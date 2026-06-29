@@ -1,0 +1,1945 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>전자결재 · 제이에이치솔루션</title>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getFirestore, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc,
+         collection, query, where, orderBy, serverTimestamp, onSnapshot }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const FB = {
+  apiKey:"AIzaSyCyQxBJ_ftfM0ImBXubmqD5gfzFR54iPmE",
+  authDomain:"p4ph2-fab-506a7.firebaseapp.com",
+  projectId:"p4ph2-fab-506a7",
+  storageBucket:"p4ph2-fab-506a7.firebasestorage.app",
+  messagingSenderId:"36946317914",
+  appId:"1:36946317914:web:c6ad5f3a1b98130c99fe63"
+};
+const app  = initializeApp(FB);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+const prov = new GoogleAuthProvider();
+window._db = db;
+
+let _user = null, _isAdmin = false;
+
+// ── 화면 전환 ──
+// 전화번호 포맷 공통 함수
+function fmtTel(v){
+  var d=v.replace(/\D/g,'');
+  if(d.length<=3) return d;
+  if(d.length<=6) return d.slice(0,3)+'-'+d.slice(3);
+  if(d.length<=10) return d.slice(0,3)+'-'+d.slice(3,6)+'-'+d.slice(6);
+  return d.slice(0,3)+'-'+d.slice(3,7)+'-'+d.slice(7,11);
+}
+function fmtTelBlur(el){
+  var d=el.value.replace(/\D/g,'');
+  if(d.length===8 && d[0]!=='0') d='010'+d;
+  el.value=fmtTel(d);
+}
+function show(s) {
+  ['login','denied','app'].forEach(id=>{
+    const el=document.getElementById(id+'-screen');
+    if(el) el.style.display=(id===s?'flex':'none');
+  });
+}
+
+// ── 인증 ──
+window.doLogin  = async () => { try { await signInWithPopup(auth, prov); } catch(e) { alert('로그인 오류'); } };
+window.doLogout = async () => { await signOut(auth); location.reload(); };
+
+onAuthStateChanged(auth, async u => {
+  if (!u) { show('login'); return; }
+  _user = u;
+
+  // 포털 경유 승인 체크
+  const via = new URLSearchParams(location.search).get('via') === 'portal';
+  if (via) {
+    try {
+      const ps = await getDoc(doc(db, 'portal_users', u.uid));
+      if (ps.exists()) {
+        const d = ps.data();
+        if (d.status === 'approved' && (d.admin || (d.perms && d.perms.edoc))) {
+          _isAdmin = !!d.admin;
+          _myInfo = { name: d.name||u.displayName||'', rank: d.rank||'', dept: d.dept||'', email: u.email };
+          document.documentElement.classList.add('portal-embed');
+          enterApp(u);
+          return;
+        } else {
+          // perms.edoc 없음 또는 미승인 → 직접 접근 허용 (로그인된 상태로 입장)
+          _isAdmin = !!d.admin;
+          _myInfo = { name: d.name||u.displayName||'', rank: d.rank||'', dept: d.dept||'', email: u.email };
+          document.documentElement.classList.add('portal-embed');
+          enterApp(u);
+          return;
+        }
+      } else {
+        // portal_users 문서 없음 → 그냥 입장 허용
+        document.documentElement.classList.add('portal-embed');
+        enterApp(u);
+        return;
+      }
+    } catch(e) {
+      console.error('portal auth error:', e);
+      document.documentElement.classList.add('portal-embed');
+      enterApp(u);
+      return;
+    }
+  }
+
+  // 직접 접근: portal_users 승인 체크
+  try {
+    const ps = await getDoc(doc(db, 'portal_users', u.uid));
+    if (ps.exists() && ps.data().status === 'approved') {
+      const d = ps.data();
+      _isAdmin = !!d.admin;
+      _myInfo = { name: d.name||u.displayName||'', rank: d.rank||'', dept: d.dept||'', email: u.email };
+      enterApp(u);
+    } else {
+      show('denied');
+    }
+  } catch(e) {
+    show('denied');
+  }
+});
+
+function enterApp(u) {
+  const ini = document.getElementById('user-initial');
+  if (ini) ini.textContent = (u.displayName||u.email||'?')[0].toUpperCase();
+  const sb = document.getElementById('sb-user');
+  if (sb) sb.textContent = (u.displayName||u.email||'?')[0].toUpperCase();
+  show('app');
+  // 로그인 직후 사용자 정보 미리 로드
+  loadMyInfo();
+  const params = new URLSearchParams(location.search);
+  if (params.get('via')==='portal') document.documentElement.classList.add('portal-embed');
+  const t = params.get('tab');
+  goTab((t && EDOC_TABS[t]) ? t : 'home');
+}
+
+// ── 탭 시스템 ──
+const EDOC_TABS = {
+  home:    { id:'tab-home',    title:'전자결재 홈',  fn:()=>renderEdocHome() },
+  approve: { id:'tab-approve', title:'결재함',        fn:()=>renderApproveBox() },
+  daily:   { id:'tab-daily',   title:'업무일지',      fn:()=>renderDailyMain() },
+  leave:   { id:'tab-leave',   title:'연차신청서',    fn:()=>renderLeaveMain() },
+  resign:  { id:'tab-resign',  title:'퇴직원서',      fn:()=>renderDocMain('resign') },
+  cert:    { id:'tab-cert',    title:'재직증명서',    fn:()=>renderDocMain('cert') },
+  purchase:{ id:'tab-purchase',title:'구매품의서',    fn:()=>renderDocMain('purchase') },
+  expense: { id:'tab-expense', title:'지출결의서',    fn:()=>renderDocMain('expense') },
+};
+
+window.goTab = function(key, afterFn) {
+  const t = EDOC_TABS[key]; if (!t) return;
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  const tc = document.getElementById(t.id); if (tc) tc.classList.add('active');
+  document.querySelectorAll('[data-navkey]').forEach(b=>
+    b.classList.toggle('active', b.getAttribute('data-navkey')===key));
+  const ht = document.getElementById('header-title'); if (ht) ht.textContent = t.title;
+  if (t.fn) {
+    const result = t.fn();
+    // fn이 Promise를 반환하면 then, 아니면 setTimeout으로 afterFn 실행
+    if (afterFn) {
+      if (result && typeof result.then === 'function') {
+        result.then(() => afterFn());
+      } else {
+        setTimeout(afterFn, 50);
+      }
+    }
+  } else if (afterFn) {
+    setTimeout(afterFn, 50);
+  }
+};
+
+// KPI 카드 클릭 → 해당 목록 전체를 모달로 표시
+window.edocShowList = function(kind) {
+  const lists = window._edocLists || {};
+  const TITLES = { inbox:'📨 수신함 (회람)', mydocs:'📝 내가 작성한 문서', posted:'📤 게시된 문건', approve:'✍️ 결재할 문서' };
+  const EMPTY = { inbox:'수신된 문서가 없습니다', mydocs:'작성한 문서가 없습니다', posted:'게시된 문건이 없습니다', approve:'결재할 문서가 없습니다' };
+  const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'퇴직원서', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서' };
+  const STATUS_LABEL = { draft:'임시저장', pending:'결재대기', reviewing:'검토중', approved:'승인', rejected:'반려', posted:'게시' };
+  const STATUS_COLOR = { draft:'#9AAABF', pending:'#F59E0B', reviewing:'#1D5BA6', approved:'#16A34A', rejected:'#DC2626', posted:'#16A34A' };
+  const STATUS_BG = { draft:'#F1EFE8', pending:'#FAEEDA', reviewing:'#E6F1FB', approved:'#EAF3DE', rejected:'#FCEBEB', posted:'#E1F5EE' };
+  const STATUS_FG = { draft:'#444441', pending:'#633806', reviewing:'#0C447C', approved:'#27500A', rejected:'#791F1F', posted:'#085041' };
+  const arr = lists[kind] || [];
+
+  const fmtD = (ts) => {
+    if(!ts) return '';
+    const d = ts.seconds ? new Date(ts.seconds*1000) : new Date(ts);
+    return `${d.getMonth()+1}월 ${d.getDate()}일`;
+  };
+
+  const authorOf = (d) => {
+    const nm = d.authorName || '';
+    const rk = d.authorRank || '';
+    const ty = TYPE_LABEL[d.dtype] || d.dtype;
+    return ty + (nm ? ' · ' + nm + (rk ? ' ' + rk : '') : '');
+  };
+  const rows = arr.length ? arr.map(d => `
+    <div class="elist-rowB" onclick="edocCloseList();openDocFromHome(${JSON.stringify(d).replace(/"/g,'&quot;')})" style="display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid #EEF2F7;cursor:pointer;" onmouseover="this.style.background='#F7F9FC'" onmouseout="this.style.background='transparent'">
+      <span style="flex-shrink:0;font-size:11px;font-weight:600;padding:4px 10px;border-radius:7px;background:${STATUS_BG[d.status]||'#F1EFE8'};color:${STATUS_FG[d.status]||'#444441'};white-space:nowrap;">${STATUS_LABEL[d.status]||d.status}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;color:#1A2540;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.title||'(제목없음)'}</div>
+        <div style="font-size:11px;color:#5C6F8A;margin-top:3px;">${authorOf(d)}</div>
+      </div>
+      <span style="flex-shrink:0;font-size:11px;color:#9AAABF;">${fmtD(d.createdAt)}</span>
+      <span style="flex-shrink:0;font-size:15px;color:#C5CEDB;">›</span>
+    </div>`).join('') : `<div class="panel-empty" style="padding:48px;text-align:center;color:#9AAABF;font-size:13px;">${EMPTY[kind]||'문서가 없습니다'}</div>`;
+
+  let modal = document.getElementById('edoc-list-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'edoc-list-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(19,51,92,0.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+    modal.onclick = (e)=>{ if(e.target===modal) edocCloseList(); };
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:16px;max-width:680px;width:100%;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #DDE4EF;">
+        <div style="font-size:17px;font-weight:800;color:#13335C;">${TITLES[kind]||'문서 목록'} <span style="color:#5BA4CF;">(${arr.length})</span></div>
+        <button onclick="edocCloseList()" style="border:none;background:#F4F7FB;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:18px;color:#5C6F8A;">✕</button>
+      </div>
+      <div style="overflow-y:auto;padding:12px 16px;">${rows}</div>
+    </div>`;
+  modal.style.display = 'flex';
+};
+
+window.edocCloseList = function() {
+  const m = document.getElementById('edoc-list-modal');
+  if (m) m.style.display = 'none';
+};
+
+window.addEventListener('message', e => {
+  const d = e.data;
+  if (!d || d.source !== 'jh-portal') return;
+  if (d.action === 'goTab') {
+    const key = d.key;
+    if (EDOC_TABS[key]) {
+      goTab(key);
+    }
+  }
+});
+
+// ══════════════════════════════════════════════
+// 📝 업무일지 전용 모듈
+// ══════════════════════════════════════════════
+let _pjts = [];   // gihoek_projects 캐시
+let _myInfo = {}; // 로그인 사용자 정보 (소속·이름·직급)
+
+// 로그인 사용자 정보 로드 (portal_users → workers 순 시도)
+async function loadMyInfo() {
+  if (!window._db || !_user) return;
+  try {
+    const { getDoc, getDocs, doc, collection, query, where } =
+      await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    // portal_users: { name, rank, email }
+    const pu = await getDoc(doc(window._db, 'portal_users', _user.uid));
+    if (pu.exists()) {
+      const d = pu.data();
+      _myInfo = { name: d.name || _user.displayName || '', rank: d.rank || '', dept: d.dept || '', email: _user.email };
+    }
+    // workers 컬렉션에서 이메일로 매칭해 dept 보완
+    const ws = await getDocs(collection(window._db, 'workers'));
+    ws.forEach(w => {
+      const wd = w.data();
+      if ((wd.email || '').toLowerCase() === (_user.email || '').toLowerCase() ||
+          (wd.name && wd.name === _myInfo.name)) {
+        _myInfo = { ..._myInfo, dept: wd.dept || _myInfo.dept, rank: wd.rank || _myInfo.rank };
+      }
+    });
+  } catch(e) { console.warn('myInfo load:', e.message); }
+}
+
+// 진행 중 프로젝트 목록 로드
+async function loadPjts() {
+  if (!window._db || _pjts.length) return;
+  try {
+    const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap = await getDocs(collection(window._db, 'gihoek_projects'));
+    _pjts = [];
+    snap.forEach(d => {
+      const pd = d.data();
+      if (pd.status !== 'done') _pjts.push({ id: d.id, ...pd });
+    });
+    _pjts.sort((a,b) => (a.createdAt?.seconds||0) - (b.createdAt?.seconds||0));
+  } catch(e) { console.warn('loadPjts:', e.message); }
+}
+
+// 업무일지 메인 화면
+window.renderDailyMain = async function() {
+  const el = document.getElementById('tab-daily'); if(!el) return;
+  el.innerHTML = `<div class="wrap2">
+    <div class="sec-title">📝 업무일지</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+      <button class="sel-btn" onclick="renderDailyWrite()">
+        <div class="sel-icon" style="background:#E8F0FB;">✏️</div>
+        <div class="sel-tx"><div class="sel-name">작성</div><div class="sel-desc">업무일지 신규 작성 및 상신</div></div>
+        <div class="sel-chev">›</div>
+      </button>
+      <button class="sel-btn" onclick="renderDailyList()">
+        <div class="sel-icon" style="background:#DCFCE7;">📂</div>
+        <div class="sel-tx"><div class="sel-name">조회</div><div class="sel-desc">제출된 업무일지 목록 조회</div></div>
+        <div class="sel-chev">›</div>
+      </button>
+    </div>
+  </div>`;
+};
+
+// 업무일지 작성 화면
+window.renderDailyWrite = async function() {
+  const el = document.getElementById('tab-daily'); if(!el) return;
+  el.innerHTML = `<div class="wrap2"><div style="text-align:center;padding:32px;color:#9AAABF;">⏳ 불러오는 중…</div></div>`;
+  await Promise.all([loadMyInfo(), loadPjts()]);
+
+  const today = new Date().toISOString().slice(0,10);
+  const todayFmt = today.replace(/-/g,'').slice(2); // yymmdd
+
+  const pjtOpts = [
+    '<option value="">프로젝트 선택 (선택사항)</option>',
+    ..._pjts.map(p => `<option value="${p.id}" data-code="${p.code||''}" data-name="${p.name||''}">${p.code ? p.code+' ' : ''}${p.name||p.id}</option>`)
+  ].join('');
+
+  const authorName = _myInfo.name || _user?.displayName || '';
+  const authorDept = _myInfo.dept || '';
+  const authorRank = _myInfo.rank || '';
+
+  el.innerHTML = `<div class="wrap2">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+      <button onclick="renderDailyMain()" class="back-btn">‹ 뒤로</button>
+      <span style="font-size:14px;font-weight:800;color:#1A2540;">📝 업무일지 작성</span>
+    </div>
+
+    <!-- 기본 정보 카드 -->
+    <div class="form-card">
+      <div class="fc-sec">📌 기본 정보</div>
+
+      <div class="fc-row">
+        <div class="fc-col">
+          ${fcField('일자', `<input id="d-date" type="date" value="${today}"
+            oninput="dailyAutoTitle()" class="fc-input">`)}
+        </div>
+        <div class="fc-col">
+          ${fcField('프로젝트', `<select id="d-pjt" oninput="dailyAutoTitle()" class="fc-input">${pjtOpts}</select>`)}
+        </div>
+      </div>
+
+      ${fcField('제목 (자동생성)', `<input id="d-title" type="text"
+        placeholder="프로젝트·일자 선택 시 자동 완성됩니다"
+        class="fc-input" style="color:#1D5BA6;font-weight:600;">`)}
+    </div>
+
+    <!-- 작성자 카드 -->
+    <div class="form-card">
+      <div class="fc-sec">👤 작성자</div>
+      <div class="fc-row">
+        <div class="fc-col">${fcField('소속', `<input id="d-dept" type="text" value="${authorDept}" class="fc-input" placeholder="소속 부서">`)}</div>
+        <div class="fc-col">${fcField('직급', `<input id="d-rank" type="text" value="${authorRank}" class="fc-input" placeholder="직급">`)}</div>
+      </div>
+      ${fcField('이름', `<input id="d-name" type="text" value="${authorName}" class="fc-input" readonly
+        style="background:#F4F7FB;color:#5C6F8A;">`)}
+    </div>
+
+    <!-- 업무 내용 카드 -->
+    <div class="form-card">
+      <div class="fc-sec">📋 업무 내용</div>
+      ${fcField('오늘 진행한 업무 <span style="color:#DC2626;">*</span>',
+        `<textarea id="d-today" rows="5" class="fc-input fc-ta"
+          placeholder="금일 수행한 업무 내용을 상세히 입력하세요"></textarea>`)}
+      ${fcField('내일 예정된 업무',
+        `<textarea id="d-tomorrow" rows="4" class="fc-input fc-ta"
+          placeholder="익일 계획 업무를 입력하세요 (선택)"></textarea>`)}
+      ${fcField('이슈 · 특이사항',
+        `<textarea id="d-issue" rows="3" class="fc-input fc-ta"
+          placeholder="이슈 없으면 비워도 됩니다 (선택)"></textarea>`)}
+    </div>
+
+    <!-- 결재 라인 카드 -->
+    <div class="form-card">
+      <div class="fc-sec">🖊️ 결재 라인 <span style="font-size:10px;font-weight:400;color:#9AAABF;margin-left:6px;">회람 방식</span></div>
+      <div class="approval-line">
+        <div class="ap-box">
+          <div class="ap-role">작성</div>
+          <div class="ap-name">${authorName||'—'}</div>
+          <div class="ap-rank">${authorRank||'—'}</div>
+          <div class="ap-stamp pending">대기</div>
+        </div>
+        <div class="ap-arrow">›</div>
+        <div class="ap-box">
+          <div class="ap-role">결재</div>
+          <div class="ap-name">김종화</div>
+          <div class="ap-rank">부사장</div>
+          <div class="ap-stamp pending">대기</div>
+        </div>
+        <div class="ap-arrow">›</div>
+        <div class="ap-box">
+          <div class="ap-role">수신</div>
+          <div class="ap-name">송지훈</div>
+          <div class="ap-rank">대표</div>
+          <div class="ap-stamp pending">대기</div>
+        </div>
+      </div>
+      <div style="background:#E8F0FB;border-radius:8px;padding:10px 12px;font-size:11.5px;color:#1D5BA6;margin-top:10px;line-height:1.6;">
+        💡 결재: 김종화 부사장 → 수신: 송지훈 대표
+      </div>
+    </div>
+
+    <!-- 버튼 -->
+    <div style="display:flex;gap:8px;padding-bottom:20px;">
+      <button onclick="dailySave('draft')" style="flex:1;padding:13px;background:#6B7280;border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">💾 임시저장</button>
+      <button onclick="dailySave('pending')" style="flex:1;padding:13px;background:#1D5BA6;border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📨 상신</button>
+    </div>
+  </div>`;
+
+  // 초기 제목 자동생성
+  dailyAutoTitle();
+};
+
+// fc 헬퍼
+function fcField(label, inputHtml) {
+  return `<div style="margin-bottom:12px;">
+    <div style="font-size:11px;font-weight:700;color:#5C6F8A;margin-bottom:5px;">${label}</div>
+    ${inputHtml}
+  </div>`;
+}
+
+// 제목 자동 생성: (PJT코드) yymmdd ㅇㅇㅇ 업무일지
+window.dailyAutoTitle = function() {
+  const dateVal = (document.getElementById('d-date')?.value || '').replace(/-/g,'').slice(2);
+  const pjtSel  = document.getElementById('d-pjt');
+  const name    = document.getElementById('d-name')?.value || '';
+  const nameShort = name.slice(0,1) + (name.length > 1 ? name.slice(1) : ''); // 이름 전체
+
+  let pjtPrefix = '';
+  if (pjtSel && pjtSel.value) {
+    const opt = pjtSel.options[pjtSel.selectedIndex];
+    const code = opt.dataset.code || '';
+    const pname = opt.dataset.name || '';
+    pjtPrefix = code ? `(${code}) ` : pname ? `(${pname}) ` : '';
+  }
+
+  const titleEl = document.getElementById('d-title');
+  if (titleEl) titleEl.value = `${pjtPrefix}${dateVal} ${nameShort} 업무일지`.trim();
+};
+
+// 업무일지 저장
+window.dailySave = async function(status) {
+  if (!window._db || !_user) { alert('로그인이 필요합니다.'); return; }
+
+  const title   = (document.getElementById('d-title')?.value || '').trim();
+  const today   = (document.getElementById('d-today')?.value || '').trim();
+  const pjtSel  = document.getElementById('d-pjt');
+  const pjtId   = pjtSel?.value || '';
+  const opt     = pjtSel?.selectedIndex > 0 ? pjtSel.options[pjtSel.selectedIndex] : null;
+
+  if (status === 'pending' && !title) { alert('제목을 입력해 주세요.'); return; }
+  if (status === 'pending' && !today) { alert('오늘 진행한 업무를 입력해 주세요.'); return; }
+
+  const data = {
+    dtype: 'daily', status,
+    title, date: document.getElementById('d-date')?.value || '',
+    pjtId, pjtCode: opt?.dataset.code || '', pjtName: opt?.dataset.name || '',
+    todayWork:    today,
+    tomorrowWork: document.getElementById('d-tomorrow')?.value || '',
+    issue:        document.getElementById('d-issue')?.value || '',
+    authorUid:   _user.uid,
+    authorEmail: _user.email || '',
+    authorName:  document.getElementById('d-name')?.value || _user.displayName || '',
+    authorDept:  document.getElementById('d-dept')?.value || '',
+    authorRank:  document.getElementById('d-rank')?.value || '',
+    // 결재 라인 고정 (결재: 김종화, 수신: 송지훈)
+    approvalLine: [
+      { role:'작성', uid:_user.uid, name:document.getElementById('d-name')?.value || '', status:'draft' },
+      { role:'결재', uid:'', name:'김종화', rank:'부사장', status:'pending' },
+      { role:'수신', uid:'', name:'송지훈', rank:'대표', status:'pending' },
+    ],
+    createdAt: serverTimestamp(),
+  };
+
+  try {
+    const { addDoc, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await addDoc(collection(window._db, 'edoc_daily'), data);
+    alert(status==='pending' ? '✅ 상신 완료! 결재 대기 중입니다.' : '💾 임시저장 완료');
+    renderDailyMain();
+  } catch(e) { alert('저장 오류: '+e.message); }
+};
+
+// 업무일지 목록
+window.renderDailyList = async function() {
+  const el = document.getElementById('tab-daily'); if(!el) return;
+  el.innerHTML = `<div class="wrap2">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+      <button onclick="renderDailyMain()" class="back-btn">‹ 뒤로</button>
+      <span style="font-size:13px;font-weight:800;color:#1A2540;">📝 업무일지 목록</span>
+    </div>
+    <div id="daily-list-wrap">⏳ 불러오는 중…</div>
+  </div>`;
+
+  try {
+    const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap = await getDocs(collection(window._db, 'edoc_daily'));
+    const docs = []; snap.forEach(d=>docs.push({id:d.id,...d.data()}));
+    docs.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+
+    const STATUS_LABEL = { draft:'임시저장', pending:'결재대기', reviewing:'검토중', approved:'승인', rejected:'반려', posted:'게시' };
+    const STATUS_COLOR = { draft:'#9AAABF', pending:'#F59E0B', reviewing:'#3B82F6', approved:'#16A34A', rejected:'#DC2626', posted:'#1D5BA6' };
+    const fmtD = ts => ts?.seconds ? new Date(ts.seconds*1000).toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}) : '-';
+
+    const wrap = document.getElementById('daily-list-wrap');
+    if (!docs.length) { wrap.innerHTML='<div class="panel-empty" style="padding:40px;">작성된 업무일지가 없습니다.</div>'; return; }
+
+    wrap.innerHTML = docs.map(d=>`
+      <div class="doc-row" onclick='renderDailyDetail(${JSON.stringify(d).replace(/'/g,"&#39;")})'>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+          <span style="font-size:13px;font-weight:700;color:#1A2540;">${d.title||'(제목없음)'}</span>
+          <span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;background:${STATUS_COLOR[d.status]||'#9AAABF'}22;color:${STATUS_COLOR[d.status]||'#9AAABF'};">${STATUS_LABEL[d.status]||d.status}</span>
+        </div>
+        <div style="font-size:11px;color:#5C6F8A;">${d.authorName||'-'} · ${d.authorDept||''} · ${fmtD(d.createdAt)}</div>
+        ${d.pjtName?`<div style="font-size:10px;color:#9AAABF;margin-top:2px;">📌 ${d.pjtCode||''} ${d.pjtName}</div>`:''}
+      </div>`).join('');
+  } catch(e) {
+    document.getElementById('daily-list-wrap').innerHTML = `<div style="color:#DC2626;padding:20px;">오류: ${e.message}</div>`;
+  }
+};
+
+// 업무일지 상세 보기
+window.renderDailyDetail = function(d) {
+  const el = document.getElementById('tab-daily'); if(!el) return;
+  const STATUS_LABEL = { draft:'임시저장', pending:'결재대기', reviewing:'검토중', approved:'승인', rejected:'반려', posted:'게시' };
+  const STATUS_COLOR = { draft:'#9AAABF', pending:'#F59E0B', reviewing:'#3B82F6', approved:'#16A34A', rejected:'#DC2626', posted:'#1D5BA6' };
+  const fmtD = s => s ? s.replace(/(\d{4})-(\d{2})-(\d{2})/,'$1.$2.$3') : '-';
+  const myUid = _user?.uid;
+  const isOwner = myUid && d.authorUid === myUid;
+  const canApprove = _isAdmin && (d.status==='pending'||d.status==='reviewing');
+  // 작성자: 임시저장/반려 상태면 수정·삭제 가능, 관리자는 항상 삭제 가능
+  const canEdit = isOwner && (d.status==='draft' || d.status==='rejected');
+  const canDelete = (isOwner && (d.status==='draft'||d.status==='rejected')) || _isAdmin;
+  const canRecall = isOwner && (d.status==='pending' || d.status==='reviewing');
+
+  const apLine = (d.approvalLine||[
+    {role:'작성',name:d.authorName||'',status:'done'},
+    {role:'결재',name:'',status:'pending'},
+    {role:'수신',name:'',status:'pending'},
+  ]);
+
+  const apBoxes = apLine.map((ap, i) => `
+    <div class="ap-box">
+      <div class="ap-role">${ap.role}</div>
+      <div class="ap-name">${ap.name||'—'}</div>
+      <div class="ap-rank">${ap.rank||'—'}</div>
+      <div class="ap-stamp ${ap.status==='done'||ap.status==='approved'?'approved':ap.status==='pending'&&i===0?'pending':'empty'}">
+        ${ap.status==='done'||ap.status==='approved'?'✓':ap.status==='pending'&&i===0?'대기':'—'}
+      </div>
+    </div>${i<apLine.length-1?'<div class="ap-arrow">›</div>':''}`).join('');
+
+  el.innerHTML = `<div class="wrap2">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+      <button onclick="renderDailyList()" class="back-btn">‹ 목록</button>
+      <span style="font-size:13px;font-weight:800;color:#1A2540;">📝 업무일지</span>
+    </div>
+
+    <div class="form-card" style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:10px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:16px;font-weight:800;color:#1A2540;margin-bottom:6px;word-break:break-all;">${d.title||'(제목없음)'}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${d.pjtName?`<span style="font-size:10px;background:#E8F0FB;color:#1D5BA6;padding:2px 8px;border-radius:8px;">📌 ${d.pjtCode||''} ${d.pjtName}</span>`:''}
+            <span style="font-size:10px;background:#F4F7FB;color:#5C6F8A;padding:2px 8px;border-radius:8px;">📅 ${fmtD(d.date)}</span>
+          </div>
+        </div>
+        <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;background:${STATUS_COLOR[d.status]||'#9AAABF'}22;color:${STATUS_COLOR[d.status]||'#9AAABF'};">${STATUS_LABEL[d.status]||d.status}</span>
+      </div>
+
+      <div style="background:#F4F7FB;border-radius:8px;padding:10px 12px;font-size:12px;margin-bottom:12px;">
+        <div style="display:flex;gap:16px;flex-wrap:wrap;">
+          <div><span style="color:#5C6F8A;font-weight:600;">작성자</span> <span style="color:#1A2540;">${d.authorName||'-'}</span></div>
+          <div><span style="color:#5C6F8A;font-weight:600;">소속</span> <span style="color:#1A2540;">${d.authorDept||'-'}</span></div>
+          <div><span style="color:#5C6F8A;font-weight:600;">직급</span> <span style="color:#1A2540;">${d.authorRank||'-'}</span></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px;font-weight:700;color:#1D5BA6;margin-bottom:6px;">✅ 오늘 진행한 업무</div>
+        <div style="font-size:13px;color:#1A2540;line-height:1.8;white-space:pre-wrap;background:#fff;border:1px solid #DDE4EF;border-radius:8px;padding:10px 12px;">${d.todayWork||'-'}</div>
+      </div>
+      ${d.tomorrowWork?`<div style="margin-bottom:10px;">
+        <div style="font-size:11px;font-weight:700;color:#5C6F8A;margin-bottom:6px;">📅 내일 예정된 업무</div>
+        <div style="font-size:13px;color:#1A2540;line-height:1.8;white-space:pre-wrap;background:#fff;border:1px solid #DDE4EF;border-radius:8px;padding:10px 12px;">${d.tomorrowWork}</div>
+      </div>`:''}
+      ${d.issue?`<div style="margin-bottom:10px;">
+        <div style="font-size:11px;font-weight:700;color:#DC2626;margin-bottom:6px;">⚠️ 이슈 · 특이사항</div>
+        <div style="font-size:13px;color:#1A2540;line-height:1.8;white-space:pre-wrap;background:#FEF3F2;border:1px solid #FEE2E2;border-radius:8px;padding:10px 12px;">${d.issue}</div>
+      </div>`:''}
+    </div>
+
+    <!-- 결재 라인 -->
+    <div class="form-card" style="margin-bottom:10px;">
+      <div class="fc-sec">🖊️ 결재 라인 <span style="font-size:10px;font-weight:400;color:#9AAABF;margin-left:6px;">회람</span></div>
+      <div class="approval-line">${apBoxes}</div>
+    </div>
+
+    ${canApprove?`<div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button onclick="dailyApprove('${d.id}','approved')" style="flex:1;padding:12px;background:#16A34A;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✅ 승인</button>
+      <button onclick="dailyApprove('${d.id}','rejected')" style="flex:1;padding:12px;background:#DC2626;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">❌ 반려</button>
+      <button onclick="dailyApprove('${d.id}','posted')" style="flex:1;padding:12px;background:#1D5BA6;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📤 게시</button>
+    </div>`:''}
+    ${(canRecall||canDelete)?`<div style="display:flex;gap:8px;margin-bottom:10px;">
+      ${canRecall ? `<button onclick="docRecall('${d.id}','daily')" style="flex:1;padding:11px;background:#F59E0B;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">↩️ 회수</button>` : ''}
+      ${canDelete ? `<button onclick="docDelete('${d.id}','daily')" style="flex:1;padding:11px;background:#fff;border:1px solid #DC2626;border-radius:10px;color:#DC2626;font-size:13px;font-weight:700;cursor:pointer;">🗑️ 삭제</button>` : ''}
+    </div>`:''}
+    <div style="margin-bottom:10px;">
+      <button onclick='printDocA4(${JSON.stringify(d).replace(/'/g,"&#39;")}, "daily")' style="width:100%;padding:12px;background:#fff;border:1px solid #1D5BA6;border-radius:12px;color:#1D5BA6;font-size:13px;font-weight:700;cursor:pointer;">🖨️ A4 출력 / PDF 저장</button>
+    </div>
+    <button onclick="renderDailyList()" class="back-btn" style="width:100%;padding:11px;text-align:center;border-radius:10px;">목록으로</button>
+  </div>`;
+};
+
+window.dailyApprove = async function(docId, newStatus) {
+  if (!window._db) return;
+  if (!confirm(`이 업무일지를 [${newStatus==='approved'?'승인':newStatus==='rejected'?'반려':'게시'}] 처리하시겠습니까?`)) return;
+  try {
+    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await setDoc(doc(window._db,'edoc_daily',docId),
+      { status:newStatus, approvedBy:_user?.displayName||'', approvedAt:serverTimestamp() }, { merge:true });
+    alert('✅ 처리 완료');
+    renderDailyList();
+  } catch(e) { alert('오류: '+e.message); }
+};
+
+// ── 전자결재 홈 ──
+// ── 근로기준법 연차 자동 계산 ──
+function calcAnnualLeaveGrant(hireDateStr, baseDateStr) {
+  if (!hireDateStr) return { granted:0, years:0, months:0, detail:'입사일 미등록' };
+  const hire = new Date(hireDateStr);
+  const base = baseDateStr ? new Date(baseDateStr) : new Date();
+  if (isNaN(hire.getTime()) || base < hire) return { granted:0, years:0, months:0, detail:'-' };
+  let years = base.getFullYear() - hire.getFullYear();
+  const mDiff = base.getMonth() - hire.getMonth();
+  const dDiff = base.getDate() - hire.getDate();
+  if (mDiff < 0 || (mDiff === 0 && dDiff < 0)) years--;
+  const totalMonths = (base.getFullYear()-hire.getFullYear())*12 + (base.getMonth()-hire.getMonth()) - (base.getDate() < hire.getDate() ? 1 : 0);
+  let granted = 0, detail = '';
+  if (years < 1) {
+    granted = Math.min(Math.max(totalMonths,0), 11);
+    detail = `입사 ${Math.max(totalMonths,0)}개월 (월 1일, 최대 11일)`;
+  } else {
+    granted = 15;
+    if (years >= 3) granted = Math.min(15 + Math.floor((years-1)/2), 25);
+    detail = `근속 ${years}년차 (15일${granted>15?` +${granted-15}`:''})`;
+  }
+  return { granted, years, months: Math.max(totalMonths,0), detail };
+}
+
+// 연차 사용일수 집계 (게시/승인된 연차신청서)
+function sumLeaveUsed(leaveDocs, workerName) {
+  let used = 0;
+  for (const lv of leaveDocs) {
+    const nm = lv.authorName || lv.name || '';
+    if (nm !== workerName) continue;
+    if (lv.status !== 'posted' && lv.status !== 'approved') continue;
+    const days = parseFloat(lv.days || lv.leaveDays || 0);
+    if (!isNaN(days)) used += days;
+  }
+  return used;
+}
+window.calcAnnualLeaveGrant = calcAnnualLeaveGrant;
+window.sumLeaveUsed = sumLeaveUsed;
+
+async function renderEdocHome() {
+  const el = document.getElementById('tab-home'); if(!el) return;
+  const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'퇴직원서', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서' };
+  const fmtD = ts => ts?.seconds ? new Date(ts.seconds*1000).toLocaleDateString('ko-KR',{month:'short',day:'numeric'}) : '-';
+  const STATUS_COLOR = { pending:'#F59E0B', approved:'#16A34A', rejected:'#DC2626', posted:'#1D5BA6', draft:'#9AAABF' };
+  const STATUS_LABEL = { pending:'결재대기', approved:'승인', rejected:'반려', posted:'게시', draft:'임시저장' };
+
+  el.innerHTML = `<div class="wrap2">
+    <div class="sec-title">전자결재 홈</div>
+    <div class="sec-sub">내 결재함 · 수신함 · 게시 문건</div>
+    <div id="edoc-leave-box" class="leave-box">
+      <div class="leave-box-inner" style="opacity:.5;">연차 현황 불러오는 중…</div>
+    </div>
+    <div id="edoc-home-kpi" class="home-kpi-grid">
+      ${[0,0,0,0].map(()=>'<div class="kpi-card loading">·</div>').join('')}
+    </div>
+    <div class="home-2col" id="edoc-home-panels">
+      <div class="panel">
+        <div class="panel-head">✍️ 내가 결재해야 할 문서</div>
+        <div id="panel-my-approve" class="panel-list">불러오는 중…</div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">📨 수신함 (회람)</div>
+        <div id="panel-inbox" class="panel-list">불러오는 중…</div>
+      </div>
+    </div>
+    <div class="home-2col" id="edoc-home-panels2" style="margin-top:16px;">
+      <div class="panel">
+        <div class="panel-head">📝 내가 작성한 문서</div>
+        <div id="panel-my-docs" class="panel-list">불러오는 중…</div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">📤 게시된 문건</div>
+        <div id="panel-posted" class="panel-list">불러오는 중…</div>
+      </div>
+    </div>
+  </div>`;
+
+  if (!window._db || !_user) return;
+  try {
+    const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const DOC_TYPES = ['daily','leave','resign','cert','purchase','expense'];
+    const myUid = _user.uid;
+
+    // 내가 결재해야 할 문서: approvalLine에 내 uid가 있고 status=pending인 역할이 현재 차례인 것
+    let myApprove = [];  // 내가 결재자인 대기 문서
+    let myInbox = [];    // 내가 회람 수신자인 문서
+    let myDocs = [];     // 내가 작성한 문서
+    let postedAll = [];  // 게시된 전체 문서
+    let allLeave = [];   // 전체 연차신청서 (연차 집계용)
+
+    for (const dtype of DOC_TYPES) {
+      const snap = await getDocs(collection(db, `edoc_${dtype}`));
+      snap.forEach(d => {
+        const data = {id:d.id, dtype, ...d.data()};
+        const line = data.approvalLine || [];
+        if (dtype === 'leave') allLeave.push(data);
+
+        // 게시된 문서
+        if (data.status === 'posted') postedAll.push(data);
+
+        // 내가 작성한 문서
+        if (data.authorUid === myUid) myDocs.push(data);
+
+        // 내가 결재라인에 있는 문서 분류
+        line.forEach((step, idx) => {
+          // uid 일치 OR uid 비어있고 이름 일치
+        const uidMatch = step.uid === myUid || (!step.uid && step.name === (_myInfo?.name||''));
+        if (!uidMatch) return;
+          if (step.role === '회람' || step.role === '수신') {
+            // 회람/수신: 문서가 posted거나 approved이면 수신함에
+            if (data.status === 'posted' || data.status === 'approved') myInbox.push(data);
+          } else {
+            // 결재1/결재2/결재: 내 차례(이전 단계가 모두 완료)인지 확인
+            const prevDone = line.slice(0, idx).every(s => s.status === 'done' || s.status === 'approved' || s.role === '작성');
+            // 이전 단계: approved 또는 draft(작성) 상태여야 내 차례
+            const prevApproved = line.slice(0, idx).every(p =>
+              p.role === '작성' || p.status === 'approved' || p.status === 'done'
+            );
+            if (prevApproved && step.status === 'pending' && (data.status === 'pending' || data.status === 'reviewing')) {
+              myApprove.push(data);
+            }
+          }
+        });
+      });
+    }
+
+    // 정렬
+    [myApprove, myInbox, myDocs, postedAll].forEach(arr =>
+      arr.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0))
+    );
+    // 중복 제거
+    const dedup = arr => arr.filter((d,i,a)=>a.findIndex(x=>x.id===d.id)===i);
+    myApprove = dedup(myApprove); myInbox = dedup(myInbox);
+    myDocs = dedup(myDocs); postedAll = dedup(postedAll);
+
+    // 전역 저장 (KPI 카드 '전체 보기'에서 사용)
+    window._edocLists = { approve: myApprove, inbox: myInbox, mydocs: myDocs, posted: postedAll };
+
+    // ── 연차 현황 계산 (로그인 계정) ──
+    (async () => {
+      const lbox = document.getElementById('edoc-leave-box');
+      if (!lbox) return;
+      const myName = _myInfo?.name || '';
+      // workers에서 내 입사일 조회
+      let hireDate = '';
+      try {
+        const wsnap = await getDocs(collection(db, 'workers'));
+        wsnap.forEach(w => {
+          const wd = w.data();
+          if (wd.name === myName && wd.hireDate) hireDate = wd.hireDate;
+        });
+      } catch(e) {}
+
+      const grant = calcAnnualLeaveGrant(hireDate);
+      const used = sumLeaveUsed(allLeave, myName);
+      const remain = Math.max(grant.granted - used, 0);
+
+      if (!hireDate) {
+        lbox.innerHTML = `<div class="leave-box-inner" style="opacity:.7;">
+          🌴 연차 현황 — 인사 명부에 입사일이 등록되어 있지 않습니다.</div>`;
+        return;
+      }
+      lbox.innerHTML = `
+        <div class="leave-title">🌴 내 연차 현황 <span style="font-size:11px;font-weight:500;color:#9AAABF;">${grant.detail}</span></div>
+        <div class="leave-stats">
+          <div class="leave-stat"><div class="ls-lab">부여</div><div class="ls-val" style="color:#1D5BA6;">${grant.granted}<span>일</span></div></div>
+          <div class="leave-stat"><div class="ls-lab">사용</div><div class="ls-val" style="color:#F59E0B;">${used}<span>일</span></div></div>
+          <div class="leave-stat"><div class="ls-lab">잔여</div><div class="ls-val" style="color:#16A34A;">${remain}<span>일</span></div></div>
+        </div>`;
+    })();
+
+    // KPI
+    const kpi = document.getElementById('edoc-home-kpi');
+    if (kpi) kpi.innerHTML = `
+      <div class="kpi-card warn" onclick="edocShowList('approve')" style="cursor:pointer;"><div class="kpi-label">결재 요청</div><div class="kpi-val">${myApprove.length}<span class="kpi-unit">건</span></div><div class="kpi-link">확인하기 ›</div></div>
+      <div class="kpi-card" onclick="edocShowList('inbox')" style="cursor:pointer;"><div class="kpi-label">수신함</div><div class="kpi-val">${myInbox.length}<span class="kpi-unit">건</span></div><div class="kpi-link">보러가기 ›</div></div>
+      <div class="kpi-card" onclick="edocShowList('mydocs')" style="cursor:pointer;"><div class="kpi-label">내 문서</div><div class="kpi-val">${myDocs.length}<span class="kpi-unit">건</span></div><div class="kpi-link">전체 보기 ›</div></div>
+      <div class="kpi-card" onclick="edocShowList('posted')" style="cursor:pointer;"><div class="kpi-label">게시 문건</div><div class="kpi-val">${postedAll.length}<span class="kpi-unit">건</span></div><div class="kpi-link">조회하기 ›</div></div>`;
+
+    const rowHtml = (d, showApproveBtn=false) => `
+      <div class="panel-row" onclick="openDocFromHome(${JSON.stringify(d).replace(/"/g,'&quot;')})">
+        <span class="doc-badge ${d.status==='posted'?'posted':''}">${TYPE_LABEL[d.dtype]||d.dtype}</span>
+        <span class="doc-title">${d.title||'(제목없음)'}</span>
+        <span style="font-size:10px;font-weight:700;color:${STATUS_COLOR[d.status]||'#9AAABF'};white-space:nowrap;">${STATUS_LABEL[d.status]||d.status}</span>
+        <span class="doc-date">${fmtD(d.createdAt)}</span>
+        ${showApproveBtn ? `<button onclick="event.stopPropagation();openDocFromHome(${JSON.stringify(d).replace(/"/g,'&quot;')})" style="margin-left:6px;font-size:11px;padding:3px 8px;background:#1D5BA6;color:#fff;border:none;border-radius:6px;cursor:pointer;flex-shrink:0;">📋 내용 확인</button>` : ''}
+      </div>`;
+
+    // 패널 렌더
+    const pa = document.getElementById('panel-my-approve');
+    if (pa) pa.innerHTML = myApprove.length ? myApprove.slice(0,8).map(d=>rowHtml(d,true)).join('') : '<div class="panel-empty">결재 요청 문서가 없습니다</div>';
+
+    const pi = document.getElementById('panel-inbox');
+    if (pi) pi.innerHTML = myInbox.length ? myInbox.slice(0,8).map(d=>rowHtml(d)).join('') : '<div class="panel-empty">수신된 문서가 없습니다</div>';
+
+    const pm = document.getElementById('panel-my-docs');
+    if (pm) pm.innerHTML = myDocs.length ? myDocs.slice(0,8).map(d=>rowHtml(d)).join('') : '<div class="panel-empty">작성한 문서가 없습니다</div>';
+
+    const pp = document.getElementById('panel-posted');
+    if (pp) pp.innerHTML = postedAll.length ? postedAll.slice(0,8).map(d=>rowHtml(d)).join('') : '<div class="panel-empty">게시된 문건이 없습니다</div>';
+
+  } catch(e) { console.error('renderEdocHome:', e); }
+}
+
+// 결재함에서 빠른 결재 처리
+// 홈에서 문서 클릭 → 탭 전환 후 상세 열기
+// ── 결재함: 내가 결재해야 할 문서 전체 목록 ──
+async function renderApproveBox() {
+  const el = document.getElementById('tab-approve'); if(!el) return;
+  el.innerHTML = `<div class="wrap2">
+    <div class="sec-title">📥 결재함</div>
+    <div class="sec-sub">결재 요청된 문서 목록</div>
+    <div id="approve-list">⏳ 불러오는 중…</div>
+  </div>`;
+
+  if (!window._db || !_user) return;
+  try {
+    const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const DOC_TYPES = ['daily','leave','resign','cert','purchase','expense'];
+    const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'퇴직원서', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서' };
+    const STATUS_COLOR = { pending:'#F59E0B', reviewing:'#3B82F6', approved:'#16A34A', rejected:'#DC2626', posted:'#1D5BA6', draft:'#9AAABF' };
+    const STATUS_LABEL = { pending:'결재대기', reviewing:'검토중', approved:'승인', rejected:'반려', posted:'게시', draft:'임시저장' };
+    const fmtD = ts => ts?.seconds ? new Date(ts.seconds*1000).toLocaleDateString('ko-KR',{month:'short',day:'numeric'}) : '-';
+    const myName = _myInfo?.name || '';
+
+    let myApprove = [];
+    for (const dtype of DOC_TYPES) {
+      const snap = await getDocs(collection(db, `edoc_${dtype}`));
+      snap.forEach(doc => {
+        const data = {id:doc.id, dtype, ...doc.data()};
+        const line = data.approvalLine || [];
+        line.forEach((step, idx) => {
+          if (step.role === '회람' || step.role === '수신' || step.role === '작성') return;
+          const uidMatch = step.uid === _user.uid || (!step.uid && step.name === myName);
+          if (!uidMatch || step.status !== 'pending') return;
+          const prevDone = line.slice(0,idx).every(p => p.role==='작성' || p.status==='approved' || p.status==='done');
+          if (prevDone && (data.status==='pending' || data.status==='reviewing')) {
+            myApprove.push(data);
+          }
+        });
+      });
+    }
+    // 중복 제거 및 최신순 정렬
+    myApprove = myApprove.filter((d,i,a)=>a.findIndex(x=>x.id===d.id)===i);
+    myApprove.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+
+    const wrap = document.getElementById('approve-list');
+    if (!myApprove.length) {
+      wrap.innerHTML = '<div class="panel-empty" style="padding:40px;text-align:center;">결재 요청 문서가 없습니다</div>';
+      return;
+    }
+    wrap.innerHTML = myApprove.map(d => `
+      <div class="doc-row" onclick="openDocFromHome(${JSON.stringify(d).replace(/"/g,'&quot;')})">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:13px;font-weight:700;color:#1A2540;">${d.title||'(제목없음)'}</span>
+          <span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;background:${STATUS_COLOR[d.status]||'#9AAABF'}20;color:${STATUS_COLOR[d.status]||'#9AAABF'};">${STATUS_LABEL[d.status]||d.status}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:11px;color:#5C6F8A;"><span style="background:#EEF4FC;color:#1D5BA6;padding:1px 7px;border-radius:6px;font-weight:600;margin-right:6px;">${TYPE_LABEL[d.dtype]||d.dtype}</span>${d.authorName||'-'} · ${fmtD(d.createdAt)}</span>
+          <button onclick="event.stopPropagation();openDocFromHome(${JSON.stringify(d).replace(/"/g,'&quot;')})" style="font-size:12px;padding:5px 14px;background:#1D5BA6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">📋 내용 확인 후 결재</button>
+        </div>
+      </div>`).join('');
+  } catch(e) { document.getElementById('approve-list').innerHTML = `<div style="color:#DC2626;padding:20px;">오류: ${e.message}</div>`; }
+}
+window.renderApproveBox = renderApproveBox;
+
+window.openDocFromHome = function(d) {
+  const dtype = d.dtype;
+  // 탭 전환 완료 후 상세 열기 (afterFn 콜백 사용)
+  goTab(dtype, () => {
+    docDetail(d, dtype);
+  });
+};
+
+window.quickApprove = async function(docId, dtype, docData) {
+  const d = typeof docData === 'string' ? JSON.parse(docData) : docData;
+  const choice = confirm(`[${d.title||'문서'}]
+✅ 확인 = 승인 / ❌ 취소 = 반려`);
+  const newStatus = choice ? 'approved' : 'rejected';
+  if (!confirm(`[${choice?'승인':'반려'}] 처리하시겠습니까?`)) return;
+  try {
+    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const approverName = _myInfo?.name || _user?.displayName || '';
+    const myUid = _user?.uid;
+    const line = (d.approvalLine||[]).map(s => {
+      const uidMatch = s.uid === myUid || (!s.uid && s.name === approverName);
+      if (uidMatch && s.status === 'pending' && s.role !== '회람' && s.role !== '수신')
+        return {...s, uid: myUid, status: choice ? 'approved' : 'rejected', approvedBy: approverName, approvedAt: new Date().toISOString()};
+      return s;
+    });
+    await setDoc(doc(db, `edoc_${dtype}`, docId), {
+      status: newStatus, approvalLine: line,
+      approvedBy: approverName, approvedAt: new Date().toISOString(),
+    }, {merge: true});
+    alert(`✅ ${choice?'승인':'반려'} 처리되었습니다.`);
+    renderEdocHome();
+  } catch(e) { alert('오류: '+e.message); }
+};
+
+// ── 문서 유형별 메인 (공통 골격) ──
+const DOC_CONFIG = {
+  leave:    { label:'연차신청서',  icon:'🏖️', fields:[
+    { key:'leaveType', label:'휴가 종류', type:'select', opts:['연차','반차(오전)','반차(오후)','병가','기타'] },
+    { key:'startDate', label:'시작일', type:'date' },
+    { key:'endDate',   label:'종료일', type:'date' },
+    { key:'days',      label:'일수',   type:'number', ph:'0.5 / 1 / 2…' },
+    { key:'reason',    label:'사유',   type:'textarea', ph:'휴가 사유를 입력하세요' },
+    { key:'contact',   label:'비상연락처', type:'text', ph:'휴가 중 연락처' },
+  ]},
+  resign:   { label:'퇴직원서',   icon:'📤',
+    approvers:['김종화','김영희','송지훈'], cc:['김민서'],
+    fields:[
+    { key:'lastDate',  label:'퇴직 예정일', type:'date' },
+    { key:'reason',    label:'퇴직 사유',   type:'textarea', ph:'퇴직 사유를 입력하세요' },
+  ]},
+  cert:     { label:'재직증명서', icon:'🪪',
+    approvers:['김종화'], cc:[],
+    fields:[
+    { key:'purpose',   label:'용도',   type:'text', ph:'예) 금융기관 제출용' },
+    { key:'language',  label:'발급 언어', type:'select', opts:['한국어','영문(English)'] },
+    { key:'copies',    label:'부수',   type:'number', ph:'1' },
+  ]},
+  purchase: { label:'구매품의서', icon:'🛒',
+    approvers:['김종화'], cc:[],
+    fields:[
+    { key:'item',      label:'구매 품목',   type:'text',   ph:'품목명을 입력하세요' },
+    { key:'qty',       label:'수량',        type:'number', ph:'1' },
+    { key:'unitPrice', label:'단가 (원)',    type:'number', ph:'0' },
+    { key:'vendor',    label:'공급업체',    type:'text',   ph:'업체명' },
+    { key:'purpose',   label:'구매 목적',   type:'textarea', ph:'구매 필요 사유' },
+    { key:'dueDate',   label:'필요일',      type:'date' },
+  ]},
+  expense:  { label:'지출결의서', icon:'💳',
+    approvers:['김종화'], cc:[],
+    fields:[
+    { key:'expDate',   label:'지출일',      type:'date' },
+    { key:'category',  label:'지출 구분',   type:'select', opts:['식대','교통비','소모품','공구/자재','접대비','기타'] },
+    { key:'amount',    label:'금액 (원)',    type:'number', ph:'0' },
+    { key:'vendor',    label:'거래처',      type:'text',   ph:'상호명' },
+    { key:'purpose',   label:'지출 목적',   type:'textarea', ph:'지출 사유를 입력하세요' },
+    { key:'receipt',   label:'증빙 구비',   type:'select', opts:['영수증 첨부','카드전표','세금계산서','없음'] },
+  ]},
+};
+
+function renderDocMain(dtype) {
+  const el = document.getElementById(`tab-${dtype}`); if(!el) return;
+  const cfg = DOC_CONFIG[dtype] || { label:dtype, icon:'📄', fields:[] };
+  el.innerHTML = `<div class="wrap2">
+    <div class="sec-title">${cfg.icon} ${cfg.label}</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+      <button class="sel-btn blue" onclick="renderDocWrite('${dtype}')">
+        <div class="sel-icon" style="background:#E8F0FB;">✏️</div>
+        <div class="sel-tx"><div class="sel-name">작성</div><div class="sel-desc">${cfg.label} 신규 작성 및 상신</div></div>
+        <div class="sel-chev">›</div>
+      </button>
+      <button class="sel-btn" onclick="renderDocList('${dtype}')">
+        <div class="sel-icon" style="background:#DCFCE7;">📂</div>
+        <div class="sel-tx"><div class="sel-name">조회</div><div class="sel-desc">제출된 ${cfg.label} 목록 조회</div></div>
+        <div class="sel-chev">›</div>
+      </button>
+    </div>
+  </div>`;
+}
+window.renderDocMain = renderDocMain;
+
+// ══════════════════════════════════════════════
+// 연차신청서 전용 모듈
+// ══════════════════════════════════════════════
+let _portalUsers = [];
+
+async function loadPortalUsers() {
+  if (_portalUsers.length) return;
+  try {
+    const { getDocs, collection, query, where } =
+      await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap = await getDocs(query(collection(window._db,'portal_users'), where('status','==','approved')));
+    _portalUsers = [];
+    snap.forEach(d => _portalUsers.push({uid:d.id,...d.data()}));
+    _portalUsers.sort((a,b)=>(a.empNo||'').localeCompare(b.empNo||'','ko',{numeric:true}));
+  } catch(e) { console.warn('loadPortalUsers:', e.message); }
+}
+
+// 이름으로 portal_user 찾기 (결재라인 고정자 지정용)
+function findUserByName(name) {
+  const u = _portalUsers.find(u => u.name === name);
+  return u ? { uid:u.uid, name:u.name, rank:u.rank||'' } : { uid:'', name, rank:'' };
+}
+
+// 문서별 고정 결재라인 생성 (연차신청서와 동일한 회람 방식)
+// 반환: approvalLine 배열 (작성=본인 + 지정된 결재자/회람)
+function buildFixedApprovalLine(dtype) {
+  // 작성 단계 (본인)
+  const line = [
+    { role:'작성', uid:_user.uid, name:_myInfo?.name||'', rank:_myInfo?.rank||'', status:'draft' },
+  ];
+  const cfg = DOC_CONFIG[dtype] || {};
+  const approvers = cfg.approvers || [];  // 결재자 이름 배열
+  const ccList = cfg.cc || [];            // 회람 이름 배열
+  approvers.forEach((nm, i) => {
+    const u = findUserByName(nm);
+    line.push({ role: approvers.length>1?`결재${i+1}`:'결재', uid:u.uid, name:u.name, rank:u.rank, status:'pending' });
+  });
+  ccList.forEach(nm => {
+    const u = findUserByName(nm);
+    line.push({ role:'회람', uid:u.uid, name:u.name, rank:u.rank, status:'pending' });
+  });
+  return line;
+}
+
+function calcLeaveDays(startDate, endDate, leaveType) {
+  if (leaveType && (leaveType.includes('반차'))) return 0.5;
+  if (!startDate || !endDate) return '';
+  const s = new Date(startDate), e = new Date(endDate);
+  if (isNaN(s)||isNaN(e)) return '';
+  let days = 0;
+  const cur = new Date(s);
+  while (cur <= e) {
+    const dow = cur.getDay();
+    if (dow !== 0 && dow !== 6) days++;
+    cur.setDate(cur.getDate()+1);
+  }
+  return days;
+}
+
+function leaveAutoTitle() {
+  const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const name = _myInfo?.name || '';
+  const type = document.getElementById('lv-type')?.value || '';
+  const t = `${today} ${name} ${type} 신청서`;
+  const el = document.getElementById('lv-title');
+  if (el) el.value = t;
+}
+
+function leaveCalcDays() {
+  const s = document.getElementById('lv-start')?.value;
+  const e = document.getElementById('lv-end')?.value;
+  const t = document.getElementById('lv-type')?.value;
+  const d = calcLeaveDays(s, e, t);
+  const el = document.getElementById('lv-days');
+  if (el && d !== '') el.value = d;
+}
+
+window.leaveAutoTitle = leaveAutoTitle;
+window.leaveCalcDays = leaveCalcDays;
+window.renderLeaveMain = async function() {
+  const el = document.getElementById('tab-leave'); if(!el) return;
+  el.innerHTML = `<div class="wrap2">
+    <div class="sec-title">🏖️ 연차신청서</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+      <button class="sel-btn blue" onclick="renderLeaveWrite()">
+        <div class="sel-icon" style="background:#E8F0FB;">✏️</div>
+        <div><div class="sel-label">신청서 작성</div><div class="sel-desc">연차·반차·병가 신청</div></div>
+      </button>
+      <button class="sel-btn" onclick="renderDocList('leave')">
+        <div class="sel-icon">📋</div>
+        <div><div class="sel-label">내 신청 목록</div><div class="sel-desc">제출한 신청서 조회</div></div>
+      </button>
+    </div>
+  </div>`;
+};
+
+window.renderLeaveWrite = async function(editDoc) {
+  // editDoc: 수정 시 기존 문서 데이터
+  if (!_myInfo?.name) await loadMyInfo();
+  await loadPortalUsers();
+  const el = document.getElementById('tab-leave'); if(!el) return;
+  const today = new Date().toISOString().slice(0,10);
+  const name = _myInfo?.name || '';
+  const rank = _myInfo?.rank || '';
+  const ed = editDoc || null; // 수정 모드 데이터
+  const todayFmt = today.replace(/-/g,'');
+  const defaultTitle = ed?.title || `${todayFmt} ${name} 연차 신청서`;
+  const isEdit = !!ed; // 수정 모드 여부
+  let _leaveEditId = ed?.id || null;
+
+  // 결재1 선택 옵션 - 수정 시 기존 결재자 선택 유지
+  const existAp1Uid = ed?.approvalLine?.find(s=>s.role==='결재1')?.uid||'';
+  const approver1Opts = _portalUsers
+    .filter(u => u.uid !== (_user?.uid||''))
+    .map(u => `<option value="${u.uid}" data-name="${u.name}" data-rank="${u.rank||''}" ${u.uid===existAp1Uid?'selected':''}>${u.name} ${u.rank||''}</option>`)
+    .join('');
+
+  const existDepUid = ed?.deputyUid||'';
+  const deputyOpts = `<option value="">선택 안함</option>` + _portalUsers
+    .filter(u => u.uid !== (_user?.uid||''))
+    .map(u => `<option value="${u.uid}" data-name="${u.name}" data-rank="${u.rank||''}" ${u.uid===existDepUid?'selected':''}>${u.name} ${u.rank||''}</option>`)
+    .join('');
+
+  // leaveSave에서 editId를 참조할 수 있도록 전역 저장
+  window._leaveEditId = _leaveEditId;
+
+  el.innerHTML = `<div class="wrap2">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+      <button onclick="renderLeaveMain()" class="back-btn">‹ 뒤로</button>
+      <span style="font-size:13px;font-weight:700;color:#1A2540;">🏖️ 연차신청서 ${isEdit?'수정':'작성'}</span>
+      ${isEdit?'<span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:6px;font-weight:600;">✏️ 수정 중</span>':''}
+    </div>
+    <div class="form-card">
+      <div style="margin-bottom:11px;">
+        <div style="font-size:11px;font-weight:700;color:#5C6F8A;margin-bottom:5px;">제목 <span style="color:#DC2626;">*</span></div>
+        <input id="lv-title" type="text" value="${defaultTitle}"
+          style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:11px;">
+        <div style="font-size:11px;font-weight:700;color:#5C6F8A;margin-bottom:5px;">휴가 종류 <span style="color:#DC2626;">*</span></div>
+        <select id="lv-type" onchange="leaveAutoTitle();leaveCalcDays();"
+          style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;">
+          ${['연차','반차(오전)','반차(오후)','병가','기타'].map(o=>`<option ${(ed?.leaveType||'연차')===o?'selected':''}>${o}</option>`).join('')}
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:11px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#5C6F8A;margin-bottom:5px;">시작일 <span style="color:#DC2626;">*</span></div>
+          <input id="lv-start" type="date" value="${ed?.startDate||today}" onchange="leaveCalcDays();"
+            style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#5C6F8A;margin-bottom:5px;">종료일 <span style="color:#DC2626;">*</span></div>
+          <input id="lv-end" type="date" value="${ed?.endDate||today}" onchange="leaveCalcDays();"
+            style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;">
+        </div>
+      </div>
+      <div style="margin-bottom:11px;">
+        <div style="font-size:11px;font-weight:700;color:#5C6F8A;margin-bottom:5px;">일수 <span style="color:#DC2626;">*</span> <span style="color:#9AAABF;font-weight:400;">(자동 계산)</span></div>
+        <input id="lv-days" type="number" step="0.5" value="${ed?.days||1}" readonly
+          style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1D5BA6;font-weight:700;background:#F4F7FB;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:11px;">
+        <div style="font-size:11px;font-weight:700;color:#5C6F8A;margin-bottom:5px;">사유 <span style="color:#DC2626;">*</span></div>
+        <textarea id="lv-reason" rows="3" placeholder="휴가 사유를 입력하세요"
+          style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;resize:vertical;font-family:inherit;">${ed?.reason||''}</textarea>
+      </div>
+      <div style="margin-bottom:11px;">
+        <div style="font-size:11px;font-weight:700;color:#5C6F8A;margin-bottom:5px;">비상연락처</div>
+        <input id="lv-contact" type="tel" placeholder="휴가 중 연락처" value="${ed?.contact||''}" oninput="this.value=fmtTel(this.value)" onblur="fmtTelBlur(this)"
+          style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:11px;">
+        <div style="font-size:11px;font-weight:700;color:#5C6F8A;margin-bottom:5px;">업무 대리인</div>
+        <select id="lv-deputy"
+          style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;">
+          ${deputyOpts}
+        </select>
+      </div>
+    </div>
+
+    <div class="form-card" style="margin-top:12px;">
+      <div style="font-size:12px;font-weight:700;color:#1D5BA6;margin-bottom:12px;">✍️ 결재 라인</div>
+      <div style="margin-bottom:11px;">
+        <div style="font-size:11px;font-weight:700;color:#5C6F8A;margin-bottom:5px;">결재1 (직접 지정) <span style="color:#DC2626;">*</span></div>
+        <select id="lv-approver1"
+          style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;">
+          <option value="">선택하세요</option>
+          ${approver1Opts}
+        </select>
+      </div>
+      <div style="background:#F4F7FB;border-radius:8px;padding:10px 12px;font-size:12px;color:#5C6F8A;line-height:1.8;">
+        📌 결재2: <b style="color:#1A2540;">김종화 부사장</b> (고정)<br>
+        📨 회람: 업무 대리인 (지정 시 자동 포함)
+      </div>
+    </div>
+
+    <div style="background:#EEF4FB;border-radius:10px;padding:11px 13px;font-size:11.5px;color:#1D5BA6;margin:12px 0;line-height:1.6;">
+      💡 상신 → 결재1 → 결재2(김종화) → 회람(대리인) 순으로 처리됩니다.
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="leaveSave('draft')" style="flex:1;padding:13px;background:#6B7280;border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">💾 임시저장</button>
+      <button onclick="leaveSave('pending')" style="flex:1;padding:13px;background:#1D5BA6;border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📨 상신</button>
+    </div>
+  </div>`;
+
+  // 초기 일수 계산
+  leaveCalcDays();
+};
+
+window.leaveSave = async function(status) {
+  if (!window._db || !_user) { alert('로그인이 필요합니다.'); return; }
+  const title   = document.getElementById('lv-title')?.value?.trim();
+  const type    = document.getElementById('lv-type')?.value;
+  const start   = document.getElementById('lv-start')?.value;
+  const end     = document.getElementById('lv-end')?.value;
+  const days    = parseFloat(document.getElementById('lv-days')?.value)||0;
+  const reason  = document.getElementById('lv-reason')?.value?.trim();
+  const contact = document.getElementById('lv-contact')?.value?.trim();
+  const dep     = document.getElementById('lv-deputy');
+  const depUid  = dep?.value||'';
+  const depName = dep?.options[dep.selectedIndex]?.dataset?.name||'';
+  const depRank = dep?.options[dep.selectedIndex]?.dataset?.rank||'';
+  const ap1sel  = document.getElementById('lv-approver1');
+  const ap1Uid  = ap1sel?.value||'';
+  const ap1Name = ap1sel?.options[ap1sel.selectedIndex]?.dataset?.name||'';
+  const ap1Rank = ap1sel?.options[ap1sel.selectedIndex]?.dataset?.rank||'';
+
+  if (!title) return alert('제목을 입력해 주세요.');
+  if (!start||!end) return alert('시작일과 종료일을 입력해 주세요.');
+  if (!reason) return alert('사유를 입력해 주세요.');
+  if (status==='pending' && !ap1Uid) return alert('결재1을 선택해 주세요.');
+
+  // 결재2 고정자(김종화) uid 확보
+  const ap2User = _portalUsers.find(u => u.email==='jh.kim@jhsol.kr') || {};
+  const ap2Uid = ap2User.uid || '';
+  const ap2Name = ap2User.name || '김종화';
+  const ap2Rank = ap2User.rank || '부사장';
+
+  const approvalLine = [
+    { role:'작성', uid:_user.uid, name:_myInfo?.name||'', rank:_myInfo?.rank||'', status:'draft' },
+    { role:'결재1', uid:ap1Uid, name:ap1Name, rank:ap1Rank, status:'pending' },
+    { role:'결재2', uid:ap2Uid, name:ap2Name, rank:ap2Rank, status:'pending' },
+  ];
+  if (depUid) approvalLine.push({ role:'회람', uid:depUid, name:depName, rank:depRank, status:'pending' });
+
+  const data = {
+    dtype:'leave', status, title,
+    leaveType:type, startDate:start, endDate:end, days,
+    reason, contact,
+    deputyUid:depUid, deputyName:depName,
+    authorUid:_user.uid, authorName:_myInfo?.name||'', authorRank:_myInfo?.rank||'', authorDept:_myInfo?.dept||'',
+    approvalLine,
+    createdAt: serverTimestamp(),
+  };
+
+  try {
+    const { addDoc, setDoc, doc, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const editId = window._leaveEditId;
+    if (editId) {
+      // 수정 모드: 기존 문서 업데이트 (createdAt 유지)
+      const {createdAt:_, ...updateData} = data;
+      await setDoc(doc(window._db,'edoc_leave',editId), updateData, {merge:true});
+      window._leaveEditId = null;
+      alert(status==='pending'?'✅ 상신 완료!':'💾 수정 저장 완료');
+    } else {
+      await addDoc(collection(window._db,'edoc_leave'), data);
+      alert(status==='pending'?'✅ 상신 완료!':'💾 임시저장 완료');
+    }
+    renderLeaveMain();
+  } catch(e) { alert('오류: '+e.message); }
+};
+
+window.renderDocWrite = function(dtype) {
+  const el = document.getElementById(`tab-${dtype}`); if(!el) return;
+  const cfg = DOC_CONFIG[dtype]; if(!cfg) return;
+  // _myInfo.name이 아직 없으면 로드 후 다시 렌더
+  if (!_myInfo?.name && typeof loadMyInfo === 'function') {
+    loadMyInfo().then(() => renderDocWrite(dtype));
+    // 일단 계속 진행 (이름 없이라도 폼은 표시)
+  }
+  const today = new Date().toISOString().slice(0,10);
+
+  // 자동 제목 생성: yyyymmdd 이름 문서명
+  const ymd = today.replace(/-/g,'');
+  const myName = _myInfo?.name || _user?.displayName || '';
+  const autoTitle = myName ? `${ymd} ${myName} ${cfg.label}` : '';
+
+  const fieldsHtml = cfg.fields.map(f => {
+    const req = f.required !== false;
+    const reqMark = req ? '<span style="color:#DC2626;margin-left:2px;">*</span>' : '';
+    let input = '';
+    if (f.type==='select') {
+      input = `<select id="f-${f.key}" style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;">
+        ${(f.opts||[]).map(o=>`<option>${o}</option>`).join('')}
+      </select>`;
+    } else if (f.type==='textarea') {
+      input = `<textarea id="f-${f.key}" placeholder="${f.ph||''}" rows="3"
+        style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;resize:vertical;font-family:inherit;"></textarea>`;
+    } else {
+      input = `<input id="f-${f.key}" type="${f.type}" placeholder="${f.ph||''}"
+        ${f.type==='date'?'value="'+today+'"':''}
+        style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;">`;
+    }
+    return `<div style="margin-bottom:11px;">
+      <div style="font-size:11px;font-weight:700;color:#5C6F8A;margin-bottom:5px;">${f.label}${reqMark}</div>
+      ${input}
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<div class="wrap2">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+      <button onclick="renderDocMain('${dtype}')" class="back-btn">‹ 뒤로</button>
+      <span style="font-size:13px;font-weight:700;color:#1A2540;">${cfg.icon} ${cfg.label} 작성</span>
+    </div>
+    <div class="form-card">
+      <div style="margin-bottom:11px;">
+        <div style="font-size:11px;font-weight:700;color:#5C6F8A;margin-bottom:5px;">제목<span style="color:#DC2626;margin-left:2px;">*</span></div>
+        <input id="f-title" type="text" placeholder="문서 제목을 입력하세요" value="${autoTitle}"
+          style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;">
+      </div>
+      ${fieldsHtml}
+    </div>
+    <div style="background:#EEF4FB;border-radius:10px;padding:11px 13px;font-size:11.5px;color:#1D5BA6;margin-bottom:14px;line-height:1.6;">
+      💡 상신 후 관리자 결재 → 승인 시 게시 문건으로 이동합니다.
+      <div id="doc-apline-preview" style="margin-top:6px;color:#5C6F8A;"></div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="docSave('${dtype}','draft')" style="flex:1;padding:13px;background:#6B7280;border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">💾 임시저장</button>
+      <button onclick="docSave('${dtype}','pending')" style="flex:1;padding:13px;background:#1D5BA6;border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📨 상신</button>
+    </div>
+  </div>`;
+
+  // 결재라인 미리보기 표시
+  (async () => {
+    await loadPortalUsers();
+    const prev = document.getElementById('doc-apline-preview');
+    if (!prev) return;
+    const apps = cfg.approvers || [];
+    const ccs = cfg.cc || [];
+    if (!apps.length && !ccs.length) { prev.textContent = ''; return; }
+    let txt = '📋 결재선: ' + [myName||'(본인)', ...apps].join(' → ');
+    if (ccs.length) txt += '  |  회람: ' + ccs.join(', ');
+    prev.textContent = txt;
+  })();
+};
+
+window.docSave = async function(dtype, status) {
+  if (!window._db || !_user) { alert('로그인이 필요합니다.'); return; }
+  const cfg = DOC_CONFIG[dtype]; if(!cfg) return;
+  const title = document.getElementById('f-title')?.value?.trim();
+  if (!title) { alert('제목을 입력해 주세요.'); return; }
+
+  // 결재라인 고정자 확보를 위해 portal_users 로드
+  await loadPortalUsers();
+  if (!_myInfo?.name) await loadMyInfo();
+  const approvalLine = buildFixedApprovalLine(dtype);
+
+  const data = {
+    title, dtype, status,
+    authorUid:_user.uid,
+    authorName:_myInfo?.name||_user.displayName||_user.email||'',
+    authorRank:_myInfo?.rank||'', authorDept:_myInfo?.dept||'',
+    approvalLine,
+    createdAt:serverTimestamp()
+  };
+  cfg.fields.forEach(f => {
+    const el = document.getElementById('f-'+f.key);
+    if (el) data[f.key] = el.value;
+  });
+
+  try {
+    const { addDoc, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await addDoc(collection(db, `edoc_${dtype}`), data);
+    alert(status==='pending' ? '✅ 상신 완료! 결재 대기 중입니다.' : '💾 임시저장 완료');
+    renderDocMain(dtype);
+  } catch(e) { alert('오류: '+e.message); }
+};
+
+window.renderDocList = async function(dtype) {
+  const el = document.getElementById(`tab-${dtype}`); if(!el) return;
+  const cfg = DOC_CONFIG[dtype];
+  el.innerHTML = `<div class="wrap2">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+      <button onclick="${dtype==='leave'?'renderLeaveMain()':"renderDocMain('"+dtype+"')"}" class="back-btn">‹ 뒤로</button>
+      <span style="font-size:13px;font-weight:700;color:#1A2540;">${cfg.icon} ${cfg.label} 목록</span>
+    </div>
+    <div id="doc-list-wrap">⏳ 불러오는 중…</div>
+  </div>`;
+
+  try {
+    console.log('[renderDocList] 시작:', dtype, 'db:', !!db, 'window._db:', !!window._db);
+    const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    console.log('[renderDocList] firestore import 완료');
+    const dbRef = window._db || db;
+    const snap = await getDocs(collection(dbRef, `edoc_${dtype}`));
+    console.log('[renderDocList] getDocs 완료, 문서수:', snap.size);
+    const allDocs = []; snap.forEach(d=>allDocs.push({id:d.id,...d.data()}));
+    const myUid = _user?.uid;
+    // 볼 수 있는 문서:
+    // - 관리자: 전체
+    // - 일반: 게시됨(모두공개) OR 내가 작성 OR 결재라인에 내 uid 포함
+    const canView = (d) => {
+      if (_isAdmin) return true;
+      if (d.status === 'posted') return true;
+      if (d.authorUid === myUid) return true;
+      return (d.approvalLine||[]).some(s => s.uid === myUid);
+    };
+    const docs = allDocs.filter(canView);
+    docs.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+
+    const STATUS = { draft:'임시저장', pending:'결재대기', reviewing:'검토중', approved:'승인', rejected:'반려', posted:'게시' };
+    const STATUS_COLOR = { draft:'#9AAABF', pending:'#F59E0B', reviewing:'#3B82F6', approved:'#16A34A', rejected:'#DC2626', posted:'#1D5BA6' };
+    const fmtD = ts => ts?.seconds ? new Date(ts.seconds*1000).toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}) : '-';
+
+    const wrap = document.getElementById('doc-list-wrap');
+    if (!docs.length) { wrap.innerHTML='<div class="panel-empty" style="padding:40px;">등록된 문서가 없습니다.</div>'; return; }
+
+    wrap.innerHTML = docs.map(d => `
+      <div class="doc-row" onclick="docDetail(${JSON.stringify(d).replace(/"/g,'&quot;')}, '${dtype}')">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+          <span style="font-size:13px;font-weight:700;color:#1A2540;">${d.title||'(제목없음)'}</span>
+          <span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;background:${STATUS_COLOR[d.status]||'#9AAABF'}20;color:${STATUS_COLOR[d.status]||'#9AAABF'};">${STATUS[d.status]||d.status}</span>
+        </div>
+        <div style="font-size:11px;color:#5C6F8A;">${d.authorName||'-'} · ${fmtD(d.createdAt)}</div>
+      </div>`).join('');
+  } catch(e) {
+    document.getElementById('doc-list-wrap').innerHTML = `<div style="color:#DC2626;padding:20px;">오류: ${e.message}</div>`;
+  }
+};
+
+// ── A4 출력 / PDF 저장 (모든 전자결재 문서 공통) ──
+window.printDocA4 = function(d, dtype) {
+  if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e){} }
+  const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'퇴직원서', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서' };
+  const cfg = (window.DOC_CONFIG && window.DOC_CONFIG[dtype]) || DOC_CONFIG[dtype] || {};
+  const docLabel = TYPE_LABEL[dtype] || (cfg.label) || '문서';
+
+  // 본문 필드 행 구성
+  let bodyRows = '';
+  if (dtype === 'daily') {
+    bodyRows = `
+      <tr><th>작성일</th><td>${d.date||'-'}</td></tr>
+      <tr><th>프로젝트</th><td>${(d.pjtCode||'')+' '+(d.pjtName||'')||'-'}</td></tr>
+      <tr><th>오늘 진행한 업무</th><td style="white-space:pre-wrap;">${d.todayWork||'-'}</td></tr>
+      ${d.tomorrowWork?`<tr><th>내일 예정 업무</th><td style="white-space:pre-wrap;">${d.tomorrowWork}</td></tr>`:''}
+      ${d.issue?`<tr><th>이슈·특이사항</th><td style="white-space:pre-wrap;">${d.issue}</td></tr>`:''}`;
+  } else if (dtype === 'leave') {
+    bodyRows = `
+      <tr><th>휴가 종류</th><td>${d.leaveType||'-'}</td></tr>
+      <tr><th>시작일</th><td>${d.startDate||'-'}</td></tr>
+      <tr><th>종료일</th><td>${d.endDate||'-'}</td></tr>
+      <tr><th>일수</th><td>${d.days||'-'}일</td></tr>
+      <tr><th>사유</th><td style="white-space:pre-wrap;">${d.reason||'-'}</td></tr>
+      <tr><th>비상연락처</th><td>${d.contact||'-'}</td></tr>
+      <tr><th>업무 대리인</th><td>${d.deputyName||'-'}</td></tr>`;
+  } else {
+    bodyRows = (cfg.fields||[]).map(f =>
+      `<tr><th>${f.label}</th><td style="white-space:pre-wrap;">${d[f.key]||'-'}</td></tr>`
+    ).join('');
+  }
+
+  // 결재란 (도장 박스)
+  const line = d.approvalLine || [];
+  const approvers = line.filter(s => s.role!=='회람' && s.role!=='수신');
+  const ccs = line.filter(s => s.role==='회람' || s.role==='수신');
+  const stampCell = (s) => {
+    const done = s.status==='approved' || s.status==='done';
+    const rejected = s.status==='rejected';
+    return `<td style="text-align:center;vertical-align:top;width:90px;border:1px solid #000;">
+      <div style="font-size:11px;border-bottom:1px solid #000;padding:3px;background:#f3f3f3;">${s.role||''}</div>
+      <div style="height:54px;display:flex;align-items:center;justify-content:center;font-size:18px;color:${done?'#1a6e3a':rejected?'#b00':'#bbb'};">${done?'승인':rejected?'반려':''}</div>
+      <div style="font-size:11px;border-top:1px solid #000;padding:3px;">${s.name||''}<br><span style="font-size:9px;color:#555;">${s.rank||''}</span></div>
+    </td>`;
+  };
+  const approvalTable = `
+    <table style="border-collapse:collapse;margin-left:auto;">
+      <tr>${approvers.map(stampCell).join('')}</tr>
+    </table>`;
+
+  const fmtNow = new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
+
+  const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+  <title>${d.title||docLabel}</title>
+  <style>
+    @page { size:A4; margin:18mm; }
+    *{ box-sizing:border-box; }
+    body{ font-family:'Malgun Gothic','맑은 고딕',sans-serif; color:#111; margin:0; }
+    .doc-wrap{ width:174mm; margin:0 auto; }
+    .doc-head{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; }
+    .doc-title{ font-size:26px; font-weight:800; letter-spacing:6px; text-align:center; flex:1; padding-top:14px; }
+    h1.company{ font-size:15px; font-weight:700; color:#1D5BA6; margin:0 0 4px; }
+    table.info{ width:100%; border-collapse:collapse; margin-top:10px; }
+    table.info th{ background:#f3f6fb; border:1px solid #999; padding:8px 10px; font-size:12px; text-align:left; width:120px; color:#333; }
+    table.info td{ border:1px solid #999; padding:8px 10px; font-size:12px; }
+    .meta{ font-size:11px; color:#555; margin-top:6px; }
+    .cc{ font-size:11px; color:#444; margin-top:10px; }
+    .sign-area{ margin-top:40px; text-align:center; font-size:13px; line-height:2.2; }
+    .footer{ margin-top:30px; border-top:2px solid #1D5BA6; padding-top:8px; font-size:11px; color:#666; text-align:center; }
+    @media print { .no-print{ display:none; } }
+  </style></head><body>
+  <div class="doc-wrap">
+    <div class="doc-head">
+      <div><h1 class="company">제이에이치솔루션</h1><div class="meta">JH SOLUTIONS</div></div>
+      <div class="doc-title">${docLabel}</div>
+      <div style="min-width:200px;">${approvalTable}</div>
+    </div>
+    <div style="font-size:14px;font-weight:700;margin:6px 0 10px;border-bottom:2px solid #111;padding-bottom:6px;">${d.title||''}</div>
+    <table class="info">
+      <tr><th>작성자</th><td>${d.authorName||'-'}</td><th>소속</th><td>${d.authorDept||'-'}</td></tr>
+      <tr><th>직급</th><td>${d.authorRank||'-'}</td><th>작성일</th><td>${fmtNow}</td></tr>
+    </table>
+    <table class="info" style="margin-top:0;border-top:none;">
+      ${bodyRows}
+    </table>
+    ${ccs.length?`<div class="cc">📋 회람: ${ccs.map(c=>c.name).join(', ')}</div>`:''}
+    <div class="sign-area">
+      위와 같이 ${docLabel}를 제출합니다.<br><br>
+      ${fmtNow}<br><br>
+      신청인 : ${d.authorName||''} (서명)
+    </div>
+    <div class="footer">제이에이치솔루션 · 전자결재 시스템 · 출력일 ${fmtNow}</div>
+  </div>
+  <div class="no-print" style="text-align:center;margin:20px;">
+    <button onclick="window.print()" style="padding:10px 24px;background:#1D5BA6;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;">🖨️ 인쇄 / PDF 저장</button>
+  </div>
+  <script>window.onload=()=>{ setTimeout(()=>window.print(), 400); };<\/script>
+  </body></html>`;
+
+  const w = window.open('', '_blank', 'width=900,height=1000');
+  if (!w) { alert('팝업이 차단되었습니다. 팝업을 허용해 주세요.'); return; }
+  w.document.write(html);
+  w.document.close();
+};
+
+window.docDetail = function(d, dtype) {
+  const el = document.getElementById(`tab-${dtype}`); if(!el) return;
+  const cfg = DOC_CONFIG[dtype];
+  const STATUS = { draft:'임시저장', pending:'결재대기', reviewing:'검토중', approved:'승인', rejected:'반려', posted:'게시' };
+  const STATUS_COLOR = { draft:'#9AAABF', pending:'#F59E0B', reviewing:'#3B82F6', approved:'#16A34A', rejected:'#DC2626', posted:'#1D5BA6' };
+  const fmtD = ts => ts?.seconds ? new Date(ts.seconds*1000).toLocaleDateString('ko-KR') : '-';
+  const backFn = dtype==='leave' ? 'renderLeaveMain()' : `renderDocList('${dtype}')`;
+
+  // leave 전용 필드 목록
+  const leaveFields = [
+    {key:'leaveType', label:'휴가 종류'},
+    {key:'startDate', label:'시작일'},
+    {key:'endDate',   label:'종료일'},
+    {key:'days',      label:'일수'},
+    {key:'reason',    label:'사유'},
+    {key:'contact',   label:'비상연락처'},
+    {key:'deputyName',label:'업무 대리인'},
+  ];
+  const displayFields = dtype==='leave' ? leaveFields : (cfg.fields||[]);
+  const rows = displayFields.map(f=>`
+    <div style="display:flex;padding:8px 0;border-bottom:1px solid #F0F4FA;font-size:12px;gap:12px;">
+      <span style="color:#5C6F8A;font-weight:600;min-width:90px;flex-shrink:0;">${f.label}</span>
+      <span style="color:#1A2540;word-break:break-all;">${d[f.key]||'-'}</span>
+    </div>`).join('');
+
+  const myUid = _user?.uid;
+  const isOwner = myUid && d.authorUid === myUid;
+  const line = d.approvalLine || [];
+
+  // 내 결재 차례인지: uid 일치 OR (uid 비어있고 이름 일치), 이전 단계 완료, 내 상태 pending
+  const myStepIdx = line.findIndex((s,i) => {
+    if (s.role === '회람' || s.role === '수신') return false;
+    const uidMatch = s.uid === myUid || (!s.uid && s.name === (_myInfo?.name||''));
+    if (!uidMatch) return false;
+    const prevDone = line.slice(0,i).every(p =>
+      p.role==='작성' || p.status==='approved' || p.status==='done'
+    );
+    return prevDone && s.status === 'pending';
+  });
+  const isMyTurn = myStepIdx >= 0 && (d.status==='pending'||d.status==='reviewing');
+
+  // 최종 결재자: 회람/수신/작성 제외하고 마지막 결재 역할
+  const approverSteps = line.filter(s => s.role!=='회람' && s.role!=='수신' && s.role!=='작성');
+  const lastApprover = approverSteps[approverSteps.length-1] || null;
+  const isLastApprover = lastApprover && lastApprover.uid === myUid;
+
+  // 결재 버튼: 내 차례이면 표시 (작성자 본인이어도 결재라인에 있으면 결재 가능)
+  const canApprove = isMyTurn || (_isAdmin && (d.status==='pending'||d.status==='reviewing'));
+  // 게시 버튼: 최종 결재자 + approved 상태
+  const canPost = d.status==='approved' && (isLastApprover || _isAdmin);
+  // 회수: 작성자 + pending/reviewing이지만 내 결재 차례가 아닐 때만
+  const canRecall = isOwner && !isMyTurn && (d.status==='pending' || d.status==='reviewing');
+  // 수정: 작성자 + draft(임시저장) 또는 rejected(반려)
+  const canEdit = isOwner && (d.status==='draft' || d.status==='rejected');
+  // 삭제: 작성자 + (draft/rejected) 또는 관리자
+  const canDelete = (isOwner && (d.status==='draft'||d.status==='rejected')) || _isAdmin;
+
+  el.innerHTML = `<div class="wrap2">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+      <button onclick="${backFn}" class="back-btn">‹ 목록</button>
+      <span style="font-size:13px;font-weight:700;color:#1A2540;">${cfg.icon} 문서 상세</span>
+    </div>
+    <div class="form-card" style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+        <div>
+          <div style="font-size:16px;font-weight:800;color:#1A2540;margin-bottom:4px;">${d.title||'(제목없음)'}</div>
+          <div style="font-size:11px;color:#5C6F8A;">${d.authorName||'-'} · ${fmtD(d.createdAt)}</div>
+        </div>
+        <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;background:${STATUS_COLOR[d.status]||'#9AAABF'}20;color:${STATUS_COLOR[d.status]||'#9AAABF'};white-space:nowrap;">${STATUS[d.status]||d.status}</span>
+      </div>
+      ${rows}
+    </div>
+
+    ${(d.approvalLine&&d.approvalLine.length) ? `
+    <div class="form-card" style="margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:700;color:#1D5BA6;margin-bottom:10px;">✍️ 결재 라인</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${(d.approvalLine||[]).map(a=>{
+          const roleColor = {작성:'#5C6F8A',결재1:'#1D5BA6',결재2:'#1D5BA6',결재:'#1D5BA6',수신:'#16A34A',회람:'#9AAABF'}[a.role]||'#9AAABF';
+          const stColor = {draft:'#9AAABF',pending:'#F59E0B',done:'#16A34A',approved:'#16A34A',rejected:'#DC2626'}[a.status]||'#9AAABF';
+          const stLabel = {draft: d.status==='draft'?'상신전':'완료', pending:'대기',done:'완료',approved:'승인',rejected:'반려'}[a.status]||a.status;
+          return `<div style="background:#F4F7FB;border-radius:10px;padding:8px 12px;min-width:80px;text-align:center;">
+            <div style="font-size:10px;font-weight:700;color:${roleColor};margin-bottom:3px;">${a.role}</div>
+            <div style="font-size:12px;font-weight:700;color:#1A2540;">${a.name||'미지정'}</div>
+            <div style="font-size:10px;color:#9AAABF;">${a.rank||''}</div>
+            <div style="font-size:10px;font-weight:700;color:${stColor};margin-top:3px;">${stLabel}</div>
+          </div>`;
+        }).join('<span style="align-self:center;color:#9AAABF;font-size:16px;">›</span>')}
+      </div>
+    </div>` : ''}
+
+    ${canApprove ? `
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button onclick="docApprove('${d.id}','${dtype}','approved',${JSON.stringify(d).replace(/"/g,'&quot;')})" style="flex:1;padding:12px;background:#16A34A;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✅ 승인</button>
+      <button onclick="docApprove('${d.id}','${dtype}','rejected',${JSON.stringify(d).replace(/"/g,'&quot;')})" style="flex:1;padding:12px;background:#DC2626;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">❌ 반려</button>
+    </div>` : ''}
+    ${canPost ? `
+    <div style="margin-bottom:10px;">
+      <button onclick="docApprove('${d.id}','${dtype}','posted',${JSON.stringify(d).replace(/"/g,'&quot;')})" style="width:100%;padding:12px;background:#1D5BA6;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📤 게시 (최종)</button>
+    </div>` : ''}
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      ${canRecall ? `<button onclick="docRecall('${d.id}','${dtype}')" style="flex:1;padding:11px;background:#F59E0B;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">↩️ 회수</button>` : ''}
+      ${canEdit ? `<button onclick="${dtype==='leave'?`renderLeaveWrite(${JSON.stringify(d).replace(/"/g,'&quot;')})`:`alert('임시저장/반려 문서는 삭제 후 재작성해 주세요.')`}" style="flex:1;padding:11px;background:#3B82F6;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✏️ 수정</button>` : ''}
+      ${canDelete ? `<button onclick="docDelete('${d.id}','${dtype}')" style="flex:1;padding:11px;background:#fff;border:1px solid #DC2626;border-radius:10px;color:#DC2626;font-size:13px;font-weight:700;cursor:pointer;">🗑️ 삭제</button>` : ''}
+    </div>
+    ${(isOwner && d.status==='draft') ? `
+    <div style="margin-bottom:10px;">
+      <button onclick="${dtype==='leave' ? `renderLeaveWrite(${JSON.stringify(d).replace(/"/g,'&quot;')})` : `renderDocWrite('${dtype}')`}" style="width:100%;padding:13px;background:#1D5BA6;border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📨 수정 후 상신하기</button>
+    </div>` : ''}
+    <div style="margin-bottom:10px;">
+      <button onclick='printDocA4(${JSON.stringify(d).replace(/'/g,"&#39;")}, "${dtype}")' style="width:100%;padding:12px;background:#fff;border:1px solid #1D5BA6;border-radius:12px;color:#1D5BA6;font-size:13px;font-weight:700;cursor:pointer;">🖨️ A4 출력 / PDF 저장</button>
+    </div>
+    <button onclick="${backFn}" class="back-btn" style="width:100%;padding:11px;text-align:center;border-radius:10px;">목록으로</button>
+  </div>`;
+};
+
+window.docRecall = async function(docId, dtype) {
+  if (!window._db) return;
+  if (!confirm('이 문서를 회수하시겠습니까? 상신이 취소되고 임시저장 상태로 돌아갑니다.')) return;
+  try {
+    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await setDoc(doc(db, `edoc_${dtype}`, docId), { status:'draft', recalledAt:serverTimestamp() }, { merge:true });
+    alert('✅ 회수 완료. 임시저장 상태로 변경되었습니다.');
+    if (dtype === 'daily' && typeof renderDailyList === 'function') renderDailyList();
+    else renderDocList(dtype);
+  } catch(e) { alert('오류: '+e.message); }
+};
+
+window.docDelete = async function(docId, dtype) {
+  if (!window._db) return;
+  if (!confirm('이 문서를 완전히 삭제하시겠습니까? 복구가 불가능합니다.')) return;
+  try {
+    const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await deleteDoc(doc(db, `edoc_${dtype}`, docId));
+    alert('🗑️ 삭제 완료');
+    if (dtype === 'daily' && typeof renderDailyList === 'function') renderDailyList();
+    else renderDocList(dtype);
+  } catch(e) { alert('오류: '+e.message); }
+};
+
+window.docApprove = async function(docId, dtype, newStatus, docData) {
+  if (!window._db) return;
+  const labels = {approved:'승인', rejected:'반려', posted:'게시'};
+  if (!confirm(`이 문서를 [${labels[newStatus]}] 처리하시겠습니까?`)) return;
+  try {
+    const { doc, setDoc, addDoc, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const approverName = _myInfo?.name || _user?.displayName || _user?.email || '';
+    const myUid = _user?.uid;
+
+    // approvalLine 단계 상태 업데이트
+    const rawData = typeof docData === 'string' ? JSON.parse(docData) : (docData||{});
+    const origLine = rawData.approvalLine || [];
+
+    // 내 단계 매칭: uid 일치 OR (uid 비어있고 이름 일치)
+    const isMyStep = (s) => {
+      if (s.role === '회람' || s.role === '수신' || s.role === '작성') return false;
+      if (s.status !== 'pending') return false;
+      return s.uid === myUid || (!s.uid && s.name === approverName);
+    };
+
+    const line = origLine.map(s => {
+      if (!isMyStep(s)) return s;
+      return {...s, uid: myUid, status: newStatus==='rejected'?'rejected':'approved', approvedBy:approverName, approvedAt:new Date().toISOString()};
+    });
+
+    // 문서 전체 status 결정
+    let docStatus = newStatus;
+    if (newStatus === 'approved') {
+      const myIdx = origLine.findIndex(s => isMyStep(s));
+      const hasNextApprover = myIdx >= 0 && origLine.slice(myIdx+1).some(s =>
+        s.role !== '회람' && s.role !== '수신' && s.role !== '작성' && s.status === 'pending'
+      );
+      docStatus = hasNextApprover ? 'reviewing' : 'approved';
+    }
+
+    await setDoc(doc(db, `edoc_${dtype}`, docId), {
+      status: docStatus,
+      approvalLine: line,
+      approvedBy: approverName,
+      approvedAt: serverTimestamp()
+    }, { merge:true });
+
+    // 게시 + 연차신청서 → user_schedules에 일정 등록
+    if (newStatus === 'posted' && dtype === 'leave' && rawData.startDate) {
+      await addDoc(collection(db, 'user_schedules'), {
+        text: `[연차] ${rawData.authorName||''} ${rawData.leaveType||'연차'} (${rawData.days||''}일)`,
+        tag: 'off', tagLabel: rawData.leaveType||'연차',
+        sdate: rawData.startDate||'', edate: rawData.endDate||rawData.startDate||'',
+        stime: null, etime: null, isTodo: false, place: '',
+        att: rawData.authorName||'', reg: _user?.email||'', savedAt: serverTimestamp(),
+      });
+      alert('✅ 게시 완료. 연차 일정이 PJT 캘린더에 자동 등록되었습니다.');
+    } else {
+      alert(`✅ ${labels[newStatus]} 처리되었습니다.`);
+    }
+    renderDocList(dtype);
+  } catch(e) { alert('오류: '+e.message); }
+};
+
+</script>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;background:#F4F7FB;color:#1A2540;min-height:100vh;}
+
+/* ── 로그인 ── */
+#login-screen,#denied-screen{display:none;min-height:100vh;align-items:center;justify-content:center;padding:24px;}
+.login-card{background:#fff;border-radius:20px;box-shadow:0 4px 24px rgba(29,91,166,0.12);padding:48px 40px;width:100%;max-width:380px;text-align:center;}
+.login-logo{height:44px;object-fit:contain;margin-bottom:20px;}
+.login-title{font-size:24px;font-weight:800;color:#1A2540;margin-bottom:4px;}
+.login-sub{font-size:13px;color:#5C6F8A;margin-bottom:28px;line-height:1.6;}
+.login-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px;background:#1D5BA6;border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;}
+.denied-card{background:#fff;border-radius:20px;padding:48px 40px;max-width:380px;text-align:center;border:1px solid #FEE2E2;}
+.denied-icon{font-size:40px;margin-bottom:16px;}
+.denied-title{font-size:18px;font-weight:700;margin-bottom:8px;}
+.denied-sub{font-size:13px;color:#5C6F8A;margin-bottom:24px;line-height:1.6;}
+.outline-btn{padding:10px 24px;background:transparent;border:1px solid #DDE4EF;border-radius:8px;color:#5C6F8A;font-size:13px;cursor:pointer;}
+
+/* ── 앱 껍데기 ── */
+#app-screen{display:none;flex-direction:column;min-height:100vh;}
+.app-header{background:#1D5BA6;padding:0 20px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(29,91,166,0.2);}
+.header-title{font-size:15px;font-weight:800;color:#fff;}
+.header-sub{font-size:11px;color:rgba(255,255,255,0.6);}
+.user-avatar{width:32px;height:32px;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;}
+.logout-small{font-size:11px;color:rgba(255,255,255,0.7);cursor:pointer;background:none;border:none;padding:4px 8px;}
+#app-content{display:flex;flex:1;}
+
+/* ── 사이드바 ── */
+#sb{display:none;}
+@media(min-width:900px){
+  #sb{display:flex;flex-direction:column;width:212px;flex:0 0 auto;background:#13335C;color:#CDD8E8;padding:16px 12px;min-height:calc(100vh - 56px);}
+  .app-header{display:flex;}
+  #tabbar{display:none;}
+  .tab-content{max-width:none;}
+}
+@media(max-width:899px){#sb{display:none!important;}}
+.portal-embed #sb{display:none!important;}
+
+.sb-brand{display:flex;align-items:center;gap:9px;padding:4px 6px 14px;border-bottom:1px solid rgba(255,255,255,0.1);margin-bottom:8px;}
+.sb-logo{width:30px;height:30px;border-radius:8px;background:#fff;color:#13335C;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;}
+.sb-brand .nm{font-size:13px;font-weight:700;color:#fff;line-height:1.2;}
+.sb-brand .nm small{display:block;font-size:10px;font-weight:400;color:#8FA3C0;}
+.sb-item{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:8px 9px;border-radius:8px;color:#CDD8E8;cursor:pointer;border:none;background:none;width:100%;text-align:left;}
+.sb-item:hover{background:rgba(255,255,255,0.07);}
+.sb-item.active{background:#1D5BA6;color:#fff;font-weight:600;}
+.sb-num{width:18px;height:18px;border-radius:5px;background:rgba(255,255,255,0.1);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+.sb-foot{margin-top:auto;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;gap:8px;font-size:11px;color:#8FA3C0;}
+.sb-foot .av{width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,0.18);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:12px;}
+.sb-foot button{margin-left:auto;background:none;border:none;color:#8FA3C0;font-size:11px;cursor:pointer;}
+
+/* ── 탭바 (모바일) ── */
+#tabbar{background:#fff;border-bottom:1px solid #DDE4EF;display:flex;overflow-x:auto;padding:0 8px;scrollbar-width:none;}
+#tabbar::-webkit-scrollbar{display:none;}
+.tab-btn{flex-shrink:0;padding:12px 10px;font-size:12px;color:#5C6F8A;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;font-weight:500;}
+.tab-btn.active{color:#1D5BA6;border-bottom-color:#1D5BA6;font-weight:700;}
+
+/* ── 콘텐츠 ── */
+#main-area{flex:1;min-width:0;display:flex;flex-direction:column;}
+.tab-content{display:none;padding:20px 16px;width:100%;}
+.tab-content.active{display:block;}
+
+/* ── 공통 컴포넌트 ── */
+.wrap2{max-width:840px;margin:0 auto;padding:4px 0;}
+.sec-title{font-size:20px;font-weight:800;color:#1A2540;margin-bottom:4px;}
+.sec-sub{font-size:12px;color:#5C6F8A;margin-bottom:18px;}
+.back-btn{background:#E8F0FB;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#1D5BA6;font-size:12px;cursor:pointer;font-weight:600;}
+.form-card{background:#fff;border-radius:12px;border:1px solid #DDE4EF;padding:16px;margin-bottom:10px;box-shadow:0 1px 4px rgba(29,91,166,0.08);}
+
+/* 선택 버튼 */
+.sel-btn{display:flex;align-items:center;gap:14px;width:100%;background:#fff;border:1px solid #DDE4EF;border-radius:14px;padding:16px 18px;cursor:pointer;text-align:left;box-shadow:0 1px 4px rgba(29,91,166,0.06);}
+.sel-btn:hover{border-color:#5BA4CF;}
+.sel-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.sel-tx{flex:1;}
+.sel-name{font-size:15px;font-weight:800;color:#1A2540;margin-bottom:3px;}
+.sel-desc{font-size:11.5px;color:#5C6F8A;}
+.sel-chev{font-size:20px;color:#C2CCD9;}
+
+/* 홈 KPI */
+.home-kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px;}
+@media(min-width:760px){.home-kpi-grid{grid-template-columns:repeat(4,1fr);}}
+.kpi-card{background:#fff;border:1px solid #DDE4EF;border-radius:12px;padding:13px 14px;cursor:pointer;box-shadow:0 1px 4px rgba(29,91,166,0.06);}
+.kpi-card:hover{border-color:#5BA4CF;}
+.kpi-card.warn{background:#FFF4E5;border-color:#F4D9AD;}
+.kpi-card.loading{color:#9AAABF;text-align:center;padding:24px;}
+.kpi-label{font-size:11px;color:#5C6F8A;font-weight:500;margin-bottom:6px;}
+.kpi-card.warn .kpi-label{color:#9A5B00;}
+.kpi-val{font-size:22px;font-weight:700;color:#1D5BA6;line-height:1.1;}
+.kpi-card.warn .kpi-val{color:#E08A00;}
+.kpi-unit{font-size:13px;font-weight:500;color:#9AAABF;margin-left:3px;}
+.kpi-link{font-size:10.5px;color:#1D5BA6;font-weight:600;margin-top:7px;}
+.kpi-card.warn .kpi-link{color:#9A5B00;}
+
+/* 홈 2단 패널 */
+.home-2col{display:grid;gap:12px;}
+@media(min-width:760px){.home-2col{grid-template-columns:1fr 1fr;}}
+.panel{background:#fff;border:1px solid #DDE4EF;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(29,91,166,0.06);}
+.panel-head{font-size:12px;font-weight:700;color:#1D5BA6;padding:11px 14px;background:#E8F0FB;border-bottom:1px solid #DDE4EF;}
+.panel-list{padding:6px 0;}
+.panel-row{display:flex;align-items:center;gap:8px;padding:9px 14px;cursor:pointer;border-bottom:1px solid #F4F7FB;font-size:12px;}
+.leave-box{background:linear-gradient(135deg,#EAF2FC,#F4F7FB);border:1px solid #DDE4EF;border-radius:14px;padding:16px 20px;margin-bottom:16px;}
+.leave-box-inner{font-size:13px;color:#5C6F8A;}
+.leave-title{font-size:14px;font-weight:800;color:#13335C;margin-bottom:12px;}
+.leave-stats{display:flex;gap:12px;}
+.leave-stat{flex:1;background:#fff;border-radius:10px;padding:12px 14px;text-align:center;box-shadow:0 1px 4px rgba(29,91,166,0.06);}
+.ls-lab{font-size:11px;color:#5C6F8A;font-weight:600;margin-bottom:4px;}
+.ls-val{font-size:24px;font-weight:800;}
+.ls-val span{font-size:13px;font-weight:600;margin-left:2px;}
+.elist-row{display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;border-bottom:1px solid #F4F7FB;font-size:13px;border-radius:8px;}
+.elist-row:hover{background:#F4F7FB;}
+.panel-row:hover{background:#F8FAFD;}
+.panel-empty{text-align:center;padding:28px;color:#9AAABF;font-size:12px;}
+.doc-badge{font-size:10px;font-weight:700;background:#E8F0FB;color:#1D5BA6;padding:2px 7px;border-radius:8px;white-space:nowrap;flex-shrink:0;}
+.doc-badge.posted{background:#DCFCE7;color:#16A34A;}
+.doc-title{flex:1;color:#1A2540;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.doc-date{font-size:10px;color:#9AAABF;flex-shrink:0;}
+
+/* 문서 목록 */
+.doc-row{background:#fff;border:1px solid #DDE4EF;border-radius:10px;padding:13px 14px;margin-bottom:8px;cursor:pointer;box-shadow:0 1px 4px rgba(29,91,166,0.06);}
+.doc-row:hover{border-color:#5BA4CF;}
+
+/* 업무일지 폼 레이아웃 */
+.fc-sec{font-size:11px;font-weight:700;color:#1D5BA6;margin-bottom:12px;letter-spacing:.5px;}
+.fc-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.fc-col{}
+.fc-input{width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;font-family:inherit;}
+.fc-input:focus{outline:none;border-color:#1D5BA6;}
+.fc-ta{resize:vertical;min-height:80px;line-height:1.7;}
+
+/* 결재 라인 */
+.approval-line{display:flex;align-items:center;gap:0;overflow-x:auto;padding:4px 0;}
+.ap-box{flex:1;min-width:80px;background:#F8FAFD;border:1px solid #DDE4EF;border-radius:10px;padding:10px 8px;text-align:center;}
+.ap-role{font-size:10px;font-weight:700;color:#5C6F8A;margin-bottom:6px;letter-spacing:.5px;}
+.ap-name{font-size:12px;font-weight:700;color:#1A2540;margin-bottom:2px;word-break:break-all;}
+.ap-rank{font-size:10px;color:#9AAABF;margin-bottom:8px;}
+.ap-stamp{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:11px;font-weight:700;}
+.ap-stamp.pending{background:#FFF4E5;border:2px solid #F59E0B;color:#F59E0B;}
+.ap-stamp.approved{background:#DCFCE7;border:2px solid #16A34A;color:#16A34A;}
+.ap-stamp.empty{background:#F4F7FB;border:2px dashed #C2CCD9;color:#C2CCD9;}
+.ap-arrow{font-size:18px;color:#C2CCD9;padding:0 6px;flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<!-- 로그인 -->
+<div id="login-screen">
+  <div class="login-card">
+    <img class="login-logo" src="data:image/png;base64,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ffv2UV98880305d/TpkzZ84nPvGJkds7d+58+eWXR26Xl5d/8pOfPN9TjNLU1PT9739/5HY0Gv25n/u5cRfAmmbpL8EXv/jF8zW6fuaZZw4cODBy+6abbtqwYUMkEjlx4sS2bdtGNdapra09+0qyq6vr7bffPnDgwPneSJFIpLS0dNGiRatXr66qqkr/+oRftWlQW1ubnhadb7P0TtUjic9IZjQyNnCMtGgCTYsGBgbeeeedffv2pXoqpSsuLl65cuWmTZvCBBN79+7dunXryO1ly5bdc889kUikra3tzTffPHz48NDQUPrGk0mL9u3bt3Xr1tRBPX/+/C1btkx4pmp6rJDZs2J7e/uDDz44cjuRSIx0iO/v79+2bduePXtGraoWjUaXL19+/fXXFxUVpX+9t7d327Zt77777qjtY7HYihUrrrvuusLCwjDFNDY2Hjp0qK6urrm5+ZyXabFYbP78+Zs2bQqZ7FzoMT40NPQXf/EXZ+/n7LP6iLvvvnv58uXne/bBwcHdu3fv27cvPR5NSSQSy5cvv/LKK8P8cL797W+nxut9/OMfr6ioGB4e3rt3744dO9ra2tK3vOqqq6666qpxd8jFRVqUHf2Ds7flWzxmqDwAM86oD66PHj26ePHiTO28qanphz/84bgNX7u6ut5888133nnnrrvuWrRoUaae/Wxnzpx59tlnm5qazrfB0NDQkSNHjhw5sn79+htvvHFUlDZJq1evfv3110eu7VtbW+vq6kI2G05fsW7x4sUzLSqasOHh4Zdeein9uxvD/v37X3jhhfRJiOfU3t6+a9eurq6uLVu2ZKLG6TB//vx9+/aN3G5tbe3u7j7n1eyopkWRSCQajdbU1Jw4cSIy5hS29AcWFBSMOzLo6NGjW7duHSMi6ezs3L59+549e2666aYxRkKdz759+1544YVROdEkvfHGG2+99Vbq7urVq2+99dbJHL/pL8HIQJJReU0GtbS0PPHEE52dnWf/0/Dw8MGDB+vq6u67775UhF1fX//UU0+ds8VVMpncv3//yZMn77///nFf6J/85CfjLt+WTCZPnDhx4sSJZcuW3X777Re64uEFHeOTdOTIkRdffHGMzl+9vb0jWdKNN944xscJ53vsk08+ec5VHQyGuCTpW5Qd/YOZ/MVwcYnneNcBMOOUlJSkXxe9++67x44dy9TOBwcHz46KYrFYIpE4e8JXf3//E088cejQoUw9+ygnTpz40Y9+dHZUFI/Hzx6AsHv37ieeeCKzCxvl5eWlL1wV8gqqv78/9Vl9JBIZ+az+0vDCCy+c74cw6gLs0KFDzz777KioKCcnp7CwsLi4OD8//6JuXzUqNDzfOoOp0CcajaY6FqWmlbW1tZ3vOvnsmGkMe/bsefLJJ0dFRdFo9Owfcl9f3zPPPHP2iK2x7d+//7nnnjtfVDSBC++hoaFnnnkmPSq6+uqrb7/99klGvTU1NanbyWTyueeeGzepnJj29vZHHnnknFFRSk9PzxNPPDEypK6+vv6xxx4buxt6d3f3Y489Nm7Bo8YljcjNzc3Pzz/7p3f48OFHHnnkQjO+8Mf4JG3fvv3JJ588+8eSl5c36nfN4ODg1q1bzzmo8HwGBwcfffTRrCwASrYYW5QdfQPSIgCYWVasWPHOO++M3E4mk0888cTq1as3bNgwai7PhI3MZVi8eHFlZWVFRUUqmhkYGGhqajpw4MC77747kssMDw9v3bq1srLy7BWF5s6d+9nPfnbk9rFjx1544YWR2/PmzbvrrrtGbXz2BJmmpqYf//jHqUudWCy2atWqVatWVVdXj1xLDAwM1NXV7dixI3VpfeLEiVdfffXGG28ctavNmzePRDZvvvnm3r17R7542WWXXX755ef83tPvbty4MXXtdOTIkfONIkm3b9++1FVfaWnpRdGGPIyDBw+OXH1Fo9EVK1YsXbp0zpw5+fn5PT09LS0tqXXiI5HI4ODgiy++mLpbWFi4adOmJUuWpL9Jkslka2trY2Pj8ePHzxl3TuZVm2qjWhfV1dWdc65NavRQ+kE0qnXRihUrRj2qv7+/ubk5dXfs4Wx1dXUvvvhi+mX86tWr161bV1VVFYvFkslkc3Pzu+++u2fPntQ2r732WllZ2bJly8J8px0dHakjt7a2duXKldXV1YlEYmBgoL29/eDBg2F2km7UiI+cnJzbbrttAsOdzrZ06dJXXnkldeidPHnye9/73qZNm1asWJHBdRiTyeRTTz01EgMtXrx47dq1NTU1Iz+QxsbGt99+++TJkyNbdnd3v/7661dfffVPfvKTkaqWLVu2evXq1A+wvr5+27ZtDQ0NI9t3dna+9dZb11577bg1FBcXL1myZP78+RUVFaWlpalMsL29/eTJk7t27UrN6jp9+vSrr7560003hfzuwhzjOTk5Iyf2/v7+v//7v089NnW2H+Wckx9379792muvpe4mEon169cvXbq0oqJi5Fju7u4+duzY9u3bUzMr33zzzYqKipDv21dffXXkIMrLy1u7du3ChQtLSkri8XhXV1dDQ8PEGkUxw0mLsqNvYPbORMsxEw2AGWnz5s379u3r6+tLfWXfvn379u0rKiqqra2trq6uqqqaO3fuBNo/5+XlXXXVVedrSDTSpre2tnbjxo2PP/74yKfr/f3927dvv/XWW0dtHIvFUjNB0v86z8nJGXeGSH9//1NPPZWKisrKyu65556KiopRxSxZsmTJkiXbt29PXXjs3Llz6dKloy6w8/LyRi4X038geXl5YSaqlJeXL1iwYOQKMJlM7t2798orrxz7IXv27EndXr9+/bhPcbEYuYwsLi6+9957586dm/p6YWFh+t1IJHLs2LFUo6Li4uKPfOQjZ/f9jcViFRUVFRUVa9eu7e3tPXsE2WRetWkwbuui9E7V6QnRSBPikff2OdOi+vr69PRnjLSov7//2WefTW0cj8e3bNmSnk7GYrGqqqqqqqoVK1Y88cQTqbUUt27dWlNTE6YXzMjrcs5Mp7y8/ELnwLa1tT3++OOp6/9EIrFly5bUqKtJKigouOyyy7Zt25b6Snt7+wsvvPDSSy9VV1fX1NSMnBgnOS20v7+/qakpFovdfvvt6T+QvLy8hQsXLly48LnnnkvNUty3b19XV1dPT088Hr/rrruWLFmSvv3ixYsXLlz45JNPptLSPXv2XHXVVWP0qK6trd20adP5AujS0tLS0tK1a9e+/vrrqRFku3fv3rRpU8jvOuQxPnIMjprjFv7AbGpqeuWVV1J3Fy9efMcdd4xKcAoLC9euXbty5cpnnnnmyJEjI198/vnnFyxYECb7G/lG5s+ff/fdd6f/LisqKqqurg5ZJxcXaVF2zOaxRblxY4sAmIkKCgruueeeJ554YtTMha6urgMHDoxMgxq5Gh/pS7pw4cKQgy9GLuDH3WzOnDnvf//7v/e9742MMNq/f//111+fwQ/wd+7cmbqkLCwsvP/++8e4FNm8eXN3d/fOnTtH7m7fvj1kd6GQNmzYkBovsGfPniuuuGKMWVR1dXWpxsbxeHzNmjUZrGTESDI47marV6++/fbbM/vUubm5999//9njyEZJj34uu+yycReoSiQSF90IrPTWRWfOnOnt7R0VsJ5vNllOTk51dfXIv56zdVH6F8duWrR3795UW99IJHL77bef78dYW1t79913P/744yN3+/r6du7cGWYYy4g77rhjjEbFIZ06derJJ59MZdylpaX33XdfWVnZJHeb7uqrr25ubh41VC2ZTNbX16dGMyUSiXnz5tXW1i5duvRC13ZMufnmm883HurGG288evToyLc5NDQ0Uswdd9yRHhWlxGKxW2+99Tvf+c5IetjX13fy5MkxMrhxo+pIJBKNRq+99tqurq79+/dHIpHh4eHdu3eHf61DHuOT8eqrr6Y+CViwYMGWLVvO9+spHo/ffffdP/rRj06fPh2JRPr7+3fv3r158+Ywz1JZWXnfffdlank4Zj7X7dkxm9MiY4sAmLHmz5//4Q9/eIxkJ5lMNjU1vfPOO0888cS3vvWtn/70p+ljkSavvLw8db00NDSUwQ4Rg4ODqegnEonceOON435qfc0116Q+mj5x4kRq0EdGLFmyJHVV2dXVdfTo0TE2Tm/5sXz58ktsysNVV10V5jIyfQW0S6bD9yij2gmdPbxojN5Dqbutra1nt6YO37Ro165dqdtLliwZO9BZtGhResCxZ8+ekG19xt1zGPv27Xv00UdTp6B58+Z9+MMfzmxUFIlEotHovffee8UVV4wRjvf29h45cuSVV175zne+8/DDD490HL8g1dXVY3RczsvLW7p0afpXFi9ePMb8qcLCwvSMb4yO/hfk6quvTt1Ohd1hhDzGJ+z06dOpPHRkzNrYn2TEYrEbbrghdTd8++1bb71VVDSrSIuyo7tvSvrDXRT0LQJgJquoqPjYxz52xx13jDu0vre39+23337wwQcn0GdkDOmXso2NjZna7YkTJ9LnMYW5Us3NzU3fbIxFzScgGo2mTygb43Klu7s7NWkicmn1t45EIvF4POSyROkZWQbfGDNKSUlJehB29iih1Jtwzpw5o4Ydpc+9GvVeHWkNlro7xii5M2fOpKeil1122bg1b9y4MXW7r68v5Esz+bfxG2+88dxzz6U60K9cufIDH/jAOee6Tl40Gr3mmms+9alPrV+/ftzRjqdOnXrssceeeOKJC0rSx51eOuqEPO726f25UyMTJyn9/dnc3Byy13X4Y3zCRkY8jVi+fHmYNHnevHmpYLGzszPMhwE1NTWp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" alt="JH Solutions"/>
+    <div class="login-title">전자결재</div>
+    <div style="width:36px;height:3px;background:#1D5BA6;border-radius:2px;margin:10px auto 16px;"></div>
+    <div class="login-sub">제이에이치솔루션 임직원 전용<br>Google 계정으로 로그인하세요</div>
+    <button class="login-btn" onclick="doLogin()">
+      <div style="width:22px;height:22px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#1D5BA6;">G</div>
+      Google 계정으로 로그인
+    </button>
+  </div>
+</div>
+
+<!-- 권한없음 -->
+<div id="denied-screen">
+  <div class="denied-card">
+    <div class="denied-icon">🔒</div>
+    <div class="denied-title">접근 권한이 없습니다</div>
+    <div class="denied-sub">관리자에게 접근 권한을 요청해 주세요.<br>로그인 시도가 자동으로 기록됩니다.</div>
+    <button class="outline-btn" onclick="doLogout()">로그아웃</button>
+  </div>
+</div>
+
+<!-- 앱 -->
+<div id="app-screen">
+  <!-- 헤더 -->
+  <div class="app-header">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div>
+        <div class="header-title" id="header-title">전자결재 홈</div>
+        <div class="header-sub">제이에이치솔루션</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="user-avatar" id="user-initial">?</div>
+      <button class="logout-small" onclick="doLogout()">로그아웃</button>
+    </div>
+  </div>
+
+  <div id="app-content">
+    <!-- PC 사이드바 -->
+    <aside id="sb">
+      <div class="sb-brand">
+        <div class="sb-logo">JH</div>
+        <div class="nm">전자결재<small>제이에이치솔루션</small></div>
+      </div>
+      <button class="sb-item" data-navkey="home" onclick="goTab('home')"><span class="sb-num">★</span> 전자결재 홈</button>
+      <button class="sb-item" data-navkey="approve" onclick="goTab('approve')"><span class="sb-num">📥</span> 결재함</button>
+      <button class="sb-item" data-navkey="daily" onclick="goTab('daily')"><span class="sb-num">1</span> 업무일지</button>
+      <button class="sb-item" data-navkey="leave" onclick="goTab('leave')"><span class="sb-num">2</span> 연차신청서</button>
+      <button class="sb-item" data-navkey="resign" onclick="goTab('resign')"><span class="sb-num">3</span> 퇴직원서</button>
+      <button class="sb-item" data-navkey="cert" onclick="goTab('cert')"><span class="sb-num">4</span> 재직증명서</button>
+      <button class="sb-item" data-navkey="purchase" onclick="goTab('purchase')"><span class="sb-num">5</span> 구매품의서</button>
+      <button class="sb-item" data-navkey="expense" onclick="goTab('expense')"><span class="sb-num">6</span> 지출결의서</button>
+      <div class="sb-foot">
+        <div class="av" id="sb-user">?</div>
+        <button onclick="doLogout()">로그아웃</button>
+      </div>
+    </aside>
+
+    <div id="main-area">
+      <!-- 모바일 탭바 -->
+      <div id="tabbar">
+        <button class="tab-btn active" data-navkey="home"     onclick="goTab('home')">🏠 홈</button>
+        <button class="tab-btn"        data-navkey="approve"  onclick="goTab('approve')">📥 결재함</button>
+        <button class="tab-btn"        data-navkey="daily"    onclick="goTab('daily')">📝 업무일지</button>
+        <button class="tab-btn"        data-navkey="leave"    onclick="goTab('leave')">🏖️ 연차</button>
+        <button class="tab-btn"        data-navkey="resign"   onclick="goTab('resign')">📤 퇴직원서</button>
+        <button class="tab-btn"        data-navkey="cert"     onclick="goTab('cert')">🪪 재직증명</button>
+        <button class="tab-btn"        data-navkey="purchase" onclick="goTab('purchase')">🛒 구매품의</button>
+        <button class="tab-btn"        data-navkey="expense"  onclick="goTab('expense')">💳 지출결의</button>
+      </div>
+
+      <!-- 탭 콘텐츠 -->
+      <div class="tab-content active" id="tab-home"></div>
+      <div class="tab-content" id="tab-approve"></div>
+      <div class="tab-content" id="tab-daily"></div>
+      <div class="tab-content" id="tab-leave"></div>
+      <div class="tab-content" id="tab-resign"></div>
+      <div class="tab-content" id="tab-cert"></div>
+      <div class="tab-content" id="tab-purchase"></div>
+      <div class="tab-content" id="tab-expense"></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
