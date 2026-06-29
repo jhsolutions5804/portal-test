@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Microsoft 인증 처리 중...</title>
+  <style>
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+         background:#F4F7FB;display:flex;align-items:center;justify-content:center;height:100vh;}
+    .card{background:#fff;border-radius:16px;padding:40px 48px;text-align:center;
+          box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:360px;width:100%;}
+    .icon{font-size:48px;margin-bottom:16px;}
+    .title{font-size:17px;font-weight:700;color:#1a2535;margin-bottom:8px;}
+    .sub{font-size:13px;color:#9AAABF;}
+    .err{font-size:13px;color:#DC2626;margin-top:12px;}
+    .btn{margin-top:20px;padding:10px 24px;background:#1D5BA6;color:#fff;
+         border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;}
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">📬</div>
+  <div class="title" id="title">Microsoft 인증 처리 중...</div>
+  <div class="sub" id="sub">잠시만 기다려 주세요.</div>
+  <div class="err" id="err" style="display:none;"></div>
+  <button class="btn" id="btn" style="display:none;" onclick="goPortal()">포털로 돌아가기</button>
+</div>
+
+<script>
+const OA2 = {
+  clientId:    '97f0a368-a746-42f9-8782-38ac8cc0962c',
+  tenantId:    '548fcb48-1ab8-4c47-8242-bc098ea80416',
+  redirectUri: 'https://jhsolutions5804.github.io/portal-test/outlook-auth.html',
+  scopes:      'Mail.Read User.Read offline_access',
+};
+OA2.tokenUrl = `https://login.microsoftonline.com/${OA2.tenantId}/oauth2/v2.0/token`;
+const PORTAL = 'https://jhsolutions5804.github.io/portal-test/';
+
+function goPortal() { window.location.href = PORTAL; }
+
+async function handleAuth() {
+  const params   = new URLSearchParams(window.location.search);
+  const code     = params.get('code');
+  const error    = params.get('error');
+  const errorDesc= params.get('error_description');
+
+  if (error) {
+    document.getElementById('title').textContent = '인증 오류';
+    document.getElementById('sub').textContent   = '';
+    document.getElementById('err').textContent   = errorDesc || error;
+    document.getElementById('err').style.display = '';
+    document.getElementById('btn').style.display = '';
+    return;
+  }
+
+  if (code) {
+    // Authorization code → Token 교환
+    document.getElementById('sub').textContent = '토큰 교환 중...';
+    const verifier = sessionStorage.getItem('oa2_verifier');
+    if (!verifier) {
+      // verifier 없음 → 세션 만료 가능성 → 3초 후 포털로 복귀
+      document.getElementById('title').textContent = '세션 만료';
+      document.getElementById('sub').textContent   = '포털에서 다시 연결해 주세요.';
+      document.getElementById('err').textContent   = 'PKCE verifier가 없습니다. 세션이 만료됐거나 다른 탭에서 접근했을 수 있습니다.';
+      document.getElementById('err').style.display = '';
+      document.getElementById('btn').style.display = '';
+      setTimeout(goPortal, 3000);
+      return;
+    }
+    try {
+      const body = new URLSearchParams({
+        client_id:     OA2.clientId,
+        grant_type:    'authorization_code',
+        code,
+        redirect_uri:  OA2.redirectUri,
+        code_verifier: verifier,
+      });
+      const res  = await fetch(OA2.tokenUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error_description || data.error);
+
+      // 토큰 저장
+      sessionStorage.setItem('oa2_token',    data.access_token);
+      sessionStorage.setItem('oa2_expiry',   String(Date.now() + (data.expires_in - 60) * 1000));
+      sessionStorage.removeItem('oa2_verifier');
+
+      // 사용자 이름 조회
+      try {
+        const me = await fetch('https://graph.microsoft.com/v1.0/me?$select=displayName',
+          { headers: { Authorization: 'Bearer ' + data.access_token } });
+        const u  = await me.json();
+        sessionStorage.setItem('oa2_name', u.displayName || '');
+      } catch(_) {}
+
+      document.getElementById('title').textContent = '✅ 인증 완료!';
+      document.getElementById('sub').textContent   = '포털로 이동합니다...';
+      setTimeout(goPortal, 1000);
+
+    } catch(e) {
+      document.getElementById('title').textContent = '토큰 오류';
+      let errMsg = e.message;
+      if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
+        errMsg = 'CORS 오류: Azure AD 앱에서 SPA 플랫폼으로 등록했는지 확인해 주세요.\n' + errMsg;
+      }
+      document.getElementById('err').textContent   = errMsg;
+      document.getElementById('err').style.display = '';
+      document.getElementById('btn').style.display = '';
+      // 재시도 버튼 추가
+      const retryBtn = document.createElement('button');
+      retryBtn.className = 'btn';
+      retryBtn.style.marginLeft = '8px';
+      retryBtn.textContent = '다시 시도';
+      retryBtn.onclick = () => { window.location.href = PORTAL; };
+      document.getElementById('btn').after(retryBtn);
+    }
+    return;
+  }
+
+  // 파라미터 없음 → 직접 접근 → 포털로 이동
+  goPortal();
+}
+
+handleAuth();
+</script>
+</body>
+</html>
