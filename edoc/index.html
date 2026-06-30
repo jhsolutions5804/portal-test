@@ -538,7 +538,7 @@ window.renderDailyList = async function() {
         <button class="toolbar-btn primary" onclick="renderDailyWrite()">✏️ 작성</button>
       </div>
     </div>
-    <div id="daily-list-wrap">⏳ 불러오는 중…</div>
+    <div id="daily-list-wrap"></div>
   </div>`;
 
   try {
@@ -1462,7 +1462,7 @@ window.renderDocList = async function(dtype) {
         <button class="toolbar-btn primary" onclick="${dtype==='leave'?'renderLeaveWrite()':`renderDocWrite('${dtype}')`}">✏️ 작성</button>
       </div>
     </div>
-    <div id="doc-list-wrap">⏳ 불러오는 중…</div>
+    <div id="doc-list-wrap"></div>
   </div>`;
 
   try {
