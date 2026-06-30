@@ -2041,9 +2041,10 @@ function openModule(m, tab, overrideUrl){
     } catch(e) {}
   }
 
-  // 새로 로드: iframe에 src 설정
+  // 새로 로드: iframe에 src 설정 (캐시 무력화 파라미터 _cb 추가 → 항상 최신 버전 로드)
   const frame=$('emb-frame');
-  frame.src = fullUrl;
+  const cacheBust = (fullUrl.includes('?')?'&':'?') + '_cb=' + Date.now();
+  frame.src = fullUrl + cacheBust;
   _embUrl = overrideUrl||m.url;
 
   $('emb-title').textContent=m.name; $('emb-title2').textContent=m.name;
