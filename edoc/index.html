@@ -818,25 +818,41 @@ async function renderEdocHome() {
 // 결재함에서 빠른 결재 처리
 // 홈에서 문서 클릭 → 탭 전환 후 상세 열기
 // ── 결재함: 내가 결재해야 할 문서 전체 목록 ──
+let _approveSubTab = 'pending';
 async function renderApproveBox() {
   const el = document.getElementById('tab-approve'); if(!el) return;
   el.innerHTML = `<div class="wrap2">
     <div class="sec-title">📥 결재함</div>
     <div class="sec-sub">결재 요청된 문서 목록</div>
+    <div style="display:flex;gap:8px;margin:12px 0 14px;">
+      <button id="appr-subtab-pending" class="appr-subtab" onclick="switchApproveSubTab('pending')">결재대기</button>
+      <button id="appr-subtab-done" class="appr-subtab" onclick="switchApproveSubTab('done')">결재완료</button>
+    </div>
     <div id="approve-list">⏳ 불러오는 중…</div>
   </div>`;
+  await loadApproveData();
+  switchApproveSubTab(_approveSubTab);
+}
+window.renderApproveBox = renderApproveBox;
 
+window.switchApproveSubTab = function(which) {
+  _approveSubTab = which;
+  const pendEl = document.getElementById('appr-subtab-pending');
+  const doneEl = document.getElementById('appr-subtab-done');
+  if (pendEl) pendEl.className = 'appr-subtab' + (which==='pending' ? ' active' : '');
+  if (doneEl) doneEl.className = 'appr-subtab' + (which==='done' ? ' active' : '');
+  renderApproveListUI();
+};
+
+let _approvePending = [], _approveDone = [];
+async function loadApproveData() {
   if (!window._db || !_user) return;
+  _approvePending = []; _approveDone = [];
   try {
     const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const DOC_TYPES = ['daily','leave','resign','cert','purchase','expense'];
-    const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'퇴직원서', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서' };
-    const STATUS_COLOR = { pending:'#F59E0B', reviewing:'#3B82F6', approved:'#16A34A', rejected:'#DC2626', posted:'#1D5BA6', draft:'#9AAABF' };
-    const STATUS_LABEL = { pending:'결재대기', reviewing:'검토중', approved:'승인', rejected:'반려', posted:'게시', draft:'임시저장' };
-    const fmtD = ts => ts?.seconds ? new Date(ts.seconds*1000).toLocaleDateString('ko-KR',{month:'short',day:'numeric'}) : '-';
     const myName = _myInfo?.name || '';
 
-    let myApprove = [];
     for (const dtype of DOC_TYPES) {
       const snap = await getDocs(collection(db, `edoc_${dtype}`));
       snap.forEach(doc => {
@@ -845,37 +861,54 @@ async function renderApproveBox() {
         line.forEach((step, idx) => {
           if (step.role === '회람' || step.role === '수신' || step.role === '작성') return;
           const uidMatch = step.uid === _user.uid || (!step.uid && step.name === myName);
-          if (!uidMatch || step.status !== 'pending') return;
+          if (!uidMatch) return;
           const prevDone = line.slice(0,idx).every(p => p.role==='작성' || p.status==='approved' || p.status==='done');
-          if (prevDone && (data.status==='pending' || data.status==='reviewing')) {
-            myApprove.push(data);
+          if (prevDone && step.status === 'pending' && (data.status==='pending' || data.status==='reviewing')) {
+            _approvePending.push(data);
+          } else if (['approved','rejected','posted'].includes(data.status)) {
+            _approveDone.push(data);
           }
         });
       });
     }
-    // 중복 제거 및 최신순 정렬
-    myApprove = myApprove.filter((d,i,a)=>a.findIndex(x=>x.id===d.id)===i);
-    myApprove.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
-
+    _approvePending = _approvePending.filter((d,i,a)=>a.findIndex(x=>x.id===d.id)===i);
+    _approveDone = _approveDone.filter((d,i,a)=>a.findIndex(x=>x.id===d.id)===i);
+    _approvePending.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+    _approveDone.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+  } catch(e) {
     const wrap = document.getElementById('approve-list');
-    if (!myApprove.length) {
-      wrap.innerHTML = '<div class="panel-empty" style="padding:40px;text-align:center;">결재 요청 문서가 없습니다</div>';
-      return;
-    }
-    wrap.innerHTML = myApprove.map(d => `
-      <div class="doc-row" onclick="openDocFromHome(${JSON.stringify(d).replace(/"/g,'&quot;')})">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-          <span style="font-size:13px;font-weight:700;color:#1A2540;">${d.title||'(제목없음)'}</span>
-          <span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;background:${STATUS_COLOR[d.status]||'#9AAABF'}20;color:${STATUS_COLOR[d.status]||'#9AAABF'};">${STATUS_LABEL[d.status]||d.status}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:11px;color:#5C6F8A;"><span style="background:#EEF4FC;color:#1D5BA6;padding:1px 7px;border-radius:6px;font-weight:600;margin-right:6px;">${TYPE_LABEL[d.dtype]||d.dtype}</span>${d.authorName||'-'} · ${fmtD(d.createdAt)}</span>
-          <button onclick="event.stopPropagation();openDocFromHome(${JSON.stringify(d).replace(/"/g,'&quot;')})" style="font-size:12px;padding:5px 14px;background:#1D5BA6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">📋 내용 확인 후 결재</button>
-        </div>
-      </div>`).join('');
-  } catch(e) { document.getElementById('approve-list').innerHTML = `<div style="color:#DC2626;padding:20px;">오류: ${e.message}</div>`; }
+    if (wrap) wrap.innerHTML = `<div style="color:#DC2626;padding:20px;">오류: ${e.message}</div>`;
+  }
 }
-window.renderApproveBox = renderApproveBox;
+
+function renderApproveListUI() {
+  const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'퇴직원서', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서' };
+  const STATUS_COLOR = { pending:'#F59E0B', reviewing:'#3B82F6', approved:'#16A34A', rejected:'#DC2626', posted:'#1D5BA6', draft:'#9AAABF' };
+  const STATUS_LABEL = { pending:'결재대기', reviewing:'검토중', approved:'승인', rejected:'반려', posted:'게시', draft:'임시저장' };
+  const fmtD = ts => ts?.seconds ? new Date(ts.seconds*1000).toLocaleDateString('ko-KR',{month:'short',day:'numeric'}) : '-';
+
+  const wrap = document.getElementById('approve-list');
+  if (!wrap) return;
+  const list = _approveSubTab === 'pending' ? _approvePending : _approveDone;
+  const emptyMsg = _approveSubTab === 'pending' ? '결재 요청 문서가 없습니다' : '결재 완료된 문서가 없습니다';
+  const btnLabel = _approveSubTab === 'pending' ? '📋 내용 확인 후 결재' : '📋 내용 확인';
+
+  if (!list.length) {
+    wrap.innerHTML = `<div class="panel-empty" style="padding:40px;text-align:center;">${emptyMsg}</div>`;
+    return;
+  }
+  wrap.innerHTML = list.map(d => `
+    <div class="doc-row" onclick="openDocFromHome(${JSON.stringify(d).replace(/"/g,'&quot;')})">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:13px;font-weight:700;color:#1A2540;">${d.title||'(제목없음)'}</span>
+        <span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;background:${STATUS_COLOR[d.status]||'#9AAABF'}20;color:${STATUS_COLOR[d.status]||'#9AAABF'};">${STATUS_LABEL[d.status]||d.status}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:11px;color:#5C6F8A;"><span style="background:#EEF4FC;color:#1D5BA6;padding:1px 7px;border-radius:6px;font-weight:600;margin-right:6px;">${TYPE_LABEL[d.dtype]||d.dtype}</span>${d.authorName||'-'} · ${fmtD(d.createdAt)}</span>
+        <button onclick="event.stopPropagation();openDocFromHome(${JSON.stringify(d).replace(/"/g,'&quot;')})" style="font-size:12px;padding:5px 14px;background:#1D5BA6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">${btnLabel}</button>
+      </div>
+    </div>`).join('');
+}
 
 window.openDocFromHome = function(d) {
   const dtype = d.dtype;
@@ -1777,6 +1810,8 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
 /* ── 공통 컴포넌트 ── */
 .wrap2{max-width:840px;margin:0 auto;padding:4px 0;}
 .sec-title{font-size:20px;font-weight:800;color:#1A2540;margin-bottom:4px;}
+.appr-subtab{padding:8px 18px;font-size:13px;font-weight:700;color:#5C6F8A;background:#F4F7FB;border:1px solid #DDE4EF;border-radius:9px;cursor:pointer;}
+.appr-subtab.active{background:#1D5BA6;color:#fff;border-color:#1D5BA6;}
 .sec-sub{font-size:12px;color:#5C6F8A;margin-bottom:18px;}
 .back-btn{background:#E8F0FB;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#1D5BA6;font-size:12px;cursor:pointer;font-weight:600;}
 .form-card{background:#fff;border-radius:12px;border:1px solid #DDE4EF;padding:16px;margin-bottom:10px;box-shadow:0 1px 4px rgba(29,91,166,0.08);}
