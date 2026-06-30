@@ -1082,28 +1082,8 @@ const DOC_CONFIG = {
   ]},
 };
 
-function renderDocMain(dtype) {
-  const el = document.getElementById(`tab-${dtype}`); if(!el) return;
-  const cfg = DOC_CONFIG[dtype] || { label:dtype, icon:'📄', fields:[] };
-  el.innerHTML = `<div class="wrap2">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-      <div class="sec-title">${cfg.icon} ${cfg.label}</div>
-      ${edocHomeBtnHtml()}
-    </div>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
-      <button class="sel-btn blue" onclick="renderDocWrite('${dtype}')">
-        <div class="sel-icon" style="background:#E8F0FB;">✏️</div>
-        <div class="sel-tx"><div class="sel-name">작성</div><div class="sel-desc">${cfg.label} 신규 작성 및 상신</div></div>
-        <div class="sel-chev">›</div>
-      </button>
-      <button class="sel-btn" onclick="renderDocList('${dtype}')">
-        <div class="sel-icon" style="background:#DCFCE7;">📂</div>
-        <div class="sel-tx"><div class="sel-name">조회</div><div class="sel-desc">제출된 ${cfg.label} 목록 조회</div></div>
-        <div class="sel-chev">›</div>
-      </button>
-    </div>
-  </div>`;
-}
+// 메인 = 조회(테이블) 화면. 우측 상단에 작성 버튼 배치 (업무일지 N6-2와 동일 패턴)
+function renderDocMain(dtype) { renderDocList(dtype); }
 window.renderDocMain = renderDocMain;
 
 // ══════════════════════════════════════════════
@@ -1185,25 +1165,8 @@ function leaveCalcDays() {
 
 window.leaveAutoTitle = leaveAutoTitle;
 window.leaveCalcDays = leaveCalcDays;
-window.renderLeaveMain = async function() {
-  const el = document.getElementById('tab-leave'); if(!el) return;
-  el.innerHTML = `<div class="wrap2">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-      <div class="sec-title">🏖️ 연차신청서</div>
-      ${edocHomeBtnHtml()}
-    </div>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
-      <button class="sel-btn blue" onclick="renderLeaveWrite()">
-        <div class="sel-icon" style="background:#E8F0FB;">✏️</div>
-        <div><div class="sel-label">신청서 작성</div><div class="sel-desc">연차·반차·병가 신청</div></div>
-      </button>
-      <button class="sel-btn" onclick="renderDocList('leave')">
-        <div class="sel-icon">📋</div>
-        <div><div class="sel-label">내 신청 목록</div><div class="sel-desc">제출한 신청서 조회</div></div>
-      </button>
-    </div>
-  </div>`;
-};
+// 메인 = 조회(테이블) 화면. 연차는 작성 함수가 renderLeaveWrite로 별도이므로 renderDocList에서 분기 처리
+window.renderLeaveMain = async function() { renderDocList('leave'); };
 
 window.renderLeaveWrite = async function(editDoc) {
   // editDoc: 수정 시 기존 문서 데이터
@@ -1492,20 +1455,20 @@ window.renderDocList = async function(dtype) {
   const el = document.getElementById(`tab-${dtype}`); if(!el) return;
   const cfg = DOC_CONFIG[dtype];
   el.innerHTML = `<div class="wrap2">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-      <button onclick="${dtype==='leave'?'renderLeaveMain()':"renderDocMain('"+dtype+"')"}" class="back-btn">‹ 뒤로</button>
-      <span style="font-size:13px;font-weight:700;color:#1A2540;">${cfg.icon} ${cfg.label} 목록</span>
+    <div class="sec-toolbar">
+      <div class="sec-title" style="margin-bottom:0;">${cfg.icon} ${cfg.label}</div>
+      <div style="display:flex;gap:8px;">
+        ${edocHomeBtnHtml()}
+        <button class="toolbar-btn primary" onclick="${dtype==='leave'?'renderLeaveWrite()':`renderDocWrite('${dtype}')`}">✏️ 작성</button>
+      </div>
     </div>
     <div id="doc-list-wrap">⏳ 불러오는 중…</div>
   </div>`;
 
   try {
-    console.log('[renderDocList] 시작:', dtype, 'db:', !!db, 'window._db:', !!window._db);
     const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    console.log('[renderDocList] firestore import 완료');
     const dbRef = window._db || db;
     const snap = await getDocs(collection(dbRef, `edoc_${dtype}`));
-    console.log('[renderDocList] getDocs 완료, 문서수:', snap.size);
     const allDocs = []; snap.forEach(d=>allDocs.push({id:d.id,...d.data()}));
     const myUid = _user?.uid;
     // 볼 수 있는 문서:
@@ -1527,14 +1490,18 @@ window.renderDocList = async function(dtype) {
     const wrap = document.getElementById('doc-list-wrap');
     if (!docs.length) { wrap.innerHTML='<div class="panel-empty" style="padding:40px;">등록된 문서가 없습니다.</div>'; return; }
 
-    wrap.innerHTML = docs.map(d => `
-      <div class="doc-row" onclick="docDetail(${JSON.stringify(d).replace(/"/g,'&quot;')}, '${dtype}')">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-          <span style="font-size:13px;font-weight:700;color:#1A2540;">${d.title||'(제목없음)'}</span>
-          <span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;background:${STATUS_COLOR[d.status]||'#9AAABF'}20;color:${STATUS_COLOR[d.status]||'#9AAABF'};">${STATUS[d.status]||d.status}</span>
-        </div>
-        <div style="font-size:11px;color:#5C6F8A;">${d.authorName||'-'} · ${fmtD(d.createdAt)}</div>
-      </div>`).join('');
+    wrap.innerHTML = `<table class="ptable">
+      <thead><tr><th style="text-align:left;">제목</th><th>작성자</th><th>작성일</th><th>상태</th></tr></thead>
+      <tbody>
+        ${docs.map(d=>`
+          <tr onclick="docDetail(${JSON.stringify(d).replace(/"/g,'&quot;')}, '${dtype}')">
+            <td style="text-align:left;font-weight:600;">${d.title||'(제목없음)'}</td>
+            <td>${d.authorName||'-'}</td>
+            <td style="color:#5C6F8A;">${fmtD(d.createdAt)}</td>
+            <td><span class="status-pill" style="background:${STATUS_COLOR[d.status]||'#9AAABF'}22;color:${STATUS_COLOR[d.status]||'#9AAABF'};">${STATUS[d.status]||d.status}</span></td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
   } catch(e) {
     document.getElementById('doc-list-wrap').innerHTML = `<div style="color:#DC2626;padding:20px;">오류: ${e.message}</div>`;
   }
