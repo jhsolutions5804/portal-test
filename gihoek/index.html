@@ -1305,8 +1305,11 @@ window.accSave=async function(id){ const total=num($('ef-total').value); if(tota
 window.accDel=async function(id){ if(!confirm('이 비용을 삭제할까요?')) return; try{ await deleteDoc(doc(db,'gihoek_expenses',id)); accCloseForm(); toast('삭제했습니다.'); }catch(e){ toast('삭제 실패: '+(e.code||e.message)); } };
 
 // ── 급여 PJT 배분 (N10-2) ──
-// 급여명세서(payslips/{wid}/months/{month})에서 grossPay를 불러와 PJT별 비율로 직접비(급여) 분배
-let _salWorkers=[]; let _salGross=0;
+// 급여명세서(payslips/{wid}/months/{month})에서 netPay를 불러와 PJT별 비율로 직접비(급여) 분배
+// 회계 반영월 = 명세서 기준월 + 1개월 (예: 5월 급여 → 6월 말 지급 → 6월 회계 반영)
+let _salWorkers=[]; let _salNet=0; let _salBaseMonth=''; let _salPayMonth='';
+// 'YYYY-MM' → 다음 달 'YYYY-MM'
+function nextMonth(ym){ const [y,m]=ym.split('-').map(Number); const d=new Date(y,m,1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 async function loadSalWorkers(){
   if(_salWorkers.length) return;
   try{ const snap=await getDocs(collection(db,'workers')); _salWorkers=[]; snap.forEach(d=>_salWorkers.push({id:d.id,...d.data()}));
@@ -1315,12 +1318,13 @@ async function loadSalWorkers(){
 }
 window.salOpenForm=async function(){
   await loadSalWorkers();
-  _salGross=0;
+  _salNet=0; _salBaseMonth=''; _salPayMonth='';
   $('em-body').innerHTML=`<div class="sec-h"><h2>급여 배분 입력</h2><button class="btn gray sm" onclick="accCloseForm()">닫기</button></div>
-    <div class="small muted" style="margin-bottom:10px;line-height:1.5">기준월 <b>${curAccMonth.replace('-','년 ')}월</b>의 급여명세서(세전 총지급액)를 불러와 PJT별 비율로 직접비(급여)에 반영합니다.</div>
-    <div class="field"><label>근로자</label><select class="sel" id="sf-worker" onchange="salLoadGross()"><option value="">선택하세요</option>${_salWorkers.map(w=>`<option value="${w.id}" data-name="${w.name||''}">${w.name||'-'} ${w.rank||''}</option>`).join('')}</select></div>
-    <div class="field"><label>세전 총지급액 (자동 로드)</label><input class="inp" id="sf-gross" inputmode="numeric" value="" placeholder="근로자 선택 시 자동 표시" readonly style="background:#f4f7fb"></div>
-    <div id="sf-gross-msg" class="small muted" style="margin-bottom:10px"></div>
+    <div class="small muted" style="margin-bottom:10px;line-height:1.5">발행된 급여명세서(실지급액)를 불러와 PJT별 비율로 직접비(급여)에 반영합니다.<br>회계 반영월은 <b>명세서 기준월의 다음 달</b>입니다 (예: 5월 급여 → 6월 회계).</div>
+    <div class="field"><label>근로자</label><select class="sel" id="sf-worker" onchange="salLoadMonths()"><option value="">선택하세요</option>${_salWorkers.map(w=>`<option value="${w.id}" data-name="${w.name||''}">${w.name||'-'} ${w.rank||''}</option>`).join('')}</select></div>
+    <div class="field"><label>급여명세서 (발행된 기준월)</label><select class="sel" id="sf-month" onchange="salLoadNet()" disabled><option value="">근로자를 먼저 선택하세요</option></select></div>
+    <div class="field"><label>실지급액 (자동 로드)</label><input class="inp" id="sf-net" inputmode="numeric" value="" placeholder="명세서 선택 시 자동 표시" readonly style="background:#f4f7fb"></div>
+    <div id="sf-net-msg" class="small muted" style="margin-bottom:10px"></div>
     <div class="field"><label>PJT별 배분 비율 (%)</label>
       <div id="sf-pjt-rows">${projects.map(p=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="pill" style="min-width:60px">${p.code}</span><input class="inp" inputmode="numeric" data-pjt="${p.id}" value="0" style="flex:1" oninput="salCalc()"><span class="small muted">%</span><span class="small" data-amt="${p.id}" style="min-width:90px;text-align:right;color:var(--money)">0</span></div>`).join('')}</div>
     </div>
@@ -1328,50 +1332,66 @@ window.salOpenForm=async function(){
     <div style="display:flex;gap:8px;margin-top:4px"><button class="btn line full" onclick="accCloseForm()">취소</button><button class="btn pri full" onclick="salSave()">저장</button></div>`;
   $('emodal').classList.add('on');
 };
-window.salLoadGross=async function(){
-  const wid=$('sf-worker').value; const msg=$('sf-gross-msg');
-  if(!wid){ _salGross=0; $('sf-gross').value=''; msg.textContent=''; salCalc(); return; }
-  msg.textContent='급여명세서 불러오는 중…';
+// 근로자 선택 → 발행된 급여명세서 월 목록 로드
+window.salLoadMonths=async function(){
+  const wid=$('sf-worker').value; const sel=$('sf-month'); const msg=$('sf-net-msg');
+  _salNet=0; _salBaseMonth=''; _salPayMonth=''; $('sf-net').value=''; msg.textContent='';
+  if(!wid){ sel.innerHTML='<option value="">근로자를 먼저 선택하세요</option>'; sel.disabled=true; salCalc(); return; }
+  sel.innerHTML='<option value="">불러오는 중…</option>'; sel.disabled=true;
   try{
-    const ref=doc(db,`payslips/${wid}/months`,curAccMonth);
-    const snap=await getDoc(ref);
-    if(snap.exists()){ const d=snap.data(); _salGross=d.grossPay||0; $('sf-gross').value=won(_salGross); msg.textContent='✅ '+curAccMonth+' 급여명세서 로드 완료'; msg.style.color='#16A34A'; }
-    else { _salGross=0; $('sf-gross').value=''; msg.textContent='⚠️ 해당 월 급여명세서가 없습니다. 인사 메뉴에서 먼저 저장하세요.'; msg.style.color='#DC2626'; }
-  }catch(e){ _salGross=0; msg.textContent='오류: '+(e.code||e.message); msg.style.color='#DC2626'; }
+    const snap=await getDocs(collection(db,`payslips/${wid}/months`));
+    const months=[]; snap.forEach(d=>months.push({month:d.id,...d.data()}));
+    months.sort((a,b)=>(b.month||'').localeCompare(a.month||''));
+    if(!months.length){ sel.innerHTML='<option value="">발행된 명세서 없음</option>'; sel.disabled=true; msg.textContent='⚠️ 이 근로자의 발행된 급여명세서가 없습니다.'; msg.style.color='#DC2626'; salCalc(); return; }
+    sel.innerHTML='<option value="">선택하세요</option>'+months.map(m=>`<option value="${m.month}" data-net="${m.netPay||0}">${m.month.replace('-','년 ')}월 (실수령 ${won(m.netPay||0)})</option>`).join('');
+    sel.disabled=false;
+  }catch(e){ sel.innerHTML='<option value="">오류</option>'; msg.textContent='오류: '+(e.code||e.message); msg.style.color='#DC2626'; }
+  salCalc();
+};
+// 명세서 월 선택 → netPay 로드 + 반영월 계산
+window.salLoadNet=function(){
+  const opt=$('sf-month').selectedOptions[0]; const msg=$('sf-net-msg');
+  if(!opt||!opt.value){ _salNet=0; _salBaseMonth=''; _salPayMonth=''; $('sf-net').value=''; msg.textContent=''; salCalc(); return; }
+  _salBaseMonth=opt.value; _salPayMonth=nextMonth(_salBaseMonth);
+  _salNet=num(opt.dataset.net)||0;
+  $('sf-net').value=won(_salNet);
+  msg.innerHTML=`✅ ${_salBaseMonth.replace('-','년 ')}월 급여 → <b>${_salPayMonth.replace('-','년 ')}월 회계</b>에 반영`;
+  msg.style.color='#16A34A';
   salCalc();
 };
 window.salCalc=function(){
   let pct=0;
   document.querySelectorAll('#sf-pjt-rows input[data-pjt]').forEach(inp=>{
     const r=num(inp.value)||0; pct+=r;
-    const amt=Math.round(_salGross*r/100);
+    const amt=Math.round(_salNet*r/100);
     const span=document.querySelector(`#sf-pjt-rows [data-amt="${inp.dataset.pjt}"]`); if(span) span.textContent=won(amt);
   });
-  const sumAmt=Math.round(_salGross*pct/100);
+  const sumAmt=Math.round(_salNet*pct/100);
   const el=$('sf-sum'); el.textContent=`합계: ${pct}% · ${won(sumAmt)}원`;
   el.style.color = pct===100 ? '#16A34A' : (pct>100?'#DC2626':'#5C6F8A');
 };
 window.salSave=async function(){
   const wid=$('sf-worker').value; if(!wid){ toast('근로자를 선택하세요.'); return; }
-  if(_salGross<=0){ toast('급여명세서가 로드되지 않았습니다.'); return; }
+  if(!_salBaseMonth){ toast('급여명세서를 선택하세요.'); return; }
+  if(_salNet<=0){ toast('실지급액이 로드되지 않았습니다.'); return; }
   const wname=$('sf-worker').selectedOptions[0]?.dataset.name||'';
   const rows=[...document.querySelectorAll('#sf-pjt-rows input[data-pjt]')].map(inp=>({pjt:inp.dataset.pjt,pct:num(inp.value)||0})).filter(r=>r.pct>0);
   if(!rows.length){ toast('1개 이상 PJT에 비율을 입력하세요.'); return; }
   const totalPct=rows.reduce((a,r)=>a+r.pct,0);
   if(totalPct>100){ toast('비율 합계가 100%를 초과했습니다.'); return; }
-  if(!confirm(`${wname}님 ${curAccMonth} 급여를 ${rows.length}개 PJT에 배분 저장할까요?\n(기존 동일 직원·월 배분은 덮어쓰기됩니다)`)) return;
+  if(!confirm(`${wname}님 ${_salBaseMonth} 급여(실수령 ${won(_salNet)})를\n${_salPayMonth} 회계에 ${rows.length}개 PJT로 배분 저장할까요?\n(기존 동일 직원·동일 기준월 배분은 덮어쓰기됩니다)`)) return;
   try{
-    // 기존 동일 직원·월 급여배분 항목 전체 삭제 (PJT 개수가 줄어든 경우 잔존 방지)
-    const stale=expenses.filter(x=>x.salaryDist&&x.workerId===wid&&x.baseMonth===curAccMonth);
+    // 기존 동일 직원·동일 기준월 급여배분 항목 전체 삭제 (PJT 개수가 줄어든 경우 잔존 방지)
+    const stale=expenses.filter(x=>x.salaryDist&&x.workerId===wid&&x.salBaseMonth===_salBaseMonth);
     for(const x of stale){ await deleteDoc(doc(db,'gihoek_expenses',x.id)); }
-    // 새 배분 작성 (id 규칙: salary_{wid}_{month}_{pjt})
+    // 새 배분 작성 (id 규칙: salary_{wid}_{기준월}_{pjt}), 회계 반영월=_salPayMonth
     for(const r of rows){
-      const eid=`salary_${wid}_${curAccMonth}_${r.pjt}`;
-      const amt=Math.round(_salGross*r.pct/100);
+      const eid=`salary_${wid}_${_salBaseMonth}_${r.pjt}`;
+      const amt=Math.round(_salNet*r.pct/100);
       await setDoc(doc(db,'gihoek_expenses',eid),{
-        date:curAccMonth+'-25', cat:'급여', vendor:wname, supply:amt, vat:0, total:amt,
-        pay:'계좌이체', pjt:r.pjt, note:`급여배분 ${r.pct}% (세전 ${won(_salGross)})`,
-        salaryDist:true, workerId:wid, baseMonth:curAccMonth, createdAt:serverTimestamp(),
+        date:_salPayMonth+'-25', cat:'급여', vendor:wname, supply:amt, vat:0, total:amt,
+        pay:'계좌이체', pjt:r.pjt, note:`급여배분 ${r.pct}% (${_salBaseMonth} 실수령 ${won(_salNet)})`,
+        salaryDist:true, workerId:wid, salBaseMonth:_salBaseMonth, baseMonth:_salPayMonth, createdAt:serverTimestamp(),
       },{merge:true});
     }
     accCloseForm(); toast('급여 배분을 저장했습니다.');
