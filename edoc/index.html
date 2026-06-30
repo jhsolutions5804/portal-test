@@ -1466,9 +1466,13 @@ window.renderDocList = async function(dtype) {
   </div>`;
 
   try {
+    const wrapEl0 = document.getElementById('doc-list-wrap');
+    if (wrapEl0) wrapEl0.innerHTML = '⏳ [1] firestore 모듈 로딩…';
     const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    if (wrapEl0) wrapEl0.innerHTML = '⏳ [2] 데이터 조회 중…';
     const dbRef = window._db || db;
     const snap = await getDocs(collection(dbRef, `edoc_${dtype}`));
+    if (wrapEl0) wrapEl0.innerHTML = `⏳ [3] 렌더링 중… (${snap.size}건)`;
     const allDocs = []; snap.forEach(d=>allDocs.push({id:d.id,...d.data()}));
     const myUid = _user?.uid;
     // 볼 수 있는 문서:
@@ -1503,7 +1507,7 @@ window.renderDocList = async function(dtype) {
       </tbody>
     </table>`;
   } catch(e) {
-    document.getElementById('doc-list-wrap').innerHTML = `<div style="color:#DC2626;padding:20px;">오류: ${e.message}</div>`;
+    document.getElementById('doc-list-wrap').innerHTML = `<div style="color:#DC2626;padding:20px;font-size:12px;">❌ 오류 발생<br>이름: ${e.name||'-'}<br>코드: ${e.code||'-'}<br>메시지: ${e.message||'-'}</div>`;
   }
 };
 
