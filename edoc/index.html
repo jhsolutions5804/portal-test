@@ -272,29 +272,8 @@ async function loadPjts() {
 }
 
 // 업무일지 메인 화면
-window.renderDailyMain = async function() {
-  const el = document.getElementById('tab-daily'); if(!el) return;
-  el.innerHTML = `<div class="wrap2">
-    <div class="sec-title">📝 업무일지</div>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
-      <button class="sel-btn" onclick="renderDailyWrite()">
-        <div class="sel-icon" style="background:#E8F0FB;">✏️</div>
-        <div class="sel-tx"><div class="sel-name">작성</div><div class="sel-desc">업무일지 신규 작성 및 상신</div></div>
-        <div class="sel-chev">›</div>
-      </button>
-      <button class="sel-btn" onclick="renderDailyList()">
-        <div class="sel-icon" style="background:#DCFCE7;">📂</div>
-        <div class="sel-tx"><div class="sel-name">조회</div><div class="sel-desc">제출된 업무일지 목록 조회</div></div>
-        <div class="sel-chev">›</div>
-      </button>
-      ${_isAdmin ? `<button class="sel-btn" onclick="renderDailyPerms()">
-        <div class="sel-icon" style="background:#F0EDFB;">🔑</div>
-        <div class="sel-tx"><div class="sel-name">권한관리</div><div class="sel-desc">직원별 업무일지 열람 권한 지정 (관리자)</div></div>
-        <div class="sel-chev">›</div>
-      </button>` : ''}
-    </div>
-  </div>`;
-};
+// 업무일지 메인 = 조회(테이블) 화면. 우측 상단에 작성/권한관리 버튼 배치
+window.renderDailyMain = function() { renderDailyList(); };
 
 // 업무일지 권한관리 화면 (관리자 전용)
 window.renderDailyPerms = async function() {
@@ -544,9 +523,12 @@ window.dailySave = async function(status) {
 window.renderDailyList = async function() {
   const el = document.getElementById('tab-daily'); if(!el) return;
   el.innerHTML = `<div class="wrap2">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-      <button onclick="renderDailyMain()" class="back-btn">‹ 뒤로</button>
-      <span style="font-size:13px;font-weight:800;color:#1A2540;">📝 업무일지 목록</span>
+    <div class="sec-toolbar">
+      <div class="sec-title" style="margin-bottom:0;">📝 업무일지</div>
+      <div style="display:flex;gap:8px;">
+        ${_isAdmin ? `<button class="toolbar-btn" onclick="renderDailyPerms()">🔑 권한관리</button>` : ''}
+        <button class="toolbar-btn primary" onclick="renderDailyWrite()">✏️ 작성</button>
+      </div>
     </div>
     <div id="daily-list-wrap">⏳ 불러오는 중…</div>
   </div>`;
@@ -578,15 +560,19 @@ window.renderDailyList = async function() {
     const wrap = document.getElementById('daily-list-wrap');
     if (!docs.length) { wrap.innerHTML='<div class="panel-empty" style="padding:40px;">작성된 업무일지가 없습니다.</div>'; return; }
 
-    wrap.innerHTML = docs.map(d=>`
-      <div class="doc-row" onclick='renderDailyDetail(${JSON.stringify(d).replace(/'/g,"&#39;")})'>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-          <span style="font-size:13px;font-weight:700;color:#1A2540;">${d.title||'(제목없음)'}</span>
-          <span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;background:${STATUS_COLOR[d.status]||'#9AAABF'}22;color:${STATUS_COLOR[d.status]||'#9AAABF'};">${STATUS_LABEL[d.status]||d.status}</span>
-        </div>
-        <div style="font-size:11px;color:#5C6F8A;">${d.authorName||'-'} · ${d.authorDept||''} · ${fmtD(d.createdAt)}</div>
-        ${d.pjtName?`<div style="font-size:10px;color:#9AAABF;margin-top:2px;">📌 ${d.pjtCode||''} ${d.pjtName}</div>`:''}
-      </div>`).join('');
+    wrap.innerHTML = `<table class="ptable">
+      <thead><tr><th style="text-align:left;">제목</th><th>작성자</th><th>소속</th><th>작성일</th><th>상태</th></tr></thead>
+      <tbody>
+        ${docs.map(d=>`
+          <tr onclick='renderDailyDetail(${JSON.stringify(d).replace(/'/g,"&#39;")})'>
+            <td style="text-align:left;font-weight:600;">${d.title||'(제목없음)'}${d.pjtName?` <span style="font-size:10px;color:#9AAABF;font-weight:400;">· ${d.pjtCode||''} ${d.pjtName}</span>`:''}</td>
+            <td>${d.authorName||'-'}</td>
+            <td style="color:#5C6F8A;">${d.authorDept||'-'}</td>
+            <td style="color:#5C6F8A;">${fmtD(d.createdAt)}</td>
+            <td><span class="status-pill" style="background:${STATUS_COLOR[d.status]||'#9AAABF'}22;color:${STATUS_COLOR[d.status]||'#9AAABF'};">${STATUS_LABEL[d.status]||d.status}</span></td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
   } catch(e) {
     document.getElementById('daily-list-wrap').innerHTML = `<div style="color:#DC2626;padding:20px;">오류: ${e.message}</div>`;
   }
@@ -1898,6 +1884,15 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
 .appr-subtab{padding:8px 18px;font-size:13px;font-weight:700;color:#5C6F8A;background:#F4F7FB;border:1px solid #DDE4EF;border-radius:9px;cursor:pointer;}
 .dvt-chip{padding:6px 14px;font-size:12px;font-weight:600;color:#5C6F8A;background:#F4F7FB;border:1px solid #DDE4EF;border-radius:20px;cursor:pointer;user-select:none;}
 .dvt-chip.on{background:#1D5BA6;color:#fff;border-color:#1D5BA6;}
+.ptable{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(29,91,166,0.06);}
+.ptable th{background:#E8F0FB;color:#1D5BA6;font-size:11px;font-weight:700;padding:10px 8px;text-align:center;border-bottom:1px solid #DDE4EF;}
+.ptable td{padding:11px 8px;text-align:center;border-bottom:1px solid #F0F4FA;color:#1A2540;}
+.ptable tbody tr{cursor:pointer;}
+.ptable tbody tr:hover{background:#F7FAFD;}
+.sec-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.toolbar-btn{display:flex;align-items:center;gap:5px;padding:7px 16px;font-size:13px;font-weight:600;border-radius:9px;cursor:pointer;border:1px solid #DDE4EF;background:#F4F7FB;color:#5C6F8A;}
+.toolbar-btn.primary{background:#1D5BA6;color:#fff;border-color:#1D5BA6;}
+.status-pill{font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;}
 .appr-subtab.active{background:#1D5BA6;color:#fff;border-color:#1D5BA6;}
 .sec-sub{font-size:12px;color:#5C6F8A;margin-bottom:18px;}
 .back-btn{background:#E8F0FB;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#1D5BA6;font-size:12px;cursor:pointer;font-weight:600;}
