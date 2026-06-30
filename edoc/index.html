@@ -287,8 +287,79 @@ window.renderDailyMain = async function() {
         <div class="sel-tx"><div class="sel-name">조회</div><div class="sel-desc">제출된 업무일지 목록 조회</div></div>
         <div class="sel-chev">›</div>
       </button>
+      ${_isAdmin ? `<button class="sel-btn" onclick="renderDailyPerms()">
+        <div class="sel-icon" style="background:#F0EDFB;">🔑</div>
+        <div class="sel-tx"><div class="sel-name">권한관리</div><div class="sel-desc">직원별 업무일지 열람 권한 지정 (관리자)</div></div>
+        <div class="sel-chev">›</div>
+      </button>` : ''}
     </div>
   </div>`;
+};
+
+// 업무일지 권한관리 화면 (관리자 전용)
+window.renderDailyPerms = async function() {
+  const el = document.getElementById('tab-daily'); if(!el) return;
+  if (!_isAdmin) { renderDailyMain(); return; }
+  el.innerHTML = `<div class="wrap2">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+      <button onclick="renderDailyMain()" class="back-btn">‹ 뒤로</button>
+      <span style="font-size:13px;font-weight:800;color:#1A2540;">🔑 업무일지 열람 권한관리</span>
+    </div>
+    <div style="background:#EEF4FB;border-radius:10px;padding:11px 13px;font-size:11.5px;color:#1D5BA6;margin-bottom:14px;line-height:1.6;">
+      💡 직원별로 "이 사람이 열람할 수 있는 다른 직원"을 지정합니다. 대표(관리자)는 항상 전체 열람 가능합니다.
+    </div>
+    <div id="daily-perms-wrap">⏳ 불러오는 중…</div>
+  </div>`;
+
+  try {
+    await loadPortalUsers();
+    const wrap = document.getElementById('daily-perms-wrap');
+    const users = _portalUsers.filter(u => !u.admin);
+    if (!users.length) { wrap.innerHTML = '<div class="panel-empty" style="padding:40px;">등록된 직원이 없습니다.</div>'; return; }
+
+    wrap.innerHTML = users.map(u => {
+      const targets = u.dailyViewTargets || [];
+      const others = _portalUsers.filter(o => o.uid !== u.uid);
+      const chips = others.map(o => `
+        <span class="dvt-chip ${targets.includes(o.uid)?'on':''}" data-owner="${u.uid}" data-target="${o.uid}" onclick="toggleDailyViewTarget(this)">${o.name}</span>
+      `).join('');
+      return `<div class="form-card" style="margin-bottom:10px;">
+        <div style="font-size:13px;font-weight:700;color:#1A2540;margin-bottom:8px;">${u.name||'-'} <span style="font-size:11px;color:#9AAABF;font-weight:400;">(${u.rank||''})</span></div>
+        <div style="font-size:11px;color:#5C6F8A;margin-bottom:8px;">이 직원의 업무일지를 열람할 수 있는 사람:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">${chips || '<span style="font-size:11px;color:#9AAABF;">다른 직원이 없습니다</span>'}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('daily-perms-wrap').innerHTML = `<div style="color:#DC2626;padding:20px;">오류: ${e.message}</div>`;
+  }
+};
+
+// 권한 칩 토글 → 즉시 Firestore 저장
+window.toggleDailyViewTarget = async function(el) {
+  const ownerUid = el.dataset.owner;
+  const targetUid = el.dataset.target;
+  const isOn = el.classList.contains('on');
+  el.style.opacity = '0.5';
+  try {
+    const { doc, updateDoc, getDoc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const ownerRef = doc(window._db, 'portal_users', ownerUid);
+    const ownerSnap = await getDoc(ownerRef);
+    let targets = ownerSnap.exists() ? (ownerSnap.data().dailyViewTargets || []) : [];
+    if (isOn) {
+      targets = targets.filter(t => t !== targetUid);
+    } else {
+      if (!targets.includes(targetUid)) targets.push(targetUid);
+    }
+    await updateDoc(ownerRef, { dailyViewTargets: targets });
+    // 로컬 캐시 동기화
+    const u = _portalUsers.find(x => x.uid === ownerUid);
+    if (u) u.dailyViewTargets = targets;
+    el.classList.toggle('on');
+    el.style.opacity = '1';
+  } catch(e) {
+    el.style.opacity = '1';
+    alert('권한 저장 실패: ' + e.message);
+  }
 };
 
 // 업무일지 작성 화면
@@ -482,8 +553,22 @@ window.renderDailyList = async function() {
 
   try {
     const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await loadPortalUsers();
     const snap = await getDocs(collection(window._db, 'edoc_daily'));
-    const docs = []; snap.forEach(d=>docs.push({id:d.id,...d.data()}));
+    let docs = []; snap.forEach(d=>docs.push({id:d.id,...d.data()}));
+
+    // 권한 필터: 관리자는 전체, 그 외는 본인 글 + 권한받은 대상자 글만
+    // dailyViewTargets는 "이 사람의 글을 볼 수 있는 대상자 uid 목록"으로 저장됨
+    // (권한관리 화면에서 [작성자 카드] → [열람 가능 대상자 칩]으로 지정)
+    if (!_isAdmin) {
+      const myUid = _user?.uid;
+      const allowedAuthors = new Set([myUid]);
+      _portalUsers.forEach(u => {
+        if ((u.dailyViewTargets || []).includes(myUid)) allowedAuthors.add(u.uid);
+      });
+      docs = docs.filter(d => allowedAuthors.has(d.authorUid));
+    }
+
     docs.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
 
     const STATUS_LABEL = { draft:'임시저장', pending:'결재대기', reviewing:'검토중', approved:'승인', rejected:'반려', posted:'게시' };
@@ -1811,6 +1896,8 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
 .wrap2{max-width:840px;margin:0 auto;padding:4px 0;}
 .sec-title{font-size:20px;font-weight:800;color:#1A2540;margin-bottom:4px;}
 .appr-subtab{padding:8px 18px;font-size:13px;font-weight:700;color:#5C6F8A;background:#F4F7FB;border:1px solid #DDE4EF;border-radius:9px;cursor:pointer;}
+.dvt-chip{padding:6px 14px;font-size:12px;font-weight:600;color:#5C6F8A;background:#F4F7FB;border:1px solid #DDE4EF;border-radius:20px;cursor:pointer;user-select:none;}
+.dvt-chip.on{background:#1D5BA6;color:#fff;border-color:#1D5BA6;}
 .appr-subtab.active{background:#1D5BA6;color:#fff;border-color:#1D5BA6;}
 .sec-sub{font-size:12px;color:#5C6F8A;margin-bottom:18px;}
 .back-btn{background:#E8F0FB;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#1D5BA6;font-size:12px;cursor:pointer;font-weight:600;}
