@@ -618,7 +618,7 @@ window.renderDailyDetail = function(d) {
 
   el.innerHTML = `<div class="wrap2">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-      <button onclick="renderDailyList()" class="back-btn">‹ 목록</button>
+      <button onclick="${_detailBackFn ? 'docDetailBack()' : 'renderDailyList()'}" class="back-btn">‹ 목록</button>
       <span style="font-size:13px;font-weight:800;color:#1A2540;">📝 업무일지</span>
     </div>
 
@@ -992,11 +992,23 @@ function renderApproveListUI() {
     </div>`).join('');
 }
 
+// 상세화면 "‹ 뒤로/목록" 클릭 시 실행할 직전 화면 복귀 함수.
+// 결재함 등 다른 탭에서 진입한 경우에만 설정되고, 그 외에는 null(기존 목록으로 이동).
+// ※ 향후 여러 단계 거슬러 올라가는 뒤로가기가 필요해지면,
+//    이 변수를 _navStack = [] 배열로 바꾸고 push/pop 방식으로 확장 가능
+//    (예: _navStack.push({tab:'approve'}); 뒤로가기 시 _navStack.pop() 후 직전 항목으로 이동)
+let _detailBackFn = null;
+
 window.openDocFromHome = function(d) {
   const dtype = d.dtype;
+  _detailBackFn = () => goTab('approve');
   // 탭 전환 완료 후 상세 열기 (afterFn 콜백 사용)
   goTab(dtype, () => {
-    docDetail(d, dtype);
+    if (dtype === 'daily') {
+      renderDailyDetail(d);
+    } else {
+      docDetail(d, dtype);
+    }
   });
 };
 
@@ -1632,13 +1644,22 @@ window.printDocA4 = function(d, dtype) {
   w.document.close();
 };
 
+// 상세화면 "뒤로/목록" 버튼 클릭 시 호출. 직전 화면으로 이동 후 즉시 초기화.
+window.docDetailBack = function() {
+  const fn = _detailBackFn;
+  _detailBackFn = null;
+  if (fn) fn(); else renderEdocHome();
+};
+
 window.docDetail = function(d, dtype) {
   const el = document.getElementById(`tab-${dtype}`); if(!el) return;
   const cfg = DOC_CONFIG[dtype];
   const STATUS = { draft:'임시저장', pending:'결재대기', reviewing:'검토중', approved:'승인', rejected:'반려', posted:'게시' };
   const STATUS_COLOR = { draft:'#9AAABF', pending:'#F59E0B', reviewing:'#3B82F6', approved:'#16A34A', rejected:'#DC2626', posted:'#1D5BA6' };
   const fmtD = ts => ts?.seconds ? new Date(ts.seconds*1000).toLocaleDateString('ko-KR') : '-';
-  const backFn = dtype==='leave' ? 'renderLeaveMain()' : `renderDocList('${dtype}')`;
+  // 결재함 등 다른 탭에서 진입했다면 그 화면으로, 아니면 기존처럼 해당 문서함 목록으로
+  const defaultBackFn = dtype==='leave' ? 'renderLeaveMain()' : `renderDocList('${dtype}')`;
+  const backFn = _detailBackFn ? 'docDetailBack()' : defaultBackFn;
 
   // leave 전용 필드 목록
   const leaveFields = [
