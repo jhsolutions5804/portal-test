@@ -134,6 +134,13 @@ const EDOC_TABS = {
   expense: { id:'tab-expense', title:'지출결의서',    fn:()=>renderDocMain('expense') },
 };
 
+// 각 탭 콘텐츠 상단에 공통으로 들어가는 "전자결재 홈" 이동 버튼
+// portal-embed 상태에서는 app-header/사이드바가 숨겨지므로, 콘텐츠 내부에 항상 노출
+function edocHomeBtnHtml() {
+  return `<button class="edoc-home-btn" onclick="goTab('home')">🏠 전자결재 홈</button>`;
+}
+window.edocHomeBtnHtml = edocHomeBtnHtml;
+
 window.goTab = function(key, afterFn) {
   const t = EDOC_TABS[key]; if (!t) return;
   document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
@@ -526,6 +533,7 @@ window.renderDailyList = async function() {
     <div class="sec-toolbar">
       <div class="sec-title" style="margin-bottom:0;">📝 업무일지</div>
       <div style="display:flex;gap:8px;">
+        ${edocHomeBtnHtml()}
         ${_isAdmin ? `<button class="toolbar-btn" onclick="renderDailyPerms()">🔑 권한관리</button>` : ''}
         <button class="toolbar-btn primary" onclick="renderDailyWrite()">✏️ 작성</button>
       </div>
@@ -893,8 +901,11 @@ let _approveSubTab = 'pending';
 async function renderApproveBox() {
   const el = document.getElementById('tab-approve'); if(!el) return;
   el.innerHTML = `<div class="wrap2">
-    <div class="sec-title">📥 결재함</div>
-    <div class="sec-sub">결재 요청된 문서 목록</div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div><div class="sec-title">📥 결재함</div>
+      <div class="sec-sub">결재 요청된 문서 목록</div></div>
+      ${edocHomeBtnHtml()}
+    </div>
     <div style="display:flex;gap:8px;margin:12px 0 14px;">
       <button id="appr-subtab-pending" class="appr-subtab" onclick="switchApproveSubTab('pending')">결재대기</button>
       <button id="appr-subtab-done" class="appr-subtab" onclick="switchApproveSubTab('done')">결재완료</button>
@@ -1063,7 +1074,10 @@ function renderDocMain(dtype) {
   const el = document.getElementById(`tab-${dtype}`); if(!el) return;
   const cfg = DOC_CONFIG[dtype] || { label:dtype, icon:'📄', fields:[] };
   el.innerHTML = `<div class="wrap2">
-    <div class="sec-title">${cfg.icon} ${cfg.label}</div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div class="sec-title">${cfg.icon} ${cfg.label}</div>
+      ${edocHomeBtnHtml()}
+    </div>
     <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
       <button class="sel-btn blue" onclick="renderDocWrite('${dtype}')">
         <div class="sel-icon" style="background:#E8F0FB;">✏️</div>
@@ -1162,7 +1176,10 @@ window.leaveCalcDays = leaveCalcDays;
 window.renderLeaveMain = async function() {
   const el = document.getElementById('tab-leave'); if(!el) return;
   el.innerHTML = `<div class="wrap2">
-    <div class="sec-title">🏖️ 연차신청서</div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div class="sec-title">🏖️ 연차신청서</div>
+      ${edocHomeBtnHtml()}
+    </div>
     <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
       <button class="sel-btn blue" onclick="renderLeaveWrite()">
         <div class="sel-icon" style="background:#E8F0FB;">✏️</div>
@@ -1893,6 +1910,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
 .toolbar-btn{display:flex;align-items:center;gap:5px;padding:7px 16px;font-size:13px;font-weight:600;border-radius:9px;cursor:pointer;border:1px solid #DDE4EF;background:#F4F7FB;color:#5C6F8A;}
 .toolbar-btn.primary{background:#1D5BA6;color:#fff;border-color:#1D5BA6;}
 .status-pill{font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;}
+.edoc-home-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;font-size:12px;font-weight:600;color:#1D5BA6;background:#EEF4FC;border:1px solid #DDE4EF;border-radius:8px;cursor:pointer;}
 .appr-subtab.active{background:#1D5BA6;color:#fff;border-color:#1D5BA6;}
 .sec-sub{font-size:12px;color:#5C6F8A;margin-bottom:18px;}
 .back-btn{background:#E8F0FB;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#1D5BA6;font-size:12px;cursor:pointer;font-weight:600;}
