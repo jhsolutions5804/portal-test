@@ -1405,6 +1405,22 @@ window._fbSubscribeProgress = async function(dateKey) {
 };
 
 // 공정 체크 저장 (오늘만, 당일 신규 체크만 Firebase에 저장)
+// ── PJT 설정 (module 블록 — db 직접 접근) ──
+window._savePjtStartDate = function(key, v){
+  try{
+    setDoc(doc(db,'pjt_settings',key),{startDate:v,updatedAt:serverTimestamp()},{merge:true})
+      .catch(function(e){console.warn('startDate 저장 실패',e);});
+  }catch(e){}
+};
+window._loadPjtSettingsData = async function(key){
+  var snap=await getDoc(doc(db,'pjt_settings',key));
+  return snap.exists()?snap.data():{};
+};
+window._savePjtSettingsData = async function(key, data){
+  data.updatedAt=serverTimestamp();
+  await setDoc(doc(db,'pjt_settings',key), data, {merge:true});
+};
+
 window._fbSetProgCheck = async function(dateKey, zoneId, key, isDone) {
   try {
     const { doc, getDoc, setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
@@ -2892,20 +2908,16 @@ async function renderHome(){
 // 시작일 저장
 function saveStartDate(v){
   localStorage.setItem('ph4_pjt_start_date',v);
-  try{
-    setDoc(doc(db,'pjt_settings','p4ph4'),{startDate:v,updatedAt:serverTimestamp()},{merge:true})
-      .catch(function(e){console.warn('startDate Firestore 저장 실패',e);});
-  }catch(e){}
+  if(typeof window._savePjtStartDate==='function') window._savePjtStartDate('p4ph4', v);
   renderHome();
 }
 
-// ── PJT 설정 탭 (pjt_settings/p4ph4) ──
+// ── PJT 설정 탭 UI (Firestore 접근은 module 헬퍼 경유) ──
 var PROJECT_KEY='p4ph4';
 async function loadPjtSettings(){
   var msg=document.getElementById('set-msg'); if(msg) msg.textContent='';
   try{
-    var snap=await getDoc(doc(db,'pjt_settings',PROJECT_KEY));
-    var d=snap.exists()?snap.data():{};
+    var d=await window._loadPjtSettingsData(PROJECT_KEY);
     var set=function(id,v){var el=document.getElementById(id); if(el) el.value=(v!=null?v:'');};
     set('set-name', d.name);
     set('set-site', d.site);
@@ -2928,10 +2940,9 @@ async function savePjtSettings(){
       name: val('set-name'), site: val('set-site'), client: val('set-client'),
       content: val('set-desc'), item: val('set-item'),
       qty: parseInt(document.getElementById('set-qty').value)||0,
-      startDate: startDate, url: val('set-url'),
-      updatedAt: serverTimestamp()
+      startDate: startDate, url: val('set-url')
     };
-    await setDoc(doc(db,'pjt_settings',PROJECT_KEY), data, {merge:true});
+    await window._savePjtSettingsData(PROJECT_KEY, data);
     if(startDate){ try{ localStorage.setItem('ph4_pjt_start_date', startDate); }catch(e){} }
     if(msg){ msg.style.color='#16A34A'; msg.textContent='✓ 저장했습니다.'; }
     renderHome();
