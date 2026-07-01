@@ -1069,6 +1069,7 @@ const DOC_CONFIG = {
     { key:'vendor',    label:'공급업체',    type:'text',   ph:'업체명' },
     { key:'purpose',   label:'구매 목적',   type:'textarea', ph:'구매 필요 사유' },
     { key:'dueDate',   label:'필요일',      type:'date' },
+    { key:'refUrls',   label:'참고 링크',   type:'urls', required:false },
   ]},
   expense:  { label:'지출결의서', icon:'💳',
     approvers:['김종화'], cc:[],
@@ -1085,6 +1086,20 @@ const DOC_CONFIG = {
 // 메인 = 조회(테이블) 화면. 우측 상단에 작성 버튼 배치 (업무일지 N6-2와 동일 패턴)
 function renderDocMain(dtype) { renderDocList(dtype); }
 window.renderDocMain = renderDocMain;
+
+// 문서 값 출력 포맷: URL 배열이면 "링크N" 하이퍼링크로, 그 외는 값 그대로
+function fmtDocVal(v) {
+  if (Array.isArray(v)) {
+    if (!v.length) return '-';
+    return v.map((u,i)=>{
+      const safe = String(u).replace(/"/g,'&quot;');
+      const label = v.length>1 ? ('링크'+(i+1)) : '링크';
+      return `<a href="${safe}" target="_blank" rel="noopener noreferrer" style="color:#1D5BA6;font-weight:700;text-decoration:underline;">${label}</a>`;
+    }).join(' &nbsp; ');
+  }
+  return (v===0 || v) ? v : '-';
+}
+window.fmtDocVal = fmtDocVal;
 
 // ══════════════════════════════════════════════
 // 연차신청서 전용 모듈
@@ -1364,7 +1379,12 @@ window.renderDocWrite = function(dtype) {
     const req = f.required !== false;
     const reqMark = req ? '<span style="color:#DC2626;margin-left:2px;">*</span>' : '';
     let input = '';
-    if (f.type==='select') {
+    if (f.type==='urls') {
+      input = `<div id="f-${f.key}" data-fieldtype="urls">
+        <div class="url-rows"></div>
+        <button type="button" onclick="addUrlRow('${f.key}')" style="margin-top:4px;padding:6px 12px;background:#EEF4FB;border:1px solid #DDE4EF;border-radius:8px;color:#1D5BA6;font-size:12px;font-weight:700;cursor:pointer;">+ 링크 추가</button>
+      </div>`;
+    } else if (f.type==='select') {
       input = `<select id="f-${f.key}" style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;">
         ${(f.opts||[]).map(o=>`<option>${o}</option>`).join('')}
       </select>`;
@@ -1417,6 +1437,21 @@ window.renderDocWrite = function(dtype) {
     if (ccs.length) txt += '  |  회람: ' + ccs.join(', ');
     prev.textContent = txt;
   })();
+
+  // urls 타입 필드 최초 1행 생성
+  cfg.fields.forEach(f => { if (f.type==='urls') addUrlRow(f.key); });
+};
+
+// URL 입력 행 추가
+window.addUrlRow = function(key, value) {
+  const box = document.querySelector(`#f-${key} .url-rows`);
+  if (!box) return;
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:6px;margin-bottom:6px;';
+  row.innerHTML = `<input type="url" class="url-input" placeholder="https://..." value="${(value||'').replace(/"/g,'&quot;')}"
+      style="flex:1;min-width:0;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;">
+    <button type="button" onclick="this.parentElement.remove()" style="flex-shrink:0;width:36px;border:1px solid #DDE4EF;border-radius:8px;background:#FEF2F2;color:#DC2626;font-size:16px;font-weight:700;cursor:pointer;">−</button>`;
+  box.appendChild(row);
 };
 
 window.docSave = async function(dtype, status) {
@@ -1439,8 +1474,14 @@ window.docSave = async function(dtype, status) {
     createdAt:serverTimestamp()
   };
   cfg.fields.forEach(f => {
-    const el = document.getElementById('f-'+f.key);
-    if (el) data[f.key] = el.value;
+    if (f.type==='urls') {
+      const box = document.getElementById('f-'+f.key);
+      const urls = box ? Array.from(box.querySelectorAll('.url-input')).map(i=>i.value.trim()).filter(Boolean) : [];
+      data[f.key] = urls;
+    } else {
+      const el = document.getElementById('f-'+f.key);
+      if (el) data[f.key] = el.value;
+    }
   });
 
   try {
@@ -1534,7 +1575,7 @@ window.printDocA4 = function(d, dtype) {
       <tr><th>업무 대리인</th><td>${d.deputyName||'-'}</td></tr>`;
   } else {
     bodyRows = (cfg.fields||[]).map(f =>
-      `<tr><th>${f.label}</th><td style="white-space:pre-wrap;">${d[f.key]||'-'}</td></tr>`
+      `<tr><th>${f.label}</th><td style="white-space:pre-wrap;">${fmtDocVal(d[f.key])}</td></tr>`
     ).join('');
   }
 
@@ -1642,7 +1683,7 @@ window.docDetail = function(d, dtype) {
   const rows = displayFields.map(f=>`
     <div style="display:flex;padding:8px 0;border-bottom:1px solid #F0F4FA;font-size:12px;gap:12px;">
       <span style="color:#5C6F8A;font-weight:600;min-width:90px;flex-shrink:0;">${f.label}</span>
-      <span style="color:#1A2540;word-break:break-all;">${d[f.key]||'-'}</span>
+      <span style="color:#1A2540;word-break:break-all;">${fmtDocVal(d[f.key])}</span>
     </div>`).join('');
 
   const myUid = _user?.uid;
