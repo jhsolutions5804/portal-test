@@ -435,8 +435,8 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
 <!-- PC 상단 탭바 -->
 <div class="pc-topnav">
   <div class="pc-topnav-brand">
-    <div class="b1">P4 Ph4 (SUP)</div>
-    <div class="b2">귀뚜라미범양냉방 · EHU 설치</div>
+    <div class="b1" id="hdr-name-pc">P4 Ph4 (SUP)</div>
+    <div class="b2" id="hdr-sub-pc">귀뚜라미범양냉방 · EHU 설치</div>
   </div>
   <div class="pc-topnav-tabs">
     <button class="pc-tnav-btn" data-tab="home" onclick="switchTabPC('home',this)">🏠 홈</button>
@@ -461,8 +461,8 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
   <div class="header">
     <div class="header-top">
       <div>
-        <div class="logo-main">P4 Ph4 (SUP)</div>
-        <div class="logo-sub">귀뚜라미범양냉방 · EHU 설치</div>
+        <div class="logo-main" id="hdr-name-mo">P4 Ph4 (SUP)</div>
+        <div class="logo-sub" id="hdr-sub-mo">귀뚜라미범양냉방 · EHU 설치</div>
       </div>
       <span class="date-badge" id="today-badge"></span>
       <a href="https://jhsolutions5804.github.io/p4ph2-fab-workspace/daily-report.html" style="font-size:12px;color:#1D5BA6;background:#e8f0fb;padding:5px 11px;border-radius:8px;text-decoration:none;font-weight:600;white-space:nowrap;">📋 공사일보</a>
@@ -759,8 +759,6 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
             </div>
             <div><label style="font-size:12px;font-weight:700;color:#5C6F8A;display:block;margin-bottom:5px">공사 시작일 <span style="font-size:11px;color:#aaa;font-weight:400">(D+ 계산 기준)</span></label>
               <input id="set-start" type="date" style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
-            <div><label style="font-size:12px;font-weight:700;color:#5C6F8A;display:block;margin-bottom:5px">워크스페이스 URL <span style="font-size:11px;color:#aaa;font-weight:400">(선택)</span></label>
-              <input id="set-url" type="text" placeholder="https://jhsolutions5804.github.io/..." style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
           </div>
           <div style="display:flex;gap:10px;margin-top:20px">
             <button onclick="loadPjtSettings()" style="flex:1;padding:11px;background:#f5f5f7;color:#555;border:1px solid #e5e5e5;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit">되돌리기</button>
@@ -2926,9 +2924,21 @@ async function loadPjtSettings(){
     set('set-item', d.item);
     set('set-qty', d.qty);
     set('set-start', d.startDate||localStorage.getItem('ph4_pjt_start_date')||'');
-    set('set-url', d.url);
+    applyPjtHeader(d);
   }catch(e){ console.warn('설정 로드 실패',e); }
 }
+// 헤더(명칭·부제) 실시간 반영 — 값 없으면 기존 하드코딩 유지
+function applyPjtHeader(d){
+  if(!d) return;
+  var setTxt=function(id,v){ var el=document.getElementById(id); if(el&&v) el.textContent=v; };
+  if(d.name){ setTxt('hdr-name-pc', d.name); setTxt('hdr-name-mo', d.name); document.title=d.name+' · 현장 관리'; }
+  var sub='';
+  if(d.client&&d.content) sub=d.client+' · '+d.content;
+  else if(d.client) sub=d.client;
+  else if(d.content) sub=d.content;
+  if(sub){ setTxt('hdr-sub-pc', sub); setTxt('hdr-sub-mo', sub); }
+}
+window.applyPjtHeader=applyPjtHeader;
 window.loadPjtSettings=loadPjtSettings;
 async function savePjtSettings(){
   var btn=document.getElementById('set-save-btn'); var msg=document.getElementById('set-msg');
@@ -2940,10 +2950,11 @@ async function savePjtSettings(){
       name: val('set-name'), site: val('set-site'), client: val('set-client'),
       content: val('set-desc'), item: val('set-item'),
       qty: parseInt(document.getElementById('set-qty').value)||0,
-      startDate: startDate, url: val('set-url')
+      startDate: startDate
     };
     await window._savePjtSettingsData(PROJECT_KEY, data);
     if(startDate){ try{ localStorage.setItem('ph4_pjt_start_date', startDate); }catch(e){} }
+    applyPjtHeader(data);
     if(msg){ msg.style.color='#16A34A'; msg.textContent='✓ 저장했습니다.'; }
     renderHome();
   }catch(e){
@@ -3035,20 +3046,22 @@ function waitForFirebaseAndInit() {
 }
 waitForFirebaseAndInit();
 (function(){
-  try{
-    getDoc(doc(db,'pjt_settings','p4ph4')).then(function(snap){
-      if(!snap.exists()) return;
-      var sd=snap.data().startDate;
-      if(!sd) return;
-      var local=''; try{local=localStorage.getItem('ph4_pjt_start_date')||'';}catch(e){}
-      if(sd!==local){
-        try{localStorage.setItem('ph4_pjt_start_date',sd);}catch(e){}
+  function applyOnLoad(){
+    if(typeof window._loadPjtSettingsData!=='function'){ setTimeout(applyOnLoad,100); return; }
+    window._loadPjtSettingsData('p4ph4').then(function(d){
+      if(!d) return;
+      if(typeof applyPjtHeader==='function') applyPjtHeader(d);
+      var sd=d.startDate;
+      if(sd){
+        var local=''; try{local=localStorage.getItem('ph4_pjt_start_date')||'';}catch(e){}
+        if(sd!==local){ try{localStorage.setItem('ph4_pjt_start_date',sd);}catch(e){} }
         var inp=document.getElementById('home-start-date');
         if(inp) inp.value=sd;
         if(typeof renderHome==='function') renderHome();
       }
     }).catch(function(){});
-  }catch(e){}
+  }
+  applyOnLoad();
 })();
 renderProgress(); // 공정 탭은 탭 클릭 시 initProgress()로 갱신
 
