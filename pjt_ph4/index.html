@@ -2463,6 +2463,34 @@ window._fbSetManday = async function(dateKey, md) {
 };
 
 // 한 달치 공수 문서를 병렬로 읽어 캐시에 적재 (집계표용)
+// ── 헤더 우측 전체 누적공수: 공사 시작일~오늘 ph4_manday 합산 ──
+window._updateTotalManday = async function(){
+  try{
+    const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    var sdStr=''; try{ sdStr=localStorage.getItem('ph4_pjt_start_date')||''; }catch(e){}
+    if(!sdStr){
+      try{ var s=await getDoc(doc(window._fbDb,'pjt_settings','p4ph4')); if(s.exists()&&s.data().startDate) sdStr=s.data().startDate; }catch(e){}
+    }
+    if(!sdStr) return;
+    var start=new Date(sdStr+'T00:00:00'); var today=new Date(); today.setHours(0,0,0,0);
+    var keys=[];
+    for(var d=new Date(start); d<=today; d.setDate(d.getDate()+1)){
+      keys.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+    }
+    var total=0;
+    await Promise.all(keys.map(async function(k){
+      try{
+        var md;
+        if(window._mandayCache && window._mandayCache[k]) md=window._mandayCache[k];
+        else { var snap=await getDoc(doc(window._fbDb,'ph4_manday',k)); md=snap.exists()?(snap.data().md||{}):{}; }
+        Object.values(md).forEach(function(v){ total+=(parseFloat(v)||0); });
+      }catch(e){}
+    }));
+    var el=document.getElementById('pc-manday-total');
+    if(el) el.textContent=total.toFixed(1);
+  }catch(e){ console.warn('전체 누적공수 계산 오류',e); }
+};
+
 window._fbGetMandayMonth = async function(y, m) {
   try {
     const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
@@ -2835,8 +2863,8 @@ function _updateHomeKPI(){
   if(mdEl) mdEl.textContent=totalMd.toFixed(1);
   var mdSubEl=document.getElementById('home-manday-sub');
   if(mdSubEl) mdSubEl.textContent=m+'월 합계';
-  var pcMdEl=document.getElementById('pc-manday-total');
-  if(pcMdEl) pcMdEl.textContent=totalMd.toFixed(1);
+  // 헤더 우측 누적공수는 '전체 누적'으로 별도 계산
+  if(window._updateTotalManday) window._updateTotalManday();
 
   // ③ 오늘 출역
   var todayKey=toKey(now);
