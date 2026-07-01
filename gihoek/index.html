@@ -890,7 +890,7 @@ function drawSettleForm(){ const d=settleDraft; const pjtEsts=estimates.filter(e
     <div class="row2">
       <div class="field"><label>기준월</label><input class="inp" type="month" value="${d.baseMonth}" onchange="setS('baseMonth',this.value)"></div>
       <div class="field"><label>발행일</label><input class="inp" type="date" value="${d.issueDate}" onchange="setS2('issueDate',this.value)"></div></div>
-    <div class="field"><label>${d.docType==='invoice'?'지급요청일':'지급예정일'}</label><input class="inp" type="date" value="${d.payDate}" onchange="setS2('payDate',this.value)"></div>
+    <div class="field"><label>${d.docType==='invoice'?'지급요청일':'지급예정일'}${d.docType==='payment'?' <span class="small muted">· 비우면 기준월 익월 말일 자동 (주말→금요일), 회계 반영월 기준</span>':''}</label><input class="inp" type="date" value="${d.payDate}" onchange="setS2('payDate',this.value)"></div>
     <div class="row2">
       <div class="field"><label>발신자 (우리)</label><select class="sel" onchange="setS2('senderId',this.value);setS2('senderContact','');drawSettleForm()">${setOptCompanies(supplierList(),d.senderId)}</select>
       ${contactDropdown(d.senderId, d.senderContact||'',"setS2('senderContact',this.value)")}</div>
@@ -1104,9 +1104,14 @@ window.publishSettle=async function(){ const d=settleDraft; const sup=setSupply(
   if(d.method==='qty') d.estIds.forEach(eid=>{ const e=estimates.find(x=>x.id===eid); if(!e) return; perItem[eid]={}; let es=0; (e.items||[]).forEach((it,idx)=>{ const q=qVal(eid,idx); const amt=qAmt(eid,idx,it); if(q>0||amt>0){ perItem[eid][idx]={qty:q,amount:amt}; es+=amt; } }); perEst[eid]=es; });
   if(d.method==='manday') mandayUsed=d.mandayInput!=null?d.mandayInput:(d.mandayAuto||0);
   const vat=Math.round(sup*0.1);
+  // 급여와 동일 규칙: 지급예정서(payment)이고 지급예정일이 비어 있으면 기준월의 익월 말일(주말→금요일)로 자동
+  let effPayDate=d.payDate||'';
+  if(d.docType==='payment' && !effPayDate && d.baseMonth) effPayDate=defaultPayDate(d.baseMonth);
+  const effAcctMonth=(effPayDate||d.issueDate||d.baseMonth||'').slice(0,7);
   $('set-save').disabled=true;
   try{ await setDoc(doc(db,'gihoek_settlements',id),{ pjtId:d.pjtId, no, docType:d.docType, method:d.method,
-      baseMonth:d.baseMonth, issueDate:d.issueDate, payDate:d.payDate||'',
+      baseMonth:d.baseMonth, issueDate:d.issueDate, payDate:effPayDate,
+      acctMonth:effAcctMonth,
       senderId:d.senderId||'', sender:{...snap(compById(d.senderId)), ...ctSnap(d.senderId,d.senderContact)}, recipientId:d.recipientId||'', recipient:{...snap(compById(d.recipientId)), ...ctSnap(d.recipientId,d.recipientContact)},
       estIds:d.estIds||[], perEst, perItem, mandayUsed, lines:settleLines(),
       supply:sup, vat, total:sup+vat, amount:sup, status:'active',
@@ -1126,7 +1131,7 @@ window.openSettle=function(id){ viewSetId=id; const s=settlements.find(x=>x.id==
         <div class="small muted" style="margin-top:3px"><span class="pill">${p?p.code:'-'}</span> &nbsp;${s.no} · 발행 ${s.issueDate}${s.author?' · '+s.author:''}</div></div>
         <div style="display:flex;gap:6px"><button class="btn line sm" onclick="previewSettle('${s.id}')">🖨 인쇄/PDF</button>${(setActive(s)&&s.status!=='done')?(s.docType==='invoice'?`<button class="btn line sm" style="color:#16A34A;border-color:#16A34A" onclick="doneSettle('${s.id}')">✓ 완결${(pjtBilled(s.pjtId)-pjtPaid(s.pjtId))<=0?' (권장)':''}</button>`:`<button class="btn line sm" style="color:#16A34A;border-color:#16A34A" onclick="doneSettlePayment('${s.id}')">✓ 지급완료</button>`):''}${(s.status==='done')?`<button class="btn line sm" style="color:#5C6F8A" onclick="undoneSettle('${s.id}')">완결 취소</button>`:''}${setActive(s)?`<button class="btn gray sm" onclick="voidSettle('${s.id}')">폐기</button>`:`<button class="btn gray sm" style="color:#c00" onclick="deleteSettle('${s.id}')">🗑 삭제</button>`}</div></div>
       <div class="partybox">${party('발신 (공급자)',s.sender)}${party(s.docType==='invoice'?'수신 (원청)':'수신 (하청)',s.recipient)}</div>
-      <div class="small muted" style="margin-bottom:10px">기준월 ${s.baseMonth} · ${s.docType==='invoice'?'지급요청일':'지급예정일'} ${s.payDate||'-'} · 정산방식 ${{progress:'공정 자동',qty:'수량정산',manday:'공수',manual:'직접입력'}[s.method]}</div>
+      <div class="small muted" style="margin-bottom:10px">기준월 ${s.baseMonth} · ${s.docType==='invoice'?'지급요청일':'지급예정일'} ${s.payDate||'-'} · 정산방식 ${{progress:'공정 자동',qty:'수량정산',manday:'공수',manual:'직접입력'}[s.method]}${s.docType==='payment'?(' · 회계 계상월 <b style="color:#1D5BA6">'+acctMonthOf(s)+'</b> <button class="btn line sm" style="padding:1px 8px;font-size:11px;margin-left:4px" onclick="editAcctMonth(\''+s.id+'\')">수정</button>'):''}</div>
       <div class="scroll"><table class="items"><thead><tr><th>#</th><th>내역</th><th>비고</th><th class="right">금액</th></tr></thead>
         <tbody>${(s.lines||[]).map((it,i)=>`<tr><td class="muted small">${i+1}</td><td>${it.name}</td><td class="muted small">${it.spec||'-'}</td><td class="right" style="font-weight:700;color:var(--money)">${won(it.amount)}</td></tr>`).join('')}</tbody></table></div>
       <div class="totbox"><div class="totrow"><span class="muted">공급가액</span><span>${won(s.supply)} 원</span></div>
@@ -1134,6 +1139,19 @@ window.openSettle=function(id){ viewSetId=id; const s=settlements.find(x=>x.id==
         <div class="totrow big"><span>${s.docType==='invoice'?'청구금액':'지급금액'} 합계</span><span>${won(s.total)} 원</span></div></div>
     </div>`;
   window.scrollTo(0,0);
+};
+window.editAcctMonth=async function(id){
+  const s=settlements.find(x=>x.id===id); if(!s) return;
+  const cur=acctMonthOf(s);
+  const v=prompt('회계 계상월을 입력하세요 (YYYY-MM 형식)\n\n※ 이 지급예정서가 회계 장부에 잡히는 월입니다.\n※ 비우면 지급일 기준으로 자동 계산됩니다.', cur);
+  if(v===null) return;
+  const t=v.trim();
+  if(t && !/^\d{4}-(0[1-9]|1[0-2])$/.test(t)){ toast('형식이 올바르지 않습니다. 예: 2026-07'); return; }
+  try{
+    const val = t || (s.payDate||s.issueDate||s.baseMonth||'').slice(0,7);
+    await setDoc(doc(db,'gihoek_settlements',id),{acctMonth:val},{merge:true});
+    toast('회계 계상월을 '+val+'(으)로 변경했습니다.'); openSettle(id);
+  }catch(e){ toast('실패: '+(e.code||e.message)); }
 };
 window.doneSettlePayment=async function(id){
   const s=settlements.find(x=>x.id===id); if(!s) return;
@@ -1202,9 +1220,11 @@ const DIRECT_CATS=['급여','용역비','공구·자재비'];
 const accIsDirect=c=>DIRECT_CATS.includes(c);
 const accCatStyle=k=>{ const c=ACC_CATS.find(c=>c.k===k)||ACC_CATS[5]; return `background:${c.bg};color:${c.fg}`; };
 let curAccMonth=new Date().toISOString().slice(0,7), accSub='pnl';
+// 지급예정서의 회계 계상월: 저장된 acctMonth 우선, 없으면 지급일→발행일→기준월 순(하위호환)
+const acctMonthOf=s=>s.acctMonth || (s.payDate||s.issueDate||s.baseMonth||'').slice(0,7);
 // 완결(지급완료)된 지급예정서를 비용장부 항목 형태로 변환
 // settlements의 supply/vat/total을 그대로 사용, cat은 항상 '용역비'(직접비) 고정
-const paymentAsExpense=()=>settlements.filter(s=>s.docType==='payment'&&s.status==='done'&&s.baseMonth===curAccMonth&&setActive(s)).map(s=>({
+const paymentAsExpense=()=>settlements.filter(s=>s.docType==='payment'&&s.status==='done'&&acctMonthOf(s)===curAccMonth&&setActive(s)).map(s=>({
   id:'settle_'+s.id, date:s.payDate||s.issueDate||'', cat:'용역비', vendor:s.recipient?.company||'-',
   pjt:s.pjtId||'', pay:'계좌이체', supply:s.supply||0, vat:s.vat||0, total:s.total||0,
   note:'정산서 '+(s.no||''), fromSettlement:true,
