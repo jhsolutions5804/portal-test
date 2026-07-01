@@ -408,11 +408,6 @@
 </style>
 </head>
 <body>
-  <!-- TEST SERVER 배너 -->
-  <div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#DC2626;color:#fff;text-align:center;font-size:12px;font-weight:700;padding:4px;letter-spacing:1px;">
-    ⚠️ TEST SERVER — 운영 서버가 아닙니다
-  </div>
-  <style>body{padding-top:24px!important}</style>
 
 <div class="splash" id="splash"><div class="spin"></div></div>
 
@@ -537,7 +532,7 @@
           <div><label style="font-size:13px;font-weight:600;color:#555;display:block;margin-bottom:5px">공사 시작일</label>
             <input id="np-start" type="date" style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
           <div><label style="font-size:13px;font-weight:600;color:#555;display:block;margin-bottom:5px">워크스페이스 URL <span style="color:#aaa;font-weight:400">(선택)</span></label>
-            <input id="np-url" type="text" placeholder="https://jhsolutions5804.github.io/portal-test/..." style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
+            <input id="np-url" type="text" placeholder="https://jhsolutions5804.github.io/portal/..." style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
         </div>
         <div style="display:flex;gap:10px;margin-top:22px">
           <button onclick="closeNewPjtForm()" style="flex:1;padding:11px;background:#f5f5f7;color:#555;border:1px solid #e5e5e5;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit">취소</button>
@@ -721,16 +716,16 @@ const db=getFirestore(app);
 const DOMAIN='@jhsol.kr';
 const ADMIN_EMAIL='jh.kim@jhsol.kr';
 const MODULES=[
-  { key:'plan', name:'기획',          desc:'영업·정산·회계 (견적·정산서·손익)',   ic:'plan', emoji:'🧭', url:'https://jhsolutions5804.github.io/portal-test/gihoek/' },
-  { key:'hr',   name:'인사',          desc:'급여·계약·근태·연차 관리',         ic:'hr',   emoji:'👥', url:'https://jhsolutions5804.github.io/portal-test/hr/' },
-  { key:'edoc', name:'전자결재',       desc:'업무일지·연차·구매품의·지출결의',   ic:'edoc', emoji:'📋', url:'https://jhsolutions5804.github.io/portal-test/edoc/' },
-  { key:'pjt',  name:'PJT 관리',       desc:'진행 중인 프로젝트 현장 관리',    ic:'pjt',  emoji:'🏗️', url:'https://jhsolutions5804.github.io/portal-test/pjt/' },
+  { key:'plan', name:'기획',          desc:'영업·정산·회계 (견적·정산서·손익)',   ic:'plan', emoji:'🧭', url:'https://jhsolutions5804.github.io/portal/gihoek/' },
+  { key:'hr',   name:'인사',          desc:'급여·계약·근태·연차 관리',         ic:'hr',   emoji:'👥', url:'https://jhsolutions5804.github.io/portal/hr/' },
+  { key:'edoc', name:'전자결재',       desc:'업무일지·연차·구매품의·지출결의',   ic:'edoc', emoji:'📋', url:'https://jhsolutions5804.github.io/portal/edoc/' },
+  { key:'pjt',  name:'PJT 관리',       desc:'진행 중인 프로젝트 현장 관리',    ic:'pjt',  emoji:'🏗️', url:'https://jhsolutions5804.github.io/portal/pjt/' },
 ];
 // PJT별 서브 목록 (url: 각 PJT 전용 워크스페이스 URL)
 const PJT_SUBTABS=[
   { key:'pjt_home', name:'PJT 홈', emoji:'🏠', desc:'진행 중인 프로젝트 현황', url:'' },
-  { key:'p4ph2', name:'P4 Ph2 (FAB)', emoji:'🏭', desc:'귀뚜라미범양냉방 · FCU 설치', url:'https://jhsolutions5804.github.io/portal-test/pjt/' },
-  { key:'p4ph4', name:'P4 Ph4 (SUP)', emoji:'🔧', desc:'귀뚜라미범양냉방 · EHU 설치', url:'https://jhsolutions5804.github.io/portal-test/pjt_ph4/' },
+  { key:'p4ph2', name:'P4 Ph2 (FAB)', emoji:'🏭', desc:'귀뚜라미범양냉방 · FCU 설치', url:'https://jhsolutions5804.github.io/portal/pjt/' },
+  { key:'p4ph4', name:'P4 Ph4 (SUP)', emoji:'🔧', desc:'귀뚜라미범양냉방 · EHU 설치', url:'https://jhsolutions5804.github.io/portal/pjt_ph4/' },
 ];
 // 인사(hr) 하위 탭 — portal/hr 앱의 goTab() 키와 일치
 const HR_SUBTABS=[
@@ -836,14 +831,14 @@ function renderPjtHomeCards(){
       +'<span style="font-size:32px">'+st.emoji+'</span>'
       +'<div><div style="font-size:17px;font-weight:700;color:#1A2540">'+st.name+'</div>'
       +'<div style="font-size:12px;color:#5C6F8A;margin-top:3px">'+st.desc+'</div></div>'
-      +'<button onclick="event.stopPropagation()" style="margin-left:auto;padding:8px 18px;background:#1D5BA6;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">바로가기 →</button>'
+      +((me&&me.admin)?'<button onclick="event.stopPropagation();openPjtSettings(\''+st.key+'\',\''+st.name.replace(/'/g,"\\'")+'\')" style="margin-left:auto;padding:8px 14px;background:#F0F4FA;color:#5C6F8A;border:1px solid #DDE4EF;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">⚙️ 설정</button><button data-go="1" onclick="event.stopPropagation()" style="margin-left:8px;padding:8px 18px;background:#1D5BA6;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">바로가기 →</button>':'<button data-go="1" onclick="event.stopPropagation()" style="margin-left:auto;padding:8px 18px;background:#1D5BA6;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">바로가기 →</button>')
       +'</div>'
       +'<div id="pjt-kpi-'+st.key+'" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'
       +'<div style="background:#f4f7fb;border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:22px;font-weight:800;color:#1D5BA6" id="kpi-pct-'+st.key+'">—</div><div style="font-size:10px;color:#86868b;margin-top:2px">전체 공정율</div></div></div>'
       +'<div style="background:#f4f7fb;border-radius:10px;padding:12px 16px;cursor:pointer" id="kpi-day-wrap-'+st.key+'" onclick="event.stopPropagation();pjtToggleStartInput(\'"+st.key+"\')">'      +'<div style="font-size:22px;font-weight:800;color:#1A2540" id="kpi-day-'+st.key+'">—</div>'      +'<div style="font-size:10px;color:#86868b;margin-top:2px">프로젝트 D+ <span style="font-size:9px;opacity:.6">(탭)</span></div>'      +'<input type="date" id="kpi-day-input-'+st.key+'" style="display:none;margin-top:6px;border:1px solid #1D5BA6;border-radius:6px;padding:4px 8px;font-size:12px;width:100%;box-sizing:border-box" onclick="event.stopPropagation()" onchange="pjtSaveStartDate(\'"+st.key+"\'",this.value)">'      +'</div>'
       +'<div style="background:#f4f7fb;border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:22px;font-weight:800;color:#1D5BA6" id="kpi-md-'+st.key+'">—</div><div style="font-size:10px;color:#86868b;margin-top:2px">전체 누적공수</div></div></div>'
       +'</div>';
-    card.querySelector('button').onclick=function(e){
+    card.querySelector('button[data-go="1"]').onclick=function(e){
       e.stopPropagation();
       const m=MODULES.find(x=>x.key==='pjt');
       if(m && st.url) openModule(m, 'home', st.url);
@@ -1093,7 +1088,9 @@ async function loadPjtStats(pjtKey){
 
 // ── 신규 PJT 등록/조회/종료 (Firestore pjt_registry) ──
 window.openNewPjtForm = function(){
+  _pjtSettingsKey=null; // 신규 등록 모드
   document.getElementById('new-pjt-title').textContent='🏗️ 신규 PJT 등록';
+  var sb=document.getElementById('np-save-btn'); if(sb) sb.textContent='등록';
   ['np-name','np-site','np-client','np-desc','np-item','np-qty','np-start','np-url'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
   });
@@ -1101,9 +1098,72 @@ window.openNewPjtForm = function(){
 };
 window.closeNewPjtForm = function(){
   document.getElementById('new-pjt-modal').style.display='none';
+  _pjtSettingsKey=null; // 설정 모드 해제
+};
+
+// ── 개별 PJT 설정 (pjt_settings/{key}) — 신규 등록 모달 재활용 ──
+var _pjtSettingsKey=null;
+window.openPjtSettings = async function(key, label){
+  _pjtSettingsKey=key;
+  document.getElementById('new-pjt-title').textContent='⚙️ '+(label||key)+' 설정';
+  // 필드 초기화
+  ['np-name','np-site','np-client','np-desc','np-item','np-qty','np-start','np-url'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  // 저장 버튼 문구 변경
+  var sb=document.getElementById('np-save-btn'); if(sb) sb.textContent='저장';
+  document.getElementById('new-pjt-modal').style.display='flex';
+  // 기존 값 로드
+  try{
+    const {getDoc,doc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap=await getDoc(doc(db,'pjt_settings',key));
+    if(snap.exists()){
+      const d=snap.data();
+      const set=(id,v)=>{var el=document.getElementById(id); if(el&&v!=null) el.value=v;};
+      set('np-name', d.name||label||'');
+      set('np-site', d.site);
+      set('np-client', d.client);
+      set('np-desc', d.content);
+      set('np-item', d.item);
+      set('np-qty', d.qty);
+      set('np-start', d.startDate);
+      set('np-url', d.url);
+    } else {
+      // 문서 없으면 명칭만 기본 채움
+      var nm=document.getElementById('np-name'); if(nm) nm.value=label||'';
+    }
+  }catch(e){ console.warn('PJT 설정 로드 실패', e); }
+};
+window.savePjtSettings = async function(key){
+  var btn=document.getElementById('np-save-btn');
+  btn.disabled=true; btn.textContent='저장 중...';
+  try{
+    var data={
+      name: document.getElementById('np-name').value.trim(),
+      site: document.getElementById('np-site').value.trim(),
+      client: document.getElementById('np-client').value.trim(),
+      content: document.getElementById('np-desc').value.trim(),
+      item: document.getElementById('np-item').value.trim(),
+      qty: parseInt(document.getElementById('np-qty').value)||0,
+      startDate: document.getElementById('np-start').value||'',
+      url: document.getElementById('np-url').value.trim(),
+      updatedAt: serverTimestamp()
+    };
+    await setDoc(doc(db,'pjt_settings',key), data, {merge:true});
+    // localStorage 시작일 동기화 (D+ 즉시 반영)
+    if(data.startDate){
+      var startKeyMap={'p4ph2':'fab_pjt_start_date','p4ph4':'ph4_pjt_start_date'};
+      try{ localStorage.setItem(startKeyMap[key]||('pjt_start_'+key), data.startDate); }catch(e){}
+    }
+    closeNewPjtForm();
+    renderPjtHomeCards(); // D+ 및 카드 갱신
+  }catch(e){ alert('저장 실패: '+e.message); }
+  finally{ btn.disabled=false; btn.textContent='저장'; }
 };
 
 window.saveNewPjt = async function(){
+  // 설정 모드로 열린 경우 pjt_settings 저장으로 분기
+  if(_pjtSettingsKey){ return savePjtSettings(_pjtSettingsKey); }
   var name=document.getElementById('np-name').value.trim();
   if(!name){ alert('PJT 명칭을 입력하세요.'); return; }
   var btn=document.getElementById('np-save-btn');
@@ -1888,7 +1948,7 @@ window._goEdocApprove = function(){
 const OA2 = {
   clientId:    '97f0a368-a746-42f9-8782-38ac8cc0962c',
   tenantId:    '548fcb48-1ab8-4c47-8242-bc098ea80416',
-  redirectUri: 'https://jhsolutions5804.github.io/portal-test/outlook-auth.html',
+  redirectUri: 'https://jhsolutions5804.github.io/portal/outlook-auth.html',
   scopes:      'Mail.Read User.Read offline_access',
 };
 OA2.authUrl  = `https://login.microsoftonline.com/${OA2.tenantId}/oauth2/v2.0/authorize`;
@@ -2028,7 +2088,9 @@ function openModule(m, tab, overrideUrl){
   if(!actualUrl){ toast(m.name+' 워크스페이스 준비 중입니다.'); return; }
   _activeMod=m.key;
   _activeSub=overrideUrl?tab:(SUBTABS[m.key]?(tab||SUBTABS[m.key][0].key):null);
-  const fullUrl=(overrideUrl||m.url)+'?via=portal'+(tab?('&tab='+tab):'')+(me&&me.admin?'&admin=1':'');
+  // overrideUrl(개별 PJT)인 경우 tab은 서브탭 key(p4ph2 등)이며 대상 페이지의 탭 이름이 아니므로 URL에 넘기지 않는다 (넘기면 존재하지 않는 탭이라 빈 화면)
+  const urlTab=overrideUrl?'':tab;
+  const fullUrl=(overrideUrl||m.url)+'?via=portal'+(urlTab?('&tab='+urlTab):'')+(me&&me.admin?'&admin=1':'');
 
   // iframe이 이미 같은 앱으로 로드된 경우 → postMessage로 탭 전환 (overrideUrl 없을 때만)
   if (!overrideUrl && SUBTABS[m.key] && _embUrl===m.url && tab) {
