@@ -866,7 +866,7 @@ window.newSettle=function(pjtId){
     baseMonth:new Date().toISOString().slice(0,7), issueDate:new Date().toISOString().slice(0,10), payDate:'',
     senderId:(sup.find(c=>c.company==='제이에이치솔루션')?.id)||sup[0]?.id||'', recipientId:'',
     senderContact:'', recipientContact:'',
-    estIds:[], estZone:{}, deposit:{}, prog:{}, eqs:{}, billOverride:{}, qtyInput:{}, qtyAmt:{}, nameOverride:{}, mandayName:null, mandayInput:null, mandayAuto:null, mandayRate:TEAM_RATE,
+    estIds:[], estZone:{}, deposit:{}, prog:{}, eqs:{}, billOverride:{}, qtyInput:{}, qtyAmt:{}, mandayInput:null, mandayAuto:null, mandayRate:TEAM_RATE,
     manualItems:[{name:'',spec:'',qty:1,price:0,amount:0},{name:'',spec:'',qty:1,price:0,amount:0}] };
   tabSilent('settle'); drawSettleForm();
 };
@@ -931,7 +931,7 @@ function setEstBlock(id){ const d=settleDraft; const e=estimates.find(x=>x.id===
   const eqd=d.eqs[id]||{banipEqs:[],installEqs:[]};
   return `<div style="border:1px solid var(--line);border-radius:10px;padding:11px 12px;margin-top:10px;background:#fafbfd">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-      <input class="ni" style="flex:1;min-width:0;text-align:left;font-weight:700" value="${progName(id,e).replace(/"/g,'&quot;')}" onchange="setProgName('${id}',this.value)">
+      <div style="font-weight:700;font-size:13px">${(e.title||'').slice(0,22)}</div>
       <select class="zsel" onchange="setZone('${id}',this.value)" title="섹터(자동인식, 필요시 변경)">${getZONES().map(zz=>`<option value="${zz.id}" ${zz.id===d.estZone[id]?'selected':''}>${zz.name} (${zz.total})</option>`).join('')}</select>
     </div>
     <div class="small muted" style="margin-top:5px;line-height:1.7">
@@ -956,8 +956,6 @@ function calcSetRow(id){ const d=settleDraft; const e=estimates.find(x=>x.id===i
   return {banip:pg.banip, install:pg.install, qty, cum, prior, thisBill};
 }
 function priorByEst(estId){ return settlements.filter(s=>setActive(s)&&s.docType==='invoice'&&s.perEst&&s.perEst[estId]).reduce((a,s)=>a+s.perEst[estId],0); }
-function progName(id,e){ const d=settleDraft; return (d.nameOverride[id]!=null)?d.nameOverride[id]:(e.title||''); }
-window.setProgName=function(id,v){ settleDraft.nameOverride[id]=v; };
 window.toggleSetEst=function(id,guessZone){ const d=settleDraft; const i=d.estIds.indexOf(id);
   if(i<0){ d.estIds.push(id); if(!d.estZone[id]) d.estZone[id]=guessZone||getZONES()[0].id; if(!d.prog[id]) d.prog[id]={banip:0,install:0}; if(!d.eqs[id]) d.eqs[id]={banipEqs:[],installEqs:[]}; }
   else { d.estIds.splice(i,1); } drawSettleForm(); };
@@ -1005,15 +1003,13 @@ function qtyEstBlock(id){ const d=settleDraft; const e=estimates.find(x=>x.id===
     <div style="font-weight:700;font-size:13px;margin-bottom:6px">${e.title}</div>
     <div style="overflow-x:auto"><table class="ptab"><thead><tr><th class="l">품명</th><th>단가</th><th>총</th><th>기청구</th><th>이번수량</th><th>금액</th></tr></thead>
     <tbody>${(e.items||[]).map((it,idx)=>{ const pr=priorQty(id,idx); const rem=(it.qty||0)-pr; const q=qVal(id,idx); const amt=qAmt(id,idx,it);
-      return `<tr><td class="l"><input class="ni" style="width:100%;text-align:left" value="${qName(id,idx,it).replace(/"/g,'&quot;')}" onchange="setQtyName('${id}',${idx},this.value)"></td><td>${won(it.price)}</td><td>${won(it.qty)}</td><td class="muted">${won(pr)}</td>
+      return `<tr><td class="l">${it.name}</td><td>${won(it.price)}</td><td>${won(it.qty)}</td><td class="muted">${won(pr)}</td>
         <td><input class="ni" value="${q}" onchange="setQty('${id}',${idx},this.value)" title="잔여 ${rem}"></td>
         <td><input class="ni wide bill" value="${won(amt)}" onchange="setQtyAmt('${id}',${idx},this.value)"></td></tr>`; }).join('')}</tbody></table></div></div>`;
 }
 function priorQty(estId,idx){ return settlements.filter(s=>setActive(s)&&s.docType==='invoice'&&s.perItem&&s.perItem[estId]&&s.perItem[estId][idx]).reduce((a,s)=>a+(s.perItem[estId][idx].qty||0),0); }
 function qVal(estId,idx){ const d=settleDraft; return (d.qtyInput[estId]&&d.qtyInput[estId][idx]!=null)?d.qtyInput[estId][idx]:0; }
 function qAmt(estId,idx,it){ const d=settleDraft; const o=d.qtyAmt[estId]&&d.qtyAmt[estId][idx]; if(o!=null) return o; return Math.round(qVal(estId,idx)*(it.price||0)); }
-function qName(estId,idx,it){ const d=settleDraft; const k=estId+'_'+idx; return (d.nameOverride[k]!=null)?d.nameOverride[k]:(it.name||''); }
-window.setQtyName=function(id,idx,v){ const d=settleDraft; d.nameOverride[id+'_'+idx]=v; };
 window.toggleQtyEst=function(id){ const d=settleDraft; const i=d.estIds.indexOf(id);
   if(i<0){ d.estIds.push(id); d.qtyInput[id]=d.qtyInput[id]||{}; d.qtyAmt[id]=d.qtyAmt[id]||{}; } else d.estIds.splice(i,1); drawSettleForm(); };
 window.setQty=function(id,idx,v){ const d=settleDraft; d.qtyInput[id]=d.qtyInput[id]||{}; d.qtyInput[id][idx]=Math.max(0,num(v)); if(d.qtyAmt[id]) delete d.qtyAmt[id][idx]; renderSetTot(); refreshQtyRows(); };
@@ -1036,14 +1032,13 @@ function setMandayCard(){ const d=settleDraft;
       <input class="inp" type="number" style="width:130px;text-align:right" value="${rate}" onchange="setMandayRate(this.value)">
     </div>
     <table class="ptab"><thead><tr><th class="l">항목</th><th>공수</th><th>단가</th><th>금액</th></tr></thead>
-    <tbody><tr><td class="l"><input class="ni" style="width:100%;text-align:left" value="${(d.mandayName!=null?d.mandayName:(d.baseMonth+' 기술인력 투입')).replace(/"/g,'&quot;')}" onchange="setMdName(this.value)"></td>
+    <tbody><tr><td class="l">${d.baseMonth} 기술인력 투입</td>
       <td><input class="ni" value="${md}" onchange="setMd(this.value)"></td><td>${won(rate)}</td><td class="bill">${won(Math.round(md*rate))}</td></tr>
       ${prior?`<tr><td class="l muted">기지급 공수</td><td class="muted">${prior}</td><td></td><td class="muted">-${won(Math.round(prior*rate))}</td></tr>`:''}</tbody></table>
     ${d.mandayAuto!=null?`<div class="small muted" style="margin-top:6px">자동 집계: ${d.mandayAuto} 공수</div>`:''}</div>`;
 }
 function priorManday(){ return settlements.filter(s=>setActive(s)&&s.docType==='payment'&&s.method==='manday').reduce((a,s)=>a+(s.mandayUsed||0),0); }
 window.setMd=function(v){ settleDraft.mandayInput=num(v); drawSettleForm(); };
-window.setMdName=function(v){ settleDraft.mandayName=v; };
 window.setMandayRate=function(v){ settleDraft.mandayRate=Math.round(num(v))||TEAM_RATE; drawSettleForm(); };
 window.fetchManday=async function(){ const d=settleDraft; toast('공수 불러오는 중...');
   try{ const col=getMandayCol(); const [y,m]=d.baseMonth.split('-').map(Number); const lastDay=new Date(y,m,0).getDate(); let sum=0; const tasks=[];
@@ -1090,11 +1085,11 @@ function renderSetTot(){ const d=settleDraft; const sup=setSupply(); const vat=M
 
 function settleLines(){ const d=settleDraft;
   if(d.method==='manual') return d.manualItems.filter(i=>(i.name||'').trim()).map(i=>({name:i.name.trim(),spec:i.spec||'',qty:i.qty||0,price:i.price||0,amount:Math.round(itemAmt(i))}));
-  if(d.method==='manday'){ const md=d.mandayInput!=null?d.mandayInput:(d.mandayAuto||0); const rate=d.mandayRate!=null?d.mandayRate:TEAM_RATE; const nm=(d.mandayName!=null&&d.mandayName.trim())?d.mandayName.trim():(d.baseMonth+' 기술인력 투입'); return [{name:nm,spec:'공수 '+md,qty:md,price:rate,amount:Math.round(md*rate)}]; }
-  if(d.method==='qty'){ const lines=[]; d.estIds.forEach(id=>{ const e=estimates.find(x=>x.id===id); if(!e) return; (e.items||[]).forEach((it,idx)=>{ const q=qVal(id,idx); const amt=qAmt(id,idx,it); if(q>0||amt>0) lines.push({name:qName(id,idx,it),spec:(it.spec||'')+' · 수량 '+q,qty:q,price:it.price||0,amount:amt}); }); }); return lines; }
+  if(d.method==='manday'){ const md=d.mandayInput!=null?d.mandayInput:(d.mandayAuto||0); const rate=d.mandayRate!=null?d.mandayRate:TEAM_RATE; return [{name:d.baseMonth+' 기술인력 투입',spec:'공수 '+md,qty:md,price:rate,amount:Math.round(md*rate)}]; }
+  if(d.method==='qty'){ const lines=[]; d.estIds.forEach(id=>{ const e=estimates.find(x=>x.id===id); if(!e) return; (e.items||[]).forEach((it,idx)=>{ const q=qVal(id,idx); const amt=qAmt(id,idx,it); if(q>0||amt>0) lines.push({name:it.name,spec:(it.spec||'')+' · 수량 '+q,qty:q,price:it.price||0,amount:amt}); }); }); return lines; }
   return d.estIds.map(id=>{ const e=estimates.find(x=>x.id===id); const r=calcSetRow(id); const z=getZONES().find(z=>z.id===d.estZone[id]); const eqd=d.eqs[id]||{banipEqs:[],installEqs:[]};
     const bN=eqd.banipEqs&&eqd.banipEqs.length?' ('+compactRanges(eqd.banipEqs)+')':''; const iN=eqd.installEqs&&eqd.installEqs.length?' ('+compactRanges(eqd.installEqs)+')':'';
-    return {name:progName(id,e),spec:(z?z.name:'')+' 반입 '+r.banip+'/'+r.qty+bN+' · 설치 '+r.install+'/'+r.qty+iN,qty:1,price:r.thisBill,amount:r.thisBill}; });
+    return {name:e.title,spec:(z?z.name:'')+' 반입 '+r.banip+'/'+r.qty+bN+' · 설치 '+r.install+'/'+r.qty+iN,qty:1,price:r.thisBill,amount:r.thisBill}; });
 }
 
 window.publishSettle=async function(){ const d=settleDraft; const sup=setSupply();
