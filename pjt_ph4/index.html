@@ -1584,7 +1584,10 @@ window.openTodayDatePicker=function(){
 window.pickTodayDate=function(val){
   if(!val) return;
   var parts=val.split('-');
-  viewDate=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+  var picked=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+  picked.setHours(0,0,0,0);
+  var base=getAppToday(); base.setHours(0,0,0,0);
+  viewDayOffset=Math.round((picked-base)/86400000);
   renderToday();
 };
 window.changeViewDay=function(dir){viewDayOffset+=dir;renderToday();};
