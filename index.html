@@ -229,6 +229,9 @@
     #view-home{ padding-bottom:74px }
     /* PJT 홈 그리드 — 모바일: 1단 */
     .pjt-home-grid{ display:flex; flex-direction:column; gap:16px; }
+    .pjt-hybrid-wrap{ display:flex; flex-direction:column; gap:18px; }
+    .pjt-cards-row{ display:grid; grid-template-columns:1fr; gap:12px; }
+    .pjt-timeline-grid{ display:grid; grid-template-columns:1fr; gap:16px; }
     /* 홈 대시보드 — 모바일: 1단 세로 */
     .home-dash{ display:flex; flex-direction:column; gap:16px; margin-top:20px; }
     .dash-approve-wrap{ display:flex; flex-direction:column; }
@@ -295,6 +298,8 @@
     .home-inner{max-width:960px; margin:0 auto; padding:34px 40px 60px}
     .home-dash{display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:stretch; margin-top:24px;}
     .pjt-home-grid{ display:grid; grid-template-columns:1fr 360px; gap:20px; align-items:start; }
+    .pjt-cards-row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:14px; }
+    .pjt-timeline-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start; }
     .hello{padding:0 0 6px}
     .hello h1{font-size:26px}
     .hello p{font-size:13.5px}
@@ -490,23 +495,19 @@
           <h2 style="margin:0; font-size:18px; font-weight:800; color:#1A2540;">🏗️ PJT 관리</h2>
           <button onclick="openNewPjtForm()" id="new-pjt-btn" style="margin-left:auto;padding:9px 18px;background:#1D5BA6;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:none">+ 신규 PJT</button>
         </div>
-        <!-- 2단 레이아웃: 좌=PJT카드 / 우=일정+보고 -->
-        <div class="pjt-home-grid">
-          <!-- 좌: 진행 중 PJT 카드 -->
-          <div>
-            <div id="pjt-home-cards" style="display:flex; flex-direction:column; gap:16px; margin-bottom:16px;"></div>
-            <div id="pjt-registry-section" style="margin-top:4px;"></div>
-          </div>
-          <!-- 우: 주요 일정 + 업무지시·보고 -->
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <!-- 주요 일정 -->
+        <!-- 하이브리드 레이아웃: 상단 축소카드 가로 / 하단 일정·보고 타임라인 2단 -->
+        <div class="pjt-hybrid-wrap">
+          <!-- 상단: 진행 중 PJT 축소 카드 (가로 배치) -->
+          <div id="pjt-home-cards" class="pjt-cards-row"></div>
+          <div id="pjt-registry-section" style="margin-top:2px;"></div>
+          <!-- 하단: 일정 타임라인 + 업무지시·보고 타임라인 -->
+          <div class="pjt-timeline-grid">
             <div style="background:#fff; border:1px solid #DDE4EF; border-radius:14px; padding:18px 20px;">
-              <div style="font-size:14px; font-weight:700; color:#13335C; margin-bottom:12px;">📅 전체 PJT 주요 일정</div>
+              <div style="font-size:14px; font-weight:700; color:#13335C; margin-bottom:14px;">📅 전체 PJT 주요 일정</div>
               <div id="pjt-schedule-panel" style="font-size:13px; color:#5C6F8A;">불러오는 중...</div>
             </div>
-            <!-- 업무지시 및 보고 -->
             <div style="background:#fff; border:1px solid #DDE4EF; border-radius:14px; padding:18px 20px;">
-              <div style="font-size:14px; font-weight:700; color:#13335C; margin-bottom:12px;">📋 업무지시 및 보고</div>
+              <div style="font-size:14px; font-weight:700; color:#13335C; margin-bottom:14px;">📋 업무지시 및 보고</div>
               <div id="pjt-report-panel" style="font-size:13px; color:#5C6F8A;">불러오는 중...</div>
             </div>
           </div>
@@ -828,22 +829,21 @@ function renderPjtHomeCards(){
   el.innerHTML='';
   PJT_SUBTABS.filter(st=>st.key!=='pjt_home').forEach(st=>{
     const card=document.createElement('div');
-    card.style.cssText='background:#fff;border:1px solid #dde4ef;border-radius:14px;padding:22px 24px;cursor:pointer;transition:.15s';
-    card.onmouseover=function(){this.style.borderColor='var(--blue)';this.style.boxShadow='0 2px 12px rgba(0,0,0,.08)'};
+    card.style.cssText='background:#fff;border:1px solid #dde4ef;border-radius:12px;padding:14px 16px;cursor:pointer;transition:.15s';
+    card.onmouseover=function(){this.style.borderColor='var(--blue)';this.style.boxShadow='0 2px 10px rgba(0,0,0,.07)'};
     card.onmouseout=function(){this.style.borderColor='#dde4ef';this.style.boxShadow=''};
     card.innerHTML=
-      '<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">'
-      +'<span style="font-size:32px">'+st.emoji+'</span>'
-      +'<div><div style="font-size:17px;font-weight:700;color:#1A2540">'+st.name+'</div>'
-      +'<div style="font-size:12px;color:#5C6F8A;margin-top:3px">'+st.desc+'</div></div>'
-      +'<button onclick="event.stopPropagation()" style="margin-left:auto;padding:8px 18px;background:#1D5BA6;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">바로가기 →</button>'
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
+      +'<span style="font-size:20px">'+st.emoji+'</span>'
+      +'<div style="min-width:0;flex:1"><div style="font-size:15px;font-weight:700;color:#1A2540;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+st.name+'</div></div>'
+      +'<button data-go="1" onclick="event.stopPropagation()" style="padding:6px 14px;background:#1D5BA6;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">바로가기 →</button>'
       +'</div>'
-      +'<div id="pjt-kpi-'+st.key+'" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'
-      +'<div style="background:#f4f7fb;border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:22px;font-weight:800;color:#1D5BA6" id="kpi-pct-'+st.key+'">—</div><div style="font-size:10px;color:#86868b;margin-top:2px">전체 공정율</div></div></div>'
-      +'<div style="background:#f4f7fb;border-radius:10px;padding:12px 16px;cursor:pointer" id="kpi-day-wrap-'+st.key+'" onclick="event.stopPropagation();pjtToggleStartInput(\'"+st.key+"\')">'      +'<div style="font-size:22px;font-weight:800;color:#1A2540" id="kpi-day-'+st.key+'">—</div>'      +'<div style="font-size:10px;color:#86868b;margin-top:2px">프로젝트 D+ <span style="font-size:9px;opacity:.6">(탭)</span></div>'      +'<input type="date" id="kpi-day-input-'+st.key+'" style="display:none;margin-top:6px;border:1px solid #1D5BA6;border-radius:6px;padding:4px 8px;font-size:12px;width:100%;box-sizing:border-box" onclick="event.stopPropagation()" onchange="pjtSaveStartDate(\'"+st.key+"\'",this.value)">'      +'</div>'
-      +'<div style="background:#f4f7fb;border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:22px;font-weight:800;color:#1D5BA6" id="kpi-md-'+st.key+'">—</div><div style="font-size:10px;color:#86868b;margin-top:2px">전체 누적공수</div></div></div>'
+      +'<div id="pjt-kpi-'+st.key+'" style="display:flex;gap:18px">'
+      +'<div><div style="font-size:19px;font-weight:800;color:#1D5BA6" id="kpi-pct-'+st.key+'">—</div><div style="font-size:10px;color:#86868b;margin-top:1px">공정율</div></div>'
+      +'<div style="cursor:pointer" id="kpi-day-wrap-'+st.key+'" onclick="event.stopPropagation();pjtToggleStartInput(\'"+st.key+"\')">'      +'<div style="font-size:19px;font-weight:800;color:#1A2540" id="kpi-day-'+st.key+'">—</div>'      +'<div style="font-size:10px;color:#86868b;margin-top:1px">D+ <span style="font-size:9px;opacity:.6">(탭)</span></div>'      +'<input type="date" id="kpi-day-input-'+st.key+'" style="display:none;margin-top:6px;border:1px solid #1D5BA6;border-radius:6px;padding:4px 8px;font-size:12px;box-sizing:border-box" onclick="event.stopPropagation()" onchange="pjtSaveStartDate(\'"+st.key+"\'",this.value)">'      +'</div>'
+      +'<div><div style="font-size:19px;font-weight:800;color:#1D5BA6" id="kpi-md-'+st.key+'">—</div><div style="font-size:10px;color:#86868b;margin-top:1px">누적공수</div></div>'
       +'</div>';
-    card.querySelector('button').onclick=function(e){
+    card.querySelector('button[data-go="1"]').onclick=function(e){
       e.stopPropagation();
       const m=MODULES.find(x=>x.key==='pjt');
       if(m && st.url) openModule(m, 'home', st.url);
@@ -929,17 +929,35 @@ async function loadPjtPanels(){
     }
     schedRows.sort((a,b)=>(a.sdate||'').localeCompare(b.sdate||'')||(a.stime||'').localeCompare(b.stime||''));
 
-    sp.innerHTML=schedRows.length? schedRows.map(s=>{
-      const isToday=s.sdate===todayKey;
-      const tag=s.tag||'admin';
-      return '<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid #EEF2F7;">'
-        +'<span style="font-size:10px;padding:2px 7px;border-radius:5px;background:'+(TAG_COLOR[tag]||'#F5F5F5')+';color:'+(TAG_FG[tag]||'#333')+';white-space:nowrap;flex-shrink:0;">'+(TAG_LBL[tag]||tag)+'</span>'
-        +'<div style="flex:1;min-width:0;">'
-        +'<div style="font-size:12px;font-weight:600;color:#1A2540;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(s.text||'')+'</div>'
-        +'<div style="font-size:11px;color:#9AAABF;margin-top:1px;">'+(isToday?'오늘':s.sdate||'')+' · '+s.pjtName+'</div>'
-        +'</div></div>';
-    }).join('')
-    :'<div style="color:#9AAABF;font-size:12px;padding:12px 0;text-align:center;">이번 주 주요 일정이 없습니다.</div>';
+    // 날짜별 그룹핑 → 타임라인
+    const fmtMd=k=>{ if(!k) return ''; const p=k.split('-'); return p.length===3?(parseInt(p[1])+'/'+parseInt(p[2])):k; };
+    const dowKo=['일','월','화','수','목','금','토'];
+    const dowOf=k=>{ try{ return dowKo[new Date(k+'T00:00:00').getDay()]; }catch(e){ return ''; } };
+    if(schedRows.length){
+      let groups={};
+      schedRows.forEach(s=>{ (groups[s.sdate]=groups[s.sdate]||[]).push(s); });
+      let html='<div style="position:relative;padding-left:16px">'
+        +'<div style="position:absolute;left:3px;top:5px;bottom:5px;width:2px;background:#EEF2F7"></div>';
+      Object.keys(groups).sort().forEach(dk=>{
+        const isToday=dk===todayKey;
+        const dotColor=isToday?'#D85A30':'#C9D2DF';
+        html+='<div style="position:relative;margin-bottom:14px">'
+          +'<div style="position:absolute;left:-16px;top:3px;width:8px;height:8px;border-radius:50%;background:'+dotColor+';border:2px solid #fff"></div>'
+          +'<div style="font-size:11px;color:'+(isToday?'#D85A30':'#9AAABF')+';font-weight:'+(isToday?'700':'600')+';margin-bottom:6px">'+(isToday?'오늘':fmtMd(dk)+' ('+dowOf(dk)+')')+'</div>';
+        groups[dk].forEach(s=>{
+          const tag=s.tag||'admin';
+          html+='<div style="display:flex;align-items:flex-start;gap:7px;margin-bottom:6px">'
+            +'<span style="font-size:10px;padding:2px 7px;border-radius:5px;background:'+(TAG_COLOR[tag]||'#F5F5F5')+';color:'+(TAG_FG[tag]||'#333')+';white-space:nowrap;flex-shrink:0">'+(TAG_LBL[tag]||tag)+'</span>'
+            +'<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:#1A2540;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(s.text||'')+'</div>'
+            +'<div style="font-size:11px;color:#9AAABF;margin-top:1px">'+s.pjtName+'</div></div></div>';
+        });
+        html+='</div>';
+      });
+      html+='</div>';
+      sp.innerHTML=html;
+    } else {
+      sp.innerHTML='<div style="color:#9AAABF;font-size:12px;padding:12px 0;text-align:center;">이번 주 주요 일정이 없습니다.</div>';
+    }
 
     // 2. 업무지시 및 보고 — 모든 PJT 최근 5건
     let reports=[];
@@ -957,17 +975,26 @@ async function loadPjtPanels(){
     reports=reports.slice(0,6);
 
     const fmtDate=ts=>{if(!ts) return ''; const d=ts.toDate?ts.toDate():new Date(ts); return (d.getMonth()+1)+'/'+(d.getDate());};
-    rp.innerHTML=reports.length? reports.map(r=>{
-      const isBrief=r.type==='brief'||r.briefText;
-      return '<div style="padding:8px 0;border-bottom:1px solid #EEF2F7;">'
-        +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">'
-        +'<span style="font-size:10px;padding:2px 7px;border-radius:5px;background:'+(isBrief?'#FAEEDA':'#E6F1FB')+';color:'+(isBrief?'#633806':'#0C447C')+';white-space:nowrap;">'+(isBrief?'보고':'지시')+'</span>'
-        +'<span style="font-size:11px;color:#9AAABF;">'+fmtDate(r.savedAt)+' · '+r.pjtName+'</span>'
-        +'</div>'
-        +'<div style="font-size:12px;color:#1A2540;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(r.instruction||r.briefText||r.content||'(내용 없음)')+'</div>'
-        +'</div>';
-    }).join('')
-    :'<div style="color:#9AAABF;font-size:12px;padding:12px 0;text-align:center;">등록된 업무 내용이 없습니다.</div>';
+    if(reports.length){
+      let html='<div style="position:relative;padding-left:16px">'
+        +'<div style="position:absolute;left:3px;top:5px;bottom:5px;width:2px;background:#EEF2F7"></div>';
+      reports.forEach((r,idx)=>{
+        const isBrief=r.type==='brief'||r.briefText;
+        const dotColor=idx===0?'#1D5BA6':'#C9D2DF';
+        html+='<div style="position:relative;margin-bottom:13px">'
+          +'<div style="position:absolute;left:-16px;top:3px;width:8px;height:8px;border-radius:50%;background:'+dotColor+';border:2px solid #fff"></div>'
+          +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">'
+          +'<span style="font-size:10px;padding:2px 7px;border-radius:5px;background:'+(isBrief?'#FAEEDA':'#E6F1FB')+';color:'+(isBrief?'#633806':'#0C447C')+';white-space:nowrap">'+(isBrief?'보고':'지시')+'</span>'
+          +'<span style="font-size:11px;color:#9AAABF">'+fmtDate(r.savedAt)+' · '+r.pjtName+'</span>'
+          +'</div>'
+          +'<div style="font-size:12px;color:#1A2540;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(r.instruction||r.briefText||r.content||'(내용 없음)')+'</div>'
+          +'</div>';
+      });
+      html+='</div>';
+      rp.innerHTML=html;
+    } else {
+      rp.innerHTML='<div style="color:#9AAABF;font-size:12px;padding:12px 0;text-align:center;">등록된 업무 내용이 없습니다.</div>';
+    }
 
   }catch(e){ sp.innerHTML='<span style="color:#DC2626;">오류: '+e.message+'</span>'; }
 }
@@ -1771,6 +1798,29 @@ function enterPortal(){
   renderMenu();
   showApp(); showView('home');
   resetAutoLogout();
+  syncPjtSubtabsFromSettings();
+}
+// PJT 설정(pjt_settings)을 읽어 사이드바·카드 메뉴명·설명 실시간 반영
+async function syncPjtSubtabsFromSettings(){
+  try{
+    const fs=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    let changed=false;
+    for(const st of PJT_SUBTABS){
+      if(st.key==='pjt_home') continue;
+      try{
+        const snap=await fs.getDoc(fs.doc(db,'pjt_settings',st.key));
+        if(!snap.exists()) continue;
+        const d=snap.data();
+        if(d.name && d.name!==st.name){ st.name=d.name; changed=true; }
+        let sub='';
+        if(d.client&&d.content) sub=d.client+' · '+d.content;
+        else if(d.client) sub=d.client;
+        else if(d.content) sub=d.content;
+        if(sub && sub!==st.desc){ st.desc=sub; changed=true; }
+      }catch(e){}
+    }
+    if(changed){ renderMenu(); }
+  }catch(e){ console.warn('PJT 메뉴명 동기화 실패', e); }
 }
 function renderMenu(){
   const wrap=$('p-menu'); wrap.innerHTML='';
