@@ -972,6 +972,11 @@ async function loadPjtPanels(){
         });
       }catch(e){}
     }
+    // 내용이 있는 항목만 표시
+    reports=reports.filter(r=>{
+      var txt=(r.instruction||r.briefText||r.content||'').trim();
+      return txt.length>0;
+    });
     reports.sort((a,b)=>(b.savedAt?.toMillis?.()||0)-(a.savedAt?.toMillis?.()||0));
     reports=reports.slice(0,6);
 
