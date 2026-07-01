@@ -445,6 +445,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
     <button class="pc-tnav-btn" data-tab="calendar" onclick="switchTabPC('calendar',this)">🗓️ 캘린더</button>
     <button class="pc-tnav-btn" data-tab="attend" onclick="switchTabPC('attend',this)">👷 근태</button>
     <button class="pc-tnav-btn" data-tab="progress" onclick="switchTabPC('progress',this)">📊 공정</button>
+    <button class="pc-tnav-btn" data-tab="settings" onclick="switchTabPC('settings',this)">⚙️ 설정</button>
   </div>
   <div class="pc-topnav-right">
     <div class="pc-topnav-stat">
@@ -472,6 +473,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
       <button class="tab" onclick="switchTab('calendar',this)">캘린더</button>
       <button class="tab" onclick="switchTab('attend',this)">근태</button>
       <button class="tab" onclick="switchTab('progress',this)">공정</button>
+      <button class="tab" onclick="switchTab('settings',this)">설정</button>
     </div>
   </div>
 
@@ -536,23 +538,6 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
           </div>
         </div>
 
-        <!-- 프로젝트 설정 -->
-        <div class="home-card">
-          <div class="home-section-hd">⚙️ 프로젝트 설정</div>
-          <div style="display:flex;flex-direction:column;gap:14px">
-            <div>
-              <div style="font-size:12px;color:#86868b;margin-bottom:6px;font-weight:600">공사 시작일</div>
-              <div style="display:flex;align-items:center;gap:10px">
-                <input type="date" id="home-start-date" style="border:1px solid #dde4ef;border-radius:8px;padding:7px 11px;font-size:13px;font-family:inherit;outline:none" onchange="saveStartDate(this.value)">
-                <span style="font-size:13px;color:#1D5BA6;font-weight:600" id="home-elapsed"></span>
-              </div>
-            </div>
-            <div id="home-prog-summary" style="background:#f9fafc;border-radius:10px;padding:14px 16px">
-              <div style="font-size:12px;color:#86868b;margin-bottom:8px;font-weight:600">섹터별 공정율</div>
-              <div id="home-zone-summary" style="font-size:12px;color:#555;line-height:1.8">로딩 중...</div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -750,11 +735,44 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
       </div>
     </div>
 
+    <!-- SETTINGS (설정) -->
+    <div id="tab-settings" style="display:none">
+      <div style="max-width:640px;margin:0 auto">
+        <div class="home-card">
+          <div class="home-section-hd">⚙️ 프로젝트 설정</div>
+          <div style="font-size:12px;color:#86868b;margin-bottom:16px">신규 PJT 등록 시 입력한 정보를 수정합니다. 저장하면 포털에 반영됩니다.</div>
+          <div style="display:flex;flex-direction:column;gap:13px">
+            <div><label style="font-size:12px;font-weight:700;color:#5C6F8A;display:block;margin-bottom:5px">PJT 명칭</label>
+              <input id="set-name" type="text" placeholder="예: P4 Ph2 (FAB)" style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
+            <div><label style="font-size:12px;font-weight:700;color:#5C6F8A;display:block;margin-bottom:5px">현장명</label>
+              <input id="set-site" type="text" placeholder="예: 평택 P4 신축현장" style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
+            <div><label style="font-size:12px;font-weight:700;color:#5C6F8A;display:block;margin-bottom:5px">거래처</label>
+              <input id="set-client" type="text" placeholder="예: 귀뚜라미범양냉방" style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
+            <div><label style="font-size:12px;font-weight:700;color:#5C6F8A;display:block;margin-bottom:5px">PJT 내용</label>
+              <input id="set-desc" type="text" placeholder="예: FCU 설치 공사" style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
+            <div style="display:flex;gap:12px">
+              <div style="flex:2"><label style="font-size:12px;font-weight:700;color:#5C6F8A;display:block;margin-bottom:5px">품목</label>
+                <input id="set-item" type="text" placeholder="예: FCU" style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
+              <div style="flex:1"><label style="font-size:12px;font-weight:700;color:#5C6F8A;display:block;margin-bottom:5px">물량(대)</label>
+                <input id="set-qty" type="number" placeholder="예: 183" style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
+            </div>
+            <div><label style="font-size:12px;font-weight:700;color:#5C6F8A;display:block;margin-bottom:5px">공사 시작일 <span style="font-size:11px;color:#aaa;font-weight:400">(D+ 계산 기준)</span></label>
+              <input id="set-start" type="date" style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
+            <div><label style="font-size:12px;font-weight:700;color:#5C6F8A;display:block;margin-bottom:5px">워크스페이스 URL <span style="font-size:11px;color:#aaa;font-weight:400">(선택)</span></label>
+              <input id="set-url" type="text" placeholder="https://jhsolutions5804.github.io/..." style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:20px">
+            <button onclick="loadPjtSettings()" style="flex:1;padding:11px;background:#f5f5f7;color:#555;border:1px solid #e5e5e5;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit">되돌리기</button>
+            <button id="set-save-btn" onclick="savePjtSettings()" style="flex:2;padding:11px;background:#1D5BA6;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">저장</button>
+          </div>
+          <div id="set-msg" style="margin-top:10px;font-size:13px;text-align:center;min-height:18px"></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div><!-- /.app -->
-</div><!-- /.ws-wrapper -->
-
-<!-- 공사일보 조회 모달 -->
+</div><!-- /.ws-wrapper --><!-- 공사일보 조회 모달 -->
 <div class="us-modal" id="dr-list-modal">
   <div class="us-sheet" style="max-width:720px;max-height:88vh;display:flex;flex-direction:column">
     <div class="us-head" style="flex-shrink:0">
@@ -2704,7 +2722,7 @@ function hideFixedItem(dateKey,text){
 }
 
 function switchTab(name,btn){
-  var ALL_TABS=['home','today','twoweek','calendar','progress','attend'];
+  var ALL_TABS=['home','today','twoweek','calendar','progress','attend','settings'];
   // 알 수 없는 탭 이름(예: 포털 서브탭 key)이 들어오면 home으로 폴백 (빈 화면 방지)
   if(ALL_TABS.indexOf(name)<0) name='home';
   // grid 레이아웃 탭 목록 (CSS에 grid 선언 있는 탭)
@@ -2729,6 +2747,7 @@ function switchTab(name,btn){
   if(name==='calendar')initCal();
   if(name==='progress')initProgress();
   if(name==='attend')  renderAttend();
+  if(name==='settings')loadPjtSettings();
 }
 
 function switchTabPC(name,btn){
@@ -2970,6 +2989,48 @@ function saveStartDate(v){
   }catch(e){}
   renderHome();
 }
+
+// ── PJT 설정 탭 (pjt_settings/p4ph2) ──
+var PROJECT_KEY='p4ph2';
+async function loadPjtSettings(){
+  var msg=document.getElementById('set-msg'); if(msg) msg.textContent='';
+  try{
+    var snap=await getDoc(doc(db,'pjt_settings',PROJECT_KEY));
+    var d=snap.exists()?snap.data():{};
+    var set=function(id,v){var el=document.getElementById(id); if(el) el.value=(v!=null?v:'');};
+    set('set-name', d.name);
+    set('set-site', d.site);
+    set('set-client', d.client);
+    set('set-desc', d.content);
+    set('set-item', d.item);
+    set('set-qty', d.qty);
+    set('set-start', d.startDate||localStorage.getItem('fab_pjt_start_date')||'');
+    set('set-url', d.url);
+  }catch(e){ console.warn('설정 로드 실패',e); }
+}
+window.loadPjtSettings=loadPjtSettings;
+async function savePjtSettings(){
+  var btn=document.getElementById('set-save-btn'); var msg=document.getElementById('set-msg');
+  if(btn){ btn.disabled=true; btn.textContent='저장 중...'; }
+  try{
+    var val=function(id){var el=document.getElementById(id); return el?el.value.trim():'';};
+    var startDate=document.getElementById('set-start').value||'';
+    var data={
+      name: val('set-name'), site: val('set-site'), client: val('set-client'),
+      content: val('set-desc'), item: val('set-item'),
+      qty: parseInt(document.getElementById('set-qty').value)||0,
+      startDate: startDate, url: val('set-url'),
+      updatedAt: serverTimestamp()
+    };
+    await setDoc(doc(db,'pjt_settings',PROJECT_KEY), data, {merge:true});
+    if(startDate){ try{ localStorage.setItem('fab_pjt_start_date', startDate); }catch(e){} }
+    if(msg){ msg.style.color='#16A34A'; msg.textContent='✓ 저장했습니다.'; }
+    renderHome();
+  }catch(e){
+    if(msg){ msg.style.color='#DC2626'; msg.textContent='저장 실패: '+(e.message||e); }
+  }finally{ if(btn){ btn.disabled=false; btn.textContent='저장'; } }
+}
+window.savePjtSettings=savePjtSettings;
 
 // 공정 패널 클릭 (zone-card 클릭 → 우측 패널에 체크표)
 window.openProgPanel=function(zoneId){
