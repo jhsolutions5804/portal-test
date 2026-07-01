@@ -836,14 +836,14 @@ function renderPjtHomeCards(){
       +'<span style="font-size:32px">'+st.emoji+'</span>'
       +'<div><div style="font-size:17px;font-weight:700;color:#1A2540">'+st.name+'</div>'
       +'<div style="font-size:12px;color:#5C6F8A;margin-top:3px">'+st.desc+'</div></div>'
-      +((me&&me.admin)?'<button onclick="event.stopPropagation();openPjtSettings(\''+st.key+'\',\''+st.name.replace(/'/g,"\\'")+'\')" style="margin-left:auto;padding:8px 14px;background:#F0F4FA;color:#5C6F8A;border:1px solid #DDE4EF;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">⚙️ 설정</button><button data-go="1" onclick="event.stopPropagation()" style="margin-left:8px;padding:8px 18px;background:#1D5BA6;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">바로가기 →</button>':'<button data-go="1" onclick="event.stopPropagation()" style="margin-left:auto;padding:8px 18px;background:#1D5BA6;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">바로가기 →</button>')
+      +'<button onclick="event.stopPropagation()" style="margin-left:auto;padding:8px 18px;background:#1D5BA6;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">바로가기 →</button>'
       +'</div>'
       +'<div id="pjt-kpi-'+st.key+'" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'
       +'<div style="background:#f4f7fb;border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:22px;font-weight:800;color:#1D5BA6" id="kpi-pct-'+st.key+'">—</div><div style="font-size:10px;color:#86868b;margin-top:2px">전체 공정율</div></div></div>'
       +'<div style="background:#f4f7fb;border-radius:10px;padding:12px 16px;cursor:pointer" id="kpi-day-wrap-'+st.key+'" onclick="event.stopPropagation();pjtToggleStartInput(\'"+st.key+"\')">'      +'<div style="font-size:22px;font-weight:800;color:#1A2540" id="kpi-day-'+st.key+'">—</div>'      +'<div style="font-size:10px;color:#86868b;margin-top:2px">프로젝트 D+ <span style="font-size:9px;opacity:.6">(탭)</span></div>'      +'<input type="date" id="kpi-day-input-'+st.key+'" style="display:none;margin-top:6px;border:1px solid #1D5BA6;border-radius:6px;padding:4px 8px;font-size:12px;width:100%;box-sizing:border-box" onclick="event.stopPropagation()" onchange="pjtSaveStartDate(\'"+st.key+"\'",this.value)">'      +'</div>'
       +'<div style="background:#f4f7fb;border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:22px;font-weight:800;color:#1D5BA6" id="kpi-md-'+st.key+'">—</div><div style="font-size:10px;color:#86868b;margin-top:2px">전체 누적공수</div></div></div>'
       +'</div>';
-    card.querySelector('button[data-go="1"]').onclick=function(e){
+    card.querySelector('button').onclick=function(e){
       e.stopPropagation();
       const m=MODULES.find(x=>x.key==='pjt');
       if(m && st.url) openModule(m, 'home', st.url);
