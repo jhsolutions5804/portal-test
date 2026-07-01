@@ -2705,6 +2705,8 @@ function hideFixedItem(dateKey,text){
 
 function switchTab(name,btn){
   var ALL_TABS=['home','today','twoweek','calendar','progress','attend'];
+  // 알 수 없는 탭 이름(예: 포털 서브탭 key)이 들어오면 home으로 폴백 (빈 화면 방지)
+  if(ALL_TABS.indexOf(name)<0) name='home';
   // grid 레이아웃 탭 목록 (CSS에 grid 선언 있는 탭)
   var GRID_TABS={today:'grid',progress:'grid',calendar:'grid'};
   ALL_TABS.forEach(function(t){
