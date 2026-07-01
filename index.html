@@ -718,6 +718,7 @@ const firebaseConfig = {
 const app=initializeApp(firebaseConfig);
 const auth=getAuth(app);
 const db=getFirestore(app);
+window._db=db; // loadPjtPanels 등 일정/보고 패널에서 사용
 
 const DOMAIN='@jhsol.kr';
 const ADMIN_EMAIL='jh.kim@jhsol.kr';
