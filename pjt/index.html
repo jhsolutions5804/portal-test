@@ -2508,6 +2508,28 @@ window.pickAttendDate=function(v){
 };
 window.goAttendToday=function(){attendDayOffset=0;renderAttend();};
 
+// 전체 공수 일괄 조정 — 전원 공수를 입력값으로 설정 (0이면 초기화). 개별 입력과 동일한 검증(0~3, 소수1자리)
+window.setAllManday=function(dateKey,value){
+  const _ws=(typeof getWorkers==='function')?getWorkers():WORKERS;
+  if(!_ws.length) return;
+  let v=parseFloat(value);
+  if(isNaN(v)||v<0) v=0;
+  if(v>3) v=3;
+  v=Math.round(v*10)/10;
+  const m={...(window._mandayCache[dateKey]||{})};
+  _ws.forEach(w=>{ if(v===0) delete m[w.id]; else m[w.id]=v; });
+  window._mandayCache[dateKey]=m; // 낙관적 반영
+  if(window._renderMandayUI) window._renderMandayUI();
+  if(window._fbSetManday) window._fbSetManday(dateKey,m);
+};
+window.applyAllManday=function(dateKey){
+  const inp=document.getElementById('att-bulk-md');
+  if(!inp) return;
+  const raw=inp.value.trim();
+  if(raw==='') return; // 빈값은 무시
+  setAllManday(dateKey, raw);
+};
+
 window.toggleWorker=function(workerId,dateKey){
   if(window._fbToggleWorker){
     window._fbToggleWorker(workerId,dateKey);
@@ -2799,7 +2821,10 @@ function renderAttend(){
     document.getElementById('att-worker-count').textContent=
       `출역 ${checks.length}명 / 전체 ${WORKERS.length}명`;
     const _allChecked=WORKERS.length>0 && WORKERS.every(w=>checks.includes(w.id));
-    const _bulkBtn='<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button onclick="toggleAllWorkers(\''+dateKey+'\')" style="font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;border:1px solid '+(_allChecked?'#c0392b':'#1D5BA6')+';background:'+(_allChecked?'#fdecea':'#e8f0fb')+';color:'+(_allChecked?'#c0392b':'#1D5BA6')+';cursor:pointer;white-space:nowrap">'+(_allChecked?'✕ 전체 출역 해제':'✓ 전체 출역 체크')+'</button></div>';
+    const _bulkBtn='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">'
+      +'<button onclick="toggleAllWorkers(\''+dateKey+'\')" style="font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;border:1px solid '+(_allChecked?'#c0392b':'#1D5BA6')+';background:'+(_allChecked?'#fdecea':'#e8f0fb')+';color:'+(_allChecked?'#c0392b':'#1D5BA6')+';cursor:pointer;white-space:nowrap">'+(_allChecked?'✕ 전체 출역 해제':'✓ 전체 출역 체크')+'</button>'
+      +'<div style="display:flex;align-items:center;gap:6px"><span style="font-size:12px;color:#86868b;white-space:nowrap">전체 공수</span><input type="number" id="att-bulk-md" step="0.5" min="0" max="3" placeholder="1.0" style="width:58px;font-size:13px;padding:6px 8px;border:1px solid #d1d1d6;border-radius:8px;text-align:center;box-sizing:border-box" onkeydown="if(event.key===\'Enter\'){applyAllManday(\''+dateKey+'\');}"><button onclick="applyAllManday(\''+dateKey+'\')" style="font-size:12px;font-weight:600;padding:7px 12px;border-radius:8px;border:1px solid #1D5BA6;background:#1D5BA6;color:#fff;cursor:pointer;white-space:nowrap">일괄 적용</button></div>'
+      +'</div>';
     document.getElementById('att-worker-list').innerHTML=_bulkBtn+WORKERS.map(w=>{
       const checked=checks.includes(w.id);
       const md=getMandayMap(dateKey)[w.id]||0;
