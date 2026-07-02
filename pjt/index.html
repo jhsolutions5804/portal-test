@@ -465,7 +465,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
         <div class="logo-sub" id="hdr-sub-mo">귀뚜라미범양냉방 · FCU 설치</div>
       </div>
       <span class="date-badge" id="today-badge"></span>
-      <a href="https://jhsolutions5804.github.io/p4ph2-fab-workspace/daily-report.html" style="font-size:12px;color:#1D5BA6;background:#e8f0fb;padding:5px 11px;border-radius:8px;text-decoration:none;font-weight:600;white-space:nowrap;">📋 공사일보</a>
+      <a href="https://jhsolutions5804.github.io/portal-test/daily-report/" style="font-size:12px;color:#1D5BA6;background:#e8f0fb;padding:5px 11px;border-radius:8px;text-decoration:none;font-weight:600;white-space:nowrap;">📋 공사일보</a>
     </div>
     <div class="tab-bar">
       <button class="tab active" onclick="switchTab('today',this)">오늘</button>
@@ -523,7 +523,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
               <div class="sci">📅</div>
               <div><div class="sct">오늘 일정</div><div class="scd">일정 확인 및 보고</div></div>
             </div>
-            <div class="home-sc" onclick="window.open('https://jhsolutions5804.github.io/p4ph2-fab-workspace/daily-report.html','_blank')">
+            <div class="home-sc" onclick="window.open('https://jhsolutions5804.github.io/portal-test/daily-report/','_blank')">
               <div class="sci">📋</div>
               <div><div class="sct">공사일보 작성</div><div class="scd">오늘 공사일보 작성</div></div>
             </div>
@@ -3614,7 +3614,7 @@ function openUsForm(prefillKey){
   document.querySelector('.us-save-btn').textContent='등록하기';
   _usCurCat='admin';_usCatTouched=false;
   ['usf-text','usf-place','usf-att'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('usf-reg').value=window._selectedName||'';
+  document.getElementById('usf-reg').value=(function(){try{return localStorage.getItem('jh_login_full')||localStorage.getItem('jh_login_name')||window._selectedName||'';}catch(e){return window._selectedName||'';}})();
   document.getElementById('usf-cat-hint').textContent='';
   // 캘린더 등 특정 날짜에서 호출 시 그 날짜, 아니면 현재 보고 있는 날짜를 기본값으로
   let key;
