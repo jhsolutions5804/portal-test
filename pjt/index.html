@@ -600,9 +600,10 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
     <div id="tab-calendar" style="display:none">
       <!-- 좌측: 달력 -->
       <div class="cal-left-panel">
-        <div class="cal-header">
+        <div class="cal-header" style="position:relative">
           <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
-          <span class="cal-month" id="cal-month-label"></span>
+          <span class="cal-month" id="cal-month-label" onclick="openCalMonthPicker()" style="cursor:pointer" title="클릭해서 원하는 시점으로 이동"></span>
+          <input type="month" id="cal-month-picker" onchange="pickCalMonth(this.value)" style="position:absolute;left:50%;transform:translateX(-50%);top:100%;opacity:0;width:1px;height:1px;pointer-events:none">
           <button class="cal-nav" onclick="changeMonth(1)">›</button>
         </div>
         <div class="legend" style="margin-bottom:10px">
@@ -1774,9 +1775,10 @@ function getWeekStart(d){
 
 function renderTwoWeek(){
   const el=document.getElementById('tab-twoweek');
+  if(typeof window._twBlock!=='number') window._twBlock=0;
   const now=getAppToday();
   const DAY=['일','월','화','수','목','금','토'];
-  const w0Start=getWeekStart(now);
+  const w0Start=getWeekStart(now);w0Start.setDate(w0Start.getDate()+14*window._twBlock);
   const w1Start=new Date(w0Start);w1Start.setDate(w0Start.getDate()+7);
   const isPc=window.innerWidth>=900;
 
@@ -1919,8 +1921,9 @@ function renderTwoWeek(){
     return h;
   }
 
-  const w0Label='W'+getWeekNum(w0Start)+' · 이번 주';
-  const w1Label='W'+getWeekNum(w1Start)+' · 다음 주';
+  const _twBlk=window._twBlock||0;
+  const w0Label='W'+getWeekNum(w0Start)+(_twBlk===0?' · 이번 주':'');
+  const w1Label='W'+getWeekNum(w1Start)+(_twBlk===0?' · 다음 주':'');
   let html='';
   if(isPc){
     html+=renderPcWeek(w0Start,w0Label);
@@ -1931,8 +1934,18 @@ function renderTwoWeek(){
     html+='<div style="height:1px;background:#e5e5e5;margin:16px 0"></div>';
     html+=renderMobWeek(w1Start,w1Label);
   }
-  el.innerHTML=html;
+  const _twE=new Date(w1Start);_twE.setDate(w1Start.getDate()+6);
+  const _twRange=(w0Start.getMonth()+1)+'/'+w0Start.getDate()+' ~ '+(_twE.getMonth()+1)+'/'+_twE.getDate();
+  let _twNav='<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">';
+  _twNav+='<button class="nav-arrow" onclick="changeTwoWeek(-1)">‹</button>';
+  _twNav+='<div style="flex:1;text-align:center;font-size:13px;font-weight:700;color:#1D5BA6">'+_twRange+((window._twBlock||0)===0?' · 이번 2주':'')+'</div>';
+  _twNav+='<button class="nav-arrow" onclick="changeTwoWeek(1)">›</button>';
+  _twNav+='<button onclick="goTwoWeekToday()" style="font-size:11px;font-weight:600;color:#1D5BA6;background:#e8f0fb;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;white-space:nowrap;margin-left:4px">오늘</button>';
+  _twNav+='</div>';
+  el.innerHTML=_twNav+html;
 }
+window.changeTwoWeek=function(dir){window._twBlock=(window._twBlock||0)+dir;renderTwoWeek();};
+window.goTwoWeekToday=function(){window._twBlock=0;renderTwoWeek();};
 
 // ===== CALENDAR =====
 let curMonth,curYear,selectedKey=null;
@@ -2013,13 +2026,19 @@ function renderCalDetail(key){
   const LEAVE_COLOR={'annual':'#c0392b','half-am':'#e67e22','half-pm':'#8e44ad'};
   const LEAVE_BG={'annual':'#ffeaea','half-am':'#fff3e0','half-pm':'#f3f0ff'};
   const body=document.getElementById('cal-detail-body');
+  window._calDetailItems=allItems;
+  const _addBtn='<button class="add-sched-btn" onclick="openUsForm(\''+key+'\')">＋ 이 날 일정 등록</button>';
   if(!allItems.filter(i=>i.tag!=='leave').length&&!leaves.length){
-    body.innerHTML='<div class="cal-detail-empty">등록된 일정이 없어요</div>';
+    body.innerHTML=_addBtn+'<div class="cal-detail-empty">등록된 일정이 없어요</div>';
   } else {
     const timed=allItems.filter(i=>i.time&&i.tag!=='leave');
     const notimed=allItems.filter(i=>!i.time&&i.tag!=='leave');
-    const mk=i=>`<div class="cal-task"><span class="cal-task-time">${i.time||'—'}</span><div class="cal-task-body"><div class="cal-task-text">${i.text}</div><div class="cal-task-tag"><span class="tag tag-${i.tag}">${i.tagLabel}</span></div></div></div>`;
-    let html=timed.map(mk).join('');
+    const mk=i=>{
+      const _ix=allItems.indexOf(i);
+      const _clk=(i._user&&i.id)?' onclick="_calDetailClick('+_ix+')" style="cursor:pointer" title="탭하여 수정 · 삭제"':'';
+      return '<div class="cal-task"'+_clk+'><span class="cal-task-time">'+(i.time||'—')+'</span><div class="cal-task-body"><div class="cal-task-text">'+i.text+'</div><div class="cal-task-tag"><span class="tag tag-'+i.tag+'">'+i.tagLabel+'</span></div></div></div>';
+    };
+    let html=_addBtn+timed.map(mk).join('');
     if(notimed.length)html+=`<div style="height:1px;background:#e5e5e5;margin:6px 0 8px"></div>`+notimed.map(mk).join('');
     if(leaves.length){
       html+=`<div style="height:1px;background:#e5e5e5;margin:6px 0 8px"></div>`;
@@ -2031,11 +2050,31 @@ function renderCalDetail(key){
   var _cd=document.getElementById('cal-detail');
   _cd.style.display='flex';
 }
+window._calDetailClick=function(idx){
+  var it=(window._calDetailItems||[])[idx];
+  if(it&&typeof openUsDetail==='function') openUsDetail(it);
+};
 function hideDetail(){
   document.getElementById('cal-detail').style.display='none';
   document.getElementById('cal-right-empty').style.display='flex';
 }
 function changeMonth(dir){curMonth+=dir;if(curMonth>11){curMonth=0;curYear++;}if(curMonth<0){curMonth=11;curYear--;}selectedKey=null;renderCal();}
+window.openCalMonthPicker=function(){
+  var p=document.getElementById('cal-month-picker');
+  if(!p)return;
+  p.value=curYear+'-'+pad(curMonth+1);
+  if(p.showPicker){try{p.showPicker();return;}catch(e){}}
+  p.style.pointerEvents='auto';p.style.opacity='0.01';p.focus();p.click();
+};
+window.pickCalMonth=function(v){
+  if(!v)return;
+  var parts=v.split('-');
+  if(parts.length<2)return;
+  curYear=parseInt(parts[0],10);
+  curMonth=parseInt(parts[1],10)-1;
+  selectedKey=null;
+  renderCal();
+};
 
 // ===== PROGRESS =====
 let progDayOffset=0;
@@ -3510,7 +3549,7 @@ function usAutoDetect(){
   else document.getElementById('usf-cat-hint').textContent='';
 }
 
-function openUsForm(){
+function openUsForm(prefillKey){
   _usEditingId=null;
   document.querySelector('#us-form-modal .us-head-title').textContent='일정 등록';
   document.querySelector('.us-save-btn').textContent='등록하기';
@@ -3518,9 +3557,14 @@ function openUsForm(){
   ['usf-text','usf-place','usf-att'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('usf-reg').value=window._selectedName||'';
   document.getElementById('usf-cat-hint').textContent='';
-  // 현재 보고 있는 날짜를 기본값으로
-  const d=typeof getViewDate==='function'?getViewDate():new Date();
-  const key=d.getFullYear()+'-'+_usPad(d.getMonth()+1)+'-'+_usPad(d.getDate());
+  // 캘린더 등 특정 날짜에서 호출 시 그 날짜, 아니면 현재 보고 있는 날짜를 기본값으로
+  let key;
+  if(prefillKey&&/^\d{4}-\d{2}-\d{2}$/.test(prefillKey)){
+    key=prefillKey;
+  } else {
+    const d=typeof getViewDate==='function'?getViewDate():new Date();
+    key=d.getFullYear()+'-'+_usPad(d.getMonth()+1)+'-'+_usPad(d.getDate());
+  }
   document.getElementById('usf-sdate').value=key;
   document.getElementById('usf-edate').value=key;
   _usBuildHour(document.getElementById('usf-sh'),0);
