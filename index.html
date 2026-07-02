@@ -232,6 +232,30 @@
     .pjt-hybrid-wrap{ display:flex; flex-direction:column; gap:18px; }
     .pjt-cards-row{ display:grid; grid-template-columns:1fr; gap:12px; }
     .pjt-timeline-grid{ display:grid; grid-template-columns:1fr; gap:16px; }
+    /* PJT 홈 통합 캘린더 */
+    .pjt-cal-grid{ display:flex; flex-direction:column; gap:16px; }
+    .pjt-cal-box,.pjt-cal-detail-box{ background:#fff; border:1px solid #DDE4EF; border-radius:14px; padding:18px 20px; }
+    .pjt-cal-detail-box{ min-height:300px; }
+    .pjt-cal-hd{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+    .pjt-cal-hd .m{ font-size:16px; font-weight:800; color:#13335C; }
+    .pjt-cal-nav{ background:#F0F4F9; border:1px solid #DDE4EF; border-radius:8px; width:32px; height:32px; cursor:pointer; color:#5C6F8A; font-size:16px; font-family:inherit; }
+    .pjt-cal-legend{ display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+    .pjt-cal-legend .li{ display:flex; align-items:center; gap:5px; font-size:11px; color:#86868b; }
+    .pjt-cal-legend .ld{ width:8px; height:8px; border-radius:2px; }
+    .pjt-cal-dow{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:4px; }
+    .pjt-cal-dow div{ text-align:center; font-size:11px; font-weight:600; color:#9AAABF; padding:2px 0; }
+    .pjt-cal-body{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+    .pjt-cal-cell{ min-height:46px; border:1px solid #EEF2F7; border-radius:8px; padding:5px 6px; cursor:pointer; transition:.12s; }
+    .pjt-cal-cell:hover{ border-color:#1D5BA6; background:#F7FAFF; }
+    .pjt-cal-cell.empty{ border:none; cursor:default; background:transparent; }
+    .pjt-cal-cell.today{ background:#EAF2FC; border-color:#1D5BA6; }
+    .pjt-cal-cell.sel{ background:#1D5BA6; border-color:#1D5BA6; }
+    .pjt-cal-cell.sel .dnum{ color:#fff; }
+    .pjt-cal-cell.sun .dnum{ color:#c0392b; }
+    .pjt-cal-cell.sat .dnum{ color:#1D5BA6; }
+    .pjt-cal-cell .dnum{ font-size:12px; font-weight:600; color:#1A2540; }
+    .pjt-cal-cell .dots{ display:flex; gap:2px; flex-wrap:wrap; margin-top:3px; }
+    .pjt-cal-cell .cd{ width:5px; height:5px; border-radius:50%; }
     /* 홈 대시보드 — 모바일: 1단 세로 */
     .home-dash{ display:flex; flex-direction:column; gap:16px; margin-top:20px; }
     .dash-approve-wrap{ display:flex; flex-direction:column; }
@@ -300,6 +324,8 @@
     .pjt-home-grid{ display:grid; grid-template-columns:1fr 360px; gap:20px; align-items:start; }
     .pjt-cards-row{ display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 340px)); gap:14px; justify-content:start; }
     .pjt-timeline-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start; }
+    .pjt-cal-grid{ display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:18px; align-items:start; }
+    .pjt-cal-cell{ min-height:56px; }
     .hello{padding:0 0 6px}
     .hello h1{font-size:26px}
     .hello p{font-size:13.5px}
@@ -500,15 +526,27 @@
           <!-- 상단: 진행 중 PJT 축소 카드 (가로 배치) -->
           <div id="pjt-home-cards" class="pjt-cards-row"></div>
           <div id="pjt-registry-section" style="margin-top:2px;"></div>
-          <!-- 하단: 일정 타임라인 + 업무지시·보고 타임라인 -->
-          <div class="pjt-timeline-grid">
-            <div style="background:#fff; border:1px solid #DDE4EF; border-radius:14px; padding:18px 20px;">
-              <div style="font-size:14px; font-weight:700; color:#13335C; margin-bottom:14px;">📅 전체 PJT 주요 일정</div>
-              <div id="pjt-schedule-panel" style="font-size:13px; color:#5C6F8A;">불러오는 중...</div>
+          <!-- 하단: 통합 월간 캘린더 + 날짜별 상세(일정·업무지시) -->
+          <div class="pjt-cal-grid">
+            <div class="pjt-cal-box">
+              <div class="pjt-cal-hd">
+                <button class="pjt-cal-nav" onclick="pjtCalShift(-1)">‹</button>
+                <span class="m" id="pjt-cal-label">—</span>
+                <button class="pjt-cal-nav" onclick="pjtCalShift(1)">›</button>
+              </div>
+              <div class="pjt-cal-legend">
+                <span class="li"><span class="ld" style="background:#1D5BA6"></span>반입</span>
+                <span class="li"><span class="ld" style="background:#2e7d32"></span>검수</span>
+                <span class="li"><span class="ld" style="background:#5e35b1"></span>교육</span>
+                <span class="li"><span class="ld" style="background:#c0392b"></span>휴무</span>
+                <span class="li"><span class="ld" style="background:#e67e22"></span>연차</span>
+              </div>
+              <div class="pjt-cal-dow"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
+              <div class="pjt-cal-body" id="pjt-cal-body"><div style="grid-column:1/-1;text-align:center;color:#9AAABF;font-size:12px;padding:20px">불러오는 중...</div></div>
             </div>
-            <div style="background:#fff; border:1px solid #DDE4EF; border-radius:14px; padding:18px 20px;">
-              <div style="font-size:14px; font-weight:700; color:#13335C; margin-bottom:14px;">📋 업무지시 및 보고</div>
-              <div id="pjt-report-panel" style="font-size:13px; color:#5C6F8A;">불러오는 중...</div>
+            <div class="pjt-cal-detail-box">
+              <div style="font-size:14px; font-weight:700; color:#13335C; margin-bottom:14px;" id="pjt-cal-detail-title">📅 일정 · 업무지시</div>
+              <div id="pjt-cal-detail" style="font-size:13px; color:#5C6F8A;">날짜를 선택하면 일정이 표시됩니다.</div>
             </div>
           </div>
         </div>
@@ -821,7 +859,7 @@ function showPjtHome(){
   if(npBtn) npBtn.style.display=(me&&me.admin)?'block':'none';
   renderPjtHomeCards();
   renderPjtRegistry();
-  loadPjtPanels();
+  loadPjtCalendar();
 }
 
 function renderPjtHomeCards(){
@@ -1005,6 +1043,134 @@ async function loadPjtPanels(){
   }catch(e){ sp.innerHTML='<span style="color:#DC2626;">오류: '+e.message+'</span>'; }
 }
 
+// ===== PJT 홈 통합 캘린더 (전체 PJT 일정 + 날짜별 업무지시·보고) =====
+const PJT_CAL_TAG = {
+  in:{c:'#1D5BA6',l:'반입'}, inspect:{c:'#2e7d32',l:'검수'}, edu:{c:'#5e35b1',l:'교육'},
+  off:{c:'#c0392b',l:'휴무'}, leave:{c:'#e67e22',l:'연차'},
+  meeting:{c:'#5D3A00',l:'회의'}, fcu:{c:'#0A3D7A',l:'설치'}, safety:{c:'#8D6E00',l:'안전'}, admin:{c:'#7A8AA0',l:'행정'}
+};
+let _pjtCalY, _pjtCalM, _pjtCalSel=null, _pjtCalCache={};
+const _pjtPad=n=>String(n).padStart(2,'0');
+const _pjtKey=(y,m,d)=>y+'-'+_pjtPad(m+1)+'-'+_pjtPad(d);
+function _pjtEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function loadPjtCalendar(){
+  if(_pjtCalY===undefined){ const now=new Date(); _pjtCalY=now.getFullYear(); _pjtCalM=now.getMonth(); }
+  await pjtCalLoadMonth();
+  renderPjtCal();
+}
+
+async function pjtCalLoadMonth(){
+  const body=document.getElementById('pjt-cal-body');
+  if(!window._db){ if(body) body.innerHTML='<div style="grid-column:1/-1;text-align:center;color:#9AAABF;font-size:12px;padding:20px">DB 연결 안 됨</div>'; return; }
+  const y=_pjtCalY, m=_pjtCalM;
+  const start=_pjtKey(y,m,1);
+  const end=_pjtKey(y,m,new Date(y,m+1,0).getDate());
+  const cache={};
+  try{
+    const {getDocs,collection,query,where} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    for(const [key,col] of Object.entries(PJT_SCHED_COL)){
+      const st=PJT_SUBTABS.find(s=>s.key===key);
+      try{
+        const snap=await getDocs(query(collection(window._db,col),where('sdate','>=',start),where('sdate','<=',end)));
+        snap.forEach(d=>{
+          const s=d.data(); const dk=s.sdate; if(!dk) return;
+          (cache[dk]=cache[dk]||[]).push({...s, pjtName:st?.name||key, pjtKey:key});
+        });
+      }catch(e){}
+    }
+  }catch(e){}
+  _pjtCalCache=cache;
+}
+
+function renderPjtCal(){
+  const body=document.getElementById('pjt-cal-body');
+  const label=document.getElementById('pjt-cal-label');
+  if(!body) return;
+  const y=_pjtCalY, m=_pjtCalM;
+  if(label) label.textContent=y+'년 '+(m+1)+'월';
+  const first=new Date(y,m,1).getDay();
+  const days=new Date(y,m+1,0).getDate();
+  const now=new Date(); const todayKey=_pjtKey(now.getFullYear(),now.getMonth(),now.getDate());
+  let html='';
+  for(let i=0;i<first;i++) html+='<div class="pjt-cal-cell empty"></div>';
+  for(let d=1;d<=days;d++){
+    const dk=_pjtKey(y,m,d);
+    const dow=new Date(y,m,d).getDay();
+    const items=_pjtCalCache[dk]||[];
+    const tags=[...new Set(items.map(it=>it.tag||'admin'))].slice(0,6);
+    const dots=tags.map(t=>'<span class="cd" style="background:'+((PJT_CAL_TAG[t]||PJT_CAL_TAG.admin).c)+'"></span>').join('');
+    const cls=['pjt-cal-cell'];
+    if(dk===todayKey) cls.push('today');
+    if(dk===_pjtCalSel) cls.push('sel');
+    if(dow===0) cls.push('sun'); if(dow===6) cls.push('sat');
+    html+='<div class="'+cls.join(' ')+'" onclick="pjtCalSelectDay(\''+dk+'\')"><div class="dnum">'+d+'</div><div class="dots">'+dots+'</div></div>';
+  }
+  body.innerHTML=html;
+}
+
+window.pjtCalShift=function(dir){
+  _pjtCalM+=dir;
+  if(_pjtCalM>11){_pjtCalM=0;_pjtCalY++;}
+  if(_pjtCalM<0){_pjtCalM=11;_pjtCalY--;}
+  loadPjtCalendar();
+};
+
+window.pjtCalSelectDay=async function(dk){
+  _pjtCalSel=dk;
+  renderPjtCal();
+  const det=document.getElementById('pjt-cal-detail');
+  const title=document.getElementById('pjt-cal-detail-title');
+  if(!det) return;
+  const p=dk.split('-'); const dowKo=['일','월','화','수','목','금','토'];
+  const dow=dowKo[new Date(dk+'T00:00:00').getDay()];
+  if(title) title.textContent='📅 '+parseInt(p[1])+'월 '+parseInt(p[2])+'일 ('+dow+')';
+  const items=(_pjtCalCache[dk]||[]).slice().sort((a,b)=>(a.stime||'').localeCompare(b.stime||''));
+  let html='';
+  html+='<div style="font-size:12px;font-weight:700;color:#13335C;margin-bottom:8px">일정</div>';
+  if(items.length){
+    items.forEach(s=>{
+      const tg=PJT_CAL_TAG[s.tag||'admin']||PJT_CAL_TAG.admin;
+      html+='<div style="display:flex;align-items:flex-start;gap:7px;margin-bottom:8px">'
+        +'<span style="font-size:10px;padding:2px 7px;border-radius:5px;background:'+tg.c+'22;color:'+tg.c+';white-space:nowrap;flex-shrink:0;font-weight:600">'+tg.l+'</span>'
+        +'<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:#1A2540">'+(s.stime?_pjtEsc(s.stime)+' ':'')+_pjtEsc(s.text||'')+'</div>'
+        +'<div style="font-size:11px;color:#9AAABF;margin-top:1px">'+_pjtEsc(s.pjtName||'')+'</div></div></div>';
+    });
+  } else {
+    html+='<div style="color:#9AAABF;font-size:12px;padding:2px 0 8px">이 날 등록된 일정이 없습니다.</div>';
+  }
+  html+='<div style="height:1px;background:#EEF2F7;margin:12px 0"></div>';
+  html+='<div style="font-size:12px;font-weight:700;color:#13335C;margin-bottom:8px">업무지시 · 보고</div>';
+  html+='<div id="pjt-cal-report-slot" style="color:#9AAABF;font-size:12px">불러오는 중...</div>';
+  det.innerHTML=html;
+  try{
+    const {getDoc,doc} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    let rHtml='';
+    for(const [key,col] of Object.entries(PJT_REPORT_COL)){
+      const st=PJT_SUBTABS.find(s=>s.key===key);
+      try{
+        const snap=await getDoc(doc(window._db,col,dk));
+        if(snap.exists()){
+          const r=snap.data();
+          const ins=(r.instruction||'').trim();
+          const brf=(r.briefText||r.content||'').trim();
+          if(ins) rHtml+=_pjtReportItem('지시',ins,st?.name||key,'#E6F1FB','#0C447C');
+          if(brf) rHtml+=_pjtReportItem('보고',brf,st?.name||key,'#FAEEDA','#633806');
+        }
+      }catch(e){}
+    }
+    const slot=document.getElementById('pjt-cal-report-slot');
+    if(slot) slot.outerHTML = rHtml || '<div style="color:#9AAABF;font-size:12px">이 날 입력된 지시·보고가 없습니다.</div>';
+  }catch(e){
+    const slot=document.getElementById('pjt-cal-report-slot');
+    if(slot) slot.textContent='업무지시 불러오기 오류';
+  }
+};
+function _pjtReportItem(type,text,pjtName,bg,fg){
+  return '<div style="margin-bottom:10px">'
+    +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><span style="font-size:10px;padding:2px 7px;border-radius:5px;background:'+bg+';color:'+fg+';white-space:nowrap">'+type+'</span><span style="font-size:11px;color:#9AAABF">'+_pjtEsc(pjtName)+'</span></div>'
+    +'<div style="font-size:12px;color:#1A2540;white-space:pre-wrap;line-height:1.5">'+_pjtEsc(text)+'</div></div>';
+}
 
 // PJT별 메타데이터 (공정율 계산용 ZONES + 컬렉션 prefix)
 // FAB 과거 고정 실적 (PJT 앱 PAST_PROGRESS_DAILY와 동일 — 공정률 정합성)
@@ -1325,7 +1491,9 @@ async function enterFromUser(user,msg){
   }
   if(!data){ await signOut(auth); if(msg) showMsg(msg,'err','등록되지 않은 계정입니다. 관리자에게 계정 생성을 요청하세요.'); return; }
   if(data.status!=='approved'){ await signOut(auth); if(msg) showMsg(msg,'err','승인되지 않은 계정입니다.'); return; }
-  me={ uid:user.uid, ...data }; enterPortal();
+  me={ uid:user.uid, ...data };
+  try{ localStorage.setItem('jh_login_name',(me.name||'').trim()); localStorage.setItem('jh_login_full',((me.name||'')+(me.rank?' '+me.rank:'')).trim()); }catch(e){}
+  enterPortal();
 }
 
 /* ---------- Portal 관리: 직원 계정 생성 ---------- */
@@ -2222,7 +2390,7 @@ window.addEventListener('message', async (e) => {
   }
 });
 
-function doLogout(){ clearTimeout(_autoLogoutTimer); clearMsalCache(); signOut(auth).then(()=>{ me=null; $('login-pw').value=''; if(window.mbnHideNav) mbnHideNav(); showAuth('s-login'); }); }
+function doLogout(){ clearTimeout(_autoLogoutTimer); clearMsalCache(); signOut(auth).then(()=>{ me=null; $('login-pw').value=''; try{ localStorage.removeItem('jh_login_name'); localStorage.removeItem('jh_login_full'); }catch(e){} if(window.mbnHideNav) mbnHideNav(); showAuth('s-login'); }); }
 // D+ 시작일 입력 토글
 function pjtToggleStartInput(key){
   const inp=document.getElementById('kpi-day-input-'+key);
