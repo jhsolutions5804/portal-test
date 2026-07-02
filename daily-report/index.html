@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>공사일보 · P4 Ph2 (FAB)</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif; background:#f0f4fa; min-height:100vh; padding:0 0 60px; }
+
+.app-header { background:#1D5BA6; color:#fff; padding:16px 20px 14px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(29,91,166,.3); }
+.header-left { display:flex; align-items:center; gap:12px; }
+.header-left .icon { font-size:22px; }
+.app-header h1 { font-size:17px; font-weight:700; letter-spacing:-.3px; }
+.app-header p  { font-size:11px; opacity:.75; margin-top:1px; }
+.back-btn { font-size:13px; color:#fff; text-decoration:none; background:rgba(255,255,255,.18); padding:6px 12px; border-radius:20px; white-space:nowrap; }
+
+.container { max-width:480px; margin:0 auto; padding:16px 14px; }
+.card { background:#fff; border-radius:14px; padding:18px 16px; margin-bottom:12px; box-shadow:0 1px 4px rgba(0,0,0,.07); }
+.card-label { font-size:11px; font-weight:700; color:#1D5BA6; letter-spacing:.6px; margin-bottom:8px; display:flex; align-items:center; gap:5px; }
+.card-label .num { width:18px; height:18px; background:#1D5BA6; color:#fff; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:10px; }
+
+select, textarea { width:100%; border:1.5px solid #dde4ef; border-radius:9px; padding:11px 13px; font-size:14px; font-family:inherit; color:#1a1a2e; background:#fafbfd; outline:none; transition:border-color .15s; appearance:none; -webkit-appearance:none; }
+select:focus, textarea:focus { border-color:#1D5BA6; background:#fff; }
+select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%231D5BA6' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; padding-right:36px; }
+textarea { resize:vertical; min-height:90px; line-height:1.6; }
+
+/* 날짜 버튼 */
+#dateDisplay { width:100%; border:1.5px solid #dde4ef; border-radius:9px; padding:11px 13px; font-size:14px; color:#1a1a2e; background:#fafbfd; text-align:left; cursor:pointer; display:flex; align-items:center; justify-content:space-between; transition:border-color .15s; }
+#dateDisplay:hover { border-color:#1D5BA6; }
+.placeholder { color:#aab; }
+
+/* 날짜 피커 */
+.date-popup { display:none; position:fixed; inset:0; z-index:999; background:rgba(0,0,0,.35); align-items:center; justify-content:center; }
+.date-popup.open { display:flex; }
+.date-picker { background:#fff; border-radius:18px; padding:20px 18px 16px; width:320px; box-shadow:0 8px 40px rgba(0,0,0,.18); }
+.dp-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.dp-nav button { background:#f0f4fa; border:none; border-radius:8px; width:32px; height:32px; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#1D5BA6; }
+.dp-title { font-size:15px; font-weight:700; color:#1a1a2e; }
+.dp-weekdays { display:grid; grid-template-columns:repeat(7,1fr); text-align:center; margin-bottom:6px; }
+.dp-weekdays span { font-size:11px; font-weight:700; color:#888; padding:4px 0; }
+.dp-weekdays span:first-child { color:#e05; } .dp-weekdays span:last-child { color:#1D5BA6; }
+.dp-days { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+.dp-day { text-align:center; padding:7px 2px; border-radius:8px; font-size:13px; cursor:pointer; transition:background .1s; color:#1a1a2e; }
+.dp-day:hover { background:#e8f0fb; } .dp-day.today { font-weight:700; color:#1D5BA6; } .dp-day.selected { background:#1D5BA6; color:#fff; font-weight:700; } .dp-day.empty { cursor:default; } .dp-day.sun { color:#e05; } .dp-day.sat { color:#1D5BA6; } .dp-day.selected.sun,.dp-day.selected.sat { color:#fff; }
+.dp-close { margin-top:12px; width:100%; padding:10px; background:#f0f4fa; border:none; border-radius:9px; font-size:13px; color:#666; cursor:pointer; font-family:inherit; }
+
+/* 로딩 뱃지 */
+.loading-badge { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#1D5BA6; background:#e8f0fb; padding:5px 12px; border-radius:20px; margin-bottom:8px; }
+.loading-badge .spin { animation:spin .8s linear infinite; display:inline-block; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.load-status { font-size:11px; margin-top:6px; }
+.load-status.ok  { color:#2e7d32; }
+.load-status.err { color:#c0392b; }
+
+/* 공정 결과 카드 */
+.prog-result { margin-top:10px; display:flex; flex-direction:column; gap:6px; }
+.prog-zone-row { background:#f5f8ff; border:1px solid #dde4ef; border-radius:10px; padding:10px 13px; }
+.prog-zone-name { font-size:12px; font-weight:700; color:#1D5BA6; margin-bottom:5px; }
+.prog-steps { display:flex; flex-wrap:wrap; gap:5px; }
+.prog-step-chip { font-size:11px; padding:3px 9px; border-radius:12px; font-weight:600; }
+.chip-반입    { background:#e8f0fb; color:#0a3d7a; }
+.chip-입고검사 { background:#e8f5e9; color:#1b5e20; }
+.chip-내진스토퍼,.chip-다이크,.chip-실링,.chip-동판,.chip-결선 { background:#f3f0ff; color:#3c2a8a; }
+.chip-시공검측 { background:#fff3e0; color:#5d3a00; }
+
+/* 인원 카운터 */
+.counter-row { display:flex; align-items:center; gap:10px; }
+.counter-val { flex:1; border:1.5px solid #dde4ef; border-radius:9px; padding:11px 13px; font-size:18px; font-weight:700; color:#1D5BA6; text-align:center; background:#fafbfd; }
+.cnt-btn { width:40px; height:40px; flex-shrink:0; border:1.5px solid #dde4ef; border-radius:9px; background:#f0f4fa; font-size:20px; color:#1D5BA6; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.cnt-btn:hover { background:#e8f0fb; border-color:#1D5BA6; }
+.hint { font-size:11px; color:#aab; margin-top:5px; }
+
+/* 장비 */
+.equip-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; min-height:32px; }
+.equip-chip { display:inline-flex; align-items:center; gap:5px; background:#e8f0fb; color:#1D5BA6; border:1.5px solid #1D5BA6; border-radius:20px; padding:4px 10px 4px 12px; font-size:12px; font-weight:600; }
+.equip-chip .rm { cursor:pointer; font-size:14px; color:#5BA4CF; }
+.equip-chip .rm:hover { color:#e05; }
+.equip-empty { font-size:12px; color:#aab; padding:4px 0; }
+
+/* 버튼 */
+.btn-row { display:flex; gap:10px; margin-top:16px; }
+.btn { flex:1; padding:14px; border:none; border-radius:12px; font-size:14px; font-weight:700; font-family:inherit; cursor:pointer; transition:all .15s; }
+.btn-preview { background:#e8f0fb; color:#1D5BA6; }
+.btn-export  { background:#1D5BA6; color:#fff; }
+.btn-export:hover { background:#1549a0; }
+
+/* 미리보기 모달 */
+.modal { display:none; position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,.45); align-items:flex-end; justify-content:center; }
+.modal.open { display:flex; }
+.modal-sheet { background:#fff; border-radius:20px 20px 0 0; width:100%; max-width:480px; max-height:92vh; overflow-y:auto; padding:20px 18px 32px; box-shadow:0 -8px 40px rgba(0,0,0,.15); }
+.modal-handle { width:40px; height:4px; background:#dde4ef; border-radius:2px; margin:0 auto 16px; }
+.modal-title { font-size:16px; font-weight:700; color:#1a1a2e; text-align:center; margin-bottom:18px; padding-bottom:14px; border-bottom:1.5px solid #f0f4fa; }
+.doc-header { text-align:center; margin-bottom:16px; }
+.doc-header h2 { font-size:20px; font-weight:800; color:#1D5BA6; letter-spacing:6px; }
+.doc-header p { font-size:11px; color:#888; margin-top:4px; }
+.doc-table { width:100%; border-collapse:collapse; font-size:13px; }
+.doc-table th,.doc-table td { border:1px solid #ccd; padding:9px 11px; vertical-align:top; text-align:left; }
+.doc-table th { background:#1D5BA6; color:#fff; font-weight:600; white-space:nowrap; width:88px; }
+.doc-table .sec-hd td { background:#e8f0fb; color:#1D5BA6; font-weight:700; font-size:12px; }
+.modal-pdf   { margin-top:10px; width:100%; padding:12px; background:#1D5BA6; border:none; border-radius:10px; font-size:14px; font-weight:700; color:#fff; cursor:pointer; font-family:inherit; }
+.modal-close { margin-top:8px; width:100%; padding:12px; background:#f0f4fa; border:none; border-radius:10px; font-size:14px; font-weight:600; color:#555; cursor:pointer; font-family:inherit; }
+
+@media print {
+  body * { visibility:hidden; }
+  #printArea,#printArea * { visibility:visible; }
+  #printArea { position:fixed; top:0; left:0; width:100%; padding:24px 28px; font-family:'Malgun Gothic',sans-serif; }
+  .doc-table { font-size:11pt; }
+  .doc-table th { background:#1D5BA6 !important; color:#fff !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .doc-table .sec-hd td { background:#e8f0fb !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-left">
+    <div class="icon">📋</div>
+    <div>
+      <h1>공사일보 작성</h1>
+      <p>P4 Ph2 (FAB) · 귀뚜라미범양냉방</p>
+    </div>
+  </div>
+  <a class="back-btn" href="index.html">← Workspace</a>
+</div>
+
+<div class="container">
+
+  <!-- 1. 현장명 -->
+  <div class="card">
+    <div class="card-label"><span class="num">1</span> 현장명</div>
+    <select id="site"><option value="P4 Ph2(FAB)">P4 Ph2(FAB)</option></select>
+  </div>
+
+  <!-- 2. 작성일자 — 선택 즉시 공정·출역 자동 로드 -->
+  <div class="card">
+    <div class="card-label"><span class="num">2</span> 작성일자</div>
+    <button id="dateDisplay" onclick="openPicker()">
+      <span id="dateText" class="placeholder">날짜를 선택하면 자동으로 불러와요</span>
+      <span>📅</span>
+    </button>
+  </div>
+
+  <!-- 3. 작성자 -->
+  <div class="card">
+    <div class="card-label"><span class="num">3</span> 작성자</div>
+    <select id="author">
+      <option value="">작성자 선택</option>
+      <option value="김종화 차장">김종화 차장</option>
+      <option value="윤석원 과장">윤석원 과장</option>
+      <option value="김영서 사원">김영서 사원</option>
+    </select>
+  </div>
+
+  <!-- 4. 금일 작업 내용 — 날짜 선택 시 자동 로드 -->
+  <div class="card">
+    <div class="card-label"><span class="num">4</span> 금일 작업 내용</div>
+    <div id="work-loading" style="display:none">
+      <div class="loading-badge"><span class="spin">⟳</span> 공정 탭에서 불러오는 중...</div>
+    </div>
+    <div id="prog-result" class="prog-result"></div>
+    <div id="st-work" class="load-status"></div>
+    <textarea id="todayWork" placeholder="날짜를 선택하면 공정 탭 체크 물량이 자동으로 채워져요&#10;(필요 시 직접 수정 가능)" style="margin-top:10px"></textarea>
+  </div>
+
+  <!-- 5. 명일 예정 작업 -->
+  <div class="card">
+    <div class="card-label"><span class="num">5</span> 명일 예정 작업</div>
+    <textarea id="tomorrowWork" placeholder="예) FCU 설치 (815~819호기, 5대)&#10;E/V #13 사용 (23:00~01:00)"></textarea>
+  </div>
+
+  <!-- 6. 기술인 투입 현황 — 날짜 선택 시 자동 로드 -->
+  <div class="card">
+    <div class="card-label"><span class="num">6</span> 기술인 투입 현황</div>
+    <div id="att-loading" style="display:none">
+      <div class="loading-badge"><span class="spin">⟳</span> 출역 현황 불러오는 중...</div>
+    </div>
+    <div class="counter-row" style="margin-top:4px">
+      <button class="cnt-btn" onclick="adj(-1)">−</button>
+      <div class="counter-val" id="headcount">0</div>
+      <button class="cnt-btn" onclick="adj(1)">+</button>
+    </div>
+    <p class="hint" id="worker-hint">※ 날짜 선택 시 자동 로드됩니다</p>
+    <div id="st-att" class="load-status"></div>
+  </div>
+
+  <!-- 7. 사용 장비 -->
+  <div class="card">
+    <div class="card-label"><span class="num">7</span> 사용 장비</div>
+    <div class="equip-chips" id="equipChips"><span class="equip-empty">장비를 선택하세요</span></div>
+    <select id="equipSel" onchange="addEquip(this)">
+      <option value="">+ 장비 추가</option>
+      <option value="지게차(004나6452)">지게차 (004나6452)</option>
+      <option value="지게차(004나8334)">지게차 (004나8334)</option>
+      <option value="지게차(004라7402)">지게차 (004라7402)</option>
+      <option value="지게차(경기04로8396)">지게차 (경기04로8396)</option>
+      <option value="지게차(경기04보6471)">지게차 (경기04보6471)</option>
+    </select>
+  </div>
+
+  <!-- 8. 특이사항 -->
+  <div class="card">
+    <div class="card-label"><span class="num">8</span> 특이사항</div>
+    <textarea id="remarks" placeholder="예) 야간 FCU 반입 시 E/V 전용 사용 신청 완료&#10;비상대피훈련 참석"></textarea>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-preview" onclick="openPreview()">👁 미리보기</button>
+    <button class="btn btn-export"  onclick="saveReport()">💾 저장</button>
+  </div>
+</div>
+
+<!-- 날짜 피커 -->
+<div class="date-popup" id="datePopup">
+  <div class="date-picker">
+    <div class="dp-nav">
+      <button onclick="chgMonth(-1)">‹</button>
+      <div class="dp-title" id="dpTitle"></div>
+      <button onclick="chgMonth(1)">›</button>
+    </div>
+    <div class="dp-weekdays"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+    <div class="dp-days" id="dpDays"></div>
+    <button class="dp-close" onclick="closePicker()">닫기</button>
+  </div>
+</div>
+
+<!-- 미리보기 모달 -->
+<div class="modal" id="previewModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">공사일보 미리보기</div>
+    <div id="previewContent"></div>
+    <button class="modal-pdf"   onclick="savePDF()">📄 PDF로 저장</button>
+    <button class="modal-close" onclick="closePreview()">닫기</button>
+  </div>
+</div>
+
+<div id="printArea" style="display:none;"></div>
+
+<script type="module">
+import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, getDocs, doc, getDoc, setDoc, serverTimestamp, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { ALL_SCHEDULE, WORKERS, FIREBASE_CONFIG } from './data.js';
+
+// default 앱으로 초기화 — workspace와 동일한 인스턴스 사용
+let app;
+try { app = getApp(); }
+catch(e) { app = initializeApp(FIREBASE_CONFIG); }
+const db = getFirestore(app);
+
+// 구역 정의
+const ZONES = [
+  {id:'fiz', name:'3F FIZ',       total:39,  eqs:Array.from({length:39},(_,i)=>String(801+i))},
+  {id:'xob', name:'X-OB',         total:19,  eqs:['861','862','863','864','865','866','867','868','869','870','871','872','873','874','875','876','877','878','879']},
+  {id:'c3',  name:'복합3동',       total:14,  eqs:['351','352','353','354','355','356','357','358','359','360','361','362','363','364']},
+  {id:'c4',  name:'복합4동',       total:14,  eqs:['302A','302B','302C','302D','302E','302F','302G','302H','302I','302J','302K','302L','302M','302N']},
+  {id:'wob', name:'W-OB',         total:81,  eqs:Array.from({length:81},(_,i)=>'W-'+(101+i))},
+  {id:'mfr', name:'2F 제조부속실', total:16,  eqs:['801','802','811','812','813','814','815','816','817','818','819','820','821','822','823','824']},
+];
+const CHECK_COLS = ['반입','입고검사','내진스토퍼','다이크','실링','동판','결선','시공검측'];
+
+// ── 날짜 피커 ──
+const DAYS = ['일','월','화','수','목','금','토'];
+let pYear, pMonth, selDate=null, selKey=null;
+
+window.openPicker = () => {
+  const n=selDate||new Date(); pYear=n.getFullYear(); pMonth=n.getMonth();
+  renderPicker(); document.getElementById('datePopup').classList.add('open');
+};
+window.closePicker = () => document.getElementById('datePopup').classList.remove('open');
+window.chgMonth = d => {
+  pMonth+=d; if(pMonth<0){pMonth=11;pYear--;} if(pMonth>11){pMonth=0;pYear++;} renderPicker();
+};
+function renderPicker(){
+  document.getElementById('dpTitle').textContent=`${pYear}년 ${pMonth+1}월`;
+  const first=new Date(pYear,pMonth,1).getDay(), last=new Date(pYear,pMonth+1,0).getDate(), today=new Date();
+  let h='';
+  for(let i=0;i<first;i++) h+=`<div class="dp-day empty"></div>`;
+  for(let d=1;d<=last;d++){
+    const isTd=today.getFullYear()===pYear&&today.getMonth()===pMonth&&today.getDate()===d;
+    const isSel=selDate&&selDate.getFullYear()===pYear&&selDate.getMonth()===pMonth&&selDate.getDate()===d;
+    const dow=(first+d-1)%7;
+    let c='dp-day'; if(dow===0)c+=' sun'; if(dow===6)c+=' sat'; if(isTd)c+=' today'; if(isSel)c+=' selected';
+    h+=`<div class="${c}" onclick="pickDay(${d})">${d}</div>`;
+  }
+  document.getElementById('dpDays').innerHTML=h;
+}
+
+// ── 날짜 선택 → 자동 로드 ──
+window.pickDay = async d => {
+  selDate=new Date(pYear,pMonth,d);
+  const m=String(pMonth+1).padStart(2,'0'), dd=String(d).padStart(2,'0');
+  selKey=`${pYear}-${m}-${dd}`;
+  document.getElementById('dateText').textContent=`${pYear}년 ${m}월 ${dd}일 ${DAYS[selDate.getDay()]}요일`;
+  document.getElementById('dateText').classList.remove('placeholder');
+  closePicker();
+  // 날짜 선택과 동시에 두 가지 자동 로드
+  await Promise.all([ loadProgress(), loadAttendance() ]);
+};
+
+// ── 4. 공정 탭 체크 물량 자동 로드 ──
+async function loadProgress(){
+  document.getElementById('work-loading').style.display='block';
+  document.getElementById('prog-result').innerHTML='';
+  document.getElementById('st-work').textContent='';
+  document.getElementById('todayWork').value='';
+
+  try {
+    // Firestore: progress_checks_{dateKey} 컬렉션, 문서 ID = zoneId
+    const colRef = collection(db, `progress_checks_${selKey}`);
+    const snap   = await getDocs(colRef);
+
+    // zone별 체크 맵 구성
+    const dayChecks = {}; // { zoneId: { '801_반입': true, ... } }
+    snap.forEach(docSnap => {
+      dayChecks[docSnap.id] = docSnap.data().checks || {};
+    });
+
+    // 구역·단계별로 집계
+    const summary = []; // { zoneName, steps: { 반입:[호기...], 입고검사:[...], ... } }
+    let totalCount = 0;
+
+    ZONES.forEach(zone => {
+      const zc = dayChecks[zone.id] || {};
+      const steps = {};
+      CHECK_COLS.forEach(col => {
+        const items = zone.eqs.filter(eq => zc[`${eq}_${col}`]);
+        if(items.length > 0){ steps[col] = items; totalCount += items.length; }
+      });
+      if(Object.keys(steps).length > 0) summary.push({ zone, steps });
+    });
+
+    // UI — 구역 카드
+    const resultEl = document.getElementById('prog-result');
+    if(summary.length === 0){
+      resultEl.innerHTML='<div style="font-size:12px;color:#aab;padding:4px 0">해당 날짜에 체크된 공정 없음</div>';
+      document.getElementById('st-work').textContent='체크된 공정 없음';
+      document.getElementById('st-work').className='load-status err';
+    } else {
+      resultEl.innerHTML = summary.map(({zone,steps})=>`
+        <div class="prog-zone-row">
+          <div class="prog-zone-name">📍 ${zone.name}</div>
+          <div class="prog-steps">
+            ${Object.entries(steps).map(([col,eqs])=>`
+              <span class="prog-step-chip chip-${col}">${col} ${eqs.length}개</span>
+            `).join('')}
+          </div>
+          <div style="font-size:11px;color:#888;margin-top:5px;line-height:1.5">
+            ${Object.entries(steps).map(([col,eqs])=>`${col}: ${formatEqRange(eqs)}`).join(' / ')}
+          </div>
+        </div>`).join('');
+
+      // textarea 자동 채우기
+      const textLines = summary.map(({zone,steps})=>{
+        const detail = Object.entries(steps)
+          .map(([col,eqs])=>`${col} ${eqs.length}개 (${formatEqRange(eqs)})`)
+          .join(', ');
+        return `[${zone.name}] ${detail}`;
+      });
+      document.getElementById('todayWork').value = textLines.join('\n');
+      document.getElementById('st-work').textContent=`✓ 총 ${totalCount}건 체크 항목 로드됨`;
+      document.getElementById('st-work').className='load-status ok';
+    }
+  } catch(e) {
+    console.error(e);
+    document.getElementById('st-work').textContent='Firebase 오류 — 수동 입력해 주세요';
+    document.getElementById('st-work').className='load-status err';
+  }
+  document.getElementById('work-loading').style.display='none';
+}
+
+// 호기 번호를 범위 형식으로 포맷 (연속이면 ~로, 비연속이면 쉼표)
+function formatEqRange(eqs){
+  if(eqs.length===0) return '';
+  // 숫자 호기인지 확인
+  const nums = eqs.map(e=>parseInt(e)).filter(n=>!isNaN(n));
+  if(nums.length===eqs.length && nums.length>0){
+    nums.sort((a,b)=>a-b);
+    const ranges=[]; let s=nums[0],e=nums[0];
+    for(let i=1;i<nums.length;i++){
+      if(nums[i]===e+1){ e=nums[i]; }
+      else { ranges.push(s===e?String(s):`${s}~${e}`); s=e=nums[i]; }
+    }
+    ranges.push(s===e?String(s):`${s}~${e}`);
+    return ranges.join(', ')+'호기';
+  }
+  return eqs.join(', ');
+}
+
+// ── 6. 출역 인원 자동 로드 ──
+async function loadAttendance(){
+  document.getElementById('att-loading').style.display='block';
+  document.getElementById('st-att').textContent='';
+  document.getElementById('headcount').textContent = '0';
+  document.getElementById('worker-hint').textContent = `전체 ${WORKERS.length}명 중 출역 0명`;
+  try {
+    const snap = await getDoc(doc(db,'worker_attendance',selKey));
+    const checks = snap.exists() ? (snap.data().checks||[]) : [];
+    document.getElementById('headcount').textContent = checks.length;
+    document.getElementById('worker-hint').textContent = `전체 ${WORKERS.length}명 중 출역 ${checks.length}명`;
+    document.getElementById('st-att').textContent = `✓ ${checks.length}명 확인`;
+    document.getElementById('st-att').className = 'load-status ok';
+  } catch(e) {
+    document.getElementById('st-att').textContent = `오류: ${e.message}`;
+    document.getElementById('st-att').className = 'load-status err';
+  }
+  document.getElementById('att-loading').style.display='none';
+}
+
+// ── 인원 수동 조정 ──
+window.adj = d => {
+  const el=document.getElementById('headcount');
+  const v=parseInt(el.textContent)+d; if(v>=0) el.textContent=v;
+};
+
+// ── 장비 ──
+let equips=[];
+window.addEquip=sel=>{ const v=sel.value; if(!v) return; if(!equips.includes(v)){equips.push(v);renderChips();} sel.value=''; };
+window.rmEquip=v=>{ equips=equips.filter(e=>e!==v); renderChips(); };
+function renderChips(){
+  const el=document.getElementById('equipChips');
+  el.innerHTML=equips.length
+    ?equips.map(v=>`<span class="equip-chip">${v}<span class="rm" onclick="rmEquip('${v}')">×</span></span>`).join('')
+    :'<span class="equip-empty">장비를 선택하세요</span>';
+}
+
+// ── 데이터 수집 & 문서 생성 ──
+function collect(){
+  return {
+    site:     document.getElementById('site').value,
+    date:     document.getElementById('dateText').textContent,
+    author:   document.getElementById('author').value,
+    today:    document.getElementById('todayWork').value.trim(),
+    tomorrow: document.getElementById('tomorrowWork').value.trim(),
+    count:    document.getElementById('headcount').textContent,
+    equip:    equips.length?equips.join(', '):'—',
+    remarks:  document.getElementById('remarks').value.trim(),
+  };
+}
+function buildDoc(d){
+  return `<div>
+    <div class="doc-header"><h2>공 사 일 보</h2><p>${d.site} · 귀뚜라미범양냉방</p></div>
+    <table class="doc-table">
+      <tr><th>현장명</th><td>${d.site}</td></tr>
+      <tr><th>작성일자</th><td>${d.date||'—'}</td></tr>
+      <tr><th>작성자</th><td>${d.author||'—'}</td></tr>
+      <tr class="sec-hd"><td colspan="2">▸ 작업 현황</td></tr>
+      <tr><th>금일 작업</th><td style="white-space:pre-wrap">${d.today||'—'}</td></tr>
+      <tr><th>명일 예정</th><td style="white-space:pre-wrap">${d.tomorrow||'—'}</td></tr>
+      <tr class="sec-hd"><td colspan="2">▸ 투입 현황</td></tr>
+      <tr><th>기술인 투입</th><td>${d.count}명 (전체 근로자 중 출역 ${d.count}명)</td></tr>
+      <tr><th>사용 장비</th><td>${d.equip}</td></tr>
+      <tr class="sec-hd"><td colspan="2">▸ 기타</td></tr>
+      <tr><th>특이사항</th><td style="white-space:pre-wrap">${d.remarks||'—'}</td></tr>
+    </table>
+  </div>`;
+}
+
+window.openPreview=()=>{ document.getElementById('previewContent').innerHTML=buildDoc(collect()); document.getElementById('previewModal').classList.add('open'); };
+window.closePreview=()=>document.getElementById('previewModal').classList.remove('open');
+// ── Firebase 저장 ──
+window.saveReport = async ()=>{
+  const d=collect();
+  if(!d.date||d.date==='날짜를 선택하세요'){alert('날짜를 선택해 주세요.');return;}
+  const btn=document.querySelector('.btn-export');
+  const orig=btn.innerHTML; btn.innerHTML='저장 중...'; btn.disabled=true;
+  try{
+    const dk=selKey||( selDate?selDate.toISOString().slice(0,10):'unknown' );
+    await setDoc(doc(db,'daily_report_docs',dk),{
+      ...d, dateKey:dk, savedAt:serverTimestamp()
+    });
+    btn.innerHTML='✓ 저장 완료!'; btn.style.background='#2e7d32';
+    setTimeout(()=>{btn.innerHTML=orig;btn.style.background='';btn.disabled=false;},2200);
+  }catch(e){
+    alert('저장 실패: '+e.message);
+    btn.innerHTML=orig; btn.disabled=false;
+  }
+};
+
+// ── PDF 출력 (미리보기/상세에서 사용) ──
+window.savePDF=()=>{
+  const d=collect(), pa=document.getElementById('printArea');
+  pa.style.display='block'; pa.innerHTML=buildDoc(d);
+  const ot=document.title;
+  if(selDate){const y=selDate.getFullYear(),m=String(selDate.getMonth()+1).padStart(2,'0'),dd=String(selDate.getDate()).padStart(2,'0');document.title=`${y}${m}${dd}_공사일보`;}
+  setTimeout(()=>{ window.print(); pa.style.display='none'; document.title=ot; },150);
+};
+
+document.getElementById('datePopup').addEventListener('click',e=>{ if(e.target===document.getElementById('datePopup'))closePicker(); });
+document.getElementById('previewModal').addEventListener('click',e=>{ if(e.target===document.getElementById('previewModal'))closePreview(); });
+
+// 로그인 계정 → 작성자 자동 반영 (포털과 같은 origin의 localStorage 공유)
+(function(){
+  try{
+    var ln=localStorage.getItem('jh_login_full')||localStorage.getItem('jh_login_name')||'';
+    if(ln){
+      var sel=document.getElementById('author');
+      if(sel){
+        var exists=Array.from(sel.options).some(function(o){return o.value===ln;});
+        if(!exists){ var op=document.createElement('option'); op.value=ln; op.textContent=ln; sel.appendChild(op); }
+        sel.value=ln;
+      }
+    }
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
