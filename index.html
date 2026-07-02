@@ -555,15 +555,15 @@
                 <span class="m" id="pjt-cal-label">—</span>
                 <button class="pjt-cal-nav" onclick="pjtCalShift(1)">›</button>
               </div>
-              <div class="pjt-cal-legend">
+              <div class="pjt-cal-legend" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
                 <span class="li"><span class="ld" style="background:#1D5BA6"></span>반입</span>
                 <span class="li"><span class="ld" style="background:#2e7d32"></span>검수</span>
                 <span class="li"><span class="ld" style="background:#5e35b1"></span>교육</span>
                 <span class="li"><span class="ld" style="background:#c0392b"></span>휴무</span>
                 <span class="li"><span class="ld" style="background:#e67e22"></span>연차</span>
               </div>
-              <div class="pjt-cal-dow"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
-              <div class="pjt-cal-body" id="pjt-cal-body"><div style="grid-column:1/-1;text-align:center;color:#9AAABF;font-size:12px;padding:20px">불러오는 중...</div></div>
+              <div class="pjt-cal-dow" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px"><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">일</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">월</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">화</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">수</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">목</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">금</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">토</div></div>
+              <div class="pjt-cal-body" id="pjt-cal-body" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px"><div style="grid-column:1/-1;text-align:center;color:#9AAABF;font-size:12px;padding:20px">불러오는 중...</div></div>
             </div>
             <div class="pjt-cal-detail-box">
               <div style="font-size:14px; font-weight:700; color:#13335C; margin-bottom:14px;" id="pjt-cal-detail-title">📅 일정 · 업무지시</div>
@@ -1114,18 +1114,18 @@ function renderPjtCal(){
   const days=new Date(y,m+1,0).getDate();
   const now=new Date(); const todayKey=_pjtKey(now.getFullYear(),now.getMonth(),now.getDate());
   let html='';
-  for(let i=0;i<first;i++) html+='<div class="pjt-cal-cell empty"></div>';
+  for(let i=0;i<first;i++) html+='<div style="min-height:56px"></div>';
   for(let d=1;d<=days;d++){
     const dk=_pjtKey(y,m,d);
     const dow=new Date(y,m,d).getDay();
     const items=_pjtCalCache[dk]||[];
     const tags=[...new Set(items.map(it=>it.tag||'admin'))].slice(0,6);
-    const dots=tags.map(t=>'<span class="cd" style="background:'+((PJT_CAL_TAG[t]||PJT_CAL_TAG.admin).c)+'"></span>').join('');
-    const cls=['pjt-cal-cell'];
-    if(dk===todayKey) cls.push('today');
-    if(dk===_pjtCalSel) cls.push('sel');
-    if(dow===0) cls.push('sun'); if(dow===6) cls.push('sat');
-    html+='<div class="'+cls.join(' ')+'" onclick="pjtCalSelectDay(\''+dk+'\')"><div class="dnum">'+d+'</div><div class="dots">'+dots+'</div></div>';
+    const dots=tags.map(t=>'<span style="width:5px;height:5px;border-radius:50%;display:inline-block;background:'+((PJT_CAL_TAG[t]||PJT_CAL_TAG.admin).c)+'"></span>').join('');
+    let _cst='min-height:56px;border:1px solid #EEF2F7;border-radius:8px;padding:5px 6px;cursor:pointer;box-sizing:border-box;';
+    if(dk===todayKey) _cst+='background:#EAF2FC;border-color:#1D5BA6;';
+    if(dk===_pjtCalSel) _cst+='background:#1D5BA6;border-color:#1D5BA6;';
+    const _nc = dk===_pjtCalSel?'#fff':(dow===0?'#c0392b':(dow===6?'#1D5BA6':'#1A2540'));
+    html+='<div style="'+_cst+'" onclick="pjtCalSelectDay(\''+dk+'\')"><div style="font-size:12px;font-weight:600;color:'+_nc+'">'+d+'</div><div style="display:flex;gap:2px;flex-wrap:wrap;margin-top:3px">'+dots+'</div></div>';
   }
   body.innerHTML=html;
 }
