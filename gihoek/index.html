@@ -106,9 +106,9 @@
   .monthbar .m{font-size:15px; font-weight:800}
   .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px}
   .catpill{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:9px; white-space:nowrap}
-  .emodal{position:fixed; inset:0; background:rgba(15,25,40,.5); z-index:85; display:none; align-items:flex-end; justify-content:center}
+  .emodal{position:fixed; inset:0; background:rgba(15,25,40,.5); z-index:85; display:none; align-items:center; justify-content:center; padding:20px; box-sizing:border-box}
   .emodal.on{display:flex}
-  .esheet{background:#fff; width:100%; max-width:900px; border-radius:16px 16px 0 0; padding:18px 18px 26px; max-height:90vh; overflow:auto}
+  .esheet{background:#fff; width:100%; max-width:900px; border-radius:16px; padding:18px 18px 26px; max-height:88vh; overflow:auto}
   .partybox{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0}
   @media(max-width:560px){ .partybox{grid-template-columns:1fr} }
   .party{border:1px solid var(--line); border-radius:10px; padding:11px 13px; background:#fafbfd}
@@ -1215,11 +1215,12 @@ const ACC_CATS=[
   {k:'임대료', bg:'#f5f0e8', fg:'#6d4c00'},{k:'세금', bg:'#ffeaea', fg:'#7f1d1d'},
   {k:'급여', bg:'#eceff1', fg:'#263238'},{k:'용역비', bg:'#e0f7fa', fg:'#006064'},
 ];
-const ACC_PAYS=['법인카드','개인카드','현금','계좌이체'];
+const ACC_PAYS=['법인카드','개인카드','현금','계좌이체','외상거래'];
 const DIRECT_CATS=['급여','용역비','공구·자재비'];
 const accIsDirect=c=>DIRECT_CATS.includes(c);
 const accCatStyle=k=>{ const c=ACC_CATS.find(c=>c.k===k)||ACC_CATS[5]; return `background:${c.bg};color:${c.fg}`; };
 let curAccMonth=new Date().toISOString().slice(0,7), accSub='pnl';
+let accLSort='date_asc', accLVendor='', accLCat='';
 // 지급예정서의 회계 계상월: 저장된 acctMonth 우선, 없으면 지급일→발행일→기준월 순(하위호환)
 const acctMonthOf=s=>s.acctMonth || (s.payDate||s.issueDate||s.baseMonth||'').slice(0,7);
 // 완결(지급완료)된 지급예정서를 비용장부 항목 형태로 변환
@@ -1275,6 +1276,17 @@ function renderAccPnl(){
 
 function renderAccLedger(){
   const list=accMonthExp();
+  const _vendors=[...new Set(list.map(e=>e.vendor).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ko'));
+  let filtered=list.slice();
+  if(accLCat) filtered=filtered.filter(e=>e.cat===accLCat);
+  if(accLVendor) filtered=filtered.filter(e=>(e.vendor||'')===accLVendor);
+  filtered.sort((a,b)=> accLSort==='date_desc' ? (b.date||'').localeCompare(a.date||'') : (a.date||'').localeCompare(b.date||''));
+  const _filterBar='<div style="display:flex;flex-wrap:wrap;gap:8px;margin:2px 2px 12px">'
+    +'<select class="sel" style="width:auto;min-width:130px;font-size:12px;padding:6px 8px" onchange="accSetFilter(\'sort\',this.value)"><option value="date_asc"'+(accLSort==='date_asc'?' selected':'')+'>날짜 ↑ 오름차순</option><option value="date_desc"'+(accLSort==='date_desc'?' selected':'')+'>날짜 ↓ 내림차순</option></select>'
+    +'<select class="sel" style="width:auto;min-width:110px;font-size:12px;padding:6px 8px" onchange="accSetFilter(\'cat\',this.value)"><option value="">전체 항목</option>'+ACC_CATS.map(c=>'<option value="'+c.k+'"'+(accLCat===c.k?' selected':'')+'>'+c.k+'</option>').join('')+'</select>'
+    +'<select class="sel" style="width:auto;min-width:130px;font-size:12px;padding:6px 8px" onchange="accSetFilter(\'vendor\',this.value)"><option value="">전체 거래처</option>'+_vendors.map(v=>'<option value="'+v.replace(/"/g,'&quot;')+'"'+(accLVendor===v?' selected':'')+'>'+v+'</option>').join('')+'</select>'
+    +((accLCat||accLVendor||accLSort!=='date_asc')?'<button class="btn gray sm" onclick="accResetFilter()">필터 초기화</button>':'')
+    +'</div>';
   const tot=list.reduce((a,e)=>a+e.total,0), sup=list.reduce((a,e)=>a+e.supply,0), vat=list.reduce((a,e)=>a+e.vat,0);
   const byCat={}; ACC_CATS.forEach(c=>byCat[c.k]={cnt:0,sup:0,vat:0,total:0});
   list.forEach(e=>{ const b=byCat[e.cat]||byCat['기타']; b.cnt++; b.sup+=e.supply; b.vat+=e.vat; b.total+=e.total; });
@@ -1289,14 +1301,17 @@ function renderAccLedger(){
         <tbody>${ACC_CATS.filter(c=>byCat[c.k].cnt>0).map(c=>{ const b=byCat[c.k]; return `<tr><td class="l"><span class="catpill" style="${accCatStyle(c.k)}">${c.k}</span></td><td class="small ${accIsDirect(c.k)?'':'muted'}">${accIsDirect(c.k)?'직접비':'간접비'}</td><td>${b.cnt}</td><td>${won(b.sup)}</td><td>${won(b.vat)}</td><td style="font-weight:700;color:var(--money)">${won(b.total)}</td></tr>`; }).join('')||'<tr><td colspan="6" class="center muted" style="padding:16px">이 달 비용이 없습니다.</td></tr>'}</tbody>
         ${list.length?`<tfoot><tr style="background:#f6f9fd;font-weight:700"><td class="l">합계</td><td></td><td>${list.length}</td><td>${won(sup)}</td><td>${won(vat)}</td><td style="color:var(--money)">${won(tot)}</td></tr></tfoot>`:''}</table></div></div>
     <div class="card" style="padding:12px"><div class="sec-h"><h2>상세 내역</h2></div>
-      ${list.length? list.map(e=>`<div class="litem" style="cursor:pointer" onclick="${e.fromSettlement?`openSettleFromLedger('${e.id.replace('settle_','')}')`:(e.salaryDist?`salDelConfirm('${e.id}')`:`accOpenForm('${e.id}')`)}">
+      ${_filterBar}
+      ${filtered.length? filtered.map(e=>`<div class="litem" style="cursor:pointer" onclick="${e.fromSettlement?`openSettleFromLedger('${e.id.replace('settle_','')}')`:(e.salaryDist?`salDelConfirm('${e.id}')`:`accOpenForm('${e.id}')`)}">
         <div class="d" style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700"><span class="catpill" style="${accCatStyle(e.cat)}">${e.cat}</span> &nbsp;${e.vendor||'-'}${e.fromSettlement?' <span style="font-size:10px;font-weight:600;color:#1D5BA6;background:#EEF4FC;padding:1px 7px;border-radius:8px;margin-left:4px;">🔗 정산 연동</span>':''}${e.salaryDist?' <span style="font-size:10px;font-weight:600;color:#6d4c00;background:#f5f0e8;padding:1px 7px;border-radius:8px;margin-left:4px;">👥 급여배분</span>':''}</div>
           <div class="small muted" style="margin-top:2px">${e.date} · ${e.pay}${e.pjt?' · '+(projects.find(p=>p.id===e.pjt)?.code||''):' · 공통'}${e.note?' · '+e.note:''}</div></div>
         <div class="amt" style="font-weight:800;color:var(--money);white-space:nowrap;text-align:right">${won(e.total)}<div class="small muted" style="font-weight:400">VAT ${won(e.vat)}</div></div></div>`).join('')
-        :'<div class="empty">이 달 비용이 없습니다. “비용 입력”으로 추가하세요.</div>'}</div>
+        :'<div class="empty">'+((accLCat||accLVendor)?'조건에 맞는 내역이 없습니다. (필터 적용 중)':'이 달 비용이 없습니다. “비용 입력”으로 추가하세요.')+'</div>'}</div>
     <div class="note-amber">실제 운영: 영수증·카드내역·계좌 거래내역·주문내역 파일을 춘식이에게 주시면 직접비/간접비로 분류해 이 장부에 채워 넣습니다. 앱에서는 직접 입력·수정·조회를 합니다. 🔗 정산 연동 항목(지급완료된 지급예정서)은 자동 반영되며, 직접 수정할 수 없습니다 — 정산 화면에서 지급완료를 취소하면 제외됩니다.</div>`;
 }
 window.openSettleFromLedger=function(id){ tab('settle'); openSettle(id); };
+window.accSetFilter=function(k,v){ if(k==='sort')accLSort=v; else if(k==='vendor')accLVendor=v; else if(k==='cat')accLCat=v; renderAccLedger(); };
+window.accResetFilter=function(){ accLSort='date_asc'; accLVendor=''; accLCat=''; renderAccLedger(); };
 
 window.accOpenForm=function(id){ const e=id?expenses.find(x=>x.id===id):null;
   $('em-body').innerHTML=`<div class="sec-h"><h2>${e?'비용 수정':'비용 입력'}</h2><button class="btn gray sm" onclick="accCloseForm()">닫기</button></div>
