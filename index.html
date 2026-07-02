@@ -322,7 +322,7 @@
     .home-inner{max-width:960px; margin:0 auto; padding:34px 40px 60px}
     .home-dash{display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:stretch; margin-top:24px;}
     .pjt-home-grid{ display:grid; grid-template-columns:1fr 360px; gap:20px; align-items:start; }
-    .pjt-cards-row{ display:grid; grid-template-columns:minmax(0, 760px); gap:14px; }
+    .pjt-cards-row{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; }
     .pjt-timeline-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start; }
     .pjt-cal-grid{ display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:18px; align-items:start; }
     .pjt-cal-box,.pjt-cal-detail-box{ background:#fff; border:1px solid #DDE4EF; border-radius:14px; padding:18px 20px; }
@@ -535,7 +535,7 @@
 
     <!-- PJT 홈 뷰 -->
     <section id="view-pjt-home" style="display:none; flex:1; overflow-y:auto; padding:24px 16px; box-sizing:border-box;">
-      <div style="max-width:1600px; margin:0 auto;">
+      <div style="width:100%; margin:0;">
         <!-- 헤더 -->
         <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px;">
           <button class="back" onclick="showView('home')" style="font-size:13px;">← 포털 홈</button>
@@ -767,12 +767,12 @@ import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp, collecti
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI",
-  authDomain: "portal-test-6e0ff.firebaseapp.com",
-  projectId: "portal-test-6e0ff",
-  storageBucket: "portal-test-6e0ff.firebasestorage.app",
-  messagingSenderId: "752763010816",
-  appId: "1:752763010816:web:4a0c7062a2f1a4e9a03de5"
+  apiKey: "AIzaSyCyQxBJ_ftfM0ImBXubmqD5gfzFR54iPmE",
+  authDomain: "p4ph2-fab-506a7.firebaseapp.com",
+  projectId: "p4ph2-fab-506a7",
+  storageBucket: "p4ph2-fab-506a7.firebasestorage.app",
+  messagingSenderId: "36946317914",
+  appId: "1:36946317914:web:c6ad5f3a1b98130c99fe63"
 };
 const app=initializeApp(firebaseConfig);
 const auth=getAuth(app);
@@ -1114,18 +1114,18 @@ function renderPjtCal(){
   const days=new Date(y,m+1,0).getDate();
   const now=new Date(); const todayKey=_pjtKey(now.getFullYear(),now.getMonth(),now.getDate());
   let html='';
-  for(let i=0;i<first;i++) html+='<div style="min-height:56px"></div>';
+  for(let i=0;i<first;i++) html+='<div style="min-height:76px"></div>';
   for(let d=1;d<=days;d++){
     const dk=_pjtKey(y,m,d);
     const dow=new Date(y,m,d).getDay();
     const items=_pjtCalCache[dk]||[];
     const tags=[...new Set(items.map(it=>it.tag||'admin'))].slice(0,6);
-    const dots=tags.map(t=>'<span style="width:5px;height:5px;border-radius:50%;display:inline-block;background:'+((PJT_CAL_TAG[t]||PJT_CAL_TAG.admin).c)+'"></span>').join('');
-    let _cst='min-height:56px;border:1px solid #EEF2F7;border-radius:8px;padding:5px 6px;cursor:pointer;box-sizing:border-box;';
+    const dots=tags.map(t=>'<span style="width:6px;height:6px;border-radius:50%;display:inline-block;background:'+((PJT_CAL_TAG[t]||PJT_CAL_TAG.admin).c)+'"></span>').join('');
+    let _cst='min-height:76px;border:1px solid #EEF2F7;border-radius:10px;padding:8px 9px;cursor:pointer;box-sizing:border-box;';
     if(dk===todayKey) _cst+='background:#EAF2FC;border-color:#1D5BA6;';
     if(dk===_pjtCalSel) _cst+='background:#1D5BA6;border-color:#1D5BA6;';
     const _nc = dk===_pjtCalSel?'#fff':(dow===0?'#c0392b':(dow===6?'#1D5BA6':'#1A2540'));
-    html+='<div style="'+_cst+'" onclick="pjtCalSelectDay(\''+dk+'\')"><div style="font-size:12px;font-weight:600;color:'+_nc+'">'+d+'</div><div style="display:flex;gap:2px;flex-wrap:wrap;margin-top:3px">'+dots+'</div></div>';
+    html+='<div style="'+_cst+'" onclick="pjtCalSelectDay(\''+dk+'\')"><div style="font-size:15px;font-weight:600;color:'+_nc+'">'+d+'</div><div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:5px">'+dots+'</div></div>';
   }
   body.innerHTML=html;
 }
