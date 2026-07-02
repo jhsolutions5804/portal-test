@@ -2431,6 +2431,21 @@ window.toggleWorker=function(workerId,dateKey){
   }
 };
 
+// 전체 출역 체크 / 전체 해제 (현재 전원 체크면 해제, 아니면 전체 체크)
+window.toggleAllWorkers=function(dateKey){
+  const _ws=(typeof getWorkers==='function')?getWorkers():WORKERS;
+  if(!_ws.length) return;
+  const checks=window._fbGetWorkerChecks?window._fbGetWorkerChecks(dateKey):[];
+  const allChecked=_ws.every(w=>checks.includes(w.id));
+  const target=!allChecked;
+  if(window._fbSetAllWorkers){
+    window._fbSetAllWorkers(dateKey,target);
+    // 낙관적 UI 즉시 반영
+    window._workerCache[dateKey]=target?_ws.map(w=>w.id):[];
+    if(window._renderWorkerUI) window._renderWorkerUI();
+  }
+};
+
 // ===== 출역 체크 Firebase 연동 =====
 // Firestore: worker_attendance/{dateKey} 문서, 구조: { checks: ['w1','w3',...] }
 let _workerUnsub = null;
@@ -2476,6 +2491,23 @@ window._fbToggleWorker = async function(workerId, dateKey) {
 window._fbGetWorkerChecks = function(dateKey) {
   if(window._workerCache[dateKey] !== undefined) return window._workerCache[dateKey];
   try { return JSON.parse(localStorage.getItem('ph4ls_worker_ck_'+dateKey)||'[]'); } catch(e) { return []; }
+};
+
+// 일괄 출역 저장 (전체 체크 / 전체 해제) — 한 번의 쓰기로 처리
+window._fbSetAllWorkers = async function(dateKey, checkAll) {
+  const _ws=(typeof getWorkers==='function')?getWorkers():WORKERS;
+  const checks = checkAll ? _ws.map(w=>w.id) : [];
+  try {
+    const { doc, setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const ref = doc(window._fbDb, 'worker_attendance', dateKey);
+    await setDoc(ref, { checks, updatedAt: serverTimestamp() });
+    window._workerCache[dateKey] = checks;
+  } catch(e) {
+    console.error('출역 일괄 저장 오류:', e);
+    localStorage.setItem('ph4ls_worker_ck_'+dateKey, JSON.stringify(checks));
+    window._workerCache[dateKey] = checks;
+    if(window._renderWorkerUI) window._renderWorkerUI();
+  }
 };
 
 // ===== 공수(man-day) Firebase 연동 =====
@@ -2677,7 +2709,9 @@ function renderAttend(){
     const checks=window._fbGetWorkerChecks?window._fbGetWorkerChecks(dateKey):[];
     document.getElementById('att-worker-count').textContent=
       `출역 ${checks.length}명 / 전체 ${WORKERS.length}명`;
-    document.getElementById('att-worker-list').innerHTML=WORKERS.map(w=>{
+    const _allChecked=WORKERS.length>0 && WORKERS.every(w=>checks.includes(w.id));
+    const _bulkBtn='<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button onclick="toggleAllWorkers(\''+dateKey+'\')" style="font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;border:1px solid '+(_allChecked?'#c0392b':'#1D5BA6')+';background:'+(_allChecked?'#fdecea':'#e8f0fb')+';color:'+(_allChecked?'#c0392b':'#1D5BA6')+';cursor:pointer;white-space:nowrap">'+(_allChecked?'✕ 전체 출역 해제':'✓ 전체 출역 체크')+'</button></div>';
+    document.getElementById('att-worker-list').innerHTML=_bulkBtn+WORKERS.map(w=>{
       const checked=checks.includes(w.id);
       const md=getMandayMap(dateKey)[w.id]||0;
       return`<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:#f5f5f7;border-radius:10px;margin-bottom:6px;cursor:pointer;-webkit-user-select:none;user-select:none"
