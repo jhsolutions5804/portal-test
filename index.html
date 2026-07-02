@@ -325,7 +325,28 @@
     .pjt-cards-row{ display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 340px)); gap:14px; justify-content:start; }
     .pjt-timeline-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start; }
     .pjt-cal-grid{ display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:18px; align-items:start; }
-    .pjt-cal-cell{ min-height:56px; }
+    .pjt-cal-box,.pjt-cal-detail-box{ background:#fff; border:1px solid #DDE4EF; border-radius:14px; padding:18px 20px; }
+    .pjt-cal-detail-box{ min-height:300px; }
+    .pjt-cal-hd{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+    .pjt-cal-hd .m{ font-size:16px; font-weight:800; color:#13335C; }
+    .pjt-cal-nav{ background:#F0F4F9; border:1px solid #DDE4EF; border-radius:8px; width:32px; height:32px; cursor:pointer; color:#5C6F8A; font-size:16px; font-family:inherit; }
+    .pjt-cal-legend{ display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+    .pjt-cal-legend .li{ display:flex; align-items:center; gap:5px; font-size:11px; color:#86868b; }
+    .pjt-cal-legend .ld{ width:8px; height:8px; border-radius:2px; }
+    .pjt-cal-dow{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:4px; }
+    .pjt-cal-dow div{ text-align:center; font-size:11px; font-weight:600; color:#9AAABF; padding:2px 0; }
+    .pjt-cal-body{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+    .pjt-cal-cell{ min-height:56px; border:1px solid #EEF2F7; border-radius:8px; padding:5px 6px; cursor:pointer; transition:.12s; }
+    .pjt-cal-cell:hover{ border-color:#1D5BA6; background:#F7FAFF; }
+    .pjt-cal-cell.empty{ border:none; cursor:default; background:transparent; }
+    .pjt-cal-cell.today{ background:#EAF2FC; border-color:#1D5BA6; }
+    .pjt-cal-cell.sel{ background:#1D5BA6; border-color:#1D5BA6; }
+    .pjt-cal-cell.sel .dnum{ color:#fff; }
+    .pjt-cal-cell.sun .dnum{ color:#c0392b; }
+    .pjt-cal-cell.sat .dnum{ color:#1D5BA6; }
+    .pjt-cal-cell .dnum{ font-size:12px; font-weight:600; color:#1A2540; }
+    .pjt-cal-cell .dots{ display:flex; gap:2px; flex-wrap:wrap; margin-top:3px; }
+    .pjt-cal-cell .cd{ width:5px; height:5px; border-radius:50%; }
     .hello{padding:0 0 6px}
     .hello h1{font-size:26px}
     .hello p{font-size:13.5px}
