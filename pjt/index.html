@@ -3543,8 +3543,18 @@ window.generateProgressPPT = async function() {
       s.addShape(pres.shapes.ROUNDED_RECTANGLE,{x:0.55,y:0.55,w:12.23,h:6.4,fill:{color:C.white},line:{color:'E5E9F0',pt:1},rectRadius:0.10,shadow:mkShadow()});
 
       const LM=1.0;
-      s.addText(`${z.name} 공정 진행율`,{x:LM,y:0.85,w:8,h:0.5,fontSize:22,fontFace:'Calibri',color:C.text,bold:true,valign:'middle'});
-      s.addText(`전체 물량 ${z.total}대 기준   ·   기준일: ${dateStr}`,{x:LM,y:1.45,w:9,h:0.35,fontSize:12,fontFace:'Calibri',color:C.sub,valign:'middle'});
+      s.addText(`${z.name} 공정 진행율`,{x:LM,y:0.85,w:7.5,h:0.5,fontSize:22,fontFace:'Calibri',color:C.text,bold:true,valign:'middle'});
+      s.addText(`전체 물량 ${z.total}대 기준   ·   기준일: ${dateStr}`,{x:LM,y:1.45,w:7.5,h:0.35,fontSize:12,fontFace:'Calibri',color:C.sub,valign:'middle'});
+      // 섹터 전체 공정율 (2페이지 카드와 동일 기준: z.pct)
+      const secPct=parseFloat(z.pct)||0;
+      const secPrev=prev.pct!==undefined?(parseFloat(prev.pct)||0):0;
+      const secDiff=(secPct-secPrev).toFixed(1);
+      s.addText('섹터 전체 공정율',{x:9.3,y:0.80,w:3.1,h:0.3,fontSize:12,fontFace:'Calibri',color:C.sub,bold:true,align:'right',valign:'middle'});
+      s.addText(`${z.pct}%`,{x:9.3,y:1.06,w:3.1,h:0.55,fontSize:30,fontFace:'Calibri',color:secPct>0?C.blue:C.gray3,bold:true,align:'right',valign:'middle'});
+      if(parseFloat(secDiff)!==0){
+        const sd=parseFloat(secDiff);
+        s.addText(`전일 대비 ${sd>0?'▲':'▼'} ${Math.abs(sd)}%`,{x:9.3,y:1.63,w:3.1,h:0.28,fontSize:11,fontFace:'Calibri',color:sd>0?C.upGreen:C.downRed,bold:true,align:'right',valign:'middle'});
+      }
 
       // 컬럼 정의
       const cols=[['구분',1.55],['전일',1.05],['금일',1.05],['누계',1.10],['증감',1.10],['공정율',1.35],['진행',3.60]];
