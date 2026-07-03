@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JH Solutions · 홈 (초안)</title>
+<style>
+  :root{
+    --blue:#1D5BA6; --blue-d:#16487f;
+    --ink:#1a2330; --sub:#6b7787; --line:#e4eaf2; --bg:#eef2f7; --card:#fff;
+    --ok:#1b8a5a; --amber:#e08a1e; --violet:#7C3AED;
+    /* 섹션별 파스텔/포인트 */
+    --plan-bg:#eaf2fc; --plan-ic:#1D5BA6;
+    --hr-bg:#fdeede;   --hr-ic:#e08a1e;
+    --edoc-bg:#f0edfb; --edoc-ic:#7C3AED;
+    --pjt-bg:#e7f5ee;  --pjt-ic:#1b8a5a;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{
+    font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.5;
+    min-height:100vh;
+  }
+  .phone{ width:100%; max-width:480px; margin:0 auto; background:var(--bg); min-height:100vh; }
+  .scr{padding:0 0 26px}
+
+  /* 상단바 */
+  .top{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 22px 4px;
+  }
+  .wordmark{display:flex; align-items:center; gap:8px}
+  .wordmark .dot{width:11px; height:11px; border-radius:50%; background:var(--blue)}
+  .wordmark b{font-size:16px; font-weight:800; letter-spacing:-.2px; color:var(--blue-d)}
+  .wordmark span{font-size:11px; color:var(--sub); font-weight:600}
+  .avatar{
+    width:40px; height:40px; border-radius:50%; background:var(--blue); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px;
+    box-shadow:0 4px 10px rgba(29,91,166,.3);
+  }
+
+  /* 인사 영역 */
+  .hello{padding:18px 24px 22px}
+  .hello .hi{font-size:14px; color:var(--sub); font-weight:600}
+  .hello .name{font-size:25px; font-weight:800; letter-spacing:-.5px; margin-top:2px}
+  .hello .name em{color:var(--blue); font-style:normal}
+  .hello .date{font-size:12.5px; color:var(--sub); margin-top:7px; font-weight:600}
+
+  /* 섹션 라벨 */
+  .lbl{font-size:12px; font-weight:800; color:#9aa8bc; letter-spacing:.5px;
+    padding:0 24px 12px; text-transform:uppercase}
+
+  /* 메인 타일 2열 그리드 */
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; padding:0 20px}
+  .tile{
+    background:var(--card); border-radius:22px; padding:20px 18px 18px;
+    border:1px solid var(--line); cursor:pointer; position:relative;
+    transition:transform .12s ease, box-shadow .12s ease;
+    display:flex; flex-direction:column; gap:14px; min-height:150px;
+    box-shadow:0 2px 8px rgba(30,50,80,.05);
+  }
+  .tile:active{transform:scale(.96); box-shadow:0 1px 4px rgba(30,50,80,.08)}
+  .tile .ic{
+    width:60px; height:60px; border-radius:18px; display:flex;
+    align-items:center; justify-content:center; font-size:31px;
+  }
+  .tile .nm{font-size:18px; font-weight:800; letter-spacing:-.3px}
+  .tile .ds{font-size:12px; color:var(--sub); font-weight:500; line-height:1.45; margin-top:-6px}
+  .tile .go{position:absolute; top:20px; right:18px; font-size:17px; color:#c3cedd}
+
+  .tile.plan .ic{background:var(--plan-bg); color:var(--plan-ic)}
+  .tile.hr   .ic{background:var(--hr-bg);   color:var(--hr-ic)}
+  .tile.edoc .ic{background:var(--edoc-bg); color:var(--edoc-ic)}
+  .tile.pjt  .ic{background:var(--pjt-bg);  color:var(--pjt-ic)}
+
+  /* 보조 메뉴 (조직도 / 관리) */
+  .sub-row{display:grid; grid-template-columns:1fr 1fr; gap:14px; padding:16px 20px 0}
+  .sub{
+    background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding:15px 16px; display:flex; align-items:center; gap:11px; cursor:pointer;
+    transition:transform .12s ease; box-shadow:0 2px 8px rgba(30,50,80,.04);
+  }
+  .sub:active{transform:scale(.96)}
+  .sub .si{width:38px; height:38px; border-radius:11px; background:#eef2f7;
+    display:flex; align-items:center; justify-content:center; font-size:19px}
+  .sub .st{font-size:14px; font-weight:700}
+  .sub .sx{font-size:11px; color:var(--sub); font-weight:600; margin-top:1px}
+
+  /* 로그아웃 */
+  .out{text-align:center; padding:26px 0 6px}
+  .out button{
+    background:none; border:none; color:var(--sub); font-size:13px; font-weight:700;
+    cursor:pointer; font-family:inherit; padding:8px 18px; border-radius:10px;
+  }
+  .out button:active{background:#e3e9f1}
+
+  .hint{
+    margin:20px 20px 0; padding:12px 14px; background:#fff7e6; border:1px solid #f5e2b8;
+    border-radius:12px; font-size:11.5px; color:#8a6d1e; line-height:1.5; font-weight:600;
+  }
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="scr">
+
+      <div class="top">
+        <div class="wordmark">
+          <span class="dot"></span>
+          <b>JH Solutions</b>
+        </div>
+        <div class="avatar">김</div>
+      </div>
+
+      <div class="hello">
+        <div class="hi">안녕하세요 👋</div>
+        <div class="name"><em>김종화</em> 부사장님</div>
+        <div class="date">2026년 7월 4일 토요일</div>
+      </div>
+
+      <div class="lbl">업무 메뉴</div>
+      <div class="grid">
+        <div class="tile plan">
+          <span class="go">›</span>
+          <div class="ic">🧭</div>
+          <div>
+            <div class="nm">기획</div>
+          </div>
+          <div class="ds">영업·정산·회계<br>견적 · 정산서 · 손익</div>
+        </div>
+
+        <div class="tile hr">
+          <span class="go">›</span>
+          <div class="ic">👥</div>
+          <div>
+            <div class="nm">인사</div>
+          </div>
+          <div class="ds">급여·계약·근태<br>연차 관리</div>
+        </div>
+
+        <div class="tile edoc">
+          <span class="go">›</span>
+          <div class="ic">📋</div>
+          <div>
+            <div class="nm">전자결재</div>
+          </div>
+          <div class="ds">업무일지·연차<br>구매품의 · 지출결의</div>
+        </div>
+
+        <div class="tile pjt">
+          <span class="go">›</span>
+          <div class="ic">🏗️</div>
+          <div>
+            <div class="nm">PJT 관리</div>
+          </div>
+          <div class="ds">진행 중인<br>프로젝트 현장 관리</div>
+        </div>
+      </div>
+
+      <div class="lbl" style="padding-top:26px">바로가기</div>
+      <div class="sub-row">
+        <div class="sub">
+          <div class="si">🏢</div>
+          <div>
+            <div class="st">조직도</div>
+            <div class="sx">임직원 현황</div>
+          </div>
+        </div>
+        <div class="sub">
+          <div class="si">⚙️</div>
+          <div>
+            <div class="st">Portal 관리</div>
+            <div class="sx">관리자 전용</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="out">
+        <button>로그아웃</button>
+      </div>
+
+      <div class="hint">
+        💡 초안 미리보기입니다. 모든 메뉴를 홈에 직접 배치해서 우측 하단 반투명 더보기 메뉴가 필요 없는 구조입니다. 타일 크기·색·문구·배치 등 원하시는 대로 조정 가능합니다.
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
