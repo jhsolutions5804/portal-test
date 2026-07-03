@@ -3569,14 +3569,15 @@ window.generateProgressPPT = async function() {
       const rowsDef=[
         {label:'반입',     cum:z.반입,     prev:prev.반입,     color:C.barBlue},
         {label:'입고검사', cum:z.입고검사, prev:prev.입고검사, color:C.barLblue},
-        {label:'설치',     cum:z.instDone, prev:prev.instDone, color:C.barGreen},
+        {label:'설치',     cum:z.instDone, prev:prev.instDone, color:C.barGreen, rate:parseFloat(z.instBarPct)||0},
         {label:'시공검측', cum:z.시공검측, prev:prev.시공검측, color:C.barPurple},
       ];
       let ry=hb;
       rowsDef.forEach((r,ri)=>{
         const cy=ry;
         const cum=r.cum||0, pv=r.prev||0, today=cum-pv;
-        const rate=z.total>0?(cum/z.total*100):0;
+        // 설치는 2페이지와 동일하게 항목 부분진행률(instBarPct) 사용, 그 외 단계는 누계/total
+        const rate=(r.rate!==undefined)?r.rate:(z.total>0?(cum/z.total*100):0);
         s.addText(r.label,{x:cx(0),y:cy,w:cols[0][1],h:bodyH,fontSize:14,fontFace:'Calibri',color:C.text,bold:true,align:'center',valign:'middle'});
         s.addText(String(pv),{x:cx(1),y:cy,w:cols[1][1],h:bodyH,fontSize:13,fontFace:'Calibri',color:C.text,align:'center',valign:'middle'});
         s.addText(String(today),{x:cx(2),y:cy,w:cols[2][1],h:bodyH,fontSize:13,fontFace:'Calibri',color:C.text,align:'center',valign:'middle'});
