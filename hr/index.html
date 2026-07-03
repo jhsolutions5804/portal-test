@@ -1558,9 +1558,17 @@ function calcIncomeTax(taxable) {
 }
 
 function psCalcAll() {
-  const sal = ps.annualData
+  const sal0 = ps.annualData
     ? psCalcPay(ps.annualData.hourly, ps.workerData?.empType)
     : { basic:0, fixedOt:0, fixedNight:0, weekly:0, total:0 };
+  // 지급내역 직접 수정 오버라이드 (undefined면 연봉계약서 자동값)
+  const _pBasic      = ps._basic      !== undefined ? Number(ps._basic)      : sal0.basic;
+  const _pFixedOt    = ps._fixedOt    !== undefined ? Number(ps._fixedOt)    : sal0.fixedOt;
+  const _pFixedNight = ps._fixedNight !== undefined ? Number(ps._fixedNight) : sal0.fixedNight;
+  const _pWeekly     = ps._weekly     !== undefined ? Number(ps._weekly)     : sal0.weekly;
+  const sal = { ...sal0, basic:_pBasic, fixedOt:_pFixedOt, fixedNight:_pFixedNight, weekly:_pWeekly,
+                total: _pBasic + _pFixedOt + _pFixedNight + _pWeekly };
+  if (sal0.annual !== undefined) sal.annual = sal.total * 12;
 
   const bonus       = Number(ps.bonus||0);
   const specialBonus= Number(ps.specialBonus||0);
@@ -1619,6 +1627,7 @@ window.renderPayslipPC = () => {
   ps.workerData = null; ps.annualData = null;
   ps.bonus=''; ps.specialBonus=''; ps.extraPay=''; ps.dormitory=''; ps.bankAccount='';
   ps._pension=undefined; ps._health=undefined; ps._ltcare=undefined; ps._employ=undefined; ps._incomeTax=undefined; ps._localTax=undefined;
+  ps._basic=undefined; ps._fixedOt=undefined; ps._fixedNight=undefined; ps._weekly=undefined;
 
   // 최근 13개월
   const months = [];
@@ -1752,8 +1761,11 @@ window.renderPayslipPCRight = () => {
         <div style="font-size:12px;font-weight:700;color:#1A2540;margin-bottom:10px;">💳 지급 내역</div>
         <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;">
           ${[['기본급','basic'],['고정연장','fixedOt'],['고정야간','fixedNight'],['주휴수당','weekly']]
-            .map(([l,k])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #F0F4F9;">
-              <span style="color:#5C6F8A;">${l}</span><span style="font-weight:600;">${won(c.sal[k])}</span></div>`).join('')}
+            .map(([l,k])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #F0F4F9;">
+              <span style="color:#5C6F8A;min-width:64px;">${l}</span>
+              <input type="number" value="${c.sal[k]}"
+                onchange="ps['_${k}']=this.value===''?undefined:Number(this.value);renderPayslipPCRight()"
+                style="width:120px;text-align:right;padding:3px 8px;border:1px solid #DDE3EE;border-radius:6px;font-size:12px;font-weight:600;color:#1A2540;box-sizing:border-box;"></div>`).join('')}
           <div style="margin-top:4px;">
             <div style="color:#5C6F8A;margin-bottom:3px;">상여금(초과근로)</div>
             ${inp('ps-bonus', ps.bonus)}
@@ -1894,6 +1906,7 @@ window.renderPayslipWrite = async () => {
   ps.workerData = null; ps.annualData = null;
   ps.bonus=''; ps.specialBonus=''; ps.extraPay=''; ps.dormitory=''; ps.bankAccount='';
   ps._pension=undefined; ps._health=undefined; ps._ltcare=undefined; ps._employ=undefined; ps._incomeTax=undefined; ps._localTax=undefined;
+  ps._basic=undefined; ps._fixedOt=undefined; ps._fixedNight=undefined; ps._weekly=undefined;
 
   const workers = await getWorkersList();
   window._psWorkers = workers;
@@ -2379,6 +2392,10 @@ window.psViewDetail = (d, wid) => {
   ps._employ    = d.employ||0;
   ps._incomeTax = d.incomeTax||0;
   ps._localTax  = d.localTax||0;
+  ps._basic      = d.basic||0;
+  ps._fixedOt    = d.fixedOt||0;
+  ps._fixedNight = d.fixedNight||0;
+  ps._weekly     = d.weekly||0;
   psPreview();
   Object.assign(ps, origPs);
 };
@@ -2474,6 +2491,10 @@ window.psViewDetail = (d, wid) => {
   ps._employ    = d.employ||0;
   ps._incomeTax = d.incomeTax||0;
   ps._localTax  = d.localTax||0;
+  ps._basic      = d.basic||0;
+  ps._fixedOt    = d.fixedOt||0;
+  ps._fixedNight = d.fixedNight||0;
+  ps._weekly     = d.weekly||0;
   psPreview();
   Object.assign(ps, origPs);
 };
