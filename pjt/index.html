@@ -3531,6 +3531,83 @@ window.generateProgressPPT = async function() {
       });
     }
 
+    // =====================================================
+    // 슬라이드 3~8: 섹터별 상세 (반입/입고검사/설치/시공검측)
+    // =====================================================
+    todayStats.forEach((z, zi) => {
+      const prev = prevStats[zi] || {};
+      const s = pres.addSlide();
+      s.background = {color:'F2F4F8'};
+
+      // 카드
+      s.addShape(pres.shapes.ROUNDED_RECTANGLE,{x:0.55,y:0.55,w:12.23,h:6.4,fill:{color:C.white},line:{color:'E5E9F0',pt:1},rectRadius:0.10,shadow:mkShadow()});
+
+      const LM=1.0;
+      s.addText(`${z.name} 공정 진행율`,{x:LM,y:0.85,w:8,h:0.5,fontSize:22,fontFace:'Calibri',color:C.text,bold:true,valign:'middle'});
+      s.addText(`전체 물량 ${z.total}대 기준   ·   기준일: ${dateStr}`,{x:LM,y:1.45,w:9,h:0.35,fontSize:12,fontFace:'Calibri',color:C.sub,valign:'middle'});
+
+      // 컬럼 정의
+      const cols=[['구분',1.55],['전일',1.05],['금일',1.05],['누계',1.10],['증감',1.10],['공정율',1.35],['진행',3.60]];
+      const cx=(i)=>{let x=LM;for(let k=0;k<i;k++)x+=cols[k][1];return x;};
+      const TW=cols.reduce((a,c)=>a+c[1],0);
+      const tblY=2.25, h1=0.42, h2=0.40, bodyH=0.66, sumH=0.62;
+      const hb=tblY+h1+h2;
+
+      // 헤더 (2단)
+      s.addShape(pres.shapes.ROUNDED_RECTANGLE,{x:LM,y:tblY,w:TW,h:h1+h2,fill:{color:'F5F6FA'},line:{color:'F5F6FA'},rectRadius:0.04});
+      s.addText('구분',{x:cx(0),y:tblY,w:cols[0][1],h:h1+h2,fontSize:12,fontFace:'Calibri',color:C.sub,bold:true,align:'center',valign:'middle'});
+      const qtyX=cx(1), qtyW=cols[1][1]+cols[2][1]+cols[3][1]+cols[4][1];
+      s.addText('수량 (대)',{x:qtyX,y:tblY,w:qtyW,h:h1,fontSize:12,fontFace:'Calibri',color:C.sub,bold:true,align:'center',valign:'middle'});
+      s.addText('공정율',{x:cx(5),y:tblY,w:cols[5][1],h:h1+h2,fontSize:12,fontFace:'Calibri',color:C.sub,bold:true,align:'center',valign:'middle'});
+      s.addText('진행',{x:cx(6)+0.05,y:tblY,w:cols[6][1],h:h1+h2,fontSize:12,fontFace:'Calibri',color:C.sub,bold:true,align:'left',valign:'middle'});
+      ['전일','금일','누계','증감'].forEach((lb,k)=>{
+        s.addText(lb,{x:cx(k+1),y:tblY+h1,w:cols[k+1][1],h:h2,fontSize:11,fontFace:'Calibri',color:C.sub,align:'center',valign:'middle'});
+      });
+      s.addShape(pres.shapes.RECTANGLE,{x:LM,y:hb,w:TW,h:0.012,fill:{color:'E5E9F0'},line:{color:'E5E9F0'}});
+
+      // 본문 4행
+      const rowsDef=[
+        {label:'반입',     cum:z.반입,     prev:prev.반입,     color:C.barBlue},
+        {label:'입고검사', cum:z.입고검사, prev:prev.입고검사, color:C.barLblue},
+        {label:'설치',     cum:z.instDone, prev:prev.instDone, color:C.barGreen},
+        {label:'시공검측', cum:z.시공검측, prev:prev.시공검측, color:C.barPurple},
+      ];
+      let ry=hb;
+      rowsDef.forEach((r,ri)=>{
+        const cy=ry;
+        const cum=r.cum||0, pv=r.prev||0, today=cum-pv;
+        const rate=z.total>0?(cum/z.total*100):0;
+        s.addText(r.label,{x:cx(0),y:cy,w:cols[0][1],h:bodyH,fontSize:14,fontFace:'Calibri',color:C.text,bold:true,align:'center',valign:'middle'});
+        s.addText(String(pv),{x:cx(1),y:cy,w:cols[1][1],h:bodyH,fontSize:13,fontFace:'Calibri',color:C.text,align:'center',valign:'middle'});
+        s.addText(String(today),{x:cx(2),y:cy,w:cols[2][1],h:bodyH,fontSize:13,fontFace:'Calibri',color:C.text,align:'center',valign:'middle'});
+        s.addText(String(cum),{x:cx(3),y:cy,w:cols[3][1],h:bodyH,fontSize:14,fontFace:'Calibri',color:C.blue,bold:true,align:'center',valign:'middle'});
+        const dTxt=today>0?`+${today}`:(today<0?String(today):'0');
+        const dCol=today>0?C.upGreen:(today<0?C.downRed:C.gray3);
+        s.addText(dTxt,{x:cx(4),y:cy,w:cols[4][1],h:bodyH,fontSize:13,fontFace:'Calibri',color:dCol,bold:today!==0,align:'center',valign:'middle'});
+        s.addText(`${rate.toFixed(1)}%`,{x:cx(5),y:cy,w:cols[5][1],h:bodyH,fontSize:14,fontFace:'Calibri',color:rate>0?C.text:C.gray3,bold:true,align:'center',valign:'middle'});
+        // 진행바
+        const barX=cx(6)+0.05, barMaxW=cols[6][1]-1.05, barH=0.16, barY=cy+bodyH/2-barH/2;
+        s.addShape(pres.shapes.ROUNDED_RECTANGLE,{x:barX,y:barY,w:barMaxW,h:barH,fill:{color:C.gray2},line:{color:C.gray2},rectRadius:0.5});
+        if(rate>0){
+          const fw=Math.max(barMaxW*rate/100,0.12);
+          s.addShape(pres.shapes.ROUNDED_RECTANGLE,{x:barX,y:barY,w:fw,h:barH,fill:{color:r.color},line:{color:r.color},rectRadius:0.5});
+          s.addText(`${rate.toFixed(1)}%`,{x:barX+barMaxW+0.12,y:cy,w:0.9,h:bodyH,fontSize:11,fontFace:'Calibri',color:C.sub,align:'left',valign:'middle'});
+        } else {
+          s.addText('-',{x:barX+barMaxW+0.12,y:cy,w:0.9,h:bodyH,fontSize:11,fontFace:'Calibri',color:C.gray3,align:'left',valign:'middle'});
+        }
+        ry+=bodyH;
+        if(ri<rowsDef.length-1) s.addShape(pres.shapes.RECTANGLE,{x:LM,y:ry,w:TW,h:0.01,fill:{color:'F0F2F6'},line:{color:'F0F2F6'}});
+      });
+
+      // 요약행 (전체 물량)
+      const syy=ry;
+      s.addShape(pres.shapes.ROUNDED_RECTANGLE,{x:LM,y:syy,w:TW,h:sumH,fill:{color:'EFF5FD'},line:{color:'EFF5FD'},rectRadius:0.04});
+      s.addText('전체 물량',{x:cx(0),y:syy,w:cols[0][1],h:sumH,fontSize:13,fontFace:'Calibri',color:C.blue,bold:true,align:'center',valign:'middle'});
+      s.addText(String(z.total),{x:cx(3),y:syy,w:cols[3][1],h:sumH,fontSize:14,fontFace:'Calibri',color:C.blue,bold:true,align:'center',valign:'middle'});
+      s.addText('100%',{x:cx(5),y:syy,w:cols[5][1],h:sumH,fontSize:14,fontFace:'Calibri',color:C.blue,bold:true,align:'center',valign:'middle'});
+      s.addText('기준 물량',{x:cx(6)+0.05,y:syy,w:cols[6][1]-0.1,h:sumH,fontSize:12,fontFace:'Calibri',color:C.blue,bold:true,align:'left',valign:'middle'});
+    });
+
     // 다운로드
     const y=viewDate.getFullYear(), m=pad(viewDate.getMonth()+1), d=pad(viewDate.getDate());
     const fileName = `${y}${m}${d}_귀뚜라미범양냉방_공정진행율.pptx`;
