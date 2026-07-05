@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>인사 · JH Solutions</title>
+<style>
+  :root{
+    --blue:#1D5BA6;--blue-d:#16487f;--ink:#1a2330;--sub:#6b7787;--line:#e4eaf2;--bg:#eef2f7;--card:#fff;
+    --ok:#1b8a5a;--warn:#c0392b;--amber:#e08a1e;--violet:#7C3AED;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;min-height:100vh}
+  .phone{width:100%;max-width:480px;margin:0 auto;background:var(--bg);min-height:100vh}
+  .scr{padding:0 0 30px}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:22px 22px 4px}
+  .back{background:var(--card);border:1px solid var(--line);color:var(--blue);font-size:13px;font-weight:700;padding:8px 14px;border-radius:12px;cursor:pointer;font-family:inherit;box-shadow:0 2px 6px rgba(30,50,80,.05)}
+  .back:active{background:#f0f4f9}
+  .avatar{width:40px;height:40px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;box-shadow:0 4px 10px rgba(29,91,166,.3);cursor:pointer}
+  .hello{padding:18px 24px 6px}
+  .hello.rowend{display:flex;align-items:flex-end;justify-content:space-between}
+  .hello .name{font-size:25px;font-weight:800;letter-spacing:-.5px;color:var(--amber)}
+  .hello .sub{font-size:12.5px;color:var(--sub);margin-top:4px;font-weight:600}
+  .summary{display:flex;gap:10px;margin:16px 20px 0;padding:14px 16px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 2px 8px rgba(30,50,80,.05)}
+  .summary .s{flex:1;text-align:center}
+  .summary .s + .s{border-left:1px solid var(--line)}
+  .summary .s .n{font-size:20px;font-weight:800;color:var(--amber)}
+  .summary .s .k{font-size:10.5px;color:var(--sub);font-weight:600;margin-top:2px}
+  .lbl{font-size:12px;font-weight:800;color:#9aa8bc;letter-spacing:.5px;padding:22px 24px 12px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 20px}
+  .tile{background:var(--card);border-radius:20px;padding:18px 16px 16px;border:1px solid var(--line);cursor:pointer;position:relative;transition:transform .12s ease;display:flex;flex-direction:column;gap:12px;min-height:124px;box-shadow:0 2px 8px rgba(30,50,80,.05)}
+  .tile:active{transform:scale(.96)}
+  .tile .ic{width:50px;height:50px;border-radius:15px;display:flex;align-items:center;justify-content:center;font-size:25px}
+  .tile .nm{font-size:15px;font-weight:800;letter-spacing:-.3px}
+  .tile .ds{font-size:11px;color:var(--sub);font-weight:500;line-height:1.4;margin-top:-4px}
+  .tile .go{position:absolute;top:16px;right:14px;font-size:15px;color:#c3cedd}
+  .c1 .ic{background:#eaf2fc;color:#1D5BA6}.c2 .ic{background:#e0f2f1;color:#0d9488}
+  .c3 .ic{background:#eef0fb;color:#4f46e5}.c4 .ic{background:#fdeede;color:#e08a1e}
+  .c5 .ic{background:#e7f5ee;color:#1b8a5a}.c6 .ic{background:#f0edfb;color:#7C3AED}
+  .c7 .ic{background:#fdecf0;color:#db2777}
+  .wide{margin:14px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px 18px;display:flex;align-items:center;gap:15px;cursor:pointer;transition:transform .12s ease;box-shadow:0 2px 8px rgba(30,50,80,.05)}
+  .wide:active{transform:scale(.98)}
+  .wide .ic{width:50px;height:50px;border-radius:15px;flex-shrink:0;background:#fdecf0;color:#db2777;display:flex;align-items:center;justify-content:center;font-size:25px}
+  .wide .nm{font-size:15px;font-weight:800}.wide .ds{font-size:11px;color:var(--sub);margin-top:2px}
+  .wide .go{margin-left:auto;font-size:15px;color:#c3cedd}
+  .list{padding:16px 20px 0;display:flex;flex-direction:column;gap:12px}
+  .empty{margin:24px 20px;padding:26px;text-align:center;color:#9aa8bc;font-size:13px;font-weight:600;background:var(--card);border:1px solid var(--line);border-radius:16px}
+  .foot{text-align:center;font-size:11px;color:#9aa8bc;font-weight:600;margin-top:16px;padding:0 20px}
+  .loading{text-align:center;padding:40px;color:#9aa8bc;font-size:13px;font-weight:600}
+  .wcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px 16px;cursor:pointer;display:flex;align-items:center;gap:13px;transition:transform .12s ease;box-shadow:0 2px 8px rgba(30,50,80,.05)}
+  .wcard:active{transform:scale(.985)}
+  .wav{width:44px;height:44px;border-radius:50%;background:#fdeede;color:#e08a1e;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;flex-shrink:0}
+  .wbody{flex:1;min-width:0}
+  .wname{font-size:15.5px;font-weight:800;display:flex;align-items:center;gap:7px}
+  .rankb{font-size:10.5px;font-weight:700;color:var(--amber);background:#fdeede;padding:2px 8px;border-radius:6px}
+  .wmeta{font-size:11.5px;color:var(--sub);font-weight:500;margin-top:3px}
+  .wgo{color:#c3cedd;font-size:16px;flex-shrink:0}
+  .icard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(30,50,80,.05)}
+  .ibody{flex:1;min-width:0}
+  .ititle{font-size:14.5px;font-weight:800}
+  .imeta{font-size:11.5px;color:var(--sub);font-weight:500;margin-top:3px}
+  .iamt{font-size:14px;font-weight:800;white-space:nowrap;flex-shrink:0}
+  .pill{font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;background:#eef2f7;color:#5c6f8a}
+  .dcard{margin:16px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px 16px;box-shadow:0 2px 8px rgba(30,50,80,.05)}
+  .drow{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid #f2f5f9}
+  .drow:last-child{border-bottom:none}
+  .dk{font-size:12.5px;color:var(--sub);font-weight:600}
+  .dv{font-size:13.5px;font-weight:700;text-align:right;max-width:62%}
+  .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 20px 0}
+  .dgc{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center;box-shadow:0 2px 8px rgba(30,50,80,.05)}
+  .dgc .l{font-size:10.5px;color:#9aa8bc;font-weight:700}
+  .dgc .v{font-size:18px;font-weight:800;margin-top:4px;color:var(--amber)}
+  .banner{margin:14px 20px 0;padding:11px 14px;border-radius:12px;font-size:11.5px;font-weight:600;line-height:1.5}
+  .banner.info{background:#eef4fc;border:1px solid #d6e4f6;color:var(--blue-d)}
+  .banner.err{background:#fdecea;border:1px solid #f5c6c0;color:#a5342a}
+</style>
+<script src="auth-guard.js"></script>
+</head>
+<body>
+  <div class="phone"><div id="app" class="scr"><div class="loading">불러오는 중…</div></div></div>
+
+<script type="module">
+const _uInitial=(function(){try{var a=JSON.parse(localStorage.getItem('jh_login_perms')||'null');return (a&&a.name)?a.name.slice(0,1):'·';}catch(e){return '·';}})();
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+const firebaseConfig = {
+  apiKey:"AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI", authDomain:"portal-test-6e0ff.firebaseapp.com",
+  projectId:"portal-test-6e0ff", storageBucket:"portal-test-6e0ff.firebasestorage.app",
+  messagingSenderId:"752763010816", appId:"1:752763010816:web:4a0c7062a2f1a4e9a03de5"
+};
+const app=initializeApp(firebaseConfig); const db=getFirestore(app);
+
+let workers=[], overtime=[], leaves=[];
+let curView='home', detailId=null, loadError='';
+const thisMonth=new Date().toISOString().slice(0,7);
+
+const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const $app=()=>document.getElementById('app');
+const won=n=>'₩'+(Math.round(n)||0).toLocaleString('ko-KR');
+const maskJumin=j=>{if(!j)return '-';const d=String(j).replace(/[^0-9]/g,'');if(d.length<7)return j;return d.slice(0,6)+'-'+d.slice(6,7)+'······';};
+const initial=n=>(n||'?').slice(0,1);
+const otOf=w=>overtime.filter(o=>o.workerId===w.id||o.name===w.name);
+const lvOf=w=>leaves.filter(l=>l.workerId===w.id||l.name===w.name);
+const usedLeave=w=>lvOf(w).reduce((s,l)=>s+(parseFloat(l.days||l.leaveDays||0)||0),0);
+
+/* 화면 전환 + History */
+function nav(v,id){ curView=v; detailId=id||null; history.pushState({v,id:id||null},''); render(); window.scrollTo(0,0); }
+function showView(v){ nav(v,null); }
+function showDetail(v,id){ nav(v+'D',id); }
+window.showView=showView; window.showDetail=showDetail;
+window.goBack=function(){ history.back(); };
+window.goAccount=function(){ location.href='account.html'; };
+window.goHome=function(){ location.href='home.html'; };
+window.addEventListener('popstate',e=>{ const st=e.state||{v:'home',id:null}; curView=st.v; detailId=st.id||null; render(); window.scrollTo(0,0); });
+
+const ROSTER_VIEWS={roster:'근로자 명부',payslip:'급여명세서',labor:'근로계약서',annual:'연봉계약서',retire:'퇴직금 정산'};
+
+function render(){
+  if(loadError){ $app().innerHTML=topBar('인사')+`<div class="banner err">데이터를 불러오지 못했습니다: ${esc(loadError)}<br>포털 로그인 세션이 필요할 수 있습니다.</div>`; return; }
+  if(ROSTER_VIEWS[curView]) return renderRoster(curView);
+  const map={home:renderHome,overtime:renderOvertime,leave:renderLeave,workerD:renderWorkerDetail};
+  (map[curView]||renderHome)();
+}
+function topBar(label,onclick){
+  return `<div class="top"><button class="back" onclick="${onclick||'goBack()'}">← ${label}</button><div class="avatar" onclick="goAccount()">${_uInitial}</div></div>`;
+}
+
+function renderHome(){
+  const cnt=workers.length;
+  const otH=overtime.filter(o=>(o.yearMonth||'')===thisMonth).reduce((s,o)=>s+(Number(o.hours)||0),0);
+  const lvUsed=leaves.filter(l=>(l.startDate||l.sdate||'').slice(0,7)===thisMonth).reduce((s,l)=>s+(parseFloat(l.days||l.leaveDays||0)||0),0);
+  $app().innerHTML=`
+    <div class="top"><button class="back" onclick="goHome()">← 홈</button><div class="avatar" onclick="goAccount()">${_uInitial}</div></div>
+    <div class="hello"><div class="name">인사</div><div class="sub">급여 · 계약 · 근태 · 연차</div></div>
+    <div class="summary">
+      <div class="s"><div class="n">${cnt}</div><div class="k">재직 인원</div></div>
+      <div class="s"><div class="n">${otH}<small style="font-size:11px">h</small></div><div class="k">이번달 초과근로</div></div>
+      <div class="s"><div class="n">${lvUsed}<small style="font-size:11px">일</small></div><div class="k">이번달 연차</div></div>
+    </div>
+    <div class="lbl">메뉴</div>
+    <div class="grid">
+      <div class="tile c1" onclick="showView('roster')"><span class="go">›</span><div class="ic">📋</div><div class="nm">근로자 명부</div><div class="ds">임직원 정보</div></div>
+      <div class="tile c2" onclick="showView('labor')"><span class="go">›</span><div class="ic">📝</div><div class="nm">근로계약서</div><div class="ds">계약 관리</div></div>
+      <div class="tile c3" onclick="showView('annual')"><span class="go">›</span><div class="ic">💵</div><div class="nm">연봉계약서</div><div class="ds">연봉 관리</div></div>
+      <div class="tile c4" onclick="showView('overtime')"><span class="go">›</span><div class="ic">⏱️</div><div class="nm">초과근로</div><div class="ds">연장·야간</div></div>
+      <div class="tile c5" onclick="showView('payslip')"><span class="go">›</span><div class="ic">💰</div><div class="nm">급여명세서</div><div class="ds">지급·공제</div></div>
+      <div class="tile c6" onclick="showView('retire')"><span class="go">›</span><div class="ic">🏦</div><div class="nm">퇴직금 정산</div><div class="ds">퇴직금</div></div>
+    </div>
+    <div class="wide" onclick="showView('leave')"><div class="ic">🌴</div><div><div class="nm">연차 현황</div><div class="ds">연차 발생·사용·잔여 관리</div></div><span class="go">›</span></div>`;
+}
+
+function renderRoster(view){
+  const label=ROSTER_VIEWS[view];
+  const cards=workers.map(w=>`<div class="wcard" onclick="showDetail('worker','${w.id}')">
+    <div class="wav">${esc(initial(w.name))}</div>
+    <div class="wbody"><div class="wname">${esc(w.name||'(무명)')} ${w.rank?`<span class="rankb">${esc(w.rank)}</span>`:''}</div>
+    <div class="wmeta">${esc(w.dept||'')}${w.empNo?' · 사번 '+esc(w.empNo):''}${w.hireDate?' · 입사 '+esc(w.hireDate):''}</div></div>
+    <span class="wgo">›</span></div>`).join('');
+  $app().innerHTML=topBar('인사')+`
+    <div class="hello rowend"><div><div class="name">${esc(label)}</div><div class="sub">재직 ${workers.length}명</div></div></div>
+    ${view!=='roster'?`<div class="banner info">근로자를 선택하면 해당 직원의 ${esc(label)} 정보로 이동합니다.</div>`:''}
+    ${workers.length?`<div class="list">${cards}</div>`:'<div class="empty">등록된 근로자가 없습니다.</div>'}`;
+}
+
+function renderOvertime(){
+  const sorted=[...overtime].sort((a,b)=>(b.yearMonth||'').localeCompare(a.yearMonth||''));
+  const cards=sorted.map(o=>`<div class="icard"><div class="ibody">
+    <div class="ititle">${esc(o.name||'-')} <span class="pill">${esc(o.yearMonth||'')}</span></div>
+    <div class="imeta">초과근로 ${esc(o.hours||0)}시간</div></div>
+    <div class="iamt">${won(o.amount||0)}</div></div>`).join('');
+  $app().innerHTML=topBar('인사')+`
+    <div class="hello rowend"><div><div class="name">초과근로</div><div class="sub">건수 ${overtime.length}</div></div></div>
+    ${overtime.length?`<div class="list">${cards}</div>`:'<div class="empty">등록된 초과근로 내역이 없습니다.</div>'}`;
+}
+
+function renderLeave(){
+  const rows=workers.map(w=>{const used=usedLeave(w);return {w,used};}).filter(x=>x.used>0).sort((a,b)=>b.used-a.used);
+  const cards=rows.map(({w,used})=>`<div class="icard"><div class="ibody">
+    <div class="ititle">${esc(w.name||'-')} ${w.rank?`<span class="pill">${esc(w.rank)}</span>`:''}</div>
+    <div class="imeta">${esc(w.dept||'')}</div></div>
+    <div class="iamt">${used}일 사용</div></div>`).join('');
+  const totUsed=leaves.reduce((s,l)=>s+(parseFloat(l.days||l.leaveDays||0)||0),0);
+  $app().innerHTML=topBar('인사')+`
+    <div class="hello rowend"><div><div class="name">연차 현황</div><div class="sub">총 사용 ${totUsed}일</div></div></div>
+    ${rows.length?`<div class="list">${cards}</div>`:'<div class="empty">연차 사용 내역이 없습니다.</div>'}`;
+}
+
+function renderWorkerDetail(){
+  const w=workers.find(x=>x.id===detailId);
+  if(!w){ $app().innerHTML=topBar('인사')+'<div class="empty">근로자를 찾을 수 없습니다.</div>'; return; }
+  const ots=otOf(w).sort((a,b)=>(b.yearMonth||'').localeCompare(a.yearMonth||''));
+  const otTotH=ots.reduce((s,o)=>s+(Number(o.hours)||0),0);
+  const lvUsed=usedLeave(w);
+  const info=[['사번',w.empNo],['부서',w.dept],['직급',w.rank],['직무',w.job],['고용형태',w.empType],['입사일',w.hireDate],['주민번호',maskJumin(w.jumin)]].filter(x=>x[1]);
+  $app().innerHTML=topBar('인사')+`
+    <div class="hello"><div class="name" style="font-size:22px">${esc(w.name||'')}</div><div class="sub">${esc(w.rank||'')}${w.dept?' · '+esc(w.dept):''}</div></div>
+    <div class="dgrid">
+      <div class="dgc"><div class="l">누적 초과근로</div><div class="v">${otTotH}<small style="font-size:12px">h</small></div></div>
+      <div class="dgc"><div class="l">연차 사용</div><div class="v">${lvUsed}<small style="font-size:12px">일</small></div></div>
+    </div>
+    <div class="lbl">기본 정보</div>
+    <div class="dcard">${info.map(([k,v])=>`<div class="drow"><span class="dk">${k}</span><span class="dv">${esc(v)}</span></div>`).join('')}</div>
+    ${ots.length?`<div class="lbl">초과근로 내역 (${ots.length})</div><div class="list">${ots.map(o=>`<div class="icard"><div class="ibody"><div class="ititle"><span class="pill">${esc(o.yearMonth||'')}</span> ${esc(o.hours||0)}시간</div></div><div class="iamt">${won(o.amount||0)}</div></div>`).join('')}</div>`:''}
+    <div class="banner info" style="margin-top:20px">급여명세서·근로계약서·연봉계약서·퇴직금 정산 등 문서 상세는 순차로 붙일 예정입니다.</div>`;
+}
+
+/* Firestore 구독 */
+function sub(coll,setter){
+  onSnapshot(collection(db,coll), snap=>{ const arr=[]; snap.forEach(d=>arr.push({id:d.id,...d.data()})); setter(arr); render(); },
+    err=>{ loadError=err.code||err.message; render(); });
+}
+sub('workers',   a=>{workers=a.sort((x,y)=>String(x.empNo||'').localeCompare(String(y.empNo||''),undefined,{numeric:true}));});
+sub('overtime',  a=>{overtime=a;});
+sub('edoc_leave',a=>{leaves=a;});
+
+history.replaceState({v:'home',id:null},'');
+render();
+</script>
+</body>
+</html>
+
