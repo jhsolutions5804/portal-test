@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>전자결재 · JH Solutions</title>
+<style>
+  :root{--blue:#1D5BA6;--blue-d:#16487f;--ink:#1a2330;--sub:#6b7787;--line:#e4eaf2;--bg:#eef2f7;--card:#fff;--ok:#1b8a5a;--warn:#c0392b;--amber:#e08a1e;--violet:#7C3AED}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;min-height:100vh}
+  .phone{width:100%;max-width:480px;margin:0 auto;background:var(--bg);min-height:100vh}
+  .scr{padding:0 0 30px}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:22px 22px 4px}
+  .back{background:var(--card);border:1px solid var(--line);color:var(--blue);font-size:13px;font-weight:700;padding:8px 14px;border-radius:12px;cursor:pointer;font-family:inherit;box-shadow:0 2px 6px rgba(30,50,80,.05)}
+  .back:active{background:#f0f4f9}
+  .avatar{width:40px;height:40px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;box-shadow:0 4px 10px rgba(29,91,166,.3);cursor:pointer}
+  .hello{padding:18px 24px 6px}
+  .hello.rowend{display:flex;align-items:flex-end;justify-content:space-between}
+  .hello .name{font-size:25px;font-weight:800;letter-spacing:-.5px;color:var(--violet)}
+  .hello .sub{font-size:12.5px;color:var(--sub);margin-top:4px;font-weight:600}
+  .summary{display:flex;gap:10px;margin:16px 20px 0;padding:14px 16px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 2px 8px rgba(30,50,80,.05)}
+  .summary .s{flex:1;text-align:center}
+  .summary .s + .s{border-left:1px solid var(--line)}
+  .summary .s .n{font-size:20px;font-weight:800;color:var(--violet)}
+  .summary .s .n.wait{color:var(--amber)}
+  .summary .s .k{font-size:10.5px;color:var(--sub);font-weight:600;margin-top:2px}
+  .lbl{font-size:12px;font-weight:800;color:#9aa8bc;letter-spacing:.5px;padding:22px 24px 12px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 20px}
+  .tile{background:var(--card);border-radius:20px;padding:18px 16px 16px;border:1px solid var(--line);cursor:pointer;position:relative;transition:transform .12s ease;display:flex;flex-direction:column;gap:12px;min-height:124px;box-shadow:0 2px 8px rgba(30,50,80,.05)}
+  .tile:active{transform:scale(.96)}
+  .tile .ic{width:50px;height:50px;border-radius:15px;display:flex;align-items:center;justify-content:center;font-size:25px}
+  .tile .nm{font-size:15px;font-weight:800;letter-spacing:-.3px}
+  .tile .ds{font-size:11px;color:var(--sub);font-weight:500;line-height:1.4;margin-top:-4px}
+  .tile .go{position:absolute;top:16px;right:14px;font-size:15px;color:#c3cedd}
+  .tile .badge{position:absolute;top:14px;right:32px;background:var(--warn);color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 5px}
+  .c1 .ic{background:#f0edfb;color:#7C3AED}.c2 .ic{background:#eaf2fc;color:#1D5BA6}
+  .c3 .ic{background:#e7f5ee;color:#1b8a5a}.c4 .ic{background:#eceff1;color:#455a64}
+  .c5 .ic{background:#e0f2f1;color:#0d9488}.c6 .ic{background:#fdeede;color:#e08a1e}
+  .c7 .ic{background:#fdecf0;color:#db2777}
+  .wide{margin:14px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px 18px;display:flex;align-items:center;gap:15px;cursor:pointer;transition:transform .12s ease;box-shadow:0 2px 8px rgba(30,50,80,.05)}
+  .wide:active{transform:scale(.98)}
+  .wide .ic{width:50px;height:50px;border-radius:15px;flex-shrink:0;background:#fdecf0;color:#db2777;display:flex;align-items:center;justify-content:center;font-size:25px}
+  .wide .nm{font-size:15px;font-weight:800}.wide .ds{font-size:11px;color:var(--sub);margin-top:2px}
+  .wide .go{margin-left:auto;font-size:15px;color:#c3cedd}
+  .list{padding:16px 20px 0;display:flex;flex-direction:column;gap:12px}
+  .empty{margin:24px 20px;padding:26px;text-align:center;color:#9aa8bc;font-size:13px;font-weight:600;background:var(--card);border:1px solid var(--line);border-radius:16px}
+  .loading{text-align:center;padding:40px;color:#9aa8bc;font-size:13px;font-weight:600}
+  .dcard-list{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px 16px;cursor:pointer;transition:transform .12s ease;box-shadow:0 2px 8px rgba(30,50,80,.05)}
+  .dcard-list:active{transform:scale(.985)}
+  .dl-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  .dl-title{font-size:15px;font-weight:800;flex:1}
+  .stbadge{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+  .st-wait{background:#fdeede;color:#b45309}.st-ok{background:#e7f5ee;color:#1b8a5a}
+  .st-rej{background:#fdecea;color:#c0392b}.st-draft{background:#eef1f5;color:#8a97a8}
+  .dl-meta{font-size:11.5px;color:var(--sub);font-weight:500;margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .pill{font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;background:#eef2f7;color:#5c6f8a}
+  .dcard{margin:16px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px 16px;box-shadow:0 2px 8px rgba(30,50,80,.05)}
+  .drow{display:flex;align-items:flex-start;justify-content:space-between;padding:11px 0;border-bottom:1px solid #f2f5f9;gap:12px}
+  .drow:last-child{border-bottom:none}
+  .dk{font-size:12.5px;color:var(--sub);font-weight:600;white-space:nowrap}
+  .dv{font-size:13px;font-weight:600;text-align:right;line-height:1.5}
+  .banner{margin:14px 20px 0;padding:11px 14px;border-radius:12px;font-size:11.5px;font-weight:600;line-height:1.5}
+  .banner.info{background:#eef4fc;border:1px solid #d6e4f6;color:var(--blue-d)}
+  .banner.err{background:#fdecea;border:1px solid #f5c6c0;color:#a5342a}
+</style>
+<script src="auth-guard.js"></script>
+</head>
+<body>
+  <div class="phone"><div id="app" class="scr"><div class="loading">불러오는 중…</div></div></div>
+
+<script type="module">
+const _uInitial=(function(){try{var a=JSON.parse(localStorage.getItem('jh_login_perms')||'null');return (a&&a.name)?a.name.slice(0,1):'·';}catch(e){return '·';}})();
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+const firebaseConfig = {
+  apiKey:"AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI", authDomain:"portal-test-6e0ff.firebaseapp.com",
+  projectId:"portal-test-6e0ff", storageBucket:"portal-test-6e0ff.firebasestorage.app",
+  messagingSenderId:"752763010816", appId:"1:752763010816:web:4a0c7062a2f1a4e9a03de5"
+};
+const app=initializeApp(firebaseConfig); const db=getFirestore(app);
+
+let dailies=[], leaves=[];
+let curView='home', detailId=null, loadError='';
+
+const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const $app=()=>document.getElementById('app');
+const WAIT=['pending','reviewing'], OKS=['approved','done','posted'];
+const isWait=s=>WAIT.includes(s), isOk=s=>OKS.includes(s), isRej=s=>s==='rejected', isDraft=s=>s==='draft';
+function stBadge(s){
+  if(isOk(s))return '<span class="stbadge st-ok">승인</span>';
+  if(isRej(s))return '<span class="stbadge st-rej">반려</span>';
+  if(isDraft(s))return '<span class="stbadge st-draft">임시</span>';
+  if(isWait(s))return '<span class="stbadge st-wait">결재중</span>';
+  return `<span class="stbadge st-draft">${esc(s||'-')}</span>`;
+}
+const fmtDate=v=>{if(!v)return '';if(v.seconds)return new Date(v.seconds*1000).toISOString().slice(0,10);return String(v).slice(0,10);};
+
+/* 화면 전환 + History */
+function nav(v,id){ curView=v; detailId=id||null; history.pushState({v,id:id||null},''); render(); window.scrollTo(0,0); }
+function showView(v){ nav(v,null); }
+function showDetail(v,id){ nav(v+'D',id); }
+window.showView=showView; window.showDetail=showDetail;
+window.goBack=function(){ history.back(); };
+window.goAccount=function(){ location.href='account.html'; };
+window.goHome=function(){ location.href='home.html'; };
+window.addEventListener('popstate',e=>{ const st=e.state||{v:'home',id:null}; curView=st.v; detailId=st.id||null; render(); window.scrollTo(0,0); });
+
+function render(){
+  if(loadError){ $app().innerHTML=topBar('전자결재')+`<div class="banner err">데이터를 불러오지 못했습니다: ${esc(loadError)}<br>포털 로그인 세션이 필요할 수 있습니다.</div>`; return; }
+  const map={home:renderHome,approve:renderApprove,daily:renderDaily,leave:renderLeave,dailyD:renderDailyDetail,leaveD:renderLeaveDetail,
+    resign:()=>renderStub('퇴직원서'),cert:()=>renderStub('재직증명서'),purchase:()=>renderStub('구매품의서'),expense:()=>renderStub('지출결의서')};
+  (map[curView]||renderHome)();
+}
+function topBar(label,onclick){ return `<div class="top"><button class="back" onclick="${onclick||'goBack()'}">← ${label}</button><div class="avatar" onclick="goAccount()">${_uInitial}</div></div>`; }
+
+function renderHome(){
+  const allDocs=[...dailies,...leaves];
+  const waitCnt=allDocs.filter(d=>isWait(d.status)).length;
+  const okCnt=allDocs.filter(d=>isOk(d.status)).length;
+  $app().innerHTML=`
+    <div class="top"><button class="back" onclick="goHome()">← 홈</button><div class="avatar" onclick="goAccount()">${_uInitial}</div></div>
+    <div class="hello"><div class="name">전자결재</div><div class="sub">업무일지 · 연차 · 구매품의 · 지출결의</div></div>
+    <div class="summary">
+      <div class="s"><div class="n wait">${waitCnt}</div><div class="k">결재 대기</div></div>
+      <div class="s"><div class="n">${okCnt}</div><div class="k">승인 완료</div></div>
+      <div class="s"><div class="n">${dailies.length}</div><div class="k">업무일지</div></div>
+    </div>
+    <div class="lbl">메뉴</div>
+    <div class="grid">
+      <div class="tile c1" onclick="showView('approve')"><span class="go">›</span>${waitCnt?`<span class="badge">${waitCnt}</span>`:''}<div class="ic">📥</div><div class="nm">결재함</div><div class="ds">대기·완료</div></div>
+      <div class="tile c2" onclick="showView('daily')"><span class="go">›</span><div class="ic">📔</div><div class="nm">업무일지</div><div class="ds">일일 업무</div></div>
+      <div class="tile c6" onclick="showView('purchase')"><span class="go">›</span><div class="ic">🛒</div><div class="nm">구매품의서</div><div class="ds">구매 품의</div></div>
+      <div class="tile c7" onclick="showView('expense')"><span class="go">›</span><div class="ic">💳</div><div class="nm">지출결의서</div><div class="ds">지출 결의</div></div>
+      <div class="tile c3" onclick="showView('leave')"><span class="go">›</span><div class="ic">🌴</div><div class="nm">연차신청서</div><div class="ds">연차 신청</div></div>
+      <div class="tile c5" onclick="showView('cert')"><span class="go">›</span><div class="ic">📃</div><div class="nm">재직증명서</div><div class="ds">증명 발급</div></div>
+    </div>
+    <div class="wide" onclick="showView('resign')"><div class="ic">📄</div><div><div class="nm">퇴직원서</div><div class="ds">퇴직 신청</div></div><span class="go">›</span></div>`;
+}
+
+function dailyCard(d){
+  return `<div class="dcard-list" onclick="showDetail('daily','${d.id}')">
+    <div class="dl-top"><div class="dl-title">${esc(d.title||d.dtype||'업무일지')}</div>${stBadge(d.status)}</div>
+    <div class="dl-meta">${d.pjtCode?`<span class="pill">${esc(d.pjtCode)}</span>`:''}${d.authorName?esc((d.authorDept||'')+' '+d.authorName).trim():''}${d.date||d.createdAt?' · '+fmtDate(d.date||d.createdAt):''}</div></div>`;
+}
+function leaveCard(l){
+  return `<div class="dcard-list" onclick="showDetail('leave','${l.id}')">
+    <div class="dl-top"><div class="dl-title">${esc(l.name||'연차신청')} <span class="pill">${esc(l.leaveType||l.type||'연차')}</span></div>${stBadge(l.status)}</div>
+    <div class="dl-meta">${esc(fmtDate(l.startDate||l.sdate))}${l.endDate||l.edate?' ~ '+esc(fmtDate(l.endDate||l.edate)):''} · ${l.days||l.leaveDays||0}일</div></div>`;
+}
+
+function renderApprove(){
+  const all=[...dailies.map(d=>({t:'daily',d})),...leaves.map(l=>({t:'leave',d:l}))]
+    .sort((a,b)=>{const sa=isWait(a.d.status)?0:1,sb=isWait(b.d.status)?0:1;if(sa!==sb)return sa-sb;return (fmtDate(b.d.createdAt||b.d.date)).localeCompare(fmtDate(a.d.createdAt||a.d.date));});
+  const waitCnt=all.filter(x=>isWait(x.d.status)).length;
+  const cards=all.map(x=>x.t==='daily'?dailyCard(x.d):leaveCard(x.d)).join('');
+  $app().innerHTML=topBar('전자결재')+`
+    <div class="hello rowend"><div><div class="name">결재함</div><div class="sub">대기 ${waitCnt} · 전체 ${all.length}</div></div></div>
+    ${all.length?`<div class="list">${cards}</div>`:'<div class="empty">결재 문서가 없습니다.</div>'}`;
+}
+function renderDaily(){
+  const sorted=[...dailies].sort((a,b)=>fmtDate(b.date||b.createdAt).localeCompare(fmtDate(a.date||a.createdAt)));
+  $app().innerHTML=topBar('전자결재')+`
+    <div class="hello rowend"><div><div class="name">업무일지</div><div class="sub">전체 ${dailies.length}</div></div></div>
+    ${dailies.length?`<div class="list">${sorted.map(dailyCard).join('')}</div>`:'<div class="empty">작성된 업무일지가 없습니다.</div>'}`;
+}
+function renderLeave(){
+  const sorted=[...leaves].sort((a,b)=>fmtDate(b.startDate||b.sdate).localeCompare(fmtDate(a.startDate||a.sdate)));
+  $app().innerHTML=topBar('전자결재')+`
+    <div class="hello rowend"><div><div class="name">연차신청서</div><div class="sub">전체 ${leaves.length}</div></div></div>
+    ${leaves.length?`<div class="list">${sorted.map(leaveCard).join('')}</div>`:'<div class="empty">연차 신청 내역이 없습니다.</div>'}`;
+}
+function renderDailyDetail(){
+  const d=dailies.find(x=>x.id===detailId);
+  if(!d){ $app().innerHTML=topBar('전자결재')+'<div class="empty">문서를 찾을 수 없습니다.</div>'; return; }
+  $app().innerHTML=topBar('전자결재')+`
+    <div class="hello"><div class="name" style="font-size:20px">${esc(d.title||'업무일지')}</div><div class="sub">${stBadge(d.status)} ${d.authorName?'· '+esc((d.authorDept||'')+' '+d.authorName).trim():''}</div></div>
+    <div class="dcard">
+      ${d.pjtName||d.pjtCode?`<div class="drow"><span class="dk">프로젝트</span><span class="dv">${esc(d.pjtCode||'')} ${esc(d.pjtName||'')}</span></div>`:''}
+      <div class="drow"><span class="dk">작성일</span><span class="dv">${esc(fmtDate(d.date||d.createdAt)||'-')}</span></div>
+      ${d.todayWork?`<div class="drow"><span class="dk">오늘 업무</span><span class="dv">${esc(d.todayWork)}</span></div>`:''}
+      ${d.tomorrowWork?`<div class="drow"><span class="dk">내일 업무</span><span class="dv">${esc(d.tomorrowWork)}</span></div>`:''}
+      ${d.issue?`<div class="drow"><span class="dk">특이사항</span><span class="dv">${esc(d.issue)}</span></div>`:''}
+    </div>
+    ${Array.isArray(d.approvalLine)&&d.approvalLine.length?`<div class="lbl">결재선</div><div class="dcard">${d.approvalLine.map(a=>`<div class="drow"><span class="dk">${esc(a.rank||a.role||'')}</span><span class="dv">${esc(a.name||'')} ${a.status?stBadge(a.status):''}</span></div>`).join('')}</div>`:''}`;
+}
+function renderLeaveDetail(){
+  const l=leaves.find(x=>x.id===detailId);
+  if(!l){ $app().innerHTML=topBar('전자결재')+'<div class="empty">문서를 찾을 수 없습니다.</div>'; return; }
+  $app().innerHTML=topBar('전자결재')+`
+    <div class="hello"><div class="name" style="font-size:20px">${esc(l.name||'연차신청')}</div><div class="sub">${stBadge(l.status)} · ${esc(l.leaveType||l.type||'연차')}</div></div>
+    <div class="dcard">
+      <div class="drow"><span class="dk">기간</span><span class="dv">${esc(fmtDate(l.startDate||l.sdate)||'-')}${l.endDate||l.edate?' ~ '+esc(fmtDate(l.endDate||l.edate)):''}</span></div>
+      <div class="drow"><span class="dk">일수</span><span class="dv">${l.days||l.leaveDays||0}일</span></div>
+      ${l.dept?`<div class="drow"><span class="dk">부서</span><span class="dv">${esc(l.dept)}</span></div>`:''}
+      ${l.reason?`<div class="drow"><span class="dk">사유</span><span class="dv">${esc(l.reason)}</span></div>`:''}
+    </div>`;
+}
+function renderStub(label){
+  $app().innerHTML=topBar('전자결재')+`
+    <div class="hello"><div class="name" style="font-size:22px">${esc(label)}</div></div>
+    <div class="banner info">${esc(label)}는 현재 전용 데이터가 분리돼 있지 않아, 실제 목록 연동을 준비 중입니다. 결재함에서 상태별로 함께 확인하실 수 있습니다.</div>
+    <div class="empty" style="margin-top:14px">준비 중</div>`;
+}
+
+/* Firestore 구독 */
+function sub(coll,setter){
+  onSnapshot(collection(db,coll), snap=>{ const arr=[]; snap.forEach(d=>arr.push({id:d.id,...d.data()})); setter(arr); render(); },
+    err=>{ loadError=err.code||err.message; render(); });
+}
+sub('edoc_daily',a=>{dailies=a;});
+sub('edoc_leave',a=>{leaves=a;});
+
+history.replaceState({v:'home',id:null},'');
+render();
+</script>
+</body>
+</html>
+
