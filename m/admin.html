@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>조직도 · Portal 관리 · JH Solutions</title>
+<style>
+  :root{--blue:#1D5BA6;--blue-d:#16487f;--ink:#1a2330;--sub:#6b7787;--line:#e4eaf2;--bg:#eef2f7;--card:#fff;--ok:#1b8a5a;--warn:#c0392b;--amber:#e08a1e;--violet:#7C3AED}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;min-height:100vh}
+  .phone{width:100%;max-width:480px;margin:0 auto;background:var(--bg);min-height:100vh}
+  .scr{padding:0 0 30px}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:22px 22px 4px}
+  .back{background:var(--card);border:1px solid var(--line);color:var(--blue);font-size:13px;font-weight:700;padding:8px 14px;border-radius:12px;cursor:pointer;font-family:inherit;box-shadow:0 2px 6px rgba(30,50,80,.05)}
+  .back:active{background:#f0f4f9}
+  .avatar{width:40px;height:40px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;box-shadow:0 4px 10px rgba(29,91,166,.3);cursor:pointer}
+  .hello{padding:18px 24px 6px}
+  .hello .name{font-size:25px;font-weight:800;letter-spacing:-.5px;color:var(--ink)}
+  .hello .sub{font-size:12.5px;color:var(--sub);margin-top:4px;font-weight:600}
+  .grp{font-size:12px;font-weight:800;padding:22px 24px 10px;color:var(--blue);display:flex;align-items:center;gap:8px}
+  .grp .cnt{font-size:11px;color:#9aa8bc}
+  .list{padding:0 20px;display:flex;flex-direction:column;gap:12px}
+  .list.top{padding-top:16px}
+  .pcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(30,50,80,.05)}
+  .pcard.click{cursor:pointer;transition:transform .12s ease}.pcard.click:active{transform:scale(.985)}
+  .pav{width:42px;height:42px;border-radius:50%;background:#eaf2fc;color:#1D5BA6;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0}
+  .pbody{flex:1;min-width:0}
+  .pname{font-size:15px;font-weight:800;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .rankb{font-size:10.5px;font-weight:700;color:var(--sub);background:#eef2f7;padding:2px 8px;border-radius:6px}
+  .adminb{font-size:10px;font-weight:700;color:#fff;background:var(--blue);padding:2px 8px;border-radius:6px}
+  .pmeta{font-size:11.5px;color:var(--sub);font-weight:500;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pgo{color:#c3cedd;font-size:16px;flex-shrink:0}
+  .empty{margin:24px 20px;padding:26px;text-align:center;color:#9aa8bc;font-size:13px;font-weight:600;background:var(--card);border:1px solid var(--line);border-radius:16px}
+  .loading{text-align:center;padding:40px;color:#9aa8bc;font-size:13px;font-weight:600}
+  .lbl{font-size:12px;font-weight:800;color:#9aa8bc;letter-spacing:.5px;padding:22px 24px 12px}
+  .dcard{margin:16px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px 16px;box-shadow:0 2px 8px rgba(30,50,80,.05)}
+  .drow{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid #f2f5f9}
+  .drow:last-child{border-bottom:none}
+  .dk{font-size:12.5px;color:var(--sub);font-weight:600}
+  .dv{font-size:13.5px;font-weight:700;text-align:right}
+  .permrow{display:flex;gap:8px;flex-wrap:wrap;padding:14px 20px 0}
+  .permchip{font-size:12px;font-weight:700;padding:7px 13px;border-radius:20px;border:1px solid var(--line);background:var(--card);color:#c3cedd}
+  .permchip.on{background:#e7f5ee;color:#1b8a5a;border-color:#bfe6d2}
+  .banner{margin:14px 20px 0;padding:11px 14px;border-radius:12px;font-size:11.5px;font-weight:600;line-height:1.5}
+  .banner.info{background:#eef4fc;border:1px solid #d6e4f6;color:var(--blue-d)}
+  .banner.err{background:#fdecea;border:1px solid #f5c6c0;color:#a5342a}
+</style>
+<script src="auth-guard.js"></script>
+</head>
+<body>
+  <div class="phone"><div id="app" class="scr"><div class="loading">불러오는 중…</div></div></div>
+
+<script type="module">
+const _uInitial=(function(){try{var a=JSON.parse(localStorage.getItem('jh_login_perms')||'null');return (a&&a.name)?a.name.slice(0,1):'·';}catch(e){return '·';}})();
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+const firebaseConfig = {
+  apiKey:"AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI", authDomain:"portal-test-6e0ff.firebaseapp.com",
+  projectId:"portal-test-6e0ff", storageBucket:"portal-test-6e0ff.firebasestorage.app",
+  messagingSenderId:"752763010816", appId:"1:752763010816:web:4a0c7062a2f1a4e9a03de5"
+};
+const app=initializeApp(firebaseConfig); const db=getFirestore(app);
+
+let users=[], loadError='';
+// 초기 뷰: URL ?v=org|admin
+const params=new URLSearchParams(location.search);
+let curView=params.get('v')==='admin'?'admin':'org';
+let detailId=null;
+
+const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const $app=()=>document.getElementById('app');
+const initial=n=>(n||'?').slice(0,1);
+const RANK_ORDER=['대표','부사장','전무','상무','이사','부장','차장','과장','대리','주임','사원'];
+const rankIdx=r=>{const i=RANK_ORDER.findIndex(x=>(r||'').includes(x));return i<0?99:i;};
+
+function nav(v,id){ curView=v; detailId=id||null; history.pushState({v,id:id||null},''); render(); window.scrollTo(0,0); }
+function showDetail(id){ nav('adminD',id); }
+window.showDetail=showDetail;
+window.goBack=function(){ history.back(); };
+window.goHome=function(){ location.href='home.html'; };
+window.goAccount=function(){ location.href='account.html'; };
+window.addEventListener('popstate',e=>{ const st=e.state||{v:curView,id:null}; curView=st.v; detailId=st.id||null; render(); window.scrollTo(0,0); });
+
+function render(){
+  if(loadError){ $app().innerHTML=topBar('홈','goHome()')+`<div class="banner err">데이터를 불러오지 못했습니다: ${esc(loadError)}<br>포털 로그인 세션이 필요할 수 있습니다.</div>`; return; }
+  ({org:renderOrg,admin:renderAdmin,adminD:renderAdminDetail}[curView]||renderOrg)();
+}
+function topBar(label,onclick){ return `<div class="top"><button class="back" onclick="${onclick||'goBack()'}">← ${label}</button><div class="avatar" onclick="goAccount()">${_uInitial}</div></div>`; }
+
+/* 조직도 — 부서별 그룹 */
+function renderOrg(){
+  const byDept={};
+  users.forEach(u=>{const d=u.dept||'미지정';(byDept[d]=byDept[d]||[]).push(u);});
+  const depts=Object.keys(byDept).sort();
+  const html=depts.map(d=>{
+    const mem=byDept[d].sort((a,b)=>rankIdx(a.rank)-rankIdx(b.rank)||String(a.empNo||'').localeCompare(String(b.empNo||''),undefined,{numeric:true}));
+    return `<div class="grp">🏢 ${esc(d)} <span class="cnt">${mem.length}명</span></div>
+      <div class="list">${mem.map(u=>`<div class="pcard"><div class="pav">${esc(initial(u.name))}</div>
+        <div class="pbody"><div class="pname">${esc(u.name||'')} ${u.rank?`<span class="rankb">${esc(u.rank)}</span>`:''}${u.admin?'<span class="adminb">관리자</span>':''}</div>
+        <div class="pmeta">${u.empNo?'사번 '+esc(u.empNo):''}${u.email?' · '+esc(u.email):''}</div></div></div>`).join('')}</div>`;
+  }).join('');
+  $app().innerHTML=topBar('홈','goHome()')+`
+    <div class="hello"><div class="name">🏢 조직도</div><div class="sub">전체 ${users.length}명 · ${depts.length}개 부서</div></div>
+    ${users.length?html:'<div class="empty">등록된 임직원이 없습니다.</div>'}`;
+}
+
+/* Portal 관리 — 계정·권한 */
+function renderAdmin(){
+  const sorted=[...users].sort((a,b)=>(b.admin?1:0)-(a.admin?1:0)||String(a.empNo||'').localeCompare(String(b.empNo||''),undefined,{numeric:true}));
+  const adminCnt=users.filter(u=>u.admin).length;
+  const cards=sorted.map(u=>`<div class="pcard click" onclick="showDetail('${u.uid||u.id}')"><div class="pav">${esc(initial(u.name))}</div>
+    <div class="pbody"><div class="pname">${esc(u.name||'')} ${u.rank?`<span class="rankb">${esc(u.rank)}</span>`:''}${u.admin?'<span class="adminb">관리자</span>':''}</div>
+    <div class="pmeta">${esc(u.dept||'-')}${u.email?' · '+esc(u.email):''}</div></div><span class="pgo">›</span></div>`).join('');
+  $app().innerHTML=topBar('홈','goHome()')+`
+    <div class="hello"><div class="name">⚙️ Portal 관리</div><div class="sub">계정 ${users.length} · 관리자 ${adminCnt}</div></div>
+    <div class="banner info">계정을 누르면 접근 권한(기획·인사·전자결재·PJT)을 확인할 수 있습니다.</div>
+    ${users.length?`<div class="list top">${cards}</div>`:'<div class="empty">등록된 계정이 없습니다.</div>'}`;
+}
+function renderAdminDetail(){
+  const u=users.find(x=>(x.uid||x.id)===detailId);
+  if(!u){ $app().innerHTML=topBar('Portal 관리','goBack()')+'<div class="empty">계정을 찾을 수 없습니다.</div>'; return; }
+  const p=u.perms||{};
+  const perms=[['기획',p.plan],['인사',p.hr],['전자결재',p.edoc],['PJT',p.pjt]];
+  const info=[['부서',u.dept],['직급',u.rank],['사번',u.empNo],['이메일',u.email],['전화',u.phone]].filter(x=>x[1]);
+  $app().innerHTML=topBar('Portal 관리','goBack()')+`
+    <div class="hello"><div class="name" style="font-size:22px">${esc(u.name||'')} ${u.admin?'<span class="adminb">관리자</span>':''}</div><div class="sub">${esc(u.dept||'')}${u.rank?' · '+esc(u.rank):''}</div></div>
+    <div class="lbl">기본 정보</div>
+    <div class="dcard">${info.map(([k,v])=>`<div class="drow"><span class="dk">${k}</span><span class="dv">${esc(v)}</span></div>`).join('')||'<div class="drow"><span class="dk">정보</span><span class="dv">없음</span></div>'}</div>
+    <div class="lbl">접근 권한</div>
+    <div class="permrow">${u.admin?'<span class="permchip on">전체 (관리자)</span>':perms.map(([k,on])=>`<span class="permchip ${on?'on':''}">${on?'✓ ':''}${k}</span>`).join('')}</div>`;
+}
+
+function sub(coll,setter){
+  onSnapshot(collection(db,coll), snap=>{ const arr=[]; snap.forEach(d=>arr.push({id:d.id,...d.data()})); setter(arr); render(); },
+    err=>{ loadError=err.code||err.message; render(); });
+}
+sub('portal_users',a=>{users=a;});
+
+history.replaceState({v:curView,id:null},'');
+render();
+</script>
+</body>
+</html>
+
