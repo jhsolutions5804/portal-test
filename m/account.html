@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>내 계정 · JH Solutions</title>
+<style>
+  :root{--blue:#1D5BA6;--blue-d:#16487f;--ink:#1a2330;--sub:#6b7787;--line:#e4eaf2;--bg:#eef2f7;--card:#fff;--ok:#1b8a5a;--warn:#c0392b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;min-height:100vh}
+  .phone{width:100%;max-width:480px;margin:0 auto;background:var(--bg);min-height:100vh}
+  .scr{padding:0 0 30px}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:22px 22px 4px}
+  .back{background:var(--card);border:1px solid var(--line);color:var(--blue);font-size:13px;font-weight:700;padding:8px 14px;border-radius:12px;cursor:pointer;font-family:inherit;box-shadow:0 2px 6px rgba(30,50,80,.05)}
+  .back:active{background:#f0f4f9}
+  .hero{text-align:center;padding:24px 20px 6px}
+  .bigav{width:82px;height:82px;border-radius:50%;background:linear-gradient(135deg,#1D5BA6,#16487f);color:#fff;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:800;margin:0 auto 14px;box-shadow:0 8px 20px rgba(29,91,166,.32)}
+  .hname{font-size:23px;font-weight:800;letter-spacing:-.5px}
+  .hsub{font-size:13px;color:var(--sub);font-weight:600;margin-top:4px}
+  .adminb{display:inline-block;font-size:11px;font-weight:700;color:#fff;background:var(--blue);padding:3px 10px;border-radius:20px;margin-top:10px}
+  .lbl{font-size:12px;font-weight:800;color:#9aa8bc;letter-spacing:.5px;padding:24px 24px 12px}
+  .dcard{margin:0 20px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px 16px;box-shadow:0 2px 8px rgba(30,50,80,.05)}
+  .drow{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid #f2f5f9}
+  .drow:last-child{border-bottom:none}
+  .dk{font-size:12.5px;color:var(--sub);font-weight:600}
+  .dv{font-size:14px;font-weight:700;text-align:right;max-width:62%}
+  .permrow{display:flex;gap:8px;flex-wrap:wrap;padding:0 20px}
+  .permchip{font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:20px;border:1px solid var(--line);background:var(--card);color:#c3cedd}
+  .permchip.on{background:#e7f5ee;color:#1b8a5a;border-color:#bfe6d2}
+  .banner{margin:16px 20px 0;padding:12px 14px;border-radius:12px;font-size:12px;font-weight:600;line-height:1.5}
+  .banner.info{background:#eef4fc;border:1px solid #d6e4f6;color:var(--blue-d)}
+  .banner.err{background:#fdecea;border:1px solid #f5c6c0;color:#a5342a}
+  .logout{margin:26px 20px 0;text-align:center}
+  .logout button{background:var(--card);border:1px solid #f0d0d0;color:var(--warn);font-size:13px;font-weight:700;padding:12px 24px;border-radius:12px;cursor:pointer;font-family:inherit;width:100%;box-shadow:0 2px 8px rgba(30,50,80,.05)}
+  .logout button:active{background:#fdf0f0}
+  .loading{text-align:center;padding:50px;color:#9aa8bc;font-size:13px;font-weight:600}
+</style>
+<script src="auth-guard.js"></script>
+</head>
+<body>
+  <div class="phone"><div id="app" class="scr"><div class="loading">불러오는 중…</div></div></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+const firebaseConfig = {
+  apiKey:"AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI", authDomain:"portal-test-6e0ff.firebaseapp.com",
+  projectId:"portal-test-6e0ff", storageBucket:"portal-test-6e0ff.firebasestorage.app",
+  messagingSenderId:"752763010816", appId:"1:752763010816:web:4a0c7062a2f1a4e9a03de5"
+};
+const app=initializeApp(firebaseConfig); const db=getFirestore(app);
+
+let users=[], loadError='';
+const loginName=localStorage.getItem('jh_login_full')||localStorage.getItem('jh_login_name')||'';
+
+const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const $app=()=>document.getElementById('app');
+const initial=n=>(n||'?').slice(0,1);
+window.goBack=function(){ if(history.length>1) history.back(); else location.href='home.html'; };
+window.goHome=function(){ location.href='home.html'; };
+
+function render(){
+  const top=`<div class="top"><button class="back" onclick="goBack()">← 뒤로</button><span></span></div>`;
+  if(loadError && !loginName){ $app().innerHTML=top+`<div class="banner err">데이터를 불러오지 못했습니다: ${esc(loadError)}</div>`; return; }
+
+  const me = users.find(u=>u.name===loginName) || null;
+
+  if(!loginName){
+    $app().innerHTML=top+`
+      <div class="hero"><div class="bigav">?</div><div class="hname">로그인 정보 없음</div>
+      <div class="hsub">포털에서 로그인하면 계정 정보가 표시됩니다</div></div>
+      <div class="banner info">이 화면은 포털 로그인 세션의 계정 정보를 보여줍니다. 포털에서 로그인 후 다시 열어주세요.</div>`;
+    return;
+  }
+
+  const name=me?.name||loginName;
+  const info=me?[['부서',me.dept],['직급',me.rank],['사번',me.empNo],['이메일',me.email],['전화',me.phone]].filter(x=>x[1]):[];
+  const p=me?.perms||{};
+  const perms=[['기획',p.plan],['인사',p.hr],['전자결재',p.edoc],['PJT',p.pjt]];
+
+  $app().innerHTML=top+`
+    <div class="hero">
+      <div class="bigav">${esc(initial(name))}</div>
+      <div class="hname">${esc(name)}</div>
+      <div class="hsub">${me?(esc(me.dept||'')+(me.rank?' · '+esc(me.rank):'')):'로그인 계정'}</div>
+      ${me?.admin?'<div class="adminb">관리자</div>':''}
+    </div>
+    ${me?`
+      <div class="lbl">기본 정보</div>
+      <div class="dcard">${info.map(([k,v])=>`<div class="drow"><span class="dk">${k}</span><span class="dv">${esc(v)}</span></div>`).join('')||'<div class="drow"><span class="dk">정보</span><span class="dv">없음</span></div>'}</div>
+      <div class="lbl">접근 권한</div>
+      <div class="permrow">${me.admin?'<span class="permchip on">전체 (관리자)</span>':perms.map(([k,on])=>`<span class="permchip ${on?'on':''}">${on?'✓ ':''}${k}</span>`).join('')}</div>`
+    :'<div class="banner info">로그인한 이름과 일치하는 포털 계정을 찾지 못했습니다. 계정 정보는 관리자에게 문의해 주세요.</div>'}
+    <div class="logout"><button onclick="jhLogout({confirm:true})">로그아웃</button><button onclick="goHome()" style="color:var(--sub);margin-top:10px">홈으로</button></div>`;
+}
+
+function sub(coll,setter){
+  onSnapshot(collection(db,coll), snap=>{ const arr=[]; snap.forEach(d=>arr.push({id:d.id,...d.data()})); setter(arr); render(); },
+    err=>{ loadError=err.code||err.message; render(); });
+}
+sub('portal_users',a=>{users=a;});
+render();
+</script>
+</body>
+</html>
+
