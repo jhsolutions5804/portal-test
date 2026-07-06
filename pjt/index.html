@@ -465,7 +465,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
         <div class="logo-sub" id="hdr-sub-mo">귀뚜라미범양냉방 · FCU 설치</div>
       </div>
       <span class="date-badge" id="today-badge"></span>
-      <a href="https://jhsolutions5804.github.io/portal-test/daily-report/" style="font-size:12px;color:#1D5BA6;background:#e8f0fb;padding:5px 11px;border-radius:8px;text-decoration:none;font-weight:600;white-space:nowrap;">📋 공사일보</a>
+      <a href="https://jhsolutions5804.github.io/portal/daily-report/" style="font-size:12px;color:#1D5BA6;background:#e8f0fb;padding:5px 11px;border-radius:8px;text-decoration:none;font-weight:600;white-space:nowrap;">📋 공사일보</a>
     </div>
     <div class="tab-bar">
       <button class="tab active" onclick="switchTab('today',this)">오늘</button>
@@ -523,7 +523,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
               <div class="sci">📅</div>
               <div><div class="sct">오늘 일정</div><div class="scd">일정 확인 및 보고</div></div>
             </div>
-            <div class="home-sc" onclick="window.open('https://jhsolutions5804.github.io/portal-test/daily-report/','_blank')">
+            <div class="home-sc" onclick="window.open('https://jhsolutions5804.github.io/portal/daily-report/','_blank')">
               <div class="sci">📋</div>
               <div><div class="sct">공사일보 작성</div><div class="scd">오늘 공사일보 작성</div></div>
             </div>
@@ -1095,6 +1095,15 @@ window._usSave = async function(data) {
   await addDoc(collection(db, 'user_schedules'), { ...data, savedAt: serverTimestamp() });
 };
 
+// 일정 완료 상태 저장 (문서 done 필드) — 다중일 일정도 문서 단위라 렌더 날짜와 무관하게 공유됨
+window._usSetDone = async function(id, isDone) {
+  try {
+    await setDoc(doc(db, 'user_schedules', id), { done: !!isDone, doneUpdatedAt: serverTimestamp() }, { merge:true });
+  } catch(e) {
+    console.error('일정 완료 저장 오류:', e);
+  }
+};
+
 // Firestore 삭제
 window._usDelete = async function(id) {
   await deleteDoc(doc(db, 'user_schedules', id));
@@ -1263,15 +1272,16 @@ window._fbSubscribeChecks = function(dateKey) {
   });
 };
 
-window._fbSetCheck = async function(dateKey, idx, isDone) {
+window._fbSetCheck = async function(dateKey, keyVal, isDone, legacyIdx) {
   try {
     const checkDoc = doc(db, 'checklist_state', dateKey);
     const snap = await getDoc(checkDoc);
     let checks = snap.exists() ? (snap.data().checks || []) : [];
     if (isDone) {
-      if (!checks.includes(idx)) checks.push(idx);
+      if (keyVal != null && !checks.includes(keyVal)) checks.push(keyVal);
     } else {
-      checks = checks.filter(i => i !== idx);
+      // 신규 안정키 + 구버전 인덱스 동시 제거
+      checks = checks.filter(i => i !== keyVal && i !== legacyIdx);
     }
     await setDoc(checkDoc, { checks, updatedAt: serverTimestamp() });
     // 로컬 캐시도 즉시 업데이트 (실시간 구독 오기 전에 UI 반영)
@@ -1280,9 +1290,9 @@ window._fbSetCheck = async function(dateKey, idx, isDone) {
   } catch(e) {
     console.error('체크 저장 오류:', e);
     // 오프라인 fallback: localStorage
-    const arr = JSON.parse(localStorage.getItem('fabls_checks_'+dateKey)||'[]');
-    if (isDone) { if(!arr.includes(idx)) arr.push(idx); }
-    else { const p=arr.indexOf(idx); if(p>-1) arr.splice(p,1); }
+    let arr = JSON.parse(localStorage.getItem('fabls_checks_'+dateKey)||'[]');
+    if (isDone) { if(keyVal != null && !arr.includes(keyVal)) arr.push(keyVal); }
+    else { arr = arr.filter(i => i !== keyVal && i !== legacyIdx); }
     localStorage.setItem('fabls_checks_'+dateKey, JSON.stringify(arr));
   }
 };
@@ -1297,11 +1307,15 @@ window._fbGetChecks = function(dateKey) {
 
 function applyChecksToUI(dateKey, checks) {
   const items = document.querySelectorAll('#task-list .task-item');
-  items.forEach((el, idx) => {
+  items.forEach((el) => {
     const chk = el.querySelector('.check');
     const txt = el.querySelector('.task-text');
     if (!chk || !txt) return;
-    const isDone = checks.includes(idx);
+    // 사용자 일정은 문서 done 필드로 관리되므로 checklist_state 구독에서는 건드리지 않음
+    if (el.dataset.user === '1') return;
+    const sk = el.dataset.skey;
+    const legacyIdx = parseInt(el.dataset.idx, 10);
+    const isDone = checks.includes(sk) || checks.includes(legacyIdx);
     if (isDone) { chk.classList.add('done'); txt.classList.add('done-text'); }
     else { chk.classList.remove('done'); txt.classList.remove('done-text'); }
   });
@@ -1714,14 +1728,23 @@ function renderToday(){
     const div=document.createElement('div');div.className='task-item';
     // 숨길 고정 일정 처리 (인덱스 유지를 위해 display:none으로)
     if(!i._user && isHiddenFixed(key,i.text)){div.style.display='none';return div;}
-    const isDone=savedChecks.includes(idx);
+    // 완료 판단: 사용자 일정은 문서 done 필드(다중일 공유), 고정 일정은 텍스트 안정 키.
+    // 구버전 인덱스(idx) 완료도 폴백으로 함께 인식(점진 전환).
+    const fxKey='fx:'+key+':'+(i.text||'');
+    let isDone;
+    if(i._user){ isDone=(i.done===true)||savedChecks.includes(idx); }
+    else { isDone=savedChecks.includes(fxKey)||savedChecks.includes(idx); }
     const contBadge=i._pos==='end'?'<span class="cont-badge">계속</span>':'';
     const userBadge=i._user?'<span class="user-sched-badge">등록</span>':'';
     div.innerHTML=`<div class="check${isDone?' done':''}"></div><div class="task-body">
       <div class="task-meta">${i.time?`<span class="task-time">${i.time}</span>`:''}<span class="tag tag-${i.tag}">${i.tagLabel}</span>${userBadge}${contBadge}</div>
       <div class="task-text${isDone?' done-text':''}">${i.text||'(내용 없음)'}</div></div>`;
+    // applyChecksToUI(실시간 구독)에서 항목을 식별하기 위한 메타 심기
+    div.dataset.skey=i._user?('us:'+(i.id||'')):fxKey;
+    div.dataset.user=i._user?'1':'';
+    div.dataset.idx=String(idx);
     const chk=div.querySelector('.check');
-    chk.onclick=e=>{e.stopPropagation();toggleTask(div,key,idx);};
+    chk.onclick=e=>{e.stopPropagation();toggleTask(div,key,idx,i);};
     div.onclick=function(e){
       if(e.target.closest && e.target.closest('.check')) return;
       openUsDetail(i);
@@ -1737,22 +1760,30 @@ function renderToday(){
   }
   updateProgress();
 }
-function toggleTask(el,key,idx){
+function toggleTask(el,key,idx,item){
   const chk=el.querySelector('.check');
   const txt=el.querySelector('.task-text');
   const willDone=!chk.classList.contains('done');
   chk.classList.toggle('done');
   txt.classList.toggle('done-text');
-  // Firebase 저장 (없으면 localStorage fallback)
-  if(window._fbSetCheck){
-    window._fbSetCheck(key,idx,willDone);
+  if(item && item._user && item.id){
+    // 사용자 일정: 문서 done 필드 저장 (다중일 렌더 날짜와 무관하게 공유)
+    if(window._usSetDone) window._usSetDone(item.id, willDone);
+    // 끌 때 구버전 인덱스 완료가 폴백 표시되지 않도록 그날 checklist_state에서도 제거
+    if(!willDone && window._fbSetCheck) window._fbSetCheck(key, null, false, idx);
   } else {
-    try{
-      const arr=JSON.parse(localStorage.getItem('fabls_checks_'+key)||'[]');
-      if(willDone){if(!arr.includes(idx))arr.push(idx);}
-      else{const p=arr.indexOf(idx);if(p>-1)arr.splice(p,1);}
-      localStorage.setItem('fabls_checks_'+key,JSON.stringify(arr));
-    }catch(e){}
+    // 고정 일정: 텍스트 안정 키로 저장 (날짜별). 끌 때 구버전 인덱스도 함께 제거
+    const fxKey='fx:'+key+':'+((item&&item.text)||'');
+    if(window._fbSetCheck){
+      window._fbSetCheck(key, fxKey, willDone, idx);
+    } else {
+      try{
+        let arr=JSON.parse(localStorage.getItem('fabls_checks_'+key)||'[]');
+        if(willDone){ if(!arr.includes(fxKey))arr.push(fxKey); }
+        else{ arr=arr.filter(x=>x!==fxKey&&x!==idx); }
+        localStorage.setItem('fabls_checks_'+key,JSON.stringify(arr));
+      }catch(e){}
+    }
   }
   updateProgress();
 }
@@ -1851,7 +1882,10 @@ function renderTwoWeek(){
         _ordK.forEach(function(item,gi){_ckMap[(item.time||'')+'|'+(item.text||'')]=gi;});
         display.forEach(function(item){
           var _ckIdx=_ckMap[(item.time||'')+'|'+(item.text||'')];
-          var _done=_ckIdx!==undefined&&_savedCks.includes(_ckIdx);
+          var _fxK='fx:'+key+':'+(item.text||'');
+          var _done;
+          if(item._user){ _done=(item.done===true)||(_ckIdx!==undefined&&_savedCks.includes(_ckIdx)); }
+          else { _done=_savedCks.includes(_fxK)||(_ckIdx!==undefined&&_savedCks.includes(_ckIdx)); }
           var _ds=_done?'color:#c7c7cc;text-decoration:line-through;':'';
           h+='<div class="wk-item" style="'+_ds+'">';
           if(item.time) h+='<span style="font-size:10px;font-weight:700;color:'+(_done?'#c7c7cc':'#1D5BA6')+'">'+item.time+'</span> ';
@@ -1904,7 +1938,10 @@ function renderTwoWeek(){
       const notimedD=display.filter(function(i){return !i.time;});
       function _mRender(i){
         var _ck=_mCkMap[(i.time||'')+'|'+(i.text||'')];
-        var _d=_ck!==undefined&&_mSavedCks.includes(_ck);
+        var _fxK='fx:'+key+':'+(i.text||'');
+        var _d;
+        if(i._user){ _d=(i.done===true)||(_ck!==undefined&&_mSavedCks.includes(_ck)); }
+        else { _d=_mSavedCks.includes(_fxK)||(_ck!==undefined&&_mSavedCks.includes(_ck)); }
         return '<div class="week-item" style="'+(_d?'opacity:0.5;text-decoration:line-through;':'')+'"><span class="week-time">'+(_d?'<s>':'')+( i.time||'—')+(_d?'</s>':'')+'</span><span class="week-text">'+i.text+'</span><span class="week-tag tag-'+i.tag+'" style="'+(_d?'opacity:0.4;':'')+'">'+i.tagLabel+'</span></div>';
       }
       h+='<div style="margin-bottom:10px;border-radius:10px;overflow:hidden;'+bg+'">';
@@ -3903,3 +3940,4 @@ function _usSetTodo(v){
 }
 function toggleUsTodo(){_usSetTodo(!_usTodo);}
 </script>
+
