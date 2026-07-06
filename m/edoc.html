@@ -237,7 +237,12 @@ function canApprove(d){
 function canDelete(d){
   if(!d) return false;
   const uid=_me.uid||'';
-  return (!!_me.admin) || (uid && d.authorUid===uid);
+  if(!!_me.admin) return true;                       // 관리자
+  if(uid && d.authorUid===uid) return true;          // 작성자 본인
+  const st=d.status||'';
+  // 아직 결재 완료 전(임시/대기/검토) 문서는 상신 취소(삭제) 허용
+  if(st==='draft'||st==='pending'||st==='reviewing') return true;
+  return false;
 }
 function deleteBtn(id,dtype,d){
   if(!canDelete(d)) return '';
