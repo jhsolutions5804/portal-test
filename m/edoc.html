@@ -62,6 +62,17 @@
   .banner{margin:14px 20px 0;padding:11px 14px;border-radius:12px;font-size:11.5px;font-weight:600;line-height:1.5}
   .banner.info{background:#eef4fc;border:1px solid #d6e4f6;color:var(--blue-d)}
   .banner.err{background:#fdecea;border:1px solid #f5c6c0;color:#a5342a}
+
+  .wform{padding:0 20px 40px}
+  .wf{margin-bottom:14px}
+  .wf label{display:block;font-size:12px;font-weight:700;color:var(--sub);margin-bottom:6px}
+  .wf input,.wf textarea,.wf select{width:100%;border:1px solid var(--line);border-radius:11px;padding:12px;font-size:14px;font-family:inherit;background:#fff;color:var(--ink)}
+  .wf textarea{min-height:70px;resize:vertical}
+  .wf input:focus,.wf textarea:focus,.wf select:focus{outline:none;border-color:var(--violet)}
+  .wline{font-size:12px;color:var(--sub);background:#f4f2fb;border-radius:10px;padding:11px 13px;margin:6px 0 14px;line-height:1.7}
+  .wamt{font-size:15px;font-weight:800;color:var(--violet);margin:0 0 14px}
+  .wsave{width:100%;padding:15px;background:var(--violet);border:none;border-radius:13px;color:#fff;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer}
+  .fab-w{position:fixed;right:18px;bottom:24px;width:54px;height:54px;border-radius:50%;background:var(--violet);color:#fff;border:none;font-size:28px;box-shadow:0 6px 18px rgba(124,77,255,.4);cursor:pointer;z-index:50;display:flex;align-items:center;justify-content:center}
 </style>
 <script src="auth-guard.js"></script>
 </head>
@@ -70,8 +81,9 @@
 
 <script type="module">
 const _uInitial=(function(){try{var a=JSON.parse(localStorage.getItem('jh_login_perms')||'null');return (a&&a.name)?a.name.slice(0,1):'·';}catch(e){return '·';}})();
+const _me=(function(){try{return JSON.parse(localStorage.getItem('jh_login_perms')||'null')||{};}catch(e){return {};}})();
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, onSnapshot, doc, getDoc, getDocs, setDoc, addDoc, serverTimestamp, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 const firebaseConfig = {
   apiKey:"AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI", authDomain:"portal-test-6e0ff.firebaseapp.com",
   projectId:"portal-test-6e0ff", storageBucket:"portal-test-6e0ff.firebasestorage.app",
@@ -81,6 +93,7 @@ const app=initializeApp(firebaseConfig); const db=getFirestore(app);
 
 let dailies=[], leaves=[];
 let curView='home', detailId=null, loadError='';
+let overtimes=[];
 
 const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const $app=()=>document.getElementById('app');
@@ -108,6 +121,7 @@ window.addEventListener('popstate',e=>{ const st=e.state||{v:'home',id:null}; cu
 function render(){
   if(loadError){ $app().innerHTML=topBar('전자결재')+`<div class="banner err">데이터를 불러오지 못했습니다: ${esc(loadError)}<br>포털 로그인 세션이 필요할 수 있습니다.</div>`; return; }
   const map={home:renderHome,approve:renderApprove,daily:renderDaily,leave:renderLeave,dailyD:renderDailyDetail,leaveD:renderLeaveDetail,
+    overtime:renderOvertimeList,overtimeD:renderOvertimeDetail,dailyW:renderDailyWrite,leaveW:renderLeaveWrite,overtimeW:renderOvertimeWrite,
     resign:()=>renderStub('퇴직원서'),cert:()=>renderStub('재직증명서'),purchase:()=>renderStub('구매품의서'),expense:()=>renderStub('지출결의서')};
   (map[curView]||renderHome)();
 }
@@ -131,6 +145,7 @@ function renderHome(){
       <div class="tile c2" onclick="showView('daily')"><span class="go">›</span><div class="ic">📔</div><div class="nm">업무일지</div><div class="ds">일일 업무</div></div>
       <div class="tile c6" onclick="showView('purchase')"><span class="go">›</span><div class="ic">🛒</div><div class="nm">구매품의서</div><div class="ds">구매 품의</div></div>
       <div class="tile c7" onclick="showView('expense')"><span class="go">›</span><div class="ic">💳</div><div class="nm">지출결의서</div><div class="ds">지출 결의</div></div>
+      <div class="tile c4" onclick="showView('overtime')"><span class="go">›</span><div class="ic">⏱️</div><div class="nm">초과근로</div><div class="ds">초과근로 신청</div></div>
       <div class="tile c3" onclick="showView('leave')"><span class="go">›</span><div class="ic">🌴</div><div class="nm">연차신청서</div><div class="ds">연차 신청</div></div>
       <div class="tile c5" onclick="showView('cert')"><span class="go">›</span><div class="ic">📃</div><div class="nm">재직증명서</div><div class="ds">증명 발급</div></div>
     </div>
@@ -161,13 +176,15 @@ function renderDaily(){
   const sorted=[...dailies].sort((a,b)=>fmtDate(b.date||b.createdAt).localeCompare(fmtDate(a.date||a.createdAt)));
   $app().innerHTML=topBar('전자결재')+`
     <div class="hello rowend"><div><div class="name">업무일지</div><div class="sub">전체 ${dailies.length}</div></div></div>
-    ${dailies.length?`<div class="list">${sorted.map(dailyCard).join('')}</div>`:'<div class="empty">작성된 업무일지가 없습니다.</div>'}`;
+    ${dailies.length?`<div class="list">${sorted.map(dailyCard).join('')}</div>`:'<div class="empty">작성된 업무일지가 없습니다.</div>'}
+    <button class="fab-w" onclick="showView('dailyW')">+</button>`;
 }
 function renderLeave(){
   const sorted=[...leaves].sort((a,b)=>fmtDate(b.startDate||b.sdate).localeCompare(fmtDate(a.startDate||a.sdate)));
   $app().innerHTML=topBar('전자결재')+`
     <div class="hello rowend"><div><div class="name">연차신청서</div><div class="sub">전체 ${leaves.length}</div></div></div>
-    ${leaves.length?`<div class="list">${sorted.map(leaveCard).join('')}</div>`:'<div class="empty">연차 신청 내역이 없습니다.</div>'}`;
+    ${leaves.length?`<div class="list">${sorted.map(leaveCard).join('')}</div>`:'<div class="empty">연차 신청 내역이 없습니다.</div>'}
+    <button class="fab-w" onclick="showView('leaveW')">+</button>`;
 }
 function renderDailyDetail(){
   const d=dailies.find(x=>x.id===detailId);
@@ -181,7 +198,8 @@ function renderDailyDetail(){
       ${d.tomorrowWork?`<div class="drow"><span class="dk">내일 업무</span><span class="dv">${esc(d.tomorrowWork)}</span></div>`:''}
       ${d.issue?`<div class="drow"><span class="dk">특이사항</span><span class="dv">${esc(d.issue)}</span></div>`:''}
     </div>
-    ${Array.isArray(d.approvalLine)&&d.approvalLine.length?`<div class="lbl">결재선</div><div class="dcard">${d.approvalLine.map(a=>`<div class="drow"><span class="dk">${esc(a.rank||a.role||'')}</span><span class="dv">${esc(a.name||'')} ${a.status?stBadge(a.status):''}</span></div>`).join('')}</div>`:''}`;
+    ${Array.isArray(d.approvalLine)&&d.approvalLine.length?`<div class="lbl">결재선</div><div class="dcard">${d.approvalLine.map(a=>`<div class="drow"><span class="dk">${esc(a.rank||a.role||'')}</span><span class="dv">${esc(a.name||'')} ${a.status?stBadge(a.status):''}</span></div>`).join('')}</div>`:''}
+    ${approveBtns(d.id,'daily',d)}`;
 }
 function renderLeaveDetail(){
   const l=leaves.find(x=>x.id===detailId);
@@ -193,7 +211,9 @@ function renderLeaveDetail(){
       <div class="drow"><span class="dk">일수</span><span class="dv">${l.days||l.leaveDays||0}일</span></div>
       ${l.dept?`<div class="drow"><span class="dk">부서</span><span class="dv">${esc(l.dept)}</span></div>`:''}
       ${l.reason?`<div class="drow"><span class="dk">사유</span><span class="dv">${esc(l.reason)}</span></div>`:''}
-    </div>`;
+    </div>
+    ${Array.isArray(l.approvalLine)&&l.approvalLine.length?`<div class="lbl">결재선</div><div class="dcard">${l.approvalLine.map(a=>`<div class="drow"><span class="dk">${esc(a.rank||a.role||'')}</span><span class="dv">${esc(a.name||'')} ${a.status?stBadge(a.status):''}</span></div>`).join('')}</div>`:''}
+    ${approveBtns(l.id,'leave',l)}`;
 }
 function renderStub(label){
   $app().innerHTML=topBar('전자결재')+`
@@ -202,6 +222,214 @@ function renderStub(label){
     <div class="empty" style="margin-top:14px">준비 중</div>`;
 }
 
+
+// ===== 결재 (승인/반려) =====
+function canApprove(d){
+  if(!d||!Array.isArray(d.approvalLine)) return false;
+  const nm=_me.name||'', uid=_me.uid||'';
+  return d.approvalLine.some(s=>s.role==='결재'&&s.status==='pending'&&((uid&&s.uid===uid)||(!s.uid&&s.name===nm)));
+}
+function approveBtns(id,dtype,d){
+  if(!canApprove(d)) return '';
+  const payload=encodeURIComponent(JSON.stringify(d));
+  return `<div style="display:flex;gap:10px;margin:18px 20px 0">
+    <button onclick="mobileApprove('${id}','${dtype}','approved','${payload}')" style="flex:1;padding:14px;background:#16A34A;border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer">✅ 승인</button>
+    <button onclick="mobileApprove('${id}','${dtype}','rejected','${payload}')" style="flex:1;padding:14px;background:#DC2626;border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer">❌ 반려</button>
+  </div>`;
+}
+window.mobileApprove=async function(docId, dtype, newStatus, docDataStr){
+  const labels={approved:'승인',rejected:'반려'};
+  if(!confirm(`이 문서를 [${labels[newStatus]}] 처리하시겠습니까?`)) return;
+  try{
+    const rawData=typeof docDataStr==='string'?JSON.parse(decodeURIComponent(docDataStr)):(docDataStr||{});
+    const origLine=rawData.approvalLine||[];
+    const approverName=_me.name||'', myUid=_me.uid||'';
+    const isMyStep=s=>{
+      if(s.role==='회람'||s.role==='수신'||s.role==='작성')return false;
+      if(s.status!=='pending')return false;
+      return (myUid&&s.uid===myUid)||(!s.uid&&s.name===approverName);
+    };
+    const line=origLine.map(s=>{
+      if(!isMyStep(s))return s;
+      return {...s, uid:myUid, status:newStatus==='rejected'?'rejected':'approved', approvedBy:approverName, approvedAt:new Date().toISOString()};
+    });
+    let docStatus=newStatus;
+    if(newStatus==='approved'){
+      const myIdx=origLine.findIndex(isMyStep);
+      const hasNext=myIdx>=0&&origLine.slice(myIdx+1).some(s=>s.role!=='회람'&&s.role!=='수신'&&s.role!=='작성'&&s.status==='pending');
+      docStatus=hasNext?'reviewing':'approved';
+    }
+    await setDoc(doc(db,`edoc_${dtype}`,docId),{status:docStatus,approvalLine:line,approvedBy:approverName,approvedAt:serverTimestamp()},{merge:true});
+    // 초과근로 승인 → 인사 overtime 자동 등록 (중복 방지)
+    if(newStatus==='approved'&&dtype==='overtime'&&!rawData.linkedToOvertime){
+      await addDoc(collection(db,'overtime'),{
+        date:rawData.date||'',name:rawData.name||'',rank:rawData.rank||'',workerId:rawData.workerId||'',
+        hours:Number(rawData.hours)||0,amount:Number(rawData.amount)||0,rate:Number(rawData.rate)||0,
+        yearMonth:(rawData.date||'').slice(0,7),savedAt:serverTimestamp()
+      });
+      await setDoc(doc(db,'edoc_overtime',docId),{linkedToOvertime:true},{merge:true});
+      alert('✅ 승인 완료. 인사 초과근로에 자동 등록되었습니다.');
+    } else {
+      alert(`✅ ${labels[newStatus]} 처리되었습니다.`);
+    }
+    goBack();
+  }catch(e){ alert('오류: '+e.message); }
+};
+
+
+// ===== 작성 (업무일지 / 연차 / 초과근로) =====
+function efld(label,inp){return `<div class="wf"><label>${label}</label>${inp}</div>`;}
+function fv(id){const e=document.getElementById(id);return e?e.value:'';}
+function lineDaily(){return [{role:'작성',uid:_me.uid||'',name:_me.name||'',status:'draft'},{role:'결재',uid:'',name:'김종화',rank:'차장',status:'pending'},{role:'수신',uid:'',name:'송지훈',rank:'대표',status:'pending'}];}
+function lineOvertime(){return [{role:'작성',uid:_me.uid||'',name:_me.name||'',status:'draft'},{role:'결재',uid:'',name:'김종화',rank:'차장',status:'pending'},{role:'회람',uid:'',name:'김민서',rank:'대리',status:'pending'}];}
+// 통상임금 (PC 인사와 동일)
+function otCalcAnnualSalary(hourly, empType){
+  if(!hourly) return {basic:0,fixedOt:0,fixedNight:0,weekly:0,total:0};
+  const h=Number(hourly); let basic,fixedOt,fixedNight,weekly;
+  if(empType==='office'){ basic=Math.round(h*8*5*4.345); fixedOt=Math.round(h*12*4.345); fixedNight=0; weekly=Math.round(h*8*4.345); }
+  else { basic=Math.round(h*8*5*4.345); fixedOt=0; fixedNight=Math.round(h*0.5*8*5*4.345); weekly=Math.round(h*8*4.345); }
+  return {basic,fixedOt,fixedNight,weekly,total:basic+fixedOt+fixedNight+weekly};
+}
+let _otWorkers=null,_otWageCache={};
+async function otLoadWorkers(){
+  if(_otWorkers)return _otWorkers;
+  const snap=await getDocs(collection(db,'workers'));
+  const list=[];snap.forEach(d=>{const w=d.data();list.push({id:d.id,name:w.name,rank:w.rank||'',empNo:w.empNo||''});});
+  list.sort((a,b)=>String(a.empNo||'zzz').localeCompare(String(b.empNo||'zzz')));
+  _otWorkers=list;return list;
+}
+async function otGetWage(workerId){
+  if(_otWageCache[workerId])return _otWageCache[workerId];
+  const snap=await getDocs(query(collection(db,`annual_contracts/${workerId}/contracts`),orderBy('contractDate','desc'),limit(1)));
+  if(snap.empty)return null;
+  const c=snap.docs[0].data();const sal=otCalcAnnualSalary(Number(c.hourly||0),c.empType||'field');
+  const rate=Math.round((sal.basic+sal.fixedOt+sal.fixedNight+sal.weekly)/209);
+  const r={rate};_otWageCache[workerId]=r;return r;
+}
+// 업무일지 작성
+window.renderDailyWrite=function(){
+  const today=new Date().toISOString().slice(0,10);
+  $app().innerHTML=topBar('업무일지 작성','goBack()')+`
+    <div class="wform">
+      ${efld('일자',`<input id="w-date" type="date" value="${today}">`)}
+      ${efld('제목',`<input id="w-title" type="text" placeholder="예: 현장 업무일지">`)}
+      ${efld('오늘 업무',`<textarea id="w-today" placeholder="오늘 진행한 업무"></textarea>`)}
+      ${efld('내일 업무',`<textarea id="w-tomorrow" placeholder="내일 예정 업무"></textarea>`)}
+      ${efld('특이사항',`<textarea id="w-issue" placeholder="특이사항 (선택)"></textarea>`)}
+      <div class="wline">결재: <b>김종화 차장</b> → 수신: <b>송지훈 대표</b></div>
+      <button class="wsave" onclick="dailySaveM()">상신</button>
+    </div>`;
+};
+window.dailySaveM=async function(){
+  const date=fv('w-date'),title=fv('w-title'),today=fv('w-today'),tomorrow=fv('w-tomorrow'),issue=fv('w-issue');
+  if(!title.trim()){alert('제목을 입력하세요.');return;}
+  if(!today.trim()){alert('오늘 업무를 입력하세요.');return;}
+  try{
+    await addDoc(collection(db,'edoc_daily'),{dtype:'daily',status:'pending',title,date,todayWork:today,tomorrowWork:tomorrow,issue,
+      authorUid:_me.uid||'',authorName:_me.name||'',authorDept:_me.dept||'',authorRank:_me.rank||'',
+      approvalLine:lineDaily(),createdAt:serverTimestamp()});
+    alert('✅ 상신 완료!');history.back();
+  }catch(e){alert('오류: '+e.message);}
+};
+// 연차 작성
+window.renderLeaveWrite=function(){
+  const today=new Date().toISOString().slice(0,10);
+  $app().innerHTML=topBar('연차신청 작성','goBack()')+`
+    <div class="wform">
+      ${efld('구분',`<select id="l-type"><option>연차</option><option>반차</option><option>병가</option><option>경조사</option></select>`)}
+      ${efld('시작일',`<input id="l-start" type="date" value="${today}">`)}
+      ${efld('종료일',`<input id="l-end" type="date" value="${today}">`)}
+      ${efld('일수',`<input id="l-days" type="number" step="0.5" min="0" value="1">`)}
+      ${efld('사유',`<textarea id="l-reason" placeholder="사유"></textarea>`)}
+      <div class="wline">결재: <b>김종화 차장</b> → 수신: <b>송지훈 대표</b></div>
+      <button class="wsave" onclick="leaveSaveM()">상신</button>
+    </div>`;
+};
+window.leaveSaveM=async function(){
+  const type=fv('l-type'),start=fv('l-start'),end=fv('l-end'),days=Number(fv('l-days')||0),reason=fv('l-reason');
+  if(!start){alert('시작일을 선택하세요.');return;}
+  if(!days||days<=0){alert('일수를 입력하세요.');return;}
+  try{
+    await addDoc(collection(db,'edoc_leave'),{dtype:'leave',status:'pending',
+      name:_me.name||'',leaveType:type,startDate:start,endDate:end||start,days,reason,
+      authorUid:_me.uid||'',authorName:_me.name||'',authorDept:_me.dept||'',authorRank:_me.rank||'',dept:_me.dept||'',
+      approvalLine:lineDaily(),createdAt:serverTimestamp()});
+    alert('✅ 상신 완료!');history.back();
+  }catch(e){alert('오류: '+e.message);}
+};
+// 초과근로 목록/작성/상세
+window.renderOvertimeList=function(){
+  const sorted=[...overtimes].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  $app().innerHTML=topBar('전자결재')+`
+    <div class="hello rowend"><div><div class="name">초과근로</div><div class="sub">전체 ${overtimes.length}</div></div></div>
+    ${overtimes.length?`<div class="list">${sorted.map(otCard).join('')}</div>`:'<div class="empty">작성된 초과근로 신청이 없습니다.</div>'}
+    <button class="fab-w" onclick="showView('overtimeW')">+</button>`;
+};
+function otCard(o){
+  return `<div class="dcard-list" onclick="showDetail('overtime','${o.id}')">
+    <div class="dl-top"><div class="dl-title">${esc(o.name||'-')} <span class="pill">${esc(o.rank||'')}</span></div>${stBadge(o.status)}</div>
+    <div class="dl-meta">${esc(o.date||'')} · ${o.hours||0}시간 · ₩${(o.amount||0).toLocaleString()}</div></div>`;
+}
+window.renderOvertimeDetail=function(){
+  const o=overtimes.find(x=>x.id===detailId);
+  if(!o){ $app().innerHTML=topBar('전자결재')+'<div class="empty">문서를 찾을 수 없습니다.</div>'; return; }
+  $app().innerHTML=topBar('전자결재')+`
+    <div class="hello"><div class="name" style="font-size:20px">초과근로 신청</div><div class="sub">${stBadge(o.status)}</div></div>
+    <div class="dcard">
+      <div class="drow"><span class="dk">근로자</span><span class="dv">${esc(o.name||'')} ${esc(o.rank||'')}</span></div>
+      <div class="drow"><span class="dk">일자</span><span class="dv">${esc(o.date||'')}</span></div>
+      <div class="drow"><span class="dk">시간</span><span class="dv">${o.hours||0}시간</span></div>
+      <div class="drow"><span class="dk">통상임금</span><span class="dv">₩${(o.rate||0).toLocaleString()}/h</span></div>
+      <div class="drow"><span class="dk">수당</span><span class="dv" style="font-weight:800;color:var(--violet)">₩${(o.amount||0).toLocaleString()}</span></div>
+    </div>
+    ${Array.isArray(o.approvalLine)&&o.approvalLine.length?`<div class="lbl">결재선</div><div class="dcard">${o.approvalLine.map(a=>`<div class="drow"><span class="dk">${esc(a.rank||a.role||'')}</span><span class="dv">${esc(a.name||'')} ${a.status?stBadge(a.status):''}</span></div>`).join('')}</div>`:''}
+    ${approveBtns(o.id,'overtime',o)}`;
+};
+window.renderOvertimeWrite=async function(){
+  $app().innerHTML=topBar('초과근로 작성','goBack()')+`<div class="wform"><div class="empty">불러오는 중…</div></div>`;
+  const workers=await otLoadWorkers();
+  const today=new Date().toISOString().slice(0,10);
+  const opts=['<option value="">근로자 선택</option>',...workers.map(w=>`<option value="${w.id}" data-name="${w.name}" data-rank="${w.rank}">${w.name}${w.rank?' '+w.rank:''}</option>`)].join('');
+  $app().innerHTML=topBar('초과근로 작성','goBack()')+`
+    <div class="wform">
+      ${efld('일자',`<input id="o-date" type="date" value="${today}">`)}
+      ${efld('근로자',`<select id="o-worker" onchange="otPick()">${opts}</select>`)}
+      ${efld('초과근로 시간',`<input id="o-hours" type="number" step="0.5" min="0" placeholder="시간" oninput="otShow()">`)}
+      <div id="o-wage" data-rate="0" class="wline">근로자를 선택하면 통상임금이 표시됩니다</div>
+      <div id="o-amt" class="wamt">예상 수당: ₩0</div>
+      <div class="wline">결재: <b>김종화 차장</b> → 회람: <b>김민서 대리</b></div>
+      <button class="wsave" onclick="overtimeSaveM()">상신</button>
+    </div>`;
+};
+window.otPick=async function(){
+  const sel=document.getElementById('o-worker');if(!sel||!sel.value)return;
+  const w=document.getElementById('o-wage');w.textContent='통상임금 조회 중…';
+  const wage=await otGetWage(sel.value);
+  if(!wage){w.textContent='⚠️ 연봉계약서 없음 (통상임금 0원)';w.dataset.rate='0';}
+  else{w.textContent=`통상임금 ${wage.rate.toLocaleString()}원/h`;w.dataset.rate=String(wage.rate);}
+  otShow();
+};
+window.otShow=function(){
+  const wEl=document.getElementById('o-wage');const rate=Number((wEl&&wEl.dataset.rate)||0);
+  const hEl=document.getElementById('o-hours');const hours=Number((hEl&&hEl.value)||0);
+  const a=document.getElementById('o-amt');if(a)a.textContent='예상 수당: ₩'+Math.round(rate*hours).toLocaleString();
+};
+window.overtimeSaveM=async function(){
+  const date=fv('o-date'),sel=document.getElementById('o-worker'),hours=Number(fv('o-hours')||0);
+  if(!date){alert('일자를 선택하세요.');return;}
+  if(!sel||!sel.value){alert('근로자를 선택하세요.');return;}
+  if(!hours||hours<=0){alert('시간을 입력하세요.');return;}
+  const opt=sel.options[sel.selectedIndex];const name=opt.dataset.name||'',rank=opt.dataset.rank||'',workerId=sel.value;
+  const wage=await otGetWage(workerId);const rate=wage?wage.rate:0,amount=Math.round(rate*hours);
+  try{
+    await addDoc(collection(db,'edoc_overtime'),{dtype:'overtime',status:'pending',
+      date,name,rank,workerId,hours,rate,amount,yearMonth:date.slice(0,7),
+      authorUid:_me.uid||'',authorName:_me.name||'',
+      approvalLine:lineOvertime(),linkedToOvertime:false,createdAt:serverTimestamp()});
+    alert('✅ 상신 완료!');history.back();
+  }catch(e){alert('오류: '+e.message);}
+};
+
 /* Firestore 구독 */
 function sub(coll,setter){
   onSnapshot(collection(db,coll), snap=>{ const arr=[]; snap.forEach(d=>arr.push({id:d.id,...d.data()})); setter(arr); render(); },
@@ -209,10 +437,12 @@ function sub(coll,setter){
 }
 sub('edoc_daily',a=>{dailies=a;});
 sub('edoc_leave',a=>{leaves=a;});
+sub('edoc_overtime',a=>{overtimes=a;});
 
 history.replaceState({v:'home',id:null},'');
 render();
 </script>
 </body>
 </html>
+
 
