@@ -731,7 +731,7 @@ window.renderOvertimeMain = async function(){
   docs.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
   const won=n=>'₩'+(Math.round(n)||0).toLocaleString('ko-KR');
   const STL={draft:'임시저장',pending:'결재대기',reviewing:'검토중',approved:'승인',rejected:'반려'};
-  const rows=docs.map(d=>`<div style="background:#fff;border:1px solid #E4EAF2;border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">
+  const rows=docs.map(d=>`<div onclick="docDetail(${JSON.stringify(d).replace(/\"/g,'&quot;')},'overtime')" style="background:#fff;border:1px solid #E4EAF2;border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
     <div><div style="font-weight:700;">${d.name||'-'} <span style="font-size:11px;color:#5C6F8A;">${d.rank||''}</span></div>
     <div style="font-size:12px;color:#5C6F8A;margin-top:3px;">${d.date||''} &middot; ${d.hours||0}시간</div></div>
     <div style="text-align:right;"><div style="font-weight:700;color:#1D5BA6;">${won(d.amount)}</div>
@@ -1168,6 +1168,13 @@ window.quickApprove = async function(docId, dtype, docData) {
 
 // ── 문서 유형별 메인 (공통 골격) ──
 const DOC_CONFIG = {
+  overtime: { label:'초과근로', icon:'⏱️', approvers:['김종화'], cc:['김민서'], fields:[
+    { key:'name',   label:'근로자',        type:'text' },
+    { key:'date',   label:'일자',          type:'date' },
+    { key:'hours',  label:'초과근로 시간', type:'number' },
+    { key:'rate',   label:'통상임금(원/h)', type:'number' },
+    { key:'amount', label:'수당(원)',      type:'number' },
+  ]},
   leave:    { label:'연차신청서',  icon:'🏖️', fields:[
     { key:'leaveType', label:'휴가 종류', type:'select', opts:['연차','반차(오전)','반차(오후)','병가','기타'] },
     { key:'startDate', label:'시작일', type:'date' },
@@ -1795,7 +1802,7 @@ window.docDetail = function(d, dtype) {
   const STATUS_COLOR = { draft:'#9AAABF', pending:'#F59E0B', reviewing:'#3B82F6', approved:'#16A34A', rejected:'#DC2626', posted:'#1D5BA6' };
   const fmtD = ts => ts?.seconds ? new Date(ts.seconds*1000).toLocaleDateString('ko-KR') : '-';
   // 결재함 등 다른 탭에서 진입했다면 그 화면으로, 아니면 기존처럼 해당 문서함 목록으로
-  const defaultBackFn = dtype==='leave' ? 'renderLeaveMain()' : `renderDocList('${dtype}')`;
+  const defaultBackFn = dtype==='leave' ? 'renderLeaveMain()' : dtype==='overtime' ? 'renderOvertimeMain()' : `renderDocList('${dtype}')`;
   const backFn = _detailBackFn ? 'docDetailBack()' : defaultBackFn;
 
   // leave 전용 필드 목록
