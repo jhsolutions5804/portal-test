@@ -83,7 +83,7 @@
 const _uInitial=(function(){try{var a=JSON.parse(localStorage.getItem('jh_login_perms')||'null');return (a&&a.name)?a.name.slice(0,1):'·';}catch(e){return '·';}})();
 const _me=(function(){try{return JSON.parse(localStorage.getItem('jh_login_perms')||'null')||{};}catch(e){return {};}})();
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, onSnapshot, doc, getDoc, getDocs, setDoc, addDoc, serverTimestamp, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, onSnapshot, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, serverTimestamp, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 const firebaseConfig = {
   apiKey:"AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI", authDomain:"portal-test-6e0ff.firebaseapp.com",
   projectId:"portal-test-6e0ff", storageBucket:"portal-test-6e0ff.firebasestorage.app",
@@ -199,7 +199,8 @@ function renderDailyDetail(){
       ${d.issue?`<div class="drow"><span class="dk">특이사항</span><span class="dv">${esc(d.issue)}</span></div>`:''}
     </div>
     ${Array.isArray(d.approvalLine)&&d.approvalLine.length?`<div class="lbl">결재선</div><div class="dcard">${d.approvalLine.map(a=>`<div class="drow"><span class="dk">${esc(a.rank||a.role||'')}</span><span class="dv">${esc(a.name||'')} ${a.status?stBadge(a.status):''}</span></div>`).join('')}</div>`:''}
-    ${approveBtns(d.id,'daily',d)}`;
+    ${approveBtns(d.id,'daily',d)}
+    ${deleteBtn(d.id,'daily',d)}`;
 }
 function renderLeaveDetail(){
   const l=leaves.find(x=>x.id===detailId);
@@ -213,7 +214,8 @@ function renderLeaveDetail(){
       ${l.reason?`<div class="drow"><span class="dk">사유</span><span class="dv">${esc(l.reason)}</span></div>`:''}
     </div>
     ${Array.isArray(l.approvalLine)&&l.approvalLine.length?`<div class="lbl">결재선</div><div class="dcard">${l.approvalLine.map(a=>`<div class="drow"><span class="dk">${esc(a.rank||a.role||'')}</span><span class="dv">${esc(a.name||'')} ${a.status?stBadge(a.status):''}</span></div>`).join('')}</div>`:''}
-    ${approveBtns(l.id,'leave',l)}`;
+    ${approveBtns(l.id,'leave',l)}
+    ${deleteBtn(l.id,'leave',l)}`;
 }
 function renderStub(label){
   $app().innerHTML=topBar('전자결재')+`
@@ -227,8 +229,25 @@ function renderStub(label){
 function canApprove(d){
   if(!d||!Array.isArray(d.approvalLine)) return false;
   const nm=_me.name||'', uid=_me.uid||'';
+  const hasPending=d.approvalLine.some(s=>s.role==='결재'&&s.status==='pending');
+  if(_me.admin && hasPending) return true; // 관리자(대표)는 대기 결재 대행
   return d.approvalLine.some(s=>s.role==='결재'&&s.status==='pending'&&((uid&&s.uid===uid)||(!s.uid&&s.name===nm)));
 }
+// 삭제 권한: 작성자 본인 또는 관리자
+function canDelete(d){
+  if(!d) return false;
+  const uid=_me.uid||'';
+  return (!!_me.admin) || (uid && d.authorUid===uid);
+}
+function deleteBtn(id,dtype,d){
+  if(!canDelete(d)) return '';
+  return `<div style="margin:12px 20px 0"><button onclick="mobileDelete('${id}','${dtype}')" style="width:100%;padding:12px;background:#fdecea;color:#c0392b;border:none;border-radius:11px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">🗑️ 삭제</button></div>`;
+}
+window.mobileDelete=async function(docId,dtype){
+  if(!confirm('이 문서를 삭제하시겠습니까?')) return;
+  try{ await deleteDoc(doc(db,`edoc_${dtype}`,docId)); alert('삭제되었습니다.'); history.back(); }
+  catch(e){ alert('오류: '+e.message); }
+};
 function approveBtns(id,dtype,d){
   if(!canApprove(d)) return '';
   const payload=encodeURIComponent(JSON.stringify(d));
@@ -247,6 +266,7 @@ window.mobileApprove=async function(docId, dtype, newStatus, docDataStr){
     const isMyStep=s=>{
       if(s.role==='회람'||s.role==='수신'||s.role==='작성')return false;
       if(s.status!=='pending')return false;
+      if(_me.admin) return true; // 관리자는 대기 결재단계 대행
       return (myUid&&s.uid===myUid)||(!s.uid&&s.name===approverName);
     };
     const line=origLine.map(s=>{
@@ -383,7 +403,8 @@ window.renderOvertimeDetail=function(){
       <div class="drow"><span class="dk">수당</span><span class="dv" style="font-weight:800;color:var(--violet)">₩${(o.amount||0).toLocaleString()}</span></div>
     </div>
     ${Array.isArray(o.approvalLine)&&o.approvalLine.length?`<div class="lbl">결재선</div><div class="dcard">${o.approvalLine.map(a=>`<div class="drow"><span class="dk">${esc(a.rank||a.role||'')}</span><span class="dv">${esc(a.name||'')} ${a.status?stBadge(a.status):''}</span></div>`).join('')}</div>`:''}
-    ${approveBtns(o.id,'overtime',o)}`;
+    ${approveBtns(o.id,'overtime',o)}
+    ${deleteBtn(o.id,'overtime',o)}`;
 };
 window.renderOvertimeWrite=async function(){
   $app().innerHTML=topBar('초과근로 작성','goBack()')+`<div class="wform"><div class="empty">불러오는 중…</div></div>`;
