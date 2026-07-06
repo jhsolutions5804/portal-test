@@ -132,6 +132,7 @@ const EDOC_TABS = {
   cert:    { id:'tab-cert',    title:'재직증명서',    fn:()=>renderDocMain('cert') },
   purchase:{ id:'tab-purchase',title:'구매품의서',    fn:()=>renderDocMain('purchase') },
   expense: { id:'tab-expense', title:'지출결의서',    fn:()=>renderDocMain('expense') },
+  overtime:{ id:'tab-overtime',title:'초과근로',      fn:()=>renderOvertimeMain() },
 };
 
 // 각 탭 콘텐츠 상단에 공통으로 들어가는 "전자결재 홈" 이동 버튼
@@ -168,7 +169,7 @@ window.edocShowList = function(kind) {
   const lists = window._edocLists || {};
   const TITLES = { inbox:'📨 수신함 (회람)', mydocs:'📝 내가 작성한 문서', posted:'📤 게시된 문건', approve:'✍️ 결재할 문서' };
   const EMPTY = { inbox:'수신된 문서가 없습니다', mydocs:'작성한 문서가 없습니다', posted:'게시된 문건이 없습니다', approve:'결재할 문서가 없습니다' };
-  const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'퇴직원서', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서' };
+  const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'퇴직원서', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서', overtime:'초과근로' };
   const STATUS_LABEL = { draft:'임시저장', pending:'결재대기', reviewing:'검토중', approved:'승인', rejected:'반려', posted:'게시' };
   const STATUS_COLOR = { draft:'#9AAABF', pending:'#F59E0B', reviewing:'#1D5BA6', approved:'#16A34A', rejected:'#DC2626', posted:'#16A34A' };
   const STATUS_BG = { draft:'#F1EFE8', pending:'#FAEEDA', reviewing:'#E6F1FB', approved:'#EAF3DE', rejected:'#FCEBEB', posted:'#E1F5EE' };
@@ -690,6 +691,133 @@ window.dailyApprove = async function(docId, newStatus) {
   } catch(e) { alert('오류: '+e.message); }
 };
 
+// ===== 초과근로 결재 (통상임금 자동계산 + 승인 시 인사 연동) =====
+function otCalcAnnualSalary(hourly, empType){
+  if(!hourly) return {basic:0,fixedOt:0,fixedNight:0,weekly:0,total:0};
+  const h=Number(hourly);
+  let basic,fixedOt,fixedNight,weekly;
+  if(empType==='office'){ basic=Math.round(h*8*5*4.345); fixedOt=Math.round(h*12*4.345); fixedNight=0; weekly=Math.round(h*8*4.345); }
+  else { basic=Math.round(h*8*5*4.345); fixedOt=0; fixedNight=Math.round(h*0.5*8*5*4.345); weekly=Math.round(h*8*4.345); }
+  const total=basic+fixedOt+fixedNight+weekly;
+  return {basic,fixedOt,fixedNight,weekly,total};
+}
+let _otWorkers=null, _otWageCache={};
+async function otLoadWorkers(){
+  if(_otWorkers) return _otWorkers;
+  const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+  const snap=await getDocs(collection(window._db,'workers'));
+  const list=[]; snap.forEach(d=>{const w=d.data(); list.push({id:d.id,name:w.name,rank:w.rank||'',empNo:w.empNo||'',empType:w.empType||'field'});});
+  list.sort((a,b)=>String(a.empNo||'zzz').localeCompare(String(b.empNo||'zzz')));
+  _otWorkers=list; return list;
+}
+async function otGetWage(workerId){
+  if(_otWageCache[workerId]) return _otWageCache[workerId];
+  const { getDocs, collection, query, orderBy, limit } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+  const snap=await getDocs(query(collection(window._db,`annual_contracts/${workerId}/contracts`), orderBy('contractDate','desc'), limit(1)));
+  if(snap.empty) return null;
+  const c=snap.docs[0].data();
+  const hourly=Number(c.hourly||0); const empType=c.empType||'field';
+  const sal=otCalcAnnualSalary(hourly, empType);
+  const rate=Math.round((sal.basic+sal.fixedOt+sal.fixedNight+sal.weekly)/209);
+  const result={rate, hourly, empType, ...sal};
+  _otWageCache[workerId]=result; return result;
+}
+window.renderOvertimeMain = async function(){
+  const el=document.getElementById('tab-overtime'); if(!el) return;
+  el.innerHTML=`<div class="wrap2"><div style="text-align:center;padding:32px;color:#9AAABF;">⏳ 불러오는 중…</div></div>`;
+  const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+  let docs=[];
+  try{ const snap=await getDocs(collection(window._db,'edoc_overtime')); snap.forEach(d=>docs.push({id:d.id,...d.data()})); }catch(e){}
+  docs.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  const won=n=>'₩'+(Math.round(n)||0).toLocaleString('ko-KR');
+  const STL={draft:'임시저장',pending:'결재대기',reviewing:'검토중',approved:'승인',rejected:'반려'};
+  const rows=docs.map(d=>`<div style="background:#fff;border:1px solid #E4EAF2;border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">
+    <div><div style="font-weight:700;">${d.name||'-'} <span style="font-size:11px;color:#5C6F8A;">${d.rank||''}</span></div>
+    <div style="font-size:12px;color:#5C6F8A;margin-top:3px;">${d.date||''} &middot; ${d.hours||0}시간</div></div>
+    <div style="text-align:right;"><div style="font-weight:700;color:#1D5BA6;">${won(d.amount)}</div>
+    <div style="font-size:11px;font-weight:700;color:#9AAABF;">${STL[d.status]||d.status||''}</div></div></div>`).join('');
+  el.innerHTML=`<div class="wrap2">
+    ${edocHomeBtnHtml()}
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 16px;">
+      <span style="font-size:16px;font-weight:800;">⏱️ 초과근로 결재</span>
+      <button onclick="renderOvertimeWrite()" style="padding:9px 16px;background:#1D5BA6;border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✏️ 작성</button>
+    </div>
+    ${docs.length?rows:'<div style="text-align:center;padding:32px;color:#9AAABF;">작성된 초과근로 결재가 없습니다.</div>'}</div>`;
+};
+window.renderOvertimeWrite = async function(){
+  const el=document.getElementById('tab-overtime'); if(!el) return;
+  el.innerHTML=`<div class="wrap2"><div style="text-align:center;padding:32px;color:#9AAABF;">⏳ 불러오는 중…</div></div>`;
+  await loadMyInfo();
+  const workers=await otLoadWorkers();
+  const today=new Date().toISOString().slice(0,10);
+  const opts=['<option value="">근로자 선택</option>',...workers.map(w=>`<option value="${w.id}" data-name="${w.name}" data-rank="${w.rank}">${w.name}${w.rank?' '+w.rank:''}</option>`)].join('');
+  el.innerHTML=`<div class="wrap2">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+      <button onclick="renderOvertimeMain()" class="back-btn">‹ 뒤로</button>
+      <span style="font-size:14px;font-weight:800;">⏱️ 초과근로 작성</span>
+    </div>
+    <div class="form-card">
+      <div class="fc-sec">📌 초과근로 정보</div>
+      ${fcField('일자', `<input id="ot-date" type="date" value="${today}" class="fc-input">`)}
+      ${fcField('근로자', `<select id="ot-worker" class="fc-input" oninput="otOnPickWorker()">${opts}</select>`)}
+      ${fcField('초과근로 시간', `<input id="ot-hours" type="number" step="0.5" min="0" placeholder="시간" class="fc-input" oninput="otCalcShow()">`)}
+      <div id="ot-wage-info" data-rate="0" style="font-size:12px;color:#5C6F8A;margin:4px 0 10px;">근로자를 선택하면 통상임금이 표시됩니다</div>
+      <div id="ot-amount-info" style="font-size:15px;font-weight:800;color:#1D5BA6;margin-bottom:6px;">예상 수당: ₩0</div>
+    </div>
+    <div class="form-card">
+      <div class="fc-sec">🖊️ 결재 라인 <span style="font-size:10px;font-weight:400;color:#9AAABF;">회람 방식</span></div>
+      <div style="font-size:12px;color:#5C6F8A;line-height:1.8;">작성: ${_myInfo.name||''} → 결재: <b>김종화 차장</b> → 회람: <b>김민서 대리</b></div>
+    </div>
+    <button onclick="overtimeSave('pending')" style="width:100%;padding:14px;background:#1D5BA6;border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;">상신</button>
+  </div>`;
+};
+window.otOnPickWorker = async function(){
+  const sel=document.getElementById('ot-worker'); if(!sel||!sel.value){ return; }
+  const info=document.getElementById('ot-wage-info');
+  info.textContent='통상임금 조회 중…';
+  const wage=await otGetWage(sel.value);
+  if(!wage){ info.textContent='⚠️ 연봉계약서가 없어 통상임금이 0원입니다'; info.dataset.rate='0'; }
+  else { info.textContent=`통상임금 ${wage.rate.toLocaleString()}원/h (연봉계약서 기준)`; info.dataset.rate=String(wage.rate); }
+  otCalcShow();
+};
+window.otCalcShow = function(){
+  const info=document.getElementById('ot-wage-info'); const rate=Number((info&&info.dataset.rate)||0);
+  const hours=Number((document.getElementById('ot-hours')||{}).value||0);
+  const amount=Math.round(rate*hours);
+  const amtEl=document.getElementById('ot-amount-info');
+  if(amtEl) amtEl.textContent='예상 수당: ₩'+amount.toLocaleString();
+};
+window.overtimeSave = async function(status){
+  const date=(document.getElementById('ot-date')||{}).value;
+  const sel=document.getElementById('ot-worker');
+  const hours=Number((document.getElementById('ot-hours')||{}).value||0);
+  if(!date){ alert('일자를 선택하세요.'); return; }
+  if(!sel||!sel.value){ alert('근로자를 선택하세요.'); return; }
+  if(!hours||hours<=0){ alert('초과근로 시간을 입력하세요.'); return; }
+  const opt=sel.options[sel.selectedIndex];
+  const name=opt.dataset.name||''; const rank=opt.dataset.rank||''; const workerId=sel.value;
+  const wage=await otGetWage(workerId); const rate=wage?wage.rate:0; const amount=Math.round(rate*hours);
+  const { addDoc, collection, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+  const uname=_myInfo.name||(_user&&_user.displayName)||'';
+  const data={
+    dtype:'overtime', status:'pending',
+    date, name, rank, workerId, hours, rate, amount, yearMonth:date.slice(0,7),
+    authorUid:(_user&&_user.uid)||'', authorName:uname, authorDept:_myInfo.dept||'', authorRank:_myInfo.rank||'',
+    approvalLine:[
+      {role:'작성', uid:(_user&&_user.uid)||'', name:uname, status:'draft'},
+      {role:'결재', uid:'', name:'김종화', rank:'차장', status:'pending'},
+      {role:'회람', uid:'', name:'김민서', rank:'대리', status:'pending'},
+    ],
+    linkedToOvertime:false,
+    createdAt:serverTimestamp(),
+  };
+  try{
+    await addDoc(collection(window._db,'edoc_overtime'), data);
+    alert('✅ 상신 완료! 결재 대기 중입니다.');
+    renderOvertimeMain();
+  }catch(e){ alert('저장 오류: '+e.message); }
+};
+
 // ── 전자결재 홈 ──
 // ── 근로기준법 연차 자동 계산 ──
 function calcAnnualLeaveGrant(hireDateStr, baseDateStr) {
@@ -731,7 +859,7 @@ window.sumLeaveUsed = sumLeaveUsed;
 
 async function renderEdocHome() {
   const el = document.getElementById('tab-home'); if(!el) return;
-  const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'퇴직원서', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서' };
+  const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'퇴직원서', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서', overtime:'초과근로' };
   const fmtD = ts => ts?.seconds ? new Date(ts.seconds*1000).toLocaleDateString('ko-KR',{month:'short',day:'numeric'}) : '-';
   const STATUS_COLOR = { pending:'#F59E0B', approved:'#16A34A', rejected:'#DC2626', posted:'#1D5BA6', draft:'#9AAABF' };
   const STATUS_LABEL = { pending:'결재대기', approved:'승인', rejected:'반려', posted:'게시', draft:'임시저장' };
@@ -964,7 +1092,7 @@ async function loadApproveData() {
 }
 
 function renderApproveListUI() {
-  const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'퇴직원서', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서' };
+  const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'퇴직원서', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서', overtime:'초과근로' };
   const STATUS_COLOR = { pending:'#F59E0B', reviewing:'#3B82F6', approved:'#16A34A', rejected:'#DC2626', posted:'#1D5BA6', draft:'#9AAABF' };
   const STATUS_LABEL = { pending:'결재대기', reviewing:'검토중', approved:'승인', rejected:'반려', posted:'게시', draft:'임시저장' };
   const fmtD = ts => ts?.seconds ? new Date(ts.seconds*1000).toLocaleDateString('ko-KR',{month:'short',day:'numeric'}) : '-';
@@ -1551,7 +1679,7 @@ window.renderDocList = async function(dtype) {
 // ── A4 출력 / PDF 저장 (모든 전자결재 문서 공통) ──
 window.printDocA4 = function(d, dtype) {
   if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e){} }
-  const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'퇴직원서', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서' };
+  const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'퇴직원서', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서', overtime:'초과근로' };
   const cfg = (window.DOC_CONFIG && window.DOC_CONFIG[dtype]) || DOC_CONFIG[dtype] || {};
   const docLabel = TYPE_LABEL[dtype] || (cfg.label) || '문서';
 
@@ -1853,6 +1981,15 @@ window.docApprove = async function(docId, dtype, newStatus, docData) {
         att: rawData.authorName||'', reg: _user?.email||'', savedAt: serverTimestamp(),
       });
       alert('✅ 게시 완료. 연차 일정이 PJT 캘린더에 자동 등록되었습니다.');
+    } else if (newStatus === 'approved' && dtype === 'overtime' && !rawData.linkedToOvertime) {
+      // 초과근로 승인 → 인사 overtime 컬렉션에 자동 등록 (중복 방지 플래그)
+      await addDoc(collection(db, 'overtime'), {
+        date: rawData.date||'', name: rawData.name||'', rank: rawData.rank||'', workerId: rawData.workerId||'',
+        hours: Number(rawData.hours)||0, amount: Number(rawData.amount)||0, rate: Number(rawData.rate)||0,
+        yearMonth: (rawData.date||'').slice(0,7), savedAt: serverTimestamp()
+      });
+      await setDoc(doc(db, 'edoc_overtime', docId), { linkedToOvertime: true }, { merge:true });
+      alert('✅ 승인 완료. 인사 초과근로에 자동 등록되었습니다.');
     } else {
       alert(`✅ ${labels[newStatus]} 처리되었습니다.`);
     }
@@ -2075,6 +2212,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
       <button class="sb-item" data-navkey="cert" onclick="goTab('cert')"><span class="sb-num">4</span> 재직증명서</button>
       <button class="sb-item" data-navkey="purchase" onclick="goTab('purchase')"><span class="sb-num">5</span> 구매품의서</button>
       <button class="sb-item" data-navkey="expense" onclick="goTab('expense')"><span class="sb-num">6</span> 지출결의서</button>
+      <button class="sb-item" data-navkey="overtime" onclick="goTab('overtime')"><span class="sb-num">7</span> 초과근로</button>
       <div class="sb-foot">
         <div class="av" id="sb-user">?</div>
         <button onclick="doLogout()">로그아웃</button>
@@ -2092,6 +2230,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
         <button class="tab-btn"        data-navkey="cert"     onclick="goTab('cert')">🪪 재직증명</button>
         <button class="tab-btn"        data-navkey="purchase" onclick="goTab('purchase')">🛒 구매품의</button>
         <button class="tab-btn"        data-navkey="expense"  onclick="goTab('expense')">💳 지출결의</button>
+        <button class="tab-btn"        data-navkey="overtime" onclick="goTab('overtime')">⏱️ 초과근로</button>
       </div>
 
       <!-- 탭 콘텐츠 -->
@@ -2103,6 +2242,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
       <div class="tab-content" id="tab-cert"></div>
       <div class="tab-content" id="tab-purchase"></div>
       <div class="tab-content" id="tab-expense"></div>
+      <div class="tab-content" id="tab-overtime"></div>
     </div>
   </div>
 </div>
