@@ -790,9 +790,17 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
       <button class="us-close" onclick="closeDRDetail()">✕</button>
     </div>
     <div id="dr-detail-body" style="flex:1;overflow-y:auto;padding:16px 18px"></div>
-    <div style="padding:12px 18px;border-top:1px solid #e5e5e5;display:flex;gap:8px;flex-shrink:0">
-      <button onclick="printDRDetail()" style="flex:1;padding:11px;background:#1D5BA6;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">📄 PDF 저장</button>
-      <button onclick="closeDRDetail()" style="padding:11px 20px;background:#f5f5f7;color:#555;border:1px solid #e5e5e5;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit">닫기</button>
+    <div style="padding:12px 18px;border-top:1px solid #e5e5e5;flex-shrink:0">
+      <div id="dr-view-btns" style="display:flex;gap:8px">
+        <button onclick="printDRDetail()" style="flex:1;padding:11px;background:#1D5BA6;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">📄 PDF</button>
+        <button onclick="editDRDetail()" style="flex:1;padding:11px;background:#f0a500;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">✏️ 수정</button>
+        <button onclick="deleteDRDetail()" style="flex:1;padding:11px;background:#c0392b;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🗑 삭제</button>
+        <button onclick="closeDRDetail()" style="padding:11px 18px;background:#f5f5f7;color:#555;border:1px solid #e5e5e5;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit">닫기</button>
+      </div>
+      <div id="dr-edit-btns" style="display:none;gap:8px">
+        <button onclick="saveDRDetail()" style="flex:1;padding:11px;background:#2e7d32;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">💾 저장</button>
+        <button onclick="cancelDREdit()" style="padding:11px 20px;background:#f5f5f7;color:#555;border:1px solid #e5e5e5;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit">취소</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1524,6 +1532,18 @@ window._fbGetReportDoc = async function(dateKey){
     const snap = await getDoc(doc(db,'daily_report_docs',dateKey));
     return snap.exists()?Object.assign({id:snap.id},snap.data()):null;
   } catch(e){ return null; }
+};
+window._fbUpdateReportDoc = async function(dateKey, patch){
+  try {
+    await setDoc(doc(db,'daily_report_docs',dateKey), Object.assign({}, patch, {updatedAt:serverTimestamp()}), {merge:true});
+    return true;
+  } catch(e){ console.error(e); return false; }
+};
+window._fbDeleteReportDoc = async function(dateKey){
+  try {
+    await deleteDoc(doc(db,'daily_report_docs',dateKey));
+    return true;
+  } catch(e){ console.error(e); return false; }
 };
 </script>
 
@@ -2991,15 +3011,14 @@ async function loadDRList(){
 }
 
 var _drCurrentDoc=null;
-async function openDRDetail(dateKey){
-  closeDRList();
-  document.getElementById('dr-detail-modal').classList.add('on');
-  var body=document.getElementById('dr-detail-body');
-  body.innerHTML='<div style="text-align:center;padding:32px;color:#86868b;font-size:13px">불러오는 중...</div>';
-  var r=window._fbGetReportDoc?await window._fbGetReportDoc(dateKey):null;
-  if(!r){ body.innerHTML='<div style="color:#c0392b;padding:16px">데이터를 불러올 수 없습니다.</div>'; return; }
-  _drCurrentDoc=r;
-  document.getElementById('dr-detail-title').textContent='공사일보 — '+(r.date||r.dateKey||dateKey);
+function _drEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toggleDRBtns(mode){
+  var v=document.getElementById('dr-view-btns'), e=document.getElementById('dr-edit-btns');
+  if(v) v.style.display=(mode==='edit')?'none':'flex';
+  if(e) e.style.display=(mode==='edit')?'flex':'none';
+}
+function renderDRView(r){
+  document.getElementById('dr-detail-title').textContent='공사일보 — '+(r.date||r.dateKey||r.id||'');
   var rows=[
     ['현장명', r.site||'—'],
     ['작성일자', r.date||r.dateKey||'—'],
@@ -3010,14 +3029,90 @@ async function openDRDetail(dateKey){
     ['사용 장비', r.equip||'—'],
     ['특이사항', r.remarks||'—'],
   ];
-  body.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:13px">'
+  document.getElementById('dr-detail-body').innerHTML='<table style="width:100%;border-collapse:collapse;font-size:13px">'
     +rows.map(function(row){
       return '<tr style="border-bottom:1px solid #f0f0f0">'
         +'<th style="padding:10px 12px;text-align:left;color:#86868b;font-weight:600;width:100px;white-space:nowrap">'+row[0]+'</th>'
-        +'<td style="padding:10px 12px;color:#1d1d1f;white-space:pre-wrap">'+row[1]+'</td>'
+        +'<td style="padding:10px 12px;color:#1d1d1f;white-space:pre-wrap">'+_drEsc(row[1])+'</td>'
       +'</tr>';
     }).join('')
   +'</table>';
+}
+async function openDRDetail(dateKey){
+  closeDRList();
+  document.getElementById('dr-detail-modal').classList.add('on');
+  toggleDRBtns('view');
+  var body=document.getElementById('dr-detail-body');
+  body.innerHTML='<div style="text-align:center;padding:32px;color:#86868b;font-size:13px">불러오는 중...</div>';
+  var r=window._fbGetReportDoc?await window._fbGetReportDoc(dateKey):null;
+  if(!r){ body.innerHTML='<div style="color:#c0392b;padding:16px">데이터를 불러올 수 없습니다.</div>'; return; }
+  _drCurrentDoc=r;
+  renderDRView(r);
+}
+function editDRDetail(){
+  if(!_drCurrentDoc){ alert('불러온 데이터가 없습니다.'); return; }
+  var r=_drCurrentDoc;
+  var roRow=function(label,val){
+    return '<div><div style="font-size:12px;color:#86868b;font-weight:600;margin-bottom:5px">'+label+'</div>'
+      +'<div style="padding:10px 12px;background:#f5f5f7;border-radius:8px;font-size:14px;color:#86868b">'+_drEsc(val)+'</div></div>';
+  };
+  var inRow=function(label,id,val,type){
+    return '<div><div style="font-size:12px;color:#86868b;font-weight:600;margin-bottom:5px">'+label+'</div>'
+      +'<input id="'+id+'" type="'+(type||'text')+'" value="'+_drEsc(val)+'" style="width:100%;padding:10px 12px;border:1.5px solid #dde4ef;border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>';
+  };
+  var taRow=function(label,id,val){
+    return '<div><div style="font-size:12px;color:#86868b;font-weight:600;margin-bottom:5px">'+label+'</div>'
+      +'<textarea id="'+id+'" style="width:100%;min-height:80px;padding:10px 12px;border:1.5px solid #dde4ef;border-radius:8px;font-size:14px;font-family:inherit;line-height:1.6;resize:vertical;box-sizing:border-box">'+_drEsc(val)+'</textarea></div>';
+  };
+  document.getElementById('dr-detail-title').textContent='공사일보 수정 — '+(r.date||r.dateKey||r.id||'');
+  document.getElementById('dr-detail-body').innerHTML=
+    '<div style="display:flex;flex-direction:column;gap:14px">'
+    +roRow('현장명', r.site||'—')
+    +roRow('작성일자', r.date||r.dateKey||'—')
+    +inRow('작성자','dr-e-author', r.author||'')
+    +taRow('금일 작업','dr-e-today', r.today||'')
+    +taRow('명일 예정','dr-e-tomorrow', r.tomorrow||'')
+    +inRow('투입 인원','dr-e-count', r.count||'', 'number')
+    +inRow('사용 장비','dr-e-equip', r.equip||'')
+    +taRow('특이사항','dr-e-remarks', r.remarks||'')
+    +'</div>';
+  toggleDRBtns('edit');
+}
+function cancelDREdit(){
+  if(_drCurrentDoc) renderDRView(_drCurrentDoc);
+  toggleDRBtns('view');
+}
+async function saveDRDetail(){
+  if(!_drCurrentDoc){ alert('불러온 데이터가 없습니다.'); return; }
+  var dateKey=_drCurrentDoc.id||_drCurrentDoc.dateKey;
+  if(!dateKey){ alert('문서 키를 찾을 수 없습니다.'); return; }
+  var patch={
+    author:  document.getElementById('dr-e-author').value.trim(),
+    today:   document.getElementById('dr-e-today').value.trim(),
+    tomorrow:document.getElementById('dr-e-tomorrow').value.trim(),
+    count:   document.getElementById('dr-e-count').value.trim(),
+    equip:   document.getElementById('dr-e-equip').value.trim(),
+    remarks: document.getElementById('dr-e-remarks').value.trim(),
+  };
+  var saveBtn=document.querySelector('#dr-edit-btns button');
+  var orig=saveBtn?saveBtn.innerHTML:''; if(saveBtn){saveBtn.innerHTML='저장 중...';saveBtn.disabled=true;}
+  var ok=window._fbUpdateReportDoc?await window._fbUpdateReportDoc(dateKey,patch):false;
+  if(saveBtn){saveBtn.innerHTML=orig;saveBtn.disabled=false;}
+  if(!ok){ alert('저장에 실패했습니다. 다시 시도해 주세요.'); return; }
+  Object.assign(_drCurrentDoc, patch);
+  renderDRView(_drCurrentDoc);
+  toggleDRBtns('view');
+}
+async function deleteDRDetail(){
+  if(!_drCurrentDoc){ alert('불러온 데이터가 없습니다.'); return; }
+  var dateKey=_drCurrentDoc.id||_drCurrentDoc.dateKey;
+  if(!dateKey){ alert('문서 키를 찾을 수 없습니다.'); return; }
+  if(!confirm('이 공사일보('+(_drCurrentDoc.date||_drCurrentDoc.dateKey||dateKey)+')를 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.')) return;
+  var ok=window._fbDeleteReportDoc?await window._fbDeleteReportDoc(dateKey):false;
+  if(!ok){ alert('삭제에 실패했습니다. 다시 시도해 주세요.'); return; }
+  _drCurrentDoc=null;
+  closeDRDetail();
+  openDailyReportList();
 }
 
 function printDRDetail(){
