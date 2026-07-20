@@ -911,12 +911,12 @@ import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, or
 // 🔥 FIREBASE CONFIG — 아래 값을 Firebase Console에서 복사해 붙여넣으세요
 // =====================================================
 const firebaseConfig = {
-  apiKey: "AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI",
-  authDomain: "portal-test-6e0ff.firebaseapp.com",
-  projectId: "portal-test-6e0ff",
-  storageBucket: "portal-test-6e0ff.firebasestorage.app",
-  messagingSenderId: "752763010816",
-  appId: "1:752763010816:web:4a0c7062a2f1a4e9a03de5"
+  apiKey: "AIzaSyCyQxBJ_ftfM0ImBXubmqD5gfzFR54iPmE",
+  authDomain: "p4ph2-fab-506a7.firebaseapp.com",
+  projectId: "p4ph2-fab-506a7",
+  storageBucket: "p4ph2-fab-506a7.firebasestorage.app",
+  messagingSenderId: "36946317914",
+  appId: "1:36946317914:web:c6ad5f3a1b98130c99fe63"
 };
 // =====================================================
 
@@ -1077,7 +1077,20 @@ window._usItemsForKey = function(key) {
   const out = [];
   _usCache.forEach(u => {
     const sd = u.sdate || key;
-    const ed = u.edate || sd;
+    const rawEd = u.edate || sd;
+    let ed = rawEd;
+    // 자정 넘기는 일정(예: 19:00~다음날 05:00) 판별: 시작일 다음날이 종료일이고,
+    // 종료시각이 시작시각보다 빠르거나 같으면 '자정 넘김'으로 보고 시작일에만 표시.
+    // 진짜 여러 날짜에 걸친 일정(출장 등)은 이 조건에 해당하지 않으므로 기존대로 각 날짜에 표시됨.
+    // (필터링/표시용 ed만 압축하고, 원본 종료일(rawEd)은 아래 _ed에 그대로 보존하여
+    //  상세보기·수정 시에는 정확한 종료일·시간이 유지됨)
+    if(!u.isTodo && rawEd !== sd && u.stime && u.etime){
+      const sdT = new Date(sd + 'T00:00:00'), edT = new Date(rawEd + 'T00:00:00');
+      const diffDays = Math.round((edT - sdT) / 86400000);
+      if(diffDays === 1 && u.etime <= u.stime){
+        ed = sd;
+      }
+    }
     if(key < sd || key > ed) return;
     const multi = sd !== ed;
     let time = null, pos = 'single';
@@ -1093,7 +1106,7 @@ window._usItemsForKey = function(key) {
     } else {
       time = '00~24'; pos = 'mid';
     }
-    out.push({ ...u, time, _user: true, _pos: pos, _sd: sd, _ed: ed });
+    out.push({ ...u, time, _user: true, _pos: pos, _sd: sd, _ed: rawEd });
   });
   return out;
 };
