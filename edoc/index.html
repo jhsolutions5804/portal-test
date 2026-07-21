@@ -350,27 +350,33 @@ window.toggleDailyViewTarget = async function(el) {
 };
 
 // 업무일지 작성 화면
-window.renderDailyWrite = async function() {
+// existingDoc이 주어지면 수정모드: 값을 미리채우고 저장 시 기존 문서를 덮어씀 (임시저장/반려 상태에서만 진입 가능)
+window.renderDailyWrite = async function(existingDoc) {
   const el = document.getElementById('tab-daily'); if(!el) return;
   el.innerHTML = `<div class="wrap2"><div style="text-align:center;padding:32px;color:#9AAABF;">⏳ 불러오는 중…</div></div>`;
   await Promise.all([loadMyInfo(), loadPjts()]);
 
-  const today = new Date().toISOString().slice(0,10);
+  // 수정모드 여부 기록 (dailySave에서 참조)
+  window._dailyEditId = existingDoc?.id || null;
+  const isEdit = !!window._dailyEditId;
+
+  const today = existingDoc?.date || new Date().toISOString().slice(0,10);
   const todayFmt = today.replace(/-/g,'').slice(2); // yymmdd
 
   const pjtOpts = [
     '<option value="">프로젝트 선택 (선택사항)</option>',
-    ..._pjts.map(p => `<option value="${p.id}" data-code="${p.code||''}" data-name="${p.name||''}">${p.code ? p.code+' ' : ''}${p.name||p.id}</option>`)
+    ..._pjts.map(p => `<option value="${p.id}" data-code="${p.code||''}" data-name="${p.name||''}" ${existingDoc?.pjtId===p.id?'selected':''}>${p.code ? p.code+' ' : ''}${p.name||p.id}</option>`)
   ].join('');
 
-  const authorName = _myInfo.name || _user?.displayName || '';
-  const authorDept = _myInfo.dept || '';
-  const authorRank = _myInfo.rank || '';
+  const authorName = existingDoc?.authorName || _myInfo.name || _user?.displayName || '';
+  const authorDept = existingDoc?.authorDept || _myInfo.dept || '';
+  const authorRank = existingDoc?.authorRank || _myInfo.rank || '';
 
   el.innerHTML = `<div class="wrap2">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
-      <button onclick="renderDailyMain()" class="back-btn">‹ 뒤로</button>
-      <span style="font-size:14px;font-weight:800;color:#1A2540;">📝 업무일지 작성</span>
+      <button onclick="${isEdit ? `renderDailyDetail(${JSON.stringify(existingDoc).replace(/"/g,'&quot;')})` : 'renderDailyMain()'}" class="back-btn">‹ 뒤로</button>
+      <span style="font-size:14px;font-weight:800;color:#1A2540;">📝 업무일지 ${isEdit ? '수정' : '작성'}</span>
+      ${isEdit ? `<span style="font-size:10px;font-weight:700;background:#FEF3C7;color:#B45309;padding:2px 8px;border-radius:8px;">임시저장 상태 수정 중</span>` : ''}
     </div>
 
     <!-- 기본 정보 카드 -->
@@ -387,7 +393,7 @@ window.renderDailyWrite = async function() {
         </div>
       </div>
 
-      ${fcField('제목 (자동생성)', `<input id="d-title" type="text"
+      ${fcField('제목 (자동생성)', `<input id="d-title" type="text" value="${(existingDoc?.title||'').replace(/"/g,'&quot;')}"
         placeholder="프로젝트·일자 선택 시 자동 완성됩니다"
         class="fc-input" style="color:#1D5BA6;font-weight:600;">`)}
     </div>
@@ -408,13 +414,13 @@ window.renderDailyWrite = async function() {
       <div class="fc-sec">📋 업무 내용</div>
       ${fcField('오늘 진행한 업무 <span style="color:#DC2626;">*</span>',
         `<textarea id="d-today" rows="5" class="fc-input fc-ta"
-          placeholder="금일 수행한 업무 내용을 상세히 입력하세요"></textarea>`)}
+          placeholder="금일 수행한 업무 내용을 상세히 입력하세요">${existingDoc?.todayWork||''}</textarea>`)}
       ${fcField('내일 예정된 업무',
         `<textarea id="d-tomorrow" rows="4" class="fc-input fc-ta"
-          placeholder="익일 계획 업무를 입력하세요 (선택)"></textarea>`)}
+          placeholder="익일 계획 업무를 입력하세요 (선택)">${existingDoc?.tomorrowWork||''}</textarea>`)}
       ${fcField('이슈 · 특이사항',
         `<textarea id="d-issue" rows="3" class="fc-input fc-ta"
-          placeholder="이슈 없으면 비워도 됩니다 (선택)"></textarea>`)}
+          placeholder="이슈 없으면 비워도 됩니다 (선택)">${existingDoc?.issue||''}</textarea>`)}
     </div>
 
     <!-- 결재 라인 카드 -->
@@ -454,8 +460,8 @@ window.renderDailyWrite = async function() {
     </div>
   </div>`;
 
-  // 초기 제목 자동생성
-  dailyAutoTitle();
+  // 신규 작성일 때만 초기 제목 자동생성 (수정모드는 기존 제목 유지)
+  if (!isEdit) dailyAutoTitle();
 };
 
 // fc 헬퍼
@@ -486,6 +492,8 @@ window.dailyAutoTitle = function() {
 };
 
 // 업무일지 저장
+// window._dailyEditId가 설정돼 있으면(임시저장/반려 문서를 열어 수정하는 경우) 기존 문서를 덮어쓰고,
+// 없으면 신규 문서로 등록한다.
 window.dailySave = async function(status) {
   if (!window._db || !_user) { alert('로그인이 필요합니다.'); return; }
 
@@ -497,6 +505,8 @@ window.dailySave = async function(status) {
 
   if (status === 'pending' && !title) { alert('제목을 입력해 주세요.'); return; }
   if (status === 'pending' && !today) { alert('오늘 진행한 업무를 입력해 주세요.'); return; }
+
+  const editId = window._dailyEditId || null;
 
   const data = {
     dtype: 'daily', status,
@@ -510,19 +520,26 @@ window.dailySave = async function(status) {
     authorName:  document.getElementById('d-name')?.value || _user.displayName || '',
     authorDept:  document.getElementById('d-dept')?.value || '',
     authorRank:  document.getElementById('d-rank')?.value || '',
-    // 결재 라인 고정 (결재: 김종화, 수신: 송지훈)
+    // 결재 라인 고정 (결재: 김종화, 수신: 송지훈) — 수정 후 재상신 시에도 대기 상태로 초기화
     approvalLine: [
       { role:'작성', uid:_user.uid, name:document.getElementById('d-name')?.value || '', status:'draft' },
       { role:'결재', uid:'', name:'김종화', rank:'부사장', status:'pending' },
       { role:'수신', uid:'', name:'송지훈', rank:'대표', status:'pending' },
     ],
-    createdAt: serverTimestamp(),
   };
+  // 신규 등록일 때만 작성일시를 새로 찍고, 수정일 때는 원래 작성일시를 유지한 채 수정일시만 기록
+  if (editId) data.updatedAt = serverTimestamp();
+  else data.createdAt = serverTimestamp();
 
   try {
-    const { addDoc, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    await addDoc(collection(window._db, 'edoc_daily'), data);
+    const { addDoc, collection, doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    if (editId) {
+      await setDoc(doc(window._db, 'edoc_daily', editId), data, { merge: true });
+    } else {
+      await addDoc(collection(window._db, 'edoc_daily'), data);
+    }
     alert(status==='pending' ? '✅ 상신 완료! 결재 대기 중입니다.' : '💾 임시저장 완료');
+    window._dailyEditId = null;
     renderDailyMain();
   } catch(e) { alert('저장 오류: '+e.message); }
 };
@@ -668,7 +685,8 @@ window.renderDailyDetail = function(d) {
       <button onclick="dailyApprove('${d.id}','rejected')" style="flex:1;padding:12px;background:#DC2626;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">❌ 반려</button>
       <button onclick="dailyApprove('${d.id}','posted')" style="flex:1;padding:12px;background:#1D5BA6;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📤 게시</button>
     </div>`:''}
-    ${(canRecall||canDelete)?`<div style="display:flex;gap:8px;margin-bottom:10px;">
+    ${(canEdit||canRecall||canDelete)?`<div style="display:flex;gap:8px;margin-bottom:10px;">
+      ${canEdit ? `<button onclick='renderDailyWrite(${JSON.stringify(d).replace(/'/g,"&#39;")})' style="flex:1;padding:11px;background:#3B82F6;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✏️ 수정</button>` : ''}
       ${canRecall ? `<button onclick="docRecall('${d.id}','daily')" style="flex:1;padding:11px;background:#F59E0B;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">↩️ 회수</button>` : ''}
       ${canDelete ? `<button onclick="docDelete('${d.id}','daily')" style="flex:1;padding:11px;background:#fff;border:1px solid #DC2626;border-radius:10px;color:#DC2626;font-size:13px;font-weight:700;cursor:pointer;">🗑️ 삭제</button>` : ''}
     </div>`:''}
