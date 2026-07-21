@@ -4136,6 +4136,11 @@ window.annualPreviewSaved2=(d)=>{annualForm2={...d};annualPreview2();};
 let _otWageCache = {};
 function otClearWageCache() { _otWageCache = {}; }
 
+// 사유 등 자유 입력 텍스트 HTML 이스케이프
+function otEsc(s) {
+  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 // 연봉계약서에서 통상임금 계산
 async function otGetWage(workerId, name) {
   if (_otWageCache[name]) return _otWageCache[name];
@@ -4229,6 +4234,7 @@ window.renderOvertimePC = async () => {
                 <label style="font-size:12px;color:#5C6F8A;white-space:nowrap;">시간(h)</label>
                 <input type="number" id="ot-pc-hours" step="0.5" min="0.5" max="24" oninput="otPcCalcPreview()" placeholder="0.5" style="padding:7px 10px;border:1px solid #DDE3EE;border-radius:8px;font-size:13px;flex:1;min-width:0;">
               </div>
+              <textarea id="ot-pc-reason" rows="2" placeholder="사유 (선택)" style="padding:7px 10px;border:1px solid #DDE3EE;border-radius:8px;font-size:13px;width:100%;box-sizing:border-box;resize:vertical;font-family:inherit;"></textarea>
               <div id="ot-pc-preview" style="font-size:12px;color:#1D5BA6;font-weight:600;min-height:18px;"></div>
               <button onclick="otPcSave()" style="padding:9px;background:#1D5BA6;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;width:100%;">저장</button>
               <button onclick="otClearAllData()" style="padding:7px;background:#fff0f0;border:1px dashed #fca5a5;border-radius:8px;color:#dc2626;font-size:11px;cursor:pointer;width:100%;">🗑 전체 초기화</button>
@@ -4361,6 +4367,7 @@ window.otPcSave = async () => {
   const date = document.getElementById('ot-pc-date')?.value;
   const sel  = document.getElementById('ot-pc-worker-sel')?.value;
   const h    = parseFloat(document.getElementById('ot-pc-hours')?.value);
+  const reason = (document.getElementById('ot-pc-reason')?.value||'').trim();
   if(!date||!sel||!h||h<=0){ alert('날짜·직원·시간을 모두 입력해주세요.'); return; }
   const [workerId,name,rank] = sel.split('|');
   const wage = await otGetWage(workerId,name);
@@ -4369,10 +4376,11 @@ window.otPcSave = async () => {
   try {
     const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     await addDoc(collection(window._db,'overtime'), {
-      date, name, rank:rank||'', workerId, hours:h, amount, rate, yearMonth:date.slice(0,7), savedAt:serverTimestamp()
+      date, name, rank:rank||'', workerId, hours:h, amount, rate, reason, yearMonth:date.slice(0,7), savedAt:serverTimestamp()
     });
     document.getElementById('ot-pc-date').value='';
     document.getElementById('ot-pc-hours').value='';
+    document.getElementById('ot-pc-reason').value='';
     document.getElementById('ot-pc-preview').textContent='';
     // KPI 갱신
     const { collection:col2, getDocs:gd2 } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
@@ -4407,11 +4415,12 @@ window.otPcShowPersonDetail = async (id, name, rank) => {
       </div>
       ${rows.length===0?'<div style="color:#9AAABF;text-align:center;padding:20px;">이번 달 초과근로 내역이 없습니다.</div>':
       `<table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <thead><tr style="background:#F7F9FC;">${['날짜','시간','수당',''].map(h=>`<th style="padding:7px 10px;text-align:left;color:#5C6F8A;font-weight:600;">${h}</th>`).join('')}</tr></thead>
+        <thead><tr style="background:#F7F9FC;">${['날짜','시간','수당','사유',''].map(h=>`<th style="padding:7px 10px;text-align:left;color:#5C6F8A;font-weight:600;">${h}</th>`).join('')}</tr></thead>
         <tbody>${rows.map(r=>`<tr style="border-bottom:1px solid #F0F4F9;">
           <td style="padding:8px 10px;">${r.date}</td>
           <td style="padding:8px 10px;">${r.hours}h</td>
           <td style="padding:8px 10px;">${(r.amount||0).toLocaleString()}원</td>
+          <td style="padding:8px 10px;color:#5C6F8A;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${otEsc(r.reason||'')}">${r.reason?otEsc(r.reason):'<span style="color:#C3CEDD;">-</span>'}</td>
           <td style="padding:8px 10px;">
             <button onclick="otPcEdit('${r.id}','${id}','${name}','${rank||''}')" style="background:#E8F0FB;border:none;border-radius:5px;color:#1D5BA6;padding:3px 8px;font-size:11px;cursor:pointer;margin-right:4px;">수정</button>
             <button onclick="otPcDelete('${r.id}','${id}','${name}','${rank||''}')" style="background:#FEE2E2;border:none;border-radius:5px;color:#DC2626;padding:3px 8px;font-size:11px;cursor:pointer;">삭제</button>
@@ -4572,6 +4581,7 @@ async function otLoadSummary() {
             <th style="padding:8px;text-align:left;color:#1D5BA6;font-size:11px;">이름</th>
             <th style="padding:8px;text-align:center;color:#1D5BA6;font-size:11px;">시간</th>
             <th style="padding:8px;text-align:right;color:#1D5BA6;font-size:11px;">수당</th>
+            <th style="padding:8px;text-align:left;color:#1D5BA6;font-size:11px;">사유</th>
             <th style="padding:8px;text-align:center;color:#1D5BA6;font-size:11px;">관리</th>
           </tr></thead><tbody>`;
       rows.forEach((r,i) => {
@@ -4580,6 +4590,7 @@ async function otLoadSummary() {
           <td style="padding:8px;">${r.name}</td>
           <td style="padding:8px;text-align:center;">${r.hours}h</td>
           <td style="padding:8px;text-align:right;">${Number(r.amount||0).toLocaleString()}원</td>
+          <td style="padding:8px;color:#5C6F8A;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${otEsc(r.reason||'')}">${r.reason?otEsc(r.reason):'<span style="color:#C3CEDD;">-</span>'}</td>
           <td style="padding:8px;text-align:center;">
             <button onclick="renderOvertimeEdit('${r.id}','','summary')" style="background:#E8F0FB;border:none;border-radius:6px;color:#1D5BA6;padding:4px 8px;font-size:11px;cursor:pointer;margin-right:4px;">수정</button>
             <button onclick="otDelete('${r.id}')" style="background:#fee2e2;border:none;border-radius:6px;color:#dc2626;padding:4px 8px;font-size:11px;cursor:pointer;">삭제</button>
@@ -4692,6 +4703,7 @@ async function otLoadPersonDetail(workerId, name, rank) {
           <th style="padding:9px 8px;text-align:left;color:#1D5BA6;font-size:11px;">날짜</th>
           <th style="padding:9px 8px;text-align:center;color:#1D5BA6;font-size:11px;">시간</th>
           <th style="padding:9px 8px;text-align:right;color:#1D5BA6;font-size:11px;">수당</th>
+          <th style="padding:9px 8px;text-align:left;color:#1D5BA6;font-size:11px;">사유</th>
           <th style="padding:9px 8px;text-align:center;color:#1D5BA6;font-size:11px;">관리</th>
         </tr></thead><tbody>`;
       rows.forEach((r,i) => {
@@ -4699,6 +4711,7 @@ async function otLoadPersonDetail(workerId, name, rank) {
           <td style="padding:9px 8px;">${r.date.slice(5).replace('-','/')}</td>
           <td style="padding:9px 8px;text-align:center;">${r.hours}h</td>
           <td style="padding:9px 8px;text-align:right;">${Number(r.amount||0).toLocaleString()}원</td>
+          <td style="padding:9px 8px;color:#5C6F8A;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${otEsc(r.reason||'')}">${r.reason?otEsc(r.reason):'<span style="color:#C3CEDD;">-</span>'}</td>
           <td style="padding:9px 8px;text-align:center;">
             <button onclick="renderOvertimeEdit('${r.id}','${workerId}','${name}','${rank}','person')" style="background:#E8F0FB;border:none;border-radius:6px;color:#1D5BA6;padding:4px 8px;font-size:11px;cursor:pointer;margin-right:4px;">수정</button>
             <button onclick="otDeletePerson('${r.id}','${workerId}','${name}','${rank}')" style="background:#fee2e2;border:none;border-radius:6px;color:#dc2626;padding:4px 8px;font-size:11px;cursor:pointer;">삭제</button>
@@ -4737,6 +4750,8 @@ window.renderOvertimeAdd = async () => {
       ${field2('시간 (h)', `<input type="number" id="ot-hours" min="0.5" max="24" step="0.5" placeholder="예: 2"
         style="width:100%;padding:9px 12px;border:1px solid #DDE4EF;border-radius:8px;font-size:14px;"
         oninput="otCalcPreview()">`)}
+      ${field2('사유 (선택)', `<textarea id="ot-reason" rows="2" placeholder="초과근로 사유를 입력하세요"
+        style="width:100%;padding:9px 12px;border:1px solid #DDE4EF;border-radius:8px;font-size:14px;box-sizing:border-box;resize:vertical;font-family:inherit;"></textarea>`)}
       <div id="ot-preview" style="background:#E8F0FB;border-radius:10px;padding:12px;margin-top:8px;font-size:13px;display:none;">
         <span style="color:#1D5BA6;font-weight:600;">예상 수당</span>
         <span id="ot-preview-amount" style="font-weight:800;color:#1D5BA6;float:right;font-size:15px;"></span>
@@ -4774,6 +4789,7 @@ window.otSave = async () => {
   const date  = document.getElementById('ot-date')?.value;
   const sel   = document.getElementById('ot-worker-sel')?.value;
   const hours = parseFloat(document.getElementById('ot-hours')?.value);
+  const reason = (document.getElementById('ot-reason')?.value||'').trim();
   if (!date || !sel || sel === '' || !hours || hours <= 0) { alert('날짜, 직원, 시간을 모두 입력해주세요.'); return; }
   const [workerId, name, rank] = sel.split('|');
   const wage   = await otGetWage(workerId, name);
@@ -4784,7 +4800,7 @@ window.otSave = async () => {
     const { collection, addDoc, serverTimestamp } =
       await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     await addDoc(collection(window._db,'overtime'), {
-      date, name, rank: rank||'', workerId, hours, amount, rate, yearMonth: date.slice(0,7),
+      date, name, rank: rank||'', workerId, hours, amount, rate, reason, yearMonth: date.slice(0,7),
       savedAt: serverTimestamp()
     });
     alert('저장되었습니다.');
@@ -4835,6 +4851,8 @@ window.renderOvertimeEdit = async (docId, workerId, name, rank, backType) => {
         ${field2('시간 (h)', `<input type="number" id="ot-hours" min="0.5" max="24" step="0.5" value="${r.hours}"
           style="width:100%;padding:9px 12px;border:1px solid #DDE4EF;border-radius:8px;font-size:14px;"
           oninput="otEditCalcPreview()">`)}
+        ${field2('사유 (선택)', `<textarea id="ot-reason" rows="2" placeholder="초과근로 사유를 입력하세요"
+          style="width:100%;padding:9px 12px;border:1px solid #DDE4EF;border-radius:8px;font-size:14px;box-sizing:border-box;resize:vertical;font-family:inherit;">${otEsc(r.reason||'')}</textarea>`)}
         <div id="ot-edit-preview" style="background:#E8F0FB;border-radius:10px;padding:12px;margin-top:8px;font-size:13px;">
           <span style="color:#1D5BA6;font-weight:600;">예상 수당</span>
           <span id="ot-edit-preview-amount" style="font-weight:800;color:#1D5BA6;float:right;font-size:15px;">${Number(r.amount||0).toLocaleString()}원</span>
@@ -4870,6 +4888,7 @@ window.otUpdate = async (docId, backType) => {
   const date  = document.getElementById('ot-date')?.value;
   const sel   = document.getElementById('ot-worker-sel')?.value;
   const hours = parseFloat(document.getElementById('ot-hours')?.value);
+  const reason = (document.getElementById('ot-reason')?.value||'').trim();
   if (!date || !sel || !hours || hours <= 0) { alert('모든 항목을 입력해주세요.'); return; }
   const [workerId, name, rank] = sel.split('|');
   const wage   = await otGetWage(workerId, name);
@@ -4879,7 +4898,7 @@ window.otUpdate = async (docId, backType) => {
     const { doc, updateDoc } =
       await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     await updateDoc(doc(window._db,'overtime', docId), {
-      date, name, rank: rank||'', workerId, hours, amount, rate, yearMonth: date.slice(0,7)
+      date, name, rank: rank||'', workerId, hours, amount, rate, reason, yearMonth: date.slice(0,7)
     });
     alert('수정되었습니다.');
     if (backType==='pc') renderOvertimeMain();
