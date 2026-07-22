@@ -3795,7 +3795,7 @@ window.generateWeeklyReportPPT = async function(tueDate){
         });
       }
 
-      // 범례 (화살표 흐름형 pill — 이 구역의 이번 주 진행상태 반영)
+      // 범례 (화살표 흐름형 pill — 항상 원색 고정, 상태에 따라 흐려지지 않음)
       var frontier = wrFrontierStep(thisStats);
       var legX=10.15, legY=2.05, legW=2.73, legH=2.35;
       s.addShape('roundRect',{x:legX,y:legY,w:legW,h:legH,fill:{color:'FFFFFF'},line:{color:C.chipLn,width:1.25},rectRadius:0.12});
@@ -3803,12 +3803,9 @@ window.generateWeeklyReportPPT = async function(tueDate){
       var pillW=legW-0.6, pillH=0.32, pillGap=0.14, pillX=legX+0.3, startY=legY+0.54;
       WR_STEPS.forEach(function(step,i){
         var py=startY+i*(pillH+pillGap);
-        var active=thisStats[step].pct>0;
         var isFrontier=(step===frontier);
-        var fillCol = active? WR_STAGE_COLORS[step] : WR_INACTIVE_COLOR;
-        var txtCol = active? 'FFFFFF' : '6B7280';
-        s.addShape('roundRect',{x:pillX,y:py,w:pillW,h:pillH,fill:{color:fillCol},line:{type:'none'},rectRadius:0.5});
-        s.addText(step,{x:pillX,y:py,w:pillW,h:pillH,align:'center',valign:'middle',fontSize:11,bold:isFrontier,fontFace:'맑은 고딕',color:txtCol});
+        s.addShape('roundRect',{x:pillX,y:py,w:pillW,h:pillH,fill:{color:WR_STAGE_COLORS[step]},line:{type:'none'},rectRadius:0.5});
+        s.addText(step,{x:pillX,y:py,w:pillW,h:pillH,align:'center',valign:'middle',fontSize:11,bold:isFrontier,fontFace:'맑은 고딕',color:'FFFFFF'});
         if(i<WR_STEPS.length-1){
           s.addText('↓',{x:pillX,y:py+pillH,w:pillW,h:pillGap,align:'center',valign:'middle',fontSize:9,fontFace:'맑은 고딕',color:C.sub});
         }
