@@ -3656,8 +3656,16 @@ window.runWeeklyReportWithDate=async function(){
 };
 
 // 단계별 색상 (범례와 동일 팔레트, 박스는 별도로 투명도 33% 적용)
-var WR_STAGE_COLORS={반입:'5BA4CF', 입고검사:'1D5BA6', 설치:'16A34A', 시공검측:'7C3AED'};
+var WR_STAGE_COLORS={반입:'1D5BA6', 입고검사:'5BA4CF', 설치:'16A34A', 시공검측:'7C3AED'};
+var WR_INACTIVE_COLOR='A0AEC0';
 var WR_STEPS=['반입','입고검사','설치','시공검측'];
+
+// 이번 주 기준 "진행 중인 최전선 단계" — 공정률>0%인 단계 중 가장 뒤쪽 단계 (범례/표 강조용)
+function wrFrontierStep(stats){
+  var frontier=null;
+  WR_STEPS.forEach(function(step){ if(stats[step].pct>0) frontier=step; });
+  return frontier;
+}
 
 function wrZoneStats(z, dateKey){
   var cksObj = window._fbGetProgChecks ? window._fbGetProgChecks(dateKey, z.id) : {merged:{}};
@@ -3787,14 +3795,23 @@ window.generateWeeklyReportPPT = async function(tueDate){
         });
       }
 
-      // 범례 (고정 위치 — 도면 폭과 무관하게 우측 상단)
-      var legX=10.15, legY=2.05, legW=2.73, legH=1.7;
-      s.addShape('roundRect',{x:legX,y:legY,w:legW,h:legH,fill:{color:'FAFBFC'},line:{color:C.gridLn,width:0.75},rectRadius:0.06});
-      s.addText('범례',{x:legX+0.14,y:legY+0.08,w:legW-0.28,h:0.25,fontSize:10,bold:true,fontFace:'맑은 고딕',color:C.sub});
+      // 범례 (화살표 흐름형 pill — 이 구역의 이번 주 진행상태 반영)
+      var frontier = wrFrontierStep(thisStats);
+      var legX=10.15, legY=2.05, legW=2.73, legH=2.35;
+      s.addShape('roundRect',{x:legX,y:legY,w:legW,h:legH,fill:{color:'FFFFFF'},line:{color:C.chipLn,width:1.25},rectRadius:0.12});
+      s.addText('범례',{x:legX,y:legY+0.14,w:legW,h:0.26,fontSize:12,bold:true,align:'center',fontFace:'맑은 고딕',color:C.navy});
+      var pillW=legW-0.6, pillH=0.32, pillGap=0.14, pillX=legX+0.3, startY=legY+0.54;
       WR_STEPS.forEach(function(step,i){
-        var yy=legY+0.36+i*0.32;
-        s.addShape('rect',{x:legX+0.16,y:yy,w:0.16,h:0.16,fill:{color:WR_STAGE_COLORS[step]},line:{type:'none'}});
-        s.addText(step,{x:legX+0.40,y:yy-0.05,w:legW-0.55,h:0.26,fontSize:10,fontFace:'맑은 고딕',color:C.text,valign:'middle'});
+        var py=startY+i*(pillH+pillGap);
+        var active=thisStats[step].pct>0;
+        var isFrontier=(step===frontier);
+        var fillCol = active? WR_STAGE_COLORS[step] : WR_INACTIVE_COLOR;
+        var txtCol = active? 'FFFFFF' : '6B7280';
+        s.addShape('roundRect',{x:pillX,y:py,w:pillW,h:pillH,fill:{color:fillCol},line:{type:'none'},rectRadius:0.5});
+        s.addText(step,{x:pillX,y:py,w:pillW,h:pillH,align:'center',valign:'middle',fontSize:11,bold:isFrontier,fontFace:'맑은 고딕',color:txtCol});
+        if(i<WR_STEPS.length-1){
+          s.addText('↓',{x:pillX,y:py+pillH,w:pillW,h:pillGap,align:'center',valign:'middle',fontSize:9,fontFace:'맑은 고딕',color:C.sub});
+        }
       });
 
       // ── 표 ──
@@ -3822,19 +3839,22 @@ window.generateWeeklyReportPPT = async function(tueDate){
       WR_STEPS.forEach(function(step,i){
         var lastQ=lastStats[step].qty, thisQ=thisStats[step].qty;
         var weekQ=thisQ-lastQ;
+        var active=thisStats[step].pct>0;
+        var isFrontier=(step===frontier);
+        var stepCol = active? WR_STAGE_COLORS[step] : WR_INACTIVE_COLOR;
         var row=[];
         if(i===0){
           row.push({text:z.name,options:{align:'center',valign:'middle',rowspan:WR_STEPS.length}});
           row.push({text:'FCU 설치',options:{align:'center',valign:'middle',rowspan:WR_STEPS.length}});
         }
-        row.push({text:step,options:{align:'center'}});
+        row.push({text:step,options:{align:'center',color:stepCol,bold:isFrontier}});
         row.push({text:'대',options:{align:'center'}});
         if(i===0) row.push({text:String(z.total),options:{align:'center',valign:'middle',rowspan:WR_STEPS.length}});
         row.push({text:String(lastQ),options:{align:'center'}});
-        row.push({text:lastStats[step].pct.toFixed(0)+'%',options:{align:'center'}});
+        row.push({text:lastStats[step].pct.toFixed(0)+'%',options:{align:'center',color:lastStats[step].pct>0?WR_STAGE_COLORS[step]:WR_INACTIVE_COLOR}});
         row.push({text:(weekQ>0?'+':'')+weekQ,options:{align:'center'}});
         row.push({text:String(thisQ),options:{align:'center'}});
-        row.push({text:thisStats[step].pct.toFixed(0)+'%',options:{align:'center'}});
+        row.push({text:thisStats[step].pct.toFixed(0)+'%',options:{align:'center',color:stepCol,bold:isFrontier}});
         if(i===0) row.push({text:'전체 공정율 '+TOTAL_PCT+'%',options:{align:'center',valign:'middle',rowspan:WR_STEPS.length,fontSize:10,color:C.navy,bold:true}});
         rows.push(row);
       });
