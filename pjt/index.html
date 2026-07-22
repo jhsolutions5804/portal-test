@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- PJT module build: 20260722 · ver 4.7.0 · 주간공정회의 자료 자동생성(전주/금주 비교, 구역별 슬라이드, 주차 자동계산) + 도면 좌표 매핑 툴(zone_layouts, 드래그/클릭 배치, 기준크기 자동적용, 크기 일괄보정) + 화살표 flow형 범례·표 색상 고정 -->
+<!DOCTYPE html><!-- PJT module build: 20260722 · ver 4.7.1 · 주간공정회의 자료 자동생성 + 도면 좌표 매핑 툴(클릭배치 버그 수정: mousemove 없는 순수 클릭도 정상 인식) + 크기 일괄보정 + 화살표 flow형 범례·표 색상 고정 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -3985,11 +3985,14 @@ function lmBindDrag(){
     if(!lmDragging) return;
     lmDragging=false;
     var box=document.getElementById('lm-drag-box');
-    if(!box) return;
     var img=document.getElementById('lm-img');
     var w=img.clientWidth, h=img.clientHeight;
-    var bx=parseFloat(box.style.left), by=parseFloat(box.style.top), bw=parseFloat(box.style.width), bh=parseFloat(box.style.height);
-    box.remove();
+    // 박스 엘리먼트의 style이 아니라 이벤트 좌표에서 직접 계산 (mousemove가 한 번도 안 일어난 순수 클릭 대응)
+    var rect=overlay.getBoundingClientRect();
+    var endX=e.clientX-rect.left, endY=e.clientY-rect.top;
+    var bx=Math.min(lmDragStart.x, endX), by=Math.min(lmDragStart.y, endY);
+    var bw=Math.abs(endX-lmDragStart.x), bh=Math.abs(endY-lmDragStart.y);
+    if(box) box.remove();
     var z=lmZone(); if(!z) return;
     var eqId=z.eqs[lmCurEqIdx];
     var norm;
@@ -4001,8 +4004,7 @@ function lmBindDrag(){
         alert('먼저 장비 1개는 직접 드래그해서 기준 크기를 잡아주세요. 이후부터는 클릭만으로 같은 크기가 자동 적용됩니다.');
         return;
       }
-      var rect=overlay.getBoundingClientRect();
-      var clickX=(bx+bw/2)/w, clickY=(by+bh/2)/h;
+      var clickX=endX/w, clickY=endY/h;
       norm={ x: clickX-ref.w/2, y: clickY-ref.h/2, w: ref.w, h: ref.h };
     }else{
       // 드래그 배치: 드래그한 크기 그대로 저장 (이후 클릭 배치의 새 기준 크기가 됨)
