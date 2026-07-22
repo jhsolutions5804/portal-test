@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- PJT module build: 20260722 · ver 4.9.0 · 주간공정회의 자료 자동생성 + 도면 좌표 매핑 툴(클릭/드래그 배치, 기준크기 자동적용, 크기 일괄보정, 확대·축소+스크롤 팬, 최근 배치 줄 자동정렬 스냅) + 화살표 flow형 범례·표 색상 고정 -->
+<!DOCTYPE html><!-- PJT module build: 20260722 · ver 4.10.0 · 주간공정회의 자료 자동생성 + 도면 좌표 매핑 툴(클릭/드래그 배치, 기준크기 자동적용, 크기 일괄보정, 확대·축소+스크롤 팬, 자동정렬 스냅, 구역 전체 좌표 일괄삭제) + 화살표 flow형 범례·표 색상 고정 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -890,6 +890,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
     <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end">
       <button id="lm-normalize-btn" onclick="lmNormalizeSizes()" style="padding:9px 16px;background:#fff;color:#1D5BA6;border:1.5px solid #b8cbe6;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">📐 크기 일괄 보정</button>
       <button onclick="lmDeleteCurrent()" style="padding:9px 16px;background:#fff;color:#d32f2f;border:1.5px solid #f0c0c0;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">현재 장비 좌표 삭제</button>
+      <button onclick="lmDeleteAll()" style="padding:9px 16px;background:#fff;color:#d32f2f;border:1.5px solid #d32f2f;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">🗑️ 이 구역 전체 삭제</button>
       <button onclick="closeLayoutMapModal()" style="padding:9px 20px;background:#1D5BA6;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">완료</button>
     </div>
   </div>
@@ -1631,6 +1632,20 @@ window._fbDeleteZoneLayoutPoint = async function(zoneId, eqId) {
     return true;
   } catch (e) {
     console.error('도면 좌표 삭제 오류:', e);
+    return false;
+  }
+};
+
+// 구역 전체 좌표 일괄 삭제
+window._fbClearZoneLayout = async function(zoneId) {
+  try {
+    const ref = doc(db, 'zone_layouts', zoneId);
+    const data = { points: {}, updatedAt: serverTimestamp() };
+    await setDoc(ref, data);
+    window._zoneLayoutCache[zoneId] = data;
+    return true;
+  } catch (e) {
+    console.error('도면 좌표 전체삭제 오류:', e);
     return false;
   }
 };
@@ -4092,6 +4107,22 @@ window.lmDeleteCurrent=async function(){
   await window._fbDeleteZoneLayoutPoint(z.id, eqId);
   lmRenderEqList();
   lmRenderBoxes();
+};
+
+window.lmDeleteAll=async function(){
+  var z=lmZone(); if(!z) return;
+  var layout=window._zoneLayoutCache[z.id]||{points:{}};
+  var count=Object.keys(layout.points||{}).length;
+  if(count===0){ alert('이 구역엔 이미 매핑된 좌표가 없습니다.'); return; }
+  if(!confirm(z.name+' 구역에 매핑된 좌표 '+count+'개를 전부 삭제할까요? 되돌릴 수 없습니다.')) return;
+  if(!confirm('정말로 전체 삭제하시겠습니까? 다시 한 번 확인합니다.')) return;
+  var ok=await window._fbClearZoneLayout(z.id);
+  if(ok){
+    lmCurEqIdx=0;
+    lmRenderEqList();
+    lmRenderBoxes();
+    alert(z.name+' 구역 좌표를 전부 삭제했습니다.');
+  }
 };
 
 // 이미 찍은 박스들을 중심점은 유지한 채 크기만 중앙값으로 일괄 보정
