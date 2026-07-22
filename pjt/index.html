@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- PJT module build: 20260722 · ver 4.7.1 · 주간공정회의 자료 자동생성 + 도면 좌표 매핑 툴(클릭배치 버그 수정: mousemove 없는 순수 클릭도 정상 인식) + 크기 일괄보정 + 화살표 flow형 범례·표 색상 고정 -->
+<!DOCTYPE html><!-- PJT module build: 20260722 · ver 4.8.0 · 주간공정회의 자료 자동생성 + 도면 좌표 매핑 툴(클릭/드래그 배치, 기준크기 자동적용, 크기 일괄보정, 확대·축소+스크롤 팬) + 화살표 flow형 범례·표 색상 고정 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -848,25 +848,33 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
 
 <!-- 도면 매핑 모달 -->
 <div id="lm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9100;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:16px;padding:20px 24px;width:min(920px,94vw);max-height:92vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+  <div style="background:#fff;border-radius:16px;padding:20px 24px;width:min(1240px,96vw);max-height:94vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
       <div style="font-size:17px;font-weight:700;color:#1A2540">🗺️ 도면 좌표 매핑</div>
       <button onclick="closeLayoutMapModal()" style="border:none;background:none;font-size:18px;cursor:pointer;color:#888">✕</button>
     </div>
-    <div style="font-size:12px;color:#86868b;margin-bottom:14px">장비 1개는 정확히 드래그해서 크기를 잡아주세요. 이후부터는 <b>클릭 한 번</b>으로 같은 크기 박스가 자동 배치됩니다(속도↑ 크기 일관성↑). 크기를 다시 잡고 싶으면 그냥 다시 드래그하면 그 크기가 새 기준이 됩니다. 이미 찍은 박스들 크기가 들쭉날쭉하면 아래 "크기 일괄 보정" 버튼으로 한번에 맞출 수 있습니다.</div>
+    <div style="font-size:12px;color:#86868b;margin-bottom:14px">장비 1개는 정확히 드래그해서 크기를 잡아주세요. 이후부터는 <b>클릭 한 번</b>으로 같은 크기 박스가 자동 배치됩니다(속도↑ 크기 일관성↑). 크기를 다시 잡고 싶으면 그냥 다시 드래그하면 그 크기가 새 기준이 됩니다. 이미 찍은 박스들 크기가 들쭉날쭉하면 아래 "크기 일괄 보정" 버튼으로 한번에 맞출 수 있습니다. 정밀하게 찍으려면 우측 상단 <b>확대(＋)</b> 버튼으로 키운 뒤 도면을 스크롤해서 이동하며 클릭하세요.</div>
 
     <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
       <select id="lm-zone-sel" onchange="lmSwitchZone(this.value)" style="padding:8px 10px;border:1.5px solid #dde4ef;border-radius:8px;font-size:13px;font-family:inherit"></select>
+      <div style="display:flex;align-items:center;gap:4px;border:1.5px solid #dde4ef;border-radius:8px;padding:2px">
+        <button onclick="lmZoomOut()" style="width:28px;height:28px;border:none;background:#f5f5f7;border-radius:6px;cursor:pointer;font-size:15px;font-weight:700;color:#1D5BA6">－</button>
+        <span id="lm-zoom-label" style="font-size:12px;width:44px;text-align:center;color:#555">100%</span>
+        <button onclick="lmZoomIn()" style="width:28px;height:28px;border:none;background:#f5f5f7;border-radius:6px;cursor:pointer;font-size:15px;font-weight:700;color:#1D5BA6">＋</button>
+        <button onclick="lmZoomReset()" style="padding:0 10px;height:28px;border:none;background:#f5f5f7;border-radius:6px;cursor:pointer;font-size:12px;color:#555">맞춤</button>
+      </div>
       <div style="flex:1"></div>
       <span id="lm-progress" style="font-size:12px;color:#1D5BA6;font-weight:700">0 / 0 매핑완료</span>
     </div>
 
     <div style="display:flex;gap:16px;flex-wrap:wrap">
-      <!-- 도면 캔버스 영역 -->
+      <!-- 도면 캔버스 영역 (확대/축소 + 스크롤 팬) -->
       <div style="flex:1;min-width:320px">
-        <div id="lm-imgwrap" style="position:relative;display:inline-block;border:1px solid #e5e5e5;border-radius:8px;overflow:hidden;background:#fafafa;max-width:100%">
-          <img id="lm-img" src="" style="display:block;max-width:100%;height:auto;user-select:none;pointer-events:none">
-          <div id="lm-overlay" style="position:absolute;inset:0;cursor:crosshair"></div>
+        <div id="lm-scrollbox" style="overflow:auto;max-height:68vh;border:1px solid #e5e5e5;border-radius:8px;background:#fafafa">
+          <div id="lm-imgwrap" style="position:relative;display:inline-block">
+            <img id="lm-img" src="" style="display:block;user-select:none;pointer-events:none">
+            <div id="lm-overlay" style="position:absolute;inset:0;cursor:crosshair"></div>
+          </div>
         </div>
         <div id="lm-noimg" style="display:none;padding:40px;text-align:center;color:#999;font-size:13px;border:1px dashed #ddd;border-radius:8px">
           이 구역의 기준 도면이 아직 등록되지 않았습니다.<br>
@@ -874,7 +882,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
         </div>
       </div>
       <!-- 장비 리스트 -->
-      <div style="width:220px;max-height:480px;overflow-y:auto;border:1px solid #eee;border-radius:8px">
+      <div style="width:220px;max-height:68vh;overflow-y:auto;border:1px solid #eee;border-radius:8px">
         <div id="lm-eqlist"></div>
       </div>
     </div>
@@ -3877,6 +3885,7 @@ window.generateWeeklyReportPPT = async function(tueDate){
 // [도면 매핑] 좌표 매핑 툴
 // =====================================================
 var lmCurZoneId=null, lmCurEqIdx=0, lmDragging=false, lmDragStart=null;
+var lmZoom=1, lmBaseW=null;
 
 window.openLayoutMapModal=async function(){
   var modal=document.getElementById('lm-modal');
@@ -3894,17 +3903,36 @@ window.closeLayoutMapModal=function(){
 window.lmSwitchZone=async function(zoneId){
   lmCurZoneId=zoneId;
   lmCurEqIdx=0;
+  lmZoom=1; lmBaseW=null;
   document.getElementById('lm-zone-sel').value=zoneId;
   await window._fbLoadZoneLayout(zoneId);
   var img=document.getElementById('lm-img');
-  var wrap=document.getElementById('lm-imgwrap');
+  var scrollbox=document.getElementById('lm-scrollbox');
   var noimg=document.getElementById('lm-noimg');
-  img.onerror=function(){ wrap.style.display='none'; noimg.style.display='block'; };
-  img.onload=function(){ wrap.style.display='inline-block'; noimg.style.display='none'; lmRenderBoxes(); };
+  img.onerror=function(){ scrollbox.style.display='none'; noimg.style.display='block'; };
+  img.onload=function(){
+    scrollbox.style.display='block'; noimg.style.display='none';
+    img.style.maxWidth='none';
+    lmBaseW = Math.min(img.naturalWidth, scrollbox.clientWidth-4);
+    lmApplyZoom();
+  };
   img.src='assets/floorplans/'+zoneId+'.png';
   lmRenderEqList();
   lmBindDrag();
 };
+
+function lmApplyZoom(){
+  var img=document.getElementById('lm-img');
+  if(!img || !lmBaseW) return;
+  img.style.width = Math.round(lmBaseW*lmZoom)+'px';
+  img.style.height = 'auto';
+  var lbl=document.getElementById('lm-zoom-label');
+  if(lbl) lbl.textContent = Math.round(lmZoom*100)+'%';
+  lmRenderBoxes();
+}
+window.lmZoomIn=function(){ lmZoom=Math.min(4, Math.round((lmZoom+0.25)*100)/100); lmApplyZoom(); };
+window.lmZoomOut=function(){ lmZoom=Math.max(0.5, Math.round((lmZoom-0.25)*100)/100); lmApplyZoom(); };
+window.lmZoomReset=function(){ lmZoom=1; lmApplyZoom(); };
 
 function lmZone(){ return ZONES.find(function(z){return z.id===lmCurZoneId;}); }
 
