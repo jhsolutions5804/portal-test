@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- PJT module build: 20260722 · ver 4.8.0 · 주간공정회의 자료 자동생성 + 도면 좌표 매핑 툴(클릭/드래그 배치, 기준크기 자동적용, 크기 일괄보정, 확대·축소+스크롤 팬) + 화살표 flow형 범례·표 색상 고정 -->
+<!DOCTYPE html><!-- PJT module build: 20260722 · ver 4.9.0 · 주간공정회의 자료 자동생성 + 도면 좌표 매핑 툴(클릭/드래그 배치, 기준크기 자동적용, 크기 일괄보정, 확대·축소+스크롤 팬, 최근 배치 줄 자동정렬 스냅) + 화살표 flow형 범례·표 색상 고정 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -3988,6 +3988,43 @@ function lmGetRefSize(zoneId){
   return { w: sw/keys.length, h: sh/keys.length };
 }
 
+function lmMean(arr){ return arr.reduce(function(a,b){return a+b;},0)/arr.length; }
+function lmVariance(arr){ var m=lmMean(arr); return lmMean(arr.map(function(v){return (v-m)*(v-m);})); }
+
+// 최근 배치한 박스들이 이루는 줄(가로/세로)을 감지해 클릭 좌표를 그 줄에 맞춰 보정
+// 정렬축과 수직인 성분만 보정하고, 클릭한 축 방향 위치는 그대로 존중
+function lmSnapToAlignment(zoneId, clickX, clickY){
+  var z=ZONES.find(function(zz){return zz.id===zoneId;});
+  var layout=window._zoneLayoutCache[zoneId]||{points:{}};
+  var pts=layout.points||{};
+  var recent=[];
+  for(var i=lmCurEqIdx-1; i>=0 && recent.length<4; i--){
+    var eq=z.eqs[i];
+    if(pts[eq]){
+      var b=pts[eq];
+      recent.push({x:b.x+b.w/2, y:b.y+b.h/2});
+    }
+  }
+  if(recent.length<2) return {x:clickX, y:clickY}; // 정렬 판단할 데이터 부족 → 보정 없음
+
+  var xs=recent.map(function(p){return p.x;}), ys=recent.map(function(p){return p.y;});
+  var xVar=lmVariance(xs), yVar=lmVariance(ys);
+  var avgX=lmMean(xs), avgY=lmMean(ys);
+  var ref=lmGetRefSize(zoneId);
+  var tolY = ref? ref.h*1.5 : 0.05; // 클릭이 이 범위를 벗어나면 "새로운 줄"로 보고 보정 안 함
+  var tolX = ref? ref.w*1.5 : 0.05;
+
+  if(yVar<xVar*0.3 && Math.abs(clickY-avgY)<tolY){
+    // 가로로 일렬 배치 중 (Y가 거의 고정) → Y만 정렬선에 스냅, X는 클릭값 유지
+    return {x:clickX, y:avgY};
+  }
+  if(xVar<yVar*0.3 && Math.abs(clickX-avgX)<tolX){
+    // 세로로 일렬 배치 중 (X가 거의 고정) → X만 정렬선에 스냅, Y는 클릭값 유지
+    return {x:avgX, y:clickY};
+  }
+  return {x:clickX, y:clickY}; // 뚜렷한 정렬 패턴 없거나 새 줄로 이동한 경우 → 보정 없음
+}
+
 function lmBindDrag(){
   var overlay=document.getElementById('lm-overlay');
   overlay.onmousedown=function(e){
@@ -4033,7 +4070,8 @@ function lmBindDrag(){
         return;
       }
       var clickX=endX/w, clickY=endY/h;
-      norm={ x: clickX-ref.w/2, y: clickY-ref.h/2, w: ref.w, h: ref.h };
+      var snapped=lmSnapToAlignment(z.id, clickX, clickY);
+      norm={ x: snapped.x-ref.w/2, y: snapped.y-ref.h/2, w: ref.w, h: ref.h };
     }else{
       // 드래그 배치: 드래그한 크기 그대로 저장 (이후 클릭 배치의 새 기준 크기가 됨)
       norm={x:bx/w, y:by/h, w:bw/w, h:bh/h};
