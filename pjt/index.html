@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- PJT module build: 20260722 · ver 4.6.3 · 주간공정회의 자료 자동생성(전주/금주 비교, 구역별 슬라이드, 주차 자동계산) + 도면 좌표 매핑 툴(zone_layouts, 드래그 박스 등록) + 화살표 flow형 범례·표 색상 전부 상태무관 고정 -->
+<!DOCTYPE html><!-- PJT module build: 20260722 · ver 4.7.0 · 주간공정회의 자료 자동생성(전주/금주 비교, 구역별 슬라이드, 주차 자동계산) + 도면 좌표 매핑 툴(zone_layouts, 드래그/클릭 배치, 기준크기 자동적용, 크기 일괄보정) + 화살표 flow형 범례·표 색상 고정 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -853,7 +853,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
       <div style="font-size:17px;font-weight:700;color:#1A2540">🗺️ 도면 좌표 매핑</div>
       <button onclick="closeLayoutMapModal()" style="border:none;background:none;font-size:18px;cursor:pointer;color:#888">✕</button>
     </div>
-    <div style="font-size:12px;color:#86868b;margin-bottom:14px">도면 위에서 장비 위치를 드래그해 박스로 지정하세요. 저장된 박스는 다시 드래그하면 갱신됩니다.</div>
+    <div style="font-size:12px;color:#86868b;margin-bottom:14px">장비 1개는 정확히 드래그해서 크기를 잡아주세요. 이후부터는 <b>클릭 한 번</b>으로 같은 크기 박스가 자동 배치됩니다(속도↑ 크기 일관성↑). 크기를 다시 잡고 싶으면 그냥 다시 드래그하면 그 크기가 새 기준이 됩니다. 이미 찍은 박스들 크기가 들쭉날쭉하면 아래 "크기 일괄 보정" 버튼으로 한번에 맞출 수 있습니다.</div>
 
     <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
       <select id="lm-zone-sel" onchange="lmSwitchZone(this.value)" style="padding:8px 10px;border:1.5px solid #dde4ef;border-radius:8px;font-size:13px;font-family:inherit"></select>
@@ -880,6 +880,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
     </div>
 
     <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end">
+      <button id="lm-normalize-btn" onclick="lmNormalizeSizes()" style="padding:9px 16px;background:#fff;color:#1D5BA6;border:1.5px solid #b8cbe6;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">📐 크기 일괄 보정</button>
       <button onclick="lmDeleteCurrent()" style="padding:9px 16px;background:#fff;color:#d32f2f;border:1.5px solid #f0c0c0;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">현재 장비 좌표 삭제</button>
       <button onclick="closeLayoutMapModal()" style="padding:9px 20px;background:#1D5BA6;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">완료</button>
     </div>
@@ -3948,6 +3949,17 @@ function lmRenderBoxes(){
   overlay.innerHTML=html;
 }
 
+// 구역 내 이미 저장된 박스들의 평균 크기 (클릭 배치용 기준 크기)
+function lmGetRefSize(zoneId){
+  var layout=window._zoneLayoutCache[zoneId]||{points:{}};
+  var pts=layout.points||{};
+  var keys=Object.keys(pts);
+  if(!keys.length) return null;
+  var sw=0, sh=0;
+  keys.forEach(function(k){ sw+=pts[k].w; sh+=pts[k].h; });
+  return { w: sw/keys.length, h: sh/keys.length };
+}
+
 function lmBindDrag(){
   var overlay=document.getElementById('lm-overlay');
   overlay.onmousedown=function(e){
@@ -3978,10 +3990,24 @@ function lmBindDrag(){
     var w=img.clientWidth, h=img.clientHeight;
     var bx=parseFloat(box.style.left), by=parseFloat(box.style.top), bw=parseFloat(box.style.width), bh=parseFloat(box.style.height);
     box.remove();
-    if(bw<4||bh<4) return; // 너무 작은 드래그는 무시(오클릭 방지)
     var z=lmZone(); if(!z) return;
     var eqId=z.eqs[lmCurEqIdx];
-    var norm={x:bx/w, y:by/h, w:bw/w, h:bh/h};
+    var norm;
+    var CLICK_THRESHOLD=8; // px — 이보다 작은 움직임은 "클릭"으로 간주
+    if(bw<CLICK_THRESHOLD && bh<CLICK_THRESHOLD){
+      // 클릭 배치: 기존 평균 크기를 클릭 지점 중심에 자동 적용
+      var ref=lmGetRefSize(z.id);
+      if(!ref){
+        alert('먼저 장비 1개는 직접 드래그해서 기준 크기를 잡아주세요. 이후부터는 클릭만으로 같은 크기가 자동 적용됩니다.');
+        return;
+      }
+      var rect=overlay.getBoundingClientRect();
+      var clickX=(bx+bw/2)/w, clickY=(by+bh/2)/h;
+      norm={ x: clickX-ref.w/2, y: clickY-ref.h/2, w: ref.w, h: ref.h };
+    }else{
+      // 드래그 배치: 드래그한 크기 그대로 저장 (이후 클릭 배치의 새 기준 크기가 됨)
+      norm={x:bx/w, y:by/h, w:bw/w, h:bh/h};
+    }
     var ok=await window._fbSaveZoneLayoutPoint(z.id, eqId, norm);
     if(ok){
       lmRenderEqList();
@@ -3998,6 +4024,32 @@ window.lmDeleteCurrent=async function(){
   await window._fbDeleteZoneLayoutPoint(z.id, eqId);
   lmRenderEqList();
   lmRenderBoxes();
+};
+
+// 이미 찍은 박스들을 중심점은 유지한 채 크기만 중앙값으로 일괄 보정
+window.lmNormalizeSizes=async function(){
+  var z=lmZone(); if(!z) return;
+  var layout=window._zoneLayoutCache[z.id]||{points:{}};
+  var pts=layout.points||{};
+  var keys=Object.keys(pts);
+  if(keys.length<2){ alert('보정하려면 박스가 2개 이상 있어야 합니다.'); return; }
+  var ws=keys.map(function(k){return pts[k].w;}).sort(function(a,b){return a-b;});
+  var hs=keys.map(function(k){return pts[k].h;}).sort(function(a,b){return a-b;});
+  var mw=ws[Math.floor(ws.length/2)], mh=hs[Math.floor(hs.length/2)];
+  if(!confirm(z.name+' 구역의 박스 '+keys.length+'개를 모두 동일 크기('+(mw*100).toFixed(1)+'%×'+(mh*100).toFixed(1)+'%)로 맞출까요? 각 박스의 중심 위치는 그대로 유지됩니다.')) return;
+  var btn=document.getElementById('lm-normalize-btn');
+  if(btn){ btn.disabled=true; btn.textContent='보정 중...'; }
+  for(var i=0;i<keys.length;i++){
+    var k=keys[i], b=pts[k];
+    var cx=b.x+b.w/2, cy=b.y+b.h/2;
+    var newBox={x:cx-mw/2, y:cy-mh/2, w:mw, h:mh};
+    await window._fbSaveZoneLayoutPoint(z.id, k, newBox);
+  }
+  await window._fbLoadZoneLayout(z.id);
+  lmRenderEqList();
+  lmRenderBoxes();
+  if(btn){ btn.disabled=false; btn.textContent='📐 크기 일괄 보정'; }
+  alert('보정 완료했습니다.');
 };
 
 window.generateProgressPPT = async function() {
