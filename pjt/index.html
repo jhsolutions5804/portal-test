@@ -535,6 +535,14 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
               <div class="sci">📈</div>
               <div><div class="sct">공정표 PPT</div><div class="scd">공정율 PPT 다운로드</div></div>
             </div>
+            <div class="home-sc" onclick="openWeeklyReportModal()">
+              <div class="sci">🗓️</div>
+              <div><div class="sct">주간공정회의 자료</div><div class="scd">주간 비교 PPT 다운로드</div></div>
+            </div>
+            <div class="home-sc" onclick="openLayoutMapModal()">
+              <div class="sci">🗺️</div>
+              <div><div class="sct">도면 매핑</div><div class="scd">장비 위치 좌표 등록</div></div>
+            </div>
           </div>
         </div>
 
@@ -818,6 +826,62 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
     <div style="display:flex;gap:10px">
       <button onclick="closePptDateModal()" style="flex:1;padding:11px;background:#f5f5f7;color:#555;border:1px solid #e5e5e5;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit">취소</button>
       <button onclick="runPptWithDate()" style="flex:2;padding:11px;background:#1D5BA6;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">📊 PPT 생성 · 다운로드</button>
+    </div>
+  </div>
+</div>
+
+<!-- 주간공정회의 자료 기준일 선택 모달 -->
+<div id="wr-date-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:28px 32px;width:340px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+    <div style="font-size:17px;font-weight:700;color:#1A2540;margin-bottom:6px">🗓️ 주간공정회의 자료 기준일 선택</div>
+    <div style="font-size:12px;color:#86868b;margin-bottom:20px">선택한 화요일이 금주 마감일이 되며, 전주 화요일 대비 비교표가 생성됩니다</div>
+    <label style="font-size:13px;color:#555;font-weight:600;display:block;margin-bottom:6px">금주 화요일(기준일)</label>
+    <input type="date" id="wr-date-inp" style="width:100%;padding:10px 12px;border:1.5px solid #dde4ef;border-radius:10px;font-size:14px;font-family:inherit;box-sizing:border-box;margin-bottom:6px">
+    <div style="font-size:12px;color:#86868b;margin-bottom:18px" id="wr-week-preview">—</div>
+    <div id="wr-status" style="display:none;font-size:12px;color:#1D5BA6;margin-bottom:12px"></div>
+    <div style="display:flex;gap:10px">
+      <button onclick="closeWeeklyReportModal()" style="flex:1;padding:11px;background:#f5f5f7;color:#555;border:1px solid #e5e5e5;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit">취소</button>
+      <button id="wr-btn" onclick="runWeeklyReportWithDate()" style="flex:2;padding:11px;background:#1D5BA6;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🗓️ PPT 생성 · 다운로드</button>
+    </div>
+  </div>
+</div>
+
+<!-- 도면 매핑 모달 -->
+<div id="lm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9100;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:20px 24px;width:min(920px,94vw);max-height:92vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <div style="font-size:17px;font-weight:700;color:#1A2540">🗺️ 도면 좌표 매핑</div>
+      <button onclick="closeLayoutMapModal()" style="border:none;background:none;font-size:18px;cursor:pointer;color:#888">✕</button>
+    </div>
+    <div style="font-size:12px;color:#86868b;margin-bottom:14px">도면 위에서 장비 위치를 드래그해 박스로 지정하세요. 저장된 박스는 다시 드래그하면 갱신됩니다.</div>
+
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+      <select id="lm-zone-sel" onchange="lmSwitchZone(this.value)" style="padding:8px 10px;border:1.5px solid #dde4ef;border-radius:8px;font-size:13px;font-family:inherit"></select>
+      <div style="flex:1"></div>
+      <span id="lm-progress" style="font-size:12px;color:#1D5BA6;font-weight:700">0 / 0 매핑완료</span>
+    </div>
+
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <!-- 도면 캔버스 영역 -->
+      <div style="flex:1;min-width:320px">
+        <div id="lm-imgwrap" style="position:relative;display:inline-block;border:1px solid #e5e5e5;border-radius:8px;overflow:hidden;background:#fafafa;max-width:100%">
+          <img id="lm-img" src="" style="display:block;max-width:100%;height:auto;user-select:none;pointer-events:none">
+          <div id="lm-overlay" style="position:absolute;inset:0;cursor:crosshair"></div>
+        </div>
+        <div id="lm-noimg" style="display:none;padding:40px;text-align:center;color:#999;font-size:13px;border:1px dashed #ddd;border-radius:8px">
+          이 구역의 기준 도면이 아직 등록되지 않았습니다.<br>
+          <code>pjt/assets/floorplans/{구역id}.png</code> 경로로 도면 파일을 저장소에 등록해주세요.
+        </div>
+      </div>
+      <!-- 장비 리스트 -->
+      <div style="width:220px;max-height:480px;overflow-y:auto;border:1px solid #eee;border-radius:8px">
+        <div id="lm-eqlist"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end">
+      <button onclick="lmDeleteCurrent()" style="padding:9px 16px;background:#fff;color:#d32f2f;border:1.5px solid #f0c0c0;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">현재 장비 좌표 삭제</button>
+      <button onclick="closeLayoutMapModal()" style="padding:9px 20px;background:#1D5BA6;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">완료</button>
     </div>
   </div>
 </div>
@@ -1505,6 +1569,61 @@ window._fbGetProgChecks = function(dateKey, zoneId) {
   // pastOnly = 고정 과거 + Firebase 과거 (오늘 제외)
   const pastOnly = Object.assign({}, pastMerged, fbMerged);
   return { merged, todayOnly, pastOnly };
+};
+
+// ===== [주간공정회의] 도면 좌표 매핑 (zone_layouts) =====
+window._zoneLayoutCache = window._zoneLayoutCache || {};
+
+// 구역의 좌표 매핑 데이터 로드 (1회) — {points:{eqId:{x,y,w,h}}, updatedAt}
+window._fbLoadZoneLayout = async function(zoneId) {
+  try {
+    const ref = doc(db, 'zone_layouts', zoneId);
+    const snap = await getDoc(ref);
+    const data = snap.exists() ? snap.data() : { points: {} };
+    window._zoneLayoutCache[zoneId] = data;
+    return data;
+  } catch (e) {
+    console.error('도면 좌표 로드 오류:', e);
+    window._zoneLayoutCache[zoneId] = window._zoneLayoutCache[zoneId] || { points: {} };
+    return window._zoneLayoutCache[zoneId];
+  }
+};
+
+// 장비 1개의 박스 좌표 저장 (병합 저장 — 다른 장비 좌표 보존)
+window._fbSaveZoneLayoutPoint = async function(zoneId, eqId, box) {
+  // box = {x,y,w,h} — 0~1 사이 정규화 비율 (이미지 원본 크기 대비)
+  try {
+    const ref = doc(db, 'zone_layouts', zoneId);
+    const snap = await getDoc(ref);
+    const data = snap.exists() ? snap.data() : { points: {} };
+    data.points = data.points || {};
+    data.points[eqId] = box;
+    data.updatedAt = serverTimestamp();
+    await setDoc(ref, data);
+    window._zoneLayoutCache[zoneId] = data;
+    return true;
+  } catch (e) {
+    console.error('도면 좌표 저장 오류:', e);
+    return false;
+  }
+};
+
+// 장비 1개의 박스 좌표 삭제
+window._fbDeleteZoneLayoutPoint = async function(zoneId, eqId) {
+  try {
+    const ref = doc(db, 'zone_layouts', zoneId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return true;
+    const data = snap.data();
+    if (data.points) delete data.points[eqId];
+    data.updatedAt = serverTimestamp();
+    await setDoc(ref, data);
+    window._zoneLayoutCache[zoneId] = data;
+    return true;
+  } catch (e) {
+    console.error('도면 좌표 삭제 오류:', e);
+    return false;
+  }
 };
 
 // ===== 전자결재 연차(edoc_leave) 구독 → 캘린더 자동 등재 =====
@@ -3481,6 +3600,388 @@ window.runPptWithDate=async function(){
   progDayOffset=Math.round(diffMs/(1000*60*60*24));
   await generateProgressPPT();
   progDayOffset=savedOffset;
+};
+
+// =====================================================
+// [주간공정회의 자료] 주차 계산 유틸
+// 앵커: 30주차 = 2026-07-15(수) ~ 2026-07-21(화)
+// =====================================================
+function wrSnapToTuesday(d){
+  var r=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  var dow=r.getDay(); // 0=일 ... 2=화 ... 6=토
+  var add=(2-dow+7)%7;
+  r.setDate(r.getDate()+add);
+  return r;
+}
+function wrCalcWeekNo(tueDate){
+  var anchor=new Date(2026,6,21); // 2026-07-21(화) = 30주차 종료일
+  var diffDays=Math.round((tueDate-anchor)/(1000*60*60*24));
+  var diffWeeks=Math.round(diffDays/7);
+  return 30+diffWeeks;
+}
+function wrFmtDate(d){return d.getFullYear()+'. '+(d.getMonth()+1)+'. '+d.getDate();}
+
+window.openWeeklyReportModal=function(){
+  var modal=document.getElementById('wr-date-modal');
+  if(!modal) return;
+  var d=wrSnapToTuesday(getAppToday());
+  var y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
+  var inp=document.getElementById('wr-date-inp');
+  if(inp){ inp.value=y+'-'+m+'-'+dd; inp.oninput=wrUpdatePreview; }
+  wrUpdatePreview();
+  modal.style.display='flex';
+};
+window.closeWeeklyReportModal=function(){
+  var modal=document.getElementById('wr-date-modal');
+  if(modal) modal.style.display='none';
+};
+function wrUpdatePreview(){
+  var inp=document.getElementById('wr-date-inp');
+  var prev=document.getElementById('wr-week-preview');
+  if(!inp||!inp.value||!prev) return;
+  var parts=inp.value.split('-');
+  var raw=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+  var tue=wrSnapToTuesday(raw);
+  var wed=new Date(tue); wed.setDate(tue.getDate()-6);
+  var wk=wrCalcWeekNo(tue);
+  prev.textContent=wk+'주차 · '+wrFmtDate(wed)+' ~ '+wrFmtDate(tue)+' 기준';
+}
+window.runWeeklyReportWithDate=async function(){
+  var inp=document.getElementById('wr-date-inp');
+  if(!inp||!inp.value){ alert('기준일을 선택해 주세요.'); return; }
+  var parts=inp.value.split('-');
+  var raw=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+  var tueDate=wrSnapToTuesday(raw);
+  await generateWeeklyReportPPT(tueDate);
+};
+
+// 단계별 색상 (범례와 동일 팔레트, 박스는 별도로 투명도 33% 적용)
+var WR_STAGE_COLORS={반입:'5BA4CF', 입고검사:'1D5BA6', 설치:'16A34A', 시공검측:'7C3AED'};
+var WR_STEPS=['반입','입고검사','설치','시공검측'];
+
+function wrZoneStats(z, dateKey){
+  var cksObj = window._fbGetProgChecks ? window._fbGetProgChecks(dateKey, z.id) : {merged:{}};
+  var r = calcZone(z, cksObj);
+  return {
+    반입:{qty:r.zIn, pct:(r.zIn/z.total*100)},
+    입고검사:{qty:r.zAn, pct:(r.zAn/z.total*100)},
+    설치:{qty:r.instDone, pct:(r.instDone/z.total*100)},
+    시공검측:{qty:r.zChk, pct:(r.zChk/z.total*100)},
+    totalChecked:r.totalChecked, mx:r.mx
+  };
+}
+
+// 이미지 존재 여부 + 원본 크기 사전 확인 (addImage는 실패해도 그 자리에서 throw하지 않으므로 반드시 사전 체크)
+function wrGetImageInfo(url){
+  return new Promise(function(resolve){
+    var img=new Image();
+    img.onload=function(){ resolve({exists:true, w:img.naturalWidth, h:img.naturalHeight}); };
+    img.onerror=function(){ resolve({exists:false, w:0, h:0}); };
+    img.src=url;
+  });
+}
+// 박스 안에 원본 비율을 유지하며 최대로 맞춰 넣기 (object-fit: contain), 중앙 정렬 좌표 반환
+function wrFitContain(natW, natH, boxX, boxY, maxW, maxH){
+  var ratio=natW/natH;
+  var dispW=maxW, dispH=maxW/ratio;
+  if(dispH>maxH){ dispH=maxH; dispW=maxH*ratio; }
+  return { x: boxX+(maxW-dispW)/2, y: boxY+(maxH-dispH)/2, w: dispW, h: dispH };
+}
+
+// 장비별 "현재 도달한 최종 단계" 판정 (도면 박스 색상용)
+function wrEqStage(cks, eqId){
+  if(cks[eqId+'_시공검측']) return '시공검측';
+  if(INSTALL_COLS.every(function(c){return cks[eqId+'_'+c];})) return '설치';
+  if(cks[eqId+'_입고검사']) return '입고검사';
+  if(cks[eqId+'_반입']) return '반입';
+  return null;
+}
+
+window.generateWeeklyReportPPT = async function(tueDate){
+  closeWeeklyReportModal();
+  var status=document.getElementById('wr-status');
+  var btn=document.getElementById('wr-btn');
+  if(btn){ btn.disabled=true; btn.innerHTML='⏳ 데이터 불러오는 중...'; }
+
+  try{
+    var thisKey=toKey(tueDate);
+    var lastTue=new Date(tueDate); lastTue.setDate(tueDate.getDate()-7);
+    var lastKey=toKey(lastTue);
+    var weekNo=wrCalcWeekNo(tueDate);
+    var wed=new Date(tueDate); wed.setDate(tueDate.getDate()-6);
+
+    // 전체 공정율 (Remark 첫 행용)
+    var grandChecked=0, grandMax=0;
+    ZONES.forEach(function(z){
+      var s=wrZoneStats(z, thisKey);
+      grandChecked+=s.totalChecked; grandMax+=s.mx;
+    });
+    var TOTAL_PCT=(grandChecked/grandMax*100).toFixed(1);
+
+    var C={
+      navy:'1F3864', chip:'D6DCE5', chipLn:'A9BCDC', line:'8EA9D4',
+      white:'FFFFFF', text:'1E293B', sub:'64748B', headBg:'EAF0F8',
+      gridLn:'D9E2EC'
+    };
+
+    var pres=new PptxGenJS();
+    pres.layout='LAYOUT_WIDE'; // 13.33 x 7.5 in
+
+    // 슬라이드 생성 전 6개 구역 도면 이미지 존재 여부를 미리 병렬 확인
+    if(status) status.textContent='도면 이미지 확인 중...';
+    var imgInfoMap={};
+    await Promise.all(ZONES.map(async function(z){
+      imgInfoMap[z.id] = await wrGetImageInfo('assets/floorplans/'+z.id+'.png');
+    }));
+    // 매핑 데이터도 미리 로드 (있는 구역만)
+    await Promise.all(ZONES.map(async function(z){
+      if(imgInfoMap[z.id].exists) await window._fbLoadZoneLayout(z.id);
+    }));
+
+    for(var zi=0; zi<ZONES.length; zi++){
+      var z=ZONES[zi];
+      var thisStats=wrZoneStats(z, thisKey);
+      var lastStats=wrZoneStats(z, lastKey);
+
+      var s=pres.addSlide();
+      s.background={color:C.white};
+
+      // 상단 타이틀
+      s.addText('P4 Ph2(FAB) 시공 현황', {x:0.45,y:0.32,w:9,h:0.6,fontSize:26,bold:true,fontFace:'맑은 고딕',color:C.navy});
+      s.addText(weekNo+'주차 · '+wrFmtDate(wed)+' ~ '+wrFmtDate(tueDate)+' 기준', {x:9.3,y:0.32,w:3.6,h:0.5,fontSize:12,align:'right',fontFace:'맑은 고딕',color:C.sub,valign:'bottom'});
+      s.addShape('line',{x:0.45,y:1.0,w:12.43,h:0,line:{color:C.line,width:1.5}});
+
+      // 구역 칩
+      s.addShape('roundRect',{x:0.45,y:1.18,w:7.4,h:0.55,fill:{color:C.chip},line:{color:C.chipLn,width:0.75},rectRadius:0.08});
+      s.addText('FCU 설치_'+z.name, {x:0.65,y:1.18,w:7.0,h:0.55,fontSize:17,bold:true,fontFace:'맑은 고딕',color:C.navy,valign:'middle'});
+
+      // ── 도면: 실측 기준 가로 스트립 배치 (원본 비율 유지, contain 방식) ──
+      var boxX=0.45, boxY=2.05, maxW=9.5, maxH=3.5;
+      var layoutData = window._zoneLayoutCache && window._zoneLayoutCache[z.id];
+      var imgPath = 'assets/floorplans/'+z.id+'.png';
+      var info = imgInfoMap[z.id] || {exists:false};
+      var hasImg = !!info.exists;
+      var imgX, imgY, imgW, imgH;
+      if(hasImg){
+        var fit=wrFitContain(info.w, info.h, boxX, boxY, maxW, maxH);
+        imgX=fit.x; imgY=fit.y; imgW=fit.w; imgH=fit.h;
+        s.addImage({path:imgPath, x:imgX, y:imgY, w:imgW, h:imgH});
+      }else{
+        imgX=boxX; imgY=boxY; imgW=maxW; imgH=maxH;
+        // 도면 미등록 구역: 안내 placeholder
+        s.addShape('rect',{x:imgX,y:imgY,w:imgW,h:imgH,fill:{color:'FAFBFC'},line:{color:C.gridLn,width:0.75,dashType:'dash'}});
+        s.addText('도면 미등록', {x:imgX,y:imgY,w:imgW,h:imgH,align:'center',valign:'middle',fontSize:12,color:C.sub,fontFace:'맑은 고딕'});
+      }
+
+      if(hasImg && layoutData && layoutData.points){
+        var cksAll = (window._fbGetProgChecks?window._fbGetProgChecks(thisKey,z.id):{merged:{}}).merged;
+        Object.keys(layoutData.points).forEach(function(eqId){
+          var box=layoutData.points[eqId];
+          var stage=wrEqStage(cksAll, eqId);
+          if(!stage) return;
+          var col=WR_STAGE_COLORS[stage];
+          s.addShape('rect',{
+            x:imgX+box.x*imgW, y:imgY+box.y*imgH, w:box.w*imgW, h:box.h*imgH,
+            fill:{color:col, transparency:33}, line:{type:'none'}
+          });
+        });
+      }
+
+      // 범례 (고정 위치 — 도면 폭과 무관하게 우측 상단)
+      var legX=10.15, legY=2.05, legW=2.73, legH=1.7;
+      s.addShape('roundRect',{x:legX,y:legY,w:legW,h:legH,fill:{color:'FAFBFC'},line:{color:C.gridLn,width:0.75},rectRadius:0.06});
+      s.addText('범례',{x:legX+0.14,y:legY+0.08,w:legW-0.28,h:0.25,fontSize:10,bold:true,fontFace:'맑은 고딕',color:C.sub});
+      WR_STEPS.forEach(function(step,i){
+        var yy=legY+0.36+i*0.32;
+        s.addShape('rect',{x:legX+0.16,y:yy,w:0.16,h:0.16,fill:{color:WR_STAGE_COLORS[step]},line:{type:'none'}});
+        s.addText(step,{x:legX+0.40,y:yy-0.05,w:legW-0.55,h:0.26,fontSize:10,fontFace:'맑은 고딕',color:C.text,valign:'middle'});
+      });
+
+      // ── 표 ──
+      var tblY=5.70;
+      var rows=[];
+      rows.push([
+        {text:'구 역',options:{bold:true,fill:{color:C.headBg},align:'center',valign:'middle',rowspan:2}},
+        {text:'Activity',options:{bold:true,fill:{color:C.headBg},align:'center',valign:'middle',rowspan:2}},
+        {text:'Step',options:{bold:true,fill:{color:C.headBg},align:'center',valign:'middle',rowspan:2}},
+        {text:'단위',options:{bold:true,fill:{color:C.headBg},align:'center',valign:'middle',rowspan:2}},
+        {text:'총 물량',options:{bold:true,fill:{color:C.headBg},align:'center',valign:'middle',rowspan:2}},
+        {text:'전주 누계',options:{bold:true,fill:{color:C.headBg},align:'center',colspan:2}},
+        {text:'금주 누계',options:{bold:true,fill:{color:C.headBg},align:'center',colspan:3}},
+        {text:'Remark',options:{bold:true,fill:{color:C.headBg},align:'center',valign:'middle',rowspan:2}},
+      ]);
+      rows.push([
+        {text:'',options:{fill:{color:C.headBg}}},{text:'',options:{fill:{color:C.headBg}}},{text:'',options:{fill:{color:C.headBg}}},{text:'',options:{fill:{color:C.headBg}}},{text:'',options:{fill:{color:C.headBg}}},
+        {text:'누계',options:{bold:true,fill:{color:C.headBg},align:'center'}},
+        {text:'공정률',options:{bold:true,fill:{color:C.headBg},align:'center'}},
+        {text:'금주',options:{bold:true,fill:{color:C.headBg},align:'center'}},
+        {text:'누계',options:{bold:true,fill:{color:C.headBg},align:'center'}},
+        {text:'공정률',options:{bold:true,fill:{color:C.headBg},align:'center'}},
+        {text:'',options:{fill:{color:C.headBg}}},
+      ]);
+      WR_STEPS.forEach(function(step,i){
+        var lastQ=lastStats[step].qty, thisQ=thisStats[step].qty;
+        var weekQ=thisQ-lastQ;
+        var row=[];
+        if(i===0){
+          row.push({text:z.name,options:{align:'center',valign:'middle',rowspan:WR_STEPS.length}});
+          row.push({text:'FCU 설치',options:{align:'center',valign:'middle',rowspan:WR_STEPS.length}});
+        }
+        row.push({text:step,options:{align:'center'}});
+        row.push({text:'대',options:{align:'center'}});
+        if(i===0) row.push({text:String(z.total),options:{align:'center',valign:'middle',rowspan:WR_STEPS.length}});
+        row.push({text:String(lastQ),options:{align:'center'}});
+        row.push({text:lastStats[step].pct.toFixed(0)+'%',options:{align:'center'}});
+        row.push({text:(weekQ>0?'+':'')+weekQ,options:{align:'center'}});
+        row.push({text:String(thisQ),options:{align:'center'}});
+        row.push({text:thisStats[step].pct.toFixed(0)+'%',options:{align:'center'}});
+        if(i===0) row.push({text:'전체 공정율 '+TOTAL_PCT+'%',options:{align:'center',valign:'middle',rowspan:WR_STEPS.length,fontSize:10,color:C.navy,bold:true}});
+        rows.push(row);
+      });
+      s.addTable(rows,{
+        x:0.45,y:tblY,w:12.43,colW:[1.4,1.3,1.1,0.7,1.0,1.0,1.0,1.0,1.0,1.0,1.83],
+        fontSize:11,fontFace:'맑은 고딕',border:{type:'solid',color:C.gridLn,pt:0.75},
+        color:C.text,valign:'middle',autoPage:false
+      });
+    }
+
+    var y=tueDate.getFullYear(), m=String(tueDate.getMonth()+1).padStart(2,'0'), dd=String(tueDate.getDate()).padStart(2,'0');
+    var fileName=weekNo+'주차_귀뚜라미범양냉방_P4_PH2(FAB)_주간공정회의자료.pptx';
+    await pres.writeFile({fileName:fileName});
+  }catch(e){
+    console.error('주간공정회의 자료 생성 오류:',e);
+    alert('생성 중 오류가 발생했습니다: '+e.message);
+  }finally{
+    if(btn){ btn.disabled=false; btn.innerHTML='🗓️ PPT 생성 · 다운로드'; }
+  }
+};
+
+// =====================================================
+// [도면 매핑] 좌표 매핑 툴
+// =====================================================
+var lmCurZoneId=null, lmCurEqIdx=0, lmDragging=false, lmDragStart=null;
+
+window.openLayoutMapModal=async function(){
+  var modal=document.getElementById('lm-modal');
+  if(!modal) return;
+  var sel=document.getElementById('lm-zone-sel');
+  sel.innerHTML=ZONES.map(function(z){return '<option value="'+z.id+'">'+z.name+'</option>';}).join('');
+  modal.style.display='flex';
+  await lmSwitchZone(ZONES[0].id);
+};
+window.closeLayoutMapModal=function(){
+  var modal=document.getElementById('lm-modal');
+  if(modal) modal.style.display='none';
+};
+
+window.lmSwitchZone=async function(zoneId){
+  lmCurZoneId=zoneId;
+  lmCurEqIdx=0;
+  document.getElementById('lm-zone-sel').value=zoneId;
+  await window._fbLoadZoneLayout(zoneId);
+  var img=document.getElementById('lm-img');
+  var wrap=document.getElementById('lm-imgwrap');
+  var noimg=document.getElementById('lm-noimg');
+  img.onerror=function(){ wrap.style.display='none'; noimg.style.display='block'; };
+  img.onload=function(){ wrap.style.display='inline-block'; noimg.style.display='none'; lmRenderBoxes(); };
+  img.src='assets/floorplans/'+zoneId+'.png';
+  lmRenderEqList();
+  lmBindDrag();
+};
+
+function lmZone(){ return ZONES.find(function(z){return z.id===lmCurZoneId;}); }
+
+function lmRenderEqList(){
+  var z=lmZone(); if(!z) return;
+  var layout=window._zoneLayoutCache[z.id]||{points:{}};
+  var pts=layout.points||{};
+  var mappedCount=z.eqs.filter(function(eq){return !!pts[eq];}).length;
+  document.getElementById('lm-progress').textContent=mappedCount+' / '+z.eqs.length+' 매핑완료';
+  var html=z.eqs.map(function(eq,i){
+    var done=!!pts[eq];
+    var active=(i===lmCurEqIdx);
+    return '<div onclick="lmSelectEq('+i+')" style="padding:8px 12px;cursor:pointer;font-size:12px;display:flex;justify-content:space-between;align-items:center;'
+      +(active?'background:#EAF0F8;':'')+'border-bottom:1px solid #f2f2f2">'
+      +'<span>'+eq+'</span><span>'+(done?'✅':'—')+'</span></div>';
+  }).join('');
+  document.getElementById('lm-eqlist').innerHTML=html;
+}
+
+window.lmSelectEq=function(idx){
+  lmCurEqIdx=idx;
+  lmRenderEqList();
+  lmRenderBoxes();
+};
+
+function lmRenderBoxes(){
+  var z=lmZone(); if(!z) return;
+  var overlay=document.getElementById('lm-overlay');
+  var img=document.getElementById('lm-img');
+  var layout=window._zoneLayoutCache[z.id]||{points:{}};
+  var pts=layout.points||{};
+  var w=img.clientWidth, h=img.clientHeight;
+  var curEq=z.eqs[lmCurEqIdx];
+  var html='';
+  Object.keys(pts).forEach(function(eqId){
+    var b=pts[eqId];
+    var isCur=(eqId===curEq);
+    html+='<div style="position:absolute;left:'+(b.x*w)+'px;top:'+(b.y*h)+'px;width:'+(b.w*w)+'px;height:'+(b.h*h)+'px;'
+      +'background:rgba(220,38,38,'+(isCur?'0.35':'0.18')+');border:1.5px solid '+(isCur?'#dc2626':'#f0a0a0')+';'
+      +'pointer-events:none;font-size:9px;color:#7a1010;overflow:hidden">'+eqId+'</div>';
+  });
+  overlay.innerHTML=html;
+}
+
+function lmBindDrag(){
+  var overlay=document.getElementById('lm-overlay');
+  overlay.onmousedown=function(e){
+    var rect=overlay.getBoundingClientRect();
+    lmDragging=true;
+    lmDragStart={x:e.clientX-rect.left, y:e.clientY-rect.top};
+    var box=document.createElement('div');
+    box.id='lm-drag-box';
+    box.style.cssText='position:absolute;border:1.5px dashed #1D5BA6;background:rgba(29,91,166,.15);pointer-events:none';
+    overlay.appendChild(box);
+  };
+  overlay.onmousemove=function(e){
+    if(!lmDragging) return;
+    var rect=overlay.getBoundingClientRect();
+    var cx=e.clientX-rect.left, cy=e.clientY-rect.top;
+    var box=document.getElementById('lm-drag-box');
+    if(!box) return;
+    var x=Math.min(lmDragStart.x,cx), y=Math.min(lmDragStart.y,cy);
+    var w=Math.abs(cx-lmDragStart.x), h=Math.abs(cy-lmDragStart.y);
+    box.style.left=x+'px'; box.style.top=y+'px'; box.style.width=w+'px'; box.style.height=h+'px';
+  };
+  overlay.onmouseup=async function(e){
+    if(!lmDragging) return;
+    lmDragging=false;
+    var box=document.getElementById('lm-drag-box');
+    if(!box) return;
+    var img=document.getElementById('lm-img');
+    var w=img.clientWidth, h=img.clientHeight;
+    var bx=parseFloat(box.style.left), by=parseFloat(box.style.top), bw=parseFloat(box.style.width), bh=parseFloat(box.style.height);
+    box.remove();
+    if(bw<4||bh<4) return; // 너무 작은 드래그는 무시(오클릭 방지)
+    var z=lmZone(); if(!z) return;
+    var eqId=z.eqs[lmCurEqIdx];
+    var norm={x:bx/w, y:by/h, w:bw/w, h:bh/h};
+    var ok=await window._fbSaveZoneLayoutPoint(z.id, eqId, norm);
+    if(ok){
+      lmRenderEqList();
+      lmRenderBoxes();
+      if(lmCurEqIdx<z.eqs.length-1){ lmCurEqIdx++; lmRenderEqList(); lmRenderBoxes(); }
+    }
+  };
+}
+
+window.lmDeleteCurrent=async function(){
+  var z=lmZone(); if(!z) return;
+  var eqId=z.eqs[lmCurEqIdx];
+  if(!confirm(eqId+' 좌표를 삭제할까요?')) return;
+  await window._fbDeleteZoneLayoutPoint(z.id, eqId);
+  lmRenderEqList();
+  lmRenderBoxes();
 };
 
 window.generateProgressPPT = async function() {
