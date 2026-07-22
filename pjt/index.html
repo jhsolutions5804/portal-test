@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- PJT module build: 20260722 · ver 4.6.2 · 주간공정회의 자료 자동생성(전주/금주 비교, 구역별 슬라이드, 주차 자동계산) + 도면 좌표 매핑 툴(zone_layouts, 드래그 박스 등록) + 화살표 flow형 범례(항상 원색)·표 색상 코딩 -->
+<!DOCTYPE html><!-- PJT module build: 20260722 · ver 4.6.3 · 주간공정회의 자료 자동생성(전주/금주 비교, 구역별 슬라이드, 주차 자동계산) + 도면 좌표 매핑 툴(zone_layouts, 드래그 박스 등록) + 화살표 flow형 범례·표 색상 전부 상태무관 고정 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -3836,9 +3836,8 @@ window.generateWeeklyReportPPT = async function(tueDate){
       WR_STEPS.forEach(function(step,i){
         var lastQ=lastStats[step].qty, thisQ=thisStats[step].qty;
         var weekQ=thisQ-lastQ;
-        var active=thisStats[step].pct>0;
         var isFrontier=(step===frontier);
-        var stepCol = active? WR_STAGE_COLORS[step] : WR_INACTIVE_COLOR;
+        var stepCol = WR_STAGE_COLORS[step];
         var row=[];
         if(i===0){
           row.push({text:z.name,options:{align:'center',valign:'middle',rowspan:WR_STEPS.length}});
@@ -3848,7 +3847,7 @@ window.generateWeeklyReportPPT = async function(tueDate){
         row.push({text:'대',options:{align:'center'}});
         if(i===0) row.push({text:String(z.total),options:{align:'center',valign:'middle',rowspan:WR_STEPS.length}});
         row.push({text:String(lastQ),options:{align:'center'}});
-        row.push({text:lastStats[step].pct.toFixed(0)+'%',options:{align:'center',color:lastStats[step].pct>0?WR_STAGE_COLORS[step]:WR_INACTIVE_COLOR}});
+        row.push({text:lastStats[step].pct.toFixed(0)+'%',options:{align:'center',color:stepCol}});
         row.push({text:(weekQ>0?'+':'')+weekQ,options:{align:'center'}});
         row.push({text:String(thisQ),options:{align:'center'}});
         row.push({text:thisStats[step].pct.toFixed(0)+'%',options:{align:'center',color:stepCol,bold:isFrontier}});
