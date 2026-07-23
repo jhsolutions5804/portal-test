@@ -186,6 +186,8 @@ const app=initializeApp(firebaseConfig); const auth=getAuth(app); const db=getFi
 const $=id=>document.getElementById(id);
 const won=n=>(Math.round(n)||0).toLocaleString('ko-KR');
 const num=v=>{ const n=parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n; };
+// 금액 입력창 실시간 콤마 포맷 (1000단위마다 ,)
+window.fmtMoney=function(el){ const raw=el.value.replace(/[^0-9]/g,''); el.value = raw ? Number(raw).toLocaleString('ko-KR') : ''; };
 const itemAmt=it=> (it.amount!=null ? it.amount : (it.qty||0)*(it.price||0));
 const estSupply=e=>(e.items||[]).reduce((s,i)=>s+itemAmt(i),0);
 const estTotal =e=>{ const s=estSupply(e); return s+Math.round(s*0.1); };
@@ -542,7 +544,7 @@ function drawEstForm(){ const d=estDraft;
       <div class="totrow"><span class="muted">공급가액</span><span id="t-supply">0 원</span></div>
       <div class="totrow"><span class="muted">부가세 (10%)</span><span id="t-vat">0 원</span></div>
       <div class="totrow big"><span>합계금액 <span class="small muted" style="font-weight:500">(직접 수정 가능)</span></span>
-        <span style="display:flex;align-items:center;gap:6px"><input class="tinp" id="t-total" type="number" inputmode="numeric" onchange="onTotalEdit(this.value)"> 원</span></div>
+        <span style="display:flex;align-items:center;gap:6px"><input class="tinp" id="t-total" type="text" inputmode="numeric" oninput="fmtMoney(this)" onchange="onTotalEdit(this.value)"> 원</span></div>
     </div>
     <div style="display:flex; gap:8px; margin-top:16px"><button class="btn line full" onclick="renderEst()">취소</button><button class="btn pri full" id="est-save" onclick="saveEst()">저장</button></div>
   </div>`;
@@ -558,8 +560,8 @@ function drawRows(){
     <td><input class="ti" value="${(it.name||'').replace(/"/g,'&quot;')}" placeholder="품명" oninput="setItem(${i},'name',this.value)"></td>
     <td><input class="ti" value="${(it.spec||'').replace(/"/g,'&quot;')}" placeholder="규격" oninput="setItem(${i},'spec',this.value)"></td>
     <td><input class="ti num" id="q-${i}" type="number" inputmode="numeric" value="${it.qty}" oninput="onQty(${i},this.value)"></td>
-    <td><input class="ti num" id="p-${i}" type="number" inputmode="numeric" value="${it.price}" oninput="onPrice(${i},this.value)"></td>
-    <td><input class="ti num" id="a-${i}" type="number" inputmode="numeric" value="${Math.round(itemAmt(it))}" oninput="onAmt(${i},this.value)"></td>
+    <td><input class="ti num" id="p-${i}" type="text" inputmode="numeric" value="${Number(it.price||0).toLocaleString('ko-KR')}" oninput="fmtMoney(this);onPrice(${i},this.value)"></td>
+    <td><input class="ti num" id="a-${i}" type="text" inputmode="numeric" value="${Number(Math.round(itemAmt(it))).toLocaleString('ko-KR')}" oninput="fmtMoney(this);onAmt(${i},this.value)"></td>
     <td><button class="del" onclick="delRow(${i})">×</button></td></tr>`).join('');
   recalcTotals();
 }
@@ -567,17 +569,17 @@ function recalcTotals(){
   const sup=estDraft.items.reduce((s,it)=>s+itemAmt(it),0); const vat=Math.round(sup*0.1);
   if($('t-supply')) $('t-supply').textContent=won(sup)+' 원';
   if($('t-vat')) $('t-vat').textContent=won(vat)+' 원';
-  if($('t-total')) $('t-total').value=Math.round(sup+vat);
+  if($('t-total')) $('t-total').value=Math.round(sup+vat).toLocaleString('ko-KR');
 }
-window.onQty=function(i,v){ const it=estDraft.items[i]; it.qty=num(v); it.amount=Math.round(it.qty*it.price); const a=$('a-'+i); if(a)a.value=it.amount; recalcTotals(); };
-window.onPrice=function(i,v){ const it=estDraft.items[i]; it.price=num(v); it.amount=Math.round(it.qty*it.price); const a=$('a-'+i); if(a)a.value=it.amount; recalcTotals(); };
-window.onAmt=function(i,v){ const it=estDraft.items[i]; it.amount=num(v); it.price=it.qty>0?Math.round(it.amount/it.qty):it.amount; const p=$('p-'+i); if(p)p.value=it.price; recalcTotals(); };
+window.onQty=function(i,v){ const it=estDraft.items[i]; it.qty=num(v); it.amount=Math.round(it.qty*it.price); const a=$('a-'+i); if(a)a.value=it.amount.toLocaleString('ko-KR'); recalcTotals(); };
+window.onPrice=function(i,v){ const it=estDraft.items[i]; it.price=num(v); it.amount=Math.round(it.qty*it.price); const a=$('a-'+i); if(a)a.value=it.amount.toLocaleString('ko-KR'); recalcTotals(); };
+window.onAmt=function(i,v){ const it=estDraft.items[i]; it.amount=num(v); it.price=it.qty>0?Math.round(it.amount/it.qty):it.amount; const p=$('p-'+i); if(p)p.value=it.price.toLocaleString('ko-KR'); recalcTotals(); };
 window.onTotalEdit=function(v){ const X=num(v); const items=estDraft.items; if(!items.length) return;
   const targetSupply=Math.round(X/1.1);
   const others=items.slice(0,-1).reduce((s,it)=>s+itemAmt(it),0);
   const last=items[items.length-1];
   last.amount=targetSupply-others; last.price=last.qty>0?Math.round(last.amount/last.qty):last.amount;
-  const li=items.length-1; if($('a-'+li))$('a-'+li).value=Math.round(last.amount); if($('p-'+li))$('p-'+li).value=last.price;
+  const li=items.length-1; if($('a-'+li))$('a-'+li).value=Math.round(last.amount).toLocaleString('ko-KR'); if($('p-'+li))$('p-'+li).value=last.price.toLocaleString('ko-KR');
   recalcTotals(); toast('마지막 품목으로 차액을 반영했습니다.'); };
 window.addRow=function(){ estDraft.items.push({name:'',spec:'',qty:1,price:0,amount:0}); drawRows(); };
 window.delRow=function(i){ estDraft.items.splice(i,1); if(!estDraft.items.length) estDraft.items.push({name:'',spec:'',qty:1,price:0,amount:0}); drawRows(); };
@@ -1029,7 +1031,7 @@ function setMandayCard(){ const d=settleDraft;
     <div class="note-amber">기준월(${d.baseMonth}) · 워크스페이스 <b>${wsLabel}</b> (<code style="font-size:11px">${col}</code>) 에서 공수 합계를 읽어옵니다. 공수·단가 모두 직접 수정 가능합니다.</div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
       <label class="small muted" style="white-space:nowrap">기술인력 단가 (원/공수)</label>
-      <input class="inp" type="number" style="width:130px;text-align:right" value="${rate}" onchange="setMandayRate(this.value)">
+      <input class="inp" type="text" inputmode="numeric" style="width:130px;text-align:right" value="${Number(rate||0).toLocaleString('ko-KR')}" oninput="fmtMoney(this)" onchange="setMandayRate(this.value)">
     </div>
     <table class="ptab"><thead><tr><th class="l">항목</th><th>공수</th><th>단가</th><th>금액</th></tr></thead>
     <tbody><tr><td class="l">${d.baseMonth} 기술인력 투입</td>
@@ -1058,13 +1060,13 @@ function drawSmRows(){ $('sm-rows').innerHTML=settleDraft.manualItems.map((it,i)
   <td><input class="ti" value="${(it.name||'').replace(/"/g,'&quot;')}" placeholder="품명" oninput="smSet(${i},'name',this.value)"></td>
   <td><input class="ti" value="${(it.spec||'').replace(/"/g,'&quot;')}" placeholder="규격" oninput="smSet(${i},'spec',this.value)"></td>
   <td><input class="ti num" id="sq-${i}" type="number" value="${it.qty}" oninput="smQty(${i},this.value)"></td>
-  <td><input class="ti num" id="sp-${i}" type="number" value="${it.price}" oninput="smPrice(${i},this.value)"></td>
-  <td><input class="ti num" id="sa-${i}" type="number" value="${Math.round(itemAmt(it))}" oninput="smAmt(${i},this.value)"></td>
+  <td><input class="ti num" id="sp-${i}" type="text" inputmode="numeric" value="${Number(it.price||0).toLocaleString('ko-KR')}" oninput="fmtMoney(this);smPrice(${i},this.value)"></td>
+  <td><input class="ti num" id="sa-${i}" type="text" inputmode="numeric" value="${Number(Math.round(itemAmt(it))).toLocaleString('ko-KR')}" oninput="fmtMoney(this);smAmt(${i},this.value)"></td>
   <td><button class="del" onclick="delSm(${i})">×</button></td></tr>`).join(''); renderSetTot(); }
 window.smSet=function(i,k,v){ settleDraft.manualItems[i][k]=v; };
-window.smQty=function(i,v){ const it=settleDraft.manualItems[i]; it.qty=num(v); it.amount=Math.round(it.qty*it.price); if($('sa-'+i))$('sa-'+i).value=it.amount; renderSetTot(); };
-window.smPrice=function(i,v){ const it=settleDraft.manualItems[i]; it.price=num(v); it.amount=Math.round(it.qty*it.price); if($('sa-'+i))$('sa-'+i).value=it.amount; renderSetTot(); };
-window.smAmt=function(i,v){ const it=settleDraft.manualItems[i]; it.amount=num(v); it.price=it.qty>0?Math.round(it.amount/it.qty):it.amount; if($('sp-'+i))$('sp-'+i).value=it.price; renderSetTot(); };
+window.smQty=function(i,v){ const it=settleDraft.manualItems[i]; it.qty=num(v); it.amount=Math.round(it.qty*it.price); if($('sa-'+i))$('sa-'+i).value=it.amount.toLocaleString('ko-KR'); renderSetTot(); };
+window.smPrice=function(i,v){ const it=settleDraft.manualItems[i]; it.price=num(v); it.amount=Math.round(it.qty*it.price); if($('sa-'+i))$('sa-'+i).value=it.amount.toLocaleString('ko-KR'); renderSetTot(); };
+window.smAmt=function(i,v){ const it=settleDraft.manualItems[i]; it.amount=num(v); it.price=it.qty>0?Math.round(it.amount/it.qty):it.amount; if($('sp-'+i))$('sp-'+i).value=it.price.toLocaleString('ko-KR'); renderSetTot(); };
 window.addSm=function(){ settleDraft.manualItems.push({name:'',spec:'',qty:1,price:0,amount:0}); drawSmRows(); };
 window.delSm=function(i){ settleDraft.manualItems.splice(i,1); if(!settleDraft.manualItems.length) settleDraft.manualItems.push({name:'',spec:'',qty:1,price:0,amount:0}); drawSmRows(); };
 
