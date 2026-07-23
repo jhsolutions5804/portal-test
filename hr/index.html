@@ -21,6 +21,9 @@
 
   const app  = initializeApp(firebaseConfig);
   const db   = getFirestore(app);
+  // 금액 입력창 실시간 콤마 포맷(1000단위마다 ,) 및 파싱 헬퍼
+  window.fmtMoney = function(el){ const raw=el.value.replace(/[^0-9]/g,''); el.value = raw ? Number(raw).toLocaleString('ko-KR') : ''; };
+  window.numClean = function(v){ const n=parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n; };
 
   // 정산서 일반 script에서 접근할 수 있도록 window에 노출
   window._db     = db;
@@ -1751,8 +1754,8 @@ window.renderPayslipPCRight = () => {
   const c = psCalcAll();
   const won = v => Number(v||0).toLocaleString()+'원';
   const inp = (id, val, ph='0') =>
-    `<input type="number" id="${id}" value="${val||''}" placeholder="${ph}"
-      oninput="ps.${id.replace('ps-','')}=this.value;renderPayslipPCRight()"
+    `<input type="text" inputmode="numeric" id="${id}" value="${val?Number(val).toLocaleString('ko-KR'):''}" placeholder="${ph}"
+      oninput="fmtMoney(this);ps.${id.replace('ps-','')}=numClean(this.value);renderPayslipPCRight()"
       style="width:100%;padding:6px 10px;border:1px solid #DDE3EE;border-radius:7px;font-size:13px;box-sizing:border-box;">`;
 
   panel.innerHTML = `
@@ -1763,8 +1766,8 @@ window.renderPayslipPCRight = () => {
           ${[['기본급','basic'],['고정연장','fixedOt'],['고정야간','fixedNight'],['주휴수당','weekly']]
             .map(([l,k])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #F0F4F9;">
               <span style="color:#5C6F8A;min-width:64px;">${l}</span>
-              <input type="number" value="${c.sal[k]}"
-                onchange="ps['_${k}']=this.value===''?undefined:Number(this.value);renderPayslipPCRight()"
+              <input type="text" inputmode="numeric" value="${Number(c.sal[k]||0).toLocaleString('ko-KR')}"
+                oninput="fmtMoney(this)" onchange="ps['_${k}']=this.value===''?undefined:numClean(this.value);renderPayslipPCRight()"
                 style="width:120px;text-align:right;padding:3px 8px;border:1px solid #DDE3EE;border-radius:6px;font-size:12px;font-weight:600;color:#1A2540;box-sizing:border-box;"></div>`).join('')}
           <div style="margin-top:4px;">
             <div style="color:#5C6F8A;margin-bottom:3px;">상여금(초과근로)</div>
@@ -1790,14 +1793,14 @@ window.renderPayslipPCRight = () => {
           ${[['국민연금','pension','_pension'],['건강보험','health','_health'],['장기요양','ltcare','_ltcare'],['고용보험','employ','_employ'],['소득세','incomeTax','_incomeTax'],['지방소득세','localTax','_localTax']]
             .map(([l,k,pk])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #F0F4F9;">
               <span style="color:#5C6F8A;font-size:12px;min-width:64px;">${l}</span>
-              <input type="number" value="${c[k]}"
-                onchange="ps['${pk}']=this.value===''?undefined:Number(this.value);renderPayslipPCRight()"
+              <input type="text" inputmode="numeric" value="${Number(c[k]||0).toLocaleString('ko-KR')}"
+                oninput="fmtMoney(this)" onchange="ps['${pk}']=this.value===''?undefined:numClean(this.value);renderPayslipPCRight()"
                 style="width:120px;text-align:right;padding:3px 8px;border:1px solid #DDE3EE;border-radius:6px;font-size:12px;font-weight:600;color:#1A2540;box-sizing:border-box;">
             </div>`).join('')}
           <div style="margin-top:4px;">
             <div style="color:#5C6F8A;margin-bottom:3px;">기숙사</div>
-            <input type="number" id="ps-dormitory" value="${ps.dormitory||''}" placeholder="0"
-              onchange="ps.dormitory=this.value;renderPayslipPCRight()"
+            <input type="text" inputmode="numeric" id="ps-dormitory" value="${ps.dormitory?Number(ps.dormitory).toLocaleString('ko-KR'):''}" placeholder="0"
+              oninput="fmtMoney(this)" onchange="ps.dormitory=numClean(this.value);renderPayslipPCRight()"
               style="width:100%;padding:6px 10px;border:1px solid #DDE3EE;border-radius:7px;font-size:13px;box-sizing:border-box;">
           </div>
           <div style="display:flex;justify-content:space-between;padding:7px 0;border-top:2px solid #DDE3EE;margin-top:4px;">
@@ -2038,19 +2041,19 @@ function renderPayslipWriteForm(el, workers, months, calcPayDate) {
         ` : `<div style="text-align:center;padding:16px;font-size:12px;color:${C2.mute};">⚠️ 연봉계약서를 먼저 등록해야 지급내역이 자동 연동됩니다.</div>`}
       </div>
       ${field2('상여금', `
-        <input type="number" value="${ps.bonus}" placeholder="0"
-          oninput="ps.bonus=Number(this.value);window.psRefresh();" ${inp2Style}>
+        <input type="text" inputmode="numeric" value="${ps.bonus?Number(ps.bonus).toLocaleString('ko-KR'):''}" placeholder="0"
+          oninput="fmtMoney(this);ps.bonus=numClean(this.value);window.psRefresh();" ${inp2Style}>
         <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
           <div style="font-size:10px;color:#9AAABF;flex:1;">⏱ 초과근로 탭 해당 월 누계 수당 자동 연동 · 직접 수정 가능</div>
           <button onclick="psDebugOT()" style="font-size:10px;padding:2px 8px;background:#F0F4F9;border:1px solid #DDE4EF;border-radius:6px;color:#5C6F8A;cursor:pointer;white-space:nowrap;">🔍 연동 확인</button>
         </div>
         <div id="ps-ot-debug" style="display:none;margin-top:6px;font-size:11px;background:#F8FAFD;border-radius:6px;padding:8px 10px;color:#5C6F8A;"></div>
       `)}
-      ${field2('특별성과급', `<input type="number" value="${ps.specialBonus}" placeholder="0"
-        onchange="ps.specialBonus=this.value;window.psRefresh();" ${inp2Style}>`)}
+      ${field2('특별성과급', `<input type="text" inputmode="numeric" value="${ps.specialBonus?Number(ps.specialBonus).toLocaleString('ko-KR'):''}" placeholder="0"
+        oninput="fmtMoney(this)" onchange="ps.specialBonus=numClean(this.value);window.psRefresh();" ${inp2Style}>`)}
       ${field2('특근수당', `
-        <input type="number" value="${ps.extraPay}" placeholder="0"
-          onchange="ps.extraPay=this.value;window.psRefresh();" ${inp2Style}>
+        <input type="text" inputmode="numeric" value="${ps.extraPay?Number(ps.extraPay).toLocaleString('ko-KR'):''}" placeholder="0"
+          oninput="fmtMoney(this)" onchange="ps.extraPay=numClean(this.value);window.psRefresh();" ${inp2Style}>
 
       `)}
       <div style="display:flex;justify-content:space-between;padding:10px 12px;background:#E8F0FB;border-radius:8px;font-size:14px;font-weight:700;margin-top:4px;">
@@ -2076,8 +2079,8 @@ function renderPayslipWriteForm(el, workers, months, calcPayDate) {
       </div>
       <div style="margin-bottom:10px;">
         <div style="font-size:11px;font-weight:700;color:${C2.sub};margin-bottom:5px;">기숙사 공제</div>
-        <input type="number" id="ps-dormitory-input" value="${ps.dormitory||''}" placeholder="0"
-          onchange="ps.dormitory=this.value;window.psRefresh();"
+        <input type="text" inputmode="numeric" id="ps-dormitory-input" value="${ps.dormitory?Number(ps.dormitory).toLocaleString('ko-KR'):''}" placeholder="0"
+          oninput="fmtMoney(this)" onchange="ps.dormitory=numClean(this.value);window.psRefresh();"
           style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;">
       </div>
       <div style="display:flex;justify-content:space-between;padding:10px 12px;background:#FEE2E2;border-radius:8px;font-size:14px;font-weight:700;">
@@ -3409,8 +3412,8 @@ function renderLaborForm(el, workers) {
     `)}
     ${card2('💼 담당 업무', field2('담당업무',`<input type="text" value="${laborForm2.job}" placeholder="담당 업무 입력" oninput="laborForm2.job=this.value" ${inp2Style}>`))}
     ${card2('💰 시급 입력', `
-      ${field2('시급 (원)',`<input type="number" value="${laborForm2.hourly}" placeholder="시급 입력 (숫자만)"
-          oninput="laborForm2.hourly=this.value;laborUpdateSalaryPreview();" ${inp2Style}>`)}
+      ${field2('시급 (원)',`<input type="text" inputmode="numeric" value="${laborForm2.hourly?Number(laborForm2.hourly).toLocaleString('ko-KR'):''}" placeholder="시급 입력 (숫자만)"
+          oninput="fmtMoney(this);laborForm2.hourly=numClean(this.value);laborUpdateSalaryPreview();" ${inp2Style}>`)}
       <div id="labor-sal-preview2">${sal}</div>
     `)}
     ${card2('✍️ 근로자 서명', `
@@ -3879,8 +3882,8 @@ function renderAnnualForm(el, workers) {
       ${field2('계약일자',`<input type="date" value="${annualForm2.contractDate}" onchange="annualForm2.contractDate=this.value" ${inp2Style}>`)}
     `)}
     ${card2('💰 시급 입력', `
-      ${field2('시급 (원)',`<input type="number" value="${annualForm2.hourly}" placeholder="시급 입력 (숫자만)"
-          oninput="annualForm2.hourly=this.value;annualUpdateSalaryPreview();" ${inp2Style}>`)}
+      ${field2('시급 (원)',`<input type="text" inputmode="numeric" value="${annualForm2.hourly?Number(annualForm2.hourly).toLocaleString('ko-KR'):''}" placeholder="시급 입력 (숫자만)"
+          oninput="fmtMoney(this);annualForm2.hourly=numClean(this.value);annualUpdateSalaryPreview();" ${inp2Style}>`)}
       <div id="annual-sal-preview2">${salPreview}</div>
       ${annualForm2.salary?'<div style="font-size:12px;color:#1D5BA6;margin-top:6px;font-weight:700;">→ 계약연봉: ₩'+Number(annualForm2.salary).toLocaleString()+'원</div>':''}
     `)}
