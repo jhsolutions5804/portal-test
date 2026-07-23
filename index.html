@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260624232120 -->
+<!DOCTYPE html><!-- build: 20260723 · ver: 2026-07-23 (PJT 4.5.2 · edoc 3.2r1 · hr payslip 2.6.2) · 전자결재 초과근로 결재 목록 본인 작성분만 표시(다른 사람 상신 건 비노출) · 급여명세서 상여금/특별상여/기타수당 입력 시 한글자마다 커서 초기화되는 버그 수정(oninput→onchange) · 초과근로 상신 사유 입력 필드 추가(edoc/hr 공통) · 전자결재 업무일지 임시저장/반려 상태 수정 기능 추가 · PJT 일정 자정 넘기는 일정(저녁~다음날 새벽) 시작일에만 표시 · 공사일보 작성자 드롭다운 버그 수정(standalone Auth 미존재 대응) · 홈 일정 등록/수정/삭제 · 공사일보 조회 수정/삭제 · PJT홈 통합캘린더 · 근태 출역·공수 일괄 · 로그인 계정 자동반영 · 공사일보 portal 이관 · 회계 외상거래·필터 · Firebase 테섭 격리 · .nojekyll -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -484,6 +484,7 @@
   </div>
   <style>body{padding-top:24px!important}</style>
 
+
 <div class="splash" id="splash"><div class="spin"></div></div>
 
 <!-- ===== 인증 화면 ===== -->
@@ -614,11 +615,21 @@
           </div>
           <div><label style="font-size:13px;font-weight:600;color:#555;display:block;margin-bottom:5px">공사 시작일</label>
             <input id="np-start" type="date" style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
-          <div><label style="font-size:13px;font-weight:600;color:#555;display:block;margin-bottom:5px">워크스페이스 URL <span style="color:#aaa;font-weight:400">(선택)</span></label>
+          <div><label style="font-size:13px;font-weight:600;color:#555;display:block;margin-bottom:5px">워크스페이스 URL <span style="color:#aaa;font-weight:400">(선택 — 비워두면 경량 PJT 워크스페이스가 자동 연결됩니다)</span></label>
             <input id="np-url" type="text" placeholder="https://jhsolutions5804.github.io/portal-test/..." style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
+          <div id="np-light-extra" style="display:none;border-top:1px solid #eee;padding-top:14px;margin-top:2px">
+            <div style="font-size:12px;font-weight:700;color:#1D5BA6;margin-bottom:10px">⚙️ 진행 현황 (경량 PJT 워크스페이스에도 동일 반영)</div>
+            <div style="display:flex;gap:12px">
+              <div style="flex:1"><label style="font-size:13px;font-weight:600;color:#555;display:block;margin-bottom:5px">공정율 (%)</label>
+                <input id="np-progress" type="number" min="0" max="100" step="0.1" placeholder="0" style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
+              <div style="flex:1"><label style="font-size:13px;font-weight:600;color:#555;display:block;margin-bottom:5px">누적공수</label>
+                <input id="np-manday" type="number" min="0" step="0.5" placeholder="0" style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
+            </div>
+          </div>
         </div>
         <div style="display:flex;gap:10px;margin-top:22px">
           <button onclick="closeNewPjtForm()" style="flex:1;padding:11px;background:#f5f5f7;color:#555;border:1px solid #e5e5e5;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit">취소</button>
+          <button id="np-end-btn" onclick="endPjtFromSettings()" style="display:none;flex:1;padding:11px;background:#fff;color:#c0392b;border:1px solid #f0c4c4;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🏁 종료</button>
           <button onclick="saveNewPjt()" id="np-save-btn" style="flex:2;padding:11px;background:#1D5BA6;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">등록</button>
         </div>
       </div>
@@ -903,7 +914,9 @@ const SUBTABS={ plan:PLAN_SUBTABS, hr:HR_SUBTABS, edoc:EDOC_SUBTABS, pjt:PJT_SUB
 let me=null;
 // 하단 탭바(일반 script)에서 접근 가능하도록 window 노출
 window.MODULES=MODULES; window.SUBTABS=SUBTABS;
-Object.defineProperty(window,'me',{get:()=>me,set:v=>{me=v;}});
+Object.defineProperty(window,'me',{get:()=>me,set:v=>{me=v;
+  try{ if(v){ localStorage.setItem('jh_login_perms', JSON.stringify({perms:v.perms||{}, admin:!!v.admin, uid:v.uid||'', name:v.name||'', dept:v.dept||'', rank:v.rank||''})); } }catch(e){}
+}});
 
 const $=id=>document.getElementById(id);
 function showAuth(id){
@@ -913,10 +926,10 @@ function showAuth(id){
   window.scrollTo(0,0);
 }
 function showApp(){
+  if(/Mobi/i.test(navigator.userAgent||'')){ location.href='m/home.html'; return; }
   $('auth-stage').style.display='none';
   $('s-app').classList.add('shown');
   window.scrollTo(0,0);
-  // 모바일 하단 탭바 표시 (PC에서는 display:flex가 CSS로 none됨)
   if(window.mbnShowNav) mbnShowNav();
 }
 function showView(v){
@@ -952,6 +965,7 @@ function showPjtHome(){
   // 관리자만 신규 PJT 버튼 표시
   var npBtn=document.getElementById('new-pjt-btn');
   if(npBtn) npBtn.style.display=(me&&me.admin)?'block':'none';
+  syncPjtRegistrySubtabs().then(renderPjtHomeCards);
   renderPjtHomeCards();
   renderPjtRegistry();
   loadPjtCalendar();
@@ -966,10 +980,13 @@ function renderPjtHomeCards(){
     card.style.cssText='background:#fff;border:1px solid #dde4ef;border-radius:12px;padding:14px 16px;cursor:pointer;transition:.15s;flex-shrink:0;width:460px';
     card.onmouseover=function(){this.style.borderColor='var(--blue)';this.style.boxShadow='0 2px 10px rgba(0,0,0,.07)'};
     card.onmouseout=function(){this.style.borderColor='#dde4ef';this.style.boxShadow=''};
+    const isLightPjt=st.key.indexOf('reg_')===0;
+    const gearBtn=(me&&me.admin)?('<button data-gear="1" onclick="event.stopPropagation()" title="설정" style="padding:6px 9px;background:#f5f5f7;color:#555;border:none;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;margin-right:6px">⚙️</button>'):'';
     card.innerHTML=
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
       +'<span style="font-size:20px">'+st.emoji+'</span>'
       +'<div style="min-width:0;flex:1"><div style="font-size:15px;font-weight:700;color:#1A2540;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+st.name+'</div></div>'
+      +gearBtn
       +'<button data-go="1" onclick="event.stopPropagation()" style="padding:6px 14px;background:#1D5BA6;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">바로가기 →</button>'
       +'</div>'
       +'<div id="pjt-kpi-'+st.key+'" style="display:flex;gap:18px">'
@@ -982,15 +999,17 @@ function renderPjtHomeCards(){
       const m=MODULES.find(x=>x.key==='pjt');
       if(m && st.url) openModule(m, 'home', st.url);
     };
+    if(me&&me.admin){
+      const gb=card.querySelector('button[data-gear="1"]');
+      if(gb) gb.onclick=function(e){ e.stopPropagation(); window.openPjtSettings(st.key, st.name); };
+    }
     card.onclick=function(){
       const m=MODULES.find(x=>x.key==='pjt');
       if(m && st.url) openModule(m, 'home', st.url);
     };
     el.appendChild(card);
-    // 시작일 D+ 계산 — Firestore 우선, localStorage 폴백
+    // 시작일 D+ 계산 — Firestore 우선, localStorage 폴백 (경량 PJT는 pjt_registry에서 직접 조회)
     (function(pjtKey){
-      var startKeyMap={ 'p4ph2':'fab_pjt_start_date', 'p4ph4':'ph4_pjt_start_date' };
-      var fsDocId=pjtKey; // pjt_settings/{p4ph2 or p4ph4}
       function applyDday(sd){
         if(!sd) return;
         var diff=Math.floor((new Date()-new Date(sd+'T00:00:00'))/(1000*60*60*24));
@@ -998,7 +1017,18 @@ function renderPjtHomeCards(){
         var inp=document.getElementById('kpi-day-input-'+pjtKey);
         if(dayEl) dayEl.textContent='D+'+diff+'일';
         if(inp) inp.value=sd;
-        // localStorage 동기화
+      }
+      if(pjtKey.indexOf('reg_')===0){
+        import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js')
+          .then(function(fs){ return fs.getDoc(fs.doc(db,'pjt_registry',pjtKey.slice(4))); })
+          .then(function(snap){ if(snap.exists() && snap.data().startDate) applyDday(snap.data().startDate); })
+          .catch(function(){});
+        return;
+      }
+      var startKeyMap={ 'p4ph2':'fab_pjt_start_date', 'p4ph4':'ph4_pjt_start_date' };
+      var fsDocId=pjtKey; // pjt_settings/{p4ph2 or p4ph4}
+      function applyDdayLegacy(sd){
+        applyDday(sd);
         try{ localStorage.setItem(startKeyMap[pjtKey]||('pjt_start_'+pjtKey), sd); }catch(e){}
       }
       // 1) Firestore 에서 읽기
@@ -1007,16 +1037,16 @@ function renderPjtHomeCards(){
           return fs.getDoc(fs.doc(db,'pjt_settings',fsDocId));
         }).then(function(snap){
           if(snap.exists() && snap.data().startDate){
-            applyDday(snap.data().startDate);
+            applyDdayLegacy(snap.data().startDate);
           } else {
             // 2) Firestore에 없으면 localStorage 폴백
             var local=''; try{local=localStorage.getItem(startKeyMap[pjtKey])||'';}catch(e){}
-            applyDday(local);
+            applyDdayLegacy(local);
           }
         }).catch(function(){
           // 3) import 실패 시 localStorage 폴백
           var local=''; try{local=localStorage.getItem(startKeyMap[pjtKey])||'';}catch(e){}
-          applyDday(local);
+          applyDdayLegacy(local);
         });
     })(st.key);
     // 공정율 + 전체 누적공수 비동기 로딩
@@ -1093,40 +1123,37 @@ async function loadPjtPanels(){
       sp.innerHTML='<div style="color:#9AAABF;font-size:12px;padding:12px 0;text-align:center;">이번 주 주요 일정이 없습니다.</div>';
     }
 
-    // 2. 업무지시 및 보고 — 모든 PJT 최근 5건
+    // 2. 업무지시 및 보고 — 최근 21일 daily_reports_{날짜}(FAB)/ph4_daily_{날짜}(SUP)
+    const REPORT_PREFIX = { p4ph2:'daily_reports_', p4ph4:'ph4_daily_' };
     let reports=[];
-    for(const [key,col] of Object.entries(PJT_REPORT_COL)){
-      const st=PJT_SUBTABS.find(s=>s.key===key);
-      try{
-        const snap=await getDocs(query(collection(window._db,col),orderBy('savedAt','desc'),limit(5)));
-        snap.forEach(d=>{
-          const r=d.data();
-          reports.push({...r, id:d.id, pjtName:st?.name||key});
-        });
-      }catch(e){}
+    const _rt=new Date();
+    for(let _off=-14;_off<=21;_off++){
+      const _d=new Date(_rt); _d.setDate(_d.getDate()+_off);
+      const dk=_d.getFullYear()+'-'+String(_d.getMonth()+1).padStart(2,'0')+'-'+String(_d.getDate()).padStart(2,'0');
+      for(const [key,prefix] of Object.entries(REPORT_PREFIX)){
+        const st=PJT_SUBTABS.find(s=>s.key===key);
+        try{
+          const snap=await getDocs(collection(window._db, prefix+dk));
+          snap.forEach(dd=>{ const r=dd.data(); reports.push({...r, id:dd.id, dateKey:dk, pjtName:st?.name||key}); });
+        }catch(e){}
+      }
     }
-    // 내용이 있는 항목만 표시
-    reports=reports.filter(r=>{
-      var txt=(r.instruction||r.briefText||r.content||'').trim();
-      return txt.length>0;
-    });
-    reports.sort((a,b)=>(b.savedAt?.toMillis?.()||0)-(a.savedAt?.toMillis?.()||0));
+    reports=reports.filter(r=>(r.text||'').trim().length>0);
+    reports.sort((a,b)=>{var ta=a.ts&&a.ts.toMillis?a.ts.toMillis():0,tb=b.ts&&b.ts.toMillis?b.ts.toMillis():0; if(ta||tb)return tb-ta; return String(b.dateKey||'').localeCompare(String(a.dateKey||''));});
     reports=reports.slice(0,6);
 
-    const fmtDate=ts=>{if(!ts) return ''; const d=ts.toDate?ts.toDate():new Date(ts); return (d.getMonth()+1)+'/'+(d.getDate());};
     if(reports.length){
       let html='<div style="position:relative;padding-left:16px">'
         +'<div style="position:absolute;left:3px;top:5px;bottom:5px;width:2px;background:#EEF2F7"></div>';
       reports.forEach((r,idx)=>{
-        const isBrief=r.type==='brief'||r.briefText;
         const dotColor=idx===0?'#1D5BA6':'#C9D2DF';
+        const dateLbl=String(r.dateKey||'').slice(5);
         html+='<div style="position:relative;margin-bottom:13px">'
           +'<div style="position:absolute;left:-16px;top:3px;width:8px;height:8px;border-radius:50%;background:'+dotColor+';border:2px solid #fff"></div>'
           +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">'
-          +'<span style="font-size:10px;padding:2px 7px;border-radius:5px;background:'+(isBrief?'#FAEEDA':'#E6F1FB')+';color:'+(isBrief?'#633806':'#0C447C')+';white-space:nowrap">'+(isBrief?'보고':'지시')+'</span>'
-          +'<span style="font-size:11px;color:#9AAABF">'+fmtDate(r.savedAt)+' · '+r.pjtName+'</span>'
+          +'<span style="font-size:11px;color:#9AAABF">'+dateLbl+(r.time?' '+r.time:'')+(r.name?' · '+r.name:'')+' · '+r.pjtName+'</span>'
           +'</div>'
-          +'<div style="font-size:12px;color:#1A2540;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(r.instruction||r.briefText||r.content||'(내용 없음)')+'</div>'
+          +'<div style="font-size:12px;color:#1A2540;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(r.text||'(내용 없음)')+'</div>'
           +'</div>';
       });
       html+='</div>';
@@ -1242,19 +1269,17 @@ window.pjtCalSelectDay=async function(dk){
   html+='<div id="pjt-cal-report-slot" style="color:#9AAABF;font-size:12px">불러오는 중...</div>';
   det.innerHTML=html;
   try{
-    const {getDoc,doc} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const {getDocs,collection} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     let rHtml='';
-    for(const [key,col] of Object.entries(PJT_REPORT_COL)){
+    const REPORT_PREFIX = { p4ph2:'daily_reports_', p4ph4:'ph4_daily_' };
+    for(const [key,prefix] of Object.entries(REPORT_PREFIX)){
       const st=PJT_SUBTABS.find(s=>s.key===key);
       try{
-        const snap=await getDoc(doc(window._db,col,dk));
-        if(snap.exists()){
-          const r=snap.data();
-          const ins=(r.instruction||'').trim();
-          const brf=(r.briefText||r.content||'').trim();
-          if(ins) rHtml+=_pjtReportItem('지시',ins,st?.name||key,'#E6F1FB','#0C447C');
-          if(brf) rHtml+=_pjtReportItem('보고',brf,st?.name||key,'#FAEEDA','#633806');
-        }
+        const snap=await getDocs(collection(window._db, prefix+dk));
+        const items=[];
+        snap.forEach(d=>{ const r=d.data(); if((r.text||'').trim()) items.push(r); });
+        items.sort((a,b)=>((a.ts&&a.ts.toMillis?a.ts.toMillis():0)-(b.ts&&b.ts.toMillis?b.ts.toMillis():0)));
+        items.forEach(r=>{ rHtml+=_pjtReportItem((r.time||'')+(r.name?' '+r.name:''), r.text, st?.name||key, '#E6F1FB','#0C447C'); });
       }catch(e){}
     }
     const slot=document.getElementById('pjt-cal-report-slot');
@@ -1449,6 +1474,17 @@ const PJT_META = {
 };
 
 async function loadPjtStats(pjtKey){
+  if(pjtKey.indexOf('reg_')===0){
+    try{
+      const snap=await getDoc(doc(db,'pjt_registry',pjtKey.slice(4)));
+      const d=snap.exists()?snap.data():{};
+      const pctEl=document.getElementById('kpi-pct-'+pjtKey);
+      if(pctEl) pctEl.textContent=(typeof d.progress==='number'?d.progress:0).toFixed(1)+'%';
+      const mdEl=document.getElementById('kpi-md-'+pjtKey);
+      if(mdEl) mdEl.textContent=(typeof d.manday==='number'?d.manday:0).toFixed(1);
+    }catch(e){ console.warn('PJT(경량) stats 로딩 오류:', pjtKey, e); }
+    return;
+  }
   const meta = PJT_META[pjtKey];
   if(!meta) return;
   try{
@@ -1535,9 +1571,11 @@ window.openNewPjtForm = function(){
   _pjtSettingsKey=null; // 신규 등록 모드
   document.getElementById('new-pjt-title').textContent='🏗️ 신규 PJT 등록';
   var sb=document.getElementById('np-save-btn'); if(sb) sb.textContent='등록';
-  ['np-name','np-site','np-client','np-desc','np-item','np-qty','np-start','np-url'].forEach(function(id){
+  ['np-name','np-site','np-client','np-desc','np-item','np-qty','np-start','np-url','np-progress','np-manday'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
   });
+  document.getElementById('np-light-extra').style.display='none';
+  document.getElementById('np-end-btn').style.display='none';
   document.getElementById('new-pjt-modal').style.display='flex';
 };
 window.closeNewPjtForm = function(){
@@ -1549,15 +1587,18 @@ window.closeNewPjtForm = function(){
 var _pjtSettingsKey=null;
 window.openPjtSettings = async function(key, label){
   _pjtSettingsKey=key;
+  const isLight=key.indexOf('reg_')===0;
   document.getElementById('new-pjt-title').textContent='⚙️ '+(label||key)+' 설정';
-  ['np-name','np-site','np-client','np-desc','np-item','np-qty','np-start','np-url'].forEach(function(id){
+  ['np-name','np-site','np-client','np-desc','np-item','np-qty','np-start','np-url','np-progress','np-manday'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
   });
+  document.getElementById('np-light-extra').style.display=isLight?'block':'none';
+  document.getElementById('np-end-btn').style.display=isLight?'block':'none';
   var sb=document.getElementById('np-save-btn'); if(sb) sb.textContent='저장';
   document.getElementById('new-pjt-modal').style.display='flex';
   try{
     const {getDoc,doc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    const snap=await getDoc(doc(db,'pjt_settings',key));
+    const snap=isLight?await getDoc(doc(db,'pjt_registry',key.slice(4))):await getDoc(doc(db,'pjt_settings',key));
     if(snap.exists()){
       const d=snap.data();
       const set=(id,v)=>{var el=document.getElementById(id); if(el&&v!=null) el.value=v;};
@@ -1569,6 +1610,7 @@ window.openPjtSettings = async function(key, label){
       set('np-qty', d.qty);
       set('np-start', d.startDate);
       set('np-url', d.url);
+      if(isLight){ set('np-progress', d.progress); set('np-manday', d.manday); }
     } else {
       var nm=document.getElementById('np-name'); if(nm) nm.value=label||'';
     }
@@ -1577,6 +1619,7 @@ window.openPjtSettings = async function(key, label){
 window.savePjtSettings = async function(key){
   var btn=document.getElementById('np-save-btn');
   btn.disabled=true; btn.textContent='저장 중...';
+  var isLight=key.indexOf('reg_')===0;
   try{
     var data={
       name: document.getElementById('np-name').value.trim(),
@@ -1589,15 +1632,36 @@ window.savePjtSettings = async function(key){
       url: document.getElementById('np-url').value.trim(),
       updatedAt: serverTimestamp()
     };
-    await setDoc(doc(db,'pjt_settings',key), data, {merge:true});
-    if(data.startDate){
-      var startKeyMap={'p4ph2':'fab_pjt_start_date','p4ph4':'ph4_pjt_start_date'};
-      try{ localStorage.setItem(startKeyMap[key]||('pjt_start_'+key), data.startDate); }catch(e){}
+    if(isLight){
+      data.progress=parseFloat(document.getElementById('np-progress').value)||0;
+      data.manday=parseFloat(document.getElementById('np-manday').value)||0;
+      await updateDoc(doc(db,'pjt_registry',key.slice(4)), data);
+    } else {
+      await setDoc(doc(db,'pjt_settings',key), data, {merge:true});
+      if(data.startDate){
+        var startKeyMap={'p4ph2':'fab_pjt_start_date','p4ph4':'ph4_pjt_start_date'};
+        try{ localStorage.setItem(startKeyMap[key]||('pjt_start_'+key), data.startDate); }catch(e){}
+      }
     }
     closeNewPjtForm();
+    await syncPjtRegistrySubtabs();
     renderPjtHomeCards();
   }catch(e){ alert('저장 실패: '+e.message); }
   finally{ btn.disabled=false; btn.textContent='저장'; }
+};
+
+window.endPjtFromSettings = async function(){
+  if(!_pjtSettingsKey || _pjtSettingsKey.indexOf('reg_')!==0) return;
+  var id=_pjtSettingsKey.slice(4);
+  var name=document.getElementById('np-name').value.trim()||'이 프로젝트';
+  if(!confirm('['+name+'] 프로젝트를 종료 처리할까요?\n종료된 PJT는 카드·사이드바에서 사라지고, PJT 홈 하단 종료 목록으로 이동합니다.')) return;
+  try{
+    await updateDoc(doc(db,'pjt_registry',id), { status:'ended', endedAt: serverTimestamp() });
+    closeNewPjtForm();
+    await syncPjtRegistrySubtabs();
+    renderPjtHomeCards();
+    renderPjtRegistry();
+  }catch(e){ alert('종료 실패: '+e.message); }
 };
 
 window.saveNewPjt = async function(){
@@ -1617,12 +1681,16 @@ window.saveNewPjt = async function(){
       qty: parseInt(document.getElementById('np-qty').value)||0,
       startDate: document.getElementById('np-start').value||'',
       url: document.getElementById('np-url').value.trim(),
+      progress: 0,
+      manday: 0,
       status: 'active',
       createdAt: serverTimestamp()
     };
     var ref=doc(collection(db,'pjt_registry'));
     await setDoc(ref, data);
     closeNewPjtForm();
+    await syncPjtRegistrySubtabs();
+    renderPjtHomeCards();
     renderPjtRegistry();
   }catch(e){ alert('등록 실패: '+e.message); }
   finally{ btn.disabled=false; btn.textContent='등록'; }
@@ -1632,6 +1700,8 @@ window.endPjt = async function(id, name){
   if(!confirm('['+name+'] 프로젝트를 종료 처리할까요?\n종료된 PJT는 별도로 표시됩니다.')) return;
   try{
     await updateDoc(doc(db,'pjt_registry',id), { status:'ended', endedAt: serverTimestamp() });
+    await syncPjtRegistrySubtabs();
+    renderPjtHomeCards();
     renderPjtRegistry();
   }catch(e){ alert('종료 실패: '+e.message); }
 };
@@ -1639,9 +1709,52 @@ window.endPjt = async function(id, name){
 window.reopenPjt = async function(id){
   try{
     await updateDoc(doc(db,'pjt_registry',id), { status:'active' });
+    await syncPjtRegistrySubtabs();
+    renderPjtHomeCards();
     renderPjtRegistry();
   }catch(e){ alert('오류: '+e.message); }
 };
+
+// PJT 레지스트리(신규 등록 PJT)를 PJT_SUBTABS에 동적으로 편입 — 상단 카드·사이드바 메뉴 자동 반영
+async function syncPjtRegistrySubtabs(){
+  try{
+    const snap=await getDocs(query(collection(db,'pjt_registry'), orderBy('createdAt','desc')));
+    let changed=false;
+    const activeIds=new Set();
+    snap.forEach(function(d){
+      const data=d.data();
+      if(data.status==='ended') return;
+      activeIds.add(d.id);
+      const key='reg_'+d.id;
+      let sub='';
+      if(data.client&&data.content) sub=data.client+' · '+data.content;
+      else if(data.client) sub=data.client;
+      else if(data.content) sub=data.content;
+      else if(data.site) sub=data.site;
+      const url=data.url||('https://jhsolutions5804.github.io/portal-test/pjt_light/index.html?pjtId='+d.id);
+      let st=PJT_SUBTABS.find(function(s){return s.key===key;});
+      if(!st){
+        PJT_SUBTABS.push({ key:key, name:data.name||'PJT', emoji:'🏗️', desc:sub, url:url });
+        changed=true;
+      } else {
+        if(data.name && data.name!==st.name){ st.name=data.name; changed=true; }
+        if(sub!==st.desc){ st.desc=sub; changed=true; }
+        if(url!==st.url){ st.url=url; changed=true; }
+      }
+    });
+    for(let i=PJT_SUBTABS.length-1;i>=0;i--){
+      const st=PJT_SUBTABS[i];
+      if(st.key.indexOf('reg_')===0 && !activeIds.has(st.key.slice(4))){
+        PJT_SUBTABS.splice(i,1); changed=true;
+      }
+    }
+    if(changed){
+      renderMenu();
+      const homeView=document.getElementById('view-pjt-home');
+      if(homeView && homeView.style.display!=='none'){ renderPjtHomeCards(); }
+    }
+  }catch(e){ console.warn('PJT registry 서브탭 동기화 실패', e); }
+}
 
 async function renderPjtRegistry(){
   var sec=document.getElementById('pjt-registry-section');
@@ -1649,18 +1762,12 @@ async function renderPjtRegistry(){
   try{
     var snap=await getDocs(query(collection(db,'pjt_registry'), orderBy('createdAt','desc')));
     if(snap.empty){ sec.innerHTML=''; return; }
-    var active=[], ended=[];
+    var ended=[];
     snap.forEach(function(d){
       var item=Object.assign({id:d.id}, d.data());
-      (item.status==='ended'?ended:active).push(item);
+      if(item.status==='ended') ended.push(item);
     });
     var html='';
-    if(active.length){
-      html+='<div style="font-size:14px;font-weight:700;color:#1A2540;margin:8px 0 12px">📋 등록된 추가 프로젝트</div>';
-      html+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:20px">';
-      active.forEach(function(p){ html+=pjtRegistryCard(p,false); });
-      html+='</div>';
-    }
     if(ended.length){
       html+='<div style="font-size:14px;font-weight:700;color:#86868b;margin:8px 0 12px">🏁 종료된 프로젝트</div>';
       html+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px">';
@@ -1731,7 +1838,9 @@ async function enterFromUser(user,msg){
   }
   if(!data){ await signOut(auth); if(msg) showMsg(msg,'err','등록되지 않은 계정입니다. 관리자에게 계정 생성을 요청하세요.'); return; }
   if(data.status!=='approved'){ await signOut(auth); if(msg) showMsg(msg,'err','승인되지 않은 계정입니다.'); return; }
-  me={ uid:user.uid, ...data };
+  // window.me 로 할당해야 setter(831줄)가 실행되어 jh_login_perms(모바일이 읽는 로그인 정보)가
+  // 실제 로그인한 사용자로 갱신된다. 지역변수(me=)로 할당하면 setter를 건너뛰어 이전 계정이 잔존한다.
+  window.me={ uid:user.uid, ...data };
   try{ localStorage.setItem('jh_login_name',(me.name||'').trim()); localStorage.setItem('jh_login_full',((me.name||'')+(me.rank?' '+me.rank:'')).trim()); }catch(e){}
   enterPortal();
 }
@@ -2213,6 +2322,7 @@ function enterPortal(){
   showApp(); showView('home');
   resetAutoLogout();
   syncPjtSubtabsFromSettings();
+  syncPjtRegistrySubtabs();
 }
 // PJT 설정(pjt_settings)을 읽어 사이드바·카드 메뉴명·설명 실시간 반영
 async function syncPjtSubtabsFromSettings(){
@@ -2412,7 +2522,7 @@ window._goEdocApprove = function(){
 const OA2 = {
   clientId:    '97f0a368-a746-42f9-8782-38ac8cc0962c',
   tenantId:    '548fcb48-1ab8-4c47-8242-bc098ea80416',
-  redirectUri: 'https://jhsolutions5804.github.io/portal-test/outlook-auth.html',
+  redirectUri: 'https://jhsolutions5804.github.io/portal/outlook-auth.html',
   scopes:      'Mail.Read User.Read offline_access',
 };
 OA2.authUrl  = `https://login.microsoftonline.com/${OA2.tenantId}/oauth2/v2.0/authorize`;
@@ -2554,7 +2664,9 @@ function openModule(m, tab, overrideUrl){
   _activeSub=overrideUrl?tab:(SUBTABS[m.key]?(tab||SUBTABS[m.key][0].key):null);
   // overrideUrl(개별 PJT)인 경우 tab은 서브탭 key(p4ph2 등)이며 대상 페이지의 탭 이름이 아니므로 URL에 넘기지 않는다 (넘기면 존재하지 않는 탭이라 빈 화면)
   const urlTab=overrideUrl?'':tab;
-  const fullUrl=(overrideUrl||m.url)+'?via=portal'+(urlTab?('&tab='+urlTab):'')+(me&&me.admin?'&admin=1':'');
+  const baseUrl=overrideUrl||m.url;
+  const qSep=baseUrl.includes('?')?'&':'?';
+  const fullUrl=baseUrl+qSep+'via=portal'+(urlTab?('&tab='+urlTab):'')+(me&&me.admin?'&admin=1':'');
 
   // iframe이 이미 같은 앱으로 로드된 경우 → postMessage로 탭 전환 (overrideUrl 없을 때만)
   if (!overrideUrl && SUBTABS[m.key] && _embUrl===m.url && tab) {
@@ -2630,15 +2742,12 @@ window.addEventListener('message', async (e) => {
   }
 });
 
-function doLogout(){ clearTimeout(_autoLogoutTimer); clearMsalCache(); signOut(auth).then(()=>{ me=null; $('login-pw').value=''; try{ localStorage.removeItem('jh_login_name'); localStorage.removeItem('jh_login_full'); }catch(e){} if(window.mbnHideNav) mbnHideNav(); showAuth('s-login'); }); }
+function doLogout(){ clearTimeout(_autoLogoutTimer); clearMsalCache(); signOut(auth).then(()=>{ me=null; $('login-pw').value=''; try{ localStorage.removeItem('jh_login_perms'); localStorage.removeItem('jh_login_name'); localStorage.removeItem('jh_login_full'); }catch(e){} if(window.mbnHideNav) mbnHideNav(); showAuth('s-login'); }); }
 // D+ 시작일 입력 토글
 function pjtToggleStartInput(key){
   const inp=document.getElementById('kpi-day-input-'+key);
   if(!inp) return;
-  const startKeyMap={'p4ph2':'fab_pjt_start_date','p4ph4':'ph4_pjt_start_date'};
-  const saved=localStorage.getItem(startKeyMap[key]||('pjt_start_'+key))||'';
   if(inp.style.display==='none'){
-    if(saved) inp.value=saved;
     inp.style.display='block';
     setTimeout(()=>inp.focus(),50);
   } else {
@@ -2647,14 +2756,21 @@ function pjtToggleStartInput(key){
 }
 // D+ 시작일 저장 및 표시 업데이트
 function pjtSaveStartDate(key,val){
-  const startKeyMap={'p4ph2':'fab_pjt_start_date','p4ph4':'ph4_pjt_start_date'};
-  const storageKey=startKeyMap[key]||('pjt_start_'+key);
-  localStorage.setItem(storageKey,val);
-  // Firestore에도 저장
-  try{
-    setDoc(doc(db,'pjt_settings',key),{startDate:val,updatedAt:serverTimestamp()},{merge:true})
-      .catch(e=>console.warn('D+ Firestore 저장 실패',e));
-  }catch(e){}
+  if(key.indexOf('reg_')===0){
+    try{
+      updateDoc(doc(db,'pjt_registry',key.slice(4)),{startDate:val})
+        .catch(e=>console.warn('D+ Firestore 저장 실패',e));
+    }catch(e){}
+  } else {
+    const startKeyMap={'p4ph2':'fab_pjt_start_date','p4ph4':'ph4_pjt_start_date'};
+    const storageKey=startKeyMap[key]||('pjt_start_'+key);
+    localStorage.setItem(storageKey,val);
+    // Firestore에도 저장
+    try{
+      setDoc(doc(db,'pjt_settings',key),{startDate:val,updatedAt:serverTimestamp()},{merge:true})
+        .catch(e=>console.warn('D+ Firestore 저장 실패',e));
+    }catch(e){}
+  }
   const dayEl=document.getElementById('kpi-day-'+key);
   const inp=document.getElementById('kpi-day-input-'+key);
   if(dayEl && val){
@@ -2852,3 +2968,5 @@ window.mbnCloseMore=mbnCloseMore;
 
 </body>
 </html>
+<!-- b 1783190358 -->
+
