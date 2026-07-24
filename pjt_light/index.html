@@ -453,6 +453,8 @@ textarea.f-input{resize:vertical;min-height:70px}
     <div class="sheet-head"><div class="sheet-title">👷 인원 추가</div><button class="sheet-close" onclick="closeWorkerAdd()">×</button></div>
     <div class="sheet-body">
       <label class="f-label">이름</label><input class="f-input" type="text" id="wk-name" placeholder="예: 홍길동">
+      <label class="f-label">생년월일 <span style="color:#aaa;font-weight:400">(여러 PJT 겸직 인원의 공수를 한 사람으로 합산하는 데 쓰입니다)</span></label>
+      <input class="f-input" type="date" id="wk-birth">
       <button class="btn-primary block" id="wk-save-btn" onclick="saveWorker()">추가</button>
     </div>
   </div>
@@ -729,16 +731,18 @@ window.attDayShift=function(n){
 };
 window.openWorkerAdd=function(){
   document.getElementById('wk-name').value='';
+  document.getElementById('wk-birth').value='';
   document.getElementById('worker-modal').classList.add('on');
 };
 window.closeWorkerAdd=function(){ document.getElementById('worker-modal').classList.remove('on'); };
 window.saveWorker=async function(){
   const name=document.getElementById('wk-name').value.trim();
+  const birth=document.getElementById('wk-birth').value;
   if(!name){ toast('이름을 입력하세요'); return; }
   const btn=document.getElementById('wk-save-btn'); btn.disabled=true; btn.textContent='추가 중...';
   try{
     const ref=doc(collection(db,'pjt_registry',pjtId,'workers'));
-    await setDoc(ref, { name, order: workersCache.length, createdAt: serverTimestamp() });
+    await setDoc(ref, { name, birth: birth||'', order: workersCache.length, createdAt: serverTimestamp() });
     closeWorkerAdd();
     await loadWorkers();
     renderAttGrid();
@@ -822,7 +826,10 @@ function renderAttGrid(){
   workersCache.forEach(function(w){
     const checked=attChecks.indexOf(w.id)!==-1;
     const md=attManday[w.id]!=null?attManday[w.id]:'';
-    html+='<tr><td class="w-name">'+escapeHtml(w.name)+'</td>'
+    const birthPart = w.birth
+      ? '<span style="font-size:10px;color:#9AAABF;margin-left:6px">'+w.birth+'</span>'
+      : (isAdmin?('<input type="date" style="font-size:10px;padding:2px 5px;border:1px solid #ffd699;border-radius:5px;margin-left:6px;background:#fff8ea" title="생년월일 미입력 — 입력하면 다른 PJT 공수와 합산됩니다" onchange="updateWorkerBirth(\''+w.id+'\',this.value)">'):'');
+    html+='<tr><td class="w-name">'+escapeHtml(w.name)+birthPart+'</td>'
       +'<td><button class="chk-cell'+(checked?' done':'')+'" '+(isAdmin?('onclick="toggleAttCheck(\''+w.id+'\')"'):'disabled')+'>'+(checked?'✓':'')+'</button></td>'
       +'<td><input class="md-input" type="number" step="0.5" min="0" value="'+md+'" '+(isAdmin?('onchange="onMandayInput(\''+w.id+'\',this.value)"'):'disabled')+'></td>'
       +(isAdmin?('<td><button class="del-btn" onclick="deleteWorker(\''+w.id+'\')">삭제</button></td>'):'')
@@ -831,6 +838,14 @@ function renderAttGrid(){
   html+='</tbody></table>';
   wrap.innerHTML=html;
 }
+window.updateWorkerBirth=async function(wid, birth){
+  if(!birth) return;
+  try{
+    await updateDoc(doc(db,'pjt_registry',pjtId,'workers',wid), {birth});
+    await loadWorkers();
+    renderAttGrid();
+  }catch(e){ toast('저장 실패: '+e.message); }
+};
 window.saveAttendance=async function(){
   const btn=document.getElementById('att-save-btn'); btn.disabled=true; btn.textContent='저장 중...';
   try{
