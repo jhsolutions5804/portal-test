@@ -1055,8 +1055,20 @@ function renderPjtHomeCards(){
 }
 
 // ===== PJT 홈 우측 패널: 주요 일정 + 업무 보고 =====
-const PJT_SCHED_COL = { p4ph2:'user_schedules', p4ph4:'ph4_schedules' };
+const PJT_SCHED_COL = { p4ph2:['user_schedules'], p4ph4:['ph4_schedules'] };
 const PJT_REPORT_COL = { p4ph2:'daily_report_docs', p4ph4:'ph4_reports' };
+// 일정 컬렉션 경로: FAB/SUP는 최상위 컬렉션, 경량(reg_) PJT는 pjt_registry/{id}/schedules 서브컬렉션
+function schedColPath(pjtKey){
+  if(PJT_SCHED_COL[pjtKey]) return PJT_SCHED_COL[pjtKey];
+  if(pjtKey && pjtKey.indexOf('reg_')===0) return ['pjt_registry', pjtKey.slice(4), 'schedules'];
+  return null;
+}
+// 현재 활성 PJT 전체(FAB/SUP + 경량 등록 PJT)의 pjtKey 목록
+function allSchedPjtKeys(){
+  const keys=Object.keys(PJT_SCHED_COL);
+  PJT_SUBTABS.forEach(function(st){ if(st.key.indexOf('reg_')===0) keys.push(st.key); });
+  return keys;
+}
 
 async function loadPjtPanels(){
   const sp = document.getElementById('pjt-schedule-panel');
@@ -1080,10 +1092,11 @@ async function loadPjtPanels(){
 
     // 1. 주요 일정 (반입·교육) — 모든 PJT 일정 컬렉션 합산
     let schedRows=[];
-    for(const [key,col] of Object.entries(PJT_SCHED_COL)){
+    for(const key of allSchedPjtKeys()){
+      const colPath=schedColPath(key);
       const st=PJT_SUBTABS.find(s=>s.key===key);
       try{
-        const snap=await getDocs(query(collection(window._db,col),where('sdate','>=',todayKey),where('sdate','<=',endKey),limit(30)));
+        const snap=await getDocs(query(collection(window._db,...colPath),where('sdate','>=',todayKey),where('sdate','<=',endKey),limit(30)));
         snap.forEach(d=>{
           const s=d.data();
           if(!['in','edu','meeting','fcu','safety'].includes(s.tag)) return;
@@ -1191,13 +1204,14 @@ async function pjtCalLoadMonth(){
   const cache={};
   try{
     const {getDocs,collection,query,where} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    for(const [key,col] of Object.entries(PJT_SCHED_COL)){
+    for(const key of allSchedPjtKeys()){
+      const colPath=schedColPath(key);
       const st=PJT_SUBTABS.find(s=>s.key===key);
       try{
-        const snap=await getDocs(query(collection(window._db,col),where('sdate','>=',start),where('sdate','<=',end)));
+        const snap=await getDocs(query(collection(window._db,...colPath),where('sdate','>=',start),where('sdate','<=',end)));
         snap.forEach(d=>{
           const s=d.data(); const dk=s.sdate; if(!dk) return;
-          (cache[dk]=cache[dk]||[]).push({...s, id:d.id, col, pjtName:st?.name||key, pjtKey:key});
+          (cache[dk]=cache[dk]||[]).push({...s, id:d.id, pjtName:st?.name||key, pjtKey:key});
         });
       }catch(e){}
     }
@@ -1353,8 +1367,13 @@ window.openHomeSchedForm=function(mode, dk, data){
   const pjtField=document.getElementById('hsc-pjt-field');
   const pjtSel=document.getElementById('hsc-pjt');
   const g=function(id){ return document.getElementById(id); };
+  // PJT 선택 옵션을 현재 활성 PJT 기준으로 동적 구성 (FAB/SUP 고정 + 경량 등록 PJT)
+  pjtSel.innerHTML=allSchedPjtKeys().map(function(k){
+    const st=PJT_SUBTABS.find(x=>x.key===k);
+    return '<option value="'+k+'">'+(st?st.name:k)+'</option>';
+  }).join('');
   if(mode==='edit' && data){
-    _hscEditing={ id:data.id, col:data.col };
+    _hscEditing={ id:data.id, pjtKey:data.pjtKey };
     g('hsc-form-title').textContent='✏️ 일정 수정';
     pjtSel.value=data.pjtKey||'p4ph2'; pjtSel.disabled=true; pjtField.style.opacity='.55';
     g('hsc-text').value=data.text||'';
@@ -1403,15 +1422,16 @@ window.saveHomeSched=async function(){
     isTodo:false,
   };
   const pjtKey=g('hsc-pjt').value;
-  const col=PJT_SCHED_COL[pjtKey];
+  const colPath=schedColPath(pjtKey);
   const btn=document.querySelector('#home-sched-form-modal .modal-save');
   const orig=btn?btn.textContent:''; if(btn){ btn.textContent='저장 중...'; btn.disabled=true; }
   try{
     const {addDoc,collection,doc,setDoc,serverTimestamp}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     if(_hscEditing){
-      await setDoc(doc(window._db,_hscEditing.col,_hscEditing.id), {...data, savedAt:serverTimestamp()}, {merge:true});
+      const editPath=schedColPath(_hscEditing.pjtKey);
+      await setDoc(doc(window._db,...editPath,_hscEditing.id), {...data, savedAt:serverTimestamp()}, {merge:true});
     } else {
-      await addDoc(collection(window._db,col), {...data, savedAt:serverTimestamp()});
+      await addDoc(collection(window._db,...colPath), {...data, savedAt:serverTimestamp()});
     }
     if(btn){ btn.textContent=orig; btn.disabled=false; }
     _hscEditing=null;
@@ -1426,11 +1446,12 @@ window.saveHomeSched=async function(){
 
 window.deleteHomeSched=async function(){
   const s=window._hscDetailItem;
-  if(!s||!s.id||!s.col){ alert('삭제할 일정을 찾을 수 없습니다.'); return; }
+  if(!s||!s.id||!s.pjtKey){ alert('삭제할 일정을 찾을 수 없습니다.'); return; }
   if(!confirm('이 일정을 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.')) return;
   try{
     const {doc,deleteDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    await deleteDoc(doc(window._db,s.col,s.id));
+    const delPath=schedColPath(s.pjtKey);
+    await deleteDoc(doc(window._db,...delPath,s.id));
     closeHomeSchedDetail();
     await loadPjtCalendar();
     if(_pjtCalSel) pjtCalSelectDay(_pjtCalSel);
