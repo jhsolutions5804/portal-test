@@ -618,12 +618,12 @@
           <div><label style="font-size:13px;font-weight:600;color:#555;display:block;margin-bottom:5px">워크스페이스 URL <span style="color:#aaa;font-weight:400">(선택 — 비워두면 경량 PJT 워크스페이스가 자동 연결됩니다)</span></label>
             <input id="np-url" type="text" placeholder="https://jhsolutions5804.github.io/portal-test/..." style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
           <div id="np-light-extra" style="display:none;border-top:1px solid #eee;padding-top:14px;margin-top:2px">
-            <div style="font-size:12px;font-weight:700;color:#1D5BA6;margin-bottom:10px">⚙️ 진행 현황 (경량 PJT 워크스페이스에도 동일 반영)</div>
+            <div style="font-size:12px;font-weight:700;color:#1D5BA6;margin-bottom:10px">⚙️ 진행 현황 <span style="color:#aaa;font-weight:400">(워크스페이스의 품목현황·근태공수 탭에서 자동 계산됩니다)</span></div>
             <div style="display:flex;gap:12px">
               <div style="flex:1"><label style="font-size:13px;font-weight:600;color:#555;display:block;margin-bottom:5px">공정율 (%)</label>
-                <input id="np-progress" type="number" min="0" max="100" step="0.1" placeholder="0" style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
+                <input id="np-progress" type="number" readonly style="width:100%;padding:9px 12px;border:1.5px solid #eee;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box;background:#f7f9fc;color:#888"></div>
               <div style="flex:1"><label style="font-size:13px;font-weight:600;color:#555;display:block;margin-bottom:5px">누적공수</label>
-                <input id="np-manday" type="number" min="0" step="0.5" placeholder="0" style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
+                <input id="np-manday" type="number" readonly style="width:100%;padding:9px 12px;border:1.5px solid #eee;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box;background:#f7f9fc;color:#888"></div>
             </div>
           </div>
         </div>
@@ -1633,8 +1633,6 @@ window.savePjtSettings = async function(key){
       updatedAt: serverTimestamp()
     };
     if(isLight){
-      data.progress=parseFloat(document.getElementById('np-progress').value)||0;
-      data.manday=parseFloat(document.getElementById('np-manday').value)||0;
       await updateDoc(doc(db,'pjt_registry',key.slice(4)), data);
     } else {
       await setDoc(doc(db,'pjt_settings',key), data, {merge:true});
