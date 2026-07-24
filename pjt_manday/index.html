@@ -277,11 +277,15 @@ async function loadMonth(){
   function personKeyOf(name, birth){
     return (name||'').trim()+'|'+(birth||'MISSING');
   }
-  function addToPerson(worker, amount, pjtName){
+  function addToPerson(worker, amount, pjtName, dk){
     const pk=personKeyOf(worker.name, worker.birth);
-    if(!personMap[pk]) personMap[pk]={ name:worker.name, birth:worker.birth, total:0, byPjt:{} };
+    if(!personMap[pk]) personMap[pk]={ name:worker.name, birth:worker.birth, total:0, byPjt:{}, byDate:{} };
     personMap[pk].total+=amount;
     personMap[pk].byPjt[pjtName]=(personMap[pk].byPjt[pjtName]||0)+amount;
+    if(dk){
+      if(!personMap[pk].byDate[dk]) personMap[pk].byDate[dk]={};
+      personMap[pk].byDate[dk][pjtName]=(personMap[pk].byDate[dk][pjtName]||0)+amount;
+    }
     if(!worker.birth){
       const missKey=worker.sourceLabel+'|'+worker.id;
       if(!seenMissing.has(missKey)){
@@ -306,7 +310,7 @@ async function loadMonth(){
         if(!amount) return;
         if(fabIdSet.has(wid)){
           pjtTotals['p4ph2'].total+=amount;
-          addToPerson(fabById[wid], amount, 'P4 Ph2 (FAB)');
+          addToPerson(fabById[wid], amount, 'P4 Ph2 (FAB)', dk);
         } else {
           _debugLines.push('  · '+wid+' amount='+amount+' → FAB 명단에 없음(무시)');
           unknownIdCount++;
@@ -330,7 +334,7 @@ async function loadMonth(){
         if(!amount) return;
         if(supIdSet.has(wid)){
           pjtTotals['p4ph4'].total+=amount;
-          addToPerson(supById[wid], amount, 'P4 Ph4 (SUP)');
+          addToPerson(supById[wid], amount, 'P4 Ph4 (SUP)', dk);
         } else {
           _debugLines.push('  · '+wid+' amount='+amount+' → SUP 명단에 없음(무시)');
           unknownIdCount++;
@@ -353,7 +357,7 @@ async function loadMonth(){
           const amount=parseFloat(md[wid])||0;
           if(!amount || !byId[wid]) return;
           pjtTotals[pjtKey].total+=amount;
-          addToPerson(byId[wid], amount, lp.name);
+          addToPerson(byId[wid], amount, lp.name, dk);
         });
       }catch(e){}
     }
@@ -370,7 +374,7 @@ async function loadMonth(){
 
 function renderResult(pjtTotals, personMap, ambiguousIds, missingBirthWorkers, unknownIdCount){
   const pjtList=Object.keys(pjtTotals).map(k=>pjtTotals[k]).sort((a,b)=>b.total-a.total);
-  const personList=Object.keys(personMap).map(k=>personMap[k]).sort((a,b)=>b.total-a.total);
+  const personList=Object.keys(personMap).map(k=>Object.assign({_key:k}, personMap[k])).sort((a,b)=>b.total-a.total);
   const grandTotal=pjtList.reduce((s,p)=>s+p.total,0);
 
   document.getElementById('s-total').textContent=grandTotal.toFixed(1);
@@ -414,13 +418,14 @@ function renderResult(pjtTotals, personMap, ambiguousIds, missingBirthWorkers, u
   const pe=document.getElementById('person-table');
   if(!personList.length){ pe.innerHTML='<div class="empty">이번 달 등록된 공수가 없습니다.</div>'; }
   else{
-    let html='<table><thead><tr><th>이름</th><th>참여 PJT</th><th style="text-align:right">합계 공수</th></tr></thead><tbody>';
+    let html='<table><thead><tr><th>이름</th><th>참여 PJT</th><th style="text-align:right">합계 공수</th><th></th></tr></thead><tbody>';
     personList.forEach(function(p){
       const badges=Object.keys(p.byPjt).map(function(pn){
         return '<span class="pjt-badge">'+escapeHtml(pn)+' '+p.byPjt[pn].toFixed(1)+'</span>';
       }).join('');
       html+='<tr><td>'+escapeHtml(p.name)+(p.birth?' <span style="color:#9AAABF;font-size:11px">('+p.birth+')</span>':' <span style="color:#e67e22;font-size:11px">⚠ 생년월일 미입력</span>')+'</td>'
-        +'<td>'+badges+'</td><td class="num">'+p.total.toFixed(1)+'</td></tr>';
+        +'<td>'+badges+'</td><td class="num">'+p.total.toFixed(1)+'</td>'
+        +'<td><button class="nav-arrow" style="width:auto;padding:0 10px;font-size:11px" onclick="openPersonSheet(\''+encodeURIComponent(p._key)+'\')">📋 공수표</button></td></tr>';
     });
     html+='</tbody></table>';
     pe.innerHTML=html;
@@ -482,6 +487,7 @@ function renderMasterTable(){
       +'<span style="flex:1;font-weight:600">'+escapeHtml(m.name)+' <span style="color:#9AAABF;font-size:11px">('+(m.birth||'생년월일 없음')+')</span></span>'
       +badge+rateHtml
       +'<button class="nav-arrow" style="width:auto;padding:0 10px;font-size:11px" onclick="editMaster(\''+m.id+'\')">수정</button>'
+      +'<button class="nav-arrow" style="width:auto;padding:0 10px;font-size:11px;color:#c0392b" onclick="deleteMaster(\''+m.id+'\')">삭제</button>'
       +'</div>';
   }).join('');
 }
@@ -554,6 +560,15 @@ window.saveMaster=async function(){
   }catch(e){ alert('저장 실패: '+e.message); }
   finally{ btn.disabled=false; btn.textContent='저장'; }
 };
+window.deleteMaster=async function(id){
+  const m=masterById(id); if(!m) return;
+  if(isLeaderId(id)){ alert(m.name+'님은 팀장으로 지정된 인원이 있어 삭제할 수 없습니다. 먼저 팀원들의 소속을 변경해주세요.'); return; }
+  if(!confirm(m.name+'님을 마스터 명부에서 삭제할까요?\n(각 프로젝트에 이미 등록된 근태·공수 기록은 그대로 남습니다)')) return;
+  try{
+    await deleteDoc(doc(db,'master_workers',id));
+    await loadMasterWorkers();
+  }catch(e){ alert('삭제 실패: '+e.message); }
+};
 
 // ── 기존 인원 마이그레이션 ──
 window.openMigrateTool=function(){
@@ -567,13 +582,15 @@ window.openMigrateTool=function(){
   else{
     el.innerHTML=names.map(function(name){
       const items=groups[name];
-      const alreadyDone=_masterList.some(m=>m.name===name);
+      const alreadyDone=_masterList.find(m=>m.name===name);
       let html='<div class="migrate-group"><div class="migrate-name">'+escapeHtml(name)+(alreadyDone?' <span style="color:#1b5e20;font-size:11px">✓ 마스터 등록됨</span>':'')+'</div>';
       items.forEach(function(it){
         html+='<div class="migrate-src"><span>'+escapeHtml(it.sourceLabel)+' · id='+it.id+' · '+(it.birth||'생년월일 없음')+'</span></div>';
       });
       if(!alreadyDone){
         html+='<button class="nav-arrow" style="width:auto;padding:6px 14px;font-size:12px;margin-top:6px" onclick="openMigrateConfirm(\''+encodeURIComponent(name)+'\')">마스터로 등록</button>';
+      } else {
+        html+='<button class="nav-arrow" style="width:auto;padding:6px 14px;font-size:12px;margin-top:6px" onclick="closeMigrateTool();editMaster(\''+alreadyDone.id+'\')">✏️ 등록정보 수정</button>';
       }
       html+='</div>';
       return html;
@@ -626,11 +643,60 @@ window.confirmMigrate=async function(){
     await loadMasterWorkers();
     openMigrateTool(); // 목록 갱신
     await loadMonth(); // 전체 재계산
+    alert(name+'님 마스터 등록 완료했습니다.\n\n⚠️ 이미 열려 있던 FAB/SUP/경량PJT 근태 탭이 있다면 반드시 새로고침 후 사용해주세요. 새로고침 없이 그대로 쓰면 예전 명단으로 저장되어 연동이 안 됩니다.');
   }catch(e){ alert('마이그레이션 실패: '+e.message); }
   finally{ btn.disabled=false; btn.textContent='마스터로 등록'; }
 };
 
+window.openPersonSheet=function(encodedKey){
+  const key=decodeURIComponent(encodedKey);
+  const p=_lastPersonMap[key];
+  if(!p){ alert('데이터를 찾을 수 없습니다.'); return; }
+  document.getElementById('ps-title').textContent='📋 '+p.name+'님 '+curY+'년 '+(curM+1)+'월 공수표';
+  const days=new Date(curY,curM+1,0).getDate();
+  const first=new Date(curY,curM,1).getDay();
+  const dows=['일','월','화','수','목','금','토'];
+  let cells='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px">';
+  dows.forEach(d=>cells+='<div style="text-align:center;font-size:11px;color:#9AAABF;font-weight:700;padding:4px 0">'+d+'</div>');
+  for(let i=0;i<first;i++) cells+='<div></div>';
+  for(let d=1; d<=days; d++){
+    const dk=curY+'-'+pad(curM+1)+'-'+pad(d);
+    const dayData=p.byDate[dk];
+    let dayTotal=0, projLines='';
+    if(dayData){
+      Object.keys(dayData).forEach(function(pn){
+        dayTotal+=dayData[pn];
+        projLines+='<div style="font-size:8.5px;color:#5C6F8A;line-height:1.3">'+escapeHtml(pn.replace('P4 Ph2 (FAB)','FAB').replace('P4 Ph4 (SUP)','SUP'))+' '+dayData[pn].toFixed(1)+'</div>';
+      });
+    }
+    cells+='<div style="min-height:56px;border:1px solid #EEF2F7;border-radius:8px;padding:4px 3px;box-sizing:border-box'+(dayTotal>0?';background:#F4F8FF':'')+'">'
+      +'<div style="font-size:11px;font-weight:600;color:#1A2540">'+d+'</div>'
+      +(dayTotal>0?'<div style="font-size:12px;font-weight:800;color:#1D5BA6">'+dayTotal.toFixed(1)+'</div>':'')
+      +projLines+'</div>';
+  }
+  cells+='</div>';
+  const badges=Object.keys(p.byPjt).map(function(pn){
+    return '<span class="pjt-badge">'+escapeHtml(pn)+' '+p.byPjt[pn].toFixed(1)+'</span>';
+  }).join('');
+  document.getElementById('ps-body').innerHTML=
+    '<div style="font-size:12px;color:#86868b;margin-bottom:8px">참여 PJT: '+badges+'</div>'
+    +cells
+    +'<div style="text-align:center;margin-top:14px;padding-top:14px;border-top:1px solid #f0f0f0"><span style="font-size:12px;color:#86868b">이번 달 합계</span><div style="font-size:24px;font-weight:800;color:#1D5BA6">'+p.total.toFixed(1)+' 공수</div></div>';
+  document.getElementById('person-sheet-modal').style.display='flex';
+};
+window.closePersonSheet=function(){ document.getElementById('person-sheet-modal').style.display='none'; };
+
 loadMonth();
 </script>
+<!-- 개인별 통합 공수표 모달 -->
+<div class="modal" id="person-sheet-modal" style="position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.45);display:none;justify-content:center;align-items:center">
+  <div style="width:100%;max-width:520px;background:#fff;border-radius:16px;max-height:88vh;overflow-y:auto;margin:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px 8px">
+      <div style="font-size:16px;font-weight:700" id="ps-title">📋 공수표</div>
+      <button style="background:none;border:none;font-size:22px;color:#86868b;cursor:pointer" onclick="closePersonSheet()">×</button>
+    </div>
+    <div style="padding:6px 18px 24px" id="ps-body"></div>
+  </div>
+</div>
 </body>
 </html>
