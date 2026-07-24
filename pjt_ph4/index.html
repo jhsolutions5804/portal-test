@@ -654,14 +654,15 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
           </div>
           <!-- 기술인 명단 관리 패널 -->
           <div id="worker-mgmt-panel" style="display:none;margin-bottom:12px;background:#f9fafc;border-radius:10px;padding:12px 14px;border:1px solid #e5e5e5">
-            <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px">현재 투입 기술인</div>
+            <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px">현재 투입 기술인 <span style="font-weight:400;color:#9AAABF">(생년월일은 여러 PJT 겸직 인원의 공수를 한 사람으로 합산하는 데 쓰입니다)</span></div>
             <div id="worker-mgmt-list" style="margin-bottom:10px"></div>
-            <div style="display:flex;gap:6px;align-items:center">
-              <input id="worker-add-name" type="text" placeholder="이름" style="flex:1;padding:7px 10px;border:1px solid #dde4ef;border-radius:8px;font-size:13px;font-family:inherit">
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <input id="worker-add-name" type="text" placeholder="이름" style="flex:1;min-width:100px;padding:7px 10px;border:1px solid #dde4ef;border-radius:8px;font-size:13px;font-family:inherit">
               <select id="worker-add-role" style="padding:7px 8px;border:1px solid #dde4ef;border-radius:8px;font-size:12px;font-family:inherit">
                 <option value="">기술인</option>
                 <option value="팀장">팀장</option>
               </select>
+              <input id="worker-add-birth" type="date" style="padding:7px 8px;border:1px solid #dde4ef;border-radius:8px;font-size:12px;font-family:inherit" title="생년월일">
               <button onclick="addWorkerFromUI()" style="padding:7px 14px;background:#1D5BA6;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">추가</button>
             </div>
           </div>
@@ -943,7 +944,7 @@ window._fbLoadWorkers = async function(){
   }catch(e){ return false; }
 };
 
-window._fbAddWorker = async function(name, role){
+window._fbAddWorker = async function(name, role, birth){
   try{
     // 현재 최대 번호 계산
     const snap = await getDocs(collection(db, WORKERS_COLLECTION));
@@ -951,10 +952,17 @@ window._fbAddWorker = async function(name, role){
     snap.docs.forEach(d=>{ const n=parseInt(d.id.replace('w','')); if(n>maxNum) maxNum=n; });
     const newId = 'w'+(maxNum+1);
     const order = snap.docs.length + 1;
-    await setDoc(doc(db, WORKERS_COLLECTION, newId), {id:newId, name, role:role||'', order, active:true, createdAt:serverTimestamp()});
+    await setDoc(doc(db, WORKERS_COLLECTION, newId), {id:newId, name, role:role||'', birth:birth||'', order, active:true, createdAt:serverTimestamp()});
     await window._fbLoadWorkers();
     if(typeof renderAttend==='function') renderAttend();
   }catch(e){ alert('추가 실패: '+e.message); }
+};
+
+window._fbUpdateWorkerBirth = async function(workerId, birth){
+  try{
+    await setDoc(doc(db, WORKERS_COLLECTION, workerId), {birth}, {merge:true});
+    await window._fbLoadWorkers();
+  }catch(e){ alert('생년월일 저장 실패: '+e.message); }
 };
 
 window._fbDeleteWorker = async function(workerId){
@@ -2654,14 +2662,21 @@ function renderWorkerMgmtList(){
   var ws=getWorkers();
   if(!ws.length){ el.innerHTML='<div style="font-size:12px;color:#86868b">명단이 없습니다</div>'; return; }
   el.innerHTML=ws.map(function(w){
+    var birthPart = w.birth
+      ? '<span style="font-size:10px;color:#9AAABF;margin-left:6px">'+w.birth+'</span>'
+      : '<input type="date" class="birth-fix-input" data-wid="'+w.id+'" style="font-size:10px;padding:2px 5px;border:1px solid #ffd699;border-radius:5px;margin-left:6px;background:#fff8ea" title="생년월일 미입력 — 입력하면 다른 PJT 공수와 합산됩니다">';
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0">'
-      +'<span style="font-size:13px;color:#1d1d1f">'+(w.role?'<span style="font-size:10px;color:#86868b;margin-right:4px">['+w.role+']</span>':'')+w.name+'</span>'
+      +'<span style="font-size:13px;color:#1d1d1f;display:flex;align-items:center">'+(w.role?'<span style="font-size:10px;color:#86868b;margin-right:4px">['+w.role+']</span>':'')+w.name+birthPart+'</span>'
       +'<button class="del-worker-btn" data-wid="'+w.id+'" style="font-size:11px;padding:3px 8px;background:#fff;border:1px solid #ffb3b3;border-radius:6px;color:#c0392b;cursor:pointer">삭제</button>'
     +'</div>';
   }).join('');
   // 삭제 버튼 이벤트
   el.querySelectorAll('.del-worker-btn').forEach(function(btn){
     btn.addEventListener('click',function(){deleteWorkerFromUI(this.dataset.wid);});
+  });
+  // 생년월일 미입력 인원 인라인 입력 이벤트
+  el.querySelectorAll('.birth-fix-input').forEach(function(inp){
+    inp.addEventListener('change',function(){ updateWorkerBirthFromUI(this.dataset.wid, this.value); });
   });
 }
 
@@ -2679,19 +2694,33 @@ function _waitForFb(fnName, maxWait){
 window.addWorkerFromUI = async function(){
   var name=document.getElementById('worker-add-name').value.trim();
   var role=document.getElementById('worker-add-role').value;
+  var birth=document.getElementById('worker-add-birth').value;
   if(!name){ alert('이름을 입력하세요.'); return; }
   var btn=event&&event.target?event.target:null;
   if(btn){ btn.disabled=true; btn.textContent='추가 중...'; }
   try{
     await _waitForFb('_fbAddWorker', 6000);
-    await window._fbAddWorker(name, role);
+    await window._fbAddWorker(name, role, birth);
     document.getElementById('worker-add-name').value='';
+    document.getElementById('worker-add-birth').value='';
     if(window._refreshWorkerArrays) window._refreshWorkerArrays();
     renderWorkerMgmtList();
   }catch(e){
     alert('Firebase 연결을 확인해 주세요. 네트워크 또는 권한 문제일 수 있습니다.');
   }finally{
     if(btn){ btn.disabled=false; btn.textContent='추가'; }
+  }
+};
+
+window.updateWorkerBirthFromUI = async function(wid, birth){
+  if(!birth) return;
+  try{
+    await _waitForFb('_fbUpdateWorkerBirth', 6000);
+    await window._fbUpdateWorkerBirth(wid, birth);
+    if(window._refreshWorkerArrays) window._refreshWorkerArrays();
+    renderWorkerMgmtList();
+  }catch(e){
+    alert('생년월일 저장에 실패했습니다.');
   }
 };
 
