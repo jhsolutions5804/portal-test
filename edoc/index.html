@@ -898,21 +898,33 @@ async function renderEdocHome() {
     </div>
     <div class="home-2col" id="edoc-home-panels">
       <div class="panel">
-        <div class="panel-head">✍️ 내가 결재해야 할 문서</div>
+        <div class="panel-head" onclick="edocShowList('approve')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+          <span>✍️ 내가 결재해야 할 문서</span>
+          <span style="font-size:11px;font-weight:700;color:#1D5BA6;white-space:nowrap;">전체보기 ›</span>
+        </div>
         <div id="panel-my-approve" class="panel-list">불러오는 중…</div>
       </div>
       <div class="panel">
-        <div class="panel-head">📨 수신함 (회람)</div>
+        <div class="panel-head" onclick="edocShowList('inbox')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+          <span>📨 수신함 (회람)</span>
+          <span style="font-size:11px;font-weight:700;color:#1D5BA6;white-space:nowrap;">전체보기 ›</span>
+        </div>
         <div id="panel-inbox" class="panel-list">불러오는 중…</div>
       </div>
     </div>
     <div class="home-2col" id="edoc-home-panels2" style="margin-top:16px;">
       <div class="panel">
-        <div class="panel-head">📝 내가 작성한 문서</div>
+        <div class="panel-head" onclick="edocShowList('mydocs')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+          <span>📝 내가 작성한 문서</span>
+          <span style="font-size:11px;font-weight:700;color:#1D5BA6;white-space:nowrap;">전체보기 ›</span>
+        </div>
         <div id="panel-my-docs" class="panel-list">불러오는 중…</div>
       </div>
       <div class="panel">
-        <div class="panel-head">📤 게시된 문건</div>
+        <div class="panel-head" onclick="edocShowList('posted')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+          <span>📤 게시된 문건</span>
+          <span style="font-size:11px;font-weight:700;color:#1D5BA6;white-space:nowrap;">전체보기 ›</span>
+        </div>
         <div id="panel-posted" class="panel-list">불러오는 중…</div>
       </div>
     </div>
