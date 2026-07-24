@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260724 · ver: 3.0.0 · 경량 PJT 워크스페이스 (FAB/SUP 동일 PC 대시보드 레이아웃 적용) -->
+<!DOCTYPE html><!-- build: 20260724 · ver: 3.1.0 · 경량 PJT 워크스페이스 (탭별 PC 2단 분할 레이아웃 강화: 근태·공수/공사일보/일정관리/품목요약) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -69,6 +69,7 @@ textarea.f-input{resize:vertical;min-height:70px}
 .chk-cell{width:28px;height:28px;border-radius:7px;border:1.5px solid #dde4ef;background:#fff;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;justify-content:center}
 .chk-cell.done{background:#1D5BA6;border-color:#1D5BA6;color:#fff}
 .item-grid-wrap{overflow-x:auto}
+.item-summary-row{display:none}
 .stage-editor-tag{display:inline-flex;align-items:center;gap:5px;background:#f4f8ff;color:#1D5BA6;border:1px solid #d6e4f6;border-radius:16px;padding:4px 10px 4px 12px;font-size:12px;font-weight:600;margin:0 6px 6px 0}
 .stage-editor-tag button{background:none;border:none;color:#1D5BA6;cursor:pointer;font-size:13px;padding:0 2px}
 /* 근태·공수 그리드 */
@@ -145,6 +146,24 @@ textarea.f-input{resize:vertical;min-height:70px}
   .card{padding:20px 24px}
   .item-grid-wrap{overflow-x:visible}
   .item-grid th,.item-grid td{padding:10px 8px;font-size:13px}
+
+  /* 근태·공수 탭: 좌(그리드)+우(최근 요약) 2단 분할 */
+  .att-pc-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;align-items:start}
+  .recent-md-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px}
+  .recent-md-row:last-child{border-bottom:none}
+  .recent-md-row .d{color:#86868b}
+  .recent-md-row .v{font-weight:700;color:#1D5BA6}
+
+  /* 공사일보 탭: 좌(작성폼)+우(최근 일보) 2단 분할 */
+  .report-pc-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+
+  /* 일정관리 탭: 카드형 그리드 */
+  #sched-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;padding:20px 24px}
+  #sched-list .sched-item{border:1px solid #eef0f3;border-radius:10px;padding:12px 14px;border-bottom:1px solid #eef0f3;background:#fafbfc}
+  #sched-list .empty{grid-column:1/-1}
+
+  /* 품목현황 탭: 상단 요약 스트립 */
+  .item-summary-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
 }
 </style>
 </head>
@@ -243,6 +262,7 @@ textarea.f-input{resize:vertical;min-height:70px}
 
     <!-- 품목현황 -->
     <div id="pane-items" style="display:none">
+      <div class="item-summary-row" id="item-summary-row"></div>
       <div class="card">
         <div class="card-title">
           <span>📦 품목별 공정 체크</span>
@@ -259,13 +279,19 @@ textarea.f-input{resize:vertical;min-height:70px}
         <div class="day-title" id="att-day-title">—</div>
         <button class="nav-arrow" onclick="attDayShift(1)">›</button>
       </div>
-      <div class="card">
-        <div class="card-title">
-          <span>👷 기술인 명단 · 출역/공수</span>
-          <button class="btn-sm" id="worker-add-btn" onclick="openWorkerAdd()" style="display:none">+ 인원 추가</button>
+      <div class="att-pc-grid">
+        <div class="card">
+          <div class="card-title">
+            <span>👷 기술인 명단 · 출역/공수</span>
+            <button class="btn-sm" id="worker-add-btn" onclick="openWorkerAdd()" style="display:none">+ 인원 추가</button>
+          </div>
+          <div id="att-grid-wrap"><div class="loading">불러오는 중...</div></div>
+          <button class="btn-primary block" id="att-save-btn" onclick="saveAttendance()" style="display:none">출역·공수 저장</button>
         </div>
-        <div id="att-grid-wrap"><div class="loading">불러오는 중...</div></div>
-        <button class="btn-primary block" id="att-save-btn" onclick="saveAttendance()" style="display:none">출역·공수 저장</button>
+        <div class="card">
+          <div class="card-title"><span>📊 최근 7일 공수 합계</span></div>
+          <div id="recent-md-list"><div class="loading">불러오는 중...</div></div>
+        </div>
       </div>
     </div>
 
@@ -282,17 +308,22 @@ textarea.f-input{resize:vertical;min-height:70px}
         <div class="day-title" id="report-day-title">—</div>
         <button class="nav-arrow" onclick="reportDayShift(1)">›</button>
       </div>
-      <div class="card">
-        <label class="f-label">작성자</label>
-        <input class="f-input" type="text" id="r-author" placeholder="작성자명">
-        <label class="f-label">작업 내용</label>
-        <textarea class="f-input" id="r-content" placeholder="금일 작업 내용을 입력하세요"></textarea>
-        <label class="f-label">특이사항</label>
-        <textarea class="f-input" id="r-note" placeholder="특이사항 (선택)" style="min-height:50px"></textarea>
-        <button class="btn-primary block" id="r-save-btn" onclick="saveReport()">저장</button>
+      <div class="report-pc-grid">
+        <div class="card">
+          <div class="card-title"><span>📝 공사일보 작성</span></div>
+          <label class="f-label">작성자</label>
+          <input class="f-input" type="text" id="r-author" placeholder="작성자명">
+          <label class="f-label">작업 내용</label>
+          <textarea class="f-input" id="r-content" placeholder="금일 작업 내용을 입력하세요"></textarea>
+          <label class="f-label">특이사항</label>
+          <textarea class="f-input" id="r-note" placeholder="특이사항 (선택)" style="min-height:50px"></textarea>
+          <button class="btn-primary block" id="r-save-btn" onclick="saveReport()">저장</button>
+        </div>
+        <div class="card">
+          <div class="card-title"><span>📋 최근 공사일보</span></div>
+          <div id="report-list"><div class="loading">불러오는 중...</div></div>
+        </div>
       </div>
-      <div style="font-size:13px;font-weight:700;color:#1A2540;margin:18px 0 10px">📋 최근 공사일보</div>
-      <div class="card" id="report-list"><div class="loading">불러오는 중...</div></div>
     </div>
   </div>
 </div>
@@ -534,6 +565,7 @@ window.toggleItemStage=async function(id, encodedStage){
     await updateDoc(doc(db,'pjt_registry',pjtId,'items',id), {stages});
     item.stages=stages;
     renderItemGrid();
+    renderItemSummary();
     await recalcProgress();
   }catch(e){ toast('저장 실패: '+e.message); }
 };
@@ -542,8 +574,25 @@ async function loadItems(){
     const snap=await getDocs(query(collection(db,'pjt_registry',pjtId,'items'), orderBy('order','asc')));
     itemsCache=[]; snap.forEach(d=>itemsCache.push(Object.assign({id:d.id}, d.data())));
     renderItemGrid();
+    renderItemSummary();
     await recalcProgress();
   }catch(e){ document.getElementById('item-grid-wrap').innerHTML='<div class="empty">불러오기 실패</div>'; }
+}
+function renderItemSummary(){
+  const el=document.getElementById('item-summary-row');
+  if(!itemsCache.length || !stageList.length){ el.innerHTML=''; return; }
+  let doneItems=0;
+  const pcts=itemsCache.map(function(it){
+    let d=0; stageList.forEach(function(s){ if(it.stages && it.stages[s]) d++; });
+    const p=d/stageList.length*100;
+    if(p>=100) doneItems++;
+    return p;
+  });
+  const avg=pcts.length?(pcts.reduce((a,b)=>a+b,0)/pcts.length):0;
+  el.innerHTML=
+    '<div class="home-kpi-card"><div class="home-kpi-lbl">총 품목수</div><div class="home-kpi-val">'+itemsCache.length+'</div></div>'
+    +'<div class="home-kpi-card"><div class="home-kpi-lbl">평균 진행률</div><div class="home-kpi-val blue">'+avg.toFixed(1)+'%</div></div>'
+    +'<div class="home-kpi-card"><div class="home-kpi-lbl">완료 품목</div><div class="home-kpi-val">'+doneItems+' / '+itemsCache.length+'</div></div>';
 }
 function renderItemGrid(){
   const wrap=document.getElementById('item-grid-wrap');
@@ -632,6 +681,27 @@ async function loadAttOfDay(){
     attManday=mdSnap.exists()?(mdSnap.data().md||{}):{};
   }catch(e){ attChecks=[]; attManday={}; }
   renderAttGrid();
+  loadRecentManday();
+}
+async function loadRecentManday(){
+  const el=document.getElementById('recent-md-list');
+  if(!el) return;
+  try{
+    const days=[];
+    const base=new Date();
+    for(let i=0;i<7;i++){
+      const d=new Date(base); d.setDate(d.getDate()-i);
+      days.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+    }
+    const snaps=await Promise.all(days.map(function(dk){ return getDoc(doc(db,'pjt_registry',pjtId,'manday',dk)); }));
+    let html='';
+    days.forEach(function(dk,i){
+      const md=snaps[i].exists()?(snaps[i].data().md||{}):{};
+      let sum=0; Object.keys(md).forEach(function(k){ sum+=(parseFloat(md[k])||0); });
+      html+='<div class="recent-md-row"><span class="d">'+fmtDate(dk)+'</span><span class="v">'+sum.toFixed(1)+'</span></div>';
+    });
+    el.innerHTML=html;
+  }catch(e){ el.innerHTML='<div class="empty">불러오기 실패</div>'; }
 }
 window.toggleAttCheck=function(wid){
   const idx=attChecks.indexOf(wid);
@@ -664,6 +734,7 @@ window.saveAttendance=async function(){
     await setDoc(doc(db,'pjt_registry',pjtId,'manday',attDate), { md: mdToSave, updatedAt: serverTimestamp() });
     toast('저장되었습니다');
     await recalcTotalManday();
+    loadRecentManday();
   }catch(e){ toast('저장 실패: '+e.message); }
   finally{ btn.disabled=false; btn.textContent='출역·공수 저장'; }
 };
