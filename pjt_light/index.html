@@ -452,9 +452,9 @@ textarea.f-input{resize:vertical;min-height:70px}
   <div class="sheet">
     <div class="sheet-head"><div class="sheet-title">👷 인원 추가</div><button class="sheet-close" onclick="closeWorkerAdd()">×</button></div>
     <div class="sheet-body">
-      <label class="f-label">이름</label><input class="f-input" type="text" id="wk-name" placeholder="예: 홍길동">
-      <label class="f-label">생년월일 <span style="color:#aaa;font-weight:400">(여러 PJT 겸직 인원의 공수를 한 사람으로 합산하는 데 쓰입니다)</span></label>
-      <input class="f-input" type="date" id="wk-birth">
+      <label class="f-label">마스터 명부에서 선택</label>
+      <select class="f-input" id="wk-master"><option value="">-- 선택 --</option></select>
+      <div style="font-size:11px;color:#9AAABF;margin-top:6px">목록에 없는 새 인원은 사이드바 [PJT 관리 → 월간 공수]에서 먼저 등록해주세요.</div>
       <button class="btn-primary block" id="wk-save-btn" onclick="saveWorker()">추가</button>
     </div>
   </div>
@@ -729,20 +729,31 @@ window.attDayShift=function(n){
   attDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   renderAttDay();
 };
-window.openWorkerAdd=function(){
-  document.getElementById('wk-name').value='';
-  document.getElementById('wk-birth').value='';
+window.openWorkerAdd=async function(){
+  const sel=document.getElementById('wk-master');
+  try{
+    const snap=await getDocs(collection(db,'master_workers'));
+    const already=new Set(workersCache.map(w=>w.id));
+    let opts='<option value="">-- 선택 --</option>';
+    snap.forEach(function(d){
+      if(already.has(d.id)) return;
+      const m=d.data();
+      opts+='<option value="'+d.id+'">'+m.name+' ('+(m.birth||'생년월일 없음')+')</option>';
+    });
+    sel.innerHTML=opts;
+  }catch(e){ sel.innerHTML='<option value="">(마스터 명부 로드 실패)</option>'; }
   document.getElementById('worker-modal').classList.add('on');
 };
 window.closeWorkerAdd=function(){ document.getElementById('worker-modal').classList.remove('on'); };
 window.saveWorker=async function(){
-  const name=document.getElementById('wk-name').value.trim();
-  const birth=document.getElementById('wk-birth').value;
-  if(!name){ toast('이름을 입력하세요'); return; }
+  const masterId=document.getElementById('wk-master').value;
+  if(!masterId){ toast('마스터 명부에서 인원을 선택하세요'); return; }
   const btn=document.getElementById('wk-save-btn'); btn.disabled=true; btn.textContent='추가 중...';
   try{
-    const ref=doc(collection(db,'pjt_registry',pjtId,'workers'));
-    await setDoc(ref, { name, birth: birth||'', order: workersCache.length, createdAt: serverTimestamp() });
+    const masterSnap=await getDoc(doc(db,'master_workers',masterId));
+    if(!masterSnap.exists()){ toast('마스터 명부에서 찾을 수 없습니다'); return; }
+    const m=masterSnap.data();
+    await setDoc(doc(db,'pjt_registry',pjtId,'workers',masterId), { name:m.name, birth:m.birth||'', masterId, order: workersCache.length, createdAt: serverTimestamp() });
     closeWorkerAdd();
     await loadWorkers();
     renderAttGrid();
