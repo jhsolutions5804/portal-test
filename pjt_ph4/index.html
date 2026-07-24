@@ -2584,7 +2584,7 @@ window._fbSetAllWorkers = async function(dateKey, checkAll) {
   const checks = checkAll ? _ws.map(w=>w.id) : [];
   try {
     const { doc, setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    const ref = doc(window._fbDb, 'worker_attendance', dateKey);
+    const ref = doc(window._fbDb, 'ph4_attendance', dateKey);
     await setDoc(ref, { checks, updatedAt: serverTimestamp() });
     window._workerCache[dateKey] = checks;
   } catch(e) {
