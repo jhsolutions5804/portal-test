@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>월간 공수 집계</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;background:#f5f5f7;color:#1d1d1f;min-height:100vh}
@@ -678,13 +679,28 @@ window.openPersonSheet=function(encodedKey){
   const badges=Object.keys(p.byPjt).map(function(pn){
     return '<span class="pjt-badge">'+escapeHtml(pn)+' '+p.byPjt[pn].toFixed(1)+'</span>';
   }).join('');
+  const fname=p.name+'_'+curY+(curM+1<10?'0':'')+(curM+1)+'_공수표.png';
   document.getElementById('ps-body').innerHTML=
-    '<div style="font-size:12px;color:#86868b;margin-bottom:8px">참여 PJT: '+badges+'</div>'
+    '<button style="width:100%;padding:10px;background:#2e7d32;color:#fff;border:none;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:12px" onclick="saveSheetPng(\'ps-capture\',\''+fname+'\')">📷 이 공수표 PNG로 저장</button>'
+    +'<div id="ps-capture" style="background:#fff;padding:14px;border-radius:12px;border:1px solid #ececec">'
+    +'<div style="font-size:13px;font-weight:700;color:#1A2540;margin-bottom:4px">'+escapeHtml(p.name)+'님 · '+curY+'년 '+(curM+1)+'월 공수표</div>'
+    +'<div style="font-size:12px;color:#86868b;margin-bottom:8px">참여 PJT: '+badges+'</div>'
     +cells
-    +'<div style="text-align:center;margin-top:14px;padding-top:14px;border-top:1px solid #f0f0f0"><span style="font-size:12px;color:#86868b">이번 달 합계</span><div style="font-size:24px;font-weight:800;color:#1D5BA6">'+p.total.toFixed(1)+' 공수</div></div>';
+    +'<div style="text-align:center;margin-top:14px;padding-top:14px;border-top:1px solid #f0f0f0"><span style="font-size:12px;color:#86868b">이번 달 합계</span><div style="font-size:24px;font-weight:800;color:#1D5BA6">'+p.total.toFixed(1)+' 공수</div></div>'
+    +'</div>';
   document.getElementById('person-sheet-modal').style.display='flex';
 };
 window.closePersonSheet=function(){ document.getElementById('person-sheet-modal').style.display='none'; };
+window.saveSheetPng=async function(elId,fname){
+  const el=document.getElementById(elId);
+  if(!el) return;
+  if(typeof html2canvas==='undefined'){ alert('이미지 저장 모듈을 불러오는 중이에요. 잠시 후 다시 눌러주세요.'); return; }
+  try{
+    const canvas=await html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:true});
+    const a=document.createElement('a');
+    a.href=canvas.toDataURL('image/png'); a.download=fname; a.click();
+  }catch(e){ console.error(e); alert('저장 중 오류가 났어요: '+e.message); }
+};
 
 loadMonth();
 </script>
