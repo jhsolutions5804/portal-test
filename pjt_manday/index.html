@@ -1,0 +1,294 @@
+<!DOCTYPE html><!-- build: 20260724 · ver: 1.0.0 · 월간 공수 집계 (전체 PJT 통합) -->
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>월간 공수 집계</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;background:#f5f5f7;color:#1d1d1f;min-height:100vh}
+.app{width:100%;max-width:1100px;margin:0 auto;padding:16px;padding-bottom:60px}
+.header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.title{font-size:18px;font-weight:800;color:#1A2540}
+.month-nav{display:flex;align-items:center;gap:10px}
+.nav-arrow{background:#fff;border:1px solid #d1d1d6;border-radius:8px;width:32px;height:32px;cursor:pointer;color:#555;font-size:16px}
+.month-label{font-size:16px;font-weight:700;color:#1A2540;min-width:90px;text-align:center}
+.summary-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+.summary-card{background:#fff;border-radius:12px;border:1px solid #e5e5e5;padding:16px 18px}
+.summary-lbl{font-size:11px;color:#86868b;margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.summary-val{font-size:26px;font-weight:800;color:#1D5BA6}
+.card{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:18px 20px;margin-bottom:16px}
+.card-title{font-size:14px;font-weight:700;color:#1A2540;margin-bottom:14px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#f5f7fa;color:#555;font-weight:700;padding:9px 10px;text-align:left;border-bottom:1.5px solid #e0e6ee}
+td{padding:9px 10px;border-bottom:1px solid #f0f0f0}
+tr:last-child td{border-bottom:none}
+.num{text-align:right;font-weight:700;color:#1D5BA6}
+.pjt-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:5px;background:#eef2f7;color:#5C6F8A;font-weight:600;margin-right:4px;margin-bottom:2px}
+.warn-box{background:#fff8e8;border:1px solid #ffe082;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:#7a5c00}
+.warn-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #ffedb8}
+.warn-row:last-child{border-bottom:none}
+.birth-input{font-size:11px;padding:3px 7px;border:1px solid #e0a800;border-radius:6px}
+.loading{text-align:center;padding:60px 0;color:#9AAABF;font-size:13px}
+.empty{text-align:center;color:#9AAABF;font-size:13px;padding:20px 0}
+@media (max-width:700px){ .summary-row{grid-template-columns:1fr 1fr} }
+</style>
+</head>
+<body>
+<div class="app" id="app" style="display:none">
+  <div class="header-row">
+    <div class="title">📊 월간 공수 집계 <span style="font-weight:400;font-size:12px;color:#9AAABF">(전체 PJT 통합)</span></div>
+    <div class="month-nav">
+      <button class="nav-arrow" onclick="mShift(-1)">‹</button>
+      <div class="month-label" id="m-label">—</div>
+      <button class="nav-arrow" onclick="mShift(1)">›</button>
+    </div>
+  </div>
+
+  <div class="summary-row">
+    <div class="summary-card"><div class="summary-lbl">이번 달 전체 합계 공수</div><div class="summary-val" id="s-total">—</div></div>
+    <div class="summary-card"><div class="summary-lbl">참여 PJT 수</div><div class="summary-val" id="s-pjtcount">—</div></div>
+    <div class="summary-card"><div class="summary-lbl">참여 인원 수</div><div class="summary-val" id="s-workercount">—</div></div>
+  </div>
+
+  <div id="warn-section" style="display:none"></div>
+
+  <div class="card">
+    <div class="card-title">🏗️ PJT별 합계</div>
+    <div id="pjt-table"><div class="loading">불러오는 중...</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">👤 개인별 합계 <span style="font-weight:400;font-size:11px;color:#9AAABF">(여러 PJT 참여 시 이름+생년월일 기준으로 자동 합산)</span></div>
+    <div id="person-table"><div class="loading">불러오는 중...</div></div>
+  </div>
+</div>
+<div id="loading-init" class="loading">불러오는 중...</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, doc, getDoc, setDoc, collection, query, orderBy, where, getDocs }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI",
+  authDomain: "portal-test-6e0ff.firebaseapp.com",
+  projectId: "portal-test-6e0ff",
+  storageBucket: "portal-test-6e0ff.firebasestorage.app",
+  messagingSenderId: "752763010816",
+  appId: "1:752763010816:web:4a0c7062a2f1a4e9a03de5"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function pad(n){ return String(n).padStart(2,'0'); }
+
+let curY, curM;
+const now=new Date(); curY=now.getFullYear(); curM=now.getMonth();
+
+window.mShift=function(dir){
+  curM+=dir;
+  if(curM>11){curM=0;curY++;}
+  if(curM<0){curM=11;curY--;}
+  loadMonth();
+};
+
+async function loadRoster(collPath, sourceLabel, sourceKind, regId){
+  try{
+    const snap=await getDocs(collection(db, ...collPath));
+    const list=[];
+    snap.forEach(function(d){
+      const w=d.data();
+      list.push({ id:d.id, name:w.name||'(이름없음)', birth:w.birth||'', sourceLabel, sourceKind, regId, collPath });
+    });
+    return list;
+  }catch(e){ return []; }
+}
+
+async function loadMonth(){
+  document.getElementById('app').style.display='none';
+  document.getElementById('loading-init').style.display='block';
+  document.getElementById('m-label').textContent=curY+'년 '+(curM+1)+'월';
+
+  const daysInMonth=new Date(curY,curM+1,0).getDate();
+  const dateKeys=[];
+  for(let d=1; d<=daysInMonth; d++){ dateKeys.push(curY+'-'+pad(curM+1)+'-'+pad(d)); }
+
+  // 1. 활성 PJT 목록 구성: FAB / SUP 고정 + pjt_registry 활성 항목
+  const projects=[
+    { key:'p4ph2', name:'P4 Ph2 (FAB)', kind:'fab' },
+    { key:'p4ph4', name:'P4 Ph4 (SUP)', kind:'sup' },
+  ];
+  let registrySnap=null;
+  try{ registrySnap=await getDocs(collection(db,'pjt_registry')); }catch(e){}
+  const lightPjts=[];
+  if(registrySnap){
+    registrySnap.forEach(function(d){
+      const data=d.data();
+      if(data.status==='ended') return;
+      lightPjts.push({ id:d.id, name:data.name||'PJT' });
+      projects.push({ key:'reg_'+d.id, name:data.name||'PJT', kind:'light', regId:d.id });
+    });
+  }
+
+  // 2. 근로자 명단 로딩 (FAB/SUP/경량 PJT 전체)
+  const rosterFab=await loadRoster(['pjt_workers_fab'],'P4 Ph2 (FAB)','fab');
+  const rosterSup=await loadRoster(['pjt_workers_ph4'],'P4 Ph4 (SUP)','sup');
+  let rosterLight=[];
+  for(const lp of lightPjts){
+    const r=await loadRoster(['pjt_registry',lp.id,'workers'], lp.name, 'light', lp.id);
+    rosterLight=rosterLight.concat(r);
+  }
+  const fabIdSet=new Set(rosterFab.map(w=>w.id));
+  const supIdSet=new Set(rosterSup.map(w=>w.id));
+  const fabById={}; rosterFab.forEach(w=>fabById[w.id]=w);
+  const supById={}; rosterSup.forEach(w=>supById[w.id]=w);
+
+  // 3. 공수 데이터 집계
+  // pjtTotals: { pjtKey: { name, total } }
+  const pjtTotals={};
+  projects.forEach(p=>{ pjtTotals[p.key]={ name:p.name, total:0 }; });
+  // personMap: { personKey: { name, birth, total, byPjt:{pjtName: sub} } }
+  const personMap={};
+  const ambiguousIds=new Set();
+  const missingBirthWorkers=[]; // {name, sourceLabel, id, collPath}
+  const seenMissing=new Set();
+
+  function personKeyOf(name, birth){
+    return (name||'').trim()+'|'+(birth||'MISSING');
+  }
+  function addToPerson(worker, amount, pjtName){
+    const pk=personKeyOf(worker.name, worker.birth);
+    if(!personMap[pk]) personMap[pk]={ name:worker.name, birth:worker.birth, total:0, byPjt:{} };
+    personMap[pk].total+=amount;
+    personMap[pk].byPjt[pjtName]=(personMap[pk].byPjt[pjtName]||0)+amount;
+    if(!worker.birth){
+      const missKey=worker.sourceLabel+'|'+worker.id;
+      if(!seenMissing.has(missKey)){
+        seenMissing.add(missKey);
+        missingBirthWorkers.push(worker);
+      }
+    }
+  }
+
+  // 3-1. FAB/SUP 공유 컬렉션(worker_manday) — 날짜별로 순회하며 소속 판별
+  for(const dk of dateKeys){
+    try{
+      const snap=await getDoc(doc(db,'worker_manday',dk));
+      if(!snap.exists()) continue;
+      const md=snap.data().md||{};
+      Object.keys(md).forEach(function(wid){
+        const amount=parseFloat(md[wid])||0;
+        if(!amount) return;
+        const inFab=fabIdSet.has(wid), inSup=supIdSet.has(wid);
+        if(inFab && inSup){ ambiguousIds.add(wid); }
+        if(inFab){
+          pjtTotals['p4ph2'].total+=amount;
+          addToPerson(fabById[wid], amount, 'P4 Ph2 (FAB)');
+        }
+        if(inSup){
+          pjtTotals['p4ph4'].total+=amount;
+          addToPerson(supById[wid], amount, 'P4 Ph4 (SUP)');
+        }
+        if(!inFab && !inSup){ /* 소속 불명 workerId — 무시 */ }
+      });
+    }catch(e){}
+  }
+
+  // 3-2. 경량 PJT 각각의 manday 서브컬렉션
+  for(const lp of lightPjts){
+    const roster=rosterLight.filter(w=>w.regId===lp.id);
+    const byId={}; roster.forEach(w=>byId[w.id]=w);
+    const pjtKey='reg_'+lp.id;
+    for(const dk of dateKeys){
+      try{
+        const snap=await getDoc(doc(db,'pjt_registry',lp.id,'manday',dk));
+        if(!snap.exists()) continue;
+        const md=snap.data().md||{};
+        Object.keys(md).forEach(function(wid){
+          const amount=parseFloat(md[wid])||0;
+          if(!amount || !byId[wid]) return;
+          pjtTotals[pjtKey].total+=amount;
+          addToPerson(byId[wid], amount, lp.name);
+        });
+      }catch(e){}
+    }
+  }
+
+  renderResult(pjtTotals, personMap, ambiguousIds, missingBirthWorkers);
+  document.getElementById('loading-init').style.display='none';
+  document.getElementById('app').style.display='block';
+}
+
+function renderResult(pjtTotals, personMap, ambiguousIds, missingBirthWorkers){
+  const pjtList=Object.keys(pjtTotals).map(k=>pjtTotals[k]).filter(p=>p.total>0).sort((a,b)=>b.total-a.total);
+  const personList=Object.keys(personMap).map(k=>personMap[k]).sort((a,b)=>b.total-a.total);
+  const grandTotal=pjtList.reduce((s,p)=>s+p.total,0);
+
+  document.getElementById('s-total').textContent=grandTotal.toFixed(1);
+  document.getElementById('s-pjtcount').textContent=pjtList.length;
+  document.getElementById('s-workercount').textContent=personList.length;
+
+  // 경고 섹션: 생년월일 미입력 + 소속 중복(ID 충돌) 인원
+  const warnEl=document.getElementById('warn-section');
+  let warnHtml='';
+  if(missingBirthWorkers.length){
+    warnHtml+='<div class="warn-box"><b>⚠️ 생년월일 미입력 인원 (여러 PJT 겸직 시 별도 인원으로 집계됨)</b>';
+    missingBirthWorkers.forEach(function(w){
+      warnHtml+='<div class="warn-row"><span style="flex:1">'+escapeHtml(w.name)+' <span style="color:#9AAABF">('+escapeHtml(w.sourceLabel)+')</span></span>'
+        +'<input type="date" class="birth-input" onchange="fixBirth(\''+w.id+'\',\''+w.sourceKind+'\',\''+(w.regId||'')+'\',this.value)"></div>';
+    });
+    warnHtml+='</div>';
+  }
+  if(ambiguousIds.size){
+    warnHtml+='<div class="warn-box">⚠️ FAB·SUP 양쪽 명단에 동일 ID('+Array.from(ambiguousIds).join(', ')+')가 존재해 공수가 양쪽에 중복 집계되었을 수 있습니다. 관리자 확인이 필요합니다.</div>';
+  }
+  warnEl.innerHTML=warnHtml;
+  warnEl.style.display=warnHtml?'block':'none';
+
+  // PJT별 표
+  const pt=document.getElementById('pjt-table');
+  if(!pjtList.length){ pt.innerHTML='<div class="empty">이번 달 등록된 공수가 없습니다.</div>'; }
+  else{
+    let html='<table><thead><tr><th>PJT</th><th style="text-align:right">합계 공수</th></tr></thead><tbody>';
+    pjtList.forEach(function(p){ html+='<tr><td>'+escapeHtml(p.name)+'</td><td class="num">'+p.total.toFixed(1)+'</td></tr>'; });
+    html+='</tbody></table>';
+    pt.innerHTML=html;
+  }
+
+  // 개인별 표
+  const pe=document.getElementById('person-table');
+  if(!personList.length){ pe.innerHTML='<div class="empty">이번 달 등록된 공수가 없습니다.</div>'; }
+  else{
+    let html='<table><thead><tr><th>이름</th><th>참여 PJT</th><th style="text-align:right">합계 공수</th></tr></thead><tbody>';
+    personList.forEach(function(p){
+      const badges=Object.keys(p.byPjt).map(function(pn){
+        return '<span class="pjt-badge">'+escapeHtml(pn)+' '+p.byPjt[pn].toFixed(1)+'</span>';
+      }).join('');
+      html+='<tr><td>'+escapeHtml(p.name)+(p.birth?' <span style="color:#9AAABF;font-size:11px">('+p.birth+')</span>':' <span style="color:#e67e22;font-size:11px">⚠ 생년월일 미입력</span>')+'</td>'
+        +'<td>'+badges+'</td><td class="num">'+p.total.toFixed(1)+'</td></tr>';
+    });
+    html+='</tbody></table>';
+    pe.innerHTML=html;
+  }
+}
+
+window.fixBirth=async function(workerId, sourceKind, regId, birth){
+  if(!birth) return;
+  try{
+    let ref;
+    if(sourceKind==='fab') ref=doc(db,'pjt_workers_fab',workerId);
+    else if(sourceKind==='sup') ref=doc(db,'pjt_workers_ph4',workerId);
+    else ref=doc(db,'pjt_registry',regId,'workers',workerId);
+    await setDoc(ref, {birth}, {merge:true});
+    await loadMonth();
+  }catch(e){ alert('저장 실패: '+e.message); }
+};
+
+loadMonth();
+</script>
+</body>
+</html>
