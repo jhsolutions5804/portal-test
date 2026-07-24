@@ -1222,13 +1222,10 @@ const DOC_CONFIG = {
   purchase: { label:'구매품의서', icon:'🛒',
     approvers:['김종화'], cc:[],
     fields:[
-    { key:'item',      label:'구매 품목',   type:'text',   ph:'품목명을 입력하세요' },
-    { key:'qty',       label:'수량',        type:'number', ph:'1' },
-    { key:'unitPrice', label:'단가 (원)',    type:'money', ph:'0' },
     { key:'vendor',    label:'공급업체',    type:'text',   ph:'업체명' },
     { key:'purpose',   label:'구매 목적',   type:'textarea', ph:'구매 필요 사유' },
     { key:'dueDate',   label:'필요일',      type:'date' },
-    { key:'refUrls',   label:'참고 링크',   type:'urls', required:false },
+    { key:'items',     label:'구매 품목',   type:'items', required:false },
   ]},
   expense:  { label:'지출결의서', icon:'💳',
     approvers:['김종화'], cc:[],
@@ -1239,6 +1236,7 @@ const DOC_CONFIG = {
     { key:'vendor',    label:'거래처',      type:'text',   ph:'상호명' },
     { key:'purpose',   label:'지출 목적',   type:'textarea', ph:'지출 사유를 입력하세요' },
     { key:'receipt',   label:'증빙 구비',   type:'select', opts:['영수증 첨부','카드전표','세금계산서','없음'] },
+    { key:'items',     label:'구매 품목',   type:'items', required:false },
   ]},
 };
 
@@ -1543,6 +1541,18 @@ window.renderDocWrite = function(dtype) {
         <div class="url-rows"></div>
         <button type="button" onclick="addUrlRow('${f.key}')" style="margin-top:4px;padding:6px 12px;background:#EEF4FB;border:1px solid #DDE4EF;border-radius:8px;color:#1D5BA6;font-size:12px;font-weight:700;cursor:pointer;">+ 링크 추가</button>
       </div>`;
+    } else if (f.type==='items') {
+      input = `<div id="f-${f.key}" data-fieldtype="items">
+        <div style="display:flex;gap:6px;margin-bottom:4px;font-size:11px;font-weight:700;color:#5C6F8A;padding:0 2px;">
+          <span style="flex:2;min-width:0;">품목명</span>
+          <span style="width:60px;text-align:center;flex-shrink:0;">수량</span>
+          <span style="width:100px;text-align:center;flex-shrink:0;">단가</span>
+          <span style="flex:2;min-width:0;">링크</span>
+          <span style="width:36px;flex-shrink:0;"></span>
+        </div>
+        <div class="item-rows"></div>
+        <button type="button" onclick="addItemRow('${f.key}')" style="margin-top:4px;padding:6px 12px;background:#EEF4FB;border:1px solid #DDE4EF;border-radius:8px;color:#1D5BA6;font-size:12px;font-weight:700;cursor:pointer;">+ 품목 추가</button>
+      </div>`;
     } else if (f.type==='select') {
       input = `<select id="f-${f.key}" style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;">
         ${(f.opts||[]).map(o=>`<option>${o}</option>`).join('')}
@@ -1600,8 +1610,11 @@ window.renderDocWrite = function(dtype) {
     prev.textContent = txt;
   })();
 
-  // urls 타입 필드 최초 1행 생성
-  cfg.fields.forEach(f => { if (f.type==='urls') addUrlRow(f.key); });
+  // urls / items 타입 필드 최초 1행 생성
+  cfg.fields.forEach(f => {
+    if (f.type==='urls') addUrlRow(f.key);
+    else if (f.type==='items') addItemRow(f.key);
+  });
 };
 
 // URL 입력 행 추가
@@ -1615,6 +1628,73 @@ window.addUrlRow = function(key, value) {
     <button type="button" onclick="this.parentElement.remove()" style="flex-shrink:0;width:36px;border:1px solid #DDE4EF;border-radius:8px;background:#FEF2F2;color:#DC2626;font-size:16px;font-weight:700;cursor:pointer;">−</button>`;
   box.appendChild(row);
 };
+
+// 품목 입력 행 추가 (품목명 / 수량 / 단가 / 링크, 가로 배치)
+window.addItemRow = function(key, values) {
+  const box = document.querySelector(`#f-${key} .item-rows`);
+  if (!box) return;
+  const v = values || {};
+  const row = document.createElement('div');
+  row.className = 'item-row';
+  row.style.cssText = 'display:flex;gap:6px;margin-bottom:6px;align-items:center;';
+  row.innerHTML = `<input type="text" class="item-name" placeholder="품목명" value="${String(v.name||'').replace(/"/g,'&quot;')}"
+      style="flex:2;min-width:0;border:1px solid #DDE4EF;border-radius:8px;padding:9px 10px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;">
+    <input type="number" class="item-qty" placeholder="수량" min="0" value="${v.qty||''}"
+      style="width:60px;flex-shrink:0;border:1px solid #DDE4EF;border-radius:8px;padding:9px 6px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;text-align:center;">
+    <input type="text" inputmode="numeric" class="item-price" placeholder="단가" value="${v.unitPrice?Number(v.unitPrice).toLocaleString('ko-KR'):''}" oninput="fmtMoney(this)"
+      style="width:100px;flex-shrink:0;border:1px solid #DDE4EF;border-radius:8px;padding:9px 6px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;text-align:right;">
+    <input type="url" class="item-link" placeholder="https://..." value="${String(v.link||'').replace(/"/g,'&quot;')}"
+      style="flex:2;min-width:0;border:1px solid #DDE4EF;border-radius:8px;padding:9px 10px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;">
+    <button type="button" onclick="this.parentElement.remove()" style="flex-shrink:0;width:36px;height:36px;border:1px solid #DDE4EF;border-radius:8px;background:#FEF2F2;color:#DC2626;font-size:16px;font-weight:700;cursor:pointer;">−</button>`;
+  box.appendChild(row);
+};
+
+// 품목 리스트를 표/합계로 렌더 (상세보기 · 출력용)
+function fmtItemsTable(items) {
+  if (!Array.isArray(items) || !items.length) return '<div style="color:#9AAABF;font-size:12px;">-</div>';
+  const rowsHtml = items.map(it=>{
+    const qty = Number(it.qty)||0, price = Number(it.unitPrice)||0;
+    const amt = (it.amount!=null ? Number(it.amount) : qty*price) || 0;
+    const linkHtml = it.link ? `<a href="${String(it.link).replace(/"/g,'&quot;')}" target="_blank" rel="noopener noreferrer" style="color:#1D5BA6;font-weight:700;text-decoration:underline;">링크</a>` : '-';
+    return `<tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #F0F4FA;text-align:left;">${it.name||'-'}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #F0F4FA;text-align:center;">${qty.toLocaleString('ko-KR')}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #F0F4FA;text-align:right;">${price.toLocaleString('ko-KR')}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #F0F4FA;text-align:right;">${amt.toLocaleString('ko-KR')}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #F0F4FA;text-align:center;">${linkHtml}</td>
+    </tr>`;
+  }).join('');
+  const total = items.reduce((s,it)=>s+((it.amount!=null ? Number(it.amount) : (Number(it.qty)||0)*(Number(it.unitPrice)||0))||0),0);
+  return `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <thead><tr style="background:#F4F7FB;">
+      <th style="padding:6px 8px;text-align:left;">품명</th>
+      <th style="padding:6px 8px;">수량</th>
+      <th style="padding:6px 8px;text-align:right;">단가</th>
+      <th style="padding:6px 8px;text-align:right;">금액</th>
+      <th style="padding:6px 8px;">링크</th>
+    </tr></thead>
+    <tbody>${rowsHtml}
+    <tr><td colspan="3" style="padding:6px 8px;text-align:right;font-weight:700;">합계</td><td style="padding:6px 8px;text-align:right;font-weight:700;">${total.toLocaleString('ko-KR')}</td><td></td></tr>
+    </tbody></table>`;
+}
+window.fmtItemsTable = fmtItemsTable;
+
+// 하위호환: 구조 변경 이전(items 필드 도입 전)에 저장된 구매품의서는
+// item/qty/unitPrice/refUrls 형태로 저장되어 있으므로, items가 없으면 그 값으로 1행을 구성해 표시한다.
+function getItemsForDisplay(d, dtype) {
+  if (Array.isArray(d.items) && d.items.length) return d.items;
+  if (dtype === 'purchase' && (d.item || d.qty || d.unitPrice || (d.refUrls && d.refUrls.length))) {
+    return [{
+      name: d.item || '',
+      qty: Number(d.qty) || 0,
+      unitPrice: Number(d.unitPrice) || 0,
+      amount: (Number(d.qty) || 0) * (Number(d.unitPrice) || 0),
+      link: (d.refUrls && d.refUrls[0]) || ''
+    }];
+  }
+  return [];
+}
+window.getItemsForDisplay = getItemsForDisplay;
 
 window.docSave = async function(dtype, status) {
   if (!window._db || !_user) { alert('로그인이 필요합니다.'); return; }
@@ -1640,6 +1720,21 @@ window.docSave = async function(dtype, status) {
       const box = document.getElementById('f-'+f.key);
       const urls = box ? Array.from(box.querySelectorAll('.url-input')).map(i=>i.value.trim()).filter(Boolean) : [];
       data[f.key] = urls;
+    } else if (f.type==='items') {
+      const box = document.getElementById('f-'+f.key);
+      const items = [];
+      if (box) {
+        box.querySelectorAll('.item-row').forEach(row=>{
+          const name = row.querySelector('.item-name')?.value.trim()||'';
+          const qty = Number(row.querySelector('.item-qty')?.value)||0;
+          const unitPrice = Number(String(row.querySelector('.item-price')?.value||'').replace(/[^0-9.\-]/g,''))||0;
+          const link = row.querySelector('.item-link')?.value.trim()||'';
+          if (name || qty || unitPrice || link) {
+            items.push({ name, qty, unitPrice, amount: qty*unitPrice, link });
+          }
+        });
+      }
+      data[f.key] = items;
     } else if (f.type==='money') {
       const el = document.getElementById('f-'+f.key);
       if (el) data[f.key] = Number(String(el.value).replace(/[^0-9.\-]/g,''))||0;
@@ -1739,9 +1834,11 @@ window.printDocA4 = function(d, dtype) {
       <tr><th>비상연락처</th><td>${d.contact||'-'}</td></tr>
       <tr><th>업무 대리인</th><td>${d.deputyName||'-'}</td></tr>`;
   } else {
-    bodyRows = (cfg.fields||[]).map(f =>
-      `<tr><th>${f.label}</th><td style="white-space:pre-wrap;">${fmtDocVal(d[f.key])}</td></tr>`
-    ).join('');
+    bodyRows = (cfg.fields||[]).map(f => {
+      if (f.type==='items') return `<tr><th>${f.label}</th><td>${fmtItemsTable(getItemsForDisplay(d, dtype))}</td></tr>`;
+      const val = f.type==='money' ? ((d[f.key]===0||d[f.key]) ? Number(d[f.key]).toLocaleString('ko-KR')+'원' : '-') : fmtDocVal(d[f.key]);
+      return `<tr><th>${f.label}</th><td style="white-space:pre-wrap;">${val}</td></tr>`;
+    }).join('');
   }
 
   // 결재란 (도장 박스)
@@ -1845,11 +1942,18 @@ window.docDetail = function(d, dtype) {
     {key:'deputyName',label:'업무 대리인'},
   ];
   const displayFields = dtype==='leave' ? leaveFields : (cfg.fields||[]);
-  const rows = displayFields.map(f=>`
-    <div style="display:flex;padding:8px 0;border-bottom:1px solid #F0F4FA;font-size:12px;gap:12px;">
+  const rows = displayFields.map(f=>{
+    if (f.type==='items') {
+      return `<div style="padding:8px 0;border-bottom:1px solid #F0F4FA;font-size:12px;">
+        <div style="color:#5C6F8A;font-weight:600;margin-bottom:6px;">${f.label}</div>
+        ${fmtItemsTable(getItemsForDisplay(d, dtype))}
+      </div>`;
+    }
+    return `<div style="display:flex;padding:8px 0;border-bottom:1px solid #F0F4FA;font-size:12px;gap:12px;">
       <span style="color:#5C6F8A;font-weight:600;min-width:90px;flex-shrink:0;">${f.label}</span>
       <span style="color:#1A2540;word-break:break-all;">${f.type==='money' ? ((d[f.key]===0||d[f.key]) ? Number(d[f.key]).toLocaleString('ko-KR')+'원' : '-') : fmtDocVal(d[f.key])}</span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   const myUid = _user?.uid;
   const isOwner = myUid && d.authorUid === myUid;
