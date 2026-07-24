@@ -877,6 +877,7 @@ const PJT_SUBTABS=[
   { key:'pjt_home', name:'PJT 홈', emoji:'🏠', desc:'진행 중인 프로젝트 현황', url:'' },
   { key:'p4ph2', name:'P4 Ph2 (FAB)', emoji:'🏭', desc:'귀뚜라미범양냉방 · FCU 설치', url:'https://jhsolutions5804.github.io/portal-test/pjt/' },
   { key:'p4ph4', name:'P4 Ph4 (SUP)', emoji:'🔧', desc:'귀뚜라미범양냉방 · EHU 설치', url:'https://jhsolutions5804.github.io/portal-test/pjt_ph4/' },
+  { key:'pjt_manday', name:'월간 공수', emoji:'📊', desc:'전체 PJT 공수 집계', url:'https://jhsolutions5804.github.io/portal-test/pjt_manday/' },
 ];
 // 인사(hr) 하위 탭 — portal/hr 앱의 goTab() 키와 일치
 const HR_SUBTABS=[
@@ -975,7 +976,7 @@ function renderPjtHomeCards(){
   const el=document.getElementById('pjt-home-cards');
   if(!el) return;
   el.innerHTML='';
-  PJT_SUBTABS.filter(st=>st.key!=='pjt_home').forEach(st=>{
+  PJT_SUBTABS.filter(st=>st.key!=='pjt_home' && st.key!=='pjt_manday').forEach(st=>{
     const card=document.createElement('div');
     card.style.cssText='background:#fff;border:1px solid #dde4ef;border-radius:12px;padding:14px 16px;cursor:pointer;transition:.15s;flex-shrink:0;width:460px';
     card.onmouseover=function(){this.style.borderColor='var(--blue)';this.style.boxShadow='0 2px 10px rgba(0,0,0,.07)'};
