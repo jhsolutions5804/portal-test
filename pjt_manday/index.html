@@ -199,8 +199,8 @@ async function loadMonth(){
     }
   }
 
-  // 3-1. FAB/SUP 공유 컬렉션(worker_manday) — 날짜별로 순회하며 소속 판별
-  _debugLines.push('=== worker_manday 일자별 원본 (FAB/SUP 공유 컬렉션) ===');
+  // 3-1. FAB 공수 (컬렉션: worker_manday)
+  _debugLines.push('=== worker_manday 일자별 원본 (FAB 전용 컬렉션) ===');
   for(const dk of dateKeys){
     try{
       const snap=await getDoc(doc(db,'worker_manday',dk));
@@ -212,23 +212,42 @@ async function loadMonth(){
       keys.forEach(function(wid){
         const amount=parseFloat(md[wid])||0;
         if(!amount) return;
-        const inFab=fabIdSet.has(wid), inSup=supIdSet.has(wid);
-        _debugLines.push('  · '+wid+' amount='+amount+' → inFab='+inFab+' inSup='+inSup);
-        if(inFab && inSup){ ambiguousIds.add(wid); }
-        if(inFab){
+        if(fabIdSet.has(wid)){
           pjtTotals['p4ph2'].total+=amount;
           addToPerson(fabById[wid], amount, 'P4 Ph2 (FAB)');
+        } else {
+          _debugLines.push('  · '+wid+' amount='+amount+' → FAB 명단에 없음(무시)');
+          unknownIdCount++;
         }
-        if(inSup){
-          pjtTotals['p4ph4'].total+=amount;
-          addToPerson(supById[wid], amount, 'P4 Ph4 (SUP)');
-        }
-        if(!inFab && !inSup){ unknownIdCount++; }
       });
     }catch(e){ _debugLines.push(dk+': 오류 - '+e.message); }
   }
 
-  // 3-2. 경량 PJT 각각의 manday 서브컬렉션
+  // 3-2. SUP 공수 (컬렉션: ph4_manday — FAB과 별도!)
+  _debugLines.push('=== ph4_manday 일자별 원본 (SUP 전용 컬렉션) ===');
+  for(const dk of dateKeys){
+    try{
+      const snap=await getDoc(doc(db,'ph4_manday',dk));
+      if(!snap.exists()) continue;
+      const md=snap.data().md||{};
+      const keys=Object.keys(md);
+      if(!keys.length) continue;
+      _debugLines.push(dk+': '+JSON.stringify(md));
+      keys.forEach(function(wid){
+        const amount=parseFloat(md[wid])||0;
+        if(!amount) return;
+        if(supIdSet.has(wid)){
+          pjtTotals['p4ph4'].total+=amount;
+          addToPerson(supById[wid], amount, 'P4 Ph4 (SUP)');
+        } else {
+          _debugLines.push('  · '+wid+' amount='+amount+' → SUP 명단에 없음(무시)');
+          unknownIdCount++;
+        }
+      });
+    }catch(e){ _debugLines.push(dk+': 오류 - '+e.message); }
+  }
+
+  // 3-3. 경량 PJT 각각의 manday 서브컬렉션
   for(const lp of lightPjts){
     const roster=rosterLight.filter(w=>w.regId===lp.id);
     const byId={}; roster.forEach(w=>byId[w.id]=w);
