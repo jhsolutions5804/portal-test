@@ -47,7 +47,7 @@ tr:last-child td{border-bottom:none}
 
   <div class="summary-row">
     <div class="summary-card"><div class="summary-lbl">이번 달 전체 합계 공수</div><div class="summary-val" id="s-total">—</div></div>
-    <div class="summary-card"><div class="summary-lbl">참여 PJT 수</div><div class="summary-val" id="s-pjtcount">—</div></div>
+    <div class="summary-card"><div class="summary-lbl">공수기록 PJT / 전체</div><div class="summary-val" id="s-pjtcount">—</div></div>
     <div class="summary-card"><div class="summary-lbl">참여 인원 수</div><div class="summary-val" id="s-workercount">—</div></div>
   </div>
 
@@ -148,14 +148,21 @@ async function loadMonth(){
   const supById={}; rosterSup.forEach(w=>supById[w.id]=w);
 
   // 3. 공수 데이터 집계
-  // pjtTotals: { pjtKey: { name, total } }
+  // pjtTotals: { pjtKey: { name, total, workerCount } }
   const pjtTotals={};
-  projects.forEach(p=>{ pjtTotals[p.key]={ name:p.name, total:0 }; });
+  projects.forEach(p=>{
+    let wc=0;
+    if(p.kind==='fab') wc=rosterFab.length;
+    else if(p.kind==='sup') wc=rosterSup.length;
+    else wc=rosterLight.filter(w=>w.regId===p.regId).length;
+    pjtTotals[p.key]={ name:p.name, total:0, workerCount:wc };
+  });
   // personMap: { personKey: { name, birth, total, byPjt:{pjtName: sub} } }
   const personMap={};
   const ambiguousIds=new Set();
   const missingBirthWorkers=[]; // {name, sourceLabel, id, collPath}
   const seenMissing=new Set();
+  let unknownIdCount=0;
 
   function personKeyOf(name, birth){
     return (name||'').trim()+'|'+(birth||'MISSING');
@@ -193,7 +200,7 @@ async function loadMonth(){
           pjtTotals['p4ph4'].total+=amount;
           addToPerson(supById[wid], amount, 'P4 Ph4 (SUP)');
         }
-        if(!inFab && !inSup){ /* 소속 불명 workerId — 무시 */ }
+        if(!inFab && !inSup){ unknownIdCount++; }
       });
     }catch(e){}
   }
@@ -218,21 +225,21 @@ async function loadMonth(){
     }
   }
 
-  renderResult(pjtTotals, personMap, ambiguousIds, missingBirthWorkers);
+  renderResult(pjtTotals, personMap, ambiguousIds, missingBirthWorkers, unknownIdCount);
   document.getElementById('loading-init').style.display='none';
   document.getElementById('app').style.display='block';
 }
 
-function renderResult(pjtTotals, personMap, ambiguousIds, missingBirthWorkers){
-  const pjtList=Object.keys(pjtTotals).map(k=>pjtTotals[k]).filter(p=>p.total>0).sort((a,b)=>b.total-a.total);
+function renderResult(pjtTotals, personMap, ambiguousIds, missingBirthWorkers, unknownIdCount){
+  const pjtList=Object.keys(pjtTotals).map(k=>pjtTotals[k]).sort((a,b)=>b.total-a.total);
   const personList=Object.keys(personMap).map(k=>personMap[k]).sort((a,b)=>b.total-a.total);
   const grandTotal=pjtList.reduce((s,p)=>s+p.total,0);
 
   document.getElementById('s-total').textContent=grandTotal.toFixed(1);
-  document.getElementById('s-pjtcount').textContent=pjtList.length;
+  document.getElementById('s-pjtcount').textContent=pjtList.filter(p=>p.total>0).length+' / '+pjtList.length;
   document.getElementById('s-workercount').textContent=personList.length;
 
-  // 경고 섹션: 생년월일 미입력 + 소속 중복(ID 충돌) 인원
+  // 경고 섹션: 생년월일 미입력 + 소속 중복(ID 충돌) + 소속 불명 인원
   const warnEl=document.getElementById('warn-section');
   let warnHtml='';
   if(missingBirthWorkers.length){
@@ -246,15 +253,21 @@ function renderResult(pjtTotals, personMap, ambiguousIds, missingBirthWorkers){
   if(ambiguousIds.size){
     warnHtml+='<div class="warn-box">⚠️ FAB·SUP 양쪽 명단에 동일 ID('+Array.from(ambiguousIds).join(', ')+')가 존재해 공수가 양쪽에 중복 집계되었을 수 있습니다. 관리자 확인이 필요합니다.</div>';
   }
+  if(unknownIdCount){
+    warnHtml+='<div class="warn-box">⚠️ 어느 프로젝트 명단에도 없는 인원 ID가 포함된 공수 기록이 '+unknownIdCount+'건 있어 집계에서 제외했습니다. 명단이 삭제되었거나 아직 로딩되지 않았을 수 있습니다.</div>';
+  }
   warnEl.innerHTML=warnHtml;
   warnEl.style.display=warnHtml?'block':'none';
 
-  // PJT별 표
+  // PJT별 표 — 데이터가 없어도 항상 모든 PJT를 표시 (로딩 실패인지 데이터 없음인지 구분 가능하도록)
   const pt=document.getElementById('pjt-table');
-  if(!pjtList.length){ pt.innerHTML='<div class="empty">이번 달 등록된 공수가 없습니다.</div>'; }
+  if(!pjtList.length){ pt.innerHTML='<div class="empty">등록된 PJT가 없습니다.</div>'; }
   else{
-    let html='<table><thead><tr><th>PJT</th><th style="text-align:right">합계 공수</th></tr></thead><tbody>';
-    pjtList.forEach(function(p){ html+='<tr><td>'+escapeHtml(p.name)+'</td><td class="num">'+p.total.toFixed(1)+'</td></tr>'; });
+    let html='<table><thead><tr><th>PJT</th><th style="text-align:center">등록 인원</th><th style="text-align:right">합계 공수</th></tr></thead><tbody>';
+    pjtList.forEach(function(p){
+      const dim = p.total===0 ? 'color:#c7c7cc' : '';
+      html+='<tr style="'+dim+'"><td>'+escapeHtml(p.name)+'</td><td style="text-align:center">'+p.workerCount+'명</td><td class="num" style="'+dim+'">'+p.total.toFixed(1)+(p.total===0?' (기록없음)':'')+'</td></tr>';
+    });
     html+='</tbody></table>';
     pt.innerHTML=html;
   }
