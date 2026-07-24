@@ -656,14 +656,16 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
             <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px">현재 투입 기술인 <span style="font-weight:400;color:#9AAABF">(생년월일은 여러 PJT 겸직 인원의 공수를 한 사람으로 합산하는 데 쓰입니다)</span></div>
             <div id="worker-mgmt-list" style="margin-bottom:10px"></div>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-              <input id="worker-add-name" type="text" placeholder="이름" style="flex:1;min-width:100px;padding:7px 10px;border:1px solid #dde4ef;border-radius:8px;font-size:13px;font-family:inherit">
+              <select id="worker-add-master" style="flex:1;min-width:160px;padding:7px 10px;border:1px solid #dde4ef;border-radius:8px;font-size:13px;font-family:inherit">
+                <option value="">-- 마스터 명부에서 선택 --</option>
+              </select>
               <select id="worker-add-role" style="padding:7px 8px;border:1px solid #dde4ef;border-radius:8px;font-size:12px;font-family:inherit">
                 <option value="">기술인</option>
                 <option value="팀장">팀장</option>
               </select>
-              <input id="worker-add-birth" type="date" style="padding:7px 8px;border:1px solid #dde4ef;border-radius:8px;font-size:12px;font-family:inherit;min-width:138px;flex-shrink:0" title="생년월일">
               <button onclick="addWorkerFromUI()" style="padding:7px 14px;background:#1D5BA6;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">추가</button>
             </div>
+            <div style="font-size:11px;color:#9AAABF;margin-top:6px">목록에 없는 새 인원은 사이드바 [PJT 관리 → 월간 공수]에서 먼저 등록해주세요.</div>
           </div>
           <div id="att-worker-list"></div>
           <div class="att-pc-kongsu">
@@ -967,6 +969,19 @@ window._fbAddWorker = async function(name, role, birth){
     const newId = 'w'+(maxNum+1);
     const order = snap.docs.length + 1;
     await setDoc(doc(db, WORKERS_COLLECTION, newId), {id:newId, name, role:role||'', birth:birth||'', order, active:true, createdAt:serverTimestamp()});
+    await window._fbLoadWorkers();
+    if(typeof renderAttend==='function') renderAttend();
+  }catch(e){ alert('추가 실패: '+e.message); }
+};
+
+window._fbAddWorkerFromMaster = async function(masterId, role){
+  try{
+    const masterSnap = await getDoc(doc(db,'master_workers',masterId));
+    if(!masterSnap.exists()){ alert('마스터 명부에서 해당 인원을 찾을 수 없습니다.'); return; }
+    const m=masterSnap.data();
+    const snap = await getDocs(collection(db, WORKERS_COLLECTION));
+    const order = snap.docs.length + 1;
+    await setDoc(doc(db, WORKERS_COLLECTION, masterId), {id:masterId, name:m.name, role:role||'', birth:m.birth||'', masterId, order, active:true, createdAt:serverTimestamp()});
     await window._fbLoadWorkers();
     if(typeof renderAttend==='function') renderAttend();
   }catch(e){ alert('추가 실패: '+e.message); }
@@ -2801,8 +2816,25 @@ window.toggleWorkerMgmt = function(){
   if(!p) return;
   var showing = p.style.display!=='none';
   p.style.display = showing ? 'none' : 'block';
-  if(!showing) renderWorkerMgmtList();
+  if(!showing){ renderWorkerMgmtList(); loadMasterOptions(); }
 };
+
+async function loadMasterOptions(){
+  var sel=document.getElementById('worker-add-master');
+  if(!sel) return;
+  try{
+    const {getDocs,collection}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap=await getDocs(collection(window._fbDb,'master_workers'));
+    const already=new Set(getWorkers().map(w=>w.id));
+    let opts='<option value="">-- 마스터 명부에서 선택 --</option>';
+    snap.forEach(function(d){
+      if(already.has(d.id)) return; // 이미 이 PJT에 등록된 사람은 제외
+      const m=d.data();
+      opts+='<option value="'+d.id+'">'+m.name+' ('+(m.birth||'생년월일 없음')+')</option>';
+    });
+    sel.innerHTML=opts;
+  }catch(e){ console.warn('마스터 명부 로드 실패', e); }
+}
 
 function renderWorkerMgmtList(){
   var el=document.getElementById('worker-mgmt-list');
@@ -2840,19 +2872,17 @@ function _waitForFb(fnName, maxWait){
 }
 
 window.addWorkerFromUI = async function(){
-  var name=document.getElementById('worker-add-name').value.trim();
+  var masterId=document.getElementById('worker-add-master').value;
   var role=document.getElementById('worker-add-role').value;
-  var birth=document.getElementById('worker-add-birth').value;
-  if(!name){ alert('이름을 입력하세요.'); return; }
+  if(!masterId){ alert('마스터 명부에서 인원을 선택하세요.'); return; }
   var btn=event&&event.target?event.target:null;
   if(btn){ btn.disabled=true; btn.textContent='추가 중...'; }
   try{
-    await _waitForFb('_fbAddWorker', 6000);
-    await window._fbAddWorker(name, role, birth);
-    document.getElementById('worker-add-name').value='';
-    document.getElementById('worker-add-birth').value='';
+    await _waitForFb('_fbAddWorkerFromMaster', 6000);
+    await window._fbAddWorkerFromMaster(masterId, role);
     if(window._refreshWorkerArrays) window._refreshWorkerArrays();
     renderWorkerMgmtList();
+    loadMasterOptions();
   }catch(e){
     alert('Firebase 연결을 확인해 주세요. 네트워크 또는 권한 문제일 수 있습니다.');
   }finally{
