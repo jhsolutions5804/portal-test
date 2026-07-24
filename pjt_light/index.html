@@ -828,7 +828,7 @@ function renderAttGrid(){
     const md=attManday[w.id]!=null?attManday[w.id]:'';
     const birthPart = w.birth
       ? '<span style="font-size:10px;color:#9AAABF;margin-left:6px">'+w.birth+'</span>'
-      : (isAdmin?('<input type="date" style="font-size:10px;padding:2px 5px;border:1px solid #ffd699;border-radius:5px;margin-left:6px;background:#fff8ea" title="생년월일 미입력 — 입력하면 다른 PJT 공수와 합산됩니다" onchange="updateWorkerBirth(\''+w.id+'\',this.value)">'):'');
+      : (isAdmin?('<input type="date" style="font-size:12px;padding:4px 7px;border:1px solid #ffd699;border-radius:6px;margin-left:6px;background:#fff8ea;min-width:138px" title="생년월일 미입력 — 입력하면 다른 PJT 공수와 합산됩니다" onchange="updateWorkerBirth(\''+w.id+'\',this.value)">'):'');
     html+='<tr><td class="w-name">'+escapeHtml(w.name)+birthPart+'</td>'
       +'<td><button class="chk-cell'+(checked?' done':'')+'" '+(isAdmin?('onclick="toggleAttCheck(\''+w.id+'\')"'):'disabled')+'>'+(checked?'✓':'')+'</button></td>'
       +'<td><input class="md-input" type="number" step="0.5" min="0" value="'+md+'" '+(isAdmin?('onchange="onMandayInput(\''+w.id+'\',this.value)"'):'disabled')+'></td>'
@@ -850,13 +850,18 @@ window.saveAttendance=async function(){
   const btn=document.getElementById('att-save-btn'); btn.disabled=true; btn.textContent='저장 중...';
   try{
     await setDoc(doc(db,'pjt_registry',pjtId,'attendance',attDate), { checks: attChecks, updatedAt: serverTimestamp() });
-    const mdToSave={}; attChecks.forEach(function(wid){ mdToSave[wid]=attManday[wid]||0; });
+    // 출역 체크 여부와 무관하게, 공수 입력값이 있는 인원은 모두 저장 (체크 안 해도 공수만 입력 가능)
+    const mdToSave={};
+    workersCache.forEach(function(w){
+      const v=attManday[w.id];
+      if(v!=null && v!=='') mdToSave[w.id]=parseFloat(v)||0;
+    });
     await setDoc(doc(db,'pjt_registry',pjtId,'manday',attDate), { md: mdToSave, updatedAt: serverTimestamp() });
     toast('저장되었습니다');
     await recalcTotalManday();
     loadRecentManday();
     loadWorkerTotals();
-  }catch(e){ toast('저장 실패: '+e.message); }
+  }catch(e){ console.error('공수 저장 오류:', e); toast('저장 실패: '+e.message); }
   finally{ btn.disabled=false; btn.textContent='출역·공수 저장'; }
 };
 async function recalcTotalManday(){
