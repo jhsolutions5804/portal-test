@@ -662,7 +662,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
                 <option value="">기술인</option>
                 <option value="팀장">팀장</option>
               </select>
-              <input id="worker-add-birth" type="date" style="padding:7px 8px;border:1px solid #dde4ef;border-radius:8px;font-size:12px;font-family:inherit" title="생년월일">
+              <input id="worker-add-birth" type="date" style="padding:7px 8px;border:1px solid #dde4ef;border-radius:8px;font-size:12px;font-family:inherit;min-width:138px;flex-shrink:0" title="생년월일">
               <button onclick="addWorkerFromUI()" style="padding:7px 14px;background:#1D5BA6;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">추가</button>
             </div>
           </div>
@@ -2664,7 +2664,7 @@ function renderWorkerMgmtList(){
   el.innerHTML=ws.map(function(w){
     var birthPart = w.birth
       ? '<span style="font-size:10px;color:#9AAABF;margin-left:6px">'+w.birth+'</span>'
-      : '<input type="date" class="birth-fix-input" data-wid="'+w.id+'" style="font-size:10px;padding:2px 5px;border:1px solid #ffd699;border-radius:5px;margin-left:6px;background:#fff8ea" title="생년월일 미입력 — 입력하면 다른 PJT 공수와 합산됩니다">';
+      : '<input type="date" class="birth-fix-input" data-wid="'+w.id+'" style="font-size:12px;padding:4px 7px;border:1px solid #ffd699;border-radius:6px;margin-left:6px;background:#fff8ea;min-width:138px" title="생년월일 미입력 — 입력하면 다른 PJT 공수와 합산됩니다">';
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0">'
       +'<span style="font-size:13px;color:#1d1d1f;display:flex;align-items:center">'+(w.role?'<span style="font-size:10px;color:#86868b;margin-right:4px">['+w.role+']</span>':'')+w.name+birthPart+'</span>'
       +'<button class="del-worker-btn" data-wid="'+w.id+'" style="font-size:11px;padding:3px 8px;background:#fff;border:1px solid #ffb3b3;border-radius:6px;color:#c0392b;cursor:pointer">삭제</button>'
