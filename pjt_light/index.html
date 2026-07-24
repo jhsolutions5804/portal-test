@@ -72,6 +72,17 @@ textarea.f-input{resize:vertical;min-height:70px}
 .item-summary-row{display:none}
 .stage-editor-tag{display:inline-flex;align-items:center;gap:5px;background:#f4f8ff;color:#1D5BA6;border:1px solid #d6e4f6;border-radius:16px;padding:4px 10px 4px 12px;font-size:12px;font-weight:600;margin:0 6px 6px 0}
 .stage-editor-tag button{background:none;border:none;color:#1D5BA6;cursor:pointer;font-size:13px;padding:0 2px}
+/* 일정 등록 폼: 카테고리 칩 / 2열 일시 */
+.cats{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.cat-chip{font-size:12px;padding:5px 11px;border-radius:14px;border:1.5px solid #DDE4EF;background:#fff;color:#5C6F8A;cursor:pointer;font-weight:600}
+.cat-chip.on{border-color:#1D5BA6;background:#1D5BA6;color:#fff}
+.two-col{display:flex;gap:8px}
+.two-col .f-input{flex:1}
+.sd-row{display:flex;gap:8px;padding:9px 0;border-bottom:1px solid #F0F4F9;font-size:13px}
+.sd-row:last-child{border-bottom:none}
+.sd-row .k{width:66px;color:#9AAABF;font-weight:600;flex-shrink:0}
+.sd-row .v{color:#1A2540;flex:1;white-space:pre-wrap;min-width:0}
+
 /* 일정관리 캘린더 */
 .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .cal-month-label{font-size:15px;font-weight:700;color:#1A2540}
@@ -308,9 +319,15 @@ textarea.f-input{resize:vertical;min-height:70px}
           <div id="att-grid-wrap"><div class="loading">불러오는 중...</div></div>
           <button class="btn-primary block" id="att-save-btn" onclick="saveAttendance()" style="display:none">출역·공수 저장</button>
         </div>
-        <div class="card">
-          <div class="card-title"><span>📊 최근 7일 공수 합계</span></div>
-          <div id="recent-md-list"><div class="loading">불러오는 중...</div></div>
+        <div>
+          <div class="card">
+            <div class="card-title"><span>👤 인원별 누적공수</span></div>
+            <div id="worker-total-list"><div class="loading">불러오는 중...</div></div>
+          </div>
+          <div class="card">
+            <div class="card-title"><span>📊 최근 7일 공수 합계</span></div>
+            <div id="recent-md-list"><div class="loading">불러오는 중...</div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -381,21 +398,40 @@ textarea.f-input{resize:vertical;min-height:70px}
   ⚠️ 유효한 프로젝트를 찾을 수 없습니다.<br>포털 홈에서 다시 접속해주세요.
 </div>
 
-<!-- 일정 추가 모달 -->
+<!-- 일정 등록/수정 모달 -->
 <div class="modal" id="sched-modal">
   <div class="sheet">
-    <div class="sheet-head"><div class="sheet-title">📅 일정 추가</div><button class="sheet-close" onclick="closeSchedForm()">×</button></div>
+    <div class="sheet-head"><div class="sheet-title" id="sf-title">📅 일정 등록</div><button class="sheet-close" onclick="closeSchedForm()">×</button></div>
     <div class="sheet-body">
-      <label class="f-label">날짜</label><input class="f-input" type="date" id="s-date">
-      <label class="f-label">시간 <span style="color:#aaa;font-weight:400">(선택)</span></label><input class="f-input" type="time" id="s-time">
-      <label class="f-label">구분</label>
-      <select class="f-input" id="s-tag">
-        <option value="in">반입</option><option value="inspect">검수</option><option value="edu">교육</option>
-        <option value="meeting">회의</option><option value="fcu">설치</option><option value="safety">안전</option>
-        <option value="off">휴무</option><option value="leave">연차</option><option value="admin">행정</option>
-      </select>
-      <label class="f-label">내용</label><input class="f-input" type="text" id="s-title" placeholder="예: 자재 반입">
+      <label class="f-label">일정 내용 <span style="color:#aaa;font-weight:400">(공란 가능)</span></label>
+      <input class="f-input" type="text" id="s-text" placeholder="예: FCU 야간 설치 작업">
+      <label class="f-label">카테고리</label>
+      <div class="cats" id="s-cats"></div>
+      <label class="f-label">시작</label>
+      <div class="two-col"><input class="f-input" type="date" id="s-sdate"><input class="f-input" type="time" id="s-stime"></div>
+      <label class="f-label">종료 <span style="color:#aaa;font-weight:400">(같은 날이면 비워도 됨)</span></label>
+      <div class="two-col"><input class="f-input" type="date" id="s-edate"><input class="f-input" type="time" id="s-etime"></div>
+      <label class="f-label">장소 <span style="color:#aaa;font-weight:400">(선택)</span></label>
+      <input class="f-input" type="text" id="s-place" placeholder="예: 가동 1층 대회의실">
+      <label class="f-label">참석자 <span style="color:#aaa;font-weight:400">(선택)</span></label>
+      <input class="f-input" type="text" id="s-att" placeholder="예: 서민우 팀장, 김혁">
+      <label class="f-label">등록자 <span style="color:#aaa;font-weight:400">(선택)</span></label>
+      <input class="f-input" type="text" id="s-reg" placeholder="본인 이름">
       <button class="btn-primary block" id="s-save-btn" onclick="saveSched()">등록</button>
+    </div>
+  </div>
+</div>
+
+<!-- 일정 상세 모달 -->
+<div class="modal" id="sched-detail-modal">
+  <div class="sheet">
+    <div class="sheet-head"><div class="sheet-title">📅 일정 상세</div><button class="sheet-close" onclick="closeSchedDetail()">×</button></div>
+    <div class="sheet-body">
+      <div id="sd-body"></div>
+      <div style="display:flex;gap:10px;margin-top:16px" id="sd-admin-btns">
+        <button class="btn-primary" style="flex:1;background:#f0a500" onclick="editSchedFromDetail()">✏️ 수정</button>
+        <button class="btn-primary" style="flex:1;background:#c0392b" onclick="deleteSchedFromDetail()">🗑 삭제</button>
+      </div>
     </div>
   </div>
 </div>
@@ -489,7 +525,7 @@ async function init(){
       renderStageTags();
     }
     loadItems();
-    loadWorkers().then(renderAttGrid);
+    loadWorkers().then(function(){ renderAttGrid(); loadWorkerTotals(); });
     attDate=getToday(); renderAttDay();
     reportDate=getToday(); renderReportDay();
     initCal();
@@ -706,12 +742,13 @@ window.saveWorker=async function(){
     closeWorkerAdd();
     await loadWorkers();
     renderAttGrid();
+    loadWorkerTotals();
   }catch(e){ toast('추가 실패: '+e.message); }
   finally{ btn.disabled=false; btn.textContent='추가'; }
 };
 window.deleteWorker=async function(id){
   if(!confirm('이 인원을 명단에서 삭제할까요?')) return;
-  try{ await deleteDoc(doc(db,'pjt_registry',pjtId,'workers',id)); await loadWorkers(); renderAttGrid(); }
+  try{ await deleteDoc(doc(db,'pjt_registry',pjtId,'workers',id)); await loadWorkers(); renderAttGrid(); loadWorkerTotals(); }
   catch(e){ toast('삭제 실패: '+e.message); }
 };
 async function loadWorkers(){
@@ -719,6 +756,25 @@ async function loadWorkers(){
     const snap=await getDocs(query(collection(db,'pjt_registry',pjtId,'workers'), orderBy('order','asc')));
     workersCache=[]; snap.forEach(d=>workersCache.push(Object.assign({id:d.id}, d.data())));
   }catch(e){ workersCache=[]; }
+}
+async function loadWorkerTotals(){
+  const el=document.getElementById('worker-total-list');
+  if(!el) return;
+  try{
+    const snap=await getDocs(collection(db,'pjt_registry',pjtId,'manday'));
+    const totals={};
+    snap.forEach(function(d){
+      const md=d.data().md||{};
+      Object.keys(md).forEach(function(k){ totals[k]=(totals[k]||0)+(parseFloat(md[k])||0); });
+    });
+    const rows=workersCache.map(function(w){ return {name:w.name, total: totals[w.id]||0}; })
+      .filter(function(r){ return r.total>0; })
+      .sort(function(a,b){ return b.total-a.total; });
+    if(!rows.length){ el.innerHTML='<div class="empty">공수 기록이 없습니다.</div>'; return; }
+    el.innerHTML=rows.map(function(r){
+      return '<div class="recent-md-row"><span class="d">'+escapeHtml(r.name)+'</span><span class="v">'+r.total.toFixed(1)+'</span></div>';
+    }).join('');
+  }catch(e){ el.innerHTML='<div class="empty">불러오기 실패</div>'; }
 }
 async function loadAttOfDay(){
   try{
@@ -784,6 +840,7 @@ window.saveAttendance=async function(){
     toast('저장되었습니다');
     await recalcTotalManday();
     loadRecentManday();
+    loadWorkerTotals();
   }catch(e){ toast('저장 실패: '+e.message); }
   finally{ btn.disabled=false; btn.textContent='출역·공수 저장'; }
 };
@@ -808,9 +865,18 @@ const SCHED_TAG = {
   meeting:{c:'#5D3A00',l:'회의'}, fcu:{c:'#0A3D7A',l:'설치'}, safety:{c:'#8D6E00',l:'안전'},
   off:{c:'#c0392b',l:'휴무'}, leave:{c:'#e67e22',l:'연차'}, admin:{c:'#7A8AA0',l:'행정'}
 };
+const SCHED_CATS=[['in','반입'],['inspect','검수'],['edu','교육'],['meeting','회의'],['fcu','설치'],['safety','안전'],['off','휴무'],['leave','연차'],['admin','행정']];
 let calY, calM, calSel=null, calCache={};
+let schedCurCat='admin', schedEditing=null, schedDetailItem=null;
 const calPad=n=>String(n).padStart(2,'0');
 const calKey=(y,m,d)=>y+'-'+calPad(m+1)+'-'+calPad(d);
+function rangeText(s){
+  const f=d=>{ if(!d) return ''; const p=d.split('-'); return (+p[1])+'/'+(+p[2]); };
+  const sd=s.sdate||'', ed=s.edate||sd;
+  let base=(sd===ed)?f(sd):f(sd)+' ~ '+f(ed);
+  if(s.stime) base+=' '+s.stime+(s.etime?('~'+s.etime):'');
+  return base||'—';
+}
 
 function initCal(){
   const now=new Date(); calY=now.getFullYear(); calM=now.getMonth();
@@ -842,12 +908,12 @@ function renderSchedCal(){
   const label=document.getElementById('cal-month-label');
   if(!grid) return;
   if(label) label.textContent=calY+'년 '+(calM+1)+'월';
-  // 요일 헤더 뒤의 기존 날짜 셀만 제거
-  Array.from(grid.querySelectorAll('.cal-day')).forEach(function(el){ el.remove(); });
+  // 요일 헤더 뒤의 기존 날짜/스페이서 셀 제거 (누락 시 클릭할 때마다 셀이 누적되어 레이아웃이 밀리는 버그 발생)
+  Array.from(grid.querySelectorAll('.cal-day, .cal-spacer')).forEach(function(el){ el.remove(); });
   const first=new Date(calY,calM,1).getDay();
   const days=new Date(calY,calM+1,0).getDate();
   const now=new Date(); const todayKey=calKey(now.getFullYear(),now.getMonth(),now.getDate());
-  for(let i=0;i<first;i++){ const sp=document.createElement('div'); grid.appendChild(sp); }
+  for(let i=0;i<first;i++){ const sp=document.createElement('div'); sp.className='cal-spacer'; grid.appendChild(sp); }
   for(let d=1;d<=days;d++){
     const dk=calKey(calY,calM,d);
     const items=calCache[dk]||[];
@@ -878,10 +944,10 @@ window.selectSchedDay=function(dk){
   if(items.length){
     items.forEach(function(s){
       const tg=SCHED_TAG[s.tag||'admin']||SCHED_TAG.admin;
-      html+='<div class="cal-sched-row">'
+      html+='<div class="cal-sched-row" style="cursor:pointer" onclick="openSchedDetail(\''+s.id+'\')">'
         +'<span class="tag" style="background:'+tg.c+'22;color:'+tg.c+'">'+tg.l+'</span>'
-        +'<div style="flex:1;min-width:0"><div class="sched-title">'+(s.stime?escapeHtml(s.stime)+' ':'')+escapeHtml(s.text||'')+'</div></div>'
-        +(isAdmin?('<button class="del-btn" onclick="deleteSched(\''+s.id+'\')">삭제</button>'):'')
+        +'<div style="flex:1;min-width:0"><div class="sched-title">'+(s.stime?escapeHtml(s.stime)+' ':'')+escapeHtml(s.text||'(내용 없음)')+'</div>'
+        +(s.place?('<div class="sched-memo">📍 '+escapeHtml(s.place)+'</div>'):'')+'</div>'
         +'</div>';
     });
   } else {
@@ -889,29 +955,105 @@ window.selectSchedDay=function(dk){
   }
   document.getElementById('cal-detail-body').innerHTML=html;
 };
+
+function renderSchedCats(){
+  const el=document.getElementById('s-cats'); if(!el) return;
+  el.innerHTML=SCHED_CATS.map(function(c){
+    return '<span class="cat-chip'+(c[0]===schedCurCat?' on':'')+'" onclick="pickSchedCat(\''+c[0]+'\')">'+c[1]+'</span>';
+  }).join('');
+}
+window.pickSchedCat=function(tag){ schedCurCat=tag; renderSchedCats(); };
+
 window.openSchedForm=function(dk){
-  document.getElementById('s-date').value=dk||'';
-  document.getElementById('s-time').value='';
-  document.getElementById('s-tag').value='in';
-  document.getElementById('s-title').value='';
+  schedEditing=null;
+  document.getElementById('sf-title').textContent='📅 일정 등록';
+  document.getElementById('s-text').value='';
+  schedCurCat='admin';
+  document.getElementById('s-sdate').value=dk||'';
+  document.getElementById('s-edate').value=dk||'';
+  document.getElementById('s-stime').value='';
+  document.getElementById('s-etime').value='';
+  document.getElementById('s-place').value='';
+  document.getElementById('s-att').value='';
+  document.getElementById('s-reg').value='';
+  renderSchedCats();
+  closeSchedDetail();
   document.getElementById('sched-modal').classList.add('on');
 };
 window.closeSchedForm=function(){ document.getElementById('sched-modal').classList.remove('on'); };
+
+window.openSchedDetail=function(id){
+  const dk=calSel;
+  const item=(calCache[dk]||[]).find(function(x){ return x.id===id; });
+  if(!item) return;
+  schedDetailItem=item;
+  const tg=SCHED_TAG[item.tag||'admin']||SCHED_TAG.admin;
+  const rows=[
+    ['카테고리','<span class="tag" style="background:'+tg.c+'22;color:'+tg.c+'">'+tg.l+'</span>'],
+    ['일정', escapeHtml(item.text||'—')],
+    ['기간', escapeHtml(rangeText(item))],
+    ['장소', escapeHtml(item.place||'—')],
+    ['참석자', escapeHtml(item.att||'—')],
+    ['등록자', escapeHtml(item.reg||'—')],
+  ];
+  document.getElementById('sd-body').innerHTML=rows.map(function(r){
+    return '<div class="sd-row"><div class="k">'+r[0]+'</div><div class="v">'+r[1]+'</div></div>';
+  }).join('');
+  document.getElementById('sd-admin-btns').style.display=isAdmin?'flex':'none';
+  document.getElementById('sched-detail-modal').classList.add('on');
+};
+window.closeSchedDetail=function(){ document.getElementById('sched-detail-modal').classList.remove('on'); };
+window.editSchedFromDetail=function(){
+  const item=schedDetailItem; if(!item) return;
+  closeSchedDetail();
+  schedEditing=item;
+  document.getElementById('sf-title').textContent='✏️ 일정 수정';
+  document.getElementById('s-text').value=item.text||'';
+  schedCurCat=item.tag||'admin';
+  document.getElementById('s-sdate').value=item.sdate||'';
+  document.getElementById('s-edate').value=item.edate||item.sdate||'';
+  document.getElementById('s-stime').value=item.stime||'';
+  document.getElementById('s-etime').value=item.etime||'';
+  document.getElementById('s-place').value=item.place||'';
+  document.getElementById('s-att').value=item.att||'';
+  document.getElementById('s-reg').value=item.reg||'';
+  renderSchedCats();
+  document.getElementById('sched-modal').classList.add('on');
+};
+window.deleteSchedFromDetail=function(){
+  const item=schedDetailItem; if(!item) return;
+  deleteSched(item.id);
+  closeSchedDetail();
+};
+
 window.saveSched=async function(){
-  const sdate=document.getElementById('s-date').value;
-  const text=document.getElementById('s-title').value.trim();
-  if(!sdate||!text){ toast('날짜와 내용을 입력하세요'); return; }
-  const btn=document.getElementById('s-save-btn'); btn.disabled=true; btn.textContent='등록 중...';
+  let sdate=document.getElementById('s-sdate').value;
+  let edate=document.getElementById('s-edate').value||sdate;
+  if(!sdate){ toast('시작일을 입력하세요'); return; }
+  if(edate<sdate) edate=sdate;
+  const tagLabel=(SCHED_CATS.find(function(c){ return c[0]===schedCurCat; })||['admin','행정'])[1];
+  const data={
+    text: document.getElementById('s-text').value.trim(),
+    tag: schedCurCat, tagLabel: tagLabel,
+    sdate, edate,
+    stime: document.getElementById('s-stime').value||'',
+    etime: document.getElementById('s-etime').value||'',
+    place: document.getElementById('s-place').value.trim(),
+    att: document.getElementById('s-att').value.trim(),
+    reg: document.getElementById('s-reg').value.trim()
+  };
+  const btn=document.getElementById('s-save-btn'); btn.disabled=true; btn.textContent='저장 중...';
   try{
-    const ref=doc(collection(db,'pjt_registry',pjtId,'schedules'));
-    await setDoc(ref, {
-      sdate, edate: sdate, tag: document.getElementById('s-tag').value,
-      text, stime: document.getElementById('s-time').value||'',
-      createdAt: serverTimestamp()
-    });
+    if(schedEditing){
+      await setDoc(doc(db,'pjt_registry',pjtId,'schedules',schedEditing.id), data, {merge:true});
+    } else {
+      const ref=doc(collection(db,'pjt_registry',pjtId,'schedules'));
+      await setDoc(ref, Object.assign({createdAt: serverTimestamp()}, data));
+    }
+    schedEditing=null;
     closeSchedForm();
     await loadSchedMonth();
-  }catch(e){ toast('등록 실패: '+e.message); }
+  }catch(e){ toast('저장 실패: '+e.message); }
   finally{ btn.disabled=false; btn.textContent='등록'; }
 };
 window.deleteSched=async function(id){
