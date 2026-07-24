@@ -72,6 +72,26 @@ textarea.f-input{resize:vertical;min-height:70px}
 .item-summary-row{display:none}
 .stage-editor-tag{display:inline-flex;align-items:center;gap:5px;background:#f4f8ff;color:#1D5BA6;border:1px solid #d6e4f6;border-radius:16px;padding:4px 10px 4px 12px;font-size:12px;font-weight:600;margin:0 6px 6px 0}
 .stage-editor-tag button{background:none;border:none;color:#1D5BA6;cursor:pointer;font-size:13px;padding:0 2px}
+/* 일정관리 캘린더 */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cal-month-label{font-size:15px;font-weight:700;color:#1A2540}
+.cal-legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;font-size:11px;color:#555}
+.legend-item{display:flex;align-items:center;gap:4px}
+.legend-dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-dow{text-align:center;font-size:11px;color:#9AAABF;font-weight:700;padding:4px 0}
+.cal-day{min-height:52px;border:1px solid #EEF2F7;border-radius:8px;padding:5px 4px;cursor:pointer;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:3px}
+.cal-day.today{background:#EAF2FC;border-color:#1D5BA6}
+.cal-day.sel{background:#1D5BA6;border-color:#1D5BA6}
+.cal-day .dnum{font-size:13px;font-weight:600;color:#1A2540}
+.cal-day.sel .dnum{color:#fff}
+.cal-day .ddots{display:flex;gap:2px;flex-wrap:wrap;justify-content:center}
+.cal-day .ddot{width:5px;height:5px;border-radius:50%;display:inline-block}
+.cal-right-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 0}
+.cal-detail-hd{font-size:14px;font-weight:700;color:#1A2540;margin-bottom:12px}
+.cal-sched-row{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid #f0f0f0}
+.cal-sched-row:last-child{border-bottom:none}
+
 /* 근태·공수 그리드 */
 .att-grid{width:100%;border-collapse:collapse;font-size:13px}
 .att-grid th{background:#f5f7fa;color:#555;font-weight:700;padding:8px 6px;text-align:center;border-bottom:1.5px solid #e0e6ee}
@@ -157,10 +177,10 @@ textarea.f-input{resize:vertical;min-height:70px}
   /* 공사일보 탭: 좌(작성폼)+우(최근 일보) 2단 분할 */
   .report-pc-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
 
-  /* 일정관리 탭: 카드형 그리드 */
-  #sched-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;padding:20px 24px}
-  #sched-list .sched-item{border:1px solid #eef0f3;border-radius:10px;padding:12px 14px;border-bottom:1px solid #eef0f3;background:#fafbfc}
-  #sched-list .empty{grid-column:1/-1}
+  /* 일정관리 캘린더: 좌(달력)+우(상세) 2단 분할 */
+  .cal-wrap{display:grid;grid-template-columns:420px 1fr;gap:16px;align-items:start}
+  .cal-day{min-height:74px}
+  .cal-right{min-height:400px}
 
   /* 품목현황 탭: 상단 요약 스트립 */
   .item-summary-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
@@ -295,10 +315,38 @@ textarea.f-input{resize:vertical;min-height:70px}
       </div>
     </div>
 
-    <!-- 일정관리 -->
+    <!-- 일정관리 (캘린더) -->
     <div id="pane-sched" style="display:none">
-      <button class="add-btn" onclick="openSchedForm()">+ 일정 추가</button>
-      <div class="card" id="sched-list"><div class="loading">불러오는 중...</div></div>
+      <div class="cal-wrap">
+        <div class="cal-left">
+          <div class="cal-nav">
+            <button class="nav-arrow" onclick="calShift(-1)">‹</button>
+            <span class="cal-month-label" id="cal-month-label">—</span>
+            <button class="nav-arrow" onclick="calShift(1)">›</button>
+          </div>
+          <div class="cal-legend">
+            <span class="legend-item"><span class="legend-dot" style="background:#1D5BA6"></span>반입</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#2e7d32"></span>검수</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#5e35b1"></span>교육</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#c0392b"></span>휴무</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#e67e22"></span>연차</span>
+          </div>
+          <div class="cal-grid" id="cal-grid">
+            <div class="cal-dow">일</div><div class="cal-dow">월</div><div class="cal-dow">화</div>
+            <div class="cal-dow">수</div><div class="cal-dow">목</div><div class="cal-dow">금</div><div class="cal-dow">토</div>
+          </div>
+        </div>
+        <div class="cal-right card">
+          <div class="cal-right-empty" id="cal-right-empty">
+            <span style="font-size:32px">📅</span>
+            <span style="color:#9AAABF;font-size:13px;margin-top:6px">날짜를 선택하면 일정이 표시됩니다</span>
+          </div>
+          <div id="cal-detail" style="display:none">
+            <div class="cal-detail-hd" id="cal-detail-title">—</div>
+            <div id="cal-detail-body"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 공사일보 -->
@@ -339,13 +387,14 @@ textarea.f-input{resize:vertical;min-height:70px}
     <div class="sheet-head"><div class="sheet-title">📅 일정 추가</div><button class="sheet-close" onclick="closeSchedForm()">×</button></div>
     <div class="sheet-body">
       <label class="f-label">날짜</label><input class="f-input" type="date" id="s-date">
+      <label class="f-label">시간 <span style="color:#aaa;font-weight:400">(선택)</span></label><input class="f-input" type="time" id="s-time">
       <label class="f-label">구분</label>
       <select class="f-input" id="s-tag">
-        <option value="반입">반입</option><option value="검수">검수</option><option value="교육">교육</option>
-        <option value="휴무">휴무</option><option value="연차">연차</option><option value="기타">기타</option>
+        <option value="in">반입</option><option value="inspect">검수</option><option value="edu">교육</option>
+        <option value="meeting">회의</option><option value="fcu">설치</option><option value="safety">안전</option>
+        <option value="off">휴무</option><option value="leave">연차</option><option value="admin">행정</option>
       </select>
-      <label class="f-label">제목</label><input class="f-input" type="text" id="s-title" placeholder="예: 자재 반입">
-      <label class="f-label">메모</label><textarea class="f-input" id="s-memo" placeholder="선택 입력" style="min-height:50px"></textarea>
+      <label class="f-label">내용</label><input class="f-input" type="text" id="s-title" placeholder="예: 자재 반입">
       <button class="btn-primary block" id="s-save-btn" onclick="saveSched()">등록</button>
     </div>
   </div>
@@ -443,7 +492,7 @@ async function init(){
     loadWorkers().then(renderAttGrid);
     attDate=getToday(); renderAttDay();
     reportDate=getToday(); renderReportDay();
-    loadSchedules();
+    initCal();
     loadReports();
   }catch(e){ console.error(e); document.getElementById('no-pjt').style.display='block'; }
 }
@@ -753,48 +802,125 @@ async function recalcTotalManday(){
   }catch(e){}
 }
 
-// ── 일정관리 ──
-window.openSchedForm=function(){
-  document.getElementById('s-date').value=''; document.getElementById('s-tag').value='반입';
-  document.getElementById('s-title').value=''; document.getElementById('s-memo').value='';
+// ── 일정관리 (캘린더) ──
+const SCHED_TAG = {
+  in:{c:'#1D5BA6',l:'반입'}, inspect:{c:'#2e7d32',l:'검수'}, edu:{c:'#5e35b1',l:'교육'},
+  meeting:{c:'#5D3A00',l:'회의'}, fcu:{c:'#0A3D7A',l:'설치'}, safety:{c:'#8D6E00',l:'안전'},
+  off:{c:'#c0392b',l:'휴무'}, leave:{c:'#e67e22',l:'연차'}, admin:{c:'#7A8AA0',l:'행정'}
+};
+let calY, calM, calSel=null, calCache={};
+const calPad=n=>String(n).padStart(2,'0');
+const calKey=(y,m,d)=>y+'-'+calPad(m+1)+'-'+calPad(d);
+
+function initCal(){
+  const now=new Date(); calY=now.getFullYear(); calM=now.getMonth();
+  loadSchedMonth();
+}
+window.calShift=function(dir){
+  calM+=dir;
+  if(calM>11){calM=0;calY++;}
+  if(calM<0){calM=11;calY--;}
+  loadSchedMonth();
+};
+async function loadSchedMonth(){
+  const start=calKey(calY,calM,1);
+  const end=calKey(calY,calM,new Date(calY,calM+1,0).getDate());
+  calCache={};
+  try{
+    const snap=await getDocs(query(collection(db,'pjt_registry',pjtId,'schedules'), orderBy('sdate','asc')));
+    snap.forEach(function(d){
+      const s=d.data(); const dk=s.sdate;
+      if(!dk || dk<start || dk>end) return;
+      (calCache[dk]=calCache[dk]||[]).push(Object.assign({id:d.id}, s));
+    });
+  }catch(e){}
+  renderSchedCal();
+  if(calSel) selectSchedDay(calSel);
+}
+function renderSchedCal(){
+  const grid=document.getElementById('cal-grid');
+  const label=document.getElementById('cal-month-label');
+  if(!grid) return;
+  if(label) label.textContent=calY+'년 '+(calM+1)+'월';
+  // 요일 헤더 뒤의 기존 날짜 셀만 제거
+  Array.from(grid.querySelectorAll('.cal-day')).forEach(function(el){ el.remove(); });
+  const first=new Date(calY,calM,1).getDay();
+  const days=new Date(calY,calM+1,0).getDate();
+  const now=new Date(); const todayKey=calKey(now.getFullYear(),now.getMonth(),now.getDate());
+  for(let i=0;i<first;i++){ const sp=document.createElement('div'); grid.appendChild(sp); }
+  for(let d=1;d<=days;d++){
+    const dk=calKey(calY,calM,d);
+    const items=calCache[dk]||[];
+    const tags=[...new Set(items.map(it=>it.tag||'admin'))].slice(0,6);
+    const cell=document.createElement('div');
+    cell.className='cal-day'+(dk===todayKey?' today':'')+(dk===calSel?' sel':'');
+    cell.onclick=function(){ selectSchedDay(dk); };
+    const dots=tags.map(function(t){ return '<span class="ddot" style="background:'+(SCHED_TAG[t]||SCHED_TAG.admin).c+'"></span>'; }).join('');
+    cell.innerHTML='<div class="dnum">'+d+'</div><div class="ddots">'+dots+'</div>';
+    grid.appendChild(cell);
+  }
+}
+window.selectSchedDay=function(dk){
+  calSel=dk;
+  renderSchedCal();
+  const empty=document.getElementById('cal-right-empty');
+  const det=document.getElementById('cal-detail');
+  const title=document.getElementById('cal-detail-title');
+  empty.style.display='none'; det.style.display='block';
+  const p=dk.split('-'); const dowKo=['일','월','화','수','목','금','토'];
+  const dow=dowKo[new Date(dk+'T00:00:00').getDay()];
+  title.textContent='📅 '+parseInt(p[1])+'월 '+parseInt(p[2])+'일 ('+dow+')';
+  const items=(calCache[dk]||[]).slice().sort(function(a,b){ return (a.stime||'').localeCompare(b.stime||''); });
+  let html='';
+  if(isAdmin){
+    html+='<button class="add-btn" style="margin-bottom:14px" onclick="openSchedForm(\''+dk+'\')">+ 이 날 일정 등록</button>';
+  }
+  if(items.length){
+    items.forEach(function(s){
+      const tg=SCHED_TAG[s.tag||'admin']||SCHED_TAG.admin;
+      html+='<div class="cal-sched-row">'
+        +'<span class="tag" style="background:'+tg.c+'22;color:'+tg.c+'">'+tg.l+'</span>'
+        +'<div style="flex:1;min-width:0"><div class="sched-title">'+(s.stime?escapeHtml(s.stime)+' ':'')+escapeHtml(s.text||'')+'</div></div>'
+        +(isAdmin?('<button class="del-btn" onclick="deleteSched(\''+s.id+'\')">삭제</button>'):'')
+        +'</div>';
+    });
+  } else {
+    html+='<div class="empty">이 날 등록된 일정이 없습니다.</div>';
+  }
+  document.getElementById('cal-detail-body').innerHTML=html;
+};
+window.openSchedForm=function(dk){
+  document.getElementById('s-date').value=dk||'';
+  document.getElementById('s-time').value='';
+  document.getElementById('s-tag').value='in';
+  document.getElementById('s-title').value='';
   document.getElementById('sched-modal').classList.add('on');
 };
 window.closeSchedForm=function(){ document.getElementById('sched-modal').classList.remove('on'); };
 window.saveSched=async function(){
-  const date=document.getElementById('s-date').value;
-  const title=document.getElementById('s-title').value.trim();
-  if(!date||!title){ toast('날짜와 제목을 입력하세요'); return; }
+  const sdate=document.getElementById('s-date').value;
+  const text=document.getElementById('s-title').value.trim();
+  if(!sdate||!text){ toast('날짜와 내용을 입력하세요'); return; }
   const btn=document.getElementById('s-save-btn'); btn.disabled=true; btn.textContent='등록 중...';
   try{
     const ref=doc(collection(db,'pjt_registry',pjtId,'schedules'));
-    await setDoc(ref, { date, tag: document.getElementById('s-tag').value, title,
-      memo: document.getElementById('s-memo').value.trim(), createdAt: serverTimestamp() });
-    closeSchedForm(); loadSchedules();
+    await setDoc(ref, {
+      sdate, edate: sdate, tag: document.getElementById('s-tag').value,
+      text, stime: document.getElementById('s-time').value||'',
+      createdAt: serverTimestamp()
+    });
+    closeSchedForm();
+    await loadSchedMonth();
   }catch(e){ toast('등록 실패: '+e.message); }
   finally{ btn.disabled=false; btn.textContent='등록'; }
 };
 window.deleteSched=async function(id){
   if(!confirm('이 일정을 삭제할까요?')) return;
-  try{ await deleteDoc(doc(db,'pjt_registry',pjtId,'schedules',id)); loadSchedules(); }
-  catch(e){ toast('삭제 실패: '+e.message); }
-};
-async function loadSchedules(){
-  const el=document.getElementById('sched-list');
   try{
-    const snap=await getDocs(query(collection(db,'pjt_registry',pjtId,'schedules'), orderBy('date','asc')));
-    if(snap.empty){ el.innerHTML='<div class="empty">등록된 일정이 없습니다.</div>'; return; }
-    let html='';
-    snap.forEach(function(d){
-      const s=d.data();
-      html+='<div class="sched-item"><div class="sched-date">'+fmtDate(s.date)+'</div>'
-        +'<div class="sched-body"><span class="tag tag-'+(s.tag||'기타')+'">'+(s.tag||'기타')+'</span>'
-        +'<div class="sched-title">'+escapeHtml(s.title||'')+'</div>'
-        +(s.memo?('<div class="sched-memo">'+escapeHtml(s.memo)+'</div>'):'')+'</div>'
-        +(isAdmin?('<button class="del-btn" onclick="deleteSched(\''+d.id+'\')">삭제</button>'):'')+'</div>';
-    });
-    el.innerHTML=html;
-  }catch(e){ el.innerHTML='<div class="empty">불러오기 실패</div>'; }
-}
+    await deleteDoc(doc(db,'pjt_registry',pjtId,'schedules',id));
+    await loadSchedMonth();
+  }catch(e){ toast('삭제 실패: '+e.message); }
+};
 
 // ── 공사일보 ──
 let reportDate=getToday();
