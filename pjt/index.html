@@ -941,6 +941,7 @@ window._fbLoadWorkers = async function(){
     return true;
   }catch(e){ return false; }
 };
+let _lastSaveInfo='';
 function _showDebugBadge(){
   try{
     let b=document.getElementById('_chunsik-debug-badge');
@@ -951,9 +952,11 @@ function _showDebugBadge(){
       document.body.appendChild(b);
     }
     const ws=(window._dynamicWorkers||[]);
-    b.textContent='🔍 DEBUG\nprojectId: '+app.options.projectId+'\ncollection: '+WORKERS_COLLECTION+'\nworkers('+ws.length+'): '+ws.map(w=>w.id+'='+w.name).join(', ');
+    b.textContent='🔍 DEBUG\nprojectId: '+app.options.projectId+'\ncollection: '+WORKERS_COLLECTION+'\nworkers('+ws.length+'): '+ws.map(w=>w.id+'='+w.name).join(', ')+(_lastSaveInfo?('\n'+_lastSaveInfo):'');
   }catch(e){}
 }
+window._showDebugBadge=_showDebugBadge;
+window._setLastSaveInfo=function(s){ _lastSaveInfo=s; _showDebugBadge(); };
 
 window._fbAddWorker = async function(name, role, birth){
   try{
@@ -2441,6 +2444,9 @@ var TECHS = WORKERS.filter(w=>w.id!=='w1');
 window._refreshWorkerArrays = function(){
   WORKERS = getWorkers();
   TECHS = WORKERS.filter(w=>w.id!=='w1');
+  // 명단이 갱신됐는데 이미 그려진 근태/공수 화면이 예전 상태로 남아있던 문제 수정: 강제 재렌더
+  if(typeof window._renderWorkerUI==='function') window._renderWorkerUI();
+  if(typeof window._renderMandayUI==='function') window._renderMandayUI();
 };
 
 // ===================================================
@@ -2462,6 +2468,7 @@ window.setMandayInput=function(workerId,dateKey,raw){
   const inp=document.querySelector('#att-worker-list .md-input[data-wid="'+workerId+'"]');
   if(inp) inp.value = v ? v.toFixed(1) : '';
   if(window._fbSetManday) window._fbSetManday(dateKey,m);
+  if(typeof window._setLastSaveInfo==='function'){ window._setLastSaveInfo('마지막 저장: workerId='+workerId+' date='+dateKey+' value='+v); }
 };
 
 // ===================================================
@@ -2613,6 +2620,7 @@ window.setAllManday=function(dateKey,value){
   window._mandayCache[dateKey]=m; // 낙관적 반영
   if(window._renderMandayUI) window._renderMandayUI();
   if(window._fbSetManday) window._fbSetManday(dateKey,m);
+  if(typeof window._setLastSaveInfo==='function'){ window._setLastSaveInfo('마지막 일괄저장: date='+dateKey+' value='+v+' ids='+_ws.map(w=>w.id).join(',')); }
 };
 window.applyAllManday=function(dateKey){
   const inp=document.getElementById('att-bulk-md');
