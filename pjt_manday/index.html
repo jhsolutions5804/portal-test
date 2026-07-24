@@ -53,6 +53,9 @@ tr:last-child td{border-bottom:none}
 
   <div id="warn-section" style="display:none"></div>
 
+  <button class="nav-arrow" style="width:auto;padding:0 14px;font-size:12px" onclick="toggleDebug()">🔍 디버그 정보</button>
+  <div id="debug-panel" class="card" style="display:none;font-size:11px;font-family:monospace;white-space:pre-wrap;line-height:1.6;max-height:400px;overflow-y:auto"></div>
+
   <div class="card">
     <div class="card-title">🏗️ PJT별 합계</div>
     <div id="pjt-table"><div class="loading">불러오는 중...</div></div>
@@ -108,6 +111,13 @@ async function loadRoster(collPath, sourceLabel, sourceKind, regId){
   }catch(e){ return []; }
 }
 
+let _debugLines=[];
+window.toggleDebug=function(){
+  const el=document.getElementById('debug-panel');
+  el.style.display = (el.style.display==='none') ? 'block' : 'none';
+  if(el.style.display==='block') el.textContent=_debugLines.join('\n');
+};
+
 async function loadMonth(){
   document.getElementById('app').style.display='none';
   document.getElementById('loading-init').style.display='block';
@@ -147,6 +157,14 @@ async function loadMonth(){
   const fabById={}; rosterFab.forEach(w=>fabById[w.id]=w);
   const supById={}; rosterSup.forEach(w=>supById[w.id]=w);
 
+  _debugLines=[];
+  _debugLines.push('=== FAB 로스터 ('+rosterFab.length+'명) ===');
+  rosterFab.forEach(w=>_debugLines.push('  id='+w.id+' name='+w.name+' birth='+(w.birth||'(없음)')));
+  _debugLines.push('=== SUP 로스터 ('+rosterSup.length+'명) ===');
+  rosterSup.forEach(w=>_debugLines.push('  id='+w.id+' name='+w.name+' birth='+(w.birth||'(없음)')));
+  _debugLines.push('=== 경량 PJT 로스터 ('+rosterLight.length+'명) ===');
+  rosterLight.forEach(w=>_debugLines.push('  id='+w.id+' name='+w.name+' birth='+(w.birth||'(없음)')+' pjt='+w.sourceLabel));
+
   // 3. 공수 데이터 집계
   // pjtTotals: { pjtKey: { name, total, workerCount } }
   const pjtTotals={};
@@ -182,15 +200,20 @@ async function loadMonth(){
   }
 
   // 3-1. FAB/SUP 공유 컬렉션(worker_manday) — 날짜별로 순회하며 소속 판별
+  _debugLines.push('=== worker_manday 일자별 원본 (FAB/SUP 공유 컬렉션) ===');
   for(const dk of dateKeys){
     try{
       const snap=await getDoc(doc(db,'worker_manday',dk));
       if(!snap.exists()) continue;
       const md=snap.data().md||{};
-      Object.keys(md).forEach(function(wid){
+      const keys=Object.keys(md);
+      if(!keys.length) continue;
+      _debugLines.push(dk+': '+JSON.stringify(md));
+      keys.forEach(function(wid){
         const amount=parseFloat(md[wid])||0;
         if(!amount) return;
         const inFab=fabIdSet.has(wid), inSup=supIdSet.has(wid);
+        _debugLines.push('  · '+wid+' amount='+amount+' → inFab='+inFab+' inSup='+inSup);
         if(inFab && inSup){ ambiguousIds.add(wid); }
         if(inFab){
           pjtTotals['p4ph2'].total+=amount;
@@ -202,7 +225,7 @@ async function loadMonth(){
         }
         if(!inFab && !inSup){ unknownIdCount++; }
       });
-    }catch(e){}
+    }catch(e){ _debugLines.push(dk+': 오류 - '+e.message); }
   }
 
   // 3-2. 경량 PJT 각각의 manday 서브컬렉션
