@@ -31,6 +31,18 @@ tr:last-child td{border-bottom:none}
 .birth-input{font-size:12px;padding:4px 8px;border:1px solid #e0a800;border-radius:6px;min-width:138px}
 .loading{text-align:center;padding:60px 0;color:#9AAABF;font-size:13px}
 .empty{text-align:center;color:#9AAABF;font-size:13px;padding:20px 0}
+label.f-label{font-size:12px;font-weight:600;color:#555;display:block;margin:12px 0 5px}
+input.f-input,select.f-input{width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box}
+.master-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f0f0f0;font-size:13px}
+.master-row:last-child{border-bottom:none}
+.leader-badge{font-size:10px;padding:2px 7px;border-radius:5px;background:#eef7ee;color:#1b5e20;font-weight:700}
+.member-badge{font-size:10px;padding:2px 7px;border-radius:5px;background:#eef2f7;color:#5C6F8A;font-weight:600}
+.team-block{border:1px solid #eef0f3;border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.team-head{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;color:#1A2540;margin-bottom:8px}
+.team-member-row{display:flex;justify-content:space-between;padding:5px 0 5px 14px;font-size:12.5px;color:#555;border-top:1px dashed #f0f0f0}
+.migrate-group{border:1px solid #eef0f3;border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.migrate-name{font-weight:700;color:#1A2540;font-size:13px;margin-bottom:6px}
+.migrate-src{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#666;padding:4px 0}
 @media (max-width:700px){ .summary-row{grid-template-columns:1fr 1fr} }
 </style>
 </head>
@@ -56,21 +68,94 @@ tr:last-child td{border-bottom:none}
   <button class="nav-arrow" style="width:auto;padding:0 14px;font-size:12px" onclick="toggleDebug()">🔍 디버그 정보</button>
   <div id="debug-panel" class="card" style="display:none;font-size:11px;font-family:monospace;white-space:pre-wrap;line-height:1.6;max-height:400px;overflow-y:auto"></div>
 
+  <div class="card" id="master-card" style="display:none">
+    <div class="card-title">
+      <span>👥 근로자 마스터 관리</span>
+      <div style="display:flex;gap:6px">
+        <button class="nav-arrow" style="width:auto;padding:0 12px;font-size:12px" onclick="openMigrateTool()">🔄 기존 인원 마이그레이션</button>
+        <button class="nav-arrow" style="width:auto;padding:0 12px;font-size:12px" onclick="openMasterForm()">+ 신규 등록</button>
+      </div>
+    </div>
+    <div id="master-table"><div class="loading">불러오는 중...</div></div>
+  </div>
+
+  <div class="card" id="team-card" style="display:none">
+    <div class="card-title">🧑‍🤝‍🧑 팀별 합계 <span style="font-weight:400;font-size:11px;color:#9AAABF">(팀장 기준 · 금액은 관리자만 표시)</span></div>
+    <div id="team-table"><div class="loading">불러오는 중...</div></div>
+  </div>
+
   <div class="card">
     <div class="card-title">🏗️ PJT별 합계</div>
     <div id="pjt-table"><div class="loading">불러오는 중...</div></div>
   </div>
 
   <div class="card">
-    <div class="card-title">👤 개인별 합계 <span style="font-weight:400;font-size:11px;color:#9AAABF">(여러 PJT 참여 시 이름+생년월일 기준으로 자동 합산)</span></div>
+    <div class="card-title">👤 개인별 합계 <span style="font-weight:400;font-size:11px;color:#9AAABF">(마스터 ID 기준으로 자동 합산)</span></div>
     <div id="person-table"><div class="loading">불러오는 중...</div></div>
   </div>
 </div>
 <div id="loading-init" class="loading">불러오는 중...</div>
 
+<!-- 마스터 근로자 등록/수정 모달 -->
+<div class="modal" id="master-modal" style="position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.45);display:none;justify-content:center;align-items:flex-end">
+  <div style="width:100%;max-width:520px;background:#fff;border-radius:18px 18px 0 0;max-height:92vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px 8px">
+      <div style="font-size:16px;font-weight:700" id="mf-title">👤 근로자 등록</div>
+      <button style="background:none;border:none;font-size:22px;color:#86868b;cursor:pointer" onclick="closeMasterForm()">×</button>
+    </div>
+    <div style="padding:6px 18px 24px">
+      <label class="f-label">이름</label>
+      <input class="f-input" type="text" id="mf-name" placeholder="예: 홍길동">
+      <label class="f-label">생년월일 <span style="color:#aaa;font-weight:400">(고유 식별 코드로 사용됩니다)</span></label>
+      <input class="f-input" type="date" id="mf-birth">
+      <label class="f-label">소속</label>
+      <select class="f-input" id="mf-leader">
+        <option value="">팀장 (또는 소속 없음)</option>
+      </select>
+      <label class="f-label">일당 (원) <span style="color:#aaa;font-weight:400">(관리자만 표시됩니다)</span></label>
+      <input class="f-input" type="text" id="mf-rate" placeholder="예: 180,000" inputmode="numeric">
+      <button class="btn-primary block" id="mf-save-btn" onclick="saveMaster()" style="width:100%;padding:12px;margin-top:14px;background:#1D5BA6;color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 마이그레이션 도구 모달 -->
+<div class="modal" id="migrate-modal" style="position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.45);display:none;justify-content:center;align-items:flex-end">
+  <div style="width:100%;max-width:640px;background:#fff;border-radius:18px 18px 0 0;max-height:92vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px 8px">
+      <div style="font-size:16px;font-weight:700">🔄 기존 인원 마이그레이션</div>
+      <button style="background:none;border:none;font-size:22px;color:#86868b;cursor:pointer" onclick="closeMigrateTool()">×</button>
+    </div>
+    <div style="padding:6px 18px 24px;font-size:12px;color:#9AAABF">각 프로젝트에 개별 등록된 인원을 마스터 명부로 통합합니다. 이름이 같으면 동일인으로 묶여서 표시됩니다 — 생년월일이 다른 사람이면 반드시 확인 후 따로 등록해주세요.</div>
+    <div id="migrate-list" style="padding:0 18px 24px"></div>
+  </div>
+</div>
+
+<!-- 마이그레이션 확정 모달 -->
+<div class="modal" id="migrate-confirm-modal" style="position:fixed;inset:0;z-index:310;background:rgba(0,0,0,.55);display:none;justify-content:center;align-items:flex-end">
+  <div style="width:100%;max-width:520px;background:#fff;border-radius:18px 18px 0 0;max-height:92vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px 8px">
+      <div style="font-size:16px;font-weight:700">✅ 마스터로 등록 확정</div>
+      <button style="background:none;border:none;font-size:22px;color:#86868b;cursor:pointer" onclick="closeMigrateConfirm()">×</button>
+    </div>
+    <div style="padding:6px 18px 24px">
+      <div id="mc-summary" style="font-size:12px;color:#86868b;margin-bottom:10px"></div>
+      <label class="f-label">이름</label>
+      <input class="f-input" type="text" id="mc-name" readonly style="background:#f7f9fc">
+      <label class="f-label">생년월일 <span style="color:#e67e22;font-weight:600">(필수)</span></label>
+      <input class="f-input" type="date" id="mc-birth">
+      <label class="f-label">소속</label>
+      <select class="f-input" id="mc-leader"><option value="">팀장 (또는 소속 없음)</option></select>
+      <label class="f-label">일당 (원)</label>
+      <input class="f-input" type="text" id="mc-rate" placeholder="예: 180,000" inputmode="numeric">
+      <button class="btn-primary block" id="mc-save-btn" onclick="confirmMigrate()" style="width:100%;padding:12px;margin-top:14px;background:#1D5BA6;color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer">마스터로 등록</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, doc, getDoc, setDoc, collection, query, orderBy, where, getDocs }
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, query, orderBy, where, getDocs }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -83,6 +168,12 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+const _params=new URLSearchParams(location.search);
+const isAdmin=_params.get('admin')==='1';
+
+function fmtMoney(n){ return (n||0).toLocaleString('ko-KR'); }
+function parseMoney(s){ return parseInt(String(s||'').replace(/[^0-9]/g,''))||0; }
 
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -156,6 +247,7 @@ async function loadMonth(){
   const supIdSet=new Set(rosterSup.map(w=>w.id));
   const fabById={}; rosterFab.forEach(w=>fabById[w.id]=w);
   const supById={}; rosterSup.forEach(w=>supById[w.id]=w);
+  _rosterFab=rosterFab; _rosterSup=rosterSup; _rosterLight=rosterLight;
 
   _debugLines=[];
   _debugLines.push('=== FAB 로스터 ('+rosterFab.length+'명) ===');
@@ -267,7 +359,11 @@ async function loadMonth(){
     }
   }
 
+  _lastPersonMap=personMap;
   renderResult(pjtTotals, personMap, ambiguousIds, missingBirthWorkers, unknownIdCount);
+  document.getElementById('master-card').style.display='block';
+  document.getElementById('team-card').style.display='block';
+  await loadMasterWorkers();
   document.getElementById('loading-init').style.display='none';
   document.getElementById('app').style.display='block';
 }
@@ -341,6 +437,197 @@ window.fixBirth=async function(workerId, sourceKind, regId, birth){
     await setDoc(ref, {birth}, {merge:true});
     await loadMonth();
   }catch(e){ alert('저장 실패: '+e.message); }
+};
+
+// ══════════════════════════════════════════
+// 근로자 마스터 명부 (master_workers)
+// ══════════════════════════════════════════
+let _masterList=[]; // [{id,name,birth,leaderId,dailyRate}]
+let _rosterFab=[], _rosterSup=[], _rosterLight=[]; // loadMonth()에서 채워짐 (마이그레이션 도구에서 재사용)
+let _masterEditing=null;
+let _lastPersonMap={};
+
+async function loadMasterWorkers(){
+  try{
+    const snap=await getDocs(collection(db,'master_workers'));
+    _masterList=[]; snap.forEach(d=>_masterList.push(Object.assign({id:d.id},d.data())));
+  }catch(e){ _masterList=[]; }
+  renderMasterTable();
+  renderTeamTable();
+}
+
+function masterById(id){ return _masterList.find(m=>m.id===id); }
+function isLeaderId(id){ return _masterList.some(m=>m.leaderId===id); }
+
+function renderLeaderOptions(selectEl, excludeId){
+  const leaders=_masterList.filter(m=>!m.leaderId && m.id!==excludeId); // leaderId 없는 사람 = 팀장 후보
+  selectEl.innerHTML='<option value="">팀장 (또는 소속 없음)</option>'
+    + leaders.map(l=>'<option value="'+l.id+'">'+escapeHtml(l.name)+' 팀 소속</option>').join('');
+}
+
+function renderMasterTable(){
+  const el=document.getElementById('master-table');
+  if(!_masterList.length){ el.innerHTML='<div class="empty">등록된 근로자가 없습니다.</div>'; return; }
+  const sorted=_masterList.slice().sort((a,b)=>{
+    // 팀장 먼저, 그 다음 팀원(팀장별로 묶어서)
+    const aLead=!a.leaderId, bLead=!b.leaderId;
+    if(aLead!==bLead) return aLead?-1:1;
+    return (a.leaderId||'').localeCompare(b.leaderId||'') || a.name.localeCompare(b.name);
+  });
+  el.innerHTML=sorted.map(function(m){
+    const leader=m.leaderId?masterById(m.leaderId):null;
+    const badge=(!m.leaderId)?'<span class="leader-badge">팀장/독립</span>':'<span class="member-badge">'+escapeHtml(leader?leader.name:'?')+' 팀</span>';
+    const rateHtml=isAdmin?('<span style="color:#1D5BA6;font-weight:700;margin-left:8px">'+fmtMoney(m.dailyRate)+'원</span>'):'';
+    return '<div class="master-row">'
+      +'<span style="flex:1;font-weight:600">'+escapeHtml(m.name)+' <span style="color:#9AAABF;font-size:11px">('+(m.birth||'생년월일 없음')+')</span></span>'
+      +badge+rateHtml
+      +'<button class="nav-arrow" style="width:auto;padding:0 10px;font-size:11px" onclick="editMaster(\''+m.id+'\')">수정</button>'
+      +'</div>';
+  }).join('');
+}
+
+function renderTeamTable(){
+  const el=document.getElementById('team-table');
+  const leaders=_masterList.filter(m=>!m.leaderId);
+  if(!leaders.length){ el.innerHTML='<div class="empty">등록된 팀이 없습니다.</div>'; return; }
+  let html='';
+  leaders.forEach(function(leader){
+    const members=_masterList.filter(m=>m.leaderId===leader.id);
+    // personMap은 renderResult 스코프에만 있으므로, 최근 계산된 _lastPersonMap을 사용
+    const pm=_lastPersonMap||{};
+    function totalOf(m){
+      const key=Object.keys(pm).find(k=>pm[k].name===m.name && pm[k].birth===m.birth);
+      return key?pm[key].total:0;
+    }
+    const leaderMd=totalOf(leader);
+    let teamMd=leaderMd;
+    let teamAmt=isAdmin?leaderMd*(leader.dailyRate||0):0;
+    let memberRows='';
+    members.forEach(function(mem){
+      const md=totalOf(mem);
+      teamMd+=md;
+      if(isAdmin) teamAmt+=md*(mem.dailyRate||0);
+      memberRows+='<div class="team-member-row"><span>'+escapeHtml(mem.name)+'</span><span>'+md.toFixed(1)+'공수'+(isAdmin?('  ·  '+fmtMoney(md*(mem.dailyRate||0))+'원'):'')+'</span></div>';
+    });
+    html+='<div class="team-block"><div class="team-head"><span>👑 '+escapeHtml(leader.name)+' 팀 ('+members.length+'명)</span>'
+      +'<span>'+teamMd.toFixed(1)+'공수'+(isAdmin?('  ·  '+fmtMoney(teamAmt)+'원'):'')+'</span></div>'
+      +'<div class="team-member-row" style="border-top:none;font-weight:600"><span>'+escapeHtml(leader.name)+' (팀장 본인)</span><span>'+leaderMd.toFixed(1)+'공수'+(isAdmin?('  ·  '+fmtMoney(leaderMd*(leader.dailyRate||0))+'원'):'')+'</span></div>'
+      +memberRows+'</div>';
+  });
+  el.innerHTML=html;
+}
+
+window.openMasterForm=function(){
+  _masterEditing=null;
+  document.getElementById('mf-title').textContent='👤 근로자 등록';
+  document.getElementById('mf-name').value='';
+  document.getElementById('mf-birth').value='';
+  document.getElementById('mf-rate').value='';
+  renderLeaderOptions(document.getElementById('mf-leader'));
+  document.getElementById('mf-leader').value='';
+  document.getElementById('master-modal').style.display='flex';
+};
+window.closeMasterForm=function(){ document.getElementById('master-modal').style.display='none'; };
+window.editMaster=function(id){
+  const m=masterById(id); if(!m) return;
+  _masterEditing=m;
+  document.getElementById('mf-title').textContent='✏️ 근로자 정보 수정';
+  document.getElementById('mf-name').value=m.name||'';
+  document.getElementById('mf-birth').value=m.birth||'';
+  document.getElementById('mf-rate').value=m.dailyRate?fmtMoney(m.dailyRate):'';
+  renderLeaderOptions(document.getElementById('mf-leader'), m.id);
+  document.getElementById('mf-leader').value=m.leaderId||'';
+  document.getElementById('master-modal').style.display='flex';
+};
+window.saveMaster=async function(){
+  const name=document.getElementById('mf-name').value.trim();
+  const birth=document.getElementById('mf-birth').value;
+  if(!name||!birth){ alert('이름과 생년월일을 입력하세요.'); return; }
+  const leaderId=document.getElementById('mf-leader').value;
+  const dailyRate=parseMoney(document.getElementById('mf-rate').value);
+  const btn=document.getElementById('mf-save-btn'); btn.disabled=true; btn.textContent='저장 중...';
+  try{
+    const id=_masterEditing?_masterEditing.id:(name+'_'+birth).replace(/[^a-zA-Z0-9가-힣_]/g,'');
+    await setDoc(doc(db,'master_workers',id), { name, birth, leaderId, dailyRate }, {merge:true});
+    closeMasterForm();
+    await loadMasterWorkers();
+  }catch(e){ alert('저장 실패: '+e.message); }
+  finally{ btn.disabled=false; btn.textContent='저장'; }
+};
+
+// ── 기존 인원 마이그레이션 ──
+window.openMigrateTool=function(){
+  const groups={}; // name -> [{id,name,birth,sourceLabel,sourceKind,regId}]
+  function push(w){ (groups[w.name]=groups[w.name]||[]).push(w); }
+  _rosterFab.forEach(push); _rosterSup.forEach(push); _rosterLight.forEach(push);
+  _migrateGroups=groups;
+  const names=Object.keys(groups).sort();
+  const el=document.getElementById('migrate-list');
+  if(!names.length){ el.innerHTML='<div class="empty">마이그레이션할 인원이 없습니다.</div>'; }
+  else{
+    el.innerHTML=names.map(function(name){
+      const items=groups[name];
+      const alreadyDone=_masterList.some(m=>m.name===name);
+      let html='<div class="migrate-group"><div class="migrate-name">'+escapeHtml(name)+(alreadyDone?' <span style="color:#1b5e20;font-size:11px">✓ 마스터 등록됨</span>':'')+'</div>';
+      items.forEach(function(it){
+        html+='<div class="migrate-src"><span>'+escapeHtml(it.sourceLabel)+' · id='+it.id+' · '+(it.birth||'생년월일 없음')+'</span></div>';
+      });
+      if(!alreadyDone){
+        html+='<button class="nav-arrow" style="width:auto;padding:6px 14px;font-size:12px;margin-top:6px" onclick="openMigrateConfirm(\''+encodeURIComponent(name)+'\')">마스터로 등록</button>';
+      }
+      html+='</div>';
+      return html;
+    }).join('');
+  }
+  document.getElementById('migrate-modal').style.display='flex';
+};
+window.closeMigrateTool=function(){ document.getElementById('migrate-modal').style.display='none'; };
+
+let _migrateGroups={};
+let _migrateItems=null;
+window.openMigrateConfirm=function(encodedName){
+  const items=_migrateGroups[decodeURIComponent(encodedName)];
+  if(!items) return;
+  _migrateItems=items;
+  const best=items.find(it=>it.birth) || items[0];
+  document.getElementById('mc-summary').textContent=items.length+'개 프로젝트에서 발견됨: '+items.map(it=>it.sourceLabel).join(', ');
+  document.getElementById('mc-name').value=best.name;
+  document.getElementById('mc-birth').value=best.birth||'';
+  document.getElementById('mc-rate').value='';
+  renderLeaderOptions(document.getElementById('mc-leader'));
+  document.getElementById('mc-leader').value='';
+  document.getElementById('migrate-confirm-modal').style.display='flex';
+};
+window.closeMigrateConfirm=function(){ document.getElementById('migrate-confirm-modal').style.display='none'; };
+
+window.confirmMigrate=async function(){
+  const items=_migrateItems; if(!items) return;
+  const birth=document.getElementById('mc-birth').value;
+  if(!birth){ alert('생년월일을 입력하세요.'); return; }
+  const name=document.getElementById('mc-name').value;
+  const leaderId=document.getElementById('mc-leader').value;
+  const dailyRate=parseMoney(document.getElementById('mc-rate').value);
+  const btn=document.getElementById('mc-save-btn'); btn.disabled=true; btn.textContent='등록 중...';
+  try{
+    // 마스터 ID: 첫 번째로 발견된 프로젝트의 로컬 ID를 그대로 재사용 (그 프로젝트의 기존 이력 데이터 보존)
+    const masterId=items[0].id;
+    await setDoc(doc(db,'master_workers',masterId), { name, birth, leaderId, dailyRate }, {merge:true});
+    // 나머지 프로젝트(로컬 ID가 마스터ID와 다른 경우): 마스터ID로 새 문서를 만들고 기존 로컬 문서는 삭제
+    for(const it of items){
+      if(it.id===masterId) continue; // 첫 항목은 이미 마스터ID와 동일
+      let collPath;
+      if(it.sourceKind==='fab') collPath=['pjt_workers_fab'];
+      else if(it.sourceKind==='sup') collPath=['pjt_workers_ph4'];
+      else collPath=['pjt_registry', it.regId, 'workers'];
+      await setDoc(doc(db,...collPath,masterId), { name, birth, masterId, order:999 }, {merge:true});
+      await deleteDoc(doc(db,...collPath,it.id));
+    }
+    closeMigrateConfirm();
+    await loadMasterWorkers();
+    openMigrateTool(); // 목록 갱신
+    await loadMonth(); // 전체 재계산
+  }catch(e){ alert('마이그레이션 실패: '+e.message); }
+  finally{ btn.disabled=false; btn.textContent='마스터로 등록'; }
 };
 
 loadMonth();
