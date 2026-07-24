@@ -1754,7 +1754,9 @@ async function syncPjtRegistrySubtabs(){
       const url=data.url||('https://jhsolutions5804.github.io/portal-test/pjt_light/index.html?pjtId='+d.id);
       let st=PJT_SUBTABS.find(function(s){return s.key===key;});
       if(!st){
-        PJT_SUBTABS.push({ key:key, name:data.name||'PJT', emoji:'🏗️', desc:sub, url:url });
+        const mandayIdx=PJT_SUBTABS.findIndex(function(s){ return s.key==='pjt_manday'; });
+        const insertAt=mandayIdx===-1?PJT_SUBTABS.length:mandayIdx;
+        PJT_SUBTABS.splice(insertAt, 0, { key:key, name:data.name||'PJT', emoji:'🏗️', desc:sub, url:url });
         changed=true;
       } else {
         if(data.name && data.name!==st.name){ st.name=data.name; changed=true; }
