@@ -186,9 +186,23 @@
         💡 초안 미리보기입니다. 모든 메뉴를 홈에 직접 배치해서 우측 하단 반투명 더보기 메뉴가 필요 없는 구조입니다. 타일 크기·색·문구·배치 등 원하시는 대로 조정 가능합니다.
       </div>
 
+      <div class="hint" id="mbPcSwitchHint" style="display:flex; align-items:center; justify-content:space-between; gap:10px; cursor:pointer;" onclick="switchToPC()">
+        <span>🖥️ 화면이 넓으신가요? (Z Fold 등 펼친 화면) PC 화면으로 전환할 수 있어요.</span>
+        <span style="white-space:nowrap; font-weight:800; color:var(--blue);">전환 ›</span>
+      </div>
+
     </div>
   </div>
 <script>
+(function(){
+  window.switchToPC = function(){
+    try{
+      localStorage.setItem('jh_force_pc','1');
+      localStorage.removeItem('jh_force_mobile');
+    }catch(e){}
+    location.href='../index.html';
+  };
+})();
 (function(){
   var auth=null; try{ auth=JSON.parse(localStorage.getItem('jh_login_perms')||'null'); }catch(e){}
   // 상단 아바타: 로그인 사용자 이름 첫 글자로 표시 (기존 '김' 하드코딩 제거)
