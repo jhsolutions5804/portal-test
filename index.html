@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260723 · ver: 2026-07-23 (PJT 4.5.2 · edoc 3.2r1 · hr payslip 2.6.2) · 전자결재 초과근로 결재 목록 본인 작성분만 표시(다른 사람 상신 건 비노출) · 급여명세서 상여금/특별상여/기타수당 입력 시 한글자마다 커서 초기화되는 버그 수정(oninput→onchange) · 초과근로 상신 사유 입력 필드 추가(edoc/hr 공통) · 전자결재 업무일지 임시저장/반려 상태 수정 기능 추가 · PJT 일정 자정 넘기는 일정(저녁~다음날 새벽) 시작일에만 표시 · 공사일보 작성자 드롭다운 버그 수정(standalone Auth 미존재 대응) · 홈 일정 등록/수정/삭제 · 공사일보 조회 수정/삭제 · PJT홈 통합캘린더 · 근태 출역·공수 일괄 · 로그인 계정 자동반영 · 공사일보 portal 이관 · 회계 외상거래·필터 · Firebase 테섭 격리 · .nojekyll -->
+<!DOCTYPE html><!-- build: 20260724 · ver: 2026-07-24 (PJT 5.0.0 · edoc 3.2r1 · hr payslip 2.6.2) · [PJT] 신규 등록 PJT(경량 PJT) 상단 카드·사이드바 자동 편입 및 PJT홈 통합캘린더 연동 · 경량 PJT 워크스페이스 신설(품목현황 공정체크·근태공수·일정캘린더·공사일보, PC/모바일 반응형) · 근로자 마스터 명부 신설(이름+생년월일 고유식별, 팀장/팀원 1단계 구조, 일당은 관리자 전용) · 각 PJT 인원추가를 마스터 명부 선택 방식으로 전환 · 월간 공수 집계 메뉴 신설(PJT별·개인별·팀별 합계, 개인별 통합 공수표 PNG 저장, 기존인원 마이그레이션 도구) · FAB/SUP 근태화면 명단 갱신 시 미반영되던 버그 수정 · SUP 전체출역 일괄버튼 컬렉션 불일치 수정 · portal-test FAB/SUP Firebase 프로젝트 격리 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -848,7 +848,7 @@ import { initializeApp, initializeApp as initApp2 } from 'https://www.gstatic.co
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged,
          updatePassword, sendPasswordResetEmail }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, orderBy }
+import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp, collection, query, where, getDocs, orderBy }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -1735,6 +1735,16 @@ window.reopenPjt = async function(id){
   }catch(e){ alert('오류: '+e.message); }
 };
 
+window.deletePjtPermanently = async function(id, name){
+  if(!confirm('['+name+'] 프로젝트를 완전히 삭제할까요?\n\n⚠️ 이 작업은 되돌릴 수 없습니다. 등록된 품목·근태·공수·일정·공사일보 데이터는 그대로 남지만 프로젝트 정보 자체는 복구할 수 없습니다.')) return;
+  if(!confirm('정말 삭제하시겠습니까? 다시 한번 확인합니다.\n['+name+']을(를) 영구 삭제합니다.')) return;
+  try{
+    await deleteDoc(doc(db,'pjt_registry',id));
+    renderPjtRegistry();
+    alert('삭제했습니다.');
+  }catch(e){ alert('삭제 실패: '+e.message); }
+};
+
 // PJT 레지스트리(신규 등록 PJT)를 PJT_SUBTABS에 동적으로 편입 — 상단 카드·사이드바 메뉴 자동 반영
 async function syncPjtRegistrySubtabs(){
   try{
@@ -1813,6 +1823,9 @@ function pjtRegistryCard(p, isEnded){
   var btns='';
   if(isEnded){
     btns='<button onclick="reopenPjt(\''+p.id+'\')" style="padding:6px 12px;background:#f0f4f8;border:1px solid #dde4ef;border-radius:8px;font-size:12px;cursor:pointer;color:#1D5BA6;font-family:inherit">재개</button>';
+    if(me&&me.admin){
+      btns+='<button onclick="deletePjtPermanently(\''+p.id+'\',\''+(p.name||'').replace(/'/g,"")+'\')" style="padding:6px 12px;background:#fff;border:1px solid #ffb3b3;border-radius:8px;font-size:12px;cursor:pointer;color:#c0392b;font-family:inherit">🗑 완전삭제</button>';
+    }
   } else {
     var goBtn=p.url?'<button onclick="window.open(\''+p.url+'\',\'_blank\')" style="padding:6px 12px;background:#1D5BA6;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit">바로가기</button>':'';
     btns=goBtn+'<button onclick="endPjt(\''+p.id+'\',\''+(p.name||'').replace(/'/g,"")+'\')" style="padding:6px 12px;background:#fff;border:1px solid #ffb3b3;border-radius:8px;font-size:12px;cursor:pointer;color:#c0392b;font-family:inherit">종료</button>';
