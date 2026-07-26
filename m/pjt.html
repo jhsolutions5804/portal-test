@@ -38,6 +38,28 @@
   .sch-text{font-size:13.5px;font-weight:700}
   .sch-meta{font-size:11px;color:var(--sub);margin-top:2px}
   .sch-go{color:#c3cedd;font-size:15px;flex-shrink:0}
+  .sch-chk{width:22px;height:22px;border-radius:7px;border:2px solid #cdd8e6;flex-shrink:0;cursor:pointer;position:relative;transition:all .15s}
+  .sch-chk.on{background:#1b8a5a;border-color:#1b8a5a}
+  .sch-chk.on::after{content:'✓';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:13px;font-weight:900}
+  .schcard.done{opacity:.72}
+  .sch-text.done-text{text-decoration:line-through;color:#9aa8bc}
+  .sform-ov{position:fixed;inset:0;background:rgba(20,30,45,.44);display:flex;align-items:flex-end;justify-content:center;z-index:100}
+  .sform{background:#fff;width:100%;max-width:480px;border-radius:20px 20px 0 0;padding:20px 20px 26px;max-height:88vh;overflow-y:auto}
+  .sform h3{font-size:17px;font-weight:800;color:#16487f;margin-bottom:16px}
+  .sfield{margin-bottom:14px}
+  .sfield label{display:block;font-size:12px;font-weight:700;color:#5c6f8a;margin-bottom:6px}
+  .sfield input,.sfield textarea{width:100%;border:1px solid var(--line);border-radius:11px;padding:11px 12px;font-size:14px;font-family:inherit;background:#f8fafc}
+  .sfield input:focus,.sfield textarea:focus{outline:none;border-color:var(--blue);background:#fff}
+  .sfield textarea{min-height:60px;resize:vertical}
+  .stagrow{display:flex;flex-wrap:wrap;gap:7px}
+  .stag{font-size:12px;font-weight:700;padding:7px 13px;border-radius:9px;border:1.5px solid var(--line);background:#fff;cursor:pointer;color:#5c6f8a}
+  .sform-btns{display:flex;gap:9px;margin-top:8px}
+  .sform-btns button{flex:1;padding:13px;border-radius:12px;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer;border:none}
+  .sbtn-save{background:var(--blue);color:#fff}
+  .sbtn-cancel{background:#eef2f7;color:#5c6f8a}
+  .sbtn-del{background:#fdecea;color:#c0392b;flex:0 0 auto!important;padding:13px 16px!important}
+  .fab-add{position:fixed;right:18px;bottom:24px;width:54px;height:54px;border-radius:50%;background:var(--blue);color:#fff;border:none;font-size:28px;box-shadow:0 6px 18px rgba(29,91,166,.4);cursor:pointer;z-index:50;display:flex;align-items:center;justify-content:center}
+  .sch-edit-btn{background:var(--blue);color:#fff;border:none;font-size:13px;font-weight:800;padding:11px 16px;border-radius:11px;font-family:inherit;cursor:pointer}
   .tag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;white-space:nowrap}
   .rep-item{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 15px;box-shadow:0 2px 8px rgba(30,50,80,.05)}
   .rep-head{display:flex;align-items:center;gap:6px;margin-bottom:5px}
@@ -78,6 +100,8 @@
   .att-navlabel{font-size:15px;font-weight:800;color:#16487f;min-width:130px;text-align:center}
   .att-todaybtn{background:var(--ok);border:none;color:#fff;font-size:12px;font-weight:700;padding:7px 12px;border-radius:9px;cursor:pointer;font-family:inherit}
   .attb.ro{cursor:default;border-color:#e4eaf2}
+  .att-mdin{width:70px;text-align:center;font-size:13px;font-weight:700;color:#16487f;border:1px solid var(--line);border-radius:9px;padding:8px 4px;font-family:inherit;background:#f8fafc}
+  .att-mdin:focus{outline:none;border-color:var(--blue);background:#fff}
   .att-list{display:flex;flex-direction:column;gap:10px}
   .attcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 15px;box-shadow:0 2px 8px rgba(30,50,80,.05);display:flex;align-items:center;gap:11px}
   .att-body{flex:1;min-width:0}
@@ -107,7 +131,7 @@
 <script type="module">
 const _uInitial=(function(){try{var a=JSON.parse(localStorage.getItem('jh_login_perms')||'null');return (a&&a.name)?a.name.slice(0,1):'·';}catch(e){return '·';}})();
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, onSnapshot, getDocs, doc, getDoc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, onSnapshot, getDocs, doc, getDoc, setDoc, addDoc, deleteDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 const firebaseConfig = {
   apiKey:"AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI", authDomain:"portal-test-6e0ff.firebaseapp.com",
   projectId:"portal-test-6e0ff", storageBucket:"portal-test-6e0ff.firebasestorage.app",
@@ -250,6 +274,20 @@ window.toggleAttend=async function(wid){
   }catch(e){ if(isDone)attChecks.push(wid); else attChecks.splice(idx,1); }
   render();
 };
+// 공수 입력 (오늘만) — worker_manday/{날짜} 문서의 md 맵에 저장
+window.setMd=async function(wid,val){
+  if(attDate!==todayStr()) return; // 오늘만 입력 가능
+  const cfg=ATT[site]; if(!cfg) return; const td=todayStr();
+  const num=(val===''||val==null)?null:parseFloat(val);
+  try{
+    const ref=doc(db,cfg.md,td); const snap=await getDoc(ref);
+    let md=snap.exists()?((snap.data()||{}).md||{}):{};
+    if(num==null||isNaN(num)) delete md[wid]; else md[wid]=num;
+    await setDoc(ref,{md,updatedAt:serverTimestamp()},{merge:true});
+    attMd=md;
+  }catch(e){ console.error('공수 저장 오류',e); }
+  render();
+};
 
 let data={user_schedules:[],ph4_schedules:[]};
 let repCache={}; // 날짜별 업무지시/보고 (daily_reports_{날짜}/ph4_daily_{날짜})
@@ -265,7 +303,7 @@ async function loadReports(dk){
   render();
 }
 let curView='home', site=null, sub='sched', detailId=null, loadError='';
-const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+const todayStr=()=>{const d=new Date(); if(d.getHours()<6) d.setDate(d.getDate()-1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 let selectedDate=todayStr(), calMonth=todayStr().slice(0,7);
 
 const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -374,7 +412,9 @@ function renderAttend(){
         : `<div class="attb ro ${on?'on':''}">${on?'출역':'-'}</div>`;
       return `<div class="attcard">
         <div class="att-body"><div class="att-name">${esc(w.name||'—')}</div>${w.role?`<div class="att-role">${esc(w.role)}</div>`:''}</div>
-        <div class="att-md">${md!=null&&md!==''?('공수 '+md):'<span style="color:#c3cedd">공수 —</span>'}</div>
+        ${isToday
+          ? `<input class="att-mdin" type="number" step="0.25" min="0" inputmode="decimal" placeholder="공수" value="${md!=null&&md!==''?md:''}" onchange="setMd('${w.id}',this.value)" onclick="event.stopPropagation()">`
+          : `<div class="att-md">${md!=null&&md!==''?('공수 '+md):'<span style="color:#c3cedd">공수 —</span>'}</div>`}
         ${btn}
       </div>`;
     }).join(''):'<div class="empty">등록된 기술인이 없습니다.</div>';
@@ -382,7 +422,7 @@ function renderAttend(){
         <div class="pi"><div class="pil">출역</div><div class="piv" style="color:#1D5BA6">${present}/${ws.length}명</div></div>
         <div class="pi"><div class="pil">공수 합계</div><div class="piv">${(+totMd.toFixed(2))}</div></div>
       </div>
-      <div class="att-hint">${isToday?'기술인을 눌러 오늘 출역을 체크할 수 있습니다':'지난 날짜는 조회만 됩니다'} · 공수는 표시 전용</div>
+      <div class="att-hint">${isToday?'기술인을 눌러 오늘 출역을 체크할 수 있습니다':'지난 날짜는 조회만 됩니다'} · ${isToday?'공수는 칸에 직접 입력':'공수는 조회 전용'}</div>
       <div class="att-list">${rows}</div>`;
   }
   return `<div class="prog-wrap">${nav}${inner}</div>`;
@@ -458,14 +498,83 @@ function renderCalendar(s){
     ${dayItems.length?`<div class="list">${dayItems.map(schCard).join('')}</div>`:'<div class="empty">이 날 등록된 일정이 없습니다.</div>'}
     <div class="divider"></div>
     <div class="lbl">📋 업무지시 · 보고</div>
-    ${repHtml}`;
+    ${repHtml}
+    <button class="fab-add" onclick="openSchedForm(null)">+</button>`;
 }
 function schCard(s){
-  return `<div class="schcard" onclick="openSched('${s.id}')">
+  const done=s.done===true;
+  return `<div class="schcard${done?' done':''}" onclick="openSched('${s.id}')">
+    <div class="sch-chk${done?' on':''}" onclick="toggleSchedDone('${s.id}',event)"></div>
     <div class="sch-time">${s.stime?esc(s.stime):'종일'}</div>
-    <div class="sch-body"><div class="sch-text">${esc(s.text||s.title||'(내용 없음)')}</div>${s.pjtName?`<div class="sch-meta">${esc(s.pjtName)}</div>`:''}</div>
+    <div class="sch-body"><div class="sch-text${done?' done-text':''}">${esc(s.text||s.title||'(내용 없음)')}</div>${s.pjtName?`<div class="sch-meta">${esc(s.pjtName)}</div>`:''}</div>
     ${tagChip(s.tag)}<span class="sch-go">›</span></div>`;
 }
+// 일정 완료 토글 (문서 done 필드) — 구독으로 자동 리렌더
+window.toggleSchedDone=async function(id,ev){
+  if(ev&&ev.stopPropagation) ev.stopPropagation();
+  const s=SITES[site]; if(!s) return;
+  const sch=(data[s.sch]||[]).find(x=>x.id===id); if(!sch) return;
+  const willDone=!sch.done;
+  sch.done=willDone; render(); // 낙관적 반영
+  try{ await setDoc(doc(db,s.sch,id),{done:willDone,doneAt:serverTimestamp()},{merge:true}); }
+  catch(e){ sch.done=!willDone; render(); console.error('완료 저장 오류',e); }
+};
+// ===== 일정 등록/수정 폼 =====
+let _schForm=null;
+window.openSchedForm=function(id){
+  const s=SITES[site]; if(!s) return;
+  const sch=id?(data[s.sch]||[]).find(x=>x.id===id):null;
+  _schForm = sch ? {...sch} : {id:null, text:'', sdate:selectedDate, stime:'', tag:'', memo:''};
+  renderSchedForm();
+};
+window.closeSchedForm=function(){ _schForm=null; const ov=document.getElementById('sform-ov'); if(ov)ov.remove(); };
+function _schCapture(){
+  if(!_schForm)return;
+  const t=document.getElementById('sf-text'), d=document.getElementById('sf-date'),
+        tm=document.getElementById('sf-time'), m=document.getElementById('sf-memo');
+  if(t)_schForm.text=t.value; if(d)_schForm.sdate=d.value; if(tm)_schForm.stime=tm.value; if(m)_schForm.memo=m.value;
+}
+window._schPickTag=function(k){ if(!_schForm)return; _schCapture(); _schForm.tag=(_schForm.tag===k?'':k); renderSchedForm(); };
+function renderSchedForm(){
+  const f=_schForm; if(!f) return;
+  const tags=Object.keys(TAGS).map(k=>`<div class="stag${f.tag===k?' on':''}" style="${f.tag===k?`background:${TAGS[k].c};border-color:${TAGS[k].c};color:#fff`:''}" onclick="_schPickTag('${k}')">${TAGS[k].l}</div>`).join('');
+  const html=`<div class="sform-ov" id="sform-ov" onclick="if(event.target===this)closeSchedForm()">
+    <div class="sform">
+      <h3>${f.id?'일정 수정':'일정 등록'}</h3>
+      <div class="sfield"><label>내용</label><textarea id="sf-text" placeholder="일정 내용을 입력하세요">${esc(f.text||'')}</textarea></div>
+      <div class="sfield"><label>날짜</label><input type="date" id="sf-date" value="${f.sdate||selectedDate}"></div>
+      <div class="sfield"><label>시간 (비우면 종일)</label><input type="time" id="sf-time" value="${f.stime||''}"></div>
+      <div class="sfield"><label>구분</label><div class="stagrow">${tags}</div></div>
+      <div class="sfield"><label>메모 (선택)</label><textarea id="sf-memo" placeholder="상세 메모">${esc(f.memo||'')}</textarea></div>
+      <div class="sform-btns">
+        ${f.id?`<button class="sbtn-del" onclick="deleteSched('${f.id}')">삭제</button>`:''}
+        <button class="sbtn-cancel" onclick="closeSchedForm()">취소</button>
+        <button class="sbtn-save" onclick="saveSched()">저장</button>
+      </div>
+    </div></div>`;
+  const ex=document.getElementById('sform-ov'); if(ex)ex.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+window.saveSched=async function(){
+  _schCapture(); const f=_schForm; if(!f) return;
+  const s=SITES[site]; if(!s) return;
+  if(!f.text||!f.text.trim()){ alert('내용을 입력하세요.'); return; }
+  if(!f.sdate){ alert('날짜를 선택하세요.'); return; }
+  const payload={ text:f.text.trim(), sdate:f.sdate, edate:f.edate||f.sdate, stime:f.stime||'', tag:f.tag||'', memo:f.memo||'', updatedAt:serverTimestamp() };
+  try{
+    if(f.id){ await setDoc(doc(db,s.sch,f.id), payload, {merge:true}); }
+    else { payload.savedAt=serverTimestamp(); payload.done=false; await addDoc(collection(db,s.sch), payload); }
+    closeSchedForm();
+    if(f.sdate) selectedDate=f.sdate, calMonth=f.sdate.slice(0,7);
+    if(curView==='schedD'){ goBack(); } else { render(); }
+  }catch(e){ alert('저장 오류: '+e.message); }
+};
+window.deleteSched=async function(id){
+  if(!confirm('이 일정을 삭제하시겠습니까?')) return;
+  const s=SITES[site]; if(!s) return;
+  try{ await deleteDoc(doc(db,s.sch,id)); closeSchedForm(); if(curView==='schedD') goBack(); else render(); }
+  catch(e){ alert('삭제 오류: '+e.message); }
+};
 function renderSchedDetail(){
   const s=SITES[site]; if(!s){ renderHome(); return; }
   const sch=(data[s.sch]||[]).find(x=>x.id===detailId);
@@ -474,7 +583,8 @@ function renderSchedDetail(){
   $app().innerHTML=topBar('일정','goBack()')+`
     <div class="hello"><div class="name" style="font-size:20px;color:var(--ink)">${esc(sch.text||sch.title||'일정')}</div><div class="sub">${esc(s.code)} · ${esc(fmtDate(sch.sdate))}</div></div>
     <div class="dcard">${info.map(([k,v])=>`<div class="drow"><span class="dk">${k}</span><span class="dv">${esc(v)}</span></div>`).join('')}</div>
-    ${sch.memo||sch.detail||sch.note?`<div class="lbl">상세 내용</div><div class="dcard"><div class="drow"><span class="dv" style="text-align:left;max-width:100%">${esc(sch.memo||sch.detail||sch.note)}</span></div></div>`:''}`;
+    ${sch.memo||sch.detail||sch.note?`<div class="lbl">상세 내용</div><div class="dcard"><div class="drow"><span class="dv" style="text-align:left;max-width:100%">${esc(sch.memo||sch.detail||sch.note)}</span></div></div>`:''}
+    <div style="margin:18px 20px 0"><button class="sch-edit-btn" style="width:100%" onclick="openSchedForm('${sch.id}')">✏️ 일정 수정</button></div>`;
 }
 
 function subscribe(coll){
@@ -488,4 +598,5 @@ render();
 </script>
 </body>
 </html>
+
 
