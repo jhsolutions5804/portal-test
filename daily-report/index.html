@@ -146,9 +146,6 @@ textarea { resize:vertical; min-height:90px; line-height:1.6; }
     <div class="card-label"><span class="num">3</span> 작성자</div>
     <select id="author">
       <option value="">작성자 선택</option>
-      <option value="김종화 차장">김종화 차장</option>
-      <option value="윤석원 과장">윤석원 과장</option>
-      <option value="김영서 사원">김영서 사원</option>
     </select>
   </div>
 
@@ -489,19 +486,30 @@ window.savePDF=()=>{
 document.getElementById('datePopup').addEventListener('click',e=>{ if(e.target===document.getElementById('datePopup'))closePicker(); });
 document.getElementById('previewModal').addEventListener('click',e=>{ if(e.target===document.getElementById('previewModal'))closePreview(); });
 
-// 로그인 계정 → 작성자 자동 반영 (포털과 같은 origin의 localStorage 공유)
-(function(){
+// 작성자 목록: portal_users(포털 직원)에서 로드 + 로그인 계정 자동 선택
+// standalone 창은 메인 포털 Auth 컨텍스트가 없어 Firestore 조회가 실패할 수 있음 →
+// 조회 성공/실패와 무관하게 localStorage 로그인 계정은 항상 추가 + 자동 선택되도록 처리
+(async function(){
+  var sel=document.getElementById('author'); if(!sel) return;
+  var ln=localStorage.getItem('jh_login_full')||localStorage.getItem('jh_login_name')||'';
+  var lnName=ln?ln.split(' ')[0]:'';
+  var byName={};
   try{
-    var ln=localStorage.getItem('jh_login_full')||localStorage.getItem('jh_login_name')||'';
-    if(ln){
-      var sel=document.getElementById('author');
-      if(sel){
-        var exists=Array.from(sel.options).some(function(o){return o.value===ln;});
-        if(!exists){ var op=document.createElement('option'); op.value=ln; op.textContent=ln; sel.appendChild(op); }
-        sel.value=ln;
-      }
+    var snap=await getDocs(collection(db,'portal_users'));
+    snap.forEach(function(d){ var u=d.data(); if(u&&u.name){ byName[u.name]=(u.name+' '+(u.rank||'')).trim(); } });
+  }catch(e){
+    console.warn('[daily-report] portal_users 조회 실패(standalone 창 Auth 미존재 가능):', e);
+  }
+  if(ln && lnName) byName[lnName]=ln;   // 같은 이름은 로그인 계정(직급)으로 통일 → 중복 제거
+  var names=Object.keys(byName).map(function(n){ return byName[n]; });
+  names.sort(function(a,b){ return a.localeCompare(b,'ko'); });
+  names.forEach(function(nm){ var op=document.createElement('option'); op.value=nm; op.textContent=nm; sel.appendChild(op); });
+  if(ln){
+    if(!Array.from(sel.options).some(function(o){return o.value===ln;})){
+      var op=document.createElement('option'); op.value=ln; op.textContent=ln; sel.appendChild(op);
     }
-  }catch(e){}
+    sel.value=ln;
+  }
 })();
 </script>
 </body>
