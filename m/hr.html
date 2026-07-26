@@ -82,7 +82,7 @@
 <script type="module">
 const _uInitial=(function(){try{var a=JSON.parse(localStorage.getItem('jh_login_perms')||'null');return (a&&a.name)?a.name.slice(0,1):'·';}catch(e){return '·';}})();
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, onSnapshot, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 const firebaseConfig = {
   apiKey:"AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI", authDomain:"portal-test-6e0ff.firebaseapp.com",
   projectId:"portal-test-6e0ff", storageBucket:"portal-test-6e0ff.firebasestorage.app",
@@ -91,7 +91,7 @@ const firebaseConfig = {
 const app=initializeApp(firebaseConfig); const db=getFirestore(app);
 
 let workers=[], overtime=[], leaves=[];
-let curView='home', detailId=null, loadError='';
+let curView='home', detailId=null, detailFrom='roster', loadError='';
 const thisMonth=new Date().toISOString().slice(0,7);
 
 const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -104,14 +104,15 @@ const lvOf=w=>leaves.filter(l=>l.workerId===w.id||l.name===w.name);
 const usedLeave=w=>lvOf(w).reduce((s,l)=>s+(parseFloat(l.days||l.leaveDays||0)||0),0);
 
 /* 화면 전환 + History */
-function nav(v,id){ curView=v; detailId=id||null; history.pushState({v,id:id||null},''); render(); window.scrollTo(0,0); }
+function nav(v,id){ curView=v; detailId=id||null; history.pushState({v,id:id||null,from:detailFrom},''); render(); window.scrollTo(0,0); }
+window.showWorkerFrom=function(from,id){ detailFrom=from; nav('workerD',id); };
 function showView(v){ nav(v,null); }
 function showDetail(v,id){ nav(v+'D',id); }
 window.showView=showView; window.showDetail=showDetail;
 window.goBack=function(){ history.back(); };
 window.goAccount=function(){ location.href='account.html'; };
 window.goHome=function(){ location.href='home.html'; };
-window.addEventListener('popstate',e=>{ const st=e.state||{v:'home',id:null}; curView=st.v; detailId=st.id||null; render(); window.scrollTo(0,0); });
+window.addEventListener('popstate',e=>{ const st=e.state||{v:'home',id:null}; curView=st.v; detailId=st.id||null; detailFrom=st.from||'roster'; render(); window.scrollTo(0,0); });
 
 const ROSTER_VIEWS={roster:'근로자 명부',payslip:'급여명세서',labor:'근로계약서',annual:'연봉계약서',retire:'퇴직금 정산'};
 
@@ -120,6 +121,47 @@ function render(){
   if(ROSTER_VIEWS[curView]) return renderRoster(curView);
   const map={home:renderHome,overtime:renderOvertime,leave:renderLeave,workerD:renderWorkerDetail};
   (map[curView]||renderHome)();
+}
+// ===== 계약서/급여명세서 목록 (서브컬렉션 순회 로드) =====
+let docCache={labor:null, annual:null, payslip:null}, docLoading={};
+async function loadDocs(kind){
+  if(docCache[kind]!==null || docLoading[kind]) return;
+  if(!workers.length){ return; } // 근로자 로드 후 재호출됨
+  docLoading[kind]=true;
+  const out=[];
+  try{
+    for(const w of workers){
+      if(kind==='payslip'){
+        const snap=await getDocs(collection(db,`payslips/${w.id}/months`));
+        snap.forEach(d=>out.push({worker:w, ym:d.id, ...d.data()}));
+      } else {
+        const path=kind==='labor'?`labor_contracts/${w.id}/contracts`:`annual_contracts/${w.id}/contracts`;
+        const snap=await getDocs(collection(db,path));
+        snap.forEach(d=>out.push({worker:w, cid:d.id, ...d.data()}));
+      }
+    }
+  }catch(e){ console.error('문서 로드 오류',kind,e); }
+  docCache[kind]=out; docLoading[kind]=false; render();
+}
+function renderDocList(kind){
+  const LABEL={labor:'근로계약서', annual:'연봉계약서', payslip:'급여명세서'};
+  if(docCache[kind]===null){
+    loadDocs(kind);
+    $app().innerHTML=topBar('인사')+`<div class="hello"><div class="name">${LABEL[kind]}</div></div><div class="loading">불러오는 중…</div>`;
+    return;
+  }
+  const items=docCache[kind];
+  let cards;
+  if(kind==='payslip'){
+    cards=[...items].sort((a,b)=>String(b.ym||'').localeCompare(String(a.ym||''))).map(it=>
+      `<div class="icard"><div class="ibody"><div class="ititle">${esc(it.worker.name||'-')} <span class="pill">${esc(it.ym||'')}</span></div><div class="imeta">${esc(it.worker.dept||'')}</div></div><div class="iamt">${won(it.netPay||it.totalPay||0)}</div></div>`).join('');
+  } else {
+    cards=[...items].sort((a,b)=>String(b.startDate||b.contractDate||'').localeCompare(String(a.startDate||a.contractDate||''))).map(it=>
+      `<div class="icard"><div class="ibody"><div class="ititle">${esc(it.worker.name||'-')} ${it.worker.rank?`<span class="pill">${esc(it.worker.rank)}</span>`:''}</div><div class="imeta">${esc((it.startDate||it.contractDate||'')+(it.endDate?' ~ '+it.endDate:''))}</div></div>${it.salary?`<div class="iamt">${won(it.salary)}</div>`:''}</div>`).join('');
+  }
+  $app().innerHTML=topBar('인사')+`
+    <div class="hello rowend"><div><div class="name">${LABEL[kind]}</div><div class="sub">전체 ${items.length}건</div></div></div>
+    ${items.length?`<div class="list">${cards}</div>`:`<div class="empty">작성된 ${LABEL[kind]}가 없습니다.</div>`}`;
 }
 function topBar(label,onclick){
   return `<div class="top"><button class="back" onclick="${onclick||'goBack()'}">← ${label}</button><div class="avatar" onclick="goAccount()">${_uInitial}</div></div>`;
@@ -151,7 +193,7 @@ function renderHome(){
 
 function renderRoster(view){
   const label=ROSTER_VIEWS[view];
-  const cards=workers.map(w=>`<div class="wcard" onclick="showDetail('worker','${w.id}')">
+  const cards=workers.map(w=>`<div class="wcard" onclick="showWorkerFrom('${view}','${w.id}')">
     <div class="wav">${esc(initial(w.name))}</div>
     <div class="wbody"><div class="wname">${esc(w.name||'(무명)')} ${w.rank?`<span class="rankb">${esc(w.rank)}</span>`:''}</div>
     <div class="wmeta">${esc(w.dept||'')}${w.empNo?' · 사번 '+esc(w.empNo):''}${w.hireDate?' · 입사 '+esc(w.hireDate):''}</div></div>
@@ -185,23 +227,40 @@ function renderLeave(){
     ${rows.length?`<div class="list">${cards}</div>`:'<div class="empty">연차 사용 내역이 없습니다.</div>'}`;
 }
 
-function renderWorkerDetail(){
+async function renderWorkerDetail(){
   const w=workers.find(x=>x.id===detailId);
   if(!w){ $app().innerHTML=topBar('인사')+'<div class="empty">근로자를 찾을 수 없습니다.</div>'; return; }
-  const ots=otOf(w).sort((a,b)=>(b.yearMonth||'').localeCompare(a.yearMonth||''));
-  const otTotH=ots.reduce((s,o)=>s+(Number(o.hours)||0),0);
-  const lvUsed=usedLeave(w);
+  const from=detailFrom;
   const info=[['사번',w.empNo],['부서',w.dept],['직급',w.rank],['직무',w.job],['고용형태',w.empType],['입사일',w.hireDate],['주민번호',maskJumin(w.jumin)]].filter(x=>x[1]);
-  $app().innerHTML=topBar('인사')+`
+  const LABEL={roster:'근로자 정보',labor:'근로계약서',annual:'연봉계약서',payslip:'급여명세서',retire:'퇴직금'};
+  const header=`
     <div class="hello"><div class="name" style="font-size:22px">${esc(w.name||'')}</div><div class="sub">${esc(w.rank||'')}${w.dept?' · '+esc(w.dept):''}</div></div>
-    <div class="dgrid">
-      <div class="dgc"><div class="l">누적 초과근로</div><div class="v">${otTotH}<small style="font-size:12px">h</small></div></div>
-      <div class="dgc"><div class="l">연차 사용</div><div class="v">${lvUsed}<small style="font-size:12px">일</small></div></div>
-    </div>
     <div class="lbl">기본 정보</div>
-    <div class="dcard">${info.map(([k,v])=>`<div class="drow"><span class="dk">${k}</span><span class="dv">${esc(v)}</span></div>`).join('')}</div>
-    ${ots.length?`<div class="lbl">초과근로 내역 (${ots.length})</div><div class="list">${ots.map(o=>`<div class="icard"><div class="ibody"><div class="ititle"><span class="pill">${esc(o.yearMonth||'')}</span> ${esc(o.hours||0)}시간</div></div><div class="iamt">${won(o.amount||0)}</div></div>`).join('')}</div>`:''}
-    <div class="banner info" style="margin-top:20px">급여명세서·근로계약서·연봉계약서·퇴직금 정산 등 문서 상세는 순차로 붙일 예정입니다.</div>`;
+    <div class="dcard">${info.map(([k,v])=>`<div class="drow"><span class="dk">${k}</span><span class="dv">${esc(v)}</span></div>`).join('')}</div>`;
+  // 근로자명부: 기본정보만 (초과근로 표시 안 함)
+  if(from==='roster'){ $app().innerHTML=topBar('인사')+header; return; }
+  // 퇴직금: 기본정보 + 안내 (초과근로 표시 안 함)
+  if(from==='retire'){ $app().innerHTML=topBar('인사')+header+`<div class="lbl">퇴직금</div><div class="banner info">퇴직금 정산 내역은 준비 중입니다.</div>`; return; }
+  // 근로계약서/연봉계약서/급여명세서: 해당 근로자 문서 로드
+  $app().innerHTML=topBar('인사')+header+`<div class="lbl">${LABEL[from]||''}</div><div class="loading">불러오는 중…</div>`;
+  let docs=[];
+  try{ docs=await loadWorkerDocs(from, w.id); }catch(e){ console.error('문서 로드 오류',e); }
+  if(!(curView==='workerD' && detailId===w.id)) return; // 로드 중 이동 시 렌더 취소
+  let body;
+  if(from==='payslip'){
+    body=docs.sort((a,b)=>String(b.id).localeCompare(String(a.id))).map(d=>
+      `<div class="icard"><div class="ibody"><div class="ititle"><span class="pill">${esc(d.id)}</span></div></div><div class="iamt">${won(d.netPay||d.totalPay||0)}</div></div>`).join('');
+  } else {
+    body=docs.sort((a,b)=>String(b.startDate||b.contractDate||'').localeCompare(String(a.startDate||a.contractDate||''))).map(d=>
+      `<div class="icard"><div class="ibody"><div class="ititle">${esc((d.startDate||d.contractDate||'')+(d.endDate?' ~ '+d.endDate:''))}</div>${d.hourly?`<div class="imeta">시급 ${won(d.hourly)}</div>`:''}</div>${d.salary?`<div class="iamt">${won(d.salary)}</div>`:''}</div>`).join('');
+  }
+  $app().innerHTML=topBar('인사')+header+`<div class="lbl">${LABEL[from]||''} (${docs.length})</div>${docs.length?`<div class="list">${body}</div>`:`<div class="empty">작성된 ${LABEL[from]}가 없습니다.</div>`}`;
+}
+// 특정 근로자의 계약서/급여명세서 서브컬렉션 로드
+async function loadWorkerDocs(kind, wid){
+  const path = kind==='payslip'?`payslips/${wid}/months` : kind==='labor'?`labor_contracts/${wid}/contracts` : `annual_contracts/${wid}/contracts`;
+  const snap=await getDocs(collection(db,path));
+  const out=[]; snap.forEach(d=>out.push({id:d.id,...d.data()})); return out;
 }
 
 /* Firestore 구독 */
@@ -218,4 +277,5 @@ render();
 </script>
 </body>
 </html>
+
 
