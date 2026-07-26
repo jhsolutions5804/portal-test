@@ -944,21 +944,9 @@ window._fbLoadWorkers = async function(){
   }catch(e){ return false; }
 };
 let _lastSaveInfo='';
-function _showDebugBadge(){
-  try{
-    let b=document.getElementById('_chunsik-debug-badge');
-    if(!b){
-      b=document.createElement('div');
-      b.id='_chunsik-debug-badge';
-      b.style.cssText='position:fixed;bottom:8px;right:8px;z-index:99999;background:#000;color:#0f0;font-family:monospace;font-size:10px;padding:8px 10px;border-radius:6px;max-width:320px;line-height:1.5;opacity:.85;white-space:pre-wrap';
-      document.body.appendChild(b);
-    }
-    const ws=(window._dynamicWorkers||[]);
-    b.textContent='🔍 DEBUG\nprojectId: '+app.options.projectId+'\ncollection: '+WORKERS_COLLECTION+'\nworkers('+ws.length+'): '+ws.map(w=>w.id+'='+w.name).join(', ')+(_lastSaveInfo?('\n'+_lastSaveInfo):'');
-  }catch(e){}
-}
+function _showDebugBadge(){ /* 디버그 뱃지 비활성화 (진단 완료, 프로덕션 노출 방지) */ }
 window._showDebugBadge=_showDebugBadge;
-window._setLastSaveInfo=function(s){ _lastSaveInfo=s; _showDebugBadge(); };
+window._setLastSaveInfo=function(s){ _lastSaveInfo=s; };
 
 window._fbAddWorker = async function(name, role, birth){
   try{
