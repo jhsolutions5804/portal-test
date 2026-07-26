@@ -30,11 +30,11 @@
 const OA2 = {
   clientId:    '97f0a368-a746-42f9-8782-38ac8cc0962c',
   tenantId:    '548fcb48-1ab8-4c47-8242-bc098ea80416',
-  redirectUri: 'https://jhsolutions5804.github.io/portal-test/outlook-auth.html',
+  redirectUri: 'https://jhsolutions5804.github.io/portal/outlook-auth.html',
   scopes:      'Mail.Read User.Read offline_access',
 };
 OA2.tokenUrl = `https://login.microsoftonline.com/${OA2.tenantId}/oauth2/v2.0/token`;
-const PORTAL = 'https://jhsolutions5804.github.io/portal-test/';
+const PORTAL = 'https://jhsolutions5804.github.io/portal/';
 
 function goPortal() { window.location.href = PORTAL; }
 
