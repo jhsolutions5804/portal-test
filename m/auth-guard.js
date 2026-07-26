@@ -56,6 +56,27 @@
     }
   }
 
+  // === 로그인 게이트 ===
+  // 앱 로그인 정보(jh_login_perms) 없이 서브페이지에 직접 진입한 경우 메인 로그인으로 보낸다.
+  // (Firebase 세션이 브라우저에 남아 데이터가 보이더라도, 로그인 정보가 없으면 이름·권한이 잡히지 않는다)
+  if(!isLoggedIn()){
+    var _rc = 0;
+    try{ _rc = parseInt(sessionStorage.getItem('jh_gate_redir') || '0', 10) || 0; }catch(e){}
+    if(_rc < 2){
+      // 최대 2회까지만 메인으로 유도 (무한 리다이렉트 방지)
+      try{
+        sessionStorage.setItem('jh_gate_redir', String(_rc + 1));
+        sessionStorage.setItem('jh_return_to', location.pathname.split('/').pop() + location.search);
+      }catch(e){}
+      location.replace('../index.html');
+      return;
+    }
+    // 2회 유도에도 로그인 정보가 없으면 루프로 간주하고 통과시켜 최소한 화면은 뜨게 한다.
+  } else {
+    // 정상 로그인 상태면 리다이렉트 카운터 초기화
+    try{ sessionStorage.removeItem('jh_gate_redir'); }catch(e){}
+  }
+
   // 페이지 진입 시: 먼저 방치 여부 검사, 통과하면 활동시각 갱신
   checkIdle();
   touch();
