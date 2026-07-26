@@ -1755,7 +1755,7 @@ window.renderPayslipPCRight = () => {
   const won = v => Number(v||0).toLocaleString()+'원';
   const inp = (id, val, ph='0') =>
     `<input type="text" inputmode="numeric" id="${id}" value="${val?Number(val).toLocaleString('ko-KR'):''}" placeholder="${ph}"
-      oninput="fmtMoney(this);ps.${id.replace('ps-','')}=numClean(this.value);renderPayslipPCRight()"
+      oninput="fmtMoney(this)" onchange="ps.${id.replace('ps-','')}=numClean(this.value);renderPayslipPCRight()"
       style="width:100%;padding:6px 10px;border:1px solid #DDE3EE;border-radius:7px;font-size:13px;box-sizing:border-box;">`;
 
   panel.innerHTML = `
@@ -4187,13 +4187,77 @@ let otYear  = new Date().getFullYear();
 let otMonth = new Date().getMonth() + 1;
 
 // ── 메인 뷰 ──
-window.renderOvertimeMain = () => {
+window.renderOvertimeMain = async () => {
   otClearWageCache();
+  const syncResult = await otSyncFromEdoc();
   if (window.innerWidth >= 900) {
     renderOvertimePC();
   } else {
     renderOvertimeMobile();
   }
+  otShowSyncBanner(syncResult);
+};
+
+// 전자결재에서 승인됐지만 아직 인사 overtime에 반영 안 된 건을 자동으로 채워 넣는다.
+// (edoc/index.html의 docApprove() 승인 시점 연동이 실패했거나 누락된 경우를 대비한 자동 복구)
+// 반환값: { synced, total, error } — 화면에 결과를 표시하기 위해 사용
+window.otSyncFromEdoc = async () => {
+  try {
+    const { collection, getDocs, addDoc, doc, setDoc, serverTimestamp } =
+      await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap = await getDocs(collection(window._db, 'edoc_overtime'));
+    const pending = [];
+    snap.forEach(d => {
+      const data = d.data();
+      if (data.status === 'approved' && !data.linkedToOvertime) {
+        pending.push({ id: d.id, ...data });
+      }
+    });
+    if (!pending.length) return { synced: 0, total: 0, error: null };
+    let synced = 0;
+    let firstError = null;
+    for (const p of pending) {
+      try {
+        await addDoc(collection(window._db, 'overtime'), {
+          date: p.date||'', name: p.name||'', rank: p.rank||'', workerId: p.workerId||'',
+          hours: Number(p.hours)||0, amount: Number(p.amount)||0, rate: Number(p.rate)||0,
+          reason: p.reason||'', yearMonth: (p.date||'').slice(0,7), savedAt: serverTimestamp()
+        });
+        await setDoc(doc(window._db, 'edoc_overtime', p.id), { linkedToOvertime: true }, { merge:true });
+        synced++;
+      } catch (e2) {
+        console.error('[초과근로 자동연동 오류-개별건]', p.id, e2);
+        if (!firstError) firstError = e2;
+      }
+    }
+    console.log(`[초과근로 자동연동] ${pending.length}건 중 ${synced}건 반영`);
+    return { synced, total: pending.length, error: firstError ? (firstError.code || firstError.message || String(firstError)) : null };
+  } catch (e) {
+    console.error('[초과근로 자동연동 오류]', e);
+    return { synced: 0, total: 0, error: e.code || e.message || String(e) };
+  }
+};
+
+// 동기화 결과를 화면 상단에 잠깐 보여준다 (문제 없으면 자동 반영 0건일 때만 조용히 넘어감)
+window.otShowSyncBanner = (result) => {
+  if (!result) return;
+  const el = document.getElementById('tab-overtime') || document.body;
+  let msg = null, bg = '#E8F0FB', color = '#1D5BA6';
+  if (result.error) {
+    msg = `⚠️ 전자결재 자동연동 확인 중 오류가 발생했습니다: ${result.error} (스크린샷 찍어서 알려주시면 원인을 확인하겠습니다)`;
+    bg = '#FEE2E2'; color = '#DC2626';
+  } else if (result.synced > 0) {
+    msg = `✅ 전자결재에서 승인된 초과근로 ${result.synced}건을 자동으로 반영했습니다.`;
+  } else if (result.total > result.synced) {
+    msg = `⚠️ ${result.total - result.synced}건은 자동 반영에 실패했습니다. (스크린샷 찍어서 알려주시면 원인을 확인하겠습니다)`;
+    bg = '#FEE2E2'; color = '#DC2626';
+  }
+  if (!msg) return;
+  const banner = document.createElement('div');
+  banner.textContent = msg;
+  banner.style.cssText = `position:sticky;top:0;z-index:50;padding:10px 14px;background:${bg};color:${color};font-size:12.5px;font-weight:700;border-radius:8px;margin:8px 8px 0;`;
+  if (el.firstChild) el.insertBefore(banner, el.firstChild);
+  else el.appendChild(banner);
 };
 
 // ── PC 뷰 ──
