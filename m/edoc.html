@@ -107,6 +107,8 @@ function stBadge(s){
   return `<span class="stbadge st-draft">${esc(s||'-')}</span>`;
 }
 const fmtDate=v=>{if(!v)return '';if(v.seconds)return new Date(v.seconds*1000).toISOString().slice(0,10);return String(v).slice(0,10);};
+// 업무 기준일: 오전 6시 전이면 전날로 (PC와 통일). 로컬(한국) 시각 기준.
+function bizToday(){ const d=new Date(); if(d.getHours()<6) d.setDate(d.getDate()-1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
 /* 화면 전환 + History */
 function nav(v,id){ curView=v; detailId=id||null; history.pushState({v,id:id||null},''); render(); window.scrollTo(0,0); }
@@ -148,8 +150,8 @@ function renderHome(){
       <div class="tile c4" onclick="showView('overtime')"><span class="go">›</span><div class="ic">⏱️</div><div class="nm">초과근로</div><div class="ds">초과근로 신청</div></div>
       <div class="tile c3" onclick="showView('leave')"><span class="go">›</span><div class="ic">🌴</div><div class="nm">연차신청서</div><div class="ds">연차 신청</div></div>
       <div class="tile c5" onclick="showView('cert')"><span class="go">›</span><div class="ic">📃</div><div class="nm">재직증명서</div><div class="ds">증명 발급</div></div>
-    </div>
-    <div class="wide" onclick="showView('resign')"><div class="ic">📄</div><div><div class="nm">퇴직원서</div><div class="ds">퇴직 신청</div></div><span class="go">›</span></div>`;
+      <div class="tile c8" onclick="showView('resign')"><span class="go">›</span><div class="ic" style="background:#fdecf0;color:#db2777">📄</div><div class="nm">퇴직원서</div><div class="ds">퇴직 신청</div></div>
+    </div>`;
 }
 
 function dailyCard(d){
@@ -228,6 +230,8 @@ function renderStub(label){
 // ===== 결재 (승인/반려) =====
 function canApprove(d){
   if(!d||!Array.isArray(d.approvalLine)) return false;
+  const st=d.status||'';
+  if(st==='approved'||st==='rejected'||st==='posted'||st==='done') return false; // 이미 결재 완료된 문서
   const nm=_me.name||'', uid=_me.uid||'';
   const hasPending=d.approvalLine.some(s=>s.role==='결재'&&s.status==='pending');
   if(_me.admin && hasPending) return true; // 관리자(대표)는 대기 결재 대행
@@ -333,7 +337,7 @@ async function otGetWage(workerId){
 }
 // 업무일지 작성
 window.renderDailyWrite=function(){
-  const today=new Date().toISOString().slice(0,10);
+  const today=bizToday();
   $app().innerHTML=topBar('업무일지 작성','goBack()')+`
     <div class="wform">
       ${efld('일자',`<input id="w-date" type="date" value="${today}">`)}
@@ -358,7 +362,7 @@ window.dailySaveM=async function(){
 };
 // 연차 작성
 window.renderLeaveWrite=function(){
-  const today=new Date().toISOString().slice(0,10);
+  const today=bizToday();
   $app().innerHTML=topBar('연차신청 작성','goBack()')+`
     <div class="wform">
       ${efld('구분',`<select id="l-type"><option>연차</option><option>반차</option><option>병가</option><option>경조사</option></select>`)}
@@ -414,7 +418,7 @@ window.renderOvertimeDetail=function(){
 window.renderOvertimeWrite=async function(){
   $app().innerHTML=topBar('초과근로 작성','goBack()')+`<div class="wform"><div class="empty">불러오는 중…</div></div>`;
   const workers=await otLoadWorkers();
-  const today=new Date().toISOString().slice(0,10);
+  const today=bizToday();
   const opts=['<option value="">근로자 선택</option>',...workers.map(w=>`<option value="${w.id}" data-name="${w.name}" data-rank="${w.rank}">${w.name}${w.rank?' '+w.rank:''}</option>`)].join('');
   $app().innerHTML=topBar('초과근로 작성','goBack()')+`
     <div class="wform">
