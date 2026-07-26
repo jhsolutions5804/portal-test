@@ -593,6 +593,17 @@
       </div>
     </section>
 
+    <!-- 종료 PJT 뷰 -->
+    <section id="view-pjt-ended" style="display:none; flex:1; overflow-y:auto; padding:24px 16px; box-sizing:border-box;">
+      <div style="width:100%; max-width:900px; margin:0 auto;">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px;">
+          <button class="back" onclick="showPjtHome()" style="font-size:13px;">← PJT 관리</button>
+          <h2 style="margin:0; font-size:18px; font-weight:800; color:#1A2540;">🗄️ 종료 PJT</h2>
+        </div>
+        <div id="pjt-ended-list" style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;"></div>
+      </div>
+    </section>
+
     <!-- 신규 PJT 등록 모달 -->
     <div id="new-pjt-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center;padding:20px">
       <div style="background:#fff;border-radius:16px;padding:28px 30px;width:480px;max-width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.18)">
@@ -873,11 +884,16 @@ const MODULES=[
   { key:'pjt',  name:'PJT 관리',       desc:'진행 중인 프로젝트 현장 관리',    ic:'pjt',  emoji:'🏗️', url:'https://jhsolutions5804.github.io/portal-test/pjt/' },
 ];
 // PJT별 서브 목록 (url: 각 PJT 전용 워크스페이스 URL)
-const PJT_SUBTABS=[
-  { key:'pjt_home', name:'PJT 홈', emoji:'🏠', desc:'진행 중인 프로젝트 현황', url:'' },
+// 고정 PJT 원본 정의 — 종료되어 PJT_SUBTABS에서 제거돼도 재개 시 이 원본으로 복원한다
+const PJT_FIXED_BASE=[
   { key:'p4ph2', name:'P4 Ph2 (FAB)', emoji:'🏭', desc:'귀뚜라미범양냉방 · FCU 설치', url:'https://jhsolutions5804.github.io/portal-test/pjt/' },
   { key:'p4ph4', name:'P4 Ph4 (SUP)', emoji:'🔧', desc:'귀뚜라미범양냉방 · EHU 설치', url:'https://jhsolutions5804.github.io/portal-test/pjt_ph4/' },
+];
+const PJT_SUBTABS=[
+  { key:'pjt_home', name:'PJT 홈', emoji:'🏠', desc:'진행 중인 프로젝트 현황', url:'' },
+  ...PJT_FIXED_BASE.map(x=>({...x})),
   { key:'pjt_manday', name:'월간 공수', emoji:'📊', desc:'전체 PJT 공수 집계', url:'https://jhsolutions5804.github.io/portal-test/pjt_manday/' },
+  { key:'pjt_ended', name:'종료 PJT', emoji:'🗄️', desc:'종료된 프로젝트 모아보기', url:'' },
 ];
 // 인사(hr) 하위 탭 — portal/hr 앱의 goTab() 키와 일치
 const HR_SUBTABS=[
@@ -938,6 +954,7 @@ function showView(v){
   $('view-embed').classList.toggle('on', v==='embed');
   $('view-admin').style.display = (v==='admin') ? 'block' : 'none';
   if($('view-pjt-home')) $('view-pjt-home').style.display = (v==='pjt-home') ? 'flex' : 'none';
+  if($('view-pjt-ended')) $('view-pjt-ended').style.display = (v==='pjt-ended') ? 'flex' : 'none';
   $('view-org').classList.toggle('on', v==='org');
   $('view-emp-detail').style.display = (v==='emp-detail') ? 'block' : 'none';
   // 포털 홈이면 드롭다운 전부 닫기
@@ -967,16 +984,47 @@ function showPjtHome(){
   var npBtn=document.getElementById('new-pjt-btn');
   if(npBtn) npBtn.style.display=(me&&me.admin)?'block':'none';
   syncPjtRegistrySubtabs().then(renderPjtHomeCards);
+  syncPjtSubtabsFromSettings();
   renderPjtHomeCards();
-  renderPjtRegistry();
   loadPjtCalendar();
 }
+
+async function showPjtEndedView(){
+  showView('pjt-ended');
+  document.querySelectorAll('.sb-item').forEach(b=>b.classList.remove('active'));
+  const pjtBtn=document.querySelector('[data-mod="pjt"]');
+  if(pjtBtn){ pjtBtn.classList.add('active'); }
+  const listEl=document.getElementById('pjt-ended-list');
+  if(!listEl) return;
+  listEl.innerHTML='<div style="grid-column:1/-1;text-align:center;color:#9AAABF;font-size:13px;padding:30px 0">불러오는 중...</div>';
+  try{
+    let html='';
+    // ① 고정 PJT(FAB/SUP) 중 종료된 것
+    for(const base of PJT_FIXED_BASE){
+      const snap=await getDoc(doc(db,'pjt_settings',base.key));
+      if(snap.exists() && snap.data().status==='ended'){
+        const d=snap.data();
+        html+=pjtRegistryCard({ id:base.key, name:d.name||base.name, content:d.content||base.desc, site:d.site, client:d.client, item:d.item, qty:d.qty, startDate:d.startDate }, true, 'fixed');
+      }
+    }
+    // ② 경량 PJT 중 종료된 것
+    const regSnap=await getDocs(query(collection(db,'pjt_registry'), orderBy('createdAt','desc')));
+    regSnap.forEach(function(d){
+      const item=Object.assign({id:d.id}, d.data());
+      if(item.status==='ended') html+=pjtRegistryCard(item, true, 'light');
+    });
+    listEl.innerHTML=html || '<div style="grid-column:1/-1;text-align:center;color:#9AAABF;font-size:13px;padding:30px 0">종료된 프로젝트가 없습니다.</div>';
+  }catch(e){
+    listEl.innerHTML='<div style="grid-column:1/-1;text-align:center;color:#c0392b;font-size:13px;padding:30px 0">불러오기 실패</div>';
+  }
+}
+window.showPjtEndedView=showPjtEndedView;
 
 function renderPjtHomeCards(){
   const el=document.getElementById('pjt-home-cards');
   if(!el) return;
   el.innerHTML='';
-  PJT_SUBTABS.filter(st=>st.key!=='pjt_home' && st.key!=='pjt_manday').forEach(st=>{
+  PJT_SUBTABS.filter(st=>st.key!=='pjt_home' && st.key!=='pjt_manday' && st.key!=='pjt_ended').forEach(st=>{
     const card=document.createElement('div');
     card.style.cssText='background:#fff;border:1px solid #dde4ef;border-radius:12px;padding:14px 16px;cursor:pointer;transition:.15s;flex-shrink:0;width:460px';
     card.onmouseover=function(){this.style.borderColor='var(--blue)';this.style.boxShadow='0 2px 10px rgba(0,0,0,.07)'};
@@ -1610,12 +1658,13 @@ var _pjtSettingsKey=null;
 window.openPjtSettings = async function(key, label){
   _pjtSettingsKey=key;
   const isLight=key.indexOf('reg_')===0;
+  const canEnd=key!=='pjt_home' && key!=='pjt_manday' && key!=='pjt_ended';
   document.getElementById('new-pjt-title').textContent='⚙️ '+(label||key)+' 설정';
   ['np-name','np-site','np-client','np-desc','np-item','np-qty','np-start','np-url','np-progress','np-manday'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
   });
   document.getElementById('np-light-extra').style.display=isLight?'block':'none';
-  document.getElementById('np-end-btn').style.display=isLight?'block':'none';
+  document.getElementById('np-end-btn').style.display=canEnd?'block':'none';
   var sb=document.getElementById('np-save-btn'); if(sb) sb.textContent='저장';
   document.getElementById('new-pjt-modal').style.display='flex';
   try{
@@ -1671,16 +1720,23 @@ window.savePjtSettings = async function(key){
 };
 
 window.endPjtFromSettings = async function(){
-  if(!_pjtSettingsKey || _pjtSettingsKey.indexOf('reg_')!==0) return;
-  var id=_pjtSettingsKey.slice(4);
+  if(!_pjtSettingsKey || _pjtSettingsKey==='pjt_home' || _pjtSettingsKey==='pjt_manday' || _pjtSettingsKey==='pjt_ended') return;
+  var key=_pjtSettingsKey;
+  var isLight=key.indexOf('reg_')===0;
   var name=document.getElementById('np-name').value.trim()||'이 프로젝트';
-  if(!confirm('['+name+'] 프로젝트를 종료 처리할까요?\n종료된 PJT는 카드·사이드바에서 사라지고, PJT 홈 하단 종료 목록으로 이동합니다.')) return;
+  if(!confirm('['+name+'] 프로젝트를 종료 처리할까요?\n종료된 PJT는 카드·사이드바에서 사라지고, 사이드바의 "종료 PJT" 메뉴에서 재개할 수 있습니다.')) return;
   try{
-    await updateDoc(doc(db,'pjt_registry',id), { status:'ended', endedAt: serverTimestamp() });
+    if(isLight){
+      await updateDoc(doc(db,'pjt_registry',key.slice(4)), { status:'ended', endedAt: serverTimestamp() });
+    } else {
+      await setDoc(doc(db,'pjt_settings',key), { status:'ended', endedAt: serverTimestamp() }, {merge:true});
+      const idx=PJT_SUBTABS.findIndex(s=>s.key===key);
+      if(idx!==-1) PJT_SUBTABS.splice(idx,1);
+    }
     closeNewPjtForm();
     await syncPjtRegistrySubtabs();
+    renderMenu();
     renderPjtHomeCards();
-    renderPjtRegistry();
   }catch(e){ alert('종료 실패: '+e.message); }
 };
 
@@ -1733,6 +1789,16 @@ window.reopenPjt = async function(id){
     renderPjtHomeCards();
     renderPjtRegistry();
   }catch(e){ alert('오류: '+e.message); }
+};
+
+window.reopenFixedPjt = async function(key){
+  try{
+    await updateDoc(doc(db,'pjt_settings',key), { status:'active' });
+    await syncPjtSubtabsFromSettings();
+    renderMenu();
+    renderPjtHomeCards();
+    showPjtEndedView();
+  }catch(e){ alert('재개 실패: '+e.message); }
 };
 
 window.deletePjtPermanently = async function(id, name){
@@ -1810,7 +1876,8 @@ async function renderPjtRegistry(){
   }catch(e){ console.warn('PJT registry 오류:', e); sec.innerHTML=''; }
 }
 
-function pjtRegistryCard(p, isEnded){
+function pjtRegistryCard(p, isEnded, kind){
+  kind=kind||'light';
   var dday='';
   if(p.startDate){
     var diff=Math.floor((new Date()-new Date(p.startDate))/(1000*60*60*24));
@@ -1822,9 +1889,13 @@ function pjtRegistryCard(p, isEnded){
   if(p.item||p.qty) info.push('📦 '+(p.item||'')+(p.qty?' '+p.qty+'대':''));
   var btns='';
   if(isEnded){
-    btns='<button onclick="reopenPjt(\''+p.id+'\')" style="padding:6px 12px;background:#f0f4f8;border:1px solid #dde4ef;border-radius:8px;font-size:12px;cursor:pointer;color:#1D5BA6;font-family:inherit">재개</button>';
-    if(me&&me.admin){
-      btns+='<button onclick="deletePjtPermanently(\''+p.id+'\',\''+(p.name||'').replace(/'/g,"")+'\')" style="padding:6px 12px;background:#fff;border:1px solid #ffb3b3;border-radius:8px;font-size:12px;cursor:pointer;color:#c0392b;font-family:inherit">🗑 완전삭제</button>';
+    if(kind==='fixed'){
+      btns='<button onclick="reopenFixedPjt(\''+p.id+'\')" style="padding:6px 12px;background:#f0f4f8;border:1px solid #dde4ef;border-radius:8px;font-size:12px;cursor:pointer;color:#1D5BA6;font-family:inherit">재개</button>';
+    } else {
+      btns='<button onclick="reopenPjt(\''+p.id+'\')" style="padding:6px 12px;background:#f0f4f8;border:1px solid #dde4ef;border-radius:8px;font-size:12px;cursor:pointer;color:#1D5BA6;font-family:inherit">재개</button>';
+      if(me&&me.admin){
+        btns+='<button onclick="deletePjtPermanently(\''+p.id+'\',\''+(p.name||'').replace(/'/g,"")+'\')" style="padding:6px 12px;background:#fff;border:1px solid #ffb3b3;border-radius:8px;font-size:12px;cursor:pointer;color:#c0392b;font-family:inherit">🗑 완전삭제</button>';
+      }
     }
   } else {
     var goBtn=p.url?'<button onclick="window.open(\''+p.url+'\',\'_blank\')" style="padding:6px 12px;background:#1D5BA6;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit">바로가기</button>':'';
@@ -2364,8 +2435,31 @@ async function syncPjtSubtabsFromSettings(){
   try{
     const fs=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     let changed=false;
+    // ① 고정 PJT(FAB/SUP)의 종료 상태 체크 — 종료되면 목록에서 제거, 활성이면 원본에서 복원
+    for(const base of PJT_FIXED_BASE){
+      try{
+        const snap=await fs.getDoc(fs.doc(db,'pjt_settings',base.key));
+        const d=snap.exists()?snap.data():{};
+        const isEnded=d.status==='ended';
+        const idx=PJT_SUBTABS.findIndex(s=>s.key===base.key);
+        if(isEnded && idx!==-1){
+          PJT_SUBTABS.splice(idx,1); changed=true;
+        } else if(!isEnded && idx===-1){
+          const mandayIdx=PJT_SUBTABS.findIndex(s=>s.key==='pjt_manday');
+          const insertAt=mandayIdx===-1?PJT_SUBTABS.length:mandayIdx;
+          const restored={...base};
+          if(d.name) restored.name=d.name;
+          if(d.client&&d.content) restored.desc=d.client+' · '+d.content;
+          else if(d.client) restored.desc=d.client;
+          else if(d.content) restored.desc=d.content;
+          PJT_SUBTABS.splice(insertAt,0,restored);
+          changed=true;
+        }
+      }catch(e){}
+    }
+    // ② 목록에 남아있는(=활성) 고정/일반 PJT의 이름·설명 동기화
     for(const st of PJT_SUBTABS){
-      if(st.key==='pjt_home') continue;
+      if(st.key==='pjt_home'||st.key==='pjt_manday'||st.key==='pjt_ended') continue;
       try{
         const snap=await fs.getDoc(fs.doc(db,'pjt_settings',st.key));
         if(!snap.exists()) continue;
@@ -2693,6 +2787,9 @@ function openModule(m, tab, overrideUrl){
   const actualUrl=overrideUrl||m.url;
   if(tab==='pjt_home'||m.key==='pjt'&&tab===null){
     showPjtHome(); return;
+  }
+  if(tab==='pjt_ended'){
+    showPjtEndedView(); return;
   }
   if(!actualUrl){ toast(m.name+' 워크스페이스 준비 중입니다.'); return; }
   _activeMod=m.key;
