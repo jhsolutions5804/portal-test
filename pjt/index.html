@@ -909,6 +909,8 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, serverTimestamp, setDoc, getDoc, getDocs }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, onAuthStateChanged }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 // =====================================================
 // 🔥 FIREBASE CONFIG — 아래 값을 Firebase Console에서 복사해 붙여넣으세요
@@ -925,10 +927,39 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 // Firebase 연결 상태를 전역에 노출
 window._fbDb = db;
 window._fbReady = true;
+
+// ══════════════════════════════════════════
+// 접근 검증 게이트 — 로그인 + 승인된 계정(portal_users)만 통과
+// URL 직접 접근으로 인한 우회를 막기 위해 화면을 즉시 가리고, 아래 자동 preload(공수/공정 데이터)도 검증 통과 후에만 실행한다.
+// ══════════════════════════════════════════
+window._accessGranted=false;
+const _gateOverlay=document.createElement('div');
+_gateOverlay.id='_access-gate';
+_gateOverlay.style.cssText='position:fixed;inset:0;z-index:999999;background:#f5f5f7;display:flex;align-items:center;justify-content:center;font-family:-apple-system,sans-serif;color:#86868b;font-size:13px';
+_gateOverlay.textContent='확인 중...';
+document.body.appendChild(_gateOverlay);
+function _denyGateAccess(msg){
+  _gateOverlay.innerHTML='<div style="max-width:380px;text-align:center;padding:32px 24px;background:#fff;border:1px solid #e5e5e5;border-radius:14px"><div style="font-size:36px;margin-bottom:12px">🔒</div><div style="font-size:15px;font-weight:700;color:#1A2540;margin-bottom:8px">접근할 수 없습니다</div><div style="font-size:13px;color:#86868b;line-height:1.5">'+msg+'</div></div>';
+}
+window._accessGatePromise=new Promise(function(resolve){
+  onAuthStateChanged(auth, async function(user){
+    if(!user){ _denyGateAccess('로그인이 필요합니다. 포털(portal.jhsol.kr)에서 로그인 후 다시 접속해주세요.'); resolve(false); return; }
+    try{
+      const uSnap=await getDoc(doc(db,'portal_users',user.uid));
+      const uData=uSnap.exists()?uSnap.data():null;
+      const ok=!!(uData && uData.status==='approved' && (uData.admin===true || (uData.perms && uData.perms.pjt===true)));
+      if(!ok){ _denyGateAccess('PJT 관리 접근 권한이 없습니다. 관리자에게 요청해주세요.'); resolve(false); return; }
+      window._accessGranted=true;
+      _gateOverlay.remove();
+      resolve(true);
+    }catch(e){ _denyGateAccess('권한 확인 중 오류가 발생했습니다: '+e.message); resolve(false); }
+  });
+});
 
 // ===== 기술인 명단 Firebase 관리 =====
 // 컬렉션: pjt_workers_{pjtId}  (현재 FAB = pjt_workers_fab)
@@ -1012,6 +1043,8 @@ window._mandayCache = window._mandayCache || {};
 window._checkCache = window._checkCache || {};
 window._progCache = window._progCache || {};
 (function(){
+  window._accessGatePromise.then(function(ok){
+  if(!ok) return;
   // 공수 preload: 시작일~오늘 전체 범위 (과거 달 공수도 누적·집계 반영)
   var _msd=''; try{ _msd=localStorage.getItem('fab_pjt_start_date')||''; }catch(e){}
   var _mToday=(typeof getAppToday==='function')?getAppToday():new Date();
@@ -1033,11 +1066,14 @@ window._progCache = window._progCache || {};
   Promise.all(_pTasks).then(()=>{
     if(typeof window._updateHomeKPI==='function') window._updateHomeKPI();
   });
+  });
 })();
 
 // ===== 공정 데이터 자동 preload (홈/정산 공정율 표시용 - _progCache 미리 로드) =====
 // ZONES 정의 이후 실행되도록 지연 (module 평가 순서 대응)
 setTimeout(function(){
+  window._accessGatePromise.then(function(ok){
+  if(!ok) return;
   window._progCache = window._progCache || {};
   // 시작일~오늘 범위의 모든 날짜 × 모든 zone 공정 체크를 미리 로드
   var _sdStr = '';
@@ -1068,6 +1104,7 @@ setTimeout(function(){
     if(typeof window._updateHomeKPI==='function') window._updateHomeKPI();
     if(typeof window._renderProgressUI==='function') window._renderProgressUI();
   });
+  });
 }, 0);
 
 // ===== 체크 데이터 다중 날짜 일괄 조회 =====
@@ -1088,8 +1125,8 @@ window._fbPreloadChecks = async function(keys){
 let _usCache = [];  // { id, reg, text, place, att, tag, tagLabel, sdate, edate, stime, etime }
 let _usUnsub = null;
 
-// 실시간 구독 (앱 시작 시 1회)
-(function subscribeUserSchedules(){
+// 실시간 구독 (앱 시작 시 1회, 접근검증 통과 후)
+function subscribeUserSchedules(){
   const q = query(collection(db, 'user_schedules'), orderBy('savedAt','asc'));
   _usUnsub = onSnapshot(q, snap => {
     _usCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -1098,7 +1135,8 @@ let _usUnsub = null;
     if(typeof renderTwoWeek === 'function' && document.getElementById('tab-twoweek').style.display !== 'none') renderTwoWeek();
     if(typeof renderCal === 'function' && document.getElementById('tab-calendar').style.display !== 'none') renderCal();
   }, err => console.warn('user_schedules 구독 오류:', err));
-})();
+}
+window._accessGatePromise.then(function(ok){ if(ok) subscribeUserSchedules(); });
 
 // 특정 날짜에 해당하는 사용자 일정 반환 (다중일 처리 포함)
 window._usItemsForKey = function(key) {
@@ -1535,8 +1573,8 @@ window._fbGetProgChecks = function(dateKey, zoneId) {
   return { merged, todayOnly, pastOnly };
 };
 
-// ===== 전자결재 연차(edoc_leave) 구독 → 캘린더 자동 등재 =====
-(function subscribeEdocLeave(){
+// ===== 전자결재 연차(edoc_leave) 구독 → 캘린더 자동 등재 (접근검증 통과 후) =====
+function subscribeEdocLeave(){
   const q = query(collection(db, 'edoc_leave'));
   onSnapshot(q, function(snap){
     const typeMap = {'연차':'annual','반차(오전)':'half-am','반차(오후)':'half-pm','오전반차':'half-am','오후반차':'half-pm','반차':'half-am','병가':'annual','기타':'annual'};
@@ -1545,7 +1583,8 @@ window._fbGetProgChecks = function(dateKey, zoneId) {
     if(typeof renderCal==='function' && document.getElementById('tab-calendar').style.display!=='none') renderCal();
     if(typeof renderAttend==='function' && document.getElementById('tab-attend').style.display!=='none') renderAttend();
   }, function(err){console.warn('edoc_leave 구독 오류:',err);});
-})();
+}
+window._accessGatePromise.then(function(ok){ if(ok) subscribeEdocLeave(); });
 
 window._edocLeaveItemsForKey = function(key){
   if(!window._edocLeaveCache) return [];
@@ -3424,7 +3463,8 @@ window.openProgPanel=function(zoneId){
 // 일반 스크립트에서 window._fbSubscribeReports가 아직 없을 수 있음
 // → 짧은 polling으로 Firebase 준비 후 실행
 function waitForFirebaseAndInit() {
-  if (window._fbSubscribeReports && window._fbSubscribeChecks && window._fbSubscribeProgress) {
+  // ⚠️ 접근검증(window._accessGranted, 모듈 스크립트 상단) 통과 전에는 초기화를 시작하지 않는다.
+  if (window._accessGranted && window._fbSubscribeReports && window._fbSubscribeChecks && window._fbSubscribeProgress) {
     // 기술인 명단 Firebase 로드 (없으면 초기 데이터 마이그레이션)
     if(window._fbInitWorkers && window._fbLoadWorkers){
       window._fbInitWorkers(WORKERS_FALLBACK).then(function(){
@@ -3480,7 +3520,7 @@ function waitForFirebaseAndInit() {
   }
 }
 waitForFirebaseAndInit();
-// Firestore에서 설정 읽어 헤더·시작일 반영 (포털·타 기기에서 저장된 값 반영)
+// Firestore에서 설정 읽어 헤더·시작일 반영 (포털·타 기기에서 저장된 값 반영) — 접근검증 통과 후
 (function(){
   function applyOnLoad(){
     if(typeof window._loadPjtSettingsData!=='function'){ setTimeout(applyOnLoad,100); return; }
@@ -3497,9 +3537,9 @@ waitForFirebaseAndInit();
       }
     }).catch(function(){});
   }
-  applyOnLoad();
+  window._accessGatePromise.then(function(ok){ if(ok) applyOnLoad(); });
 })();
-renderProgress(); // 공정 탭은 탭 클릭 시 initProgress()로 갱신
+window._accessGatePromise.then(function(ok){ if(ok) renderProgress(); }); // 공정 탭은 탭 클릭 시 initProgress()로 갱신
 
 // 리포트 입력창 Enter 키
 document.getElementById('report-input').addEventListener('keydown',e=>{
@@ -4118,4 +4158,5 @@ function _usSetTodo(v){
 }
 function toggleUsTodo(){_usSetTodo(!_usTodo);}
 </script>
+
 
