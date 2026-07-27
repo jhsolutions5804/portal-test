@@ -9,6 +9,8 @@
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
   import { getFirestore, doc, getDoc, getDocs, setDoc, collection, serverTimestamp }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+  import { getAuth, onAuthStateChanged }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
   const firebaseConfig = {
     apiKey: "AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI",
@@ -21,6 +23,7 @@
 
   const app  = initializeApp(firebaseConfig);
   const db   = getFirestore(app);
+  const auth = getAuth(app);
   // 금액 입력창 실시간 콤마 포맷(1000단위마다 ,) 및 파싱 헬퍼
   window.fmtMoney = function(el){ const raw=el.value.replace(/[^0-9]/g,''); el.value = raw ? Number(raw).toLocaleString('ko-KR') : ''; };
   window.numClean = function(v){ const n=parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n; };
@@ -57,16 +60,24 @@
   }
 
   // ── 인증 ──
-  // 포털 경유 여부 확인 — ?via=portal 없으면 차단
-  (function() {
+  // ⚠️ 과거엔 ?via=portal 파라미터 존재 여부만으로 접근을 허용했음 — 로그인 여부·승인 상태·hr 권한을
+  //    전혀 확인하지 않아, 주소창에 ?via=portal만 붙이면 급여·계약서 등 인사 데이터 전체가 그대로
+  //    노출되는 우회 경로였음(2026-07-27 수정). 이제 portal_users 기준 실제 검증을 거친다.
+  onAuthStateChanged(auth, async function(user) {
     const viaPortal = new URLSearchParams(location.search).get('via') === 'portal';
-    if (viaPortal) {
-      document.documentElement.classList.add('portal-embed');
+    if (!user) { showScreen('blocked'); return; }
+    try {
+      const ps = await getDoc(doc(db, 'portal_users', user.uid));
+      const d = ps.exists() ? ps.data() : null;
+      const ok = !!(d && d.status === 'approved' && (d.admin === true || (d.perms && d.perms.hr === true)));
+      if (!ok) { showScreen('blocked'); return; }
+      window._isAdmin = !!(d.admin === true);
+      if (viaPortal) document.documentElement.classList.add('portal-embed');
       showScreen('app');
-    } else {
+    } catch (e) {
       showScreen('blocked');
     }
-  })();
+  });
 
   // ── 공정 현황 ──
   let progressYear  = new Date().getFullYear();
@@ -736,8 +747,8 @@ function showScreen(name) {
   if (name === 'app') {
     loadCompSignatures();
     const params = new URLSearchParams(location.search);
-    if (params.get('via') === 'portal') document.documentElement.classList.add('portal-embed');
-    if (params.get('admin') === '1') window._isAdmin = true;
+    // ⚠️ window._isAdmin은 더 이상 ?admin=1 파라미터로 설정하지 않는다 — 위쪽 접근 검증(onAuthStateChanged)에서
+    //    portal_users.admin 값을 확인한 뒤 이미 설정해 둔 값을 그대로 사용한다.
     const t = params.get('tab');
     goTab((t && HR_TABS[t]) ? t : 'home');
   }
@@ -5619,3 +5630,4 @@ window.retireDelete = async (wid, rid, wname) => {
 </script>
 </body>
 </html>
+
