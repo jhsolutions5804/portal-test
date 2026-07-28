@@ -352,8 +352,8 @@ const $app=()=>document.getElementById('app');
 const fmtDate=v=>{if(!v)return '';if(v.seconds)return new Date(v.seconds*1000).toISOString().slice(0,10);return String(v).slice(0,10);};
 const WD=['일','월','화','수','목','금','토'];
 
-function nav(v,s){ curView=v; if(s!==undefined)site=s; history.pushState({v,site,sub,selectedDate,detailId},''); render(); window.scrollTo(0,0); }
-window.openSite=function(s){ site=s; sub='sched'; selectedDate=todayStr(); calMonth=todayStr().slice(0,7); progLoaded=false; progData=null; progLoadingSite=null; attLoaded=false; attWorkers=null; attLoadingSite=null; repCache={}; nav('site',s); const sc=SITE(s); if(sc && sc.type==='light'){ ensureLightSchedSub(sc.regId); } else { loadReports(todayStr()); } };
+function nav(v,s,replace){ curView=v; if(s!==undefined)site=s; const st={v,site,sub,selectedDate,detailId}; if(replace) history.replaceState(st,''); else history.pushState(st,''); render(); window.scrollTo(0,0); }
+window.openSite=function(s,replace){ site=s; sub='sched'; selectedDate=todayStr(); calMonth=todayStr().slice(0,7); progLoaded=false; progData=null; progLoadingSite=null; attLoaded=false; attWorkers=null; attLoadingSite=null; repCache={}; nav('site',s,replace); const sc=SITE(s); if(sc && sc.type==='light'){ ensureLightSchedSub(sc.regId); } else { loadReports(todayStr()); } };
 window.setSub=function(t){ sub=t; if(t==='sched'){ selectedDate=todayStr(); calMonth=todayStr().slice(0,7); if(repCache[selectedDate]===undefined) loadReports(selectedDate); } if(t==='progress' && !progLoaded && progLoadingSite!==site){ loadProgress(site); } if(t==='attend' && !attLoaded && attLoadingSite!==site){ loadAtt(site); } render(); };
 window.selectDate=function(d){ selectedDate=d; if(repCache[d]===undefined) loadReports(d); render(); };
 window.shiftCalMonth=function(delta){ const [y,m]=calMonth.split('-').map(Number); const nm=new Date(y,m-1+delta,1); calMonth=nm.getFullYear()+'-'+String(nm.getMonth()+1).padStart(2,'0'); render(); };
@@ -657,13 +657,13 @@ onAuthStateChanged(auth, ()=>{
     lightMeta=next; render();
   }, err=>{ console.error('pjt_registry 구독 오류',err); });
 
-  history.replaceState({v:'home',site:null,sub:'sched'},'');
   (function(){
     try{
       const qs=new URLSearchParams(location.search);
       const qsite=qs.get('site');
-      if(qsite && (SITES[qsite] || String(qsite).indexOf('reg_')===0)) { openSite(qsite); return; }
+      if(qsite && (SITES[qsite] || String(qsite).indexOf('reg_')===0)) { openSite(qsite, true); return; }
     }catch(e){}
+    history.replaceState({v:'home',site:null,sub:'sched'},'');
     render();
   })();
 });
