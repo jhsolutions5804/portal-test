@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- build: 20260728a · ver: 2026-07-28 (모바일 PJT 5.2.0) · pjt_registry 실시간 연동으로 경량PJT(화성 17L 등) 신규/종료 즉시 반영, 경량PJT 상세(일정·근태·공수) 뷰 신설 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -23,7 +24,7 @@
   .fcard{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px 18px;cursor:pointer;transition:transform .12s ease;box-shadow:0 2px 8px rgba(30,50,80,.05);display:flex;align-items:center;gap:15px}
   .fcard:active{transform:scale(.98)}
   .fcard .ic{width:58px;height:58px;border-radius:17px;display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0}
-  .fcard.fab .ic{background:#e7f5ee;color:#1b8a5a}.fcard.sup .ic{background:#eaf2fc;color:#1D5BA6}
+  .fcard.fab .ic{background:#e7f5ee;color:#1b8a5a}.fcard.sup .ic{background:#eaf2fc;color:#1D5BA6}.fcard.light .ic{background:#f0edfb;color:#7C3AED}
   .fcard .cl{font-size:12px;font-weight:700;color:var(--sub)}
   .fcard .nm{font-size:17px;font-weight:800;letter-spacing:-.3px;margin-top:2px}
   .fcard .ds{font-size:11.5px;color:var(--sub);font-weight:500;margin-top:3px}
@@ -131,7 +132,7 @@
 <script type="module">
 const _uInitial=(function(){try{var a=JSON.parse(localStorage.getItem('jh_login_perms')||'null');return (a&&a.name)?a.name.slice(0,1):'·';}catch(e){return '·';}})();
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, onSnapshot, getDocs, doc, getDoc, setDoc, addDoc, deleteDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, onSnapshot, getDocs, doc, getDoc, setDoc, addDoc, deleteDoc, serverTimestamp, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 const firebaseConfig = {
   apiKey:"AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI", authDomain:"portal-test-6e0ff.firebaseapp.com",
   projectId:"portal-test-6e0ff", storageBucket:"portal-test-6e0ff.firebasestorage.app",
@@ -245,17 +246,54 @@ const ATT={
   fab:{workers:'pjt_workers_fab', att:'worker_attendance', md:'worker_manday'},
   sup:{workers:'pjt_workers_ph4', att:'ph4_attendance', md:'ph4_manday'},
 };
+// ── 경량 PJT(pjt_registry) 실시간 동기화: PC와 동일하게 신규/종료가 즉시 반영 ──
+let lightMeta={}; // {id: pjt_registry 문서데이터} — status!=='ended'만 보관
+function SITE(key){
+  if(!key) return null;
+  if(SITES[key]) return Object.assign({type:'static', key}, SITES[key]);
+  if(String(key).indexOf('reg_')===0){
+    const id=key.slice(4); const m=lightMeta[id]; if(!m) return null;
+    return {type:'light', key, regId:id, code:m.name||'(이름 없음)', client:m.client||'',
+      desc:m.content||(m.item?(m.item+(m.qty?(' '+m.qty+'건'):'')):''), ic:'🧩', cls:'light', progress:m.progress||0};
+  }
+  return null;
+}
+function schedList(s){ return data[s.type==='light'?('light_'+s.regId):s.sch]||[]; }
+function schColl(s){ return s.type==='light' ? collection(db,'pjt_registry',s.regId,'schedules') : collection(db,s.sch); }
+function schDocRef(s,id){ return s.type==='light' ? doc(db,'pjt_registry',s.regId,'schedules',id) : doc(db,s.sch,id); }
+let lightSchedSubs={};
+function ensureLightSchedSub(regId){
+  if(lightSchedSubs[regId]) return;
+  lightSchedSubs[regId]=true;
+  const key='light_'+regId; data[key]=data[key]||[];
+  onSnapshot(collection(db,'pjt_registry',regId,'schedules'), snap=>{
+    const arr=[]; snap.forEach(d=>arr.push({id:d.id,...d.data()})); data[key]=arr; render();
+  }, err=>{ console.error('경량PJT 일정 구독 오류',err); });
+}
 let attWorkers=null, attChecks=[], attMd={}, attLoaded=false, attLoadingSite=null, attDate=(function(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})();
 async function loadAtt(s){
-  const cfg=ATT[s]; if(!cfg){ attLoaded=true; attWorkers=[]; render(); return; }
+  const sc=SITE(s);
   attLoadingSite=s; attLoaded=false; render();
   const dk=attDate;
-  let ws=[];
-  try{ const snap=await getDocs(collection(db,cfg.workers)); ws=snap.docs.map(d=>Object.assign({id:d.id},d.data())).filter(w=>w.active!==false); ws.sort((a,b)=>(a.order||0)-(b.order||0)); }catch(e){}
-  let checks=[];
-  try{ const s2=await getDoc(doc(db,cfg.att,dk)); if(s2.exists())checks=(s2.data()||{}).checks||[]; }catch(e){}
-  let md={};
-  try{ const s3=await getDoc(doc(db,cfg.md,dk)); if(s3.exists())md=(s3.data()||{}).md||{}; }catch(e){}
+  let ws=[], checks=[], md={};
+  try{
+    if(sc && sc.type==='light'){
+      const snap=await getDocs(query(collection(db,'pjt_registry',sc.regId,'workers'), orderBy('order','asc')));
+      ws=snap.docs.map(d=>Object.assign({id:d.id},d.data()));
+      const [attSnap,mdSnap]=await Promise.all([
+        getDoc(doc(db,'pjt_registry',sc.regId,'attendance',dk)),
+        getDoc(doc(db,'pjt_registry',sc.regId,'manday',dk))
+      ]);
+      checks=attSnap.exists()?(attSnap.data().checks||[]):[];
+      md=mdSnap.exists()?(mdSnap.data().md||{}):{};
+    } else {
+      const cfg=ATT[s];
+      if(!cfg){ attLoaded=true; attWorkers=[]; attLoadingSite=null; render(); return; }
+      const snap=await getDocs(collection(db,cfg.workers)); ws=snap.docs.map(d=>Object.assign({id:d.id},d.data())).filter(w=>w.active!==false); ws.sort((a,b)=>(a.order||0)-(b.order||0));
+      const s2=await getDoc(doc(db,cfg.att,dk)); if(s2.exists())checks=(s2.data()||{}).checks||[];
+      const s3=await getDoc(doc(db,cfg.md,dk)); if(s3.exists())md=(s3.data()||{}).md||{};
+    }
+  }catch(e){}
   if(attDate!==dk) return; // 로드 중 날짜가 바뀌면 무시
   attWorkers=ws; attChecks=checks; attMd=md; attLoaded=true; attLoadingSite=null; render();
 }
@@ -263,24 +301,26 @@ window.shiftAttDate=function(delta){ const d=new Date(attDate); d.setDate(d.getD
 window.attToday=function(){ attDate=todayStr(); attLoaded=false; loadAtt(site); };
 window.toggleAttend=async function(wid){
   if(attDate!==todayStr()) return; // 오늘만 수정 가능
-  const cfg=ATT[site]; if(!cfg) return; const td=todayStr();
+  const sc=SITE(site); if(!sc) return; const td=todayStr();
   const idx=attChecks.indexOf(wid); const isDone=idx===-1;
   try{
-    const ref=doc(db,cfg.att,td); const snap=await getDoc(ref);
+    const ref = sc.type==='light' ? doc(db,'pjt_registry',sc.regId,'attendance',td) : doc(db,ATT[site].att,td);
+    const snap=await getDoc(ref);
     let checks=snap.exists()?((snap.data()||{}).checks||[]):[];
     const i=checks.indexOf(wid); if(i===-1)checks.push(wid); else checks.splice(i,1);
-    await setDoc(ref,{checks,updatedAt:serverTimestamp()});
+    await setDoc(ref,{checks,updatedAt:serverTimestamp()},{merge:true});
     attChecks=checks;
   }catch(e){ if(isDone)attChecks.push(wid); else attChecks.splice(idx,1); }
   render();
 };
-// 공수 입력 (오늘만) — worker_manday/{날짜} 문서의 md 맵에 저장
+// 공수 입력 (오늘만) — worker_manday/{날짜} 또는 pjt_registry/{id}/manday/{날짜} 문서의 md 맵에 저장
 window.setMd=async function(wid,val){
   if(attDate!==todayStr()) return; // 오늘만 입력 가능
-  const cfg=ATT[site]; if(!cfg) return; const td=todayStr();
+  const sc=SITE(site); if(!sc) return; const td=todayStr();
   const num=(val===''||val==null)?null:parseFloat(val);
   try{
-    const ref=doc(db,cfg.md,td); const snap=await getDoc(ref);
+    const ref = sc.type==='light' ? doc(db,'pjt_registry',sc.regId,'manday',td) : doc(db,ATT[site].md,td);
+    const snap=await getDoc(ref);
     let md=snap.exists()?((snap.data()||{}).md||{}):{};
     if(num==null||isNaN(num)) delete md[wid]; else md[wid]=num;
     await setDoc(ref,{md,updatedAt:serverTimestamp()},{merge:true});
@@ -312,7 +352,7 @@ const fmtDate=v=>{if(!v)return '';if(v.seconds)return new Date(v.seconds*1000).t
 const WD=['일','월','화','수','목','금','토'];
 
 function nav(v,s){ curView=v; if(s!==undefined)site=s; history.pushState({v,site,sub,selectedDate,detailId},''); render(); window.scrollTo(0,0); }
-window.openSite=function(s){ site=s; sub='sched'; selectedDate=todayStr(); calMonth=todayStr().slice(0,7); progLoaded=false; progData=null; progLoadingSite=null; attLoaded=false; attWorkers=null; attLoadingSite=null; repCache={}; nav('site',s); loadReports(todayStr()); };
+window.openSite=function(s){ site=s; sub='sched'; selectedDate=todayStr(); calMonth=todayStr().slice(0,7); progLoaded=false; progData=null; progLoadingSite=null; attLoaded=false; attWorkers=null; attLoadingSite=null; repCache={}; nav('site',s); const sc=SITE(s); if(sc && sc.type==='light'){ ensureLightSchedSub(sc.regId); } else { loadReports(todayStr()); } };
 window.setSub=function(t){ sub=t; if(t==='sched'){ selectedDate=todayStr(); calMonth=todayStr().slice(0,7); if(repCache[selectedDate]===undefined) loadReports(selectedDate); } if(t==='progress' && !progLoaded && progLoadingSite!==site){ loadProgress(site); } if(t==='attend' && !attLoaded && attLoadingSite!==site){ loadAtt(site); } render(); };
 window.selectDate=function(d){ selectedDate=d; if(repCache[d]===undefined) loadReports(d); render(); };
 window.shiftCalMonth=function(delta){ const [y,m]=calMonth.split('-').map(Number); const nm=new Date(y,m-1+delta,1); calMonth=nm.getFullYear()+'-'+String(nm.getMonth()+1).padStart(2,'0'); render(); };
@@ -331,6 +371,14 @@ function render(){
 function topBar(label,onclick){ return `<div class="top"><button class="back" onclick="${onclick||'goBack()'}">← ${label}</button><div class="avatar" onclick="goAccount()">${_uInitial}</div></div>`; }
 
 function renderHome(){
+  const lightCards=Object.keys(lightMeta).map(id=>{
+    const m=lightMeta[id];
+    const desc=m.content||(m.item?(m.item+(m.qty?(' '+m.qty+'건'):'')):'');
+    return `<div class="fcard light" onclick="openSite('reg_${id}')">
+      <div class="ic">🧩</div>
+      <div><div class="cl">${esc(m.client||'')}</div><div class="nm">${esc(m.name||'(이름 없음)')}</div><div class="ds">${esc(desc)} · 일정·근태·공수</div></div>
+      <span class="go">›</span></div>`;
+  }).join('');
   $app().innerHTML=`
     <div class="top"><button class="back" onclick="goHome()">← 홈</button><div class="avatar" onclick="goAccount()">${_uInitial}</div></div>
     <div class="hello"><div class="name">PJT 관리</div><div class="sub">진행 중인 프로젝트 현장 관리</div></div>
@@ -340,21 +388,23 @@ function renderHome(){
         <div class="ic">${s.ic}</div>
         <div><div class="cl">${esc(s.client)}</div><div class="nm">${esc(s.code)}</div><div class="ds">${esc(s.desc)} · 공정·일정·근태</div></div>
         <span class="go">›</span></div>`).join('')}
+      ${lightCards}
     </div>`;
 }
 
 function renderSite(){
-  const s=SITES[site]; if(!s){ renderHome(); return; }
+  const s=SITE(site); if(!s){ renderHome(); return; }
+  const isLight=s.type==='light';
   let body='';
   if(sub==='sched') body=renderCalendar(s);
-  else if(sub==='progress') body=renderProgress();
+  else if(sub==='progress' && !isLight) body=renderProgress();
   else body=renderAttend();
   $app().innerHTML=topBar('PJT','goBack()')+`
-    <div class="hello"><div class="name" style="font-size:21px;color:var(--ink)">${esc(s.code)}</div><div class="sub">${esc(s.client)} · ${esc(s.desc)}</div></div>
+    <div class="hello"><div class="name" style="font-size:21px;color:var(--ink)">${esc(s.code)}</div><div class="sub">${esc(s.client)}${s.desc?(' · '+esc(s.desc)):''}${isLight?(' · 진행률 '+s.progress+'%'):''}</div></div>
     <div class="segs">
-      <div class="seg ${sub==='progress'?'on':''}" onclick="setSub('progress')">공정</div>
+      ${isLight?'':`<div class="seg ${sub==='progress'?'on':''}" onclick="setSub('progress')">공정</div>`}
       <div class="seg ${sub==='sched'?'on':''}" onclick="setSub('sched')">일정</div>
-      <div class="seg ${sub==='attend'?'on':''}" onclick="setSub('attend')">근태</div>
+      <div class="seg ${sub==='attend'?'on':''}" onclick="setSub('attend')">${isLight?'근태·공수':'근태'}</div>
     </div>
     ${body}`;
 }
@@ -388,8 +438,8 @@ function renderProgress(){
     </div>`;
 }
 function renderAttend(){
-  const cfg=ATT[site];
-  if(!cfg) return '<div class="empty">준비 중</div>';
+  const sc=SITE(site);
+  if(!ATT[site] && !(sc&&sc.type==='light')) return '<div class="empty">준비 중</div>';
   const isToday=attDate===todayStr();
   const [y,m,d]=attDate.split('-');
   const label=`${m}월 ${d}일 (${WD[new Date(+y,+m-1,+d).getDay()]})`;
@@ -457,7 +507,7 @@ function progZoneCard(z,r,cfg){
   </div>`;
 }
 function renderCalendar(s){
-  const scheds=data[s.sch]||[];
+  const scheds=schedList(s);
   const byDate={}; scheds.forEach(x=>{const d=fmtDate(x.sdate); if(d)(byDate[d]=byDate[d]||[]).push(x);});
   const [y,m]=calMonth.split('-').map(Number);
   const startDay=new Date(y,m-1,1).getDay();
@@ -478,12 +528,15 @@ function renderCalendar(s){
   const dayItems=(byDate[selectedDate]||[]).sort((a,b)=>(a.stime||'').localeCompare(b.stime||''));
   const [sy,sm,sd]=selectedDate.split('-');
   const selLabel=`${sm}월 ${sd}일 (${WD[new Date(sy,sm-1,sd).getDay()]})`;
-  // 업무지시/보고: 해당 날짜 컬렉션(daily_reports_{날짜}/ph4_daily_{날짜})
-  const repItems=repCache[selectedDate];
-  let repHtml;
-  if(repItems===undefined){ repHtml='<div class="empty">불러오는 중…</div>'; }
-  else if(repItems.length){ repHtml=`<div class="list">${repItems.map(r=>`<div class="rep-item"><div class="rep-head"><span class="rtag ins">${esc((r.time||'')+(r.name?' '+r.name:''))}</span><span class="rep-pjt">${esc(s.code)}</span></div><div class="rep-text">${esc(r.text||'')}</div></div>`).join('')}</div>`; }
-  else { repHtml='<div class="empty">이 날 입력된 지시·보고가 없습니다.</div>'; }
+  const isLight=s.type==='light';
+  // 업무지시/보고: 해당 날짜 컬렉션(daily_reports_{날짜}/ph4_daily_{날짜}) — 경량PJT는 구조가 달라 우선 제외
+  let repHtml='';
+  if(!isLight){
+    const repItems=repCache[selectedDate];
+    if(repItems===undefined){ repHtml='<div class="empty">불러오는 중…</div>'; }
+    else if(repItems.length){ repHtml=`<div class="list">${repItems.map(r=>`<div class="rep-item"><div class="rep-head"><span class="rtag ins">${esc((r.time||'')+(r.name?' '+r.name:''))}</span><span class="rep-pjt">${esc(s.code)}</span></div><div class="rep-text">${esc(r.text||'')}</div></div>`).join('')}</div>`; }
+    else { repHtml='<div class="empty">이 날 입력된 지시·보고가 없습니다.</div>'; }
+  }
   return `
     <div style="margin:14px 20px 0;background:#fff;border:1px solid #e4eaf2;border-radius:18px;padding:14px 14px 16px;box-shadow:0 2px 8px rgba(30,50,80,.05)">
       <div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:12px">
@@ -496,9 +549,7 @@ function renderCalendar(s){
     </div>
     <div class="lbl">📅 ${selLabel} 일정 ${dayItems.length?`(${dayItems.length})`:''}</div>
     ${dayItems.length?`<div class="list">${dayItems.map(schCard).join('')}</div>`:'<div class="empty">이 날 등록된 일정이 없습니다.</div>'}
-    <div class="divider"></div>
-    <div class="lbl">📋 업무지시 · 보고</div>
-    ${repHtml}
+    ${isLight?'':`<div class="divider"></div><div class="lbl">📋 업무지시 · 보고</div>${repHtml}`}
     <button class="fab-add" onclick="openSchedForm(null)">+</button>`;
 }
 function schCard(s){
@@ -512,18 +563,18 @@ function schCard(s){
 // 일정 완료 토글 (문서 done 필드) — 구독으로 자동 리렌더
 window.toggleSchedDone=async function(id,ev){
   if(ev&&ev.stopPropagation) ev.stopPropagation();
-  const s=SITES[site]; if(!s) return;
-  const sch=(data[s.sch]||[]).find(x=>x.id===id); if(!sch) return;
+  const s=SITE(site); if(!s) return;
+  const sch=schedList(s).find(x=>x.id===id); if(!sch) return;
   const willDone=!sch.done;
   sch.done=willDone; render(); // 낙관적 반영
-  try{ await setDoc(doc(db,s.sch,id),{done:willDone,doneAt:serverTimestamp()},{merge:true}); }
+  try{ await setDoc(schDocRef(s,id),{done:willDone,doneAt:serverTimestamp()},{merge:true}); }
   catch(e){ sch.done=!willDone; render(); console.error('완료 저장 오류',e); }
 };
 // ===== 일정 등록/수정 폼 =====
 let _schForm=null;
 window.openSchedForm=function(id){
-  const s=SITES[site]; if(!s) return;
-  const sch=id?(data[s.sch]||[]).find(x=>x.id===id):null;
+  const s=SITE(site); if(!s) return;
+  const sch=id?schedList(s).find(x=>x.id===id):null;
   _schForm = sch ? {...sch} : {id:null, text:'', sdate:selectedDate, stime:'', tag:'', memo:''};
   renderSchedForm();
 };
@@ -557,13 +608,13 @@ function renderSchedForm(){
 }
 window.saveSched=async function(){
   _schCapture(); const f=_schForm; if(!f) return;
-  const s=SITES[site]; if(!s) return;
+  const s=SITE(site); if(!s) return;
   if(!f.text||!f.text.trim()){ alert('내용을 입력하세요.'); return; }
   if(!f.sdate){ alert('날짜를 선택하세요.'); return; }
   const payload={ text:f.text.trim(), sdate:f.sdate, edate:f.edate||f.sdate, stime:f.stime||'', tag:f.tag||'', memo:f.memo||'', updatedAt:serverTimestamp() };
   try{
-    if(f.id){ await setDoc(doc(db,s.sch,f.id), payload, {merge:true}); }
-    else { payload.savedAt=serverTimestamp(); payload.done=false; await addDoc(collection(db,s.sch), payload); }
+    if(f.id){ await setDoc(schDocRef(s,f.id), payload, {merge:true}); }
+    else { payload.savedAt=serverTimestamp(); payload.done=false; await addDoc(schColl(s), payload); }
     closeSchedForm();
     if(f.sdate) selectedDate=f.sdate, calMonth=f.sdate.slice(0,7);
     if(curView==='schedD'){ goBack(); } else { render(); }
@@ -571,13 +622,13 @@ window.saveSched=async function(){
 };
 window.deleteSched=async function(id){
   if(!confirm('이 일정을 삭제하시겠습니까?')) return;
-  const s=SITES[site]; if(!s) return;
-  try{ await deleteDoc(doc(db,s.sch,id)); closeSchedForm(); if(curView==='schedD') goBack(); else render(); }
+  const s=SITE(site); if(!s) return;
+  try{ await deleteDoc(schDocRef(s,id)); closeSchedForm(); if(curView==='schedD') goBack(); else render(); }
   catch(e){ alert('삭제 오류: '+e.message); }
 };
 function renderSchedDetail(){
-  const s=SITES[site]; if(!s){ renderHome(); return; }
-  const sch=(data[s.sch]||[]).find(x=>x.id===detailId);
+  const s=SITE(site); if(!s){ renderHome(); return; }
+  const sch=schedList(s).find(x=>x.id===detailId);
   if(!sch){ $app().innerHTML=topBar('일정','goBack()')+'<div class="empty">일정을 찾을 수 없습니다.</div>'; return; }
   const info=[['날짜',fmtDate(sch.sdate)],['시간',sch.stime||'종일'],['구분',sch.tag&&TAGS[sch.tag]?TAGS[sch.tag].l:(sch.tag||'')],['PJT',sch.pjtName],['담당/역할',sch.role],['등록자',sch.author||sch.writer]].filter(x=>x[1]);
   $app().innerHTML=topBar('일정','goBack()')+`
@@ -592,9 +643,21 @@ function subscribe(coll){
     err=>{ loadError=err.code||err.message; render(); });
 }
 ['user_schedules','ph4_schedules'].forEach(subscribe);
+onSnapshot(collection(db,'pjt_registry'), snap=>{
+  const next={};
+  snap.forEach(d=>{ const v=d.data()||{}; if(v.status!=='ended') next[d.id]=v; });
+  lightMeta=next; render();
+}, err=>{ console.error('pjt_registry 구독 오류',err); });
 
 history.replaceState({v:'home',site:null,sub:'sched'},'');
-render();
+(function(){
+  try{
+    const qs=new URLSearchParams(location.search);
+    const qsite=qs.get('site');
+    if(qsite && (SITES[qsite] || String(qsite).indexOf('reg_')===0)) { openSite(qsite); return; }
+  }catch(e){}
+  render();
+})();
 </script>
 </body>
 </html>
