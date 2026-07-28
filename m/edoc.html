@@ -92,7 +92,7 @@ const firebaseConfig = {
 };
 const app=initializeApp(firebaseConfig); const db=getFirestore(app); const auth=getAuth(app);
 
-let dailies=[], leaves=[];
+let dailies=[], leaves=[], purchases=[], expenses=[];
 let curView='home', detailId=null, loadError='';
 let overtimes=[];
 
@@ -125,7 +125,9 @@ function render(){
   if(loadError){ $app().innerHTML=topBar('전자결재')+`<div class="banner err">데이터를 불러오지 못했습니다: ${esc(loadError)}<br>포털 로그인 세션이 필요할 수 있습니다.</div>`; return; }
   const map={home:renderHome,approve:renderApprove,daily:renderDaily,leave:renderLeave,dailyD:renderDailyDetail,leaveD:renderLeaveDetail,
     overtime:renderOvertimeList,overtimeD:renderOvertimeDetail,dailyW:renderDailyWrite,leaveW:renderLeaveWrite,overtimeW:renderOvertimeWrite,
-    resign:()=>renderStub('퇴직원서'),cert:()=>renderStub('재직증명서'),purchase:()=>renderStub('구매품의서'),expense:()=>renderStub('지출결의서')};
+    purchase:renderPurchase,purchaseD:renderPurchaseDetail,purchaseW:renderPurchaseWrite,
+    expense:renderExpense,expenseD:renderExpenseDetail,expenseW:renderExpenseWrite,
+    resign:()=>renderStub('퇴직원서'),cert:()=>renderStub('재직증명서')};
   (map[curView]||renderHome)();
 }
 function topBar(label,onclick){ return `<div class="top"><button class="back" onclick="${onclick||'goBack()'}">← ${label}</button><div class="avatar" onclick="goAccount()">${_uInitial}</div></div>`; }
@@ -165,12 +167,27 @@ function leaveCard(l){
     <div class="dl-top"><div class="dl-title">${esc(l.name||'연차신청')} <span class="pill">${esc(l.leaveType||l.type||'연차')}</span></div>${stBadge(l.status)}</div>
     <div class="dl-meta">${esc(fmtDate(l.startDate||l.sdate))}${l.endDate||l.edate?' ~ '+esc(fmtDate(l.endDate||l.edate)):''} · ${l.days||l.leaveDays||0}일</div></div>`;
 }
+function itemsTotal(items){ if(!Array.isArray(items))return 0; return items.reduce((s,it)=>s+((it.amount!=null?Number(it.amount):(Number(it.qty)||0)*(Number(it.unitPrice)||0))||0),0); }
+function purchaseCard(p){
+  const tot=itemsTotal(p.items);
+  return `<div class="dcard-list" onclick="showDetail('purchase','${p.id}')">
+    <div class="dl-top"><div class="dl-title">${esc(p.vendor||'구매품의서')}</div>${stBadge(p.status)}</div>
+    <div class="dl-meta">${p.dueDate?esc(fmtDate(p.dueDate))+' 필요 · ':''}${Array.isArray(p.items)?p.items.length+'개 품목':''}${tot?' · ₩'+tot.toLocaleString('ko-KR'):''}</div></div>`;
+}
+function expenseCard(x){
+  return `<div class="dcard-list" onclick="showDetail('expense','${x.id}')">
+    <div class="dl-top"><div class="dl-title">${esc(x.vendor||x.category||'지출결의서')} <span class="pill">${esc(x.category||'')}</span></div>${stBadge(x.status)}</div>
+    <div class="dl-meta">${x.expDate?esc(fmtDate(x.expDate))+' · ':''}₩${(Number(x.amount)||0).toLocaleString('ko-KR')}</div></div>`;
+}
 
 function renderApprove(){
-  const all=[...dailies.map(d=>({t:'daily',d})),...leaves.map(l=>({t:'leave',d:l}))]
+  const all=[...dailies.map(d=>({t:'daily',d})),...leaves.map(l=>({t:'leave',d:l})),
+    ...purchases.map(p=>({t:'purchase',d:p})),...expenses.map(x=>({t:'expense',d:x})),
+    ...overtimes.map(o=>({t:'overtime',d:o}))]
     .sort((a,b)=>{const sa=isWait(a.d.status)?0:1,sb=isWait(b.d.status)?0:1;if(sa!==sb)return sa-sb;return (fmtDate(b.d.createdAt||b.d.date)).localeCompare(fmtDate(a.d.createdAt||a.d.date));});
   const waitCnt=all.filter(x=>isWait(x.d.status)).length;
-  const cards=all.map(x=>x.t==='daily'?dailyCard(x.d):leaveCard(x.d)).join('');
+  const cardFn={daily:dailyCard,leave:leaveCard,purchase:purchaseCard,expense:expenseCard,overtime:otCard};
+  const cards=all.map(x=>cardFn[x.t](x.d)).join('');
   $app().innerHTML=topBar('전자결재')+`
     <div class="hello rowend"><div><div class="name">결재함</div><div class="sub">대기 ${waitCnt} · 전체 ${all.length}</div></div></div>
     ${all.length?`<div class="list">${cards}</div>`:'<div class="empty">결재 문서가 없습니다.</div>'}`;
@@ -223,8 +240,62 @@ function renderLeaveDetail(){
 function renderStub(label){
   $app().innerHTML=topBar('전자결재')+`
     <div class="hello"><div class="name" style="font-size:22px">${esc(label)}</div></div>
-    <div class="banner info">${esc(label)}는 현재 전용 데이터가 분리돼 있지 않아, 실제 목록 연동을 준비 중입니다. 결재함에서 상태별로 함께 확인하실 수 있습니다.</div>
     <div class="empty" style="margin-top:14px">준비 중</div>`;
+}
+function renderPurchase(){
+  const sorted=[...purchases].sort((a,b)=>fmtDate(b.createdAt).localeCompare(fmtDate(a.createdAt)));
+  $app().innerHTML=topBar('전자결재')+`
+    <div class="hello rowend"><div><div class="name">구매품의서</div><div class="sub">전체 ${purchases.length}</div></div></div>
+    ${purchases.length?`<div class="list">${sorted.map(purchaseCard).join('')}</div>`:'<div class="empty">작성된 구매품의서가 없습니다.</div>'}
+    <button class="fab-w" onclick="showView('purchaseW')">+</button>`;
+}
+function renderExpense(){
+  const sorted=[...expenses].sort((a,b)=>fmtDate(b.createdAt).localeCompare(fmtDate(a.createdAt)));
+  $app().innerHTML=topBar('전자결재')+`
+    <div class="hello rowend"><div><div class="name">지출결의서</div><div class="sub">전체 ${expenses.length}</div></div></div>
+    ${expenses.length?`<div class="list">${sorted.map(expenseCard).join('')}</div>`:'<div class="empty">작성된 지출결의서가 없습니다.</div>'}
+    <button class="fab-w" onclick="showView('expenseW')">+</button>`;
+}
+function itemsRowsHtml(items){
+  if(!Array.isArray(items)||!items.length) return '<div class="drow"><span class="dv" style="color:#9aa8bc">등록된 품목 없음</span></div>';
+  return items.map(it=>{
+    const qty=Number(it.qty)||0, price=Number(it.unitPrice)||0;
+    const amt=(it.amount!=null?Number(it.amount):qty*price)||0;
+    return `<div class="drow"><span class="dk">${esc(it.name||'-')}</span><span class="dv">${qty} × ₩${price.toLocaleString('ko-KR')} = ₩${amt.toLocaleString('ko-KR')}${it.link?` · <a href="${esc(it.link)}" target="_blank" rel="noopener noreferrer" style="color:#1D5BA6">링크</a>`:''}</span></div>`;
+  }).join('');
+}
+function renderPurchaseDetail(){
+  const p=purchases.find(x=>x.id===detailId);
+  if(!p){ $app().innerHTML=topBar('전자결재')+'<div class="empty">문서를 찾을 수 없습니다.</div>'; return; }
+  const tot=itemsTotal(p.items);
+  $app().innerHTML=topBar('전자결재')+`
+    <div class="hello"><div class="name" style="font-size:20px">${esc(p.vendor||'구매품의서')}</div><div class="sub">${stBadge(p.status)} ${p.authorName?'· '+esc((p.authorDept||'')+' '+p.authorName).trim():''}</div></div>
+    <div class="dcard">
+      ${p.dueDate?`<div class="drow"><span class="dk">필요일</span><span class="dv">${esc(fmtDate(p.dueDate))}</span></div>`:''}
+      ${p.purpose?`<div class="drow"><span class="dk">구매 목적</span><span class="dv">${esc(p.purpose)}</span></div>`:''}
+    </div>
+    <div class="lbl">구매 품목 ${tot?'· 합계 ₩'+tot.toLocaleString('ko-KR'):''}</div>
+    <div class="dcard">${itemsRowsHtml(p.items)}</div>
+    ${Array.isArray(p.approvalLine)&&p.approvalLine.length?`<div class="lbl">결재선</div><div class="dcard">${p.approvalLine.map(a=>`<div class="drow"><span class="dk">${esc(a.rank||a.role||'')}</span><span class="dv">${esc(a.name||'')} ${a.status?stBadge(a.status):''}</span></div>`).join('')}</div>`:''}
+    ${approveBtns(p.id,'purchase',p)}
+    ${deleteBtn(p.id,'purchase',p)}`;
+}
+function renderExpenseDetail(){
+  const x=expenses.find(y=>y.id===detailId);
+  if(!x){ $app().innerHTML=topBar('전자결재')+'<div class="empty">문서를 찾을 수 없습니다.</div>'; return; }
+  $app().innerHTML=topBar('전자결재')+`
+    <div class="hello"><div class="name" style="font-size:20px">${esc(x.vendor||x.category||'지출결의서')}</div><div class="sub">${stBadge(x.status)} ${x.authorName?'· '+esc((x.authorDept||'')+' '+x.authorName).trim():''}</div></div>
+    <div class="dcard">
+      ${x.expDate?`<div class="drow"><span class="dk">지출일</span><span class="dv">${esc(fmtDate(x.expDate))}</span></div>`:''}
+      ${x.category?`<div class="drow"><span class="dk">지출 구분</span><span class="dv">${esc(x.category)}</span></div>`:''}
+      <div class="drow"><span class="dk">금액</span><span class="dv" style="font-weight:800;color:var(--violet)">₩${(Number(x.amount)||0).toLocaleString('ko-KR')}</span></div>
+      ${x.receipt?`<div class="drow"><span class="dk">증빙</span><span class="dv">${esc(x.receipt)}</span></div>`:''}
+      ${x.purpose?`<div class="drow"><span class="dk">지출 목적</span><span class="dv">${esc(x.purpose)}</span></div>`:''}
+    </div>
+    ${Array.isArray(x.items)&&x.items.length?`<div class="lbl">관련 품목</div><div class="dcard">${itemsRowsHtml(x.items)}</div>`:''}
+    ${Array.isArray(x.approvalLine)&&x.approvalLine.length?`<div class="lbl">결재선</div><div class="dcard">${x.approvalLine.map(a=>`<div class="drow"><span class="dk">${esc(a.rank||a.role||'')}</span><span class="dv">${esc(a.name||'')} ${a.status?stBadge(a.status):''}</span></div>`).join('')}</div>`:''}
+    ${approveBtns(x.id,'expense',x)}
+    ${deleteBtn(x.id,'expense',x)}`;
 }
 
 
@@ -387,6 +458,79 @@ window.leaveSaveM=async function(){
     alert('✅ 상신 완료!');history.back();
   }catch(e){alert('오류: '+e.message);}
 };
+// 품목(구매품의/지출결의 공용) 다중 입력 행
+let _itemRows=[];
+function itemRowHtml(it,i){
+  return `<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
+    <input type="text" placeholder="품목명" value="${esc(it.name||'')}" oninput="_itemRows[${i}].name=this.value" style="flex:2;min-width:0;border:1px solid #DDE4EF;border-radius:8px;padding:9px 10px;font-size:13px;font-family:inherit">
+    <input type="number" placeholder="수량" min="0" value="${it.qty||''}" oninput="_itemRows[${i}].qty=this.value" style="width:56px;flex-shrink:0;border:1px solid #DDE4EF;border-radius:8px;padding:9px 4px;font-size:13px;text-align:center;font-family:inherit">
+    <input type="number" placeholder="단가" min="0" value="${it.unitPrice||''}" oninput="_itemRows[${i}].unitPrice=this.value" style="width:84px;flex-shrink:0;border:1px solid #DDE4EF;border-radius:8px;padding:9px 4px;font-size:13px;text-align:right;font-family:inherit">
+    <button type="button" onclick="removeItemRow(${i})" style="width:32px;height:32px;flex-shrink:0;border:1px solid #DDE4EF;border-radius:8px;background:#FEF2F2;color:#DC2626;font-weight:700;cursor:pointer;font-family:inherit">−</button>
+  </div>`;
+}
+function itemFieldHtml(){
+  return `<div class="wf"><label>품목 (선택)</label>
+    <div id="item-rows">${_itemRows.map((it,i)=>itemRowHtml(it,i)).join('')}</div>
+    <button type="button" onclick="addItemRow()" style="margin-top:6px;padding:8px 14px;background:#EEF4FB;border:1px solid #DDE4EF;border-radius:8px;color:#1D5BA6;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">+ 품목 추가</button>
+  </div>`;
+}
+window.addItemRow=function(){ _itemRows.push({name:'',qty:'',unitPrice:''}); const box=document.getElementById('item-rows'); if(box) box.innerHTML=_itemRows.map((it,i)=>itemRowHtml(it,i)).join(''); };
+window.removeItemRow=function(i){ _itemRows.splice(i,1); const box=document.getElementById('item-rows'); if(box) box.innerHTML=_itemRows.map((it,j)=>itemRowHtml(it,j)).join(''); };
+function collectItems(){ return _itemRows.filter(it=>it.name&&it.name.trim()).map(it=>({name:it.name.trim(),qty:Number(it.qty)||0,unitPrice:Number(it.unitPrice)||0})); }
+function lineSingleApprove(){ return [{role:'작성',uid:_me.uid||'',name:_me.name||'',status:'draft'},{role:'결재',uid:'',name:'김종화',rank:'차장',status:'pending'}]; }
+// 구매품의서 작성
+window.renderPurchaseWrite=function(){
+  _itemRows=[];
+  const today=bizToday();
+  $app().innerHTML=topBar('구매품의서 작성','goBack()')+`
+    <div class="wform">
+      ${efld('공급업체',`<input id="p-vendor" type="text" placeholder="업체명">`)}
+      ${efld('구매 목적',`<textarea id="p-purpose" placeholder="구매 필요 사유"></textarea>`)}
+      ${efld('필요일',`<input id="p-due" type="date" value="${today}">`)}
+      ${itemFieldHtml()}
+      <div class="wline">결재: <b>김종화 차장</b></div>
+      <button class="wsave" onclick="purchaseSaveM()">상신</button>
+    </div>`;
+};
+window.purchaseSaveM=async function(){
+  const vendor=fv('p-vendor'),purpose=fv('p-purpose'),dueDate=fv('p-due'),items=collectItems();
+  if(!vendor.trim()){alert('공급업체를 입력하세요.');return;}
+  if(!purpose.trim()){alert('구매 목적을 입력하세요.');return;}
+  try{
+    await addDoc(collection(db,'edoc_purchase'),{dtype:'purchase',status:'pending',vendor,purpose,dueDate,items,
+      authorUid:_me.uid||'',authorName:_me.name||'',authorDept:_me.dept||'',authorRank:_me.rank||'',
+      approvalLine:lineSingleApprove(),createdAt:serverTimestamp()});
+    alert('✅ 상신 완료!');history.back();
+  }catch(e){alert('오류: '+e.message);}
+};
+// 지출결의서 작성
+window.renderExpenseWrite=function(){
+  _itemRows=[];
+  const today=bizToday();
+  $app().innerHTML=topBar('지출결의서 작성','goBack()')+`
+    <div class="wform">
+      ${efld('지출일',`<input id="x-date" type="date" value="${today}">`)}
+      ${efld('지출 구분',`<select id="x-cat"><option>식대</option><option>교통비</option><option>소모품</option><option>공구/자재</option><option>접대비</option><option>기타</option></select>`)}
+      ${efld('금액 (원)',`<input id="x-amount" type="number" min="0" placeholder="0">`)}
+      ${efld('거래처',`<input id="x-vendor" type="text" placeholder="상호명">`)}
+      ${efld('지출 목적',`<textarea id="x-purpose" placeholder="지출 사유를 입력하세요"></textarea>`)}
+      ${efld('증빙 구비',`<select id="x-receipt"><option>영수증 첨부</option><option>카드전표</option><option>세금계산서</option><option>없음</option></select>`)}
+      ${itemFieldHtml()}
+      <div class="wline">결재: <b>김종화 차장</b></div>
+      <button class="wsave" onclick="expenseSaveM()">상신</button>
+    </div>`;
+};
+window.expenseSaveM=async function(){
+  const expDate=fv('x-date'),category=fv('x-cat'),amount=Number(fv('x-amount')||0),vendor=fv('x-vendor'),purpose=fv('x-purpose'),receipt=fv('x-receipt'),items=collectItems();
+  if(!amount||amount<=0){alert('금액을 입력하세요.');return;}
+  if(!purpose.trim()){alert('지출 목적을 입력하세요.');return;}
+  try{
+    await addDoc(collection(db,'edoc_expense'),{dtype:'expense',status:'pending',expDate,category,amount,vendor,purpose,receipt,items,
+      authorUid:_me.uid||'',authorName:_me.name||'',authorDept:_me.dept||'',authorRank:_me.rank||'',
+      approvalLine:lineSingleApprove(),createdAt:serverTimestamp()});
+    alert('✅ 상신 완료!');history.back();
+  }catch(e){alert('오류: '+e.message);}
+};
 // 초과근로 목록/작성/상세
 window.renderOvertimeList=function(){
   const sorted=[...overtimes].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
@@ -472,6 +616,8 @@ onAuthStateChanged(auth, ()=>{
   sub('edoc_daily',a=>{dailies=a;});
   sub('edoc_leave',a=>{leaves=a;});
   sub('edoc_overtime',a=>{overtimes=a;});
+  sub('edoc_purchase',a=>{purchases=a;});
+  sub('edoc_expense',a=>{expenses=a;});
 
   history.replaceState({v:'home',id:null},'');
   render();
