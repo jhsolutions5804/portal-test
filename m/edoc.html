@@ -84,12 +84,13 @@ const _uInitial=(function(){try{var a=JSON.parse(localStorage.getItem('jh_login_
 const _me=(function(){try{return JSON.parse(localStorage.getItem('jh_login_perms')||'null')||{};}catch(e){return {};}})();
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, collection, onSnapshot, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, serverTimestamp, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 const firebaseConfig = {
   apiKey:"AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI", authDomain:"portal-test-6e0ff.firebaseapp.com",
   projectId:"portal-test-6e0ff", storageBucket:"portal-test-6e0ff.firebasestorage.app",
   messagingSenderId:"752763010816", appId:"1:752763010816:web:4a0c7062a2f1a4e9a03de5"
 };
-const app=initializeApp(firebaseConfig); const db=getFirestore(app);
+const app=initializeApp(firebaseConfig); const db=getFirestore(app); const auth=getAuth(app);
 
 let dailies=[], leaves=[];
 let curView='home', detailId=null, loadError='';
@@ -465,14 +466,19 @@ function sub(coll,setter){
   onSnapshot(collection(db,coll), snap=>{ const arr=[]; snap.forEach(d=>arr.push({id:d.id,...d.data()})); setter(arr); render(); },
     err=>{ loadError=err.code||err.message; render(); });
 }
-sub('edoc_daily',a=>{dailies=a;});
-sub('edoc_leave',a=>{leaves=a;});
-sub('edoc_overtime',a=>{overtimes=a;});
+let _authBooted=false;
+onAuthStateChanged(auth, ()=>{
+  if(_authBooted) return; _authBooted=true;
+  sub('edoc_daily',a=>{dailies=a;});
+  sub('edoc_leave',a=>{leaves=a;});
+  sub('edoc_overtime',a=>{overtimes=a;});
 
-history.replaceState({v:'home',id:null},'');
-render();
+  history.replaceState({v:'home',id:null},'');
+  render();
+});
 </script>
 </body>
 </html>
+
 
 
