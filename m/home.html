@@ -121,6 +121,7 @@
     margin:20px 20px 0; padding:12px 14px; background:#fff7e6; border:1px solid #f5e2b8;
     border-radius:12px; font-size:11.5px; color:#8a6d1e; line-height:1.5; font-weight:600;
   }
+  .pjt-site.light{background:linear-gradient(135deg,#7C3AED,#9461f0)}
   .tile.locked,.sub.locked{opacity:.45;cursor:not-allowed}
   .tile.locked .go,.sub.locked{pointer-events:none}
 </style>
@@ -165,6 +166,7 @@
         </div>
         <span class="ps-go">›</span>
       </div>
+      <div id="lightPjtCards"></div>
 
       <div class="edoc-card" data-perm="edoc" onclick="location.href='edoc.html'">
         <div class="ic">📋</div>
@@ -209,10 +211,6 @@
         <button id="mbLogoutBtn" type="button">로그아웃</button>
       </div>
 
-      <div class="hint">
-        💡 초안 미리보기입니다. 모든 메뉴를 홈에 직접 배치해서 우측 하단 반투명 더보기 메뉴가 필요 없는 구조입니다. 타일 크기·색·문구·배치 등 원하시는 대로 조정 가능합니다.
-      </div>
-
       <div class="hint" id="mbPcSwitchHint" style="display:flex; align-items:center; justify-content:space-between; gap:10px; cursor:pointer;" onclick="switchToPC()">
         <span>🖥️ 화면이 넓으신가요? (Z Fold 등 펼친 화면) PC 화면으로 전환할 수 있어요.</span>
         <span style="white-space:nowrap; font-weight:800; color:var(--blue);">전환 ›</span>
@@ -236,7 +234,7 @@
   var _av=document.getElementById('mbAvatar');
   if(_av) _av.textContent=(auth&&auth.name)?auth.name.slice(0,1):'·';
   var perms=(auth&&auth.perms)||{}, admin=(auth&&auth.admin)||false;
-  function can(k){ return admin || !!perms[k]; }
+  function can(k){ if(k==='plan'||k==='hr') return admin; return admin || !!perms[k]; }
   // 권한 없는 섹션 잠금
   document.querySelectorAll('[data-perm]').forEach(function(el){
     var k=el.getAttribute('data-perm');
@@ -262,6 +260,36 @@
     });
   }
 })();
+</script>
+<script type="module">
+// ── 경량 PJT(pjt_registry) 실시간 구독 → 홈 화면에 FAB/SUP과 함께 카드로 노출 ──
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+const firebaseConfig = {
+  apiKey:"AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI", authDomain:"portal-test-6e0ff.firebaseapp.com",
+  projectId:"portal-test-6e0ff", storageBucket:"portal-test-6e0ff.firebasestorage.app",
+  messagingSenderId:"752763010816", appId:"1:752763010816:web:4a0c7062a2f1a4e9a03de5"
+};
+const app=initializeApp(firebaseConfig); const db=getFirestore(app); const auth=getAuth(app);
+const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+let _authBooted=false;
+onAuthStateChanged(auth, ()=>{
+  if(_authBooted) return; _authBooted=true;
+  onSnapshot(collection(db,'pjt_registry'), snap=>{
+    const wrap=document.getElementById('lightPjtCards'); if(!wrap) return;
+    let html='';
+    snap.forEach(d=>{
+      const m=d.data()||{}; if(m.status==='ended') return;
+      const desc=m.content||(m.item?(m.item+(m.qty?(' '+m.qty+'건'):'')):'');
+      html += `<div class="pjt-site light" onclick="location.href='pjt.html?site=reg_${d.id}'">
+        <div class="ps-ic">🧩</div>
+        <div><div class="ps-cl">${esc(m.client||'')}</div><div class="ps-nm">${esc(m.name||'(이름 없음)')}</div><div class="ps-ds">${esc(desc)}</div></div>
+        <span class="ps-go">›</span></div>`;
+    });
+    wrap.innerHTML=html;
+  }, err=>{ console.error('pjt_registry 구독 오류(홈)', err); });
+});
 </script>
 </body>
 </html>
