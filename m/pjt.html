@@ -133,12 +133,13 @@
 const _uInitial=(function(){try{var a=JSON.parse(localStorage.getItem('jh_login_perms')||'null');return (a&&a.name)?a.name.slice(0,1):'·';}catch(e){return '·';}})();
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, collection, onSnapshot, getDocs, doc, getDoc, setDoc, addDoc, deleteDoc, serverTimestamp, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 const firebaseConfig = {
   apiKey:"AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI", authDomain:"portal-test-6e0ff.firebaseapp.com",
   projectId:"portal-test-6e0ff", storageBucket:"portal-test-6e0ff.firebasestorage.app",
   messagingSenderId:"752763010816", appId:"1:752763010816:web:4a0c7062a2f1a4e9a03de5"
 };
-const app=initializeApp(firebaseConfig); const db=getFirestore(app);
+const app=initializeApp(firebaseConfig); const db=getFirestore(app); const auth=getAuth(app);
 
 const SITES={
   fab:{code:'P4 Ph2 (FAB)',client:'귀뚜라미범양냉방',desc:'FCU 설치 · 6섹터 183대',ic:'🏭',cls:'fab',sch:'user_schedules',repPrefix:'daily_reports_'},
@@ -642,22 +643,30 @@ function subscribe(coll){
   onSnapshot(collection(db,coll), snap=>{ const arr=[]; snap.forEach(d=>arr.push({id:d.id,...d.data()})); data[coll]=arr; render(); },
     err=>{ loadError=err.code||err.message; render(); });
 }
-['user_schedules','ph4_schedules'].forEach(subscribe);
-onSnapshot(collection(db,'pjt_registry'), snap=>{
-  const next={};
-  snap.forEach(d=>{ const v=d.data()||{}; if(v.status!=='ended') next[d.id]=v; });
-  lightMeta=next; render();
-}, err=>{ console.error('pjt_registry 구독 오류',err); });
+// ── Firebase Auth 상태가 확정된 뒤에야 Firestore 구독 시작 ──
+// (PC index.html에서 로그인한 세션을 이 페이지의 Firestore 요청에도 실어 보내려면
+//  getAuth()로 Auth 인스턴스를 초기화하고 최초 상태 통지를 기다려야 한다.
+//  이걸 안 하면 request.auth가 항상 null이라 승인된 계정이어도 규칙에서 막힌다.)
+let _authBooted=false;
+onAuthStateChanged(auth, ()=>{
+  if(_authBooted) return; _authBooted=true;
+  ['user_schedules','ph4_schedules'].forEach(subscribe);
+  onSnapshot(collection(db,'pjt_registry'), snap=>{
+    const next={};
+    snap.forEach(d=>{ const v=d.data()||{}; if(v.status!=='ended') next[d.id]=v; });
+    lightMeta=next; render();
+  }, err=>{ console.error('pjt_registry 구독 오류',err); });
 
-history.replaceState({v:'home',site:null,sub:'sched'},'');
-(function(){
-  try{
-    const qs=new URLSearchParams(location.search);
-    const qsite=qs.get('site');
-    if(qsite && (SITES[qsite] || String(qsite).indexOf('reg_')===0)) { openSite(qsite); return; }
-  }catch(e){}
-  render();
-})();
+  history.replaceState({v:'home',site:null,sub:'sched'},'');
+  (function(){
+    try{
+      const qs=new URLSearchParams(location.search);
+      const qsite=qs.get('site');
+      if(qsite && (SITES[qsite] || String(qsite).indexOf('reg_')===0)) { openSite(qsite); return; }
+    }catch(e){}
+    render();
+  })();
+});
 </script>
 </body>
 </html>
