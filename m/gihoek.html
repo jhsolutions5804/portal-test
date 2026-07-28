@@ -146,6 +146,7 @@
 const _uInitial=(function(){try{var a=JSON.parse(localStorage.getItem('jh_login_perms')||'null');return (a&&a.name)?a.name.slice(0,1):'·';}catch(e){return '·';}})();
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 const firebaseConfig = {
   apiKey:"AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI", authDomain:"portal-test-6e0ff.firebaseapp.com",
@@ -154,6 +155,7 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 /* ---------- 상태 ---------- */
 let projects=[], estimates=[], settlements=[], companies=[], expenses=[];
@@ -442,16 +444,21 @@ function sub(coll,setter,key){
     render();
   }, err=>{ loadError=err.code||err.message; render(); });
 }
-sub('gihoek_projects',   a=>{projects=a.sort((x,y)=>(x.createdAt?.seconds||0)-(y.createdAt?.seconds||0));},'p');
-sub('gihoek_estimates',  a=>{estimates=a.sort((x,y)=>(y.date||'').localeCompare(x.date||''));},'e');
-sub('gihoek_settlements',a=>{settlements=a;},'s');
-sub('gihoek_companies',  a=>{companies=a.sort((x,y)=>(x.company||'').localeCompare(y.company||''));},'c');
-sub('gihoek_expenses',   a=>{expenses=a;},'x');
+let _authBooted=false;
+onAuthStateChanged(auth, ()=>{
+  if(_authBooted) return; _authBooted=true;
+  sub('gihoek_projects',   a=>{projects=a.sort((x,y)=>(x.createdAt?.seconds||0)-(y.createdAt?.seconds||0));},'p');
+  sub('gihoek_estimates',  a=>{estimates=a.sort((x,y)=>(y.date||'').localeCompare(x.date||''));},'e');
+  sub('gihoek_settlements',a=>{settlements=a;},'s');
+  sub('gihoek_companies',  a=>{companies=a.sort((x,y)=>(x.company||'').localeCompare(y.company||''));},'c');
+  sub('gihoek_expenses',   a=>{expenses=a;},'x');
 
-// 최초 렌더 (앱 진입 상태를 히스토리에 기록 → 뒤로가기 시 홈 복귀 후 포털로)
-history.replaceState({v:'home',id:null},'');
-render();
+  // 최초 렌더 (앱 진입 상태를 히스토리에 기록 → 뒤로가기 시 홈 복귀 후 포털로)
+  history.replaceState({v:'home',id:null},'');
+  render();
+});
 </script>
 </body>
 </html>
+
 
