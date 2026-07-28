@@ -50,28 +50,51 @@
   .lbl{font-size:12px; font-weight:800; color:#9aa8bc; letter-spacing:.5px;
     padding:0 24px 12px; text-transform:uppercase}
 
-  /* 메인 타일 2열 그리드 */
-  .grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; padding:0 20px}
-  .tile{
-    background:var(--card); border-radius:22px; padding:20px 18px 18px;
-    border:1px solid var(--line); cursor:pointer; position:relative;
-    transition:transform .12s ease, box-shadow .12s ease;
-    display:flex; flex-direction:column; gap:14px; min-height:150px;
-    box-shadow:0 2px 8px rgba(30,50,80,.05);
+  /* PJT: 현장별 개별 강조 카드 */
+  .pjt-sec-lbl{font-size:12px; font-weight:800; color:#9aa8bc; letter-spacing:.5px; padding:0 24px 10px}
+  .pjt-site{
+    margin:0 20px 10px; border-radius:20px; padding:18px 20px; cursor:pointer; position:relative;
+    color:#fff; box-shadow:0 8px 20px rgba(30,50,80,.16); overflow:hidden;
+    display:flex; align-items:center; gap:14px; transition:transform .12s ease;
   }
-  .tile:active{transform:scale(.96); box-shadow:0 1px 4px rgba(30,50,80,.08)}
-  .tile .ic{
-    width:60px; height:60px; border-radius:18px; display:flex;
-    align-items:center; justify-content:center; font-size:31px;
-  }
-  .tile .nm{font-size:18px; font-weight:800; letter-spacing:-.3px}
-  .tile .ds{font-size:12px; color:var(--sub); font-weight:500; line-height:1.45; margin-top:-6px}
-  .tile .go{position:absolute; top:20px; right:18px; font-size:17px; color:#c3cedd}
+  .pjt-site:active{transform:scale(.97)}
+  .pjt-site::after{content:'';position:absolute;right:-26px;top:-26px;width:100px;height:100px;
+    border-radius:50%;background:rgba(255,255,255,.09)}
+  .pjt-site.fab{background:linear-gradient(135deg,#1b8a5a,#16a66b)}
+  .pjt-site.sup{background:linear-gradient(135deg,#1D5BA6,#2f72c4)}
+  .pjt-site .ps-ic{width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.18);
+    display:flex;align-items:center;justify-content:center;font-size:23px;flex-shrink:0}
+  .pjt-site .ps-cl{font-size:11px;font-weight:700;opacity:.82}
+  .pjt-site .ps-nm{font-size:16.5px;font-weight:800;letter-spacing:-.2px;margin-top:1px}
+  .pjt-site .ps-ds{font-size:11px;font-weight:600;opacity:.82;margin-top:2px}
+  .pjt-site .ps-go{margin-left:auto;font-size:18px;opacity:.85;position:relative;z-index:1}
 
-  .tile.plan .ic{background:var(--plan-bg); color:var(--plan-ic)}
-  .tile.hr   .ic{background:var(--hr-bg);   color:var(--hr-ic)}
-  .tile.edoc .ic{background:var(--edoc-bg); color:var(--edoc-ic)}
-  .tile.pjt  .ic{background:var(--pjt-bg);  color:var(--pjt-ic)}
+  /* 전자결재: 준-강조 단독 카드 */
+  .edoc-card{
+    margin:8px 20px 18px; background:var(--card); border:1px solid var(--line); border-radius:20px;
+    padding:16px 18px; display:flex; align-items:center; gap:14px; cursor:pointer;
+    box-shadow:0 2px 8px rgba(30,50,80,.05); transition:transform .12s ease;
+  }
+  .edoc-card:active{transform:scale(.97)}
+  .edoc-card .ic{width:48px;height:48px;border-radius:14px;background:var(--edoc-bg);color:var(--edoc-ic);
+    display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+  .edoc-card .nm{font-size:15.5px;font-weight:800}
+  .edoc-card .ds{font-size:11.5px;color:var(--sub);font-weight:500;margin-top:2px}
+  .edoc-card .go{margin-left:auto;font-size:17px;color:#c3cedd}
+
+  /* 기획/인사: 축소된 보조 메뉴 (조직도 스타일과 동일) */
+  .minor-lbl{font-size:11px; font-weight:800; color:#b3bdcb; letter-spacing:.5px; padding:2px 24px 10px}
+  .minor-row{display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:0 20px 4px}
+  .minor{
+    background:var(--card); border:1px solid var(--line); border-radius:15px;
+    padding:12px 13px; display:flex; align-items:center; gap:9px; cursor:pointer;
+    transition:transform .12s ease; box-shadow:0 1px 5px rgba(30,50,80,.04);
+  }
+  .minor:active{transform:scale(.96)}
+  .minor .mi{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+  .minor.plan .mi{background:var(--plan-bg);color:var(--plan-ic)}
+  .minor.hr .mi{background:var(--hr-bg);color:var(--hr-ic)}
+  .minor .mt{font-size:13px;font-weight:700}
 
   /* 보조 메뉴 (조직도 / 관리) */
   .sub-row{display:grid; grid-template-columns:1fr 1fr; gap:14px; padding:16px 20px 0}
@@ -122,45 +145,49 @@
       </div>
 
       <div class="lbl">업무 메뉴</div>
-      <div class="grid">
-        <div class="tile plan" data-perm="plan" onclick="location.href='gihoek.html'">
-          <span class="go">›</span>
-          <div class="ic">🧭</div>
-          <div>
-            <div class="nm">기획</div>
-          </div>
-          <div class="ds">영업·정산·회계<br>견적 · 정산서 · 손익</div>
-        </div>
 
-        <div class="tile hr" data-perm="hr" onclick="location.href='hr.html'">
-          <span class="go">›</span>
-          <div class="ic">👥</div>
-          <div>
-            <div class="nm">인사</div>
-          </div>
-          <div class="ds">급여·계약·근태<br>연차 관리</div>
+      <div class="pjt-sec-lbl">🏗️ PJT 관리 · 진행 현장</div>
+      <div class="pjt-site fab" data-perm="pjt" onclick="location.href='pjt.html?site=fab'">
+        <div class="ps-ic">🏭</div>
+        <div>
+          <div class="ps-cl">귀뚜라미범양냉방</div>
+          <div class="ps-nm">P4 Ph2 (FAB)</div>
+          <div class="ps-ds">FCU 설치 · 6섹터 183대</div>
         </div>
-
-        <div class="tile edoc" data-perm="edoc" onclick="location.href='edoc.html'">
-          <span class="go">›</span>
-          <div class="ic">📋</div>
-          <div>
-            <div class="nm">전자결재</div>
-          </div>
-          <div class="ds">업무일지·연차<br>구매품의 · 지출결의</div>
+        <span class="ps-go">›</span>
+      </div>
+      <div class="pjt-site sup" data-perm="pjt" onclick="location.href='pjt.html?site=sup'">
+        <div class="ps-ic">🔧</div>
+        <div>
+          <div class="ps-cl">귀뚜라미범양냉방</div>
+          <div class="ps-nm">P4 Ph4 (SUP)</div>
+          <div class="ps-ds">EHU 설치 · 4섹터 11대</div>
         </div>
+        <span class="ps-go">›</span>
+      </div>
 
-        <div class="tile pjt" data-perm="pjt" onclick="location.href='pjt.html'">
-          <span class="go">›</span>
-          <div class="ic">🏗️</div>
-          <div>
-            <div class="nm">PJT 관리</div>
-          </div>
-          <div class="ds">진행 중인<br>프로젝트 현장 관리</div>
+      <div class="edoc-card" data-perm="edoc" onclick="location.href='edoc.html'">
+        <div class="ic">📋</div>
+        <div>
+          <div class="nm">전자결재</div>
+          <div class="ds">업무일지·연차·구매품의·지출결의</div>
+        </div>
+        <span class="go">›</span>
+      </div>
+
+      <div class="minor-lbl">그 외</div>
+      <div class="minor-row">
+        <div class="minor plan" data-perm="plan" onclick="location.href='gihoek.html'">
+          <div class="mi">🧭</div>
+          <div class="mt">기획</div>
+        </div>
+        <div class="minor hr" data-perm="hr" onclick="location.href='hr.html'">
+          <div class="mi">👥</div>
+          <div class="mt">인사</div>
         </div>
       </div>
 
-      <div class="lbl" style="padding-top:26px">바로가기</div>
+      <div class="lbl" style="padding-top:22px">바로가기</div>
       <div class="sub-row">
         <div class="sub" onclick="location.href='admin.html?v=org'">
           <div class="si">🏢</div>
