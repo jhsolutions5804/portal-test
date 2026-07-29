@@ -222,14 +222,31 @@ function render(pjtTotals, personMap){
 // ── 개인별 상세 공수표 + PNG 저장 ──
 window.showPersonSheet=function(i){
   const p=_personList[i]; if(!p) return;
-  const dates=Object.keys(p.byDate).sort();
-  const rows=dates.map(dk=>{
-    const [,mm,dd]=dk.split('-');
-    const pjts=p.byDate[dk];
-    const line=Object.keys(pjts).map(pn=>`${pn} ${pjts[pn].toFixed(1)}`).join(', ');
-    const dayTotal=Object.values(pjts).reduce((a,b)=>a+b,0);
-    return `<tr><td>${mm}/${dd}</td><td>${esc(line)}</td><td style="text-align:right;font-weight:800">${dayTotal.toFixed(1)}</td></tr>`;
-  }).join('');
+  const daysInMonth=new Date(curY,curM+1,0).getDate();
+  const firstDow=new Date(curY,curM,1).getDay();
+  const dows=['일','월','화','수','목','금','토'];
+  let cells=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:8px">`;
+  dows.forEach(d=>{ cells+=`<div style="text-align:center;font-size:9.5px;color:#9aa8bc;font-weight:700;padding:3px 0">${d}</div>`; });
+  for(let i2=0;i2<firstDow;i2++) cells+='<div></div>';
+  for(let d=1; d<=daysInMonth; d++){
+    const dk=`${curY}-${pad(curM+1)}-${pad(d)}`;
+    const dayData=p.byDate[dk];
+    let dayTotal=0, projLines='';
+    if(dayData){
+      Object.keys(dayData).forEach(pn=>{
+        dayTotal+=dayData[pn];
+        const short=pn.replace('P4 Ph2 (FAB)','FAB').replace('P4 Ph4 (SUP)','SUP');
+        projLines+=`<div style="font-size:7px;color:#5c6f8a;line-height:1.25">${esc(short)} ${dayData[pn].toFixed(1)}</div>`;
+      });
+    }
+    cells+=`<div style="min-height:46px;border:1px solid #eef2f7;border-radius:7px;padding:3px 2px;box-sizing:border-box${dayTotal>0?';background:#f4f8ff':''}">
+      <div style="font-size:9.5px;font-weight:700;color:#1a2330">${d}</div>
+      ${dayTotal>0?`<div style="font-size:10.5px;font-weight:800;color:var(--violet)">${dayTotal.toFixed(1)}</div>`:''}
+      ${projLines}
+    </div>`;
+  }
+  cells+='</div>';
+  const badges=Object.keys(p.byPjt).map(pn=>`<span class="pjt-badge">${esc(pn)} ${p.byPjt[pn].toFixed(1)}</span>`).join('');
   $app().innerHTML = topBar('월간 공수') + `
     <div class="hello"><div class="name">${esc(p.name)} 공수표</div><div class="sub">${curY}년 ${curM+1}월 · ${p.birth?esc(p.birth):'생년월일 미입력'}</div></div>
     <div style="margin:14px 20px 0;display:flex;gap:8px">
@@ -237,17 +254,13 @@ window.showPersonSheet=function(i){
       <button onclick="savePersonSheetPng(${i})" style="flex:1;background:var(--violet);border:none;border-radius:12px;padding:11px;font-weight:700;font-size:13px;color:#fff;cursor:pointer;font-family:inherit">📥 PNG로 저장</button>
     </div>
     <div id="personSheetCapture" style="margin:14px 20px 0;background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;">
-      <div style="font-size:15px;font-weight:800;margin-bottom:2px">${esc(p.name)} ${curY}년 ${curM+1}월 공수표</div>
-      <div style="font-size:11px;color:var(--sub);margin-bottom:10px">${p.birth?esc(p.birth):'생년월일 미입력'} · 합계 ${p.total.toFixed(1)}공수</div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
-        <thead><tr style="border-bottom:2px solid #eef2f7">
-          <th style="text-align:left;padding:6px 4px;color:#9aa8bc;font-size:10.5px">날짜</th>
-          <th style="text-align:left;padding:6px 4px;color:#9aa8bc;font-size:10.5px">PJT별 공수</th>
-          <th style="text-align:right;padding:6px 4px;color:#9aa8bc;font-size:10.5px">합계</th>
-        </tr></thead>
-        <tbody>${rows||'<tr><td colspan="3" style="padding:14px 4px;color:#9aa8bc;text-align:center">기록 없음</td></tr>'}</tbody>
-        <tfoot><tr style="border-top:2px solid #eef2f7"><td colspan="2" style="padding:8px 4px;font-weight:800">합계</td><td style="padding:8px 4px;text-align:right;font-weight:800;color:var(--violet)">${p.total.toFixed(1)}</td></tr></tfoot>
-      </table>
+      <div style="font-size:14px;font-weight:800;margin-bottom:3px">${esc(p.name)}님 · ${curY}년 ${curM+1}월 공수표</div>
+      <div style="font-size:10.5px;color:var(--sub);margin-bottom:6px">참여 PJT: ${badges||'-'}</div>
+      ${cells}
+      <div style="text-align:center;margin-top:14px;padding-top:12px;border-top:1px solid #f0f2f5">
+        <span style="font-size:11px;color:var(--sub)">이번 달 합계</span>
+        <div style="font-size:22px;font-weight:800;color:var(--violet)">${p.total.toFixed(1)} 공수</div>
+      </div>
     </div>
   `;
 };
