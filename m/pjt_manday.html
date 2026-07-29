@@ -52,6 +52,7 @@
   .warn-box{margin:12px 20px 0;padding:12px 14px;background:#fff8e8;border:1px solid #ffe082;border-radius:12px;font-size:11.5px;color:#7a5c00;line-height:1.6}
 </style>
 <script src="auth-guard.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
   <div class="phone"><div id="app" class="scr"><div class="loading">불러오는 중…</div></div></div>
@@ -100,7 +101,7 @@ async function loadRoster(collPath, sourceLabel, masterMap){
   }catch(e){ return []; }
 }
 
-let _lastPersonMap={}, _masterList=[];
+let _lastPersonMap={}, _masterList=[], _personList=[], _lastPjtTotals={};
 
 async function loadMonth(){
   $app().innerHTML = topBar('월간 공수') + `<div class="loading">${curY}년 ${curM+1}월 데이터 불러오는 중…</div>`;
@@ -134,26 +135,28 @@ async function loadMonth(){
     pjtTotals[p.key]={ name:p.name, total:0, workerCount:wc };
   });
   const personMap={};
-  function addToPerson(worker, amount, pjtName){
+  function addToPerson(worker, amount, pjtName, dk){
     const pk=(worker.name||'').trim()+'|'+(worker.birth||'MISSING');
-    if(!personMap[pk]) personMap[pk]={ name:worker.name, birth:worker.birth, total:0, byPjt:{} };
+    if(!personMap[pk]) personMap[pk]={ name:worker.name, birth:worker.birth, total:0, byPjt:{}, byDate:{} };
     personMap[pk].total+=amount;
     personMap[pk].byPjt[pjtName]=(personMap[pk].byPjt[pjtName]||0)+amount;
+    personMap[pk].byDate[dk]=(personMap[pk].byDate[dk]||{});
+    personMap[pk].byDate[dk][pjtName]=(personMap[pk].byDate[dk][pjtName]||0)+amount;
   }
   for(const dk of dateKeys){
     try{ const s=await getDoc(doc(db,'worker_manday',dk)); if(s.exists()){ const md=s.data().md||{};
-      Object.keys(md).forEach(wid=>{ const amt=parseFloat(md[wid])||0; if(amt&&fabById[wid]){ pjtTotals['p4ph2'].total+=amt; addToPerson(fabById[wid],amt,'P4 Ph2 (FAB)'); } }); } }catch(e){}
+      Object.keys(md).forEach(wid=>{ const amt=parseFloat(md[wid])||0; if(amt&&fabById[wid]){ pjtTotals['p4ph2'].total+=amt; addToPerson(fabById[wid],amt,'P4 Ph2 (FAB)',dk); } }); } }catch(e){}
   }
   for(const dk of dateKeys){
     try{ const s=await getDoc(doc(db,'ph4_manday',dk)); if(s.exists()){ const md=s.data().md||{};
-      Object.keys(md).forEach(wid=>{ const amt=parseFloat(md[wid])||0; if(amt&&supById[wid]){ pjtTotals['p4ph4'].total+=amt; addToPerson(supById[wid],amt,'P4 Ph4 (SUP)'); } }); } }catch(e){}
+      Object.keys(md).forEach(wid=>{ const amt=parseFloat(md[wid])||0; if(amt&&supById[wid]){ pjtTotals['p4ph4'].total+=amt; addToPerson(supById[wid],amt,'P4 Ph4 (SUP)',dk); } }); } }catch(e){}
   }
   for(const lp of lightPjts){
     const byId={}; rosterLight.filter(w=>w.regId===lp.id).forEach(w=>byId[w.id]=w);
     const pjtKey='reg_'+lp.id;
     for(const dk of dateKeys){
       try{ const s=await getDoc(doc(db,'pjt_registry',lp.id,'manday',dk)); if(s.exists()){ const md=s.data().md||{};
-        Object.keys(md).forEach(wid=>{ const amt=parseFloat(md[wid])||0; if(amt&&byId[wid]){ pjtTotals[pjtKey].total+=amt; addToPerson(byId[wid],amt,lp.name); } }); } }catch(e){}
+        Object.keys(md).forEach(wid=>{ const amt=parseFloat(md[wid])||0; if(amt&&byId[wid]){ pjtTotals[pjtKey].total+=amt; addToPerson(byId[wid],amt,lp.name,dk); } }); } }catch(e){}
     }
   }
   _lastPersonMap=personMap;
@@ -161,8 +164,10 @@ async function loadMonth(){
 }
 
 function render(pjtTotals, personMap){
+  _lastPjtTotals=pjtTotals; _lastPersonMap=personMap;
   const pjtList=Object.keys(pjtTotals).map(k=>pjtTotals[k]).sort((a,b)=>b.total-a.total);
   const personList=Object.keys(personMap).map(k=>personMap[k]).sort((a,b)=>b.total-a.total);
+  _personList=personList;
   const grand=pjtList.reduce((s,p)=>s+p.total,0);
   const missingBirth=personList.filter(p=>!p.birth).length;
 
@@ -185,8 +190,8 @@ function render(pjtTotals, personMap){
     </div>`;
   }).join('') : '<div class="empty">등록된 팀이 없습니다.</div>';
 
-  const personHtml = personList.length ? personList.map(p=>`
-    <div class="person-row">
+  const personHtml = personList.length ? personList.map((p,i)=>`
+    <div class="person-row" onclick="showPersonSheet(${i})">
       <div class="top-r"><div class="nm">${esc(p.name)}${p.birth?`<span class="birth">${esc(p.birth)}</span>`:`<span class="warn">⚠ 생년월일 미입력</span>`}</div><div class="tot">${p.total.toFixed(1)}</div></div>
       <div class="badges">${Object.keys(p.byPjt).map(pn=>`<span class="pjt-badge">${esc(pn)} ${p.byPjt[pn].toFixed(1)}</span>`).join('')}</div>
     </div>
@@ -213,6 +218,51 @@ function render(pjtTotals, personMap){
     <div class="list">${personHtml}</div>
   `;
 }
+
+// ── 개인별 상세 공수표 + PNG 저장 ──
+window.showPersonSheet=function(i){
+  const p=_personList[i]; if(!p) return;
+  const dates=Object.keys(p.byDate).sort();
+  const rows=dates.map(dk=>{
+    const [,mm,dd]=dk.split('-');
+    const pjts=p.byDate[dk];
+    const line=Object.keys(pjts).map(pn=>`${pn} ${pjts[pn].toFixed(1)}`).join(', ');
+    const dayTotal=Object.values(pjts).reduce((a,b)=>a+b,0);
+    return `<tr><td>${mm}/${dd}</td><td>${esc(line)}</td><td style="text-align:right;font-weight:800">${dayTotal.toFixed(1)}</td></tr>`;
+  }).join('');
+  $app().innerHTML = topBar('월간 공수') + `
+    <div class="hello"><div class="name">${esc(p.name)} 공수표</div><div class="sub">${curY}년 ${curM+1}월 · ${p.birth?esc(p.birth):'생년월일 미입력'}</div></div>
+    <div style="margin:14px 20px 0;display:flex;gap:8px">
+      <button onclick="closePersonSheet()" style="flex:1;background:#f0f4f9;border:1px solid var(--line);border-radius:12px;padding:11px;font-weight:700;font-size:13px;color:#5c6f8a;cursor:pointer;font-family:inherit">← 목록으로</button>
+      <button onclick="savePersonSheetPng(${i})" style="flex:1;background:var(--violet);border:none;border-radius:12px;padding:11px;font-weight:700;font-size:13px;color:#fff;cursor:pointer;font-family:inherit">📥 PNG로 저장</button>
+    </div>
+    <div id="personSheetCapture" style="margin:14px 20px 0;background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;">
+      <div style="font-size:15px;font-weight:800;margin-bottom:2px">${esc(p.name)} ${curY}년 ${curM+1}월 공수표</div>
+      <div style="font-size:11px;color:var(--sub);margin-bottom:10px">${p.birth?esc(p.birth):'생년월일 미입력'} · 합계 ${p.total.toFixed(1)}공수</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="border-bottom:2px solid #eef2f7">
+          <th style="text-align:left;padding:6px 4px;color:#9aa8bc;font-size:10.5px">날짜</th>
+          <th style="text-align:left;padding:6px 4px;color:#9aa8bc;font-size:10.5px">PJT별 공수</th>
+          <th style="text-align:right;padding:6px 4px;color:#9aa8bc;font-size:10.5px">합계</th>
+        </tr></thead>
+        <tbody>${rows||'<tr><td colspan="3" style="padding:14px 4px;color:#9aa8bc;text-align:center">기록 없음</td></tr>'}</tbody>
+        <tfoot><tr style="border-top:2px solid #eef2f7"><td colspan="2" style="padding:8px 4px;font-weight:800">합계</td><td style="padding:8px 4px;text-align:right;font-weight:800;color:var(--violet)">${p.total.toFixed(1)}</td></tr></tfoot>
+      </table>
+    </div>
+  `;
+};
+window.closePersonSheet=function(){ render(_lastPjtTotals, _lastPersonMap); };
+window.savePersonSheetPng=async function(i){
+  const p=_personList[i]; if(!p) return;
+  const el=document.getElementById('personSheetCapture'); if(!el || !window.html2canvas) { alert('PNG 저장 기능을 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.'); return; }
+  try{
+    const canvas=await html2canvas(el, {backgroundColor:'#ffffff', scale:2});
+    const link=document.createElement('a');
+    link.download=`${p.name}_${curY}${String(curM+1).padStart(2,'0')}_공수표.png`;
+    link.href=canvas.toDataURL('image/png');
+    link.click();
+  }catch(e){ alert('PNG 저장 중 오류: '+e.message); }
+};
 
 // ── Firebase Auth 확정 후, portal_users에서 실제 admin 여부를 재확인(클라이언트 localStorage 신뢰 안 함) ──
 onAuthStateChanged(auth, async (user)=>{
