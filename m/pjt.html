@@ -25,6 +25,21 @@
   .fcard:active{transform:scale(.98)}
   .fcard .ic{width:58px;height:58px;border-radius:17px;display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0}
   .fcard.fab .ic{background:#e7f5ee;color:#1b8a5a}.fcard.sup .ic{background:#eaf2fc;color:#1D5BA6}.fcard.light .ic{background:#f0edfb;color:#7C3AED}
+  /* PJT 관리 홈: 정사각형 카드 그리드 */
+  .sqgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 20px}
+  .sqcard{aspect-ratio:1;border-radius:20px;padding:16px;cursor:pointer;position:relative;overflow:hidden;
+    display:flex;flex-direction:column;justify-content:space-between;color:#fff;box-shadow:0 6px 16px rgba(30,50,80,.15);
+    transition:transform .12s ease}
+  .sqcard:active{transform:scale(.96)}
+  .sqcard.fab{background:linear-gradient(135deg,#1b8a5a,#16a66b)}
+  .sqcard.sup{background:linear-gradient(135deg,#1D5BA6,#2f72c4)}
+  .sqcard.light{background:linear-gradient(135deg,#7C3AED,#9461f0)}
+  .sqcard::after{content:'';position:absolute;right:-24px;top:-24px;width:96px;height:96px;border-radius:50%;background:rgba(255,255,255,.09)}
+  .sqcard .sq-ic{width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:21px;position:relative;z-index:1}
+  .sqcard .sq-body{position:relative;z-index:1}
+  .sqcard .sq-cl{font-size:10.5px;font-weight:700;opacity:.82}
+  .sqcard .sq-nm{font-size:15px;font-weight:800;margin-top:2px;line-height:1.25}
+  .sqcard .sq-ds{font-size:10.5px;font-weight:600;opacity:.8;margin-top:4px}
   .fcard .cl{font-size:12px;font-weight:700;color:var(--sub)}
   .fcard .nm{font-size:17px;font-weight:800;letter-spacing:-.3px;margin-top:2px}
   .fcard .ds{font-size:11.5px;color:var(--sub);font-weight:500;margin-top:3px}
@@ -375,20 +390,18 @@ function renderHome(){
   const lightCards=Object.keys(lightMeta).map(id=>{
     const m=lightMeta[id];
     const desc=m.content||(m.item?(m.item+(m.qty?(' '+m.qty+'건'):'')):'');
-    return `<div class="fcard light" onclick="openSite('reg_${id}')">
-      <div class="ic">🧩</div>
-      <div><div class="cl">${esc(m.client||'')}</div><div class="nm">${esc(m.name||'(이름 없음)')}</div><div class="ds">${esc(desc)} · 일정·근태·공수</div></div>
-      <span class="go">›</span></div>`;
+    return `<div class="sqcard light" onclick="openSite('reg_${id}')">
+      <div class="sq-ic">🧩</div>
+      <div class="sq-body"><div class="sq-cl">${esc(m.client||'')}</div><div class="sq-nm">${esc(m.name||'(이름 없음)')}</div><div class="sq-ds">${esc(desc)}</div></div></div>`;
   }).join('');
   $app().innerHTML=`
     <div class="top"><button class="back" onclick="goHome()">← 홈</button><div class="avatar" onclick="goAccount()">${_uInitial}</div></div>
     <div class="hello"><div class="name">PJT 관리</div><div class="sub">진행 중인 프로젝트 현장 관리</div></div>
     <div class="lbl">진행 프로젝트</div>
-    <div class="list top">
-      ${Object.entries(SITES).map(([k,s])=>`<div class="fcard ${s.cls}" onclick="openSite('${k}')">
-        <div class="ic">${s.ic}</div>
-        <div><div class="cl">${esc(s.client)}</div><div class="nm">${esc(s.code)}</div><div class="ds">${esc(s.desc)} · 공정·일정·근태</div></div>
-        <span class="go">›</span></div>`).join('')}
+    <div class="sqgrid">
+      ${Object.entries(SITES).map(([k,s])=>`<div class="sqcard ${s.cls}" onclick="openSite('${k}')">
+        <div class="sq-ic">${s.ic}</div>
+        <div class="sq-body"><div class="sq-cl">${esc(s.client)}</div><div class="sq-nm">${esc(s.code)}</div><div class="sq-ds">${esc(s.desc)}</div></div></div>`).join('')}
       ${lightCards}
     </div>`;
 }
