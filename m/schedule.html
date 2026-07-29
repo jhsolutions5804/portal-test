@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<!-- build: 20260728a · ver: 1.0.0 (모바일 통합 일정 신규) -->
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>오늘 일정 · JH Solutions</title>
+<style>
+  :root{--blue:#1D5BA6;--blue-d:#16487f;--ink:#1a2330;--sub:#6b7787;--line:#e4eaf2;--bg:#eef2f7;--card:#fff;--ok:#1b8a5a;--violet:#7C3AED}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;min-height:100vh}
+  .phone{width:100%;max-width:480px;margin:0 auto;background:var(--bg);min-height:100vh}
+  .scr{padding:0 0 30px}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:22px 22px 4px}
+  .back{background:var(--card);border:1px solid var(--line);color:var(--blue);font-size:13px;font-weight:700;padding:8px 14px;border-radius:12px;cursor:pointer;font-family:inherit;box-shadow:0 2px 6px rgba(30,50,80,.05)}
+  .avatar{width:40px;height:40px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;box-shadow:0 4px 10px rgba(29,91,166,.3)}
+  .hello{padding:16px 24px 2px}
+  .hello .name{font-size:22px;font-weight:800;letter-spacing:-.5px}
+  .hello .sub{font-size:12.5px;color:var(--sub);margin-top:4px;font-weight:600}
+  .date-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin:14px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:0 2px 8px rgba(30,50,80,.05)}
+  .date-arrow{background:#f0f4f9;border:1px solid var(--line);border-radius:9px;width:34px;height:34px;font-size:16px;color:#5c6f8a;cursor:pointer;flex-shrink:0}
+  .date-label{font-size:15px;font-weight:800;color:var(--blue-d);flex:1;text-align:center;cursor:pointer}
+  .date-today{background:#eef2f7;border:1px solid var(--line);border-radius:9px;padding:0 10px;height:34px;font-size:11px;font-weight:700;color:#5c6f8a;cursor:pointer;flex-shrink:0}
+  .lbl{font-size:12px;font-weight:800;color:#9aa8bc;letter-spacing:.5px;padding:20px 24px 10px}
+  .list{padding:0 20px;display:flex;flex-direction:column;gap:9px}
+  .sch-item{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 15px;display:flex;align-items:flex-start;gap:11px;cursor:pointer;box-shadow:0 2px 8px rgba(30,50,80,.05);transition:transform .12s ease}
+  .sch-item:active{transform:scale(.98)}
+  .pjt-badge{font-size:10px;font-weight:800;padding:4px 9px;border-radius:8px;color:#fff;flex-shrink:0;white-space:nowrap;margin-top:1px}
+  .pjt-badge.fab{background:#1b8a5a}
+  .pjt-badge.sup{background:#1D5BA6}
+  .pjt-badge.light{background:#7C3AED}
+  .sch-body{flex:1;min-width:0}
+  .sch-time{font-size:11px;color:var(--sub);font-weight:700}
+  .sch-text{font-size:13.5px;font-weight:700;margin-top:2px;word-break:break-word}
+  .sch-tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;margin-top:5px;color:#fff}
+  .sch-done{opacity:.5;text-decoration:line-through}
+  .empty{margin:8px 20px 0;padding:34px 20px;text-align:center;color:#9aa8bc;font-size:12.5px;font-weight:600;background:var(--card);border:1px solid var(--line);border-radius:14px}
+  .loading{text-align:center;padding:60px 20px;color:#9aa8bc;font-size:13px;font-weight:600}
+</style>
+<script src="auth-guard.js"></script>
+</head>
+<body>
+  <div class="phone"><div id="app" class="scr"><div class="loading">불러오는 중…</div></div></div>
+
+<script type="module">
+const _uInitial=(function(){try{var a=JSON.parse(localStorage.getItem('jh_login_perms')||'null');return (a&&a.name)?a.name.slice(0,1):'·';}catch(e){return '·';}})();
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+const firebaseConfig = {
+  apiKey:"AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI", authDomain:"portal-test-6e0ff.firebaseapp.com",
+  projectId:"portal-test-6e0ff", storageBucket:"portal-test-6e0ff.firebasestorage.app",
+  messagingSenderId:"752763010816", appId:"1:752763010816:web:4a0c7062a2f1a4e9a03de5"
+};
+const app=initializeApp(firebaseConfig); const db=getFirestore(app); const auth=getAuth(app);
+const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const $app=()=>document.getElementById('app');
+const WD=['일','월','화','수','목','금','토'];
+const TAGS={in:{c:'#1D5BA6',l:'반입'},inspect:{c:'#2e7d32',l:'검수'},edu:{c:'#5e35b1',l:'교육'},off:{c:'#c0392b',l:'휴무'},leave:{c:'#e67e22',l:'연차'},meeting:{c:'#5D3A00',l:'회의'},fcu:{c:'#0A3D7A',l:'설치'},safety:{c:'#8D6E00',l:'안전'},admin:{c:'#7A8AA0',l:'행정'}};
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function fmtLabel(dk){ const [y,m,d]=dk.split('-').map(Number); const w=WD[new Date(y,m-1,d).getDay()]; return `${m}월 ${d}일 (${w})`; }
+function shiftDate(dk,n){ const [y,m,d]=dk.split('-').map(Number); const dt=new Date(y,m-1,d); dt.setDate(dt.getDate()+n); return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0'); }
+
+function topBar(){ return `<div class="top"><button class="back" onclick="goHome()">← 홈</button><div class="avatar" onclick="goAccount()">${_uInitial}</div></div>`; }
+window.goHome=function(){ location.href='home.html'; };
+window.goAccount=function(){ location.href='account.html'; };
+
+let curDate=todayStr();
+let fabSched=[], supSched=[], lightMeta={}, lightSched={}; // lightSched: regId -> array
+let lightSubs={};
+
+window.dShift=function(n){ curDate=shiftDate(curDate,n); render(); };
+window.dToday=function(){ curDate=todayStr(); render(); };
+
+function ensureLightSub(regId){
+  if(lightSubs[regId]) return;
+  lightSubs[regId]=true;
+  onSnapshot(collection(db,'pjt_registry',regId,'schedules'), snap=>{
+    const arr=[]; snap.forEach(d=>arr.push({id:d.id,...d.data()})); lightSched[regId]=arr; render();
+  }, err=>{ console.error('경량PJT 일정 구독 오류',err); });
+}
+
+function itemsForDate(dk){
+  const items=[];
+  fabSched.forEach(s=>{ if(inRange(s,dk)) items.push({...s, _src:'fab', _label:'FAB'}); });
+  supSched.forEach(s=>{ if(inRange(s,dk)) items.push({...s, _src:'sup', _label:'SUP'}); });
+  Object.keys(lightMeta).forEach(id=>{
+    (lightSched[id]||[]).forEach(s=>{ if(inRange(s,dk)) items.push({...s, _src:'reg_'+id, _label:lightMeta[id].name||'경량PJT'}); });
+  });
+  items.sort((a,b)=>(a.stime||'').localeCompare(b.stime||''));
+  return items;
+}
+function inRange(s,dk){ const sd=s.sdate||s.date; const ed=s.edate||sd; if(!sd) return false; return dk>=sd && dk<=ed; }
+
+function schItemHtml(it){
+  const tag=it.tag&&TAGS[it.tag]?TAGS[it.tag]:null;
+  const cls=it._src==='fab'?'fab':(it._src==='sup'?'sup':'light');
+  return `<div class="sch-item ${it.done?'sch-done':''}" onclick="location.href='pjt.html?site=${it._src}'">
+    <span class="pjt-badge ${cls}">${esc(it._label)}</span>
+    <div class="sch-body">
+      <div class="sch-time">${it.stime?esc(it.stime):'종일'}</div>
+      <div class="sch-text">${esc(it.text||it.title||'(제목 없음)')}</div>
+      ${tag?`<span class="sch-tag" style="background:${tag.c}">${esc(tag.l)}</span>`:''}
+    </div>
+  </div>`;
+}
+
+function render(){
+  const items=itemsForDate(curDate);
+  const isToday=curDate===todayStr();
+  $app().innerHTML = topBar() + `
+    <div class="hello"><div class="name">오늘 일정</div><div class="sub">FAB · SUP · 경량PJT 통합</div></div>
+    <div class="date-nav">
+      <button class="date-arrow" onclick="dShift(-1)">‹</button>
+      <div class="date-label">${isToday?'오늘 · ':''}${fmtLabel(curDate)}</div>
+      <button class="date-arrow" onclick="dShift(1)">›</button>
+      ${isToday?'':'<button class="date-today" onclick="dToday()">오늘</button>'}
+    </div>
+    <div class="lbl">📅 ${items.length}건</div>
+    ${items.length?`<div class="list">${items.map(schItemHtml).join('')}</div>`:'<div class="empty">이 날 등록된 일정이 없습니다.</div>'}
+  `;
+}
+
+let _authBooted=false;
+onAuthStateChanged(auth, ()=>{
+  if(_authBooted) return; _authBooted=true;
+  onSnapshot(collection(db,'user_schedules'), snap=>{ const arr=[]; snap.forEach(d=>arr.push({id:d.id,...d.data()})); fabSched=arr; render(); });
+  onSnapshot(collection(db,'ph4_schedules'), snap=>{ const arr=[]; snap.forEach(d=>arr.push({id:d.id,...d.data()})); supSched=arr; render(); });
+  onSnapshot(collection(db,'pjt_registry'), snap=>{
+    const next={};
+    snap.forEach(d=>{ const v=d.data()||{}; if(v.status!=='ended'){ next[d.id]=v; ensureLightSub(d.id); } });
+    lightMeta=next; render();
+  });
+  render();
+});
+</script>
+</body>
+</html>
