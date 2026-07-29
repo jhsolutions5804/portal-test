@@ -910,9 +910,34 @@ async function renderEdocHome() {
     </div>
   </div>`;
 
+// ── edoc_* 컬렉션 조회 헬퍼: Firestore는 규칙과 일치하지 않는 무제한 list 쿼리를 통째로 거부하므로,
+//    작성자/결재선(viewerUids)/게시(posted)/관리자 네 갈래로 나눠 조회한 뒤 합친다 ──
+async function fetchEdocDocs(dtype, dbRef) {
+  const { getDocs, collection, query, where } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+  const _dbRef = dbRef || db;
+  const coll = collection(_dbRef, `edoc_${dtype}`);
+  const myUid = _user?.uid;
+  const seen = {}; const results = [];
+  const addAll = (snap) => { snap.forEach(d => { if (!seen[d.id]) { seen[d.id] = true; results.push({ id: d.id, dtype, ...d.data() }); } }); };
+  try {
+    if (myUid) {
+      const [s1, s2] = await Promise.all([
+        getDocs(query(coll, where('authorUid', '==', myUid))),
+        getDocs(query(coll, where('viewerUids', 'array-contains', myUid)))
+      ]);
+      addAll(s1); addAll(s2);
+    }
+    if (_isAdmin) {
+      addAll(await getDocs(coll));
+    } else {
+      addAll(await getDocs(query(coll, where('status', '==', 'posted'))));
+    }
+  } catch (e) { console.error('edoc 조회 오류', dtype, e); }
+  return results;
+}
+
   if (!window._db || !_user) return;
   try {
-    const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const DOC_TYPES = ['daily','leave','resign','cert','purchase','expense'];
     const myUid = _user.uid;
 
@@ -924,9 +949,8 @@ async function renderEdocHome() {
     let allLeave = [];   // 전체 연차신청서 (연차 집계용)
 
     for (const dtype of DOC_TYPES) {
-      const snap = await getDocs(collection(db, `edoc_${dtype}`));
-      snap.forEach(d => {
-        const data = {id:d.id, dtype, ...d.data()};
+      const docsArr = await fetchEdocDocs(dtype);
+      docsArr.forEach(data => {
         const line = data.approvalLine || [];
         if (dtype === 'leave') allLeave.push(data);
 
@@ -1079,9 +1103,8 @@ async function loadApproveData() {
     const myName = _myInfo?.name || '';
 
     for (const dtype of DOC_TYPES) {
-      const snap = await getDocs(collection(db, `edoc_${dtype}`));
-      snap.forEach(doc => {
-        const data = {id:doc.id, dtype, ...doc.data()};
+      const docsArr = await fetchEdocDocs(dtype);
+      docsArr.forEach(data => {
         const line = data.approvalLine || [];
         line.forEach((step, idx) => {
           if (step.role === '회람' || step.role === '수신' || step.role === '작성') return;
@@ -1762,10 +1785,8 @@ window.renderDocList = async function(dtype) {
   </div>`;
 
   try {
-    const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const dbRef = window._db || db;
-    const snap = await getDocs(collection(dbRef, `edoc_${dtype}`));
-    const allDocs = []; snap.forEach(d=>allDocs.push({id:d.id,...d.data()}));
+    const allDocs = await fetchEdocDocs(dtype, dbRef);
     const myUid = _user?.uid;
     // 볼 수 있는 문서:
     // - 관리자: 전체
