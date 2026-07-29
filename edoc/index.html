@@ -13,12 +13,12 @@ import { getFirestore, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc,
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const FB = {
-  apiKey:"AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI",
-  authDomain:"portal-test-6e0ff.firebaseapp.com",
-  projectId:"portal-test-6e0ff",
-  storageBucket:"portal-test-6e0ff.firebasestorage.app",
-  messagingSenderId:"752763010816",
-  appId:"1:752763010816:web:4a0c7062a2f1a4e9a03de5"
+  apiKey:"AIzaSyCyQxBJ_ftfM0ImBXubmqD5gfzFR54iPmE",
+  authDomain:"p4ph2-fab-506a7.firebaseapp.com",
+  projectId:"p4ph2-fab-506a7",
+  storageBucket:"p4ph2-fab-506a7.firebasestorage.app",
+  messagingSenderId:"36946317914",
+  appId:"1:36946317914:web:c6ad5f3a1b98130c99fe63"
 };
 const app  = initializeApp(FB);
 const auth = getAuth(app);
@@ -59,52 +59,23 @@ onAuthStateChanged(auth, async u => {
   if (!u) { show('login'); return; }
   _user = u;
 
-  // 포털 경유 승인 체크
+  // 포털 경유 여부와 무관하게 항상 동일한 기준으로 검증한다.
+  // ⚠️ 과거엔 via=portal일 때 승인/권한 여부와 무관하게 무조건 입장시켜서,
+  //    주소창에 ?via=portal만 붙이면 미승인·권한없는 계정도 들어올 수 있는 우회 경로였음(2026-07-27 수정).
   const via = new URLSearchParams(location.search).get('via') === 'portal';
-  if (via) {
-    try {
-      const ps = await getDoc(doc(db, 'portal_users', u.uid));
-      if (ps.exists()) {
-        const d = ps.data();
-        if (d.status === 'approved' && (d.admin || (d.perms && d.perms.edoc))) {
-          _isAdmin = !!d.admin;
-          _myInfo = { name: d.name||u.displayName||'', rank: d.rank||'', dept: d.dept||'', email: u.email };
-          document.documentElement.classList.add('portal-embed');
-          enterApp(u);
-          return;
-        } else {
-          // perms.edoc 없음 또는 미승인 → 직접 접근 허용 (로그인된 상태로 입장)
-          _isAdmin = !!d.admin;
-          _myInfo = { name: d.name||u.displayName||'', rank: d.rank||'', dept: d.dept||'', email: u.email };
-          document.documentElement.classList.add('portal-embed');
-          enterApp(u);
-          return;
-        }
-      } else {
-        // portal_users 문서 없음 → 그냥 입장 허용
-        document.documentElement.classList.add('portal-embed');
+  try {
+    const ps = await getDoc(doc(db, 'portal_users', u.uid));
+    if (ps.exists()) {
+      const d = ps.data();
+      if (d.status === 'approved' && (d.admin || (d.perms && d.perms.edoc))) {
+        _isAdmin = !!d.admin;
+        _myInfo = { name: d.name||u.displayName||'', rank: d.rank||'', dept: d.dept||'', email: u.email };
+        if (via) document.documentElement.classList.add('portal-embed');
         enterApp(u);
         return;
       }
-    } catch(e) {
-      console.error('portal auth error:', e);
-      document.documentElement.classList.add('portal-embed');
-      enterApp(u);
-      return;
     }
-  }
-
-  // 직접 접근: portal_users 승인 체크
-  try {
-    const ps = await getDoc(doc(db, 'portal_users', u.uid));
-    if (ps.exists() && ps.data().status === 'approved') {
-      const d = ps.data();
-      _isAdmin = !!d.admin;
-      _myInfo = { name: d.name||u.displayName||'', rank: d.rank||'', dept: d.dept||'', email: u.email };
-      enterApp(u);
-    } else {
-      show('denied');
-    }
+    show('denied');
   } catch(e) {
     show('denied');
   }
@@ -749,7 +720,14 @@ window.renderOvertimeMain = async function(){
   let docs=[];
   try{ const snap=await getDocs(collection(window._db,'edoc_overtime')); snap.forEach(d=>docs.push({id:d.id,...d.data()})); }catch(e){}
   const myUid=(_user&&_user.uid)||'';
-  docs=docs.filter(d=>d.authorUid===myUid);
+  // 볼 수 있는 문서: 관리자(전체) / 내가 작성 / 결재라인에 내 uid 포함(이미 처리한 이력) / 아직 결재 안 됐고 내가 결재라인에 이름으로 지정된 건
+  const myName=(_myInfo&&_myInfo.name)||'';
+  docs = docs.filter(d => {
+    if (_isAdmin) return true;
+    if (d.authorUid === myUid) return true;
+    const line = d.approvalLine || [];
+    return line.some(s => s.uid === myUid || (!s.uid && s.name === myName && s.role !== '회람' && s.role !== '수신' && s.role !== '작성'));
+  });
   docs.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
   const won=n=>'₩'+(Math.round(n)||0).toLocaleString('ko-KR');
   const STL={draft:'임시저장',pending:'결재대기',reviewing:'검토중',approved:'승인',rejected:'반려'};
@@ -1720,6 +1698,8 @@ window.docSave = async function(dtype, status) {
   await loadPortalUsers();
   if (!_myInfo?.name) await loadMyInfo();
   const approvalLine = buildFixedApprovalLine(dtype);
+  const viewerUidSet = new Set([_user.uid]);
+  approvalLine.forEach(a => { if (a.uid) viewerUidSet.add(a.uid); });
 
   const data = {
     title, dtype, status,
@@ -1727,6 +1707,7 @@ window.docSave = async function(dtype, status) {
     authorName:_myInfo?.name||_user.displayName||_user.email||'',
     authorRank:_myInfo?.rank||'', authorDept:_myInfo?.dept||'',
     approvalLine,
+    viewerUids: Array.from(viewerUidSet),
     createdAt:serverTimestamp()
   };
   cfg.fields.forEach(f => {
@@ -2097,12 +2078,24 @@ window.docApprove = async function(docId, dtype, newStatus, docData) {
     const rawData = typeof docData === 'string' ? JSON.parse(docData) : (docData||{});
     const origLine = rawData.approvalLine || [];
 
-    // 내 단계 매칭: uid 일치 OR (uid 비어있고 이름 일치)
-    const isMyStep = (s) => {
-      if (s.role === '회람' || s.role === '수신' || s.role === '작성') return false;
-      if (s.status !== 'pending') return false;
-      return s.uid === myUid || (!s.uid && s.name === approverName);
-    };
+    // 결재 처리 대상 단계를 정확히 하나만 찾는다 (다단계 결재라인에서 관리자 대신승인 시 여러 단계가
+    // 한번에 승인되는 것을 방지하기 위해, "이전 단계가 모두 완료된" 순번상 내 차례인 단계만 매칭한다).
+    const isEligibleRole = (s) => s.role !== '회람' && s.role !== '수신' && s.role !== '작성';
+    const prevStepsDone = (idx) => origLine.slice(0, idx).every(p =>
+      p.role === '작성' || p.status === 'approved' || p.status === 'done'
+    );
+    // 1순위: uid/이름이 정확히 내 것과 일치하는, 순번상 차례가 된 단계
+    let targetIdx = origLine.findIndex((s, i) =>
+      isEligibleRole(s) && s.status === 'pending' && prevStepsDone(i) &&
+      (s.uid === myUid || (!s.uid && s.name === approverName))
+    );
+    // 2순위: 관리자는 본인이 결재라인에 없어도, 순번상 차례가 된 단계를 대신 승인 가능
+    if (targetIdx < 0 && _isAdmin) {
+      targetIdx = origLine.findIndex((s, i) =>
+        isEligibleRole(s) && s.status === 'pending' && prevStepsDone(i)
+      );
+    }
+    const isMyStep = (s) => origLine.indexOf(s) === targetIdx && targetIdx >= 0;
 
     const line = origLine.map(s => {
       if (!isMyStep(s)) return s;
@@ -2404,3 +2397,5 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
 
 </body>
 </html>
+
+
