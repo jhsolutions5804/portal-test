@@ -381,8 +381,28 @@ window.mobileApprove=async function(docId, dtype, newStatus, docDataStr){
 // ===== 작성 (업무일지 / 연차 / 초과근로) =====
 function efld(label,inp){return `<div class="wf"><label>${label}</label>${inp}</div>`;}
 function fv(id){const e=document.getElementById(id);return e?e.value:'';}
-function lineDaily(){return [{role:'작성',uid:_me.uid||'',name:_me.name||'',status:'draft'},{role:'결재',uid:'',name:'김종화',rank:'차장',status:'pending'},{role:'수신',uid:'',name:'송지훈',rank:'대표',status:'pending'}];}
-function lineOvertime(){return [{role:'작성',uid:_me.uid||'',name:_me.name||'',status:'draft'},{role:'결재',uid:'',name:'김종화',rank:'차장',status:'pending'},{role:'회람',uid:'',name:'김민서',rank:'대리',status:'pending'}];}
+// ── 이름 → UID 조회 (portal_users 캐시) : 결재라인에 실제 UID를 채워넣어야 열람권한(viewerUids)이 정확히 동작함 ──
+let _userDirectory=null;
+async function resolveUid(name){
+  if(!_userDirectory){
+    _userDirectory={};
+    try{
+      const snap=await getDocs(collection(db,'portal_users'));
+      snap.forEach(d=>{ const v=d.data(); if(v && v.name) _userDirectory[v.name]=d.id; });
+    }catch(e){ console.error('사용자 조회 실패',e); }
+  }
+  return _userDirectory[name]||'';
+}
+async function fillUids(line){
+  for(const item of line){ if(!item.uid && item.name){ item.uid=await resolveUid(item.name); } }
+  return line;
+}
+function viewerUidsOf(line){
+  const set=new Set(); (line||[]).forEach(x=>{ if(x.uid) set.add(x.uid); });
+  return Array.from(set);
+}
+async function lineDaily(){return fillUids([{role:'작성',uid:_me.uid||'',name:_me.name||'',status:'draft'},{role:'결재',uid:'',name:'김종화',rank:'차장',status:'pending'},{role:'수신',uid:'',name:'송지훈',rank:'대표',status:'pending'}]);}
+async function lineOvertime(){return fillUids([{role:'작성',uid:_me.uid||'',name:_me.name||'',status:'draft'},{role:'결재',uid:'',name:'김종화',rank:'차장',status:'pending'},{role:'회람',uid:'',name:'김민서',rank:'대리',status:'pending'}]);}
 // 통상임금 (PC 인사와 동일)
 function otCalcAnnualSalary(hourly, empType){
   if(!hourly) return {basic:0,fixedOt:0,fixedNight:0,weekly:0,total:0};
@@ -426,9 +446,10 @@ window.dailySaveM=async function(){
   if(!title.trim()){alert('제목을 입력하세요.');return;}
   if(!today.trim()){alert('오늘 업무를 입력하세요.');return;}
   try{
+    const line=await lineDaily();
     await addDoc(collection(db,'edoc_daily'),{dtype:'daily',status:'pending',title,date,todayWork:today,tomorrowWork:tomorrow,issue,
       authorUid:_me.uid||'',authorName:_me.name||'',authorDept:_me.dept||'',authorRank:_me.rank||'',
-      approvalLine:lineDaily(),createdAt:serverTimestamp()});
+      approvalLine:line,viewerUids:viewerUidsOf(line),createdAt:serverTimestamp()});
     alert('✅ 상신 완료!');history.back();
   }catch(e){alert('오류: '+e.message);}
 };
@@ -451,10 +472,11 @@ window.leaveSaveM=async function(){
   if(!start){alert('시작일을 선택하세요.');return;}
   if(!days||days<=0){alert('일수를 입력하세요.');return;}
   try{
+    const line=await lineDaily();
     await addDoc(collection(db,'edoc_leave'),{dtype:'leave',status:'pending',
       name:_me.name||'',leaveType:type,startDate:start,endDate:end||start,days,reason,
       authorUid:_me.uid||'',authorName:_me.name||'',authorDept:_me.dept||'',authorRank:_me.rank||'',dept:_me.dept||'',
-      approvalLine:lineDaily(),createdAt:serverTimestamp()});
+      approvalLine:line,viewerUids:viewerUidsOf(line),createdAt:serverTimestamp()});
     alert('✅ 상신 완료!');history.back();
   }catch(e){alert('오류: '+e.message);}
 };
@@ -477,7 +499,7 @@ function itemFieldHtml(){
 window.addItemRow=function(){ _itemRows.push({name:'',qty:'',unitPrice:''}); const box=document.getElementById('item-rows'); if(box) box.innerHTML=_itemRows.map((it,i)=>itemRowHtml(it,i)).join(''); };
 window.removeItemRow=function(i){ _itemRows.splice(i,1); const box=document.getElementById('item-rows'); if(box) box.innerHTML=_itemRows.map((it,j)=>itemRowHtml(it,j)).join(''); };
 function collectItems(){ return _itemRows.filter(it=>it.name&&it.name.trim()).map(it=>({name:it.name.trim(),qty:Number(it.qty)||0,unitPrice:Number(it.unitPrice)||0})); }
-function lineSingleApprove(){ return [{role:'작성',uid:_me.uid||'',name:_me.name||'',status:'draft'},{role:'결재',uid:'',name:'김종화',rank:'차장',status:'pending'}]; }
+function lineSingleApprove(){ return fillUids([{role:'작성',uid:_me.uid||'',name:_me.name||'',status:'draft'},{role:'결재',uid:'',name:'김종화',rank:'차장',status:'pending'}]); }
 // 구매품의서 작성
 window.renderPurchaseWrite=function(){
   _itemRows=[];
@@ -497,9 +519,10 @@ window.purchaseSaveM=async function(){
   if(!vendor.trim()){alert('공급업체를 입력하세요.');return;}
   if(!purpose.trim()){alert('구매 목적을 입력하세요.');return;}
   try{
+    const line=await lineSingleApprove();
     await addDoc(collection(db,'edoc_purchase'),{dtype:'purchase',status:'pending',vendor,purpose,dueDate,items,
       authorUid:_me.uid||'',authorName:_me.name||'',authorDept:_me.dept||'',authorRank:_me.rank||'',
-      approvalLine:lineSingleApprove(),createdAt:serverTimestamp()});
+      approvalLine:line,viewerUids:viewerUidsOf(line),createdAt:serverTimestamp()});
     alert('✅ 상신 완료!');history.back();
   }catch(e){alert('오류: '+e.message);}
 };
@@ -525,9 +548,10 @@ window.expenseSaveM=async function(){
   if(!amount||amount<=0){alert('금액을 입력하세요.');return;}
   if(!purpose.trim()){alert('지출 목적을 입력하세요.');return;}
   try{
+    const line=await lineSingleApprove();
     await addDoc(collection(db,'edoc_expense'),{dtype:'expense',status:'pending',expDate,category,amount,vendor,purpose,receipt,items,
       authorUid:_me.uid||'',authorName:_me.name||'',authorDept:_me.dept||'',authorRank:_me.rank||'',
-      approvalLine:lineSingleApprove(),createdAt:serverTimestamp()});
+      approvalLine:line,viewerUids:viewerUidsOf(line),createdAt:serverTimestamp()});
     alert('✅ 상신 완료!');history.back();
   }catch(e){alert('오류: '+e.message);}
 };
@@ -597,10 +621,11 @@ window.overtimeSaveM=async function(){
   const opt=sel.options[sel.selectedIndex];const name=opt.dataset.name||'',rank=opt.dataset.rank||'',workerId=sel.value;
   const wage=await otGetWage(workerId);const rate=wage?wage.rate:0,amount=Math.round(rate*hours);
   try{
+    const line=await lineOvertime();
     await addDoc(collection(db,'edoc_overtime'),{dtype:'overtime',status:'pending',
       date,name,rank,workerId,hours,rate,amount,yearMonth:date.slice(0,7),
       authorUid:_me.uid||'',authorName:_me.name||'',
-      approvalLine:lineOvertime(),linkedToOvertime:false,createdAt:serverTimestamp()});
+      approvalLine:line,viewerUids:viewerUidsOf(line),linkedToOvertime:false,createdAt:serverTimestamp()});
     alert('✅ 상신 완료!');history.back();
   }catch(e){alert('오류: '+e.message);}
 };
