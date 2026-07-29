@@ -83,7 +83,7 @@
 const _uInitial=(function(){try{var a=JSON.parse(localStorage.getItem('jh_login_perms')||'null');return (a&&a.name)?a.name.slice(0,1):'·';}catch(e){return '·';}})();
 const _me=(function(){try{return JSON.parse(localStorage.getItem('jh_login_perms')||'null')||{};}catch(e){return {};}})();
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, onSnapshot, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, serverTimestamp, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, onSnapshot, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, serverTimestamp, query, where, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 const firebaseConfig = {
   apiKey:"AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI", authDomain:"portal-test-6e0ff.firebaseapp.com",
@@ -632,8 +632,21 @@ window.overtimeSaveM=async function(){
 
 /* Firestore 구독 */
 function sub(coll,setter){
-  onSnapshot(collection(db,coll), snap=>{ const arr=[]; snap.forEach(d=>arr.push({id:d.id,...d.data()})); setter(arr); render(); },
-    err=>{ loadError=err.code||err.message; render(); });
+  const myUid=_me.uid||'';
+  let byAuthor=[], byViewer=[], byAdmin=[];
+  const merge=()=>{
+    const map={};
+    [...byAuthor,...byViewer,...byAdmin].forEach(d=>{ map[d.id]=d; });
+    setter(Object.values(map)); render();
+  };
+  const onErr=err=>{ loadError=err.code||err.message; render(); };
+  if(myUid){
+    onSnapshot(query(collection(db,coll), where('authorUid','==',myUid)), snap=>{ byAuthor=snap.docs.map(d=>({id:d.id,...d.data()})); merge(); }, onErr);
+    onSnapshot(query(collection(db,coll), where('viewerUids','array-contains',myUid)), snap=>{ byViewer=snap.docs.map(d=>({id:d.id,...d.data()})); merge(); }, onErr);
+  }
+  if(_me.admin){
+    onSnapshot(collection(db,coll), snap=>{ byAdmin=snap.docs.map(d=>({id:d.id,...d.data()})); merge(); }, onErr);
+  }
 }
 let _authBooted=false;
 onAuthStateChanged(auth, ()=>{
