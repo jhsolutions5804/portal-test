@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- PJT module build: 20260722 · ver 4.10.1 · 주간공정회의 자료 자동생성 + 도면 좌표 매핑 툴(클릭/드래그 배치, 기준크기 자동적용, 크기 일괄보정, 확대·축소+스크롤 팬, 자동정렬 스냅, 구역 전체 좌표 일괄삭제) + 화살표 flow형 범례·표 색상 고정 (7/26 본섭↔테섭 동기화로 유실되었던 기능 복구 재반영) -->
+<!DOCTYPE html><!-- PJT module build: 20260722 · ver 4.10.2 · 주간공정회의 자료 자동생성 + 도면 좌표 매핑 툴(클릭/드래그 배치, 기준크기 자동적용, 크기 일괄보정, 확대·축소+스크롤 팬, 자동정렬 스냅, 구역 전체 좌표 일괄삭제) + 화살표 flow형 범례·표 색상 고정 (7/26 동기화로 유실됐던 기능 복구 중 _savePjtStartDate 함수가 두 조각으로 잘려 스크립트 전체가 죽는 치명적 버그 발견·수정, jsdom 실제 실행 테스트로 검증) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1580,10 +1580,6 @@ window._fbSubscribeProgress = async function(dateKey) {
   });
 };
 
-// ── PJT 설정 (module 블록 — db 직접 접근) ──
-window._savePjtStartDate = function(key, v){
-  try{
-    setDoc(doc(db,'pjt_settings',key),{startDate:v,updatedAt:serverTimestamp()},{merge:true})
 // ===== [주간공정회의] 도면 좌표 매핑 (zone_layouts) =====
 window._zoneLayoutCache = window._zoneLayoutCache || {};
 
@@ -1653,6 +1649,10 @@ window._fbClearZoneLayout = async function(zoneId) {
   }
 };
 
+// ── PJT 설정 (module 블록 — db 직접 접근) ──
+window._savePjtStartDate = function(key, v){
+  try{
+    setDoc(doc(db,'pjt_settings',key),{startDate:v,updatedAt:serverTimestamp()},{merge:true})
       .catch(function(e){console.warn('startDate 저장 실패',e);});
   }catch(e){}
 };
