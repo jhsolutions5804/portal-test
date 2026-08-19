@@ -215,44 +215,40 @@ const SEED_COMPANIES=[
   {id:'sj',    company:'에스제이',   ceo:'서민우', bizno:'', tel:'010-8456-1098', email:'seoyo20@naver.com', address:'', roleSupplier:false, roleClient:true},
 ];
 
-// via=portal이면 Firebase Auth 대기 없이 즉시 앱 표시
+// via=portal이어도 승인/권한 검증 전에는 화면 표시·데이터 구독을 시작하지 않는다.
+// ⚠️ 과거엔 via=portal일 때 splash를 즉시 없애고 검증 없이 바로 onSnapshot을 등록해,
+//    주소창에 ?via=portal만 붙이면 승인·권한 여부와 무관하게 전체 견적/정산/거래처 데이터가 그대로 노출되는 우회 경로였음(2026-07-27 수정).
 const _viaPortal = new URLSearchParams(location.search).get('via') === 'portal';
-if (_viaPortal) {
-  // 1) 즉시 splash 제거
-  $('splash').style.display = 'none';
-  $('app').style.display = 'block';
-  document.documentElement.classList.add('portal-embed');
 
-  // 2) onAuthStateChanged — 인증 완료 후 onSnapshot 등록 + 렌더
-  onAuthStateChanged(auth, async user => {
-    if (!user) return;
-    try {
-      const ps = await getDoc(doc(db,'portal_users',user.uid));
-      if (ps.exists()) me = { uid:user.uid, ...ps.data() };
-    } catch(e) {}
-    // onSnapshot 등록 (startApp 대신 직접)
-    onSnapshot(collection(db,'gihoek_projects'), s=>{ projects=[]; s.forEach(d=>projects.push({id:d.id,...d.data()})); projects.sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0)); if(curTab==='pjt'&&!detailId&&!pjtForm) renderPjt(); else if(curTab==='home') renderPlanHome(); });
-    onSnapshot(collection(db,'gihoek_estimates'), s=>{ estimates=[]; s.forEach(d=>estimates.push({id:d.id,...d.data()})); estimates.sort((a,b)=>{ const dc=(b.date||'').localeCompare(a.date||''); if(dc) return dc; return (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0); }); if(curTab==='pjt'&&detailId) pjtDetail(detailId); else if(curTab==='pjt'&&!pjtForm) renderPjt(); if(curTab==='est'&&!estDraft&&!viewEstId) renderEst(); else if(curTab==='home') renderPlanHome(); });
-    onSnapshot(collection(db,'gihoek_settlements'), s=>{ settlements=[]; s.forEach(d=>settlements.push({id:d.id,...d.data()})); if(curTab==='pjt') { detailId?pjtDetail(detailId):renderPjt(); } else if(curTab==='settle'&&!settleDraft&&!viewSetId) renderSettle(); else if(curTab==='acct') renderAcct(); else if(curTab==='home') renderPlanHome(); });
-    onSnapshot(collection(db,'gihoek_companies'), s=>{ companies=[]; s.forEach(d=>companies.push({id:d.id,...d.data()})); companies.sort((a,b)=>(a.company||'').localeCompare(b.company||'')); if(curTab==='comp'&&!compForm) renderComp(); });
-    onSnapshot(collection(db,'gihoek_expenses'), s=>{ expenses=[]; s.forEach(d=>expenses.push({id:d.id,...d.data()})); if(curTab==='acct') renderAcct(); });
-    const t0 = new URLSearchParams(location.search).get('tab');
-    if (t0 && ['home','pjt','comp','est','settle','acct'].includes(t0)) tab(t0);
-    else renderPlanHome();
-  });
-
-} else {
-  // 직접 접근 시 기존 Firebase Auth 방식
-  onAuthStateChanged(auth, async user=>{
-    if(!user){ showDenied('로그인이 필요합니다','포털에서 로그인 후 기획 메뉴로 접속해 주세요.'); return; }
-    try{
-      const ps=await getDoc(doc(db,'portal_users',user.uid));
-      if(ps.exists()){ const d=ps.data();
-        if(d.status==='approved' && (d.admin===true || (d.perms&&d.perms.plan===true))){ me={uid:user.uid,...d}; await startApp(); return; } }
-    }catch(e){}
-    showDenied('접근 권한이 없습니다','기획 메뉴 접근 권한이 없습니다. 관리자에게 요청해 주세요.');
-  });
-}
+onAuthStateChanged(auth, async user => {
+  if (!user) { showDenied('로그인이 필요합니다','포털에서 로그인 후 기획 메뉴로 접속해 주세요.'); return; }
+  try {
+    const ps = await getDoc(doc(db,'portal_users',user.uid));
+    if (ps.exists()) {
+      const d = ps.data();
+      if (d.status==='approved' && d.admin===true) {  // 기획은 관리자 전용으로 제한(2026-07-28)
+        me = { uid:user.uid, ...d };
+        if (_viaPortal) {
+          $('splash').style.display = 'none';
+          $('app').style.display = 'block';
+          document.documentElement.classList.add('portal-embed');
+          onSnapshot(collection(db,'gihoek_projects'), s=>{ projects=[]; s.forEach(d=>projects.push({id:d.id,...d.data()})); projects.sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0)); if(curTab==='pjt'&&!detailId&&!pjtForm) renderPjt(); else if(curTab==='home') renderPlanHome(); });
+          onSnapshot(collection(db,'gihoek_estimates'), s=>{ estimates=[]; s.forEach(d=>estimates.push({id:d.id,...d.data()})); estimates.sort((a,b)=>{ const dc=(b.date||'').localeCompare(a.date||''); if(dc) return dc; return (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0); }); if(curTab==='pjt'&&detailId) pjtDetail(detailId); else if(curTab==='pjt'&&!pjtForm) renderPjt(); if(curTab==='est'&&!estDraft&&!viewEstId) renderEst(); else if(curTab==='home') renderPlanHome(); });
+          onSnapshot(collection(db,'gihoek_settlements'), s=>{ settlements=[]; s.forEach(d=>settlements.push({id:d.id,...d.data()})); if(curTab==='pjt') { detailId?pjtDetail(detailId):renderPjt(); } else if(curTab==='settle'&&!settleDraft&&!viewSetId) renderSettle(); else if(curTab==='acct') renderAcct(); else if(curTab==='home') renderPlanHome(); });
+          onSnapshot(collection(db,'gihoek_companies'), s=>{ companies=[]; s.forEach(d=>companies.push({id:d.id,...d.data()})); companies.sort((a,b)=>(a.company||'').localeCompare(b.company||'')); if(curTab==='comp'&&!compForm) renderComp(); });
+          onSnapshot(collection(db,'gihoek_expenses'), s=>{ expenses=[]; s.forEach(d=>expenses.push({id:d.id,...d.data()})); if(curTab==='acct') renderAcct(); });
+          const t0 = new URLSearchParams(location.search).get('tab');
+          if (t0 && ['home','pjt','comp','est','settle','acct'].includes(t0)) tab(t0);
+          else renderPlanHome();
+        } else {
+          await startApp();
+        }
+        return;
+      }
+    }
+  } catch(e) {}
+  showDenied('접근 권한이 없습니다','기획 메뉴 접근 권한이 없습니다. 관리자에게 요청해 주세요.');
+});
 function showDenied(t,s){ $('splash').style.display='none'; $('app').style.display='none'; $('denied-t').textContent=t; $('denied-s').textContent=s; $('denied').style.display='block'; }
 
 async function startApp(){
@@ -473,18 +469,18 @@ window.newEst=function(pjtId){
   const sup=supplierList(), cli=clientList();
   estDraft={ editId:null, no:null, pjtId:pjtId||projects[0].id, title:'', date:new Date().toISOString().slice(0,10),
     clientId: cli[0]?.id||'', issuerId: (sup.find(c=>c.company==='제이에이치솔루션')?.id) || sup[0]?.id || '',
-    issuerContact:'', clientContact:'',
+    issuerContact:'', clientContact:'', notes:'',
     authorDept:(me&&me.rank)||'', authorName:(me&&me.name)||'', authorEmail:(me&&me.email)||'',
-    items:[{name:'',spec:'',qty:1,price:0,amount:0},{name:'',spec:'',qty:1,price:0,amount:0}] };
+    items:[{name:'',spec:'',qty:1,price:0,amount:0,remark:''},{name:'',spec:'',qty:1,price:0,amount:0,remark:''}] };
   tabSilent('est'); drawEstForm();
 };
 window.editEst=function(id){
   const e=estimates.find(x=>x.id===id); if(!e){ renderEst(); return; }
   estDraft={ editId:e.id, baseNo:e.baseNo||e.no, srcNo:e.no, srcRev:e.rev||1, pjtId:e.pjtId, title:e.title||'', date:e.date||new Date().toISOString().slice(0,10),
     clientId:e.clientId||'', issuerId:e.issuerId||(supplierList().find(c=>c.company==='제이에이치솔루션')?.id)||'',
-    issuerContact:e.issuerContact||'', clientContact:e.clientContact||'',
+    issuerContact:e.issuerContact||'', clientContact:e.clientContact||'', notes:e.notes||'',
     authorDept:e.authorDept||(me&&me.rank)||'', authorName:e.authorName||(me&&me.name)||'', authorEmail:e.authorEmail||(me&&me.email)||'',
-    items:(e.items&&e.items.length)? e.items.map(i=>({name:i.name||'',spec:i.spec||'',qty:i.qty||0,price:i.price||0,amount:Math.round(itemAmt(i))})) : [{name:'',spec:'',qty:1,price:0,amount:0}] };
+    items:(e.items&&e.items.length)? e.items.map(i=>({name:i.name||'',spec:i.spec||'',qty:i.qty||0,price:i.price||0,amount:Math.round(itemAmt(i)),remark:i.remark||''})) : [{name:'',spec:'',qty:1,price:0,amount:0,remark:''}] };
   viewEstId=null; tabSilent('est'); drawEstForm();
 };
 function clientOpt(sel){ const list=clientList(); return `<option value="">— 선택 —</option>`+list.map(c=>`<option value="${c.id}" ${c.id===sel?'selected':''}>${c.company}${c.ceo?' ('+c.ceo+')':''}</option>`).join(''); }
@@ -497,11 +493,14 @@ function fmtTel(v){
   if(d.length<=10) return d.slice(0,3)+'-'+d.slice(3,6)+'-'+d.slice(6);
   return d.slice(0,3)+'-'+d.slice(3,7)+'-'+d.slice(7,11);
 }
-function fmtTelBlur(el){
+window.fmtTel=fmtTel;
+function fmtTelBlur(el,idx){
   var d=el.value.replace(/\D/g,'');
   if(d.length===8 && d[0]!=='0') d='010'+d;
   el.value=fmtTel(d);
+  if(idx!==undefined && window._cfContacts && window._cfContacts[idx]) window._cfContacts[idx].tel=el.value;
 }
+window.fmtTelBlur=fmtTelBlur;
 // 업체 선택 후 담당자 드롭다운 렌더
 function contactOptHtml(compId, selName){
   const c = compById(compId);
@@ -536,16 +535,17 @@ function drawEstForm(){ const d=estDraft;
 
     <label style="font-size:12px;color:var(--sub);font-weight:600">품목</label>
     <div class="scroll"><table class="items">
-      <colgroup><col class="c-no"><col><col><col class="c-qty"><col class="c-price"><col class="c-amt"><col class="c-del"></colgroup>
-      <thead><tr><th>#</th><th>품명</th><th>규격</th><th>수량</th><th>단가</th><th>금액</th><th></th></tr></thead>
+      <colgroup><col class="c-no"><col><col><col class="c-qty"><col class="c-price"><col class="c-amt"><col><col class="c-del"></colgroup>
+      <thead><tr><th>#</th><th>품명</th><th>규격</th><th>수량</th><th>단가</th><th>금액</th><th>비고</th><th></th></tr></thead>
       <tbody id="est-rows"></tbody></table></div>
     <button class="btn gray sm" style="margin-top:10px" onclick="addRow()">+ 품목 추가</button>
     <div class="totbox">
-      <div class="totrow"><span class="muted">공급가액</span><span id="t-supply">0 원</span></div>
+      <div class="totrow"><span class="muted">공급가액 <span class="small muted" style="font-weight:500">(직접 수정 가능)</span></span>
+        <span style="display:flex;align-items:center;gap:6px"><input class="tinp" id="t-supply" type="text" inputmode="numeric" oninput="fmtMoney(this)" onchange="onSupplyEdit(this.value)"> 원</span></div>
       <div class="totrow"><span class="muted">부가세 (10%)</span><span id="t-vat">0 원</span></div>
-      <div class="totrow big"><span>합계금액 <span class="small muted" style="font-weight:500">(직접 수정 가능)</span></span>
-        <span style="display:flex;align-items:center;gap:6px"><input class="tinp" id="t-total" type="text" inputmode="numeric" oninput="fmtMoney(this)" onchange="onTotalEdit(this.value)"> 원</span></div>
+      <div class="totrow big"><span>합계금액</span><span id="t-total">0 원</span></div>
     </div>
+    <div class="field" style="margin-top:12px"><label>특기사항 <span class="small muted" style="font-weight:500">(선택사항)</span></label><textarea class="inp" id="ed-notes" rows="3" placeholder="예: 납기·설치조건·특이사항 등을 입력하세요" oninput="setDraft('notes',this.value)" style="resize:vertical;font-family:inherit">${(d.notes||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea></div>
     <div style="display:flex; gap:8px; margin-top:16px"><button class="btn line full" onclick="renderEst()">취소</button><button class="btn pri full" id="est-save" onclick="saveEst()">저장</button></div>
   </div>`;
   drawRows(); window.scrollTo(0,0);
@@ -562,34 +562,34 @@ function drawRows(){
     <td><input class="ti num" id="q-${i}" type="number" inputmode="numeric" value="${it.qty}" oninput="onQty(${i},this.value)"></td>
     <td><input class="ti num" id="p-${i}" type="text" inputmode="numeric" value="${Number(it.price||0).toLocaleString('ko-KR')}" oninput="fmtMoney(this);onPrice(${i},this.value)"></td>
     <td><input class="ti num" id="a-${i}" type="text" inputmode="numeric" value="${Number(Math.round(itemAmt(it))).toLocaleString('ko-KR')}" oninput="fmtMoney(this);onAmt(${i},this.value)"></td>
+    <td><input class="ti" value="${(it.remark||'').replace(/"/g,'&quot;')}" placeholder="비고" oninput="setItem(${i},'remark',this.value)"></td>
     <td><button class="del" onclick="delRow(${i})">×</button></td></tr>`).join('');
   recalcTotals();
 }
 function recalcTotals(){
   const sup=estDraft.items.reduce((s,it)=>s+itemAmt(it),0); const vat=Math.round(sup*0.1);
-  if($('t-supply')) $('t-supply').textContent=won(sup)+' 원';
+  if($('t-supply') && document.activeElement!==$('t-supply')) $('t-supply').value=Math.round(sup).toLocaleString('ko-KR');
   if($('t-vat')) $('t-vat').textContent=won(vat)+' 원';
-  if($('t-total')) $('t-total').value=Math.round(sup+vat).toLocaleString('ko-KR');
+  if($('t-total')) $('t-total').textContent=won(sup+vat)+' 원';
 }
 window.onQty=function(i,v){ const it=estDraft.items[i]; it.qty=num(v); it.amount=Math.round(it.qty*it.price); const a=$('a-'+i); if(a)a.value=it.amount.toLocaleString('ko-KR'); recalcTotals(); };
 window.onPrice=function(i,v){ const it=estDraft.items[i]; it.price=num(v); it.amount=Math.round(it.qty*it.price); const a=$('a-'+i); if(a)a.value=it.amount.toLocaleString('ko-KR'); recalcTotals(); };
 window.onAmt=function(i,v){ const it=estDraft.items[i]; it.amount=num(v); it.price=it.qty>0?Math.round(it.amount/it.qty):it.amount; const p=$('p-'+i); if(p)p.value=it.price.toLocaleString('ko-KR'); recalcTotals(); };
-window.onTotalEdit=function(v){ const X=num(v); const items=estDraft.items; if(!items.length) return;
-  const targetSupply=Math.round(X/1.1);
+window.onSupplyEdit=function(v){ const X=num(v); const items=estDraft.items; if(!items.length) return;
   const others=items.slice(0,-1).reduce((s,it)=>s+itemAmt(it),0);
   const last=items[items.length-1];
-  last.amount=targetSupply-others; last.price=last.qty>0?Math.round(last.amount/last.qty):last.amount;
+  last.amount=X-others; last.price=last.qty>0?Math.round(last.amount/last.qty):last.amount;
   const li=items.length-1; if($('a-'+li))$('a-'+li).value=Math.round(last.amount).toLocaleString('ko-KR'); if($('p-'+li))$('p-'+li).value=last.price.toLocaleString('ko-KR');
   recalcTotals(); toast('마지막 품목으로 차액을 반영했습니다.'); };
-window.addRow=function(){ estDraft.items.push({name:'',spec:'',qty:1,price:0,amount:0}); drawRows(); };
-window.delRow=function(i){ estDraft.items.splice(i,1); if(!estDraft.items.length) estDraft.items.push({name:'',spec:'',qty:1,price:0,amount:0}); drawRows(); };
+window.addRow=function(){ estDraft.items.push({name:'',spec:'',qty:1,price:0,amount:0,remark:''}); drawRows(); };
+window.delRow=function(i){ estDraft.items.splice(i,1); if(!estDraft.items.length) estDraft.items.push({name:'',spec:'',qty:1,price:0,amount:0,remark:''}); drawRows(); };
 
 // ctSnap: 담당자 스냅샷 헬퍼 (saveEst / saveSettle 공통)
 function ctSnap(cid,name){ const c=compById(cid); const ct=(c?.contacts||[]).find(x=>x.name===name)||{}; return {contact:name||'',contactTel:ct.tel||'',contactEmail:ct.email||''}; }
 
 window.saveEst=async function(){ const d=estDraft;
   if(!d.title.trim()){ toast('견적 제목을 입력하세요.'); return; }
-  const items=d.items.filter(i=>(i.name||'').trim()).map(i=>({name:i.name.trim(),spec:i.spec||'',qty:i.qty||0,price:i.price||0,amount:Math.round(itemAmt(i))}));
+  const items=d.items.filter(i=>(i.name||'').trim()).map(i=>({name:i.name.trim(),spec:i.spec||'',qty:i.qty||0,price:i.price||0,amount:Math.round(itemAmt(i)),remark:(i.remark||'').trim()}));
   if(!items.length){ toast('품목을 1개 이상 입력하세요.'); return; }
   const cl=compById(d.clientId); const iss=compById(d.issuerId);
   const authorDept=(d.authorDept||'').trim(), authorName=(d.authorName||'').trim(), authorEmail=(d.authorEmail||'').trim(), authorUid=(me&&me.uid)||'';
@@ -609,7 +609,7 @@ window.saveEst=async function(){ const d=estDraft;
   const payload={ pjtId:d.pjtId, no, baseNo, rev, status:'active', date:d.date, title:d.title.trim(), items, authorDept, authorName, authorEmail, authorUid,
       clientId:d.clientId||'', client: cl?{company:cl.company,ceo:cl.ceo||'',bizno:cl.bizno||'',tel:cl.tel||'',email:cl.email||'',address:cl.address||'',...ctSnap(d.clientId,d.clientContact)}:null,
       issuerId:d.issuerId||'', issuer: iss?{company:iss.company,ceo:iss.ceo||'',bizno:iss.bizno||'',tel:iss.tel||'',email:iss.email||'',address:iss.address||'',...ctSnap(d.issuerId,d.issuerContact)}:null,
-      clientContact:d.clientContact||'', issuerContact:d.issuerContact||'',
+      clientContact:d.clientContact||'', issuerContact:d.issuerContact||'', notes:(d.notes||'').trim(),
       createdAt:serverTimestamp() };
   try{
     await setDoc(doc(db,'gihoek_estimates',id), payload);
@@ -632,12 +632,13 @@ window.openEst=function(id){ viewEstId=id; const e=estimates.find(x=>x.id===id);
       </div>
       <div class="partybox">${partyHtml('발행처',e.issuer)}${partyHtml('수신처',e.client)}</div>
       <div class="scroll"><table class="items">
-        <thead><tr><th>#</th><th>품명</th><th>규격</th><th class="right">수량</th><th class="right">단가</th><th class="right">금액</th></tr></thead>
-        <tbody>${e.items.map((it,i)=>`<tr><td class="muted small">${i+1}</td><td>${it.name}</td><td class="muted">${it.spec||'-'}</td><td class="right">${won(it.qty)}</td><td class="right">${won(it.price)}</td><td class="right" style="font-weight:700;color:var(--money)">${won(itemAmt(it))}</td></tr>`).join('')}</tbody>
+        <thead><tr><th>#</th><th>품명</th><th>규격</th><th class="right">수량</th><th class="right">단가</th><th class="right">금액</th><th>비고</th></tr></thead>
+        <tbody>${e.items.map((it,i)=>`<tr><td class="muted small">${i+1}</td><td>${it.name}</td><td class="muted">${it.spec||'-'}</td><td class="right">${won(it.qty)}</td><td class="right">${won(it.price)}</td><td class="right" style="font-weight:700;color:var(--money)">${won(itemAmt(it))}</td><td class="muted">${it.remark||''}</td></tr>`).join('')}</tbody>
       </table></div>
       <div class="totbox"><div class="totrow"><span class="muted">공급가액</span><span>${won(sup)} 원</span></div>
         <div class="totrow"><span class="muted">부가세 (10%)</span><span>${won(vat)} 원</span></div>
         <div class="totrow big"><span>합계금액</span><span>${won(sup+vat)} 원</span></div></div>
+      ${e.notes?`<div class="field" style="margin-top:12px"><label>특기사항</label><div class="small" style="white-space:pre-wrap;padding:10px 12px;background:#f6f9fd;border:1px solid var(--line);border-radius:8px">${e.notes.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div></div>`:''}
     </div>`;
   window.scrollTo(0,0);
 };
@@ -655,7 +656,7 @@ window.delEst=async function(id){ if(!confirm('이 견적을 삭제할까요?'))
 window.printEst=function(id){ const e=estimates.find(x=>x.id===id); if(!e) return; const p=projects.find(x=>x.id===e.pjtId);
   const sup=estSupply(e), vat=Math.round(sup*0.1), tot=sup+vat;
   const iss=e.issuer||{}, cl=e.client||{};
-  const rows=e.items.map((it,i)=>`<tr><td style="text-align:center">${i+1}</td><td>${it.name||''}</td><td>${it.spec||''}</td><td style="text-align:right">${won(it.qty)}</td><td style="text-align:right">${won(it.price)}</td><td style="text-align:right">${won(itemAmt(it))}</td></tr>`).join('');
+  const rows=e.items.map((it,i)=>`<tr><td style="text-align:center">${i+1}</td><td>${it.name||''}</td><td>${it.spec||''}</td><td style="text-align:right">${won(it.qty)}</td><td style="text-align:right">${won(it.price)}</td><td style="text-align:right">${won(itemAmt(it))}</td><td>${it.remark||''}</td></tr>`).join('');
   const w=window.open('','_blank'); if(!w){ toast('팝업이 차단되었습니다.'); return; }
   w.document.write(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>견적서 ${e.no}</title>
   <style>@page{size:A4;margin:16mm}*{box-sizing:border-box;font-family:'Malgun Gothic','맑은 고딕',sans-serif}
@@ -679,18 +680,19 @@ window.printEst=function(id){ const e=estimates.find(x=>x.id===id); if(!e) retur
   <div class="meta"><span>견적번호: ${e.no}${(e.rev||1)>1?' (개정 r'+e.rev+')':''}</span><span>작성일: ${e.date}</span></div>
   <div class="parties">
     <div class="pcard"><div class="h">공급받는자</div><div class="nm">${cl.company||'-'}</div>
-      <div class="ln">${cl.ceo?'대표 '+cl.ceo:''}${cl.bizno?' / '+cl.bizno:''}</div>${cl.tel?`<div class="ln">${cl.tel}</div>`:''}${cl.address?`<div class="ln">${cl.address}</div>`:''}</div>
+      <div class="ln">${cl.ceo?'대표 '+cl.ceo:''}${cl.bizno?' / '+cl.bizno:''}</div>${cl.contact?`<div class="ln">${cl.contactTel?cl.contactTel+' ':''}(${cl.contact})</div>`:(cl.tel?`<div class="ln">${cl.tel}</div>`:'')}${cl.address?`<div class="ln">${cl.address}</div>`:''}</div>
     <div class="pcard"><div class="h">공급자</div><div class="nm">${iss.company||'-'}</div>
       <div class="ln">${iss.ceo?'대표 '+iss.ceo:''}${iss.bizno?' / '+iss.bizno:''}</div>${iss.tel?`<div class="ln">${iss.tel}</div>`:''}${iss.email?`<div class="ln">${iss.email}</div>`:''}</div>
   </div>
   <div class="title-row">${p?'['+p.code+'] ':''}${e.title}</div>
-  <table><thead><tr><th style="width:34px">No</th><th>품명</th><th>규격</th><th style="width:60px">수량</th><th style="width:96px">단가</th><th style="width:110px">금액</th></tr></thead>
+  <table><thead><tr><th style="width:34px">No</th><th>품명</th><th>규격</th><th style="width:60px">수량</th><th style="width:96px">단가</th><th style="width:110px">금액</th><th style="width:90px">비고</th></tr></thead>
   <tbody>${rows}</tbody>
   <tfoot>
-    <tr><td colspan="5" style="text-align:right">공급가액</td><td style="text-align:right">${won(sup)}</td></tr>
-    <tr><td colspan="5" style="text-align:right">부가세 (10%)</td><td style="text-align:right">${won(vat)}</td></tr>
-    <tr class="tot"><td colspan="5" style="text-align:right">합계금액</td><td style="text-align:right">${won(tot)}</td></tr>
+    <tr><td colspan="5" style="text-align:right">공급가액</td><td style="text-align:right">${won(sup)}</td><td></td></tr>
+    <tr><td colspan="5" style="text-align:right">부가세 (10%)</td><td style="text-align:right">${won(vat)}</td><td></td></tr>
+    <tr class="tot"><td colspan="5" style="text-align:right">합계금액</td><td style="text-align:right">${won(tot)}</td><td></td></tr>
   </tfoot></table>
+  ${e.notes?`<div style="margin-top:14px;border:1px solid #cfd8e6;border-radius:6px;padding:10px 12px"><div style="font-size:10px;color:#1D5BA6;font-weight:700;margin-bottom:4px;letter-spacing:1px">특기사항</div><div style="font-size:11.5px;white-space:pre-wrap">${e.notes.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div></div>`:''}
   <div class="stamp">위와 같이 견적합니다.<br><br>${iss.company||''} ${iss.ceo?'　대표 '+iss.ceo+' (인)':''} ${iss.contact?'<br><span style="font-size:11px;color:#555">담당: '+iss.contact+(iss.contactTel?' &nbsp;'+iss.contactTel:'')+(iss.contactEmail?' &nbsp;'+iss.contactEmail:'')+'</span>':''}</div>
   <scr`+`ipt>window.onload=function(){setTimeout(function(){window.print();},250);}</scr`+`ipt>
   
@@ -724,7 +726,7 @@ window.renderContactRows=function(){
   wrap.innerHTML = window._cfContacts.map((ct,i)=>`
     <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
       <input class="inp" style="flex:1;min-width:0" placeholder="이름" value="${(ct.name||'').replace(/"/g,'&quot;')}" oninput="window._cfContacts[${i}].name=this.value">
-      <input class="inp" style="flex:1.2;min-width:0" placeholder="전화번호" value="${ct.tel||''}" oninput="window._cfContacts[${i}].tel=fmtTel(this.value);this.value=fmtTel(this.value)" onblur="fmtTelBlur(this)">
+      <input class="inp" style="flex:1.2;min-width:0" placeholder="전화번호" value="${ct.tel||''}" oninput="window._cfContacts[${i}].tel=fmtTel(this.value);this.value=fmtTel(this.value)" onblur="fmtTelBlur(this,${i})">
       <input class="inp" style="flex:1.8;min-width:0" placeholder="이메일" value="${ct.email||''}" oninput="window._cfContacts[${i}].email=this.value">
       <button class="btn gray sm" style="flex-shrink:0;padding:4px 8px" onclick="window._cfContacts.splice(${i},1);window.renderContactRows()">✕</button>
     </div>`).join('');
@@ -845,21 +847,50 @@ let settleDraft=null, viewSetId=null;
 const setActive=s=>s.status!=='void';
 
 function renderSettle(){ settleDraft=null; viewSetId=null;
-  const inv=settlements.filter(s=>s.docType==='invoice'&&setActive(s)).reduce((a,s)=>a+(s.total||0),0);
-  const pay=settlements.filter(s=>s.docType==='payment'&&setActive(s)).reduce((a,s)=>a+(s.total||0),0);
-  const done=settlements.filter(s=>s.docType==='invoice'&&s.status==='done').reduce((a,s)=>a+(s.total||0),0);
-  const sorted=[...settlements].sort((a,b)=>(b.issueDate||'').localeCompare(a.issueDate||'')||(b.no||'').localeCompare(a.no||'')||((b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)));
+  if(!window.settleFilter) window.settleFilter={docType:'',pjtId:'',client:'',status:''};
+  const f=window.settleFilter;
+  const clients=[...new Set(settlements.map(s=>s.recipient&&s.recipient.company).filter(Boolean))].sort();
+  const filtered=settlements.filter(s=>(!f.docType||s.docType===f.docType)&&(!f.pjtId||s.pjtId===f.pjtId||(s.pjtIds&&s.pjtIds.includes(f.pjtId)))&&(!f.client||(s.recipient&&s.recipient.company)===f.client)&&(!f.status||(f.status==='done'?s.status==='done':s.status!=='done')));
+  const inv=filtered.filter(s=>s.docType==='invoice'&&setActive(s)).reduce((a,s)=>a+(s.total||0),0);
+  const pay=filtered.filter(s=>s.docType==='payment'&&setActive(s)).reduce((a,s)=>a+(s.total||0),0);
+  const done=filtered.filter(s=>s.docType==='invoice'&&s.status==='done').reduce((a,s)=>a+(s.total||0),0);
+  const sorted=[...filtered].sort((a,b)=>(b.issueDate||'').localeCompare(a.issueDate||'')||(b.no||'').localeCompare(a.no||'')||((b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)));
+  const filterBarHtml=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <select class="sel" style="width:auto;min-width:110px" onchange="setSettleFilter('docType',this.value)">
+        <option value="" ${!f.docType?'selected':''}>구분: 전체</option>
+        <option value="invoice" ${f.docType==='invoice'?'selected':''}>대금청구서</option>
+        <option value="payment" ${f.docType==='payment'?'selected':''}>지급예정서</option>
+      </select>
+      <select class="sel" style="width:auto;min-width:130px" onchange="setSettleFilter('pjtId',this.value)">
+        <option value="" ${!f.pjtId?'selected':''}>PJT: 전체</option>
+        ${projects.map(p=>`<option value="${p.id}" ${f.pjtId===p.id?'selected':''}>${p.code}</option>`).join('')}
+      </select>
+      <select class="sel" style="width:auto;min-width:130px" onchange="setSettleFilter('client',this.value)">
+        <option value="" ${!f.client?'selected':''}>거래처: 전체</option>
+        ${clients.map(c=>`<option value="${c}" ${f.client===c?'selected':''}>${c}</option>`).join('')}
+      </select>
+      <select class="sel" style="width:auto;min-width:100px" onchange="setSettleFilter('status',this.value)">
+        <option value="" ${!f.status?'selected':''}>상태: 전체</option>
+        <option value="done" ${f.status==='done'?'selected':''}>✓ 완결</option>
+        <option value="pending" ${f.status==='pending'?'selected':''}>미결</option>
+      </select>
+      ${(f.docType||f.pjtId||f.client||f.status)?`<button class="btn line sm" onclick="resetSettleFilter()">필터 초기화</button>`:''}
+    </div>`;
   $('v-settle').innerHTML=`<button onclick="tab('home')" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#5C6F8A;font-size:12px;cursor:pointer;font-weight:600;">🏠 기획 홈</button>
   <div class="sec-h"><h2>정산</h2><button class="btn pri sm" onclick="newSettle()">+ 정산서 발행</button></div>
     <div class="sumgrid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:16px">
       <div class="sumcell"><div class="l">대금청구 누계</div><div class="v">${won(inv)}</div></div>
       <div class="sumcell"><div class="l">지급예정 누계</div><div class="v">${won(pay)}</div></div>
       <div class="sumcell"><div class="l">미수금 (청구−수금)</div><div class="v" style="color:${(inv-done)>0?'#DC2626':'#16A34A'}">${won(inv-done)}</div></div></div>
+    ${filterBarHtml}
     ${sorted.length? sorted.map(s=>{ const p=projects.find(x=>x.id===s.pjtId); const v=!setActive(s);
-      return `<div class="litem ${v?'void':''}" onclick="openSettle('${s.id}')"><div class="d"><div class="ti">${s.docType==='invoice'?'대금청구서':'지급예정서'} <span class="pill">${s.no}</span>${v?'<span class="void-tag">폐기</span>':''}${s.status==='done'?'<span class="void-tag" style="background:#E1F5EE;color:#085041">✓ 완결</span>':''}</div><div class="mt"><span class="pill">${p?p.code:'-'}</span> &nbsp;기준월 ${s.baseMonth} · 발행 ${s.issueDate}${s.recipient?.company?' · '+s.recipient.company:''}</div></div><div class="amt">${won(s.total)}</div></div>`;
-    }).join('') : '<div class="empty">발행된 정산서가 없습니다.</div>'}`;
+      const pjtBadge=(s.pjtIds&&s.pjtIds.length>1)? s.pjtIds.map(pid=>{const pp=projects.find(x=>x.id===pid);return pp?pp.code:pid;}).join('+') : (p?p.code:'-');
+      return `<div class="litem ${v?'void':''}" onclick="openSettle('${s.id}')"><div class="d"><div class="ti">${s.docType==='invoice'?'대금청구서':'지급예정서'} <span class="pill">${s.no}</span>${v?'<span class="void-tag">폐기</span>':''}${s.status==='done'?'<span class="void-tag" style="background:#E1F5EE;color:#085041">✓ 완결</span>':''}</div><div class="mt"><span class="pill">${pjtBadge}</span> &nbsp;기준월 ${s.baseMonth} · 발행 ${s.issueDate}${s.recipient?.company?' · '+s.recipient.company:''}</div></div><div class="amt">${won(s.total)}</div></div>`;
+    }).join('') : `<div class="empty">${(f.docType||f.pjtId||f.client||f.status)?'조건에 맞는 정산서가 없습니다.':'발행된 정산서가 없습니다.'}</div>`}`;
 }
 window.renderSettle=renderSettle;
+window.setSettleFilter=function(key,val){ if(!window.settleFilter) window.settleFilter={docType:'',pjtId:'',client:'',status:''}; window.settleFilter[key]=val; renderSettle(); };
+window.resetSettleFilter=function(){ window.settleFilter={docType:'',pjtId:'',client:'',status:''}; renderSettle(); };
 
 window.newSettle=function(pjtId){
   if(!projects.length){ toast('먼저 프로젝트를 등록하세요.'); tab('pjt'); return; }
@@ -869,6 +900,8 @@ window.newSettle=function(pjtId){
     senderId:(sup.find(c=>c.company==='제이에이치솔루션')?.id)||sup[0]?.id||'', recipientId:'',
     senderContact:'', recipientContact:'',
     estIds:[], estZone:{}, deposit:{}, prog:{}, eqs:{}, billOverride:{}, qtyInput:{}, qtyAmt:{}, mandayInput:null, mandayAuto:null, mandayRate:TEAM_RATE,
+    pjtIds:[pjtId||projects[0].id], mandayBreakdown:{}, mandayOverride:{}, mandayRateOverride:{},
+    supplyOverride:null, vatOverride:null,
     manualItems:[{name:'',spec:'',qty:1,price:0,amount:0},{name:'',spec:'',qty:1,price:0,amount:0}] };
   tabSilent('settle'); drawSettleForm();
 };
@@ -1020,33 +1053,103 @@ function refreshQtyRows(){ const el=$('qty-rows'); if(el) el.innerHTML=settleDra
 
 /* 공수 */
 function getMandayCol(){ return getLinkMandayCol(); }
+// 임의 프로젝트(pid)의 연동 공수 컬렉션 / 근로자 명부 컬렉션 반환 (다중 프로젝트 합산용)
+function mandayColForPjt(pid){
+  const prof=projects.find(p=>p.id===pid); const key=getLinkPjt(prof);
+  if(key==='none') return '';
+  return PROGRESS_PROFILES[key] ? PROGRESS_PROFILES[key].mandayCol : 'worker_manday';
+}
+function rosterColForPjt(pid){
+  const prof=projects.find(p=>p.id===pid); const key=getLinkPjt(prof);
+  return key==='p4ph4'?'pjt_workers_ph4':'pjt_workers_fab';
+}
+// 현재 선택된 md값(프로젝트별 수동수정 우선, 없으면 자동집계값)
+function mdForPjt(pid){ const d=settleDraft;
+  if(d.mandayOverride && d.mandayOverride[pid]!=null) return d.mandayOverride[pid];
+  return (d.mandayBreakdown && d.mandayBreakdown[pid]!=null) ? d.mandayBreakdown[pid] : 0;
+}
+// 현재 선택된 단가(프로젝트별 수동수정 우선, 없으면 공통 단가)
+function rateForPjt(pid){ const d=settleDraft; const base=d.mandayRate!=null?d.mandayRate:TEAM_RATE;
+  return (d.mandayRateOverride && d.mandayRateOverride[pid]!=null) ? d.mandayRateOverride[pid] : base;
+}
+window.setMdForPjt=function(pid,v){ settleDraft.mandayOverride=settleDraft.mandayOverride||{}; settleDraft.mandayOverride[pid]=num(v); renderSetTot(); refreshMandayRows(); };
+window.setRateForPjt=function(pid,v){ settleDraft.mandayRateOverride=settleDraft.mandayRateOverride||{}; settleDraft.mandayRateOverride[pid]=Math.round(num(v))||0; renderSetTot(); refreshMandayRows(); };
+window.toggleMandayPjt=function(pid){ const d=settleDraft; d.pjtIds=d.pjtIds||[d.pjtId];
+  const i=d.pjtIds.indexOf(pid);
+  if(i<0){ d.pjtIds.push(pid); } else { if(d.pjtIds.length<=1){ toast('최소 1개 프로젝트는 선택되어야 합니다.'); return; } d.pjtIds.splice(i,1); }
+  drawSettleForm(); };
+function refreshMandayRows(){ const el=$('manday-rows'); if(el) el.innerHTML=mandayRowsHtml(); renderSetTot(); }
+function mandayRowsHtml(){ const d=settleDraft; const rate=d.mandayRate!=null?d.mandayRate:TEAM_RATE;
+  if(d.pjtIds.length<=1){
+    const md=d.mandayInput!=null?d.mandayInput:(d.mandayAuto!=null?d.mandayAuto:0);
+    const prior=priorManday();
+    return `<tr><td class="l">${d.baseMonth} 기술인력 투입</td>
+      <td><input class="ni" value="${md}" onchange="setMd(this.value)"></td><td>${won(rate)}</td><td class="bill">${won(Math.round(md*rate))}</td></tr>
+      ${prior?`<tr><td class="l muted">기지급 공수</td><td class="muted">${prior}</td><td></td><td class="muted">-${won(Math.round(prior*rate))}</td></tr>`:''}`;
+  }
+  return d.pjtIds.map(pid=>{ const p=projects.find(x=>x.id===pid); const md=mdForPjt(pid); const r=rateForPjt(pid);
+    return `<tr><td class="l">${d.baseMonth} 기술인력 투입 <span class="pill" style="font-size:10px">${p?p.code:pid}</span></td>
+      <td><input class="ni" value="${md}" onchange="setMdForPjt('${pid}',this.value)"></td>
+      <td><input class="ni num" style="width:88px;text-align:right" type="text" inputmode="numeric" value="${Number(r||0).toLocaleString('ko-KR')}" oninput="fmtMoney(this)" onchange="setRateForPjt('${pid}',this.value)"></td>
+      <td class="bill">${won(Math.round(md*r))}</td></tr>`;
+  }).join('');
+}
 function setMandayCard(){ const d=settleDraft;
-  const md=d.mandayInput!=null?d.mandayInput:(d.mandayAuto!=null?d.mandayAuto:0);
+  d.pjtIds=(d.pjtIds&&d.pjtIds.length)?d.pjtIds:[d.pjtId];
+  if(d.pjtIds.indexOf(d.pjtId)<0) d.pjtIds.push(d.pjtId); // 상단 "프로젝트" 선택값은 항상 포함
   const rate=d.mandayRate!=null?d.mandayRate:TEAM_RATE;
-  const prior=priorManday();
-  const col=getMandayCol();
-  const WS_LABEL={'worker_manday':'P4 Ph2 (FAB)'};
-  const wsLabel=WS_LABEL[col]||col;
+  const linkable=projects.filter(p=>getLinkPjt(p)!=='none');
+  const WS_LABEL={'worker_manday':'P4 Ph2 (FAB)','ph4_manday':'P4 Ph4 (SUP)'};
+  const wsLabels=d.pjtIds.map(pid=>WS_LABEL[mandayColForPjt(pid)]||mandayColForPjt(pid)).join(' + ');
+  const total=d.pjtIds.length<=1
+    ? (d.mandayInput!=null?d.mandayInput:(d.mandayAuto||0))
+    : d.pjtIds.reduce((s,pid)=>s+mdForPjt(pid),0);
+  const totalAmt=d.pjtIds.length<=1
+    ? Math.round(total*rate)
+    : d.pjtIds.reduce((s,pid)=>s+Math.round(mdForPjt(pid)*rateForPjt(pid)),0);
   return `<div class="card"><div class="sec-h"><h2>공수 연동</h2><button class="btn line sm" onclick="fetchManday()">⟳ 공수 불러오기</button></div>
-    <div class="note-amber">기준월(${d.baseMonth}) · 워크스페이스 <b>${wsLabel}</b> (<code style="font-size:11px">${col}</code>) 에서 공수 합계를 읽어옵니다. 공수·단가 모두 직접 수정 가능합니다.</div>
+    <div class="note-amber">기준월(${d.baseMonth}) · 워크스페이스 <b>${wsLabels}</b> 에서 공수 합계를 읽어옵니다. 공수·단가 모두 직접 수정 가능합니다.</div>
+    <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:6px">▼ 합산할 프로젝트 (여러 개 선택 가능 — Ph2·Ph4 정산서를 하나로 합칠 수 있습니다)</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      ${linkable.map(p=>`<label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;border:1px solid ${d.pjtIds.includes(p.id)?'var(--blue)':'var(--line)'};border-radius:8px;padding:6px 10px;cursor:pointer;background:${d.pjtIds.includes(p.id)?'#EEF4FC':'#fff'}">
+        <input type="checkbox" ${d.pjtIds.includes(p.id)?'checked':''} onchange="toggleMandayPjt('${p.id}')" style="accent-color:var(--blue)"> ${p.code}</label>`).join('')}
+    </div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-      <label class="small muted" style="white-space:nowrap">기술인력 단가 (원/공수)</label>
+      <label class="small muted" style="white-space:nowrap">기술인력 단가 (원/공수)${d.pjtIds.length>1?' <span class="small muted" style="font-weight:400">— 기본값. 프로젝트별로 아래 표에서 개별 수정 가능</span>':''}</label>
       <input class="inp" type="text" inputmode="numeric" style="width:130px;text-align:right" value="${Number(rate||0).toLocaleString('ko-KR')}" oninput="fmtMoney(this)" onchange="setMandayRate(this.value)">
     </div>
     <table class="ptab"><thead><tr><th class="l">항목</th><th>공수</th><th>단가</th><th>금액</th></tr></thead>
-    <tbody><tr><td class="l">${d.baseMonth} 기술인력 투입</td>
-      <td><input class="ni" value="${md}" onchange="setMd(this.value)"></td><td>${won(rate)}</td><td class="bill">${won(Math.round(md*rate))}</td></tr>
-      ${prior?`<tr><td class="l muted">기지급 공수</td><td class="muted">${prior}</td><td></td><td class="muted">-${won(Math.round(prior*rate))}</td></tr>`:''}</tbody></table>
-    ${d.mandayAuto!=null?`<div class="small muted" style="margin-top:6px">자동 집계: ${d.mandayAuto} 공수</div>`:''}</div>`;
+    <tbody id="manday-rows">${mandayRowsHtml()}</tbody></table>
+    ${d.pjtIds.length<=1 && d.mandayAuto!=null?`<div class="small muted" style="margin-top:6px">자동 집계: ${d.mandayAuto} 공수</div>`
+      : d.pjtIds.length>1?`<div class="small muted" style="margin-top:6px">합계: ${Math.round(total*10)/10} 공수 · ${won(totalAmt)}원 (${d.pjtIds.map(pid=>{const p=projects.find(x=>x.id===pid);return (p?p.code:pid)+' '+mdForPjt(pid)+'×'+won(rateForPjt(pid));}).join(' + ')})</div>`:''}
+    </div>`;
 }
 function priorManday(){ return settlements.filter(s=>setActive(s)&&s.docType==='payment'&&s.method==='manday').reduce((a,s)=>a+(s.mandayUsed||0),0); }
-window.setMd=function(v){ settleDraft.mandayInput=num(v); drawSettleForm(); };
+window.setMd=function(v){ settleDraft.mandayInput=num(v); refreshMandayRows(); };
 window.setMandayRate=function(v){ settleDraft.mandayRate=Math.round(num(v))||TEAM_RATE; drawSettleForm(); };
 window.fetchManday=async function(){ const d=settleDraft; toast('공수 불러오는 중...');
-  try{ const col=getMandayCol(); const [y,m]=d.baseMonth.split('-').map(Number); const lastDay=new Date(y,m,0).getDate(); let sum=0; const tasks=[];
-    for(let day=1; day<=lastDay; day++){ const dk=y+'-'+String(m).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-      tasks.push((async()=>{ try{ const sn=await getDoc(doc(db,col,dk)); if(sn.exists()){ const md=sn.data().md||{}; Object.values(md).forEach(v=>sum+=Number(v)||0); } }catch(e){} })()); }
-    await Promise.all(tasks); d.mandayAuto=Math.round(sum*10)/10; d.mandayInput=d.mandayAuto; drawSettleForm(); toast('공수 '+d.mandayAuto+' 반영했습니다.');
+  d.pjtIds=(d.pjtIds&&d.pjtIds.length)?d.pjtIds:[d.pjtId];
+  try{
+    const breakdown={}; let grand=0; let ignoredTotal=0;
+    for(const pid of d.pjtIds){
+      const col=mandayColForPjt(pid); if(!col){ breakdown[pid]=0; continue; }
+      const rosterCol=rosterColForPjt(pid);
+      // pjt_manday(월간 공수 집계) 화면과 동일하게, 현재 유효한 근로자 명부(pjt_workers_fab/ph4)에 등록된 ID만 합산한다.
+      // 그렇지 않으면 명부에서 빠진(탈퇴/오입력/중복 정리 등) 구 근로자 ID의 잔여 기록까지 그대로 합산되어
+      // 월간 공수 집계 화면(정상)보다 큰 값이 나오는 오차가 생길 수 있다.
+      let idSet=null;
+      try{ const rs=await getDocs(collection(db,rosterCol)); idSet=new Set(rs.docs.map(x=>x.id)); }catch(e){ idSet=null; }
+      const [y,m]=d.baseMonth.split('-').map(Number); const lastDay=new Date(y,m,0).getDate(); let sum=0; let ignored=0; const tasks=[];
+      for(let day=1; day<=lastDay; day++){ const dk=y+'-'+String(m).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+        tasks.push((async()=>{ try{ const sn=await getDoc(doc(db,col,dk)); if(sn.exists()){ const md=sn.data().md||{};
+          Object.keys(md).forEach(wid=>{ const v=Number(md[wid])||0; if(!idSet || idSet.has(wid)) sum+=v; else ignored+=v; }); } }catch(e){} })()); }
+      await Promise.all(tasks);
+      breakdown[pid]=Math.round(sum*10)/10; grand+=breakdown[pid]; ignoredTotal+=ignored;
+    }
+    d.mandayBreakdown=breakdown; d.mandayOverride={};
+    d.mandayAuto=Math.round(grand*10)/10; d.mandayInput=d.mandayAuto;
+    drawSettleForm();
+    toast('공수 '+d.mandayAuto+' 반영했습니다.'+(ignoredTotal>0?' (명부 외 '+Math.round(ignoredTotal*10)/10+' 공수 제외)':''));
   }catch(e){ toast('불러오기 실패: '+(e.code||e.message)); }
 };
 
@@ -1072,29 +1175,43 @@ window.delSm=function(i){ settleDraft.manualItems.splice(i,1); if(!settleDraft.m
 
 function setSupply(){ const d=settleDraft;
   if(d.method==='manual') return d.manualItems.reduce((s,it)=>s+itemAmt(it),0);
-  if(d.method==='manday'){ const md=d.mandayInput!=null?d.mandayInput:(d.mandayAuto||0); const rate=d.mandayRate!=null?d.mandayRate:TEAM_RATE; return Math.round(md*rate); }
+  if(d.method==='manday'){ const rate=d.mandayRate!=null?d.mandayRate:TEAM_RATE;
+    const pjtIds=(d.pjtIds&&d.pjtIds.length)?d.pjtIds:[d.pjtId];
+    if(pjtIds.length>1) return pjtIds.reduce((s,pid)=>s+Math.round(mdForPjt(pid)*rateForPjt(pid)),0);
+    const md=d.mandayInput!=null?d.mandayInput:(d.mandayAuto||0); return Math.round(md*rate); }
   if(d.method==='qty') return d.estIds.reduce((s,id)=>{ const e=estimates.find(x=>x.id===id); if(!e) return s; return s+(e.items||[]).reduce((a,it,idx)=>a+qAmt(id,idx,it),0); },0);
   return d.estIds.reduce((s,id)=>s+calcSetRow(id).thisBill,0);
 }
-function renderSetTot(){ const d=settleDraft; const sup=setSupply(); const vat=Math.round(sup*0.1);
+function effSupply(){ const d=settleDraft; const auto=setSupply(); return d.supplyOverride!=null?d.supplyOverride:auto; }
+function effVat(){ const d=settleDraft; const sup=effSupply(); return d.vatOverride!=null?d.vatOverride:Math.round(sup*0.1); }
+window.setSupplyOverride=function(v){ settleDraft.supplyOverride=Math.max(0,num(v)); renderSetTot(); };
+window.setVatOverride=function(v){ settleDraft.vatOverride=Math.max(0,num(v)); renderSetTot(); };
+window.resetSetTot=function(){ settleDraft.supplyOverride=null; settleDraft.vatOverride=null; renderSetTot(); };
+function renderSetTot(){ const d=settleDraft; const sup=effSupply(); const vat=effVat(); const auto=setSupply();
   const label=d.docType==='invoice'?'청구':'지급';
+  const overridden=(d.supplyOverride!=null || d.vatOverride!=null);
   if($('set-tot')) $('set-tot').innerHTML=`<div class="totbox" style="margin-top:0;border-top:none;padding-top:0">
-    <div class="totrow"><span class="muted">금번 ${label} 공급가액</span><span>${won(sup)} 원</span></div>
-    <div class="totrow"><span class="muted">부가세 (10%)</span><span>${won(vat)} 원</span></div>
-    <div class="totrow big"><span>금번 ${label}금액 합계</span><span>${won(sup+vat)} 원</span></div></div>`;
+    <div class="totrow"><span class="muted">금번 ${label} 공급가액</span><span><input class="ti num" style="width:140px;text-align:right;display:inline-block" type="text" inputmode="numeric" value="${Number(sup).toLocaleString('ko-KR')}" oninput="fmtMoney(this)" onchange="setSupplyOverride(this.value)"> 원</span></div>
+    <div class="totrow"><span class="muted">부가세 (10%)</span><span><input class="ti num" style="width:140px;text-align:right;display:inline-block" type="text" inputmode="numeric" value="${Number(vat).toLocaleString('ko-KR')}" oninput="fmtMoney(this)" onchange="setVatOverride(this.value)"> 원</span></div>
+    <div class="totrow big"><span>금번 ${label}금액 합계</span><span>${won(sup+vat)} 원</span></div>
+    ${overridden?`<div class="small muted" style="margin-top:4px">✎ 수동 수정됨 (자동계산: 공급가액 ${won(auto)} 원) · <a href="javascript:void(0)" onclick="resetSetTot()">자동계산으로 되돌리기</a></div>`:''}</div>`;
   if(d.method==='manual'&&$('sm-rows')&&!$('sm-rows').children.length) drawSmRows();
 }
 
 function settleLines(){ const d=settleDraft;
   if(d.method==='manual') return d.manualItems.filter(i=>(i.name||'').trim()).map(i=>({name:i.name.trim(),spec:i.spec||'',qty:i.qty||0,price:i.price||0,amount:Math.round(itemAmt(i))}));
-  if(d.method==='manday'){ const md=d.mandayInput!=null?d.mandayInput:(d.mandayAuto||0); const rate=d.mandayRate!=null?d.mandayRate:TEAM_RATE; return [{name:d.baseMonth+' 기술인력 투입',spec:'공수 '+md,qty:md,price:rate,amount:Math.round(md*rate)}]; }
+  if(d.method==='manday'){ const rate=d.mandayRate!=null?d.mandayRate:TEAM_RATE;
+    const pjtIds=(d.pjtIds&&d.pjtIds.length)?d.pjtIds:[d.pjtId];
+    if(pjtIds.length>1) return pjtIds.map(pid=>{ const p=projects.find(x=>x.id===pid); const md=mdForPjt(pid); const r=rateForPjt(pid);
+      return {name:d.baseMonth+' 기술인력 투입 ('+(p?p.code:pid)+')', spec:'공수 '+md+' × '+won(r)+'원', qty:md, price:r, amount:Math.round(md*r)}; });
+    const md=d.mandayInput!=null?d.mandayInput:(d.mandayAuto||0); return [{name:d.baseMonth+' 기술인력 투입',spec:'공수 '+md,qty:md,price:rate,amount:Math.round(md*rate)}]; }
   if(d.method==='qty'){ const lines=[]; d.estIds.forEach(id=>{ const e=estimates.find(x=>x.id===id); if(!e) return; (e.items||[]).forEach((it,idx)=>{ const q=qVal(id,idx); const amt=qAmt(id,idx,it); if(q>0||amt>0) lines.push({name:it.name,spec:(it.spec||'')+' · 수량 '+q,qty:q,price:it.price||0,amount:amt}); }); }); return lines; }
   return d.estIds.map(id=>{ const e=estimates.find(x=>x.id===id); const r=calcSetRow(id); const z=getZONES().find(z=>z.id===d.estZone[id]); const eqd=d.eqs[id]||{banipEqs:[],installEqs:[]};
     const bN=eqd.banipEqs&&eqd.banipEqs.length?' ('+compactRanges(eqd.banipEqs)+')':''; const iN=eqd.installEqs&&eqd.installEqs.length?' ('+compactRanges(eqd.installEqs)+')':'';
     return {name:e.title,spec:(z?z.name:'')+' 반입 '+r.banip+'/'+r.qty+bN+' · 설치 '+r.install+'/'+r.qty+iN,qty:1,price:r.thisBill,amount:r.thisBill}; });
 }
 
-window.publishSettle=async function(){ const d=settleDraft; const sup=setSupply();
+window.publishSettle=async function(){ const d=settleDraft; const sup=effSupply();
   if(sup<=0){ toast('정산 금액이 없습니다.'); return; }
   if(!d.recipientId){ if(!confirm('수신자(거래처)가 선택되지 않았습니다. 그래도 발행할까요?')) return; }
   const yymm=d.issueDate.slice(2,4)+d.issueDate.slice(5,7);
@@ -1104,14 +1221,15 @@ window.publishSettle=async function(){ const d=settleDraft; const sup=setSupply(
   const perEst={}; const perItem={}; let mandayUsed=0;
   if(d.method==='progress') d.estIds.forEach(eid=>perEst[eid]=calcSetRow(eid).thisBill);
   if(d.method==='qty') d.estIds.forEach(eid=>{ const e=estimates.find(x=>x.id===eid); if(!e) return; perItem[eid]={}; let es=0; (e.items||[]).forEach((it,idx)=>{ const q=qVal(eid,idx); const amt=qAmt(eid,idx,it); if(q>0||amt>0){ perItem[eid][idx]={qty:q,amount:amt}; es+=amt; } }); perEst[eid]=es; });
-  if(d.method==='manday') mandayUsed=d.mandayInput!=null?d.mandayInput:(d.mandayAuto||0);
-  const vat=Math.round(sup*0.1);
+  if(d.method==='manday'){ const pjtIds=(d.pjtIds&&d.pjtIds.length)?d.pjtIds:[d.pjtId];
+    mandayUsed=pjtIds.length>1 ? pjtIds.reduce((s,pid)=>s+mdForPjt(pid),0) : (d.mandayInput!=null?d.mandayInput:(d.mandayAuto||0)); }
+  const vat=effVat();
   // 급여와 동일 규칙: 지급예정서(payment)이고 지급예정일이 비어 있으면 기준월의 익월 말일(주말→금요일)로 자동
   let effPayDate=d.payDate||'';
   if(d.docType==='payment' && !effPayDate && d.baseMonth) effPayDate=defaultPayDate(d.baseMonth);
   const effAcctMonth=(effPayDate||d.issueDate||d.baseMonth||'').slice(0,7);
   $('set-save').disabled=true;
-  try{ await setDoc(doc(db,'gihoek_settlements',id),{ pjtId:d.pjtId, no, docType:d.docType, method:d.method,
+  try{ await setDoc(doc(db,'gihoek_settlements',id),{ pjtId:d.pjtId, pjtIds:(d.pjtIds&&d.pjtIds.length)?d.pjtIds:[d.pjtId], no, docType:d.docType, method:d.method,
       baseMonth:d.baseMonth, issueDate:d.issueDate, payDate:effPayDate,
       acctMonth:effAcctMonth,
       senderId:d.senderId||'', sender:{...snap(compById(d.senderId)), ...ctSnap(d.senderId,d.senderContact)}, recipientId:d.recipientId||'', recipient:{...snap(compById(d.recipientId)), ...ctSnap(d.recipientId,d.recipientContact)},
@@ -1123,17 +1241,22 @@ window.publishSettle=async function(){ const d=settleDraft; const sup=setSupply(
 };
 
 window.openSettle=function(id){ viewSetId=id; const s=settlements.find(x=>x.id===id); if(!s){ renderSettle(); return; }
-  const p=projects.find(x=>x.id===s.pjtId); tabSilent('settle');
+  const p=projects.find(x=>x.id===s.pjtId);
+  const pjtBadgeDetail=(s.pjtIds&&s.pjtIds.length>1)? s.pjtIds.map(pid=>{const pp=projects.find(x=>x.id===pid);return pp?pp.code:pid;}).join(' + ') : (p?p.code:'-');
+  tabSilent('settle');
   const party=(label,o)=>`<div class="party"><div class="pl">${label}</div><div class="pc">${o?.company||'-'}</div><div class="pd">${o?.ceo?'대표 '+o.ceo:''}${o?.bizno?' · '+o.bizno:''}</div>${o?.contact?`<div class="pd">담당: ${o.contact}</div>`:''}</div>`;
+  const canLink=(s.docType==='invoice' && (s.method==='manual'||s.method==='qty'));
+  const linkedEsts=Object.keys(s.perEst||{}).filter(k=>s.perEst[k]>0);
   $('v-settle').innerHTML=`<button class="back" onclick="renderSettle()">← 정산 목록</button>
     <div class="card">
       ${!setActive(s)?'<div class="void-banner">🚫 폐기된 정산서입니다. 집계에서 제외됩니다.</div>':''}
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div><div style="font-size:16px;font-weight:800">${s.docType==='invoice'?'대금청구서':'지급예정서'}</div>
-        <div class="small muted" style="margin-top:3px"><span class="pill">${p?p.code:'-'}</span> &nbsp;${s.no} · 발행 ${s.issueDate}${s.author?' · '+s.author:''}</div></div>
-        <div style="display:flex;gap:6px"><button class="btn line sm" onclick="previewSettle('${s.id}')">🖨 인쇄/PDF</button>${(setActive(s)&&s.status!=='done')?(s.docType==='invoice'?`<button class="btn line sm" style="color:#16A34A;border-color:#16A34A" onclick="doneSettle('${s.id}')">✓ 완결${(pjtBilled(s.pjtId)-pjtPaid(s.pjtId))<=0?' (권장)':''}</button>`:`<button class="btn line sm" style="color:#16A34A;border-color:#16A34A" onclick="doneSettlePayment('${s.id}')">✓ 지급완료</button>`):''}${(s.status==='done')?`<button class="btn line sm" style="color:#5C6F8A" onclick="undoneSettle('${s.id}')">완결 취소</button>`:''}${setActive(s)?`<button class="btn gray sm" onclick="voidSettle('${s.id}')">폐기</button>`:`<button class="btn gray sm" style="color:#c00" onclick="deleteSettle('${s.id}')">🗑 삭제</button>`}</div></div>
+        <div class="small muted" style="margin-top:3px"><span class="pill">${pjtBadgeDetail}</span> &nbsp;${s.no} · 발행 ${s.issueDate}${s.author?' · '+s.author:''}</div></div>
+        <div style="display:flex;gap:6px">${canLink?`<button class="btn line sm" onclick="linkSettleToEst('${s.id}')">🔗 견적 연결${linkedEsts.length?' 수정':''}</button>`:''}<button class="btn line sm" onclick="previewSettle('${s.id}')">🖨 인쇄/PDF</button>${(setActive(s)&&s.status!=='done')?(s.docType==='invoice'?`<button class="btn line sm" style="color:#16A34A;border-color:#16A34A" onclick="doneSettle('${s.id}')">✓ 완결${(pjtBilled(s.pjtId)-pjtPaid(s.pjtId))<=0?' (권장)':''}</button>`:`<button class="btn line sm" style="color:#16A34A;border-color:#16A34A" onclick="doneSettlePayment('${s.id}')">✓ 지급완료</button>`):''}${(s.status==='done')?`<button class="btn line sm" style="color:#5C6F8A" onclick="undoneSettle('${s.id}')">완결 취소</button>`:''}${setActive(s)?`<button class="btn gray sm" onclick="voidSettle('${s.id}')">폐기</button>`:`<button class="btn gray sm" style="color:#c00" onclick="deleteSettle('${s.id}')">🗑 삭제</button>`}</div></div>
       <div class="partybox">${party('발신 (공급자)',s.sender)}${party(s.docType==='invoice'?'수신 (원청)':'수신 (하청)',s.recipient)}</div>
       <div class="small muted" style="margin-bottom:10px">기준월 ${s.baseMonth} · ${s.docType==='invoice'?'지급요청일':'지급예정일'} ${s.payDate||'-'} · 정산방식 ${{progress:'공정 자동',qty:'수량정산',manday:'공수',manual:'직접입력'}[s.method]}${s.docType==='payment'?(' · 회계 계상월 <b style="color:#1D5BA6">'+acctMonthOf(s)+'</b> <button class="btn line sm" style="padding:1px 8px;font-size:11px;margin-left:4px" onclick="editAcctMonth(\''+s.id+'\')">수정</button>'):''}</div>
+      ${linkedEsts.length?`<div class="note-amber" style="margin-bottom:10px">🔗 견적 연결됨: ${linkedEsts.map(eid=>{ const e=estimates.find(x=>x.id===eid); return (e?e.title:eid)+' '+won(s.perEst[eid])+'원'; }).join(', ')} — 이후 이 견적의 공정 정산서에서 기청구로 반영됩니다.</div>`:''}
       <div class="scroll"><table class="items"><thead><tr><th>#</th><th>내역</th><th>비고</th><th class="right">금액</th></tr></thead>
         <tbody>${(s.lines||[]).map((it,i)=>`<tr><td class="muted small">${i+1}</td><td>${it.name}</td><td class="muted small">${it.spec||'-'}</td><td class="right" style="font-weight:700;color:var(--money)">${won(it.amount)}</td></tr>`).join('')}</tbody></table></div>
       <div class="totbox"><div class="totrow"><span class="muted">공급가액</span><span>${won(s.supply)} 원</span></div>
@@ -1141,6 +1264,45 @@ window.openSettle=function(id){ viewSetId=id; const s=settlements.find(x=>x.id==
         <div class="totrow big"><span>${s.docType==='invoice'?'청구금액':'지급금액'} 합계</span><span>${won(s.total)} 원</span></div></div>
     </div>`;
   window.scrollTo(0,0);
+};
+window.linkSettleToEst=function(id){
+  const s=settlements.find(x=>x.id===id); if(!s) return;
+  const ests=estimates.filter(e=>e.pjtId===s.pjtId && isActive(e));
+  if(!ests.length){ toast('연결할 견적이 없습니다.'); return; }
+  const lines=(s.lines&&s.lines.length)?s.lines:[{name:'전체 금액',amount:s.supply}];
+  const curLines=s.perEstLines||{};
+  const optHtml=selId=>'<option value="">— 연결 안 함 —</option>'+ests.map(e=>`<option value="${e.id}" ${selId===e.id?'selected':''}>${e.title}</option>`).join('');
+  const rowsHtml=lines.map((ln,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid #EEF2F7">
+      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ln.name}</div><div style="font-size:11px;color:#5C6F8A">${won(ln.amount)} 원</div></div>
+      <select data-idx="${i}" class="link-est-sel" style="flex:1;max-width:230px;padding:7px 8px;border:1px solid #DDE4EF;border-radius:8px;font-size:12px">${optHtml(curLines[i]||'')}</select>
+    </div>`).join('');
+  let modal=document.getElementById('link-est-modal');
+  if(!modal){ modal=document.createElement('div'); modal.id='link-est-modal';
+    modal.style.cssText='position:fixed;inset:0;background:rgba(19,51,92,0.45);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;';
+    modal.onclick=(e)=>{ if(e.target===modal) modal.style.display='none'; }; document.body.appendChild(modal); }
+  modal.innerHTML=`<div style="background:#fff;border-radius:16px;max-width:560px;width:100%;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #DDE4EF">
+      <div><div style="font-size:16px;font-weight:800;color:#13335C">항목별 견적 연결</div><div class="small muted" style="margin-top:2px">각 내역을 연결하면 해당 견적의 기청구에 그 금액이 반영됩니다</div></div>
+      <button onclick="document.getElementById('link-est-modal').style.display='none'" style="border:none;background:#F4F7FB;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:18px;color:#5C6F8A;flex-shrink:0">✕</button>
+    </div>
+    <div style="padding:4px 18px;overflow-y:auto">${rowsHtml}</div>
+    <div style="padding:14px 18px;border-top:1px solid #DDE4EF;text-align:right"><button class="btn" onclick="saveLinkEst('${s.id}')">저장</button></div>
+  </div>`;
+  modal.style.display='flex';
+};
+window.saveLinkEst=async function(id){
+  const s=settlements.find(x=>x.id===id); if(!s) return;
+  const lines=(s.lines&&s.lines.length)?s.lines:[{name:'전체 금액',amount:s.supply}];
+  const sels=document.querySelectorAll('#link-est-modal .link-est-sel');
+  const perEstLines={}; const perEst={};
+  sels.forEach(sel=>{ const idx=Number(sel.dataset.idx); const estId=sel.value;
+    if(estId){ perEstLines[idx]=estId; perEst[estId]=(perEst[estId]||0)+(Number(lines[idx].amount)||0); } });
+  try{
+    await setDoc(doc(db,'gihoek_settlements',id), { perEst, perEstLines }, {merge:true});
+    toast('견적 연결을 저장했습니다.');
+    const m=document.getElementById('link-est-modal'); if(m) m.style.display='none';
+    openSettle(id);
+  }catch(e){ toast('저장 실패: '+(e.code||e.message)); }
 };
 window.editAcctMonth=async function(id){
   const s=settlements.find(x=>x.id===id); if(!s) return;
@@ -1180,13 +1342,14 @@ window.deleteSettle=async function(id){ if(!confirm('폐기된 정산서를 완�
 
 function settleDocHTML(s){ const title=s.docType==='invoice'?'대 금 청 구 서':'지 급 예 정 서';
   const dateLabel=s.docType==='invoice'?'지급요청일':'지급예정일'; const sd=s.sender||{}, rc=s.recipient||{}; const p=projects.find(x=>x.id===s.pjtId);
+  const pjtLabel=(s.pjtIds&&s.pjtIds.length>1)? s.pjtIds.map(pid=>{const pp=projects.find(x=>x.id===pid);return pp?pp.code:pid;}).join(' + ') : (p?p.code:'-');
   const rows=(s.lines||[]).map((it,i)=>`<tr><td style="text-align:center">${i+1}</td><td>${it.name}</td><td>${it.spec||''}</td><td style="text-align:right">${won(it.amount)}</td></tr>`).join('');
   return `<h1>${title}</h1>
   <div class="meta"><span>발행번호: ${s.no}</span><span>발행일: ${s.issueDate}</span></div>
   <div class="parties">
-    <div class="pcard"><div class="h">${s.docType==='invoice'?'수신 (원청)':'수신 (하청)'}</div><div class="nm">${rc.company||'-'}</div><div class="ln">${rc.ceo?'대표 '+rc.ceo:''}${rc.bizno?' / '+rc.bizno:''}</div>${rc.tel?`<div class="ln">${rc.tel}</div>`:''}</div>
+    <div class="pcard"><div class="h">${s.docType==='invoice'?'수신 (원청)':'수신 (하청)'}</div><div class="nm">${rc.company||'-'}</div><div class="ln">${rc.ceo?'대표 '+rc.ceo:''}${rc.bizno?' / '+rc.bizno:''}</div>${rc.contact?`<div class="ln">${rc.contactTel?rc.contactTel+' ':''}(${rc.contact})</div>`:(rc.tel?`<div class="ln">${rc.tel}</div>`:'')}</div>
     <div class="pcard"><div class="h">발신 (공급자)</div><div class="nm">${sd.company||'-'}</div><div class="ln">${sd.ceo?'대표 '+sd.ceo:''}${sd.bizno?' / '+sd.bizno:''}</div>${sd.tel?`<div class="ln">${sd.tel}</div>`:''}</div></div>
-  <div class="info"><b>프로젝트</b> : ${p?p.code:'-'} &nbsp;&nbsp; <b>기준월</b> : ${s.baseMonth} &nbsp;&nbsp; <b>${dateLabel}</b> : ${s.payDate||'-'}</div>
+  <div class="info"><b>프로젝트</b> : ${pjtLabel} &nbsp;&nbsp; <b>기준월</b> : ${s.baseMonth} &nbsp;&nbsp; <b>${dateLabel}</b> : ${s.payDate||'-'}</div>
   <table><thead><tr><th style="width:34px">No</th><th>내역</th><th>비고</th><th style="width:130px">금액</th></tr></thead><tbody>${rows}</tbody>
   <tfoot><tr><td colspan="3" style="text-align:right">공급가액</td><td style="text-align:right">${won(s.supply)}</td></tr>
     <tr><td colspan="3" style="text-align:right">부가세 (10%)</td><td style="text-align:right">${won(s.vat)}</td></tr>
@@ -1468,3 +1631,6 @@ window.tab=tab;
 
 </body>
 </html>
+
+
+
