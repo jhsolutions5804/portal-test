@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260724 · ver: 3.1.0 · 경량 PJT 워크스페이스 (탭별 PC 2단 분할 레이아웃 강화: 근태·공수/공사일보/일정관리/품목요약) -->
+<!DOCTYPE html><!-- build: 20260818 · ver: 3.1.1 · 경량 PJT 워크스페이스 · 마스터 명부 퇴사자는 인원 추가 드롭다운에서 제외 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -760,6 +760,7 @@ window.openWorkerAdd=async function(){
     snap.forEach(function(d){
       if(already.has(d.id)) return;
       const m=d.data();
+      if(m.resigned) return; // 퇴사자는 신규 투입 대상에서 제외
       opts+='<option value="'+d.id+'">'+m.name+' ('+(m.birth||'생년월일 없음')+')</option>';
     });
     sel.innerHTML=opts;
