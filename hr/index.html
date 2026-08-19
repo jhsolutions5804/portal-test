@@ -69,7 +69,7 @@
     try {
       const ps = await getDoc(doc(db, 'portal_users', user.uid));
       const d = ps.exists() ? ps.data() : null;
-      const ok = !!(d && d.status === 'approved' && (d.admin === true || (d.perms && d.perms.hr === true)));
+      const ok = !!(d && d.status === 'approved' && d.admin === true);  // 인사는 관리자 전용으로 제한(2026-07-28)
       if (!ok) { showScreen('blocked'); return; }
       window._isAdmin = !!(d.admin === true);
       if (viaPortal) document.documentElement.classList.add('portal-embed');
@@ -4155,6 +4155,35 @@ function otEsc(s) {
   return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+// 초과근로 내역 클릭 시 전체 사유·상세를 보여주는 모달 (표에서 사유가 말줄임될 때 대응)
+let _otDetailCache = {};
+window.otShowDetail = (rowId) => {
+  const r = _otDetailCache[rowId];
+  if (!r) return;
+  const old = document.getElementById('ot-detail-modal'); if (old) old.remove();
+  const modal = document.createElement('div');
+  modal.id = 'ot-detail-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(20,30,50,.45);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:22px;max-width:420px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.25);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+        <div>
+          <div style="font-size:16px;font-weight:800;color:#1A2540;">${otEsc(r.name||'-')} ${otEsc(r.rank||'')}</div>
+          <div style="font-size:12px;color:#9AAABF;margin-top:2px;">${otEsc(r.date||'')}</div>
+        </div>
+        <button onclick="document.getElementById('ot-detail-modal').remove()" style="background:none;border:none;font-size:20px;color:#9AAABF;cursor:pointer;line-height:1;padding:0;">✕</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+        <div style="background:#F0F4F9;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:11px;color:#9AAABF;">시간</div><div style="font-size:16px;font-weight:700;color:#1A2540;">${r.hours||0}h</div></div>
+        <div style="background:#F0F4F9;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:11px;color:#9AAABF;">수당</div><div style="font-size:16px;font-weight:700;color:#1D5BA6;">${(Number(r.amount)||0).toLocaleString()}원</div></div>
+      </div>
+      <div style="font-size:12px;color:#5C6F8A;font-weight:600;margin-bottom:6px;">사유</div>
+      <div style="font-size:13px;color:#1A2540;line-height:1.6;white-space:pre-wrap;word-break:break-word;background:#F7F9FC;border-radius:8px;padding:12px;min-height:40px;">${r.reason?otEsc(r.reason):'<span style="color:#C3CEDD;">작성된 사유가 없습니다.</span>'}</div>
+    </div>`;
+  document.body.appendChild(modal);
+};
+
 // 연봉계약서에서 통상임금 계산
 async function otGetWage(workerId, name) {
   if (_otWageCache[name]) return _otWageCache[name];
@@ -4494,16 +4523,16 @@ window.otPcShowPersonDetail = async (id, name, rank) => {
       ${rows.length===0?'<div style="color:#9AAABF;text-align:center;padding:20px;">이번 달 초과근로 내역이 없습니다.</div>':
       `<table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead><tr style="background:#F7F9FC;">${['날짜','시간','수당','사유',''].map(h=>`<th style="padding:7px 10px;text-align:left;color:#5C6F8A;font-weight:600;">${h}</th>`).join('')}</tr></thead>
-        <tbody>${rows.map(r=>`<tr style="border-bottom:1px solid #F0F4F9;">
+        <tbody>${rows.map(r=>{_otDetailCache[r.id]=r; return `<tr style="border-bottom:1px solid #F0F4F9;cursor:pointer;" onclick="otShowDetail('${r.id}')">
           <td style="padding:8px 10px;">${r.date}</td>
           <td style="padding:8px 10px;">${r.hours}h</td>
           <td style="padding:8px 10px;">${(r.amount||0).toLocaleString()}원</td>
           <td style="padding:8px 10px;color:#5C6F8A;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${otEsc(r.reason||'')}">${r.reason?otEsc(r.reason):'<span style="color:#C3CEDD;">-</span>'}</td>
           <td style="padding:8px 10px;">
-            <button onclick="otPcEdit('${r.id}','${id}','${name}','${rank||''}')" style="background:#E8F0FB;border:none;border-radius:5px;color:#1D5BA6;padding:3px 8px;font-size:11px;cursor:pointer;margin-right:4px;">수정</button>
-            <button onclick="otPcDelete('${r.id}','${id}','${name}','${rank||''}')" style="background:#FEE2E2;border:none;border-radius:5px;color:#DC2626;padding:3px 8px;font-size:11px;cursor:pointer;">삭제</button>
+            <button onclick="event.stopPropagation();otPcEdit('${r.id}','${id}','${name}','${rank||''}')" style="background:#E8F0FB;border:none;border-radius:5px;color:#1D5BA6;padding:3px 8px;font-size:11px;cursor:pointer;margin-right:4px;">수정</button>
+            <button onclick="event.stopPropagation();otPcDelete('${r.id}','${id}','${name}','${rank||''}')" style="background:#FEE2E2;border:none;border-radius:5px;color:#DC2626;padding:3px 8px;font-size:11px;cursor:pointer;">삭제</button>
           </td>
-        </tr>`).join('')}</tbody>
+        </tr>`;}).join('')}</tbody>
       </table>`}`;
   } catch(e){ panel.innerHTML=`<div style="color:#dc2626;">오류: ${e.message}</div>`; }
 };
@@ -4663,15 +4692,16 @@ async function otLoadSummary() {
             <th style="padding:8px;text-align:center;color:#1D5BA6;font-size:11px;">관리</th>
           </tr></thead><tbody>`;
       rows.forEach((r,i) => {
-        html += `<tr style="background:${i%2===0?'#fff':'#F7F8FA'};">
+        _otDetailCache[r.id] = r;
+        html += `<tr style="background:${i%2===0?'#fff':'#F7F8FA'};cursor:pointer;" onclick="otShowDetail('${r.id}')">
           <td style="padding:8px;">${r.date.slice(5).replace('-','/')}</td>
           <td style="padding:8px;">${r.name}</td>
           <td style="padding:8px;text-align:center;">${r.hours}h</td>
           <td style="padding:8px;text-align:right;">${Number(r.amount||0).toLocaleString()}원</td>
           <td style="padding:8px;color:#5C6F8A;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${otEsc(r.reason||'')}">${r.reason?otEsc(r.reason):'<span style="color:#C3CEDD;">-</span>'}</td>
           <td style="padding:8px;text-align:center;">
-            <button onclick="renderOvertimeEdit('${r.id}','','summary')" style="background:#E8F0FB;border:none;border-radius:6px;color:#1D5BA6;padding:4px 8px;font-size:11px;cursor:pointer;margin-right:4px;">수정</button>
-            <button onclick="otDelete('${r.id}')" style="background:#fee2e2;border:none;border-radius:6px;color:#dc2626;padding:4px 8px;font-size:11px;cursor:pointer;">삭제</button>
+            <button onclick="event.stopPropagation();renderOvertimeEdit('${r.id}','','summary')" style="background:#E8F0FB;border:none;border-radius:6px;color:#1D5BA6;padding:4px 8px;font-size:11px;cursor:pointer;margin-right:4px;">수정</button>
+            <button onclick="event.stopPropagation();otDelete('${r.id}')" style="background:#fee2e2;border:none;border-radius:6px;color:#dc2626;padding:4px 8px;font-size:11px;cursor:pointer;">삭제</button>
           </td>
         </tr>`;
       });
@@ -4785,14 +4815,15 @@ async function otLoadPersonDetail(workerId, name, rank) {
           <th style="padding:9px 8px;text-align:center;color:#1D5BA6;font-size:11px;">관리</th>
         </tr></thead><tbody>`;
       rows.forEach((r,i) => {
-        html += `<tr style="background:${i%2===0?'#fff':'#F7F8FA'};">
+        _otDetailCache[r.id] = r;
+        html += `<tr style="background:${i%2===0?'#fff':'#F7F8FA'};cursor:pointer;" onclick="otShowDetail('${r.id}')">
           <td style="padding:9px 8px;">${r.date.slice(5).replace('-','/')}</td>
           <td style="padding:9px 8px;text-align:center;">${r.hours}h</td>
           <td style="padding:9px 8px;text-align:right;">${Number(r.amount||0).toLocaleString()}원</td>
           <td style="padding:9px 8px;color:#5C6F8A;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${otEsc(r.reason||'')}">${r.reason?otEsc(r.reason):'<span style="color:#C3CEDD;">-</span>'}</td>
           <td style="padding:9px 8px;text-align:center;">
-            <button onclick="renderOvertimeEdit('${r.id}','${workerId}','${name}','${rank}','person')" style="background:#E8F0FB;border:none;border-radius:6px;color:#1D5BA6;padding:4px 8px;font-size:11px;cursor:pointer;margin-right:4px;">수정</button>
-            <button onclick="otDeletePerson('${r.id}','${workerId}','${name}','${rank}')" style="background:#fee2e2;border:none;border-radius:6px;color:#dc2626;padding:4px 8px;font-size:11px;cursor:pointer;">삭제</button>
+            <button onclick="event.stopPropagation();renderOvertimeEdit('${r.id}','${workerId}','${name}','${rank}','person')" style="background:#E8F0FB;border:none;border-radius:6px;color:#1D5BA6;padding:4px 8px;font-size:11px;cursor:pointer;margin-right:4px;">수정</button>
+            <button onclick="event.stopPropagation();otDeletePerson('${r.id}','${workerId}','${name}','${rank}')" style="background:#fee2e2;border:none;border-radius:6px;color:#dc2626;padding:4px 8px;font-size:11px;cursor:pointer;">삭제</button>
           </td>
         </tr>`;
       });
@@ -5630,4 +5661,5 @@ window.retireDelete = async (wid, rid, wname) => {
 </script>
 </body>
 </html>
+
 
