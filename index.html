@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260726 · ver: 2026-07-26 (PJT 5.1.0 · edoc 3.2r1 · hr payslip 2.6.2) · [PJT] FAB/SUP도 경량PJT처럼 종료·재개 가능하도록 확장(pjt_settings.status) · 사이드바 PJT 하위에 "종료 PJT" 전용 메뉴/뷰 신설(FAB·SUP·경량PJT 종료 항목 통합 조회, 재개, 경량PJT는 완전삭제) · 기존 PJT홈 하단 종료목록 섹션은 전용 메뉴로 이전(중복 제거) · 종료된 프로젝트 완전삭제 버튼 추가(관리자 전용, 이중확인) -->
+<!DOCTYPE html><!-- build: 20260818g · ver: 2026-08-18 (PJT 5.3.4 · mobile 5.3.0 · edoc 3.4r3 · hr payslip 2.6.2 · hr overtime 2.6.8 · pjt_manday 1.1.2 · gihoek 5.3.16) · [기획/정산] 지급예정서 다중 프로젝트 선택 시 프로젝트별 단가 개별 수정 가능 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -478,12 +478,6 @@
 </style>
 </head>
 <body>
-  <!-- TEST SERVER 배너 -->
-  <div style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#DC2626;color:#fff;text-align:center;font-size:12px;font-weight:700;padding:4px;letter-spacing:1px;">
-    ⚠️ TEST SERVER — 운영 서버가 아닙니다
-  </div>
-  <style>body{padding-top:24px!important}</style>
-
 
 <div class="splash" id="splash"><div class="spin"></div></div>
 
@@ -627,7 +621,7 @@
           <div><label style="font-size:13px;font-weight:600;color:#555;display:block;margin-bottom:5px">공사 시작일</label>
             <input id="np-start" type="date" style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
           <div><label style="font-size:13px;font-weight:600;color:#555;display:block;margin-bottom:5px">워크스페이스 URL <span style="color:#aaa;font-weight:400">(선택 — 비워두면 경량 PJT 워크스페이스가 자동 연결됩니다)</span></label>
-            <input id="np-url" type="text" placeholder="https://jhsolutions5804.github.io/portal-test/..." style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
+            <input id="np-url" type="text" placeholder="https://jhsolutions5804.github.io/portal/..." style="width:100%;padding:9px 12px;border:1.5px solid #dde4ef;border-radius:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
           <div id="np-light-extra" style="display:none;border-top:1px solid #eee;padding-top:14px;margin-top:2px">
             <div style="font-size:12px;font-weight:700;color:#1D5BA6;margin-bottom:10px">⚙️ 진행 현황 <span style="color:#aaa;font-weight:400">(워크스페이스의 품목현황·근태공수 탭에서 자동 계산됩니다)</span></div>
             <div style="display:flex;gap:12px">
@@ -878,21 +872,21 @@ window._db=db; // loadPjtPanels 등 일정/보고 패널에서 사용
 const DOMAIN='@jhsol.kr';
 const ADMIN_EMAIL='jh.kim@jhsol.kr';
 const MODULES=[
-  { key:'plan', name:'기획',          desc:'영업·정산·회계 (견적·정산서·손익)',   ic:'plan', emoji:'🧭', url:'https://jhsolutions5804.github.io/portal-test/gihoek/' },
-  { key:'hr',   name:'인사',          desc:'급여·계약·근태·연차 관리',         ic:'hr',   emoji:'👥', url:'https://jhsolutions5804.github.io/portal-test/hr/' },
-  { key:'edoc', name:'전자결재',       desc:'업무일지·연차·구매품의·지출결의',   ic:'edoc', emoji:'📋', url:'https://jhsolutions5804.github.io/portal-test/edoc/' },
-  { key:'pjt',  name:'PJT 관리',       desc:'진행 중인 프로젝트 현장 관리',    ic:'pjt',  emoji:'🏗️', url:'https://jhsolutions5804.github.io/portal-test/pjt/' },
+  { key:'plan', name:'기획',          desc:'영업·정산·회계 (견적·정산서·손익)',   ic:'plan', emoji:'🧭', url:'gihoek/' },
+  { key:'hr',   name:'인사',          desc:'급여·계약·근태·연차 관리',         ic:'hr',   emoji:'👥', url:'hr/' },
+  { key:'edoc', name:'전자결재',       desc:'업무일지·연차·구매품의·지출결의',   ic:'edoc', emoji:'📋', url:'edoc/' },
+  { key:'pjt',  name:'PJT 관리',       desc:'진행 중인 프로젝트 현장 관리',    ic:'pjt',  emoji:'🏗️', url:'pjt/' },
 ];
 // PJT별 서브 목록 (url: 각 PJT 전용 워크스페이스 URL)
 // 고정 PJT 원본 정의 — 종료되어 PJT_SUBTABS에서 제거돼도 재개 시 이 원본으로 복원한다
 const PJT_FIXED_BASE=[
-  { key:'p4ph2', name:'P4 Ph2 (FAB)', emoji:'🏭', desc:'귀뚜라미범양냉방 · FCU 설치', url:'https://jhsolutions5804.github.io/portal-test/pjt/' },
-  { key:'p4ph4', name:'P4 Ph4 (SUP)', emoji:'🔧', desc:'귀뚜라미범양냉방 · EHU 설치', url:'https://jhsolutions5804.github.io/portal-test/pjt_ph4/' },
+  { key:'p4ph2', name:'P4 Ph2 (FAB)', emoji:'🏭', desc:'귀뚜라미범양냉방 · FCU 설치', url:'pjt/' },
+  { key:'p4ph4', name:'P4 Ph4 (SUP)', emoji:'🔧', desc:'귀뚜라미범양냉방 · EHU 설치', url:'pjt_ph4/' },
 ];
 const PJT_SUBTABS=[
   { key:'pjt_home', name:'PJT 홈', emoji:'🏠', desc:'진행 중인 프로젝트 현황', url:'' },
   ...PJT_FIXED_BASE.map(x=>({...x})),
-  { key:'pjt_manday', name:'월간 공수', emoji:'📊', desc:'전체 PJT 공수 집계', url:'https://jhsolutions5804.github.io/portal-test/pjt_manday/' },
+  { key:'pjt_manday', name:'월간 공수', emoji:'📊', desc:'전체 PJT 공수 집계', url:'pjt_manday/' },
   { key:'pjt_ended', name:'종료 PJT', emoji:'🗄️', desc:'종료된 프로젝트 모아보기', url:'' },
 ];
 // 인사(hr) 하위 탭 — portal/hr 앱의 goTab() 키와 일치
@@ -1827,7 +1821,7 @@ async function syncPjtRegistrySubtabs(){
       else if(data.client) sub=data.client;
       else if(data.content) sub=data.content;
       else if(data.site) sub=data.site;
-      const url=data.url||('https://jhsolutions5804.github.io/portal-test/pjt_light/index.html?pjtId='+d.id);
+      const url=data.url||('pjt_light/index.html?pjtId='+d.id);
       let st=PJT_SUBTABS.find(function(s){return s.key===key;});
       if(!st){
         const mandayIdx=PJT_SUBTABS.findIndex(function(s){ return s.key==='pjt_manday'; });
@@ -2487,7 +2481,7 @@ function renderMenu(){
   const sec=document.createElement('div'); sec.className='sb-sec'; sec.textContent='업무';
   nav.appendChild(sec);
   MODULES.forEach(m=>{
-    const allowed=me.admin||(me.perms&&me.perms[m.key]);
+    const allowed=(m.key==='plan'||m.key==='hr')?me.admin:(me.admin||(me.perms&&me.perms[m.key]));
     // 홈 카드
     const card=document.createElement('div');
     card.className='mcard'+(allowed?'':' locked');
@@ -2512,7 +2506,7 @@ function renderMenu(){
         if(willOpen) grp.classList.add('open');
       };
       const sub=document.createElement('div'); sub.className='sb-sub';
-      SUBTABS[m.key].forEach(st=>{
+      SUBTABS[m.key].filter(st=>st.key!=='pjt_manday' || (me&&me.admin)).forEach(st=>{
         const sbtn=document.createElement('button');
         sbtn.className='sb-subitem'; sbtn.dataset.nav=m.key; sbtn.dataset.sub=st.key;
         sbtn.innerHTML=`<span class="sdot">${st.emoji}</span><span>${st.name}</span>`;
@@ -2784,6 +2778,8 @@ async function renderOutlookCard(){
 window.renderOutlookCard = renderOutlookCard;
 
 function openModule(m, tab, overrideUrl){
+  if(tab==='pjt_manday' && !(me&&me.admin)){ toast('월간 공수는 관리자만 접근할 수 있습니다.'); return; }
+  if((m.key==='plan'||m.key==='hr') && !(me&&me.admin)){ toast('기획/인사는 관리자만 접근할 수 있습니다.'); return; }
   const actualUrl=overrideUrl||m.url;
   if(tab==='pjt_home'||m.key==='pjt'&&tab===null){
     showPjtHome(); return;
@@ -3008,13 +3004,13 @@ function mbnOpenMore(){
   // 업무 메뉴
   const workItems=[];
   _MODULES.forEach(m=>{
-    const allowed=_me.admin||(_me.perms&&_me.perms[m.key]);
+    const allowed=(m.key==='plan'||m.key==='hr')?_me.admin:(_me.admin||(_me.perms&&_me.perms[m.key]));
     if(_SUBTABS[m.key] && allowed){
       const wrap=document.createElement('div'); wrap.style.cssText='width:100%';
       const head=document.createElement('button'); head.className='mmp-btn'; head.style.cssText='width:100%;padding:12px 20px';
       head.innerHTML='<span class="mmp-ic">'+m.emoji+'</span><div><div>'+m.name+'</div><div class="mmp-sub">'+m.desc+'</div></div><span style="margin-left:auto;font-size:14px;">›</span>';
       const sublist=document.createElement('div'); sublist.className='mmp-sublist'; sublist.style.display='none';
-      _SUBTABS[m.key].forEach(st=>{
+      _SUBTABS[m.key].filter(st=>st.key!=='pjt_manday' || _me.admin).forEach(st=>{
         const sbtn=document.createElement('button'); sbtn.className='mmp-subbtn';
         sbtn.innerHTML='<span style="font-size:15px;">'+st.emoji+'</span> '+st.name;
         sbtn.onclick=()=>{
@@ -3101,4 +3097,6 @@ window.mbnCloseMore=mbnCloseMore;
 </body>
 </html>
 <!-- b 1783190358 -->
+
+
 
