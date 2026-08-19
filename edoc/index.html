@@ -859,6 +859,32 @@ function sumLeaveUsed(leaveDocs, workerName) {
 window.calcAnnualLeaveGrant = calcAnnualLeaveGrant;
 window.sumLeaveUsed = sumLeaveUsed;
 
+// ── edoc_* 컬렉션 조회 헬퍼: Firestore는 규칙과 일치하지 않는 무제한 list 쿼리를 통째로 거부하므로,
+//    작성자/결재선(viewerUids)/게시(posted)/관리자 네 갈래로 나눠 조회한 뒤 합친다 ──
+async function fetchEdocDocs(dtype, dbRef) {
+  const { getDocs, collection, query, where } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+  const _dbRef = dbRef || db;
+  const coll = collection(_dbRef, `edoc_${dtype}`);
+  const myUid = _user?.uid;
+  const seen = {}; const results = [];
+  const addAll = (snap) => { snap.forEach(d => { if (!seen[d.id]) { seen[d.id] = true; results.push({ id: d.id, dtype, ...d.data() }); } }); };
+  try {
+    if (myUid) {
+      const [s1, s2] = await Promise.all([
+        getDocs(query(coll, where('authorUid', '==', myUid))),
+        getDocs(query(coll, where('viewerUids', 'array-contains', myUid)))
+      ]);
+      addAll(s1); addAll(s2);
+    }
+    if (_isAdmin) {
+      addAll(await getDocs(coll));
+    } else {
+      addAll(await getDocs(query(coll, where('status', '==', 'posted'))));
+    }
+  } catch (e) { console.error('edoc 조회 오류', dtype, e); }
+  return results;
+}
+
 async function renderEdocHome() {
   const el = document.getElementById('tab-home'); if(!el) return;
   const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'퇴직원서', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서', overtime:'초과근로' };
@@ -909,32 +935,6 @@ async function renderEdocHome() {
       </div>
     </div>
   </div>`;
-
-// ── edoc_* 컬렉션 조회 헬퍼: Firestore는 규칙과 일치하지 않는 무제한 list 쿼리를 통째로 거부하므로,
-//    작성자/결재선(viewerUids)/게시(posted)/관리자 네 갈래로 나눠 조회한 뒤 합친다 ──
-async function fetchEdocDocs(dtype, dbRef) {
-  const { getDocs, collection, query, where } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-  const _dbRef = dbRef || db;
-  const coll = collection(_dbRef, `edoc_${dtype}`);
-  const myUid = _user?.uid;
-  const seen = {}; const results = [];
-  const addAll = (snap) => { snap.forEach(d => { if (!seen[d.id]) { seen[d.id] = true; results.push({ id: d.id, dtype, ...d.data() }); } }); };
-  try {
-    if (myUid) {
-      const [s1, s2] = await Promise.all([
-        getDocs(query(coll, where('authorUid', '==', myUid))),
-        getDocs(query(coll, where('viewerUids', 'array-contains', myUid)))
-      ]);
-      addAll(s1); addAll(s2);
-    }
-    if (_isAdmin) {
-      addAll(await getDocs(coll));
-    } else {
-      addAll(await getDocs(query(coll, where('status', '==', 'posted'))));
-    }
-  } catch (e) { console.error('edoc 조회 오류', dtype, e); }
-  return results;
-}
 
   if (!window._db || !_user) return;
   try {
