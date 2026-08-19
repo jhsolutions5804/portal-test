@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- PJT module build: 20260722 · ver 4.10.3 · 주간공정회의 자료 자동생성 + 도면 좌표 매핑 툴(클릭/드래그 배치, 기준크기 자동적용, 크기 일괄보정, 확대·축소+스크롤 팬, 자동정렬 스냅, 구역 전체 좌표 일괄삭제) + 화살표 flow형 범례·표 색상 고정 + W-OB 장비ID 801~881로 수정 (기존 W-101~W-181 오류) -->
+<!DOCTYPE html><!-- PJT module build: 20260818d · ver 4.10.7 · 퇴사자는 퇴사일 이후 날짜의 출역 체크리스트에서 자동 제외 (퇴사일 이전 과거 기록은 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1085,6 +1085,14 @@ window._fbUpdateWorkerBirth = async function(workerId, birth){
     await setDoc(doc(db, WORKERS_COLLECTION, workerId), {birth}, {merge:true});
     await window._fbLoadWorkers();
   }catch(e){ alert('생년월일 저장 실패: '+e.message); }
+};
+
+// 이름/생년월일을 함께(또는 개별) 수정 — 명단 관리 패널의 "수정" 기능에서 사용
+window._fbUpdateWorker = async function(workerId, data){
+  try{
+    await setDoc(doc(db, WORKERS_COLLECTION, workerId), data, {merge:true});
+    await window._fbLoadWorkers();
+  }catch(e){ alert('수정 실패: '+e.message); }
 };
 
 window._fbDeleteWorker = async function(workerId){
@@ -2986,8 +2994,19 @@ window.toggleWorkerMgmt = function(){
   if(!p) return;
   var showing = p.style.display!=='none';
   p.style.display = showing ? 'none' : 'block';
-  if(!showing){ renderWorkerMgmtList(); loadMasterOptions(); }
+  if(!showing){ renderWorkerMgmtList(); loadMasterOptions(); loadMasterResignedMap().then(renderWorkerMgmtList); }
 };
+
+var _masterResignedMap = {}; // masterId -> {resigned, resignedDate} (근로자 마스터 명부 재직상태 캐시)
+async function loadMasterResignedMap(){
+  try{
+    const {getDocs,collection}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap=await getDocs(collection(window._fbDb,'master_workers'));
+    var map={};
+    snap.forEach(function(d){ map[d.id]=d.data(); });
+    _masterResignedMap=map;
+  }catch(e){ console.warn('마스터 재직상태 로드 실패', e); }
+}
 
 async function loadMasterOptions(){
   var sel=document.getElementById('worker-add-master');
@@ -3000,10 +3019,24 @@ async function loadMasterOptions(){
     snap.forEach(function(d){
       if(already.has(d.id)) return; // 이미 이 PJT에 등록된 사람은 제외
       const m=d.data();
+      if(m.resigned) return; // 퇴사자는 신규 투입 대상에서 제외
       opts+='<option value="'+d.id+'">'+m.name+' ('+(m.birth||'생년월일 없음')+')</option>';
     });
     sel.innerHTML=opts;
   }catch(e){ console.warn('마스터 명부 로드 실패', e); }
+}
+
+var _workerEditingId = null; // 현재 인라인 수정 중인 인원 id (한 번에 한 명만)
+
+// "YYYY-MM-DD" 텍스트 입력용 마스킹 — 숫자만 받아 자동으로 하이픈을 붙인다.
+// (네이티브 <input type=date>는 한 자리 입력 후 잠깐 멈추면 자동으로 다음 칸으로
+//  넘어가버려 "10"을 치려다 "01"만 확정되는 문제가 있어 일반 텍스트 입력으로 대체)
+function _maskBirthInput(el){
+  var digits = el.value.replace(/[^0-9]/g,'').slice(0,8);
+  var out = digits;
+  if(digits.length>4) out = digits.slice(0,4)+'-'+digits.slice(4);
+  if(digits.length>6) out = digits.slice(0,4)+'-'+digits.slice(4,6)+'-'+digits.slice(6);
+  el.value = out;
 }
 
 function renderWorkerMgmtList(){
@@ -3012,23 +3045,107 @@ function renderWorkerMgmtList(){
   var ws=getWorkers();
   if(!ws.length){ el.innerHTML='<div style="font-size:12px;color:#86868b">명단이 없습니다</div>'; return; }
   el.innerHTML=ws.map(function(w){
+    var roleTag = w.role?'<span style="font-size:10px;color:#86868b;margin-right:4px">['+w.role+']</span>':'';
+    if(_workerEditingId===w.id){
+      // ── 수정 모드: 이름 + 생년월일 인라인 입력 ──
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;gap:6px">'
+        +'<span style="display:flex;align-items:center;gap:6px;flex:1">'+roleTag
+          +'<input type="text" class="name-edit-input" data-wid="'+w.id+'" value="'+w.name.replace(/"/g,'&quot;')+'" style="font-size:13px;padding:4px 7px;border:1px solid #cfe0f5;border-radius:6px;width:76px">'
+          +'<input type="text" inputmode="numeric" placeholder="YYYY-MM-DD" class="birth-edit-input" data-wid="'+w.id+'" value="'+(w.birth||'')+'" maxlength="10" style="font-size:12px;padding:4px 7px;border:1px solid #cfe0f5;border-radius:6px;min-width:110px">'
+        +'</span>'
+        +'<span style="display:flex;gap:4px;white-space:nowrap">'
+          +'<button class="save-worker-btn" data-wid="'+w.id+'" style="font-size:11px;padding:3px 8px;background:#1D5BA6;border:none;border-radius:6px;color:#fff;cursor:pointer">저장</button>'
+          +'<button class="cancel-worker-btn" style="font-size:11px;padding:3px 8px;background:#fff;border:1px solid #dde4ef;border-radius:6px;color:#555;cursor:pointer">취소</button>'
+        +'</span>'
+      +'</div>';
+    }
     var birthPart = w.birth
       ? '<span style="font-size:10px;color:#9AAABF;margin-left:6px">'+w.birth+'</span>'
-      : '<input type="date" class="birth-fix-input" data-wid="'+w.id+'" style="font-size:12px;padding:4px 7px;border:1px solid #ffd699;border-radius:6px;margin-left:6px;background:#fff8ea;min-width:138px" title="생년월일 미입력 — 입력하면 다른 PJT 공수와 합산됩니다">';
+      : '<span style="font-size:10px;color:#e0a02f;margin-left:6px">생년월일 미입력</span>';
+    var mInfo = _masterResignedMap[w.id] || {};
+    var resignedBadge = mInfo.resigned
+      ? '<span style="font-size:10px;padding:2px 7px;border-radius:8px;background:#f2f2f2;color:#888;margin-left:6px">퇴사 · '+(mInfo.resignedDate||'')+'</span>'
+      : '';
+    var resignBtn = mInfo.resigned
+      ? '<button class="resign-worker-btn" data-wid="'+w.id+'" data-cur="1" style="font-size:11px;padding:3px 8px;background:#fff;border:1px solid #dde4ef;border-radius:6px;color:#1D5BA6;cursor:pointer">재직 전환</button>'
+      : '<button class="resign-worker-btn" data-wid="'+w.id+'" data-cur="0" style="font-size:11px;padding:3px 8px;background:#fff;border:1px solid #ffe0ad;border-radius:6px;color:#9a5a00;cursor:pointer">퇴사처리</button>';
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0">'
-      +'<span style="font-size:13px;color:#1d1d1f;display:flex;align-items:center">'+(w.role?'<span style="font-size:10px;color:#86868b;margin-right:4px">['+w.role+']</span>':'')+w.name+birthPart+'</span>'
-      +'<button class="del-worker-btn" data-wid="'+w.id+'" style="font-size:11px;padding:3px 8px;background:#fff;border:1px solid #ffb3b3;border-radius:6px;color:#c0392b;cursor:pointer">삭제</button>'
+      +'<span style="font-size:13px;color:#1d1d1f;display:flex;align-items:center">'+roleTag+w.name+birthPart+resignedBadge+'</span>'
+      +'<span style="display:flex;gap:4px;white-space:nowrap">'
+        +resignBtn
+        +'<button class="edit-worker-btn" data-wid="'+w.id+'" style="font-size:11px;padding:3px 8px;background:#fff;border:1px solid #cfe0f5;border-radius:6px;color:#1D5BA6;cursor:pointer">수정</button>'
+        +'<button class="del-worker-btn" data-wid="'+w.id+'" style="font-size:11px;padding:3px 8px;background:#fff;border:1px solid #ffb3b3;border-radius:6px;color:#c0392b;cursor:pointer">삭제</button>'
+      +'</span>'
     +'</div>';
   }).join('');
   // 삭제 버튼 이벤트
   el.querySelectorAll('.del-worker-btn').forEach(function(btn){
     btn.addEventListener('click',function(){deleteWorkerFromUI(this.dataset.wid);});
   });
-  // 생년월일 미입력 인원 인라인 입력 이벤트
-  el.querySelectorAll('.birth-fix-input').forEach(function(inp){
-    inp.addEventListener('change',function(){ updateWorkerBirthFromUI(this.dataset.wid, this.value); });
+  // 퇴사처리/재직전환 버튼 이벤트
+  el.querySelectorAll('.resign-worker-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){ toggleWorkerResignFromUI(this.dataset.wid, this.dataset.cur==='1'); });
+  });
+  // 수정 버튼 이벤트
+  el.querySelectorAll('.edit-worker-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){ _workerEditingId=this.dataset.wid; renderWorkerMgmtList(); });
+  });
+  el.querySelectorAll('.cancel-worker-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){ _workerEditingId=null; renderWorkerMgmtList(); });
+  });
+  el.querySelectorAll('.save-worker-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){ saveWorkerEditFromUI(this.dataset.wid); });
+  });
+  // 생년월일 입력 마스킹 (타이핑 중 하이픈 자동 삽입, 값 초기화 없음)
+  el.querySelectorAll('.birth-edit-input').forEach(function(inp){
+    inp.addEventListener('input',function(){ _maskBirthInput(this); });
   });
 }
+
+// 퇴사처리 / 재직 전환 — 근로자 마스터 명부(master_workers)에 직접 반영.
+// 삭제가 아닌 상태 플래그(resigned/resignedDate) 방식이라 이 PJT 및 다른 PJT의
+// 기존 근태·공수 기록에는 전혀 영향이 없다. (상세 관리는 PJT 관리 → 월간 공수 → 근로자 마스터 관리)
+window.toggleWorkerResignFromUI = async function(wid, currentlyResigned){
+  var w=getWorkers().find(function(x){return x.id===wid;});
+  var name=w?w.name:'해당 인원';
+  try{
+    const {getDoc,doc,setDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    if(currentlyResigned){
+      if(!confirm(name+'님을 재직 상태로 전환할까요?')) return;
+      await setDoc(doc(window._fbDb,'master_workers',wid), {resigned:false, resignedDate:null}, {merge:true});
+    } else {
+      var today=new Date().toISOString().slice(0,10);
+      var input=prompt(name+'님의 퇴사일을 입력하세요.', today);
+      if(input===null) return;
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(input)){ alert('날짜 형식은 YYYY-MM-DD 로 입력하세요.'); return; }
+      await setDoc(doc(window._fbDb,'master_workers',wid), {resigned:true, resignedDate:input}, {merge:true});
+    }
+    await loadMasterResignedMap();
+    renderWorkerMgmtList();
+    if(typeof renderAttend==='function') renderAttend(); // 출역 목록에도 즉시 반영
+  }catch(e){ alert('처리 실패: '+e.message); }
+};
+
+window.saveWorkerEditFromUI = async function(wid){
+  var nameInp=document.querySelector('.name-edit-input[data-wid="'+wid+'"]');
+  var birthInp=document.querySelector('.birth-edit-input[data-wid="'+wid+'"]');
+  var name=nameInp?nameInp.value.trim():'';
+  var birth=birthInp?birthInp.value.trim():'';
+  if(!name){ alert('이름을 입력하세요.'); return; }
+  if(birth && !/^\d{4}-\d{2}-\d{2}$/.test(birth)){ alert('생년월일은 YYYY-MM-DD 형식으로 입력하세요.'); return; }
+  var btn=document.querySelector('.save-worker-btn[data-wid="'+wid+'"]');
+  if(btn){ btn.disabled=true; btn.textContent='저장 중...'; }
+  try{
+    await _waitForFb('_fbUpdateWorker', 6000);
+    await window._fbUpdateWorker(wid, {name:name, birth:birth});
+    if(window._refreshWorkerArrays) window._refreshWorkerArrays();
+    _workerEditingId=null;
+    renderWorkerMgmtList();
+  }catch(e){
+    alert('저장에 실패했습니다.');
+    if(btn){ btn.disabled=false; btn.textContent='저장'; }
+  }
+};
 
 function _waitForFb(fnName, maxWait){
   return new Promise(function(resolve,reject){
@@ -3090,6 +3207,9 @@ function renderAttend(){
   document.getElementById('att-date-label').textContent=
     'W'+getWeekNum(d)+' · '+(d.getMonth()+1)+'월 '+d.getDate()+'일('+days[d.getDay()]+')';
 
+  // 마스터 명부 재직상태 최신화 — 퇴사자는 퇴사일 이후 날짜의 출역 목록에서 제외해야 하므로 매번 갱신
+  loadMasterResignedMap().then(function(){ if(typeof renderWorkerList==='function') renderWorkerList(); });
+
   // Firebase 출역 구독 시작 (준비된 경우에만)
   window._renderWorkerUI = renderWorkerList;
   renderWorkerList(); // 즉시 렌더 (localStorage 기반)
@@ -3138,7 +3258,14 @@ function renderAttend(){
 
   // ── 기술인 출역 현황 (Firebase 실시간) ──
   function renderWorkerList(){
-    const _ws=getWorkers(); // WORKERS 모듈변수는 갱신 타이밍이 어긋날 수 있어 항상 최신값을 직접 조회
+    // WORKERS 모듈변수는 갱신 타이밍이 어긋날 수 있어 항상 최신값을 직접 조회.
+    // 퇴사일(resignedDate)이 조회 날짜(dateKey) 이전이거나 같은 인원은 출역 대상에서 제외.
+    // (퇴사일 이전 과거 날짜를 볼 때는 그 시점엔 재직 중이었으므로 계속 표시됨 — 과거 기록 보존)
+    const _ws=getWorkers().filter(function(w){
+      const info=_masterResignedMap[w.id];
+      if(info && info.resigned && info.resignedDate && info.resignedDate<=dateKey) return false;
+      return true;
+    });
     const checks=window._fbGetWorkerChecks?window._fbGetWorkerChecks(dateKey):[];
     document.getElementById('att-worker-count').textContent=
       `출역 ${checks.length}명 / 전체 ${_ws.length}명`;
