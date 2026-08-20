@@ -409,6 +409,9 @@ textarea.f-input{resize:vertical;min-height:70px}
             <button type="button" class="cnt-btn-sm" onclick="adjReportManday(0.5)">+</button>
             <span style="font-size:12px;color:#9AAABF">공수</span>
           </div>
+          <div style="margin-top:8px;padding:9px 12px;background:#f4f8ff;border-radius:8px;font-size:13px;color:#1D5BA6">
+            합계 투입 공수 = <span id="r-headcount-echo">0</span>명 × <span id="r-manday-echo">0.0</span>공수 = <b id="r-manday-total">0.0</b>
+          </div>
           <label class="f-label">사용 장비</label>
           <div id="r-equip-chips">
             <span class="equip-empty">장비를 선택하세요</span>
@@ -1353,12 +1356,22 @@ window.adjReportHeadcount=function(n){
   const el=document.getElementById('r-headcount');
   const v=Math.max(0, (parseInt(el.textContent)||0)+n);
   el.textContent=v;
+  updateReportMandayTotal();
 };
 window.adjReportManday=function(n){
   const el=document.getElementById('r-manday');
   const v=Math.max(0, Math.round(((parseFloat(el.textContent)||0)+n)*10)/10);
   el.textContent=v.toFixed(1);
+  updateReportMandayTotal();
 };
+function updateReportMandayTotal(){
+  const headcount=parseInt(document.getElementById('r-headcount').textContent)||0;
+  const manday=parseFloat(document.getElementById('r-manday').textContent)||0;
+  const total=Math.round(headcount*manday*10)/10;
+  document.getElementById('r-headcount-echo').textContent=headcount;
+  document.getElementById('r-manday-echo').textContent=manday.toFixed(1);
+  document.getElementById('r-manday-total').textContent=total.toFixed(1);
+}
 
 // 품목현황 체크(오늘자 item_checks) 기반 작업내용 자동 생성
 async function buildAutoReportContent(dateKey){
@@ -1405,6 +1418,7 @@ async function loadReportOfDay(){
       reportEquips=(r.equip?String(r.equip).split(',').map(function(s){return s.trim();}).filter(Boolean):[]);
       renderReportEquipChips();
       document.getElementById('r-note').value=r.note||'';
+      updateReportMandayTotal();
     } else {
       // 저장된 일보가 없으면 품목현황 체크 + 출역 인원/공수로 자동 프리필
       if(!document.getElementById('r-author').value && loginUserLabel) document.getElementById('r-author').value=loginUserLabel;
@@ -1419,8 +1433,11 @@ async function loadReportOfDay(){
         document.getElementById('r-headcount').textContent=cnt;
         const mdObj=mdSnap.exists()?(mdSnap.data().md||{}):{};
         const mdTotal=Object.values(mdObj).reduce(function(a,b){ return a+(parseFloat(b)||0); }, 0);
-        document.getElementById('r-manday').textContent=mdTotal.toFixed(1);
+        // 표시는 "1인당 공수"이므로, 실제 합계(mdTotal)를 인원수로 나눠 평균 공수를 역산
+        const avgManday=cnt>0 ? Math.round((mdTotal/cnt)*10)/10 : 0;
+        document.getElementById('r-manday').textContent=avgManday.toFixed(1);
       }catch(e){}
+      updateReportMandayTotal();
     }
   }catch(e){}
 }
@@ -1434,6 +1451,7 @@ function collectReportData(){
     tomorrow: document.getElementById('r-tomorrow').value.trim(),
     headcount: parseInt(document.getElementById('r-headcount').textContent)||0,
     manday: parseFloat(document.getElementById('r-manday').textContent)||0,
+    mandayTotal: parseFloat(document.getElementById('r-manday-total').textContent)||0,
     equip: reportEquips.join(', '),
     note: document.getElementById('r-note').value.trim(),
   };
@@ -1506,7 +1524,7 @@ function renderDRView(r){
     ['작성자', r.author||'—'],
     ['금일 작업', r.content||'—'],
     ['명일 예정', r.tomorrow||'—'],
-    ['투입 인원', (r.headcount||r.headcount===0)?r.headcount+'명 · 공수 '+(r.manday||0).toFixed(1):'—'],
+    ['투입 인원 · 공수', (r.headcount||r.headcount===0)?(r.headcount+'명 × '+(r.manday||0).toFixed(1)+'공수 = 합계 '+(r.mandayTotal!=null?r.mandayTotal.toFixed(1):((r.headcount||0)*(r.manday||0)).toFixed(1))):'—'],
     ['사용 장비', r.equip||'—'],
     ['특이사항', r.note||'—'],
   ];
@@ -1554,13 +1572,20 @@ window.editReportDetail=function(){
     +inRow('작성자','dr-e-author', r.author||'')
     +taRow('금일 작업','dr-e-content', r.content||'')
     +taRow('명일 예정','dr-e-tomorrow', r.tomorrow||'')
-    +inRow('투입 인원','dr-e-headcount', r.headcount||0, 'number')
-    +inRow('공수','dr-e-manday', r.manday||0, 'number')
+    +'<div style="margin-bottom:12px"><div style="font-size:12px;color:#86868b;font-weight:600;margin-bottom:5px">투입 인원</div><input id="dr-e-headcount" class="f-input" type="number" value="'+(r.headcount||0)+'" oninput="updateDrEditMandayTotal()"></div>'
+    +'<div style="margin-bottom:12px"><div style="font-size:12px;color:#86868b;font-weight:600;margin-bottom:5px">공수(1인당)</div><input id="dr-e-manday" class="f-input" type="number" step="0.1" value="'+(r.manday||0)+'" oninput="updateDrEditMandayTotal()"></div>'
+    +'<div style="margin-bottom:12px"><div style="font-size:12px;color:#86868b;font-weight:600;margin-bottom:5px">합계 투입 공수</div><div class="ro-field" id="dr-e-manday-total">'+((r.mandayTotal!=null?r.mandayTotal:((r.headcount||0)*(r.manday||0))).toFixed(1))+' (인원 × 공수, 자동계산)</div></div>'
     +inRow('사용 장비','dr-e-equip', r.equip||'')
     +taRow('특이사항','dr-e-note', r.note||'');
   toggleDRBtns('edit');
 };
 window.cancelReportDetailEdit=function(){ if(drCurrentDoc) renderDRView(drCurrentDoc); toggleDRBtns('view'); };
+window.updateDrEditMandayTotal=function(){
+  const h=parseInt(document.getElementById('dr-e-headcount').value)||0;
+  const m=parseFloat(document.getElementById('dr-e-manday').value)||0;
+  const total=Math.round(h*m*10)/10;
+  document.getElementById('dr-e-manday-total').textContent=total.toFixed(1)+' (인원 × 공수, 자동계산)';
+};
 window.saveReportDetailEdit=async function(){
   if(!drCurrentDoc){ toast('불러온 데이터가 없습니다'); return; }
   const dateKey=drCurrentDoc.id;
@@ -1573,6 +1598,7 @@ window.saveReportDetailEdit=async function(){
     equip: document.getElementById('dr-e-equip').value.trim(),
     note: document.getElementById('dr-e-note').value.trim(),
   };
+  patch.mandayTotal = Math.round(patch.headcount*patch.manday*10)/10;
   try{
     await setDoc(doc(db,'pjt_registry',pjtId,'reports',dateKey), Object.assign({}, patch, {updatedAt: serverTimestamp()}), {merge:true});
     Object.assign(drCurrentDoc, patch);
@@ -1606,7 +1632,7 @@ function buildReportDocHtml(d){
     +'<tr><th style="border:1px solid #ccc;padding:8px 12px;background:#f5f5f5;text-align:left">작성자</th><td style="border:1px solid #ccc;padding:8px 12px">'+escapeHtml(d.author||'—')+'</td></tr>'
     +'<tr><th style="border:1px solid #ccc;padding:8px 12px;background:#f5f5f5;text-align:left">금일 작업</th><td style="border:1px solid #ccc;padding:8px 12px;white-space:pre-wrap">'+escapeHtml(d.content||'—')+'</td></tr>'
     +'<tr><th style="border:1px solid #ccc;padding:8px 12px;background:#f5f5f5;text-align:left">명일 예정</th><td style="border:1px solid #ccc;padding:8px 12px;white-space:pre-wrap">'+escapeHtml(d.tomorrow||'—')+'</td></tr>'
-    +'<tr><th style="border:1px solid #ccc;padding:8px 12px;background:#f5f5f5;text-align:left">투입 인원</th><td style="border:1px solid #ccc;padding:8px 12px">'+((d.headcount||d.headcount===0)?d.headcount+'명 · 공수 '+(d.manday||0).toFixed(1):'—')+'</td></tr>'
+    +'<tr><th style="border:1px solid #ccc;padding:8px 12px;background:#f5f5f5;text-align:left">투입 인원 · 공수</th><td style="border:1px solid #ccc;padding:8px 12px">'+((d.headcount||d.headcount===0)?(d.headcount+'명 × '+(d.manday||0).toFixed(1)+'공수 = 합계 '+(d.mandayTotal!=null?d.mandayTotal.toFixed(1):((d.headcount||0)*(d.manday||0)).toFixed(1))):'—')+'</td></tr>'
     +'<tr><th style="border:1px solid #ccc;padding:8px 12px;background:#f5f5f5;text-align:left">사용 장비</th><td style="border:1px solid #ccc;padding:8px 12px">'+escapeHtml(d.equip||'—')+'</td></tr>'
     +'<tr><th style="border:1px solid #ccc;padding:8px 12px;background:#f5f5f5;text-align:left">특이사항</th><td style="border:1px solid #ccc;padding:8px 12px;white-space:pre-wrap">'+escapeHtml(d.note||'—')+'</td></tr>'
     +'</table>';
