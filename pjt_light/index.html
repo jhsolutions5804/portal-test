@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260819 · ver: 3.2.0 · 경량 PJT 워크스페이스 · 공사일보 메인 PJT 수준으로 고도화(작성자 마스터명부/품목현황·근태 자동반영/장비/PDF/조회·수정·삭제) -->
+<!DOCTYPE html><!-- build: 20260820 · ver: 3.3.0 · 경량 PJT 워크스페이스 · 공사일보 메인 PJT 수준 고도화(작성자 마스터명부/품목현황·근태 자동반영/장비/PDF/조회·수정·삭제/투입인원×공수=합계공수) + 품목현황 일괄 등록·수정 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -89,6 +89,18 @@ textarea.f-input{resize:vertical;min-height:70px}
 .cat-chip.on{border-color:#1D5BA6;background:#1D5BA6;color:#fff}
 .two-col{display:flex;gap:8px}
 .two-col .f-input{flex:1}
+.cat-auto-hint{font-size:11px;color:#1D5BA6;margin-top:4px;min-height:14px}
+.sf-todo-wrap{display:flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid #dde4ef;border-radius:9px;cursor:pointer;user-select:none;margin:10px 0 6px}
+.sf-todo-wrap.on{border-color:#1D5BA6;background:#f4f8ff}
+.sf-todo-cb{width:18px;height:18px;border:2px solid #c7c7cc;border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px}
+.sf-todo-wrap.on .sf-todo-cb{background:#1D5BA6;border-color:#1D5BA6;color:#fff}
+.sf-todo-label{font-size:13px;color:#555}
+.sf-todo-wrap.on .sf-todo-label{color:#1D5BA6;font-weight:600}
+.sf-time-block.disabled{opacity:.35;pointer-events:none}
+.sf-3col{display:flex;gap:6px}
+.sf-3col .col-date{flex:1.5}
+.sf-3col .col-h,.sf-3col .col-m{flex:1}
+.sf-3col select.f-input{padding:9px 4px;text-align:center}
 .sd-row{display:flex;gap:8px;padding:9px 0;border-bottom:1px solid #F0F4F9;font-size:13px}
 .sd-row:last-child{border-bottom:none}
 .sd-row .k{width:66px;color:#9AAABF;font-weight:600;flex-shrink:0}
@@ -451,23 +463,39 @@ textarea.f-input{resize:vertical;min-height:70px}
     <div class="sheet-head"><div class="sheet-title" id="sf-title">📅 일정 등록</div><button class="sheet-close" onclick="closeSchedForm()">×</button></div>
     <div class="sheet-body">
       <label class="f-label">일정 내용 <span style="color:#aaa;font-weight:400">(공란 가능)</span></label>
-      <input class="f-input" type="text" id="s-text" placeholder="예: FCU 야간 설치 작업">
-      <label class="f-label">카테고리</label>
+      <input class="f-input" type="text" id="s-text" placeholder="예: FCU 야간 설치 작업" oninput="schedAutoDetect()">
+      <div class="cat-auto-hint" id="s-cat-hint"></div>
+      <label class="f-label">카테고리 <span style="color:#aaa;font-weight:400">(자동 추정 · 탭해서 변경)</span></label>
       <div class="cats" id="s-cats"></div>
-      <label class="f-label">시작</label>
-      <div class="two-col"><input class="f-input" type="date" id="s-sdate"><input class="f-input" type="time" id="s-stime"></div>
-      <label class="f-label">종료 <span style="color:#aaa;font-weight:400">(같은 날이면 비워도 됨)</span></label>
-      <div class="two-col"><input class="f-input" type="date" id="s-edate"><input class="f-input" type="time" id="s-etime"></div>
-      <label class="f-label">장소 <span style="color:#aaa;font-weight:400">(선택)</span></label>
+      <div class="sf-todo-wrap" id="s-todo-wrap" onclick="toggleSchedTodo()">
+        <div class="sf-todo-cb" id="s-todo-cb"></div>
+        <span class="sf-todo-label">할 일 (시간 없이 체크리스트로 등록)</span>
+      </div>
+      <div id="s-time-block">
+        <label class="f-label">시작</label>
+        <div class="sf-3col" style="margin-bottom:8px">
+          <div class="col-date"><input class="f-input" type="date" id="s-sdate"></div>
+          <div class="col-h"><select class="f-input" id="s-sh"></select></div>
+          <div class="col-m"><select class="f-input" id="s-sm"></select></div>
+        </div>
+        <label class="f-label">종료 <span style="color:#aaa;font-weight:400">(다중일 가능 · 같은 날이면 비워도 됨)</span></label>
+        <div class="sf-3col">
+          <div class="col-date"><input class="f-input" type="date" id="s-edate"></div>
+          <div class="col-h"><select class="f-input" id="s-eh"></select></div>
+          <div class="col-m"><select class="f-input" id="s-em"></select></div>
+        </div>
+      </div>
+      <label class="f-label">장소 <span style="color:#aaa;font-weight:400">(공란 가능)</span></label>
       <input class="f-input" type="text" id="s-place" placeholder="예: 가동 1층 대회의실">
-      <label class="f-label">참석자 <span style="color:#aaa;font-weight:400">(선택)</span></label>
+      <label class="f-label">참석자 <span style="color:#aaa;font-weight:400">(공란 가능)</span></label>
       <input class="f-input" type="text" id="s-att" placeholder="예: 서민우 팀장, 김혁">
-      <label class="f-label">등록자 <span style="color:#aaa;font-weight:400">(선택)</span></label>
+      <label class="f-label">등록자 <span style="color:#aaa;font-weight:400">(상세에서만 표시)</span></label>
       <input class="f-input" type="text" id="s-reg" placeholder="본인 이름">
-      <button class="btn-primary block" id="s-save-btn" onclick="saveSched()">등록</button>
+      <button class="btn-primary block" id="s-save-btn" onclick="saveSched()">등록하기</button>
     </div>
   </div>
 </div>
+
 
 <!-- 일정 상세 모달 -->
 <div class="modal" id="sched-detail-modal">
@@ -1107,9 +1135,11 @@ async function recalcTotalManday(){
 const SCHED_TAG = {
   in:{c:'#1D5BA6',l:'반입'}, inspect:{c:'#2e7d32',l:'검수'}, edu:{c:'#5e35b1',l:'교육'},
   meeting:{c:'#5D3A00',l:'회의'}, fcu:{c:'#0A3D7A',l:'설치'}, safety:{c:'#8D6E00',l:'안전'},
-  off:{c:'#c0392b',l:'휴무'}, leave:{c:'#e67e22',l:'연차'}, admin:{c:'#7A8AA0',l:'행정'}
+  off:{c:'#c0392b',l:'휴무'}, leave:{c:'#e67e22',l:'연차'}, quality:{c:'#00695C',l:'품질'}, admin:{c:'#7A8AA0',l:'기타'}
 };
-const SCHED_CATS=[['in','반입'],['inspect','검수'],['edu','교육'],['meeting','회의'],['fcu','설치'],['safety','안전'],['off','휴무'],['leave','연차'],['admin','행정']];
+// 메인 PJT(FAB)와 동일한 카테고리 선택지 (구 태그 inspect/leave 등은 과거 데이터 표시 호환용으로 SCHED_TAG에만 유지)
+const SCHED_CATS=[['edu','교육'],['meeting','회의'],['in','반입'],['fcu','설치'],['off','휴무'],['safety','안전'],['quality','품질'],['admin','기타']];
+const SCHED_LABELS={edu:'교육',meeting:'회의',in:'반입',fcu:'설치',off:'휴무',safety:'안전',quality:'품질',admin:'기타'};
 let calY, calM, calSel=null, calCache={};
 let schedCurCat='admin', schedEditing=null, schedDetailItem=null;
 const calPad=n=>String(n).padStart(2,'0');
@@ -1118,7 +1148,8 @@ function rangeText(s){
   const f=d=>{ if(!d) return ''; const p=d.split('-'); return (+p[1])+'/'+(+p[2]); };
   const sd=s.sdate||'', ed=s.edate||sd;
   let base=(sd===ed)?f(sd):f(sd)+' ~ '+f(ed);
-  if(s.stime) base+=' '+s.stime+(s.etime?('~'+s.etime):'');
+  if(s.isTodo || !s.stime) base+=' (시간 미정)';
+  else base+=' '+s.stime+(s.etime?('~'+s.etime):'');
   return base||'—';
 }
 
@@ -1206,20 +1237,63 @@ function renderSchedCats(){
     return '<span class="cat-chip'+(c[0]===schedCurCat?' on':'')+'" onclick="pickSchedCat(\''+c[0]+'\')">'+c[1]+'</span>';
   }).join('');
 }
-window.pickSchedCat=function(tag){ schedCurCat=tag; renderSchedCats(); };
+let schedCatTouched=false;
+window.pickSchedCat=function(tag){ schedCurCat=tag; schedCatTouched=true; renderSchedCats(); document.getElementById('s-cat-hint').textContent=''; };
+window.schedAutoDetect=function(){
+  if(schedCatTouched) return;
+  const t=document.getElementById('s-text').value;
+  let tag='admin';
+  if(/회의/.test(t)) tag='meeting';
+  else if(/교육|훈련/.test(t)) tag='edu';
+  else if(/반입|입고/.test(t)) tag='in';
+  else if(/설치|시공|FCU|EHU/.test(t)) tag='fcu';
+  else if(/휴무|휴일|휴가/.test(t)) tag='off';
+  else if(/안전|점검|대피|소방|TBM/.test(t)) tag='safety';
+  else if(/품질|QC|공정회의/.test(t)) tag='quality';
+  schedCurCat=tag;
+  renderSchedCats();
+  document.getElementById('s-cat-hint').textContent=(tag!=='admin')?('자동 추정: '+SCHED_LABELS[tag]+' (다르면 위에서 탭해 변경)'):'';
+};
+
+let schedTodo=false;
+function setSchedTodo(v){
+  schedTodo=v;
+  const wrap=document.getElementById('s-todo-wrap'), cb=document.getElementById('s-todo-cb'), block=document.getElementById('s-time-block');
+  if(!wrap) return;
+  if(v){ wrap.classList.add('on'); cb.textContent='✓'; block.classList.add('disabled'); }
+  else{ wrap.classList.remove('on'); cb.textContent=''; block.classList.remove('disabled'); }
+}
+window.toggleSchedTodo=function(){ setSchedTodo(!schedTodo); };
+
+function schedPad(n){ return String(n).padStart(2,'0'); }
+function buildSchedHourSel(sel, defH){
+  let h=''; for(let i=0;i<=24;i++) h+='<option value="'+schedPad(i)+'">'+schedPad(i)+'시</option>';
+  sel.innerHTML=h; sel.value=schedPad(defH||0);
+}
+function buildSchedMinSel(sel, defM){
+  let h=''; for(let m=0;m<=50;m+=10) h+='<option value="'+schedPad(m)+'">'+schedPad(m)+'분</option>';
+  sel.innerHTML=h; sel.value=schedPad(defM||0);
+}
+function schedGetTime(hId,mId){ return document.getElementById(hId).value+':'+document.getElementById(mId).value; }
+function schedParseTime(t){ if(!t) return {h:0,m:0}; const p=(t+':00').split(':'); return {h:parseInt(p[0])||0, m:parseInt(p[1])||0}; }
 
 window.openSchedForm=function(dk){
   schedEditing=null;
   document.getElementById('sf-title').textContent='📅 일정 등록';
+  document.querySelector('#sched-modal .btn-primary').textContent='등록하기';
   document.getElementById('s-text').value='';
-  schedCurCat='admin';
-  document.getElementById('s-sdate').value=dk||'';
-  document.getElementById('s-edate').value=dk||'';
-  document.getElementById('s-stime').value='';
-  document.getElementById('s-etime').value='';
+  schedCurCat='admin'; schedCatTouched=false;
+  document.getElementById('s-cat-hint').textContent='';
+  document.getElementById('s-sdate').value=dk||getToday();
+  document.getElementById('s-edate').value=dk||getToday();
+  buildSchedHourSel(document.getElementById('s-sh'),0);
+  buildSchedMinSel(document.getElementById('s-sm'),0);
+  buildSchedHourSel(document.getElementById('s-eh'),0);
+  buildSchedMinSel(document.getElementById('s-em'),0);
+  setSchedTodo(false);
   document.getElementById('s-place').value='';
   document.getElementById('s-att').value='';
-  document.getElementById('s-reg').value='';
+  document.getElementById('s-reg').value=loginUserLabel||'';
   renderSchedCats();
   closeSchedDetail();
   document.getElementById('sched-modal').classList.add('on');
@@ -1252,12 +1326,16 @@ window.editSchedFromDetail=function(){
   closeSchedDetail();
   schedEditing=item;
   document.getElementById('sf-title').textContent='✏️ 일정 수정';
+  document.querySelector('#sched-modal .btn-primary').textContent='수정 저장';
   document.getElementById('s-text').value=item.text||'';
-  schedCurCat=item.tag||'admin';
+  schedCurCat=item.tag||'admin'; schedCatTouched=true;
+  document.getElementById('s-cat-hint').textContent='';
   document.getElementById('s-sdate').value=item.sdate||'';
   document.getElementById('s-edate').value=item.edate||item.sdate||'';
-  document.getElementById('s-stime').value=item.stime||'';
-  document.getElementById('s-etime').value=item.etime||'';
+  const sp=schedParseTime(item.stime), ep=schedParseTime(item.etime);
+  buildSchedHourSel(document.getElementById('s-sh'),sp.h); buildSchedMinSel(document.getElementById('s-sm'),sp.m);
+  buildSchedHourSel(document.getElementById('s-eh'),ep.h); buildSchedMinSel(document.getElementById('s-em'),ep.m);
+  setSchedTodo(!!item.isTodo);
   document.getElementById('s-place').value=item.place||'';
   document.getElementById('s-att').value=item.att||'';
   document.getElementById('s-reg').value=item.reg||'';
@@ -1273,15 +1351,16 @@ window.deleteSchedFromDetail=function(){
 window.saveSched=async function(){
   let sdate=document.getElementById('s-sdate').value;
   let edate=document.getElementById('s-edate').value||sdate;
-  if(!sdate){ toast('시작일을 입력하세요'); return; }
+  if(!sdate){ sdate=getToday(); }
   if(edate<sdate) edate=sdate;
-  const tagLabel=(SCHED_CATS.find(function(c){ return c[0]===schedCurCat; })||['admin','행정'])[1];
+  const tagLabel=(SCHED_CATS.find(function(c){ return c[0]===schedCurCat; })||['admin','기타'])[1];
   const data={
     text: document.getElementById('s-text').value.trim(),
     tag: schedCurCat, tagLabel: tagLabel,
     sdate, edate,
-    stime: document.getElementById('s-stime').value||'',
-    etime: document.getElementById('s-etime').value||'',
+    isTodo: schedTodo,
+    stime: schedTodo?'':schedGetTime('s-sh','s-sm'),
+    etime: schedTodo?'':schedGetTime('s-eh','s-em'),
     place: document.getElementById('s-place').value.trim(),
     att: document.getElementById('s-att').value.trim(),
     reg: document.getElementById('s-reg').value.trim()
@@ -1298,7 +1377,7 @@ window.saveSched=async function(){
     closeSchedForm();
     await loadSchedMonth();
   }catch(e){ toast('저장 실패: '+e.message); }
-  finally{ btn.disabled=false; btn.textContent='등록'; }
+  finally{ btn.disabled=false; btn.textContent='등록하기'; }
 };
 window.deleteSched=async function(id){
   if(!confirm('이 일정을 삭제할까요?')) return;
