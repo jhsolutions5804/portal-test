@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260818 · ver: 3.1.1 · 경량 PJT 워크스페이스 · 마스터 명부 퇴사자는 인원 추가 드롭다운에서 제외 -->
+<!DOCTYPE html><!-- build: 20260819 · ver: 3.2.0 · 경량 PJT 워크스페이스 · 공사일보 메인 PJT 수준으로 고도화(작성자 마스터명부/품목현황·근태 자동반영/장비/PDF/조회·수정·삭제) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -72,6 +72,17 @@ textarea.f-input{resize:vertical;min-height:70px}
 .item-summary-row{display:none}
 .stage-editor-tag{display:inline-flex;align-items:center;gap:5px;background:#f4f8ff;color:#1D5BA6;border:1px solid #d6e4f6;border-radius:16px;padding:4px 10px 4px 12px;font-size:12px;font-weight:600;margin:0 6px 6px 0}
 .stage-editor-tag button{background:none;border:none;color:#1D5BA6;cursor:pointer;font-size:13px;padding:0 2px}
+/* 공사일보: 장비 칩 / 인원 스테퍼 / 목록 행 */
+.equip-chip{display:inline-flex;align-items:center;gap:5px;background:#f4f8ff;color:#1D5BA6;border:1px solid #d6e4f6;border-radius:16px;padding:4px 8px 4px 12px;font-size:12px;font-weight:600;margin:0 6px 6px 0}
+.equip-chip .rm{cursor:pointer;color:#8aa9d6;font-size:13px;padding:0 2px}
+.equip-empty{font-size:12px;color:#9AAABF}
+.counter-row-sm{display:flex;align-items:center;gap:12px}
+.cnt-btn-sm{width:30px;height:30px;border-radius:8px;border:1.5px solid #dde4ef;background:#fff;color:#1D5BA6;font-size:16px;font-weight:700;cursor:pointer}
+.counter-val-sm{font-size:16px;font-weight:800;color:#1A2540;min-width:28px;text-align:center}
+.dr-row{display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;border-radius:8px}
+.dr-row:hover{background:#f9fafc}
+.dr-row:last-child{border-bottom:none}
+.ro-field{padding:9px 12px;background:#f5f5f7;border-radius:8px;font-size:13px;color:#86868b;white-space:pre-wrap}
 /* 일정 등록 폼: 카테고리 칩 / 2열 일시 */
 .cats{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
 .cat-chip{font-size:12px;padding:5px 11px;border-radius:14px;border:1.5px solid #DDE4EF;background:#fff;color:#5C6F8A;cursor:pointer;font-weight:600}
@@ -297,7 +308,10 @@ textarea.f-input{resize:vertical;min-height:70px}
       <div class="card">
         <div class="card-title">
           <span>📦 품목별 공정 체크</span>
-          <button class="btn-sm" id="item-add-btn" onclick="openItemAdd()" style="display:none">+ 품목 추가</button>
+          <span>
+            <button class="btn-sm" id="item-bulk-btn" onclick="openBulkItemModal()" style="display:none">📋 일괄 등록/수정</button>
+            <button class="btn-sm" id="item-add-btn" onclick="openItemAdd()" style="display:none">+ 품목 추가</button>
+          </span>
         </div>
         <div class="item-grid-wrap" id="item-grid-wrap"><div class="loading">불러오는 중...</div></div>
       </div>
@@ -377,15 +391,40 @@ textarea.f-input{resize:vertical;min-height:70px}
         <div class="card">
           <div class="card-title"><span>📝 공사일보 작성</span></div>
           <label class="f-label">작성자</label>
-          <input class="f-input" type="text" id="r-author" placeholder="작성자명">
-          <label class="f-label">작업 내용</label>
+          <select class="f-input" id="r-author"><option value="">작성자 선택</option></select>
+          <label class="f-label">금일 작업 내용 <span style="font-weight:400;color:#9AAABF">(품목현황 체크 기준 자동 반영, 수정 가능)</span></label>
           <textarea class="f-input" id="r-content" placeholder="금일 작업 내용을 입력하세요"></textarea>
+          <div style="text-align:right;margin-top:-4px"><button type="button" class="btn-sm" onclick="autofillReportContent()">🔄 품목 체크 다시 불러오기</button></div>
+          <label class="f-label">명일 예정 작업</label>
+          <textarea class="f-input" id="r-tomorrow" placeholder="예) FCU 설치 예정, 자재 반입 예정 등" style="min-height:50px"></textarea>
+          <label class="f-label">기술인 투입 인원 <span style="font-weight:400;color:#9AAABF">(근태·공수 출역 기준 자동 반영)</span></label>
+          <div class="counter-row-sm">
+            <button type="button" class="cnt-btn-sm" onclick="adjReportHeadcount(-1)">−</button>
+            <div class="counter-val-sm" id="r-headcount">0</div>
+            <button type="button" class="cnt-btn-sm" onclick="adjReportHeadcount(1)">+</button>
+            <span style="font-size:12px;color:#9AAABF">명</span>
+          </div>
+          <label class="f-label">사용 장비</label>
+          <div id="r-equip-chips">
+            <span class="equip-empty">장비를 선택하세요</span>
+          </div>
+          <select class="f-input" id="r-equip-sel" onchange="addReportEquip(this)">
+            <option value="">+ 장비 추가</option>
+            <option value="지게차(004나6452)">지게차 (004나6452)</option>
+            <option value="지게차(004나8334)">지게차 (004나8334)</option>
+            <option value="지게차(004라7402)">지게차 (004라7402)</option>
+            <option value="지게차(경기04로8396)">지게차 (경기04로8396)</option>
+            <option value="지게차(경기04보6471)">지게차 (경기04보6471)</option>
+          </select>
           <label class="f-label">특이사항</label>
           <textarea class="f-input" id="r-note" placeholder="특이사항 (선택)" style="min-height:50px"></textarea>
-          <button class="btn-primary block" id="r-save-btn" onclick="saveReport()">저장</button>
+          <div style="display:flex;gap:8px;margin-top:14px">
+            <button type="button" class="btn-sm" style="flex:1;padding:11px" onclick="previewReport()">👁 미리보기 · PDF</button>
+            <button type="button" class="btn-primary" style="flex:1" id="r-save-btn" onclick="saveReport()">저장</button>
+          </div>
         </div>
         <div class="card">
-          <div class="card-title"><span>📋 최근 공사일보</span></div>
+          <div class="card-title"><span>📋 최근 공사일보</span><button class="btn-sm" onclick="openReportList()">📂 전체보기</button></div>
           <div id="report-list"><div class="loading">불러오는 중...</div></div>
         </div>
       </div>
@@ -436,6 +475,22 @@ textarea.f-input{resize:vertical;min-height:70px}
   </div>
 </div>
 
+<!-- 품목 일괄 등록/수정 모달 -->
+<div class="modal" id="bulk-item-modal">
+  <div class="sheet" style="max-width:640px">
+    <div class="sheet-head"><div class="sheet-title">📦 품목 일괄 등록/수정</div><button class="sheet-close" onclick="closeBulkItemModal()">×</button></div>
+    <div class="sheet-body">
+      <label class="f-label">📋 붙여넣기로 일괄 추가 <span style="font-weight:400;color:#9AAABF">(한 줄에 품목명 하나씩)</span></label>
+      <textarea class="f-input" id="bulk-add-text" placeholder="예)&#10;C01-FCU-X15001A : Check Valve&#10;C01-FCU-X15001B : Check Valve" style="min-height:100px"></textarea>
+      <button class="btn-primary block" id="bulk-add-btn" onclick="bulkAddItems()">일괄 추가</button>
+      <div style="border-top:1px solid #f0f0f0;margin:20px 0 14px"></div>
+      <label class="f-label">✏️ 기존 품목 수정 · 삭제 <span style="font-weight:400;color:#9AAABF">(이름을 고친 뒤 하단에서 저장)</span></label>
+      <div id="bulk-edit-list" style="max-height:320px;overflow-y:auto;margin-top:6px"></div>
+      <button class="btn-primary block" id="bulk-save-btn" onclick="saveBulkItemEdits()">수정사항 저장</button>
+    </div>
+  </div>
+</div>
+
 <!-- 품목 추가 모달 -->
 <div class="modal" id="item-modal">
   <div class="sheet">
@@ -460,11 +515,51 @@ textarea.f-input{resize:vertical;min-height:70px}
   </div>
 </div>
 
+<!-- 공사일보 조회 모달 -->
+<div class="modal" id="dr-list-modal">
+  <div class="sheet" style="max-width:720px">
+    <div class="sheet-head"><div class="sheet-title">📂 공사일보 조회</div><button class="sheet-close" onclick="closeReportList()">×</button></div>
+    <div class="sheet-body" id="dr-list-body"><div class="loading">불러오는 중...</div></div>
+  </div>
+</div>
+
+<!-- 공사일보 상세/수정 모달 -->
+<div class="modal" id="dr-detail-modal">
+  <div class="sheet" style="max-width:720px">
+    <div class="sheet-head"><div class="sheet-title" id="dr-detail-title">공사일보 상세</div><button class="sheet-close" onclick="closeReportDetail()">×</button></div>
+    <div class="sheet-body" id="dr-detail-body"></div>
+    <div style="padding:4px 18px 20px">
+      <div id="dr-view-btns" style="display:flex;gap:8px">
+        <button type="button" class="btn-sm" style="flex:1;padding:11px" onclick="printReportDetail()">📄 PDF</button>
+        <button type="button" class="btn-sm" style="flex:1;padding:11px" onclick="editReportDetail()">✏️ 수정</button>
+        <button type="button" class="btn-sm" style="flex:1;padding:11px;color:#c0392b" onclick="deleteReportDetail()">🗑 삭제</button>
+      </div>
+      <div id="dr-edit-btns" style="display:none;gap:8px">
+        <button type="button" class="btn-primary" style="flex:1" onclick="saveReportDetailEdit()">💾 저장</button>
+        <button type="button" class="btn-sm" style="flex:1;padding:11px" onclick="cancelReportDetailEdit()">취소</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 공사일보 미리보기 모달 -->
+<div class="modal" id="dr-preview-modal">
+  <div class="sheet" style="max-width:640px">
+    <div class="sheet-head"><div class="sheet-title">👁 공사일보 미리보기</div><button class="sheet-close" onclick="closeReportPreview()">×</button></div>
+    <div class="sheet-body" id="dr-preview-body"></div>
+    <div style="padding:4px 18px 20px;display:flex;gap:8px">
+      <button type="button" class="btn-primary" style="flex:1" onclick="pdfFromPreview()">📄 PDF로 저장</button>
+    </div>
+  </div>
+</div>
+
+<div id="dr-print-area" style="display:none"></div>
+
 <div class="toast" id="toast"></div>
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, orderBy, getDocs, deleteDoc, serverTimestamp }
+import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, orderBy, getDocs, deleteDoc, serverTimestamp, deleteField, writeBatch }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { getAuth, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
@@ -510,6 +605,7 @@ let pjtData=null;
 let stageList=[];
 let itemsCache=[];
 let workersCache=[];
+let loginUserLabel='';
 
 // ══════════════════════════════════════════
 // 접근 검증 — 로그인 + 승인된 계정만. URL 직접 접근 우회 차단.
@@ -525,6 +621,7 @@ onAuthStateChanged(auth, async function(user){
     const ok=!!(uData && uData.status==='approved' && (uData.admin===true || (uData.perms && uData.perms.pjt===true)));
     if(!ok){ showAccessDenied('PJT 관리 접근 권한이 없습니다. 관리자에게 요청해주세요.'); return; }
     isAdmin=!!(uData && uData.admin===true);
+    loginUserLabel=uData?((uData.name||'')+' '+(uData.rank||'')).trim():'';
     init();
   }catch(e){ showAccessDenied('권한 확인 중 오류가 발생했습니다: '+e.message); }
 });
@@ -543,6 +640,7 @@ async function init(){
     if(isAdmin){
       document.getElementById('admin-row').style.display='grid';
       document.getElementById('item-add-btn').style.display='inline-block';
+      document.getElementById('item-bulk-btn').style.display='inline-block';
       document.getElementById('worker-add-btn').style.display='inline-block';
       document.getElementById('att-save-btn').style.display='block';
       document.getElementById('e-start').value=pjtData.startDate||'';
@@ -664,18 +762,102 @@ window.deleteItem=async function(id){
   try{ await deleteDoc(doc(db,'pjt_registry',pjtId,'items',id)); await loadItems(); }
   catch(e){ toast('삭제 실패: '+e.message); }
 };
+
+// ── 품목 일괄 등록/수정 ──
+window.openBulkItemModal=function(){
+  document.getElementById('bulk-add-text').value='';
+  renderBulkEditList();
+  document.getElementById('bulk-item-modal').classList.add('on');
+};
+window.closeBulkItemModal=function(){ document.getElementById('bulk-item-modal').classList.remove('on'); };
+function renderBulkEditList(){
+  const el=document.getElementById('bulk-edit-list');
+  if(!itemsCache.length){ el.innerHTML='<div class="empty">등록된 품목이 없습니다.</div>'; return; }
+  el.innerHTML=itemsCache.map(function(it){
+    return '<div class="two-col" style="align-items:center;margin-bottom:8px" data-id="'+it.id+'">'
+      +'<input class="f-input" type="text" value="'+escapeHtml(it.name||'')+'">'
+      +'<button type="button" class="del-btn" onclick="markBulkDelete(this)">삭제</button></div>';
+  }).join('');
+}
+window.markBulkDelete=function(btn){
+  const row=btn.closest('[data-id]');
+  const marked=row.dataset.deleted==='1';
+  row.dataset.deleted=marked?'':'1';
+  row.style.opacity=marked?'1':'.4';
+  row.querySelector('input').disabled=!marked;
+  btn.textContent=marked?'삭제':'취소';
+};
+window.bulkAddItems=async function(){
+  const raw=document.getElementById('bulk-add-text').value;
+  const names=raw.split('\n').map(function(s){return s.trim();}).filter(Boolean);
+  if(!names.length){ toast('추가할 품목명을 입력하세요'); return; }
+  const btn=document.getElementById('bulk-add-btn'); btn.disabled=true; btn.textContent='추가 중...';
+  try{
+    const batch=writeBatch(db);
+    let order=itemsCache.length;
+    names.forEach(function(name){
+      const ref=doc(collection(db,'pjt_registry',pjtId,'items'));
+      batch.set(ref, {name:name, stages:{}, order:order++, createdAt: serverTimestamp()});
+    });
+    await batch.commit();
+    document.getElementById('bulk-add-text').value='';
+    await loadItems();
+    renderBulkEditList();
+    toast(names.length+'개 품목이 추가되었습니다');
+  }catch(e){ toast('추가 실패: '+e.message); }
+  finally{ btn.disabled=false; btn.textContent='일괄 추가'; }
+};
+window.saveBulkItemEdits=async function(){
+  const rows=Array.from(document.querySelectorAll('#bulk-edit-list [data-id]'));
+  const toDelete=rows.filter(function(r){ return r.dataset.deleted==='1'; });
+  const toRename=[];
+  rows.forEach(function(r){
+    if(r.dataset.deleted==='1') return;
+    const id=r.dataset.id;
+    const newName=r.querySelector('input').value.trim();
+    const orig=itemsCache.find(function(it){ return it.id===id; });
+    if(orig && newName && newName!==orig.name) toRename.push({id:id, newName:newName});
+  });
+  if(!toDelete.length && !toRename.length){ toast('변경사항이 없습니다'); return; }
+  let msg='';
+  if(toRename.length) msg+='이름 변경 '+toRename.length+'건';
+  if(toDelete.length) msg+=(msg?', ':'')+'삭제 '+toDelete.length+'건';
+  if(!confirm(msg+'을(를) 저장할까요?'+(toDelete.length?'\n삭제된 품목의 진행 체크 기록은 복구할 수 없습니다.':''))) return;
+  const btn=document.getElementById('bulk-save-btn'); btn.disabled=true; btn.textContent='저장 중...';
+  try{
+    const batch=writeBatch(db);
+    toRename.forEach(function(r){ batch.update(doc(db,'pjt_registry',pjtId,'items',r.id), {name:r.newName}); });
+    toDelete.forEach(function(r){ batch.delete(doc(db,'pjt_registry',pjtId,'items',r.dataset.id)); });
+    await batch.commit();
+    await loadItems();
+    renderBulkEditList();
+    toast('저장되었습니다');
+  }catch(e){ toast('저장 실패: '+e.message); }
+  finally{ btn.disabled=false; btn.textContent='수정사항 저장'; }
+};
+
 window.toggleItemStage=async function(id, encodedStage){
   const stage=decodeURIComponent(encodedStage);
   const item=itemsCache.find(x=>x.id===id);
   if(!item) return;
   const stages=Object.assign({}, item.stages||{});
-  stages[stage]=!stages[stage];
+  const willCheck=!stages[stage];
+  stages[stage]=willCheck;
   try{
     await updateDoc(doc(db,'pjt_registry',pjtId,'items',id), {stages});
     item.stages=stages;
     renderItemGrid();
     renderItemSummary();
     await recalcProgress();
+    // 공사일보 자동반영용: 오늘 날짜에 체크/해제 이력 기록
+    const today=getToday();
+    const checkRef=doc(db,'pjt_registry',pjtId,'item_checks',today);
+    const fieldPath=id+'.'+stage;
+    if(willCheck){
+      await setDoc(checkRef, {[id]:{[stage]:true}}, {merge:true});
+    } else {
+      try{ await updateDoc(checkRef, {[fieldPath]: deleteField()}); }catch(e){ /* 문서/필드 없으면 무시 */ }
+    }
   }catch(e){ toast('저장 실패: '+e.message); }
 };
 async function loadItems(){
@@ -1120,6 +1302,9 @@ window.deleteSched=async function(id){
 
 // ── 공사일보 ──
 let reportDate=getToday();
+let reportEquips=[];
+let authorOptionsLoaded=false;
+
 function renderReportDay(){
   const d=new Date(reportDate+'T00:00:00');
   document.getElementById('report-day-title').textContent=(d.getMonth()+1)+'월 '+d.getDate()+'일';
@@ -1130,32 +1315,122 @@ window.reportDayShift=function(n){
   reportDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   renderReportDay();
 };
+
+// 작성자 드롭다운: portal_users(포털 계정)에서 로드 + 로그인 계정 자동 추가
+async function loadAuthorOptions(){
+  if(authorOptionsLoaded) return; authorOptionsLoaded=true;
+  const sel=document.getElementById('r-author'); if(!sel) return;
+  const byName={};
+  try{
+    const snap=await getDocs(collection(db,'portal_users'));
+    snap.forEach(function(d){ const u=d.data(); if(u&&u.name){ byName[u.name]=(u.name+' '+(u.rank||'')).trim(); } });
+  }catch(e){}
+  const names=Object.keys(byName).map(function(n){ return byName[n]; }).sort(function(a,b){ return a.localeCompare(b,'ko'); });
+  names.forEach(function(nm){ const op=document.createElement('option'); op.value=nm; op.textContent=nm; sel.appendChild(op); });
+}
+
+// 사용 장비 칩
+window.addReportEquip=function(sel){
+  const v=sel.value; if(!v) return;
+  if(!reportEquips.includes(v)) reportEquips.push(v);
+  sel.value=''; renderReportEquipChips();
+};
+window.rmReportEquip=function(idx){ reportEquips.splice(idx,1); renderReportEquipChips(); };
+function renderReportEquipChips(){
+  const el=document.getElementById('r-equip-chips'); if(!el) return;
+  el.innerHTML=reportEquips.length
+    ? reportEquips.map(function(v,idx){ return '<span class="equip-chip">'+escapeHtml(v)+'<span class="rm" onclick="rmReportEquip('+idx+')">×</span></span>'; }).join('')
+    : '<span class="equip-empty">장비를 선택하세요</span>';
+}
+
+// 기술인 투입 인원 수동 조정
+window.adjReportHeadcount=function(n){
+  const el=document.getElementById('r-headcount');
+  const v=Math.max(0, (parseInt(el.textContent)||0)+n);
+  el.textContent=v;
+};
+
+// 품목현황 체크(오늘자 item_checks) 기반 작업내용 자동 생성
+async function buildAutoReportContent(dateKey){
+  try{
+    const [checkSnap, itemSnap]=await Promise.all([
+      getDoc(doc(db,'pjt_registry',pjtId,'item_checks',dateKey)),
+      getDocs(query(collection(db,'pjt_registry',pjtId,'items'), orderBy('order','asc')))
+    ]);
+    if(!checkSnap.exists()) return '';
+    const checks=checkSnap.data()||{};
+    const nameById={}; itemSnap.forEach(function(d){ nameById[d.id]=(d.data().name||'품목'); });
+    const lines=[];
+    Object.keys(checks).forEach(function(itemId){
+      const stages=Object.keys(checks[itemId]||{}).filter(function(s){ return checks[itemId][s]; });
+      if(!stages.length) return;
+      lines.push('['+(nameById[itemId]||'품목')+'] '+stages.join(', ')+' 완료');
+    });
+    return lines.join('\n');
+  }catch(e){ return ''; }
+}
+window.autofillReportContent=async function(){
+  const el=document.getElementById('r-content');
+  const auto=await buildAutoReportContent(reportDate);
+  el.value=auto||'해당 날짜에 품목현황 체크 항목이 없습니다.';
+};
+
 async function loadReportOfDay(){
+  loadAuthorOptions();
+  const contentEl=document.getElementById('r-content');
+  document.getElementById('r-author').value='';
+  contentEl.value=''; document.getElementById('r-tomorrow').value=''; document.getElementById('r-note').value='';
+  document.getElementById('r-headcount').textContent='0';
+  reportEquips=[]; renderReportEquipChips();
   try{
     const snap=await getDoc(doc(db,'pjt_registry',pjtId,'reports',reportDate));
     if(snap.exists()){
       const r=snap.data();
       document.getElementById('r-author').value=r.author||'';
-      document.getElementById('r-content').value=r.content||'';
+      contentEl.value=r.content||'';
+      document.getElementById('r-tomorrow').value=r.tomorrow||'';
+      document.getElementById('r-headcount').textContent=r.headcount||0;
+      reportEquips=(r.equip?String(r.equip).split(',').map(function(s){return s.trim();}).filter(Boolean):[]);
+      renderReportEquipChips();
       document.getElementById('r-note').value=r.note||'';
     } else {
-      document.getElementById('r-author').value=''; document.getElementById('r-content').value=''; document.getElementById('r-note').value='';
+      // 저장된 일보가 없으면 품목현황 체크 + 출역 인원으로 자동 프리필
+      if(!document.getElementById('r-author').value && loginUserLabel) document.getElementById('r-author').value=loginUserLabel;
+      const auto=await buildAutoReportContent(reportDate);
+      if(auto) contentEl.value=auto;
+      try{
+        const attSnap=await getDoc(doc(db,'pjt_registry',pjtId,'attendance',reportDate));
+        const cnt=attSnap.exists()?((attSnap.data().checks||[]).length):0;
+        document.getElementById('r-headcount').textContent=cnt;
+      }catch(e){}
     }
   }catch(e){}
 }
+
+function collectReportData(){
+  return {
+    date: reportDate,
+    site: (pjtData&&pjtData.name)||'',
+    author: document.getElementById('r-author').value.trim(),
+    content: document.getElementById('r-content').value.trim(),
+    tomorrow: document.getElementById('r-tomorrow').value.trim(),
+    headcount: parseInt(document.getElementById('r-headcount').textContent)||0,
+    equip: reportEquips.join(', '),
+    note: document.getElementById('r-note').value.trim(),
+  };
+}
+
 window.saveReport=async function(){
-  const content=document.getElementById('r-content').value.trim();
-  if(!content){ toast('작업 내용을 입력하세요'); return; }
+  const d=collectReportData();
+  if(!d.content){ toast('작업 내용을 입력하세요'); return; }
   const btn=document.getElementById('r-save-btn'); btn.disabled=true; btn.textContent='저장 중...';
   try{
-    await setDoc(doc(db,'pjt_registry',pjtId,'reports',reportDate), {
-      date: reportDate, author: document.getElementById('r-author').value.trim(),
-      content: content, note: document.getElementById('r-note').value.trim(), updatedAt: serverTimestamp()
-    }, {merge:true});
+    await setDoc(doc(db,'pjt_registry',pjtId,'reports',reportDate), Object.assign({}, d, {updatedAt: serverTimestamp()}), {merge:true});
     toast('저장되었습니다'); loadReports();
   }catch(e){ toast('저장 실패: '+e.message); }
   finally{ btn.disabled=false; btn.textContent='저장'; }
 };
+
 async function loadReports(){
   const el=document.getElementById('report-list');
   try{
@@ -1165,7 +1440,7 @@ async function loadReports(){
     snap.forEach(function(d){
       if(count>=15) return; count++;
       const r=d.data();
-      html+='<div class="sched-item"><div class="sched-date">'+fmtDate(r.date)+'</div>'
+      html+='<div class="dr-row" onclick="openReportDetail(\''+d.id+'\')"><div class="sched-date">'+fmtDate(r.date)+'</div>'
         +'<div class="sched-body"><div class="sched-title">'+escapeHtml(r.author||'작성자 미상')+'</div>'
         +'<div class="sched-memo">'+escapeHtml(r.content||'')+'</div>'
         +(r.note?('<div class="sched-memo" style="color:#c0392b">⚠ '+escapeHtml(r.note)+'</div>'):'')+'</div></div>';
@@ -1173,6 +1448,170 @@ async function loadReports(){
     el.innerHTML=html||'<div class="empty">작성된 공사일보가 없습니다.</div>';
   }catch(e){ el.innerHTML='<div class="empty">불러오기 실패</div>'; }
 }
+
+// ── 공사일보 조회 목록 모달 ──
+window.openReportList=function(){
+  document.getElementById('dr-list-modal').classList.add('on');
+  loadReportListModal();
+};
+window.closeReportList=function(){ document.getElementById('dr-list-modal').classList.remove('on'); };
+async function loadReportListModal(){
+  const body=document.getElementById('dr-list-body');
+  body.innerHTML='<div class="loading">불러오는 중...</div>';
+  try{
+    const snap=await getDocs(query(collection(db,'pjt_registry',pjtId,'reports'), orderBy('date','desc')));
+    if(snap.empty){ body.innerHTML='<div class="empty">저장된 공사일보가 없습니다.</div>'; return; }
+    let html='';
+    snap.forEach(function(d){
+      const r=d.data();
+      html+='<div class="dr-row" onclick="openReportDetail(\''+d.id+'\')"><div class="sched-date">'+fmtDate(r.date)+'</div>'
+        +'<div class="sched-body"><div class="sched-title">'+escapeHtml(r.author||'작성자 미상')+'</div>'
+        +'<div class="sched-memo">'+escapeHtml(r.content||'')+'</div></div></div>';
+    });
+    body.innerHTML=html;
+  }catch(e){ body.innerHTML='<div class="empty">불러오기 실패</div>'; }
+}
+
+// ── 공사일보 상세/수정/삭제/PDF ──
+let drCurrentDoc=null;
+function toggleDRBtns(mode){
+  document.getElementById('dr-view-btns').style.display=(mode==='edit')?'none':'flex';
+  document.getElementById('dr-edit-btns').style.display=(mode==='edit')?'flex':'none';
+}
+function renderDRView(r){
+  document.getElementById('dr-detail-title').textContent='공사일보 — '+(r.date||r.id||'');
+  const rows=[
+    ['현장명', r.site||'—'],
+    ['작성일자', r.date||r.id||'—'],
+    ['작성자', r.author||'—'],
+    ['금일 작업', r.content||'—'],
+    ['명일 예정', r.tomorrow||'—'],
+    ['투입 인원', (r.headcount||r.headcount===0)?r.headcount+'명':'—'],
+    ['사용 장비', r.equip||'—'],
+    ['특이사항', r.note||'—'],
+  ];
+  document.getElementById('dr-detail-body').innerHTML='<table style="width:100%;border-collapse:collapse;font-size:13px">'
+    +rows.map(function(row){
+      return '<tr style="border-bottom:1px solid #f0f0f0">'
+        +'<th style="padding:10px 8px;text-align:left;color:#86868b;font-weight:600;width:88px;white-space:nowrap;vertical-align:top">'+row[0]+'</th>'
+        +'<td style="padding:10px 8px;color:#1d1d1f;white-space:pre-wrap">'+escapeHtml(row[1])+'</td>'
+      +'</tr>';
+    }).join('')
+  +'</table>';
+}
+window.openReportDetail=async function(dateKey){
+  closeReportList();
+  document.getElementById('dr-detail-modal').classList.add('on');
+  toggleDRBtns('view');
+  const body=document.getElementById('dr-detail-body');
+  body.innerHTML='<div class="loading">불러오는 중...</div>';
+  try{
+    const snap=await getDoc(doc(db,'pjt_registry',pjtId,'reports',dateKey));
+    if(!snap.exists()){ body.innerHTML='<div class="empty">데이터를 불러올 수 없습니다.</div>'; return; }
+    drCurrentDoc=Object.assign({id:snap.id}, snap.data());
+    renderDRView(drCurrentDoc);
+  }catch(e){ body.innerHTML='<div class="empty">불러오기 실패</div>'; }
+};
+window.closeReportDetail=function(){
+  document.getElementById('dr-detail-modal').classList.remove('on');
+  document.getElementById('dr-print-area').innerHTML='';
+};
+window.editReportDetail=function(){
+  if(!drCurrentDoc){ toast('불러온 데이터가 없습니다'); return; }
+  const r=drCurrentDoc;
+  const roRow=function(label,val){
+    return '<div style="margin-bottom:12px"><div style="font-size:12px;color:#86868b;font-weight:600;margin-bottom:5px">'+label+'</div><div class="ro-field">'+escapeHtml(val)+'</div></div>';
+  };
+  const inRow=function(label,id,val,type){
+    return '<div style="margin-bottom:12px"><div style="font-size:12px;color:#86868b;font-weight:600;margin-bottom:5px">'+label+'</div><input id="'+id+'" class="f-input" type="'+(type||'text')+'" value="'+escapeHtml(val)+'"></div>';
+  };
+  const taRow=function(label,id,val){
+    return '<div style="margin-bottom:12px"><div style="font-size:12px;color:#86868b;font-weight:600;margin-bottom:5px">'+label+'</div><textarea id="'+id+'" class="f-input">'+escapeHtml(val)+'</textarea></div>';
+  };
+  document.getElementById('dr-detail-title').textContent='공사일보 수정 — '+(r.date||r.id||'');
+  document.getElementById('dr-detail-body').innerHTML=
+    roRow('현장명', r.site||'—')+roRow('작성일자', r.date||r.id||'—')
+    +inRow('작성자','dr-e-author', r.author||'')
+    +taRow('금일 작업','dr-e-content', r.content||'')
+    +taRow('명일 예정','dr-e-tomorrow', r.tomorrow||'')
+    +inRow('투입 인원','dr-e-headcount', r.headcount||0, 'number')
+    +inRow('사용 장비','dr-e-equip', r.equip||'')
+    +taRow('특이사항','dr-e-note', r.note||'');
+  toggleDRBtns('edit');
+};
+window.cancelReportDetailEdit=function(){ if(drCurrentDoc) renderDRView(drCurrentDoc); toggleDRBtns('view'); };
+window.saveReportDetailEdit=async function(){
+  if(!drCurrentDoc){ toast('불러온 데이터가 없습니다'); return; }
+  const dateKey=drCurrentDoc.id;
+  const patch={
+    author: document.getElementById('dr-e-author').value.trim(),
+    content: document.getElementById('dr-e-content').value.trim(),
+    tomorrow: document.getElementById('dr-e-tomorrow').value.trim(),
+    headcount: parseInt(document.getElementById('dr-e-headcount').value)||0,
+    equip: document.getElementById('dr-e-equip').value.trim(),
+    note: document.getElementById('dr-e-note').value.trim(),
+  };
+  try{
+    await setDoc(doc(db,'pjt_registry',pjtId,'reports',dateKey), Object.assign({}, patch, {updatedAt: serverTimestamp()}), {merge:true});
+    Object.assign(drCurrentDoc, patch);
+    renderDRView(drCurrentDoc);
+    toggleDRBtns('view');
+    toast('수정되었습니다');
+    loadReports();
+    if(dateKey===reportDate) loadReportOfDay();
+  }catch(e){ toast('저장 실패: '+e.message); }
+};
+window.deleteReportDetail=async function(){
+  if(!drCurrentDoc){ toast('불러온 데이터가 없습니다'); return; }
+  const dateKey=drCurrentDoc.id;
+  if(!confirm('이 공사일보('+(drCurrentDoc.date||dateKey)+')를 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.')) return;
+  try{
+    await deleteDoc(doc(db,'pjt_registry',pjtId,'reports',dateKey));
+    drCurrentDoc=null;
+    closeReportDetail();
+    toast('삭제되었습니다');
+    loadReports();
+    if(dateKey===reportDate) loadReportOfDay();
+  }catch(e){ toast('삭제 실패: '+e.message); }
+};
+
+function buildReportDocHtml(d){
+  return '<div class="doc-h" style="text-align:center;margin-bottom:20px"><h2 style="font-size:22px;font-weight:700;letter-spacing:4px">공 사 일 보</h2>'
+    +'<p style="font-size:12px;color:#555;margin-top:4px">'+escapeHtml(d.site||'')+'</p></div>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:13px">'
+    +'<tr><th style="border:1px solid #ccc;padding:8px 12px;background:#f5f5f5;width:100px;text-align:left">현장명</th><td style="border:1px solid #ccc;padding:8px 12px">'+escapeHtml(d.site||'—')+'</td></tr>'
+    +'<tr><th style="border:1px solid #ccc;padding:8px 12px;background:#f5f5f5;text-align:left">작성일자</th><td style="border:1px solid #ccc;padding:8px 12px">'+escapeHtml(d.date||'—')+'</td></tr>'
+    +'<tr><th style="border:1px solid #ccc;padding:8px 12px;background:#f5f5f5;text-align:left">작성자</th><td style="border:1px solid #ccc;padding:8px 12px">'+escapeHtml(d.author||'—')+'</td></tr>'
+    +'<tr><th style="border:1px solid #ccc;padding:8px 12px;background:#f5f5f5;text-align:left">금일 작업</th><td style="border:1px solid #ccc;padding:8px 12px;white-space:pre-wrap">'+escapeHtml(d.content||'—')+'</td></tr>'
+    +'<tr><th style="border:1px solid #ccc;padding:8px 12px;background:#f5f5f5;text-align:left">명일 예정</th><td style="border:1px solid #ccc;padding:8px 12px;white-space:pre-wrap">'+escapeHtml(d.tomorrow||'—')+'</td></tr>'
+    +'<tr><th style="border:1px solid #ccc;padding:8px 12px;background:#f5f5f5;text-align:left">투입 인원</th><td style="border:1px solid #ccc;padding:8px 12px">'+((d.headcount||d.headcount===0)?d.headcount+'명':'—')+'</td></tr>'
+    +'<tr><th style="border:1px solid #ccc;padding:8px 12px;background:#f5f5f5;text-align:left">사용 장비</th><td style="border:1px solid #ccc;padding:8px 12px">'+escapeHtml(d.equip||'—')+'</td></tr>'
+    +'<tr><th style="border:1px solid #ccc;padding:8px 12px;background:#f5f5f5;text-align:left">특이사항</th><td style="border:1px solid #ccc;padding:8px 12px;white-space:pre-wrap">'+escapeHtml(d.note||'—')+'</td></tr>'
+    +'</table>';
+}
+window.printReportDetail=function(){
+  if(!drCurrentDoc){ toast('불러온 데이터가 없습니다'); return; }
+  printReportDoc(drCurrentDoc);
+};
+function printReportDoc(d){
+  const pa=document.getElementById('dr-print-area');
+  pa.style.display='block';
+  pa.innerHTML='<style>@media print{body>*:not(#dr-print-area){display:none!important}#dr-print-area{display:block!important}}'
+    +'@page{size:A4;margin:18mm}</style>'+buildReportDocHtml(d);
+  const ot=document.title;
+  document.title=(d.date||'공사일보')+'_공사일보';
+  window.print();
+  setTimeout(function(){ pa.style.display='none'; pa.innerHTML=''; document.title=ot; }, 500);
+}
+
+// ── 공사일보 미리보기(작성 중) ──
+window.previewReport=function(){
+  const d=collectReportData();
+  document.getElementById('dr-preview-body').innerHTML=buildReportDocHtml(d);
+  document.getElementById('dr-preview-modal').classList.add('on');
+};
+window.closeReportPreview=function(){ document.getElementById('dr-preview-modal').classList.remove('on'); };
+window.pdfFromPreview=function(){ printReportDoc(collectReportData()); };
 
 </script>
 </body>
