@@ -237,6 +237,7 @@ textarea { resize:vertical; min-height:90px; line-height:1.6; }
 <script type="module">
 import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, collection, getDocs, doc, getDoc, setDoc, serverTimestamp, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { ALL_SCHEDULE, WORKERS, FIREBASE_CONFIG } from './data.js';
 
 // default 앱으로 초기화 — workspace와 동일한 인스턴스 사용
@@ -244,6 +245,36 @@ let app;
 try { app = getApp(); }
 catch(e) { app = initializeApp(FIREBASE_CONFIG); }
 const db = getFirestore(app);
+const auth = getAuth(app);
+
+// ══════════════════════════════════════════
+// 접근 검증 게이트 — 로그인 + PJT 권한(perms.pjt) 또는 관리자만 통과
+// (다른 새 탭·standalone 접근에서도 Firestore 요청에 인증 토큰이 실리도록
+//  이 모듈에서 반드시 자체적으로 Firebase Auth를 초기화해야 함)
+// ══════════════════════════════════════════
+window._accessGranted = false;
+const _gateOverlay = document.createElement('div');
+_gateOverlay.id = '_access-gate';
+_gateOverlay.style.cssText = 'position:fixed;inset:0;z-index:999999;background:#f0f4fa;display:flex;align-items:center;justify-content:center;font-family:-apple-system,sans-serif;color:#86868b;font-size:13px';
+_gateOverlay.textContent = '확인 중...';
+document.body.appendChild(_gateOverlay);
+function _denyGateAccess(msg){
+  _gateOverlay.innerHTML = '<div style="max-width:380px;text-align:center;padding:32px 24px;background:#fff;border:1px solid #e5e5e5;border-radius:14px"><div style="font-size:36px;margin-bottom:12px">🔒</div><div style="font-size:15px;font-weight:700;color:#1A2540;margin-bottom:8px">접근할 수 없습니다</div><div style="font-size:13px;color:#86868b;line-height:1.5">'+msg+'</div></div>';
+}
+window._accessGatePromise = new Promise(function(resolve){
+  onAuthStateChanged(auth, async function(user){
+    if(!user){ _denyGateAccess('로그인이 필요합니다. 포털(portal.jhsol.kr)에서 로그인 후 다시 접속해주세요.'); resolve(false); return; }
+    try{
+      const uSnap = await getDoc(doc(db,'portal_users',user.uid));
+      const uData = uSnap.exists() ? uSnap.data() : null;
+      const ok = !!(uData && uData.status==='approved' && (uData.admin===true || (uData.perms && uData.perms.pjt===true)));
+      if(!ok){ _denyGateAccess('공사일보 작성 권한이 없습니다. 관리자에게 요청해주세요.'); resolve(false); return; }
+      window._accessGranted = true;
+      _gateOverlay.remove();
+      resolve(true);
+    }catch(e){ _denyGateAccess('권한 확인 중 오류가 발생했습니다: '+e.message); resolve(false); }
+  });
+});
 
 // 구역 정의
 const ZONES = [
