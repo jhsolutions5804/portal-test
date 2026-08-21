@@ -316,6 +316,12 @@ textarea.f-input{resize:vertical;min-height:70px}
 
     <!-- 품목현황 -->
     <div id="pane-items" style="display:none">
+      <div class="day-nav">
+        <button class="nav-arrow" onclick="itemsDayShift(-1)">‹</button>
+        <div class="day-title" id="items-day-title">—</div>
+        <button class="nav-arrow" onclick="itemsDayShift(1)">›</button>
+      </div>
+      <div style="font-size:11px;color:#9AAABF;margin:-4px 0 10px 2px">※ 선택한 날짜까지 누적된 완료 상태가 표시됩니다. 체크는 항상 선택한 날짜 기준으로 기록됩니다.</div>
       <div class="item-summary-row" id="item-summary-row"></div>
       <div class="card">
         <div class="card-title">
@@ -640,6 +646,9 @@ function getToday(){
 let pjtData=null;
 let stageList=[];
 let itemsCache=[];
+let itemsDate=getToday();
+let _itemChecksCache={}; // { dateKey: {itemId:{stage:true,...}} } — item_checks 컬렉션 캐시(날짜별 신규 체크만)
+let _itemChecksLoaded=false; // 컬렉션 전체를 이미 1회 로드했는지
 let workersCache=[];
 let loginUserLabel='';
 
@@ -682,6 +691,7 @@ async function init(){
       document.getElementById('e-start').value=pjtData.startDate||'';
       renderStageTags();
     }
+    itemsDate=getToday();
     loadItems();
     loadWorkers().then(function(){ renderAttGrid(); loadWorkerTotals(); });
     attDate=getToday(); renderAttDay();
@@ -787,7 +797,7 @@ window.saveItem=async function(){
   const btn=document.getElementById('it-save-btn'); btn.disabled=true; btn.textContent='추가 중...';
   try{
     const ref=doc(collection(db,'pjt_registry',pjtId,'items'));
-    await setDoc(ref, { name, stages:{}, order: itemsCache.length, createdAt: serverTimestamp() });
+    await setDoc(ref, { name, order: itemsCache.length, createdAt: serverTimestamp() });
     closeItemAdd();
     await loadItems();
   }catch(e){ toast('추가 실패: '+e.message); }
@@ -833,7 +843,7 @@ window.bulkAddItems=async function(){
     let order=itemsCache.length;
     names.forEach(function(name){
       const ref=doc(collection(db,'pjt_registry',pjtId,'items'));
-      batch.set(ref, {name:name, stages:{}, order:order++, createdAt: serverTimestamp()});
+      batch.set(ref, {name:name, order:order++, createdAt: serverTimestamp()});
     });
     await batch.commit();
     document.getElementById('bulk-add-text').value='';
@@ -872,34 +882,78 @@ window.saveBulkItemEdits=async function(){
   finally{ btn.disabled=false; btn.textContent='수정사항 저장'; }
 };
 
+// ── 품목현황: 날짜별 누적 체크 (메인 PJT와 동일한 모델) ──
+// Firestore: item_checks/{dateKey} = { itemId: { stage: true, ... }, ... } — 해당 날짜 신규 체크만 저장
+// 화면 표시: 선택 날짜까지 모든 날짜 체크를 누적 병합해서 완료 여부 계산
+
+window.itemsDayShift=function(n){
+  const d=new Date(itemsDate+'T00:00:00'); d.setDate(d.getDate()+n);
+  itemsDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  renderItemsDayTitle();
+  renderItemGrid();
+  renderItemSummary();
+};
+function renderItemsDayTitle(){
+  const d=new Date(itemsDate+'T00:00:00');
+  const el=document.getElementById('items-day-title');
+  if(el) el.textContent=(d.getMonth()+1)+'월 '+d.getDate()+'일'+(itemsDate===getToday()?' (오늘)':'');
+}
+
+// item_checks 컬렉션 전체를 1회 로드해서 캐시 (프로젝트 단위라 규모가 크지 않음)
+async function ensureItemChecksLoaded(){
+  if(_itemChecksLoaded) return;
+  try{
+    const snap=await getDocs(collection(db,'pjt_registry',pjtId,'item_checks'));
+    _itemChecksCache={};
+    snap.forEach(function(d){ _itemChecksCache[d.id]=d.data()||{}; });
+    _itemChecksLoaded=true;
+  }catch(e){ _itemChecksCache={}; }
+}
+
+// 선택 날짜까지 누적 병합: { itemId: { stage:true, ... } }
+function getCumulativeItemChecks(dateKey){
+  const merged={};
+  Object.keys(_itemChecksCache).sort().forEach(function(dk){
+    if(dk>dateKey) return;
+    const dayData=_itemChecksCache[dk]||{};
+    Object.keys(dayData).forEach(function(itemId){
+      merged[itemId]=Object.assign({}, merged[itemId]||{}, dayData[itemId]||{});
+    });
+  });
+  return merged;
+}
+
 window.toggleItemStage=async function(id, encodedStage){
+  if(!isAdmin) return;
   const stage=decodeURIComponent(encodedStage);
   const item=itemsCache.find(x=>x.id===id);
   if(!item) return;
-  const stages=Object.assign({}, item.stages||{});
-  const willCheck=!stages[stage];
-  stages[stage]=willCheck;
+  const cum=getCumulativeItemChecks(itemsDate);
+  const currentlyDone=!!(cum[id] && cum[id][stage]);
+  const willCheck=!currentlyDone;
   try{
-    await updateDoc(doc(db,'pjt_registry',pjtId,'items',id), {stages});
-    item.stages=stages;
-    renderItemGrid();
-    renderItemSummary();
-    await recalcProgress();
-    // 공사일보 자동반영용: 오늘 날짜에 체크/해제 이력 기록
-    const today=getToday();
-    const checkRef=doc(db,'pjt_registry',pjtId,'item_checks',today);
-    const fieldPath=id+'.'+stage;
+    const checkRef=doc(db,'pjt_registry',pjtId,'item_checks',itemsDate);
     if(willCheck){
       await setDoc(checkRef, {[id]:{[stage]:true}}, {merge:true});
     } else {
-      try{ await updateDoc(checkRef, {[fieldPath]: deleteField()}); }catch(e){ /* 문서/필드 없으면 무시 */ }
+      try{ await updateDoc(checkRef, {[id+'.'+stage]: deleteField()}); }catch(e){ /* 문서/필드 없으면 무시 */ }
     }
+    // 로컬 캐시 갱신
+    _itemChecksCache[itemsDate]=_itemChecksCache[itemsDate]||{};
+    _itemChecksCache[itemsDate][id]=Object.assign({}, _itemChecksCache[itemsDate][id]||{});
+    if(willCheck) _itemChecksCache[itemsDate][id][stage]=true;
+    else delete _itemChecksCache[itemsDate][id][stage];
+    renderItemGrid();
+    renderItemSummary();
+    await recalcProgress();
   }catch(e){ toast('저장 실패: '+e.message); }
 };
 async function loadItems(){
   try{
     const snap=await getDocs(query(collection(db,'pjt_registry',pjtId,'items'), orderBy('order','asc')));
     itemsCache=[]; snap.forEach(d=>itemsCache.push(Object.assign({id:d.id}, d.data())));
+    await ensureItemChecksLoaded();
+    renderItemsDayTitle();
     renderItemGrid();
     renderItemSummary();
     await recalcProgress();
@@ -908,9 +962,10 @@ async function loadItems(){
 function renderItemSummary(){
   const el=document.getElementById('item-summary-row');
   if(!itemsCache.length || !stageList.length){ el.innerHTML=''; return; }
+  const cum=getCumulativeItemChecks(itemsDate);
   let doneItems=0;
   const pcts=itemsCache.map(function(it){
-    let d=0; stageList.forEach(function(s){ if(it.stages && it.stages[s]) d++; });
+    let d=0; stageList.forEach(function(s){ if(cum[it.id] && cum[it.id][s]) d++; });
     const p=d/stageList.length*100;
     if(p>=100) doneItems++;
     return p;
@@ -925,6 +980,7 @@ function renderItemGrid(){
   const wrap=document.getElementById('item-grid-wrap');
   if(!itemsCache.length){ wrap.innerHTML='<div class="empty">등록된 품목이 없습니다. '+(isAdmin?'상단 [+ 품목 추가]로 등록하세요.':'') +'</div>'; return; }
   if(!stageList.length){ wrap.innerHTML='<div class="empty">공정 단계가 설정되지 않았습니다. (홈 탭에서 설정)</div>'; return; }
+  const cum=getCumulativeItemChecks(itemsDate);
   let html='<table class="item-grid"><thead><tr><th style="text-align:left">품목</th>';
   stageList.forEach(function(s){ html+='<th>'+escapeHtml(s)+'</th>'; });
   if(isAdmin) html+='<th></th>';
@@ -932,7 +988,7 @@ function renderItemGrid(){
   itemsCache.forEach(function(it){
     html+='<tr><td class="item-name">'+escapeHtml(it.name)+'</td>';
     stageList.forEach(function(s){
-      const done=it.stages && it.stages[s];
+      const done=!!(cum[it.id] && cum[it.id][s]);
       html+='<td><button class="chk-cell'+(done?' done':'')+'" '+(isAdmin?('onclick="toggleItemStage(\''+it.id+'\',\''+encodeURIComponent(s)+'\')"'):'disabled')+'>'+(done?'✓':'')+'</button></td>';
     });
     if(isAdmin) html+='<td><button class="del-btn" onclick="deleteItem(\''+it.id+'\')">삭제</button></td>';
@@ -942,9 +998,12 @@ function renderItemGrid(){
   wrap.innerHTML=html;
 }
 async function recalcProgress(){
+  // 상단 KPI(전체 공정율)는 항상 "오늘" 기준 누적 완료율 — 품목현황 탭에서 과거 날짜를 보고 있어도 변하지 않음
+  await ensureItemChecksLoaded();
+  const cum=getCumulativeItemChecks(getToday());
   let total=0, done=0;
   itemsCache.forEach(function(it){
-    stageList.forEach(function(s){ total++; if(it.stages && it.stages[s]) done++; });
+    stageList.forEach(function(s){ total++; if(cum[it.id] && cum[it.id][s]) done++; });
   });
   const pct = total? (done/total*100) : 0;
   try{
