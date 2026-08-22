@@ -416,16 +416,30 @@ function formatEqRange(eqs){
 }
 
 // ── 6. 출역 인원 자동 로드 ──
+// 전체 인원수는 data.js에 하드코딩된 WORKERS가 아니라, 근태 탭과 동일하게
+// pjt_workers_fab(현재 명단) + master_workers(퇴사일)을 실시간 조회해서 계산.
+// (하드코딩 목록은 근태 탭에서 인원을 추가/삭제해도 갱신되지 않아 숫자가 어긋나는 원인이었음)
 async function loadAttendance(){
   document.getElementById('att-loading').style.display='block';
   document.getElementById('st-att').textContent='';
   document.getElementById('headcount').textContent = '0';
-  document.getElementById('worker-hint').textContent = `전체 ${WORKERS.length}명 중 출역 0명`;
+  document.getElementById('worker-hint').textContent = `전체 —명 중 출역 0명`;
   try {
-    const snap = await getDoc(doc(db,'worker_attendance',selKey));
-    const checks = snap.exists() ? (snap.data().checks||[]) : [];
+    const [wsSnap, masterSnap, attSnap] = await Promise.all([
+      getDocs(collection(db,'pjt_workers_fab')),
+      getDocs(collection(db,'master_workers')),
+      getDoc(doc(db,'worker_attendance',selKey))
+    ]);
+    const masterMap={};
+    masterSnap.forEach(function(d){ masterMap[d.id]=d.data(); });
+    const totalWorkers = wsSnap.docs.filter(function(d){
+      const info=masterMap[d.id];
+      if(info && info.resigned && info.resignedDate && info.resignedDate<=selKey) return false;
+      return true;
+    }).length;
+    const checks = attSnap.exists() ? (attSnap.data().checks||[]) : [];
     document.getElementById('headcount').textContent = checks.length;
-    document.getElementById('worker-hint').textContent = `전체 ${WORKERS.length}명 중 출역 ${checks.length}명`;
+    document.getElementById('worker-hint').textContent = `전체 ${totalWorkers}명 중 출역 ${checks.length}명`;
     document.getElementById('st-att').textContent = `✓ ${checks.length}명 확인`;
     document.getElementById('st-att').className = 'load-status ok';
   } catch(e) {
