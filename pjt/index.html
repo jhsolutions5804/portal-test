@@ -3267,8 +3267,11 @@ function renderAttend(){
       return true;
     });
     const checks=window._fbGetWorkerChecks?window._fbGetWorkerChecks(dateKey):[];
+    // 배지 숫자는 화면에 실제로 보이는 현재 명단(_ws) 기준으로만 카운트.
+    // (명단에서 삭제된 인원의 과거 체크 기록도 Firestore엔 남아있지만, 화면엔 안 보이므로 숫자에도 안 잡히게 함)
+    const validChecks=checks.filter(id=>_ws.some(w=>w.id===id));
     document.getElementById('att-worker-count').textContent=
-      `출역 ${checks.length}명 / 전체 ${_ws.length}명`;
+      `출역 ${validChecks.length}명 / 전체 ${_ws.length}명`;
     const _allChecked=_ws.length>0 && _ws.every(w=>checks.includes(w.id));
     const _bulkBtn='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">'
       +'<button onclick="toggleAllWorkers(\''+dateKey+'\')" style="font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;border:1px solid '+(_allChecked?'#c0392b':'#1D5BA6')+';background:'+(_allChecked?'#fdecea':'#e8f0fb')+';color:'+(_allChecked?'#c0392b':'#1D5BA6')+';cursor:pointer;white-space:nowrap">'+(_allChecked?'✕ 전체 출역 해제':'✓ 전체 출역 체크')+'</button>'
@@ -3583,8 +3586,10 @@ function _updateHomeKPI(){
   // ③ 오늘 출역
   var todayKey=toKey(now);
   var checks=window._fbGetWorkerChecks?window._fbGetWorkerChecks(todayKey):[];
+  var _wsToday=(typeof getWorkers==='function')?getWorkers():WORKERS;
+  var validTodayChecks=checks.filter(function(id){ return _wsToday.some(function(w){ return w.id===id; }); });
   var wkEl=document.getElementById('home-workers');
-  if(wkEl) wkEl.textContent=checks.length;
+  if(wkEl) wkEl.textContent=validTodayChecks.length;
 
   // ④ 섹터 요약
   if(typeof ZONES!=='undefined' && typeof getCksProg==='function' && typeof calcZone==='function'){
