@@ -432,12 +432,15 @@ async function loadAttendance(){
     ]);
     const masterMap={};
     masterSnap.forEach(function(d){ masterMap[d.id]=d.data(); });
-    const totalWorkers = wsSnap.docs.filter(function(d){
+    const totalWorkerIds = new Set(wsSnap.docs.filter(function(d){
       const info=masterMap[d.id];
       if(info && info.resigned && info.resignedDate && info.resignedDate<=selKey) return false;
       return true;
-    }).length;
-    const checks = attSnap.exists() ? (attSnap.data().checks||[]) : [];
+    }).map(function(d){ return d.id; }));
+    const totalWorkers = totalWorkerIds.size;
+    const rawChecks = attSnap.exists() ? (attSnap.data().checks||[]) : [];
+    // 명단에서 삭제(또는 그 날짜 기준 퇴사)된 인원의 과거 체크는 카운트에서 제외 — 근태 탭과 동일 기준
+    const checks = rawChecks.filter(function(id){ return totalWorkerIds.has(id); });
     document.getElementById('headcount').textContent = checks.length;
     document.getElementById('worker-hint').textContent = `전체 ${totalWorkers}명 중 출역 ${checks.length}명`;
     document.getElementById('st-att').textContent = `✓ ${checks.length}명 확인`;
