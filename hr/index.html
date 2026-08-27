@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html><!-- HR module build: 20260827a · ver 1.0.1 · 초과근로 누계 수당 만원 반올림 제거, 1원 단위 정확 표시 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -4398,7 +4398,7 @@ window.otPcLoadKpiAndHours = async (workers) => {
       count++;
       personHours[r.workerId] = (personHours[r.workerId]||0) + (Number(r.hours)||0);
     });
-    const fmt = v => v>=10000 ? Math.round(v/10000)+'만원' : v.toLocaleString()+'원';
+    const fmt = v => v.toLocaleString()+'원';
     const s = id => document.getElementById(id);
     if(s('ot-kpi-hours')) s('ot-kpi-hours').textContent = totalH+'h';
     if(s('ot-kpi-amt'))   s('ot-kpi-amt').textContent   = fmt(totalA);
@@ -4512,7 +4512,7 @@ window.otPcShowPersonDetail = async (id, name, rank) => {
     const totalH = rows.reduce((s,r)=>s+(Number(r.hours)||0),0);
     const totalA = rows.reduce((s,r)=>s+(Number(r.amount)||0),0);
     const wage = await otGetWage(id,name);
-    const fmt = v => v>=10000?Math.round(v/10000)+'만원':v.toLocaleString()+'원';
+    const fmt = v => v.toLocaleString()+'원';
     panel.innerHTML = `
       <div style="font-size:14px;font-weight:700;color:#1A2540;margin-bottom:12px;">${name} ${rank||''}</div>
       ${wage?`<div style="font-size:12px;color:#5C6F8A;margin-bottom:10px;">통상임금 ${wage.rate.toLocaleString()}원/h</div>`:''}
