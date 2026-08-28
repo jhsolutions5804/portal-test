@@ -1763,8 +1763,163 @@ function leaveCalcDays() {
 
 window.leaveAutoTitle = leaveAutoTitle;
 window.leaveCalcDays = leaveCalcDays;
-// 메인 = 조회(테이블) 화면. 연차는 작성 함수가 renderLeaveWrite로 별도이므로 renderDocList에서 분기 처리
-window.renderLeaveMain = async function() { renderDocList('leave'); };
+
+// ══════════════════════════════════════════════
+// 🏖️ 연차신청서 홈: 좌-캘린더 / 우상-내 연차정보 / 우하-내 신청리스트
+// ══════════════════════════════════════════════
+let _leaveCalYear = new Date().getFullYear();
+let _leaveCalMonth = new Date().getMonth() + 1;
+let _leaveMyDocs = []; // 로그인 계정이 작성한 연차신청서 캐시 (캘린더·리스트 공용)
+
+window.renderLeaveMain = async function() {
+  const el = document.getElementById('tab-leave'); if(!el) return;
+  el.innerHTML = `<div class="wrap2">${edocHomeBtnHtml()}<div style="text-align:center;padding:32px;color:#9AAABF;">⏳ 불러오는 중…</div></div>`;
+  if (!_myInfo?.name) await loadMyInfo();
+
+  _leaveCalYear = new Date().getFullYear();
+  _leaveCalMonth = new Date().getMonth() + 1;
+
+  // 내가 작성한 연차신청서만 (fetchEdocDocs는 열람 가능한 문서 전체를 주므로 authorUid로 한번 더 필터)
+  const myUid = _user?.uid;
+  try {
+    const all = await fetchEdocDocs('leave');
+    _leaveMyDocs = all.filter(d => d.authorUid === myUid);
+  } catch(e) { console.warn('연차 목록 조회 실패:', e.message); _leaveMyDocs = []; }
+
+  // 입사일 조회 (본인 workers 문서 — _myWorkerId는 loadMyInfo에서 이미 안전하게 resolved)
+  let hireDate = '';
+  try {
+    if (_myWorkerId) {
+      const wSnap = await getDoc(doc(window._db, 'workers', _myWorkerId));
+      if (wSnap.exists()) hireDate = wSnap.data().hireDate || '';
+    }
+  } catch(e) { console.warn('입사일 조회 실패:', e.message); }
+
+  const grant = calcAnnualLeaveGrant(hireDate);
+  const used = sumLeaveUsed(_leaveMyDocs, _myInfo?.name || '');
+  const remain = Math.max(grant.granted - used, 0);
+
+  el.innerHTML = `<div class="wrap2" style="max-width:1040px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <span style="font-size:16px;font-weight:800;">🏖️ 연차신청서</span>
+      <div style="display:flex;gap:8px;">
+        ${edocHomeBtnHtml()}
+        <button class="toolbar-btn primary" onclick="renderLeaveWrite()">✏️ 작성</button>
+      </div>
+    </div>
+    <div class="home-2col">
+      <div class="panel">
+        <div class="panel-head" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>📅 연차 달력</span>
+          <span style="display:flex;align-items:center;gap:6px;">
+            <button onclick="leaveCalShift(-1)" style="border:none;background:#fff;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:13px;color:#1D5BA6;">◀</button>
+            <span id="leave-cal-label" style="font-size:12px;font-weight:700;color:#1A2540;min-width:74px;text-align:center;"></span>
+            <button onclick="leaveCalShift(1)" style="border:none;background:#fff;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:13px;color:#1D5BA6;">▶</button>
+          </span>
+        </div>
+        <div id="leave-cal-body" style="padding:14px 16px;"></div>
+        <div style="display:flex;gap:14px;padding:0 16px 14px;font-size:10.5px;color:#9AAABF;">
+          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#1D5BA6;margin-right:4px;"></span>승인·게시</span>
+          <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#F59E0B;margin-right:4px;"></span>결재대기</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="panel">
+          <div class="panel-head">👤 ${_myInfo?.name||''} ${_myInfo?.rank||''} 연차 정보</div>
+          <div style="padding:14px 16px;">
+            <div style="font-size:11px;color:#9AAABF;margin-bottom:10px;">${grant.detail}</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;">
+              <div><div style="font-size:10.5px;color:#9AAABF;">부여</div><div style="font-size:18px;font-weight:800;color:#1D5BA6;">${grant.granted}<small style="font-size:11px;">일</small></div></div>
+              <div><div style="font-size:10.5px;color:#9AAABF;">사용</div><div style="font-size:18px;font-weight:800;color:#F59E0B;">${used}<small style="font-size:11px;">일</small></div></div>
+              <div><div style="font-size:10.5px;color:#9AAABF;">잔여</div><div style="font-size:18px;font-weight:800;color:#16A34A;">${remain}<small style="font-size:11px;">일</small></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel" style="flex:1;">
+          <div class="panel-head">📋 내 연차 신청 내역</div>
+          <div id="leave-my-list" class="panel-list">불러오는 중…</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  leaveUpdateCalLabel();
+  leaveRenderCalendar();
+  leaveRenderMyList();
+};
+
+function leaveUpdateCalLabel(){
+  const lbl = document.getElementById('leave-cal-label');
+  if (lbl) lbl.textContent = `${_leaveCalYear}년 ${String(_leaveCalMonth).padStart(2,'0')}월`;
+}
+
+window.leaveCalShift = function(delta){
+  _leaveCalMonth += delta;
+  if (_leaveCalMonth > 12) { _leaveCalMonth = 1; _leaveCalYear++; }
+  if (_leaveCalMonth < 1)  { _leaveCalMonth = 12; _leaveCalYear--; }
+  leaveUpdateCalLabel();
+  leaveRenderCalendar();
+};
+
+// 특정 날짜(YYYY-MM-DD)가 내 연차신청서 기간에 포함되는지 확인 → 상태 반환(없으면 null)
+function leaveStatusOnDate(dateStr){
+  let best = null; // 승인류가 대기류보다 우선 표시
+  for (const d of _leaveMyDocs) {
+    if (!d.startDate || !d.endDate) continue;
+    if (d.status === 'rejected' || d.status === 'draft') continue;
+    if (dateStr < d.startDate || dateStr > d.endDate) continue;
+    if (d.status === 'approved' || d.status === 'posted') return 'approved';
+    if (!best) best = 'pending';
+  }
+  return best;
+}
+
+function leaveRenderCalendar(){
+  const box = document.getElementById('leave-cal-body'); if(!box) return;
+  const first = new Date(_leaveCalYear, _leaveCalMonth-1, 1);
+  const lastDate = new Date(_leaveCalYear, _leaveCalMonth, 0).getDate();
+  const firstDow = first.getDay();
+  const today = new Date();
+  const todayStr = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+
+  const DOW = ['일','월','화','수','목','금','토'];
+  let html = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;">
+    ${DOW.map((w,i)=>`<div style="text-align:center;font-size:10.5px;font-weight:700;color:${i===0?'#E05':(i===6?'#1D5BA6':'#9AAABF')};padding:4px 0;">${w}</div>`).join('')}
+  </div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;">`;
+
+  for (let i=0;i<firstDow;i++) html += `<div></div>`;
+  for (let day=1; day<=lastDate; day++){
+    const dateStr = `${_leaveCalYear}-${String(_leaveCalMonth).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const status = leaveStatusOnDate(dateStr);
+    const isToday = dateStr === todayStr;
+    const dow = (firstDow + day - 1) % 7;
+    let bg = 'transparent', fg = '#1A2540', fw = '500';
+    if (status === 'approved') { bg = '#1D5BA6'; fg = '#fff'; fw = '700'; }
+    else if (status === 'pending') { bg = '#FEF3C7'; fg = '#92400E'; fw = '700'; }
+    else if (dow===0) fg = '#E05'; else if (dow===6) fg = '#1D5BA6';
+    const border = isToday ? 'border:1.5px solid #1D5BA6;' : '';
+    html += `<div style="text-align:center;padding:7px 2px;border-radius:7px;font-size:12px;background:${bg};color:${fg};font-weight:${fw};${border}">${day}</div>`;
+  }
+  html += `</div>`;
+  box.innerHTML = html;
+}
+
+function leaveRenderMyList(){
+  const box = document.getElementById('leave-my-list'); if(!box) return;
+  if (!_leaveMyDocs.length) { box.innerHTML = '<div class="panel-empty" style="padding:28px;">작성한 연차신청서가 없습니다.</div>'; return; }
+  const STATUS = { draft:'임시저장', pending:'결재대기', reviewing:'검토중', approved:'승인', rejected:'반려', posted:'게시' };
+  const STATUS_COLOR = { draft:'#9AAABF', pending:'#F59E0B', reviewing:'#3B82F6', approved:'#16A34A', rejected:'#DC2626', posted:'#1D5BA6' };
+  const rows = [..._leaveMyDocs].sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+  box.innerHTML = rows.map(d => `
+    <div class="panel-row" onclick="docDetail(${JSON.stringify(d).replace(/"/g,'&quot;')}, 'leave')">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12.5px;font-weight:600;color:#1A2540;">${d.leaveType||'연차'} · ${d.startDate||''}${d.endDate&&d.endDate!==d.startDate?` ~ ${d.endDate}`:''}</div>
+        <div style="font-size:11px;color:#9AAABF;margin-top:2px;">${d.days||0}일 · ${(d.reason||'').slice(0,20)||'-'}</div>
+      </div>
+      <span class="status-pill" style="background:${STATUS_COLOR[d.status]||'#9AAABF'}22;color:${STATUS_COLOR[d.status]||'#9AAABF'};flex-shrink:0;">${STATUS[d.status]||d.status}</span>
+    </div>
+  `).join('');
+}
 
 window.renderLeaveWrite = async function(editDoc) {
   // editDoc: 수정 시 기존 문서 데이터
