@@ -538,6 +538,16 @@ window.dailySave = async function(status) {
 
   const editId = window._dailyEditId || null;
 
+  // 본인 문서 열람 대상자(dailyViewTargets)를 viewerUids로 함께 저장 — Firestore 규칙(canViewEdocDoc)이
+  // authorUid/viewerUids 기준으로 열람을 판단하므로, 이 필드가 없으면 지정된 열람자도 목록에서 못 본다.
+  // 본인 portal_users 문서는 누구나 읽기 허용되므로 단일 get으로 안전하게 조회 가능.
+  let viewerUids = [];
+  try {
+    const { getDoc, doc: fsDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const meSnap = await getDoc(fsDoc(window._db, 'portal_users', _user.uid));
+    if (meSnap.exists()) viewerUids = meSnap.data().dailyViewTargets || [];
+  } catch(e) { console.warn('dailyViewTargets 조회 실패:', e.message); }
+
   const data = {
     dtype: 'daily', status,
     title, date: document.getElementById('d-date')?.value || '',
@@ -550,6 +560,7 @@ window.dailySave = async function(status) {
     authorName:  document.getElementById('d-name')?.value || _user.displayName || '',
     authorDept:  document.getElementById('d-dept')?.value || '',
     authorRank:  document.getElementById('d-rank')?.value || '',
+    viewerUids,
     // 결재 라인 고정 (결재: 김종화, 수신: 송지훈) — 수정 후 재상신 시에도 대기 상태로 초기화
     approvalLine: [
       { role:'작성', uid:_user.uid, name:document.getElementById('d-name')?.value || '', status:'draft' },
@@ -590,22 +601,10 @@ window.renderDailyList = async function() {
   </div>`;
 
   try {
-    const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    await loadPortalUsers();
-    const snap = await getDocs(collection(window._db, 'edoc_daily'));
-    let docs = []; snap.forEach(d=>docs.push({id:d.id,...d.data()}));
-
-    // 권한 필터: 관리자는 전체, 그 외는 본인 글 + 권한받은 대상자 글만
-    // dailyViewTargets는 "이 사람의 글을 볼 수 있는 대상자 uid 목록"으로 저장됨
-    // (권한관리 화면에서 [작성자 카드] → [열람 가능 대상자 칩]으로 지정)
-    if (!_isAdmin) {
-      const myUid = _user?.uid;
-      const allowedAuthors = new Set([myUid]);
-      _portalUsers.forEach(u => {
-        if ((u.dailyViewTargets || []).includes(myUid)) allowedAuthors.add(u.uid);
-      });
-      docs = docs.filter(d => allowedAuthors.has(d.authorUid));
-    }
+    // fetchEdocDocs: authorUid/viewerUids/posted/관리자 네 갈래로 나눠 조회하는 표준 헬퍼.
+    // (예전엔 무필터 전체조회 + loadPortalUsers()의 dailyViewTargets로 클라이언트 필터링을 했으나,
+    //  Firestore는 규칙과 안 맞는 무필터 list 쿼리를 통째로 거부하기 때문에 관리자 외 계정은 항상 에러가 났음)
+    let docs = await fetchEdocDocs('daily');
 
     docs.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
 
