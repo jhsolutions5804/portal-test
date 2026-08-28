@@ -149,9 +149,24 @@ textarea { resize:vertical; min-height:90px; line-height:1.6; }
     </select>
   </div>
 
-  <!-- 4. 금일 작업 내용 — 날짜 선택 시 자동 로드 -->
+  <!-- 4. 근무시간 -->
   <div class="card">
-    <div class="card-label"><span class="num">4</span> 금일 작업 내용</div>
+    <div class="card-label"><span class="num">4</span> 근무시간</div>
+    <div style="display:flex;gap:10px;align-items:flex-end">
+      <div style="flex:1">
+        <label style="font-size:11px;color:#888;display:block;margin-bottom:5px">출근시간</label>
+        <input type="time" id="checkInTime" value="07:00" style="width:100%;border:1.5px solid #dde4ef;border-radius:9px;padding:11px 13px;font-size:14px;font-family:inherit;color:#1a1a2e;background:#fafbfd">
+      </div>
+      <div style="flex:1">
+        <label style="font-size:11px;color:#888;display:block;margin-bottom:5px">퇴근시간</label>
+        <input type="time" id="checkOutTime" value="18:00" style="width:100%;border:1.5px solid #dde4ef;border-radius:9px;padding:11px 13px;font-size:14px;font-family:inherit;color:#1a1a2e;background:#fafbfd">
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. 금일 작업 내용 — 날짜 선택 시 자동 로드 -->
+  <div class="card">
+    <div class="card-label"><span class="num">5</span> 금일 작업 내용</div>
     <div id="work-loading" style="display:none">
       <div class="loading-badge"><span class="spin">⟳</span> 공정 탭에서 불러오는 중...</div>
     </div>
@@ -160,15 +175,15 @@ textarea { resize:vertical; min-height:90px; line-height:1.6; }
     <textarea id="todayWork" placeholder="날짜를 선택하면 공정 탭 체크 물량이 자동으로 채워져요&#10;(필요 시 직접 수정 가능)" style="margin-top:10px"></textarea>
   </div>
 
-  <!-- 5. 명일 예정 작업 -->
+  <!-- 6. 명일 예정 작업 -->
   <div class="card">
-    <div class="card-label"><span class="num">5</span> 명일 예정 작업</div>
+    <div class="card-label"><span class="num">6</span> 명일 예정 작업</div>
     <textarea id="tomorrowWork" placeholder="예) FCU 설치 (815~819호기, 5대)&#10;E/V #13 사용 (23:00~01:00)"></textarea>
   </div>
 
-  <!-- 6. 기술인 투입 현황 — 날짜 선택 시 자동 로드 -->
+  <!-- 7. 기술인 투입 현황 — 날짜 선택 시 자동 로드 -->
   <div class="card">
-    <div class="card-label"><span class="num">6</span> 기술인 투입 현황</div>
+    <div class="card-label"><span class="num">7</span> 기술인 투입 현황</div>
     <div id="att-loading" style="display:none">
       <div class="loading-badge"><span class="spin">⟳</span> 출역 현황 불러오는 중...</div>
     </div>
@@ -181,9 +196,9 @@ textarea { resize:vertical; min-height:90px; line-height:1.6; }
     <div id="st-att" class="load-status"></div>
   </div>
 
-  <!-- 7. 사용 장비 -->
+  <!-- 8. 사용 장비 -->
   <div class="card">
-    <div class="card-label"><span class="num">7</span> 사용 장비</div>
+    <div class="card-label"><span class="num">8</span> 사용 장비</div>
     <div class="equip-chips" id="equipChips"><span class="equip-empty">장비를 선택하세요</span></div>
     <select id="equipSel" onchange="addEquip(this)">
       <option value="">+ 장비 추가</option>
@@ -195,9 +210,9 @@ textarea { resize:vertical; min-height:90px; line-height:1.6; }
     </select>
   </div>
 
-  <!-- 8. 특이사항 -->
+  <!-- 9. 특이사항 -->
   <div class="card">
-    <div class="card-label"><span class="num">8</span> 특이사항</div>
+    <div class="card-label"><span class="num">9</span> 특이사항</div>
     <textarea id="remarks" placeholder="예) 야간 FCU 반입 시 E/V 전용 사용 신청 완료&#10;비상대피훈련 참석"></textarea>
   </div>
 
@@ -475,6 +490,8 @@ function collect(){
     site:     document.getElementById('site').value,
     date:     document.getElementById('dateText').textContent,
     author:   document.getElementById('author').value,
+    checkIn:  document.getElementById('checkInTime').value,
+    checkOut: document.getElementById('checkOutTime').value,
     today:    document.getElementById('todayWork').value.trim(),
     tomorrow: document.getElementById('tomorrowWork').value.trim(),
     count:    document.getElementById('headcount').textContent,
@@ -489,6 +506,7 @@ function buildDoc(d){
       <tr><th>현장명</th><td>${d.site}</td></tr>
       <tr><th>작성일자</th><td>${d.date||'—'}</td></tr>
       <tr><th>작성자</th><td>${d.author||'—'}</td></tr>
+      <tr><th>근무시간</th><td>${d.checkIn||'—'} ~ ${d.checkOut||'—'}</td></tr>
       <tr class="sec-hd"><td colspan="2">▸ 작업 현황</td></tr>
       <tr><th>금일 작업</th><td style="white-space:pre-wrap">${d.today||'—'}</td></tr>
       <tr><th>명일 예정</th><td style="white-space:pre-wrap">${d.tomorrow||'—'}</td></tr>
