@@ -1753,7 +1753,7 @@ window.psPcMonthChange = (month) => {
 };
 
 window.psPcWorkerSelect = async (wid) => {
-  if (!wid) { ps.workerData=null; ps.annualData=null; ps.workerId=''; renderPayslipPCRight(); return; }
+  if (!wid) { ps.workerData=null; ps.annualData=null; ps.workerId=''; ps.attHours=0; ps.leaveHours=0; ps.nightHours=0; ps.attDates=new Set(); ps.leaveDocsRaw=[]; ps.holidayRecords=[]; renderPayslipPCRight(); return; }
   const workers = window._psWorkers || [];
   ps.workerData = workers.find(w=>w.id===wid) || null;
   ps.workerId = wid;
@@ -1789,6 +1789,13 @@ window.psPcWorkerSelect = async (wid) => {
     ps.bonus = otAmt > 0 ? String(otAmt) : '';
   } catch(e) { ps.annualData = null; }
 
+  // 근태 데이터 연동 (출퇴근기록 누계·유급휴가·야간·휴일근로 → 기본/연장/야간/휴일/주휴수당 자동계산용)
+  // ※ PC 화면은 모바일 작성폼(psWorkerSelect)과 별도 함수라 반드시 여기서도 호출해야 함 — 누락 시
+  //   근태데이터가 0으로 처리되어 실제 근무와 무관하게 기본급이 대폭 삭감되는 오류가 발생한다.
+  const attData = await psFetchAttendanceData(wid, ps.workerData?.name, ps.month);
+  ps.attHours = attData.attHours; ps.leaveHours = attData.leaveHours; ps.nightHours = attData.nightHours;
+  ps.attDates = attData.attDates; ps.leaveDocsRaw = attData.leaveDocs; ps.holidayRecords = attData.holidayRecords;
+
   renderPayslipPCRight();
 };
 
@@ -1811,12 +1818,18 @@ window.renderPayslipPCRight = () => {
       <div style="background:#fff;border-radius:12px;padding:14px;">
         <div style="font-size:12px;font-weight:700;color:#1A2540;margin-bottom:10px;">💳 지급 내역</div>
         <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;">
-          ${[['기본급','basic'],['고정연장','fixedOt'],['고정야간','fixedNight'],['주휴수당','weekly']]
+          ${[['기본근로수당','basic'],['연장근로수당','fixedOt'],['야간근로수당','fixedNight'],['주휴수당','weekly'],['휴일근로수당','holidayPay']]
             .map(([l,k])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #F0F4F9;">
               <span style="color:#5C6F8A;min-width:64px;">${l}</span>
               <input type="text" inputmode="numeric" value="${Number(c.sal[k]||0).toLocaleString('ko-KR')}"
                 oninput="fmtMoney(this)" onchange="ps['_${k}']=this.value===''?undefined:numClean(this.value);renderPayslipPCRight()"
                 style="width:120px;text-align:right;padding:3px 8px;border:1px solid #DDE3EE;border-radius:6px;font-size:12px;font-weight:600;color:#1A2540;box-sizing:border-box;"></div>`).join('')}
+          <div style="font-size:10px;color:#9AAABF;line-height:1.6;background:#F7F9FC;border-radius:6px;padding:6px 8px;">
+            실근무 ${(c.sal.attHours||0).toFixed(1)}h + 유급휴가 ${(c.sal.leaveHours||0).toFixed(1)}h = 인정 ${(c.sal.actualHours||0).toFixed(1)}h (기준 ${c.sal.standardHours||209}h)
+            ${(c.sal.otHours||0)>0?` · 연장 ${c.sal.otHours.toFixed(1)}h`:''}${(c.sal.shortHours||0)>0?` · 부족 ${c.sal.shortHours.toFixed(1)}h`:''}
+            ${(c.sal.nightHours||0)>0?` · 야간 ${c.sal.nightHours.toFixed(1)}h`:''}${(c.sal.holidayHours||0)>0?` · 휴일 ${c.sal.holidayHours.toFixed(1)}h`:''}<br>
+            주휴: ${c.sal.weeklyEstimated?'출퇴근기록 없어 추정값':`개근 ${c.sal.weeklyQualifyingWeeks}/${c.sal.weeklyTotalWeeks}주`}
+          </div>
           <div style="margin-top:4px;">
             <div style="color:#5C6F8A;margin-bottom:3px;">상여금(초과근로)</div>
             ${inp('ps-bonus', ps.bonus)}
@@ -4834,7 +4847,7 @@ window.renderOvertimeMobile = () => {
         ${selectMain('➕','초과근로 입력','renderOvertimeAdd()','날짜·직원·시간 입력 → 수당 자동 계산')}
       </div>
       <div style="margin-top:12px;padding:10px 12px;background:#F0F4F9;border-radius:8px;font-size:11px;color:#5C6F8A;line-height:1.6;">
-        💡 <strong>통상임금</strong> = (기본+고정연장+고정야간+주휴) ÷ 209<br>
+        💡 <strong>통상임금</strong> = (기본근로수당+주휴수당) ÷ 209<br>
         연봉계약서 기준 자동 계산 · 누계 수당은 급여명세서 <strong>상여금</strong>에 자동 연동
       </div>
       <div style="margin-top:10px;">
@@ -5304,7 +5317,7 @@ window.otDeletePerson = async (docId, workerId, name, rank) => {
 <script>
 // ════════════════════════════════
 // 🧾 퇴직금 정산
-// 1일 평균임금 = (퇴직 전 3개월: 기본+고정연장+고정야간+주휴+상여금) ÷ 그 기간 일수
+// 1일 평균임금 = (퇴직 전 3개월: 기본근로수당+연장근로수당+야간근로수당+주휴수당+상여금) ÷ 그 기간 일수
 //   · 특별성과급·특근수당 제외, 정기상여/연차수당 가산 없음
 //   · 평균임금 < 통상임금이면 통상임금(1일=통상시급×8) 적용
 //   · 계속근로 1년 미만 0원
