@@ -1,0 +1,287 @@
+<!DOCTYPE html><!-- Test data seeder: 2026-08 근태 시나리오 시딩 (일회성 관리자 유틸리티) -->
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>급여명세서 테스트 데이터 시딩</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; font-family:-apple-system,'Apple SD Gothic Neo',sans-serif; }
+body { background:#f0f4fa; padding:20px; }
+.wrap { max-width:640px; margin:0 auto; }
+h1 { font-size:18px; color:#1A2540; margin-bottom:6px; }
+.sub { font-size:12px; color:#9AAABF; margin-bottom:20px; }
+.card { background:#fff; border-radius:12px; padding:18px; margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+.card h2 { font-size:13px; color:#1D5BA6; margin-bottom:10px; }
+.row { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #F0F4FA; font-size:12.5px; }
+.row:last-child { border-bottom:none; }
+button { padding:12px 20px; background:#1D5BA6; color:#fff; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; width:100%; margin-top:6px; }
+button:disabled { opacity:.5; cursor:default; }
+button.danger { background:#DC2626; }
+#log { margin-top:14px; background:#111; color:#0f0; font-family:monospace; font-size:11px; padding:12px; border-radius:8px; max-height:400px; overflow-y:auto; white-space:pre-wrap; display:none; }
+.status { font-size:12px; margin-top:8px; text-align:center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>⚙️ 급여명세서 테스트 데이터 시딩</h1>
+  <div class="sub">2026년 8월 근태 시나리오를 5명에게 심습니다. 관리자 계정으로 로그인 후 실행하세요.</div>
+
+  <div class="card" id="login-card">
+    <h2>1. 로그인</h2>
+    <button onclick="doLogin()">Google 계정으로 로그인</button>
+    <div class="status" id="login-status"></div>
+  </div>
+
+  <div class="card" id="scenario-card" style="display:none;">
+    <h2>2. 시나리오 미리보기</h2>
+    <div class="row"><span>윤석원</span><span>기준선 — 160h 정확히 충족 (이상 없음)</span></div>
+    <div class="row"><span>정다애</span><span>연차 1일 + 연장근무 5일 → 10h 초과</span></div>
+    <div class="row"><span>이한영</span><span>무단결근 3일(3개 주에 분산) → 24h 부족</span></div>
+    <div class="row"><span>김영서</span><span>저녁근무 5일 → 야간 5h</span></div>
+    <div class="row"><span>형일우</span><span>토·일 휴일근무(9h+10h) → 8h초과 2.0배 케이스 포함</span></div>
+  </div>
+
+  <div class="card" id="run-card" style="display:none;">
+    <h2>3. 실행</h2>
+    <div style="font-size:11px;color:#9AAABF;margin-bottom:8px;">
+      각 근로자의 workers 문서를 이름으로 찾아 연동합니다. 연봉계약서(시급)가 없는 사람은 테스트용 시급 12,000원으로 임시 계약서도 함께 생성합니다(추후 실제 값으로 교체 필요).
+    </div>
+    <button onclick="runSeed()" id="seed-btn">🌱 테스트 데이터 생성 실행</button>
+    <button onclick="runCleanup()" id="cleanup-btn" class="danger" style="margin-top:10px;">🗑 방금 생성한 테스트 데이터 삭제</button>
+  </div>
+
+  <div id="log"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, doc, getDoc, getDocs, setDoc, deleteDoc, collection, query, where, serverTimestamp }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI",
+  authDomain: "portal-test-6e0ff.firebaseapp.com",
+  projectId: "portal-test-6e0ff",
+  storageBucket: "portal-test-6e0ff.firebasestorage.app",
+  messagingSenderId: "752763010816",
+  appId: "1:752763010816:web:4a0c7062a2f1a4e9a03de5"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+const logEl = document.getElementById('log');
+function log(msg) {
+  logEl.style.display = 'block';
+  logEl.textContent += msg + '\n';
+  logEl.scrollTop = logEl.scrollHeight;
+  console.log(msg);
+}
+
+window.doLogin = async () => {
+  const provider = new GoogleAuthProvider();
+  try {
+    await signInWithPopup(auth, provider);
+  } catch(e) {
+    document.getElementById('login-status').textContent = '로그인 실패: ' + e.message;
+  }
+};
+
+onAuthStateChanged(auth, async (user) => {
+  const statusEl = document.getElementById('login-status');
+  if (!user) { statusEl.textContent = '로그인이 필요합니다.'; return; }
+  try {
+    const uSnap = await getDoc(doc(db, 'portal_users', user.uid));
+    const uData = uSnap.exists() ? uSnap.data() : null;
+    if (!uData || uData.status !== 'approved') {
+      statusEl.textContent = '⚠️ 승인된 계정이 아닙니다.'; return;
+    }
+    if (!uData.admin) {
+      statusEl.textContent = '⚠️ 관리자 계정으로 로그인해주세요.'; return;
+    }
+    statusEl.textContent = `✅ ${uData.name || user.email} (관리자) 로그인됨`;
+    document.getElementById('scenario-card').style.display = 'block';
+    document.getElementById('run-card').style.display = 'block';
+  } catch(e) {
+    statusEl.textContent = '확인 중 오류: ' + e.message;
+  }
+});
+
+const TARGET_NAMES = ['윤석원', '정다애', '이한영', '김영서', '형일우'];
+const YM = '2026-08';
+const SEED_TAG = 'test-seed-202608'; // 삭제 시 이 태그로 식별
+
+// 시간 계산 도우미
+function calcWorkHours(checkIn, checkOut, breakMin) {
+  const [ih,im] = checkIn.split(':').map(Number);
+  const [oh,om] = checkOut.split(':').map(Number);
+  let mins = (oh*60+om) - (ih*60+im);
+  if (mins <= 0) mins += 24*60;
+  mins -= breakMin;
+  return Math.round((mins/60) * 10) / 10;
+}
+
+// 근로자 이름 → workers 문서(id, data) 찾기
+async function findWorkerByName(name) {
+  const snap = await getDocs(collection(db, 'workers'));
+  let found = null;
+  snap.forEach(d => { if (d.data().name === name) found = { id: d.id, ...d.data() }; });
+  return found;
+}
+
+// 시나리오 정의: [date, checkIn, checkOut, breakMin] 목록 + 별도 연차 정보
+function buildScenario(name) {
+  const normalDays = ['2026-08-03','2026-08-04','2026-08-05','2026-08-06','2026-08-07',
+    '2026-08-10','2026-08-11','2026-08-12','2026-08-13','2026-08-14',
+    '2026-08-18','2026-08-19','2026-08-20','2026-08-21',
+    '2026-08-24','2026-08-25','2026-08-26','2026-08-27','2026-08-28','2026-08-31'];
+
+  if (name === '윤석원') {
+    // 기준선: 20일 전부 07:00~16:00(휴게60분=8h)
+    return { attendance: normalDays.map(d => [d,'07:00','16:00',60]), leaves: [] };
+  }
+  if (name === '정다애') {
+    // 08-13은 연차로 대체(출근기록 없음), 08-03~07은 연장(07:00~18:00, 휴게60분=10h)
+    const otDays = new Set(['2026-08-03','2026-08-04','2026-08-05','2026-08-06','2026-08-07']);
+    const leaveDay = '2026-08-13';
+    const att = normalDays.filter(d => d !== leaveDay).map(d =>
+      otDays.has(d) ? [d,'07:00','18:00',60] : [d,'07:00','16:00',60]
+    );
+    return { attendance: att, leaves: [{ startDate:leaveDay, endDate:leaveDay, leaveType:'연차(유급)', days:1 }] };
+  }
+  if (name === '이한영') {
+    // 3일 무단결근 (서로 다른 3주): 08-04, 08-12, 08-25
+    const absent = new Set(['2026-08-04','2026-08-12','2026-08-25']);
+    const att = normalDays.filter(d => !absent.has(d)).map(d => [d,'07:00','16:00',60]);
+    return { attendance: att, leaves: [] };
+  }
+  if (name === '김영서') {
+    // 08-03~07(첫주 5일)은 저녁근무 14:00~23:00(휴게60분=8h, 22~23시 야간1h)
+    const eveDays = new Set(['2026-08-03','2026-08-04','2026-08-05','2026-08-06','2026-08-07']);
+    const att = normalDays.map(d => eveDays.has(d) ? [d,'14:00','23:00',60] : [d,'07:00','16:00',60]);
+    return { attendance: att, leaves: [] };
+  }
+  if (name === '형일우') {
+    // 20일 정상근무 + 토(08-08, 08:00~18:00,휴게60분=9h) + 일(08-16, 08:00~19:00,휴게60분=10h)
+    const att = normalDays.map(d => [d,'07:00','16:00',60]);
+    att.push(['2026-08-08','08:00','18:00',60]); // 토요일 9h
+    att.push(['2026-08-16','08:00','19:00',60]); // 일요일 10h
+    return { attendance: att, leaves: [] };
+  }
+  return { attendance: [], leaves: [] };
+}
+
+window.runSeed = async () => {
+  const btn = document.getElementById('seed-btn');
+  btn.disabled = true;
+  logEl.textContent = '';
+  log('=== 시딩 시작 ===');
+
+  for (const name of TARGET_NAMES) {
+    log(`\n[${name}] workers 문서 조회 중...`);
+    const worker = await findWorkerByName(name);
+    if (!worker) { log(`  ⚠️ workers 컬렉션에서 "${name}"을 찾을 수 없습니다. 건너뜁니다.`); continue; }
+    log(`  workerId=${worker.id}, empType=${worker.empType||'(미설정)'}`);
+
+    // 연봉계약서(시급) 확인, 없으면 테스트용 생성
+    try {
+      const cSnap = await getDocs(collection(db, `annual_contracts/${worker.id}/contracts`));
+      let hasContract = false;
+      cSnap.forEach(d => { if (d.data().hourly) hasContract = true; });
+      if (!hasContract) {
+        const testDate = '2026-01-01';
+        await setDoc(doc(db, `annual_contracts/${worker.id}/contracts`, testDate), {
+          contractDate: testDate, hourly: 12000, empType: worker.empType || 'field',
+          startDate: '2026-01-01', endDate: '2026-12-31',
+          _testSeed: SEED_TAG, savedAt: new Date().toISOString(),
+        });
+        log(`  📝 연봉계약서 없어 테스트용(시급 12,000원) 생성함`);
+      } else {
+        log(`  연봉계약서 기존 데이터 사용`);
+      }
+    } catch(e) { log(`  ⚠️ 연봉계약서 확인/생성 실패: ${e.message}`); }
+
+    const scenario = buildScenario(name);
+
+    // 출퇴근기록 기록
+    for (const [date, checkIn, checkOut, breakMin] of scenario.attendance) {
+      const workHours = calcWorkHours(checkIn, checkOut, breakMin);
+      const key = `${worker.id}_${date}`;
+      try {
+        await setDoc(doc(db, 'worker_attendance_log', key), {
+          workerId: worker.id, name: worker.name, rank: worker.rank || '',
+          date, yearMonth: YM,
+          checkIn, checkOut, breakMinutes: breakMin, workHours,
+          _testSeed: SEED_TAG,
+          updatedAt: serverTimestamp(),
+        });
+      } catch(e) { log(`  ⚠️ ${date} 기록 실패: ${e.message}`); }
+    }
+    log(`  ✅ 출퇴근기록 ${scenario.attendance.length}건 생성`);
+
+    // 연차 기록
+    for (const lv of scenario.leaves) {
+      const docId = `${SEED_TAG}_${worker.id}_${lv.startDate}`;
+      try {
+        await setDoc(doc(db, 'edoc_leave', docId), {
+          dtype: 'leave', status: 'approved',
+          title: `${worker.name} ${lv.leaveType}`,
+          leaveType: lv.leaveType, startDate: lv.startDate, endDate: lv.endDate, days: lv.days,
+          reason: '테스트 데이터', authorUid: worker.portalUid || '', authorName: worker.name,
+          authorDept: worker.dept || '', authorRank: worker.rank || '',
+          viewerUids: [],
+          _testSeed: SEED_TAG,
+          createdAt: serverTimestamp(),
+        });
+      } catch(e) { log(`  ⚠️ 연차(${lv.startDate}) 생성 실패: ${e.message}`); }
+    }
+    if (scenario.leaves.length) log(`  ✅ 연차기록 ${scenario.leaves.length}건 생성`);
+  }
+
+  log('\n=== 시딩 완료 ===');
+  btn.disabled = false;
+};
+
+window.runCleanup = async () => {
+  if (!confirm('테스트 시딩 데이터(_testSeed=' + SEED_TAG + ')를 전부 삭제하시겠습니까?')) return;
+  const btn = document.getElementById('cleanup-btn');
+  btn.disabled = true;
+  logEl.textContent = '';
+  log('=== 삭제 시작 ===');
+
+  // worker_attendance_log
+  try {
+    const snap = await getDocs(query(collection(db, 'worker_attendance_log'), where('_testSeed','==',SEED_TAG)));
+    let n = 0;
+    for (const d of snap.docs) { await deleteDoc(d.ref); n++; }
+    log(`worker_attendance_log ${n}건 삭제`);
+  } catch(e) { log('⚠️ worker_attendance_log 삭제 오류: ' + e.message); }
+
+  // edoc_leave
+  try {
+    const snap = await getDocs(query(collection(db, 'edoc_leave'), where('_testSeed','==',SEED_TAG)));
+    let n = 0;
+    for (const d of snap.docs) { await deleteDoc(d.ref); n++; }
+    log(`edoc_leave ${n}건 삭제`);
+  } catch(e) { log('⚠️ edoc_leave 삭제 오류: ' + e.message); }
+
+  // 테스트용 연봉계약서 (신중 처리 — _testSeed 태그 있는 것만)
+  try {
+    for (const name of TARGET_NAMES) {
+      const worker = await findWorkerByName(name);
+      if (!worker) continue;
+      const cSnap = await getDocs(collection(db, `annual_contracts/${worker.id}/contracts`));
+      for (const d of cSnap.docs) {
+        if (d.data()._testSeed === SEED_TAG) { await deleteDoc(d.ref); log(`  ${name} 테스트 연봉계약서 삭제`); }
+      }
+    }
+  } catch(e) { log('⚠️ 연봉계약서 삭제 오류: ' + e.message); }
+
+  log('=== 삭제 완료 ===');
+  btn.disabled = false;
+};
+</script>
+</body>
+</html>
