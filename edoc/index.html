@@ -106,6 +106,7 @@ const EDOC_TABS = {
   purchase:{ id:'tab-purchase',title:'구매품의서',    fn:()=>renderDocMain('purchase') },
   expense: { id:'tab-expense', title:'지출결의서',    fn:()=>renderDocMain('expense') },
   overtime:{ id:'tab-overtime',title:'초과근로',      fn:()=>renderOvertimeMain() },
+  mycard:  { id:'tab-mycard',  title:'인사카드',      fn:()=>renderMyCard() },
 };
 
 // 각 탭 콘텐츠 상단에 공통으로 들어가는 "전자결재 홈" 이동 버튼
@@ -211,7 +212,56 @@ window.addEventListener('message', e => {
 // 📝 업무일지 전용 모듈
 // ══════════════════════════════════════════════
 let _pjts = [];   // gihoek_projects 캐시
+// ── 한국 공휴일 및 월 소정근로시간/최대초과근로시간 자동계산 (attendance·hr 모듈과 동일 로직 — 공휴일 갱신 시 3곳 동시 반영 필요) ──
+const EDOC_KR_HOLIDAYS = new Set([
+  '2024-01-01','2024-02-09','2024-02-10','2024-02-11','2024-02-12',
+  '2024-03-01','2024-04-10','2024-05-05','2024-05-06','2024-05-15',
+  '2024-06-06','2024-08-15','2024-09-16','2024-09-17','2024-09-18',
+  '2024-10-03','2024-10-09','2024-12-25',
+  '2025-01-01','2025-01-28','2025-01-29','2025-01-30',
+  '2025-03-01','2025-05-05','2025-05-06','2025-06-06',
+  '2025-08-15','2025-10-03','2025-10-05','2025-10-06','2025-10-07','2025-10-09',
+  '2025-12-25',
+  '2026-01-01','2026-02-17','2026-02-18','2026-02-19','2026-02-20',
+  '2026-03-01','2026-03-02','2026-05-05','2026-05-25',
+  '2026-06-06','2026-08-17','2026-09-24','2026-09-25','2026-09-28',
+  '2026-10-09','2026-12-25',
+  '2027-01-01','2027-02-08','2027-02-09','2027-02-10','2027-03-01',
+  '2027-05-05','2027-05-13','2027-06-06','2027-08-16',
+  '2027-09-14','2027-09-15','2027-09-16','2027-10-04','2027-10-09','2027-12-25',
+]);
+function edocMonthlyStandardHours(year, month) {
+  const first = new Date(year, month-1, 1);
+  const last  = new Date(year, month, 0);
+  let workDays = 0;
+  const cur = new Date(first);
+  while (cur <= last) {
+    const dow = cur.getDay();
+    const key = cur.toISOString().slice(0,10);
+    if (dow!==0 && dow!==6 && !EDOC_KR_HOLIDAYS.has(key)) workDays++;
+    cur.setDate(cur.getDate()+1);
+  }
+  return workDays*8;
+}
+function edocIsoWeekKey(d) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = (t.getUTCDay()+6)%7;
+  t.setUTCDate(t.getUTCDate()-dayNum+3);
+  const firstThursday = new Date(Date.UTC(t.getUTCFullYear(),0,4));
+  const weekNum = 1 + Math.round(((t-firstThursday)/86400000 - 3 + (firstThursday.getUTCDay()+6)%7)/7);
+  return `${t.getUTCFullYear()}-W${weekNum}`;
+}
+function edocMonthlyMaxOvertimeHours(year, month) {
+  const first = new Date(year, month-1, 1);
+  const last  = new Date(year, month, 0);
+  const weeks = new Set();
+  const cur = new Date(first);
+  while (cur <= last) { weeks.add(edocIsoWeekKey(cur)); cur.setDate(cur.getDate()+1); }
+  return weeks.size*12;
+}
+
 let _myInfo = {}; // 로그인 사용자 정보 (소속·이름·직급)
+let _myWorkerId = ''; // 근로자 명부(workers) 문서 ID — 인사카드·근로시간 집계용
 
 // 로그인 사용자 정보 로드 (portal_users → workers 순 시도)
 async function loadMyInfo() {
@@ -219,21 +269,28 @@ async function loadMyInfo() {
   try {
     const { getDoc, getDocs, doc, collection, query, where } =
       await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    // portal_users: { name, rank, email }
+    // portal_users: { name, rank, email, workerId? }
     const pu = await getDoc(doc(window._db, 'portal_users', _user.uid));
+    let puWorkerId = '';
     if (pu.exists()) {
       const d = pu.data();
       _myInfo = { name: d.name || _user.displayName || '', rank: d.rank || '', dept: d.dept || '', email: _user.email };
+      puWorkerId = d.workerId || '';
     }
-    // workers 컬렉션에서 이메일로 매칭해 dept 보완
+    // workers 컬렉션 매칭: portalUid(가장 정확) → 이메일 → 이름 순
     const ws = await getDocs(collection(window._db, 'workers'));
+    let matchedId = puWorkerId;
     ws.forEach(w => {
       const wd = w.data();
-      if ((wd.email || '').toLowerCase() === (_user.email || '').toLowerCase() ||
-          (wd.name && wd.name === _myInfo.name)) {
+      const isPortalUidMatch = wd.portalUid === _user.uid;
+      const isEmailMatch = (wd.email || '').toLowerCase() === (_user.email || '').toLowerCase();
+      const isNameMatch = wd.name && wd.name === _myInfo.name;
+      if (isPortalUidMatch || (!matchedId && (isEmailMatch || isNameMatch))) {
+        if (isPortalUidMatch) matchedId = w.id;
         _myInfo = { ..._myInfo, dept: wd.dept || _myInfo.dept, rank: wd.rank || _myInfo.rank };
       }
     });
+    _myWorkerId = matchedId;
   } catch(e) { console.warn('myInfo load:', e.message); }
 }
 
@@ -713,6 +770,54 @@ async function otGetWage(workerId){
   const result={rate, hourly, empType, ...sal};
   _otWageCache[workerId]=result; return result;
 }
+// ── 개인 인사카드: 로그인 계정 본인 정보만 조회 (workerId 매칭, 타인 정보 접근 불가) ──
+window.renderMyCard = async function(){
+  const el = document.getElementById('tab-mycard'); if(!el) return;
+  el.innerHTML = `<div class="wrap2">${edocHomeBtnHtml()}<div style="text-align:center;padding:32px;color:#9AAABF;">⏳ 불러오는 중…</div></div>`;
+  if (!_myInfo?.name) await loadMyInfo();
+  if (!_myWorkerId) {
+    el.innerHTML = `<div class="wrap2">${edocHomeBtnHtml()}
+      <div style="text-align:center;padding:32px;color:#9AAABF;">
+        계정이 근무자 명부와 연동되어 있지 않습니다.<br>인사 담당자에게 "근무자 연동"을 요청해주세요.
+      </div></div>`;
+    return;
+  }
+  try {
+    const { getDoc, doc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const wsnap = await getDoc(doc(window._db,'workers',_myWorkerId));
+    if (!wsnap.exists()) {
+      el.innerHTML = `<div class="wrap2">${edocHomeBtnHtml()}<div style="text-align:center;padding:32px;color:#9AAABF;">근로자 명부 정보를 찾을 수 없습니다.</div></div>`;
+      return;
+    }
+    const w = wsnap.data();
+    // 민감정보(주민번호·계좌) 마스킹
+    const maskJumin = j => j ? (j.slice(0,6)+'-'+'●'.repeat(Math.max(0,(j.replace(/[^0-9]/g,'').length-6)))) : '-';
+    const maskBank = b => b ? b.replace(/.(?=.{4})/g,'●') : '-';
+    const row = (label, val) => `<div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #F0F4F9;">
+      <span style="font-size:12.5px;color:#5C6F8A;">${label}</span><span style="font-size:13.5px;font-weight:600;color:#1A2540;">${val||'-'}</span></div>`;
+    el.innerHTML = `<div class="wrap2">
+      ${edocHomeBtnHtml()}
+      <div style="display:flex;align-items:center;gap:12px;margin:14px 0 18px;">
+        <div style="width:48px;height:48px;border-radius:50%;background:#1D5BA6;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;">${(w.name||'?')[0]}</div>
+        <div><div style="font-size:17px;font-weight:800;color:#1A2540;">${w.name||'-'} <span style="font-size:13px;font-weight:600;color:#5C6F8A;">${w.rank||''}</span></div>
+        <div style="font-size:12px;color:#9AAABF;margin-top:2px;">${w.dept||'-'} · 사번 ${w.empNo||'-'}</div></div>
+      </div>
+      <div style="background:#fff;border-radius:14px;padding:6px 16px;box-shadow:0 1px 4px rgba(0,0,0,.06);">
+        ${row('입사일', w.hireDate)}
+        ${row('직종', w.job)}
+        ${row('고용형태', w.empType==='field'?'현장직':(w.empType==='office'?'사무직':w.empType))}
+        ${row('휴대폰번호', w.phone)}
+        ${row('주소', w.address)}
+        ${row('주민등록번호', maskJumin(w.jumin))}
+        ${row('계좌번호', maskBank(w.bankAccount))}
+      </div>
+      <div style="font-size:11px;color:#aab;margin-top:10px;text-align:center;">본인 정보만 조회됩니다. 정보 수정은 인사 담당자에게 요청해주세요.</div>
+    </div>`;
+  } catch(e) {
+    el.innerHTML = `<div class="wrap2">${edocHomeBtnHtml()}<div style="text-align:center;padding:32px;color:#c0392b;">불러오기 실패: ${e.message}</div></div>`;
+  }
+};
+
 window.renderOvertimeMain = async function(){
   const el=document.getElementById('tab-overtime'); if(!el) return;
   el.innerHTML=`<div class="wrap2"><div style="text-align:center;padding:32px;color:#9AAABF;">⏳ 불러오는 중…</div></div>`;
@@ -895,7 +1000,7 @@ async function renderEdocHome() {
   el.innerHTML = `<div class="wrap2">
     <div class="sec-title">전자결재 홈</div>
     <div class="sec-sub">내 결재함 · 수신함 · 게시 문건</div>
-    <div style="margin:12px 0"><button onclick="goTab('overtime')" style="width:100%;padding:13px;background:#1D5BA6;border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">⏱️ 초과근로 신청 · 결재</button></div>
+    <div id="edoc-worktime-box" style="margin:12px 0"></div>
     <div id="edoc-leave-box" class="leave-box">
       <div class="leave-box-inner" style="opacity:.5;">연차 현황 불러오는 중…</div>
     </div>
@@ -994,6 +1099,39 @@ async function renderEdocHome() {
 
     // 전역 저장 (KPI 카드 '전체 보기'에서 사용)
     window._edocLists = { approve: myApprove, inbox: myInbox, mydocs: myDocs, posted: postedAll };
+
+    // ── 이번 달 누적 근로시간 (로그인 계정, worker_attendance_log 집계) ──
+    (async () => {
+      const wbox = document.getElementById('edoc-worktime-box');
+      if (!wbox) return;
+      if (!_myWorkerId) {
+        wbox.innerHTML = `<div class="leave-box-inner" style="opacity:.7;padding:12px 14px;background:#F7F9FC;border-radius:10px;">
+          ⏰ 근로시간 — 계정이 근무자 명부와 연동되어 있지 않아 집계할 수 없습니다.</div>`;
+        return;
+      }
+      try {
+        const now = new Date();
+        const ym = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+        const wsnap = await getDocs(query(collection(db,'worker_attendance_log'), where('workerId','==',_myWorkerId), where('yearMonth','==',ym)));
+        let total = 0;
+        wsnap.forEach(d => { total += Number(d.data().workHours)||0; });
+        const standard = edocMonthlyStandardHours(now.getFullYear(), now.getMonth()+1);
+        const maxOt = edocMonthlyMaxOvertimeHours(now.getFullYear(), now.getMonth()+1);
+        const remain = Math.max(0, standard - Math.min(total, standard));
+        wbox.innerHTML = `
+          <div style="background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.06);">
+            <div style="font-size:13px;font-weight:700;color:#1A2540;margin-bottom:10px;">⏰ ${ym} 이번 달 근로시간</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;">
+              <div><div style="font-size:11px;color:#9AAABF;">근무시간 누계</div><div style="font-size:16px;font-weight:800;color:#1D5BA6;">${total.toFixed(1)}h</div></div>
+              <div><div style="font-size:11px;color:#9AAABF;">소정근로시간</div><div style="font-size:16px;font-weight:800;color:#1A2540;">${standard.toFixed(1)}h</div></div>
+              <div><div style="font-size:11px;color:#9AAABF;">정규 잔여</div><div style="font-size:16px;font-weight:800;color:#16A34A;">${remain.toFixed(1)}h</div></div>
+            </div>
+            <a href="../attendance/index.html" style="display:block;text-align:center;margin-top:10px;font-size:12px;color:#1D5BA6;font-weight:700;text-decoration:none;">출퇴근 기록하러 가기 ›</a>
+          </div>`;
+      } catch(e) {
+        wbox.innerHTML = `<div class="leave-box-inner" style="opacity:.7;">⏰ 근로시간 불러오기 실패: ${e.message}</div>`;
+      }
+    })();
 
     // ── 연차 현황 계산 (로그인 계정) ──
     (async () => {
@@ -2382,6 +2520,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
       <button class="sb-item" data-navkey="purchase" onclick="goTab('purchase')"><span class="sb-num">5</span> 구매품의서</button>
       <button class="sb-item" data-navkey="expense" onclick="goTab('expense')"><span class="sb-num">6</span> 지출결의서</button>
       <button class="sb-item" data-navkey="overtime" onclick="goTab('overtime')"><span class="sb-num">7</span> 초과근로</button>
+      <button class="sb-item" data-navkey="mycard" onclick="goTab('mycard')"><span class="sb-num">🪪</span> 인사카드</button>
       <div class="sb-foot">
         <div class="av" id="sb-user">?</div>
         <button onclick="doLogout()">로그아웃</button>
@@ -2400,6 +2539,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
         <button class="tab-btn"        data-navkey="purchase" onclick="goTab('purchase')">🛒 구매품의</button>
         <button class="tab-btn"        data-navkey="expense"  onclick="goTab('expense')">💳 지출결의</button>
         <button class="tab-btn"        data-navkey="overtime" onclick="goTab('overtime')">⏱️ 초과근로</button>
+        <button class="tab-btn"        data-navkey="mycard"   onclick="goTab('mycard')">🪪 인사카드</button>
       </div>
 
       <!-- 탭 콘텐츠 -->
@@ -2412,6 +2552,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
       <div class="tab-content" id="tab-purchase"></div>
       <div class="tab-content" id="tab-expense"></div>
       <div class="tab-content" id="tab-overtime"></div>
+      <div class="tab-content" id="tab-mycard"></div>
     </div>
   </div>
 </div>
