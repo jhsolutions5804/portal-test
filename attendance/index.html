@@ -1,0 +1,361 @@
+<!DOCTYPE html><!-- Attendance module build: 20260828a · ver 1.0.0 · 신규 생성: 개인별 출퇴근 기록 -->
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>출퇴근 기록 · 제이에이치솔루션</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif; background:#f0f4fa; min-height:100vh; padding:0 0 60px; }
+
+.app-header { background:#1D5BA6; color:#fff; padding:16px 20px 14px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(29,91,166,.3); }
+.header-left { display:flex; align-items:center; gap:12px; }
+.header-left .icon { font-size:22px; }
+.app-header h1 { font-size:17px; font-weight:700; letter-spacing:-.3px; }
+.app-header p  { font-size:11px; opacity:.75; margin-top:1px; }
+.back-btn { font-size:13px; color:#fff; text-decoration:none; background:rgba(255,255,255,.18); padding:6px 12px; border-radius:20px; white-space:nowrap; }
+
+.container { max-width:480px; margin:0 auto; padding:16px 14px; }
+.card { background:#fff; border-radius:14px; padding:18px 16px; margin-bottom:12px; box-shadow:0 1px 4px rgba(0,0,0,.07); }
+.card-label { font-size:11px; font-weight:700; color:#1D5BA6; letter-spacing:.6px; margin-bottom:8px; display:flex; align-items:center; gap:5px; }
+
+input[type="time"], input[type="number"] { width:100%; border:1.5px solid #dde4ef; border-radius:9px; padding:11px 13px; font-size:14px; font-family:inherit; color:#1a1a2e; background:#fafbfd; outline:none; transition:border-color .15s; }
+input[type="time"]:focus, input[type="number"]:focus { border-color:#1D5BA6; background:#fff; }
+label.fld-lab { font-size:11px; color:#888; display:block; margin-bottom:5px; }
+
+.today-date { font-size:15px; font-weight:700; color:#1a1a2e; margin-bottom:14px; }
+.hours-display { text-align:center; padding:18px 0 6px; }
+.hours-display .val { font-size:34px; font-weight:800; color:#1D5BA6; }
+.hours-display .lab { font-size:12px; color:#888; margin-top:4px; }
+
+.btn { width:100%; padding:14px; border:none; border-radius:12px; font-size:14px; font-weight:700; font-family:inherit; cursor:pointer; transition:all .15s; background:#1D5BA6; color:#fff; margin-top:6px; }
+.btn:hover { background:#1549a0; }
+.btn:disabled { opacity:.6; cursor:default; }
+
+.summary-row { display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid #f0f4fa; font-size:13px; }
+.summary-row:last-child { border-bottom:none; }
+.summary-row .k { color:#5C6F8A; }
+.summary-row .v { font-weight:700; color:#1a1a2e; }
+.summary-row .v.warn { color:#c0392b; }
+
+.hist-item { display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid #f0f4fa; font-size:12.5px; }
+.hist-item:last-child { border-bottom:none; }
+.hist-item .d { color:#5C6F8A; }
+.hist-item .t { color:#1a1a2e; }
+.hist-item .h { font-weight:700; color:#1D5BA6; }
+
+.load-status { font-size:11px; margin-top:6px; text-align:center; }
+.load-status.ok  { color:#2e7d32; }
+.load-status.err { color:#c0392b; }
+.hint { font-size:11px; color:#aab; margin-top:5px; line-height:1.5; }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-left">
+    <div class="icon">⏰</div>
+    <div>
+      <h1>출퇴근 기록</h1>
+      <p>제이에이치솔루션</p>
+    </div>
+  </div>
+  <a class="back-btn" href="../index.html">← 포털 홈</a>
+</div>
+
+<div class="container">
+
+  <div class="card">
+    <div class="card-label">오늘 출퇴근</div>
+    <div class="today-date" id="todayDate">—</div>
+
+    <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:12px">
+      <div style="flex:1">
+        <label class="fld-lab">출근시간</label>
+        <input type="time" id="checkInTime" value="07:00">
+      </div>
+      <div style="flex:1">
+        <label class="fld-lab">퇴근시간</label>
+        <input type="time" id="checkOutTime" value="18:00">
+      </div>
+    </div>
+    <div style="max-width:160px">
+      <label class="fld-lab">휴게시간(분)</label>
+      <input type="number" id="breakMin" value="120" min="0" step="10">
+    </div>
+
+    <div class="hours-display">
+      <div class="val" id="workHoursVal">0.0h</div>
+      <div class="lab">오늘 근무시간 (휴게시간 제외)</div>
+    </div>
+
+    <button class="btn" id="saveBtn" onclick="saveAttendance()">💾 저장</button>
+    <div class="load-status" id="saveStatus"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">이번 달 누계</div>
+    <div id="monthSummary">
+      <div style="text-align:center;color:#aab;padding:16px 0;font-size:12px">불러오는 중...</div>
+    </div>
+    <div class="hint">※ 월 소정근로시간은 해당 월 평일수(공휴일 제외) × 8시간, 월 최대초과근로시간은 근로기준법 연장근로 한도(주 12시간) × 해당월 겹치는 주수 기준으로 자동 계산됩니다.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">최근 기록</div>
+    <div id="recentHistory">
+      <div style="text-align:center;color:#aab;padding:16px 0;font-size:12px">불러오는 중...</div>
+    </div>
+  </div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, doc, getDoc, getDocs, setDoc, collection, query, where, serverTimestamp }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, onAuthStateChanged }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI",
+  authDomain: "portal-test-6e0ff.firebaseapp.com",
+  projectId: "portal-test-6e0ff",
+  storageBucket: "portal-test-6e0ff.appspot.com",
+  messagingSenderId: "752763010816",
+  appId: "1:752763010816:web:4a0c7062a2f1a4e9a03de5"
+};
+
+const app  = initializeApp(firebaseConfig);
+const db   = getFirestore(app);
+const auth = getAuth(app);
+
+// ══════════════════════════════════════════
+// 접근 게이트 — 로그인 + 승인된 계정이면 누구나 (perms 무관, 전 직원 대상)
+// ══════════════════════════════════════════
+const _gateOverlay = document.createElement('div');
+_gateOverlay.id = '_access-gate';
+_gateOverlay.style.cssText = 'position:fixed;inset:0;z-index:999999;background:#f0f4fa;display:flex;align-items:center;justify-content:center;font-family:-apple-system,sans-serif;color:#86868b;font-size:13px';
+_gateOverlay.textContent = '확인 중...';
+document.body.appendChild(_gateOverlay);
+function _denyGateAccess(msg){
+  _gateOverlay.innerHTML = '<div style="max-width:380px;text-align:center;padding:32px 24px;background:#fff;border:1px solid #e5e5e5;border-radius:14px"><div style="font-size:36px;margin-bottom:12px">🔒</div><div style="font-size:15px;font-weight:700;color:#1A2540;margin-bottom:8px">접근할 수 없습니다</div><div style="font-size:13px;color:#86868b;line-height:1.5">'+msg+'</div></div>';
+}
+
+let _me = null; // { uid, name, rank, workerId }
+
+window._accessGatePromise = new Promise(function(resolve){
+  onAuthStateChanged(auth, async function(user){
+    if(!user){ _denyGateAccess('로그인이 필요합니다. 포털(portal.jhsol.kr)에서 로그인 후 다시 접속해주세요.'); resolve(false); return; }
+    try{
+      const uSnap = await getDoc(doc(db,'portal_users',user.uid));
+      const uData = uSnap.exists() ? uSnap.data() : null;
+      const ok = !!(uData && uData.status==='approved');
+      if(!ok){ _denyGateAccess('계정 승인이 완료되지 않았습니다. 관리자에게 문의해주세요.'); resolve(false); return; }
+      // portal_users.workerId가 없으면 workers.portalUid 역조회로 보완
+      // (포털 관리 화면의 "근무자 연동"은 workers.portalUid만 설정하고 workerId는 안 채우는 경로가 있어 이중 확인)
+      let workerId = uData.workerId || '';
+      if(!workerId){
+        try{
+          const wq = await getDocs(query(collection(db,'workers'), where('portalUid','==',user.uid)));
+          if(!wq.empty) workerId = wq.docs[0].id;
+        }catch(e){ console.warn('[attendance] workerId 역조회 실패', e); }
+      }
+      if(!workerId){
+        _denyGateAccess('계정이 근무자 명부와 연동되어 있지 않습니다. 인사 담당자에게 "근무자 연동"을 요청해주세요.');
+        resolve(false); return;
+      }
+      _me = { uid:user.uid, name:uData.name||'', rank:uData.rank||'', workerId };
+      _gateOverlay.remove();
+      resolve(true);
+      init();
+    }catch(e){ _denyGateAccess('권한 확인 중 오류가 발생했습니다: '+e.message); resolve(false); }
+  });
+});
+
+// ── 한국 공휴일 (hr 모듈의 KR_HOLIDAYS와 동일 소스 — 갱신 시 양쪽 동시 반영 필요) ──
+const KR_HOLIDAYS = new Set([
+  '2024-01-01','2024-02-09','2024-02-10','2024-02-11','2024-02-12',
+  '2024-03-01','2024-04-10','2024-05-05','2024-05-06','2024-05-15',
+  '2024-06-06','2024-08-15','2024-09-16','2024-09-17','2024-09-18',
+  '2024-10-03','2024-10-09','2024-12-25',
+  '2025-01-01','2025-01-28','2025-01-29','2025-01-30',
+  '2025-03-01','2025-05-05','2025-05-06','2025-06-06',
+  '2025-08-15','2025-10-03','2025-10-05','2025-10-06','2025-10-07','2025-10-09',
+  '2025-12-25',
+  '2026-01-01','2026-02-17','2026-02-18','2026-02-19','2026-02-20',
+  '2026-03-01','2026-03-02','2026-05-05','2026-05-25',
+  '2026-06-06','2026-08-17','2026-09-24','2026-09-25','2026-09-28',
+  '2026-10-09','2026-12-25',
+  '2027-01-01','2027-02-08','2027-02-09','2027-02-10','2027-03-01',
+  '2027-05-05','2027-05-13','2027-06-06','2027-08-16',
+  '2027-09-14','2027-09-15','2027-09-16','2027-10-04','2027-10-09','2027-12-25',
+]);
+
+// 해당 월 소정근로시간(공휴일 제외 평일수 × 8h) / 최대초과근로시간(겹치는 ISO주수 × 12h)
+function monthlyStandardHours(year, month /* 1-12 */){
+  const first = new Date(year, month-1, 1);
+  const last  = new Date(year, month, 0);
+  let workDays = 0;
+  const cur = new Date(first);
+  while (cur <= last){
+    const dow = cur.getDay();
+    const key = cur.toISOString().slice(0,10);
+    if (dow!==0 && dow!==6 && !KR_HOLIDAYS.has(key)) workDays++;
+    cur.setDate(cur.getDate()+1);
+  }
+  return workDays*8;
+}
+function isoWeekKey(d){
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = (t.getUTCDay()+6)%7;
+  t.setUTCDate(t.getUTCDate()-dayNum+3);
+  const firstThursday = new Date(Date.UTC(t.getUTCFullYear(),0,4));
+  const weekNum = 1 + Math.round(((t-firstThursday)/86400000 - 3 + (firstThursday.getUTCDay()+6)%7)/7);
+  return `${t.getUTCFullYear()}-W${weekNum}`;
+}
+function monthlyMaxOvertimeHours(year, month){
+  const first = new Date(year, month-1, 1);
+  const last  = new Date(year, month, 0);
+  const weeks = new Set();
+  const cur = new Date(first);
+  while (cur <= last){ weeks.add(isoWeekKey(cur)); cur.setDate(cur.getDate()+1); }
+  return weeks.size*12;
+}
+window._attHelpers = { monthlyStandardHours, monthlyMaxOvertimeHours, KR_HOLIDAYS };
+
+// ── 오늘 근무시간 실시간 계산 ──
+function calcWorkHours(){
+  const inV = document.getElementById('checkInTime').value;
+  const outV = document.getElementById('checkOutTime').value;
+  const brk = parseFloat(document.getElementById('breakMin').value)||0;
+  if(!inV || !outV) return 0;
+  const [ih,im] = inV.split(':').map(Number);
+  const [oh,om] = outV.split(':').map(Number);
+  let mins = (oh*60+om) - (ih*60+im);
+  if (mins <= 0) mins += 24*60; // 익일 퇴근 대응
+  mins -= brk;
+  if (mins < 0) mins = 0;
+  return mins/60;
+}
+function refreshHoursDisplay(){
+  const h = calcWorkHours();
+  document.getElementById('workHoursVal').textContent = h.toFixed(1)+'h';
+}
+['checkInTime','checkOutTime','breakMin'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', refreshHoursDisplay);
+});
+
+function todayKey(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+const DAYS_KO = ['일','월','화','수','목','금','토'];
+
+async function init(){
+  const d = new Date();
+  document.getElementById('todayDate').textContent = `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 ${DAYS_KO[d.getDay()]}요일`;
+
+  // 오늘 기존 기록 있으면 불러오기
+  try{
+    const key = `${_me.workerId}_${todayKey()}`;
+    const snap = await getDoc(doc(db,'worker_attendance_log',key));
+    if (snap.exists()){
+      const data = snap.data();
+      if(data.checkIn) document.getElementById('checkInTime').value = data.checkIn;
+      if(data.checkOut) document.getElementById('checkOutTime').value = data.checkOut;
+      if(data.breakMinutes!=null) document.getElementById('breakMin').value = data.breakMinutes;
+    }
+  }catch(e){ console.warn('오늘 기록 로드 실패', e); }
+  refreshHoursDisplay();
+
+  await Promise.all([ loadMonthSummary(), loadRecentHistory() ]);
+}
+
+window.saveAttendance = async function(){
+  const btn = document.getElementById('saveBtn');
+  const statusEl = document.getElementById('saveStatus');
+  const checkIn = document.getElementById('checkInTime').value;
+  const checkOut = document.getElementById('checkOutTime').value;
+  const breakMinutes = parseFloat(document.getElementById('breakMin').value)||0;
+  if(!checkIn || !checkOut){ alert('출근/퇴근 시간을 모두 입력해주세요.'); return; }
+
+  const workHours = calcWorkHours();
+  const dk = todayKey();
+  const key = `${_me.workerId}_${dk}`;
+  btn.disabled = true; const orig = btn.innerHTML; btn.innerHTML = '저장 중...';
+  try{
+    await setDoc(doc(db,'worker_attendance_log',key), {
+      workerId: _me.workerId, name: _me.name, rank: _me.rank,
+      date: dk, yearMonth: dk.slice(0,7),
+      checkIn, checkOut, breakMinutes, workHours,
+      updatedAt: serverTimestamp()
+    }, { merge:true });
+    statusEl.textContent = '✓ 저장 완료'; statusEl.className='load-status ok';
+    await Promise.all([ loadMonthSummary(), loadRecentHistory() ]);
+  }catch(e){
+    statusEl.textContent = '저장 실패: '+e.message; statusEl.className='load-status err';
+  }
+  btn.disabled = false; btn.innerHTML = orig;
+  setTimeout(()=>{ statusEl.textContent=''; }, 3000);
+};
+
+async function loadMonthSummary(){
+  const el = document.getElementById('monthSummary');
+  const now = new Date();
+  const ym = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  try{
+    const q = query(collection(db,'worker_attendance_log'), where('workerId','==',_me.workerId), where('yearMonth','==',ym));
+    const snap = await getDocs(q);
+    let total = 0;
+    snap.forEach(s=>{ total += (s.data().workHours||0); });
+
+    const standard = monthlyStandardHours(now.getFullYear(), now.getMonth()+1);
+    const maxOt = monthlyMaxOvertimeHours(now.getFullYear(), now.getMonth()+1);
+    const maxTotal = standard + maxOt;
+
+    const regularUsed = Math.min(total, standard);
+    const otUsed = Math.max(0, total - standard);
+    const regularRemain = Math.max(0, standard - regularUsed);
+    const otRemain = Math.max(0, maxOt - otUsed);
+
+    el.innerHTML = `
+      <div class="summary-row"><span class="k">${ym} 소정근로시간</span><span class="v">${standard.toFixed(1)}h</span></div>
+      <div class="summary-row"><span class="k">최대초과근로 한도</span><span class="v">${maxOt.toFixed(1)}h</span></div>
+      <div class="summary-row"><span class="k">이번 달 근무시간 누계</span><span class="v">${total.toFixed(1)}h</span></div>
+      <div class="summary-row"><span class="k">정규근로 잔여</span><span class="v">${regularRemain.toFixed(1)}h</span></div>
+      <div class="summary-row"><span class="k">초과근로 가능 잔여</span><span class="v ${otUsed>maxOt?'warn':''}">${otRemain.toFixed(1)}h</span></div>
+      <div class="summary-row"><span class="k">이번 달 최대 근무 가능</span><span class="v">${maxTotal.toFixed(1)}h</span></div>
+    `;
+  }catch(e){
+    el.innerHTML = `<div style="color:#c0392b;font-size:12px;text-align:center;padding:10px 0">불러오기 실패: ${e.message}</div>`;
+  }
+}
+
+async function loadRecentHistory(){
+  const el = document.getElementById('recentHistory');
+  try{
+    const q = query(collection(db,'worker_attendance_log'), where('workerId','==',_me.workerId));
+    const snap = await getDocs(q);
+    let rows = [];
+    snap.forEach(s=>rows.push(s.data()));
+    rows.sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+    rows = rows.slice(0,10);
+    if(rows.length===0){
+      el.innerHTML = '<div style="text-align:center;color:#aab;padding:16px 0;font-size:12px">기록이 없습니다</div>';
+      return;
+    }
+    el.innerHTML = rows.map(r=>`
+      <div class="hist-item">
+        <span class="d">${r.date||'—'}</span>
+        <span class="t">${r.checkIn||'—'} ~ ${r.checkOut||'—'}</span>
+        <span class="h">${(r.workHours||0).toFixed(1)}h</span>
+      </div>
+    `).join('');
+  }catch(e){
+    el.innerHTML = `<div style="color:#c0392b;font-size:12px;text-align:center;padding:10px 0">불러오기 실패: ${e.message}</div>`;
+  }
+}
+</script>
+</body>
+</html>
