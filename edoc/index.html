@@ -910,7 +910,7 @@ window.renderAttendanceTab = async function(){
             <span>📊 월별 근로시간 조회</span>
             <span style="display:flex;align-items:center;gap:6px;">
               <button onclick="attChangeMonth(-1)" style="border:none;background:#fff;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:13px;color:#1D5BA6;">◀</button>
-              <span id="att-month-label" style="font-size:12px;font-weight:700;color:#1A2540;min-width:74px;text-align:center;"></span>
+              <span id="att-month-label" onclick="attOpenMonthPicker()" style="font-size:12px;font-weight:700;color:#1A2540;min-width:74px;text-align:center;cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:#C5CEDB;"></span>
               <button onclick="attChangeMonth(1)" style="border:none;background:#fff;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:13px;color:#1D5BA6;">▶</button>
             </span>
           </div>
@@ -948,6 +948,54 @@ window.attChangeMonth = async function(delta){
   _attMonth += delta;
   if (_attMonth > 12) { _attMonth = 1; _attYear++; }
   if (_attMonth < 1)  { _attMonth = 12; _attYear--; }
+  attUpdateMonthLabel();
+  await Promise.all([ attLoadMonthSummary(), attLoadMonthRecords() ]);
+};
+
+// ── 월 선택 팝업: 연도 이동 + 12개월 그리드에서 원하는 달로 바로 이동 ──
+let _attPickerYear = new Date().getFullYear();
+window.attOpenMonthPicker = function(){
+  _attPickerYear = _attYear;
+  let modal = document.getElementById('att-month-picker-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'att-month-picker-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(19,51,92,0.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+    modal.onclick = (e)=>{ if(e.target===modal) attCloseMonthPicker(); };
+    document.body.appendChild(modal);
+  }
+  attRenderMonthPicker(modal);
+  modal.style.display = 'flex';
+};
+window.attCloseMonthPicker = function(){
+  const m = document.getElementById('att-month-picker-modal');
+  if (m) m.style.display = 'none';
+};
+function attRenderMonthPicker(modal){
+  const months = Array.from({length:12}, (_,i)=>i+1);
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:16px;width:320px;max-width:100%;padding:20px 18px 16px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <button onclick="attPickerShiftYear(-1)" style="border:none;background:#F0F4F9;border-radius:8px;width:30px;height:30px;font-size:15px;cursor:pointer;color:#1D5BA6;">‹</button>
+        <span style="font-size:15px;font-weight:800;color:#1A2540;">${_attPickerYear}년</span>
+        <button onclick="attPickerShiftYear(1)" style="border:none;background:#F0F4F9;border-radius:8px;width:30px;height:30px;font-size:15px;cursor:pointer;color:#1D5BA6;">›</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+        ${months.map(m=>{
+          const isSel = _attPickerYear===_attYear && m===_attMonth;
+          return `<button onclick="attPickMonth(${m})" style="padding:12px 0;border-radius:9px;border:1.5px solid ${isSel?'#1D5BA6':'#DDE4EF'};background:${isSel?'#1D5BA6':'#fff'};color:${isSel?'#fff':'#1A2540'};font-size:13px;font-weight:${isSel?'800':'600'};cursor:pointer;font-family:inherit;">${m}월</button>`;
+        }).join('')}
+      </div>
+      <button onclick="attCloseMonthPicker()" style="margin-top:14px;width:100%;padding:10px;background:#F0F4F9;border:none;border-radius:9px;font-size:13px;color:#666;cursor:pointer;font-family:inherit;">닫기</button>
+    </div>`;
+}
+window.attPickerShiftYear = function(delta){
+  _attPickerYear += delta;
+  attRenderMonthPicker(document.getElementById('att-month-picker-modal'));
+};
+window.attPickMonth = async function(m){
+  _attYear = _attPickerYear; _attMonth = m;
+  attCloseMonthPicker();
   attUpdateMonthLabel();
   await Promise.all([ attLoadMonthSummary(), attLoadMonthRecords() ]);
 };
