@@ -716,7 +716,7 @@ body { font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif; 
     <button class="tab-btn" data-navkey="roster" onclick="goTab('roster')">👥 근로자 명부</button>
     <button class="tab-btn" data-navkey="labor" onclick="goTab('labor')">📝 근로계약서</button>
     <button class="tab-btn" data-navkey="annual" onclick="goTab('annual')">📋 연봉계약서</button>
-    <button class="tab-btn" data-navkey="overtime" onclick="goTab('overtime')">⏱ 초과근로</button>
+    <button class="tab-btn" data-navkey="overtime" onclick="goTab('overtime')">⏱ 근로시간</button>
     <button class="tab-btn" data-navkey="payslip" onclick="goTab('payslip')">💰 급여명세서</button>
     <button class="tab-btn" data-navkey="retire" onclick="goTab('retire')">🧾 퇴직금</button>
     <button class="tab-btn" data-navkey="leave" onclick="goTab('leave')">🌴 연차</button>
@@ -765,7 +765,7 @@ const HR_TABS = {
   roster:   { id:'tab-roster',   title:'근로자 명부', fn:()=>renderRosterMain() },
   labor:    { id:'tab-labor',    title:'근로계약서',  fn:()=>renderLaborMain() },
   annual:   { id:'tab-annual',   title:'연봉계약서',  fn:()=>renderAnnualMain() },
-  overtime: { id:'tab-overtime', title:'초과근로',    fn:()=>renderOvertimeMain() },
+  overtime: { id:'tab-overtime', title:'근로시간',    fn:()=>renderOvertimeMain() },
   payslip:  { id:'tab-payslip',  title:'급여명세서',  fn:()=>renderPayslipMain2() },
   retire:   { id:'tab-retire',   title:'퇴직금 정산', fn:()=>renderRetireMain() },
   leave:    { id:'tab-leave',    title:'연차 현황',   fn:()=>renderLeaveStatusMain() },
@@ -795,7 +795,7 @@ async function renderHome() {
       <div class="hm-fc full" onclick="goTab('roster')"><div class="hm-step">1</div><div class="hm-fb"><div class="stage">입사 · 인사 마스터 (모든 단계의 기준)</div><div class="ttl">근로자 명부</div><div class="hm-pills"><span class="hm-pill">등록</span><span class="hm-pill">조회 · 상세</span></div></div><div class="hm-chev">›</div></div>
       <div class="hm-fc" onclick="goTab('labor')"><div class="hm-step">2</div><div class="hm-fb"><div class="stage">시급 입력 → 연봉 자동 산정</div><div class="ttl">근로계약서</div></div><div class="hm-chev">›</div></div>
       <div class="hm-fc" onclick="goTab('annual')"><div class="hm-step">3</div><div class="hm-fb"><div class="stage">근로계약서 시급 연동</div><div class="ttl">연봉계약서</div></div><div class="hm-chev">›</div></div>
-      <div class="hm-fc" onclick="goTab('overtime')"><div class="hm-step">4</div><div class="hm-fb"><div class="stage">근무 · 통상임금 자동 계산</div><div class="ttl">초과근로</div></div><div class="hm-chev">›</div></div>
+      <div class="hm-fc" onclick="goTab('overtime')"><div class="hm-step">4</div><div class="hm-fb"><div class="stage">근무 · 통상임금 자동 계산</div><div class="ttl">근로시간</div></div><div class="hm-chev">›</div></div>
       <div class="hm-fc" onclick="goTab('payslip')"><div class="hm-step">5</div><div class="hm-fb"><div class="stage">급여 · 연봉 + 초과근로 연동</div><div class="ttl">급여명세서</div></div><div class="hm-chev">›</div></div>
       <div class="hm-fc" onclick="goTab('retire')"><div class="hm-step">6</div><div class="hm-fb"><div class="stage">퇴직 · 재직기간 × 평균임금</div><div class="ttl">퇴직금 정산</div></div><div class="hm-chev">›</div></div>
       <div class="hm-fc" onclick="goTab('leave')"><div class="hm-step">7</div><div class="hm-fb"><div class="stage">근로기준법 자동 산정 · 전 직원</div><div class="ttl">연차 현황</div></div><div class="hm-chev">›</div></div>
@@ -907,7 +907,7 @@ async function loadHomeKpis() {
       <div class="hm-kpi" onclick="hrShowList('roster')"><div class="lab">재직 인원</div><div class="val">${headcount}<small> 명</small></div><div class="act">명부 보기 ›</div></div>
       <div class="hm-kpi ${renew>0?'warn':''}" onclick="hrShowList('renew')"><div class="lab">계약 갱신 필요</div><div class="val">${renew}<small> 명 · D-30 이내</small></div><div class="act">갱신하러 가기 ›</div></div>
       <div class="hm-kpi ${payDone<headcount?'warn':''}" onclick="hrShowList('paymissing')"><div class="lab">이번 달 급여명세서</div><div class="val">${payDone}<small> / ${headcount} 작성</small></div><div class="act">작성하러 가기 ›</div></div>
-      <div class="hm-kpi" onclick="hrShowList('overtime')"><div class="lab">이번 달 초과근로</div><div class="val">${otHours}<small> h · ${manWon}만원</small></div><div class="act">현황 보기 ›</div></div>`;
+      <div class="hm-kpi" onclick="hrShowList('overtime')"><div class="lab">이번 달 초과근로수당</div><div class="val">${otHours}<small> h · ${manWon}만원</small></div><div class="act">현황 보기 ›</div></div>`;
   } catch(e) {
     const kpi=document.getElementById('hm-kpi');
     if (kpi) kpi.innerHTML = '<div style="grid-column:1/-1;color:#9AAABF;font-size:12px;padding:12px;">현황을 불러오지 못했습니다.</div>';
@@ -3017,6 +3017,73 @@ const KR_HOLIDAYS = new Set([
   '2027-09-14','2027-09-15','2027-09-16','2027-10-04','2027-10-09','2027-12-25',
 ]);
 
+// ── 월 소정근로시간(공휴일 제외 평일수×8h) / 월 최대초과근로시간(겹치는 ISO주수×12h, 근로기준법 연장근로 한도) ──
+// attendance/index.html의 동일 함수와 로직을 통일 — 공휴일 갱신 시 양쪽 KR_HOLIDAYS 동시 반영 필요
+function monthlyStandardHours(year, month) {
+  const first = new Date(year, month-1, 1);
+  const last  = new Date(year, month, 0);
+  let workDays = 0;
+  const cur = new Date(first);
+  while (cur <= last) {
+    const dow = cur.getDay();
+    const key = cur.toISOString().slice(0,10);
+    if (dow!==0 && dow!==6 && !KR_HOLIDAYS.has(key)) workDays++;
+    cur.setDate(cur.getDate()+1);
+  }
+  return workDays*8;
+}
+function _isoWeekKey(d) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = (t.getUTCDay()+6)%7;
+  t.setUTCDate(t.getUTCDate()-dayNum+3);
+  const firstThursday = new Date(Date.UTC(t.getUTCFullYear(),0,4));
+  const weekNum = 1 + Math.round(((t-firstThursday)/86400000 - 3 + (firstThursday.getUTCDay()+6)%7)/7);
+  return `${t.getUTCFullYear()}-W${weekNum}`;
+}
+function monthlyMaxOvertimeHours(year, month) {
+  const first = new Date(year, month-1, 1);
+  const last  = new Date(year, month, 0);
+  const weeks = new Set();
+  const cur = new Date(first);
+  while (cur <= last) { weeks.add(_isoWeekKey(cur)); cur.setDate(cur.getDate()+1); }
+  return weeks.size*12;
+}
+window._laborHourHelpers = { monthlyStandardHours, monthlyMaxOvertimeHours };
+
+// ── worker_attendance_log(직원 개인별 출퇴근 기록) 기준 해당 월 근로시간 요약 ──
+// attendance/index.html에서 직원이 직접 입력한 출퇴근시간을 집계해, 소정/초과 근로시간 잔여를 계산한다.
+window.otGetAttendanceSummary = async (workerId, year, month) => {
+  const { collection, getDocs, query, where } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+  const ym = `${year}-${String(month).padStart(2,'0')}`;
+  const snap = await getDocs(query(collection(window._db,'worker_attendance_log'), where('workerId','==',workerId), where('yearMonth','==',ym)));
+  let total = 0, days = 0;
+  snap.forEach(d => { total += Number(d.data().workHours)||0; days++; });
+  const standard = monthlyStandardHours(year, month);
+  const maxOt = monthlyMaxOvertimeHours(year, month);
+  const regularUsed = Math.min(total, standard);
+  const otUsed = Math.max(0, total - standard);
+  return {
+    yearMonth: ym, total, days, standard, maxOt,
+    maxTotal: standard+maxOt,
+    regularUsed, otUsed,
+    regularRemain: Math.max(0, standard-regularUsed),
+    otRemain: Math.max(0, maxOt-otUsed),
+  };
+};
+// 근로시간 현황 카드 HTML (PC·모바일 공통)
+window.otRenderAttendanceCard = (s) => `
+  <div style="background:#F0F4F9;border-radius:10px;padding:12px 14px;margin-bottom:12px;">
+    <div style="font-weight:700;color:#1D5BA6;font-size:12px;margin-bottom:8px;">⏰ ${s.yearMonth} 근로시간 현황 (출퇴근 기록 자동 집계)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11.5px;color:#5C6F8A;">
+      <div style="display:flex;justify-content:space-between;"><span>소정근로시간</span><span style="font-weight:700;color:#1A2540;">${s.standard.toFixed(1)}h</span></div>
+      <div style="display:flex;justify-content:space-between;"><span>최대초과한도</span><span style="font-weight:700;color:#1A2540;">${s.maxOt.toFixed(1)}h</span></div>
+      <div style="display:flex;justify-content:space-between;"><span>근무시간 누계</span><span style="font-weight:700;color:#1A2540;">${s.total.toFixed(1)}h</span></div>
+      <div style="display:flex;justify-content:space-between;"><span>최대근무가능</span><span style="font-weight:700;color:#1A2540;">${s.maxTotal.toFixed(1)}h</span></div>
+      <div style="display:flex;justify-content:space-between;"><span>정규 잔여</span><span style="font-weight:700;color:#1D5BA6;">${s.regularRemain.toFixed(1)}h</span></div>
+      <div style="display:flex;justify-content:space-between;"><span>초과 가능 잔여</span><span style="font-weight:700;color:${s.otUsed>s.maxOt?'#DC2626':'#1D5BA6'};">${s.otRemain.toFixed(1)}h</span></div>
+    </div>
+  </div>`;
+
 function calcWorkDays(startStr, endStr) {
   if (!startStr) return { days:0, months:0, years:0 };
   const start = new Date(startStr);
@@ -4310,7 +4377,7 @@ window.renderOvertimePC = async () => {
     <div style="max-width:1100px;margin:0 auto;padding:16px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">${homeBtn()}</div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-        <div style="font-size:16px;font-weight:700;color:#1A2540;">⏱ 초과근로</div>
+        <div style="font-size:16px;font-weight:700;color:#1A2540;">⏱ 근로시간</div>
         <div style="display:flex;align-items:center;gap:8px;">
           <button onclick="otPcChangeMonth(-1)" style="border:none;background:#F0F4F9;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:14px;">◀</button>
           <span id="ot-pc-label" style="font-size:14px;font-weight:600;color:#1A2540;">${_otPcYear}년 ${String(_otPcMonth).padStart(2,'0')}월</span>
@@ -4512,9 +4579,11 @@ window.otPcShowPersonDetail = async (id, name, rank) => {
     const totalH = rows.reduce((s,r)=>s+(Number(r.hours)||0),0);
     const totalA = rows.reduce((s,r)=>s+(Number(r.amount)||0),0);
     const wage = await otGetWage(id,name);
+    const attSummary = await otGetAttendanceSummary(id, _otPcYear, _otPcMonth);
     const fmt = v => v.toLocaleString()+'원';
     panel.innerHTML = `
       <div style="font-size:14px;font-weight:700;color:#1A2540;margin-bottom:12px;">${name} ${rank||''}</div>
+      ${otRenderAttendanceCard(attSummary)}
       ${wage?`<div style="font-size:12px;color:#5C6F8A;margin-bottom:10px;">통상임금 ${wage.rate.toLocaleString()}원/h</div>`:''}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
         <div style="background:#F0F4F9;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:11px;color:#9AAABF;">누계 시간</div><div style="font-size:18px;font-weight:700;color:#1A2540;">${totalH}h</div></div>
@@ -4780,6 +4849,8 @@ async function otLoadPersonDetail(workerId, name, rank) {
 
     // 통상임금 정보
     const wage = await otGetWage(workerId, name);
+    const attSummary = await otGetAttendanceSummary(workerId, otYear, otMonth);
+    const attHtml = otRenderAttendanceCard(attSummary);
     const wageHtml = wage
       ? `<div style="background:#F0F4F9;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:#5C6F8A;">
           <div style="font-weight:700;color:#1D5BA6;margin-bottom:4px;">📐 통상임금 계산 기준</div>
@@ -4793,7 +4864,7 @@ async function otLoadPersonDetail(workerId, name, rank) {
         </div>`
       : `<div style="background:#fff3cd;border-radius:8px;padding:10px;margin-bottom:12px;font-size:11px;color:#856404;">⚠️ 연봉계약서가 없습니다. 연봉계약서 등록 후 사용 가능합니다.</div>`;
 
-    let html = wageHtml + `
+    let html = attHtml + wageHtml + `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
         <div style="background:#F0F4F9;border-radius:10px;padding:12px;">
           <div style="font-size:11px;color:#9AAABF;">누계 시간</div>
