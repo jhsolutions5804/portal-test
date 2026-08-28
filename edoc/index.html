@@ -1032,8 +1032,17 @@ async function attLoadMonthSummary(){
   const ym = _attYear+'-'+String(_attMonth).padStart(2,'0');
   try {
     const snap = await getDocs(query(collection(window._db,'worker_attendance_log'), where('workerId','==',_myWorkerId), where('yearMonth','==',ym)));
-    let total = 0;
-    snap.forEach(s => { total += Number(s.data().workHours)||0; });
+    let attHours = 0;
+    snap.forEach(s => { attHours += Number(s.data().workHours)||0; });
+
+    // 유급휴가 사용분을 근무시간에 반영 (1일=8h, 반차=4h)
+    let leaveHours = 0;
+    try {
+      const myLeaveDocs = (await fetchEdocDocs('leave')).filter(d => d.authorUid === _user?.uid);
+      leaveHours = computeLeaveHoursForMonth(myLeaveDocs, _myInfo?.name || '', _attYear, _attMonth);
+    } catch(e) { console.warn('유급휴가 반영 실패:', e.message); }
+
+    const total = attHours + leaveHours;
     const standard = edocMonthlyStandardHours(_attYear, _attMonth);
     const maxOt = edocMonthlyMaxOvertimeHours(_attYear, _attMonth);
     const regularUsed = Math.min(total, standard);
@@ -1044,11 +1053,13 @@ async function attLoadMonthSummary(){
     box.innerHTML = `
       ${row(ym+' 소정근로시간', standard.toFixed(1)+'h')}
       ${row('최대초과근로 한도', maxOt.toFixed(1)+'h')}
+      ${row('출퇴근 기록 근무시간', attHours.toFixed(1)+'h')}
+      ${row('유급휴가 반영시간', leaveHours.toFixed(1)+'h')}
       ${row('해당 월 근무시간 누계', total.toFixed(1)+'h', '#1D5BA6')}
       ${row('정규근로 잔여', regularRemain.toFixed(1)+'h', '#16A34A')}
       ${row('초과근로 가능 잔여', otRemain.toFixed(1)+'h', otUsed>maxOt?'#DC2626':'#16A34A')}
       ${row('해당 월 최대 근무 가능', (standard+maxOt).toFixed(1)+'h')}
-      <div style="font-size:10.5px;color:#9AAABF;margin-top:8px;line-height:1.5;">※ 월 소정근로시간은 해당 월 평일수(공휴일 제외)×8시간, 월 최대초과근로시간은 근로기준법 연장근로 한도(주 12시간)×해당월 겹치는 주수 기준으로 자동 계산됩니다.</div>
+      <div style="font-size:10.5px;color:#9AAABF;margin-top:8px;line-height:1.5;">※ 월 소정근로시간은 해당 월 평일수(공휴일 제외)×8시간, 월 최대초과근로시간은 근로기준법 연장근로 한도(주 12시간)×해당월 겹치는 주수 기준으로 자동 계산됩니다. 유급휴가(연차·반차 등)는 1일=8h, 반차=4h로 근무시간에 반영되며 무급휴가는 반영되지 않습니다.</div>
     `;
   } catch(e) {
     box.innerHTML = `<div style="color:#DC2626;">불러오기 실패: ${e.message}</div>`;
@@ -1234,8 +1245,32 @@ function sumLeaveUsed(leaveDocs, workerName) {
   }
   return used;
 }
+
+// 유급휴가 사용일수를 근무시간으로 환산 (1일=8h, 반차=4h) — 무급 휴가(생리휴가·육아휴직·가족돌봄휴가)는 제외.
+// 승인/게시된 것만 인정하며, 여러 날짜에 걸친 연차는 그 중 해당 연월(year-month)에 속하는 날짜만 카운트한다.
+function computeLeaveHoursForMonth(leaveDocs, workerName, year, month) {
+  const ym = year + '-' + String(month).padStart(2,'0');
+  let hours = 0;
+  for (const lv of leaveDocs) {
+    const nm = lv.authorName || lv.name || '';
+    if (nm !== workerName) continue;
+    if (lv.status !== 'posted' && lv.status !== 'approved') continue;
+    if (!/\(유급\)/.test(lv.leaveType || '')) continue; // 무급 휴가 제외
+    if (!lv.startDate || !lv.endDate) continue;
+    const perDay = /반차/.test(lv.leaveType || '') ? 4 : 8;
+    const cur = new Date(lv.startDate);
+    const end = new Date(lv.endDate);
+    while (cur <= end) {
+      const key = cur.getFullYear() + '-' + String(cur.getMonth() + 1).padStart(2, '0');
+      if (key === ym) hours += perDay;
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+  return hours;
+}
 window.calcAnnualLeaveGrant = calcAnnualLeaveGrant;
 window.sumLeaveUsed = sumLeaveUsed;
+window.computeLeaveHoursForMonth = computeLeaveHoursForMonth;
 
 // ── edoc_* 컬렉션 조회 헬퍼: Firestore는 규칙과 일치하지 않는 무제한 list 쿼리를 통째로 거부하므로,
 //    작성자/결재선(viewerUids)/게시(posted)/관리자 네 갈래로 나눠 조회한 뒤 합친다 ──
@@ -1386,8 +1421,14 @@ async function renderEdocHome() {
         const now = new Date();
         const ym = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
         const wsnap = await getDocs(query(collection(db,'worker_attendance_log'), where('workerId','==',_myWorkerId), where('yearMonth','==',ym)));
-        let total = 0;
-        wsnap.forEach(d => { total += Number(d.data().workHours)||0; });
+        let attHours = 0;
+        wsnap.forEach(d => { attHours += Number(d.data().workHours)||0; });
+        let leaveHours = 0;
+        try {
+          const myLeaveDocs = (await fetchEdocDocs('leave')).filter(d => d.authorUid === _user?.uid);
+          leaveHours = computeLeaveHoursForMonth(myLeaveDocs, _myInfo?.name || '', now.getFullYear(), now.getMonth()+1);
+        } catch(e) { console.warn('유급휴가 반영 실패:', e.message); }
+        const total = attHours + leaveHours;
         const standard = edocMonthlyStandardHours(now.getFullYear(), now.getMonth()+1);
         const maxOt = edocMonthlyMaxOvertimeHours(now.getFullYear(), now.getMonth()+1);
         const remain = Math.max(0, standard - Math.min(total, standard));
@@ -1399,6 +1440,7 @@ async function renderEdocHome() {
               <div><div style="font-size:11px;color:#9AAABF;">소정근로시간</div><div style="font-size:16px;font-weight:800;color:#1A2540;">${standard.toFixed(1)}h</div></div>
               <div><div style="font-size:11px;color:#9AAABF;">정규 잔여</div><div style="font-size:16px;font-weight:800;color:#16A34A;">${remain.toFixed(1)}h</div></div>
             </div>
+            ${leaveHours>0?`<div style="font-size:10.5px;color:#9AAABF;margin-top:8px;text-align:center;">(유급휴가 ${leaveHours.toFixed(1)}h 포함)</div>`:''}
             <button onclick="goTab('attendance')" style="display:block;width:100%;text-align:center;margin-top:10px;font-size:12px;color:#1D5BA6;font-weight:700;background:none;border:none;cursor:pointer;font-family:inherit;">출퇴근 기록하러 가기 ›</button>
           </div>`;
       } catch(e) {
