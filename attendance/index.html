@@ -224,6 +224,23 @@ function monthlyMaxOvertimeHours(year, month){
 }
 window._attHelpers = { monthlyStandardHours, monthlyMaxOvertimeHours, KR_HOLIDAYS };
 
+// ── 10분 단위 스냅 — 일부 브라우저(특히 Android)는 time input의 step 속성을 무시하고
+//    분 단위를 1분 간격으로 보여주므로, 선택/입력된 값을 최종적으로 10분 단위로 강제 보정한다 ──
+function snapTo10Min(timeStr){
+  if(!timeStr) return timeStr;
+  const [h,m] = timeStr.split(':').map(Number);
+  let total = h*60 + Math.round(m/10)*10;
+  if (total >= 24*60) total -= 24*60;
+  if (total < 0) total += 24*60;
+  const hh = String(Math.floor(total/60)).padStart(2,'0');
+  const mm = String(total%60).padStart(2,'0');
+  return `${hh}:${mm}`;
+}
+function snapInputTo10Min(el){
+  const snapped = snapTo10Min(el.value);
+  if (snapped && snapped !== el.value) el.value = snapped;
+}
+
 // ── 오늘 근무시간 실시간 계산 ──
 function calcWorkHours(){
   const inV = document.getElementById('checkInTime').value;
@@ -242,9 +259,13 @@ function refreshHoursDisplay(){
   const h = calcWorkHours();
   document.getElementById('workHoursVal').textContent = h.toFixed(1)+'h';
 }
-['checkInTime','checkOutTime','breakMin'].forEach(id=>{
-  document.getElementById(id).addEventListener('input', refreshHoursDisplay);
+['checkInTime','checkOutTime'].forEach(id=>{
+  const el = document.getElementById(id);
+  el.addEventListener('input', refreshHoursDisplay);
+  el.addEventListener('change', e=>{ snapInputTo10Min(e.target); refreshHoursDisplay(); });
 });
+document.getElementById('breakMin').addEventListener('input', refreshHoursDisplay);
+
 
 function todayKey(){
   const d = new Date();
