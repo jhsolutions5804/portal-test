@@ -107,6 +107,7 @@ const EDOC_TABS = {
   expense: { id:'tab-expense', title:'지출결의서',    fn:()=>renderDocMain('expense') },
   overtime:{ id:'tab-overtime',title:'초과근로',      fn:()=>renderOvertimeMain() },
   mycard:  { id:'tab-mycard',  title:'인사카드',      fn:()=>renderMyCard() },
+  attendance: { id:'tab-attendance', title:'출퇴근 기록', fn:()=>renderAttendanceTab() },
 };
 
 // 각 탭 콘텐츠 상단에 공통으로 들어가는 "전자결재 홈" 이동 버튼
@@ -817,6 +818,191 @@ window.renderMyCard = async function(){
   }
 };
 
+// ── 출퇴근 기록: edoc 내부 탭으로 동작 (goTab, 페이지 이탈 없음) ──
+function attSnapTo10Min(timeStr){
+  if(!timeStr) return timeStr;
+  const [h,m] = timeStr.split(':').map(Number);
+  let total = h*60 + Math.round(m/10)*10;
+  if (total >= 24*60) total -= 24*60;
+  if (total < 0) total += 24*60;
+  const hh = String(Math.floor(total/60)).padStart(2,'0');
+  const mm = String(total%60).padStart(2,'0');
+  return `${hh}:${mm}`;
+}
+function attCalcWorkHours(inV, outV, brk){
+  if(!inV || !outV) return 0;
+  const [ih,im] = inV.split(':').map(Number);
+  const [oh,om] = outV.split(':').map(Number);
+  let mins = (oh*60+om) - (ih*60+im);
+  if (mins <= 0) mins += 24*60; // 익일 퇴근 대응
+  mins -= (brk||0);
+  if (mins < 0) mins = 0;
+  return mins/60;
+}
+function attTodayKey(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+const ATT_DAYS_KO = ['일','월','화','수','목','금','토'];
+
+window.renderAttendanceTab = async function(){
+  const el = document.getElementById('tab-attendance'); if(!el) return;
+  el.innerHTML = `<div class="wrap2">${edocHomeBtnHtml()}<div style="text-align:center;padding:32px;color:#9AAABF;">⏳ 불러오는 중…</div></div>`;
+  if (!_myInfo?.name) await loadMyInfo();
+  if (!_myWorkerId) {
+    el.innerHTML = `<div class="wrap2">${edocHomeBtnHtml()}
+      <div style="text-align:center;padding:32px;color:#9AAABF;">
+        계정이 근무자 명부와 연동되어 있지 않습니다.<br>인사 담당자에게 "근무자 연동"을 요청해주세요.
+      </div></div>`;
+    return;
+  }
+
+  const d = new Date();
+  const todayLabel = `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 ${ATT_DAYS_KO[d.getDay()]}요일`;
+  const dk = attTodayKey();
+
+  // 오늘 기존 기록 조회
+  let existing = { checkIn:'07:00', checkOut:'18:00', breakMinutes:120 };
+  try {
+    const snap = await getDoc(doc(window._db,'worker_attendance_log', `${_myWorkerId}_${dk}`));
+    if (snap.exists()) {
+      const dd = snap.data();
+      existing = { checkIn: dd.checkIn||existing.checkIn, checkOut: dd.checkOut||existing.checkOut, breakMinutes: dd.breakMinutes ?? existing.breakMinutes };
+    }
+  } catch(e) { console.warn('오늘 출퇴근 기록 조회 실패', e); }
+
+  el.innerHTML = `<div class="wrap2" style="max-width:960px;">
+    ${edocHomeBtnHtml()}
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 16px;">
+      <span style="font-size:16px;font-weight:800;">⏰ 출퇴근 기록</span>
+    </div>
+    <div class="home-2col">
+      <div class="form-card">
+        <div class="fc-sec">📅 ${todayLabel}</div>
+        <div style="display:flex;gap:14px;margin-bottom:14px;">
+          <div style="flex:1">
+            <div style="font-size:11px;color:#5C6F8A;margin-bottom:6px;">출근시간</div>
+            <input type="time" id="att-checkin" value="${existing.checkIn}" step="600" class="fc-input">
+          </div>
+          <div style="flex:1">
+            <div style="font-size:11px;color:#5C6F8A;margin-bottom:6px;">퇴근시간</div>
+            <input type="time" id="att-checkout" value="${existing.checkOut}" step="600" class="fc-input">
+          </div>
+        </div>
+        <div style="max-width:180px;margin-bottom:18px;">
+          <div style="font-size:11px;color:#5C6F8A;margin-bottom:6px;">휴게시간(분)</div>
+          <input type="number" id="att-break" value="${existing.breakMinutes}" min="0" step="10" class="fc-input">
+        </div>
+        <div style="text-align:center;padding:16px 0 10px;background:#F0F4F9;border-radius:10px;margin-bottom:16px;">
+          <div id="att-hours-val" style="font-size:32px;font-weight:800;color:#1D5BA6;">${attCalcWorkHours(existing.checkIn,existing.checkOut,existing.breakMinutes).toFixed(1)}h</div>
+          <div style="font-size:11px;color:#9AAABF;margin-top:4px;">오늘 근무시간 (휴게시간 제외)</div>
+        </div>
+        <button id="att-save-btn" onclick="attSave()" style="width:100%;padding:13px;background:#1D5BA6;border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">💾 저장</button>
+        <div id="att-save-status" style="font-size:11px;text-align:center;margin-top:8px;"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="panel">
+          <div class="panel-head">📊 이번 달 누계</div>
+          <div id="att-month-summary" style="padding:14px 16px;font-size:12px;color:#9AAABF;">불러오는 중…</div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">🕘 최근 기록</div>
+          <div id="att-recent" class="panel-list" style="padding:6px 14px 14px;font-size:12px;color:#9AAABF;">불러오는 중…</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  const refresh = () => {
+    const h = attCalcWorkHours(document.getElementById('att-checkin').value, document.getElementById('att-checkout').value, parseFloat(document.getElementById('att-break').value)||0);
+    document.getElementById('att-hours-val').textContent = h.toFixed(1)+'h';
+  };
+  ['att-checkin','att-checkout'].forEach(id=>{
+    const inp = document.getElementById(id);
+    inp.addEventListener('input', refresh);
+    inp.addEventListener('change', e=>{ const s=attSnapTo10Min(e.target.value); if(s&&s!==e.target.value) e.target.value=s; refresh(); });
+  });
+  document.getElementById('att-break').addEventListener('input', refresh);
+
+  await Promise.all([ attLoadMonthSummary(), attLoadRecent() ]);
+};
+
+window.attSave = async function(){
+  const btn = document.getElementById('att-save-btn');
+  const statusEl = document.getElementById('att-save-status');
+  const checkIn = document.getElementById('att-checkin').value;
+  const checkOut = document.getElementById('att-checkout').value;
+  const breakMinutes = parseFloat(document.getElementById('att-break').value)||0;
+  if(!checkIn || !checkOut){ alert('출근/퇴근 시간을 모두 입력해주세요.'); return; }
+  const workHours = attCalcWorkHours(checkIn, checkOut, breakMinutes);
+  const dk = attTodayKey();
+  const key = `${_myWorkerId}_${dk}`;
+  btn.disabled = true; const orig = btn.innerHTML; btn.innerHTML = '저장 중...';
+  try {
+    await setDoc(doc(window._db,'worker_attendance_log',key), {
+      workerId: _myWorkerId, name: _myInfo?.name||'', rank: _myInfo?.rank||'',
+      date: dk, yearMonth: dk.slice(0,7),
+      checkIn, checkOut, breakMinutes, workHours,
+      updatedAt: serverTimestamp()
+    }, { merge:true });
+    statusEl.textContent = '✓ 저장 완료'; statusEl.style.color = '#16A34A';
+    await Promise.all([ attLoadMonthSummary(), attLoadRecent() ]);
+  } catch(e) {
+    statusEl.textContent = '저장 실패: '+e.message; statusEl.style.color = '#DC2626';
+  }
+  btn.disabled = false; btn.innerHTML = orig;
+  setTimeout(()=>{ statusEl.textContent=''; }, 3000);
+};
+
+async function attLoadMonthSummary(){
+  const box = document.getElementById('att-month-summary'); if(!box) return;
+  const now = new Date();
+  const ym = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  try {
+    const snap = await getDocs(query(collection(window._db,'worker_attendance_log'), where('workerId','==',_myWorkerId), where('yearMonth','==',ym)));
+    let total = 0;
+    snap.forEach(s => { total += Number(s.data().workHours)||0; });
+    const standard = edocMonthlyStandardHours(now.getFullYear(), now.getMonth()+1);
+    const maxOt = edocMonthlyMaxOvertimeHours(now.getFullYear(), now.getMonth()+1);
+    const regularUsed = Math.min(total, standard);
+    const otUsed = Math.max(0, total - standard);
+    const regularRemain = Math.max(0, standard - regularUsed);
+    const otRemain = Math.max(0, maxOt - otUsed);
+    const row = (k,v,color) => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F4F7FB;"><span style="color:#5C6F8A;">${k}</span><span style="font-weight:700;color:${color||'#1A2540'};">${v}</span></div>`;
+    box.innerHTML = `
+      ${row(ym+' 소정근로시간', standard.toFixed(1)+'h')}
+      ${row('최대초과근로 한도', maxOt.toFixed(1)+'h')}
+      ${row('이번 달 근무시간 누계', total.toFixed(1)+'h', '#1D5BA6')}
+      ${row('정규근로 잔여', regularRemain.toFixed(1)+'h', '#16A34A')}
+      ${row('초과근로 가능 잔여', otRemain.toFixed(1)+'h', otUsed>maxOt?'#DC2626':'#16A34A')}
+      ${row('이번 달 최대 근무 가능', (standard+maxOt).toFixed(1)+'h')}
+      <div style="font-size:10.5px;color:#9AAABF;margin-top:8px;line-height:1.5;">※ 월 소정근로시간은 해당 월 평일수(공휴일 제외)×8시간, 월 최대초과근로시간은 근로기준법 연장근로 한도(주 12시간)×해당월 겹치는 주수 기준으로 자동 계산됩니다.</div>
+    `;
+  } catch(e) {
+    box.innerHTML = `<div style="color:#DC2626;">불러오기 실패: ${e.message}</div>`;
+  }
+}
+
+async function attLoadRecent(){
+  const box = document.getElementById('att-recent'); if(!box) return;
+  try {
+    const snap = await getDocs(query(collection(window._db,'worker_attendance_log'), where('workerId','==',_myWorkerId)));
+    let rows = []; snap.forEach(s=>rows.push(s.data()));
+    rows.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    rows = rows.slice(0,10);
+    if(!rows.length){ box.innerHTML = '<div style="text-align:center;color:#9AAABF;padding:12px 0;">기록이 없습니다</div>'; return; }
+    box.innerHTML = rows.map(r=>`
+      <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #F4F7FB;">
+        <span style="color:#5C6F8A;">${r.date||'—'}</span>
+        <span style="color:#1A2540;">${r.checkIn||'—'} ~ ${r.checkOut||'—'}</span>
+        <span style="font-weight:700;color:#1D5BA6;">${(r.workHours||0).toFixed(1)}h</span>
+      </div>
+    `).join('');
+  } catch(e) {
+    box.innerHTML = `<div style="color:#DC2626;">불러오기 실패: ${e.message}</div>`;
+  }
+}
+
 window.renderOvertimeMain = async function(){
   const el=document.getElementById('tab-overtime'); if(!el) return;
   el.innerHTML=`<div class="wrap2"><div style="text-align:center;padding:32px;color:#9AAABF;">⏳ 불러오는 중…</div></div>`;
@@ -1125,7 +1311,7 @@ async function renderEdocHome() {
               <div><div style="font-size:11px;color:#9AAABF;">소정근로시간</div><div style="font-size:16px;font-weight:800;color:#1A2540;">${standard.toFixed(1)}h</div></div>
               <div><div style="font-size:11px;color:#9AAABF;">정규 잔여</div><div style="font-size:16px;font-weight:800;color:#16A34A;">${remain.toFixed(1)}h</div></div>
             </div>
-            <a href="../attendance/index.html" style="display:block;text-align:center;margin-top:10px;font-size:12px;color:#1D5BA6;font-weight:700;text-decoration:none;">출퇴근 기록하러 가기 ›</a>
+            <button onclick="goTab('attendance')" style="display:block;width:100%;text-align:center;margin-top:10px;font-size:12px;color:#1D5BA6;font-weight:700;background:none;border:none;cursor:pointer;font-family:inherit;">출퇴근 기록하러 가기 ›</button>
           </div>`;
       } catch(e) {
         wbox.innerHTML = `<div class="leave-box-inner" style="opacity:.7;">⏰ 근로시간 불러오기 실패: ${e.message}</div>`;
@@ -2520,6 +2706,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
       <button class="sb-item" data-navkey="expense" onclick="goTab('expense')"><span class="sb-num">6</span> 지출결의서</button>
       <button class="sb-item" data-navkey="overtime" onclick="goTab('overtime')"><span class="sb-num">7</span> 초과근로</button>
       <button class="sb-item" data-navkey="mycard" onclick="goTab('mycard')"><span class="sb-num">🪪</span> 인사카드</button>
+      <button class="sb-item" data-navkey="attendance" onclick="goTab('attendance')"><span class="sb-num">⏰</span> 출퇴근 기록</button>
       <div class="sb-foot">
         <div class="av" id="sb-user">?</div>
         <button onclick="doLogout()">로그아웃</button>
@@ -2539,6 +2726,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
         <button class="tab-btn"        data-navkey="expense"  onclick="goTab('expense')">💳 지출결의</button>
         <button class="tab-btn"        data-navkey="overtime" onclick="goTab('overtime')">⏱️ 초과근로</button>
         <button class="tab-btn"        data-navkey="mycard"   onclick="goTab('mycard')">🪪 인사카드</button>
+        <button class="tab-btn"        data-navkey="attendance" onclick="goTab('attendance')">⏰ 출퇴근</button>
       </div>
 
       <!-- 탭 콘텐츠 -->
@@ -2552,6 +2740,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
       <div class="tab-content" id="tab-expense"></div>
       <div class="tab-content" id="tab-overtime"></div>
       <div class="tab-content" id="tab-mycard"></div>
+      <div class="tab-content" id="tab-attendance"></div>
     </div>
   </div>
 </div>
