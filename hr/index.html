@@ -934,21 +934,14 @@ window.addEventListener('DOMContentLoaded', () => {
 function calcAnnualSalary(hourly, empType) {
   if (!hourly) return { basic:0, fixedOt:0, fixedNight:0, weekly:0, total:0, annual:0 };
   const h = Number(hourly);
-  if (empType === 'office') {
-    const basic      = Math.round(h * 8 * 5 * 4.345);
-    const fixedOt    = Math.round(h * 12 * 4.345);
-    const fixedNight = 0;
-    const weekly     = Math.round(h * 8 * 4.345);
-    const total      = basic + fixedOt + fixedNight + weekly;
-    return { basic, fixedOt, fixedNight, weekly, total, annual: total * 12 };
-  } else {
-    const basic      = Math.round(h * 8 * 5 * 4.345);
-    const fixedOt    = 0;
-    const fixedNight = Math.round(h * 0.5 * 8 * 5 * 4.345);
-    const weekly     = Math.round(h * 8 * 4.345);
-    const total      = basic + fixedOt + fixedNight + weekly;
-    return { basic, fixedOt, fixedNight, weekly, total, annual: total * 12 };
-  }
+  // 포괄임금제 폐지: 고정연장·고정야간수당은 더 이상 연봉계약서에 고정값으로 포함하지 않는다.
+  // 실제 연장·야간근로수당은 매달 실제 근무기록을 기준으로 급여명세서 작성 시 자동 계산된다 (psCalcAll 참고).
+  const basic      = Math.round(h * 8 * 5 * 4.345);
+  const fixedOt    = 0;
+  const fixedNight = 0;
+  const weekly     = Math.round(h * 8 * 4.345);
+  const total       = basic + fixedOt + fixedNight + weekly;
+  return { basic, fixedOt, fixedNight, weekly, total, annual: total * 12 };
 }
 
 
@@ -1575,13 +1568,45 @@ function psCalcAll() {
   const sal0 = ps.annualData
     ? psCalcPay(ps.annualData.hourly, ps.workerData?.empType)
     : { basic:0, fixedOt:0, fixedNight:0, weekly:0, total:0 };
-  // 지급내역 직접 수정 오버라이드 (undefined면 연봉계약서 자동값)
-  const _pBasic      = ps._basic      !== undefined ? Number(ps._basic)      : sal0.basic;
-  const _pFixedOt    = ps._fixedOt    !== undefined ? Number(ps._fixedOt)    : sal0.fixedOt;
-  const _pFixedNight = ps._fixedNight !== undefined ? Number(ps._fixedNight) : sal0.fixedNight;
+
+  // ── 실근무시간 기반 기본근로수당·연장근로수당·야간근로수당 자동계산 ──
+  // 기본근로수당 "금액"은 시급×209h 기준(calcAnnualSalary, 변경 없음)이지만,
+  // 초과/부족 "판정 기준"은 해당 월 캘린더 기준 소정근로시간(monthlyStandardHours, 공휴일 제외 평일수×8h)을 쓴다.
+  // → 실근무시간이 그 달 소정근로시간을 채우면 기본근로수당 100% + 초과분은 연장근로수당(시급×1.5).
+  //   못 채우면 부족분만큼 기본근로수당에서 차감. 야간근로수당은 22시~06시 실근무시간×시급×0.5.
+  const hourly       = Number(ps.annualData?.hourly || 0);
+  const attHours     = Number(ps.attHours || 0);
+  const leaveHours   = Number(ps.leaveHours || 0);
+  const nightHours   = Number(ps.nightHours || 0);
+  const actualHours  = attHours + leaveHours;
+  const [psYear, psMonthNum] = (ps.month || '').split('-').map(Number);
+  const monthlyThreshold = (psYear && psMonthNum) ? monthlyStandardHours(psYear, psMonthNum) : 209;
+  const diffHours    = actualHours - monthlyThreshold;
+  let basicAuto = sal0.basic, otHours = 0, otPayAuto = 0, shortHours = 0, shortDeduct = 0;
+  if (hourly > 0 && ps.annualData) {
+    if (diffHours >= 0) {
+      otHours   = diffHours;
+      otPayAuto = Math.round(hourly * otHours * 1.5);
+    } else {
+      shortHours   = -diffHours;
+      shortDeduct  = Math.round(hourly * shortHours);
+      basicAuto    = Math.max(0, sal0.basic - shortDeduct);
+    }
+  }
+  const nightPayAuto = hourly > 0 ? Math.round(hourly * nightHours * 0.5) : 0;
+
+  // 지급내역 직접 수정 오버라이드 (undefined면 실근무 기반 자동값)
+  // ※ 필드명(fixedOt/fixedNight)은 과거 저장된 급여명세서와의 호환을 위해 그대로 유지하되,
+  //   값의 의미는 "고정수당"에서 "실근무 기반 연장/야간근로수당"으로 변경됨.
+  const _pBasic      = ps._basic      !== undefined ? Number(ps._basic)      : basicAuto;
+  const _pFixedOt    = ps._fixedOt    !== undefined ? Number(ps._fixedOt)    : otPayAuto;
+  const _pFixedNight = ps._fixedNight !== undefined ? Number(ps._fixedNight) : nightPayAuto;
   const _pWeekly     = ps._weekly     !== undefined ? Number(ps._weekly)     : sal0.weekly;
   const sal = { ...sal0, basic:_pBasic, fixedOt:_pFixedOt, fixedNight:_pFixedNight, weekly:_pWeekly,
-                total: _pBasic + _pFixedOt + _pFixedNight + _pWeekly };
+                total: _pBasic + _pFixedOt + _pFixedNight + _pWeekly,
+                // 급여명세서 화면에 실근무 정보를 함께 보여주기 위한 참고값
+                attHours, leaveHours, nightHours, actualHours, standardHours: monthlyThreshold,
+                otHours, shortHours, shortDeduct };
   if (sal0.annual !== undefined) sal.annual = sal.total * 12;
 
   const bonus       = Number(ps.bonus||0);
@@ -1949,7 +1974,7 @@ window.renderPayslipWrite = async () => {
   renderPayslipWriteForm(el, workers, months, calcPayDate);
 
   window.psWorkerSelect = async (wid) => {
-    if (!wid) { ps.workerId=''; ps.workerData=null; ps.annualData=null; window.psRefresh(); return; }
+    if (!wid) { ps.workerId=''; ps.workerData=null; ps.annualData=null; ps.attHours=0; ps.leaveHours=0; ps.nightHours=0; window.psRefresh(); return; }
     ps.workerId = wid;
     ps.workerData = workers.find(w=>w.id===wid) || null;
     // 명부에서 계좌번호 불러오기
@@ -1980,6 +2005,10 @@ window.renderPayslipWrite = async () => {
       } catch(e) { console.error('초과근로 연동 오류:', e); }
     }
 
+    // 근태 데이터 연동 (출퇴근기록 누계·유급휴가 반영시간·야간근로시간 → 연장/야간근로수당 자동계산용)
+    const attData = await psFetchAttendanceData(wid, ps.workerData?.name, ps.month);
+    ps.attHours = attData.attHours; ps.leaveHours = attData.leaveHours; ps.nightHours = attData.nightHours;
+
     window.psRefresh();
   };
 
@@ -1993,6 +2022,11 @@ window.renderPayslipWrite = async () => {
         const otAmt = await window.getOvertimeAmountForPayslip(ps.workerData.name, month);
         ps.bonus = otAmt; // 0이어도 덮어씀
       } catch(e) { console.error('초과근로 연동 오류:', e); }
+    }
+    // 근태 데이터도 기준월 변경에 맞춰 재연동
+    if (ps.workerId) {
+      const attData = await psFetchAttendanceData(ps.workerId, ps.workerData?.name, month);
+      ps.attHours = attData.attHours; ps.leaveHours = attData.leaveHours; ps.nightHours = attData.nightHours;
     }
     window.psRefresh(); // await 완료 후 렌더링
   };
@@ -2040,15 +2074,20 @@ function renderPayslipWriteForm(el, workers, months, calcPayDate) {
       <div style="background:#F8FAFD;border-radius:8px;overflow:hidden;margin-bottom:10px;">
         ${ps.annualData ? `
         ${[
-          ['기본근로수당', c.sal.basic,      '연봉계약서 연동'],
-          ['고정연장수당', c.sal.fixedOt,    '연봉계약서 연동'],
-          ['고정야간수당', c.sal.fixedNight,  '연봉계약서 연동'],
+          ['기본근로수당', c.sal.basic,      `${c.sal.standardHours||209}h 기준(캘린더), 실근무 반영`],
+          ['연장근로수당', c.sal.fixedOt,    `월 소정 ${c.sal.standardHours||209}h 초과분×1.5`],
+          ['야간근로수당', c.sal.fixedNight,  '22시~06시 근무×0.5'],
           ['주휴수당',    c.sal.weekly,      '연봉계약서 연동'],
-        ].filter(([,v])=>v>0).map(([l,v,note])=>`
+        ].map(([l,v,note])=>`
           <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #F0F4FA;font-size:12px;">
             <div><span style="color:${C2.sub};font-weight:600;">${l}</span><span style="font-size:10px;color:${C2.mute};margin-left:6px;">${note}</span></div>
             <span style="color:${C2.text};font-weight:600;">₩${v.toLocaleString()}</span>
           </div>`).join('')}
+        <div style="padding:8px 12px;font-size:10.5px;color:${C2.mute};line-height:1.6;background:#EEF2F7;">
+          실근무 ${(c.sal.attHours||0).toFixed(1)}h + 유급휴가 ${(c.sal.leaveHours||0).toFixed(1)}h = 인정시간 ${(c.sal.actualHours||0).toFixed(1)}h (기준 ${c.sal.standardHours||209}h)
+          ${(c.sal.otHours||0)>0?` → 연장 ${c.sal.otHours.toFixed(1)}h`:''}${(c.sal.shortHours||0)>0?` → 부족 ${c.sal.shortHours.toFixed(1)}h(기본근로수당 ₩${(c.sal.shortDeduct||0).toLocaleString()} 차감)`:''}
+          · 야간근로 ${(c.sal.nightHours||0).toFixed(1)}h
+        </div>
         ` : `<div style="text-align:center;padding:16px;font-size:12px;color:${C2.mute};">⚠️ 연봉계약서를 먼저 등록해야 지급내역이 자동 연동됩니다.</div>`}
       </div>
       ${field2('상여금', `
@@ -2212,9 +2251,9 @@ window.psPreview = () => {
             <th style="padding:8px 10px;text-align:left;font-size:9pt;color:#1D5BA6;border:1px solid #DDE4EF;">비고</th>
           </tr></thead>
           <tbody>
-            ${payRow('기본근로수당', psWonR(c.sal.basic), '시급×8×5×4.345')}
-            ${payRow('고정연장수당', c.sal.fixedOt?psWonR(c.sal.fixedOt):'—', w.empType==='office'?'시급×12×4.345':'현장직 해당없음')}
-            ${payRow('고정야간수당', c.sal.fixedNight?psWonR(c.sal.fixedNight):'—', w.empType==='field'?'시급×0.5×8×5×4.345':'사무직 해당없음')}
+            ${payRow('기본근로수당', psWonR(c.sal.basic), `월소정 ${c.sal.standardHours||209}h 기준(실근무 ${(c.sal.actualHours||0).toFixed(1)}h)`)}
+            ${payRow('연장근로수당', c.sal.fixedOt?psWonR(c.sal.fixedOt):'—', (c.sal.otHours||0)>0?`${c.sal.otHours.toFixed(1)}h×1.5`:'해당없음')}
+            ${payRow('야간근로수당', c.sal.fixedNight?psWonR(c.sal.fixedNight):'—', (c.sal.nightHours||0)>0?`${c.sal.nightHours.toFixed(1)}h×0.5`:'해당없음')}
             ${payRow('주휴수당', psWonR(c.sal.weekly), '시급×8×4.345')}
             ${payRow('상여금', c.bonus?psWonR(c.bonus):'—', '')}
             ${payRow('특별성과급', c.specialBonus?psWonR(c.specialBonus):'—', '')}
@@ -3075,6 +3114,51 @@ function hrComputeLeaveHoursForMonth(leaveDocs, workerName, year, month) {
   return hours;
 }
 
+// ── 근로기준법 56조 3항: 22:00~익일 06:00 사이 근로시간을 야간근로로 산정 (통상임금의 50% 가산 대상) ──
+// 익일로 넘어가는 근무(예: 22:00~02:00)와, 자정을 넘기지 않고 새벽대에 걸치는 근무(예: 03:00~11:00) 모두 처리한다.
+function hrCalcNightHours(checkIn, checkOut) {
+  if (!checkIn || !checkOut) return 0;
+  const [ih, im] = checkIn.split(':').map(Number);
+  const [oh, om] = checkOut.split(':').map(Number);
+  let startMin = ih * 60 + im;
+  let endMin = oh * 60 + om;
+  if (endMin <= startMin) endMin += 24 * 60; // 익일 퇴근 대응
+  // 전날 22시~당일 06시, 당일 22시~익일 06시 — 두 야간대 윈도우와의 겹침을 각각 합산
+  const windows = [[-120, 360], [1320, 1800]];
+  let mins = 0;
+  for (const [ws, we] of windows) {
+    const os = Math.max(startMin, ws);
+    const oe = Math.min(endMin, we);
+    if (oe > os) mins += (oe - os);
+  }
+  return mins / 60;
+}
+
+// ── 급여명세서용 해당 월 근태 데이터 일괄 조회: 근무시간 누계·유급휴가 반영시간·야간근로시간 ──
+async function psFetchAttendanceData(workerId, workerName, ym) {
+  const result = { attHours: 0, leaveHours: 0, nightHours: 0 };
+  if (!workerId || !window._db) return result;
+  const [year, month] = ym.split('-').map(Number);
+  try {
+    const { getDocs, collection, query, where } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap = await getDocs(query(collection(window._db, 'worker_attendance_log'), where('workerId','==',workerId), where('yearMonth','==',ym)));
+    snap.forEach(d => {
+      const dd = d.data();
+      result.attHours += Number(dd.workHours) || 0;
+      result.nightHours += hrCalcNightHours(dd.checkIn, dd.checkOut);
+    });
+  } catch(e) { console.warn('[급여] 출퇴근기록 조회 실패:', e.message); }
+  if (workerName) {
+    try {
+      const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+      const leaveSnap = await getDocs(collection(window._db, 'edoc_leave'));
+      const leaveDocs = []; leaveSnap.forEach(d => leaveDocs.push(d.data()));
+      result.leaveHours = hrComputeLeaveHoursForMonth(leaveDocs, workerName, year, month);
+    } catch(e) { console.warn('[급여] 유급휴가 조회 실패:', e.message); }
+  }
+  return result;
+}
+
 window.otGetAttendanceSummary = async (workerId, year, month, workerName) => {
   const { collection, getDocs, query, where } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
   const ym = `${year}-${String(month).padStart(2,'0')}`;
@@ -3616,19 +3700,12 @@ function laborSalaryPreviewHtml(f) {
 
   const isOffice = empType === 'office';
   const empLabel = isOffice ? '💼 사무직' : '🔧 현장직';
-  const rows = isOffice
-    ? [['기본근로수당 (시급×8×5×4.345)', sal.basic],
-       ['고정연장수당 (시급×12×4.345)', sal.fixedOt],
-       ['고정야간수당', null],
-       ['주휴수당 (시급×8×4.345)', sal.weekly],
-       ['월 지급계', sal.total],
-       ['계약연봉 (월×12)', sal.annual]]
-    : [['기본근로수당 (시급×8×5×4.345)', sal.basic],
-       ['고정연장수당', null],
-       ['고정야간수당 (시급×0.5×8×5×4.345)', sal.fixedNight],
-       ['주휴수당 (시급×8×4.345)', sal.weekly],
-       ['월 지급계', sal.total],
-       ['계약연봉 (월×12)', sal.annual]];
+  const rows = [
+    ['기본근로수당 (시급×8×5×4.345)', sal.basic],
+    ['주휴수당 (시급×8×4.345)', sal.weekly],
+    ['월 지급계', sal.total],
+    ['계약연봉 (월×12)', sal.annual],
+  ];
 
   return '<div style="margin-top:8px;border-radius:8px;overflow:hidden;border:1px solid #DDE4EF;">'
     + '<div style="background:#1D5BA6;padding:7px 12px;font-size:11px;font-weight:700;color:#fff;">' + empLabel + ' 급여 구성</div>'
@@ -3639,6 +3716,7 @@ function laborSalaryPreviewHtml(f) {
         return '<div style="display:flex;justify-content:space-between;padding:7px 12px;border-bottom:1px solid #F0F4FA;font-size:11px;background:'+(isTotal?'#E8F0FB':'#fff')+';"><span style="color:#5C6F8A;">'+l+'</span>'
           +'<span style="color:'+(l.includes('연봉')?'#1D5BA6':isTotal?'#1D5BA6':isNull?'#9AAABF':'#1A2540')+';font-weight:'+(isTotal?700:400)+';">'+(isNull?'—':'₩'+Math.round(v).toLocaleString())+'</span></div>';
       }).join('')
+    + '<div style="padding:7px 12px;font-size:10px;color:#9AAABF;line-height:1.5;background:#F7F9FC;">※ 포괄임금제 미적용 — 연장근로수당(해당 월 소정근로시간 초과분×1.5)·야간근로수당(22시~06시 근무×0.5)은 매달 실제 근무기록 기준으로 급여명세서 작성 시 별도 자동계산되어 지급됩니다.</div>'
     + '</div>';
 }
 
@@ -3950,18 +4028,17 @@ function renderAnnualForm(el, workers) {
   const isOff = annualForm2.empType === 'office';
   const salPreview = (() => {
     if (!annualForm2.hourly) return '';
-    const rows = isOff
-      ? [['기본근로수당',sal.basic,false],['고정연장수당',sal.fixedOt,false],['고정야간수당',0,true],
-         ['주휴수당',sal.weekly,false],['월 지급계',sal.total,false],['계약연봉 (월×12)',sal.annual,false]]
-      : [['기본근로수당',sal.basic,false],['고정연장수당',0,true],['고정야간수당',sal.fixedNight,false],
-         ['주휴수당',sal.weekly,false],['월 지급계',sal.total,false],['계약연봉 (월×12)',sal.annual,false]];
+    const rows = [['기본근로수당',sal.basic,false],
+       ['주휴수당',sal.weekly,false],['월 지급계',sal.total,false],['계약연봉 (월×12)',sal.annual,false]];
     return '<div style="margin-top:8px;border-radius:8px;overflow:hidden;border:1px solid #DDE4EF;">'
       +'<div style="background:#1D5BA6;padding:6px 12px;font-size:11px;font-weight:700;color:#fff;">'+(isOff?'💼 사무직':'🔧 현장직')+' 급여 구성</div>'
       +rows.map(function(r){var l=r[0],v=r[1],z=r[2];var isTot=l.includes('지급계')||l.includes('연봉');
         return '<div style="display:flex;justify-content:space-between;padding:6px 12px;border-bottom:1px solid #F0F4FA;font-size:11px;background:'+(isTot?'#E8F0FB':'#fff')+';">'
           +'<span style="color:#5C6F8A;">'+l+'</span>'
           +'<span style="color:'+(l.includes('연봉')?'#1D5BA6':isTot?'#1D5BA6':z?'#9AAABF':'#1A2540')+';font-weight:'+(isTot?700:400)+';margin-left:8px;">'+(z?'—':'₩'+Math.round(v).toLocaleString())+'</span></div>';
-      }).join('')+'</div>';
+      }).join('')
+      +'<div style="padding:6px 12px;font-size:10px;color:#9AAABF;line-height:1.5;background:#F7F9FC;">※ 포괄임금제 미적용 — 연장근로수당·야간근로수당은 매달 실제 근무기록 기준으로 급여명세서 작성 시 별도 자동계산됩니다.</div>'
+      +'</div>';
   })();
 
   el.innerHTML = wrap2(`
@@ -4070,18 +4147,17 @@ window.annualUpdateSalaryPreview = () => {
   if (!el) return;
   if (!annualForm2.hourly) { el.innerHTML=''; return; }
   const isOff = annualForm2.empType === 'office';
-  const rows = isOff
-    ? [['기본근로수당',sal.basic,false],['고정연장수당',sal.fixedOt,false],['고정야간수당',0,true],
-       ['주휴수당',sal.weekly,false],['월 지급계',sal.total,false],['계약연봉 (월×12)',sal.annual,false]]
-    : [['기본근로수당',sal.basic,false],['고정연장수당',0,true],['고정야간수당',sal.fixedNight,false],
-       ['주휴수당',sal.weekly,false],['월 지급계',sal.total,false],['계약연봉 (월×12)',sal.annual,false]];
+  const rows = [['기본근로수당',sal.basic,false],
+     ['주휴수당',sal.weekly,false],['월 지급계',sal.total,false],['계약연봉 (월×12)',sal.annual,false]];
   el.innerHTML = '<div style="margin-top:8px;border-radius:8px;overflow:hidden;border:1px solid #DDE4EF;">'
     +'<div style="background:#1D5BA6;padding:6px 12px;font-size:11px;font-weight:700;color:#fff;">'+(isOff?'💼 사무직':'🔧 현장직')+' 급여 구성</div>'
     +rows.map(function(r){var l=r[0],v=r[1],z=r[2];var isTot=l.includes('지급계')||l.includes('연봉');
       return '<div style="display:flex;justify-content:space-between;padding:6px 12px;border-bottom:1px solid #F0F4FA;font-size:11px;background:'+(isTot?'#E8F0FB':'#fff')+';">'
         +'<span style="color:#5C6F8A;">'+l+'</span>'
         +'<span style="color:'+(l.includes('연봉')?'#1D5BA6':isTot?'#1D5BA6':z?'#9AAABF':'#1A2540')+';font-weight:'+(isTot?700:400)+';margin-left:8px;">'+(z?'—':'₩'+Math.round(v).toLocaleString())+'</span></div>';
-    }).join('') + '</div>';
+    }).join('')
+    +'<div style="padding:6px 12px;font-size:10px;color:#9AAABF;line-height:1.5;background:#F7F9FC;">※ 포괄임금제 미적용 — 연장근로수당·야간근로수당은 매달 실제 근무기록 기준으로 급여명세서 작성 시 별도 자동계산됩니다.</div>'
+    + '</div>';
   // 계약연봉 표시 업데이트
   const salaryEl = el.nextElementSibling;
   if (salaryEl && salaryEl.tagName === 'DIV') {
@@ -4146,12 +4222,11 @@ window.annualPreview2=()=>{
       <p style="margin-bottom:8px;">② 월급여 임금 구성:</p>
       <table style="width:100%;border-collapse:collapse;margin-bottom:6px;">
         <thead><tr style="background:#E8F0FB;"><th style="border:1px solid #333;padding:6px 8px;text-align:left;font-size:10pt;">항목</th><th style="border:1px solid #333;padding:6px 8px;text-align:right;font-size:10pt;">금액</th><th style="border:1px solid #333;padding:6px 8px;text-align:left;font-size:10pt;">산출근거</th></tr></thead>
-        <tbody>${f.empType==='office'
-          ? tr('기본근로수당',w(sal.basic),'시급×8×5×4.345')+tr('고정연장수당',w(sal.fixedOt),'시급×12×4.345')+tr('고정야간수당','—','—')+tr('주휴수당',w(sal.weekly),'시급×8×4.345')
-          : tr('기본근로수당',w(sal.basic),'시급×8×5×4.345')+tr('고정연장수당','—','—')+tr('고정야간수당',w(sal.fixedNight),'시급×0.5×8×5×4.345')+tr('주휴수당',w(sal.weekly),'시급×8×4.345')
+        <tbody>${tr('기본근로수당',w(sal.basic),'시급×8×5×4.345')}${tr('주휴수당',w(sal.weekly),'시급×8×4.345')
         }${tr('상여금','','회사 내규에 따름')}${tr('특별성과급','','회사 내규에 따름')}${tr('특근수당','','주말, 공휴일 출근 시 지급')}
         <tr style="background:#E8F0FB;"><td style="border:1px solid #333;padding:6px 8px;font-weight:700;font-size:10pt;">합계</td><td style="border:1px solid #333;padding:6px 8px;text-align:right;font-weight:700;font-size:10pt;">${w(sal.total)}</td><td style="border:1px solid #333;padding:6px 8px;"></td></tr></tbody>
       </table>
+      <p style="font-size:9pt;color:#555;margin-bottom:4px;">※ 본 계약은 포괄임금제를 적용하지 않습니다. 기본근로수당은 월 209시간을 기준으로 산정하되, 연장근로수당(해당 월 소정근로시간 초과분에 대해 통상시급의 1.5배)과 야간근로수당(22:00~06:00 근로시간에 대해 통상시급의 0.5배 가산)은 매월 실제 근무기록을 기준으로 산정하여 별도 지급합니다.</p>
       <p style="font-size:9pt;color:#555;margin-bottom:10px;">※ 위 임금구성은 소정근로시간(주52시간)을 기준으로 작성됨</p>
       <p style="font-weight:700;margin:14px 0 5px;">제3조 (지급시기 및 방법)</p>
       <p style="margin-bottom:4px;">① 연봉을 12개월로 균등 분할해 익월 말일에 지급한다.</p>
@@ -4892,8 +4967,6 @@ async function otLoadPersonDetail(workerId, name, rank) {
       ? `<div style="background:#F0F4F9;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:#5C6F8A;">
           <div style="font-weight:700;color:#1D5BA6;margin-bottom:4px;">📐 통상임금 계산 기준</div>
           <div style="display:flex;justify-content:space-between;"><span>기본근로수당</span><span>${(wage.basic||0).toLocaleString()}원</span></div>
-          <div style="display:flex;justify-content:space-between;"><span>고정연장수당</span><span>${(wage.fixedOt||0).toLocaleString()}원</span></div>
-          <div style="display:flex;justify-content:space-between;"><span>고정야간수당</span><span>${(wage.fixedNight||0).toLocaleString()}원</span></div>
           <div style="display:flex;justify-content:space-between;"><span>주휴수당</span><span>${(wage.weekly||0).toLocaleString()}원</span></div>
           <div style="display:flex;justify-content:space-between;border-top:1px solid #DDE4EF;margin-top:4px;padding-top:4px;font-weight:700;color:#1D5BA6;">
             <span>시간당 통상임금</span><span>${(wage.rate||0).toLocaleString()}원/h</span>
