@@ -549,6 +549,26 @@ window.savePDF=()=>{
   setTimeout(()=>{ window.print(); pa.style.display='none'; document.title=ot; },150);
 };
 
+// ── 10분 단위 스냅 — 일부 브라우저(특히 Android)는 time input의 step 속성을 무시하므로
+//    선택/입력된 값을 최종적으로 10분 단위로 강제 보정한다 ──
+function snapTo10Min(timeStr){
+  if(!timeStr) return timeStr;
+  const [h,m] = timeStr.split(':').map(Number);
+  let total = h*60 + Math.round(m/10)*10;
+  if (total >= 24*60) total -= 24*60;
+  if (total < 0) total += 24*60;
+  const hh = String(Math.floor(total/60)).padStart(2,'0');
+  const mm = String(total%60).padStart(2,'0');
+  return `${hh}:${mm}`;
+}
+['checkInTime','checkOutTime'].forEach(id=>{
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('change', e=>{
+    const snapped = snapTo10Min(e.target.value);
+    if (snapped && snapped !== e.target.value) e.target.value = snapped;
+  });
+});
+
 document.getElementById('datePopup').addEventListener('click',e=>{ if(e.target===document.getElementById('datePopup'))closePicker(); });
 document.getElementById('previewModal').addEventListener('click',e=>{ if(e.target===document.getElementById('previewModal'))closePreview(); });
 
