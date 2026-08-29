@@ -1488,7 +1488,7 @@ window.openSettle=function(id, fromPjtId){ viewSetId=id; if(fromPjtId!==undefine
   const party=(label,o)=>`<div class="party"><div class="pl">${label}</div><div class="pc">${o?.company||'-'}</div><div class="pd">${o?.ceo?'대표 '+o.ceo:''}${o?.bizno?' · '+o.bizno:''}</div>${o?.contact?`<div class="pd">담당: ${o.contact}</div>`:''}</div>`;
   const canLink=(s.docType==='invoice' && (s.method==='manual'||s.method==='qty'));
   const linkedEsts=Object.keys(s.perEst||{}).filter(k=>s.perEst[k]>0);
-  $('v-settle').innerHTML=`<button class="back" onclick="${setOrigin?`pjtDetail('${setOrigin}')`:'renderSettle()'}">← ${setOrigin?'프로젝트로 돌아가기':'정산 목록'}</button>
+  $('v-settle').innerHTML=`<button class="back" onclick="${setOrigin==='acct'?`tab('acct')`:setOrigin?`pjtDetail('${setOrigin}')`:'renderSettle()'}">← ${setOrigin==='acct'?'비용장부로 돌아가기':setOrigin?'프로젝트로 돌아가기':'정산 목록'}</button>
     <div class="card">
       ${!setActive(s)?'<div class="void-banner">🚫 폐기된 정산서입니다. 집계에서 제외됩니다.</div>':''}
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
@@ -1715,7 +1715,7 @@ function renderAccLedger(){
         :'<div class="empty">'+((accLCat||accLVendor)?'조건에 맞는 내역이 없습니다. (필터 적용 중)':'이 달 비용이 없습니다. “비용 입력”으로 추가하세요.')+'</div>'}</div>
     <div class="note-amber">실제 운영: 영수증·카드내역·계좌 거래내역·주문내역 파일을 춘식이에게 주시면 직접비/간접비로 분류해 이 장부에 채워 넣습니다. 앱에서는 직접 입력·수정·조회를 합니다. 🔗 정산 연동 항목(지급완료된 지급예정서)은 자동 반영되며, 직접 수정할 수 없습니다 — 정산 화면에서 지급완료를 취소하면 제외됩니다.</div>`;
 }
-window.openSettleFromLedger=function(id){ tab('settle'); openSettle(id, null); };
+window.openSettleFromLedger=function(id){ tab('settle'); openSettle(id, 'acct'); };
 window.accSetFilter=function(k,v){ if(k==='sort')accLSort=v; else if(k==='vendor')accLVendor=v; else if(k==='cat')accLCat=v; renderAccLedger(); };
 window.accResetFilter=function(){ accLSort='date_asc'; accLVendor=''; accLCat=''; renderAccLedger(); };
 
