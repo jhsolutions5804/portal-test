@@ -593,20 +593,20 @@ function renderEst(){ estDraft=null; viewEstId=null; estPage=1; estFilterPjt='';
   $('v-est').innerHTML=`<button onclick="tab('home')" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#5C6F8A;font-size:12px;cursor:pointer;font-weight:600;">🏠 기획 홈</button>
   <div class="sec-h"><h2>견적</h2><button class="btn pri sm" onclick="newEst()">+ 견적 작성</button></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
-    <select id="est-filter-pjt" onchange="estFilterChange('pjt',this.value)" style="flex:1;min-width:150px;padding:9px 10px;border:1px solid #DDE4EF;border-radius:9px;font-size:12.5px;font-family:inherit;background:#fff;">
+    <select id="est-filter-pjt" onchange="estFilterChange('pjt',this.value)" style="flex:1;min-width:150px;padding:9px 10px;border:1px solid #DDE4EF;border-radius:9px;font-size:12.5px;font-family:inherit;background:#fff;color:#1A2540;">
       <option value="">현장명 전체</option>
       ${opt.pjtOptions.map(([id,label])=>`<option value="${id}">${label}</option>`).join('')}
     </select>
-    <select id="est-filter-pjtstatus" onchange="estFilterChange('pjtStatus',this.value)" style="flex:1;min-width:120px;padding:9px 10px;border:1px solid #DDE4EF;border-radius:9px;font-size:12.5px;font-family:inherit;background:#fff;">
+    <select id="est-filter-pjtstatus" onchange="estFilterChange('pjtStatus',this.value)" style="flex:1;min-width:120px;padding:9px 10px;border:1px solid #DDE4EF;border-radius:9px;font-size:12.5px;font-family:inherit;background:#fff;color:#1A2540;">
       <option value="">진행상태 전체</option>
       <option value="run">진행중</option>
       <option value="done">종결</option>
     </select>
-    <select id="est-filter-client" onchange="estFilterChange('client',this.value)" style="flex:1;min-width:150px;padding:9px 10px;border:1px solid #DDE4EF;border-radius:9px;font-size:12.5px;font-family:inherit;background:#fff;">
+    <select id="est-filter-client" onchange="estFilterChange('client',this.value)" style="flex:1;min-width:150px;padding:9px 10px;border:1px solid #DDE4EF;border-radius:9px;font-size:12.5px;font-family:inherit;background:#fff;color:#1A2540;">
       <option value="">거래처 전체</option>
       ${opt.clientOptions.map(c=>`<option value="${c}">${c}</option>`).join('')}
     </select>
-    <select id="est-filter-month" onchange="estFilterChange('month',this.value)" style="flex:1;min-width:130px;padding:9px 10px;border:1px solid #DDE4EF;border-radius:9px;font-size:12.5px;font-family:inherit;background:#fff;">
+    <select id="est-filter-month" onchange="estFilterChange('month',this.value)" style="flex:1;min-width:130px;padding:9px 10px;border:1px solid #DDE4EF;border-radius:9px;font-size:12.5px;font-family:inherit;background:#fff;color:#1A2540;">
       <option value="">발행월 전체</option>
       ${opt.monthOptions.map(m=>`<option value="${m}">${m}</option>`).join('')}
     </select>
@@ -999,7 +999,7 @@ const setProjects=()=>projects; // alias
 let settleDraft=null, viewSetId=null, settlePage=1;
 const SETTLE_PAGE_SIZE=10;
 const setActive=s=>s.status!=='void';
-const FILTER_SEL_STYLE='flex:1;min-width:120px;padding:9px 10px;border:1px solid #DDE4EF;border-radius:9px;font-size:12.5px;font-family:inherit;background:#fff;';
+const FILTER_SEL_STYLE='flex:1;min-width:120px;padding:9px 10px;border:1px solid #DDE4EF;border-radius:9px;font-size:12.5px;font-family:inherit;background:#fff;color:#1A2540;';
 
 function renderSettle(){ settleDraft=null; viewSetId=null;
   if(!window.settleFilter) window.settleFilter={docType:'',pjtId:'',client:'',status:'',month:''};
@@ -1027,24 +1027,24 @@ function renderSettle(){ settleDraft=null; viewSetId=null;
 
   const filterBarHtml=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
       <select style="${FILTER_SEL_STYLE}" onchange="setSettleFilter('docType',this.value)">
-        <option value="" ${!f.docType?'selected':''}>구분: 전체</option>
+        <option value="" ${!f.docType?'selected':''}>구분 전체</option>
         <option value="invoice" ${f.docType==='invoice'?'selected':''}>대금청구서</option>
         <option value="payment" ${f.docType==='payment'?'selected':''}>지급예정서</option>
       </select>
       <select style="${FILTER_SEL_STYLE}" onchange="setSettleFilter('pjtId',this.value)">
-        <option value="" ${!f.pjtId?'selected':''}>PJT: 전체</option>
+        <option value="" ${!f.pjtId?'selected':''}>현장명 전체</option>
         ${projects.map(p=>`<option value="${p.id}" ${f.pjtId===p.id?'selected':''}>${p.code}</option>`).join('')}
       </select>
       <select style="${FILTER_SEL_STYLE}" onchange="setSettleFilter('client',this.value)">
-        <option value="" ${!f.client?'selected':''}>거래처: 전체</option>
+        <option value="" ${!f.client?'selected':''}>거래처 전체</option>
         ${clients.map(c=>`<option value="${c}" ${f.client===c?'selected':''}>${c}</option>`).join('')}
       </select>
       <select style="${FILTER_SEL_STYLE}" onchange="setSettleFilter('month',this.value)">
-        <option value="" ${!f.month?'selected':''}>발행월: 전체</option>
+        <option value="" ${!f.month?'selected':''}>발행월 전체</option>
         ${months.map(m=>`<option value="${m}" ${f.month===m?'selected':''}>${m}</option>`).join('')}
       </select>
       <select style="${FILTER_SEL_STYLE}" onchange="setSettleFilter('status',this.value)">
-        <option value="" ${!f.status?'selected':''}>상태: 전체</option>
+        <option value="" ${!f.status?'selected':''}>상태 전체</option>
         <option value="done" ${f.status==='done'?'selected':''}>✓ 완결</option>
         <option value="pending" ${f.status==='pending'?'selected':''}>미결</option>
       </select>
