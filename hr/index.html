@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- HR module build: 20260830a · ver 2.1.0 · 유급휴가 근로시간 미반영 버그 수정(접미사 없는 예전 방식 휴가명 인식), 병가 무급 전환 -->
+<!DOCTYPE html><!-- HR module build: 20260830b · ver 2.2.0 · 2026년 공휴일 데이터 정정(제헌절/개천절대체/지방선거일 추가, 설날 날짜오류 수정) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -720,6 +720,7 @@ body { font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif; 
     <button class="tab-btn" data-navkey="payslip" onclick="goTab('payslip')">💰 급여명세서</button>
     <button class="tab-btn" data-navkey="retire" onclick="goTab('retire')">🧾 퇴직금</button>
     <button class="tab-btn" data-navkey="leave" onclick="goTab('leave')">🌴 연차</button>
+    <button class="tab-btn" data-navkey="salarytable" onclick="goTab('salarytable')">📊 급여테이블</button>
   </div>
 
   <!-- 인사 홈 -->
@@ -737,6 +738,7 @@ body { font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif; 
   <!-- 퇴직금 정산 -->
   <div class="tab-content" id="tab-retire"></div>
   <div class="tab-content" id="tab-leave"></div>
+  <div class="tab-content" id="tab-salarytable"></div>
   </div>
 </div>
 
@@ -769,6 +771,7 @@ const HR_TABS = {
   payslip:  { id:'tab-payslip',  title:'급여명세서',  fn:()=>renderPayslipMain2() },
   retire:   { id:'tab-retire',   title:'퇴직금 정산', fn:()=>renderRetireMain() },
   leave:    { id:'tab-leave',    title:'연차 현황',   fn:()=>renderLeaveStatusMain() },
+  salarytable: { id:'tab-salarytable', title:'급여테이블', fn:()=>renderSalaryTableMain() },
 };
 
 function goTab(key) {
@@ -6149,6 +6152,140 @@ window.retireDelete = async (wid, rid, wname) => {
   const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
   await deleteDoc(doc(window._db, `severance/${wid}/records`, rid));
   retireViewWorker(wid, wname);
+};
+
+/* ==================== 급여테이블 (직급·호봉별 연봉 인상 참고표) ====================
+   ⚠️ 이 표는 참고·계획용입니다. 실제 급여명세서 자동계산 로직과는 별개로 동작하며,
+   여기서 수정해도 급여명세서 계산에는 영향을 주지 않습니다. */
+let _salTableData = null; // { minWage, rows:[{id,position,current,rate}] }
+
+async function salTableLoad() {
+  const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+  const snap = await getDoc(doc(window._db, 'company_settings', 'salaryTable'));
+  if (snap.exists()) {
+    _salTableData = snap.data();
+  } else {
+    _salTableData = {
+      minWage: 10320, // 2026년 최저시급 기본값(직접 수정 가능)
+      rows: [
+        { id:'r1', position:'과장(현장)', current:44673552, rate:3.5 },
+        { id:'r2', position:'대리(사무)', current:32285088, rate:5.0 },
+        { id:'r3', position:'사원1(현장)', current:32285088, rate:3.5 },
+        { id:'r4', position:'사원2(현장)', current:32285088, rate:3.5 },
+      ],
+    };
+  }
+}
+
+function salTableCalc(row, minWage) {
+  const current = Number(row.current)||0;
+  const rate = Number(row.rate)||0;
+  const changed = Math.round(current * (1 + rate/100));
+  const monthly = Math.round(changed / 12);
+  const hourly = Math.round(monthly / 209);
+  const diff = hourly - (Number(minWage)||0);
+  return { changed, monthly, hourly, diff };
+}
+
+window.renderSalaryTableMain = async function() {
+  const el = document.getElementById('tab-salarytable');
+  el.innerHTML = `<div style="text-align:center;padding:40px;"><div class="spinner"></div></div>`;
+  if (!_salTableData) await salTableLoad();
+  renderSalaryTableBody();
+};
+
+function won2(v) { return Math.round(v||0).toLocaleString(); }
+
+function renderSalaryTableBody() {
+  const el = document.getElementById('tab-salarytable');
+  if (!el) return;
+  const d = _salTableData;
+  const totalCurrent = d.rows.reduce((s,r)=>s+(Number(r.current)||0),0);
+  const totalChanged = d.rows.reduce((s,r)=>s+salTableCalc(r,d.minWage).changed,0);
+  const totalMonthly  = d.rows.reduce((s,r)=>s+salTableCalc(r,d.minWage).monthly,0);
+
+  el.innerHTML = wrap2(`
+    <div style="font-size:14px;font-weight:700;color:${C2.text};margin-bottom:4px;">📊 임직원 연봉 인상 제안표 (참고용)</div>
+    <div style="font-size:11px;color:${C2.mute};margin-bottom:14px;line-height:1.6;">
+      퇴직금 별도·세전 기준. 시급 환산은 월 소정근로시간 209시간 기준입니다.<br>
+      ⚠️ 참고·계획용 표입니다 — 여기서 값을 바꿔도 실제 급여명세서 계산에는 반영되지 않습니다.
+    </div>
+
+    <div style="display:flex;align-items:center;gap:10px;background:#F8FAFD;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+      <label style="font-size:12px;font-weight:700;color:${C2.sub};white-space:nowrap;">최저시급(원)</label>
+      <input type="number" id="sal-minwage" value="${d.minWage}" onchange="salTableSetMinWage(this.value)"
+        style="width:110px;padding:7px 10px;border:1px solid #DDE4EF;border-radius:8px;font-size:13px;font-weight:700;color:${C2.text};">
+      <span style="font-size:11px;color:${C2.mute};">이 값을 바꾸면 아래 "최저시급 대비" 열이 전부 재계산됩니다.</span>
+    </div>
+
+    <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:680px;">
+      <thead><tr style="background:#F0F4F9;">
+        ${['직급(직무)','현재 연봉(원)','인상률','변경 후 연봉(원)','월급 환산액(원)','환산 시급(원)','최저시급 대비',''].map(h=>`<th style="padding:8px 10px;text-align:left;color:${C2.sub};font-weight:700;white-space:nowrap;">${h}</th>`).join('')}
+      </tr></thead>
+      <tbody>
+        ${d.rows.map(r=>{
+          const c = salTableCalc(r, d.minWage);
+          const diffColor = c.diff>=0 ? '#16A34A' : '#DC2626';
+          const diffLabel = c.diff>=0 ? `+${won2(c.diff)}원 상회` : `${won2(c.diff)}원 미달`;
+          return `<tr style="border-bottom:1px solid #F0F4F9;">
+            <td style="padding:8px 10px;"><input value="${r.position}" onchange="salTableEdit('${r.id}','position',this.value)" style="width:110px;border:1px solid #E4EAF2;border-radius:6px;padding:5px 7px;font-size:12px;font-weight:700;color:${C2.text};"></td>
+            <td style="padding:8px 10px;"><input type="number" value="${r.current}" onchange="salTableEdit('${r.id}','current',this.value)" style="width:110px;border:1px solid #E4EAF2;border-radius:6px;padding:5px 7px;font-size:12px;text-align:right;"></td>
+            <td style="padding:8px 10px;"><input type="number" step="0.1" value="${r.rate}" onchange="salTableEdit('${r.id}','rate',this.value)" style="width:60px;border:1px solid #E4EAF2;border-radius:6px;padding:5px 7px;font-size:12px;text-align:right;">%</td>
+            <td style="padding:8px 10px;font-weight:700;color:${C2.text};">${won2(c.changed)}</td>
+            <td style="padding:8px 10px;">${won2(c.monthly)}</td>
+            <td style="padding:8px 10px;font-weight:700;">${won2(c.hourly)}</td>
+            <td style="padding:8px 10px;color:${diffColor};font-weight:600;white-space:nowrap;">
+              <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${diffColor};margin-right:4px;"></span>${diffLabel}</td>
+            <td style="padding:8px 10px;"><button onclick="salTableDelRow('${r.id}')" style="background:#FEE2E2;border:none;border-radius:5px;color:#DC2626;padding:4px 8px;font-size:11px;cursor:pointer;">삭제</button></td>
+          </tr>`;
+        }).join('')}
+        <tr style="background:#F0F4F9;font-weight:700;">
+          <td style="padding:8px 10px;" colspan="1">총계</td>
+          <td style="padding:8px 10px;">${won2(totalCurrent)}</td>
+          <td style="padding:8px 10px;">-</td>
+          <td style="padding:8px 10px;">${won2(totalChanged)}</td>
+          <td style="padding:8px 10px;">${won2(totalMonthly)}</td>
+          <td style="padding:8px 10px;">-</td>
+          <td style="padding:8px 10px;">-</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button onclick="salTableAddRow()" style="flex:1;padding:10px;background:#F0F4F9;border:none;border-radius:9px;color:${C2.sub};font-size:12.5px;font-weight:600;cursor:pointer;">➕ 행 추가</button>
+      <button onclick="salTableSave()" style="flex:2;padding:10px;background:#1D5BA6;border:none;border-radius:9px;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;">💾 저장</button>
+    </div>
+  `);
+}
+
+window.salTableSetMinWage = function(v) {
+  _salTableData.minWage = Number(v)||0;
+  renderSalaryTableBody();
+};
+window.salTableEdit = function(id, field, value) {
+  const row = _salTableData.rows.find(r=>r.id===id);
+  if (!row) return;
+  row[field] = (field==='position') ? value : Number(value)||0;
+  renderSalaryTableBody();
+};
+window.salTableAddRow = function() {
+  const id = 'r'+Date.now();
+  _salTableData.rows.push({ id, position:'신규 직급', current:0, rate:0 });
+  renderSalaryTableBody();
+};
+window.salTableDelRow = function(id) {
+  _salTableData.rows = _salTableData.rows.filter(r=>r.id!==id);
+  renderSalaryTableBody();
+};
+window.salTableSave = async function() {
+  try {
+    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await setDoc(doc(window._db, 'company_settings', 'salaryTable'), _salTableData);
+    alert('저장되었습니다.');
+  } catch(e) { alert('저장 실패: '+e.message); }
 };
 </script>
 </body>
