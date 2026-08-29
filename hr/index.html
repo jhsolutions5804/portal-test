@@ -867,10 +867,10 @@ async function loadHomeKpis() {
   if (!window._db) { setTimeout(loadHomeKpis, 600); return; }
   try {
     const { getDocs, collection, doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    const now = new Date().toISOString().slice(0,10);
+    const now = (() => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })();
     const ym  = now.slice(0,7);
     const d30 = new Date(); d30.setDate(d30.getDate()+30);
-    const d30s = d30.toISOString().slice(0,10);
+    const d30s = d30.getFullYear()+'-'+String(d30.getMonth()+1).padStart(2,'0')+'-'+String(d30.getDate()).padStart(2,'0');
 
     const wSnap = await getDocs(collection(window._db,'workers'));
     const workers = []; wSnap.forEach(d=>workers.push({id:d.id, ...d.data()}));
@@ -3093,7 +3093,8 @@ function monthlyStandardHours(year, month) {
   const cur = new Date(first);
   while (cur <= last) {
     const dow = cur.getDay();
-    const key = cur.toISOString().slice(0,10);
+    // ⚠️ toISOString()은 UTC 변환이라 KST(+9) 브라우저에서 날짜가 하루 밀린다 — 로컬 연/월/일로 직접 문자열 생성해야 함
+    const key = cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0');
     if (dow!==0 && dow!==6 && !KR_HOLIDAYS.has(key)) workDays++;
     cur.setDate(cur.getDate()+1);
   }
@@ -3182,7 +3183,8 @@ function hrCalcWeeklyHolidayPay(hourly, year, month, attDates, leaveDocs, worker
   const cur = new Date(first);
   while (cur <= last) {
     const dow = cur.getDay();
-    const dateStr = cur.toISOString().slice(0,10);
+    // ⚠️ toISOString()은 UTC 변환이라 KST 브라우저에서 날짜가 하루 밀려 attDates(실제 출근기록, 로컬날짜)와 매칭이 안 된다
+    const dateStr = cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0');
     if (dow !== 0 && dow !== 6 && !KR_HOLIDAYS.has(dateStr)) {
       const wk = _isoWeekKey(cur);
       (weekMap[wk] = weekMap[wk] || []).push(dateStr);
@@ -3322,7 +3324,8 @@ function calcWorkDays(startStr, endStr) {
   const cur = new Date(start);
   while (cur <= end) {
     const dow = cur.getDay();
-    const key = cur.toISOString().slice(0,10);
+    // ⚠️ toISOString() UTC 변환 문제로 KST에서 날짜가 하루 밀리는 버그 수정
+    const key = cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0');
     if (dow !== 0 && dow !== 6 && !KR_HOLIDAYS.has(key)) workDays++;
     cur.setDate(cur.getDate()+1);
   }
