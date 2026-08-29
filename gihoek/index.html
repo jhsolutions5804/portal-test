@@ -386,7 +386,7 @@ function renderPlanHome(){
 let detailId=null, pjtForm=false, pdEstPage=1, pdSetPage=1;
 const PD_PAGE_SIZE=10;
 const TYPE_LABEL={fcu:'자동정산', general:'일반(품목)'};
-function renderPjt(){ detailId=null; pjtForm=false;
+function renderPjt(){ tabSilent('pjt'); detailId=null; pjtForm=false;
   $('v-pjt').innerHTML=`<button onclick="tab('home')" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#5C6F8A;font-size:12px;cursor:pointer;font-weight:600;">🏠 기획 홈</button>
   <div class="sec-h"><h2>프로젝트</h2><button class="btn pri sm" onclick="addPjt()">+ 프로젝트 등록</button></div>
   ${projects.length? projects.map(p=>{ const est=pjtEstSum(p.id), b=pjtBilled(p.id), pd=pjtPaid(p.id), pr=b-pd;
@@ -400,7 +400,7 @@ function renderPjt(){ detailId=null; pjtForm=false;
   }).join('') : '<div class="empty">등록된 프로젝트가 없습니다. “프로젝트 등록”으로 추가하세요.</div>'}
   <div class="small muted center" style="margin-top:8px">금액 단위: 원 · 청구·지급·손익은 정산 입력 시 자동 집계</div>`;
 }
-window.pjtDetail=function(id){ detailId=id; pjtForm=false; pdEstPage=1; pdSetPage=1;
+window.pjtDetail=function(id){ tabSilent('pjt'); detailId=id; pjtForm=false; pdEstPage=1; pdSetPage=1;
   const p=projects.find(x=>x.id===id); if(!p){ renderPjt(); return; }
   const est=pjtEstSum(id), b=pjtBilled(id), pd=pjtPaid(id), pr=b-pd;
   $('v-pjt').innerHTML=`<button class="back" onclick="renderPjtList()">← 프로젝트 목록</button>
