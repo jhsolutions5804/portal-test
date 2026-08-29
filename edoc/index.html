@@ -238,7 +238,8 @@ function edocMonthlyStandardHours(year, month) {
   const cur = new Date(first);
   while (cur <= last) {
     const dow = cur.getDay();
-    const key = cur.toISOString().slice(0,10);
+    // ⚠️ toISOString()은 UTC 변환이라 KST 브라우저에서 날짜가 하루 밀린다 — 로컬 연/월/일로 직접 문자열 생성
+    const key = cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0');
     if (dow!==0 && dow!==6 && !EDOC_KR_HOLIDAYS.has(key)) workDays++;
     cur.setDate(cur.getDate()+1);
   }
