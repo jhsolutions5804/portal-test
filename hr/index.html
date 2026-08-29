@@ -4782,6 +4782,16 @@ window.otPcShowPersonDetail = async (id, name, rank) => {
     attRows.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
     attRows.forEach(r => { _otAttCache[r.docId] = r; });
 
+    // 해당 근로자의 연차(승인/게시)만 — 결근과 구분해서 표시하기 위함
+    let leaveDocs = [];
+    try {
+      const leaveSnap = await getDocs(collection(window._db, 'edoc_leave'));
+      leaveSnap.forEach(d => {
+        const ld = d.data();
+        if (ld.authorName === name && (ld.status==='approved' || ld.status==='posted')) leaveDocs.push(ld);
+      });
+    } catch(e) { console.warn('연차 조회 실패:', e.message); }
+
     panel.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
         <div style="font-size:14px;font-weight:700;color:#1A2540;">${name} ${rank||''}</div>
@@ -4790,9 +4800,10 @@ window.otPcShowPersonDetail = async (id, name, rank) => {
       ${otRenderAttendanceCard(attSummary)}
       ${wage?`<div style="font-size:12px;color:#5C6F8A;margin-bottom:10px;">통상임금 ${wage.rate.toLocaleString()}원/h</div>`:''}
       <div style="font-size:12px;font-weight:700;color:#1A2540;margin:14px 0 8px;">🗓 근로 내역 (${ym}) — 날짜를 클릭하면 조회·수정할 수 있습니다</div>
-      ${otRenderAttendanceCalendar(id, name, rank, attRows)}
-      <div style="display:flex;gap:14px;margin-top:10px;font-size:10.5px;color:#9AAABF;">
+      ${otRenderAttendanceCalendar(id, name, rank, attRows, leaveDocs)}
+      <div style="display:flex;gap:14px;margin-top:10px;font-size:10.5px;color:#9AAABF;flex-wrap:wrap;">
         <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#1D5BA6;margin-right:4px;"></span>정상 근무</span>
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#FDE68A;margin-right:4px;"></span>연차·휴가</span>
         <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#FEE2E2;margin-right:4px;"></span>평일 결근(기록없음)</span>
         <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#EDE9FE;margin-right:4px;"></span>휴일근무</span>
         <span><span style="width:9px;height:9px;border-radius:50%;background:#F59E0B;display:inline-block;margin-right:4px;"></span>관리자 수정</span>
@@ -4801,9 +4812,16 @@ window.otPcShowPersonDetail = async (id, name, rank) => {
 };
 
 // ── 근로 내역 캘린더 렌더 ──
-function otRenderAttendanceCalendar(workerId, workerName, rank, attRows){
+function otRenderAttendanceCalendar(workerId, workerName, rank, attRows, leaveDocs){
   const byDate = {};
   attRows.forEach(r => { byDate[r.date] = r; });
+  leaveDocs = leaveDocs || [];
+
+  // 특정 날짜가 승인/게시된 연차 기간에 포함되는지 확인 → 휴가종류 반환(없으면 null)
+  function leaveOnDate(dateStr){
+    const lv = leaveDocs.find(l => l.startDate && l.endDate && dateStr >= l.startDate && dateStr <= l.endDate);
+    return lv ? (lv.leaveType || '휴가') : null;
+  }
 
   const first = new Date(_otPcYear, _otPcMonth-1, 1);
   const lastDate = new Date(_otPcYear, _otPcMonth, 0).getDate();
@@ -4825,21 +4843,25 @@ function otRenderAttendanceCalendar(workerId, workerName, rank, attRows){
     const isHoliday = KR_HOLIDAYS.has(dateStr);
     const isOffDay = isWeekend || isHoliday;
     const rec = byDate[dateStr];
+    const leaveType = leaveOnDate(dateStr);
     const isToday = dateStr === todayStr;
 
     let bg = 'transparent', fg = '#1A2540', fw = '500';
-    if (rec && isOffDay) { bg = '#EDE9FE'; fg = '#5B21B6'; fw = '700'; }       // 휴일근무
-    else if (rec) { bg = '#1D5BA6'; fg = '#fff'; fw = '700'; }                 // 정상근무
-    else if (!isOffDay) { bg = '#FEE2E2'; fg = '#DC2626'; fw = '700'; }        // 평일 결근
+    if (rec && isOffDay) { bg = '#EDE9FE'; fg = '#5B21B6'; fw = '700'; }              // 휴일근무
+    else if (rec) { bg = '#1D5BA6'; fg = '#fff'; fw = '700'; }                        // 정상근무
+    else if (!isOffDay && leaveType) { bg = '#FDE68A'; fg = '#92400E'; fw = '700'; }  // 연차·휴가(결근 아님)
+    else if (!isOffDay) { bg = '#FEE2E2'; fg = '#DC2626'; fw = '700'; }               // 평일 결근(기록·연차 둘 다 없음)
     else if (dow===0) fg = '#E05'; else if (dow===6) fg = '#1D5BA6';
 
     const border = isToday ? 'border:1.5px solid #F59E0B;' : '';
-    const hoursLabel = rec ? `<div style="font-size:8.5px;margin-top:1px;">${(rec.workHours||0).toFixed(1)}h</div>` : '';
+    const subLabel = rec ? `<div style="font-size:8.5px;margin-top:1px;">${(rec.workHours||0).toFixed(1)}h</div>`
+                    : leaveType ? `<div style="font-size:8px;margin-top:1px;">${otEsc(leaveType.replace(/\(.+?\)/,''))}</div>` : '';
     const adminDot = rec?.updatedByAdmin ? `<span style="position:absolute;top:2px;right:3px;width:5px;height:5px;border-radius:50%;background:#F59E0B;"></span>` : '';
 
     html += `<div onclick="otAttOpenEdit('${workerId}','${otEsc(workerName)}','${dateStr}')"
+      title="${leaveType?otEsc(leaveType):''}"
       style="position:relative;text-align:center;padding:6px 2px 5px;border-radius:8px;font-size:11.5px;background:${bg};color:${fg};font-weight:${fw};${border}cursor:pointer;">
-      ${adminDot}${day}${hoursLabel}
+      ${adminDot}${day}${subLabel}
     </div>`;
   }
   html += `</div></div>`;
