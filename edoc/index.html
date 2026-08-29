@@ -1975,11 +1975,39 @@ function leaveRenderCalendar(){
     const border = isToday ? 'border:1.5px solid #1D5BA6;' : '';
     const names = entries.map(d => `${d.authorName||'-'}(${d.leaveType||'연차(유급)'})`).join(', ');
     const badge = entries.length > 1 ? `<span style="font-size:8px;position:relative;top:-1px;">+${entries.length}</span>` : '';
-    html += `<div title="${names.replace(/"/g,'&quot;')}" style="text-align:center;padding:7px 2px;border-radius:7px;font-size:12px;background:${bg};color:${fg};font-weight:${fw};${border}${entries.length?'cursor:default;':''}">${day}${badge}</div>`;
+    const clickAttr = entries.length ? `onclick="leaveShowDayDetail('${dateStr}')"` : '';
+    html += `<div title="${names.replace(/"/g,'&quot;')}" ${clickAttr} style="text-align:center;padding:7px 2px;border-radius:7px;font-size:12px;background:${bg};color:${fg};font-weight:${fw};${border}${entries.length?'cursor:pointer;':''}">${day}${badge}</div>`;
   }
   html += `</div>`;
   box.innerHTML = html;
 }
+
+// 연차 달력의 특정 날짜를 클릭했을 때, 그날 연차를 쓴 사람 목록을 팝업으로 표시
+window.leaveShowDayDetail = function(dateStr){
+  const entries = leaveEntriesOnDate(dateStr);
+  let modal = document.getElementById('leave-day-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'leave-day-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(19,51,92,0.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+    modal.onclick = (e)=>{ if(e.target===modal) modal.remove(); };
+    document.body.appendChild(modal);
+  }
+  const STATUS = { draft:'임시저장', pending:'결재대기', reviewing:'검토중', approved:'승인', rejected:'반려', posted:'게시' };
+  const STATUS_COLOR = { draft:'#9AAABF', pending:'#F59E0B', reviewing:'#3B82F6', approved:'#16A34A', rejected:'#DC2626', posted:'#1D5BA6' };
+  modal.innerHTML = `<div style="background:#fff;border-radius:16px;width:360px;max-width:100%;max-height:80vh;overflow-y:auto;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <div style="font-size:14px;font-weight:800;color:#1A2540;margin-bottom:14px;">🗓 ${dateStr} 연차 현황 (${entries.length}명)</div>
+    ${entries.length ? entries.map(e => `
+      <div style="border:1px solid #F0F4F9;border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#1A2540;">${e.authorName||'-'} ${e.authorRank||''}</div>
+          <div style="font-size:11px;color:#5C6F8A;margin-top:2px;">${e.leaveType||'연차(유급)'} · ${e.startDate}${e.endDate&&e.endDate!==e.startDate?'~'+e.endDate:''}</div>
+        </div>
+        <span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;background:${STATUS_COLOR[e.status]||'#9AAABF'}22;color:${STATUS_COLOR[e.status]||'#9AAABF'};">${STATUS[e.status]||e.status}</span>
+      </div>`).join('') : '<div style="color:#9AAABF;text-align:center;padding:20px 0;">해당 날짜에 연차가 없습니다.</div>'}
+    <button onclick="document.getElementById('leave-day-modal').remove()" style="margin-top:6px;width:100%;padding:10px;background:#F0F4F9;border:none;border-radius:9px;color:#5C6F8A;font-size:13px;cursor:pointer;">닫기</button>
+  </div>`;
+};
 
 function leaveRenderMyList(){
   const box = document.getElementById('leave-my-list'); if(!box) return;
@@ -2103,13 +2131,46 @@ window.renderLeaveWrite = async function(editDoc) {
       💡 상신 → 결재1 → 결재2(김종화) → 회람(대리인) 순으로 처리됩니다.
     </div>
     <div style="display:flex;gap:8px;">
+      ${(isEdit && ed.status!=='draft' && ed.status!=='rejected') ? `
+      <button onclick="leaveSaveAdminCorrect('${ed.id}')" style="flex:1;padding:13px;background:#DC2626;border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🔧 관리자 정정 저장 (결재상태 유지)</button>
+      ` : `
       <button onclick="leaveSave('draft')" style="flex:1;padding:13px;background:#6B7280;border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">💾 임시저장</button>
       <button onclick="leaveSave('pending')" style="flex:1;padding:13px;background:#1D5BA6;border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📨 상신</button>
+      `}
     </div>
   </div>`;
 
   // 초기 일수 계산
   leaveCalcDays();
+};
+
+// 관리자가 이미 승인/게시/결재중인 연차신청서의 내용(날짜·사유 등)만 정정 — 결재라인·상태는 그대로 유지.
+// 오기 정정 목적이라 재상신/재승인 절차를 거치지 않는다.
+window.leaveSaveAdminCorrect = async function(editId) {
+  if (!window._db || !_user) { alert('로그인이 필요합니다.'); return; }
+  const title   = document.getElementById('lv-title')?.value?.trim();
+  const type    = document.getElementById('lv-type')?.value;
+  const start   = document.getElementById('lv-start')?.value;
+  const end     = document.getElementById('lv-end')?.value;
+  const days    = parseFloat(document.getElementById('lv-days')?.value)||0;
+  const reason  = document.getElementById('lv-reason')?.value?.trim();
+  const contact = document.getElementById('lv-contact')?.value?.trim();
+
+  if (!title) return alert('제목을 입력해 주세요.');
+  if (!start||!end) return alert('시작일과 종료일을 입력해 주세요.');
+  if (!reason) return alert('사유를 입력해 주세요.');
+  if (!confirm('결재 상태는 그대로 두고 내용만 정정합니다. 계속할까요?')) return;
+
+  try {
+    const { setDoc, doc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await setDoc(doc(window._db,'edoc_leave',editId), {
+      title, leaveType:type, startDate:start, endDate:end, days, reason, contact,
+      correctedBy: _myInfo?.name || _user?.email || '',
+      correctedAt: new Date().toISOString(),
+    }, { merge:true });
+    alert('🔧 관리자 정정 저장 완료 (결재상태 유지됨)');
+    renderLeaveMain();
+  } catch(e) { alert('오류: '+e.message); }
 };
 
 window.leaveSave = async function(status) {
@@ -2641,8 +2702,9 @@ window.docDetail = function(d, dtype) {
   const canPost = d.status==='approved' && (isLastApprover || _isAdmin);
   // 회수: 작성자 + pending/reviewing이지만 내 결재 차례가 아닐 때만
   const canRecall = isOwner && !isMyTurn && (d.status==='pending' || d.status==='reviewing');
-  // 수정: 작성자 + draft(임시저장) 또는 rejected(반려)
-  const canEdit = isOwner && (d.status==='draft' || d.status==='rejected');
+  // 수정: 작성자 + draft(임시저장) 또는 rejected(반려) / 연차는 관리자가 지난 건도 직접 수정 가능(오기 정정용)
+  const canEdit = (isOwner && (d.status==='draft' || d.status==='rejected')) || (dtype==='leave' && _isAdmin);
+  const isAdminEditingApproved = dtype==='leave' && _isAdmin && !(isOwner && (d.status==='draft'||d.status==='rejected')) && (d.status==='approved'||d.status==='posted'||d.status==='pending'||d.status==='reviewing');
   // 삭제: 작성자 + (draft/rejected) 또는 관리자
   const canDelete = (isOwner && (d.status==='draft'||d.status==='rejected')) || _isAdmin;
 
