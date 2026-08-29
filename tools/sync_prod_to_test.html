@@ -38,10 +38,18 @@ button.secondary { background:#5C6F8A; }
   </div>
 
   <div class="card" id="login-card">
-    <h2>1. 양쪽 로그인 (본섭 → 테섭 순서로 각각 로그인)</h2>
+    <h2>1. 양쪽 로그인 (이메일/비밀번호 — 포털 로그인과 동일한 계정)</h2>
     <div class="grid2">
-      <button onclick="loginProd()">본섭 관리자 로그인</button>
-      <button onclick="loginTest()">테섭 관리자 로그인</button>
+      <div>
+        <input type="email" id="prod-email" placeholder="본섭 관리자 이메일" style="width:100%;padding:9px 10px;border:1px solid #DDE4EF;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:6px;">
+        <input type="password" id="prod-pw" placeholder="비밀번호" style="width:100%;padding:9px 10px;border:1px solid #DDE4EF;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:6px;">
+        <button onclick="loginProd()" style="margin-top:0;">본섭 관리자 로그인</button>
+      </div>
+      <div>
+        <input type="email" id="test-email" placeholder="테섭 관리자 이메일" style="width:100%;padding:9px 10px;border:1px solid #DDE4EF;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:6px;">
+        <input type="password" id="test-pw" placeholder="비밀번호" style="width:100%;padding:9px 10px;border:1px solid #DDE4EF;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:6px;">
+        <button onclick="loginTest()" style="margin-top:0;">테섭 관리자 로그인</button>
+      </div>
     </div>
     <div class="status" id="login-status">본섭·테섭 둘 다 관리자 계정으로 로그인해주세요.</div>
   </div>
@@ -67,7 +75,7 @@ button.secondary { background:#5C6F8A; }
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, doc, getDoc, getDocs, collection, writeBatch, deleteDoc }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup }
+import { getAuth, signInWithEmailAndPassword }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 const prodConfig = {
@@ -114,8 +122,11 @@ function updateStatus() {
 }
 
 window.loginProd = async () => {
+  const email = document.getElementById('prod-email').value.trim();
+  const pw = document.getElementById('prod-pw').value;
+  if (!email || !pw) { document.getElementById('login-status').textContent = '본섭 이메일/비밀번호를 입력해주세요.'; return; }
   try {
-    await signInWithPopup(prodAuth, new GoogleAuthProvider());
+    await signInWithEmailAndPassword(prodAuth, email, pw);
     const u = prodAuth.currentUser;
     const snap = await getDoc(doc(prodDb, 'portal_users', u.uid));
     const d = snap.exists() ? snap.data() : null;
@@ -124,8 +135,11 @@ window.loginProd = async () => {
   } catch(e) { document.getElementById('login-status').textContent = '본섭 로그인 실패: ' + e.message; }
 };
 window.loginTest = async () => {
+  const email = document.getElementById('test-email').value.trim();
+  const pw = document.getElementById('test-pw').value;
+  if (!email || !pw) { document.getElementById('login-status').textContent = '테섭 이메일/비밀번호를 입력해주세요.'; return; }
   try {
-    await signInWithPopup(testAuth, new GoogleAuthProvider());
+    await signInWithEmailAndPassword(testAuth, email, pw);
     const u = testAuth.currentUser;
     const snap = await getDoc(doc(testDb, 'portal_users', u.uid));
     const d = snap.exists() ? snap.data() : null;
