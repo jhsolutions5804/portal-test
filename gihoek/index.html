@@ -484,39 +484,63 @@ window.delPjt=async function(id){ if(!confirm('이 프로젝트를 삭제할까�
   try{ await deleteDoc(doc(db,'gihoek_projects',id)); toast('삭제했습니다.'); renderPjt(); }catch(e){ toast('삭제 실패: '+(e.code||e.message)); } };
 
 /* ---------------- 견적 ---------------- */
-let estDraft=null, viewEstId=null, estSearchQuery='', estPage=1;
+let estDraft=null, viewEstId=null, estPage=1;
+let estFilterPjt='', estFilterClient='', estFilterMonth='';
 const EST_PAGE_SIZE=10;
 
-window.estSearchChange = function(v){
-  estSearchQuery = v;
-  estPage = 1; // 검색어 바뀌면 1페이지로
-  renderEstList();
-};
 window.estGoPage = function(p){
   estPage = p;
   renderEstList();
   const listEl = document.getElementById('est-list-wrap');
   if (listEl) listEl.scrollIntoView({block:'start'});
 };
+window.estFilterChange = function(kind, v){
+  if (kind==='pjt') estFilterPjt = v;
+  else if (kind==='client') estFilterClient = v;
+  else if (kind==='month') estFilterMonth = v;
+  estPage = 1;
+  renderEstList();
+};
+window.estFilterReset = function(){
+  estFilterPjt=''; estFilterClient=''; estFilterMonth=''; estPage=1;
+  ['est-filter-pjt','est-filter-client','est-filter-month'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  renderEstList();
+};
+
+// 작성된 견적서들에서 실제로 쓰인 값만 뽑아 드롭다운 옵션 구성 (현장명=연결PJT, 거래처, 발행월)
+function estFilterOptions(){
+  const pjtMap = new Map(); // pjtId -> label
+  const clientSet = new Set();
+  const monthSet = new Set();
+  estimates.forEach(e=>{
+    const p = projects.find(x=>x.id===e.pjtId);
+    if (p) pjtMap.set(p.id, p.code || p.name || '(이름없음)');
+    else if (e.pjtId) pjtMap.set(e.pjtId, '삭제된 PJT');
+    if (e.client?.company) clientSet.add(e.client.company);
+    if (e.date && e.date.length>=7) monthSet.add(e.date.slice(0,7));
+  });
+  return {
+    pjtOptions: Array.from(pjtMap.entries()).sort((a,b)=>a[1].localeCompare(b[1],'ko')),
+    clientOptions: Array.from(clientSet).sort((a,b)=>a.localeCompare(b,'ko')),
+    monthOptions: Array.from(monthSet).sort((a,b)=>b.localeCompare(a)), // 최신월 먼저
+  };
+}
 
 function estFilteredList(){
-  const q = (estSearchQuery||'').trim().toLowerCase();
-  if (!q) return estimates;
   return estimates.filter(e=>{
-    const p = projects.find(x=>x.id===e.pjtId);
-    const haystack = [
-      e.title, e.no, e.date, e.client?.company,
-      p?.code, p?.name, p?.client,
-    ].filter(Boolean).join(' ').toLowerCase();
-    return haystack.includes(q);
+    if (estFilterPjt && e.pjtId !== estFilterPjt) return false;
+    if (estFilterClient && e.client?.company !== estFilterClient) return false;
+    if (estFilterMonth && !(e.date||'').startsWith(estFilterMonth)) return false;
+    return true;
   });
 }
 
-// 목록(검색결과+페이지네이션) 부분만 다시 그리는 함수 — 검색창 자체는 재생성하지 않아 포커스 유지
+// 목록(검색결과+페이지네이션) 부분만 다시 그리는 함수 — 드롭다운 자체는 재생성하지 않아 선택값 유지
 function renderEstList(){
   const wrap = document.getElementById('est-list-wrap');
   if (!wrap) return;
   const filtered = estFilteredList();
+  const isFiltered = estFilterPjt || estFilterClient || estFilterMonth;
   const totalPages = Math.max(1, Math.ceil(filtered.length/EST_PAGE_SIZE));
   if (estPage > totalPages) estPage = totalPages;
   const startIdx = (estPage-1)*EST_PAGE_SIZE;
@@ -524,7 +548,7 @@ function renderEstList(){
 
   const listHtml = pageItems.length ? pageItems.map(e=>{ const p=projects.find(x=>x.id===e.pjtId); const v=!isActive(e);
     return `<div class="litem ${v?'void':''}" onclick="openEst('${e.id}')"><div class="d"><div class="ti">${e.title}${e.status==='void'?'<span class="void-tag">폐기</span>':e.status==='closed'?'<span class="void-tag" style="background:#E6F1FB;color:#1D5BA6">종결</span>':((e.rev||1)>1?'<span class="rev-tag">개정 r'+e.rev+'</span>':'')}</div><div class="mt"><span class="pill">${p?p.code:'삭제된 PJT'}</span> &nbsp;${e.no} · ${e.date}${e.client?.company?' · '+e.client.company:''}</div></div><div class="amt">${won(estTotal(e))}</div></div>`;
-  }).join('') : `<div class="empty">${estSearchQuery?'검색 결과가 없습니다.':'작성된 견적이 없습니다.'}</div>`;
+  }).join('') : `<div class="empty">${isFiltered?'조건에 맞는 견적이 없습니다.':'작성된 견적이 없습니다.'}</div>`;
 
   const pagerHtml = totalPages>1 ? `
     <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:14px;">
@@ -538,12 +562,24 @@ function renderEstList(){
   wrap.innerHTML = listHtml + pagerHtml;
 }
 
-function renderEst(){ estDraft=null; viewEstId=null; estSearchQuery=''; estPage=1;
+function renderEst(){ estDraft=null; viewEstId=null; estPage=1; estFilterPjt=''; estFilterClient=''; estFilterMonth='';
+  const opt = estFilterOptions();
   $('v-est').innerHTML=`<button onclick="tab('home')" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#5C6F8A;font-size:12px;cursor:pointer;font-weight:600;">🏠 기획 홈</button>
   <div class="sec-h"><h2>견적</h2><button class="btn pri sm" onclick="newEst()">+ 견적 작성</button></div>
-  <div style="margin-bottom:14px;">
-    <input type="text" placeholder="🔍 현장명·견적번호·거래처·발행일로 검색" oninput="estSearchChange(this.value)"
-      style="width:100%;padding:10px 14px;border:1px solid #DDE4EF;border-radius:10px;font-size:13px;box-sizing:border-box;font-family:inherit;">
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+    <select id="est-filter-pjt" onchange="estFilterChange('pjt',this.value)" style="flex:1;min-width:150px;padding:9px 10px;border:1px solid #DDE4EF;border-radius:9px;font-size:12.5px;font-family:inherit;background:#fff;">
+      <option value="">현장명 전체</option>
+      ${opt.pjtOptions.map(([id,label])=>`<option value="${id}">${label}</option>`).join('')}
+    </select>
+    <select id="est-filter-client" onchange="estFilterChange('client',this.value)" style="flex:1;min-width:150px;padding:9px 10px;border:1px solid #DDE4EF;border-radius:9px;font-size:12.5px;font-family:inherit;background:#fff;">
+      <option value="">거래처 전체</option>
+      ${opt.clientOptions.map(c=>`<option value="${c}">${c}</option>`).join('')}
+    </select>
+    <select id="est-filter-month" onchange="estFilterChange('month',this.value)" style="flex:1;min-width:130px;padding:9px 10px;border:1px solid #DDE4EF;border-radius:9px;font-size:12.5px;font-family:inherit;background:#fff;">
+      <option value="">발행월 전체</option>
+      ${opt.monthOptions.map(m=>`<option value="${m}">${m}</option>`).join('')}
+    </select>
+    <button onclick="estFilterReset()" style="padding:9px 14px;border:1px solid #DDE4EF;border-radius:9px;background:#F7F9FC;color:#5C6F8A;font-size:12.5px;cursor:pointer;white-space:nowrap;">초기화</button>
   </div>
   <div id="est-list-wrap"></div>`;
   renderEstList();
