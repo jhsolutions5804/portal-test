@@ -1627,6 +1627,7 @@ function psCalcAll() {
   const bonus       = Number(ps.bonus||0);
   const specialBonus= Number(ps.specialBonus||0);
   const extraPay    = Number(ps.extraPay||0);
+  const travelAllowance = Number(ps.travelAllowance||0); // 실비변상적 금품(비과세) — 4대보험 산정 기준(totalPay)에서 제외
   const totalPay    = sal.total + bonus + specialBonus + extraPay;
 
   // 공제 (자동계산 후 직접 수정값 있으면 오버라이드)
@@ -1644,9 +1645,9 @@ function psCalcAll() {
   const localTax   = ps._localTax  !== undefined ? Number(ps._localTax)  : _localTax;
   const dormitory  = Number(ps.dormitory||0);
   const totalDeduct = pension + health + ltcare + employ + dormitory + incomeTax + localTax;
-  const netPay      = totalPay - totalDeduct;
+  const netPay      = totalPay - totalDeduct + travelAllowance;
 
-  return { sal, bonus, specialBonus, extraPay, totalPay,
+  return { sal, bonus, specialBonus, extraPay, travelAllowance, totalPay,
             pension, health, ltcare, employ, dormitory, incomeTax, localTax,
             totalDeduct, netPay };
 }
@@ -2136,6 +2137,11 @@ function renderPayslipWriteForm(el, workers, months, calcPayDate) {
           oninput="fmtMoney(this)" onchange="ps.extraPay=numClean(this.value);window.psRefresh();" ${inp2Style}>
 
       `)}
+      ${field2('여비교통비', `
+        <input type="text" inputmode="numeric" value="${ps.travelAllowance?Number(ps.travelAllowance).toLocaleString('ko-KR'):''}" placeholder="0"
+          oninput="fmtMoney(this)" onchange="ps.travelAllowance=numClean(this.value);window.psRefresh();" ${inp2Style}>
+        <div style="font-size:10px;color:#9AAABF;margin-top:4px;">🚗 실비변상적 성격의 현장수당(비과세) — 지급계엔 안 잡히고 실지급액에만 별도로 더해집니다</div>
+      `)}
       <div style="display:flex;justify-content:space-between;padding:10px 12px;background:#E8F0FB;border-radius:8px;font-size:14px;font-weight:700;margin-top:4px;">
         <span style="color:${C2.blue};">지급계</span>
         <span style="color:${C2.blue};">₩${c.totalPay.toLocaleString()}</span>
@@ -2291,6 +2297,7 @@ window.psPreview = () => {
             ${payRow('상여금', c.bonus?psWonR(c.bonus):'—', '')}
             ${payRow('특별성과급', c.specialBonus?psWonR(c.specialBonus):'—', '')}
             ${payRow('특근수당', c.extraPay?psWonR(c.extraPay):'—', '')}
+            ${payRow('여비교통비', c.travelAllowance?psWonR(c.travelAllowance):'—', c.travelAllowance?'비과세 · 지급계 미포함, 실지급액에 별도가산':'해당없음')}
             <tr style="background:#E8F0FB;">
               <td style="padding:9px 10px;border:1px solid #DDE4EF;font-weight:800;color:#1D5BA6;white-space:nowrap;">지급계</td>
               <td style="padding:9px 10px;border:1px solid #DDE4EF;text-align:right;font-weight:800;color:#1D5BA6;white-space:nowrap;">${psWonR(c.totalPay)}</td>
@@ -2368,7 +2375,7 @@ window.psSave = async () => {
       rank: ps.workerData?.rank||'', empNo: ps.workerData?.empNo||'',
       hourly: ps.annualData?.hourly||0, empType: ps.workerData?.empType||'field',
       ...c.sal,
-      bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay,
+      bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay, travelAllowance: c.travelAllowance,
       grossPay: c.totalPay,
       pension: c.pension, health: c.health, ltcare: c.ltcare, employ: c.employ,
       dormitory: c.dormitory, incomeTax: c.incomeTax, localTax: c.localTax,
@@ -2462,7 +2469,7 @@ window.psViewDetail = (d, wid) => {
   // 저장된 데이터로 미리보기
   const savedC = {
     sal: { basic:d.basic||0, fixedOt:d.fixedOt||0, fixedNight:d.fixedNight||0, weekly:d.weekly||0, holidayPay:d.holidayPay||0 },
-    bonus:d.bonus||0, specialBonus:d.specialBonus||0, extraPay:d.extraPay||0,
+    bonus:d.bonus||0, specialBonus:d.specialBonus||0, extraPay:d.extraPay||0, travelAllowance:d.travelAllowance||0,
     totalPay:d.grossPay||0, pension:d.pension||0, health:d.health||0,
     ltcare:d.ltcare||0, employ:d.employ||0, dormitory:d.dormitory||0,
     incomeTax:d.incomeTax||0, localTax:d.localTax||0,
@@ -2504,7 +2511,7 @@ window.psSave = async () => {
       rank: ps.workerData?.rank||'', empNo: ps.workerData?.empNo||'',
       hourly: ps.annualData?.hourly||0, empType: ps.workerData?.empType||'field',
       ...c.sal,
-      bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay,
+      bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay, travelAllowance: c.travelAllowance,
       grossPay: c.totalPay,
       pension: c.pension, health: c.health, ltcare: c.ltcare, employ: c.employ,
       dormitory: c.dormitory, incomeTax: c.incomeTax, localTax: c.localTax,
@@ -2561,7 +2568,7 @@ window.psViewDetail = (d, wid) => {
   // 저장된 데이터로 미리보기
   const savedC = {
     sal: { basic:d.basic||0, fixedOt:d.fixedOt||0, fixedNight:d.fixedNight||0, weekly:d.weekly||0, holidayPay:d.holidayPay||0 },
-    bonus:d.bonus||0, specialBonus:d.specialBonus||0, extraPay:d.extraPay||0,
+    bonus:d.bonus||0, specialBonus:d.specialBonus||0, extraPay:d.extraPay||0, travelAllowance:d.travelAllowance||0,
     totalPay:d.grossPay||0, pension:d.pension||0, health:d.health||0,
     ltcare:d.ltcare||0, employ:d.employ||0, dormitory:d.dormitory||0,
     incomeTax:d.incomeTax||0, localTax:d.localTax||0,
