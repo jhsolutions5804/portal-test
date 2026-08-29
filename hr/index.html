@@ -2138,6 +2138,16 @@ function renderPayslipWriteForm(el, workers, months, calcPayDate) {
 
       `)}
       ${field2('여비교통비', `
+        <select onchange="psTravelTypeChange(this.value)" style="width:100%;padding:9px 10px;border:1px solid #DDE4EF;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;margin-bottom:6px;">
+          <option value="">유형 선택 (직접입력하려면 비워두세요)</option>
+          <option value="personal_near" ${ps._travelType==='personal_near'?'selected':''}>🚗 개인차량 · 사무실 40km 이내 (1만원)</option>
+          <option value="personal_far" ${ps._travelType==='personal_far'?'selected':''}>🚗 개인차량 · 사무실 40km 초과 (2만원)</option>
+          <option value="company_car" ${ps._travelType==='company_car'?'selected':''}>🚙 회사차량 이동 (거리무관, 1만원 고정)</option>
+          <option value="longtrip" ${ps._travelType==='longtrip'?'selected':''}>🚄 지방 장기출장(숙박) · 왕복 KTX 교통비로 대체</option>
+        </select>
+        ${ps._travelType==='longtrip' ? `
+        <div style="font-size:10px;color:#9AAABF;margin-bottom:4px;">숙소 지급 시 일비(1만원) 대신 왕복 KTX 교통비 실비로 지급합니다. 금액을 직접 입력하세요.</div>
+        ` : ''}
         <input type="text" inputmode="numeric" value="${ps.travelAllowance?Number(ps.travelAllowance).toLocaleString('ko-KR'):''}" placeholder="0"
           oninput="fmtMoney(this)" onchange="ps.travelAllowance=numClean(this.value);window.psRefresh();" ${inp2Style}>
         <div style="font-size:10px;color:#9AAABF;margin-top:4px;">🚗 실비변상적 성격의 현장수당(비과세) — 지급계엔 안 잡히고 실지급액에만 별도로 더해집니다</div>
@@ -2361,6 +2371,19 @@ window.psPreview = () => {
   win.document.close();
 };
 
+// 여비교통비 유형 선택 → 자동 금액 계산 (근로기준법상 실비변상적 금품 — 회사 내규 기준)
+// 개인차량 40km 이내=1만원 / 40km 초과=2만원 / 회사차량=거리무관 1만원 고정 / 지방장기출장(숙박)=왕복KTX 실비(직접입력)
+window.psTravelTypeChange = function(type) {
+  ps._travelType = type;
+  const AMOUNTS = { personal_near: 10000, personal_far: 20000, company_car: 10000 };
+  if (type === 'longtrip') {
+    ps.travelAllowance = 0; // 실비 직접 입력 필요
+  } else if (AMOUNTS[type] !== undefined) {
+    ps.travelAllowance = AMOUNTS[type];
+  }
+  window.psRefresh();
+};
+
 // 급여명세서 저장
 window.psSave = async () => {
   if (!ps.workerId||!ps.month) { alert('기준월과 근로자를 선택해 주세요.'); return; }
@@ -2375,7 +2398,7 @@ window.psSave = async () => {
       rank: ps.workerData?.rank||'', empNo: ps.workerData?.empNo||'',
       hourly: ps.annualData?.hourly||0, empType: ps.workerData?.empType||'field',
       ...c.sal,
-      bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay, travelAllowance: c.travelAllowance,
+      bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay, travelAllowance: c.travelAllowance, travelType: ps._travelType||``,
       grossPay: c.totalPay,
       pension: c.pension, health: c.health, ltcare: c.ltcare, employ: c.employ,
       dormitory: c.dormitory, incomeTax: c.incomeTax, localTax: c.localTax,
@@ -2469,7 +2492,7 @@ window.psViewDetail = (d, wid) => {
   // 저장된 데이터로 미리보기
   const savedC = {
     sal: { basic:d.basic||0, fixedOt:d.fixedOt||0, fixedNight:d.fixedNight||0, weekly:d.weekly||0, holidayPay:d.holidayPay||0 },
-    bonus:d.bonus||0, specialBonus:d.specialBonus||0, extraPay:d.extraPay||0, travelAllowance:d.travelAllowance||0,
+    bonus:d.bonus||0, specialBonus:d.specialBonus||0, extraPay:d.extraPay||0, travelAllowance:d.travelAllowance||0, _travelType:d.travelType||``,
     totalPay:d.grossPay||0, pension:d.pension||0, health:d.health||0,
     ltcare:d.ltcare||0, employ:d.employ||0, dormitory:d.dormitory||0,
     incomeTax:d.incomeTax||0, localTax:d.localTax||0,
@@ -2511,7 +2534,7 @@ window.psSave = async () => {
       rank: ps.workerData?.rank||'', empNo: ps.workerData?.empNo||'',
       hourly: ps.annualData?.hourly||0, empType: ps.workerData?.empType||'field',
       ...c.sal,
-      bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay, travelAllowance: c.travelAllowance,
+      bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay, travelAllowance: c.travelAllowance, travelType: ps._travelType||``,
       grossPay: c.totalPay,
       pension: c.pension, health: c.health, ltcare: c.ltcare, employ: c.employ,
       dormitory: c.dormitory, incomeTax: c.incomeTax, localTax: c.localTax,
@@ -2568,7 +2591,7 @@ window.psViewDetail = (d, wid) => {
   // 저장된 데이터로 미리보기
   const savedC = {
     sal: { basic:d.basic||0, fixedOt:d.fixedOt||0, fixedNight:d.fixedNight||0, weekly:d.weekly||0, holidayPay:d.holidayPay||0 },
-    bonus:d.bonus||0, specialBonus:d.specialBonus||0, extraPay:d.extraPay||0, travelAllowance:d.travelAllowance||0,
+    bonus:d.bonus||0, specialBonus:d.specialBonus||0, extraPay:d.extraPay||0, travelAllowance:d.travelAllowance||0, _travelType:d.travelType||``,
     totalPay:d.grossPay||0, pension:d.pension||0, health:d.health||0,
     ltcare:d.ltcare||0, employ:d.employ||0, dormitory:d.dormitory||0,
     incomeTax:d.incomeTax||0, localTax:d.localTax||0,
