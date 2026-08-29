@@ -1,0 +1,259 @@
+<!DOCTYPE html><!-- 본섭→테섭 데이터 완전 동기화 유틸리티 (일회성, 관리자 전용) -->
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>본섭 → 테섭 데이터 동기화</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; font-family:-apple-system,'Apple SD Gothic Neo',sans-serif; }
+body { background:#f0f4fa; padding:20px; }
+.wrap { max-width:680px; margin:0 auto; }
+h1 { font-size:18px; color:#1A2540; margin-bottom:6px; }
+.sub { font-size:12px; color:#9AAABF; margin-bottom:20px; line-height:1.6; }
+.card { background:#fff; border-radius:12px; padding:18px; margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+.card h2 { font-size:13px; color:#1D5BA6; margin-bottom:10px; }
+.warn { background:#FEF3C7; border:1px solid #F59E0B; border-radius:10px; padding:12px 14px; font-size:12px; color:#92400E; line-height:1.7; margin-bottom:14px; }
+.row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #F0F4FA; font-size:12.5px; }
+.row:last-child { border-bottom:none; }
+label.chk { display:flex; align-items:center; gap:8px; padding:5px 0; font-size:12.5px; color:#1A2540; }
+button { padding:12px 20px; background:#1D5BA6; color:#fff; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; width:100%; margin-top:6px; }
+button:disabled { opacity:.5; cursor:default; }
+button.danger { background:#DC2626; }
+button.secondary { background:#5C6F8A; }
+#log { margin-top:14px; background:#111; color:#0f0; font-family:monospace; font-size:11px; padding:12px; border-radius:8px; max-height:420px; overflow-y:auto; white-space:pre-wrap; display:none; }
+.status { font-size:12px; margin-top:8px; text-align:center; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🔄 본섭 → 테섭 데이터 동기화</h1>
+  <div class="sub">본섭(프로덕션) 데이터를 테섭(portal-test)으로 완전히 거울 복사합니다. 테섭에만 있는 여분 데이터는 삭제됩니다.</div>
+
+  <div class="warn">
+    ⚠️ <b>portal_users(로그인 계정)는 동기화 대상에서 제외됩니다</b> — UID가 프로젝트별로 달라서 그대로 복사하면 테섭 로그인이 전부 깨집니다.<br>
+    ⚠️ <b>workers.portalUid 필드는 복사하지 않습니다</b> — 테섭에 기존 값이 있으면 유지하고, 없으면 비워둡니다.<br>
+    ⚠️ 이 작업은 <b>테섭 데이터를 되돌릴 수 없이 덮어씁니다.</b> 실행 전 정말 필요한지 확인해주세요.<br>
+    ⚠️ 날짜별로 이름이 바뀌는 컬렉션(daily_reports_YYYYMMDD 등)은 목록 조회가 불가능해 자동 동기화 대상에서 빠져있습니다.
+  </div>
+
+  <div class="card" id="login-card">
+    <h2>1. 양쪽 로그인 (본섭 → 테섭 순서로 각각 로그인)</h2>
+    <div class="grid2">
+      <button onclick="loginProd()">본섭 관리자 로그인</button>
+      <button onclick="loginTest()">테섭 관리자 로그인</button>
+    </div>
+    <div class="status" id="login-status">본섭·테섭 둘 다 관리자 계정으로 로그인해주세요.</div>
+  </div>
+
+  <div class="card" id="collection-card" style="display:none;">
+    <h2>2. 동기화할 컬렉션 선택</h2>
+    <div id="collection-list"></div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="secondary" onclick="toggleAll(true)" style="margin-top:0;">전체 선택</button>
+      <button class="secondary" onclick="toggleAll(false)" style="margin-top:0;">전체 해제</button>
+    </div>
+  </div>
+
+  <div class="card" id="run-card" style="display:none;">
+    <h2>3. 실행</h2>
+    <button onclick="runSync()" id="sync-btn" class="danger">🔄 선택한 컬렉션 완전 동기화 실행</button>
+  </div>
+
+  <div id="log"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, doc, getDoc, getDocs, collection, writeBatch, deleteDoc }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+const prodConfig = {
+  apiKey: "AIzaSyCyQxBJ_ftfM0ImBXubmqD5gfzFR54iPmE",
+  authDomain: "p4ph2-fab-506a7.firebaseapp.com",
+  projectId: "p4ph2-fab-506a7",
+  storageBucket: "p4ph2-fab-506a7.firebasestorage.app",
+  messagingSenderId: "36946317914",
+  appId: "1:36946317914:web:c6ad5f3a1b98130c99fe63"
+};
+const testConfig = {
+  apiKey: "AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI",
+  authDomain: "portal-test-6e0ff.firebaseapp.com",
+  projectId: "portal-test-6e0ff",
+  storageBucket: "portal-test-6e0ff.firebasestorage.app",
+  messagingSenderId: "752763010816",
+  appId: "1:752763010816:web:4a0c7062a2f1a4e9a03de5"
+};
+
+const prodApp = initializeApp(prodConfig, 'prodApp');
+const testApp = initializeApp(testConfig, 'testApp');
+const prodDb = getFirestore(prodApp);
+const testDb = getFirestore(testApp);
+const prodAuth = getAuth(prodApp);
+const testAuth = getAuth(testApp);
+
+let prodOk = false, testOk = false;
+
+const logEl = document.getElementById('log');
+function log(msg) {
+  logEl.style.display = 'block';
+  logEl.textContent += msg + '\n';
+  logEl.scrollTop = logEl.scrollHeight;
+  console.log(msg);
+}
+
+function updateStatus() {
+  const el = document.getElementById('login-status');
+  el.textContent = `본섭: ${prodOk ? '✅ 로그인됨' : '⏳ 대기중'}  ·  테섭: ${testOk ? '✅ 로그인됨' : '⏳ 대기중'}`;
+  if (prodOk && testOk) {
+    document.getElementById('collection-card').style.display = 'block';
+    document.getElementById('run-card').style.display = 'block';
+  }
+}
+
+window.loginProd = async () => {
+  try {
+    await signInWithPopup(prodAuth, new GoogleAuthProvider());
+    const u = prodAuth.currentUser;
+    const snap = await getDoc(doc(prodDb, 'portal_users', u.uid));
+    const d = snap.exists() ? snap.data() : null;
+    if (!d || !d.admin) { document.getElementById('login-status').textContent = '⚠️ 본섭 관리자 계정이 아닙니다.'; return; }
+    prodOk = true; updateStatus();
+  } catch(e) { document.getElementById('login-status').textContent = '본섭 로그인 실패: ' + e.message; }
+};
+window.loginTest = async () => {
+  try {
+    await signInWithPopup(testAuth, new GoogleAuthProvider());
+    const u = testAuth.currentUser;
+    const snap = await getDoc(doc(testDb, 'portal_users', u.uid));
+    const d = snap.exists() ? snap.data() : null;
+    if (!d || !d.admin) { document.getElementById('login-status').textContent = '⚠️ 테섭 관리자 계정이 아닙니다.'; return; }
+    testOk = true; updateStatus();
+  } catch(e) { document.getElementById('login-status').textContent = '테섭 로그인 실패: ' + e.message; }
+};
+
+// 동기화 대상 컬렉션 (portal_users 제외) + 알려진 서브컬렉션 매핑
+const COLLECTIONS = [
+  'workers', 'master_workers', 'annual_contracts',
+  'worker_attendance_log', 'worker_attendance', 'ph4_attendance', 'worker_manday', 'ph4_manday',
+  'pjt_workers_fab', 'pjt_workers_ph4', 'user_schedules', 'ph4_schedules',
+  'edoc_purchase', 'edoc_expense', 'edoc_daily', 'edoc_leave', 'edoc_overtime',
+  'daily_report_docs', 'ph4_reports',
+  'gihoek_clients', 'gihoek_companies', 'gihoek_estimates', 'gihoek_expenses',
+  'gihoek_issuers', 'gihoek_projects', 'gihoek_settlements',
+  'invoice_history', 'payment_history', 'payslips',
+  'pjt_registry', 'pjt_settings',
+  'checklist_state', 'company_settings', 'overtime', 'zone_layouts', 'item_checks',
+];
+// 부모컬렉션 -> [서브컬렉션명, ...]
+const SUBCOLLECTIONS = {
+  annual_contracts: ['contracts'],
+  payslips: ['months'],
+  pjt_registry: ['item_checks', 'items', 'manday', 'reports', 'schedules', 'workers'],
+};
+// 복사 시 제외할 필드 (컬렉션별)
+const EXCLUDE_FIELDS = { workers: ['portalUid'] };
+
+const listEl = document.getElementById('collection-list');
+listEl.innerHTML = COLLECTIONS.map(c => `
+  <label class="chk"><input type="checkbox" class="cbcol" value="${c}" checked> ${c}${SUBCOLLECTIONS[c] ? ` <span style="color:#9AAABF;font-size:11px;">(서브: ${SUBCOLLECTIONS[c].join(', ')} 포함)</span>` : ''}</label>
+`).join('');
+
+window.toggleAll = (v) => { document.querySelectorAll('.cbcol').forEach(cb => cb.checked = v); };
+
+async function copyCollection(colName, excludeFields) {
+  const prodSnap = await getDocs(collection(prodDb, colName));
+  const prodDocs = []; prodSnap.forEach(d => prodDocs.push({ id: d.id, data: d.data() }));
+  const prodIds = new Set(prodDocs.map(d => d.id));
+
+  const testSnap = await getDocs(collection(testDb, colName));
+  const testIds = []; testSnap.forEach(d => testIds.push(d.id));
+
+  // 1) 테섭에만 있는 문서 삭제 (거울 동기화)
+  const toDelete = testIds.filter(id => !prodIds.has(id));
+  let delCount = 0;
+  for (const id of toDelete) {
+    await deleteDoc(doc(testDb, colName, id));
+    delCount++;
+  }
+
+  // 2) 본섭 문서를 테섭에 기록 (배치, 최대 500개씩)
+  let writeCount = 0;
+  for (let i = 0; i < prodDocs.length; i += 400) {
+    const batch = writeBatch(testDb);
+    const chunk = prodDocs.slice(i, i + 400);
+    for (const { id, data } of chunk) {
+      const cleaned = { ...data };
+      if (excludeFields) {
+        for (const f of excludeFields) {
+          if (f in cleaned) delete cleaned[f]; // 기존 테섭 값 보존을 위해 필드 자체를 안 건드림(merge:true)
+        }
+      }
+      batch.set(doc(testDb, colName, id), cleaned, { merge: true });
+    }
+    await batch.commit();
+    writeCount += chunk.length;
+  }
+
+  log(`  ${colName}: 본섭 ${prodDocs.length}건 → 테섭 반영 ${writeCount}건, 여분 삭제 ${delCount}건`);
+  return prodDocs; // 서브컬렉션 복사용으로 부모 문서 id 목록 반환
+}
+
+async function copySubcollection(parentCol, parentId, subCol) {
+  const prodSnap = await getDocs(collection(prodDb, parentCol, parentId, subCol));
+  const prodDocs = []; prodSnap.forEach(d => prodDocs.push({ id: d.id, data: d.data() }));
+  if (prodDocs.length === 0) return { w: 0, del: 0 };
+  const prodIds = new Set(prodDocs.map(d => d.id));
+
+  const testSnap = await getDocs(collection(testDb, parentCol, parentId, subCol));
+  const testIds = []; testSnap.forEach(d => testIds.push(d.id));
+  const toDelete = testIds.filter(id => !prodIds.has(id));
+  for (const id of toDelete) await deleteDoc(doc(testDb, parentCol, parentId, subCol, id));
+
+  for (let i = 0; i < prodDocs.length; i += 400) {
+    const batch = writeBatch(testDb);
+    const chunk = prodDocs.slice(i, i + 400);
+    for (const { id, data } of chunk) batch.set(doc(testDb, parentCol, parentId, subCol, id), data, { merge: true });
+    await batch.commit();
+  }
+  return { w: prodDocs.length, del: toDelete.length };
+}
+
+window.runSync = async () => {
+  const selected = Array.from(document.querySelectorAll('.cbcol:checked')).map(cb => cb.value);
+  if (!selected.length) { alert('컬렉션을 하나 이상 선택해주세요.'); return; }
+  if (!confirm(`${selected.length}개 컬렉션을 완전 동기화합니다.\n테섭 전용 데이터는 삭제되고, 본섭 데이터로 덮어써집니다.\n되돌릴 수 없습니다. 계속할까요?`)) return;
+
+  const btn = document.getElementById('sync-btn');
+  btn.disabled = true;
+  logEl.textContent = '';
+  log('=== 동기화 시작 ===\n');
+
+  for (const colName of selected) {
+    log(`[${colName}] 동기화 중...`);
+    try {
+      const parentDocs = await copyCollection(colName, EXCLUDE_FIELDS[colName]);
+      const subs = SUBCOLLECTIONS[colName];
+      if (subs && parentDocs.length) {
+        for (const sub of subs) {
+          let totalW = 0, totalDel = 0;
+          for (const { id } of parentDocs) {
+            const r = await copySubcollection(colName, id, sub);
+            totalW += r.w; totalDel += r.del;
+          }
+          if (totalW || totalDel) log(`    └ ${colName}/*/${sub}: 반영 ${totalW}건, 삭제 ${totalDel}건`);
+        }
+      }
+    } catch(e) {
+      log(`  ⚠️ ${colName} 처리 중 오류: ${e.message}`);
+    }
+  }
+
+  log('\n=== 동기화 완료 ===');
+  btn.disabled = false;
+};
+</script>
+</body>
+</html>
