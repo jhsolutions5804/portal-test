@@ -1627,8 +1627,9 @@ function psCalcAll() {
   const bonus       = Number(ps.bonus||0);
   const specialBonus= Number(ps.specialBonus||0);
   const extraPay    = Number(ps.extraPay||0);
+  const techAllowance = Number(ps.techAllowance||0); // 기술수당(자격수당) — 일반 임금항목이라 지급계·4대보험 산정에 포함
   const travelAllowance = Number(ps.travelAllowance||0); // 실비변상적 금품(비과세) — 4대보험 산정 기준(totalPay)에서 제외
-  const totalPay    = sal.total + bonus + specialBonus + extraPay;
+  const totalPay    = sal.total + bonus + specialBonus + extraPay + techAllowance;
 
   // 공제 (자동계산 후 직접 수정값 있으면 오버라이드)
   const _pension   = Math.round(totalPay * 0.045);
@@ -1647,7 +1648,7 @@ function psCalcAll() {
   const totalDeduct = pension + health + ltcare + employ + dormitory + incomeTax + localTax;
   const netPay      = totalPay - totalDeduct + travelAllowance;
 
-  return { sal, bonus, specialBonus, extraPay, travelAllowance, totalPay,
+  return { sal, bonus, specialBonus, extraPay, techAllowance, travelAllowance, totalPay,
             pension, health, ltcare, employ, dormitory, incomeTax, localTax,
             totalDeduct, netPay };
 }
@@ -1762,6 +1763,7 @@ window.psPcWorkerSelect = async (wid) => {
   ps.workerData = workers.find(w=>w.id===wid) || null;
   ps.workerId = wid;
   ps.bankAccount = ps.workerData?.bankAccount || '';
+  ps.techAllowance = ps.workerData?.hasCertification ? 50000 : 0;
 
   // 근로자 정보 표시
   const info = document.getElementById('ps-pc-workerinfo');
@@ -2008,6 +2010,7 @@ window.renderPayslipWrite = async () => {
     ps.workerData = workers.find(w=>w.id===wid) || null;
     // 명부에서 계좌번호 불러오기
     if (ps.workerData?.bankAccount) ps.bankAccount = ps.workerData.bankAccount;
+    ps.techAllowance = ps.workerData?.hasCertification ? 50000 : 0;
 
     // 연봉계약서에서 해당 월 기준 최신 계약 불러오기
     if (window._db && wid) {
@@ -2136,6 +2139,11 @@ function renderPayslipWriteForm(el, workers, months, calcPayDate) {
         <input type="text" inputmode="numeric" value="${ps.extraPay?Number(ps.extraPay).toLocaleString('ko-KR'):''}" placeholder="0"
           oninput="fmtMoney(this)" onchange="ps.extraPay=numClean(this.value);window.psRefresh();" ${inp2Style}>
 
+      `)}
+      ${field2('기술수당', `
+        <input type="text" inputmode="numeric" value="${ps.techAllowance?Number(ps.techAllowance).toLocaleString('ko-KR'):''}" placeholder="0"
+          oninput="fmtMoney(this)" onchange="ps.techAllowance=numClean(this.value);window.psRefresh();" ${inp2Style}>
+        <div style="font-size:10px;color:#9AAABF;margin-top:4px;">🎓 국가기술자격증 보유자 월 5만원 ${ps.workerData?.hasCertification?'(자격증 보유 확인됨, 자동 반영됨)':'(명부에 자격증 보유 등록 필요)'}</div>
       `)}
       ${field2('여비교통비', `
         <select onchange="psTravelTypeChange(this.value)" style="width:100%;padding:9px 10px;border:1px solid #DDE4EF;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;margin-bottom:6px;">
@@ -2307,6 +2315,7 @@ window.psPreview = () => {
             ${payRow('상여금', c.bonus?psWonR(c.bonus):'—', '')}
             ${payRow('특별성과급', c.specialBonus?psWonR(c.specialBonus):'—', '')}
             ${payRow('특근수당', c.extraPay?psWonR(c.extraPay):'—', '')}
+            ${payRow('기술수당', c.techAllowance?psWonR(c.techAllowance):'—', c.techAllowance?'국가기술자격증 보유':'해당없음')}
             ${payRow('여비교통비', c.travelAllowance?psWonR(c.travelAllowance):'—', c.travelAllowance?'비과세 · 지급계 미포함, 실지급액에 별도가산':'해당없음')}
             <tr style="background:#E8F0FB;">
               <td style="padding:9px 10px;border:1px solid #DDE4EF;font-weight:800;color:#1D5BA6;white-space:nowrap;">지급계</td>
@@ -2398,7 +2407,7 @@ window.psSave = async () => {
       rank: ps.workerData?.rank||'', empNo: ps.workerData?.empNo||'',
       hourly: ps.annualData?.hourly||0, empType: ps.workerData?.empType||'field',
       ...c.sal,
-      bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay, travelAllowance: c.travelAllowance, travelType: ps._travelType||``,
+      bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay, techAllowance: c.techAllowance, travelAllowance: c.travelAllowance, travelType: ps._travelType||``,
       grossPay: c.totalPay,
       pension: c.pension, health: c.health, ltcare: c.ltcare, employ: c.employ,
       dormitory: c.dormitory, incomeTax: c.incomeTax, localTax: c.localTax,
@@ -2492,7 +2501,7 @@ window.psViewDetail = (d, wid) => {
   // 저장된 데이터로 미리보기
   const savedC = {
     sal: { basic:d.basic||0, fixedOt:d.fixedOt||0, fixedNight:d.fixedNight||0, weekly:d.weekly||0, holidayPay:d.holidayPay||0 },
-    bonus:d.bonus||0, specialBonus:d.specialBonus||0, extraPay:d.extraPay||0, travelAllowance:d.travelAllowance||0, _travelType:d.travelType||``,
+    bonus:d.bonus||0, specialBonus:d.specialBonus||0, extraPay:d.extraPay||0, techAllowance:d.techAllowance||0, travelAllowance:d.travelAllowance||0, _travelType:d.travelType||``,
     totalPay:d.grossPay||0, pension:d.pension||0, health:d.health||0,
     ltcare:d.ltcare||0, employ:d.employ||0, dormitory:d.dormitory||0,
     incomeTax:d.incomeTax||0, localTax:d.localTax||0,
@@ -2534,7 +2543,7 @@ window.psSave = async () => {
       rank: ps.workerData?.rank||'', empNo: ps.workerData?.empNo||'',
       hourly: ps.annualData?.hourly||0, empType: ps.workerData?.empType||'field',
       ...c.sal,
-      bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay, travelAllowance: c.travelAllowance, travelType: ps._travelType||``,
+      bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay, techAllowance: c.techAllowance, travelAllowance: c.travelAllowance, travelType: ps._travelType||``,
       grossPay: c.totalPay,
       pension: c.pension, health: c.health, ltcare: c.ltcare, employ: c.employ,
       dormitory: c.dormitory, incomeTax: c.incomeTax, localTax: c.localTax,
@@ -2591,7 +2600,7 @@ window.psViewDetail = (d, wid) => {
   // 저장된 데이터로 미리보기
   const savedC = {
     sal: { basic:d.basic||0, fixedOt:d.fixedOt||0, fixedNight:d.fixedNight||0, weekly:d.weekly||0, holidayPay:d.holidayPay||0 },
-    bonus:d.bonus||0, specialBonus:d.specialBonus||0, extraPay:d.extraPay||0, travelAllowance:d.travelAllowance||0, _travelType:d.travelType||``,
+    bonus:d.bonus||0, specialBonus:d.specialBonus||0, extraPay:d.extraPay||0, techAllowance:d.techAllowance||0, travelAllowance:d.travelAllowance||0, _travelType:d.travelType||``,
     totalPay:d.grossPay||0, pension:d.pension||0, health:d.health||0,
     ltcare:d.ltcare||0, employ:d.employ||0, dormitory:d.dormitory||0,
     incomeTax:d.incomeTax||0, localTax:d.localTax||0,
@@ -3494,6 +3503,14 @@ window.rosterDetail = (id) => {
             </button>
           </div>
         </div>
+        <div style="display:flex;align-items:center;padding:8px 0 0;gap:8px;border-top:1px solid #DDE4EF;margin-top:8px;">
+          <span style="color:#5C6F8A;font-weight:600;min-width:68px;font-size:12px;flex-shrink:0;">기술수당</span>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#1A2540;cursor:pointer;">
+            <input type="checkbox" ${d.hasCertification?'checked':''} onchange="window._editRosterTarget.hasCertification=this.checked;"
+              style="width:16px;height:16px;cursor:pointer;">
+            국가기술자격증 보유 (월 5만원 자동 지급 대상)
+          </label>
+        </div>
       </div>
 
       ${!d.portalUid ? `
@@ -3927,7 +3944,7 @@ window.laborPreview2 = () => {
       <p style="font-weight:700;margin:14px 0 5px;">제1조 【의 무】</p><p style="margin-bottom:8px;">"을"은 "갑"의 정규직원으로서 "갑"의 사규에 따른 제규정 및 취업규칙에 정해진 근로조건을 승인하고 근로를 성실히 이행할 의무를 진다.</p>
       <p style="font-weight:700;margin:14px 0 5px;">제2조 【근로기간】</p><p style="margin-bottom:4px;">1. 근로계약기간 : ${fmtDp(f.startDate)} ~ ${fmtDp(f.endDate)}</p><p style="margin-bottom:8px;">2. PJT계약근로기간이 만료되고 계속 근무의 필요가 있을 때에는 당사자간의 합의 하에 재계약 할 수 있다.</p>
       <p style="font-weight:700;margin:14px 0 5px;">제3조 【근무장소 및 대상업무】</p><p style="margin-bottom:4px;">1. "을"은 "갑"이 제공하는 근무장소에서 근무하며, "을"은 이에 따른다.</p><p style="margin-bottom:4px;">&nbsp;&nbsp;1) 소속 : ${ul(f.dept,180)} &nbsp; 직급 : ${ul(f.rank,60)}</p><p style="margin-bottom:8px;">&nbsp;&nbsp;2) 담당 업무 : ${ul(f.job,160)}</p>
-      <p style="font-weight:700;margin:14px 0 5px;">제4조 【임 금】</p><p style="margin-bottom:4px;">- 계약연봉 : ${f.salary?`일금 ${Number(f.salary).toLocaleString()}원`:ul('',180)}</p><p style="margin-bottom:4px;">- 세부 지급 사항은 연봉계약서를 기준으로 한다. 임금 지급일 : 익월 말일</p>
+      <p style="font-weight:700;margin:14px 0 5px;">제4조 【임 금】</p><p style="margin-bottom:4px;">- 계약연봉 : ${f.salary?`일금 ${Number(f.salary).toLocaleString()}원`:ul('',180)}</p><p style="margin-bottom:4px;">- 세부 지급 사항은 연봉계약서를 기준으로 한다. 임금 지급일 : 익월 말일</p><p style="margin-bottom:8px;">- 여비교통비(실비변상)와 국가기술자격증 보유에 따른 기술수당(월 5만원)은 임금과 별도로 지급하며, 세부 지급 기준은 연봉계약서 제2조의2에 따른다.</p>
       <p style="font-weight:700;margin:14px 0 5px;">제5조 【사회보험】</p><p style="margin-bottom:8px;">☑ 고용보험 &nbsp; ☑ 산재보험 &nbsp; ☑ 국민연금 &nbsp; ☑ 건강보험</p>
       <p style="font-weight:700;margin:12px 0 4px;">제6조 【근로시간】</p>
       <p style="margin-bottom:6px;">근로기준법 제50조에 따라 주 40시간 근로를 원칙으로 한다. 다만 현장 여건에 따라 근로기준법 제53조에 의거하여 최대 12시간까지 연장하여 근로할 수 있다. (식사 및 휴게시간은 근로시간에서 제외)</p>
@@ -4391,6 +4408,11 @@ window.annualPreview2=()=>{
       </table>
       <p style="font-size:9pt;color:#555;margin-bottom:4px;">※ 본 계약은 포괄임금제를 적용하지 않습니다. 기본근로수당은 월 209시간을 기준으로 산정하되, 연장근로수당(해당 월 소정근로시간 초과분에 대해 통상시급의 1.5배)과 야간근로수당(22:00~06:00 근로시간에 대해 통상시급의 0.5배 가산)은 매월 실제 근무기록을 기준으로 산정하여 별도 지급합니다.</p>
       <p style="font-size:9pt;color:#555;margin-bottom:10px;">※ 위 임금구성은 소정근로시간(주52시간)을 기준으로 작성됨</p>
+      <p style="font-weight:700;margin:14px 0 5px;">제2조의2 (여비교통비 및 기술수당)</p>
+      <p style="margin-bottom:4px;">① 회사는 근로자가 업무상 이동에 소요한 비용을 실비변상적 성격의 여비교통비로 별도 지급한다. 이는 근로기준법 시행령상 임금(통상임금·평균임금)에 산입되지 않는 실비변상적 금품으로, 4대보험 산정 기준에서 제외한다.</p>
+      <p style="margin-bottom:4px;">② 여비교통비 지급 기준(개인차량 이용 시 사무실 기준 편도거리)은 다음과 같다: 40km 이내 1만원, 40km 초과 2만원. 회사차량 이용 시에는 이동거리와 무관하게 1만원을 고정 지급한다.</p>
+      <p style="margin-bottom:4px;">③ 지방 장기출장으로 회사가 숙소를 별도 지급하는 경우, 일비(1만원)를 지급하지 않는 대신 왕복 교통비(KTX 기준 실비)를 지급한다.</p>
+      <p style="margin-bottom:4px;">④ 근로자가 관련 국가기술자격증을 보유하고 그 업무에 종사하는 경우, 회사는 월 5만원의 기술수당을 별도 지급한다. 자격증의 종류 및 인정 범위는 회사 내규에 따른다.</p>
       <p style="font-weight:700;margin:14px 0 5px;">제3조 (지급시기 및 방법)</p>
       <p style="margin-bottom:4px;">① 연봉을 12개월로 균등 분할해 익월 말일에 지급한다.</p>
       <p style="margin-bottom:4px;">② 지급일이 휴일인 경우 다음 은행 영업일에 지급한다.</p>
