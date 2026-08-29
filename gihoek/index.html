@@ -173,7 +173,7 @@
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot, serverTimestamp }
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot, serverTimestamp, query, where, addDoc }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -194,7 +194,7 @@ const estTotal =e=>{ const s=estSupply(e); return s+Math.round(s*0.1); };
 function toast(t){ const e=$('toast'); e.textContent=t; e.classList.add('show'); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove('show'),2300); }
 
 let me=null;
-let projects=[], estimates=[], settlements=[], companies=[], expenses=[];
+let projects=[], estimates=[], settlements=[], companies=[], expenses=[], pjtRegistryList=[];
 const supplierList=()=>companies.filter(c=>c.roleSupplier);
 const clientList=()=>companies.filter(c=>c.roleClient);
 const compById=id=>companies.find(c=>c.id===id)||null;
@@ -236,7 +236,7 @@ onAuthStateChanged(auth, async user => {
           onSnapshot(collection(db,'gihoek_estimates'), s=>{ estimates=[]; s.forEach(d=>estimates.push({id:d.id,...d.data()})); estimates.sort((a,b)=>{ const dc=(b.date||'').localeCompare(a.date||''); if(dc) return dc; return (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0); }); if(curTab==='pjt'&&detailId) pjtDetail(detailId); else if(curTab==='pjt'&&!pjtForm) renderPjt(); if(curTab==='est'&&!estDraft&&!viewEstId) renderEst(); else if(curTab==='home') renderPlanHome(); });
           onSnapshot(collection(db,'gihoek_settlements'), s=>{ settlements=[]; s.forEach(d=>settlements.push({id:d.id,...d.data()})); if(curTab==='pjt') { detailId?pjtDetail(detailId):renderPjt(); } else if(curTab==='settle'&&!settleDraft&&!viewSetId) renderSettle(); else if(curTab==='acct') renderAcct(); else if(curTab==='home') renderPlanHome(); });
           onSnapshot(collection(db,'gihoek_companies'), s=>{ companies=[]; s.forEach(d=>companies.push({id:d.id,...d.data()})); companies.sort((a,b)=>(a.company||'').localeCompare(b.company||'')); if(curTab==='comp'&&!compForm) renderComp(); });
-          onSnapshot(collection(db,'gihoek_expenses'), s=>{ expenses=[]; s.forEach(d=>expenses.push({id:d.id,...d.data()})); if(curTab==='acct') renderAcct(); });
+          onSnapshot(collection(db,'gihoek_expenses'), s=>{ expenses=[]; s.forEach(d=>expenses.push({id:d.id,...d.data()})); if(curTab==='acct') renderAcct(); }); onSnapshot(query(collection(db,'pjt_registry'), where('status','!=','ended')), s=>{ pjtRegistryList=[]; s.forEach(d=>pjtRegistryList.push({id:d.id,...d.data()})); if(pjtForm) refreshLinkPjtOptions(); });
           const t0 = new URLSearchParams(location.search).get('tab');
           if (t0 && ['home','pjt','comp','est','settle','acct'].includes(t0)) tab(t0);
           else renderPlanHome();
@@ -270,7 +270,7 @@ async function startApp(){
   onSnapshot(collection(db,'gihoek_estimates'), s=>{ estimates=[]; s.forEach(d=>estimates.push({id:d.id,...d.data()})); estimates.sort((a,b)=>{ const dc=(b.date||'').localeCompare(a.date||''); if(dc) return dc; return (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0); }); if(curTab==='pjt'&&detailId) pjtDetail(detailId); else if(curTab==='pjt'&&!pjtForm) renderPjt(); if(curTab==='est'&&!estDraft&&!viewEstId) renderEst(); else if(curTab==='home') renderPlanHome(); });
   onSnapshot(collection(db,'gihoek_settlements'), s=>{ settlements=[]; s.forEach(d=>settlements.push({id:d.id,...d.data()})); if(curTab==='pjt') { detailId?pjtDetail(detailId):renderPjt(); } else if(curTab==='settle'&&!settleDraft&&!viewSetId) renderSettle(); else if(curTab==='acct') renderAcct(); else if(curTab==='home') renderPlanHome(); });
   onSnapshot(collection(db,'gihoek_companies'), s=>{ companies=[]; s.forEach(d=>companies.push({id:d.id,...d.data()})); companies.sort((a,b)=>(a.company||'').localeCompare(b.company||'')); if(curTab==='comp'&&!compForm) renderComp(); });
-  onSnapshot(collection(db,'gihoek_expenses'), s=>{ expenses=[]; s.forEach(d=>expenses.push({id:d.id,...d.data()})); if(curTab==='acct') renderAcct(); });
+  onSnapshot(collection(db,'gihoek_expenses'), s=>{ expenses=[]; s.forEach(d=>expenses.push({id:d.id,...d.data()})); if(curTab==='acct') renderAcct(); }); onSnapshot(query(collection(db,'pjt_registry'), where('status','!=','ended')), s=>{ pjtRegistryList=[]; s.forEach(d=>pjtRegistryList.push({id:d.id,...d.data()})); if(pjtForm) refreshLinkPjtOptions(); });
   const params=new URLSearchParams(location.search);
   if(params.get('via')==='portal') document.documentElement.classList.add('portal-embed');
   const t0=params.get('tab');
@@ -437,18 +437,48 @@ function openPjtForm(p){ pjtForm=true; detailId=p?p.id:null;
       <option value="fcu" ${p?.type==='fcu'?'selected':''}>자동정산 (정산서·공수 연동)</option></select></div>
       <div class="field"><label>상태</label><select class="sel" id="pf-status">
       <option value="run" ${p?.status!=='done'?'selected':''}>진행중</option><option value="done" ${p?.status==='done'?'selected':''}>종료</option></select></div></div>
-    <div class="field"><label>연동 PJT (공정·공수 통합)</label><select class="sel" id="pf-link-pjt">
+    <div class="field"><label>연동 PJT (공정·공수 통합, 견적·정산서 연동)</label><select class="sel" id="pf-link-pjt">
+      <option value="auto" ${getLinkPjt(p)==='auto'?'selected':''}>🆕 새 PJT관리 항목 자동 생성</option>
       <option value="p4ph2" ${getLinkPjt(p)==='p4ph2'?'selected':''}>P4 Ph2 (FAB) — 6섹터 183대 · 공수</option>
       <option value="p4ph4" ${getLinkPjt(p)==='p4ph4'?'selected':''}>P4 Ph4 (SUP) — 4섹터 11대 EHU · 공수</option>
+      ${pjtRegistryList.map(r=>`<option value="reg_${r.id}" ${getLinkPjt(p)==='reg_'+r.id?'selected':''}>${r.name||'(이름없음)'} — 기존 PJT관리 항목에 연결</option>`).join('')}
       <option value="none" ${getLinkPjt(p)==='none'?'selected':''}>(연동 없음 / 직접 입력)</option></select>
-      <div class="small muted" style="margin-top:4px">선택한 PJT의 공정(섹터·진척)과 공수 데이터를 자동정산에 함께 연동합니다.</div></div>
+      <div class="small muted" style="margin-top:4px">선택한 PJT의 공정(섹터·진척)과 공수 데이터를 자동정산에 함께 연동합니다. "자동 생성"을 선택하면 저장 시 PJT관리에도 동일한 이름으로 새 항목이 만들어집니다.</div></div>
     <div style="display:flex; gap:8px"><button class="btn line full" onclick="${p?`pjtDetail('${p.id}')`:'renderPjtList()'}">취소</button><button class="btn pri full" onclick="savePjt('${p?p.id:''}')">저장</button></div></div>`;
   window.scrollTo(0,0);
 }
+window.refreshLinkPjtOptions = function(){
+  const sel = $('pf-link-pjt'); if(!sel) return;
+  const cur = sel.value;
+  const p = detailId ? projects.find(x=>x.id===detailId) : null;
+  sel.innerHTML = `
+    <option value="auto">🆕 새 PJT관리 항목 자동 생성</option>
+    <option value="p4ph2">P4 Ph2 (FAB) — 6섹터 183대 · 공수</option>
+    <option value="p4ph4">P4 Ph4 (SUP) — 4섹터 11대 EHU · 공수</option>
+    ${pjtRegistryList.map(r=>`<option value="reg_${r.id}">${r.name||'(이름없음)'} — 기존 PJT관리 항목에 연결</option>`).join('')}
+    <option value="none">(연동 없음 / 직접 입력)</option>`;
+  sel.value = cur || getLinkPjt(p);
+};
 window.savePjt=async function(id){ const code=$('pf-code').value.trim(); if(!code){ toast('PJT 코드를 입력하세요.'); return; }
-  const data={ code, name:$('pf-name').value.trim(), client:$('pf-client').value.trim(), type:$('pf-type').value, status:$('pf-status').value, linkPjt:$('pf-link-pjt')?.value||'p4ph2', progProfile:($('pf-link-pjt')?.value==='none'?'':($('pf-link-pjt')?.value||'p4ph2')), mandayCol:($('pf-link-pjt')?.value==='p4ph4'?'ph4_manday':($('pf-link-pjt')?.value==='none'?'':'worker_manday')) };
-  try{ if(id){ await setDoc(doc(db,'gihoek_projects',id),data,{merge:true}); toast('수정했습니다.'); pjtDetail(id); }
-    else{ const nid='pjt_'+Date.now(); await setDoc(doc(db,'gihoek_projects',nid),{...data, createdAt:serverTimestamp()}); toast('프로젝트를 등록했습니다.'); renderPjt(); } }
+  const linkSel = $('pf-link-pjt')?.value || 'auto';
+  const data={ code, name:$('pf-name').value.trim(), client:$('pf-client').value.trim(), type:$('pf-type').value, status:$('pf-status').value };
+  try{
+    let finalLink = linkSel;
+    if (linkSel === 'auto') {
+      // PJT관리(pjt_registry)에 동일한 이름으로 경량 PJT 신규 생성 후 연결
+      const regRef = await addDoc(collection(db,'pjt_registry'), {
+        name: data.name || data.code, site: data.client || '', client: data.client || '',
+        content: '', item: '', qty: 0, startDate: '', url: '',
+        progress: 0, manday: 0, status: 'active', createdAt: serverTimestamp(),
+      });
+      finalLink = 'reg_' + regRef.id;
+    }
+    data.linkPjt = finalLink;
+    data.progProfile = (finalLink==='none' ? '' : (finalLink==='p4ph4' ? 'p4ph4' : (finalLink==='p4ph2' ? 'p4ph2' : '')));
+    data.mandayCol = (finalLink==='p4ph4' ? 'ph4_manday' : (finalLink==='p4ph2' ? 'worker_manday' : ''));
+    if(id){ await setDoc(doc(db,'gihoek_projects',id),data,{merge:true}); toast(linkSel==='auto'?'수정했습니다. (PJT관리에 신규 항목 생성됨)':'수정했습니다.'); pjtDetail(id); }
+    else{ const nid='pjt_'+Date.now(); await setDoc(doc(db,'gihoek_projects',nid),{...data, createdAt:serverTimestamp()}); toast(linkSel==='auto'?'프로젝트를 등록했습니다. (PJT관리에도 자동 생성됨)':'프로젝트를 등록했습니다.'); renderPjt(); }
+  }
   catch(e){ toast('저장 실패: '+(e.code||e.message)); } };
 window.delPjt=async function(id){ if(!confirm('이 프로젝트를 삭제할까요? (견적·정산 데이터는 남습니다)')) return;
   try{ await deleteDoc(doc(db,'gihoek_projects',id)); toast('삭제했습니다.'); renderPjt(); }catch(e){ toast('삭제 실패: '+(e.code||e.message)); } };
@@ -803,7 +833,7 @@ const PROGRESS_PROFILES = {
 
 // 프로젝트의 연동 PJT 키 반환 (linkPjt 우선, 구버전 호환: progProfile/mandayCol에서 추정)
 function getLinkPjt(p){
-  if(!p) return 'p4ph2';
+  if(!p) return 'auto'; // 신규 등록 시 기본값: PJT관리에 경량 PJT 자동 생성
   if(p.linkPjt) return p.linkPjt;
   // 구버전 호환
   if(p.progProfile==='p4ph4' || p.mandayCol==='ph4_manday') return 'p4ph4';
