@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- gihoek module build: 20260829b · ver 5.5.0 · 견적/정산 검색(드롭다운)·페이지네이션(10건), 프로젝트상세 좌우2단 레이아웃+고정높이 내부스크롤, 견적/정산 상세 뒤로가기 출처추적(프로젝트↔목록) 버그 2건 수정(리터럴 보간 오류, 탭전환 누락) -->
+<!DOCTYPE html><!-- gihoek module build: 20260830a · ver 5.6.0 · 비용장부→정산 뒤로가기 버그 수정(출처추적에 acct 추가) -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -1631,7 +1631,7 @@ let accLSort='date_asc', accLVendor='', accLCat='';
 const acctMonthOf=s=>s.acctMonth || (s.payDate||s.issueDate||s.baseMonth||'').slice(0,7);
 // 완결(지급완료)된 지급예정서를 비용장부 항목 형태로 변환
 // settlements의 supply/vat/total을 그대로 사용, cat은 항상 '용역비'(직접비) 고정
-const paymentAsExpense=()=>settlements.filter(s=>s.docType==='payment'&&s.status==='done'&&acctMonthOf(s)===curAccMonth&&setActive(s)).map(s=>({
+const paymentAsExpense=(monthFilter)=>settlements.filter(s=>s.docType==='payment'&&s.status==='done'&&(monthFilter===null||acctMonthOf(s)===(monthFilter||curAccMonth))&&setActive(s)).map(s=>({
   id:'settle_'+s.id, date:s.payDate||s.issueDate||'', cat:'용역비', vendor:s.recipient?.company||'-',
   pjt:s.pjtId||'', pay:'계좌이체', supply:s.supply||0, vat:s.vat||0, total:s.total||0,
   note:'정산서 '+(s.no||''), fromSettlement:true,
@@ -1640,7 +1640,14 @@ const accMonthExp=()=>{
   const manual=expenses.filter(e=>(e.date||'').slice(0,7)===curAccMonth);
   return [...manual,...paymentAsExpense()].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 };
+// 누적(전체기간) 비용 — 월 필터 없이 전체
+const accAllExp=()=>{
+  return [...expenses,...paymentAsExpense(null)].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+};
 const monthBill=(pid,month)=>settlements.filter(s=>s.pjtId===pid&&s.docType==='invoice'&&s.status==='done'&&s.baseMonth===month).reduce((a,s)=>a+(s.amount||0),0);
+// 누적(전체기간) 매출 — baseMonth 조건 없이 전체
+const allBill=(pid)=>settlements.filter(s=>s.pjtId===pid&&s.docType==='invoice'&&s.status==='done').reduce((a,s)=>a+(s.amount||0),0);
+let accPnlMode='month'; // 'month' | 'cumulative'
 
 function renderAcct(){
   $('v-acct').innerHTML=`<button onclick="tab('home')" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#5C6F8A;font-size:12px;cursor:pointer;font-weight:600;">🏠 기획 홈</button>
@@ -1653,32 +1660,38 @@ function renderAcct(){
   accSub==='ledger'?renderAccLedger():renderAccPnl();
 }
 window.renderAcct=renderAcct;
-window.accTab=function(t){ accSub=t; renderAcct(); };
+window.accTab=function(t){ accSub=t; accPnlMode='month'; renderAcct(); };
 window.accShiftMonth=function(d){ const [y,m]=curAccMonth.split('-').map(Number); const nm=new Date(y,m-1+d,1); curAccMonth=nm.getFullYear()+'-'+String(nm.getMonth()+1).padStart(2,'0'); renderAcct(); };
 
 function renderAccPnl(){
-  const list=accMonthExp();
+  const isCum = accPnlMode==='cumulative';
+  const list=isCum?accAllExp():accMonthExp();
   const byPjt={}; projects.forEach(p=>byPjt[p.id]={dir:0,ind:0}); let comDir=0,comInd=0;
   list.forEach(e=>{ const t=byPjt[e.pjt]; if(e.pjt&&t){ accIsDirect(e.cat)?t.dir+=e.total:t.ind+=e.total; } else { accIsDirect(e.cat)?comDir+=e.total:comInd+=e.total; } });
-  const totBill=projects.reduce((a,p)=>a+monthBill(p.id,curAccMonth),0);
+  const totBill=projects.reduce((a,p)=>a+(isCum?allBill(p.id):monthBill(p.id,curAccMonth)),0);
   const totDir=list.filter(e=>accIsDirect(e.cat)).reduce((a,e)=>a+e.total,0);
   const totInd=list.filter(e=>!accIsDirect(e.cat)).reduce((a,e)=>a+e.total,0);
   const op=totBill-totDir-totInd; const opRate=totBill>0?Math.round(op/totBill*1000)/10:0;
   $('acc-body').innerHTML=`
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="seg-btn ${!isCum?'on':''}" onclick="accPnlToggle('month')">📅 ${curAccMonth} 이번달</button>
+      <button class="seg-btn ${isCum?'on':''}" onclick="accPnlToggle('cumulative')">📊 전체 누적</button>
+    </div>
     <div class="sumgrid">
       <div class="sumcell"><div class="l">매출 (완결 청구)</div><div class="v">${won(totBill)}</div></div>
       <div class="sumcell"><div class="l">직접비</div><div class="v neg">${won(totDir)}</div></div>
       <div class="sumcell"><div class="l">간접비</div><div class="v neg">${won(totInd)}</div></div>
       <div class="sumcell"><div class="l">영업이익 <span style="color:var(--blue)">(${opRate}%)</span></div><div class="v ${op>=0?'pos':'neg'}">${op>=0?'+':''}${won(op)}</div></div></div>
-    <div class="small muted" style="margin:8px 2px 0">영업이익 = 매출(기준월 완결 청구) − 직접비 − 간접비. 직접비=급여·용역비·공구자재비 / 간접비=임대료·식대·세금·차량유지비·유류비·사무용품·기타. 정산 지급(지급예정서)은 손익에 자동 반영되지 않으며, 회계 장부에 실제 지출(용역비 등)로 입력·확인 후 비용으로 반영됩니다.</div>
+    <div class="small muted" style="margin:8px 2px 0">${isCum?'전체 누적 기준(기간 제한 없음). ':''}영업이익 = 매출(${isCum?'전체 누적':'기준월'} 완결 청구) − 직접비 − 간접비. 직접비=급여·용역비·공구자재비 / 간접비=임대료·식대·세금·차량유지비·유류비·사무용품·기타. 정산 지급(지급예정서)은 손익에 자동 반영되지 않으며, 회계 장부에 실제 지출(용역비 등)로 입력·확인 후 비용으로 반영됩니다.</div>
     <div class="sec-h" style="margin-top:20px"><h2>PJT별 영업이익</h2></div>
     <div class="card" style="padding:12px"><div class="scroll"><table class="ptab">
       <thead><tr><th class="l">PJT</th><th>매출</th><th>직접비</th><th>간접비</th><th>영업이익</th><th>이익률</th></tr></thead>
-      <tbody>${projects.length?projects.map(p=>{ const b=monthBill(p.id,curAccMonth),di=byPjt[p.id].dir,ind=byPjt[p.id].ind,o=b-di-ind,r=b>0?Math.round(o/b*1000)/10:0;
+      <tbody>${projects.length?projects.map(p=>{ const b=isCum?allBill(p.id):monthBill(p.id,curAccMonth),di=byPjt[p.id].dir,ind=byPjt[p.id].ind,o=b-di-ind,r=b>0?Math.round(o/b*1000)/10:0;
         return `<tr><td class="l">${p.code}</td><td>${won(b)}</td><td class="neg" style="color:var(--warn)">${won(di)}</td><td style="color:var(--warn)">${won(ind)}</td><td style="font-weight:700;color:${o>=0?'var(--ok)':'var(--warn)'}">${o>=0?'+':''}${won(o)}</td><td>${b>0?r+'%':'-'}</td></tr>`; }).join(''):'<tr><td colspan="6" class="center muted" style="padding:16px">프로젝트 없음</td></tr>'}
       ${(comDir+comInd)>0?`<tr style="background:#f6f9fd"><td class="l">공통비용 (미지정)</td><td>-</td><td style="color:var(--warn)">${won(comDir)}</td><td style="color:var(--warn)">${won(comInd)}</td><td>-</td><td>-</td></tr>`:''}</tbody></table></div>
       <div class="small muted" style="margin-top:8px">공통비용(PJT 미지정)은 전체 영업이익엔 반영, 개별 PJT엔 배분 안 함. · 폐기 건 제외, 공급가 기준.</div></div>`;
 }
+window.accPnlToggle=function(mode){ accPnlMode=mode; renderAccPnl(); };
 
 function renderAccLedger(){
   const list=accMonthExp();
