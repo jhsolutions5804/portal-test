@@ -2203,16 +2203,16 @@ window.psPreview = () => {
 
   const payRow = (l, v, note='') => `
     <tr>
-      <td style="padding:7px 10px;border:1px solid #DDE4EF;font-size:10pt;">${l}</td>
-      <td style="padding:7px 10px;border:1px solid #DDE4EF;text-align:right;font-size:10pt;font-weight:600;">${v}</td>
-      <td style="padding:7px 10px;border:1px solid #DDE4EF;font-size:9pt;color:#888;">${note}</td>
+      <td style="padding:8px 10px;border:1px solid #E4EAF2;font-size:10pt;white-space:nowrap;">${l}</td>
+      <td style="padding:8px 10px;border:1px solid #E4EAF2;text-align:right;font-size:10pt;font-weight:700;white-space:nowrap;">${v}</td>
+      <td style="padding:8px 10px;border:1px solid #E4EAF2;font-size:8.5pt;color:#8A96A8;">${note}</td>
     </tr>`;
 
   const deductRow = (l, v, note='') => `
     <tr>
-      <td style="padding:7px 10px;border:1px solid #DDE4EF;font-size:10pt;">${l}</td>
-      <td style="padding:7px 10px;border:1px solid #DDE4EF;text-align:right;font-size:10pt;font-weight:600;color:#DC2626;">-${psWonR(v)}</td>
-      <td style="padding:7px 10px;border:1px solid #DDE4EF;font-size:9pt;color:#888;">${note}</td>
+      <td style="padding:8px 10px;border:1px solid #E4EAF2;font-size:10pt;white-space:nowrap;">${l}</td>
+      <td style="padding:8px 10px;border:1px solid #E4EAF2;text-align:right;font-size:10pt;font-weight:700;color:#DC2626;white-space:nowrap;">-${psWonR(v)}</td>
+      <td style="padding:8px 10px;border:1px solid #E4EAF2;font-size:8.5pt;color:#8A96A8;">${note}</td>
     </tr>`;
 
   const win = window.open('','_blank');
@@ -2240,30 +2240,31 @@ window.psPreview = () => {
       </div>
 
       <!-- 근로자 기본 정보 -->
-      <table style="margin-bottom:14px;">
+      <table style="margin-bottom:14px;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <colgroup><col style="width:18%"><col style="width:32%"><col style="width:18%"><col style="width:32%"></colgroup>
         <thead><tr style="background:#E8F0FB;">
-          <th colspan="4" style="padding:8px 10px;text-align:left;font-size:10pt;color:#1D5BA6;border:1px solid #DDE4EF;">👤 근로자 기본 정보</th>
+          <th colspan="4" style="padding:9px 10px;text-align:left;font-size:10pt;color:#1D5BA6;border:1px solid #DDE4EF;">👤 근로자 기본 정보</th>
         </tr></thead>
         <tbody>
           <tr>
-            <td style="padding:7px 10px;border:1px solid #DDE4EF;font-weight:600;color:#5C6F8A;width:18%;">이름</td>
-            <td style="padding:7px 10px;border:1px solid #DDE4EF;width:32%;">${w.name||'-'}</td>
-            <td style="padding:7px 10px;border:1px solid #DDE4EF;font-weight:600;color:#5C6F8A;width:18%;">사번</td>
-            <td style="padding:7px 10px;border:1px solid #DDE4EF;width:32%;">${w.empNo||'-'}</td>
+            <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">이름</td>
+            <td style="padding:8px 10px;border:1px solid #E4EAF2;">${w.name||'-'}</td>
+            <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">사번</td>
+            <td style="padding:8px 10px;border:1px solid #E4EAF2;">${w.empNo||'-'}</td>
           </tr>
           <tr>
-            <td style="padding:7px 10px;border:1px solid #DDE4EF;font-weight:600;color:#5C6F8A;">소속/직급</td>
-            <td colspan="3" style="padding:7px 10px;border:1px solid #DDE4EF;">${(w.dept||'-')+' / '+(w.rank||'-')}</td>
+            <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">소속/직급</td>
+            <td colspan="3" style="padding:8px 10px;border:1px solid #E4EAF2;">${(w.dept||'-')+' / '+(w.rank||'-')}</td>
           </tr>
           <tr>
-            <td style="padding:7px 10px;border:1px solid #DDE4EF;font-weight:600;color:#5C6F8A;">입사일</td>
-            <td style="padding:7px 10px;border:1px solid #DDE4EF;">${w.hireDate||'-'}</td>
-            <td style="padding:7px 10px;border:1px solid #DDE4EF;font-weight:600;color:#5C6F8A;">생년월일</td>
-            <td style="padding:7px 10px;border:1px solid #DDE4EF;">${w.jumin?(w.jumin.slice(0,2)+'.'+w.jumin.slice(2,4)+'.'+w.jumin.slice(4,6)):'-'}</td>
+            <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">입사일</td>
+            <td style="padding:8px 10px;border:1px solid #E4EAF2;">${w.hireDate||'-'}</td>
+            <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">생년월일</td>
+            <td style="padding:8px 10px;border:1px solid #E4EAF2;">${w.jumin?(w.jumin.slice(0,2)+'.'+w.jumin.slice(2,4)+'.'+w.jumin.slice(4,6)):'-'}</td>
           </tr>
           <tr>
-            <td style="padding:7px 10px;border:1px solid #DDE4EF;font-weight:600;color:#5C6F8A;">계좌번호</td>
-            <td colspan="3" style="padding:7px 10px;border:1px solid #DDE4EF;">${d.bankAccount||'-'}</td>
+            <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">계좌번호</td>
+            <td colspan="3" style="padding:8px 10px;border:1px solid #E4EAF2;">${d.bankAccount||'-'}</td>
           </tr>
         </tbody>
       </table>
@@ -2271,11 +2272,12 @@ window.psPreview = () => {
       <!-- 지급/공제 나란히 -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
         <!-- 지급 내역 -->
-        <table>
+        <table style="border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <colgroup><col style="width:32%"><col style="width:30%"><col style="width:38%"></colgroup>
           <thead><tr style="background:#E8F0FB;">
-            <th style="padding:8px 10px;text-align:left;font-size:10pt;color:#1D5BA6;border:1px solid #DDE4EF;">지급 항목</th>
-            <th style="padding:8px 10px;text-align:right;font-size:10pt;color:#1D5BA6;border:1px solid #DDE4EF;">금액</th>
-            <th style="padding:8px 10px;text-align:left;font-size:9pt;color:#1D5BA6;border:1px solid #DDE4EF;">비고</th>
+            <th style="padding:9px 10px;text-align:left;font-size:10pt;color:#1D5BA6;border:1px solid #DDE4EF;white-space:nowrap;">지급 항목</th>
+            <th style="padding:9px 10px;text-align:right;font-size:10pt;color:#1D5BA6;border:1px solid #DDE4EF;white-space:nowrap;">금액</th>
+            <th style="padding:9px 10px;text-align:left;font-size:9pt;color:#1D5BA6;border:1px solid #DDE4EF;">비고</th>
           </tr></thead>
           <tbody>
             ${payRow('기본근로수당', psWonR(c.sal.basic), `월소정 ${c.sal.standardHours||209}h 기준(실근무 ${(c.sal.actualHours||0).toFixed(1)}h)`)}
@@ -2287,18 +2289,19 @@ window.psPreview = () => {
             ${payRow('특별성과급', c.specialBonus?psWonR(c.specialBonus):'—', '')}
             ${payRow('특근수당', c.extraPay?psWonR(c.extraPay):'—', '')}
             <tr style="background:#E8F0FB;">
-              <td style="padding:8px 10px;border:1px solid #DDE4EF;font-weight:700;color:#1D5BA6;">지급계</td>
-              <td style="padding:8px 10px;border:1px solid #DDE4EF;text-align:right;font-weight:700;color:#1D5BA6;">${psWonR(c.totalPay)}</td>
-              <td style="padding:8px 10px;border:1px solid #DDE4EF;"></td>
+              <td style="padding:9px 10px;border:1px solid #DDE4EF;font-weight:800;color:#1D5BA6;white-space:nowrap;">지급계</td>
+              <td style="padding:9px 10px;border:1px solid #DDE4EF;text-align:right;font-weight:800;color:#1D5BA6;white-space:nowrap;">${psWonR(c.totalPay)}</td>
+              <td style="padding:9px 10px;border:1px solid #DDE4EF;"></td>
             </tr>
           </tbody>
         </table>
         <!-- 공제 내역 -->
-        <table>
+        <table style="border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <colgroup><col style="width:32%"><col style="width:30%"><col style="width:38%"></colgroup>
           <thead><tr style="background:#FEE2E2;">
-            <th style="padding:8px 10px;text-align:left;font-size:10pt;color:#DC2626;border:1px solid #DDE4EF;">공제 항목</th>
-            <th style="padding:8px 10px;text-align:right;font-size:10pt;color:#DC2626;border:1px solid #DDE4EF;">금액</th>
-            <th style="padding:8px 10px;text-align:left;font-size:9pt;color:#DC2626;border:1px solid #DDE4EF;">비고</th>
+            <th style="padding:9px 10px;text-align:left;font-size:10pt;color:#DC2626;border:1px solid #DDE4EF;white-space:nowrap;">공제 항목</th>
+            <th style="padding:9px 10px;text-align:right;font-size:10pt;color:#DC2626;border:1px solid #DDE4EF;white-space:nowrap;">금액</th>
+            <th style="padding:9px 10px;text-align:left;font-size:9pt;color:#DC2626;border:1px solid #DDE4EF;">비고</th>
           </tr></thead>
           <tbody>
             ${deductRow('국민연금', c.pension, '월 보수액 × 4.5%')}
@@ -2309,28 +2312,32 @@ window.psPreview = () => {
             ${deductRow('지방소득세', c.localTax, '소득세 × 10%')}
             ${c.dormitory?deductRow('기숙사', c.dormitory, '직접 입력'):''}
             <tr style="background:#FEE2E2;">
-              <td style="padding:8px 10px;border:1px solid #DDE4EF;font-weight:700;color:#DC2626;">공제계</td>
-              <td style="padding:8px 10px;border:1px solid #DDE4EF;text-align:right;font-weight:700;color:#DC2626;">-${psWonR(c.totalDeduct)}</td>
-              <td style="padding:8px 10px;border:1px solid #DDE4EF;"></td>
+              <td style="padding:9px 10px;border:1px solid #DDE4EF;font-weight:800;color:#DC2626;white-space:nowrap;">공제계</td>
+              <td style="padding:9px 10px;border:1px solid #DDE4EF;text-align:right;font-weight:800;color:#DC2626;white-space:nowrap;">-${psWonR(c.totalDeduct)}</td>
+              <td style="padding:9px 10px;border:1px solid #DDE4EF;"></td>
             </tr>
           </tbody>
         </table>
       </div>
 
       <!-- 실지급액 -->
-      <div style="background:#1D5BA6;border-radius:10px;padding:14px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;">
+      <div style="background:linear-gradient(135deg,#1D5BA6,#2E7DD1);border-radius:10px;padding:14px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(29,91,166,0.25);">
         <span style="font-size:14pt;font-weight:700;color:#fff;">실 지급액</span>
         <span style="font-size:18pt;font-weight:800;color:#fff;">${psWonR(c.netPay)}</span>
       </div>
 
       <!-- 하단 산출식 + 회사 정보 -->
       <div style="border-top:1px solid #DDE4EF;padding-top:12px;">
-        <div style="font-size:9pt;color:#888;margin-bottom:10px;line-height:1.8;">
-          <strong>산출식</strong><br/>
+        <div style="font-size:9pt;color:#8A96A8;margin-bottom:10px;line-height:1.9;">
+          <strong style="color:#5C6F8A;">산출식</strong><br/>
           국민연금: 지급계×4.5% &nbsp;|&nbsp; 건강보험: 지급계×3.545% &nbsp;|&nbsp;
           장기요양: 건강보험×12.81% &nbsp;|&nbsp; 고용보험: 지급계×0.9%<br/>
           소득세: 간이세액표(부양가족 1인 기준) &nbsp;|&nbsp; 지방소득세: 소득세×10%<br/>
-          '기본근로수당: 시급×8×5×4.345 | 연장수당: 시급×(10 또는 12)×4.345 | 주휴수당: 시급×8×4.345'
+          기본근로수당: 시급×209h(그 달 소정근로시간 대비 실근무 부족 시 부족분만큼 차감) &nbsp;|&nbsp;
+          연장근로수당: 소정근로시간 초과분×시급×1.5<br/>
+          야간근로수당: 22:00~06:00 실근무시간×시급×0.5 &nbsp;|&nbsp;
+          휴일근로수당: 토·일·공휴일 근무시간 중 8h 이내×1.5, 8h 초과분×2.0<br/>
+          주휴수당: 그 주 소정근로일 개근 시 1일(8h)분 지급 — 결근한 주는 미지급 (포괄임금제 미적용, 실제 근무기록 기준 매월 자동 산정)
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
           <div style="font-size:10pt;color:#5C6F8A;">
