@@ -4789,27 +4789,62 @@ window.otPcShowPersonDetail = async (id, name, rank) => {
       </div>
       ${otRenderAttendanceCard(attSummary)}
       ${wage?`<div style="font-size:12px;color:#5C6F8A;margin-bottom:10px;">통상임금 ${wage.rate.toLocaleString()}원/h</div>`:''}
-      <div style="font-size:12px;font-weight:700;color:#1A2540;margin:14px 0 8px;">🗓 근로 내역 (${ym})</div>
-      ${attRows.length===0?'<div style="color:#9AAABF;text-align:center;padding:20px;">이번 달 출퇴근 기록이 없습니다.</div>':
-      `<table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <thead><tr style="background:#F7F9FC;">${['날짜','출근','퇴근','휴게','근무시간','업무일지',''].map(h=>`<th style="padding:7px 10px;text-align:left;color:#5C6F8A;font-weight:600;">${h}</th>`).join('')}</tr></thead>
-        <tbody>${attRows.map(r=>`<tr style="border-bottom:1px solid #F0F4F9;">
-          <td style="padding:8px 10px;">${r.date||'—'}</td>
-          <td style="padding:8px 10px;">${r.checkIn||'—'}</td>
-          <td style="padding:8px 10px;">${r.checkOut||'—'}</td>
-          <td style="padding:8px 10px;">${((r.breakMinutes||0)/60).toFixed(1)}h</td>
-          <td style="padding:8px 10px;font-weight:700;color:#1D5BA6;">${(r.workHours||0).toFixed(1)}h</td>
-          <td style="padding:8px 10px;">
-            <button onclick="otShowDailyReport('${otEsc(name)}','${r.date}')" style="background:#F0F4F9;border:none;border-radius:5px;color:#5C6F8A;padding:3px 8px;font-size:11px;cursor:pointer;">📋 보기</button>
-          </td>
-          <td style="padding:8px 10px;">
-            <button onclick="otAttOpenEdit('${id}','${otEsc(name)}','${r.date}')" style="background:#E8F0FB;border:none;border-radius:5px;color:#1D5BA6;padding:3px 8px;font-size:11px;cursor:pointer;margin-right:4px;">수정</button>
-            <button onclick="otAttDelete('${r.docId}','${id}','${otEsc(name)}','${rank||''}')" style="background:#FEE2E2;border:none;border-radius:5px;color:#DC2626;padding:3px 8px;font-size:11px;cursor:pointer;">삭제</button>
-          </td>
-        </tr>`).join('')}</tbody>
-      </table>`}`;
+      <div style="font-size:12px;font-weight:700;color:#1A2540;margin:14px 0 8px;">🗓 근로 내역 (${ym}) — 날짜를 클릭하면 조회·수정할 수 있습니다</div>
+      ${otRenderAttendanceCalendar(id, name, rank, attRows)}
+      <div style="display:flex;gap:14px;margin-top:10px;font-size:10.5px;color:#9AAABF;">
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#1D5BA6;margin-right:4px;"></span>정상 근무</span>
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#FEE2E2;margin-right:4px;"></span>평일 결근(기록없음)</span>
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#EDE9FE;margin-right:4px;"></span>휴일근무</span>
+        <span><span style="width:9px;height:9px;border-radius:50%;background:#F59E0B;display:inline-block;margin-right:4px;"></span>관리자 수정</span>
+      </div>`;
   } catch(e){ panel.innerHTML=`<div style="color:#dc2626;">오류: ${e.message}</div>`; }
 };
+
+// ── 근로 내역 캘린더 렌더 ──
+function otRenderAttendanceCalendar(workerId, workerName, rank, attRows){
+  const byDate = {};
+  attRows.forEach(r => { byDate[r.date] = r; });
+
+  const first = new Date(_otPcYear, _otPcMonth-1, 1);
+  const lastDate = new Date(_otPcYear, _otPcMonth, 0).getDate();
+  const firstDow = first.getDay();
+  const todayStr = date_today_str();
+  const DOW = ['일','월','화','수','목','금','토'];
+
+  let html = `<div style="background:#fff;border-radius:12px;padding:14px;">
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px;">
+      ${DOW.map((w,i)=>`<div style="text-align:center;font-size:10.5px;font-weight:700;color:${i===0?'#E05':(i===6?'#1D5BA6':'#9AAABF')};padding:4px 0;">${w}</div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;">`;
+
+  for (let i=0;i<firstDow;i++) html += `<div></div>`;
+  for (let day=1; day<=lastDate; day++){
+    const dateStr = `${_otPcYear}-${String(_otPcMonth).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const dow = (firstDow + day - 1) % 7;
+    const isWeekend = dow===0 || dow===6;
+    const isHoliday = KR_HOLIDAYS.has(dateStr);
+    const isOffDay = isWeekend || isHoliday;
+    const rec = byDate[dateStr];
+    const isToday = dateStr === todayStr;
+
+    let bg = 'transparent', fg = '#1A2540', fw = '500';
+    if (rec && isOffDay) { bg = '#EDE9FE'; fg = '#5B21B6'; fw = '700'; }       // 휴일근무
+    else if (rec) { bg = '#1D5BA6'; fg = '#fff'; fw = '700'; }                 // 정상근무
+    else if (!isOffDay) { bg = '#FEE2E2'; fg = '#DC2626'; fw = '700'; }        // 평일 결근
+    else if (dow===0) fg = '#E05'; else if (dow===6) fg = '#1D5BA6';
+
+    const border = isToday ? 'border:1.5px solid #F59E0B;' : '';
+    const hoursLabel = rec ? `<div style="font-size:8.5px;margin-top:1px;">${(rec.workHours||0).toFixed(1)}h</div>` : '';
+    const adminDot = rec?.updatedByAdmin ? `<span style="position:absolute;top:2px;right:3px;width:5px;height:5px;border-radius:50%;background:#F59E0B;"></span>` : '';
+
+    html += `<div onclick="otAttOpenEdit('${workerId}','${otEsc(workerName)}','${dateStr}')"
+      style="position:relative;text-align:center;padding:6px 2px 5px;border-radius:8px;font-size:11.5px;background:${bg};color:${fg};font-weight:${fw};${border}cursor:pointer;">
+      ${adminDot}${day}${hoursLabel}
+    </div>`;
+  }
+  html += `</div></div>`;
+  return html;
+}
 
 function date_today_str(){
   const d = new Date();
@@ -4831,7 +4866,10 @@ window.otAttOpenEdit = (workerId, workerName, dateStr) => {
   }
   modal.innerHTML = `
     <div style="background:#fff;border-radius:16px;width:360px;max-width:100%;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-      <div style="font-size:14px;font-weight:800;color:#1A2540;margin-bottom:14px;">${workerName} 근로 내역 ${existing?'수정':'추가'}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-size:14px;font-weight:800;color:#1A2540;">${workerName} 근로 내역 ${existing?'수정':'추가'}</div>
+        <button onclick="otShowDailyReport('${otEsc(workerName)}','${dateStr}')" style="background:#F0F4F9;border:none;border-radius:6px;color:#5C6F8A;padding:4px 8px;font-size:11px;cursor:pointer;">📋 업무일지</button>
+      </div>
       <div style="display:flex;flex-direction:column;gap:10px;">
         <div>
           <label style="font-size:11px;color:#5C6F8A;display:block;margin-bottom:4px;">날짜</label>
@@ -4854,6 +4892,7 @@ window.otAttOpenEdit = (workerId, workerName, dateStr) => {
         <div id="ot-att-status" style="font-size:11px;color:#DC2626;min-height:14px;"></div>
         <div style="display:flex;gap:8px;margin-top:6px;">
           <button onclick="document.getElementById('ot-att-modal').remove()" style="flex:1;padding:10px;background:#F0F4F9;border:none;border-radius:9px;color:#5C6F8A;font-size:13px;cursor:pointer;">취소</button>
+          ${existing?`<button onclick="otAttDelete('${existing.docId}','${workerId}','${otEsc(workerName)}','')" style="flex:1;padding:10px;background:#FEE2E2;border:none;border-radius:9px;color:#DC2626;font-size:13px;font-weight:700;cursor:pointer;">삭제</button>`:''}
           <button onclick="otAttSave('${workerId}','${otEsc(workerName)}','${existing?dateStr:''}')" style="flex:2;padding:10px;background:#1D5BA6;border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">저장</button>
         </div>
       </div>
@@ -4895,6 +4934,8 @@ window.otAttDelete = async (docId, workerId, name, rank) => {
   try {
     const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     await deleteDoc(doc(window._db,'worker_attendance_log',docId));
+    const modal = document.getElementById('ot-att-modal');
+    if (modal) modal.remove();
     otPcShowPersonDetail(workerId,name,rank);
   } catch(e){ alert('오류: '+e.message); }
 };
