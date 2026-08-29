@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html><!-- gihoek module build: 20260829a · ver 5.4.0 · 프로젝트 등록 시 PJT관리(pjt_registry) 자동 연동 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -233,7 +233,7 @@ onAuthStateChanged(auth, async user => {
           $('app').style.display = 'block';
           document.documentElement.classList.add('portal-embed');
           onSnapshot(collection(db,'gihoek_projects'), s=>{ projects=[]; s.forEach(d=>projects.push({id:d.id,...d.data()})); projects.sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0)); if(curTab==='pjt'&&!detailId&&!pjtForm) renderPjt(); else if(curTab==='home') renderPlanHome(); });
-          onSnapshot(collection(db,'gihoek_estimates'), s=>{ estimates=[]; s.forEach(d=>estimates.push({id:d.id,...d.data()})); estimates.sort((a,b)=>{ const dc=(b.date||'').localeCompare(a.date||''); if(dc) return dc; return (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0); }); if(curTab==='pjt'&&detailId) pjtDetail(detailId); else if(curTab==='pjt'&&!pjtForm) renderPjt(); if(curTab==='est'&&!estDraft&&!viewEstId) renderEst(); else if(curTab==='home') renderPlanHome(); });
+          onSnapshot(collection(db,'gihoek_estimates'), s=>{ estimates=[]; s.forEach(d=>estimates.push({id:d.id,...d.data()})); estimates.sort((a,b)=>{ const dc=(b.date||'').localeCompare(a.date||''); if(dc) return dc; return (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0); }); if(curTab==='pjt'&&detailId) pjtDetail(detailId); else if(curTab==='pjt'&&!pjtForm) renderPjt(); if(curTab==='est'&&!estDraft&&!viewEstId){ if(document.getElementById('est-list-wrap')) renderEstList(); else renderEst(); } else if(curTab==='home') renderPlanHome(); });
           onSnapshot(collection(db,'gihoek_settlements'), s=>{ settlements=[]; s.forEach(d=>settlements.push({id:d.id,...d.data()})); if(curTab==='pjt') { detailId?pjtDetail(detailId):renderPjt(); } else if(curTab==='settle'&&!settleDraft&&!viewSetId) renderSettle(); else if(curTab==='acct') renderAcct(); else if(curTab==='home') renderPlanHome(); });
           onSnapshot(collection(db,'gihoek_companies'), s=>{ companies=[]; s.forEach(d=>companies.push({id:d.id,...d.data()})); companies.sort((a,b)=>(a.company||'').localeCompare(b.company||'')); if(curTab==='comp'&&!compForm) renderComp(); });
           onSnapshot(collection(db,'gihoek_expenses'), s=>{ expenses=[]; s.forEach(d=>expenses.push({id:d.id,...d.data()})); if(curTab==='acct') renderAcct(); }); onSnapshot(query(collection(db,'pjt_registry'), where('status','!=','ended')), s=>{ pjtRegistryList=[]; s.forEach(d=>pjtRegistryList.push({id:d.id,...d.data()})); if(pjtForm) refreshLinkPjtOptions(); });
@@ -267,7 +267,7 @@ async function startApp(){
     }
   }catch(e){}
   onSnapshot(collection(db,'gihoek_projects'), s=>{ projects=[]; s.forEach(d=>projects.push({id:d.id,...d.data()})); projects.sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0)); if(curTab==='pjt'&&!detailId&&!pjtForm) renderPjt(); else if(curTab==='home') renderPlanHome(); });
-  onSnapshot(collection(db,'gihoek_estimates'), s=>{ estimates=[]; s.forEach(d=>estimates.push({id:d.id,...d.data()})); estimates.sort((a,b)=>{ const dc=(b.date||'').localeCompare(a.date||''); if(dc) return dc; return (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0); }); if(curTab==='pjt'&&detailId) pjtDetail(detailId); else if(curTab==='pjt'&&!pjtForm) renderPjt(); if(curTab==='est'&&!estDraft&&!viewEstId) renderEst(); else if(curTab==='home') renderPlanHome(); });
+  onSnapshot(collection(db,'gihoek_estimates'), s=>{ estimates=[]; s.forEach(d=>estimates.push({id:d.id,...d.data()})); estimates.sort((a,b)=>{ const dc=(b.date||'').localeCompare(a.date||''); if(dc) return dc; return (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0); }); if(curTab==='pjt'&&detailId) pjtDetail(detailId); else if(curTab==='pjt'&&!pjtForm) renderPjt(); if(curTab==='est'&&!estDraft&&!viewEstId){ if(document.getElementById('est-list-wrap')) renderEstList(); else renderEst(); } else if(curTab==='home') renderPlanHome(); });
   onSnapshot(collection(db,'gihoek_settlements'), s=>{ settlements=[]; s.forEach(d=>settlements.push({id:d.id,...d.data()})); if(curTab==='pjt') { detailId?pjtDetail(detailId):renderPjt(); } else if(curTab==='settle'&&!settleDraft&&!viewSetId) renderSettle(); else if(curTab==='acct') renderAcct(); else if(curTab==='home') renderPlanHome(); });
   onSnapshot(collection(db,'gihoek_companies'), s=>{ companies=[]; s.forEach(d=>companies.push({id:d.id,...d.data()})); companies.sort((a,b)=>(a.company||'').localeCompare(b.company||'')); if(curTab==='comp'&&!compForm) renderComp(); });
   onSnapshot(collection(db,'gihoek_expenses'), s=>{ expenses=[]; s.forEach(d=>expenses.push({id:d.id,...d.data()})); if(curTab==='acct') renderAcct(); }); onSnapshot(query(collection(db,'pjt_registry'), where('status','!=','ended')), s=>{ pjtRegistryList=[]; s.forEach(d=>pjtRegistryList.push({id:d.id,...d.data()})); if(pjtForm) refreshLinkPjtOptions(); });
@@ -484,13 +484,69 @@ window.delPjt=async function(id){ if(!confirm('이 프로젝트를 삭제할까�
   try{ await deleteDoc(doc(db,'gihoek_projects',id)); toast('삭제했습니다.'); renderPjt(); }catch(e){ toast('삭제 실패: '+(e.code||e.message)); } };
 
 /* ---------------- 견적 ---------------- */
-let estDraft=null, viewEstId=null;
-function renderEst(){ estDraft=null; viewEstId=null;
+let estDraft=null, viewEstId=null, estSearchQuery='', estPage=1;
+const EST_PAGE_SIZE=10;
+
+window.estSearchChange = function(v){
+  estSearchQuery = v;
+  estPage = 1; // 검색어 바뀌면 1페이지로
+  renderEstList();
+};
+window.estGoPage = function(p){
+  estPage = p;
+  renderEstList();
+  const listEl = document.getElementById('est-list-wrap');
+  if (listEl) listEl.scrollIntoView({block:'start'});
+};
+
+function estFilteredList(){
+  const q = (estSearchQuery||'').trim().toLowerCase();
+  if (!q) return estimates;
+  return estimates.filter(e=>{
+    const p = projects.find(x=>x.id===e.pjtId);
+    const haystack = [
+      e.title, e.no, e.date, e.client?.company,
+      p?.code, p?.name, p?.client,
+    ].filter(Boolean).join(' ').toLowerCase();
+    return haystack.includes(q);
+  });
+}
+
+// 목록(검색결과+페이지네이션) 부분만 다시 그리는 함수 — 검색창 자체는 재생성하지 않아 포커스 유지
+function renderEstList(){
+  const wrap = document.getElementById('est-list-wrap');
+  if (!wrap) return;
+  const filtered = estFilteredList();
+  const totalPages = Math.max(1, Math.ceil(filtered.length/EST_PAGE_SIZE));
+  if (estPage > totalPages) estPage = totalPages;
+  const startIdx = (estPage-1)*EST_PAGE_SIZE;
+  const pageItems = filtered.slice(startIdx, startIdx+EST_PAGE_SIZE);
+
+  const listHtml = pageItems.length ? pageItems.map(e=>{ const p=projects.find(x=>x.id===e.pjtId); const v=!isActive(e);
+    return `<div class="litem ${v?'void':''}" onclick="openEst('${e.id}')"><div class="d"><div class="ti">${e.title}${e.status==='void'?'<span class="void-tag">폐기</span>':e.status==='closed'?'<span class="void-tag" style="background:#E6F1FB;color:#1D5BA6">종결</span>':((e.rev||1)>1?'<span class="rev-tag">개정 r'+e.rev+'</span>':'')}</div><div class="mt"><span class="pill">${p?p.code:'삭제된 PJT'}</span> &nbsp;${e.no} · ${e.date}${e.client?.company?' · '+e.client.company:''}</div></div><div class="amt">${won(estTotal(e))}</div></div>`;
+  }).join('') : `<div class="empty">${estSearchQuery?'검색 결과가 없습니다.':'작성된 견적이 없습니다.'}</div>`;
+
+  const pagerHtml = totalPages>1 ? `
+    <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:14px;">
+      <button onclick="estGoPage(${Math.max(1,estPage-1)})" ${estPage===1?'disabled':''} style="padding:6px 10px;border:1px solid #DDE4EF;border-radius:7px;background:#fff;color:${estPage===1?'#C3CEDD':'#5C6F8A'};cursor:${estPage===1?'default':'pointer'};font-size:12px;">‹ 이전</button>
+      ${Array.from({length:totalPages},(_,i)=>i+1).map(n=>`
+        <button onclick="estGoPage(${n})" style="min-width:30px;padding:6px 8px;border:1px solid ${n===estPage?'#1D5BA6':'#DDE4EF'};border-radius:7px;background:${n===estPage?'#1D5BA6':'#fff'};color:${n===estPage?'#fff':'#5C6F8A'};cursor:pointer;font-size:12px;font-weight:${n===estPage?700:400};">${n}</button>`).join('')}
+      <button onclick="estGoPage(${Math.min(totalPages,estPage+1)})" ${estPage===totalPages?'disabled':''} style="padding:6px 10px;border:1px solid #DDE4EF;border-radius:7px;background:#fff;color:${estPage===totalPages?'#C3CEDD':'#5C6F8A'};cursor:${estPage===totalPages?'default':'pointer'};font-size:12px;">다음 ›</button>
+    </div>
+    <div style="text-align:center;margin-top:6px;font-size:11px;color:#9AAABF;">전체 ${filtered.length}건 중 ${startIdx+1}-${Math.min(startIdx+EST_PAGE_SIZE,filtered.length)}건</div>` : (filtered.length ? `<div style="text-align:center;margin-top:10px;font-size:11px;color:#9AAABF;">전체 ${filtered.length}건</div>` : '');
+
+  wrap.innerHTML = listHtml + pagerHtml;
+}
+
+function renderEst(){ estDraft=null; viewEstId=null; estSearchQuery=''; estPage=1;
   $('v-est').innerHTML=`<button onclick="tab('home')" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#5C6F8A;font-size:12px;cursor:pointer;font-weight:600;">🏠 기획 홈</button>
   <div class="sec-h"><h2>견적</h2><button class="btn pri sm" onclick="newEst()">+ 견적 작성</button></div>
-  ${estimates.length? estimates.map(e=>{ const p=projects.find(x=>x.id===e.pjtId); const v=!isActive(e);
-    return `<div class="litem ${v?'void':''}" onclick="openEst('${e.id}')"><div class="d"><div class="ti">${e.title}${e.status==='void'?'<span class="void-tag">폐기</span>':e.status==='closed'?'<span class="void-tag" style="background:#E6F1FB;color:#1D5BA6">종결</span>':((e.rev||1)>1?'<span class="rev-tag">개정 r'+e.rev+'</span>':'')}</div><div class="mt"><span class="pill">${p?p.code:'삭제된 PJT'}</span> &nbsp;${e.no} · ${e.date}${e.client?.company?' · '+e.client.company:''}</div></div><div class="amt">${won(estTotal(e))}</div></div>`;
-  }).join('') : '<div class="empty">작성된 견적이 없습니다.</div>'}`;
+  <div style="margin-bottom:14px;">
+    <input type="text" placeholder="🔍 현장명·견적번호·거래처·발행일로 검색" oninput="estSearchChange(this.value)"
+      style="width:100%;padding:10px 14px;border:1px solid #DDE4EF;border-radius:10px;font-size:13px;box-sizing:border-box;font-family:inherit;">
+  </div>
+  <div id="est-list-wrap"></div>`;
+  renderEstList();
 }
 window.renderEst=renderEst;
 
