@@ -438,7 +438,7 @@ function pdRenderEstList(id){
   const startIdx = (pdEstPage-1)*PD_PAGE_SIZE;
   const pageItems = ests.slice(startIdx, startIdx+PD_PAGE_SIZE);
   const listHtml = pageItems.length ? pageItems.map(e=>{ const v=!isActive(e);
-    return `<div class="litem ${v?'void':''}" onclick="openEst('${e.id}')"><div class="d"><div class="ti">${e.title}${e.status==='void'?'<span class="void-tag">폐기</span>':e.status==='closed'?'<span class="void-tag" style="background:#E6F1FB;color:#1D5BA6">종결</span>':((e.rev||1)>1?'<span class="rev-tag">개정 r'+e.rev+'</span>':'')}</div><div class="mt">${e.no} · ${e.date}${e.client?.company?' · '+e.client.company:''}</div></div><div class="amt">${won(estTotal(e))}</div></div>`;
+    return `<div class="litem ${v?'void':''}" onclick="openEst('${e.id}', null)"><div class="d"><div class="ti">${e.title}${e.status==='void'?'<span class="void-tag">폐기</span>':e.status==='closed'?'<span class="void-tag" style="background:#E6F1FB;color:#1D5BA6">종결</span>':((e.rev||1)>1?'<span class="rev-tag">개정 r'+e.rev+'</span>':'')}</div><div class="mt">${e.no} · ${e.date}${e.client?.company?' · '+e.client.company:''}</div></div><div class="amt">${won(estTotal(e))}</div></div>`;
   }).join('') : '<div class="empty">아직 견적이 없습니다.</div>';
   wrap.innerHTML = listHtml + pdPagerHtml(totalPages, pdEstPage, ests.length, `pdEstGoPage('${id}',`);
 }
@@ -453,7 +453,7 @@ function pdRenderSetList(id){
   const listHtml = pageItems.length ? pageItems.map(s=>{ const v=!setActive(s); const done=s.status==='done'; const isInv=s.docType==='invoice';
     const stLbl=v?'폐기':(done?'완결':'유효'); const stCol=v?'#9AAABF':(done?'#16A34A':'#1D5BA6');
     const typeLbl=isInv?'대금청구서':'지급예정서';
-    return `<div class="litem ${v?'void':''}" onclick="openSettle('${s.id}')"><div class="d"><div class="ti">${typeLbl} <span style="font-size:11px;color:#5BA4CF">${s.no||''}</span> <span style="font-size:11px;font-weight:700;color:${stCol}">${stLbl}</span></div><div class="sub">기준월 ${s.baseMonth||'-'} · 발행 ${s.issueDate||'-'}${isInv?'':' · 지급'}</div></div><div class="amt">${won(s.amount||0)}</div></div>`;
+    return `<div class="litem ${v?'void':''}" onclick="openSettle('${s.id}', id)"><div class="d"><div class="ti">${typeLbl} <span style="font-size:11px;color:#5BA4CF">${s.no||''}</span> <span style="font-size:11px;font-weight:700;color:${stCol}">${stLbl}</span></div><div class="sub">기준월 ${s.baseMonth||'-'} · 발행 ${s.issueDate||'-'}${isInv?'':' · 지급'}</div></div><div class="amt">${won(s.amount||0)}</div></div>`;
   }).join('') : '<div class="empty">아직 정산 내역이 없습니다.</div>';
   wrap.innerHTML = listHtml + pdPagerHtml(totalPages, pdSetPage, setts.length, `pdSetGoPage('${id}',`);
 }
@@ -622,7 +622,7 @@ function renderEstList(){
 
   const listHtml = pageItems.length ? pageItems.map(e=>{ const p=projects.find(x=>x.id===e.pjtId); const v=!isActive(e);
     const pjtStatusTag = p ? `<span class="badge ${p.status==='done'?'done':'run'}" style="font-size:10px;padding:1px 7px;margin-left:6px;">${p.status==='done'?'종결':'진행중'}</span>` : '';
-    return `<div class="litem ${v?'void':''}" onclick="openEst('${e.id}')"><div class="d"><div class="ti">${e.title}${e.status==='void'?'<span class="void-tag">폐기</span>':e.status==='closed'?'<span class="void-tag" style="background:#E6F1FB;color:#1D5BA6">종결</span>':((e.rev||1)>1?'<span class="rev-tag">개정 r'+e.rev+'</span>':'')}</div><div class="mt"><span class="pill">${p?p.code:'삭제된 PJT'}</span>${pjtStatusTag} &nbsp;${e.no} · ${e.date}${e.client?.company?' · '+e.client.company:''}</div></div><div class="amt">${won(estTotal(e))}</div></div>`;
+    return `<div class="litem ${v?'void':''}" onclick="openEst('${e.id}', id)"><div class="d"><div class="ti">${e.title}${e.status==='void'?'<span class="void-tag">폐기</span>':e.status==='closed'?'<span class="void-tag" style="background:#E6F1FB;color:#1D5BA6">종결</span>':((e.rev||1)>1?'<span class="rev-tag">개정 r'+e.rev+'</span>':'')}</div><div class="mt"><span class="pill">${p?p.code:'삭제된 PJT'}</span>${pjtStatusTag} &nbsp;${e.no} · ${e.date}${e.client?.company?' · '+e.client.company:''}</div></div><div class="amt">${won(estTotal(e))}</div></div>`;
   }).join('') : `<div class="empty">${isFiltered?'조건에 맞는 견적이 없습니다.':'작성된 견적이 없습니다.'}</div>`;
 
   const pagerHtml = totalPages>1 ? `
@@ -819,12 +819,14 @@ window.saveEst=async function(){ const d=estDraft;
     toast(d.editId?'개정본을 발행했습니다. (원본 폐기)':'견적을 저장했습니다.'); renderEst(); }
   catch(e){ $('est-save').disabled=false; toast('저장 실패: '+(e.code||e.message)); } };
 
-window.openEst=function(id){ viewEstId=id; const e=estimates.find(x=>x.id===id); if(!e){ renderEst(); return; }
+let estOrigin=null; // 견적 상세에 어디서 들어왔는지: 프로젝트id(프로젝트 상세에서 진입) 또는 null(견적 목록에서 진입)
+window.openEst=function(id, fromPjtId){ viewEstId=id; if(fromPjtId!==undefined) estOrigin=fromPjtId;
+  const e=estimates.find(x=>x.id===id); if(!e){ renderEst(); return; }
   const p=projects.find(x=>x.id===e.pjtId); const sup=estSupply(e), vat=Math.round(sup*0.1);
   tabSilent('est');
   const partyHtml=(label,o)=> `<div class="party"><div class="pl">${label}</div><div class="pc">${o?.company||'-'}</div>
     <div class="pd">${o?.ceo?'대표 '+o.ceo:''}${o?.bizno?' · '+o.bizno:''}</div>${o?.contact?`<div class="pd">담당: ${o.contact}</div>`:''}${o?.address?`<div class="pd">${o.address}</div>`:''}</div>`;
-  $('v-est').innerHTML=`<button class="back" onclick="renderEst()">← 견적 목록</button>
+  $('v-est').innerHTML=`<button class="back" onclick="${estOrigin?`pjtDetail('${estOrigin}')`:'renderEst()'}">← ${estOrigin?'프로젝트로 돌아가기':'견적 목록'}</button>
     <div class="card">
       ${e.status==='void'?`<div class="void-banner">🚫 폐기된 견적입니다.${e.replacedBy?' 개정본: <b>'+e.replacedBy+'</b>':''} 집계에는 반영되지 않습니다.</div>`:''}${e.status==='closed'?`<div class="void-banner" style="background:#E6F1FB;color:#1D5BA6">🔒 종결된 견적입니다. 정산이 완료되어 유효 견적 집계에서 제외됩니다.</div>`:''}
       <div style="display:flex; justify-content:space-between; align-items:flex-start">
@@ -1102,7 +1104,7 @@ function renderSettle(){ settleDraft=null; viewSetId=null;
 
   const listHtml = pageItems.length? pageItems.map(s=>{ const p=projects.find(x=>x.id===s.pjtId); const v=!setActive(s);
       const pjtBadge=(s.pjtIds&&s.pjtIds.length>1)? s.pjtIds.map(pid=>{const pp=projects.find(x=>x.id===pid);return pp?pp.code:pid;}).join('+') : (p?p.code:'-');
-      return `<div class="litem ${v?'void':''}" onclick="openSettle('${s.id}')"><div class="d"><div class="ti">${s.docType==='invoice'?'대금청구서':'지급예정서'} <span class="pill">${s.no}</span>${v?'<span class="void-tag">폐기</span>':''}${s.status==='done'?'<span class="void-tag" style="background:#E1F5EE;color:#085041">✓ 완결</span>':''}</div><div class="mt"><span class="pill">${pjtBadge}</span> &nbsp;기준월 ${s.baseMonth} · 발행 ${s.issueDate}${s.recipient?.company?' · '+s.recipient.company:''}</div></div><div class="amt">${won(s.total)}</div></div>`;
+      return `<div class="litem ${v?'void':''}" onclick="openSettle('${s.id}', null)"><div class="d"><div class="ti">${s.docType==='invoice'?'대금청구서':'지급예정서'} <span class="pill">${s.no}</span>${v?'<span class="void-tag">폐기</span>':''}${s.status==='done'?'<span class="void-tag" style="background:#E1F5EE;color:#085041">✓ 완결</span>':''}</div><div class="mt"><span class="pill">${pjtBadge}</span> &nbsp;기준월 ${s.baseMonth} · 발행 ${s.issueDate}${s.recipient?.company?' · '+s.recipient.company:''}</div></div><div class="amt">${won(s.total)}</div></div>`;
     }).join('') : `<div class="empty">${isFiltered?'조건에 맞는 정산서가 없습니다.':'발행된 정산서가 없습니다.'}</div>`;
 
   const pagerHtml = totalPages>1 ? `
@@ -1477,14 +1479,16 @@ window.publishSettle=async function(){ const d=settleDraft; const sup=effSupply(
   catch(e){ $('set-save').disabled=false; toast('발행 실패: '+(e.code||e.message)); }
 };
 
-window.openSettle=function(id){ viewSetId=id; const s=settlements.find(x=>x.id===id); if(!s){ renderSettle(); return; }
+let setOrigin=null; // 정산 상세에 어디서 들어왔는지: 프로젝트id 또는 null
+window.openSettle=function(id, fromPjtId){ viewSetId=id; if(fromPjtId!==undefined) setOrigin=fromPjtId;
+  const s=settlements.find(x=>x.id===id); if(!s){ renderSettle(); return; }
   const p=projects.find(x=>x.id===s.pjtId);
   const pjtBadgeDetail=(s.pjtIds&&s.pjtIds.length>1)? s.pjtIds.map(pid=>{const pp=projects.find(x=>x.id===pid);return pp?pp.code:pid;}).join(' + ') : (p?p.code:'-');
   tabSilent('settle');
   const party=(label,o)=>`<div class="party"><div class="pl">${label}</div><div class="pc">${o?.company||'-'}</div><div class="pd">${o?.ceo?'대표 '+o.ceo:''}${o?.bizno?' · '+o.bizno:''}</div>${o?.contact?`<div class="pd">담당: ${o.contact}</div>`:''}</div>`;
   const canLink=(s.docType==='invoice' && (s.method==='manual'||s.method==='qty'));
   const linkedEsts=Object.keys(s.perEst||{}).filter(k=>s.perEst[k]>0);
-  $('v-settle').innerHTML=`<button class="back" onclick="renderSettle()">← 정산 목록</button>
+  $('v-settle').innerHTML=`<button class="back" onclick="${setOrigin?`pjtDetail('${setOrigin}')`:'renderSettle()'}">← ${setOrigin?'프로젝트로 돌아가기':'정산 목록'}</button>
     <div class="card">
       ${!setActive(s)?'<div class="void-banner">🚫 폐기된 정산서입니다. 집계에서 제외됩니다.</div>':''}
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
@@ -1711,7 +1715,7 @@ function renderAccLedger(){
         :'<div class="empty">'+((accLCat||accLVendor)?'조건에 맞는 내역이 없습니다. (필터 적용 중)':'이 달 비용이 없습니다. “비용 입력”으로 추가하세요.')+'</div>'}</div>
     <div class="note-amber">실제 운영: 영수증·카드내역·계좌 거래내역·주문내역 파일을 춘식이에게 주시면 직접비/간접비로 분류해 이 장부에 채워 넣습니다. 앱에서는 직접 입력·수정·조회를 합니다. 🔗 정산 연동 항목(지급완료된 지급예정서)은 자동 반영되며, 직접 수정할 수 없습니다 — 정산 화면에서 지급완료를 취소하면 제외됩니다.</div>`;
 }
-window.openSettleFromLedger=function(id){ tab('settle'); openSettle(id); };
+window.openSettleFromLedger=function(id){ tab('settle'); openSettle(id, null); };
 window.accSetFilter=function(k,v){ if(k==='sort')accLSort=v; else if(k==='vendor')accLVendor=v; else if(k==='cat')accLCat=v; renderAccLedger(); };
 window.accResetFilter=function(){ accLSort='date_asc'; accLVendor=''; accLCat=''; renderAccLedger(); };
 
