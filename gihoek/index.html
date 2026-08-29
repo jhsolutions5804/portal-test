@@ -996,18 +996,39 @@ const TEAM_RATE=190000;
 const zoneGuess=title=>{ const t=title||''; const z=getZONES().find(z=>z.kw.some(k=>t.includes(k))); return z?z.id:''; };
 const setProjects=()=>projects; // alias
 
-let settleDraft=null, viewSetId=null;
+let settleDraft=null, viewSetId=null, settlePage=1;
+const SETTLE_PAGE_SIZE=10;
 const setActive=s=>s.status!=='void';
 
 function renderSettle(){ settleDraft=null; viewSetId=null;
-  if(!window.settleFilter) window.settleFilter={docType:'',pjtId:'',client:'',status:''};
+  if(!window.settleFilter) window.settleFilter={docType:'',pjtId:'',client:'',status:'',month:'',pjtStatus:''};
   const f=window.settleFilter;
   const clients=[...new Set(settlements.map(s=>s.recipient&&s.recipient.company).filter(Boolean))].sort();
-  const filtered=settlements.filter(s=>(!f.docType||s.docType===f.docType)&&(!f.pjtId||s.pjtId===f.pjtId||(s.pjtIds&&s.pjtIds.includes(f.pjtId)))&&(!f.client||(s.recipient&&s.recipient.company)===f.client)&&(!f.status||(f.status==='done'?s.status==='done':s.status!=='done')));
+  const months=[...new Set(settlements.map(s=>s.issueDate&&s.issueDate.length>=7?s.issueDate.slice(0,7):null).filter(Boolean))].sort((a,b)=>b.localeCompare(a));
+  const filtered=settlements.filter(s=>{
+    if(f.docType && s.docType!==f.docType) return false;
+    if(f.pjtId && !(s.pjtId===f.pjtId || (s.pjtIds&&s.pjtIds.includes(f.pjtId)))) return false;
+    if(f.client && (s.recipient&&s.recipient.company)!==f.client) return false;
+    if(f.status && (f.status==='done'?s.status!=='done':s.status==='done')) return false;
+    if(f.month && !(s.issueDate||'').startsWith(f.month)) return false;
+    if(f.pjtStatus){
+      const p=projects.find(x=>x.id===s.pjtId);
+      const pStatus = p ? (p.status==='done'?'done':'run') : null;
+      if(pStatus!==f.pjtStatus) return false;
+    }
+    return true;
+  });
   const inv=filtered.filter(s=>s.docType==='invoice'&&setActive(s)).reduce((a,s)=>a+(s.total||0),0);
   const pay=filtered.filter(s=>s.docType==='payment'&&setActive(s)).reduce((a,s)=>a+(s.total||0),0);
   const done=filtered.filter(s=>s.docType==='invoice'&&s.status==='done').reduce((a,s)=>a+(s.total||0),0);
   const sorted=[...filtered].sort((a,b)=>(b.issueDate||'').localeCompare(a.issueDate||'')||(b.no||'').localeCompare(a.no||'')||((b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)));
+
+  const totalPages=Math.max(1, Math.ceil(sorted.length/SETTLE_PAGE_SIZE));
+  if(settlePage>totalPages) settlePage=totalPages;
+  const startIdx=(settlePage-1)*SETTLE_PAGE_SIZE;
+  const pageItems=sorted.slice(startIdx, startIdx+SETTLE_PAGE_SIZE);
+  const isFiltered = f.docType||f.pjtId||f.client||f.status||f.month||f.pjtStatus;
+
   const filterBarHtml=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <select class="sel" style="width:auto;min-width:110px" onchange="setSettleFilter('docType',this.value)">
         <option value="" ${!f.docType?'selected':''}>구분: 전체</option>
@@ -1018,17 +1039,42 @@ function renderSettle(){ settleDraft=null; viewSetId=null;
         <option value="" ${!f.pjtId?'selected':''}>PJT: 전체</option>
         ${projects.map(p=>`<option value="${p.id}" ${f.pjtId===p.id?'selected':''}>${p.code}</option>`).join('')}
       </select>
+      <select class="sel" style="width:auto;min-width:110px" onchange="setSettleFilter('pjtStatus',this.value)">
+        <option value="" ${!f.pjtStatus?'selected':''}>진행상태: 전체</option>
+        <option value="run" ${f.pjtStatus==='run'?'selected':''}>진행중</option>
+        <option value="done" ${f.pjtStatus==='done'?'selected':''}>종결</option>
+      </select>
       <select class="sel" style="width:auto;min-width:130px" onchange="setSettleFilter('client',this.value)">
         <option value="" ${!f.client?'selected':''}>거래처: 전체</option>
         ${clients.map(c=>`<option value="${c}" ${f.client===c?'selected':''}>${c}</option>`).join('')}
+      </select>
+      <select class="sel" style="width:auto;min-width:120px" onchange="setSettleFilter('month',this.value)">
+        <option value="" ${!f.month?'selected':''}>발행월: 전체</option>
+        ${months.map(m=>`<option value="${m}" ${f.month===m?'selected':''}>${m}</option>`).join('')}
       </select>
       <select class="sel" style="width:auto;min-width:100px" onchange="setSettleFilter('status',this.value)">
         <option value="" ${!f.status?'selected':''}>상태: 전체</option>
         <option value="done" ${f.status==='done'?'selected':''}>✓ 완결</option>
         <option value="pending" ${f.status==='pending'?'selected':''}>미결</option>
       </select>
-      ${(f.docType||f.pjtId||f.client||f.status)?`<button class="btn line sm" onclick="resetSettleFilter()">필터 초기화</button>`:''}
+      ${isFiltered?`<button class="btn line sm" onclick="resetSettleFilter()">필터 초기화</button>`:''}
     </div>`;
+
+  const listHtml = pageItems.length? pageItems.map(s=>{ const p=projects.find(x=>x.id===s.pjtId); const v=!setActive(s);
+      const pjtBadge=(s.pjtIds&&s.pjtIds.length>1)? s.pjtIds.map(pid=>{const pp=projects.find(x=>x.id===pid);return pp?pp.code:pid;}).join('+') : (p?p.code:'-');
+      const pjtStatusTag = p ? `<span class="badge ${p.status==='done'?'done':'run'}" style="font-size:10px;padding:1px 7px;margin-left:6px;">${p.status==='done'?'종결':'진행중'}</span>` : '';
+      return `<div class="litem ${v?'void':''}" onclick="openSettle('${s.id}')"><div class="d"><div class="ti">${s.docType==='invoice'?'대금청구서':'지급예정서'} <span class="pill">${s.no}</span>${v?'<span class="void-tag">폐기</span>':''}${s.status==='done'?'<span class="void-tag" style="background:#E1F5EE;color:#085041">✓ 완결</span>':''}</div><div class="mt"><span class="pill">${pjtBadge}</span>${pjtStatusTag} &nbsp;기준월 ${s.baseMonth} · 발행 ${s.issueDate}${s.recipient?.company?' · '+s.recipient.company:''}</div></div><div class="amt">${won(s.total)}</div></div>`;
+    }).join('') : `<div class="empty">${isFiltered?'조건에 맞는 정산서가 없습니다.':'발행된 정산서가 없습니다.'}</div>`;
+
+  const pagerHtml = totalPages>1 ? `
+    <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:14px;">
+      <button onclick="setSettlePage(${Math.max(1,settlePage-1)})" ${settlePage===1?'disabled':''} style="padding:6px 10px;border:1px solid #DDE4EF;border-radius:7px;background:#fff;color:${settlePage===1?'#C3CEDD':'#5C6F8A'};cursor:${settlePage===1?'default':'pointer'};font-size:12px;">‹ 이전</button>
+      ${Array.from({length:totalPages},(_,i)=>i+1).map(n=>`
+        <button onclick="setSettlePage(${n})" style="min-width:30px;padding:6px 8px;border:1px solid ${n===settlePage?'#1D5BA6':'#DDE4EF'};border-radius:7px;background:${n===settlePage?'#1D5BA6':'#fff'};color:${n===settlePage?'#fff':'#5C6F8A'};cursor:pointer;font-size:12px;font-weight:${n===settlePage?700:400};">${n}</button>`).join('')}
+      <button onclick="setSettlePage(${Math.min(totalPages,settlePage+1)})" ${settlePage===totalPages?'disabled':''} style="padding:6px 10px;border:1px solid #DDE4EF;border-radius:7px;background:#fff;color:${settlePage===totalPages?'#C3CEDD':'#5C6F8A'};cursor:${settlePage===totalPages?'default':'pointer'};font-size:12px;">다음 ›</button>
+    </div>
+    <div style="text-align:center;margin-top:6px;font-size:11px;color:#9AAABF;">전체 ${sorted.length}건 중 ${startIdx+1}-${Math.min(startIdx+SETTLE_PAGE_SIZE,sorted.length)}건</div>` : (sorted.length ? `<div style="text-align:center;margin-top:10px;font-size:11px;color:#9AAABF;">전체 ${sorted.length}건</div>` : '');
+
   $('v-settle').innerHTML=`<button onclick="tab('home')" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#5C6F8A;font-size:12px;cursor:pointer;font-weight:600;">🏠 기획 홈</button>
   <div class="sec-h"><h2>정산</h2><button class="btn pri sm" onclick="newSettle()">+ 정산서 발행</button></div>
     <div class="sumgrid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:16px">
@@ -1036,14 +1082,13 @@ function renderSettle(){ settleDraft=null; viewSetId=null;
       <div class="sumcell"><div class="l">지급예정 누계</div><div class="v">${won(pay)}</div></div>
       <div class="sumcell"><div class="l">미수금 (청구−수금)</div><div class="v" style="color:${(inv-done)>0?'#DC2626':'#16A34A'}">${won(inv-done)}</div></div></div>
     ${filterBarHtml}
-    ${sorted.length? sorted.map(s=>{ const p=projects.find(x=>x.id===s.pjtId); const v=!setActive(s);
-      const pjtBadge=(s.pjtIds&&s.pjtIds.length>1)? s.pjtIds.map(pid=>{const pp=projects.find(x=>x.id===pid);return pp?pp.code:pid;}).join('+') : (p?p.code:'-');
-      return `<div class="litem ${v?'void':''}" onclick="openSettle('${s.id}')"><div class="d"><div class="ti">${s.docType==='invoice'?'대금청구서':'지급예정서'} <span class="pill">${s.no}</span>${v?'<span class="void-tag">폐기</span>':''}${s.status==='done'?'<span class="void-tag" style="background:#E1F5EE;color:#085041">✓ 완결</span>':''}</div><div class="mt"><span class="pill">${pjtBadge}</span> &nbsp;기준월 ${s.baseMonth} · 발행 ${s.issueDate}${s.recipient?.company?' · '+s.recipient.company:''}</div></div><div class="amt">${won(s.total)}</div></div>`;
-    }).join('') : `<div class="empty">${(f.docType||f.pjtId||f.client||f.status)?'조건에 맞는 정산서가 없습니다.':'발행된 정산서가 없습니다.'}</div>`}`;
+    ${listHtml}
+    ${pagerHtml}`;
 }
 window.renderSettle=renderSettle;
-window.setSettleFilter=function(key,val){ if(!window.settleFilter) window.settleFilter={docType:'',pjtId:'',client:'',status:''}; window.settleFilter[key]=val; renderSettle(); };
-window.resetSettleFilter=function(){ window.settleFilter={docType:'',pjtId:'',client:'',status:''}; renderSettle(); };
+window.setSettleFilter=function(key,val){ if(!window.settleFilter) window.settleFilter={docType:'',pjtId:'',client:'',status:'',month:'',pjtStatus:''}; window.settleFilter[key]=val; settlePage=1; renderSettle(); };
+window.resetSettleFilter=function(){ window.settleFilter={docType:'',pjtId:'',client:'',status:'',month:'',pjtStatus:''}; settlePage=1; renderSettle(); };
+window.setSettlePage=function(p){ settlePage=p; renderSettle(); const el=document.querySelector('#v-settle .sec-h'); if(el) el.scrollIntoView({block:'start'}); };
 
 window.newSettle=function(pjtId){
   if(!projects.length){ toast('먼저 프로젝트를 등록하세요.'); tab('pjt'); return; }
