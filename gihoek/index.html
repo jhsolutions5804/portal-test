@@ -438,7 +438,7 @@ function pdRenderEstList(id){
   const startIdx = (pdEstPage-1)*PD_PAGE_SIZE;
   const pageItems = ests.slice(startIdx, startIdx+PD_PAGE_SIZE);
   const listHtml = pageItems.length ? pageItems.map(e=>{ const v=!isActive(e);
-    return `<div class="litem ${v?'void':''}" onclick="openEst('${e.id}', null)"><div class="d"><div class="ti">${e.title}${e.status==='void'?'<span class="void-tag">폐기</span>':e.status==='closed'?'<span class="void-tag" style="background:#E6F1FB;color:#1D5BA6">종결</span>':((e.rev||1)>1?'<span class="rev-tag">개정 r'+e.rev+'</span>':'')}</div><div class="mt">${e.no} · ${e.date}${e.client?.company?' · '+e.client.company:''}</div></div><div class="amt">${won(estTotal(e))}</div></div>`;
+    return `<div class="litem ${v?'void':''}" onclick="openEst('${e.id}', '${id}')"><div class="d"><div class="ti">${e.title}${e.status==='void'?'<span class="void-tag">폐기</span>':e.status==='closed'?'<span class="void-tag" style="background:#E6F1FB;color:#1D5BA6">종결</span>':((e.rev||1)>1?'<span class="rev-tag">개정 r'+e.rev+'</span>':'')}</div><div class="mt">${e.no} · ${e.date}${e.client?.company?' · '+e.client.company:''}</div></div><div class="amt">${won(estTotal(e))}</div></div>`;
   }).join('') : '<div class="empty">아직 견적이 없습니다.</div>';
   wrap.innerHTML = listHtml + pdPagerHtml(totalPages, pdEstPage, ests.length, `pdEstGoPage('${id}',`);
 }
@@ -453,7 +453,7 @@ function pdRenderSetList(id){
   const listHtml = pageItems.length ? pageItems.map(s=>{ const v=!setActive(s); const done=s.status==='done'; const isInv=s.docType==='invoice';
     const stLbl=v?'폐기':(done?'완결':'유효'); const stCol=v?'#9AAABF':(done?'#16A34A':'#1D5BA6');
     const typeLbl=isInv?'대금청구서':'지급예정서';
-    return `<div class="litem ${v?'void':''}" onclick="openSettle('${s.id}', id)"><div class="d"><div class="ti">${typeLbl} <span style="font-size:11px;color:#5BA4CF">${s.no||''}</span> <span style="font-size:11px;font-weight:700;color:${stCol}">${stLbl}</span></div><div class="sub">기준월 ${s.baseMonth||'-'} · 발행 ${s.issueDate||'-'}${isInv?'':' · 지급'}</div></div><div class="amt">${won(s.amount||0)}</div></div>`;
+    return `<div class="litem ${v?'void':''}" onclick="openSettle('${s.id}', '${id}')"><div class="d"><div class="ti">${typeLbl} <span style="font-size:11px;color:#5BA4CF">${s.no||''}</span> <span style="font-size:11px;font-weight:700;color:${stCol}">${stLbl}</span></div><div class="sub">기준월 ${s.baseMonth||'-'} · 발행 ${s.issueDate||'-'}${isInv?'':' · 지급'}</div></div><div class="amt">${won(s.amount||0)}</div></div>`;
   }).join('') : '<div class="empty">아직 정산 내역이 없습니다.</div>';
   wrap.innerHTML = listHtml + pdPagerHtml(totalPages, pdSetPage, setts.length, `pdSetGoPage('${id}',`);
 }
@@ -622,7 +622,7 @@ function renderEstList(){
 
   const listHtml = pageItems.length ? pageItems.map(e=>{ const p=projects.find(x=>x.id===e.pjtId); const v=!isActive(e);
     const pjtStatusTag = p ? `<span class="badge ${p.status==='done'?'done':'run'}" style="font-size:10px;padding:1px 7px;margin-left:6px;">${p.status==='done'?'종결':'진행중'}</span>` : '';
-    return `<div class="litem ${v?'void':''}" onclick="openEst('${e.id}', id)"><div class="d"><div class="ti">${e.title}${e.status==='void'?'<span class="void-tag">폐기</span>':e.status==='closed'?'<span class="void-tag" style="background:#E6F1FB;color:#1D5BA6">종결</span>':((e.rev||1)>1?'<span class="rev-tag">개정 r'+e.rev+'</span>':'')}</div><div class="mt"><span class="pill">${p?p.code:'삭제된 PJT'}</span>${pjtStatusTag} &nbsp;${e.no} · ${e.date}${e.client?.company?' · '+e.client.company:''}</div></div><div class="amt">${won(estTotal(e))}</div></div>`;
+    return `<div class="litem ${v?'void':''}" onclick="openEst('${e.id}', null)"><div class="d"><div class="ti">${e.title}${e.status==='void'?'<span class="void-tag">폐기</span>':e.status==='closed'?'<span class="void-tag" style="background:#E6F1FB;color:#1D5BA6">종결</span>':((e.rev||1)>1?'<span class="rev-tag">개정 r'+e.rev+'</span>':'')}</div><div class="mt"><span class="pill">${p?p.code:'삭제된 PJT'}</span>${pjtStatusTag} &nbsp;${e.no} · ${e.date}${e.client?.company?' · '+e.client.company:''}</div></div><div class="amt">${won(estTotal(e))}</div></div>`;
   }).join('') : `<div class="empty">${isFiltered?'조건에 맞는 견적이 없습니다.':'작성된 견적이 없습니다.'}</div>`;
 
   const pagerHtml = totalPages>1 ? `
