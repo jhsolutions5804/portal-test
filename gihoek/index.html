@@ -194,7 +194,7 @@ const estTotal =e=>{ const s=estSupply(e); return s+Math.round(s*0.1); };
 function toast(t){ const e=$('toast'); e.textContent=t; e.classList.add('show'); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove('show'),2300); }
 
 let me=null;
-let projects=[], estimates=[], settlements=[], companies=[], expenses=[], pjtRegistryList=[];
+let projects=[], estimates=[], settlements=[], companies=[], expenses=[], pjtRegistryList=[], pnlEntries=[];
 const supplierList=()=>companies.filter(c=>c.roleSupplier);
 const clientList=()=>companies.filter(c=>c.roleClient);
 const compById=id=>companies.find(c=>c.id===id)||null;
@@ -244,7 +244,7 @@ onAuthStateChanged(auth, async user => {
           onSnapshot(collection(db,'gihoek_estimates'), s=>{ estimates=[]; s.forEach(d=>estimates.push({id:d.id,...d.data()})); estimates.sort((a,b)=>{ const dc=(b.date||'').localeCompare(a.date||''); if(dc) return dc; return (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0); }); if(curTab==='pjt'&&detailId) pjtDetail(detailId); else if(curTab==='pjt'&&!pjtForm) renderPjt(); if(curTab==='est'&&!estDraft&&!viewEstId){ if(document.getElementById('est-list-wrap')) renderEstList(); else renderEst(); } else if(curTab==='home') renderPlanHome(); });
           onSnapshot(collection(db,'gihoek_settlements'), s=>{ settlements=[]; s.forEach(d=>settlements.push({id:d.id,...d.data()})); if(curTab==='pjt') { detailId?pjtDetail(detailId):renderPjt(); } else if(curTab==='settle'&&!settleDraft&&!viewSetId) renderSettle(); else if(curTab==='acct') renderAcct(); else if(curTab==='home') renderPlanHome(); });
           onSnapshot(collection(db,'gihoek_companies'), s=>{ companies=[]; s.forEach(d=>companies.push({id:d.id,...d.data()})); companies.sort((a,b)=>(a.company||'').localeCompare(b.company||'')); if(curTab==='comp'&&!compForm) renderComp(); });
-          onSnapshot(collection(db,'gihoek_expenses'), s=>{ expenses=[]; s.forEach(d=>expenses.push({id:d.id,...d.data()})); if(curTab==='acct') renderAcct(); }); onSnapshot(query(collection(db,'pjt_registry'), where('status','!=','ended')), s=>{ pjtRegistryList=[]; s.forEach(d=>pjtRegistryList.push({id:d.id,...d.data()})); if(pjtForm) refreshLinkPjtOptions(); });
+          onSnapshot(collection(db,'gihoek_expenses'), s=>{ expenses=[]; s.forEach(d=>expenses.push({id:d.id,...d.data()})); if(curTab==='acct') renderAcct(); }); onSnapshot(collection(db,'gihoek_pnl_entries'), s=>{ pnlEntries=[]; s.forEach(d=>pnlEntries.push({id:d.id,...d.data()})); if(curTab==='acct') renderAcct(); }); onSnapshot(query(collection(db,'pjt_registry'), where('status','!=','ended')), s=>{ pjtRegistryList=[]; s.forEach(d=>pjtRegistryList.push({id:d.id,...d.data()})); if(pjtForm) refreshLinkPjtOptions(); });
           const t0 = new URLSearchParams(location.search).get('tab');
           if (t0 && ['home','pjt','comp','est','settle','acct'].includes(t0)) tab(t0);
           else renderPlanHome();
@@ -278,7 +278,7 @@ async function startApp(){
   onSnapshot(collection(db,'gihoek_estimates'), s=>{ estimates=[]; s.forEach(d=>estimates.push({id:d.id,...d.data()})); estimates.sort((a,b)=>{ const dc=(b.date||'').localeCompare(a.date||''); if(dc) return dc; return (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0); }); if(curTab==='pjt'&&detailId) pjtDetail(detailId); else if(curTab==='pjt'&&!pjtForm) renderPjt(); if(curTab==='est'&&!estDraft&&!viewEstId){ if(document.getElementById('est-list-wrap')) renderEstList(); else renderEst(); } else if(curTab==='home') renderPlanHome(); });
   onSnapshot(collection(db,'gihoek_settlements'), s=>{ settlements=[]; s.forEach(d=>settlements.push({id:d.id,...d.data()})); if(curTab==='pjt') { detailId?pjtDetail(detailId):renderPjt(); } else if(curTab==='settle'&&!settleDraft&&!viewSetId) renderSettle(); else if(curTab==='acct') renderAcct(); else if(curTab==='home') renderPlanHome(); });
   onSnapshot(collection(db,'gihoek_companies'), s=>{ companies=[]; s.forEach(d=>companies.push({id:d.id,...d.data()})); companies.sort((a,b)=>(a.company||'').localeCompare(b.company||'')); if(curTab==='comp'&&!compForm) renderComp(); });
-  onSnapshot(collection(db,'gihoek_expenses'), s=>{ expenses=[]; s.forEach(d=>expenses.push({id:d.id,...d.data()})); if(curTab==='acct') renderAcct(); }); onSnapshot(query(collection(db,'pjt_registry'), where('status','!=','ended')), s=>{ pjtRegistryList=[]; s.forEach(d=>pjtRegistryList.push({id:d.id,...d.data()})); if(pjtForm) refreshLinkPjtOptions(); });
+  onSnapshot(collection(db,'gihoek_expenses'), s=>{ expenses=[]; s.forEach(d=>expenses.push({id:d.id,...d.data()})); if(curTab==='acct') renderAcct(); }); onSnapshot(collection(db,'gihoek_pnl_entries'), s=>{ pnlEntries=[]; s.forEach(d=>pnlEntries.push({id:d.id,...d.data()})); if(curTab==='acct') renderAcct(); }); onSnapshot(query(collection(db,'pjt_registry'), where('status','!=','ended')), s=>{ pjtRegistryList=[]; s.forEach(d=>pjtRegistryList.push({id:d.id,...d.data()})); if(pjtForm) refreshLinkPjtOptions(); });
   const params=new URLSearchParams(location.search);
   if(params.get('via')==='portal') document.documentElement.classList.add('portal-embed');
   const t0=params.get('tab');
@@ -1640,6 +1640,8 @@ const ACC_CATS=[
   {k:'급여', bg:'#eceff1', fg:'#263238'},{k:'용역비', bg:'#e0f7fa', fg:'#006064'},
 ];
 const ACC_PAYS=['법인카드','개인카드','현금','계좌이체','외상거래'];
+const PNL_COMPANIES=[{k:'jh_eng',label:'제이에이치이엔지'},{k:'jh_sol',label:'제이에이치솔루션'}];
+let pnlCompanyFilter=''; // ''=전체, 'jh_eng'|'jh_sol'
 const DIRECT_CATS=['급여','용역비','공구·자재비'];
 const accIsDirect=c=>DIRECT_CATS.includes(c);
 const accCatStyle=k=>{ const c=ACC_CATS.find(c=>c.k===k)||ACC_CATS[5]; return `background:${c.bg};color:${c.fg}`; };
@@ -1655,7 +1657,7 @@ const paymentAsExpense=(monthFilter)=>settlements.filter(s=>s.docType==='payment
   note:'정산서 '+(s.no||''), fromSettlement:true,
 }));
 const accMonthExp=()=>{
-  const manual=expenses.filter(e=>(e.date||'').slice(0,7)===curAccMonth);
+  const manual=expenses.filter(e=>(e.accMonth||(e.date||'').slice(0,7))===curAccMonth);
   return [...manual,...paymentAsExpense()].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 };
 // 누적(전체기간) 비용 — 월 필터 없이 전체
@@ -1673,9 +1675,10 @@ function renderAcct(){
     <div class="monthbar"><button onclick="accShiftMonth(-1)">‹</button><span class="m">${curAccMonth.replace('-','년 ')}월</span><button onclick="accShiftMonth(1)">›</button></div>
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <button class="seg-btn ${accSub==='pnl'?'on':''}" onclick="accTab('pnl')">영업이익 현황</button>
-      <button class="seg-btn ${accSub==='ledger'?'on':''}" onclick="accTab('ledger')">비용 장부</button></div>
+      <button class="seg-btn ${accSub==='ledger'?'on':''}" onclick="accTab('ledger')">비용 장부</button>
+      <button class="seg-btn ${accSub==='income'?'on':''}" onclick="accTab('income')">손익계산서</button></div>
     <div id="acc-body"></div>`;
-  accSub==='ledger'?renderAccLedger():renderAccPnl();
+  accSub==='ledger'?renderAccLedger():accSub==='income'?renderAccIncome():renderAccPnl();
 }
 window.renderAcct=renderAcct;
 window.accTab=function(t){ accSub=t; accPnlMode='month'; renderAcct(); };
@@ -1684,12 +1687,15 @@ window.accShiftMonth=function(d){ const [y,m]=curAccMonth.split('-').map(Number)
 function renderAccPnl(){
   const isCum = accPnlMode==='cumulative';
   const list=isCum?accAllExp():accMonthExp();
+  const pnlList=isCum?pnlEntries:pnlEntries.filter(e=>(e.accMonth||'')===curAccMonth); // 손익계산서 항목(전부 간접비로 취급)
   const byPjt={}; projects.forEach(p=>byPjt[p.id]={dir:0,ind:0}); let comDir=0,comInd=0;
   list.forEach(e=>{ const t=byPjt[e.pjt]; if(e.pjt&&t){ accIsDirect(e.cat)?t.dir+=e.total:t.ind+=e.total; } else { accIsDirect(e.cat)?comDir+=e.total:comInd+=e.total; } });
+  pnlList.forEach(e=>{ const t=byPjt[e.pjt]; if(e.pjt&&t){ t.ind+=(e.total||0); } else { comInd+=(e.total||0); } });
   const totBill=projects.reduce((a,p)=>a+(isCum?allBill(p.id):monthBill(p.id,curAccMonth)),0);
   const totDir=list.filter(e=>accIsDirect(e.cat)).reduce((a,e)=>a+e.total,0);
-  const totInd=list.filter(e=>!accIsDirect(e.cat)).reduce((a,e)=>a+e.total,0);
+  const totInd=list.filter(e=>!accIsDirect(e.cat)).reduce((a,e)=>a+e.total,0) + pnlList.reduce((a,e)=>a+(e.total||0),0);
   const op=totBill-totDir-totInd; const opRate=totBill>0?Math.round(op/totBill*1000)/10:0;
+  const costRate=totBill>0?Math.round((totDir+totInd)/totBill*1000)/10:0;
   $('acc-body').innerHTML=`
     <div style="display:flex;gap:8px;margin-bottom:12px">
       <button class="seg-btn ${!isCum?'on':''}" onclick="accPnlToggle('month')">📅 ${curAccMonth} 이번달</button>
@@ -1698,16 +1704,19 @@ function renderAccPnl(){
     <div class="sumgrid">
       <div class="sumcell"><div class="l">매출 (완결 청구)</div><div class="v">${won(totBill)}</div></div>
       <div class="sumcell"><div class="l">직접비</div><div class="v neg">${won(totDir)}</div></div>
-      <div class="sumcell"><div class="l">간접비</div><div class="v neg">${won(totInd)}</div></div>
+      <div class="sumcell"><div class="l">간접비 <span class="small muted">(손익계산서 포함)</span></div><div class="v neg">${won(totInd)}</div></div>
       <div class="sumcell"><div class="l">영업이익 <span style="color:var(--blue)">(${opRate}%)</span></div><div class="v ${op>=0?'pos':'neg'}">${op>=0?'+':''}${won(op)}</div></div></div>
-    <div class="small muted" style="margin:8px 2px 0">${isCum?'전체 누적 기준(기간 제한 없음). ':''}영업이익 = 매출(${isCum?'전체 누적':'기준월'} 완결 청구) − 직접비 − 간접비. 직접비=급여·용역비·공구자재비 / 간접비=임대료·식대·세금·차량유지비·유류비·사무용품·기타. 정산 지급(지급예정서)은 손익에 자동 반영되지 않으며, 회계 장부에 실제 지출(용역비 등)로 입력·확인 후 비용으로 반영됩니다.</div>
+    <div class="sumgrid" style="margin-top:8px;grid-template-columns:1fr 1fr">
+      <div class="sumcell"><div class="l">원가율 (직접비+간접비 / 매출)</div><div class="v">${costRate}%</div></div>
+      <div class="sumcell"><div class="l">마진율 (영업이익 / 매출)</div><div class="v ${op>=0?'pos':'neg'}">${opRate}%</div></div></div>
+    <div class="small muted" style="margin:8px 2px 0">${isCum?'전체 누적 기준(기간 제한 없음). ':''}영업이익 = 매출(${isCum?'전체 누적':'기준월'} 완결 청구) − 직접비 − 간접비. 직접비=급여·용역비·공구자재비 / 간접비=임대료·식대·세금·차량유지비·유류비·사무용품·기타+손익계산서 전 항목. 정산 지급(지급예정서)은 손익에 자동 반영되지 않으며, 회계 장부에 실제 지출(용역비 등)로 입력·확인 후 비용으로 반영됩니다.</div>
     <div class="sec-h" style="margin-top:20px"><h2>PJT별 영업이익</h2></div>
     <div class="card" style="padding:12px"><div class="scroll"><table class="ptab">
-      <thead><tr><th class="l">PJT</th><th>매출</th><th>직접비</th><th>간접비</th><th>영업이익</th><th>이익률</th></tr></thead>
-      <tbody>${projects.length?projects.map(p=>{ const b=isCum?allBill(p.id):monthBill(p.id,curAccMonth),di=byPjt[p.id].dir,ind=byPjt[p.id].ind,o=b-di-ind,r=b>0?Math.round(o/b*1000)/10:0;
-        return `<tr><td class="l">${p.code}</td><td>${won(b)}</td><td class="neg" style="color:var(--warn)">${won(di)}</td><td style="color:var(--warn)">${won(ind)}</td><td style="font-weight:700;color:${o>=0?'var(--ok)':'var(--warn)'}">${o>=0?'+':''}${won(o)}</td><td>${b>0?r+'%':'-'}</td></tr>`; }).join(''):'<tr><td colspan="6" class="center muted" style="padding:16px">프로젝트 없음</td></tr>'}
-      ${(comDir+comInd)>0?`<tr style="background:#f6f9fd"><td class="l">공통비용 (미지정)</td><td>-</td><td style="color:var(--warn)">${won(comDir)}</td><td style="color:var(--warn)">${won(comInd)}</td><td>-</td><td>-</td></tr>`:''}</tbody></table></div>
-      <div class="small muted" style="margin-top:8px">공통비용(PJT 미지정)은 전체 영업이익엔 반영, 개별 PJT엔 배분 안 함. · 폐기 건 제외, 공급가 기준.</div></div>`;
+      <thead><tr><th class="l">PJT</th><th>매출</th><th>직접비</th><th>간접비</th><th>영업이익</th><th>원가율</th><th>마진율</th></tr></thead>
+      <tbody>${projects.length?projects.map(p=>{ const b=isCum?allBill(p.id):monthBill(p.id,curAccMonth),di=byPjt[p.id].dir,ind=byPjt[p.id].ind,o=b-di-ind,r=b>0?Math.round(o/b*1000)/10:0,cr=b>0?Math.round((di+ind)/b*1000)/10:0;
+        return `<tr><td class="l">${p.code}</td><td>${won(b)}</td><td class="neg" style="color:var(--warn)">${won(di)}</td><td style="color:var(--warn)">${won(ind)}</td><td style="font-weight:700;color:${o>=0?'var(--ok)':'var(--warn)'}">${o>=0?'+':''}${won(o)}</td><td>${b>0?cr+'%':'-'}</td><td>${b>0?r+'%':'-'}</td></tr>`; }).join(''):'<tr><td colspan="7" class="center muted" style="padding:16px">프로젝트 없음</td></tr>'}
+      ${(comDir+comInd)>0?`<tr style="background:#f6f9fd"><td class="l">공통비용 (미지정)</td><td>-</td><td style="color:var(--warn)">${won(comDir)}</td><td style="color:var(--warn)">${won(comInd)}</td><td>-</td><td>-</td><td>-</td></tr>`:''}</tbody></table></div>
+      <div class="small muted" style="margin-top:8px">공통비용(PJT 미지정)은 전체 영업이익엔 반영, 개별 PJT엔 배분 안 함. · 폐기 건 제외, 공급가 기준. 손익계산서 항목은 전부 간접비로 집계됩니다.</div></div>`;
 }
 window.accPnlToggle=function(mode){ accPnlMode=mode; renderAccPnl(); };
 
@@ -1741,11 +1750,85 @@ function renderAccLedger(){
       ${_filterBar}
       ${filtered.length? filtered.map(e=>`<div class="litem" style="cursor:pointer" onclick="${e.fromSettlement?`openSettleFromLedger('${e.id.replace('settle_','')}')`:(e.salaryDist?`salDelConfirm('${e.id}')`:`accOpenForm('${e.id}')`)}">
         <div class="d" style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700"><span class="catpill" style="${accCatStyle(e.cat)}">${e.cat}</span> &nbsp;${e.vendor||'-'}${e.fromSettlement?' <span style="font-size:10px;font-weight:600;color:#1D5BA6;background:#EEF4FC;padding:1px 7px;border-radius:8px;margin-left:4px;">🔗 정산 연동</span>':''}${e.salaryDist?' <span style="font-size:10px;font-weight:600;color:#6d4c00;background:#f5f0e8;padding:1px 7px;border-radius:8px;margin-left:4px;">👥 급여배분</span>':''}</div>
-          <div class="small muted" style="margin-top:2px">${e.date} · ${e.pay}${e.pjt?' · '+(projects.find(p=>p.id===e.pjt)?.code||''):' · 공통'}${e.note?' · '+e.note:''}</div></div>
+          <div class="small muted" style="margin-top:2px">${e.date}${e.accMonth&&e.accMonth!==e.date.slice(0,7)?' <span style="color:#1D5BA6;font-weight:600">(귀속 '+e.accMonth+')</span>':''} · ${e.pay}${e.pjt?' · '+(projects.find(p=>p.id===e.pjt)?.code||''):' · 공통'}${e.note?' · '+e.note:''}</div></div>
         <div class="amt" style="font-weight:800;color:var(--money);white-space:nowrap;text-align:right">${won(e.total)}<div class="small muted" style="font-weight:400">VAT ${won(e.vat)}</div></div></div>`).join('')
         :'<div class="empty">'+((accLCat||accLVendor)?'조건에 맞는 내역이 없습니다. (필터 적용 중)':'이 달 비용이 없습니다. “비용 입력”으로 추가하세요.')+'</div>'}</div>
     <div class="note-amber">실제 운영: 영수증·카드내역·계좌 거래내역·주문내역 파일을 춘식이에게 주시면 직접비/간접비로 분류해 이 장부에 채워 넣습니다. 앱에서는 직접 입력·수정·조회를 합니다. 🔗 정산 연동 항목(지급완료된 지급예정서)은 자동 반영되며, 직접 수정할 수 없습니다 — 정산 화면에서 지급완료를 취소하면 제외됩니다.</div>`;
 }
+// ── 손익계산서 (회사구분 · 자유항목 · 귀속월 직접입력) ──
+function renderAccIncome(){
+  const monthList=pnlEntries.filter(e=>(e.accMonth||'')===curAccMonth);
+  const list=pnlCompanyFilter?monthList.filter(e=>e.company===pnlCompanyFilter):monthList;
+  const sorted=[...list].sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));
+  const sup=list.reduce((a,e)=>a+(e.amount||0),0), vat=list.reduce((a,e)=>a+(e.vat||0),0), tot=list.reduce((a,e)=>a+(e.total||0),0);
+  const byCompany={}; PNL_COMPANIES.forEach(c=>byCompany[c.k]={sup:0,vat:0,tot:0,cnt:0});
+  monthList.forEach(e=>{ const b=byCompany[e.company]; if(b){ b.sup+=(e.amount||0); b.vat+=(e.vat||0); b.tot+=(e.total||0); b.cnt++; } });
+
+  const companyTabs=`<div style="display:flex;gap:6px;margin-bottom:12px;">
+    <button class="seg-btn ${!pnlCompanyFilter?'on':''}" onclick="pnlSetCompanyFilter('')">전체</button>
+    ${PNL_COMPANIES.map(c=>`<button class="seg-btn ${pnlCompanyFilter===c.k?'on':''}" onclick="pnlSetCompanyFilter('${c.k}')">${c.label} (${byCompany[c.k].cnt})</button>`).join('')}
+  </div>`;
+
+  $('acc-body').innerHTML=`
+    ${companyTabs}
+    <div class="sumgrid">
+      <div class="sumcell"><div class="l">금액 합계</div><div class="v">${won(sup)}</div></div>
+      <div class="sumcell"><div class="l">부가세 합계</div><div class="v">${won(vat)}</div></div>
+      <div class="sumcell"><div class="l">총 합계</div><div class="v">${won(tot)}</div></div>
+      <div class="sumcell"><div class="l">건수</div><div class="v">${list.length}</div></div></div>
+    <div class="card" style="margin-top:14px;padding:12px">
+      <div class="sec-h"><h2>${curAccMonth} 손익계산서${pnlCompanyFilter?' — '+(PNL_COMPANIES.find(c=>c.k===pnlCompanyFilter)?.label):''}</h2><button class="btn pri sm" onclick="pnlOpenForm()">+ 항목 추가</button></div>
+      <div class="scroll"><table class="ptab">
+        <thead><tr><th>연번</th><th class="l">내용</th><th class="l">회사</th><th>금액</th><th>부가세</th><th>합계</th><th class="l">비고</th></tr></thead>
+        <tbody>${sorted.length?sorted.map((e,i)=>`<tr style="cursor:pointer" onclick="pnlOpenForm('${e.id}')">
+            <td>${i+1}</td>
+            <td class="l">${e.category||'-'}${e.pjt?` <span class="small muted">(${projects.find(p=>p.id===e.pjt)?.code||''})</span>`:''}</td>
+            <td class="l small">${PNL_COMPANIES.find(c=>c.k===e.company)?.label||'-'}</td>
+            <td>${e.amount?won(e.amount):'—'}</td>
+            <td>${e.vat?won(e.vat):'—'}</td>
+            <td style="font-weight:700;color:var(--money)">${won(e.total)}</td>
+            <td class="l small muted">${e.note||''}</td>
+          </tr>`).join(''):'<tr><td colspan="7" class="center muted" style="padding:16px">이 달 손익계산서 항목이 없습니다.</td></tr>'}</tbody>
+        ${list.length?`<tfoot><tr style="background:#f6f9fd;font-weight:700"><td colspan="3" class="l">합계</td><td>${won(sup)}</td><td>${won(vat)}</td><td style="color:var(--money)">${won(tot)}</td><td></td></tr></tfoot>`:''}
+      </table></div>
+    </div>
+    <div class="note-amber">손익계산서 항목명은 자유롭게 입력·추가할 수 있습니다. 귀속월(회계상 반영될 달)은 실제 결제일과 무관하게 직접 지정합니다 — 예: 7~8월분 합산 결제도 원하는 달에 나눠 기입 가능. PJT를 연결하면 영업이익 현황의 해당 PJT 손익에도 반영됩니다.</div>`;
+}
+window.renderAccIncome=renderAccIncome;
+window.pnlSetCompanyFilter=function(c){ pnlCompanyFilter=c; renderAccIncome(); };
+
+window.pnlOpenForm=function(id){
+  const e=id?pnlEntries.find(x=>x.id===id):null;
+  $('em-body').innerHTML=`<div class="sec-h"><h2>${e?'손익계산서 항목 수정':'손익계산서 항목 추가'}</h2><button class="btn gray sm" onclick="accCloseForm()">닫기</button></div>
+    <div class="row2">
+      <div class="field"><label>회사</label><select class="sel" id="pf-company">${PNL_COMPANIES.map(c=>`<option value="${c.k}" ${e&&e.company===c.k?'selected':''}>${c.label}</option>`).join('')}</select></div>
+      <div class="field"><label>귀속월</label><input class="inp" type="month" id="pf-accmonth" value="${e?.accMonth||curAccMonth}"></div>
+    </div>
+    <div class="field"><label>내용 (항목명 — 자유 입력)</label><input class="inp" id="pf-category" value="${(e?.category||'').replace(/"/g,'&quot;')}" placeholder="예: 26-07 급여, 26-08 거상 구매비 등"></div>
+    <div class="row3">
+      <div class="field"><label>금액</label><input class="inp" id="pf-amount" inputmode="numeric" value="${e?.amount||''}"></div>
+      <div class="field"><label>부가세</label><input class="inp" id="pf-vat" inputmode="numeric" value="${e?.vat||''}"></div>
+      <div class="field"><label>합계</label><input class="inp" id="pf-total" inputmode="numeric" value="${e?.total||''}"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:11px"><button class="btn line sm" onclick="pnlCalcTotal()">금액+부가세 → 합계 자동계산</button></div>
+    <div class="field"><label>PJT 연결 (선택 — 영업이익 현황에 반영)</label><select class="sel" id="pf-pjt"><option value="">미지정 (회사 공통비용)</option>${projects.map(p=>`<option value="${p.id}" ${e&&e.pjt===p.id?'selected':''}>${p.code}</option>`).join('')}</select></div>
+    <div class="field"><label>비고</label><input class="inp" id="pf-note" value="${(e?.note||'').replace(/"/g,'&quot;')}" placeholder="예: 카드로, 7~8월에 6개월치 등"></div>
+    <div style="display:flex;gap:8px;margin-top:4px">${e?`<button class="btn gray sm" onclick="pnlDel('${e.id}')">삭제</button>`:''}
+      <button class="btn line full" onclick="accCloseForm()">취소</button><button class="btn pri full" onclick="pnlSave('${e?e.id:''}')">저장</button></div>`;
+  $('emodal').classList.add('on');
+};
+window.pnlCalcTotal=function(){ const a=num($('pf-amount').value), v=num($('pf-vat').value); $('pf-total').value=a+v; };
+window.pnlSave=async function(id){
+  const total=num($('pf-total').value); const category=$('pf-category').value.trim();
+  if(!category){ toast('내용을 입력하세요.'); return; }
+  if(total<=0){ toast('합계를 입력하세요.'); return; }
+  const data={ company:$('pf-company').value, category, amount:num($('pf-amount').value), vat:num($('pf-vat').value), total,
+    accMonth:$('pf-accmonth').value||curAccMonth, pjt:$('pf-pjt').value, note:$('pf-note').value.trim() };
+  try{ const eid=id||('pnl_'+Date.now()); if(!id) data.createdAt=serverTimestamp(); await setDoc(doc(db,'gihoek_pnl_entries',eid),data,{merge:true}); accCloseForm(); toast('저장했습니다.'); }
+  catch(e){ toast('저장 실패: '+(e.code||e.message)); }
+};
+window.pnlDel=async function(id){ if(!confirm('이 손익계산서 항목을 삭제할까요?')) return; try{ await deleteDoc(doc(db,'gihoek_pnl_entries',id)); accCloseForm(); toast('삭제했습니다.'); }catch(e){ toast('삭제 실패: '+(e.code||e.message)); } };
+
 window.openSettleFromLedger=function(id){ tab('settle'); openSettle(id, 'acct'); };
 window.accSetFilter=function(k,v){ if(k==='sort')accLSort=v; else if(k==='vendor')accLVendor=v; else if(k==='cat')accLCat=v; renderAccLedger(); };
 window.accResetFilter=function(){ accLSort='date_asc'; accLVendor=''; accLCat=''; renderAccLedger(); };
@@ -1754,6 +1837,7 @@ window.accOpenForm=function(id){ const e=id?expenses.find(x=>x.id===id):null;
   $('em-body').innerHTML=`<div class="sec-h"><h2>${e?'비용 수정':'비용 입력'}</h2><button class="btn gray sm" onclick="accCloseForm()">닫기</button></div>
     <div class="row2"><div class="field"><label>날짜</label><input class="inp" type="date" id="ef-date" value="${e?e.date:curAccMonth+'-01'}"></div>
       <div class="field"><label>카테고리</label><select class="sel" id="ef-cat">${ACC_CATS.map(c=>`<option ${e&&e.cat===c.k?'selected':''}>${c.k}</option>`).join('')}</select></div></div>
+    <div class="field"><label>귀속월 <span class="small muted" style="font-weight:400">(회계상 반영될 달 — 거래일과 다를 수 있음, 예: 7~8월분을 8월에 몰아 결제)</span></label><input class="inp" type="month" id="ef-accmonth" value="${e?.accMonth||(e?e.date.slice(0,7):curAccMonth)}"></div>
     <div class="field"><label>상호 (거래처·가맹점)</label><input class="inp" id="ef-vendor" value="${(e?.vendor||'').replace(/"/g,'&quot;')}" placeholder="예: 쿠팡, ○○식당"></div>
     <div class="row3"><div class="field"><label>합계 (실결제)</label><input class="inp" id="ef-total" inputmode="numeric" value="${e?e.total:''}"></div>
       <div class="field"><label>공급가</label><input class="inp" id="ef-supply" inputmode="numeric" value="${e?e.supply:''}"></div>
@@ -1771,7 +1855,7 @@ window.accSplitVat=function(){ const t=num($('ef-total').value); if(t<=0){ toast
 window.accZeroVat=function(){ const t=num($('ef-total').value); $('ef-supply').value=t; $('ef-vat').value=0; };
 window.accSave=async function(id){ const total=num($('ef-total').value); if(total<=0){ toast('합계를 입력하세요.'); return; }
   let sup=num($('ef-supply').value), vat=num($('ef-vat').value); if(sup===0&&vat===0){ sup=Math.round(total/1.1); vat=total-sup; }
-  const data={ date:$('ef-date').value, cat:$('ef-cat').value, vendor:$('ef-vendor').value.trim(), supply:sup, vat, total, pay:$('ef-pay').value, pjt:$('ef-pjt').value, note:$('ef-note').value.trim() };
+  const data={ date:$('ef-date').value, accMonth:$('ef-accmonth').value||$('ef-date').value.slice(0,7), cat:$('ef-cat').value, vendor:$('ef-vendor').value.trim(), supply:sup, vat, total, pay:$('ef-pay').value, pjt:$('ef-pjt').value, note:$('ef-note').value.trim() };
   try{ const eid=id||('exp_'+Date.now()); if(!id) data.createdAt=serverTimestamp(); await setDoc(doc(db,'gihoek_expenses',eid),data,{merge:true}); accCloseForm(); toast('저장했습니다.'); }
   catch(e){ toast('저장 실패: '+(e.code||e.message)); } };
 window.accDel=async function(id){ if(!confirm('이 비용을 삭제할까요?')) return; try{ await deleteDoc(doc(db,'gihoek_expenses',id)); accCloseForm(); toast('삭제했습니다.'); }catch(e){ toast('삭제 실패: '+(e.code||e.message)); } };
