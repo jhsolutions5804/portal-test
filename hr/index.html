@@ -1856,11 +1856,18 @@ window.renderPayslipPCRight = () => {
             <div style="color:#5C6F8A;margin-bottom:3px;">여비교통비 <span style="font-size:9px;color:#9AAABF;">(비과세, 지급계 미포함)</span></div>
             <select onchange="psTravelTypeChange(this.value)" style="width:100%;padding:5px 8px;border:1px solid #DDE3EE;border-radius:7px;font-size:11.5px;font-family:inherit;background:#fff;margin-bottom:5px;">
               <option value="">유형 선택 (직접입력하려면 비워두세요)</option>
-              <option value="personal_near" ${ps._travelType==='personal_near'?'selected':''}>🚗 개인차량 · 40km 이내 (1만원)</option>
-              <option value="personal_far" ${ps._travelType==='personal_far'?'selected':''}>🚗 개인차량 · 40km 초과 (2만원)</option>
-              <option value="company_car" ${ps._travelType==='company_car'?'selected':''}>🚙 회사차량 (거리무관 1만원)</option>
+              <option value="personal_near" ${ps._travelType==='personal_near'?'selected':''}>🚗 개인차량 · 40km 이내 (1만원/일)</option>
+              <option value="personal_far" ${ps._travelType==='personal_far'?'selected':''}>🚗 개인차량 · 40km 초과 (2만원/일)</option>
+              <option value="company_car" ${ps._travelType==='company_car'?'selected':''}>🚙 회사차량 (거리무관 1만원/일)</option>
               <option value="longtrip" ${ps._travelType==='longtrip'?'selected':''}>🚄 지방장기출장 · 왕복KTX 실비</option>
             </select>
+            ${(ps._travelType && ps._travelType!=='longtrip') ? `
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+              <span style="font-size:11px;color:#5C6F8A;white-space:nowrap;">적용 일수</span>
+              <input type="number" min="0" value="${ps.travelDays||1}" onchange="psTravelDaysChange(this.value)"
+                style="width:60px;padding:4px 6px;border:1px solid #DDE3EE;border-radius:6px;font-size:12px;text-align:center;box-sizing:border-box;">
+              <span style="font-size:10px;color:#9AAABF;">일 × ${won2(PS_TRAVEL_PER_DAY[ps._travelType]||0)}원 = 자동계산</span>
+            </div>` : ''}
             ${inp('ps-travelAllowance', ps.travelAllowance)}
           </div>
           <div style="display:flex;justify-content:space-between;padding:7px 0;border-top:2px solid #DDE3EE;margin-top:4px;">
@@ -2163,11 +2170,18 @@ function renderPayslipWriteForm(el, workers, months, calcPayDate) {
       ${field2('여비교통비', `
         <select onchange="psTravelTypeChange(this.value)" style="width:100%;padding:9px 10px;border:1px solid #DDE4EF;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;margin-bottom:6px;">
           <option value="">유형 선택 (직접입력하려면 비워두세요)</option>
-          <option value="personal_near" ${ps._travelType==='personal_near'?'selected':''}>🚗 개인차량 · 사무실 40km 이내 (1만원)</option>
-          <option value="personal_far" ${ps._travelType==='personal_far'?'selected':''}>🚗 개인차량 · 사무실 40km 초과 (2만원)</option>
-          <option value="company_car" ${ps._travelType==='company_car'?'selected':''}>🚙 회사차량 이동 (거리무관, 1만원 고정)</option>
+          <option value="personal_near" ${ps._travelType==='personal_near'?'selected':''}>🚗 개인차량 · 사무실 40km 이내 (1만원/일)</option>
+          <option value="personal_far" ${ps._travelType==='personal_far'?'selected':''}>🚗 개인차량 · 사무실 40km 초과 (2만원/일)</option>
+          <option value="company_car" ${ps._travelType==='company_car'?'selected':''}>🚙 회사차량 이동 (거리무관, 1만원/일)</option>
           <option value="longtrip" ${ps._travelType==='longtrip'?'selected':''}>🚄 지방 장기출장(숙박) · 왕복 KTX 교통비로 대체</option>
         </select>
+        ${(ps._travelType && ps._travelType!=='longtrip') ? `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style="font-size:12px;color:#5C6F8A;white-space:nowrap;">적용 일수</span>
+          <input type="number" min="0" value="${ps.travelDays||1}" onchange="psTravelDaysChange(this.value)"
+            style="width:70px;padding:6px 8px;border:1px solid #DDE4EF;border-radius:7px;font-size:13px;text-align:center;box-sizing:border-box;">
+          <span style="font-size:11px;color:#9AAABF;">일 × ${won2(PS_TRAVEL_PER_DAY[ps._travelType]||0)}원</span>
+        </div>` : ''}
         ${ps._travelType==='longtrip' ? `
         <div style="font-size:10px;color:#9AAABF;margin-bottom:4px;">숙소 지급 시 일비(1만원) 대신 왕복 KTX 교통비 실비로 지급합니다. 금액을 직접 입력하세요.</div>
         ` : ''}
@@ -2331,7 +2345,7 @@ window.psPreview = () => {
             ${payRow('특별성과급', c.specialBonus?psWonR(c.specialBonus):'—', '')}
             ${payRow('특근수당', c.extraPay?psWonR(c.extraPay):'—', '')}
             ${payRow('기술수당', c.techAllowance?psWonR(c.techAllowance):'—', c.techAllowance?'국가기술자격증 보유':'해당없음')}
-            ${payRow('여비교통비', c.travelAllowance?psWonR(c.travelAllowance):'—', c.travelAllowance?'비과세 · 지급계 미포함, 실지급액에 별도가산':'해당없음')}
+            ${payRow('여비교통비', c.travelAllowance?psWonR(c.travelAllowance):'—', c.travelAllowance?(ps._travelType&&ps._travelType!=='longtrip'?`${ps.travelDays||1}일 × ${psWonR(PS_TRAVEL_PER_DAY[ps._travelType]||0)} · 비과세, 지급계 미포함`:'비과세 · 지급계 미포함, 실지급액에 별도가산'):'해당없음')}
             <tr style="background:#E8F0FB;">
               <td style="padding:9px 10px;border:1px solid #DDE4EF;font-weight:800;color:#1D5BA6;white-space:nowrap;">지급계</td>
               <td style="padding:9px 10px;border:1px solid #DDE4EF;text-align:right;font-weight:800;color:#1D5BA6;white-space:nowrap;">${psWonR(c.totalPay)}</td>
@@ -2395,18 +2409,30 @@ window.psPreview = () => {
   win.document.close();
 };
 
-// 여비교통비 유형 선택 → 자동 금액 계산 (근로기준법상 실비변상적 금품 — 회사 내규 기준)
-// 개인차량 40km 이내=1만원 / 40km 초과=2만원 / 회사차량=거리무관 1만원 고정 / 지방장기출장(숙박)=왕복KTX 실비(직접입력)
-window.psTravelTypeChange = function(type) {
-  ps._travelType = type;
-  const AMOUNTS = { personal_near: 10000, personal_far: 20000, company_car: 10000 };
-  if (type === 'longtrip') {
-    ps.travelAllowance = 0; // 실비 직접 입력 필요
-  } else if (AMOUNTS[type] !== undefined) {
-    ps.travelAllowance = AMOUNTS[type];
-  }
+// 여비교통비 유형 선택 → 일수 × 일당단가로 자동 금액 계산 (근로기준법상 실비변상적 금품 — 회사 내규 기준)
+// 개인차량 40km 이내=1만원/일 · 40km 초과=2만원/일 · 회사차량=거리무관 1만원/일 고정 · 지방장기출장(숙박)=왕복KTX 실비(직접입력, 일수 무관)
+const PS_TRAVEL_PER_DAY = { personal_near: 10000, personal_far: 20000, company_car: 10000 };
+function psTravelRefreshPanel(){
   if (document.getElementById('ps-pc-right')) renderPayslipPCRight();
   else if (window.psRefresh) window.psRefresh();
+}
+window.psTravelTypeChange = function(type) {
+  ps._travelType = type;
+  if (type === 'longtrip') {
+    ps.travelAllowance = ps.travelAllowance || 0; // 실비 직접 입력(일수와 무관, 기존 값 유지)
+  } else if (PS_TRAVEL_PER_DAY[type] !== undefined) {
+    const days = Number(ps.travelDays) || 1;
+    ps.travelDays = days;
+    ps.travelAllowance = PS_TRAVEL_PER_DAY[type] * days;
+  }
+  psTravelRefreshPanel();
+};
+window.psTravelDaysChange = function(value) {
+  const days = Math.max(0, Number(value) || 0);
+  ps.travelDays = days;
+  const perDay = PS_TRAVEL_PER_DAY[ps._travelType];
+  if (perDay !== undefined) ps.travelAllowance = perDay * days; // longtrip(실비)은 일수와 무관하므로 재계산 안 함
+  psTravelRefreshPanel();
 };
 
 // 급여명세서 저장
@@ -2423,7 +2449,7 @@ window.psSave = async () => {
       rank: ps.workerData?.rank||'', empNo: ps.workerData?.empNo||'',
       hourly: ps.annualData?.hourly||0, empType: ps.workerData?.empType||'field',
       ...c.sal,
-      bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay, techAllowance: c.techAllowance, travelAllowance: c.travelAllowance, travelType: ps._travelType||``,
+      bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay, techAllowance: c.techAllowance, travelAllowance: c.travelAllowance, travelType: ps._travelType||``, travelDays: ps.travelDays||1,
       grossPay: c.totalPay,
       pension: c.pension, health: c.health, ltcare: c.ltcare, employ: c.employ,
       dormitory: c.dormitory, incomeTax: c.incomeTax, localTax: c.localTax,
@@ -2517,7 +2543,7 @@ window.psViewDetail = (d, wid) => {
   // 저장된 데이터로 미리보기
   const savedC = {
     sal: { basic:d.basic||0, fixedOt:d.fixedOt||0, fixedNight:d.fixedNight||0, weekly:d.weekly||0, holidayPay:d.holidayPay||0 },
-    bonus:d.bonus||0, specialBonus:d.specialBonus||0, extraPay:d.extraPay||0, techAllowance:d.techAllowance||0, travelAllowance:d.travelAllowance||0, _travelType:d.travelType||``,
+    bonus:d.bonus||0, specialBonus:d.specialBonus||0, extraPay:d.extraPay||0, techAllowance:d.techAllowance||0, travelAllowance:d.travelAllowance||0, _travelType:d.travelType||``, travelDays:d.travelDays||1,
     totalPay:d.grossPay||0, pension:d.pension||0, health:d.health||0,
     ltcare:d.ltcare||0, employ:d.employ||0, dormitory:d.dormitory||0,
     incomeTax:d.incomeTax||0, localTax:d.localTax||0,
@@ -2559,7 +2585,7 @@ window.psSave = async () => {
       rank: ps.workerData?.rank||'', empNo: ps.workerData?.empNo||'',
       hourly: ps.annualData?.hourly||0, empType: ps.workerData?.empType||'field',
       ...c.sal,
-      bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay, techAllowance: c.techAllowance, travelAllowance: c.travelAllowance, travelType: ps._travelType||``,
+      bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay, techAllowance: c.techAllowance, travelAllowance: c.travelAllowance, travelType: ps._travelType||``, travelDays: ps.travelDays||1,
       grossPay: c.totalPay,
       pension: c.pension, health: c.health, ltcare: c.ltcare, employ: c.employ,
       dormitory: c.dormitory, incomeTax: c.incomeTax, localTax: c.localTax,
@@ -2616,7 +2642,7 @@ window.psViewDetail = (d, wid) => {
   // 저장된 데이터로 미리보기
   const savedC = {
     sal: { basic:d.basic||0, fixedOt:d.fixedOt||0, fixedNight:d.fixedNight||0, weekly:d.weekly||0, holidayPay:d.holidayPay||0 },
-    bonus:d.bonus||0, specialBonus:d.specialBonus||0, extraPay:d.extraPay||0, techAllowance:d.techAllowance||0, travelAllowance:d.travelAllowance||0, _travelType:d.travelType||``,
+    bonus:d.bonus||0, specialBonus:d.specialBonus||0, extraPay:d.extraPay||0, techAllowance:d.techAllowance||0, travelAllowance:d.travelAllowance||0, _travelType:d.travelType||``, travelDays:d.travelDays||1,
     totalPay:d.grossPay||0, pension:d.pension||0, health:d.health||0,
     ltcare:d.ltcare||0, employ:d.employ||0, dormitory:d.dormitory||0,
     incomeTax:d.incomeTax||0, localTax:d.localTax||0,
