@@ -201,8 +201,16 @@ const compById=id=>companies.find(c=>c.id===id)||null;
 
 const isActive=e=> e.status!=='void' && e.status!=='closed';
 const pjtEstSum=pid=>estimates.filter(e=>e.pjtId===pid && isActive(e)).reduce((s,e)=>s+estSupply(e),0);
-const pjtBilled=pid=>settlements.filter(s=>s.pjtId===pid&&s.docType==='invoice'&&s.status!=='void').reduce((a,s)=>a+(s.amount||0),0);
-const pjtPaid =pid=>settlements.filter(s=>s.pjtId===pid&&s.docType==='payment'&&s.status!=='void').reduce((a,s)=>a+(s.amount||0),0);
+// 정산서 금액을 특정 프로젝트(pid) 몫으로 산정: perPjtAmount에 그 프로젝트분이 저장돼 있으면 그 값을,
+// 없으면(과거 데이터·단일 프로젝트) pjtIds가 여러개인 경우만 균등분배 폴백, 그 외엔 전체 금액 그대로.
+function settleAmountForPjt(s, pid){
+  if (s.perPjtAmount && s.perPjtAmount[pid]!=null) return s.perPjtAmount[pid];
+  if (s.pjtIds && s.pjtIds.length>1) return (s.amount||0)/s.pjtIds.length;
+  return s.amount||0;
+}
+const settleBelongsToPjt=(s,pid)=> s.pjtId===pid || (s.pjtIds&&s.pjtIds.includes(pid));
+const pjtBilled=pid=>settlements.filter(s=>settleBelongsToPjt(s,pid)&&s.docType==='invoice'&&s.status!=='void').reduce((a,s)=>a+settleAmountForPjt(s,pid),0);
+const pjtPaid =pid=>settlements.filter(s=>settleBelongsToPjt(s,pid)&&s.docType==='payment'&&s.status!=='void').reduce((a,s)=>a+settleAmountForPjt(s,pid),0);
 // 완결된 청구 합계 (status==='done')
 const pjtDone =pid=>settlements.filter(s=>s.pjtId===pid&&s.docType==='invoice'&&s.status==='done').reduce((a,s)=>a+(s.amount||0),0);
 // 미수금 = 청구액 - 수금액 (완결된 청구서 = 수금으로 간주)
@@ -444,7 +452,7 @@ function pdRenderEstList(id){
 }
 function pdRenderSetList(id){
   const wrap = document.getElementById('pd-set-list'); if(!wrap) return;
-  const setts = [...settlements].filter(s=>s.pjtId===id).sort((a,b)=>(b.issueDate||'').localeCompare(a.issueDate||'')||(b.no||'').localeCompare(a.no||''));
+  const setts = [...settlements].filter(s=>settleBelongsToPjt(s,id)).sort((a,b)=>(b.issueDate||'').localeCompare(a.issueDate||'')||(b.no||'').localeCompare(a.no||''));
   const cnt = document.getElementById('pd-set-count'); if(cnt) cnt.textContent = `정산 내역 (${setts.length})`;
   const totalPages = Math.max(1, Math.ceil(setts.length/PD_PAGE_SIZE));
   if (pdSetPage > totalPages) pdSetPage = totalPages;
@@ -453,7 +461,9 @@ function pdRenderSetList(id){
   const listHtml = pageItems.length ? pageItems.map(s=>{ const v=!setActive(s); const done=s.status==='done'; const isInv=s.docType==='invoice';
     const stLbl=v?'폐기':(done?'완결':'유효'); const stCol=v?'#9AAABF':(done?'#16A34A':'#1D5BA6');
     const typeLbl=isInv?'대금청구서':'지급예정서';
-    return `<div class="litem ${v?'void':''}" onclick="openSettle('${s.id}', '${id}')"><div class="d"><div class="ti">${typeLbl} <span style="font-size:11px;color:#5BA4CF">${s.no||''}</span> <span style="font-size:11px;font-weight:700;color:${stCol}">${stLbl}</span></div><div class="sub">기준월 ${s.baseMonth||'-'} · 발행 ${s.issueDate||'-'}${isInv?'':' · 지급'}</div></div><div class="amt">${won(s.amount||0)}</div></div>`;
+    const isMulti=s.pjtIds&&s.pjtIds.length>1;
+    const myAmt=settleAmountForPjt(s,id);
+    return `<div class="litem ${v?'void':''}" onclick="openSettle('${s.id}', '${id}')"><div class="d"><div class="ti">${typeLbl} <span style="font-size:11px;color:#5BA4CF">${s.no||''}</span> <span style="font-size:11px;font-weight:700;color:${stCol}">${stLbl}</span>${isMulti?'<span style="font-size:10px;color:#9AAABF;margin-left:4px;">(공동 발행분)</span>':''}</div><div class="sub">기준월 ${s.baseMonth||'-'} · 발행 ${s.issueDate||'-'}${isInv?'':' · 지급'}</div></div><div class="amt">${won(myAmt)}${isMulti?`<div style="font-size:10px;color:#9AAABF;font-weight:400;">전체 ${won(s.amount||0)} 중 이 PJT 몫</div>`:''}</div></div>`;
   }).join('') : '<div class="empty">아직 정산 내역이 없습니다.</div>';
   wrap.innerHTML = listHtml + pdPagerHtml(totalPages, pdSetPage, setts.length, `pdSetGoPage('${id}',`);
 }
@@ -1460,15 +1470,23 @@ window.publishSettle=async function(){ const d=settleDraft; const sup=effSupply(
   const perEst={}; const perItem={}; let mandayUsed=0;
   if(d.method==='progress') d.estIds.forEach(eid=>perEst[eid]=calcSetRow(eid).thisBill);
   if(d.method==='qty') d.estIds.forEach(eid=>{ const e=estimates.find(x=>x.id===eid); if(!e) return; perItem[eid]={}; let es=0; (e.items||[]).forEach((it,idx)=>{ const q=qVal(eid,idx); const amt=qAmt(eid,idx,it); if(q>0||amt>0){ perItem[eid][idx]={qty:q,amount:amt}; es+=amt; } }); perEst[eid]=es; });
-  if(d.method==='manday'){ const pjtIds=(d.pjtIds&&d.pjtIds.length)?d.pjtIds:[d.pjtId];
-    mandayUsed=pjtIds.length>1 ? pjtIds.reduce((s,pid)=>s+mdForPjt(pid),0) : (d.mandayInput!=null?d.mandayInput:(d.mandayAuto||0)); }
+  const pjtIdsFinal=(d.pjtIds&&d.pjtIds.length)?d.pjtIds:[d.pjtId];
+  if(d.method==='manday'){
+    mandayUsed=pjtIdsFinal.length>1 ? pjtIdsFinal.reduce((s,pid)=>s+mdForPjt(pid),0) : (d.mandayInput!=null?d.mandayInput:(d.mandayAuto||0)); }
+  // 여러 프로젝트를 묶어 발행하는 정산서: 프로젝트별 금액 분배를 저장해서, 각 프로젝트 상세 화면의 청구/지급 누계에 각자의 몫만 정확히 반영되도록 함.
+  const perPjtAmount={};
+  if(d.method==='manday' && pjtIdsFinal.length>1){
+    pjtIdsFinal.forEach(pid=>{ perPjtAmount[pid]=Math.round(mdForPjt(pid)*rateForPjt(pid)); });
+  } else {
+    perPjtAmount[d.pjtId]=sup; // 단일 프로젝트는 전체 공급가가 그대로 그 프로젝트 몫
+  }
   const vat=effVat();
   // 급여와 동일 규칙: 지급예정서(payment)이고 지급예정일이 비어 있으면 기준월의 익월 말일(주말→금요일)로 자동
   let effPayDate=d.payDate||'';
   if(d.docType==='payment' && !effPayDate && d.baseMonth) effPayDate=defaultPayDate(d.baseMonth);
   const effAcctMonth=(effPayDate||d.issueDate||d.baseMonth||'').slice(0,7);
   $('set-save').disabled=true;
-  try{ await setDoc(doc(db,'gihoek_settlements',id),{ pjtId:d.pjtId, pjtIds:(d.pjtIds&&d.pjtIds.length)?d.pjtIds:[d.pjtId], no, docType:d.docType, method:d.method,
+  try{ await setDoc(doc(db,'gihoek_settlements',id),{ pjtId:d.pjtId, pjtIds:pjtIdsFinal, perPjtAmount, no, docType:d.docType, method:d.method,
       baseMonth:d.baseMonth, issueDate:d.issueDate, payDate:effPayDate,
       acctMonth:effAcctMonth,
       senderId:d.senderId||'', sender:{...snap(compById(d.senderId)), ...ctSnap(d.senderId,d.senderContact)}, recipientId:d.recipientId||'', recipient:{...snap(compById(d.recipientId)), ...ctSnap(d.recipientId,d.recipientContact)},
