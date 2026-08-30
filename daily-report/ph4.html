@@ -121,7 +121,7 @@ textarea { resize:vertical; min-height:90px; line-height:1.6; }
       <p>P4 Ph4 (SUP) · 귀뚜라미범양냉방</p>
     </div>
   </div>
-  <a class="back-btn" href="ph4.html">← Workspace</a>
+  <a class="back-btn" id="dr-back-btn" href="ph4.html">← Workspace</a>
 </div>
 
 <div class="container">
@@ -240,6 +240,19 @@ import { getFirestore, collection, getDocs, doc, getDoc, setDoc, serverTimestamp
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { ALL_SCHEDULE, FIREBASE_CONFIG } from './data.js';
 let WORKERS=[]; // PH4: 근태 로드 시 pjt_workers_ph4 기준으로 갱신
+
+// PJT 페이지 안 iframe으로 열린 경우(embed=1) — 뒤로가기를 부모 모달 닫기로 연결
+const _isEmbed = new URLSearchParams(location.search).get('embed') === '1';
+if (_isEmbed) {
+  document.addEventListener('DOMContentLoaded', () => {
+    const backBtn = document.getElementById('dr-back-btn');
+    if (backBtn) {
+      backBtn.textContent = '✕ 닫기';
+      backBtn.href = 'javascript:void(0)';
+      backBtn.onclick = () => { try { window.parent.closeDRWrite(); } catch(e) {} };
+    }
+  });
+}
 
 // default 앱으로 초기화 — workspace와 동일한 인스턴스 사용
 let app;
@@ -499,6 +512,7 @@ window.saveReport = async ()=>{
     });
     btn.innerHTML='✓ 저장 완료!'; btn.style.background='#2e7d32';
     setTimeout(()=>{btn.innerHTML=orig;btn.style.background='';btn.disabled=false;},2200);
+    if (_isEmbed) { try { if (window.parent.renderHome) window.parent.renderHome(); } catch(e) {} }
   }catch(e){
     alert('저장 실패: '+e.message);
     btn.innerHTML=orig; btn.disabled=false;
