@@ -1693,7 +1693,7 @@ let accPnlMode='month'; // 'month' | 'cumulative'
 
 function renderAcct(){
   $('v-acct').innerHTML=`<button onclick="tab('home')" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#5C6F8A;font-size:12px;cursor:pointer;font-weight:600;">🏠 기획 홈</button>
-  <div class="sec-h"><h2>회계</h2></div>
+  <div class="sec-h"><h2>회계</h2><button class="btn line sm" onclick="migratePerPjtAmount()" style="font-size:11px;">🔧 기존 다중PJT 정산서 분배 재계산</button></div>
     <div class="monthbar"><button onclick="accShiftMonth(-1)">‹</button><span class="m">${curAccMonth.replace('-','년 ')}월</span><button onclick="accShiftMonth(1)">›</button></div>
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <button class="seg-btn ${accSub==='pnl'?'on':''}" onclick="accTab('pnl')">영업이익 현황</button>
@@ -1705,6 +1705,39 @@ function renderAcct(){
 window.renderAcct=renderAcct;
 window.accTab=function(t){ accSub=t; accPnlMode='month'; renderAcct(); };
 window.accShiftMonth=function(d){ const [y,m]=curAccMonth.split('-').map(Number); const nm=new Date(y,m-1+d,1); curAccMonth=nm.getFullYear()+'-'+String(nm.getMonth()+1).padStart(2,'0'); renderAcct(); };
+
+// ── 일회성 마이그레이션: perPjtAmount 없이 저장된 기존 다중PJT 정산서를 lines[].name의 "(프로젝트코드)" 텍스트로 역파싱해 분배금액을 채운다.
+window.migratePerPjtAmount=async function(){
+  const targets = settlements.filter(s => s.pjtIds && s.pjtIds.length>1 && (!s.perPjtAmount || Object.keys(s.perPjtAmount).length===0));
+  if(!targets.length){ alert('보정이 필요한 정산서가 없습니다. 모두 정상입니다.'); return; }
+  if(!confirm(`프로젝트별 분배금액이 없는 다중PJT 정산서 ${targets.length}건을 발견했습니다.\n각 정산서의 라인 항목명에서 프로젝트 코드를 읽어 분배금액을 채워 넣습니다.\n계속할까요?`)) return;
+
+  let fixed=0, skipped=[];
+  for(const s of targets){
+    const perPjtAmount={};
+    let allMatched=true;
+    (s.lines||[]).forEach(line=>{
+      const m=(line.name||'').match(/\((.+)\)\s*$/); // 첫 여는괄호~마지막 닫는괄호까지(프로젝트 코드 자체에 괄호가 포함될 수 있어 [^()] 제한 없이 greedy 매칭)
+      if(!m){ allMatched=false; return; }
+      const code=m[1].trim();
+      const p=projects.find(x=>x.code===code || x.code.replace(/\s/g,'')===code.replace(/\s/g,''));
+      if(!p){ allMatched=false; return; }
+      perPjtAmount[p.id]=(perPjtAmount[p.id]||0)+(line.amount||0);
+    });
+    // pjtIds에 있는 모든 프로젝트가 매칭됐고, 합계가 원래 금액과 (반올림 오차 이내로) 같아야 신뢰
+    const sumMatched = Object.values(perPjtAmount).reduce((a,b)=>a+b,0);
+    const withinTolerance = Math.abs(sumMatched - (s.amount||0)) <= s.pjtIds.length; // 반올림 오차 허용
+    if(!allMatched || !withinTolerance || Object.keys(perPjtAmount).length < s.pjtIds.length){
+      skipped.push(s.no||s.id); continue;
+    }
+    try{
+      await setDoc(doc(db,'gihoek_settlements',s.id), { perPjtAmount }, { merge:true });
+      fixed++;
+    }catch(e){ skipped.push(s.no||s.id); }
+  }
+  alert(`✅ ${fixed}건 보정 완료${skipped.length?`\n⚠️ 자동 보정 실패(수동 확인 필요): ${skipped.join(', ')}`:''}`);
+  renderAcct();
+};
 
 function renderAccPnl(){
   const isCum = accPnlMode==='cumulative';
