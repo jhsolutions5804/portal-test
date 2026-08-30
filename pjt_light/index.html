@@ -1652,9 +1652,13 @@ window.openReportDetail=async function(dateKey){
     renderDRView(drCurrentDoc);
   }catch(e){ body.innerHTML='<div class="empty">불러오기 실패</div>'; }
 };
-window.closeReportDetail=function(){
+window.closeReportDetail=function(backToList){
   document.getElementById('dr-detail-modal').classList.remove('on');
   document.getElementById('dr-print-area').innerHTML='';
+  if (backToList !== false) {
+    document.getElementById('dr-list-modal').classList.add('on');
+    loadReportListModal();
+  }
 };
 window.editReportDetail=function(){
   if(!drCurrentDoc){ toast('불러온 데이터가 없습니다'); return; }
