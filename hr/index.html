@@ -1659,7 +1659,7 @@ const psWonR = v => '₩'+Math.round(v||0).toLocaleString();
 const PS_PC_BP = 900;
 
 // 기술수당 정책(단가·자격증개수 상한) — 급여테이블 화면의 "기준 설정"에서 관리, 여기서는 캐시해서 동기적으로 사용
-let _techAllowanceConfig = { perCert: 50000, maxCount: 2 }; // 로드 전 기본값(회사 기본 정책)
+let _techAllowanceConfig = { perCert: 50000 }; // 로드 전 기본값(회사 기본 정책) — 상한 없이 자격증 개수만큼 지급
 let _techAllowanceConfigLoaded = false;
 async function loadTechAllowanceConfig(){
   if (_techAllowanceConfigLoaded || !window._db) return;
@@ -1670,18 +1670,17 @@ async function loadTechAllowanceConfig(){
     if (snap.exists()) {
       const data = snap.data();
       if (data.techAllowancePerCert != null) _techAllowanceConfig.perCert = Number(data.techAllowancePerCert)||50000;
-      if (data.techAllowanceMaxCount != null) _techAllowanceConfig.maxCount = Number(data.techAllowanceMaxCount)||2;
     }
   } catch(e) { /* 로드 실패해도 기본값으로 계속 동작 */ }
 }
-// 근로자의 보유 자격증 개수(상한 적용) × 단가로 기술수당 계산. 자격증 목록이 없으면 구버전 hasCertification(boolean)으로 폴백(1개 취급).
+// 근로자의 보유 자격증 개수 × 단가로 기술수당 계산(상한 없음). 자격증 목록이 없으면 구버전 hasCertification(boolean)으로 폴백(1개 취급).
+// 최종 지급액은 급여명세서 작성 시 직접 수정(삭감 등)도 가능.
 function calcTechAllowance(workerData){
   if (!workerData) return 0;
   const certs = (workerData.certifications && workerData.certifications.length)
     ? workerData.certifications.filter(c=>c && String(c).trim())
     : (workerData.hasCertification ? ['(구버전 등록분)'] : []);
-  const count = Math.min(certs.length, _techAllowanceConfig.maxCount);
-  return count * _techAllowanceConfig.perCert;
+  return certs.length * _techAllowanceConfig.perCert;
 }
 
 window.renderPayslipMain2 = () => {
@@ -1876,7 +1875,7 @@ window.renderPayslipPCRight = () => {
             ${inp('ps-extraPay', ps.extraPay)}
           </div>
           <div>
-            <div style="color:#5C6F8A;margin-bottom:3px;">기술수당 <span style="font-size:9px;color:#9AAABF;">(자격증${(ps.workerData?.certifications||[]).filter(c=>c&&c.trim()).length}개×${won2(_techAllowanceConfig.perCert)}원, 최대${_techAllowanceConfig.maxCount}개)</span></div>
+            <div style="color:#5C6F8A;margin-bottom:3px;">기술수당 <span style="font-size:9px;color:#9AAABF;">(자격증${(ps.workerData?.certifications||[]).filter(c=>c&&c.trim()).length}개×${won2(_techAllowanceConfig.perCert)}원)</span></div>
             ${inp('ps-techAllowance', ps.techAllowance)}
           </div>
           <div>
@@ -2192,7 +2191,7 @@ function renderPayslipWriteForm(el, workers, months, calcPayDate) {
       ${field2('기술수당', `
         <input type="text" inputmode="numeric" value="${ps.techAllowance?Number(ps.techAllowance).toLocaleString('ko-KR'):''}" placeholder="0"
           oninput="fmtMoney(this)" onchange="ps.techAllowance=numClean(this.value);window.psRefresh();" ${inp2Style}>
-        <div style="font-size:10px;color:#9AAABF;margin-top:4px;">🎓 보유 자격증 ${(ps.workerData?.certifications||[]).filter(c=>c&&c.trim()).length}개 × ${won2(_techAllowanceConfig.perCert)}원 (최대 ${_techAllowanceConfig.maxCount}개까지 인정) — 명부에서 자격증 목록 관리</div>
+        <div style="font-size:10px;color:#9AAABF;margin-top:4px;">🎓 보유 자격증 ${(ps.workerData?.certifications||[]).filter(c=>c&&c.trim()).length}개 × ${won2(_techAllowanceConfig.perCert)}원 (상한 없음) — 명부에서 자격증 목록 관리</div>
       `)}
       ${field2('여비교통비', `
         <select onchange="psTravelTypeChange(this.value)" style="width:100%;padding:9px 10px;border:1px solid #DDE4EF;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;margin-bottom:6px;">
@@ -3574,7 +3573,7 @@ window.rosterDetail = (id) => {
         </div>
         <div style="padding:8px 0 0;border-top:1px solid #DDE4EF;margin-top:8px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-            <span style="color:#5C6F8A;font-weight:600;font-size:12px;">보유 자격증 <span style="font-weight:400;color:#9AAABF;">(1개당 기술수당, 개수만큼 누적·상한 있음)</span></span>
+            <span style="color:#5C6F8A;font-weight:600;font-size:12px;">보유 자격증 <span style="font-weight:400;color:#9AAABF;">(1개당 기술수당, 개수만큼 상한없이 누적)</span></span>
             <button onclick="rosterAddCert()" style="background:#EAF2FC;border:none;border-radius:6px;color:#1D5BA6;padding:3px 9px;font-size:11px;font-weight:700;cursor:pointer;">+ 추가</button>
           </div>
           <div id="roster-cert-list">${(d.certifications&&d.certifications.length ? d.certifications : (d.hasCertification?['(마이그레이션 필요) 기존 자격증']:[])).map((c,i)=>`
@@ -3582,14 +3581,6 @@ window.rosterDetail = (id) => {
               <input value="${(c||'').replace(/"/g,'&quot;')}" onchange="rosterEditCert(${i},this.value)" placeholder="예: 에너지관리기사" style="flex:1;padding:6px 9px;border:1px solid #E4EAF2;border-radius:7px;font-size:12px;">
               <button onclick="rosterDelCert(${i})" style="background:#FEE2E2;border:none;border-radius:6px;color:#DC2626;padding:0 10px;font-size:11px;cursor:pointer;">삭제</button>
             </div>`).join('') || '<div style="font-size:11px;color:#9AAABF;padding:4px 0;">등록된 자격증이 없습니다.</div>'}</div>
-        </div>
-        <div style="display:flex;align-items:center;padding:8px 0 0;gap:8px;border-top:1px solid #DDE4EF;margin-top:8px;">
-          <span style="color:#5C6F8A;font-weight:600;min-width:68px;font-size:12px;flex-shrink:0;">기술수당</span>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#1A2540;cursor:pointer;">
-            <input type="checkbox" ${d.hasCertification?'checked':''} onchange="window._editRosterTarget.hasCertification=this.checked;"
-              style="width:16px;height:16px;cursor:pointer;">
-            (구버전 필드, 위 자격증 목록으로 대체됨 — 목록에 하나라도 있으면 자동 적용)
-          </label>
         </div>
       </div>
 
@@ -6437,10 +6428,8 @@ function renderSalaryTableBody() {
           <input type="number" step="0.1" value="${d.perfRateMax}" onchange="salTableSetField('perfRateMax',this.value)" style="width:100%;padding:6px 8px;border:1px solid #DDE4EF;border-radius:7px;font-size:12.5px;box-sizing:border-box;"></div>
         <div><label style="font-size:11px;color:${C2.mute};display:block;margin-bottom:3px;">기술수당(자격증 1개당, 원)</label>
           <input type="number" value="${d.techAllowancePerCert??50000}" onchange="salTableSetField('techAllowancePerCert',this.value)" style="width:100%;padding:6px 8px;border:1px solid #DDE4EF;border-radius:7px;font-size:12.5px;font-weight:700;box-sizing:border-box;"></div>
-        <div><label style="font-size:11px;color:${C2.mute};display:block;margin-bottom:3px;">기술수당 인정 자격증 상한(개)</label>
-          <input type="number" value="${d.techAllowanceMaxCount??2}" onchange="salTableSetField('techAllowanceMaxCount',this.value)" style="width:100%;padding:6px 8px;border:1px solid #DDE4EF;border-radius:7px;font-size:12.5px;font-weight:700;box-sizing:border-box;"></div>
       </div>
-      <div style="font-size:11px;color:${C2.mute};margin-top:8px;">기술수당은 근로자 명부에 등록된 자격증 <b>1개당 ${won2(d.techAllowancePerCert??50000)}원</b>씩 지급되며, 최대 <b>${d.techAllowanceMaxCount??2}개</b>까지만 인정됩니다(예: 3개 보유해도 ${d.techAllowanceMaxCount??2}개분만 지급).</div>
+      <div style="font-size:11px;color:${C2.mute};margin-top:8px;">기술수당은 근로자 명부에 등록된 자격증 <b>1개당 ${won2(d.techAllowancePerCert??50000)}원</b>씩 상한 없이 누적 지급됩니다(예: 3개 보유 시 ${won2((d.techAllowancePerCert??50000)*3)}원). 급여명세서 작성 시 필요하면 직접 수정(삭감 등)할 수 있습니다.</div>
       <div style="font-size:11px;color:${C2.mute};margin-top:8px;">학력 트랙은 고졸 기준 시급 <b>${d.eduGapRate}%씩 단계적</b>으로 높아집니다(고졸→비전공대졸→전공대졸). 실제 개인별 인상률은 고과에 따라 <b>${d.perfRateMin}%~${d.perfRateMax}%</b> 사이에서 적용될 수 있으며, 표준(${d.standardRate}%)은 이 표의 기준값입니다.</div>
       <div style="font-size:12.5px;font-weight:700;color:${C2.text};margin:14px 0 8px;">직급 체류연한(년)</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:10px;">
