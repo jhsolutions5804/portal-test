@@ -465,7 +465,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
         <div class="logo-sub" id="hdr-sub-mo">귀뚜라미범양냉방 · EHU 설치</div>
       </div>
       <span class="date-badge" id="today-badge"></span>
-      <a href="#" onclick="window.open('../daily-report/ph4.html','_blank');return false;" style="font-size:12px;color:#1D5BA6;background:#e8f0fb;padding:5px 11px;border-radius:8px;text-decoration:none;font-weight:600;white-space:nowrap;">📋 공사일보</a>
+      <a href="javascript:void(0)" onclick="openDRWrite()" style="font-size:12px;color:#1D5BA6;background:#e8f0fb;padding:5px 11px;border-radius:8px;text-decoration:none;font-weight:600;white-space:nowrap;">📋 공사일보</a>
     </div>
     <div class="tab-bar">
       <button class="tab active" onclick="switchTab('today',this)">오늘</button>
@@ -523,7 +523,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
               <div class="sci">📅</div>
               <div><div class="sct">오늘 일정</div><div class="scd">일정 확인 및 보고</div></div>
             </div>
-            <div class="home-sc" onclick="window.open('../daily-report/ph4.html','_blank')">
+            <div class="home-sc" onclick="openDRWrite()">
               <div class="sci">📋</div>
               <div><div class="sct">공사일보 작성</div><div class="scd">오늘 공사일보 작성</div></div>
             </div>
@@ -776,6 +776,17 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
   </div>
 </div><!-- /.app -->
 </div><!-- /.ws-wrapper -->
+
+<!-- 공사일보 작성 모달(페이지 내 iframe) -->
+<div class="us-modal" id="dr-write-modal">
+  <div class="us-sheet" style="max-width:520px;max-height:94vh;display:flex;flex-direction:column;padding:0;overflow:hidden;">
+    <div class="us-head" style="flex-shrink:0;">
+      <span class="us-head-title">📋 공사일보 작성</span>
+      <button class="us-close" onclick="closeDRWrite()">✕</button>
+    </div>
+    <iframe id="dr-write-iframe" src="about:blank" style="flex:1;width:100%;border:none;min-height:70vh;"></iframe>
+  </div>
+</div>
 
 <!-- 공사일보 조회 모달 -->
 <div class="us-modal" id="dr-list-modal">
@@ -3101,12 +3112,29 @@ function openDailyReportList(){
   document.getElementById('dr-list-modal').classList.add('on');
   loadDRList();
 }
+// 공사일보 작성(daily-report/ph4.html)을 새 탭이 아니라 페이지 내 iframe으로 연다.
+window.openDRWrite=function(){
+  const modal=document.getElementById('dr-write-modal');
+  const frame=document.getElementById('dr-write-iframe');
+  frame.src='../daily-report/ph4.html?embed=1&t='+Date.now();
+  modal.classList.add('on');
+};
+window.closeDRWrite=function(){
+  document.getElementById('dr-write-modal').classList.remove('on');
+  document.getElementById('dr-write-iframe').src='about:blank';
+  if (typeof renderHome==='function') renderHome();
+};
 function closeDRList(){
   document.getElementById('dr-list-modal').classList.remove('on');
 }
-function closeDRDetail(){
+// 상세보기를 닫으면 목록으로 복귀. backToList=false면(예: 저장 후) 그냥 완전히 닫는다.
+function closeDRDetail(backToList){
   document.getElementById('dr-detail-modal').classList.remove('on');
   document.getElementById('dr-print-area').innerHTML='';
+  if (backToList !== false) {
+    document.getElementById('dr-list-modal').classList.add('on');
+    loadDRList();
+  }
 }
 
 async function loadDRList(){
@@ -3235,8 +3263,7 @@ async function deleteDRDetail(){
   var ok=window._fbDeleteReportDoc?await window._fbDeleteReportDoc(dateKey):false;
   if(!ok){ alert('삭제에 실패했습니다. 다시 시도해 주세요.'); return; }
   _drCurrentDoc=null;
-  closeDRDetail();
-  openDailyReportList();
+  closeDRDetail(); // 기본값(true)이라 목록으로 자동 복귀됨
 }
 
 function printDRDetail(){
