@@ -128,6 +128,8 @@
   @media (min-width:900px){ html.portal-embed .head{display:none} }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 </head>
 <body>
 <div class="splash" id="splash"><div class="spin"></div><div class="small muted">불러오는 중...</div></div>
@@ -1866,9 +1868,9 @@ window.accXlsxOpen=function(){
   _xlsxRows=null; _xlsxHeaders=null; _xlsxDraft=null; _xlsxCardName='';
   document.getElementById('xlsx-body').innerHTML=`
     <div class="sec-h"><h2>📊 카드 이용내역 엑셀 업로드</h2><button class="btn gray sm" onclick="accXlsxClose()">닫기</button></div>
-    <div class="small muted" style="margin-bottom:12px">카드사 홈페이지/앱에서 내려받은 이용내역 엑셀(.xlsx, .csv) 파일을 그대로 올려주세요. 첫 번째 시트를 읽습니다.</div>
+    <div class="small muted" style="margin-bottom:12px">카드사 홈페이지/앱에서 내려받은 이용내역 엑셀(.xlsx, .csv) 또는 PDF 명세서를 그대로 올려주세요. 엑셀은 첫 번째 시트를 읽고, PDF는 텍스트에서 날짜·가맹점·금액 패턴을 찾아 인식합니다(레이아웃에 따라 정확도가 다를 수 있어 결과를 꼭 검토해 주세요).</div>
     <div class="field"><label>카드명 (이 파일 전체에 적용)</label><input class="inp" id="xlsx-card" list="acc-card-list" placeholder="예: 삼성카드"></div>
-    <div class="field"><label>파일 선택</label><input type="file" id="xlsx-file" accept=".xlsx,.xls,.csv" class="inp" onchange="accXlsxFileChange(this)"></div>
+    <div class="field"><label>파일 선택</label><input type="file" id="xlsx-file" accept=".xlsx,.xls,.csv,.pdf" class="inp" onchange="accXlsxFileChange(this)"></div>
     <div id="xlsx-preview"></div>`;
   document.getElementById('xlsx-modal').classList.add('on');
 };
@@ -1876,6 +1878,8 @@ window.accXlsxClose=function(){ document.getElementById('xlsx-modal').classList.
 
 window.accXlsxFileChange=function(input){
   const file=input.files[0]; if(!file) return;
+  const isPdf=/\.pdf$/i.test(file.name);
+  if(isPdf) return accPdfFileChange(file);
   const reader=new FileReader();
   reader.onload=function(ev){
     try{
@@ -1890,6 +1894,74 @@ window.accXlsxFileChange=function(input){
   };
   reader.readAsArrayBuffer(file);
 };
+
+// PDF 명세서: 페이지별 텍스트를 추출한 뒤, 줄 단위로 "날짜 ... 금액" 패턴을 찾아 표로 재구성한다.
+// 표 구조(칸 구분)가 없는 순수 텍스트라 정확도가 엑셀보다 낮을 수 있어, 추출 직후 사용자가 검토·수정하도록 안내한다.
+async function accPdfFileChange(file){
+  const prev=document.getElementById('xlsx-preview');
+  prev.innerHTML='<div class="small muted" style="margin-top:10px">PDF를 읽는 중...</div>';
+  if(!window.pdfjsLib){ toast('PDF 라이브러리를 불러오지 못했습니다.'); return; }
+  try{
+    const buf=await file.arrayBuffer();
+    const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+    const lines=[];
+    for(let p=1;p<=pdf.numPages;p++){
+      const page=await pdf.getPage(p);
+      const content=await page.getTextContent();
+      // 같은 y좌표(줄)끼리 묶어서 한 줄의 텍스트로 재구성
+      const byLine={};
+      content.items.forEach(it=>{
+        const y=Math.round(it.transform[5]);
+        (byLine[y]=byLine[y]||[]).push(it);
+      });
+      Object.keys(byLine).map(Number).sort((a,b)=>b-a).forEach(y=>{
+        const lineText=byLine[y].sort((a,b)=>a.transform[4]-b.transform[4]).map(it=>it.str).join(' ').replace(/\s+/g,' ').trim();
+        if(lineText) lines.push(lineText);
+      });
+    }
+    accPdfParseLines(lines);
+  }catch(e){ prev.innerHTML=`<div class="small" style="color:#DC2626;margin-top:10px">PDF 읽기 실패: ${e.message}</div>`; }
+}
+
+function accPdfParseLines(lines){
+  // 줄에서 날짜(YYYY-MM-DD/YYYY.MM.DD/MM.DD/MM/DD)와 금액(쉼표 포함 숫자, 3자리 이상)을 찾는다.
+  // 날짜와 금액이 둘 다 있는 줄만 거래 내역으로 간주하고, 그 사이 텍스트를 가맹점명으로 취급한다.
+  const DATE_RE=/(\d{4}[.\-]\d{1,2}[.\-]\d{1,2}|\d{1,2}[.\/]\d{1,2})/;
+  const AMT_RE=/([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{4,})\s*원?/g;
+  const parsed=[];
+  lines.forEach(line=>{
+    const dm=line.match(DATE_RE);
+    if(!dm) return;
+    const amts=[...line.matchAll(AMT_RE)];
+    if(!amts.length) return;
+    const amtMatch=amts[amts.length-1]; // 보통 맨 마지막 숫자가 거래금액
+    const amt=Number(amtMatch[1].replace(/,/g,''));
+    if(!amt || amt<=0) return;
+    let vendor=line.slice(dm.index+dm[0].length, amtMatch.index).trim();
+    vendor=vendor.replace(/^[\s:|\-·]+|[\s:|\-·]+$/g,'');
+    if(!vendor) vendor=line.replace(dm[0],'').replace(amtMatch[0],'').trim();
+    parsed.push({ dateRaw:dm[0], vendor, amt });
+  });
+  if(!parsed.length){
+    document.getElementById('xlsx-preview').innerHTML='<div class="small" style="color:#DC2626;margin-top:10px">거래 내역 패턴을 찾지 못했습니다. PDF가 이미지로 스캔된 문서라면 텍스트 인식이 안 될 수 있습니다 — 엑셀 파일을 받으실 수 있으면 그쪽을 권장드립니다.</div>';
+    return;
+  }
+  document.getElementById('xlsx-preview').innerHTML=`
+    <div class="note-amber" style="margin:10px 0">PDF 텍스트에서 <b>${parsed.length}건</b>의 거래로 추정되는 줄을 찾았습니다. 표 구조가 없는 텍스트 추출이라 오인식이 있을 수 있으니 아래에서 꼭 확인해 주세요.</div>
+    <div class="field"><label>귀속월 (일괄 지정, 나중에 행별로 개별 수정 가능)</label><input class="inp" type="month" id="xlsx-accmonth" value="${curAccMonth}"></div>
+    <div id="xlsx-result"></div>`;
+  const accMonth=document.getElementById('xlsx-accmonth').value||curAccMonth;
+  const curYear=Number(curAccMonth.slice(0,4));
+  _xlsxDraft=parsed.map((d,idx)=>{
+    let dateStr='';
+    const full=d.dateRaw.match(/(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})/);
+    const short=d.dateRaw.match(/(\d{1,2})[.\/](\d{1,2})/);
+    if(full) dateStr=`${full[1]}-${full[2].padStart(2,'0')}-${full[3].padStart(2,'0')}`;
+    else if(short) dateStr=`${curYear}-${short[1].padStart(2,'0')}-${short[2].padStart(2,'0')}`;
+    return { idx, date:dateStr, vendor:d.vendor, total:d.amt, cat:guessAccCat(d.vendor), pjt:'', include:true };
+  });
+  accXlsxRenderResultTable(accMonth);
+}
 
 function accXlsxRenderColumnPicker(){
   const opts=(sel)=>_xlsxHeaders.map((h,i)=>`<option value="${i}" ${sel===i?'selected':''}>${h||'(제목없음 열'+(i+1)+')'}</option>`).join('');
