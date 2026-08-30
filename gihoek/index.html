@@ -127,6 +127,7 @@
   /* 포털 임베드(PC): 포털 왼쪽 메뉴가 내비를 제공하므로 자체 탭바 숨김 */
   @media (min-width:900px){ html.portal-embed .head{display:none} }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="splash" id="splash"><div class="spin"></div><div class="small muted">불러오는 중...</div></div>
@@ -169,6 +170,7 @@
 </div>
 
 <div class="emodal" id="emodal"><div class="esheet" id="em-body"></div></div>
+<div class="emodal" id="xlsx-modal"><div class="esheet" id="xlsx-body" style="max-width:920px;width:96%;"></div></div>
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -1640,13 +1642,31 @@ const ACC_CATS=[
   {k:'급여', bg:'#eceff1', fg:'#263238'},{k:'용역비', bg:'#e0f7fa', fg:'#006064'},
 ];
 const ACC_PAYS=['법인카드','개인카드','현금','계좌이체','외상거래'];
+const ACC_CARD_DEFAULTS=['삼성카드','농협카드','현대카드','기업카드']; // 관리자가 자유 입력 가능, 이건 자동완성용 기본값일 뿐
 const PNL_COMPANIES=[{k:'jh_eng',label:'제이에이치이엔지'},{k:'jh_sol',label:'제이에이치솔루션'}];
+// 가맹점명 키워드 → 카테고리 자동추정(참고용, 최종 확인은 사용자가 함)
+const ACC_CAT_GUESS=[
+  {kw:['주유','오일뱅크','GS칼텍스','SK에너지','현대오일','에너지'], cat:'유류비'},
+  {kw:['식당','식품','커피','스타벅스','투썸','김밥','치킨','배달','푸드'], cat:'식대'},
+  {kw:['카센터','정비','타이어','자동차','세차'], cat:'차량유지비'},
+  {kw:['철물','자재','건재','산업','공구'], cat:'공구·자재비'},
+  {kw:['문구','오피스','이마트','다이소','쿠팡'], cat:'사무용품'},
+  {kw:['임대','부동산','관리비'], cat:'임대료'},
+  {kw:['국세청','세무','세금','부가세'], cat:'세금'},
+  {kw:['급여','인건비'], cat:'급여'},
+  {kw:['용역','시공','설비'], cat:'용역비'},
+];
+function guessAccCat(vendor){
+  const v=(vendor||'');
+  for(const g of ACC_CAT_GUESS){ if(g.kw.some(k=>v.includes(k))) return g.cat; }
+  return '기타';
+}
 let pnlCompanyFilter=''; // ''=전체, 'jh_eng'|'jh_sol'
 const DIRECT_CATS=['급여','용역비','공구·자재비'];
 const accIsDirect=c=>DIRECT_CATS.includes(c);
 const accCatStyle=k=>{ const c=ACC_CATS.find(c=>c.k===k)||ACC_CATS[5]; return `background:${c.bg};color:${c.fg}`; };
 let curAccMonth=new Date().toISOString().slice(0,7), accSub='pnl';
-let accLSort='date_asc', accLVendor='', accLCat='';
+let accLSort='date_asc', accLVendor='', accLCat='', accLCard='';
 // 지급예정서의 회계 계상월: 저장된 acctMonth 우선, 없으면 지급일→발행일→기준월 순(하위호환)
 const acctMonthOf=s=>s.acctMonth || (s.payDate||s.issueDate||s.baseMonth||'').slice(0,7);
 // 완결(지급완료)된 지급예정서를 비용장부 항목 형태로 변환
@@ -1723,15 +1743,18 @@ window.accPnlToggle=function(mode){ accPnlMode=mode; renderAccPnl(); };
 function renderAccLedger(){
   const list=accMonthExp();
   const _vendors=[...new Set(list.map(e=>e.vendor).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ko'));
+  const _cards=[...new Set(list.map(e=>e.card).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ko'));
   let filtered=list.slice();
   if(accLCat) filtered=filtered.filter(e=>e.cat===accLCat);
   if(accLVendor) filtered=filtered.filter(e=>(e.vendor||'')===accLVendor);
+  if(accLCard) filtered=filtered.filter(e=>(e.card||'')===accLCard);
   filtered.sort((a,b)=> accLSort==='date_desc' ? (b.date||'').localeCompare(a.date||'') : (a.date||'').localeCompare(b.date||''));
   const _filterBar='<div style="display:flex;flex-wrap:wrap;gap:8px;margin:2px 2px 12px">'
     +'<select class="sel" style="width:auto;min-width:130px;font-size:12px;padding:6px 8px" onchange="accSetFilter(\'sort\',this.value)"><option value="date_asc"'+(accLSort==='date_asc'?' selected':'')+'>날짜 ↑ 오름차순</option><option value="date_desc"'+(accLSort==='date_desc'?' selected':'')+'>날짜 ↓ 내림차순</option></select>'
     +'<select class="sel" style="width:auto;min-width:110px;font-size:12px;padding:6px 8px" onchange="accSetFilter(\'cat\',this.value)"><option value="">전체 항목</option>'+ACC_CATS.map(c=>'<option value="'+c.k+'"'+(accLCat===c.k?' selected':'')+'>'+c.k+'</option>').join('')+'</select>'
     +'<select class="sel" style="width:auto;min-width:130px;font-size:12px;padding:6px 8px" onchange="accSetFilter(\'vendor\',this.value)"><option value="">전체 거래처</option>'+_vendors.map(v=>'<option value="'+v.replace(/"/g,'&quot;')+'"'+(accLVendor===v?' selected':'')+'>'+v+'</option>').join('')+'</select>'
-    +((accLCat||accLVendor||accLSort!=='date_asc')?'<button class="btn gray sm" onclick="accResetFilter()">필터 초기화</button>':'')
+    +(_cards.length?'<select class="sel" style="width:auto;min-width:110px;font-size:12px;padding:6px 8px" onchange="accSetFilter(\'card\',this.value)"><option value="">전체 카드</option>'+_cards.map(c=>'<option value="'+c.replace(/"/g,'&quot;')+'"'+(accLCard===c?' selected':'')+'>'+c+'</option>').join('')+'</select>':'')
+    +((accLCat||accLVendor||accLCard||accLSort!=='date_asc')?'<button class="btn gray sm" onclick="accResetFilter()">필터 초기화</button>':'')
     +'</div>';
   const tot=list.reduce((a,e)=>a+e.total,0), sup=list.reduce((a,e)=>a+e.supply,0), vat=list.reduce((a,e)=>a+e.vat,0);
   const byCat={}; ACC_CATS.forEach(c=>byCat[c.k]={cnt:0,sup:0,vat:0,total:0});
@@ -1742,7 +1765,7 @@ function renderAccLedger(){
       <div class="sumcell"><div class="l">건수</div><div class="v">${list.length}</div></div>
       <div class="sumcell"><div class="l">공급가 합</div><div class="v">${won(sup)}</div></div>
       <div class="sumcell"><div class="l">부가세 합</div><div class="v">${won(vat)}</div></div></div>
-    <div class="card" style="margin-top:14px;padding:12px"><div class="sec-h"><h2>카테고리별 집계</h2><div style="display:flex;gap:6px"><button class="btn line sm" onclick="salOpenForm()">👥 급여 배분</button><button class="btn pri sm" onclick="accOpenForm()">+ 비용 입력</button></div></div>
+    <div class="card" style="margin-top:14px;padding:12px"><div class="sec-h"><h2>카테고리별 집계</h2><div style="display:flex;gap:6px"><button class="btn line sm" onclick="salOpenForm()">👥 급여 배분</button><button class="btn line sm" onclick="accXlsxOpen()">📊 엑셀 업로드</button><button class="btn pri sm" onclick="accOpenForm()">+ 비용 입력</button></div></div>
       <div class="scroll"><table class="ptab"><thead><tr><th class="l">카테고리</th><th>구분</th><th>건수</th><th>공급가</th><th>부가세</th><th>합계</th></tr></thead>
         <tbody>${ACC_CATS.filter(c=>byCat[c.k].cnt>0).map(c=>{ const b=byCat[c.k]; return `<tr><td class="l"><span class="catpill" style="${accCatStyle(c.k)}">${c.k}</span></td><td class="small ${accIsDirect(c.k)?'':'muted'}">${accIsDirect(c.k)?'직접비':'간접비'}</td><td>${b.cnt}</td><td>${won(b.sup)}</td><td>${won(b.vat)}</td><td style="font-weight:700;color:var(--money)">${won(b.total)}</td></tr>`; }).join('')||'<tr><td colspan="6" class="center muted" style="padding:16px">이 달 비용이 없습니다.</td></tr>'}</tbody>
         ${list.length?`<tfoot><tr style="background:#f6f9fd;font-weight:700"><td class="l">합계</td><td></td><td>${list.length}</td><td>${won(sup)}</td><td>${won(vat)}</td><td style="color:var(--money)">${won(tot)}</td></tr></tfoot>`:''}</table></div></div>
@@ -1750,7 +1773,7 @@ function renderAccLedger(){
       ${_filterBar}
       ${filtered.length? filtered.map(e=>`<div class="litem" style="cursor:pointer" onclick="${e.fromSettlement?`openSettleFromLedger('${e.id.replace('settle_','')}')`:(e.salaryDist?`salDelConfirm('${e.id}')`:`accOpenForm('${e.id}')`)}">
         <div class="d" style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700"><span class="catpill" style="${accCatStyle(e.cat)}">${e.cat}</span> &nbsp;${e.vendor||'-'}${e.fromSettlement?' <span style="font-size:10px;font-weight:600;color:#1D5BA6;background:#EEF4FC;padding:1px 7px;border-radius:8px;margin-left:4px;">🔗 정산 연동</span>':''}${e.salaryDist?' <span style="font-size:10px;font-weight:600;color:#6d4c00;background:#f5f0e8;padding:1px 7px;border-radius:8px;margin-left:4px;">👥 급여배분</span>':''}</div>
-          <div class="small muted" style="margin-top:2px">${e.date}${e.accMonth&&e.accMonth!==e.date.slice(0,7)?' <span style="color:#1D5BA6;font-weight:600">(귀속 '+e.accMonth+')</span>':''} · ${e.pay}${e.pjt?' · '+(projects.find(p=>p.id===e.pjt)?.code||''):' · 공통'}${e.note?' · '+e.note:''}</div></div>
+          <div class="small muted" style="margin-top:2px">${e.date}${e.accMonth&&e.accMonth!==e.date.slice(0,7)?' <span style="color:#1D5BA6;font-weight:600">(귀속 '+e.accMonth+')</span>':''} · ${e.pay}${e.card?' ('+e.card+')':''}${e.pjt?' · '+(projects.find(p=>p.id===e.pjt)?.code||''):' · 공통'}${e.note?' · '+e.note:''}</div></div>
         <div class="amt" style="font-weight:800;color:var(--money);white-space:nowrap;text-align:right">${won(e.total)}<div class="small muted" style="font-weight:400">VAT ${won(e.vat)}</div></div></div>`).join('')
         :'<div class="empty">'+((accLCat||accLVendor)?'조건에 맞는 내역이 없습니다. (필터 적용 중)':'이 달 비용이 없습니다. “비용 입력”으로 추가하세요.')+'</div>'}</div>
     <div class="note-amber">실제 운영: 영수증·카드내역·계좌 거래내역·주문내역 파일을 춘식이에게 주시면 직접비/간접비로 분류해 이 장부에 채워 넣습니다. 앱에서는 직접 입력·수정·조회를 합니다. 🔗 정산 연동 항목(지급완료된 지급예정서)은 자동 반영되며, 직접 수정할 수 없습니다 — 정산 화면에서 지급완료를 취소하면 제외됩니다.</div>`;
@@ -1830,8 +1853,129 @@ window.pnlSave=async function(id){
 window.pnlDel=async function(id){ if(!confirm('이 손익계산서 항목을 삭제할까요?')) return; try{ await deleteDoc(doc(db,'gihoek_pnl_entries',id)); accCloseForm(); toast('삭제했습니다.'); }catch(e){ toast('삭제 실패: '+(e.code||e.message)); } };
 
 window.openSettleFromLedger=function(id){ tab('settle'); openSettle(id, 'acct'); };
-window.accSetFilter=function(k,v){ if(k==='sort')accLSort=v; else if(k==='vendor')accLVendor=v; else if(k==='cat')accLCat=v; renderAccLedger(); };
-window.accResetFilter=function(){ accLSort='date_asc'; accLVendor=''; accLCat=''; renderAccLedger(); };
+
+/* ==================== 카드 이용내역 엑셀 업로드 자동분석 ====================
+   1) 파일 선택 → SheetJS로 파싱, 헤더/미리보기 표시
+   2) 사용자가 날짜·가맹점·금액 컬럼을 지정
+   3) "분석" → 전체 행을 draft로 변환(가맹점명 기반 카테고리 자동추정)
+   4) 미리보기에서 행별로 카테고리·PJT·귀속월·포함여부 수정 가능
+   5) "일괄 저장" → 체크된 행만 gihoek_expenses에 배치 등록                */
+let _xlsxRows=null; let _xlsxHeaders=null; let _xlsxDraft=null; let _xlsxCardName='';
+
+window.accXlsxOpen=function(){
+  _xlsxRows=null; _xlsxHeaders=null; _xlsxDraft=null; _xlsxCardName='';
+  document.getElementById('xlsx-body').innerHTML=`
+    <div class="sec-h"><h2>📊 카드 이용내역 엑셀 업로드</h2><button class="btn gray sm" onclick="accXlsxClose()">닫기</button></div>
+    <div class="small muted" style="margin-bottom:12px">카드사 홈페이지/앱에서 내려받은 이용내역 엑셀(.xlsx, .csv) 파일을 그대로 올려주세요. 첫 번째 시트를 읽습니다.</div>
+    <div class="field"><label>카드명 (이 파일 전체에 적용)</label><input class="inp" id="xlsx-card" list="acc-card-list" placeholder="예: 삼성카드"></div>
+    <div class="field"><label>파일 선택</label><input type="file" id="xlsx-file" accept=".xlsx,.xls,.csv" class="inp" onchange="accXlsxFileChange(this)"></div>
+    <div id="xlsx-preview"></div>`;
+  document.getElementById('xlsx-modal').classList.add('on');
+};
+window.accXlsxClose=function(){ document.getElementById('xlsx-modal').classList.remove('on'); };
+
+window.accXlsxFileChange=function(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      const wb=XLSX.read(ev.target.result, {type:'array'});
+      const sheet=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+      if(!rows.length){ toast('빈 파일입니다.'); return; }
+      _xlsxHeaders=rows[0].map(h=>String(h||'').trim());
+      _xlsxRows=rows.slice(1).filter(r=>r.some(c=>String(c||'').trim()!==''));
+      accXlsxRenderColumnPicker();
+    }catch(e){ toast('파일을 읽는 중 오류: '+e.message); }
+  };
+  reader.readAsArrayBuffer(file);
+};
+
+function accXlsxRenderColumnPicker(){
+  const opts=(sel)=>_xlsxHeaders.map((h,i)=>`<option value="${i}" ${sel===i?'selected':''}>${h||'(제목없음 열'+(i+1)+')'}</option>`).join('');
+  // 흔한 헤더명으로 자동 추정
+  const guessCol=(keywords)=>{ const idx=_xlsxHeaders.findIndex(h=>keywords.some(k=>h.includes(k))); return idx>=0?idx:0; };
+  const dateGuess=guessCol(['일자','날짜','이용일','거래일']);
+  const vendorGuess=guessCol(['가맹점','내용','적요','상호','거래처']);
+  const amtGuess=guessCol(['금액','이용금액','거래금액','승인금액']);
+  document.getElementById('xlsx-preview').innerHTML=`
+    <div class="note-amber" style="margin:10px 0">파일에서 <b>${_xlsxRows.length}건</b>의 행을 찾았습니다. 날짜·가맹점·금액이 어느 열인지 지정해 주세요.</div>
+    <div class="row3">
+      <div class="field"><label>날짜 열</label><select class="sel" id="xlsx-col-date">${opts(dateGuess)}</select></div>
+      <div class="field"><label>가맹점 열</label><select class="sel" id="xlsx-col-vendor">${opts(vendorGuess)}</select></div>
+      <div class="field"><label>금액 열</label><select class="sel" id="xlsx-col-amt">${opts(amtGuess)}</select></div>
+    </div>
+    <div class="field"><label>귀속월 (일괄 지정, 나중에 행별로 개별 수정 가능)</label><input class="inp" type="month" id="xlsx-accmonth" value="${curAccMonth}"></div>
+    <button class="btn pri full" onclick="accXlsxAnalyze()">🔍 분석하기</button>
+    <div id="xlsx-result"></div>`;
+}
+
+window.accXlsxAnalyze=function(){
+  _xlsxCardName=document.getElementById('xlsx-card').value.trim();
+  const ci=Number(document.getElementById('xlsx-col-date').value);
+  const cv=Number(document.getElementById('xlsx-col-vendor').value);
+  const ca=Number(document.getElementById('xlsx-col-amt').value);
+  const accMonth=document.getElementById('xlsx-accmonth').value||curAccMonth;
+
+  _xlsxDraft=_xlsxRows.map((r,idx)=>{
+    let dateRaw=r[ci];
+    let dateStr='';
+    if(typeof dateRaw==='number'){ // 엑셀 시리얼 날짜
+      const d=XLSX.SSF?XLSX.SSF.parse_date_code(dateRaw):null;
+      if(d) dateStr=`${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+    } else {
+      const s=String(dateRaw||'').trim().replace(/\./g,'-').replace(/\//g,'-');
+      const m=s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+      dateStr=m?`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`:'';
+    }
+    const vendor=String(r[cv]||'').trim();
+    const amtStr=String(r[ca]||'0').replace(/[^0-9.-]/g,'');
+    const total=Math.round(Number(amtStr)||0);
+    return { idx, date:dateStr, vendor, total, cat:guessAccCat(vendor), pjt:'', include: total>0 };
+  }).filter(d=>d.total>0);
+
+  accXlsxRenderResultTable(accMonth);
+};
+
+function accXlsxRenderResultTable(accMonth){
+  const included=_xlsxDraft.filter(d=>d.include).length;
+  document.getElementById('xlsx-result').innerHTML=`
+    <div class="small muted" style="margin:10px 2px">총 ${_xlsxDraft.length}건 인식됨, 현재 <b>${included}건</b> 저장 대상으로 체크됨. 카테고리·포함여부는 행별로 직접 수정할 수 있습니다.</div>
+    <div class="scroll" style="max-height:380px;overflow-y:auto"><table class="ptab">
+      <thead><tr><th></th><th class="l">날짜</th><th class="l">가맹점</th><th>금액</th><th class="l">카테고리</th><th class="l">PJT</th></tr></thead>
+      <tbody>${_xlsxDraft.map((d,i)=>`<tr>
+        <td><input type="checkbox" ${d.include?'checked':''} onchange="accXlsxToggle(${i},this.checked)"></td>
+        <td class="l small">${d.date||'<span style=\"color:#DC2626\">날짜인식실패</span>'}</td>
+        <td class="l small">${d.vendor||'-'}</td>
+        <td>${won(d.total)}</td>
+        <td class="l"><select class="sel" style="font-size:11px;padding:3px 5px" onchange="accXlsxSetField(${i},'cat',this.value)">${ACC_CATS.map(c=>`<option ${d.cat===c.k?'selected':''}>${c.k}</option>`).join('')}</select></td>
+        <td class="l"><select class="sel" style="font-size:11px;padding:3px 5px" onchange="accXlsxSetField(${i},'pjt',this.value)"><option value="">공통</option>${projects.map(p=>`<option value="${p.id}" ${d.pjt===p.id?'selected':''}>${p.code}</option>`).join('')}</select></td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+    <button class="btn pri full" style="margin-top:12px" onclick="accXlsxImport('${accMonth}')">✅ 체크된 ${included}건 비용장부에 일괄 저장</button>`;
+}
+window.accXlsxToggle=function(i,checked){ _xlsxDraft[i].include=checked; const included=_xlsxDraft.filter(d=>d.include).length; const btn=document.querySelector('#xlsx-result button.btn.pri.full'); if(btn) btn.textContent=`✅ 체크된 ${included}건 비용장부에 일괄 저장`; const cnt=document.querySelector('#xlsx-result .small.muted b'); if(cnt) cnt.textContent=included+'건'; };
+window.accXlsxSetField=function(i,field,val){ _xlsxDraft[i][field]=val; };
+
+window.accXlsxImport=async function(accMonth){
+  const toSave=_xlsxDraft.filter(d=>d.include && d.date);
+  if(!toSave.length){ toast('저장할 항목이 없습니다.'); return; }
+  if(!confirm(`${toSave.length}건을 비용장부에 일괄 저장합니다. 계속할까요?`)) return;
+  const btn=document.querySelector('#xlsx-result button.btn.pri.full'); if(btn){ btn.disabled=true; btn.textContent='저장 중...'; }
+  try{
+    for(const d of toSave){
+      const eid='exp_xlsx_'+Date.now()+'_'+d.idx;
+      await setDoc(doc(db,'gihoek_expenses',eid),{
+        date:d.date, accMonth, cat:d.cat, vendor:d.vendor, supply:d.total, vat:0, total:d.total,
+        pay:'법인카드', card:_xlsxCardName, pjt:d.pjt, note:'엑셀 업로드 자동등록', createdAt:serverTimestamp(),
+      });
+    }
+    toast(`${toSave.length}건 저장 완료`);
+    accXlsxClose();
+  }catch(e){ toast('저장 중 오류: '+(e.code||e.message)); if(btn){ btn.disabled=false; } }
+};
+window.accSetFilter=function(k,v){ if(k==='sort')accLSort=v; else if(k==='vendor')accLVendor=v; else if(k==='cat')accLCat=v; else if(k==='card')accLCard=v; renderAccLedger(); };
+window.accResetFilter=function(){ accLSort='date_asc'; accLVendor=''; accLCat=''; accLCard=''; renderAccLedger(); };
 
 window.accOpenForm=function(id){ const e=id?expenses.find(x=>x.id===id):null;
   $('em-body').innerHTML=`<div class="sec-h"><h2>${e?'비용 수정':'비용 입력'}</h2><button class="btn gray sm" onclick="accCloseForm()">닫기</button></div>
@@ -1845,6 +1989,8 @@ window.accOpenForm=function(id){ const e=id?expenses.find(x=>x.id===id):null;
     <div style="display:flex;gap:8px;margin-bottom:11px"><button class="btn line sm" onclick="accSplitVat()">합계 → 공급가·부가세 역산</button><button class="btn gray sm" onclick="accZeroVat()">면세 (부가세 0)</button></div>
     <div class="row2"><div class="field"><label>결제수단</label><select class="sel" id="ef-pay">${ACC_PAYS.map(p=>`<option ${e&&e.pay===p?'selected':''}>${p}</option>`).join('')}</select></div>
       <div class="field"><label>PJT 연결 (선택)</label><select class="sel" id="ef-pjt"><option value="">미지정 (공통비용)</option>${projects.map(p=>`<option value="${p.id}" ${e&&e.pjt===p.id?'selected':''}>${p.code}</option>`).join('')}</select></div></div>
+    <div class="field"><label>카드명 (선택 — 결제수단이 카드일 때)</label><input class="inp" id="ef-card" list="acc-card-list" value="${(e?.card||'').replace(/"/g,'&quot;')}" placeholder="예: 삼성카드, 농협카드, 기업카드">
+      <datalist id="acc-card-list">${[...new Set([...ACC_CARD_DEFAULTS, ...expenses.map(x=>x.card).filter(Boolean)])].map(c=>`<option value="${c}">`).join('')}</datalist></div>
     <div class="field"><label>비고</label><input class="inp" id="ef-note" value="${(e?.note||'').replace(/"/g,'&quot;')}" placeholder="품목·용도·추정 메모"></div>
     <div style="display:flex;gap:8px;margin-top:4px">${e?`<button class="btn gray sm" onclick="accDel('${e.id}')">삭제</button>`:''}
       <button class="btn line full" onclick="accCloseForm()">취소</button><button class="btn pri full" onclick="accSave('${e?e.id:''}')">저장</button></div>`;
@@ -1855,7 +2001,7 @@ window.accSplitVat=function(){ const t=num($('ef-total').value); if(t<=0){ toast
 window.accZeroVat=function(){ const t=num($('ef-total').value); $('ef-supply').value=t; $('ef-vat').value=0; };
 window.accSave=async function(id){ const total=num($('ef-total').value); if(total<=0){ toast('합계를 입력하세요.'); return; }
   let sup=num($('ef-supply').value), vat=num($('ef-vat').value); if(sup===0&&vat===0){ sup=Math.round(total/1.1); vat=total-sup; }
-  const data={ date:$('ef-date').value, accMonth:$('ef-accmonth').value||$('ef-date').value.slice(0,7), cat:$('ef-cat').value, vendor:$('ef-vendor').value.trim(), supply:sup, vat, total, pay:$('ef-pay').value, pjt:$('ef-pjt').value, note:$('ef-note').value.trim() };
+  const data={ date:$('ef-date').value, accMonth:$('ef-accmonth').value||$('ef-date').value.slice(0,7), cat:$('ef-cat').value, vendor:$('ef-vendor').value.trim(), supply:sup, vat, total, pay:$('ef-pay').value, card:$('ef-card').value.trim(), pjt:$('ef-pjt').value, note:$('ef-note').value.trim() };
   try{ const eid=id||('exp_'+Date.now()); if(!id) data.createdAt=serverTimestamp(); await setDoc(doc(db,'gihoek_expenses',eid),data,{merge:true}); accCloseForm(); toast('저장했습니다.'); }
   catch(e){ toast('저장 실패: '+(e.code||e.message)); } };
 window.accDel=async function(id){ if(!confirm('이 비용을 삭제할까요?')) return; try{ await deleteDoc(doc(db,'gihoek_expenses',id)); accCloseForm(); toast('삭제했습니다.'); }catch(e){ toast('삭제 실패: '+(e.code||e.message)); } };
