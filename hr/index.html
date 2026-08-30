@@ -6206,80 +6206,71 @@ window.retireDelete = async (wid, rid, wname) => {
   retireViewWorker(wid, wname);
 };
 
-/* ==================== 급여테이블 (학력트랙×직급·호봉 자동생성 — 회사 내규) ====================
+/* ==================== 급여테이블 (시급 기준 · 학력 10% 차등 · 통합표 — 회사 내규) ====================
    ⚠️ 이 표는 회사가 정하는 표준 급여 기준(호봉표)입니다. 특정 직원 개인의 현재 급여가 아니라,
-   "이 학력·직급·호봉이면 연봉이 얼마"라는 내규를 관리하는 화면입니다.
-   고졸 트랙 사원 1호봉은 법정 최저임금에 고정되어, 최저임금이 바뀌면 자동으로 갱신됩니다.
+   "이 학력·직급·호봉이면 시급이 얼마, 연봉으로 환산하면 얼마"라는 내규를 관리하는 화면입니다.
+   시급이 기준값이고 연봉은 계산되어 표시됩니다(시급×209시간×12개월).
+   고졸 사원 1호봉 시급 = 법정 최저시급 고정. 학력 트랙 간 시급 10% 단계 차등(고졸→비전공대졸→전공대졸).
    호봉마다 표준인상률(기본 3.5%)로 복리 인상되며, 직급이 바뀌어도 호봉은 이어서 계산됩니다.
    여기서 수정해도 급여명세서 자동계산 로직에는 영향을 주지 않습니다(참고·내규용). */
 const SAL_POSITIONS=['사원','대리','과장','차장'];
 let _salTableData = null;
-// { minWage, standardRate, perfRateMin, perfRateMax, tenure:{사원,대리,과장,차장}, tracks:[{id,label,pinned,baseSalary,cells:{'사원-1':salary,...}}] }
+// { minWage, standardRate, eduGapRate, perfRateMin, perfRateMax, tenure:{사원,대리,과장,차장}, tracks:[{id,label,pinned,cellsHourly:{'사원-1':시급,...}}] }
 
 async function salTableLoad() {
   const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
   const snap = await getDoc(doc(window._db, 'company_settings', 'salaryTable'));
-  if (snap.exists() && snap.data().tracks) {
+  if (snap.exists() && snap.data().tracks && snap.data().tracks[0]?.cellsHourly) {
     _salTableData = snap.data();
   } else {
     _salTableData = {
       minWage: 10320,
       standardRate: 3.5,
+      eduGapRate: 10,
       perfRateMin: 2.0,
       perfRateMax: 5.0,
       tenure: { '사원':3, '대리':4, '과장':5, '차장':3 },
       tracks: [
-        { id:'high', label:'고졸', pinned:true, baseSalary:0, cells:{} },
-        { id:'nonmajor', label:'비전공대졸', pinned:false, baseSalary:29000000, cells:{} },
-        { id:'major', label:'전공대졸', pinned:false, baseSalary:32000000, cells:{} },
+        { id:'high', label:'고졸', pinned:true, cellsHourly:{} },
+        { id:'nonmajor', label:'비전공대졸', pinned:false, cellsHourly:{} },
+        { id:'major', label:'전공대졸', pinned:false, cellsHourly:{} },
       ],
     };
     salTableRegenerateAll();
   }
 }
 
-function salTableHourlyToAnnual(hourly){ return Math.round(hourly*209*12); }
-
-// 트랙 하나의 전체 호봉표(사원1호봉~차장N호봉)를 표준인상률 복리로 자동 생성한다.
-// 고졸 트랙은 시작값(사원1호봉)이 최저임금(시급→연봉 환산)으로 고정, 나머지 트랙은 트랙별 시작연봉(baseSalary)에서 시작.
-function salTableBuildTrack(track, d){
+function salTableTrackStartHourly(track, d, allTracks){
+  if (track.pinned) return Number(d.minWage)||0;
+  const idx = allTracks.findIndex(t=>t.id===track.id);
+  const prevTrack = allTracks[idx-1];
+  const prevStart = prevTrack ? salTableTrackStartHourly(prevTrack, d, allTracks) : (Number(d.minWage)||0);
+  return Math.round(prevStart * (1+((Number(d.eduGapRate)||0)/100)));
+}
+function salTableBuildTrack(track, d, allTracks){
   const rate=1+((Number(d.standardRate)||0)/100);
-  const start=track.pinned ? salTableHourlyToAnnual(d.minWage) : (Number(track.baseSalary)||0);
+  const start=salTableTrackStartHourly(track, d, allTracks);
   const cells={};
   let cur=start;
   SAL_POSITIONS.forEach(pos=>{
     const years=Math.max(1, Number(d.tenure?.[pos])||1);
     for(let step=1; step<=years; step++){
       const key=pos+'-'+step;
-      // 이미 사용자가 직접 수정해 저장해둔 값이 있으면 그 값을 우선 사용(재생성으로 덮어쓰지 않음) — salTableRegenerate(force)로만 전체 재계산
-      cells[key]= (track.cells && track.cells[key]!=null) ? track.cells[key] : Math.round(cur);
+      cells[key]= (track.cellsHourly && track.cellsHourly[key]!=null) ? track.cellsHourly[key] : Math.round(cur);
       cur = cur*rate;
     }
   });
   return cells;
 }
 function salTableRegenerateAll(){
-  _salTableData.tracks.forEach(t=>{ t.cells = salTableBuildTrack(t, _salTableData); });
+  _salTableData.tracks.forEach(t=>{ t.cellsHourly = salTableBuildTrack(t, _salTableData, _salTableData.tracks); });
 }
 function salTableRegenerateForce(){
-  // 개별 수정값을 무시하고 전부 표준인상률 기준으로 다시 계산
-  _salTableData.tracks.forEach(t=>{
-    const rate=1+((Number(_salTableData.standardRate)||0)/100);
-    const start=t.pinned ? salTableHourlyToAnnual(_salTableData.minWage) : (Number(t.baseSalary)||0);
-    const cells={}; let cur=start;
-    SAL_POSITIONS.forEach(pos=>{
-      const years=Math.max(1, Number(_salTableData.tenure?.[pos])||1);
-      for(let step=1; step<=years; step++){ cells[pos+'-'+step]=Math.round(cur); cur=cur*rate; }
-    });
-    t.cells=cells;
-  });
+  _salTableData.tracks.forEach(t=>{ t.cellsHourly = {}; });
+  _salTableData.tracks.forEach(t=>{ t.cellsHourly = salTableBuildTrack(t, _salTableData, _salTableData.tracks); });
 }
 
-function salTableRange(salary) {
-  const monthly = Math.round(salary/12);
-  const hourly = Math.round(monthly/209);
-  return { monthly, hourly };
-}
+function salTableAnnual(hourly) { return Math.round(hourly*209*12); }
 
 window.renderSalaryTableMain = async function() {
   const el = document.getElementById('tab-salarytable');
@@ -6295,80 +6286,77 @@ function renderSalaryTableBody() {
   if (!el) return;
   const d = _salTableData;
 
-  const trackTables = d.tracks.map(t=>{
-    let rows='';
-    SAL_POSITIONS.forEach(pos=>{
-      const years=Math.max(1, Number(d.tenure?.[pos])||1);
-      for(let step=1; step<=years; step++){
-        const key=pos+'-'+step;
-        const salary=t.cells[key]||0;
-        const r=salTableRange(salary);
-        const belowMinWage = r.hourly>0 && r.hourly < (Number(d.minWage)||0);
-        const isPinnedCell = t.pinned && pos==='사원' && step===1;
-        rows+=`<tr style="border-bottom:1px solid #F0F4F9;">
-          <td style="padding:6px 10px;font-weight:700;color:${C2.text};">${pos}</td>
-          <td style="padding:6px 10px;">${step}호봉</td>
-          <td style="padding:6px 10px;">
+  let rows='';
+  SAL_POSITIONS.forEach((pos,posIdx)=>{
+    const years=Math.max(1, Number(d.tenure?.[pos])||1);
+    for(let step=1; step<=years; step++){
+      const key=pos+'-'+step;
+      const rowBg = posIdx%2===0 ? '#fff' : '#FAFCFE';
+      rows+=`<tr style="border-bottom:1px solid #F0F4F9;background:${rowBg};">
+        <td style="padding:5px 8px;font-weight:700;color:${C2.text};font-size:11.5px;white-space:nowrap;">${step===1?pos:''}</td>
+        <td style="padding:5px 8px;font-size:11.5px;color:${C2.sub};white-space:nowrap;">${step}호봉</td>
+        ${d.tracks.map(t=>{
+          const hourly=t.cellsHourly[key]||0;
+          const annual=salTableAnnual(hourly);
+          const isPinnedCell = t.pinned && key==='사원-1';
+          const belowMinWage = hourly>0 && hourly < (Number(d.minWage)||0);
+          return `<td style="padding:5px 8px;white-space:nowrap;">
             ${isPinnedCell
-              ? `<span style="font-weight:700;color:#1D5BA6;">${won2(salary)} <span style="font-size:10px;color:${C2.mute};font-weight:400;">(최저임금 고정)</span></span>`
-              : `<input type="number" value="${salary}" onchange="salTableEditCell('${t.id}','${key}',this.value)" style="width:110px;border:1px solid #E4EAF2;border-radius:6px;padding:4px 6px;font-size:11.5px;text-align:right;">`}
-          </td>
-          <td style="padding:6px 10px;font-size:11.5px;color:${C2.sub};white-space:nowrap;">${won2(r.monthly)}</td>
-          <td style="padding:6px 10px;font-size:11.5px;font-weight:700;white-space:nowrap;color:${belowMinWage?'#DC2626':C2.text};">${won2(r.hourly)}${belowMinWage?' ⚠️':''}</td>
-        </tr>`;
-      }
-    });
-    return `<div class="card" style="padding:12px;margin-bottom:14px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <div style="font-size:13px;font-weight:800;color:${C2.text};">${t.label}${t.pinned?' <span style="font-size:10px;font-weight:400;color:#1D5BA6;">(사원1호봉=최저임금 고정)</span>':''}</div>
-        ${!t.pinned ? `<div style="display:flex;align-items:center;gap:6px;"><label style="font-size:11px;color:${C2.mute};">사원 1호봉 시작연봉</label><input type="number" value="${t.baseSalary}" onchange="salTableSetBase('${t.id}',this.value)" style="width:110px;border:1px solid #E4EAF2;border-radius:6px;padding:4px 6px;font-size:11.5px;text-align:right;"></div>` : ''}
-      </div>
-      <div class="scroll"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:460px;">
-        <thead><tr style="background:#F0F4F9;">
-          ${['직급','호봉','연봉(원)','월급(원)','환산시급(원)'].map(h=>`<th style="padding:6px 10px;text-align:left;color:${C2.sub};font-weight:700;white-space:nowrap;">${h}</th>`).join('')}
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table></div>
-    </div>`;
-  }).join('');
+              ? `<span style="font-weight:700;color:#1D5BA6;font-size:11.5px;">${won2(hourly)}원</span>`
+              : `<input type="number" value="${hourly}" onchange="salTableEditCell('${t.id}','${key}',this.value)" style="width:76px;border:1px solid #E4EAF2;border-radius:5px;padding:3px 5px;font-size:11px;text-align:right;font-weight:700;color:${belowMinWage?'#DC2626':C2.text};">`}
+            <div style="font-size:10px;color:${C2.mute};margin-top:1px;">연 ${won2(annual)}</div>
+          </td>`;
+        }).join('')}
+      </tr>`;
+    }
+  });
 
   el.innerHTML = wrap2(`
     <div style="font-size:14px;font-weight:700;color:${C2.text};margin-bottom:4px;">📊 학력·직급·호봉별 표준 급여테이블 (회사 내규)</div>
     <div style="font-size:11px;color:${C2.mute};margin-bottom:14px;line-height:1.6;">
-      고졸 트랙 사원 1호봉은 법정 최저임금에 고정되어 최저임금이 바뀌면 자동 갱신됩니다. 각 호봉은 표준인상률로 복리 인상되며, 직급이 바뀌어도 호봉 계산은 이어집니다.<br>
+      <b>시급이 기준값</b>이며 연봉은 시급×209시간×12개월로 자동 계산되어 아래 작은 글씨로 표시됩니다. 고졸 사원 1호봉 시급은 법정 최저시급에 고정됩니다.<br>
       ⚠️ 참고·내규용 표이며, 여기서 값을 바꿔도 급여명세서 자동계산에는 반영되지 않습니다.
     </div>
 
     <div class="card" style="padding:12px 14px;margin-bottom:14px;">
       <div style="font-size:12.5px;font-weight:700;color:${C2.text};margin-bottom:10px;">⚙️ 기준 설정</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;">
         <div><label style="font-size:11px;color:${C2.mute};display:block;margin-bottom:3px;">법정 최저시급(원)</label>
           <input type="number" value="${d.minWage}" onchange="salTableSetField('minWage',this.value)" style="width:100%;padding:6px 8px;border:1px solid #DDE4EF;border-radius:7px;font-size:12.5px;font-weight:700;box-sizing:border-box;"></div>
-        <div><label style="font-size:11px;color:${C2.mute};display:block;margin-bottom:3px;">표준 인상률(%)</label>
+        <div><label style="font-size:11px;color:${C2.mute};display:block;margin-bottom:3px;">호봉별 표준 인상률(%)</label>
           <input type="number" step="0.1" value="${d.standardRate}" onchange="salTableSetField('standardRate',this.value)" style="width:100%;padding:6px 8px;border:1px solid #DDE4EF;border-radius:7px;font-size:12.5px;font-weight:700;box-sizing:border-box;"></div>
+        <div><label style="font-size:11px;color:${C2.mute};display:block;margin-bottom:3px;">학력별 시급 차등(%)</label>
+          <input type="number" step="0.1" value="${d.eduGapRate}" onchange="salTableSetField('eduGapRate',this.value)" style="width:100%;padding:6px 8px;border:1px solid #DDE4EF;border-radius:7px;font-size:12.5px;font-weight:700;box-sizing:border-box;"></div>
         <div><label style="font-size:11px;color:${C2.mute};display:block;margin-bottom:3px;">고과 반영 최소(%)</label>
           <input type="number" step="0.1" value="${d.perfRateMin}" onchange="salTableSetField('perfRateMin',this.value)" style="width:100%;padding:6px 8px;border:1px solid #DDE4EF;border-radius:7px;font-size:12.5px;box-sizing:border-box;"></div>
         <div><label style="font-size:11px;color:${C2.mute};display:block;margin-bottom:3px;">고과 반영 최대(%)</label>
           <input type="number" step="0.1" value="${d.perfRateMax}" onchange="salTableSetField('perfRateMax',this.value)" style="width:100%;padding:6px 8px;border:1px solid #DDE4EF;border-radius:7px;font-size:12.5px;box-sizing:border-box;"></div>
       </div>
-      <div style="font-size:11px;color:${C2.mute};margin-top:8px;">실제 개인별 인상률은 고과에 따라 <b>${d.perfRateMin}%~${d.perfRateMax}%</b> 사이에서 적용될 수 있으며, 표준(${d.standardRate}%)은 이 표를 만드는 기준값입니다.</div>
+      <div style="font-size:11px;color:${C2.mute};margin-top:8px;">학력 트랙은 고졸 기준 시급 <b>${d.eduGapRate}%씩 단계적</b>으로 높아집니다(고졸→비전공대졸→전공대졸). 실제 개인별 인상률은 고과에 따라 <b>${d.perfRateMin}%~${d.perfRateMax}%</b> 사이에서 적용될 수 있으며, 표준(${d.standardRate}%)은 이 표의 기준값입니다.</div>
       <div style="font-size:12.5px;font-weight:700;color:${C2.text};margin:14px 0 8px;">직급 체류연한(년)</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:10px;">
         ${SAL_POSITIONS.map(pos=>`<div><label style="font-size:11px;color:${C2.mute};display:block;margin-bottom:3px;">${pos}</label>
           <input type="number" value="${d.tenure?.[pos]||1}" onchange="salTableSetTenure('${pos}',this.value)" style="width:100%;padding:6px 8px;border:1px solid #DDE4EF;border-radius:7px;font-size:12.5px;text-align:center;box-sizing:border-box;"></div>`).join('')}
       </div>
-      <button onclick="salTableRegenerateAllClick()" style="margin-top:12px;width:100%;padding:9px;background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;color:#92400E;font-size:12px;font-weight:700;cursor:pointer;">🔄 표 다시 생성 (직접 수정한 값 전부 표준인상률 기준으로 재계산)</button>
+      <button onclick="salTableRegenerateAllClick()" style="margin-top:12px;width:100%;padding:9px;background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;color:#92400E;font-size:12px;font-weight:700;cursor:pointer;">🔄 표 다시 생성 (직접 수정한 값 전부 표준공식 기준으로 재계산)</button>
     </div>
 
-    ${trackTables}
+    <div class="scroll"><table style="width:100%;border-collapse:collapse;min-width:560px;">
+      <thead><tr style="background:#F0F4F9;">
+        <th style="padding:6px 8px;text-align:left;color:${C2.sub};font-weight:700;font-size:11px;white-space:nowrap;">직급</th>
+        <th style="padding:6px 8px;text-align:left;color:${C2.sub};font-weight:700;font-size:11px;white-space:nowrap;">호봉</th>
+        ${d.tracks.map(t=>`<th style="padding:6px 8px;text-align:left;color:${C2.sub};font-weight:700;font-size:11px;white-space:nowrap;">${t.label} <span style="font-weight:400;color:${C2.mute};">(시급/연봉)</span></th>`).join('')}
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
 
-    <button onclick="salTableSave()" style="width:100%;padding:11px;background:#1D5BA6;border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">💾 저장</button>
+    <button onclick="salTableSave()" style="width:100%;margin-top:14px;padding:11px;background:#1D5BA6;border:none;border-radius:9px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">💾 저장</button>
   `);
 }
 
 window.salTableSetField = function(field, value) {
   _salTableData[field] = Number(value)||0;
-  if (field==='minWage' || field==='standardRate') salTableRegenerateAll(); // 최저임금·인상률 변경시 자동 갱신(직접수정값은 유지)
+  if (field==='minWage' || field==='standardRate' || field==='eduGapRate') salTableRegenerateAll();
   renderSalaryTableBody();
 };
 window.salTableSetTenure = function(pos, value) {
@@ -6377,19 +6365,13 @@ window.salTableSetTenure = function(pos, value) {
   salTableRegenerateAll();
   renderSalaryTableBody();
 };
-window.salTableSetBase = function(tid, value) {
-  const t=_salTableData.tracks.find(x=>x.id===tid); if(!t) return;
-  t.baseSalary = Number(value)||0;
-  t.cells = salTableBuildTrack(t, _salTableData);
-  renderSalaryTableBody();
-};
 window.salTableEditCell = function(tid, key, value) {
   const t=_salTableData.tracks.find(x=>x.id===tid); if(!t) return;
-  t.cells[key] = Number(value)||0;
+  t.cellsHourly[key] = Number(value)||0;
   renderSalaryTableBody();
 };
 window.salTableRegenerateAllClick = function() {
-  if (!confirm('직접 수정한 값을 포함해 전체 표를 표준인상률 기준으로 다시 계산합니다. 계속할까요?')) return;
+  if (!confirm('직접 수정한 값을 포함해 전체 표를 표준공식 기준으로 다시 계산합니다. 계속할까요?')) return;
   salTableRegenerateForce();
   renderSalaryTableBody();
 };
@@ -6403,5 +6385,3 @@ window.salTableSave = async function() {
 </script>
 </body>
 </html>
-
-
