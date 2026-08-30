@@ -6206,37 +6206,49 @@ window.retireDelete = async (wid, rid, wname) => {
   retireViewWorker(wid, wname);
 };
 
-/* ==================== 급여테이블 (직급·호봉별 연봉 인상 참고표) ====================
-   ⚠️ 이 표는 참고·계획용입니다. 실제 급여명세서 자동계산 로직과는 별개로 동작하며,
-   여기서 수정해도 급여명세서 계산에는 영향을 주지 않습니다. */
-let _salTableData = null; // { minWage, rows:[{id,position,current,rate}] }
+/* ==================== 급여테이블 (직급·호봉별 표준 연봉/시급 범위 — 회사 내규) ====================
+   ⚠️ 이 표는 회사가 정하는 표준 급여 기준(호봉표)입니다. 특정 직원 개인의 현재 급여를 보여주는 게 아니라,
+   "이 직급·호봉이면 연봉을 얼마~얼마 범위로 준다"는 내규를 관리하는 화면입니다.
+   여기서 수정해도 급여명세서 자동계산 로직에는 영향을 주지 않습니다(참고·내규용). */
+let _salTableData = null; // { minWage, grades:[{id,position,steps:[{id,label,salaryMin,salaryMax,note}]}] }
 
 async function salTableLoad() {
   const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
   const snap = await getDoc(doc(window._db, 'company_settings', 'salaryTable'));
-  if (snap.exists()) {
+  if (snap.exists() && snap.data().grades) {
     _salTableData = snap.data();
   } else {
+    // 기본값(예시): 2027년 기준 사원/대리/과장 호봉표
     _salTableData = {
-      minWage: 10320, // 2026년 최저시급 기본값(직접 수정 가능)
-      rows: [
-        { id:'r1', position:'과장(현장)', current:44673552, rate:3.5 },
-        { id:'r2', position:'대리(사무)', current:32285088, rate:5.0 },
-        { id:'r3', position:'사원1(현장)', current:32285088, rate:3.5 },
-        { id:'r4', position:'사원2(현장)', current:32285088, rate:3.5 },
+      minWage: 10320,
+      grades: [
+        { id:'g1', position:'사원', steps: [
+          { id:'s1', label:'1호봉(고졸)', salaryMin:26900000, salaryMax:27500000, note:'법정 최저임금 방어선' },
+          { id:'s2', label:'1호봉(비전공대졸)', salaryMin:29000000, salaryMax:29800000, note:'전문대졸 및 직무 비전공 대졸 신입' },
+          { id:'s3', label:'1호봉(전공대졸)', salaryMin:32000000, salaryMax:32500000, note:'기계/건축/설비 전공자' },
+          { id:'s4', label:'2호봉(2년차)', salaryMin:33100000, salaryMax:33600000, note:'' },
+          { id:'s5', label:'3호봉(3년차)', salaryMin:34300000, salaryMax:34800000, note:'대리 승진 대상자 기본급' },
+        ]},
+        { id:'g2', position:'대리', steps: [
+          { id:'s6', label:'1호봉(1년차)', salaryMin:36000000, salaryMax:36600000, note:'사원→대리 진입 구간' },
+          { id:'s7', label:'2호봉(2년차)', salaryMin:37200000, salaryMax:37800000, note:'' },
+          { id:'s8', label:'3호봉(3년차)', salaryMin:38500000, salaryMax:39200000, note:'과장 승진 대상자 기본급' },
+        ]},
+        { id:'g3', position:'과장', steps: [
+          { id:'s9', label:'1호봉(1년차)', salaryMin:41300000, salaryMax:42000000, note:'메인 현장 책임자 시작선' },
+          { id:'s10', label:'2호봉(2년차)', salaryMin:42700000, salaryMax:43400000, note:'' },
+          { id:'s11', label:'3호봉(3년차)', salaryMin:44200000, salaryMax:44900000, note:'' },
+          { id:'s12', label:'4호봉(4년차)', salaryMin:45800000, salaryMax:46500000, note:'' },
+        ]},
       ],
     };
   }
 }
 
-function salTableCalc(row, minWage) {
-  const current = Number(row.current)||0;
-  const rate = Number(row.rate)||0;
-  const changed = Math.round(current * (1 + rate/100));
-  const monthly = Math.round(changed / 12);
-  const hourly = Math.round(monthly / 209);
-  const diff = hourly - (Number(minWage)||0);
-  return { changed, monthly, hourly, diff };
+function salTableRange(salaryMin, salaryMax) {
+  const monthlyMin = Math.round(salaryMin/12), monthlyMax = Math.round(salaryMax/12);
+  const hourlyMin = Math.round(monthlyMin/209), hourlyMax = Math.round(monthlyMax/209);
+  return { monthlyMin, monthlyMax, hourlyMin, hourlyMax };
 }
 
 window.renderSalaryTableMain = async function() {
@@ -6252,62 +6264,60 @@ function renderSalaryTableBody() {
   const el = document.getElementById('tab-salarytable');
   if (!el) return;
   const d = _salTableData;
-  const totalCurrent = d.rows.reduce((s,r)=>s+(Number(r.current)||0),0);
-  const totalChanged = d.rows.reduce((s,r)=>s+salTableCalc(r,d.minWage).changed,0);
-  const totalMonthly  = d.rows.reduce((s,r)=>s+salTableCalc(r,d.minWage).monthly,0);
+
+  let rowsHtml = '';
+  d.grades.forEach(g=>{
+    rowsHtml += `<tr style="background:#EAF2FC;">
+      <td colspan="6" style="padding:8px 10px;font-weight:800;color:${C2.text};display:flex;align-items:center;justify-content:space-between;">
+        <span>${g.position}</span>
+        <span style="display:flex;gap:6px;">
+          <input value="${g.position}" onchange="salTableEditGrade('${g.id}',this.value)" style="width:90px;border:1px solid #C7D8EC;border-radius:6px;padding:4px 7px;font-size:11.5px;font-weight:700;" placeholder="직급명 수정">
+          <button onclick="salTableAddStep('${g.id}')" style="background:#fff;border:1px solid #C7D8EC;border-radius:5px;color:#1D5BA6;padding:3px 8px;font-size:11px;cursor:pointer;">+ 호봉 추가</button>
+          <button onclick="salTableDelGrade('${g.id}')" style="background:#fff;border:1px solid #FCA5A5;border-radius:5px;color:#DC2626;padding:3px 8px;font-size:11px;cursor:pointer;">직급 삭제</button>
+        </span>
+      </td></tr>`;
+    g.steps.forEach(s=>{
+      const r = salTableRange(s.salaryMin, s.salaryMax);
+      const belowMinWage = r.hourlyMin>0 && r.hourlyMin < (Number(d.minWage)||0);
+      rowsHtml += `<tr style="border-bottom:1px solid #F0F4F9;">
+        <td style="padding:7px 10px;"><input value="${s.label}" onchange="salTableEditStep('${g.id}','${s.id}','label',this.value)" style="width:120px;border:1px solid #E4EAF2;border-radius:6px;padding:5px 7px;font-size:12px;"></td>
+        <td style="padding:7px 10px;white-space:nowrap;">
+          <input type="number" value="${s.salaryMin}" onchange="salTableEditStep('${g.id}','${s.id}','salaryMin',this.value)" style="width:95px;border:1px solid #E4EAF2;border-radius:6px;padding:5px 6px;font-size:11.5px;text-align:right;">
+          ~ <input type="number" value="${s.salaryMax}" onchange="salTableEditStep('${g.id}','${s.id}','salaryMax',this.value)" style="width:95px;border:1px solid #E4EAF2;border-radius:6px;padding:5px 6px;font-size:11.5px;text-align:right;">
+        </td>
+        <td style="padding:7px 10px;font-size:11.5px;color:${C2.sub};white-space:nowrap;">${won2(r.monthlyMin)} ~ ${won2(r.monthlyMax)}</td>
+        <td style="padding:7px 10px;font-size:11.5px;font-weight:700;white-space:nowrap;color:${belowMinWage?'#DC2626':C2.text};">${won2(r.hourlyMin)} ~ ${won2(r.hourlyMax)}${belowMinWage?' ⚠️':''}</td>
+        <td style="padding:7px 10px;"><input value="${(s.note||'').replace(/"/g,'&quot;')}" onchange="salTableEditStep('${g.id}','${s.id}','note',this.value)" placeholder="설계기준·가이드" style="width:100%;min-width:140px;border:1px solid #E4EAF2;border-radius:6px;padding:5px 7px;font-size:11.5px;"></td>
+        <td style="padding:7px 10px;"><button onclick="salTableDelStep('${g.id}','${s.id}')" style="background:#FEE2E2;border:none;border-radius:5px;color:#DC2626;padding:4px 8px;font-size:11px;cursor:pointer;">삭제</button></td>
+      </tr>`;
+    });
+  });
 
   el.innerHTML = wrap2(`
-    <div style="font-size:14px;font-weight:700;color:${C2.text};margin-bottom:4px;">📊 임직원 연봉 인상 제안표 (참고용)</div>
+    <div style="font-size:14px;font-weight:700;color:${C2.text};margin-bottom:4px;">📊 직급·호봉별 표준 연봉/시급 범위 테이블 (회사 내규)</div>
     <div style="font-size:11px;color:${C2.mute};margin-bottom:14px;line-height:1.6;">
-      퇴직금 별도·세전 기준. 시급 환산은 월 소정근로시간 209시간 기준입니다.<br>
-      ⚠️ 참고·계획용 표입니다 — 여기서 값을 바꿔도 실제 급여명세서 계산에는 반영되지 않습니다.
+      직급·호봉에 따라 회사가 정하는 표준 연봉 범위입니다. 특정 직원의 현재 급여가 아니라 채용·승진·연봉협상 시 기준으로 참고하는 표입니다.<br>
+      시급 환산은 월 소정근로시간 209시간 기준. ⚠️ 이 표는 참고·내규용이며, 여기서 값을 바꿔도 급여명세서 자동계산에는 반영되지 않습니다.
     </div>
 
     <div style="display:flex;align-items:center;gap:10px;background:#F8FAFD;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
-      <label style="font-size:12px;font-weight:700;color:${C2.sub};white-space:nowrap;">최저시급(원)</label>
+      <label style="font-size:12px;font-weight:700;color:${C2.sub};white-space:nowrap;">법정 최저시급(원)</label>
       <input type="number" id="sal-minwage" value="${d.minWage}" onchange="salTableSetMinWage(this.value)"
         style="width:110px;padding:7px 10px;border:1px solid #DDE4EF;border-radius:8px;font-size:13px;font-weight:700;color:${C2.text};">
-      <span style="font-size:11px;color:${C2.mute};">이 값을 바꾸면 아래 "최저시급 대비" 열이 전부 재계산됩니다.</span>
+      <span style="font-size:11px;color:${C2.mute};">이 값보다 낮은 시급 구간은 ⚠️로 표시됩니다.</span>
     </div>
 
     <div style="overflow-x:auto;">
-    <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:680px;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:760px;">
       <thead><tr style="background:#F0F4F9;">
-        ${['직급(직무)','현재 연봉(원)','인상률','변경 후 연봉(원)','월급 환산액(원)','환산 시급(원)','최저시급 대비',''].map(h=>`<th style="padding:8px 10px;text-align:left;color:${C2.sub};font-weight:700;white-space:nowrap;">${h}</th>`).join('')}
+        ${['호봉(연차)','연봉 범위(원)','월급 범위(원)','환산 시급 범위(원)','설계기준 및 가이드',''].map(h=>`<th style="padding:8px 10px;text-align:left;color:${C2.sub};font-weight:700;white-space:nowrap;">${h}</th>`).join('')}
       </tr></thead>
-      <tbody>
-        ${d.rows.map(r=>{
-          const c = salTableCalc(r, d.minWage);
-          const diffColor = c.diff>=0 ? '#16A34A' : '#DC2626';
-          const diffLabel = c.diff>=0 ? `+${won2(c.diff)}원 상회` : `${won2(c.diff)}원 미달`;
-          return `<tr style="border-bottom:1px solid #F0F4F9;">
-            <td style="padding:8px 10px;"><input value="${r.position}" onchange="salTableEdit('${r.id}','position',this.value)" style="width:110px;border:1px solid #E4EAF2;border-radius:6px;padding:5px 7px;font-size:12px;font-weight:700;color:${C2.text};"></td>
-            <td style="padding:8px 10px;"><input type="number" value="${r.current}" onchange="salTableEdit('${r.id}','current',this.value)" style="width:110px;border:1px solid #E4EAF2;border-radius:6px;padding:5px 7px;font-size:12px;text-align:right;"></td>
-            <td style="padding:8px 10px;"><input type="number" step="0.1" value="${r.rate}" onchange="salTableEdit('${r.id}','rate',this.value)" style="width:60px;border:1px solid #E4EAF2;border-radius:6px;padding:5px 7px;font-size:12px;text-align:right;">%</td>
-            <td style="padding:8px 10px;font-weight:700;color:${C2.text};">${won2(c.changed)}</td>
-            <td style="padding:8px 10px;">${won2(c.monthly)}</td>
-            <td style="padding:8px 10px;font-weight:700;">${won2(c.hourly)}</td>
-            <td style="padding:8px 10px;color:${diffColor};font-weight:600;white-space:nowrap;">
-              <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${diffColor};margin-right:4px;"></span>${diffLabel}</td>
-            <td style="padding:8px 10px;"><button onclick="salTableDelRow('${r.id}')" style="background:#FEE2E2;border:none;border-radius:5px;color:#DC2626;padding:4px 8px;font-size:11px;cursor:pointer;">삭제</button></td>
-          </tr>`;
-        }).join('')}
-        <tr style="background:#F0F4F9;font-weight:700;">
-          <td style="padding:8px 10px;" colspan="1">총계</td>
-          <td style="padding:8px 10px;">${won2(totalCurrent)}</td>
-          <td style="padding:8px 10px;">-</td>
-          <td style="padding:8px 10px;">${won2(totalChanged)}</td>
-          <td style="padding:8px 10px;">${won2(totalMonthly)}</td>
-          <td style="padding:8px 10px;">-</td>
-          <td style="padding:8px 10px;">-</td>
-          <td></td>
-        </tr>
-      </tbody>
+      <tbody>${rowsHtml || '<tr><td colspan="6" style="padding:20px;text-align:center;color:'+C2.mute+'">등록된 직급이 없습니다.</td></tr>'}</tbody>
     </table>
     </div>
 
     <div style="display:flex;gap:8px;margin-top:14px;">
-      <button onclick="salTableAddRow()" style="flex:1;padding:10px;background:#F0F4F9;border:none;border-radius:9px;color:${C2.sub};font-size:12.5px;font-weight:600;cursor:pointer;">➕ 행 추가</button>
+      <button onclick="salTableAddGrade()" style="flex:1;padding:10px;background:#F0F4F9;border:none;border-radius:9px;color:${C2.sub};font-size:12.5px;font-weight:600;cursor:pointer;">➕ 직급 추가</button>
       <button onclick="salTableSave()" style="flex:2;padding:10px;background:#1D5BA6;border:none;border-radius:9px;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;">💾 저장</button>
     </div>
   `);
@@ -6317,19 +6327,36 @@ window.salTableSetMinWage = function(v) {
   _salTableData.minWage = Number(v)||0;
   renderSalaryTableBody();
 };
-window.salTableEdit = function(id, field, value) {
-  const row = _salTableData.rows.find(r=>r.id===id);
-  if (!row) return;
-  row[field] = (field==='position') ? value : Number(value)||0;
+window.salTableEditGrade = function(gid, value) {
+  const g = _salTableData.grades.find(x=>x.id===gid);
+  if (!g) return;
+  g.position = value;
   renderSalaryTableBody();
 };
-window.salTableAddRow = function() {
-  const id = 'r'+Date.now();
-  _salTableData.rows.push({ id, position:'신규 직급', current:0, rate:0 });
+window.salTableEditStep = function(gid, sid, field, value) {
+  const g = _salTableData.grades.find(x=>x.id===gid); if (!g) return;
+  const s = g.steps.find(x=>x.id===sid); if (!s) return;
+  s[field] = (field==='label'||field==='note') ? value : (Number(value)||0);
   renderSalaryTableBody();
 };
-window.salTableDelRow = function(id) {
-  _salTableData.rows = _salTableData.rows.filter(r=>r.id!==id);
+window.salTableAddGrade = function() {
+  const id = 'g'+Date.now();
+  _salTableData.grades.push({ id, position:'신규 직급', steps:[{ id:'s'+Date.now(), label:'1호봉', salaryMin:0, salaryMax:0, note:'' }] });
+  renderSalaryTableBody();
+};
+window.salTableDelGrade = function(gid) {
+  if (!confirm('이 직급 전체(하위 호봉 포함)를 삭제할까요?')) return;
+  _salTableData.grades = _salTableData.grades.filter(g=>g.id!==gid);
+  renderSalaryTableBody();
+};
+window.salTableAddStep = function(gid) {
+  const g = _salTableData.grades.find(x=>x.id===gid); if (!g) return;
+  g.steps.push({ id:'s'+Date.now(), label:(g.steps.length+1)+'호봉', salaryMin:0, salaryMax:0, note:'' });
+  renderSalaryTableBody();
+};
+window.salTableDelStep = function(gid, sid) {
+  const g = _salTableData.grades.find(x=>x.id===gid); if (!g) return;
+  g.steps = g.steps.filter(s=>s.id!==sid);
   renderSalaryTableBody();
 };
 window.salTableSave = async function() {
