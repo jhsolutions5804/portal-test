@@ -338,6 +338,11 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
   .home-sc{background:#f9fafc;border:1px solid #e5e5e5;border-radius:10px;padding:14px 16px;cursor:pointer;transition:box-shadow .15s,border-color .15s;display:flex;align-items:center;gap:12px}
   .home-sc:hover{box-shadow:0 2px 12px rgba(0,0,0,.08);border-color:#1D5BA6}
   .home-sc .sci{font-size:22px;flex-shrink:0}
+  .home-info-list{display:flex;flex-direction:column;gap:12px}
+  .home-info-row{display:flex;justify-content:space-between;align-items:baseline;padding-bottom:10px;border-bottom:1px solid #F0F4F9}
+  .home-info-row:last-child{border-bottom:none;padding-bottom:0}
+  .home-info-k{font-size:12px;color:#8a8a8e;flex-shrink:0}
+  .home-info-v{font-size:13.5px;font-weight:700;color:#1d1d1f;text-align:right}
   .home-sc .sct{font-size:13px;font-weight:700;color:#1d1d1f}
   .home-sc .scd{font-size:11px;color:#86868b;margin-top:2px}
 
@@ -425,6 +430,11 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
   .home-shortcuts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .home-sc{background:#f9fafc;border:1px solid #e5e5e5;border-radius:10px;padding:12px;cursor:pointer;display:flex;align-items:center;gap:10px}
   .home-sc .sci{font-size:20px;flex-shrink:0}
+  .home-info-list{display:flex;flex-direction:column;gap:10px}
+  .home-info-row{display:flex;justify-content:space-between;align-items:baseline;padding-bottom:8px;border-bottom:1px solid #F0F4F9}
+  .home-info-row:last-child{border-bottom:none;padding-bottom:0}
+  .home-info-k{font-size:11.5px;color:#8a8a8e;flex-shrink:0}
+  .home-info-v{font-size:13px;font-weight:700;color:#1d1d1f;text-align:right}
   .home-sc .sct{font-size:13px;font-weight:700;color:#1d1d1f}
   .home-sc .scd{font-size:11px;color:#86868b;margin-top:1px}
 </style>
@@ -505,7 +515,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
         </div>
       </div>
 
-      <!-- 2행: 바로가기 + 설정 -->
+      <!-- 2행: 바로가기 + 기본정보 -->
       <div class="home-row2">
         <!-- 바로가기 -->
         <div class="home-card">
@@ -538,7 +548,18 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
           </div>
         </div>
 
-        <!-- 프로젝트 설정 섹션은 상단 설정 탭으로 이동 -->
+        <!-- 기본정보 -->
+        <div class="home-card">
+          <div class="home-section-hd">📋 기본정보</div>
+          <div class="home-info-list">
+            <div class="home-info-row"><span class="home-info-k">현장명</span><span class="home-info-v" id="home-info-name">—</span></div>
+            <div class="home-info-row"><span class="home-info-k">거래처</span><span class="home-info-v" id="home-info-client">—</span></div>
+            <div class="home-info-row"><span class="home-info-k">PJT 내용</span><span class="home-info-v" id="home-info-content">—</span></div>
+            <div class="home-info-row"><span class="home-info-k">품목</span><span class="home-info-v" id="home-info-item">—</span></div>
+            <div class="home-info-row"><span class="home-info-k">물량</span><span class="home-info-v" id="home-info-qty">—</span></div>
+            <div class="home-info-row"><span class="home-info-k">공사 시작일</span><span class="home-info-v" id="home-info-start">—</span></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -3402,6 +3423,27 @@ async function renderHome(){
 
   // 비동기 데이터 수신 후 KPI 재갱신
   _updateHomeKPI();
+
+  // ── 비동기: 홈 화면 기본정보 카드 채우기 (최초 1회 로드, 이후 캐시 재사용) ──
+  if(window._loadPjtSettingsData){
+    try{
+      var infoData = window._homePjtInfoCache || await window._loadPjtSettingsData(PROJECT_KEY);
+      window._homePjtInfoCache = infoData;
+      _fillHomeInfo(infoData);
+    }catch(e){}
+  }
+}
+
+// 기본정보 카드 채우기(홈 화면 우측 패널)
+function _fillHomeInfo(d){
+  if(!d) return;
+  var setTxt=function(id,v,fallback){ var el=document.getElementById(id); if(el) el.textContent=(v!=null&&v!==''?v:(fallback||'미설정')); };
+  setTxt('home-info-name', d.name);
+  setTxt('home-info-client', d.client);
+  setTxt('home-info-content', d.content);
+  setTxt('home-info-item', d.item);
+  setTxt('home-info-qty', d.qty!=null?d.qty+'대':null);
+  setTxt('home-info-start', d.startDate);
 }
 
 // 시작일 저장
@@ -3426,6 +3468,8 @@ async function loadPjtSettings(){
     set('set-qty', d.qty);
     set('set-start', d.startDate||localStorage.getItem('ph4_pjt_start_date')||'');
     applyPjtHeader(d);
+    window._homePjtInfoCache = d; // 홈 화면 기본정보 캐시도 최신화
+    if(typeof _fillHomeInfo==='function') _fillHomeInfo(d);
   }catch(e){ console.warn('설정 로드 실패',e); }
 }
 // 헤더(명칭·부제) 실시간 반영 — 값 없으면 기존 하드코딩 유지
@@ -3456,6 +3500,8 @@ async function savePjtSettings(){
     await window._savePjtSettingsData(PROJECT_KEY, data);
     if(startDate){ try{ localStorage.setItem('ph4_pjt_start_date', startDate); }catch(e){} }
     applyPjtHeader(data);
+    window._homePjtInfoCache = data; // 홈 화면 기본정보도 즉시 최신값으로
+    if(typeof _fillHomeInfo==='function') _fillHomeInfo(data);
     if(msg){ msg.style.color='#16A34A'; msg.textContent='✓ 저장했습니다.'; }
     renderHome();
   }catch(e){
