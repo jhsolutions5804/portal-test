@@ -568,13 +568,7 @@
                 <span class="m" id="pjt-cal-label">—</span>
                 <button class="pjt-cal-nav" onclick="pjtCalShift(1)">›</button>
               </div>
-              <div class="pjt-cal-legend" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
-                <span class="li"><span class="ld" style="background:#1D5BA6"></span>반입</span>
-                <span class="li"><span class="ld" style="background:#2e7d32"></span>검수</span>
-                <span class="li"><span class="ld" style="background:#5e35b1"></span>교육</span>
-                <span class="li"><span class="ld" style="background:#c0392b"></span>휴무</span>
-                <span class="li"><span class="ld" style="background:#e67e22"></span>연차</span>
-              </div>
+              <div class="pjt-cal-legend" id="pjt-cal-legend" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px"></div>
               <div class="pjt-cal-dow" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px"><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">일</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">월</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">화</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">수</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">목</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">금</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">토</div></div>
               <div class="pjt-cal-body" id="pjt-cal-body" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px"><div style="grid-column:1/-1;text-align:center;color:#9AAABF;font-size:12px;padding:20px">불러오는 중...</div></div>
             </div>
@@ -1233,6 +1227,18 @@ const _pjtPad=n=>String(n).padStart(2,'0');
 const _pjtKey=(y,m,d)=>y+'-'+_pjtPad(m+1)+'-'+_pjtPad(d);
 function _pjtEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+// PJT별 구분 색상 — 여러 PJT 일정이 한 캘린더에 섞여 보일 때 어느 프로젝트 건지 구분하기 위함(태그 색과는 별개)
+const PJT_ID_COLORS=['#1D5BA6','#2e7d32','#8D6E00','#5e35b1','#c0392b','#0A3D7A','#00695C','#5D3A00','#7A8AA0','#B8006B'];
+const _pjtColorCache={};
+function pjtColorFor(pjtKey){
+  if(_pjtColorCache[pjtKey]) return _pjtColorCache[pjtKey];
+  const keys=allSchedPjtKeys();
+  const idx=keys.indexOf(pjtKey);
+  const c=PJT_ID_COLORS[(idx>=0?idx:0)%PJT_ID_COLORS.length];
+  _pjtColorCache[pjtKey]=c;
+  return c;
+}
+
 // 한국 공휴일(hr/edoc의 KR_HOLIDAYS와 동일 소스 — 갱신 시 여러 파일 동시 반영 필요)
 const PJT_CAL_HOLIDAYS={
   '2026-01-01':'신정','2026-02-16':'설날 연휴','2026-02-17':'설날','2026-02-18':'설날 연휴',
@@ -1275,10 +1281,24 @@ async function pjtCalLoadMonth(){
   _pjtCalCache=cache;
 }
 
+function renderPjtCalLegend(){
+  const el=document.getElementById('pjt-cal-legend'); if(!el) return;
+  const keysInView=new Set();
+  Object.values(_pjtCalCache).forEach(items=>items.forEach(it=>keysInView.add(it.pjtKey)));
+  const keys=[...keysInView];
+  if(!keys.length){ el.innerHTML='<span class="li" style="color:#9AAABF;font-size:11px;">이번 달 일정이 없습니다.</span>'; return; }
+  el.innerHTML=keys.map(k=>{
+    const st=PJT_SUBTABS.find(s=>s.key===k);
+    const name=st?.name||k;
+    return '<span class="li"><span class="ld" style="background:'+pjtColorFor(k)+'"></span>'+_pjtEsc(name)+'</span>';
+  }).join('');
+}
+
 function renderPjtCal(){
   const body=document.getElementById('pjt-cal-body');
   const label=document.getElementById('pjt-cal-label');
   if(!body) return;
+  renderPjtCalLegend();
   const y=_pjtCalY, m=_pjtCalM;
   if(label) label.textContent=y+'년 '+(m+1)+'월';
   const first=new Date(y,m,1).getDay();
@@ -1291,14 +1311,17 @@ function renderPjtCal(){
     const dow=new Date(y,m,d).getDay();
     const holidayName=PJT_CAL_HOLIDAYS[dk];
     const items=_pjtCalCache[dk]||[];
-    const tags=[...new Set(items.map(it=>it.tag||'admin'))].slice(0,6);
-    const dots=tags.map(t=>'<span style="width:6px;height:6px;border-radius:50%;display:inline-block;background:'+((PJT_CAL_TAG[t]||PJT_CAL_TAG.admin).c)+'"></span>').join('');
+    // PJT별로 점을 찍는다(태그색이 아니라 프로젝트색) — 여러 PJT 일정이 섞여도 어느 프로젝트 건지 구분되도록
+    const pjtKeysInDay=[...new Set(items.map(it=>it.pjtKey))].slice(0,6);
+    const dots=pjtKeysInDay.map(k=>'<span style="width:6px;height:6px;border-radius:50%;display:inline-block;background:'+pjtColorFor(k)+'"></span>').join('');
+    const tooltipLines=items.slice(0,5).map(it=>(it.pjtName||'')+': '+(it.text||'')).join('\n');
     let _cst='min-height:76px;border:1px solid #EEF2F7;border-radius:10px;padding:8px 9px;cursor:pointer;box-sizing:border-box;';
     if(dk===todayKey) _cst+='background:#EAF2FC;border-color:#1D5BA6;';
     if(dk===_pjtCalSel) _cst+='background:#1D5BA6;border-color:#1D5BA6;';
     const _nc = dk===_pjtCalSel?'#fff':((dow===0||holidayName)?'#c0392b':(dow===6?'#1D5BA6':'#1A2540'));
     const holidayLbl = holidayName ? '<div style="font-size:9px;color:'+(dk===_pjtCalSel?'#fff':'#DC2626')+';line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px;">'+holidayName+'</div>' : '';
-    html+='<div style="'+_cst+'" onclick="pjtCalSelectDay(\''+dk+'\')" title="'+(holidayName||'')+'"><div style="font-size:15px;font-weight:600;color:'+_nc+'">'+d+'</div>'+holidayLbl+'<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:5px">'+dots+'</div></div>';
+    const _titleAttr=_pjtEsc([holidayName, tooltipLines].filter(Boolean).join('\n'));
+    html+='<div style="'+_cst+'" onclick="pjtCalSelectDay(\''+dk+'\')" title="'+_titleAttr+'"><div style="font-size:15px;font-weight:600;color:'+_nc+'">'+d+'</div>'+holidayLbl+'<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:5px">'+dots+(items.length>6?'<span style="font-size:8px;color:'+(dk===_pjtCalSel?'#fff':'#9AAABF')+';">+'+(items.length-6)+'</span>':'')+'</div></div>';
   }
   body.innerHTML=html;
 }
@@ -1328,10 +1351,11 @@ window.pjtCalSelectDay=async function(dk){
   if(items.length){
     items.forEach((s,idx)=>{
       const tg=PJT_CAL_TAG[s.tag||'admin']||PJT_CAL_TAG.admin;
-      html+='<div onclick="openHomeSchedDetail('+idx+')" style="display:flex;align-items:flex-start;gap:7px;margin-bottom:6px;cursor:pointer;padding:5px 4px;border-radius:7px;transition:background .12s" onmouseover="this.style.background=\'#F5F8FC\'" onmouseout="this.style.background=\'\'">'
-        +'<span style="font-size:10px;padding:2px 7px;border-radius:5px;background:'+tg.c+'22;color:'+tg.c+';white-space:nowrap;flex-shrink:0;font-weight:600">'+tg.l+'</span>'
+      const pc=pjtColorFor(s.pjtKey);
+      html+='<div onclick="openHomeSchedDetail('+idx+')" style="display:flex;align-items:flex-start;gap:7px;margin-bottom:6px;cursor:pointer;padding:5px 4px;border-radius:7px;transition:background .12s;border-left:3px solid '+pc+';" onmouseover="this.style.background=\'#F5F8FC\'" onmouseout="this.style.background=\'\'">'
+        +'<span style="font-size:10px;padding:2px 7px;border-radius:5px;background:'+tg.c+'22;color:'+tg.c+';white-space:nowrap;flex-shrink:0;font-weight:600;margin-left:4px">'+tg.l+'</span>'
         +'<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:#1A2540">'+(s.stime?_pjtEsc(s.stime)+' ':'')+_pjtEsc(s.text||'')+'</div>'
-        +'<div style="font-size:11px;color:#9AAABF;margin-top:1px">'+_pjtEsc(s.pjtName||'')+' ›</div></div></div>';
+        +'<div style="font-size:11px;color:'+pc+';margin-top:1px;font-weight:600">'+_pjtEsc(s.pjtName||'')+' ›</div></div></div>';
     });
   } else {
     html+='<div style="color:#9AAABF;font-size:12px;padding:2px 0 8px">이 날 등록된 일정이 없습니다.</div>';
