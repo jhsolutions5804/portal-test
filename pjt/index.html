@@ -2284,8 +2284,9 @@ function renderTwoWeek(){
   _twNav+='<div style="flex:1;text-align:center;font-size:13px;font-weight:700;color:#1D5BA6">'+_twRange+((window._twBlock||0)===0?' · 이번 2주':'')+'</div>';
   _twNav+='<button class="nav-arrow" onclick="changeTwoWeek(1)">›</button>';
   _twNav+='<button onclick="goTwoWeekToday()" style="font-size:11px;font-weight:600;color:#1D5BA6;background:#e8f0fb;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;white-space:nowrap;margin-left:4px">오늘</button>';
+  _twNav+='<button onclick="saveSheetPng(\'tw-capture-area\',\'주간일정_'+toKey(w0Start)+'.png\')" style="font-size:11px;font-weight:600;color:#1D5BA6;background:#e8f0fb;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;white-space:nowrap;margin-left:4px">🖼️ 이미지 저장</button>';
   _twNav+='</div>';
-  el.innerHTML=_twNav+html;
+  el.innerHTML=_twNav+'<div id="tw-capture-area" style="background:#fff;padding:4px;">'+html+'</div>';
 }
 window.changeTwoWeek=function(dir){window._twBlock=(window._twBlock||0)+dir;renderTwoWeek();};
 window.goTwoWeekToday=function(){window._twBlock=0;renderTwoWeek();};
