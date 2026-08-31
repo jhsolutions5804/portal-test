@@ -18,6 +18,19 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
 .tab{flex:1;min-width:74px;padding:10px 4px;font-size:12.5px;font-weight:400;color:#86868b;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;font-family:inherit;white-space:nowrap}
 .tab.active{color:#1d1d1f;font-weight:700;border-bottom-color:#1D5BA6}
 .content{padding:16px}
+.sched-view-toggle{display:flex;gap:5px;margin-bottom:14px}
+.svt-btn{flex:1;padding:8px 4px;border:1px solid #d1d1d6;border-radius:8px;background:#fff;color:#5C6F8A;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.svt-btn.active{background:#1D5BA6;border-color:#1D5BA6;color:#fff}
+.wk-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.wk-day-col{border:1px solid #eee;border-radius:8px;padding:5px;min-height:90px;background:#fafbfc}
+.wk-day-col.wk-today{border-color:#1D5BA6;background:#eaf2fc}
+.wk-day-col.wk-sat{background:#f6f8fb}
+.wk-day-head{text-align:center;margin-bottom:4px}
+.wk-day-num{font-size:12px;font-weight:700;color:#1d1d1f}
+.wk-day-dow{font-size:8.5px;color:#86868b}
+.wk-holi{font-size:7.5px;color:#DC2626;line-height:1.1}
+.wk-item{font-size:8.5px;padding:2px 3px;border-radius:4px;margin-bottom:2px;background:#fff;border:1px solid #eee;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wk-empty{font-size:9px;color:#c7c7cc;text-align:center;padding:6px 0}
 .card{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:14px 16px;margin-bottom:12px}
 .card-title{font-size:13px;font-weight:700;color:#1A2540;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
 .info-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0;font-size:13px}
@@ -213,6 +226,13 @@ textarea.f-input{resize:vertical;min-height:70px}
 
   /* 일정관리 캘린더: 좌(달력)+우(상세) 2단 분할 */
   .cal-wrap{display:grid;grid-template-columns:420px 1fr;gap:16px;align-items:start}
+  .sched-view-toggle{gap:8px}
+  .svt-btn{flex:none;padding:9px 22px;font-size:13.5px}
+  .wk-day-col{min-height:130px;padding:8px}
+  .wk-day-num{font-size:14px}
+  .wk-day-dow{font-size:10px}
+  .wk-holi{font-size:9px}
+  .wk-item{font-size:10.5px;padding:3px 5px;white-space:normal}
   .cal-day{min-height:74px}
   .cal-right{min-height:400px}
 
@@ -220,6 +240,7 @@ textarea.f-input{resize:vertical;min-height:70px}
   .item-summary-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 <div class="ws-wrapper">
@@ -358,8 +379,48 @@ textarea.f-input{resize:vertical;min-height:70px}
       </div>
     </div>
 
-    <!-- 일정관리 (캘린더) -->
+    <!-- 일정관리 -->
     <div id="pane-sched" style="display:none">
+      <div class="sched-view-toggle">
+        <button class="svt-btn active" data-view="daily" onclick="setSchedView('daily')">Daily</button>
+        <button class="svt-btn" data-view="weekly" onclick="setSchedView('weekly')">Weekly</button>
+        <button class="svt-btn" data-view="monthly" onclick="setSchedView('monthly')">Monthly</button>
+      </div>
+
+      <!-- Daily -->
+      <div id="sched-daily-pane">
+        <div class="today-nav">
+          <button class="nav-arrow" onclick="schedDayShift(-1)">‹</button>
+          <div style="flex:1;text-align:center">
+            <div class="today-title" id="sched-daily-title">—</div>
+          </div>
+          <button class="nav-arrow" onclick="schedDayShift(1)">›</button>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin:8px 0 12px">
+          <button onclick="schedDayGoToday()" style="font-size:11px;font-weight:600;color:#1D5BA6;background:#e8f0fb;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;">오늘</button>
+        </div>
+        <button class="add-btn" id="sched-daily-addbtn" style="margin-bottom:14px;display:none" onclick="openSchedForm(schedDailyKey())">+ 이 날 일정 등록</button>
+        <div id="sched-daily-list"></div>
+      </div>
+
+      <!-- Weekly -->
+      <div id="sched-weekly-pane" style="display:none">
+        <div class="today-nav">
+          <button class="nav-arrow" onclick="schedWeekShift(-1)">‹</button>
+          <div style="flex:1;text-align:center;font-size:13px;font-weight:700;color:#1D5BA6" id="sched-week-title">—</div>
+          <button class="nav-arrow" onclick="schedWeekShift(1)">›</button>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:6px;margin:8px 0 12px">
+          <button onclick="schedWeekGoToday()" style="font-size:11px;font-weight:600;color:#1D5BA6;background:#e8f0fb;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;">오늘</button>
+          <button onclick="saveSchedWeekPng()" style="font-size:11px;font-weight:600;color:#1D5BA6;background:#e8f0fb;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;">🖼️ 이미지 저장</button>
+        </div>
+        <div id="sched-week-capture" style="background:#fff;">
+          <div class="wk-grid" id="sched-week-grid"></div>
+        </div>
+      </div>
+
+      <!-- Monthly (캘린더, 기존 그대로) -->
+      <div id="sched-monthly-pane" style="display:none">
       <div class="cal-wrap">
         <div class="cal-left">
           <div class="cal-nav">
@@ -389,6 +450,7 @@ textarea.f-input{resize:vertical;min-height:70px}
             <div id="cal-detail-body"></div>
           </div>
         </div>
+      </div>
       </div>
     </div>
 
@@ -1161,6 +1223,9 @@ const HOLIDAYS={
 
 let calY, calM, calSel=null, calCache={};
 let schedCurCat='admin', schedEditing=null, schedDetailItem=null;
+let schedViewMode='daily'; // 'daily' | 'weekly' | 'monthly'
+let schedDayOffset=0, schedWeekOffset=0; // 오늘 기준 이동 오프셋
+let allSchedLoaded=false;
 const calPad=n=>String(n).padStart(2,'0');
 const calKey=(y,m,d)=>y+'-'+calPad(m+1)+'-'+calPad(d);
 function rangeText(s){
@@ -1174,29 +1239,148 @@ function rangeText(s){
 
 function initCal(){
   const now=new Date(); calY=now.getFullYear(); calM=now.getMonth();
-  loadSchedMonth();
+  loadAllSched();
 }
 window.calShift=function(dir){
   calM+=dir;
   if(calM>11){calM=0;calY++;}
   if(calM<0){calM=11;calY--;}
-  loadSchedMonth();
+  renderSchedCal(); // 전체기간을 이미 캐시하고 있으므로 재조회 없이 다시 그리기만 하면 됨
+  if(calSel) selectSchedDay(calSel);
 };
-async function loadSchedMonth(){
-  const start=calKey(calY,calM,1);
-  const end=calKey(calY,calM,new Date(calY,calM+1,0).getDate());
+// 일정 전체를 한 번만 로드해서 날짜별로 캐시(calCache)해 둔다.
+// Daily/Weekly/Monthly 뷰가 모두 이 캐시 하나를 공유하므로, 뷰 전환 시 추가 조회가 필요 없다.
+async function loadAllSched(){
   calCache={};
   try{
     const snap=await getDocs(query(collection(db,'pjt_registry',pjtId,'schedules'), orderBy('sdate','asc')));
     snap.forEach(function(d){
       const s=d.data(); const dk=s.sdate;
-      if(!dk || dk<start || dk>end) return;
+      if(!dk) return;
       (calCache[dk]=calCache[dk]||[]).push(Object.assign({id:d.id}, s));
     });
   }catch(e){}
-  renderSchedCal();
+  allSchedLoaded=true;
+  renderSchedView();
   if(calSel) selectSchedDay(calSel);
 }
+// 하위 호환용 별칭(기존 코드에서 loadSchedMonth 이름으로 호출하던 곳들이 그대로 동작하도록)
+function loadSchedMonth(){ return loadAllSched(); }
+// ── 일정관리: Daily/Weekly/Monthly 뷰 전환 ──
+window.setSchedView=function(mode){
+  schedViewMode=mode;
+  var PANE={daily:'sched-daily-pane', weekly:'sched-weekly-pane', monthly:'sched-monthly-pane'};
+  Object.keys(PANE).forEach(function(k){
+    var el=document.getElementById(PANE[k]);
+    if(el) el.style.display=(k===mode)?'':'none';
+  });
+  document.querySelectorAll('.svt-btn').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-view')===mode);
+  });
+  renderSchedView();
+};
+function renderSchedView(){
+  if(!allSchedLoaded) return; // 데이터 로드 완료 후 loadAllSched()에서 다시 호출해줌
+  if(schedViewMode==='daily') renderSchedDaily();
+  else if(schedViewMode==='weekly') renderSchedWeekly();
+  else renderSchedCal();
+}
+
+// ── Daily ──
+function schedGetDay(){ var d=new Date(); d.setDate(d.getDate()+schedDayOffset); return d; }
+window.schedDailyKey=function(){ var d=schedGetDay(); return calKey(d.getFullYear(),d.getMonth(),d.getDate()); };
+window.schedDayShift=function(dir){ schedDayOffset+=dir; renderSchedDaily(); };
+window.schedDayGoToday=function(){ schedDayOffset=0; renderSchedDaily(); };
+function renderSchedDaily(){
+  var d=schedGetDay(); var dk=calKey(d.getFullYear(),d.getMonth(),d.getDate());
+  var now=new Date(); var todayKey=calKey(now.getFullYear(),now.getMonth(),now.getDate());
+  var dowKo=['일','월','화','수','목','금','토'];
+  var holidayName=HOLIDAYS[dk];
+  var titleEl=document.getElementById('sched-daily-title');
+  if(titleEl){
+    titleEl.textContent=(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+dowKo[d.getDay()]+')'+(dk===todayKey?' · 오늘':'')+(holidayName?' · '+holidayName:'');
+  }
+  var addBtn=document.getElementById('sched-daily-addbtn');
+  if(addBtn) addBtn.style.display=isAdmin?'':'none';
+  var items=(calCache[dk]||[]).slice().sort(function(a,b){ return (a.stime||'').localeCompare(b.stime||''); });
+  var html='';
+  if(items.length){
+    items.forEach(function(s){
+      var tg=SCHED_TAG[s.tag||'admin']||SCHED_TAG.admin;
+      html+='<div class="cal-sched-row" style="cursor:pointer" onclick="openSchedDetail(\''+s.id+'\')">'
+        +'<span class="tag" style="background:'+tg.c+'22;color:'+tg.c+'">'+tg.l+'</span>'
+        +'<div style="flex:1;min-width:0"><div class="sched-title">'+(s.stime?escapeHtml(s.stime)+' ':'')+escapeHtml(s.text||'(내용 없음)')+'</div>'
+        +(s.place?('<div class="sched-memo">📍 '+escapeHtml(s.place)+'</div>'):'')+'</div>'
+        +'</div>';
+    });
+  } else {
+    html='<div class="empty">이 날 등록된 일정이 없습니다.</div>';
+  }
+  var listEl=document.getElementById('sched-daily-list');
+  if(listEl) listEl.innerHTML=html;
+}
+
+// ── Weekly ──
+function schedGetWeekStart(){
+  var now=new Date(); now.setDate(now.getDate()+schedWeekOffset*7);
+  var d=new Date(now); d.setDate(d.getDate()-d.getDay()); // 이번 주 일요일
+  return d;
+}
+window.schedWeekShift=function(dir){ schedWeekOffset+=dir; renderSchedWeekly(); };
+window.schedWeekGoToday=function(){ schedWeekOffset=0; renderSchedWeekly(); };
+function renderSchedWeekly(){
+  var wStart=schedGetWeekStart();
+  var now=new Date(); var todayKey=calKey(now.getFullYear(),now.getMonth(),now.getDate());
+  var dowKo=['일','월','화','수','목','금','토'];
+  var wEnd=new Date(wStart); wEnd.setDate(wStart.getDate()+6);
+  var titleEl=document.getElementById('sched-week-title');
+  if(titleEl){
+    titleEl.textContent=(wStart.getMonth()+1)+'/'+wStart.getDate()+' ~ '+(wEnd.getMonth()+1)+'/'+wEnd.getDate()+(schedWeekOffset===0?' · 이번 주':'');
+  }
+  var grid=document.getElementById('sched-week-grid');
+  if(!grid) return;
+  var html='';
+  for(var i=0;i<7;i++){
+    var d=new Date(wStart); d.setDate(wStart.getDate()+i);
+    var dk=calKey(d.getFullYear(),d.getMonth(),d.getDate());
+    var dow=d.getDay();
+    var holidayName=HOLIDAYS[dk];
+    var isToday=dk===todayKey;
+    var isSat=dow===6, isSun=dow===0;
+    var items=(calCache[dk]||[]).slice().sort(function(a,b){ return (a.stime||'').localeCompare(b.stime||''); });
+    var numColor=(isSun||holidayName)?'#DC2626':(isSat?'#1D5BA6':'');
+    html+='<div class="wk-day-col'+(isToday?' wk-today':'')+((isSat||isSun)?' wk-sat':'')+'">';
+    html+='<div class="wk-day-head">';
+    html+='<div class="wk-day-num"'+(numColor?' style="color:'+numColor+'"':'')+'>'+d.getDate()+'</div>';
+    html+='<div class="wk-day-dow">'+dowKo[dow]+'요일</div>';
+    if(holidayName) html+='<div class="wk-holi">'+holidayName+'</div>';
+    html+='</div>';
+    if(!items.length){ html+='<div class="wk-empty">—</div>'; }
+    else{
+      items.forEach(function(s){
+        var tg=SCHED_TAG[s.tag||'admin']||SCHED_TAG.admin;
+        html+='<div class="wk-item" style="border-left:3px solid '+tg.c+'" onclick="openSchedDetail(\''+s.id+'\')">'
+          +(s.stime?'<b>'+escapeHtml(s.stime)+'</b> ':'')+escapeHtml(s.text||'')+'</div>';
+      });
+    }
+    html+='</div>';
+  }
+  grid.innerHTML=html;
+}
+window.saveSchedWeekPng=async function(){
+  var el=document.getElementById('sched-week-capture');
+  if(!el) return;
+  if(typeof html2canvas==='undefined'){ toast('이미지 저장 모듈을 불러오는 중이에요. 잠시 후 다시 눌러주세요.'); return; }
+  try{
+    var canvas=await html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:true});
+    var a=document.createElement('a');
+    var wStart=schedGetWeekStart();
+    a.href=canvas.toDataURL('image/png');
+    a.download='주간일정_'+calKey(wStart.getFullYear(),wStart.getMonth(),wStart.getDate())+'.png';
+    a.click();
+  }catch(e){ console.error(e); alert('저장 중 오류가 났어요: '+e.message); }
+};
+
 function renderSchedCal(){
   const grid=document.getElementById('cal-grid');
   const label=document.getElementById('cal-month-label');
