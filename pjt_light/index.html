@@ -253,10 +253,10 @@ textarea.f-input{resize:vertical;min-height:70px}
   </div>
   <div class="pc-topnav-tabs">
     <button class="pc-tnav-btn active" data-tab="home" onclick="switchTab('home')">🏠 홈</button>
+    <button class="pc-tnav-btn" data-tab="sched" onclick="switchTab('sched')">📅 일정관리</button>
     <button class="pc-tnav-btn" data-tab="items" onclick="switchTab('items')">📦 품목현황</button>
     <button class="pc-tnav-btn" data-tab="att" onclick="switchTab('att')">👷 근태·공수</button>
-    <button class="pc-tnav-btn" data-tab="sched" onclick="switchTab('sched')">📅 일정관리</button>
-    <button class="pc-tnav-btn" data-tab="report" onclick="switchTab('report')">📝 공사일보</button>
+    <button class="pc-tnav-btn" data-tab="settings" onclick="switchTab('settings')">⚙️ 설정</button>
   </div>
   <div class="pc-topnav-right">
     <span class="pc-status-badge" id="pc-status">진행중</span>
@@ -284,10 +284,10 @@ textarea.f-input{resize:vertical;min-height:70px}
     </div>
     <div class="tab-bar">
       <button class="tab active" data-tab="home" onclick="switchTab('home')">🏠 홈</button>
+      <button class="tab" data-tab="sched" onclick="switchTab('sched')">📅 일정</button>
       <button class="tab" data-tab="items" onclick="switchTab('items')">📦 품목</button>
       <button class="tab" data-tab="att" onclick="switchTab('att')">👷 근태</button>
-      <button class="tab" data-tab="sched" onclick="switchTab('sched')">📅 일정</button>
-      <button class="tab" data-tab="report" onclick="switchTab('report')">📝 일보</button>
+      <button class="tab" data-tab="settings" onclick="switchTab('settings')">⚙️ 설정</button>
     </div>
   </div>
 
@@ -316,7 +316,10 @@ textarea.f-input{resize:vertical;min-height:70px}
           <div class="info-row"><span class="k">공사 시작일</span><span class="v" id="i-start">—</span></div>
         </div>
       </div>
+    </div>
 
+    <!-- 설정 -->
+    <div id="pane-settings" style="display:none">
       <div class="home-row2" id="admin-row" style="display:none">
         <div class="home-card">
           <div class="home-section-hd">⚙️ 기본정보 수정 <span style="font-weight:400;color:#9AAABF;font-size:11px">(관리자)</span></div>
@@ -333,6 +336,7 @@ textarea.f-input{resize:vertical;min-height:70px}
           </div>
         </div>
       </div>
+      <div id="settings-noaccess" style="display:none;text-align:center;padding:40px;color:#9AAABF;font-size:13px;">관리자만 설정을 변경할 수 있습니다.</div>
     </div>
 
     <!-- 품목현황 -->
@@ -795,9 +799,14 @@ window.switchTab=function(tab){
   document.querySelectorAll('.tab, .pc-tnav-btn').forEach(function(b){
     b.classList.toggle('active', b.dataset.tab===tab);
   });
-  ['home','items','att','sched','report'].forEach(function(t){
-    document.getElementById('pane-'+t).style.display=(t===tab)?'':'none';
+  ['home','items','att','sched','report','settings'].forEach(function(t){
+    var el=document.getElementById('pane-'+t);
+    if(el) el.style.display=(t===tab)?'':'none';
   });
+  if(tab==='settings'){
+    document.getElementById('admin-row').style.display=isAdmin?'grid':'none';
+    document.getElementById('settings-noaccess').style.display=isAdmin?'none':'block';
+  }
 };
 
 window.saveBasic=async function(){
