@@ -259,9 +259,10 @@
     .pjt-cal-cell .dnum{ font-size:12px; font-weight:600; color:#1A2540; }
     .pjt-cal-cell .dots{ display:flex; gap:2px; flex-wrap:wrap; margin-top:3px; }
     .pjt-cal-cell .cd{ width:5px; height:5px; border-radius:50%; }
-    /* 일정관리 Daily/Weekly/Monthly 토글 */
-    .pjt-svt-btn{ flex:1; padding:8px 4px; border:1px solid #d1d1d6; border-radius:8px; background:#fff; color:#5C6F8A; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
-    .pjt-svt-btn.active{ background:#1D5BA6; border-color:#1D5BA6; color:#fff; }
+    /* 일정관리 Weekly/Monthly 토글 — 앱 전반 파란색 톤(연한블루 칩/솔리드블루)에 맞춘 세그먼트 컨트롤 */
+    .pjt-cal-toggle{ background:#F0F4F9; border-radius:10px; padding:3px; display:inline-flex; gap:2px; }
+    .pjt-svt-btn{ flex:1; padding:8px 6px; border:none; border-radius:8px; background:transparent; color:#5C6F8A; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; transition:background .15s,color .15s; }
+    .pjt-svt-btn.active{ background:#1D5BA6; color:#fff; box-shadow:0 1px 4px rgba(29,91,166,.25); }
     .pjt-week-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
     .pjt-week-day-col{ border:1px solid #EEF2F7; border-radius:8px; padding:5px; min-height:90px; background:#fafbfc; }
     .pjt-week-day-col.today{ border-color:#1D5BA6; background:#eaf2fc; }
@@ -360,7 +361,7 @@
     .pjt-cal-cell .dnum{ font-size:12px; font-weight:600; color:#1A2540; }
     .pjt-cal-cell .dots{ display:flex; gap:2px; flex-wrap:wrap; margin-top:3px; }
     .pjt-cal-cell .cd{ width:5px; height:5px; border-radius:50%; }
-    .pjt-svt-btn{ flex:none; padding:9px 22px; font-size:13.5px; }
+    .pjt-svt-btn{ flex:none; padding:9px 26px; font-size:13.5px; }
     .pjt-week-day-col{ min-height:180px; padding:10px; }
     .pjt-week-day-num{ font-size:15px; }
     .pjt-week-day-dow{ font-size:11px; }
@@ -575,7 +576,7 @@
         <div class="pjt-hybrid-wrap">
           <div id="pjt-registry-section" style="margin-top:2px;"></div>
           <!-- 통합 일정관리(Weekly/Monthly) -->
-          <div class="pjt-cal-toggle" style="display:flex;gap:6px;margin-bottom:14px">
+          <div class="pjt-cal-toggle" style="margin-bottom:14px">
             <button class="pjt-svt-btn active" data-view="weekly" onclick="setPjtCalView('weekly')">Weekly</button>
             <button class="pjt-svt-btn" data-view="monthly" onclick="setPjtCalView('monthly')">Monthly</button>
           </div>
