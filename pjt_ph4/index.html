@@ -465,8 +465,8 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
   <div class="pc-topnav-tabs">
     <button class="pc-tnav-btn" data-tab="home" onclick="switchTabPC('home',this)">🏠 홈</button>
     <button class="pc-tnav-btn active" data-tab="schedule" onclick="switchTabPC('schedule',this)">📅 일정관리</button>
-    <button class="pc-tnav-btn" data-tab="progress" onclick="switchTabPC('progress',this)">📊 공정</button>
-    <button class="pc-tnav-btn" data-tab="attend" onclick="switchTabPC('attend',this)">👷 근태</button>
+    <button class="pc-tnav-btn" data-tab="progress" onclick="switchTabPC('progress',this)">📊 공정관리</button>
+    <button class="pc-tnav-btn" data-tab="attend" onclick="switchTabPC('attend',this)">👷 근태관리</button>
     <button class="pc-tnav-btn" data-tab="settings" onclick="switchTabPC('settings',this)">⚙️ 설정</button>
   </div>
   <div class="pc-topnav-right">
@@ -491,8 +491,8 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
     </div>
     <div class="tab-bar">
       <button class="tab active" onclick="switchTab('schedule',this)">📅 일정관리</button>
-      <button class="tab" onclick="switchTab('progress',this)">공정</button>
-      <button class="tab" onclick="switchTab('attend',this)">근태</button>
+      <button class="tab" onclick="switchTab('progress',this)">공정관리</button>
+      <button class="tab" onclick="switchTab('attend',this)">근태관리</button>
       <button class="tab" onclick="switchTab('settings',this)">설정</button>
     </div>
   </div>
@@ -576,8 +576,8 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
     <!-- SCHEDULE -->
     <div id="tab-schedule">
       <div class="sched-view-toggle">
-        <button class="svt-btn active" data-view="weekly" onclick="setScheduleView('weekly')">Weekly</button>
-        <button class="svt-btn" data-view="monthly" onclick="setScheduleView('monthly')">Monthly</button>
+        <button class="svt-btn" data-view="weekly" onclick="setScheduleView('weekly')">Weekly</button>
+        <button class="svt-btn active" data-view="monthly" onclick="setScheduleView('monthly')">Monthly</button>
       </div>
 
     <!-- TWO WEEK -->
@@ -3076,7 +3076,7 @@ function hideFixedItem(dateKey,text){
   closeUsDetail();renderToday();
 }
 
-var scheduleViewMode='weekly'; // 'weekly' | 'monthly' — 일정관리 탭 내부 서브뷰
+var scheduleViewMode='monthly'; // 'weekly' | 'monthly' — 일정관리 탭 내부 서브뷰
 function switchTab(name,btn){
   var ALL_TABS=['home','schedule','progress','attend','settings'];
   // 알 수 없는 탭 이름(예: 포털 서브탭 key, 혹은 예전 today/twoweek/calendar 키) → schedule로 흡수, 그 외는 home 폴백
@@ -3570,7 +3570,7 @@ function waitForFirebaseAndInit() {
         if(window._refreshWorkerArrays) window._refreshWorkerArrays();
       });
     }
-    initToday();
+    // initToday(); // ⚠️ Daily 뷰(tab-today) 제거로 today-title 등 참조 요소가 사라져 예외 발생 → 홈 전환 로직이 중단되던 버그의 원인. 더 이상 필요 없어 호출 제거.
     // URL ?tab= / ?via= 파라미터 확인
     var _urlTab='home';
     var _viaPortal=false;
