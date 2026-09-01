@@ -1335,7 +1335,8 @@ function _pjtDailyLegend(elId, items){
 function _pjtGetWeeklyStart(){
   const now=new Date(); now.setHours(0,0,0,0);
   now.setDate(now.getDate()+_pjtWeekOffset*14);
-  return now; // 오늘(또는 오프셋 적용된 기준일) 자체가 시작일 — 요일 정렬 없이 "오늘부터"
+  now.setDate(now.getDate()-now.getDay()); // 이번 주 일요일로 정렬 — 캘린더처럼 항상 일~토로 시작·종료
+  return now;
 }
 // 14일 범위가 여러 달에 걸칠 수 있으므로, 필요한 달을 전부 캐시에 채운다.
 async function _pjtEnsureWeeklyRangeLoaded(){
@@ -1386,7 +1387,7 @@ function renderPjtCalWeekly(){
   const dowKo=['일','월','화','수','목','금','토'];
   const wEnd=new Date(wStart); wEnd.setDate(wStart.getDate()+13);
   const labelEl=document.getElementById('pjt-cal-week-label');
-  if(labelEl) labelEl.textContent=(wStart.getMonth()+1)+'/'+wStart.getDate()+' ~ '+(wEnd.getMonth()+1)+'/'+wEnd.getDate()+(_pjtWeekOffset===0?' · 오늘부터 2주':'');
+  if(labelEl) labelEl.textContent=(wStart.getMonth()+1)+'/'+wStart.getDate()+' ~ '+(wEnd.getMonth()+1)+'/'+wEnd.getDate()+(_pjtWeekOffset===0?' · 이번 주 + 다음 주':'');
   const weekItemsAll=[];
   const grid=document.getElementById('pjt-cal-week-grid');
   if(!grid) return;
