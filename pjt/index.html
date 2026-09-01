@@ -465,8 +465,8 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
   <div class="pc-topnav-tabs">
     <button class="pc-tnav-btn" data-tab="home" onclick="switchTabPC('home',this)">🏠 홈</button>
     <button class="pc-tnav-btn active" data-tab="schedule" onclick="switchTabPC('schedule',this)">📅 일정관리</button>
-    <button class="pc-tnav-btn" data-tab="attend" onclick="switchTabPC('attend',this)">👷 근태</button>
     <button class="pc-tnav-btn" data-tab="progress" onclick="switchTabPC('progress',this)">📊 공정</button>
+    <button class="pc-tnav-btn" data-tab="attend" onclick="switchTabPC('attend',this)">👷 근태</button>
     <button class="pc-tnav-btn" data-tab="settings" onclick="switchTabPC('settings',this)">⚙️ 설정</button>
   </div>
   <div class="pc-topnav-right">
@@ -491,8 +491,8 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
     </div>
     <div class="tab-bar">
       <button class="tab active" onclick="switchTab('schedule',this)">📅 일정관리</button>
-      <button class="tab" onclick="switchTab('attend',this)">근태</button>
       <button class="tab" onclick="switchTab('progress',this)">공정</button>
+      <button class="tab" onclick="switchTab('attend',this)">근태</button>
       <button class="tab" onclick="switchTab('settings',this)">설정</button>
     </div>
   </div>
@@ -625,7 +625,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
         </div>
         <div id="cal-detail" style="display:none;flex-direction:column;flex:1">
           <div class="cal-right-hd" id="cal-detail-title"></div>
-          <div class="cal-right-body" id="cal-detail-body" style="max-height:280px;overflow-y:auto"></div>
+          <div class="cal-right-body" id="cal-detail-body" style="flex:none;max-height:280px;overflow-y:auto"></div>
           <!-- 업무지시 및 보고 (선택한 날짜 기준) -->
           <div class="report-section" style="border-top:1px solid #e5e5e5;margin-top:12px;padding-top:12px">
             <div class="report-title">
