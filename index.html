@@ -259,6 +259,16 @@
     .pjt-cal-cell .dnum{ font-size:12px; font-weight:600; color:#1A2540; }
     .pjt-cal-cell .dots{ display:flex; gap:2px; flex-wrap:wrap; margin-top:3px; }
     .pjt-cal-cell .cd{ width:5px; height:5px; border-radius:50%; }
+    /* 일정관리 Daily/Weekly/Monthly 토글 */
+    .pjt-svt-btn{ flex:1; padding:8px 4px; border:1px solid #d1d1d6; border-radius:8px; background:#fff; color:#5C6F8A; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
+    .pjt-svt-btn.active{ background:#1D5BA6; border-color:#1D5BA6; color:#fff; }
+    .pjt-week-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+    .pjt-week-day-col{ border:1px solid #EEF2F7; border-radius:8px; padding:5px; min-height:90px; background:#fafbfc; }
+    .pjt-week-day-col.today{ border-color:#1D5BA6; background:#eaf2fc; }
+    .pjt-week-day-num{ font-size:12px; font-weight:700; color:#1A2540; text-align:center; }
+    .pjt-week-day-dow{ font-size:8.5px; color:#86868b; text-align:center; }
+    .pjt-week-item{ font-size:8px; padding:2px 3px; border-radius:4px; margin-top:2px; background:#fff; border:1px solid #eee; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pjt-daily-item{ display:flex; align-items:flex-start; gap:7px; margin-bottom:6px; padding:6px 4px; border-radius:7px; cursor:pointer; }
     /* 홈 대시보드 — 모바일: 1단 세로 */
     .home-dash{ display:flex; flex-direction:column; gap:16px; margin-top:20px; }
     .dash-approve-wrap{ display:flex; flex-direction:column; }
@@ -350,6 +360,11 @@
     .pjt-cal-cell .dnum{ font-size:12px; font-weight:600; color:#1A2540; }
     .pjt-cal-cell .dots{ display:flex; gap:2px; flex-wrap:wrap; margin-top:3px; }
     .pjt-cal-cell .cd{ width:5px; height:5px; border-radius:50%; }
+    .pjt-svt-btn{ flex:none; padding:9px 22px; font-size:13.5px; }
+    .pjt-week-day-col{ min-height:130px; padding:8px; }
+    .pjt-week-day-num{ font-size:14px; }
+    .pjt-week-day-dow{ font-size:10px; }
+    .pjt-week-item{ font-size:10.5px; padding:3px 5px; white-space:normal; }
     .hello{padding:0 0 6px}
     .hello h1{font-size:26px}
     .hello p{font-size:13.5px}
@@ -560,7 +575,47 @@
           <!-- 상단: 진행 중 PJT 축소 카드 (가로 배치) -->
           <div id="pjt-home-cards" class="pjt-cards-row"></div>
           <div id="pjt-registry-section" style="margin-top:2px;"></div>
-          <!-- 하단: 통합 월간 캘린더 + 날짜별 상세(일정·업무지시) -->
+          <!-- 하단: 통합 일정관리(Daily/Weekly/Monthly) -->
+          <div class="pjt-cal-toggle" style="display:flex;gap:6px;margin-bottom:14px">
+            <button class="pjt-svt-btn" data-view="daily" onclick="setPjtCalView('daily')">Daily</button>
+            <button class="pjt-svt-btn" data-view="weekly" onclick="setPjtCalView('weekly')">Weekly</button>
+            <button class="pjt-svt-btn active" data-view="monthly" onclick="setPjtCalView('monthly')">Monthly</button>
+          </div>
+
+          <!-- Daily -->
+          <div id="pjt-cal-daily-pane" style="display:none">
+            <div class="pjt-cal-box">
+              <div class="pjt-cal-hd">
+                <button class="pjt-cal-nav" onclick="pjtCalDayShift(-1)">‹</button>
+                <span class="m" id="pjt-cal-daily-label">—</span>
+                <button class="pjt-cal-nav" onclick="pjtCalDayShift(1)">›</button>
+              </div>
+              <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+                <button onclick="pjtCalDayGoToday()" style="font-size:11px;font-weight:600;color:#1D5BA6;background:#e8f0fb;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;">오늘</button>
+              </div>
+              <div class="pjt-cal-legend" id="pjt-cal-daily-legend" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px"></div>
+              <div id="pjt-cal-daily-list"></div>
+            </div>
+          </div>
+
+          <!-- Weekly -->
+          <div id="pjt-cal-weekly-pane" style="display:none">
+            <div class="pjt-cal-box">
+              <div class="pjt-cal-hd">
+                <button class="pjt-cal-nav" onclick="pjtCalWeekShift(-1)">‹</button>
+                <span class="m" id="pjt-cal-week-label">—</span>
+                <button class="pjt-cal-nav" onclick="pjtCalWeekShift(1)">›</button>
+              </div>
+              <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+                <button onclick="pjtCalWeekGoToday()" style="font-size:11px;font-weight:600;color:#1D5BA6;background:#e8f0fb;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;">오늘</button>
+              </div>
+              <div class="pjt-cal-legend" id="pjt-cal-week-legend" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px"></div>
+              <div class="pjt-week-grid" id="pjt-cal-week-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px"></div>
+            </div>
+          </div>
+
+          <!-- Monthly (기존 그대로) -->
+          <div id="pjt-cal-monthly-pane">
           <div class="pjt-cal-grid">
             <div class="pjt-cal-box">
               <div class="pjt-cal-hd">
@@ -576,6 +631,7 @@
               <div style="font-size:14px; font-weight:700; color:#13335C; margin-bottom:14px;" id="pjt-cal-detail-title">📅 일정 · 업무지시</div>
               <div id="pjt-cal-detail" style="font-size:13px; color:#5C6F8A;">날짜를 선택하면 일정이 표시됩니다.</div>
             </div>
+          </div>
           </div>
         </div>
       </div>
@@ -1255,6 +1311,132 @@ async function loadPjtCalendar(){
   if(_pjtCalY===undefined){ const now=new Date(); _pjtCalY=now.getFullYear(); _pjtCalM=now.getMonth(); }
   await pjtCalLoadMonth();
   renderPjtCal();
+  if(_pjtCalView==='daily') renderPjtCalDaily();
+  else if(_pjtCalView==='weekly') renderPjtCalWeekly();
+}
+
+// 선택된 날짜/주가 현재 캐시된 달(_pjtCalY,_pjtCalM)과 다르면 그 달 데이터를 새로 로드
+async function _pjtCalEnsureMonth(y,m){
+  if(y===_pjtCalY && m===_pjtCalM) return;
+  _pjtCalY=y; _pjtCalM=m;
+  await pjtCalLoadMonth();
+}
+
+// ── Daily/Weekly/Monthly 뷰 전환 ──
+let _pjtCalView='monthly';
+let _pjtDayOffset=0, _pjtWeekOffset=0;
+window.setPjtCalView=function(mode){
+  _pjtCalView=mode;
+  const PANE={daily:'pjt-cal-daily-pane', weekly:'pjt-cal-weekly-pane', monthly:'pjt-cal-monthly-pane'};
+  Object.keys(PANE).forEach(function(k){
+    const el=document.getElementById(PANE[k]);
+    if(el) el.style.display=(k===mode)?'':'none';
+  });
+  document.querySelectorAll('.pjt-svt-btn').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-view')===mode);
+  });
+  if(mode==='daily') renderPjtCalDaily();
+  else if(mode==='weekly') renderPjtCalWeekly();
+  else renderPjtCal();
+};
+
+// ── Daily ──
+function _pjtDailyLegend(elId, items){
+  const el=document.getElementById(elId); if(!el) return;
+  const keys=[...new Set(items.map(it=>it.pjtKey))];
+  el.innerHTML=keys.length ? keys.map(function(k){
+    const st=PJT_SUBTABS.find(function(s){return s.key===k;});
+    return '<span class="li"><span class="ld" style="background:'+pjtColorFor(k)+'"></span>'+_pjtEsc(st?.name||k)+'</span>';
+  }).join('') : '<span class="li" style="color:#9AAABF;font-size:11px;">이 날 일정이 없습니다.</span>';
+}
+window.pjtCalDayShift=async function(dir){
+  _pjtDayOffset+=dir;
+  const d=new Date(); d.setDate(d.getDate()+_pjtDayOffset);
+  await _pjtCalEnsureMonth(d.getFullYear(), d.getMonth());
+  renderPjtCalDaily();
+};
+window.pjtCalDayGoToday=async function(){
+  _pjtDayOffset=0;
+  const now=new Date();
+  await _pjtCalEnsureMonth(now.getFullYear(), now.getMonth());
+  renderPjtCalDaily();
+};
+function renderPjtCalDaily(){
+  const d=new Date(); d.setDate(d.getDate()+_pjtDayOffset);
+  const dk=_pjtKey(d.getFullYear(),d.getMonth(),d.getDate());
+  const now=new Date(); const todayKey=_pjtKey(now.getFullYear(),now.getMonth(),now.getDate());
+  const dowKo=['일','월','화','수','목','금','토'];
+  const holidayName=PJT_CAL_HOLIDAYS[dk];
+  const labelEl=document.getElementById('pjt-cal-daily-label');
+  if(labelEl) labelEl.textContent=(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+dowKo[d.getDay()]+')'+(dk===todayKey?' · 오늘':'')+(holidayName?' · '+holidayName:'');
+  const items=(_pjtCalCache[dk]||[]).slice().sort(function(a,b){return (a.stime||'').localeCompare(b.stime||'');});
+  _pjtDailyLegend('pjt-cal-daily-legend', items);
+  const listEl=document.getElementById('pjt-cal-daily-list');
+  if(!listEl) return;
+  if(!items.length){ listEl.innerHTML='<div style="color:#9AAABF;font-size:12px;padding:8px 0">이 날 등록된 일정이 없습니다.</div>'; return; }
+  listEl.innerHTML=items.map(function(s,idx){
+    const tg=PJT_CAL_TAG[s.tag||'admin']||PJT_CAL_TAG.admin;
+    const pc=pjtColorFor(s.pjtKey);
+    return '<div class="pjt-daily-item" style="border-left:3px solid '+pc+';" onmouseover="this.style.background=\'#F5F8FC\'" onmouseout="this.style.background=\'\'">'
+      +'<span style="font-size:10px;padding:2px 7px;border-radius:5px;background:'+tg.c+'22;color:'+tg.c+';white-space:nowrap;flex-shrink:0;font-weight:600;margin-left:4px">'+tg.l+'</span>'
+      +'<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:#1A2540">'+(s.stime?_pjtEsc(s.stime)+' ':'')+_pjtEsc(s.text||'')+'</div>'
+      +'<div style="font-size:11px;color:'+pc+';margin-top:1px;font-weight:600">'+_pjtEsc(s.pjtName||'')+'</div></div></div>';
+  }).join('');
+}
+
+// ── Weekly ──
+function _pjtGetWeekStart(){
+  const now=new Date(); now.setDate(now.getDate()+_pjtWeekOffset*7);
+  const d=new Date(now); d.setDate(d.getDate()-d.getDay());
+  return d;
+}
+window.pjtCalWeekShift=async function(dir){
+  _pjtWeekOffset+=dir;
+  const wStart=_pjtGetWeekStart();
+  await _pjtCalEnsureMonth(wStart.getFullYear(), wStart.getMonth());
+  renderPjtCalWeekly();
+};
+window.pjtCalWeekGoToday=async function(){
+  _pjtWeekOffset=0;
+  const now=new Date();
+  await _pjtCalEnsureMonth(now.getFullYear(), now.getMonth());
+  renderPjtCalWeekly();
+};
+function renderPjtCalWeekly(){
+  const wStart=_pjtGetWeekStart();
+  const now=new Date(); const todayKey=_pjtKey(now.getFullYear(),now.getMonth(),now.getDate());
+  const dowKo=['일','월','화','수','목','금','토'];
+  const wEnd=new Date(wStart); wEnd.setDate(wStart.getDate()+6);
+  const labelEl=document.getElementById('pjt-cal-week-label');
+  if(labelEl) labelEl.textContent=(wStart.getMonth()+1)+'/'+wStart.getDate()+' ~ '+(wEnd.getMonth()+1)+'/'+wEnd.getDate()+(_pjtWeekOffset===0?' · 이번 주':'');
+  const weekItemsAll=[];
+  const grid=document.getElementById('pjt-cal-week-grid');
+  if(!grid) return;
+  let html='';
+  for(let i=0;i<7;i++){
+    const d=new Date(wStart); d.setDate(wStart.getDate()+i);
+    const dk=_pjtKey(d.getFullYear(),d.getMonth(),d.getDate());
+    const dow=d.getDay();
+    const holidayName=PJT_CAL_HOLIDAYS[dk];
+    const isToday=dk===todayKey;
+    const items=(_pjtCalCache[dk]||[]).slice().sort(function(a,b){return (a.stime||'').localeCompare(b.stime||'');});
+    weekItemsAll.push.apply(weekItemsAll, items);
+    const numColor=(dow===0||holidayName)?'#c0392b':(dow===6?'#1D5BA6':'');
+    html+='<div class="pjt-week-day-col'+(isToday?' today':'')+'">';
+    html+='<div class="pjt-week-day-num"'+(numColor?' style="color:'+numColor+'"':'')+'>'+d.getDate()+'</div>';
+    html+='<div class="pjt-week-day-dow">'+dowKo[dow]+'요일</div>';
+    if(!items.length){ html+='<div style="font-size:9px;color:#c7c7cc;text-align:center;padding:6px 0">—</div>'; }
+    else{
+      items.forEach(function(s){
+        const pc=pjtColorFor(s.pjtKey);
+        html+='<div class="pjt-week-item" style="border-left:3px solid '+pc+'">'
+          +(s.stime?'<b>'+_pjtEsc(s.stime)+'</b> ':'')+_pjtEsc(s.text||'')+'</div>';
+      });
+    }
+    html+='</div>';
+  }
+  grid.innerHTML=html;
+  _pjtDailyLegend('pjt-cal-week-legend', weekItemsAll);
 }
 
 async function pjtCalLoadMonth(){
