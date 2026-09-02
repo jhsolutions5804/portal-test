@@ -1866,7 +1866,7 @@ window.renderLeaveMain = async function() {
   const used = sumLeaveUsed(_leaveMyDocs, _myInfo?.name || '');
   const remain = Math.max(grant.granted - used, 0);
 
-  el.innerHTML = `<div class="wrap2" style="max-width:1040px;">
+  el.innerHTML = `<div class="wrap2" style="max-width:1280px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <span style="font-size:16px;font-weight:800;">🏖️ 연차신청서</span>
       <div style="display:flex;gap:8px;">
@@ -1874,7 +1874,7 @@ window.renderLeaveMain = async function() {
         <button class="toolbar-btn primary" onclick="renderLeaveWrite()">✏️ 작성</button>
       </div>
     </div>
-    <div class="home-2col">
+    <div class="home-2col leave-2col">
       <div class="panel">
         <div class="panel-head" style="display:flex;align-items:center;justify-content:space-between;">
           <span>📅 전 직원 연차 달력</span>
@@ -1957,9 +1957,9 @@ function leaveRenderCalendar(){
   const todayStr = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
 
   const DOW = ['일','월','화','수','목','금','토'];
-  let html = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;">
-    ${DOW.map((w,i)=>`<div style="text-align:center;font-size:10.5px;font-weight:700;color:${i===0?'#E05':(i===6?'#1D5BA6':'#9AAABF')};padding:4px 0;">${w}</div>`).join('')}
-  </div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;">`;
+  let html = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px;">
+    ${DOW.map((w,i)=>`<div style="text-align:center;font-size:12.5px;font-weight:700;color:${i===0?'#E05':(i===6?'#1D5BA6':'#9AAABF')};padding:6px 0;">${w}</div>`).join('')}
+  </div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">`;
 
   for (let i=0;i<firstDow;i++) html += `<div></div>`;
   for (let day=1; day<=lastDate; day++){
@@ -1976,7 +1976,7 @@ function leaveRenderCalendar(){
     const names = entries.map(d => `${d.authorName||'-'}(${d.leaveType||'연차(유급)'})`).join(', ');
     const badge = entries.length > 1 ? `<span style="font-size:8px;position:relative;top:-1px;">+${entries.length}</span>` : '';
     const clickAttr = entries.length ? `onclick="leaveShowDayDetail('${dateStr}')"` : '';
-    html += `<div title="${names.replace(/"/g,'&quot;')}" ${clickAttr} style="text-align:center;padding:7px 2px;border-radius:7px;font-size:12px;background:${bg};color:${fg};font-weight:${fw};${border}${entries.length?'cursor:pointer;':''}">${day}${badge}</div>`;
+    html += `<div title="${names.replace(/"/g,'&quot;')}" ${clickAttr} style="text-align:center;padding:13px 3px;border-radius:8px;font-size:14px;background:${bg};color:${fg};font-weight:${fw};${border}${entries.length?'cursor:pointer;':''}">${day}${badge}</div>`;
   }
   html += `</div>`;
   box.innerHTML = html;
@@ -2983,6 +2983,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
 /* 홈 2단 패널 */
 .home-2col{display:grid;gap:12px;}
 @media(min-width:760px){.home-2col{grid-template-columns:1fr 1fr;}}
+@media(min-width:760px){.leave-2col{grid-template-columns:1.6fr 1fr!important;}}
 .panel{background:#fff;border:1px solid #DDE4EF;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(29,91,166,0.06);}
 .panel-head{font-size:12px;font-weight:700;color:#1D5BA6;padding:11px 14px;background:#E8F0FB;border-bottom:1px solid #DDE4EF;}
 .panel-list{padding:6px 0;}
