@@ -1326,9 +1326,9 @@ function _schedWeekBlockHtml(wStart,label){
   var dowKo=['일','월','화','수','목','금','토'];
   var wEnd=new Date(wStart); wEnd.setDate(wStart.getDate()+6);
   var wS=(wStart.getMonth()+1)+'/'+wStart.getDate(), wE=(wEnd.getMonth()+1)+'/'+wEnd.getDate();
-  var html='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
-    +'<span style="font-size:13px;font-weight:700;color:#1D5BA6">'+label+'</span>'
-    +'<span style="font-size:11px;color:#86868b">'+wS+' ~ '+wE+'</span></div>';
+  var html='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;background:#fff">'
+    +'<span style="font-size:13px;font-weight:700;color:#1D5BA6;background:#fff">'+label+'</span>'
+    +'<span style="font-size:11px;color:#86868b;background:#fff">'+wS+' ~ '+wE+'</span></div>';
   html+='<div class="wk-grid">';
   for(var i=0;i<7;i++){
     var d=new Date(wStart); d.setDate(wStart.getDate()+i);
