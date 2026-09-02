@@ -391,12 +391,20 @@ textarea.f-input{resize:vertical;min-height:70px}
             <span>👷 기술인 명단 · 출역/공수</span>
             <button class="btn-sm" id="worker-add-btn" onclick="openWorkerAdd()" style="display:none">+ 인원 추가</button>
           </div>
+          <div id="att-bulk-row" style="display:none;align-items:center;gap:8px;margin-bottom:10px;padding:9px 10px;background:#f7f9fc;border-radius:9px;border:1px solid #e5e5e5">
+            <button class="btn-sm" onclick="toggleAllAttCheck()" style="white-space:nowrap">☑️ 전체 출역 토글</button>
+            <span style="font-size:12px;color:#9AAABF">|</span>
+            <span style="font-size:12px;color:#5C6F8A">전원 공수 일괄</span>
+            <input id="att-bulk-md" type="number" step="0.5" min="0" max="3" placeholder="예: 1" style="width:64px;padding:5px 7px;border:1px solid #dde4ef;border-radius:7px;font-size:12px">
+            <button class="btn-sm" onclick="applyAllAttManday()">적용</button>
+          </div>
           <div id="att-grid-wrap"><div class="loading">불러오는 중...</div></div>
           <button class="btn-primary block" id="att-save-btn" onclick="saveAttendance()" style="display:none">출역·공수 저장</button>
         </div>
         <div>
           <div class="card">
             <div class="card-title"><span>👤 인원별 누적공수</span></div>
+            <button class="btn-sm" id="ks-open-btn" onclick="openKongsuModalLight()" style="display:none;width:100%;margin-bottom:10px">📋 이달 공수 집계표 보기</button>
             <div id="worker-total-list"><div class="loading">불러오는 중...</div></div>
           </div>
           <div class="card">
@@ -584,6 +592,22 @@ textarea.f-input{resize:vertical;min-height:70px}
   </div>
 </div>
 
+<!-- 이달 공수 집계표 모달 -->
+<div class="modal" id="ks-modal-light">
+  <div class="sheet" style="max-width:520px">
+    <div class="sheet-head"><div class="sheet-title">📋 이달 공수 집계표</div><button class="sheet-close" onclick="closeKongsuModalLight()">×</button></div>
+    <div class="sheet-body">
+      <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:12px">
+        <button class="nav-arrow" onclick="changeKsMonthLight(-1)">‹</button>
+        <div id="ks-mlabel-light" style="font-size:14px;font-weight:700">—</div>
+        <button class="nav-arrow" onclick="changeKsMonthLight(1)">›</button>
+      </div>
+      <div id="ks-tabbar-light" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:10px"></div>
+      <div id="ks-body-light">불러오는 중...</div>
+    </div>
+  </div>
+</div>
+
 <!-- 품목 일괄 등록/수정 모달 -->
 <div class="modal" id="bulk-item-modal">
   <div class="sheet" style="max-width:640px">
@@ -752,9 +776,11 @@ async function init(){
       document.getElementById('item-bulk-btn').style.display='inline-block';
       document.getElementById('worker-add-btn').style.display='inline-block';
       document.getElementById('att-save-btn').style.display='block';
+      document.getElementById('att-bulk-row').style.display='flex';
       document.getElementById('e-start').value=pjtData.startDate||'';
       renderStageTags();
     }
+    document.getElementById('ks-open-btn').style.display='block';
     loadItems();
     loadWorkers().then(function(){ renderAttGrid(); loadWorkerTotals(); });
     attDate=getToday(); renderAttDay();
@@ -1249,6 +1275,32 @@ window.toggleAttCheck=function(wid){
   else { attChecks.splice(idx,1); }
   renderAttGrid();
 };
+window.toggleAllAttCheck=function(){
+  if(!workersCache.length) return;
+  const allChecked=workersCache.every(function(w){ return attChecks.indexOf(w.id)!==-1; });
+  if(allChecked){
+    attChecks=[];
+  } else {
+    attChecks=workersCache.map(function(w){ return w.id; });
+    workersCache.forEach(function(w){ if(attManday[w.id]==null) attManday[w.id]=1; });
+  }
+  renderAttGrid();
+};
+window.applyAllAttManday=function(){
+  const inp=document.getElementById('att-bulk-md');
+  if(!inp) return;
+  const raw=inp.value.trim();
+  if(raw==='') { toast('적용할 공수값을 입력해주세요.'); return; }
+  let v=parseFloat(raw);
+  if(isNaN(v)||v<0) v=0;
+  if(v>3) v=3;
+  v=Math.round(v*10)/10;
+  workersCache.forEach(function(w){
+    if(v===0) delete attManday[w.id]; else attManday[w.id]=v;
+  });
+  renderAttGrid();
+  toast('전원 공수를 '+v+'(으)로 일괄 적용했습니다. 저장 버튼을 눌러 반영해주세요.');
+};
 window.onMandayInput=function(wid, val){ attManday[wid]=parseFloat(val)||0; };
 function renderAttGrid(){
   const wrap=document.getElementById('att-grid-wrap');
@@ -1309,6 +1361,102 @@ async function recalcTotalManday(){
     document.getElementById('pc-manday').textContent=total.toFixed(1);
   }catch(e){}
 }
+
+// ── 이달 공수 집계표 (FAB와 동일 UX) ──
+let _ksY, _ksM, _ksActive='', _ksMonthCache={};
+const KS_PAD=function(n){ return String(n).padStart(2,'0'); };
+window.openKongsuModalLight=async function(){
+  if(!workersCache.length){ toast('등록된 기술인이 없습니다.'); return; }
+  const d=new Date(attDate+'T12:00:00');
+  _ksY=d.getFullYear(); _ksM=d.getMonth();
+  _ksActive=workersCache[0].id;
+  document.getElementById('ks-modal-light').classList.add('on');
+  renderKsTabsLight();
+  document.getElementById('ks-body-light').innerHTML='<div style="text-align:center;padding:40px 0;color:#86868b;font-size:13px">불러오는 중…</div>';
+  await loadKsMonthLight();
+  renderKsSheetLight();
+};
+window.closeKongsuModalLight=function(){ document.getElementById('ks-modal-light').classList.remove('on'); };
+window.changeKsMonthLight=async function(dir){
+  _ksM+=dir; if(_ksM<0){_ksM=11;_ksY--;} if(_ksM>11){_ksM=0;_ksY++;}
+  document.getElementById('ks-body-light').innerHTML='<div style="text-align:center;padding:40px 0;color:#86868b;font-size:13px">불러오는 중…</div>';
+  await loadKsMonthLight();
+  renderKsSheetLight();
+};
+window.selectKsTabLight=function(id){ _ksActive=id; renderKsTabsLight(); renderKsSheetLight(); };
+function renderKsTabsLight(){
+  const bar=document.getElementById('ks-tabbar-light');
+  const boss=workersCache[0];
+  let html='<div class="btn-sm'+(_ksActive===boss.id?' active':'')+'" style="white-space:nowrap;cursor:pointer'+(_ksActive===boss.id?';background:#1D5BA6;color:#fff':'')+'" onclick="selectKsTabLight(\''+boss.id+'\')">'+escapeHtml(boss.name)+' 팀장</div>';
+  html+=workersCache.slice(1).map(function(w){
+    return '<div class="btn-sm'+(_ksActive===w.id?' active':'')+'" style="white-space:nowrap;cursor:pointer'+(_ksActive===w.id?';background:#1D5BA6;color:#fff':'')+'" onclick="selectKsTabLight(\''+w.id+'\')">'+escapeHtml(w.name)+'</div>';
+  }).join('');
+  bar.innerHTML=html;
+}
+async function loadKsMonthLight(){
+  _ksMonthCache={};
+  const days=new Date(_ksY,_ksM+1,0).getDate();
+  const keys=[]; for(let day=1; day<=days; day++){ keys.push(_ksY+'-'+KS_PAD(_ksM+1)+'-'+KS_PAD(day)); }
+  const snaps=await Promise.all(keys.map(function(k){ return getDoc(doc(db,'pjt_registry',pjtId,'manday',k)); }));
+  keys.forEach(function(k,i){ _ksMonthCache[k]=snaps[i].exists()?(snaps[i].data().md||{}):{}; });
+}
+function renderKsSheetLight(){
+  document.getElementById('ks-mlabel-light').textContent=_ksY+'년 '+(_ksM+1)+'월';
+  const isBoss=(workersCache.length && _ksActive===workersCache[0].id);
+  const w=workersCache.find(function(x){ return x.id===_ksActive; });
+  if(!w){ document.getElementById('ks-body-light').innerHTML='<div style="text-align:center;padding:40px 0;color:#86868b">기술인 정보를 찾을 수 없습니다</div>'; return; }
+  const first=new Date(_ksY,_ksM,1), startDow=first.getDay();
+  const days=new Date(_ksY,_ksM+1,0).getDate();
+  const dows=['일','월','화','수','목','금','토'];
+  let rows='<tr>'; let cellCount=0;
+  for(let i=0;i<startDow;i++){ rows+='<td></td>'; cellCount++; }
+  let monthTotal=0, workDays=0;
+  for(let day=1; day<=days; day++){
+    const key=_ksY+'-'+KS_PAD(_ksM+1)+'-'+KS_PAD(day);
+    const dow=new Date(_ksY,_ksM,day).getDay();
+    const holi=!!HOLIDAYS[key];
+    const md=_ksMonthCache[key]||{};
+    let color=(dow===0||holi)?'#c0392b':(dow===6?'#1D5BA6':'#1A2540');
+    let inner='<div style="font-size:11px;font-weight:600;color:'+color+'">'+day+'</div>';
+    if(isBoss){
+      const present=workersCache.filter(function(t){ return md[t.id]>0; }).length;
+      const daySum=workersCache.reduce(function(s,t){ return s+(md[t.id]||0); },0);
+      monthTotal+=daySum;
+      if(daySum>0) inner+='<div style="font-size:9px;color:#5C6F8A">'+present+'/'+workersCache.length+'명</div><div style="font-size:12px;font-weight:700;color:#1D5BA6">'+daySum.toFixed(1)+'</div>';
+    } else {
+      const v=md[_ksActive]||0;
+      monthTotal+=v;
+      if(v>0){ workDays++; inner+='<div style="font-size:12px;font-weight:700;color:'+(v<1?'#e67e22':'#1D5BA6')+'">'+v.toFixed(1)+'</div>'; }
+    }
+    rows+='<td style="padding:5px 2px;text-align:center;border:1px solid #eee;vertical-align:top;height:44px">'+inner+'</td>';
+    cellCount++;
+    if(dow===6 && day!==days) rows+='</tr><tr>';
+  }
+  while(cellCount%7!==0){ rows+='<td></td>'; cellCount++; }
+  rows+='</tr>';
+  const foot = isBoss
+    ? '<div style="text-align:center;margin-top:10px;font-size:13px"><b>월간 공수 합계: '+monthTotal.toFixed(1)+'</b></div>'
+    : '<div style="display:flex;justify-content:center;gap:24px;margin-top:10px;font-size:13px"><span>출역 일수 <b style="color:#16A34A">'+workDays+'일</b></span><span>월 공수 합계 <b>'+monthTotal.toFixed(1)+'</b></span></div>';
+  const capId='ks-capture-light';
+  const title=isBoss?(w.name+' 팀장 — 전체 '+workersCache.length+'명 출역/공수 합계'):(w.name+' 기술인 공수');
+  const fname=_ksY+'-'+KS_PAD(_ksM+1)+'_'+(isBoss?'전체출역_'+w.name+'팀장':w.name)+'_공수.png';
+  document.getElementById('ks-body-light').innerHTML=
+    '<button class="btn-sm" style="width:100%;margin-bottom:10px" onclick="saveKsPngLight(\''+capId+'\',\''+fname+'\')">📷 이 시트 PNG로 저장</button>'
+    +'<div id="'+capId+'" style="background:#fff;padding:12px">'
+    +'<div style="text-align:center;font-size:12px;font-weight:700;color:#1D5BA6;margin-bottom:8px">'+escapeHtml(pjtData.name||'')+' · '+title+'</div>'
+    +'<table style="width:100%;border-collapse:collapse"><thead><tr>'+dows.map(function(d,i){ return '<th style="font-size:11px;color:'+(i===0?'#c0392b':(i===6?'#1D5BA6':'#9AAABF'))+';padding:4px 0">'+d+'</th>'; }).join('')+'</tr></thead><tbody>'+rows+'</tbody></table>'
+    +foot+'</div>';
+}
+window.saveKsPngLight=async function(elId,fname){
+  const el=document.getElementById(elId);
+  if(!el) return;
+  if(typeof html2canvas==='undefined'){ toast('이미지 저장 모듈을 불러오는 중이에요. 잠시 후 다시 눌러주세요.'); return; }
+  try{
+    const canvas=await html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:true});
+    const a=document.createElement('a');
+    a.href=canvas.toDataURL('image/png'); a.download=fname; a.click();
+  }catch(e){ toast('저장 중 오류: '+e.message); }
+};
 
 // ── 일정관리 (캘린더) ──
 const SCHED_TAG = {
