@@ -794,6 +794,10 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
             <button id="set-save-btn" onclick="savePjtSettings()" style="flex:2;padding:11px;background:#1D5BA6;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">저장</button>
           </div>
           <div id="set-msg" style="margin-top:10px;font-size:13px;text-align:center;min-height:18px"></div>
+          <div style="margin-top:24px;padding-top:20px;border-top:1px solid #eee">
+            <div style="font-size:12px;color:#86868b;margin-bottom:8px">프로젝트 상태: <b id="set-status-lbl">진행중</b></div>
+            <button id="set-end-btn" onclick="toggleEndPjt()" style="width:100%;padding:11px;background:#fff;color:#c0392b;border:1.5px solid #c0392b;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🔴 프로젝트 종료</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1244,7 +1248,10 @@ function subscribeUserSchedules(){
     if(typeof renderToday === 'function') renderToday();
     if(typeof renderTwoWeek === 'function' && document.getElementById('tab-twoweek').style.display !== 'none') renderTwoWeek();
     if(typeof renderCal === 'function' && document.getElementById('tab-calendar').style.display !== 'none') renderCal();
-  }, err => console.warn('user_schedules 구독 오류:', err));
+  }, err => {
+    console.error('user_schedules 구독 오류:', err);
+    if(!window._usErrShown){ window._usErrShown=true; alert('⚠️ 일정 목록을 불러오지 못했습니다. 권한 문제일 수 있으니 관리자에게 문의해주세요.'); }
+  });
 }
 window._accessGatePromise.then(function(ok){ if(ok) subscribeUserSchedules(); });
 
@@ -1807,6 +1814,12 @@ window._fbDeleteReportDoc = async function(dateKey){
 </script>
 
 <script>
+// module 스크립트(defer 취급)는 이 classic 스크립트보다 나중에 실행되므로,
+// window._accessGatePromise가 아직 없을 수 있다 — 준비될 때까지 대기 후 호출.
+function _waitAccessGate(cb){
+  if(window._accessGatePromise){ window._accessGatePromise.then(cb); }
+  else { setTimeout(function(){ _waitAccessGate(cb); }, 30); }
+}
 // ===== 공정 데이터 =====
 const CHECK_COLS=['반입','입고검사','내진스토퍼','다이크','실링','동판','결선','시공검측'];
 const INSTALL_COLS=['내진스토퍼','다이크','실링','동판','결선'];
@@ -3776,10 +3789,32 @@ async function loadPjtSettings(){
     set('set-qty', d.qty);
     set('set-start', d.startDate||localStorage.getItem('fab_pjt_start_date')||'');
     applyPjtHeader(d);
+    window._pjtEnded = (d.status==='ended');
+    var lbl=document.getElementById('set-status-lbl'), btn=document.getElementById('set-end-btn');
+    if(lbl) lbl.textContent = window._pjtEnded ? '종료' : '진행중';
+    if(btn){
+      btn.textContent = window._pjtEnded ? '🟢 프로젝트 재개' : '🔴 프로젝트 종료';
+      btn.style.color = window._pjtEnded ? '#16A34A' : '#c0392b';
+      btn.style.borderColor = window._pjtEnded ? '#16A34A' : '#c0392b';
+    }
     window._homePjtInfoCache = d; // 홈 화면 기본정보 캐시도 최신화
     if(typeof _fillHomeInfo==='function') _fillHomeInfo(d);
   }catch(e){ console.warn('설정 로드 실패',e); }
 }
+window.toggleEndPjt=async function(){
+  var toEnded=!window._pjtEnded;
+  var msg=toEnded?'이 프로젝트를 종료 처리하시겠습니까?\n종료 시 포털 홈 사이드바에서 "종료 PJT" 그룹으로 이동합니다.':'이 프로젝트를 다시 진행중 상태로 되돌리시겠습니까?';
+  if(!confirm(msg)) return;
+  var btn=document.getElementById('set-end-btn');
+  if(btn) btn.disabled=true;
+  try{
+    await window._savePjtSettingsData(PROJECT_KEY, {status: toEnded?'ended':'active'});
+    await loadPjtSettings();
+    var m=document.getElementById('set-msg');
+    if(m){ m.style.color='#16A34A'; m.textContent = toEnded?'✓ 종료 처리했습니다.':'✓ 재개 처리했습니다.'; }
+  }catch(e){ alert('처리 실패: '+(e.message||e)); }
+  finally{ if(btn) btn.disabled=false; }
+};
 // 헤더(명칭·부제) 실시간 반영 — 값 없으면 기존 하드코딩 유지
 function applyPjtHeader(d){
   if(!d) return;
@@ -3919,9 +3954,9 @@ waitForFirebaseAndInit();
       }
     }).catch(function(){});
   }
-  window._accessGatePromise.then(function(ok){ if(ok) applyOnLoad(); });
+  _waitAccessGate(function(ok){ if(ok) applyOnLoad(); });
 })();
-window._accessGatePromise.then(function(ok){ if(ok) renderProgress(); }); // 공정 탭은 탭 클릭 시 initProgress()로 갱신
+_waitAccessGate(function(ok){ if(ok) renderProgress(); }); // 공정 탭은 탭 클릭 시 initProgress()로 갱신
 
 // 리포트 입력창 Enter 키
 document.getElementById('report-input').addEventListener('keydown',e=>{
