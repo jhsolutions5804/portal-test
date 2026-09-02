@@ -1804,15 +1804,67 @@ function renderAccLedger(){
       <div class="scroll"><table class="ptab"><thead><tr><th class="l">카테고리</th><th>구분</th><th>건수</th><th>공급가</th><th>부가세</th><th>합계</th></tr></thead>
         <tbody>${ACC_CATS.filter(c=>byCat[c.k].cnt>0).map(c=>{ const b=byCat[c.k]; return `<tr><td class="l"><span class="catpill" style="${accCatStyle(c.k)}">${c.k}</span></td><td class="small ${accIsDirect(c.k)?'':'muted'}">${accIsDirect(c.k)?'직접비':'간접비'}</td><td>${b.cnt}</td><td>${won(b.sup)}</td><td>${won(b.vat)}</td><td style="font-weight:700;color:var(--money)">${won(b.total)}</td></tr>`; }).join('')||'<tr><td colspan="6" class="center muted" style="padding:16px">이 달 비용이 없습니다.</td></tr>'}</tbody>
         ${list.length?`<tfoot><tr style="background:#f6f9fd;font-weight:700"><td class="l">합계</td><td></td><td>${list.length}</td><td>${won(sup)}</td><td>${won(vat)}</td><td style="color:var(--money)">${won(tot)}</td></tr></tfoot>`:''}</table></div></div>
-    <div class="card" style="padding:12px"><div class="sec-h"><h2>상세 내역</h2></div>
+    <div class="card" style="padding:12px"><div class="sec-h"><h2>상세 내역</h2>
+      ${accSelIds.size?`<div style="display:flex;gap:6px;align-items:center"><span class="small" style="color:#1D5BA6;font-weight:700">${accSelIds.size}건 선택</span><button class="btn line sm" onclick="accBulkCarryover()">📅 다음달로 이월</button><button class="btn line sm" style="color:#c0392b;border-color:#c0392b" onclick="accBulkDelete()">🗑 선택 삭제</button><button class="btn gray sm" onclick="accClearSel()">선택 해제</button></div>`:''}
+      </div>
       ${_filterBar}
-      ${filtered.length? filtered.map(e=>`<div class="litem" style="cursor:pointer" onclick="${e.fromSettlement?`openSettleFromLedger('${e.id.replace('settle_','')}')`:(e.salaryDist?`salDelConfirm('${e.id}')`:`accOpenForm('${e.id}')`)}">
+      ${filtered.length? `<div class="litem" style="cursor:default;background:#F7F9FC"><label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#5C6F8A;cursor:pointer"><input type="checkbox" onclick="accToggleAll(this.checked)" ${filtered.filter(e=>!e.fromSettlement&&!e.salaryDist).length&&filtered.filter(e=>!e.fromSettlement&&!e.salaryDist).every(e=>accSelIds.has(e.id))?'checked':''}> 전체 선택 (삭제/이월 대상만)</label></div>`:''}
+      ${filtered.length? filtered.map(e=>{
+        const selectable=!e.fromSettlement&&!e.salaryDist;
+        const cb=selectable?`<input type="checkbox" onclick="event.stopPropagation();accToggleSel('${e.id}',this.checked)" ${accSelIds.has(e.id)?'checked':''} style="margin-right:10px;flex-shrink:0">`:'<span style="display:inline-block;width:26px;flex-shrink:0"></span>';
+        return `<div class="litem" style="cursor:pointer;display:flex;align-items:center" onclick="${e.fromSettlement?`openSettleFromLedger('${e.id.replace('settle_','')}')`:(e.salaryDist?`salDelConfirm('${e.id}')`:`accOpenForm('${e.id}')`)}">
+        ${cb}
         <div class="d" style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700"><span class="catpill" style="${accCatStyle(e.cat)}">${e.cat}</span> &nbsp;${e.vendor||'-'}${e.fromSettlement?' <span style="font-size:10px;font-weight:600;color:#1D5BA6;background:#EEF4FC;padding:1px 7px;border-radius:8px;margin-left:4px;">🔗 정산 연동</span>':''}${e.salaryDist?' <span style="font-size:10px;font-weight:600;color:#6d4c00;background:#f5f0e8;padding:1px 7px;border-radius:8px;margin-left:4px;">👥 급여배분</span>':''}</div>
           <div class="small muted" style="margin-top:2px">${e.date}${e.accMonth&&e.accMonth!==e.date.slice(0,7)?' <span style="color:#1D5BA6;font-weight:600">(귀속 '+e.accMonth+')</span>':''} · ${e.pay}${e.card?' ('+e.card+')':''}${e.pjt?' · '+(projects.find(p=>p.id===e.pjt)?.code||''):' · 공통'}${e.note?' · '+e.note:''}</div></div>
-        <div class="amt" style="font-weight:800;color:var(--money);white-space:nowrap;text-align:right">${won(e.total)}<div class="small muted" style="font-weight:400">VAT ${won(e.vat)}</div></div></div>`).join('')
+        <div class="amt" style="font-weight:800;color:var(--money);white-space:nowrap;text-align:right">${won(e.total)}<div class="small muted" style="font-weight:400">VAT ${won(e.vat)}</div></div></div>`;}).join('')
         :'<div class="empty">'+((accLCat||accLVendor)?'조건에 맞는 내역이 없습니다. (필터 적용 중)':'이 달 비용이 없습니다. “비용 입력”으로 추가하세요.')+'</div>'}</div>
     <div class="note-amber">실제 운영: 영수증·카드내역·계좌 거래내역·주문내역 파일을 춘식이에게 주시면 직접비/간접비로 분류해 이 장부에 채워 넣습니다. 앱에서는 직접 입력·수정·조회를 합니다. 🔗 정산 연동 항목(지급완료된 지급예정서)은 자동 반영되며, 직접 수정할 수 없습니다 — 정산 화면에서 지급완료를 취소하면 제외됩니다.</div>`;
 }
+let accSelIds = new Set();
+window.accToggleSel = function(id, checked){ if(checked) accSelIds.add(id); else accSelIds.delete(id); renderAccLedger(); };
+window.accToggleAll = function(checked){
+  const list=accMonthExp().filter(e=>!e.fromSettlement&&!e.salaryDist);
+  let filtered=list.slice();
+  if(accLCat) filtered=filtered.filter(e=>e.cat===accLCat);
+  if(accLVendor) filtered=filtered.filter(e=>(e.vendor||'')===accLVendor);
+  if(accLCard) filtered=filtered.filter(e=>(e.card||'')===accLCard);
+  filtered.forEach(e=>{ if(checked) accSelIds.add(e.id); else accSelIds.delete(e.id); });
+  renderAccLedger();
+};
+window.accClearSel = function(){ accSelIds.clear(); renderAccLedger(); };
+window.accBulkDelete = async function(){
+  if(!accSelIds.size) return;
+  if(!confirm(`선택한 ${accSelIds.size}건을 삭제할까요? 되돌릴 수 없습니다.`)) return;
+  const ids=[...accSelIds];
+  try{
+    for(const id of ids){ await deleteDoc(doc(db,'gihoek_expenses',id)); }
+    accSelIds.clear();
+    toast(`${ids.length}건 삭제했습니다.`);
+  }catch(e){ toast('일괄 삭제 실패: '+(e.code||e.message)); }
+};
+function _accNextMonth(ym){
+  const [y,m]=ym.split('-').map(Number);
+  const nm=m===12?1:m+1, ny=m===12?y+1:y;
+  return ny+'-'+String(nm).padStart(2,'0');
+}
+window.accBulkCarryover = async function(){
+  if(!accSelIds.size) return;
+  const ids=[...accSelIds];
+  const list=expenses.filter(e=>ids.includes(e.id));
+  if(!confirm(`선택한 ${list.length}건을 다음달로 이월할까요? (원본은 삭제되고 다음달 귀속으로 새로 생성됩니다)`)) return;
+  try{
+    for(const e of list){
+      const curYm = e.accMonth || (e.date||'').slice(0,7);
+      const nextYm = _accNextMonth(curYm);
+      const {id, ...rest} = e;
+      const newId = 'exp_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+      await setDoc(doc(db,'gihoek_expenses',newId), {...rest, accMonth: nextYm, carriedFrom: id, updatedAt: serverTimestamp()});
+      await deleteDoc(doc(db,'gihoek_expenses',id));
+    }
+    accSelIds.clear();
+    toast(`${list.length}건 다음달로 이월했습니다.`);
+  }catch(e){ toast('이월 실패: '+(e.code||e.message)); }
+};
 // ── 손익계산서 (회사구분 · 자유항목 · 귀속월 직접입력) ──
 function renderAccIncome(){
   const monthList=pnlEntries.filter(e=>(e.accMonth||'')===curAccMonth);
