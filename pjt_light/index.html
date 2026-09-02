@@ -1349,8 +1349,9 @@ function _schedWeekBlockHtml(wStart,label){
     else{
       items.forEach(function(s){
         var tg=SCHED_TAG[s.tag||'admin']||SCHED_TAG.admin;
-        html+='<div class="wk-item" style="border-left:3px solid '+tg.c+'" onclick="openSchedDetail(\''+s.id+'\')">'
-          +(s.stime?'<b>'+escapeHtml(s.stime)+'</b> ':'')+escapeHtml(s.text||'')+'</div>';
+        html+='<div class="wk-item" style="border:none;background:'+tg.c+'14;padding:3px 5px" onclick="openSchedDetail(\''+s.id+'\')">'
+          +'<span class="tag" style="background:'+tg.c+'22;color:'+tg.c+';font-weight:700">'+tg.l+'</span> '
+          +(s.stime?'<b style="color:'+tg.c+'">'+escapeHtml(s.stime)+'</b> ':'')+escapeHtml(s.text||'')+'</div>';
       });
     }
     html+='</div>';
