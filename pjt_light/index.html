@@ -71,6 +71,7 @@ textarea.f-input{resize:vertical;min-height:70px}
 .day-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px}
 .day-title{font-size:15px;font-weight:700;flex:1;text-align:center}
 .today-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px}
+.today-title{font-size:16px;font-weight:600;color:#1d1d1f;flex:1;text-align:center}
 .nav-arrow{background:none;border:1px solid #d1d1d6;border-radius:8px;width:30px;height:30px;cursor:pointer;color:#86868b;font-size:16px;flex-shrink:0}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A2540;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:999}
 .toast.on{opacity:1}
@@ -82,6 +83,8 @@ textarea.f-input{resize:vertical;min-height:70px}
 .item-grid td.item-name{text-align:left;font-weight:600;color:#1A2540;white-space:nowrap}
 .chk-cell{width:28px;height:28px;border-radius:7px;border:1.5px solid #dde4ef;background:#fff;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;justify-content:center}
 .chk-cell.done{background:#1D5BA6;border-color:#1D5BA6;color:#fff}
+.chk-cell:disabled{cursor:default;opacity:.75}
+.chk-cell:disabled.done{background:#9AAABF;border-color:#9AAABF}
 .item-grid-wrap{overflow-x:auto}
 .item-summary-row{display:none}
 .stage-editor-tag{display:inline-flex;align-items:center;gap:5px;background:#f4f8ff;color:#1D5BA6;border:1px solid #d6e4f6;border-radius:16px;padding:4px 10px 4px 12px;font-size:12px;font-weight:600;margin:0 6px 6px 0}
@@ -349,6 +352,19 @@ textarea.f-input{resize:vertical;min-height:70px}
 
     <!-- 품목현황 -->
     <div id="pane-items" style="display:none">
+      <div class="today-nav" style="margin-bottom:10px">
+        <button class="nav-arrow" onclick="changeProgDay(-1)">‹</button>
+        <div style="flex:1;text-align:center;position:relative">
+          <div class="today-title" id="prog-date-label" onclick="openProgDatePicker()" style="cursor:pointer">—</div>
+          <input type="date" id="prog-date-picker" onchange="pickProgDate(this.value)" style="position:absolute;left:50%;transform:translateX(-50%);top:100%;opacity:0;width:1px;height:1px;pointer-events:none">
+        </div>
+        <button class="nav-arrow" onclick="changeProgDay(1)">›</button>
+        <button onclick="goProgToday()" style="font-size:11px;font-weight:600;color:#1D5BA6;background:#e8f0fb;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;white-space:nowrap;margin-left:4px">오늘</button>
+      </div>
+      <div id="prog-readonly-banner" style="display:none;align-items:center;justify-content:space-between;gap:6px;background:#fff8e8;border:1px solid #ffe082;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#7a5c00">
+        <span>📅 과거 기록 조회 중 — 체크는 오늘 날짜에서만 가능해요</span>
+        <button onclick="toggleProgEditMode()" id="prog-edit-btn" style="font-size:11px;padding:4px 12px;background:#fff;border:1px solid #e0a800;border-radius:8px;cursor:pointer;color:#7a5c00;font-weight:600;white-space:nowrap">✏️ 수정 모드</button>
+      </div>
       <div class="item-summary-row" id="item-summary-row"></div>
       <div class="card">
         <div class="card-title">
@@ -652,7 +668,7 @@ textarea.f-input{resize:vertical;min-height:70px}
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, orderBy, getDocs, deleteDoc, serverTimestamp, deleteField, writeBatch }
+import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, orderBy, getDocs, deleteDoc, serverTimestamp, deleteField, writeBatch, where, documentId, onSnapshot }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { getAuth, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
@@ -965,27 +981,73 @@ window.saveBulkItemEdits=async function(){
   finally{ btn.disabled=false; btn.textContent='수정사항 저장'; }
 };
 
+// ── 공정관리: 날짜별 스냅샷 구조 (FAB와 동일 정책) ──
+// pjt_registry/{pjtId}/progress_checks/{dateKey} 문서에는 "그날 새로 체크된 것"만 저장한다.
+// 특정 날짜까지의 누적 상태는 그 날짜 이하의 모든 문서를 병합해서 구한다.
+let progDate=getToday();
+window._progEditMode=false;
+window._pgCumCache=null; // {key, data}
+function toKeyLight(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function isProgTodayLight(){ return progDate===getToday(); }
+window.changeProgDay=function(n){
+  const d=new Date(progDate+'T12:00:00'); d.setDate(d.getDate()+n);
+  progDate=toKeyLight(d);
+  window._progEditMode=false;
+  renderItemGrid();
+};
+window.goProgToday=function(){ progDate=getToday(); window._progEditMode=false; renderItemGrid(); };
+window.openProgDatePicker=function(){ const el=document.getElementById('prog-date-picker'); if(el){ el.value=progDate; el.showPicker?el.showPicker():el.click(); } };
+window.pickProgDate=function(v){ if(!v) return; progDate=v; window._progEditMode=false; renderItemGrid(); };
+window.toggleProgEditMode=function(){ window._progEditMode=!window._progEditMode; renderItemGrid(); };
+
+async function getCumulativeChecksUpTo(dateKey){
+  if(window._pgCumCache && window._pgCumCache.key===dateKey) return window._pgCumCache.data;
+  try{
+    const q=query(collection(db,'pjt_registry',pjtId,'progress_checks'), orderBy(documentId()), where(documentId(),'<=',dateKey));
+    const snap=await getDocs(q);
+    const merged={};
+    snap.forEach(function(d){ Object.assign(merged, d.data()); });
+    window._pgCumCache={key:dateKey, data:merged};
+    return merged;
+  }catch(e){ console.warn('공정 이력 로드 실패', e); return {}; }
+}
+async function getDailyNewChecksOf(dateKey){
+  try{
+    const snap=await getDoc(doc(db,'pjt_registry',pjtId,'progress_checks',dateKey));
+    return snap.exists()?snap.data():{};
+  }catch(e){ return {}; }
+}
+async function _pgSetCheck(dateKey, key, isDone){
+  const ref=doc(db,'pjt_registry',pjtId,'progress_checks',dateKey);
+  if(isDone){ await setDoc(ref, {[key]:true}, {merge:true}); }
+  else{ try{ await updateDoc(ref, {[key]: deleteField()}); }catch(e){ /* 문서/필드 없으면 무시 */ } }
+  window._pgCumCache=null; // 캐시 무효화
+}
+
 window.toggleItemStage=async function(id, encodedStage){
+  if(!isProgTodayLight() && !window._progEditMode) return; // 과거 조회 중엔 수정모드가 아니면 막음
   const stage=decodeURIComponent(encodedStage);
-  const item=itemsCache.find(x=>x.id===id);
+  const item=itemsCache.find(function(x){ return x.id===id; });
   if(!item) return;
   const stages=Object.assign({}, item.stages||{});
   const willCheck=!stages[stage];
   stages[stage]=willCheck;
+  const key=id+'_'+stage;
   try{
+    // 항상 "지금 보고 있는 날짜"의 스냅샷 문서에 기록 (오늘=정상 체크, 과거+수정모드=소급 정정)
+    await _pgSetCheck(progDate, key, willCheck);
+    // 현재상태(items.stages)는 프로젝트의 최종 진행상황을 나타내므로 함께 갱신
     await updateDoc(doc(db,'pjt_registry',pjtId,'items',id), {stages});
     item.stages=stages;
     renderItemGrid();
     renderItemSummary();
     await recalcProgress();
-    // 공사일보 자동반영용: 오늘 날짜에 체크/해제 이력 기록
-    const today=getToday();
-    const checkRef=doc(db,'pjt_registry',pjtId,'item_checks',today);
-    const fieldPath=id+'.'+stage;
-    if(willCheck){
-      await setDoc(checkRef, {[id]:{[stage]:true}}, {merge:true});
-    } else {
-      try{ await updateDoc(checkRef, {[fieldPath]: deleteField()}); }catch(e){ /* 문서/필드 없으면 무시 */ }
+    if(isProgTodayLight()){
+      // 공사일보 자동반영용(오늘자) 이력은 기존과 동일하게 별도 기록
+      const checkRef=doc(db,'pjt_registry',pjtId,'item_checks',getToday());
+      const fieldPath=id+'.'+stage;
+      if(willCheck){ await setDoc(checkRef, {[id]:{[stage]:true}}, {merge:true}); }
+      else{ try{ await updateDoc(checkRef, {[fieldPath]: deleteField()}); }catch(e){} }
     }
   }catch(e){ toast('저장 실패: '+e.message); }
 };
@@ -1014,21 +1076,45 @@ function renderItemSummary(){
     +'<div class="home-kpi-card"><div class="home-kpi-lbl">평균 진행률</div><div class="home-kpi-val blue">'+avg.toFixed(1)+'%</div></div>'
     +'<div class="home-kpi-card"><div class="home-kpi-lbl">완료 품목</div><div class="home-kpi-val">'+doneItems+' / '+itemsCache.length+'</div></div>';
 }
-function renderItemGrid(){
+async function renderItemGrid(){
   const wrap=document.getElementById('item-grid-wrap');
+  const lbl=document.getElementById('prog-date-label');
+  const banner=document.getElementById('prog-readonly-banner');
+  const editBtn=document.getElementById('prog-edit-btn');
+  const today=isProgTodayLight();
+  const d=new Date(progDate+'T12:00:00');
+  const dowKo=['일','월','화','수','목','금','토'];
+  if(lbl) lbl.textContent=(today?'오늘 · ':'')+(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+dowKo[d.getDay()]+')';
+  if(banner) banner.style.display=(!today)?'flex':'none';
+  if(editBtn) editBtn.textContent=window._progEditMode?'✏️ 수정 모드 (켜짐)':'✏️ 수정 모드';
+  if(editBtn) editBtn.style.background=window._progEditMode?'#fff3cd':'#fff';
   if(!itemsCache.length){ wrap.innerHTML='<div class="empty">등록된 품목이 없습니다. '+(isAdmin?'상단 [+ 품목 추가]로 등록하세요.':'') +'</div>'; return; }
   if(!stageList.length){ wrap.innerHTML='<div class="empty">공정 단계가 설정되지 않았습니다. (홈 탭에서 설정)</div>'; return; }
+  // 보고 있는 날짜 기준 누적 체크 상태를 계산 (오늘이면 items.stages를 그대로 신뢰 = 캐시 재계산 불필요)
+  let viewStages=null;
+  if(!today){
+    const cum=await getCumulativeChecksUpTo(progDate);
+    viewStages={};
+    itemsCache.forEach(function(it){
+      const s={};
+      stageList.forEach(function(stg){ if(cum[it.id+'_'+stg]) s[stg]=true; });
+      viewStages[it.id]=s;
+    });
+  }
+  const editable=today || window._progEditMode;
   let html='<table class="item-grid"><thead><tr><th style="text-align:left">품목</th>';
   stageList.forEach(function(s){ html+='<th>'+escapeHtml(s)+'</th>'; });
-  if(isAdmin) html+='<th></th>';
+  if(isAdmin && today) html+='<th></th>';
   html+='</tr></thead><tbody>';
   itemsCache.forEach(function(it){
+    const stages=today?(it.stages||{}):(viewStages[it.id]||{});
     html+='<tr><td class="item-name">'+escapeHtml(it.name)+'</td>';
     stageList.forEach(function(s){
-      const done=it.stages && it.stages[s];
-      html+='<td><button class="chk-cell'+(done?' done':'')+'" '+(isAdmin?('onclick="toggleItemStage(\''+it.id+'\',\''+encodeURIComponent(s)+'\')"'):'disabled')+'>'+(done?'✓':'')+'</button></td>';
+      const done=stages[s];
+      const clickable=isAdmin && editable;
+      html+='<td><button class="chk-cell'+(done?' done':'')+'" '+(clickable?('onclick="toggleItemStage(\''+it.id+'\',\''+encodeURIComponent(s)+'\')"'):'disabled')+'>'+(done?'✓':'')+'</button></td>';
     });
-    if(isAdmin) html+='<td><button class="del-btn" onclick="deleteItem(\''+it.id+'\')">삭제</button></td>';
+    if(isAdmin && today) html+='<td><button class="del-btn" onclick="deleteItem(\''+it.id+'\')">삭제</button></td>';
     html+='</tr>';
   });
   html+='</tbody></table>';
