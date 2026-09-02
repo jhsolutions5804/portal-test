@@ -337,6 +337,13 @@ textarea.f-input{resize:vertical;min-height:70px}
           </div>
         </div>
       </div>
+      <div class="home-row2" id="admin-row2" style="display:none">
+        <div class="home-card">
+          <div class="home-section-hd">🚩 프로젝트 상태</div>
+          <div style="font-size:12px;color:#9AAABF;margin-bottom:10px">현재 상태: <b id="lp-status-lbl">진행중</b></div>
+          <button id="lp-end-btn" onclick="toggleEndLightPjt()" style="width:100%;padding:11px;background:#fff;color:#c0392b;border:1.5px solid #c0392b;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">🔴 프로젝트 종료</button>
+        </div>
+      </div>
       <div id="settings-noaccess" style="display:none;text-align:center;padding:40px;color:#9AAABF;font-size:13px;">관리자만 설정을 변경할 수 있습니다.</div>
     </div>
 
@@ -789,7 +796,9 @@ window.switchTab=function(tab){
   });
   if(tab==='settings'){
     document.getElementById('admin-row').style.display=isAdmin?'grid':'none';
+    var ar2=document.getElementById('admin-row2'); if(ar2) ar2.style.display=isAdmin?'grid':'none';
     document.getElementById('settings-noaccess').style.display=isAdmin?'none':'block';
+    if(isAdmin && typeof loadLightPjtStatus==='function') loadLightPjtStatus();
   }
 };
 
@@ -803,6 +812,35 @@ window.saveBasic=async function(){
     toast('저장되었습니다');
   }catch(e){ toast('저장 실패: '+e.message); }
   finally{ btn.disabled=false; btn.textContent='저장'; }
+};
+
+// ── 프로젝트 종료/재개 (메인PJT 설정탭과 동일 정책, pjt_registry의 status 필드 사용) ──
+window.loadLightPjtStatus=async function(){
+  try{
+    const snap=await getDoc(doc(db,'pjt_registry',pjtId));
+    const d=snap.exists()?snap.data():{};
+    window._lpEnded = (d.status==='ended');
+    const lbl=document.getElementById('lp-status-lbl'), btn=document.getElementById('lp-end-btn');
+    if(lbl) lbl.textContent = window._lpEnded ? '종료' : '진행중';
+    if(btn){
+      btn.textContent = window._lpEnded ? '🟢 프로젝트 재개' : '🔴 프로젝트 종료';
+      btn.style.color = window._lpEnded ? '#16A34A' : '#c0392b';
+      btn.style.borderColor = window._lpEnded ? '#16A34A' : '#c0392b';
+    }
+  }catch(e){ console.warn('상태 로드 실패', e); }
+};
+window.toggleEndLightPjt=async function(){
+  const toEnded=!window._lpEnded;
+  const msg=toEnded?'이 프로젝트를 종료 처리하시겠습니까?\n종료된 PJT는 포털 홈 사이드바에서 "종료 PJT" 그룹으로 이동합니다.':'이 프로젝트를 다시 진행중 상태로 되돌리시겠습니까?';
+  if(!confirm(msg)) return;
+  const btn=document.getElementById('lp-end-btn');
+  if(btn) btn.disabled=true;
+  try{
+    await updateDoc(doc(db,'pjt_registry',pjtId), { status: toEnded?'ended':'active' });
+    await loadLightPjtStatus();
+    toast(toEnded?'✓ 종료 처리했습니다.':'✓ 재개 처리했습니다.');
+  }catch(e){ alert('처리 실패: '+(e.message||e)); }
+  finally{ if(btn) btn.disabled=false; }
 };
 
 // ── 공정 단계 설정 ──
