@@ -1162,7 +1162,12 @@ window.newSettle=function(pjtId){
 function setOptCompanies(list,sel){ return list.map(c=>`<option value="${c.id}" ${c.id===sel?'selected':''}>${c.company}${c.ceo?' ('+c.ceo+')':''}</option>`).join(''); }
 
 function drawSettleForm(){ const d=settleDraft; d.pjtIds=(d.pjtIds&&d.pjtIds.length)?d.pjtIds:[d.pjtId]; if(d.pjtIds.indexOf(d.pjtId)<0) d.pjtId=d.pjtIds[0];
-  const pjtEsts=estimates.filter(e=>d.pjtIds.includes(e.pjtId) && isActive(e));
+  const pjtEstsAll=estimates.filter(e=>d.pjtIds.includes(e.pjtId) && isActive(e));
+  // '공정 연동(자동)' 방식은 FAB/SUP처럼 실제 섹터·장비 자동추적 데이터가 있는 프로젝트에서만 정확합니다.
+  // 연동PJT가 설정 안 된(경량PJT 등) 프로젝트의 견적을 여기 섞으면, FAB의 섹터/장비 번호가 엉뚱하게 매칭되어 물량이 틀어집니다.
+  const zoneTrackablePjtIds=d.pjtIds.filter(pid=>{ const key=getLinkPjt(projects.find(p=>p.id===pid)); return key==='p4ph2'||key==='p4ph4'; });
+  const pjtEsts = d.method==='progress' ? estimates.filter(e=>zoneTrackablePjtIds.includes(e.pjtId) && isActive(e)) : pjtEstsAll;
+  const excludedForProgress = d.method==='progress' ? d.pjtIds.filter(pid=>!zoneTrackablePjtIds.includes(pid)) : [];
   $('v-settle').innerHTML=`<button class="back" onclick="renderSettle()">← 정산 목록</button>
   <div class="card">
     <div class="field"><label>정산서 종류</label>
@@ -1188,6 +1193,7 @@ function drawSettleForm(){ const d=settleDraft; d.pjtIds=(d.pjtIds&&d.pjtIds.len
       <div class="field"><label>수신자 (${d.docType==='invoice'?'원청':'하청'})</label><select class="sel" onchange="setS2('recipientId',this.value);setS2('recipientContact','');drawSettleForm()"><option value="">— 거래처 선택 —</option>${setOptCompanies(clientList(),d.recipientId)}</select>
       ${contactDropdown(d.recipientId, d.recipientContact||'',"setS2('recipientContact',this.value)")}</div></div>
   </div>
+  ${d.method==='progress'&&excludedForProgress.length?`<div class="note-amber" style="margin-top:0">⚠️ ${excludedForProgress.map(pid=>{const p=projects.find(x=>x.id===pid);return p?p.code:pid;}).join(', ')}은(는) 섹터·장비 자동추적 연동이 없어 "공정 연동(자동)" 방식에서 제외됩니다. 이 프로젝트 견적은 "수량 정산" 또는 "직접 입력" 방식을 이용해주세요.</div>`:''}
   ${d.method==='manual'? setManualCard() : d.method==='manday'? setMandayCard() : d.method==='qty'? setQtyCard(pjtEsts) : setProgressCard(pjtEsts)}
   <div class="card" id="set-tot"></div>
   <button class="btn pri full" id="set-save" onclick="publishSettle()">정산서 발행</button>
@@ -1392,6 +1398,16 @@ window.setMd=function(v){ settleDraft.mandayInput=num(v); refreshMandayRows(); }
 window.setMandayRate=function(v){ settleDraft.mandayRate=Math.round(num(v))||TEAM_RATE; drawSettleForm(); };
 window.fetchManday=async function(){ const d=settleDraft; toast('공수 불러오는 중...');
   d.pjtIds=(d.pjtIds&&d.pjtIds.length)?d.pjtIds:[d.pjtId];
+  // 안전장치: 서로 다른 프로젝트가 같은 공수 데이터소스로 겹치면(연동PJT 미설정 등) 잘못된 합산이 나올 수 있어 미리 경고
+  if(d.pjtIds.length>1){
+    const colMap={};
+    d.pjtIds.forEach(pid=>{ const col=mandayColForPjt(pid); if(!col) return; (colMap[col]=colMap[col]||[]).push(pid); });
+    const dupGroups=Object.values(colMap).filter(g=>g.length>1);
+    if(dupGroups.length){
+      const names=dupGroups.map(g=>g.map(pid=>{const p=projects.find(x=>x.id===pid);return p?p.code:pid;}).join(' = ')).join(', ');
+      if(!confirm('⚠️ 다음 프로젝트들이 같은 공수 데이터소스로 연결되어 있어 똑같은 값이 중복 집계될 수 있습니다:\n'+names+'\n\n(기획 > PJT 관리에서 "연동 PJT" 설정을 확인해주세요.)\n\n그래도 계속 불러올까요?')) return;
+    }
+  }
   try{
     const breakdown={}; let grand=0; let ignoredTotal=0;
     for(const pid of d.pjtIds){
@@ -1818,10 +1834,10 @@ function renderAccLedger(){
         <tbody>${ACC_CATS.filter(c=>byCat[c.k].cnt>0).map(c=>{ const b=byCat[c.k]; return `<tr><td class="l"><span class="catpill" style="${accCatStyle(c.k)}">${c.k}</span></td><td class="small ${accIsDirect(c.k)?'':'muted'}">${accIsDirect(c.k)?'직접비':'간접비'}</td><td>${b.cnt}</td><td>${won(b.sup)}</td><td>${won(b.vat)}</td><td style="font-weight:700;color:var(--money)">${won(b.total)}</td></tr>`; }).join('')||'<tr><td colspan="6" class="center muted" style="padding:16px">이 달 비용이 없습니다.</td></tr>'}</tbody>
         ${list.length?`<tfoot><tr style="background:#f6f9fd;font-weight:700"><td class="l">합계</td><td></td><td>${list.length}</td><td>${won(sup)}</td><td>${won(vat)}</td><td style="color:var(--money)">${won(tot)}</td></tr></tfoot>`:''}</table></div></div>
     <div class="card" style="padding:12px"><div class="sec-h"><h2>상세 내역</h2>
-      ${accSelIds.size?`<div style="display:flex;gap:6px;align-items:center"><span class="small" style="color:#1D5BA6;font-weight:700">${accSelIds.size}건 선택</span><button class="btn line sm" onclick="accBulkCarryover()">📅 다음달로 이월</button><button class="btn line sm" style="color:#c0392b;border-color:#c0392b" onclick="accBulkDelete()">🗑 선택 삭제</button><button class="btn gray sm" onclick="accClearSel()">선택 해제</button></div>`:''}
+      ${accSelIds.size?`<div style="display:flex;gap:6px;align-items:center"><span class="small" style="color:#1D5BA6;font-weight:700">${accSelIds.size}건 선택</span><button class="btn line sm" onclick="accBulkChangeMonth()">📅 귀속월 수정</button><button class="btn line sm" style="color:#c0392b;border-color:#c0392b" onclick="accBulkDelete()">🗑 선택 삭제</button><button class="btn gray sm" onclick="accClearSel()">선택 해제</button></div>`:''}
       </div>
       ${_filterBar}
-      ${filtered.length? `<div class="litem" style="cursor:default;background:#F7F9FC"><label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#5C6F8A;cursor:pointer"><input type="checkbox" onclick="accToggleAll(this.checked)" ${filtered.filter(e=>!e.fromSettlement&&!e.salaryDist).length&&filtered.filter(e=>!e.fromSettlement&&!e.salaryDist).every(e=>accSelIds.has(e.id))?'checked':''}> 전체 선택 (삭제/이월 대상만)</label></div>`:''}
+      ${filtered.length? `<div class="litem" style="cursor:default;background:#F7F9FC"><label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#5C6F8A;cursor:pointer"><input type="checkbox" onclick="accToggleAll(this.checked)" ${filtered.filter(e=>!e.fromSettlement&&!e.salaryDist).length&&filtered.filter(e=>!e.fromSettlement&&!e.salaryDist).every(e=>accSelIds.has(e.id))?'checked':''}> 전체 선택 (삭제/수정 대상만)</label></div>`:''}
       ${filtered.length? filtered.map(e=>{
         const selectable=!e.fromSettlement&&!e.salaryDist;
         const cb=selectable?`<input type="checkbox" onclick="event.stopPropagation();accToggleSel('${e.id}',this.checked)" ${accSelIds.has(e.id)?'checked':''} style="margin-right:10px;flex-shrink:0">`:'<span style="display:inline-block;width:26px;flex-shrink:0"></span>';
@@ -1855,28 +1871,23 @@ window.accBulkDelete = async function(){
     toast(`${ids.length}건 삭제했습니다.`);
   }catch(e){ toast('일괄 삭제 실패: '+(e.code||e.message)); }
 };
-function _accNextMonth(ym){
-  const [y,m]=ym.split('-').map(Number);
-  const nm=m===12?1:m+1, ny=m===12?y+1:y;
-  return ny+'-'+String(nm).padStart(2,'0');
-}
-window.accBulkCarryover = async function(){
+window.accBulkChangeMonth = async function(){
   if(!accSelIds.size) return;
   const ids=[...accSelIds];
   const list=expenses.filter(e=>ids.includes(e.id));
-  if(!confirm(`선택한 ${list.length}건을 다음달로 이월할까요? (원본은 삭제되고 다음달 귀속으로 새로 생성됩니다)`)) return;
+  const sampleYm=list[0]?(list[0].accMonth||(list[0].date||'').slice(0,7)):'';
+  const v=prompt(`선택한 ${list.length}건의 귀속월을 변경합니다 (YYYY-MM 형식)`, sampleYm);
+  if(v===null) return;
+  const t=v.trim();
+  if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(t)){ toast('형식이 올바르지 않습니다. 예: 2026-07'); return; }
+  if(!confirm(`선택한 ${list.length}건의 귀속월을 ${t}(으)로 변경할까요?`)) return;
   try{
     for(const e of list){
-      const curYm = e.accMonth || (e.date||'').slice(0,7);
-      const nextYm = _accNextMonth(curYm);
-      const {id, ...rest} = e;
-      const newId = 'exp_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
-      await setDoc(doc(db,'gihoek_expenses',newId), {...rest, accMonth: nextYm, carriedFrom: id, updatedAt: serverTimestamp()});
-      await deleteDoc(doc(db,'gihoek_expenses',id));
+      await setDoc(doc(db,'gihoek_expenses',e.id),{accMonth:t,updatedAt:serverTimestamp()},{merge:true});
     }
     accSelIds.clear();
-    toast(`${list.length}건 다음달로 이월했습니다.`);
-  }catch(e){ toast('이월 실패: '+(e.code||e.message)); }
+    toast(`${list.length}건의 귀속월을 ${t}(으)로 변경했습니다.`);
+  }catch(e){ toast('변경 실패: '+(e.code||e.message)); }
 };
 // ── 손익계산서 (회사구분 · 자유항목 · 귀속월 직접입력) ──
 function renderAccIncome(){
