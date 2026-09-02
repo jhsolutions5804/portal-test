@@ -1244,6 +1244,7 @@ window.calShift=function(dir){
 // Daily/Weekly/Monthly 뷰가 모두 이 캐시 하나를 공유하므로, 뷰 전환 시 추가 조회가 필요 없다.
 async function loadAllSched(){
   calCache={};
+  window._schedLoadFailed=false;
   try{
     const snap=await getDocs(query(collection(db,'pjt_registry',pjtId,'schedules'), orderBy('sdate','asc')));
     snap.forEach(function(d){
@@ -1251,7 +1252,11 @@ async function loadAllSched(){
       if(!dk) return;
       (calCache[dk]=calCache[dk]||[]).push(Object.assign({id:d.id}, s));
     });
-  }catch(e){}
+  }catch(e){
+    console.error('[경량PJT] 일정 목록 로드 실패:', e);
+    window._schedLoadFailed=true;
+    toast('⚠️ 일정을 불러오지 못했습니다 (권한 확인 필요)');
+  }
   allSchedLoaded=true;
   renderSchedView();
   if(calSel) selectSchedDay(calSel);
@@ -1406,9 +1411,7 @@ window.selectSchedDay=function(dk){
   title.textContent='📅 '+parseInt(p[1])+'월 '+parseInt(p[2])+'일 ('+dow+')';
   const items=(calCache[dk]||[]).slice().sort(function(a,b){ return (a.stime||'').localeCompare(b.stime||''); });
   let html='';
-  if(isAdmin){
-    html+='<button class="add-btn" style="margin-bottom:14px" onclick="openSchedForm(\''+dk+'\')">+ 이 날 일정 등록</button>';
-  }
+  html+='<button class="add-btn" style="margin-bottom:14px" onclick="openSchedForm(\''+dk+'\')">+ 이 날 일정 등록</button>';
   if(items.length){
     items.forEach(function(s){
       const tg=SCHED_TAG[s.tag||'admin']||SCHED_TAG.admin;
@@ -1419,7 +1422,7 @@ window.selectSchedDay=function(dk){
         +'</div>';
     });
   } else {
-    html+='<div class="empty">이 날 등록된 일정이 없습니다.</div>';
+    html+=window._schedLoadFailed?'<div class="empty" style="color:#c0392b">⚠️ 일정을 불러오지 못했습니다. 권한 문제일 수 있으니 관리자에게 문의해주세요.</div>':'<div class="empty">이 날 등록된 일정이 없습니다.</div>';
   }
   document.getElementById('cal-detail-body').innerHTML=html;
 };
