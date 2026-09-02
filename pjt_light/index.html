@@ -70,7 +70,8 @@ textarea.f-input{resize:vertical;min-height:70px}
 .sheet-body{padding:6px 18px 24px}
 .day-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px}
 .day-title{font-size:15px;font-weight:700;flex:1;text-align:center}
-.nav-arrow{background:none;border:1px solid #d1d1d6;border-radius:8px;width:30px;height:30px;cursor:pointer;color:#86868b;font-size:16px}
+.today-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px}
+.nav-arrow{background:none;border:1px solid #d1d1d6;border-radius:8px;width:30px;height:30px;cursor:pointer;color:#86868b;font-size:16px;flex-shrink:0}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A2540;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:999}
 .toast.on{opacity:1}
 .loading{text-align:center;padding:60px 0;color:#9AAABF;font-size:13px}
@@ -1317,20 +1318,18 @@ function schedGetWeekStart(){
   var d=new Date(now); d.setDate(d.getDate()-d.getDay()); // 이번 주 일요일
   return d;
 }
-window.schedWeekShift=function(dir){ schedWeekOffset+=dir; renderSchedWeekly(); };
+window.schedWeekShift=function(dir){ schedWeekOffset+=dir*2; renderSchedWeekly(); };
 window.schedWeekGoToday=function(){ schedWeekOffset=0; renderSchedWeekly(); };
-function renderSchedWeekly(){
-  var wStart=schedGetWeekStart();
+function getWeekNum(d){const j=new Date(d.getFullYear(),0,1);return Math.ceil(((d-j)/86400000+j.getDay()+1)/7);}
+function _schedWeekBlockHtml(wStart,label){
   var now=new Date(); var todayKey=calKey(now.getFullYear(),now.getMonth(),now.getDate());
   var dowKo=['일','월','화','수','목','금','토'];
   var wEnd=new Date(wStart); wEnd.setDate(wStart.getDate()+6);
-  var titleEl=document.getElementById('sched-week-title');
-  if(titleEl){
-    titleEl.textContent=(wStart.getMonth()+1)+'/'+wStart.getDate()+' ~ '+(wEnd.getMonth()+1)+'/'+wEnd.getDate()+(schedWeekOffset===0?' · 이번 주':'');
-  }
-  var grid=document.getElementById('sched-week-grid');
-  if(!grid) return;
-  var html='';
+  var wS=(wStart.getMonth()+1)+'/'+wStart.getDate(), wE=(wEnd.getMonth()+1)+'/'+wEnd.getDate();
+  var html='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
+    +'<span style="font-size:13px;font-weight:700;color:#1D5BA6">'+label+'</span>'
+    +'<span style="font-size:11px;color:#86868b">'+wS+' ~ '+wE+'</span></div>';
+  html+='<div class="wk-grid">';
   for(var i=0;i<7;i++){
     var d=new Date(wStart); d.setDate(wStart.getDate()+i);
     var dk=calKey(d.getFullYear(),d.getMonth(),d.getDate());
@@ -1356,6 +1355,24 @@ function renderSchedWeekly(){
     }
     html+='</div>';
   }
+  html+='</div>';
+  return html;
+}
+function renderSchedWeekly(){
+  var w0Start=schedGetWeekStart();
+  var w1Start=new Date(w0Start); w1Start.setDate(w0Start.getDate()+7);
+  var w1End=new Date(w1Start); w1End.setDate(w1Start.getDate()+6);
+  var titleEl=document.getElementById('sched-week-title');
+  if(titleEl){
+    titleEl.textContent=(w0Start.getMonth()+1)+'/'+w0Start.getDate()+' ~ '+(w1End.getMonth()+1)+'/'+w1End.getDate()+(schedWeekOffset===0?' · 이번 2주':'');
+  }
+  var grid=document.getElementById('sched-week-grid');
+  if(!grid) return;
+  var w0Label='W'+getWeekNum(w0Start)+(schedWeekOffset===0?' · 이번 주':'');
+  var w1Label='W'+getWeekNum(w1Start)+(schedWeekOffset===0?' · 다음 주':'');
+  var html=_schedWeekBlockHtml(w0Start,w0Label)
+    +'<div style="height:1px;background:#e5e5e5;margin:16px 0"></div>'
+    +_schedWeekBlockHtml(w1Start,w1Label);
   grid.innerHTML=html;
 }
 window.saveSchedWeekPng=async function(){
