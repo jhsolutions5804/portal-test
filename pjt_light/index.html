@@ -224,8 +224,8 @@ textarea.f-input{resize:vertical;min-height:70px}
   /* 공사일보 탭: 좌(작성폼)+우(최근 일보) 2단 분할 */
   .report-pc-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
 
-  /* 일정관리 캘린더: 좌(달력)+우(상세) 2단 분할 */
-  .cal-wrap{display:grid;grid-template-columns:420px 1fr;gap:16px;align-items:start}
+  /* 일정관리 캘린더: 좌(달력)+우(상세) 2단 분할 — 메인PJT(FAB)와 동일 비율/크기로 통일 */
+  .cal-wrap{display:grid;grid-template-columns:minmax(560px,1.3fr) 1fr;gap:16px;align-items:start}
   .sched-view-toggle{gap:8px}
   .svt-btn{flex:none;padding:9px 22px;font-size:13.5px}
   .wk-day-col{min-height:130px;padding:8px}
@@ -233,7 +233,7 @@ textarea.f-input{resize:vertical;min-height:70px}
   .wk-day-dow{font-size:10px}
   .wk-holi{font-size:9px}
   .wk-item{font-size:10.5px;padding:3px 5px;white-space:normal}
-  .cal-day{min-height:74px}
+  .cal-day{min-height:92px}
   .cal-right{min-height:400px}
 
   /* 품목현황 탭: 상단 요약 스트립 */
