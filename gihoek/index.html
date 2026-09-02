@@ -216,7 +216,7 @@ const settleBelongsToPjt=(s,pid)=> s.pjtId===pid || (s.pjtIds&&s.pjtIds.includes
 const pjtBilled=pid=>settlements.filter(s=>settleBelongsToPjt(s,pid)&&s.docType==='invoice'&&s.status!=='void').reduce((a,s)=>a+settleAmountForPjt(s,pid),0);
 const pjtPaid =pid=>settlements.filter(s=>settleBelongsToPjt(s,pid)&&s.docType==='payment'&&s.status!=='void').reduce((a,s)=>a+settleAmountForPjt(s,pid),0);
 // 완결된 청구 합계 (status==='done')
-const pjtDone =pid=>settlements.filter(s=>s.pjtId===pid&&s.docType==='invoice'&&s.status==='done').reduce((a,s)=>a+(s.amount||0),0);
+const pjtDone =pid=>settlements.filter(s=>settleBelongsToPjt(s,pid)&&s.docType==='invoice'&&s.status==='done').reduce((a,s)=>a+settleAmountForPjt(s,pid),0);
 // 미수금 = 청구액 - 수금액 (완결된 청구서 = 수금으로 간주)
 const pjtDue  =pid=>pjtBilled(pid)-pjtDone(pid);
 
@@ -1161,7 +1161,8 @@ window.newSettle=function(pjtId){
 
 function setOptCompanies(list,sel){ return list.map(c=>`<option value="${c.id}" ${c.id===sel?'selected':''}>${c.company}${c.ceo?' ('+c.ceo+')':''}</option>`).join(''); }
 
-function drawSettleForm(){ const d=settleDraft; const pjtEsts=estimates.filter(e=>e.pjtId===d.pjtId && isActive(e));
+function drawSettleForm(){ const d=settleDraft; d.pjtIds=(d.pjtIds&&d.pjtIds.length)?d.pjtIds:[d.pjtId]; if(d.pjtIds.indexOf(d.pjtId)<0) d.pjtId=d.pjtIds[0];
+  const pjtEsts=estimates.filter(e=>d.pjtIds.includes(e.pjtId) && isActive(e));
   $('v-settle').innerHTML=`<button class="back" onclick="renderSettle()">← 정산 목록</button>
   <div class="card">
     <div class="field"><label>정산서 종류</label>
@@ -1169,7 +1170,9 @@ function drawSettleForm(){ const d=settleDraft; const pjtEsts=estimates.filter(e
         <button class="seg-btn ${d.docType==='invoice'?'on':''}" onclick="setS('docType','invoice')">대금청구서<div class="small" style="font-weight:400">원청에게 청구</div></button>
         <button class="seg-btn ${d.docType==='payment'?'on':''}" onclick="setS('docType','payment')">지급예정서<div class="small" style="font-weight:400">하청에게 지급</div></button></div></div>
     <div class="row2">
-      <div class="field"><label>프로젝트</label><select class="sel" onchange="setS('pjtId',this.value)">${projects.map(p=>`<option value="${p.id}" ${p.id===d.pjtId?'selected':''}>${p.code}</option>`).join('')}</select></div>
+      <div class="field"><label>프로젝트 (다중 선택 가능)</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">${projects.map(p=>`<label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;border:1.5px solid ${(d.pjtIds||[d.pjtId]).includes(p.id)?'var(--blue)':'var(--line)'};background:${(d.pjtIds||[d.pjtId]).includes(p.id)?'#EEF4FC':'#fff'};border-radius:8px;padding:5px 10px;cursor:pointer">
+          <input type="checkbox" ${(d.pjtIds||[d.pjtId]).includes(p.id)?'checked':''} onchange="toggleSettlePjt('${p.id}')" style="accent-color:var(--blue)"> ${p.code}</label>`).join('')}</div></div>
       <div class="field"><label>정산 방식</label><select class="sel" onchange="setS('method',this.value)">
         <option value="progress" ${d.method==='progress'?'selected':''}>공정 연동 (반입·설치 자동)</option>
         <option value="qty" ${d.method==='qty'?'selected':''}>수량 정산 (견적 품목별)</option>
@@ -1193,6 +1196,13 @@ function drawSettleForm(){ const d=settleDraft; const pjtEsts=estimates.filter(e
 }
 window.setS=function(k,v){ settleDraft[k]=v; drawSettleForm(); };
 window.setS2=function(k,v){ settleDraft[k]=v; };
+window.toggleSettlePjt=function(pid){ const d=settleDraft; d.pjtIds=d.pjtIds||[d.pjtId];
+  const i=d.pjtIds.indexOf(pid);
+  if(i<0){ d.pjtIds.push(pid); } else { if(d.pjtIds.length<=1){ toast('최소 1개 프로젝트는 선택되어야 합니다.'); return; } d.pjtIds.splice(i,1); }
+  d.pjtId=d.pjtIds[0];
+  // 프로젝트 구성이 바뀌면 선택된 견적/공수 오버라이드는 새로 골라야 하므로 초기화
+  d.estIds=(d.estIds||[]).filter(id=>{ const e=estimates.find(x=>x.id===id); return e && d.pjtIds.includes(e.pjtId); });
+  drawSettleForm(); };
 
 /* 공정 연동 (자동) */
 function compactRanges(arr){ if(!arr||!arr.length) return '-';
@@ -1481,6 +1491,9 @@ window.publishSettle=async function(){ const d=settleDraft; const sup=effSupply(
   const perPjtAmount={};
   if(d.method==='manday' && pjtIdsFinal.length>1){
     pjtIdsFinal.forEach(pid=>{ perPjtAmount[pid]=Math.round(mdForPjt(pid)*rateForPjt(pid)); });
+  } else if((d.method==='progress'||d.method==='qty') && pjtIdsFinal.length>1){
+    pjtIdsFinal.forEach(pid=>{ perPjtAmount[pid]=0; });
+    Object.keys(perEst).forEach(eid=>{ const e=estimates.find(x=>x.id===eid); if(!e) return; perPjtAmount[e.pjtId]=(perPjtAmount[e.pjtId]||0)+(perEst[eid]||0); });
   } else {
     perPjtAmount[d.pjtId]=sup; // 단일 프로젝트는 전체 공급가가 그대로 그 프로젝트 몫
   }
