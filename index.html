@@ -226,6 +226,11 @@
   .mmp-subbtn:hover{ color:#fff; }
   .mmp-subbtn:active{ opacity:.7 }
 
+  /* 일정관리 Weekly/Monthly 토글 — 앱 전반 파란색 톤(연한블루 칩/솔리드블루)에 맞춘 세그먼트 컨트롤 (전역 — PC/모바일 공통) */
+  .pjt-cal-toggle{ background:#F0F4F9; border-radius:10px; padding:3px; display:inline-flex; gap:2px; }
+  .pjt-svt-btn{ flex:1; padding:8px 6px; border:none; border-radius:8px; background:transparent; color:#5C6F8A; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; -webkit-appearance:none; appearance:none; transition:background .15s,color .15s; }
+  .pjt-svt-btn.active{ background:#1D5BA6; color:#fff; box-shadow:0 1px 4px rgba(29,91,166,.25); }
+
   /* 모바일에서 view-home 하단 여백 */
   @media (max-width:899px){
     #view-home{ padding-bottom:74px }
@@ -261,10 +266,6 @@
     .pjt-cal-cell .dnum{ font-size:12px; font-weight:600; color:#1A2540; }
     .pjt-cal-cell .dots{ display:flex; gap:2px; flex-wrap:wrap; margin-top:3px; }
     .pjt-cal-cell .cd{ width:5px; height:5px; border-radius:50%; }
-    /* 일정관리 Weekly/Monthly 토글 — 앱 전반 파란색 톤(연한블루 칩/솔리드블루)에 맞춘 세그먼트 컨트롤 */
-    .pjt-cal-toggle{ background:#F0F4F9; border-radius:10px; padding:3px; display:inline-flex; gap:2px; }
-    .pjt-svt-btn{ flex:1; padding:8px 6px; border:none; border-radius:8px; background:transparent; color:#5C6F8A; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; transition:background .15s,color .15s; }
-    .pjt-svt-btn.active{ background:#1D5BA6; color:#fff; box-shadow:0 1px 4px rgba(29,91,166,.25); }
     .pjt-week-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
     .pjt-week-day-col{ border:1px solid #EEF2F7; border-radius:8px; padding:5px; min-height:90px; background:#fafbfc; }
     .pjt-week-day-col.today{ border-color:#1D5BA6; background:#eaf2fc; }
