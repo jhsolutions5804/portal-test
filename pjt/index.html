@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- PJT module build: 20260818d · ver 4.10.7 · 퇴사자는 퇴사일 이후 날짜의 출역 체크리스트에서 자동 제외 (퇴사일 이전 과거 기록은 유지) -->
+<!DOCTYPE html><!-- PJT module build: 20260910 · ver 4.10.8(test) · 공수 집계표(이달 공수 집계표) 탭 목록도 퇴사자 제외되도록 재직자 필터 적용 (openKongsuModal/renderKongsuTabs/renderKongsuSheet) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -2722,10 +2722,26 @@ window.setMandayInput=function(workerId,dateKey,raw){
 // 공수 집계표 모달
 // ===================================================
 let _sheetY, _sheetM, _sheetActive='w1';
+// 공수 집계표에서 조회 중인 달의 말일 기준 dateKey — 해당 달까지 재직했던 인원만 탭에 노출
+function _ksDateKey(){
+  var lastDay=new Date(_sheetY,_sheetM+1,0).getDate();
+  return _sheetY+'-'+pad(_sheetM+1)+'-'+pad(lastDay);
+}
+// 공수 집계표 전용 재직자 필터 (근태관리 쪽 _masterResignedMap 캐시 재사용)
+function _ksActiveWorkers(){
+  const all=(typeof getWorkers==='function')?getWorkers():WORKERS;
+  const dateKey=_ksDateKey();
+  return all.filter(function(w){
+    const info=_masterResignedMap[w.id];
+    if(info && info.resigned && info.resignedDate && info.resignedDate<=dateKey) return false;
+    return true;
+  });
+}
 window.openKongsuModal=async function(){
   const d=getAttendDate();
   _sheetY=d.getFullYear(); _sheetM=d.getMonth();
-  var _wsList=(typeof getWorkers==='function')?getWorkers():WORKERS;
+  if(typeof loadMasterResignedMap==='function') await loadMasterResignedMap();
+  var _wsList=_ksActiveWorkers();
   _sheetActive=(_wsList&&_wsList.length)?_wsList[0].id:'w1';
   document.getElementById('ks-modal').classList.add('on');
   document.getElementById('ks-mlabel').textContent=`${_sheetY}년 ${_sheetM+1}월`;
@@ -2740,13 +2756,14 @@ window.changeSheetMonth=async function(dir){
   document.getElementById('ks-mlabel').textContent=`${_sheetY}년 ${_sheetM+1}월`;
   document.getElementById('ks-body').innerHTML='<div style="text-align:center;padding:48px 0;color:#86868b;font-size:13px">불러오는 중…</div>';
   if(window._fbGetMandayMonth) await window._fbGetMandayMonth(_sheetY,_sheetM);
+  renderKongsuTabs();
   renderKongsuSheet();
 };
 window.selectKongsuTab=function(id){ _sheetActive=id; renderKongsuTabs(); renderKongsuSheet(); };
 
 function renderKongsuTabs(){
   const bar=document.getElementById('ks-tabbar');
-  const _ws=(typeof getWorkers==='function')?getWorkers():WORKERS;
+  const _ws=_ksActiveWorkers();
   if(!_ws||!_ws.length){ bar.innerHTML='<div style="padding:10px;color:#86868b;font-size:13px">등록된 기술인이 없습니다</div>'; return; }
   const boss=_ws[0];
   const bossId=boss.id;
@@ -2757,7 +2774,7 @@ function renderKongsuTabs(){
 
 function renderKongsuSheet(){
   document.getElementById('ks-mlabel').textContent=`${_sheetY}년 ${_sheetM+1}월`;
-  const _ws=(typeof getWorkers==='function')?getWorkers():WORKERS;
+  const _ws=_ksActiveWorkers();
   const isBoss=(_ws&&_ws.length&&_sheetActive===_ws[0].id);
   const w=_ws.find(x=>x.id===_sheetActive);
   if(!w){ document.getElementById('ks-body').innerHTML='<div style="text-align:center;padding:48px 0;color:#86868b">기술인 정보를 찾을 수 없습니다</div>'; return; }
