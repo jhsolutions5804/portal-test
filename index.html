@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260822b · ver: 2026-08-22 (PJT 5.3.5 · mobile 5.3.0 · edoc 3.4r3 · hr payslip 2.6.2 · hr overtime 2.6.8 · pjt_manday 1.1.2 · gihoek 5.3.16 · daily-report(SUP) 2.4.1) · [PJT] 공사일보(SUP) ph4.html Firebase Auth 초기화 누락 수정 -->
+<!DOCTYPE html><!-- build: 20260910a · ver: 2026-09-10 (PJT 5.3.5 · mobile 5.3.0 · edoc 3.4r3 · hr payslip 2.6.2 · hr overtime 2.6.8 · pjt_manday 1.1.2 · gihoek 5.3.16 · daily-report(SUP) 2.4.1) · [포털홈] PJT 홈 일정관리 완료체크 + 일정 등록 시 할 일(체크리스트) 옵션 추가 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -442,6 +442,18 @@
   .hsc-detail-row .k{width:66px; color:#9AAABF; font-weight:600; flex-shrink:0}
   .hsc-detail-row .v{color:#1A2540; flex:1; white-space:pre-wrap; min-width:0}
   .hsc-tagbadge{display:inline-block; font-size:11px; padding:2px 9px; border-radius:6px; font-weight:600}
+  .hsc-check{width:18px; height:18px; border:2px solid #c7c7cc; border-radius:6px; flex-shrink:0; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-top:1px; transition:.12s; background:#fff}
+  .hsc-check.done{background:#1D5BA6; border-color:#1D5BA6}
+  .hsc-check.done::after{content:'✓'; color:#fff; font-size:12px; font-weight:700; line-height:1}
+  .hsc-item-text.done-text{color:#9AAABF; text-decoration:line-through}
+  .hsc-todo-badge{font-size:9px; padding:1px 6px; border-radius:5px; background:#EEF2F7; color:#5C6F8A; font-weight:700}
+  .hsc-todo-wrap{display:flex; align-items:center; gap:8px; padding:9px 11px; border:1px solid #DDE4EF; border-radius:9px; cursor:pointer; user-select:none}
+  .hsc-todo-wrap.on{border-color:#1D5BA6; background:#F4F8FF}
+  .hsc-todo-cb{width:18px; height:18px; border:2px solid #c7c7cc; border-radius:5px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:12px}
+  .hsc-todo-wrap.on .hsc-todo-cb{background:#1D5BA6; border-color:#1D5BA6; color:#fff}
+  .hsc-todo-wrap.on .hsc-todo-label{color:#1D5BA6; font-weight:600}
+  .hsc-time-block{transition:opacity .15s}
+  .hsc-time-block.disabled{opacity:.35; pointer-events:none}
 
   /* ====================== 조직도 ====================== */
   #view-org{display:none; flex:1; overflow-y:auto; padding:0}
@@ -861,12 +873,20 @@
       <div class="hsc-cats" id="hsc-cats"></div>
     </div>
     <div class="modal-field">
-      <label>시작</label>
-      <div class="hsc-2col"><div><input type="date" id="hsc-sdate"></div><div><input type="time" id="hsc-stime"></div></div>
+      <div class="hsc-todo-wrap" id="hsc-todo-wrap" onclick="toggleHscTodo()">
+        <div class="hsc-todo-cb" id="hsc-todo-cb"></div>
+        <span class="hsc-todo-label">할 일 (시간 없이 체크리스트로 등록)</span>
+      </div>
     </div>
-    <div class="modal-field">
-      <label>종료 <span style="color:#9AAABF; font-weight:400">(같은 날이면 비워도 됨)</span></label>
-      <div class="hsc-2col"><div><input type="date" id="hsc-edate"></div><div><input type="time" id="hsc-etime"></div></div>
+    <div class="hsc-time-block" id="hsc-time-block">
+      <div class="modal-field">
+        <label>시작</label>
+        <div class="hsc-2col"><div><input type="date" id="hsc-sdate"></div><div><input type="time" id="hsc-stime"></div></div>
+      </div>
+      <div class="modal-field">
+        <label>종료 <span style="color:#9AAABF; font-weight:400">(같은 날이면 비워도 됨)</span></label>
+        <div class="hsc-2col"><div><input type="date" id="hsc-edate"></div><div><input type="time" id="hsc-etime"></div></div>
+      </div>
     </div>
     <div class="modal-field">
       <label>장소 <span style="color:#9AAABF; font-weight:400">(선택)</span></label>
@@ -1533,9 +1553,13 @@ window.pjtCalSelectDay=async function(dk){
     items.forEach((s,idx)=>{
       const tg=PJT_CAL_TAG[s.tag||'admin']||PJT_CAL_TAG.admin;
       const pc=pjtColorFor(s.pjtKey);
-      html+='<div onclick="openHomeSchedDetail('+idx+')" style="display:flex;align-items:flex-start;gap:7px;margin-bottom:6px;cursor:pointer;padding:5px 4px;border-radius:7px;transition:background .12s;border-left:3px solid '+pc+';" onmouseover="this.style.background=\'#F5F8FC\'" onmouseout="this.style.background=\'\'">'
-        +'<span style="font-size:10px;padding:2px 7px;border-radius:5px;background:'+tg.c+'22;color:'+tg.c+';white-space:nowrap;flex-shrink:0;font-weight:600;margin-left:4px">'+tg.l+'</span>'
-        +'<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:#1A2540">'+(s.stime?_pjtEsc(s.stime)+' ':'')+_pjtEsc(s.text||'')+'</div>'
+      const isDone=!!s.done;
+      const todoBadge=s.isTodo?'<span class="hsc-todo-badge">할일</span>':'';
+      html+='<div class="hsc-sched-item" style="display:flex;align-items:flex-start;gap:7px;margin-bottom:6px;padding:5px 4px;border-radius:7px;transition:background .12s;border-left:3px solid '+pc+';" onmouseover="this.style.background=\'#F5F8FC\'" onmouseout="this.style.background=\'\'">'
+        +'<div class="hsc-check'+(isDone?' done':'')+'" onclick="event.stopPropagation();toggleHomeSchedDone('+idx+',this)"></div>'
+        +'<div style="flex:1;min-width:0;cursor:pointer" onclick="openHomeSchedDetail('+idx+')">'
+        +'<div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px;padding:2px 7px;border-radius:5px;background:'+tg.c+'22;color:'+tg.c+';white-space:nowrap;flex-shrink:0;font-weight:600">'+tg.l+'</span>'+todoBadge+'</div>'
+        +'<div class="hsc-item-text'+(isDone?' done-text':'')+'" style="font-size:12px;font-weight:600;color:#1A2540;margin-top:2px">'+(s.stime?_pjtEsc(s.stime)+' ':'')+_pjtEsc(s.text||'')+'</div>'
         +'<div style="font-size:11px;color:'+pc+';margin-top:1px;font-weight:600">'+_pjtEsc(s.pjtName||'')+' ›</div></div></div>';
     });
   } else {
@@ -1580,6 +1604,17 @@ const HOME_SCHED_CATS = [
 let _homeSchedItems=[];   // 현재 선택일 일정 목록 (id·col·pjtKey 포함)
 let _hscCurCat='admin';
 let _hscEditing=null;     // 수정 중이면 {id,col}, 신규면 null
+let _hscTodo=false;       // 할 일(시간 없는 체크리스트) 여부
+
+function _hscSetTodo(v){
+  _hscTodo=!!v;
+  const wrap=document.getElementById('hsc-todo-wrap');
+  const block=document.getElementById('hsc-time-block');
+  if(!wrap) return;
+  if(_hscTodo){ wrap.classList.add('on'); if(block) block.classList.add('disabled'); }
+  else{ wrap.classList.remove('on'); if(block) block.classList.remove('disabled'); }
+}
+window.toggleHscTodo=function(){ _hscSetTodo(!_hscTodo); };
 
 function _hscRangeText(s){
   const f=d=>{ if(!d)return''; const p=d.split('-'); return (+p[1])+'/'+(+p[2]); };
@@ -1648,6 +1683,7 @@ window.openHomeSchedForm=function(mode, dk, data){
     g('hsc-place').value=data.place||'';
     g('hsc-att').value=data.att||'';
     g('hsc-reg').value=data.reg||'';
+    _hscSetTodo(!!data.isTodo);
   } else {
     _hscEditing=null;
     g('hsc-form-title').textContent='＋ 일정 등록';
@@ -1661,6 +1697,7 @@ window.openHomeSchedForm=function(mode, dk, data){
     g('hsc-place').value='';
     g('hsc-att').value='';
     g('hsc-reg').value=(localStorage.getItem('jh_login_full')||localStorage.getItem('jh_login_name')||'');
+    _hscSetTodo(false);
   }
   _hscRenderCats();
   document.getElementById('home-sched-form-modal').classList.add('on');
@@ -1680,9 +1717,9 @@ window.saveHomeSched=async function(){
     att:g('hsc-att').value.trim(),
     tag:_hscCurCat, tagLabel:catLabel,
     sdate, edate,
-    stime:g('hsc-stime').value||'',
-    etime:g('hsc-etime').value||'',
-    isTodo:false,
+    stime:_hscTodo?'':(g('hsc-stime').value||''),
+    etime:_hscTodo?'':(g('hsc-etime').value||''),
+    isTodo:_hscTodo,
   };
   const pjtKey=g('hsc-pjt').value;
   const colPath=schedColPath(pjtKey);
@@ -1719,6 +1756,34 @@ window.deleteHomeSched=async function(){
     await loadPjtCalendar();
     if(_pjtCalSel) pjtCalSelectDay(_pjtCalSel);
   }catch(e){ alert('삭제 중 오류가 발생했습니다: '+e.message); }
+};
+
+// 일정 완료 상태 저장 (문서 done 필드)
+window._hscSetDone=async function(pjtKey, id, isDone){
+  try{
+    const {doc,setDoc,serverTimestamp}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const colPath=schedColPath(pjtKey);
+    await setDoc(doc(window._db,...colPath,id), {done:!!isDone, doneUpdatedAt:serverTimestamp()}, {merge:true});
+  }catch(e){ console.error('일정 완료 저장 오류:', e); }
+};
+
+// 일정 목록 체크박스 클릭 시 완료 상태 토글 (낙관적 업데이트 + 저장)
+window.toggleHomeSchedDone=function(idx, el){
+  const s=_homeSchedItems[idx]; if(!s||!s.id||!s.pjtKey) return;
+  const willDone=!s.done;
+  s.done=willDone;
+  const dk=s.sdate;
+  if(_pjtCalCache[dk]){
+    const cached=_pjtCalCache[dk].find(function(x){ return x.id===s.id && x.pjtKey===s.pjtKey; });
+    if(cached) cached.done=willDone;
+  }
+  if(el){
+    el.classList.toggle('done', willDone);
+    const item=el.closest('.hsc-sched-item');
+    const txt=item?item.querySelector('.hsc-item-text'):null;
+    if(txt) txt.classList.toggle('done-text', willDone);
+  }
+  _hscSetDone(s.pjtKey, s.id, willDone);
 };
 
 // PJT별 메타데이터 (공정율 계산용 ZONES + 컬렉션 prefix)
