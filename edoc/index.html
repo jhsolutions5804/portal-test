@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- edoc module build: 20260830a · ver 4.1.0 · 유급휴가 근로시간 미반영 버그 수정, 병가 무급 전환, 관리자의 지난 연차 정정(결재상태 유지), 연차달력 날짜클릭 상세팝업 -->
+<!DOCTYPE html><!-- edoc module build: 20260916a · ver 4.1.1 · 결재(승인/반려/게시) 처리 후 문서종류 목록이 아닌 결재요청(결재함)으로 복귀하도록 수정 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -736,7 +736,9 @@ window.dailyApprove = async function(docId, newStatus) {
     await setDoc(doc(window._db,'edoc_daily',docId),
       { status:newStatus, approvedBy:_user?.displayName||'', approvedAt:serverTimestamp() }, { merge:true });
     alert('✅ 처리 완료');
-    renderDailyList();
+    // 승인/반려/게시 처리 후에는 업무일지 목록이 아니라 결재요청(결재함) 화면으로 돌아갑니다.
+    _detailBackFn = null;
+    if (typeof goTab === 'function') goTab('approve'); else renderDailyList();
   } catch(e) { alert('오류: '+e.message); }
 };
 
@@ -2867,7 +2869,9 @@ window.docApprove = async function(docId, dtype, newStatus, docData) {
     } else {
       alert(`✅ ${labels[newStatus]} 처리되었습니다.`);
     }
-    renderDocList(dtype);
+    // 승인/반려/게시 처리 후에는 문서종류 목록이 아니라 결재요청(결재함) 화면으로 돌아갑니다.
+    _detailBackFn = null;
+    if (typeof goTab === 'function') goTab('approve'); else renderDocList(dtype);
   } catch(e) { alert('오류: '+e.message); }
 };
 
