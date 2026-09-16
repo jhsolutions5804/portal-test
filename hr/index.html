@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- HR module build: 20260830b · ver 2.2.0 · 2026년 공휴일 데이터 정정(제헌절/개천절대체/지방선거일 추가, 설날 날짜오류 수정) -->
+<!DOCTYPE html><!-- HR module build: 20260916a · ver 2.3.0 · 근로자 명부에 퇴직 처리/재직 복구 기능 추가 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -3150,6 +3150,8 @@ window.renderRosterList = async () => {
     const docs = []; snap.forEach(d=>docs.push({id:d.id,...d.data()}));
     docs.sort((a,b)=>(a.empNo||'').localeCompare(b.empNo||''));
     docs.sort((a,b)=>{
+      const ar=a.status==='resigned', br=b.status==='resigned';
+      if(ar!==br) return ar?1:-1;
       if(a.dept!==b.dept)return(a.dept||'').localeCompare(b.dept||'','ko');
       if(a.empNo!==b.empNo)return(a.empNo||'').localeCompare(b.empNo||'');
       return(a.rank||'').localeCompare(b.rank||'','ko');
@@ -3183,8 +3185,9 @@ window.renderRosterList = async () => {
       const aExp=ci.annual?ci.annual:null;
       const lColor=lExp?(lExp<now?C2.red:C2.green):C2.mute;
       const aColor=aExp?(aExp<now?C2.red:C2.green):C2.mute;
+      const rowResigned = d.status==='resigned';
       return `
-        <div style="background:${i%2===0?'#fff':'#F8FAFD'};border-bottom:1px solid #F0F4FA;padding:10px 12px;">
+        <div style="background:${rowResigned?'#FEF2F2':(i%2===0?'#fff':'#F8FAFD')};border-bottom:1px solid #F0F4FA;padding:10px 12px;${rowResigned?'opacity:0.75;':''}">
           <div style="display:grid;grid-template-columns:0.5fr 1fr 0.8fr 0.5fr 0.7fr 0.9fr;gap:6px;align-items:center;margin-bottom:6px;">
             <div>
               <span id="eno-d-${d.id}" style="font-size:12px;font-weight:700;color:${C2.blue};cursor:pointer;text-decoration:underline;" onclick="rosterEmpNoEdit('${d.id}','${d.empNo||''}')">
@@ -3196,7 +3199,7 @@ window.renderRosterList = async () => {
               </div>
             </div>
             <div style="font-size:11px;color:${C2.text};">${d.dept||'-'}</div>
-            <div style="font-size:12px;font-weight:600;color:${C2.blue};cursor:pointer;text-decoration:underline;" onclick="rosterDetail('${d.id}')">${d.name||'-'}</div>
+            <div style="font-size:12px;font-weight:600;color:${C2.blue};cursor:pointer;text-decoration:underline;" onclick="rosterDetail('${d.id}')">${d.name||'-'}${rowResigned?' <span style="font-size:9px;background:#FEE2E2;color:#DC2626;padding:1px 5px;border-radius:6px;font-weight:700;">퇴직</span>':''}</div>
             <div style="font-size:11px;color:${C2.sub};">${d.rank||'-'}</div>
             <div style="font-size:10px;color:${C2.sub};">${bf}</div>
             <div style="font-size:10px;color:${C2.sub};">${d.phone||'-'}</div>
@@ -3518,7 +3521,8 @@ function calcWorkDays(startStr, endStr) {
 window.rosterDetail = (id) => {
   const d = (window._rosterDocs2||[]).find(x=>x.id===id);
   if (!d) return;
-  const w = calcWorkDays(d.hireDate);
+  const isResigned = d.status === 'resigned';
+  const w = calcWorkDays(d.hireDate, isResigned ? d.resignDate : null);
   const empTypeBadge = d.empType==='field'
     ? `<span style="font-size:11px;background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:8px;font-weight:700;">🔧 현장직</span>`
     : d.empType==='office'
@@ -3543,6 +3547,9 @@ window.rosterDetail = (id) => {
         <div>
           <div style="font-size:16px;font-weight:800;color:#1A2540;">${d.name}</div>
           <div style="font-size:12px;color:#5C6F8A;margin-top:2px;">${d.dept||''} · ${d.rank||''} &nbsp; ${empTypeBadge}</div>
+          <div style="margin-top:6px;">${isResigned
+            ? `<span style="font-size:11px;background:#FEE2E2;color:#DC2626;padding:2px 8px;border-radius:8px;font-weight:700;">🔴 퇴직 (${d.resignDate||'-'})</span>`
+            : `<span style="font-size:11px;background:#E8F7EE;color:#15803D;padding:2px 8px;border-radius:8px;font-weight:700;">🟢 재직중</span>`}</div>
         </div>
         <button onclick="document.getElementById('roster-detail-modal').remove()"
           style="background:#F4F7FB;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:16px;color:#5C6F8A;">✕</button>
@@ -3564,6 +3571,12 @@ window.rosterDetail = (id) => {
           <span style="color:#5C6F8A;font-weight:600;">실 근무일수</span>
           <span style="color:#1D5BA6;font-weight:700;">${d.hireDate ? w.days.toLocaleString()+'일' : '-'}</span>
         </div>
+        ${isResigned ? `
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #DDE4EF;font-size:12px;">
+          <span style="color:#5C6F8A;font-weight:600;min-width:80px;">퇴직일</span>
+          <input type="date" value="${d.resignDate||''}" onchange="window._editRosterTarget.resignDate=this.value;"
+            style="border:1px solid #DDE4EF;border-radius:6px;padding:3px 6px;font-size:12px;color:#1A2540;"/>
+        </div>` : ''}
         <div style="padding:8px 0 2px;">
           <div style="font-size:10px;font-weight:700;color:#1D5BA6;margin-bottom:6px;letter-spacing:1px;">💰 퇴직금 (예상)</div>
           <div style="background:#fff;border-radius:8px;padding:10px 12px;border:1px solid #DDE4EF;">
@@ -3638,6 +3651,15 @@ window.rosterDetail = (id) => {
       <div style="width:100%;padding:8px 12px;background:#E8F7EE;border-radius:10px;font-size:12px;color:#15803D;font-weight:600;text-align:center;margin-bottom:8px;">
         ✅ 포털 계정 연동됨
       </div>`}
+      ${isResigned ? `
+      <button onclick="rosterUnresign('${d.id}','${d.name}')"
+        style="width:100%;padding:11px;background:#fff;border:1px solid #16A34A;border-radius:10px;color:#16A34A;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px;">
+        ↩️ 재직으로 복구
+      </button>` : `
+      <button onclick="rosterResign('${d.id}','${d.name}')"
+        style="width:100%;padding:11px;background:#fff;border:1px solid #DC2626;border-radius:10px;color:#DC2626;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px;">
+        🚪 퇴직 처리
+      </button>`}
       <button onclick="rosterDetailSave('${d.id}')"
         style="width:100%;padding:12px;background:#1D5BA6;border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(29,91,166,0.25);">
         💾 수정 저장
@@ -3692,6 +3714,31 @@ window.rosterDetailSave = async (id) => {
     alert('✅ 수정 완료!');
     renderRosterList();
   } catch(e) { alert('저장 오류: '+e.message); }
+};
+window.rosterResign = async (id, name) => {
+  if (!window._db) { alert('Firebase 연결 필요'); return; }
+  const dateInput = prompt(`${name}님의 퇴직일을 입력해 주세요 (YYYY-MM-DD)`, new Date().toISOString().slice(0,10));
+  if (!dateInput) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) { alert('날짜 형식이 올바르지 않습니다. 예: 2026-09-16'); return; }
+  if (!confirm(`${name}님을 [${dateInput}] 자로 퇴직 처리하시겠습니까?\n(명부에서 삭제되지 않고 '퇴직' 상태로 표시됩니다.)`)) return;
+  try {
+    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await setDoc(doc(window._db,'workers',id), { status:'resigned', resignDate:dateInput }, { merge:true });
+    document.getElementById('roster-detail-modal')?.remove();
+    alert('✅ 퇴직 처리 완료');
+    renderRosterList();
+  } catch(e) { alert('오류: '+e.message); }
+};
+window.rosterUnresign = async (id, name) => {
+  if (!window._db) { alert('Firebase 연결 필요'); return; }
+  if (!confirm(`${name}님을 재직 상태로 복구하시겠습니까?`)) return;
+  try {
+    const { doc, setDoc, deleteField } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await setDoc(doc(window._db,'workers',id), { status:'active', resignDate: deleteField() }, { merge:true });
+    document.getElementById('roster-detail-modal')?.remove();
+    alert('✅ 재직 상태로 복구되었습니다.');
+    renderRosterList();
+  } catch(e) { alert('오류: '+e.message); }
 };
 window.rosterLinkPortal = async (workerId, workerName) => {
   if (!window._db) { alert('Firebase 연결 필요'); return; }
