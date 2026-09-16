@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- edoc module build: 20260916a · ver 4.1.1 · 결재(승인/반려/게시) 처리 후 문서종류 목록이 아닌 결재요청(결재함)으로 복귀하도록 수정 -->
+<!DOCTYPE html><!-- edoc module build: 20260916b · ver 4.2.0 · 연차신청서: 관리자 계정 전 직원 신청 내역 조회 기능 추가 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1906,7 +1906,7 @@ window.renderLeaveMain = async function() {
           </div>
         </div>
         <div class="panel" style="flex:1;">
-          <div class="panel-head">📋 내 연차 신청 내역</div>
+          <div class="panel-head">📋 ${_isAdmin ? '전 직원 연차 신청 내역' : '내 연차 신청 내역'}</div>
           <div id="leave-my-list" class="panel-list">불러오는 중…</div>
         </div>
       </div>
@@ -2013,14 +2013,16 @@ window.leaveShowDayDetail = function(dateStr){
 
 function leaveRenderMyList(){
   const box = document.getElementById('leave-my-list'); if(!box) return;
-  if (!_leaveMyDocs.length) { box.innerHTML = '<div class="panel-empty" style="padding:28px;">작성한 연차신청서가 없습니다.</div>'; return; }
+  // 관리자는 전 직원이 작성한 연차신청서 전체를 조회, 일반 직원은 본인 것만 조회.
+  const srcDocs = _isAdmin ? _leaveAllDocs : _leaveMyDocs;
+  if (!srcDocs.length) { box.innerHTML = '<div class="panel-empty" style="padding:28px;">작성한 연차신청서가 없습니다.</div>'; return; }
   const STATUS = { draft:'임시저장', pending:'결재대기', reviewing:'검토중', approved:'승인', rejected:'반려', posted:'게시' };
   const STATUS_COLOR = { draft:'#9AAABF', pending:'#F59E0B', reviewing:'#3B82F6', approved:'#16A34A', rejected:'#DC2626', posted:'#1D5BA6' };
-  const rows = [..._leaveMyDocs].sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+  const rows = [...srcDocs].sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
   box.innerHTML = rows.map(d => `
     <div class="panel-row" onclick="docDetail(${JSON.stringify(d).replace(/"/g,'&quot;')}, 'leave')">
       <div style="flex:1;min-width:0;">
-        <div style="font-size:12.5px;font-weight:600;color:#1A2540;">${d.leaveType||'연차(유급)'} · ${d.startDate||''}${d.endDate&&d.endDate!==d.startDate?` ~ ${d.endDate}`:''}</div>
+        <div style="font-size:12.5px;font-weight:600;color:#1A2540;">${_isAdmin ? `${d.authorName||'-'}${d.authorRank?' '+d.authorRank:''} · ` : ''}${d.leaveType||'연차(유급)'} · ${d.startDate||''}${d.endDate&&d.endDate!==d.startDate?` ~ ${d.endDate}`:''}</div>
         <div style="font-size:11px;color:#9AAABF;margin-top:2px;">${d.days||0}일 · ${(d.reason||'').slice(0,20)||'-'}</div>
       </div>
       <span class="status-pill" style="background:${STATUS_COLOR[d.status]||'#9AAABF'}22;color:${STATUS_COLOR[d.status]||'#9AAABF'};flex-shrink:0;">${STATUS[d.status]||d.status}</span>
