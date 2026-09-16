@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- HR module build: 20260916a · ver 2.3.0 · 근로자 명부에 퇴직 처리/재직 복구 기능 추가 -->
+<!DOCTYPE html><!-- HR module build: 20260916b · ver 2.4.0 · 근로자 명부 중복 렌더 함수 통합(수정 후 화면 깨짐 버그 수정) + 재직자/퇴사자 필터 탭 추가 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -2804,98 +2804,6 @@ async function _loadRosterDocs() {
   return docs;
 }
 
-// ── 명부 메인: 목록 테이블 직접 표시 ──
-window.renderRosterMain = async () => {
-  const el = document.getElementById('tab-roster');
-  if (!el) return;
-  el.innerHTML = `<div style="padding:20px 24px;max-width:1100px;margin:0 auto;">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">${homeBtn()}</div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">${homeBtn()}</div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">${homeBtn()}</div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-      <div style="font-size:16px;font-weight:800;color:#1A2540;">👥 근로자 명부</div>
-      <button onclick="renderRosterRegister()" style="background:#1D5BA6;border:none;border-radius:9px;padding:8px 18px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(29,91,166,0.18);">➕ 신규 등록</button>
-    </div>
-    <div id="roster-list-loading" style="text-align:center;padding:48px;color:#9AAABF;">⏳ 불러오는 중...</div>
-    <div id="roster-list-wrap"></div>
-  </div>`;
-  if (!window._db) { setTimeout(renderRosterMain, 500); return; }
-  try {
-    const docs = await _loadRosterDocs();
-    const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    const ci = {};
-    for (const d of docs) {
-      try {
-        const lS = await getDocs(collection(window._db,`labor_contracts/${d.id}/contracts`));
-        let lL=''; lS.forEach(c=>{ const e=c.data().endDate||''; if(e>lL) lL=e; });
-        const aS = await getDocs(collection(window._db,`annual_contracts/${d.id}/contracts`));
-        let aL=''; aS.forEach(c=>{ const e=c.data().endDate||''; if(e>aL) aL=e; });
-        ci[d.id]={ labor:lL, annual:aL, laborCnt:lS.size, annualCnt:aS.size };
-      } catch(e) { ci[d.id]={ labor:'', annual:'', laborCnt:0, annualCnt:0 }; }
-    }
-    document.getElementById('roster-list-loading').style.display='none';
-    if (!docs.length) {
-      document.getElementById('roster-list-wrap').innerHTML =
-        '<div style="text-align:center;padding:48px;color:#9AAABF;">등록된 근로자가 없습니다.</div>';
-      return;
-    }
-    const now = new Date().toISOString().slice(0,10);
-    const rows = docs.map((d,i) => {
-      const birth=(d.jumin||'').slice(0,6);
-      const bf=birth.length===6?birth.slice(0,2)+'.'+birth.slice(2,4)+'.'+birth.slice(4,6):'-';
-      const c=ci[d.id]||{};
-      const lE=c.labor||null, aE=c.annual||null;
-      const lC=lE?(lE<now?'#DC2626':'#16A34A'):'#9AAABF';
-      const aC=aE?(aE<now?'#DC2626':'#16A34A'):'#9AAABF';
-      const etB=d.empType==='field'
-        ?'<span style="font-size:10px;background:#FEF3C7;color:#92400E;padding:1px 7px;border-radius:6px;font-weight:700;">현장</span>'
-        :d.empType==='office'
-        ?'<span style="font-size:10px;background:#E8F0FB;color:#1D5BA6;padding:1px 7px;border-radius:6px;font-weight:700;">사무</span>'
-        :'<span style="font-size:10px;background:#F3F4F6;color:#9AAABF;padding:1px 7px;border-radius:6px;">미지정</span>';
-      const ptB=d.portalUid
-        ?'<span style="font-size:10px;background:#DCFCE7;color:#15803D;padding:1px 7px;border-radius:6px;font-weight:700;" title="포털 연동됨">🔗</span>'
-        :'<span style="font-size:10px;background:#F3F4F6;color:#9AAABF;padding:1px 7px;border-radius:6px;">미연동</span>';
-      const lTxt=lE?(lE<now?'⚠️ 만료':'✅ '+fmtD2(lE)):c.laborCnt?'확인필요':'미작성';
-      const aTxt=aE?(aE<now?'⚠️ 만료':'✅ '+fmtD2(aE)):c.annualCnt?'확인필요':'미작성';
-      return `<tr style="background:${i%2===0?'#fff':'#F8FAFD'};border-bottom:1px solid #F0F4FA;" onmouseover="this.style.background='#EEF4FF'" onmouseout="this.style.background='${i%2===0?'#fff':'#F8FAFD'}'">
-        <td style="padding:10px 12px;font-size:12px;font-weight:700;color:#1D5BA6;">
-          <span id="eno-d-${d.id}" style="cursor:pointer;text-decoration:underline;" onclick="rosterEmpNoEdit('${d.id}','${d.empNo||''}')">${d.empNo||'-'}</span>
-          <span id="eno-e-${d.id}" style="display:none;align-items:center;gap:3px;">
-            <input id="eno-i-${d.id}" value="${d.empNo||''}" style="width:44px;border:1px solid #1D5BA6;border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;"/>
-            <button onclick="rosterEmpNoSave('${d.id}')" style="background:#1D5BA6;border:none;border-radius:3px;color:#fff;font-size:10px;padding:2px 5px;cursor:pointer;">✓</button>
-            <button onclick="rosterEmpNoCancel('${d.id}')" style="background:#9AAABF;border:none;border-radius:3px;color:#fff;font-size:10px;padding:2px 5px;cursor:pointer;">✕</button>
-          </span>
-        </td>
-        <td style="padding:10px 12px;font-size:12px;font-weight:700;color:#1D5BA6;cursor:pointer;text-decoration:underline;" onclick="rosterDetail('${d.id}')">${d.name||'-'}</td>
-        <td style="padding:10px 12px;font-size:11px;color:#1A2540;">${d.dept||'-'}</td>
-        <td style="padding:10px 12px;font-size:11px;color:#5C6F8A;">${d.rank||'-'}</td>
-        <td style="padding:10px 12px;">${etB}</td>
-        <td style="padding:10px 12px;font-size:11px;color:#5C6F8A;">${bf}</td>
-        <td style="padding:10px 12px;font-size:11px;color:#5C6F8A;">${d.phone||'-'}</td>
-        <td style="padding:10px 12px;font-size:10px;"><span style="color:${lC};font-weight:600;">${lTxt}</span></td>
-        <td style="padding:10px 12px;font-size:10px;"><span style="color:${aC};font-weight:600;">${aTxt}</span></td>
-        <td style="padding:10px 12px;">${ptB}</td>
-        <td style="padding:10px 12px;"><button onclick="rosterDelete('${d.id}','${d.name}')" style="font-size:10px;background:#FEE2E2;color:#DC2626;border:1px solid #fca5a5;padding:2px 8px;border-radius:6px;cursor:pointer;font-weight:600;">🗑</button></td>
-      </tr>`;
-    }).join('');
-    document.getElementById('roster-list-wrap').innerHTML = `
-      <div style="background:#fff;border-radius:14px;border:1px solid #DDE4EF;overflow:hidden;box-shadow:0 1px 4px rgba(29,91,166,0.08);">
-        <table style="width:100%;border-collapse:collapse;">
-          <thead><tr style="background:#E8F0FB;">
-            ${['사원번호','이름','소속','직급','구분','생년월일','휴대폰','근로계약','연봉계약','포털',''].map(h=>`<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#1D5BA6;text-align:left;white-space:nowrap;">${h}</th>`).join('')}
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
-      <div style="font-size:11px;color:#9AAABF;margin-top:8px;padding:0 4px;">
-        💡 사원번호 클릭 → 수정 &nbsp;·&nbsp; 이름 클릭 → 상세/수정
-      </div>`;
-  } catch(e) {
-    const lel=document.getElementById('roster-list-loading');
-    if(lel) lel.innerHTML='<div style="color:#DC2626;padding:24px;text-align:center;">오류: '+e.message+'</div>';
-  }
-};
-
 // ── 사원번호 인라인 수정 ──
 window.rosterEmpNoEdit = (id) => {
   document.getElementById('eno-d-'+id).style.display='none';
@@ -2926,21 +2834,37 @@ window.rosterDelete = async (id, name) => {
 
 // ── 상세/수정 모달 ──
 
+let _rosterViewFilter = 'active'; // active | resigned
+window.rosterSetFilter = (f) => { _rosterViewFilter = f; renderRosterMain(); };
 window.renderRosterMain = async () => {
   const el = document.getElementById('tab-roster');
   if (!el) return;
+  const allDocs0 = window._rosterDocs2 || [];
+  const activeCnt0 = allDocs0.filter(d=>d.status!=='resigned').length;
+  const resignedCnt0 = allDocs0.filter(d=>d.status==='resigned').length;
   el.innerHTML = `<div style="padding:20px 24px;max-width:1100px;margin:0 auto;">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">${homeBtn()}</div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
       <div style="font-size:16px;font-weight:800;color:#1A2540;">👥 근로자 명부</div>
       <button onclick="renderRosterRegister()" style="background:#1D5BA6;border:none;border-radius:9px;padding:8px 18px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(29,91,166,0.18);">➕ 신규 등록</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button id="roster-filter-active" onclick="rosterSetFilter('active')"
+        style="padding:7px 16px;border-radius:8px;border:1px solid ${_rosterViewFilter==='active'?'#1D5BA6':'#DDE4EF'};background:${_rosterViewFilter==='active'?'#E8F0FB':'#fff'};color:${_rosterViewFilter==='active'?'#1D5BA6':'#5C6F8A'};font-size:12px;font-weight:700;cursor:pointer;">
+        🟢 재직자 ${allDocs0.length?`(${activeCnt0})`:''}
+      </button>
+      <button id="roster-filter-resigned" onclick="rosterSetFilter('resigned')"
+        style="padding:7px 16px;border-radius:8px;border:1px solid ${_rosterViewFilter==='resigned'?'#DC2626':'#DDE4EF'};background:${_rosterViewFilter==='resigned'?'#FEE2E2':'#fff'};color:${_rosterViewFilter==='resigned'?'#DC2626':'#5C6F8A'};font-size:12px;font-weight:700;cursor:pointer;">
+        🔴 퇴사자 ${allDocs0.length?`(${resignedCnt0})`:''}
+      </button>
     </div>
     <div id="roster-list-loading" style="text-align:center;padding:48px;color:#9AAABF;">⏳ 불러오는 중...</div>
     <div id="roster-list-wrap"></div>
   </div>`;
   if (!window._db) { setTimeout(renderRosterMain, 500); return; }
   try {
-    const docs = await _loadRosterDocs();
+    const allDocs = await _loadRosterDocs();
+    const docs = allDocs.filter(d => _rosterViewFilter==='resigned' ? d.status==='resigned' : d.status!=='resigned');
     const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const ci = {};
     for (const d of docs) {
@@ -2953,9 +2877,14 @@ window.renderRosterMain = async () => {
       } catch(e) { ci[d.id]={ labor:'', annual:'', laborCnt:0, annualCnt:0 }; }
     }
     document.getElementById('roster-list-loading').style.display='none';
+    // 상단 필터 버튼 카운트를 실제 로드된 전체 문서 기준으로 갱신
+    const activeCnt = allDocs.filter(d=>d.status!=='resigned').length;
+    const resignedCnt = allDocs.filter(d=>d.status==='resigned').length;
+    const fa=document.getElementById('roster-filter-active'); if(fa) fa.innerHTML = `🟢 재직자 (${activeCnt})`;
+    const fr=document.getElementById('roster-filter-resigned'); if(fr) fr.innerHTML = `🔴 퇴사자 (${resignedCnt})`;
     if (!docs.length) {
       document.getElementById('roster-list-wrap').innerHTML =
-        '<div style="text-align:center;padding:48px;color:#9AAABF;">등록된 근로자가 없습니다.</div>';
+        `<div style="text-align:center;padding:48px;color:#9AAABF;">${_rosterViewFilter==='resigned' ? '퇴사 처리된 근로자가 없습니다.' : '등록된 근로자가 없습니다.'}</div>`;
       return;
     }
     const now = new Date().toISOString().slice(0,10);
@@ -2976,6 +2905,7 @@ window.renderRosterMain = async () => {
         :'<span style="font-size:10px;background:#F3F4F6;color:#9AAABF;padding:1px 7px;border-radius:6px;">미연동</span>';
       const lTxt=lE?(lE<now?'⚠️ 만료':'✅ '+fmtD2(lE)):c.laborCnt?'확인필요':'미작성';
       const aTxt=aE?(aE<now?'⚠️ 만료':'✅ '+fmtD2(aE)):c.annualCnt?'확인필요':'미작성';
+      const resignBadge = d.status==='resigned' ? `<span style="font-size:9px;background:#FEE2E2;color:#DC2626;padding:1px 6px;border-radius:6px;font-weight:700;margin-left:4px;">퇴직 ${d.resignDate||''}</span>` : '';
       return `<tr style="background:${i%2===0?'#fff':'#F8FAFD'};border-bottom:1px solid #F0F4FA;" onmouseover="this.style.background='#EEF4FF'" onmouseout="this.style.background='${i%2===0?'#fff':'#F8FAFD'}'">
         <td style="padding:10px 12px;font-size:12px;font-weight:700;color:#1D5BA6;">
           <span id="eno-d-${d.id}" style="cursor:pointer;text-decoration:underline;" onclick="rosterEmpNoEdit('${d.id}','${d.empNo||''}')">${d.empNo||'-'}</span>
@@ -2985,7 +2915,7 @@ window.renderRosterMain = async () => {
             <button onclick="rosterEmpNoCancel('${d.id}')" style="background:#9AAABF;border:none;border-radius:3px;color:#fff;font-size:10px;padding:2px 5px;cursor:pointer;">✕</button>
           </span>
         </td>
-        <td style="padding:10px 12px;font-size:12px;font-weight:700;color:#1D5BA6;cursor:pointer;text-decoration:underline;" onclick="rosterDetail('${d.id}')">${d.name||'-'}</td>
+        <td style="padding:10px 12px;font-size:12px;font-weight:700;color:#1D5BA6;cursor:pointer;text-decoration:underline;" onclick="rosterDetail('${d.id}')">${d.name||'-'}${resignBadge}</td>
         <td style="padding:10px 12px;font-size:11px;color:#1A2540;">${d.dept||'-'}</td>
         <td style="padding:10px 12px;font-size:11px;color:#5C6F8A;">${d.rank||'-'}</td>
         <td style="padding:10px 12px;">${etB}</td>
@@ -3130,104 +3060,6 @@ window.rosterSave = async () => {
 
     renderRosterMain();
   } catch(e) { alert('오류: '+e.message); }
-};
-
-window.renderRosterList = async () => {
-  const el = document.getElementById('tab-roster');
-  el.innerHTML = wrap2(`
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-      ${backBtn2('renderRosterMain()')}
-      <span style="font-size:12px;color:${C2.sub};font-weight:600;">근로자 명부</span>
-    </div>
-    <div id="roster-list-loading" style="text-align:center;padding:32px;color:${C2.mute};">⏳ 불러오는 중...</div>
-    <div id="roster-list-wrap"></div>
-  `);
-
-  if (!window._db) { setTimeout(renderRosterList,500); return; }
-  try {
-    const { getDocs, collection, doc, deleteDoc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    const snap = await getDocs(collection(window._db,'workers'));
-    const docs = []; snap.forEach(d=>docs.push({id:d.id,...d.data()}));
-    docs.sort((a,b)=>(a.empNo||'').localeCompare(b.empNo||''));
-    docs.sort((a,b)=>{
-      const ar=a.status==='resigned', br=b.status==='resigned';
-      if(ar!==br) return ar?1:-1;
-      if(a.dept!==b.dept)return(a.dept||'').localeCompare(b.dept||'','ko');
-      if(a.empNo!==b.empNo)return(a.empNo||'').localeCompare(b.empNo||'');
-      return(a.rank||'').localeCompare(b.rank||'','ko');
-    });
-    window._rosterDocs2 = docs;
-
-    // 각 근로자의 계약 만료일 조회
-    const contractInfo = {};
-    for (const d of docs) {
-      try {
-        const lSnap = await getDocs(collection(window._db,`labor_contracts/${d.id}/contracts`));
-        let lLatest=''; lSnap.forEach(c=>{ const ed=c.data().endDate||''; if(ed>lLatest)lLatest=ed; });
-        const aSnap = await getDocs(collection(window._db,`annual_contracts/${d.id}/contracts`));
-        let aLatest=''; aSnap.forEach(c=>{ const ed=c.data().endDate||''; if(ed>aLatest)aLatest=ed; });
-        contractInfo[d.id] = { labor:lLatest, annual:aLatest, laborCnt:lSnap.size, annualCnt:aSnap.size };
-      } catch(e) { contractInfo[d.id]={labor:'',annual:'',laborCnt:0,annualCnt:0}; }
-    }
-
-    document.getElementById('roster-list-loading').style.display='none';
-    if (!docs.length) {
-      document.getElementById('roster-list-wrap').innerHTML='<div style="text-align:center;padding:40px;color:'+C2.mute+';">등록된 근로자가 없습니다.</div>';
-      return;
-    }
-
-    const rows = docs.map((d,i)=>{
-      const birth=(d.jumin||'').slice(0,6);
-      const bf=birth.length===6?`${birth.slice(0,2)}.${birth.slice(2,4)}.${birth.slice(4,6)}`:'-';
-      const ci=contractInfo[d.id]||{};
-      const now=new Date().toISOString().slice(0,10);
-      const lExp=ci.labor?ci.labor:null;
-      const aExp=ci.annual?ci.annual:null;
-      const lColor=lExp?(lExp<now?C2.red:C2.green):C2.mute;
-      const aColor=aExp?(aExp<now?C2.red:C2.green):C2.mute;
-      const rowResigned = d.status==='resigned';
-      return `
-        <div style="background:${rowResigned?'#FEF2F2':(i%2===0?'#fff':'#F8FAFD')};border-bottom:1px solid #F0F4FA;padding:10px 12px;${rowResigned?'opacity:0.75;':''}">
-          <div style="display:grid;grid-template-columns:0.5fr 1fr 0.8fr 0.5fr 0.7fr 0.9fr;gap:6px;align-items:center;margin-bottom:6px;">
-            <div>
-              <span id="eno-d-${d.id}" style="font-size:12px;font-weight:700;color:${C2.blue};cursor:pointer;text-decoration:underline;" onclick="rosterEmpNoEdit('${d.id}','${d.empNo||''}')">
-                ${d.empNo||'-'}
-              </span>
-              <div id="eno-e-${d.id}" style="display:none;flex;gap:2px;">
-                <input id="eno-i-${d.id}" value="${d.empNo||''}" style="width:35px;border:1px solid ${C2.blue};border-radius:4px;padding:2px 3px;font-size:10px;text-align:center;"/>
-                <button onclick="rosterEmpNoSave('${d.id}')" style="background:${C2.blue};border:none;border-radius:3px;color:#fff;font-size:9px;padding:2px 4px;cursor:pointer;">✓</button>
-              </div>
-            </div>
-            <div style="font-size:11px;color:${C2.text};">${d.dept||'-'}</div>
-            <div style="font-size:12px;font-weight:600;color:${C2.blue};cursor:pointer;text-decoration:underline;" onclick="rosterDetail('${d.id}')">${d.name||'-'}${rowResigned?' <span style="font-size:9px;background:#FEE2E2;color:#DC2626;padding:1px 5px;border-radius:6px;font-weight:700;">퇴직</span>':''}</div>
-            <div style="font-size:11px;color:${C2.sub};">${d.rank||'-'}</div>
-            <div style="font-size:10px;color:${C2.sub};">${bf}</div>
-            <div style="font-size:10px;color:${C2.sub};">${d.phone||'-'}</div>
-          </div>
-          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-            <span style="font-size:10px;background:${lExp?'#E8F0FB':'#F8FAFD'};color:${lColor};border:1px solid ${lExp?'#DDE4EF':'#EEE'};padding:2px 8px;border-radius:8px;font-weight:600;">
-              📝 근로계약 ${lExp?fmtD2(lExp)+' 만료':ci.laborCnt?'확인필요':'미작성'}
-            </span>
-            <span style="font-size:10px;background:${aExp?'#E8F0FB':'#F8FAFD'};color:${aColor};border:1px solid ${aExp?'#DDE4EF':'#EEE'};padding:2px 8px;border-radius:8px;font-weight:600;">
-              📋 연봉계약 ${aExp?fmtD2(aExp)+' 만료':ci.annualCnt?'확인필요':'미작성'}
-            </span>
-            <button onclick="rosterDelete('${d.id}','${d.name}')"
-              style="margin-left:auto;font-size:10px;background:${C2.redLt};color:${C2.red};border:1px solid #fca5a5;padding:2px 8px;border-radius:8px;cursor:pointer;font-weight:600;">
-              🗑 삭제
-            </button>
-          </div>
-        </div>`;
-    }).join('');
-
-    document.getElementById('roster-list-wrap').innerHTML=`
-      <div style="background:#fff;border-radius:12px;border:1px solid #DDE4EF;overflow:hidden;box-shadow:${C2.shadow};">
-        <div style="display:grid;grid-template-columns:0.5fr 1fr 0.8fr 0.5fr 0.7fr 0.9fr;background:#E8F0FB;padding:9px 12px;gap:6px;">
-          ${['사원번호','소속','이름','직급','생년월일','휴대폰'].map(h=>`<div style="font-size:10px;font-weight:700;color:${C2.blue};">${h}</div>`).join('')}
-        </div>
-        ${rows}
-      </div>
-      <div style="font-size:11px;color:${C2.mute};margin-top:6px;">💡 사원번호 클릭 수정 / 🔴 만료 🟢 유효</div>`;
-  } catch(e) { document.getElementById('roster-list-loading').innerHTML=`<div style="color:${C2.red};">오류: ${e.message}</div>`; }
 };
 
 
@@ -3712,7 +3544,7 @@ window.rosterDetailSave = async (id) => {
 
     document.getElementById('roster-detail-modal').remove();
     alert('✅ 수정 완료!');
-    renderRosterList();
+    renderRosterMain();
   } catch(e) { alert('저장 오류: '+e.message); }
 };
 window.rosterResign = async (id, name) => {
@@ -3726,7 +3558,7 @@ window.rosterResign = async (id, name) => {
     await setDoc(doc(window._db,'workers',id), { status:'resigned', resignDate:dateInput }, { merge:true });
     document.getElementById('roster-detail-modal')?.remove();
     alert('✅ 퇴직 처리 완료');
-    renderRosterList();
+    renderRosterMain();
   } catch(e) { alert('오류: '+e.message); }
 };
 window.rosterUnresign = async (id, name) => {
@@ -3737,7 +3569,7 @@ window.rosterUnresign = async (id, name) => {
     await setDoc(doc(window._db,'workers',id), { status:'active', resignDate: deleteField() }, { merge:true });
     document.getElementById('roster-detail-modal')?.remove();
     alert('✅ 재직 상태로 복구되었습니다.');
-    renderRosterList();
+    renderRosterMain();
   } catch(e) { alert('오류: '+e.message); }
 };
 window.rosterLinkPortal = async (workerId, workerName) => {
@@ -3768,7 +3600,7 @@ window.rosterLinkPortal = async (workerId, workerName) => {
     }, '*');
     document.getElementById('roster-detail-modal')?.remove();
     alert(`✅ "${workerName}" 포털 계정 연동 완료!`);
-    renderRosterList();
+    renderRosterMain();
   } catch(e) { alert('연동 오류: ' + e.message); }
 };
 
@@ -3781,13 +3613,13 @@ window.rosterEmpNoSave = async (id) => {
   if(!v)return;
   const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
   await setDoc(doc(window._db,'workers',id),{empNo:v},{merge:true});
-  renderRosterList();
+  renderRosterMain();
 };
 window.rosterDelete = async (id, name) => {
   if(!confirm(`${name}님을 명부에서 삭제하시겠습니까?\n(계약서 데이터는 유지됩니다.)`))return;
   const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
   await deleteDoc(doc(window._db,'workers',id));
-  renderRosterList();
+  renderRosterMain();
 };
 
 // ════════════════════════════════
