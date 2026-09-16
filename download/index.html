@@ -1,0 +1,77 @@
+<!DOCTYPE html><!-- download page build: 20260916a · ver 1.0.0 · JH Portal 앱 다운로드 안내 페이지 (로그인 불필요, 공개) -->
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JH Portal 앱 다운로드</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;background:#F4F7FB;color:#1A2540;min-height:100vh;padding:32px 16px;}
+  .wrap{max-width:720px;margin:0 auto;}
+  .header{text-align:center;margin-bottom:28px;}
+  .header h1{font-size:22px;font-weight:800;margin-bottom:6px;}
+  .header p{font-size:13px;color:#5C6F8A;}
+  .qr-card{background:#fff;border-radius:16px;padding:20px;box-shadow:0 2px 10px rgba(29,91,166,0.08);display:flex;align-items:center;gap:16px;margin-bottom:24px;}
+  .qr-card img{width:96px;height:96px;border-radius:8px;border:1px solid #EEF2F7;flex-shrink:0;}
+  .qr-card .txt{font-size:12.5px;color:#5C6F8A;line-height:1.6;}
+  .qr-card .txt b{color:#1A2540;}
+  .card{background:#fff;border-radius:16px;padding:22px;box-shadow:0 2px 10px rgba(29,91,166,0.08);margin-bottom:18px;}
+  .card h2{font-size:16px;font-weight:800;margin-bottom:4px;display:flex;align-items:center;gap:8px;}
+  .card .sub{font-size:12px;color:#5C6F8A;margin-bottom:16px;}
+  .btn{display:inline-block;width:100%;text-align:center;padding:13px;background:#1D5BA6;color:#fff !important;text-decoration:none;border-radius:10px;font-size:14px;font-weight:700;box-shadow:0 3px 10px rgba(29,91,166,0.25);}
+  .btn.disabled{background:#E4EAF2;color:#9AAABF !important;box-shadow:none;cursor:not-allowed;pointer-events:none;}
+  .btn.secondary{background:#F0F4F9;color:#1D5BA6 !important;box-shadow:none;border:1px solid #DDE4EF;}
+  .steps{margin-top:14px;padding:12px 14px;background:#F8FAFD;border-radius:10px;font-size:12px;color:#5C6F8A;line-height:1.8;}
+  .steps b{color:#1A2540;}
+  .badge{font-size:10px;background:#F3F4F6;color:#9AAABF;padding:2px 8px;border-radius:6px;font-weight:700;vertical-align:middle;}
+  .badge.ready{background:#E8F7EE;color:#15803D;}
+  footer{text-align:center;font-size:11px;color:#9AAABF;margin-top:20px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>📦 JH Portal 앱 다운로드</h1>
+    <p>회사 포털을 PC·모바일 프로그램처럼 설치해서 쓸 수 있습니다.</p>
+  </div>
+
+  <div class="qr-card">
+    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUoAAAFKAQAAAABTUiuoAAACOUlEQVR4nO2bQYrkMAxFn8qGWSbQB5ijJDeYI83VKgdqsJcNCZqFpU6qF03NDOkYWl6YpPIWAiHpS3aJ8uRabs+SEGiggd6giq25ZmSuIiLjJgD4p9yJrYGSVFVVYXgTGFT1DkDNMKmqaunG1kDBoqf+UL1XEaYCMgMt8ubTDQj0qZWPL8ObAGllmUGXn+sXGBDoP6NJmYo9ye/y9QYE+ulqsWUyvr6swCZMZRQDBgXqeQYE+pfo1nSf/5TUtpphERGR8VwDAn126Yd1H1ZMIrpYtA+X2xroDWpGZsBCCGCRTNPtywgy1+i3ukBR1RUgtS5LtSRt231Q9fYrRWz1gHomLLscBKYC1iK31/BWF6glPIbVnqa9ZBXYy1h4qwMUcwq0EIJhtWBq8eaRF97qBDUfWRwVaFONZYTD1oet3xu12DpKDRMYhy1iqxO0icAm/VrdKqB3b5Gj3+oKdQnh6dD1RtJddERs9YK2JOgN1sqe/7CC5hIxvHU96pqwdcLre5flxevgy8ttDdRmglNJB0XhWv5hWBjeuh499lvv46eHJzw7Xm5roA8z+JLUtbwJQ9eJkQm7QL0dBp9gqH7MiVG3ekFdravalOkwGOQ4jQ9vdYC2k36BtPpThmVOduYPiFLz2oGtgT6im/gYYxMmtbGh3afpzNbviD7cUKsjMinA8JpZfr1Cu7A2ptMMCPQ/6tZ+Q81PTOJ8qx804+UJqCN+Je0FYBNdJKldXbvc1kAl/hEUaKCnoH8AXUMF+ad9A7YAAAAASUVORK5CYII=" alt="다운로드 페이지 QR코드">
+    <div class="txt">이 QR을 스캔하면<br><b>지금 보고 계신 이 페이지</b>가 휴대폰에서 바로 열립니다.<br>동료에게 공유할 땐 QR을 찍어 보내거나 링크를 전달해주세요.</div>
+  </div>
+
+  <div class="card">
+    <h2>🖥️ Windows 데스크톱 앱 <span class="badge ready">이용 가능</span></h2>
+    <div class="sub">사무실 PC · 노트북용 설치 프로그램</div>
+    <a class="btn" href="/downloads/JH-Portal-Setup.exe" download>⬇️ 다운로드 (JH-Portal-Setup.exe)</a>
+    <div class="steps">
+      <b>설치 방법</b><br>
+      1. 위 버튼으로 다운로드 후 실행<br>
+      2. "Windows의 PC 보호" 경고가 뜨면 <b>추가 정보 → 실행</b> 클릭 (정상 프로그램입니다)<br>
+      3. 설치 완료 후 바탕화면 아이콘으로 실행
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📱 Android 모바일 앱 <span class="badge">준비 중</span></h2>
+    <div class="sub">안드로이드 휴대폰용 설치 파일(APK)</div>
+    <a class="btn disabled">⬇️ 다운로드 (준비 중)</a>
+    <div class="steps">출시되면 이 페이지에 다운로드 링크가 자동으로 추가됩니다. 링크만 다시 확인해 주세요.</div>
+  </div>
+
+  <div class="card">
+    <h2>📱 iPhone (아이폰)</h2>
+    <div class="sub">앱스토어 없이 무료로 홈 화면에 아이콘 설치</div>
+    <a class="btn secondary" href="https://portal.jhsol.kr" target="_blank">🌐 포털 열기 (Safari로 접속)</a>
+    <div class="steps">
+      <b>설치 방법</b><br>
+      1. 아이폰 <b>사파리(Safari)</b>로 위 버튼 눌러 포털 접속<br>
+      2. 하단 <b>공유 버튼</b> 탭 → <b>"홈 화면에 추가"</b> 선택<br>
+      3. 바탕화면에 생긴 아이콘으로 앱처럼 실행
+    </div>
+  </div>
+
+  <footer>문의: 사내 IT 담당 · JH솔루션즈</footer>
+</div>
+</body>
+</html>
