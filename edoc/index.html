@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- edoc module build: 20260916b · ver 4.2.0 · 연차신청서: 관리자 계정 전 직원 신청 내역 조회 기능 추가 -->
+<!DOCTYPE html><!-- edoc module build: 20260916c · ver 4.3.0 · 연차신청서 결재라인(approvers) 추가 + 관리자 결재함 전체조회 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1579,10 +1579,12 @@ async function loadApproveData() {
       const docsArr = await fetchEdocDocs(dtype);
       docsArr.forEach(data => {
         const line = data.approvalLine || [];
+        let matchedAsApprover = false;
         line.forEach((step, idx) => {
           if (step.role === '회람' || step.role === '수신' || step.role === '작성') return;
           const uidMatch = step.uid === _user.uid || (!step.uid && step.name === myName);
           if (!uidMatch) return;
+          matchedAsApprover = true;
           const prevDone = line.slice(0,idx).every(p => p.role==='작성' || p.status==='approved' || p.status==='done');
           if (prevDone && step.status === 'pending' && (data.status==='pending' || data.status==='reviewing')) {
             _approvePending.push(data);
@@ -1590,6 +1592,11 @@ async function loadApproveData() {
             _approveDone.push(data);
           }
         });
+        // 관리자는 결재라인에 실제로 걸려있지 않아도(=approvers 미지정 등) 결재대기 문서 전체를 볼 수 있어야 함.
+        // 일반 직원은 위 로직대로 자기 결재 순서에 맞을 때만 노출.
+        if (_isAdmin && !matchedAsApprover && (data.status==='pending' || data.status==='reviewing')) {
+          _approvePending.push(data);
+        }
       });
     }
     _approvePending = _approvePending.filter((d,i,a)=>a.findIndex(x=>x.id===d.id)===i);
@@ -1686,7 +1693,7 @@ const DOC_CONFIG = {
     { key:'amount', label:'수당(원)',      type:'number' },
     { key:'reason', label:'사유',          type:'text' },
   ]},
-  leave:    { label:'연차신청서',  icon:'🏖️', fields:[
+  leave:    { label:'연차신청서',  icon:'🏖️', approvers:['김종화'], fields:[
     { key:'leaveType', label:'휴가 종류', type:'select', opts:[
       '연차(유급)','반차-오전(유급)','반차-오후(유급)',
       '생리휴가(무급)','출산전후휴가(유급)','배우자출산휴가(유급)','유산·사산휴가(유급)',
