@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- HR module build: 20260919 · ver 2.4.1 · 저장 서류(근로계약서·연봉계약서·급여명세서) 양식 동결 — 저장 당시 양식으로만 조회/출력, 저장 시 tplVer 기록 -->
+<!DOCTYPE html><!-- HR module build: 20260921 · ver 2.5.0 · 근로계약서·연봉계약서 급여 입력 기준 선택(시급/월급/연봉) → 시급 자동 환산 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -3570,6 +3570,81 @@ window.rosterDelete = async (id, name) => {
 // 📝 근로계약서 (재구성)
 // ════════════════════════════════
 let laborView2 = 'main';
+// ════════════════════════════════
+// 💰 급여 입력 기준 선택 (시급 / 월급 / 연봉) — v2.5.0
+//  · 저장·계산의 기준값은 항상 "시급(hourly)" — 월급/연봉 입력은 시급으로 환산해 기존 계산식(calcAnnualSalary)을 그대로 사용
+//  · 월급 = 월 지급계(기본근로수당+주휴수당). 연장·야간수당은 매월 실근무 기준 별도이므로 제외
+//  · 환산: 계약연봉이 입력액 "이상"이 되는 최소 정수 시급 (근로자 불이익 방지)
+// ════════════════════════════════
+const PAY_BASIS_LABELS = { hourly:'시급', monthly:'월급', annual:'연봉' };
+const PAY_MONTH_FACTOR = 8*5*4.345 + 8*4.345;   // 월 지급계 = 시급 × 208.56
+
+function payToHourly(basis, value) {
+  const v = Number(value || 0);
+  if (!(v > 0)) return 0;
+  if (basis !== 'monthly' && basis !== 'annual') return v;        // 시급 직접 입력은 기존 동작 그대로
+  const targetAnnual = basis === 'annual' ? v : v * 12;
+  let h = Math.max(1, Math.floor(targetAnnual / 12 / PAY_MONTH_FACTOR) - 1);
+  for (let i = 0; i < 20 && calcAnnualSalary(h, 'field').annual < targetAnnual; i++) h++;
+  return h;
+}
+
+function payConvHtml(f) {
+  const basis = f.payBasis || 'hourly';
+  const h = Number(f.hourly || 0);
+  if (basis === 'hourly' || !h) return '';
+  const sal = calcAnnualSalary(h, 'field');
+  const inputVal = Number(f.payInput || 0);
+  const actual = basis === 'monthly' ? sal.total : sal.annual;
+  const diff = Math.round(actual - inputVal);
+  const diffTxt = diff === 0 ? '입력액과 정확히 일치'
+    : '입력 대비 ' + (diff > 0 ? '+' : '−') + '₩' + Math.abs(diff).toLocaleString();
+  return '<div style="font-size:11.5px;color:#1D5BA6;margin:-4px 0 8px;font-weight:700;">→ 환산 시급 ₩' + h.toLocaleString()
+    + ' <span style="font-weight:500;color:#5C6F8A;">· 실제 ' + (basis === 'monthly' ? '월 지급계' : '계약연봉') + ' ₩' + Math.round(actual).toLocaleString()
+    + ' (' + diffTxt + ')</span></div>';
+}
+
+function payInputHtml(kind, f) {
+  const basis = f.payBasis || 'hourly';
+  const sal = calcAnnualSalary(Number(f.hourly || 0), 'field');
+  const label = basis === 'monthly' ? '월급 — 월 지급계 (원)' : basis === 'annual' ? '연봉 (원)' : '시급 (원)';
+  const shown = basis === 'hourly' ? f.hourly
+    : (f.payInput || (basis === 'monthly' ? sal.total : sal.annual) || '');
+  const seg = '<div style="display:flex;gap:6px;margin-bottom:10px;">' + ['hourly','monthly','annual'].map(function(b){
+    const on = b === basis;
+    return '<button type="button" onclick="payBasisChange(\'' + kind + '\',\'' + b + '\')" style="flex:1;padding:8px 0;border-radius:8px;cursor:pointer;font-size:12.5px;font-weight:700;'
+      + 'border:1.5px solid ' + (on ? C2.blue : '#DDE4EF') + ';background:' + (on ? '#E8F0FB' : '#fff') + ';color:' + (on ? C2.blue : '#5C6F8A') + ';">' + PAY_BASIS_LABELS[b] + '</button>';
+  }).join('') + '</div>';
+  const hint = basis === 'hourly' ? '시급 입력 (숫자만)' : (basis === 'monthly' ? '월급 입력 (숫자만)' : '연봉 입력 (숫자만)');
+  return seg
+    + field2(label, '<input type="text" inputmode="numeric" value="' + (shown ? Number(shown).toLocaleString('ko-KR') : '') + '" placeholder="' + hint + '" '
+        + 'oninput="payValueInput(\'' + kind + '\',this)" ' + inp2Style + '>')
+    + '<div id="' + kind + '-pay-conv2">' + payConvHtml(f) + '</div>';
+}
+
+window.payBasisChange = (kind, basis) => {
+  const f = kind === 'labor' ? laborForm2 : annualForm2;
+  if ((f.payBasis || 'hourly') === basis) return;
+  const sal = calcAnnualSalary(Number(f.hourly || 0), 'field');
+  f.payBasis = basis;
+  // 기준 전환 시 시급은 그대로 두고, 새 기준의 표시값만 현재 시급 기준으로 채움
+  f.payInput = basis === 'monthly' ? (sal.total || '') : basis === 'annual' ? (sal.annual || '') : '';
+  const refresh = kind === 'labor' ? window.laborRefreshForm2 : window.annualRefreshForm2;
+  if (refresh) refresh();
+};
+
+window.payValueInput = (kind, el) => {
+  const f = kind === 'labor' ? laborForm2 : annualForm2;
+  fmtMoney(el);
+  const v = numClean(el.value);
+  const basis = f.payBasis || 'hourly';
+  if (basis === 'hourly') { f.hourly = v; f.payInput = ''; }
+  else { f.payInput = v; f.hourly = payToHourly(basis, v); }
+  if (kind === 'labor') laborUpdateSalaryPreview(); else annualUpdateSalaryPreview();
+  const conv = document.getElementById(kind + '-pay-conv2');
+  if (conv) conv.innerHTML = payConvHtml(f);
+};
+
 let laborForm2 = { workerId:'', name:'', jumin:'', phone:'', address:'', dept:'', rank:'', job:'', empType:'field', startDate:'', endDate:'', contractDate:'', hourly:'', salary:'', signData:null };
 // ===== B4: 갑 서명/도장 =====
 let _compSignatures = {};
@@ -3754,9 +3829,8 @@ function renderLaborForm(el, workers) {
       ${field2('계약 체결일',`<input type="date" value="${laborForm2.contractDate}" onchange="laborForm2.contractDate=this.value" ${inp2Style}>`)}
     `)}
     ${card2('💼 담당 업무', field2('담당업무',`<input type="text" value="${laborForm2.job}" placeholder="담당 업무 입력" oninput="laborForm2.job=this.value" ${inp2Style}>`))}
-    ${card2('💰 시급 입력', `
-      ${field2('시급 (원)',`<input type="text" inputmode="numeric" value="${laborForm2.hourly?Number(laborForm2.hourly).toLocaleString('ko-KR'):''}" placeholder="시급 입력 (숫자만)"
-          oninput="fmtMoney(this);laborForm2.hourly=numClean(this.value);laborUpdateSalaryPreview();" ${inp2Style}>`)}
+    ${card2('💰 급여 입력', `
+      ${payInputHtml('labor', laborForm2)}
       <div id="labor-sal-preview2">${sal}</div>
     `)}
     ${card2('✍️ 근로자 서명', `
@@ -4214,9 +4288,8 @@ function renderAnnualForm(el, workers) {
       </div>
       ${field2('계약일자',`<input type="date" value="${annualForm2.contractDate}" onchange="annualForm2.contractDate=this.value" ${inp2Style}>`)}
     `)}
-    ${card2('💰 시급 입력', `
-      ${field2('시급 (원)',`<input type="text" inputmode="numeric" value="${annualForm2.hourly?Number(annualForm2.hourly).toLocaleString('ko-KR'):''}" placeholder="시급 입력 (숫자만)"
-          oninput="fmtMoney(this);annualForm2.hourly=numClean(this.value);annualUpdateSalaryPreview();" ${inp2Style}>`)}
+    ${card2('💰 급여 입력', `
+      ${payInputHtml('annual', annualForm2)}
       <div id="annual-sal-preview2">${salPreview}</div>
       ${annualForm2.salary?'<div style="font-size:12px;color:#1D5BA6;margin-top:6px;font-weight:700;">→ 계약연봉: ₩'+Number(annualForm2.salary).toLocaleString()+'원</div>':''}
     `)}
@@ -4279,6 +4352,8 @@ window.annualWorkerSelect2 = async (wid) => {
   annualForm2.rank     = w.rank    || '';
   annualForm2.empType  = w.empType || 'field';
   annualForm2.hourly   = '';
+  annualForm2.payBasis = 'hourly';
+  annualForm2.payInput = '';
   annualForm2.salary   = '';
   annualForm2.wageType = 'noncomprehensive';
   annualForm2.fixedOT  = '';
