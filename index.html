@@ -2661,7 +2661,8 @@ function mdToHtmlSimple(md){
   const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const lines=md.replace(/\r\n/g,'\n').split('\n');
   let html=''; let i=0;
-  const inline=t=>esc(t).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  const unesc=t=>t.replace(/\\([\\`*_{}\[\]()#+\-.!~|])/g,'$1');
+  const inline=t=>esc(unesc(t)).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
   while(i<lines.length){
     const line=lines[i];
     if(/^\s*$/.test(line)){ i++; continue; }
