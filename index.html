@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260922a · ver: 2026-09-22 (인사 사이드바 '연봉 제안서' 추가) · [포털홈] 이전: 20260916a PWA 매니페스트/아이콘 추가 -->
+<!DOCTYPE html><!-- build: 20260923a · ver: 2026-09-23 (하단 다중 작업탭 신설 — 여러 메뉴 동시 열기, 최대 10개) · [포털홈] 이전: 20260922a 인사 사이드바 '연봉 제안서' 추가 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -98,6 +98,21 @@
   .embed-frame-wrap{flex:1; min-height:0; background:#fff; position:relative; height:100%;}
   .embed-pad{position:absolute; inset:0; display:flex; flex-direction:column;}
   .embed-frame{flex:1; width:100%; height:100%; border:none; display:block;}
+
+  /* 다중 작업탭 바 (하단 고정형, .main 안쪽 — 사이드바와 겹치지 않음) */
+  .jh-tabbar{display:flex; gap:4px; align-items:stretch; overflow-x:auto; overflow-y:hidden;
+    background:#0F2A4A; padding:5px 8px; flex:0 0 auto; -webkit-overflow-scrolling:touch;
+    padding-bottom:calc(5px + env(safe-area-inset-bottom, 0px));}
+  .jh-tabbar::-webkit-scrollbar{height:4px}
+  .jh-tab{display:flex; align-items:center; gap:5px; background:#1A3A5C; color:#CBD8EA;
+    border-radius:8px; padding:6px 6px 6px 10px; font-size:11.5px; white-space:nowrap;
+    cursor:pointer; flex:0 0 auto; max-width:160px; user-select:none;}
+  .jh-tab.active{background:#fff; color:#1A2540; font-weight:700;}
+  .jh-tab-emoji{font-size:12px; flex:0 0 auto;}
+  .jh-tab-label{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:96px;}
+  .jh-tab-x{border:none; background:transparent; color:inherit; opacity:.55; cursor:pointer;
+    font-size:12px; padding:2px 3px; line-height:1; border-radius:4px; flex:0 0 auto;}
+  .jh-tab-x:hover{opacity:1; color:#DC2626; background:rgba(220,38,38,0.1);}
 
   .hello{padding:22px 0 6px}
   .hello h1{margin:0; font-size:20px}
@@ -801,8 +816,7 @@
             <span class="et" id="emb-title2"></span>
             <a class="eo" id="emb-open2" target="_blank" rel="noopener">새 창에서 열기 ↗</a>
           </div>
-          <div style="flex:1; position:relative">
-            <iframe id="emb-frame" class="embed-frame" title="앱"></iframe>
+          <div id="emb-frame-stack" style="flex:1; position:relative">
           </div>
         </div>
       </div>
@@ -829,6 +843,9 @@
         <div id="emp-detail-content"></div>
       </div>
     </section>
+
+    <!-- 다중 작업탭 (하단, 최대 10개) -->
+    <div id="jh-tabbar" class="jh-tabbar" style="display:none;"></div>
   </div>
 </section>
 
@@ -2715,6 +2732,7 @@ function enterPortal(){
   $('p-hello').textContent=`${me.name||''} ${me.rank||''}님, 안녕하세요 👋`;
   renderMenu();
   showApp(); showView('home');
+  jhRestoreTabs();
   resetAutoLogout();
   syncPjtSubtabsFromSettings();
   syncPjtRegistrySubtabs();
@@ -3072,6 +3090,29 @@ async function renderOutlookCard(){
 
 window.renderOutlookCard = renderOutlookCard;
 
+// ════════════════════════════════
+// 🗂 다중 작업탭 (하단 탭바) — 메뉴를 오가며 여러 화면을 동시에 열어두고 전환
+//  · 탭 단위 = 모듈(m.key) 또는 개별 워크스페이스(overrideUrl). 같은 모듈 안의 서브탭 전환은
+//    기존처럼 postMessage로 그 탭의 iframe 안에서만 처리(새 탭을 만들지 않음).
+//  · 탭마다 독립된 iframe을 유지해 다른 탭으로 갔다 와도 입력 중이던 화면이 그대로 보존된다.
+//  · 최대 개수는 JH_TABS_MAX. 새로고침해도 세션 동안은 sessionStorage로 목록이 복원된다
+//    (단, 화면 안에서 입력 중이던 내용까지 복원되진 않음 — iframe 자체를 다시 불러오기 때문).
+// ════════════════════════════════
+const JH_TABS_MAX = 10;
+const JH_TABS_KEY = 'jh_portal_tabs_v1';
+let jhTabs = [];          // [{id, modKey, name, emoji, url, overrideUrl, tab, subKey, fullUrl, frame}]
+let jhActiveTabId = null;
+
+function jhTabId(m, overrideUrl){ return overrideUrl ? ('ov:'+overrideUrl) : ('m:'+m.key); }
+
+function jhMakeFrame(name, fullUrl){
+  const frame=document.createElement('iframe');
+  frame.className='embed-frame'; frame.title=name;
+  frame.style.cssText='position:absolute;inset:0;width:100%;height:100%;border:none;display:none;';
+  frame.src = fullUrl + (fullUrl.includes('?')?'&':'?') + '_cb=' + Date.now();
+  return frame;
+}
+
 function openModule(m, tab, overrideUrl){
   if(tab==='pjt_manday' && !(me&&me.admin)){ toast('월간 공수는 관리자만 접근할 수 있습니다.'); return; }
   if((m.key==='plan'||m.key==='hr') && !(me&&me.admin)){ toast('기획/인사는 관리자만 접근할 수 있습니다.'); return; }
@@ -3083,35 +3124,111 @@ function openModule(m, tab, overrideUrl){
     showPjtEndedView(); return;
   }
   if(!actualUrl){ toast(m.name+' 워크스페이스 준비 중입니다.'); return; }
-  _activeMod=m.key;
-  _activeSub=overrideUrl?tab:(SUBTABS[m.key]?(tab||SUBTABS[m.key][0].key):null);
+
+  const tabId = jhTabId(m, overrideUrl);
   // overrideUrl(개별 PJT)인 경우 tab은 서브탭 key(p4ph2 등)이며 대상 페이지의 탭 이름이 아니므로 URL에 넘기지 않는다 (넘기면 존재하지 않는 탭이라 빈 화면)
   const urlTab=overrideUrl?'':tab;
+  const subKey=overrideUrl?tab:(SUBTABS[m.key]?(tab||SUBTABS[m.key][0].key):null);
   const baseUrl=overrideUrl||m.url;
   const qSep=baseUrl.includes('?')?'&':'?';
   const fullUrl=baseUrl+qSep+'via=portal'+(urlTab?('&tab='+urlTab):'')+(me&&me.admin?'&admin=1':'');
 
-  // iframe이 이미 같은 앱으로 로드된 경우 → postMessage로 탭 전환 (overrideUrl 없을 때만)
-  if (!overrideUrl && SUBTABS[m.key] && _embUrl===m.url && tab) {
-    try {
-      const frame=$('emb-frame');
-      frame.contentWindow.postMessage({source:'jh-portal', action:'goTab', key:tab}, '*');
-      document.querySelectorAll('#sb-nav .sb-group').forEach(g=>g.classList.toggle('open', g.dataset.mod===m.key));
-      showView('embed');
-      return;
-    } catch(e) {}
+  const existing = jhTabs.find(t=>t.id===tabId);
+  if (existing) {
+    // 이미 열려 있는 탭 → 다시 불러오지 않고 그대로 전환 (서브탭만 postMessage로 이동)
+    if (!overrideUrl && SUBTABS[m.key] && tab) {
+      try { existing.frame.contentWindow.postMessage({source:'jh-portal', action:'goTab', key:tab}, '*'); } catch(e) {}
+      existing.subKey = subKey;
+    }
+    jhActivateTab(tabId);
+    document.querySelectorAll('#sb-nav .sb-group').forEach(g=>g.classList.toggle('open', g.dataset.mod===m.key));
+    jhSaveTabs();
+    return;
   }
 
-  // 새로 로드: iframe에 src 설정 (캐시 무력화 파라미터 _cb 추가 → 항상 최신 버전 로드)
-  const frame=$('emb-frame');
-  const cacheBust = (fullUrl.includes('?')?'&':'?') + '_cb=' + Date.now();
-  frame.src = fullUrl + cacheBust;
-  _embUrl = overrideUrl||m.url;
+  if (jhTabs.length >= JH_TABS_MAX) {
+    toast(`탭은 최대 ${JH_TABS_MAX}개까지 열 수 있습니다. 먼저 하단에서 탭을 닫아주세요.`);
+    return;
+  }
 
-  $('emb-title').textContent=m.name; $('emb-title2').textContent=m.name;
-  $('emb-open').href=fullUrl; $('emb-open2').href=fullUrl;
+  const stack = $('emb-frame-stack');
+  const frame = jhMakeFrame(m.name, fullUrl);
+  stack.appendChild(frame);
+  jhTabs.push({ id:tabId, modKey:m.key, name:m.name, emoji:m.emoji||'▫️', url:actualUrl, overrideUrl:overrideUrl||'', tab:urlTab||'', subKey, fullUrl, frame });
+  jhActivateTab(tabId);
   document.querySelectorAll('#sb-nav .sb-group').forEach(g=>g.classList.toggle('open', g.dataset.mod===m.key));
+  jhSaveTabs();
+}
+
+// 탭 전환: 해당 iframe만 보이고 나머지는 숨김(재로딩 없음) → 상단 타이틀·사이드바 활성표시·기존 뷰전환 갱신
+function jhActivateTab(id){
+  const t = jhTabs.find(x=>x.id===id);
+  if (!t) return;
+  jhActiveTabId = id;
+  jhTabs.forEach(x=>{ x.frame.style.display = (x.id===id) ? 'block' : 'none'; });
+  $('emb-title').textContent=t.name; $('emb-title2').textContent=t.name;
+  $('emb-open').href=t.fullUrl; $('emb-open2').href=t.fullUrl;
+  _embUrl = t.url; _activeMod = t.modKey; _activeSub = t.subKey;
   showView('embed');
+  jhRenderTabbar();
+}
+window.jhActivateTab = jhActivateTab;
+
+function jhCloseTab(id, evt){
+  if (evt) { evt.stopPropagation(); evt.preventDefault(); }
+  const idx = jhTabs.findIndex(t=>t.id===id);
+  if (idx < 0) return;
+  const wasActive = (jhActiveTabId === id);
+  jhTabs[idx].frame.remove();
+  jhTabs.splice(idx, 1);
+  if (wasActive) {
+    if (jhTabs.length) jhActivateTab(jhTabs[Math.max(0, idx-1)].id);
+    else { jhActiveTabId = null; jhRenderTabbar(); showView('home'); }
+  } else {
+    jhRenderTabbar();
+  }
+  jhSaveTabs();
+}
+window.jhCloseTab = jhCloseTab;
+
+function jhRenderTabbar(){
+  const bar = document.getElementById('jh-tabbar');
+  if (!bar) return;
+  if (!jhTabs.length) { bar.style.display='none'; bar.innerHTML=''; return; }
+  bar.style.display='flex';
+  bar.innerHTML = jhTabs.map(t => `
+    <div class="jh-tab${t.id===jhActiveTabId?' active':''}" onclick="jhActivateTab('${t.id}')" title="${(t.name||'').replace(/"/g,'&quot;')}">
+      <span class="jh-tab-emoji">${t.emoji||''}</span><span class="jh-tab-label">${(t.name||'').replace(/</g,'&lt;')}</span>
+      <button type="button" class="jh-tab-x" onclick="jhCloseTab('${t.id}', event)">✕</button>
+    </div>`).join('');
+}
+
+function jhSaveTabs(){
+  try {
+    const plain = jhTabs.map(t=>({ id:t.id, modKey:t.modKey, name:t.name, emoji:t.emoji, url:t.url, overrideUrl:t.overrideUrl, tab:t.tab, subKey:t.subKey, fullUrl:t.fullUrl }));
+    sessionStorage.setItem(JH_TABS_KEY, JSON.stringify(plain));
+    sessionStorage.setItem(JH_TABS_KEY+'_active', jhActiveTabId||'');
+  } catch(e) {}
+}
+
+// 로그인 직후 1회 호출 — 세션에 남아있던 탭 목록을 iframe으로 복원(화면은 홈에 그대로 둔다)
+function jhRestoreTabs(){
+  jhActiveTabId = null; // 새로고침 직후에는 홈 화면부터 시작 — 목록만 준비해두고 클릭해야 전환
+  try {
+    const raw = sessionStorage.getItem(JH_TABS_KEY);
+    if (!raw) return;
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr) || !arr.length) return;
+    const stack = $('emb-frame-stack');
+    if (!stack) return;
+    arr.forEach(t=>{
+      if (!t || !t.id || !t.fullUrl) return;
+      const frame = jhMakeFrame(t.name, t.fullUrl);
+      stack.appendChild(frame);
+      jhTabs.push({ ...t, frame });
+    });
+    jhRenderTabbar();
+  } catch(e) { console.warn('[portal] 작업탭 복원 실패:', e.message); }
 }
 
 
