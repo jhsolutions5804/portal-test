@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- edoc module build: 20260924b · ver 4.4.0 · 업무일지 캘린더 뷰 신설 + 상세화면 "‹ 목록" 복귀처를 캘린더로 수정(전체목록 아님) · 이전: 20260916c ver 4.3.0 -->
+<!DOCTYPE html><!-- edoc module build: 20260924c · ver 4.5.0 · 포털 하단 작업탭 동기화 — 내부 이동(전자결재 홈 등) 시 현재 화면을 포털에 알려 탭 라벨 정확화 · 이전: 20260924b ver 4.4.0 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -124,6 +124,9 @@ window.goTab = function(key, afterFn) {
   document.querySelectorAll('[data-navkey]').forEach(b=>
     b.classList.toggle('active', b.getAttribute('data-navkey')===key));
   const ht = document.getElementById('header-title'); if (ht) ht.textContent = t.title;
+  if (document.documentElement.classList.contains('portal-embed')) {
+    try { window.parent.postMessage({source:'jh-embed', mod:'edoc', key}, '*'); } catch(e) {}
+  }
   if (t.fn) {
     const result = t.fn();
     // fn이 Promise를 반환하면 then, 아니면 setTimeout으로 afterFn 실행
