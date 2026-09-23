@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- HR module build: 20260922 · ver 2.6.0 · 연봉 제안서 신설 — 연봉/시급 입력 시 급여 구성 자동 계산 + A4 제안서·회신서 출력(저장 없음) · 이전: 2.5.1 월급/연봉 입력 시 기본근로수당·주휴수당 역산 -->
+<!DOCTYPE html><!-- HR module build: 20260923 · ver 2.7.0 · 근로시간 탭에서 휴가 직접 부여(관리자) + 연봉 제안서 출력에 기술수당·여비교통비 표시 · 이전: 2.6.0 연봉 제안서 신설 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -6053,14 +6053,18 @@ window.otPcShowPersonDetail = async (id, name, rank) => {
       const leaveSnap = await getDocs(collection(window._db, 'edoc_leave'));
       leaveSnap.forEach(d => {
         const ld = d.data();
-        if (ld.authorName === name && (ld.status==='approved' || ld.status==='posted')) leaveDocs.push(ld);
+        if (ld.authorName === name && (ld.status==='approved' || ld.status==='posted')) leaveDocs.push({ id:d.id, ...ld });
       });
     } catch(e) { console.warn('연차 조회 실패:', e.message); }
+    _otLeaveCache[name] = leaveDocs; // otAttOpenEdit에서 날짜별 휴가 여부 조회용
 
     panel.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:6px;">
         <div style="font-size:14px;font-weight:700;color:#1A2540;">${name} ${rank||''}</div>
-        <button onclick="otAttOpenEdit('${id}','${otEsc(name)}','${date_today_str()}')" style="background:#1D5BA6;border:none;border-radius:7px;color:#fff;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;">➕ 기록 추가</button>
+        <div style="display:flex;gap:6px;">
+          <button onclick="openLeaveAdminForm(null,{workerName:'${otEsc(name)}',date:'${date_today_str()}',returnTo:{type:'ot',workerId:'${id}',workerName:'${otEsc(name)}',rank:'${otEsc(rank||'')}'}})" style="background:#F59E0B;border:none;border-radius:7px;color:#fff;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;">🌴 휴가 부여</button>
+          <button onclick="otAttOpenEdit('${id}','${otEsc(name)}','${date_today_str()}','${otEsc(rank||'')}')" style="background:#1D5BA6;border:none;border-radius:7px;color:#fff;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;">➕ 근무시간 추가</button>
+        </div>
       </div>
       ${otRenderAttendanceCard(attSummary)}
       ${wage?`<div style="font-size:12px;color:#5C6F8A;margin-bottom:10px;">통상임금 ${wage.rate.toLocaleString()}원/h</div>`:''}
@@ -6123,7 +6127,7 @@ function otRenderAttendanceCalendar(workerId, workerName, rank, attRows, leaveDo
                     : leaveType ? `<div style="font-size:8px;margin-top:1px;">${otEsc(leaveType.replace(/\(.+?\)/,''))}</div>` : '';
     const adminDot = rec?.updatedByAdmin ? `<span style="position:absolute;top:2px;right:3px;width:5px;height:5px;border-radius:50%;background:#F59E0B;"></span>` : '';
 
-    html += `<div onclick="otAttOpenEdit('${workerId}','${otEsc(workerName)}','${dateStr}')"
+    html += `<div onclick="otAttOpenEdit('${workerId}','${otEsc(workerName)}','${dateStr}','${otEsc(rank||'')}')"
       title="${leaveType?otEsc(leaveType):''}"
       style="position:relative;text-align:center;padding:6px 2px 5px;border-radius:8px;font-size:11.5px;background:${bg};color:${fg};font-weight:${fw};${border}cursor:pointer;">
       ${adminDot}${day}${subLabel}
@@ -6139,10 +6143,13 @@ function date_today_str(){
 }
 
 const _otAttCache = {}; // docId -> 출퇴근기록 원본 (수정 모달용)
+const _otLeaveCache = {}; // workerName -> 승인/게시된 연차 목록({id,startDate,endDate,leaveType,...}) — 근로시간 탭에서 날짜별 휴가 조회·부여용
 
 // ── 근로 내역 추가/수정 모달 ──
-window.otAttOpenEdit = (workerId, workerName, dateStr) => {
+window.otAttOpenEdit = (workerId, workerName, dateStr, rank) => {
   const existing = Object.values(_otAttCache).find(r => r.workerId===workerId && r.date===dateStr);
+  const leaveHit = (_otLeaveCache[workerName]||[]).find(l => l.startDate && l.endDate && dateStr>=l.startDate && dateStr<=l.endDate);
+  const returnTo = { type:'ot', workerId, workerName, rank: rank||'' };
   let modal = document.getElementById('ot-att-modal');
   if (!modal) {
     modal = document.createElement('div');
@@ -6151,12 +6158,19 @@ window.otAttOpenEdit = (workerId, workerName, dateStr) => {
     modal.onclick = (e)=>{ if(e.target===modal) modal.remove(); };
     document.body.appendChild(modal);
   }
+  const leaveBlock = leaveHit
+    ? `<div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:8px 10px;font-size:11.5px;color:#92400E;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <span>🌴 이 날짜는 <b>${otEsc(leaveHit.leaveType||'휴가')}</b> 기간입니다 (${leaveHit.startDate}~${leaveHit.endDate})</span>
+        <button onclick="openLeaveAdminForm('${leaveHit.id}',{returnTo:${otEsc(JSON.stringify(returnTo))}})" style="white-space:nowrap;background:#fff;border:1px solid #F59E0B;border-radius:6px;padding:4px 8px;font-size:11px;color:#92400E;cursor:pointer;">수정/삭제</button>
+      </div>`
+    : `<button onclick="openLeaveAdminForm(null,{workerName:'${otEsc(workerName)}',date:'${dateStr}',returnTo:${otEsc(JSON.stringify(returnTo))}})" style="width:100%;padding:9px;background:#FFFBEB;border:1px dashed #F59E0B;border-radius:8px;color:#92400E;font-size:11.5px;font-weight:700;cursor:pointer;">🌴 이 날짜에 휴가 부여</button>`;
   modal.innerHTML = `
     <div style="background:#fff;border-radius:16px;width:360px;max-width:100%;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
         <div style="font-size:14px;font-weight:800;color:#1A2540;">${workerName} 근로 내역 ${existing?'수정':'추가'}</div>
         <button onclick="otShowDailyReport('${otEsc(workerName)}','${dateStr}')" style="background:#F0F4F9;border:none;border-radius:6px;color:#5C6F8A;padding:4px 8px;font-size:11px;cursor:pointer;">📋 업무일지</button>
       </div>
+      <div style="margin-bottom:12px;">${leaveBlock}</div>
       <div style="display:flex;flex-direction:column;gap:10px;">
         <div>
           <label style="font-size:11px;color:#5C6F8A;display:block;margin-bottom:4px;">날짜</label>
@@ -6799,7 +6813,7 @@ function hrCalcAnnualLeave(hireDateStr, baseDateStr) {
 }
 
 // ===== 관리자 연차 등록/수정/삭제 (B2) =====
-window.openLeaveAdminForm = async function(editId) {
+window.openLeaveAdminForm = async function(editId, preset) {
   const old = document.getElementById('leave-admin-modal');
   if(old) old.remove();
 
@@ -6829,8 +6843,8 @@ window.openLeaveAdminForm = async function(editId) {
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(19,51,92,0.45);z-index:10000;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;';
   modal.onclick = function(e){ if(e.target===modal) modal.remove(); };
 
-  const workerOpts = wlist.map(w=>`<option value="${w.name}" ${editData&&editData.authorName===w.name?'selected':''}>${w.empNo?'['+w.empNo+'] ':''}${w.name} (${w.rank||'-'})</option>`).join('');
-  const ed = editData||{};
+  const workerOpts = wlist.map(w=>`<option value="${w.name}" ${(editData?editData.authorName===w.name:(preset&&preset.workerName===w.name))?'selected':''}>${w.empNo?'['+w.empNo+'] ':''}${w.name} (${w.rank||'-'})</option>`).join('');
+  const ed = editData || (preset ? { startDate:preset.date, endDate:preset.date } : {});
 
   modal.innerHTML = `<div style="background:#fff;border-radius:16px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.25);overflow:hidden;">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #DDE4EF;">
@@ -6866,8 +6880,22 @@ window.openLeaveAdminForm = async function(editId) {
       <button onclick="saveLeaveAdmin('${editData?editData.id:''}')" style="flex:1;background:#1D5BA6;color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:700;cursor:pointer;">저장</button>
     </div>
   </div>`;
+  modal.dataset.returnJson = JSON.stringify((preset && preset.returnTo) || null);
   document.body.appendChild(modal);
 };
+
+// 관리자 연차 등록/수정 모달을 닫고, 근로시간 탭에서 열렸던 경우 그 화면으로 돌아가 새로고침한다.
+// (연차현황 탭에서 연 경우엔 preset.returnTo가 없어 기존처럼 renderLeaveStatusMain으로 돌아간다)
+function leaveAdminReturn() {
+  const modalEl = document.getElementById('leave-admin-modal');
+  let returnTo = null;
+  try { returnTo = modalEl && modalEl.dataset.returnJson ? JSON.parse(modalEl.dataset.returnJson) : null; } catch(e) {}
+  if (modalEl) modalEl.remove();
+  document.getElementById('ot-att-modal')?.remove();
+  if (returnTo && returnTo.type === 'ot') otPcShowPersonDetail(returnTo.workerId, returnTo.workerName, returnTo.rank);
+  else window.renderLeaveStatusMain();
+}
+window.leaveAdminReturn = leaveAdminReturn; // 테스트/외부 접근용
 
 window.saveLeaveAdmin = async function(editId) {
   const worker = document.getElementById('la-worker')?.value;
@@ -6896,8 +6924,7 @@ window.saveLeaveAdmin = async function(editId) {
       await addDoc(collection(window._db,'edoc_leave'),data);
       alert('등록했습니다.');
     }
-    document.getElementById('leave-admin-modal')?.remove();
-    window.renderLeaveStatusMain();
+    leaveAdminReturn();
   } catch(e){ alert('오류: '+e.message); }
 };
 
@@ -6908,9 +6935,8 @@ window.deleteLeaveAdmin = async function(docId) {
     const {doc,deleteDoc} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     await deleteDoc(doc(window._db,'edoc_leave',docId));
     alert('삭제했습니다.');
-    document.getElementById('leave-admin-modal')?.remove();
     document.getElementById('leave-detail-modal')?.remove();
-    window.renderLeaveStatusMain();
+    leaveAdminReturn();
   } catch(e){ alert('오류: '+e.message); }
 };
 
@@ -7645,10 +7671,11 @@ window.salTableSave = async function() {
   } catch(e) { alert('저장 실패: '+e.message); }
 };
 
-/* ==================== 연봉 제안서 (hr v2.6.0) ====================
+/* ==================== 연봉 제안서 (hr v2.7.0) ====================
  * 연봉 또는 시급 중 하나만 입력 → 급여 구성 자동 산출 → A4 2쪽(제안서 + 회신서) 출력(PDF 저장)
  * · 산식은 연봉계약서(calcAnnualSalary)와 동일 — 기본근로수당 = 시급×8×5×4.345, 주휴수당 = 시급×8×4.345
  * · DB 저장 없음(출력 전용). 근로자 명부·기존 연봉계약서는 읽기만 한다 → 저장 서류 양식 동결(2_9) 대상 아님
+ * · 별도지급(기술수당·여비교통비)은 급여명세서(calcTechAllowance)와 같은 기준으로 출력에 표시 — 근로자를 선택한 경우 실제 금액, 아니면 일반 안내
  * · 회사명·대표는 아래 상수로 관리
  */
 const OFFER_CO  = 'JH솔루션';
@@ -7710,6 +7737,7 @@ window.renderOfferMain = async () => {
   const el = document.getElementById('tab-offer'); if (!el) return;
   el.innerHTML = '<div style="text-align:center;padding:48px;color:#9AAABF;">⏳ 불러오는 중...</div>';
   try { if (typeof _salTableData !== 'undefined' && !_salTableData) await salTableLoad(); } catch(e) {}
+  loadTechAllowanceConfig(); // 급여명세서와 같은 기술수당 단가 캐시 — 완료 전엔 기본값(5만원)으로 표시, 출력 시점까진 대개 로드 완료
   try {
     const today = _offerYmd(new Date());
     _offerWorkers = (await getWorkersList()).filter(w => !w.resignDate || w.resignDate >= today);
@@ -7898,6 +7926,9 @@ function offerRefresh() {
       const d = r.annual - cur;
       notes.push('현재 연봉 ' + w(cur) + ' 대비 ' + (d >= 0 ? '+' : '−') + w(Math.abs(d)).replace('₩','') + '원 (' + (d >= 0 ? '+' : '−') + Math.abs(d / cur * 100).toFixed(1) + '%)');
     }
+    const selW = _offerWorkers.find(x => x.id === f.workerId);
+    const certN2 = selW ? (selW.certifications || []).filter(c => c && String(c).trim()).length : 0;
+    if (selW && certN2 > 0) notes.push('선택한 근로자는 기술수당 별도 대상입니다 — 자격증 ' + certN2 + '개 × ' + w(_techAllowanceConfig.perCert) + '원 = 월 ' + w(certN2 * _techAllowanceConfig.perCert) + '원 (연봉과 별도, 출력 시 표시됨)');
     notes.push('기준: 월 소정근로 ' + OFFER_HB.toFixed(1) + 'h + 주휴 ' + OFFER_HW.toFixed(2) + 'h = ' + OFFER_HF.toFixed(2) + 'h');
     body += `<div style="padding:9px 12px;font-size:11px;line-height:1.65;color:${C2.sub};">${notes.map(n=>'· '+n).join('<br>')}</div>`;
   }
@@ -7959,7 +7990,15 @@ function offerBuildHtml(f, r) {
       <tr><td class="c">직위 / 직급</td><td class="c">${cell(f.curRank)}</td><td class="c">${cell(f.rank)}</td><td class="c" colspan="2">${nb}</td></tr></table>`;
   };
 
-  const sepRow = f.sepNote ? `<tr><th>별도 지급</th><td>기술수당(국가기술자격 보유 및 해당 업무 종사 시)과 여비교통비는 연봉에 포함되지 않으며, 회사 내규 및 근로계약에 따라 별도 지급합니다.</td></tr>` : '';
+  // 급여명세서(psCalcAll·calcTechAllowance)와 같은 기준 — 근로자를 선택했으면 실제 자격증 개수로 계산, 아니면 일반 안내 문구
+  const selWorker = _offerWorkers.find(x => x.id === f.workerId);
+  const certN = selWorker ? (selWorker.certifications || []).filter(c => c && String(c).trim()).length : 0;
+  const techAmt = selWorker ? calcTechAllowance(selWorker) : 0;
+  const techLine = (selWorker && certN > 0)
+    ? `기술수당 : 보유 자격증 ${certN}개 × ${w(_techAllowanceConfig.perCert)}원 = <b>월 ${w(techAmt)}원</b> (근로자 명부 자격증 등록 기준, 급여명세서 작성 시 자동 반영)`
+    : `기술수당 : 국가기술자격증을 보유하고 해당 업무에 종사하는 경우 자격증 1개당 월 ${w(_techAllowanceConfig.perCert)}원 지급 (상한 없음)`;
+  const travelLine = `여비교통비 : 실비변상적 성격으로 별도 지급 — 개인차량 40km 이내 1만원/일, 40km 초과 2만원/일, 회사차량 1만원/일(거리무관), 지방 장기출장 왕복교통비 실비(주 1회 한도)`;
+  const sepRow = f.sepNote ? `<tr><th>별도 지급</th><td>${techLine}<br>${travelLine}<div class="note" style="margin-top:4px;">※ 위 두 항목은 연봉 총액에 포함되지 않으며, 실제 지급액은 매월 급여명세서 작성 시 자동 계산됩니다.</div></td></tr>` : '';
   const ovt = wc
     ? '고정연장·고정야간수당은 실제 근로 여부와 관계없이 매월 고정 지급되며, 약정 시간을 초과한 근로에 대해서는 관계 법령에 따라 별도 정산합니다.'
     : '연장·야간·휴일근로수당은 위 연봉에 포함되어 있지 않으며, 실제 근무기록을 기준으로 매월 급여 정산 시 별도 산정하여 지급합니다.';
