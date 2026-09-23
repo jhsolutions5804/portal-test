@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260923a · ver: 2026-09-23 (하단 다중 작업탭 신설 — 여러 메뉴 동시 열기, 최대 10개) · [포털홈] 이전: 20260922a 인사 사이드바 '연봉 제안서' 추가 -->
+<!DOCTYPE html><!-- build: 20260924a · ver: 2026-09-24 (하단 작업탭 라벨을 모듈명 대신 실제 보고 있는 세부메뉴 기준으로 표시 + 내부 이동 시 동기화) · 이전: 20260923a 하단 다중 작업탭 신설 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -3226,16 +3226,23 @@ function openModule(m, tab, overrideUrl){
   // overrideUrl(개별 PJT)인 경우 tab은 서브탭 key(p4ph2 등)이며 대상 페이지의 탭 이름이 아니므로 URL에 넘기지 않는다 (넘기면 존재하지 않는 탭이라 빈 화면)
   const urlTab=overrideUrl?'':tab;
   const subKey=overrideUrl?tab:(SUBTABS[m.key]?(tab||SUBTABS[m.key][0].key):null);
+  // 탭 이름/아이콘은 상위 모듈명이 아니라 실제 보고 있는 세부 메뉴(서브탭) 기준으로 표시 — 여러 탭을 오갈 때 구분되도록
+  const subDef = SUBTABS[m.key] ? SUBTABS[m.key].find(s=>s.key===subKey) : null;
+  const tabName = subDef ? subDef.name : m.name;
+  const tabEmoji = (subDef && subDef.emoji) ? subDef.emoji : (m.emoji||'▫️');
   const baseUrl=overrideUrl||m.url;
   const qSep=baseUrl.includes('?')?'&':'?';
   const fullUrl=baseUrl+qSep+'via=portal'+(urlTab?('&tab='+urlTab):'')+(me&&me.admin?'&admin=1':'');
 
   const existing = jhTabs.find(t=>t.id===tabId);
   if (existing) {
-    // 이미 열려 있는 탭 → 다시 불러오지 않고 그대로 전환 (서브탭만 postMessage로 이동)
+    // 이미 열려 있는 탭 → 다시 불러오지 않고 그대로 전환 (서브탭만 postMessage로 이동, 탭 이름도 함께 갱신)
     if (!overrideUrl && SUBTABS[m.key] && tab) {
       try { existing.frame.contentWindow.postMessage({source:'jh-portal', action:'goTab', key:tab}, '*'); } catch(e) {}
       existing.subKey = subKey;
+      existing.tab = tab;
+      existing.name = tabName;
+      existing.emoji = tabEmoji;
     }
     jhActivateTab(tabId);
     document.querySelectorAll('#sb-nav .sb-group').forEach(g=>g.classList.toggle('open', g.dataset.mod===m.key));
@@ -3249,9 +3256,9 @@ function openModule(m, tab, overrideUrl){
   }
 
   const stack = $('emb-frame-stack');
-  const frame = jhMakeFrame(m.name, fullUrl);
+  const frame = jhMakeFrame(tabName, fullUrl);
   stack.appendChild(frame);
-  jhTabs.push({ id:tabId, modKey:m.key, name:m.name, emoji:m.emoji||'▫️', url:actualUrl, overrideUrl:overrideUrl||'', tab:urlTab||'', subKey, fullUrl, frame });
+  jhTabs.push({ id:tabId, modKey:m.key, name:tabName, emoji:tabEmoji, url:actualUrl, overrideUrl:overrideUrl||'', tab:urlTab||'', subKey, fullUrl, frame });
   jhActivateTab(tabId);
   document.querySelectorAll('#sb-nav .sb-group').forEach(g=>g.classList.toggle('open', g.dataset.mod===m.key));
   jhSaveTabs();
@@ -3377,6 +3384,21 @@ window.addEventListener('message', async (e) => {
       console.log('[portal] portal_users 동기화 완료:', puUid, fields);
     } catch(e) { console.warn('[portal] syncWorkerToPortal 실패:', e.message); }
   }
+});
+
+// ── 임베드된 모듈(edoc/hr/plan) 내부에서 사용자가 직접 세부 메뉴를 이동한 경우(예: 콘텐츠 안의 "전자결재 홈" 버튼) ──
+// 포털 사이드바를 거치지 않은 이동이므로, 앱이 알려온 현재 서브탭 키를 받아 하단 작업탭 이름·상단 타이틀을 실제 화면에 맞게 갱신한다.
+window.addEventListener('message', (e) => {
+  const d = e.data;
+  if (!d || d.source !== 'jh-embed' || !d.mod || !d.key) return;
+  const st = SUBTABS[d.mod] ? SUBTABS[d.mod].find(s=>s.key===d.key) : null;
+  if (!st) return;
+  const t = jhTabs.find(x=>x.modKey===d.mod && !x.overrideUrl);
+  if (!t || t.subKey === d.key) return;
+  t.subKey = d.key; t.tab = d.key; t.name = st.name; t.emoji = st.emoji || t.emoji;
+  if (jhActiveTabId === t.id) { $('emb-title').textContent=t.name; $('emb-title2').textContent=t.name; _activeSub = t.subKey; }
+  jhRenderTabbar();
+  jhSaveTabs();
 });
 
 function doLogout(){ clearTimeout(_autoLogoutTimer); clearMsalCache(); signOut(auth).then(()=>{ me=null; $('login-pw').value=''; try{ localStorage.removeItem('jh_login_perms'); localStorage.removeItem('jh_login_name'); localStorage.removeItem('jh_login_full'); }catch(e){} if(window.mbnHideNav) mbnHideNav(); showAuth('s-login'); }); }
