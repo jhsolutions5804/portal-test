@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- gihoek module build: 20260830a · ver 5.6.0 · 비용장부→정산 뒤로가기 버그 수정(출처추적에 acct 추가) -->
+<!DOCTYPE html><!-- gihoek module build: 20260924a · ver 5.7.0 · 포털 하단 작업탭 동기화 — 내부 이동 시 현재 화면을 포털에 알려 탭 라벨 정확화 · 이전: 20260830a ver 5.6.0 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -293,6 +293,9 @@ let curTab='home';
 function tab(t){ curTab=t; detailId=null; estDraft=null; viewEstId=null; pjtForm=false; compForm=false; settleDraft=null; viewSetId=null;
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on', x.dataset.tab===t));
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('on')); $('v-'+t).classList.add('on');
+  if (document.documentElement.classList.contains('portal-embed')) {
+    try { window.parent.postMessage({source:'jh-embed', mod:'plan', key:t}, '*'); } catch(e) {}
+  }
   ({home:renderPlanHome, pjt:renderPjt, comp:renderComp, est:renderEst, settle:renderSettle, acct:renderAcct})[t](); window.scrollTo(0,0); }
 function tabSilent(t){ curTab=t; document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on', x.dataset.tab===t)); document.querySelectorAll('.view').forEach(v=>v.classList.remove('on')); $('v-'+t).classList.add('on'); }
 // 포털 사이드바에서 보낸 탭 전환 메시지 수신
