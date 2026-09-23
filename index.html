@@ -491,6 +491,24 @@
   .org-table td{padding:10px 14px; border-bottom:1px solid #F4F7FB; color:#1A2540}
   .org-table tr:last-child td{border-bottom:none}
   .org-table tr:hover td{background:#F8FAFF}
+  #view-rules{display:none; flex:1; overflow-y:auto; padding:0}
+  #view-rules.on{display:flex; flex-direction:column}
+  .rules-inner{display:flex; gap:22px; align-items:flex-start; flex-wrap:wrap}
+  .rules-tabs{flex:0 0 210px; display:flex; flex-direction:column; gap:6px}
+  .rules-tab{text-align:left; padding:10px 14px; border-radius:10px; border:1px solid #DDE4EF; background:#fff; color:#1A2540; font-size:13px; font-weight:700; cursor:pointer}
+  .rules-tab:hover{background:#F8FAFF}
+  .rules-tab.active{background:#1D5BA6; color:#fff; border-color:#1D5BA6}
+  .rules-content{flex:1; min-width:280px; background:#fff; border:1px solid #DDE4EF; border-radius:14px; padding:28px 32px; box-shadow:0 1px 4px rgba(29,91,166,.05)}
+  .rules-content h1{font-size:19px; font-weight:800; color:#1D5BA6; margin:0 0 6px}
+  .rules-content .rules-meta{font-size:12px; color:#9AAABF; margin-bottom:18px}
+  .rules-content h2{font-size:15px; font-weight:800; color:#1A2540; margin:26px 0 12px; padding-top:14px; border-top:1px solid #EEF2F7}
+  .rules-content h2:first-of-type{border-top:none; padding-top:0; margin-top:0}
+  .rules-content p{font-size:13.5px; line-height:1.75; color:#333; margin:0 0 12px}
+  .rules-content strong{color:#1D5BA6}
+  .rules-content table{width:100%; border-collapse:collapse; font-size:13px; margin:10px 0 18px}
+  .rules-content th{padding:8px 12px; text-align:left; font-weight:700; color:#5C6F8A; font-size:11.5px; border-bottom:1px solid #EEF2F7; background:#FAFCFF}
+  .rules-content td{padding:8px 12px; border-bottom:1px solid #F4F7FB}
+  @media (max-width:720px){ .rules-inner{flex-direction:column} .rules-tabs{flex-direction:row; flex-wrap:wrap; width:100%} .rules-content{padding:20px 18px} }
 
   /* 사이드바 클릭 가능한 사용자 영역 */
   .sb-user-btn{display:flex; align-items:center; gap:10px; flex:1; cursor:pointer; background:none; border:none; padding:0; font-family:inherit; text-align:left}
@@ -833,6 +851,20 @@
       </div>
     </section>
 
+    <!-- 내규 열람 뷰 -->
+    <section id="view-rules">
+      <div class="org-inner" style="max-width:1040px;">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px;">
+          <button class="back" onclick="showView('home')" style="font-size:13px;">← 포털 홈</button>
+          <h2 style="margin:0; font-size:18px; font-weight:800; color:#1A2540;">📖 내규 열람</h2>
+        </div>
+        <div class="rules-inner">
+          <div class="rules-tabs" id="rules-tabs"></div>
+          <div class="rules-content" id="rules-content"><div class="empty">불러오는 중...</div></div>
+        </div>
+      </div>
+    </section>
+
     <!-- 직원 상세 뷰 (관리자용) -->
     <section id="view-emp-detail" style="display:none; flex:1; overflow-y:auto; padding:24px 20px;">
       <div style="max-width:600px; margin:0 auto;">
@@ -1039,6 +1071,7 @@ function showView(v){
   if($('view-pjt-home')) $('view-pjt-home').style.display = (v==='pjt-home') ? 'flex' : 'none';
   if($('view-pjt-ended')) $('view-pjt-ended').style.display = (v==='pjt-ended') ? 'flex' : 'none';
   $('view-org').classList.toggle('on', v==='org');
+  $('view-rules').classList.toggle('on', v==='rules');
   $('view-emp-detail').style.display = (v==='emp-detail') ? 'block' : 'none';
   // 포털 홈이면 드롭다운 전부 닫기
   if (v==='home') document.querySelectorAll('#sb-nav .sb-group').forEach(g=>g.classList.remove('open'));
@@ -2623,6 +2656,59 @@ window.sendPwReset = async function(){
   }catch(e){ showMsg(msg,'err','발송 실패: '+e.message); }
 };
 
+// ---------- 내규 열람 ----------
+function mdToHtmlSimple(md){
+  const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const lines=md.replace(/\r\n/g,'\n').split('\n');
+  let html=''; let i=0;
+  const inline=t=>esc(t).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  while(i<lines.length){
+    const line=lines[i];
+    if(/^\s*$/.test(line)){ i++; continue; }
+    if(line.startsWith('# ')){ html+=`<h1>${inline(line.slice(2))}</h1>`; i++; continue; }
+    if(line.startsWith('## ')){ html+=`<h2>${inline(line.slice(3))}</h2>`; i++; continue; }
+    if(/^\|.*\|\s*$/.test(line) && lines[i+1] && /^\|[\s:|-]+\|\s*$/.test(lines[i+1])){
+      const rows=[]; let j=i;
+      while(j<lines.length && /^\|.*\|\s*$/.test(lines[j])){ rows.push(lines[j]); j++; }
+      const cells=r=>r.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim());
+      const head=cells(rows[0]);
+      const body=rows.slice(2).map(cells);
+      html+='<table><thead><tr>'+head.map(h=>`<th>${inline(h)}</th>`).join('')+'</tr></thead><tbody>'
+        +body.map(r=>'<tr>'+r.map(c=>`<td>${inline(c)}</td>`).join('')+'</tr>').join('')+'</tbody></table>';
+      i=j; continue;
+    }
+    html+=`<p>${inline(line)}</p>`; i++;
+  }
+  return html;
+}
+async function loadRules(){
+  const tabsBox=$('rules-tabs'); const contentBox=$('rules-content');
+  if(!tabsBox||!contentBox) return;
+  try{
+    if(!window._rulesCache){
+      const qs=await getDocs(query(collection(db,'company_policies'), orderBy('order')));
+      const list=[]; qs.forEach(d=>list.push({id:d.id,...d.data()}));
+      window._rulesCache=list;
+    }
+    const list=window._rulesCache;
+    if(!list.length){ contentBox.innerHTML='<div class="empty">등록된 내규가 없습니다.</div>'; return; }
+    const renderDoc=(idx)=>{
+      const doc=list[idx];
+      contentBox.innerHTML=mdToHtmlSimple(doc.markdown||'');
+      tabsBox.querySelectorAll('.rules-tab').forEach((b,i)=>b.classList.toggle('active', i===idx));
+    };
+    tabsBox.innerHTML='';
+    list.forEach((doc,idx)=>{
+      const b=document.createElement('button');
+      b.className='rules-tab'; b.textContent=doc.title||doc.id;
+      b.onclick=()=>renderDoc(idx);
+      tabsBox.appendChild(b);
+    });
+    renderDoc(0);
+  }catch(e){ contentBox.innerHTML=`<div class="empty">불러오기 실패: ${e.code||e.message}</div>`; }
+}
+window.loadRules=loadRules;
+
 async function loadOrg(){
   const box=$('org-content'); if(!box) return;
   box.innerHTML='<div class="empty">불러오는 중...</div>';
@@ -2853,6 +2939,15 @@ function renderMenu(){
       org.classList.add('active');
     };
     nav.appendChild(org);
+
+    const rulesBtn=document.createElement('button');
+    rulesBtn.className='sb-item'; rulesBtn.dataset.nav='rules';
+    rulesBtn.innerHTML='<span class="sic">📖</span><span>내규 열람</span>';
+    rulesBtn.onclick=()=>{ showView('rules'); loadRules();
+      document.querySelectorAll('#sb-nav .sb-item, #sb-nav .sb-subitem').forEach(b=>b.classList.remove('active'));
+      rulesBtn.classList.add('active');
+    };
+    nav.appendChild(rulesBtn);
   }
 
   // Portal 관리 (관리자 전용) — 구분선 + 버튼
@@ -3464,7 +3559,11 @@ function mbnOpenMore(){
   const orgBtn=document.createElement('button'); orgBtn.className='mmp-btn';
   orgBtn.innerHTML='<span class="mmp-ic">🏢</span><div><div>조직도</div></div>';
   orgBtn.onclick=()=>{ mbnCloseMore(); window.showView&&window.showView('org'); window.loadOrg&&window.loadOrg(); };
-  const extraItems=[orgBtn];
+
+  const rulesBtnM=document.createElement('button'); rulesBtnM.className='mmp-btn';
+  rulesBtnM.innerHTML='<span class="mmp-ic">📖</span><div><div>내규 열람</div></div>';
+  rulesBtnM.onclick=()=>{ mbnCloseMore(); window.showView&&window.showView('rules'); window.loadRules&&window.loadRules(); };
+  const extraItems=[orgBtn, rulesBtnM];
 
   if(_me.admin){
     const admBtn=document.createElement('button'); admBtn.className='mmp-btn';
