@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- HR module build: 20260923 · ver 2.7.0 · 근로시간 탭에서 휴가 직접 부여(관리자) + 연봉 제안서 출력에 기술수당·여비교통비 표시 · 이전: 2.6.0 연봉 제안서 신설 -->
+<!DOCTYPE html><!-- HR module build: 20260924 · ver 2.8.0 · 근로시간 체크 시 출장 여부 함께 기록(관리자) · 이전: 2.7.0 근로시간 휴가 직접 부여 + 연봉 제안서 별도지급 표시 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -6067,7 +6067,10 @@ window.otPcShowPersonDetail = async (id, name, rank) => {
         </div>
       </div>
       ${otRenderAttendanceCard(attSummary)}
-      ${wage?`<div style="font-size:12px;color:#5C6F8A;margin-bottom:10px;">통상임금 ${wage.rate.toLocaleString()}원/h</div>`:''}
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+        ${wage?`<div style="font-size:12px;color:#5C6F8A;">통상임금 ${wage.rate.toLocaleString()}원/h</div>`:''}
+        ${attRows.filter(r=>r.isBusinessTrip).length?`<div style="font-size:12px;color:#1D5BA6;font-weight:600;">✈️ 이번달 출장 ${attRows.filter(r=>r.isBusinessTrip).length}일</div>`:''}
+      </div>
       <div style="font-size:12px;font-weight:700;color:#1A2540;margin:14px 0 8px;">🗓 근로 내역 (${ym}) — 날짜를 클릭하면 조회·수정할 수 있습니다</div>
       ${otRenderAttendanceCalendar(id, name, rank, attRows, leaveDocs)}
       <div style="display:flex;gap:14px;margin-top:10px;font-size:10.5px;color:#9AAABF;flex-wrap:wrap;">
@@ -6076,6 +6079,7 @@ window.otPcShowPersonDetail = async (id, name, rank) => {
         <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#FEE2E2;margin-right:4px;"></span>평일 결근(기록없음)</span>
         <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#EDE9FE;margin-right:4px;"></span>휴일근무</span>
         <span><span style="width:9px;height:9px;border-radius:50%;background:#F59E0B;display:inline-block;margin-right:4px;"></span>관리자 수정</span>
+        <span>✈️ 출장</span>
       </div>`;
   } catch(e){ panel.innerHTML=`<div style="color:#dc2626;">오류: ${e.message}</div>`; }
 };
@@ -6123,12 +6127,13 @@ function otRenderAttendanceCalendar(workerId, workerName, rank, attRows, leaveDo
     else if (dow===0) fg = '#E05'; else if (dow===6) fg = '#1D5BA6';
 
     const border = isToday ? 'border:1.5px solid #F59E0B;' : '';
-    const subLabel = rec ? `<div style="font-size:8.5px;margin-top:1px;">${(rec.workHours||0).toFixed(1)}h</div>`
+    const subLabel = rec ? `<div style="font-size:8.5px;margin-top:1px;">${rec.isBusinessTrip?'✈️ ':''}${(rec.workHours||0).toFixed(1)}h</div>`
                     : leaveType ? `<div style="font-size:8px;margin-top:1px;">${otEsc(leaveType.replace(/\(.+?\)/,''))}</div>` : '';
     const adminDot = rec?.updatedByAdmin ? `<span style="position:absolute;top:2px;right:3px;width:5px;height:5px;border-radius:50%;background:#F59E0B;"></span>` : '';
+    const tripTitle = rec?.isBusinessTrip ? '출장' : '';
 
     html += `<div onclick="otAttOpenEdit('${workerId}','${otEsc(workerName)}','${dateStr}','${otEsc(rank||'')}')"
-      title="${leaveType?otEsc(leaveType):''}"
+      title="${leaveType?otEsc(leaveType):tripTitle}"
       style="position:relative;text-align:center;padding:6px 2px 5px;border-radius:8px;font-size:11.5px;background:${bg};color:${fg};font-weight:${fw};${border}cursor:pointer;">
       ${adminDot}${day}${subLabel}
     </div>`;
@@ -6190,6 +6195,10 @@ window.otAttOpenEdit = (workerId, workerName, dateStr, rank) => {
           <label style="font-size:11px;color:#5C6F8A;display:block;margin-bottom:4px;">휴게시간(분)</label>
           <input type="number" id="ot-att-break" value="${existing?.breakMinutes??120}" min="0" step="10" style="width:100%;padding:8px 10px;border:1px solid #DDE3EE;border-radius:8px;font-size:13px;box-sizing:border-box;">
         </div>
+        <label style="display:flex;align-items:center;gap:7px;padding:9px 10px;border:1px solid ${existing?.isBusinessTrip?'#1D5BA6':'#DDE3EE'};border-radius:8px;background:${existing?.isBusinessTrip?'#E8F0FB':'#fff'};cursor:pointer;">
+          <input type="checkbox" id="ot-att-trip" ${existing?.isBusinessTrip?'checked':''} onchange="this.parentElement.style.background=this.checked?'#E8F0FB':'#fff';this.parentElement.style.borderColor=this.checked?'#1D5BA6':'#DDE3EE';" style="width:15px;height:15px;cursor:pointer;">
+          <span style="font-size:12.5px;color:#1A2540;font-weight:600;">✈️ 출장 (외근·타 현장 파견 등)</span>
+        </label>
         <div id="ot-att-status" style="font-size:11px;color:#DC2626;min-height:14px;"></div>
         <div style="display:flex;gap:8px;margin-top:6px;">
           <button onclick="document.getElementById('ot-att-modal').remove()" style="flex:1;padding:10px;background:#F0F4F9;border:none;border-radius:9px;color:#5C6F8A;font-size:13px;cursor:pointer;">취소</button>
@@ -6206,6 +6215,7 @@ window.otAttSave = async (workerId, workerName, lockedDate) => {
   const checkIn = document.getElementById('ot-att-checkin').value;
   const checkOut = document.getElementById('ot-att-checkout').value;
   const breakMinutes = Number(document.getElementById('ot-att-break').value)||0;
+  const isBusinessTrip = !!document.getElementById('ot-att-trip')?.checked;
   const statusEl = document.getElementById('ot-att-status');
   if (!date || !checkIn || !checkOut) { statusEl.textContent = '날짜·출근·퇴근 시간을 모두 입력해주세요.'; return; }
 
@@ -6221,7 +6231,7 @@ window.otAttSave = async (workerId, workerName, lockedDate) => {
     const key = `${workerId}_${date}`;
     await setDoc(doc(window._db,'worker_attendance_log',key), {
       workerId, name: workerName, date, yearMonth: date.slice(0,7),
-      checkIn, checkOut, breakMinutes, workHours,
+      checkIn, checkOut, breakMinutes, workHours, isBusinessTrip,
       updatedAt: serverTimestamp(), updatedByAdmin: true,
     }, { merge:true });
     document.getElementById('ot-att-modal').remove();
