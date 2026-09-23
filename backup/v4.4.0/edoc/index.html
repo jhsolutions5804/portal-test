@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- edoc module build: 20260924 · ver 4.4.0 · 업무일지 캘린더 뷰 신설(날짜 클릭 시 해당일 업무일지만 표시, 기본 진입 화면) · 이전: 20260916c ver 4.3.0 -->
+<!DOCTYPE html><!-- edoc module build: 20260924b · ver 4.4.0 · 업무일지 캘린더 뷰 신설 + 상세화면 "‹ 목록" 복귀처를 캘린더로 수정(전체목록 아님) · 이전: 20260916c ver 4.3.0 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -374,6 +374,12 @@ window.dailyCalPickDate = function(dateStr) {
   _dailySelDate = (_dailySelDate === dateStr) ? null : dateStr;
   renderDailyCalendarBody();
 };
+// 캘린더에서 연 상세화면의 "‹ 목록" 버튼이 전체목록이 아니라 캘린더(선택된 날짜 유지)로 돌아가도록
+// 기존 _detailBackFn 메커니즘(결재함 등에서 이미 쓰는 방식)에 그대로 태운다.
+window.dailyCalOpenDetail = function(d) {
+  _detailBackFn = () => renderDailyCalendar();
+  renderDailyDetail(d);
+};
 
 function renderDailyCalendarBody() {
   const wrap = document.getElementById('daily-cal-wrap'); if (!wrap) return;
@@ -437,7 +443,7 @@ function renderDailyCalendarBody() {
         <thead><tr><th style="text-align:left;">제목</th><th>작성자</th><th>소속</th><th>상태</th></tr></thead>
         <tbody>
           ${rows.map(d=>`
-            <tr onclick='renderDailyDetail(${JSON.stringify(d).replace(/'/g,"&#39;")})'>
+            <tr onclick='dailyCalOpenDetail(${JSON.stringify(d).replace(/'/g,"&#39;")})'>
               <td style="text-align:left;font-weight:600;">${d.title||'(제목없음)'}${d.pjtName?` <span style="font-size:10px;color:#9AAABF;font-weight:400;">· ${d.pjtCode||''} ${d.pjtName}</span>`:''}</td>
               <td>${d.authorName||'-'}</td>
               <td style="color:#5C6F8A;">${d.authorDept||'-'}</td>
