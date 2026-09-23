@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- HR module build: 20260924d · ver 2.11.0 · 근로계약서 문구에서 파견법 연상 표현(근로자보호 등에 관한 법률·사용사업주) 삭제(v5) · 이전: 2.10.0 동의서 별지 자동첨부 -->
+<!DOCTYPE html><!-- HR module build: 20260924e · ver 2.12.0 · 포털 하단 작업탭 동기화 — 내부 이동 시 현재 화면을 포털에 알려 탭 라벨 정확화 · 이전: 20260924d ver 2.11.0 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -785,6 +785,9 @@ function goTab(key) {
   document.querySelectorAll('[data-navkey]').forEach(b =>
     b.classList.toggle('active', b.getAttribute('data-navkey') === key));
   const ht = document.getElementById('header-title'); if (ht) ht.textContent = t.title;
+  if (document.documentElement.classList.contains('portal-embed')) {
+    try { window.parent.postMessage({source:'jh-embed', mod:'hr', key}, '*'); } catch(e) {}
+  }
   if (t.fn) t.fn();
 }
 window.goTab = goTab;
