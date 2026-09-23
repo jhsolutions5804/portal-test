@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- edoc module build: 20260916c · ver 4.3.0 · 연차신청서 결재라인(approvers) 추가 + 관리자 결재함 전체조회 -->
+<!DOCTYPE html><!-- edoc module build: 20260924 · ver 4.4.0 · 업무일지 캘린더 뷰 신설(날짜 클릭 시 해당일 업무일지만 표시, 기본 진입 화면) · 이전: 20260916c ver 4.3.0 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -312,8 +312,146 @@ async function loadPjts() {
 }
 
 // 업무일지 메인 화면
-// 업무일지 메인 = 조회(테이블) 화면. 우측 상단에 작성/권한관리 버튼 배치
-window.renderDailyMain = function() { renderDailyList(); };
+// 업무일지 메인 = 캘린더(기본) 또는 전체목록. 우측 상단에 작성/권한관리 버튼 배치.
+let _dailyView = 'calendar';           // 'calendar' | 'list' — 화면 전환 시 유지
+let _dailyCalYear = new Date().getFullYear();
+let _dailyCalMonth = new Date().getMonth() + 1;
+let _dailySelDate = null;              // 캘린더에서 선택된 날짜(YYYY-MM-DD)
+window.renderDailyMain = function() { _dailyView === 'list' ? renderDailyList() : renderDailyCalendar(); };
+
+// _dailyView는 이 <script type="module"> 안의 모듈 스코프 변수라 인라인 onclick(전역 스코프)에서
+// 직접 대입하면 다른 바인딩이 생겨 반영되지 않는다 — 반드시 window.* 함수를 통해서만 바꾼다.
+window.dailySetView = function(v) {
+  _dailyView = v;
+  v === 'list' ? renderDailyList() : renderDailyCalendar();
+};
+const dailyViewToggleHtml = () => `<div style="display:flex;background:#F0F4F9;border-radius:8px;padding:2px;gap:2px;">
+  <button onclick="dailySetView('calendar')" style="padding:6px 12px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;background:${_dailyView==='calendar'?'#fff':'transparent'};color:${_dailyView==='calendar'?'#1D5BA6':'#5C6F8A'};box-shadow:${_dailyView==='calendar'?'0 1px 3px rgba(0,0,0,0.08)':'none'};">📅 캘린더</button>
+  <button onclick="dailySetView('list')" style="padding:6px 12px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;background:${_dailyView==='list'?'#fff':'transparent'};color:${_dailyView==='list'?'#1D5BA6':'#5C6F8A'};box-shadow:${_dailyView==='list'?'0 1px 3px rgba(0,0,0,0.08)':'none'};">📋 전체목록</button>
+</div>`;
+
+// 업무일지 — 캘린더 화면 (기본 진입 화면). 날짜를 클릭하면 그 날짜에 작성된 업무일지만 아래에 표시한다.
+window.renderDailyCalendar = async function() {
+  const el = document.getElementById('tab-daily'); if(!el) return;
+  el.innerHTML = `<div class="wrap2">
+    <div class="sec-toolbar">
+      <div class="sec-title" style="margin-bottom:0;">📝 업무일지</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        ${edocHomeBtnHtml()}
+        ${dailyViewToggleHtml()}
+        ${_isAdmin ? `<button class="toolbar-btn" onclick="renderDailyPerms()">🔑 권한관리</button>` : ''}
+        <button class="toolbar-btn primary" onclick="renderDailyWrite()">✏️ 작성</button>
+      </div>
+    </div>
+    <div id="daily-cal-wrap"><div class="panel-empty" style="padding:40px;">⏳ 불러오는 중...</div></div>
+  </div>`;
+
+  try {
+    const docs = await fetchEdocDocs('daily');
+    _dailyCalDocs = docs;
+    renderDailyCalendarBody();
+  } catch(e) {
+    document.getElementById('daily-cal-wrap').innerHTML = `<div style="color:#DC2626;padding:20px;">오류: ${e.message}</div>`;
+  }
+};
+
+let _dailyCalDocs = [];
+
+window.dailyCalNav = function(delta) {
+  _dailyCalMonth += delta;
+  if (_dailyCalMonth < 1) { _dailyCalMonth = 12; _dailyCalYear--; }
+  else if (_dailyCalMonth > 12) { _dailyCalMonth = 1; _dailyCalYear++; }
+  _dailySelDate = null;
+  renderDailyCalendarBody();
+};
+window.dailyCalToday = function() {
+  const t = new Date();
+  _dailyCalYear = t.getFullYear(); _dailyCalMonth = t.getMonth()+1;
+  _dailySelDate = t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');
+  renderDailyCalendarBody();
+};
+window.dailyCalPickDate = function(dateStr) {
+  _dailySelDate = (_dailySelDate === dateStr) ? null : dateStr;
+  renderDailyCalendarBody();
+};
+
+function renderDailyCalendarBody() {
+  const wrap = document.getElementById('daily-cal-wrap'); if (!wrap) return;
+  const docs = _dailyCalDocs || [];
+  const byDate = {};
+  docs.forEach(d => { const k = d.date || ''; if (!k) return; (byDate[k] = byDate[k] || []).push(d); });
+
+  const STATUS_LABEL = { draft:'임시저장', pending:'결재대기', reviewing:'검토중', approved:'승인', rejected:'반려', posted:'게시' };
+  const STATUS_COLOR = { draft:'#9AAABF', pending:'#F59E0B', reviewing:'#3B82F6', approved:'#16A34A', rejected:'#DC2626', posted:'#1D5BA6' };
+
+  const y = _dailyCalYear, m = _dailyCalMonth;
+  const first = new Date(y, m-1, 1);
+  const lastDate = new Date(y, m, 0).getDate();
+  const firstDow = first.getDay();
+  const today = new Date();
+  const todayStr = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  const DOW = ['일','월','화','수','목','금','토'];
+
+  let grid = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px;">
+    ${DOW.map((w,i)=>`<div style="text-align:center;font-size:10.5px;font-weight:700;color:${i===0?'#E05':(i===6?'#1D5BA6':'#9AAABF')};padding:4px 0;">${w}</div>`).join('')}
+  </div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;">`;
+  for (let i=0;i<firstDow;i++) grid += `<div></div>`;
+  for (let day=1; day<=lastDate; day++){
+    const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const dow = (firstDow + day - 1) % 7;
+    const isHoliday = EDOC_KR_HOLIDAYS.has(dateStr);
+    const cnt = (byDate[dateStr]||[]).length;
+    const isToday = dateStr === todayStr;
+    const isSel = dateStr === _dailySelDate;
+    let fg = '#1A2540';
+    if (dow===0 || isHoliday) fg = '#E05'; else if (dow===6) fg = '#1D5BA6';
+    const bg = isSel ? '#1D5BA6' : (cnt ? '#E8F0FB' : 'transparent');
+    if (isSel) fg = '#fff';
+    const border = isToday && !isSel ? 'border:1.5px solid #F59E0B;' : (isSel ? '' : 'border:1px solid transparent;');
+    grid += `<div onclick="dailyCalPickDate('${dateStr}')"
+      style="position:relative;text-align:center;padding:7px 2px 6px;border-radius:8px;font-size:12px;background:${bg};color:${fg};font-weight:${cnt||isSel?700:500};cursor:pointer;${border}">
+      ${day}${cnt?`<div style="font-size:9px;margin-top:2px;color:${isSel?'#DCEAFB':'#1D5BA6'};">●${cnt>1?' '+cnt:''}</div>`:''}
+    </div>`;
+  }
+  grid += `</div>`;
+
+  const monthNav = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+    <button onclick="dailyCalNav(-1)" style="background:#F0F4F9;border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:14px;color:#5C6F8A;">‹</button>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="font-size:14px;font-weight:800;color:#1A2540;">${y}년 ${m}월</div>
+      <button onclick="dailyCalToday()" style="background:#E8F0FB;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;color:#1D5BA6;cursor:pointer;">오늘</button>
+    </div>
+    <button onclick="dailyCalNav(1)" style="background:#F0F4F9;border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:14px;color:#5C6F8A;">›</button>
+  </div>`;
+
+  let dayPanel = '';
+  if (_dailySelDate) {
+    const rows = (byDate[_dailySelDate] || []).slice().sort((a,b)=>(a.authorName||'').localeCompare(b.authorName||''));
+    const dLabel = _dailySelDate.replace(/-/g,'.');
+    dayPanel = `<div style="margin-top:16px;border-top:1px solid #EEF2F7;padding-top:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:13px;font-weight:800;color:#1A2540;">🗓 ${dLabel} 업무일지 ${rows.length ? `(${rows.length}건)` : ''}</div>
+        <button onclick="renderDailyWrite({date:'${_dailySelDate}'})" style="background:#1D5BA6;border:none;border-radius:7px;color:#fff;padding:5px 11px;font-size:11.5px;font-weight:600;cursor:pointer;">✏️ 이 날짜에 작성</button>
+      </div>
+      ${rows.length ? `<table class="ptable">
+        <thead><tr><th style="text-align:left;">제목</th><th>작성자</th><th>소속</th><th>상태</th></tr></thead>
+        <tbody>
+          ${rows.map(d=>`
+            <tr onclick='renderDailyDetail(${JSON.stringify(d).replace(/'/g,"&#39;")})'>
+              <td style="text-align:left;font-weight:600;">${d.title||'(제목없음)'}${d.pjtName?` <span style="font-size:10px;color:#9AAABF;font-weight:400;">· ${d.pjtCode||''} ${d.pjtName}</span>`:''}</td>
+              <td>${d.authorName||'-'}</td>
+              <td style="color:#5C6F8A;">${d.authorDept||'-'}</td>
+              <td><span class="status-pill" style="background:${STATUS_COLOR[d.status]||'#9AAABF'}22;color:${STATUS_COLOR[d.status]||'#9AAABF'};">${STATUS_LABEL[d.status]||d.status}</span></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>` : `<div class="panel-empty" style="padding:24px;">이 날짜에 작성된 업무일지가 없습니다.</div>`}
+    </div>`;
+  } else {
+    dayPanel = `<div style="margin-top:16px;text-align:center;color:#9AAABF;font-size:12px;padding:8px 0;">날짜를 클릭하면 그날 작성된 업무일지만 볼 수 있습니다. (●는 작성 건수)</div>`;
+  }
+
+  wrap.innerHTML = `<div style="background:#fff;border-radius:12px;padding:16px;">${monthNav}${grid}${dayPanel}</div>`;
+}
 
 // 업무일지 권한관리 화면 (관리자 전용)
 window.renderDailyPerms = async function() {
@@ -593,8 +731,9 @@ window.renderDailyList = async function() {
   el.innerHTML = `<div class="wrap2">
     <div class="sec-toolbar">
       <div class="sec-title" style="margin-bottom:0;">📝 업무일지</div>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;align-items:center;">
         ${edocHomeBtnHtml()}
+        ${dailyViewToggleHtml()}
         ${_isAdmin ? `<button class="toolbar-btn" onclick="renderDailyPerms()">🔑 권한관리</button>` : ''}
         <button class="toolbar-btn primary" onclick="renderDailyWrite()">✏️ 작성</button>
       </div>
@@ -3143,5 +3282,6 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
 
 </body>
 </html>
+
 
 
