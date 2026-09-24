@@ -3125,7 +3125,7 @@ function hrComputeLeaveHoursForMonth(leaveDocs, workerName, year, month) {
     if (lv.status !== 'posted' && lv.status !== 'approved') continue;
     if (!isLeavePaid(lv.leaveType)) continue;
     if (!lv.startDate || !lv.endDate) continue;
-    const perDay = /반차/.test(lv.leaveType || '') ? 4 : 8;
+    const perDay = (/반차/.test(lv.leaveType || '') || lv.days === 0.5 || lv.leaveDays === 0.5) ? 4 : 8;
     const cur = new Date(lv.startDate);
     const end = new Date(lv.endDate);
     while (cur <= end) {
@@ -3729,10 +3729,15 @@ let laborSignCanvas2 = null, laborSignDrawing2 = false;
 
 
 
+let _laborViewFilter = 'active'; // active | resigned
+window.laborSetFilter = (f) => { _laborViewFilter = f; renderLaborMain(); };
 window.renderLaborMain = async () => {
   const el = document.getElementById('tab-labor');
   if(!el)return;
   laborView2='main';
+  const allW0 = await getWorkersList();
+  const activeCnt0 = allW0.filter(d=>d.status!=='resigned').length;
+  const resignedCnt0 = allW0.filter(d=>d.status==='resigned').length;
 
   el.innerHTML = `<div style="padding:20px 24px;max-width:1100px;margin:0 auto;">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">${homeBtn()}</div>
@@ -3740,13 +3745,24 @@ window.renderLaborMain = async () => {
       <div style="font-size:16px;font-weight:800;color:#1A2540;">📝 근로계약서</div>
       <button onclick="renderLaborRegister()" style="background:#1D5BA6;border:none;border-radius:9px;padding:8px 18px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(29,91,166,0.18);">➕ 신규 작성</button>
     </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button id="labor-filter-active" onclick="laborSetFilter('active')"
+        style="padding:7px 16px;border-radius:8px;border:1px solid ${_laborViewFilter==='active'?'#1D5BA6':'#DDE4EF'};background:${_laborViewFilter==='active'?'#E8F0FB':'#fff'};color:${_laborViewFilter==='active'?'#1D5BA6':'#5C6F8A'};font-size:12px;font-weight:700;cursor:pointer;">
+        🟢 재직자 ${allW0.length?`(${activeCnt0})`:''}
+      </button>
+      <button id="labor-filter-resigned" onclick="laborSetFilter('resigned')"
+        style="padding:7px 16px;border-radius:8px;border:1px solid ${_laborViewFilter==='resigned'?'#DC2626':'#DDE4EF'};background:${_laborViewFilter==='resigned'?'#FEE2E2':'#fff'};color:${_laborViewFilter==='resigned'?'#DC2626':'#5C6F8A'};font-size:12px;font-weight:700;cursor:pointer;">
+        🔴 퇴사자 ${allW0.length?`(${resignedCnt0})`:''}
+      </button>
+    </div>
     <div id="labor-list-loading" style="text-align:center;padding:48px;color:#9AAABF;">⏳ 불러오는 중...</div>
     <div id="labor-list-wrap"></div>
   </div>`;
 
   if(!window._db){ setTimeout(renderLaborMain,500); return; }
   try {
-    const workers = await getWorkersList();
+    const allWorkers = allW0;
+    const workers = allWorkers.filter(d => _laborViewFilter==='resigned' ? d.status==='resigned' : d.status!=='resigned');
     const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
 
     const ci = {};
@@ -3760,9 +3776,13 @@ window.renderLaborMain = async () => {
     }
 
     document.getElementById('labor-list-loading').style.display='none';
+    const activeCnt = allWorkers.filter(d=>d.status!=='resigned').length;
+    const resignedCnt = allWorkers.filter(d=>d.status==='resigned').length;
+    const fa=document.getElementById('labor-filter-active'); if(fa) fa.innerHTML = `🟢 재직자 (${activeCnt})`;
+    const fr=document.getElementById('labor-filter-resigned'); if(fr) fr.innerHTML = `🔴 퇴사자 (${resignedCnt})`;
     if(!workers.length){
       document.getElementById('labor-list-wrap').innerHTML=
-        '<div style="text-align:center;padding:48px;color:#9AAABF;">등록된 근로자가 없습니다.<br><small>근로자 명부에 먼저 등록하세요.</small></div>';
+        `<div style="text-align:center;padding:48px;color:#9AAABF;">${_laborViewFilter==='resigned' ? '퇴사 처리된 근로자가 없습니다.' : '등록된 근로자가 없습니다.<br><small>근로자 명부에 먼저 등록하세요.</small>'}</div>`;
       return;
     }
 
@@ -4174,10 +4194,15 @@ let annualView2='main';
 let annualForm2={workerId:'',name:'',jumin:'',address:'',dept:'',rank:'',empType:'field',startDate:'2026-06-02',endDate:'2027-05-31',contractDate:'',hourly:'',salary:'',wageType:'noncomprehensive',fixedOT:'',fixedNight:'',signData:null};
 let annualSignCanvas2=null, annualSignDrawing2=false;
 
+let _annualViewFilter = 'active'; // active | resigned
+window.annualSetFilter = (f) => { _annualViewFilter = f; renderAnnualMain(); };
 window.renderAnnualMain = async () => {
   const el = document.getElementById('tab-annual');
   if(!el) return;
   annualView2 = 'main';
+  const allW0 = await getWorkersList();
+  const activeCnt0 = allW0.filter(d=>d.status!=='resigned').length;
+  const resignedCnt0 = allW0.filter(d=>d.status==='resigned').length;
 
   el.innerHTML = `<div style="padding:20px 24px;max-width:1100px;margin:0 auto;">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">${homeBtn()}</div>
@@ -4185,13 +4210,24 @@ window.renderAnnualMain = async () => {
       <div style="font-size:16px;font-weight:800;color:#1A2540;">📋 연봉계약서</div>
       <button onclick="renderAnnualRegister()" style="background:#1D5BA6;border:none;border-radius:9px;padding:8px 18px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(29,91,166,0.18);">➕ 신규 작성</button>
     </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button id="annual-filter-active" onclick="annualSetFilter('active')"
+        style="padding:7px 16px;border-radius:8px;border:1px solid ${_annualViewFilter==='active'?'#1D5BA6':'#DDE4EF'};background:${_annualViewFilter==='active'?'#E8F0FB':'#fff'};color:${_annualViewFilter==='active'?'#1D5BA6':'#5C6F8A'};font-size:12px;font-weight:700;cursor:pointer;">
+        🟢 재직자 ${allW0.length?`(${activeCnt0})`:''}
+      </button>
+      <button id="annual-filter-resigned" onclick="annualSetFilter('resigned')"
+        style="padding:7px 16px;border-radius:8px;border:1px solid ${_annualViewFilter==='resigned'?'#DC2626':'#DDE4EF'};background:${_annualViewFilter==='resigned'?'#FEE2E2':'#fff'};color:${_annualViewFilter==='resigned'?'#DC2626':'#5C6F8A'};font-size:12px;font-weight:700;cursor:pointer;">
+        🔴 퇴사자 ${allW0.length?`(${resignedCnt0})`:''}
+      </button>
+    </div>
     <div id="annual-list-loading" style="text-align:center;padding:48px;color:#9AAABF;">⏳ 불러오는 중...</div>
     <div id="annual-list-wrap"></div>
   </div>`;
 
   if(!window._db){ setTimeout(renderAnnualMain, 500); return; }
   try {
-    const workers = await getWorkersList();
+    const allWorkers = allW0;
+    const workers = allWorkers.filter(d => _annualViewFilter==='resigned' ? d.status==='resigned' : d.status!=='resigned');
     const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
 
     const ci = {};
@@ -4210,9 +4246,13 @@ window.renderAnnualMain = async () => {
     }
 
     document.getElementById('annual-list-loading').style.display = 'none';
+    const activeCnt = allWorkers.filter(d=>d.status!=='resigned').length;
+    const resignedCnt = allWorkers.filter(d=>d.status==='resigned').length;
+    const fa=document.getElementById('annual-filter-active'); if(fa) fa.innerHTML = `🟢 재직자 (${activeCnt})`;
+    const fr=document.getElementById('annual-filter-resigned'); if(fr) fr.innerHTML = `🔴 퇴사자 (${resignedCnt})`;
     if(!workers.length){
       document.getElementById('annual-list-wrap').innerHTML =
-        '<div style="text-align:center;padding:48px;color:#9AAABF;">등록된 근로자가 없습니다.<br><small>근로자 명부에 먼저 등록하세요.</small></div>';
+        `<div style="text-align:center;padding:48px;color:#9AAABF;">${_annualViewFilter==='resigned' ? '퇴사 처리된 근로자가 없습니다.' : '등록된 근로자가 없습니다.<br><small>근로자 명부에 먼저 등록하세요.</small>'}</div>`;
       return;
     }
 
@@ -6589,6 +6629,22 @@ window.renderOvertimePC = async () => {
   await otPcInit();
 };
 
+// ── 근로시간 탭 직원 목록: 퇴사자는 퇴사한 달까지만 표시(그 이후 달에는 안 보임) ──
+function otFilterWorkersForMonth(workers, year, month) {
+  const ym = `${year}-${String(month).padStart(2,'0')}`;
+  return (workers||[]).filter(w => {
+    if (w.status !== 'resigned' || !w.resignDate) return true; // 재직자는 항상 표시
+    return w.resignDate.slice(0,7) >= ym; // 퇴사월(resignDate가 속한 달) 이후 달엔 제외
+  });
+}
+function otRenderWorkerListHtml(workers) {
+  return workers.map(w => `
+      <button id="ot-pw-${w.id}" onclick="otPcSelectWorker('${w.id}','${w.name}','${w.rank||''}')"
+        style="text-align:left;padding:7px 10px;border:none;border-radius:7px;background:#F7F9FC;cursor:pointer;font-size:12px;color:#1A2540;width:100%;">
+        ${w.name} <span style="color:#9AAABF;font-size:10px;">${w.rank||''}</span>${w.status==='resigned'?`<span style="color:#DC2626;font-size:9px;margin-left:4px;">퇴사</span>`:''}
+      </button>`).join('');
+}
+
 window.otPcInit = async () => {
   try {
     const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
@@ -6597,19 +6653,16 @@ window.otPcInit = async () => {
     snap.forEach(d => workers.push({ id: d.id, ...d.data() }));
     workers.sort((a,b) => (a.empNo||'').localeCompare(b.empNo||''));
 
-    // 직원 목록 렌더
+    // 직원 목록 렌더 (퇴사자는 퇴사월까지만)
     const wBox = document.getElementById('ot-pc-workers');
     const sel  = document.getElementById('ot-pc-worker-sel');
-    if (wBox) wBox.innerHTML = workers.map(w => `
-      <button id="ot-pw-${w.id}" onclick="otPcSelectWorker('${w.id}','${w.name}','${w.rank||''}')"
-        style="text-align:left;padding:7px 10px;border:none;border-radius:7px;background:#F7F9FC;cursor:pointer;font-size:12px;color:#1A2540;width:100%;">
-        ${w.name} <span style="color:#9AAABF;font-size:10px;">${w.rank||''}</span>
-      </button>`).join('');
+    const visibleWorkers = otFilterWorkersForMonth(workers, _otPcYear, _otPcMonth);
+    if (wBox) wBox.innerHTML = otRenderWorkerListHtml(visibleWorkers);
     if (sel) {
       sel.innerHTML = '<option value="">직원 선택</option>' +
-        workers.map(w => `<option value="${w.id}|${w.name}|${w.rank||''}">${w.name} ${w.rank||''}</option>`).join('');
+        visibleWorkers.map(w => `<option value="${w.id}|${w.name}|${w.rank||''}">${w.name} ${w.rank||''}</option>`).join('');
     }
-    await otPcLoadKpiAndHours(workers);
+    await otPcLoadKpiAndHours(visibleWorkers);
   } catch(e) { console.error(e); }
 };
 
@@ -6654,13 +6707,17 @@ window.otPcChangeMonth = async (delta) => {
   // 날짜 입력 초기화
   const di = document.getElementById('ot-pc-date');
   if(di) di.value = `${_otPcYear}-${String(_otPcMonth).padStart(2,'0')}-01`;
-  // KPI 갱신
+  // KPI 갱신 (월 이동에 따라 직원 목록도 퇴사자 필터 재적용)
   try {
     const { collection, getDocs, query, where } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const snap = await getDocs(collection(window._db,'workers'));
     const workers = [];
     snap.forEach(d => workers.push({id:d.id,...d.data()}));
-    await otPcLoadKpiAndHours(workers);
+    workers.sort((a,b) => (a.empNo||'').localeCompare(b.empNo||''));
+    const visibleWorkers = otFilterWorkersForMonth(workers, _otPcYear, _otPcMonth);
+    const wBox = document.getElementById('ot-pc-workers');
+    if (wBox) wBox.innerHTML = otRenderWorkerListHtml(visibleWorkers);
+    await otPcLoadKpiAndHours(visibleWorkers);
   } catch(e){}
   // 우패널도 갱신 (현재 선택 직원 있으면)
   const sel = document.getElementById('ot-pc-worker-sel');
@@ -7581,7 +7638,7 @@ window.openLeaveAdminForm = async function(editId, preset) {
           <option value="">선택</option>${workerOpts}
         </select></div>
       <div><label style="font-size:12px;font-weight:600;color:#5C6F8A;display:block;margin-bottom:4px;">휴가 종류</label>
-        <select id="la-type" style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;">
+        <select id="la-type" onchange="const dEl=document.getElementById('la-days'); if(dEl) dEl.value = this.value.includes('반차') ? 0.5 : 1;" style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;">
           <option value="연차" ${ed.leaveType==='연차'?'selected':''}>연차</option>
           <option value="반차(오전)" ${ed.leaveType==='반차(오전)'?'selected':''}>반차(오전)</option>
           <option value="반차(오후)" ${ed.leaveType==='반차(오후)'?'selected':''}>반차(오후)</option>
