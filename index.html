@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260924c · ver: 2026-09-24 (포털 홈 Outlook 메일 카드 제거 → 출퇴근 기록(출근/퇴근시간 입력·저장) + 업무일지(오늘 작성여부·최근목록) 위젯으로 교체) · 이전: 20260924b 하단 작업탭 서브탭 단위 분리 -->
+<!DOCTYPE html><!-- build: 20260924d · ver: 2026-09-24 (포털 홈: 대시보드 카드 높이 고정(내용 길이 무관, 목록은 스크롤) + 하단에 전체 PJT 일정 캘린더 신설(월별, 프로젝트별 색상 구분, 읽기전용)) · 이전: 20260924c Outlook 카드 제거 → 출퇴근/업무일지 위젯 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -515,13 +515,13 @@
   .sb-user-btn{display:flex; align-items:center; gap:10px; flex:1; cursor:pointer; background:none; border:none; padding:0; font-family:inherit; text-align:left}
   .sb-user-btn:hover .nm{text-decoration:underline}
   /* 결재함 카드 */
-  .section-card{background:#fff; border:1px solid #DDE4EF; border-radius:14px; padding:20px 22px; box-shadow:0 1px 4px rgba(29,91,166,.06); display:flex; flex-direction:column; flex:1;}
+  .section-card{background:#fff; border:1px solid #DDE4EF; border-radius:14px; padding:20px 22px; box-shadow:0 1px 4px rgba(29,91,166,.06); display:flex; flex-direction:column; flex:1; min-height:300px;}
   .section-card-header{display:flex; align-items:center; gap:10px; margin-bottom:16px;}
   .section-card-header .sc-icon{width:36px; height:36px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; background:#f0edfb;}
   .section-card-header .sc-title{font-size:15px; font-weight:700; color:#13335C;}
   .section-card-header .sc-badge{margin-left:auto; background:#DC2626; color:#fff; font-size:11px; font-weight:700; border-radius:20px; padding:2px 9px;}
   .section-card-header .sc-badge.zero{background:#16A34A;}
-  .approve-list{display:flex; flex-direction:column; gap:8px; margin-bottom:16px; flex:1;}
+  .approve-list{display:flex; flex-direction:column; gap:8px; margin-bottom:16px; flex:1; max-height:220px; overflow-y:auto;}
   .approve-item{padding:11px 13px; border-radius:9px; background:#F4F7FB; border-left:3px solid #7C3AED; cursor:pointer; display:flex; align-items:center; gap:11px; transition:background .12s;}
   .approve-item:hover{background:#F0EDFB;}
   .approve-item .ai-dtype{font-size:10.5px; font-weight:700; color:#7C3AED; background:#f0edfb; border-radius:6px; padding:2px 7px; white-space:nowrap; flex-shrink:0;}
@@ -533,13 +533,13 @@
   .sc-more-btn{display:flex; align-items:center; justify-content:center; width:100%; padding:9px; border-radius:9px; background:#F4F7FB; border:1px solid #DDE4EF; color:#5C6F8A; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:.12s;}
   .sc-more-btn:hover{background:#E8F0FB; color:#1D5BA6; border-color:#5BA4CF;}
   /* Outlook 카드 */
-  .outlook-card{background:#fff; border:1px solid #DDE4EF; border-radius:14px; padding:18px 20px; box-shadow:0 1px 4px rgba(29,91,166,0.06); display:flex; flex-direction:column; flex:1;}
+  .outlook-card{background:#fff; border:1px solid #DDE4EF; border-radius:14px; padding:18px 20px; box-shadow:0 1px 4px rgba(29,91,166,0.06); display:flex; flex-direction:column; flex:1; min-height:300px;}
   .outlook-card-header{display:flex; align-items:center; gap:10px; margin-bottom:14px;}
   .outlook-card-header .oc-icon{width:36px; height:36px; border-radius:9px; background:#0078D4; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;}
   .outlook-card-header .oc-title{font-size:15px; font-weight:700; color:#13335C;}
   .outlook-card-header .oc-badge{margin-left:auto; background:#DC2626; color:#fff; font-size:11px; font-weight:700; border-radius:20px; padding:2px 8px; min-width:20px; text-align:center;}
   .outlook-card-header .oc-badge.zero{background:#16A34A;}
-  .outlook-mail-list{display:flex; flex-direction:column; gap:8px; margin-bottom:14px;}
+  .outlook-mail-list{display:flex; flex-direction:column; gap:8px; margin-bottom:14px; max-height:150px; overflow-y:auto;}
   .outlook-mail-item{padding:9px 12px; border-radius:9px; background:#F4F7FB; border-left:3px solid #0078D4; cursor:pointer;}
   .outlook-mail-item:hover{background:#E8F0FB;}
   .outlook-mail-item .om-from{font-size:12px; font-weight:700; color:#1A2540; margin-bottom:2px;}
@@ -621,6 +621,27 @@
           <div class="dash-daily-wrap">
             <div class="outlook-card" id="daily-card-wrap">
               <div class="oc-loading">📝 불러오는 중...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 전체 PJT 일정 캘린더 -->
+        <div style="margin-top:24px;">
+          <div style="font-size:15px;font-weight:800;color:#1A2540;margin-bottom:12px;">🗓 전체 PJT 일정</div>
+          <div class="pjt-cal-grid">
+            <div class="pjt-cal-box">
+              <div class="pjt-cal-hd">
+                <button class="pjt-cal-nav" onclick="homeCalShift(-1)">‹</button>
+                <span class="m" id="home-cal-label">—</span>
+                <button class="pjt-cal-nav" onclick="homeCalShift(1)">›</button>
+              </div>
+              <div class="pjt-cal-legend" id="home-cal-legend" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px"></div>
+              <div class="pjt-cal-dow" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px"><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">일</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">월</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">화</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">수</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">목</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">금</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">토</div></div>
+              <div class="pjt-cal-body" id="home-cal-body" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px"><div style="grid-column:1/-1;text-align:center;color:#9AAABF;font-size:12px;padding:20px">불러오는 중...</div></div>
+            </div>
+            <div class="pjt-cal-detail-box">
+              <div style="font-size:14px; font-weight:700; color:#13335C; margin-bottom:14px;" id="home-cal-detail-title">📅 일정 · 업무지시</div>
+              <div id="home-cal-detail" style="font-size:13px; color:#5C6F8A;">날짜를 선택하면 일정이 표시됩니다.</div>
             </div>
           </div>
         </div>
@@ -1598,6 +1619,114 @@ window.pjtCalShift=function(dir){
   if(_pjtCalM>11){_pjtCalM=0;_pjtCalY++;}
   if(_pjtCalM<0){_pjtCalM=11;_pjtCalY--;}
   loadPjtCalendar();
+};
+
+// ── 포털 홈용 "전체 PJT 일정" 캘린더 (읽기 전용 — 위 PJT 관리 화면의 캘린더와 데이터 소스는 같지만 별도 상태/DOM으로 독립 운영) ──
+let _homeCalY=new Date().getFullYear(), _homeCalM=new Date().getMonth();
+let _homeCalCache={}, _homeCalSel=null;
+
+async function loadHomeCalendar(){
+  const body=document.getElementById('home-cal-body');
+  if(!body) return;
+  const y=_homeCalY, m=_homeCalM;
+  const start=_pjtKey(y,m,1);
+  const end=_pjtKey(y,m,new Date(y,m+1,0).getDate());
+  const cache={};
+  if(window._db){
+    try{
+      const {getDocs,collection,query,where} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+      for(const key of allSchedPjtKeys()){
+        const colPath=schedColPath(key);
+        const st=PJT_SUBTABS.find(s=>s.key===key);
+        try{
+          const snap=await getDocs(query(collection(window._db,...colPath),where('sdate','>=',start),where('sdate','<=',end)));
+          snap.forEach(d=>{
+            const s=d.data(); const dk=s.sdate; if(!dk) return;
+            (cache[dk]=cache[dk]||[]).push({...s, id:d.id, pjtName:st?.name||key, pjtKey:key});
+          });
+        }catch(e){}
+      }
+    }catch(e){}
+  }
+  _homeCalCache=cache;
+  renderHomeCal();
+}
+
+function renderHomeCalLegend(){
+  const el=document.getElementById('home-cal-legend'); if(!el) return;
+  const keysInView=new Set();
+  Object.values(_homeCalCache).forEach(items=>items.forEach(it=>keysInView.add(it.pjtKey)));
+  const keys=[...keysInView];
+  if(!keys.length){ el.innerHTML='<span class="li" style="color:#9AAABF;font-size:11px;">이번 달 일정이 없습니다.</span>'; return; }
+  el.innerHTML=keys.map(k=>{
+    const st=PJT_SUBTABS.find(s=>s.key===k);
+    const name=st?.name||k;
+    return '<span class="li"><span class="ld" style="background:'+pjtColorFor(k)+'"></span>'+_pjtEsc(name)+'</span>';
+  }).join('');
+}
+
+function renderHomeCal(){
+  const body=document.getElementById('home-cal-body');
+  const label=document.getElementById('home-cal-label');
+  if(!body) return;
+  renderHomeCalLegend();
+  const y=_homeCalY, m=_homeCalM;
+  if(label) label.textContent=y+'년 '+(m+1)+'월';
+  const first=new Date(y,m,1).getDay();
+  const days=new Date(y,m+1,0).getDate();
+  const now=new Date(); const todayKey=_pjtKey(now.getFullYear(),now.getMonth(),now.getDate());
+  let html='';
+  for(let i=0;i<first;i++) html+='<div style="min-height:76px"></div>';
+  for(let d=1;d<=days;d++){
+    const dk=_pjtKey(y,m,d);
+    const dow=new Date(y,m,d).getDay();
+    const holidayName=PJT_CAL_HOLIDAYS[dk];
+    const items=_homeCalCache[dk]||[];
+    const pjtKeysInDay=[...new Set(items.map(it=>it.pjtKey))].slice(0,6);
+    const dots=pjtKeysInDay.map(k=>'<span style="width:6px;height:6px;border-radius:50%;display:inline-block;background:'+pjtColorFor(k)+'"></span>').join('');
+    const tooltipLines=items.slice(0,5).map(it=>(it.pjtName||'')+': '+(it.text||'')).join('\n');
+    let _cst='min-height:76px;border:1px solid #EEF2F7;border-radius:10px;padding:8px 9px;cursor:pointer;box-sizing:border-box;';
+    if(dk===todayKey) _cst+='background:#EAF2FC;border-color:#1D5BA6;';
+    if(dk===_homeCalSel) _cst+='background:#1D5BA6;border-color:#1D5BA6;';
+    const _nc = dk===_homeCalSel?'#fff':((dow===0||holidayName)?'#c0392b':(dow===6?'#1D5BA6':'#1A2540'));
+    const holidayLbl = holidayName ? '<div style="font-size:9px;color:'+(dk===_homeCalSel?'#fff':'#DC2626')+';line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px;">'+holidayName+'</div>' : '';
+    const _titleAttr=_pjtEsc([holidayName, tooltipLines].filter(Boolean).join('\n'));
+    html+='<div style="'+_cst+'" onclick="homeCalSelectDay(\''+dk+'\')" title="'+_titleAttr+'"><div style="font-size:15px;font-weight:600;color:'+_nc+'">'+d+'</div>'+holidayLbl+'<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:5px">'+dots+(items.length>6?'<span style="font-size:8px;color:'+(dk===_homeCalSel?'#fff':'#9AAABF')+';">+'+(items.length-6)+'</span>':'')+'</div></div>';
+  }
+  body.innerHTML=html;
+}
+
+window.homeCalShift=function(dir){
+  _homeCalM+=dir;
+  if(_homeCalM>11){_homeCalM=0;_homeCalY++;}
+  if(_homeCalM<0){_homeCalM=11;_homeCalY--;}
+  loadHomeCalendar();
+};
+
+// 상세 패널은 읽기 전용 요약만 표시 — 일정 등록/수정은 기존 PJT 관리 화면에서 그대로 진행
+window.homeCalSelectDay=function(dk){
+  _homeCalSel=dk;
+  renderHomeCal();
+  const det=document.getElementById('home-cal-detail');
+  const title=document.getElementById('home-cal-detail-title');
+  if(!det) return;
+  const p=dk.split('-'); const dowKo=['일','월','화','수','목','금','토'];
+  const dow=dowKo[new Date(dk+'T00:00:00').getDay()];
+  if(title) title.textContent='📅 '+parseInt(p[1])+'월 '+parseInt(p[2])+'일 ('+dow+')';
+  const items=(_homeCalCache[dk]||[]).slice().sort((a,b)=>(a.stime||'').localeCompare(b.stime||''));
+  let html='';
+  if(items.length){
+    items.forEach(s=>{
+      const pc=pjtColorFor(s.pjtKey);
+      html+='<div style="display:flex;flex-direction:column;gap:1px;margin-bottom:8px;padding:6px 8px;border-radius:7px;border-left:3px solid '+pc+';background:#F7FAFF;">'
+        +'<div style="font-size:12px;font-weight:600;color:#1A2540;">'+(s.stime?_pjtEsc(s.stime)+' ':'')+_pjtEsc(s.text||'')+'</div>'
+        +'<div style="font-size:11px;color:'+pc+';font-weight:600;">'+_pjtEsc(s.pjtName||'')+'</div></div>';
+    });
+  } else {
+    html+='<div style="color:#9AAABF;font-size:12px;padding:2px 0 8px">이 날 등록된 일정이 없습니다.</div>';
+  }
+  html+='<button onclick="showPjtHome()" style="margin-top:4px;font-size:12px;font-weight:600;color:#1D5BA6;background:#E8F0FB;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;font-family:inherit;width:100%;">PJT 관리에서 일정 등록·수정 →</button>';
+  det.innerHTML=html;
 };
 
 window.pjtCalSelectDay=async function(dk){
@@ -2980,6 +3109,8 @@ function renderMenu(){
   // 출퇴근 · 업무일지 카드
   renderAttendHomeCard();
   renderDailyHomeCard();
+  // 전체 PJT 일정 캘린더
+  loadHomeCalendar();
 }
 
 // ── 결재함 카드 (홈) ────────────────────────────────────────
