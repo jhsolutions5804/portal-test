@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- HR module build: 20260924e · ver 2.12.0 · 포털 하단 작업탭 동기화 — 내부 이동 시 현재 화면을 포털에 알려 탭 라벨 정확화 · 이전: 20260924d ver 2.11.0 -->
+<!DOCTYPE html><!-- HR module build: 20260924f · ver 2.12.1 · 연봉계약서·근로계약서 상세화면 '‹ 목록' 버튼이 사용하지 않는 옛 조회목록(List2)으로 가던 버그 수정 — 실제 진입 경로인 메인 목록으로 복귀 · 이전: 20260924e ver 2.12.0 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -4126,7 +4126,7 @@ window.laborViewWorker2 = async (wid, wname) => {
   const el=document.getElementById('tab-labor');
   el.innerHTML=wrap2(`
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-      ${backBtn2('renderLaborList2()','목록')}
+      ${backBtn2('renderLaborMain()','목록')}
       <span style="font-size:13px;font-weight:700;color:${C2.text};">${wname} · 근로계약서</span>
     </div>
     <div id="labor-contracts-loading" style="text-align:center;padding:32px;color:${C2.mute};">⏳ 불러오는 중...</div>
@@ -4585,7 +4585,7 @@ window.annualViewWorker2=async(wid,wname)=>{
   const el=document.getElementById('tab-annual');
   el.innerHTML=wrap2(`
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-      ${backBtn2('renderAnnualList2()','목록')}
+      ${backBtn2('renderAnnualMain()','목록')}
       <span style="font-size:13px;font-weight:700;color:${C2.text};">${wname} · 연봉계약서</span>
     </div>
     <div id="annual-contracts-loading" style="text-align:center;padding:32px;color:${C2.mute};">⏳ 불러오는 중...</div>
