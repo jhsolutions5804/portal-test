@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260924b · ver: 2026-09-24 (하단 작업탭을 서브탭(세부메뉴) 단위로 분리 — 같은 모듈이라도 프로젝트/견적처럼 서로 다른 세부메뉴는 각각 별도 탭으로 열려 오갈 수 있음) · 이전: 20260924a 탭 라벨 세부메뉴 기준 표시 -->
+<!DOCTYPE html><!-- build: 20260924c · ver: 2026-09-24 (포털 홈 Outlook 메일 카드 제거 → 출퇴근 기록(출근/퇴근시간 입력·저장) + 업무일지(오늘 작성여부·최근목록) 위젯으로 교체) · 이전: 20260924b 하단 작업탭 서브탭 단위 분리 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -299,7 +299,8 @@
     /* 홈 대시보드 — 모바일: 1단 세로 */
     .home-dash{ display:flex; flex-direction:column; gap:16px; margin-top:20px; }
     .dash-approve-wrap{ display:flex; flex-direction:column; }
-    .dash-outlook-wrap{ display:flex; flex-direction:column; }
+    .dash-attend-wrap{ display:flex; flex-direction:column; }
+    .dash-daily-wrap{ display:flex; flex-direction:column; }
   }
 
   /* ====================== PC 레이아웃 (≥ 900px) ====================== */
@@ -360,7 +361,7 @@
     .main{height:100vh; overflow:hidden;}
     #view-home{overflow-y:auto; padding:0; flex:1; min-height:0;}
     .home-inner{max-width:960px; margin:0 auto; padding:34px 40px 60px}
-    .home-dash{display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:stretch; margin-top:24px;}
+    .home-dash{display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; align-items:stretch; margin-top:24px;}
     .pjt-home-grid{ display:grid; grid-template-columns:1fr 360px; gap:20px; align-items:start; }
     .pjt-cards-row{ display:flex; flex-wrap:nowrap; overflow-x:auto; gap:14px; padding-bottom:10px; }
     .pjt-timeline-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start; }
@@ -612,9 +613,14 @@
               <div class="oc-loading">📋 불러오는 중...</div>
             </div>
           </div>
-          <div class="dash-outlook-wrap">
-            <div class="outlook-card" id="outlook-card-wrap">
-              <div class="oc-loading">📬 불러오는 중...</div>
+          <div class="dash-attend-wrap">
+            <div class="outlook-card" id="attend-card-wrap">
+              <div class="oc-loading">⏰ 불러오는 중...</div>
+            </div>
+          </div>
+          <div class="dash-daily-wrap">
+            <div class="outlook-card" id="daily-card-wrap">
+              <div class="oc-loading">📝 불러오는 중...</div>
             </div>
           </div>
         </div>
@@ -2971,8 +2977,9 @@ function renderMenu(){
   if(dash) dash.style.display = '';
   // 결재함 카드
   renderApproveCard();
-  // Outlook 카드
-  renderOutlookCard();
+  // 출퇴근 · 업무일지 카드
+  renderAttendHomeCard();
+  renderDailyHomeCard();
 }
 
 // ── 결재함 카드 (홈) ────────────────────────────────────────
@@ -3051,141 +3058,118 @@ window._goEdocApprove = function(){
   if(m) openModule(m,'approve',null);
 };
 
-// ── Outlook 카드 (OAuth2 PKCE 직접 구현) ──────────────────────
-const OA2 = {
-  clientId:    '97f0a368-a746-42f9-8782-38ac8cc0962c',
-  tenantId:    '548fcb48-1ab8-4c47-8242-bc098ea80416',
-  redirectUri: 'https://jhsolutions5804.github.io/portal/outlook-auth.html',
-  scopes:      'Mail.Read User.Read offline_access',
-};
-OA2.authUrl  = `https://login.microsoftonline.com/${OA2.tenantId}/oauth2/v2.0/authorize`;
-OA2.tokenUrl = `https://login.microsoftonline.com/${OA2.tenantId}/oauth2/v2.0/token`;
-// ── OAuth2 PKCE 헬퍼 ──
-async function _oa2PKCE() {
-  const arr = new Uint8Array(32);
-  crypto.getRandomValues(arr);
-  const ver = btoa(String.fromCharCode(...arr)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-  const dig = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ver));
-  const cha = btoa(String.fromCharCode(...new Uint8Array(dig))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-  return { ver, cha };
+// ── 출퇴근 카드 (전자결재 출퇴근 기록과 동일한 방식 — worker_attendance_log 공유) ──
+function jhTodayKey(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
-async function oa2GetToken() {
-  const t = sessionStorage.getItem('oa2_token');
-  const e = Number(sessionStorage.getItem('oa2_expiry') || 0);
-  return (t && Date.now() < e) ? t : null;
+function jhCalcWorkHours(inV, outV, brk){
+  if(!inV || !outV) return 0;
+  const [ih,im] = inV.split(':').map(Number);
+  const [oh,om] = outV.split(':').map(Number);
+  let mins = (oh*60+om) - (ih*60+im);
+  if (mins <= 0) mins += 24*60; // 익일 퇴근 대응
+  mins -= (brk||0);
+  if (mins < 0) mins = 0;
+  return mins/60;
 }
-async function oa2Login() {
-  const { ver, cha } = await _oa2PKCE();
-  sessionStorage.setItem('oa2_verifier', ver);
-  sessionStorage.setItem('oa2_uid', me?.uid || 'guest');
-  const p = new URLSearchParams({
-    client_id: OA2.clientId, response_type:'code',
-    redirect_uri: OA2.redirectUri, scope: OA2.scopes,
-    code_challenge: cha, code_challenge_method:'S256', response_mode:'query'
-  });
-  window.location.href = OA2.authUrl + '?' + p;
-}
-async function oa2Logout() {
-  ['oa2_token','oa2_expiry','oa2_name','oa2_verifier','oa2_uid']
-    .forEach(k => sessionStorage.removeItem(k));
-  renderOutlookCard();
-}
-function clearMsalCache() { oa2Logout(); }
-window.oa2Login  = oa2Login;
-window.oa2Logout = oa2Logout;
-async function renderOutlookCard(){
-  const container = document.getElementById('outlook-card-wrap');
-  if(!container) return;
-  container.style.display = '';
-  container.innerHTML = '<div class="oc-loading">📬 Outlook 연결 중...</div>';
-
-  let isLinked;
-  try{
-    isLinked = !!(await oa2GetToken());
-  } catch(e){
-    container.innerHTML =
-      '<div class="outlook-card-header"><div class="oc-icon">📧</div><div class="oc-title">Outlook 메일</div></div>'
-      +'<div style="font-size:12px;color:#DC2626;margin-bottom:10px;">Outlook 연결 오류: '+e.message+'</div>'
-      +'<a href="https://outlook.office.com/mail/" target="_blank" class="outlook-open-btn">📬 Outlook Web 열기</a>';
+async function renderAttendHomeCard(){
+  const box = document.getElementById('attend-card-wrap');
+  if(!box) return;
+  box.innerHTML = '<div class="oc-loading">⏰ 불러오는 중...</div>';
+  if(!me?.workerId){
+    box.innerHTML = `
+      <div class="outlook-card-header"><div class="oc-icon" style="background:#1D5BA6;">⏰</div><div class="oc-title">출퇴근 기록</div></div>
+      <div style="font-size:12px;color:#9AAABF;line-height:1.6;">근무자 명부와 연동되어 있지 않습니다.<br>인사 담당자에게 "근무자 연동"을 요청해주세요.</div>`;
     return;
   }
-
-  if(!isLinked){
-    container.innerHTML = `
-      <div class="outlook-card-header">
-        <div class="oc-icon">📧</div>
-        <div class="oc-title">Outlook 메일</div>
-      </div>
-      <div style="font-size:12px;color:#9AAABF;margin-bottom:10px;">Microsoft 계정과 연결하면<br>읽지 않은 메일을 확인할 수 있습니다.</div>
-      <button class="oc-login-btn" onclick="oa2Login()">🔗 Microsoft 계정 연결</button>
-      <a href="https://outlook.office.com/mail/" target="_blank" class="outlook-open-btn">📬 Outlook Web 열기</a>`;
-    return;
-  }
-
-  // 토큰 취득 & 메일 조회
+  const dk = jhTodayKey();
+  let ex = { checkIn:'07:00', checkOut:'18:00', breakMinutes:120 };
   try{
-    const token = await oa2GetToken();
-    if(!token) throw new Error('token_fail');
-
-    // 읽지 않은 메일 수
-    const [countRes, mailRes] = await Promise.all([
-      fetch('https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/$count?$filter=isRead eq false', {
-        headers:{ Authorization:'Bearer '+token, ConsistencyLevel:'eventual' }
-      }),
-      fetch('https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=5&$select=subject,from,isRead,receivedDateTime&$orderby=receivedDateTime desc', {
-        headers:{ Authorization:'Bearer '+token }
-      })
-    ]);
-
-    const unreadCount = countRes.ok ? parseInt(await countRes.text()||'0') : 0;
-    const mailData = mailRes.ok ? await mailRes.json() : { value:[] };
-    const mails = mailData.value || [];
-
-    const badgeClass = unreadCount === 0 ? 'zero' : '';
-    const badgeText = unreadCount > 99 ? '99+' : String(unreadCount);
-
-    let mailListHtml = '';
-    if(mails.length === 0){
-      mailListHtml = '<div style="font-size:12px;color:#9AAABF;text-align:center;padding:8px 0;">최근 메일이 없습니다.</div>';
-    } else {
-      mailListHtml = mails.map(m => {
-        const from = m.from?.emailAddress?.name || m.from?.emailAddress?.address || '(알 수 없음)';
-        const subj = m.subject || '(제목 없음)';
-        const unread = !m.isRead ? 'unread' : '';
-        return `<div class="outlook-mail-item ${unread}" onclick="window.open('https://outlook.office.com/mail/','_blank')">
-          <div class="om-from">${from}${!m.isRead?' 🔵':''}</div>
-          <div class="om-subject">${subj}</div>
-        </div>`;
-      }).join('');
+    const snap = await getDoc(doc(db,'worker_attendance_log', `${me.workerId}_${dk}`));
+    if(snap.exists()){
+      const dd = snap.data();
+      ex = { checkIn: dd.checkIn||ex.checkIn, checkOut: dd.checkOut||ex.checkOut, breakMinutes: dd.breakMinutes ?? ex.breakMinutes };
     }
-
-    const acctName = sessionStorage.getItem('oa2_name') || '';
-
-    container.innerHTML = `
-      <div class="outlook-card-header">
-        <div class="oc-icon">📧</div>
-        <div class="oc-title">Outlook 메일<br><span style="font-size:11px;font-weight:400;color:#9AAABF;">${acctName}</span></div>
-        <div class="oc-badge ${badgeClass}">${unreadCount === 0 ? '✓' : badgeText}</div>
+  } catch(e){ console.warn('[portal] 출퇴근 기록 조회 실패:', e.message); }
+  box.innerHTML = `
+    <div class="outlook-card-header"><div class="oc-icon" style="background:#1D5BA6;">⏰</div><div class="oc-title">출퇴근 기록</div></div>
+    <div style="display:flex;gap:10px;margin-bottom:12px;">
+      <div style="flex:1">
+        <div style="font-size:11px;color:#5C6F8A;margin-bottom:6px;">출근시간</div>
+        <input type="time" id="jh-att-in" value="${ex.checkIn}" step="600" style="width:100%;padding:9px;border:1px solid #DDE4EF;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;">
       </div>
-      <div class="outlook-mail-list">${mailListHtml}</div>
-      <a href="https://outlook.office.com/mail/" target="_blank" class="outlook-open-btn">📬 Outlook Web 열기</a>
-      <div style="text-align:right;margin-top:8px;">
-        <button onclick="oa2Logout()" style="font-size:11px;color:#9AAABF;background:none;border:none;cursor:pointer;font-family:inherit;">연결 해제</button>
-        <button onclick="renderOutlookCard()" style="font-size:11px;color:#9AAABF;background:none;border:none;cursor:pointer;font-family:inherit;margin-left:8px;">↻ 새로고침</button>
-      </div>`;
+      <div style="flex:1">
+        <div style="font-size:11px;color:#5C6F8A;margin-bottom:6px;">퇴근시간</div>
+        <input type="time" id="jh-att-out" value="${ex.checkOut}" step="600" style="width:100%;padding:9px;border:1px solid #DDE4EF;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box;">
+      </div>
+    </div>
+    <button type="button" id="jh-att-save-btn" class="outlook-open-btn" style="background:#1D5BA6;" onclick="jhAttendSave()">💾 저장</button>
+    <div id="jh-att-status" style="font-size:11px;text-align:center;margin-top:8px;"></div>`;
+}
+window.jhAttendSave = async function(){
+  const btn = document.getElementById('jh-att-save-btn');
+  const statusEl = document.getElementById('jh-att-status');
+  const checkIn = document.getElementById('jh-att-in')?.value;
+  const checkOut = document.getElementById('jh-att-out')?.value;
+  if(!checkIn || !checkOut){ if(statusEl){ statusEl.style.color='#DC2626'; statusEl.textContent='시간을 모두 입력해주세요.'; } return; }
+  const key = `${me.workerId}_${jhTodayKey()}`;
+  if(btn) btn.disabled = true;
+  try{
+    let breakMinutes = 120;
+    try{ const prev = await getDoc(doc(db,'worker_attendance_log', key)); if(prev.exists() && prev.data().breakMinutes!=null) breakMinutes = prev.data().breakMinutes; } catch(e){}
+    const workHours = jhCalcWorkHours(checkIn, checkOut, breakMinutes);
+    await setDoc(doc(db,'worker_attendance_log', key), {
+      workerId: me.workerId, name: me.name||'', rank: me.rank||'',
+      date: jhTodayKey(), yearMonth: jhTodayKey().slice(0,7),
+      checkIn, checkOut, breakMinutes, workHours,
+      updatedAt: serverTimestamp()
+    }, { merge:true });
+    if(statusEl){ statusEl.style.color='#16A34A'; statusEl.textContent='✓ 저장 완료'; }
   } catch(e){
-    container.innerHTML = `
-      <div class="outlook-card-header">
-        <div class="oc-icon">📧</div>
-        <div class="oc-title">Outlook 메일</div>
-      </div>
-      <div style="font-size:12px;color:#DC2626;margin-bottom:10px;">메일 로드 실패. 다시 시도해 주세요.</div>
-      <button class="oc-login-btn" onclick="oa2Login()">🔄 다시 연결</button>
-      <a href="https://outlook.office.com/mail/" target="_blank" class="outlook-open-btn">📬 Outlook Web 열기</a>`;
+    if(statusEl){ statusEl.style.color='#DC2626'; statusEl.textContent='저장 실패: '+e.message; }
+  }
+  if(btn) btn.disabled = false;
+  setTimeout(()=>{ if(statusEl) statusEl.textContent=''; }, 3000);
+};
+
+// ── 업무일지 카드 (오늘 작성 여부 + 최근 목록, 클릭 시 전자결재>업무일지로 이동) ──
+async function renderDailyHomeCard(){
+  const box = document.getElementById('daily-card-wrap');
+  if(!box) return;
+  box.innerHTML = '<div class="oc-loading">📝 불러오는 중...</div>';
+  if(!me?.uid){ box.innerHTML=''; return; }
+  try{
+    const qs = await getDocs(query(collection(db,'edoc_daily'), where('authorUid','==',me.uid)));
+    const docs = []; qs.forEach(d=>docs.push({ id:d.id, ...d.data() }));
+    docs.sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+    const recent = docs.slice(0,5);
+    const todayKey = jhTodayKey();
+    const wroteToday = docs.some(d=>d.date===todayKey);
+    const statusHtml = wroteToday
+      ? `<div style="font-size:12px;color:#16A34A;font-weight:700;margin-bottom:10px;">✓ 오늘 업무일지 작성 완료</div>`
+      : `<div style="font-size:12px;color:#DC2626;font-weight:700;margin-bottom:10px;">아직 오늘 업무일지를 작성하지 않았습니다</div>`;
+    const listHtml = recent.length
+      ? recent.map(d=>`<div class="outlook-mail-item" onclick="window._goEdocDaily()">
+          <div class="om-from">${d.date||''}</div>
+          <div class="om-subject">${(d.title||'(제목 없음)').replace(/</g,'&lt;')}</div>
+        </div>`).join('')
+      : `<div style="font-size:12px;color:#9AAABF;text-align:center;padding:8px 0;">작성한 업무일지가 없습니다.</div>`;
+    box.innerHTML = `
+      <div class="outlook-card-header"><div class="oc-icon" style="background:#16A34A;">📝</div><div class="oc-title">업무일지</div></div>
+      ${statusHtml}
+      <div class="outlook-mail-list">${listHtml}</div>
+      <button type="button" class="outlook-open-btn" style="background:#16A34A;" onclick="window._goEdocDaily()">📝 업무일지 바로가기</button>`;
+  } catch(e){
+    box.innerHTML = `
+      <div class="outlook-card-header"><div class="oc-icon" style="background:#16A34A;">📝</div><div class="oc-title">업무일지</div></div>
+      <div style="font-size:12px;color:#DC2626;">불러오기 실패: ${e.message}</div>`;
   }
 }
-
-window.renderOutlookCard = renderOutlookCard;
+window._goEdocDaily = function(){
+  const m = MODULES.find(x=>x.key==='edoc');
+  if(m) openModule(m, 'daily');
+};
 
 // ════════════════════════════════
 // 🗂 다중 작업탭 (하단 탭바) — 메뉴를 오가며 여러 화면을 동시에 열어두고 전환
@@ -3399,7 +3383,7 @@ window.addEventListener('message', (e) => {
   jhSaveTabs();
 });
 
-function doLogout(){ clearTimeout(_autoLogoutTimer); clearMsalCache(); signOut(auth).then(()=>{ me=null; $('login-pw').value=''; try{ localStorage.removeItem('jh_login_perms'); localStorage.removeItem('jh_login_name'); localStorage.removeItem('jh_login_full'); }catch(e){} if(window.mbnHideNav) mbnHideNav(); showAuth('s-login'); }); }
+function doLogout(){ clearTimeout(_autoLogoutTimer); signOut(auth).then(()=>{ me=null; $('login-pw').value=''; try{ localStorage.removeItem('jh_login_perms'); localStorage.removeItem('jh_login_name'); localStorage.removeItem('jh_login_full'); }catch(e){} if(window.mbnHideNav) mbnHideNav(); showAuth('s-login'); }); }
 // D+ 시작일 입력 토글
 function pjtToggleStartInput(key){
   const inp=document.getElementById('kpi-day-input-'+key);
