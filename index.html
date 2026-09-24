@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260924e · ver: 2026-09-24 (특정 프로젝트에 속하지 않는 '회사 일정' 등록 지원 — 일정 등록 시 PJT 선택지에 회사 일정 추가, 전체 PJT 일정 캘린더(홈)에서도 바로 등록 가능) · 이전: 20260924d 홈 카드 높이 고정 + 전체 PJT 일정 캘린더 -->
+<!DOCTYPE html><!-- build: 20260924f · ver: 2026-09-24 (페이지 새로고침 시 하단 작업탭을 이전 세션에서 복원하지 않고 항상 초기화) · 이전: 20260924e 회사 일정 등록 지원 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -3435,24 +3435,12 @@ function jhSaveTabs(){
   } catch(e) {}
 }
 
-// 로그인 직후 1회 호출 — 세션에 남아있던 탭 목록을 iframe으로 복원(화면은 홈에 그대로 둔다)
+// 로그인/새로고침 시 1회 호출 — 이전 세션에 남아있던 탭은 복원하지 않고 완전히 비운 상태로 시작한다
 function jhRestoreTabs(){
-  jhActiveTabId = null; // 새로고침 직후에는 홈 화면부터 시작 — 목록만 준비해두고 클릭해야 전환
-  try {
-    const raw = sessionStorage.getItem(JH_TABS_KEY);
-    if (!raw) return;
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr) || !arr.length) return;
-    const stack = $('emb-frame-stack');
-    if (!stack) return;
-    arr.forEach(t=>{
-      if (!t || !t.id || !t.fullUrl) return;
-      const frame = jhMakeFrame(t.name, t.fullUrl);
-      stack.appendChild(frame);
-      jhTabs.push({ ...t, frame });
-    });
-    jhRenderTabbar();
-  } catch(e) { console.warn('[portal] 작업탭 복원 실패:', e.message); }
+  jhActiveTabId = null;
+  jhTabs = [];
+  try { sessionStorage.removeItem(JH_TABS_KEY); sessionStorage.removeItem(JH_TABS_KEY+'_active'); } catch(e) {}
+  jhRenderTabbar();
 }
 
 
