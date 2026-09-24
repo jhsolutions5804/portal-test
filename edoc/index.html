@@ -1425,7 +1425,7 @@ function computeLeaveHoursForMonth(leaveDocs, workerName, year, month) {
     if (lv.status !== 'posted' && lv.status !== 'approved') continue;
     if (!isLeavePaid(lv.leaveType)) continue; // 무급 휴가 제외
     if (!lv.startDate || !lv.endDate) continue;
-    const perDay = /반차/.test(lv.leaveType || '') ? 4 : 8;
+    const perDay = (/반차/.test(lv.leaveType || '') || lv.days === 0.5 || lv.leaveDays === 0.5) ? 4 : 8;
     const cur = new Date(lv.startDate);
     const end = new Date(lv.endDate);
     while (cur <= end) {
