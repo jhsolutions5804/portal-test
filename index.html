@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260924a · ver: 2026-09-24 (하단 작업탭 라벨을 모듈명 대신 실제 보고 있는 세부메뉴 기준으로 표시 + 내부 이동 시 동기화) · 이전: 20260923a 하단 다중 작업탭 신설 -->
+<!DOCTYPE html><!-- build: 20260924b · ver: 2026-09-24 (하단 작업탭을 서브탭(세부메뉴) 단위로 분리 — 같은 모듈이라도 프로젝트/견적처럼 서로 다른 세부메뉴는 각각 별도 탭으로 열려 오갈 수 있음) · 이전: 20260924a 탭 라벨 세부메뉴 기준 표시 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -3200,7 +3200,11 @@ const JH_TABS_KEY = 'jh_portal_tabs_v1';
 let jhTabs = [];          // [{id, modKey, name, emoji, url, overrideUrl, tab, subKey, fullUrl, frame}]
 let jhActiveTabId = null;
 
-function jhTabId(m, overrideUrl){ return overrideUrl ? ('ov:'+overrideUrl) : ('m:'+m.key); }
+function jhTabId(m, overrideUrl, tab){
+  if (overrideUrl) return 'ov:'+overrideUrl;
+  if (SUBTABS[m.key]) return 'sub:'+m.key+':'+(tab || SUBTABS[m.key][0].key);
+  return 'm:'+m.key;
+}
 
 function jhMakeFrame(name, fullUrl){
   const frame=document.createElement('iframe');
@@ -3222,11 +3226,11 @@ function openModule(m, tab, overrideUrl){
   }
   if(!actualUrl){ toast(m.name+' 워크스페이스 준비 중입니다.'); return; }
 
-  const tabId = jhTabId(m, overrideUrl);
+  const tabId = jhTabId(m, overrideUrl, tab);
   // overrideUrl(개별 PJT)인 경우 tab은 서브탭 key(p4ph2 등)이며 대상 페이지의 탭 이름이 아니므로 URL에 넘기지 않는다 (넘기면 존재하지 않는 탭이라 빈 화면)
   const urlTab=overrideUrl?'':tab;
   const subKey=overrideUrl?tab:(SUBTABS[m.key]?(tab||SUBTABS[m.key][0].key):null);
-  // 탭 이름/아이콘은 상위 모듈명이 아니라 실제 보고 있는 세부 메뉴(서브탭) 기준으로 표시 — 여러 탭을 오갈 때 구분되도록
+  // 탭 이름/아이콘은 상위 모듈명이 아니라 실제 서브탭(세부 메뉴) 기준으로 표시 — 서브탭마다 별도 탭으로 열려 서로 오갈 수 있다
   const subDef = SUBTABS[m.key] ? SUBTABS[m.key].find(s=>s.key===subKey) : null;
   const tabName = subDef ? subDef.name : m.name;
   const tabEmoji = (subDef && subDef.emoji) ? subDef.emoji : (m.emoji||'▫️');
@@ -3236,14 +3240,7 @@ function openModule(m, tab, overrideUrl){
 
   const existing = jhTabs.find(t=>t.id===tabId);
   if (existing) {
-    // 이미 열려 있는 탭 → 다시 불러오지 않고 그대로 전환 (서브탭만 postMessage로 이동, 탭 이름도 함께 갱신)
-    if (!overrideUrl && SUBTABS[m.key] && tab) {
-      try { existing.frame.contentWindow.postMessage({source:'jh-portal', action:'goTab', key:tab}, '*'); } catch(e) {}
-      existing.subKey = subKey;
-      existing.tab = tab;
-      existing.name = tabName;
-      existing.emoji = tabEmoji;
-    }
+    // 이미 열려 있는 서브탭 → 다시 불러오지 않고 그대로 전환
     jhActivateTab(tabId);
     document.querySelectorAll('#sb-nav .sb-group').forEach(g=>g.classList.toggle('open', g.dataset.mod===m.key));
     jhSaveTabs();
@@ -3391,10 +3388,11 @@ window.addEventListener('message', async (e) => {
 window.addEventListener('message', (e) => {
   const d = e.data;
   if (!d || d.source !== 'jh-embed' || !d.mod || !d.key) return;
+  // 여러 탭이 동시에 열려 있을 수 있으므로 모듈명이 아니라 메시지를 보낸 iframe(e.source) 자체로 어느 탭인지 특정한다
+  const t = jhTabs.find(x=>x.frame && x.frame.contentWindow===e.source);
+  if (!t) return;
   const st = SUBTABS[d.mod] ? SUBTABS[d.mod].find(s=>s.key===d.key) : null;
-  if (!st) return;
-  const t = jhTabs.find(x=>x.modKey===d.mod && !x.overrideUrl);
-  if (!t || t.subKey === d.key) return;
+  if (!st || t.subKey === d.key) return;
   t.subKey = d.key; t.tab = d.key; t.name = st.name; t.emoji = st.emoji || t.emoji;
   if (jhActiveTabId === t.id) { $('emb-title').textContent=t.name; $('emb-title2').textContent=t.name; _activeSub = t.subKey; }
   jhRenderTabbar();
