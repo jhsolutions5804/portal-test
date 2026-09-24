@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260924d · ver: 2026-09-24 (포털 홈: 대시보드 카드 높이 고정(내용 길이 무관, 목록은 스크롤) + 하단에 전체 PJT 일정 캘린더 신설(월별, 프로젝트별 색상 구분, 읽기전용)) · 이전: 20260924c Outlook 카드 제거 → 출퇴근/업무일지 위젯 -->
+<!DOCTYPE html><!-- build: 20260924e · ver: 2026-09-24 (특정 프로젝트에 속하지 않는 '회사 일정' 등록 지원 — 일정 등록 시 PJT 선택지에 회사 일정 추가, 전체 PJT 일정 캘린더(홈)에서도 바로 등록 가능) · 이전: 20260924d 홈 카드 높이 고정 + 전체 PJT 일정 캘린더 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -1032,6 +1032,7 @@ const PJT_FIXED_BASE=[
 const PJT_SUBTABS=[
   { key:'pjt_home', name:'PJT 홈', emoji:'🏠', desc:'진행 중인 프로젝트 현황', url:'' },
   ...PJT_FIXED_BASE.map(x=>({...x})),
+  { key:'company', name:'회사 일정', emoji:'🏢', desc:'특정 프로젝트에 속하지 않는 회사 공통 일정', url:'' },
   { key:'pjt_manday', name:'월간 공수', emoji:'📊', desc:'전체 PJT 공수 집계', url:'pjt_manday/' },
   { key:'pjt_ended', name:'종료 PJT', emoji:'🗄️', desc:'종료된 프로젝트 모아보기', url:'' },
 ];
@@ -1167,7 +1168,7 @@ function renderPjtHomeCards(){
   const el=document.getElementById('pjt-home-cards');
   if(!el) return;
   el.innerHTML='';
-  PJT_SUBTABS.filter(st=>st.key!=='pjt_home' && st.key!=='pjt_manday' && st.key!=='pjt_ended').forEach(st=>{
+  PJT_SUBTABS.filter(st=>st.key!=='pjt_home' && st.key!=='pjt_manday' && st.key!=='pjt_ended' && st.key!=='company').forEach(st=>{
     const card=document.createElement('div');
     card.style.cssText='background:#fff;border:1px solid #dde4ef;border-radius:12px;padding:14px 16px;cursor:pointer;transition:.15s;flex-shrink:0;width:460px';
     card.onmouseover=function(){this.style.borderColor='var(--blue)';this.style.boxShadow='0 2px 10px rgba(0,0,0,.07)'};
@@ -1247,7 +1248,7 @@ function renderPjtHomeCards(){
 }
 
 // ===== PJT 홈 우측 패널: 주요 일정 + 업무 보고 =====
-const PJT_SCHED_COL = { p4ph2:['user_schedules'], p4ph4:['ph4_schedules'] };
+const PJT_SCHED_COL = { p4ph2:['user_schedules'], p4ph4:['ph4_schedules'], company:['company_schedules'] };
 const PJT_REPORT_COL = { p4ph2:'daily_report_docs', p4ph4:'ph4_reports' };
 // 일정 컬렉션 경로: FAB/SUP는 최상위 컬렉션, 경량(reg_) PJT는 pjt_registry/{id}/schedules 서브컬렉션
 function schedColPath(pjtKey){
@@ -1715,6 +1716,9 @@ window.homeCalSelectDay=function(dk){
   if(title) title.textContent='📅 '+parseInt(p[1])+'월 '+parseInt(p[2])+'일 ('+dow+')';
   const items=(_homeCalCache[dk]||[]).slice().sort((a,b)=>(a.stime||'').localeCompare(b.stime||''));
   let html='';
+  html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+    +'<span style="font-size:12px;font-weight:700;color:#13335C">일정</span>'
+    +'<button onclick="openHomeSchedForm(\'new\',\''+dk+'\')" style="font-size:11px;padding:4px 10px;background:#1D5BA6;color:#fff;border:none;border-radius:7px;cursor:pointer;font-weight:600;font-family:inherit">＋ 일정 등록</button></div>';
   if(items.length){
     items.forEach(s=>{
       const pc=pjtColorFor(s.pjtKey);
@@ -1725,7 +1729,7 @@ window.homeCalSelectDay=function(dk){
   } else {
     html+='<div style="color:#9AAABF;font-size:12px;padding:2px 0 8px">이 날 등록된 일정이 없습니다.</div>';
   }
-  html+='<button onclick="showPjtHome()" style="margin-top:4px;font-size:12px;font-weight:600;color:#1D5BA6;background:#E8F0FB;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;font-family:inherit;width:100%;">PJT 관리에서 일정 등록·수정 →</button>';
+  html+='<button onclick="showPjtHome()" style="margin-top:4px;font-size:12px;font-weight:600;color:#1D5BA6;background:#E8F0FB;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;font-family:inherit;width:100%;">PJT 관리에서 일정 수정·삭제 →</button>';
   det.innerHTML=html;
 };
 
@@ -1933,6 +1937,8 @@ window.saveHomeSched=async function(){
     closeHomeSchedForm();
     await loadPjtCalendar();
     if(_pjtCalSel) pjtCalSelectDay(_pjtCalSel);
+    await loadHomeCalendar();
+    if(_homeCalSel) homeCalSelectDay(_homeCalSel);
   }catch(e){
     if(btn){ btn.textContent=orig; btn.disabled=false; }
     alert('저장 중 오류가 발생했습니다: '+e.message);
@@ -1950,6 +1956,8 @@ window.deleteHomeSched=async function(){
     closeHomeSchedDetail();
     await loadPjtCalendar();
     if(_pjtCalSel) pjtCalSelectDay(_pjtCalSel);
+    await loadHomeCalendar();
+    if(_homeCalSel) homeCalSelectDay(_homeCalSel);
   }catch(e){ alert('삭제 중 오류가 발생했습니다: '+e.message); }
 };
 
@@ -2989,7 +2997,7 @@ async function syncPjtSubtabsFromSettings(){
     }
     // ② 목록에 남아있는(=활성) 고정/일반 PJT의 이름·설명 동기화
     for(const st of PJT_SUBTABS){
-      if(st.key==='pjt_home'||st.key==='pjt_manday'||st.key==='pjt_ended') continue;
+      if(st.key==='pjt_home'||st.key==='pjt_manday'||st.key==='pjt_ended'||st.key==='company') continue;
       try{
         const snap=await fs.getDoc(fs.doc(db,'pjt_settings',st.key));
         if(!snap.exists()) continue;
@@ -3042,7 +3050,7 @@ function renderMenu(){
         if(willOpen) grp.classList.add('open');
       };
       const sub=document.createElement('div'); sub.className='sb-sub';
-      SUBTABS[m.key].filter(st=>st.key!=='pjt_manday' || (me&&me.admin)).forEach(st=>{
+      SUBTABS[m.key].filter(st=>st.key!=='pjt_manday' || (me&&me.admin)).filter(st=>st.key!=='company').forEach(st=>{
         const sbtn=document.createElement('button');
         sbtn.className='sb-subitem'; sbtn.dataset.nav=m.key; sbtn.dataset.sub=st.key;
         sbtn.innerHTML=`<span class="sdot">${st.emoji}</span><span>${st.name}</span>`;
@@ -3654,7 +3662,7 @@ function mbnOpenMore(){
       const head=document.createElement('button'); head.className='mmp-btn'; head.style.cssText='width:100%;padding:12px 20px';
       head.innerHTML='<span class="mmp-ic">'+m.emoji+'</span><div><div>'+m.name+'</div><div class="mmp-sub">'+m.desc+'</div></div><span style="margin-left:auto;font-size:14px;">›</span>';
       const sublist=document.createElement('div'); sublist.className='mmp-sublist'; sublist.style.display='none';
-      _SUBTABS[m.key].filter(st=>st.key!=='pjt_manday' || _me.admin).forEach(st=>{
+      _SUBTABS[m.key].filter(st=>st.key!=='pjt_manday' || _me.admin).filter(st=>st.key!=='company').forEach(st=>{
         const sbtn=document.createElement('button'); sbtn.className='mmp-subbtn';
         sbtn.innerHTML='<span style="font-size:15px;">'+st.emoji+'</span> '+st.name;
         sbtn.onclick=()=>{
