@@ -367,8 +367,7 @@ function leaveCalendarGridM(){
     else if(dow===0) fg='#E05'; else if(dow===6) fg='var(--blue)';
     const border=isToday?'border:1.5px solid var(--blue)':'';
     const badge=entries.length>1?`<span style="font-size:8px;position:relative;top:-1px">+${entries.length}</span>`:'';
-    const clickAttr=entries.length?`onclick="leaveShowDayDetailM('${dateStr}')"`:'';
-    html+=`<div ${clickAttr} style="text-align:center;padding:9px 2px;border-radius:9px;font-size:12.5px;background:${bg};color:${fg};font-weight:${fw};${border};${entries.length?'cursor:pointer':''}">${day}${badge}</div>`;
+    html+=`<div onclick="leaveShowDayDetailM('${dateStr}')" style="text-align:center;padding:9px 2px;border-radius:9px;font-size:12.5px;background:${bg};color:${fg};font-weight:${fw};${border};cursor:pointer">${day}${badge}</div>`;
   }
   html+='</div>';
   return html;
