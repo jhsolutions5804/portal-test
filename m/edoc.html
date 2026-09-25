@@ -175,7 +175,8 @@ function leaveCard(l){
 }
 function itemsTotal(items){ if(!Array.isArray(items))return 0; return items.reduce((s,it)=>s+((it.amount!=null?Number(it.amount):(Number(it.qty)||0)*(Number(it.unitPrice)||0))||0),0); }
 const APPR_TYPE_LABEL={daily:'업무일지',leave:'연차신청서',resign:'퇴직원서',cert:'재직증명서',purchase:'구매품의서',expense:'지출결의서',overtime:'초과근로'};
-const APPR_STATUS_LABEL={all:'전체 단계',draft:'임시저장',pending:'결재대기',reviewing:'검토중',approved:'승인',rejected:'반려',posted:'게시'};
+const APPR_STATUS_LABEL={all:'전체 단계',wait:'결재중',done:'결재완료',rejected:'반려'};
+const APPR_STATUS_GROUP={wait:['pending','reviewing'],done:['approved','posted','done'],rejected:['rejected']};
 let _apprStatus='all', _apprType='all', _apprAuthor='all';
 window.apprSetStatus=function(v){_apprStatus=v; renderApprove();};
 window.apprSetType=function(v){_apprType=v; renderApprove();};
@@ -192,7 +193,7 @@ function renderApprove(){
   const filtered=all.filter(x=>{
     if(_apprType!=='all'&&x.t!==_apprType) return false;
     if(_apprAuthor!=='all'&&(x.d.authorName||x.d.name||'')!==_apprAuthor) return false;
-    if(_apprStatus!=='all'&&(x.d.status||'')!==_apprStatus) return false;
+    if(_apprStatus!=='all'&&!(APPR_STATUS_GROUP[_apprStatus]||[]).includes(x.d.status||'')) return false;
     return true;
   }).sort((a,b)=>{const sa=isWait(a.d.status)?0:1,sb=isWait(b.d.status)?0:1;if(sa!==sb)return sa-sb;return (fmtDate(b.d.createdAt||b.d.date)).localeCompare(fmtDate(a.d.createdAt||a.d.date));});
   const cardFn={daily:dailyCard,leave:leaveCard,purchase:d=>docCardM('purchase',d),expense:d=>docCardM('expense',d),
