@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 20260925a · ver: 2026-09-25 (모바일 홈 2.8.0) · [홈] 최상단 원탭 출퇴근 카드 추가(worker_attendance_log 연동, 근무중 실시간 타이머) · 기획/인사/조직도/관리를 '더보기' 4열로 축소해 PJT관리·전자결재 강조 -->
+<!-- build: 20260925b · ver: 2026-09-25 (모바일 홈 2.8.1) · [홈] 근무자 명부 미매칭 계정(관리자 등)도 출퇴근 카드 노출되도록 UID 폴백 추가 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -347,7 +347,7 @@ async function loadMyWorkerInfo(user){
         _myInfo={..._myInfo, rank: wd.rank||_myInfo.rank};
       }
     });
-    _myWorkerId=matchedId;
+    _myWorkerId = matchedId || ('staff_' + (user?.uid || ''));
   }catch(e){ console.error('출퇴근용 근무자 매칭 실패', e); }
 }
 function attTodayKey(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }

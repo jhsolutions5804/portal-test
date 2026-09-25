@@ -295,7 +295,7 @@ async function loadMyInfo() {
         _myInfo = { ..._myInfo, dept: wd.dept || _myInfo.dept, rank: wd.rank || _myInfo.rank };
       }
     });
-    _myWorkerId = matchedId;
+    _myWorkerId = matchedId || ('staff_' + (_user?.uid || ''));
   } catch(e) { console.warn('myInfo load:', e.message); }
 }
 
