@@ -209,18 +209,209 @@ function renderApprove(){
     </div>
     ${filtered.length?`<div class="list">${cards}</div>`:'<div class="empty">조건에 맞는 문서가 없습니다.</div>'}`;
 }
-function renderDaily(){
+let _dailyViewM='calendar', _dailyCalYearM=new Date().getFullYear(), _dailyCalMonthM=new Date().getMonth()+1, _dailySelDateM=null;
+window.dailySetViewM=function(v){ _dailyViewM=v; render(); };
+window.dailyCalNavM=function(delta){
+  _dailyCalMonthM+=delta;
+  if(_dailyCalMonthM<1){_dailyCalMonthM=12;_dailyCalYearM--;} else if(_dailyCalMonthM>12){_dailyCalMonthM=1;_dailyCalYearM++;}
+  _dailySelDateM=null; render();
+};
+window.dailyCalTodayM=function(){
+  const t=new Date(); _dailyCalYearM=t.getFullYear(); _dailyCalMonthM=t.getMonth()+1;
+  _dailySelDateM=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');
+  render();
+};
+window.dailyCalPickDateM=function(dateStr){ _dailySelDateM=(_dailySelDateM===dateStr)?null:dateStr; render(); };
+window.dailyCalWriteM=function(){ window._dailyPrefillDate=_dailySelDateM; nav('dailyW',null); };
+function dailyViewToggleHtmlM(){
+  return `<div style="display:flex;background:#F0F4F9;border-radius:9px;padding:2px;gap:2px;margin:0 20px 14px">
+    <button onclick="dailySetViewM('calendar')" style="flex:1;padding:8px;border:none;border-radius:7px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;background:${_dailyViewM==='calendar'?'#fff':'transparent'};color:${_dailyViewM==='calendar'?'var(--blue)':'var(--sub)'}">📅 캘린더</button>
+    <button onclick="dailySetViewM('list')" style="flex:1;padding:8px;border:none;border-radius:7px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;background:${_dailyViewM==='list'?'#fff':'transparent'};color:${_dailyViewM==='list'?'var(--blue)':'var(--sub)'}">📋 전체목록</button>
+  </div>`;
+}
+function renderDaily(){ _dailyViewM==='list' ? renderDailyListM() : renderDailyCalendarM(); }
+function renderDailyListM(){
   const sorted=[...dailies].sort((a,b)=>fmtDate(b.date||b.createdAt).localeCompare(fmtDate(a.date||a.createdAt)));
   $app().innerHTML=topBar('전자결재')+`
     <div class="hello rowend"><div><div class="name">업무일지</div><div class="sub">전체 ${dailies.length}</div></div></div>
+    ${dailyViewToggleHtmlM()}
     ${dailies.length?`<div class="list">${sorted.map(dailyCard).join('')}</div>`:'<div class="empty">작성된 업무일지가 없습니다.</div>'}
     <button class="fab-w" onclick="showView('dailyW')">+</button>`;
 }
-function renderLeave(){
-  const sorted=[...leaves].sort((a,b)=>fmtDate(b.startDate||b.sdate).localeCompare(fmtDate(a.startDate||a.sdate)));
+function renderDailyCalendarM(){
+  const byDate={};
+  dailies.forEach(d=>{ const k=d.date||''; if(!k) return; (byDate[k]=byDate[k]||[]).push(d); });
+  const y=_dailyCalYearM, m=_dailyCalMonthM;
+  const first=new Date(y,m-1,1), lastDate=new Date(y,m,0).getDate(), firstDow=first.getDay();
+  const today=new Date(), todayStr=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  const DOW=['일','월','화','수','목','금','토'];
+  let grid=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px">
+    ${DOW.map((w,i)=>`<div style="text-align:center;font-size:10.5px;font-weight:700;color:${i===0?'#E05':(i===6?'var(--blue)':'var(--sub)')};padding:4px 0">${w}</div>`).join('')}
+  </div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">`;
+  for(let i=0;i<firstDow;i++) grid+='<div></div>';
+  for(let day=1; day<=lastDate; day++){
+    const dateStr=`${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const dow=(firstDow+day-1)%7;
+    const isHoliday=EDOC_KR_HOLIDAYS_M.has(dateStr);
+    const cnt=(byDate[dateStr]||[]).length;
+    const isToday=dateStr===todayStr, isSel=dateStr===_dailySelDateM;
+    let fg='var(--ink)';
+    if(dow===0||isHoliday) fg='#E05'; else if(dow===6) fg='var(--blue)';
+    const bg=isSel?'var(--blue)':(cnt?'#E8F0FB':'transparent');
+    if(isSel) fg='#fff';
+    const border=isToday&&!isSel?'border:1.5px solid #F59E0B':(isSel?'':'border:1px solid transparent');
+    grid+=`<div onclick="dailyCalPickDateM('${dateStr}')" style="position:relative;text-align:center;padding:8px 2px 7px;border-radius:9px;font-size:12.5px;background:${bg};color:${fg};font-weight:${cnt||isSel?700:500};cursor:pointer;${border}">
+      ${day}${cnt?`<div style="font-size:9px;margin-top:2px;color:${isSel?'#DCEAFB':'var(--blue)'}">●${cnt>1?' '+cnt:''}</div>`:''}
+    </div>`;
+  }
+  grid+='</div>';
+  const monthNav=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <button onclick="dailyCalNavM(-1)" style="background:#F0F4F9;border:none;border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:14px;color:var(--sub)">‹</button>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="font-size:14px;font-weight:800">${y}년 ${m}월</div>
+      <button onclick="dailyCalTodayM()" style="background:#E8F0FB;border:none;border-radius:7px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--blue);cursor:pointer;font-family:inherit">오늘</button>
+    </div>
+    <button onclick="dailyCalNavM(1)" style="background:#F0F4F9;border:none;border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:14px;color:var(--sub)">›</button>
+  </div>`;
+  let dayPanel='';
+  if(_dailySelDateM){
+    const rows=(byDate[_dailySelDateM]||[]).slice().sort((a,b)=>(a.authorName||'').localeCompare(b.authorName||''));
+    dayPanel=`<div class="lbl" style="display:flex;align-items:center;justify-content:space-between;padding-right:20px">
+      <span>🗓 ${_dailySelDateM.replace(/-/g,'.')} 업무일지 ${rows.length?`(${rows.length}건)`:''}</span>
+      <button onclick="dailyCalWriteM()" style="background:var(--blue);border:none;border-radius:8px;color:#fff;padding:6px 11px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit">✏️ 작성</button>
+    </div>
+    ${rows.length?`<div class="list">${rows.map(dailyCard).join('')}</div>`:'<div class="empty">이 날짜에 작성된 업무일지가 없습니다.</div>'}`;
+  } else {
+    dayPanel=`<div style="text-align:center;color:#9aa8bc;font-size:12px;padding:10px 0 6px">날짜를 탭하면 그날 작성된 업무일지만 볼 수 있어요 (●는 작성 건수)</div>`;
+  }
+  $app().innerHTML=topBar('전자결재')+`
+    <div class="hello rowend"><div><div class="name">업무일지</div><div class="sub">전체 ${dailies.length}</div></div></div>
+    ${dailyViewToggleHtmlM()}
+    <div class="dcard" style="padding:14px 12px">${monthNav}${grid}</div>
+    ${dayPanel}
+    <button class="fab-w" onclick="showView('dailyW')">+</button>`;
+}
+let _leaveCalYearM=new Date().getFullYear(), _leaveCalMonthM=new Date().getMonth()+1;
+// PC calcAnnualLeaveGrant/sumLeaveUsed와 동일한 계산식
+function calcAnnualLeaveGrantM(hireDateStr, baseDateStr){
+  if(!hireDateStr) return {granted:0,years:0,months:0,detail:'입사일 미등록'};
+  const hire=new Date(hireDateStr);
+  const base=baseDateStr?new Date(baseDateStr):new Date();
+  if(isNaN(hire.getTime())||base<hire) return {granted:0,years:0,months:0,detail:'-'};
+  let years=base.getFullYear()-hire.getFullYear();
+  const mDiff=base.getMonth()-hire.getMonth(), dDiff=base.getDate()-hire.getDate();
+  if(mDiff<0||(mDiff===0&&dDiff<0)) years--;
+  const totalMonths=(base.getFullYear()-hire.getFullYear())*12+(base.getMonth()-hire.getMonth())-(base.getDate()<hire.getDate()?1:0);
+  let granted=0, detail='';
+  if(years<1){ granted=Math.min(Math.max(totalMonths,0),11); detail=`입사 ${Math.max(totalMonths,0)}개월 (월 1일, 최대 11일)`; }
+  else{ granted=15; if(years>=3) granted=Math.min(15+Math.floor((years-1)/2),25); detail=`근속 ${years}년차 (15일${granted>15?` +${granted-15}`:''})`; }
+  return {granted,years,months:Math.max(totalMonths,0),detail};
+}
+function sumLeaveUsedM(leaveDocs, workerName){
+  let used=0;
+  for(const lv of leaveDocs){
+    const nm=lv.authorName||lv.name||''; if(nm!==workerName) continue;
+    if(lv.status!=='posted'&&lv.status!=='approved') continue;
+    const days=parseFloat(lv.days||lv.leaveDays||0); if(!isNaN(days)) used+=days;
+  }
+  return used;
+}
+function leaveEntriesOnDateM(dateStr){
+  return leaves.filter(d=>{
+    if(!d.startDate||!d.endDate) return false;
+    if(d.status==='rejected'||d.status==='draft') return false;
+    return dateStr>=d.startDate && dateStr<=d.endDate;
+  });
+}
+window.leaveCalShiftM=function(delta){
+  _leaveCalMonthM+=delta;
+  if(_leaveCalMonthM>12){_leaveCalMonthM=1;_leaveCalYearM++;}
+  if(_leaveCalMonthM<1){_leaveCalMonthM=12;_leaveCalYearM--;}
+  render();
+};
+window.leaveShowDayDetailM=function(dateStr){
+  const entries=leaveEntriesOnDateM(dateStr);
+  let modal=document.getElementById('leave-day-modal-m');
+  if(!modal){ modal=document.createElement('div'); modal.id='leave-day-modal-m';
+    modal.style.cssText='position:fixed;inset:0;background:rgba(19,51,92,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+    modal.onclick=e=>{ if(e.target===modal) modal.remove(); };
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML=`<div style="background:#fff;border-radius:16px;width:100%;max-width:340px;max-height:78vh;overflow-y:auto;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="font-size:14px;font-weight:800;margin-bottom:12px">🗓 ${esc(dateStr)} 연차 현황 (${entries.length}명)</div>
+    ${entries.length?entries.map(e=>`<div style="border:1px solid #f0f4f9;border-radius:10px;padding:9px 11px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:13px;font-weight:700">${esc(e.authorName||'-')} ${esc(e.authorRank||'')}</div>
+      <div style="font-size:11px;color:var(--sub);margin-top:2px">${esc(e.leaveType||'연차(유급)')} · ${esc(e.startDate)}${e.endDate&&e.endDate!==e.startDate?'~'+esc(e.endDate):''}</div></div>
+      ${stBadge(e.status)}</div>`).join(''):'<div style="text-align:center;color:#9aa8bc;padding:16px 0">해당 날짜에 연차가 없습니다.</div>'}
+    <button onclick="document.getElementById('leave-day-modal-m').remove()" style="margin-top:4px;width:100%;padding:10px;background:#F0F4F9;border:none;border-radius:9px;color:var(--sub);font-size:13px;cursor:pointer;font-family:inherit">닫기</button>
+  </div>`;
+};
+function leaveCalendarGridM(){
+  const y=_leaveCalYearM, m=_leaveCalMonthM;
+  const first=new Date(y,m-1,1), lastDate=new Date(y,m,0).getDate(), firstDow=first.getDay();
+  const today=new Date(), todayStr=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  const DOW=['일','월','화','수','목','금','토'];
+  let html=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px">
+    ${DOW.map((w,i)=>`<div style="text-align:center;font-size:10.5px;font-weight:700;color:${i===0?'#E05':(i===6?'var(--blue)':'var(--sub)')};padding:4px 0">${w}</div>`).join('')}
+  </div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">`;
+  for(let i=0;i<firstDow;i++) html+='<div></div>';
+  for(let day=1; day<=lastDate; day++){
+    const dateStr=`${y}-${String(m).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const entries=leaveEntriesOnDateM(dateStr);
+    const status=entries.length?(entries.some(d=>d.status==='approved'||d.status==='posted')?'approved':'pending'):null;
+    const isToday=dateStr===todayStr;
+    const dow=(firstDow+day-1)%7;
+    let bg='transparent', fg='var(--ink)', fw='500';
+    if(status==='approved'){bg='var(--blue)';fg='#fff';fw='700';}
+    else if(status==='pending'){bg='#FEF3C7';fg='#92400E';fw='700';}
+    else if(dow===0) fg='#E05'; else if(dow===6) fg='var(--blue)';
+    const border=isToday?'border:1.5px solid var(--blue)':'';
+    const badge=entries.length>1?`<span style="font-size:8px;position:relative;top:-1px">+${entries.length}</span>`:'';
+    const clickAttr=entries.length?`onclick="leaveShowDayDetailM('${dateStr}')"`:'';
+    html+=`<div ${clickAttr} style="text-align:center;padding:9px 2px;border-radius:9px;font-size:12.5px;background:${bg};color:${fg};font-weight:${fw};${border};${entries.length?'cursor:pointer':''}">${day}${badge}</div>`;
+  }
+  html+='</div>';
+  return html;
+}
+async function renderLeave(){
+  $app().innerHTML=topBar('전자결재')+'<div class="loading">⏳ 불러오는 중…</div>';
+  let hireDate='';
+  try{
+    if(_myRealWorkerId){
+      const wSnap=await getDoc(doc(db,'workers',_myRealWorkerId));
+      if(wSnap.exists()) hireDate=wSnap.data().hireDate||'';
+    }
+  }catch(e){ console.warn('입사일 조회 실패',e.message); }
+  const grant=calcAnnualLeaveGrantM(hireDate);
+  const used=sumLeaveUsedM(leaves.filter(l=>l.authorUid===(_me.uid||'')), _me.name||'');
+  const remain=Math.max(grant.granted-used,0);
+  const myList=[...leaves.filter(l=>_me.admin?true:l.authorUid===(_me.uid||''))].sort((a,b)=>fmtDate(b.startDate||b.sdate).localeCompare(fmtDate(a.startDate||a.sdate)));
   $app().innerHTML=topBar('전자결재')+`
     <div class="hello rowend"><div><div class="name">연차신청서</div><div class="sub">전체 ${leaves.length}</div></div></div>
-    ${leaves.length?`<div class="list">${sorted.map(leaveCard).join('')}</div>`:'<div class="empty">연차 신청 내역이 없습니다.</div>'}
+    <div class="lbl" style="display:flex;align-items:center;justify-content:space-between;padding-right:20px">
+      <span>📅 전 직원 연차 달력</span>
+      <span style="display:flex;align-items:center;gap:8px">
+        <button onclick="leaveCalShiftM(-1)" style="border:none;background:var(--card);border-radius:7px;padding:3px 9px;cursor:pointer;color:var(--blue);font-family:inherit">◀</button>
+        <span style="font-size:12px;font-weight:700">${_leaveCalYearM}년 ${String(_leaveCalMonthM).padStart(2,'0')}월</span>
+        <button onclick="leaveCalShiftM(1)" style="border:none;background:var(--card);border-radius:7px;padding:3px 9px;cursor:pointer;color:var(--blue);font-family:inherit">▶</button>
+      </span>
+    </div>
+    <div class="dcard" style="padding:14px 12px">${leaveCalendarGridM()}</div>
+    <div style="display:flex;gap:14px;margin:8px 20px 0;font-size:10.5px;color:#9aa8bc">
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--blue);margin-right:4px"></span>승인·게시</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#F59E0B;margin-right:4px"></span>결재대기</span>
+    </div>
+    <div class="lbl">👤 ${esc(_me.name||'')} ${esc(_me.rank||'')} 연차 정보</div>
+    <div class="dcard" style="padding:14px 16px">
+      <div style="font-size:11px;color:#9aa8bc;margin-bottom:10px">${esc(grant.detail)}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
+        <div><div style="font-size:10.5px;color:#9aa8bc">부여</div><div style="font-size:18px;font-weight:800;color:var(--blue)">${grant.granted}<small style="font-size:11px">일</small></div></div>
+        <div><div style="font-size:10.5px;color:#9aa8bc">사용</div><div style="font-size:18px;font-weight:800;color:#F59E0B">${used}<small style="font-size:11px">일</small></div></div>
+        <div><div style="font-size:10.5px;color:#9aa8bc">잔여</div><div style="font-size:18px;font-weight:800;color:#16A34A">${remain}<small style="font-size:11px">일</small></div></div>
+      </div>
+    </div>
+    <div class="lbl">📋 ${_me.admin?'전 직원 연차 신청 내역':'내 연차 신청 내역'}</div>
+    ${myList.length?`<div class="list">${myList.map(leaveCard).join('')}</div>`:'<div class="empty">연차 신청 내역이 없습니다.</div>'}
     <button class="fab-w" onclick="showView('leaveW')">+</button>`;
 }
 function renderDailyDetail(){
@@ -473,7 +664,8 @@ window.dailyAutoTitle=function(){
 window.renderDailyWrite=async function(existingDoc){
   const isEdit=!!existingDoc;
   window._dailyEditId=existingDoc?.id||null;
-  const today=existingDoc?.date||bizToday();
+  const today=existingDoc?.date||window._dailyPrefillDate||bizToday();
+  window._dailyPrefillDate=null;
   await loadPjts();
   const pjtOpts=['<option value="">프로젝트 선택 (선택사항)</option>',
     ..._pjts.map(p=>`<option value="${p.id}" data-code="${esc(p.code||'')}" data-name="${esc(p.name||'')}" ${existingDoc?.pjtId===p.id?'selected':''}>${p.code?p.code+' ':''}${p.name||p.id}</option>`)
@@ -978,10 +1170,10 @@ async function attLoadMonthRecordsM(){
 }
 function sub(coll,setter){
   const myUid=_me.uid||'';
-  let byAuthor=[], byViewer=[], byAdmin=[];
+  let byAuthor=[], byViewer=[], byAdmin=[], byPosted=[];
   const merge=()=>{
     const map={};
-    [...byAuthor,...byViewer,...byAdmin].forEach(d=>{ map[d.id]=d; });
+    [...byAuthor,...byViewer,...byAdmin,...byPosted].forEach(d=>{ map[d.id]=d; });
     setter(Object.values(map)); render();
   };
   const onErr=err=>{ loadError=err.code||err.message; render(); };
@@ -991,6 +1183,9 @@ function sub(coll,setter){
   }
   if(_me.admin){
     onSnapshot(collection(db,coll), snap=>{ byAdmin=snap.docs.map(d=>({id:d.id,...d.data()})); merge(); }, onErr);
+  } else {
+    // PC(fetchEdocDocs)와 동일하게, 게시(posted) 확정된 문서는 관리자가 아니어도 전 직원이 볼 수 있어야 함(연차 달력 등)
+    onSnapshot(query(collection(db,coll), where('status','==','posted')), snap=>{ byPosted=snap.docs.map(d=>({id:d.id,...d.data()})); merge(); }, onErr);
   }
 }
 let _authBooted=false;
