@@ -164,7 +164,7 @@ function dailyCard(d){
 }
 function leaveCard(l){
   return `<div class="dcard-list" onclick="showDetail('leave','${l.id}')">
-    <div class="dl-top"><div class="dl-title">${esc(l.name||'연차신청')} <span class="pill">${esc(l.leaveType||l.type||'연차')}</span></div>${stBadge(l.status)}</div>
+    <div class="dl-top"><div class="dl-title">${esc(l.title||l.name||'연차신청')} <span class="pill">${esc(l.leaveType||l.type||'연차')}</span></div>${stBadge(l.status)}</div>
     <div class="dl-meta">${esc(fmtDate(l.startDate||l.sdate))}${l.endDate||l.edate?' ~ '+esc(fmtDate(l.endDate||l.edate)):''} · ${l.days||l.leaveDays||0}일</div></div>`;
 }
 function itemsTotal(items){ if(!Array.isArray(items))return 0; return items.reduce((s,it)=>s+((it.amount!=null?Number(it.amount):(Number(it.qty)||0)*(Number(it.unitPrice)||0))||0),0); }
@@ -232,16 +232,26 @@ function renderDailyDetail(){
 function renderLeaveDetail(){
   const l=leaves.find(x=>x.id===detailId);
   if(!l){ $app().innerHTML=topBar('전자결재')+'<div class="empty">문서를 찾을 수 없습니다.</div>'; return; }
+  const isOwner=(_me.uid||'')&&l.authorUid===_me.uid;
+  // PC와 동일: 연차는 임시/반려 상태의 작성자뿐 아니라 관리자도 언제든 수정(정정) 가능
+  const canEdit=(isOwner&&(l.status==='draft'||l.status==='rejected'))||!!_me.admin;
+  const canRecall=isOwner&&(l.status==='pending'||l.status==='reviewing');
   $app().innerHTML=topBar('전자결재')+`
-    <div class="hello"><div class="name" style="font-size:20px">${esc(l.name||'연차신청')}</div><div class="sub">${stBadge(l.status)} · ${esc(l.leaveType||l.type||'연차')}</div></div>
+    <div class="hello"><div class="name" style="font-size:20px">${esc(l.title||l.name||'연차신청')}</div><div class="sub">${stBadge(l.status)} · ${esc(l.leaveType||l.type||'연차')}</div></div>
     <div class="dcard">
       <div class="drow"><span class="dk">기간</span><span class="dv">${esc(fmtDate(l.startDate||l.sdate)||'-')}${l.endDate||l.edate?' ~ '+esc(fmtDate(l.endDate||l.edate)):''}</span></div>
       <div class="drow"><span class="dk">일수</span><span class="dv">${l.days||l.leaveDays||0}일</span></div>
       ${l.dept?`<div class="drow"><span class="dk">부서</span><span class="dv">${esc(l.dept)}</span></div>`:''}
+      ${l.contact?`<div class="drow"><span class="dk">비상연락처</span><span class="dv">${esc(l.contact)}</span></div>`:''}
+      ${l.deputyName?`<div class="drow"><span class="dk">업무 대리인</span><span class="dv">${esc(l.deputyName)}</span></div>`:''}
       ${l.reason?`<div class="drow"><span class="dk">사유</span><span class="dv">${esc(l.reason)}</span></div>`:''}
     </div>
     ${Array.isArray(l.approvalLine)&&l.approvalLine.length?`<div class="lbl">결재선</div><div class="dcard">${l.approvalLine.map(a=>`<div class="drow"><span class="dk">${esc(a.rank||a.role||'')}</span><span class="dv">${esc(a.name||'')} ${a.status?stBadge(a.status):''}</span></div>`).join('')}</div>`:''}
     ${approveBtns(l.id,'leave',l)}
+    ${(canEdit||canRecall)?`<div style="display:flex;gap:10px;margin:12px 20px 0">
+      ${canEdit?`<button onclick='renderLeaveWrite(${JSON.stringify(l).replace(/'/g,"&#39;")})' style="flex:1;padding:12px;background:#3B82F6;border:none;border-radius:11px;color:#fff;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">✏️ ${(l.status!=='draft'&&l.status!=='rejected')?'정정':'수정'}</button>`:''}
+      ${canRecall?`<button onclick="mobileRecall('${l.id}','leave')" style="flex:1;padding:12px;background:#F59E0B;border:none;border-radius:11px;color:#fff;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">↩️ 회수</button>`:''}
+    </div>`:''}
     ${deleteBtn(l.id,'leave',l)}`;
 }
 function renderStub(label){
@@ -312,9 +322,10 @@ function canApprove(d){
   const st=d.status||'';
   if(st==='approved'||st==='rejected'||st==='posted'||st==='done') return false; // 이미 결재 완료된 문서
   const nm=_me.name||'', uid=_me.uid||'';
-  const hasPending=d.approvalLine.some(s=>s.role==='결재'&&s.status==='pending');
+  const isApRole=r=>/^결재/.test(r||''); // '결재', '결재1', '결재2' 등 다단계 결재 모두 인식 (PC와 동일)
+  const hasPending=d.approvalLine.some(s=>isApRole(s.role)&&s.status==='pending');
   if(_me.admin && hasPending) return true; // 관리자(대표)는 대기 결재 대행
-  return d.approvalLine.some(s=>s.role==='결재'&&s.status==='pending'&&((uid&&s.uid===uid)||(!s.uid&&s.name===nm)));
+  return d.approvalLine.some(s=>isApRole(s.role)&&s.status==='pending'&&((uid&&s.uid===uid)||(!s.uid&&s.name===nm)));
 }
 // 삭제 권한: 작성자 본인 또는 관리자
 function canDelete(d){
@@ -522,34 +533,139 @@ window.dailySaveM=async function(status){
     history.back();
   }catch(e){alert('오류: '+e.message);}
 };
-// 연차 작성
-window.renderLeaveWrite=function(){
-  const today=bizToday();
-  $app().innerHTML=topBar('연차신청 작성','goBack()')+`
-    <div class="wform">
-      ${efld('구분',`<select id="l-type"><option>연차</option><option>반차</option><option>병가</option><option>경조사</option></select>`)}
-      ${efld('시작일',`<input id="l-start" type="date" value="${today}">`)}
-      ${efld('종료일',`<input id="l-end" type="date" value="${today}">`)}
-      ${efld('일수',`<input id="l-days" type="number" step="0.5" min="0" value="1">`)}
-      ${efld('사유',`<textarea id="l-reason" placeholder="사유"></textarea>`)}
-      <div class="wline">결재: <b>김종화 부사장</b> → 수신: <b>송지훈 대표</b></div>
-      <button class="wsave" onclick="leaveSaveM()">상신</button>
-    </div>`;
-};
-window.leaveSaveM=async function(){
-  const type=fv('l-type'),start=fv('l-start'),end=fv('l-end'),days=Number(fv('l-days')||0),reason=fv('l-reason');
-  if(!start){alert('시작일을 선택하세요.');return;}
-  if(!days||days<=0){alert('일수를 입력하세요.');return;}
+// 연차 — 승인된 전 직원 캐시 (결재1/업무대리인 선택용, PC loadPortalUsers와 동일)
+let _portalUsers=null;
+async function loadPortalUsers(){
+  if(_portalUsers) return _portalUsers;
   try{
-    const line=await lineDaily();
-    // PC(연차신청서)와 동일한 형식으로 제목 자동생성 — 이 필드가 없으면 PC 목록·상세에서 "(제목없음)"으로 보임
-    const todayFmt=bizToday().replace(/-/g,'');
-    const title=`${todayFmt} ${_me.name||''} 연차 신청서`.trim();
-    await addDoc(collection(db,'edoc_leave'),{dtype:'leave',status:'pending',title,
-      name:_me.name||'',leaveType:type,startDate:start,endDate:end||start,days,reason,
-      authorUid:_me.uid||'',authorName:_me.name||'',authorDept:_me.dept||'',authorRank:_me.rank||'',dept:_me.dept||'',
-      approvalLine:line,viewerUids:viewerUidsOf(line),createdAt:serverTimestamp()});
-    alert('✅ 상신 완료!');history.back();
+    const snap=await getDocs(query(collection(db,'portal_users'),where('status','==','approved')));
+    const list=[]; snap.forEach(d=>list.push({uid:d.id,...d.data()}));
+    list.sort((a,b)=>String(a.empNo||'').localeCompare(String(b.empNo||''),'ko',{numeric:true}));
+    _portalUsers=list;
+  }catch(e){ console.warn('loadPortalUsers:',e.message); _portalUsers=[]; }
+  return _portalUsers;
+}
+const LEAVE_TYPE_OPTS=['연차(유급)','반차-오전(유급)','반차-오후(유급)',
+  '생리휴가(무급)','출산전후휴가(유급)','배우자출산휴가(유급)','유산·사산휴가(유급)',
+  '육아휴직(무급)','가족돌봄휴가(무급)','병가(무급)','예비군/민방위(유급)'];
+// PC calcLeaveDays와 동일: 반차류는 0.5일 고정, 그 외는 평일수 계산
+function calcLeaveDaysM(startDate,endDate,leaveType){
+  if(leaveType&&leaveType.includes('반차')) return 0.5;
+  if(!startDate||!endDate) return '';
+  const s=new Date(startDate), e=new Date(endDate);
+  if(isNaN(s)||isNaN(e)) return '';
+  let d=0; const cur=new Date(s);
+  while(cur<=e){ const dow=cur.getDay(); if(dow!==0&&dow!==6) d++; cur.setDate(cur.getDate()+1); }
+  return d;
+}
+window.leaveAutoTitleM=function(){
+  const today=bizToday().replace(/-/g,'');
+  const type=fv('l-type');
+  const el=document.getElementById('l-title');
+  if(el) el.value=`${today} ${_me.name||''} ${type} 신청서`.trim();
+};
+window.leaveCalcDaysM=function(){
+  const d=calcLeaveDaysM(fv('l-start'),fv('l-end'),fv('l-type'));
+  const el=document.getElementById('l-days');
+  if(el&&d!=='') el.value=d;
+};
+// 연차 작성/수정 — existingDoc이 있으면 수정모드(관리자는 어떤 상태든, 작성자 본인은 임시/반려 상태에서만)
+window.renderLeaveWrite=async function(existingDoc){
+  const isEdit=!!existingDoc;
+  window._leaveEditId=existingDoc?.id||null;
+  const isAdminCorrect=isEdit&&existingDoc.status!=='draft'&&existingDoc.status!=='rejected';
+  const today=bizToday();
+  await loadPortalUsers();
+  const others=_portalUsers.filter(u=>u.uid!==(_me.uid||''));
+  const ap1Uid=existingDoc?.approvalLine?.find(s=>s.role==='결재1')?.uid||'';
+  const approver1Opts=others.map(u=>`<option value="${u.uid}" data-name="${esc(u.name||'')}" data-rank="${esc(u.rank||'')}" ${u.uid===ap1Uid?'selected':''}>${esc(u.name||'')} ${esc(u.rank||'')}</option>`).join('');
+  const depUid=existingDoc?.deputyUid||'';
+  const deputyOpts='<option value="">선택 안함</option>'+others.map(u=>`<option value="${u.uid}" data-name="${esc(u.name||'')}" data-rank="${esc(u.rank||'')}" ${u.uid===depUid?'selected':''}>${esc(u.name||'')} ${esc(u.rank||'')}</option>`).join('');
+  const defaultTitle=existingDoc?.title||`${today.replace(/-/g,'')} ${_me.name||''} ${LEAVE_TYPE_OPTS[0]} 신청서`;
+  $app().innerHTML=topBar(isEdit?'연차신청 '+(isAdminCorrect?'정정':'수정'):'연차신청 작성','goBack()')+`
+    <div class="wform">
+      ${efld('제목',`<input id="l-title" type="text" value="${esc(defaultTitle)}">`)}
+      ${efld('휴가 종류',`<select id="l-type" onchange="leaveAutoTitleM();leaveCalcDaysM();">${LEAVE_TYPE_OPTS.map(o=>`<option ${(existingDoc?.leaveType||LEAVE_TYPE_OPTS[0])===o?'selected':''}>${o}</option>`).join('')}</select>`)}
+      ${efld('시작일',`<input id="l-start" type="date" value="${existingDoc?.startDate||today}" onchange="leaveCalcDaysM()">`)}
+      ${efld('종료일',`<input id="l-end" type="date" value="${existingDoc?.endDate||today}" onchange="leaveCalcDaysM()">`)}
+      ${efld('일수 (자동 계산)',`<input id="l-days" type="number" step="0.5" value="${existingDoc?.days||1}" readonly style="background:#F4F7FB;color:#1D5BA6;font-weight:700">`)}
+      ${efld('사유',`<textarea id="l-reason" placeholder="휴가 사유를 입력하세요">${esc(existingDoc?.reason||'')}</textarea>`)}
+      ${efld('비상연락처',`<input id="l-contact" type="tel" placeholder="휴가 중 연락처" value="${esc(existingDoc?.contact||'')}" oninput="this.value=fmtTelM(this.value)" onblur="fmtTelBlurM(this)">`)}
+      ${efld('업무 대리인',`<select id="l-deputy">${deputyOpts}</select>`)}
+      ${efld('결재1 (직접 지정)',`<select id="l-approver1"><option value="">선택하세요</option>${approver1Opts}</select>`)}
+      <div class="wline">결재2: <b>김종화 부사장</b> (고정)<br>회람: 업무 대리인 (지정 시 자동 포함)</div>
+      ${isAdminCorrect
+        ? `<button class="wsave" onclick="leaveSaveAdminCorrectM()">🔧 관리자 정정 저장 (결재상태 유지)</button>`
+        : `<div style="display:flex;gap:8px">
+            <button class="wsave" style="flex:1;background:#6B7280" onclick="leaveSaveM('draft')">💾 임시저장</button>
+            <button class="wsave" style="flex:1" onclick="leaveSaveM('pending')">📨 상신</button>
+          </div>`}
+    </div>`;
+  if(!isEdit) leaveAutoTitleM();
+  leaveCalcDaysM();
+};
+window.fmtTelM=function(v){
+  const d=(v||'').replace(/\D/g,'');
+  if(d.length<=3) return d;
+  if(d.length<=6) return d.slice(0,3)+'-'+d.slice(3);
+  if(d.length<=10) return d.slice(0,3)+'-'+d.slice(3,6)+'-'+d.slice(6);
+  return d.slice(0,3)+'-'+d.slice(3,7)+'-'+d.slice(7,11);
+};
+window.fmtTelBlurM=function(el){
+  let d=el.value.replace(/\D/g,'');
+  if(d.length===8&&d[0]!=='0') d='010'+d;
+  el.value=window.fmtTelM(d);
+};
+async function leaveBuildData(status){
+  const title=fv('l-title').trim(),type=fv('l-type'),start=fv('l-start'),end=fv('l-end'),days=parseFloat(fv('l-days'))||0,reason=fv('l-reason').trim(),contact=fv('l-contact').trim();
+  const dep=document.getElementById('l-deputy'), depUid=dep?.value||'', depName=dep?.options[dep.selectedIndex]?.dataset?.name||'', depRank=dep?.options[dep.selectedIndex]?.dataset?.rank||'';
+  const ap1=document.getElementById('l-approver1'), ap1Uid=ap1?.value||'', ap1Name=ap1?.options[ap1.selectedIndex]?.dataset?.name||'', ap1Rank=ap1?.options[ap1.selectedIndex]?.dataset?.rank||'';
+  if(!title){alert('제목을 입력해 주세요.');return null;}
+  if(!start||!end){alert('시작일과 종료일을 입력해 주세요.');return null;}
+  if(!reason){alert('사유를 입력해 주세요.');return null;}
+  if(status==='pending'&&!ap1Uid){alert('결재1을 선택해 주세요.');return null;}
+  await loadPortalUsers();
+  const ap2User=_portalUsers.find(u=>u.name==='김종화')||{};
+  const ap2Uid=ap2User.uid||'', ap2Name=ap2User.name||'김종화', ap2Rank=ap2User.rank||'부사장';
+  const approvalLine=[
+    {role:'작성',uid:_me.uid||'',name:_me.name||'',rank:_me.rank||'',status:'draft'},
+    {role:'결재1',uid:ap1Uid,name:ap1Name,rank:ap1Rank,status:'pending'},
+    {role:'결재2',uid:ap2Uid,name:ap2Name,rank:ap2Rank,status:'pending'},
+  ];
+  if(depUid) approvalLine.push({role:'회람',uid:depUid,name:depName,rank:depRank,status:'pending'});
+  // PC는 승인라인(approvalLine)의 uid로 열람권한을 판단해 별도 viewerUids가 없지만,
+  // 모바일 목록은 viewerUids 기준으로 조회하므로 결재자·대리인이 모바일에서도 보이도록 추가한다.
+  const viewerUids=Array.from(new Set([_me.uid,ap1Uid,ap2Uid,depUid].filter(Boolean)));
+  return {dtype:'leave',status,title,leaveType:type,startDate:start,endDate:end,days,reason,contact,
+    deputyUid:depUid,deputyName:depName,
+    authorUid:_me.uid||'',authorName:_me.name||'',authorRank:_me.rank||'',authorDept:_me.dept||'',
+    approvalLine,viewerUids};
+}
+window.leaveSaveM=async function(status){
+  const data=await leaveBuildData(status); if(!data) return;
+  const editId=window._leaveEditId||null;
+  try{
+    if(editId){ data.updatedAt=serverTimestamp(); await setDoc(doc(db,'edoc_leave',editId),data,{merge:true}); }
+    else { data.createdAt=serverTimestamp(); await addDoc(collection(db,'edoc_leave'),data); }
+    alert(status==='pending'?'✅ 상신 완료!':(editId?'💾 수정 저장 완료':'💾 임시저장 완료'));
+    window._leaveEditId=null;
+    history.back();
+  }catch(e){alert('오류: '+e.message);}
+};
+// 관리자가 이미 승인/게시/결재중인 연차신청서 내용만 정정 — 결재라인·상태는 유지 (PC와 동일)
+window.leaveSaveAdminCorrectM=async function(){
+  const editId=window._leaveEditId; if(!editId) return;
+  const title=fv('l-title').trim(),type=fv('l-type'),start=fv('l-start'),end=fv('l-end'),days=parseFloat(fv('l-days'))||0,reason=fv('l-reason').trim(),contact=fv('l-contact').trim();
+  if(!title){alert('제목을 입력해 주세요.');return;}
+  if(!start||!end){alert('시작일과 종료일을 입력해 주세요.');return;}
+  if(!reason){alert('사유를 입력해 주세요.');return;}
+  if(!confirm('결재 상태는 그대로 두고 내용만 정정합니다. 계속할까요?')) return;
+  try{
+    await setDoc(doc(db,'edoc_leave',editId),{title,leaveType:type,startDate:start,endDate:end,days,reason,contact,
+      correctedBy:_me.name||'',correctedAt:new Date().toISOString()},{merge:true});
+    alert('🔧 관리자 정정 저장 완료 (결재상태 유지됨)');
+    window._leaveEditId=null;
+    history.back();
   }catch(e){alert('오류: '+e.message);}
 };
 // 품목(구매품의/지출결의 공용) 다중 입력 행
