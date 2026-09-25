@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 20260925b · ver: 2026-09-25 (모바일 홈 2.8.1) · [홈] 근무자 명부 미매칭 계정(관리자 등)도 출퇴근 카드 노출되도록 UID 폴백 추가 -->
+<!-- build: 20260925c · ver: 2026-09-25 (모바일 홈 2.8.2) · [홈] 개별 PJT 카드 나열 대신 'PJT 관리' 단일 진입점으로 축소, 전자결재 메뉴 파리티 대규모 개선 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -178,26 +178,14 @@
 
       <div class="lbl">업무 메뉴</div>
 
-      <div class="pjt-sec-lbl">🏗️ PJT 관리 · 진행 현장</div>
-      <div class="pjt-site fab" id="siteFab" style="visibility:hidden" data-perm="pjt" onclick="location.href='pjt.html?site=fab'">
-        <div class="ps-ic">🏭</div>
+      <div class="edoc-card" data-perm="pjt" onclick="location.href='pjt.html'">
+        <div class="ic" style="background:#e8f5e9;color:#2e7d32">🏗️</div>
         <div>
-          <div class="ps-cl">귀뚜라미범양냉방</div>
-          <div class="ps-nm">P4 Ph2 (FAB)</div>
-          <div class="ps-ds">FCU 설치 · 6섹터 183대</div>
+          <div class="nm">PJT 관리</div>
+          <div class="ds">진행 중인 현장 전체 보기</div>
         </div>
-        <span class="ps-go">›</span>
+        <span class="go">›</span>
       </div>
-      <div class="pjt-site sup" id="siteSup" style="visibility:hidden" data-perm="pjt" onclick="location.href='pjt.html?site=sup'">
-        <div class="ps-ic">🔧</div>
-        <div>
-          <div class="ps-cl">귀뚜라미범양냉방</div>
-          <div class="ps-nm">P4 Ph4 (SUP)</div>
-          <div class="ps-ds">EHU 설치 · 4섹터 11대</div>
-        </div>
-        <span class="ps-go">›</span>
-      </div>
-      <div id="lightPjtCards"></div>
       <div class="edoc-card" id="mandayCard" style="display:none" onclick="location.href='pjt_manday.html'">
         <div class="ic" style="background:#f0edfb;color:#7C3AED">📊</div>
         <div>
@@ -308,7 +296,6 @@ let _todayCounts={fab:0,sup:0,light:{}};
 const FIXED_PJT={p4ph2:'siteFab', p4ph4:'siteSup'};
 let _fixedEnded={p4ph2:false, p4ph4:false};
 function applyFixedPjt(){
-  Object.keys(FIXED_PJT).forEach(k=>{ const el=document.getElementById(FIXED_PJT[k]); if(!el) return; el.style.visibility=''; el.style.display=_fixedEnded[k]?'none':''; });
   updateTodayBadge();
 }
 let _lightSchedSubs={};
@@ -431,18 +418,10 @@ onAuthStateChanged(auth, (user)=>{
   onSnapshot(collection(db,'user_schedules'), snap=>{ let c=0; snap.forEach(d=>{ if(inRangeToday(d.data())) c++; }); _todayCounts.fab=c; updateTodayBadge(); });
   onSnapshot(collection(db,'ph4_schedules'), snap=>{ let c=0; snap.forEach(d=>{ if(inRangeToday(d.data())) c++; }); _todayCounts.sup=c; updateTodayBadge(); });
   onSnapshot(collection(db,'pjt_registry'), snap=>{
-    const wrap=document.getElementById('lightPjtCards'); if(!wrap) return;
-    let html='';
     snap.forEach(d=>{
       const m=d.data()||{}; if(m.status==='ended') return;
       ensureLightSchedSub(d.id);
-      const desc=m.content||(m.item?(m.item+(m.qty?(' '+m.qty+'건'):'')):'');
-      html += `<div class="pjt-site light" onclick="location.href='pjt.html?site=reg_${d.id}'">
-        <div class="ps-ic">🧩</div>
-        <div><div class="ps-cl">${esc(m.client||'')}</div><div class="ps-nm">${esc(m.name||'(이름 없음)')}</div><div class="ps-ds">${esc(desc)}</div></div>
-        <span class="ps-go">›</span></div>`;
     });
-    wrap.innerHTML=html;
   }, err=>{ console.error('pjt_registry 구독 오류(홈)', err); });
 });
 </script>

@@ -92,7 +92,7 @@ const firebaseConfig = {
 };
 const app=initializeApp(firebaseConfig); const db=getFirestore(app); const auth=getAuth(app);
 
-let dailies=[], leaves=[], purchases=[], expenses=[];
+let dailies=[], leaves=[], purchases=[], expenses=[], resigns=[], certs=[];
 let curView='home', detailId=null, loadError='';
 let overtimes=[];
 
@@ -125,9 +125,11 @@ function render(){
   if(loadError){ $app().innerHTML=topBar('전자결재')+`<div class="banner err">데이터를 불러오지 못했습니다: ${esc(loadError)}<br>포털 로그인 세션이 필요할 수 있습니다.</div>`; return; }
   const map={home:renderHome,approve:renderApprove,daily:renderDaily,leave:renderLeave,dailyD:renderDailyDetail,leaveD:renderLeaveDetail,
     overtime:renderOvertimeList,overtimeD:renderOvertimeDetail,dailyW:renderDailyWrite,leaveW:renderLeaveWrite,overtimeW:renderOvertimeWrite,
-    purchase:renderPurchase,purchaseD:renderPurchaseDetail,purchaseW:renderPurchaseWrite,
-    expense:renderExpense,expenseD:renderExpenseDetail,expenseW:renderExpenseWrite,
-    resign:()=>renderStub('퇴직원서'),cert:()=>renderStub('재직증명서')};
+    purchase:()=>renderDocListM('purchase'),purchaseD:()=>renderDocDetailM('purchase'),purchaseW:()=>renderDocWriteM('purchase'),
+    expense:()=>renderDocListM('expense'),expenseD:()=>renderDocDetailM('expense'),expenseW:()=>renderDocWriteM('expense'),
+    resign:()=>renderDocListM('resign'),resignD:()=>renderDocDetailM('resign'),resignW:()=>renderDocWriteM('resign'),
+    cert:()=>renderDocListM('cert'),certD:()=>renderDocDetailM('cert'),certW:()=>renderDocWriteM('cert'),
+    mycard:renderMyCardM,attendance:renderAttendanceTabM};
   (map[curView]||renderHome)();
 }
 function topBar(label,onclick){ return `<div class="top"><button class="back" onclick="${onclick||'goBack()'}">← ${label}</button><div class="avatar" onclick="goAccount()">${_uInitial}</div></div>`; }
@@ -154,6 +156,8 @@ function renderHome(){
       <div class="tile c3" onclick="showView('leave')"><span class="go">›</span><div class="ic">🌴</div><div class="nm">연차신청서</div><div class="ds">연차 신청</div></div>
       <div class="tile c5" onclick="showView('cert')"><span class="go">›</span><div class="ic">📃</div><div class="nm">재직증명서</div><div class="ds">증명 발급</div></div>
       <div class="tile c8" onclick="showView('resign')"><span class="go">›</span><div class="ic" style="background:#fdecf0;color:#db2777">📄</div><div class="nm">퇴직원서</div><div class="ds">퇴직 신청</div></div>
+      <div class="tile c4" onclick="showView('mycard')"><span class="go">›</span><div class="ic" style="background:#e0f2f1;color:#0d9488">🪪</div><div class="nm">인사카드</div><div class="ds">내 정보 조회</div></div>
+      <div class="tile c2" onclick="showView('attendance')"><span class="go">›</span><div class="ic" style="background:#eaf2fc;color:#1D5BA6">⏰</div><div class="nm">출퇴근 기록</div><div class="ds">월별 조회·수정</div></div>
     </div>`;
 }
 
@@ -168,25 +172,15 @@ function leaveCard(l){
     <div class="dl-meta">${esc(fmtDate(l.startDate||l.sdate))}${l.endDate||l.edate?' ~ '+esc(fmtDate(l.endDate||l.edate)):''} · ${l.days||l.leaveDays||0}일</div></div>`;
 }
 function itemsTotal(items){ if(!Array.isArray(items))return 0; return items.reduce((s,it)=>s+((it.amount!=null?Number(it.amount):(Number(it.qty)||0)*(Number(it.unitPrice)||0))||0),0); }
-function purchaseCard(p){
-  const tot=itemsTotal(p.items);
-  return `<div class="dcard-list" onclick="showDetail('purchase','${p.id}')">
-    <div class="dl-top"><div class="dl-title">${esc(p.vendor||'구매품의서')}</div>${stBadge(p.status)}</div>
-    <div class="dl-meta">${p.dueDate?esc(fmtDate(p.dueDate))+' 필요 · ':''}${Array.isArray(p.items)?p.items.length+'개 품목':''}${tot?' · ₩'+tot.toLocaleString('ko-KR'):''}</div></div>`;
-}
-function expenseCard(x){
-  return `<div class="dcard-list" onclick="showDetail('expense','${x.id}')">
-    <div class="dl-top"><div class="dl-title">${esc(x.vendor||x.category||'지출결의서')} <span class="pill">${esc(x.category||'')}</span></div>${stBadge(x.status)}</div>
-    <div class="dl-meta">${x.expDate?esc(fmtDate(x.expDate))+' · ':''}₩${(Number(x.amount)||0).toLocaleString('ko-KR')}</div></div>`;
-}
-
 function renderApprove(){
   const all=[...dailies.map(d=>({t:'daily',d})),...leaves.map(l=>({t:'leave',d:l})),
     ...purchases.map(p=>({t:'purchase',d:p})),...expenses.map(x=>({t:'expense',d:x})),
+    ...resigns.map(r=>({t:'resign',d:r})),...certs.map(c=>({t:'cert',d:c})),
     ...overtimes.map(o=>({t:'overtime',d:o}))]
     .sort((a,b)=>{const sa=isWait(a.d.status)?0:1,sb=isWait(b.d.status)?0:1;if(sa!==sb)return sa-sb;return (fmtDate(b.d.createdAt||b.d.date)).localeCompare(fmtDate(a.d.createdAt||a.d.date));});
   const waitCnt=all.filter(x=>isWait(x.d.status)).length;
-  const cardFn={daily:dailyCard,leave:leaveCard,purchase:purchaseCard,expense:expenseCard,overtime:otCard};
+  const cardFn={daily:dailyCard,leave:leaveCard,purchase:d=>docCardM('purchase',d),expense:d=>docCardM('expense',d),
+    resign:d=>docCardM('resign',d),cert:d=>docCardM('cert',d),overtime:otCard};
   const cards=all.map(x=>cardFn[x.t](x.d)).join('');
   $app().innerHTML=topBar('전자결재')+`
     <div class="hello rowend"><div><div class="name">결재함</div><div class="sub">대기 ${waitCnt} · 전체 ${all.length}</div></div></div>
@@ -254,25 +248,34 @@ function renderLeaveDetail(){
     </div>`:''}
     ${deleteBtn(l.id,'leave',l)}`;
 }
-function renderStub(label){
-  $app().innerHTML=topBar('전자결재')+`
-    <div class="hello"><div class="name" style="font-size:22px">${esc(label)}</div></div>
-    <div class="empty" style="margin-top:14px">준비 중</div>`;
-}
-function renderPurchase(){
-  const sorted=[...purchases].sort((a,b)=>fmtDate(b.createdAt).localeCompare(fmtDate(a.createdAt)));
-  $app().innerHTML=topBar('전자결재')+`
-    <div class="hello rowend"><div><div class="name">구매품의서</div><div class="sub">전체 ${purchases.length}</div></div></div>
-    ${purchases.length?`<div class="list">${sorted.map(purchaseCard).join('')}</div>`:'<div class="empty">작성된 구매품의서가 없습니다.</div>'}
-    <button class="fab-w" onclick="showView('purchaseW')">+</button>`;
-}
-function renderExpense(){
-  const sorted=[...expenses].sort((a,b)=>fmtDate(b.createdAt).localeCompare(fmtDate(a.createdAt)));
-  $app().innerHTML=topBar('전자결재')+`
-    <div class="hello rowend"><div><div class="name">지출결의서</div><div class="sub">전체 ${expenses.length}</div></div></div>
-    ${expenses.length?`<div class="list">${sorted.map(expenseCard).join('')}</div>`:'<div class="empty">작성된 지출결의서가 없습니다.</div>'}
-    <button class="fab-w" onclick="showView('expenseW')">+</button>`;
-}
+// PC의 DOC_CONFIG와 동일한 정의 — 결재선(approvers/cc)·입력 필드 구성의 단일 출처
+const MOBILE_DOC_CONFIG={
+  resign:{label:'퇴직원서',icon:'📤',approvers:['김종화','송지훈'],cc:['김민서'],fields:[
+    {key:'lastDate',label:'퇴직 예정일',type:'date'},
+    {key:'reason',label:'퇴직 사유',type:'textarea',ph:'퇴직 사유를 입력하세요'},
+  ]},
+  cert:{label:'재직증명서',icon:'🪪',approvers:['김종화'],cc:[],fields:[
+    {key:'purpose',label:'용도',type:'text',ph:'예) 금융기관 제출용'},
+    {key:'language',label:'발급 언어',type:'select',opts:['한국어','영문(English)']},
+    {key:'copies',label:'부수',type:'number',ph:'1'},
+  ]},
+  purchase:{label:'구매품의서',icon:'🛒',approvers:['김종화'],cc:[],fields:[
+    {key:'vendor',label:'공급업체',type:'text',ph:'업체명'},
+    {key:'purpose',label:'구매 목적',type:'textarea',ph:'구매 필요 사유'},
+    {key:'dueDate',label:'필요일',type:'date'},
+    {key:'items',label:'구매 품목',type:'items',required:false},
+  ]},
+  expense:{label:'지출결의서',icon:'💳',approvers:['김종화'],cc:[],fields:[
+    {key:'expDate',label:'지출일',type:'date'},
+    {key:'category',label:'지출 구분',type:'select',opts:['식대','교통비','소모품','공구/자재','접대비','기타']},
+    {key:'amount',label:'금액 (원)',type:'money',ph:'0'},
+    {key:'vendor',label:'거래처',type:'text',ph:'상호명'},
+    {key:'purpose',label:'지출 목적',type:'textarea',ph:'지출 사유를 입력하세요'},
+    {key:'receipt',label:'증빙 구비',type:'select',opts:['영수증 첨부','카드전표','세금계산서','없음']},
+    {key:'items',label:'구매 품목',type:'items',required:false},
+  ]},
+};
+function docsOf(dtype){ return {resign:resigns,cert:certs,purchase:purchases,expense:expenses}[dtype]||[]; }
 function itemsRowsHtml(items){
   if(!Array.isArray(items)||!items.length) return '<div class="drow"><span class="dv" style="color:#9aa8bc">등록된 품목 없음</span></div>';
   return items.map(it=>{
@@ -281,38 +284,40 @@ function itemsRowsHtml(items){
     return `<div class="drow"><span class="dk">${esc(it.name||'-')}</span><span class="dv">${qty} × ₩${price.toLocaleString('ko-KR')} = ₩${amt.toLocaleString('ko-KR')}${it.link?` · <a href="${esc(it.link)}" target="_blank" rel="noopener noreferrer" style="color:#1D5BA6">링크</a>`:''}</span></div>`;
   }).join('');
 }
-function renderPurchaseDetail(){
-  const p=purchases.find(x=>x.id===detailId);
-  if(!p){ $app().innerHTML=topBar('전자결재')+'<div class="empty">문서를 찾을 수 없습니다.</div>'; return; }
-  const tot=itemsTotal(p.items);
-  $app().innerHTML=topBar('전자결재')+`
-    <div class="hello"><div class="name" style="font-size:20px">${esc(p.vendor||'구매품의서')}</div><div class="sub">${stBadge(p.status)} ${p.authorName?'· '+esc((p.authorDept||'')+' '+p.authorName).trim():''}</div></div>
-    <div class="dcard">
-      ${p.dueDate?`<div class="drow"><span class="dk">필요일</span><span class="dv">${esc(fmtDate(p.dueDate))}</span></div>`:''}
-      ${p.purpose?`<div class="drow"><span class="dk">구매 목적</span><span class="dv">${esc(p.purpose)}</span></div>`:''}
-    </div>
-    <div class="lbl">구매 품목 ${tot?'· 합계 ₩'+tot.toLocaleString('ko-KR'):''}</div>
-    <div class="dcard">${itemsRowsHtml(p.items)}</div>
-    ${Array.isArray(p.approvalLine)&&p.approvalLine.length?`<div class="lbl">결재선</div><div class="dcard">${p.approvalLine.map(a=>`<div class="drow"><span class="dk">${esc(a.rank||a.role||'')}</span><span class="dv">${esc(a.name||'')} ${a.status?stBadge(a.status):''}</span></div>`).join('')}</div>`:''}
-    ${approveBtns(p.id,'purchase',p)}
-    ${deleteBtn(p.id,'purchase',p)}`;
+function docCardM(dtype,d){
+  const cfg=MOBILE_DOC_CONFIG[dtype];
+  const sub=dtype==='purchase'?(d.vendor||''):dtype==='expense'?(d.vendor||d.category||''):(d.reason||d.purpose||'');
+  return `<div class="dcard-list" onclick="showDetail('${dtype}','${d.id}')">
+    <div class="dl-top"><div class="dl-title">${esc(d.title||cfg.label)}</div>${stBadge(d.status)}</div>
+    <div class="dl-meta">${esc(sub)}${d.createdAt?' · '+esc(fmtDate(d.createdAt)):''}${dtype==='expense'?' · ₩'+(Number(d.amount)||0).toLocaleString('ko-KR'):''}</div></div>`;
 }
-function renderExpenseDetail(){
-  const x=expenses.find(y=>y.id===detailId);
-  if(!x){ $app().innerHTML=topBar('전자결재')+'<div class="empty">문서를 찾을 수 없습니다.</div>'; return; }
+function renderDocListM(dtype){
+  const cfg=MOBILE_DOC_CONFIG[dtype];
+  const list=docsOf(dtype);
+  const sorted=[...list].sort((a,b)=>fmtDate(b.createdAt).localeCompare(fmtDate(a.createdAt)));
   $app().innerHTML=topBar('전자결재')+`
-    <div class="hello"><div class="name" style="font-size:20px">${esc(x.vendor||x.category||'지출결의서')}</div><div class="sub">${stBadge(x.status)} ${x.authorName?'· '+esc((x.authorDept||'')+' '+x.authorName).trim():''}</div></div>
-    <div class="dcard">
-      ${x.expDate?`<div class="drow"><span class="dk">지출일</span><span class="dv">${esc(fmtDate(x.expDate))}</span></div>`:''}
-      ${x.category?`<div class="drow"><span class="dk">지출 구분</span><span class="dv">${esc(x.category)}</span></div>`:''}
-      <div class="drow"><span class="dk">금액</span><span class="dv" style="font-weight:800;color:var(--violet)">₩${(Number(x.amount)||0).toLocaleString('ko-KR')}</span></div>
-      ${x.receipt?`<div class="drow"><span class="dk">증빙</span><span class="dv">${esc(x.receipt)}</span></div>`:''}
-      ${x.purpose?`<div class="drow"><span class="dk">지출 목적</span><span class="dv">${esc(x.purpose)}</span></div>`:''}
-    </div>
-    ${Array.isArray(x.items)&&x.items.length?`<div class="lbl">관련 품목</div><div class="dcard">${itemsRowsHtml(x.items)}</div>`:''}
-    ${Array.isArray(x.approvalLine)&&x.approvalLine.length?`<div class="lbl">결재선</div><div class="dcard">${x.approvalLine.map(a=>`<div class="drow"><span class="dk">${esc(a.rank||a.role||'')}</span><span class="dv">${esc(a.name||'')} ${a.status?stBadge(a.status):''}</span></div>`).join('')}</div>`:''}
-    ${approveBtns(x.id,'expense',x)}
-    ${deleteBtn(x.id,'expense',x)}`;
+    <div class="hello rowend"><div><div class="name">${cfg.icon} ${cfg.label}</div><div class="sub">전체 ${list.length}</div></div></div>
+    ${list.length?`<div class="list">${sorted.map(d=>docCardM(dtype,d)).join('')}</div>`:`<div class="empty">작성된 ${cfg.label}가 없습니다.</div>`}
+    <button class="fab-w" onclick="showView('${dtype}W')">+</button>`;
+}
+function renderDocDetailM(dtype){
+  const cfg=MOBILE_DOC_CONFIG[dtype];
+  const d=docsOf(dtype).find(x=>x.id===detailId);
+  if(!d){ $app().innerHTML=topBar('전자결재')+'<div class="empty">문서를 찾을 수 없습니다.</div>'; return; }
+  const rows=cfg.fields.filter(f=>f.type!=='items').map(f=>{
+    const v=d[f.key];
+    if(v==null||v==='') return '';
+    const disp=f.type==='money'?'₩'+(Number(v)||0).toLocaleString('ko-KR'):f.type==='date'?fmtDate(v):v;
+    return `<div class="drow"><span class="dk">${esc(f.label)}</span><span class="dv">${esc(disp)}</span></div>`;
+  }).join('');
+  const itemsField=cfg.fields.find(f=>f.type==='items');
+  $app().innerHTML=topBar('전자결재')+`
+    <div class="hello"><div class="name" style="font-size:20px">${esc(d.title||cfg.label)}</div><div class="sub">${stBadge(d.status)} ${d.authorName?'· '+esc((d.authorDept||'')+' '+d.authorName).trim():''}</div></div>
+    <div class="dcard">${rows||'<div class="drow"><span class="dv" style="color:#9aa8bc">등록된 내용 없음</span></div>'}</div>
+    ${itemsField?`<div class="lbl">${esc(itemsField.label)}${itemsTotal(d[itemsField.key])?' · 합계 ₩'+itemsTotal(d[itemsField.key]).toLocaleString('ko-KR'):''}</div><div class="dcard">${itemsRowsHtml(d[itemsField.key])}</div>`:''}
+    ${Array.isArray(d.approvalLine)&&d.approvalLine.length?`<div class="lbl">결재선</div><div class="dcard">${d.approvalLine.map(a=>`<div class="drow"><span class="dk">${esc(a.rank||a.role||'')}</span><span class="dv">${esc(a.name||'')} ${a.status?stBadge(a.status):''}</span></div>`).join('')}</div>`:''}
+    ${approveBtns(d.id,dtype,d)}
+    ${deleteBtn(d.id,dtype,d)}`;
 }
 
 
@@ -669,79 +674,116 @@ window.leaveSaveAdminCorrectM=async function(){
   }catch(e){alert('오류: '+e.message);}
 };
 // 품목(구매품의/지출결의 공용) 다중 입력 행
-let _itemRows=[];
-function itemRowHtml(it,i){
-  return `<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
-    <input type="text" placeholder="품목명" value="${esc(it.name||'')}" oninput="_itemRows[${i}].name=this.value" style="flex:2;min-width:0;border:1px solid #DDE4EF;border-radius:8px;padding:9px 10px;font-size:13px;font-family:inherit">
-    <input type="number" placeholder="수량" min="0" value="${it.qty||''}" oninput="_itemRows[${i}].qty=this.value" style="width:56px;flex-shrink:0;border:1px solid #DDE4EF;border-radius:8px;padding:9px 4px;font-size:13px;text-align:center;font-family:inherit">
-    <input type="number" placeholder="단가" min="0" value="${it.unitPrice||''}" oninput="_itemRows[${i}].unitPrice=this.value" style="width:84px;flex-shrink:0;border:1px solid #DDE4EF;border-radius:8px;padding:9px 4px;font-size:13px;text-align:right;font-family:inherit">
-    <button type="button" onclick="removeItemRow(${i})" style="width:32px;height:32px;flex-shrink:0;border:1px solid #DDE4EF;border-radius:8px;background:#FEF2F2;color:#DC2626;font-weight:700;cursor:pointer;font-family:inherit">−</button>
-  </div>`;
+// 결재선 고정자 조회 — PC findUserByName과 동일 (portal_users에서 이름 매칭)
+function findUserByNameM(name){
+  const u=(_portalUsers||[]).find(x=>x.name===name);
+  return u?{uid:u.uid,name:u.name,rank:u.rank||''}:{uid:'',name,rank:''};
 }
-function itemFieldHtml(){
-  return `<div class="wf"><label>품목 (선택)</label>
-    <div id="item-rows">${_itemRows.map((it,i)=>itemRowHtml(it,i)).join('')}</div>
-    <button type="button" onclick="addItemRow()" style="margin-top:6px;padding:8px 14px;background:#EEF4FB;border:1px solid #DDE4EF;border-radius:8px;color:#1D5BA6;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">+ 품목 추가</button>
-  </div>`;
+// 문서별 고정 결재라인 생성 — PC buildFixedApprovalLine과 동일
+function buildFixedApprovalLineM(dtype){
+  const line=[{role:'작성',uid:_me.uid||'',name:_me.name||'',rank:_me.rank||'',status:'draft'}];
+  const cfg=MOBILE_DOC_CONFIG[dtype]||{};
+  const approvers=cfg.approvers||[], ccList=cfg.cc||[];
+  approvers.forEach((nm,i)=>{
+    const u=findUserByNameM(nm);
+    line.push({role:approvers.length>1?`결재${i+1}`:'결재',uid:u.uid,name:u.name,rank:u.rank,status:'pending'});
+  });
+  ccList.forEach(nm=>{ const u=findUserByNameM(nm); line.push({role:'회람',uid:u.uid,name:u.name,rank:u.rank,status:'pending'}); });
+  return line;
 }
-window.addItemRow=function(){ _itemRows.push({name:'',qty:'',unitPrice:''}); const box=document.getElementById('item-rows'); if(box) box.innerHTML=_itemRows.map((it,i)=>itemRowHtml(it,i)).join(''); };
-window.removeItemRow=function(i){ _itemRows.splice(i,1); const box=document.getElementById('item-rows'); if(box) box.innerHTML=_itemRows.map((it,j)=>itemRowHtml(it,j)).join(''); };
-function collectItems(){ return _itemRows.filter(it=>it.name&&it.name.trim()).map(it=>({name:it.name.trim(),qty:Number(it.qty)||0,unitPrice:Number(it.unitPrice)||0})); }
-function lineSingleApprove(){ return fillUids([{role:'작성',uid:_me.uid||'',name:_me.name||'',status:'draft'},{role:'결재',uid:'',name:'김종화',rank:'차장',status:'pending'}]); }
-// 구매품의서 작성
-window.renderPurchaseWrite=function(){
-  _itemRows=[];
-  const today=bizToday();
-  $app().innerHTML=topBar('구매품의서 작성','goBack()')+`
-    <div class="wform">
-      ${efld('공급업체',`<input id="p-vendor" type="text" placeholder="업체명">`)}
-      ${efld('구매 목적',`<textarea id="p-purpose" placeholder="구매 필요 사유"></textarea>`)}
-      ${efld('필요일',`<input id="p-due" type="date" value="${today}">`)}
-      ${itemFieldHtml()}
-      <div class="wline">결재: <b>김종화 차장</b></div>
-      <button class="wsave" onclick="purchaseSaveM()">상신</button>
+window.fmtMoneyM=function(el){ const d=el.value.replace(/[^0-9]/g,''); el.value=d?Number(d).toLocaleString('ko-KR'):''; };
+window.addItemRowM=function(key){
+  const box=document.querySelector(`#f-${key} .item-rows`); if(!box) return;
+  const row=document.createElement('div');
+  row.className='item-row';
+  row.style.cssText='margin-bottom:8px;padding:8px;border:1px solid #DDE4EF;border-radius:8px';
+  row.innerHTML=`<div style="display:flex;gap:6px;margin-bottom:6px">
+      <input type="text" class="item-name" placeholder="품목명" style="flex:2;min-width:0;border:1px solid #DDE4EF;border-radius:8px;padding:9px 10px;font-size:13px;font-family:inherit">
+      <input type="number" class="item-qty" placeholder="수량" min="0" style="width:56px;flex-shrink:0;border:1px solid #DDE4EF;border-radius:8px;padding:9px 4px;font-size:13px;text-align:center;font-family:inherit">
+      <input type="text" inputmode="numeric" class="item-price" placeholder="단가" oninput="fmtMoneyM(this)" style="width:84px;flex-shrink:0;border:1px solid #DDE4EF;border-radius:8px;padding:9px 4px;font-size:13px;text-align:right;font-family:inherit">
+    </div>
+    <div style="display:flex;gap:6px">
+      <input type="url" class="item-link" placeholder="링크(선택)" style="flex:1;min-width:0;border:1px solid #DDE4EF;border-radius:8px;padding:9px 10px;font-size:13px;font-family:inherit">
+      <button type="button" onclick="this.closest('.item-row').remove()" style="width:36px;flex-shrink:0;border:1px solid #DDE4EF;border-radius:8px;background:#FEF2F2;color:#DC2626;font-weight:700;cursor:pointer;font-family:inherit">−</button>
     </div>`;
+  box.appendChild(row);
 };
-window.purchaseSaveM=async function(){
-  const vendor=fv('p-vendor'),purpose=fv('p-purpose'),dueDate=fv('p-due'),items=collectItems();
-  if(!vendor.trim()){alert('공급업체를 입력하세요.');return;}
-  if(!purpose.trim()){alert('구매 목적을 입력하세요.');return;}
-  try{
-    const line=await lineSingleApprove();
-    await addDoc(collection(db,'edoc_purchase'),{dtype:'purchase',status:'pending',vendor,purpose,dueDate,items,
-      authorUid:_me.uid||'',authorName:_me.name||'',authorDept:_me.dept||'',authorRank:_me.rank||'',
-      approvalLine:line,viewerUids:viewerUidsOf(line),createdAt:serverTimestamp()});
-    alert('✅ 상신 완료!');history.back();
-  }catch(e){alert('오류: '+e.message);}
-};
-// 지출결의서 작성
-window.renderExpenseWrite=function(){
-  _itemRows=[];
+// 퇴직원서·재직증명서·구매품의서·지출결의서 공용 작성 화면 — MOBILE_DOC_CONFIG 기준으로 PC와 동일 구조 생성
+window.renderDocWriteM=async function(dtype){
+  const cfg=MOBILE_DOC_CONFIG[dtype];
   const today=bizToday();
-  $app().innerHTML=topBar('지출결의서 작성','goBack()')+`
+  const autoTitle=_me.name?`${today.replace(/-/g,'')} ${_me.name} ${cfg.label}`:'';
+  const fieldsHtml=cfg.fields.map(f=>{
+    let input='';
+    if(f.type==='items'){
+      input=`<div id="f-${f.key}"><div class="item-rows"></div>
+        <button type="button" onclick="addItemRowM('${f.key}')" style="margin-top:4px;padding:8px 14px;background:#EEF4FB;border:1px solid #DDE4EF;border-radius:8px;color:#1D5BA6;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">+ 품목 추가</button>
+      </div>`;
+    } else if(f.type==='select'){
+      input=`<select id="f-${f.key}">${(f.opts||[]).map(o=>`<option>${o}</option>`).join('')}</select>`;
+    } else if(f.type==='textarea'){
+      input=`<textarea id="f-${f.key}" placeholder="${f.ph||''}"></textarea>`;
+    } else if(f.type==='money'){
+      input=`<input id="f-${f.key}" type="text" inputmode="numeric" placeholder="${f.ph||''}" oninput="fmtMoneyM(this)">`;
+    } else {
+      input=`<input id="f-${f.key}" type="${f.type}" placeholder="${f.ph||''}" ${f.type==='date'?`value="${today}"`:''}>`;
+    }
+    return efld(f.label,input);
+  }).join('');
+  $app().innerHTML=topBar(`${cfg.label} 작성`,'goBack()')+`
     <div class="wform">
-      ${efld('지출일',`<input id="x-date" type="date" value="${today}">`)}
-      ${efld('지출 구분',`<select id="x-cat"><option>식대</option><option>교통비</option><option>소모품</option><option>공구/자재</option><option>접대비</option><option>기타</option></select>`)}
-      ${efld('금액 (원)',`<input id="x-amount" type="number" min="0" placeholder="0">`)}
-      ${efld('거래처',`<input id="x-vendor" type="text" placeholder="상호명">`)}
-      ${efld('지출 목적',`<textarea id="x-purpose" placeholder="지출 사유를 입력하세요"></textarea>`)}
-      ${efld('증빙 구비',`<select id="x-receipt"><option>영수증 첨부</option><option>카드전표</option><option>세금계산서</option><option>없음</option></select>`)}
-      ${itemFieldHtml()}
-      <div class="wline">결재: <b>김종화 차장</b></div>
-      <button class="wsave" onclick="expenseSaveM()">상신</button>
+      ${efld('제목',`<input id="f-title" type="text" placeholder="문서 제목을 입력하세요" value="${esc(autoTitle)}">`)}
+      ${fieldsHtml}
+      <div class="wline" id="doc-apline-preview-m">📋 결재선 확인 중…</div>
+      <div style="display:flex;gap:8px">
+        <button class="wsave" style="flex:1;background:#6B7280" onclick="docSaveM('${dtype}','draft')">💾 임시저장</button>
+        <button class="wsave" style="flex:1" onclick="docSaveM('${dtype}','pending')">📨 상신</button>
+      </div>
     </div>`;
+  await loadPortalUsers();
+  const prev=document.getElementById('doc-apline-preview-m');
+  if(prev){
+    const apps=cfg.approvers||[], ccs=cfg.cc||[];
+    let txt='📋 결재선: '+[_me.name||'(본인)',...apps].join(' → ');
+    if(ccs.length) txt+='  |  회람: '+ccs.join(', ');
+    prev.textContent=txt;
+  }
 };
-window.expenseSaveM=async function(){
-  const expDate=fv('x-date'),category=fv('x-cat'),amount=Number(fv('x-amount')||0),vendor=fv('x-vendor'),purpose=fv('x-purpose'),receipt=fv('x-receipt'),items=collectItems();
-  if(!amount||amount<=0){alert('금액을 입력하세요.');return;}
-  if(!purpose.trim()){alert('지출 목적을 입력하세요.');return;}
+window.docSaveM=async function(dtype,status){
+  const cfg=MOBILE_DOC_CONFIG[dtype];
+  const title=fv('f-title').trim();
+  if(!title){alert('제목을 입력해 주세요.');return;}
+  await loadPortalUsers();
+  const approvalLine=buildFixedApprovalLineM(dtype);
+  const viewerUids=Array.from(new Set([_me.uid,...approvalLine.map(a=>a.uid)].filter(Boolean)));
+  const data={title,dtype,status,
+    authorUid:_me.uid||'',authorName:_me.name||'',authorRank:_me.rank||'',authorDept:_me.dept||'',
+    approvalLine,viewerUids,createdAt:serverTimestamp()};
+  cfg.fields.forEach(f=>{
+    if(f.type==='items'){
+      const box=document.getElementById('f-'+f.key);
+      const items=[];
+      if(box) box.querySelectorAll('.item-row').forEach(row=>{
+        const name=row.querySelector('.item-name')?.value.trim()||'';
+        const qty=Number(row.querySelector('.item-qty')?.value)||0;
+        const unitPrice=Number(String(row.querySelector('.item-price')?.value||'').replace(/[^0-9.\-]/g,''))||0;
+        const link=row.querySelector('.item-link')?.value.trim()||'';
+        if(name||qty||unitPrice||link) items.push({name,qty,unitPrice,amount:qty*unitPrice,link});
+      });
+      data[f.key]=items;
+    } else if(f.type==='money'){
+      const el=document.getElementById('f-'+f.key);
+      if(el) data[f.key]=Number(String(el.value).replace(/[^0-9.\-]/g,''))||0;
+    } else {
+      const el=document.getElementById('f-'+f.key);
+      if(el) data[f.key]=el.value;
+    }
+  });
   try{
-    const line=await lineSingleApprove();
-    await addDoc(collection(db,'edoc_expense'),{dtype:'expense',status:'pending',expDate,category,amount,vendor,purpose,receipt,items,
-      authorUid:_me.uid||'',authorName:_me.name||'',authorDept:_me.dept||'',authorRank:_me.rank||'',
-      approvalLine:line,viewerUids:viewerUidsOf(line),createdAt:serverTimestamp()});
-    alert('✅ 상신 완료!');history.back();
-  }catch(e){alert('오류: '+e.message);}
+    await addDoc(collection(db,`edoc_${dtype}`),data);
+    alert(status==='pending'?'✅ 상신 완료! 결재 대기 중입니다.':'💾 임시저장 완료');
+    history.back();
+  }catch(e){ alert('오류: '+e.message); }
 };
 // 초과근로 목록/작성/상세
 window.renderOvertimeList=function(){
@@ -819,6 +861,209 @@ window.overtimeSaveM=async function(){
 };
 
 /* Firestore 구독 */
+// ── 근무자 명부 매칭 (인사카드·출퇴근 기록용) — PC loadMyInfo와 동일 로직 + 미매칭 계정은 staff_{uid}로 폴백 ──
+let _myWorkerId='', _myRealWorkerId='';
+async function loadMyWorkerIdM(user){
+  if(!user) return;
+  try{
+    const puSnap=await getDoc(doc(db,'portal_users',user.uid));
+    let puWorkerId=''; if(puSnap.exists()) puWorkerId=puSnap.data().workerId||'';
+    const ws=await getDocs(collection(db,'workers'));
+    let matchedId=puWorkerId;
+    ws.forEach(w=>{
+      const wd=w.data();
+      const isPortalUidMatch=wd.portalUid===user.uid;
+      const isEmailMatch=(wd.email||'').toLowerCase()===(user.email||'').toLowerCase();
+      const isNameMatch=wd.name&&wd.name===(_me.name||'');
+      if(isPortalUidMatch||(!matchedId&&(isEmailMatch||isNameMatch))){ if(isPortalUidMatch) matchedId=w.id; }
+    });
+    _myRealWorkerId=matchedId;
+    _myWorkerId=matchedId||('staff_'+user.uid);
+  }catch(e){ console.error('근무자 매칭 실패',e); }
+}
+// ── 인사카드 (PC renderMyCard와 동일, 본인 근무자 명부 정보 읽기전용 조회) ──
+window.renderMyCardM=async function(){
+  $app().innerHTML=topBar('전자결재')+'<div class="loading">⏳ 불러오는 중…</div>';
+  if(!_myRealWorkerId){
+    $app().innerHTML=topBar('전자결재')+'<div class="empty">계정이 근무자 명부와 연동되어 있지 않습니다.<br>인사 담당자에게 "근무자 연동"을 요청해주세요.</div>';
+    return;
+  }
+  try{
+    const wsnap=await getDoc(doc(db,'workers',_myRealWorkerId));
+    if(!wsnap.exists()){ $app().innerHTML=topBar('전자결재')+'<div class="empty">근로자 명부 정보를 찾을 수 없습니다.</div>'; return; }
+    const w=wsnap.data();
+    const maskJumin=j=>j?(j.slice(0,6)+'-'+'●'.repeat(Math.max(0,(j.replace(/[^0-9]/g,'').length-6)))):'-';
+    const maskBank=b=>b?b.replace(/.(?=.{4})/g,'●'):'-';
+    $app().innerHTML=topBar('전자결재')+`
+      <div class="hello"><div class="name" style="font-size:20px">${esc(w.name||'-')} <span style="font-size:13px;color:var(--sub)">${esc(w.rank||'')}</span></div><div class="sub">${esc(w.dept||'-')} · 사번 ${esc(w.empNo||'-')}</div></div>
+      <div class="dcard">
+        <div class="drow"><span class="dk">입사일</span><span class="dv">${esc(w.hireDate||'-')}</span></div>
+        <div class="drow"><span class="dk">직종</span><span class="dv">${esc(w.job||'-')}</span></div>
+        <div class="drow"><span class="dk">고용형태</span><span class="dv">${w.empType==='field'?'현장직':(w.empType==='office'?'사무직':esc(w.empType||'-'))}</span></div>
+        <div class="drow"><span class="dk">휴대폰번호</span><span class="dv">${esc(w.phone||'-')}</span></div>
+        <div class="drow"><span class="dk">주소</span><span class="dv">${esc(w.address||'-')}</span></div>
+        <div class="drow"><span class="dk">주민등록번호</span><span class="dv">${esc(maskJumin(w.jumin))}</span></div>
+        <div class="drow"><span class="dk">계좌번호</span><span class="dv">${esc(maskBank(w.bankAccount))}</span></div>
+      </div>
+      <div style="font-size:11px;color:#9aa8bc;margin:10px 20px 0;text-align:center">본인 정보만 조회됩니다. 정보 수정은 인사 담당자에게 요청해주세요.</div>`;
+  }catch(e){ $app().innerHTML=topBar('전자결재')+`<div class="empty">불러오기 실패: ${esc(e.message)}</div>`; }
+};
+// ── 출퇴근 기록 (PC renderAttendanceTab과 동일: 오늘 수동 입력 + 월별 근로시간 요약/상세) ──
+const EDOC_KR_HOLIDAYS_M=new Set(['2026-01-01','2026-02-16','2026-02-17','2026-02-18','2026-03-01','2026-03-02','2026-05-05','2026-05-25',
+  '2026-06-03','2026-06-06','2026-07-17','2026-08-17','2026-09-24','2026-09-25','2026-09-26','2026-10-05','2026-10-09','2026-12-25']);
+function edocMonthlyStandardHoursM(year,month){
+  const first=new Date(year,month-1,1), last=new Date(year,month,0);
+  let workDays=0; const cur=new Date(first);
+  while(cur<=last){
+    const dow=cur.getDay(), key=cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0');
+    if(dow!==0&&dow!==6&&!EDOC_KR_HOLIDAYS_M.has(key)) workDays++;
+    cur.setDate(cur.getDate()+1);
+  }
+  return workDays*8;
+}
+function edocIsoWeekKeyM(d){
+  const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  const dayNum=(t.getUTCDay()+6)%7; t.setUTCDate(t.getUTCDate()-dayNum+3);
+  const firstThursday=new Date(Date.UTC(t.getUTCFullYear(),0,4));
+  const weekNum=1+Math.round(((t-firstThursday)/86400000-3+(firstThursday.getUTCDay()+6)%7)/7);
+  return `${t.getUTCFullYear()}-W${weekNum}`;
+}
+function edocMonthlyMaxOvertimeHoursM(year,month){
+  const first=new Date(year,month-1,1), last=new Date(year,month,0);
+  const weeks=new Set(); const cur=new Date(first);
+  while(cur<=last){ weeks.add(edocIsoWeekKeyM(cur)); cur.setDate(cur.getDate()+1); }
+  return weeks.size*12;
+}
+function isLeavePaidM(leaveType){ return /\(유급\)/.test(leaveType||''); }
+function computeLeaveHoursForMonthM(year,month){
+  const ym=year+'-'+String(month).padStart(2,'0'); let hours=0;
+  for(const lv of leaves){
+    if((lv.authorName||lv.name||'')!==(_me.name||'')) continue;
+    if(lv.status!=='posted'&&lv.status!=='approved') continue;
+    if(!isLeavePaidM(lv.leaveType)) continue;
+    if(!lv.startDate||!lv.endDate) continue;
+    const perDay=(/반차/.test(lv.leaveType||'')||lv.days===0.5)?4:8;
+    const cur=new Date(lv.startDate), end=new Date(lv.endDate);
+    while(cur<=end){ const key=cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0'); if(key===ym) hours+=perDay; cur.setDate(cur.getDate()+1); }
+  }
+  return hours;
+}
+function attCalcWorkHoursM(inV,outV,brk){
+  if(!inV||!outV) return 0;
+  const [ih,im]=inV.split(':').map(Number), [oh,om]=outV.split(':').map(Number);
+  let mins=(oh*60+om)-(ih*60+im); if(mins<=0) mins+=24*60; mins-=(brk||0); if(mins<0) mins=0;
+  return mins/60;
+}
+function attSnapTo10MinM(t){
+  if(!t) return t; const [h,m]=t.split(':').map(Number);
+  let total=h*60+Math.round(m/10)*10; if(total>=1440) total-=1440; if(total<0) total+=1440;
+  return String(Math.floor(total/60)).padStart(2,'0')+':'+String(total%60).padStart(2,'0');
+}
+let _attYearM=new Date().getFullYear(), _attMonthM=new Date().getMonth()+1;
+window.renderAttendanceTabM=async function(){
+  $app().innerHTML=topBar('전자결재')+'<div class="loading">⏳ 불러오는 중…</div>';
+  if(!_myWorkerId){ $app().innerHTML=topBar('전자결재')+'<div class="empty">계정이 근무자 명부와 연동되어 있지 않습니다.<br>인사 담당자에게 "근무자 연동"을 요청해주세요.</div>'; return; }
+  _attYearM=new Date().getFullYear(); _attMonthM=new Date().getMonth()+1;
+  const d=new Date(), wd=['일','월','화','수','목','금','토'][d.getDay()];
+  const todayLabel=`${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 ${wd}요일`;
+  const dk=bizDateKeyM();
+  let existing={checkIn:'07:00',checkOut:'18:00',breakMinutes:120};
+  try{
+    const snap=await getDoc(doc(db,'worker_attendance_log',`${_myWorkerId}_${dk}`));
+    if(snap.exists()){ const dd=snap.data(); existing={checkIn:dd.checkIn||existing.checkIn,checkOut:dd.checkOut||existing.checkOut,breakMinutes:dd.breakMinutes??existing.breakMinutes}; }
+  }catch(e){ console.warn('오늘 출퇴근 기록 조회 실패',e); }
+  $app().innerHTML=topBar('전자결재')+`
+    <div class="hello"><div class="name" style="font-size:18px">⏰ 출퇴근 기록</div><div class="sub">${esc(todayLabel)}</div></div>
+    <div class="dcard" style="padding:14px 16px">
+      <div style="display:flex;gap:10px;margin-bottom:10px">
+        <div style="flex:1"><div style="font-size:11px;color:var(--sub);margin-bottom:5px">출근시간</div><input type="time" id="att-checkin" value="${existing.checkIn}" step="600" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px;font-size:14px;font-family:inherit"></div>
+        <div style="flex:1"><div style="font-size:11px;color:var(--sub);margin-bottom:5px">퇴근시간</div><input type="time" id="att-checkout" value="${existing.checkOut}" step="600" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px;font-size:14px;font-family:inherit"></div>
+      </div>
+      <div style="max-width:160px;margin-bottom:12px"><div style="font-size:11px;color:var(--sub);margin-bottom:5px">휴게시간(분)</div><input type="number" id="att-break" value="${existing.breakMinutes}" min="0" step="10" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px;font-size:14px;font-family:inherit"></div>
+      <div style="text-align:center;padding:14px 0;background:#F0F4F9;border-radius:10px;margin-bottom:12px">
+        <div id="att-hours-val-m" style="font-size:28px;font-weight:800;color:var(--blue)">${attCalcWorkHoursM(existing.checkIn,existing.checkOut,existing.breakMinutes).toFixed(1)}h</div>
+        <div style="font-size:11px;color:var(--sub);margin-top:4px">오늘 근무시간 (휴게시간 제외)</div>
+      </div>
+      <button class="wsave" onclick="attSaveM()">💾 저장</button>
+      <div id="att-save-status-m" style="font-size:11px;text-align:center;margin-top:8px"></div>
+    </div>
+    <div class="lbl" style="display:flex;align-items:center;justify-content:space-between;padding-right:20px">
+      <span>📊 월별 근로시간 조회</span>
+      <span style="display:flex;align-items:center;gap:8px">
+        <button onclick="attChangeMonthM(-1)" style="border:none;background:var(--card);border-radius:6px;padding:2px 8px;cursor:pointer;color:var(--blue)">◀</button>
+        <span id="att-month-label-m" style="font-size:12.5px;font-weight:700"></span>
+        <button onclick="attChangeMonthM(1)" style="border:none;background:var(--card);border-radius:6px;padding:2px 8px;cursor:pointer;color:var(--blue)">▶</button>
+      </span>
+    </div>
+    <div class="dcard" id="att-month-summary-m" style="padding:12px 16px">불러오는 중…</div>
+    <div class="lbl">🗓 해당 월 상세 내역</div>
+    <div class="dcard" id="att-recent-m" style="padding:6px 0">불러오는 중…</div>`;
+  const refresh=()=>{
+    const h=attCalcWorkHoursM(fv('att-checkin'),fv('att-checkout'),parseFloat(fv('att-break'))||0);
+    document.getElementById('att-hours-val-m').textContent=h.toFixed(1)+'h';
+  };
+  ['att-checkin','att-checkout'].forEach(id=>{
+    const inp=document.getElementById(id);
+    inp.addEventListener('input',refresh);
+    inp.addEventListener('change',e=>{ const s=attSnapTo10MinM(e.target.value); if(s&&s!==e.target.value) e.target.value=s; refresh(); });
+  });
+  document.getElementById('att-break').addEventListener('input',refresh);
+  attUpdateMonthLabelM();
+  await Promise.all([attLoadMonthSummaryM(),attLoadMonthRecordsM()]);
+};
+function bizDateKeyM(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function attUpdateMonthLabelM(){ const el=document.getElementById('att-month-label-m'); if(el) el.textContent=`${_attYearM}년 ${String(_attMonthM).padStart(2,'0')}월`; }
+window.attChangeMonthM=async function(delta){
+  _attMonthM+=delta;
+  if(_attMonthM>12){_attMonthM=1;_attYearM++;} if(_attMonthM<1){_attMonthM=12;_attYearM--;}
+  attUpdateMonthLabelM();
+  await Promise.all([attLoadMonthSummaryM(),attLoadMonthRecordsM()]);
+};
+window.attSaveM=async function(){
+  const checkIn=fv('att-checkin'),checkOut=fv('att-checkout'),breakMinutes=parseFloat(fv('att-break'))||0;
+  if(!checkIn||!checkOut){alert('출근/퇴근 시간을 모두 입력해주세요.');return;}
+  const workHours=attCalcWorkHoursM(checkIn,checkOut,breakMinutes);
+  const dk=bizDateKeyM(), key=`${_myWorkerId}_${dk}`;
+  const statusEl=document.getElementById('att-save-status-m');
+  try{
+    await setDoc(doc(db,'worker_attendance_log',key),{
+      workerId:_myWorkerId,name:_me.name||'',rank:_me.rank||'',date:dk,yearMonth:dk.slice(0,7),
+      checkIn,checkOut,breakMinutes,workHours,updatedAt:serverTimestamp()
+    },{merge:true});
+    if(statusEl){ statusEl.textContent='✓ 저장 완료'; statusEl.style.color='#16A34A'; }
+    await Promise.all([attLoadMonthSummaryM(),attLoadMonthRecordsM()]);
+  }catch(e){ if(statusEl){ statusEl.textContent='저장 실패: '+e.message; statusEl.style.color='#DC2626'; } }
+};
+async function attLoadMonthSummaryM(){
+  const box=document.getElementById('att-month-summary-m'); if(!box) return;
+  const ym=_attYearM+'-'+String(_attMonthM).padStart(2,'0');
+  try{
+    const snap=await getDocs(query(collection(db,'worker_attendance_log'),where('workerId','==',_myWorkerId),where('yearMonth','==',ym)));
+    let attHours=0; snap.forEach(s=>{ attHours+=Number(s.data().workHours)||0; });
+    const leaveHours=computeLeaveHoursForMonthM(_attYearM,_attMonthM);
+    const total=attHours+leaveHours;
+    const standard=edocMonthlyStandardHoursM(_attYearM,_attMonthM), maxOt=edocMonthlyMaxOvertimeHoursM(_attYearM,_attMonthM);
+    const regularUsed=Math.min(total,standard), otUsed=Math.max(0,total-standard);
+    const regularRemain=Math.max(0,standard-regularUsed), otRemain=Math.max(0,maxOt-otUsed);
+    const row=(k,v,color)=>`<div class="drow"><span class="dk">${k}</span><span class="dv" style="${color?'color:'+color:''}">${v}</span></div>`;
+    box.innerHTML=row(ym+' 소정근로시간',standard.toFixed(1)+'h')+row('최대초과근로 한도',maxOt.toFixed(1)+'h')
+      +row('출퇴근 기록 근무시간',attHours.toFixed(1)+'h')+row('유급휴가 반영시간',leaveHours.toFixed(1)+'h')
+      +row('해당 월 근무시간 누계',total.toFixed(1)+'h','#1D5BA6')+row('정규근로 잔여',regularRemain.toFixed(1)+'h','#16A34A')
+      +row('초과근로 가능 잔여',otRemain.toFixed(1)+'h',otUsed>maxOt?'#DC2626':'#16A34A');
+  }catch(e){ box.innerHTML=`<div style="color:#DC2626;padding:8px">불러오기 실패: ${esc(e.message)}</div>`; }
+}
+async function attLoadMonthRecordsM(){
+  const box=document.getElementById('att-recent-m'); if(!box) return;
+  const ym=_attYearM+'-'+String(_attMonthM).padStart(2,'0');
+  try{
+    const snap=await getDocs(query(collection(db,'worker_attendance_log'),where('workerId','==',_myWorkerId),where('yearMonth','==',ym)));
+    let rows=[]; snap.forEach(s=>rows.push(s.data()));
+    rows.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    if(!rows.length){ box.innerHTML='<div style="text-align:center;color:#9aa8bc;padding:16px 0">해당 월 기록이 없습니다</div>'; return; }
+    box.innerHTML=rows.map(r=>`<div class="drow"><span class="dk">${esc(r.date||'—')}</span><span class="dv">${esc(r.checkIn||'—')}~${esc(r.checkOut||'—')} · ${(r.workHours||0).toFixed(1)}h</span></div>`).join('')
+      +`<div class="drow" style="font-weight:800;color:var(--blue)"><span class="dk">합계 (${rows.length}일)</span><span class="dv">${rows.reduce((s,r)=>s+(r.workHours||0),0).toFixed(1)}h</span></div>`;
+  }catch(e){ box.innerHTML=`<div style="color:#DC2626;padding:8px">불러오기 실패: ${esc(e.message)}</div>`; }
+}
 function sub(coll,setter){
   const myUid=_me.uid||'';
   let byAuthor=[], byViewer=[], byAdmin=[];
@@ -837,13 +1082,16 @@ function sub(coll,setter){
   }
 }
 let _authBooted=false;
-onAuthStateChanged(auth, ()=>{
+onAuthStateChanged(auth, (user)=>{
   if(_authBooted) return; _authBooted=true;
   sub('edoc_daily',a=>{dailies=a;});
   sub('edoc_leave',a=>{leaves=a;});
   sub('edoc_overtime',a=>{overtimes=a;});
   sub('edoc_purchase',a=>{purchases=a;});
   sub('edoc_expense',a=>{expenses=a;});
+  sub('edoc_resign',a=>{resigns=a;});
+  sub('edoc_cert',a=>{certs=a;});
+  loadMyWorkerIdM(user);
 
   history.replaceState({v:'home',id:null},'');
   render();
