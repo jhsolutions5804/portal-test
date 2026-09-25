@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260820b · ver: 3.4.0 · 경량 PJT 워크스페이스 · 일정등록 폼을 메인 PJT(FAB)와 동일하게 개편(카테고리 자동추정/할일체크/시분선택/등록자 자동입력) + 공사일보 고도화 + 품목현황 일괄 등록·수정 -->
+<!DOCTYPE html><!-- build: 20260925a · ver: 3.5.0 · 공사일보 탭 상단에 캘린더 추가(날짜별 작성여부 표시, 클릭해서 이동) + 공사일보 저장 시 작성자 계정으로 전자결재 업무일지 자동 연동(별도 작성 불필요) · 이전: 20260820b ver 3.4.0 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -481,6 +481,16 @@ textarea.f-input{resize:vertical;min-height:70px}
 
     <!-- 공사일보 -->
     <div id="pane-report" style="display:none">
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-title">
+          <span>📅 <span id="report-cal-label">—</span></span>
+          <div style="display:flex;gap:4px">
+            <button class="nav-arrow" onclick="reportCalShift(-1)">‹</button>
+            <button class="nav-arrow" onclick="reportCalShift(1)">›</button>
+          </div>
+        </div>
+        <div class="cal-grid" id="report-cal-grid"><div class="loading">불러오는 중...</div></div>
+      </div>
       <div class="day-nav">
         <button class="nav-arrow" onclick="reportDayShift(-1)">‹</button>
         <div class="day-title" id="report-day-title">—</div>
@@ -746,6 +756,7 @@ let stageList=[];
 let itemsCache=[];
 let workersCache=[];
 let loginUserLabel='';
+let currentUid='', currentUserName='', currentUserRank='';
 
 // ══════════════════════════════════════════
 // 접근 검증 — 로그인 + 승인된 계정만. URL 직접 접근 우회 차단.
@@ -762,6 +773,9 @@ onAuthStateChanged(auth, async function(user){
     if(!ok){ showAccessDenied('PJT 관리 접근 권한이 없습니다. 관리자에게 요청해주세요.'); return; }
     isAdmin=!!(uData && uData.admin===true);
     loginUserLabel=uData?((uData.name||'')+' '+(uData.rank||'')).trim():'';
+    currentUid=user.uid;
+    currentUserName=uData?(uData.name||''):'';
+    currentUserRank=uData?(uData.rank||''):'';
     init();
   }catch(e){ showAccessDenied('권한 확인 중 오류가 발생했습니다: '+e.message); }
 });
@@ -790,7 +804,7 @@ async function init(){
     loadItems();
     loadWorkers().then(function(){ renderAttGrid(); loadWorkerTotals(); });
     attDate=getToday(); renderAttDay();
-    reportDate=getToday(); renderReportDay();
+    reportDate=getToday(); renderReportDay(); initReportCal();
     initCal();
     loadReports();
   }catch(e){ console.error(e); document.getElementById('no-pjt').style.display='block'; }
@@ -1975,8 +1989,11 @@ function renderReportDay(){
 }
 window.reportDayShift=function(n){
   const d=new Date(reportDate+'T00:00:00'); d.setDate(d.getDate()+n);
+  const prevY=_reportCalY, prevM=_reportCalM;
   reportDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   renderReportDay();
+  if(d.getFullYear()!==prevY || d.getMonth()!==prevM){ _reportCalY=d.getFullYear(); _reportCalM=d.getMonth(); loadReportCalMonth(); }
+  else renderReportCal();
 };
 
 // 작성자 드롭다운: portal_users(포털 계정)에서 로드 + 로그인 계정 자동 추가
@@ -2097,6 +2114,57 @@ async function loadReportOfDay(){
   }catch(e){}
 }
 
+// ── 공사일보 탭 상단 캘린더 (업무일지 캘린더 뷰와 동일한 취지 — 날짜를 먼저 보고 골라 들어가기) ──
+let _reportCalY, _reportCalM, _reportCalDates=new Set();
+function initReportCal(){
+  const d=new Date(reportDate+'T12:00:00');
+  _reportCalY=d.getFullYear(); _reportCalM=d.getMonth();
+  loadReportCalMonth();
+}
+window.reportCalShift=function(dir){
+  _reportCalM+=dir; if(_reportCalM<0){_reportCalM=11;_reportCalY--;} if(_reportCalM>11){_reportCalM=0;_reportCalY++;}
+  loadReportCalMonth();
+};
+async function loadReportCalMonth(){
+  const grid=document.getElementById('report-cal-grid');
+  if(grid) grid.innerHTML='<div class="loading">불러오는 중...</div>';
+  try{
+    const start=_reportCalY+'-'+String(_reportCalM+1).padStart(2,'0')+'-01';
+    const end=_reportCalY+'-'+String(_reportCalM+1).padStart(2,'0')+'-'+String(new Date(_reportCalY,_reportCalM+1,0).getDate()).padStart(2,'0');
+    const snap=await getDocs(query(collection(db,'pjt_registry',pjtId,'reports'), where('date','>=',start), where('date','<=',end)));
+    _reportCalDates=new Set();
+    snap.forEach(function(d){ const dt=d.data().date; if(dt) _reportCalDates.add(dt); });
+  }catch(e){ _reportCalDates=new Set(); }
+  renderReportCal();
+}
+function renderReportCal(){
+  const grid=document.getElementById('report-cal-grid');
+  const lbl=document.getElementById('report-cal-label');
+  if(!grid) return;
+  if(lbl) lbl.textContent=_reportCalY+'년 '+(_reportCalM+1)+'월';
+  const first=new Date(_reportCalY,_reportCalM,1).getDay();
+  const days=new Date(_reportCalY,_reportCalM+1,0).getDate();
+  const today=getToday();
+  let html='';
+  for(let i=0;i<first;i++) html+='<div></div>';
+  for(let day=1; day<=days; day++){
+    const dk=_reportCalY+'-'+String(_reportCalM+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    const hasReport=_reportCalDates.has(dk);
+    const isToday=(dk===today);
+    const isSel=(dk===reportDate);
+    html+='<div class="cal-day'+(isSel?' sel':(isToday?' today':''))+'" onclick="pickReportDate(\''+dk+'\')">'
+      +'<div class="dnum">'+day+'</div>'
+      +'<div class="ddots">'+(hasReport?'<span style="width:5px;height:5px;border-radius:50%;background:'+(isSel?'#fff':'#16A34A')+';display:inline-block"></span>':'')+'</div>'
+      +'</div>';
+  }
+  grid.innerHTML=html;
+}
+window.pickReportDate=function(dk){
+  reportDate=dk;
+  renderReportDay();
+  renderReportCal();
+};
+
 function collectReportData(){
   return {
     date: reportDate,
@@ -2119,10 +2187,47 @@ window.saveReport=async function(){
   const btn=document.getElementById('r-save-btn'); btn.disabled=true; btn.textContent='저장 중...';
   try{
     await setDoc(doc(db,'pjt_registry',pjtId,'reports',reportDate), Object.assign({}, d, {updatedAt: serverTimestamp()}), {merge:true});
+    await syncReportToDailyLog(d);
+    _reportCalDates.add(reportDate); renderReportCal();
     toast('저장되었습니다'); loadReports();
   }catch(e){ toast('저장 실패: '+e.message); }
   finally{ btn.disabled=false; btn.textContent='저장'; }
 };
+
+// 공사일보를 저장하면 작성자(현재 로그인 계정) 명의로 전자결재 업무일지도 함께 생성/갱신한다.
+// 별도로 업무일지를 다시 쓰지 않아도 되도록 — 문서 id를 프로젝트+날짜로 고정해 재저장 시 덮어쓴다(중복 생성 방지).
+async function syncReportToDailyLog(d){
+  if(!currentUid) return; // 로그인 계정을 특정할 수 없으면 연동하지 않음(수동 작성으로 대체)
+  try{
+    const docId='pjtreport_'+pjtId+'_'+reportDate;
+    let viewerUids=[];
+    try{
+      const uSnap=await getDoc(doc(db,'portal_users',currentUid));
+      if(uSnap.exists()) viewerUids=uSnap.data().dailyViewTargets||[];
+    }catch(e){}
+    const data={
+      dtype:'daily', status:'pending',
+      title:(pjtData&&pjtData.name?pjtData.name+' 공사일보':'공사일보')+' ('+fmtDate(reportDate)+')',
+      date: reportDate,
+      pjtId:'reg_'+pjtId, pjtCode:'', pjtName:(pjtData&&pjtData.name)||'',
+      todayWork: d.content,
+      tomorrowWork: d.tomorrow||'',
+      issue: d.note||'',
+      authorUid: currentUid,
+      authorName: currentUserName||d.author||'',
+      authorRank: currentUserRank||'',
+      viewerUids,
+      approvalLine:[
+        { role:'작성', uid:currentUid, name:currentUserName||'', status:'draft' },
+        { role:'결재', uid:'', name:'김종화', rank:'부사장', status:'pending' },
+        { role:'수신', uid:'', name:'송지훈', rank:'대표', status:'pending' },
+      ],
+      source:'pjt_report', // 공사일보에서 자동 연동된 업무일지 표시용
+      updatedAt: serverTimestamp(),
+    };
+    await setDoc(doc(db,'edoc_daily',docId), data, { merge:true });
+  }catch(e){ console.warn('[공사일보→업무일지 연동 실패]', e.message); }
+}
 
 async function loadReports(){
   const el=document.getElementById('report-list');
