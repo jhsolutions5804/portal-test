@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260925a · ver: 3.5.0 · 공사일보 탭 상단에 캘린더 추가(날짜별 작성여부 표시, 클릭해서 이동) + 공사일보 저장 시 작성자 계정으로 전자결재 업무일지 자동 연동(별도 작성 불필요) · 이전: 20260820b ver 3.4.0 -->
+<!DOCTYPE html><!-- build: 20260925b · ver: 3.6.0 · 공사일보 조회 모달 중앙정렬+목록 간소화(날짜만), 설정에서 현장정보 전체 수정 가능, 근태관리 탭 날짜 클릭 이동, 사용장비 하드코딩(FAB 지게차번호) 제거→자유입력 · 이전: 20260925a ver 3.5.0 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -329,6 +329,16 @@ textarea.f-input{resize:vertical;min-height:70px}
       <div class="home-row2" id="admin-row" style="display:none">
         <div class="home-card">
           <div class="home-section-hd">⚙️ 기본정보 수정 <span style="font-weight:400;color:#9AAABF;font-size:11px">(관리자)</span></div>
+          <label class="f-label">현장명</label>
+          <input class="f-input" type="text" id="e-site">
+          <label class="f-label">거래처</label>
+          <input class="f-input" type="text" id="e-client">
+          <label class="f-label">PJT 내용</label>
+          <input class="f-input" type="text" id="e-content">
+          <label class="f-label">품목</label>
+          <input class="f-input" type="text" id="e-item">
+          <label class="f-label">물량</label>
+          <input class="f-input" type="number" step="1" min="0" id="e-qty" style="max-width:140px">
           <label class="f-label">공사 시작일</label>
           <input class="f-input" type="date" id="e-start" style="max-width:220px">
           <button class="btn-primary" id="e-save-btn" onclick="saveBasic()" style="margin-top:12px">저장</button>
@@ -384,7 +394,10 @@ textarea.f-input{resize:vertical;min-height:70px}
     <div id="pane-att" style="display:none">
       <div class="day-nav">
         <button class="nav-arrow" onclick="attDayShift(-1)">‹</button>
-        <div class="day-title" id="att-day-title">—</div>
+        <div style="flex:1;text-align:center;position:relative">
+          <div class="day-title" id="att-day-title" onclick="openAttDatePicker()" style="cursor:pointer">—</div>
+          <input type="date" id="att-date-picker" onchange="pickAttDate(this.value)" style="position:absolute;left:50%;transform:translateX(-50%);top:100%;opacity:0;width:1px;height:1px;pointer-events:none">
+        </div>
         <button class="nav-arrow" onclick="attDayShift(1)">›</button>
       </div>
       <div class="att-pc-grid">
@@ -525,14 +538,10 @@ textarea.f-input{resize:vertical;min-height:70px}
           <div id="r-equip-chips">
             <span class="equip-empty">장비를 선택하세요</span>
           </div>
-          <select class="f-input" id="r-equip-sel" onchange="addReportEquip(this)">
-            <option value="">+ 장비 추가</option>
-            <option value="지게차(004나6452)">지게차 (004나6452)</option>
-            <option value="지게차(004나8334)">지게차 (004나8334)</option>
-            <option value="지게차(004라7402)">지게차 (004라7402)</option>
-            <option value="지게차(경기04로8396)">지게차 (경기04로8396)</option>
-            <option value="지게차(경기04보6471)">지게차 (경기04보6471)</option>
-          </select>
+          <div style="display:flex;gap:6px">
+            <input type="text" class="f-input" id="r-equip-input" placeholder="예: 지게차 (00가0000)" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addReportEquip();}">
+            <button type="button" class="btn-sm" onclick="addReportEquip()" style="white-space:nowrap">+ 추가</button>
+          </div>
           <label class="f-label">특이사항</label>
           <textarea class="f-input" id="r-note" placeholder="특이사항 (선택)" style="min-height:50px"></textarea>
           <div style="display:flex;gap:8px;margin-top:14px">
@@ -666,8 +675,8 @@ textarea.f-input{resize:vertical;min-height:70px}
 </div>
 
 <!-- 공사일보 조회 모달 -->
-<div class="modal" id="dr-list-modal">
-  <div class="sheet" style="max-width:720px">
+<div class="modal" id="dr-list-modal" style="align-items:center">
+  <div class="sheet" style="max-width:720px;border-radius:18px;margin:0">
     <div class="sheet-head"><div class="sheet-title">📂 공사일보 조회</div><button class="sheet-close" onclick="closeReportList()">×</button></div>
     <div class="sheet-body" id="dr-list-body"><div class="loading">불러오는 중...</div></div>
   </div>
@@ -797,6 +806,11 @@ async function init(){
       document.getElementById('item-bulk-btn').style.display='inline-block';
       document.getElementById('worker-mgmt-btn').style.display='inline-block';
       document.getElementById('att-bulk-row').style.display='flex';
+      document.getElementById('e-site').value=pjtData.site||'';
+      document.getElementById('e-client').value=pjtData.client||'';
+      document.getElementById('e-content').value=pjtData.content||'';
+      document.getElementById('e-item').value=pjtData.item||'';
+      document.getElementById('e-qty').value=pjtData.qty||'';
       document.getElementById('e-start').value=pjtData.startDate||'';
       renderStageTags();
     }
@@ -867,9 +881,16 @@ window.switchTab=function(tab){
 window.saveBasic=async function(){
   const btn=document.getElementById('e-save-btn'); btn.disabled=true; btn.textContent='저장 중...';
   try{
-    const startDate=document.getElementById('e-start').value||'';
-    await updateDoc(doc(db,'pjt_registry',pjtId), {startDate});
-    pjtData.startDate=startDate;
+    const patch={
+      site: document.getElementById('e-site').value.trim(),
+      client: document.getElementById('e-client').value.trim(),
+      content: document.getElementById('e-content').value.trim(),
+      item: document.getElementById('e-item').value.trim(),
+      qty: parseFloat(document.getElementById('e-qty').value)||0,
+      startDate: document.getElementById('e-start').value||'',
+    };
+    await updateDoc(doc(db,'pjt_registry',pjtId), patch);
+    Object.assign(pjtData, patch);
     renderHeader();
     toast('저장되었습니다');
   }catch(e){ toast('저장 실패: '+e.message); }
@@ -1194,6 +1215,11 @@ window.attDayShift=function(n){
   attDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   renderAttDay();
 };
+window.openAttDatePicker=function(){
+  const el=document.getElementById('att-date-picker');
+  if(el){ el.value=attDate; el.showPicker?el.showPicker():el.click(); }
+};
+window.pickAttDate=function(v){ if(!v) return; attDate=v; renderAttDay(); };
 window.openWorkerAdd=async function(){
   const sel=document.getElementById('wk-master');
   try{
@@ -2010,10 +2036,11 @@ async function loadAuthorOptions(){
 }
 
 // 사용 장비 칩
-window.addReportEquip=function(sel){
-  const v=sel.value; if(!v) return;
+window.addReportEquip=function(){
+  const inp=document.getElementById('r-equip-input'); if(!inp) return;
+  const v=inp.value.trim(); if(!v) return;
   if(!reportEquips.includes(v)) reportEquips.push(v);
-  sel.value=''; renderReportEquipChips();
+  inp.value=''; renderReportEquipChips(); inp.focus();
 };
 window.rmReportEquip=function(idx){ reportEquips.splice(idx,1); renderReportEquipChips(); };
 function renderReportEquipChips(){
@@ -2240,7 +2267,6 @@ async function loadReports(){
       const r=d.data();
       html+='<div class="dr-row" onclick="openReportDetail(\''+d.id+'\')"><div class="sched-date">'+fmtDate(r.date)+'</div>'
         +'<div class="sched-body"><div class="sched-title">'+escapeHtml(r.author||'작성자 미상')+'</div>'
-        +'<div class="sched-memo">'+escapeHtml(r.content||'')+'</div>'
         +(r.note?('<div class="sched-memo" style="color:#c0392b">⚠ '+escapeHtml(r.note)+'</div>'):'')+'</div></div>';
     });
     el.innerHTML=html||'<div class="empty">작성된 공사일보가 없습니다.</div>';
@@ -2263,8 +2289,7 @@ async function loadReportListModal(){
     snap.forEach(function(d){
       const r=d.data();
       html+='<div class="dr-row" onclick="openReportDetail(\''+d.id+'\')"><div class="sched-date">'+fmtDate(r.date)+'</div>'
-        +'<div class="sched-body"><div class="sched-title">'+escapeHtml(r.author||'작성자 미상')+'</div>'
-        +'<div class="sched-memo">'+escapeHtml(r.content||'')+'</div></div></div>';
+        +'<div class="sched-body"><div class="sched-title">'+escapeHtml(r.author||'작성자 미상')+'</div></div></div>';
     });
     body.innerHTML=html;
   }catch(e){ body.innerHTML='<div class="empty">불러오기 실패</div>'; }
