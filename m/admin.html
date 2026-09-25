@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 20260919a · ver: 2026-09-19 (모바일 관리 2.7.0) · [조직도] 대표 최상단(부서 표시 없음)·부서 지정순서·부서 내 사번순 정렬 -->
+<!-- build: 20260925a · ver: 2026-09-25 (모바일 관리 2.8.0) · [내규] 회사내규 열람(company_policies) 추가 · 이전: 20260919a ver 2.7.0 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -45,6 +45,16 @@
   .banner{margin:14px 20px 0;padding:11px 14px;border-radius:12px;font-size:11.5px;font-weight:600;line-height:1.5}
   .banner.info{background:#eef4fc;border:1px solid #d6e4f6;color:var(--blue-d)}
   .banner.err{background:#fdecea;border:1px solid #f5c6c0;color:#a5342a}
+  .rtabs{display:flex;gap:6px;overflow-x:auto;padding:14px 20px 4px}
+  .rtab{flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid var(--line);background:var(--card);color:var(--sub);font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .rtab.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  .rcontent{margin:14px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 18px;box-shadow:0 2px 8px rgba(30,50,80,.05);font-size:13.5px;line-height:1.75;color:var(--ink)}
+  .rcontent h1{font-size:17px;font-weight:800;margin:2px 0 12px}
+  .rcontent h2{font-size:14.5px;font-weight:800;margin:18px 0 8px;color:var(--blue)}
+  .rcontent p{margin:0 0 9px}
+  .rcontent table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.5px}
+  .rcontent th{background:#eef2f7;padding:7px 8px;text-align:left;font-weight:700;border-bottom:1px solid var(--line)}
+  .rcontent td{padding:7px 8px;border-bottom:1px solid #f2f5f9}
 </style>
 <script src="auth-guard.js"></script>
 </head>
@@ -54,7 +64,7 @@
 <script type="module">
 const _uInitial=(function(){try{var a=JSON.parse(localStorage.getItem('jh_login_perms')||'null');return (a&&a.name)?a.name.slice(0,1):'·';}catch(e){return '·';}})();
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, onSnapshot, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 const firebaseConfig = {
   apiKey:"AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI", authDomain:"portal-test-6e0ff.firebaseapp.com",
@@ -64,10 +74,11 @@ const firebaseConfig = {
 const app=initializeApp(firebaseConfig); const db=getFirestore(app); const auth=getAuth(app);
 
 let users=[], loadError='';
-// 초기 뷰: URL ?v=org|admin
+// 초기 뷰: URL ?v=org|admin|rules
 const params=new URLSearchParams(location.search);
-let curView=params.get('v')==='admin'?'admin':'org';
+let curView=params.get('v')==='admin'?'admin':params.get('v')==='rules'?'rules':'org';
 let detailId=null;
+let rules=[], rulesLoaded=false, rulesLoading=false, rulesError='', rulesActiveIdx=0;
 
 const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const $app=()=>document.getElementById('app');
@@ -85,7 +96,7 @@ window.addEventListener('popstate',e=>{ const st=e.state||{v:curView,id:null}; c
 
 function render(){
   if(loadError){ $app().innerHTML=topBar('홈','goHome()')+`<div class="banner err">데이터를 불러오지 못했습니다: ${esc(loadError)}<br>포털 로그인 세션이 필요할 수 있습니다.</div>`; return; }
-  ({org:renderOrg,admin:renderAdmin,adminD:renderAdminDetail}[curView]||renderOrg)();
+  ({org:renderOrg,admin:renderAdmin,adminD:renderAdminDetail,rules:renderRules}[curView]||renderOrg)();
 }
 function topBar(label,onclick){ return `<div class="top"><button class="back" onclick="${onclick||'goBack()'}">← ${label}</button><div class="avatar" onclick="goAccount()">${_uInitial}</div></div>`; }
 
@@ -150,6 +161,58 @@ function renderAdminDetail(){
     <div class="dcard">${info.map(([k,v])=>`<div class="drow"><span class="dk">${k}</span><span class="dv">${esc(v)}</span></div>`).join('')||'<div class="drow"><span class="dk">정보</span><span class="dv">없음</span></div>'}</div>
     <div class="lbl">접근 권한</div>
     <div class="permrow">${u.admin?'<span class="permchip on">전체 (관리자)</span>':perms.map(([k,on])=>`<span class="permchip ${on?'on':''}">${on?'✓ ':''}${k}</span>`).join('')}</div>`;
+}
+
+/* 회사내규 열람 — PC(index.html)의 company_policies 컬렉션·마크다운 렌더러와 동일 */
+function mdToHtmlSimpleM(md){
+  const e2=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const lines=(md||'').replace(/\r\n/g,'\n').split('\n');
+  let html=''; let i=0;
+  const unesc=t=>t.replace(/\\([\\`*_{}\[\]()#+\-.!~|])/g,'$1');
+  const inline=t=>e2(unesc(t)).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  while(i<lines.length){
+    const line=lines[i];
+    if(/^\s*$/.test(line)){ i++; continue; }
+    if(line.startsWith('# ')){ html+=`<h1>${inline(line.slice(2))}</h1>`; i++; continue; }
+    if(line.startsWith('## ')){ html+=`<h2>${inline(line.slice(3))}</h2>`; i++; continue; }
+    if(/^\|.*\|\s*$/.test(line) && lines[i+1] && /^\|[\s:|-]+\|\s*$/.test(lines[i+1])){
+      const rows=[]; let j=i;
+      while(j<lines.length && /^\|.*\|\s*$/.test(lines[j])){ rows.push(lines[j]); j++; }
+      const cells=r=>r.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim());
+      const head=cells(rows[0]);
+      const body=rows.slice(2).map(cells);
+      html+='<table><thead><tr>'+head.map(h=>`<th>${inline(h)}</th>`).join('')+'</tr></thead><tbody>'
+        +body.map(r=>'<tr>'+r.map(c=>`<td>${inline(c)}</td>`).join('')+'</tr>').join('')+'</tbody></table>';
+      i=j; continue;
+    }
+    html+=`<p>${inline(line)}</p>`; i++;
+  }
+  return html;
+}
+async function loadRulesM(){
+  if(rulesLoaded||rulesLoading) return;
+  rulesLoading=true;
+  try{
+    const qs=await getDocs(query(collection(db,'company_policies'), orderBy('order')));
+    const list=[]; qs.forEach(d=>list.push({id:d.id,...d.data()}));
+    rules=list; rulesLoaded=true;
+  }catch(e){ rulesError=e.code||e.message; }
+  rulesLoading=false;
+  if(curView==='rules') render();
+}
+window.rulesPick=function(idx){ rulesActiveIdx=idx; render(); };
+function renderRules(){
+  if(!rulesLoaded && !rulesLoading && !rulesError) loadRulesM();
+  const tabsHtml=rules.map((r,idx)=>`<button class="rtab ${idx===rulesActiveIdx?'on':''}" onclick="rulesPick(${idx})">${esc(r.title||r.id)}</button>`).join('');
+  const doc=rules[rulesActiveIdx];
+  const body = rulesError ? `<div class="empty">불러오기 실패: ${esc(rulesError)}</div>`
+    : rulesLoading || !rulesLoaded ? '<div class="loading">불러오는 중…</div>'
+    : !rules.length ? '<div class="empty">등록된 내규가 없습니다.</div>'
+    : `<div class="rcontent">${mdToHtmlSimpleM(doc?.markdown||'')}</div>`;
+  $app().innerHTML=topBar('홈','goHome()')+`
+    <div class="hello"><div class="name">📖 내규 열람</div><div class="sub">회사 취업규칙·제규정 열람</div></div>
+    ${rules.length?`<div class="rtabs">${tabsHtml}</div>`:''}
+    ${body}`;
 }
 
 function sub(coll,setter){

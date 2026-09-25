@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 20260925c · ver: 2026-09-25 (모바일 홈 2.8.2) · [홈] 개별 PJT 카드 나열 대신 'PJT 관리' 단일 진입점으로 축소, 전자결재 메뉴 파리티 대규모 개선 -->
+<!-- build: 20260925d · ver: 2026-09-25 (모바일 홈 2.8.3) · [홈] 더보기에 내규 열람 타일 추가(5열) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -112,7 +112,7 @@
   .edoc-card .go{margin-left:auto;font-size:17px;color:#c3cedd}
 
   /* 그 외 기능(기획/인사/조직도/관리): PJT·전자결재 대비 축소된 4열 소형 링크 */
-  .more-row{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:0 20px 4px}
+  .more-row{display:grid; grid-template-columns:repeat(5,1fr); gap:6px; padding:0 20px 4px}
   .more-item{
     background:var(--card); border:1px solid var(--line); border-radius:13px;
     padding:11px 4px; display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer;
@@ -217,6 +217,9 @@
         </div>
         <div class="more-item" data-admin="1" onclick="location.href='admin.html?v=admin'">
           <span class="mi2">⚙️</span><span class="mt2">관리</span>
+        </div>
+        <div class="more-item" onclick="location.href='admin.html?v=rules'">
+          <span class="mi2">📖</span><span class="mt2">내규</span>
         </div>
       </div>
 
