@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- gihoek module build: 20260924a · ver 5.7.0 · 포털 하단 작업탭 동기화 — 내부 이동 시 현재 화면을 포털에 알려 탭 라벨 정확화 · 이전: 20260830a ver 5.6.0 -->
+<!DOCTYPE html><!-- gihoek module build: 20260925a · ver 5.7.1 · 연동 PJT(pjt_registry) 발주처 변경 시 동기화 · 이전: 20260924a ver 5.7.0 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -177,7 +177,7 @@
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc, onSnapshot, serverTimestamp, query, where, addDoc }
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp, query, where, addDoc }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -542,6 +542,10 @@ window.savePjt=async function(id){ const code=$('pf-code').value.trim(); if(!cod
     data.linkPjt = finalLink;
     data.progProfile = (finalLink==='none' ? '' : (finalLink==='p4ph4' ? 'p4ph4' : (finalLink==='p4ph2' ? 'p4ph2' : '')));
     data.mandayCol = (finalLink==='p4ph4' ? 'ph4_manday' : (finalLink==='p4ph2' ? 'worker_manday' : ''));
+    // 경량 PJT(pjt_registry)에 연동된 경우, 발주처 변경 시 연동 항목에도 반영 (PJT관리 쪽 화면과 어긋나지 않도록)
+    if (finalLink.indexOf('reg_')===0 && data.client) {
+      try{ await updateDoc(doc(db,'pjt_registry', finalLink.slice(4)), { client: data.client }); }catch(e){ console.warn('[기획] 연동 PJT 발주처 동기화 실패:', e.message); }
+    }
     if(id){ await setDoc(doc(db,'gihoek_projects',id),data,{merge:true}); toast(linkSel==='auto'?'수정했습니다. (PJT관리에 신규 항목 생성됨)':'수정했습니다.'); pjtDetail(id); }
     else{ const nid='pjt_'+Date.now(); await setDoc(doc(db,'gihoek_projects',nid),{...data, createdAt:serverTimestamp()}); toast(linkSel==='auto'?'프로젝트를 등록했습니다. (PJT관리에도 자동 생성됨)':'프로젝트를 등록했습니다.'); renderPjt(); }
   }
