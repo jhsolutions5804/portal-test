@@ -532,7 +532,7 @@ window.renderLeaveWrite=function(){
       ${efld('종료일',`<input id="l-end" type="date" value="${today}">`)}
       ${efld('일수',`<input id="l-days" type="number" step="0.5" min="0" value="1">`)}
       ${efld('사유',`<textarea id="l-reason" placeholder="사유"></textarea>`)}
-      <div class="wline">결재: <b>김종화 차장</b> → 수신: <b>송지훈 대표</b></div>
+      <div class="wline">결재: <b>김종화 부사장</b> → 수신: <b>송지훈 대표</b></div>
       <button class="wsave" onclick="leaveSaveM()">상신</button>
     </div>`;
 };
@@ -542,7 +542,10 @@ window.leaveSaveM=async function(){
   if(!days||days<=0){alert('일수를 입력하세요.');return;}
   try{
     const line=await lineDaily();
-    await addDoc(collection(db,'edoc_leave'),{dtype:'leave',status:'pending',
+    // PC(연차신청서)와 동일한 형식으로 제목 자동생성 — 이 필드가 없으면 PC 목록·상세에서 "(제목없음)"으로 보임
+    const todayFmt=bizToday().replace(/-/g,'');
+    const title=`${todayFmt} ${_me.name||''} 연차 신청서`.trim();
+    await addDoc(collection(db,'edoc_leave'),{dtype:'leave',status:'pending',title,
       name:_me.name||'',leaveType:type,startDate:start,endDate:end||start,days,reason,
       authorUid:_me.uid||'',authorName:_me.name||'',authorDept:_me.dept||'',authorRank:_me.rank||'',dept:_me.dept||'',
       approvalLine:line,viewerUids:viewerUidsOf(line),createdAt:serverTimestamp()});
