@@ -209,6 +209,9 @@ function renderLeave(){
 function renderDailyDetail(){
   const d=dailies.find(x=>x.id===detailId);
   if(!d){ $app().innerHTML=topBar('전자결재')+'<div class="empty">문서를 찾을 수 없습니다.</div>'; return; }
+  const isOwner=(_me.uid||'')&&d.authorUid===_me.uid;
+  const canEdit=isOwner&&(d.status==='draft'||d.status==='rejected');
+  const canRecall=isOwner&&(d.status==='pending'||d.status==='reviewing');
   $app().innerHTML=topBar('전자결재')+`
     <div class="hello"><div class="name" style="font-size:20px">${esc(d.title||'업무일지')}</div><div class="sub">${stBadge(d.status)} ${d.authorName?'· '+esc((d.authorDept||'')+' '+d.authorName).trim():''}</div></div>
     <div class="dcard">
@@ -220,6 +223,10 @@ function renderDailyDetail(){
     </div>
     ${Array.isArray(d.approvalLine)&&d.approvalLine.length?`<div class="lbl">결재선</div><div class="dcard">${d.approvalLine.map(a=>`<div class="drow"><span class="dk">${esc(a.rank||a.role||'')}</span><span class="dv">${esc(a.name||'')} ${a.status?stBadge(a.status):''}</span></div>`).join('')}</div>`:''}
     ${approveBtns(d.id,'daily',d)}
+    ${(canEdit||canRecall)?`<div style="display:flex;gap:10px;margin:12px 20px 0">
+      ${canEdit?`<button onclick='renderDailyWrite(${JSON.stringify(d).replace(/'/g,"&#39;")})' style="flex:1;padding:12px;background:#3B82F6;border:none;border-radius:11px;color:#fff;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">✏️ 수정</button>`:''}
+      ${canRecall?`<button onclick="mobileRecall('${d.id}','daily')" style="flex:1;padding:12px;background:#F59E0B;border:none;border-radius:11px;color:#fff;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer">↩️ 회수</button>`:''}
+    </div>`:''}
     ${deleteBtn(d.id,'daily',d)}`;
 }
 function renderLeaveDetail(){
@@ -329,6 +336,11 @@ window.mobileDelete=async function(docId,dtype){
   try{ await deleteDoc(doc(db,`edoc_${dtype}`,docId)); alert('삭제되었습니다.'); history.back(); }
   catch(e){ alert('오류: '+e.message); }
 };
+window.mobileRecall=async function(docId,dtype){
+  if(!confirm('이 문서를 회수하시겠습니까? 상신이 취소되고 임시저장 상태로 돌아갑니다.')) return;
+  try{ await setDoc(doc(db,`edoc_${dtype}`,docId),{status:'draft',recalledAt:serverTimestamp()},{merge:true}); alert('✅ 회수 완료. 임시저장 상태로 변경되었습니다.'); history.back(); }
+  catch(e){ alert('오류: '+e.message); }
+};
 function approveBtns(id,dtype,d){
   if(!canApprove(d)) return '';
   const payload=encodeURIComponent(JSON.stringify(d));
@@ -401,7 +413,7 @@ function viewerUidsOf(line){
   const set=new Set(); (line||[]).forEach(x=>{ if(x.uid) set.add(x.uid); });
   return Array.from(set);
 }
-async function lineDaily(){return fillUids([{role:'작성',uid:_me.uid||'',name:_me.name||'',status:'draft'},{role:'결재',uid:'',name:'김종화',rank:'차장',status:'pending'},{role:'수신',uid:'',name:'송지훈',rank:'대표',status:'pending'}]);}
+async function lineDaily(){return fillUids([{role:'작성',uid:_me.uid||'',name:_me.name||'',status:'draft'},{role:'결재',uid:'',name:'김종화',rank:'부사장',status:'pending'},{role:'수신',uid:'',name:'송지훈',rank:'대표',status:'pending'}]);}
 async function lineOvertime(){return fillUids([{role:'작성',uid:_me.uid||'',name:_me.name||'',status:'draft'},{role:'결재',uid:'',name:'김종화',rank:'차장',status:'pending'},{role:'회람',uid:'',name:'김민서',rank:'대리',status:'pending'}]);}
 // 통상임금 (PC 인사와 동일)
 function otCalcAnnualSalary(hourly, empType){
@@ -427,30 +439,87 @@ async function otGetWage(workerId){
   const rate=Math.round((sal.basic+sal.fixedOt+sal.fixedNight+sal.weekly)/209);
   const r={rate};_otWageCache[workerId]=r;return r;
 }
-// 업무일지 작성
-window.renderDailyWrite=function(){
-  const today=bizToday();
-  $app().innerHTML=topBar('업무일지 작성','goBack()')+`
-    <div class="wform">
-      ${efld('일자',`<input id="w-date" type="date" value="${today}">`)}
-      ${efld('제목',`<input id="w-title" type="text" placeholder="예: 현장 업무일지">`)}
-      ${efld('오늘 업무',`<textarea id="w-today" placeholder="오늘 진행한 업무"></textarea>`)}
-      ${efld('내일 업무',`<textarea id="w-tomorrow" placeholder="내일 예정 업무"></textarea>`)}
-      ${efld('특이사항',`<textarea id="w-issue" placeholder="특이사항 (선택)"></textarea>`)}
-      <div class="wline">결재: <b>김종화 차장</b> → 수신: <b>송지훈 대표</b></div>
-      <button class="wsave" onclick="dailySaveM()">상신</button>
-    </div>`;
-};
-window.dailySaveM=async function(){
-  const date=fv('w-date'),title=fv('w-title'),today=fv('w-today'),tomorrow=fv('w-tomorrow'),issue=fv('w-issue');
-  if(!title.trim()){alert('제목을 입력하세요.');return;}
-  if(!today.trim()){alert('오늘 업무를 입력하세요.');return;}
+// 업무일지 — 진행 중 프로젝트 캐시 (PC loadPjts와 동일: gihoek_projects, status!=='done')
+let _pjts=null;
+async function loadPjts(){
+  if(_pjts) return _pjts;
   try{
+    const snap=await getDocs(collection(db,'gihoek_projects'));
+    const list=[];
+    snap.forEach(d=>{ const pd=d.data(); if(pd.status!=='done') list.push({id:d.id,...pd}); });
+    list.sort((a,b)=>(a.createdAt?.seconds||0)-(b.createdAt?.seconds||0));
+    _pjts=list;
+  }catch(e){ console.warn('loadPjts:',e.message); _pjts=[]; }
+  return _pjts;
+}
+// 제목 자동생성: (PJT코드) yymmdd 이름 업무일지 — PC와 동일 규칙
+window.dailyAutoTitle=function(){
+  const dateVal=(fv('w-date')||'').replace(/-/g,'').slice(2);
+  const pjtSel=document.getElementById('w-pjt');
+  const name=_me.name||'';
+  let pjtPrefix='';
+  if(pjtSel&&pjtSel.value){
+    const opt=pjtSel.options[pjtSel.selectedIndex];
+    const code=opt.dataset.code||'', pname=opt.dataset.name||'';
+    pjtPrefix = code?`(${code}) `:pname?`(${pname}) `:'';
+  }
+  const titleEl=document.getElementById('w-title');
+  if(titleEl) titleEl.value=`${pjtPrefix}${dateVal} ${name} 업무일지`.trim();
+};
+// 업무일지 작성/수정 — existingDoc이 있으면 수정모드(임시저장·반려 상태에서만 진입)
+window.renderDailyWrite=async function(existingDoc){
+  const isEdit=!!existingDoc;
+  window._dailyEditId=existingDoc?.id||null;
+  const today=existingDoc?.date||bizToday();
+  await loadPjts();
+  const pjtOpts=['<option value="">프로젝트 선택 (선택사항)</option>',
+    ..._pjts.map(p=>`<option value="${p.id}" data-code="${esc(p.code||'')}" data-name="${esc(p.name||'')}" ${existingDoc?.pjtId===p.id?'selected':''}>${p.code?p.code+' ':''}${p.name||p.id}</option>`)
+  ].join('');
+  $app().innerHTML=topBar(isEdit?'업무일지 수정':'업무일지 작성','goBack()')+`
+    <div class="wform">
+      ${efld('일자',`<input id="w-date" type="date" value="${today}" oninput="dailyAutoTitle()">`)}
+      ${efld('프로젝트',`<select id="w-pjt" oninput="dailyAutoTitle()">${pjtOpts}</select>`)}
+      ${efld('제목 (자동생성)',`<input id="w-title" type="text" value="${esc(existingDoc?.title||'')}" placeholder="프로젝트·일자 선택 시 자동 완성됩니다">`)}
+      ${efld('오늘 업무',`<textarea id="w-today" placeholder="오늘 진행한 업무">${esc(existingDoc?.todayWork||'')}</textarea>`)}
+      ${efld('내일 업무',`<textarea id="w-tomorrow" placeholder="내일 예정 업무">${esc(existingDoc?.tomorrowWork||'')}</textarea>`)}
+      ${efld('특이사항',`<textarea id="w-issue" placeholder="특이사항 (선택)">${esc(existingDoc?.issue||'')}</textarea>`)}
+      <div class="wline">결재: <b>김종화 부사장</b> → 수신: <b>송지훈 대표</b></div>
+      <div style="display:flex;gap:8px">
+        <button class="wsave" style="flex:1;background:#6B7280" onclick="dailySaveM('draft')">💾 임시저장</button>
+        <button class="wsave" style="flex:1" onclick="dailySaveM('pending')">📨 상신</button>
+      </div>
+    </div>`;
+  if(!isEdit) dailyAutoTitle();
+};
+window.dailySaveM=async function(status){
+  const date=fv('w-date'),title=fv('w-title'),today=fv('w-today'),tomorrow=fv('w-tomorrow'),issue=fv('w-issue');
+  const pjtSel=document.getElementById('w-pjt');
+  const pjtId=pjtSel?.value||'';
+  const opt=(pjtSel&&pjtSel.selectedIndex>0)?pjtSel.options[pjtSel.selectedIndex]:null;
+  if(status==='pending'&&!title.trim()){alert('제목을 입력하세요.');return;}
+  if(status==='pending'&&!today.trim()){alert('오늘 업무를 입력하세요.');return;}
+  const editId=window._dailyEditId||null;
+  try{
+    // 관리자가 '업무일지 권한관리'에서 지정한 열람 대상자까지 포함해야 PC와 동일하게 열람 가능
+    let extraViewers=[];
+    try{
+      const meSnap=await getDoc(doc(db,'portal_users',_me.uid||''));
+      if(meSnap.exists()) extraViewers=meSnap.data().dailyViewTargets||[];
+    }catch(e){ console.warn('dailyViewTargets 조회 실패',e.message); }
     const line=await lineDaily();
-    await addDoc(collection(db,'edoc_daily'),{dtype:'daily',status:'pending',title,date,todayWork:today,tomorrowWork:tomorrow,issue,
-      authorUid:_me.uid||'',authorName:_me.name||'',authorDept:_me.dept||'',authorRank:_me.rank||'',
-      approvalLine:line,viewerUids:viewerUidsOf(line),createdAt:serverTimestamp()});
-    alert('✅ 상신 완료!');history.back();
+    const viewerUids=Array.from(new Set([...viewerUidsOf(line), ...extraViewers]));
+    const data={
+      dtype:'daily', status, title, date,
+      pjtId, pjtCode:opt?.dataset.code||'', pjtName:opt?.dataset.name||'',
+      todayWork:today, tomorrowWork:tomorrow, issue,
+      authorUid:_me.uid||'', authorName:_me.name||'', authorDept:_me.dept||'', authorRank:_me.rank||'',
+      approvalLine:line, viewerUids
+    };
+    if(editId){ data.updatedAt=serverTimestamp(); await setDoc(doc(db,'edoc_daily',editId),data,{merge:true}); }
+    else { data.createdAt=serverTimestamp(); await addDoc(collection(db,'edoc_daily'),data); }
+    alert(status==='pending'?'✅ 상신 완료!':'💾 임시저장 완료');
+    window._dailyEditId=null;
+    history.back();
   }catch(e){alert('오류: '+e.message);}
 };
 // 연차 작성
