@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260925d · ver: 2026-09-25 (임베드 앱 내부 이동 시 탭 식별자도 함께 갱신 — 업무일지에서 승인 후 결재함으로 넘어가면 갇히던 문제 해결) · 이전: 20260925c 사이드바 경량PJT 생성일순 정렬 -->
+<!DOCTYPE html><!-- build: 20260925e · ver: 2026-09-25 (하단 작업탭 10개 초과 시 막지 않고 가장 먼저 열었던 탭을 자동으로 닫음) · 이전: 20260925d 결재함 이동 후 탭 갇힘 현상 해결 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -3383,8 +3383,9 @@ function openModule(m, tab, overrideUrl){
   }
 
   if (jhTabs.length >= JH_TABS_MAX) {
-    toast(`탭은 최대 ${JH_TABS_MAX}개까지 열 수 있습니다. 먼저 하단에서 탭을 닫아주세요.`);
-    return;
+    const oldest = jhTabs[0];
+    jhCloseTab(oldest.id);
+    toast(`탭이 ${JH_TABS_MAX}개를 넘어 "${oldest.name}" 탭을 닫았습니다.`);
   }
 
   const stack = $('emb-frame-stack');
