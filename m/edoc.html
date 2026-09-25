@@ -1062,45 +1062,35 @@ function attSnapTo10MinM(t){
   let total=h*60+Math.round(m/10)*10; if(total>=1440) total-=1440; if(total<0) total+=1440;
   return String(Math.floor(total/60)).padStart(2,'0')+':'+String(total%60).padStart(2,'0');
 }
-let _attYearM=new Date().getFullYear(), _attMonthM=new Date().getMonth()+1;
-window.renderAttendanceTabM=async function(){
-  $app().innerHTML=topBar('전자결재')+'<div class="loading">⏳ 불러오는 중…</div>';
-  if(!_myWorkerId){ $app().innerHTML=topBar('전자결재')+'<div class="empty">계정이 근무자 명부와 연동되어 있지 않습니다.<br>인사 담당자에게 "근무자 연동"을 요청해주세요.</div>'; return; }
-  _attYearM=new Date().getFullYear(); _attMonthM=new Date().getMonth()+1;
-  const d=new Date(), wd=['일','월','화','수','목','금','토'][d.getDay()];
-  const todayLabel=`${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 ${wd}요일`;
-  const dk=bizDateKeyM();
+let _attYearM=new Date().getFullYear(), _attMonthM=new Date().getMonth()+1, _attEditDateM=bizDateKeyM();
+async function attLoadEditCardM(dateStr){
+  _attEditDateM=dateStr;
+  const box=document.getElementById('att-edit-card'); if(!box) return;
+  box.innerHTML='<div style="text-align:center;color:#9aa8bc;padding:20px 0">불러오는 중…</div>';
   let existing={checkIn:'07:00',checkOut:'18:00',breakMinutes:120};
   try{
-    const snap=await getDoc(doc(db,'worker_attendance_log',`${_myWorkerId}_${dk}`));
+    const snap=await getDoc(doc(db,'worker_attendance_log',`${_myWorkerId}_${dateStr}`));
     if(snap.exists()){ const dd=snap.data(); existing={checkIn:dd.checkIn||existing.checkIn,checkOut:dd.checkOut||existing.checkOut,breakMinutes:dd.breakMinutes??existing.breakMinutes}; }
-  }catch(e){ console.warn('오늘 출퇴근 기록 조회 실패',e); }
-  $app().innerHTML=topBar('전자결재')+`
-    <div class="hello"><div class="name" style="font-size:18px">⏰ 출퇴근 기록</div><div class="sub">${esc(todayLabel)}</div></div>
-    <div class="dcard" style="padding:14px 16px">
-      <div style="display:flex;gap:10px;margin-bottom:10px">
-        <div style="flex:1"><div style="font-size:11px;color:var(--sub);margin-bottom:5px">출근시간</div><input type="time" id="att-checkin" value="${existing.checkIn}" step="600" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px;font-size:14px;font-family:inherit"></div>
-        <div style="flex:1"><div style="font-size:11px;color:var(--sub);margin-bottom:5px">퇴근시간</div><input type="time" id="att-checkout" value="${existing.checkOut}" step="600" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px;font-size:14px;font-family:inherit"></div>
-      </div>
-      <div style="max-width:160px;margin-bottom:12px"><div style="font-size:11px;color:var(--sub);margin-bottom:5px">휴게시간(분)</div><input type="number" id="att-break" value="${existing.breakMinutes}" min="0" step="10" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px;font-size:14px;font-family:inherit"></div>
-      <div style="text-align:center;padding:14px 0;background:#F0F4F9;border-radius:10px;margin-bottom:12px">
-        <div id="att-hours-val-m" style="font-size:28px;font-weight:800;color:var(--blue)">${attCalcWorkHoursM(existing.checkIn,existing.checkOut,existing.breakMinutes).toFixed(1)}h</div>
-        <div style="font-size:11px;color:var(--sub);margin-top:4px">오늘 근무시간 (휴게시간 제외)</div>
-      </div>
-      <button class="wsave" onclick="attSaveM()">💾 저장</button>
-      <div id="att-save-status-m" style="font-size:11px;text-align:center;margin-top:8px"></div>
+  }catch(e){ console.warn('출퇴근 기록 조회 실패',e); }
+  const isToday=dateStr===bizDateKeyM();
+  const dObj=new Date(dateStr+'T00:00:00'), wd=['일','월','화','수','목','금','토'][dObj.getDay()];
+  const dateLabel=`${dObj.getFullYear()}년 ${dObj.getMonth()+1}월 ${dObj.getDate()}일 ${wd}요일`;
+  box.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:700">${isToday?'📅 오늘':'✏️ 수정'} · ${esc(dateLabel)}</div>
+      ${isToday?'':`<button onclick="attLoadEditCardM('${bizDateKeyM()}')" style="border:none;background:#F0F4F9;border-radius:7px;padding:4px 10px;font-size:11px;color:var(--sub);cursor:pointer;font-family:inherit">오늘로</button>`}
     </div>
-    <div class="lbl" style="display:flex;align-items:center;justify-content:space-between;padding-right:20px">
-      <span>📊 월별 근로시간 조회</span>
-      <span style="display:flex;align-items:center;gap:8px">
-        <button onclick="attChangeMonthM(-1)" style="border:none;background:var(--card);border-radius:6px;padding:2px 8px;cursor:pointer;color:var(--blue)">◀</button>
-        <span id="att-month-label-m" style="font-size:12.5px;font-weight:700"></span>
-        <button onclick="attChangeMonthM(1)" style="border:none;background:var(--card);border-radius:6px;padding:2px 8px;cursor:pointer;color:var(--blue)">▶</button>
-      </span>
+    <div style="display:flex;gap:10px;margin-bottom:10px">
+      <div style="flex:1"><div style="font-size:11px;color:var(--sub);margin-bottom:5px">출근시간</div><input type="time" id="att-checkin" value="${existing.checkIn}" step="600" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px;font-size:14px;font-family:inherit"></div>
+      <div style="flex:1"><div style="font-size:11px;color:var(--sub);margin-bottom:5px">퇴근시간</div><input type="time" id="att-checkout" value="${existing.checkOut}" step="600" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px;font-size:14px;font-family:inherit"></div>
     </div>
-    <div class="dcard" id="att-month-summary-m" style="padding:12px 16px">불러오는 중…</div>
-    <div class="lbl">🗓 해당 월 상세 내역</div>
-    <div class="dcard" id="att-recent-m" style="padding:6px 0">불러오는 중…</div>`;
+    <div style="max-width:160px;margin-bottom:12px"><div style="font-size:11px;color:var(--sub);margin-bottom:5px">휴게시간(분)</div><input type="number" id="att-break" value="${existing.breakMinutes}" min="0" step="10" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:9px;font-size:14px;font-family:inherit"></div>
+    <div style="text-align:center;padding:14px 0;background:#F0F4F9;border-radius:10px;margin-bottom:12px">
+      <div id="att-hours-val-m" style="font-size:28px;font-weight:800;color:var(--blue)">${attCalcWorkHoursM(existing.checkIn,existing.checkOut,existing.breakMinutes).toFixed(1)}h</div>
+      <div style="font-size:11px;color:var(--sub);margin-top:4px">${isToday?'오늘':'해당 날짜'} 근무시간 (휴게시간 제외)</div>
+    </div>
+    <button class="wsave" onclick="attSaveM()">💾 저장</button>
+    <div id="att-save-status-m" style="font-size:11px;text-align:center;margin-top:8px"></div>`;
   const refresh=()=>{
     const h=attCalcWorkHoursM(fv('att-checkin'),fv('att-checkout'),parseFloat(fv('att-break'))||0);
     document.getElementById('att-hours-val-m').textContent=h.toFixed(1)+'h';
@@ -1111,8 +1101,28 @@ window.renderAttendanceTabM=async function(){
     inp.addEventListener('change',e=>{ const s=attSnapTo10MinM(e.target.value); if(s&&s!==e.target.value) e.target.value=s; refresh(); });
   });
   document.getElementById('att-break').addEventListener('input',refresh);
+}
+window.attPickDayM=function(dateStr){ attLoadEditCardM(dateStr); document.getElementById('att-edit-card')?.scrollIntoView({behavior:'smooth',block:'start'}); };
+window.renderAttendanceTabM=async function(){
+  $app().innerHTML=topBar('전자결재')+'<div class="loading">⏳ 불러오는 중…</div>';
+  if(!_myWorkerId){ $app().innerHTML=topBar('전자결재')+'<div class="empty">계정이 근무자 명부와 연동되어 있지 않습니다.<br>인사 담당자에게 "근무자 연동"을 요청해주세요.</div>'; return; }
+  _attYearM=new Date().getFullYear(); _attMonthM=new Date().getMonth()+1; _attEditDateM=bizDateKeyM();
+  $app().innerHTML=topBar('전자결재')+`
+    <div class="hello"><div class="name" style="font-size:18px">⏰ 출퇴근 기록</div><div class="sub">월별 내역에서 날짜를 탭하면 그날 기록도 수정할 수 있어요</div></div>
+    <div class="dcard" id="att-edit-card" style="padding:14px 16px"></div>
+    <div class="lbl" style="display:flex;align-items:center;justify-content:space-between;padding-right:20px">
+      <span>📊 월별 근로시간 조회</span>
+      <span style="display:flex;align-items:center;gap:8px">
+        <button onclick="attChangeMonthM(-1)" style="border:none;background:var(--card);border-radius:6px;padding:2px 8px;cursor:pointer;color:var(--blue)">◀</button>
+        <span id="att-month-label-m" style="font-size:12.5px;font-weight:700"></span>
+        <button onclick="attChangeMonthM(1)" style="border:none;background:var(--card);border-radius:6px;padding:2px 8px;cursor:pointer;color:var(--blue)">▶</button>
+      </span>
+    </div>
+    <div class="dcard" id="att-month-summary-m" style="padding:12px 16px">불러오는 중…</div>
+    <div class="lbl">🗓 해당 월 상세 내역 · 탭해서 수정</div>
+    <div class="dcard" id="att-recent-m" style="padding:6px 0">불러오는 중…</div>`;
   attUpdateMonthLabelM();
-  await Promise.all([attLoadMonthSummaryM(),attLoadMonthRecordsM()]);
+  await Promise.all([attLoadEditCardM(_attEditDateM), attLoadMonthSummaryM(), attLoadMonthRecordsM()]);
 };
 function bizDateKeyM(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function attUpdateMonthLabelM(){ const el=document.getElementById('att-month-label-m'); if(el) el.textContent=`${_attYearM}년 ${String(_attMonthM).padStart(2,'0')}월`; }
@@ -1126,7 +1136,7 @@ window.attSaveM=async function(){
   const checkIn=fv('att-checkin'),checkOut=fv('att-checkout'),breakMinutes=parseFloat(fv('att-break'))||0;
   if(!checkIn||!checkOut){alert('출근/퇴근 시간을 모두 입력해주세요.');return;}
   const workHours=attCalcWorkHoursM(checkIn,checkOut,breakMinutes);
-  const dk=bizDateKeyM(), key=`${_myWorkerId}_${dk}`;
+  const dk=_attEditDateM||bizDateKeyM(), key=`${_myWorkerId}_${dk}`;
   const statusEl=document.getElementById('att-save-status-m');
   try{
     await setDoc(doc(db,'worker_attendance_log',key),{
@@ -1163,7 +1173,7 @@ async function attLoadMonthRecordsM(){
     let rows=[]; snap.forEach(s=>rows.push(s.data()));
     rows.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
     if(!rows.length){ box.innerHTML='<div style="text-align:center;color:#9aa8bc;padding:16px 0">해당 월 기록이 없습니다</div>'; return; }
-    box.innerHTML=rows.map(r=>`<div class="drow"><span class="dk">${esc(r.date||'—')}</span><span class="dv">${esc(r.checkIn||'—')}~${esc(r.checkOut||'—')} · ${(r.workHours||0).toFixed(1)}h</span></div>`).join('')
+    box.innerHTML=rows.map(r=>`<div class="drow" onclick="attPickDayM('${r.date}')" style="cursor:pointer;${r.date===_attEditDateM?'background:#EEF4FC':''}"><span class="dk">${esc(r.date||'—')}</span><span class="dv">${esc(r.checkIn||'—')}~${esc(r.checkOut||'—')} · ${(r.workHours||0).toFixed(1)}h</span></div>`).join('')
       +`<div class="drow" style="font-weight:800;color:var(--blue)"><span class="dk">합계 (${rows.length}일)</span><span class="dv">${rows.reduce((s,r)=>s+(r.workHours||0),0).toFixed(1)}h</span></div>`;
   }catch(e){ box.innerHTML=`<div style="color:#DC2626;padding:8px">불러오기 실패: ${esc(e.message)}</div>`; }
 }
