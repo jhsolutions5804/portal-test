@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260924f · ver: 2026-09-24 (페이지 새로고침 시 하단 작업탭을 이전 세션에서 복원하지 않고 항상 초기화) · 이전: 20260924e 회사 일정 등록 지원 -->
+<!DOCTYPE html><!-- build: 20260925c · ver: 2026-09-25 (사이드바 경량PJT 목록을 생성일순(오름차순)으로 항상 재정렬) · 이전: 20260924f 새로고침 시 탭 초기화 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -2296,38 +2296,50 @@ window.deletePjtPermanently = async function(id, name){
 // PJT 레지스트리(신규 등록 PJT)를 PJT_SUBTABS에 동적으로 편입 — 상단 카드·사이드바 메뉴 자동 반영
 async function syncPjtRegistrySubtabs(){
   try{
-    const snap=await getDocs(query(collection(db,'pjt_registry'), orderBy('createdAt','desc')));
+    const snap=await getDocs(query(collection(db,'pjt_registry'), orderBy('createdAt','asc')));
     let changed=false;
     const activeIds=new Set();
+    const orderedKeys=[];
+    const byKey={};
     snap.forEach(function(d){
       const data=d.data();
       if(data.status==='ended') return;
       activeIds.add(d.id);
       const key='reg_'+d.id;
+      orderedKeys.push(key);
       let sub='';
       if(data.client&&data.content) sub=data.client+' · '+data.content;
       else if(data.client) sub=data.client;
       else if(data.content) sub=data.content;
       else if(data.site) sub=data.site;
       const url=data.url||('pjt_light/index.html?pjtId='+d.id);
-      let st=PJT_SUBTABS.find(function(s){return s.key===key;});
-      if(!st){
-        const mandayIdx=PJT_SUBTABS.findIndex(function(s){ return s.key==='pjt_manday'; });
-        const insertAt=mandayIdx===-1?PJT_SUBTABS.length:mandayIdx;
-        PJT_SUBTABS.splice(insertAt, 0, { key:key, name:data.name||'PJT', emoji:'🏗️', desc:sub, url:url });
-        changed=true;
-      } else {
-        if(data.name && data.name!==st.name){ st.name=data.name; changed=true; }
-        if(sub!==st.desc){ st.desc=sub; changed=true; }
-        if(url!==st.url){ st.url=url; changed=true; }
-      }
+      byKey[key]={ key:key, name:data.name||'PJT', emoji:'🏗️', desc:sub, url:url };
     });
-    for(let i=PJT_SUBTABS.length-1;i>=0;i--){
-      const st=PJT_SUBTABS[i];
-      if(st.key.indexOf('reg_')===0 && !activeIds.has(st.key.slice(4))){
-        PJT_SUBTABS.splice(i,1); changed=true;
+    // 기존 항목이 이미 있으면 그 객체(참조)를 재사용해 값만 갱신 — 다른 데서 이 객체를 참조 중이어도 안전
+    const existingByKey={};
+    PJT_SUBTABS.forEach(function(s){ if(s.key.indexOf('reg_')===0) existingByKey[s.key]=s; });
+    const newRegList=orderedKeys.map(function(key){
+      const fresh=byKey[key];
+      const st=existingByKey[key];
+      if(st){
+        if(fresh.name!==st.name){ st.name=fresh.name; changed=true; }
+        if(fresh.desc!==st.desc){ st.desc=fresh.desc; changed=true; }
+        if(fresh.url!==st.url){ st.url=fresh.url; changed=true; }
+        return st;
       }
+      changed=true;
+      return fresh;
+    });
+    // 순서가 예전과 달라졌는지도 확인(생성일순 재정렬 반영용)
+    const prevOrder=PJT_SUBTABS.filter(function(s){return s.key.indexOf('reg_')===0;}).map(function(s){return s.key;});
+    if(prevOrder.join(',')!==orderedKeys.join(',')) changed=true;
+    // reg_ 항목 전부 제거 후, 생성일순으로 다시 삽입(위치는 기존과 동일하게 pjt_manday 앞)
+    for(let i=PJT_SUBTABS.length-1;i>=0;i--){
+      if(PJT_SUBTABS[i].key.indexOf('reg_')===0) PJT_SUBTABS.splice(i,1);
     }
+    const mandayIdx=PJT_SUBTABS.findIndex(function(s){ return s.key==='pjt_manday'; });
+    const insertAt=mandayIdx===-1?PJT_SUBTABS.length:mandayIdx;
+    PJT_SUBTABS.splice.apply(PJT_SUBTABS, [insertAt, 0].concat(newRegList));
     if(changed){
       renderMenu();
       const homeView=document.getElementById('view-pjt-home');
