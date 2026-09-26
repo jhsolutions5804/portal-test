@@ -1776,7 +1776,10 @@ window.renderPayslipPC = () => {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
       <div style="display:flex;align-items:center;gap:8px;">${homeBtn()}</div>
       <div style="font-size:15px;font-weight:800;color:#1A2540;">💰 급여명세서</div>
-      <button onclick="renderPayslipPCList()" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#5C6F8A;font-size:12px;cursor:pointer;font-weight:600;">📂 조회 목록</button>
+      <div style="display:flex;gap:6px;">
+        <button onclick="renderDocTplHistory('payslip')" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#5C6F8A;font-size:12px;cursor:pointer;font-weight:600;">📜 양식 이력</button>
+        <button onclick="renderPayslipPCList()" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#5C6F8A;font-size:12px;cursor:pointer;font-weight:600;">📂 조회 목록</button>
+      </div>
     </div>
     <div style="display:flex;gap:14px;align-items:flex-start;">
       <div style="width:260px;flex:0 0 auto;background:#fff;border-radius:12px;padding:16px;">
@@ -1995,7 +1998,10 @@ window.renderPayslipPCList = async () => {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
       <div style="display:flex;align-items:center;gap:8px;">${homeBtn()}</div>
       <div style="font-size:15px;font-weight:800;color:#1A2540;">📂 급여명세서 조회</div>
-      <button onclick="renderPayslipPC()" style="background:#1D5BA6;border:none;border-radius:8px;padding:5px 12px;color:#fff;font-size:12px;cursor:pointer;font-weight:600;">✏️ 작성</button>
+      <div style="display:flex;gap:6px;">
+        <button onclick="renderDocTplHistory('payslip')" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#5C6F8A;font-size:12px;cursor:pointer;font-weight:600;">📜 양식 이력</button>
+        <button onclick="renderPayslipPC()" style="background:#1D5BA6;border:none;border-radius:8px;padding:5px 12px;color:#fff;font-size:12px;cursor:pointer;font-weight:600;">✏️ 작성</button>
+      </div>
     </div>
     <div style="display:flex;gap:14px;align-items:flex-start;">
       <div style="width:240px;flex:0 0 auto;background:#fff;border-radius:12px;padding:14px;">
@@ -2041,7 +2047,10 @@ window.psLoadWorkerSlips = async (wid, wname, btn) => {
       : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
           ${items.map(d=>`
             <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,0.07);">
-              <div style="font-size:13px;font-weight:700;color:#1A2540;margin-bottom:4px;">${d.month}</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                <div style="font-size:13px;font-weight:700;color:#1A2540;">${d.month}</div>
+                <span style="font-size:9.5px;background:#F3F4F6;color:#9AAABF;padding:1px 6px;border-radius:5px;font-weight:700;" title="저장 당시 적용 양식">${docTplVer(d)}</span>
+              </div>
               <div style="font-size:11px;color:#5C6F8A;margin-bottom:8px;">지급일: ${d.payDate||'-'}</div>
               <div style="font-size:16px;font-weight:800;color:#1D5BA6;margin-bottom:10px;">${won(d.netPay)}</div>
               <div style="display:flex;gap:6px;">
@@ -2610,9 +2619,12 @@ window.psSave = async () => {
 window.renderPayslipListNew = async () => {
   const el = document.getElementById('tab-payslip');
   el.innerHTML = wrap2(`
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-      ${backBtn2('renderPayslipMain2()')}
-      <span style="font-size:12px;color:${C2.sub};font-weight:600;">급여명세서 조회</span>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        ${backBtn2('renderPayslipMain2()')}
+        <span style="font-size:12px;color:${C2.sub};font-weight:600;">급여명세서 조회</span>
+      </div>
+      <button onclick="renderDocTplHistory('payslip')" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:7px;padding:4px 9px;color:#5C6F8A;font-size:11px;cursor:pointer;font-weight:600;">📜 양식 이력</button>
     </div>
     <div id="ps-list-loading" style="text-align:center;padding:32px;color:${C2.mute};">⏳ 불러오는 중...</div>
     <div id="ps-list-wrap"></div>
@@ -2670,7 +2682,10 @@ window.psViewWorker = async (wid, wname) => {
       <div style="background:#fff;border-radius:12px;border:1px solid #DDE4EF;padding:14px;margin-bottom:8px;box-shadow:${C2.shadow};">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <span style="font-size:13px;font-weight:700;color:${C2.blue};">${d.month?.replace('-','년 ')}월</span>
-          <span style="font-size:10px;background:${C2.greenLt};color:${C2.green};padding:2px 8px;border-radius:8px;font-weight:700;">✅ 저장됨</span>
+          <span style="display:flex;gap:4px;align-items:center;">
+            <span style="font-size:9.5px;background:#F3F4F6;color:#9AAABF;padding:1px 6px;border-radius:5px;font-weight:700;" title="저장 당시 적용 양식">${docTplVer(d)}</span>
+            <span style="font-size:10px;background:${C2.greenLt};color:${C2.green};padding:2px 8px;border-radius:8px;font-weight:700;">✅ 저장됨</span>
+          </span>
         </div>
         <div style="font-size:12px;color:${C2.sub};margin-bottom:4px;">지급계: ₩${Math.round(d.grossPay||0).toLocaleString()}</div>
         <div style="font-size:13px;font-weight:700;color:#1D5BA6;margin-bottom:10px;">실지급액: ₩${Math.round(d.netPay||0).toLocaleString()}</div>
@@ -2741,7 +2756,10 @@ window.psViewWorker = async (wid, wname) => {
       <div style="background:#fff;border-radius:12px;border:1px solid #DDE4EF;padding:14px;margin-bottom:8px;box-shadow:${C2.shadow};">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <span style="font-size:13px;font-weight:700;color:${C2.blue};">${d.month?.replace('-','년 ')}월</span>
-          <span style="font-size:10px;background:${C2.greenLt};color:${C2.green};padding:2px 8px;border-radius:8px;font-weight:700;">✅ 저장됨</span>
+          <span style="display:flex;gap:4px;align-items:center;">
+            <span style="font-size:9.5px;background:#F3F4F6;color:#9AAABF;padding:1px 6px;border-radius:5px;font-weight:700;" title="저장 당시 적용 양식">${docTplVer(d)}</span>
+            <span style="font-size:10px;background:${C2.greenLt};color:${C2.green};padding:2px 8px;border-radius:8px;font-weight:700;">✅ 저장됨</span>
+          </span>
         </div>
         <div style="font-size:12px;color:${C2.sub};margin-bottom:4px;">지급계: ₩${Math.round(d.grossPay||0).toLocaleString()}</div>
         <div style="font-size:13px;font-weight:700;color:#1D5BA6;margin-bottom:10px;">실지급액: ₩${Math.round(d.netPay||0).toLocaleString()}</div>
@@ -4999,6 +5017,38 @@ const DOC_TPL_ERAS = [
   { ver:'v4', from:'2026-09-23T18:00:00+09:00' },
   { ver:'v5', from:'2026-09-23T19:00:00+09:00' },
 ];
+// 화면에 보여주기 위한 버전별 상세 이력 (위 주석의 내용을 데이터로도 유지)
+const DOC_TPL_HISTORY = [
+  { ver:'v0', from:null, payslip:'포괄임금제 양식 — 고정연장/고정야간수당 항목', labor:'포괄임금제 양식', annual:'포괄임금제 양식' },
+  { ver:'v1', from:'2026-08-29T16:47:27+09:00', payslip:'실근무 기반 연장/야간/휴일수당 항목으로 전환(비포괄)', labor:'비포괄 전환', annual:'비포괄 안내문구 추가' },
+  { ver:'v2', from:'2026-09-01T11:33:06+09:00', payslip:'기술수당·여비교통비 항목 추가', labor:'제2조의2·제4조(여비교통비/기술수당) 조항 보강', annual:'조항 보강' },
+  { ver:'v3', from:'2026-09-02T17:20:58+09:00', payslip:'여비교통비 다중 유형 지원', labor:'포괄/비포괄 선택(wageType) 도입', annual:'포괄/비포괄 선택 도입' },
+  { ver:'v4', from:'2026-09-23T18:00:00+09:00', payslip:'내용 변경 없음 (버전 동기화만)', labor:'개인정보 제3자 제공 동의서(별지) 자동 첨부', annual:'내용 변경 없음 (버전 동기화만)' },
+  { ver:'v5', from:'2026-09-23T19:00:00+09:00', payslip:'내용 변경 없음 (버전 동기화만)', labor:'파견법 연상 표현("근로자보호 등에 관한 법률" 등) 삭제', annual:'내용 변경 없음 (버전 동기화만)' },
+];
+window.renderDocTplHistory = (fromTab) => {
+  const el = document.getElementById(`tab-${fromTab}`);
+  if (!el) return;
+  const titleMap = { payslip:'급여명세서', labor:'근로계약서', annual:'연봉계약서' };
+  const backFnMap = { payslip:'renderPayslipMain2()', labor:'renderLaborMain()', annual:'renderAnnualMain()' };
+  const fmtDT = iso => { if(!iso) return '최초 도입'; const d=new Date(iso); return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
+  const rows = [...DOC_TPL_HISTORY].reverse().map(h => `
+    <div style="background:#fff;border-radius:12px;border:1px solid ${C2.border};padding:14px;margin-bottom:8px;box-shadow:${C2.shadow};">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:13px;font-weight:800;color:${h.ver===DOC_TPL_CURRENT?C2.blue:C2.sub};">${h.ver}${h.ver===DOC_TPL_CURRENT?' · 현재 적용중':''}</span>
+        <span style="font-size:10.5px;color:${C2.mute};">${fmtDT(h.from)} 부터</span>
+      </div>
+      <div style="font-size:12.5px;color:${C2.text};">${h[fromTab] || '-'}</div>
+    </div>`).join('');
+  el.innerHTML = wrap2(`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+      ${backBtn2(backFnMap[fromTab], titleMap[fromTab])}
+      <span style="font-size:13px;font-weight:700;color:${C2.text};">📜 ${titleMap[fromTab]} 양식 변경 이력</span>
+    </div>
+    <div style="font-size:11.5px;color:${C2.mute};margin-bottom:14px;line-height:1.6;">이미 저장된 서류는 저장 당시 양식(아래 버전) 그대로 조회·출력됩니다 — 양식이 바뀌어도 과거에 서명·저장한 서류의 내용은 변경되지 않습니다.</div>
+    ${rows}
+  `);
+};
 function docTplVer(d) {
   if (d && d.tplVer) return d.tplVer;
   const t = Date.parse((d && d.savedAt) || '');
