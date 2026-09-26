@@ -3143,8 +3143,8 @@ window.renderRosterMain = async () => {
         <td style="padding:10px 12px;">${etB}</td>
         <td style="padding:10px 12px;font-size:11px;color:#5C6F8A;">${bf}</td>
         <td style="padding:10px 12px;font-size:11px;color:#5C6F8A;">${d.phone||'-'}</td>
-        <td style="padding:10px 12px;font-size:10px;"><span style="color:${lC};font-weight:600;">${lTxt}</span></td>
-        <td style="padding:10px 12px;font-size:10px;"><span style="color:${aC};font-weight:600;">${aTxt}</span></td>
+        <td style="padding:10px 12px;font-size:10px;"><span onclick="rosterGoLabor('${d.id}','${(d.name||'').replace(/'/g,"\\'")}')" style="color:${lC};font-weight:600;cursor:pointer;text-decoration:underline;">${lTxt}</span></td>
+        <td style="padding:10px 12px;font-size:10px;"><span onclick="rosterGoAnnual('${d.id}','${(d.name||'').replace(/'/g,"\\'")}')" style="color:${aC};font-weight:600;cursor:pointer;text-decoration:underline;">${aTxt}</span></td>
         <td style="padding:10px 12px;">${ptB}</td>
         <td style="padding:10px 12px;"><button onclick="rosterDelete('${d.id}','${d.name}')" style="font-size:10px;background:#FEE2E2;color:#DC2626;border:1px solid #fca5a5;padding:2px 8px;border-radius:6px;cursor:pointer;font-weight:600;">🗑</button></td>
       </tr>`;
@@ -3159,12 +3159,34 @@ window.renderRosterMain = async () => {
         </table>
       </div>
       <div style="font-size:11px;color:#9AAABF;margin-top:8px;padding:0 4px;">
-        💡 사원번호 클릭 → 수정 &nbsp;·&nbsp; 이름 클릭 → 상세/수정
+        💡 사원번호 클릭 → 수정 &nbsp;·&nbsp; 이름 클릭 → 상세/수정 &nbsp;·&nbsp; 근로계약/연봉계약 클릭 → 해당 화면으로 바로 이동
       </div>`;
   } catch(e) {
     const lel=document.getElementById('roster-list-loading');
     if(lel) lel.innerHTML='<div style="color:#DC2626;padding:24px;text-align:center;">오류: '+e.message+'</div>';
   }
+};
+
+/* ── 근로자 명부에서 근로계약서/연봉계약서로 바로 이동 (같은 탭 내 전환) ── */
+window.rosterGoLabor = (wid, wname) => {
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  const tc = document.getElementById('tab-labor'); if (tc) tc.classList.add('active');
+  document.querySelectorAll('[data-navkey]').forEach(b => b.classList.toggle('active', b.getAttribute('data-navkey')==='labor'));
+  const ht = document.getElementById('header-title'); if (ht) ht.textContent = '근로계약서';
+  if (document.documentElement.classList.contains('portal-embed')) {
+    try { window.parent.postMessage({source:'jh-embed', mod:'hr', key:'labor'}, '*'); } catch(e) {}
+  }
+  laborViewWorker2(wid, wname);
+};
+window.rosterGoAnnual = (wid, wname) => {
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  const tc = document.getElementById('tab-annual'); if (tc) tc.classList.add('active');
+  document.querySelectorAll('[data-navkey]').forEach(b => b.classList.toggle('active', b.getAttribute('data-navkey')==='annual'));
+  const ht = document.getElementById('header-title'); if (ht) ht.textContent = '연봉계약서';
+  if (document.documentElement.classList.contains('portal-embed')) {
+    try { window.parent.postMessage({source:'jh-embed', mod:'hr', key:'annual'}, '*'); } catch(e) {}
+  }
+  annualViewWorker2(wid, wname);
 };
 
 
