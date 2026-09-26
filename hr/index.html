@@ -720,6 +720,7 @@ body { font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif; 
     <button class="tab-btn" data-navkey="annual" onclick="goTab('annual')">💰 연봉계약서</button>
     <button class="tab-btn" data-navkey="overtime" onclick="goTab('overtime')">⏱️ 근로시간</button>
     <button class="tab-btn" data-navkey="payslip" onclick="goTab('payslip')">🧾 급여명세서</button>
+    <button class="tab-btn" data-navkey="eval" onclick="goTab('eval')">📝 인사평가</button>
     <button class="tab-btn" data-navkey="leave" onclick="goTab('leave')">🗓️ 연차 현황</button>
     <button class="tab-btn" data-navkey="retire" onclick="goTab('retire')">📤 퇴직금 정산</button>
     <button class="tab-btn" data-navkey="salarytable" onclick="goTab('salarytable')">📊 급여테이블</button>
@@ -741,6 +742,7 @@ body { font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif; 
   <div class="tab-content" id="tab-overtime"></div>
   <!-- 급여명세서 -->
   <div class="tab-content" id="tab-payslip"></div>
+  <div class="tab-content" id="tab-eval"></div>
   <!-- 퇴직금 정산 -->
   <div class="tab-content" id="tab-retire"></div>
   <div class="tab-content" id="tab-leave"></div>
@@ -787,6 +789,7 @@ const HR_TABS = {
   annual:   { id:'tab-annual',   title:'연봉계약서',  fn:()=>renderAnnualMain() },
   overtime: { id:'tab-overtime', title:'근로시간',    fn:()=>renderOvertimeMain() },
   payslip:  { id:'tab-payslip',  title:'급여명세서',  fn:()=>renderPayslipMain2() },
+  eval:     { id:'tab-eval',     title:'인사평가',    fn:()=>renderEvalMain() },
   leave:    { id:'tab-leave',    title:'연차 현황',   fn:()=>renderLeaveStatusMain() },
   retire:   { id:'tab-retire',   title:'퇴직금 정산', fn:()=>renderRetireMain() },
   salarytable: { id:'tab-salarytable', title:'급여테이블', fn:()=>renderSalaryTableMain() },
@@ -823,8 +826,9 @@ async function renderHome() {
       <div class="hm-fc" onclick="goTab('annual')"><div class="hm-step">5</div><div class="hm-fb"><div class="stage">근로계약서 시급 연동</div><div class="ttl">연봉계약서</div></div><div class="hm-chev">›</div></div>
       <div class="hm-fc" onclick="goTab('overtime')"><div class="hm-step">6</div><div class="hm-fb"><div class="stage">근무 · 통상임금 자동 계산</div><div class="ttl">근로시간</div></div><div class="hm-chev">›</div></div>
       <div class="hm-fc" onclick="goTab('payslip')"><div class="hm-step">7</div><div class="hm-fb"><div class="stage">급여 · 연봉 + 초과근로 연동</div><div class="ttl">급여명세서</div></div><div class="hm-chev">›</div></div>
-      <div class="hm-fc" onclick="goTab('leave')"><div class="hm-step">8</div><div class="hm-fb"><div class="stage">근로기준법 자동 산정 · 전 직원</div><div class="ttl">연차 현황</div></div><div class="hm-chev">›</div></div>
-      <div class="hm-fc" onclick="goTab('retire')"><div class="hm-step">9</div><div class="hm-fb"><div class="stage">퇴직 · 재직기간 × 평균임금</div><div class="ttl">퇴직금 정산</div></div><div class="hm-chev">›</div></div>
+      <div class="hm-fc" onclick="goTab('eval')"><div class="hm-step">8</div><div class="hm-fb"><div class="stage">내규 기준 정기평가 · 연봉협상 전 실시</div><div class="ttl">인사평가</div></div><div class="hm-chev">›</div></div>
+      <div class="hm-fc" onclick="goTab('leave')"><div class="hm-step">9</div><div class="hm-fb"><div class="stage">근로기준법 자동 산정 · 전 직원</div><div class="ttl">연차 현황</div></div><div class="hm-chev">›</div></div>
+      <div class="hm-fc" onclick="goTab('retire')"><div class="hm-step">10</div><div class="hm-fb"><div class="stage">퇴직 · 재직기간 × 평균임금</div><div class="ttl">퇴직금 정산</div></div><div class="hm-chev">›</div></div>
     </div>
     <div id="hr-sign-mgr"></div>
   </div>`;
@@ -8253,6 +8257,202 @@ window.renderLeaveStatusMain = async () => {
   } catch(e) {
     document.getElementById('leave-status-body').innerHTML = '<div style="padding:30px;color:#DC2626;">오류: '+e.message+'</div>';
   }
+};
+
+/* ══════════════════════════════════════════════
+   인사평가 (인사관리내규 제2장 기준)
+   - 정기평가: 연 1회, 연봉협상 이전 실시. 등급 S/A/B/C.
+   - 대상: 근로자 명부에 등록된 재직자만 (외주/현장 팀장 등 명부 외 인원 제외)
+   - 저장: evaluations/{workerId}/records/{evalId}
+   ══════════════════════════════════════════════ */
+
+// 호봉 계산: 입사 후 첫 12/31 기준으로 1호봉 시작.
+// 전년도 4분기(10~12월) 입사자는 해당연도까지도 1호봉 유지(그레이스), 1~3분기 입사자는 다음해 2호봉로 조기 승급.
+function calcWorkerStep(hireDateStr, asOfYear) {
+  if (!hireDateStr) return null;
+  const hd = new Date(hireDateStr + (hireDateStr.length===10?'T00:00:00':''));
+  if (isNaN(hd.getTime())) return null;
+  const hireYear = hd.getFullYear();
+  const hireQuarter = Math.ceil((hd.getMonth()+1)/3); // 1~4
+  const year = asOfYear || new Date().getFullYear();
+  const q4Grace = (hireQuarter === 4) ? 1 : 0;
+  const yearsSinceHire = year - hireYear;
+  return 1 + Math.max(0, yearsSinceHire - q4Grace);
+}
+
+const EVAL_GRADES = { S:'탁월', A:'우수', B:'보통', C:'미흡' };
+const EVAL_GRADE_COLOR = { S:'#7C3AED', A:'#16A34A', B:'#1D5BA6', C:'#DC2626' };
+
+window.renderEvalMain = async () => {
+  const el = document.getElementById('tab-eval');
+  if (!el) return;
+  window._contractBackToRoster = false;
+  el.innerHTML = `<div style="padding:20px 24px;max-width:1100px;margin:0 auto;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">${homeBtn()}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <div style="font-size:16px;font-weight:800;color:${C2.text};">📝 인사평가</div>
+    </div>
+    <div style="font-size:11.5px;color:${C2.mute};margin-bottom:14px;line-height:1.6;">인사관리내규 제2장 기준 정기평가(연 1회, 연봉협상 이전) — 근로자 명부에 등록된 재직자만 대상입니다. 등급: S(탁월)·A(우수)·B(보통)·C(미흡)</div>
+    <div id="eval-list-loading" style="text-align:center;padding:48px;color:${C2.mute};">⏳ 불러오는 중...</div>
+    <div id="eval-list-wrap"></div>
+  </div>`;
+  if (!window._db) { setTimeout(renderEvalMain, 500); return; }
+  try {
+    const { getDocs, collection, query, orderBy, limit } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const allWorkers = await getWorkersList();
+    const workers = allWorkers.filter(w => w.status !== 'resigned');
+    document.getElementById('eval-list-loading').style.display = 'none';
+    if (!workers.length) {
+      document.getElementById('eval-list-wrap').innerHTML = `<div style="text-align:center;padding:48px;color:${C2.mute};">등록된 근로자가 없습니다.<br><small>근로자 명부에 먼저 등록하세요.</small></div>`;
+      return;
+    }
+    const nowYear = new Date().getFullYear();
+    const latest = {};
+    for (const w of workers) {
+      try {
+        const s = await getDocs(query(collection(window._db, `evaluations/${w.id}/records`), orderBy('year','desc'), limit(1)));
+        latest[w.id] = s.empty ? null : { id:s.docs[0].id, ...s.docs[0].data() };
+      } catch(e) { latest[w.id] = null; }
+    }
+    const sorted = [...workers].sort((a,b)=>(a.empNo||'').localeCompare(b.empNo||''));
+    const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const rows = sorted.map((w,i) => {
+      const step = calcWorkerStep(w.hireDate, nowYear);
+      const lt = latest[w.id];
+      const gradeCell = lt
+        ? `<span style="font-size:11px;font-weight:700;color:${EVAL_GRADE_COLOR[lt.grade]||C2.sub};">${lt.year} · ${lt.grade}(${EVAL_GRADES[lt.grade]||''})</span>${lt.status!=='confirmed'?' <span style="font-size:9px;background:#FEF3C7;color:#92400E;padding:1px 6px;border-radius:6px;font-weight:700;">초안</span>':''}`
+        : `<span style="font-size:11px;color:${C2.mute};">평가 없음</span>`;
+      return `<tr style="background:${i%2===0?'#fff':'#F8FAFD'};border-bottom:1px solid #F0F4FA;" onmouseover="this.style.background='#EEF4FF'" onmouseout="this.style.background='${i%2===0?'#fff':'#F8FAFD'}'">
+        <td style="padding:10px 12px;font-size:12px;font-weight:700;color:#1D5BA6;">${esc(w.empNo)||'-'}</td>
+        <td style="padding:10px 12px;font-size:12px;font-weight:700;color:#1D5BA6;cursor:pointer;text-decoration:underline;" onclick="evalViewWorker('${w.id}','${esc(w.name).replace(/'/g,"\\'")}')">${esc(w.name)||'-'}</td>
+        <td style="padding:10px 12px;font-size:11px;color:#1A2540;">${esc(w.dept)||'-'}</td>
+        <td style="padding:10px 12px;font-size:11px;color:#5C6F8A;">${esc(w.rank)||'-'}</td>
+        <td style="padding:10px 12px;font-size:11px;color:#5C6F8A;">${step?step+'호봉':'-'}</td>
+        <td style="padding:10px 12px;">${gradeCell}</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('eval-list-wrap').innerHTML = `
+      <div style="background:#fff;border-radius:14px;border:1px solid ${C2.border};overflow:hidden;box-shadow:${C2.shadow};">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead><tr style="background:#E8F0FB;">
+            ${['사원번호','이름','소속','직급','호봉','최근 정기평가'].map(h=>`<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#1D5BA6;text-align:left;white-space:nowrap;">${h}</th>`).join('')}
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div style="font-size:11px;color:${C2.mute};margin-top:8px;padding:0 4px;">💡 호봉은 입사일 기준 자동 계산값입니다 (전년도 4분기 입사자는 1년 유예). 이름 클릭 → 평가 이력 · 신규 작성</div>`;
+  } catch(e) {
+    document.getElementById('eval-list-loading').innerHTML = '<div style="color:#DC2626;padding:24px;text-align:center;">오류: '+e.message+'</div>';
+  }
+};
+
+let _evalForm = { year: new Date().getFullYear(), grade: 'B', comment: '' };
+
+window.evalViewWorker = async (wid, wname) => {
+  const el = document.getElementById('tab-eval');
+  if (!el) return;
+  _evalForm = { year: new Date().getFullYear(), grade: 'B', comment: '' };
+  el.innerHTML = wrap2(`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      ${backBtn2('renderEvalMain()','목록')}
+      <span style="font-size:13px;font-weight:700;color:${C2.text};">${wname} · 인사평가</span>
+    </div>
+    <div id="eval-form-wrap"></div>
+    <div style="font-size:13px;font-weight:700;color:${C2.text};margin:20px 0 10px;">지난 평가 이력</div>
+    <div id="eval-records-loading" style="text-align:center;padding:24px;color:${C2.mute};">⏳ 불러오는 중...</div>
+    <div id="eval-records-wrap"></div>
+  `);
+  _renderEvalForm(wid, wname);
+  try {
+    const { getDocs, collection, query, orderBy } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap = await getDocs(query(collection(window._db, `evaluations/${wid}/records`), orderBy('year','desc')));
+    const docs = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    window._evalRecords = docs;
+    document.getElementById('eval-records-loading').style.display = 'none';
+    _renderEvalRecords(wid, wname);
+  } catch(e) {
+    document.getElementById('eval-records-loading').innerHTML = '<div style="color:#DC2626;">오류: '+e.message+'</div>';
+  }
+};
+
+function _renderEvalForm(wid, wname) {
+  const wrap = document.getElementById('eval-form-wrap');
+  if (!wrap) return;
+  const f = _evalForm;
+  const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const gradeBtn = (g) => `<button onclick="evalSetGrade('${g}','${wid}','${wname.replace(/'/g,"\\'")}')" style="flex:1;padding:10px;border-radius:8px;border:2px solid ${f.grade===g?EVAL_GRADE_COLOR[g]:'#DDE4EF'};background:${f.grade===g?EVAL_GRADE_COLOR[g]+'22':'#fff'};color:${f.grade===g?EVAL_GRADE_COLOR[g]:'#5C6F8A'};font-weight:700;font-size:13px;cursor:pointer;">${g} · ${EVAL_GRADES[g]}</button>`;
+  wrap.innerHTML = `
+    <div style="background:#fff;border-radius:12px;border:1px solid ${C2.border};padding:16px;box-shadow:${C2.shadow};margin-bottom:6px;">
+      <div style="font-size:12.5px;font-weight:700;color:${C2.text};margin-bottom:10px;">➕ 정기평가 작성</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div>
+          <label style="font-size:11px;color:${C2.mute};display:block;margin-bottom:4px;">평가연도</label>
+          <input type="number" value="${f.year}" oninput="_evalForm.year=Number(this.value)" style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:8px 10px;font-size:13px;">
+        </div>
+      </div>
+      <label style="font-size:11px;color:${C2.mute};display:block;margin-bottom:4px;">평가등급</label>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">${['S','A','B','C'].map(gradeBtn).join('')}</div>
+      <label style="font-size:11px;color:${C2.mute};display:block;margin-bottom:4px;">평가 코멘트 (부서장 초안 성격)</label>
+      <textarea oninput="_evalForm.comment=this.value" rows="3" placeholder="평가 사유·특이사항을 입력하세요" style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:8px 10px;font-size:13px;resize:vertical;margin-bottom:12px;">${esc(f.comment)}</textarea>
+      <div style="display:flex;gap:8px;">
+        <button onclick="evalSaveNew('${wid}','${wname.replace(/'/g,"\\'")}',false)" style="flex:1;padding:10px;background:#fff;border:1px solid ${C2.border};border-radius:8px;color:${C2.sub};font-size:12.5px;font-weight:700;cursor:pointer;">💾 초안 저장</button>
+        <button onclick="evalSaveNew('${wid}','${wname.replace(/'/g,"\\'")}',true)" style="flex:1;padding:10px;background:#1D5BA6;border:none;border-radius:8px;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;">✅ 확정 저장 (사장단 확정)</button>
+      </div>
+    </div>`;
+}
+
+window.evalSetGrade = (g, wid, wname) => { _evalForm.grade = g; _renderEvalForm(wid, wname); };
+
+window.evalSaveNew = async (wid, wname, confirmed) => {
+  const f = _evalForm;
+  if (!f.year) { alert('평가연도를 입력해 주세요.'); return; }
+  try {
+    const { addDoc, collection, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await addDoc(collection(window._db, `evaluations/${wid}/records`), {
+      type: 'regular', year: f.year, grade: f.grade, comment: f.comment || '',
+      status: confirmed ? 'confirmed' : 'draft',
+      createdAt: serverTimestamp(),
+      confirmedAt: confirmed ? serverTimestamp() : null,
+    });
+    evalViewWorker(wid, wname);
+  } catch(e) { alert('저장 오류: ' + e.message); }
+};
+
+function _renderEvalRecords(wid, wname) {
+  const wrap = document.getElementById('eval-records-wrap');
+  if (!wrap) return;
+  const docs = window._evalRecords || [];
+  if (!docs.length) { wrap.innerHTML = `<div style="text-align:center;padding:24px;color:${C2.mute};">작성된 평가가 없습니다.</div>`; return; }
+  const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  wrap.innerHTML = docs.map(d => `
+    <div style="background:#fff;border-radius:12px;border:1px solid ${C2.border};padding:14px;margin-bottom:8px;box-shadow:${C2.shadow};">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:13px;font-weight:700;color:${EVAL_GRADE_COLOR[d.grade]||C2.blue};">${d.year}년 정기평가 · ${d.grade}(${EVAL_GRADES[d.grade]||''})</span>
+        <span style="font-size:10px;background:${d.status==='confirmed'?'#DCFCE7':'#FEF3C7'};color:${d.status==='confirmed'?'#16A34A':'#92400E'};padding:2px 8px;border-radius:8px;font-weight:700;">${d.status==='confirmed'?'✅ 확정':'📝 초안'}</span>
+      </div>
+      ${d.comment ? `<div style="font-size:12px;color:${C2.sub};margin-bottom:10px;white-space:pre-wrap;">${esc(d.comment)}</div>` : ''}
+      <div style="display:flex;gap:8px;">
+        ${d.status!=='confirmed' ? `<button onclick="evalConfirmRecord('${wid}','${d.id}','${wname.replace(/'/g,"\\'")}')" style="flex:1;padding:8px;background:#E8F0FB;border:1px solid #DDE4EF;border-radius:8px;font-size:12px;font-weight:600;color:${C2.blue};cursor:pointer;">✅ 확정 처리</button>` : ''}
+        <button onclick="evalDeleteRecord('${wid}','${d.id}','${wname.replace(/'/g,"\\'")}')" style="padding:8px 12px;background:${C2.redLt};border:1px solid #fca5a5;border-radius:8px;font-size:12px;font-weight:600;color:${C2.red};cursor:pointer;">🗑 삭제</button>
+      </div>
+    </div>`).join('');
+}
+
+window.evalConfirmRecord = async (wid, evalId, wname) => {
+  try {
+    const { doc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await updateDoc(doc(window._db, `evaluations/${wid}/records`, evalId), { status:'confirmed', confirmedAt: serverTimestamp() });
+    evalViewWorker(wid, wname);
+  } catch(e) { alert('확정 처리 오류: ' + e.message); }
+};
+
+window.evalDeleteRecord = async (wid, evalId, wname) => {
+  if (!confirm('이 평가 기록을 삭제하시겠습니까?')) return;
+  try {
+    const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await deleteDoc(doc(window._db, `evaluations/${wid}/records`, evalId));
+    evalViewWorker(wid, wname);
+  } catch(e) { alert('삭제 오류: ' + e.message); }
 };
 
 window.renderRetireMain = () => {
