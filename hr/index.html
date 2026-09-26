@@ -759,6 +759,16 @@ function showScreen(name) {
     //    portal_users.admin 값을 확인한 뒤 이미 설정해 둔 값을 그대로 사용한다.
     const t = params.get('tab');
     goTab((t && HR_TABS[t]) ? t : 'home');
+    // 채용 지원자 → 근로자 명부(새 탭)로 넘어온 경우, 목록 대신 등록 폼으로 바로 진입
+    if (t === 'roster') {
+      try {
+        const pf = sessionStorage.getItem('jh_roster_prefill');
+        if (pf) {
+          sessionStorage.removeItem('jh_roster_prefill');
+          setTimeout(() => { if (typeof renderRosterRegister === 'function') renderRosterRegister(JSON.parse(pf)); }, 0);
+        }
+      } catch(e) {}
+    }
   }
 }
 
@@ -2866,14 +2876,16 @@ window.applicantsSendToOffer = (id) => {
 window.applicantsToRoster = (id) => {
   const d = (window._applicantsDocs||[]).find(x=>x.id===id);
   if (!d) return;
-  // roster 탭으로 화면 전환하되, 목록(renderRosterMain)이 아니라 등록 폼으로 바로 진입
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  const tc = document.getElementById('tab-roster'); if (tc) tc.classList.add('active');
-  document.querySelectorAll('[data-navkey]').forEach(b => b.classList.toggle('active', b.getAttribute('data-navkey')==='roster'));
-  const ht = document.getElementById('header-title'); if (ht) ht.textContent = '근로자 명부';
+  // 현재(채용 지원자) 탭은 그대로 두고, 근로자 명부는 별도 탭으로 새로 연다.
+  // 새로 열린 탭이 로드되면 곧바로 등록 폼으로 진입할 수 있도록 프리필 데이터를 임시 저장해 둔다.
+  try {
+    sessionStorage.setItem('jh_roster_prefill', JSON.stringify({ name: d.name||'', phone: d.phone||'', address: d.address||'' }));
+  } catch(e) {}
   if (document.documentElement.classList.contains('portal-embed')) {
-    try { window.parent.postMessage({source:'jh-embed', mod:'hr', key:'roster'}, '*'); } catch(e) {}
+    try { window.parent.postMessage({source:'jh-embed', mod:'hr', key:'roster', action:'openNewTab'}, '*'); return; } catch(e) {}
   }
+  // 포털 임베드가 아닌 단독 접속 상태라면 폴백으로 현재 화면에서 이동
+  goTab('roster');
   renderRosterRegister({ name: d.name || '', phone: d.phone || '', address: d.address || '' });
 };
 
