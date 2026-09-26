@@ -714,14 +714,14 @@ body { font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif; 
   <div id="tabbar-hr" class="tab-bar">
     <button class="tab-btn active" data-navkey="home" onclick="goTab('home')">🏠 인사 홈</button>
     <button class="tab-btn" data-navkey="applicants" onclick="goTab('applicants')">🗂️ 채용 지원자</button>
+    <button class="tab-btn" data-navkey="offer" onclick="goTab('offer')">📨 연봉 제안서</button>
     <button class="tab-btn" data-navkey="roster" onclick="goTab('roster')">👥 근로자 명부</button>
     <button class="tab-btn" data-navkey="labor" onclick="goTab('labor')">📝 근로계약서</button>
-    <button class="tab-btn" data-navkey="annual" onclick="goTab('annual')">📋 연봉계약서</button>
-    <button class="tab-btn" data-navkey="offer" onclick="goTab('offer')">📨 연봉 제안서</button>
-    <button class="tab-btn" data-navkey="overtime" onclick="goTab('overtime')">⏱ 근로시간</button>
-    <button class="tab-btn" data-navkey="payslip" onclick="goTab('payslip')">💰 급여명세서</button>
-    <button class="tab-btn" data-navkey="retire" onclick="goTab('retire')">🧾 퇴직금</button>
-    <button class="tab-btn" data-navkey="leave" onclick="goTab('leave')">🌴 연차</button>
+    <button class="tab-btn" data-navkey="annual" onclick="goTab('annual')">💰 연봉계약서</button>
+    <button class="tab-btn" data-navkey="overtime" onclick="goTab('overtime')">⏱️ 근로시간</button>
+    <button class="tab-btn" data-navkey="payslip" onclick="goTab('payslip')">🧾 급여명세서</button>
+    <button class="tab-btn" data-navkey="leave" onclick="goTab('leave')">🗓️ 연차 현황</button>
+    <button class="tab-btn" data-navkey="retire" onclick="goTab('retire')">📤 퇴직금 정산</button>
     <button class="tab-btn" data-navkey="salarytable" onclick="goTab('salarytable')">📊 급여테이블</button>
   </div>
 
@@ -771,14 +771,14 @@ window.addEventListener('message', (e) => {
 const HR_TABS = {
   home:     { id:'tab-home',     title:'인사 홈',     fn:()=>renderHome() },
   applicants: { id:'tab-applicants', title:'채용 지원자', fn:()=>renderApplicantsMain() },
+  offer:    { id:'tab-offer',    title:'연봉 제안서', fn:()=>renderOfferMain() },
   roster:   { id:'tab-roster',   title:'근로자 명부', fn:()=>renderRosterMain() },
   labor:    { id:'tab-labor',    title:'근로계약서',  fn:()=>renderLaborMain() },
   annual:   { id:'tab-annual',   title:'연봉계약서',  fn:()=>renderAnnualMain() },
-  offer:    { id:'tab-offer',    title:'연봉 제안서', fn:()=>renderOfferMain() },
   overtime: { id:'tab-overtime', title:'근로시간',    fn:()=>renderOvertimeMain() },
   payslip:  { id:'tab-payslip',  title:'급여명세서',  fn:()=>renderPayslipMain2() },
-  retire:   { id:'tab-retire',   title:'퇴직금 정산', fn:()=>renderRetireMain() },
   leave:    { id:'tab-leave',    title:'연차 현황',   fn:()=>renderLeaveStatusMain() },
+  retire:   { id:'tab-retire',   title:'퇴직금 정산', fn:()=>renderRetireMain() },
   salarytable: { id:'tab-salarytable', title:'급여테이블', fn:()=>renderSalaryTableMain() },
 };
 
@@ -805,9 +805,14 @@ async function renderHome() {
       ${[0,0,0,0].map(()=>'<div class="hm-kpi"><div class="lab">불러오는 중…</div><div class="val">·</div></div>').join('')}
     </div>
     <div class="hm-sec">채용</div>
-    <div class="hm-fc full" onclick="goTab('applicants')" style="margin-bottom:20px;">
+    <div class="hm-fc" onclick="goTab('applicants')" style="margin-bottom:0;">
       <div class="hm-step" style="background:#EAF3FD;color:#1D5BA6;">🗂️</div>
       <div class="hm-fb"><div class="stage">홈페이지 지원 폼 → 접수된 지원자 확인</div><div class="ttl">채용 지원자</div></div>
+      <div class="hm-chev">›</div>
+    </div>
+    <div class="hm-fc" onclick="goTab('offer')" style="margin-bottom:20px;">
+      <div class="hm-step" style="background:#EAF3FD;color:#1D5BA6;">📨</div>
+      <div class="hm-fb"><div class="stage">합격자 대상 · 저장 없이 출력 전용</div><div class="ttl">연봉 제안서</div></div>
       <div class="hm-chev">›</div>
     </div>
     <div class="hm-sec">업무 흐름 (의존 순서대로)</div>
@@ -817,8 +822,8 @@ async function renderHome() {
       <div class="hm-fc" onclick="goTab('annual')"><div class="hm-step">3</div><div class="hm-fb"><div class="stage">근로계약서 시급 연동</div><div class="ttl">연봉계약서</div></div><div class="hm-chev">›</div></div>
       <div class="hm-fc" onclick="goTab('overtime')"><div class="hm-step">4</div><div class="hm-fb"><div class="stage">근무 · 통상임금 자동 계산</div><div class="ttl">근로시간</div></div><div class="hm-chev">›</div></div>
       <div class="hm-fc" onclick="goTab('payslip')"><div class="hm-step">5</div><div class="hm-fb"><div class="stage">급여 · 연봉 + 초과근로 연동</div><div class="ttl">급여명세서</div></div><div class="hm-chev">›</div></div>
-      <div class="hm-fc" onclick="goTab('retire')"><div class="hm-step">6</div><div class="hm-fb"><div class="stage">퇴직 · 재직기간 × 평균임금</div><div class="ttl">퇴직금 정산</div></div><div class="hm-chev">›</div></div>
-      <div class="hm-fc" onclick="goTab('leave')"><div class="hm-step">7</div><div class="hm-fb"><div class="stage">근로기준법 자동 산정 · 전 직원</div><div class="ttl">연차 현황</div></div><div class="hm-chev">›</div></div>
+      <div class="hm-fc" onclick="goTab('leave')"><div class="hm-step">6</div><div class="hm-fb"><div class="stage">근로기준법 자동 산정 · 전 직원</div><div class="ttl">연차 현황</div></div><div class="hm-chev">›</div></div>
+      <div class="hm-fc" onclick="goTab('retire')"><div class="hm-step">7</div><div class="hm-fb"><div class="stage">퇴직 · 재직기간 × 평균임금</div><div class="ttl">퇴직금 정산</div></div><div class="hm-chev">›</div></div>
     </div>
     <div id="hr-sign-mgr"></div>
   </div>`;
@@ -2867,6 +2872,17 @@ window.applicantsSendToOffer = (id) => {
   goTab('offer');
 };
 
+window.applicantsToRoster = (id) => {
+  const d = (window._applicantsDocs||[]).find(x=>x.id===id);
+  if (!d) return;
+  // roster 탭으로 화면 전환하되, 목록(renderRosterMain)이 아니라 등록 폼으로 바로 진입
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  const tc = document.getElementById('tab-roster'); if (tc) tc.classList.add('active');
+  document.querySelectorAll('[data-navkey]').forEach(b => b.classList.toggle('active', b.getAttribute('data-navkey')==='roster'));
+  const ht = document.getElementById('header-title'); if (ht) ht.textContent = '근로자 명부';
+  renderRosterRegister({ name: d.name || '', phone: d.phone || '', address: d.address || '' });
+};
+
 window.applicantsDetail = (id) => {
   const d = (window._applicantsDocs||[]).find(x=>x.id===id);
   const el = document.getElementById('tab-applicants');
@@ -2884,6 +2900,7 @@ window.applicantsDetail = (id) => {
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
       ${backBtn2('renderApplicantsMain()','목록')}
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="applicantsToRoster('${id}')" style="background:${(d.status==='pass')?'#1D5BA6':'#fff'};border:1px solid ${(d.status==='pass')?'#1D5BA6':'#DDE4EF'};border-radius:8px;padding:8px 16px;color:${(d.status==='pass')?'#fff':'#5C6F8A'};font-size:12px;font-weight:700;cursor:pointer;">👤 근로자 명부 등록</button>
         <button onclick="applicantsSendToOffer('${id}')" style="background:${(d.status==='pass')?'#16A34A':'#fff'};border:1px solid ${(d.status==='pass')?'#16A34A':'#DDE4EF'};border-radius:8px;padding:8px 16px;color:${(d.status==='pass')?'#fff':'#5C6F8A'};font-size:12px;font-weight:700;cursor:pointer;">📨 연봉 제안서 작성</button>
         <button onclick="applicantsPrint('${id}')" style="background:#1D5BA6;border:none;border-radius:8px;padding:8px 16px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">🖨 이력서 인쇄</button>
       </div>
@@ -3144,19 +3161,21 @@ window.renderRosterMain = async () => {
 };
 
 
-window.renderRosterRegister = () => {
+window.renderRosterRegister = (prefill) => {
   const el = document.getElementById('tab-roster');
-  rosterForm = { name:'', jumin:'', phone:'', address:'', dept:'', rank:'', job:'' };
+  rosterForm = { name:'', jumin:'', phone:'', address:'', dept:'', rank:'', job:'', ...(prefill||{}) };
+  const _rrEsc = (typeof _applicantsEsc==='function') ? _applicantsEsc : (s=>String(s==null?'':s));
   el.innerHTML = wrap2(`
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
       ${backBtn2('renderRosterMain()')}
       <span style="font-size:13px;font-weight:700;color:${C2.text};">근로자 등록</span>
     </div>
+    ${prefill ? `<div style="background:#EAF3FD;color:#1D5BA6;border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:14px;">🗂️ 채용 지원자 정보를 불러왔습니다 — 주민등록번호 등 나머지 항목을 입력해 등록을 완료해 주세요.</div>` : ''}
     ${card2('👤 기본 정보', `
-      ${field2('이름', `<input type="text" placeholder="성명 입력" oninput="rosterForm.name=this.value" ${inp2Style}>`)}
+      ${field2('이름', `<input type="text" value="${_rrEsc(rosterForm.name)}" placeholder="성명 입력" oninput="rosterForm.name=this.value" ${inp2Style}>`)}
       ${field2('주민등록번호', `<input type="text" placeholder="000000-0000000" maxlength="14" oninput="rosterForm.jumin=fmtJumin2(this.value);this.value=rosterForm.jumin;" ${inp2Style}>`)}
-      ${field2('휴대폰번호', `<input type="text" placeholder="010-0000-0000" oninput="rosterForm.phone=fmtPhone2(this.value);this.value=rosterForm.phone;" onblur="fmtTelBlur(this)" ${inp2Style}>`)}
-      ${field2('주소', `<input type="text" placeholder="주소 입력" oninput="rosterForm.address=this.value" ${inp2Style}>`)}
+      ${field2('휴대폰번호', `<input type="text" value="${_rrEsc(rosterForm.phone)}" placeholder="010-0000-0000" oninput="rosterForm.phone=fmtPhone2(this.value);this.value=rosterForm.phone;" onblur="fmtTelBlur(this)" ${inp2Style}>`)}
+      ${field2('주소', `<input type="text" value="${_rrEsc(rosterForm.address)}" placeholder="주소 입력" oninput="rosterForm.address=this.value" ${inp2Style}>`)}
     `)}
     ${card2('💼 소속 및 업무', `
       ${field2('직원 구분', `
