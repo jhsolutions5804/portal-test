@@ -3176,6 +3176,7 @@ window.rosterGoLabor = (wid, wname) => {
   if (document.documentElement.classList.contains('portal-embed')) {
     try { window.parent.postMessage({source:'jh-embed', mod:'hr', key:'labor'}, '*'); } catch(e) {}
   }
+  window._contractBackToRoster = true;
   laborViewWorker2(wid, wname);
 };
 window.rosterGoAnnual = (wid, wname) => {
@@ -3186,7 +3187,19 @@ window.rosterGoAnnual = (wid, wname) => {
   if (document.documentElement.classList.contains('portal-embed')) {
     try { window.parent.postMessage({source:'jh-embed', mod:'hr', key:'annual'}, '*'); } catch(e) {}
   }
+  window._contractBackToRoster = true;
   annualViewWorker2(wid, wname);
+};
+// 계약서 상세에서 "근로자 명부"로 되돌아가기 (roster 탭 내용은 유지되어 있으므로 재조회 없이 화면만 전환)
+window.rosterGoBackFromContract = () => {
+  window._contractBackToRoster = false;
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  const tc = document.getElementById('tab-roster'); if (tc) tc.classList.add('active');
+  document.querySelectorAll('[data-navkey]').forEach(b => b.classList.toggle('active', b.getAttribute('data-navkey')==='roster'));
+  const ht = document.getElementById('header-title'); if (ht) ht.textContent = '근로자 명부';
+  if (document.documentElement.classList.contains('portal-embed')) {
+    try { window.parent.postMessage({source:'jh-embed', mod:'hr', key:'roster'}, '*'); } catch(e) {}
+  }
 };
 
 
@@ -4004,6 +4017,7 @@ window.laborSetFilter = (f) => { _laborViewFilter = f; renderLaborMain(); };
 window.renderLaborMain = async () => {
   const el = document.getElementById('tab-labor');
   if(!el)return;
+  window._contractBackToRoster = false;
   laborView2='main';
   const allW0 = await getWorkersList();
   const activeCnt0 = allW0.filter(d=>d.status!=='resigned').length;
@@ -4414,9 +4428,11 @@ window.renderLaborList2 = async () => {
 
 window.laborViewWorker2 = async (wid, wname) => {
   const el=document.getElementById('tab-labor');
+  const _back = window._contractBackToRoster ? "rosterGoBackFromContract()" : "renderLaborMain()";
+  const _backLabel = window._contractBackToRoster ? "근로자 명부" : "목록";
   el.innerHTML=wrap2(`
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-      ${backBtn2('renderLaborMain()','목록')}
+      ${backBtn2(_back,_backLabel)}
       <span style="font-size:13px;font-weight:700;color:${C2.text};">${wname} · 근로계약서</span>
     </div>
     <div id="labor-contracts-loading" style="text-align:center;padding:32px;color:${C2.mute};">⏳ 불러오는 중...</div>
@@ -4469,6 +4485,7 @@ window.annualSetFilter = (f) => { _annualViewFilter = f; renderAnnualMain(); };
 window.renderAnnualMain = async () => {
   const el = document.getElementById('tab-annual');
   if(!el) return;
+  window._contractBackToRoster = false;
   annualView2 = 'main';
   const allW0 = await getWorkersList();
   const activeCnt0 = allW0.filter(d=>d.status!=='resigned').length;
@@ -4893,9 +4910,11 @@ window.renderAnnualList2=async()=>{
 
 window.annualViewWorker2=async(wid,wname)=>{
   const el=document.getElementById('tab-annual');
+  const _back = window._contractBackToRoster ? "rosterGoBackFromContract()" : "renderAnnualMain()";
+  const _backLabel = window._contractBackToRoster ? "근로자 명부" : "목록";
   el.innerHTML=wrap2(`
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-      ${backBtn2('renderAnnualMain()','목록')}
+      ${backBtn2(_back,_backLabel)}
       <span style="font-size:13px;font-weight:700;color:${C2.text};">${wname} · 연봉계약서</span>
     </div>
     <div id="annual-contracts-loading" style="text-align:center;padding:32px;color:${C2.mute};">⏳ 불러오는 중...</div>
