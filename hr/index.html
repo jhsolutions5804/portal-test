@@ -713,6 +713,7 @@ body { font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif; 
   <!-- 모바일 탭바 -->
   <div id="tabbar-hr" class="tab-bar">
     <button class="tab-btn active" data-navkey="home" onclick="goTab('home')">🏠 인사 홈</button>
+    <button class="tab-btn" data-navkey="applicants" onclick="goTab('applicants')">🗂️ 채용 지원자</button>
     <button class="tab-btn" data-navkey="roster" onclick="goTab('roster')">👥 근로자 명부</button>
     <button class="tab-btn" data-navkey="labor" onclick="goTab('labor')">📝 근로계약서</button>
     <button class="tab-btn" data-navkey="annual" onclick="goTab('annual')">📋 연봉계약서</button>
@@ -726,6 +727,8 @@ body { font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif; 
 
   <!-- 인사 홈 -->
   <div class="tab-content active" id="tab-home"></div>
+  <!-- 채용 지원자 -->
+  <div class="tab-content" id="tab-applicants"></div>
   <!-- 근로자 명부 -->
   <div class="tab-content" id="tab-roster"></div>
   <!-- 근로계약서 -->
@@ -767,6 +770,7 @@ window.addEventListener('message', (e) => {
 
 const HR_TABS = {
   home:     { id:'tab-home',     title:'인사 홈',     fn:()=>renderHome() },
+  applicants: { id:'tab-applicants', title:'채용 지원자', fn:()=>renderApplicantsMain() },
   roster:   { id:'tab-roster',   title:'근로자 명부', fn:()=>renderRosterMain() },
   labor:    { id:'tab-labor',    title:'근로계약서',  fn:()=>renderLaborMain() },
   annual:   { id:'tab-annual',   title:'연봉계약서',  fn:()=>renderAnnualMain() },
@@ -2745,6 +2749,199 @@ const card2 = (title, body) => `<div style="background:#fff;border-radius:12px;b
 const field2 = (label, input) => `<div style="margin-bottom:10px;"><div style="font-size:11px;font-weight:700;color:#5C6F8A;margin-bottom:5px;">${label}</div>${input}</div>`;
 const backBtn2 = (fn, label='뒤로') => `<button onclick="${fn}" style="background:#E8F0FB;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#1D5BA6;font-size:12px;cursor:pointer;font-weight:600;">‹ ${label}</button>`;
 const homeBtn  = () => `<button onclick="goTab('home')" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#5C6F8A;font-size:12px;cursor:pointer;font-weight:600;">🏠 인사 홈</button>`;
+
+/* ── 채용 지원자 (recruit.html 지원 폼 → recruit_applicants 컬렉션) ── */
+let _applicantsFilter = 'all';
+window.applicantsSetFilter = (f) => { _applicantsFilter = f; _renderApplicantsFilterBar(window._applicantsDocs||[]); _renderApplicantsList(window._applicantsDocs||[]); };
+
+window.renderApplicantsMain = async () => {
+  const el = document.getElementById('tab-applicants');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:20px 24px;max-width:1100px;margin:0 auto;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">${homeBtn()}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+      <div style="font-size:16px;font-weight:800;color:#1A2540;">🗂️ 채용 지원자</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;" id="applicants-filter-bar"></div>
+    <div id="applicants-list-loading" style="text-align:center;padding:48px;color:#9AAABF;">⏳ 불러오는 중...</div>
+    <div id="applicants-list-wrap"></div>
+  </div>`;
+  if (!window._db) { setTimeout(renderApplicantsMain, 500); return; }
+  try {
+    const { getDocs, collection, query, orderBy } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap = await getDocs(query(collection(window._db,'recruit_applicants'), orderBy('createdAt','desc')));
+    const all = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    window._applicantsDocs = all;
+    document.getElementById('applicants-list-loading').style.display = 'none';
+    _renderApplicantsFilterBar(all);
+    _renderApplicantsList(all);
+  } catch(e) {
+    const lel = document.getElementById('applicants-list-loading');
+    if (lel) lel.innerHTML = '<div style="color:#DC2626;padding:24px;text-align:center;">오류: '+e.message+'</div>';
+  }
+};
+
+function _applicantsEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function _applicantsFmtDT(ts){
+  if (!ts) return '-';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function _renderApplicantsFilterBar(all){
+  const bar = document.getElementById('applicants-filter-bar');
+  if (!bar) return;
+  const counts = { all: all.length, new:0, review:0, pass:0, fail:0 };
+  all.forEach(a=>{ const s=a.status||'new'; if (counts[s]!=null) counts[s]++; });
+  const labels = { all:'전체', new:'신규', review:'검토중', pass:'합격', fail:'불합격' };
+  const colors = { all:'#1D5BA6', new:'#1D5BA6', review:'#92400E', pass:'#16A34A', fail:'#DC2626' };
+  const bgs    = { all:'#E8F0FB', new:'#E8F0FB', review:'#FEF3C7', pass:'#DCFCE7', fail:'#FEE2E2' };
+  bar.innerHTML = Object.keys(labels).map(k=>{
+    const active = _applicantsFilter===k;
+    return `<button onclick="applicantsSetFilter('${k}')" style="padding:7px 16px;border-radius:8px;border:1px solid ${active?colors[k]:'#DDE4EF'};background:${active?bgs[k]:'#fff'};color:${active?colors[k]:'#5C6F8A'};font-size:12px;font-weight:700;cursor:pointer;">${labels[k]} (${counts[k]})</button>`;
+  }).join('');
+}
+
+function _renderApplicantsList(all){
+  const esc = _applicantsEsc;
+  const wrap = document.getElementById('applicants-list-wrap');
+  if (!wrap) return;
+  const list = _applicantsFilter==='all' ? all : all.filter(a=>(a.status||'new')===_applicantsFilter);
+  if (!list.length){
+    wrap.innerHTML = `<div style="text-align:center;padding:48px;color:#9AAABF;">해당 조건의 지원자가 없습니다.</div>`;
+    return;
+  }
+  const statusLabel = { new:'신규', review:'검토중', pass:'합격', fail:'불합격' };
+  const statusColor = { new:'#1D5BA6', review:'#92400E', pass:'#16A34A', fail:'#DC2626' };
+  const rows = list.map((a,i)=>`<tr style="background:${i%2===0?'#fff':'#F8FAFD'};border-bottom:1px solid #F0F4FA;">
+    <td style="padding:10px 12px;font-size:12px;font-weight:700;color:#1D5BA6;cursor:pointer;text-decoration:underline;" onclick="applicantsDetail('${a.id}')">${esc(a.name)}</td>
+    <td style="padding:10px 12px;font-size:11px;color:#5C6F8A;">${esc(a.phone)}</td>
+    <td style="padding:10px 12px;font-size:11px;">${a.jobTitle?`<span style="font-size:10px;background:#E8F0FB;color:#1D5BA6;padding:2px 8px;border-radius:10px;font-weight:700;">${esc(a.jobTitle)}</span>`:'-'}</td>
+    <td style="padding:10px 12px;font-size:11px;color:#9AAABF;">${_applicantsFmtDT(a.createdAt)}</td>
+    <td style="padding:10px 12px;">
+      <select onchange="applicantsChangeStatus('${a.id}',this.value)" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid #DDE4EF;color:${statusColor[a.status||'new']};font-weight:700;">
+        ${Object.entries(statusLabel).map(([k,label])=>`<option value="${k}" ${(a.status||'new')===k?'selected':''}>${label}</option>`).join('')}
+      </select>
+    </td>
+  </tr>`).join('');
+  wrap.innerHTML = `
+    <div style="background:#fff;border-radius:14px;border:1px solid #DDE4EF;overflow:hidden;box-shadow:0 1px 4px rgba(29,91,166,0.08);">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:#E8F0FB;">
+          ${['이름','연락처','지원 공고','제출일','상태'].map(h=>`<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#1D5BA6;text-align:left;white-space:nowrap;">${h}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="font-size:11px;color:#9AAABF;margin-top:8px;padding:0 4px;">💡 이름 클릭 → 상세보기(이력서 조회 · 인쇄)</div>`;
+}
+
+window.applicantsChangeStatus = async (id, status) => {
+  try {
+    const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await updateDoc(doc(window._db,'recruit_applicants',id), { status });
+    const a = (window._applicantsDocs||[]).find(x=>x.id===id);
+    if (a) a.status = status;
+  } catch(e) { alert('상태 변경 오류: '+e.message); }
+};
+
+window.applicantsDetail = (id) => {
+  const d = (window._applicantsDocs||[]).find(x=>x.id===id);
+  const el = document.getElementById('tab-applicants');
+  if (!d || !el) return;
+  const esc = _applicantsEsc;
+  const td = (v,extra) => `<td style="padding:8px 10px;border:1px solid #E5EDF7;font-size:12px;"${extra||''}>${esc(v)}</td>`;
+  const th = (label) => `<th style="padding:8px 10px;border:1px solid #E5EDF7;background:#E8F0FB;color:#1D5BA6;font-size:12px;white-space:nowrap;">${label}</th>`;
+  const sec = (label) => `<div style="background:#1D5BA6;color:#fff;font-weight:700;padding:7px 10px;font-size:12.5px;border-radius:6px 6px 0 0;margin-top:14px;">${label}</div>`;
+  const rows = (list, cols) => (list && list.length)
+    ? list.map(item=>`<tr>${cols.map(c=>td(item[c])).join('')}</tr>`).join('')
+    : `<tr><td colspan="${cols.length}" style="padding:8px 10px;border:1px solid #E5EDF7;font-size:12px;color:#B0BAC7;font-style:italic;">입력된 내용이 없습니다</td></tr>`;
+  const m = d.military || {};
+
+  el.innerHTML = wrap2(`
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+      ${backBtn2('renderApplicantsMain()','목록')}
+      <button onclick="applicantsPrint('${id}')" style="background:#1D5BA6;border:none;border-radius:8px;padding:8px 16px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">🖨 이력서 인쇄</button>
+    </div>
+    <div style="font-size:16px;font-weight:800;color:#1A2540;margin-bottom:14px;">${esc(d.name)} 님 지원서 ${d.jobTitle?`<span style="font-size:11px;background:#E8F0FB;color:#1D5BA6;padding:2px 8px;border-radius:10px;font-weight:700;margin-left:6px;">${esc(d.jobTitle)}</span>`:''}</div>
+    ${sec('인 적 사 항')}
+    <table style="width:100%;border-collapse:collapse;">
+      <tr>${th('성명')}${td(d.name)}${th('생년월일')}${td(d.birth)}</tr>
+      <tr>${th('연락처')}${td(d.phone)}${th('성별')}${td(d.gender)}</tr>
+      <tr>${th('이메일')}${td(d.email)}${th('최종학력')}${td(d.eduLevel)}</tr>
+      <tr>${th('주소')}<td colspan="3" style="padding:8px 10px;border:1px solid #E5EDF7;font-size:12px;">${esc(d.address)}</td></tr>
+      ${d.notes?`<tr>${th('특이사항')}<td colspan="3" style="padding:8px 10px;border:1px solid #E5EDF7;font-size:12px;">${esc(d.notes)}</td></tr>`:''}
+    </table>
+    ${sec('학 력 사 항')}
+    <table style="width:100%;border-collapse:collapse;"><tr>${th('기간')}${th('학교명/전공')}${th('소재지')}${th('졸업구분')}</tr>${rows(d.educations,['period','school','location','grad'])}</table>
+    ${sec('경 력 사 항')}
+    <table style="width:100%;border-collapse:collapse;"><tr>${th('근무기간')}${th('근무처')}${th('담당업무')}${th('직위')}</tr>${rows(d.careers,['period','company','duty','position'])}</table>
+    ${sec('자격 및 면허사항')}
+    <table style="width:100%;border-collapse:collapse;"><tr>${th('취득일자')}${th('자격/면허명')}${th('발행처')}${th('등급')}</tr>${rows(d.certs,['date','name','issuer','grade'])}</table>
+    ${sec('병 역 사 항')}
+    <table style="width:100%;border-collapse:collapse;">
+      <tr>${th('군별')}${td(m.branch)}${th('제대구분')}${td(m.discharge)}</tr>
+      <tr>${th('복무기간')}${td(m.period)}${th('비고')}${td(m.exempt)}</tr>
+    </table>
+    <div style="margin-top:16px;color:#9AAABF;font-size:11px;">제출일시: ${_applicantsFmtDT(d.createdAt)}</div>
+  `);
+};
+
+window.applicantsPrint = (id) => {
+  const d = (window._applicantsDocs||[]).find(x=>x.id===id);
+  if (!d) return;
+  const esc = _applicantsEsc;
+  const td = (v,cs) => `<td${cs?` colspan="${cs}"`:''} style="padding:6px 8px;border:1px solid #ccc;">${esc(v)}</td>`;
+  const th = (l) => `<th style="padding:6px 8px;border:1px solid #ccc;background:#EAF3FD;color:#1D5BA6;font-size:12px;white-space:nowrap;">${l}</th>`;
+  const sec = (l) => `<div style="background:#1D5BA6;color:#fff;font-weight:700;padding:6px 10px;font-size:12px;margin-top:14px;">${l}</div>`;
+  const rows = (list, cols) => (list && list.length)
+    ? list.map(item=>`<tr>${cols.map(c=>td(item[c])).join('')}</tr>`).join('')
+    : `<tr><td colspan="${cols.length}" style="padding:6px 8px;border:1px solid #ccc;color:#999;font-style:italic;">입력된 내용이 없습니다</td></tr>`;
+  const m = d.military || {};
+  const pdfWin = window.open('','_blank');
+  pdfWin.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>${esc(d.name)} 이력서</title>
+    <style>
+      body{margin:0;font-family:'Noto Sans KR',Arial,sans-serif;background:#888;display:flex;flex-direction:column;align-items:center;padding:20px;}
+      .toolbar{margin-bottom:12px;display:flex;gap:8px;}
+      .toolbar button{padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;border:none;}
+      .btn-print{background:#1D5BA6;color:#fff;font-weight:700;}
+      .btn-back{background:#fff;border:1px solid #DDE4EF !important;}
+      .a4{width:794px;min-height:1123px;background:#fff;padding:50px 60px;box-shadow:0 4px 24px rgba(0,0,0,0.2);box-sizing:border-box;}
+      table{width:100%;border-collapse:collapse;font-size:12px;}
+      @media print{body{background:#fff;padding:0;}.toolbar{display:none;}.a4{box-shadow:none;padding:30px 40px;width:auto;}}
+    </style></head><body>
+    <div class="toolbar">
+      <button class="btn-back" onclick="window.close()">← 돌아가기</button>
+      <button class="btn-print" onclick="window.print()">🖨 인쇄 / PDF 저장</button>
+    </div>
+    <div class="a4">
+      <div style="text-align:center;margin-bottom:28px;">
+        <div style="font-size:22px;font-weight:800;color:#1D5BA6;letter-spacing:6px;">이 력 서</div>
+      </div>
+      ${sec('인 적 사 항')}
+      <table>
+        <tr>${th('성명')}${td(d.name)}${th('생년월일')}${td(d.birth)}</tr>
+        <tr>${th('연락처')}${td(d.phone)}${th('성별')}${td(d.gender)}</tr>
+        <tr>${th('이메일')}${td(d.email)}${th('최종학력')}${td(d.eduLevel)}</tr>
+        <tr>${th('주소')}${td(d.address,3)}</tr>
+        ${d.notes?`<tr>${th('특이사항')}${td(d.notes,3)}</tr>`:''}
+      </table>
+      ${sec('학 력 사 항')}
+      <table><tr>${th('기간')}${th('학교명/전공')}${th('소재지')}${th('졸업구분')}</tr>${rows(d.educations,['period','school','location','grad'])}</table>
+      ${sec('경 력 사 항')}
+      <table><tr>${th('근무기간')}${th('근무처')}${th('담당업무')}${th('직위')}</tr>${rows(d.careers,['period','company','duty','position'])}</table>
+      ${sec('자격 및 면허사항')}
+      <table><tr>${th('취득일자')}${th('자격/면허명')}${th('발행처')}${th('등급')}</tr>${rows(d.certs,['date','name','issuer','grade'])}</table>
+      ${sec('병 역 사 항')}
+      <table>
+        <tr>${th('군별')}${td(m.branch)}${th('제대구분')}${td(m.discharge)}</tr>
+        <tr>${th('복무기간')}${td(m.period)}${th('비고')}${td(m.exempt)}</tr>
+      </table>
+    </div>
+  </body></html>`);
+  pdfWin.document.close();
+};
 const selectMain = (icon, label, fn, desc) => `
   <button onclick="${fn}" style="background:#fff;border:1px solid #DDE4EF;border-radius:14px;padding:18px 20px;text-align:left;cursor:pointer;box-shadow:${C2.shadow};display:flex;align-items:center;gap:16px;width:100%;">
     <div style="width:48px;height:48px;background:${icon.includes('📂')?C2.greenLt:C2.blueLt};border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">${icon}</div>
