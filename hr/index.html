@@ -2834,17 +2834,18 @@ function _renderApplicantsList(all){
         ${Object.entries(statusLabel).map(([k,label])=>`<option value="${k}" ${(a.status||'new')===k?'selected':''}>${label}</option>`).join('')}
       </select>
     </td>
+    <td style="padding:10px 12px;">${(a.status==='pass')?`<button onclick="applicantsSendToOffer('${a.id}')" style="background:#16A34A;border:none;border-radius:6px;padding:5px 10px;color:#fff;font-size:10.5px;font-weight:700;cursor:pointer;white-space:nowrap;">📨 제안서</button>`:''}</td>
   </tr>`).join('');
   wrap.innerHTML = `
     <div style="background:#fff;border-radius:14px;border:1px solid #DDE4EF;overflow:hidden;box-shadow:0 1px 4px rgba(29,91,166,0.08);">
       <table style="width:100%;border-collapse:collapse;">
         <thead><tr style="background:#E8F0FB;">
-          ${['이름','연락처','지원 공고','제출일','상태'].map(h=>`<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#1D5BA6;text-align:left;white-space:nowrap;">${h}</th>`).join('')}
+          ${['이름','연락처','지원 공고','제출일','상태',''].map(h=>`<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#1D5BA6;text-align:left;white-space:nowrap;">${h}</th>`).join('')}
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
-    <div style="font-size:11px;color:#9AAABF;margin-top:8px;padding:0 4px;">💡 이름 클릭 → 상세보기(이력서 조회 · 인쇄)</div>`;
+    <div style="font-size:11px;color:#9AAABF;margin-top:8px;padding:0 4px;">💡 이름 클릭 → 상세보기(이력서 조회 · 인쇄) · 합격자는 목록에서 바로 연봉 제안서 작성 가능</div>`;
 }
 
 window.applicantsChangeStatus = async (id, status) => {
@@ -2854,6 +2855,16 @@ window.applicantsChangeStatus = async (id, status) => {
     const a = (window._applicantsDocs||[]).find(x=>x.id===id);
     if (a) a.status = status;
   } catch(e) { alert('상태 변경 오류: '+e.message); }
+};
+
+window.applicantsSendToOffer = (id) => {
+  const d = (window._applicantsDocs||[]).find(x=>x.id===id);
+  if (!d) return;
+  offerForm = offerNewForm();
+  offerForm.kind = 'new';
+  offerForm.name = d.name || '';
+  offerForm.job  = d.jobTitle || '';
+  goTab('offer');
 };
 
 window.applicantsDetail = (id) => {
@@ -2872,7 +2883,10 @@ window.applicantsDetail = (id) => {
   el.innerHTML = wrap2(`
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
       ${backBtn2('renderApplicantsMain()','목록')}
-      <button onclick="applicantsPrint('${id}')" style="background:#1D5BA6;border:none;border-radius:8px;padding:8px 16px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">🖨 이력서 인쇄</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="applicantsSendToOffer('${id}')" style="background:${(d.status==='pass')?'#16A34A':'#fff'};border:1px solid ${(d.status==='pass')?'#16A34A':'#DDE4EF'};border-radius:8px;padding:8px 16px;color:${(d.status==='pass')?'#fff':'#5C6F8A'};font-size:12px;font-weight:700;cursor:pointer;">📨 연봉 제안서 작성</button>
+        <button onclick="applicantsPrint('${id}')" style="background:#1D5BA6;border:none;border-radius:8px;padding:8px 16px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">🖨 이력서 인쇄</button>
+      </div>
     </div>
     <div style="font-size:16px;font-weight:800;color:#1A2540;margin-bottom:14px;">${esc(d.name)} 님 지원서 ${d.jobTitle?`<span style="font-size:11px;background:#E8F0FB;color:#1D5BA6;padding:2px 8px;border-radius:10px;font-weight:700;margin-left:6px;">${esc(d.jobTitle)}</span>`:''}</div>
     ${sec('인 적 사 항')}
