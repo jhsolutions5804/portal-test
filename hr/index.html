@@ -664,6 +664,8 @@ body { font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif; 
 .hm-kpi.warn { background:#FFF4E5; border-color:#F4D9AD; }
 .hm-kpi.warn .lab { color:#9A5B00; } .hm-kpi.warn .val { color:#E08A00; } .hm-kpi.warn .act { color:#9A5B00; }
 .hm-sec { font-size:12px; font-weight:600; color:#5C6F8A; margin:4px 0 8px; }
+.hm-stage-label { font-size:11px; font-weight:800; color:#1D5BA6; background:#EAF3FD; display:inline-block; padding:3px 10px; border-radius:6px; margin:14px 0 8px; }
+.hm-stage-label:first-of-type { margin-top:2px; }
 .hm-flow { display:grid; gap:9px; }
 @media (min-width:760px){ .hm-flow { grid-template-columns:repeat(2,1fr); } .hm-flow .hm-fc.full { grid-column:1 / -1; } }
 .hm-fc { background:#fff; border:1px solid #DDE4EF; border-radius:12px; padding:12px 13px; display:flex; align-items:center; gap:12px; cursor:pointer; text-align:left; width:100%; }
@@ -818,17 +820,31 @@ async function renderHome() {
       ${[0,0,0,0].map(()=>'<div class="hm-kpi"><div class="lab">불러오는 중…</div><div class="val">·</div></div>').join('')}
     </div>
     <div class="hm-sec">업무 흐름 (채용 → 퇴직)</div>
+
+    <div class="hm-stage-label">① 채용</div>
     <div class="hm-flow">
       <div class="hm-fc full" onclick="goTab('applicants')"><div class="hm-step">1</div><div class="hm-fb"><div class="stage">홈페이지 지원 폼 → 접수된 지원자 확인</div><div class="ttl">채용 지원자</div></div><div class="hm-chev">›</div></div>
+    </div>
+
+    <div class="hm-stage-label">② 입사처리</div>
+    <div class="hm-flow">
       <div class="hm-fc" onclick="goTab('offer')"><div class="hm-step">2</div><div class="hm-fb"><div class="stage">합격자 대상 급여 조건 제시</div><div class="ttl">연봉 제안서</div></div><div class="hm-chev">›</div></div>
       <div class="hm-fc" onclick="goTab('roster')"><div class="hm-step">3</div><div class="hm-fb"><div class="stage">입사 · 인사 마스터 (모든 단계의 기준)</div><div class="ttl">근로자 명부</div><div class="hm-pills"><span class="hm-pill">등록</span><span class="hm-pill">조회 · 상세</span></div></div><div class="hm-chev">›</div></div>
       <div class="hm-fc" onclick="goTab('labor')"><div class="hm-step">4</div><div class="hm-fb"><div class="stage">시급 입력 → 연봉 자동 산정</div><div class="ttl">근로계약서</div></div><div class="hm-chev">›</div></div>
       <div class="hm-fc" onclick="goTab('annual')"><div class="hm-step">5</div><div class="hm-fb"><div class="stage">근로계약서 시급 연동</div><div class="ttl">연봉계약서</div></div><div class="hm-chev">›</div></div>
+    </div>
+
+    <div class="hm-stage-label">③ 재직중 관리</div>
+    <div class="hm-flow">
       <div class="hm-fc" onclick="goTab('overtime')"><div class="hm-step">6</div><div class="hm-fb"><div class="stage">근무 · 통상임금 자동 계산</div><div class="ttl">근로시간</div></div><div class="hm-chev">›</div></div>
       <div class="hm-fc" onclick="goTab('payslip')"><div class="hm-step">7</div><div class="hm-fb"><div class="stage">급여 · 연봉 + 초과근로 연동</div><div class="ttl">급여명세서</div></div><div class="hm-chev">›</div></div>
       <div class="hm-fc" onclick="goTab('eval')"><div class="hm-step">8</div><div class="hm-fb"><div class="stage">내규 기준 정기평가 · 연봉협상 전 실시</div><div class="ttl">인사평가</div></div><div class="hm-chev">›</div></div>
       <div class="hm-fc" onclick="goTab('leave')"><div class="hm-step">9</div><div class="hm-fb"><div class="stage">근로기준법 자동 산정 · 전 직원</div><div class="ttl">연차 현황</div></div><div class="hm-chev">›</div></div>
-      <div class="hm-fc" onclick="goTab('retire')"><div class="hm-step">10</div><div class="hm-fb"><div class="stage">퇴직 · 재직기간 × 평균임금</div><div class="ttl">퇴직금 정산</div></div><div class="hm-chev">›</div></div>
+    </div>
+
+    <div class="hm-stage-label">④ 퇴사</div>
+    <div class="hm-flow">
+      <div class="hm-fc full" onclick="goTab('retire')"><div class="hm-step">10</div><div class="hm-fb"><div class="stage">퇴직 · 재직기간 × 평균임금</div><div class="ttl">퇴직금 정산</div></div><div class="hm-chev">›</div></div>
     </div>
     <div id="hr-sign-mgr"></div>
   </div>`;
@@ -8266,21 +8282,32 @@ window.renderLeaveStatusMain = async () => {
    - 저장: evaluations/{workerId}/records/{evalId}
    ══════════════════════════════════════════════ */
 
-// 호봉 산정: 입사 "다음 해"에 1회만 자동 산정한다(전년도 4분기 입사자는 1호봉, 1~3분기 입사자는 2호봉).
-// 이후의 호봉 승급은 자동이 아니라 정기평가 결과에 따라 관리자가 직접 조정하는 값이므로,
-// 한 번 산정된 뒤에는 workers.step에 저장된 값을 그대로 쓰고 달력 나이로 계속 올리지 않는다.
+// 호봉 산정: 저장된 기준값(step, stepYear)이 있으면 그 시점부터 경과한 연수만큼 자동으로 계속 올려서 보여준다.
+// 저장된 기준값이 없는 신규 근로자는 입사일 기준으로 최초값을 추정한다(4분기 입사=1호봉, 1~3분기 입사=2호봉).
+// ※ 승진(직급 변경) 시에는 관리자가 호봉을 1로 다시 입력해줘야 그 시점부터 "새 직급 1년차"로 다시 누적된다.
 function calcWorkerStepSeed(hireDateStr) {
   if (!hireDateStr) return null;
   const hd = new Date(hireDateStr + (hireDateStr.length===10?'T00:00:00':''));
   if (isNaN(hd.getTime())) return null;
   const hireYear = hd.getFullYear();
   const hireQuarter = Math.ceil((hd.getMonth()+1)/3); // 1~4
-  return (hireQuarter === 4) ? 1 : 2; // 입사 다음해 기준값
+  return { baseYear: hireYear + 1, baseStep: (hireQuarter === 4) ? 1 : 2 };
+}
+function calcWorkerStepNow(worker) {
+  const currentYear = new Date().getFullYear();
+  let base;
+  if (worker.step != null && worker.stepYear != null) {
+    base = { baseYear: worker.stepYear, baseStep: worker.step };
+  } else {
+    base = calcWorkerStepSeed(worker.hireDate);
+  }
+  if (!base) return null;
+  return base.baseStep + Math.max(0, currentYear - base.baseYear);
 }
 window.rosterStepSave = async (workerId, val) => {
   try {
     const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    await setDoc(doc(window._db,'workers',workerId), { step: Number(val) || null }, { merge:true });
+    await setDoc(doc(window._db,'workers',workerId), { step: Number(val) || null, stepYear: new Date().getFullYear() }, { merge:true });
   } catch(e) { alert('호봉 저장 오류: ' + e.message); }
 };
 
@@ -8320,8 +8347,8 @@ window.renderEvalMain = async () => {
     const sorted = [...workers].sort((a,b)=>(a.empNo||'').localeCompare(b.empNo||''));
     const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
     const rows = sorted.map((w,i) => {
-      const step = (w.step != null && w.step !== '') ? w.step : calcWorkerStepSeed(w.hireDate);
-      const isSeed = !(w.step != null && w.step !== '');
+      const step = calcWorkerStepNow(w);
+      const isSeed = !(w.step != null && w.stepYear != null);
       const lt = latest[w.id];
       const gradeCell = lt
         ? `<span style="font-size:11px;font-weight:700;color:${EVAL_GRADE_COLOR[lt.grade]||C2.sub};">${lt.year} · ${lt.grade}(${EVAL_GRADES[lt.grade]||''})</span>${lt.status!=='confirmed'?' <span style="font-size:9px;background:#FEF3C7;color:#92400E;padding:1px 6px;border-radius:6px;font-weight:700;">초안</span>':''}`
@@ -8346,7 +8373,7 @@ window.renderEvalMain = async () => {
           <tbody>${rows}</tbody>
         </table>
       </div>
-      <div style="font-size:11px;color:${C2.mute};margin-top:8px;padding:0 4px;">💡 호봉 칸은 직접 입력·수정 가능합니다 (연한 테두리는 입사연도 기준 자동 추정값, 확정 아님). 이름 클릭 → 평가 이력 · 신규 작성</div>`;
+      <div style="font-size:11px;color:${C2.mute};margin-top:8px;padding:0 4px;">💡 호봉은 매해 자동으로 1씩 올라갑니다. 승진(직급 변경) 시에는 호봉을 1로 다시 입력해 주세요 — 그 시점부터 새 직급 기준으로 다시 누적됩니다. 이름 클릭 → 평가 이력 · 신규 작성</div>`;
   } catch(e) {
     document.getElementById('eval-list-loading').innerHTML = '<div style="color:#DC2626;padding:24px;text-align:center;">오류: '+e.message+'</div>';
   }
