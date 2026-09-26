@@ -804,6 +804,12 @@ async function renderHome() {
     <div class="hm-kgrid" id="hm-kpi">
       ${[0,0,0,0].map(()=>'<div class="hm-kpi"><div class="lab">불러오는 중…</div><div class="val">·</div></div>').join('')}
     </div>
+    <div class="hm-sec">채용</div>
+    <div class="hm-fc full" onclick="goTab('applicants')" style="margin-bottom:20px;">
+      <div class="hm-step" style="background:#EAF3FD;color:#1D5BA6;">🗂️</div>
+      <div class="hm-fb"><div class="stage">홈페이지 지원 폼 → 접수된 지원자 확인</div><div class="ttl">채용 지원자</div></div>
+      <div class="hm-chev">›</div>
+    </div>
     <div class="hm-sec">업무 흐름 (의존 순서대로)</div>
     <div class="hm-flow">
       <div class="hm-fc full" onclick="goTab('roster')"><div class="hm-step">1</div><div class="hm-fb"><div class="stage">입사 · 인사 마스터 (모든 단계의 기준)</div><div class="ttl">근로자 명부</div><div class="hm-pills"><span class="hm-pill">등록</span><span class="hm-pill">조회 · 상세</span></div></div><div class="hm-chev">›</div></div>
@@ -893,12 +899,17 @@ async function loadHomeKpis() {
 
     let noAnnual = 0, renew = 0, payDone = 0;
     const L_roster=[], L_renew=[], L_paymissing=[], L_overtime=[];
+    // 근로계약서/연봉계약서 작성 대상에서 열외 처리 (대표/테스트 계정 등)
+    const CONTRACT_EXEMPT_NAMES = ['송지훈','김종화','김영희','김민서','test'];
     for (const w of workers) {
       L_roster.push(w);
+      const _exempt = CONTRACT_EXEMPT_NAMES.includes((w.name||'').trim());
       let aLatest='', aCnt=0;
-      try { const aS=await getDocs(collection(window._db,`annual_contracts/${w.id}/contracts`)); aCnt=aS.size; aS.forEach(c=>{const ed=c.data().endDate||''; if(ed>aLatest)aLatest=ed;}); } catch(e){}
-      if (aCnt===0) noAnnual++;
-      if (aLatest && aLatest <= d30s){ renew++; w._aLatest=aLatest; L_renew.push(w); }
+      if (!_exempt) {
+        try { const aS=await getDocs(collection(window._db,`annual_contracts/${w.id}/contracts`)); aCnt=aS.size; aS.forEach(c=>{const ed=c.data().endDate||''; if(ed>aLatest)aLatest=ed;}); } catch(e){}
+        if (aCnt===0) noAnnual++;
+        if (aLatest && aLatest <= d30s){ renew++; w._aLatest=aLatest; L_renew.push(w); }
+      }
       let _payOk=false;
       try { const pS=await getDoc(doc(window._db,`payslips/${w.id}/months`,ym)); if(pS.exists()) {payDone++; _payOk=true;} } catch(e){}
       if(!_payOk) L_paymissing.push(w);
