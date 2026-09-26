@@ -2868,6 +2868,7 @@ window.applicantsSendToOffer = (id) => {
   if (!d) return;
   offerForm = offerNewForm();
   offerForm.kind = 'new';
+  offerForm.applicantId = id;
   offerForm.name = d.name || '';
   offerForm.job  = d.jobTitle || '';
   goTab('offer');
@@ -8722,7 +8723,7 @@ const _offerAddDays = (s, n) => { const d=new Date(s+'T00:00:00'); d.setDate(d.g
 function offerNewForm() {
   const t = new Date();
   return {
-    kind:'new', workerId:'', name:'', empNo:'', dept:'', rank:'', hireDate:'', job:'', site:'',
+    kind:'new', workerId:'', applicantId:'', name:'', empNo:'', dept:'', rank:'', hireDate:'', job:'', site:'',
     empKind:'regular', startDate:'', endDate:'', hoursDay:'8', hoursWeek:'40', probation:'',
     mode:'annual', amount:'', wageType:'noncomprehensive', fixedOT:'', fixedNight:'', etcName:'', etc:'',
     curSalary:'', curRank:'',
@@ -8985,7 +8986,32 @@ window.offerPrint = async () => {
 };
 
 /* ── 지난 제안서 목록 ── */
+let _offerHistTab = 'active'; // active(재직자) | pending(신규입사 예정자)
+
 window.renderOfferHistory = async () => {
+  const el = document.getElementById('tab-offer');
+  if (!el) return;
+  _offerHistTab = 'active';
+  el.innerHTML = wrap2(`<div id="offer-hist-loading" style="text-align:center;padding:48px;color:#9AAABF;">⏳ 불러오는 중...</div>`);
+  if (!window._db) { document.getElementById('offer-hist-loading').textContent = 'Firebase 연결 필요'; return; }
+  try {
+    const { getDocs, collection, query, orderBy } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const [offerSnap, workers, applSnap] = await Promise.all([
+      getDocs(query(collection(window._db,'salary_offers'), orderBy('createdAt','desc'))),
+      getWorkersList(),
+      getDocs(collection(window._db,'recruit_applicants')),
+    ]);
+    window._allOffers = offerSnap.docs.map(d=>({ id:d.id, ...d.data() }));
+    window._offerWorkersAll = workers;
+    window._allApplicantsForOffer = applSnap.docs.map(d=>({ id:d.id, ...d.data() }));
+    _renderOfferHistShell();
+    _renderOfferHistBody();
+  } catch(e) {
+    el.innerHTML = wrap2('<div style="color:#DC2626;padding:24px;text-align:center;">오류: '+e.message+'</div>');
+  }
+};
+
+function _renderOfferHistShell(){
   const el = document.getElementById('tab-offer');
   if (!el) return;
   el.innerHTML = wrap2(`
@@ -8993,53 +9019,126 @@ window.renderOfferHistory = async () => {
       ${backBtn2('renderOfferForm()','제안서 작성')}
       <span style="font-size:13px;font-weight:700;color:${C2.text};">📜 지난 제안서</span>
     </div>
-    <div id="offer-history-wrap" style="text-align:center;padding:48px;color:#9AAABF;">⏳ 불러오는 중...</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button id="offer-hist-active" onclick="offerHistSetTab('active')" style="padding:7px 16px;border-radius:8px;border:1px solid ${_offerHistTab==='active'?'#1D5BA6':'#DDE4EF'};background:${_offerHistTab==='active'?'#E8F0FB':'#fff'};color:${_offerHistTab==='active'?'#1D5BA6':'#5C6F8A'};font-size:12px;font-weight:700;cursor:pointer;">🟢 재직자</button>
+      <button id="offer-hist-pending" onclick="offerHistSetTab('pending')" style="padding:7px 16px;border-radius:8px;border:1px solid ${_offerHistTab==='pending'?'#1D5BA6':'#DDE4EF'};background:${_offerHistTab==='pending'?'#E8F0FB':'#fff'};color:${_offerHistTab==='pending'?'#1D5BA6':'#5C6F8A'};font-size:12px;font-weight:700;cursor:pointer;">🆕 신규입사 예정자</button>
+    </div>
+    <div id="offer-hist-wrap"></div>
   `);
-  const wrap = document.getElementById('offer-history-wrap');
-  if (!window._db) { wrap.textContent = 'Firebase 연결 필요'; return; }
-  try {
-    const { getDocs, collection, query, orderBy } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    const snap = await getDocs(query(collection(window._db,'salary_offers'), orderBy('createdAt','desc')));
-    const list = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-    window._offerHistory = list;
-    if (!list.length) { wrap.innerHTML = `<div style="text-align:center;padding:48px;color:#9AAABF;">저장된 제안서가 없습니다.</div>`; return; }
-    const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-    const kindLabel = { new:'신규 입사', renew:'재계약', adjust:'연봉 조정' };
-    const fmtDT = ts => { if(!ts) return '-'; const d = ts.toDate ? ts.toDate() : new Date(ts); return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
-    const rows = list.map(o => {
-      const r = offerCalc(o);
-      return `<tr style="border-bottom:1px solid #F0F4FA;">
-        <td style="padding:10px 12px;font-size:12px;font-weight:700;color:${C2.text};">${esc(o.name)||'(성명 미입력)'}</td>
-        <td style="padding:10px 12px;font-size:11px;color:#5C6F8A;">${kindLabel[o.kind]||o.kind||'-'}</td>
-        <td style="padding:10px 12px;font-size:11px;color:#5C6F8A;">${esc(o.job)||'-'}</td>
-        <td style="padding:10px 12px;font-size:11px;color:#1D5BA6;font-weight:700;">${r.ok?('₩'+Math.round(r.annual).toLocaleString('ko-KR')):'-'}</td>
-        <td style="padding:10px 12px;font-size:11px;color:#9AAABF;">${fmtDT(o.createdAt)}</td>
-        <td style="padding:10px 12px;"><button onclick="offerReprint('${o.id}')" style="background:${C2.blue};border:none;border-radius:6px;padding:6px 12px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;">🖨 다시 출력</button></td>
-      </tr>`;
-    }).join('');
-    wrap.innerHTML = `
-      <div style="background:#fff;border-radius:14px;border:1px solid ${C2.border};overflow:hidden;">
-        <table style="width:100%;border-collapse:collapse;">
-          <thead><tr style="background:#E8F0FB;">
-            ${['성명','구분','담당업무/공고','연봉','작성일',''].map(h=>`<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#1D5BA6;text-align:left;white-space:nowrap;">${h}</th>`).join('')}
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
-  } catch(e) {
-    wrap.innerHTML = '<div style="color:#DC2626;padding:24px;text-align:center;">오류: '+e.message+'</div>';
-  }
+}
+
+window.offerHistSetTab = (t) => {
+  _offerHistTab = t;
+  const ab = document.getElementById('offer-hist-active'), pb = document.getElementById('offer-hist-pending');
+  if (ab) { ab.style.borderColor = t==='active'?'#1D5BA6':'#DDE4EF'; ab.style.background = t==='active'?'#E8F0FB':'#fff'; ab.style.color = t==='active'?'#1D5BA6':'#5C6F8A'; }
+  if (pb) { pb.style.borderColor = t==='pending'?'#1D5BA6':'#DDE4EF'; pb.style.background = t==='pending'?'#E8F0FB':'#fff'; pb.style.color = t==='pending'?'#1D5BA6':'#5C6F8A'; }
+  _renderOfferHistBody();
 };
 
-window.offerReprint = (id) => {
-  const o = (window._offerHistory||[]).find(x=>x.id===id);
-  if (!o) return;
+function _renderOfferHistBody(){
+  const wrap = document.getElementById('offer-hist-wrap');
+  if (!wrap) return;
+  const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const offers = window._allOffers || [];
+
+  if (_offerHistTab === 'active') {
+    const activeWorkers = (window._offerWorkersAll||[]).filter(w=>w.status!=='resigned');
+    if (!activeWorkers.length){ wrap.innerHTML = `<div style="text-align:center;padding:48px;color:#9AAABF;">등록된 근로자가 없습니다.</div>`; return; }
+    const sorted = [...activeWorkers].sort((a,b)=>(a.empNo||'').localeCompare(b.empNo||''));
+    const rows = sorted.map((w,i)=>{
+      const cnt = offers.filter(o=>o.workerId===w.id).length;
+      return `<tr style="background:${i%2===0?'#fff':'#F8FAFD'};border-bottom:1px solid #F0F4FA;">
+        <td style="padding:10px 12px;font-size:12px;font-weight:700;color:#1D5BA6;">${esc(w.empNo)||'-'}</td>
+        <td style="padding:10px 12px;font-size:12px;font-weight:700;color:#1D5BA6;cursor:pointer;text-decoration:underline;" onclick="offerViewWorker('${w.id}')">${esc(w.name)||'-'}</td>
+        <td style="padding:10px 12px;font-size:11px;color:#5C6F8A;">${esc(w.dept)||'-'}</td>
+        <td style="padding:10px 12px;font-size:11px;color:#5C6F8A;">${esc(w.rank)||'-'}</td>
+        <td style="padding:10px 12px;font-size:11px;color:#9AAABF;">${cnt?cnt+'건':'-'}</td>
+      </tr>`;
+    }).join('');
+    wrap.innerHTML = `<div style="background:#fff;border-radius:14px;border:1px solid #DDE4EF;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:#E8F0FB;">${['사원번호','이름','소속','직급','제안서'].map(h=>`<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#1D5BA6;text-align:left;white-space:nowrap;">${h}</th>`).join('')}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+      <div style="font-size:11px;color:#9AAABF;margin-top:8px;padding:0 4px;">💡 이름 클릭 → 해당 근로자의 재계약/연봉조정 제안서 이력</div>`;
+  } else {
+    const byApplicant = {};
+    offers.forEach(o=>{ if (o.applicantId) (byApplicant[o.applicantId] = byApplicant[o.applicantId]||[]).push(o); });
+    const eligible = (window._allApplicantsForOffer||[])
+      .filter(a => byApplicant[a.id] && ['review','pass'].includes(a.status||'new'));
+    if (!eligible.length){ wrap.innerHTML = `<div style="text-align:center;padding:48px;color:#9AAABF;">제안서가 작성된 신규입사 예정자가 없습니다.<br><small>채용 지원자 중 '검토중' 또는 '합격' 상태이면서, 연봉 제안서를 한 번이라도 작성한 경우에만 표시됩니다.</small></div>`; return; }
+    const statusLabel = { review:'검토중', pass:'합격' };
+    const statusColor = { review:'#92400E', pass:'#16A34A' };
+    const rows = eligible.map((a,i)=>{
+      const cnt = byApplicant[a.id].length;
+      return `<tr style="background:${i%2===0?'#fff':'#F8FAFD'};border-bottom:1px solid #F0F4FA;">
+        <td style="padding:10px 12px;font-size:12px;font-weight:700;color:#1D5BA6;cursor:pointer;text-decoration:underline;" onclick="offerViewApplicant('${a.id}')">${esc(a.name)||'-'}</td>
+        <td style="padding:10px 12px;font-size:11px;color:#5C6F8A;">${a.jobTitle?`<span style="font-size:10px;background:#E8F0FB;color:#1D5BA6;padding:2px 8px;border-radius:10px;font-weight:700;">${esc(a.jobTitle)}</span>`:'-'}</td>
+        <td style="padding:10px 12px;"><span style="font-size:10px;background:#FEF3C7;color:${statusColor[a.status]};padding:2px 8px;border-radius:10px;font-weight:700;">${statusLabel[a.status]}</span></td>
+        <td style="padding:10px 12px;font-size:11px;color:#9AAABF;">${cnt}건</td>
+      </tr>`;
+    }).join('');
+    wrap.innerHTML = `<div style="background:#fff;border-radius:14px;border:1px solid #DDE4EF;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:#E8F0FB;">${['이름','지원 공고','상태','제안서'].map(h=>`<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#1D5BA6;text-align:left;white-space:nowrap;">${h}</th>`).join('')}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+      <div style="font-size:11px;color:#9AAABF;margin-top:8px;padding:0 4px;">💡 지원자가 '불합격'·'신규'로 바뀌면 이 목록에서 자동으로 빠집니다.</div>`;
+  }
+}
+
+/* ── 개인별 제안서 이력 ── */
+window.offerViewWorker = (workerId) => {
+  const w = (window._offerWorkersAll||[]).find(x=>x.id===workerId);
+  const list = (window._allOffers||[]).filter(o=>o.workerId===workerId);
+  _renderOfferPersonHistory(w?w.name:'', list, () => offerStartFor({ kind:'renew', workerId, name:w?w.name:'', dept:w?w.dept:'', rank:w?w.rank:'' }));
+};
+window.offerViewApplicant = (applicantId) => {
+  const a = (window._allApplicantsForOffer||[]).find(x=>x.id===applicantId);
+  const list = (window._allOffers||[]).filter(o=>o.applicantId===applicantId);
+  _renderOfferPersonHistory(a?a.name:'', list, () => offerStartFor({ kind:'new', applicantId, name:a?a.name:'', job:a?a.jobTitle:'' }));
+};
+
+function _renderOfferPersonHistory(name, list, onNewOffer){
+  const el = document.getElementById('tab-offer');
+  const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const fmtDT = ts => { if(!ts) return '-'; const d = ts.toDate ? ts.toDate() : new Date(ts); return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
+  const kindLabel = { new:'신규 입사', renew:'재계약', adjust:'연봉 조정' };
+  window._offerHistDetailNewFn = onNewOffer;
+  el.innerHTML = wrap2(`
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        ${backBtn2("_renderOfferHistShell();_renderOfferHistBody();",'목록')}
+        <span style="font-size:13px;font-weight:700;color:${C2.text};">${esc(name)} · 연봉 제안서 이력</span>
+      </div>
+      <button onclick="_offerHistDetailNewFn()" style="background:#1D5BA6;border:none;border-radius:8px;padding:8px 16px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">➕ 새 제안서 작성</button>
+    </div>
+    ${!list.length ? `<div style="text-align:center;padding:32px;color:#9AAABF;">작성된 제안서가 없습니다.</div>` : list.map(o=>{
+      const r = offerCalc(o);
+      return `<div style="background:#fff;border-radius:12px;border:1px solid #DDE4EF;padding:14px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:13px;font-weight:700;color:#1D5BA6;">${kindLabel[o.kind]||o.kind} · ${esc(o.offerDate)}</span>
+          <span style="font-size:10px;background:#E8F0FB;color:#1D5BA6;padding:2px 8px;border-radius:8px;font-weight:700;">${fmtDT(o.createdAt)} 작성</span>
+        </div>
+        <div style="font-size:12px;color:#5C6F8A;margin-bottom:10px;">제안 연봉: ${r.ok?('₩'+Math.round(r.annual).toLocaleString('ko-KR')):'-'}</div>
+        <button onclick="offerReprintObj(${JSON.stringify(o).replace(/"/g,'&quot;')})" style="padding:8px 14px;background:#E8F0FB;border:1px solid #DDE4EF;border-radius:8px;font-size:12px;font-weight:600;color:#1D5BA6;cursor:pointer;">🖨 다시 출력</button>
+      </div>`;
+    }).join('')}
+  `);
+}
+
+window.offerReprintObj = (o) => {
   const r = offerCalc(o);
   if (!r.ok) { alert('저장된 데이터로 금액을 재계산할 수 없습니다.'); return; }
   const win = window.open('', '_blank');
   if (!win) { alert('팝업이 차단되었습니다. 팝업을 허용한 뒤 다시 시도해 주세요.'); return; }
   win.document.write(offerBuildHtml(o, r));
   win.document.close();
+};
+
+window.offerStartFor = (partial) => {
+  offerForm = { ...offerNewForm(), ...partial };
+  renderOfferForm();
 };
 
 function offerBuildHtml(f, r) {
