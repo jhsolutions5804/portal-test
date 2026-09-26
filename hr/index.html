@@ -8228,8 +8228,7 @@ window.renderLeaveStatusMain = async () => {
       return;
     }
 
-    // 정렬: 입사일 빠른 순
-    workers.sort((a,b)=>(a.hireDate||'').localeCompare(b.hireDate||''));
+    // 정렬: 사원번호 순
 
     const rows = workers.map(w => {
       const g = hrCalcAnnualLeave(w.hireDate);
