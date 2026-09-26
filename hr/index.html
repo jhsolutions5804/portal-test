@@ -8716,6 +8716,7 @@ const OFFER_HW  = 8*4.345;            // 34.76h  (월 주휴)
 const OFFER_HF  = OFFER_HB + OFFER_HW; // 208.56h (월 환산 시간)
 
 let _offerWorkers = [];
+let _offerApplicants = [];
 let _offerHint = '';
 const _offerYmd = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const _offerAddDays = (s, n) => { const d=new Date(s+'T00:00:00'); d.setDate(d.getDate()+n); return _offerYmd(d); };
@@ -8773,6 +8774,11 @@ window.renderOfferMain = async () => {
     const today = _offerYmd(new Date());
     _offerWorkers = (await getWorkersList()).filter(w => !w.resignDate || w.resignDate >= today);
   } catch(e) { _offerWorkers = []; }
+  try {
+    const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap = await getDocs(collection(window._db,'recruit_applicants'));
+    _offerApplicants = snap.docs.map(d=>({ id:d.id, ...d.data() })).filter(a => ['review','pass'].includes(a.status||'new'));
+  } catch(e) { _offerApplicants = []; }
   renderOfferForm();
 };
 
@@ -8787,8 +8793,12 @@ function renderOfferForm() {
   const radio = (name, val, cur, label, fn) => `<label style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:12.5px;color:${C2.text};cursor:pointer;"><input type="radio" name="${name}" ${cur===val?'checked':''} onchange="${fn}"> ${label}</label>`;
   const two = (a, b) => `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">${a}${b}</div>`;
 
-  const workerOpts = ['<option value="">— 직접 입력 (신규 입사자 등) —</option>']
-    .concat(_offerWorkers.map(w => `<option value="${esc(w.id)}" ${w.id===f.workerId?'selected':''}>${esc(w.empNo?w.empNo+' · ':'')}${esc(w.name||'')}${w.rank?' ('+esc(w.rank)+')':''}</option>`)).join('');
+  const isNewKind = f.kind === 'new';
+  const workerOpts = isNewKind
+    ? ['<option value="">— 직접 입력 —</option>']
+        .concat(_offerApplicants.map(a => `<option value="${esc(a.id)}" ${a.id===f.applicantId?'selected':''}>${esc(a.name||'')}${a.jobTitle?' · '+esc(a.jobTitle):''} (${a.status==='pass'?'합격':'검토중'})</option>`)).join('')
+    : ['<option value="">— 직접 입력 —</option>']
+        .concat(_offerWorkers.map(w => `<option value="${esc(w.id)}" ${w.id===f.workerId?'selected':''}>${esc(w.empNo?w.empNo+' · ':'')}${esc(w.name||'')}${w.rank?' ('+esc(w.rank)+')':''}</option>`)).join('');
 
   const isWc = f.wageType === 'comprehensive';
   const showCur = f.kind !== 'new';
@@ -8813,7 +8823,7 @@ function renderOfferForm() {
             ${radio('offer-kind','renew',f.kind,'재계약',"offerSetKind('renew')")}
             ${radio('offer-kind','adjust',f.kind,'연봉 조정',"offerSetKind('adjust')")}
           </div>
-          ${field2('근로자 선택 (선택 시 성명·소속·직급 자동 입력)', `<select onchange="offerPickWorker(this.value)" ${inp2Style}>${workerOpts}</select>`)}
+          ${field2(isNewKind?'지원자 선택 (검토중·합격만 표시 · 선택 시 성명 자동 입력)':'근로자 선택 (선택 시 성명·소속·직급 자동 입력)', `<select onchange="${isNewKind?'offerPickApplicant(this.value)':'offerPickWorker(this.value)'}" ${inp2Style}>${workerOpts}</select>`)}
           ${two(field2('성명', txt('name')), field2('소속 / 부서', txt('dept')))}
           ${two(field2('직위 / 직급', txt('rank')), field2(f.kind==='new'?'입사 예정일':'입사일', dt('hireDate')))}
           ${field2('담당 업무', txt('job'))}
@@ -8918,16 +8928,23 @@ async function offerFillCurrent() {
   renderOfferForm();
 }
 
-window.offerSetKind = (k) => { offerForm.kind = k; _offerHint = ''; offerFillCurrent(); };
+window.offerSetKind = (k) => { offerForm.kind = k; offerForm.workerId=''; offerForm.applicantId=''; _offerHint = ''; offerFillCurrent(); };
 
 window.offerPickWorker = async (id) => {
-  const f = offerForm; f.workerId = id || '';
+  const f = offerForm; f.workerId = id || ''; f.applicantId = '';
   const w = _offerWorkers.find(x => x.id === id);
   if (w) {
     f.name = w.name || ''; f.empNo = w.empNo || ''; f.dept = w.dept || ''; f.rank = w.rank || '';
     f.job = w.job || f.job; f.hireDate = w.hireDate || f.hireDate; f.curRank = w.rank || '';
   }
   await offerFillCurrent();
+};
+
+window.offerPickApplicant = (id) => {
+  const f = offerForm; f.applicantId = id || ''; f.workerId = '';
+  const a = _offerApplicants.find(x => x.id === id);
+  if (a) { f.name = a.name || ''; f.job = a.jobTitle || f.job; }
+  renderOfferForm();
 };
 
 /* ── 계산 결과 패널 ───────────────────────────────── */
