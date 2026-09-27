@@ -101,7 +101,7 @@ const EDOC_TABS = {
   approve: { id:'tab-approve', title:'결재함',        fn:()=>renderApproveBox() },
   daily:   { id:'tab-daily',   title:'업무일지',      fn:()=>renderDailyMain() },
   leave:   { id:'tab-leave',   title:'연차신청서',    fn:()=>renderLeaveMain() },
-  resign:  { id:'tab-resign',  title:'퇴직원서',      fn:()=>renderDocMain('resign') },
+  resign:  { id:'tab-resign',  title:'휴직/퇴직',      fn:()=>renderDocMain('resign') },
   cert:    { id:'tab-cert',    title:'재직증명서',    fn:()=>renderDocMain('cert') },
   purchase:{ id:'tab-purchase',title:'구매품의서',    fn:()=>renderDocMain('purchase') },
   expense: { id:'tab-expense', title:'지출결의서',    fn:()=>renderDocMain('expense') },
@@ -146,7 +146,7 @@ window.edocShowList = function(kind) {
   const lists = window._edocLists || {};
   const TITLES = { inbox:'📨 수신함 (회람)', mydocs:'📝 내가 작성한 문서', posted:'📤 게시된 문건', approve:'✍️ 결재할 문서' };
   const EMPTY = { inbox:'수신된 문서가 없습니다', mydocs:'작성한 문서가 없습니다', posted:'게시된 문건이 없습니다', approve:'결재할 문서가 없습니다' };
-  const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'퇴직원서', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서' };
+  const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'휴직/퇴직', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서' };
   const STATUS_LABEL = { draft:'임시저장', pending:'결재대기', reviewing:'검토중', approved:'승인', rejected:'반려', posted:'게시' };
   const STATUS_COLOR = { draft:'#9AAABF', pending:'#F59E0B', reviewing:'#1D5BA6', approved:'#16A34A', rejected:'#DC2626', posted:'#16A34A' };
   const STATUS_BG = { draft:'#F1EFE8', pending:'#FAEEDA', reviewing:'#E6F1FB', approved:'#EAF3DE', rejected:'#FCEBEB', posted:'#E1F5EE' };
@@ -1337,7 +1337,7 @@ async function fetchEdocDocs(dtype, dbRef) {
 
 async function renderEdocHome() {
   const el = document.getElementById('tab-home'); if(!el) return;
-  const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'퇴직원서', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서' };
+  const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'휴직/퇴직', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서' };
   const fmtD = ts => ts?.seconds ? new Date(ts.seconds*1000).toLocaleDateString('ko-KR',{month:'short',day:'numeric'}) : '-';
   const STATUS_COLOR = { pending:'#F59E0B', approved:'#16A34A', rejected:'#DC2626', posted:'#1D5BA6', draft:'#9AAABF' };
   const STATUS_LABEL = { pending:'결재대기', approved:'승인', rejected:'반려', posted:'게시', draft:'임시저장' };
@@ -1557,7 +1557,7 @@ async function renderEdocHome() {
 let _approveSubTab = 'pending';
 const APPR_STATUS_LABEL_PC={all:'전체 단계',wait:'결재중',done:'결재완료',rejected:'반려'};
 const APPR_STATUS_GROUP_PC={wait:['pending','reviewing'],done:['approved','posted','done'],rejected:['rejected']};
-const APPR_TYPE_LABEL_PC={daily:'업무일지',leave:'연차신청서',resign:'퇴직원서',cert:'재직증명서',purchase:'구매품의서',expense:'지출결의서'};
+const APPR_TYPE_LABEL_PC={daily:'업무일지',leave:'연차신청서',resign:'휴직/퇴직',cert:'재직증명서',purchase:'구매품의서',expense:'지출결의서'};
 let _apprPcFilter={status:'all',type:'all',author:'all'};
 window.apprPcSetFilter=function(k,v){ _apprPcFilter[k]=v; renderApproveListUI(); };
 
@@ -1704,11 +1704,13 @@ const DOC_CONFIG = {
     { key:'reason',    label:'사유',   type:'textarea', ph:'휴가 사유를 입력하세요' },
     { key:'contact',   label:'비상연락처', type:'text', ph:'휴가 중 연락처' },
   ]},
-  resign:   { label:'퇴직원서',   icon:'📤',
+  resign:   { label:'휴직/퇴직',   icon:'📤',
     approvers:['김종화','김영희','송지훈'], cc:['김민서'],
     fields:[
-    { key:'lastDate',  label:'퇴직 예정일', type:'date' },
-    { key:'reason',    label:'퇴직 사유',   type:'textarea', ph:'퇴직 사유를 입력하세요' },
+    { key:'leaveKind', label:'구분', type:'select', opts:['퇴직','휴직'] },
+    { key:'lastDate',  label:'퇴직/휴직 예정일', type:'date' },
+    { key:'returnDate',label:'복직 예정일 (휴직인 경우)', type:'date' },
+    { key:'reason',    label:'사유',   type:'textarea', ph:'사유를 입력하세요' },
   ]},
   cert:     { label:'재직증명서', icon:'🪪',
     approvers:['김종화'], cc:[],
@@ -2540,7 +2542,7 @@ window.renderDocList = async function(dtype) {
 // ── A4 출력 / PDF 저장 (모든 전자결재 문서 공통) ──
 window.printDocA4 = function(d, dtype) {
   if (typeof d === 'string') { try { d = JSON.parse(d); } catch(e){} }
-  const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'퇴직원서', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서' };
+  const TYPE_LABEL = { daily:'업무일지', leave:'연차신청서', resign:'휴직/퇴직', cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서' };
   const cfg = (window.DOC_CONFIG && window.DOC_CONFIG[dtype]) || DOC_CONFIG[dtype] || {};
   const docLabel = TYPE_LABEL[dtype] || (cfg.label) || '문서';
 
@@ -3083,7 +3085,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
       <button class="sb-item" data-navkey="approve" onclick="goTab('approve')"><span class="sb-num">📥</span> 결재함</button>
       <button class="sb-item" data-navkey="daily" onclick="goTab('daily')"><span class="sb-num">1</span> 업무일지</button>
       <button class="sb-item" data-navkey="leave" onclick="goTab('leave')"><span class="sb-num">2</span> 연차신청서</button>
-      <button class="sb-item" data-navkey="resign" onclick="goTab('resign')"><span class="sb-num">3</span> 퇴직원서</button>
+      <button class="sb-item" data-navkey="resign" onclick="goTab('resign')"><span class="sb-num">3</span> 휴직/퇴직</button>
       <button class="sb-item" data-navkey="cert" onclick="goTab('cert')"><span class="sb-num">4</span> 재직증명서</button>
       <button class="sb-item" data-navkey="purchase" onclick="goTab('purchase')"><span class="sb-num">5</span> 구매품의서</button>
       <button class="sb-item" data-navkey="expense" onclick="goTab('expense')"><span class="sb-num">6</span> 지출결의서</button>
@@ -3102,7 +3104,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
         <button class="tab-btn"        data-navkey="approve"  onclick="goTab('approve')">📥 결재함</button>
         <button class="tab-btn"        data-navkey="daily"    onclick="goTab('daily')">📝 업무일지</button>
         <button class="tab-btn"        data-navkey="leave"    onclick="goTab('leave')">🏖️ 연차</button>
-        <button class="tab-btn"        data-navkey="resign"   onclick="goTab('resign')">📤 퇴직원서</button>
+        <button class="tab-btn"        data-navkey="resign"   onclick="goTab('resign')">📤 휴직/퇴직</button>
         <button class="tab-btn"        data-navkey="cert"     onclick="goTab('cert')">🪪 재직증명</button>
         <button class="tab-btn"        data-navkey="purchase" onclick="goTab('purchase')">🛒 구매품의</button>
         <button class="tab-btn"        data-navkey="expense"  onclick="goTab('expense')">💳 지출결의</button>
