@@ -42,6 +42,8 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI",
@@ -53,6 +55,7 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 const el = document.getElementById('app');
 
 const params = new URLSearchParams(location.search);
@@ -118,6 +121,82 @@ async function boot(){
     window._compSignatures = compSig;
 
     const docTitle = link.docType === 'annual' ? '연봉계약서' : '근로계약서';
+    showPhoneVerify(f, link, contractRef, docTitle, fMasked);
+  } catch(e) {
+    showError('오류가 발생했습니다: ' + e.message);
+  }
+}
+
+function normalizePhoneE164(phone){
+  const digits = String(phone||'').replace(/\D/g,'');
+  // 한국 휴대폰번호(010...) 가정 → +82 국제표준으로 변환
+  const local = digits.replace(/^0/, '');
+  return '+82' + local;
+}
+
+function showPhoneVerify(f, link, contractRef, docTitle, fMasked){
+  const phoneDigits = String(f.phone||'').replace(/\D/g,'');
+  const maskedPhone = phoneDigits.length >= 8
+    ? phoneDigits.slice(0,3) + '-****-' + phoneDigits.slice(-4)
+    : (f.phone || '(등록된 연락처 없음)');
+
+  el.innerHTML = `
+    <div class="card">
+      <div style="font-weight:800;font-size:0.98rem;margin-bottom:4px;">${esc(f.name)}님, 안녕하세요</div>
+      <div class="muted">본인 확인을 위해 근로자 명부에 등록된 휴대폰 번호로 인증번호를 보내드립니다.</div>
+    </div>
+    <div class="card center">
+      <div style="font-size:1.3rem;font-weight:800;letter-spacing:1px;margin-bottom:14px;">${esc(maskedPhone)}</div>
+      <div id="recaptcha-container"></div>
+      <button class="btn btn-primary" id="sendCodeBtn">📩 이 번호로 인증번호 받기</button>
+      <div id="phoneStep2" style="display:none;margin-top:14px;">
+        <input type="tel" id="otpInput" placeholder="인증번호 6자리" maxlength="6" style="width:100%;padding:12px;border:1px solid #DDE4EF;border-radius:10px;font-size:1.1rem;text-align:center;letter-spacing:4px;margin-bottom:10px;">
+        <button class="btn btn-primary" id="verifyCodeBtn">확인</button>
+        <div id="otpMsg" class="muted" style="margin-top:8px;"></div>
+      </div>
+    </div>
+    <div class="warn">⚠️ 등록된 번호가 본인 것이 아니거나 변경되었다면, 계약서 확인 전에 회사(인사담당자)에게 먼저 연락해 번호를 갱신해 주세요.</div>
+  `;
+
+  if (!phoneDigits) {
+    document.querySelector('.card.center').innerHTML = `<div class="state-icon">⚠️</div><div style="font-weight:700;">등록된 연락처가 없어 본인확인을 진행할 수 없습니다.<br>회사(인사담당자)에게 문의해 주세요.</div>`;
+    return;
+  }
+
+  const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+  let confirmationResult = null;
+
+  document.getElementById('sendCodeBtn').onclick = async () => {
+    const btn = document.getElementById('sendCodeBtn');
+    btn.disabled = true; btn.textContent = '전송 중...';
+    try {
+      const e164 = normalizePhoneE164(f.phone);
+      confirmationResult = await signInWithPhoneNumber(auth, e164, verifier);
+      btn.textContent = '✅ 전송 완료 (재전송하려면 새로고침)';
+      document.getElementById('phoneStep2').style.display = 'block';
+    } catch(e) {
+      btn.disabled = false; btn.textContent = '📩 이 번호로 인증번호 받기';
+      document.getElementById('otpMsg').textContent = '전송 실패: ' + e.message;
+    }
+  };
+
+  document.getElementById('verifyCodeBtn').onclick = async () => {
+    const code = document.getElementById('otpInput').value.trim();
+    if (!code) return;
+    const vBtn = document.getElementById('verifyCodeBtn');
+    vBtn.disabled = true; vBtn.textContent = '확인 중...';
+    try {
+      await confirmationResult.confirm(code);
+      showContractAndSign(f, link, contractRef, docTitle, fMasked);
+    } catch(e) {
+      vBtn.disabled = false; vBtn.textContent = '확인';
+      document.getElementById('otpMsg').textContent = '인증번호가 올바르지 않습니다. 다시 확인해 주세요.';
+    }
+  };
+}
+
+async function showContractAndSign(f, link, contractRef, docTitle, fMasked){
+  try {
     const previewHtml = link.docType === 'annual'
       ? __annualHtml_v5(fMasked)
       : __laborHtml_v5(fMasked);
