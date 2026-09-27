@@ -643,6 +643,16 @@ window.renderDailyWrite = async function(existingDoc) {
 };
 
 // fc 헬퍼
+// 조건부 필드 표시/숨김 (예: 휴직/퇴직 구분에 따라 복직예정일 노출)
+window.docUpdateFieldVisibility = function(){
+  document.querySelectorAll('[data-showif-key]').forEach(el => {
+    const key = el.getAttribute('data-showif-key');
+    const want = el.getAttribute('data-showif-equals');
+    const src = document.getElementById('f-'+key);
+    el.style.display = (src && src.value === want) ? '' : 'none';
+  });
+};
+
 function fcField(label, inputHtml) {
   return `<div style="margin-bottom:12px;">
     <div style="font-size:11px;font-weight:700;color:#5C6F8A;margin-bottom:5px;">${label}</div>
@@ -1709,7 +1719,7 @@ const DOC_CONFIG = {
     fields:[
     { key:'leaveKind', label:'구분', type:'select', opts:['퇴직','휴직'] },
     { key:'lastDate',  label:'퇴직/휴직 예정일', type:'date' },
-    { key:'returnDate',label:'복직 예정일 (휴직인 경우)', type:'date' },
+    { key:'returnDate',label:'복직 예정일', type:'date', showIf:{key:'leaveKind', equals:'휴직'} },
     { key:'reason',    label:'사유',   type:'textarea', ph:'사유를 입력하세요' },
   ]},
   cert:     { label:'재직증명서', icon:'🪪',
@@ -2284,7 +2294,7 @@ window.renderDocWrite = function(dtype) {
         <button type="button" onclick="addItemRow('${f.key}')" style="margin-top:4px;padding:6px 12px;background:#EEF4FB;border:1px solid #DDE4EF;border-radius:8px;color:#1D5BA6;font-size:12px;font-weight:700;cursor:pointer;">+ 품목 추가</button>
       </div>`;
     } else if (f.type==='select') {
-      input = `<select id="f-${f.key}" style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;">
+      input = `<select id="f-${f.key}" onchange="docUpdateFieldVisibility()" style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;">
         ${(f.opts||[]).map(o=>`<option>${o}</option>`).join('')}
       </select>`;
     } else if (f.type==='textarea') {
@@ -2298,7 +2308,8 @@ window.renderDocWrite = function(dtype) {
         ${f.type==='date'?'value="'+today+'"':''}
         style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:9px 12px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;">`;
     }
-    return `<div style="margin-bottom:11px;">
+    const showIfAttr = f.showIf ? ` data-showif-key="${f.showIf.key}" data-showif-equals="${String(f.showIf.equals).replace(/"/g,'&quot;')}"` : '';
+    return `<div id="ffield-${f.key}"${showIfAttr} style="margin-bottom:11px;">
       <div style="font-size:11px;font-weight:700;color:#5C6F8A;margin-bottom:5px;">${f.label}${reqMark}</div>
       ${input}
     </div>`;
@@ -2326,6 +2337,7 @@ window.renderDocWrite = function(dtype) {
       <button onclick="docSave('${dtype}','pending')" style="flex:1;padding:13px;background:#1D5BA6;border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📨 상신</button>
     </div>
   </div>`;
+  docUpdateFieldVisibility();
 
   // 결재라인 미리보기 표시
   (async () => {
