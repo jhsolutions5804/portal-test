@@ -1040,15 +1040,17 @@ const PJT_SUBTABS=[
 const HR_SUBTABS=[
   { key:'home',     name:'인사 홈',     emoji:'★' },
   { key:'applicants', name:'채용 지원자', emoji:'1' },
-  { key:'offer',    name:'연봉 제안서', emoji:'2' },
-  { key:'roster',   name:'근로자 명부', emoji:'3' },
-  { key:'labor',    name:'근로계약서',  emoji:'4' },
-  { key:'annual',   name:'연봉계약서',  emoji:'5' },
-  { key:'overtime', name:'근로시간',    emoji:'6' },
-  { key:'payslip',  name:'급여명세서',  emoji:'7' },
-  { key:'eval',     name:'인사평가',    emoji:'8' },
-  { key:'leave',    name:'연차 현황',   emoji:'9' },
-  { key:'retire',   name:'퇴직금 정산', emoji:'10' },
+  { key:'jobposting', name:'공고 관리', emoji:'2' },
+  { key:'offer',    name:'연봉 제안서', emoji:'3' },
+  { key:'roster',   name:'근로자 명부', emoji:'4' },
+  { key:'labor',    name:'근로계약서',  emoji:'5' },
+  { key:'annual',   name:'연봉계약서',  emoji:'6' },
+  { key:'overtime', name:'근로시간',    emoji:'7' },
+  { key:'payslip',  name:'급여명세서',  emoji:'8' },
+  { key:'eval',     name:'인사평가',    emoji:'9' },
+  { key:'interview', name:'근로자 면담', emoji:'10' },
+  { key:'leave',    name:'연차 현황',   emoji:'11' },
+  { key:'retire',   name:'퇴직금 정산', emoji:'12' },
   { key:'salarytable', name:'급여테이블', emoji:'📊' },
 ];
 // 기획(plan) 하위 탭 — gihoek 앱의 tab() 키와 일치
@@ -3051,7 +3053,9 @@ function renderMenu(){
     };
     wrap.appendChild(card);
     // 사이드바 항목
-    if (SUBTABS[m.key] && allowed) {
+    // ⚠️ 인사(hr)는 하위 메뉴가 많아져 사이드바 아코디언 대신 단일 항목으로 유지한다.
+    //    하위 화면 이동은 인사 홈(hr/index.html)의 카드에서 새 탭으로 열도록 처리한다.
+    if (SUBTABS[m.key] && allowed && m.key !== 'hr') {
       // 확장형 드롭다운 (기획·인사)
       const grp=document.createElement('div'); grp.className='sb-group'; grp.dataset.mod=m.key;
       const head=document.createElement('button');
@@ -3682,7 +3686,7 @@ function mbnOpenMore(){
   const workItems=[];
   _MODULES.forEach(m=>{
     const allowed=(m.key==='plan'||m.key==='hr')?_me.admin:(_me.admin||(_me.perms&&_me.perms[m.key]));
-    if(_SUBTABS[m.key] && allowed){
+    if(_SUBTABS[m.key] && allowed && m.key !== 'hr'){
       const wrap=document.createElement('div'); wrap.style.cssText='width:100%';
       const head=document.createElement('button'); head.className='mmp-btn'; head.style.cssText='width:100%;padding:12px 20px';
       head.innerHTML='<span class="mmp-ic">'+m.emoji+'</span><div><div>'+m.name+'</div><div class="mmp-sub">'+m.desc+'</div></div><span style="margin-left:auto;font-size:14px;">›</span>';
