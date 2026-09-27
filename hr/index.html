@@ -4305,7 +4305,11 @@ function renderLaborForm(el, workers) {
         ${laborForm2.signData
           ?`<img src="${laborForm2.signData}" style="width:160px;height:60px;object-fit:contain;border:1px solid #DDE4EF;border-radius:8px;"/>
              <br/><button onclick="laborForm2.signData=null;window.laborRefreshForm2&&window.laborRefreshForm2();" style="font-size:11px;color:${C2.mute};background:none;border:none;cursor:pointer;text-decoration:underline;">지우기</button>`
-          :`<button onclick="laborOpenSign2();" style="padding:10px 24px;background:#E8F0FB;border:2px dashed #1D5BA6;border-radius:10px;color:#1D5BA6;font-size:13px;font-weight:600;cursor:pointer;">✍️ 서명하기</button>`}
+          :`<button onclick="laborOpenSign2();" style="padding:10px 24px;background:#E8F0FB;border:2px dashed #1D5BA6;border-radius:10px;color:#1D5BA6;font-size:13px;font-weight:600;cursor:pointer;">✍️ 지금 이 자리에서 서명하기</button>`}
+        <div style="margin-top:10px;padding-top:10px;border-top:1px dashed #DDE4EF;">
+          <div style="font-size:11px;color:${C2.mute};margin-bottom:6px;">근로자 본인 기기로 원격 서명을 받으려면</div>
+          <button onclick="laborCreateSignLink();" style="padding:8px 16px;background:#fff;border:1px solid #1D5BA6;border-radius:8px;color:#1D5BA6;font-size:12.5px;font-weight:700;cursor:pointer;">🔗 원격 서명 링크·QR 생성</button>
+        </div>
       </div>
     `)}
     <div style="display:flex;gap:8px;">
@@ -4429,6 +4433,50 @@ window.laborSave2 = async () => {
     renderLaborMain();
   } catch(e){alert('오류: '+e.message);}
 };
+
+window.laborCreateSignLink = async () => {
+  if (!laborForm2.workerId || !laborForm2.contractDate) { alert('근로자와 계약일자는 필수입니다.'); return; }
+  if (!window._db) { alert('Firebase 연결 필요'); return; }
+  try {
+    const { doc, setDoc, addDoc, collection, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const contractId = laborForm2.contractDate.replace(/-/g,'');
+    const _emp = (window._laborWorkers2||[]).find(w=>w.id===laborForm2.workerId);
+    laborForm2.salary = calcAnnualSalary(Number(laborForm2.hourly||0), _emp?.empType||'field').annual;
+    // 서명 전 상태로 우선 저장 (원격 서명 완료 시 signData만 갱신됨)
+    await setDoc(doc(window._db,`labor_contracts/${laborForm2.workerId}/contracts`,contractId), {
+      ...laborForm2, savedAt:new Date().toISOString(), savedBy:'admin', tplVer:DOC_TPL_CURRENT
+    });
+    const expiresAt = new Date(Date.now() + 72*3600*1000).toISOString();
+    const linkDoc = await addDoc(collection(window._db,'sign_links'), {
+      docType:'labor', workerId: laborForm2.workerId, contractId,
+      workerName: laborForm2.name, createdAt: serverTimestamp(), expiresAt, status:'pending'
+    });
+    showSignLinkModal(linkDoc.id, laborForm2.name);
+  } catch(e) { alert('링크 생성 오류: '+e.message); }
+};
+
+function showSignLinkModal(token, name) {
+  const url = `https://jhsolutions5804.github.io/portal-test/sign.html?token=${token}`;
+  const qr = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}`;
+  const existing = document.getElementById('sign-link-modal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'sign-link-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:340px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+      <div style="font-size:14px;font-weight:800;color:#1A2540;margin-bottom:4px;">🔗 ${name||''}님 서명 링크</div>
+      <div style="font-size:11px;color:#9AAABF;margin-bottom:14px;">72시간 동안 유효합니다</div>
+      <img src="${qr}" style="width:180px;height:180px;margin:0 auto 14px;border:1px solid #DDE4EF;border-radius:10px;">
+      <div style="display:flex;gap:6px;margin-bottom:12px;">
+        <input type="text" readonly value="${url}" id="sign-link-input" style="flex:1;border:1px solid #DDE4EF;border-radius:8px;padding:8px 10px;font-size:11px;color:#5C6F8A;">
+        <button onclick="navigator.clipboard.writeText(document.getElementById('sign-link-input').value);this.textContent='복사됨!';" style="padding:8px 12px;background:#1D5BA6;border:none;border-radius:8px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">복사</button>
+      </div>
+      <div style="font-size:11px;color:#9AAABF;margin-bottom:14px;line-height:1.6;">이 링크(또는 QR)를 근로자 본인에게 전달하세요. 서명 완료되면 이 계약서에 자동 반영됩니다.</div>
+      <button onclick="document.getElementById('sign-link-modal').remove()" style="width:100%;padding:10px;background:#F4F7FB;border:none;border-radius:8px;color:#5C6F8A;font-size:12.5px;font-weight:600;cursor:pointer;">닫기</button>
+    </div>`;
+  document.body.appendChild(modal);
+}
 
 window.laborPreview2 = () => {
   const f=laborForm2;
@@ -4822,7 +4870,11 @@ function renderAnnualForm(el, workers) {
         ${annualForm2.signData
           ?`<img src="${annualForm2.signData}" style="width:160px;height:60px;object-fit:contain;border:1px solid #DDE4EF;border-radius:8px;"/>
              <br/><button onclick="annualForm2.signData=null;window.annualRefreshForm2&&window.annualRefreshForm2();" style="font-size:11px;color:${C2.mute};background:none;border:none;cursor:pointer;text-decoration:underline;">지우기</button>`
-          :`<button onclick="annualOpenSign2();" style="padding:10px 24px;background:#E8F0FB;border:2px dashed #1D5BA6;border-radius:10px;color:#1D5BA6;font-size:13px;font-weight:600;cursor:pointer;">✍️ 서명하기</button>`}
+          :`<button onclick="annualOpenSign2();" style="padding:10px 24px;background:#E8F0FB;border:2px dashed #1D5BA6;border-radius:10px;color:#1D5BA6;font-size:13px;font-weight:600;cursor:pointer;">✍️ 지금 이 자리에서 서명하기</button>`}
+        <div style="margin-top:10px;padding-top:10px;border-top:1px dashed #DDE4EF;">
+          <div style="font-size:11px;color:${C2.mute};margin-bottom:6px;">근로자 본인 기기로 원격 서명을 받으려면</div>
+          <button onclick="annualCreateSignLink();" style="padding:8px 16px;background:#fff;border:1px solid #1D5BA6;border-radius:8px;color:#1D5BA6;font-size:12.5px;font-weight:700;cursor:pointer;">🔗 원격 서명 링크·QR 생성</button>
+        </div>
       </div>
     `)}
     <div style="display:flex;gap:8px;">
@@ -4941,6 +4993,25 @@ window.annualSave2=async()=>{
     await setDoc(doc(window._db,`annual_contracts/${annualForm2.workerId}/contracts`,cid),{...annualForm2,savedAt:new Date().toISOString(),savedBy:'admin',tplVer:DOC_TPL_CURRENT});
     alert('✅ 연봉계약서 저장 완료!'); renderAnnualMain();
   }catch(e){alert('오류: '+e.message);}
+};
+
+window.annualCreateSignLink = async () => {
+  if (!annualForm2.workerId || !annualForm2.contractDate) { alert('근로자와 계약일자는 필수입니다.'); return; }
+  if (!window._db) { alert('Firebase 연결 필요'); return; }
+  try {
+    const { doc, setDoc, addDoc, collection, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const contractId = annualForm2.contractDate.replace(/-/g,'');
+    annualForm2.salary = calcAnnualSalary(Number(annualForm2.hourly||0), annualForm2.empType||'field').annual;
+    await setDoc(doc(window._db,`annual_contracts/${annualForm2.workerId}/contracts`,contractId), {
+      ...annualForm2, savedAt:new Date().toISOString(), savedBy:'admin', tplVer:DOC_TPL_CURRENT
+    });
+    const expiresAt = new Date(Date.now() + 72*3600*1000).toISOString();
+    const linkDoc = await addDoc(collection(window._db,'sign_links'), {
+      docType:'annual', workerId: annualForm2.workerId, contractId,
+      workerName: annualForm2.name, createdAt: serverTimestamp(), expiresAt, status:'pending'
+    });
+    showSignLinkModal(linkDoc.id, annualForm2.name);
+  } catch(e) { alert('링크 생성 오류: '+e.message); }
 };
 
 window.annualPreview2=()=>{
