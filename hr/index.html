@@ -683,6 +683,8 @@ body { font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif; 
 .hm-chev { color:#C2CCD9; flex:0 0 auto; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
 
@@ -2711,6 +2713,8 @@ window.psViewWorker = async (wid, wname) => {
         <div style="display:flex;gap:8px;">
           <button onclick="psViewDetail(${JSON.stringify(d).replace(/"/g,'&quot;')}, '${wid}')"
             style="flex:1;padding:8px;background:#E8F0FB;border:1px solid #DDE4EF;border-radius:8px;font-size:12px;font-weight:600;color:${C2.blue};cursor:pointer;">📄 PDF 출력</button>
+          <button onclick="psSendEmail(${JSON.stringify(d).replace(/"/g,'&quot;')}, '${wid}', this)"
+            style="flex:1;padding:8px;background:#fff;border:1px solid ${C2.blue};border-radius:8px;font-size:12px;font-weight:600;color:${C2.blue};cursor:pointer;">📧 발송</button>
           <button onclick="psDeleteSlip('${wid}','${d.id}','${wname}')"
             style="padding:8px 12px;background:#FEE2E2;border:1px solid #fca5a5;border-radius:8px;font-size:12px;font-weight:600;color:#DC2626;cursor:pointer;">🗑 삭제</button>
         </div>
@@ -2785,6 +2789,8 @@ window.psViewWorker = async (wid, wname) => {
         <div style="display:flex;gap:8px;">
           <button onclick="psViewDetail(${JSON.stringify(d).replace(/"/g,'&quot;')}, '${wid}')"
             style="flex:1;padding:8px;background:#E8F0FB;border:1px solid #DDE4EF;border-radius:8px;font-size:12px;font-weight:600;color:${C2.blue};cursor:pointer;">📄 PDF 출력</button>
+          <button onclick="psSendEmail(${JSON.stringify(d).replace(/"/g,'&quot;')}, '${wid}', this)"
+            style="flex:1;padding:8px;background:#fff;border:1px solid ${C2.blue};border-radius:8px;font-size:12px;font-weight:600;color:${C2.blue};cursor:pointer;">📧 발송</button>
           <button onclick="psDeleteSlip('${wid}','${d.id}','${wname}')"
             style="padding:8px 12px;background:#FEE2E2;border:1px solid #fca5a5;border-radius:8px;font-size:12px;font-weight:600;color:#DC2626;cursor:pointer;">🗑 삭제</button>
         </div>
@@ -2795,6 +2801,14 @@ window.psViewWorker = async (wid, wname) => {
 window.psViewDetail = (d, wid) => {
   // 저장된 급여명세서는 저장 당시 양식(tplVer)·저장값 그대로 출력 (현재 ps 작업상태·현재 양식과 무관)
   try { __docOpenWin(docHtmlByVer(__PS_TPL, d)); } catch(e) { alert('급여명세서 출력 오류: '+e.message); }
+};
+
+window.psSendEmail = async (d, wid, btnEl) => {
+  const htmlString = docHtmlByVer(__PS_TPL, d);
+  await sendDocPdfByEmail({
+    kind:'worker', id: wid, toName: d.name||'', docLabel:'급여명세서',
+    htmlString, fileName:`급여명세서_${d.month||''}_${d.name||''}.pdf`, btnEl,
+  });
 };
 
 window.psDeleteSlip = async (wid, mid, wname) => {
@@ -2823,6 +2837,88 @@ const card2 = (title, body) => `<div style="background:#fff;border-radius:12px;b
 const field2 = (label, input) => `<div style="margin-bottom:10px;"><div style="font-size:11px;font-weight:700;color:#5C6F8A;margin-bottom:5px;">${label}</div>${input}</div>`;
 const backBtn2 = (fn, label='뒤로') => `<button onclick="${fn}" style="background:#E8F0FB;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#1D5BA6;font-size:12px;cursor:pointer;font-weight:600;">‹ ${label}</button>`;
 const homeBtn  = () => `<button onclick="goTab('home')" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#5C6F8A;font-size:12px;cursor:pointer;font-weight:600;">🏠 인사 홈</button>`;
+
+/* ══════════════════════════════════════════════
+   문서 이메일 발송 (PDF 첨부) — EmailJS 사용
+   ⚠️ 아래 3개 값은 EmailJS(emailjs.com) 계정 생성 후 대표님이 직접 채워 넣어야 합니다.
+   설정 방법은 배포 안내 메시지 참고.
+   ══════════════════════════════════════════════ */
+const EMAILJS_PUBLIC_KEY  = 'YOUR_PUBLIC_KEY';
+const EMAILJS_SERVICE_ID  = 'YOUR_SERVICE_ID';
+const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID';
+let _emailjsInited = false;
+function _ensureEmailJs(){
+  if (_emailjsInited) return;
+  if (typeof emailjs === 'undefined') throw new Error('EmailJS SDK 로드 실패');
+  emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+  _emailjsInited = true;
+}
+
+// htmlString(문서 전체 HTML) → PDF base64 문자열로 변환
+async function _htmlToPdfBase64(htmlString){
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;left:-99999px;top:0;width:800px;height:1131px;border:none;';
+  document.body.appendChild(iframe);
+  await new Promise(resolve => {
+    iframe.onload = resolve;
+    iframe.srcdoc = htmlString;
+  });
+  try {
+    const target = iframe.contentDocument.querySelector('.a4') || iframe.contentDocument.body;
+    const opt = { margin:0, image:{ type:'jpeg', quality:0.95 }, html2canvas:{ scale:2, useCORS:true }, jsPDF:{ unit:'pt', format:'a4', orientation:'portrait' } };
+    const pdfBlob = await html2pdf().set(opt).from(target).outputPdf('blob');
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]); // data:...;base64, 이후만
+      reader.onerror = reject;
+      reader.readAsDataURL(pdfBlob);
+    });
+  } finally {
+    document.body.removeChild(iframe);
+  }
+}
+
+// 근로자(workers) 또는 지원자(recruit_applicants) 문서에서 이메일 주소 조회
+async function getRecipientEmail(kind, id){
+  if (!id || !window._db) return '';
+  try {
+    const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const coll = kind === 'applicant' ? 'recruit_applicants' : 'workers';
+    const snap = await getDoc(doc(window._db, coll, id));
+    return snap.exists() ? (snap.data().email || '') : '';
+  } catch(e) { return ''; }
+}
+
+// 문서 발송 공용 함수: 대상 이메일 확인(없으면 프롬프트) → PDF 생성 → EmailJS 발송
+async function sendDocPdfByEmail({ kind, id, toEmail, toName, docLabel, htmlString, fileName, btnEl }){
+  const origText = btnEl ? btnEl.textContent : '';
+  try {
+    let email = toEmail;
+    if (!email && id) email = await getRecipientEmail(kind, id);
+    if (!email) email = prompt(`${toName||''}님에게 보낼 이메일 주소를 입력해 주세요.`, '');
+    if (!email) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { alert('이메일 주소 형식이 올바르지 않습니다.'); return; }
+
+    if (btnEl) { btnEl.disabled = true; btnEl.textContent = '📄 PDF 생성 중...'; }
+    const base64 = await _htmlToPdfBase64(htmlString);
+
+    if (btnEl) btnEl.textContent = '📧 발송 중...';
+    _ensureEmailJs();
+    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      to_email: email,
+      to_name: toName || '',
+      doc_label: docLabel,
+      company_name: 'JH솔루션',
+      attachment: base64,
+      attachment_name: fileName || (docLabel + '.pdf'),
+    });
+    alert(`✅ ${email} 주소로 ${docLabel}가 발송되었습니다.`);
+  } catch(e) {
+    alert('이메일 발송 오류: ' + e.message + '\n(EmailJS 설정이 안 되어 있다면 관리자에게 문의하세요)');
+  } finally {
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = origText; }
+  }
+}
 
 /* ── 채용 지원자 (recruit.html 지원 폼 → recruit_applicants 컬렉션) ── */
 let _applicantsFilter = 'all';
@@ -3071,7 +3167,7 @@ async function getWorkersList() {
 // 👥 근로자 명부
 // ════════════════════════════════
 let rosterView = 'main'; // main | register | list
-let rosterForm = { name:'', jumin:'', phone:'', address:'', dept:'', rank:'', job:'', empType:'', hireDate:'', bankAccount:'' };
+let rosterForm = { name:'', jumin:'', phone:'', email:'', address:'', dept:'', rank:'', job:'', empType:'', hireDate:'', bankAccount:'' };
 
 async function _loadRosterDocs() {
   if (!window._db) return [];
@@ -3262,7 +3358,7 @@ window.rosterGoBackFromContract = () => {
 
 window.renderRosterRegister = (prefill) => {
   const el = document.getElementById('tab-roster');
-  rosterForm = { name:'', jumin:'', phone:'', address:'', dept:'', rank:'', job:'', ...(prefill||{}) };
+  rosterForm = { name:'', jumin:'', phone:'', email:'', address:'', dept:'', rank:'', job:'', ...(prefill||{}) };
   const _rrEsc = (typeof _applicantsEsc==='function') ? _applicantsEsc : (s=>String(s==null?'':s));
   el.innerHTML = wrap2(`
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
@@ -3274,6 +3370,7 @@ window.renderRosterRegister = (prefill) => {
       ${field2('이름', `<input type="text" value="${_rrEsc(rosterForm.name)}" placeholder="성명 입력" oninput="rosterForm.name=this.value" ${inp2Style}>`)}
       ${field2('주민등록번호', `<input type="text" placeholder="000000-0000000" maxlength="14" oninput="rosterForm.jumin=fmtJumin2(this.value);this.value=rosterForm.jumin;" ${inp2Style}>`)}
       ${field2('휴대폰번호', `<input type="text" value="${_rrEsc(rosterForm.phone)}" placeholder="010-0000-0000" oninput="rosterForm.phone=fmtPhone2(this.value);this.value=rosterForm.phone;" onblur="fmtTelBlur(this)" ${inp2Style}>`)}
+      ${field2('이메일 (문서 발송용)', `<input type="email" value="${_rrEsc(rosterForm.email)}" placeholder="example@jhsol.kr" oninput="rosterForm.email=this.value" ${inp2Style}>`)}
       ${field2('주소', `<input type="text" value="${_rrEsc(rosterForm.address)}" placeholder="주소 입력" oninput="rosterForm.address=this.value" ${inp2Style}>`)}
     `)}
     ${card2('💼 소속 및 업무', `
@@ -4315,6 +4412,7 @@ function renderLaborForm(el, workers) {
     <div style="display:flex;gap:8px;">
       <button onclick="laborPreview2();" style="flex:1;padding:13px;background:${C2.sub};border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📄 미리보기</button>
       <button onclick="laborSave2();" style="flex:1;padding:13px;background:${C2.green};border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✅ 확정 저장</button>
+      <button id="laborEmailBtn" onclick="laborSendEmail(this)" style="flex:1;padding:13px;background:#fff;border:1px solid ${C2.blue};border-radius:12px;color:${C2.blue};font-size:13px;font-weight:700;cursor:pointer;">📧 이메일 발송</button>
     </div>
     <!-- 서명 팝업 -->
     <div id="labor-sign2-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
@@ -4477,6 +4575,15 @@ function showSignLinkModal(token, name) {
     </div>`;
   document.body.appendChild(modal);
 }
+
+window.laborSendEmail = async (btnEl) => {
+  const f = laborForm2;
+  if (!f.workerId) { alert('근로자를 먼저 선택해 주세요.'); return; }
+  await sendDocPdfByEmail({
+    kind:'worker', id: f.workerId, toName: f.name, docLabel:'근로계약서',
+    htmlString: __laborHtml_v5(f), fileName:`근로계약서_${f.name||''}.pdf`, btnEl,
+  });
+};
 
 window.laborPreview2 = () => {
   const f=laborForm2;
@@ -4880,6 +4987,7 @@ function renderAnnualForm(el, workers) {
     <div style="display:flex;gap:8px;">
       <button onclick="annualPreview2();" style="flex:1;padding:13px;background:${C2.sub};border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📄 미리보기</button>
       <button onclick="annualSave2();" style="flex:1;padding:13px;background:${C2.green};border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">✅ 확정 저장</button>
+      <button id="annualEmailBtn" onclick="annualSendEmail(this)" style="flex:1;padding:13px;background:#fff;border:1px solid ${C2.blue};border-radius:12px;color:${C2.blue};font-size:13px;font-weight:700;cursor:pointer;">📧 이메일 발송</button>
     </div>
     <div id="annual-sign2-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
       <div style="background:#fff;border-radius:16px;padding:24px;width:320px;text-align:center;">
@@ -5012,6 +5120,15 @@ window.annualCreateSignLink = async () => {
     });
     showSignLinkModal(linkDoc.id, annualForm2.name);
   } catch(e) { alert('링크 생성 오류: '+e.message); }
+};
+
+window.annualSendEmail = async (btnEl) => {
+  const f = annualForm2;
+  if (!f.workerId) { alert('근로자를 먼저 선택해 주세요.'); return; }
+  await sendDocPdfByEmail({
+    kind:'worker', id: f.workerId, toName: f.name, docLabel:'연봉계약서',
+    htmlString: __annualHtml_v5(f), fileName:`연봉계약서_${f.name||''}.pdf`, btnEl,
+  });
 };
 
 window.annualPreview2=()=>{
@@ -9531,6 +9648,7 @@ function renderOfferForm() {
         <button onclick="renderOfferHistory()" style="background:#fff;border:1px solid ${C2.border};border-radius:9px;padding:8px 14px;color:${C2.sub};font-size:12.5px;font-weight:700;cursor:pointer;">📜 지난 제안서</button>
         <button onclick="offerReset()" style="background:#fff;border:1px solid ${C2.border};border-radius:9px;padding:8px 14px;color:${C2.sub};font-size:12.5px;font-weight:700;cursor:pointer;">↺ 초기화</button>
         <button onclick="offerPrint()" style="background:${C2.blue};border:none;border-radius:9px;padding:8px 18px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(29,91,166,0.18);">📄 제안서 출력 (PDF)</button>
+        <button id="offerEmailBtn" onclick="offerSendEmail(this)" style="background:#fff;border:1px solid ${C2.blue};border-radius:9px;padding:8px 16px;color:${C2.blue};font-size:13px;font-weight:700;cursor:pointer;">📧 이메일 발송</button>
       </div>
     </div>
     <div style="font-size:11.5px;color:${C2.mute};margin-bottom:14px;line-height:1.6;">연봉 <b>또는</b> 시급 하나만 입력하면 급여 구성이 자동 계산되어 제안서에 채워집니다. 산식은 연봉계약서와 동일합니다. 출력 시 이 내용은 <b>지난 제안서</b> 목록에 자동 저장됩니다.</div>
@@ -9705,6 +9823,17 @@ function offerRefresh() {
 }
 
 /* ── 출력 (A4 2쪽) ───────────────────────────────── */
+window.offerSendEmail = async (btnEl) => {
+  const f = offerForm, r = offerCalc(f);
+  if (!r.ok) { alert('연봉 또는 시급을 먼저 입력해 주세요.'); return; }
+  const kind = f.kind === 'new' ? 'applicant' : 'worker';
+  const id = f.kind === 'new' ? f.applicantId : f.workerId;
+  await sendDocPdfByEmail({
+    kind, id, toName: f.name, docLabel: '연봉제안서',
+    htmlString: offerBuildHtml(f, r), fileName: `연봉제안서_${f.name||''}.pdf`, btnEl,
+  });
+};
+
 window.offerPrint = async () => {
   const f = offerForm, r = offerCalc(f);
   if (r.err) { alert(r.err); return; }
