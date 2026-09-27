@@ -3671,6 +3671,7 @@ window.rosterDetail = (id) => {
   const DEPTS2 = ['사업본부','현장관리팀','인력배치팀','경영지원본부','경영총무팀','영업기획팀'];
   const RANKS2 = ['과장','대리','사원'];
   window._editRosterTarget = {...d};
+  window._editRosterOriginalRank = d.rank || '';
 
   modal.innerHTML = `
     <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:400px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
@@ -3828,7 +3829,16 @@ window.rosterDetailSave = async (id) => {
   if (!window._db) { alert('Firebase 연결 필요'); return; }
   try {
     const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    await setDoc(doc(window._db,'workers',id), { ...window._editRosterTarget }, { merge:true });
+    const newRank = window._editRosterTarget.rank || '';
+    const rankChanged = window._editRosterOriginalRank != null
+      && newRank !== window._editRosterOriginalRank
+      && String(window._editRosterOriginalRank).trim() !== '';
+    const payload = { ...window._editRosterTarget };
+    if (rankChanged) {
+      payload.step = 1;
+      payload.stepYear = new Date().getFullYear();
+    }
+    await setDoc(doc(window._db,'workers',id), payload, { merge:true });
 
     // portal_users 동기화 (portalUid 있을 때만)
     const puUid = window._editRosterTarget.portalUid;
@@ -3842,7 +3852,9 @@ window.rosterDetailSave = async (id) => {
     }
 
     document.getElementById('roster-detail-modal').remove();
-    alert('✅ 수정 완료!');
+    alert(rankChanged
+      ? `✅ 수정 완료!\n\n직급이 "${window._editRosterOriginalRank}" → "${newRank}"(으)로 바뀌어, 호봉이 1로 자동 초기화되었습니다.`
+      : '✅ 수정 완료!');
     renderRosterMain();
   } catch(e) { alert('저장 오류: '+e.message); }
 };
