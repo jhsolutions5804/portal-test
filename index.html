@@ -11,6 +11,21 @@ window.jhApplyViewport=function(pc){
   try{
     var m=document.querySelector('meta[name="viewport"]'); if(!m) return;
     m.setAttribute('content', pc ? 'width=1280, user-scalable=yes' : 'width=device-width, initial-scale=1');
+    document.documentElement.classList.toggle('force-pc', !!pc);
+  }catch(e){}
+};
+/* 강제 PC 화면에서 모바일로 돌아가는 버튼 — 화면 '상단'에 고정(사이드바 하단은 폰 브라우저 툴바에 가려져 누를 수 없었음).
+   1280px 레이아웃을 폰 화면에 맞춰 축소해 보여주므로, 축소된 비율만큼 키워서 실제 화면에서 손가락 크기로 보이게 한다. */
+window.jhEnsureMobileFab=function(on){
+  try{
+    var id='jh-to-mobile-fab', el=document.getElementById(id);
+    if(!on){ if(el) el.remove(); return; }
+    if(el) return;
+    var k=Math.max(1, 1280/((window.screen&&screen.width)||1280));
+    el=document.createElement('button'); el.id=id; el.type='button'; el.textContent='📱 모바일 화면';
+    el.setAttribute('style','position:fixed;top:'+(10*k)+'px;right:'+(10*k)+'px;z-index:2147483000;background:#1D5BA6;color:#fff;border:'+(2*k)+'px solid #fff;border-radius:999px;padding:'+(9*k)+'px '+(16*k)+'px;font-size:'+(14*k)+'px;font-weight:800;line-height:1.2;box-shadow:0 '+(3*k)+'px '+(12*k)+'px rgba(0,0,0,.35);cursor:pointer;font-family:inherit;');
+    el.onclick=function(){ jhSwitchToMobile(); };
+    (document.body||document.documentElement).appendChild(el);
   }catch(e){}
 };
 window.jhSwitchToMobile=function(){
@@ -18,6 +33,10 @@ window.jhSwitchToMobile=function(){
   location.href='m/home.html';
 };
 </script>
+<style>
+/* 강제 PC 화면(jh_force_pc): 100vh는 폰에서 브라우저 툴바 뒤까지 잡혀 하단이 가려지므로 보이는 영역(dvh) 기준으로 */
+html.force-pc #s-app.shown, html.force-pc .sidebar, html.force-pc .main, html.force-pc #view-embed { height:100vh; height:100dvh; }
+</style>
 <title>JH Solutions 업무 포털</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icons/favicon-32.png" sizes="32x32">
@@ -596,7 +615,7 @@ window.jhSwitchToMobile=function(){
     <nav class="sb-nav" id="sb-nav"></nav>
     <div class="sb-spacer"></div>
     <a href="/download/" target="_blank" style="display:flex;align-items:center;gap:6px;margin:0 12px 10px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.18);color:#9fbbe0;text-decoration:none;font-size:11px;font-weight:600;">📥 PC·모바일 앱 다운로드</a>
-    <a id="sb-to-mobile" href="javascript:void(0)" onclick="jhSwitchToMobile()" style="display:none;align-items:center;justify-content:center;gap:6px;margin:0 12px 10px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.18);color:#9fbbe0;text-decoration:none;font-size:11px">📱 모바일 화면으로 전환</a>
+    <button type="button" id="sb-to-mobile" onclick="jhSwitchToMobile()" style="display:none;align-items:center;justify-content:center;gap:6px;margin:0 12px 10px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.18);color:#9fbbe0;text-decoration:none;font-size:11px;background:none;cursor:pointer;font-family:inherit;">📱 모바일 화면으로 전환</button>
     <div class="sb-user">
       <button class="sb-user-btn" onclick="openMyProfile()">
         <div class="avatar" id="sb-avatar">·</div>
@@ -1103,6 +1122,7 @@ Object.defineProperty(window,'me',{get:()=>me,set:v=>{me=v;
 const $=id=>document.getElementById(id);
 function showAuth(id){
   if(window.jhApplyViewport) jhApplyViewport(false);
+  if(window.jhEnsureMobileFab) jhEnsureMobileFab(false);
   $('auth-stage').style.display='flex';
   $('s-app').classList.remove('shown');
   document.querySelectorAll('.authscreen').forEach(s=>s.classList.toggle('on', s.id===id));
@@ -1112,6 +1132,7 @@ function showApp(){
   var _fpc = window.jhForcePc ? jhForcePc() : false;
   if(!_fpc && /Mobi/i.test(navigator.userAgent||'')){ location.href='m/home.html'; return; }
   if(window.jhApplyViewport) jhApplyViewport(_fpc);
+  if(window.jhEnsureMobileFab) jhEnsureMobileFab(_fpc);
   var _tm=document.getElementById('sb-to-mobile'); if(_tm) _tm.style.display = _fpc ? 'flex' : 'none';
   $('auth-stage').style.display='none';
   $('s-app').classList.add('shown');
