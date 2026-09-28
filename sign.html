@@ -40,9 +40,9 @@
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp }
+import { getFirestore, doc, getDoc, writeBatch, serverTimestamp }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { getAuth, RecaptchaVerifier, signInWithPhoneNumber }
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, setPersistence, browserSessionPersistence, signOut }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 const firebaseConfig = {
@@ -56,6 +56,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+// 인증 상태를 이 탭에만 유지 — 탭을 닫으면 로그아웃되어 공용 기기에서도 안전
+const authReady = setPersistence(auth, browserSessionPersistence).catch(() => {});
 const el = document.getElementById('app');
 
 const params = new URLSearchParams(location.search);
@@ -86,55 +88,60 @@ if (!token) {
 
 async function boot(){
   try {
+    await authReady;
+    // 링크 메타(공개): 문서 종류·인증 대상 번호·만료·상태만 들어 있다. 문서 내용은 문자 인증 통과 후에만 읽을 수 있다.
     const linkSnap = await getDoc(doc(db,'sign_links',token));
     if (!linkSnap.exists()) { showError('유효하지 않은 링크입니다.'); return; }
     const link = linkSnap.data();
+    if (link.status === 'revoked') { showError('회수된 링크입니다. 회사(인사담당자)에게 새 링크를 요청해 주세요.'); return; }
+    const expMs = (link.expiresTs && link.expiresTs.toMillis) ? link.expiresTs.toMillis() : 0;
+    if (!link.phoneE164 || !expMs) { showError('이 링크는 예전 방식으로 만들어져 열 수 없습니다. 회사(인사담당자)에게 새 링크를 요청해 주세요.'); return; }
+    if (expMs < Date.now()) { showError('링크가 만료되었습니다 (72시간 경과). 회사(인사담당자)에게 새 링크를 요청해 주세요.'); return; }
 
-    if (link.expiresAt && new Date(link.expiresAt).getTime() < Date.now()) {
-      showError('링크가 만료되었습니다 (72시간 경과).');
-      return;
-    }
+    // 이 탭에서 같은 번호로 이미 인증했다면 문자 인증 생략, 다른 번호로 인증된 세션이면 로그아웃 후 새로 인증
+    if (auth.currentUser && auth.currentUser.phoneNumber === link.phoneE164) { await loadAndShow(link); return; }
+    if (auth.currentUser) { try { await signOut(auth); } catch(e) {} }
+    showPhoneVerify(link);
+  } catch(e) {
+    showError('오류가 발생했습니다: ' + e.message);
+  }
+}
 
-    // 회사 서명(도장) 로드 (있으면 문서에 반영)
-    let compSig = {};
-    try {
-      const cs = await getDoc(doc(db,'company_settings','signatures'));
-      if (cs.exists()) compSig = cs.data();
-    } catch(e) {}
-    window._compSignatures = compSig;
+// 문자 인증 통과 후: 문서 스냅샷(주민번호 마스킹)·회사 도장·서명 결과를 읽어 문서 종류별로 화면 구성
+async function loadAndShow(link){
+  try {
+    const paySnap = await getDoc(doc(db, `sign_links/${token}/secure/payload`));
+    if (!paySnap.exists()) { showError('문서 정보를 찾을 수 없습니다. 회사(인사담당자)에게 새 링크를 요청해 주세요.'); return; }
+    const pay = paySnap.data();
+    window._compSignatures = pay.seal || {};
+    const f = { ...(pay.doc || {}) };
 
     if (link.docType === 'offer') {
-      const oSnap = await getDoc(doc(db,'salary_offers', link.offerId));
-      if (!oSnap.exists()) { showError('연봉 제안서 정보를 찾을 수 없습니다.'); return; }
-      showViewOnly({ f: oSnap.data(), title:'연봉 제안서', buildHtml: (f)=>{ const r = offerCalc(f); return offerBuildHtml(f, r); } });
+      showViewOnly({ f, title:'연봉 제안서', buildHtml: (x)=>{ const r = offerCalc(x); return offerBuildHtml(x, r); } });
       return;
     }
     if (link.docType === 'payslip') {
-      const pSnap = await getDoc(doc(db, `payslips/${link.payslipWid}/months`, link.payslipMonth));
-      if (!pSnap.exists()) { showError('급여명세서 정보를 찾을 수 없습니다.'); return; }
-      showViewOnly({ f: pSnap.data(), title:'급여명세서', buildHtml: (d)=>__psHtml_v5(d) });
+      showViewOnly({ f, title:'급여명세서', buildHtml: (d)=>__psHtml_v5(d) });
       return;
     }
 
     // ── 근로계약서 / 연봉계약서 ──
-    const collName = link.docType === 'annual' ? 'annual_contracts' : 'labor_contracts';
-    const contractRef = doc(db, `${collName}/${link.workerId}/contracts`, link.contractId);
-    const cSnap = await getDoc(contractRef);
-    if (!cSnap.exists()) { showError('계약서 정보를 찾을 수 없습니다.'); return; }
-    const f = { ...cSnap.data() };
-    const fMasked = { ...f, jumin: maskJumin(f.jumin) };
     const docTitle = link.docType === 'annual' ? '연봉계약서' : '근로계약서';
-
-    if (link.status === 'signed' || f.signData) {
-      // 이미 서명 완료된 문서 — 실제 내용을 그대로 보여주고 인쇄만 가능
-      const buildHtml = link.docType === 'annual' ? __annualHtml_v5 : __laborHtml_v5;
-      showViewOnly({ f: fMasked, title: docTitle + ' (서명 완료)', buildHtml, alreadySigned:true });
+    const buildHtml = link.docType === 'annual' ? __annualHtml_v5 : __laborHtml_v5;
+    const fMasked = { ...f, jumin: maskJumin(f.jumin) };
+    let result = null;
+    try { const rs = await getDoc(doc(db, `sign_links/${token}/secure/result`)); if (rs.exists()) result = rs.data(); } catch(e) {}
+    if (result) {
+      // 이미 서명 완료 — 서명이 들어간 문서를 그대로 보여주고 인쇄만 가능. (서명은 접수됐으나 상태 표시가 안 넘어간 경우 복구)
+      if (link.status !== 'signed') {
+        try { const b = writeBatch(db); b.update(doc(db,'sign_links',token), { status:'signed', signedAt: serverTimestamp() }); await b.commit(); } catch(e) {}
+      }
+      showViewOnly({ f: { ...fMasked, signData: result.signData }, title: docTitle + ' (서명 완료)', buildHtml, alreadySigned:true });
       return;
     }
-
-    showPhoneVerify(f, link, contractRef, docTitle, fMasked);
+    showContractAndSign(fMasked, link, docTitle);
   } catch(e) {
-    showError('오류가 발생했습니다: ' + e.message);
+    showError('문서를 불러오지 못했습니다: ' + e.message);
   }
 }
 
@@ -162,15 +169,15 @@ function normalizePhoneE164(phone){
   return '+82' + local;
 }
 
-function showPhoneVerify(f, link, contractRef, docTitle, fMasked){
-  const phoneDigits = String(f.phone||'').replace(/\D/g,'');
+function showPhoneVerify(link){
+  const phoneDigits = '0' + String(link.phoneE164||'').replace(/^\+82/,'');
   const maskedPhone = phoneDigits.length >= 8
     ? phoneDigits.slice(0,3) + '-****-' + phoneDigits.slice(-4)
-    : (f.phone || '(등록된 연락처 없음)');
+    : '(등록된 연락처 없음)';
 
   el.innerHTML = `
     <div class="card">
-      <div style="font-weight:800;font-size:0.98rem;margin-bottom:4px;">${esc(f.name)}님, 안녕하세요</div>
+      <div style="font-weight:800;font-size:0.98rem;margin-bottom:4px;">${esc(link.workerName||'')}님, 안녕하세요</div>
       <div class="muted">본인 확인을 위해 근로자 명부에 등록된 휴대폰 번호로 인증번호를 보내드립니다.</div>
     </div>
     <div class="card center">
@@ -198,8 +205,7 @@ function showPhoneVerify(f, link, contractRef, docTitle, fMasked){
     const btn = document.getElementById('sendCodeBtn');
     btn.disabled = true; btn.textContent = '전송 중...';
     try {
-      const e164 = normalizePhoneE164(f.phone);
-      confirmationResult = await signInWithPhoneNumber(auth, e164, verifier);
+      confirmationResult = await signInWithPhoneNumber(auth, link.phoneE164, verifier);
       btn.textContent = '✅ 전송 완료 (재전송하려면 새로고침)';
       document.getElementById('phoneStep2').style.display = 'block';
     } catch(e) {
@@ -215,7 +221,7 @@ function showPhoneVerify(f, link, contractRef, docTitle, fMasked){
     vBtn.disabled = true; vBtn.textContent = '확인 중...';
     try {
       await confirmationResult.confirm(code);
-      showContractAndSign(f, link, contractRef, docTitle, fMasked);
+      await loadAndShow(link);
     } catch(e) {
       vBtn.disabled = false; vBtn.textContent = '확인';
       document.getElementById('otpMsg').textContent = '인증번호가 올바르지 않습니다. 다시 확인해 주세요.';
@@ -223,7 +229,8 @@ function showPhoneVerify(f, link, contractRef, docTitle, fMasked){
   };
 }
 
-async function showContractAndSign(f, link, contractRef, docTitle, fMasked){
+async function showContractAndSign(fMasked, link, docTitle){
+  const f = fMasked;
   try {
     const previewHtml = link.docType === 'annual'
       ? __annualHtml_v5(fMasked)
@@ -248,7 +255,7 @@ async function showContractAndSign(f, link, contractRef, docTitle, fMasked){
         </div>
         <button class="btn btn-primary" id="submitBtn" disabled>서명 완료</button>
       </div>
-      <div class="warn">⚠️ 서명 후에는 이 계약서 내용을 임의로 수정할 수 없습니다. 서명 완료 즉시 회사 인사관리시스템에 자동 반영되며, 서명 시각과 접속 정보가 함께 기록됩니다.</div>
+      <div class="warn">⚠️ 서명 후에는 이 계약서 내용을 임의로 수정할 수 없습니다. 서명 시각과 접속 정보가 함께 기록되며, 서명은 회사 인사관리시스템에서 계약서에 반영됩니다.</div>
     `;
 
     // ── 서명 캔버스 ──
@@ -296,20 +303,23 @@ async function showContractAndSign(f, link, contractRef, docTitle, fMasked){
           const r = await fetch('https://api.ipify.org?format=json');
           const j = await r.json(); ip = j.ip || '';
         } catch(e) {}
-        await updateDoc(contractRef, {
-          signData, remoteSigned: true, signedAt: new Date().toISOString(),
-          signedIp: ip, signedUserAgent: navigator.userAgent,
+        // 서명 결과는 링크 하위 문서에만 기록한다(계약서 원본은 회사 시스템이 반영). 결과 기록과 상태 변경은 한 번에 처리.
+        const batch = writeBatch(db);
+        batch.set(doc(db, `sign_links/${token}/secure/result`), {
+          signData, remoteSigned: true, signedAt: serverTimestamp(),
+          signedIp: String(ip).slice(0,60), signedUserAgent: String(navigator.userAgent||'').slice(0,500),
         });
-        await updateDoc(doc(db,'sign_links',token), { status:'signed', signedAt: serverTimestamp() });
+        batch.update(doc(db,'sign_links',token), { status:'signed', signedAt: serverTimestamp() });
+        await batch.commit();
 
         // 서명 반영된 최종본 (다운로드/보관용)
-        const finalF = { ...f, jumin: maskJumin(f.jumin), signData };
+        const finalF = { ...f, signData };
         const finalHtml = link.docType === 'annual' ? __annualHtml_v5(finalF) : __laborHtml_v5(finalF);
 
         el.innerHTML = `<div class="card center">
           <div class="state-icon">✅</div>
           <div style="font-weight:800;font-size:1rem;margin-bottom:6px;">서명이 완료되었습니다</div>
-          <div class="muted" style="margin-bottom:16px;">인사관리시스템에 자동으로 반영되었습니다. 아래 버튼으로 서명된 계약서를 확인·저장하실 수 있습니다.</div>
+          <div class="muted" style="margin-bottom:16px;">서명이 접수되었습니다. 회사 인사관리시스템에 곧 반영됩니다. 아래 버튼으로 서명된 계약서를 확인·저장하실 수 있습니다.</div>
           <button class="btn btn-primary" id="viewFinalBtn">📄 서명된 계약서 보기 / 저장</button>
         </div>`;
         document.getElementById('viewFinalBtn').onclick = () => {
