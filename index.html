@@ -1066,7 +1066,9 @@ const HR_SUBTABS=[
   { key:'eval',     name:'인사평가',    emoji:'9' },
   { key:'interview', name:'근로자 면담', emoji:'10' },
   { key:'leave',    name:'연차 현황',   emoji:'11' },
-  { key:'retire',   name:'퇴직금 정산', emoji:'12' },
+  { key:'resignreq', name:'휴직/퇴직 원서', emoji:'12' },
+  { key:'dismissal', name:'해고예고통지서', emoji:'13' },
+  { key:'retire',   name:'퇴직금 정산', emoji:'14' },
   { key:'salarytable', name:'급여테이블', emoji:'📊' },
 ];
 // 기획(plan) 하위 탭 — gihoek 앱의 tab() 키와 일치
@@ -1085,7 +1087,7 @@ const EDOC_SUBTABS=[
   { key:'approve',  name:'결재함',       emoji:'📥' },
   { key:'daily',    name:'업무일지',     emoji:'1' },
   { key:'leave',    name:'연차신청서',   emoji:'2' },
-  { key:'resign',   name:'퇴직원서',     emoji:'3' },
+  { key:'resign',   name:'휴직/퇴직',     emoji:'3' },
   { key:'cert',     name:'재직증명서',   emoji:'4' },
   { key:'purchase', name:'구매품의서',   emoji:'5' },
   { key:'expense',  name:'지출결의서',   emoji:'6' },
@@ -3254,7 +3256,7 @@ async function renderApproveCard(){
       await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const EDOC_COLS = ['edoc_daily','edoc_leave','edoc_resign','edoc_cert','edoc_purchase','edoc_expense'];
     const DOCTYPE_LABEL = {
-      daily:'업무일지', leave:'연차신청서', resign:'퇴직원서',
+      daily:'업무일지', leave:'연차신청서', resign:'휴직/퇴직',
       cert:'재직증명서', purchase:'구매품의서', expense:'지출결의서'
     };
     let myTurnDocs = [];
