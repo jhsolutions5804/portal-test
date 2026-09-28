@@ -9426,58 +9426,85 @@ window.dsDeleteDraft = async (id) => {
 };
 
 /* ══════════════════════════════════════════════
-   연차사용촉진 (근로기준법 제61조)
-   - 1년 이상 근속자(제1항): 사용기간 종료 6개월 전 기준 10일 이내 1차 서면 촉구 → 10일 내 미통보 시 종료 2개월 전까지 2차 사용시기 지정 서면 통보
-   - 1년 미만 근속자(제2항, 월 개근 1일분): 최초 1년 종료 3개월 전 기준 10일 이내 1차 → 종료 1개월 전까지 2차
+   연차사용촉진 (근로기준법 제61조) — 회사 연차 기준: 회계연도(1월 1일 ~ 12월 31일)
+   - 회계연도 연차(제1항): 사용기간 12/31 종료 → 6개월 전(7/1) 기준 10일 이내(7/1~7/10) 1차 서면 촉구
+       → 10일 내 미통보 시 종료 2개월 전(10/31)까지 2차 사용시기 지정 서면 통보
+   - 입사 첫 1년의 월 개근분(제2항, 최초 1년은 입사일 기준): 종료 3개월 전 기준 10일 이내 1차 → 종료 1개월 전까지 2차
      (1차 후 발생분은 종료 1개월 전 기준 5일 이내 추가 촉구 → 종료 10일 전까지 2차)
+   - 회계연도 연차 부여: 입사 다음 해 1/1은 입사 첫해 재직일수 비례(15일×재직일수/365, 올림),
+     이후 매년 1/1 15일 + 3년 이상 매 2년 1일 가산(1/1 기준 계속근로연수, 최대 25일)
    - 저장: leave_promotions/{workerId}/records/{id}  (tplVer 로 양식 동결)
-   ⚠️ 일정은 입사일 기준으로 자동 계산한 참고값이다. 법률 자문이 아니며 실제 적용 전 노무사 확인을 권장한다.
+   ⚠️ 일정·일수는 위 기준으로 자동 계산한 참고값이다. 법률 자문이 아니며 실제 적용 전 노무사 확인을 권장한다.
    ══════════════════════════════════════════════ */
 let _lp = { workers:[], leaves:[], recs:{} };
 const _LP_STAGE = { p1:'1차 촉진', p1x:'추가 1차', p2:'2차 지정통보' };
 
-// 근로자별 현재 연차 기간·촉진 일정 계산 (입사일 기준)
-function _lpPeriod(w, today) {
-  const hire = _hzParse(w.hireDate); if (!hire) return null;
-  let years = today.getFullYear() - hire.getFullYear();
-  while (years > 0 && _hzAddMonths(hire, 12*years) > today) years--;
-  if (years >= 1) {
-    const start = _hzAddMonths(hire, 12*years), end = _hzAddDays(_hzAddMonths(start,12), -1);
-    const b1 = _hzAddMonths(start, 6);
-    return { cat:'y1', years, start, end, p1s:b1, p1e:_hzAddDays(b1,9), dl2:_hzAddDays(_hzAddMonths(start,10),-1) };
+// 회계연도 연차 부여일수 (입사 다음 해 1/1: 첫해 비례 / 이후: 15일 + 가산)
+function _lpFyGrant(hire, Y) {
+  if (hire.getFullYear() === Y - 1) {
+    const days = _hzDiffDays(hire, new Date(Y-1, 11, 31)) + 1;
+    return { granted: Math.min(15, Math.ceil(15 * days / 365)), basis: `입사 첫해 비례 (${days}일/365일)` };
   }
-  const start = hire, end = _hzAddDays(_hzAddMonths(start,12), -1);
-  const b1 = _hzAddMonths(start, 9), bx = _hzAddMonths(start, 11);
-  return { cat:'y0', years:0, start, end, p1s:b1, p1e:_hzAddDays(b1,9), pxs:bx, pxe:_hzAddDays(bx,4), dl2:_hzAddDays(bx,-1), dl2x:_hzAddDays(end,-10) };
+  const jan1 = new Date(Y, 0, 1);
+  let years = Y - hire.getFullYear();
+  while (years > 0 && _hzAddMonths(hire, 12*years) > jan1) years--;
+  const g = years >= 3 ? Math.min(15 + Math.floor((years-1)/2), 25) : 15;
+  return { granted: g, basis: `근속 ${years}년 (1.1 기준)` };
 }
-// 연차·반차 사용일수 (승인/게시된 연차신청서, 해당 연차 기간 내 시작일 기준)
-function _lpUsed(w, leaves, start, end, asOf) {
-  let used = 0, planned = 0;
+// 촉진 대상 연차 구간(트랙): y1=회계연도 연차, y0=입사 첫 1년 월 개근분(입사일 기준)
+function _lpTracks(w, today) {
+  const hire = _hzParse(w.hireDate); if (!hire) return [];
+  const Y = today.getFullYear(), out = [], ann1 = _hzAddMonths(hire, 12);
+  if (today < ann1) {
+    const start = hire, end = _hzAddDays(ann1, -1), b1 = _hzAddMonths(start, 9), bx = _hzAddMonths(start, 11);
+    const g = hrCalcAnnualLeave(w.hireDate, _hzYmd(today));
+    out.push({ cat:'y0', title:'입사 첫 1년 (월 개근분)', start, end, p1s:b1, p1e:_hzAddDays(b1,9), pxs:bx, pxe:_hzAddDays(bx,4),
+      dl2:_hzAddDays(bx,-1), dl2x:_hzAddDays(end,-10), granted:Math.min(g.granted, 11), basis:`입사 ${g.months}개월 · 1개월 개근당 1일` });
+  }
+  if (hire.getFullYear() < Y) {
+    const start = new Date(Y,0,1), end = new Date(Y,11,31), b1 = _hzAddMonths(start, 6), g = _lpFyGrant(hire, Y);
+    out.push({ cat:'y1', title:`${Y}년 회계연도`, start, end, p1s:b1, p1e:_hzAddDays(b1,9), dl2:_hzAddDays(_hzAddMonths(start,10),-1), granted:g.granted, basis:g.basis });
+  }
+  return out;
+}
+// 승인·게시된 연차/반차 사용일수를 트랙별로 배분 (시작일 순 · 입사 첫 1년분 우선 소진). asOf 이후 시작분은 '예정'
+function _lpUsageByTrack(w, leaves, tracks, asOf) {
+  const list = [];
   for (const lv of leaves) {
     const nm = lv.authorName || lv.name || '';
     if (!(nm === w.name || (w.portalUid && lv.authorUid === w.portalUid))) continue;
     if (lv.status !== 'posted' && lv.status !== 'approved') continue;
     const t = String(lv.leaveType || '');
     if (!(t.startsWith('연차') || t.startsWith('반차'))) continue;
-    const sd = _hzParse(lv.startDate); if (!sd || sd < start || sd > end) continue;
+    const sd = _hzParse(lv.startDate); if (!sd) continue;
     let d = parseFloat(lv.days || lv.leaveDays || 0); if (isNaN(d) || d <= 0) d = t.startsWith('반차') ? 0.5 : 1;
-    if (asOf && sd > asOf) planned += d; else used += d;
+    list.push({ sd, d });
   }
-  return { used, planned };
+  list.sort((a,b) => a.sd - b.sd);
+  const y0 = tracks.find(t => t.cat==='y0'), y1 = tracks.find(t => t.cat==='y1');
+  const res = { y0:{ used:0, planned:0 }, y1:{ used:0, planned:0 } };
+  let y0Taken = 0;
+  for (const it of list) {
+    let d = it.d; const key = it.sd > asOf ? 'planned' : 'used';
+    if (y0 && it.sd >= y0.start && it.sd <= y0.end) {
+      // 월 개근분은 발생 전에 미리 쓴 경우도 이 구간 사용으로 본다(최대 11일)
+      const take = Math.min(d, Math.max(11 - y0Taken, 0));
+      if (take > 0) { res.y0[key] += take; y0Taken += take; d -= take; }
+    }
+    if (d > 0 && y1 && it.sd >= y1.start && it.sd <= y1.end) res.y1[key] += d;
+  }
+  return res;
 }
-function _lpGranted(w, asOf) { return hrCalcAnnualLeave(w.hireDate, _hzYmd(asOf)).granted; }
 
-// 진행 상태 판정
-function _lpEval(w, today) {
-  const p = _lpPeriod(w, today); if (!p) return { skip:'입사일 미등록' };
-  const granted = _lpGranted(w, today);
-  const { used, planned } = _lpUsed(w, _lp.leaves, p.start, p.end, today);
-  const remain = Math.max(granted - used, 0);
+// 트랙별 진행 상태 판정
+function _lpEvalTrack(w, p, usage, today) {
+  const u = usage[p.cat] || { used:0, planned:0 };
+  const granted = p.granted, used = u.used, planned = u.planned, remain = Math.max(granted - used, 0);
   const startStr = _hzYmd(p.start);
-  const recs = (_lp.recs[w.id] || []).filter(r => r.periodStart === startStr);
+  const recs = (_lp.recs[w.id] || []).filter(r => r.category === p.cat && r.periodStart === startStr);
   const r1 = recs.filter(r => r.stage==='p1').sort((a,b)=>String(a.noticeDate).localeCompare(String(b.noticeDate)))[0];
   const r2 = recs.find(r => r.stage==='p2');
-  const D = (d) => _hzDiffDays(today, d);
+  const D = d => _hzDiffDays(today, d);
   let state = '', tone = 'gray', urgent = 0, label = '';
   if (!r1) {
     if (remain <= 0) { state='none'; label='대상 아님 (잔여 0일)'; tone='gray'; }
@@ -9494,23 +9521,29 @@ function _lpEval(w, today) {
   }
   return { p, granted, used, planned, remain, recs, r1, r2, state, tone, label, urgent };
 }
+function _lpEvalWorker(w, today) {
+  if (!_hzParse(w.hireDate)) return { skip:'입사일 미등록' };
+  const tracks = _lpTracks(w, today), usage = _lpUsageByTrack(w, _lp.leaves, tracks, today);
+  return { list: tracks.map(p => _lpEvalTrack(w, p, usage, today)) };
+}
 
 window.renderLeavePromoMain = async () => {
   const el = document.getElementById('tab-leave'); if (!el) return;
   el.innerHTML = `<div style="padding:20px 24px;max-width:1150px;margin:0 auto;">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">${backBtn2('renderLeaveStatusMain()','연차 현황')}</div>
-    <div style="font-size:18px;font-weight:800;color:#13335C;margin-bottom:4px;">📣 연차사용촉진</div>
+    <div style="font-size:18px;font-weight:800;color:#13335C;margin-bottom:4px;">📣 연차사용촉진 <span style="font-size:12px;font-weight:700;color:#1D5BA6;background:#E8F0FB;border-radius:8px;padding:2px 9px;margin-left:6px;">회계연도 기준 1.1 ~ 12.31</span></div>
     <div style="font-size:12px;color:#5C6F8A;line-height:1.75;margin-bottom:12px;">
       근로기준법 제61조에 따라 <b>기한 안에 서면으로 촉구·지정 통보</b>하면, 근로자가 쓰지 않아 소멸된 연차에 대해 회사는 연차수당 지급 의무가 없습니다. 기한을 놓치면 이 효과가 생기지 않습니다.
     </div>
     <div id="lp-summary"></div>
     <div id="lp-body" style="text-align:center;padding:40px;color:#9AAABF;">⏳ 불러오는 중...</div>
     <div style="margin-top:14px;background:#F7F9FC;border:1px solid #E5EDF7;border-radius:10px;padding:12px 14px;font-size:11.5px;color:#5C6F8A;line-height:1.8;">
-      <b>일정 기준 (제61조, 입사일 기준 자동 계산)</b><br>
-      · <b>1년 이상 근속</b>: 연차 사용기간 종료 6개월 전 기준 10일 이내에 <b>1차 서면 촉구</b> → 근로자가 10일 안에 사용 시기를 통보하지 않으면 종료 2개월 전까지 <b>2차 사용시기 지정 서면 통보</b><br>
-      · <b>1년 미만 근속</b>(월 개근 1일분): 최초 1년 종료 3개월 전 기준 10일 이내 1차 → 종료 1개월 전까지 2차 (1차 이후 발생분은 종료 1개월 전 기준 5일 이내 추가 촉구 → 종료 10일 전까지 2차)<br>
+      <b>일정 기준 (제61조 · 회사 연차 기준일 1.1)</b><br>
+      · <b>회계연도 연차</b>: 사용기간 12/31 종료 → <b>7/1~7/10 1차 서면 촉구</b> → 근로자가 10일 안에 사용 시기를 통보하지 않으면 <b>10/31까지 2차 사용시기 지정 서면 통보</b><br>
+      · <b>입사 첫 1년의 월 개근분</b>(제61조 제2항, 최초 1년은 입사일 기준): 최초 1년 종료 3개월 전 기준 10일 이내 1차 → 종료 1개월 전까지 2차 (1차 이후 발생분은 종료 1개월 전 기준 5일 이내 추가 촉구 → 종료 10일 전까지 2차)<br>
+      · <b>부여일수</b>: 입사 다음 해 1/1은 입사 첫해 재직일수 비례(15일 × 재직일수/365, 올림), 이후 매년 1/1에 15일 + 3년 이상 매 2년 1일 가산(1/1 기준 계속근로연수, 최대 25일). <span style="color:#B45309;">※ 연차 현황 화면의 부여일수는 입사일 기준이라 이 화면과 다를 수 있습니다.</span><br>
       · 통보는 <b>근로자별로 서면</b>으로 하고 <b>수령 증빙</b>(수령 서명 등)을 남기세요. 대표는 근로기준법상 근로자가 아니어서 제외했습니다.<br>
-      · 사용일수는 <b>해당 연차 기간에 시작한 승인·게시된 연차·반차 신청서</b> 기준이라 연차 현황(누적 집계)과 다를 수 있습니다. 일정·양식은 참고용이며 실제 적용 전 노무사 확인을 권장합니다.
+      · 사용일수는 <b>승인·게시된 연차·반차 신청서</b> 기준입니다. 일정·양식은 참고용이며 실제 적용 전 노무사 확인을 권장합니다.
     </div></div>`;
   if (!window._db) { document.getElementById('lp-body').textContent = 'DB 연결 안 됨'; return; }
   try {
@@ -9528,23 +9561,28 @@ window.renderLeavePromoMain = async () => {
 
 function _lpRender() {
   const today = new Date(); today.setHours(0,0,0,0);
-  const evs = _lp.workers.map(w => ({ w, e:_lpEval(w, today) }));
-  const okRows = evs.filter(x => !x.e.skip);
+  const items = [];
+  for (const w of _lp.workers) { const r = _lpEvalWorker(w, today); if (r.skip) items.push({ w, skip:r.skip }); else r.list.forEach(e => items.push({ w, e })); }
+  const okRows = items.filter(x => x.e);
   const cnt = f => okRows.filter(x => f(x.e)).length;
-  const card = (n, t, c) => `<div style="flex:1;min-width:130px;background:#fff;border:1px solid #DDE4EF;border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:#5C6F8A;font-weight:700;">${t}</div><div style="font-size:22px;font-weight:800;color:${c};margin-top:2px;">${n}<span style="font-size:12px;font-weight:600;color:#9AAABF;"> 명</span></div></div>`;
-  document.getElementById('lp-summary').innerHTML = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
-    ${card(cnt(e => e.urgent===3), '지금 조치 필요', '#DC2626')}${card(cnt(e => e.state==='wait' && e.urgent>0), '45일 내 시작', '#1D5BA6')}${card(cnt(e => e.urgent===1), '기한 경과·미실시', '#EA580C')}${card(cnt(e => e.tone==='green'), '완료', '#16A34A')}</div>`;
+  const card = (n, t, c) => `<div style="flex:1;min-width:130px;background:#fff;border:1px solid #DDE4EF;border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:#5C6F8A;font-weight:700;">${t}</div><div style="font-size:22px;font-weight:800;color:${c};margin-top:2px;">${n}<span style="font-size:12px;font-weight:600;color:#9AAABF;"> 건</span></div></div>`;
+  const missed = okRows.filter(x => x.e.urgent===1 && x.e.state==='missed');
+  document.getElementById('lp-summary').innerHTML = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+    ${card(cnt(e => e.urgent===3), '지금 조치 필요', '#DC2626')}${card(cnt(e => e.state==='wait' && e.urgent>0), '45일 내 시작', '#1D5BA6')}${card(cnt(e => e.urgent===1), '기한 경과·미실시', '#EA580C')}${card(cnt(e => e.tone==='green'), '완료', '#16A34A')}</div>
+    ${missed.length ? `<div style="background:#FFF4E5;border:1px solid #F4D9AD;border-radius:10px;padding:11px 14px;font-size:12px;color:#7A4A00;line-height:1.75;margin-bottom:12px;">
+      ⚠️ <b>${missed.map(x=>_hzEsc(x.w.name)).filter((v,i,a)=>a.indexOf(v)===i).join(', ')}</b>님은 이번 회계연도의 1차 촉진 기간(7/1~7/10)이 지났는데 촉진 기록이 없습니다. 기록이 없으면 12/31에 소멸되는 미사용 연차에 대해 <b>연차수당 지급 의무가 남을 수 있습니다.</b><br>
+      이미 서면으로 진행하셨다면 아래 <b>[1차 촉진서] → "이미 발송함 — 기록만 등록"</b>으로 남겨 두세요. 그렇지 않다면 노무사와 대응을 상의하세요.</div>` : ''}`;
   const tone = { red:['#FEE2E2','#991B1B'], orange:['#FFEDD5','#9A3412'], blue:['#DBEAFE','#1E40AF'], green:['#DCFCE7','#166534'], gray:['#F3F4F6','#6B7280'] };
-  const rows = evs.map(({ w, e }) => {
-    if (e.skip) return `<tr style="border-bottom:1px solid #EEF2F7;"><td style="padding:11px 12px;font-weight:700;">${_hzEsc(w.name)}</td><td colspan="6" style="padding:11px 12px;color:#DC2626;font-size:12px;">입사일 미등록 — 근로자 명부에서 입력해 주세요.</td></tr>`;
+  const rows = items.map(({ w, e, skip }) => {
+    if (skip) return `<tr style="border-bottom:1px solid #EEF2F7;"><td style="padding:11px 12px;font-weight:700;">${_hzEsc(w.name)}</td><td colspan="5" style="padding:11px 12px;color:#DC2626;font-size:12px;">입사일 미등록 — 근로자 명부에서 입력해 주세요.</td></tr>`;
     const p = e.p, t = tone[e.tone] || tone.gray;
     const sched = p.cat==='y1'
       ? `1차 ${_hzDot(p.p1s)}~${_hzDot(p.p1e)}<br>2차 ~${_hzDot(p.dl2)}`
       : `1차 ${_hzDot(p.p1s)}~${_hzDot(p.p1e)}<br>2차 ~${_hzDot(p.dl2)} <span style="color:#9AAABF;">(추가분 ~${_hzDot(p.dl2x)})</span>`;
-    const btn = (label, stage, on) => `<button ${on?'':'disabled'} onclick="lpOpenForm('${w.id}','${stage}')" style="font-size:11px;font-weight:700;padding:5px 9px;border-radius:7px;border:1px solid ${on?'#1D5BA6':'#E5E7EB'};background:${on?'#E8F0FB':'#F9FAFB'};color:${on?'#1D5BA6':'#B0B7C3'};cursor:${on?'pointer':'not-allowed'};margin:0 3px 3px 0;">${label}</button>`;
+    const btn = (label, stage, on) => `<button ${on?'':'disabled'} onclick="lpOpenForm('${w.id}','${stage}','${p.cat}')" style="font-size:11px;font-weight:700;padding:5px 9px;border-radius:7px;border:1px solid ${on?'#1D5BA6':'#E5E7EB'};background:${on?'#E8F0FB':'#F9FAFB'};color:${on?'#1D5BA6':'#B0B7C3'};cursor:${on?'pointer':'not-allowed'};margin:0 3px 3px 0;">${label}</button>`;
     return `<tr style="border-bottom:1px solid #EEF2F7;">
       <td style="padding:11px 12px;"><div style="font-weight:700;color:#1A2540;">${_hzEsc(w.name)}</div><div style="font-size:11px;color:#9AAABF;">${_hzEsc(w.rank||'')} · 입사 ${_hzEsc(w.hireDate)}</div></td>
-      <td style="padding:11px 12px;font-size:11.5px;color:#5C6F8A;">${p.cat==='y1'?`근속 ${p.years}년차`:'1년 미만'}<br><span style="color:#9AAABF;">${_hzDot(p.start)} ~ ${_hzDot(p.end)}</span></td>
+      <td style="padding:11px 12px;font-size:11.5px;color:#5C6F8A;"><b style="color:${p.cat==='y1'?'#1D5BA6':'#7C3AED'};">${_hzEsc(p.title)}</b><br><span style="color:#9AAABF;">${_hzDot(p.start)} ~ ${_hzDot(p.end)}</span><br><span style="color:#9AAABF;font-size:10.5px;">${_hzEsc(p.basis)}</span></td>
       <td style="padding:11px 12px;text-align:center;font-size:12px;"><b style="color:#1D5BA6;">${e.granted}</b> / <b style="color:#F59E0B;">${e.used}</b> / <b style="color:#16A34A;">${e.remain}</b>${e.planned?`<div style="font-size:10px;color:#9AAABF;">예정 ${e.planned}일</div>`:''}</td>
       <td style="padding:11px 12px;font-size:11px;color:#5C6F8A;line-height:1.6;">${sched}</td>
       <td style="padding:11px 12px;"><span style="display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:8px;background:${t[0]};color:${t[1]};">${e.label}</span></td>
@@ -9552,16 +9590,16 @@ function _lpRender() {
   }).join('');
   document.getElementById('lp-body').style.cssText = '';
   document.getElementById('lp-body').innerHTML = `<div style="background:#fff;border:1px solid #DDE4EF;border-radius:12px;overflow:hidden;overflow-x:auto;">
-    <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:860px;">
-      <thead><tr style="background:#F4F7FB;">${['근로자','연차 기간','발생 / 사용 / 잔여','촉진 일정','진행 상태',''].map((h,i)=>`<th style="padding:12px;text-align:${i===2?'center':'left'};font-size:12px;color:#5C6F8A;font-weight:700;white-space:nowrap;">${h}</th>`).join('')}</tr></thead>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:900px;">
+      <thead><tr style="background:#F4F7FB;">${['근로자','연차 구간','발생 / 사용 / 잔여','촉진 일정','진행 상태',''].map((h,i)=>`<th style="padding:12px;text-align:${i===2?'center':'left'};font-size:12px;color:#5C6F8A;font-weight:700;white-space:nowrap;">${h}</th>`).join('')}</tr></thead>
       <tbody>${rows || `<tr><td colspan="6" style="padding:36px;text-align:center;color:#9AAABF;">대상 근로자가 없습니다.</td></tr>`}</tbody></table></div>`;
 }
 
 /* ── 촉진서 작성 ── */
 let _lpForm = null;
-window.lpOpenForm = (wid, stage) => {
+window.lpOpenForm = (wid, stage, cat) => {
   const w = _lp.workers.find(x => x.id===wid); if (!w) return;
-  _lpForm = { wid, stage, noticeDate:_hzToday(), method:'직접 교부(수령 서명)', dates:[''], memo:'' };
+  _lpForm = { wid, stage, cat: cat || 'y1', noticeDate:_hzToday(), method:'직접 교부(수령 서명)', dates:[''], memo:'', recordOnly:false };
   _lpFormRender();
 };
 window.lpFormSet = (k, v) => { _lpForm[k] = v; _lpFormRender(); };
@@ -9572,26 +9610,29 @@ window.lpFormClose = () => { const m = document.getElementById('lp-form-modal');
 
 function _lpFormCtx() {
   const f = _lpForm, w = _lp.workers.find(x => x.id===f.wid), n = _hzParse(f.noticeDate) || new Date();
-  const p = _lpPeriod(w, n), granted = _lpGranted(w, n), { used, planned } = _lpUsed(w, _lp.leaves, p.start, p.end, n);
-  const unused = Math.max(granted - used, 0);
-  const recs = (_lp.recs[w.id] || []).filter(r => r.periodStart === _hzYmd(p.start));
+  const tracks = _lpTracks(w, n), p = tracks.find(t => t.cat===f.cat);
+  if (!p) return { f, w, n, p:null };
+  const usage = _lpUsageByTrack(w, _lp.leaves, tracks, n), u = usage[p.cat] || { used:0, planned:0 };
+  const granted = p.granted, used = u.used, planned = u.planned, unused = Math.max(granted - used, 0);
+  const recs = (_lp.recs[w.id] || []).filter(r => r.category===p.cat && r.periodStart===_hzYmd(p.start));
   const r1 = recs.filter(r => r.stage==='p1').sort((a,b)=>String(a.noticeDate).localeCompare(String(b.noticeDate)))[0];
   const replied = (r1 && r1.replyDates) ? r1.replyDates : [];
   const need = f.stage==='p2' ? Math.max(unused - replied.length, 0) : 0;
   let win = null, dl = null;
   if (f.stage==='p1') win = [p.p1s, p.p1e]; else if (f.stage==='p1x') win = [p.pxs, p.pxe];
-  if (f.stage==='p2') dl = (p.cat==='y1') ? p.dl2 : p.dl2;
+  if (f.stage==='p2') dl = p.dl2;
   return { f, w, n, p, granted, used, planned, unused, recs, r1, replied, need, win, dl };
 }
 function _lpFormInfoHtml(c) {
   const box = (t, cls) => `<div style="padding:8px 10px;border-radius:8px;font-size:11.5px;line-height:1.6;margin-top:6px;background:${cls==='bad'?'#FEE2E2':cls==='warn'?'#FEF3C7':'#F0F4F9'};color:${cls==='bad'?'#991B1B':cls==='warn'?'#92400E':'#3B4A63'};">${t}</div>`;
-  let h = box(`연차 기간 ${_hzDot(c.p.start)} ~ ${_hzDot(c.p.end)} · 발생 <b>${c.granted}</b>일 · 사용 <b>${c.used}</b>일 · 미사용 <b>${c.unused}</b>일${c.planned?` · (사용 예정 ${c.planned}일 별도)`:''}`, 'info');
+  if (!c.p) return box('⚠️ 이 통보일 기준으로는 해당 연차 구간이 없습니다. 통보일을 확인해 주세요.', 'warn');
+  let h = box(`${_hzEsc(c.p.title)} · ${_hzDot(c.p.start)} ~ ${_hzDot(c.p.end)} · 발생 <b>${c.granted}</b>일 (${_hzEsc(c.p.basis)}) · 사용 <b>${c.used}</b>일 · 미사용 <b>${c.unused}</b>일${c.planned?` · (사용 예정 ${c.planned}일 별도)`:''}`, 'info');
   if (c.win) {
     const inWin = c.n >= c.win[0] && c.n <= c.win[1];
     h += box(inWin ? `✅ 통보일이 법정 촉진 기간(${_hzDot(c.win[0])} ~ ${_hzDot(c.win[1])}) 안에 있습니다.` : `⚠️ 법정 촉진 기간은 <b>${_hzDot(c.win[0])} ~ ${_hzDot(c.win[1])}</b> 입니다. 이 밖의 통보는 촉진 효력을 인정받지 못할 수 있습니다.`, inWin ? 'info' : 'warn');
   }
   if (c.f.stage==='p2') {
-    if (!c.r1) h += box('⚠️ 이 연차 기간의 <b>1차 촉진 기록이 없습니다.</b> 1차 촉구 없이 한 2차 통보는 효력이 없을 수 있습니다.', 'warn');
+    if (!c.r1) h += box('⚠️ 이 연차 구간의 <b>1차 촉진 기록이 없습니다.</b> 1차 촉구 없이 한 2차 통보는 효력이 없을 수 있습니다.', 'warn');
     else {
       const due = _hzAddDays(_hzParse(c.r1.noticeDate), 10);
       h += box(`1차 통보일 ${_hzDot(c.r1.noticeDate)} · 회신 기한 ${_hzDot(due)}${c.replied.length?` · 근로자 회신 사용일 ${c.replied.length}일(${c.replied.map(_hzDot).join(', ')})`:' · 회신 없음/미기록'}`, c.n <= due ? 'warn' : 'info');
@@ -9617,19 +9658,21 @@ function _lpFormRender() {
       <div style="font-size:14px;font-weight:800;color:#1A2540;">📣 ${_hzEsc(c.w.name)} · ${_LP_STAGE[f.stage]}</div>
       <button onclick="lpFormClose()" style="background:#F4F7FB;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:14px;color:#5C6F8A;">✕</button>
     </div>
-    ${lab('통보일')}<input type="date" value="${_hzEsc(f.noticeDate)}" onchange="lpFormSet('noticeDate',this.value)" ${inp}>
+    ${lab('통보일 (이미 발송한 건은 실제 발송일을 입력)')}<input type="date" value="${_hzEsc(f.noticeDate)}" onchange="lpFormSet('noticeDate',this.value)" ${inp}>
     <div id="lp-form-info">${_lpFormInfoHtml(c)}</div>
     ${dates}
     ${lab('교부 방법')}<select onchange="lpFormSet('method',this.value)" ${inp}>${['직접 교부(수령 서명)','이메일 + 수령 확인','우편(내용증명)','기타'].map(x=>`<option ${x===f.method?'selected':''}>${x}</option>`).join('')}</select>
     ${lab('내부 메모 (문서에는 인쇄되지 않음)')}<input type="text" value="${_hzEsc(f.memo)}" oninput="_lpForm.memo=this.value" ${inp}>
+    <label style="display:flex;gap:7px;align-items:flex-start;margin-top:12px;font-size:12px;color:#3B4A63;cursor:pointer;line-height:1.5;"><input type="checkbox" ${f.recordOnly?'checked':''} onchange="_lpForm.recordOnly=this.checked" style="margin-top:2px;"><span><b>이미 서면으로 발송함 — 기록만 등록</b> (출력 없이 이력만 저장)<br><span style="color:#9AAABF;">이미 나간 촉진서를 이 화면에 남겨 진행 상태에 반영할 때 사용하세요. 수령 확인·회신은 이력에서 기록합니다.</span></span></label>
     <div style="display:flex;gap:8px;margin-top:16px;">
       <button onclick="lpFormClose()" style="flex:1;padding:11px;background:#F4F7FB;border:none;border-radius:10px;color:#5C6F8A;font-size:13px;font-weight:700;cursor:pointer;">취소</button>
-      <button onclick="lpIssue()" style="flex:2;padding:11px;background:#1D5BA6;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🖨 발행 (저장 + 출력)</button>
+      <button onclick="lpIssue()" style="flex:2;padding:11px;background:#1D5BA6;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">${f.recordOnly?'💾 기록 등록':'🖨 발행 (저장 + 출력)'}</button>
     </div>`, 520);
 }
 
 window.lpIssue = async () => {
   const c = _lpFormCtx(), f = c.f;
+  if (!c.p) { alert('통보일 기준으로 해당 연차 구간이 없습니다. 통보일을 확인해 주세요.'); return; }
   if (!f.noticeDate) { alert('통보일을 입력해 주세요.'); return; }
   if (c.unused <= 0) { alert('미사용 연차가 없어 촉진 대상이 아닙니다.'); return; }
   const warn = [];
@@ -9641,17 +9684,17 @@ window.lpIssue = async () => {
     if (new Set(dates).size !== dates.length) { alert('중복된 날짜가 있습니다.'); return; }
     for (const d of dates) { const x = _hzParse(d); if (x <= c.n || x > c.p.end) { alert(`${d} — 사용일은 통보일 이후, 연차 기간(${_hzDot(c.p.end)}) 이내여야 합니다.`); return; } }
     if (dates.length !== c.need) warn.push(`지정 일수(${dates.length}일)가 필요한 일수(${c.need}일)와 다릅니다.`);
-    if (!c.r1) warn.push('이 연차 기간의 1차 촉진 기록이 없습니다.');
+    if (!c.r1) warn.push('이 연차 구간의 1차 촉진 기록이 없습니다.');
     if (c.n > c.dl) warn.push('2차 통보 기한이 지났습니다.');
     const wk = dates.filter(d => { const g = _hzParse(d).getDay(); return g===0 || g===6; });
     if (wk.length) warn.push(`주말이 포함되어 있습니다 (${wk.join(', ')}).`);
   }
-  if (warn.length && !confirm(`확인이 필요한 사항이 있습니다.\n\n· ${warn.join('\n· ')}\n\n그래도 발행하시겠습니까?`)) return;
+  if (warn.length && !confirm(`확인이 필요한 사항이 있습니다.\n\n· ${warn.join('\n· ')}\n\n그래도 ${f.recordOnly?'기록을 등록':'발행'}하시겠습니까?`)) return;
   const rec = {
     stage:f.stage, category:c.p.cat, periodStart:_hzYmd(c.p.start), periodEnd:_hzYmd(c.p.end), noticeDate:f.noticeDate,
     grantDays:c.granted, usedDays:c.used, unusedDays:c.unused, replyDue: f.stage==='p2' ? '' : _hzYmd(_hzAddDays(c.n,10)),
     designatedDates:dates, p1NoticeDate: c.r1 ? c.r1.noticeDate : '', priorReplyDates: c.replied || [],
-    method:f.method, memo:(f.memo||'').trim(), tplVer:'l1', replyStatus:'', replyDates:[], receivedAt:'',
+    method:f.method, memo:(f.memo||'').trim(), tplVer:'l1', replyStatus:'', replyDates:[], receivedAt:'', recordOnly:!!f.recordOnly,
     workerName:c.w.name||'', dept:c.w.dept||'', rank:c.w.rank||'', empNo:c.w.empNo||'',
   };
   try {
@@ -9659,14 +9702,14 @@ window.lpIssue = async () => {
     const r = await addDoc(collection(window._db, `leave_promotions/${f.wid}/records`), { ...rec, createdAt:serverTimestamp() });
     (_lp.recs[f.wid] = _lp.recs[f.wid] || []).push({ id:r.id, ...rec });
     lpFormClose(); _lpRender();
-    await loadCompSignatures(); __docOpenWin(leavePromoHtmlByVer(rec));
+    if (!f.recordOnly) { await loadCompSignatures(); __docOpenWin(leavePromoHtmlByVer(rec)); }
   } catch(e) { alert('저장 오류: ' + e.message); }
 };
 
 function __leavePromoHtml_l1(r) {
   const y0 = r.category === 'y0', isP2 = r.stage === 'p2', isX = r.stage === 'p1x';
   const law = y0 ? (isP2 ? '제61조 제2항 제2호' : '제61조 제2항 제1호' + (isX ? ' 단서' : '')) : (isP2 ? '제61조 제1항 제2호' : '제61조 제1항 제1호');
-  const periodLabel = y0 ? '최초 1년의 근로기간' : '연차 유급휴가 사용 가능 기간';
+  const periodLabel = y0 ? '최초 1년의 근로기간' : '연차 유급휴가 사용 가능 기간<br>(회계연도 기준)';
   const title = isP2 ? '연차 유급휴가 사용 시기 지정 통보서 (2차)' : `연차 유급휴가 사용 촉진 통보서 (${isX?'추가 1차':'1차'})`;
   const n = _hzParse(r.noticeDate);
   const replyDue = n ? _hzKor(_hzAddDays(n,10)) : '';
