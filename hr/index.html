@@ -822,6 +822,12 @@ function goTab(key, opts) {
     try { window.parent.postMessage({source:'jh-embed', mod:'hr', key}, '*'); } catch(e) {}
   }
   if (t.fn && !(opts && opts.noRender)) t.fn();
+  if (['home','roster','labor','annual'].includes(key) && typeof syncSignedLinks === 'function') {
+    syncSignedLinks().then(r => {
+      if (r.applied && document.getElementById(t.id)?.classList.contains('active') && t.fn) t.fn();
+      if (r.conflict) alert(`⚠️ 근로자가 서명한 계약서 ${r.conflict}건이 링크 생성 이후 내용이 바뀌어 자동 반영되지 않았습니다.\n서명 당시 내용과 현재 내용이 달라 서명을 붙이면 안 되므로, 계약서를 확인하고 새 링크로 다시 서명받아 주세요.`);
+    }).catch(() => {});
+  }
 }
 window.goTab = goTab;
 
@@ -2872,19 +2878,107 @@ async function getRecipientEmail(kind, id){
   } catch(e) { return ''; }
 }
 
-// 문서 보기/서명 링크(view_links) 생성 — sign.html이 이 컬렉션을 읽어 문서 종류별로 분기 처리
-async function _createDocLink({ docType, workerId, contractId, offerId, payslipWid, payslipMonth, workerName }){
-  const { addDoc, collection, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-  const expiresAt = new Date(Date.now() + 72*3600*1000).toISOString();
-  const payload = { docType, workerName, createdAt: serverTimestamp(), expiresAt, status:'pending' };
-  if (workerId) payload.workerId = workerId;
-  if (contractId) payload.contractId = contractId;
-  if (offerId) payload.offerId = offerId;
-  if (payslipWid) payload.payslipWid = payslipWid;
-  if (payslipMonth) payload.payslipMonth = payslipMonth;
-  const linkDoc = await addDoc(collection(window._db,'sign_links'), payload);
-  return linkDoc.id;
+/* ── 문서 확인·서명 링크 (sign.html) ──────────────────────────────────────────
+   · 링크 메타(sign_links/{token})에는 공개 가능한 최소 정보(문서 종류·이름·인증 대상 번호·만료·상태)만 둔다.
+   · 문서 내용(주민번호 마스킹)·회사 도장은 sign_links/{token}/secure/payload 에 스냅샷으로 저장한다 — 링크에 지정된 번호로
+     문자 인증(OTP)을 통과한 사람만 열람 가능(Firestore 보안 규칙). 서명 결과는 secure/result 에 기록되고, 관리자 화면이 계약서 원본에 반영한다.
+   · 서명 후 계약 내용이 바뀌었는지 확인하기 위해 링크 생성 시 계약 내용 해시를 함께 저장한다. */
+const _SIGN_BASE = 'https://jhsolutions5804.github.io/portal-test/sign.html'; // 본섭 반영 시 https://portal.jhsol.kr/sign.html
+function _linkPhoneE164(p) {
+  const d = String(p || '').replace(/\D/g, ''); if (!d) return '';
+  const e = '+82' + d.replace(/^0/, '');
+  return /^\+821[016789]\d{7,8}$/.test(e) ? e : '';
 }
+function _linkMaskJumin(j) {
+  if (!j) return '';
+  const dg = String(j).replace(/\D/g, ''); if (dg.length < 7) return j;
+  return `${dg.slice(0,6)}-${dg.slice(6,7)}${'●'.repeat(Math.max(dg.length - 7, 6))}`;
+}
+function _stableStringify(o) {
+  if (o === null || typeof o !== 'object') return JSON.stringify(o === undefined ? null : o);
+  if (Array.isArray(o)) return '[' + o.map(_stableStringify).join(',') + ']';
+  if (typeof o.toMillis === 'function') return JSON.stringify({ t: o.toMillis() });
+  return '{' + Object.keys(o).sort().map(k => JSON.stringify(k) + ':' + _stableStringify(o[k])).join(',') + '}';
+}
+async function _contractContentHash(d) {
+  const c = { ...d }; ['savedAt','savedBy','signData','remoteSigned','signedAt','signedIp','signedUserAgent'].forEach(k => delete c[k]);
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(_stableStringify(c)));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+async function _createDocLink({ docType, workerId, contractId, offerId, payslipWid, payslipMonth, workerName, recipient }) {
+  const { doc, getDoc, collection, writeBatch, serverTimestamp, Timestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+  const db = window._db;
+  let srcRef, coll = '';
+  if (docType === 'labor' || docType === 'annual') { coll = docType === 'annual' ? 'annual_contracts' : 'labor_contracts'; srcRef = doc(db, `${coll}/${workerId}/contracts`, contractId); }
+  else if (docType === 'offer') srcRef = doc(db, 'salary_offers', offerId);
+  else if (docType === 'payslip') srcRef = doc(db, `payslips/${payslipWid}/months`, payslipMonth);
+  else throw new Error('지원하지 않는 문서 종류입니다.');
+  const srcSnap = await getDoc(srcRef);
+  if (!srcSnap.exists()) throw new Error('원본 문서를 찾을 수 없습니다. 먼저 저장해 주세요.');
+  const src = srcSnap.data();
+
+  // 문자 인증(OTP)을 보낼 번호: 문서에 적힌 번호 → 근로자 명부 → 채용 지원서 순
+  let e164 = _linkPhoneE164(src.phone);
+  const tryRecord = async (c, id) => { if (e164 || !id) return; try { const s = await getDoc(doc(db, c, id)); if (s.exists()) e164 = _linkPhoneE164(s.data().phone); } catch(e) {} };
+  await tryRecord('workers', workerId || payslipWid || src.workerId || (recipient && recipient.kind === 'worker' ? recipient.id : ''));
+  await tryRecord('recruit_applicants', src.applicantId || (recipient && recipient.kind === 'applicant' ? recipient.id : ''));
+  if (!e164) throw new Error('받는 분의 휴대폰 번호가 없거나 형식이 올바르지 않아 링크를 만들 수 없습니다.\n문서 확인 시 이 번호로 문자 인증을 하므로, 근로자 명부(또는 채용 지원서)에 휴대폰 번호를 등록한 뒤 다시 시도해 주세요.');
+
+  // 문서 스냅샷(주민번호는 마스킹본만) + 회사 도장
+  const snapDoc = { ...src }; if ('jumin' in snapDoc) snapDoc.jumin = _linkMaskJumin(snapDoc.jumin);
+  let seal = {}; try { const cs = await getDoc(doc(db, 'company_settings', 'signatures')); if (cs.exists()) seal = cs.data(); } catch(e) {}
+  const size = () => JSON.stringify({ snapDoc, seal }).length;
+  if (size() > 900000 && seal.kjh) seal = { kjh: seal.kjh };
+  if (size() > 950000) throw new Error('문서가 너무 커서 링크를 만들 수 없습니다. (이미지·첨부 용량 확인)');
+
+  const linkRef = doc(collection(db, 'sign_links'));
+  const now = Date.now(), expMs = now + 72 * 3600 * 1000;
+  const meta = { docType, workerName: workerName || src.name || '', phoneE164: e164, status: 'pending', synced: false,
+    createdAt: serverTimestamp(), expiresAt: new Date(expMs).toISOString(), expiresTs: Timestamp.fromMillis(expMs) };
+  const payload = { docType, doc: snapDoc, seal, createdAt: serverTimestamp(), ref: {} };
+  if (coll) payload.ref = { coll, workerId, contractId, contentHash: await _contractContentHash(src) };
+  const batch = writeBatch(db);
+  batch.set(linkRef, meta);
+  batch.set(doc(db, `sign_links/${linkRef.id}/secure/payload`), payload);
+  await batch.commit();
+  return linkRef.id;
+}
+
+// 근로자가 서명한 결과(sign_links/{token}/secure/result)를 계약서 원본에 반영 — 관리자 화면에서만 실행된다.
+// 링크 생성 이후 계약 내용이 바뀐 경우(해시 불일치)에는 자동 반영하지 않고 'conflict'로 표시한다.
+let _syncBusy = false;
+async function syncSignedLinks() {
+  const out = { applied: 0, conflict: 0 };
+  if (_syncBusy || !window._db) return out;
+  _syncBusy = true;
+  try {
+    const { getDocs, collection, query, where, doc, getDoc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap = await getDocs(query(collection(window._db, 'sign_links'), where('status', '==', 'signed'), where('synced', '==', false)));
+    for (const d of snap.docs) {
+      try {
+        const l = d.data();
+        if (l.docType !== 'labor' && l.docType !== 'annual') { await updateDoc(d.ref, { synced: true }); continue; }
+        const [pay, res] = await Promise.all([getDoc(doc(window._db, `sign_links/${d.id}/secure/payload`)), getDoc(doc(window._db, `sign_links/${d.id}/secure/result`))]);
+        if (!pay.exists() || !res.exists()) continue;
+        const ref = pay.data().ref || {}, r = res.data();
+        if (!/^data:image\/png;base64,[A-Za-z0-9+\/=]+$/.test(r.signData || '')) { await updateDoc(d.ref, { synced: 'invalid' }); continue; }
+        const cref = doc(window._db, `${ref.coll}/${ref.workerId}/contracts`, ref.contractId);
+        const cs = await getDoc(cref);
+        if (!cs.exists()) { await updateDoc(d.ref, { synced: 'missing' }); continue; }
+        const cur = cs.data();
+        if (cur.signData) { await updateDoc(d.ref, { synced: 'already' }); continue; }
+        if (ref.contentHash && (await _contractContentHash(cur)) !== ref.contentHash) { await updateDoc(d.ref, { synced: 'conflict' }); out.conflict++; continue; }
+        await updateDoc(cref, { signData: r.signData, remoteSigned: true,
+          signedAt: (r.signedAt && r.signedAt.toDate) ? r.signedAt.toDate().toISOString() : new Date().toISOString(),
+          signedIp: r.signedIp || '', signedUserAgent: r.signedUserAgent || '' });
+        await updateDoc(d.ref, { synced: true }); out.applied++;
+      } catch(e) { console.warn('서명 반영 실패:', d.id, e.message); }
+    }
+  } catch(e) { console.warn('서명 반영 조회 실패:', e.message); }
+  finally { _syncBusy = false; }
+  return out;
+}
+window.syncSignedLinks = syncSignedLinks;
 
 // 문서 발송 공용 함수: 대상 이메일 확인(없으면 프롬프트) → 보기 링크 생성 → EmailJS로 링크 발송
 async function sendDocLinkByEmail({ kind, id, toEmail, toName, docLabel, linkParams, btnEl }){
@@ -2903,8 +2997,8 @@ async function sendDocLinkByEmail({ kind, id, toEmail, toName, docLabel, linkPar
     if (fromRecord && !confirm(`${toName||''}님 (${email})에게\n${docLabel} 확인 링크를 이메일로 발송합니다.`)) return;
 
     if (btnEl) { btnEl.disabled = true; btnEl.textContent = '🔗 링크 생성 중...'; }
-    const token = await _createDocLink({ ...linkParams, workerName: toName });
-    const link = `https://jhsolutions5804.github.io/portal-test/sign.html?token=${token}`;
+    const token = await _createDocLink({ ...linkParams, workerName: toName, recipient: { kind, id } });
+    const link = `${_SIGN_BASE}?token=${token}`;
 
     if (btnEl) btnEl.textContent = '📧 발송 중...';
     _ensureEmailJs();
@@ -4573,17 +4667,13 @@ window.laborCreateSignLink = async () => {
     await setDoc(doc(window._db,`labor_contracts/${laborForm2.workerId}/contracts`,contractId), {
       ...laborForm2, savedAt:new Date().toISOString(), savedBy:'admin', tplVer:DOC_TPL_CURRENT
     });
-    const expiresAt = new Date(Date.now() + 72*3600*1000).toISOString();
-    const linkDoc = await addDoc(collection(window._db,'sign_links'), {
-      docType:'labor', workerId: laborForm2.workerId, contractId,
-      workerName: laborForm2.name, createdAt: serverTimestamp(), expiresAt, status:'pending'
-    });
-    showSignLinkModal(linkDoc.id, laborForm2.name);
+    const token = await _createDocLink({ docType:'labor', workerId: laborForm2.workerId, contractId, workerName: laborForm2.name, recipient:{ kind:'worker', id: laborForm2.workerId } });
+    showSignLinkModal(token, laborForm2.name);
   } catch(e) { alert('링크 생성 오류: '+e.message); }
 };
 
 function showSignLinkModal(token, name) {
-  const url = `https://jhsolutions5804.github.io/portal-test/sign.html?token=${token}`;
+  const url = `${_SIGN_BASE}?token=${token}`;
   const qr = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}`;
   const existing = document.getElementById('sign-link-modal');
   if (existing) existing.remove();
@@ -4599,7 +4689,7 @@ function showSignLinkModal(token, name) {
         <input type="text" readonly value="${url}" id="sign-link-input" style="flex:1;border:1px solid #DDE4EF;border-radius:8px;padding:8px 10px;font-size:11px;color:#5C6F8A;">
         <button onclick="navigator.clipboard.writeText(document.getElementById('sign-link-input').value);this.textContent='복사됨!';" style="padding:8px 12px;background:#1D5BA6;border:none;border-radius:8px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">복사</button>
       </div>
-      <div style="font-size:11px;color:#9AAABF;margin-bottom:14px;line-height:1.6;">이 링크(또는 QR)를 근로자 본인에게 전달하세요. 서명 완료되면 이 계약서에 자동 반영됩니다.</div>
+      <div style="font-size:11px;color:#9AAABF;margin-bottom:14px;line-height:1.6;">이 링크(또는 QR)를 근로자 본인에게 전달하세요. 링크를 열면 등록된 휴대폰 번호로 문자 인증을 거치며, 서명이 끝나면 인사 화면을 열 때 이 계약서에 반영됩니다.</div>
       <button onclick="document.getElementById('sign-link-modal').remove()" style="width:100%;padding:10px;background:#F4F7FB;border:none;border-radius:8px;color:#5C6F8A;font-size:12.5px;font-weight:600;cursor:pointer;">닫기</button>
     </div>`;
   document.body.appendChild(modal);
@@ -5151,12 +5241,8 @@ window.annualCreateSignLink = async () => {
     await setDoc(doc(window._db,`annual_contracts/${annualForm2.workerId}/contracts`,contractId), {
       ...annualForm2, savedAt:new Date().toISOString(), savedBy:'admin', tplVer:DOC_TPL_CURRENT
     });
-    const expiresAt = new Date(Date.now() + 72*3600*1000).toISOString();
-    const linkDoc = await addDoc(collection(window._db,'sign_links'), {
-      docType:'annual', workerId: annualForm2.workerId, contractId,
-      workerName: annualForm2.name, createdAt: serverTimestamp(), expiresAt, status:'pending'
-    });
-    showSignLinkModal(linkDoc.id, annualForm2.name);
+    const token = await _createDocLink({ docType:'annual', workerId: annualForm2.workerId, contractId, workerName: annualForm2.name, recipient:{ kind:'worker', id: annualForm2.workerId } });
+    showSignLinkModal(token, annualForm2.name);
   } catch(e) { alert('링크 생성 오류: '+e.message); }
 };
 
