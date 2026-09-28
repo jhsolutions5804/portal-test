@@ -14,23 +14,33 @@ window.jhApplyViewport=function(pc){
     document.documentElement.classList.toggle('force-pc', !!pc);
   }catch(e){}
 };
-/* 강제 PC 화면에서 모바일로 돌아가는 버튼 — 화면 '상단'에 고정(사이드바 하단은 폰 브라우저 툴바에 가려져 누를 수 없었음).
+/* 강제 PC 화면에서 모바일로 돌아가는 버튼 — 화면 우측 하단 고정(하단 작업탭이 있으면 그 위로 띄움).
    1280px 레이아웃을 폰 화면에 맞춰 축소해 보여주므로, 축소된 비율만큼 키워서 실제 화면에서 손가락 크기로 보이게 한다. */
+window.jhPlaceFab=function(){
+  try{
+    var el=document.getElementById('jh-to-mobile-fab'); if(!el) return;
+    var k=Math.max(1, 1280/((window.screen&&screen.width)||1280));
+    var tb=document.getElementById('jh-tabbar'), h=0;
+    if(tb && tb.style.display!=='none' && tb.offsetHeight) h=tb.offsetHeight;
+    el.style.top='auto'; el.style.right=(12*k)+'px'; el.style.bottom=(h+12*k)+'px';
+  }catch(e){}
+};
 window.jhEnsureMobileFab=function(on){
   try{
     var id='jh-to-mobile-fab', el=document.getElementById(id);
     if(!on){ if(el) el.remove(); return; }
-    if(el) return;
+    if(el){ jhPlaceFab(); return; }
     var k=Math.max(1, 1280/((window.screen&&screen.width)||1280));
     el=document.createElement('button'); el.id=id; el.type='button'; el.textContent='📱 모바일 화면';
-    el.setAttribute('style','position:fixed;top:'+(10*k)+'px;right:'+(10*k)+'px;z-index:2147483000;background:#1D5BA6;color:#fff;border:'+(2*k)+'px solid #fff;border-radius:999px;padding:'+(9*k)+'px '+(16*k)+'px;font-size:'+(14*k)+'px;font-weight:800;line-height:1.2;box-shadow:0 '+(3*k)+'px '+(12*k)+'px rgba(0,0,0,.35);cursor:pointer;font-family:inherit;');
+    el.setAttribute('style','position:fixed;z-index:2147483000;background:#1D5BA6;color:#fff;border:'+(2*k)+'px solid #fff;border-radius:999px;padding:'+(9*k)+'px '+(16*k)+'px;font-size:'+(14*k)+'px;font-weight:800;line-height:1.2;box-shadow:0 '+(3*k)+'px '+(12*k)+'px rgba(0,0,0,.35);cursor:pointer;font-family:inherit;');
     el.onclick=function(){ jhSwitchToMobile(); };
     (document.body||document.documentElement).appendChild(el);
+    jhPlaceFab();
+    // 작업탭이 생기거나 사라지면(높이 변화) 위치를 다시 잡는다
+    var tb=document.getElementById('jh-tabbar');
+    if(tb && window.MutationObserver){ new MutationObserver(jhPlaceFab).observe(tb,{attributes:true,childList:true,subtree:true}); }
+    window.addEventListener('resize', jhPlaceFab);
   }catch(e){}
-};
-window.jhSwitchToMobile=function(){
-  try{ localStorage.removeItem('jh_force_pc'); }catch(e){}
-  location.href='m/home.html';
 };
 </script>
 <style>
