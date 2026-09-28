@@ -3,6 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+/* 모바일 'PC 화면으로 전환'(jh_force_pc) 지원 — 로그인 후 앱 화면에서만 뷰포트를 데스크톱 너비(1280px)로 고정해
+   화면 너비와 무관하게 PC 레이아웃(≥900px 미디어쿼리·iframe 모듈의 PC 화면)이 적용되게 한다. 로그인 화면은 기존대로 모바일 크기. */
+window.jhForcePc=function(){ try{ return localStorage.getItem('jh_force_pc')==='1'; }catch(e){ return false; } };
+window.jhApplyViewport=function(pc){
+  try{
+    var m=document.querySelector('meta[name="viewport"]'); if(!m) return;
+    m.setAttribute('content', pc ? 'width=1280, user-scalable=yes' : 'width=device-width, initial-scale=1');
+  }catch(e){}
+};
+window.jhSwitchToMobile=function(){
+  try{ localStorage.removeItem('jh_force_pc'); }catch(e){}
+  location.href='m/home.html';
+};
+</script>
 <title>JH Solutions 업무 포털</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icons/favicon-32.png" sizes="32x32">
@@ -581,6 +596,7 @@
     <nav class="sb-nav" id="sb-nav"></nav>
     <div class="sb-spacer"></div>
     <a href="/download/" target="_blank" style="display:flex;align-items:center;gap:6px;margin:0 12px 10px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.18);color:#9fbbe0;text-decoration:none;font-size:11px;font-weight:600;">📥 PC·모바일 앱 다운로드</a>
+    <a id="sb-to-mobile" href="javascript:void(0)" onclick="jhSwitchToMobile()" style="display:none;align-items:center;justify-content:center;gap:6px;margin:0 12px 10px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.18);color:#9fbbe0;text-decoration:none;font-size:11px">📱 모바일 화면으로 전환</a>
     <div class="sb-user">
       <button class="sb-user-btn" onclick="openMyProfile()">
         <div class="avatar" id="sb-avatar">·</div>
@@ -1084,13 +1100,17 @@ Object.defineProperty(window,'me',{get:()=>me,set:v=>{me=v;
 
 const $=id=>document.getElementById(id);
 function showAuth(id){
+  if(window.jhApplyViewport) jhApplyViewport(false);
   $('auth-stage').style.display='flex';
   $('s-app').classList.remove('shown');
   document.querySelectorAll('.authscreen').forEach(s=>s.classList.toggle('on', s.id===id));
   window.scrollTo(0,0);
 }
 function showApp(){
-  if(/Mobi/i.test(navigator.userAgent||'')){ location.href='m/home.html'; return; }
+  var _fpc = window.jhForcePc ? jhForcePc() : false;
+  if(!_fpc && /Mobi/i.test(navigator.userAgent||'')){ location.href='m/home.html'; return; }
+  if(window.jhApplyViewport) jhApplyViewport(_fpc);
+  var _tm=document.getElementById('sb-to-mobile'); if(_tm) _tm.style.display = _fpc ? 'flex' : 'none';
   $('auth-stage').style.display='none';
   $('s-app').classList.add('shown');
   window.scrollTo(0,0);
