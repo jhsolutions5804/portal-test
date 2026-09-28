@@ -155,7 +155,7 @@ function renderHome(){
       <div class="tile c7" onclick="showView('expense')"><span class="go">›</span><div class="ic">💳</div><div class="nm">지출결의서</div><div class="ds">지출 결의</div></div>
       <div class="tile c3" onclick="showView('leave')"><span class="go">›</span><div class="ic">🌴</div><div class="nm">연차신청서</div><div class="ds">연차 신청</div></div>
       <div class="tile c5" onclick="showView('cert')"><span class="go">›</span><div class="ic">📃</div><div class="nm">재직증명서</div><div class="ds">증명 발급</div></div>
-      <div class="tile c8" onclick="showView('resign')"><span class="go">›</span><div class="ic" style="background:#fdecf0;color:#db2777">📄</div><div class="nm">퇴직원서</div><div class="ds">퇴직 신청</div></div>
+      <div class="tile c8" onclick="showView('resign')"><span class="go">›</span><div class="ic" style="background:#fdecf0;color:#db2777">📄</div><div class="nm">휴직/퇴직</div><div class="ds">휴직·퇴직 신청</div></div>
       <div class="tile c4" onclick="showView('mycard')"><span class="go">›</span><div class="ic" style="background:#e0f2f1;color:#0d9488">🪪</div><div class="nm">인사카드</div><div class="ds">내 정보 조회</div></div>
       <div class="tile c2" onclick="showView('attendance')"><span class="go">›</span><div class="ic" style="background:#eaf2fc;color:#1D5BA6">⏰</div><div class="nm">출퇴근 기록</div><div class="ds">월별 조회·수정</div></div>
     </div>`;
@@ -172,7 +172,7 @@ function leaveCard(l){
     <div class="dl-meta">${esc(fmtDate(l.startDate||l.sdate))}${l.endDate||l.edate?' ~ '+esc(fmtDate(l.endDate||l.edate)):''} · ${l.days||l.leaveDays||0}일</div></div>`;
 }
 function itemsTotal(items){ if(!Array.isArray(items))return 0; return items.reduce((s,it)=>s+((it.amount!=null?Number(it.amount):(Number(it.qty)||0)*(Number(it.unitPrice)||0))||0),0); }
-const APPR_TYPE_LABEL={daily:'업무일지',leave:'연차신청서',resign:'퇴직원서',cert:'재직증명서',purchase:'구매품의서',expense:'지출결의서'};
+const APPR_TYPE_LABEL={daily:'업무일지',leave:'연차신청서',resign:'휴직/퇴직',cert:'재직증명서',purchase:'구매품의서',expense:'지출결의서'};
 const APPR_STATUS_LABEL={all:'전체 단계',wait:'결재중',done:'결재완료',rejected:'반려'};
 const APPR_STATUS_GROUP={wait:['pending','reviewing'],done:['approved','posted','done'],rejected:['rejected']};
 let _apprStatus='all', _apprType='all', _apprAuthor='all';
@@ -463,9 +463,11 @@ function renderLeaveDetail(){
 }
 // PC의 DOC_CONFIG와 동일한 정의 — 결재선(approvers/cc)·입력 필드 구성의 단일 출처
 const MOBILE_DOC_CONFIG={
-  resign:{label:'퇴직원서',icon:'📤',approvers:['김종화','송지훈'],cc:['김민서'],fields:[
-    {key:'lastDate',label:'퇴직 예정일',type:'date'},
-    {key:'reason',label:'퇴직 사유',type:'textarea',ph:'퇴직 사유를 입력하세요'},
+  resign:{label:'휴직/퇴직',icon:'📤',approvers:['김종화','송지훈'],cc:['김민서'],fields:[
+    {key:'leaveKind',label:'구분',type:'select',opts:['퇴직','휴직']},
+    {key:'lastDate',label:'퇴직/휴직 예정일',type:'date'},
+    {key:'returnDate',label:'복직 예정일',type:'date',showIf:{key:'leaveKind',equals:'휴직'}},
+    {key:'reason',label:'사유',type:'textarea',ph:'사유를 입력하세요'},
   ]},
   cert:{label:'재직증명서',icon:'🪪',approvers:['김종화'],cc:[],fields:[
     {key:'purpose',label:'용도',type:'text',ph:'예) 금융기관 제출용'},
@@ -887,6 +889,26 @@ window.addItemRowM=function(key){
   box.appendChild(row);
 };
 // 퇴직원서·재직증명서·구매품의서·지출결의서 공용 작성 화면 — MOBILE_DOC_CONFIG 기준으로 PC와 동일 구조 생성
+// 조건부 필드(showIf): 예) 구분=휴직일 때만 복직 예정일 표시 (PC 전자결재와 동일 동작)
+window.mobileApplyShowIf=function(dtype){
+  const cfg=MOBILE_DOC_CONFIG[dtype]; if(!cfg) return;
+  cfg.fields.forEach(f=>{
+    if(!f.showIf) return;
+    const el=document.getElementById('f-'+f.key); if(!el) return;
+    const wrap=el.closest('.wf')||el.parentElement;
+    const src=document.getElementById('f-'+f.showIf.key);
+    wrap.style.display=(src&&src.value===f.showIf.equals)?'':'none';
+  });
+};
+window.mobileWireShowIf=function(dtype){
+  const cfg=MOBILE_DOC_CONFIG[dtype]; if(!cfg) return;
+  cfg.fields.forEach(f=>{
+    if(!f.showIf) return;
+    const src=document.getElementById('f-'+f.showIf.key);
+    if(src) src.addEventListener('change',()=>mobileApplyShowIf(dtype));
+  });
+  mobileApplyShowIf(dtype);
+};
 window.renderDocWriteM=async function(dtype){
   const cfg=MOBILE_DOC_CONFIG[dtype];
   const today=bizToday();
@@ -918,6 +940,7 @@ window.renderDocWriteM=async function(dtype){
         <button class="wsave" style="flex:1" onclick="docSaveM('${dtype}','pending')">📨 상신</button>
       </div>
     </div>`;
+  mobileWireShowIf(dtype);
   await loadPortalUsers();
   const prev=document.getElementById('doc-apline-preview-m');
   if(prev){
@@ -938,6 +961,7 @@ window.docSaveM=async function(dtype,status){
     authorUid:_me.uid||'',authorName:_me.name||'',authorRank:_me.rank||'',authorDept:_me.dept||'',
     approvalLine,viewerUids,createdAt:serverTimestamp()};
   cfg.fields.forEach(f=>{
+    if(f.showIf){ const _s=document.getElementById('f-'+f.showIf.key); if(!_s||_s.value!==f.showIf.equals) return; }
     if(f.type==='items'){
       const box=document.getElementById('f-'+f.key);
       const items=[];
