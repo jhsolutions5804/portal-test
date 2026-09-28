@@ -683,7 +683,6 @@ body { font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif; 
 .hm-chev { color:#C2CCD9; flex:0 0 auto; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
@@ -2804,10 +2803,10 @@ window.psViewDetail = (d, wid) => {
 };
 
 window.psSendEmail = async (d, wid, btnEl) => {
-  const htmlString = docHtmlByVer(__PS_TPL, d);
-  await sendDocPdfByEmail({
+  await sendDocLinkByEmail({
     kind:'worker', id: wid, toName: d.name||'', docLabel:'급여명세서',
-    htmlString, fileName:`급여명세서_${d.month||''}_${d.name||''}.pdf`, btnEl,
+    linkParams: { docType:'payslip', payslipWid: wid, payslipMonth: d.id },
+    btnEl,
   });
 };
 
@@ -2839,9 +2838,8 @@ const backBtn2 = (fn, label='뒤로') => `<button onclick="${fn}" style="backgro
 const homeBtn  = () => `<button onclick="goTab('home')" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#5C6F8A;font-size:12px;cursor:pointer;font-weight:600;">🏠 인사 홈</button>`;
 
 /* ══════════════════════════════════════════════
-   문서 이메일 발송 (PDF 첨부) — EmailJS 사용
+   문서 이메일 발송 (보기 링크 방식) — EmailJS 사용, 첨부파일 없음 → 무료 요금제로 충분
    ⚠️ 아래 3개 값은 EmailJS(emailjs.com) 계정 생성 후 대표님이 직접 채워 넣어야 합니다.
-   설정 방법은 배포 안내 메시지 참고.
    ══════════════════════════════════════════════ */
 const EMAILJS_PUBLIC_KEY  = 'YOUR_PUBLIC_KEY';
 const EMAILJS_SERVICE_ID  = 'YOUR_SERVICE_ID';
@@ -2852,30 +2850,6 @@ function _ensureEmailJs(){
   if (typeof emailjs === 'undefined') throw new Error('EmailJS SDK 로드 실패');
   emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
   _emailjsInited = true;
-}
-
-// htmlString(문서 전체 HTML) → PDF base64 문자열로 변환
-async function _htmlToPdfBase64(htmlString){
-  const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;left:-99999px;top:0;width:800px;height:1131px;border:none;';
-  document.body.appendChild(iframe);
-  await new Promise(resolve => {
-    iframe.onload = resolve;
-    iframe.srcdoc = htmlString;
-  });
-  try {
-    const target = iframe.contentDocument.querySelector('.a4') || iframe.contentDocument.body;
-    const opt = { margin:0, image:{ type:'jpeg', quality:0.95 }, html2canvas:{ scale:2, useCORS:true }, jsPDF:{ unit:'pt', format:'a4', orientation:'portrait' } };
-    const pdfBlob = await html2pdf().set(opt).from(target).outputPdf('blob');
-    return await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result.split(',')[1]); // data:...;base64, 이후만
-      reader.onerror = reject;
-      reader.readAsDataURL(pdfBlob);
-    });
-  } finally {
-    document.body.removeChild(iframe);
-  }
 }
 
 // 근로자(workers) 또는 지원자(recruit_applicants) 문서에서 이메일 주소 조회
@@ -2889,8 +2863,22 @@ async function getRecipientEmail(kind, id){
   } catch(e) { return ''; }
 }
 
-// 문서 발송 공용 함수: 대상 이메일 확인(없으면 프롬프트) → PDF 생성 → EmailJS 발송
-async function sendDocPdfByEmail({ kind, id, toEmail, toName, docLabel, htmlString, fileName, btnEl }){
+// 문서 보기/서명 링크(view_links) 생성 — sign.html이 이 컬렉션을 읽어 문서 종류별로 분기 처리
+async function _createDocLink({ docType, workerId, contractId, offerId, payslipWid, payslipMonth, workerName }){
+  const { addDoc, collection, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+  const expiresAt = new Date(Date.now() + 72*3600*1000).toISOString();
+  const payload = { docType, workerName, createdAt: serverTimestamp(), expiresAt, status:'pending' };
+  if (workerId) payload.workerId = workerId;
+  if (contractId) payload.contractId = contractId;
+  if (offerId) payload.offerId = offerId;
+  if (payslipWid) payload.payslipWid = payslipWid;
+  if (payslipMonth) payload.payslipMonth = payslipMonth;
+  const linkDoc = await addDoc(collection(window._db,'sign_links'), payload);
+  return linkDoc.id;
+}
+
+// 문서 발송 공용 함수: 대상 이메일 확인(없으면 프롬프트) → 보기 링크 생성 → EmailJS로 링크 발송
+async function sendDocLinkByEmail({ kind, id, toEmail, toName, docLabel, linkParams, btnEl }){
   const origText = btnEl ? btnEl.textContent : '';
   try {
     let email = toEmail;
@@ -2899,8 +2887,9 @@ async function sendDocPdfByEmail({ kind, id, toEmail, toName, docLabel, htmlStri
     if (!email) return;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { alert('이메일 주소 형식이 올바르지 않습니다.'); return; }
 
-    if (btnEl) { btnEl.disabled = true; btnEl.textContent = '📄 PDF 생성 중...'; }
-    const base64 = await _htmlToPdfBase64(htmlString);
+    if (btnEl) { btnEl.disabled = true; btnEl.textContent = '🔗 링크 생성 중...'; }
+    const token = await _createDocLink({ ...linkParams, workerName: toName });
+    const link = `https://jhsolutions5804.github.io/portal-test/sign.html?token=${token}`;
 
     if (btnEl) btnEl.textContent = '📧 발송 중...';
     _ensureEmailJs();
@@ -2909,10 +2898,9 @@ async function sendDocPdfByEmail({ kind, id, toEmail, toName, docLabel, htmlStri
       to_name: toName || '',
       doc_label: docLabel,
       company_name: 'JH솔루션',
-      attachment: base64,
-      attachment_name: fileName || (docLabel + '.pdf'),
+      link,
     });
-    alert(`✅ ${email} 주소로 ${docLabel}가 발송되었습니다.`);
+    alert(`✅ ${email} 주소로 ${docLabel} 확인 링크가 발송되었습니다.`);
   } catch(e) {
     alert('이메일 발송 오류: ' + e.message + '\n(EmailJS 설정이 안 되어 있다면 관리자에게 문의하세요)');
   } finally {
@@ -4578,11 +4566,20 @@ function showSignLinkModal(token, name) {
 
 window.laborSendEmail = async (btnEl) => {
   const f = laborForm2;
-  if (!f.workerId) { alert('근로자를 먼저 선택해 주세요.'); return; }
-  await sendDocPdfByEmail({
-    kind:'worker', id: f.workerId, toName: f.name, docLabel:'근로계약서',
-    htmlString: __laborHtml_v5(f), fileName:`근로계약서_${f.name||''}.pdf`, btnEl,
-  });
+  if (!f.workerId || !f.contractDate) { alert('근로자와 계약일자는 필수입니다.'); return; }
+  if (!window._db) { alert('Firebase 연결 필요'); return; }
+  try {
+    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const contractId = f.contractDate.replace(/-/g,'');
+    await setDoc(doc(window._db,`labor_contracts/${f.workerId}/contracts`,contractId), {
+      ...f, savedAt:new Date().toISOString(), savedBy:'admin', tplVer:DOC_TPL_CURRENT
+    }, { merge:true });
+    await sendDocLinkByEmail({
+      kind:'worker', id: f.workerId, toName: f.name, docLabel:'근로계약서',
+      linkParams: { docType:'labor', workerId: f.workerId, contractId },
+      btnEl,
+    });
+  } catch(e) { alert('발송 준비 중 오류: ' + e.message); }
 };
 
 window.laborPreview2 = () => {
@@ -5124,11 +5121,20 @@ window.annualCreateSignLink = async () => {
 
 window.annualSendEmail = async (btnEl) => {
   const f = annualForm2;
-  if (!f.workerId) { alert('근로자를 먼저 선택해 주세요.'); return; }
-  await sendDocPdfByEmail({
-    kind:'worker', id: f.workerId, toName: f.name, docLabel:'연봉계약서',
-    htmlString: __annualHtml_v5(f), fileName:`연봉계약서_${f.name||''}.pdf`, btnEl,
-  });
+  if (!f.workerId || !f.contractDate) { alert('근로자와 계약일자는 필수입니다.'); return; }
+  if (!window._db) { alert('Firebase 연결 필요'); return; }
+  try {
+    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const contractId = f.contractDate.replace(/-/g,'');
+    await setDoc(doc(window._db,`annual_contracts/${f.workerId}/contracts`,contractId), {
+      ...f, savedAt:new Date().toISOString(), savedBy:'admin', tplVer:DOC_TPL_CURRENT
+    }, { merge:true });
+    await sendDocLinkByEmail({
+      kind:'worker', id: f.workerId, toName: f.name, docLabel:'연봉계약서',
+      linkParams: { docType:'annual', workerId: f.workerId, contractId },
+      btnEl,
+    });
+  } catch(e) { alert('발송 준비 중 오류: ' + e.message); }
 };
 
 window.annualPreview2=()=>{
@@ -9826,12 +9832,18 @@ function offerRefresh() {
 window.offerSendEmail = async (btnEl) => {
   const f = offerForm, r = offerCalc(f);
   if (!r.ok) { alert('연봉 또는 시급을 먼저 입력해 주세요.'); return; }
-  const kind = f.kind === 'new' ? 'applicant' : 'worker';
-  const id = f.kind === 'new' ? f.applicantId : f.workerId;
-  await sendDocPdfByEmail({
-    kind, id, toName: f.name, docLabel: '연봉제안서',
-    htmlString: offerBuildHtml(f, r), fileName: `연봉제안서_${f.name||''}.pdf`, btnEl,
-  });
+  if (!window._db) { alert('Firebase 연결 필요'); return; }
+  try {
+    const { addDoc, collection, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const saved = await addDoc(collection(window._db,'salary_offers'), { ...f, createdAt: serverTimestamp() });
+    const kind = f.kind === 'new' ? 'applicant' : 'worker';
+    const id = f.kind === 'new' ? f.applicantId : f.workerId;
+    await sendDocLinkByEmail({
+      kind, id, toName: f.name, docLabel: '연봉제안서',
+      linkParams: { docType:'offer', offerId: saved.id },
+      btnEl,
+    });
+  } catch(e) { alert('발송 준비 중 오류: ' + e.message); }
 };
 
 window.offerPrint = async () => {
