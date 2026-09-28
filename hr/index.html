@@ -804,8 +804,9 @@ const HR_TABS = {
   salarytable: { id:'tab-salarytable', title:'급여테이블', fn:()=>renderSalaryTableMain() },
 };
 
-function goTab(key) {
+function goTab(key, opts) {
   const t = HR_TABS[key]; if (!t) return;
+  if (key !== 'offer') window._offerBack = null; // 연봉제안서의 '돌아갈 곳'은 제안서 화면을 벗어나면 초기화
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   const tc = document.getElementById(t.id); if (tc) tc.classList.add('active');
   document.querySelectorAll('[data-navkey]').forEach(b =>
@@ -814,7 +815,7 @@ function goTab(key) {
   if (document.documentElement.classList.contains('portal-embed')) {
     try { window.parent.postMessage({source:'jh-embed', mod:'hr', key}, '*'); } catch(e) {}
   }
-  if (t.fn) t.fn();
+  if (t.fn && !(opts && opts.noRender)) t.fn();
 }
 window.goTab = goTab;
 
@@ -3004,6 +3005,13 @@ window.applicantsChangeStatus = async (id, status) => {
   } catch(e) { alert('상태 변경 오류: '+e.message); }
 };
 
+window.offerBackToApplicants = () => {
+  window._offerBack = null;
+  const el = document.getElementById('tab-applicants');
+  const hasView = !!(el && el.innerHTML.trim());
+  goTab('applicants', { noRender: hasView });
+};
+
 window.applicantsSendToOffer = (id) => {
   const d = (window._applicantsDocs||[]).find(x=>x.id===id);
   if (!d) return;
@@ -3012,6 +3020,7 @@ window.applicantsSendToOffer = (id) => {
   offerForm.applicantId = id;
   offerForm.name = d.name || '';
   offerForm.job  = d.jobTitle || '';
+  window._offerBack = { to:'applicants' }; // 제안서 화면의 뒤로가기를 채용 지원자로
   goTab('offer');
 };
 
@@ -9647,7 +9656,7 @@ function renderOfferForm() {
   const showCur = f.kind !== 'new';
 
   el.innerHTML = wrap2(`
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">${homeBtn()}</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">${(window._offerBack && window._offerBack.to==='applicants') ? backBtn2('offerBackToApplicants()','채용 지원자') : homeBtn()}</div>
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
       <div style="font-size:16px;font-weight:800;color:${C2.text};">📨 연봉 제안서</div>
       <div style="display:flex;gap:8px;">
