@@ -2452,6 +2452,11 @@ async function doLogin(){
   catch(e){ showMsg(msg,'err',authErr(e.code)); }
   finally{ btn.disabled=false; btn.textContent='로그인'; }
 }
+/* 최초 로그인 휴대폰 본인인증 사용 스위치.
+   ⚠️ 켜기 전 선행 설정 필수: Firebase Blaze 전환 · Authentication에서 '전화' 로그인 활성화 · 승인된 도메인 등록.
+   설정 전에 true로 두면 등록된 연락처가 있는 계정은 문자가 안 나가 로그인이 막힌다. */
+const PHONE_VERIFY_REQUIRED = false;
+
 async function enterFromUser(user,msg){
   const ref=doc(db,'portal_users',user.uid);
   let snap=await getDoc(ref); let data=snap.exists()?snap.data():null;
@@ -2464,7 +2469,7 @@ async function enterFromUser(user,msg){
   if(data.status!=='approved'){ await signOut(auth); if(msg) showMsg(msg,'err','승인되지 않은 계정입니다.'); return; }
 
   // 최초 로그인 1회 휴대폰 본인인증 (등록된 연락처가 있을 때만; 매 로그인마다 X, 계정당 딱 한 번)
-  if (data.phone && !data.phoneVerified) {
+  if (PHONE_VERIFY_REQUIRED && data.phone && !data.phoneVerified) {
     const ok = await showPhoneVerifyGate(user, data.phone);
     if (!ok) { await signOut(auth); return; }
     await setDoc(ref, { phoneVerified:true, phoneVerifiedAt: serverTimestamp() }, { merge:true });
