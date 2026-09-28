@@ -8259,6 +8259,91 @@ const rtWon = n => Math.round(Number(n)||0).toLocaleString('ko-KR');
 let _rtWorkers = [];
 
 // ── 근로기준법 연차 자동 계산 (HR) ──
+/* ══════════════════════════════════════════════════════════════
+   연차 산정 — 회사 기준: 회계연도(1월 1일 ~ 12월 31일)
+   ⚠️ hr · edoc · m/edoc 3곳에 동일 코드가 들어 있음 — 변경 시 3곳을 함께 수정할 것
+   · 회계연도 연차(y1): 입사 다음 해부터 발생. 입사 다음 해 1/1은 입사 첫해 재직일수 비례(15일×재직일수/365, 올림),
+     이후 매년 1/1에 15일 + 3년 이상 매 2년 1일 가산(1/1 기준 계속근로연수, 최대 25일)
+   · 입사 첫 1년의 월 개근분(y0): 입사일부터 1개월 개근당 1일(최대 11일), 입사 1주년까지 (근로기준법 제60조 제2항)
+   · 사용: 승인·게시된 연차·반차(휴가 종류가 비어 있는 옛 데이터 포함)만 차감. 병가·생리휴가 등은 차감하지 않음.
+           시작일이 속한 구간에서 차감하며 입사 첫 1년분을 먼저 소진. 회계연도 밖 시작일은 해당 연도 계산에서 제외
+   ══════════════════════════════════════════════════════════════ */
+function jhLvDate(s) { if (!s) return null; const d = new Date(String(s).slice(0,10) + 'T00:00:00'); return isNaN(d.getTime()) ? null : d; }
+function jhLvAddMonths(d, n) { const t = new Date(d.getFullYear(), d.getMonth() + n, 1); const last = new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate(); return new Date(t.getFullYear(), t.getMonth(), Math.min(d.getDate(), last)); }
+function jhLvDiffDays(a, b) { return Math.round((b.getTime() - a.getTime()) / 86400000); }
+function jhLeaveIsAnnual(type) { const t = String(type || '').trim(); return !t || t.startsWith('연차') || t.startsWith('반차'); }
+function jhLeaveFyGrant(hire, Y) {
+  if (hire.getFullYear() === Y - 1) {
+    const days = jhLvDiffDays(hire, new Date(Y - 1, 11, 31)) + 1;
+    return { granted: Math.min(15, Math.ceil(15 * days / 365)), basis: `입사 첫해 비례 (${days}일/365일)` };
+  }
+  const jan1 = new Date(Y, 0, 1);
+  let years = Y - hire.getFullYear();
+  while (years > 0 && jhLvAddMonths(hire, 12 * years) > jan1) years--;
+  const g = years >= 3 ? Math.min(15 + Math.floor((years - 1) / 2), 25) : 15;
+  return { granted: g, basis: `근속 ${years}년 (1.1 기준)` };
+}
+// 기준일(asOf)에 유효한 연차 구간: y0(입사 첫 1년 월 개근분, 입사일 기준) · y1(해당 회계연도 연차)
+function jhLeaveTracks(hireDateStr, asOf) {
+  const hire = jhLvDate(hireDateStr); if (!hire) return [];
+  const base = asOf ? new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate()) : (() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); })();
+  if (base < hire) return [];
+  const Y = base.getFullYear(), out = [], ann1 = jhLvAddMonths(hire, 12);
+  if (base < ann1) {
+    const months = Math.max((base.getFullYear() - hire.getFullYear()) * 12 + (base.getMonth() - hire.getMonth()) - (base.getDate() < hire.getDate() ? 1 : 0), 0);
+    out.push({ cat:'y0', title:'입사 첫 1년 (월 개근분)', start:hire, end:new Date(ann1.getFullYear(), ann1.getMonth(), ann1.getDate() - 1), granted:Math.min(months, 11), months, basis:`입사 ${months}개월 · 1개월 개근당 1일` });
+  }
+  if (hire.getFullYear() < Y) {
+    const g = jhLeaveFyGrant(hire, Y);
+    out.push({ cat:'y1', title:`${Y}년 회계연도`, start:new Date(Y,0,1), end:new Date(Y,11,31), granted:g.granted, basis:g.basis });
+  }
+  return out;
+}
+// 근로자 1인의 연차 문서 → 구간별 사용일수 배분. asOf 이후 시작분은 '예정'
+function jhLeaveAllocate(tracks, docs, asOf) {
+  const list = [];
+  for (const lv of (docs || [])) {
+    if (lv.status !== 'posted' && lv.status !== 'approved') continue;
+    if (!jhLeaveIsAnnual(lv.leaveType)) continue;
+    const sd = jhLvDate(lv.startDate || lv.sdate); if (!sd) continue;
+    let d = parseFloat(lv.days || lv.leaveDays || 0); if (isNaN(d) || d <= 0) d = String(lv.leaveType || '').startsWith('반차') ? 0.5 : 1;
+    list.push({ sd, d });
+  }
+  list.sort((a, b) => a.sd - b.sd);
+  const y0 = tracks.find(t => t.cat === 'y0'), y1 = tracks.find(t => t.cat === 'y1');
+  const res = { y0:{ used:0, planned:0 }, y1:{ used:0, planned:0 } };
+  let y0Taken = 0;
+  for (const it of list) {
+    let d = it.d; const key = it.sd > asOf ? 'planned' : 'used';
+    if (y0 && it.sd >= y0.start && it.sd <= y0.end) {
+      const take = Math.min(d, Math.max(11 - y0Taken, 0)); // 월 개근분은 발생 전에 미리 쓴 경우도 이 구간 사용으로 본다(최대 11일)
+      if (take > 0) { res.y0[key] += take; y0Taken += take; d -= take; }
+    }
+    if (d > 0 && y1 && it.sd >= y1.start && it.sd <= y1.end) res.y1[key] += d;
+  }
+  return res;
+}
+// 연차 부여·사용·잔여 (docs = 해당 근로자의 연차신청서 목록)
+function calcLeaveBalance(hireDateStr, docs, baseDateStr) {
+  const hire = jhLvDate(hireDateStr);
+  if (!hire) return { granted:0, used:0, usedPast:0, planned:0, remain:0, years:0, months:0, detail:'입사일 미등록', tracks:[] };
+  const asOf = baseDateStr ? (jhLvDate(baseDateStr) || new Date()) : new Date();
+  const base = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate());
+  const tracks = jhLeaveTracks(hireDateStr, base);
+  if (!tracks.length) return { granted:0, used:0, usedPast:0, planned:0, remain:0, years:0, months:0, detail:'-', tracks:[] };
+  const alloc = jhLeaveAllocate(tracks, docs, base);
+  let granted = 0, usedPast = 0, planned = 0;
+  for (const t of tracks) { granted += t.granted; usedPast += alloc[t.cat].used; planned += alloc[t.cat].planned; }
+  const used = usedPast + planned;
+  let years = base.getFullYear() - hire.getFullYear();
+  if (base.getMonth() < hire.getMonth() || (base.getMonth() === hire.getMonth() && base.getDate() < hire.getDate())) years--;
+  const y0 = tracks.find(t => t.cat === 'y0'), y1 = tracks.find(t => t.cat === 'y1');
+  const detail = (y0 && y1) ? `${y1.title} ${y1.granted}일 (${y1.basis}) + 입사 첫 1년 월 개근분 ${y0.granted}일`
+    : y1 ? `${y1.title} · ${y1.basis}` : `입사 ${y0.months}개월 (월 1일, 최대 11일)`;
+  return { granted, used, usedPast, planned, remain:Math.max(granted - used, 0), years:Math.max(years, 0), months:y0 ? y0.months : Math.max((base.getFullYear() - hire.getFullYear()) * 12 + (base.getMonth() - hire.getMonth()), 0), detail, tracks, alloc };
+}
+
+// (참고) 입사일 기준 단순 계산 — 화면 계산은 위 calcLeaveBalance(회계연도 기준)를 사용
 function hrCalcAnnualLeave(hireDateStr, baseDateStr) {
   if (!hireDateStr) return { granted:0, years:0, months:0, detail:'입사일 미등록' };
   const hire = new Date(hireDateStr);
@@ -8419,7 +8504,6 @@ window.showLeaveDetail = async function(wid, wname, hireDate) {
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(19,51,92,0.45);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;';
   modal.onclick = function(e){ if(e.target===modal) modal.remove(); };
 
-  const g = hrCalcAnnualLeave(hireDate);
   const box = document.createElement('div');
   box.style.cssText = 'background:#fff;border-radius:16px;max-width:540px;width:100%;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.25);';
   box.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #DDE4EF;">
@@ -8427,11 +8511,11 @@ window.showLeaveDetail = async function(wid, wname, hireDate) {
     <button onclick="document.getElementById('leave-detail-modal').remove()" style="border:none;background:#F4F7FB;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:18px;color:#5C6F8A;">✕</button>
   </div>
   <div style="padding:16px 22px;border-bottom:1px solid #EEF2F7;background:#F7F9FC;">
-    <div style="font-size:12px;color:#5C6F8A;">입사일: ${hireDate||'미등록'} · ${g.detail}</div>
+    <div id="leave-detail-basis" style="font-size:12px;color:#5C6F8A;">입사일: ${hireDate||'미등록'} · …</div>
     <div style="display:flex;gap:16px;margin-top:10px;">
       <div style="flex:1;background:#fff;border:1px solid #DDE4EF;border-radius:10px;padding:12px;text-align:center;">
         <div style="font-size:11px;color:#5C6F8A;margin-bottom:4px;">부여</div>
-        <div style="font-size:22px;font-weight:800;color:#1D5BA6;">${g.granted}</div>
+        <div id="leave-detail-granted" style="font-size:22px;font-weight:800;color:#1D5BA6;">…</div>
       </div>
       <div id="leave-detail-used" style="flex:1;background:#fff;border:1px solid #DDE4EF;border-radius:10px;padding:12px;text-align:center;">
         <div style="font-size:11px;color:#5C6F8A;margin-bottom:4px;">사용</div>
@@ -8463,8 +8547,11 @@ window.showLeaveDetail = async function(wid, wname, hireDate) {
     });
     leaves.sort((a,b)=>(b.startDate||b.sdate||'').localeCompare(a.startDate||a.sdate||''));
 
-    const used = leaves.reduce((s,lv)=>s+(parseFloat(lv.days||lv.leaveDays||0)||0),0);
-    const remain = Math.max(g.granted-used,0);
+    const g = calcLeaveBalance(hireDate, leaves);
+    const used = g.used;
+    const remain = g.remain;
+    const grEl = document.getElementById('leave-detail-granted'); if(grEl) grEl.textContent = g.granted;
+    const bsEl = document.getElementById('leave-detail-basis'); if(bsEl) bsEl.textContent = `입사일: ${hireDate||'미등록'} · ${g.detail}${g.planned?` · 사용 중 예정 ${g.planned}일 포함`:''}`;
 
     const usedEl = document.getElementById('leave-detail-used');
     const remainEl = document.getElementById('leave-detail-remain');
@@ -8481,7 +8568,7 @@ window.showLeaveDetail = async function(wid, wname, hireDate) {
       <div onclick="editLeaveEntry('${lv.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 22px;border-bottom:1px solid #EEF2F7;cursor:pointer;" onmouseover="this.style.background='#F7F9FC'" onmouseout="this.style.background='transparent'">
         <span style="flex-shrink:0;font-size:11px;font-weight:600;padding:3px 9px;border-radius:7px;background:#E1F5EE;color:#085041;">${STATUS_LBL[lv.status]||lv.status}</span>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:600;color:#1A2540;">${lv.title||lv.leaveType||'-'}</div>
+          <div style="font-size:13px;font-weight:600;color:#1A2540;">${lv.title||lv.leaveType||'-'}${jhLeaveIsAnnual(lv.leaveType)?'':' <span style="font-size:10px;font-weight:600;color:#9AAABF;background:#F3F4F6;border-radius:6px;padding:1px 6px;margin-left:4px;">연차 미차감</span>'}</div>
           <div style="font-size:11px;color:#5C6F8A;margin-top:2px;">${lv.startDate||lv.sdate||''} ~ ${lv.endDate||lv.edate||''}</div>
         </div>
         <span style="flex-shrink:0;font-size:14px;font-weight:700;color:#1D5BA6;">${lv.days||lv.leaveDays||0}일</span>
@@ -8571,7 +8658,7 @@ window.renderLeaveStatusMain = async () => {
       <div style="font-size:20px;font-weight:800;color:#13335C;">🌴 전체 직원 연차 현황</div>
       <div style="display:flex;gap:8px;">${window._isAdmin?`<button onclick="renderLeavePromoMain()" style="background:#fff;color:#1D5BA6;border:1px solid #1D5BA6;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">📣 연차사용촉진</button>`:''}${window._isAdmin?`<button onclick="openLeaveAdminForm()" style="background:#1D5BA6;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;">+ 연차 등록</button>`:''}</div>
     </div>
-    <div style="font-size:13px;color:#5C6F8A;margin-bottom:18px;">최초 입사일 기준 · 근로기준법 자동 산정 · 게시 완료된 연차신청서 차감</div>
+    <div style="font-size:13px;color:#5C6F8A;margin-bottom:18px;">회계연도(1.1~12.31) 기준 · 근로기준법 자동 산정 · 게시 완료된 연차·반차 신청서 차감</div>
     <div id="leave-status-body" style="opacity:.6;">불러오는 중…</div>
   </div>`;
 
@@ -8608,9 +8695,9 @@ window.renderLeaveStatusMain = async () => {
     // 정렬: 사원번호 순
 
     const rows = workers.map(w => {
-      const g = hrCalcAnnualLeave(w.hireDate);
-      const used = sumUsed(w.name);
-      const remain = Math.max(g.granted - used, 0);
+      const g = calcLeaveBalance(w.hireDate, leaves.filter(lv => (lv.authorName || lv.name || '') === w.name));
+      const used = g.used;
+      const remain = g.remain;
       const noHire = !w.hireDate;
       return `<tr onclick="showLeaveDetail('${w.id}','${(w.name||'').replace(/'/g,'')}','${w.hireDate||''}')" style="cursor:pointer;" onmouseover="this.style.background='#F7F9FC'" onmouseout="this.style.background='transparent'">
         <td style="padding:11px 12px;border-bottom:1px solid #EEF2F7;font-weight:600;color:#1A2540;">${w.name||'-'}</td>
@@ -8633,7 +8720,7 @@ window.renderLeaveStatusMain = async () => {
               <th style="padding:12px;text-align:left;font-size:12px;color:#5C6F8A;font-weight:700;">부서</th>
               <th style="padding:12px;text-align:left;font-size:12px;color:#5C6F8A;font-weight:700;">직급</th>
               <th style="padding:12px;text-align:left;font-size:12px;color:#5C6F8A;font-weight:700;">최초 입사일</th>
-              <th style="padding:12px;text-align:left;font-size:12px;color:#5C6F8A;font-weight:700;">산정 기준</th>
+              <th style="padding:12px;text-align:left;font-size:12px;color:#5C6F8A;font-weight:700;">산정 기준 (회계연도)</th>
               <th style="padding:12px;text-align:center;font-size:12px;color:#5C6F8A;font-weight:700;">부여</th>
               <th style="padding:12px;text-align:center;font-size:12px;color:#5C6F8A;font-weight:700;">사용</th>
               <th style="padding:12px;text-align:center;font-size:12px;color:#5C6F8A;font-weight:700;">잔여</th>
@@ -8643,7 +8730,7 @@ window.renderLeaveStatusMain = async () => {
         </table>
       </div>
       <div style="margin-top:12px;font-size:12px;color:#9AAABF;line-height:1.7;">
-        ※ 1년 미만: 1개월 개근당 1일(최대 11일) · 1년 이상: 15일 · 3년 이상: 2년마다 +1일(최대 25일)<br>
+        ※ 입사 첫 1년: 1개월 개근당 1일(최대 11일, 입사 1주년까지) · 입사 다음 해 1/1: 첫해 재직일수 비례(15일×재직일수/365, 올림) · 이후 매년 1/1: 15일 + 3년 이상 2년마다 +1일(최대 25일, 1/1 기준 근속연수)<br>※ 사용일수는 <b>해당 연차 구간에 시작한 승인·게시 연차·반차</b>만 차감합니다(병가·생리휴가 등은 차감하지 않음). 승인된 미래 일정도 사용으로 봅니다.<br>
         ※ 입사일이 미등록된 직원은 근로자 명부에서 최초 입사일을 입력해 주세요.
       </div>`;
   } catch(e) {
@@ -9439,61 +9526,21 @@ window.dsDeleteDraft = async (id) => {
 let _lp = { workers:[], leaves:[], recs:{} };
 const _LP_STAGE = { p1:'1차 촉진', p1x:'추가 1차', p2:'2차 지정통보' };
 
-// 회계연도 연차 부여일수 (입사 다음 해 1/1: 첫해 비례 / 이후: 15일 + 가산)
-function _lpFyGrant(hire, Y) {
-  if (hire.getFullYear() === Y - 1) {
-    const days = _hzDiffDays(hire, new Date(Y-1, 11, 31)) + 1;
-    return { granted: Math.min(15, Math.ceil(15 * days / 365)), basis: `입사 첫해 비례 (${days}일/365일)` };
-  }
-  const jan1 = new Date(Y, 0, 1);
-  let years = Y - hire.getFullYear();
-  while (years > 0 && _hzAddMonths(hire, 12*years) > jan1) years--;
-  const g = years >= 3 ? Math.min(15 + Math.floor((years-1)/2), 25) : 15;
-  return { granted: g, basis: `근속 ${years}년 (1.1 기준)` };
-}
-// 촉진 대상 연차 구간(트랙): y1=회계연도 연차, y0=입사 첫 1년 월 개근분(입사일 기준)
+// 촉진 대상 연차 구간 = 공용 코어(jhLeaveTracks)의 구간 + 촉진 일정(1차 기간·2차 기한)
 function _lpTracks(w, today) {
-  const hire = _hzParse(w.hireDate); if (!hire) return [];
-  const Y = today.getFullYear(), out = [], ann1 = _hzAddMonths(hire, 12);
-  if (today < ann1) {
-    const start = hire, end = _hzAddDays(ann1, -1), b1 = _hzAddMonths(start, 9), bx = _hzAddMonths(start, 11);
-    const g = hrCalcAnnualLeave(w.hireDate, _hzYmd(today));
-    out.push({ cat:'y0', title:'입사 첫 1년 (월 개근분)', start, end, p1s:b1, p1e:_hzAddDays(b1,9), pxs:bx, pxe:_hzAddDays(bx,4),
-      dl2:_hzAddDays(bx,-1), dl2x:_hzAddDays(end,-10), granted:Math.min(g.granted, 11), basis:`입사 ${g.months}개월 · 1개월 개근당 1일` });
-  }
-  if (hire.getFullYear() < Y) {
-    const start = new Date(Y,0,1), end = new Date(Y,11,31), b1 = _hzAddMonths(start, 6), g = _lpFyGrant(hire, Y);
-    out.push({ cat:'y1', title:`${Y}년 회계연도`, start, end, p1s:b1, p1e:_hzAddDays(b1,9), dl2:_hzAddDays(_hzAddMonths(start,10),-1), granted:g.granted, basis:g.basis });
-  }
-  return out;
-}
-// 승인·게시된 연차/반차 사용일수를 트랙별로 배분 (시작일 순 · 입사 첫 1년분 우선 소진). asOf 이후 시작분은 '예정'
-function _lpUsageByTrack(w, leaves, tracks, asOf) {
-  const list = [];
-  for (const lv of leaves) {
-    const nm = lv.authorName || lv.name || '';
-    if (!(nm === w.name || (w.portalUid && lv.authorUid === w.portalUid))) continue;
-    if (lv.status !== 'posted' && lv.status !== 'approved') continue;
-    const t = String(lv.leaveType || '');
-    if (!(t.startsWith('연차') || t.startsWith('반차'))) continue;
-    const sd = _hzParse(lv.startDate); if (!sd) continue;
-    let d = parseFloat(lv.days || lv.leaveDays || 0); if (isNaN(d) || d <= 0) d = t.startsWith('반차') ? 0.5 : 1;
-    list.push({ sd, d });
-  }
-  list.sort((a,b) => a.sd - b.sd);
-  const y0 = tracks.find(t => t.cat==='y0'), y1 = tracks.find(t => t.cat==='y1');
-  const res = { y0:{ used:0, planned:0 }, y1:{ used:0, planned:0 } };
-  let y0Taken = 0;
-  for (const it of list) {
-    let d = it.d; const key = it.sd > asOf ? 'planned' : 'used';
-    if (y0 && it.sd >= y0.start && it.sd <= y0.end) {
-      // 월 개근분은 발생 전에 미리 쓴 경우도 이 구간 사용으로 본다(최대 11일)
-      const take = Math.min(d, Math.max(11 - y0Taken, 0));
-      if (take > 0) { res.y0[key] += take; y0Taken += take; d -= take; }
+  return jhLeaveTracks(w.hireDate, today).map(t => {
+    if (t.cat === 'y0') {
+      const b1 = _hzAddMonths(t.start, 9), bx = _hzAddMonths(t.start, 11);
+      return { ...t, p1s:b1, p1e:_hzAddDays(b1,9), pxs:bx, pxe:_hzAddDays(bx,4), dl2:_hzAddDays(bx,-1), dl2x:_hzAddDays(t.end,-10) };
     }
-    if (d > 0 && y1 && it.sd >= y1.start && it.sd <= y1.end) res.y1[key] += d;
-  }
-  return res;
+    const b1 = _hzAddMonths(t.start, 6);
+    return { ...t, p1s:b1, p1e:_hzAddDays(b1,9), dl2:_hzAddDays(_hzAddMonths(t.start,10),-1) };
+  });
+}
+// 연차 사용일수 구간별 배분 = 공용 코어(jhLeaveAllocate) — 해당 근로자 문서만 추려서 사용
+function _lpUsageByTrack(w, leaves, tracks, asOf) {
+  const mine = leaves.filter(lv => (lv.authorName || lv.name || '') === w.name || (w.portalUid && lv.authorUid === w.portalUid));
+  return jhLeaveAllocate(tracks, mine, asOf);
 }
 
 // 트랙별 진행 상태 판정
