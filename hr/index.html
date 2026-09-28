@@ -727,6 +727,8 @@ body { font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif; 
     <button class="tab-btn" data-navkey="eval" onclick="goTab('eval')">📝 인사평가</button>
     <button class="tab-btn" data-navkey="interview" onclick="goTab('interview')">💬 근로자 면담</button>
     <button class="tab-btn" data-navkey="leave" onclick="goTab('leave')">🗓️ 연차 현황</button>
+    <button class="tab-btn" data-navkey="resignreq" onclick="goTab('resignreq')">📋 휴직/퇴직 원서</button>
+    <button class="tab-btn" data-navkey="dismissal" onclick="goTab('dismissal')">📄 해고예고통지서</button>
     <button class="tab-btn" data-navkey="retire" onclick="goTab('retire')">📤 퇴직금 정산</button>
     <button class="tab-btn" data-navkey="salarytable" onclick="goTab('salarytable')">📊 급여테이블</button>
   </div>
@@ -752,6 +754,8 @@ body { font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif; 
   <div class="tab-content" id="tab-interview"></div>
   <!-- 퇴직금 정산 -->
   <div class="tab-content" id="tab-retire"></div>
+  <div class="tab-content" id="tab-resignreq"></div>
+  <div class="tab-content" id="tab-dismissal"></div>
   <div class="tab-content" id="tab-leave"></div>
   <div class="tab-content" id="tab-salarytable"></div>
   </div>
@@ -801,6 +805,8 @@ const HR_TABS = {
   interview: { id:'tab-interview', title:'근로자 면담', fn:()=>renderInterviewMain() },
   leave:    { id:'tab-leave',    title:'연차 현황',   fn:()=>renderLeaveStatusMain() },
   retire:   { id:'tab-retire',   title:'퇴직금 정산', fn:()=>renderRetireMain() },
+  resignreq: { id:'tab-resignreq', title:'휴직/퇴직 원서', fn:()=>renderResignReqMain() },
+  dismissal: { id:'tab-dismissal', title:'해고예고통지서', fn:()=>renderDismissalMain() },
   salarytable: { id:'tab-salarytable', title:'급여테이블', fn:()=>renderSalaryTableMain() },
 };
 
@@ -854,7 +860,9 @@ async function renderHome() {
 
     <div class="hm-stage-label">④ 퇴사</div>
     <div class="hm-flow">
-      <div class="hm-fc full" onclick="hrHomeOpen('retire')"><div class="hm-step">12</div><div class="hm-fb"><div class="stage">퇴직 · 재직기간 × 평균임금 · 휴직/퇴직원서 연동</div><div class="ttl">퇴직금 정산</div></div><div class="hm-chev">›</div></div>
+      <div class="hm-fc" onclick="hrHomeOpen('resignreq')"><div class="hm-step">12</div><div class="hm-fb"><div class="stage">전자결재로 상신된 원서 확인</div><div class="ttl">휴직/퇴직 원서</div></div><div class="hm-chev">›</div></div>
+      <div class="hm-fc" onclick="hrHomeOpen('dismissal')"><div class="hm-step">13</div><div class="hm-fb"><div class="stage">해고 예고 · 사유/시기 서면통지</div><div class="ttl">해고예고통지서</div></div><div class="hm-chev">›</div></div>
+      <div class="hm-fc full" onclick="hrHomeOpen('retire')"><div class="hm-step">14</div><div class="hm-fb"><div class="stage">퇴직 · 재직기간 × 평균임금</div><div class="ttl">퇴직금 정산</div></div><div class="hm-chev">›</div></div>
     </div>
     <div id="hr-sign-mgr"></div>
   </div>`;
@@ -3303,6 +3311,7 @@ window.renderRosterMain = async () => {
         <td style="padding:10px 12px;font-size:12px;font-weight:700;color:#1D5BA6;cursor:pointer;text-decoration:underline;" onclick="rosterDetail('${d.id}')">${d.name||'-'}${resignBadge}</td>
         <td style="padding:10px 12px;font-size:11px;color:#1A2540;">${d.dept||'-'}</td>
         <td style="padding:10px 12px;font-size:11px;color:#5C6F8A;">${d.rank||'-'}</td>
+        <td style="padding:10px 12px;font-size:11px;font-weight:700;color:#1D5BA6;white-space:nowrap;">${(()=>{ const st=calcWorkerStepNow(d); return st==null?'<span style="color:#9AAABF;font-weight:400;">-</span>':st+'호봉'; })()}</td>
         <td style="padding:10px 12px;">${etB}</td>
         <td style="padding:10px 12px;font-size:11px;color:#5C6F8A;">${bf}</td>
         <td style="padding:10px 12px;font-size:11px;color:#5C6F8A;">${d.phone||'-'}</td>
@@ -3316,7 +3325,7 @@ window.renderRosterMain = async () => {
       <div style="background:#fff;border-radius:14px;border:1px solid #DDE4EF;overflow:hidden;box-shadow:0 1px 4px rgba(29,91,166,0.08);">
         <table style="width:100%;border-collapse:collapse;">
           <thead><tr style="background:#E8F0FB;">
-            ${['사원번호','이름','소속','직급','구분','생년월일','휴대폰','근로계약','연봉계약','포털',''].map(h=>`<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#1D5BA6;text-align:left;white-space:nowrap;">${h}</th>`).join('')}
+            ${['사원번호','이름','소속','직급','호봉','구분','생년월일','휴대폰','근로계약','연봉계약','포털',''].map(h=>`<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#1D5BA6;text-align:left;white-space:nowrap;">${h}</th>`).join('')}
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -3799,6 +3808,7 @@ window.rosterDetail = (id) => {
   window._editRosterTarget = {...d};
   window._editRosterOriginalRank = d.rank || '';
   window._editRosterOriginalDept = d.dept || '';
+  window._editRosterStepEdited = false;
 
   modal.innerHTML = `
     <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:400px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
@@ -3880,6 +3890,13 @@ window.rosterDetail = (id) => {
             style="flex:1;border:1px solid #DDE4EF;border-radius:6px;padding:4px 8px;font-size:12px;color:#1A2540;cursor:pointer;">
             ${RANKS2.map(r=>`<option value="${r}" ${d.rank===r?'selected':''}>${r}</option>`).join('')}
           </select>
+        </div>
+        <div style="display:flex;align-items:center;padding:6px 0;border-bottom:1px solid #DDE4EF;gap:8px;flex-wrap:wrap;">
+          <span style="color:#5C6F8A;font-weight:600;min-width:68px;font-size:12px;flex-shrink:0;">호봉</span>
+          <input type="number" min="1" value="${calcWorkerStepNow(d)==null?'':calcWorkerStepNow(d)}"
+            oninput="window._editRosterTarget.step=Number(this.value)||null;window._editRosterTarget.stepYear=new Date().getFullYear();window._editRosterStepEdited=true;"
+            style="width:72px;border:1px solid #DDE4EF;border-radius:6px;padding:4px 8px;font-size:12px;color:#1A2540;"/>
+          <span style="font-size:10.5px;color:#9AAABF;line-height:1.5;">해마다 자동으로 오릅니다 · 직급을 바꾸면 1호봉으로 초기화 (직접 입력하면 입력값 우선)</span>
         </div>
         <div style="display:flex;align-items:center;padding:6px 0;gap:8px;">
           <span style="color:#5C6F8A;font-weight:600;min-width:68px;font-size:12px;flex-shrink:0;">구분</span>
@@ -3975,7 +3992,8 @@ window.rosterDetailSave = async (id) => {
     }
 
     const payload = { ...window._editRosterTarget };
-    if (rankChanged) { payload.step = 1; payload.stepYear = new Date().getFullYear(); }
+    const stepReset = rankChanged && !window._editRosterStepEdited;
+    if (stepReset) { payload.step = 1; payload.stepYear = new Date().getFullYear(); }
     await setDoc(doc(window._db,'workers',id), payload, { merge:true });
 
     if (rankChanged || deptChanged) {
@@ -3999,7 +4017,7 @@ window.rosterDetailSave = async (id) => {
     }
 
     document.getElementById('roster-detail-modal').remove();
-    alert(rankChanged
+    alert(stepReset
       ? `✅ 수정 완료!\n\n직급이 "${oldRank}" → "${newRank}"(으)로 바뀌어, 호봉이 1로 자동 초기화되었습니다.`
       : '✅ 수정 완료!');
     renderRosterMain();
@@ -8551,7 +8569,7 @@ window.renderLeaveStatusMain = async () => {
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">${homeBtn()}</div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
       <div style="font-size:20px;font-weight:800;color:#13335C;">🌴 전체 직원 연차 현황</div>
-      ${window._isAdmin?`<button onclick="openLeaveAdminForm()" style="background:#1D5BA6;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;">+ 연차 등록</button>`:''}
+      <div style="display:flex;gap:8px;">${window._isAdmin?`<button onclick="renderLeavePromoMain()" style="background:#fff;color:#1D5BA6;border:1px solid #1D5BA6;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">📣 연차사용촉진</button>`:''}${window._isAdmin?`<button onclick="openLeaveAdminForm()" style="background:#1D5BA6;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;">+ 연차 등록</button>`:''}</div>
     </div>
     <div style="font-size:13px;color:#5C6F8A;margin-bottom:18px;">최초 입사일 기준 · 근로기준법 자동 산정 · 게시 완료된 연차신청서 차감</div>
     <div id="leave-status-body" style="opacity:.6;">불러오는 중…</div>
@@ -9021,6 +9039,746 @@ window.interviewDeleteRecord = async (wid, id, wname) => {
   } catch(e) { alert('삭제 오류: ' + e.message); }
 };
 
+/* ══════════════════════════════════════════════
+   공용 헬퍼 (휴직/퇴직 원서 · 해고예고통지서 · 연차사용촉진)
+   ══════════════════════════════════════════════ */
+const _hzEsc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const _hzYmd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const _hzParse = s => { if(!s) return null; const d=new Date(String(s).slice(0,10)+'T00:00:00'); return isNaN(d.getTime())?null:d; };
+const _hzAddDays = (d,n) => new Date(d.getFullYear(), d.getMonth(), d.getDate()+n);
+const _hzAddMonths = (d,n) => { const t=new Date(d.getFullYear(), d.getMonth()+n, 1); const last=new Date(t.getFullYear(), t.getMonth()+1, 0).getDate(); return new Date(t.getFullYear(), t.getMonth(), Math.min(d.getDate(), last)); };
+const _hzDiffDays = (a,b) => Math.round((b.getTime()-a.getTime())/86400000);
+const _hzKor = s => { const d=(s instanceof Date)?s:_hzParse(s); return d ? `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일` : '____년 __월 __일'; };
+const _hzDot = s => { const d=(s instanceof Date)?s:_hzParse(s); return d ? `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}` : '-'; };
+const _hzDow = d => '일월화수목금토'[d.getDay()];
+const _hzWon = v => '₩' + Math.round(Number(v)||0).toLocaleString();
+const _hzToday = () => _hzYmd(new Date());
+const _hzTs = ts => { if(!ts) return '-'; const d = ts.toDate ? ts.toDate() : new Date(ts); return isNaN(d.getTime()) ? '-' : _hzYmd(d); };
+const _hzFs = () => import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+
+function _hzDocShell(title, bodyHtml){
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${_hzEsc(title)}</title>
+  <style>body{margin:0;font-family:'Malgun Gothic',Arial,sans-serif;background:#888;display:flex;flex-direction:column;align-items:center;padding:20px;}
+  .a4{width:210mm;min-height:297mm;background:#fff;padding:20mm 22mm;box-shadow:0 4px 24px rgba(0,0,0,.2);font-size:10.5pt;line-height:1.8;color:#1A2540;box-sizing:border-box;}
+  h1{text-align:center;font-size:20pt;letter-spacing:6px;margin:0 0 6px;} .ul{width:60px;height:2px;background:#333;margin:8px auto 24px;}
+  table.kv{width:100%;border-collapse:collapse;margin:10px 0;} table.kv th{border:1px solid #333;background:#F0F3F8;padding:7px 10px;width:130px;text-align:left;font-size:10pt;vertical-align:top;} table.kv td{border:1px solid #333;padding:7px 10px;font-size:10pt;vertical-align:top;}
+  .box{border:1px solid #333;padding:10px 14px;margin-top:18px;font-size:10pt;line-height:2;}
+  @media print{body{background:#fff;padding:0;}.toolbar{display:none;}.a4{box-shadow:none;padding:15mm 20mm;width:100%;}}</style></head><body>
+  <div class="toolbar" style="margin-bottom:12px;display:flex;gap:8px;">
+    <button onclick="window.close()" style="padding:8px 16px;background:#fff;border:1px solid #DDE4EF;border-radius:8px;cursor:pointer;">← 닫기</button>
+    <button onclick="window.print()" style="padding:8px 16px;background:#1D5BA6;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;">🖨 인쇄/PDF</button>
+  </div>
+  <div class="a4">${bodyHtml}</div></body></html>`;
+}
+function _hzCompanyBlock(){
+  const sig = (typeof _compSignatures!=='undefined' && _compSignatures && _compSignatures.kjh)
+    ? `<img src="${_compSignatures.kjh}" style="height:34px;max-width:80px;object-fit:contain;vertical-align:middle;opacity:.9;">`
+    : `<span style="display:inline-block;width:56px;height:30px;border:1px dashed #ccc;vertical-align:middle;text-align:center;line-height:30px;font-size:10px;color:#aaa;">(인)</span>`;
+  return `<div style="margin-top:26px;text-align:right;line-height:2;">
+    <p style="margin:0;">사업체명 : 제이에이치솔루션</p>
+    <p style="margin:0;">대&nbsp;&nbsp;&nbsp;표 : 김 종 화 &nbsp;${sig}</p>
+    <p style="margin:0;">사업자번호 : 383-09-02847</p></div>`;
+}
+const _hzModal = (id, innerHtml, maxW) => {
+  const old = document.getElementById(id); if (old) old.remove();
+  const m = document.createElement('div'); m.id = id;
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  m.innerHTML = `<div style="background:#fff;border-radius:16px;padding:22px;width:100%;max-width:${maxW||520}px;max-height:88vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2);">${innerHtml}</div>`;
+  document.body.appendChild(m);
+  return m;
+};
+
+/* ══════════════════════════════════════════════
+   휴직/퇴직 원서 (전자결재 edoc_resign 연동 — 인사 확인용)
+   ══════════════════════════════════════════════ */
+const _RRQ_STATUS = { draft:'임시저장', pending:'결재중', reviewing:'검토중', approved:'승인', posted:'승인·게시', done:'완료', rejected:'반려' };
+const _RRQ_COLOR  = { draft:'#9AAABF', pending:'#B45309', reviewing:'#B45309', approved:'#16A34A', posted:'#16A34A', done:'#16A34A', rejected:'#DC2626' };
+let _rrqKind = 'all', _rrqStat = 'active';
+
+window.renderResignReqMain = async () => {
+  const el = document.getElementById('tab-resignreq'); if (!el) return;
+  el.innerHTML = `<div style="padding:20px 24px;max-width:1100px;margin:0 auto;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">${homeBtn()}</div>
+    <div style="font-size:16px;font-weight:800;color:${C2.text};margin-bottom:4px;">📋 휴직/퇴직 원서</div>
+    <div style="font-size:11.5px;color:${C2.mute};margin-bottom:14px;line-height:1.6;">전자결재 &gt; 휴직/퇴직에서 작성·상신된 원서를 인사 담당자가 확인합니다. 결재 처리는 전자결재에서 진행하세요.</div>
+    <div id="rrq-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;"></div>
+    <div id="rrq-body" style="text-align:center;padding:40px;color:${C2.mute};">⏳ 불러오는 중...</div>
+  </div>`;
+  if (!window._db) { setTimeout(renderResignReqMain, 500); return; }
+  try {
+    const { getDocs, collection, query, orderBy } = await _hzFs();
+    const snap = await getDocs(query(collection(window._db,'edoc_resign'), orderBy('createdAt','desc')));
+    window._rrqDocs = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    _rrqRender();
+  } catch(e) {
+    document.getElementById('rrq-body').innerHTML = `<div style="color:#DC2626;padding:24px;">불러오기 오류: ${_hzEsc(e.message)}<br><span style="font-size:11px;color:${C2.mute};">전자결재 문서 열람은 관리자 권한이 필요합니다.</span></div>`;
+  }
+};
+window.rrqSet = (k, v) => { if (k==='kind') _rrqKind=v; else _rrqStat=v; _rrqRender(); };
+function _rrqRender() {
+  const all = window._rrqDocs || [];
+  const kindOf = d => d.leaveKind || '퇴직';
+  const inStat = d => _rrqStat==='all' ? true : _rrqStat==='active' ? !['draft','rejected'].includes(d.status) : d.status===_rrqStat;
+  const rows = all.filter(d => (_rrqKind==='all' || kindOf(d)===_rrqKind) && inStat(d));
+  const chip = (label, cur, val, fn, cnt) => `<button onclick="rrqSet('${fn}','${val}')" style="padding:6px 13px;border-radius:8px;border:1px solid ${cur===val?'#1D5BA6':'#DDE4EF'};background:${cur===val?'#E8F0FB':'#fff'};color:${cur===val?'#1D5BA6':'#5C6F8A'};font-size:12px;font-weight:700;cursor:pointer;">${label}${cnt!=null?` (${cnt})`:''}</button>`;
+  const cntK = k => all.filter(d => (k==='all'||kindOf(d)===k) && inStat(d)).length;
+  const cntS = s => all.filter(d => (_rrqKind==='all'||kindOf(d)===_rrqKind) && (s==='all'?true:s==='active'?!['draft','rejected'].includes(d.status):d.status===s)).length;
+  document.getElementById('rrq-filters').innerHTML =
+    chip('전체 구분',_rrqKind,'all','kind',cntK('all')) + chip('퇴직',_rrqKind,'퇴직','kind',cntK('퇴직')) + chip('휴직',_rrqKind,'휴직','kind',cntK('휴직')) +
+    `<span style="width:14px;"></span>` +
+    chip('진행·완료',_rrqStat,'active','stat',cntS('active')) + chip('반려',_rrqStat,'rejected','stat',cntS('rejected')) + chip('임시저장',_rrqStat,'draft','stat',cntS('draft')) + chip('전체',_rrqStat,'all','stat',cntS('all'));
+  const body = document.getElementById('rrq-body');
+  if (!rows.length) { body.innerHTML = `<div style="padding:44px;color:${C2.mute};text-align:center;">해당하는 원서가 없습니다.</div>`; return; }
+  body.style.cssText = '';
+  body.innerHTML = `<div style="background:#fff;border-radius:14px;border:1px solid ${C2.border};overflow:hidden;box-shadow:${C2.shadow};">
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="background:#E8F0FB;">${['작성자','소속','구분','예정일','복직예정일','상태','접수일'].map(h=>`<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#1D5BA6;text-align:left;white-space:nowrap;">${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map((d,i) => { const k=kindOf(d); const st=d.status||''; return `
+        <tr onclick="rrqDetail('${d.id}')" style="cursor:pointer;background:${i%2?'#F8FAFD':'#fff'};border-bottom:1px solid #F0F4FA;" onmouseover="this.style.background='#EEF4FF'" onmouseout="this.style.background='${i%2?'#F8FAFD':'#fff'}'">
+          <td style="padding:10px 12px;font-size:12px;font-weight:700;color:#1D5BA6;">${_hzEsc(d.authorName)||'-'}</td>
+          <td style="padding:10px 12px;font-size:11px;color:#5C6F8A;">${_hzEsc(d.authorDept)||'-'}${d.authorRank?' · '+_hzEsc(d.authorRank):''}</td>
+          <td style="padding:10px 12px;"><span style="font-size:10px;background:${k==='휴직'?'#F3E8FF':'#FEE2E2'};color:${k==='휴직'?'#7C3AED':'#DC2626'};padding:2px 8px;border-radius:8px;font-weight:700;">${k}</span></td>
+          <td style="padding:10px 12px;font-size:12px;color:#1A2540;">${_hzEsc(d.lastDate)||'-'}</td>
+          <td style="padding:10px 12px;font-size:12px;color:#5C6F8A;">${k==='휴직'?(_hzEsc(d.returnDate)||'-'):'-'}</td>
+          <td style="padding:10px 12px;"><span style="font-size:10px;background:${(_RRQ_COLOR[st]||'#9AAABF')}22;color:${_RRQ_COLOR[st]||'#9AAABF'};padding:2px 8px;border-radius:8px;font-weight:700;">${_RRQ_STATUS[st]||st||'-'}</span></td>
+          <td style="padding:10px 12px;font-size:11px;color:${C2.mute};">${_hzTs(d.createdAt)}</td></tr>`; }).join('')}</tbody>
+    </table></div>
+    <div style="font-size:11px;color:${C2.mute};margin-top:8px;padding:0 4px;">💡 행을 누르면 사유·결재 현황을 볼 수 있습니다.</div>`;
+}
+window.rrqDetail = async (id) => {
+  const d = (window._rrqDocs||[]).find(x => x.id===id); if (!d) return;
+  const k = d.leaveKind || '퇴직';
+  const st = d.status || '';
+  const line = (d.approvalLine||[]).map(a => `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #F0F4FA;font-size:12px;"><span>${_hzEsc(a.role||'')} · <b>${_hzEsc(a.name||'')}</b> ${_hzEsc(a.rank||'')}</span><span style="color:${_RRQ_COLOR[a.status]||'#5C6F8A'};font-weight:700;">${_RRQ_STATUS[a.status]||a.status||'-'}</span></div>`).join('');
+  const done = ['approved','posted','done'].includes(st);
+  const kv = (l,v) => `<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid #F0F4FA;font-size:12.5px;"><span style="min-width:84px;color:${C2.mute};font-weight:600;">${l}</span><span style="color:${C2.text};">${v}</span></div>`;
+  _hzModal('rrq-modal', `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-size:14px;font-weight:800;color:${C2.text};">📋 ${k} 원서 — ${_hzEsc(d.authorName)||''}</div>
+      <button onclick="document.getElementById('rrq-modal').remove()" style="background:#F4F7FB;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:14px;color:#5C6F8A;">✕</button>
+    </div>
+    ${kv('제목', _hzEsc(d.title)||'-')}${kv('작성자', `${_hzEsc(d.authorName)||''} ${_hzEsc(d.authorRank)||''} · ${_hzEsc(d.authorDept)||'-'}`)}
+    ${kv('구분', k)}${kv(k+' 예정일', _hzEsc(d.lastDate)||'-')}${k==='휴직'?kv('복직 예정일', _hzEsc(d.returnDate)||'-'):''}
+    ${kv('상태', `<span style="color:${_RRQ_COLOR[st]||'#5C6F8A'};font-weight:700;">${_RRQ_STATUS[st]||st||'-'}</span>`)}${kv('접수일', _hzTs(d.createdAt))}
+    <div style="font-size:11px;color:${C2.mute};font-weight:700;margin:12px 0 4px;">사유</div>
+    <div style="background:#F7F9FC;border-radius:8px;padding:10px 12px;font-size:12.5px;white-space:pre-wrap;line-height:1.7;">${_hzEsc(d.reason)||'(내용 없음)'}</div>
+    <div style="font-size:11px;color:${C2.mute};font-weight:700;margin:14px 0 4px;">결재 현황</div>${line||'<div style="font-size:12px;color:#9AAABF;">결재선 정보 없음</div>'}
+    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+      ${(k==='퇴직' && done) ? `<button onclick="rrqToRetire('${d.id}')" style="flex:1;padding:10px;background:#1D5BA6;border:none;border-radius:9px;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;">🧾 퇴직금 정산으로</button>` : ''}
+      <button onclick="rrqToRoster()" style="flex:1;padding:10px;background:#fff;border:1px solid #DDE4EF;border-radius:9px;color:#5C6F8A;font-size:12.5px;font-weight:700;cursor:pointer;">👥 근로자 명부</button>
+    </div>
+    ${(k==='퇴직' && !done) ? `<div style="font-size:11px;color:${C2.mute};margin-top:8px;">※ 결재가 완료(승인)되면 퇴직금 정산으로 바로 이동할 수 있습니다.</div>` : ''}`, 500);
+};
+window.rrqToRoster = () => { const m=document.getElementById('rrq-modal'); if(m) m.remove(); goTab('roster'); };
+window.rrqToRetire = async (id) => {
+  const d = (window._rrqDocs||[]).find(x => x.id===id); if (!d) return;
+  let wid = '';
+  try {
+    const ws = await getWorkersList();
+    const w = ws.find(x => d.authorUid && x.portalUid===d.authorUid) || ws.find(x => x.name===d.authorName);
+    wid = w ? w.id : '';
+  } catch(e) {}
+  const m=document.getElementById('rrq-modal'); if(m) m.remove();
+  goTab('retire');
+  if (!wid) { alert(`근로자 명부에서 "${d.authorName}"님을 찾지 못했습니다. 퇴직금 정산 화면에서 직접 선택해 주세요.`); return; }
+  let tries = 0;
+  const t = setInterval(() => {
+    const sel = document.getElementById('rt-worker'), dt = document.getElementById('rt-date');
+    if (sel && dt && [...sel.options].some(o => o.value===wid)) {
+      clearInterval(t);
+      sel.value = wid; if (d.lastDate) dt.value = d.lastDate;
+      if (typeof retireCompute === 'function') retireCompute();
+    } else if (++tries > 25) clearInterval(t);
+  }, 300);
+};
+
+/* ══════════════════════════════════════════════
+   해고예고통지서 (근로기준법 제26조 해고의 예고 · 제27조 해고사유 등의 서면통지)
+   - 저장: dismissal_notices/{id}  (tplVer 로 양식 동결)
+   ⚠️ 해고는 정당한 이유가 있어야 유효(제23조). 이 도구는 절차 서류 작성 보조용이며 법률 자문이 아니다.
+   ══════════════════════════════════════════════ */
+const _DS_REASON = { discipline:'징계해고', management:'경영상 이유에 의한 해고', ordinary:'통상해고 (근로능력 부족·직무 부적합 등)', other:'기타' };
+const _DS_EXEMPT = {
+  under3m:'계속 근로한 기간이 3개월 미만인 경우',
+  disaster:'천재·사변, 그 밖의 부득이한 사유로 사업을 계속하는 것이 불가능한 경우',
+  willful:'근로자가 고의로 사업에 막대한 지장을 초래하거나 재산상 손해를 끼친 경우 (고용노동부령으로 정하는 사유)',
+};
+let _dsForm = null, _dsWorkers = [];
+const _dsNewForm = () => ({ id:'', workerId:'', noticeDate:_hzToday(), dismissalDate:_hzYmd(_hzAddDays(new Date(),30)), reasonType:'discipline', reasonDetail:'', ruleRef:'', exemptType:'', hourly:'', deliveryMethod:'직접 교부(수령 서명)', note:'' });
+
+window.renderDismissalMain = async () => {
+  const el = document.getElementById('tab-dismissal'); if (!el) return;
+  if (!_dsForm) _dsForm = _dsNewForm();
+  el.innerHTML = `<div style="text-align:center;padding:48px;color:${C2.mute};">⏳ 불러오는 중...</div>`;
+  if (!window._db) { setTimeout(renderDismissalMain, 500); return; }
+  try { _dsWorkers = (await getWorkersList()).filter(w => w.status!=='resigned').sort((a,b)=>(a.empNo||'zzz').localeCompare(b.empNo||'zzz')); } catch(e) { _dsWorkers = []; }
+  _dsRender();
+};
+
+async function _dsFindHourly(wid) {
+  const { getDocs, collection } = await _hzFs();
+  for (const coll of ['annual_contracts','labor_contracts']) {
+    try {
+      const s = await getDocs(collection(window._db, `${coll}/${wid}/contracts`));
+      let best = null;
+      s.forEach(x => { const v = x.data(); const key = String(v.contractDate || x.id); if (Number(v.hourly) && (!best || key > best.key)) best = { key, hourly:Number(v.hourly) }; });
+      if (best) return best.hourly;
+    } catch(e) {}
+  }
+  return 0;
+}
+window.dsPickWorker = async (id) => {
+  _dsForm.workerId = id; _dsForm.hourly = '';
+  _dsRender();
+  if (id) { try { const h = await _dsFindHourly(id); if (h && _dsForm.workerId===id) { _dsForm.hourly = String(h); _dsRender(); } } catch(e) {} }
+};
+window.dsSet = (k, v) => { _dsForm[k] = v; _dsRecalc(); };
+window.dsSetHourly = (v) => { _dsForm.hourly = String(v||'').replace(/[^0-9.]/g,''); _dsRecalc(); };
+
+function _dsCalc() {
+  const f = _dsForm, n = _hzParse(f.noticeDate), d = _hzParse(f.dismissalDate);
+  if (!n || !d) return { ok:false };
+  const w = _dsWorkers.find(x => x.id===f.workerId);
+  const days = _hzDiffDays(n, d);
+  const hourly = Number(f.hourly) || 0, daily = Math.round(hourly * 8);
+  const exempt = !!f.exemptType;
+  const shortDays = exempt ? 0 : Math.max(0, 30 - days);
+  const hd = w ? _hzParse(w.hireDate) : null;
+  const tenureMonths = hd ? (n.getFullYear()-hd.getFullYear())*12 + (n.getMonth()-hd.getMonth()) - (n.getDate()<hd.getDate()?1:0) : null;
+  return { ok:true, days, hourly, daily, exempt, shortDays, allowance: shortDays*daily, tenureMonths };
+}
+function _dsCalcHtml() {
+  const c = _dsCalc();
+  if (!c.ok) return `<div style="color:${C2.mute};font-size:12px;">통지일과 해고일을 입력하면 예고기간이 계산됩니다.</div>`;
+  const row = (t, cls) => `<div style="padding:8px 10px;border-radius:8px;font-size:12px;line-height:1.6;margin-bottom:6px;background:${cls==='bad'?'#FEE2E2':cls==='warn'?'#FEF3C7':cls==='ok'?'#DCFCE7':'#F0F4F9'};color:${cls==='bad'?'#991B1B':cls==='warn'?'#92400E':cls==='ok'?'#166534':'#3B4A63'};">${t}</div>`;
+  let h = '';
+  if (c.days <= 0) h += row('❌ 해고일은 통지일 이후여야 합니다.', 'bad');
+  else h += row(`예고기간 <b>${c.days}일</b> (통지일 다음 날 ~ 해고일, 초일불산입)`, 'info');
+  if (c.tenureMonths != null && c.tenureMonths < 3) h += row(`근속 ${Math.max(c.tenureMonths,0)}개월 — <b>3개월 미만</b>이면 해고예고 적용 예외(제26조 제1호)일 수 있습니다. 아래 예외 사유에서 선택하세요.`, 'warn');
+  if (c.days > 0) {
+    if (c.exempt) h += row('✅ 예고 예외 적용 — 해고예고수당 없음', 'ok');
+    else if (c.days >= 30) h += row('✅ 30일 이상 예고 — 해고예고수당 없음', 'ok');
+    else if (c.daily) h += row(`⚠️ 예고기간 ${c.shortDays}일 부족 → <b>해고예고수당 ${_hzWon(c.allowance)}</b> (통상일급 ${_hzWon(c.daily)} × ${c.shortDays}일)`, 'warn');
+    else h += row(`⚠️ 예고기간 ${c.shortDays}일 부족 — 해고예고수당 산정을 위해 통상시급을 입력하세요.`, 'warn');
+  }
+  return h;
+}
+function _dsRecalc() { const el = document.getElementById('ds-calc'); if (el) el.innerHTML = _dsCalcHtml(); }
+
+function _dsRender() {
+  const el = document.getElementById('tab-dismissal'); if (!el) return;
+  const f = _dsForm, w = _dsWorkers.find(x => x.id===f.workerId);
+  const inp = `style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:8px 10px;font-size:13px;color:#1A2540;background:#FAFCFF;box-sizing:border-box;font-family:inherit;"`;
+  const lab = t => `<label style="display:block;font-size:11px;font-weight:700;color:#5C6F8A;margin:10px 0 4px;">${t}</label>`;
+  const radios = (name, map, cur, fn) => Object.keys(map).map(k => `<label style="display:flex;gap:6px;align-items:flex-start;font-size:12.5px;color:${C2.text};margin-bottom:5px;cursor:pointer;"><input type="radio" name="${name}" ${cur===k?'checked':''} onchange="${fn}('${k}')" style="margin-top:3px;"><span>${map[k]}</span></label>`).join('');
+  el.innerHTML = `<div style="padding:20px 24px;max-width:900px;margin:0 auto;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">${homeBtn()}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
+      <div style="font-size:16px;font-weight:800;color:${C2.text};">📄 해고예고통지서</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="renderDismissalHistory()" style="background:#fff;border:1px solid ${C2.border};border-radius:9px;padding:8px 14px;color:${C2.sub};font-size:12.5px;font-weight:700;cursor:pointer;">📂 발행 이력</button>
+        <button onclick="dsReset()" style="background:#fff;border:1px solid ${C2.border};border-radius:9px;padding:8px 14px;color:${C2.sub};font-size:12.5px;font-weight:700;cursor:pointer;">↺ 초기화</button>
+      </div>
+    </div>
+    <div style="background:#FFF4E5;border:1px solid #F4D9AD;border-radius:10px;padding:11px 14px;font-size:11.5px;color:#7A4A00;line-height:1.75;margin:8px 0 14px;">
+      ⚠️ <b>해고는 정당한 이유가 있어야 유효</b>하며(근로기준법 제23조) 이 서류만으로 해고가 정당해지지 않습니다. 이 도구는 <b>절차 서류(제26조 30일 전 예고·제27조 사유/시기 서면통지)</b> 작성을 돕습니다.<br>
+      · 서면은 <b>종이 문서 교부가 원칙</b>입니다. 이메일·문자·카톡만으로는 서면통지로 인정되지 않을 수 있어 발송 기능을 두지 않았습니다.<br>
+      · 취업규칙·인사관리내규의 징계 절차(소명 기회, 인사위원회 등)를 지켰는지 먼저 확인하세요. 실제 해고 전 노무사 확인을 권장합니다.
+    </div>
+    <div style="background:#fff;border:1px solid ${C2.border};border-radius:12px;padding:16px;box-shadow:${C2.shadow};margin-bottom:12px;">
+      <div style="font-size:12.5px;font-weight:800;color:${C2.text};">① 대상 근로자</div>
+      ${lab('근로자 (재직자)')}
+      <select onchange="dsPickWorker(this.value)" ${inp}><option value="">— 선택 —</option>${_dsWorkers.map(x => `<option value="${_hzEsc(x.id)}" ${x.id===f.workerId?'selected':''}>${_hzEsc(x.empNo?x.empNo+' · ':'')}${_hzEsc(x.name||'')}${x.rank?' ('+_hzEsc(x.rank)+')':''}</option>`).join('')}</select>
+      ${w ? `<div style="font-size:11.5px;color:${C2.sub};margin-top:8px;line-height:1.7;">${_hzEsc(w.dept||'-')} · ${_hzEsc(w.rank||'-')} · 입사일 ${_hzEsc(w.hireDate||'미등록')}</div>` : ''}
+    </div>
+    <div style="background:#fff;border:1px solid ${C2.border};border-radius:12px;padding:16px;box-shadow:${C2.shadow};margin-bottom:12px;">
+      <div style="font-size:12.5px;font-weight:800;color:${C2.text};">② 통지일 · 해고일</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>${lab('통지일 (이 서면을 교부하는 날)')}<input type="date" value="${_hzEsc(f.noticeDate)}" onchange="dsSet('noticeDate',this.value)" ${inp}></div>
+        <div>${lab('해고일 (해고 시기)')}<input type="date" value="${_hzEsc(f.dismissalDate)}" onchange="dsSet('dismissalDate',this.value)" ${inp}></div>
+      </div>
+      <div id="ds-calc" style="margin-top:10px;">${_dsCalcHtml()}</div>
+      ${lab('예고 예외 사유 (해당하는 경우만 · 제26조 단서)')}
+      <label style="display:flex;gap:6px;align-items:center;font-size:12.5px;margin-bottom:5px;cursor:pointer;"><input type="radio" name="ds-ex" ${!f.exemptType?'checked':''} onchange="dsSetExempt('')"> 해당 없음 (30일 전 예고 또는 예고수당 지급)</label>
+      ${radios('ds-ex', _DS_EXEMPT, f.exemptType, "dsSetExempt")}
+      <div style="font-size:10.5px;color:${C2.mute};margin-top:4px;line-height:1.6;">※ 예외에 해당하는지는 사실관계에 따라 달라집니다. 확실하지 않으면 예외로 선택하지 말고 노무사에게 확인하세요.</div>
+      ${lab('통상시급 (원) — 해고예고수당 산정용, 최근 연봉·근로계약서 시급을 자동 조회')}
+      <input type="text" inputmode="numeric" value="${_hzEsc(f.hourly)}" oninput="dsSetHourly(this.value)" placeholder="예) 12000" ${inp}>
+    </div>
+    <div style="background:#fff;border:1px solid ${C2.border};border-radius:12px;padding:16px;box-shadow:${C2.shadow};margin-bottom:12px;">
+      <div style="font-size:12.5px;font-weight:800;color:${C2.text};">③ 해고 사유</div>
+      ${lab('사유 구분')}${radios('ds-rs', _DS_REASON, f.reasonType, "dsSetReason")}
+      ${lab('구체적 사유 (필수) — 누가·언제·무엇을 했는지 구체적 사실을 적습니다')}
+      <textarea rows="6" oninput="dsSet('reasonDetail',this.value)" placeholder="예) 2026. 9. 3.부터 9. 12.까지 회사의 허가 없이 무단결근(6일)하였고, 2026. 9. 8. 이에 대한 서면 경고를 받았음에도 …" ${inp}>${_hzEsc(f.reasonDetail)}</textarea>
+      <div style="font-size:10.5px;color:${C2.mute};margin-top:4px;line-height:1.6;">※ 대법원은 해고사유를 근로자가 알 수 있을 만큼 구체적으로 적어야 한다고 봅니다. 위반한 <b>조문만 나열하는 것은 부족</b>합니다.</div>
+      ${lab('근거 규정 (선택)')}<input type="text" value="${_hzEsc(f.ruleRef)}" oninput="dsSet('ruleRef',this.value)" placeholder="예) 취업규칙 제○조 제○항 제○호" ${inp}>
+    </div>
+    <div style="background:#fff;border:1px solid ${C2.border};border-radius:12px;padding:16px;box-shadow:${C2.shadow};margin-bottom:14px;">
+      <div style="font-size:12.5px;font-weight:800;color:${C2.text};">④ 교부 방법 · 메모</div>
+      ${lab('교부 방법')}
+      <select onchange="dsSet('deliveryMethod',this.value)" ${inp}>${['직접 교부(수령 서명)','내용증명 우편','기타'].map(x=>`<option ${x===f.deliveryMethod?'selected':''}>${x}</option>`).join('')}</select>
+      ${lab('내부 메모 (통지서에는 인쇄되지 않음)')}<input type="text" value="${_hzEsc(f.note)}" oninput="dsSet('note',this.value)" ${inp}>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="dsSave(false)" style="flex:1;padding:13px;background:#6B7280;border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">💾 임시저장</button>
+      <button onclick="dsSave(true)" style="flex:2;padding:13px;background:#1D5BA6;border:none;border-radius:12px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🖨 통지서 발행 (저장 + 출력)</button>
+    </div>
+  </div>`;
+}
+window.dsSetReason = (k) => { _dsForm.reasonType = k; };
+window.dsSetExempt = (k) => { _dsForm.exemptType = k; _dsRecalc(); };
+window.dsReset = () => { if (confirm('입력한 내용을 모두 지우고 새로 시작할까요?')) { _dsForm = _dsNewForm(); _dsRender(); } };
+
+window.dsSave = async (issue) => {
+  const f = _dsForm, w = _dsWorkers.find(x => x.id===f.workerId), c = _dsCalc();
+  if (!w) { alert('대상 근로자를 선택해 주세요.'); return; }
+  if (!c.ok || c.days <= 0) { alert('통지일과 해고일을 확인해 주세요. 해고일은 통지일 이후여야 합니다.'); return; }
+  if (issue) {
+    if (f.reasonDetail.trim().length < 15) { alert('해고 사유를 구체적으로 적어 주세요. (근로자가 사유를 알 수 있을 정도로 구체적인 사실이 필요합니다)'); return; }
+    if (!f.exemptType && c.days < 30 && !c.daily) { alert('예고기간이 30일 미만입니다. 해고예고수당 산정을 위해 통상시급을 입력해 주세요.'); return; }
+    if (!confirm(`${w.name}님 해고예고통지서를 발행하시겠습니까?\n\n· 해고는 정당한 이유가 있어야 유효합니다(제23조). 이 서류만으로 정당해지지 않습니다.\n· 취업규칙상 징계 절차(소명 기회 등)를 거쳤는지 확인하셨나요?`)) return;
+  }
+  const data = {
+    workerId:w.id, workerName:w.name||'', empNo:w.empNo||'', dept:w.dept||'', rank:w.rank||'', hireDate:w.hireDate||'',
+    noticeDate:f.noticeDate, dismissalDate:f.dismissalDate, reasonType:f.reasonType, reasonDetail:f.reasonDetail.trim(), ruleRef:f.ruleRef.trim(),
+    exemptType:f.exemptType||'', hourly:c.hourly, dailyWage:c.daily, noticeDays:c.days, shortDays:c.shortDays, allowance:c.allowance,
+    deliveryMethod:f.deliveryMethod, note:f.note.trim(), status: issue ? 'issued' : 'draft', tplVer:'d1',
+  };
+  try {
+    const { doc, setDoc, addDoc, collection, serverTimestamp } = await _hzFs();
+    if (f.id) { await setDoc(doc(window._db,'dismissal_notices',f.id), { ...data, updatedAt:serverTimestamp() }, { merge:true }); }
+    else { const r = await addDoc(collection(window._db,'dismissal_notices'), { ...data, createdAt:serverTimestamp() }); f.id = r.id; }
+    if (issue) { await loadCompSignatures(); __docOpenWin(dismissHtmlByVer(data)); }
+    else alert('✅ 임시저장 되었습니다.');
+  } catch(e) { alert('저장 오류: ' + e.message); }
+};
+
+function __dismissHtml_d1(d) {
+  const ck = (on, t) => `${on?'☑':'☐'} ${t}`;
+  const dm = String(d.deliveryMethod||'');
+  const reasonLabel = _DS_REASON[d.reasonType] || '';
+  let allowTxt;
+  if (d.exemptType) allowTxt = `해당 없음 — ${_hzEsc(_DS_EXEMPT[d.exemptType]||'')} (근로기준법 제26조 단서)`;
+  else if (Number(d.noticeDays) >= 30) allowTxt = '해당 없음 (30일 이상 전에 예고함)';
+  else allowTxt = `예고기간이 30일에 ${Number(d.shortDays)||0}일 부족하여, 통상임금 ${Number(d.shortDays)||0}일분 <b>${_hzWon(d.allowance)}</b> (통상일급 ${_hzWon(d.dailyWage)} × ${Number(d.shortDays)||0}일)을 해고일에 지급합니다.`;
+  const body = `
+    <h1>해 고 예 고 통 지 서</h1><div class="ul"></div>
+    <table class="kv">
+      <tr><th>성 명</th><td>${_hzEsc(d.workerName)}</td><th style="width:90px;">사원번호</th><td>${_hzEsc(d.empNo)||'-'}</td></tr>
+      <tr><th>소속 · 직급</th><td>${_hzEsc(d.dept)||'-'} / ${_hzEsc(d.rank)||'-'}</td><th>입사일</th><td>${_hzKor(d.hireDate)}</td></tr>
+    </table>
+    <p style="margin:16px 0 8px;">귀하에 대하여 「근로기준법」 제26조에 따라 아래와 같이 해고를 예고하며, 같은 법 제27조에 따라 해고사유와 해고시기를 서면으로 통지합니다.</p>
+    <table class="kv">
+      <tr><th>통 지 일</th><td>${_hzKor(d.noticeDate)}</td></tr>
+      <tr><th>해고 시기<br>(해고일)</th><td>${_hzKor(d.dismissalDate)} <span style="color:#555;">(통지일로부터 ${Number(d.noticeDays)||0}일 후)</span></td></tr>
+      <tr><th>해고 사유</th><td><b>${_hzEsc(reasonLabel)}</b><div style="white-space:pre-wrap;margin-top:6px;">${_hzEsc(d.reasonDetail)}</div></td></tr>
+      ${d.ruleRef ? `<tr><th>근거 규정</th><td>${_hzEsc(d.ruleRef)}</td></tr>` : ''}
+      <tr><th>해고예고수당</th><td>${allowTxt}</td></tr>
+    </table>
+    <p style="font-size:10pt;color:#333;margin:10px 0 0;">※ 본 통지서는 「근로기준법」 제26조에 따른 해고의 예고와 제27조에 따른 해고사유·해고시기의 서면통지를 겸합니다.</p>
+    ${_hzCompanyBlock()}
+    <div class="box">
+      <div style="font-weight:700;">수령 확인</div>
+      위 해고예고통지서를 수령하였음을 확인합니다.<br>
+      수령일 : ________년 ____월 ____일 &nbsp;&nbsp;&nbsp; 성명 : ____________________ (서명 또는 인)
+      <div style="margin-top:6px;font-size:9.5pt;color:#333;">교부 방법 : ${ck(/직접/.test(dm),'직접 교부')} &nbsp; ${ck(/우편/.test(dm),'내용증명 우편')} &nbsp; ${ck(!/직접|우편/.test(dm),'기타')}</div>
+      <div style="margin-top:6px;font-size:9.5pt;color:#333;">※ 수령을 거부한 경우 — 교부 일시·장소 : ______________________ / 입회인 : ____________ (서명)</div>
+    </div>`;
+  return _hzDocShell(`해고예고통지서 - ${d.workerName||''}`, body);
+}
+const __DISMISS_TPL = { d1: __dismissHtml_d1 };
+function dismissHtmlByVer(d) { return (__DISMISS_TPL[d.tplVer] || __DISMISS_TPL.d1)(d); }
+
+window.renderDismissalHistory = async () => {
+  const el = document.getElementById('tab-dismissal'); if (!el) return;
+  el.innerHTML = `<div style="padding:20px 24px;max-width:900px;margin:0 auto;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">${backBtn2('renderDismissalMain()','작성')}<span style="font-size:13px;font-weight:700;color:${C2.text};">📂 해고예고통지서 발행 이력</span></div>
+    <div id="ds-hist" style="text-align:center;padding:36px;color:${C2.mute};">⏳ 불러오는 중...</div></div>`;
+  try {
+    const { getDocs, collection, query, orderBy } = await _hzFs();
+    const s = await getDocs(query(collection(window._db,'dismissal_notices'), orderBy('createdAt','desc')));
+    window._dsHist = s.docs.map(x => ({ id:x.id, ...x.data() }));
+    const box = document.getElementById('ds-hist');
+    if (!window._dsHist.length) { box.innerHTML = '발행된 통지서가 없습니다.'; return; }
+    box.style.cssText = '';
+    box.innerHTML = `<div style="background:#fff;border-radius:14px;border:1px solid ${C2.border};overflow:hidden;box-shadow:${C2.shadow};"><table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="background:#E8F0FB;">${['근로자','통지일','해고일','사유','상태',''].map(h=>`<th style="padding:10px 12px;font-size:11px;font-weight:700;color:#1D5BA6;text-align:left;">${h}</th>`).join('')}</tr></thead>
+      <tbody>${window._dsHist.map((d,i)=>`<tr style="background:${i%2?'#F8FAFD':'#fff'};border-bottom:1px solid #F0F4FA;">
+        <td style="padding:10px 12px;font-size:12px;font-weight:700;">${_hzEsc(d.workerName)}</td>
+        <td style="padding:10px 12px;font-size:12px;">${_hzEsc(d.noticeDate)}</td><td style="padding:10px 12px;font-size:12px;">${_hzEsc(d.dismissalDate)}</td>
+        <td style="padding:10px 12px;font-size:11px;color:${C2.sub};">${_hzEsc(_DS_REASON[d.reasonType]||'')}</td>
+        <td style="padding:10px 12px;"><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;background:${d.status==='issued'?'#DCFCE7':'#F3F4F6'};color:${d.status==='issued'?'#15803D':'#6B7280'};">${d.status==='issued'?'발행':'임시저장'}</span></td>
+        <td style="padding:10px 12px;white-space:nowrap;"><button onclick="dsReprint('${d.id}')" style="font-size:11px;background:#E8F0FB;border:1px solid #DDE4EF;border-radius:7px;padding:4px 10px;color:#1D5BA6;font-weight:600;cursor:pointer;">🖨 출력</button>
+          ${d.status!=='issued'?`<button onclick="dsEditDraft('${d.id}')" style="font-size:11px;background:#fff;border:1px solid #DDE4EF;border-radius:7px;padding:4px 10px;color:#5C6F8A;font-weight:600;cursor:pointer;margin-left:4px;">이어쓰기</button><button onclick="dsDeleteDraft('${d.id}')" style="font-size:11px;background:#FEE2E2;border:1px solid #fca5a5;border-radius:7px;padding:4px 10px;color:#DC2626;font-weight:600;cursor:pointer;margin-left:4px;">삭제</button>`:''}</td></tr>`).join('')}</tbody></table></div>
+      <div style="font-size:11px;color:${C2.mute};margin-top:8px;">※ 발행된 통지서는 법적 기록이므로 삭제할 수 없습니다. 임시저장만 삭제·이어쓰기 가능합니다.</div>`;
+  } catch(e) { document.getElementById('ds-hist').innerHTML = `<div style="color:#DC2626;">오류: ${_hzEsc(e.message)}</div>`; }
+};
+window.dsReprint = async (id) => { const d = (window._dsHist||[]).find(x => x.id===id); if (!d) return; await loadCompSignatures(); __docOpenWin(dismissHtmlByVer(d)); };
+window.dsEditDraft = async (id) => {
+  const d = (window._dsHist||[]).find(x => x.id===id); if (!d) return;
+  _dsForm = { id:d.id, workerId:d.workerId||'', noticeDate:d.noticeDate||_hzToday(), dismissalDate:d.dismissalDate||'', reasonType:d.reasonType||'discipline', reasonDetail:d.reasonDetail||'', ruleRef:d.ruleRef||'', exemptType:d.exemptType||'', hourly:d.hourly?String(d.hourly):'', deliveryMethod:d.deliveryMethod||'직접 교부(수령 서명)', note:d.note||'' };
+  await renderDismissalMain();
+};
+window.dsDeleteDraft = async (id) => {
+  const d = (window._dsHist||[]).find(x => x.id===id); if (!d || d.status==='issued') return;
+  if (!confirm('이 임시저장을 삭제할까요?')) return;
+  try { const { doc, deleteDoc } = await _hzFs(); await deleteDoc(doc(window._db,'dismissal_notices',id)); renderDismissalHistory(); } catch(e) { alert('삭제 오류: ' + e.message); }
+};
+
+/* ══════════════════════════════════════════════
+   연차사용촉진 (근로기준법 제61조)
+   - 1년 이상 근속자(제1항): 사용기간 종료 6개월 전 기준 10일 이내 1차 서면 촉구 → 10일 내 미통보 시 종료 2개월 전까지 2차 사용시기 지정 서면 통보
+   - 1년 미만 근속자(제2항, 월 개근 1일분): 최초 1년 종료 3개월 전 기준 10일 이내 1차 → 종료 1개월 전까지 2차
+     (1차 후 발생분은 종료 1개월 전 기준 5일 이내 추가 촉구 → 종료 10일 전까지 2차)
+   - 저장: leave_promotions/{workerId}/records/{id}  (tplVer 로 양식 동결)
+   ⚠️ 일정은 입사일 기준으로 자동 계산한 참고값이다. 법률 자문이 아니며 실제 적용 전 노무사 확인을 권장한다.
+   ══════════════════════════════════════════════ */
+let _lp = { workers:[], leaves:[], recs:{} };
+const _LP_STAGE = { p1:'1차 촉진', p1x:'추가 1차', p2:'2차 지정통보' };
+
+// 근로자별 현재 연차 기간·촉진 일정 계산 (입사일 기준)
+function _lpPeriod(w, today) {
+  const hire = _hzParse(w.hireDate); if (!hire) return null;
+  let years = today.getFullYear() - hire.getFullYear();
+  while (years > 0 && _hzAddMonths(hire, 12*years) > today) years--;
+  if (years >= 1) {
+    const start = _hzAddMonths(hire, 12*years), end = _hzAddDays(_hzAddMonths(start,12), -1);
+    const b1 = _hzAddMonths(start, 6);
+    return { cat:'y1', years, start, end, p1s:b1, p1e:_hzAddDays(b1,9), dl2:_hzAddDays(_hzAddMonths(start,10),-1) };
+  }
+  const start = hire, end = _hzAddDays(_hzAddMonths(start,12), -1);
+  const b1 = _hzAddMonths(start, 9), bx = _hzAddMonths(start, 11);
+  return { cat:'y0', years:0, start, end, p1s:b1, p1e:_hzAddDays(b1,9), pxs:bx, pxe:_hzAddDays(bx,4), dl2:_hzAddDays(bx,-1), dl2x:_hzAddDays(end,-10) };
+}
+// 연차·반차 사용일수 (승인/게시된 연차신청서, 해당 연차 기간 내 시작일 기준)
+function _lpUsed(w, leaves, start, end, asOf) {
+  let used = 0, planned = 0;
+  for (const lv of leaves) {
+    const nm = lv.authorName || lv.name || '';
+    if (!(nm === w.name || (w.portalUid && lv.authorUid === w.portalUid))) continue;
+    if (lv.status !== 'posted' && lv.status !== 'approved') continue;
+    const t = String(lv.leaveType || '');
+    if (!(t.startsWith('연차') || t.startsWith('반차'))) continue;
+    const sd = _hzParse(lv.startDate); if (!sd || sd < start || sd > end) continue;
+    let d = parseFloat(lv.days || lv.leaveDays || 0); if (isNaN(d) || d <= 0) d = t.startsWith('반차') ? 0.5 : 1;
+    if (asOf && sd > asOf) planned += d; else used += d;
+  }
+  return { used, planned };
+}
+function _lpGranted(w, asOf) { return hrCalcAnnualLeave(w.hireDate, _hzYmd(asOf)).granted; }
+
+// 진행 상태 판정
+function _lpEval(w, today) {
+  const p = _lpPeriod(w, today); if (!p) return { skip:'입사일 미등록' };
+  const granted = _lpGranted(w, today);
+  const { used, planned } = _lpUsed(w, _lp.leaves, p.start, p.end, today);
+  const remain = Math.max(granted - used, 0);
+  const startStr = _hzYmd(p.start);
+  const recs = (_lp.recs[w.id] || []).filter(r => r.periodStart === startStr);
+  const r1 = recs.filter(r => r.stage==='p1').sort((a,b)=>String(a.noticeDate).localeCompare(String(b.noticeDate)))[0];
+  const r2 = recs.find(r => r.stage==='p2');
+  const D = (d) => _hzDiffDays(today, d);
+  let state = '', tone = 'gray', urgent = 0, label = '';
+  if (!r1) {
+    if (remain <= 0) { state='none'; label='대상 아님 (잔여 0일)'; tone='gray'; }
+    else if (today < p.p1s) { const n = D(p.p1s); state='wait'; label = `1차 촉진 시작 D-${n}`; tone = n<=45?'blue':'gray'; urgent = n<=45?2:0; }
+    else if (today <= p.p1e) { const n = D(p.p1e); state='now'; label = `🔔 지금 1차 촉진 기간 (마감 D-${n})`; tone='red'; urgent = 3; }
+    else { state='missed'; label = '⚠️ 1차 촉진 기간 경과 · 미실시'; tone='orange'; urgent = 1; }
+  } else if (r2) { state='done'; label='✅ 2차 지정 통보 완료'; tone='green'; }
+  else if (r1.replyStatus === 'all') { state='replied'; label='✅ 회신 완료 (사용계획 수립)'; tone='green'; }
+  else {
+    const due = _hzAddDays(_hzParse(r1.noticeDate), 10);
+    if (today <= due) { state='waitreply'; label = `1차 통보 완료 · 회신 대기 (~${_hzDot(due)})`; tone='blue'; }
+    else if (today <= p.dl2) { const n = D(p.dl2); state='need2'; label = `🔔 2차 지정통보 필요 (기한 D-${n})`; tone='red'; urgent = 3; }
+    else { state='miss2'; label='⚠️ 2차 통보 기한 경과'; tone='orange'; urgent = 1; }
+  }
+  return { p, granted, used, planned, remain, recs, r1, r2, state, tone, label, urgent };
+}
+
+window.renderLeavePromoMain = async () => {
+  const el = document.getElementById('tab-leave'); if (!el) return;
+  el.innerHTML = `<div style="padding:20px 24px;max-width:1150px;margin:0 auto;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">${backBtn2('renderLeaveStatusMain()','연차 현황')}</div>
+    <div style="font-size:18px;font-weight:800;color:#13335C;margin-bottom:4px;">📣 연차사용촉진</div>
+    <div style="font-size:12px;color:#5C6F8A;line-height:1.75;margin-bottom:12px;">
+      근로기준법 제61조에 따라 <b>기한 안에 서면으로 촉구·지정 통보</b>하면, 근로자가 쓰지 않아 소멸된 연차에 대해 회사는 연차수당 지급 의무가 없습니다. 기한을 놓치면 이 효과가 생기지 않습니다.
+    </div>
+    <div id="lp-summary"></div>
+    <div id="lp-body" style="text-align:center;padding:40px;color:#9AAABF;">⏳ 불러오는 중...</div>
+    <div style="margin-top:14px;background:#F7F9FC;border:1px solid #E5EDF7;border-radius:10px;padding:12px 14px;font-size:11.5px;color:#5C6F8A;line-height:1.8;">
+      <b>일정 기준 (제61조, 입사일 기준 자동 계산)</b><br>
+      · <b>1년 이상 근속</b>: 연차 사용기간 종료 6개월 전 기준 10일 이내에 <b>1차 서면 촉구</b> → 근로자가 10일 안에 사용 시기를 통보하지 않으면 종료 2개월 전까지 <b>2차 사용시기 지정 서면 통보</b><br>
+      · <b>1년 미만 근속</b>(월 개근 1일분): 최초 1년 종료 3개월 전 기준 10일 이내 1차 → 종료 1개월 전까지 2차 (1차 이후 발생분은 종료 1개월 전 기준 5일 이내 추가 촉구 → 종료 10일 전까지 2차)<br>
+      · 통보는 <b>근로자별로 서면</b>으로 하고 <b>수령 증빙</b>(수령 서명 등)을 남기세요. 대표는 근로기준법상 근로자가 아니어서 제외했습니다.<br>
+      · 사용일수는 <b>해당 연차 기간에 시작한 승인·게시된 연차·반차 신청서</b> 기준이라 연차 현황(누적 집계)과 다를 수 있습니다. 일정·양식은 참고용이며 실제 적용 전 노무사 확인을 권장합니다.
+    </div></div>`;
+  if (!window._db) { document.getElementById('lp-body').textContent = 'DB 연결 안 됨'; return; }
+  try {
+    const { getDocs, collection } = await _hzFs();
+    const ws = []; (await getDocs(collection(window._db,'workers'))).forEach(x => ws.push({ id:x.id, ...x.data() }));
+    const lv = []; (await getDocs(collection(window._db,'edoc_leave'))).forEach(x => lv.push(x.data()));
+    ws.sort((a,b) => (a.empNo||'').localeCompare(b.empNo||''));
+    const targets = ws.filter(w => w.status !== 'resigned' && !/대표/.test(w.rank||''));
+    const recs = {};
+    for (const w of targets) { try { const s = await getDocs(collection(window._db, `leave_promotions/${w.id}/records`)); recs[w.id] = s.docs.map(x => ({ id:x.id, ...x.data() })); } catch(e) { recs[w.id] = []; } }
+    _lp = { workers:targets, leaves:lv, recs };
+    _lpRender();
+  } catch(e) { document.getElementById('lp-body').innerHTML = `<div style="color:#DC2626;padding:24px;">오류: ${_hzEsc(e.message)}</div>`; }
+};
+
+function _lpRender() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const evs = _lp.workers.map(w => ({ w, e:_lpEval(w, today) }));
+  const okRows = evs.filter(x => !x.e.skip);
+  const cnt = f => okRows.filter(x => f(x.e)).length;
+  const card = (n, t, c) => `<div style="flex:1;min-width:130px;background:#fff;border:1px solid #DDE4EF;border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:#5C6F8A;font-weight:700;">${t}</div><div style="font-size:22px;font-weight:800;color:${c};margin-top:2px;">${n}<span style="font-size:12px;font-weight:600;color:#9AAABF;"> 명</span></div></div>`;
+  document.getElementById('lp-summary').innerHTML = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+    ${card(cnt(e => e.urgent===3), '지금 조치 필요', '#DC2626')}${card(cnt(e => e.state==='wait' && e.urgent>0), '45일 내 시작', '#1D5BA6')}${card(cnt(e => e.urgent===1), '기한 경과·미실시', '#EA580C')}${card(cnt(e => e.tone==='green'), '완료', '#16A34A')}</div>`;
+  const tone = { red:['#FEE2E2','#991B1B'], orange:['#FFEDD5','#9A3412'], blue:['#DBEAFE','#1E40AF'], green:['#DCFCE7','#166534'], gray:['#F3F4F6','#6B7280'] };
+  const rows = evs.map(({ w, e }) => {
+    if (e.skip) return `<tr style="border-bottom:1px solid #EEF2F7;"><td style="padding:11px 12px;font-weight:700;">${_hzEsc(w.name)}</td><td colspan="6" style="padding:11px 12px;color:#DC2626;font-size:12px;">입사일 미등록 — 근로자 명부에서 입력해 주세요.</td></tr>`;
+    const p = e.p, t = tone[e.tone] || tone.gray;
+    const sched = p.cat==='y1'
+      ? `1차 ${_hzDot(p.p1s)}~${_hzDot(p.p1e)}<br>2차 ~${_hzDot(p.dl2)}`
+      : `1차 ${_hzDot(p.p1s)}~${_hzDot(p.p1e)}<br>2차 ~${_hzDot(p.dl2)} <span style="color:#9AAABF;">(추가분 ~${_hzDot(p.dl2x)})</span>`;
+    const btn = (label, stage, on) => `<button ${on?'':'disabled'} onclick="lpOpenForm('${w.id}','${stage}')" style="font-size:11px;font-weight:700;padding:5px 9px;border-radius:7px;border:1px solid ${on?'#1D5BA6':'#E5E7EB'};background:${on?'#E8F0FB':'#F9FAFB'};color:${on?'#1D5BA6':'#B0B7C3'};cursor:${on?'pointer':'not-allowed'};margin:0 3px 3px 0;">${label}</button>`;
+    return `<tr style="border-bottom:1px solid #EEF2F7;">
+      <td style="padding:11px 12px;"><div style="font-weight:700;color:#1A2540;">${_hzEsc(w.name)}</div><div style="font-size:11px;color:#9AAABF;">${_hzEsc(w.rank||'')} · 입사 ${_hzEsc(w.hireDate)}</div></td>
+      <td style="padding:11px 12px;font-size:11.5px;color:#5C6F8A;">${p.cat==='y1'?`근속 ${p.years}년차`:'1년 미만'}<br><span style="color:#9AAABF;">${_hzDot(p.start)} ~ ${_hzDot(p.end)}</span></td>
+      <td style="padding:11px 12px;text-align:center;font-size:12px;"><b style="color:#1D5BA6;">${e.granted}</b> / <b style="color:#F59E0B;">${e.used}</b> / <b style="color:#16A34A;">${e.remain}</b>${e.planned?`<div style="font-size:10px;color:#9AAABF;">예정 ${e.planned}일</div>`:''}</td>
+      <td style="padding:11px 12px;font-size:11px;color:#5C6F8A;line-height:1.6;">${sched}</td>
+      <td style="padding:11px 12px;"><span style="display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:8px;background:${t[0]};color:${t[1]};">${e.label}</span></td>
+      <td style="padding:11px 12px;white-space:nowrap;">${btn('1차 촉진서','p1',e.remain>0)}${p.cat==='y0'?btn('추가 1차','p1x',e.remain>0):''}${btn('2차 지정통보','p2',e.remain>0)}<button onclick="lpHistory('${w.id}')" style="font-size:11px;font-weight:700;padding:5px 9px;border-radius:7px;border:1px solid #DDE4EF;background:#fff;color:#5C6F8A;cursor:pointer;margin-bottom:3px;">이력 ${(_lp.recs[w.id]||[]).length}</button></td></tr>`;
+  }).join('');
+  document.getElementById('lp-body').style.cssText = '';
+  document.getElementById('lp-body').innerHTML = `<div style="background:#fff;border:1px solid #DDE4EF;border-radius:12px;overflow:hidden;overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:860px;">
+      <thead><tr style="background:#F4F7FB;">${['근로자','연차 기간','발생 / 사용 / 잔여','촉진 일정','진행 상태',''].map((h,i)=>`<th style="padding:12px;text-align:${i===2?'center':'left'};font-size:12px;color:#5C6F8A;font-weight:700;white-space:nowrap;">${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows || `<tr><td colspan="6" style="padding:36px;text-align:center;color:#9AAABF;">대상 근로자가 없습니다.</td></tr>`}</tbody></table></div>`;
+}
+
+/* ── 촉진서 작성 ── */
+let _lpForm = null;
+window.lpOpenForm = (wid, stage) => {
+  const w = _lp.workers.find(x => x.id===wid); if (!w) return;
+  _lpForm = { wid, stage, noticeDate:_hzToday(), method:'직접 교부(수령 서명)', dates:[''], memo:'' };
+  _lpFormRender();
+};
+window.lpFormSet = (k, v) => { _lpForm[k] = v; _lpFormRender(); };
+window.lpDateSet = (i, v) => { _lpForm.dates[i] = v; _lpFormInfoRefresh(); };
+window.lpDateAdd = () => { _lpForm.dates.push(''); _lpFormRender(); };
+window.lpDateDel = (i) => { _lpForm.dates.splice(i,1); if (!_lpForm.dates.length) _lpForm.dates=['']; _lpFormRender(); };
+window.lpFormClose = () => { const m = document.getElementById('lp-form-modal'); if (m) m.remove(); };
+
+function _lpFormCtx() {
+  const f = _lpForm, w = _lp.workers.find(x => x.id===f.wid), n = _hzParse(f.noticeDate) || new Date();
+  const p = _lpPeriod(w, n), granted = _lpGranted(w, n), { used, planned } = _lpUsed(w, _lp.leaves, p.start, p.end, n);
+  const unused = Math.max(granted - used, 0);
+  const recs = (_lp.recs[w.id] || []).filter(r => r.periodStart === _hzYmd(p.start));
+  const r1 = recs.filter(r => r.stage==='p1').sort((a,b)=>String(a.noticeDate).localeCompare(String(b.noticeDate)))[0];
+  const replied = (r1 && r1.replyDates) ? r1.replyDates : [];
+  const need = f.stage==='p2' ? Math.max(unused - replied.length, 0) : 0;
+  let win = null, dl = null;
+  if (f.stage==='p1') win = [p.p1s, p.p1e]; else if (f.stage==='p1x') win = [p.pxs, p.pxe];
+  if (f.stage==='p2') dl = (p.cat==='y1') ? p.dl2 : p.dl2;
+  return { f, w, n, p, granted, used, planned, unused, recs, r1, replied, need, win, dl };
+}
+function _lpFormInfoHtml(c) {
+  const box = (t, cls) => `<div style="padding:8px 10px;border-radius:8px;font-size:11.5px;line-height:1.6;margin-top:6px;background:${cls==='bad'?'#FEE2E2':cls==='warn'?'#FEF3C7':'#F0F4F9'};color:${cls==='bad'?'#991B1B':cls==='warn'?'#92400E':'#3B4A63'};">${t}</div>`;
+  let h = box(`연차 기간 ${_hzDot(c.p.start)} ~ ${_hzDot(c.p.end)} · 발생 <b>${c.granted}</b>일 · 사용 <b>${c.used}</b>일 · 미사용 <b>${c.unused}</b>일${c.planned?` · (사용 예정 ${c.planned}일 별도)`:''}`, 'info');
+  if (c.win) {
+    const inWin = c.n >= c.win[0] && c.n <= c.win[1];
+    h += box(inWin ? `✅ 통보일이 법정 촉진 기간(${_hzDot(c.win[0])} ~ ${_hzDot(c.win[1])}) 안에 있습니다.` : `⚠️ 법정 촉진 기간은 <b>${_hzDot(c.win[0])} ~ ${_hzDot(c.win[1])}</b> 입니다. 이 밖의 통보는 촉진 효력을 인정받지 못할 수 있습니다.`, inWin ? 'info' : 'warn');
+  }
+  if (c.f.stage==='p2') {
+    if (!c.r1) h += box('⚠️ 이 연차 기간의 <b>1차 촉진 기록이 없습니다.</b> 1차 촉구 없이 한 2차 통보는 효력이 없을 수 있습니다.', 'warn');
+    else {
+      const due = _hzAddDays(_hzParse(c.r1.noticeDate), 10);
+      h += box(`1차 통보일 ${_hzDot(c.r1.noticeDate)} · 회신 기한 ${_hzDot(due)}${c.replied.length?` · 근로자 회신 사용일 ${c.replied.length}일(${c.replied.map(_hzDot).join(', ')})`:' · 회신 없음/미기록'}`, c.n <= due ? 'warn' : 'info');
+      if (c.n <= due) h += box('⚠️ 근로자의 회신 기한(10일)이 지나지 않았습니다. 기한 후에 2차 통보를 하세요.', 'warn');
+    }
+    h += box(`2차 통보 기한: <b>${_hzDot(c.dl)}</b>까지${c.p.cat==='y0'?` (1차 이후 발생분은 ${_hzDot(c.p.dl2x)}까지)`:''}${c.n > c.dl ? ' — <b>기한이 지났습니다</b>':''}`, c.n > c.dl ? 'bad' : 'info');
+    const filled = c.f.dates.filter(Boolean).length;
+    h += box(`지정할 사용일: 필요 <b>${c.need}</b>일 / 입력 <b>${filled}</b>일${filled!==c.need?' — 일수를 맞춰 주세요':''}`, filled===c.need?'info':'warn');
+  }
+  return h;
+}
+function _lpFormInfoRefresh() { const el = document.getElementById('lp-form-info'); if (el) el.innerHTML = _lpFormInfoHtml(_lpFormCtx()); }
+
+function _lpFormRender() {
+  const c = _lpFormCtx(), f = c.f;
+  const inp = `style="width:100%;border:1px solid #DDE4EF;border-radius:8px;padding:8px 10px;font-size:13px;box-sizing:border-box;font-family:inherit;"`;
+  const lab = t => `<label style="display:block;font-size:11px;font-weight:700;color:#5C6F8A;margin:10px 0 4px;">${t}</label>`;
+  const dates = f.stage==='p2' ? `${lab('회사가 지정하는 연차 사용일')}
+    ${f.dates.map((d,i)=>`<div style="display:flex;gap:6px;margin-bottom:5px;"><input type="date" value="${_hzEsc(d)}" onchange="lpDateSet(${i},this.value)" ${inp}><button onclick="lpDateDel(${i})" style="padding:0 12px;background:#F4F7FB;border:none;border-radius:8px;color:#5C6F8A;cursor:pointer;">✕</button></div>`).join('')}
+    <button onclick="lpDateAdd()" style="font-size:12px;font-weight:700;padding:6px 12px;background:#E8F0FB;border:1px solid #DDE4EF;border-radius:8px;color:#1D5BA6;cursor:pointer;">+ 날짜 추가</button>` : '';
+  _hzModal('lp-form-modal', `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="font-size:14px;font-weight:800;color:#1A2540;">📣 ${_hzEsc(c.w.name)} · ${_LP_STAGE[f.stage]}</div>
+      <button onclick="lpFormClose()" style="background:#F4F7FB;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:14px;color:#5C6F8A;">✕</button>
+    </div>
+    ${lab('통보일')}<input type="date" value="${_hzEsc(f.noticeDate)}" onchange="lpFormSet('noticeDate',this.value)" ${inp}>
+    <div id="lp-form-info">${_lpFormInfoHtml(c)}</div>
+    ${dates}
+    ${lab('교부 방법')}<select onchange="lpFormSet('method',this.value)" ${inp}>${['직접 교부(수령 서명)','이메일 + 수령 확인','우편(내용증명)','기타'].map(x=>`<option ${x===f.method?'selected':''}>${x}</option>`).join('')}</select>
+    ${lab('내부 메모 (문서에는 인쇄되지 않음)')}<input type="text" value="${_hzEsc(f.memo)}" oninput="_lpForm.memo=this.value" ${inp}>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button onclick="lpFormClose()" style="flex:1;padding:11px;background:#F4F7FB;border:none;border-radius:10px;color:#5C6F8A;font-size:13px;font-weight:700;cursor:pointer;">취소</button>
+      <button onclick="lpIssue()" style="flex:2;padding:11px;background:#1D5BA6;border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🖨 발행 (저장 + 출력)</button>
+    </div>`, 520);
+}
+
+window.lpIssue = async () => {
+  const c = _lpFormCtx(), f = c.f;
+  if (!f.noticeDate) { alert('통보일을 입력해 주세요.'); return; }
+  if (c.unused <= 0) { alert('미사용 연차가 없어 촉진 대상이 아닙니다.'); return; }
+  const warn = [];
+  if (c.win && !(c.n >= c.win[0] && c.n <= c.win[1])) warn.push('통보일이 법정 촉진 기간을 벗어났습니다.');
+  let dates = [];
+  if (f.stage==='p2') {
+    dates = f.dates.filter(Boolean).sort();
+    if (!dates.length) { alert('지정할 사용일을 1개 이상 입력해 주세요.'); return; }
+    if (new Set(dates).size !== dates.length) { alert('중복된 날짜가 있습니다.'); return; }
+    for (const d of dates) { const x = _hzParse(d); if (x <= c.n || x > c.p.end) { alert(`${d} — 사용일은 통보일 이후, 연차 기간(${_hzDot(c.p.end)}) 이내여야 합니다.`); return; } }
+    if (dates.length !== c.need) warn.push(`지정 일수(${dates.length}일)가 필요한 일수(${c.need}일)와 다릅니다.`);
+    if (!c.r1) warn.push('이 연차 기간의 1차 촉진 기록이 없습니다.');
+    if (c.n > c.dl) warn.push('2차 통보 기한이 지났습니다.');
+    const wk = dates.filter(d => { const g = _hzParse(d).getDay(); return g===0 || g===6; });
+    if (wk.length) warn.push(`주말이 포함되어 있습니다 (${wk.join(', ')}).`);
+  }
+  if (warn.length && !confirm(`확인이 필요한 사항이 있습니다.\n\n· ${warn.join('\n· ')}\n\n그래도 발행하시겠습니까?`)) return;
+  const rec = {
+    stage:f.stage, category:c.p.cat, periodStart:_hzYmd(c.p.start), periodEnd:_hzYmd(c.p.end), noticeDate:f.noticeDate,
+    grantDays:c.granted, usedDays:c.used, unusedDays:c.unused, replyDue: f.stage==='p2' ? '' : _hzYmd(_hzAddDays(c.n,10)),
+    designatedDates:dates, p1NoticeDate: c.r1 ? c.r1.noticeDate : '', priorReplyDates: c.replied || [],
+    method:f.method, memo:(f.memo||'').trim(), tplVer:'l1', replyStatus:'', replyDates:[], receivedAt:'',
+    workerName:c.w.name||'', dept:c.w.dept||'', rank:c.w.rank||'', empNo:c.w.empNo||'',
+  };
+  try {
+    const { addDoc, collection, serverTimestamp } = await _hzFs();
+    const r = await addDoc(collection(window._db, `leave_promotions/${f.wid}/records`), { ...rec, createdAt:serverTimestamp() });
+    (_lp.recs[f.wid] = _lp.recs[f.wid] || []).push({ id:r.id, ...rec });
+    lpFormClose(); _lpRender();
+    await loadCompSignatures(); __docOpenWin(leavePromoHtmlByVer(rec));
+  } catch(e) { alert('저장 오류: ' + e.message); }
+};
+
+function __leavePromoHtml_l1(r) {
+  const y0 = r.category === 'y0', isP2 = r.stage === 'p2', isX = r.stage === 'p1x';
+  const law = y0 ? (isP2 ? '제61조 제2항 제2호' : '제61조 제2항 제1호' + (isX ? ' 단서' : '')) : (isP2 ? '제61조 제1항 제2호' : '제61조 제1항 제1호');
+  const periodLabel = y0 ? '최초 1년의 근로기간' : '연차 유급휴가 사용 가능 기간';
+  const title = isP2 ? '연차 유급휴가 사용 시기 지정 통보서 (2차)' : `연차 유급휴가 사용 촉진 통보서 (${isX?'추가 1차':'1차'})`;
+  const n = _hzParse(r.noticeDate);
+  const replyDue = n ? _hzKor(_hzAddDays(n,10)) : '';
+  const p = { start:_hzParse(r.periodStart), end:_hzParse(r.periodEnd) };
+  const dl2 = y0 ? _hzKor(_hzAddDays(_hzAddMonths(p.start,11),-1)) : _hzKor(_hzAddDays(_hzAddMonths(p.start,10),-1));
+  const dl2x = y0 ? _hzKor(_hzAddDays(p.end,-10)) : '';
+  const head = `
+    <h1 style="font-size:17pt;letter-spacing:2px;">${title}</h1><div class="ul"></div>
+    <table class="kv">
+      <tr><th>수 신</th><td>${_hzEsc(r.workerName)} (${_hzEsc(r.dept)||'-'} / ${_hzEsc(r.rank)||'-'})</td></tr>
+      <tr><th>발 신</th><td>제이에이치솔루션 대표 김종화</td></tr>
+      <tr><th>통 보 일</th><td>${_hzKor(r.noticeDate)}</td></tr>
+    </table>`;
+  const stats = `<table class="kv">
+      <tr><th>${periodLabel}</th><td>${_hzKor(r.periodStart)} ~ ${_hzKor(r.periodEnd)}</td></tr>
+      <tr><th>발생 일수</th><td>${r.grantDays}일</td></tr>
+      <tr><th>사용 일수<br>(통보일 기준)</th><td>${r.usedDays}일</td></tr>
+      <tr><th>미사용 일수</th><td><b>${r.unusedDays}일</b></td></tr>
+    </table>`;
+  const law2 = y0 ? (isX ? '제61조 제2항 제2호 단서' : '제61조 제2항 제2호') : '제61조 제1항 제2호';
+  let dlText;
+  if (!y0) dlText = `연차 사용 가능 기간이 끝나기 2개월 전(${dl2})`;
+  else if (isX) dlText = `최초 1년의 근로기간이 끝나기 10일 전(${dl2x})`;
+  else dlText = `최초 1년의 근로기간이 끝나기 1개월 전(${dl2}) (1차 이후 발생분은 종료 10일 전인 ${dl2x})`;
+  let body;
+  if (!isP2) {
+    body = `${head}
+    <p style="margin:14px 0 6px;">「근로기준법」 ${law}에 따라, 귀하의 연차 유급휴가 사용을 아래와 같이 촉구합니다.</p>
+    ${stats}
+    <ol style="margin:10px 0 0 18px;padding:0;line-height:1.9;">
+      <li>귀하는 위 미사용 연차 유급휴가 <b>${r.unusedDays}일</b>에 대하여, 이 통보서를 받은 날부터 10일 이내(<b>${replyDue}</b>까지)에 사용 시기를 정하여 회사에 서면(아래 회신란)으로 통보하여 주시기 바랍니다.</li>
+      <li>위 기한 내에 사용 시기를 통보하지 않는 경우, 회사는 「근로기준법」 ${law2}에 따라 ${dlText}까지 미사용 연차 유급휴가의 사용 시기를 지정하여 서면으로 통보할 예정입니다.</li>
+      <li>위 절차에도 불구하고 사용하지 않아 소멸된 연차 유급휴가에 대하여는 「근로기준법」 제61조에 따라 회사가 보상할 의무가 없습니다.</li>
+    </ol>
+    ${_hzCompanyBlock()}
+    <div class="box"><div style="font-weight:700;">회신란 (근로자 작성)</div>
+      사용 예정일 : ____________ , ____________ , ____________ , ____________ , ____________ (총 ____일)<br>
+      회신일 : ________년 ____월 ____일 &nbsp;&nbsp; 성명 : ________________ (서명 또는 인)</div>
+    <div class="box"><div style="font-weight:700;">수령 확인</div>
+      위 통보서를 ________년 ____월 ____일에 수령하였음을 확인합니다. &nbsp;&nbsp; 성명 : ________________ (서명 또는 인)</div>`;
+  } else {
+    const list = (r.designatedDates||[]).map(d => `${_hzDot(d)}(${_hzDow(_hzParse(d))})`).join(', ') || '-';
+    const prior = (r.priorReplyDates && r.priorReplyDates.length) ? `<tr><th>근로자가 통보한<br>사용 예정일</th><td>${r.priorReplyDates.map(d=>`${_hzDot(d)}(${_hzDow(_hzParse(d))})`).join(', ')} <span style="color:#555;">(참고)</span></td></tr>` : '';
+    body = `${head}
+    <p style="margin:14px 0 6px;">「근로기준법」 ${law}에 따라, 회사는 귀하가 ${r.p1NoticeDate?`1차 촉구(${_hzKor(r.p1NoticeDate)} 통보)를 받은 날부터 10일 이내에`:'1차 촉구를 받은 날부터 10일 이내에'} 미사용 연차 유급휴가의 사용 시기를 ${prior?'전부 ':''}정하여 통보하지 않았으므로, ${prior?'통보하지 않은 나머지에 대하여 ':''}아래와 같이 사용 시기를 지정하여 통보합니다.</p>
+    ${stats}
+    <table class="kv">${prior}<tr><th>회사가 지정한<br>사용일</th><td><b>${list}</b> <span style="color:#555;">(총 ${(r.designatedDates||[]).length}일)</span></td></tr></table>
+    <p style="margin:10px 0 0;">지정된 사용일에는 회사가 근로 제공을 받지 않으며(노무 수령 거부), 해당 일은 연차 유급휴가 사용일로 처리됩니다. 사용 시기의 변경이 필요한 경우 미리 회사와 협의하시기 바랍니다.</p>
+    ${_hzCompanyBlock()}
+    <div class="box"><div style="font-weight:700;">수령 확인</div>
+      위 통보서를 ________년 ____월 ____일에 수령하였음을 확인합니다. &nbsp;&nbsp; 성명 : ________________ (서명 또는 인)</div>`;
+  }
+  return _hzDocShell(`${title} - ${r.workerName||''}`, body);
+}
+const __LEAVEPROMO_TPL = { l1: __leavePromoHtml_l1 };
+function leavePromoHtmlByVer(r) { return (__LEAVEPROMO_TPL[r.tplVer] || __LEAVEPROMO_TPL.l1)(r); }
+
+/* ── 이력 · 회신 기록 · 수령 확인 ── */
+window.lpHistory = (wid) => {
+  const w = _lp.workers.find(x => x.id===wid); if (!w) return;
+  const recs = [...(_lp.recs[wid] || [])].sort((a,b) => String(b.noticeDate).localeCompare(String(a.noticeDate)));
+  const rs = { all:'전부 회신', partial:'일부 회신', none:'회신 없음' };
+  _hzModal('lp-hist-modal', `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div style="font-size:14px;font-weight:800;color:#1A2540;">📂 ${_hzEsc(w.name)} · 촉진 이력</div>
+      <button onclick="document.getElementById('lp-hist-modal').remove()" style="background:#F4F7FB;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:14px;color:#5C6F8A;">✕</button>
+    </div>
+    ${recs.length ? recs.map(r => `<div style="border:1px solid #E5EDF7;border-radius:10px;padding:11px 12px;margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;"><b style="font-size:13px;color:#1D5BA6;">${_LP_STAGE[r.stage]||r.stage}</b><span style="font-size:11px;color:#9AAABF;">통보 ${_hzEsc(r.noticeDate)}</span></div>
+      <div style="font-size:11.5px;color:#5C6F8A;line-height:1.7;margin-top:4px;">연차 기간 ${_hzDot(r.periodStart)}~${_hzDot(r.periodEnd)} · 미사용 ${r.unusedDays}일 · ${_hzEsc(r.method||'')}
+        ${r.stage==='p2' ? `<br>지정일: ${(r.designatedDates||[]).map(_hzDot).join(', ')||'-'}` : `<br>회신: ${rs[r.replyStatus]||'미기록'}${(r.replyDates&&r.replyDates.length)?` (${r.replyDates.map(_hzDot).join(', ')})`:''} · 회신기한 ${_hzDot(r.replyDue)}`}
+        <br>수령 확인: ${r.receivedAt ? _hzDot(r.receivedAt) : '<span style="color:#DC2626;">미기록</span>'}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+        <button onclick="lpReprint('${wid}','${r.id}')" style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:7px;border:1px solid #DDE4EF;background:#E8F0FB;color:#1D5BA6;cursor:pointer;">🖨 다시 출력</button>
+        ${r.stage!=='p2' ? `<button onclick="lpRecordReply('${wid}','${r.id}')" style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:7px;border:1px solid #DDE4EF;background:#fff;color:#5C6F8A;cursor:pointer;">회신 기록</button>` : ''}
+        <button onclick="lpMarkReceived('${wid}','${r.id}')" style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:7px;border:1px solid #DDE4EF;background:#fff;color:#5C6F8A;cursor:pointer;">수령 확인 기록</button>
+        <button onclick="lpDeleteRec('${wid}','${r.id}')" style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:7px;border:1px solid #fca5a5;background:#FEE2E2;color:#DC2626;cursor:pointer;">삭제</button>
+      </div></div>`).join('') : '<div style="padding:24px;text-align:center;color:#9AAABF;">기록된 촉진 이력이 없습니다.</div>'}`, 520);
+};
+window.lpReprint = async (wid, id) => { const r = (_lp.recs[wid]||[]).find(x => x.id===id); if (!r) return; await loadCompSignatures(); __docOpenWin(leavePromoHtmlByVer(r)); };
+async function _lpUpdateRec(wid, id, patch) {
+  const { doc, setDoc } = await _hzFs();
+  await setDoc(doc(window._db, `leave_promotions/${wid}/records`, id), patch, { merge:true });
+  const r = (_lp.recs[wid]||[]).find(x => x.id===id); if (r) Object.assign(r, patch);
+  _lpRender(); lpHistory(wid);
+}
+window.lpRecordReply = async (wid, id) => {
+  const r = (_lp.recs[wid]||[]).find(x => x.id===id); if (!r) return;
+  const v = prompt('근로자가 회신한 연차 사용 예정일을 쉼표로 구분해 입력하세요. (예: 2026-11-10, 2026-11-11)\n회신이 없었으면 비워두고 확인을 누르세요.', (r.replyDates||[]).join(', '));
+  if (v === null) return;
+  const dates = v.split(',').map(s => s.trim()).filter(Boolean);
+  for (const d of dates) { if (!_hzParse(d) || !/^\d{4}-\d{2}-\d{2}$/.test(d)) { alert(`날짜 형식이 올바르지 않습니다: ${d}`); return; } }
+  const status = !dates.length ? 'none' : (dates.length >= Number(r.unusedDays||0) ? 'all' : 'partial');
+  try { await _lpUpdateRec(wid, id, { replyDates:dates, replyStatus:status }); } catch(e) { alert('저장 오류: ' + e.message); }
+};
+window.lpMarkReceived = async (wid, id) => {
+  const v = prompt('근로자가 통보서를 수령(서명)한 날짜를 입력하세요. (YYYY-MM-DD)', _hzToday());
+  if (!v) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v.trim()) || !_hzParse(v.trim())) { alert('날짜 형식이 올바르지 않습니다.'); return; }
+  try { await _lpUpdateRec(wid, id, { receivedAt:v.trim() }); } catch(e) { alert('저장 오류: ' + e.message); }
+};
+window.lpDeleteRec = async (wid, id) => {
+  if (!confirm('이 촉진 기록을 삭제할까요?\n삭제하면 촉진을 했다는 증빙이 사라질 수 있습니다.')) return;
+  try {
+    const { doc, deleteDoc } = await _hzFs();
+    await deleteDoc(doc(window._db, `leave_promotions/${wid}/records`, id));
+    _lp.recs[wid] = (_lp.recs[wid]||[]).filter(x => x.id!==id);
+    _lpRender(); lpHistory(wid);
+  } catch(e) { alert('삭제 오류: ' + e.message); }
+};
+
+
 window.renderRetireResignList = async () => {
   const el = document.getElementById('tab-retire');
   if (!el) return;
@@ -9099,7 +9857,7 @@ window.renderRetirePC = async () => {
           <div style="font-size:16px;font-weight:700;color:#1A2540;">🧾 퇴직금 정산</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
-          <button onclick="renderRetireResignList()" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:8px;padding:6px 12px;color:#5C6F8A;font-size:12px;cursor:pointer;font-weight:600;">📋 휴직/퇴직 신청 확인</button>
+          <button onclick="goTab('resignreq')" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:8px;padding:6px 12px;color:#5C6F8A;font-size:12px;cursor:pointer;font-weight:600;">📋 휴직/퇴직 신청 확인</button>
           <div style="font-size:12px;color:#9AAABF;">재직기간 × 평균임금 기준 자동 산정</div>
         </div>
       </div>
@@ -9159,7 +9917,7 @@ window.renderRetireMobile = () => {
     <div style="display:flex;flex-direction:column;gap:10px;">
       ${selectMain('🧾','퇴직금 산정','renderRetireCalcMobile()','근로자·퇴직일 선택 → 자동 계산')}
       ${selectMain('📂','정산 내역 조회','renderRetireList()','저장된 퇴직금 정산 보기')}
-      ${selectMain('📋','휴직/퇴직 신청 확인','renderRetireResignList()','전자결재로 접수된 휴직·퇴직원서')}
+      ${selectMain('📋','휴직/퇴직 원서 확인',"goTab('resignreq')",'전자결재로 접수된 휴직·퇴직원서')}
     </div>
     <div style="margin-top:16px;background:#FFF4E5;border:1px solid #F4D9AD;border-radius:10px;padding:11px 13px;font-size:11.5px;color:#9A5B00;line-height:1.5;">
       ⚠️ 자동 산정 결과는 참고용입니다. 실제 지급 전 노무사 또는 관할 고용센터에 확인하시기 바랍니다.
