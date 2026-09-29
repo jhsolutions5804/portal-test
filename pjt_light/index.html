@@ -250,6 +250,7 @@ textarea.f-input{resize:vertical;min-height:70px}
 }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 </head>
 <body>
 <div class="ws-wrapper">
@@ -312,6 +313,7 @@ textarea.f-input{resize:vertical;min-height:70px}
             <div class="home-sc" onclick="switchTab('att')"><div class="sci">👷</div><div><div class="sct">근태·공수</div><div class="scd">출역 및 공수 입력</div></div></div>
             <div class="home-sc" onclick="switchTab('sched')"><div class="sci">📅</div><div><div class="sct">일정관리</div><div class="scd">일정 등록 및 확인</div></div></div>
             <div class="home-sc" onclick="switchTab('report')"><div class="sci">📝</div><div><div class="sct">공사일보</div><div class="scd">일일 작업 기록</div></div></div>
+            <div class="home-sc" onclick="openPptDateModalLight()"><div class="sci">📊</div><div><div class="sct">공정표 PPT</div><div class="scd">공정율 PPT 다운로드</div></div></div>
           </div>
         </div>
         <!-- 기본정보 -->
@@ -720,6 +722,20 @@ textarea.f-input{resize:vertical;min-height:70px}
   </div>
 </div>
 
+<!-- 공정표 PPT 기준일 선택 모달 -->
+<div id="ppt-date-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:28px 32px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+    <div style="font-size:17px;font-weight:700;color:#1A2540;margin-bottom:6px">📊 공정표 PPT 기준일 선택</div>
+    <div style="font-size:12px;color:#86868b;margin-bottom:20px">선택한 날짜까지의 품목 공정 체크 데이터로 PPT가 생성됩니다</div>
+    <label style="font-size:13px;color:#555;font-weight:600;display:block;margin-bottom:6px">기준일</label>
+    <input type="date" id="ppt-date-inp-light" style="width:100%;padding:10px 12px;border:1.5px solid #dde4ef;border-radius:10px;font-size:14px;font-family:inherit;box-sizing:border-box;margin-bottom:12px">
+    <div id="ppt-status-light" style="display:none;font-size:12px;color:#1D5BA6;margin-bottom:12px"></div>
+    <div style="display:flex;gap:10px">
+      <button onclick="closePptDateModalLight()" style="flex:1;padding:11px;background:#f5f5f7;color:#555;border:1px solid #e5e5e5;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit">취소</button>
+      <button id="ppt-btn-light" onclick="runPptWithDateLight()" style="flex:2;padding:11px;background:#1D5BA6;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">📊 PPT 생성 · 다운로드</button>
+    </div>
+  </div>
+</div>
 <div id="dr-print-area" style="display:none"></div>
 
 <div class="toast" id="toast"></div>
@@ -1208,6 +1224,150 @@ async function recalcProgress(){
     document.getElementById('pc-pct').textContent=pct.toFixed(1)+'%';
   }catch(e){}
 }
+
+
+// ── 공정표 PPT (메인PJT의 공정표 PPT와 같은 취지 — 경량PJT는 구역 없이 품목×공정단계 구조이므로 그에 맞게 구성) ──
+window.openPptDateModalLight = function(){
+  const modal=document.getElementById('ppt-date-modal'); if(!modal) return;
+  const inp=document.getElementById('ppt-date-inp-light');
+  if(inp) inp.value=progDate||getToday();
+  modal.style.display='flex';
+};
+window.closePptDateModalLight=function(){
+  const modal=document.getElementById('ppt-date-modal'); if(modal) modal.style.display='none';
+};
+window.runPptWithDateLight=async function(){
+  const inp=document.getElementById('ppt-date-inp-light');
+  if(!inp||!inp.value){ alert('날짜를 선택해 주세요.'); return; }
+  await generateProgressPptLight(inp.value);
+};
+
+// dateKey 시점까지의 누적 체크로 품목별 완료 단계수를 계산 (과거 조회와 동일 로직, getCumulativeChecksUpTo 재사용)
+async function _pptItemStagesAsOf(dateKey){
+  const cum = (dateKey===getToday())
+    ? null // 오늘은 items.stages(현재값)를 그대로 신뢰
+    : await getCumulativeChecksUpTo(dateKey);
+  return itemsCache.map(function(it){
+    const stagesObj={};
+    stageList.forEach(function(s){ stagesObj[s] = cum ? !!cum[it.id+'_'+s] : !!(it.stages && it.stages[s]); });
+    const done=stageList.filter(function(s){ return stagesObj[s]; }).length;
+    return { id:it.id, name:it.name, stages:stagesObj, done, pct: stageList.length ? (done/stageList.length*100) : 0 };
+  });
+}
+
+window.generateProgressPptLight=async function(dateKey){
+  const btn=document.getElementById('ppt-btn-light'), status=document.getElementById('ppt-status-light');
+  if(!itemsCache.length){ alert('등록된 품목이 없어 PPT를 만들 수 없습니다.'); return; }
+  if(!stageList.length){ alert('공정 단계가 설정되지 않아 PPT를 만들 수 없습니다. (홈 탭에서 설정)'); return; }
+  if(btn){ btn.disabled=true; btn.textContent='⏳ 데이터 불러오는 중...'; }
+  if(status){ status.style.display='block'; status.textContent='데이터를 불러오는 중...'; }
+  try{
+    const d=new Date(dateKey+'T12:00:00');
+    const dows=['일','월','화','수','목','금','토'];
+    const dateStr=d.getFullYear()+'. '+(d.getMonth()+1)+'. '+d.getDate()+'('+dows[d.getDay()]+')';
+    const prevD=new Date(d); prevD.setDate(prevD.getDate()-1);
+    const prevKey=calKey(prevD.getFullYear(),prevD.getMonth(),prevD.getDate());
+
+    const todayRows=await _pptItemStagesAsOf(dateKey);
+    const prevRows=await _pptItemStagesAsOf(prevKey);
+    const prevPctById={}; prevRows.forEach(function(r){ prevPctById[r.id]=r.pct; });
+
+    const total=todayRows.length;
+    const avgPct= total? (todayRows.reduce(function(s,r){return s+r.pct;},0)/total) : 0;
+    const doneItems=todayRows.filter(function(r){ return r.pct>=100; }).length;
+    const prevAvg= prevRows.length ? (prevRows.reduce(function(s,r){return s+r.pct;},0)/prevRows.length) : 0;
+    const diffPct=(avgPct-prevAvg);
+
+    if(status) status.textContent='PPT 생성 중...';
+    const C={ blue:'1D5BA6', text:'1E293B', sub:'64748B', gray1:'F1F5F9', gray2:'E2E8F0', gray3:'94A3B8',
+      headBg:'EAF0F8', upGreen:'16A34A', downRed:'DC2626' };
+    const pres=new PptxGenJS();
+    pres.layout='LAYOUT_WIDE';
+
+    // ── 표지 ──
+    {
+      const s=pres.addSlide(); s.background={color:'FFFFFF'};
+      s.addText((pjtData&&pjtData.client)||'', {x:0.6,y:0.3,w:9,h:0.45,fontSize:13,fontFace:'맑은 고딕',color:C.sub});
+      s.addText((pjtData&&pjtData.name)||'PJT', {x:0.6,y:1.35,w:12,h:0.65,fontSize:24,fontFace:'맑은 고딕',color:C.sub});
+      s.addText('품목 공정 진행율', {x:0.6,y:1.95,w:12,h:1.05,fontSize:44,fontFace:'맑은 고딕',color:C.text,bold:true});
+      s.addShape('rect',{x:0.6,y:3.15,w:12.1,h:0.05,fill:{color:C.gray2},line:{color:C.gray2}});
+      s.addShape('rect',{x:0.6,y:3.15,w:1.2,h:0.05,fill:{color:C.blue},line:{color:C.blue}});
+      s.addText('기준일 : '+dateStr,{x:0.6,y:3.45,w:7,h:0.38,fontSize:12,fontFace:'맑은 고딕',color:C.sub});
+      const cards=[
+        {label:'총 품목수', val:total+'개', color:C.text, bg:C.gray1},
+        {label:'평균 진행률', val:avgPct.toFixed(1)+'%', color:C.blue, bg:'EAF7FC'},
+        {label:'완료 품목', val:doneItems+' / '+total, color:'16A34A', bg:C.gray1},
+        {label:'공정 단계 수', val:stageList.length+'단계', color:C.text, bg:C.gray1},
+      ];
+      const cW=2.75,cH=1.3,cY=3.98,gap=0.22;
+      const startX=(13.3-(cW*4+gap*3))/2;
+      cards.forEach(function(c,i){
+        const cx=startX+i*(cW+gap);
+        s.addShape('roundRect',{x:cx,y:cY,w:cW,h:cH,fill:{color:c.bg},line:{color:C.gray2,pt:1},rectRadius:0.12});
+        s.addText(c.val,{x:cx,y:cY+0.22,w:cW,h:0.6,fontSize:26,fontFace:'맑은 고딕',color:c.color,bold:true,align:'center',valign:'middle'});
+        s.addText(c.label,{x:cx,y:cY+0.88,w:cW,h:0.28,fontSize:11,fontFace:'맑은 고딕',color:C.sub,align:'center'});
+      });
+      if(prevRows.length){
+        const dn=diffPct, dc=dn>0?C.upGreen:(dn<0?C.downRed:C.gray3), dm=dn>0?'▲':(dn<0?'▼':'±');
+        s.addText('전일 대비  '+dm+' '+Math.abs(dn).toFixed(1)+'%',{x:0.6,y:cY+cH+0.28,w:12,h:0.4,fontSize:13,fontFace:'맑은 고딕',color:dc,bold:dn!==0});
+      }
+    }
+
+    // ── 품목별 상세 표 (페이지당 최대 16개 품목) ──
+    const PAGE=16;
+    const pages=Math.max(1, Math.ceil(todayRows.length/PAGE));
+    for(let p=0;p<pages;p++){
+      const rows=todayRows.slice(p*PAGE,(p+1)*PAGE);
+      const s=pres.addSlide(); s.background={color:'FFFFFF'};
+      s.addText('품목별 공정 현황'+(pages>1?' ('+(p+1)+'/'+pages+')':''),{x:0.45,y:0,w:7,h:0.7,fontSize:19,fontFace:'맑은 고딕',color:C.text,bold:true,valign:'middle'});
+      s.addText('기준일 : '+dateStr,{x:7.5,y:0,w:5.35,h:0.7,fontSize:11,fontFace:'맑은 고딕',color:C.sub,align:'right',valign:'middle'});
+      s.addShape('rect',{x:0,y:0.72,w:13.3,h:0.03,fill:{color:C.gray2},line:{color:C.gray2}});
+      s.addShape('rect',{x:0.4,y:0.72,w:1.5,h:0.03,fill:{color:C.blue},line:{color:C.blue}});
+
+      const LM=0.45, TW=12.4;
+      const nameW=2.6, pctW=1.0, barW=2.2;
+      const stageW=Math.max((TW-nameW-pctW-barW)/Math.max(stageList.length,1), 0.55);
+      const cols=[nameW].concat(stageList.map(function(){return stageW;})).concat([pctW,barW]);
+      const cx=function(i){ let x=LM; for(let k=0;k<i;k++) x+=cols[k]; return x; };
+      const headY=0.95, headH=0.42, rowH=0.36;
+      s.addShape('roundRect',{x:LM,y:headY,w:TW,h:headH,fill:{color:C.headBg},line:{color:C.headBg},rectRadius:0.04});
+      s.addText('품목',{x:cx(0),y:headY,w:cols[0],h:headH,fontSize:11,fontFace:'맑은 고딕',color:C.sub,bold:true,align:'center',valign:'middle'});
+      stageList.forEach(function(st,i){ s.addText(st,{x:cx(1+i),y:headY,w:cols[1+i],h:headH,fontSize:10,fontFace:'맑은 고딕',color:C.sub,bold:true,align:'center',valign:'middle'}); });
+      s.addText('진행률',{x:cx(1+stageList.length),y:headY,w:pctW,h:headH,fontSize:11,fontFace:'맑은 고딕',color:C.sub,bold:true,align:'center',valign:'middle'});
+      s.addText('진행',{x:cx(2+stageList.length),y:headY,w:barW,h:headH,fontSize:11,fontFace:'맑은 고딕',color:C.sub,bold:true,align:'left',valign:'middle'});
+
+      let ry=headY+headH;
+      rows.forEach(function(r,ri){
+        s.addText(r.name,{x:cx(0),y:ry,w:cols[0],h:rowH,fontSize:11,fontFace:'맑은 고딕',color:C.text,align:'left',valign:'middle'});
+        stageList.forEach(function(st,i){
+          const on=!!r.stages[st];
+          s.addText(on?'✓':'-',{x:cx(1+i),y:ry,w:cols[1+i],h:rowH,fontSize:11,fontFace:'맑은 고딕',color:on?C.blue:C.gray3,bold:true,align:'center',valign:'middle'});
+        });
+        s.addText(r.pct.toFixed(0)+'%',{x:cx(1+stageList.length),y:ry,w:pctW,h:rowH,fontSize:11,fontFace:'맑은 고딕',color:r.pct>0?C.text:C.gray3,bold:true,align:'center',valign:'middle'});
+        const barX=cx(2+stageList.length), barTrackW=barW-0.2, barH=0.14, barY=ry+rowH/2-barH/2;
+        s.addShape('roundRect',{x:barX,y:barY,w:barTrackW,h:barH,fill:{color:C.gray2},line:{color:C.gray2},rectRadius:0.5});
+        if(r.pct>0){
+          const fw=Math.max(barTrackW*r.pct/100,0.1);
+          s.addShape('roundRect',{x:barX,y:barY,w:fw,h:barH,fill:{color:r.pct>=100?'16A34A':C.blue},line:{color:r.pct>=100?'16A34A':C.blue},rectRadius:0.5});
+        }
+        ry+=rowH;
+        if(ri<rows.length-1) s.addShape('rect',{x:LM,y:ry,w:TW,h:0.008,fill:{color:'F0F2F6'},line:{color:'F0F2F6'}});
+      });
+    }
+
+    const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
+    const fname=y+m+dd+'_'+((pjtData&&pjtData.name)||'PJT')+'_공정진행율.pptx';
+    await pres.writeFile({fileName:fname});
+
+    closePptDateModalLight();
+    if(status){ status.style.display='none'; }
+  }catch(e){
+    console.error(e);
+    if(status){ status.textContent='❌ 오류: '+e.message; }
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='📊 PPT 생성 · 다운로드'; }
+  }
+};
 
 // ── 근태·공수 ──
 let attDate=getToday();
