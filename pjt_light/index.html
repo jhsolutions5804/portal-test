@@ -72,7 +72,7 @@ textarea.f-input{resize:vertical;min-height:70px}
 .day-title{font-size:15px;font-weight:700;flex:1;text-align:center}
 .today-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px}
 .today-title{font-size:16px;font-weight:600;color:#1d1d1f;flex:1;text-align:center}
-.nav-arrow{background:none;border:1px solid #d1d1d6;border-radius:8px;width:30px;height:30px;cursor:pointer;color:#86868b;font-size:16px;flex-shrink:0}
+.nav-arrow{background:none;border:1px solid #d1d1d6;border-radius:8px;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#86868b;font-size:16px;flex-shrink:0}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A2540;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:999}
 .toast.on{opacity:1}
 .loading{text-align:center;padding:60px 0;color:#9AAABF;font-size:13px}
@@ -124,7 +124,7 @@ textarea.f-input{resize:vertical;min-height:70px}
 .sd-row .v{color:#1A2540;flex:1;white-space:pre-wrap;min-width:0}
 
 /* 일정관리 캘린더 */
-.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .cal-month-label{font-size:15px;font-weight:700;color:#1A2540}
 .cal-legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;font-size:11px;color:#555}
 .legend-item{display:flex;align-items:center;gap:4px}
@@ -231,15 +231,18 @@ textarea.f-input{resize:vertical;min-height:70px}
   .report-pc-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
 
   /* 일정관리 캘린더: 좌(달력)+우(상세) 2단 분할 — 메인PJT(FAB)와 동일 비율/크기로 통일 */
-  .cal-wrap{display:grid;grid-template-columns:minmax(560px,1.3fr) 1fr;gap:16px;align-items:start}
-  .sched-view-toggle{gap:8px}
-  .svt-btn{flex:none;padding:9px 22px;font-size:13.5px}
-  .wk-day-col{min-height:130px;padding:8px}
-  .wk-day-num{font-size:14px}
+  .cal-wrap{display:grid;grid-template-columns:minmax(560px,1.3fr) 1fr;gap:16px;height:calc(100vh - 82px)}
+  .cal-left{overflow-y:auto;display:flex;flex-direction:column;min-width:0}
+  .cal-right{overflow-y:auto;display:flex;flex-direction:column}
+  .sched-view-toggle{gap:6px;margin-bottom:16px}
+  .svt-btn{flex:none;padding:8px 18px;border-radius:9px;font-size:13px}
+  .wk-day-col{padding:8px 6px}
+  .wk-day-num{font-size:16px;line-height:1}
+  .wk-day-head{margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid #f0f0f0}
   .wk-day-dow{font-size:10px}
   .wk-holi{font-size:9px}
-  .wk-item{font-size:10.5px;padding:3px 5px;white-space:normal}
-  .cal-day{min-height:92px}
+  .wk-item{font-size:10px;padding:3px 5px;white-space:normal}
+  .cal-day{min-height:92px;padding:8px 5px;border-radius:10px}
   .cal-right{min-height:400px}
 
   /* 품목현황 탭: 상단 요약 스트립 */
@@ -472,6 +475,11 @@ textarea.f-input{resize:vertical;min-height:70px}
             <span class="legend-item"><span class="legend-dot" style="background:#5e35b1"></span>교육</span>
             <span class="legend-item"><span class="legend-dot" style="background:#c0392b"></span>휴무</span>
             <span class="legend-item"><span class="legend-dot" style="background:#e67e22"></span>연차</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#5D3A00"></span>회의</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#0A3D7A"></span>설치</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#8D6E00"></span>안전</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#00695C"></span>품질</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#7A8AA0"></span>기타</span>
           </div>
           <div class="cal-grid" id="cal-grid">
             <div class="cal-dow">일</div><div class="cal-dow">월</div><div class="cal-dow">화</div>
