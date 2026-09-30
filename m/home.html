@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 20260930e · 관리자 전용 ‘근로자 연명부’ 카드 추가(PC와 동일한 연명부 화면 사용) · 이전: 20260930d · 오래된 캐시 감지 시 1회 새로 받기(주소의 v= 값과 화면 빌드가 다르면 재로드) · 이전: 20260930c · ‘내 팀 공수표’ 카드: 팀장 지정 계정 + 관리자 계정(전체 팀) 표시 · 이전: 20260930b · 팀장 전용 ‘내 팀 공수표’ 카드 추가(portal_users.teamLeaderIds 지정 계정에만 표시) · 이전: 20260925d · ver: 2026-09-25 (모바일 홈 2.8.3) · [홈] 더보기에 내규 열람 타일 추가(5열) -->
+<!-- build: 20260930f · 메뉴 구조를 PC 사이드바와 동일하게 정리(업무: 기획·인사·전자결재·PJT 관리·내 팀 공수표 / 그 아래: 조직도·내규·Portal 관리), 근로자 연명부는 PJT 관리 하위로 이동 · 이전: 20260930e · 관리자 전용 ‘근로자 연명부’ 카드 추가(PC와 동일한 연명부 화면 사용) · 이전: 20260930d · 오래된 캐시 감지 시 1회 새로 받기(주소의 v= 값과 화면 빌드가 다르면 재로드) · 이전: 20260930c · ‘내 팀 공수표’ 카드: 팀장 지정 계정 + 관리자 계정(전체 팀) 표시 · 이전: 20260930b · 팀장 전용 ‘내 팀 공수표’ 카드 추가(portal_users.teamLeaderIds 지정 계정에만 표시) · 이전: 20260925d · ver: 2026-09-25 (모바일 홈 2.8.3) · [홈] 더보기에 내규 열람 타일 추가(5열) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -184,60 +184,58 @@
       </div>
 
       <div class="lbl">업무 메뉴</div>
-
-      <div class="edoc-card" data-perm="pjt" onclick="location.href='pjt.html'">
-        <div class="ic" style="background:#e8f5e9;color:#2e7d32">🏗️</div>
+      <div class="edoc-card" data-perm="plan" onclick="location.href='gihoek.html'">
+        <div class="ic" style="background:#e8eefb;color:#1D5BA6">🧭</div>
         <div>
-          <div class="nm">PJT 관리</div>
-          <div class="ds">진행 중인 현장 전체 보기</div>
+          <div class="nm">기획</div>
+          <div class="ds">영업·정산·회계 (견적·정산서·손익)</div>
         </div>
         <span class="go">›</span>
       </div>
-      <div class="edoc-card" id="rosterCard" style="display:none" onclick="location.href='../pjt_roster/index.html?via=mobile'">
-        <div class="ic" style="background:#fff4e0;color:#b26a00">👷</div>
+      <div class="edoc-card" data-perm="hr" onclick="location.href='hr.html'">
+        <div class="ic" style="background:#f0edfb;color:#7C3AED">👥</div>
         <div>
-          <div class="nm">근로자 연명부</div>
-          <div class="ds">인적사항 · 검진 · 자격/교육 · 월간 공수 (관리자 전용)</div>
+          <div class="nm">인사</div>
+          <div class="ds">급여·계약·근태·연차 관리</div>
         </div>
         <span class="go">›</span>
       </div>
-      <div class="edoc-card" id="myTeamCard" style="display:none" onclick="location.href='../team/index.html?via=mobile'">
-        <div class="ic" style="background:#eaf3ff;color:#1D5BA6">👥</div>
-        <div>
-          <div class="nm">내 팀 공수표</div>
-          <div class="ds">팀원 공수 · 팀 단가 · 노무비 (팀장 전용)</div>
-        </div>
-        <span class="go">›</span>
-      </div>
-
       <div class="edoc-card" data-perm="edoc" onclick="location.href='edoc.html'">
-        <div class="ic">📋</div>
+        <div class="ic" style="background:#f0edfb;color:#7C3AED">📋</div>
         <div>
           <div class="nm">전자결재</div>
           <div class="ds">업무일지·연차·구매품의·지출결의</div>
         </div>
         <span class="go">›</span>
       </div>
-
+      <div class="edoc-card" data-perm="pjt" onclick="location.href='pjt.html'">
+        <div class="ic" style="background:#e8f5e9;color:#2e7d32">🏗️</div>
+        <div>
+          <div class="nm">PJT 관리</div>
+          <div class="ds">프로젝트 · 회사 일정 · 근로자 연명부 · 종료 PJT</div>
+        </div>
+        <span class="go">›</span>
+      </div>
+      <div class="edoc-card" id="myTeamCard" style="display:none" onclick="location.href='../team/index.html?via=mobile&back=home.html'">
+        <div class="ic" style="background:#eaf3ff;color:#1D5BA6">👥</div>
+        <div>
+          <div class="nm">내 팀 공수표</div>
+          <div class="ds">팀원 공수 · 팀 단가 · 노무비 (팀장·관리자)</div>
+        </div>
+        <span class="go">›</span>
+      </div>
       <div class="lbl" style="padding-top:20px">더보기</div>
       <div class="more-row">
-        <div class="more-item" data-perm="plan" onclick="location.href='gihoek.html'">
-          <span class="mi2">🧭</span><span class="mt2">기획</span>
-        </div>
-        <div class="more-item" data-perm="hr" onclick="location.href='hr.html'">
-          <span class="mi2">👥</span><span class="mt2">인사</span>
-        </div>
         <div class="more-item" onclick="location.href='admin.html?v=org'">
           <span class="mi2">🏢</span><span class="mt2">조직도</span>
-        </div>
-        <div class="more-item" data-admin="1" onclick="location.href='admin.html?v=admin'">
-          <span class="mi2">⚙️</span><span class="mt2">관리</span>
         </div>
         <div class="more-item" onclick="location.href='admin.html?v=rules'">
           <span class="mi2">📖</span><span class="mt2">내규</span>
         </div>
+        <div class="more-item" data-admin="1" onclick="location.href='admin.html?v=admin'">
+          <span class="mi2">⚙️</span><span class="mt2">Portal 관리</span>
+        </div>
       </div>
-
       <div class="out">
         <button id="mbLogoutBtn" type="button">로그아웃</button>
       </div>
@@ -269,9 +267,6 @@
   var _tl=(auth&&Array.isArray(auth.teamLeaderIds))?auth.teamLeaderIds:[];
   var _myTeamCard=document.getElementById('myTeamCard');
   if(_myTeamCard && (_tl.length || admin)) _myTeamCard.style.display='';
-  // 근로자 연명부: 관리자 전용(개인정보 포함) — 관리자가 아니면 잠금 표시도 없이 아예 숨김
-  var _rosterCard=document.getElementById('rosterCard');
-  if(_rosterCard && admin) _rosterCard.style.display='';
   function can(k){ if(k==='plan'||k==='hr') return admin; return admin || !!perms[k]; }
   // 권한 없는 섹션 잠금
   document.querySelectorAll('[data-perm]').forEach(function(el){
