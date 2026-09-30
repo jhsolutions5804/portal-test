@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260930e · ver: 1.4.0 · 월간 공수 보기 이전(PJT별 합계 · 개인별 합계 · 개인별 공수표 PNG) — 월간 공수 → 연명부 · 이전: 20260930d ver 1.3.0 기존 인원 마이그레이션 도구 이전(월간 공수 → 연명부) · 이전: 20260930c ver 1.2.0 원청별(삼성전자/SK하이닉스) 탭 구성 — 자격·인증(취득 현장명)은 탭별, 사내화 교육·상생협력포탈 계정은 삼성전자 탭 · 이전: 20260930b ver 1.1.0 연명부 개정: 인적사항 개편(전화번호 포함), 사내화 교육 만료일, 첨부 3칸(사진·신분증·건설기초이수증), 관리자 전용 급여/계좌 구역 · 이전: 20260930a ver 1.0.0 근로자 연명부 신설 — 마스터 근로자 관리(등록/수정/퇴사/삭제) 이전, 개인정보·건강검진·자격인증·사내화교육·상생협력포탈 계정·사진(파일 보관) 관리. 관리자 전용 -->
+<!DOCTYPE html><!-- build: 20260930f · ver: 1.5.0 · 일당을 관리자 전용 문서(master_worker_private)로 이동 · 이전: 20260930e ver 1.4.0 월간 공수 보기 이전(PJT별 합계 · 개인별 합계 · 개인별 공수표 PNG) — 월간 공수 → 연명부 · 이전: 20260930d ver 1.3.0 기존 인원 마이그레이션 도구 이전(월간 공수 → 연명부) · 이전: 20260930c ver 1.2.0 원청별(삼성전자/SK하이닉스) 탭 구성 — 자격·인증(취득 현장명)은 탭별, 사내화 교육·상생협력포탈 계정은 삼성전자 탭 · 이전: 20260930b ver 1.1.0 연명부 개정: 인적사항 개편(전화번호 포함), 사내화 교육 만료일, 첨부 3칸(사진·신분증·건설기초이수증), 관리자 전용 급여/계좌 구역 · 이전: 20260930a ver 1.0.0 근로자 연명부 신설 — 마스터 근로자 관리(등록/수정/퇴사/삭제) 이전, 개인정보·건강검진·자격인증·사내화교육·상생협력포탈 계정·사진(파일 보관) 관리. 관리자 전용 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -196,7 +196,7 @@ label.f{font-size:12px;font-weight:600;color:#555;display:block;margin:9px 0 4px
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs, writeBatch, serverTimestamp, query, where, documentId }
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, writeBatch, serverTimestamp, query, where, documentId, deleteField }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { getAuth, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
@@ -404,7 +404,7 @@ function blankForm(){
 function formFromMaster(m){
   const p = privs[m.id]||{};
   return { name:m.name||'', jumin:fmtJumin(p.jumin), birth:m.birth||'', gender:m.gender||'', hireDate:m.hireDate||'', leaderId:m.leaderId||'',
-           rate:m.dailyRate?fmtMoney(m.dailyRate):'', phone:p.phone||'', bank:p.bank||'', account:p.account||'',
+           rate:((p.dailyRate!=null?p.dailyRate:m.dailyRate)?fmtMoney(p.dailyRate!=null?p.dailyRate:m.dailyRate):''), phone:p.phone||'', bank:p.bank||'', account:p.account||'',
            health:(p.health||[]).map(h=>({type:h.type,date:h.date||''})), certs:(p.certs||[]).map(c=>({co:certCo(c),name:c.name||'',site:c.site||'',acquired:c.acquired||'',expiry:c.expiry||''})),
            edu:Object.assign({}, p.inhouseEdu||{}), eduExp:Object.assign({}, p.inhouseEduExp||{}), ssId:p.ssId||'', ssPw:p.ssPw||'', note:p.note||'',
            files: blankFiles(filesMeta(p)) };
@@ -642,7 +642,8 @@ window.saveWorker = async function(){
   if (editing && f.leaderId && isLeaderId(id)){ alert(name+'님은 팀장으로 지정된 인원이 있어 다른 팀 소속으로 변경할 수 없습니다. 먼저 팀원들의 소속을 변경해주세요.'); return; }
   const gender = f.gender || (pj&&pj.gender) || '';
   const base = { name, birth, gender, hireDate:f.hireDate||'', leaderId:f.leaderId||'' };
-  if (isAdmin) base.dailyRate = parseMoney(f.rate);              // 급여 정보는 관리자 구역에서만 저장 (일당은 월간 공수가 읽는 master_workers에 유지)
+  // 금액 정보(일당)는 모든 직원이 읽을 수 있는 master_workers가 아니라 관리자 전용 master_worker_private에 저장한다. 예전 값이 master_workers에 남아 있으면 함께 제거.
+  if (isAdmin) base.dailyRate = deleteField();
   const health = f.health.filter(h=>h.date).map(h=>({type:h.type,date:h.date})).sort((a,b)=>a.date.localeCompare(b.date));
   const incomplete = f.certs.find(c=>!(c.name||'').trim() && (c.site||c.acquired||c.expiry));
   if (incomplete){ coTab = certCo(incomplete); redrawCo(); alert('자격/인증명이 비어 있는 행이 있습니다. ('+COMPANIES.find(x=>x.k===certCo(incomplete)).label+' 탭) 이름을 입력하거나 행을 삭제해 주세요.'); return; }
@@ -659,7 +660,7 @@ window.saveWorker = async function(){
                  health, certs, inhouseEdu:edu, inhouseEduExp:eduExp, ssId:(f.ssId||'').trim(), ssPw:f.ssPw||'', note:(f.note||'').trim(),
                  files: filesOut, hasPhoto: hasAny, photoName:'', photoSize:0, photoW:0, photoH:0,   // 예전 단일 사진 필드는 files로 통합되어 비움
                  updatedAt: serverTimestamp() };
-  if (isAdmin){ priv.bank = (f.bank||'').trim(); priv.account = (f.account||'').trim(); }
+  if (isAdmin){ priv.bank = (f.bank||'').trim(); priv.account = (f.account||'').trim(); priv.dailyRate = parseMoney(f.rate); }
   const btn = $('save-btn'); btn.disabled=true; btn.textContent='저장 중...';
   try{
     const b = writeBatch(db);
@@ -785,11 +786,11 @@ window.confirmMigrate = async function(){
   const births = Array.from(new Set(items.map(it=>it.birth).filter(Boolean)));
   if (births.length > 1 && !confirm('생년월일이 서로 다른 항목이 있습니다 ('+births.join(', ')+').\n같은 사람으로 묶어 등록할까요?')) return;
   const data = { name, birth, leaderId };
-  if (isAdmin) data.dailyRate = parseMoney($('mc-rate').value);
   const btn = $('mc-save-btn'); btn.disabled = true; btn.textContent = '등록 중...';
   try{
     const b = writeBatch(db);
     b.set(doc(db,'master_workers',masterId), data, { merge:true });
+    if (isAdmin){ const rt = parseMoney($('mc-rate').value); if (rt) b.set(doc(db,'master_worker_private',masterId), { dailyRate:rt }, { merge:true }); }
     for (const it of items){
       if (it.id === masterId) continue;           // 첫 항목은 이미 마스터 ID와 동일
       b.set(doc(db, ...it.collPath, masterId), { name, birth, masterId, order:999 }, { merge:true });
