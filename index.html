@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260930l · ver: 2026-09-30 (일정 소속 명칭 통일: 프로젝트에 속하지 않는 일정 = ‘소속 없음’) · 이전: 20260930k · ver: 2026-09-30 (GUEST 사번: 회사 일정 미표시·일정 등록 불가 — 로그인 정보에 사번(empNo) 저장, jhIsGuest 판별, PC 홈 캘린더에서 GUEST에게 회사 일정 제외·등록/수정/삭제/완료 체크 숨김, 화면 낱말을 ‘일정’으로 통일) · 이전: 20260930j · ver: 2026-09-30 (포털→모바일 홈 이동 시 버전 표시로 캐시 우회 — 예전 화면이 남아 새 기능이 안 보이는 문제 방지) · 이전: 20260930i · ver: 2026-09-30 (내 팀 공수표: 관리자 계정도 표시 — 팀 연결 없이 전체 팀 조회) · 이전: 20260930h · ver: 2026-09-30 (팀장 전용 ‘내 팀 공수표’ 진입점 추가(portal_users.teamLeaderIds 지정 계정에만 표시, 관리자 제외)) · 이전: 20260930g · ver: 2026-09-30 (직원 비밀번호(_pw)를 계정 문서에서 본인·관리자 전용 문서 portal_secrets로 이동) · 이전: 20260930f · ver: 2026-09-30 (회사 일정 카테고리 행사·기타·만료 추가) · 이전: 20260925e 2026-09-25 (하단 작업탭 10개 초과 시 막지 않고 가장 먼저 열었던 탭을 자동으로 닫음) · 이전: 20260925d 결재함 이동 후 탭 갇힘 현상 해결 -->
+<!DOCTYPE html><!-- build: 20260930m · ver: 2026-09-30 (연차·휴무 전체 공개: GUEST도 회사 일정 중 연차·휴무(분류 off·leave)는 조회 — 일정 조회를 schedDocsInRange 한 곳으로 모음) · 이전: 20260930l · ver: 2026-09-30 (일정 소속 명칭 통일: 프로젝트에 속하지 않는 일정 = ‘소속 없음’) · 이전: 20260930k · ver: 2026-09-30 (GUEST 사번: 회사 일정 미표시·일정 등록 불가 — 로그인 정보에 사번(empNo) 저장, jhIsGuest 판별, PC 홈 캘린더에서 GUEST에게 회사 일정 제외·등록/수정/삭제/완료 체크 숨김, 화면 낱말을 ‘일정’으로 통일) · 이전: 20260930j · ver: 2026-09-30 (포털→모바일 홈 이동 시 버전 표시로 캐시 우회 — 예전 화면이 남아 새 기능이 안 보이는 문제 방지) · 이전: 20260930i · ver: 2026-09-30 (내 팀 공수표: 관리자 계정도 표시 — 팀 연결 없이 전체 팀 조회) · 이전: 20260930h · ver: 2026-09-30 (팀장 전용 ‘내 팀 공수표’ 진입점 추가(portal_users.teamLeaderIds 지정 계정에만 표시, 관리자 제외)) · 이전: 20260930g · ver: 2026-09-30 (직원 비밀번호(_pw)를 계정 문서에서 본인·관리자 전용 문서 portal_secrets로 이동) · 이전: 20260930f · ver: 2026-09-30 (회사 일정 카테고리 행사·기타·만료 추가) · 이전: 20260925e 2026-09-25 (하단 작업탭 10개 초과 시 막지 않고 가장 먼저 열었던 탭을 자동으로 닫음) · 이전: 20260925d 결재함 이동 후 탭 갇힘 현상 해결 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -1332,11 +1332,29 @@ function schedColPath(pjtKey){
 }
 // 현재 활성 PJT 전체(FAB/SUP + 경량 등록 PJT)의 pjtKey 목록
 function allSchedPjtKeys(){
-  const keys=Object.keys(PJT_SCHED_COL).filter(function(k){ return !(k==='company' && window.jhIsGuest && window.jhIsGuest(window.me)); });   // GUEST 사번: 공통 일정 미표시(보안규칙도 차단)
+  const keys=Object.keys(PJT_SCHED_COL);   // GUEST도 공통 일정 키를 유지 — 단 조회는 schedDocsInRange에서 연차·휴무만(보안규칙도 같은 기준)
   PJT_SUBTABS.forEach(function(st){ if(st.key.indexOf('reg_')===0) keys.push(st.key); });
   return keys;
 }
 
+// 일정 조회 공용 함수 — 날짜 범위 [start,end]의 일정 문서 배열을 반환한다.
+//  · 일반: 컬렉션에 sdate 범위 쿼리(기존과 동일)
+//  · GUEST의 공통 일정(company): 보안규칙상 연차·휴무(분류 off·leave)만 조회 가능 → tag in [off,leave] 로만 조회한 뒤 날짜는 코드에서 거른다
+//    (범위 조건과 함께 쓰면 복합 색인이 필요해지므로 분리. 연차·휴무는 건수가 적다)
+async function schedDocsInRange(fs, key, start, end, lim){
+  const {getDocs,collection,query,where,limit}=fs;
+  const colPath=schedColPath(key);
+  // 전체 공개 분류(연차·휴무 사용) — 보안규칙과 같은 기준. 함수 안에 두어 정의 순서에 의존하지 않는다.
+  const PUBLIC_TAGS=['off','leave'];
+  if(key==='company' && window.jhIsGuest && window.jhIsGuest(window.me)){
+    const snap=await getDocs(query(collection(window._db,...colPath),where('tag','in',PUBLIC_TAGS)));
+    const out=[]; snap.forEach(function(d){ const s=d.data(); const sd=s.sdate||''; const ed=s.edate||sd; if(!sd) return; if(sd>=start && sd<=end) out.push(d); });   // 캘린더 배치는 시작일 기준(기존 쿼리와 동일)
+    out.sort(function(a,b){ return (a.data().sdate||'').localeCompare(b.data().sdate||''); });
+    return lim?out.slice(0,lim):out;
+  }
+  const c=[where('sdate','>=',start),where('sdate','<=',end)]; if(lim) c.push(limit(lim));
+  const snap=await getDocs(query(collection(window._db,...colPath),...c)); const out=[]; snap.forEach(function(d){ out.push(d); }); return out;
+}
 async function loadPjtPanels(){
   const sp = document.getElementById('pjt-schedule-panel');
   const rp = document.getElementById('pjt-report-panel');
@@ -1363,8 +1381,8 @@ async function loadPjtPanels(){
       const colPath=schedColPath(key);
       const st=PJT_SUBTABS.find(s=>s.key===key);
       try{
-        const snap=await getDocs(query(collection(window._db,...colPath),where('sdate','>=',todayKey),where('sdate','<=',endKey),limit(30)));
-        snap.forEach(d=>{
+        const docs=await schedDocsInRange({getDocs,collection,query,where,limit},key,todayKey,endKey,30);
+        docs.forEach(d=>{
           const s=d.data();
           if(!['in','edu','meeting','fcu','safety'].includes(s.tag)) return;
           schedRows.push({...s, pjtName:st?.name||key});
@@ -1549,8 +1567,8 @@ async function _pjtLoadMonthMerge(y,m){
       const colPath=schedColPath(key);
       const st=PJT_SUBTABS.find(s=>s.key===key);
       try{
-        const snap=await getDocs(query(collection(window._db,...colPath),where('sdate','>=',start),where('sdate','<=',end)));
-        snap.forEach(d=>{
+        const docs=await schedDocsInRange({getDocs,collection,query,where,limit:undefined},key,start,end,0);
+        docs.forEach(d=>{
           const s=d.data(); const dk=s.sdate; if(!dk) return;
           (_pjtCalCache[dk]=_pjtCalCache[dk]||[]).push({...s, id:d.id, pjtName:st?.name||key, pjtKey:key});
         });
@@ -1634,8 +1652,8 @@ async function pjtCalLoadMonth(){
       const colPath=schedColPath(key);
       const st=PJT_SUBTABS.find(s=>s.key===key);
       try{
-        const snap=await getDocs(query(collection(window._db,...colPath),where('sdate','>=',start),where('sdate','<=',end)));
-        snap.forEach(d=>{
+        const docs=await schedDocsInRange({getDocs,collection,query,where,limit:undefined},key,start,end,0);
+        docs.forEach(d=>{
           const s=d.data(); const dk=s.sdate; if(!dk) return;
           (cache[dk]=cache[dk]||[]).push({...s, id:d.id, pjtName:st?.name||key, pjtKey:key});
         });
@@ -1715,8 +1733,8 @@ async function loadHomeCalendar(){
         const colPath=schedColPath(key);
         const st=PJT_SUBTABS.find(s=>s.key===key);
         try{
-          const snap=await getDocs(query(collection(window._db,...colPath),where('sdate','>=',start),where('sdate','<=',end)));
-          snap.forEach(d=>{
+          const docs=await schedDocsInRange({getDocs,collection,query,where,limit:undefined},key,start,end,0);
+          docs.forEach(d=>{
             const s=d.data(); const dk=s.sdate; if(!dk) return;
             (cache[dk]=cache[dk]||[]).push({...s, id:d.id, pjtName:st?.name||key, pjtKey:key});
           });
