@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 20260925d · ver: 2026-09-25 (모바일 홈 2.8.3) · [홈] 더보기에 내규 열람 타일 추가(5열) -->
+<!-- build: 20260930b · 팀장 전용 ‘내 팀 공수표’ 카드 추가(portal_users.teamLeaderIds 지정 계정에만 표시) · 이전: 20260925d · ver: 2026-09-25 (모바일 홈 2.8.3) · [홈] 더보기에 내규 열람 타일 추가(5열) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -186,6 +186,14 @@
         </div>
         <span class="go">›</span>
       </div>
+      <div class="edoc-card" id="myTeamCard" style="display:none" onclick="location.href='../team/index.html?via=mobile'">
+        <div class="ic" style="background:#eaf3ff;color:#1D5BA6">👥</div>
+        <div>
+          <div class="nm">내 팀 공수표</div>
+          <div class="ds">팀원 공수 · 팀 단가 · 노무비 (팀장 전용)</div>
+        </div>
+        <span class="go">›</span>
+      </div>
 
       <div class="edoc-card" data-perm="edoc" onclick="location.href='edoc.html'">
         <div class="ic">📋</div>
@@ -242,6 +250,10 @@
   var _av=document.getElementById('mbAvatar');
   if(_av) _av.textContent=(auth&&auth.name)?auth.name.slice(0,1):'·';
   var perms=(auth&&auth.perms)||{}, admin=(auth&&auth.admin)||false;
+  // 내 팀 공수표: 관리자가 팀장으로 지정한 계정에만 표시(잠금 표시 없이 아예 숨김)
+  var _tl=(auth&&Array.isArray(auth.teamLeaderIds))?auth.teamLeaderIds:[];
+  var _myTeamCard=document.getElementById('myTeamCard');
+  if(_myTeamCard && _tl.length) _myTeamCard.style.display='';
   function can(k){ if(k==='plan'||k==='hr') return admin; return admin || !!perms[k]; }
   // 권한 없는 섹션 잠금
   document.querySelectorAll('[data-perm]').forEach(function(el){
