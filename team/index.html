@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260930d · ver: 1.3.0 · 관리자 화면에서 팀 단가 설정(각 팀 카드의 ✏️, 기획 정산의 팀별 노무비와 같은 두 문서에 저장) — PC·모바일 동일 · 이전: 20260930c ver 1.2.0 · 관리자 계정은 팀 연결 없이 전체 팀 조회(팀이 여러 개면 전체 합계 표시), 팀장 계정은 지정된 자기 팀만 · 이전: 20260930b ver 1.1.0 · 모바일·PC 화면 다듬기(버튼 글자 꺾임·큰 금액 잘림·긴 프로젝트명 정리, 포털 안에서 열릴 때 홈 버튼 숨김) · 이전: 20260930a ver 1.0.0 · 내 팀 공수표(팀장 전용) — 관리자가 연명부에서 지정한 팀(portal_users.teamLeaderIds)의 월별 공수·개인별 공수표·팀 단가·노무비 조회 -->
+<!DOCTYPE html><!-- build: 20260930e · ver: 1.3.1 · 모바일에서 진입한 화면(기획 정산 등)으로 돌아가는 ← 버튼(back 파라미터, 허용 목록만) · 이전: 20260930d ver 1.3.0 · 관리자 화면에서 팀 단가 설정(각 팀 카드의 ✏️, 기획 정산의 팀별 노무비와 같은 두 문서에 저장) — PC·모바일 동일 · 이전: 20260930c ver 1.2.0 · 관리자 계정은 팀 연결 없이 전체 팀 조회(팀이 여러 개면 전체 합계 표시), 팀장 계정은 지정된 자기 팀만 · 이전: 20260930b ver 1.1.0 · 모바일·PC 화면 다듬기(버튼 글자 꺾임·큰 금액 잘림·긴 프로젝트명 정리, 포털 안에서 열릴 때 홈 버튼 숨김) · 이전: 20260930a ver 1.0.0 · 내 팀 공수표(팀장 전용) — 관리자가 연명부에서 지정한 팀(portal_users.teamLeaderIds)의 월별 공수·개인별 공수표·팀 단가·노무비 조회 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -55,7 +55,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
 <div id="gate" class="gate" style="display:none"></div>
 <div id="init" class="loading">불러오는 중...</div>
 <div class="app" id="app" style="display:none">
-  <div class="top"><div><div class="title">👥 내 팀 공수표</div><div class="sub" id="who"></div></div><button class="btn sm" id="back-btn" onclick="goBack()">← 홈</button></div>
+  <div class="top"><div><div class="title">👥 내 팀 공수표</div><div class="sub" id="who"></div></div><button class="btn sm" id="back-btn" onclick="goBack()">← 뒤로</button></div>
   <div class="monthbar"><button class="btn sm" onclick="mShift(-1)">‹</button><b id="mlabel">—</b><button class="btn sm" onclick="mShift(1)">›</button></div>
   <div id="warn"></div>
   <div id="summary"></div>
@@ -96,7 +96,8 @@ function gate(icon, title, msg){
 }
 const embedded = (function(){ try{ return window.self !== window.top; }catch(e){ return true; } })();   // 포털(PC) 안 iframe으로 열린 경우
 if (embedded) document.addEventListener('DOMContentLoaded',()=>{ const b=document.getElementById('back-btn'); if(b) b.style.display='none'; });
-window.goBack = function(){ const q=new URLSearchParams(location.search); location.href = (q.get('via')==='mobile') ? '../m/home.html' : '../index.html'; };
+const M_BACK_OK = ['home.html','pjt.html','gihoek.html','hr.html','edoc.html','admin.html'];        // 돌아갈 수 있는 모바일 화면(허용 목록)
+window.goBack = function(){ const q=new URLSearchParams(location.search); const b=q.get('back')||''; location.href = (q.get('via')==='mobile') ? '../m/'+(M_BACK_OK.indexOf(b)>=0?b:'home.html') : '../index.html'; };
 
 onAuthStateChanged(auth, async user => {
   if (!user) { gate('🔒','로그인이 필요합니다','포털(portal.jhsol.kr)에서 로그인 후 다시 접속해 주세요.'); return; }
