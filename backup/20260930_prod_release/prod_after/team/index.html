@@ -1,0 +1,256 @@
+<!DOCTYPE html><!-- build: 20260930e · ver: 1.3.1 · 모바일에서 진입한 화면(기획 정산 등)으로 돌아가는 ← 버튼(back 파라미터, 허용 목록만) · 이전: 20260930d ver 1.3.0 · 관리자 화면에서 팀 단가 설정(각 팀 카드의 ✏️, 기획 정산의 팀별 노무비와 같은 두 문서에 저장) — PC·모바일 동일 · 이전: 20260930c ver 1.2.0 · 관리자 계정은 팀 연결 없이 전체 팀 조회(팀이 여러 개면 전체 합계 표시), 팀장 계정은 지정된 자기 팀만 · 이전: 20260930b ver 1.1.0 · 모바일·PC 화면 다듬기(버튼 글자 꺾임·큰 금액 잘림·긴 프로젝트명 정리, 포털 안에서 열릴 때 홈 버튼 숨김) · 이전: 20260930a ver 1.0.0 · 내 팀 공수표(팀장 전용) — 관리자가 연명부에서 지정한 팀(portal_users.teamLeaderIds)의 월별 공수·개인별 공수표·팀 단가·노무비 조회 -->
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>내 팀 공수표</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;background:#eef0f6;color:#1d1d1f;min-height:100vh}
+.app{max-width:860px;margin:0 auto;padding:16px 14px calc(60px + env(safe-area-inset-bottom))}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.title{font-size:19px;font-weight:800;color:#1A2540}
+.sub{font-size:12px;color:#86868b}
+.btn{background:#fff;border:1px solid #d1d1d6;border-radius:10px;padding:8px 14px;font-size:14px;cursor:pointer;color:#444;font-family:inherit}
+.btn{white-space:nowrap}
+.btn.sm{padding:6px 11px;font-size:12.5px;border-radius:8px}
+.btn.pri{background:#1D5BA6;color:#fff;border-color:#1D5BA6;font-weight:700}
+.monthbar{display:flex;align-items:center;justify-content:center;gap:14px;background:#fff;border-radius:14px;padding:10px;margin-bottom:12px;box-shadow:0 2px 10px rgba(30,60,120,.06)}
+.monthbar b{font-size:17px;min-width:110px;text-align:center;color:#1A2540}
+.sumall{display:grid;grid-template-columns:1fr 1.35fr;gap:8px;background:#fff;border-radius:16px;padding:12px;margin-bottom:14px;box-shadow:0 2px 12px rgba(30,60,120,.07)}
+.team{background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 12px rgba(30,60,120,.07)}
+.team-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.team-nm{font-size:16px;font-weight:800;color:#1A2540}
+.sumline{display:grid;grid-template-columns:1fr 1fr 1.35fr;gap:8px;margin:10px 0}
+.sumcell{background:#F5F8FD;border-radius:12px;padding:10px 6px;text-align:center;min-width:0}
+.sumcell .l{font-size:11px;color:#86868b;margin-bottom:3px}
+.sumcell .v{font-size:clamp(13px,4.2vw,17px);font-weight:800;color:#1D5BA6;white-space:nowrap}
+.sumcell .v.money{color:#1b5e20}
+.ed{border:none;background:none;cursor:pointer;font-size:13px;padding:0 2px}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#1A2540;color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;z-index:400;max-width:90%;text-align:center;display:none}
+.chip{display:inline-block;font-size:11px;padding:3px 9px;border-radius:7px;background:#EEF4FC;color:#1D5BA6;font-weight:600;margin:0 4px 4px 0}
+.mem{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 2px;border-top:1px solid #f0f0f0}
+.mem>div:first-child{min-width:0;flex:1}
+.mem .act{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.mem:first-of-type{border-top:none}
+.mem .nm{font-size:14.5px;font-weight:700}
+.mem .nm small{font-weight:400;color:#9AAABF;font-size:11px;margin-left:4px}
+.mem .md{font-size:15px;font-weight:800;color:#1D5BA6;white-space:nowrap}
+.mem .pj{font-size:11px;color:#86868b;margin-top:2px;word-break:keep-all}
+.note{background:#fff8e8;border:1px solid #ffe082;border-radius:10px;padding:9px 12px;font-size:12px;color:#7a5c00;margin-bottom:12px;line-height:1.55}
+.empty,.loading{text-align:center;color:#9AAABF;font-size:14px;padding:40px 12px}
+.gate{max-width:420px;margin:70px auto;background:#fff;border-radius:18px;padding:30px 24px;text-align:center;box-shadow:0 6px 24px rgba(30,60,120,.08)}
+.gate h2{font-size:17px;color:#1A2540;margin:8px 0}.gate p{font-size:13px;color:#5C6F8A;line-height:1.6}
+.modal{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.45);display:none;justify-content:center;align-items:center;padding:14px;overflow-y:auto}
+.sheet{width:100%;max-width:520px;background:#fff;border-radius:18px;padding:16px;max-height:94vh;overflow-y:auto}
+.sheet-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}
+.dl{font-size:8.5px;color:#5C6F8A;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.daycell{min-width:0;overflow:hidden}
+@media (max-width:380px){ .team{padding:12px} .sumcell .l{font-size:10px} }
+</style>
+</head>
+<body>
+<div id="gate" class="gate" style="display:none"></div>
+<div id="init" class="loading">불러오는 중...</div>
+<div class="app" id="app" style="display:none">
+  <div class="top"><div><div class="title">👥 내 팀 공수표</div><div class="sub" id="who"></div></div><button class="btn sm" id="back-btn" onclick="goBack()">← 뒤로</button></div>
+  <div class="monthbar"><button class="btn sm" onclick="mShift(-1)">‹</button><b id="mlabel">—</b><button class="btn sm" onclick="mShift(1)">›</button></div>
+  <div id="warn"></div>
+  <div id="summary"></div>
+  <div id="teams"><div class="loading">불러오는 중...</div></div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="modal" id="sheet-modal"><div class="sheet"><div class="sheet-h"><b id="sheet-title" style="font-size:15px"></b><button class="btn sm" onclick="closeSheet()">닫기 ✕</button></div><div id="sheet-body"></div></div></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, doc, getDoc, getDocs, setDoc, collection, query, where, documentId, serverTimestamp }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCyQxBJ_ftfM0ImBXubmqD5gfzFR54iPmE",
+  authDomain: "p4ph2-fab-506a7.firebaseapp.com",
+  projectId: "p4ph2-fab-506a7",
+  storageBucket: "p4ph2-fab-506a7.firebasestorage.app",
+  messagingSenderId: "36946317914",
+  appId: "1:36946317914:web:c6ad5f3a1b98130c99fe63"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const pad = n => String(n).padStart(2,'0');
+const won = n => (Math.round(n)||0).toLocaleString('ko-KR');
+
+let teamIds = [], isAdminView = false, userName = '', Y = new Date().getFullYear(), M = new Date().getMonth(), seq = 0, view = null;
+
+function gate(icon, title, msg){
+  $('init').style.display='none'; $('app').style.display='none';
+  const g=$('gate'); g.style.display='block';
+  g.innerHTML='<div style="font-size:40px">'+icon+'</div><h2>'+esc(title)+'</h2><p>'+msg+'</p>'+(embedded?'':'<button class="btn pri" style="margin-top:16px;width:100%" onclick="goBack()">← 홈으로</button>');
+}
+const embedded = (function(){ try{ return window.self !== window.top; }catch(e){ return true; } })();   // 포털(PC) 안 iframe으로 열린 경우
+if (embedded) document.addEventListener('DOMContentLoaded',()=>{ const b=document.getElementById('back-btn'); if(b) b.style.display='none'; });
+const M_BACK_OK = ['home.html','pjt.html','gihoek.html','hr.html','edoc.html','admin.html'];        // 돌아갈 수 있는 모바일 화면(허용 목록)
+window.goBack = function(){ const q=new URLSearchParams(location.search); const b=q.get('back')||''; location.href = (q.get('via')==='mobile') ? '../m/'+(M_BACK_OK.indexOf(b)>=0?b:'home.html') : '../index.html'; };
+
+onAuthStateChanged(auth, async user => {
+  if (!user) { gate('🔒','로그인이 필요합니다','포털(portal.jhsol.kr)에서 로그인 후 다시 접속해 주세요.'); return; }
+  try{
+    const snap = await getDoc(doc(db,'portal_users',user.uid));
+    const u = snap.exists() ? snap.data() : null;
+    if (!u || u.status !== 'approved') { gate('🔒','접근할 수 없습니다','승인된 계정이 아닙니다.'); return; }
+    const ids = Array.isArray(u.teamLeaderIds) ? u.teamLeaderIds.filter(x=>typeof x==='string' && x) : [];
+    isAdminView = u.admin === true;                       // 관리자: 팀 연결 없이 전체 팀 조회
+    if (!ids.length && !isAdminView) { gate('👥','팀장 전용 화면입니다','팀장으로 지정된 계정에서만 볼 수 있어요.<br>(팀장 지정은 관리자가 연명부 또는 모바일 관리에서 합니다.)'); return; }
+    teamIds = ids; userName = u.name || '';
+    $('who').textContent = (u.name||'') + (u.rank?' '+u.rank:'') + (isAdminView ? ' · 관리자 (전체 팀)' : ' · 팀 '+ids.length+'개');
+    $('init').style.display='none'; $('gate').style.display='none'; $('app').style.display='block';
+    await loadMonth();
+  }catch(e){ gate('⚠️','불러오지 못했습니다',esc(e.message)); }
+});
+
+window.mShift = function(dir){ M += dir; if (M>11){ M=0; Y++; } if (M<0){ M=11; Y--; } loadMonth(); };
+
+async function monthDocs(path, lo, hi){
+  const s = await getDocs(query(collection(db,...path), where(documentId(),'>=',lo), where(documentId(),'<=',hi)));
+  const rows=[]; s.forEach(d=>rows.push([d.id, (d.data().md)||{}])); return rows;
+}
+
+async function loadMonth(){
+  const my = ++seq;
+  $('mlabel').textContent = Y+'년 '+(M+1)+'월';
+  $('teams').innerHTML = '<div class="loading">불러오는 중...</div>'; $('warn').innerHTML='';
+  try{
+    const lo=Y+'-'+pad(M+1)+'-01', hi=Y+'-'+pad(M+1)+'-31', failed=[];
+    // 1) 팀 목록: 관리자 = 전체 재직 팀장, 팀장 = 관리자가 지정한 팀(master_workers), 팀 단가는 team_rates (규칙: 관리자 전체 / 팀장은 자기 팀만)
+    const teams=[];
+    const rateOf = async lid => { try{ const rd=await getDoc(doc(db,'team_rates',lid)); if (rd.exists() && rd.data().teamRate!=null) return { rate:Number(rd.data().teamRate)||0, err:false }; return { rate:null, err:false }; }catch(e){ return { rate:null, err:true }; } };
+    const byName = (a,b)=>(a.name||'').localeCompare(b.name||'','ko');
+    if (isAdminView){
+      const all=[]; const ms=await getDocs(collection(db,'master_workers')); ms.forEach(d=>all.push(Object.assign({id:d.id}, d.data())));
+      const leaders=all.filter(m=>!m.leaderId && !m.resigned).sort(byName);
+      for (const l of leaders){ const r=await rateOf(l.id); teams.push({ leader:l, members:all.filter(m=>m.leaderId===l.id).sort(byName), rate:r.rate, rateErr:r.err }); }
+    } else {
+      for (const lid of teamIds){
+        const ld = await getDoc(doc(db,'master_workers',lid));
+        if (!ld.exists()){ failed.push('팀장 정보('+lid+')'); continue; }
+        const ms = await getDocs(query(collection(db,'master_workers'), where('leaderId','==',lid)));
+        const members=[]; ms.forEach(d=>members.push(Object.assign({id:d.id}, d.data()))); members.sort(byName);
+        const r=await rateOf(lid);
+        teams.push({ leader:Object.assign({id:lid}, ld.data()), members, rate:r.rate, rateErr:r.err });
+      }
+    }
+    // 2) 프로젝트별 근로자 명단 + 그 달 공수
+    const roster=[]; const names={fab:'P4 Ph2 (FAB)', sup:'P4 Ph4 (SUP)'};
+    const pull = async (path,label,kind,regId) => { try{ const s=await getDocs(collection(db,...path)); s.forEach(d=>{ const w=d.data(); roster.push({id:d.id,name:w.name||'',birth:w.birth||'',label,kind,regId}); }); }catch(e){ failed.push(label); } };
+    await pull(['pjt_workers_fab'],names.fab,'fab'); await pull(['pjt_workers_ph4'],names.sup,'sup');
+    const regs=[]; try{ const rs=await getDocs(collection(db,'pjt_registry')); rs.forEach(d=>{ const x=d.data(); if (x.status!=='ended') regs.push({id:d.id,name:x.name||'PJT'}); }); }catch(e){ failed.push('경량 PJT 목록'); }
+    for (const rg of regs) await pull(['pjt_registry',rg.id,'workers'],rg.name,'light',rg.id);
+    const safe = async (path,label) => { try{ return await monthDocs(path,lo,hi); }catch(e){ failed.push(label+' 공수'); return []; } };
+    const fabRows=await safe(['worker_manday'],names.fab), supRows=await safe(['ph4_manday'],names.sup);
+    const lightRows={}; for (const rg of regs) lightRows[rg.id]=await safe(['pjt_registry',rg.id,'manday'],rg.name);
+    if (my !== seq) return;                          // 그 사이 다른 달을 골랐으면 이전 결과는 버림
+
+    // 3) 사람별 집계 (이름+생년월일 기준 — 연명부·기획 화면과 동일한 방식)
+    const key = (n,b)=>((n||'').trim())+'|'+(b||'MISSING');
+    const pm = {};
+    const add = (w,a,pn,dk)=>{ const k=key(w.name,w.birth); const P=pm[k]||(pm[k]={total:0,byPjt:{},byDate:{}}); P.total+=a; P.byPjt[pn]=(P.byPjt[pn]||0)+a; ((P.byDate[dk]=P.byDate[dk]||{})[pn]=((P.byDate[dk]||{})[pn]||0)+a); };
+    const byKind = k => { const o={}; roster.filter(w=>w.kind===k).forEach(w=>o[w.id]=w); return o; };
+    const fabBy=byKind('fab'), supBy=byKind('sup');
+    fabRows.forEach(([dk,md])=>Object.keys(md).forEach(id=>{ const a=parseFloat(md[id])||0; if (a && fabBy[id]) add(fabBy[id],a,names.fab,dk); }));
+    supRows.forEach(([dk,md])=>Object.keys(md).forEach(id=>{ const a=parseFloat(md[id])||0; if (a && supBy[id]) add(supBy[id],a,names.sup,dk); }));
+    regs.forEach(rg=>{ const by={}; roster.filter(w=>w.kind==='light'&&w.regId===rg.id).forEach(w=>by[w.id]=w);
+      (lightRows[rg.id]||[]).forEach(([dk,md])=>Object.keys(md).forEach(id=>{ const a=parseFloat(md[id])||0; if (a && by[id]) add(by[id],a,rg.name,dk); })); });
+
+    // 4) 팀별로 정리
+    view = teams.map(t=>{
+      const people = [t.leader, ...t.members].map((m,i)=>{ const P = pm[key(m.name,m.birth)] || { total:0, byPjt:{}, byDate:{} }; return { m, isLeader:i===0, total:P.total, byPjt:P.byPjt, byDate:P.byDate }; });
+      const md = people.reduce((s,x)=>s+x.total,0);
+      const byPjt = {}; people.forEach(x=>Object.keys(x.byPjt).forEach(pn=>{ byPjt[pn]=(byPjt[pn]||0)+x.byPjt[pn]; }));
+      return { t, people, md, byPjt, amount: t.rate==null ? null : Math.round(md*t.rate) };
+    });
+    renderTeams(failed);
+  }catch(e){ if (my===seq) $('teams').innerHTML='<div class="empty">불러오기 실패: '+esc(e.message)+'</div>'; }
+}
+
+function renderSummary(){
+  const box=$('summary');
+  if (!view || view.length<2){ box.innerHTML=''; return; }
+  const md=view.reduce((a,v)=>a+v.md,0), priced=view.filter(v=>v.amount!=null), amt=priced.reduce((a,v)=>a+v.amount,0);
+  box.innerHTML='<div class="sumall"><div class="sumcell"><div class="l">전체 팀 공수 ('+view.length+'팀)</div><div class="v">'+md.toFixed(1)+'</div></div>'
+    +'<div class="sumcell"><div class="l">노무비 합계'+(priced.length<view.length?' (단가 있는 '+priced.length+'팀)':'')+'</div><div class="v money">'+won(amt)+'원</div></div></div>';
+}
+function renderTeams(failed){
+  renderSummary();
+  $('warn').innerHTML = failed.length ? '<div class="note">⚠️ 일부 데이터를 불러오지 못해 집계에서 빠졌을 수 있습니다: '+failed.map(esc).join(', ')+'</div>' : '';
+  if (!view.length){ $('teams').innerHTML='<div class="empty">표시할 팀이 없습니다.</div>'; return; }
+  $('teams').innerHTML = view.map((v,ti)=>{
+    const t=v.t, rateTxt = t.rate==null ? (t.rateErr?'조회 불가':'미설정') : won(t.rate)+'원';
+    const chips = Object.keys(v.byPjt).map(pn=>'<span class="chip">'+esc(pn)+' '+v.byPjt[pn].toFixed(1)+'공수'+(t.rate==null?'':' · '+won(v.byPjt[pn]*t.rate)+'원')+'</span>').join('');
+    const rows = v.people.map((x,pi)=>'<div class="mem"><div><div class="nm">'+esc(x.m.name)+(x.isLeader?'<small>팀장</small>':'')+(x.m.resigned?'<small>퇴사'+(x.m.resignedDate?' '+esc(x.m.resignedDate):'')+'</small>':'')+'</div>'
+      +'<div class="pj">'+(Object.keys(x.byPjt).map(pn=>esc(pn)+' '+x.byPjt[pn].toFixed(1)).join(' · ')||'기록 없음')+'</div></div>'
+      +'<div class="act"><span class="md">'+x.total.toFixed(1)+'</span><button class="btn sm" onclick="openSheet('+ti+','+pi+')">📋 공수표</button></div></div>').join('');
+    return '<div class="team"><div class="team-h"><div><div class="team-nm">👑 '+esc(t.leader.name)+' 팀</div><div class="sub">팀원 '+t.members.length+'명 (팀장 포함 '+v.people.length+'명)</div></div></div>'
+      +'<div class="sumline"><div class="sumcell"><div class="l">팀 공수</div><div class="v">'+v.md.toFixed(1)+'</div></div>'
+      +'<div class="sumcell"><div class="l">팀 단가'+(isAdminView?' <button class="ed" title="팀 단가 설정" onclick="editRate('+ti+')">✏️</button>':'')+'</div><div class="v">'+rateTxt+'</div></div>'
+      +'<div class="sumcell"><div class="l">노무비</div><div class="v money">'+(v.amount==null?'—':won(v.amount)+'원')+'</div></div></div>'
+      +(chips?'<div style="margin-bottom:6px">'+chips+'</div>':'')+rows+'</div>';
+  }).join('');
+}
+
+// 달력 칸용 프로젝트 약칭 (긴 이름은 앞부분만)
+const abbr = pn => pn==='P4 Ph2 (FAB)' ? 'FAB' : pn==='P4 Ph4 (SUP)' ? 'SUP' : (pn.length>6 ? pn.slice(0,6)+'…' : pn);
+const toast = m => { const t=$('toast'); t.textContent=m; t.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>{ t.style.display='none'; }, 4200); };
+// 팀 단가 설정(관리자 전용): 기획 > 정산 > 팀별 노무비와 같은 두 곳에 저장
+//  ① master_worker_private(관리자 전용 — 기획·집계가 읽음) ② team_rates(관리자 + 그 팀 팀장만 조회 — 팀장 화면용)
+window.editRate = async function(ti){
+  if (!isAdminView) return;
+  const v0 = view[ti]; if (!v0) return; const t = v0.t;
+  const cur = t.rate==null ? '' : String(t.rate);
+  const inp = prompt(t.leader.name+' 팀의 단가(원/공수)를 입력하세요.', cur);
+  if (inp === null) return;
+  const v = parseInt(String(inp).replace(/[^0-9]/g,''))||0;
+  let okPriv=false, okRate=false, err='';
+  try{ await setDoc(doc(db,'master_worker_private',t.leader.id),{teamRate:v},{merge:true}); okPriv=true; }catch(e){ err='관리자 문서: '+(e.code||e.message); }
+  try{ await setDoc(doc(db,'team_rates',t.leader.id),{teamRate:v,updatedAt:serverTimestamp()},{merge:true}); okRate=true; }catch(e){ err+=(err?' / ':'')+'팀장 조회용 문서: '+(e.code||e.message); }
+  if (okPriv || okRate){ t.rate=v; t.rateErr=false; v0.amount=Math.round(v0.md*v); renderTeams([]); }
+  if (okPriv && okRate) toast('팀 단가를 저장했습니다.');
+  else if (okPriv || okRate) toast('⚠️ 일부만 저장됐습니다 ('+err+'). 다시 저장해 주세요.');
+  else toast('저장 실패: '+err);
+};
+window.openSheet = function(ti, pi){
+  const x = view[ti].people[pi]; if (!x) return;
+  const days = new Date(Y, M+1, 0).getDate(), first = new Date(Y, M, 1).getDay();
+  let cells = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px">';
+  ['일','월','화','수','목','금','토'].forEach(d=>cells+='<div style="text-align:center;font-size:11px;color:#9AAABF;font-weight:700;padding:4px 0">'+d+'</div>');
+  for (let i=0;i<first;i++) cells+='<div></div>';
+  for (let d=1; d<=days; d++){
+    const dk=Y+'-'+pad(M+1)+'-'+pad(d), dd=x.byDate[dk]; let tot=0, lines='';
+    if (dd) Object.keys(dd).forEach(pn=>{ tot+=dd[pn]; lines+='<div class="dl" title="'+esc(pn)+'">'+esc(abbr(pn))+' '+dd[pn].toFixed(1)+'</div>'; });
+    cells+='<div class="daycell" style="min-height:56px;border:1px solid #EEF2F7;border-radius:8px;padding:4px 3px'+(tot>0?';background:#F4F8FF':'')+'"><div style="font-size:11px;font-weight:600;color:#1A2540">'+d+'</div>'+(tot>0?'<div style="font-size:12px;font-weight:800;color:#1D5BA6">'+tot.toFixed(1)+'</div>':'')+lines+'</div>';
+  }
+  cells+='</div>';
+  const fname = (x.m.name||'')+'_'+Y+pad(M+1)+'_공수표.png';
+  $('sheet-title').textContent = '📋 '+x.m.name+'님 '+Y+'년 '+(M+1)+'월 공수표';
+  $('sheet-body').innerHTML = '<button class="btn pri" style="width:100%;margin-bottom:10px;background:#2e7d32;border-color:#2e7d32" onclick="savePng(\'cap\',\''+esc(fname)+'\')">📷 이 공수표 PNG로 저장</button>'
+    +'<div id="cap" style="background:#fff;padding:12px;border-radius:12px;border:1px solid #ececec"><div style="font-size:13px;font-weight:700;color:#1A2540;margin-bottom:6px">'+esc(x.m.name)+'님 · '+Y+'년 '+(M+1)+'월 공수표</div>'
+    +'<div style="font-size:12px;color:#86868b;margin-bottom:6px">'+(Object.keys(x.byPjt).map(pn=>'<span class="chip">'+esc(pn)+' '+x.byPjt[pn].toFixed(1)+'</span>').join('')||'기록 없음')+'</div>'+cells
+    +'<div style="text-align:center;margin-top:12px;padding-top:12px;border-top:1px solid #f0f0f0"><span style="font-size:12px;color:#86868b">이번 달 합계</span><div style="font-size:24px;font-weight:800;color:#1D5BA6">'+x.total.toFixed(1)+' 공수</div></div></div>';
+  $('sheet-modal').style.display='flex';
+};
+window.closeSheet = function(){ $('sheet-modal').style.display='none'; };
+window.savePng = async function(id, fname){
+  const el=$(id); if(!el) return;
+  if (typeof html2canvas==='undefined'){ alert('이미지 저장 모듈을 불러오는 중이에요. 잠시 후 다시 눌러주세요.'); return; }
+  try{ const c=await html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:true}); const a=document.createElement('a'); a.href=c.toDataURL('image/png'); a.download=fname; document.body.appendChild(a); a.click(); a.remove(); }
+  catch(e){ alert('저장 중 오류가 났어요: '+e.message); }
+};
+</script>
+</body>
+</html>
