@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 20260930h · 오늘 일정 건수에 공통 일정 포함(일정 화면과 건수 일치), GUEST 사번은 공통 일정을 구독·집계하지 않음 · 이전: 20260930g · 모바일은 PJT 관리·전자결재를 큰 카드로 강조(메뉴 계층은 PC와 동일: 연명부=PJT 관리 하위, 팀별 노무비=기획 정산 하위), 기획·인사·조직도·내규·Portal 관리는 작은 아이콘 · 이전: 20260930f · 메뉴 구조를 PC 사이드바와 동일하게 정리(업무: 기획·인사·전자결재·PJT 관리·내 팀 공수표 / 그 아래: 조직도·내규·Portal 관리), 근로자 연명부는 PJT 관리 하위로 이동 · 이전: 20260930e · 관리자 전용 ‘근로자 연명부’ 카드 추가(PC와 동일한 연명부 화면 사용) · 이전: 20260930d · 오래된 캐시 감지 시 1회 새로 받기(주소의 v= 값과 화면 빌드가 다르면 재로드) · 이전: 20260930c · ‘내 팀 공수표’ 카드: 팀장 지정 계정 + 관리자 계정(전체 팀) 표시 · 이전: 20260930b · 팀장 전용 ‘내 팀 공수표’ 카드 추가(portal_users.teamLeaderIds 지정 계정에만 표시) · 이전: 20260925d · ver: 2026-09-25 (모바일 홈 2.8.3) · [홈] 더보기에 내규 열람 타일 추가(5열) -->
+<!-- build: 20260930i · 오늘 일정 건수: GUEST도 공통 일정 중 연차·휴무(분류 off·leave)를 포함(필터 구독) · 이전: 20260930h · 오늘 일정 건수에 공통 일정 포함(일정 화면과 건수 일치), GUEST 사번은 공통 일정을 구독·집계하지 않음 · 이전: 20260930g · 모바일은 PJT 관리·전자결재를 큰 카드로 강조(메뉴 계층은 PC와 동일: 연명부=PJT 관리 하위, 팀별 노무비=기획 정산 하위), 기획·인사·조직도·내규·Portal 관리는 작은 아이콘 · 이전: 20260930f · 메뉴 구조를 PC 사이드바와 동일하게 정리(업무: 기획·인사·전자결재·PJT 관리·내 팀 공수표 / 그 아래: 조직도·내규·Portal 관리), 근로자 연명부는 PJT 관리 하위로 이동 · 이전: 20260930e · 관리자 전용 ‘근로자 연명부’ 카드 추가(PC와 동일한 연명부 화면 사용) · 이전: 20260930d · 오래된 캐시 감지 시 1회 새로 받기(주소의 v= 값과 화면 빌드가 다르면 재로드) · 이전: 20260930c · ‘내 팀 공수표’ 카드: 팀장 지정 계정 + 관리자 계정(전체 팀) 표시 · 이전: 20260930b · 팀장 전용 ‘내 팀 공수표’ 카드 추가(portal_users.teamLeaderIds 지정 계정에만 표시) · 이전: 20260925d · ver: 2026-09-25 (모바일 홈 2.8.3) · [홈] 더보기에 내규 열람 타일 추가(5열) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -291,7 +291,7 @@
 <script type="module">
 // ── 경량 PJT(pjt_registry) 실시간 구독 → 홈 화면에 FAB/SUP과 함께 카드로 노출 ──
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, doc, onSnapshot, getDoc, setDoc, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, doc, onSnapshot, query, where, getDoc, setDoc, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 const firebaseConfig = {
   apiKey:"AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI", authDomain:"portal-test-6e0ff.firebaseapp.com",
@@ -303,6 +303,7 @@ const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function inRangeToday(s){ const td=todayStr(); const sd=s.sdate||s.date; const ed=s.edate||sd; if(!sd) return false; return td>=sd && td<=ed; }
 let _todayCounts={fab:0,sup:0,light:{},comp:0};
+// GUEST 사번: 프로젝트에 속하지 않는 일정은 연차·휴무(분류 off·leave)만 조회 가능
 const _isGuestEmp=(function(){ try{ var a=JSON.parse(localStorage.getItem('jh_login_perms')||'null'); return !!(a&&typeof a.empNo==='string'&&/^guest/i.test(a.empNo.trim())); }catch(e){ return false; } })();   // GUEST 사번: 공통 일정 미표시
 // ── 고정 PJT(FAB/SUP) 종료 상태: PC와 동일하게 pjt_settings/{p4ph2|p4ph4}.status==='ended'이면 카드·오늘 일정 집계에서 제외 ──
 const FIXED_PJT={p4ph2:'siteFab', p4ph4:'siteSup'};
@@ -313,7 +314,7 @@ function applyFixedPjt(){
 let _lightSchedSubs={};
 function updateTodayBadge(){
   const t2=document.querySelector('.today-sched .ts-t2'); if(!t2) return;
-  const total=(_fixedEnded.p4ph2?0:_todayCounts.fab)+(_fixedEnded.p4ph4?0:_todayCounts.sup)+Object.values(_todayCounts.light).reduce((a,b)=>a+b,0)+(_isGuestEmp?0:_todayCounts.comp);
+  const total=(_fixedEnded.p4ph2?0:_todayCounts.fab)+(_fixedEnded.p4ph4?0:_todayCounts.sup)+Object.values(_todayCounts.light).reduce((a,b)=>a+b,0)+_todayCounts.comp;
   t2.textContent = total? `일정 ${total}건 보기` : '오늘은 등록된 일정 없음';
   const t1=document.querySelector('.today-sched .ts-t1');
   if(t1){ const d=new Date(); const wd=['일','월','화','수','목','금','토'][d.getDay()]; t1.textContent=(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+wd+') 오늘 일정'; }
@@ -429,7 +430,8 @@ onAuthStateChanged(auth, (user)=>{
   setTimeout(applyFixedPjt,3000); // 응답이 늦거나 없어도 카드가 계속 숨겨져 있지 않도록
   onSnapshot(collection(db,'user_schedules'), snap=>{ let c=0; snap.forEach(d=>{ if(inRangeToday(d.data())) c++; }); _todayCounts.fab=c; updateTodayBadge(); });
   onSnapshot(collection(db,'ph4_schedules'), snap=>{ let c=0; snap.forEach(d=>{ if(inRangeToday(d.data())) c++; }); _todayCounts.sup=c; updateTodayBadge(); });
-  if(!_isGuestEmp) onSnapshot(collection(db,'company_schedules'), snap=>{ let c=0; snap.forEach(d=>{ if(inRangeToday(d.data())) c++; }); _todayCounts.comp=c; updateTodayBadge(); }, err=>{ console.error('공통 일정 구독 오류(홈)',err); });
+  // GUEST는 규칙상 연차·휴무만 읽을 수 있으므로 tag in [off,leave] 필터로 구독(필터가 없으면 서버가 거부한다)
+  onSnapshot(_isGuestEmp?query(collection(db,'company_schedules'),where('tag','in',['off','leave'])):collection(db,'company_schedules'), snap=>{ let c=0; snap.forEach(d=>{ if(inRangeToday(d.data())) c++; }); _todayCounts.comp=c; updateTodayBadge(); }, err=>{ console.error('공통 일정 구독 오류(홈)',err); });
   onSnapshot(collection(db,'pjt_registry'), snap=>{
     snap.forEach(d=>{
       const m=d.data()||{}; if(m.status==='ended') return;
