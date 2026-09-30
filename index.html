@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260930h · ver: 2026-09-30 (팀장 전용 ‘내 팀 공수표’ 진입점 추가(portal_users.teamLeaderIds 지정 계정에만 표시, 관리자 제외)) · 이전: 20260930g · ver: 2026-09-30 (직원 비밀번호(_pw)를 계정 문서에서 본인·관리자 전용 문서 portal_secrets로 이동) · 이전: 20260930f · ver: 2026-09-30 (회사 일정 카테고리 행사·기타·만료 추가) · 이전: 20260925e 2026-09-25 (하단 작업탭 10개 초과 시 막지 않고 가장 먼저 열었던 탭을 자동으로 닫음) · 이전: 20260925d 결재함 이동 후 탭 갇힘 현상 해결 -->
+<!DOCTYPE html><!-- build: 20260930i · ver: 2026-09-30 (내 팀 공수표: 관리자 계정도 표시 — 팀 연결 없이 전체 팀 조회) · 이전: 20260930h · ver: 2026-09-30 (팀장 전용 ‘내 팀 공수표’ 진입점 추가(portal_users.teamLeaderIds 지정 계정에만 표시, 관리자 제외)) · 이전: 20260930g · ver: 2026-09-30 (직원 비밀번호(_pw)를 계정 문서에서 본인·관리자 전용 문서 portal_secrets로 이동) · 이전: 20260930f · ver: 2026-09-30 (회사 일정 카테고리 행사·기타·만료 추가) · 이전: 20260925e 2026-09-25 (하단 작업탭 10개 초과 시 막지 않고 가장 먼저 열었던 탭을 자동으로 닫음) · 이전: 20260925d 결재함 이동 후 탭 갇힘 현상 해결 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -1073,11 +1073,11 @@ const MODULES=[
   { key:'pjt',  name:'PJT 관리',       desc:'진행 중인 프로젝트 현장 관리',    ic:'pjt',  emoji:'🏗️', url:'pjt/' },
   { key:'myteam', name:'내 팀 공수표',   desc:'팀원 공수 · 팀 단가 · 노무비 (팀장 전용)', ic:'pjt', emoji:'👥', url:'team/' },
 ];
-// 모듈 접근 판정: 내 팀 공수표(myteam)는 권한 칩이 아니라 관리자가 지정한 팀장 계정(teamLeaderIds)에만 열린다(관리자라도 팀장 지정이 없으면 대상 아님 — 관리자는 연명부·기획에서 확인).
+// 모듈 접근 판정: 내 팀 공수표(myteam)는 권한 칩이 아니라 ① 관리자가 지정한 팀장 계정(teamLeaderIds — 자기 팀만) ② 관리자 계정(전체 팀)에 열린다.
 window.jhIsTeamLeader=function(u){ return !!(u && Array.isArray(u.teamLeaderIds) && u.teamLeaderIds.length); };
 window.jhModAllowed=function(m,u){
   if(!u) return false;
-  if(m.key==='myteam') return window.jhIsTeamLeader(u);
+  if(m.key==='myteam') return !!u.admin || window.jhIsTeamLeader(u);
   return (m.key==='plan'||m.key==='hr') ? !!u.admin : !!(u.admin||(u.perms&&u.perms[m.key]));
 };
 // PJT별 서브 목록 (url: 각 PJT 전용 워크스페이스 URL)
@@ -3515,7 +3515,7 @@ function jhMakeFrame(name, fullUrl){
 }
 
 function openModule(m, tab, overrideUrl){
-  if(m.key==='myteam' && !window.jhIsTeamLeader(me)){ toast('팀장으로 지정된 계정만 볼 수 있습니다.'); return; }
+  if(m.key==='myteam' && !window.jhModAllowed(m,me)){ toast('팀장으로 지정된 계정 또는 관리자만 볼 수 있습니다.'); return; }
   if(tab==='pjt_roster' && !(me&&me.admin)){ toast('근로자 연명부는 관리자만 접근할 수 있습니다.'); return; }
   if((m.key==='plan'||m.key==='hr') && !(me&&me.admin)){ toast('기획/인사는 관리자만 접근할 수 있습니다.'); return; }
   const actualUrl=overrideUrl||m.url;
