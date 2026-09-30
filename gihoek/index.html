@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- gihoek module build: 20260930b · ver 5.9.0 · 정산 탭에 '팀별 노무비' 보기 신설(월간 공수의 팀별 합계 이전 — 팀 공수 × 팀 단가, 프로젝트별 소계, 팀 단가는 관리자 전용 문서 master_worker_private에 저장) · 이전: 20260930a ver 5.8.0 · 견적 목록: 견적상태 필터(진행중/종결/폐기) 추가·현장상태 필터 명칭 분리, 상세→목록 복귀 시 필터·페이지·스크롤 유지(브라우저 뒤로가기 포함) · 이전: 20260925d ver 5.7.4 · 프로젝트 목록 생성일순 정렬 강건화(createdAt 없는 옛 데이터는 문서ID 타임스탬프로 폴백) · 이전: 20260925c ver 5.7.3 -->
+<!DOCTYPE html><!-- gihoek module build: 20260930c · ver 5.10.0 · 프로젝트 기본정보 통일(PJT 코드·내용·현장명·발주처·시공사·협력사) — 기획↔PJT관리 양방향 반영 / 직전: ver 5.9.0 · 정산 탭에 '팀별 노무비' 보기 신설(월간 공수의 팀별 합계 이전 — 팀 공수 × 팀 단가, 프로젝트별 소계, 팀 단가는 관리자 전용 문서 master_worker_private에 저장) · 이전: 20260930a ver 5.8.0 · 견적 목록: 견적상태 필터(진행중/종결/폐기) 추가·현장상태 필터 명칭 분리, 상세→목록 복귀 시 필터·페이지·스크롤 유지(브라우저 뒤로가기 포함) · 이전: 20260925d ver 5.7.4 · 프로젝트 목록 생성일순 정렬 강건화(createdAt 없는 옛 데이터는 문서ID 타임스탬프로 폴백) · 이전: 20260925c ver 5.7.3 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -321,7 +321,7 @@ window.planShowList = function(kind){
   let rows=[];
   if(kind==='pjt'){
     rows=projects.map(p=>({badge:STATUS_LBL[p.status]||'\uc9c4\ud589\uc911',bg:STATUS_BG[p.status]||'#E6F1FB',fg:STATUS_FG[p.status]||'#0C447C',
-      title:(p.code?'['+p.code+'] ':'')+(p.name||'(\uc774\ub984\uc5c6\uc74c)'),meta:(p.client||'')+(p.type?' \u00b7 '+p.type.toUpperCase():''),right:won(pjtBilled(p.id)),onclick:"tab(&#39;pjt&#39;)"}));
+      title:(p.code?'['+p.code+'] ':'')+(p.name||'(\uc774\ub984\uc5c6\uc74c)'),meta:[p.site,p.client].filter(Boolean).join(' \u00b7 ')+(p.type?' \u00b7 '+p.type.toUpperCase():''),right:won(pjtBilled(p.id)),onclick:"tab(&#39;pjt&#39;)"}));
   } else if(kind==='est'){
     rows=estimates.filter(e=>isActive(e)).map(e=>({badge:'\uacac\uc801',bg:'#E6F1FB',fg:'#0C447C',
       title:e.title||'(\uc81c\ubaa9\uc5c6\uc74c)',meta:(e.no||'')+(e.client&&e.client.company?' \u00b7 '+e.client.company:''),right:won(estSupply(e)),onclick:"tab(&#39;est&#39;)"}));
@@ -428,7 +428,7 @@ window.pjtDetail=function(id){ tabSilent('pjt'); detailId=id; pjtForm=false; pdE
   $('v-pjt').innerHTML=`<button class="back" onclick="renderPjtList()">← 프로젝트 목록</button>
     <div class="card"><div style="display:flex; align-items:flex-start; gap:10px"><div style="flex:1">
       <div class="pjt-code">${p.code} <span class="badge type">${TYPE_LABEL[p.type]||'일반'}</span></div><div class="pjt-name">${p.name||''}</div>
-      ${p.client?`<div class="small muted" style="margin-top:4px">발주처: ${p.client}</div>`:''}</div>
+      ${[['현장명',p.site],['발주처',p.client],['시공사',p.contractor],['협력사',p.partner]].filter(x=>x[1]).map(x=>`<div class="small muted" style="margin-top:3px">${x[0]}: ${x[1]}</div>`).join('')}</div>
       <span class="badge ${p.status==='done'?'done':'run'}">${p.status==='done'?'종료':'진행중'}</span></div>
       <div style="margin-top:12px; display:flex; gap:8px"><button class="btn gray sm" onclick="editPjt('${p.id}')">정보 수정</button><button class="btn gray sm" onclick="delPjt('${p.id}')">삭제</button></div></div>
     <div class="sec-h" style="margin-top:18px"><h2>요약</h2></div>
@@ -503,8 +503,11 @@ function openPjtForm(p){ pjtForm=true; detailId=p?p.id:null;
   $('v-pjt').innerHTML=`<button class="back" onclick="${p?`pjtDetail('${p.id}')`:'renderPjtList()'}">← 뒤로</button>
     <div class="card"><div class="sec-h"><h2>${p?'프로젝트 수정':'프로젝트 등록'}</h2></div>
     <div class="field"><label>PJT 코드</label><input class="inp" id="pf-code" placeholder="예: P4 Ph5 (XXX)" value="${p?.code||''}"></div>
-    <div class="field"><label>설명</label><input class="inp" id="pf-name" placeholder="예: 귀뚜라미범양냉방 · FCU 설치" value="${p?.name||''}"></div>
-    <div class="field"><label>발주처</label><input class="inp" id="pf-client" placeholder="예: 범양냉방" value="${p?.client||''}"></div>
+    <div class="field"><label>내용</label><input class="inp" id="pf-name" placeholder="예: FCU 183대 설치" value="${p?.name||''}"></div>
+    <div class="field"><label>현장명</label><input class="inp" id="pf-site" placeholder="예: 화성 17L / 청주 M15X CUB동" value="${p?.site||''}"></div>
+    <div class="field"><label>발주처</label><input class="inp" id="pf-client" placeholder="예: 다람이엔지" value="${p?.client||''}"></div>
+    <div class="row2"><div class="field"><label>시공사</label><input class="inp" id="pf-contractor" placeholder="예: 귀뚜라미범양냉방" value="${p?.contractor||''}"></div>
+      <div class="field"><label>협력사</label><input class="inp" id="pf-partner" placeholder="예: JH솔루션" value="${p?.partner||''}"></div></div>
     <div class="row2"><div class="field"><label>정산 방식</label><select class="sel" id="pf-type">
       <option value="general" ${p?.type==='general'?'selected':''}>일반 (품목 직접 입력)</option>
       <option value="fcu" ${p?.type==='fcu'?'selected':''}>자동정산 (정산서·공수 연동)</option></select></div>
@@ -534,14 +537,16 @@ window.refreshLinkPjtOptions = function(){
 };
 window.savePjt=async function(id){ const code=$('pf-code').value.trim(); if(!code){ toast('PJT 코드를 입력하세요.'); return; }
   const linkSel = $('pf-link-pjt')?.value || 'auto';
-  const data={ code, name:$('pf-name').value.trim(), client:$('pf-client').value.trim(), type:$('pf-type').value, status:$('pf-status').value };
+  const data={ code, name:$('pf-name').value.trim(), site:$('pf-site').value.trim(), client:$('pf-client').value.trim(),
+    contractor:$('pf-contractor').value.trim(), partner:$('pf-partner').value.trim(), type:$('pf-type').value, status:$('pf-status').value };
   try{
     let finalLink = linkSel;
     if (linkSel === 'auto') {
       // PJT관리(pjt_registry)에 동일한 이름으로 경량 PJT 신규 생성 후 연결
       const regRef = await addDoc(collection(db,'pjt_registry'), {
-        name: data.code || data.name, site: data.client || '', client: data.client || '',
-        content: '', item: '', qty: 0, startDate: '', url: '',
+        name: data.code || data.name, site: data.site || '', client: data.client || '',
+        contractor: data.contractor || '', partner: data.partner || '',
+        content: data.name || '', item: '', qty: 0, startDate: '', url: '',
         progress: 0, manday: 0, status: 'active', createdAt: serverTimestamp(),
       });
       finalLink = 'reg_' + regRef.id;
@@ -551,12 +556,10 @@ window.savePjt=async function(id){ const code=$('pf-code').value.trim(); if(!cod
     data.mandayCol = (finalLink==='p4ph4' ? 'ph4_manday' : (finalLink==='p4ph2' ? 'worker_manday' : ''));
     // 경량 PJT(pjt_registry)에 연동된 경우, PJT 코드/발주처 변경 시 연동 항목(사이드바 표시명 포함)에도 반영
     if (finalLink.indexOf('reg_')===0) {
-      const syncPatch={};
-      if (data.code) syncPatch.name = data.code;
-      if (data.client) syncPatch.client = data.client;
-      if (Object.keys(syncPatch).length) {
-        try{ await updateDoc(doc(db,'pjt_registry', finalLink.slice(4)), syncPatch); }catch(e){ console.warn('[기획] 연동 PJT 동기화 실패:', e.message); }
-      }
+      // 프로젝트 기본정보 6항목(PJT 코드·내용·현장명·발주처·시공사·협력사)은 기획 ↔ PJT관리가 같은 값을 쓴다.
+      // 저장한 값 그대로(비운 값 포함) PJT관리 항목에 반영한다. (PJT관리에서 수정하면 반대로 이 프로젝트에 반영됨)
+      const syncPatch={ name:data.code, content:data.name, site:data.site, client:data.client, contractor:data.contractor, partner:data.partner };
+      try{ await updateDoc(doc(db,'pjt_registry', finalLink.slice(4)), syncPatch); }catch(e){ console.warn('[기획] 연동 PJT 동기화 실패:', e.message); }
     }
     if(id){ await setDoc(doc(db,'gihoek_projects',id),data,{merge:true}); toast(linkSel==='auto'?'수정했습니다. (PJT관리에 신규 항목 생성됨)':'수정했습니다.'); pjtDetail(id); }
     else{ const nid='pjt_'+Date.now(); await setDoc(doc(db,'gihoek_projects',nid),{...data, createdAt:serverTimestamp()}); toast(linkSel==='auto'?'프로젝트를 등록했습니다. (PJT관리에도 자동 생성됨)':'프로젝트를 등록했습니다.'); renderPjt(); }
