@@ -98,7 +98,7 @@ async function boot(){
     if (link.status === 'revoked') { showError('회수된 링크입니다. 회사(인사담당자)에게 새 링크를 요청해 주세요.'); return; }
     const expMs = (link.expiresTs && link.expiresTs.toMillis) ? link.expiresTs.toMillis() : 0;
     if (!link.phoneE164 || !expMs) { showError('이 링크는 예전 방식으로 만들어져 열 수 없습니다. 회사(인사담당자)에게 새 링크를 요청해 주세요.'); return; }
-    if (expMs < Date.now()) { showError('링크가 만료되었습니다 (72시간 경과). 회사(인사담당자)에게 새 링크를 요청해 주세요.'); return; }
+    if (expMs < Date.now()) { showError(link.viewOnly ? '링크가 만료되었습니다 (유효기간 경과). 회사(인사담당자)에게 새 링크를 요청해 주세요.' : '링크가 만료되었습니다 (72시간 경과). 회사(인사담당자)에게 새 링크를 요청해 주세요.'); return; }
 
     // 이 탭에서 같은 번호로 이미 인증했다면 문자 인증 생략, 다른 번호로 인증된 세션이면 로그아웃 후 새로 인증
     if (auth.currentUser && auth.currentUser.phoneNumber === link.phoneE164) { await loadAndShow(link); return; }
@@ -116,6 +116,13 @@ async function loadAndShow(link){
     if (!paySnap.exists()) { showError('문서 정보를 찾을 수 없습니다. 회사(인사담당자)에게 새 링크를 요청해 주세요.'); return; }
     const pay = paySnap.data();
     window._compSignatures = pay.seal || {};
+
+    // 열람 전용 링크 — 회사가 저장 당시 양식으로 만들어 둔 HTML을 그대로 보여준다(서명·수정 없음)
+    if (pay.viewOnly && pay.html) {
+      const vt = (link.docType === 'annual' ? '연봉계약서' : '근로계약서') + ' (저장본)';
+      showViewOnly({ f: { name: link.workerName || '' }, title: vt, buildHtml: () => pay.html });
+      return;
+    }
     const f = { ...(pay.doc || {}) };
 
     if (link.docType === 'offer') {
