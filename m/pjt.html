@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 20260930a · ver: 2026-09-30 (모바일 PJT 5.4.0) · PC와 같은 하위 구성: PJT 홈(진행 프로젝트) / 회사 일정 / 근로자 연명부(관리자) / 종료 PJT · 이전: 20260919b · ver: 2026-09-19 (모바일 PJT 5.3.0) · [PJT] 종료 처리된 고정 PJT(FAB/SUP) 목록·진입 제외 (PC와 동일) / 이전: pjt_registry 실시간 연동으로 경량PJT 신규/종료 즉시 반영, 경량PJT 상세(일정·근태·공수) 뷰 신설 -->
+<!-- build: 20260930b · ver: 2026-09-30 (모바일 PJT 5.4.1) · GUEST 사번: 일정 등록·수정·삭제·완료 체크 불가, PJT 메뉴의 ‘회사 일정’을 ‘일정’(통합 일정 화면)으로 · 이전: 20260930a · ver: 2026-09-30 (모바일 PJT 5.4.0) · PC와 같은 하위 구성: PJT 홈(진행 프로젝트) / 회사 일정 / 근로자 연명부(관리자) / 종료 PJT · 이전: 20260919b · ver: 2026-09-19 (모바일 PJT 5.3.0) · [PJT] 종료 처리된 고정 PJT(FAB/SUP) 목록·진입 제외 (PC와 동일) / 이전: pjt_registry 실시간 연동으로 경량PJT 신규/종료 즉시 반영, 경량PJT 상세(일정·근태·공수) 뷰 신설 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -275,6 +275,7 @@ const ATT={
 // ── 경량 PJT(pjt_registry) 실시간 동기화: PC와 동일하게 신규/종료가 즉시 반영 ──
 let lightMeta={}; // {id: pjt_registry 문서데이터} — status!=='ended'만 보관
 let endedLight={}; // {id: pjt_registry 문서데이터} — 종료된 경량 PJT(종료 PJT 화면용)
+const isGuest=(function(){ try{ var a=JSON.parse(localStorage.getItem('jh_login_perms')||'null'); return !!(a&&typeof a.empNo==='string'&&/^guest/i.test(a.empNo.trim())); }catch(e){ return false; } })();   // GUEST 사번: 일정은 읽기 전용
 const isMeAdmin=()=>{ try{ var a=JSON.parse(localStorage.getItem('jh_login_perms')||'null'); return !!(a&&a.admin); }catch(e){ return false; } };
 function SITE(key){
   if(!key) return null;
@@ -421,7 +422,7 @@ function renderHome(){
     </div>
     <div class="lbl" style="margin-top:6px">PJT 메뉴</div>
     <div class="menulist">
-      <div class="mrow" onclick="location.href='schedule.html'"><span class="mic">📅</span><div><div class="mnm">회사 일정</div><div class="mds">오늘 일정 · 전사 일정</div></div><span class="mgo">›</span></div>
+      <div class="mrow" onclick="location.href='schedule.html'"><span class="mic">📅</span><div><div class="mnm">일정</div><div class="mds">캘린더 · 날짜별 일정</div></div><span class="mgo">›</span></div>
       ${isMeAdmin()?`<div class="mrow" onclick="location.href='../pjt_roster/index.html?via=mobile&back=pjt.html'"><span class="mic">👷</span><div><div class="mnm">근로자 연명부</div><div class="mds">인적사항 · 검진 · 자격/교육 · 월간 공수 (관리자 전용)</div></div><span class="mgo">›</span></div>`:''}
       <div class="mrow" onclick="openEnded()"><span class="mic">🗄️</span><div><div class="mnm">종료 PJT</div><div class="mds">종료된 프로젝트 모아보기${(function(){var n=Object.keys(SITES).filter(isEndedSite).length+Object.keys(endedLight).length; return n?' · '+n+'건':'';})()}</div></div><span class="mgo">›</span></div>
     </div>`;
@@ -595,19 +596,20 @@ function renderCalendar(s){
     <div class="lbl">📅 ${selLabel} 일정 ${dayItems.length?`(${dayItems.length})`:''}</div>
     ${dayItems.length?`<div class="list">${dayItems.map(schCard).join('')}</div>`:'<div class="empty">이 날 등록된 일정이 없습니다.</div>'}
     ${isLight?'':`<div class="divider"></div><div class="lbl">📋 업무지시 · 보고</div>${repHtml}`}
-    <button class="fab-add" onclick="openSchedForm(null)">+</button>`;
+    ${isGuest?'':'<button class="fab-add" onclick="openSchedForm(null)">+</button>'}`;
 }
 function schCard(s){
   const done=s.done===true;
   return `<div class="schcard${done?' done':''}" onclick="openSched('${s.id}')">
-    <div class="sch-chk${done?' on':''}" onclick="toggleSchedDone('${s.id}',event)"></div>
+    ${isGuest?'':`<div class="sch-chk${done?' on':''}" onclick="toggleSchedDone('${s.id}',event)"></div>`}
     <div class="sch-time">${s.stime?esc(s.stime):'종일'}</div>
     <div class="sch-body"><div class="sch-text${done?' done-text':''}">${esc(s.text||s.title||'(내용 없음)')}</div>${s.pjtName?`<div class="sch-meta">${esc(s.pjtName)}</div>`:''}</div>
     ${tagChip(s.tag)}<span class="sch-go">›</span></div>`;
 }
 // 일정 완료 토글 (문서 done 필드) — 구독으로 자동 리렌더
 window.toggleSchedDone=async function(id,ev){
-  if(ev&&ev.stopPropagation) ev.stopPropagation();
+  if(isGuest){ alert('GUEST 계정은 일정을 등록·수정·삭제할 수 없습니다. (조회만 가능)'); return; }
+    if(ev&&ev.stopPropagation) ev.stopPropagation();
   const s=SITE(site); if(!s) return;
   const sch=schedList(s).find(x=>x.id===id); if(!sch) return;
   const willDone=!sch.done;
@@ -618,7 +620,8 @@ window.toggleSchedDone=async function(id,ev){
 // ===== 일정 등록/수정 폼 =====
 let _schForm=null;
 window.openSchedForm=function(id){
-  const s=SITE(site); if(!s) return;
+  if(isGuest){ alert('GUEST 계정은 일정을 등록·수정·삭제할 수 없습니다. (조회만 가능)'); return; }
+    const s=SITE(site); if(!s) return;
   const sch=id?schedList(s).find(x=>x.id===id):null;
   _schForm = sch ? {...sch} : {id:null, text:'', sdate:selectedDate, stime:'', tag:'', memo:''};
   renderSchedForm();
@@ -652,7 +655,8 @@ function renderSchedForm(){
   document.body.insertAdjacentHTML('beforeend', html);
 }
 window.saveSched=async function(){
-  _schCapture(); const f=_schForm; if(!f) return;
+  if(isGuest){ alert('GUEST 계정은 일정을 등록·수정·삭제할 수 없습니다. (조회만 가능)'); return; }
+    _schCapture(); const f=_schForm; if(!f) return;
   const s=SITE(site); if(!s) return;
   if(!f.text||!f.text.trim()){ alert('내용을 입력하세요.'); return; }
   if(!f.sdate){ alert('날짜를 선택하세요.'); return; }
@@ -666,7 +670,8 @@ window.saveSched=async function(){
   }catch(e){ alert('저장 오류: '+e.message); }
 };
 window.deleteSched=async function(id){
-  if(!confirm('이 일정을 삭제하시겠습니까?')) return;
+  if(isGuest){ alert('GUEST 계정은 일정을 등록·수정·삭제할 수 없습니다. (조회만 가능)'); return; }
+    if(!confirm('이 일정을 삭제하시겠습니까?')) return;
   const s=SITE(site); if(!s) return;
   try{ await deleteDoc(schDocRef(s,id)); closeSchedForm(); if(curView==='schedD') goBack(); else render(); }
   catch(e){ alert('삭제 오류: '+e.message); }
@@ -680,7 +685,7 @@ function renderSchedDetail(){
     <div class="hello"><div class="name" style="font-size:20px;color:var(--ink)">${esc(sch.text||sch.title||'일정')}</div><div class="sub">${esc(s.code)} · ${esc(fmtDate(sch.sdate))}</div></div>
     <div class="dcard">${info.map(([k,v])=>`<div class="drow"><span class="dk">${k}</span><span class="dv">${esc(v)}</span></div>`).join('')}</div>
     ${sch.memo||sch.detail||sch.note?`<div class="lbl">상세 내용</div><div class="dcard"><div class="drow"><span class="dv" style="text-align:left;max-width:100%">${esc(sch.memo||sch.detail||sch.note)}</span></div></div>`:''}
-    <div style="margin:18px 20px 0"><button class="sch-edit-btn" style="width:100%" onclick="openSchedForm('${sch.id}')">✏️ 일정 수정</button></div>`;
+    ${isGuest?'':`<div style="margin:18px 20px 0"><button class="sch-edit-btn" style="width:100%" onclick="openSchedForm('${sch.id}')">✏️ 일정 수정</button></div>`}`;
 }
 
 function subscribe(coll){
