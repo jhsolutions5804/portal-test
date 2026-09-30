@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- gihoek module build: 20260930d · ver 5.10.1 · 프로젝트 정보 수정 화면 발주처·시공사·협력사 한 줄 배치 / 직전: ver 5.10.0 · 프로젝트 기본정보 통일(PJT 코드·내용·현장명·발주처·시공사·협력사) — 기획↔PJT관리 양방향 반영 / 직전: ver 5.9.0 · 정산 탭에 '팀별 노무비' 보기 신설(월간 공수의 팀별 합계 이전 — 팀 공수 × 팀 단가, 프로젝트별 소계, 팀 단가는 관리자 전용 문서 master_worker_private에 저장) · 이전: 20260930a ver 5.8.0 · 견적 목록: 견적상태 필터(진행중/종결/폐기) 추가·현장상태 필터 명칭 분리, 상세→목록 복귀 시 필터·페이지·스크롤 유지(브라우저 뒤로가기 포함) · 이전: 20260925d ver 5.7.4 · 프로젝트 목록 생성일순 정렬 강건화(createdAt 없는 옛 데이터는 문서ID 타임스탬프로 폴백) · 이전: 20260925c ver 5.7.3 -->
+<!DOCTYPE html><!-- gihoek module build: 20260930e · ver 5.11.0 · 팀 단가를 팀장 본인도 조회할 수 있는 별도 문서 team_rates에도 함께 저장(팀장 ‘내 팀 공수표’용, 관리자 전용 문서 master_worker_private와 동시 저장) · 직전: ver 5.10.1 · 프로젝트 정보 수정 화면 발주처·시공사·협력사 한 줄 배치 / 직전: ver 5.10.0 · 프로젝트 기본정보 통일(PJT 코드·내용·현장명·발주처·시공사·협력사) — 기획↔PJT관리 양방향 반영 / 직전: ver 5.9.0 · 정산 탭에 '팀별 노무비' 보기 신설(월간 공수의 팀별 합계 이전 — 팀 공수 × 팀 단가, 프로젝트별 소계, 팀 단가는 관리자 전용 문서 master_worker_private에 저장) · 이전: 20260930a ver 5.8.0 · 견적 목록: 견적상태 필터(진행중/종결/폐기) 추가·현장상태 필터 명칭 분리, 상세→목록 복귀 시 필터·페이지·스크롤 유지(브라우저 뒤로가기 포함) · 이전: 20260925d ver 5.7.4 · 프로젝트 목록 생성일순 정렬 강건화(createdAt 없는 옛 데이터는 문서ID 타임스탬프로 폴백) · 이전: 20260925c ver 5.7.3 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -1239,8 +1239,14 @@ window.tlEditRate=async function(leaderId){
   const inp=prompt(leader.name+' 팀의 단가(원/공수)를 입력하세요.', cur?String(cur):'');
   if(inp===null) return;
   const v=parseInt(String(inp).replace(/[^0-9]/g,''))||0;
-  try{ await setDoc(doc(db,'master_worker_private',leaderId),{teamRate:v},{merge:true}); tl.data.rate[leaderId]=v; drawTeamLabor(); toast('팀 단가를 저장했습니다.'); }
-  catch(e){ toast('저장 실패: '+(e.code||e.message)); }
+  // 팀 단가는 두 곳에 저장한다: ① master_worker_private(관리자 전용 — 기획·월간 집계가 읽음) ② team_rates(관리자 + 그 팀의 팀장만 조회 — 팀장 ‘내 팀 공수표’용)
+  let okPriv=false, okRate=false, errMsg='';
+  try{ await setDoc(doc(db,'master_worker_private',leaderId),{teamRate:v},{merge:true}); okPriv=true; }catch(e){ errMsg='관리자 문서: '+(e.code||e.message); }
+  try{ await setDoc(doc(db,'team_rates',leaderId),{teamRate:v,updatedAt:serverTimestamp()},{merge:true}); okRate=true; }catch(e){ errMsg+=(errMsg?' / ':'')+'팀장 조회용 문서: '+(e.code||e.message); }
+  if(okPriv){ tl.data.rate[leaderId]=v; drawTeamLabor(); }
+  if(okPriv&&okRate) toast('팀 단가를 저장했습니다.');
+  else if(okPriv) toast('⚠️ 팀 단가는 저장됐지만 팀장 조회용 문서에는 저장되지 않았습니다 ('+errMsg+'). 다시 저장해 주세요.');
+  else toast('저장 실패: '+errMsg);
 };
 function drawTeamLabor(){
   const el=$('v-settle');
