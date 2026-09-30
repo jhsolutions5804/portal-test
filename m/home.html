@@ -270,6 +270,7 @@
   document.querySelectorAll('[data-admin]').forEach(function(el){
     if(auth && !admin){ el.classList.add('locked'); el.setAttribute('onclick',"alert('관리자 전용 메뉴입니다.')"); }
   });
+  // (근로자 연명부는 PC와 같이 PJT 관리 하위로 이동 — 홈 카드 없음)
   // 인사말: 로그인 사용자 + 오늘 날짜
   if(auth && auth.name){
     var nmEl=document.querySelector('.hello .name');
