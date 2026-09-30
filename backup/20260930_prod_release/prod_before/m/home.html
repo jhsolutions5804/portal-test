@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<!-- build: 20260925d · ver: 2026-09-25 (모바일 홈 2.8.3) · [홈] 더보기에 내규 열람 타일 추가(5열) -->
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JH Solutions · 홈 (초안)</title>
+<style>
+  :root{
+    --blue:#1D5BA6; --blue-d:#16487f;
+    --ink:#1a2330; --sub:#6b7787; --line:#e4eaf2; --bg:#eef2f7; --card:#fff;
+    --ok:#1b8a5a; --amber:#e08a1e; --violet:#7C3AED;
+    /* 섹션별 파스텔/포인트 */
+    --plan-bg:#eaf2fc; --plan-ic:#1D5BA6;
+    --hr-bg:#fdeede;   --hr-ic:#e08a1e;
+    --edoc-bg:#f0edfb; --edoc-ic:#7C3AED;
+    --pjt-bg:#e7f5ee;  --pjt-ic:#1b8a5a;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{
+    font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.5;
+    min-height:100vh;
+  }
+  .phone{ width:100%; max-width:480px; margin:0 auto; background:var(--bg); min-height:100vh; }
+  .scr{padding:0 0 26px}
+
+  /* 상단바 */
+  .top{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 22px 4px;
+  }
+  .wordmark{display:flex; align-items:center; gap:8px}
+  .wordmark .dot{width:11px; height:11px; border-radius:50%; background:var(--blue)}
+  .wordmark b{font-size:16px; font-weight:800; letter-spacing:-.2px; color:var(--blue-d)}
+  .wordmark span{font-size:11px; color:var(--sub); font-weight:600}
+  .avatar{
+    width:40px; height:40px; border-radius:50%; background:var(--blue); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px;
+    box-shadow:0 4px 10px rgba(29,91,166,.3);
+  }
+
+  /* 인사 영역 */
+  .hello{padding:18px 24px 22px}
+  .hello .hi{font-size:14px; color:var(--sub); font-weight:600}
+  .hello .name{font-size:25px; font-weight:800; letter-spacing:-.5px; margin-top:2px}
+  .hello .name em{color:var(--blue); font-style:normal}
+  .hello .date{font-size:12.5px; color:var(--sub); margin-top:7px; font-weight:600}
+
+  /* 섹션 라벨 */
+  .lbl{font-size:12px; font-weight:800; color:#9aa8bc; letter-spacing:.5px;
+    padding:0 24px 12px; text-transform:uppercase}
+
+  /* PJT: 현장별 개별 강조 카드 */
+  .pjt-sec-lbl{font-size:12px; font-weight:800; color:#9aa8bc; letter-spacing:.5px; padding:0 24px 10px}
+  .pjt-site{
+    margin:0 20px 10px; border-radius:20px; padding:18px 20px; cursor:pointer; position:relative;
+    color:#fff; box-shadow:0 8px 20px rgba(30,50,80,.16); overflow:hidden;
+    display:flex; align-items:center; gap:14px; transition:transform .12s ease;
+  }
+  .pjt-site:active{transform:scale(.97)}
+  .pjt-site::after{content:'';position:absolute;right:-26px;top:-26px;width:100px;height:100px;
+    border-radius:50%;background:rgba(255,255,255,.09)}
+  /* 출퇴근: 최상단 강조 카드 (원탭 출근/퇴근) */
+  .att-card{ margin:16px 20px 0; border-radius:20px; padding:18px 20px; color:#fff;
+    background:linear-gradient(135deg,#0f9d58,#22b96b); box-shadow:0 10px 24px rgba(15,157,88,.32); }
+  .att-card.working{ background:linear-gradient(135deg,#e08a1e,#f0a83e); box-shadow:0 10px 24px rgba(224,138,30,.32); }
+  .att-card.done{ background:linear-gradient(135deg,#93a1b5,#aab6c6); box-shadow:0 8px 18px rgba(30,50,80,.18); }
+  .att-top{display:flex; align-items:center; gap:12px; margin-bottom:14px}
+  .att-ic{width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0}
+  .att-t1{font-size:11.5px;font-weight:700;opacity:.88}
+  .att-t2{font-size:16px;font-weight:800;letter-spacing:-.2px;margin-top:1px}
+  .att-btn{width:100%;padding:13px;border:none;border-radius:14px;background:rgba(255,255,255,.22);color:#fff;
+    font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;transition:transform .12s ease}
+  .att-btn:active{transform:scale(.97)}
+  .att-btn:disabled{opacity:.6;cursor:default}
+  .att-note{margin-top:10px;font-size:10.5px;opacity:.85;text-align:center;font-weight:600}
+
+  /* 최상단 오늘 일정 버튼 */
+  .today-sched{
+    margin:16px 20px 0; background:linear-gradient(135deg,var(--blue-d),var(--blue)); border-radius:18px;
+    padding:13px 16px; display:flex; align-items:center; gap:12px; cursor:pointer; color:#fff;
+    box-shadow:0 8px 18px rgba(29,91,166,.28); transition:transform .12s ease;
+  }
+  .today-sched:active{transform:scale(.98)}
+  .today-sched .ts-ic{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+  .today-sched .ts-tx{flex:1;min-width:0}
+  .today-sched .ts-t1{font-size:11px;font-weight:700;opacity:.85}
+  .today-sched .ts-t2{font-size:14px;font-weight:800;margin-top:1px}
+  .today-sched .ts-go{font-size:16px;opacity:.85}
+
+  .pjt-site.fab{background:linear-gradient(135deg,#1b8a5a,#16a66b)}
+  .pjt-site.sup{background:linear-gradient(135deg,#1D5BA6,#2f72c4)}
+  .pjt-site .ps-ic{width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.18);
+    display:flex;align-items:center;justify-content:center;font-size:23px;flex-shrink:0}
+  .pjt-site .ps-cl{font-size:11px;font-weight:700;opacity:.82}
+  .pjt-site .ps-nm{font-size:16.5px;font-weight:800;letter-spacing:-.2px;margin-top:1px}
+  .pjt-site .ps-ds{font-size:11px;font-weight:600;opacity:.82;margin-top:2px}
+  .pjt-site .ps-go{margin-left:auto;font-size:18px;opacity:.85;position:relative;z-index:1}
+
+  /* 전자결재: 준-강조 단독 카드 */
+  .edoc-card{
+    margin:8px 20px 18px; background:var(--card); border:1px solid var(--line); border-radius:20px;
+    padding:16px 18px; display:flex; align-items:center; gap:14px; cursor:pointer;
+    box-shadow:0 2px 8px rgba(30,50,80,.05); transition:transform .12s ease;
+  }
+  .edoc-card:active{transform:scale(.97)}
+  .edoc-card .ic{width:48px;height:48px;border-radius:14px;background:var(--edoc-bg);color:var(--edoc-ic);
+    display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+  .edoc-card .nm{font-size:15.5px;font-weight:800}
+  .edoc-card .ds{font-size:11.5px;color:var(--sub);font-weight:500;margin-top:2px}
+  .edoc-card .go{margin-left:auto;font-size:17px;color:#c3cedd}
+
+  /* 그 외 기능(기획/인사/조직도/관리): PJT·전자결재 대비 축소된 4열 소형 링크 */
+  .more-row{display:grid; grid-template-columns:repeat(5,1fr); gap:6px; padding:0 20px 4px}
+  .more-item{
+    background:var(--card); border:1px solid var(--line); border-radius:13px;
+    padding:11px 4px; display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer;
+    transition:transform .12s ease; box-shadow:0 1px 5px rgba(30,50,80,.04);
+  }
+  .more-item:active{transform:scale(.94)}
+  .more-item .mi2{font-size:17px}
+  .more-item .mt2{font-size:10.5px; font-weight:700; color:var(--sub)}
+
+  /* 로그아웃 */
+  .out{text-align:center; padding:26px 0 6px}
+  .out button{
+    background:none; border:none; color:var(--sub); font-size:13px; font-weight:700;
+    cursor:pointer; font-family:inherit; padding:8px 18px; border-radius:10px;
+  }
+  .out button:active{background:#e3e9f1}
+
+  .hint{
+    margin:20px 20px 0; padding:12px 14px; background:#fff7e6; border:1px solid #f5e2b8;
+    border-radius:12px; font-size:11.5px; color:#8a6d1e; line-height:1.5; font-weight:600;
+  }
+  .pjt-site.light{background:linear-gradient(135deg,#7C3AED,#9461f0)}
+  .tile.locked,.sub.locked{opacity:.45;cursor:not-allowed}
+  .tile.locked .go,.sub.locked{pointer-events:none}
+</style>
+<script src="auth-guard.js"></script>
+</head>
+<body>
+  <div class="phone">
+    <div class="scr">
+
+      <div class="att-card" id="attCard" style="display:none">
+        <div class="att-top">
+          <div class="att-ic" id="attIcon">🟢</div>
+          <div>
+            <div class="att-t1" id="attLabel">출근 전</div>
+            <div class="att-t2" id="attSub">오늘도 안전한 하루 되세요</div>
+          </div>
+        </div>
+        <button class="att-btn" id="attBtn" onclick="attTap()">출근하기</button>
+        <div class="att-note" id="attNote" style="display:none"></div>
+      </div>
+
+      <div class="today-sched" onclick="location.href='schedule.html'">
+        <div class="ts-ic">📅</div>
+        <div class="ts-tx"><div class="ts-t1" id="tsDateLabel">오늘 일정</div><div class="ts-t2">전체 일정 보기</div></div>
+        <div class="ts-go">›</div>
+      </div>
+
+      <div class="top">
+        <div class="wordmark">
+          <span class="dot"></span>
+          <b>JH Solutions</b>
+        </div>
+        <div class="avatar" id="mbAvatar" onclick="location.href='account.html'" style="cursor:pointer">·</div>
+      </div>
+
+      <div class="hello">
+        <div class="hi">안녕하세요 👋</div>
+        <div class="name"><em>김종화</em> 부사장님</div>
+        <div class="date">2026년 7월 4일 토요일</div>
+      </div>
+
+      <div class="lbl">업무 메뉴</div>
+
+      <div class="edoc-card" data-perm="pjt" onclick="location.href='pjt.html'">
+        <div class="ic" style="background:#e8f5e9;color:#2e7d32">🏗️</div>
+        <div>
+          <div class="nm">PJT 관리</div>
+          <div class="ds">진행 중인 현장 전체 보기</div>
+        </div>
+        <span class="go">›</span>
+      </div>
+      <div class="edoc-card" id="rosterCard" style="display:none" onclick="location.href='../pjt_roster/index.html?via=mobile&back=home.html'">
+        <div class="ic" style="background:#eaf2fc;color:#1D5BA6">👷</div>
+        <div>
+          <div class="nm">근로자 연명부</div>
+          <div class="ds">인적사항 · 검진(PDF) · 자격/교육 · 관리자 전용</div>
+        </div>
+        <span class="go">›</span>
+      </div>
+
+      <div class="edoc-card" data-perm="edoc" onclick="location.href='edoc.html'">
+        <div class="ic">📋</div>
+        <div>
+          <div class="nm">전자결재</div>
+          <div class="ds">업무일지·연차·구매품의·지출결의</div>
+        </div>
+        <span class="go">›</span>
+      </div>
+
+      <div class="lbl" style="padding-top:20px">더보기</div>
+      <div class="more-row">
+        <div class="more-item" data-perm="plan" onclick="location.href='gihoek.html'">
+          <span class="mi2">🧭</span><span class="mt2">기획</span>
+        </div>
+        <div class="more-item" data-perm="hr" onclick="location.href='hr.html'">
+          <span class="mi2">👥</span><span class="mt2">인사</span>
+        </div>
+        <div class="more-item" onclick="location.href='admin.html?v=org'">
+          <span class="mi2">🏢</span><span class="mt2">조직도</span>
+        </div>
+        <div class="more-item" data-admin="1" onclick="location.href='admin.html?v=admin'">
+          <span class="mi2">⚙️</span><span class="mt2">관리</span>
+        </div>
+        <div class="more-item" onclick="location.href='admin.html?v=rules'">
+          <span class="mi2">📖</span><span class="mt2">내규</span>
+        </div>
+      </div>
+
+      <div class="out">
+        <button id="mbLogoutBtn" type="button">로그아웃</button>
+      </div>
+
+      <div class="hint" id="mbPcSwitchHint" style="display:flex; align-items:center; justify-content:space-between; gap:10px; cursor:pointer;" onclick="switchToPC()">
+        <span>🖥️ PC 화면으로 보기 — 화면 크기와 관계없이 PC 화면으로 표시돼요. (확대/축소 가능, 사이드바 하단 “모바일 화면으로 전환”으로 되돌릴 수 있어요)</span>
+        <span style="white-space:nowrap; font-weight:800; color:var(--blue);">전환 ›</span>
+      </div>
+
+    </div>
+  </div>
+<script>
+(function(){
+  window.switchToPC = function(){
+    try{
+      localStorage.setItem('jh_force_pc','1');
+      localStorage.removeItem('jh_force_mobile');
+    }catch(e){}
+    location.href='../index.html';
+  };
+})();
+(function(){
+  var auth=null; try{ auth=JSON.parse(localStorage.getItem('jh_login_perms')||'null'); }catch(e){}
+  // 상단 아바타: 로그인 사용자 이름 첫 글자로 표시 (기존 '김' 하드코딩 제거)
+  var _av=document.getElementById('mbAvatar');
+  if(_av) _av.textContent=(auth&&auth.name)?auth.name.slice(0,1):'·';
+  var perms=(auth&&auth.perms)||{}, admin=(auth&&auth.admin)||false;
+  function can(k){ if(k==='plan'||k==='hr') return admin; return admin || !!perms[k]; }
+  // 권한 없는 섹션 잠금
+  document.querySelectorAll('[data-perm]').forEach(function(el){
+    var k=el.getAttribute('data-perm');
+    if(auth && !can(k)){ el.classList.add('locked'); el.setAttribute('onclick',"alert('접근 권한이 없습니다. 관리자에게 문의하세요.')"); var g=el.querySelector('.go'); if(g) g.textContent='🔒'; }
+  });
+  document.querySelectorAll('[data-admin]').forEach(function(el){
+    if(auth && !admin){ el.classList.add('locked'); el.setAttribute('onclick',"alert('관리자 전용 메뉴입니다.')"); }
+  });
+  var _rosterCard=document.getElementById('rosterCard'); if(_rosterCard && admin) _rosterCard.style.display='';
+  // 인사말: 로그인 사용자 + 오늘 날짜
+  if(auth && auth.name){
+    var nmEl=document.querySelector('.hello .name');
+    if(nmEl) nmEl.innerHTML='<em>'+auth.name+'</em>'+(auth.rank?' '+auth.rank:'')+'님';
+  }
+  var dEl=document.querySelector('.hello .date');
+  if(dEl){ var d=new Date(), wd=['일','월','화','수','목','금','토'][d.getDay()];
+    dEl.textContent=d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일 '+wd+'요일'; }
+
+  // ── 로그아웃 처리 → 공통 함수(auth-guard.js의 jhLogout) 사용 ──
+  var _outBtn=document.getElementById('mbLogoutBtn');
+  if(_outBtn){
+    _outBtn.addEventListener('click', function(){
+      if(window.jhLogout){ window.jhLogout({confirm:true}); }
+    });
+  }
+})();
+</script>
+<script type="module">
+// ── 경량 PJT(pjt_registry) 실시간 구독 → 홈 화면에 FAB/SUP과 함께 카드로 노출 ──
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, doc, onSnapshot, getDoc, setDoc, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+const firebaseConfig = {
+  apiKey:"AIzaSyCyQxBJ_ftfM0ImBXubmqD5gfzFR54iPmE", authDomain:"p4ph2-fab-506a7.firebaseapp.com",
+  projectId:"p4ph2-fab-506a7", storageBucket:"p4ph2-fab-506a7.firebasestorage.app",
+  messagingSenderId:"36946317914", appId:"1:36946317914:web:4a0c7062a2f1a4e9a03de5"
+};
+const app=initializeApp(firebaseConfig); const db=getFirestore(app); const auth=getAuth(app);
+const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function inRangeToday(s){ const td=todayStr(); const sd=s.sdate||s.date; const ed=s.edate||sd; if(!sd) return false; return td>=sd && td<=ed; }
+let _todayCounts={fab:0,sup:0,light:{}};
+// ── 고정 PJT(FAB/SUP) 종료 상태: PC와 동일하게 pjt_settings/{p4ph2|p4ph4}.status==='ended'이면 카드·오늘 일정 집계에서 제외 ──
+const FIXED_PJT={p4ph2:'siteFab', p4ph4:'siteSup'};
+let _fixedEnded={p4ph2:false, p4ph4:false};
+function applyFixedPjt(){
+  updateTodayBadge();
+}
+let _lightSchedSubs={};
+function updateTodayBadge(){
+  const t2=document.querySelector('.today-sched .ts-t2'); if(!t2) return;
+  const total=(_fixedEnded.p4ph2?0:_todayCounts.fab)+(_fixedEnded.p4ph4?0:_todayCounts.sup)+Object.values(_todayCounts.light).reduce((a,b)=>a+b,0);
+  t2.textContent = total? `일정 ${total}건 보기` : '오늘은 등록된 일정 없음';
+  const t1=document.querySelector('.today-sched .ts-t1');
+  if(t1){ const d=new Date(); const wd=['일','월','화','수','목','금','토'][d.getDay()]; t1.textContent=(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+wd+') 오늘 일정'; }
+}
+function ensureLightSchedSub(regId){
+  if(_lightSchedSubs[regId]) return; _lightSchedSubs[regId]=true;
+  onSnapshot(collection(db,'pjt_registry',regId,'schedules'), snap=>{
+    let c=0; snap.forEach(d=>{ if(inRangeToday(d.data())) c++; });
+    _todayCounts.light[regId]=c; updateTodayBadge();
+  });
+}
+// ── 원탭 출퇴근: 전자결재 '출퇴근 기록'(worker_attendance_log)과 동일 데이터에 자동 기록 ──
+// 시간 수정·휴게시간 입력은 기존 전자결재 화면(edoc.html > 출퇴근 기록)에서 처리.
+let _myWorkerId='', _myInfo={}, _attDoc=null, _attTimer=null;
+async function loadMyWorkerInfo(user){
+  if(!user) return;
+  try{
+    const puSnap = await getDoc(doc(db,'portal_users',user.uid));
+    let puWorkerId='';
+    if(puSnap.exists()){ const d=puSnap.data(); _myInfo={name:d.name||user.displayName||'', rank:d.rank||''}; puWorkerId=d.workerId||''; }
+    const ws = await getDocs(collection(db,'workers'));
+    let matchedId=puWorkerId;
+    ws.forEach(w=>{
+      const wd=w.data();
+      const isPortalUidMatch = wd.portalUid===user.uid;
+      const isEmailMatch = (wd.email||'').toLowerCase()===(user.email||'').toLowerCase();
+      const isNameMatch = wd.name && wd.name===_myInfo.name;
+      if(isPortalUidMatch || (!matchedId && (isEmailMatch||isNameMatch))){
+        if(isPortalUidMatch) matchedId=w.id;
+        _myInfo={..._myInfo, rank: wd.rank||_myInfo.rank};
+      }
+    });
+    _myWorkerId = matchedId || ('staff_' + (user?.uid || ''));
+  }catch(e){ console.error('출퇴근용 근무자 매칭 실패', e); }
+}
+function attTodayKey(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function attNowHM(){ const d=new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+function attCalcWorkHours(inV,outV,brk){
+  if(!inV||!outV) return 0;
+  const [ih,im]=inV.split(':').map(Number), [oh,om]=outV.split(':').map(Number);
+  let mins=(oh*60+om)-(ih*60+im); if(mins<=0) mins+=24*60; mins-=(brk||0); if(mins<0) mins=0;
+  return mins/60;
+}
+function attRenderNone(){
+  clearInterval(_attTimer);
+  document.getElementById('attCard').className='att-card';
+  document.getElementById('attIcon').textContent='🟢';
+  document.getElementById('attLabel').textContent='출근 전';
+  document.getElementById('attSub').textContent='오늘도 안전한 하루 되세요';
+  const btn=document.getElementById('attBtn'); btn.style.display=''; btn.textContent='출근하기'; btn.disabled=false;
+  document.getElementById('attNote').style.display='none';
+}
+function attRenderWorking(checkIn){
+  document.getElementById('attCard').className='att-card working';
+  document.getElementById('attIcon').textContent='🟠';
+  document.getElementById('attLabel').textContent='근무 중';
+  const btn=document.getElementById('attBtn'); btn.style.display=''; btn.textContent='퇴근하기'; btn.disabled=false;
+  document.getElementById('attNote').style.display='none';
+  const tick=()=>{
+    const [ih,im]=checkIn.split(':').map(Number);
+    const now=new Date(); let mins=(now.getHours()*60+now.getMinutes())-(ih*60+im); if(mins<0) mins+=24*60;
+    document.getElementById('attSub').textContent=`${checkIn} 출근 · ${Math.floor(mins/60)}시간 ${mins%60}분째 근무 중`;
+  };
+  tick(); clearInterval(_attTimer); _attTimer=setInterval(tick,30000);
+}
+function attRenderDone(checkIn,checkOut,workHours){
+  clearInterval(_attTimer);
+  document.getElementById('attCard').className='att-card done';
+  document.getElementById('attIcon').textContent='✅';
+  document.getElementById('attLabel').textContent='오늘 근무 완료';
+  document.getElementById('attSub').textContent=`${checkIn} ~ ${checkOut} · ${workHours.toFixed(1)}시간`;
+  document.getElementById('attBtn').style.display='none';
+  const note=document.getElementById('attNote'); note.style.display=''; note.textContent='시간 수정은 전자결재 > 출퇴근 기록에서 할 수 있어요';
+}
+async function attRefresh(){
+  if(!_myWorkerId) return;
+  const key=`${_myWorkerId}_${attTodayKey()}`;
+  try{ const snap=await getDoc(doc(db,'worker_attendance_log',key)); _attDoc=snap.exists()?snap.data():null; }
+  catch(e){ console.error('출퇴근 기록 조회 실패',e); _attDoc=null; }
+  if(_attDoc && _attDoc.checkIn && _attDoc.checkOut) attRenderDone(_attDoc.checkIn,_attDoc.checkOut, _attDoc.workHours ?? attCalcWorkHours(_attDoc.checkIn,_attDoc.checkOut,_attDoc.breakMinutes||0));
+  else if(_attDoc && _attDoc.checkIn) attRenderWorking(_attDoc.checkIn);
+  else attRenderNone();
+}
+window.attTap = async function(){
+  if(!_myWorkerId) return;
+  const btn=document.getElementById('attBtn'); btn.disabled=true;
+  const dk=attTodayKey(), key=`${_myWorkerId}_${dk}`;
+  try{
+    if(!_attDoc || !_attDoc.checkIn){
+      await setDoc(doc(db,'worker_attendance_log',key), {
+        workerId:_myWorkerId, name:_myInfo.name||'', rank:_myInfo.rank||'',
+        date:dk, yearMonth:dk.slice(0,7), checkIn:attNowHM(), updatedAt: serverTimestamp()
+      }, {merge:true});
+    } else if(!_attDoc.checkOut){
+      const checkOut=attNowHM(), brk=_attDoc.breakMinutes||0;
+      await setDoc(doc(db,'worker_attendance_log',key), { checkOut, workHours: attCalcWorkHours(_attDoc.checkIn,checkOut,brk), updatedAt: serverTimestamp() }, {merge:true});
+    }
+    await attRefresh();
+  }catch(e){ alert('처리 중 오류가 발생했습니다: '+e.message); }
+  btn.disabled=false;
+};
+
+let _authBooted=false;
+onAuthStateChanged(auth, (user)=>{
+  if(_authBooted) return; _authBooted=true;
+  loadMyWorkerInfo(user).then(()=>{
+    if(_myWorkerId){ document.getElementById('attCard').style.display=''; attRefresh(); }
+  });
+  Object.keys(FIXED_PJT).forEach(k=>{
+    onSnapshot(doc(db,'pjt_settings',k), snap=>{ _fixedEnded[k]=snap.exists()&&(snap.data()||{}).status==='ended'; applyFixedPjt(); },
+      err=>{ console.error('pjt_settings 구독 오류(홈)',k,err); applyFixedPjt(); });
+  });
+  setTimeout(applyFixedPjt,3000); // 응답이 늦거나 없어도 카드가 계속 숨겨져 있지 않도록
+  onSnapshot(collection(db,'user_schedules'), snap=>{ let c=0; snap.forEach(d=>{ if(inRangeToday(d.data())) c++; }); _todayCounts.fab=c; updateTodayBadge(); });
+  onSnapshot(collection(db,'ph4_schedules'), snap=>{ let c=0; snap.forEach(d=>{ if(inRangeToday(d.data())) c++; }); _todayCounts.sup=c; updateTodayBadge(); });
+  onSnapshot(collection(db,'pjt_registry'), snap=>{
+    snap.forEach(d=>{
+      const m=d.data()||{}; if(m.status==='ended') return;
+      ensureLightSchedSub(d.id);
+    });
+  }, err=>{ console.error('pjt_registry 구독 오류(홈)', err); });
+});
+</script>
+</body>
+</html>
+
