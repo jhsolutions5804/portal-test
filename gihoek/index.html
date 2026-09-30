@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- gihoek module build: 20260930a · ver 5.8.0 · 견적 목록: 견적상태 필터(진행중/종결/폐기) 추가·현장상태 필터 명칭 분리, 상세→목록 복귀 시 필터·페이지·스크롤 유지(브라우저 뒤로가기 포함) · 이전: 20260925d ver 5.7.4 · 프로젝트 목록 생성일순 정렬 강건화(createdAt 없는 옛 데이터는 문서ID 타임스탬프로 폴백) · 이전: 20260925c ver 5.7.3 -->
+<!DOCTYPE html><!-- gihoek module build: 20260930b · ver 5.9.0 · 정산 탭에 '팀별 노무비' 보기 신설(월간 공수의 팀별 합계 이전 — 팀 공수 × 팀 단가, 프로젝트별 소계, 팀 단가는 관리자 전용 문서 master_worker_private에 저장) · 이전: 20260930a ver 5.8.0 · 견적 목록: 견적상태 필터(진행중/종결/폐기) 추가·현장상태 필터 명칭 분리, 상세→목록 복귀 시 필터·페이지·스크롤 유지(브라우저 뒤로가기 포함) · 이전: 20260925d ver 5.7.4 · 프로젝트 목록 생성일순 정렬 강건화(createdAt 없는 옛 데이터는 문서ID 타임스탬프로 폴백) · 이전: 20260925c ver 5.7.3 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -177,7 +177,7 @@
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp, query, where, addDoc }
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp, query, where, addDoc, documentId }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -1106,6 +1106,7 @@ const setActive=s=>s.status!=='void';
 const FILTER_SEL_STYLE='flex:1;min-width:120px;padding:9px 10px;border:1px solid #DDE4EF;border-radius:9px;font-size:12.5px;font-family:inherit;background:#fff;color:#1A2540;';
 
 function renderSettle(){ settleDraft=null; viewSetId=null;
+if(window.settleView==='team'){ drawTeamLabor(); return; }
   if(!window.settleFilter) window.settleFilter={docType:'',pjtId:'',client:'',status:'',month:''};
   const f=window.settleFilter;
   const clients=[...new Set(settlements.map(s=>s.recipient&&s.recipient.company).filter(Boolean))].sort();
@@ -1171,6 +1172,7 @@ function renderSettle(){ settleDraft=null; viewSetId=null;
 
   $('v-settle').innerHTML=`<button onclick="tab('home')" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#5C6F8A;font-size:12px;cursor:pointer;font-weight:600;">🏠 기획 홈</button>
   <div class="sec-h"><h2>정산</h2><button class="btn pri sm" onclick="newSettle()">+ 정산서 발행</button></div>
+${settleSegHtml()}
     <div class="sumgrid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:16px">
       <div class="sumcell"><div class="l">대금청구 누계</div><div class="v">${won(inv)}</div></div>
       <div class="sumcell"><div class="l">지급예정 누계</div><div class="v">${won(pay)}</div></div>
@@ -1180,6 +1182,102 @@ function renderSettle(){ settleDraft=null; viewSetId=null;
     ${pagerHtml}`;
 }
 window.renderSettle=renderSettle;
+
+/* ---------------- 팀별 노무비 (월간 공수의 팀별 합계 이전) ----------------
+   팀 = 팀장(master_workers에서 leaderId가 없는 근로자) 기준. 팀 공수 = 팀장+팀원 공수 합계, 노무비 = 팀 공수 × 팀 단가.
+   팀 단가는 금액 정보이므로 관리자 전용 문서 master_worker_private/{팀장ID}.teamRate 에 저장한다(옛 위치 master_workers.teamRate 는 읽기 폴백).
+   공수는 FAB(worker_manday)·SUP(ph4_manday)·종료되지 않은 경량PJT(pjt_registry/{id}/manday)의 일자 문서를 문서 ID 범위 조회로 읽는다. */
+const settleSegHtml=()=>`<div style="display:inline-flex;border:1px solid #DDE4EF;border-radius:9px;overflow:hidden;margin:0 0 14px">
+<button onclick="setSettleView('list')" style="border:none;padding:8px 18px;font-size:13px;cursor:pointer;font-family:inherit;${window.settleView!=='team'?'background:#1D5BA6;color:#fff;font-weight:700':'background:#fff;color:#5C6F8A'}">정산서</button>
+<button onclick="setSettleView('team')" style="border:none;padding:8px 18px;font-size:13px;cursor:pointer;font-family:inherit;${window.settleView==='team'?'background:#1D5BA6;color:#fff;font-weight:700':'background:#fff;color:#5C6F8A'}">팀별 노무비</button></div>`;
+window.setSettleView=function(v){ window.settleView=v; if(v==='team') loadTeamLabor(); else renderSettle(); };
+const tl={ y:new Date().getFullYear(), m:new Date().getMonth(), seq:0, data:null, err:'' };
+const tlEsc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const tlPad=n=>String(n).padStart(2,'0');
+window.tlShift=function(dir){ tl.m+=dir; if(tl.m>11){ tl.m=0; tl.y++; } if(tl.m<0){ tl.m=11; tl.y--; } loadTeamLabor(); };
+async function tlMonthDocs(path, lo, hi){
+  const snap=await getDocs(query(collection(db,...path), where(documentId(),'>=',lo), where(documentId(),'<=',hi)));
+  const rows=[]; snap.forEach(d=>rows.push([d.id,(d.data().md)||{}])); return rows;
+}
+async function loadTeamLabor(){
+  const seq=++tl.seq; tl.data=null; tl.err=''; drawTeamLabor();
+  try{
+    const lo=tl.y+'-'+tlPad(tl.m+1)+'-01', hi=tl.y+'-'+tlPad(tl.m+1)+'-31';
+    const [ms,ps]=await Promise.all([ getDocs(collection(db,'master_workers')), getDocs(collection(db,'master_worker_private')) ]);
+    const masters=[], mm={}; ms.forEach(d=>{ const o={id:d.id,...d.data()}; masters.push(o); mm[d.id]=o; });
+    const rate={}; ps.forEach(d=>{ const v=d.data(); if(v.teamRate!=null) rate[d.id]=Number(v.teamRate)||0; });
+    const failed=[], roster=[];
+    const pull=async (path,label,kind,regId)=>{ try{ const sn=await getDocs(collection(db,...path));
+      sn.forEach(d=>{ const w=d.data(), m=mm[d.id]; roster.push({id:d.id,name:(m&&m.name)||w.name||'(이름없음)',birth:(m&&m.birth)||w.birth||'',label,kind,regId}); }); }catch(e){ failed.push(label); } };
+    await pull(['pjt_workers_fab'],'P4 Ph2 (FAB)','fab'); await pull(['pjt_workers_ph4'],'P4 Ph4 (SUP)','sup');
+    const regs=[]; try{ const rs=await getDocs(collection(db,'pjt_registry')); rs.forEach(d=>{ const x=d.data(); if(x.status!=='ended') regs.push({id:d.id,name:x.name||'PJT'}); }); }catch(e){ failed.push('경량 PJT 목록'); }
+    for(const rg of regs) await pull(['pjt_registry',rg.id,'workers'],rg.name,'light',rg.id);
+    const safe=async (path,label)=>{ try{ return await tlMonthDocs(path,lo,hi); }catch(e){ failed.push(label+' 공수'); return []; } };
+    const fabRows=await safe(['worker_manday'],'P4 Ph2 (FAB)'), supRows=await safe(['ph4_manday'],'P4 Ph4 (SUP)');
+    const lightRows={}; for(const rg of regs) lightRows[rg.id]=await safe(['pjt_registry',rg.id,'manday'],rg.name);
+    if(seq!==tl.seq) return;
+    const pmap={}, add=(w,a,pn)=>{ const k=(w.name||'').trim()+'|'+(w.birth||'MISSING'); const P=pmap[k]||(pmap[k]={name:w.name,birth:w.birth,total:0,byPjt:{}}); P.total+=a; P.byPjt[pn]=(P.byPjt[pn]||0)+a; };
+    const byKind=k=>{ const o={}; roster.filter(w=>w.kind===k).forEach(w=>o[w.id]=w); return o; };
+    const fabById=byKind('fab'), supById=byKind('sup');
+    fabRows.forEach(([dk,md])=>Object.keys(md).forEach(id=>{ const a=parseFloat(md[id])||0; if(a&&fabById[id]) add(fabById[id],a,'P4 Ph2 (FAB)'); }));
+    supRows.forEach(([dk,md])=>Object.keys(md).forEach(id=>{ const a=parseFloat(md[id])||0; if(a&&supById[id]) add(supById[id],a,'P4 Ph4 (SUP)'); }));
+    regs.forEach(rg=>{ const by={}; roster.filter(w=>w.kind==='light'&&w.regId===rg.id).forEach(w=>by[w.id]=w);
+      (lightRows[rg.id]||[]).forEach(([dk,md])=>Object.keys(md).forEach(id=>{ const a=parseFloat(md[id])||0; if(a&&by[id]) add(by[id],a,rg.name); })); });
+    tl.data={ masters, rate, pmap, failed };
+  }catch(e){ if(seq!==tl.seq) return; tl.err=e.message; }
+  drawTeamLabor();
+}
+window.tlEditRate=async function(leaderId){
+  if(!tl.data) return;
+  const leader=tl.data.masters.find(m=>m.id===leaderId); if(!leader) return;
+  const cur=tl.data.rate[leaderId]!=null?tl.data.rate[leaderId]:(Number(leader.teamRate)||0);
+  const inp=prompt(leader.name+' 팀의 단가(원/공수)를 입력하세요.', cur?String(cur):'');
+  if(inp===null) return;
+  const v=parseInt(String(inp).replace(/[^0-9]/g,''))||0;
+  try{ await setDoc(doc(db,'master_worker_private',leaderId),{teamRate:v},{merge:true}); tl.data.rate[leaderId]=v; drawTeamLabor(); toast('팀 단가를 저장했습니다.'); }
+  catch(e){ toast('저장 실패: '+(e.code||e.message)); }
+};
+function drawTeamLabor(){
+  const el=$('v-settle');
+  const head=`<button onclick="tab('home')" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#5C6F8A;font-size:12px;cursor:pointer;font-weight:600;">🏠 기획 홈</button>
+<div class="sec-h"><h2>정산</h2></div>${settleSegHtml()}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+<div style="display:flex;align-items:center;gap:10px"><button class="btn line sm" onclick="tlShift(-1)">‹</button><b style="font-size:16px;min-width:96px;text-align:center">${tl.y}년 ${tl.m+1}월</b><button class="btn line sm" onclick="tlShift(1)">›</button></div>
+<button class="btn line sm" onclick="loadTeamLabor()">↻ 다시 계산</button></div>`;
+  if(tl.err){ el.innerHTML=head+`<div class="empty">불러오기 실패: ${tlEsc(tl.err)}</div>`; return; }
+  if(!tl.data){ el.innerHTML=head+`<div class="empty">불러오는 중...</div>`; return; }
+  const {masters,rate,pmap,failed}=tl.data;
+  const totalOf=m=>{ const k=Object.keys(pmap).find(k=>pmap[k].name===m.name&&pmap[k].birth===m.birth); return k?pmap[k]:null; };
+  const leaders=masters.filter(m=>!m.leaderId).sort((a,b)=>(a.name||'').localeCompare(b.name||'','ko'));
+  const rateOf=l=>rate[l.id]!=null?rate[l.id]:(Number(l.teamRate)||0);
+  const usedKeys=new Set(); let grandMd=0, grandAmt=0;
+  const teams=leaders.map(l=>{
+    const members=masters.filter(m=>m.leaderId===l.id).sort((a,b)=>(a.name||'').localeCompare(b.name||'','ko'));
+    const people=[l,...members].map(m=>{ const p=totalOf(m); if(p) usedKeys.add(Object.keys(pmap).find(k=>pmap[k]===p)); return { m, md:p?p.total:0, byPjt:p?p.byPjt:{} }; });
+    const md=people.reduce((s,x)=>s+x.md,0), r=rateOf(l), amt=Math.round(md*r);
+    const byPjt={}; people.forEach(x=>Object.keys(x.byPjt).forEach(pn=>{ byPjt[pn]=(byPjt[pn]||0)+x.byPjt[pn]; }));
+    grandMd+=md; grandAmt+=amt;
+    return { l, members, people, md, r, amt, byPjt };
+  }).sort((a,b)=>b.amt-a.amt||b.md-a.md);
+  const unassigned=Object.keys(pmap).filter(k=>!usedKeys.has(k)).map(k=>pmap[k]);
+  const unMd=unassigned.reduce((s,p)=>s+p.total,0);
+  const teamsHtml=teams.length?teams.map(t=>{
+    const chips=Object.keys(t.byPjt).map(pn=>`<span style="display:inline-block;font-size:10.5px;padding:2px 8px;border-radius:6px;background:#EEF4FC;color:#1D5BA6;font-weight:600;margin:0 4px 3px 0">${tlEsc(pn)} ${t.byPjt[pn].toFixed(1)}공수 · ${won(t.byPjt[pn]*t.r)}원</span>`).join('');
+    const rows=t.people.map((x,i)=>`<div style="display:flex;justify-content:space-between;padding:5px 0 5px 14px;font-size:12.5px;color:#555;${i?'border-top:1px dashed #f0f0f0':'font-weight:600'}"><span>${tlEsc(x.m.name)}${i===0?' (팀장 본인)':''}${x.m.resigned?' <span style="color:#a3a3a3;font-size:11px">퇴사</span>':''}</span><span>${x.md.toFixed(1)}공수</span></div>`).join('');
+    return `<div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+<b style="font-size:14px">👑 ${tlEsc(t.l.name)} 팀 <span style="font-weight:400;color:#9AAABF;font-size:12px">(${t.members.length}명)</span></b>
+<span style="font-size:13px">${t.md.toFixed(1)}공수 · 팀단가 ${won(t.r)}원 <button onclick="tlEditRate('${tlEsc(t.l.id)}')" title="팀 단가 설정" style="border:none;background:none;color:#9AAABF;cursor:pointer;font-size:12px">✏️</button> · <b style="color:#1D5BA6;font-size:15px">${won(t.amt)}원</b></span></div>
+${chips?`<div style="margin-bottom:6px">${chips}</div>`:''}${rows}</div>`;
+  }).join(''):`<div class="empty">등록된 팀이 없습니다. (PJT관리 > 근로자 연명부에서 팀장을 등록하세요)</div>`;
+  const warn=(failed.length?`<div class="note-amber" style="margin-bottom:10px">⚠️ 일부 데이터를 불러오지 못해 집계에서 빠졌을 수 있습니다: ${failed.map(tlEsc).join(', ')}</div>`:'')
+    +(unassigned.length?`<div class="note-amber" style="margin-bottom:10px">ℹ️ 팀(마스터 근로자)에 속하지 않은 인원의 공수 ${unMd.toFixed(1)}공수는 팀별 합계에 포함되지 않았습니다: ${unassigned.map(p=>tlEsc(p.name)+(p.birth?'':'(생년월일 없음)')).join(', ')}. [PJT관리 > 근로자 연명부 > 기존 인원 마이그레이션]에서 등록하면 팀에 포함됩니다.</div>`:'');
+  el.innerHTML=head+`<div class="sumgrid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:16px">
+<div class="sumcell"><div class="l">팀 노무비 합계</div><div class="v">${won(grandAmt)}원</div></div>
+<div class="sumcell"><div class="l">팀 공수 합계</div><div class="v">${grandMd.toFixed(1)}</div></div>
+<div class="sumcell"><div class="l">팀 수</div><div class="v">${teams.length}</div></div></div>${warn}${teamsHtml}
+<div class="note-amber">팀 노무비 = 팀 공수(팀장+팀원) × 팀 단가. 팀 단가는 관리자만 조회·수정할 수 있는 별도 문서에 저장됩니다. 공수는 PJT관리 근태(FAB·SUP·경량PJT)의 월 합계입니다.</div>`;
+}
+window.loadTeamLabor=loadTeamLabor;
 window.setSettleFilter=function(key,val){ if(!window.settleFilter) window.settleFilter={docType:'',pjtId:'',client:'',status:'',month:''}; window.settleFilter[key]=val; settlePage=1; renderSettle(); };
 window.resetSettleFilter=function(){ window.settleFilter={docType:'',pjtId:'',client:'',status:'',month:''}; settlePage=1; renderSettle(); };
 window.setSettlePage=function(p){ settlePage=p; renderSettle(); const el=document.querySelector('#v-settle .sec-h'); if(el) el.scrollIntoView({block:'start'}); };
