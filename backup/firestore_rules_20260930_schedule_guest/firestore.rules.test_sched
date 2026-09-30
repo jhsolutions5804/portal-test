@@ -48,11 +48,16 @@ service cloud.firestore {
     }
 
     // ── 일정 ──
-    //  · 읽기: 승인된 직원 (단, 회사 공통 일정 company_schedules는 GUEST 사번 제외 — 연차 등 직원 정보 포함)
+    //  · 읽기: 승인된 직원 (단, 프로젝트에 속하지 않는 일정 company_schedules는 GUEST 사번 제외 — 연차·휴무는 예외로 공개)
     //  · 쓰기(등록·수정·삭제·완료 체크): GUEST 사번은 불가
     match /user_schedules/{sid}    { allow read: if isApproved(); allow write: if isApproved() && !isGuestEmp(); }
     match /ph4_schedules/{sid}     { allow read: if isApproved(); allow write: if isApproved() && !isGuestEmp(); }
-    match /company_schedules/{sid} { allow read, write: if isApproved() && !isGuestEmp(); }
+    //  · company_schedules(프로젝트에 속하지 않는 모든 일정): 읽기는 GUEST 제외 — 단, 연차·휴무 사용(분류 off·leave)은 전체 공개(대표님 결정 2026-09-30)
+    //    GUEST가 목록을 조회하려면 쿼리에 where('tag','in',['off','leave'])(또는 tag == 값)가 있어야 한다(규칙은 필터가 아니라 조건 증명).
+    match /company_schedules/{sid} {
+      allow read: if isApproved() && (!isGuestEmp() || resource.data.tag in ['off','leave']);
+      allow write: if isApproved() && !isGuestEmp();
+    }
     match /pjt_registry/{rid}/schedules/{sid} { allow read: if isApproved(); allow write: if isApproved() && !isGuestEmp(); }
 
     // portal_secrets: 직원 비밀번호(관리자 비밀번호 직접 변경 기능용, base64). 본인과 관리자만 접근.
