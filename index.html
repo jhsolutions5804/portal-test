@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260930g · ver: 2026-09-30 (직원 비밀번호(_pw)를 계정 문서에서 본인·관리자 전용 문서 portal_secrets로 이동) · 이전: 20260930f · ver: 2026-09-30 (회사 일정 카테고리 행사·기타·만료 추가) · 이전: 20260925e 2026-09-25 (하단 작업탭 10개 초과 시 막지 않고 가장 먼저 열었던 탭을 자동으로 닫음) · 이전: 20260925d 결재함 이동 후 탭 갇힘 현상 해결 -->
+<!DOCTYPE html><!-- build: 20260930h · ver: 2026-09-30 (팀장 전용 ‘내 팀 공수표’ 진입점 추가(portal_users.teamLeaderIds 지정 계정에만 표시, 관리자 제외)) · 이전: 20260930g · ver: 2026-09-30 (직원 비밀번호(_pw)를 계정 문서에서 본인·관리자 전용 문서 portal_secrets로 이동) · 이전: 20260930f · ver: 2026-09-30 (회사 일정 카테고리 행사·기타·만료 추가) · 이전: 20260925e 2026-09-25 (하단 작업탭 10개 초과 시 막지 않고 가장 먼저 열었던 탭을 자동으로 닫음) · 이전: 20260925d 결재함 이동 후 탭 갇힘 현상 해결 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -1071,7 +1071,15 @@ const MODULES=[
   { key:'hr',   name:'인사',          desc:'급여·계약·근태·연차 관리',         ic:'hr',   emoji:'👥', url:'hr/' },
   { key:'edoc', name:'전자결재',       desc:'업무일지·연차·구매품의·지출결의',   ic:'edoc', emoji:'📋', url:'edoc/' },
   { key:'pjt',  name:'PJT 관리',       desc:'진행 중인 프로젝트 현장 관리',    ic:'pjt',  emoji:'🏗️', url:'pjt/' },
+  { key:'myteam', name:'내 팀 공수표',   desc:'팀원 공수 · 팀 단가 · 노무비 (팀장 전용)', ic:'pjt', emoji:'👥', url:'team/' },
 ];
+// 모듈 접근 판정: 내 팀 공수표(myteam)는 권한 칩이 아니라 관리자가 지정한 팀장 계정(teamLeaderIds)에만 열린다(관리자라도 팀장 지정이 없으면 대상 아님 — 관리자는 연명부·기획에서 확인).
+window.jhIsTeamLeader=function(u){ return !!(u && Array.isArray(u.teamLeaderIds) && u.teamLeaderIds.length); };
+window.jhModAllowed=function(m,u){
+  if(!u) return false;
+  if(m.key==='myteam') return window.jhIsTeamLeader(u);
+  return (m.key==='plan'||m.key==='hr') ? !!u.admin : !!(u.admin||(u.perms&&u.perms[m.key]));
+};
 // PJT별 서브 목록 (url: 각 PJT 전용 워크스페이스 URL)
 // 고정 PJT 원본 정의 — 종료되어 PJT_SUBTABS에서 제거돼도 재개 시 이 원본으로 복원한다
 const PJT_FIXED_BASE=[
@@ -1131,7 +1139,7 @@ let me=null;
 // 하단 탭바(일반 script)에서 접근 가능하도록 window 노출
 window.MODULES=MODULES; window.SUBTABS=SUBTABS;
 Object.defineProperty(window,'me',{get:()=>me,set:v=>{me=v;
-  try{ if(v){ localStorage.setItem('jh_login_perms', JSON.stringify({perms:v.perms||{}, admin:!!v.admin, uid:v.uid||'', name:v.name||'', dept:v.dept||'', rank:v.rank||''})); } }catch(e){}
+  try{ if(v){ localStorage.setItem('jh_login_perms', JSON.stringify({perms:v.perms||{}, admin:!!v.admin, uid:v.uid||'', name:v.name||'', dept:v.dept||'', rank:v.rank||'', teamLeaderIds:Array.isArray(v.teamLeaderIds)?v.teamLeaderIds:[]})); } }catch(e){}
 }});
 
 const $=id=>document.getElementById(id);
@@ -2810,7 +2818,7 @@ async function openEmpDetail(uid){
       <option value="영업기획팀" ${u.dept==='영업기획팀'?'selected':''}>　영업기획팀</option>
     </optgroup>
     <option value="guest" ${u.dept==='guest'?'selected':''}>guest</option>`;
-  const permsHtml=MODULES.map(m=>`
+  const permsHtml=MODULES.filter(m=>m.key!=='myteam').map(m=>`
     <span class="chip ${(u.perms&&u.perms[m.key])?'on':''}" data-u="${u.uid}" data-k="${m.key}">${m.name}</span>
   `).join('');
   $('emp-detail-content').innerHTML=`
@@ -3191,7 +3199,8 @@ function renderMenu(){
   const sec=document.createElement('div'); sec.className='sb-sec'; sec.textContent='업무';
   nav.appendChild(sec);
   MODULES.forEach(m=>{
-    const allowed=(m.key==='plan'||m.key==='hr')?me.admin:(me.admin||(me.perms&&me.perms[m.key]));
+    const allowed=window.jhModAllowed(m,me);
+    if(m.key==='myteam' && !allowed) return;    // 팀장이 아니면 잠금 표시도 없이 숨김
     // 홈 카드
     const card=document.createElement('div');
     card.className='mcard'+(allowed?'':' locked');
@@ -3506,6 +3515,7 @@ function jhMakeFrame(name, fullUrl){
 }
 
 function openModule(m, tab, overrideUrl){
+  if(m.key==='myteam' && !window.jhIsTeamLeader(me)){ toast('팀장으로 지정된 계정만 볼 수 있습니다.'); return; }
   if(tab==='pjt_roster' && !(me&&me.admin)){ toast('근로자 연명부는 관리자만 접근할 수 있습니다.'); return; }
   if((m.key==='plan'||m.key==='hr') && !(me&&me.admin)){ toast('기획/인사는 관리자만 접근할 수 있습니다.'); return; }
   const actualUrl=overrideUrl||m.url;
@@ -3835,7 +3845,8 @@ function mbnOpenMore(){
   // 업무 메뉴
   const workItems=[];
   _MODULES.forEach(m=>{
-    const allowed=(m.key==='plan'||m.key==='hr')?_me.admin:(_me.admin||(_me.perms&&_me.perms[m.key]));
+    const allowed=window.jhModAllowed(m,_me);
+    if(m.key==='myteam' && !allowed) return;
     if(_SUBTABS[m.key] && allowed && m.key !== 'hr'){
       const wrap=document.createElement('div'); wrap.style.cssText='width:100%';
       const head=document.createElement('button'); head.className='mmp-btn'; head.style.cssText='width:100%;padding:12px 20px';
