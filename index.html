@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260925e · ver: 2026-09-25 (하단 작업탭 10개 초과 시 막지 않고 가장 먼저 열었던 탭을 자동으로 닫음) · 이전: 20260925d 결재함 이동 후 탭 갇힘 현상 해결 -->
+<!DOCTYPE html><!-- build: 20260930f · ver: 2026-09-30 (회사 일정 카테고리 행사·기타·만료 추가) · 이전: 20260925e 2026-09-25 (하단 작업탭 10개 초과 시 막지 않고 가장 먼저 열었던 탭을 자동으로 닫음) · 이전: 20260925d 결재함 이동 후 탭 갇힘 현상 해결 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -1341,9 +1341,9 @@ async function loadPjtPanels(){
 
   try{
     const {getDocs,collection,query,where,orderBy,limit} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    const TAG_LBL={'in':'반입','edu':'교육','meeting':'회의','fcu':'설치','safety':'안전','admin':'행정','off':'휴무'};
-    const TAG_COLOR={'in':'#E0F2F1','edu':'#F3F0FF','meeting':'#FFF3E0','fcu':'#E8F0FB','safety':'#FFF8E1','admin':'#F5F5F5','off':'#FFEAEA'};
-    const TAG_FG={'in':'#00695C','edu':'#3C2A8A','meeting':'#5D3A00','fcu':'#0A3D7A','safety':'#8D6E00','admin':'#3A3A3A','off':'#7F1D1D'};
+    const TAG_LBL={'in':'반입','edu':'교육','meeting':'회의','fcu':'설치','safety':'안전','admin':'행정','off':'휴무','event':'행사','etc':'기타','expiry':'만료'};
+    const TAG_COLOR={'in':'#E0F2F1','edu':'#F3F0FF','meeting':'#FFF3E0','fcu':'#E8F0FB','safety':'#FFF8E1','admin':'#F5F5F5','off':'#FFEAEA','event':'#E8F5E9','etc':'#F5F5F5','expiry':'#FFF3E0'};
+    const TAG_FG={'in':'#00695C','edu':'#3C2A8A','meeting':'#5D3A00','fcu':'#0A3D7A','safety':'#8D6E00','admin':'#3A3A3A','off':'#7F1D1D','event':'#1B5E20','etc':'#3A3A3A','expiry':'#8A4B00'};
 
     // 1. 주요 일정 (반입·교육) — 모든 PJT 일정 컬렉션 합산
     let schedRows=[];
@@ -1437,7 +1437,8 @@ async function loadPjtPanels(){
 const PJT_CAL_TAG = {
   in:{c:'#1D5BA6',l:'반입'}, inspect:{c:'#2e7d32',l:'검수'}, edu:{c:'#5e35b1',l:'교육'},
   off:{c:'#c0392b',l:'휴무'}, leave:{c:'#e67e22',l:'연차'},
-  meeting:{c:'#5D3A00',l:'회의'}, fcu:{c:'#0A3D7A',l:'설치'}, safety:{c:'#8D6E00',l:'안전'}, admin:{c:'#7A8AA0',l:'행정'}
+  meeting:{c:'#5D3A00',l:'회의'}, fcu:{c:'#0A3D7A',l:'설치'}, safety:{c:'#8D6E00',l:'안전'}, admin:{c:'#7A8AA0',l:'행정'},
+  event:{c:'#2e7d32',l:'행사'}, etc:{c:'#7A8AA0',l:'기타'}, expiry:{c:'#c25b00',l:'만료'}
 };
 let _pjtCalY, _pjtCalM, _pjtCalSel=null, _pjtCalCache={};
 const _pjtPad=n=>String(n).padStart(2,'0');
@@ -1860,7 +1861,8 @@ function _pjtReportItem(type,text,pjtName,bg,fg){
 // ===== 홈 일정 등록/수정/삭제/상세 =====
 const HOME_SCHED_CATS = [
   ['in','반입'],['inspect','검수'],['edu','교육'],['meeting','회의'],
-  ['fcu','설치'],['safety','안전'],['off','휴무'],['leave','연차'],['admin','행정']
+  ['fcu','설치'],['safety','안전'],['off','휴무'],['leave','연차'],['admin','행정'],
+  ['event','행사'],['etc','기타']   // 회사 일정(PJT 외) 등록용
 ];
 let _homeSchedItems=[];   // 현재 선택일 일정 목록 (id·col·pjtKey 포함)
 let _hscCurCat='admin';
