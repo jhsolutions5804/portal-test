@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260930c · ver: 1.2.0 · 관리자 계정은 팀 연결 없이 전체 팀 조회(팀이 여러 개면 전체 합계 표시), 팀장 계정은 지정된 자기 팀만 · 이전: 20260930b ver 1.1.0 · 모바일·PC 화면 다듬기(버튼 글자 꺾임·큰 금액 잘림·긴 프로젝트명 정리, 포털 안에서 열릴 때 홈 버튼 숨김) · 이전: 20260930a ver 1.0.0 · 내 팀 공수표(팀장 전용) — 관리자가 연명부에서 지정한 팀(portal_users.teamLeaderIds)의 월별 공수·개인별 공수표·팀 단가·노무비 조회 -->
+<!DOCTYPE html><!-- build: 20260930d · ver: 1.3.0 · 관리자 화면에서 팀 단가 설정(각 팀 카드의 ✏️, 기획 정산의 팀별 노무비와 같은 두 문서에 저장) — PC·모바일 동일 · 이전: 20260930c ver 1.2.0 · 관리자 계정은 팀 연결 없이 전체 팀 조회(팀이 여러 개면 전체 합계 표시), 팀장 계정은 지정된 자기 팀만 · 이전: 20260930b ver 1.1.0 · 모바일·PC 화면 다듬기(버튼 글자 꺾임·큰 금액 잘림·긴 프로젝트명 정리, 포털 안에서 열릴 때 홈 버튼 숨김) · 이전: 20260930a ver 1.0.0 · 내 팀 공수표(팀장 전용) — 관리자가 연명부에서 지정한 팀(portal_users.teamLeaderIds)의 월별 공수·개인별 공수표·팀 단가·노무비 조회 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -28,6 +28,8 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
 .sumcell .l{font-size:11px;color:#86868b;margin-bottom:3px}
 .sumcell .v{font-size:clamp(13px,4.2vw,17px);font-weight:800;color:#1D5BA6;white-space:nowrap}
 .sumcell .v.money{color:#1b5e20}
+.ed{border:none;background:none;cursor:pointer;font-size:13px;padding:0 2px}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#1A2540;color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;z-index:400;max-width:90%;text-align:center;display:none}
 .chip{display:inline-block;font-size:11px;padding:3px 9px;border-radius:7px;background:#EEF4FC;color:#1D5BA6;font-weight:600;margin:0 4px 4px 0}
 .mem{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 2px;border-top:1px solid #f0f0f0}
 .mem>div:first-child{min-width:0;flex:1}
@@ -59,11 +61,12 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
   <div id="summary"></div>
   <div id="teams"><div class="loading">불러오는 중...</div></div>
 </div>
+<div class="toast" id="toast"></div>
 <div class="modal" id="sheet-modal"><div class="sheet"><div class="sheet-h"><b id="sheet-title" style="font-size:15px"></b><button class="btn sm" onclick="closeSheet()">닫기 ✕</button></div><div id="sheet-body"></div></div></div>
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, doc, getDoc, getDocs, collection, query, where, documentId }
+import { getFirestore, doc, getDoc, getDocs, setDoc, collection, query, where, documentId, serverTimestamp }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
@@ -194,7 +197,7 @@ function renderTeams(failed){
       +'<div class="act"><span class="md">'+x.total.toFixed(1)+'</span><button class="btn sm" onclick="openSheet('+ti+','+pi+')">📋 공수표</button></div></div>').join('');
     return '<div class="team"><div class="team-h"><div><div class="team-nm">👑 '+esc(t.leader.name)+' 팀</div><div class="sub">팀원 '+t.members.length+'명 (팀장 포함 '+v.people.length+'명)</div></div></div>'
       +'<div class="sumline"><div class="sumcell"><div class="l">팀 공수</div><div class="v">'+v.md.toFixed(1)+'</div></div>'
-      +'<div class="sumcell"><div class="l">팀 단가</div><div class="v">'+rateTxt+'</div></div>'
+      +'<div class="sumcell"><div class="l">팀 단가'+(isAdminView?' <button class="ed" title="팀 단가 설정" onclick="editRate('+ti+')">✏️</button>':'')+'</div><div class="v">'+rateTxt+'</div></div>'
       +'<div class="sumcell"><div class="l">노무비</div><div class="v money">'+(v.amount==null?'—':won(v.amount)+'원')+'</div></div></div>'
       +(chips?'<div style="margin-bottom:6px">'+chips+'</div>':'')+rows+'</div>';
   }).join('');
@@ -202,6 +205,24 @@ function renderTeams(failed){
 
 // 달력 칸용 프로젝트 약칭 (긴 이름은 앞부분만)
 const abbr = pn => pn==='P4 Ph2 (FAB)' ? 'FAB' : pn==='P4 Ph4 (SUP)' ? 'SUP' : (pn.length>6 ? pn.slice(0,6)+'…' : pn);
+const toast = m => { const t=$('toast'); t.textContent=m; t.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>{ t.style.display='none'; }, 4200); };
+// 팀 단가 설정(관리자 전용): 기획 > 정산 > 팀별 노무비와 같은 두 곳에 저장
+//  ① master_worker_private(관리자 전용 — 기획·집계가 읽음) ② team_rates(관리자 + 그 팀 팀장만 조회 — 팀장 화면용)
+window.editRate = async function(ti){
+  if (!isAdminView) return;
+  const v0 = view[ti]; if (!v0) return; const t = v0.t;
+  const cur = t.rate==null ? '' : String(t.rate);
+  const inp = prompt(t.leader.name+' 팀의 단가(원/공수)를 입력하세요.', cur);
+  if (inp === null) return;
+  const v = parseInt(String(inp).replace(/[^0-9]/g,''))||0;
+  let okPriv=false, okRate=false, err='';
+  try{ await setDoc(doc(db,'master_worker_private',t.leader.id),{teamRate:v},{merge:true}); okPriv=true; }catch(e){ err='관리자 문서: '+(e.code||e.message); }
+  try{ await setDoc(doc(db,'team_rates',t.leader.id),{teamRate:v,updatedAt:serverTimestamp()},{merge:true}); okRate=true; }catch(e){ err+=(err?' / ':'')+'팀장 조회용 문서: '+(e.code||e.message); }
+  if (okPriv || okRate){ t.rate=v; t.rateErr=false; v0.amount=Math.round(v0.md*v); renderTeams([]); }
+  if (okPriv && okRate) toast('팀 단가를 저장했습니다.');
+  else if (okPriv || okRate) toast('⚠️ 일부만 저장됐습니다 ('+err+'). 다시 저장해 주세요.');
+  else toast('저장 실패: '+err);
+};
 window.openSheet = function(ti, pi){
   const x = view[ti].people[pi]; if (!x) return;
   const days = new Date(Y, M+1, 0).getDate(), first = new Date(Y, M, 1).getDay();
