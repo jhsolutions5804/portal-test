@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- HR module build: 20260930f · ver 2.16.0 · 저장 계약서 메일 재전송 + 발송 이력(doc_send_log) / 직전: ver 2.15.0 · 저장된 근로계약서·연봉계약서 근로자 본인 열람 링크(문자 인증, 180일, 저장 당시 양식으로 표시) / 직전: ver 2.14.0 · 인사 변동 메뉴 신설(직급·부서 변경 저장+호봉 초기화+이력, 연봉 조정은 근로계약서 작성으로 연결, 변동 현황 조회) · 이전: 20260925e ver 2.13.1 · 근로시간 캘린더 — 반차 쓰고 그날 일부 근무한 경우, 근무시간만 보이고 반차 여부가 안 보이던 문제 수정(🌴 표시 병기) · 이전: 20260925d ver 2.13.0 -->
+<!DOCTYPE html><!-- HR module build: 20260930g · ver 2.17.0 · 급여명세서 열람 링크(저장 당시 양식·180일)·메일 발송 이력·링크/QR / 직전: ver 2.16.0 · 저장 계약서 메일 재전송 + 발송 이력(doc_send_log) / 직전: ver 2.15.0 · 저장된 근로계약서·연봉계약서 근로자 본인 열람 링크(문자 인증, 180일, 저장 당시 양식으로 표시) / 직전: ver 2.14.0 · 인사 변동 메뉴 신설(직급·부서 변경 저장+호봉 초기화+이력, 연봉 조정은 근로계약서 작성으로 연결, 변동 현황 조회) · 이전: 20260925e ver 2.13.1 · 근로시간 캘린더 — 반차 쓰고 그날 일부 근무한 경우, 근무시간만 보이고 반차 여부가 안 보이던 문제 수정(🌴 표시 병기) · 이전: 20260925d ver 2.13.0 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -2731,16 +2731,20 @@ window.psViewWorker = async (wid, wname) => {
           </span>
         </div>
         <div style="font-size:12px;color:${C2.sub};margin-bottom:4px;">지급계: ₩${Math.round(d.grossPay||0).toLocaleString()}</div>
-        <div style="font-size:13px;font-weight:700;color:#1D5BA6;margin-bottom:10px;">실지급액: ₩${Math.round(d.netPay||0).toLocaleString()}</div>
+        <div style="font-size:13px;font-weight:700;color:#1D5BA6;margin-bottom:6px;">실지급액: ₩${Math.round(d.netPay||0).toLocaleString()}</div>
+        <div data-sendlog="payslip:${d.id}" style="font-size:11px;color:#9AAABF;margin-bottom:10px;">✉ 발송 이력 확인 중...</div>
         <div style="display:flex;gap:8px;">
           <button onclick="psViewDetail(${JSON.stringify(d).replace(/"/g,'&quot;')}, '${wid}')"
             style="flex:1;padding:8px;background:#E8F0FB;border:1px solid #DDE4EF;border-radius:8px;font-size:12px;font-weight:600;color:${C2.blue};cursor:pointer;">📄 PDF 출력</button>
           <button onclick="psSendEmail(${JSON.stringify(d).replace(/"/g,'&quot;')}, '${wid}', this)"
-            style="flex:1;padding:8px;background:#fff;border:1px solid ${C2.blue};border-radius:8px;font-size:12px;font-weight:600;color:${C2.blue};cursor:pointer;">📧 발송</button>
+            style="flex:1;padding:8px;background:#fff;border:1px solid ${C2.blue};border-radius:8px;font-size:12px;font-weight:600;color:${C2.blue};cursor:pointer;">📧 메일 발송</button>
+          <button onclick="docViewLink('payslip','${wid}','${d.id}','${wname}')"
+            style="flex:1;padding:8px;background:#fff;border:1px solid ${C2.blue};border-radius:8px;font-size:12px;font-weight:600;color:${C2.blue};cursor:pointer;">🔗 링크·QR (문자/카톡 전달)</button>
           <button onclick="psDeleteSlip('${wid}','${d.id}','${wname}')"
             style="padding:8px 12px;background:#FEE2E2;border:1px solid #fca5a5;border-radius:8px;font-size:12px;font-weight:600;color:#DC2626;cursor:pointer;">🗑 삭제</button>
         </div>
       </div>`).join('');
+    _fillSendLog('payslip', wid);
   } catch(e) { document.getElementById('ps-months-loading').innerHTML=`<div style="color:#DC2626;">오류: ${e.message}</div>`; }
 };
 
@@ -2807,16 +2811,20 @@ window.psViewWorker = async (wid, wname) => {
           </span>
         </div>
         <div style="font-size:12px;color:${C2.sub};margin-bottom:4px;">지급계: ₩${Math.round(d.grossPay||0).toLocaleString()}</div>
-        <div style="font-size:13px;font-weight:700;color:#1D5BA6;margin-bottom:10px;">실지급액: ₩${Math.round(d.netPay||0).toLocaleString()}</div>
+        <div style="font-size:13px;font-weight:700;color:#1D5BA6;margin-bottom:6px;">실지급액: ₩${Math.round(d.netPay||0).toLocaleString()}</div>
+        <div data-sendlog="payslip:${d.id}" style="font-size:11px;color:#9AAABF;margin-bottom:10px;">✉ 발송 이력 확인 중...</div>
         <div style="display:flex;gap:8px;">
           <button onclick="psViewDetail(${JSON.stringify(d).replace(/"/g,'&quot;')}, '${wid}')"
             style="flex:1;padding:8px;background:#E8F0FB;border:1px solid #DDE4EF;border-radius:8px;font-size:12px;font-weight:600;color:${C2.blue};cursor:pointer;">📄 PDF 출력</button>
           <button onclick="psSendEmail(${JSON.stringify(d).replace(/"/g,'&quot;')}, '${wid}', this)"
-            style="flex:1;padding:8px;background:#fff;border:1px solid ${C2.blue};border-radius:8px;font-size:12px;font-weight:600;color:${C2.blue};cursor:pointer;">📧 발송</button>
+            style="flex:1;padding:8px;background:#fff;border:1px solid ${C2.blue};border-radius:8px;font-size:12px;font-weight:600;color:${C2.blue};cursor:pointer;">📧 메일 발송</button>
+          <button onclick="docViewLink('payslip','${wid}','${d.id}','${wname}')"
+            style="flex:1;padding:8px;background:#fff;border:1px solid ${C2.blue};border-radius:8px;font-size:12px;font-weight:600;color:${C2.blue};cursor:pointer;">🔗 링크·QR (문자/카톡 전달)</button>
           <button onclick="psDeleteSlip('${wid}','${d.id}','${wname}')"
             style="padding:8px 12px;background:#FEE2E2;border:1px solid #fca5a5;border-radius:8px;font-size:12px;font-weight:600;color:#DC2626;cursor:pointer;">🗑 삭제</button>
         </div>
       </div>`).join('');
+    _fillSendLog('payslip', wid);
   } catch(e) { document.getElementById('ps-months-loading').innerHTML=`<div style="color:#DC2626;">오류: ${e.message}</div>`; }
 };
 
@@ -2828,9 +2836,10 @@ window.psViewDetail = (d, wid) => {
 window.psSendEmail = async (d, wid, btnEl) => {
   await sendDocLinkByEmail({
     kind:'worker', id: wid, toName: d.name||'', docLabel:'급여명세서',
-    linkParams: { docType:'payslip', payslipWid: wid, payslipMonth: d.id },
+    linkParams: { docType:'payslip', payslipWid: wid, payslipMonth: d.id, viewOnly: true },
     btnEl,
   });
+  _fillSendLog('payslip', wid);
 };
 
 window.psDeleteSlip = async (wid, mid, wname) => {
@@ -2938,8 +2947,8 @@ async function _createDocLink({ docType, workerId, contractId, offerId, payslipW
   // 열람 전용 링크(근로자 본인이 저장된 계약서를 다시 확인) — 서명·수정 불가, 문자 인증 후 열람.
   // 저장 서류 양식 동결 원칙: 저장 당시 양식(tplVer)으로 렌더링한 HTML만 담는다(현재 양식으로 다시 그리지 않음).
   if (viewOnly) {
-    if (docType !== 'labor' && docType !== 'annual') throw new Error('열람 링크는 근로계약서·연봉계약서만 지원합니다.');
-    const html = docHtmlByVer(docType === 'annual' ? __ANNUAL_TPL : __LABOR_TPL, snapDoc);
+    if (docType !== 'labor' && docType !== 'annual' && docType !== 'payslip') throw new Error('열람 링크는 근로계약서·연봉계약서·급여명세서만 지원합니다.');
+    const html = docHtmlByVer(docType === 'annual' ? __ANNUAL_TPL : docType === 'payslip' ? __PS_TPL : __LABOR_TPL, snapDoc);
     if (html.length > 900000) throw new Error('문서가 너무 커서 링크를 만들 수 없습니다. (이미지·첨부 용량 확인)');
     const vRef = doc(collection(db, 'sign_links'));
     const vExp = Date.now() + 180 * 24 * 3600 * 1000;
@@ -3012,7 +3021,7 @@ async function _logDocSend({ kind, id, docLabel, linkParams, email, token }){
   const lp = linkParams || {};
   await addDoc(collection(window._db, 'doc_send_log'), {
     channel: 'email', kind: kind || '', recipientId: id || '', docLabel: docLabel || '',
-    docType: lp.docType || '', workerId: lp.workerId || lp.payslipWid || '', contractId: lp.contractId || '',
+    docType: lp.docType || '', workerId: lp.workerId || lp.payslipWid || '', contractId: lp.contractId || lp.payslipMonth || '',
     offerId: lp.offerId || '', payslipMonth: lp.payslipMonth || '', linkKind: lp.viewOnly ? 'view' : 'sign',
     toMasked: _maskEmail(email), sentAt: serverTimestamp()   // 링크 토큰은 이력에 남기지 않는다(전 직원 열람 가능한 컬렉션)
   });
@@ -4750,8 +4759,10 @@ window.laborCreateSignLink = async () => {
 window.docViewLink = async (docType, wid, cid, wname) => {
   if (!window._db) { alert('Firebase 연결 필요'); return; }
   try {
-    const token = await _createDocLink({ docType, workerId: wid, contractId: cid, workerName: wname, recipient: { kind: 'worker', id: wid }, viewOnly: true });
-    showSignLinkModal(token, wname, { view: true, label: docType === 'annual' ? '연봉계약서' : '근로계약서' });
+    const isPs = docType === 'payslip';
+    const token = await _createDocLink({ docType, workerId: isPs ? undefined : wid, contractId: isPs ? undefined : cid, payslipWid: isPs ? wid : undefined, payslipMonth: isPs ? cid : undefined,
+      workerName: wname, recipient: { kind: 'worker', id: wid }, viewOnly: true });
+    showSignLinkModal(token, wname, { view: true, label: docType === 'annual' ? '연봉계약서' : isPs ? '급여명세서' : '근로계약서' });
   } catch (e) { alert('열람 링크 생성 오류: ' + e.message); }
 };
 
