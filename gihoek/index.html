@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- gihoek module build: 20260925d · ver 5.7.4 · 프로젝트 목록 생성일순 정렬 강건화(createdAt 없는 옛 데이터는 문서ID 타임스탬프로 폴백) · 이전: 20260925c ver 5.7.3 -->
+<!DOCTYPE html><!-- gihoek module build: 20260930a · ver 5.8.0 · 견적 목록: 견적상태 필터(진행중/종결/폐기) 추가·현장상태 필터 명칭 분리, 상세→목록 복귀 시 필터·페이지·스크롤 유지(브라우저 뒤로가기 포함) · 이전: 20260925d ver 5.7.4 · 프로젝트 목록 생성일순 정렬 강건화(createdAt 없는 옛 데이터는 문서ID 타임스탬프로 폴백) · 이전: 20260925c ver 5.7.3 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -567,7 +567,8 @@ window.delPjt=async function(id){ if(!confirm('이 프로젝트를 삭제할까�
 
 /* ---------------- 견적 ---------------- */
 let estDraft=null, viewEstId=null, estPage=1;
-let estFilterPjt='', estFilterClient='', estFilterMonth='', estFilterPjtStatus='';
+let estFilterPjt='', estFilterClient='', estFilterMonth='', estFilterPjtStatus='', estFilterStatus='';
+let estListScroll=0; // 견적 상세 진입 직전 목록 스크롤 위치 (복귀 시 복원)
 const EST_PAGE_SIZE=10;
 
 window.estGoPage = function(p){
@@ -581,12 +582,13 @@ window.estFilterChange = function(kind, v){
   else if (kind==='client') estFilterClient = v;
   else if (kind==='month') estFilterMonth = v;
   else if (kind==='pjtStatus') estFilterPjtStatus = v;
+  else if (kind==='status') estFilterStatus = v;
   estPage = 1;
   renderEstList();
 };
 window.estFilterReset = function(){
-  estFilterPjt=''; estFilterClient=''; estFilterMonth=''; estFilterPjtStatus=''; estPage=1;
-  ['est-filter-pjt','est-filter-client','est-filter-month','est-filter-pjtstatus'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  estFilterPjt=''; estFilterClient=''; estFilterMonth=''; estFilterPjtStatus=''; estFilterStatus=''; estPage=1;
+  ['est-filter-pjt','est-filter-client','est-filter-month','est-filter-pjtstatus','est-filter-status'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   renderEstList();
 };
 
@@ -614,6 +616,10 @@ function estFilteredList(){
     if (estFilterPjt && e.pjtId !== estFilterPjt) return false;
     if (estFilterClient && e.client?.company !== estFilterClient) return false;
     if (estFilterMonth && !(e.date||'').startsWith(estFilterMonth)) return false;
+    if (estFilterStatus) { // 견적 자체 상태: 진행중(유효) / 종결 / 폐기
+      const st = e.status==='void' ? 'void' : e.status==='closed' ? 'closed' : 'active';
+      if (st !== estFilterStatus) return false;
+    }
     if (estFilterPjtStatus) {
       const p = projects.find(x=>x.id===e.pjtId);
       const pStatus = p ? (p.status==='done' ? 'done' : 'run') : null;
@@ -646,8 +652,10 @@ function renderEstList(){
     monthSel.value = estFilterMonth;
   }
 
+  const stSel = document.getElementById('est-filter-status'); if (stSel) stSel.value = estFilterStatus;
+  const pjtStSel = document.getElementById('est-filter-pjtstatus'); if (pjtStSel) pjtStSel.value = estFilterPjtStatus;
   const filtered = estFilteredList();
-  const isFiltered = estFilterPjt || estFilterClient || estFilterMonth || estFilterPjtStatus;
+  const isFiltered = estFilterPjt || estFilterClient || estFilterMonth || estFilterPjtStatus || estFilterStatus;
   const totalPages = Math.max(1, Math.ceil(filtered.length/EST_PAGE_SIZE));
   if (estPage > totalPages) estPage = totalPages;
   const startIdx = (estPage-1)*EST_PAGE_SIZE;
@@ -670,7 +678,7 @@ function renderEstList(){
   wrap.innerHTML = listHtml + pagerHtml;
 }
 
-function renderEst(){ estDraft=null; viewEstId=null; estPage=1; estFilterPjt=''; estFilterClient=''; estFilterMonth=''; estFilterPjtStatus='';
+function renderEst(keep){ estDraft=null; viewEstId=null; if(!keep){ estPage=1; estFilterPjt=''; estFilterClient=''; estFilterMonth=''; estFilterPjtStatus=''; estFilterStatus=''; estListScroll=0; } // keep=true: 상세/폼에서 목록 복귀 → 필터·페이지·스크롤 유지
   const opt = estFilterOptions();
   $('v-est').innerHTML=`<button onclick="tab('home')" style="background:#F0F4F9;border:1px solid #DDE4EF;border-radius:8px;padding:5px 12px;color:#5C6F8A;font-size:12px;cursor:pointer;font-weight:600;">🏠 기획 홈</button>
   <div class="sec-h"><h2>견적</h2><button class="btn pri sm" onclick="newEst()">+ 견적 작성</button></div>
@@ -680,9 +688,15 @@ function renderEst(){ estDraft=null; viewEstId=null; estPage=1; estFilterPjt='';
       ${opt.pjtOptions.map(([id,label])=>`<option value="${id}">${label}</option>`).join('')}
     </select>
     <select id="est-filter-pjtstatus" onchange="estFilterChange('pjtStatus',this.value)" style="flex:1;min-width:120px;padding:9px 10px;border:1px solid #DDE4EF;border-radius:9px;font-size:12.5px;font-family:inherit;background:#fff;color:#1A2540;">
-      <option value="">진행상태 전체</option>
-      <option value="run">진행중</option>
-      <option value="done">종결</option>
+      <option value="">현장상태 전체</option>
+      <option value="run">현장 진행중</option>
+      <option value="done">현장 종료</option>
+    </select>
+    <select id="est-filter-status" onchange="estFilterChange('status',this.value)" style="flex:1;min-width:120px;padding:9px 10px;border:1px solid #DDE4EF;border-radius:9px;font-size:12.5px;font-family:inherit;background:#fff;color:#1A2540;">
+      <option value="">견적상태 전체</option>
+      <option value="active">진행중</option>
+      <option value="closed">종결</option>
+      <option value="void">폐기</option>
     </select>
     <select id="est-filter-client" onchange="estFilterChange('client',this.value)" style="flex:1;min-width:150px;padding:9px 10px;border:1px solid #DDE4EF;border-radius:9px;font-size:12.5px;font-family:inherit;background:#fff;color:#1A2540;">
       <option value="">거래처 전체</option>
@@ -696,6 +710,7 @@ function renderEst(){ estDraft=null; viewEstId=null; estPage=1; estFilterPjt='';
   </div>
   <div id="est-list-wrap"></div>`;
   renderEstList();
+  if(keep) window.scrollTo(0, estListScroll||0);
 }
 window.renderEst=renderEst;
 
@@ -752,7 +767,7 @@ function contactDropdown(compId, selName, onchangeJs){
 }
 
 function drawEstForm(){ const d=estDraft;
-  $('v-est').innerHTML=`<button class="back" onclick="renderEst()">← 견적 목록</button>
+  $('v-est').innerHTML=`<button class="back" onclick="renderEst(true)">← 견적 목록</button>
   <div class="card">
     ${d.editId?`<div class="void-banner" style="background:#fff3e0;color:#9a5a00;border-color:#f3e0c4">📝 개정 발행: 저장하면 원본 <b>${d.srcNo}</b>은 폐기 처리되고, 개정본이 새로 발행됩니다.</div>`:''}
     <div class="row2">
@@ -781,7 +796,7 @@ function drawEstForm(){ const d=estDraft;
       <div class="totrow big"><span>합계금액</span><span id="t-total">0 원</span></div>
     </div>
     <div class="field" style="margin-top:12px"><label>특기사항 <span class="small muted" style="font-weight:500">(선택사항)</span></label><textarea class="inp" id="ed-notes" rows="3" placeholder="예: 납기·설치조건·특이사항 등을 입력하세요" oninput="setDraft('notes',this.value)" style="resize:vertical;font-family:inherit">${(d.notes||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea></div>
-    <div style="display:flex; gap:8px; margin-top:16px"><button class="btn line full" onclick="renderEst()">취소</button><button class="btn pri full" id="est-save" onclick="saveEst()">저장</button></div>
+    <div style="display:flex; gap:8px; margin-top:16px"><button class="btn line full" onclick="renderEst(true)">취소</button><button class="btn pri full" id="est-save" onclick="saveEst()">저장</button></div>
   </div>`;
   drawRows(); window.scrollTo(0,0);
 }
@@ -849,17 +864,22 @@ window.saveEst=async function(){ const d=estDraft;
   try{
     await setDoc(doc(db,'gihoek_estimates',id), payload);
     if(d.editId){ await setDoc(doc(db,'gihoek_estimates',d.editId), {status:'void', voidedAt:serverTimestamp(), replacedBy:no}, {merge:true}); }
-    toast(d.editId?'개정본을 발행했습니다. (원본 폐기)':'견적을 저장했습니다.'); renderEst(); }
+    toast(d.editId?'개정본을 발행했습니다. (원본 폐기)':'견적을 저장했습니다.'); renderEst(true); }
   catch(e){ $('est-save').disabled=false; toast('저장 실패: '+(e.code||e.message)); } };
 
+// 견적 상세 → 직전 화면 복귀 (프로젝트 상세에서 왔으면 프로젝트로, 목록에서 왔으면 필터·페이지·스크롤 유지한 목록으로)
+function estBackRender(){ if(estOrigin) pjtDetail(estOrigin); else renderEst(true); }
+window.estBack=function(){ if(history.state&&history.state.estView){ history.back(); } else { estBackRender(); } };
+window.addEventListener('popstate',()=>{ if(curTab==='est'&&viewEstId) estBackRender(); });
 let estOrigin=null; // 견적 상세에 어디서 들어왔는지: 프로젝트id(프로젝트 상세에서 진입) 또는 null(견적 목록에서 진입)
-window.openEst=function(id, fromPjtId){ viewEstId=id; if(fromPjtId!==undefined) estOrigin=fromPjtId;
-  const e=estimates.find(x=>x.id===id); if(!e){ renderEst(); return; }
+window.openEst=function(id, fromPjtId){ const fromList=!!document.getElementById('est-list-wrap'); if(fromList) estListScroll=window.scrollY||document.documentElement.scrollTop||0; viewEstId=id; if(fromPjtId!==undefined) estOrigin=fromPjtId;
+  const e=estimates.find(x=>x.id===id); if(!e){ renderEst(true); return; }
+  try{ if(history.state&&history.state.estView) history.replaceState({estView:1},''); else history.pushState({estView:1},''); }catch(_){} // 브라우저 뒤로가기 → 직전 화면
   const p=projects.find(x=>x.id===e.pjtId); const sup=estSupply(e), vat=Math.round(sup*0.1);
   tabSilent('est');
   const partyHtml=(label,o)=> `<div class="party"><div class="pl">${label}</div><div class="pc">${o?.company||'-'}</div>
     <div class="pd">${o?.ceo?'대표 '+o.ceo:''}${o?.bizno?' · '+o.bizno:''}</div>${o?.contact?`<div class="pd">담당: ${o.contact}</div>`:''}${o?.address?`<div class="pd">${o.address}</div>`:''}</div>`;
-  $('v-est').innerHTML=`<button class="back" onclick="${estOrigin?`pjtDetail('${estOrigin}')`:'renderEst()'}">← ${estOrigin?'프로젝트로 돌아가기':'견적 목록'}</button>
+  $('v-est').innerHTML=`<button class="back" onclick="estBack()">← ${estOrigin?'프로젝트로 돌아가기':'견적 목록'}</button>
     <div class="card">
       ${e.status==='void'?`<div class="void-banner">🚫 폐기된 견적입니다.${e.replacedBy?' 개정본: <b>'+e.replacedBy+'</b>':''} 집계에는 반영되지 않습니다.</div>`:''}${e.status==='closed'?`<div class="void-banner" style="background:#E6F1FB;color:#1D5BA6">🔒 종결된 견적입니다. 정산이 완료되어 유효 견적 집계에서 제외됩니다.</div>`:''}
       <div style="display:flex; justify-content:space-between; align-items:flex-start">
@@ -888,7 +908,7 @@ window.reopenEst=async function(id){
   if(!confirm('종결을 취소하고 유효 상태로 되돌릴까요?')) return;
   try{ await setDoc(doc(db,'gihoek_estimates',id),{status:'active',closedAt:null},{merge:true}); toast('종결을 취소했습니다.'); openEst(id); }catch(err){ toast('실패: '+(err.code||err.message)); }
 };
-window.delEst=async function(id){ if(!confirm('이 견적을 삭제할까요?')) return; try{ await deleteDoc(doc(db,'gihoek_estimates',id)); toast('삭제했습니다.'); renderEst(); }catch(e){ toast('삭제 실패: '+(e.code||e.message)); } };
+window.delEst=async function(id){ if(!confirm('이 견적을 삭제할까요?')) return; try{ await deleteDoc(doc(db,'gihoek_estimates',id)); toast('삭제했습니다.'); if(estOrigin) pjtDetail(estOrigin); else renderEst(true); }catch(e){ toast('삭제 실패: '+(e.code||e.message)); } };
 
 window.printEst=function(id){ const e=estimates.find(x=>x.id===id); if(!e) return; const p=projects.find(x=>x.id===e.pjtId);
   const sup=estSupply(e), vat=Math.round(sup*0.1), tot=sup+vat;
