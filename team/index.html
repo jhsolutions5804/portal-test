@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260930a · ver: 1.0.0 · 내 팀 공수표(팀장 전용) — 관리자가 연명부에서 지정한 팀(portal_users.teamLeaderIds)의 월별 공수·개인별 공수표·팀 단가·노무비 조회 -->
+<!DOCTYPE html><!-- build: 20260930b · ver: 1.1.0 · 모바일·PC 화면 다듬기(버튼 글자 꺾임·큰 금액 잘림·긴 프로젝트명 정리, 포털 안에서 열릴 때 홈 버튼 숨김) · 이전: 20260930a ver 1.0.0 · 내 팀 공수표(팀장 전용) — 관리자가 연명부에서 지정한 팀(portal_users.teamLeaderIds)의 월별 공수·개인별 공수표·팀 단가·노무비 조회 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -9,44 +9,50 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;background:#eef0f6;color:#1d1d1f;min-height:100vh}
-.app{max-width:760px;margin:0 auto;padding:16px 14px 60px}
+.app{max-width:860px;margin:0 auto;padding:16px 14px calc(60px + env(safe-area-inset-bottom))}
 .top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
 .title{font-size:19px;font-weight:800;color:#1A2540}
 .sub{font-size:12px;color:#86868b}
 .btn{background:#fff;border:1px solid #d1d1d6;border-radius:10px;padding:8px 14px;font-size:14px;cursor:pointer;color:#444;font-family:inherit}
-.btn.sm{padding:5px 10px;font-size:12.5px;border-radius:8px}
+.btn{white-space:nowrap}
+.btn.sm{padding:6px 11px;font-size:12.5px;border-radius:8px}
 .btn.pri{background:#1D5BA6;color:#fff;border-color:#1D5BA6;font-weight:700}
 .monthbar{display:flex;align-items:center;justify-content:center;gap:14px;background:#fff;border-radius:14px;padding:10px;margin-bottom:12px;box-shadow:0 2px 10px rgba(30,60,120,.06)}
 .monthbar b{font-size:17px;min-width:110px;text-align:center;color:#1A2540}
 .team{background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 12px rgba(30,60,120,.07)}
 .team-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:8px}
 .team-nm{font-size:16px;font-weight:800;color:#1A2540}
-.sumline{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
-.sumcell{background:#F5F8FD;border-radius:12px;padding:10px 8px;text-align:center}
+.sumline{display:grid;grid-template-columns:1fr 1fr 1.35fr;gap:8px;margin:10px 0}
+.sumcell{background:#F5F8FD;border-radius:12px;padding:10px 6px;text-align:center;min-width:0}
 .sumcell .l{font-size:11px;color:#86868b;margin-bottom:3px}
-.sumcell .v{font-size:16px;font-weight:800;color:#1D5BA6}
+.sumcell .v{font-size:clamp(13px,4.2vw,17px);font-weight:800;color:#1D5BA6;white-space:nowrap}
 .sumcell .v.money{color:#1b5e20}
 .chip{display:inline-block;font-size:11px;padding:3px 9px;border-radius:7px;background:#EEF4FC;color:#1D5BA6;font-weight:600;margin:0 4px 4px 0}
 .mem{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 2px;border-top:1px solid #f0f0f0}
+.mem>div:first-child{min-width:0;flex:1}
+.mem .act{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .mem:first-of-type{border-top:none}
 .mem .nm{font-size:14.5px;font-weight:700}
 .mem .nm small{font-weight:400;color:#9AAABF;font-size:11px;margin-left:4px}
 .mem .md{font-size:15px;font-weight:800;color:#1D5BA6;white-space:nowrap}
-.mem .pj{font-size:11px;color:#86868b;margin-top:2px}
+.mem .pj{font-size:11px;color:#86868b;margin-top:2px;word-break:keep-all}
 .note{background:#fff8e8;border:1px solid #ffe082;border-radius:10px;padding:9px 12px;font-size:12px;color:#7a5c00;margin-bottom:12px;line-height:1.55}
 .empty,.loading{text-align:center;color:#9AAABF;font-size:14px;padding:40px 12px}
 .gate{max-width:420px;margin:70px auto;background:#fff;border-radius:18px;padding:30px 24px;text-align:center;box-shadow:0 6px 24px rgba(30,60,120,.08)}
 .gate h2{font-size:17px;color:#1A2540;margin:8px 0}.gate p{font-size:13px;color:#5C6F8A;line-height:1.6}
 .modal{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.45);display:none;justify-content:center;align-items:center;padding:14px;overflow-y:auto}
 .sheet{width:100%;max-width:520px;background:#fff;border-radius:18px;padding:16px;max-height:94vh;overflow-y:auto}
-.sheet-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.sheet-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}
+.dl{font-size:8.5px;color:#5C6F8A;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.daycell{min-width:0;overflow:hidden}
+@media (max-width:380px){ .team{padding:12px} .sumcell .l{font-size:10px} }
 </style>
 </head>
 <body>
 <div id="gate" class="gate" style="display:none"></div>
 <div id="init" class="loading">불러오는 중...</div>
 <div class="app" id="app" style="display:none">
-  <div class="top"><div><div class="title">👥 내 팀 공수표</div><div class="sub" id="who"></div></div><button class="btn sm" onclick="goBack()">← 홈</button></div>
+  <div class="top"><div><div class="title">👥 내 팀 공수표</div><div class="sub" id="who"></div></div><button class="btn sm" id="back-btn" onclick="goBack()">← 홈</button></div>
   <div class="monthbar"><button class="btn sm" onclick="mShift(-1)">‹</button><b id="mlabel">—</b><button class="btn sm" onclick="mShift(1)">›</button></div>
   <div id="warn"></div>
   <div id="teams"><div class="loading">불러오는 중...</div></div>
@@ -81,8 +87,10 @@ let teamIds = [], userName = '', Y = new Date().getFullYear(), M = new Date().ge
 function gate(icon, title, msg){
   $('init').style.display='none'; $('app').style.display='none';
   const g=$('gate'); g.style.display='block';
-  g.innerHTML='<div style="font-size:40px">'+icon+'</div><h2>'+esc(title)+'</h2><p>'+msg+'</p><button class="btn pri" style="margin-top:16px;width:100%" onclick="goBack()">← 홈으로</button>';
+  g.innerHTML='<div style="font-size:40px">'+icon+'</div><h2>'+esc(title)+'</h2><p>'+msg+'</p>'+(embedded?'':'<button class="btn pri" style="margin-top:16px;width:100%" onclick="goBack()">← 홈으로</button>');
 }
+const embedded = (function(){ try{ return window.self !== window.top; }catch(e){ return true; } })();   // 포털(PC) 안 iframe으로 열린 경우
+if (embedded) document.addEventListener('DOMContentLoaded',()=>{ const b=document.getElementById('back-btn'); if(b) b.style.display='none'; });
 window.goBack = function(){ const q=new URLSearchParams(location.search); location.href = (q.get('via')==='mobile') ? '../m/home.html' : '../index.html'; };
 
 onAuthStateChanged(auth, async user => {
@@ -166,7 +174,7 @@ function renderTeams(failed){
     const chips = Object.keys(v.byPjt).map(pn=>'<span class="chip">'+esc(pn)+' '+v.byPjt[pn].toFixed(1)+'공수'+(t.rate==null?'':' · '+won(v.byPjt[pn]*t.rate)+'원')+'</span>').join('');
     const rows = v.people.map((x,pi)=>'<div class="mem"><div><div class="nm">'+esc(x.m.name)+(x.isLeader?'<small>팀장</small>':'')+(x.m.resigned?'<small>퇴사'+(x.m.resignedDate?' '+esc(x.m.resignedDate):'')+'</small>':'')+'</div>'
       +'<div class="pj">'+(Object.keys(x.byPjt).map(pn=>esc(pn)+' '+x.byPjt[pn].toFixed(1)).join(' · ')||'기록 없음')+'</div></div>'
-      +'<div style="display:flex;align-items:center;gap:8px"><span class="md">'+x.total.toFixed(1)+'</span><button class="btn sm" onclick="openSheet('+ti+','+pi+')">📋 공수표</button></div></div>').join('');
+      +'<div class="act"><span class="md">'+x.total.toFixed(1)+'</span><button class="btn sm" onclick="openSheet('+ti+','+pi+')">📋 공수표</button></div></div>').join('');
     return '<div class="team"><div class="team-h"><div><div class="team-nm">👑 '+esc(t.leader.name)+' 팀</div><div class="sub">팀원 '+t.members.length+'명 (팀장 포함 '+v.people.length+'명)</div></div></div>'
       +'<div class="sumline"><div class="sumcell"><div class="l">팀 공수</div><div class="v">'+v.md.toFixed(1)+'</div></div>'
       +'<div class="sumcell"><div class="l">팀 단가</div><div class="v">'+rateTxt+'</div></div>'
@@ -175,6 +183,8 @@ function renderTeams(failed){
   }).join('');
 }
 
+// 달력 칸용 프로젝트 약칭 (긴 이름은 앞부분만)
+const abbr = pn => pn==='P4 Ph2 (FAB)' ? 'FAB' : pn==='P4 Ph4 (SUP)' ? 'SUP' : (pn.length>6 ? pn.slice(0,6)+'…' : pn);
 window.openSheet = function(ti, pi){
   const x = view[ti].people[pi]; if (!x) return;
   const days = new Date(Y, M+1, 0).getDate(), first = new Date(Y, M, 1).getDay();
@@ -183,7 +193,7 @@ window.openSheet = function(ti, pi){
   for (let i=0;i<first;i++) cells+='<div></div>';
   for (let d=1; d<=days; d++){
     const dk=Y+'-'+pad(M+1)+'-'+pad(d), dd=x.byDate[dk]; let tot=0, lines='';
-    if (dd) Object.keys(dd).forEach(pn=>{ tot+=dd[pn]; lines+='<div style="font-size:8.5px;color:#5C6F8A;line-height:1.3">'+esc(pn.replace('P4 Ph2 (FAB)','FAB').replace('P4 Ph4 (SUP)','SUP'))+' '+dd[pn].toFixed(1)+'</div>'; });
+    if (dd) Object.keys(dd).forEach(pn=>{ tot+=dd[pn]; lines+='<div class="dl" title="'+esc(pn)+'">'+esc(abbr(pn))+' '+dd[pn].toFixed(1)+'</div>'; });
     cells+='<div class="daycell" style="min-height:56px;border:1px solid #EEF2F7;border-radius:8px;padding:4px 3px'+(tot>0?';background:#F4F8FF':'')+'"><div style="font-size:11px;font-weight:600;color:#1A2540">'+d+'</div>'+(tot>0?'<div style="font-size:12px;font-weight:800;color:#1D5BA6">'+tot.toFixed(1)+'</div>':'')+lines+'</div>';
   }
   cells+='</div>';
