@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- HR module build: 20260930g · ver 2.17.0 · 급여명세서 열람 링크(저장 당시 양식·180일)·메일 발송 이력·링크/QR / 직전: ver 2.16.0 · 저장 계약서 메일 재전송 + 발송 이력(doc_send_log) / 직전: ver 2.15.0 · 저장된 근로계약서·연봉계약서 근로자 본인 열람 링크(문자 인증, 180일, 저장 당시 양식으로 표시) / 직전: ver 2.14.0 · 인사 변동 메뉴 신설(직급·부서 변경 저장+호봉 초기화+이력, 연봉 조정은 근로계약서 작성으로 연결, 변동 현황 조회) · 이전: 20260925e ver 2.13.1 · 근로시간 캘린더 — 반차 쓰고 그날 일부 근무한 경우, 근무시간만 보이고 반차 여부가 안 보이던 문제 수정(🌴 표시 병기) · 이전: 20260925d ver 2.13.0 -->
+<!DOCTYPE html><!-- HR module build: 20260930h · ver 2.17.1 · 급여명세서 PC 조회 화면에 메일 발송·링크/QR·발송 이력 추가 / 직전: ver 2.17.0 · 급여명세서 열람 링크(저장 당시 양식·180일)·메일 발송 이력·링크/QR / 직전: ver 2.16.0 · 저장 계약서 메일 재전송 + 발송 이력(doc_send_log) / 직전: ver 2.15.0 · 저장된 근로계약서·연봉계약서 근로자 본인 열람 링크(문자 인증, 180일, 저장 당시 양식으로 표시) / 직전: ver 2.14.0 · 인사 변동 메뉴 신설(직급·부서 변경 저장+호봉 초기화+이력, 연봉 조정은 근로계약서 작성으로 연결, 변동 현황 조회) · 이전: 20260925e ver 2.13.1 · 근로시간 캘린더 — 반차 쓰고 그날 일부 근무한 경우, 근무시간만 보이고 반차 여부가 안 보이던 문제 수정(🌴 표시 병기) · 이전: 20260925d ver 2.13.0 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -2087,7 +2087,7 @@ window.psLoadWorkerSlips = async (wid, wname, btn) => {
     const won = v => Number(v||0).toLocaleString()+'원';
     panel.innerHTML = items.length === 0
       ? `<div style="background:#fff;border-radius:12px;padding:30px;text-align:center;color:#9AAABF;">${wname}의 급여명세서가 없습니다.</div>`
-      : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
+      : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;">
           ${items.map(d=>`
             <div style="background:#fff;border-radius:12px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,0.07);">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
@@ -2095,7 +2095,14 @@ window.psLoadWorkerSlips = async (wid, wname, btn) => {
                 <span style="font-size:9.5px;background:#F3F4F6;color:#9AAABF;padding:1px 6px;border-radius:5px;font-weight:700;" title="저장 당시 적용 양식">${docTplVer(d)}</span>
               </div>
               <div style="font-size:11px;color:#5C6F8A;margin-bottom:8px;">지급일: ${d.payDate||'-'}</div>
-              <div style="font-size:16px;font-weight:800;color:#1D5BA6;margin-bottom:10px;">${won(d.netPay)}</div>
+              <div style="font-size:16px;font-weight:800;color:#1D5BA6;margin-bottom:6px;">${won(d.netPay)}</div>
+              <div data-sendlog="payslip:${d.id}" style="font-size:10.5px;color:#9AAABF;margin-bottom:8px;line-height:1.4;">✉ 발송 이력 확인 중...</div>
+              <div style="display:flex;gap:6px;margin-bottom:6px;">
+                <button onclick="psSendEmail(${JSON.stringify(d).replace(/"/g,'&quot;')},'${wid}',this)"
+                  style="flex:1;padding:6px;background:#fff;border:1px solid #1D5BA6;border-radius:6px;color:#1D5BA6;font-size:11px;cursor:pointer;font-weight:600;">📧 메일 발송</button>
+                <button onclick="docViewLink('payslip','${wid}','${d.id}','${wname}')"
+                  style="flex:1;padding:6px;background:#fff;border:1px solid #1D5BA6;border-radius:6px;color:#1D5BA6;font-size:11px;cursor:pointer;font-weight:600;">🔗 링크·QR</button>
+              </div>
               <div style="display:flex;gap:6px;">
                 <button onclick="psViewDetail(${JSON.stringify(d).replace(/"/g,'&quot;')},'${wid}')"
                   style="flex:1;padding:6px;background:#E8F0FB;border:none;border-radius:6px;color:#1D5BA6;font-size:11px;cursor:pointer;">PDF</button>
@@ -2104,6 +2111,7 @@ window.psLoadWorkerSlips = async (wid, wname, btn) => {
               </div>
             </div>`).join('')}
         </div>`;
+    if (items.length) _fillSendLog('payslip', wid);
   } catch(e) { panel.innerHTML = `<div style="color:#DC2626;padding:20px;">오류: ${e.message}</div>`; }
 };
 
