@@ -53,7 +53,9 @@ const firebaseConfig = {
   messagingSenderId: "752763010816",
   appId: "1:752763010816:web:4a0c7062a2f1a4e9a03de5"
 };
-const app = initializeApp(firebaseConfig);
+// ⚠️ 포털(같은 도메인)의 로그인 세션과 섞이지 않도록 별도 이름('sign')의 앱으로 초기화한다.
+// 기본 앱을 쓰면 서명 페이지의 로그아웃/전화 로그인이 같은 브라우저의 포털 로그인을 덮어써 권한이 사라진다.
+const app = initializeApp(firebaseConfig, 'sign');
 const db = getFirestore(app);
 const auth = getAuth(app);
 // 인증 상태를 이 탭에만 유지 — 탭을 닫으면 로그아웃되어 공용 기기에서도 안전
