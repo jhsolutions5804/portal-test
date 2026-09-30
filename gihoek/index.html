@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- gihoek module build: 20260930c · ver 5.10.0 · 프로젝트 기본정보 통일(PJT 코드·내용·현장명·발주처·시공사·협력사) — 기획↔PJT관리 양방향 반영 / 직전: ver 5.9.0 · 정산 탭에 '팀별 노무비' 보기 신설(월간 공수의 팀별 합계 이전 — 팀 공수 × 팀 단가, 프로젝트별 소계, 팀 단가는 관리자 전용 문서 master_worker_private에 저장) · 이전: 20260930a ver 5.8.0 · 견적 목록: 견적상태 필터(진행중/종결/폐기) 추가·현장상태 필터 명칭 분리, 상세→목록 복귀 시 필터·페이지·스크롤 유지(브라우저 뒤로가기 포함) · 이전: 20260925d ver 5.7.4 · 프로젝트 목록 생성일순 정렬 강건화(createdAt 없는 옛 데이터는 문서ID 타임스탬프로 폴백) · 이전: 20260925c ver 5.7.3 -->
+<!DOCTYPE html><!-- gihoek module build: 20260930d · ver 5.10.1 · 프로젝트 정보 수정 화면 발주처·시공사·협력사 한 줄 배치 / 직전: ver 5.10.0 · 프로젝트 기본정보 통일(PJT 코드·내용·현장명·발주처·시공사·협력사) — 기획↔PJT관리 양방향 반영 / 직전: ver 5.9.0 · 정산 탭에 '팀별 노무비' 보기 신설(월간 공수의 팀별 합계 이전 — 팀 공수 × 팀 단가, 프로젝트별 소계, 팀 단가는 관리자 전용 문서 master_worker_private에 저장) · 이전: 20260930a ver 5.8.0 · 견적 목록: 견적상태 필터(진행중/종결/폐기) 추가·현장상태 필터 명칭 분리, 상세→목록 복귀 시 필터·페이지·스크롤 유지(브라우저 뒤로가기 포함) · 이전: 20260925d ver 5.7.4 · 프로젝트 목록 생성일순 정렬 강건화(createdAt 없는 옛 데이터는 문서ID 타임스탬프로 폴백) · 이전: 20260925c ver 5.7.3 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -50,6 +50,8 @@
   .inp,.sel{width:100%; border:1px solid var(--line); border-radius:9px; padding:10px 11px; font-size:13.5px; background:#fbfcfe; font-family:inherit}
   .inp:focus,.sel:focus{outline:none; border-color:var(--blue); background:#fff; box-shadow:0 0 0 3px rgba(29,91,166,.12)}
   .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .pf-row3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px}  /* 프로젝트 정보: 발주처·시공사·협력사 한 줄 (기존 .row3와 별개) */
+  @media (max-width:520px){ .pf-row3{grid-template-columns:1fr; gap:0} }
   .items{width:100%; border-collapse:collapse; margin-top:6px}
   .items th{font-size:11px; color:var(--sub); font-weight:700; text-align:left; padding:7px 6px; border-bottom:1.5px solid var(--line); white-space:nowrap}
   .items td{padding:5px 5px; border-bottom:1px solid #f0f3f7; vertical-align:middle}
@@ -505,9 +507,9 @@ function openPjtForm(p){ pjtForm=true; detailId=p?p.id:null;
     <div class="field"><label>PJT 코드</label><input class="inp" id="pf-code" placeholder="예: P4 Ph5 (XXX)" value="${p?.code||''}"></div>
     <div class="field"><label>내용</label><input class="inp" id="pf-name" placeholder="예: FCU 183대 설치" value="${p?.name||''}"></div>
     <div class="field"><label>현장명</label><input class="inp" id="pf-site" placeholder="예: 화성 17L / 청주 M15X CUB동" value="${p?.site||''}"></div>
-    <div class="field"><label>발주처</label><input class="inp" id="pf-client" placeholder="예: 다람이엔지" value="${p?.client||''}"></div>
-    <div class="row2"><div class="field"><label>시공사</label><input class="inp" id="pf-contractor" placeholder="예: 귀뚜라미범양냉방" value="${p?.contractor||''}"></div>
-      <div class="field"><label>협력사</label><input class="inp" id="pf-partner" placeholder="예: JH솔루션" value="${p?.partner||''}"></div></div>
+    <div class="pf-row3"><div class="field"><label>발주처</label><input class="inp" id="pf-client" placeholder="예: 삼성전자" value="${p?.client||''}"></div>
+      <div class="field"><label>시공사</label><input class="inp" id="pf-contractor" placeholder="예: 삼성중공업" value="${p?.contractor||''}"></div>
+      <div class="field"><label>협력사</label><input class="inp" id="pf-partner" placeholder="예: 귀뚜라미범양냉방" value="${p?.partner||''}"></div></div>
     <div class="row2"><div class="field"><label>정산 방식</label><select class="sel" id="pf-type">
       <option value="general" ${p?.type==='general'?'selected':''}>일반 (품목 직접 입력)</option>
       <option value="fcu" ${p?.type==='fcu'?'selected':''}>자동정산 (정산서·공수 연동)</option></select></div>
