@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 20260728a · ver: 1.0.0 (모바일 월간 공수 신규) -->
+<!-- build: 20260930a · ver: 1.1.0 (팀 단가를 관리자 전용 문서 master_worker_private에서 읽음, 옛 위치 폴백) · 이전: 20260728a ver 1.0.0 (모바일 월간 공수 신규) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -118,6 +118,9 @@ async function loadMonth(){
   let masterSnap=null; try{ masterSnap=await getDocs(collection(db,'master_workers')); }catch(e){}
   const masterMap={}; if(masterSnap) masterSnap.forEach(d=>{ masterMap[d.id]=d.data(); });
   _masterList=Object.keys(masterMap).map(id=>({id,...masterMap[id]}));
+// 팀 단가는 관리자 전용 문서(master_worker_private)에서 읽는다. 없으면 옛 위치(master_workers) 값을 그대로 사용.
+try{ const ps=await getDocs(collection(db,'master_worker_private')); const pv={}; ps.forEach(d=>{ pv[d.id]=d.data(); });
+  _masterList.forEach(x=>{ const q=pv[x.id]; if(q&&q.teamRate!=null) x.teamRate=q.teamRate; }); }catch(e){}
 
   const rosterFab=await loadRoster(['pjt_workers_fab'],'P4 Ph2 (FAB)',masterMap);
   const rosterSup=await loadRoster(['pjt_workers_ph4'],'P4 Ph4 (SUP)',masterMap);
