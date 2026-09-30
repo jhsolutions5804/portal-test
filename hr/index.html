@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- HR module build: 20260930h · ver 2.17.1 · 급여명세서 PC 조회 화면에 메일 발송·링크/QR·발송 이력 추가 / 직전: ver 2.17.0 · 급여명세서 열람 링크(저장 당시 양식·180일)·메일 발송 이력·링크/QR / 직전: ver 2.16.0 · 저장 계약서 메일 재전송 + 발송 이력(doc_send_log) / 직전: ver 2.15.0 · 저장된 근로계약서·연봉계약서 근로자 본인 열람 링크(문자 인증, 180일, 저장 당시 양식으로 표시) / 직전: ver 2.14.0 · 인사 변동 메뉴 신설(직급·부서 변경 저장+호봉 초기화+이력, 연봉 조정은 근로계약서 작성으로 연결, 변동 현황 조회) · 이전: 20260925e ver 2.13.1 · 근로시간 캘린더 — 반차 쓰고 그날 일부 근무한 경우, 근무시간만 보이고 반차 여부가 안 보이던 문제 수정(🌴 표시 병기) · 이전: 20260925d ver 2.13.0 -->
+<!DOCTYPE html><!-- HR module build: 20260930i · ver 2.18.0 · 문서 메일 수신 주소: 명부 이메일이 없으면 포털 로그인 계정(@jhsol.kr)으로 자동 대체 / 직전: ver 2.17.1 · 급여명세서 PC 조회 화면에 메일 발송·링크/QR·발송 이력 추가 / 직전: ver 2.17.0 · 급여명세서 열람 링크(저장 당시 양식·180일)·메일 발송 이력·링크/QR / 직전: ver 2.16.0 · 저장 계약서 메일 재전송 + 발송 이력(doc_send_log) / 직전: ver 2.15.0 · 저장된 근로계약서·연봉계약서 근로자 본인 열람 링크(문자 인증, 180일, 저장 당시 양식으로 표시) / 직전: ver 2.14.0 · 인사 변동 메뉴 신설(직급·부서 변경 저장+호봉 초기화+이력, 연봉 조정은 근로계약서 작성으로 연결, 변동 현황 조회) · 이전: 20260925e ver 2.13.1 · 근로시간 캘린더 — 반차 쓰고 그날 일부 근무한 경우, 근무시간만 보이고 반차 여부가 안 보이던 문제 수정(🌴 표시 병기) · 이전: 20260925d ver 2.13.0 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -2892,6 +2892,24 @@ function _ensureEmailJs(){
   _emailjsInited = true;
 }
 
+// 근로자 명부에 이메일이 없으면 연결된 포털 로그인 계정(portalUid → portal_users.email, @jhsol.kr)으로 대체한다.
+// 근로자 명부 ↔ 포털 계정은 portalUid·사원번호(empNo)로 1:1 연결되어 있다(본섭 데이터 10/10 검증). 인사 모듈은 관리자 전용이라 portal_users 조회 가능.
+async function getRecipientEmailEx(kind, id){
+  if (!id || !window._db) return { email:'', source:'' };
+  try {
+    const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const coll = kind === 'applicant' ? 'recruit_applicants' : 'workers';
+    const snap = await getDoc(doc(window._db, coll, id));
+    if (!snap.exists()) return { email:'', source:'' };
+    const w = snap.data();
+    if (w.email) return { email: w.email, source: 'record' };
+    if (kind === 'worker' && w.portalUid) {
+      const ps = await getDoc(doc(window._db, 'portal_users', w.portalUid));
+      if (ps.exists() && ps.data().email) return { email: ps.data().email, source: 'login' };
+    }
+  } catch(e) {}
+  return { email:'', source:'' };
+}
 // 근로자(workers) 또는 지원자(recruit_applicants) 문서에서 이메일 주소 조회
 async function getRecipientEmail(kind, id){
   if (!id || !window._db) return '';
@@ -3074,8 +3092,8 @@ async function sendDocLinkByEmail({ kind, id, toEmail, toName, docLabel, linkPar
   const origText = btnEl ? btnEl.textContent : '';
   try {
     const _srcLabel = kind === 'applicant' ? '지원서' : '근로자 명부';
-    let email = toEmail; let fromRecord = false;
-    if (!email && id) { email = await getRecipientEmail(kind, id); fromRecord = !!email; }
+    let email = toEmail; let fromRecord = false; let srcNote = '';
+    if (!email && id) { const r = await getRecipientEmailEx(kind, id); email = r.email; fromRecord = !!email; srcNote = r.source === 'login' ? ' · 로그인 계정 주소' : ''; }
     if (!email) {
       email = prompt(`${toName||''}님의 이메일 주소가 ${_srcLabel}에 등록되어 있지 않습니다.\n발송할 이메일 주소를 입력해 주세요.${id ? `\n(발송 후 ${_srcLabel}에 함께 저장되어 다음부터 자동 입력됩니다)` : ''}`, '');
     }
@@ -3083,7 +3101,7 @@ async function sendDocLinkByEmail({ kind, id, toEmail, toName, docLabel, linkPar
     email = email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { alert('이메일 주소 형식이 올바르지 않습니다.'); return; }
     // 등록된 주소로 나가는 경우, 잘못된 수신자 방지를 위해 한 번 확인
-    if (fromRecord && !confirm(`${toName||''}님 (${email})에게\n${docLabel} 확인 링크를 이메일로 발송합니다.`)) return;
+    if (fromRecord && !confirm(`${toName||''}님 (${email}${srcNote})에게\n${docLabel} 확인 링크를 이메일로 발송합니다.`)) return;
 
     if (btnEl) { btnEl.disabled = true; btnEl.textContent = '🔗 링크 생성 중...'; }
     const token = await _createDocLink({ ...linkParams, workerName: toName, recipient: { kind, id } });
