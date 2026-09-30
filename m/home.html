@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 20260930f · 메뉴 구조를 PC 사이드바와 동일하게 정리(업무: 기획·인사·전자결재·PJT 관리·내 팀 공수표 / 그 아래: 조직도·내규·Portal 관리), 근로자 연명부는 PJT 관리 하위로 이동 · 이전: 20260930e · 관리자 전용 ‘근로자 연명부’ 카드 추가(PC와 동일한 연명부 화면 사용) · 이전: 20260930d · 오래된 캐시 감지 시 1회 새로 받기(주소의 v= 값과 화면 빌드가 다르면 재로드) · 이전: 20260930c · ‘내 팀 공수표’ 카드: 팀장 지정 계정 + 관리자 계정(전체 팀) 표시 · 이전: 20260930b · 팀장 전용 ‘내 팀 공수표’ 카드 추가(portal_users.teamLeaderIds 지정 계정에만 표시) · 이전: 20260925d · ver: 2026-09-25 (모바일 홈 2.8.3) · [홈] 더보기에 내규 열람 타일 추가(5열) -->
+<!-- build: 20260930g · 모바일은 PJT 관리·전자결재를 큰 카드로 강조(메뉴 계층은 PC와 동일: 연명부=PJT 관리 하위, 팀별 노무비=기획 정산 하위), 기획·인사·조직도·내규·Portal 관리는 작은 아이콘 · 이전: 20260930f · 메뉴 구조를 PC 사이드바와 동일하게 정리(업무: 기획·인사·전자결재·PJT 관리·내 팀 공수표 / 그 아래: 조직도·내규·Portal 관리), 근로자 연명부는 PJT 관리 하위로 이동 · 이전: 20260930e · 관리자 전용 ‘근로자 연명부’ 카드 추가(PC와 동일한 연명부 화면 사용) · 이전: 20260930d · 오래된 캐시 감지 시 1회 새로 받기(주소의 v= 값과 화면 빌드가 다르면 재로드) · 이전: 20260930c · ‘내 팀 공수표’ 카드: 팀장 지정 계정 + 관리자 계정(전체 팀) 표시 · 이전: 20260930b · 팀장 전용 ‘내 팀 공수표’ 카드 추가(portal_users.teamLeaderIds 지정 계정에만 표시) · 이전: 20260925d · ver: 2026-09-25 (모바일 홈 2.8.3) · [홈] 더보기에 내규 열람 타일 추가(5열) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -105,6 +105,12 @@
     box-shadow:0 2px 8px rgba(30,50,80,.05); transition:transform .12s ease;
   }
   .edoc-card:active{transform:scale(.97)}
+.team-card{ margin:-6px 20px 16px; background:#f4f8ff; border:1px solid #cfe0f7; border-radius:16px; padding:11px 15px; display:flex; align-items:center; gap:11px; cursor:pointer }
+.team-card:active{transform:scale(.97)}
+.team-card .tic{font-size:20px}
+.team-card .tnm{font-size:13.5px;font-weight:800;color:#1D5BA6}
+.team-card .tds{font-size:11px;color:var(--sub);margin-top:1px}
+.team-card .go{margin-left:auto;font-size:16px;color:#9fb7d8}
   .edoc-card .ic{width:48px;height:48px;border-radius:14px;background:var(--edoc-bg);color:var(--edoc-ic);
     display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
   .edoc-card .nm{font-size:15.5px;font-weight:800}
@@ -121,6 +127,7 @@
   .more-item:active{transform:scale(.94)}
   .more-item .mi2{font-size:17px}
   .more-item .mt2{font-size:10.5px; font-weight:700; color:var(--sub)}
+.more-item .mt-fit{font-size:9.5px;letter-spacing:-.4px;white-space:nowrap}
 
   /* 로그아웃 */
   .out{text-align:center; padding:26px 0 6px}
@@ -184,48 +191,35 @@
       </div>
 
       <div class="lbl">업무 메뉴</div>
-      <div class="edoc-card" data-perm="plan" onclick="location.href='gihoek.html'">
-        <div class="ic" style="background:#e8eefb;color:#1D5BA6">🧭</div>
+      <div class="edoc-card" data-perm="pjt" onclick="location.href='pjt.html'">
+        <div class="ic" style="background:#e8f5e9;color:#2e7d32">🏗️</div>
         <div>
-          <div class="nm">기획</div>
-          <div class="ds">영업·정산·회계 (견적·정산서·손익)</div>
-        </div>
-        <span class="go">›</span>
-      </div>
-      <div class="edoc-card" data-perm="hr" onclick="location.href='hr.html'">
-        <div class="ic" style="background:#f0edfb;color:#7C3AED">👥</div>
-        <div>
-          <div class="nm">인사</div>
-          <div class="ds">급여·계약·근태·연차 관리</div>
+          <div class="nm">PJT 관리</div>
+          <div class="ds">진행 중인 현장 전체 보기</div>
         </div>
         <span class="go">›</span>
       </div>
       <div class="edoc-card" data-perm="edoc" onclick="location.href='edoc.html'">
-        <div class="ic" style="background:#f0edfb;color:#7C3AED">📋</div>
+        <div class="ic">📋</div>
         <div>
           <div class="nm">전자결재</div>
           <div class="ds">업무일지·연차·구매품의·지출결의</div>
         </div>
         <span class="go">›</span>
       </div>
-      <div class="edoc-card" data-perm="pjt" onclick="location.href='pjt.html'">
-        <div class="ic" style="background:#e8f5e9;color:#2e7d32">🏗️</div>
-        <div>
-          <div class="nm">PJT 관리</div>
-          <div class="ds">프로젝트 · 회사 일정 · 근로자 연명부 · 종료 PJT</div>
-        </div>
-        <span class="go">›</span>
-      </div>
-      <div class="edoc-card" id="myTeamCard" style="display:none" onclick="location.href='../team/index.html?via=mobile&back=home.html'">
-        <div class="ic" style="background:#eaf3ff;color:#1D5BA6">👥</div>
-        <div>
-          <div class="nm">내 팀 공수표</div>
-          <div class="ds">팀원 공수 · 팀 단가 · 노무비 (팀장·관리자)</div>
-        </div>
+      <div class="team-card" id="myTeamCard" style="display:none" onclick="location.href='../team/index.html?via=mobile&back=home.html'">
+        <span class="tic">👥</span>
+        <div><div class="tnm">내 팀 공수표</div><div class="tds">팀원 공수 · 팀 단가 · 노무비</div></div>
         <span class="go">›</span>
       </div>
       <div class="lbl" style="padding-top:20px">더보기</div>
       <div class="more-row">
+        <div class="more-item" data-perm="plan" onclick="location.href='gihoek.html'">
+          <span class="mi2">🧭</span><span class="mt2">기획</span>
+        </div>
+        <div class="more-item" data-perm="hr" onclick="location.href='hr.html'">
+          <span class="mi2">👥</span><span class="mt2">인사</span>
+        </div>
         <div class="more-item" onclick="location.href='admin.html?v=org'">
           <span class="mi2">🏢</span><span class="mt2">조직도</span>
         </div>
@@ -233,7 +227,7 @@
           <span class="mi2">📖</span><span class="mt2">내규</span>
         </div>
         <div class="more-item" data-admin="1" onclick="location.href='admin.html?v=admin'">
-          <span class="mi2">⚙️</span><span class="mt2">Portal 관리</span>
+          <span class="mi2">⚙️</span><span class="mt2 mt-fit">Portal 관리</span>
         </div>
       </div>
       <div class="out">
