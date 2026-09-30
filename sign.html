@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
 <meta name="robots" content="noindex, nofollow" />
 <title>계약서 서명 | JH Solutions</title>
 <style>
@@ -144,6 +144,29 @@ async function loadAndShow(link){
     showError('문서를 불러오지 못했습니다: ' + e.message);
   }
 }
+
+// 문서 미리보기(iframe) 폭 맞춤 — A4(210mm≈794px) 문서가 좁은 화면에서 잘리지 않도록 창 너비에 맞춰 축소한다.
+function fitDocFrame(fr){
+  try{
+    const d = fr.contentDocument; if(!d || !d.body) return;
+    d.body.style.zoom = '';
+    const cw = fr.clientWidth; if(!(cw > 0)) return;
+    // 문서 본문(.a4)이 가운데 정렬(flex)된 채 창보다 넓으면 왼쪽이 잘려 스크롤로도 볼 수 없으므로, 본문 실제 폭 기준으로 맞춘다.
+    const pg = d.querySelector('.a4');
+    const cs = pg ? d.defaultView.getComputedStyle(d.body) : null;
+    const padX = cs ? (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0) : 0;
+    const need = Math.max(d.documentElement.scrollWidth, pg ? pg.offsetWidth + padX : 0);
+    if(need > cw + 1) d.body.style.zoom = (cw / need).toFixed(4);
+  }catch(e){}
+}
+function wireDocFrame(){
+  const fr = document.getElementById('docFrame'); if(!fr || fr._fitWired) return; fr._fitWired = true;
+  const fit = () => fitDocFrame(fr);
+  fr.addEventListener('load', fit);
+  try{ if(fr.contentDocument && fr.contentDocument.readyState === 'complete') fit(); }catch(e){}
+  window.addEventListener('resize', fit);
+}
+new MutationObserver(wireDocFrame).observe(document.body, { childList:true, subtree:true });
 
 // 서명이 필요 없는 문서(연봉제안서·급여명세서) 또는 이미 서명 완료된 계약서를 그냥 보여주기만 하는 화면
 function showViewOnly({ f, title, buildHtml, alreadySigned }){
