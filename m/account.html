@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html><!-- build: 20260930b · 내 정보 수정(전화번호·비밀번호) 추가 — PC ‘내 정보 수정’과 동일한 저장 방식, 계정은 이름이 아니라 로그인 uid로 찾음 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -34,6 +34,12 @@
   .logout button{background:var(--card);border:1px solid #f0d0d0;color:var(--warn);font-size:13px;font-weight:700;padding:12px 24px;border-radius:12px;cursor:pointer;font-family:inherit;width:100%;box-shadow:0 2px 8px rgba(30,50,80,.05)}
   .logout button:active{background:#fdf0f0}
   .loading{text-align:center;padding:50px;color:#9aa8bc;font-size:13px;font-weight:600}
+  .editbtn{width:100%;margin:10px 0 2px;padding:14px;border-radius:14px;border:1.5px solid #cfe0f7;background:#f4f8ff;color:#1D5BA6;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+  .editbox{margin:14px 20px 0;padding:16px;border-radius:16px;background:#fff;box-shadow:0 2px 12px rgba(30,60,120,.08)}
+  .editbox .fl{display:block;font-size:12.5px;font-weight:700;color:#5C6F8A;margin:12px 0 5px}
+  .editbox input{width:100%;padding:13px;border:1.5px solid #dde4ef;border-radius:11px;font-size:16px;font-family:inherit}
+  .emsg{margin-top:10px;font-size:13px;padding:9px 11px;border-radius:9px} .emsg.ok{background:#e8f5e9;color:#1b5e20} .emsg.err{background:#fdecea;color:#b71c1c}
+  .erow{display:flex;gap:8px;margin-top:14px} .ebtn{flex:1;padding:13px;border-radius:12px;border:1px solid #d1d1d6;background:#fff;font-size:15px;cursor:pointer;font-family:inherit} .ebtn.pri{background:#1D5BA6;color:#fff;border-color:#1D5BA6;font-weight:700} .ebtn:disabled{opacity:.6}
 </style>
 <script src="auth-guard.js"></script>
 </head>
@@ -42,8 +48,8 @@
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getFirestore, collection, onSnapshot, doc, updateDoc, setDoc, deleteField, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, onAuthStateChanged, updatePassword } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 const firebaseConfig = {
   apiKey:"AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI", authDomain:"portal-test-6e0ff.firebaseapp.com",
   projectId:"portal-test-6e0ff", storageBucket:"portal-test-6e0ff.firebasestorage.app",
@@ -51,7 +57,7 @@ const firebaseConfig = {
 };
 const app=initializeApp(firebaseConfig); const db=getFirestore(app); const auth=getAuth(app);
 
-let users=[], loadError='';
+let users=[], loadError='', editOpen=false, editMsg='', editBusy=false;
 const loginName=localStorage.getItem('jh_login_full')||localStorage.getItem('jh_login_name')||'';
 
 const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -60,11 +66,40 @@ const initial=n=>(n||'?').slice(0,1);
 window.goBack=function(){ if(history.length>1) history.back(); else location.href='home.html'; };
 window.goHome=function(){ location.href='home.html'; };
 
+const editHtml=me=>`<div class="editbox"><div class="lbl" style="padding-top:0">내 정보 수정</div>
+  <label class="fl">전화번호</label><input id="e-phone" type="tel" value="${esc(me.phone||'')}" placeholder="010-0000-0000">
+  <label class="fl">새 비밀번호 <span style="color:#9AAABF;font-weight:400">(바꾸지 않으려면 비워 두세요, 6자 이상)</span></label><input id="e-pw" type="password" autocomplete="new-password" placeholder="6자 이상">
+  ${editMsg?`<div class="emsg ${editMsg.startsWith('✅')?'ok':'err'}">${esc(editMsg)}</div>`:''}
+  <div class="erow"><button class="ebtn pri" ${editBusy?'disabled':''} onclick="saveEdit()">${editBusy?'저장 중…':'저장'}</button><button class="ebtn" onclick="closeEdit()">취소</button></div></div>`;
+window.openEdit=function(){ editOpen=true; editMsg=''; render(); setTimeout(()=>{ const b=document.querySelector('.editbox'); if(b) b.scrollIntoView({block:'center'}); },50); };
+window.closeEdit=function(){ editOpen=false; editMsg=''; render(); };
+// PC ‘내 정보 수정’(saveMyProfile)과 같은 순서: 전화번호는 계정 문서, 비밀번호는 인증 + portal_secrets(옛 계정 문서 _pw 제거)
+window.saveEdit=async function(){
+  const uid=auth.currentUser?auth.currentUser.uid:''; if(!uid){ editMsg='로그인 정보를 확인할 수 없습니다. 포털에서 다시 로그인해 주세요.'; render(); return; }
+  const phone=(document.getElementById('e-phone').value||'').trim(), pw=document.getElementById('e-pw').value||'';
+  if(pw && pw.length<6){ editMsg='비밀번호는 6자 이상이어야 합니다.'; render(); return; }
+  editBusy=true; editMsg=''; render();
+  try{
+    await updateDoc(doc(db,'portal_users',uid),{phone});
+    if(pw){
+      await updatePassword(auth.currentUser,pw);
+      await setDoc(doc(db,'portal_secrets',uid),{ pw: btoa(unescape(encodeURIComponent(pw))), updatedAt:serverTimestamp() });
+      try{ await updateDoc(doc(db,'portal_users',uid),{_pw: deleteField()}); }catch(_){}
+    }
+    editMsg='✅ 정보가 저장되었습니다.'; editBusy=false; render();
+    setTimeout(()=>{ editOpen=false; editMsg=''; render(); },1200);
+  }catch(e){
+    editBusy=false;
+    const c=e&&e.code||''; editMsg = c==='auth/requires-recent-login' ? '보안을 위해 다시 로그인한 뒤 비밀번호를 바꿔 주세요.' : c==='auth/weak-password' ? '비밀번호가 너무 약합니다.' : ('저장 실패: '+(c||e.message));
+    render();
+  }
+};
 function render(){
   const top=`<div class="top"><button class="back" onclick="goBack()">← 뒤로</button><span></span></div>`;
   if(loadError && !loginName){ $app().innerHTML=top+`<div class="banner err">데이터를 불러오지 못했습니다: ${esc(loadError)}</div>`; return; }
 
-  const me = users.find(u=>u.name===loginName) || null;
+  const uidNow = auth.currentUser ? auth.currentUser.uid : '';
+  const me = users.find(u=>(u.uid||u.id)===uidNow) || users.find(u=>u.name===loginName) || null;      // 로그인 uid 우선(동명이인 방지)
 
   if(!loginName){
     $app().innerHTML=top+`
@@ -89,10 +124,12 @@ function render(){
     ${me?`
       <div class="lbl">기본 정보</div>
       <div class="dcard">${info.map(([k,v])=>`<div class="drow"><span class="dk">${k}</span><span class="dv">${esc(v)}</span></div>`).join('')||'<div class="drow"><span class="dk">정보</span><span class="dv">없음</span></div>'}</div>
-      <div class="lbl">접근 권한</div>
+      <div style="padding:0 20px"><button class="editbtn" onclick="openEdit()">✏️ 내 정보 수정 (전화번호 · 비밀번호)</button></div>
+  <div class="lbl">접근 권한</div>
       <div class="permrow">${me.admin?'<span class="permchip on">전체 (관리자)</span>':perms.map(([k,on])=>`<span class="permchip ${on?'on':''}">${on?'✓ ':''}${k}</span>`).join('')}</div>`
     :'<div class="banner info">로그인한 이름과 일치하는 포털 계정을 찾지 못했습니다. 계정 정보는 관리자에게 문의해 주세요.</div>'}
-    <div class="logout"><button onclick="jhLogout({confirm:true})">로그아웃</button><button onclick="goHome()" style="color:var(--sub);margin-top:10px">홈으로</button></div>`;
+    ${editOpen?editHtml(me):''}
+  <div class="logout"><button onclick="jhLogout({confirm:true})">로그아웃</button><button onclick="goHome()" style="color:var(--sub);margin-top:10px">홈으로</button></div>`;
 }
 
 function sub(coll,setter){
