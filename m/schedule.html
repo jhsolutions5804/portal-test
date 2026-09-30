@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260930a · 일정 통합 캘린더(PJT·회사 구분 없이 ‘일정’) — 월 캘린더+날짜별 목록, 회사 공통 일정 합산, GUEST 사번은 회사 일정 미표시·등록/수정/삭제/완료 체크 불가 -->
+<!DOCTYPE html><!-- build: 20260930b · 분류에 행사·기타 추가(PC와 동일, 프로젝트에 속하지 않는 일정 등록용)·소속 없음 명칭 통일 · 이전: 20260930a · 일정 통합 캘린더(PJT·회사 구분 없이 ‘일정’) — 월 캘린더+날짜별 목록, 회사 공통 일정 합산, GUEST 사번은 회사 일정 미표시·등록/수정/삭제/완료 체크 불가 -->
 <!-- build: 20260919c · ver: 1.1.0 (모바일 통합 일정) · [일정] 통합 일정에서 등록/수정/삭제/완료체크 (PC 홈 일정과 동일 스키마·권한 pjt) / 이전: 1.0.1 종료 PJT 제외, 1.0.0 통합 일정 신규 -->
 <html lang="ko">
 <head>
@@ -108,7 +108,7 @@ const app=initializeApp(firebaseConfig); const db=getFirestore(app); const auth=
 const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const $app=()=>document.getElementById('app');
 const WD=['일','월','화','수','목','금','토'];
-const TAGS={in:{c:'#1D5BA6',l:'반입'},inspect:{c:'#2e7d32',l:'검수'},edu:{c:'#5e35b1',l:'교육'},off:{c:'#c0392b',l:'휴무'},leave:{c:'#e67e22',l:'연차'},meeting:{c:'#5D3A00',l:'회의'},fcu:{c:'#0A3D7A',l:'설치'},safety:{c:'#8D6E00',l:'안전'},admin:{c:'#7A8AA0',l:'행정'}};
+const TAGS={in:{c:'#1D5BA6',l:'반입'},inspect:{c:'#2e7d32',l:'검수'},edu:{c:'#5e35b1',l:'교육'},off:{c:'#c0392b',l:'휴무'},leave:{c:'#e67e22',l:'연차'},meeting:{c:'#5D3A00',l:'회의'},fcu:{c:'#0A3D7A',l:'설치'},safety:{c:'#8D6E00',l:'안전'},admin:{c:'#7A8AA0',l:'행정'},event:{c:'#2e7d32',l:'행사'},etc:{c:'#7A8AA0',l:'기타'}};
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function fmtLabel(dk){ const [y,m,d]=dk.split('-').map(Number); const w=WD[new Date(y,m-1,d).getDay()]; return `${m}월 ${d}일 (${w})`; }
 function shiftDate(dk,n){ const [y,m,d]=dk.split('-').map(Number); const dt=new Date(y,m-1,d); dt.setDate(dt.getDate()+n); return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0'); }
@@ -156,7 +156,7 @@ const _me=(function(){ try{ return JSON.parse(localStorage.getItem('jh_login_per
 const isGuest=!!(_me && typeof _me.empNo==='string' && /^guest/i.test(_me.empNo.trim()));
 const canEdit=!isGuest && !!(_me && (_me.admin || (_me.perms && _me.perms.pjt)));
 const myName=()=>{ try{ return localStorage.getItem('jh_login_full')||localStorage.getItem('jh_login_name')||(_me&&_me.name)||''; }catch(e){ return (_me&&_me.name)||''; } };
-const CATS=[['in','반입'],['inspect','검수'],['edu','교육'],['meeting','회의'],['fcu','설치'],['safety','안전'],['off','휴무'],['leave','연차'],['admin','행정']];
+const CATS=[['in','반입'],['inspect','검수'],['edu','교육'],['meeting','회의'],['fcu','설치'],['safety','안전'],['off','휴무'],['leave','연차'],['admin','행정'],['event','행사'],['etc','기타']];   // 행사·기타: 프로젝트에 속하지 않는 일정용(PC와 동일)
 // 일정 컬렉션 경로: FAB/SUP는 최상위 컬렉션, 경량(reg_) PJT는 pjt_registry/{id}/schedules
 function colPath(key){
   if(key==='fab') return ['user_schedules'];
@@ -170,7 +170,7 @@ function projectOptions(){
   if(!fixedEnded.p4ph2) o.push({key:'fab', name:'P4 Ph2 (FAB)'});
   if(!fixedEnded.p4ph4) o.push({key:'sup', name:'P4 Ph4 (SUP)'});
   Object.keys(lightMeta).forEach(id=>o.push({key:'reg_'+id, name:lightMeta[id].name||'프로젝트'}));
-  o.push({key:'comp', name:'소속 없음 (공통 일정)'});
+  o.push({key:'comp', name:'소속 없음'});
   return o;
 }
 let _items=[], _detail=null, _form=null;
@@ -290,7 +290,7 @@ window.openForm=function(mode,it){
   const opts=projectOptions();
   const d=edit?it:{};
   _form={ mode:edit?'edit':'new', id:edit?it.id:null, src:edit?it._src:opts[0].key, cat:(edit&&it.tag&&TAGS[it.tag])?it.tag:'admin', todo:edit?!!it.isTodo:false };
-  const pjtOpts=(edit&&!opts.some(o=>o.key===it._src)?[{key:it._src,name:it._label||'소속 없음 (공통 일정)'}]:[]).concat(opts);
+  const pjtOpts=(edit&&!opts.some(o=>o.key===it._src)?[{key:it._src,name:it._label||'소속 없음'}]:[]).concat(opts);
   const sd=edit?(d.sdate||d.date||curDate):curDate, ed=edit?(d.edate||sd):curDate;
   openSheet(`<h3>${edit?'✏️ 일정 수정':'＋ 일정 등록'}</h3>
     <div class="sfield"><label>소속${edit?' (수정 시 변경 불가)':''}</label><select id="f-pjt" ${edit?'disabled':''}>${pjtOpts.map(o=>`<option value="${esc(o.key)}" ${o.key===_form.src?'selected':''}>${esc(o.name)}</option>`).join('')}</select></div>
