@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- edoc module build: 20260925g · ver 4.9.0 · 출퇴근 기록: 오늘뿐 아니라 지난 날짜도 월별 내역에서 클릭해 수정 가능(PC+모바일) · 이전: 20260925f ver 4.8.0 -->
+<!DOCTYPE html><!-- edoc module build: 20260930h · ver 4.10.0 · 연차 게시 시 P4 Ph2 일정이 아닌 회사 일정(company_schedules)에 등록(문서ID 고정으로 중복 방지) / 직전: ver 4.9.0 · 출퇴근 기록: 오늘뿐 아니라 지난 날짜도 월별 내역에서 클릭해 수정 가능(PC+모바일) · 이전: 20260925f ver 4.8.0 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -2916,16 +2916,17 @@ window.docApprove = async function(docId, dtype, newStatus, docData) {
       approvedAt: serverTimestamp()
     }, { merge:true });
 
-    // 게시 + 연차신청서 → user_schedules에 일정 등록
+    // 게시 + 연차신청서 → 회사 일정(company_schedules)에 등록 — 연차는 특정 PJT에 속하지 않는다.
+    // 문서 ID를 결재 문서 ID로 고정(leave_<docId>)해 같은 문서를 여러 번 게시 처리해도 일정이 중복 생성되지 않는다.
     if (newStatus === 'posted' && dtype === 'leave' && rawData.startDate) {
-      await addDoc(collection(db, 'user_schedules'), {
+      await setDoc(doc(db, 'company_schedules', `leave_${docId}`), {
         text: `[연차] ${rawData.authorName||''} ${rawData.leaveType||'연차(유급)'} (${rawData.days||''}일)`,
         tag: 'off', tagLabel: rawData.leaveType||'연차(유급)',
         sdate: rawData.startDate||'', edate: rawData.endDate||rawData.startDate||'',
         stime: null, etime: null, isTodo: false, place: '',
-        att: rawData.authorName||'', reg: _user?.email||'', savedAt: serverTimestamp(),
-      });
-      alert('✅ 게시 완료. 연차 일정이 PJT 캘린더에 자동 등록되었습니다.');
+        att: rawData.authorName||'', reg: _user?.email||'', source: 'edoc_leave', srcDocId: docId, savedAt: serverTimestamp(),
+      }, { merge:true });
+      alert('✅ 게시 완료. 연차 일정이 회사 일정(공용 캘린더)에 자동 등록되었습니다.');
     } else {
       alert(`✅ ${labels[newStatus]} 처리되었습니다.`);
     }
