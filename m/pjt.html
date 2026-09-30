@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 20260919b · ver: 2026-09-19 (모바일 PJT 5.3.0) · [PJT] 종료 처리된 고정 PJT(FAB/SUP) 목록·진입 제외 (PC와 동일) / 이전: pjt_registry 실시간 연동으로 경량PJT 신규/종료 즉시 반영, 경량PJT 상세(일정·근태·공수) 뷰 신설 -->
+<!-- build: 20260930a · ver: 2026-09-30 (모바일 PJT 5.4.0) · PC와 같은 하위 구성: PJT 홈(진행 프로젝트) / 회사 일정 / 근로자 연명부(관리자) / 종료 PJT · 이전: 20260919b · ver: 2026-09-19 (모바일 PJT 5.3.0) · [PJT] 종료 처리된 고정 PJT(FAB/SUP) 목록·진입 제외 (PC와 동일) / 이전: pjt_registry 실시간 연동으로 경량PJT 신규/종료 즉시 반영, 경량PJT 상세(일정·근태·공수) 뷰 신설 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -138,6 +138,12 @@
   .drow:last-child{border-bottom:none}
   .dk{font-size:12.5px;color:var(--sub);font-weight:600;white-space:nowrap}
   .dv{font-size:13.5px;font-weight:600;text-align:right;line-height:1.5}
+  .menulist{margin:0 20px 24px;background:#fff;border-radius:16px;box-shadow:0 2px 12px rgba(30,60,120,.07);overflow:hidden}
+  .mrow{display:flex;align-items:center;gap:12px;padding:15px 16px;border-top:1px solid #f0f0f0;cursor:pointer}
+  .mrow:first-child{border-top:none}
+  .mic{font-size:24px;width:34px;text-align:center}
+  .mnm{font-size:15.5px;font-weight:700;color:var(--ink,#1A2540)} .mds{font-size:12px;color:#86868b;margin-top:2px}
+  .mgo{margin-left:auto;color:#c7c7cc;font-size:20px}
 </style>
 <script src="auth-guard.js"></script>
 </head>
@@ -268,6 +274,8 @@ const ATT={
 };
 // ── 경량 PJT(pjt_registry) 실시간 동기화: PC와 동일하게 신규/종료가 즉시 반영 ──
 let lightMeta={}; // {id: pjt_registry 문서데이터} — status!=='ended'만 보관
+let endedLight={}; // {id: pjt_registry 문서데이터} — 종료된 경량 PJT(종료 PJT 화면용)
+const isMeAdmin=()=>{ try{ var a=JSON.parse(localStorage.getItem('jh_login_perms')||'null'); return !!(a&&a.admin); }catch(e){ return false; } };
 function SITE(key){
   if(!key) return null;
   if(SITES[key]){ if(isEndedSite(key)) return null; return Object.assign({type:'static', key}, SITES[key]); }
@@ -377,6 +385,7 @@ window.setSub=function(t){ sub=t; if(t==='sched'){ selectedDate=todayStr(); calM
 window.selectDate=function(d){ selectedDate=d; if(repCache[d]===undefined) loadReports(d); render(); };
 window.shiftCalMonth=function(delta){ const [y,m]=calMonth.split('-').map(Number); const nm=new Date(y,m-1+delta,1); calMonth=nm.getFullYear()+'-'+String(nm.getMonth()+1).padStart(2,'0'); render(); };
 window.openSched=function(id){ detailId=id; nav('schedD',site); };
+window.openEnded=function(){ nav('ended',null); };     // 종료 PJT 화면(PC의 ‘종료 PJT’와 같은 위치)
 window.goBack=function(){ history.back(); };
 window.goHome=function(){ location.href='home.html'; };
 window.goAccount=function(){ location.href='account.html'; };
@@ -387,6 +396,7 @@ function render(){
   if(loadError){ $app().innerHTML=topBar('홈','goHome()')+`<div class="banner err">데이터를 불러오지 못했습니다: ${esc(loadError)}<br>포털 로그인 세션이 필요할 수 있습니다.</div>`; return; }
   if(curView==='schedD') return renderSchedDetail();
   if(curView==='site') return renderSite();
+  if(curView==='ended') return renderEnded();
   renderHome();
 }
 function topBar(label,onclick){ return `<div class="top"><button class="back" onclick="${onclick||'goBack()'}">← ${label}</button><div class="avatar" onclick="goAccount()">${_uInitial}</div></div>`; }
@@ -408,7 +418,23 @@ function renderHome(){
         <div class="sq-ic">${s.ic}</div>
         <div class="sq-body"><div class="sq-cl">${esc(s.client)}</div><div class="sq-nm">${esc(s.code)}</div><div class="sq-ds">${esc(s.desc)}</div></div></div>`).join('')}
       ${lightCards}
+    </div>
+    <div class="lbl" style="margin-top:6px">PJT 메뉴</div>
+    <div class="menulist">
+      <div class="mrow" onclick="location.href='schedule.html'"><span class="mic">📅</span><div><div class="mnm">회사 일정</div><div class="mds">오늘 일정 · 전사 일정</div></div><span class="mgo">›</span></div>
+      ${isMeAdmin()?`<div class="mrow" onclick="location.href='../pjt_roster/index.html?via=mobile&back=pjt.html'"><span class="mic">👷</span><div><div class="mnm">근로자 연명부</div><div class="mds">인적사항 · 검진 · 자격/교육 · 월간 공수 (관리자 전용)</div></div><span class="mgo">›</span></div>`:''}
+      <div class="mrow" onclick="openEnded()"><span class="mic">🗄️</span><div><div class="mnm">종료 PJT</div><div class="mds">종료된 프로젝트 모아보기${(function(){var n=Object.keys(SITES).filter(isEndedSite).length+Object.keys(endedLight).length; return n?' · '+n+'건':'';})()}</div></div><span class="mgo">›</span></div>
     </div>`;
+}
+
+// 종료 PJT: PC의 ‘종료 PJT’와 같은 데이터(종료된 고정 PJT + 종료된 경량 PJT)를 모아서 보여준다(조회 전용)
+function renderEnded(){
+  const fixed=Object.entries(SITES).filter(([k])=>isEndedSite(k)).map(([k,s])=>`<div class="sqcard ${s.cls}" style="opacity:.75"><div class="sq-ic">${s.ic}</div><div class="sq-body"><div class="sq-cl">${esc(s.client)} · 종료</div><div class="sq-nm">${esc(s.code)}</div><div class="sq-ds">${esc(s.desc)}</div></div></div>`).join('');
+  const light=Object.keys(endedLight).map(id=>{ const m=endedLight[id]; const desc=m.content||(m.item?(m.item+(m.qty?(' '+m.qty+'건'):'')):'');
+    return `<div class="sqcard light" style="opacity:.75"><div class="sq-ic">🧩</div><div class="sq-body"><div class="sq-cl">${esc(m.client||'')} · 종료</div><div class="sq-nm">${esc(m.name||'(이름 없음)')}</div><div class="sq-ds">${esc(desc)}</div></div></div>`; }).join('');
+  $app().innerHTML=topBar('PJT 관리','goBack()')+`
+    <div class="hello"><div class="name">종료 PJT</div><div class="sub">종료된 프로젝트 모아보기</div></div>
+    ${(fixed||light)?`<div class="sqgrid">${fixed}${light}</div>`:'<div class="empty" style="text-align:center;color:#9AAABF;padding:40px 0">종료된 프로젝트가 없습니다.</div>'}`;
 }
 
 function renderSite(){
@@ -670,9 +696,9 @@ onAuthStateChanged(auth, ()=>{
   if(_authBooted) return; _authBooted=true;
   ['user_schedules','ph4_schedules'].forEach(subscribe);
   onSnapshot(collection(db,'pjt_registry'), snap=>{
-    const next={};
-    snap.forEach(d=>{ const v=d.data()||{}; if(v.status!=='ended') next[d.id]=v; });
-    lightMeta=next; render();
+    const next={}, ended={};
+    snap.forEach(d=>{ const v=d.data()||{}; if(v.status!=='ended') next[d.id]=v; else ended[d.id]=v; });
+    lightMeta=next; endedLight=ended; render();
   }, err=>{ console.error('pjt_registry 구독 오류',err); });
 
   function bootRoute(){
