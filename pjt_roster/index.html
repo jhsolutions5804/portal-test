@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260930i · ver: 1.7.0 · 팀장에게 포털 계정 연결(portal_users.teamLeaderIds, 관리자만 지정) — 팀장이 ‘내 팀 공수표’에서 자기 팀 공수·팀 단가·노무비 조회 · 이전: 20260930h ver 1.6.1 · 날짜 입력 중 화면이 초기화되는 버그 수정(만료일·상태만 제자리 갱신, 타이핑 중간 날짜 무시) · 이전: 20260930g ver 1.6.0 · 검진 만료일 자동 계산(실시일+1년, 수정 가능)·자격 유효기간(년) 선택 시 만료일 자동 계산(수정 가능)·목록 만료 배지 · 이전: 20260930f ver 1.5.0 · 일당을 관리자 전용 문서(master_worker_private)로 이동 · 이전: 20260930e ver 1.4.0 월간 공수 보기 이전(PJT별 합계 · 개인별 합계 · 개인별 공수표 PNG) — 월간 공수 → 연명부 · 이전: 20260930d ver 1.3.0 기존 인원 마이그레이션 도구 이전(월간 공수 → 연명부) · 이전: 20260930c ver 1.2.0 원청별(삼성전자/SK하이닉스) 탭 구성 — 자격·인증(취득 현장명)은 탭별, 사내화 교육·상생협력포탈 계정은 삼성전자 탭 · 이전: 20260930b ver 1.1.0 연명부 개정: 인적사항 개편(전화번호 포함), 사내화 교육 만료일, 첨부 3칸(사진·신분증·건설기초이수증), 관리자 전용 급여/계좌 구역 · 이전: 20260930a ver 1.0.0 근로자 연명부 신설 — 마스터 근로자 관리(등록/수정/퇴사/삭제) 이전, 개인정보·건강검진·자격인증·사내화교육·상생협력포탈 계정·사진(파일 보관) 관리. 관리자 전용 -->
+<!DOCTYPE html><!-- build: 20260930j · ver: 1.8.0 · 모바일 화면 지원(좁은 화면에서 목록을 카드로 표시·버튼 꺾임 방지·모바일 홈/PJT 관리에서 진입) — PC와 같은 기능·같은 파일 · 이전: 20260930i ver 1.7.0 · 팀장에게 포털 계정 연결(portal_users.teamLeaderIds, 관리자만 지정) — 팀장이 ‘내 팀 공수표’에서 자기 팀 공수·팀 단가·노무비 조회 · 이전: 20260930h ver 1.6.1 · 날짜 입력 중 화면이 초기화되는 버그 수정(만료일·상태만 제자리 갱신, 타이핑 중간 날짜 무시) · 이전: 20260930g ver 1.6.0 · 검진 만료일 자동 계산(실시일+1년, 수정 가능)·자격 유효기간(년) 선택 시 만료일 자동 계산(수정 가능)·목록 만료 배지 · 이전: 20260930f ver 1.5.0 · 일당을 관리자 전용 문서(master_worker_private)로 이동 · 이전: 20260930e ver 1.4.0 월간 공수 보기 이전(PJT별 합계 · 개인별 합계 · 개인별 공수표 PNG) — 월간 공수 → 연명부 · 이전: 20260930d ver 1.3.0 기존 인원 마이그레이션 도구 이전(월간 공수 → 연명부) · 이전: 20260930c ver 1.2.0 원청별(삼성전자/SK하이닉스) 탭 구성 — 자격·인증(취득 현장명)은 탭별, 사내화 교육·상생협력포탈 계정은 삼성전자 탭 · 이전: 20260930b ver 1.1.0 연명부 개정: 인적사항 개편(전화번호 포함), 사내화 교육 만료일, 첨부 3칸(사진·신분증·건설기초이수증), 관리자 전용 급여/계좌 구역 · 이전: 20260930a ver 1.0.0 근로자 연명부 신설 — 마스터 근로자 관리(등록/수정/퇴사/삭제) 이전, 개인정보·건강검진·자격인증·사내화교육·상생협력포탈 계정·사진(파일 보관) 관리. 관리자 전용 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -93,15 +93,49 @@ label.f{font-size:12px;font-weight:600;color:#555;display:block;margin:9px 0 4px
 .sec.admin{border-color:#f0d9a8;background:#fffdf6}
 .sec.admin .sec-t{color:#8a5a00}
 @media (max-width:700px){ .summary-row{grid-template-columns:1fr 1fr} .grid2{grid-template-columns:1fr} }
+/* ── 모바일(좁은 화면): 목록을 카드로, 버튼·머리글 꺾임 방지 ── */
+.card-view{display:none}
+.mback{width:100%}
+.mcard{border:1px solid #e5e5e5;border-radius:12px;padding:12px 13px;margin-bottom:10px;background:#fff}
+.mcard.resigned{opacity:.6}
+.mc-h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.mc-nm{font-size:16px;font-weight:800;color:#1A2540}
+.mc-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin:10px 0 8px;font-size:12.5px}
+.mc-grid span{display:block;font-size:10.5px;color:#9AAABF;margin-bottom:1px}
+.mc-chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.mc-act{display:flex;gap:8px}
+.mc-act .btn{flex:1;padding:9px 10px;font-size:13px}
+.btn{white-space:nowrap}
+@media (max-width:700px){
+  .tbl-view{display:none} .card-view{display:block}
+  .search{min-width:0;width:100%;flex:1}
+  body{-webkit-text-size-adjust:100%}
+  .btn{padding:9px 12px;font-size:13px}
+  .btn.sm{padding:6px 10px;font-size:12px}
+  .modal{padding:0;align-items:stretch}
+  .sheet{max-width:none;border-radius:0;min-height:100vh}
+  .in{font-size:16px;padding:10px 11px}       /* 확대(줌) 방지 */
+  .flbl{min-width:0}
+  .title-sub{display:none}
+  .header-row{flex-wrap:wrap;gap:8px}
+  .hdr-actions{width:100%}
+  .hdr-actions .btn{flex:1;padding:10px 6px}
+  .hdr-actions .btn:first-child{flex:0 0 auto}
+  .lbl-long{display:none}
+  .app{padding-left:12px;padding-right:12px}
+  .summary-card{padding:12px}
+}
+
 </style>
 </head>
 <body>
 <div class="app" id="app" style="display:none">
   <div class="header-row">
-    <div class="title">👷 근로자 연명부 <span style="font-weight:400;font-size:12px;color:#9AAABF">(관리자 전용 · 인적사항 · 건강검진 · 자격/교육)</span></div>
-    <div style="display:flex;gap:8px" id="roster-actions">
-      <button class="btn" onclick="reloadAll()">↻ 새로고침</button>
-      <button class="btn" onclick="openMigrate()">🔄 기존 인원 마이그레이션</button>
+    <div class="mback" id="mback" style="display:none"><button class="btn" onclick="goHomeM()">← 홈</button></div>
+    <div class="title">👷 근로자 연명부 <span class="title-sub" style="font-weight:400;font-size:12px;color:#9AAABF">(관리자 전용 · 인적사항 · 건강검진 · 자격/교육)</span></div>
+    <div style="display:flex;gap:8px" id="roster-actions" class="hdr-actions">
+      <button class="btn" onclick="reloadAll()">↻ <span class="lbl-long">새로고침</span></button>
+      <button class="btn" onclick="openMigrate()">🔄 <span class="lbl-long">기존 인원 </span>마이그레이션</button>
       <button class="btn pri" onclick="openForm()">+ 신규 등록</button>
     </div>
   </div>
@@ -351,6 +385,9 @@ function portalRowHtml(){
     +'<div class="hint">이 계정으로 로그인하면 [내 팀 공수표]에서 이 팀의 공수·팀 단가·노무비를 볼 수 있습니다. 관리자만 지정할 수 있고, 팀 단가는 기획 › 정산 › 팀별 노무비에서 설정합니다.</div>';
 }
 window.leaderChanged = function(v){ wf.leaderId = v; const r=$('portal-row'); if (r) r.style.display = v ? 'none' : ''; };
+// 모바일 홈에서 들어온 경우(?via=mobile, 포털 iframe이 아닐 때)에만 ‘← 홈’ 표시
+(function(){ try{ var q=new URLSearchParams(location.search); if(q.get('via')==='mobile' && window.self===window.top){ document.addEventListener('DOMContentLoaded',function(){ var b=document.getElementById('mback'); if(b) b.style.display='block'; }); } }catch(e){} })();
+window.goHomeM = function(){ location.href='../m/home.html'; };
 window.reloadAll = async function(){ $('list').innerHTML='<div class="loading">불러오는 중...</div>'; try{ await loadAll(); }catch(e){ $('list').innerHTML='<div class="empty">불러오기 실패: '+esc(e.message)+'</div>'; } };
 
 // ── 목록 ──
@@ -423,7 +460,24 @@ function render(){
       +'<td style="white-space:nowrap"><button class="btn sm" onclick="openForm(\''+esc(m.id)+'\')">수정</button> '+resignBtn+'</td>'
       +'</tr>';
   }).join('');
-  $('list').innerHTML = '<table><thead><tr><th>이름</th><th>성별</th><th>주민등록번호</th><th>전화번호</th><th>입사일</th><th>소속</th><th>일반검진</th><th>배치전검진</th><th>사내화 교육<br><span class="sub">(삼성전자)</span></th><th>자격·인증</th><th>첨부</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
+  const tableHtml = '<table><thead><tr><th>이름</th><th>성별</th><th>주민등록번호</th><th>전화번호</th><th>입사일</th><th>소속</th><th>일반검진</th><th>배치전검진</th><th>사내화 교육<br><span class="sub">(삼성전자)</span></th><th>자격·인증</th><th>첨부</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
+// 모바일(좁은 화면)용 카드 목록 — 표와 같은 정보·같은 버튼
+const cards = list.map(m=>{
+  const p = privs[m.id]||{}, leader = m.leaderId ? masterById(m.leaderId) : null, acc = !m.leaderId ? linkedAccountOf(m.id) : null;
+  const team = !m.leaderId ? '<span class="badge b-lead">팀장/독립</span>'+(acc?' <span class="badge b-ok">🔗 '+esc(acc.name)+'</span>':'') : '<span class="badge b-mem">'+esc(leader?leader.name:'?')+' 팀</span>';
+  const gd = latestHealth(p,'general'), pd = latestHealth(p,'preplace'), n = eduDoneCount(p), ex = eduCountBy(p,'expired'), so = eduCountBy(p,'soon');
+  let eduB = n===EDU.length ? '<span class="badge b-ok">교육 4/4</span>' : n===0 ? '<span class="badge b-none">교육 0/4</span>' : '<span class="badge b-part">교육 '+n+'/4</span>';
+  if (ex) eduB += ' <span class="badge b-none">만료 '+ex+'</span>'; else if (so) eduB += ' <span class="badge b-part">임박 '+so+'</span>';
+  const certChips = COMPANIES.map(co=>{ const cs=(p.certs||[]).filter(c=>certCo(c)===co.k); if(!cs.length) return ''; const exp=cs.filter(c=>eduStateOf(true,c.expiry||'').state==='expired').length; return '<span class="badge '+(exp?'b-none':'b-mem')+'">'+co.short+' '+cs.length+(exp?' ⚠':'')+'</span>'; }).filter(Boolean).join(' ');
+  const fm = filesMeta(p), fileChips = FILE_SLOTS.map(x=>'<span class="badge '+(fm[x.k]?'b-ok':'b-off')+'">'+x.short+'</span>').join(' ');
+  const resignBtn = m.resigned ? '<button class="btn sm" style="color:#1D5BA6" onclick="toggleResign(\''+esc(m.id)+'\')">재직 전환</button>' : '<button class="btn sm" style="color:#9a5a00" onclick="toggleResign(\''+esc(m.id)+'\')">퇴사처리</button>';
+  return '<div class="mcard'+(m.resigned?' resigned':'')+'"><div class="mc-h"><div><span class="mc-nm">'+esc(m.name)+'</span> '+(m.resigned?'<span class="badge b-off">퇴사 '+esc(m.resignedDate||'')+'</span>':'')+'<div class="sub">'+esc(m.birth||'생년월일 없음')+(m.gender?' · '+esc(m.gender):'')+'</div></div><div>'+team+'</div></div>'
+   +'<div class="mc-grid"><div><span>연락처</span>'+esc(p.phone||'—')+'</div><div><span>입사일</span>'+esc(m.hireDate||'—')+'</div>'
+   +'<div><span>일반검진</span>'+esc(gd||'—')+' '+healthBadge(p,'general')+'</div><div><span>배치전검진</span>'+esc(pd||'—')+' '+healthBadge(p,'preplace')+'</div></div>'
+   +'<div class="mc-chips">'+eduB+(certChips?' '+certChips:'')+' '+fileChips+'</div>'
+   +'<div class="mc-act"><button class="btn sm pri" onclick="openForm(\''+esc(m.id)+'\')">수정</button> '+resignBtn+'</div></div>';
+}).join('');
+$('list').innerHTML = '<div class="tbl-view">'+tableHtml+'</div><div class="card-view">'+cards+'</div>';
 }
 
 // ── 등록/수정 폼 ──
