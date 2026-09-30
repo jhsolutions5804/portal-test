@@ -22,7 +22,7 @@ service cloud.firestore {
 
     // portal_users: 직원 계정 문서.
     //  · 읽기: 승인된 직원은 직원 목록(조직도·결재선 등)을 위해 조회 가능, 본인 문서는 로그인 승인 체크를 위해 항상 조회 가능
-    //  · 쓰기: 관리자만. 단, 직원 본인은 아래 5개 필드만 수정 가능(비밀번호 변경·연락처·휴대폰 인증 표시·일지 조회 대상).
+    //  · 쓰기: 관리자만. 단, 직원 본인은 아래 4개 필드만 수정 가능(비밀번호 변경·연락처·휴대폰 인증 표시).
     //    admin·perms·status·teamLeaderIds 등 권한 관련 필드는 관리자만 바꿀 수 있다.
     //  ※ 이 컬렉션은 아래 포괄 규칙(/{document=**})에서 제외되어야 한다 — 제외하지 않으면 포괄 규칙이 승인된 직원 전원에게 읽기·쓰기를 다시 열어 준다(OR 평가).
     match /portal_users/{uid} {
@@ -30,7 +30,7 @@ service cloud.firestore {
       allow write: if isAdmin();
       allow update: if isApproved() && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['_pw','phone','phoneVerified','phoneVerifiedAt','dailyViewTargets']);
+             .hasOnly(['_pw','phone','phoneVerified','phoneVerifiedAt']);
       // 최초 관리자 계정 부트스트랩: 본인 문서가 아직 없을 때만, 지정된 관리자 이메일 본인 문서 생성 허용
       allow write: if request.auth != null && request.auth.uid == uid
         && request.auth.token.email == 'jh.kim@jhsol.kr'
