@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- HR module build: 20260925e · ver 2.13.1 · 근로시간 캘린더 — 반차 쓰고 그날 일부 근무한 경우, 근무시간만 보이고 반차 여부가 안 보이던 문제 수정(🌴 표시 병기) · 이전: 20260925d ver 2.13.0 -->
+<!DOCTYPE html><!-- HR module build: 20260930a · ver 2.14.0 · 인사 변동 메뉴 신설(직급·부서 변경 저장+호봉 초기화+이력, 연봉 조정은 근로계약서 작성으로 연결, 변동 현황 조회) · 이전: 20260925e ver 2.13.1 · 근로시간 캘린더 — 반차 쓰고 그날 일부 근무한 경우, 근무시간만 보이고 반차 여부가 안 보이던 문제 수정(🌴 표시 병기) · 이전: 20260925d ver 2.13.0 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -727,6 +727,7 @@ body { font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif; 
     <button class="tab-btn" data-navkey="eval" onclick="goTab('eval')">📝 인사평가</button>
     <button class="tab-btn" data-navkey="interview" onclick="goTab('interview')">💬 근로자 면담</button>
     <button class="tab-btn" data-navkey="leave" onclick="goTab('leave')">🗓️ 연차 현황</button>
+<button class="tab-btn" data-navkey="change" onclick="goTab('change')">🔄 인사 변동</button>
     <button class="tab-btn" data-navkey="resignreq" onclick="goTab('resignreq')">📋 휴직/퇴직 원서</button>
     <button class="tab-btn" data-navkey="dismissal" onclick="goTab('dismissal')">📄 해고예고통지서</button>
     <button class="tab-btn" data-navkey="retire" onclick="goTab('retire')">📤 퇴직금 정산</button>
@@ -757,6 +758,7 @@ body { font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif; 
   <div class="tab-content" id="tab-resignreq"></div>
   <div class="tab-content" id="tab-dismissal"></div>
   <div class="tab-content" id="tab-leave"></div>
+<div class="tab-content" id="tab-change"></div>
   <div class="tab-content" id="tab-salarytable"></div>
   </div>
 </div>
@@ -804,6 +806,7 @@ const HR_TABS = {
   eval:     { id:'tab-eval',     title:'인사평가',    fn:()=>renderEvalMain() },
   interview: { id:'tab-interview', title:'근로자 면담', fn:()=>renderInterviewMain() },
   leave:    { id:'tab-leave',    title:'연차 현황',   fn:()=>renderLeaveStatusMain() },
+  change:    { id:'tab-change',   title:'인사 변동',   fn:()=>renderChangeMain() },
   retire:   { id:'tab-retire',   title:'퇴직금 정산', fn:()=>renderRetireMain() },
   resignreq: { id:'tab-resignreq', title:'휴직/퇴직 원서', fn:()=>renderResignReqMain() },
   dismissal: { id:'tab-dismissal', title:'해고예고통지서', fn:()=>renderDismissalMain() },
@@ -864,11 +867,16 @@ async function renderHome() {
       <div class="hm-fc" onclick="hrHomeOpen('leave')"><div class="hm-step">11</div><div class="hm-fb"><div class="stage">근로기준법 자동 산정 · 전 직원</div><div class="ttl">연차 현황</div></div><div class="hm-chev">›</div></div>
     </div>
 
-    <div class="hm-stage-label">④ 퇴사</div>
+    <div class="hm-stage-label">④ 변동</div>
     <div class="hm-flow">
-      <div class="hm-fc" onclick="hrHomeOpen('resignreq')"><div class="hm-step">12</div><div class="hm-fb"><div class="stage">전자결재로 상신된 원서 확인</div><div class="ttl">휴직/퇴직 원서</div></div><div class="hm-chev">›</div></div>
-      <div class="hm-fc" onclick="hrHomeOpen('dismissal')"><div class="hm-step">13</div><div class="hm-fb"><div class="stage">해고 예고 · 사유/시기 서면통지</div><div class="ttl">해고예고통지서</div></div><div class="hm-chev">›</div></div>
-      <div class="hm-fc" onclick="hrHomeOpen('retire')"><div class="hm-step">14</div><div class="hm-fb"><div class="stage">퇴직 · 재직기간 × 평균임금</div><div class="ttl">퇴직금 정산</div></div><div class="hm-chev">›</div></div>
+      <div class="hm-fc" onclick="hrHomeOpen('change')"><div class="hm-step">12</div><div class="hm-fb"><div class="stage">승진 · 부서 이동 · 연봉 조정 · 이력</div><div class="ttl">인사 변동</div></div><div class="hm-chev">›</div></div>
+    </div>
+
+    <div class="hm-stage-label">⑤ 퇴사</div>
+    <div class="hm-flow">
+      <div class="hm-fc" onclick="hrHomeOpen('resignreq')"><div class="hm-step">13</div><div class="hm-fb"><div class="stage">전자결재로 상신된 원서 확인</div><div class="ttl">휴직/퇴직 원서</div></div><div class="hm-chev">›</div></div>
+      <div class="hm-fc" onclick="hrHomeOpen('dismissal')"><div class="hm-step">14</div><div class="hm-fb"><div class="stage">해고 예고 · 사유/시기 서면통지</div><div class="ttl">해고예고통지서</div></div><div class="hm-chev">›</div></div>
+      <div class="hm-fc" onclick="hrHomeOpen('retire')"><div class="hm-step">15</div><div class="hm-fb"><div class="stage">퇴직 · 재직기간 × 평균임금</div><div class="ttl">퇴직금 정산</div></div><div class="hm-chev">›</div></div>
     </div>
     <div id="hr-sign-mgr"></div>
   </div>`;
@@ -9378,6 +9386,178 @@ const _DS_EXEMPT = {
 };
 let _dsForm = null, _dsWorkers = [];
 const _dsNewForm = () => ({ id:'', workerId:'', noticeDate:_hzToday(), dismissalDate:_hzYmd(_hzAddDays(new Date(),30)), reasonType:'discipline', reasonDetail:'', ruleRef:'', exemptType:'', hourly:'', deliveryMethod:'직접 교부(수령 서명)', note:'' });
+
+// ════════════════════════════════
+// 🔄 인사 변동 (직급 · 부서 · 연봉)
+// ════════════════════════════════
+let _chg = { workers:[], events:[], curSalary:{}, sel:'', typeFilter:'all', onlySel:false, form:{ rank:'', dept:'', date:'', reason:'' } };
+const _chgEsc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const _chgPad = n => String(n).padStart(2,'0');
+const _chgToday = () => { const d = new Date(); return `${d.getFullYear()}-${_chgPad(d.getMonth()+1)}-${_chgPad(d.getDate())}`; };
+const _chgTsDate = ts => { if (!ts) return ''; const d = ts.toDate ? ts.toDate() : new Date(ts); return isNaN(d) ? '' : `${d.getFullYear()}-${_chgPad(d.getMonth()+1)}-${_chgPad(d.getDate())}`; };
+const _chgWon = n => '₩' + Math.round(Number(n)||0).toLocaleString();
+
+window.renderChangeMain = async () => {
+  const el = document.getElementById('tab-change'); if (!el) return;
+  el.innerHTML = `<div style="text-align:center;padding:48px;color:${C2.mute};">⏳ 불러오는 중...</div>`;
+  if (!window._db) { setTimeout(renderChangeMain, 500); return; }
+  try {
+    const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const workers = (await getWorkersList()).filter(w => w.status !== 'resigned');
+    const events = [], curSalary = {};
+    await Promise.all(workers.map(async w => {
+      // 직급·부서 변경 이력 (명부 수정 · 인사 변동에서 저장된 것)
+      try {
+        const hs = await getDocs(collection(window._db, `workers/${w.id}/history`));
+        hs.forEach(d => {
+          const h = d.data(), parts = [];
+          if ((h.fromRank||'') !== (h.toRank||'')) parts.push(`직급 <b>${_chgEsc(h.fromRank)||'-'}</b> → <b style="color:${C2.blue};">${_chgEsc(h.toRank)||'-'}</b>`);
+          if ((h.fromDept||'') !== (h.toDept||'')) parts.push(`부서 <b>${_chgEsc(h.fromDept)||'-'}</b> → <b style="color:${C2.blue};">${_chgEsc(h.toDept)||'-'}</b>`);
+          if (!parts.length) return;
+          events.push({ wid:w.id, name:w.name, date:h.effectiveDate || _chgTsDate(h.changedAt), kind:h.type==='both'?'both':(h.type||'rank'), text:parts.join(' · '), reason:h.reason||'' });
+        });
+      } catch(e) {}
+      // 연봉 변동은 저장된 연봉계약서의 계약연봉 변화에서 산출 (별도 이중 기록 없음)
+      try {
+        const as = await getDocs(collection(window._db, `annual_contracts/${w.id}/contracts`));
+        const raw = []; as.forEach(d => { const c = d.data(), s = Number(c.salary||0); if (s && c.startDate) raw.push({ start:c.startDate, salary:s, saved:c.savedAt||'' }); });
+        raw.sort((a,b) => a.start.localeCompare(b.start) || String(a.saved).localeCompare(String(b.saved)));
+        const arr = []; raw.forEach(c => { if (arr.length && arr[arr.length-1].start === c.start) arr[arr.length-1] = c; else arr.push(c); });
+        arr.forEach((c,i) => { if (i > 0 && c.salary !== arr[i-1].salary) events.push({ wid:w.id, name:w.name, date:c.start, kind:'salary', text:`연봉 <b>${_chgWon(arr[i-1].salary)}</b> → <b style="color:${C2.blue};">${_chgWon(c.salary)}</b>`, reason:'' }); });
+        if (arr.length) curSalary[w.id] = arr[arr.length-1].salary;
+      } catch(e) {}
+    }));
+    events.sort((a,b) => (b.date||'').localeCompare(a.date||''));
+    _chg.workers = workers.sort((a,b) => (a.empNo||'zzz').localeCompare(b.empNo||'zzz'));
+    _chg.events = events; _chg.curSalary = curSalary;
+  } catch(e) {
+    el.innerHTML = wrap2(`<div style="color:${C2.red};padding:24px;text-align:center;">불러오기 오류: ${_chgEsc(e.message)}</div>`); return;
+  }
+  _chgRender();
+};
+
+function _chgOptions(list, cur) {
+  const set = new Set(list); if (cur) set.add(cur);
+  return Array.from(set).map(v => `<option value="${_chgEsc(v)}" ${v===cur?'selected':''}>${_chgEsc(v)}</option>`).join('');
+}
+
+function _chgRender() {
+  const el = document.getElementById('tab-change'); if (!el) return;
+  const w = _chg.workers.find(x => x.id === _chg.sel);
+  const f = _chg.form;
+  const rankList = Array.from(new Set([...RANKS2, ..._chg.workers.map(x => x.rank).filter(Boolean)]));
+  const deptList = Array.from(new Set([...DEPTS2, ..._chg.workers.map(x => x.dept).filter(Boolean)]));
+  const step = w ? calcWorkerStepNow(w) : null;
+  const sal = w ? _chg.curSalary[w.id] : null;
+  const rankChg = w && f.rank && f.rank !== (w.rank||'');
+  const inpS = `style="width:100%;border:1px solid ${C2.border};border-radius:8px;padding:9px 12px;font-size:13px;color:${C2.text};background:#FAFCFF;box-sizing:border-box;"`;
+
+  const cur = w ? `<div style="margin-top:10px;background:#F8FAFD;border-radius:8px;overflow:hidden;">
+    ${[['소속', w.dept||'-'], ['직급', w.rank||'-'], ['호봉', step==null?'-':step+'호봉'], ['현재 계약연봉', sal?_chgWon(sal):'연봉계약서 없음']].map(([l,v]) =>
+      `<div style="display:flex;padding:7px 12px;border-bottom:1px solid #F0F4FA;font-size:12px;"><span style="color:${C2.sub};min-width:90px;font-weight:600;">${l}</span><span style="color:${C2.text};">${_chgEsc(v)}</span></div>`).join('')}</div>` : '';
+
+  const form = w ? `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      ${field2('변경 직급', `<select onchange="_chg.form.rank=this.value;_chgRender()" ${inpS}>${_chgOptions(rankList, f.rank)}</select>`)}
+      ${field2('변경 부서', `<select onchange="_chg.form.dept=this.value;_chgRender()" ${inpS}>${_chgOptions(deptList, f.dept)}</select>`)}
+    </div>
+    ${rankChg ? `<div style="font-size:11px;color:#B45309;background:#FEF3C7;border-radius:8px;padding:8px 10px;margin-bottom:10px;">⚠️ 직급이 바뀌면 호봉이 1호봉으로 초기화됩니다.</div>` : ''}
+    ${field2('시행일 (오늘 이전)', `<input type="date" value="${_chgEsc(f.date)}" max="${_chgToday()}" onchange="_chg.form.date=this.value" ${inpS}>`)}
+    ${field2('사유 (선택)', `<textarea rows="2" oninput="_chg.form.reason=this.value" ${inpS} placeholder="예: 정기 승진, 현장 배치 전환 등">${_chgEsc(f.reason)}</textarea>`)}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+      <button onclick="chgSave()" style="background:${C2.blue};color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;">✅ 직급·부서 변경 저장</button>
+      <button onclick="chgGoSalary()" style="background:#fff;color:${C2.blue};border:1px solid ${C2.blue};border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;">💰 연봉 조정 (근로계약서 작성으로)</button>
+    </div>
+    <div style="font-size:10.5px;color:${C2.mute};margin-top:8px;line-height:1.6;">연봉은 근로계약서의 시급/월급/연봉 입력에서 산정되어 연봉계약서로 이어집니다. 연봉 조정 버튼은 선택한 근로자와 시행일을 채운 근로계약서 작성 화면으로 이동하며, 서명 문서는 자동 생성되지 않습니다.</div>` : '';
+
+  const shown = _chg.events.filter(e => {
+    if (_chg.onlySel && _chg.sel && e.wid !== _chg.sel) return false;
+    const t = _chg.typeFilter;
+    if (t === 'all') return true;
+    if (t === 'rank') return e.kind === 'rank' || e.kind === 'both';
+    if (t === 'dept') return e.kind === 'dept' || e.kind === 'both';
+    return e.kind === t;
+  }).slice(0, 200);
+  const KL = { rank:'직급', dept:'부서', both:'직급·부서', salary:'연봉' };
+  const list = shown.length ? shown.map(e => `
+    <div style="display:flex;gap:12px;padding:10px 4px;border-bottom:1px solid #F0F4FA;font-size:12.5px;align-items:flex-start;">
+      <div style="min-width:82px;color:${C2.mute};font-size:11.5px;padding-top:1px;">${_chgEsc(e.date||'-')}</div>
+      <div style="min-width:58px;font-weight:700;color:${C2.text};">${_chgEsc(e.name)}</div>
+      <div style="flex:1;color:${C2.text};"><span style="font-size:10.5px;background:${C2.blueLt};color:${C2.blue};border-radius:6px;padding:1px 7px;margin-right:6px;font-weight:700;">${KL[e.kind]||'변동'}</span>${e.text}${e.reason?`<div style="margin-top:4px;font-size:11.5px;color:${C2.sub};white-space:pre-wrap;">${_chgEsc(e.reason)}</div>`:''}</div>
+    </div>`).join('') : `<div style="text-align:center;padding:28px;color:${C2.mute};font-size:12.5px;">변동 이력이 없습니다.</div>`;
+
+  el.innerHTML = wrap2(`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+      ${backBtn2("goTab('home')", '인사 홈')}
+      <span style="font-size:13px;font-weight:700;color:${C2.text};">🔄 인사 변동 (직급 · 부서 · 연봉)</span>
+    </div>
+    ${card2('👤 변동 처리', `
+      <select onchange="chgSelect(this.value)" style="width:100%;border:1px solid ${C2.border};border-radius:8px;padding:10px 12px;font-size:13px;font-weight:600;color:${C2.blue};background:${C2.blueLt};cursor:pointer;">
+        <option value="">근로자를 선택하세요</option>
+        ${_chg.workers.map(x => `<option value="${x.id}" ${x.id===_chg.sel?'selected':''}>${_chgEsc(x.empNo||'-')} · ${_chgEsc(x.name)} (${_chgEsc(x.rank||'')})</option>`).join('')}
+      </select>${cur}<div style="margin-top:12px;">${form}</div>`)}
+    ${card2('📜 변동 현황', `
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+        <select onchange="_chg.typeFilter=this.value;_chgRender()" style="border:1px solid ${C2.border};border-radius:8px;padding:7px 10px;font-size:12px;">
+          ${[['all','전체 유형'],['rank','직급'],['dept','부서'],['salary','연봉']].map(([v,l]) => `<option value="${v}" ${_chg.typeFilter===v?'selected':''}>${l}</option>`).join('')}
+        </select>
+        <label style="font-size:12px;color:${C2.sub};display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" ${_chg.onlySel?'checked':''} onchange="_chg.onlySel=this.checked;_chgRender()"> 선택한 근로자만</label>
+        <span style="font-size:11px;color:${C2.mute};margin-left:auto;">직급·부서: 변경 이력 · 연봉: 저장된 연봉계약서 기준</span>
+      </div>${list}`)}
+  `);
+}
+window._chg = _chg; window._chgRender = _chgRender;
+
+window.chgSelect = (id) => {
+  _chg.sel = id;
+  const w = _chg.workers.find(x => x.id === id);
+  _chg.form = { rank: w ? (w.rank||'') : '', dept: w ? (w.dept||'') : '', date: _chgToday(), reason: '' };
+  _chgRender();
+};
+
+window.chgSave = async () => {
+  const w = _chg.workers.find(x => x.id === _chg.sel);
+  if (!w) { alert('근로자를 선택해 주세요.'); return; }
+  const f = _chg.form, oldRank = w.rank||'', oldDept = w.dept||'';
+  const newRank = f.rank || oldRank, newDept = f.dept || oldDept;
+  const rankChanged = newRank !== oldRank, deptChanged = newDept !== oldDept;
+  if (!rankChanged && !deptChanged) { alert('변경된 직급·부서가 없습니다.'); return; }
+  if (!f.date) { alert('시행일을 입력해 주세요.'); return; }
+  if (f.date > _chgToday()) { alert('시행일은 오늘 이전 날짜만 입력할 수 있습니다. (저장 즉시 명부에 반영됩니다)'); return; }
+  const what = [rankChanged?`직급 ${oldRank||'-'} → ${newRank}`:'', deptChanged?`부서 ${oldDept||'-'} → ${newDept}`:''].filter(Boolean).join('\n');
+  if (!confirm(`${w.name}님 인사 변동을 저장하시겠습니까?\n\n${what}\n시행일: ${f.date}${rankChanged?'\n\n※ 직급 변경으로 호봉이 1호봉으로 초기화됩니다.':''}`)) return;
+  try {
+    const { doc, setDoc, addDoc, collection, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const payload = {};
+    if (rankChanged) { payload.rank = newRank; payload.step = 1; payload.stepYear = new Date().getFullYear(); }
+    if (deptChanged) payload.dept = newDept;
+    await setDoc(doc(window._db, 'workers', w.id), payload, { merge:true });
+    await addDoc(collection(window._db, `workers/${w.id}/history`), {
+      type: rankChanged && deptChanged ? 'both' : (rankChanged ? 'rank' : 'dept'),
+      fromRank: oldRank, toRank: newRank, fromDept: oldDept, toDept: newDept,
+      reason: f.reason || '', effectiveDate: f.date, changedAt: serverTimestamp(),
+    });
+    if (w.portalUid) {
+      try { window.parent.postMessage({ source:'jh-hr', action:'syncWorkerToPortal', payload:{ puUid:w.portalUid, fields:{ name:w.name, rank:newRank, dept:newDept } } }, '*'); } catch(e) {}
+    }
+    alert('✅ 인사 변동이 저장되었습니다.' + (rankChanged ? '\n호봉이 1호봉으로 초기화되었습니다.' : ''));
+    const keep = w.id;
+    await renderChangeMain();
+    chgSelect(keep);
+  } catch(e) { alert('저장 오류: ' + e.message); }
+};
+
+window.chgGoSalary = async () => {
+  const w = _chg.workers.find(x => x.id === _chg.sel);
+  if (!w) { alert('근로자를 선택해 주세요.'); return; }
+  const start = _chg.form.date || _chgToday();
+  goTab('labor', { noRender:true });
+  await renderLaborRegister();
+  laborWorkerSelect2(w.id);
+  const e = new Date(start); e.setFullYear(e.getFullYear()+1); e.setDate(e.getDate()-1);
+  laborForm2.startDate = start; laborForm2.endDate = e.toISOString().slice(0,10);
+  if (window.laborRefreshForm2) window.laborRefreshForm2();
+};
 
 window.renderDismissalMain = async () => {
   const el = document.getElementById('tab-dismissal'); if (!el) return;
