@@ -119,7 +119,7 @@ async function loadAndShow(link){
 
     // 열람 전용 링크 — 회사가 저장 당시 양식으로 만들어 둔 HTML을 그대로 보여준다(서명·수정 없음)
     if (pay.viewOnly && pay.html) {
-      const vt = (link.docType === 'annual' ? '연봉계약서' : '근로계약서') + ' (저장본)';
+      const vt = link.docType === 'payslip' ? '급여명세서' : ((link.docType === 'annual' ? '연봉계약서' : '근로계약서') + ' (저장본)');
       showViewOnly({ f: { name: link.workerName || '' }, title: vt, buildHtml: () => pay.html });
       return;
     }
