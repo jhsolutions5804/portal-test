@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html><!-- build: 20260930b · 정산 화면에 [정산서][팀별 노무비] 전환 추가(관리자, PC 기획 > 정산과 같은 구조) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -317,6 +317,7 @@ function renderSettle(){
   }).join('');
   $app().innerHTML=topBar('기획')+`
     <div class="hello rowend"><div><div class="name">정산</div><div class="sub">청구 ${invCnt} · 지급 ${payCnt}</div></div></div>
+  <div class="segs" style="margin:0 20px 12px"><div class="seg on">정산서</div>${(function(){try{var a=JSON.parse(localStorage.getItem('jh_login_perms')||'null');return (a&&a.admin)?`<div class="seg" onclick="location.href='../team/index.html?via=mobile&back=gihoek.html'">팀별 노무비</div>`:'';}catch(e){return '';}})()}</div>
     <div class="summary">
       <div class="s"><div class="n">${won(inv).replace('₩','')}</div><div class="k">대금청구 누계</div></div>
       <div class="s"><div class="n">${won(pay).replace('₩','')}</div><div class="k">지급예정 누계</div></div>
