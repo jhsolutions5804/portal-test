@@ -42,6 +42,10 @@ window.jhEnsureMobileFab=function(on){
     window.addEventListener('resize', jhPlaceFab);
   }catch(e){}
 };
+window.jhSwitchToMobile=function(){
+  try{ localStorage.removeItem('jh_force_pc'); }catch(e){}
+  location.href='m/home.html';
+};
 </script>
 <style>
 /* 강제 PC 화면(jh_force_pc): 100vh는 폰에서 브라우저 툴바 뒤까지 잡혀 하단이 가려지므로 보이는 영역(dvh) 기준으로 */
