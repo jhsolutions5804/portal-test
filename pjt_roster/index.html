@@ -1,9 +1,10 @@
-<!DOCTYPE html><!-- build: 20260930d · ver: 1.3.0 · 기존 인원 마이그레이션 도구 이전(월간 공수 → 연명부) · 이전: 20260930c ver 1.2.0 원청별(삼성전자/SK하이닉스) 탭 구성 — 자격·인증(취득 현장명)은 탭별, 사내화 교육·상생협력포탈 계정은 삼성전자 탭 · 이전: 20260930b ver 1.1.0 연명부 개정: 인적사항 개편(전화번호 포함), 사내화 교육 만료일, 첨부 3칸(사진·신분증·건설기초이수증), 관리자 전용 급여/계좌 구역 · 이전: 20260930a ver 1.0.0 근로자 연명부 신설 — 마스터 근로자 관리(등록/수정/퇴사/삭제) 이전, 개인정보·건강검진·자격인증·사내화교육·상생협력포탈 계정·사진(파일 보관) 관리. 관리자 전용 -->
+<!DOCTYPE html><!-- build: 20260930e · ver: 1.4.0 · 월간 공수 보기 이전(PJT별 합계 · 개인별 합계 · 개인별 공수표 PNG) — 월간 공수 → 연명부 · 이전: 20260930d ver 1.3.0 기존 인원 마이그레이션 도구 이전(월간 공수 → 연명부) · 이전: 20260930c ver 1.2.0 원청별(삼성전자/SK하이닉스) 탭 구성 — 자격·인증(취득 현장명)은 탭별, 사내화 교육·상생협력포탈 계정은 삼성전자 탭 · 이전: 20260930b ver 1.1.0 연명부 개정: 인적사항 개편(전화번호 포함), 사내화 교육 만료일, 첨부 3칸(사진·신분증·건설기초이수증), 관리자 전용 급여/계좌 구역 · 이전: 20260930a ver 1.0.0 근로자 연명부 신설 — 마스터 근로자 관리(등록/수정/퇴사/삭제) 이전, 개인정보·건강검진·자격인증·사내화교육·상생협력포탈 계정·사진(파일 보관) 관리. 관리자 전용 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>근로자 연명부</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;background:#f5f5f7;color:#1d1d1f;min-height:100vh}
@@ -79,6 +80,16 @@ label.f{font-size:12px;font-weight:600;color:#555;display:block;margin:9px 0 4px
 .migrate-name{font-weight:700;color:#1A2540;font-size:13.5px;margin-bottom:5px}
 .migrate-src{font-size:12px;color:#666;padding:2px 0}
 .mig-warn{background:#fff8e8;border:1px solid #ffe082;border-radius:8px;padding:7px 10px;font-size:11.5px;color:#7a5c00;margin-top:6px;line-height:1.5}
+.card-title{font-size:14px;font-weight:700;color:#1A2540;margin-bottom:12px}
+.month-nav{display:flex;align-items:center;gap:10px}
+.month-label{font-size:16px;font-weight:700;color:#1A2540;min-width:96px;text-align:center}
+.num{text-align:right;font-weight:700;color:#1D5BA6}
+.pjt-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:5px;background:#eef2f7;color:#5C6F8A;font-weight:600;margin-right:4px;margin-bottom:2px}
+.warn-box{background:#fff8e8;border:1px solid #ffe082;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#7a5c00}
+.warn-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #ffedb8}
+.warn-row:last-child{border-bottom:none}
+.birth-input{font-size:12px;padding:4px 8px;border:1px solid #e0a800;border-radius:6px;min-width:138px}
+.viewseg{margin-bottom:12px}
 .sec.admin{border-color:#f0d9a8;background:#fffdf6}
 .sec.admin .sec-t{color:#8a5a00}
 @media (max-width:700px){ .summary-row{grid-template-columns:1fr 1fr} .grid2{grid-template-columns:1fr} }
@@ -88,12 +99,17 @@ label.f{font-size:12px;font-weight:600;color:#555;display:block;margin:9px 0 4px
 <div class="app" id="app" style="display:none">
   <div class="header-row">
     <div class="title">👷 근로자 연명부 <span style="font-weight:400;font-size:12px;color:#9AAABF">(관리자 전용 · 인적사항 · 건강검진 · 자격/교육)</span></div>
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px" id="roster-actions">
       <button class="btn" onclick="reloadAll()">↻ 새로고침</button>
       <button class="btn" onclick="openMigrate()">🔄 기존 인원 마이그레이션</button>
       <button class="btn pri" onclick="openForm()">+ 신규 등록</button>
     </div>
   </div>
+  <div class="seg viewseg" id="viewseg">
+    <button data-v="roster" class="on" onclick="showView('roster')">👥 명부</button>
+    <button data-v="manday" onclick="showView('manday')">📊 월간 공수</button>
+  </div>
+  <div id="view-roster">
   <div class="summary-row" id="summary"></div>
   <div class="card">
     <div class="toolbar">
@@ -107,6 +123,21 @@ label.f{font-size:12px;font-weight:600;color:#555;display:block;margin:9px 0 4px
     </div>
     <div class="tbl-wrap"><div id="list"><div class="loading">불러오는 중...</div></div></div>
   </div>
+  </div>
+  <div id="view-manday" style="display:none">
+    <div class="toolbar" style="justify-content:space-between">
+      <div class="month-nav"><button class="btn" onclick="mdShift(-1)">‹</button><div class="month-label" id="md-label">—</div><button class="btn" onclick="mdShift(1)">›</button></div>
+      <button class="btn" onclick="mdReload()">↻ 다시 계산</button>
+    </div>
+    <div class="summary-row" style="grid-template-columns:repeat(3,1fr)">
+      <div class="summary-card"><div class="summary-lbl">이번 달 전체 합계 공수</div><div class="summary-val" id="md-total">—</div></div>
+      <div class="summary-card"><div class="summary-lbl">공수기록 PJT / 전체</div><div class="summary-val" id="md-pjtcount">—</div></div>
+      <div class="summary-card"><div class="summary-lbl">참여 인원 수</div><div class="summary-val" id="md-workercount">—</div></div>
+    </div>
+    <div id="md-warn" style="display:none"></div>
+    <div class="card"><div class="card-title">🏗️ PJT별 합계</div><div class="tbl-wrap"><div id="md-pjt"><div class="loading">불러오는 중...</div></div></div></div>
+    <div class="card"><div class="card-title">👤 개인별 합계 <span style="font-weight:400;font-size:11px;color:#9AAABF">(마스터 ID 기준으로 자동 합산)</span></div><div class="tbl-wrap"><div id="md-person"><div class="loading">불러오는 중...</div></div></div></div>
+  </div>
 </div>
 <div id="loading-init" class="loading">불러오는 중...</div>
 
@@ -116,6 +147,14 @@ label.f{font-size:12px;font-weight:600;color:#555;display:block;margin:9px 0 4px
     <div class="sheet-h"><div style="font-size:16px;font-weight:800" id="fm-title">👤 근로자 등록</div>
       <button style="background:none;border:none;font-size:22px;color:#86868b;cursor:pointer" onclick="closeForm()">×</button></div>
     <div class="sheet-b" id="fm-body"></div>
+  </div>
+</div>
+<!-- 개인별 통합 공수표 -->
+<div class="modal" id="ps-modal" style="align-items:center">
+  <div class="sheet" style="max-width:520px">
+    <div class="sheet-h"><div style="font-size:16px;font-weight:800" id="ps-title">📋 공수표</div>
+      <button style="background:none;border:none;font-size:22px;color:#86868b;cursor:pointer" onclick="closePersonSheet()">×</button></div>
+    <div class="sheet-b" id="ps-body"></div>
   </div>
 </div>
 <!-- 기존 인원 마이그레이션 -->
@@ -157,7 +196,7 @@ label.f{font-size:12px;font-weight:600;color:#555;display:block;margin:9px 0 4px
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs, writeBatch, serverTimestamp }
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, writeBatch, serverTimestamp, query, where, documentId }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { getAuth, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
@@ -685,7 +724,7 @@ async function loadProjectRosters(){
   const regs = [];
   try{ const rs = await getDocs(collection(db,'pjt_registry')); rs.forEach(d=>{ const x=d.data(); if(x.status!=='ended') regs.push({ id:d.id, name:x.name||'PJT' }); }); }catch(e){ fail.push('경량 PJT 목록'); }
   for (const r of regs) await pull(['pjt_registry', r.id, 'workers'], r.name, 'light', r.id);
-  return { out, fail };
+  return { out, fail, regs };
 }
 async function refreshMigSources(){ const r = await loadProjectRosters(); migSources = r.out; migFail = r.fail; }
 window.openMigrate = async function(){
@@ -763,6 +802,142 @@ window.confirmMigrate = async function(){
     alert(name+'님 마스터 등록을 완료했습니다.\n\n⚠️ 이미 열려 있던 FAB/SUP/경량PJT 근태 탭이 있다면 반드시 새로고침 후 사용해주세요. 새로고침 없이 그대로 쓰면 예전 명단으로 저장되어 연동이 안 됩니다.');
   }catch(e){ alert('마이그레이션 실패: '+e.message); }
   finally{ btn.disabled = false; btn.textContent = '마스터로 등록'; }
+};
+
+// ── 월간 공수 보기 (PJT별 합계 · 개인별 합계 · 개인별 공수표) — 월간 공수에서 이전 ──
+// 집계 대상: FAB(worker_manday) · SUP(ph4_manday) · 종료되지 않은 경량PJT(pjt_registry/{id}/manday). 일자 문서(YYYY-MM-DD)의 md{근로자ID: 공수}를 합산한다.
+// 월간 공수 대비: 일자별 getDoc 반복 대신 문서 ID 범위 조회로 그 달에 존재하는 문서만 읽는다(읽기 횟수 절감).
+let mdY = new Date().getFullYear(), mdM = new Date().getMonth(), mdSeq = 0, mdLoadedOnce = false, mdPersonMap = {};
+window.showView = function(v){
+  document.querySelectorAll('#viewseg button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
+  $('view-roster').style.display = v==='roster' ? '' : 'none';
+  $('view-manday').style.display = v==='manday' ? '' : 'none';
+  $('roster-actions').style.display = v==='roster' ? 'flex' : 'none';
+  if (v==='manday' && !mdLoadedOnce) loadMonth();
+};
+window.mdShift = function(dir){ mdM += dir; if (mdM>11){ mdM=0; mdY++; } if (mdM<0){ mdM=11; mdY--; } loadMonth(); };
+window.mdReload = function(){ loadMonth(); };
+async function fetchMonthDocs(path, lo, hi){
+  const snap = await getDocs(query(collection(db, ...path), where(documentId(), '>=', lo), where(documentId(), '<=', hi)));
+  const rows = []; snap.forEach(d=>rows.push([d.id, (d.data().md)||{}])); return rows;
+}
+async function loadMonth(){
+  const seq = ++mdSeq;
+  $('md-label').textContent = mdY+'년 '+(mdM+1)+'월';
+  $('md-pjt').innerHTML = '<div class="loading">불러오는 중...</div>'; $('md-person').innerHTML = '<div class="loading">불러오는 중...</div>';
+  try{
+    const lo = mdY+'-'+pad(mdM+1)+'-01', hi = mdY+'-'+pad(mdM+1)+'-31';
+    const r = await loadProjectRosters();
+    const rosterFab = r.out.filter(w=>w.sourceKind==='fab'), rosterSup = r.out.filter(w=>w.sourceKind==='sup'), rosterLight = r.out.filter(w=>w.sourceKind==='light');
+    const fabById = {}; rosterFab.forEach(w=>fabById[w.id]=w);
+    const supById = {}; rosterSup.forEach(w=>supById[w.id]=w);
+    const failed = r.fail.slice();
+    const safe = async (path, label) => { try{ return await fetchMonthDocs(path, lo, hi); }catch(e){ failed.push(label+' 공수'); return []; } };
+    const fabRows = await safe(['worker_manday'], 'P4 Ph2 (FAB)');
+    const supRows = await safe(['ph4_manday'], 'P4 Ph4 (SUP)');
+    const lightRows = {}; for (const rg of r.regs) lightRows[rg.id] = await safe(['pjt_registry', rg.id, 'manday'], rg.name);
+    if (seq !== mdSeq) return;                     // 그 사이 월을 바꾼 경우 이전 결과는 버림
+
+    const pjtTotals = { p4ph2:{ name:'P4 Ph2 (FAB)', total:0, workerCount:rosterFab.length }, p4ph4:{ name:'P4 Ph4 (SUP)', total:0, workerCount:rosterSup.length } };
+    r.regs.forEach(rg=>{ pjtTotals['reg_'+rg.id] = { name:rg.name, total:0, workerCount:rosterLight.filter(w=>w.regId===rg.id).length }; });
+    const personMap = {}, missingBirth = [], seenMissing = new Set(); let unknownIdCount = 0;
+    const addToPerson = (worker, amount, pjtName, dk)=>{
+      const pk = (worker.name||'').trim()+'|'+(worker.birth||'MISSING');
+      if (!personMap[pk]) personMap[pk] = { name:worker.name, birth:worker.birth, total:0, byPjt:{}, byDate:{} };
+      const P = personMap[pk]; P.total += amount; P.byPjt[pjtName] = (P.byPjt[pjtName]||0) + amount;
+      (P.byDate[dk] = P.byDate[dk] || {})[pjtName] = ((P.byDate[dk]||{})[pjtName]||0) + amount;
+      if (!worker.birth){ const mk = worker.sourceLabel+'|'+worker.id; if (!seenMissing.has(mk)){ seenMissing.add(mk); missingBirth.push(worker); } }
+    };
+    fabRows.forEach(([dk,md])=>Object.keys(md).forEach(wid=>{ const a = parseFloat(md[wid])||0; if(!a) return;
+      if (fabById[wid]){ pjtTotals.p4ph2.total += a; addToPerson(fabById[wid], a, 'P4 Ph2 (FAB)', dk); } else unknownIdCount++; }));
+    supRows.forEach(([dk,md])=>Object.keys(md).forEach(wid=>{ const a = parseFloat(md[wid])||0; if(!a) return;
+      if (supById[wid]){ pjtTotals.p4ph4.total += a; addToPerson(supById[wid], a, 'P4 Ph4 (SUP)', dk); } else unknownIdCount++; }));
+    r.regs.forEach(rg=>{
+      const byId = {}; rosterLight.filter(w=>w.regId===rg.id).forEach(w=>byId[w.id]=w);
+      (lightRows[rg.id]||[]).forEach(([dk,md])=>Object.keys(md).forEach(wid=>{ const a = parseFloat(md[wid])||0; if(!a || !byId[wid]) return;
+        pjtTotals['reg_'+rg.id].total += a; addToPerson(byId[wid], a, rg.name, dk); }));
+    });
+    mdPersonMap = personMap; mdLoadedOnce = true;
+    renderMonth(pjtTotals, personMap, missingBirth, unknownIdCount, failed);
+  }catch(e){
+    if (seq !== mdSeq) return;
+    $('md-pjt').innerHTML = '<div class="empty">불러오기 실패: '+esc(e.message)+'</div>'; $('md-person').innerHTML = '';
+  }
+}
+function renderMonth(pjtTotals, personMap, missingBirth, unknownIdCount, failed){
+  const pjtList = Object.keys(pjtTotals).map(k=>pjtTotals[k]).sort((a,b)=>b.total-a.total);
+  const personList = Object.keys(personMap).map(k=>Object.assign({_key:k}, personMap[k])).sort((a,b)=>b.total-a.total);
+  const grand = pjtList.reduce((x,y)=>x+y.total,0);
+  $('md-total').textContent = grand.toFixed(1);
+  $('md-pjtcount').textContent = pjtList.filter(x=>x.total>0).length+' / '+pjtList.length;
+  $('md-workercount').textContent = personList.length;
+  let wh = '';
+  if (failed.length) wh += '<div class="warn-box">⚠️ 일부 데이터를 불러오지 못해 집계에서 빠졌을 수 있습니다: '+failed.map(esc).join(', ')+'</div>';
+  if (missingBirth.length){
+    wh += '<div class="warn-box"><b>⚠️ 생년월일 미입력 인원 (근로자 마스터 명부에 미등록 · 여러 PJT 겸직 시 별도 인원으로 집계됨)</b>'
+      + missingBirth.map(w=>'<div class="warn-row"><span style="flex:1">'+esc(w.name)+' <span style="color:#9AAABF">('+esc(w.sourceLabel)+')</span></span>'
+        +'<input type="date" class="birth-input" onchange="fixBirth(\''+esc(w.id)+'\',\''+esc(w.sourceKind)+'\',\''+esc(w.regId||'')+'\',this.value)"></div>').join('')+'</div>';
+  }
+  if (unknownIdCount) wh += '<div class="warn-box">⚠️ 어느 프로젝트 명단에도 없는 인원 ID가 포함된 공수 기록이 '+unknownIdCount+'건 있어 집계에서 제외했습니다. 명단이 삭제되었거나 아직 로딩되지 않았을 수 있습니다.</div>';
+  $('md-warn').innerHTML = wh; $('md-warn').style.display = wh ? 'block' : 'none';
+
+  $('md-pjt').innerHTML = !pjtList.length ? '<div class="empty">등록된 PJT가 없습니다.</div>'
+    : '<table style="min-width:0"><thead><tr><th>PJT</th><th style="text-align:center">등록 인원</th><th style="text-align:right">합계 공수</th></tr></thead><tbody>'
+      + pjtList.map(x=>{ const dim = x.total===0 ? 'color:#c7c7cc' : '';
+          return '<tr style="'+dim+'"><td>'+esc(x.name)+'</td><td style="text-align:center">'+x.workerCount+'명</td><td class="num" style="'+dim+'">'+x.total.toFixed(1)+(x.total===0?' (기록없음)':'')+'</td></tr>'; }).join('')
+      + '</tbody></table>';
+  $('md-person').innerHTML = !personList.length ? '<div class="empty">이번 달 등록된 공수가 없습니다.</div>'
+    : '<table style="min-width:0"><thead><tr><th>이름</th><th>참여 PJT</th><th style="text-align:right">합계 공수</th><th></th></tr></thead><tbody>'
+      + personList.map(x=>{
+          const badges = Object.keys(x.byPjt).map(pn=>'<span class="pjt-badge">'+esc(pn)+' '+x.byPjt[pn].toFixed(1)+'</span>').join('');
+          return '<tr><td>'+esc(x.name)+(x.birth?' <span class="sub">('+esc(x.birth)+')</span>':' <span style="color:#e67e22;font-size:11px">⚠ 생년월일 미입력</span>')+'</td><td>'+badges+'</td><td class="num">'+x.total.toFixed(1)+'</td>'
+            +'<td><button class="btn sm" onclick="openPersonSheet(\''+encodeURIComponent(x._key)+'\')">📋 공수표</button></td></tr>'; }).join('')
+      + '</tbody></table>';
+}
+window.fixBirth = async function(workerId, sourceKind, regId, birth){
+  if (!birth) return;
+  try{
+    const ref = sourceKind==='fab' ? doc(db,'pjt_workers_fab',workerId) : sourceKind==='sup' ? doc(db,'pjt_workers_ph4',workerId) : doc(db,'pjt_registry',regId,'workers',workerId);
+    await setDoc(ref, { birth }, { merge:true });
+    await loadMonth();
+  }catch(e){ alert('저장 실패: '+e.message); }
+};
+window.openPersonSheet = function(encodedKey){
+  const P = mdPersonMap[decodeURIComponent(encodedKey)];
+  if (!P){ alert('데이터를 찾을 수 없습니다.'); return; }
+  $('ps-title').textContent = '📋 '+P.name+'님 '+mdY+'년 '+(mdM+1)+'월 공수표';
+  const days = new Date(mdY, mdM+1, 0).getDate(), first = new Date(mdY, mdM, 1).getDay();
+  let cells = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px">';
+  ['일','월','화','수','목','금','토'].forEach(d=>cells += '<div style="text-align:center;font-size:11px;color:#9AAABF;font-weight:700;padding:4px 0">'+d+'</div>');
+  for (let i=0;i<first;i++) cells += '<div></div>';
+  for (let d=1; d<=days; d++){
+    const dk = mdY+'-'+pad(mdM+1)+'-'+pad(d), dayData = P.byDate[dk];
+    let dayTotal = 0, lines = '';
+    if (dayData) Object.keys(dayData).forEach(pn=>{ dayTotal += dayData[pn];
+      lines += '<div style="font-size:8.5px;color:#5C6F8A;line-height:1.3">'+esc(pn.replace('P4 Ph2 (FAB)','FAB').replace('P4 Ph4 (SUP)','SUP'))+' '+dayData[pn].toFixed(1)+'</div>'; });
+    cells += '<div style="min-height:56px;border:1px solid #EEF2F7;border-radius:8px;padding:4px 3px'+(dayTotal>0?';background:#F4F8FF':'')+'">'
+      +'<div style="font-size:11px;font-weight:600;color:#1A2540">'+d+'</div>'
+      +(dayTotal>0?'<div style="font-size:12px;font-weight:800;color:#1D5BA6">'+dayTotal.toFixed(1)+'</div>':'')+lines+'</div>';
+  }
+  cells += '</div>';
+  const badges = Object.keys(P.byPjt).map(pn=>'<span class="pjt-badge">'+esc(pn)+' '+P.byPjt[pn].toFixed(1)+'</span>').join('');
+  const fname = P.name+'_'+mdY+pad(mdM+1)+'_공수표.png';
+  $('ps-body').innerHTML =
+    '<button class="btn" style="width:100%;padding:10px;background:#2e7d32;color:#fff;border:none;font-weight:700;margin-bottom:12px" onclick="saveSheetPng(\'ps-capture\',\''+esc(fname)+'\')">📷 이 공수표 PNG로 저장</button>'
+    +'<div id="ps-capture" style="background:#fff;padding:14px;border-radius:12px;border:1px solid #ececec">'
+    +'<div style="font-size:13px;font-weight:700;color:#1A2540;margin-bottom:4px">'+esc(P.name)+'님 · '+mdY+'년 '+(mdM+1)+'월 공수표</div>'
+    +'<div style="font-size:12px;color:#86868b;margin-bottom:8px">참여 PJT: '+badges+'</div>'+cells
+    +'<div style="text-align:center;margin-top:14px;padding-top:14px;border-top:1px solid #f0f0f0"><span style="font-size:12px;color:#86868b">이번 달 합계</span><div style="font-size:24px;font-weight:800;color:#1D5BA6">'+P.total.toFixed(1)+' 공수</div></div></div>';
+  $('ps-modal').style.display = 'flex';
+};
+window.closePersonSheet = function(){ $('ps-modal').style.display = 'none'; };
+window.saveSheetPng = async function(elId, fname){
+  const el = $(elId); if (!el) return;
+  if (typeof html2canvas === 'undefined'){ alert('이미지 저장 모듈을 불러오는 중이에요. 잠시 후 다시 눌러주세요.'); return; }
+  try{
+    const canvas = await html2canvas(el, { scale:2, backgroundColor:'#ffffff', useCORS:true });
+    const a = document.createElement('a'); a.href = canvas.toDataURL('image/png'); a.download = fname; document.body.appendChild(a); a.click(); a.remove();
+  }catch(e){ console.error(e); alert('저장 중 오류가 났어요: '+e.message); }
 };
 
 // ── 접근 검증 (관리자 전용) ──
