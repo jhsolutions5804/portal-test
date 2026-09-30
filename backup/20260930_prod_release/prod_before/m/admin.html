@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<!-- build: 20260925a · ver: 2026-09-25 (모바일 관리 2.8.0) · [내규] 회사내규 열람(company_policies) 추가 · 이전: 20260919a ver 2.7.0 -->
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>조직도 · Portal 관리 · JH Solutions</title>
+<style>
+  :root{--blue:#1D5BA6;--blue-d:#16487f;--ink:#1a2330;--sub:#6b7787;--line:#e4eaf2;--bg:#eef2f7;--card:#fff;--ok:#1b8a5a;--warn:#c0392b;--amber:#e08a1e;--violet:#7C3AED}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;min-height:100vh}
+  .phone{width:100%;max-width:480px;margin:0 auto;background:var(--bg);min-height:100vh}
+  .scr{padding:0 0 30px}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:22px 22px 4px}
+  .back{background:var(--card);border:1px solid var(--line);color:var(--blue);font-size:13px;font-weight:700;padding:8px 14px;border-radius:12px;cursor:pointer;font-family:inherit;box-shadow:0 2px 6px rgba(30,50,80,.05)}
+  .back:active{background:#f0f4f9}
+  .avatar{width:40px;height:40px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;box-shadow:0 4px 10px rgba(29,91,166,.3);cursor:pointer}
+  .hello{padding:18px 24px 6px}
+  .hello .name{font-size:25px;font-weight:800;letter-spacing:-.5px;color:var(--ink)}
+  .hello .sub{font-size:12.5px;color:var(--sub);margin-top:4px;font-weight:600}
+  .grp{font-size:12px;font-weight:800;padding:22px 24px 10px;color:var(--blue);display:flex;align-items:center;gap:8px}
+  .grp .cnt{font-size:11px;color:#9aa8bc}
+  .list{padding:0 20px;display:flex;flex-direction:column;gap:12px}
+  .list.top{padding-top:16px}
+  .pcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(30,50,80,.05)}
+  .pcard.click{cursor:pointer;transition:transform .12s ease}.pcard.click:active{transform:scale(.985)}
+  .pav{width:42px;height:42px;border-radius:50%;background:#eaf2fc;color:#1D5BA6;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0}
+  .pbody{flex:1;min-width:0}
+  .pname{font-size:15px;font-weight:800;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .rankb{font-size:10.5px;font-weight:700;color:var(--sub);background:#eef2f7;padding:2px 8px;border-radius:6px}
+  .adminb{font-size:10px;font-weight:700;color:#fff;background:var(--blue);padding:2px 8px;border-radius:6px}
+  .pmeta{font-size:11.5px;color:var(--sub);font-weight:500;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pgo{color:#c3cedd;font-size:16px;flex-shrink:0}
+  .empty{margin:24px 20px;padding:26px;text-align:center;color:#9aa8bc;font-size:13px;font-weight:600;background:var(--card);border:1px solid var(--line);border-radius:16px}
+  .loading{text-align:center;padding:40px;color:#9aa8bc;font-size:13px;font-weight:600}
+  .lbl{font-size:12px;font-weight:800;color:#9aa8bc;letter-spacing:.5px;padding:22px 24px 12px}
+  .dcard{margin:16px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:4px 16px;box-shadow:0 2px 8px rgba(30,50,80,.05)}
+  .drow{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid #f2f5f9}
+  .drow:last-child{border-bottom:none}
+  .dk{font-size:12.5px;color:var(--sub);font-weight:600}
+  .dv{font-size:13.5px;font-weight:700;text-align:right}
+  .permrow{display:flex;gap:8px;flex-wrap:wrap;padding:14px 20px 0}
+  .permchip{font-size:12px;font-weight:700;padding:7px 13px;border-radius:20px;border:1px solid var(--line);background:var(--card);color:#c3cedd}
+  .permchip.on{background:#e7f5ee;color:#1b8a5a;border-color:#bfe6d2}
+  .banner{margin:14px 20px 0;padding:11px 14px;border-radius:12px;font-size:11.5px;font-weight:600;line-height:1.5}
+  .banner.info{background:#eef4fc;border:1px solid #d6e4f6;color:var(--blue-d)}
+  .banner.err{background:#fdecea;border:1px solid #f5c6c0;color:#a5342a}
+  .rtabs{display:flex;gap:6px;overflow-x:auto;padding:14px 20px 4px}
+  .rtab{flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid var(--line);background:var(--card);color:var(--sub);font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .rtab.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  .rcontent{margin:14px 20px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 18px;box-shadow:0 2px 8px rgba(30,50,80,.05);font-size:13.5px;line-height:1.75;color:var(--ink)}
+  .rcontent h1{font-size:17px;font-weight:800;margin:2px 0 12px}
+  .rcontent h2{font-size:14.5px;font-weight:800;margin:18px 0 8px;color:var(--blue)}
+  .rcontent p{margin:0 0 9px}
+  .rcontent table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.5px}
+  .rcontent th{background:#eef2f7;padding:7px 8px;text-align:left;font-weight:700;border-bottom:1px solid var(--line)}
+  .rcontent td{padding:7px 8px;border-bottom:1px solid #f2f5f9}
+</style>
+<script src="auth-guard.js"></script>
+</head>
+<body>
+  <div class="phone"><div id="app" class="scr"><div class="loading">불러오는 중…</div></div></div>
+
+<script type="module">
+const _uInitial=(function(){try{var a=JSON.parse(localStorage.getItem('jh_login_perms')||'null');return (a&&a.name)?a.name.slice(0,1):'·';}catch(e){return '·';}})();
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, onSnapshot, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+const firebaseConfig = {
+  apiKey:"AIzaSyCyQxBJ_ftfM0ImBXubmqD5gfzFR54iPmE", authDomain:"p4ph2-fab-506a7.firebaseapp.com",
+  projectId:"p4ph2-fab-506a7", storageBucket:"p4ph2-fab-506a7.firebasestorage.app",
+  messagingSenderId:"36946317914", appId:"1:36946317914:web:c6ad5f3a1b98130c99fe63"
+};
+const app=initializeApp(firebaseConfig); const db=getFirestore(app); const auth=getAuth(app);
+
+let users=[], loadError='';
+// 초기 뷰: URL ?v=org|admin|rules
+const params=new URLSearchParams(location.search);
+let curView=params.get('v')==='admin'?'admin':params.get('v')==='rules'?'rules':'org';
+let detailId=null;
+let rules=[], rulesLoaded=false, rulesLoading=false, rulesError='', rulesActiveIdx=0;
+
+const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const $app=()=>document.getElementById('app');
+const initial=n=>(n||'?').slice(0,1);
+const RANK_ORDER=['대표','부사장','전무','상무','이사','부장','차장','과장','대리','주임','사원'];
+const rankIdx=r=>{const i=RANK_ORDER.findIndex(x=>(r||'').includes(x));return i<0?99:i;};
+
+function nav(v,id){ curView=v; detailId=id||null; history.pushState({v,id:id||null},''); render(); window.scrollTo(0,0); }
+function showDetail(id){ nav('adminD',id); }
+window.showDetail=showDetail;
+window.goBack=function(){ history.back(); };
+window.goHome=function(){ location.href='home.html'; };
+window.goAccount=function(){ location.href='account.html'; };
+window.addEventListener('popstate',e=>{ const st=e.state||{v:curView,id:null}; curView=st.v; detailId=st.id||null; render(); window.scrollTo(0,0); });
+
+function render(){
+  if(loadError){ $app().innerHTML=topBar('홈','goHome()')+`<div class="banner err">데이터를 불러오지 못했습니다: ${esc(loadError)}<br>포털 로그인 세션이 필요할 수 있습니다.</div>`; return; }
+  ({org:renderOrg,admin:renderAdmin,adminD:renderAdminDetail,rules:renderRules}[curView]||renderOrg)();
+}
+function topBar(label,onclick){ return `<div class="top"><button class="back" onclick="${onclick||'goBack()'}">← ${label}</button><div class="avatar" onclick="goAccount()">${_uInitial}</div></div>`; }
+
+/* 조직도 — 대표 최상단(부서 표시 없음) → 지정 부서 순서 → 부서 내 사번 순 (사번 없는 인원은 부서 맨 뒤) */
+const ORG_DEPT_ORDER=['사업본부','경영지원본부','경영총무팀','현장관리팀','인력배치팀','guest','미지정'];
+const isTop=u=>u.name==='송지훈'||(u.rank||'').trim()==='대표';
+const empKey=u=>String(u.empNo==null?'':u.empNo).trim();
+const cmpEmp=(a,b)=>{
+  const x=empKey(a), y=empKey(b);
+  if(x&&!y) return -1; if(!x&&y) return 1;
+  const c=x.localeCompare(y,undefined,{numeric:true});
+  return c||rankIdx(a.rank)-rankIdx(b.rank)||String(a.name||'').localeCompare(String(b.name||''),'ko');
+};
+// 지정 순서에 없는 부서는 guest 뒤·미지정 앞에 가나다순으로 배치
+const deptRank=d=>{
+  const i=ORG_DEPT_ORDER.indexOf(d);
+  if(i>=0) return d==='미지정'?1e6:i;
+  return ORG_DEPT_ORDER.indexOf('guest')+1;
+};
+const orgCard=u=>`<div class="pcard"><div class="pav">${esc(initial(u.name))}</div>
+  <div class="pbody"><div class="pname">${esc(u.name||'')} ${u.rank?`<span class="rankb">${esc(u.rank)}</span>`:''}${u.admin?'<span class="adminb">관리자</span>':''}</div>
+  <div class="pmeta">${u.empNo?'사번 '+esc(u.empNo):''}${u.email?' · '+esc(u.email):''}</div></div></div>`;
+function renderOrg(){
+  const tops=users.filter(isTop).sort(cmpEmp);
+  const byDept={};
+  users.filter(u=>!isTop(u)).forEach(u=>{
+    let d=(u.dept||'').trim(); if(!d||d==='(미지정)') d='미지정';
+    (byDept[d]=byDept[d]||[]).push(u);
+  });
+  const depts=Object.keys(byDept)
+    .sort((a,b)=>deptRank(a)-deptRank(b)||a.localeCompare(b,'ko'))
+    .map(d=>({d,mem:byDept[d].sort(cmpEmp)}));
+  const topHtml=tops.length?`<div class="list top">${tops.map(orgCard).join('')}</div>`:'';
+  const html=depts.map(({d,mem})=>`<div class="grp">🏢 ${esc(d)} <span class="cnt">${mem.length}명</span></div>
+    <div class="list">${mem.map(orgCard).join('')}</div>`).join('');
+  $app().innerHTML=topBar('홈','goHome()')+`
+    <div class="hello"><div class="name">🏢 조직도</div><div class="sub">전체 ${users.length}명 · ${depts.length}개 부서</div></div>
+    ${users.length?topHtml+html:'<div class="empty">등록된 임직원이 없습니다.</div>'}`;
+}
+
+/* Portal 관리 — 계정·권한 */
+function renderAdmin(){
+  const sorted=[...users].sort((a,b)=>(b.admin?1:0)-(a.admin?1:0)||String(a.empNo||'').localeCompare(String(b.empNo||''),undefined,{numeric:true}));
+  const adminCnt=users.filter(u=>u.admin).length;
+  const cards=sorted.map(u=>`<div class="pcard click" onclick="showDetail('${u.uid||u.id}')"><div class="pav">${esc(initial(u.name))}</div>
+    <div class="pbody"><div class="pname">${esc(u.name||'')} ${u.rank?`<span class="rankb">${esc(u.rank)}</span>`:''}${u.admin?'<span class="adminb">관리자</span>':''}</div>
+    <div class="pmeta">${esc(u.dept||'-')}${u.email?' · '+esc(u.email):''}</div></div><span class="pgo">›</span></div>`).join('');
+  $app().innerHTML=topBar('홈','goHome()')+`
+    <div class="hello"><div class="name">⚙️ Portal 관리</div><div class="sub">계정 ${users.length} · 관리자 ${adminCnt}</div></div>
+    <div class="banner info">계정을 누르면 접근 권한(기획·인사·전자결재·PJT)을 확인할 수 있습니다.</div>
+    ${users.length?`<div class="list top">${cards}</div>`:'<div class="empty">등록된 계정이 없습니다.</div>'}`;
+}
+function renderAdminDetail(){
+  const u=users.find(x=>(x.uid||x.id)===detailId);
+  if(!u){ $app().innerHTML=topBar('Portal 관리','goBack()')+'<div class="empty">계정을 찾을 수 없습니다.</div>'; return; }
+  const p=u.perms||{};
+  const perms=[['기획',p.plan],['인사',p.hr],['전자결재',p.edoc],['PJT',p.pjt]];
+  const info=[['부서',u.dept],['직급',u.rank],['사번',u.empNo],['이메일',u.email],['전화',u.phone]].filter(x=>x[1]);
+  $app().innerHTML=topBar('Portal 관리','goBack()')+`
+    <div class="hello"><div class="name" style="font-size:22px">${esc(u.name||'')} ${u.admin?'<span class="adminb">관리자</span>':''}</div><div class="sub">${esc(u.dept||'')}${u.rank?' · '+esc(u.rank):''}</div></div>
+    <div class="lbl">기본 정보</div>
+    <div class="dcard">${info.map(([k,v])=>`<div class="drow"><span class="dk">${k}</span><span class="dv">${esc(v)}</span></div>`).join('')||'<div class="drow"><span class="dk">정보</span><span class="dv">없음</span></div>'}</div>
+    <div class="lbl">접근 권한</div>
+    <div class="permrow">${u.admin?'<span class="permchip on">전체 (관리자)</span>':perms.map(([k,on])=>`<span class="permchip ${on?'on':''}">${on?'✓ ':''}${k}</span>`).join('')}</div>`;
+}
+
+/* 회사내규 열람 — PC(index.html)의 company_policies 컬렉션·마크다운 렌더러와 동일 */
+function mdToHtmlSimpleM(md){
+  const e2=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const lines=(md||'').replace(/\r\n/g,'\n').split('\n');
+  let html=''; let i=0;
+  const unesc=t=>t.replace(/\\([\\`*_{}\[\]()#+\-.!~|])/g,'$1');
+  const inline=t=>e2(unesc(t)).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  while(i<lines.length){
+    const line=lines[i];
+    if(/^\s*$/.test(line)){ i++; continue; }
+    if(line.startsWith('# ')){ html+=`<h1>${inline(line.slice(2))}</h1>`; i++; continue; }
+    if(line.startsWith('## ')){ html+=`<h2>${inline(line.slice(3))}</h2>`; i++; continue; }
+    if(/^\|.*\|\s*$/.test(line) && lines[i+1] && /^\|[\s:|-]+\|\s*$/.test(lines[i+1])){
+      const rows=[]; let j=i;
+      while(j<lines.length && /^\|.*\|\s*$/.test(lines[j])){ rows.push(lines[j]); j++; }
+      const cells=r=>r.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim());
+      const head=cells(rows[0]);
+      const body=rows.slice(2).map(cells);
+      html+='<table><thead><tr>'+head.map(h=>`<th>${inline(h)}</th>`).join('')+'</tr></thead><tbody>'
+        +body.map(r=>'<tr>'+r.map(c=>`<td>${inline(c)}</td>`).join('')+'</tr>').join('')+'</tbody></table>';
+      i=j; continue;
+    }
+    html+=`<p>${inline(line)}</p>`; i++;
+  }
+  return html;
+}
+async function loadRulesM(){
+  if(rulesLoaded||rulesLoading) return;
+  rulesLoading=true;
+  try{
+    const qs=await getDocs(query(collection(db,'company_policies'), orderBy('order')));
+    const list=[]; qs.forEach(d=>list.push({id:d.id,...d.data()}));
+    rules=list; rulesLoaded=true;
+  }catch(e){ rulesError=e.code||e.message; }
+  rulesLoading=false;
+  if(curView==='rules') render();
+}
+window.rulesPick=function(idx){ rulesActiveIdx=idx; render(); };
+function renderRules(){
+  if(!rulesLoaded && !rulesLoading && !rulesError) loadRulesM();
+  const tabsHtml=rules.map((r,idx)=>`<button class="rtab ${idx===rulesActiveIdx?'on':''}" onclick="rulesPick(${idx})">${esc(r.title||r.id)}</button>`).join('');
+  const doc=rules[rulesActiveIdx];
+  const body = rulesError ? `<div class="empty">불러오기 실패: ${esc(rulesError)}</div>`
+    : rulesLoading || !rulesLoaded ? '<div class="loading">불러오는 중…</div>'
+    : !rules.length ? '<div class="empty">등록된 내규가 없습니다.</div>'
+    : `<div class="rcontent">${mdToHtmlSimpleM(doc?.markdown||'')}</div>`;
+  $app().innerHTML=topBar('홈','goHome()')+`
+    <div class="hello"><div class="name">📖 내규 열람</div><div class="sub">회사 취업규칙·제규정 열람</div></div>
+    ${rules.length?`<div class="rtabs">${tabsHtml}</div>`:''}
+    ${body}`;
+}
+
+function sub(coll,setter){
+  onSnapshot(collection(db,coll), snap=>{ const arr=[]; snap.forEach(d=>arr.push({id:d.id,...d.data()})); setter(arr); render(); },
+    err=>{ loadError=err.code||err.message; render(); });
+}
+let _authBooted=false;
+onAuthStateChanged(auth, ()=>{
+  if(_authBooted) return; _authBooted=true;
+  sub('portal_users',a=>{users=a;});
+
+  history.replaceState({v:curView,id:null},'');
+  render();
+});
+</script>
+</body>
+</html>
+
+
