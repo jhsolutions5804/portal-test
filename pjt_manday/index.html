@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260818 · ver: 1.1.2 · 월간 공수 집계 (전체 PJT 통합) · r5: 근로자 마스터 관리에 퇴사처리/재직전환 기능 추가 -->
+<!DOCTYPE html><!-- build: 20260930 · ver: 1.2.0 · 금액(팀 단가·일당)을 관리자 전용 문서 master_worker_private에서 읽고 저장(옛 위치 master_workers는 읽기 폴백) · 이전: 20260818 ver 1.1.2 · 월간 공수 집계 (전체 PJT 통합) · r5: 근로자 마스터 관리에 퇴사처리/재직전환 기능 추가 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -470,6 +470,11 @@ async function loadMasterWorkers(){
   try{
     const snap=await getDocs(collection(db,'master_workers'));
     _masterList=[]; snap.forEach(d=>_masterList.push(Object.assign({id:d.id},d.data())));
+    // 금액(팀 단가·일당)은 관리자 전용 문서에서 읽는다. 없으면 옛 위치(master_workers) 값을 그대로 사용.
+    try{
+      const ps=await getDocs(collection(db,'master_worker_private')); const pv={}; ps.forEach(d=>{ pv[d.id]=d.data(); });
+      _masterList.forEach(function(x){ const q=pv[x.id]; if(!q) return; if(q.teamRate!=null) x.teamRate=q.teamRate; if(q.dailyRate!=null) x.dailyRate=q.dailyRate; });
+    }catch(e){}
   }catch(e){ _masterList=[]; }
   renderMasterTable();
   renderTeamTable();
@@ -554,7 +559,7 @@ window.editTeamRate=async function(leaderId, leaderName, currentRate){
   if(input===null) return;
   const rate=parseMoney(input);
   try{
-    await setDoc(doc(db,'master_workers',leaderId), {teamRate:rate}, {merge:true});
+    await setDoc(doc(db,'master_worker_private',leaderId), {teamRate:rate}, {merge:true});   // 금액은 관리자 전용 문서에 저장
     await loadMonth();
   }catch(e){ alert('저장 실패: '+e.message); }
 };
@@ -590,7 +595,8 @@ window.saveMaster=async function(){
   const btn=document.getElementById('mf-save-btn'); btn.disabled=true; btn.textContent='저장 중...';
   try{
     const id=_masterEditing?_masterEditing.id:(name+'_'+birth).replace(/[^a-zA-Z0-9가-힣_]/g,'');
-    await setDoc(doc(db,'master_workers',id), { name, birth, leaderId, dailyRate }, {merge:true});
+    await setDoc(doc(db,'master_workers',id), { name, birth, leaderId }, {merge:true});
+    await setDoc(doc(db,'master_worker_private',id), { dailyRate }, {merge:true});   // 일당은 관리자 전용 문서에 저장
     closeMasterForm();
     await loadMasterWorkers();
   }catch(e){ alert('저장 실패: '+e.message); }
@@ -688,7 +694,8 @@ window.confirmMigrate=async function(){
   try{
     // 마스터 ID: 첫 번째로 발견된 프로젝트의 로컬 ID를 그대로 재사용 (그 프로젝트의 기존 이력 데이터 보존)
     const masterId=items[0].id;
-    await setDoc(doc(db,'master_workers',masterId), { name, birth, leaderId, dailyRate }, {merge:true});
+    await setDoc(doc(db,'master_workers',masterId), { name, birth, leaderId }, {merge:true});
+    if(dailyRate) await setDoc(doc(db,'master_worker_private',masterId), { dailyRate }, {merge:true});   // 일당은 관리자 전용 문서에 저장
     // 나머지 프로젝트(로컬 ID가 마스터ID와 다른 경우): 마스터ID로 새 문서를 만들고 기존 로컬 문서는 삭제
     for(const it of items){
       if(it.id===masterId) continue; // 첫 항목은 이미 마스터ID와 동일
