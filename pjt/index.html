@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- PJT module build: 20260930 · ver 4.10.10 · 공수표 월 중 퇴사자 누락 수정(월초 기준 대상자 + 일자별 재직 판정) / 직전: ver 4.10.9 · 공수 집계표(이달 공수 집계표) 탭 목록도 퇴사자 제외되도록 getActiveWorkersForDate 적용 (openKongsuModal/renderKongsuTabs/renderKongsuSheet) -->
+<!DOCTYPE html><!-- PJT module build: 20260930b · ver 4.10.11 · PC 본문 하단 잘림 방지(.app min-height:0) / 직전: ver 4.10.10 · 공수표 월 중 퇴사자 누락 수정(월초 기준 대상자 + 일자별 재직 판정) / 직전: ver 4.10.9 · 공수 집계표(이달 공수 집계표) 탭 목록도 퇴사자 제외되도록 getActiveWorkersForDate 적용 (openKongsuModal/renderKongsuTabs/renderKongsuSheet) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -324,7 +324,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
   .pc-topnav-date{font-size:11px;color:rgba(255,255,255,.5)}
 
   /* ── 앱 메인 영역 ── */
-  .app{flex:1;max-width:none !important;margin:0 !important;
+  .app{flex:1;min-height:0;max-width:none !important;margin:0 !important;
     overflow-y:auto;display:flex;flex-direction:column;background:#f0f4f8}
   .content{flex:1;padding:20px 28px;overflow-y:auto;max-width:1440px;margin:0 auto;width:100%;box-sizing:border-box}
 
