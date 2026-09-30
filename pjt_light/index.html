@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260930c · ver: 3.8.1 · PC 본문 하단 잘림(프로젝트 종료 버튼) 수정, 발주처·시공사·협력사 한 줄 배치 / 직전: ver 3.8.0 · 프로젝트 기본정보 통일(PJT 코드·내용·현장명·발주처·시공사·협력사) — 기획↔PJT관리 양방향 반영 / 직전: ver 3.7.0 · 경량PJT 공정표 PPT 추가 + 일정관리 PC 레이아웃 통일 / 직전: ver 3.6.0 · 공사일보 조회 모달 중앙정렬+목록 간소화(날짜만), 설정에서 현장정보 전체 수정 가능, 근태관리 탭 날짜 클릭 이동, 사용장비 하드코딩(FAB 지게차번호) 제거→자유입력 · 이전: 20260925a ver 3.5.0 -->
+<!DOCTYPE html><!-- GUEST 사번(사번이 guest로 시작): 일정 등록·수정·삭제·완료 체크 불가(함수 차단, 서버 보안규칙도 차단) · 이전:  build: 20260930c · ver: 3.8.1 · PC 본문 하단 잘림(프로젝트 종료 버튼) 수정, 발주처·시공사·협력사 한 줄 배치 / 직전: ver 3.8.0 · 프로젝트 기본정보 통일(PJT 코드·내용·현장명·발주처·시공사·협력사) — 기획↔PJT관리 양방향 반영 / 직전: ver 3.7.0 · 경량PJT 공정표 PPT 추가 + 일정관리 PC 레이아웃 통일 / 직전: ver 3.6.0 · 공사일보 조회 모달 중앙정렬+목록 간소화(날짜만), 설정에서 현장정보 전체 수정 가능, 근태관리 탭 날짜 클릭 이동, 사용장비 하드코딩(FAB 지게차번호) 제거→자유입력 · 이전: 20260925a ver 3.5.0 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -772,6 +772,7 @@ const params = new URLSearchParams(location.search);
 const pjtId = params.get('pjtId');
 // ⚠️ isAdmin은 더 이상 URL 파라미터(?admin=1)로 판단하지 않는다 — 아래 접근 검증에서 portal_users.admin 값을 확인한 뒤에만 true로 바뀐다.
 let isAdmin=false;
+let isGuest=false;   // GUEST 사번(사번이 guest로 시작): 일정은 읽기 전용
 const DEFAULT_STAGES = ['반입','설치','시운전'];
 
 function toast(msg){
@@ -814,6 +815,7 @@ onAuthStateChanged(auth, async function(user){
     const ok=!!(uData && uData.status==='approved' && (uData.admin===true || (uData.perms && uData.perms.pjt===true)));
     if(!ok){ showAccessDenied('PJT 관리 접근 권한이 없습니다. 관리자에게 요청해주세요.'); return; }
     isAdmin=!!(uData && uData.admin===true);
+    isGuest=!!(uData && typeof uData.empNo==='string' && /^guest/i.test(uData.empNo.trim()));
     loginUserLabel=uData?((uData.name||'')+' '+(uData.rank||'')).trim():'';
     currentUid=user.uid;
     currentUserName=uData?(uData.name||''):'';
@@ -1852,7 +1854,7 @@ function renderSchedDaily(){
     titleEl.textContent=(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+dowKo[d.getDay()]+')'+(dk===todayKey?' · 오늘':'')+(holidayName?' · '+holidayName:'');
   }
   var addBtn=document.getElementById('sched-daily-addbtn');
-  if(addBtn) addBtn.style.display=isAdmin?'':'none';
+  if(addBtn) addBtn.style.display=(isAdmin&&!isGuest)?'':'none';
   var items=(calCache[dk]||[]).slice().sort(function(a,b){ return (a.stime||'').localeCompare(b.stime||''); });
   var html='';
   if(items.length){
@@ -2054,7 +2056,8 @@ function schedGetTime(hId,mId){ return document.getElementById(hId).value+':'+do
 function schedParseTime(t){ if(!t) return {h:0,m:0}; const p=(t+':00').split(':'); return {h:parseInt(p[0])||0, m:parseInt(p[1])||0}; }
 
 window.openSchedForm=function(dk){
-  schedEditing=null;
+  if(isGuest){ alert('GUEST 계정은 일정을 등록·수정·삭제할 수 없습니다. (조회만 가능)'); return; }
+    schedEditing=null;
   document.getElementById('sf-title').textContent='📅 일정 등록';
   document.querySelector('#sched-modal .btn-primary').textContent='등록하기';
   document.getElementById('s-text').value='';
@@ -2099,7 +2102,8 @@ window.openSchedDetail=function(id){
 };
 window.closeSchedDetail=function(){ document.getElementById('sched-detail-modal').classList.remove('on'); };
 window.editSchedFromDetail=function(){
-  const item=schedDetailItem; if(!item) return;
+  if(isGuest){ alert('GUEST 계정은 일정을 등록·수정·삭제할 수 없습니다. (조회만 가능)'); return; }
+    const item=schedDetailItem; if(!item) return;
   closeSchedDetail();
   schedEditing=item;
   document.getElementById('sf-title').textContent='✏️ 일정 수정';
@@ -2126,7 +2130,8 @@ window.deleteSchedFromDetail=function(){
 };
 
 window.saveSched=async function(){
-  let sdate=document.getElementById('s-sdate').value;
+  if(isGuest){ alert('GUEST 계정은 일정을 등록·수정·삭제할 수 없습니다. (조회만 가능)'); return; }
+    let sdate=document.getElementById('s-sdate').value;
   let edate=document.getElementById('s-edate').value||sdate;
   if(!sdate){ sdate=getToday(); }
   if(edate<sdate) edate=sdate;
@@ -2157,14 +2162,16 @@ window.saveSched=async function(){
   finally{ btn.disabled=false; btn.textContent='등록하기'; }
 };
 window.deleteSched=async function(id){
-  if(!confirm('이 일정을 삭제할까요?')) return;
+  if(isGuest){ alert('GUEST 계정은 일정을 등록·수정·삭제할 수 없습니다. (조회만 가능)'); return; }
+    if(!confirm('이 일정을 삭제할까요?')) return;
   try{
     await deleteDoc(doc(db,'pjt_registry',pjtId,'schedules',id));
     await loadSchedMonth();
   }catch(e){ toast('삭제 실패: '+e.message); }
 };
 window.toggleSchedDone=async function(id, ev){
-  if(ev){ ev.stopPropagation(); }
+  if(isGuest){ alert('GUEST 계정은 일정을 등록·수정·삭제할 수 없습니다. (조회만 가능)'); return; }
+    if(ev){ ev.stopPropagation(); }
   var item=null;
   for(var k in calCache){
     var found=(calCache[k]||[]).find(function(x){ return x.id===id; });
