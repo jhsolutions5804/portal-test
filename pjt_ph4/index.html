@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html><!-- GUEST 사번: 일정 등록·수정·삭제·완료 체크 불가(화면 숨김 + 저수준 쓰기 차단, 서버 보안규칙도 차단) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -989,6 +989,7 @@ window._accessGatePromise=new Promise(function(resolve){
       const uData=uSnap.exists()?uSnap.data():null;
       const ok=!!(uData && uData.status==='approved' && (uData.admin===true || (uData.perms && uData.perms.pjt===true)));
       if(!ok){ _denyGateAccess('PJT 관리 접근 권한이 없습니다. 관리자에게 요청해주세요.'); resolve(false); return; }
+      window._isGuest=!!(uData && typeof uData.empNo==='string' && /^guest/i.test(uData.empNo.trim()));   // GUEST 사번: 일정은 읽기 전용
       window._accessGranted=true;
       _gateOverlay.remove();
       resolve(true);
@@ -1226,11 +1227,13 @@ window._usItemsForKey = function(key) {
 
 // Firestore 저장
 window._usSave = async function(data) {
+  if(window._isGuest){ alert('GUEST 계정은 일정을 등록·수정·삭제할 수 없습니다. (조회만 가능)'); return; }
   await addDoc(collection(db, 'ph4_schedules'), { ...data, savedAt: serverTimestamp() });
 };
 
 // 일정 완료 상태 저장 (문서 done 필드) — 다중일 일정도 문서 단위라 렌더 날짜와 무관하게 공유됨
 window._usSetDone = async function(id, isDone) {
+  if(window._isGuest){ alert('GUEST 계정은 일정을 등록·수정·삭제할 수 없습니다. (조회만 가능)'); return; }
   try {
     await setDoc(doc(db, 'ph4_schedules', id), { done: !!isDone, doneUpdatedAt: serverTimestamp() }, { merge:true });
   } catch(e) {
@@ -1240,11 +1243,13 @@ window._usSetDone = async function(id, isDone) {
 
 // Firestore 삭제
 window._usDelete = async function(id) {
+  if(window._isGuest){ alert('GUEST 계정은 일정을 등록·수정·삭제할 수 없습니다. (조회만 가능)'); return; }
   await deleteDoc(doc(db, 'ph4_schedules', id));
 };
 
 // Firestore 수정 (setDoc으로 덮어쓰기)
 window._usUpdate = async function(id, data) {
+  if(window._isGuest){ alert('GUEST 계정은 일정을 등록·수정·삭제할 수 없습니다. (조회만 가능)'); return; }
   await setDoc(doc(db, 'ph4_schedules', id), { ...data, savedAt: serverTimestamp() });
 };
 
@@ -2146,7 +2151,7 @@ function renderCalDetail(key){
   const LEAVE_BG={'annual':'#ffeaea','half-am':'#fff3e0','half-pm':'#f3f0ff'};
   const body=document.getElementById('cal-detail-body');
   window._calDetailItems=allItems;
-  const _addBtn='<button class="add-sched-btn" onclick="openUsForm(\''+key+'\')">＋ 이 날 일정 등록</button>';
+  const _addBtn=window._isGuest?'':'<button class="add-sched-btn" onclick="openUsForm(\''+key+'\')">＋ 이 날 일정 등록</button>';
   if(!allItems.filter(i=>i.tag!=='leave').length&&!leaves.length){
     body.innerHTML=_addBtn+'<div class="cal-detail-empty">등록된 일정이 없어요</div>';
   } else {
