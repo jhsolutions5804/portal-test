@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260930b · ver: 1.1.0 · 모바일·PC 화면 다듬기(버튼 글자 꺾임·큰 금액 잘림·긴 프로젝트명 정리, 포털 안에서 열릴 때 홈 버튼 숨김) · 이전: 20260930a ver 1.0.0 · 내 팀 공수표(팀장 전용) — 관리자가 연명부에서 지정한 팀(portal_users.teamLeaderIds)의 월별 공수·개인별 공수표·팀 단가·노무비 조회 -->
+<!DOCTYPE html><!-- build: 20260930c · ver: 1.2.0 · 관리자 계정은 팀 연결 없이 전체 팀 조회(팀이 여러 개면 전체 합계 표시), 팀장 계정은 지정된 자기 팀만 · 이전: 20260930b ver 1.1.0 · 모바일·PC 화면 다듬기(버튼 글자 꺾임·큰 금액 잘림·긴 프로젝트명 정리, 포털 안에서 열릴 때 홈 버튼 숨김) · 이전: 20260930a ver 1.0.0 · 내 팀 공수표(팀장 전용) — 관리자가 연명부에서 지정한 팀(portal_users.teamLeaderIds)의 월별 공수·개인별 공수표·팀 단가·노무비 조회 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -19,6 +19,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
 .btn.pri{background:#1D5BA6;color:#fff;border-color:#1D5BA6;font-weight:700}
 .monthbar{display:flex;align-items:center;justify-content:center;gap:14px;background:#fff;border-radius:14px;padding:10px;margin-bottom:12px;box-shadow:0 2px 10px rgba(30,60,120,.06)}
 .monthbar b{font-size:17px;min-width:110px;text-align:center;color:#1A2540}
+.sumall{display:grid;grid-template-columns:1fr 1.35fr;gap:8px;background:#fff;border-radius:16px;padding:12px;margin-bottom:14px;box-shadow:0 2px 12px rgba(30,60,120,.07)}
 .team{background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 12px rgba(30,60,120,.07)}
 .team-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:8px}
 .team-nm{font-size:16px;font-weight:800;color:#1A2540}
@@ -55,6 +56,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
   <div class="top"><div><div class="title">👥 내 팀 공수표</div><div class="sub" id="who"></div></div><button class="btn sm" id="back-btn" onclick="goBack()">← 홈</button></div>
   <div class="monthbar"><button class="btn sm" onclick="mShift(-1)">‹</button><b id="mlabel">—</b><button class="btn sm" onclick="mShift(1)">›</button></div>
   <div id="warn"></div>
+  <div id="summary"></div>
   <div id="teams"><div class="loading">불러오는 중...</div></div>
 </div>
 <div class="modal" id="sheet-modal"><div class="sheet"><div class="sheet-h"><b id="sheet-title" style="font-size:15px"></b><button class="btn sm" onclick="closeSheet()">닫기 ✕</button></div><div id="sheet-body"></div></div></div>
@@ -82,7 +84,7 @@ const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
 const pad = n => String(n).padStart(2,'0');
 const won = n => (Math.round(n)||0).toLocaleString('ko-KR');
 
-let teamIds = [], userName = '', Y = new Date().getFullYear(), M = new Date().getMonth(), seq = 0, view = null;
+let teamIds = [], isAdminView = false, userName = '', Y = new Date().getFullYear(), M = new Date().getMonth(), seq = 0, view = null;
 
 function gate(icon, title, msg){
   $('init').style.display='none'; $('app').style.display='none';
@@ -100,9 +102,10 @@ onAuthStateChanged(auth, async user => {
     const u = snap.exists() ? snap.data() : null;
     if (!u || u.status !== 'approved') { gate('🔒','접근할 수 없습니다','승인된 계정이 아닙니다.'); return; }
     const ids = Array.isArray(u.teamLeaderIds) ? u.teamLeaderIds.filter(x=>typeof x==='string' && x) : [];
-    if (!ids.length) { gate('👥','팀장 전용 화면입니다','팀장으로 지정된 계정에서만 볼 수 있어요.<br>(관리자는 PJT관리 › 근로자 연명부 › 월간 공수를 이용해 주세요. 팀장 지정은 관리자가 연명부에서 합니다.)'); return; }
+    isAdminView = u.admin === true;                       // 관리자: 팀 연결 없이 전체 팀 조회
+    if (!ids.length && !isAdminView) { gate('👥','팀장 전용 화면입니다','팀장으로 지정된 계정에서만 볼 수 있어요.<br>(팀장 지정은 관리자가 연명부 또는 모바일 관리에서 합니다.)'); return; }
     teamIds = ids; userName = u.name || '';
-    $('who').textContent = (u.name||'') + (u.rank?' '+u.rank:'') + ' · 팀 '+ids.length+'개';
+    $('who').textContent = (u.name||'') + (u.rank?' '+u.rank:'') + (isAdminView ? ' · 관리자 (전체 팀)' : ' · 팀 '+ids.length+'개');
     $('init').style.display='none'; $('gate').style.display='none'; $('app').style.display='block';
     await loadMonth();
   }catch(e){ gate('⚠️','불러오지 못했습니다',esc(e.message)); }
@@ -121,17 +124,23 @@ async function loadMonth(){
   $('teams').innerHTML = '<div class="loading">불러오는 중...</div>'; $('warn').innerHTML='';
   try{
     const lo=Y+'-'+pad(M+1)+'-01', hi=Y+'-'+pad(M+1)+'-31', failed=[];
-    // 1) 내 팀: 팀장 + 팀원 (master_workers), 팀 단가 (team_rates — 규칙상 내 팀 것만 조회 가능)
+    // 1) 팀 목록: 관리자 = 전체 재직 팀장, 팀장 = 관리자가 지정한 팀(master_workers), 팀 단가는 team_rates (규칙: 관리자 전체 / 팀장은 자기 팀만)
     const teams=[];
-    for (const lid of teamIds){
-      const ld = await getDoc(doc(db,'master_workers',lid));
-      if (!ld.exists()){ failed.push('팀장 정보('+lid+')'); continue; }
-      const ms = await getDocs(query(collection(db,'master_workers'), where('leaderId','==',lid)));
-      const members=[]; ms.forEach(d=>members.push(Object.assign({id:d.id}, d.data())));
-      members.sort((a,b)=>(a.name||'').localeCompare(b.name||'','ko'));
-      let rate=null, rateErr=false;
-      try{ const rd=await getDoc(doc(db,'team_rates',lid)); if (rd.exists() && rd.data().teamRate!=null) rate = Number(rd.data().teamRate)||0; }catch(e){ rateErr=true; }
-      teams.push({ leader:Object.assign({id:lid}, ld.data()), members, rate, rateErr });
+    const rateOf = async lid => { try{ const rd=await getDoc(doc(db,'team_rates',lid)); if (rd.exists() && rd.data().teamRate!=null) return { rate:Number(rd.data().teamRate)||0, err:false }; return { rate:null, err:false }; }catch(e){ return { rate:null, err:true }; } };
+    const byName = (a,b)=>(a.name||'').localeCompare(b.name||'','ko');
+    if (isAdminView){
+      const all=[]; const ms=await getDocs(collection(db,'master_workers')); ms.forEach(d=>all.push(Object.assign({id:d.id}, d.data())));
+      const leaders=all.filter(m=>!m.leaderId && !m.resigned).sort(byName);
+      for (const l of leaders){ const r=await rateOf(l.id); teams.push({ leader:l, members:all.filter(m=>m.leaderId===l.id).sort(byName), rate:r.rate, rateErr:r.err }); }
+    } else {
+      for (const lid of teamIds){
+        const ld = await getDoc(doc(db,'master_workers',lid));
+        if (!ld.exists()){ failed.push('팀장 정보('+lid+')'); continue; }
+        const ms = await getDocs(query(collection(db,'master_workers'), where('leaderId','==',lid)));
+        const members=[]; ms.forEach(d=>members.push(Object.assign({id:d.id}, d.data()))); members.sort(byName);
+        const r=await rateOf(lid);
+        teams.push({ leader:Object.assign({id:lid}, ld.data()), members, rate:r.rate, rateErr:r.err });
+      }
     }
     // 2) 프로젝트별 근로자 명단 + 그 달 공수
     const roster=[]; const names={fab:'P4 Ph2 (FAB)', sup:'P4 Ph4 (SUP)'};
@@ -166,7 +175,15 @@ async function loadMonth(){
   }catch(e){ if (my===seq) $('teams').innerHTML='<div class="empty">불러오기 실패: '+esc(e.message)+'</div>'; }
 }
 
+function renderSummary(){
+  const box=$('summary');
+  if (!view || view.length<2){ box.innerHTML=''; return; }
+  const md=view.reduce((a,v)=>a+v.md,0), priced=view.filter(v=>v.amount!=null), amt=priced.reduce((a,v)=>a+v.amount,0);
+  box.innerHTML='<div class="sumall"><div class="sumcell"><div class="l">전체 팀 공수 ('+view.length+'팀)</div><div class="v">'+md.toFixed(1)+'</div></div>'
+    +'<div class="sumcell"><div class="l">노무비 합계'+(priced.length<view.length?' (단가 있는 '+priced.length+'팀)':'')+'</div><div class="v money">'+won(amt)+'원</div></div></div>';
+}
 function renderTeams(failed){
+  renderSummary();
   $('warn').innerHTML = failed.length ? '<div class="note">⚠️ 일부 데이터를 불러오지 못해 집계에서 빠졌을 수 있습니다: '+failed.map(esc).join(', ')+'</div>' : '';
   if (!view.length){ $('teams').innerHTML='<div class="empty">표시할 팀이 없습니다.</div>'; return; }
   $('teams').innerHTML = view.map((v,ti)=>{
