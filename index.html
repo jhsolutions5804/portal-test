@@ -1079,6 +1079,7 @@ const PJT_SUBTABS=[
   ...PJT_FIXED_BASE.map(x=>({...x})),
   { key:'company', name:'회사 일정', emoji:'🏢', desc:'특정 프로젝트에 속하지 않는 회사 공통 일정', url:'' },
   { key:'pjt_manday', name:'월간 공수', emoji:'📊', desc:'전체 PJT 공수 집계', url:'pjt_manday/' },
+  { key:'pjt_roster', name:'근로자 연명부', emoji:'👷', desc:'인적사항 · 건강검진 · 자격/교육 관리 (관리자 전용)', url:'pjt_roster/' },
   { key:'pjt_ended', name:'종료 PJT', emoji:'🗄️', desc:'종료된 프로젝트 모아보기', url:'' },
 ];
 // 인사(hr) 하위 탭 — portal/hr 앱의 goTab() 키와 일치
@@ -1226,7 +1227,7 @@ function renderPjtHomeCards(){
   const el=document.getElementById('pjt-home-cards');
   if(!el) return;
   el.innerHTML='';
-  PJT_SUBTABS.filter(st=>st.key!=='pjt_home' && st.key!=='pjt_manday' && st.key!=='pjt_ended' && st.key!=='company').forEach(st=>{
+  PJT_SUBTABS.filter(st=>st.key!=='pjt_home' && st.key!=='pjt_manday' && st.key!=='pjt_roster' && st.key!=='pjt_ended' && st.key!=='company').forEach(st=>{
     const card=document.createElement('div');
     card.style.cssText='background:#fff;border:1px solid #dde4ef;border-radius:12px;padding:14px 16px;cursor:pointer;transition:.15s;flex-shrink:0;width:460px';
     card.onmouseover=function(){this.style.borderColor='var(--blue)';this.style.boxShadow='0 2px 10px rgba(0,0,0,.07)'};
@@ -2198,7 +2199,7 @@ var _pjtSettingsKey=null;
 window.openPjtSettings = async function(key, label){
   _pjtSettingsKey=key;
   const isLight=key.indexOf('reg_')===0;
-  const canEnd=key!=='pjt_home' && key!=='pjt_manday' && key!=='pjt_ended';
+  const canEnd=key!=='pjt_home' && key!=='pjt_manday' && key!=='pjt_roster' && key!=='pjt_ended';
   document.getElementById('new-pjt-title').textContent='⚙️ '+(label||key)+' 설정';
   ['np-name','np-site','np-client','np-desc','np-item','np-qty','np-start','np-url','np-progress','np-manday'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
@@ -2260,7 +2261,7 @@ window.savePjtSettings = async function(key){
 };
 
 window.endPjtFromSettings = async function(){
-  if(!_pjtSettingsKey || _pjtSettingsKey==='pjt_home' || _pjtSettingsKey==='pjt_manday' || _pjtSettingsKey==='pjt_ended') return;
+  if(!_pjtSettingsKey || _pjtSettingsKey==='pjt_home' || _pjtSettingsKey==='pjt_manday' || _pjtSettingsKey==='pjt_roster' || _pjtSettingsKey==='pjt_ended') return;
   var key=_pjtSettingsKey;
   var isLight=key.indexOf('reg_')===0;
   var name=document.getElementById('np-name').value.trim()||'이 프로젝트';
@@ -3152,7 +3153,7 @@ async function syncPjtSubtabsFromSettings(){
     }
     // ② 목록에 남아있는(=활성) 고정/일반 PJT의 이름·설명 동기화
     for(const st of PJT_SUBTABS){
-      if(st.key==='pjt_home'||st.key==='pjt_manday'||st.key==='pjt_ended'||st.key==='company') continue;
+      if(st.key==='pjt_home'||st.key==='pjt_manday'||st.key==='pjt_roster'||st.key==='pjt_ended'||st.key==='company') continue;
       try{
         const snap=await fs.getDoc(fs.doc(db,'pjt_settings',st.key));
         if(!snap.exists()) continue;
@@ -3207,7 +3208,7 @@ function renderMenu(){
         if(willOpen) grp.classList.add('open');
       };
       const sub=document.createElement('div'); sub.className='sb-sub';
-      SUBTABS[m.key].filter(st=>st.key!=='pjt_manday' || (me&&me.admin)).filter(st=>st.key!=='company').forEach(st=>{
+      SUBTABS[m.key].filter(st=>(st.key!=='pjt_manday' && st.key!=='pjt_roster') || (me&&me.admin)).filter(st=>st.key!=='company').forEach(st=>{
         const sbtn=document.createElement('button');
         sbtn.className='sb-subitem'; sbtn.dataset.nav=m.key; sbtn.dataset.sub=st.key;
         sbtn.innerHTML=`<span class="sdot">${st.emoji}</span><span>${st.name}</span>`;
@@ -3496,6 +3497,7 @@ function jhMakeFrame(name, fullUrl){
 
 function openModule(m, tab, overrideUrl){
   if(tab==='pjt_manday' && !(me&&me.admin)){ toast('월간 공수는 관리자만 접근할 수 있습니다.'); return; }
+if(tab==='pjt_roster' && !(me&&me.admin)){ toast('근로자 연명부는 관리자만 접근할 수 있습니다.'); return; }
   if((m.key==='plan'||m.key==='hr') && !(me&&me.admin)){ toast('기획/인사는 관리자만 접근할 수 있습니다.'); return; }
   const actualUrl=overrideUrl||m.url;
   if(tab==='pjt_home'||m.key==='pjt'&&tab===null){
@@ -3830,7 +3832,7 @@ function mbnOpenMore(){
       const head=document.createElement('button'); head.className='mmp-btn'; head.style.cssText='width:100%;padding:12px 20px';
       head.innerHTML='<span class="mmp-ic">'+m.emoji+'</span><div><div>'+m.name+'</div><div class="mmp-sub">'+m.desc+'</div></div><span style="margin-left:auto;font-size:14px;">›</span>';
       const sublist=document.createElement('div'); sublist.className='mmp-sublist'; sublist.style.display='none';
-      _SUBTABS[m.key].filter(st=>st.key!=='pjt_manday' || _me.admin).filter(st=>st.key!=='company').forEach(st=>{
+      _SUBTABS[m.key].filter(st=>(st.key!=='pjt_manday' && st.key!=='pjt_roster') || _me.admin).filter(st=>st.key!=='company').forEach(st=>{
         const sbtn=document.createElement('button'); sbtn.className='mmp-subbtn';
         sbtn.innerHTML='<span style="font-size:15px;">'+st.emoji+'</span> '+st.name;
         sbtn.onclick=()=>{
