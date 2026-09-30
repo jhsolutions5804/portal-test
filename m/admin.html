@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html><!-- build: 20260930b · 모바일 관리: ‘팀장 계정 연결’ 화면 추가(내 팀 공수표 조회 계정 지정, 관리자만) -->
 <!-- build: 20260925a · ver: 2026-09-25 (모바일 관리 2.8.0) · [내규] 회사내규 열람(company_policies) 추가 · 이전: 20260919a ver 2.7.0 -->
 <html lang="ko">
 <head>
@@ -64,7 +64,7 @@
 <script type="module">
 const _uInitial=(function(){try{var a=JSON.parse(localStorage.getItem('jh_login_perms')||'null');return (a&&a.name)?a.name.slice(0,1):'·';}catch(e){return '·';}})();
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, onSnapshot, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, onSnapshot, getDocs, query, orderBy, doc, setDoc, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 const firebaseConfig = {
   apiKey:"AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI", authDomain:"portal-test-6e0ff.firebaseapp.com",
@@ -76,8 +76,10 @@ const app=initializeApp(firebaseConfig); const db=getFirestore(app); const auth=
 let users=[], loadError='';
 // 초기 뷰: URL ?v=org|admin|rules
 const params=new URLSearchParams(location.search);
-let curView=params.get('v')==='admin'?'admin':params.get('v')==='rules'?'rules':'org';
+let curView=params.get('v')==='admin'?'admin':params.get('v')==='leaders'?'leaders':params.get('v')==='rules'?'rules':'org';
 let detailId=null;
+let masters=[], mastersLoaded=false, mastersLoading=false, mastersError='';   // 팀장 계정 연결용(master_workers)
+const linkState={};                                                              // 팀장별 저장 상태: 'saving' | 'ok' | 오류 문구
 let rules=[], rulesLoaded=false, rulesLoading=false, rulesError='', rulesActiveIdx=0;
 
 const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -96,7 +98,7 @@ window.addEventListener('popstate',e=>{ const st=e.state||{v:curView,id:null}; c
 
 function render(){
   if(loadError){ $app().innerHTML=topBar('홈','goHome()')+`<div class="banner err">데이터를 불러오지 못했습니다: ${esc(loadError)}<br>포털 로그인 세션이 필요할 수 있습니다.</div>`; return; }
-  ({org:renderOrg,admin:renderAdmin,adminD:renderAdminDetail,rules:renderRules}[curView]||renderOrg)();
+  ({org:renderOrg,admin:renderAdmin,adminD:renderAdminDetail,leaders:renderLeaders,rules:renderRules}[curView]||renderOrg)();
 }
 function topBar(label,onclick){ return `<div class="top"><button class="back" onclick="${onclick||'goBack()'}">← ${label}</button><div class="avatar" onclick="goAccount()">${_uInitial}</div></div>`; }
 
@@ -146,7 +148,8 @@ function renderAdmin(){
     <div class="pmeta">${esc(u.dept||'-')}${u.email?' · '+esc(u.email):''}</div></div><span class="pgo">›</span></div>`).join('');
   $app().innerHTML=topBar('홈','goHome()')+`
     <div class="hello"><div class="name">⚙️ Portal 관리</div><div class="sub">계정 ${users.length} · 관리자 ${adminCnt}</div></div>
-    <div class="banner info">계정을 누르면 접근 권한(기획·인사·전자결재·PJT)을 확인할 수 있습니다.</div>
+    <div class="pcard click" onclick="openLeaders()" style="border:1.5px solid #cfe0f7;background:#f4f8ff"><div class="pav" style="background:#1D5BA6;color:#fff">👥</div><div class="pbody"><div class="pname">팀장 계정 연결</div><div class="pmeta">팀장이 ‘내 팀 공수표’에서 자기 팀 공수·단가를 볼 계정 지정</div></div><span class="pgo">›</span></div>
+  <div class="banner info">계정을 누르면 접근 권한(기획·인사·전자결재·PJT)을 확인할 수 있습니다.</div>
     ${users.length?`<div class="list top">${cards}</div>`:'<div class="empty">등록된 계정이 없습니다.</div>'}`;
 }
 function renderAdminDetail(){
@@ -162,6 +165,50 @@ function renderAdminDetail(){
     <div class="lbl">접근 권한</div>
     <div class="permrow">${u.admin?'<span class="permchip on">전체 (관리자)</span>':perms.map(([k,on])=>`<span class="permchip ${on?'on':''}">${on?'✓ ':''}${k}</span>`).join('')}</div>`;
 }
+
+/* ── 팀장 계정 연결 (내 팀 공수표 조회 계정 지정 — 관리자만, portal_users.teamLeaderIds) ── */
+window.openLeaders=function(){ nav('leaders'); loadMasters(); };
+async function loadMasters(){
+  if(mastersLoaded||mastersLoading) return; mastersLoading=true; mastersError='';
+  try{ const qs=await getDocs(collection(db,'master_workers')); masters=[]; qs.forEach(d=>masters.push({id:d.id,...d.data()})); mastersLoaded=true; }
+  catch(e){ mastersError=e.code||e.message; }
+  mastersLoading=false; if(curView==='leaders') render();
+}
+const myUid=()=>auth.currentUser?auth.currentUser.uid:'';
+const isMeAdmin=()=>{ const me=users.find(u=>(u.uid||u.id)===myUid()); return !!(me&&me.admin); };
+const linkedOf=id=>users.find(u=>Array.isArray(u.teamLeaderIds)&&u.teamLeaderIds.includes(id))||null;
+function renderLeaders(){
+  const bar=topBar('Portal 관리','goBack()');
+  if(!isMeAdmin()){ $app().innerHTML=bar+'<div class="empty">관리자만 사용할 수 있는 화면입니다.</div>'; return; }
+  if(mastersError){ $app().innerHTML=bar+`<div class="banner err">팀장 목록을 불러오지 못했습니다: ${esc(mastersError)}</div>`; return; }
+  if(!mastersLoaded){ $app().innerHTML=bar+'<div class="loading">불러오는 중…</div>'; return; }
+  const leaders=masters.filter(m=>!m.leaderId&&!m.resigned).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ko'));
+  const accts=users.filter(u=>u.status==='approved').sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ko'));
+  const linked=leaders.filter(l=>linkedOf(l.id)).length;
+  const cards=leaders.map(l=>{
+    const cur=linkedOf(l.id), st=linkState[l.id], size=masters.filter(m=>m.leaderId===l.id).length;
+    const opts='<option value="">연결 안 함</option>'+accts.map(u=>{const uid=u.uid||u.id; return `<option value="${esc(uid)}" ${cur&&(cur.uid||cur.id)===uid?'selected':''}>${esc(u.name||'')}${u.rank?' ('+esc(u.rank)+')':''}</option>`;}).join('');
+    const msg=st==='saving'?'<span style="color:#9AAABF">저장 중…</span>':st==='ok'?'<span style="color:#1b7f3b">✓ 저장됨</span>':st?`<span style="color:#c0392b">저장 실패: ${esc(st)}</span>`:'';
+    return `<div class="dcard" style="margin-bottom:10px"><div class="drow" style="border:none"><span class="dk" style="font-weight:800;color:#1A2540">👑 ${esc(l.name||'')} 팀</span><span class="dv" style="color:#86868b">팀원 ${size}명</span></div>
+    <select ${st==='saving'?'disabled':''} onchange="setLeaderLink('${esc(l.id)}',this.value)" style="width:100%;padding:12px;border:1.5px solid #dde4ef;border-radius:10px;font-size:15px;background:#fff;color:#1A2540;margin-top:4px">${opts}</select>
+    <div style="min-height:18px;font-size:12px;margin-top:6px">${msg}</div></div>`;
+  }).join('');
+  $app().innerHTML=bar+`<div class="hello"><div class="name">👥 팀장 계정 연결</div><div class="sub">팀장 ${leaders.length}명 · 연결 ${linked}명</div></div>
+  <div class="banner info">계정을 고르면 바로 저장됩니다. 연결된 계정으로 로그인하면 [내 팀 공수표]에서 그 팀의 공수·팀 단가·노무비를 볼 수 있습니다. 한 계정에 여러 팀을 연결할 수도 있습니다.</div>
+  ${leaders.length?cards:'<div class="empty">등록된 팀장이 없습니다. (PC 연명부에서 근로자를 팀장으로 등록하세요)</div>'}`;
+}
+window.setLeaderLink=async function(leaderId,uid){
+  linkState[leaderId]='saving'; render();
+  try{
+    for(const u of users){
+      const id=u.uid||u.id, has=Array.isArray(u.teamLeaderIds)&&u.teamLeaderIds.includes(leaderId);
+      if(has&&id!==uid) await setDoc(doc(db,'portal_users',id),{teamLeaderIds:arrayRemove(leaderId)},{merge:true});
+      else if(!has&&id===uid) await setDoc(doc(db,'portal_users',id),{teamLeaderIds:arrayUnion(leaderId)},{merge:true});
+    }
+    linkState[leaderId]='ok';
+  }catch(e){ linkState[leaderId]=e.code||e.message||'오류'; }
+  render();
+};
 
 /* 회사내규 열람 — PC(index.html)의 company_policies 컬렉션·마크다운 렌더러와 동일 */
 function mdToHtmlSimpleM(md){
