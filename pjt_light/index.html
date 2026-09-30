@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260930 · ver: 3.7.0 · 경량PJT 공정표 PPT 추가 + 일정관리 PC 레이아웃 통일 / 직전: ver 3.6.0 · 공사일보 조회 모달 중앙정렬+목록 간소화(날짜만), 설정에서 현장정보 전체 수정 가능, 근태관리 탭 날짜 클릭 이동, 사용장비 하드코딩(FAB 지게차번호) 제거→자유입력 · 이전: 20260925a ver 3.5.0 -->
+<!DOCTYPE html><!-- build: 20260930b · ver: 3.8.0 · 프로젝트 기본정보 통일(PJT 코드·내용·현장명·발주처·시공사·협력사) — 기획↔PJT관리 양방향 반영 / 직전: ver 3.7.0 · 경량PJT 공정표 PPT 추가 + 일정관리 PC 레이아웃 통일 / 직전: ver 3.6.0 · 공사일보 조회 모달 중앙정렬+목록 간소화(날짜만), 설정에서 현장정보 전체 수정 가능, 근태관리 탭 날짜 클릭 이동, 사용장비 하드코딩(FAB 지게차번호) 제거→자유입력 · 이전: 20260925a ver 3.5.0 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -319,9 +319,12 @@ textarea.f-input{resize:vertical;min-height:70px}
         <!-- 기본정보 -->
         <div class="home-card">
           <div class="home-section-hd">📋 기본정보</div>
+          <div class="info-row"><span class="k">PJT 코드</span><span class="v" id="i-code">—</span></div>
+          <div class="info-row"><span class="k">내용</span><span class="v" id="i-content">—</span></div>
           <div class="info-row"><span class="k">현장명</span><span class="v" id="i-site">—</span></div>
-          <div class="info-row"><span class="k">거래처</span><span class="v" id="i-client">—</span></div>
-          <div class="info-row"><span class="k">PJT 내용</span><span class="v" id="i-content">—</span></div>
+          <div class="info-row"><span class="k">발주처</span><span class="v" id="i-client">—</span></div>
+          <div class="info-row"><span class="k">시공사</span><span class="v" id="i-contractor">—</span></div>
+          <div class="info-row"><span class="k">협력사</span><span class="v" id="i-partner">—</span></div>
           <div class="info-row"><span class="k">품목</span><span class="v" id="i-item">—</span></div>
           <div class="info-row"><span class="k">물량</span><span class="v" id="i-qty">—</span></div>
           <div class="info-row"><span class="k">공사 시작일</span><span class="v" id="i-start">—</span></div>
@@ -334,12 +337,18 @@ textarea.f-input{resize:vertical;min-height:70px}
       <div class="home-row2" id="admin-row" style="display:none">
         <div class="home-card">
           <div class="home-section-hd">⚙️ 기본정보 수정 <span style="font-weight:400;color:#9AAABF;font-size:11px">(관리자)</span></div>
+          <label class="f-label">PJT 코드</label>
+          <input class="f-input" type="text" id="e-code">
+          <label class="f-label">내용</label>
+          <input class="f-input" type="text" id="e-content">
           <label class="f-label">현장명</label>
           <input class="f-input" type="text" id="e-site">
-          <label class="f-label">거래처</label>
+          <label class="f-label">발주처</label>
           <input class="f-input" type="text" id="e-client">
-          <label class="f-label">PJT 내용</label>
-          <input class="f-input" type="text" id="e-content">
+          <label class="f-label">시공사</label>
+          <input class="f-input" type="text" id="e-contractor">
+          <label class="f-label">협력사</label>
+          <input class="f-input" type="text" id="e-partner">
           <label class="f-label">품목</label>
           <input class="f-input" type="text" id="e-item">
           <label class="f-label">물량</label>
@@ -830,8 +839,11 @@ async function init(){
       document.getElementById('item-bulk-btn').style.display='inline-block';
       document.getElementById('worker-mgmt-btn').style.display='inline-block';
       document.getElementById('att-bulk-row').style.display='flex';
+      document.getElementById('e-code').value=pjtData.name||'';
       document.getElementById('e-site').value=pjtData.site||'';
       document.getElementById('e-client').value=pjtData.client||'';
+      document.getElementById('e-contractor').value=pjtData.contractor||'';
+      document.getElementById('e-partner').value=pjtData.partner||'';
       document.getElementById('e-content').value=pjtData.content||'';
       document.getElementById('e-item').value=pjtData.item||'';
       document.getElementById('e-qty').value=pjtData.qty||'';
@@ -878,8 +890,11 @@ function renderHeader(){
     document.getElementById('kpi-dday-mo').textContent='D+'+diff;
   } else { document.getElementById('kpi-dday-mo').textContent='—'; }
 
+  document.getElementById('i-code').textContent=pjtData.name||'—';
   document.getElementById('i-site').textContent=pjtData.site||'—';
   document.getElementById('i-client').textContent=pjtData.client||'—';
+  document.getElementById('i-contractor').textContent=pjtData.contractor||'—';
+  document.getElementById('i-partner').textContent=pjtData.partner||'—';
   document.getElementById('i-content').textContent=pjtData.content||'—';
   document.getElementById('i-item').textContent=pjtData.item||'—';
   document.getElementById('i-qty').textContent=pjtData.qty?(pjtData.qty+'대'):'—';
@@ -905,9 +920,14 @@ window.switchTab=function(tab){
 window.saveBasic=async function(){
   const btn=document.getElementById('e-save-btn'); btn.disabled=true; btn.textContent='저장 중...';
   try{
+    const code=document.getElementById('e-code').value.trim();
+    if(!code){ toast('PJT 코드를 입력하세요'); btn.disabled=false; btn.textContent='저장'; return; }
     const patch={
+      name: code,
       site: document.getElementById('e-site').value.trim(),
       client: document.getElementById('e-client').value.trim(),
+      contractor: document.getElementById('e-contractor').value.trim(),
+      partner: document.getElementById('e-partner').value.trim(),
       content: document.getElementById('e-content').value.trim(),
       item: document.getElementById('e-item').value.trim(),
       qty: parseFloat(document.getElementById('e-qty').value)||0,
@@ -916,7 +936,16 @@ window.saveBasic=async function(){
     await updateDoc(doc(db,'pjt_registry',pjtId), patch);
     Object.assign(pjtData, patch);
     renderHeader();
-    toast('저장되었습니다');
+    // 기획 > 프로젝트에 연결된 항목이 있으면 같은 6항목을 반영 (PJT 코드→code, 내용→name(설명), 현장명·발주처·시공사·협력사)
+    let synced=0;
+    try{
+      const gs=await getDocs(query(collection(db,'gihoek_projects'), where('linkPjt','==','reg_'+pjtId)));
+      for(const g of gs.docs){
+        await updateDoc(g.ref, { code: patch.name, name: patch.content, site: patch.site, client: patch.client, contractor: patch.contractor, partner: patch.partner });
+        synced++;
+      }
+    }catch(e){ console.warn('기획 프로젝트 동기화 실패:', e.message); toast('저장되었습니다 (기획 프로젝트 반영은 실패: '+e.message+')'); return; }
+    toast(synced?'저장되었습니다 (기획 프로젝트에도 반영)':'저장되었습니다');
   }catch(e){ toast('저장 실패: '+e.message); }
   finally{ btn.disabled=false; btn.textContent='저장'; }
 };
