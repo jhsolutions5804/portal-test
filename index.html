@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260930f · ver: 2026-09-30 (회사 일정 카테고리 행사·기타·만료 추가) · 이전: 20260925e 2026-09-25 (하단 작업탭 10개 초과 시 막지 않고 가장 먼저 열었던 탭을 자동으로 닫음) · 이전: 20260925d 결재함 이동 후 탭 갇힘 현상 해결 -->
+<!DOCTYPE html><!-- build: 20260930g · ver: 2026-09-30 (직원 비밀번호(_pw)를 계정 문서에서 본인·관리자 전용 문서 portal_secrets로 이동) · 이전: 20260930f · ver: 2026-09-30 (회사 일정 카테고리 행사·기타·만료 추가) · 이전: 20260925e 2026-09-25 (하단 작업탭 10개 초과 시 막지 않고 가장 먼저 열었던 탭을 자동으로 닫음) · 이전: 20260925d 결재함 이동 후 탭 갇힘 현상 해결 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -1048,7 +1048,7 @@ import { initializeApp, initializeApp as initApp2 } from 'https://www.gstatic.co
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged,
          updatePassword, sendPasswordResetEmail, RecaptchaVerifier, linkWithPhoneNumber }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp, collection, query, where, getDocs, orderBy }
+import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, collection, query, where, getDocs, orderBy }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -2649,9 +2649,11 @@ async function createEmployee(){
       email, name, rank, dept,
       status:'approved', admin:false,
       perms:{plan:false,hr:false,pjt:false,edoc:false},
-      _pw: btoa(unescape(encodeURIComponent(pw))),  // 관리자 비밀번호 초기화용
       createdAt:serverTimestamp()
     });
+    // 비밀번호(관리자 직접 변경 기능용)는 계정 문서가 아니라 본인·관리자만 읽는 별도 문서(portal_secrets)에 보관
+    try{ await setDoc(doc(db,'portal_secrets',targetUid),{ pw: btoa(unescape(encodeURIComponent(pw))), updatedAt:serverTimestamp() }); }
+    catch(se){ console.warn('비밀번호 보관 실패(추후 관리자 비밀번호 변경 시 현재 비밀번호 입력 필요):', se); }
     // 4) workers 컬렉션에 근로자 명부 자동 생성 (portal ↔ hr 연동)
     try{
       const wid=name+'_portal_'+targetUid.slice(0,6);
@@ -2909,9 +2911,10 @@ window.changeEmpPw = async function(){
   if(newPw.length<6) return showMsg(msg,'err','새 비밀번호는 6자 이상이어야 합니다.');
   showMsg(msg,'info','비밀번호 변경 중...');
   try{
-    // Firestore에서 저장된 현재 비밀번호 읽기
-    const snap=await getDoc(doc(db,'portal_users',u.uid));
-    const stored=snap.data()?._pw;
+    // 저장된 현재 비밀번호 읽기 — 새 위치(portal_secrets) 우선, 없으면 옛 위치(계정 문서 _pw) 폴백
+    let stored=null;
+    try{ const sec=await getDoc(doc(db,'portal_secrets',u.uid)); stored=sec.exists()?(sec.data().pw||null):null; }catch(_){}
+    if(!stored){ const snap=await getDoc(doc(db,'portal_users',u.uid)); stored=(snap.data()||{})._pw||null; }
     let curPw;
     if(stored){
       curPw=decodeURIComponent(escape(atob(stored)));
@@ -2934,8 +2937,9 @@ window.changeEmpPw = async function(){
     const cred=await signInWithEmailAndPassword(auth2tmp,u.email,curPw);
     await updatePassword(cred.user,newPw);
     await signOut(auth2tmp);
-    // Firestore _pw 업데이트 (이후부터는 자동)
-    await updateDoc(doc(db,'portal_users',u.uid),{_pw: btoa(unescape(encodeURIComponent(newPw)))});
+    // 비밀번호 저장 위치 갱신 (이후부터는 자동) — portal_secrets에 저장하고 계정 문서의 옛 _pw는 제거
+    await setDoc(doc(db,'portal_secrets',u.uid),{ pw: btoa(unescape(encodeURIComponent(newPw))), updatedAt:serverTimestamp() });
+    try{ await updateDoc(doc(db,'portal_users',u.uid),{_pw: deleteField()}); }catch(_){}
     // 입력란 초기화
     $('ed-new-pw').value='';
     const curRow=$('ed-cur-pw-row');
@@ -3097,8 +3101,9 @@ async function saveMyProfile(){
       if(pw.length<6) return showMsg(msg,'err','비밀번호는 6자 이상이어야 합니다.');
       const {updatePassword}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
       await updatePassword(auth.currentUser,pw);
-      // 관리자가 추후 초기화할 수 있도록 _pw 동기화
-      await updateDoc(doc(db,'portal_users',me.uid),{_pw: btoa(unescape(encodeURIComponent(pw)))});
+      // 관리자가 추후 변경할 수 있도록 비밀번호를 별도 문서(portal_secrets)에 동기화하고 계정 문서의 옛 _pw는 제거
+      await setDoc(doc(db,'portal_secrets',me.uid),{ pw: btoa(unescape(encodeURIComponent(pw))), updatedAt:serverTimestamp() });
+      try{ await updateDoc(doc(db,'portal_users',me.uid),{_pw: deleteField()}); }catch(_){}
     }
     toast('✅ 정보가 저장되었습니다.');
     closeMyProfile();
