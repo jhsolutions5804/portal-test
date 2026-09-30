@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- build: 20260930c · ‘내 팀 공수표’ 카드: 팀장 지정 계정 + 관리자 계정(전체 팀) 표시 · 이전: 20260930b · 팀장 전용 ‘내 팀 공수표’ 카드 추가(portal_users.teamLeaderIds 지정 계정에만 표시) · 이전: 20260925d · ver: 2026-09-25 (모바일 홈 2.8.3) · [홈] 더보기에 내규 열람 타일 추가(5열) -->
+<!-- build: 20260930e · 관리자 전용 ‘근로자 연명부’ 카드 추가(PC와 동일한 연명부 화면 사용) · 이전: 20260930d · 오래된 캐시 감지 시 1회 새로 받기(주소의 v= 값과 화면 빌드가 다르면 재로드) · 이전: 20260930c · ‘내 팀 공수표’ 카드: 팀장 지정 계정 + 관리자 계정(전체 팀) 표시 · 이전: 20260930b · 팀장 전용 ‘내 팀 공수표’ 카드 추가(portal_users.teamLeaderIds 지정 계정에만 표시) · 이전: 20260925d · ver: 2026-09-25 (모바일 홈 2.8.3) · [홈] 더보기에 내규 열람 타일 추가(5열) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -138,6 +138,13 @@
   .tile.locked,.sub.locked{opacity:.45;cursor:not-allowed}
   .tile.locked .go,.sub.locked{pointer-events:none}
 </style>
+<script>
+/* 캐시 방지: 포털이 주소에 붙여 준 버전(v=)과 이 화면의 빌드가 다르면(=예전 화면이 캐시에 남은 경우) 한 번만 새로 받는다. */
+(function(){ var BUILD='20260930j'; try{
+  var q=new URLSearchParams(location.search), v=q.get('v');
+  if(v && v!==BUILD && !sessionStorage.getItem('jh_mhome_reload')){ sessionStorage.setItem('jh_mhome_reload','1'); q.set('r',String(Date.now())); location.replace(location.pathname+'?'+q.toString()); }
+}catch(e){} })();
+</script>
 <script src="auth-guard.js"></script>
 </head>
 <body>
@@ -183,6 +190,14 @@
         <div>
           <div class="nm">PJT 관리</div>
           <div class="ds">진행 중인 현장 전체 보기</div>
+        </div>
+        <span class="go">›</span>
+      </div>
+      <div class="edoc-card" id="rosterCard" style="display:none" onclick="location.href='../pjt_roster/index.html?via=mobile'">
+        <div class="ic" style="background:#fff4e0;color:#b26a00">👷</div>
+        <div>
+          <div class="nm">근로자 연명부</div>
+          <div class="ds">인적사항 · 검진 · 자격/교육 · 월간 공수 (관리자 전용)</div>
         </div>
         <span class="go">›</span>
       </div>
@@ -254,6 +269,9 @@
   var _tl=(auth&&Array.isArray(auth.teamLeaderIds))?auth.teamLeaderIds:[];
   var _myTeamCard=document.getElementById('myTeamCard');
   if(_myTeamCard && (_tl.length || admin)) _myTeamCard.style.display='';
+  // 근로자 연명부: 관리자 전용(개인정보 포함) — 관리자가 아니면 잠금 표시도 없이 아예 숨김
+  var _rosterCard=document.getElementById('rosterCard');
+  if(_rosterCard && admin) _rosterCard.style.display='';
   function can(k){ if(k==='plan'||k==='hr') return admin; return admin || !!perms[k]; }
   // 권한 없는 섹션 잠금
   document.querySelectorAll('[data-perm]').forEach(function(el){
