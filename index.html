@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260930j · ver: 2026-09-30 (포털→모바일 홈 이동 시 버전 표시로 캐시 우회 — 예전 화면이 남아 새 기능이 안 보이는 문제 방지) · 이전: 20260930i · ver: 2026-09-30 (내 팀 공수표: 관리자 계정도 표시 — 팀 연결 없이 전체 팀 조회) · 이전: 20260930h · ver: 2026-09-30 (팀장 전용 ‘내 팀 공수표’ 진입점 추가(portal_users.teamLeaderIds 지정 계정에만 표시, 관리자 제외)) · 이전: 20260930g · ver: 2026-09-30 (직원 비밀번호(_pw)를 계정 문서에서 본인·관리자 전용 문서 portal_secrets로 이동) · 이전: 20260930f · ver: 2026-09-30 (회사 일정 카테고리 행사·기타·만료 추가) · 이전: 20260925e 2026-09-25 (하단 작업탭 10개 초과 시 막지 않고 가장 먼저 열었던 탭을 자동으로 닫음) · 이전: 20260925d 결재함 이동 후 탭 갇힘 현상 해결 -->
+<!DOCTYPE html><!-- build: 20260930k · ver: 2026-09-30 (GUEST 사번: 회사 일정 미표시·일정 등록 불가 — 로그인 정보에 사번(empNo) 저장, jhIsGuest 판별, PC 홈 캘린더에서 GUEST에게 회사 일정 제외·등록/수정/삭제/완료 체크 숨김, 화면 낱말을 ‘일정’으로 통일) · 이전: 20260930j · ver: 2026-09-30 (포털→모바일 홈 이동 시 버전 표시로 캐시 우회 — 예전 화면이 남아 새 기능이 안 보이는 문제 방지) · 이전: 20260930i · ver: 2026-09-30 (내 팀 공수표: 관리자 계정도 표시 — 팀 연결 없이 전체 팀 조회) · 이전: 20260930h · ver: 2026-09-30 (팀장 전용 ‘내 팀 공수표’ 진입점 추가(portal_users.teamLeaderIds 지정 계정에만 표시, 관리자 제외)) · 이전: 20260930g · ver: 2026-09-30 (직원 비밀번호(_pw)를 계정 문서에서 본인·관리자 전용 문서 portal_secrets로 이동) · 이전: 20260930f · ver: 2026-09-30 (회사 일정 카테고리 행사·기타·만료 추가) · 이전: 20260925e 2026-09-25 (하단 작업탭 10개 초과 시 막지 않고 가장 먼저 열었던 탭을 자동으로 닫음) · 이전: 20260925d 결재함 이동 후 탭 갇힘 현상 해결 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -676,7 +676,7 @@ html.force-pc #s-app.shown, html.force-pc .sidebar, html.force-pc .main, html.fo
 
         <!-- 전체 PJT 일정 캘린더 -->
         <div style="margin-top:24px;">
-          <div style="font-size:15px;font-weight:800;color:#1A2540;margin-bottom:12px;">🗓 전체 PJT 일정</div>
+          <div style="font-size:15px;font-weight:800;color:#1A2540;margin-bottom:12px;">🗓 일정</div>
           <div class="pjt-cal-grid">
             <div class="pjt-cal-box">
               <div class="pjt-cal-hd">
@@ -1074,6 +1074,10 @@ const MODULES=[
   { key:'myteam', name:'내 팀 공수표',   desc:'팀원 공수 · 팀 단가 · 노무비 (팀장 전용)', ic:'pjt', emoji:'👥', url:'team/' },
 ];
 // 모듈 접근 판정: 내 팀 공수표(myteam)는 권한 칩이 아니라 ① 관리자가 지정한 팀장 계정(teamLeaderIds — 자기 팀만) ② 관리자 계정(전체 팀)에 열린다.
+// GUEST 사번의 일정 등록·수정·삭제·완료 체크 차단(화면 안내). 실제 차단은 서버 보안규칙(isGuestEmp)이 담당하며, 이 함수는 화면을 우회해 호출돼도 같은 안내를 주기 위한 것.
+window.jhGuestBlock=function(){ if(window.jhIsGuest && window.jhIsGuest(window.me)){ alert('GUEST 계정은 일정을 등록·수정·삭제할 수 없습니다. (조회만 가능)'); return true; } return false; };
+// GUEST 사번 계정: 사번(empNo)이 'guest'로 시작(대소문자 무시). Firestore 보안규칙의 isGuestEmp()와 같은 기준이며, 사번은 관리자만 바꿀 수 있다.
+window.jhIsGuest=function(u){ return !!(u && typeof u.empNo==='string' && /^guest/i.test(u.empNo.trim())); };
 window.jhIsTeamLeader=function(u){ return !!(u && Array.isArray(u.teamLeaderIds) && u.teamLeaderIds.length); };
 window.jhModAllowed=function(m,u){
   if(!u) return false;
@@ -1089,7 +1093,7 @@ const PJT_FIXED_BASE=[
 const PJT_SUBTABS=[
   { key:'pjt_home', name:'PJT 홈', emoji:'🏠', desc:'진행 중인 프로젝트 현황', url:'' },
   ...PJT_FIXED_BASE.map(x=>({...x})),
-  { key:'company', name:'회사 일정', emoji:'🏢', desc:'특정 프로젝트에 속하지 않는 회사 공통 일정', url:'' },
+  { key:'company', name:'공통', emoji:'🏢', desc:'프로젝트에 속하지 않는 일정', url:'' },
   { key:'pjt_roster', name:'근로자 연명부', emoji:'👷', desc:'인적사항 · 건강검진 · 자격/교육 관리 (관리자 전용)', url:'pjt_roster/' },
   { key:'pjt_ended', name:'종료 PJT', emoji:'🗄️', desc:'종료된 프로젝트 모아보기', url:'' },
 ];
@@ -1139,7 +1143,7 @@ let me=null;
 // 하단 탭바(일반 script)에서 접근 가능하도록 window 노출
 window.MODULES=MODULES; window.SUBTABS=SUBTABS;
 Object.defineProperty(window,'me',{get:()=>me,set:v=>{me=v;
-  try{ if(v){ localStorage.setItem('jh_login_perms', JSON.stringify({perms:v.perms||{}, admin:!!v.admin, uid:v.uid||'', name:v.name||'', dept:v.dept||'', rank:v.rank||'', teamLeaderIds:Array.isArray(v.teamLeaderIds)?v.teamLeaderIds:[]})); } }catch(e){}
+  try{ if(v){ localStorage.setItem('jh_login_perms', JSON.stringify({perms:v.perms||{}, admin:!!v.admin, uid:v.uid||'', name:v.name||'', dept:v.dept||'', rank:v.rank||'', empNo:String(v.empNo==null?'':v.empNo), teamLeaderIds:Array.isArray(v.teamLeaderIds)?v.teamLeaderIds:[]})); } }catch(e){}
 }});
 
 const $=id=>document.getElementById(id);
@@ -1328,7 +1332,7 @@ function schedColPath(pjtKey){
 }
 // 현재 활성 PJT 전체(FAB/SUP + 경량 등록 PJT)의 pjtKey 목록
 function allSchedPjtKeys(){
-  const keys=Object.keys(PJT_SCHED_COL);
+  const keys=Object.keys(PJT_SCHED_COL).filter(function(k){ return !(k==='company' && window.jhIsGuest && window.jhIsGuest(window.me)); });   // GUEST 사번: 공통 일정 미표시(보안규칙도 차단)
   PJT_SUBTABS.forEach(function(st){ if(st.key.indexOf('reg_')===0) keys.push(st.key); });
   return keys;
 }
@@ -1789,7 +1793,7 @@ window.homeCalSelectDay=function(dk){
   let html='';
   html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
     +'<span style="font-size:12px;font-weight:700;color:#13335C">일정</span>'
-    +'<button onclick="openHomeSchedForm(\'new\',\''+dk+'\')" style="font-size:11px;padding:4px 10px;background:#1D5BA6;color:#fff;border:none;border-radius:7px;cursor:pointer;font-weight:600;font-family:inherit">＋ 일정 등록</button></div>';
+    +(window.jhIsGuest&&window.jhIsGuest(window.me)?'':'<button onclick="openHomeSchedForm(\'new\',\''+dk+'\')" style="font-size:11px;padding:4px 10px;background:#1D5BA6;color:#fff;border:none;border-radius:7px;cursor:pointer;font-weight:600;font-family:inherit">＋ 일정 등록</button>')+'</div>';
   if(items.length){
     items.forEach(s=>{
       const pc=pjtColorFor(s.pjtKey);
@@ -1818,7 +1822,7 @@ window.pjtCalSelectDay=async function(dk){
   let html='';
   html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
     +'<span style="font-size:12px;font-weight:700;color:#13335C">일정</span>'
-    +'<button onclick="openHomeSchedForm(\'new\',\''+dk+'\')" style="font-size:11px;padding:4px 10px;background:#1D5BA6;color:#fff;border:none;border-radius:7px;cursor:pointer;font-weight:600;font-family:inherit">＋ 일정 등록</button></div>';
+    +(window.jhIsGuest&&window.jhIsGuest(window.me)?'':'<button onclick="openHomeSchedForm(\'new\',\''+dk+'\')" style="font-size:11px;padding:4px 10px;background:#1D5BA6;color:#fff;border:none;border-radius:7px;cursor:pointer;font-weight:600;font-family:inherit">＋ 일정 등록</button>')+'</div>';
   if(items.length){
     items.forEach((s,idx)=>{
       const tg=PJT_CAL_TAG[s.tag||'admin']||PJT_CAL_TAG.admin;
@@ -1826,7 +1830,7 @@ window.pjtCalSelectDay=async function(dk){
       const isDone=!!s.done;
       const todoBadge=s.isTodo?'<span class="hsc-todo-badge">할일</span>':'';
       html+='<div class="hsc-sched-item" style="display:flex;align-items:flex-start;gap:7px;margin-bottom:6px;padding:5px 4px;border-radius:7px;transition:background .12s;border-left:3px solid '+pc+';" onmouseover="this.style.background=\'#F5F8FC\'" onmouseout="this.style.background=\'\'">'
-        +'<div class="hsc-check'+(isDone?' done':'')+'" onclick="event.stopPropagation();toggleHomeSchedDone('+idx+',this)"></div>'
+        +(window.jhIsGuest&&window.jhIsGuest(window.me)?'':'<div class="hsc-check'+(isDone?' done':'')+'" onclick="event.stopPropagation();toggleHomeSchedDone('+idx+',this)"></div>')
         +'<div style="flex:1;min-width:0;cursor:pointer" onclick="openHomeSchedDetail('+idx+')">'
         +'<div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px;padding:2px 7px;border-radius:5px;background:'+tg.c+'22;color:'+tg.c+';white-space:nowrap;flex-shrink:0;font-weight:600">'+tg.l+'</span>'+todoBadge+'</div>'
         +'<div class="hsc-item-text'+(isDone?' done-text':'')+'" style="font-size:12px;font-weight:600;color:#1A2540;margin-top:2px">'+(s.stime?_pjtEsc(s.stime)+' ':'')+_pjtEsc(s.text||'')+'</div>'
@@ -1933,6 +1937,7 @@ window.editHomeSchedFromDetail=function(){
 };
 
 window.openHomeSchedForm=function(mode, dk, data){
+  if(window.jhGuestBlock()) return;
   const pjtField=document.getElementById('hsc-pjt-field');
   const pjtSel=document.getElementById('hsc-pjt');
   const g=function(id){ return document.getElementById(id); };
@@ -1975,6 +1980,7 @@ window.openHomeSchedForm=function(mode, dk, data){
 };
 
 window.saveHomeSched=async function(){
+  if(window.jhGuestBlock()) return;
   const g=function(id){ return document.getElementById(id); };
   let sdate=g('hsc-sdate').value;
   let edate=g('hsc-edate').value||sdate;
@@ -2018,6 +2024,7 @@ window.saveHomeSched=async function(){
 };
 
 window.deleteHomeSched=async function(){
+  if(window.jhGuestBlock()) return;
   const s=window._hscDetailItem;
   if(!s||!s.id||!s.pjtKey){ alert('삭제할 일정을 찾을 수 없습니다.'); return; }
   if(!confirm('이 일정을 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.')) return;
@@ -2035,6 +2042,7 @@ window.deleteHomeSched=async function(){
 
 // 일정 완료 상태 저장 (문서 done 필드)
 window._hscSetDone=async function(pjtKey, id, isDone){
+  if(window.jhGuestBlock()) return;
   try{
     const {doc,setDoc,serverTimestamp}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const colPath=schedColPath(pjtKey);
