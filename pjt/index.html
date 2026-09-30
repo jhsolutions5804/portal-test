@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- PJT module build: 20260910 · ver 4.10.9 · 공수 집계표(이달 공수 집계표) 탭 목록도 퇴사자 제외되도록 getActiveWorkersForDate 적용 (openKongsuModal/renderKongsuTabs/renderKongsuSheet) -->
+<!DOCTYPE html><!-- PJT module build: 20260930 · ver 4.10.10 · 공수표 월 중 퇴사자 누락 수정(월초 기준 대상자 + 일자별 재직 판정) / 직전: ver 4.10.9 · 공수 집계표(이달 공수 집계표) 탭 목록도 퇴사자 제외되도록 getActiveWorkersForDate 적용 (openKongsuModal/renderKongsuTabs/renderKongsuSheet) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -2727,11 +2727,21 @@ function _ksDateKey(){
   var lastDay=new Date(_sheetY,_sheetM+1,0).getDate();
   return _sheetY+'-'+pad(_sheetM+1)+'-'+pad(lastDay);
 }
+// [v4.10.10] 공수표 대상자 = 해당 월 1일 시점에 재직 중이었던 인원(월 중 퇴사자 포함).
+// 월말 기준으로 거르면 월 중 퇴사자의 퇴사 전 공수까지 통째로 사라지는 버그가 있었음.
+function _ksMonthWorkers(){
+  return getActiveWorkersForDate(_sheetY+'-'+pad(_sheetM+1)+'-01');
+}
+// 특정 일자에 해당 근로자가 재직 중인지 (퇴사일 당일부터 제외 = 기존 규칙 유지)
+function _ksActiveOn(w,dateKey){
+  var info=_masterResignedMap[w.id];
+  return !(info && info.resigned && info.resignedDate && info.resignedDate<=dateKey);
+}
 window.openKongsuModal=async function(){
   const d=getAttendDate();
   _sheetY=d.getFullYear(); _sheetM=d.getMonth();
   await loadMasterResignedMap();
-  var _wsList=getActiveWorkersForDate(_ksDateKey());
+  var _wsList=_ksMonthWorkers();
   _sheetActive=(_wsList&&_wsList.length)?_wsList[0].id:'w1';
   document.getElementById('ks-modal').classList.add('on');
   document.getElementById('ks-mlabel').textContent=`${_sheetY}년 ${_sheetM+1}월`;
@@ -2753,7 +2763,7 @@ window.selectKongsuTab=function(id){ _sheetActive=id; renderKongsuTabs(); render
 
 function renderKongsuTabs(){
   const bar=document.getElementById('ks-tabbar');
-  const _ws=getActiveWorkersForDate(_ksDateKey());
+  const _ws=_ksMonthWorkers();
   if(!_ws||!_ws.length){ bar.innerHTML='<div style="padding:10px;color:#86868b;font-size:13px">등록된 기술인이 없습니다</div>'; return; }
   const boss=_ws[0];
   const bossId=boss.id;
@@ -2764,7 +2774,7 @@ function renderKongsuTabs(){
 
 function renderKongsuSheet(){
   document.getElementById('ks-mlabel').textContent=`${_sheetY}년 ${_sheetM+1}월`;
-  const _ws=getActiveWorkersForDate(_ksDateKey());
+  const _ws=_ksMonthWorkers();
   const isBoss=(_ws&&_ws.length&&_sheetActive===_ws[0].id);
   const w=_ws.find(x=>x.id===_sheetActive);
   if(!w){ document.getElementById('ks-body').innerHTML='<div style="text-align:center;padding:48px 0;color:#86868b">기술인 정보를 찾을 수 없습니다</div>'; return; }
@@ -2786,15 +2796,16 @@ function renderKongsuSheet(){
     let inner=`<div class="dnum">${day}</div>`;
     if(isBoss){
       // 팀장: 본인 포함 전체 9명 출역(공수>0) 인원수 + 일 공수합계
-      const present=_ws.filter(t=>md[t.id]>0).length;
-      const daySum=_ws.reduce((s,t)=>s+(md[t.id]||0),0);
+      const _dayWs=_ws.filter(t=>_ksActiveOn(t,key)); // 그날 재직자만 (퇴사일 이후 제외)
+      const present=_dayWs.filter(t=>md[t.id]>0).length;
+      const daySum=_dayWs.reduce((s,t)=>s+(md[t.id]||0),0);
       monthTotal+=daySum;
       if(daySum>0){
-        inner+=`<div class="ks-boss-cnt">${present}/${_ws.length}명</div>`;
+        inner+=`<div class="ks-boss-cnt">${present}/${_dayWs.length}명</div>`;
         inner+=`<div class="ks-boss-sum">${daySum.toFixed(1)}</div>`;
       }
     }else{
-      const v=md[_sheetActive]||0;
+      const v=_ksActiveOn(w,key)?(md[_sheetActive]||0):0;
       monthTotal+=v;
       if(v>0){ workDays++; inner+=`<div class="ks-md${v<1?' half':''}">${v.toFixed(1)}</div>`; }
     }
