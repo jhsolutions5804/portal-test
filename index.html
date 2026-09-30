@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20260930i · ver: 2026-09-30 (내 팀 공수표: 관리자 계정도 표시 — 팀 연결 없이 전체 팀 조회) · 이전: 20260930h · ver: 2026-09-30 (팀장 전용 ‘내 팀 공수표’ 진입점 추가(portal_users.teamLeaderIds 지정 계정에만 표시, 관리자 제외)) · 이전: 20260930g · ver: 2026-09-30 (직원 비밀번호(_pw)를 계정 문서에서 본인·관리자 전용 문서 portal_secrets로 이동) · 이전: 20260930f · ver: 2026-09-30 (회사 일정 카테고리 행사·기타·만료 추가) · 이전: 20260925e 2026-09-25 (하단 작업탭 10개 초과 시 막지 않고 가장 먼저 열었던 탭을 자동으로 닫음) · 이전: 20260925d 결재함 이동 후 탭 갇힘 현상 해결 -->
+<!DOCTYPE html><!-- build: 20260930j · ver: 2026-09-30 (포털→모바일 홈 이동 시 버전 표시로 캐시 우회 — 예전 화면이 남아 새 기능이 안 보이는 문제 방지) · 이전: 20260930i · ver: 2026-09-30 (내 팀 공수표: 관리자 계정도 표시 — 팀 연결 없이 전체 팀 조회) · 이전: 20260930h · ver: 2026-09-30 (팀장 전용 ‘내 팀 공수표’ 진입점 추가(portal_users.teamLeaderIds 지정 계정에만 표시, 관리자 제외)) · 이전: 20260930g · ver: 2026-09-30 (직원 비밀번호(_pw)를 계정 문서에서 본인·관리자 전용 문서 portal_secrets로 이동) · 이전: 20260930f · ver: 2026-09-30 (회사 일정 카테고리 행사·기타·만료 추가) · 이전: 20260925e 2026-09-25 (하단 작업탭 10개 초과 시 막지 않고 가장 먼저 열었던 탭을 자동으로 닫음) · 이전: 20260925d 결재함 이동 후 탭 갇힘 현상 해결 -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -44,7 +44,7 @@ window.jhEnsureMobileFab=function(on){
 };
 window.jhSwitchToMobile=function(){
   try{ localStorage.removeItem('jh_force_pc'); }catch(e){}
-  location.href='m/home.html';
+  location.href='m/home.html?v=20260930j';
 };
 </script>
 <style>
@@ -1153,7 +1153,7 @@ function showAuth(id){
 }
 function showApp(){
   var _fpc = window.jhForcePc ? jhForcePc() : false;
-  if(!_fpc && /Mobi/i.test(navigator.userAgent||'')){ location.href='m/home.html'; return; }
+  if(!_fpc && /Mobi/i.test(navigator.userAgent||'')){ location.href='m/home.html?v=20260930j'; return; }
   if(window.jhApplyViewport) jhApplyViewport(_fpc);
   if(window.jhEnsureMobileFab) jhEnsureMobileFab(_fpc);
   var _tm=document.getElementById('sb-to-mobile'); if(_tm) _tm.style.display = _fpc ? 'flex' : 'none';
