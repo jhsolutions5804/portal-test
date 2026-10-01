@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- holiday-shared: 20261001 공휴일 목록을 공용 파일(holidays.js) 한 곳으로 일원화 --><!-- holiday-data: 20261001 공휴일 정비(2025~2027): 누락·오류 보정 --><!-- HR module build: 20261001q · ver 2.26.0 · 공고 관리 신설(공고 등록·수정·마감·삭제, job_postings 컬렉션) + 홈페이지 채용 소개·채용 공고·지원 폼 바로가기 버튼 · 이전: HR module build: 20261001p · ver 2.25.4 · 근로계약서 양식 v6 — 제8조(4대보험 미가입 시 퇴직금 불지급 삭제)·제12조(월급 3배 손해배상 예정 삭제)·제18조(급여 임의 공제 삭제) 법정 요건 정비(저장 서류는 저장 당시 양식 그대로) · 이전: HR module build: 20261001n · ver 2.25.3 · 지난 제안서에 🗑 삭제 버튼 추가(확인창 후 제안서와 회신기한 일정 함께 삭제) · 이전: HR module build: 20261001m · ver 2.25.2 · 채용 지원자 목록에 🗑 삭제 버튼 추가(확인창 후 지원자 문서와 면접 일정 함께 삭제) · 이전: HR module build: 20261001l · ver 2.25.1 · 근로자 등록 시 문서 ID를 주민번호 없는 임의 값으로 생성(+같은 이름·주민번호 중복 등록 차단) · 이전: build: 20261001k · ver 2.25.0 · 근로자 민감 정보 분리: 주민번호·계좌·주소·서명을 worker_private 문서로 이동(읽기는 합쳐서, 쓰기는 나눠서) · 이전: build: 20261001j · ver 2.24.3 · 공휴일 데이터 정비(2025~2027): 노동절·제헌절·부처님오신날·토요일 공휴일·대체공휴일 누락 보충, 2027 설날 연휴 오류 정정 · 이전: build: 20261001i · ver 2.24.2 · 호봉 산정 수정: 입사한 해는 1호봉(1~3분기 입사자가 입사 당해에 2호봉으로 나오던 것), 다음 해 1/1부터 1~3분기 입사=2호봉·4분기 입사=1호봉 · 이전: build: 20261001h · ver 2.24.1 · 인사 변동 화면 수정: 직급·부서 목록 변수(RANKS2/DEPTS2)가 명부 상세 함수 안에서만 정의돼 ‘불러오는 중’에서 멈추던 오류(2.14.0부터 있던 문제) · 이전: build: 20261001g · ver 2.24.0 · 퇴직원서 출력(휴직원서 포함)·승인된 퇴직원서 퇴직일을 인사 캘린더 '퇴사' 일정으로 자동 반영 · 이전: build: 20261001f · ver 2.23.1 · 연봉 제안서: 출력은 미리보기 전용(저장·캘린더 등록 안 함), 💾 저장 버튼 신설(같은 건 덮어쓰기·캘린더 회신기한 1건 연동), 지난 제안서에서 열어서 수정 / 직전: ver 2.23.0 · 인사 캘린더 자동 등록 — 채용 지원자 면접일 입력 시 면접 일정, 연봉 제안서 출력·발송 시 회신 기한 일정 자동 등록(ID 고정으로 중복 방지) / 직전: ver 2.22.0 · 인사 캘린더에 연차 표시(전자결재 게시 연차를 회사 일정에서 읽기 전용으로 표시, 기간 연차는 주말·공휴일 제외, 날짜 선택 시 사용자 목록, ‘연차 표시’ 토글) / 직전: ver 2.21.0 · 인사 캘린더 — 날짜 클릭은 선택만(하단에 그날 일정 목록·‘이 날짜에 등록’ 버튼), 공휴일 표시(2025~2027, 노동절·제헌절·대체공휴일 반영) / 직전: ver 2.20.0 · 인사 홈 2단 개편(왼쪽 인사 캘린더·오른쪽 업무 메뉴 세로 배열) / 직전: ver 2.19.0 · 인사 캘린더 신설(면접·연봉제안서 회신·연봉협상·인사평가·기타, 지정 4명 한정) / 직전: ver 2.18.0 · 문서 메일 수신 주소: 명부 이메일이 없으면 포털 로그인 계정(@jhsol.kr)으로 자동 대체 / 직전: ver 2.17.1 · 급여명세서 PC 조회 화면에 메일 발송·링크/QR·발송 이력 추가 / 직전: ver 2.17.0 · 급여명세서 열람 링크(저장 당시 양식·180일)·메일 발송 이력·링크/QR / 직전: ver 2.16.0 · 저장 계약서 메일 재전송 + 발송 이력(doc_send_log) / 직전: ver 2.15.0 · 저장된 근로계약서·연봉계약서 근로자 본인 열람 링크(문자 인증, 180일, 저장 당시 양식으로 표시) / 직전: ver 2.14.0 · 인사 변동 메뉴 신설(직급·부서 변경 저장+호봉 초기화+이력, 연봉 조정은 근로계약서 작성으로 연결, 변동 현황 조회) · 이전: 20260925e ver 2.13.1 · 근로시간 캘린더 — 반차 쓰고 그날 일부 근무한 경우, 근무시간만 보이고 반차 여부가 안 보이던 문제 수정(🌴 표시 병기) · 이전: 20260925d ver 2.13.0 -->
+<!DOCTYPE html><!-- holiday-shared: 20261001 공휴일 목록을 공용 파일(holidays.js) 한 곳으로 일원화 --><!-- holiday-data: 20261001 공휴일 정비(2025~2027): 누락·오류 보정 --><!-- HR module build: 20261001r · ver 2.26.1 · 근로시간 현황 카드 하단에 이번 달 초과근로 시간·연장근로수당 집계 표시(급여명세서와 같은 계산식: 평일 소정 초과분×시급×1.5, 포괄임금제는 고정 연장수당) · 이전: HR module build: 20261001q · ver 2.26.0 · 공고 관리 신설(공고 등록·수정·마감·삭제, job_postings 컬렉션) + 홈페이지 채용 소개·채용 공고·지원 폼 바로가기 버튼 · 이전: HR module build: 20261001p · ver 2.25.4 · 근로계약서 양식 v6 — 제8조(4대보험 미가입 시 퇴직금 불지급 삭제)·제12조(월급 3배 손해배상 예정 삭제)·제18조(급여 임의 공제 삭제) 법정 요건 정비(저장 서류는 저장 당시 양식 그대로) · 이전: HR module build: 20261001n · ver 2.25.3 · 지난 제안서에 🗑 삭제 버튼 추가(확인창 후 제안서와 회신기한 일정 함께 삭제) · 이전: HR module build: 20261001m · ver 2.25.2 · 채용 지원자 목록에 🗑 삭제 버튼 추가(확인창 후 지원자 문서와 면접 일정 함께 삭제) · 이전: HR module build: 20261001l · ver 2.25.1 · 근로자 등록 시 문서 ID를 주민번호 없는 임의 값으로 생성(+같은 이름·주민번호 중복 등록 차단) · 이전: build: 20261001k · ver 2.25.0 · 근로자 민감 정보 분리: 주민번호·계좌·주소·서명을 worker_private 문서로 이동(읽기는 합쳐서, 쓰기는 나눠서) · 이전: build: 20261001j · ver 2.24.3 · 공휴일 데이터 정비(2025~2027): 노동절·제헌절·부처님오신날·토요일 공휴일·대체공휴일 누락 보충, 2027 설날 연휴 오류 정정 · 이전: build: 20261001i · ver 2.24.2 · 호봉 산정 수정: 입사한 해는 1호봉(1~3분기 입사자가 입사 당해에 2호봉으로 나오던 것), 다음 해 1/1부터 1~3분기 입사=2호봉·4분기 입사=1호봉 · 이전: build: 20261001h · ver 2.24.1 · 인사 변동 화면 수정: 직급·부서 목록 변수(RANKS2/DEPTS2)가 명부 상세 함수 안에서만 정의돼 ‘불러오는 중’에서 멈추던 오류(2.14.0부터 있던 문제) · 이전: build: 20261001g · ver 2.24.0 · 퇴직원서 출력(휴직원서 포함)·승인된 퇴직원서 퇴직일을 인사 캘린더 '퇴사' 일정으로 자동 반영 · 이전: build: 20261001f · ver 2.23.1 · 연봉 제안서: 출력은 미리보기 전용(저장·캘린더 등록 안 함), 💾 저장 버튼 신설(같은 건 덮어쓰기·캘린더 회신기한 1건 연동), 지난 제안서에서 열어서 수정 / 직전: ver 2.23.0 · 인사 캘린더 자동 등록 — 채용 지원자 면접일 입력 시 면접 일정, 연봉 제안서 출력·발송 시 회신 기한 일정 자동 등록(ID 고정으로 중복 방지) / 직전: ver 2.22.0 · 인사 캘린더에 연차 표시(전자결재 게시 연차를 회사 일정에서 읽기 전용으로 표시, 기간 연차는 주말·공휴일 제외, 날짜 선택 시 사용자 목록, ‘연차 표시’ 토글) / 직전: ver 2.21.0 · 인사 캘린더 — 날짜 클릭은 선택만(하단에 그날 일정 목록·‘이 날짜에 등록’ 버튼), 공휴일 표시(2025~2027, 노동절·제헌절·대체공휴일 반영) / 직전: ver 2.20.0 · 인사 홈 2단 개편(왼쪽 인사 캘린더·오른쪽 업무 메뉴 세로 배열) / 직전: ver 2.19.0 · 인사 캘린더 신설(면접·연봉제안서 회신·연봉협상·인사평가·기타, 지정 4명 한정) / 직전: ver 2.18.0 · 문서 메일 수신 주소: 명부 이메일이 없으면 포털 로그인 계정(@jhsol.kr)으로 자동 대체 / 직전: ver 2.17.1 · 급여명세서 PC 조회 화면에 메일 발송·링크/QR·발송 이력 추가 / 직전: ver 2.17.0 · 급여명세서 열람 링크(저장 당시 양식·180일)·메일 발송 이력·링크/QR / 직전: ver 2.16.0 · 저장 계약서 메일 재전송 + 발송 이력(doc_send_log) / 직전: ver 2.15.0 · 저장된 근로계약서·연봉계약서 근로자 본인 열람 링크(문자 인증, 180일, 저장 당시 양식으로 표시) / 직전: ver 2.14.0 · 인사 변동 메뉴 신설(직급·부서 변경 저장+호봉 초기화+이력, 연봉 조정은 근로계약서 작성으로 연결, 변동 현황 조회) · 이전: 20260925e ver 2.13.1 · 근로시간 캘린더 — 반차 쓰고 그날 일부 근무한 경우, 근무시간만 보이고 반차 여부가 안 보이던 문제 수정(🌴 표시 병기) · 이전: 20260925d ver 2.13.0 -->
 <html lang="ko">
 <head><script src="../holidays.js?v=20261001"></script>
 <meta charset="UTF-8">
@@ -4012,8 +4012,14 @@ window.otGetAttendanceSummary = async (workerId, year, month, workerName) => {
   const { collection, getDocs, query, where } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
   const ym = `${year}-${String(month).padStart(2,'0')}`;
   const snap = await getDocs(query(collection(window._db,'worker_attendance_log'), where('workerId','==',workerId), where('yearMonth','==',ym)));
-  let attHours = 0, days = 0;
-  snap.forEach(d => { attHours += Number(d.data().workHours)||0; days++; });
+  let attHours = 0, days = 0, weekdayHours = 0, holidayHours = 0;
+  snap.forEach(d => {
+    const dd = d.data(); const h = Number(dd.workHours)||0;
+    attHours += h; days++;
+    // 급여명세서와 같은 기준: 토·일·공휴일 근무는 평일 소정근로시간 대비 초과 판정에서 제외(휴일근로수당으로 별도)
+    const dow = dd.date ? new Date(dd.date).getDay() : -1;
+    if (dow === 0 || dow === 6 || (dd.date && KR_HOLIDAYS.has(dd.date))) holidayHours += h; else weekdayHours += h;
+  });
 
   // 유급휴가 반영: 인사 화면은 관리자 전용이라 edoc_leave 전체 조회 가능
   let leaveHours = 0;
@@ -4032,6 +4038,8 @@ window.otGetAttendanceSummary = async (workerId, year, month, workerName) => {
   const otUsed = Math.max(0, total - standard);
   return {
     yearMonth: ym, total, attHours, leaveHours, days, standard, maxOt,
+    weekdayHours, holidayHours,
+    otPayHours: Math.max(0, weekdayHours + leaveHours - standard),   // 급여명세서 연장근로수당 산정 시간(평일 근무+유급휴가−소정근로시간)
     maxTotal: standard+maxOt,
     regularUsed, otUsed,
     regularRemain: Math.max(0, standard-regularUsed),
@@ -4039,7 +4047,20 @@ window.otGetAttendanceSummary = async (workerId, year, month, workerName) => {
   };
 };
 // 근로시간 현황 카드 HTML (PC·모바일 공통)
-window.otRenderAttendanceCard = (s) => `
+window.otRenderAttendanceCard = (s, wage) => {
+  const otH = Number(s.otPayHours || 0), holH = Number(s.holidayHours || 0);
+  const won = n => '₩' + Math.round(n).toLocaleString('ko-KR');
+  let payTxt, noteTxt;
+  if (wage && wage.wageType === 'comprehensive') {
+    payTxt = won(wage.fixedOTContract || 0);
+    noteTxt = '포괄임금제 — 실근무와 무관하게 매월 고정 연장수당이 지급됩니다.';
+  } else if (wage && Number(wage.hourly) > 0) {
+    payTxt = won(wage.hourly * otH * 1.5);
+    noteTxt = `평일 근무+유급휴가 ${(s.weekdayHours + (s.leaveHours||0)).toFixed(1)}h − 소정 ${s.standard.toFixed(1)}h = 초과 ${otH.toFixed(1)}h × 시급 ${Number(wage.hourly).toLocaleString('ko-KR')}원 × 1.5`;
+  } else {
+    payTxt = '—'; noteTxt = '연봉계약서가 없어 수당을 계산할 수 없습니다.';
+  }
+  return `
   <div style="background:#F0F4F9;border-radius:10px;padding:12px 14px;margin-bottom:12px;">
     <div style="font-weight:700;color:#1D5BA6;font-size:12px;margin-bottom:8px;">⏰ ${s.yearMonth} 근로시간 현황 (출퇴근 기록 + 유급휴가 자동 집계)</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11.5px;color:#5C6F8A;">
@@ -4052,7 +4073,16 @@ window.otRenderAttendanceCard = (s) => `
       <div style="display:flex;justify-content:space-between;"><span>정규 잔여</span><span style="font-weight:700;color:#1D5BA6;">${s.regularRemain.toFixed(1)}h</span></div>
       <div style="display:flex;justify-content:space-between;"><span>초과 가능 잔여</span><span style="font-weight:700;color:${s.otUsed>s.maxOt?'#DC2626':'#1D5BA6'};">${s.otRemain.toFixed(1)}h</span></div>
     </div>
+    <div style="margin-top:10px;padding-top:9px;border-top:1px dashed #C9D6E8;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:#5C6F8A;">
+        <div style="display:flex;justify-content:space-between;"><span>초과근로 시간</span><span style="font-weight:800;color:${otH>0?'#B45309':'#1A2540'};">${otH.toFixed(1)}h</span></div>
+        <div style="display:flex;justify-content:space-between;"><span>연장근로수당 집계</span><span style="font-weight:800;color:${otH>0||(wage&&wage.wageType==='comprehensive')?'#B45309':'#1A2540'};">${payTxt}</span></div>
+      </div>
+      ${holH>0?`<div style="font-size:11px;color:#6D28D9;margin-top:5px;">휴일근무 ${holH.toFixed(1)}h는 위 초과근로에 포함되지 않으며 휴일근로수당으로 별도 산정됩니다.</div>`:''}
+      <div style="font-size:10.5px;color:#9AAABF;margin-top:5px;line-height:1.5;">※ ${noteTxt} (야간·휴일근로수당은 급여명세서에서 별도 산정)</div>
+    </div>
   </div>`;
+};
 
 function calcWorkDays(startStr, endStr) {
   if (!startStr) return { days:0, months:0, years:0 };
@@ -8547,7 +8577,7 @@ async function otGetWage(workerId, name) {
     const empType = c.empType || 'field';
     const sal = calcAnnualSalary(hourly, empType);
     const rate = Math.round((sal.basic + sal.fixedOt + sal.fixedNight + sal.weekly) / 209);
-    const result = { rate, ...sal, hourly, empType, workerId };
+    const result = { rate, ...sal, hourly, empType, workerId, wageType: c.wageType || '', fixedOTContract: Number(c.fixedOT || 0) };
     _otWageCache[name] = result;
     return result;
   } catch(e) { console.error('otGetWage 오류:', e); return null; }
@@ -8883,7 +8913,7 @@ window.otPcShowPersonDetail = async (id, name, rank) => {
           <button onclick="otAttOpenEdit('${id}','${otEsc(name)}','${date_today_str()}','${otEsc(rank||'')}')" style="background:#1D5BA6;border:none;border-radius:7px;color:#fff;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;">➕ 근무시간 추가</button>
         </div>
       </div>
-      ${otRenderAttendanceCard(attSummary)}
+      ${otRenderAttendanceCard(attSummary, wage)}
       <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
         ${wage?`<div style="font-size:12px;color:#5C6F8A;">통상임금 ${wage.rate.toLocaleString()}원/h</div>`:''}
         ${attRows.filter(r=>r.isBusinessTrip).length?`<div style="font-size:12px;color:#1D5BA6;font-weight:600;">✈️ 이번달 출장 ${attRows.filter(r=>r.isBusinessTrip).length}일</div>`:''}
@@ -9370,7 +9400,7 @@ async function otLoadPersonDetail(workerId, name, rank) {
     // 통상임금 정보
     const wage = await otGetWage(workerId, name);
     const attSummary = await otGetAttendanceSummary(workerId, otYear, otMonth, name);
-    const attHtml = otRenderAttendanceCard(attSummary);
+    const attHtml = otRenderAttendanceCard(attSummary, wage);
     const wageHtml = wage
       ? `<div style="background:#F0F4F9;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:#5C6F8A;">
           <div style="font-weight:700;color:#1D5BA6;margin-bottom:4px;">📐 통상임금 계산 기준</div>
