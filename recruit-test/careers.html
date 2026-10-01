@@ -118,6 +118,21 @@
   .process-step h4 { font-size:0.87rem; font-weight:700; margin-bottom:4px; }
   .process-step p { font-size:0.76rem; color:var(--gray); line-height:1.5; }
 
+
+  /* BENEFITS */
+  .benefit-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:20px; max-width:1000px; margin:0 auto; }
+  .benefit-card { background:var(--white); border:1.5px solid #E5EDF7; border-radius:14px; padding:28px 26px; transition:all .25s; }
+  .benefit-card:hover { border-color:var(--blue-light); box-shadow:0 8px 24px rgba(29,91,166,0.1); transform:translateY(-2px); }
+  .benefit-icon { font-size:1.7rem; margin-bottom:14px; display:block; }
+  .benefit-card h3 { font-size:1.02rem; font-weight:800; margin-bottom:12px; }
+  .benefit-card ul { list-style:none; }
+  .benefit-card li { font-size:0.88rem; color:#374151; line-height:1.7; padding-left:14px; position:relative; margin-bottom:4px; }
+  .benefit-card li::before { content:'•'; position:absolute; left:0; color:var(--blue-mid); }
+
+  /* 진행 중 공고 수 */
+  .open-count { display:inline-block; margin:0 auto 22px; font-size:0.92rem; font-weight:700; color:var(--blue); background:var(--white); border:1.5px solid var(--blue-light); border-radius:24px; padding:8px 18px; }
+  .open-count strong { font-family:'Inter',sans-serif; font-size:1.05rem; }
+
   /* CTA */
   .cta {
     text-align:center; background: linear-gradient(135deg, var(--blue) 0%, var(--blue-mid) 100%);
@@ -151,6 +166,7 @@
   <div class="eyebrow">Recruitment</div>
   <h1>함께 성장할 현장 인재를 찾습니다</h1>
   <p>JH Solutions는 반도체 FAB 건설현장의 FCU·설비 설치를 전문으로 하는 현장 관리·인력 도급 기업입니다. 안전한 현장에서 실력을 키우고 싶은 분들을 기다립니다.</p>
+  <div id="openCountWrap" style="display:none;"><span class="open-count"><strong id="openCount">0</strong>개의 채용공고가 진행 중입니다</span></div>
   <a href="#jobs-cta" class="btn-primary">채용 공고 보기</a>
 </section>
 
@@ -218,15 +234,45 @@
 </section>
 
 <section>
+  <span class="section-label">Benefits</span>
+  <h2 class="section-title">복지 및 혜택</h2>
+  <p class="section-desc">함께 일하는 분들이 성장하고, 성과를 나눌 수 있는 환경을 만들어 갑니다.</p>
+  <div class="benefit-grid">
+    <div class="benefit-card">
+      <span class="benefit-icon">🎓</span>
+      <h3>자기 개발 지원</h3>
+      <ul>
+        <li>프로젝트 실무를 함께 배울 수 있어요</li>
+        <li>업무에 필요한 교육을 지원해드려요</li>
+      </ul>
+    </div>
+    <div class="benefit-card">
+      <span class="benefit-icon">🤝</span>
+      <h3>사내 문화</h3>
+      <ul>
+        <li>협업 중심의 편안한 분위기예요</li>
+      </ul>
+    </div>
+    <div class="benefit-card">
+      <span class="benefit-icon">🏅</span>
+      <h3>보상</h3>
+      <ul>
+        <li>성과에 따른 보상을 제공해요</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
   <span class="section-label">Process</span>
   <h2 class="section-title">채용 프로세스</h2>
   <p class="section-desc">지원부터 입사까지의 절차입니다.</p>
   <div class="process-steps">
     <div class="process-step"><div class="process-num">1</div><h4>공고 확인</h4><p>진행 중인 공고 확인 후 지원</p></div>
-    <div class="process-step"><div class="process-num">2</div><h4>지원서 접수</h4><p>온라인 지원서 작성·제출</p></div>
-    <div class="process-step"><div class="process-num">3</div><h4>서류 검토</h4><p>담당자 검토 후 개별 연락</p></div>
-    <div class="process-step"><div class="process-num">4</div><h4>처우 협의</h4><p>근무 조건·처우 협의</p></div>
-    <div class="process-step"><div class="process-num">5</div><h4>입사</h4><p>계약서 작성 후 현장 배치</p></div>
+    <div class="process-step"><div class="process-num">2</div><h4>지원서 접수</h4><p>홈페이지 온라인 지원서 작성·제출</p></div>
+    <div class="process-step"><div class="process-num">3</div><h4>서류전형</h4><p>담당자 검토 후 개별 연락</p></div>
+    <div class="process-step"><div class="process-num">4</div><h4>면접</h4><p>1:1 면접, 근무 조건·처우 협의</p></div>
+    <div class="process-step"><div class="process-num">5</div><h4>최종합격·입사</h4><p>계약서 작성 후 현장 배치</p></div>
   </div>
 </section>
 
@@ -243,5 +289,24 @@
   © 2026 JH Solutions. All rights reserved.
 </footer>
 
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+const firebaseConfig = {
+  apiKey: "AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI",
+  authDomain: "portal-test-6e0ff.firebaseapp.com",
+  projectId: "portal-test-6e0ff",
+  storageBucket: "p4ph2-fab-506a7.firebasestorage.app",
+  messagingSenderId: "36946317914",
+  appId: "1:36946317914:web:c6ad5f3a1b98130c99fe63"
+};
+try {
+  const db = getFirestore(initializeApp(firebaseConfig));
+  const snap = await getDocs(query(collection(db, 'job_postings'), where('status', '==', 'open')));
+  const today = new Date(); today.setHours(0,0,0,0);
+  const n = snap.docs.map(d => d.data()).filter(j => (!j.deadline || new Date(j.deadline + 'T23:59:59') >= today) && (!j.startDate || new Date(j.startDate + 'T00:00:00') <= new Date())).length;
+  if (n > 0) { document.getElementById('openCount').textContent = n; document.getElementById('openCountWrap').style.display = 'block'; }
+} catch (e) { console.error(e); }
+</script>
 </body>
 </html>

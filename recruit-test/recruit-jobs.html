@@ -112,6 +112,7 @@
 <section class="jobs-hero">
   <div class="eyebrow">Recruitment</div>
   <h1>진행 중인 채용 공고</h1>
+  <p id="jobsCount" style="margin-top:12px;color:var(--gray);font-size:0.92rem;"></p>
 </section>
 
 <div class="jobs-wrap">
@@ -155,6 +156,7 @@ try {
   const jobs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
     .filter(j => (!j.deadline || new Date(j.deadline + 'T23:59:59') >= today) && (!j.startDate || new Date(j.startDate + 'T00:00:00') <= new Date()))
     .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+  document.getElementById('jobsCount').textContent = jobs.length ? (jobs.length + '개의 채용공고가 진행 중입니다') : '';
   if (!jobs.length) empty('현재 진행 중인 채용 공고가 없습니다', '새로운 공고가 등록되면 이곳에 안내해 드리겠습니다.');
   else {
     box.innerHTML = '';
