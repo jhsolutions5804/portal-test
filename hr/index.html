@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- holiday-shared: 20261001 공휴일 목록을 공용 파일(holidays.js) 한 곳으로 일원화 --><!-- holiday-data: 20261001 공휴일 정비(2025~2027): 누락·오류 보정 --><!-- HR module build: 20261001l · ver 2.25.1 · 근로자 등록 시 문서 ID를 주민번호 없는 임의 값으로 생성(+같은 이름·주민번호 중복 등록 차단) · 이전: build: 20261001k · ver 2.25.0 · 근로자 민감 정보 분리: 주민번호·계좌·주소·서명을 worker_private 문서로 이동(읽기는 합쳐서, 쓰기는 나눠서) · 이전: build: 20261001j · ver 2.24.3 · 공휴일 데이터 정비(2025~2027): 노동절·제헌절·부처님오신날·토요일 공휴일·대체공휴일 누락 보충, 2027 설날 연휴 오류 정정 · 이전: build: 20261001i · ver 2.24.2 · 호봉 산정 수정: 입사한 해는 1호봉(1~3분기 입사자가 입사 당해에 2호봉으로 나오던 것), 다음 해 1/1부터 1~3분기 입사=2호봉·4분기 입사=1호봉 · 이전: build: 20261001h · ver 2.24.1 · 인사 변동 화면 수정: 직급·부서 목록 변수(RANKS2/DEPTS2)가 명부 상세 함수 안에서만 정의돼 ‘불러오는 중’에서 멈추던 오류(2.14.0부터 있던 문제) · 이전: build: 20261001g · ver 2.24.0 · 퇴직원서 출력(휴직원서 포함)·승인된 퇴직원서 퇴직일을 인사 캘린더 '퇴사' 일정으로 자동 반영 · 이전: build: 20261001f · ver 2.23.1 · 연봉 제안서: 출력은 미리보기 전용(저장·캘린더 등록 안 함), 💾 저장 버튼 신설(같은 건 덮어쓰기·캘린더 회신기한 1건 연동), 지난 제안서에서 열어서 수정 / 직전: ver 2.23.0 · 인사 캘린더 자동 등록 — 채용 지원자 면접일 입력 시 면접 일정, 연봉 제안서 출력·발송 시 회신 기한 일정 자동 등록(ID 고정으로 중복 방지) / 직전: ver 2.22.0 · 인사 캘린더에 연차 표시(전자결재 게시 연차를 회사 일정에서 읽기 전용으로 표시, 기간 연차는 주말·공휴일 제외, 날짜 선택 시 사용자 목록, ‘연차 표시’ 토글) / 직전: ver 2.21.0 · 인사 캘린더 — 날짜 클릭은 선택만(하단에 그날 일정 목록·‘이 날짜에 등록’ 버튼), 공휴일 표시(2025~2027, 노동절·제헌절·대체공휴일 반영) / 직전: ver 2.20.0 · 인사 홈 2단 개편(왼쪽 인사 캘린더·오른쪽 업무 메뉴 세로 배열) / 직전: ver 2.19.0 · 인사 캘린더 신설(면접·연봉제안서 회신·연봉협상·인사평가·기타, 지정 4명 한정) / 직전: ver 2.18.0 · 문서 메일 수신 주소: 명부 이메일이 없으면 포털 로그인 계정(@jhsol.kr)으로 자동 대체 / 직전: ver 2.17.1 · 급여명세서 PC 조회 화면에 메일 발송·링크/QR·발송 이력 추가 / 직전: ver 2.17.0 · 급여명세서 열람 링크(저장 당시 양식·180일)·메일 발송 이력·링크/QR / 직전: ver 2.16.0 · 저장 계약서 메일 재전송 + 발송 이력(doc_send_log) / 직전: ver 2.15.0 · 저장된 근로계약서·연봉계약서 근로자 본인 열람 링크(문자 인증, 180일, 저장 당시 양식으로 표시) / 직전: ver 2.14.0 · 인사 변동 메뉴 신설(직급·부서 변경 저장+호봉 초기화+이력, 연봉 조정은 근로계약서 작성으로 연결, 변동 현황 조회) · 이전: 20260925e ver 2.13.1 · 근로시간 캘린더 — 반차 쓰고 그날 일부 근무한 경우, 근무시간만 보이고 반차 여부가 안 보이던 문제 수정(🌴 표시 병기) · 이전: 20260925d ver 2.13.0 -->
+<!DOCTYPE html><!-- holiday-shared: 20261001 공휴일 목록을 공용 파일(holidays.js) 한 곳으로 일원화 --><!-- holiday-data: 20261001 공휴일 정비(2025~2027): 누락·오류 보정 --><!-- HR module build: 20261001m · ver 2.25.2 · 채용 지원자 목록에 🗑 삭제 버튼 추가(확인창 후 지원자 문서와 면접 일정 함께 삭제) · 이전: HR module build: 20261001l · ver 2.25.1 · 근로자 등록 시 문서 ID를 주민번호 없는 임의 값으로 생성(+같은 이름·주민번호 중복 등록 차단) · 이전: build: 20261001k · ver 2.25.0 · 근로자 민감 정보 분리: 주민번호·계좌·주소·서명을 worker_private 문서로 이동(읽기는 합쳐서, 쓰기는 나눠서) · 이전: build: 20261001j · ver 2.24.3 · 공휴일 데이터 정비(2025~2027): 노동절·제헌절·부처님오신날·토요일 공휴일·대체공휴일 누락 보충, 2027 설날 연휴 오류 정정 · 이전: build: 20261001i · ver 2.24.2 · 호봉 산정 수정: 입사한 해는 1호봉(1~3분기 입사자가 입사 당해에 2호봉으로 나오던 것), 다음 해 1/1부터 1~3분기 입사=2호봉·4분기 입사=1호봉 · 이전: build: 20261001h · ver 2.24.1 · 인사 변동 화면 수정: 직급·부서 목록 변수(RANKS2/DEPTS2)가 명부 상세 함수 안에서만 정의돼 ‘불러오는 중’에서 멈추던 오류(2.14.0부터 있던 문제) · 이전: build: 20261001g · ver 2.24.0 · 퇴직원서 출력(휴직원서 포함)·승인된 퇴직원서 퇴직일을 인사 캘린더 '퇴사' 일정으로 자동 반영 · 이전: build: 20261001f · ver 2.23.1 · 연봉 제안서: 출력은 미리보기 전용(저장·캘린더 등록 안 함), 💾 저장 버튼 신설(같은 건 덮어쓰기·캘린더 회신기한 1건 연동), 지난 제안서에서 열어서 수정 / 직전: ver 2.23.0 · 인사 캘린더 자동 등록 — 채용 지원자 면접일 입력 시 면접 일정, 연봉 제안서 출력·발송 시 회신 기한 일정 자동 등록(ID 고정으로 중복 방지) / 직전: ver 2.22.0 · 인사 캘린더에 연차 표시(전자결재 게시 연차를 회사 일정에서 읽기 전용으로 표시, 기간 연차는 주말·공휴일 제외, 날짜 선택 시 사용자 목록, ‘연차 표시’ 토글) / 직전: ver 2.21.0 · 인사 캘린더 — 날짜 클릭은 선택만(하단에 그날 일정 목록·‘이 날짜에 등록’ 버튼), 공휴일 표시(2025~2027, 노동절·제헌절·대체공휴일 반영) / 직전: ver 2.20.0 · 인사 홈 2단 개편(왼쪽 인사 캘린더·오른쪽 업무 메뉴 세로 배열) / 직전: ver 2.19.0 · 인사 캘린더 신설(면접·연봉제안서 회신·연봉협상·인사평가·기타, 지정 4명 한정) / 직전: ver 2.18.0 · 문서 메일 수신 주소: 명부 이메일이 없으면 포털 로그인 계정(@jhsol.kr)으로 자동 대체 / 직전: ver 2.17.1 · 급여명세서 PC 조회 화면에 메일 발송·링크/QR·발송 이력 추가 / 직전: ver 2.17.0 · 급여명세서 열람 링크(저장 당시 양식·180일)·메일 발송 이력·링크/QR / 직전: ver 2.16.0 · 저장 계약서 메일 재전송 + 발송 이력(doc_send_log) / 직전: ver 2.15.0 · 저장된 근로계약서·연봉계약서 근로자 본인 열람 링크(문자 인증, 180일, 저장 당시 양식으로 표시) / 직전: ver 2.14.0 · 인사 변동 메뉴 신설(직급·부서 변경 저장+호봉 초기화+이력, 연봉 조정은 근로계약서 작성으로 연결, 변동 현황 조회) · 이전: 20260925e ver 2.13.1 · 근로시간 캘린더 — 반차 쓰고 그날 일부 근무한 경우, 근무시간만 보이고 반차 여부가 안 보이던 문제 수정(🌴 표시 병기) · 이전: 20260925d ver 2.13.0 -->
 <html lang="ko">
 <head><script src="../holidays.js?v=20261001"></script>
 <meta charset="UTF-8">
@@ -3228,7 +3228,7 @@ function _renderApplicantsList(all){
         ${Object.entries(statusLabel).map(([k,label])=>`<option value="${k}" ${(a.status||'new')===k?'selected':''}>${label}</option>`).join('')}
       </select>
     </td>
-    <td style="padding:10px 12px;">${(a.status==='pass')?`<button onclick="applicantsSendToOffer('${a.id}')" style="background:#16A34A;border:none;border-radius:6px;padding:5px 10px;color:#fff;font-size:10.5px;font-weight:700;cursor:pointer;white-space:nowrap;">📨 제안서</button>`:''}</td>
+    <td style="padding:10px 12px;white-space:nowrap;">${(a.status==='pass')?`<button onclick="applicantsSendToOffer('${a.id}')" style="background:#16A34A;border:none;border-radius:6px;padding:5px 10px;color:#fff;font-size:10.5px;font-weight:700;cursor:pointer;white-space:nowrap;margin-right:4px;">📨 제안서</button>`:''}<button onclick="applicantsDelete('${a.id}')" title="이 지원자를 삭제합니다" style="background:#fff;border:1px solid #F3C4C4;border-radius:6px;padding:5px 9px;color:#DC2626;font-size:10.5px;font-weight:700;cursor:pointer;white-space:nowrap;">🗑 삭제</button></td>
   </tr>`).join('');
   wrap.innerHTML = `
     <div style="background:#fff;border-radius:14px;border:1px solid #DDE4EF;overflow:hidden;box-shadow:0 1px 4px rgba(29,91,166,0.08);">
@@ -3239,8 +3239,25 @@ function _renderApplicantsList(all){
         <tbody>${rows}</tbody>
       </table>
     </div>
-    <div style="font-size:11px;color:#9AAABF;margin-top:8px;padding:0 4px;">💡 이름 클릭 → 상세보기(이력서 조회 · 인쇄) · 합격자는 목록에서 바로 연봉 제안서 작성 가능</div>`;
+    <div style="font-size:11px;color:#9AAABF;margin-top:8px;padding:0 4px;">💡 이름 클릭 → 상세보기(이력서 조회 · 인쇄) · 합격자는 목록에서 바로 연봉 제안서 작성 가능 · 🗑 삭제는 되돌릴 수 없습니다</div>`;
 }
+
+// 지원자 삭제 — 확인창 후 지원자 문서와 인사 캘린더 면접 일정(interview_<ID>)을 함께 삭제. 되돌릴 수 없음.
+window.applicantsDelete = async (id) => {
+  const a = (window._applicantsDocs||[]).find(x=>x.id===id); if (!a) return;
+  const nm = a.name || '(이름 없음)';
+  const warn = (a.status==='pass') ? '\n※ 합격 처리된 지원자입니다.' : '';
+  if (!confirm("'"+nm+"' 지원자를 삭제합니다.\n이력서 내용과 면접 일정이 함께 삭제되며 되돌릴 수 없습니다."+warn+"\n\n계속할까요?")) return;
+  try {
+    const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await deleteDoc(doc(window._db,'recruit_applicants',id));
+  } catch(e) { alert('삭제 오류: '+e.message); return; }
+  let calOk = true;
+  try { calOk = await window._hcAutoDelete('interview_'+id); } catch(e) { calOk = false; }
+  window._applicantsDocs = (window._applicantsDocs||[]).filter(x=>x.id!==id);
+  _renderApplicantsFilterBar(window._applicantsDocs); _renderApplicantsList(window._applicantsDocs);
+  if (!calOk) alert("지원자는 삭제됐지만 인사 캘린더의 면접 일정은 지우지 못했습니다. 인사 캘린더에서 직접 확인해 주세요.");
+};
 
 window.applicantsChangeStatus = async (id, status) => {
   try {
