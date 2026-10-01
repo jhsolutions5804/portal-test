@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- build: 20261001b · ver: 2.3.0 · 인적사항에 주소 입력 칸, 첨부에 통장사본 칸 추가(주소·통장사본은 관리자 전용 master_worker_private·master_worker_photos에 저장 — 규칙 변경 없음) · 이전: build: 20261001a · ver: 2.2.2 · 검진 결과 링크를 만료일 줄 옆에 붙여 행 높이 고정(PDF 첨부해도 행이 늘어나지 않음) · 이전: 20260930s ver 2.2.1 · 시공사는 추천 드롭다운 없이 직접 입력 · 2.2.0 자격·인증에 시공사 칸 추가(삼성물산/삼성중공업 등 시공사별로 따로 기록·검색) · 이전 2.1.0 · 폰 카드 목록에 정렬 선택(PC 머리글 정렬과 같은 기준) + 본섭·테섭 통합본(본섭 1.9.1 + 테섭 1.7.0~1.8.1 병합: 팀장 포털 계정 연결·모바일 카드 목록/뒤로가기) · [본섭 계열] build: 20260930o · ver: 1.9.1 · 명부 표 가로 스크롤 제거(여백·배지·버튼 축소, 정렬 화살표 모서리 배치) · 이전: 20260930n ver 1.9.0 · 목록 머리글 클릭 정렬(오름/내림/기본, 값 없는 사람은 항상 아래) · 이전: 20260930m ver 1.8.2 · 사진·신분증·건설기초이수증 세 칸을 한 줄 카드로 배치 · 이전: 20260930l ver 1.8.1 · 수정 창 다듬기(폭 860px·인적사항 4열·급여/계좌 3열·칸 폭 상한·교육 줄 간격) · 이전: 20260930k ver 1.8.0 · 검진 PDF 첨부를 같은 줄에 한 줄 배치(아이콘 버튼)·모바일 모드(?m=1&edit=/new=1 — 모바일에서도 PC와 같은 수정·등록 화면) · 이전: 20260930j ver 1.7.1 · 수정 창 폭 확대(최대 1000px)·검진 줄 줄바꿈 제거 · 이전: 20260930i ver 1.7.0 · 건강검진 결과 PDF 첨부(Firebase Storage, 관리자만 열람·로그인 권한 다운로드) · 이전: 20260930h ver 1.6.1 · 날짜 입력 중 화면이 초기화되는 버그 수정(만료일·상태만 제자리 갱신, 타이핑 중간 날짜 무시) · 이전: 20260930g ver 1.6.0 · 검진 만료일 자동 계산(실시일+1년, 수정 가능)·자격 유효기간(년) 선택 시 만료일 자동 계산(수정 가능)·목록 만료 배지 · 이전: 20260930f ver 1.5.0 · 일당을 관리자 전용 문서(master_worker_private)로 이동 · 이전: 20260930e ver 1.4.0 월간 공수 보기 이전(PJT별 합계 · 개인별 합계 · 개인별 공수표 PNG) — 월간 공수 → 연명부 · 이전: 20260930d ver 1.3.0 기존 인원 마이그레이션 도구 이전(월간 공수 → 연명부) · 이전: 20260930c ver 1.2.0 원청별(삼성전자/SK하이닉스) 탭 구성 — 자격·인증(취득 현장명)은 탭별, 사내화 교육·상생협력포탈 계정은 삼성전자 탭 · 이전: 20260930b ver 1.1.0 연명부 개정: 인적사항 개편(전화번호 포함), 사내화 교육 만료일, 첨부 3칸(사진·신분증·건설기초이수증), 관리자 전용 급여/계좌 구역 · 이전: 20260930a ver 1.0.0 근로자 연명부 신설 — 마스터 근로자 관리(등록/수정/퇴사/삭제) 이전, 개인정보·건강검진·자격인증·사내화교육·상생협력포탈 계정·사진(파일 보관) 관리. 관리자 전용 · [테섭 계열] 이전: 20260930j ver 1.8.0 · 모바일 화면 지원(좁은 화면에서 목록을 카드로 표시·버튼 꺾임 방지·모바일 홈/PJT 관리에서 진입) — PC와 같은 기능·같은 파일 · 이전: 20260930i ver 1.7.0 · 팀장에게 포털 계정 연결(portal_users.teamLeaderIds, 관리자만 지정) — 팀장이 ‘내 팀 공수표’에서 자기 팀 공수·팀 단가·노무비 조회 -->
+<!DOCTYPE html><!-- build: 20261001c · ver: 2.3.1 · 통장사본을 첨부 칸이 아니라 관리자 전용 '급여/계좌' 구역으로 이동(목록 첨부 배지에서도 제외) · 이전: build: 20261001b · ver: 2.3.0 · 인적사항에 주소 입력 칸, 첨부에 통장사본 칸 추가(주소·통장사본은 관리자 전용 master_worker_private·master_worker_photos에 저장 — 규칙 변경 없음) · 이전: build: 20261001a · ver: 2.2.2 · 검진 결과 링크를 만료일 줄 옆에 붙여 행 높이 고정(PDF 첨부해도 행이 늘어나지 않음) · 이전: 20260930s ver 2.2.1 · 시공사는 추천 드롭다운 없이 직접 입력 · 2.2.0 자격·인증에 시공사 칸 추가(삼성물산/삼성중공업 등 시공사별로 따로 기록·검색) · 이전 2.1.0 · 폰 카드 목록에 정렬 선택(PC 머리글 정렬과 같은 기준) + 본섭·테섭 통합본(본섭 1.9.1 + 테섭 1.7.0~1.8.1 병합: 팀장 포털 계정 연결·모바일 카드 목록/뒤로가기) · [본섭 계열] build: 20260930o · ver: 1.9.1 · 명부 표 가로 스크롤 제거(여백·배지·버튼 축소, 정렬 화살표 모서리 배치) · 이전: 20260930n ver 1.9.0 · 목록 머리글 클릭 정렬(오름/내림/기본, 값 없는 사람은 항상 아래) · 이전: 20260930m ver 1.8.2 · 사진·신분증·건설기초이수증 세 칸을 한 줄 카드로 배치 · 이전: 20260930l ver 1.8.1 · 수정 창 다듬기(폭 860px·인적사항 4열·급여/계좌 3열·칸 폭 상한·교육 줄 간격) · 이전: 20260930k ver 1.8.0 · 검진 PDF 첨부를 같은 줄에 한 줄 배치(아이콘 버튼)·모바일 모드(?m=1&edit=/new=1 — 모바일에서도 PC와 같은 수정·등록 화면) · 이전: 20260930j ver 1.7.1 · 수정 창 폭 확대(최대 1000px)·검진 줄 줄바꿈 제거 · 이전: 20260930i ver 1.7.0 · 건강검진 결과 PDF 첨부(Firebase Storage, 관리자만 열람·로그인 권한 다운로드) · 이전: 20260930h ver 1.6.1 · 날짜 입력 중 화면이 초기화되는 버그 수정(만료일·상태만 제자리 갱신, 타이핑 중간 날짜 무시) · 이전: 20260930g ver 1.6.0 · 검진 만료일 자동 계산(실시일+1년, 수정 가능)·자격 유효기간(년) 선택 시 만료일 자동 계산(수정 가능)·목록 만료 배지 · 이전: 20260930f ver 1.5.0 · 일당을 관리자 전용 문서(master_worker_private)로 이동 · 이전: 20260930e ver 1.4.0 월간 공수 보기 이전(PJT별 합계 · 개인별 합계 · 개인별 공수표 PNG) — 월간 공수 → 연명부 · 이전: 20260930d ver 1.3.0 기존 인원 마이그레이션 도구 이전(월간 공수 → 연명부) · 이전: 20260930c ver 1.2.0 원청별(삼성전자/SK하이닉스) 탭 구성 — 자격·인증(취득 현장명)은 탭별, 사내화 교육·상생협력포탈 계정은 삼성전자 탭 · 이전: 20260930b ver 1.1.0 연명부 개정: 인적사항 개편(전화번호 포함), 사내화 교육 만료일, 첨부 3칸(사진·신분증·건설기초이수증), 관리자 전용 급여/계좌 구역 · 이전: 20260930a ver 1.0.0 근로자 연명부 신설 — 마스터 근로자 관리(등록/수정/퇴사/삭제) 이전, 개인정보·건강검진·자격인증·사내화교육·상생협력포탈 계정·사진(파일 보관) 관리. 관리자 전용 · [테섭 계열] 이전: 20260930j ver 1.8.0 · 모바일 화면 지원(좁은 화면에서 목록을 카드로 표시·버튼 꺾임 방지·모바일 홈/PJT 관리에서 진입) — PC와 같은 기능·같은 파일 · 이전: 20260930i ver 1.7.0 · 팀장에게 포털 계정 연결(portal_users.teamLeaderIds, 관리자만 지정) — 팀장이 ‘내 팀 공수표’에서 자기 팀 공수·팀 단가·노무비 조회 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -111,14 +111,13 @@ body.mob .edudate .in{width:170px}
 .filebox{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px}
 .frow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px dashed #eef0f3}
 .frow:last-of-type{border-bottom:none}
-/* 사진·신분증·건설기초이수증·통장사본: 네 칸을 한 줄에 카드로 (좁은 화면에서는 2칸, 더 좁으면 한 칸씩) */
-#file-rows{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+/* 사진·신분증·건설기초이수증: 세 칸을 한 줄에 카드로 (좁은 화면에서는 한 칸씩) */
+#file-rows{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 #file-rows .frow{flex-direction:column;align-items:flex-start;gap:6px;padding:10px 12px;border:1px solid #eef0f3;border-radius:10px;background:#fcfdff}
 #file-rows .flbl{width:auto;font-weight:800;font-size:13px}
 #file-rows .filebox{display:flex;flex-wrap:wrap;gap:5px;align-items:center;font-size:12px;min-width:0;word-break:break-all}
 #file-rows .hint{grid-column:1/-1}
-@media (max-width:980px){ #file-rows{grid-template-columns:repeat(2,minmax(0,1fr))} }
-@media (max-width:560px){ #file-rows{grid-template-columns:1fr} }
+@media (max-width:760px){ #file-rows{grid-template-columns:1fr} }
 .flbl{min-width:104px;font-weight:700;font-size:12.5px;color:#333}
 .edurow{max-width:640px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:5px 0;border-bottom:1px dashed #eef0f3}
 .edurow:last-of-type{border-bottom:none}
@@ -320,12 +319,12 @@ const EDU = [
   { k:'e4', label:'화학물질안전원 온라인 안전교육' },
 ];
 const HEALTH_TYPES = { general:'일반검진', preplace:'배치전검진' };
-// 첨부 파일 4칸(사진·신분증·건설기초이수증·통장사본) — 문서 ID: 사진은 기존 호환을 위해 근로자 ID 그대로, 나머지는 접미사
+// 첨부 파일 — 사진·신분증·건설기초이수증(첨부 칸)과 통장사본(관리자 전용 급여/계좌 구역) — 문서 ID: 사진은 기존 호환을 위해 근로자 ID 그대로, 나머지는 접미사
 const FILE_SLOTS = [
   { k:'photo',  label:'사진',           short:'사진',   suffix:'' },
   { k:'idcard', label:'신분증',         short:'신분증', suffix:'__idcard' },
   { k:'cert',   label:'건설기초이수증', short:'이수증', suffix:'__cert' },
-  { k:'bankbook', label:'통장사본',      short:'통장',   suffix:'__bank' },
+  { k:'bankbook', label:'통장사본',      short:'통장',   suffix:'__bank', admin:true },   // 관리자 전용 '급여/계좌' 구역에서 입력
 ];
 // 원청(협력 대상) — 탭 구성. 자격·인증은 원청별, 사내화 교육·상생협력포탈 계정은 현재 삼성전자 탭에만 둔다.
 const COMPANIES = [
@@ -334,6 +333,7 @@ const COMPANIES = [
 ];
 let coTab = 'samsung';
 const certCo = c => (c && c.co) || 'samsung';   // 원청 구분이 없던 기존 자격은 삼성전자로 본다
+const PHOTO_SLOTS = FILE_SLOTS.filter(x=>!x.admin);   // 첨부 칸·목록 배지에 표시하는 슬롯(통장사본 제외)
 const slotOf = k => FILE_SLOTS.find(x=>x.k===k);
 const slotDocId = (id,k) => id + slotOf(k).suffix;
 const PHOTO_MAX_CHARS = 950000;   // dataURL 문자 수 상한 (≈ 원본 파일 710KB) — 보안규칙 1,000,000자 미만 · Firestore 문서 1MiB 한도 여유
@@ -476,7 +476,7 @@ function sortVal(m){
     case 'preplace':return healthExpiry(p,'preplace')||'';
     case 'edu':     return eduDoneCount(p)*10 - Math.min(9,eduCountBy(p,'expired'));   // 이수 개수가 많을수록 큼(만료가 있으면 살짝 낮게)
     case 'cert':    return (p.certs||[]).length;
-    case 'files':   { const fm=filesMeta(p); return FILE_SLOTS.filter(x=>fm[x.k]).length; }
+    case 'files':   { const fm=filesMeta(p); return PHOTO_SLOTS.filter(x=>fm[x.k]).length; }
   }
   return '';
 }
@@ -557,7 +557,7 @@ function render(){
       return '<span class="badge '+(exp?'b-none':'b-mem')+'" title="'+co.label+' 자격·인증 '+cs.length+'건'+(exp?' (만료 '+exp+')':'')+'">'+co.short+' '+cs.length+(exp?' ⚠':'')+'</span>';
     }).filter(Boolean).join(' ') || '<span class="sub">—</span>';
     const fm = filesMeta(p);
-    const fileChips = FILE_SLOTS.map(x=>'<span class="badge '+(fm[x.k]?'b-ok':'b-off')+'" title="'+x.label+(fm[x.k]?' 등록':' 없음')+'">'+x.short+'</span>').join(' ');
+    const fileChips = PHOTO_SLOTS.map(x=>'<span class="badge '+(fm[x.k]?'b-ok':'b-off')+'" title="'+x.label+(fm[x.k]?' 등록':' 없음')+'">'+x.short+'</span>').join(' ');
     const state = m.resigned ? '<span class="badge b-off">퇴사 '+esc(m.resignedDate||'')+'</span>' : '';
     const resignBtn = m.resigned
       ? '<button class="btn sm" style="color:#1D5BA6" onclick="toggleResign(\''+esc(m.id)+'\')">재직 전환</button>'
@@ -585,7 +585,7 @@ const cards = list.map(m=>{
   let eduB = n===EDU.length ? '<span class="badge b-ok">교육 4/4</span>' : n===0 ? '<span class="badge b-none">교육 0/4</span>' : '<span class="badge b-part">교육 '+n+'/4</span>';
   if (ex) eduB += ' <span class="badge b-none">만료 '+ex+'</span>'; else if (so) eduB += ' <span class="badge b-part">임박 '+so+'</span>';
   const certChips = COMPANIES.map(co=>{ const cs=(p.certs||[]).filter(c=>certCo(c)===co.k); if(!cs.length) return ''; const exp=cs.filter(c=>eduStateOf(true,c.expiry||'').state==='expired').length; return '<span class="badge '+(exp?'b-none':'b-mem')+'">'+co.short+' '+cs.length+(exp?' ⚠':'')+'</span>'; }).filter(Boolean).join(' ');
-  const fm = filesMeta(p), fileChips = FILE_SLOTS.map(x=>'<span class="badge '+(fm[x.k]?'b-ok':'b-off')+'">'+x.short+'</span>').join(' ');
+  const fm = filesMeta(p), fileChips = PHOTO_SLOTS.map(x=>'<span class="badge '+(fm[x.k]?'b-ok':'b-off')+'">'+x.short+'</span>').join(' ');
   const resignBtn = m.resigned ? '<button class="btn sm" style="color:#1D5BA6" onclick="toggleResign(\''+esc(m.id)+'\')">재직 전환</button>' : '<button class="btn sm" style="color:#9a5a00" onclick="toggleResign(\''+esc(m.id)+'\')">퇴사처리</button>';
   return '<div class="mcard'+(m.resigned?' resigned':'')+'"><div class="mc-h"><div><span class="mc-nm">'+esc(m.name)+'</span> '+(m.resigned?'<span class="badge b-off">퇴사 '+esc(m.resignedDate||'')+'</span>':'')+'<div class="sub">'+esc(m.birth||'생년월일 없음')+(m.gender?' · '+esc(m.gender):'')+'</div></div><div>'+team+'</div></div>'
    +'<div class="mc-grid"><div><span>연락처</span>'+esc(p.phone||'—')+'</div><div><span>입사일</span>'+esc(m.hireDate||'—')+'</div>'
@@ -762,7 +762,7 @@ function fileRowHtml(x){
     +'<input type="file" id="photo-file-'+x.k+'" accept="image/*" style="display:none" onchange="photoPicked(this,\''+x.k+'\')"></div></div>';
 }
 function filesHtml(){
-  return FILE_SLOTS.map(fileRowHtml).join('')
+  return PHOTO_SLOTS.map(fileRowHtml).join('')
     +'<div class="hint">파일은 화면에 바로 표시하지 않고 보관합니다. 각각 긴 변 최대 2000px, 약 700KB 이하로 조정되며 용량이 크면 화질을 자동으로 낮춰 저장합니다. 이미지 파일만 등록할 수 있습니다.</div>';
 }
 function eduRowsHtml(){
@@ -792,13 +792,14 @@ function drawForm(){
     +'<div class="sec"><div class="sec-t">건강검진 이력</div><div id="health-rows">'+healthRowsHtml()+'</div>'
     +'<button class="btn sm" onclick="form_hadd()">+ 검진 이력 추가</button></div>'
     +'<div class="sec" id="co-sec">'+coSecHtml()+'</div>'
-    +'<div class="sec"><div class="sec-t">사진 파일 <span style="font-weight:400;color:#9AAABF">(사진 · 신분증 · 건설기초이수증 · 통장사본)</span></div><div id="file-rows">'+filesHtml()+'</div></div>'
+    +'<div class="sec"><div class="sec-t">사진 파일 <span style="font-weight:400;color:#9AAABF">(사진 · 신분증 · 건설기초이수증)</span></div><div id="file-rows">'+filesHtml()+'</div></div>'
     +'<div class="sec"><div class="sec-t">비고</div><textarea class="in" rows="2" oninput="wf.note=this.value">'+esc(f.note)+'</textarea></div>'
     +(isAdmin ? '<div class="sec admin"><div class="sec-t">🔒 관리자 전용 조회 · 급여 / 계좌</div><div class="grid3">'
       +'<div><label class="f">은행</label><input class="in" placeholder="예: 국민은행" value="'+esc(f.bank)+'" oninput="wf.bank=this.value"></div>'
       +'<div><label class="f">계좌번호</label><input class="in" inputmode="numeric" value="'+esc(f.account)+'" oninput="wf.account=this.value"></div>'
       +'<div><label class="f">일당 (원)</label><input class="in" inputmode="numeric" placeholder="예: 180,000" value="'+esc(f.rate)+'" oninput="wf.rate=this.value"></div>'
-      +'</div><div class="hint">급여·계좌 정보는 관리자에게만 표시됩니다.</div></div>' : '')
+      +'</div><div style="margin-top:10px">'+fileRowHtml(slotOf('bankbook'))+'</div>'
+      +'<div class="hint">급여·계좌 정보와 통장사본은 관리자에게만 표시됩니다. 통장사본은 이미지 파일만 등록할 수 있습니다.</div></div>' : '')
     +'<div style="display:flex;gap:8px;margin-top:16px">'
     +(isEdit?'<button class="btn red" onclick="deleteWorker()">삭제</button>':'')
     +'<button class="btn" style="flex:1" onclick="closeForm()">취소</button>'
