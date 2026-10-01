@@ -1013,7 +1013,7 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, serverTimestamp, setDoc, getDoc, getDocs }
+import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, where, orderBy, serverTimestamp, setDoc, getDoc, getDocs }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { getAuth, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
@@ -1766,14 +1766,21 @@ window._fbGetProgChecks = function(dateKey, zoneId) {
 
 // ===== 전자결재 연차(edoc_leave) 구독 → 캘린더 자동 등재 (접근검증 통과 후) =====
 function subscribeEdocLeave(){
-  const q = query(collection(db, 'edoc_leave'));
-  onSnapshot(q, function(snap){
-    const typeMap = {'연차':'annual','반차(오전)':'half-am','반차(오후)':'half-pm','오전반차':'half-am','오후반차':'half-pm','반차':'half-am','병가':'annual','기타':'annual'};
-    window._edocLeaveCache = snap.docs.map(function(d){return Object.assign({id:d.id},d.data());})
-      .filter(function(d){return d.status==='posted'||d.status==='approved';});
+  // 전자결재 열람 제한 규칙(작성자·결재선·관리자·게시완료 문서만 읽기) 대응:
+  // 필터 없는 전체 조회는 일반 직원에게 통째로 거부되므로 '게시완료(posted)'와 '승인(approved, 관리자만 열람)'을 각각 구독해 합친다.
+  // 승인 구독이 권한 거부되어도(일반 직원) 게시완료 연차는 그대로 표시된다.
+  var _lvPosted = [], _lvApproved = [];
+  function _lvMerge(){
+    var seen = {}; window._edocLeaveCache = _lvPosted.concat(_lvApproved).filter(function(d){ if(seen[d.id]) return false; seen[d.id]=1; return true; });
     if(typeof renderCal==='function' && document.getElementById('tab-calendar').style.display!=='none') renderCal();
     if(typeof renderAttend==='function' && document.getElementById('tab-attend').style.display!=='none') renderAttend();
-  }, function(err){console.warn('edoc_leave 구독 오류:',err);});
+  }
+  onSnapshot(query(collection(db, 'edoc_leave'), where('status','==','posted')), function(snap){
+    _lvPosted = snap.docs.map(function(d){return Object.assign({id:d.id},d.data());}); _lvMerge();
+  }, function(err){console.warn('edoc_leave(게시완료) 구독 오류:',err);});
+  onSnapshot(query(collection(db, 'edoc_leave'), where('status','==','approved')), function(snap){
+    _lvApproved = snap.docs.map(function(d){return Object.assign({id:d.id},d.data());}); _lvMerge();
+  }, function(err){ /* 일반 직원은 승인(미게시) 문서를 읽을 수 없음 — 정상 */ });
 }
 window._accessGatePromise.then(function(ok){ if(ok) subscribeEdocLeave(); });
 
