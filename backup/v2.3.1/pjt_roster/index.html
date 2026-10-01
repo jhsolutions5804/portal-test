@@ -1,0 +1,1312 @@
+<!DOCTYPE html><!-- build: 20261001c · ver: 2.3.1 · 통장사본을 첨부 칸이 아니라 관리자 전용 '급여/계좌' 구역으로 이동(목록 첨부 배지에서도 제외) · 이전: build: 20261001b · ver: 2.3.0 · 인적사항에 주소 입력 칸, 첨부에 통장사본 칸 추가(주소·통장사본은 관리자 전용 master_worker_private·master_worker_photos에 저장 — 규칙 변경 없음) · 이전: build: 20261001a · ver: 2.2.2 · 검진 결과 링크를 만료일 줄 옆에 붙여 행 높이 고정(PDF 첨부해도 행이 늘어나지 않음) · 이전: 20260930s ver 2.2.1 · 시공사는 추천 드롭다운 없이 직접 입력 · 2.2.0 자격·인증에 시공사 칸 추가(삼성물산/삼성중공업 등 시공사별로 따로 기록·검색) · 이전 2.1.0 · 폰 카드 목록에 정렬 선택(PC 머리글 정렬과 같은 기준) + 본섭·테섭 통합본(본섭 1.9.1 + 테섭 1.7.0~1.8.1 병합: 팀장 포털 계정 연결·모바일 카드 목록/뒤로가기) · [본섭 계열] build: 20260930o · ver: 1.9.1 · 명부 표 가로 스크롤 제거(여백·배지·버튼 축소, 정렬 화살표 모서리 배치) · 이전: 20260930n ver 1.9.0 · 목록 머리글 클릭 정렬(오름/내림/기본, 값 없는 사람은 항상 아래) · 이전: 20260930m ver 1.8.2 · 사진·신분증·건설기초이수증 세 칸을 한 줄 카드로 배치 · 이전: 20260930l ver 1.8.1 · 수정 창 다듬기(폭 860px·인적사항 4열·급여/계좌 3열·칸 폭 상한·교육 줄 간격) · 이전: 20260930k ver 1.8.0 · 검진 PDF 첨부를 같은 줄에 한 줄 배치(아이콘 버튼)·모바일 모드(?m=1&edit=/new=1 — 모바일에서도 PC와 같은 수정·등록 화면) · 이전: 20260930j ver 1.7.1 · 수정 창 폭 확대(최대 1000px)·검진 줄 줄바꿈 제거 · 이전: 20260930i ver 1.7.0 · 건강검진 결과 PDF 첨부(Firebase Storage, 관리자만 열람·로그인 권한 다운로드) · 이전: 20260930h ver 1.6.1 · 날짜 입력 중 화면이 초기화되는 버그 수정(만료일·상태만 제자리 갱신, 타이핑 중간 날짜 무시) · 이전: 20260930g ver 1.6.0 · 검진 만료일 자동 계산(실시일+1년, 수정 가능)·자격 유효기간(년) 선택 시 만료일 자동 계산(수정 가능)·목록 만료 배지 · 이전: 20260930f ver 1.5.0 · 일당을 관리자 전용 문서(master_worker_private)로 이동 · 이전: 20260930e ver 1.4.0 월간 공수 보기 이전(PJT별 합계 · 개인별 합계 · 개인별 공수표 PNG) — 월간 공수 → 연명부 · 이전: 20260930d ver 1.3.0 기존 인원 마이그레이션 도구 이전(월간 공수 → 연명부) · 이전: 20260930c ver 1.2.0 원청별(삼성전자/SK하이닉스) 탭 구성 — 자격·인증(취득 현장명)은 탭별, 사내화 교육·상생협력포탈 계정은 삼성전자 탭 · 이전: 20260930b ver 1.1.0 연명부 개정: 인적사항 개편(전화번호 포함), 사내화 교육 만료일, 첨부 3칸(사진·신분증·건설기초이수증), 관리자 전용 급여/계좌 구역 · 이전: 20260930a ver 1.0.0 근로자 연명부 신설 — 마스터 근로자 관리(등록/수정/퇴사/삭제) 이전, 개인정보·건강검진·자격인증·사내화교육·상생협력포탈 계정·사진(파일 보관) 관리. 관리자 전용 · [테섭 계열] 이전: 20260930j ver 1.8.0 · 모바일 화면 지원(좁은 화면에서 목록을 카드로 표시·버튼 꺾임 방지·모바일 홈/PJT 관리에서 진입) — PC와 같은 기능·같은 파일 · 이전: 20260930i ver 1.7.0 · 팀장에게 포털 계정 연결(portal_users.teamLeaderIds, 관리자만 지정) — 팀장이 ‘내 팀 공수표’에서 자기 팀 공수·팀 단가·노무비 조회 -->
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>근로자 연명부</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;background:#f5f5f7;color:#1d1d1f;min-height:100vh}
+.app{width:100%;max-width:1200px;margin:0 auto;padding:16px;padding-bottom:60px}
+.header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.title{font-size:18px;font-weight:800;color:#1A2540}
+.btn{background:#fff;border:1px solid #d1d1d6;border-radius:8px;padding:7px 12px;cursor:pointer;color:#444;font-size:12.5px;font-family:inherit}
+.btn:hover{border-color:#1D5BA6;color:#1D5BA6}
+.btn.pri{background:#1D5BA6;color:#fff;border-color:#1D5BA6;font-weight:700}
+.btn.red{color:#c0392b;border-color:#f0c4c4}
+.btn.sm{padding:4px 9px;font-size:11.5px}
+.summary-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.summary-card{background:#fff;border-radius:12px;border:1px solid #e5e5e5;padding:14px 16px}
+.summary-lbl{font-size:11px;color:#86868b;margin-bottom:4px;font-weight:600}
+.summary-val{font-size:24px;font-weight:800;color:#1D5BA6}
+.summary-val.warn{color:#b45309}
+.card{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.seg{display:inline-flex;border:1px solid #d1d1d6;border-radius:8px;overflow:hidden}
+.seg button{background:#fff;border:none;padding:7px 14px;font-size:12.5px;cursor:pointer;font-family:inherit;color:#555}
+.seg button.on{background:#1D5BA6;color:#fff;font-weight:700}
+.search{border:1px solid #d1d1d6;border-radius:8px;padding:7px 12px;font-size:13px;min-width:200px;font-family:inherit}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:980px}
+th{background:#f5f7fa;color:#555;font-weight:700;padding:8px 9px;text-align:left;border-bottom:1.5px solid #e0e6ee;white-space:nowrap}
+td{padding:8px 9px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
+tr.resigned td{color:#a3a3a3}
+tr.resigned .nm{text-decoration:line-through}
+.sub{color:#9AAABF;font-size:11px}
+.badge{font-size:10px;padding:2px 7px;border-radius:5px;font-weight:700;white-space:nowrap}
+.b-lead{background:#eef7ee;color:#1b5e20}
+.b-mem{background:#eef2f7;color:#5C6F8A}
+.b-off{background:#f2f2f2;color:#888}
+.b-ok{background:#e8f5e9;color:#1b5e20}
+.b-part{background:#fff8e1;color:#8a5a00}
+.b-none{background:#fdecea;color:#b71c1c}
+.loading{text-align:center;padding:60px 0;color:#9AAABF;font-size:13px}
+.empty{text-align:center;color:#9AAABF;font-size:13px;padding:24px 0}
+.modal{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.45);display:none;justify-content:center;align-items:flex-start;overflow-y:auto;padding:24px 12px}
+.sheet{width:100%;max-width:min(860px,96vw);background:#fff;border-radius:16px;margin:auto}
+.sheet-h{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 8px}
+.sheet-b{padding:4px 18px 20px}
+.sec{border:1px solid #eef0f3;border-radius:10px;padding:12px 14px;margin-top:12px}
+.sec-t{font-size:12.5px;font-weight:800;color:#1D5BA6;margin-bottom:6px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,320px));gap:0 12px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 12px}
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0 12px}
+.grid3 .hint,.grid4 .hint{font-size:10.5px;line-height:1.35}
+@media (max-width:760px){ .grid3,.grid4{grid-template-columns:repeat(2,minmax(0,1fr))} .grid2{grid-template-columns:1fr} }
+label.f{font-size:12px;font-weight:600;color:#555;display:block;margin:9px 0 4px}
+.in{width:100%;padding:8px 11px;border:1.5px solid #dde4ef;border-radius:8px;font-size:13.5px;font-family:inherit}
+.in:focus{outline:none;border-color:#1D5BA6}
+.rowline{display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
+.rowline .sub{white-space:nowrap}
+.rowline select.in{width:112px;flex:0 0 auto;padding-left:8px;padding-right:4px}
+.rowline input.in[type=date]{width:128px;flex:0 0 auto;padding:8px 5px;font-size:13px}
+.btn{white-space:nowrap}
+.hdates{display:contents}
+.pdfgrp{display:inline-flex;align-items:center;gap:5px;flex:0 1 auto;min-width:0}
+.pdfchip{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#1D5BA6;background:#f0f6fd;border:1px solid #d7e6f7;border-radius:7px;padding:3px 8px;white-space:nowrap}
+.pdfname{display:inline-block;max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+.pdflink{font-size:11px;margin-left:2px;white-space:nowrap;text-decoration:none;color:#1D5BA6}
+.pdflink:hover{text-decoration:underline}
+.btn.ic{padding:4px 8px;min-width:28px}
+/* 명부 표: 가로 스크롤 없이 화면 폭에 맞게 (칸 여백·배지·버튼을 작게, 정렬 화살표는 글자 옆이 아니라 오른쪽 모서리에 겹쳐 표시) */
+#list table{min-width:0;font-size:12px}
+#list th,#list td{padding:8px 5px}
+#list .badge{font-size:9.5px;padding:2px 5px}
+#list .btn.sm{padding:4px 7px;font-size:11px}
+#list td:nth-child(1) .sub,#list td:nth-child(3),#list td:nth-child(4),#list td:nth-child(5){white-space:nowrap}
+#list td:nth-child(1) .sub{font-size:10px}
+@media (max-width:1100px){ #list th,#list td{padding:8px 4px} #list .badge{font-size:9px;padding:2px 4px} .app{padding:12px 10px} .card{padding:12px 10px} }
+th.sortable{position:relative;padding-right:12px !important}
+th.sortable .arr{position:absolute;right:2px;top:50%;transform:translateY(-50%);margin:0}
+th.sortable{cursor:pointer;user-select:none;white-space:nowrap}
+th.sortable:hover{color:#1D5BA6;background:#f3f7fc}
+th.sortable .arr{font-size:8px;color:#c5cedb}
+th.sortable.on{color:#1D5BA6}
+th.sortable.on .arr{color:#1D5BA6;font-size:10px}
+.rowline{flex-wrap:wrap;gap:5px}   /* 평소엔 한 줄, 배지가 유난히 길 때만 겹치지 않고 다음 줄로 */
+.rowline > *{flex-shrink:0}
+.rowline > .pdfgrp{flex-shrink:1}
+/* 모바일 모드(?m=1): 목록 없이 수정/등록 화면만 전체 화면으로 (모바일 연명부에서 연결) */
+body.mob #app{display:none !important}
+body.mob .modal{padding:0;align-items:stretch;background:#fff}
+body.mob .sheet{max-width:100%;border-radius:0;margin:0;min-height:100vh}
+body.mob .sheet-h{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #eef0f3}
+body.mob .sheet-b{padding:4px 14px 40px}
+body.mob .in, body.mob select.in, body.mob input.in[type=date]{font-size:16px}
+body.mob .rowline{flex-wrap:wrap;padding:8px 0;border-bottom:1px dashed #eef0f3;margin-bottom:0}
+body.mob .rowline > select.in{flex:1 1 100%;width:100%}
+body.mob .hdates{display:flex;flex:1 1 100%;gap:6px;align-items:center}
+body.mob .hdates .sub{flex:0 0 auto}
+body.mob .hdates input.in[type=date]{flex:1 1 0;min-width:0;width:0;padding:8px 6px;font-size:15px}
+body.mob .rowline > .pdfgrp{flex:1 1 auto}
+body.mob .rowline > .btn.red{margin-left:auto}
+body.mob .crow{grid-template-columns:1fr 1fr}
+@media (max-width:700px){ .crow{grid-template-columns:1fr 1fr} }
+body.mob .edurow{flex-direction:column;align-items:flex-start}
+body.mob .edudate .in{width:170px}
+.chk{display:flex;align-items:center;gap:8px;font-size:13px;padding:5px 0}
+.hint{font-size:11px;color:#9AAABF;margin-top:4px;line-height:1.5}
+.note-warn{background:#fff8e8;border:1px solid #ffe082;border-radius:8px;padding:8px 10px;font-size:11.5px;color:#7a5c00;line-height:1.55;margin-top:6px}
+.filebox{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px}
+.frow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px dashed #eef0f3}
+.frow:last-of-type{border-bottom:none}
+/* 사진·신분증·건설기초이수증: 세 칸을 한 줄에 카드로 (좁은 화면에서는 한 칸씩) */
+#file-rows{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+#file-rows .frow{flex-direction:column;align-items:flex-start;gap:6px;padding:10px 12px;border:1px solid #eef0f3;border-radius:10px;background:#fcfdff}
+#file-rows .flbl{width:auto;font-weight:800;font-size:13px}
+#file-rows .filebox{display:flex;flex-wrap:wrap;gap:5px;align-items:center;font-size:12px;min-width:0;word-break:break-all}
+#file-rows .hint{grid-column:1/-1}
+@media (max-width:760px){ #file-rows{grid-template-columns:1fr} }
+.flbl{min-width:104px;font-weight:700;font-size:12.5px;color:#333}
+.edurow{max-width:640px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:5px 0;border-bottom:1px dashed #eef0f3}
+.edurow:last-of-type{border-bottom:none}
+.edudate{display:flex;align-items:center;gap:6px}
+.edudate .in{width:150px;padding:6px 9px;font-size:13px}
+.crow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 8px;padding:9px;border:1px solid #eef0f3;border-radius:8px;margin-bottom:8px;background:#fcfdff}
+.crow label.f{margin:0 0 3px;font-size:11px}
+.cfoot{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;min-height:24px}
+.cotabs{display:flex;gap:0;border-bottom:2px solid #e6ebf3;margin:2px 0 10px}
+.cotabs button{background:none;border:none;border-bottom:3px solid transparent;margin-bottom:-2px;padding:9px 18px;font-size:13.5px;font-weight:600;color:#7a8aa3;cursor:pointer;font-family:inherit}
+.cotabs button.on{color:#1D5BA6;border-bottom-color:#1D5BA6;font-weight:800}
+.tcnt{display:inline-block;min-width:18px;padding:0 6px;margin-left:5px;border-radius:9px;background:#eef2f7;color:#5C6F8A;font-size:11px;font-weight:700}
+.cotabs button.on .tcnt{background:#e3eefb;color:#1D5BA6}
+.subblk{margin-top:14px;padding-top:12px;border-top:1px dashed #e3e8f0}
+.subblk:first-of-type{margin-top:4px;padding-top:0;border-top:none}
+.subblk-t{font-size:12.5px;font-weight:800;color:#333;margin-bottom:6px}
+.migrate-group{border:1px solid #eef0f3;border-radius:10px;padding:11px 13px;margin-bottom:9px}
+.migrate-name{font-weight:700;color:#1A2540;font-size:13.5px;margin-bottom:5px}
+.migrate-src{font-size:12px;color:#666;padding:2px 0}
+.mig-warn{background:#fff8e8;border:1px solid #ffe082;border-radius:8px;padding:7px 10px;font-size:11.5px;color:#7a5c00;margin-top:6px;line-height:1.5}
+.card-title{font-size:14px;font-weight:700;color:#1A2540;margin-bottom:12px}
+.month-nav{display:flex;align-items:center;gap:10px}
+.month-label{font-size:16px;font-weight:700;color:#1A2540;min-width:96px;text-align:center}
+.num{text-align:right;font-weight:700;color:#1D5BA6}
+.pjt-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:5px;background:#eef2f7;color:#5C6F8A;font-weight:600;margin-right:4px;margin-bottom:2px}
+.warn-box{background:#fff8e8;border:1px solid #ffe082;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#7a5c00}
+.warn-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #ffedb8}
+.warn-row:last-child{border-bottom:none}
+.birth-input{font-size:12px;padding:4px 8px;border:1px solid #e0a800;border-radius:6px;min-width:138px}
+.viewseg{margin-bottom:12px}
+.sec.admin{border-color:#f0d9a8;background:#fffdf6}
+.sec.admin .sec-t{color:#8a5a00}
+@media (max-width:700px){ .summary-row{grid-template-columns:1fr 1fr} .grid2{grid-template-columns:1fr} }
+/* ── 모바일(좁은 화면): 목록을 카드로, 버튼·머리글 꺾임 방지 ── */
+.card-view{display:none}
+.msortbar{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:12px;font-weight:700;color:#6b7787}
+.msortbar select{flex:1;min-width:0;padding:9px 10px;border:1.5px solid #dde4ef;border-radius:9px;background:#fff;font-size:15px;font-family:inherit;color:#1A2540}
+.msortbar .btn{white-space:nowrap}
+.mback{width:100%}
+.mcard{border:1px solid #e5e5e5;border-radius:12px;padding:12px 13px;margin-bottom:10px;background:#fff}
+.mcard.resigned{opacity:.6}
+.mc-h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.mc-nm{font-size:16px;font-weight:800;color:#1A2540}
+.mc-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin:10px 0 8px;font-size:12.5px}
+.mc-grid span{display:block;font-size:10.5px;color:#9AAABF;margin-bottom:1px}
+.mc-chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.mc-act{display:flex;gap:8px}
+.mc-act .btn{flex:1;padding:9px 10px;font-size:13px}
+.btn{white-space:nowrap}
+@media (max-width:700px){
+  .tbl-view{display:none} .card-view{display:block}
+  .search{min-width:0;width:100%;flex:1}
+  body{-webkit-text-size-adjust:100%}
+  .btn{padding:9px 12px;font-size:13px}
+  .btn.sm{padding:6px 10px;font-size:12px}
+  .modal{padding:0;align-items:stretch}
+  .sheet{max-width:none;border-radius:0;min-height:100vh}
+  .in{font-size:16px;padding:10px 11px}       /* 확대(줌) 방지 */
+  .flbl{min-width:0}
+  .title-sub{display:none}
+  .header-row{flex-wrap:wrap;gap:8px}
+  .hdr-actions{width:100%}
+  .hdr-actions .btn{flex:1;padding:10px 6px}
+  .hdr-actions .btn:first-child{flex:0 0 auto}
+  .lbl-long{display:none}
+  .app{padding-left:12px;padding-right:12px}
+  .summary-card{padding:12px}
+}
+
+</style>
+</head>
+<body>
+<div class="app" id="app" style="display:none">
+  <div class="header-row">
+    <div class="mback" id="mback" style="display:none"><button class="btn" onclick="goHomeM()">← 뒤로</button></div>
+    <div class="title">👷 근로자 연명부 <span class="title-sub" style="font-weight:400;font-size:12px;color:#9AAABF">(관리자 전용 · 인적사항 · 건강검진 · 자격/교육)</span></div>
+    <div style="display:flex;gap:8px" id="roster-actions" class="hdr-actions">
+      <button class="btn" onclick="reloadAll()">↻ <span class="lbl-long">새로고침</span></button>
+      <button class="btn" onclick="openMigrate()">🔄 <span class="lbl-long">기존 인원 </span>마이그레이션</button>
+      <button class="btn pri" onclick="openForm()">+ 신규 등록</button>
+    </div>
+  </div>
+  <div class="seg viewseg" id="viewseg">
+    <button data-v="roster" class="on" onclick="showView('roster')">👥 명부</button>
+    <button data-v="manday" onclick="showView('manday')">📊 월간 공수</button>
+  </div>
+  <div id="view-roster">
+  <div class="summary-row" id="summary"></div>
+  <div class="card">
+    <div class="toolbar">
+      <div class="seg" id="seg">
+        <button data-f="active" class="on" onclick="setFilter('active')">재직</button>
+        <button data-f="resigned" onclick="setFilter('resigned')">퇴사</button>
+        <button data-f="all" onclick="setFilter('all')">전체</button>
+      </div>
+      <input class="search" id="q" placeholder="이름 · 연락처 · 자격/현장 검색" oninput="setQuery(this.value)">
+      <span class="sub" id="cnt"></span>
+    </div>
+    <div class="tbl-wrap"><div id="list"><div class="loading">불러오는 중...</div></div></div>
+  </div>
+  </div>
+  <div id="view-manday" style="display:none">
+    <div class="toolbar" style="justify-content:space-between">
+      <div class="month-nav"><button class="btn" onclick="mdShift(-1)">‹</button><div class="month-label" id="md-label">—</div><button class="btn" onclick="mdShift(1)">›</button></div>
+      <button class="btn" onclick="mdReload()">↻ 다시 계산</button>
+    </div>
+    <div class="summary-row" style="grid-template-columns:repeat(3,1fr)">
+      <div class="summary-card"><div class="summary-lbl">이번 달 전체 합계 공수</div><div class="summary-val" id="md-total">—</div></div>
+      <div class="summary-card"><div class="summary-lbl">공수기록 PJT / 전체</div><div class="summary-val" id="md-pjtcount">—</div></div>
+      <div class="summary-card"><div class="summary-lbl">참여 인원 수</div><div class="summary-val" id="md-workercount">—</div></div>
+    </div>
+    <div id="md-warn" style="display:none"></div>
+    <div class="card"><div class="card-title">🏗️ PJT별 합계</div><div class="tbl-wrap"><div id="md-pjt"><div class="loading">불러오는 중...</div></div></div></div>
+    <div class="card"><div class="card-title">👤 개인별 합계 <span style="font-weight:400;font-size:11px;color:#9AAABF">(마스터 ID 기준으로 자동 합산)</span></div><div class="tbl-wrap"><div id="md-person"><div class="loading">불러오는 중...</div></div></div></div>
+  </div>
+</div>
+<div id="loading-init" class="loading">불러오는 중...</div>
+
+<!-- 등록/수정 -->
+<div class="modal" id="form-modal">
+  <div class="sheet">
+    <div class="sheet-h"><div style="font-size:16px;font-weight:800" id="fm-title">👤 근로자 등록</div>
+      <button style="background:none;border:none;font-size:22px;color:#86868b;cursor:pointer" onclick="closeForm()">×</button></div>
+    <div class="sheet-b" id="fm-body"></div>
+  </div>
+</div>
+<!-- 개인별 통합 공수표 -->
+<div class="modal" id="ps-modal" style="align-items:center">
+  <div class="sheet" style="max-width:520px">
+    <div class="sheet-h"><div style="font-size:16px;font-weight:800" id="ps-title">📋 공수표</div>
+      <button style="background:none;border:none;font-size:22px;color:#86868b;cursor:pointer" onclick="closePersonSheet()">×</button></div>
+    <div class="sheet-b" id="ps-body"></div>
+  </div>
+</div>
+<!-- 기존 인원 마이그레이션 -->
+<div class="modal" id="mig-modal">
+  <div class="sheet" style="max-width:640px">
+    <div class="sheet-h"><div style="font-size:16px;font-weight:800">🔄 기존 인원 마이그레이션</div>
+      <button style="background:none;border:none;font-size:22px;color:#86868b;cursor:pointer" onclick="closeMigrate()">×</button></div>
+    <div class="sheet-b">
+      <div class="hint" style="margin:0 0 8px">각 프로젝트에 개별 등록된 인원을 마스터 명부로 통합합니다. 이름이 같으면 동일인으로 묶여 표시됩니다 — 생년월일이 다른 사람이면 반드시 확인 후 따로 등록해주세요.</div>
+      <div id="mig-list"></div>
+    </div>
+  </div>
+</div>
+<div class="modal" id="mig-confirm-modal" style="z-index:310">
+  <div class="sheet" style="max-width:520px">
+    <div class="sheet-h"><div style="font-size:16px;font-weight:800">✅ 마스터로 등록 확정</div>
+      <button style="background:none;border:none;font-size:22px;color:#86868b;cursor:pointer" onclick="closeMigConfirm()">×</button></div>
+    <div class="sheet-b">
+      <div id="mc-summary" class="hint" style="margin:0 0 6px"></div>
+      <div id="mc-warn"></div>
+      <label class="f">이름</label><input class="in" id="mc-name" readonly style="background:#f7f9fc">
+      <label class="f">생년월일 <span style="color:#e67e22;font-weight:600">(필수)</span></label><input class="in" type="date" id="mc-birth">
+      <label class="f">소속</label><select class="in" id="mc-leader"></select>
+      <div id="mc-rate-wrap"><label class="f">일당 (원) <span style="color:#aaa;font-weight:400">(관리자 전용)</span></label><input class="in" id="mc-rate" inputmode="numeric" placeholder="예: 180,000"></div>
+      <div class="hint">등록하면 다른 프로젝트 명단에 있는 같은 인원의 문서는 마스터 ID로 다시 만들어지고 기존 문서는 삭제됩니다. 이미 열려 있는 FAB/SUP/경량PJT 근태 탭이 있다면 새로고침 후 사용해주세요.</div>
+      <button class="btn pri" id="mc-save-btn" style="width:100%;padding:12px;margin-top:12px" onclick="confirmMigrate()">마스터로 등록</button>
+    </div>
+  </div>
+</div>
+<!-- 사진 보기 -->
+<div class="modal" id="photo-modal" style="align-items:center">
+  <div class="sheet" style="max-width:560px;padding:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-weight:800;font-size:14px" id="ph-title">사진</div>
+      <button style="background:none;border:none;font-size:22px;color:#86868b;cursor:pointer" onclick="closePhoto()">×</button></div>
+    <div id="ph-body" style="text-align:center;min-height:80px"></div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, writeBatch, serverTimestamp, query, where, documentId, deleteField, arrayUnion, arrayRemove }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, onAuthStateChanged }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getStorage, ref as sref, uploadBytes, deleteObject, getBlob }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI",
+  authDomain: "portal-test-6e0ff.firebaseapp.com",
+  projectId: "portal-test-6e0ff",
+  storageBucket: "portal-test-6e0ff.firebasestorage.app",
+  messagingSenderId: "752763010816",
+  appId: "1:752763010816:web:4a0c7062a2f1a4e9a03de5"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const storage = getStorage(app);   // 검진 결과 PDF 보관 (관리자만 읽기/쓰기 — Storage 규칙)
+
+// ── 상수 ──
+const EDU = [
+  { k:'e1', label:'안전담당자/화재감시자 기본 인증과정' },
+  { k:'e2', label:'중량물/양중작업(통합) 안전인증과정' },
+  { k:'e3', label:'화학물질취급작업 안전인증과정' },
+  { k:'e4', label:'화학물질안전원 온라인 안전교육' },
+];
+const HEALTH_TYPES = { general:'일반검진', preplace:'배치전검진' };
+// 첨부 파일 — 사진·신분증·건설기초이수증(첨부 칸)과 통장사본(관리자 전용 급여/계좌 구역) — 문서 ID: 사진은 기존 호환을 위해 근로자 ID 그대로, 나머지는 접미사
+const FILE_SLOTS = [
+  { k:'photo',  label:'사진',           short:'사진',   suffix:'' },
+  { k:'idcard', label:'신분증',         short:'신분증', suffix:'__idcard' },
+  { k:'cert',   label:'건설기초이수증', short:'이수증', suffix:'__cert' },
+  { k:'bankbook', label:'통장사본',      short:'통장',   suffix:'__bank', admin:true },   // 관리자 전용 '급여/계좌' 구역에서 입력
+];
+// 원청(협력 대상) — 탭 구성. 자격·인증은 원청별, 사내화 교육·상생협력포탈 계정은 현재 삼성전자 탭에만 둔다.
+const COMPANIES = [
+  { k:'samsung', label:'삼성전자',    short:'삼성' },
+  { k:'skhynix', label:'SK하이닉스',  short:'SK'   },
+];
+let coTab = 'samsung';
+const certCo = c => (c && c.co) || 'samsung';   // 원청 구분이 없던 기존 자격은 삼성전자로 본다
+const PHOTO_SLOTS = FILE_SLOTS.filter(x=>!x.admin);   // 첨부 칸·목록 배지에 표시하는 슬롯(통장사본 제외)
+const slotOf = k => FILE_SLOTS.find(x=>x.k===k);
+const slotDocId = (id,k) => id + slotOf(k).suffix;
+const PHOTO_MAX_CHARS = 950000;   // dataURL 문자 수 상한 (≈ 원본 파일 710KB) — 보안규칙 1,000,000자 미만 · Firestore 문서 1MiB 한도 여유
+const PHOTO_MAX_EDGE = 2000;      // 긴 변 최대 픽셀
+
+// ── 상태 ──
+let masters = [];          // master_workers
+let privs = {};            // master_worker_private (id → data)
+let portalUsers = [];   // 승인된 포털 계정(팀장 계정 연결용) — {uid,name,rank,email,teamLeaderIds}
+let filterMode = 'active';
+let queryText = '';
+let editing = null;        // 수정 중인 마스터 (null = 신규)
+let wf = null;             // 폼 임시 상태 (인라인 핸들러에서 input.form 속성과 충돌하지 않도록 wf로 명명)
+let isAdmin = false;
+Object.defineProperty(window,'wf',{ get:()=>wf, set:v=>{ wf=v; }, configurable:true });
+
+// ── 유틸 ──
+const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const $ = id => document.getElementById(id);
+const fmtMoney = n => (n||0).toLocaleString('ko-KR');
+const parseMoney = s => parseInt(String(s||'').replace(/[^0-9]/g,''))||0;
+const pad = n => String(n).padStart(2,'0');
+const today = () => { const d=new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); };
+const makeId = (name,birth) => (name+'_'+birth).replace(/[^a-zA-Z0-9가-힣_]/g,'');
+
+// 주민(외국인)등록번호: 13자리 숫자 → 생년월일·성별 도출. 외국인등록번호는 검증식이 달라 체크섬은 참고용(경고만)으로 쓴다.
+function parseJumin(raw){
+  const d = String(raw||'').replace(/[^0-9]/g,'');
+  if (d.length !== 13) return { valid:false, digits:d };
+  const yy=+d.slice(0,2), mm=+d.slice(2,4), dd=+d.slice(4,6), g=+d[6];
+  if (!(g>=1 && g<=8) && g!==9 && g!==0) return { valid:false, digits:d };
+  const century = (g===1||g===2||g===5||g===6) ? 1900 : (g===3||g===4||g===7||g===8) ? 2000 : 1800;
+  const y = century+yy;
+  const dt = new Date(y, mm-1, dd);
+  if (dt.getFullYear()!==y || dt.getMonth()!==mm-1 || dt.getDate()!==dd) return { valid:false, digits:d };
+  const w=[2,3,4,5,6,7,8,9,2,3,4,5]; let s=0; for(let i=0;i<12;i++) s+=(+d[i])*w[i];
+  const checksumOk = ((11 - (s%11)) % 10) === (+d[12]);
+  return { valid:true, digits:d, birth:y+'-'+pad(mm)+'-'+pad(dd), gender:(g%2===1)?'남':'여', foreign:(g>=5&&g<=8), checksumOk };
+}
+const fmtJumin = d => { const x=String(d||'').replace(/[^0-9]/g,''); return x.length>6 ? x.slice(0,6)+'-'+x.slice(6,13) : x; };
+const maskJumin = j => { const x=String(j||'').replace(/[^0-9]/g,''); return x.length===13 ? x.slice(0,6)+'-'+x[6]+'●●●●●●' : (x?'형식 확인 필요':'—'); };
+const fmtPhone = v => { const d=String(v||'').replace(/[^0-9]/g,'').slice(0,11);
+  if(d.length<=3) return d; if(d.length<=7) return d.slice(0,3)+'-'+d.slice(3);
+  return d.length===11 ? d.slice(0,3)+'-'+d.slice(3,7)+'-'+d.slice(7) : d.slice(0,3)+'-'+d.slice(3,6)+'-'+d.slice(6); };
+const fmtKB = b => b>=1048576 ? (b/1048576).toFixed(1)+'MB' : Math.max(1,Math.round(b/1024))+'KB';
+function latestHealth(p, type){
+  const l=(p&&p.health||[]).filter(h=>h.type===type&&h.date).map(h=>h.date).sort();
+  return l.length ? l[l.length-1] : '';
+}
+// 날짜 + N년 (2/29는 평년 2/28로)
+function addYearsYmd(ymd, n){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(ymd||'')) return '';
+  const yy=+ymd.slice(0,4); if(yy<1900 || yy>2100) return '';     // 날짜를 타이핑하는 중간값(0002-…, 0020-…)은 무시
+  const y=+ymd.slice(0,4), m=+ymd.slice(5,7), d=+ymd.slice(8,10);
+  const dt=new Date(Date.UTC(y+n, m-1, d)); if(dt.getUTCMonth()!==m-1) dt.setUTCDate(0);
+  return dt.getUTCFullYear()+'-'+String(dt.getUTCMonth()+1).padStart(2,'0')+'-'+String(dt.getUTCDate()).padStart(2,'0');
+}
+const HEALTH_VALID_YEARS = 1;   // 일반검진·배치전검진 유효기간(년) — 만료일은 실시일 + 1년으로 자동 계산, 화면에서 직접 수정 가능
+// 종류별 가장 최근 검진의 만료일 (저장된 만료일 우선, 없으면 실시일 + 1년)
+function healthExpiry(p, type){
+  const l=(p&&p.health||[]).filter(h=>h.type===type&&h.date).sort((a,b)=>a.date.localeCompare(b.date));
+  if(!l.length) return '';
+  const h=l[l.length-1]; return h.expiry || addYearsYmd(h.date, HEALTH_VALID_YEARS);
+}
+// 첨부 메타: 예전 단일 사진 필드(photoName 등)는 '사진' 칸으로 승격해서 읽는다 (저장 시 files로 통합)
+function filesMeta(p){
+  const f = Object.assign({}, (p&&p.files)||{});
+  if (!f.photo && p && p.hasPhoto && p.photoName) f.photo = { name:p.photoName, size:p.photoSize||0, w:p.photoW||0, h:p.photoH||0 };
+  return f;
+}
+// 사내화 교육 이수/만료 상태 — state: none(미이수) | ok(유효/만료일 없음) | soon(30일 이내 만료) | expired(만료)
+function eduInfo(p,k){
+  const chk = !!((p&&p.inhouseEdu)||{})[k];
+  const exp = ((p&&p.inhouseEduExp)||{})[k] || '';
+  return eduStateOf(chk, exp);
+}
+function eduStateOf(chk, exp){
+  if (!chk) return { chk:false, exp:'', state:'none' };
+  if (!exp) return { chk:true, exp:'', state:'ok' };
+  const d = Math.round((new Date(exp+'T00:00:00') - new Date(today()+'T00:00:00'))/86400000);
+  return { chk:true, exp, d, state: d<0 ? 'expired' : d<=30 ? 'soon' : 'ok' };
+}
+function eduDoneCount(p){ return EDU.filter(x=>eduInfo(p,x.k).chk).length; }
+function eduCountBy(p,state){ return EDU.filter(x=>eduInfo(p,x.k).state===state).length; }
+function eduStateHtml(chk, exp){
+  const r = eduStateOf(chk, exp);
+  if (r.state==='expired') return '<span class="badge b-none">만료됨 (D+'+Math.abs(r.d)+')</span>';
+  if (r.state==='soon') return '<span class="badge b-part">D-'+r.d+'</span>';
+  if (chk && exp) return '<span class="badge b-ok">유효</span>';
+  return '';
+}
+const masterById = id => masters.find(m=>m.id===id);
+const isLeaderId = id => masters.some(m=>m.leaderId===id);
+
+// ── 로딩 ──
+async function loadAll(){
+  const [ms, ps] = await Promise.all([ getDocs(collection(db,'master_workers')), getDocs(collection(db,'master_worker_private')) ]);
+  masters = []; ms.forEach(d=>masters.push(Object.assign({id:d.id}, d.data())));
+  privs = {}; ps.forEach(d=>{ privs[d.id] = d.data(); });
+  try{ const us = await getDocs(collection(db,'portal_users')); portalUsers = []; us.forEach(d=>{ const u=d.data(); if (u.status==='approved') portalUsers.push({ uid:d.id, name:u.name||'', rank:u.rank||'', email:u.email||'', teamLeaderIds:Array.isArray(u.teamLeaderIds)?u.teamLeaderIds:[] }); }); portalUsers.sort((a,b)=>a.name.localeCompare(b.name,'ko')); }catch(e){ portalUsers = []; }
+  render();
+}
+// ── 팀장 ↔ 포털 계정 연결 (portal_users.teamLeaderIds — 관리자만 수정 가능한 필드) ──
+const linkedAccountOf = leaderId => portalUsers.find(u=>u.teamLeaderIds.includes(leaderId)) || null;
+async function syncLeaderLink(leaderId, newUid){
+  for (const u of portalUsers){
+    const has = u.teamLeaderIds.includes(leaderId);
+    if (has && u.uid !== newUid){ await setDoc(doc(db,'portal_users',u.uid), { teamLeaderIds: arrayRemove(leaderId) }, { merge:true }); u.teamLeaderIds = u.teamLeaderIds.filter(x=>x!==leaderId); }
+    else if (!has && u.uid === newUid){ await setDoc(doc(db,'portal_users',u.uid), { teamLeaderIds: arrayUnion(leaderId) }, { merge:true }); u.teamLeaderIds = u.teamLeaderIds.concat([leaderId]); }
+  }
+}
+function portalRowHtml(){
+  const opts = '<option value="">연결 안 함</option>'+portalUsers.map(u=>'<option value="'+esc(u.uid)+'" '+(u.uid===wf.portalUid?'selected':'')+'>'+esc(u.name)+(u.rank?' ('+esc(u.rank)+')':'')+' · '+esc(u.email)+'</option>').join('');
+  return '<label class="f">팀장 포털 계정 <span style="color:#aaa;font-weight:400">(내 팀 공수표 조회용)</span></label><select class="in" id="f-portal" onchange="wf.portalUid=this.value">'+opts+'</select>'
+    +'<div class="hint">이 계정으로 로그인하면 [내 팀 공수표]에서 이 팀의 공수·팀 단가·노무비를 볼 수 있습니다. 관리자만 지정할 수 있고, 팀 단가는 기획 › 정산 › 팀별 노무비에서 설정합니다.</div>';
+}
+window.leaderChanged = function(v){ wf.leaderId = v; const r=$('portal-row'); if (r) r.style.display = v ? 'none' : ''; };
+// 모바일 홈에서 들어온 경우(?via=mobile, 포털 iframe이 아닐 때)에만 ‘← 홈’ 표시
+(function(){ try{ var q=new URLSearchParams(location.search); if(q.get('via')==='mobile' && window.self===window.top){ document.addEventListener('DOMContentLoaded',function(){ var b=document.getElementById('mback'); if(b) b.style.display='block'; }); } }catch(e){} })();
+const M_BACK_OK = ['home.html','pjt.html','gihoek.html','hr.html','edoc.html','admin.html'];        // 돌아갈 수 있는 모바일 화면(허용 목록 — 임의 주소로 이동 방지)
+window.goHomeM = function(){ var b=''; try{ b=new URLSearchParams(location.search).get('back')||''; }catch(e){} location.href='../m/'+(M_BACK_OK.indexOf(b)>=0?b:'home.html'); };
+window.reloadAll = async function(){ $('list').innerHTML='<div class="loading">불러오는 중...</div>'; try{ await loadAll(); }catch(e){ $('list').innerHTML='<div class="empty">불러오기 실패: '+esc(e.message)+'</div>'; } };
+
+// ── 목록 ──
+window.setFilter = function(f){ filterMode=f; document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on', b.dataset.f===f)); render(); };
+window.setQuery = function(v){ queryText=String(v||'').trim(); render(); };
+
+// ── 목록 정렬: 머리글(이름·성별·…)을 누르면 오름차순 → 내림차순 → 기본 정렬 순으로 바뀐다 ──
+let sortKey = null, sortDir = 1;      // sortDir: 1 오름차순, -1 내림차순
+function sortVal(m){
+  const p = privs[m.id]||{};
+  switch(sortKey){
+    case 'name':    return m.name||'';
+    case 'gender':  return m.gender||'';
+    case 'jumin':   return String(p.jumin||'').replace(/[^0-9]/g,'');
+    case 'phone':   return String(p.phone||'').replace(/[^0-9]/g,'');
+    case 'hire':    return m.hireDate||'';
+    case 'team':    { const l=m.leaderId?masterById(m.leaderId):null; return m.leaderId ? '1'+(l?l.name:'') : '0'; }   // 팀장/독립이 먼저, 그다음 팀장 이름순
+    case 'general': return healthExpiry(p,'general')||'';      // 검진은 만료일 기준(곧 만료되는 순), 기록 없음은 항상 맨 아래
+    case 'preplace':return healthExpiry(p,'preplace')||'';
+    case 'edu':     return eduDoneCount(p)*10 - Math.min(9,eduCountBy(p,'expired'));   // 이수 개수가 많을수록 큼(만료가 있으면 살짝 낮게)
+    case 'cert':    return (p.certs||[]).length;
+    case 'files':   { const fm=filesMeta(p); return PHOTO_SLOTS.filter(x=>fm[x.k]).length; }
+  }
+  return '';
+}
+const SORT_OPTS = [['','기본 순서'],['name','이름'],['gender','성별'],['hire','입사일'],['phone','전화번호'],['team','소속'],['general','일반검진 만료'],['preplace','배치전검진 만료'],['edu','사내화 교육 이수'],['cert','자격·인증 수'],['files','첨부 등록 수']];
+window.setSortM = function(k){ sortKey = k || null; if (!sortKey) sortDir = 1; render(); };          // 폰 카드 목록의 정렬 선택
+window.toggleSortDirM = function(){ if (!sortKey) return; sortDir = -sortDir; render(); };
+function sortBarHtml(){
+  return '<div class="msortbar"><span>정렬</span><select onchange="setSortM(this.value)">'+SORT_OPTS.map(o=>'<option value="'+o[0]+'"'+((sortKey||'')===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>'
+    +'<button class="btn sm" onclick="toggleSortDirM()"'+(sortKey?'':' disabled')+'>'+(sortDir===1?'▲ 오름':'▼ 내림')+'</button></div>';
+}
+window.setSort = function(k){
+  if (sortKey!==k){ sortKey=k; sortDir=1; }
+  else if (sortDir===1){ sortDir=-1; }
+  else { sortKey=null; sortDir=1; }
+  render();
+};
+function sortList(list){
+  const vals = new Map(list.map(m=>[m.id, sortVal(m)]));
+  return list.sort((a,b)=>{
+    const va=vals.get(a.id), vb=vals.get(b.id), ea=(va===''||va==null), eb=(vb===''||vb==null);
+    if (ea!==eb) return ea?1:-1;                                   // 값이 없는 사람은 정렬 방향과 관계없이 항상 아래
+    const c = (typeof va==='number' && typeof vb==='number') ? va-vb : String(va).localeCompare(String(vb),'ko');
+    return c ? c*sortDir : (a.name||'').localeCompare(b.name||'','ko');
+  });
+}
+function th(k,label,extra){
+  const on = sortKey===k, arr = !on ? '↕' : (sortDir===1 ? '▲' : '▼');
+  return '<th class="sortable'+(on?' on':'')+'" onclick="setSort(\''+k+'\')" title="클릭: 오름차순 → 내림차순 → 기본">'+label+' <span class="arr">'+arr+'</span>'+(extra||'')+'</th>';
+}
+function visibleList(){
+  let list = masters.filter(m=> filterMode==='all' ? true : filterMode==='resigned' ? !!m.resigned : !m.resigned);
+  if (queryText){
+    const q=queryText.toLowerCase(), qd=queryText.replace(/[^0-9]/g,'');
+    list = list.filter(m=>{
+      const p=privs[m.id]||{};
+      return (m.name||'').toLowerCase().includes(q) || (qd && String(p.phone||'').replace(/[^0-9]/g,'').includes(qd))
+        || (p.certs||[]).some(c=>((c.name||'')+' '+(c.site||'')+' '+(c.contractor||'')).toLowerCase().includes(q));
+    });
+  }
+  if (sortKey) return sortList(list);
+  return list.sort((a,b)=>{
+    if(!!a.resigned!==!!b.resigned) return a.resigned?1:-1;
+    const aL=!a.leaderId, bL=!b.leaderId; if(aL!==bL) return aL?-1:1;
+    return (a.leaderId||'').localeCompare(b.leaderId||'') || (a.name||'').localeCompare(b.name||'','ko');
+  });
+}
+
+function healthBadge(p,type,id){ const e=healthExpiry(p,type); const l=(p&&p.health||[]).filter(h=>h.type===type&&h.date).sort((a,b)=>a.date.localeCompare(b.date)); const hasPdf=l.length&&l[l.length-1].pdf;
+  const lnk = hasPdf ? '<a class="pdflink" href="#" title="검진 결과 PDF 다운로드" onclick="listPdfDownload(\''+esc(id)+'\',\''+type+'\');return false">📄결과</a>' : '';
+  // 결과 링크는 만료일 줄 오른쪽에 붙여 행 높이가 늘지 않게 함
+  return (e ? eduStateHtml(true,e)+'<div class="sub" style="white-space:nowrap">~'+esc(e)+(lnk?' '+lnk:'')+'</div>' : (lnk?'<div class="sub">'+lnk+'</div>':'')); }
+function render(){
+  const act = masters.filter(m=>!m.resigned);
+  const noHealth = act.filter(m=>!latestHealth(privs[m.id],'general')).length;
+  const eduLack = act.filter(m=>{ const p=privs[m.id]; return eduDoneCount(p)<EDU.length || eduCountBy(p,'expired')>0; }).length;
+  $('summary').innerHTML =
+    '<div class="summary-card"><div class="summary-lbl">재직 인원</div><div class="summary-val">'+act.length+'<span style="font-size:13px;font-weight:600"> 명</span></div></div>'
+   +'<div class="summary-card"><div class="summary-lbl">퇴사 인원</div><div class="summary-val" style="color:#86868b">'+(masters.length-act.length)+'<span style="font-size:13px;font-weight:600"> 명</span></div></div>'
+   +'<div class="summary-card"><div class="summary-lbl">일반검진 기록 없음 (재직)</div><div class="summary-val'+(noHealth?' warn':'')+'">'+noHealth+'<span style="font-size:13px;font-weight:600"> 명</span></div></div>'
+   +'<div class="summary-card"><div class="summary-lbl">사내화 교육(삼성전자) 미완료·만료 (재직)</div><div class="summary-val'+(eduLack?' warn':'')+'">'+eduLack+'<span style="font-size:13px;font-weight:600"> 명</span></div></div>';
+
+  const list = visibleList();
+  $('cnt').textContent = list.length+'명';
+  if (!list.length){ $('list').innerHTML='<div class="empty">'+(masters.length?'조건에 맞는 근로자가 없습니다.':'등록된 근로자가 없습니다.')+'</div>'; return; }
+  const rows = list.map(m=>{
+    const p = privs[m.id]||{};
+    const leader = m.leaderId ? masterById(m.leaderId) : null;
+    const acc = !m.leaderId ? linkedAccountOf(m.id) : null;
+    const team = !m.leaderId ? '<span class="badge b-lead">팀장/독립</span>'+(acc?' <span class="badge b-ok" title="내 팀 공수표 조회 계정">🔗 '+esc(acc.name)+'</span>':'') : '<span class="badge b-mem">'+esc(leader?leader.name:'?')+' 팀</span>';
+    const gd = latestHealth(p,'general'), pd = latestHealth(p,'preplace');
+    const n = eduDoneCount(p);
+    let eduB = n===EDU.length ? '<span class="badge b-ok">4/4 완료</span>' : n===0 ? '<span class="badge b-none">0/4</span>' : '<span class="badge b-part">'+n+'/4</span>';
+    const ex = eduCountBy(p,'expired'), so = eduCountBy(p,'soon');
+    if (ex) eduB += ' <span class="badge b-none">만료 '+ex+'</span>'; else if (so) eduB += ' <span class="badge b-part">임박 '+so+'</span>';
+    const certChips = COMPANIES.map(co=>{
+      const cs = (p.certs||[]).filter(c=>certCo(c)===co.k); if(!cs.length) return '';
+      const exp = cs.filter(c=>eduStateOf(true,c.expiry||'').state==='expired').length;
+      return '<span class="badge '+(exp?'b-none':'b-mem')+'" title="'+co.label+' 자격·인증 '+cs.length+'건'+(exp?' (만료 '+exp+')':'')+'">'+co.short+' '+cs.length+(exp?' ⚠':'')+'</span>';
+    }).filter(Boolean).join(' ') || '<span class="sub">—</span>';
+    const fm = filesMeta(p);
+    const fileChips = PHOTO_SLOTS.map(x=>'<span class="badge '+(fm[x.k]?'b-ok':'b-off')+'" title="'+x.label+(fm[x.k]?' 등록':' 없음')+'">'+x.short+'</span>').join(' ');
+    const state = m.resigned ? '<span class="badge b-off">퇴사 '+esc(m.resignedDate||'')+'</span>' : '';
+    const resignBtn = m.resigned
+      ? '<button class="btn sm" style="color:#1D5BA6" onclick="toggleResign(\''+esc(m.id)+'\')">재직 전환</button>'
+      : '<button class="btn sm" style="color:#9a5a00" onclick="toggleResign(\''+esc(m.id)+'\')">퇴사처리</button>';
+    return '<tr class="'+(m.resigned?'resigned':'')+'">'
+      +'<td><span class="nm" style="font-weight:700">'+esc(m.name)+'</span> '+state+'<div class="sub">'+esc(m.birth||'생년월일 없음')+'</div></td>'
+      +'<td>'+esc(m.gender||'—')+'</td>'
+      +'<td>'+esc(maskJumin(p.jumin))+'</td>'
+      +'<td>'+esc(p.phone||'—')+'</td>'
+      +'<td>'+esc(m.hireDate||'—')+'</td>'
+      +'<td>'+team+'</td>'
+      +'<td>'+esc(gd||'—')+' '+healthBadge(p,'general',m.id)+'</td><td>'+esc(pd||'—')+' '+healthBadge(p,'preplace',m.id)+'</td>'
+      +'<td>'+eduB+'</td>'
+      +'<td style="white-space:nowrap">'+certChips+'</td>'
+      +'<td style="white-space:nowrap">'+fileChips+'</td>'
+      +'<td style="white-space:nowrap"><button class="btn sm" onclick="openForm(\''+esc(m.id)+'\')">수정</button> '+resignBtn+'</td>'
+      +'</tr>';
+  }).join('');
+  const tableHtml = '<table><thead><tr>'+th('name','이름')+th('gender','성별')+th('jumin','주민등록번호')+th('phone','전화번호')+th('hire','입사일')+th('team','소속')+th('general','일반검진')+th('preplace','배치전검진')+th('edu','사내화 교육','<br><span class="sub">(삼성전자)</span>')+th('cert','자격·인증')+th('files','첨부')+'<th></th></tr></thead><tbody>'+rows+'</tbody></table>';
+// 모바일(좁은 화면)용 카드 목록 — 표와 같은 정보·같은 버튼
+const cards = list.map(m=>{
+  const p = privs[m.id]||{}, leader = m.leaderId ? masterById(m.leaderId) : null, acc = !m.leaderId ? linkedAccountOf(m.id) : null;
+  const team = !m.leaderId ? '<span class="badge b-lead">팀장/독립</span>'+(acc?' <span class="badge b-ok">🔗 '+esc(acc.name)+'</span>':'') : '<span class="badge b-mem">'+esc(leader?leader.name:'?')+' 팀</span>';
+  const gd = latestHealth(p,'general'), pd = latestHealth(p,'preplace'), n = eduDoneCount(p), ex = eduCountBy(p,'expired'), so = eduCountBy(p,'soon');
+  let eduB = n===EDU.length ? '<span class="badge b-ok">교육 4/4</span>' : n===0 ? '<span class="badge b-none">교육 0/4</span>' : '<span class="badge b-part">교육 '+n+'/4</span>';
+  if (ex) eduB += ' <span class="badge b-none">만료 '+ex+'</span>'; else if (so) eduB += ' <span class="badge b-part">임박 '+so+'</span>';
+  const certChips = COMPANIES.map(co=>{ const cs=(p.certs||[]).filter(c=>certCo(c)===co.k); if(!cs.length) return ''; const exp=cs.filter(c=>eduStateOf(true,c.expiry||'').state==='expired').length; return '<span class="badge '+(exp?'b-none':'b-mem')+'">'+co.short+' '+cs.length+(exp?' ⚠':'')+'</span>'; }).filter(Boolean).join(' ');
+  const fm = filesMeta(p), fileChips = PHOTO_SLOTS.map(x=>'<span class="badge '+(fm[x.k]?'b-ok':'b-off')+'">'+x.short+'</span>').join(' ');
+  const resignBtn = m.resigned ? '<button class="btn sm" style="color:#1D5BA6" onclick="toggleResign(\''+esc(m.id)+'\')">재직 전환</button>' : '<button class="btn sm" style="color:#9a5a00" onclick="toggleResign(\''+esc(m.id)+'\')">퇴사처리</button>';
+  return '<div class="mcard'+(m.resigned?' resigned':'')+'"><div class="mc-h"><div><span class="mc-nm">'+esc(m.name)+'</span> '+(m.resigned?'<span class="badge b-off">퇴사 '+esc(m.resignedDate||'')+'</span>':'')+'<div class="sub">'+esc(m.birth||'생년월일 없음')+(m.gender?' · '+esc(m.gender):'')+'</div></div><div>'+team+'</div></div>'
+   +'<div class="mc-grid"><div><span>연락처</span>'+esc(p.phone||'—')+'</div><div><span>입사일</span>'+esc(m.hireDate||'—')+'</div>'
+   +'<div><span>일반검진</span>'+esc(gd||'—')+' '+healthBadge(p,'general',m.id)+'</div><div><span>배치전검진</span>'+esc(pd||'—')+' '+healthBadge(p,'preplace',m.id)+'</div></div>'
+   +'<div class="mc-chips">'+eduB+(certChips?' '+certChips:'')+' '+fileChips+'</div>'
+   +'<div class="mc-act"><button class="btn sm pri" onclick="openForm(\''+esc(m.id)+'\')">수정</button> '+resignBtn+'</div></div>';
+}).join('');
+$('list').innerHTML = '<div class="tbl-view">'+tableHtml+'</div><div class="card-view">'+sortBarHtml()+cards+'</div>';
+}
+
+// ── 등록/수정 폼 ──
+function blankFiles(fm){
+  const o = {}; FILE_SLOTS.forEach(x=>{ const m=fm&&fm[x.k]; o[x.k] = { mode:'keep', dataUrl:'', fileName:m?m.name:'', size:m?m.size||0:0, w:m?m.w||0:0, h:m?m.h||0:0 }; });
+  return o;
+}
+function blankForm(){
+  return { name:'', jumin:'', birth:'', gender:'', hireDate:'', leaderId:'', rate:'', phone:'', address:'', bank:'', account:'',
+           health:[], certs:[], edu:{}, eduExp:{}, ssId:'', ssPw:'', note:'', files: blankFiles(null) };
+}
+function formFromMaster(m){
+  const p = privs[m.id]||{};
+  return { name:m.name||'', jumin:fmtJumin(p.jumin), birth:m.birth||'', gender:m.gender||'', hireDate:m.hireDate||'', leaderId:m.leaderId||'',
+           rate:((p.dailyRate!=null?p.dailyRate:m.dailyRate)?fmtMoney(p.dailyRate!=null?p.dailyRate:m.dailyRate):''), phone:p.phone||'', address:p.address||'', bank:p.bank||'', account:p.account||'',
+           health:(p.health||[]).map(h=>({type:h.type,date:h.date||'',expiry:h.expiry||addYearsYmd(h.date||'',HEALTH_VALID_YEARS),manual:!!h.expiryManual,pdf:h.pdf||null,pdfNew:null,pdfRemove:false})), certs:(p.certs||[]).map(c=>({co:certCo(c),name:c.name||'',site:c.site||'',contractor:c.contractor||'',acquired:c.acquired||'',expiry:c.expiry||'',validYears:c.validYears||'',manual:!!c.expiryManual})),
+           edu:Object.assign({}, p.inhouseEdu||{}), eduExp:Object.assign({}, p.inhouseEduExp||{}), ssId:p.ssId||'', ssPw:p.ssPw||'', note:p.note||'',
+           files: blankFiles(filesMeta(p)) };
+}
+window.openForm = function(id){
+  editing = id ? masterById(id) : null;
+  if (id && !editing) return;
+  wf = editing ? formFromMaster(editing) : blankForm();
+  wf.portalUid = editing ? ((linkedAccountOf(editing.id)||{}).uid||'') : '';
+  coTab = 'samsung';
+  $('fm-title').textContent = editing ? '✏️ 근로자 정보 수정' : '👤 근로자 등록';
+  drawForm();
+  $('form-modal').style.display = 'flex';
+};
+const MOB = /[?&]m=1(&|$)/.test(location.search);
+if (MOB) document.body.classList.add('mob');
+const MOB_BACK = '../m/pjt_roster.html';
+window.closeForm = function(){
+  $('form-modal').style.display='none'; wf=null; editing=null;
+  if (MOB) location.replace(MOB_BACK);          // 모바일에서 열었으면 모바일 연명부(목록·상세)로 돌아간다
+};
+
+function leaderOptionsHtml(excludeId, sel){
+  const leaders = masters.filter(m=>!m.leaderId && m.id!==excludeId && !m.resigned);
+  return '<option value="">팀장 (또는 소속 없음)</option>'+leaders.map(l=>'<option value="'+esc(l.id)+'" '+(l.id===sel?'selected':'')+'>'+esc(l.name)+' 팀 소속</option>').join('');
+}
+// ── 검진 결과 PDF ──
+const PDF_MAX = 15*1024*1024;
+function fmtSize(n){ return n>=1048576 ? (n/1048576).toFixed(1)+'MB' : Math.max(1,Math.round(n/1024))+'KB'; }
+function healthPdfHtml(i,h){
+  const cut=n=>esc(n||'');
+  if (h.pdfNew) return '<span class="pdfchip" title="'+cut(h.pdfNew.name)+' · '+fmtSize(h.pdfNew.size)+'">📎 <span class="pdfname">'+cut(h.pdfNew.name)+'</span> <span class="badge b-part">저장 시 업로드</span></span><button class="btn sm ic" title="첨부 취소" onclick="pdfCancel('+i+')">✕</button>';
+  if (h.pdf && !h.pdfRemove) return '<span class="pdfchip" title="'+cut(h.pdf.name)+' · '+fmtSize(h.pdf.size||0)+'">📄 <span class="pdfname">'+cut(h.pdf.name)+'</span></span>'
+    +'<button class="btn sm ic" title="다운로드" onclick="pdfDownload('+i+')">⬇</button><button class="btn sm ic" title="다른 파일로 교체" onclick="pdfPick('+i+')">↻</button><button class="btn sm ic red" title="파일 삭제" onclick="pdfRemove('+i+')">🗑</button>';
+  if (h.pdf && h.pdfRemove) return '<span class="sub">파일 삭제 예정</span><button class="btn sm ic" title="되돌리기" onclick="pdfUndo('+i+')">↺</button>';
+  return '<button class="btn sm" title="검진 결과 PDF 첨부 (관리자만 열람 · 15MB 이하)" onclick="pdfPick('+i+')">📎 PDF</button>';
+}
+function refreshPdf(i){ const h=wf.health[i]; const el=$('h-pdf-'+i); if(h&&el) el.innerHTML=healthPdfHtml(i,h); }
+window.pdfPick = function(i){
+  const h=wf.health[i]; if(!h) return;
+  if(!h.date){ alert('검진 실시일을 먼저 입력해 주세요.'); return; }
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='application/pdf,.pdf';
+  inp.onchange=()=>{
+    const f=inp.files&&inp.files[0]; if(!f) return;
+    if(!(f.type==='application/pdf' || /\.pdf$/i.test(f.name))){ alert('PDF 파일만 첨부할 수 있습니다.'); return; }
+    if(f.size>=PDF_MAX){ alert('파일이 너무 큽니다. ('+fmtSize(f.size)+') 15MB 미만 PDF만 첨부할 수 있습니다.'); return; }
+    h.pdfNew=f; h.pdfRemove=false; refreshPdf(i);
+  };
+  inp.click();
+};
+window.pdfCancel = i=>{ const h=wf.health[i]; h.pdfNew=null; refreshPdf(i); };
+window.pdfRemove = i=>{ const h=wf.health[i]; if(!confirm('이 검진 결과 PDF를 삭제할까요? (저장하면 파일이 삭제됩니다)')) return; h.pdfRemove=true; refreshPdf(i); };
+window.pdfUndo = i=>{ const h=wf.health[i]; h.pdfRemove=false; refreshPdf(i); };
+// 다운로드: 링크를 발급하지 않고 로그인한 관리자 권한으로 직접 내려받는다(주소가 유출되어도 열리지 않음)
+async function downloadPdfBlob(pdf, filename){
+  const blob = await getBlob(sref(storage, pdf.path));
+  const url = URL.createObjectURL(new Blob([blob],{type:'application/pdf'}));
+  const a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 30000);
+}
+window.pdfDownload = async function(i){
+  const h=wf.health[i]; if(!h||!h.pdf) return;
+  try{ await downloadPdfBlob(h.pdf, ((wf.name||'근로자')+'_'+(HEALTH_TYPES[h.type]||'검진')+'_'+h.date+'.pdf')); }
+  catch(e){ alert('다운로드 실패: '+e.message+'\n(관리자 계정인지, Storage 규칙이 게시되었는지 확인해 주세요)'); }
+};
+// 목록에서 바로 내려받기 (종류별 최신 검진)
+window.listPdfDownload = async function(id,type){
+  const p=privs[id]||{}; const l=(p.health||[]).filter(h=>h.type===type&&h.date&&h.pdf).sort((a,b)=>a.date.localeCompare(b.date)); const h=l[l.length-1]; if(!h) return;
+  const m=masterById(id);
+  try{ await downloadPdfBlob(h.pdf, ((m&&m.name)||'근로자')+'_'+(HEALTH_TYPES[type]||'검진')+'_'+h.date+'.pdf'); }
+  catch(e){ alert('다운로드 실패: '+e.message); }
+};
+function healthStatusHtml(h){
+  return (h.manual?'<span class="badge b-part">수정됨</span> ':'')+eduStateHtml(!!h.expiry, h.expiry||'');
+}
+function healthResetHtml(i,h){ return h.manual?'<button class="btn sm" title="자동 계산으로 되돌리기" onclick="form_hreset('+i+')">↺</button>':''; }
+// 입력 중인 칸을 다시 그리지 않고 만료일·상태 표시만 갱신 (날짜를 타이핑하는 도중 화면이 초기화되는 문제 방지)
+function refreshHealthRow(i, syncExpiryInput){
+  const h=wf.health[i]; if(!h) return;
+  const e=$('h-exp-'+i); if(e && syncExpiryInput) e.value=h.expiry||'';
+  const st=$('h-st-'+i); if(st) st.innerHTML=healthStatusHtml(h);
+  const rs=$('h-rs-'+i); if(rs) rs.innerHTML=healthResetHtml(i,h);
+}
+function healthRowsHtml(){
+  if(!wf.health.length) return '<div class="hint">등록된 검진 이력이 없습니다.</div>';
+  return '<div class="hint" style="margin-bottom:6px">만료일은 <b>실시일 + 1년</b>으로 자동 계산됩니다. 다르면 직접 고치세요(↺로 자동 계산 복귀). 검진 결과 PDF는 <b>📎 PDF</b>로 첨부합니다 — 관리자만 열람, 15MB 이하.</div>'
+   + wf.health.map((h,i)=>'<div class="rowline">'
+    +'<select class="in" onchange="form_h('+i+',\'type\',this.value)">'+Object.entries(HEALTH_TYPES).map(([k,v])=>'<option value="'+k+'" '+(h.type===k?'selected':'')+'>'+v+'</option>').join('')+'</select>'
+    +'<div class="hdates"><span class="sub">실시일</span><input class="in" type="date" value="'+esc(h.date)+'" onchange="form_h('+i+',\'date\',this.value)">'
+    +'<span class="sub">만료일</span><input class="in" type="date" id="h-exp-'+i+'" value="'+esc(h.expiry||'')+'" onchange="form_h('+i+',\'expiry\',this.value)"></div>'
+    +'<span id="h-st-'+i+'" style="min-width:56px">'+healthStatusHtml(h)+'</span>'
+    +'<span id="h-rs-'+i+'">'+healthResetHtml(i,h)+'</span>'
+    +'<span class="pdfgrp" id="h-pdf-'+i+'">'+healthPdfHtml(i,h)+'</span>'
+    +'<button class="btn sm red" onclick="form_hdel('+i+')">삭제</button></div>').join('');
+}
+function certManualBadge(c){ return c.manual?'<span class="badge b-part">수정됨</span>':''; }
+function certResetBtn(i,c){ return (c.manual&&c.validYears)?'<button class="btn sm" title="자동 계산으로 되돌리기" onclick="form_creset('+i+')">↺</button>':''; }
+function refreshCertRow(i, syncExpiryInput){
+  const c=wf.certs[i]; if(!c) return;
+  const e=$('c-exp-'+i); if(e && syncExpiryInput) e.value=c.expiry||'';
+  const st=$('cert-st-'+i); if(st) st.innerHTML=eduStateHtml(true,c.expiry||'');
+  const mb=$('c-mb-'+i); if(mb) mb.innerHTML=certManualBadge(c);
+  const rs=$('c-rs-'+i); if(rs) rs.innerHTML=certResetBtn(i,c);
+}
+function certRowsHtml(co){
+  const rows = wf.certs.map((c,i)=>[c,i]).filter(([c])=>certCo(c)===co);
+  if (!rows.length) return '<div class="hint">등록된 자격/인증이 없습니다.</div>';
+  return rows.map(([c,i])=>'<div class="crow">'
+    +'<div><label class="f">자격/인증명</label><input class="in" placeholder="예: 굴착기운전기능사" value="'+esc(c.name)+'" oninput="form_c('+i+',\'name\',this.value)"></div>'
+    +'<div><label class="f">취득 현장명</label><input class="in" placeholder="예: P4 Ph2 FAB" value="'+esc(c.site)+'" oninput="form_c('+i+',\'site\',this.value)"></div>'
+    +'<div><label class="f" title="같은 자격이라도 시공사(삼성물산·삼성중공업 등)가 다르면 인정되지 않을 수 있어 따로 기록합니다">시공사</label><input class="in" autocomplete="off" placeholder="예: 삼성물산" value="'+esc(c.contractor)+'" oninput="form_c('+i+',\'contractor\',this.value)"></div>'
+    +'<div><label class="f">취득일</label><input class="in" type="date" value="'+esc(c.acquired)+'" onchange="form_c('+i+',\'acquired\',this.value)"></div>'
+    +'<div><label class="f" title="선택하면 취득일 기준으로 만료일이 자동 계산됩니다">유효기간</label><select class="in" onchange="form_c('+i+',\'validYears\',this.value)">'
+      +['','1','2','3','5'].map(v=>'<option value="'+v+'" '+(String(c.validYears||'')===v?'selected':'')+'>'+(v?v+'년':'직접 입력')+'</option>').join('')+'</select></div>'
+    +'<div><label class="f">만료일 <span id="c-mb-'+i+'">'+certManualBadge(c)+'</span></label><input class="in" type="date" id="c-exp-'+i+'" value="'+esc(c.expiry)+'" onchange="form_c('+i+',\'expiry\',this.value)"></div>'
+    +'<div class="cfoot"><span id="cert-st-'+i+'">'+eduStateHtml(true,c.expiry||'')+'</span><span id="c-rs-'+i+'">'+certResetBtn(i,c)+'</span><button class="btn sm red" onclick="form_cdel('+i+')">삭제</button></div></div>').join('');
+}
+function coSecHtml(){
+  const cnt = k => wf.certs.filter(c=>certCo(c)===k).length;
+  const co = COMPANIES.find(x=>x.k===coTab);
+  let body = '<div class="subblk"><div class="subblk-t">자격 · 인증 <span class="sub">('+co.label+')</span></div><div id="cert-rows">'+certRowsHtml(coTab)+'</div>'
+    +'<button class="btn sm" onclick="form_cadd()">+ 자격/인증 추가</button></div>';
+  if (coTab==='samsung'){
+    body += '<div class="subblk"><div class="subblk-t">사내화 교육 이수 여부</div><div id="edu-rows">'+eduRowsHtml()+'</div>'
+      +'<div class="hint">이수한 과정을 체크하고 만료일을 입력하세요. 만료일이 지나면 목록에 “만료”, 30일 이내면 “임박”으로 표시됩니다. (만료일이 없는 과정은 비워 두세요)</div></div>'
+      +'<div class="subblk"><div class="subblk-t">상생협력포탈 계정</div><div class="grid2">'
+      +'<div><label class="f">아이디</label><input class="in" autocomplete="off" value="'+esc(wf.ssId)+'" oninput="wf.ssId=this.value"></div>'
+      +'<div><label class="f">비밀번호</label><div style="display:flex;gap:6px"><input class="in" id="f-sspw" type="password" autocomplete="new-password" value="'+esc(wf.ssPw)+'" oninput="wf.ssPw=this.value">'
+      +'<button class="btn sm" type="button" onclick="togglePw()">👁</button><button class="btn sm" type="button" onclick="copyPw()">복사</button></div></div></div>'
+      +'<div class="note-warn">⚠️ 비밀번호는 관리자만 조회할 수 있는 별도 영역에 저장되지만 암호화되지는 않습니다. 개인 비밀번호가 아닌 업무용·초기 비밀번호만 보관해 주세요.</div></div>';
+  } else {
+    body += '<div class="hint" style="margin-top:12px">이 탭에는 현재 자격·인증만 등록합니다. (사내화 교육, 상생협력포탈 계정은 삼성전자 탭)</div>';
+  }
+  return '<div class="sec-t">원청별 자격 · 교육 · 계정</div><div class="cotabs">'
+    +COMPANIES.map(x=>'<button class="'+(coTab===x.k?'on':'')+'" onclick="setCoTab(\''+x.k+'\')">'+x.label+'<span class="tcnt">'+cnt(x.k)+'</span></button>').join('')
+    +'</div>'+body;
+}
+window.setCoTab = function(k){ coTab = k; const el = $('co-sec'); if (el) el.innerHTML = coSecHtml(); };
+function redrawCo(){ const el = $('co-sec'); if (el) el.innerHTML = coSecHtml(); }
+function fileRowHtml(x){
+  const st = wf.files[x.k];
+  const has = st.mode==='new' || (st.mode==='keep' && !!st.fileName);
+  let info = '<span class="sub">등록된 파일 없음</span>';
+  if (st.mode==='new') info = '📎 '+esc(st.fileName)+' · '+st.w+'×'+st.h+' · '+fmtKB(st.size)+' <span class="badge b-part">저장 전</span>';
+  else if (st.mode==='keep' && st.fileName) info = '📎 '+esc(st.fileName)+(st.w?' · '+st.w+'×'+st.h:'')+' · '+fmtKB(st.size);
+  else if (st.mode==='delete') info = '<span class="badge b-none">저장 시 삭제됨</span>';
+  return '<div class="frow"><div class="flbl">'+x.label+'</div><div class="filebox">'+info
+    +(st.mode==='keep'&&st.fileName&&editing?' <button class="btn sm" onclick="viewPhoto(\''+x.k+'\',false)">보기</button> <button class="btn sm" onclick="viewPhoto(\''+x.k+'\',true)">⬇ 다운로드</button>':'')
+    +' <button class="btn sm" onclick="document.getElementById(\'photo-file-'+x.k+'\').click()">'+(has?'교체':'파일 선택')+'</button>'
+    +(has?' <button class="btn sm red" onclick="photoRemove(\''+x.k+'\')">삭제</button>':'')
+    +'<input type="file" id="photo-file-'+x.k+'" accept="image/*" style="display:none" onchange="photoPicked(this,\''+x.k+'\')"></div></div>';
+}
+function filesHtml(){
+  return PHOTO_SLOTS.map(fileRowHtml).join('')
+    +'<div class="hint">파일은 화면에 바로 표시하지 않고 보관합니다. 각각 긴 변 최대 2000px, 약 700KB 이하로 조정되며 용량이 크면 화질을 자동으로 낮춰 저장합니다. 이미지 파일만 등록할 수 있습니다.</div>';
+}
+function eduRowsHtml(){
+  return EDU.map(e=>{
+    const on = !!wf.edu[e.k], exp = wf.eduExp[e.k]||'';
+    return '<div class="edurow"><label class="chk"><input type="checkbox" '+(on?'checked':'')+' onchange="eduToggle(\''+e.k+'\',this.checked)"> '+esc(e.label)+'</label>'
+      +'<div class="edudate"><span class="sub">만료일</span><input class="in" type="date" id="edu-exp-'+e.k+'" value="'+esc(exp)+'" '+(on?'':'disabled')+' onchange="eduExpSet(\''+e.k+'\',this.value)">'
+      +'<span id="edu-st-'+e.k+'" style="min-width:74px">'+eduStateHtml(on,exp)+'</span></div></div>';
+  }).join('');
+}
+function drawForm(){
+  const f = wf, isEdit = !!editing;
+  const juminMsg = juminMsgHtml(f.jumin);
+  $('fm-body').innerHTML =
+    '<div class="sec"><div class="sec-t">인적사항</div>'
+    +'<div class="grid4"><div><label class="f">이름 *</label><input class="in" id="f-name" value="'+esc(f.name)+'" oninput="wf.name=this.value"></div>'
+    +'<div><label class="f">주민(외국인)등록번호</label><input class="in" id="f-jumin" inputmode="numeric" placeholder="000000-0000000" value="'+esc(f.jumin)+'" oninput="jiInput(this)"><div id="ji-msg">'+juminMsg+'</div></div>'
+    +'<div><label class="f">생년월일 *</label><input class="in" type="date" id="f-birth" value="'+esc(f.birth)+'" onchange="wf.birth=this.value"></div>'
+    +'<div><label class="f">성별</label><select class="in" id="f-gender" onchange="wf.gender=this.value"><option value="">선택</option><option value="남" '+(f.gender==='남'?'selected':'')+'>남</option><option value="여" '+(f.gender==='여'?'selected':'')+'>여</option></select></div>'
+    +'<div><label class="f">전화번호</label><input class="in" id="f-phone" inputmode="tel" placeholder="010-0000-0000" value="'+esc(f.phone)+'" oninput="this.value=fmtPhoneG(this.value);wf.phone=this.value"></div>'
+    +'<div><label class="f">입사일</label><input class="in" type="date" value="'+esc(f.hireDate)+'" onchange="wf.hireDate=this.value"></div>'
+    +'<div><label class="f">퇴사일</label><div class="in" style="background:#f7f9fc;color:#888">'+(isEdit&&editing.resigned?esc(editing.resignedDate||'-'):'재직 중')+'</div><div class="hint">퇴사는 [퇴사처리] 버튼으로</div></div>'
+    +'<div><label class="f">소속(팀장)</label><select class="in" id="f-leader" onchange="leaderChanged(this.value)">'+leaderOptionsHtml(isEdit?editing.id:'', f.leaderId)+'</select></div>'
+    +'<div style="grid-column:1/-1"><label class="f">주소</label><input class="in" id="f-address" placeholder="예: 충청남도 공주시 우체국길 24-2" value="'+esc(f.address)+'" oninput="wf.address=this.value"></div>'
+    +'<div id="portal-row" style="grid-column:1/-1;'+(f.leaderId?'display:none':'')+'">'+portalRowHtml()+'</div>'
+    +'</div></div>'
+    +'<div class="sec"><div class="sec-t">건강검진 이력</div><div id="health-rows">'+healthRowsHtml()+'</div>'
+    +'<button class="btn sm" onclick="form_hadd()">+ 검진 이력 추가</button></div>'
+    +'<div class="sec" id="co-sec">'+coSecHtml()+'</div>'
+    +'<div class="sec"><div class="sec-t">사진 파일 <span style="font-weight:400;color:#9AAABF">(사진 · 신분증 · 건설기초이수증)</span></div><div id="file-rows">'+filesHtml()+'</div></div>'
+    +'<div class="sec"><div class="sec-t">비고</div><textarea class="in" rows="2" oninput="wf.note=this.value">'+esc(f.note)+'</textarea></div>'
+    +(isAdmin ? '<div class="sec admin"><div class="sec-t">🔒 관리자 전용 조회 · 급여 / 계좌</div><div class="grid3">'
+      +'<div><label class="f">은행</label><input class="in" placeholder="예: 국민은행" value="'+esc(f.bank)+'" oninput="wf.bank=this.value"></div>'
+      +'<div><label class="f">계좌번호</label><input class="in" inputmode="numeric" value="'+esc(f.account)+'" oninput="wf.account=this.value"></div>'
+      +'<div><label class="f">일당 (원)</label><input class="in" inputmode="numeric" placeholder="예: 180,000" value="'+esc(f.rate)+'" oninput="wf.rate=this.value"></div>'
+      +'</div><div style="margin-top:10px">'+fileRowHtml(slotOf('bankbook'))+'</div>'
+      +'<div class="hint">급여·계좌 정보와 통장사본은 관리자에게만 표시됩니다. 통장사본은 이미지 파일만 등록할 수 있습니다.</div></div>' : '')
+    +'<div style="display:flex;gap:8px;margin-top:16px">'
+    +(isEdit?'<button class="btn red" onclick="deleteWorker()">삭제</button>':'')
+    +'<button class="btn" style="flex:1" onclick="closeForm()">취소</button>'
+    +'<button class="btn pri" style="flex:2;padding:10px" id="save-btn" onclick="saveWorker()">저장</button></div>';
+}
+window.eduToggle = function(k, checked){
+  wf.edu[k] = !!checked;
+  const inp = $('edu-exp-'+k);
+  if (!checked){ wf.eduExp[k] = ''; if (inp){ inp.value=''; inp.disabled=true; } }
+  else if (inp){ inp.disabled=false; }
+  if ($('edu-st-'+k)) $('edu-st-'+k).innerHTML = eduStateHtml(!!checked, wf.eduExp[k]||'');
+};
+window.eduExpSet = function(k, v){
+  wf.eduExp[k] = v || '';
+  if ($('edu-st-'+k)) $('edu-st-'+k).innerHTML = eduStateHtml(!!wf.edu[k], v||'');
+};
+window.fmtPhoneG = fmtPhone;
+window.form_h = (i,k,v)=>{
+  const h=wf.health[i]; h[k]=v;
+  if(k==='date'){
+    const auto=addYearsYmd(v, HEALTH_VALID_YEARS);
+    if(auto){ if(!h.manual){ h.expiry=auto; } refreshHealthRow(i,true); }         // 완성된 날짜일 때만 자동 계산 (타이핑 중간값은 무시)
+  } else if(k==='expiry'){
+    const auto=addYearsYmd(h.date, HEALTH_VALID_YEARS);
+    if(!v){ h.expiry=auto; h.manual=false; refreshHealthRow(i,true); }
+    else if(addYearsYmd(v,0)){ h.manual = (v!==auto); refreshHealthRow(i,false); }   // 사용자가 입력 중인 만료일 칸은 건드리지 않고 상태만 갱신
+  }
+};
+window.form_hreset = i=>{ const h=wf.health[i]; h.manual=false; h.expiry=addYearsYmd(h.date, HEALTH_VALID_YEARS); $('health-rows').innerHTML=healthRowsHtml(); };
+window.form_hadd = ()=>{ wf.health.push({type:'general',date:'',expiry:'',manual:false}); $('health-rows').innerHTML=healthRowsHtml(); };
+window.form_hdel = i=>{ wf.health.splice(i,1); $('health-rows').innerHTML=healthRowsHtml(); };
+window.form_c = (i,k,v)=>{
+  const c=wf.certs[i]; c[k]=v;
+  const auto = ()=> (c.validYears && c.acquired) ? addYearsYmd(c.acquired, +c.validYears) : '';
+  if(k==='acquired' || k==='validYears'){
+    const a=auto(); if(a && !c.manual) c.expiry=a;                 // 취득일·유효기간 → 만료일 자동 계산(수동 수정 전까지)
+    refreshCertRow(i, true);                                        // 화면 전체를 다시 그리지 않고 만료일 칸만 갱신
+  } else if(k==='expiry'){
+    if(addYearsYmd(v,0)||!v){ c.manual = !!(c.validYears && v && v!==auto()); refreshCertRow(i,false); }
+  }
+};
+window.form_creset = i=>{ const c=wf.certs[i]; c.manual=false; if(c.validYears&&c.acquired) c.expiry=addYearsYmd(c.acquired,+c.validYears); refreshCertRow(i,true); };
+window.form_cadd = ()=>{ wf.certs.push({co:coTab,name:'',site:'',contractor:'',acquired:'',expiry:'',validYears:'',manual:false}); redrawCo(); };
+window.form_cdel = i=>{ wf.certs.splice(i,1); redrawCo(); };
+window.togglePw = ()=>{ const el=$('f-sspw'); if(el) el.type = el.type==='password' ? 'text' : 'password'; };
+window.copyPw = async ()=>{ try{ await navigator.clipboard.writeText(wf.ssPw||''); alert('비밀번호를 복사했습니다.'); }catch(e){ alert('복사에 실패했습니다. 👁 버튼으로 표시한 뒤 직접 복사해 주세요.'); } };
+function juminMsgHtml(raw){
+  const d=String(raw||'').replace(/[^0-9]/g,''); if(!d) return '';
+  const pj=parseJumin(d);
+  if(!pj.valid) return d.length<13 ? '' : '<div class="hint" style="color:#b71c1c">주민(외국인)등록번호 형식을 확인해 주세요. (13자리)</div>';
+  return pj.checksumOk ? '<div class="hint" style="color:#1b5e20">✓ 생년월일 '+pj.birth+' · '+pj.gender+(pj.foreign?' · 외국인':'')+'</div>'
+    : '<div class="hint" style="color:#8a5a00">형식은 맞지만 검증번호가 일치하지 않습니다'+(pj.foreign?' (외국인등록번호는 정상일 수 있음)':'')+'. 확인 후 저장해 주세요.</div>';
+}
+window.jiInput = function(el){
+  const d = el.value.replace(/[^0-9]/g,'').slice(0,13);
+  el.value = fmtJumin(d); wf.jumin = el.value;
+  const pj = parseJumin(d);
+  if (pj.valid){
+    wf.birth = pj.birth; wf.gender = pj.gender;
+    if ($('f-birth')) $('f-birth').value = pj.birth;
+    if ($('f-gender')) $('f-gender').value = pj.gender;
+  }
+  if ($('ji-msg')) $('ji-msg').innerHTML = juminMsgHtml(d);
+};
+function drawFormKeepFocus(){ const y=$('form-modal').scrollTop; drawForm(); $('form-modal').scrollTop=y; }
+
+// ── 사진 ──
+function loadImageFromFile(file){
+  return new Promise((res,rej)=>{
+    const url=URL.createObjectURL(file), img=new Image();
+    img.onload=()=>{ URL.revokeObjectURL(url); res(img); };
+    img.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error('이미지를 읽을 수 없습니다.')); };
+    img.src=url;
+  });
+}
+async function compressImage(file){
+  const img = await loadImageFromFile(file);
+  let maxEdge = PHOTO_MAX_EDGE, q = 0.86, out = '', w = 0, h = 0;
+  for (let i=0;i<12;i++){
+    const scale = Math.min(1, maxEdge/Math.max(img.naturalWidth||img.width, img.naturalHeight||img.height));
+    w = Math.max(1, Math.round((img.naturalWidth||img.width)*scale)); h = Math.max(1, Math.round((img.naturalHeight||img.height)*scale));
+    const c=document.createElement('canvas'); c.width=w; c.height=h;
+    const ctx=c.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,w,h); ctx.drawImage(img,0,0,w,h);
+    out = c.toDataURL('image/jpeg', q);
+    if (out.length <= PHOTO_MAX_CHARS) return { dataUrl:out, w, h };
+    q -= 0.08; if (q < 0.55){ q = 0.85; maxEdge = Math.round(maxEdge*0.85); }
+  }
+  throw new Error('사진 용량을 줄이지 못했습니다. 더 작은 사진을 선택해 주세요.');
+}
+window.photoPicked = async function(inp, slot){
+  const file = inp.files && inp.files[0]; if(!file) return;
+  if (!/^image\//.test(file.type)) { alert('이미지 파일만 선택할 수 있습니다.'); inp.value=''; return; }
+  try{
+    const r = await compressImage(file);
+    const base = (file.name||slotOf(slot).label).replace(/\.[^.]+$/,'') + '.jpg';
+    wf.files[slot] = { mode:'new', dataUrl:r.dataUrl, fileName:base, size:Math.round((r.dataUrl.length-23)*3/4), w:r.w, h:r.h };
+    drawFormKeepFocus();
+  }catch(e){ alert(e.message); }
+  inp.value='';
+};
+window.photoRemove = function(slot){
+  if (wf.files[slot].mode==='new'){
+    // 저장 전 선택한 파일만 취소 → 기존에 저장된 파일 상태로 되돌림
+    wf.files[slot] = blankFiles(filesMeta(editing && privs[editing.id]))[slot];
+  } else {
+    wf.files[slot] = { mode:'delete', dataUrl:'', fileName:'', size:0, w:0, h:0 };
+  }
+  drawFormKeepFocus();
+};
+function dataUrlToBlob(u){
+  const m=/^data:([^;]+);base64,(.*)$/.exec(u); if(!m) throw new Error('잘못된 사진 데이터');
+  const bin=atob(m[2]), arr=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+  return new Blob([arr],{type:m[1]});
+}
+window.viewPhoto = async function(slot, download){
+  if (!editing) return;
+  try{
+    const snap = await getDoc(doc(db,'master_worker_photos',slotDocId(editing.id, slot)));
+    if (!snap.exists()) { alert('저장된 파일을 찾을 수 없습니다.'); return; }
+    const d = snap.data(), blob = dataUrlToBlob(d.dataUrl), url = URL.createObjectURL(blob);
+    const label = slotOf(slot).label;
+    const fname = ((editing.name||'근로자')+'_'+label+'.jpg').replace(/[\\/:*?"<>|]/g,'_');
+    if (download){
+      const a=document.createElement('a'); a.href=url; a.download=fname; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 1500);
+    } else {
+      $('ph-title').textContent = (editing.name||'')+' '+label;
+      $('ph-body').innerHTML = '<img src="'+url+'" style="max-width:100%;max-height:70vh;border-radius:8px"><div style="margin-top:10px"><button class="btn" onclick="viewPhoto(\''+slot+'\',true)">⬇ 다운로드</button></div>';
+      window._phUrl = url; $('photo-modal').style.display='flex';
+    }
+  }catch(e){ alert('파일을 불러오지 못했습니다: '+e.message); }
+};
+window.closePhoto = function(){ $('photo-modal').style.display='none'; if(window._phUrl){ URL.revokeObjectURL(window._phUrl); window._phUrl=null; } $('ph-body').innerHTML=''; };
+
+// ── 저장/삭제/퇴사 ──
+window.saveWorker = async function(){
+  const f = wf;
+  const name = (f.name||'').trim();
+  if (!name){ alert('이름을 입력하세요.'); return; }
+  const pj = f.jumin ? parseJumin(f.jumin) : null;
+  if (f.jumin && !pj.valid){ alert('주민(외국인)등록번호 형식이 올바르지 않습니다. (13자리, 생년월일 확인)'); return; }
+  let birth = f.birth || (pj&&pj.birth) || '';
+  if (!birth){ alert('생년월일을 입력하세요. (주민등록번호를 입력하면 자동으로 채워집니다)'); return; }
+  if (pj && pj.birth !== birth && !confirm('입력한 생년월일('+birth+')이 주민등록번호의 생년월일('+pj.birth+')과 다릅니다.\n그대로 저장할까요?')) return;
+  if (pj && !pj.checksumOk && !confirm('주민(외국인)등록번호 검증번호가 일치하지 않습니다'+(pj.foreign?' (외국인등록번호는 정상일 수 있습니다)':'')+'.\n그대로 저장할까요?')) return;
+  const id = editing ? editing.id : makeId(name, birth);
+  if (!id){ alert('이름 또는 생년월일이 올바르지 않습니다.'); return; }
+  if (!editing && masterById(id)){ alert('같은 이름·생년월일의 근로자가 이미 등록되어 있습니다.'); return; }
+  if (editing && f.leaderId && isLeaderId(id)){ alert(name+'님은 팀장으로 지정된 인원이 있어 다른 팀 소속으로 변경할 수 없습니다. 먼저 팀원들의 소속을 변경해주세요.'); return; }
+  const gender = f.gender || (pj&&pj.gender) || '';
+  const base = { name, birth, gender, hireDate:f.hireDate||'', leaderId:f.leaderId||'' };
+  // 금액 정보(일당)는 모든 직원이 읽을 수 있는 master_workers가 아니라 관리자 전용 master_worker_private에 저장한다. 예전 값이 master_workers에 남아 있으면 함께 제거.
+  if (isAdmin) base.dailyRate = deleteField();
+  const pendingUp = f.health.filter(h=>h.pdfNew && !h.date);
+  if (pendingUp.length){ alert('실시일이 없는 검진 줄에 첨부한 PDF가 있습니다. 실시일을 입력하거나 첨부를 취소해 주세요.'); return; }
+  const oldPdfPaths = [];      // 저장이 성공한 뒤 삭제할 옛 파일
+  const newPdfPaths = [];      // 저장이 실패하면 되돌릴(삭제할) 새 파일
+  const healthRows = f.health.filter(h=>h.date);
+  const health = healthRows.map(h=>({type:h.type,date:h.date,expiry:h.expiry||addYearsYmd(h.date,HEALTH_VALID_YEARS),expiryManual:!!h.manual,pdf:null,_src:h})).sort((a,b)=>a.date.localeCompare(b.date));
+  const incomplete = f.certs.find(c=>!(c.name||'').trim() && (c.site||c.contractor||c.acquired||c.expiry));
+  if (incomplete){ coTab = certCo(incomplete); redrawCo(); alert('자격/인증명이 비어 있는 행이 있습니다. ('+COMPANIES.find(x=>x.k===certCo(incomplete)).label+' 탭) 이름을 입력하거나 행을 삭제해 주세요.'); return; }
+  const certs = f.certs.filter(c=>(c.name||'').trim()).map(c=>({co:certCo(c),name:c.name.trim(),site:(c.site||'').trim(),contractor:(c.contractor||'').trim(),acquired:c.acquired||'',expiry:c.expiry||'',validYears:c.validYears?+c.validYears:'',expiryManual:!!c.manual}));
+  const edu = {}, eduExp = {};
+  EDU.forEach(e=>{ edu[e.k] = !!f.edu[e.k]; eduExp[e.k] = edu[e.k] ? (f.eduExp[e.k]||'') : ''; });
+  const filesOut = {};
+  FILE_SLOTS.forEach(x=>{
+    const st = f.files[x.k];
+    filesOut[x.k] = (st.mode==='new' || (st.mode==='keep' && st.fileName)) ? { name:st.fileName, size:st.size||0, w:st.w||0, h:st.h||0 } : null;
+  });
+  const hasAny = FILE_SLOTS.some(x=>!!filesOut[x.k]);
+  const priv = { jumin: pj ? pj.digits.slice(0,6)+'-'+pj.digits.slice(6) : '', phone:(f.phone||'').trim(), address:(f.address||'').trim(),
+                 health, certs, inhouseEdu:edu, inhouseEduExp:eduExp, ssId:(f.ssId||'').trim(), ssPw:f.ssPw||'', note:(f.note||'').trim(),
+                 files: filesOut, hasPhoto: hasAny, photoName:'', photoSize:0, photoW:0, photoH:0,   // 예전 단일 사진 필드는 files로 통합되어 비움
+                 updatedAt: serverTimestamp() };
+  if (isAdmin){ priv.bank = (f.bank||'').trim(); priv.account = (f.account||'').trim(); priv.dailyRate = parseMoney(f.rate); }
+  const btn = $('save-btn'); btn.disabled=true; btn.textContent='저장 중...';
+  try{
+    // 검진 결과 PDF 업로드 (신규/교체) — 실패하면 저장 전체를 중단한다
+    for (const row of health){
+      const h=row._src;
+      if (h.pdfNew){
+        btn.textContent='PDF 업로드 중... ('+h.pdfNew.name+')';
+        const path='roster_health/'+id+'/'+Date.now()+'_'+Math.random().toString(36).slice(2,8)+'.pdf';
+        await uploadBytes(sref(storage,path), h.pdfNew, { contentType:'application/pdf' });
+        newPdfPaths.push(path);
+        if (h.pdf) oldPdfPaths.push(h.pdf.path);
+        row.pdf = { path, name:h.pdfNew.name, size:h.pdfNew.size, uploadedAt:new Date().toISOString() };
+      } else if (h.pdf && !h.pdfRemove){ row.pdf = h.pdf; }
+      else if (h.pdf && h.pdfRemove){ oldPdfPaths.push(h.pdf.path); }
+    }
+    // 검진 줄을 삭제하면서 남은 PDF 정리
+    (editing ? (privs[id]&&privs[id].health||[]) : []).forEach(oh=>{ if(oh.pdf && !health.some(r=>r.pdf && r.pdf.path===oh.pdf.path) && !oldPdfPaths.includes(oh.pdf.path)) oldPdfPaths.push(oh.pdf.path); });
+    health.forEach(r=>{ delete r._src; if(!r.pdf) delete r.pdf; });
+    priv.health = health;
+    const b = writeBatch(db);
+    b.set(doc(db,'master_workers',id), base, { merge:true });
+    b.set(doc(db,'master_worker_private',id), priv, { merge:true });
+    FILE_SLOTS.forEach(x=>{
+      const st = f.files[x.k], did = slotDocId(id, x.k);
+      if (st.mode==='new') b.set(doc(db,'master_worker_photos',did), { dataUrl:st.dataUrl, mime:'image/jpeg', fileName:st.fileName, size:st.size, slot:x.k, updatedAt:serverTimestamp() });
+      else if (st.mode==='delete') b.delete(doc(db,'master_worker_photos',did));
+    });
+    await b.commit();
+    for (const p of oldPdfPaths){ try{ await deleteObject(sref(storage,p)); }catch(e){ console.warn('옛 PDF 삭제 실패(무시):', p, e.message); } }
+    const linkUid = f.leaderId ? '' : (f.portalUid||'');      // 팀원이 된 경우엔 팀장 연결을 해제
+    let linkErr = '';
+    try{ await syncLeaderLink(id, linkUid); }catch(e){ linkErr = e.message; }
+    if (linkErr) alert('저장은 완료됐지만 포털 계정 연결에 실패했습니다: '+linkErr);      // 모바일 모드는 닫으면 화면이 이동하므로 이동 전에 안내
+    closeForm();
+    await loadAll();
+  }catch(e){
+    for (const p of newPdfPaths){ try{ await deleteObject(sref(storage,p)); }catch(_){} }   // 저장 실패 시 방금 올린 파일 정리
+    alert('저장 실패: '+e.message); btn.disabled=false; btn.textContent='저장';
+  }
+};
+window.deleteWorker = async function(){
+  if (!editing) return;
+  const m = editing;
+  if (isLeaderId(m.id)){ alert(m.name+'님은 팀장으로 지정된 인원이 있어 삭제할 수 없습니다. 먼저 팀원들의 소속을 변경해주세요.'); return; }
+  if (!confirm(m.name+'님을 연명부에서 삭제할까요?\n개인정보·검진·사진 등 이 화면에서 관리하는 정보가 함께 삭제됩니다.\n(각 프로젝트에 이미 등록된 근태·공수 기록은 그대로 남습니다)')) return;
+  try{
+    const b = writeBatch(db);
+    b.delete(doc(db,'master_workers',m.id)); b.delete(doc(db,'master_worker_private',m.id));
+    FILE_SLOTS.forEach(x=>b.delete(doc(db,'master_worker_photos',slotDocId(m.id,x.k))));
+    await b.commit();
+    for (const oh of ((privs[m.id]&&privs[m.id].health)||[])){ if(oh.pdf){ try{ await deleteObject(sref(storage,oh.pdf.path)); }catch(_){} } }
+    try{ await syncLeaderLink(m.id,''); }catch(_){}
+    closeForm(); await loadAll();
+  }catch(e){ alert('삭제 실패: '+e.message); }
+};
+// 퇴사처리 / 재직 전환 — master_workers.resigned 필드를 그대로 사용하므로 각 PJT 모듈(FAB/경량PJT/SUP)에 기존 방식대로 반영된다.
+window.toggleResign = async function(id){
+  const m = masterById(id); if(!m) return;
+  try{
+    if (m.resigned){
+      if(!confirm(m.name+'님을 재직 상태로 전환할까요?')) return;
+      await setDoc(doc(db,'master_workers',id), { resigned:false, resignedDate:null }, { merge:true });
+    } else {
+      if (isLeaderId(id)){ alert(m.name+'님은 팀장으로 지정된 인원이 있어 퇴사처리할 수 없습니다. 먼저 팀원들의 소속을 변경해주세요.'); return; }
+      const input = prompt(m.name+'님의 퇴사일을 입력하세요.', today());
+      if (input===null) return;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(input)){ alert('날짜 형식은 YYYY-MM-DD 로 입력하세요.'); return; }
+      await setDoc(doc(db,'master_workers',id), { resigned:true, resignedDate:input }, { merge:true });
+    }
+    await loadAll();
+  }catch(e){ alert('처리 실패: '+e.message); }
+};
+
+// ── 기존 인원 마이그레이션 (월간 공수의 도구를 이전) ──
+// 각 프로젝트(FAB · SUP · 경량PJT)의 개별 명단을 이름 기준으로 묶어 마스터(master_workers)로 등록한다.
+// 마스터 ID는 처음 발견된 명단 문서의 ID를 그대로 재사용(그 프로젝트의 기존 기록 보존). 나머지 프로젝트의 문서는 마스터 ID로 다시 만들고 기존 문서는 삭제한다.
+let migSources = [], migGroups = {}, migFail = [], migOnlyNew = true, migItems = null;
+async function loadProjectRosters(){
+  const out = [], fail = [], mm = {}; masters.forEach(m=>{ mm[m.id]=m; });
+  async function pull(path, label, kind, regId){
+    try{
+      const snap = await getDocs(collection(db, ...path));
+      snap.forEach(d=>{ const w=d.data(), m=mm[d.id];
+        out.push({ id:d.id, name:(m&&m.name)||w.name||'(이름없음)', birth:(m&&m.birth)||w.birth||'', sourceLabel:label, sourceKind:kind, regId, collPath:path }); });
+    }catch(e){ fail.push(label); }
+  }
+  await pull(['pjt_workers_fab'], 'P4 Ph2 (FAB)', 'fab');
+  await pull(['pjt_workers_ph4'], 'P4 Ph4 (SUP)', 'sup');
+  const regs = [];
+  try{ const rs = await getDocs(collection(db,'pjt_registry')); rs.forEach(d=>{ const x=d.data(); if(x.status!=='ended') regs.push({ id:d.id, name:x.name||'PJT' }); }); }catch(e){ fail.push('경량 PJT 목록'); }
+  for (const r of regs) await pull(['pjt_registry', r.id, 'workers'], r.name, 'light', r.id);
+  return { out, fail, regs };
+}
+async function refreshMigSources(){ const r = await loadProjectRosters(); migSources = r.out; migFail = r.fail; }
+window.openMigrate = async function(){
+  $('mig-modal').style.display = 'flex';
+  $('mig-list').innerHTML = '<div class="loading">불러오는 중...</div>';
+  try{ await refreshMigSources(); }catch(e){ $('mig-list').innerHTML = '<div class="empty">불러오기 실패: '+esc(e.message)+'</div>'; return; }
+  drawMigrate();
+};
+window.closeMigrate = function(){ $('mig-modal').style.display = 'none'; };
+window.migToggle = function(v){ migOnlyNew = !!v; drawMigrate(); };
+function drawMigrate(){
+  const groups = {}; migSources.forEach(w=>{ (groups[w.name] = groups[w.name] || []).push(w); });
+  migGroups = groups;
+  const names = Object.keys(groups).sort((a,b)=>a.localeCompare(b,'ko'));
+  const doneOf = n => masters.find(m=>m.name===n);
+  const todo = names.filter(n=>!doneOf(n));
+  const shown = migOnlyNew ? todo : names;
+  let html = '<div class="toolbar" style="margin-bottom:8px"><span class="sub">미등록 <b>'+todo.length+'</b>명 / 프로젝트 명단 전체 '+names.length+'명</span>'
+    +'<label style="margin-left:auto;font-size:12px;color:#555;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" '+(migOnlyNew?'checked':'')+' onchange="migToggle(this.checked)"> 미등록만 보기</label></div>';
+  if (migFail.length) html += '<div class="mig-warn">⚠️ 일부 프로젝트 명단을 불러오지 못했습니다: '+migFail.map(esc).join(', ')+'</div>';
+  if (!shown.length) html += '<div class="empty">'+(names.length ? '마이그레이션할 인원이 없습니다. (모두 마스터 등록됨)' : '프로젝트 명단에 등록된 인원이 없습니다.')+'</div>';
+  else html += shown.map(name=>{
+    const items = groups[name], done = doneOf(name);
+    const births = Array.from(new Set(items.map(it=>it.birth).filter(Boolean)));
+    let h = '<div class="migrate-group"><div class="migrate-name">'+esc(name)+(done?' <span class="badge b-ok">✓ 마스터 등록됨</span>':'')+'</div>';
+    h += items.map(it=>'<div class="migrate-src">'+esc(it.sourceLabel)+' · id='+esc(it.id)+' · '+esc(it.birth||'생년월일 없음')+'</div>').join('');
+    if (!done && births.length > 1) h += '<div class="mig-warn">⚠️ 생년월일이 서로 다른 항목이 있습니다 ('+births.map(esc).join(', ')+'). 동명이인일 수 있으니 확인 후 등록하세요.</div>';
+    h += done
+      ? '<button class="btn sm" style="margin-top:6px" onclick="closeMigrate();openForm(\''+esc(done.id)+'\')">✏️ 등록정보 수정</button>'
+      : '<button class="btn sm" style="margin-top:6px" onclick="openMigConfirm(\''+encodeURIComponent(name)+'\')">마스터로 등록</button>';
+    return h+'</div>';
+  }).join('');
+  $('mig-list').innerHTML = html;
+}
+window.openMigConfirm = function(encodedName){
+  const items = migGroups[decodeURIComponent(encodedName)]; if (!items) return;
+  migItems = items;
+  const best = items.find(it=>it.birth) || items[0];
+  const births = Array.from(new Set(items.map(it=>it.birth).filter(Boolean)));
+  $('mc-summary').textContent = items.length+'개 프로젝트에서 발견됨: '+items.map(it=>it.sourceLabel).join(', ');
+  $('mc-warn').innerHTML = births.length > 1 ? '<div class="mig-warn">⚠️ 생년월일이 서로 다른 항목이 있습니다 ('+births.map(esc).join(', ')+'). 같은 사람이 맞는지 확인하세요.</div>' : '';
+  $('mc-name').value = best.name;
+  $('mc-birth').value = best.birth || '';
+  $('mc-leader').innerHTML = leaderOptionsHtml('', '');
+  $('mc-rate').value = '';
+  $('mc-rate-wrap').style.display = isAdmin ? '' : 'none';
+  $('mig-confirm-modal').style.display = 'flex';
+};
+window.closeMigConfirm = function(){ $('mig-confirm-modal').style.display = 'none'; };
+window.confirmMigrate = async function(){
+  const items = migItems; if (!items) return;
+  const birth = $('mc-birth').value;
+  if (!birth){ alert('생년월일을 입력하세요.'); return; }
+  const name = $('mc-name').value, leaderId = $('mc-leader').value;
+  const masterId = items[0].id;
+  const exist = masterById(masterId);
+  if (exist && exist.name !== name){ alert('마스터 ID('+masterId+')가 이미 다른 근로자('+exist.name+')로 등록되어 있어 진행할 수 없습니다.\n월간 공수 담당자에게 확인해 주세요.'); return; }
+  const births = Array.from(new Set(items.map(it=>it.birth).filter(Boolean)));
+  if (births.length > 1 && !confirm('생년월일이 서로 다른 항목이 있습니다 ('+births.join(', ')+').\n같은 사람으로 묶어 등록할까요?')) return;
+  const data = { name, birth, leaderId };
+  const btn = $('mc-save-btn'); btn.disabled = true; btn.textContent = '등록 중...';
+  try{
+    const b = writeBatch(db);
+    b.set(doc(db,'master_workers',masterId), data, { merge:true });
+    if (isAdmin){ const rt = parseMoney($('mc-rate').value); if (rt) b.set(doc(db,'master_worker_private',masterId), { dailyRate:rt }, { merge:true }); }
+    for (const it of items){
+      if (it.id === masterId) continue;           // 첫 항목은 이미 마스터 ID와 동일
+      b.set(doc(db, ...it.collPath, masterId), { name, birth, masterId, order:999 }, { merge:true });
+      b.delete(doc(db, ...it.collPath, it.id));
+    }
+    await b.commit();
+    closeMigConfirm();
+    await loadAll();
+    await refreshMigSources(); drawMigrate();
+    alert(name+'님 마스터 등록을 완료했습니다.\n\n⚠️ 이미 열려 있던 FAB/SUP/경량PJT 근태 탭이 있다면 반드시 새로고침 후 사용해주세요. 새로고침 없이 그대로 쓰면 예전 명단으로 저장되어 연동이 안 됩니다.');
+  }catch(e){ alert('마이그레이션 실패: '+e.message); }
+  finally{ btn.disabled = false; btn.textContent = '마스터로 등록'; }
+};
+
+// ── 월간 공수 보기 (PJT별 합계 · 개인별 합계 · 개인별 공수표) — 월간 공수에서 이전 ──
+// 집계 대상: FAB(worker_manday) · SUP(ph4_manday) · 종료되지 않은 경량PJT(pjt_registry/{id}/manday). 일자 문서(YYYY-MM-DD)의 md{근로자ID: 공수}를 합산한다.
+// 월간 공수 대비: 일자별 getDoc 반복 대신 문서 ID 범위 조회로 그 달에 존재하는 문서만 읽는다(읽기 횟수 절감).
+let mdY = new Date().getFullYear(), mdM = new Date().getMonth(), mdSeq = 0, mdLoadedOnce = false, mdPersonMap = {};
+window.showView = function(v){
+  document.querySelectorAll('#viewseg button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
+  $('view-roster').style.display = v==='roster' ? '' : 'none';
+  $('view-manday').style.display = v==='manday' ? '' : 'none';
+  $('roster-actions').style.display = v==='roster' ? 'flex' : 'none';
+  if (v==='manday' && !mdLoadedOnce) loadMonth();
+};
+window.mdShift = function(dir){ mdM += dir; if (mdM>11){ mdM=0; mdY++; } if (mdM<0){ mdM=11; mdY--; } loadMonth(); };
+window.mdReload = function(){ loadMonth(); };
+async function fetchMonthDocs(path, lo, hi){
+  const snap = await getDocs(query(collection(db, ...path), where(documentId(), '>=', lo), where(documentId(), '<=', hi)));
+  const rows = []; snap.forEach(d=>rows.push([d.id, (d.data().md)||{}])); return rows;
+}
+async function loadMonth(){
+  const seq = ++mdSeq;
+  $('md-label').textContent = mdY+'년 '+(mdM+1)+'월';
+  $('md-pjt').innerHTML = '<div class="loading">불러오는 중...</div>'; $('md-person').innerHTML = '<div class="loading">불러오는 중...</div>';
+  try{
+    const lo = mdY+'-'+pad(mdM+1)+'-01', hi = mdY+'-'+pad(mdM+1)+'-31';
+    const r = await loadProjectRosters();
+    const rosterFab = r.out.filter(w=>w.sourceKind==='fab'), rosterSup = r.out.filter(w=>w.sourceKind==='sup'), rosterLight = r.out.filter(w=>w.sourceKind==='light');
+    const fabById = {}; rosterFab.forEach(w=>fabById[w.id]=w);
+    const supById = {}; rosterSup.forEach(w=>supById[w.id]=w);
+    const failed = r.fail.slice();
+    const safe = async (path, label) => { try{ return await fetchMonthDocs(path, lo, hi); }catch(e){ failed.push(label+' 공수'); return []; } };
+    const fabRows = await safe(['worker_manday'], 'P4 Ph2 (FAB)');
+    const supRows = await safe(['ph4_manday'], 'P4 Ph4 (SUP)');
+    const lightRows = {}; for (const rg of r.regs) lightRows[rg.id] = await safe(['pjt_registry', rg.id, 'manday'], rg.name);
+    if (seq !== mdSeq) return;                     // 그 사이 월을 바꾼 경우 이전 결과는 버림
+
+    const pjtTotals = { p4ph2:{ name:'P4 Ph2 (FAB)', total:0, workerCount:rosterFab.length }, p4ph4:{ name:'P4 Ph4 (SUP)', total:0, workerCount:rosterSup.length } };
+    r.regs.forEach(rg=>{ pjtTotals['reg_'+rg.id] = { name:rg.name, total:0, workerCount:rosterLight.filter(w=>w.regId===rg.id).length }; });
+    const personMap = {}, missingBirth = [], seenMissing = new Set(); let unknownIdCount = 0;
+    const addToPerson = (worker, amount, pjtName, dk)=>{
+      const pk = (worker.name||'').trim()+'|'+(worker.birth||'MISSING');
+      if (!personMap[pk]) personMap[pk] = { name:worker.name, birth:worker.birth, total:0, byPjt:{}, byDate:{} };
+      const P = personMap[pk]; P.total += amount; P.byPjt[pjtName] = (P.byPjt[pjtName]||0) + amount;
+      (P.byDate[dk] = P.byDate[dk] || {})[pjtName] = ((P.byDate[dk]||{})[pjtName]||0) + amount;
+      if (!worker.birth){ const mk = worker.sourceLabel+'|'+worker.id; if (!seenMissing.has(mk)){ seenMissing.add(mk); missingBirth.push(worker); } }
+    };
+    fabRows.forEach(([dk,md])=>Object.keys(md).forEach(wid=>{ const a = parseFloat(md[wid])||0; if(!a) return;
+      if (fabById[wid]){ pjtTotals.p4ph2.total += a; addToPerson(fabById[wid], a, 'P4 Ph2 (FAB)', dk); } else unknownIdCount++; }));
+    supRows.forEach(([dk,md])=>Object.keys(md).forEach(wid=>{ const a = parseFloat(md[wid])||0; if(!a) return;
+      if (supById[wid]){ pjtTotals.p4ph4.total += a; addToPerson(supById[wid], a, 'P4 Ph4 (SUP)', dk); } else unknownIdCount++; }));
+    r.regs.forEach(rg=>{
+      const byId = {}; rosterLight.filter(w=>w.regId===rg.id).forEach(w=>byId[w.id]=w);
+      (lightRows[rg.id]||[]).forEach(([dk,md])=>Object.keys(md).forEach(wid=>{ const a = parseFloat(md[wid])||0; if(!a || !byId[wid]) return;
+        pjtTotals['reg_'+rg.id].total += a; addToPerson(byId[wid], a, rg.name, dk); }));
+    });
+    mdPersonMap = personMap; mdLoadedOnce = true;
+    renderMonth(pjtTotals, personMap, missingBirth, unknownIdCount, failed);
+  }catch(e){
+    if (seq !== mdSeq) return;
+    $('md-pjt').innerHTML = '<div class="empty">불러오기 실패: '+esc(e.message)+'</div>'; $('md-person').innerHTML = '';
+  }
+}
+function renderMonth(pjtTotals, personMap, missingBirth, unknownIdCount, failed){
+  const pjtList = Object.keys(pjtTotals).map(k=>pjtTotals[k]).sort((a,b)=>b.total-a.total);
+  const personList = Object.keys(personMap).map(k=>Object.assign({_key:k}, personMap[k])).sort((a,b)=>b.total-a.total);
+  const grand = pjtList.reduce((x,y)=>x+y.total,0);
+  $('md-total').textContent = grand.toFixed(1);
+  $('md-pjtcount').textContent = pjtList.filter(x=>x.total>0).length+' / '+pjtList.length;
+  $('md-workercount').textContent = personList.length;
+  let wh = '';
+  if (failed.length) wh += '<div class="warn-box">⚠️ 일부 데이터를 불러오지 못해 집계에서 빠졌을 수 있습니다: '+failed.map(esc).join(', ')+'</div>';
+  if (missingBirth.length){
+    wh += '<div class="warn-box"><b>⚠️ 생년월일 미입력 인원 (근로자 마스터 명부에 미등록 · 여러 PJT 겸직 시 별도 인원으로 집계됨)</b>'
+      + missingBirth.map(w=>'<div class="warn-row"><span style="flex:1">'+esc(w.name)+' <span style="color:#9AAABF">('+esc(w.sourceLabel)+')</span></span>'
+        +'<input type="date" class="birth-input" onchange="fixBirth(\''+esc(w.id)+'\',\''+esc(w.sourceKind)+'\',\''+esc(w.regId||'')+'\',this.value)"></div>').join('')+'</div>';
+  }
+  if (unknownIdCount) wh += '<div class="warn-box">⚠️ 어느 프로젝트 명단에도 없는 인원 ID가 포함된 공수 기록이 '+unknownIdCount+'건 있어 집계에서 제외했습니다. 명단이 삭제되었거나 아직 로딩되지 않았을 수 있습니다.</div>';
+  $('md-warn').innerHTML = wh; $('md-warn').style.display = wh ? 'block' : 'none';
+
+  $('md-pjt').innerHTML = !pjtList.length ? '<div class="empty">등록된 PJT가 없습니다.</div>'
+    : '<table style="min-width:0"><thead><tr><th>PJT</th><th style="text-align:center">등록 인원</th><th style="text-align:right">합계 공수</th></tr></thead><tbody>'
+      + pjtList.map(x=>{ const dim = x.total===0 ? 'color:#c7c7cc' : '';
+          return '<tr style="'+dim+'"><td>'+esc(x.name)+'</td><td style="text-align:center">'+x.workerCount+'명</td><td class="num" style="'+dim+'">'+x.total.toFixed(1)+(x.total===0?' (기록없음)':'')+'</td></tr>'; }).join('')
+      + '</tbody></table>';
+  $('md-person').innerHTML = !personList.length ? '<div class="empty">이번 달 등록된 공수가 없습니다.</div>'
+    : '<table style="min-width:0"><thead><tr><th>이름</th><th>참여 PJT</th><th style="text-align:right">합계 공수</th><th></th></tr></thead><tbody>'
+      + personList.map(x=>{
+          const badges = Object.keys(x.byPjt).map(pn=>'<span class="pjt-badge">'+esc(pn)+' '+x.byPjt[pn].toFixed(1)+'</span>').join('');
+          return '<tr><td>'+esc(x.name)+(x.birth?' <span class="sub">('+esc(x.birth)+')</span>':' <span style="color:#e67e22;font-size:11px">⚠ 생년월일 미입력</span>')+'</td><td>'+badges+'</td><td class="num">'+x.total.toFixed(1)+'</td>'
+            +'<td><button class="btn sm" onclick="openPersonSheet(\''+encodeURIComponent(x._key)+'\')">📋 공수표</button></td></tr>'; }).join('')
+      + '</tbody></table>';
+}
+window.fixBirth = async function(workerId, sourceKind, regId, birth){
+  if (!birth) return;
+  try{
+    const ref = sourceKind==='fab' ? doc(db,'pjt_workers_fab',workerId) : sourceKind==='sup' ? doc(db,'pjt_workers_ph4',workerId) : doc(db,'pjt_registry',regId,'workers',workerId);
+    await setDoc(ref, { birth }, { merge:true });
+    await loadMonth();
+  }catch(e){ alert('저장 실패: '+e.message); }
+};
+window.openPersonSheet = function(encodedKey){
+  const P = mdPersonMap[decodeURIComponent(encodedKey)];
+  if (!P){ alert('데이터를 찾을 수 없습니다.'); return; }
+  $('ps-title').textContent = '📋 '+P.name+'님 '+mdY+'년 '+(mdM+1)+'월 공수표';
+  const days = new Date(mdY, mdM+1, 0).getDate(), first = new Date(mdY, mdM, 1).getDay();
+  let cells = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px">';
+  ['일','월','화','수','목','금','토'].forEach(d=>cells += '<div style="text-align:center;font-size:11px;color:#9AAABF;font-weight:700;padding:4px 0">'+d+'</div>');
+  for (let i=0;i<first;i++) cells += '<div></div>';
+  for (let d=1; d<=days; d++){
+    const dk = mdY+'-'+pad(mdM+1)+'-'+pad(d), dayData = P.byDate[dk];
+    let dayTotal = 0, lines = '';
+    if (dayData) Object.keys(dayData).forEach(pn=>{ dayTotal += dayData[pn];
+      lines += '<div style="font-size:8.5px;color:#5C6F8A;line-height:1.3">'+esc(pn.replace('P4 Ph2 (FAB)','FAB').replace('P4 Ph4 (SUP)','SUP'))+' '+dayData[pn].toFixed(1)+'</div>'; });
+    cells += '<div style="min-height:56px;border:1px solid #EEF2F7;border-radius:8px;padding:4px 3px'+(dayTotal>0?';background:#F4F8FF':'')+'">'
+      +'<div style="font-size:11px;font-weight:600;color:#1A2540">'+d+'</div>'
+      +(dayTotal>0?'<div style="font-size:12px;font-weight:800;color:#1D5BA6">'+dayTotal.toFixed(1)+'</div>':'')+lines+'</div>';
+  }
+  cells += '</div>';
+  const badges = Object.keys(P.byPjt).map(pn=>'<span class="pjt-badge">'+esc(pn)+' '+P.byPjt[pn].toFixed(1)+'</span>').join('');
+  const fname = P.name+'_'+mdY+pad(mdM+1)+'_공수표.png';
+  $('ps-body').innerHTML =
+    '<button class="btn" style="width:100%;padding:10px;background:#2e7d32;color:#fff;border:none;font-weight:700;margin-bottom:12px" onclick="saveSheetPng(\'ps-capture\',\''+esc(fname)+'\')">📷 이 공수표 PNG로 저장</button>'
+    +'<div id="ps-capture" style="background:#fff;padding:14px;border-radius:12px;border:1px solid #ececec">'
+    +'<div style="font-size:13px;font-weight:700;color:#1A2540;margin-bottom:4px">'+esc(P.name)+'님 · '+mdY+'년 '+(mdM+1)+'월 공수표</div>'
+    +'<div style="font-size:12px;color:#86868b;margin-bottom:8px">참여 PJT: '+badges+'</div>'+cells
+    +'<div style="text-align:center;margin-top:14px;padding-top:14px;border-top:1px solid #f0f0f0"><span style="font-size:12px;color:#86868b">이번 달 합계</span><div style="font-size:24px;font-weight:800;color:#1D5BA6">'+P.total.toFixed(1)+' 공수</div></div></div>';
+  $('ps-modal').style.display = 'flex';
+};
+window.closePersonSheet = function(){ $('ps-modal').style.display = 'none'; };
+window.saveSheetPng = async function(elId, fname){
+  const el = $(elId); if (!el) return;
+  if (typeof html2canvas === 'undefined'){ alert('이미지 저장 모듈을 불러오는 중이에요. 잠시 후 다시 눌러주세요.'); return; }
+  try{
+    const canvas = await html2canvas(el, { scale:2, backgroundColor:'#ffffff', useCORS:true });
+    const a = document.createElement('a'); a.href = canvas.toDataURL('image/png'); a.download = fname; document.body.appendChild(a); a.click(); a.remove();
+  }catch(e){ console.error(e); alert('저장 중 오류가 났어요: '+e.message); }
+};
+
+// ── 접근 검증 (관리자 전용) ──
+function showAccessDenied(msg){
+  $('loading-init').style.display='none'; $('app').style.display='none';
+  const el=document.createElement('div');
+  el.style.cssText='max-width:420px;margin:80px auto;text-align:center;padding:32px 24px;background:#fff;border:1px solid #e5e5e5;border-radius:14px';
+  el.innerHTML='<div style="font-size:36px;margin-bottom:12px">🔒</div><div style="font-size:15px;font-weight:700;color:#1A2540;margin-bottom:8px">접근할 수 없습니다</div><div style="font-size:13px;color:#86868b;line-height:1.5">'+esc(msg)+'</div>';
+  document.body.appendChild(el);
+}
+onAuthStateChanged(auth, async function(user){
+  if(!user){ showAccessDenied('로그인이 필요합니다. 포털(portal.jhsol.kr)에서 로그인 후 다시 접속해주세요.'); return; }
+  try{
+    const uSnap = await getDoc(doc(db,'portal_users',user.uid));
+    const u = uSnap.exists() ? uSnap.data() : null;
+    if(!(u && u.admin===true && u.status==='approved')){ showAccessDenied('근로자 연명부는 관리자 계정만 접근할 수 있습니다.'); return; }
+    isAdmin = true;
+    $('loading-init').style.display='none'; $('app').style.display='block';
+    await loadAll();
+    if (MOB){                                       // 모바일 연명부에서 넘어온 경우: 바로 수정/등록 화면 열기
+      const sp = new URLSearchParams(location.search);
+      if (sp.get('new')==='1') openForm();
+      else if (sp.get('edit')){ if (masterById(sp.get('edit'))) openForm(sp.get('edit')); else { alert('해당 근로자를 찾을 수 없습니다.'); location.replace(MOB_BACK); } }
+      else location.replace(MOB_BACK);
+    }
+  }catch(e){ showAccessDenied('권한 확인 중 오류가 발생했습니다: '+e.message); }
+});
+</script>
+</body>
+</html>
