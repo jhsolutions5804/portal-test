@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html><!-- worker-private: 20261001 근로자 민감 정보(주민번호·계좌·주소·서명)는 worker_private 문서에서 읽음 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -266,7 +266,11 @@ async function loadWorkerDocs(kind, wid){
 
 /* Firestore 구독 */
 function sub(coll,setter){
-  onSnapshot(collection(db,coll), snap=>{ const arr=[]; snap.forEach(d=>arr.push({id:d.id,...d.data()})); setter(arr); render(); },
+  onSnapshot(collection(db,coll), async snap=>{ const arr=[]; snap.forEach(d=>arr.push({id:d.id,...d.data()}));
+    if(coll==='workers'){   // 민감 항목(주민번호 등)은 worker_private 에서 합친다 — 못 읽으면 일반 정보만 표시
+      try{ const ps=await getDocs(collection(db,'worker_private')); const m=new Map(); ps.forEach(d=>m.set(d.id,d.data())); arr.forEach((w,i)=>{ if(m.has(w.id)) arr[i]={...w,...m.get(w.id)}; }); }catch(e){ console.warn('worker_private 읽기 실패',e.message); }
+    }
+    setter(arr); render(); },
     err=>{ loadError=err.code||err.message; render(); });
 }
 let _authBooted=false;

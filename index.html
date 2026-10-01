@@ -2702,8 +2702,8 @@ async function createEmployee(){
       await setDoc(doc(db,'workers',wid),{
         name, rank, dept, empNo,
         portalUid: targetUid,
-        phone:'', address:'', jumin:'', job:'', empType:'office',
-        hireDate:'', bankAccount:'', registeredAt: new Date().toISOString()
+        phone:'', job:'', empType:'office',
+        hireDate:'', registeredAt: new Date().toISOString()
       });
       // portal_users에 empNo 동기화
       await updateDoc(doc(db,'portal_users',targetUid),{empNo});
@@ -2744,8 +2744,8 @@ window.syncWorker = async function(uid){
       await setDoc(doc(db,'workers',wid),{
         name:u.name||'', rank:u.rank||'', dept:u.dept||'', empNo,
         portalUid:uid,
-        phone:u.phone||'', address:'', jumin:'', job:'', empType:'office',
-        hireDate:'', bankAccount:'', registeredAt:new Date().toISOString()
+        phone:u.phone||'', job:'', empType:'office',
+        hireDate:'', registeredAt:new Date().toISOString()
       });
     }
     // portal_users에 empNo 반영

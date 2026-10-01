@@ -150,7 +150,7 @@ window.loginTest = async () => {
 
 // 동기화 대상 컬렉션 (portal_users 제외) + 알려진 서브컬렉션 매핑
 const COLLECTIONS = [
-  'workers', 'master_workers', 'annual_contracts',
+  'workers', 'worker_private', 'master_workers', 'annual_contracts',
   'worker_attendance_log', 'worker_attendance', 'ph4_attendance', 'worker_manday', 'ph4_manday',
   'pjt_workers_fab', 'pjt_workers_ph4', 'user_schedules', 'ph4_schedules',
   'edoc_purchase', 'edoc_expense', 'edoc_daily', 'edoc_leave', 'edoc_overtime',
@@ -168,7 +168,7 @@ const SUBCOLLECTIONS = {
   pjt_registry: ['item_checks', 'items', 'manday', 'reports', 'schedules', 'workers'],
 };
 // 복사 시 제외할 필드 (컬렉션별)
-const EXCLUDE_FIELDS = { workers: ['portalUid'] };
+const EXCLUDE_FIELDS = { workers: ['portalUid'], worker_private: ['portalUid'] };
 
 const listEl = document.getElementById('collection-list');
 listEl.innerHTML = COLLECTIONS.map(c => `

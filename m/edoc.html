@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- holiday-data: 20261001 공휴일 정비(2025~2027): 누락·오류 보정 -->
+<!DOCTYPE html><!-- worker-private: 20261001 근로자 민감 정보(주민번호·계좌·주소·서명)는 worker_private 문서에서 읽음 --><!-- holiday-data: 20261001 공휴일 정비(2025~2027): 누락·오류 보정 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1077,7 +1077,8 @@ window.renderMyCardM=async function(){
   try{
     const wsnap=await getDoc(doc(db,'workers',_myRealWorkerId));
     if(!wsnap.exists()){ $app().innerHTML=topBar('전자결재')+'<div class="empty">근로자 명부 정보를 찾을 수 없습니다.</div>'; return; }
-    const w=wsnap.data();
+    let w=wsnap.data();
+    try{ const ps=await getDoc(doc(db,'worker_private',_myRealWorkerId)); if(ps.exists()) w={...w,...ps.data()}; }catch(e){ console.warn('worker_private 읽기 실패',e.message); }
     const maskJumin=j=>j?(j.slice(0,6)+'-'+'●'.repeat(Math.max(0,(j.replace(/[^0-9]/g,'').length-6)))):'-';
     const maskBank=b=>b?b.replace(/.(?=.{4})/g,'●'):'-';
     $app().innerHTML=topBar('전자결재')+`
