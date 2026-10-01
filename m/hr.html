@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- worker-private: 20261001 근로자 민감 정보(주민번호·계좌·주소·서명)는 worker_private 문서에서 읽음 -->
+<!DOCTYPE html><!-- m-hr 20261001b: 근로자 상세에 주민번호 '전체 보기'(10초 후·화면 이동·앱 전환 시 자동 숨김) 추가 --><!-- worker-private: 20261001 근로자 민감 정보(주민번호·계좌·주소·서명)는 worker_private 문서에서 읽음 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -100,6 +100,15 @@ const $app=()=>document.getElementById('app');
 const won=n=>'₩'+(Math.round(n)||0).toLocaleString('ko-KR');
 const maskJumin=j=>{if(!j)return '-';const d=String(j).replace(/[^0-9]/g,'');if(d.length<7)return j;return d.slice(0,6)+'-'+d.slice(6,7)+'······';};
 const initial=n=>(n||'?').slice(0,1);
+const fmtJumin=j=>{const d=String(j||'').replace(/[^0-9]/g,'');return d.length===13?d.slice(0,6)+'-'+d.slice(6):String(j||'-');};
+/* 주민번호 '전체 보기' — 관리자 화면에서만 의미 있음(worker_private 를 읽을 수 있는 계정만 값이 있음). 10초 뒤·화면 이동·앱 전환 시 자동으로 다시 가림 */
+let _jmTimer=null;
+function hideJumin(){ clearTimeout(_jmTimer); const el=document.getElementById('jmv'); const b=document.getElementById('jmb'); const w=workers.find(x=>x.id===detailId); if(el&&w) el.textContent=maskJumin(w.jumin); if(b){ b.dataset.on='0'; b.textContent='👁 전체 보기'; } }
+window.toggleJumin=function(){ const b=document.getElementById('jmb'); const el=document.getElementById('jmv'); const w=workers.find(x=>x.id===detailId); if(!b||!el||!w) return;
+  if(b.dataset.on==='1'){ hideJumin(); return; }
+  el.textContent=fmtJumin(w.jumin); b.dataset.on='1'; b.textContent='🙈 숨기기'; clearTimeout(_jmTimer); _jmTimer=setTimeout(hideJumin,10000); };
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) hideJumin(); });
+
 const otOf=w=>overtime.filter(o=>o.workerId===w.id||o.name===w.name);
 const lvOf=w=>leaves.filter(l=>l.workerId===w.id||l.name===w.name);
 const usedLeave=w=>lvOf(w).reduce((s,l)=>s+(parseFloat(l.days||l.leaveDays||0)||0),0);
@@ -237,7 +246,7 @@ async function renderWorkerDetail(){
   const header=`
     <div class="hello"><div class="name" style="font-size:22px">${esc(w.name||'')}</div><div class="sub">${esc(w.rank||'')}${w.dept?' · '+esc(w.dept):''}</div></div>
     <div class="lbl">기본 정보</div>
-    <div class="dcard">${info.map(([k,v])=>`<div class="drow"><span class="dk">${k}</span><span class="dv">${esc(v)}</span></div>`).join('')}</div>`;
+    <div class="dcard">${info.map(([k,v])=>(k==='주민번호' && String(w.jumin||'').replace(/[^0-9]/g,'').length===13)?`<div class="drow"><span class="dk">${k}</span><span class="dv"><span id="jmv">${esc(v)}</span> <button id="jmb" data-on="0" onclick="toggleJumin()" style="margin-left:6px;padding:3px 9px;border:1px solid #1D5BA6;background:#fff;color:#1D5BA6;border-radius:8px;font-size:11px;font-weight:700;">👁 전체 보기</button></span></div>`:`<div class="drow"><span class="dk">${k}</span><span class="dv">${esc(v)}</span></div>`).join('')}</div>`;
   // 근로자명부: 기본정보만 (초과근로 표시 안 함)
   if(from==='roster'){ $app().innerHTML=topBar('인사')+header; return; }
   // 퇴직금: 기본정보 + 안내 (초과근로 표시 안 함)
