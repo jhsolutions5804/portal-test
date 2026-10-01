@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- holiday-data: 20261001 공휴일 정비(2025~2027): 누락·오류 보정 --><!-- build: 20261001d · ver: 2026-10-01 (근로자 민감 정보 분리: 내 정보의 주민번호·주소·계좌를 worker_private에서 읽음) · 이전: build: 20261001c · ver: 2026-10-01 (전자결재 열람 제한 규칙 대응: 결재함·PJT 연차 구독을 규칙에 맞는 범위 조회로 변경) · 이전: build: 20261001b · ver: 2026-10-01 (테섭: 하위 화면에서 ‘인사 홈’ 이동 후 원래 작업탭이 먹통 되던 문제 수정 — 이동한 iframe을 원래 화면으로 복원) · 이전: build: 20261001a · ver: 2026-10-01 (테섭: 인사 하위 탭에 ‘인사 캘린더’ 키 추가 — 인사 홈 ‘크게 보기’ 연동) · 이전: build: 20260930n · ver: 2026-09-30 (본섭 반영: 내 팀 공수표(팀장·관리자) 진입점, GUEST 사번 일정 제한(회사 일정은 연차·휴무만 조회·일정 등록 불가), 일정 조회 공용 함수, 소속 명칭 ‘소속 없음’, 캘린더 낱말 ‘일정’) · 이전: build: 20260930h · 월간 공수 메뉴 제거(기능은 PJT 관리 › 근로자 연명부 › 월간 공수, 기획 › 정산 › 팀별 노무비로 이전) · 이전: build: 20260930g · ver: 2026-09-30 (직원 비밀번호(_pw)를 계정 문서에서 본인·관리자 전용 문서 portal_secrets로 이동) · 이전: 20260930f · ver: 2026-09-30 (회사 일정 카테고리 행사·기타·만료 추가) · 이전: 20260925e 2026-09-25 (하단 작업탭 10개 초과 시 막지 않고 가장 먼저 열었던 탭을 자동으로 닫음) · 이전: 20260925d 결재함 이동 후 탭 갇힘 현상 해결 · 테섭 이력 요약: 20260930m~j GUEST·일정 통합, 20260930i~ 내 팀 공수표·관리자 전체 팀 조회 --> 
+<!DOCTYPE html><!-- holiday-data: 20261001 공휴일 정비(2025~2027): 누락·오류 보정 --><!-- build: 20261001e · ver: 2026-10-01 (포털 홈 캘린더 날짜 칸 너비 고정: 공휴일 이름·일정 때문에 칸이 늘어나지 않도록 7열을 동일 너비(minmax(0,1fr))로 고정, 칸 넘침은 말줄임) · 이전: build: 20261001d · ver: 2026-10-01 (근로자 민감 정보 분리: 내 정보의 주민번호·주소·계좌를 worker_private에서 읽음) · 이전: build: 20261001c · ver: 2026-10-01 (전자결재 열람 제한 규칙 대응: 결재함·PJT 연차 구독을 규칙에 맞는 범위 조회로 변경) · 이전: build: 20261001b · ver: 2026-10-01 (테섭: 하위 화면에서 ‘인사 홈’ 이동 후 원래 작업탭이 먹통 되던 문제 수정 — 이동한 iframe을 원래 화면으로 복원) · 이전: build: 20261001a · ver: 2026-10-01 (테섭: 인사 하위 탭에 ‘인사 캘린더’ 키 추가 — 인사 홈 ‘크게 보기’ 연동) · 이전: build: 20260930n · ver: 2026-09-30 (본섭 반영: 내 팀 공수표(팀장·관리자) 진입점, GUEST 사번 일정 제한(회사 일정은 연차·휴무만 조회·일정 등록 불가), 일정 조회 공용 함수, 소속 명칭 ‘소속 없음’, 캘린더 낱말 ‘일정’) · 이전: build: 20260930h · 월간 공수 메뉴 제거(기능은 PJT 관리 › 근로자 연명부 › 월간 공수, 기획 › 정산 › 팀별 노무비로 이전) · 이전: build: 20260930g · ver: 2026-09-30 (직원 비밀번호(_pw)를 계정 문서에서 본인·관리자 전용 문서 portal_secrets로 이동) · 이전: 20260930f · ver: 2026-09-30 (회사 일정 카테고리 행사·기타·만료 추가) · 이전: 20260925e 2026-09-25 (하단 작업탭 10개 초과 시 막지 않고 가장 먼저 열었던 탭을 자동으로 닫음) · 이전: 20260925d 결재함 이동 후 탭 갇힘 현상 해결 · 테섭 이력 요약: 20260930m~j GUEST·일정 통합, 20260930i~ 내 팀 공수표·관리자 전체 팀 조회 --> 
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -323,10 +323,10 @@ html.force-pc #s-app.shown, html.force-pc .sidebar, html.force-pc .main, html.fo
     .pjt-cal-legend{ display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
     .pjt-cal-legend .li{ display:flex; align-items:center; gap:5px; font-size:11px; color:#86868b; }
     .pjt-cal-legend .ld{ width:8px; height:8px; border-radius:2px; }
-    .pjt-cal-dow{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:4px; }
+    .pjt-cal-dow{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; margin-bottom:4px; }
     .pjt-cal-dow div{ text-align:center; font-size:11px; font-weight:600; color:#9AAABF; padding:2px 0; }
-    .pjt-cal-body{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
-    .pjt-cal-cell{ min-height:46px; border:1px solid #EEF2F7; border-radius:8px; padding:5px 6px; cursor:pointer; transition:.12s; }
+    .pjt-cal-body{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; }
+    .pjt-cal-cell{ min-width:0; overflow:hidden; min-height:46px; border:1px solid #EEF2F7; border-radius:8px; padding:5px 6px; cursor:pointer; transition:.12s; }
     .pjt-cal-cell:hover{ border-color:#1D5BA6; background:#F7FAFF; }
     .pjt-cal-cell.empty{ border:none; cursor:default; background:transparent; }
     .pjt-cal-cell.today{ background:#EAF2FC; border-color:#1D5BA6; }
@@ -337,7 +337,7 @@ html.force-pc #s-app.shown, html.force-pc .sidebar, html.force-pc .main, html.fo
     .pjt-cal-cell .dnum{ font-size:12px; font-weight:600; color:#1A2540; }
     .pjt-cal-cell .dots{ display:flex; gap:2px; flex-wrap:wrap; margin-top:3px; }
     .pjt-cal-cell .cd{ width:5px; height:5px; border-radius:50%; }
-    .pjt-week-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+    .pjt-week-grid{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; }
     .pjt-week-day-col{ border:1px solid #EEF2F7; border-radius:8px; padding:5px; min-height:90px; background:#fafbfc; }
     .pjt-week-day-col.today{ border-color:#1D5BA6; background:#eaf2fc; }
     .pjt-week-day-num{ font-size:12px; font-weight:700; color:#1A2540; text-align:center; }
@@ -422,10 +422,10 @@ html.force-pc #s-app.shown, html.force-pc .sidebar, html.force-pc .main, html.fo
     .pjt-cal-legend{ display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
     .pjt-cal-legend .li{ display:flex; align-items:center; gap:5px; font-size:11px; color:#86868b; }
     .pjt-cal-legend .ld{ width:8px; height:8px; border-radius:2px; }
-    .pjt-cal-dow{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:4px; }
+    .pjt-cal-dow{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; margin-bottom:4px; }
     .pjt-cal-dow div{ text-align:center; font-size:11px; font-weight:600; color:#9AAABF; padding:2px 0; }
-    .pjt-cal-body{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
-    .pjt-cal-cell{ min-height:56px; border:1px solid #EEF2F7; border-radius:8px; padding:5px 6px; cursor:pointer; transition:.12s; }
+    .pjt-cal-body{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; }
+    .pjt-cal-cell{ min-width:0; overflow:hidden; min-height:56px; border:1px solid #EEF2F7; border-radius:8px; padding:5px 6px; cursor:pointer; transition:.12s; }
     .pjt-cal-cell:hover{ border-color:#1D5BA6; background:#F7FAFF; }
     .pjt-cal-cell.empty{ border:none; cursor:default; background:transparent; }
     .pjt-cal-cell.today{ background:#EAF2FC; border-color:#1D5BA6; }
@@ -685,8 +685,8 @@ html.force-pc #s-app.shown, html.force-pc .sidebar, html.force-pc .main, html.fo
                 <button class="pjt-cal-nav" onclick="homeCalShift(1)">›</button>
               </div>
               <div class="pjt-cal-legend" id="home-cal-legend" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px"></div>
-              <div class="pjt-cal-dow" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px"><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">일</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">월</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">화</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">수</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">목</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">금</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">토</div></div>
-              <div class="pjt-cal-body" id="home-cal-body" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px"><div style="grid-column:1/-1;text-align:center;color:#9AAABF;font-size:12px;padding:20px">불러오는 중...</div></div>
+              <div class="pjt-cal-dow" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:4px"><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">일</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">월</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">화</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">수</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">목</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">금</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">토</div></div>
+              <div class="pjt-cal-body" id="home-cal-body" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px"><div style="grid-column:1/-1;text-align:center;color:#9AAABF;font-size:12px;padding:20px">불러오는 중...</div></div>
             </div>
             <div class="pjt-cal-detail-box">
               <div style="font-size:14px; font-weight:700; color:#13335C; margin-bottom:14px;" id="home-cal-detail-title">📅 일정 · 업무지시</div>
@@ -730,7 +730,7 @@ html.force-pc #s-app.shown, html.force-pc .sidebar, html.force-pc .main, html.fo
               </div>
               <div class="pjt-cal-legend" id="pjt-cal-week-legend" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px"></div>
               <div id="pjt-cal-week-capture" style="background:#fff;">
-                <div class="pjt-week-grid" id="pjt-cal-week-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px"></div>
+                <div class="pjt-week-grid" id="pjt-cal-week-grid" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px"></div>
               </div>
             </div>
           </div>
@@ -745,8 +745,8 @@ html.force-pc #s-app.shown, html.force-pc .sidebar, html.force-pc .main, html.fo
                 <button class="pjt-cal-nav" onclick="pjtCalShift(1)">›</button>
               </div>
               <div class="pjt-cal-legend" id="pjt-cal-legend" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px"></div>
-              <div class="pjt-cal-dow" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px"><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">일</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">월</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">화</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">수</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">목</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">금</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">토</div></div>
-              <div class="pjt-cal-body" id="pjt-cal-body" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px"><div style="grid-column:1/-1;text-align:center;color:#9AAABF;font-size:12px;padding:20px">불러오는 중...</div></div>
+              <div class="pjt-cal-dow" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:4px"><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">일</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">월</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">화</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">수</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">목</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">금</div><div style="text-align:center;font-size:12px;font-weight:600;color:#9AAABF;padding:2px 0">토</div></div>
+              <div class="pjt-cal-body" id="pjt-cal-body" style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px"><div style="grid-column:1/-1;text-align:center;color:#9AAABF;font-size:12px;padding:20px">불러오는 중...</div></div>
             </div>
             <div class="pjt-cal-detail-box">
               <div style="font-size:14px; font-weight:700; color:#13335C; margin-bottom:14px;" id="pjt-cal-detail-title">📅 일정 · 업무지시</div>
