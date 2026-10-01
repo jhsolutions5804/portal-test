@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>채용 공고 | JH Solutions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  p, h1, h2, h3, h4, span, li, div, td, th { word-break: keep-all; }
+
+  :root {
+    --blue:       #1D5BA6;
+    --blue-mid:   #378ADD;
+    --blue-light: #B5D4F4;
+    --blue-pale:  #EAF3FD;
+    --black:      #111827;
+    --gray:       #6B7280;
+    --gray-light: #F3F6FA;
+    --white:      #FFFFFF;
+  }
+
+  html { scroll-behavior: smooth; overflow-x: hidden; }
+  body { font-family:'Noto Sans KR', sans-serif; color:var(--black); background:var(--white); overflow-x:hidden; }
+
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 5vw; height: 64px;
+    background: rgba(255,255,255,0.97);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(29,91,166,0.12);
+  }
+  .nav-logo { display:flex; align-items:center; text-decoration:none; }
+  .nav-logo img { height:36px; width:auto; }
+  .nav-back { text-decoration:none; color:var(--gray); font-size:0.85rem; font-weight:500; }
+  .nav-back:hover { color: var(--blue); }
+
+  .jobs-hero {
+    padding: 56px 5vw 40px; text-align:center;
+    background: linear-gradient(135deg, #f0f6ff 0%, #ffffff 55%, #e8f2fd 100%);
+  }
+  .jobs-hero .eyebrow {
+    display:inline-flex; align-items:center; gap:8px;
+    background: var(--blue-pale); color: var(--blue);
+    font-size:0.75rem; font-weight:700; padding:6px 14px; border-radius:20px;
+    letter-spacing:0.06em; text-transform:uppercase; margin-bottom:18px;
+  }
+  .jobs-hero h1 { font-size: clamp(1.5rem, 3.2vw, 2.1rem); font-weight:800; letter-spacing:-0.02em; }
+
+  .jobs-wrap { max-width: 860px; margin:0 auto; padding: 44px 5vw 100px; }
+  #jobsList { display:flex; flex-direction:column; gap:20px; }
+
+  .job-card {
+    background: var(--white); border:1.5px solid #E5EDF7; border-radius:16px;
+    padding: 28px 30px; display:flex; justify-content:space-between; align-items:center; gap:20px;
+    box-shadow:0 4px 18px rgba(29,91,166,0.06); transition: all .2s;
+  }
+  .job-card:hover { border-color: var(--blue-light); box-shadow:0 6px 24px rgba(29,91,166,0.12); }
+  .job-main { flex:1; }
+  .job-tag {
+    display:inline-block; font-size:0.7rem; font-weight:700; color:var(--blue);
+    background:var(--blue-pale); padding:4px 10px; border-radius:12px; margin-bottom:10px;
+  }
+  .job-title { font-size:1.15rem; font-weight:800; margin-bottom:8px; }
+  .job-meta { display:flex; gap:14px; flex-wrap:wrap; font-size:0.82rem; color:var(--gray); margin-bottom:10px; }
+  .job-meta span::before { content:'· '; }
+  .job-meta span:first-child::before { content:''; }
+  .job-desc { font-size:0.86rem; color:var(--gray); line-height:1.6; max-width:520px; }
+  .job-apply {
+    flex-shrink:0; text-decoration:none; background:var(--blue); color:var(--white);
+    padding:12px 26px; border-radius:8px; font-size:0.88rem; font-weight:700;
+    box-shadow:0 4px 18px rgba(29,91,166,0.28); transition:all .2s; white-space:nowrap;
+  }
+  .job-card[hidden] { display: none !important; }
+  .job-apply:hover { background:var(--blue-mid); }
+
+  footer {
+    text-align:center; padding:32px 5vw; font-size:0.78rem; color:var(--gray);
+    background:var(--gray-light); border-top:1px solid #E5EDF7; line-height:1.9;
+  }
+
+  @media (max-width: 640px) {
+    .job-card { flex-direction:column; align-items:flex-start; }
+    .job-apply { width:100%; text-align:center; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo"><span style="font-family:'Inter',sans-serif;font-weight:900;font-size:1.15rem;color:var(--blue);">JH Solutions</span></a>
+  <a href="careers.html" class="nav-back">← 채용 소개</a>
+</nav>
+
+<section class="jobs-hero">
+  <div class="eyebrow">Recruitment</div>
+  <h1>진행 중인 채용 공고</h1>
+</section>
+
+<div class="jobs-wrap">
+
+  <div id="jobsList"><div class="job-card" style="justify-content:center; text-align:center; flex-direction:column; padding:56px 30px;"><div class="job-desc" style="margin:0 auto;">공고를 불러오는 중입니다…</div></div></div>
+
+</div>
+
+<footer>
+  <strong>제이에이치 솔루션 (JH Solutions)</strong><br>
+  경기도 평택시 고덕중앙로 320, 고덕원희캐슬 505호 &nbsp;|&nbsp; 대표 송지훈<br>
+  TEL &nbsp;|&nbsp; jh.kim@jhsol.kr<br>
+  © 2026 JH Solutions. All rights reserved.
+</footer>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+const firebaseConfig = {
+  apiKey: "AIzaSyDwkKOrRU1LF_N7fiVNWc5CRp-abopSyrI",
+  authDomain: "portal-test-6e0ff.firebaseapp.com",
+  projectId: "portal-test-6e0ff",
+  storageBucket: "p4ph2-fab-506a7.firebasestorage.app",
+  messagingSenderId: "36946317914",
+  appId: "1:36946317914:web:c6ad5f3a1b98130c99fe63"
+};
+const db = getFirestore(initializeApp(firebaseConfig));
+const box = document.getElementById('jobsList');
+function empty(msg, sub){
+  box.innerHTML = '';
+  const c = document.createElement('div'); c.className = 'job-card';
+  c.style.cssText = 'justify-content:center; text-align:center; flex-direction:column; padding:56px 30px;';
+  const t = document.createElement('div'); t.className = 'job-title'; t.style.marginBottom = '8px'; t.textContent = msg;
+  const d = document.createElement('div'); d.className = 'job-desc'; d.style.cssText = 'max-width:400px; margin:0 auto;'; d.textContent = sub;
+  c.append(t, d); box.appendChild(c);
+}
+function el(tag, cls, text){ const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+try {
+  const snap = await getDocs(query(collection(db, 'job_postings'), where('status', '==', 'open')));
+  const today = new Date(); today.setHours(0,0,0,0);
+  const jobs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .filter(j => !j.deadline || new Date(j.deadline + 'T23:59:59') >= today)
+    .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+  if (!jobs.length) empty('현재 진행 중인 채용 공고가 없습니다', '새로운 공고가 등록되면 이곳에 안내해 드리겠습니다.');
+  else {
+    box.innerHTML = '';
+    jobs.forEach(j => {
+      const card = el('div', 'job-card'), main = el('div', 'job-main');
+      if (j.team) main.appendChild(el('span', 'job-tag', j.team));
+      main.appendChild(el('div', 'job-title', j.title || ''));
+      const meta = el('div', 'job-meta');
+      [j.location, ...(j.conditions || []), j.deadline ? ('마감 ' + j.deadline) : '상시 모집'].filter(Boolean).forEach(m => meta.appendChild(el('span', null, m)));
+      main.appendChild(meta);
+      if (j.desc) { const d = el('div', 'job-desc', j.desc); d.style.whiteSpace = 'pre-line'; main.appendChild(d); }
+      const a = el('a', 'job-apply', '지원하기'); a.href = 'recruit.html?job=' + encodeURIComponent(j.id);
+      card.append(main, a); box.appendChild(card);
+    });
+  }
+} catch (e) { console.error(e); empty('공고를 불러오지 못했습니다', '잠시 후 다시 시도해 주세요.'); }
+</script>
+</body>
+</html>

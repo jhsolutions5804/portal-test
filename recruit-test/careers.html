@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>채용 소개 | JH Solutions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  p, h1, h2, h3, h4, span, li, div, td, th { word-break: keep-all; }
+
+  :root {
+    --blue:       #1D5BA6;
+    --blue-mid:   #378ADD;
+    --blue-light: #B5D4F4;
+    --blue-pale:  #EAF3FD;
+    --black:      #111827;
+    --gray:       #6B7280;
+    --gray-light: #F3F6FA;
+    --white:      #FFFFFF;
+  }
+
+  html { scroll-behavior: smooth; overflow-x: hidden; }
+  body { font-family:'Noto Sans KR', sans-serif; color:var(--black); background:var(--white); overflow-x:hidden; }
+
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 5vw; height: 64px;
+    background: rgba(255,255,255,0.97);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(29,91,166,0.12);
+  }
+  .nav-logo { font-family:'Inter',sans-serif; font-weight:900; font-size:1.15rem; color:var(--blue); text-decoration:none; }
+  .nav-back { text-decoration:none; color:var(--gray); font-size:0.85rem; font-weight:500; }
+  .nav-back:hover { color: var(--blue); }
+
+  section { padding: 88px 5vw; }
+  .section-label {
+    font-size:0.73rem; font-weight:700; letter-spacing:0.12em;
+    text-transform:uppercase; color:var(--blue-mid); margin-bottom:10px; display:block; text-align:center;
+  }
+  .section-title {
+    font-size: clamp(1.5rem, 3vw, 2rem); font-weight:800; letter-spacing:-0.025em;
+    color:var(--black); margin-bottom:14px; text-align:center;
+  }
+  .section-desc {
+    color:var(--gray); font-size:0.93rem; line-height:1.75;
+    max-width:600px; margin:0 auto 52px; text-align:center;
+  }
+
+  /* HERO */
+  .hero {
+    text-align:center; padding: 96px 5vw 70px;
+    background: linear-gradient(135deg, #f0f6ff 0%, #ffffff 55%, #e8f2fd 100%);
+  }
+  .hero .eyebrow {
+    display:inline-flex; align-items:center; gap:8px; background:var(--blue-pale); color:var(--blue);
+    font-size:0.75rem; font-weight:700; padding:6px 14px; border-radius:20px;
+    letter-spacing:0.06em; text-transform:uppercase; margin-bottom:20px;
+  }
+  .hero h1 { font-size: clamp(1.7rem, 4vw, 2.5rem); font-weight:800; letter-spacing:-0.02em; margin-bottom:16px; }
+  .hero p { color:var(--gray); font-size:0.95rem; max-width:560px; margin:0 auto 32px; line-height:1.75; }
+  .btn-primary {
+    display:inline-block; background:var(--blue); color:var(--white);
+    padding:14px 32px; border-radius:8px; font-size:0.95rem; font-weight:700;
+    text-decoration:none; box-shadow:0 4px 18px rgba(29,91,166,0.28); transition:all .2s;
+  }
+  .btn-primary:hover { background:var(--blue-mid); transform:translateY(-1px); }
+
+  /* STATS */
+  .stats-bar {
+    background: var(--blue); padding:32px 5vw; display:flex; justify-content:center;
+    gap:clamp(24px, 6vw, 80px); flex-wrap:wrap;
+  }
+  .stat-item { text-align:center; }
+  .stat-num { display:block; font-family:'Inter',sans-serif; font-size:clamp(1.6rem, 3.5vw, 2.2rem); font-weight:900; color:var(--white); letter-spacing:-0.03em; }
+  .stat-label { display:block; font-size:0.75rem; color:var(--blue-light); font-weight:500; margin-top:4px; }
+
+  /* 인재상 */
+  .talent-grid {
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
+    gap:20px; max-width:1000px; margin:0 auto;
+  }
+  .talent-card {
+    background:var(--white); border:1.5px solid #E5EDF7; border-radius:14px; padding:30px 26px;
+    transition:all .25s;
+  }
+  .talent-card:hover { border-color:var(--blue-light); box-shadow:0 8px 24px rgba(29,91,166,0.1); transform:translateY(-2px); }
+  .talent-icon { font-size:1.8rem; margin-bottom:16px; }
+  .talent-card h3 { font-size:1.02rem; font-weight:800; margin-bottom:8px; }
+  .talent-card p { font-size:0.85rem; color:var(--gray); line-height:1.65; }
+
+  /* EVP */
+  .evp { background: var(--gray-light); }
+  .evp-grid {
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
+    gap:20px; max-width:1000px; margin:0 auto;
+  }
+  .evp-card { background:var(--white); border-radius:14px; padding:28px 26px; border:1.5px solid #E5EDF7; }
+  .evp-card .evp-num {
+    font-family:'Inter',sans-serif; font-weight:900; color:var(--blue-light); font-size:1.6rem; margin-bottom:10px; display:block;
+  }
+  .evp-card h3 { font-size:1rem; font-weight:800; margin-bottom:8px; }
+  .evp-card p { font-size:0.85rem; color:var(--gray); line-height:1.65; }
+
+  /* PROCESS */
+  .process-steps {
+    display:grid; grid-template-columns:repeat(5, 1fr); gap:14px; max-width:1000px; margin:0 auto;
+  }
+  .process-step { text-align:center; position:relative; }
+  .process-num {
+    width:40px; height:40px; border-radius:50%; background:var(--blue); color:var(--white);
+    display:flex; align-items:center; justify-content:center; font-family:'Inter',sans-serif; font-weight:800;
+    margin:0 auto 12px; font-size:1rem;
+  }
+  .process-step h4 { font-size:0.87rem; font-weight:700; margin-bottom:4px; }
+  .process-step p { font-size:0.76rem; color:var(--gray); line-height:1.5; }
+
+  /* CTA */
+  .cta {
+    text-align:center; background: linear-gradient(135deg, var(--blue) 0%, var(--blue-mid) 100%);
+    padding: 80px 5vw; color:var(--white);
+  }
+  .cta h2 { font-size:clamp(1.4rem, 3vw, 1.9rem); font-weight:800; margin-bottom:14px; }
+  .cta p { font-size:0.92rem; color:rgba(255,255,255,0.85); max-width:520px; margin:0 auto 30px; line-height:1.7; }
+  .cta .btn-primary { background:var(--white); color:var(--blue); box-shadow:none; }
+  .cta .btn-primary:hover { background:var(--blue-pale); }
+
+  footer {
+    text-align:center; padding:32px 5vw; font-size:0.78rem; color:var(--gray);
+    background:var(--white); border-top:1px solid #E5EDF7; line-height:1.9;
+  }
+
+  @media (max-width: 768px) {
+    section { padding:56px 6vw; }
+    .process-steps { grid-template-columns:repeat(2, 1fr); }
+    .hero { padding:72px 6vw 50px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">JH Solutions</a>
+  <a href="index.html" class="nav-back">← 홈으로</a>
+</nav>
+
+<section class="hero">
+  <div class="eyebrow">Recruitment</div>
+  <h1>함께 성장할 현장 인재를 찾습니다</h1>
+  <p>JH Solutions는 반도체 FAB 건설현장의 FCU·설비 설치를 전문으로 하는 현장 관리·인력 도급 기업입니다. 안전한 현장에서 실력을 키우고 싶은 분들을 기다립니다.</p>
+  <a href="#jobs-cta" class="btn-primary">채용 공고 보기</a>
+</section>
+
+<div class="stats-bar">
+  <div class="stat-item"><span class="stat-num">26건</span><span class="stat-label">현장 관리 위탁 계약</span></div>
+  <div class="stat-item"><span class="stat-num">5년</span><span class="stat-label">현장관리 누적 경력</span></div>
+  <div class="stat-item"><span class="stat-num">100%</span><span class="stat-label">재해율 0건 유지율</span></div>
+  <div class="stat-item"><span class="stat-num">100명+</span><span class="stat-label">기술직 인력 풀</span></div>
+</div>
+
+<section>
+  <span class="section-label">Talent</span>
+  <h2 class="section-title">JH Solutions가 찾는 사람</h2>
+  <p class="section-desc">직급이나 경력보다 현장에서 함께 일할 태도를 봅니다.</p>
+  <div class="talent-grid">
+    <div class="talent-card">
+      <div class="talent-icon">🦺</div>
+      <h3>안전을 최우선으로 생각하는 사람</h3>
+      <p>어떤 작업보다 안전 수칙 준수를 우선하고, 스스로와 동료의 안전을 함께 챙기는 분.</p>
+    </div>
+    <div class="talent-card">
+      <div class="talent-icon">🤝</div>
+      <h3>책임감 있게 협업하는 사람</h3>
+      <p>팀 단위 작업이 많은 현장 특성상, 맡은 역할을 끝까지 책임지고 동료와 손발을 맞추는 분.</p>
+    </div>
+    <div class="talent-card">
+      <div class="talent-icon">🔧</div>
+      <h3>현장에서 답을 찾는 사람</h3>
+      <p>매뉴얼만이 아니라 실제 현장 상황에 맞춰 유연하게 문제를 해결하려는 분.</p>
+    </div>
+    <div class="talent-card">
+      <div class="talent-icon">📈</div>
+      <h3>꾸준히 성장하려는 사람</h3>
+      <p>경력이 없어도 배우려는 의지가 있다면, 현장 교육을 통해 함께 성장할 수 있습니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="evp">
+  <span class="section-label">Why JH Solutions</span>
+  <h2 class="section-title">우리가 일하는 방식</h2>
+  <p class="section-desc">대형 반도체 FAB 현장에서 안정적으로, 그리고 안전하게 일할 수 있는 환경을 만듭니다.</p>
+  <div class="evp-grid">
+    <div class="evp-card">
+      <span class="evp-num">01</span>
+      <h3>재해율 0건, 검증된 안전관리체계</h3>
+      <p>중대재해처벌법에 대응하는 체계적인 안전보건관리체계를 갖추고, 매 작업 전 TBM과 현장점검을 철저히 진행합니다.</p>
+    </div>
+    <div class="evp-card">
+      <span class="evp-num">02</span>
+      <h3>안정적인 대형 프로젝트</h3>
+      <p>P4 Ph2·Ph4 등 반도체 FAB 건설현장에서 지속적으로 프로젝트를 수주하고 있어, 장기적으로 안정적인 근무가 가능합니다.</p>
+    </div>
+    <div class="evp-card">
+      <span class="evp-num">03</span>
+      <h3>경력 무관, 현장 교육 지원</h3>
+      <p>미경력자도 현장 교육을 거쳐 배치되며, 경력자는 그에 맞는 역할과 처우로 우대합니다.</p>
+    </div>
+    <div class="evp-card">
+      <span class="evp-num">04</span>
+      <h3>유연한 근무 조건 협의</h3>
+      <p>일용·상용 등 근무 형태를 협의할 수 있고, 현장에 따라 숙식 지원도 가능합니다.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <span class="section-label">Process</span>
+  <h2 class="section-title">채용 프로세스</h2>
+  <p class="section-desc">지원부터 입사까지의 절차입니다.</p>
+  <div class="process-steps">
+    <div class="process-step"><div class="process-num">1</div><h4>공고 확인</h4><p>진행 중인 공고 확인 후 지원</p></div>
+    <div class="process-step"><div class="process-num">2</div><h4>지원서 접수</h4><p>온라인 지원서 작성·제출</p></div>
+    <div class="process-step"><div class="process-num">3</div><h4>서류 검토</h4><p>담당자 검토 후 개별 연락</p></div>
+    <div class="process-step"><div class="process-num">4</div><h4>처우 협의</h4><p>근무 조건·처우 협의</p></div>
+    <div class="process-step"><div class="process-num">5</div><h4>입사</h4><p>계약서 작성 후 현장 배치</p></div>
+  </div>
+</section>
+
+<section class="cta" id="jobs-cta">
+  <h2>지금 진행 중인 채용 공고를 확인해 보세요</h2>
+  <p>희망하는 직무의 공고를 선택하고 바로 지원서를 작성할 수 있습니다.</p>
+  <a href="recruit-jobs.html" class="btn-primary">채용 공고 보러가기</a>
+</section>
+
+<footer>
+  <strong>제이에이치 솔루션 (JH Solutions)</strong><br>
+  경기도 평택시 고덕중앙로 320, 고덕원희캐슬 505호 &nbsp;|&nbsp; 대표 송지훈<br>
+  TEL &nbsp;|&nbsp; jh.kim@jhsol.kr<br>
+  © 2026 JH Solutions. All rights reserved.
+</footer>
+
+</body>
+</html>
