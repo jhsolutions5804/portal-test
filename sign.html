@@ -136,7 +136,7 @@ async function loadAndShow(link){
 
     // ── 근로계약서 / 연봉계약서 ──
     const docTitle = link.docType === 'annual' ? '연봉계약서' : '근로계약서';
-    const buildHtml = link.docType === 'annual' ? __annualHtml_v5 : __laborHtml_v5;
+    const buildHtml = link.docType === 'annual' ? __annualHtml_v5 : __laborHtml_v6;
     const fMasked = { ...f, jumin: maskJumin(f.jumin) };
     let result = null;
     try { const rs = await getDoc(doc(db, `sign_links/${token}/secure/result`)); if (rs.exists()) result = rs.data(); } catch(e) {}
@@ -266,7 +266,7 @@ async function showContractAndSign(fMasked, link, docTitle){
   try {
     const previewHtml = link.docType === 'annual'
       ? __annualHtml_v5(fMasked)
-      : __laborHtml_v5(fMasked);
+      : __laborHtml_v6(fMasked);
 
     el.innerHTML = `
       <div class="card">
@@ -346,7 +346,7 @@ async function showContractAndSign(fMasked, link, docTitle){
 
         // 서명 반영된 최종본 (다운로드/보관용)
         const finalF = { ...f, signData };
-        const finalHtml = link.docType === 'annual' ? __annualHtml_v5(finalF) : __laborHtml_v5(finalF);
+        const finalHtml = link.docType === 'annual' ? __annualHtml_v5(finalF) : __laborHtml_v6(finalF);
 
         el.innerHTML = `<div class="card center">
           <div class="state-icon">✅</div>
@@ -369,7 +369,7 @@ async function showContractAndSign(fMasked, link, docTitle){
 }
 
 /* ══════════════════════════════════════════════
-   아래 두 함수는 hr/index.html의 현재(v5) 계약서 템플릿을 그대로 복사한 것입니다.
+   아래 두 함수는 hr/index.html의 현재(v6) 계약서 템플릿을 그대로 복사한 것입니다.
    ⚠️ hr/index.html에서 DOC_TPL_CURRENT가 새 버전으로 올라가면, 이 파일도 함께 갱신해야
    신규로 생성되는 서명 링크의 미리보기가 최신 양식과 일치합니다.
    (이미 서명 완료되어 저장된 계약서 자체의 내용은 영향받지 않습니다 — 저장 서류 동결 원칙)
@@ -810,7 +810,7 @@ function __annualHtml_v5(f0){
     </body></html>`);
 }
 
-function __laborHtml_v5(f0) {
+function __laborHtml_v6(f0) {
   const f=f0;
   const fmtDp=s=>{if(!s)return'____년 __월 __일';const d=new Date(s);return`${d.getFullYear()}년 ${String(d.getMonth()+1).padStart(2,'0')}월 ${String(d.getDate()).padStart(2,'0')}일`;};
   const ul=(v,w)=>`<span style="display:inline-block;min-width:${w||80}px;border-bottom:1px solid #333;text-align:center;padding:0 2px;">${v||''}</span>`;
@@ -835,8 +835,7 @@ function __laborHtml_v5(f0) {
       <p style="font-weight:700;margin:12px 0 4px;">제7조 【휴게시간】</p>
       <p style="margin-bottom:6px;">4시간 근무마다 30분 휴식, 중식 1시간 의무지급을 원칙으로 한다. 다만, 현장 상황에 따라 유연하게 적용한다.</p>
       <p style="font-weight:700;margin:12px 0 4px;">제8조 【퇴직금】</p>
-      <p style="margin-bottom:4px;">1. "갑"은 "을"의 1년 이상 계속 근로에 대하여 퇴직 전 3개월 평균임금의 30일분을 퇴직금으로 지급한다. (단, 별도로 지급되는 수당은 퇴직금 계산에서 제외된다.)</p>
-      <p style="margin-bottom:6px;">2. 4대보험 개인의 선택으로 가입하지 않을 시 퇴직금은 지급하지 아니한다.</p>
+      <p style="margin-bottom:6px;">"갑"은 "을"의 계속근로기간이 1년 이상이고 4주간을 평균하여 1주간의 소정근로시간이 15시간 이상인 경우, 근로자퇴직급여 보장법에 따라 퇴직금(퇴직 전 3개월 평균임금의 30일분 이상)을 지급한다.</p>
       <p style="font-weight:700;margin:12px 0 4px;">제9조 【휴일 및 휴가】</p>
       <p style="margin-bottom:4px;">"을"의 휴일과 휴가는 근로자계약의 내용에 따라 결정되며, 회사는 연차휴가와 관련하여 근로자대표와의 합의에 의하여 특정일을 연차휴가로 대체할 수 있다.</p>
       <p style="margin-bottom:4px;">- 계속 근로 1년 이상, 해당 기간 동안 80% 이상이 될 경우 15일의 유급휴가가 부여된다.</p>
@@ -853,7 +852,7 @@ function __laborHtml_v5(f0) {
       <p style="margin-bottom:2px;">7. 무단지각, 조퇴, 외출을 월 3회 이상 하였을 때</p>
       <p style="margin-bottom:6px;">8. 계약기간 내에 동종업체로 직접 계약 및 이직하였을 때</p>
       <p style="font-weight:700;margin:12px 0 4px;">제12조 【손해배상】</p>
-      <p style="margin-bottom:6px;">"을"의 제11조 귀책사유로 "갑"에게 재산상의 손해를 끼쳤을 경우에는 전적으로 "을"이 책임지며, 이를 지키지 않은 경우에는 "갑"은 "을" 또는 "을"의 보증인에게 월급의 3배의 책임을 물 수 있다.</p>
+      <p style="margin-bottom:6px;">"을"의 고의 또는 중대한 과실로 "갑"에게 손해를 끼친 경우 "갑"은 실제 손해를 입증하여 민사상 배상을 청구할 수 있다. 손해액을 미리 정하거나 임금에서 일방적으로 공제하지 아니한다.</p>
       <p style="font-weight:700;margin:12px 0 4px;">제13조 【재정보증】</p>
       <p style="margin-bottom:4px;">- "을"은 1명의 재정보증인을 설정 신고하거나 "갑"이 요구하는 금액의 신용보증보험에 가입하여야 한다.</p>
       <p style="margin-bottom:6px;">- "갑"은 "을"에게 신용보증보험을 요구할 수 있으며, "을"은 회사의 요구 시 1주일 이내에 제출하여야 한다.</p>
@@ -871,7 +870,7 @@ function __laborHtml_v5(f0) {
       <p style="margin-bottom:4px;">2. "을"의 계약종료 의사를 "갑"이 인지한 시점으로부터 당기 후의 1기가 지난 뒤 해지의 효력이 발생</p>
       <p style="margin-bottom:6px;">3. 제11조 귀책사유 발생 시 "갑"은 일방적으로 "을"과의 근로계약을 해지할 수 있다.</p>
       <p style="font-weight:700;margin:12px 0 4px;">제18조 【지급품의 반납】</p>
-      <p style="margin-bottom:6px;">퇴직 시에는 "을"은 "갑"으로부터 지급받은 장비, 피복, 기타 이에 준하는 지급품은 필히 반납하여야 하며 반납치 않을 시에는 급여에서 공제한다.</p>
+      <p style="margin-bottom:6px;">퇴직 시 "을"은 "갑"으로부터 지급받은 장비, 피복, 기타 이에 준하는 지급품을 반납하여야 한다. 반납하지 않은 경우 "갑"은 반환 또는 실비 배상을 청구할 수 있으며, 임금에서 임의로 공제하지 아니한다.</p>
       <p style="font-weight:700;margin:12px 0 4px;">제19조 【근로기준법의 적용】</p>
       <p style="margin-bottom:6px;">본 계약에 명시되지 않은 사항은 회사의 취업규칙 및 근로기준법의 해석에 준하여 따른다.</p>
       <p style="font-weight:700;margin:12px 0 4px;">제20조 【비밀유지】</p>
