@@ -76,6 +76,21 @@
   .job-card[hidden] { display: none !important; }
   .job-apply:hover { background:var(--blue-mid); }
 
+
+  .job-card { flex-wrap:wrap; }
+  .job-detail-toggle { background:none; border:none; color:var(--blue); font-weight:700; font-size:0.84rem; cursor:pointer; padding:0; margin-top:6px; font-family:inherit; }
+  .job-detail { flex-basis:100%; border-top:1px solid #E5EDF7; margin-top:6px; padding-top:18px; display:none; }
+  .job-detail.open { display:block; }
+  .job-facts { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px 18px; margin-bottom:18px; }
+  .job-fact dt { font-size:0.72rem; color:var(--gray); font-weight:700; margin-bottom:3px; }
+  .job-fact dd { font-size:0.88rem; font-weight:600; }
+  .job-sec { margin-bottom:16px; }
+  .job-sec h4 { font-size:0.88rem; font-weight:800; color:var(--blue); margin-bottom:6px; }
+  .job-sec ul { list-style:none; }
+  .job-sec li { font-size:0.86rem; color:#374151; line-height:1.7; padding-left:14px; position:relative; }
+  .job-sec li::before { content:'•'; position:absolute; left:0; color:var(--blue-mid); }
+  .job-sec p { font-size:0.86rem; color:#374151; line-height:1.7; }
+
   footer {
     text-align:center; padding:32px 5vw; font-size:0.78rem; color:var(--gray);
     background:var(--gray-light); border-top:1px solid #E5EDF7; line-height:1.9;
@@ -138,7 +153,7 @@ try {
   const snap = await getDocs(query(collection(db, 'job_postings'), where('status', '==', 'open')));
   const today = new Date(); today.setHours(0,0,0,0);
   const jobs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-    .filter(j => !j.deadline || new Date(j.deadline + 'T23:59:59') >= today)
+    .filter(j => (!j.deadline || new Date(j.deadline + 'T23:59:59') >= today) && (!j.startDate || new Date(j.startDate + 'T00:00:00') <= new Date()))
     .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
   if (!jobs.length) empty('현재 진행 중인 채용 공고가 없습니다', '새로운 공고가 등록되면 이곳에 안내해 드리겠습니다.');
   else {
@@ -147,12 +162,32 @@ try {
       const card = el('div', 'job-card'), main = el('div', 'job-main');
       if (j.team) main.appendChild(el('span', 'job-tag', j.team));
       main.appendChild(el('div', 'job-title', j.title || ''));
+      const period = (j.startDate || j.deadline) ? ('접수 ' + (j.startDate || '') + ' ~ ' + (j.deadline || '상시')) : '상시 모집';
       const meta = el('div', 'job-meta');
-      [j.location, ...(j.conditions || []), j.deadline ? ('마감 ' + j.deadline) : '상시 모집'].filter(Boolean).forEach(m => meta.appendChild(el('span', null, m)));
+      [j.career, j.education, j.empType, j.location, period].filter(Boolean).forEach(m => meta.appendChild(el('span', null, m)));
       main.appendChild(meta);
-      if (j.desc) { const d = el('div', 'job-desc', j.desc); d.style.whiteSpace = 'pre-line'; main.appendChild(d); }
+      const detail = el('div', 'job-detail');
+      const facts = [['고용 형태', [j.empType, j.probation ? ('수습 ' + j.probation) : ''].filter(Boolean).join(' · ')], ['급여', j.salary], ['근무 일시', j.workTime], ['근무지', j.location], ['경력', j.career], ['학력', j.education]].filter(f => f[1]);
+      if (facts.length) { const dl = el('dl', 'job-facts'); facts.forEach(f => { const d = el('div', 'job-fact'); d.append(el('dt', null, f[0]), el('dd', null, f[1])); dl.appendChild(d); }); detail.appendChild(dl); }
+      const lines = t => String(t || '').split('\n').map(x => x.trim()).filter(Boolean);
+      const sec = (title, items, asText) => {
+        if (!items.length) return;
+        const w = el('div', 'job-sec'); w.appendChild(el('h4', null, title));
+        if (asText) w.appendChild(el('p', null, items.join(' ')));
+        else { const ul = el('ul'); items.forEach(i => ul.appendChild(el('li', null, i))); w.appendChild(ul); }
+        detail.appendChild(w);
+      };
+      sec('주요 업무', lines(j.duties)); sec('자격 요건', lines(j.requirements)); sec('우대 사항', lines(j.preferred)); sec('복지 및 혜택', lines(j.benefits));
+      sec('채용 절차', [[j.process && ('전형: ' + j.process), j.documents && ('제출 서류: ' + j.documents)].filter(Boolean).join(' / ')].filter(Boolean), true);
+      sec('유의 사항', lines(j.notes));
+      const hasDetail = detail.children.length > 0;
+      if (hasDetail) {
+        const t = el('button', 'job-detail-toggle', '상세 보기 ▾'); t.type = 'button';
+        t.addEventListener('click', () => { const o = detail.classList.toggle('open'); t.textContent = o ? '접기 ▴' : '상세 보기 ▾'; });
+        main.appendChild(t);
+      }
       const a = el('a', 'job-apply', '지원하기'); a.href = 'recruit.html?job=' + encodeURIComponent(j.id);
-      card.append(main, a); box.appendChild(card);
+      card.append(main, a); if (hasDetail) card.appendChild(detail); box.appendChild(card);
     });
   }
 } catch (e) { console.error(e); empty('공고를 불러오지 못했습니다', '잠시 후 다시 시도해 주세요.'); }
