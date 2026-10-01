@@ -1,0 +1,198 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isApproved() {
+      return request.auth != null
+        && request.auth.token.email.matches('.*@jhsol[.]kr$')
+        && exists(/databases/$(database)/documents/portal_users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/portal_users/$(request.auth.uid)).data.status == 'approved';
+    }
+    function isAdmin() {
+      return isApproved()
+        && get(/databases/$(database)/documents/portal_users/$(request.auth.uid)).data.admin == true;
+    }
+    // edoc_* 컬렉션 여부 판별 (경로의 4번째 세그먼트 = 최상위 컬렉션명)
+    function isEdocCollection() {
+      return request.path[3] in
+        ['edoc_daily','edoc_leave','edoc_resign','edoc_cert','edoc_purchase','edoc_expense','edoc_overtime'];
+    }
+    // 관리자 전용 컬렉션 (연명부 민감정보 · 사진) — 아래 catch-all(승인 계정 전체 허용)에서 반드시 제외해야 한다.
+    // Firestore 규칙은 일치하는 match 중 하나라도 허용하면 허용(OR)이므로, 개별 match만으로는 제한되지 않는다.
+    // ── GUEST 사번 계정 판별: 계정 문서(portal_users)의 사번(empNo)이 'guest'로 시작(대소문자 무시).
+    //  · empNo는 관리자만 수정할 수 있다(직원 본인은 phone·phoneVerified·phoneVerifiedAt만 수정 가능) → GUEST가 사번을 바꿔 우회할 수 없다.
+    //  · 사번이 없거나 문자열이 아니면 GUEST가 아닌 것으로 본다.
+    function isGuestEmp() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/portal_users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/portal_users/$(request.auth.uid)).data.get('empNo', '') is string
+        && get(/databases/$(database)/documents/portal_users/$(request.auth.uid)).data.get('empNo', '').lower().matches('guest.*');
+    }
+    // 일정 컬렉션: 최상위 3종 + 경량 PJT 하위(pjt_registry/{id}/schedules). 포괄 규칙에서 반드시 제외(제외하지 않으면 OR 평가로 GUEST 쓰기가 다시 열린다).
+    function isScheduleCollection() {
+      // ※ request.path[5] 는 경로가 짧은 문서(예: pjt_registry/{id}, 길이 5)에서는 존재하지 않아 오류가 된다 → 규칙 전체가 거부로 평가된다.
+      //   그래서 인덱스 접근 없이 경로 문자열 패턴으로 판별한다(경량 PJT 하위의 schedules 컬렉션 문서).
+      return request.path[3] in ['user_schedules','ph4_schedules','company_schedules']
+        || (request.path[3] == 'pjt_registry' && request.path.size() == 7 && string(request.path).matches('.*/pjt_registry/[^/]+/schedules/[^/]+$'));
+    }
+    // 인사 캘린더 접근자 — hr_calendar_access/config 의 emails 목록(지정 담당자 4명)에 든 승인 계정만.
+    //  · 목록은 소문자 이메일 배열. 화면 숨김과 별개로 이 규칙이 실제 데이터 접근을 막는다.
+    function isHrCalendarUser() {
+      return isApproved()
+        && exists(/databases/$(database)/documents/hr_calendar_access/config)
+        && request.auth.token.email.lower() in get(/databases/$(database)/documents/hr_calendar_access/config).data.get('emails', []);
+    }
+    function validHrEvent() {
+      let d = request.resource.data;
+      return d.title is string && d.title.size() > 0 && d.title.size() < 201
+        && d.type in ['interview','offerreply','salarynego','eval','etc']
+        && d.date is string && d.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+    function isAdminOnlyCollection() {
+      return request.path[3] in ['master_worker_private','master_worker_photos','team_rates','portal_users','portal_secrets','hr_calendar_access','hr_calendar_events'] || isScheduleCollection();
+    }
+    // 전자결재 문서 열람 가능 여부: 작성자 본인, 결재선/회람 대상자(viewerUids), 관리자, 최종 게시(posted)된 문서
+    function canViewEdocDoc() {
+      return isApproved() && (
+        resource.data.authorUid == request.auth.uid ||
+        isAdmin() ||
+        resource.data.status == 'posted' ||
+        (request.auth.uid in resource.data.get('viewerUids', []))
+      );
+    }
+
+    // ── 일정 ──
+    //  · 읽기: 승인된 직원 (단, 프로젝트에 속하지 않는 일정 company_schedules는 GUEST 사번 제외 — 연차·휴무는 예외로 공개)
+    //  · 쓰기(등록·수정·삭제·완료 체크): GUEST 사번은 불가
+    match /user_schedules/{sid}    { allow read: if isApproved(); allow write: if isApproved() && !isGuestEmp(); }
+    match /ph4_schedules/{sid}     { allow read: if isApproved(); allow write: if isApproved() && !isGuestEmp(); }
+    //  · company_schedules(프로젝트에 속하지 않는 모든 일정): 읽기는 GUEST 제외 — 단, 연차·휴무 사용(분류 off·leave)은 전체 공개(대표님 결정 2026-09-30)
+    //    GUEST가 목록을 조회하려면 쿼리에 where('tag','in',['off','leave'])(또는 tag == 값)가 있어야 한다(규칙은 필터가 아니라 조건 증명).
+    match /company_schedules/{sid} {
+      allow read: if isApproved() && (!isGuestEmp() || resource.data.tag in ['off','leave']);
+      allow write: if isApproved() && !isGuestEmp();
+    }
+    match /pjt_registry/{rid}/schedules/{sid} { allow read: if isApproved(); allow write: if isApproved() && !isGuestEmp(); }
+
+    // portal_secrets: 직원 비밀번호(관리자 비밀번호 직접 변경 기능용, base64). 본인과 관리자만 접근.
+    //  ※ 포괄 규칙(/{document=**})에서 제외되어야 한다(제외하지 않으면 승인된 직원 전원에게 다시 열린다).
+    match /portal_secrets/{uid} {
+      allow read, write: if isAdmin() || (isApproved() && request.auth.uid == uid);
+    }
+
+    // portal_users: 직원 계정 문서.
+    //  · 읽기: 승인된 직원은 직원 목록(조직도·결재선 등)을 위해 조회 가능, 본인 문서는 로그인 승인 체크를 위해 항상 조회 가능
+    //  · 쓰기: 관리자만. 단, 직원 본인은 아래 3개 필드만 수정 가능(연락처·휴대폰 인증 표시). 비밀번호는 portal_secrets에 저장한다.
+    //    admin·perms·status·teamLeaderIds 등 권한 관련 필드는 관리자만 바꿀 수 있다.
+    //  ※ 이 컬렉션은 아래 포괄 규칙(/{document=**})에서 제외되어야 한다 — 제외하지 않으면 포괄 규칙이 승인된 직원 전원에게 읽기·쓰기를 다시 열어 준다(OR 평가).
+    match /portal_users/{uid} {
+      allow read: if isApproved() || (request.auth != null && request.auth.uid == uid);
+      allow write: if isAdmin();
+      allow update: if isApproved() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['phone','phoneVerified','phoneVerifiedAt']);
+      // 최초 관리자 계정 부트스트랩: 본인 문서가 아직 없을 때만, 지정된 관리자 이메일 본인 문서 생성 허용
+      allow write: if request.auth != null && request.auth.uid == uid
+        && request.auth.token.email == 'jh.kim@jhsol.kr'
+        && !exists(/databases/$(database)/documents/portal_users/$(uid));
+    }
+
+    // 전자결재: 작성자·결재선·관리자만 개별 문서 열람 가능 (그 외는 목록 조회 시 자동 제외됨)
+    match /edoc_daily/{docId}    { allow read: if canViewEdocDoc(); allow write: if isApproved(); }
+    match /edoc_leave/{docId}    { allow read: if canViewEdocDoc(); allow write: if isApproved(); }
+    match /edoc_resign/{docId}   { allow read: if canViewEdocDoc(); allow write: if isApproved(); }
+    match /edoc_cert/{docId}     { allow read: if canViewEdocDoc(); allow write: if isApproved(); }
+    match /edoc_purchase/{docId} { allow read: if canViewEdocDoc(); allow write: if isApproved(); }
+    match /edoc_expense/{docId}  { allow read: if canViewEdocDoc(); allow write: if isApproved(); }
+    match /edoc_overtime/{docId} { allow read: if canViewEdocDoc(); allow write: if isApproved(); }
+
+    // ══════════════════════════════════════════════════════════════════
+    // 원격 서명 · 문서 확인 링크 (sign.html — 로그인 없이 접속, 휴대폰 문자 인증(OTP)으로 본인 확인)
+    //  · sign_links/{token}        : 토큰(20자 무작위 ID)을 아는 사람만 개별 조회(get). 목록 조회·생성·삭제는 관리자만.
+    //                                공개 필드는 최소한(문서 종류·이름·인증 대상 번호·만료·상태)만 둔다.
+    //  · sign_links/{token}/secure : 문서 내용(주민번호 마스킹본)·회사 도장·서명 결과. 링크에 지정된 번호로 OTP 인증을 통과한 사용자만 읽기 가능.
+    //                                서명 결과(result)는 1회 생성만 가능하고, 서명자는 그 외 어떤 문서도 쓸 수 없다.
+    //  · 서명자(전화 인증 계정)는 이메일이 없어 isApproved()가 거짓이므로 위 링크 외의 모든 컬렉션에 접근할 수 없다.
+    // ══════════════════════════════════════════════════════════════════
+    function hasPhoneAuth() {
+      return request.auth != null && ('phone_number' in request.auth.token);
+    }
+    function linkIsOpen(l) {
+      return l.get('status', '') != 'revoked'
+        && l.get('expiresTs', null) != null
+        && request.time < l.expiresTs;
+    }
+    function isLinkSigner(token) {
+      let l = get(/databases/$(database)/documents/sign_links/$(token)).data;
+      return hasPhoneAuth()
+        && l.get('phoneE164', '') != ''
+        && request.auth.token.phone_number == l.phoneE164
+        && linkIsOpen(l);
+    }
+    match /sign_links/{token} {
+      allow get: if true;
+      // 서명 완료 표시: 서명 결과(result) 생성과 같은 배치에서만, status/signedAt 두 필드만 변경 가능
+      allow update: if hasPhoneAuth()
+          && resource.data.get('phoneE164', '') != ''
+          && request.auth.token.phone_number == resource.data.phoneE164
+          && resource.data.status == 'pending'
+          && resource.data.docType in ['labor', 'annual']
+          && linkIsOpen(resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'signedAt'])
+          && request.resource.data.status == 'signed'
+          && request.resource.data.signedAt == request.time
+          && existsAfter(/databases/$(database)/documents/sign_links/$(token)/secure/result);
+
+      match /secure/{docId} {
+        allow get: if isLinkSigner(token);
+        allow create: if docId == 'result'
+          && isLinkSigner(token)
+          && get(/databases/$(database)/documents/sign_links/$(token)).data.status == 'pending'
+          && get(/databases/$(database)/documents/sign_links/$(token)).data.docType in ['labor', 'annual']
+          && request.resource.data.keys().hasOnly(['signData', 'signedAt', 'signedIp', 'signedUserAgent', 'remoteSigned'])
+          && request.resource.data.keys().hasAll(['signData', 'signedAt', 'remoteSigned'])
+          && request.resource.data.signData is string
+          && request.resource.data.signData.size() < 400000
+          && request.resource.data.signData.matches('data:image/png;base64,[A-Za-z0-9+/=]+')
+          && request.resource.data.signedAt == request.time
+          && request.resource.data.remoteSigned == true
+          && request.resource.data.get('signedIp', '').size() < 64
+          && request.resource.data.get('signedUserAgent', '').size() < 600;
+      }
+    }
+
+    // 근로자 연명부 — 민감정보(주민번호·연락처·계좌·검진·포털 계정)와 사진은 관리자만
+    match /master_worker_private/{wid} {
+      allow read, write: if isAdmin();
+    }
+    match /master_worker_photos/{wid} {
+      allow read, delete: if isAdmin();
+      allow create, update: if isAdmin()
+        && request.resource.data.dataUrl is string
+        && request.resource.data.dataUrl.size() < 1000000
+        && request.resource.data.dataUrl.matches('data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+');
+    }
+
+    // 팀 단가 — 관리자 또는 그 팀의 팀장(portal_users.teamLeaderIds에 팀장 ID가 지정된 계정, 관리자만 지정 가능)만 조회.
+    // 다른 팀의 단가는 조회할 수 없다. 개별 문서 조회(get)만 가능하며 컬렉션 전체 목록 조회는 관리자만.
+    match /team_rates/{leaderId} {
+      allow read: if isAdmin()
+        || (isApproved()
+            && leaderId in get(/databases/$(database)/documents/portal_users/$(request.auth.uid)).data.get('teamLeaderIds', []));
+      allow write: if isAdmin();
+    }
+
+    // 인사 캘린더 — 지정 담당자(hr_calendar_access/config.emails)만 조회·등록·수정·삭제. 접근자 목록 자체도 담당자만 읽고 고칠 수 있다.
+    match /hr_calendar_access/{docId} {
+      allow read, write: if isHrCalendarUser();
+    }
+    match /hr_calendar_events/{eventId} {
+      allow read, delete: if isHrCalendarUser();
+      allow create, update: if isHrCalendarUser() && validHrEvent();
+    }
+
+    // 그 외 모든 컬렉션(현재+향후 전부, edoc_*·관리자 전용 제외): 승인된 @jhsol.kr 계정만 읽기/쓰기
+    match /{document=**} {
+      allow read, write: if isApproved() && !isEdocCollection() && !isAdminOnlyCollection();
+    }
+  }
+}
