@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- HR module build: 20261001e · ver 2.23.0 · 인사 캘린더 자동 등록 — 채용 지원자 면접일 입력 시 면접 일정, 연봉 제안서 출력·발송 시 회신 기한 일정 자동 등록(ID 고정으로 중복 방지) / 직전: ver 2.22.0 · 인사 캘린더에 연차 표시(전자결재 게시 연차를 회사 일정에서 읽기 전용으로 표시, 기간 연차는 주말·공휴일 제외, 날짜 선택 시 사용자 목록, ‘연차 표시’ 토글) / 직전: ver 2.21.0 · 인사 캘린더 — 날짜 클릭은 선택만(하단에 그날 일정 목록·‘이 날짜에 등록’ 버튼), 공휴일 표시(2025~2027, 노동절·제헌절·대체공휴일 반영) / 직전: ver 2.20.0 · 인사 홈 2단 개편(왼쪽 인사 캘린더·오른쪽 업무 메뉴 세로 배열) / 직전: ver 2.19.0 · 인사 캘린더 신설(면접·연봉제안서 회신·연봉협상·인사평가·기타, 지정 4명 한정) / 직전: ver 2.18.0 · 문서 메일 수신 주소: 명부 이메일이 없으면 포털 로그인 계정(@jhsol.kr)으로 자동 대체 / 직전: ver 2.17.1 · 급여명세서 PC 조회 화면에 메일 발송·링크/QR·발송 이력 추가 / 직전: ver 2.17.0 · 급여명세서 열람 링크(저장 당시 양식·180일)·메일 발송 이력·링크/QR / 직전: ver 2.16.0 · 저장 계약서 메일 재전송 + 발송 이력(doc_send_log) / 직전: ver 2.15.0 · 저장된 근로계약서·연봉계약서 근로자 본인 열람 링크(문자 인증, 180일, 저장 당시 양식으로 표시) / 직전: ver 2.14.0 · 인사 변동 메뉴 신설(직급·부서 변경 저장+호봉 초기화+이력, 연봉 조정은 근로계약서 작성으로 연결, 변동 현황 조회) · 이전: 20260925e ver 2.13.1 · 근로시간 캘린더 — 반차 쓰고 그날 일부 근무한 경우, 근무시간만 보이고 반차 여부가 안 보이던 문제 수정(🌴 표시 병기) · 이전: 20260925d ver 2.13.0 -->
+<!DOCTYPE html><!-- HR module build: 20261001f · ver 2.23.1 · 연봉 제안서: 출력은 미리보기 전용(저장·캘린더 등록 안 함), 💾 저장 버튼 신설(같은 건 덮어쓰기·캘린더 회신기한 1건 연동), 지난 제안서에서 열어서 수정 / 직전: ver 2.23.0 · 인사 캘린더 자동 등록 — 채용 지원자 면접일 입력 시 면접 일정, 연봉 제안서 출력·발송 시 회신 기한 일정 자동 등록(ID 고정으로 중복 방지) / 직전: ver 2.22.0 · 인사 캘린더에 연차 표시(전자결재 게시 연차를 회사 일정에서 읽기 전용으로 표시, 기간 연차는 주말·공휴일 제외, 날짜 선택 시 사용자 목록, ‘연차 표시’ 토글) / 직전: ver 2.21.0 · 인사 캘린더 — 날짜 클릭은 선택만(하단에 그날 일정 목록·‘이 날짜에 등록’ 버튼), 공휴일 표시(2025~2027, 노동절·제헌절·대체공휴일 반영) / 직전: ver 2.20.0 · 인사 홈 2단 개편(왼쪽 인사 캘린더·오른쪽 업무 메뉴 세로 배열) / 직전: ver 2.19.0 · 인사 캘린더 신설(면접·연봉제안서 회신·연봉협상·인사평가·기타, 지정 4명 한정) / 직전: ver 2.18.0 · 문서 메일 수신 주소: 명부 이메일이 없으면 포털 로그인 계정(@jhsol.kr)으로 자동 대체 / 직전: ver 2.17.1 · 급여명세서 PC 조회 화면에 메일 발송·링크/QR·발송 이력 추가 / 직전: ver 2.17.0 · 급여명세서 열람 링크(저장 당시 양식·180일)·메일 발송 이력·링크/QR / 직전: ver 2.16.0 · 저장 계약서 메일 재전송 + 발송 이력(doc_send_log) / 직전: ver 2.15.0 · 저장된 근로계약서·연봉계약서 근로자 본인 열람 링크(문자 인증, 180일, 저장 당시 양식으로 표시) / 직전: ver 2.14.0 · 인사 변동 메뉴 신설(직급·부서 변경 저장+호봉 초기화+이력, 연봉 조정은 근로계약서 작성으로 연결, 변동 현황 조회) · 이전: 20260925e ver 2.13.1 · 근로시간 캘린더 — 반차 쓰고 그날 일부 근무한 경우, 근무시간만 보이고 반차 여부가 안 보이던 문제 수정(🌴 표시 병기) · 이전: 20260925d ver 2.13.0 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -11196,11 +11196,12 @@ function renderOfferForm() {
       <div style="display:flex;gap:8px;">
         <button onclick="renderOfferHistory()" style="background:#fff;border:1px solid ${C2.border};border-radius:9px;padding:8px 14px;color:${C2.sub};font-size:12.5px;font-weight:700;cursor:pointer;">📜 지난 제안서</button>
         <button onclick="offerReset()" style="background:#fff;border:1px solid ${C2.border};border-radius:9px;padding:8px 14px;color:${C2.sub};font-size:12.5px;font-weight:700;cursor:pointer;">↺ 초기화</button>
-        <button onclick="offerPrint()" style="background:${C2.blue};border:none;border-radius:9px;padding:8px 18px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(29,91,166,0.18);">📄 제안서 출력 (PDF)</button>
+        <button id="offerSaveBtn" onclick="offerSave(this)" style="background:#fff;border:1px solid ${C2.blue};border-radius:9px;padding:8px 16px;color:${C2.blue};font-size:13px;font-weight:700;cursor:pointer;">💾 저장</button>
+        <button onclick="offerPrint()" style="background:${C2.blue};border:none;border-radius:9px;padding:8px 18px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(29,91,166,0.18);">📄 출력 (PDF)</button>
         <button id="offerEmailBtn" onclick="offerSendEmail(this)" style="background:#fff;border:1px solid ${C2.blue};border-radius:9px;padding:8px 16px;color:${C2.blue};font-size:13px;font-weight:700;cursor:pointer;">📧 이메일 발송</button>
       </div>
     </div>
-    <div style="font-size:11.5px;color:${C2.mute};margin-bottom:14px;line-height:1.6;">연봉 <b>또는</b> 시급 하나만 입력하면 급여 구성이 자동 계산되어 제안서에 채워집니다. 산식은 연봉계약서와 동일합니다. 출력 시 이 내용은 <b>지난 제안서</b> 목록에 자동 저장됩니다.</div>
+    <div style="font-size:11.5px;color:${C2.mute};margin-bottom:14px;line-height:1.6;">연봉 <b>또는</b> 시급 하나만 입력하면 급여 구성이 자동 계산되어 제안서에 채워집니다. 산식은 연봉계약서와 동일합니다. <b>📄 출력은 미리보기일 뿐 저장되지 않습니다.</b> <b>지난 제안서</b> 목록과 인사 캘린더(회신기한)에는 <b>💾 저장</b> 또는 이메일 발송을 했을 때만 반영됩니다. <span id="offerSaveState">${_offerStateHtml()}</span></div>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;align-items:start;">
       <div>
@@ -11259,14 +11260,22 @@ function renderOfferForm() {
   offerRefresh();
 }
 
+function _offerStateHtml() {
+  const f = offerForm;
+  if (f._id) return f._saved ? '<b style="color:#16A34A;">✅ 저장됨</b>' : '<b style="color:#D97706;">✏️ 수정됨 · 아직 저장 안 됨</b>';
+  return '<b style="color:#9AAABF;">· 저장 안 됨</b>';
+}
+function _offerStateRefresh() { const el = document.getElementById('offerSaveState'); if (el) el.innerHTML = _offerStateHtml(); }
+
 window.offerSet = (key, val, rerender) => {
-  offerForm[key] = val;
+  offerForm[key] = val; offerForm._saved = false; _offerStateRefresh();
   if (rerender) renderOfferForm(); else offerRefresh();
 };
 
 window.offerSwitchMode = (m) => {
   const f = offerForm;
   if (f.mode === m) return;
+  f._saved = false;
   const sw = f._swap;
   if (sw && sw.toMode === f.mode && sw.fromMode === m && String(f.amount) === String(sw.convAmount)) {
     f.amount = sw.origAmount;                         // 환산값을 건드리지 않고 되돌리면 처음 입력값 그대로 복원 (반올림 오차 방지)
@@ -11315,10 +11324,10 @@ async function offerFillCurrent() {
   renderOfferForm();
 }
 
-window.offerSetKind = (k) => { offerForm.kind = k; offerForm.workerId=''; offerForm.applicantId=''; _offerHint = ''; offerFillCurrent(); };
+window.offerSetKind = (k) => { offerForm._saved = false; offerForm.kind = k; offerForm.workerId=''; offerForm.applicantId=''; _offerHint = ''; offerFillCurrent(); };
 
 window.offerPickWorker = async (id) => {
-  const f = offerForm; f.workerId = id || ''; f.applicantId = '';
+  const f = offerForm; f._saved = false; f.workerId = id || ''; f.applicantId = '';
   const w = _offerWorkers.find(x => x.id === id);
   if (w) {
     f.name = w.name || ''; f.empNo = w.empNo || ''; f.dept = w.dept || ''; f.rank = w.rank || '';
@@ -11328,7 +11337,7 @@ window.offerPickWorker = async (id) => {
 };
 
 window.offerPickApplicant = (id) => {
-  const f = offerForm; f.applicantId = id || ''; f.workerId = '';
+  const f = offerForm; f._saved = false; f.applicantId = id || ''; f.workerId = '';
   const a = _offerApplicants.find(x => x.id === id);
   if (a) { f.name = a.name || ''; f.job = a.jobTitle || f.job; }
   renderOfferForm();
@@ -11375,16 +11384,48 @@ function offerRefresh() {
  * 일정 ID = offerreply_<지원자/근로자ID 또는 성명>_<제안일> 고정 → 같은 제안서를 출력·발송으로 두 번 저장해도 한 건만 유지된다. */
 async function _offerCalSync(f) {
   try {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(f.replyDue||''))) return false;
-    const key = String(f.applicantId || f.workerId || f.name || '').replace(/[^0-9A-Za-z가-힣_-]/g, '');
-    if (!key) return false;
+    if (!f._id) return false;
+    const evId = 'offerreply_' + f._id;                       // 제안서 1건 = 캘린더 일정 1건 (제안일·회신기한을 고쳐도 같은 일정이 갱신됨)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(f.replyDue||''))) return await window._hcAutoDelete(evId);
     const kindLabel = { new:'신규 입사', renew:'재계약', adjust:'연봉 조정' }[f.kind] || '';
-    return await window._hcAutoUpsert('offerreply_' + key + '_' + String(f.offerDate||'').replace(/[^0-9-]/g,''), {
+    return await window._hcAutoUpsert(evId, {
       type:'offerreply', title:'[연봉제안서 회신] ' + (f.name||''), person:f.name||'', date:f.replyDue, time:'', endTime:'',
-      note:(kindLabel ? kindLabel + ' · ' : '') + '제안일 ' + (f.offerDate||'-') + ' (연봉 제안서에서 자동 등록)', source:'offer', srcId:key
+      note:(kindLabel ? kindLabel + ' · ' : '') + '제안일 ' + (f.offerDate||'-') + ' (연봉 제안서 저장 시 자동 등록)', source:'offer', srcId:f._id
     });
   } catch (e) { console.warn('제안서 회신기한 캘린더 등록 실패:', e.message); return false; }
 }
+
+// 저장 대상 필드: 화면 내부 상태(_로 시작: _id/_saved/_swap)는 제외
+function _offerPayload(f) { const o = {}; Object.keys(f).forEach(k => { if (k[0] !== '_') o[k] = f[k]; }); return o; }
+
+// 저장(신규 1회 생성, 이후엔 같은 문서 덮어쓰기) + 캘린더 회신기한 1건 연동 — 💾 저장·이메일 발송에서만 호출
+async function _offerSaveDoc(f) {
+  const { addDoc, setDoc, doc, collection, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+  const data = _offerPayload(f);
+  if (f._id) {
+    await setDoc(doc(window._db,'salary_offers',f._id), { ...data, updatedAt: serverTimestamp() }, { merge:true });
+  } else {
+    const ref = await addDoc(collection(window._db,'salary_offers'), { ...data, createdAt: serverTimestamp() });
+    f._id = ref.id;
+  }
+  f._saved = true;
+  await _offerCalSync(f);
+  _offerStateRefresh();
+  return f._id;
+}
+
+window.offerSave = async (btnEl) => {
+  const f = offerForm, r = offerCalc(f);
+  if (r.err) { alert(r.err); return; }
+  if (!r.ok) { alert('연봉 또는 시급을 먼저 입력해 주세요.'); return; }
+  if (!window._db) { alert('Firebase 연결 필요'); return; }
+  if (!String(f.name || '').trim() && !confirm('성명이 비어 있습니다. 이대로 저장할까요?')) return;
+  const old = btnEl ? btnEl.textContent : '';
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = '저장 중...'; }
+  try { await _offerSaveDoc(f); }
+  catch (e) { alert('저장 오류: ' + e.message); }
+  finally { if (btnEl) { btnEl.disabled = false; btnEl.textContent = old; } }
+};
 
 /* ── 출력 (A4 2쪽) ───────────────────────────────── */
 window.offerSendEmail = async (btnEl) => {
@@ -11392,14 +11433,12 @@ window.offerSendEmail = async (btnEl) => {
   if (!r.ok) { alert('연봉 또는 시급을 먼저 입력해 주세요.'); return; }
   if (!window._db) { alert('Firebase 연결 필요'); return; }
   try {
-    const { addDoc, collection, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    const saved = await addDoc(collection(window._db,'salary_offers'), { ...f, createdAt: serverTimestamp() });
-    _offerCalSync(f);
+    const savedId = await _offerSaveDoc(f);     // 발송은 실제 전달이므로 저장(같은 건이면 덮어쓰기) + 캘린더 반영
     const kind = f.kind === 'new' ? 'applicant' : 'worker';
     const id = f.kind === 'new' ? f.applicantId : f.workerId;
     await sendDocLinkByEmail({
       kind, id, toName: f.name, docLabel: '연봉제안서',
-      linkParams: { docType:'offer', offerId: saved.id },
+      linkParams: { docType:'offer', offerId: savedId },
       btnEl,
     });
   } catch(e) { alert('발송 준비 중 오류: ' + e.message); }
@@ -11414,13 +11453,7 @@ window.offerPrint = async () => {
   if (!win) { alert('팝업이 차단되었습니다. 팝업을 허용한 뒤 다시 시도해 주세요.'); return; }
   win.document.write(offerBuildHtml(f, r));
   win.document.close();
-  try {
-    if (window._db) {
-      const { addDoc, collection, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-      await addDoc(collection(window._db,'salary_offers'), { ...f, createdAt: serverTimestamp() });
-      _offerCalSync(f);
-    }
-  } catch(e) { console.error('연봉 제안서 저장 오류:', e); }
+  // 출력은 미리보기 전용 — 지난 제안서·캘린더에는 아무것도 저장하지 않는다 (저장은 💾 저장 / 이메일 발송)
 };
 
 /* ── 지난 제안서 목록 ── */
@@ -11560,6 +11593,7 @@ function _renderOfferPersonHistory(name, list, onNewOffer){
         </div>
         <div style="font-size:12px;color:#5C6F8A;margin-bottom:10px;">제안 연봉: ${r.ok?('₩'+Math.round(r.annual).toLocaleString('ko-KR')):'-'}</div>
         <button onclick="offerReprintObj(${JSON.stringify(o).replace(/"/g,'&quot;')})" style="padding:8px 14px;background:#E8F0FB;border:1px solid #DDE4EF;border-radius:8px;font-size:12px;font-weight:600;color:#1D5BA6;cursor:pointer;">🖨 다시 출력</button>
+        <button onclick="offerEditObj(${JSON.stringify(o).replace(/"/g,'&quot;')})" style="padding:8px 14px;background:#fff;border:1px solid #1D5BA6;border-radius:8px;font-size:12px;font-weight:600;color:#1D5BA6;cursor:pointer;margin-left:6px;">✏️ 열어서 수정</button>
       </div>`;
     }).join('')}
   `);
@@ -11572,6 +11606,14 @@ window.offerReprintObj = (o) => {
   if (!win) { alert('팝업이 차단되었습니다. 팝업을 허용한 뒤 다시 시도해 주세요.'); return; }
   win.document.write(offerBuildHtml(o, r));
   win.document.close();
+};
+
+// 저장된 제안서를 폼으로 불러와 수정 — 저장하면 같은 문서를 덮어쓰고 캘린더 일정도 같은 건이 갱신됨
+window.offerEditObj = async (o) => {
+  const { id, createdAt, updatedAt, ...rest } = o;
+  offerForm = { ...offerNewForm(), ...rest, _id:id, _saved:true };
+  _offerHint = '';
+  await renderOfferMain();
 };
 
 window.offerStartFor = (partial) => {
