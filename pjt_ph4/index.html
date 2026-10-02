@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- holiday-shared: 20261001 공휴일 목록을 공용 파일(holidays.js) 한 곳으로 일원화 --><!-- holiday-data: 20261001 공휴일 정비(2025~2027): 누락·오류 보정 --><!-- GUEST 사번: 일정 등록·수정·삭제·완료 체크 불가(화면 숨김 + 저수준 쓰기 차단, 서버 보안규칙도 차단) -->
+<!DOCTYPE html><!-- PJT Ph4 build: 20261002a · 설정 탭 관리자 전용(일반 계정은 탭·화면 숨김, pjt_settings 쓰기 규칙도 관리자 전용) --><!-- holiday-shared: 20261001 공휴일 목록을 공용 파일(holidays.js) 한 곳으로 일원화 --><!-- holiday-data: 20261001 공휴일 정비(2025~2027): 누락·오류 보정 --><!-- GUEST 사번: 일정 등록·수정·삭제·완료 체크 불가(화면 숨김 + 저수준 쓰기 차단, 서버 보안규칙도 차단) -->
 <html lang="ko">
 <head><script src="../holidays.js?v=20261001"></script>
 <meta charset="UTF-8">
@@ -451,6 +451,8 @@ body{font-family:-apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;bac
   .home-sc .sct{font-size:13px;font-weight:700;color:#1d1d1f}
   .home-sc .scd{font-size:11px;color:#86868b;margin-top:1px}
 }
+/* 설정 탭은 관리자 전용 — 일반 계정에게는 탭 버튼과 화면을 모두 숨긴다(접근검증 후 body.is-admin 부여) */
+body:not(.is-admin) .pc-tnav-btn[data-tab="settings"],body:not(.is-admin) .tab[onclick*="'settings'"],body:not(.is-admin) #tab-settings{display:none !important}
 </style>
 </head>
 <body>
@@ -991,6 +993,8 @@ window._accessGatePromise=new Promise(function(resolve){
       if(!ok){ _denyGateAccess('PJT 관리 접근 권한이 없습니다. 관리자에게 요청해주세요.'); resolve(false); return; }
       window._isGuest=!!(uData && typeof uData.empNo==='string' && /^guest/i.test(uData.empNo.trim()));   // GUEST 사번: 일정은 읽기 전용
       window._accessGranted=true;
+      window._isAdminUser=!!(uData && uData.admin===true);   // 설정 탭은 관리자 전용
+      if(window._isAdminUser) document.body.classList.add('is-admin');
       _gateOverlay.remove();
       resolve(true);
     }catch(e){ _denyGateAccess('권한 확인 중 오류가 발생했습니다: '+e.message); resolve(false); }
@@ -3101,6 +3105,7 @@ function switchTab(name,btn){
     name='schedule';
   }
   if(ALL_TABS.indexOf(name)<0) name='home';
+  if(name==='settings' && window._isAdminUser!==true) name='home';   // 설정 탭은 관리자 전용
   // grid 레이아웃 탭 목록 (CSS에 grid 선언 있는 탭)
   var GRID_TABS={progress:'grid'};
   ALL_TABS.forEach(function(t){

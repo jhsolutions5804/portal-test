@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- holiday-shared: 20261001 공휴일 목록을 공용 파일(holidays.js) 한 곳으로 일원화 --><!-- holiday-data: 20261001 공휴일 정비(2025~2027): 누락·오류 보정 --><!-- GUEST 사번(사번이 guest로 시작): 일정 등록·수정·삭제·완료 체크 불가(함수 차단, 서버 보안규칙도 차단) · 이전:  build: 20260930c · ver: 3.8.1 · PC 본문 하단 잘림(프로젝트 종료 버튼) 수정, 발주처·시공사·협력사 한 줄 배치 / 직전: ver 3.8.0 · 프로젝트 기본정보 통일(PJT 코드·내용·현장명·발주처·시공사·협력사) — 기획↔PJT관리 양방향 반영 / 직전: ver 3.7.0 · 경량PJT 공정표 PPT 추가 + 일정관리 PC 레이아웃 통일 / 직전: ver 3.6.0 · 공사일보 조회 모달 중앙정렬+목록 간소화(날짜만), 설정에서 현장정보 전체 수정 가능, 근태관리 탭 날짜 클릭 이동, 사용장비 하드코딩(FAB 지게차번호) 제거→자유입력 · 이전: 20260925a ver 3.5.0 -->
+<!DOCTYPE html><!-- holiday-shared: 20261001 공휴일 목록을 공용 파일(holidays.js) 한 곳으로 일원화 --><!-- holiday-data: 20261001 공휴일 정비(2025~2027): 누락·오류 보정 --><!-- GUEST 사번(사번이 guest로 시작): 일정 등록·수정·삭제·완료 체크 불가(함수 차단, 서버 보안규칙도 차단) · 이전:  build: 20261002a · ver: 3.8.2 · 설정 탭 관리자 전용(일반 계정은 탭·화면 숨김) / 직전: build: 20260930c · ver: 3.8.1 · PC 본문 하단 잘림(프로젝트 종료 버튼) 수정, 발주처·시공사·협력사 한 줄 배치 / 직전: ver 3.8.0 · 프로젝트 기본정보 통일(PJT 코드·내용·현장명·발주처·시공사·협력사) — 기획↔PJT관리 양방향 반영 / 직전: ver 3.7.0 · 경량PJT 공정표 PPT 추가 + 일정관리 PC 레이아웃 통일 / 직전: ver 3.6.0 · 공사일보 조회 모달 중앙정렬+목록 간소화(날짜만), 설정에서 현장정보 전체 수정 가능, 근태관리 탭 날짜 클릭 이동, 사용장비 하드코딩(FAB 지게차번호) 제거→자유입력 · 이전: 20260925a ver 3.5.0 -->
 <html lang="ko">
 <head><script src="../holidays.js?v=20261001"></script>
 <meta charset="UTF-8">
@@ -251,6 +251,8 @@ textarea.f-input{resize:vertical;min-height:70px}
   /* 품목현황 탭: 상단 요약 스트립 */
   .item-summary-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px}
 }
+/* 설정 탭은 관리자 전용 — 일반 계정에게는 탭 버튼과 화면을 모두 숨긴다(접근검증 후 body.is-admin 부여) */
+body:not(.is-admin) .pc-tnav-btn[data-tab="settings"],body:not(.is-admin) .tab[data-tab="settings"],body:not(.is-admin) #pane-settings{display:none !important}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
@@ -815,6 +817,7 @@ onAuthStateChanged(auth, async function(user){
     const ok=!!(uData && uData.status==='approved' && (uData.admin===true || (uData.perms && uData.perms.pjt===true)));
     if(!ok){ showAccessDenied('PJT 관리 접근 권한이 없습니다. 관리자에게 요청해주세요.'); return; }
     isAdmin=!!(uData && uData.admin===true);
+    document.body.classList.toggle('is-admin',isAdmin);   // 설정 탭은 관리자 전용
     isGuest=!!(uData && typeof uData.empNo==='string' && /^guest/i.test(uData.empNo.trim()));
     loginUserLabel=uData?((uData.name||'')+' '+(uData.rank||'')).trim():'';
     currentUid=user.uid;
@@ -904,6 +907,7 @@ function renderHeader(){
 }
 
 window.switchTab=function(tab){
+  if(tab==='settings' && !isAdmin) tab='home';   // 설정 탭은 관리자 전용
   document.querySelectorAll('.tab, .pc-tnav-btn').forEach(function(b){
     b.classList.toggle('active', b.dataset.tab===tab);
   });
