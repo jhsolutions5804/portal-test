@@ -19,7 +19,7 @@ CLASSES = """jh-btn jh-iconbtn jh-card jh-field jh-field__label jh-input jh-sele
 jh-segmented jh-segmented__item jh-badge jh-chip jh-chiplist jh-alert jh-empty jh-skeleton jh-link jh-toast
 jh-dialog jh-dialog__backdrop jh-dialog__panel jh-dialog__title jh-dialog__body jh-dialog__actions jh-suggest jh-suggest__item
 jh-login jh-login__card jh-login__brand jh-login__sub jh-login__msg jh-app jh-sidebar jh-sidebar__brand jh-sidebar__foot
-jh-nav jh-nav__item jh-nav__icon jh-nav__label jh-nav__badge jh-body jh-topbar jh-topbar__title jh-main jh-tabbar jh-userchip
+jh-nav jh-nav__item jh-nav__icon jh-nav__label jh-nav__badge jh-body jh-topbar jh-topbar__title jh-topbar__tools jh-main jh-tabbar jh-userchip
 jh-split jh-split__list jh-split__detail jh-edoc-tabs jh-tab jh-tab__count jh-filters jh-doclist jh-docrow jh-docrow__main
 jh-docrow__title jh-docrow__summary jh-docrow__meta jh-docrow__side jh-detail jh-detail__back jh-detail__head jh-detail__type
 jh-detail__title jh-detail__meta jh-detail__state jh-detail__body jh-detail__line jh-detail__h jh-detail__foot jh-kv jh-kv__row jh-kv__item

@@ -8,7 +8,7 @@
 .jh-sidebar { background: var(--c-side); color: var(--c-side-ink); display: flex; flex-direction: column; padding: var(--sp-4); gap: var(--sp-4); position: sticky; top: 0; height: 100vh; }
 .jh-sidebar__brand { font-size: var(--fs-lg); font-weight: 800; color: var(--c-on-primary); display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2); }
 .jh-nav { display: grid; gap: var(--sp-1); }
-.jh-nav__item { display: flex; align-items: center; gap: var(--sp-3); padding: var(--u-10) var(--sp-3); border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600; }
+.jh-nav__item { background: transparent; border: 0; color: inherit; font-family: inherit; text-align: left; width: 100%; cursor: pointer; display: flex; align-items: center; gap: var(--sp-3); padding: var(--u-10) var(--sp-3); border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600; }
 .jh-nav__item:hover { background: var(--c-hover-on-dark); }
 .jh-nav__item.is-active { background: var(--c-side-active); color: var(--c-on-primary); }
 .jh-nav__icon { width: var(--u-20); text-align: center; }
@@ -21,7 +21,9 @@
 .jh-body { min-width: 0; display: flex; flex-direction: column; }
 .jh-topbar { display: flex; align-items: center; justify-content: space-between; padding: var(--sp-4) var(--sp-5); background: var(--c-surface); border-bottom: var(--u-1) solid var(--c-line); }
 .jh-topbar__title { font-size: var(--fs-lg); }
+.jh-topbar__tools { display: flex; align-items: center; gap: var(--sp-3); }
 .jh-topbar .jh-userchip { display: none; }
+.jh-topbar__tools .jh-iconbtn { display: none; }
 .jh-main { padding: var(--sp-5); min-width: 0; }
 .jh-tabbar { display: none; }
 
@@ -30,6 +32,7 @@
   .jh-sidebar { display: none; }
   .jh-topbar { position: sticky; top: 0; z-index: var(--z-topbar); padding: var(--sp-3) var(--sp-4); }
   .jh-topbar .jh-userchip { display: block; color: var(--c-ink-2); }
+  .jh-topbar__tools .jh-iconbtn { display: inline-grid; }
   .jh-main { padding: var(--sp-3); }
   .jh-tabbar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-tabbar); background: var(--c-surface); border-top: var(--u-1) solid var(--c-line); padding-bottom: env(safe-area-inset-bottom, 0); }
   .jh-tabbar .jh-nav__item { flex: 1; flex-direction: column; gap: var(--u-2); padding: var(--u-8) var(--u-4); border-radius: 0; color: var(--c-ink-2); font-size: var(--fs-xs); justify-content: center; position: relative; }

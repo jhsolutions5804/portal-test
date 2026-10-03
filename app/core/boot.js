@@ -1,9 +1,11 @@
-import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261004b';
-import { register, visibleFor, get } from './registry.js?v=20261004b';
-import { parseHash, onChange } from './router.js?v=20261004b';
-import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261004b';
-import * as edoc from '../modules/edoc/index.js?v=20261004b';
+import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261004c';
+import { register, visibleFor, get } from './registry.js?v=20261004c';
+import { parseHash, onChange } from './router.js?v=20261004c';
+import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261004c';
+import { initTheme } from './theme.js?v=20261004c';
+import * as edoc from '../modules/edoc/index.js?v=20261004c';
 
+initTheme();   // 이 기기에 저장된 화면 모드(자동·라이트·다크) 적용
 register(Object.assign({}, edoc.manifest, { mount: edoc.mount }));
 
 const root = document.getElementById('jh-root');

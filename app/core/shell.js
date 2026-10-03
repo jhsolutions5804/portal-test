@@ -1,5 +1,6 @@
-import { esc } from './ui.js?v=20261004b';
-import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261004b';
+import { esc } from './ui.js?v=20261004c';
+import { openSettings } from './settings.js?v=20261004c';
+import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261004c';
 
 export function renderLogin(root, { onSubmit, message }) {
   root.innerHTML =
@@ -42,17 +43,19 @@ export function renderShell(root, me, mods, { onLogout }) {
         '<nav class="jh-nav" aria-label="모듈">' + items + '</nav>' +
         '<div class="jh-sidebar__foot">' +
           '<a class="jh-nav__item" href="' + LEGACY_PORTAL_URL + '"><span class="jh-nav__icon" aria-hidden="true">←</span><span class="jh-nav__label">기존 포털</span></a>' +
+          '<button type="button" class="jh-nav__item" data-open-settings><span class="jh-nav__icon" aria-hidden="true">⚙</span><span class="jh-nav__label">화면 설정</span></button>' +
           '<div class="jh-userchip">' + who + '</div>' +
           '<button class="jh-btn" data-variant="ghost" id="jh-logout" type="button">로그아웃</button>' +
         '</div>' +
       '</aside>' +
       '<div class="jh-body">' +
-        '<header class="jh-topbar"><h1 class="jh-topbar__title" id="jh-title"></h1><div class="jh-userchip">' + who + '</div></header>' +
+        '<header class="jh-topbar"><h1 class="jh-topbar__title" id="jh-title"></h1><div class="jh-topbar__tools"><div class="jh-userchip">' + who + '</div><button type="button" class="jh-iconbtn" data-open-settings aria-label="화면 설정">⚙</button></div></header>' +
         '<main class="jh-main" id="jh-main"></main>' +
       '</div>' +
       '<nav class="jh-tabbar" aria-label="모듈 탭">' + items + '</nav>' +
     '</div>';
   root.querySelectorAll('#jh-logout').forEach(b => b.addEventListener('click', onLogout));
+  root.querySelectorAll('[data-open-settings]').forEach(b => b.addEventListener('click', () => openSettings(b)));
   return {
     main: root.querySelector('#jh-main'),
     setTitle(t) { root.querySelector('#jh-title').textContent = t; },
