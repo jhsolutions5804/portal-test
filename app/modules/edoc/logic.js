@@ -1,0 +1,127 @@
+export const DOC_TYPES = ['daily', 'leave', 'resign', 'cert', 'purchase', 'expense'];
+export const TYPE_LABEL = { daily: '업무일지', leave: '연차신청서', resign: '휴직/퇴직', cert: '재직증명서', purchase: '구매품의서', expense: '지출결의서' };
+export const TYPE_GROUPS = [
+  { key: 'all', label: '전체', types: DOC_TYPES },
+  { key: 'daily', label: '업무일지', types: ['daily'] },
+  { key: 'leave', label: '연차', types: ['leave'] },
+  { key: 'resign', label: '휴직/퇴직', types: ['resign'] },
+  { key: 'cert', label: '재직증명', types: ['cert'] },
+  { key: 'spend', label: '구매·지출', types: ['purchase', 'expense'] }
+];
+export const STATUS_LABEL = { draft: '임시저장', pending: '결재대기', reviewing: '검토중', approved: '승인', rejected: '반려', posted: '게시' };
+export const STATUS_GROUPS = [
+  { key: 'all', label: '전체', statuses: null },
+  { key: 'waiting', label: '결재 진행', statuses: ['pending', 'reviewing'] },
+  { key: 'approved', label: '승인', statuses: ['approved'] },
+  { key: 'posted', label: '게시', statuses: ['posted'] },
+  { key: 'rejected', label: '반려', statuses: ['rejected'] },
+  { key: 'draft', label: '임시저장', statuses: ['draft'] }
+];
+const PASSIVE = ['작성', '회람', '수신', '참조'];
+export const isPassive = (role) => PASSIVE.indexOf(role) !== -1;
+
+export function toMillis(v) {
+  if (v == null || v === '') return 0;
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string') { const t = Date.parse(v); return isNaN(t) ? 0 : t; }
+  if (typeof v.toMillis === 'function') return v.toMillis();
+  if (typeof v.seconds === 'number') return v.seconds * 1000;
+  if (v instanceof Date) return v.getTime();
+  return 0;
+}
+const pad = (n) => String(n).padStart(2, '0');
+function kst(ms) { return new Date(ms + 9 * 3600 * 1000); }
+export function fmtDate(v) {
+  const t = toMillis(v); if (!t) return '-';
+  const d = kst(t); return d.getUTCFullYear() + '.' + pad(d.getUTCMonth() + 1) + '.' + pad(d.getUTCDate());
+}
+export function fmtDateTime(v) {
+  const t = toMillis(v); if (!t) return '-';
+  const d = kst(t); return fmtDate(t) + ' ' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes());
+}
+export function fmtYmd(s) { return s ? String(s).replace(/(\d{4})-(\d{2})-(\d{2})/, '$1.$2.$3') : ''; }
+function won(n) {
+  const v = Number(String(n == null ? '' : n).replace(/,/g, ''));
+  return isFinite(v) && String(n).trim() !== '' ? v.toLocaleString('ko-KR') : '';
+}
+
+export const isMyStep = (s, me) => !!s && ((s.uid && s.uid === me.uid) || (!s.uid && s.name && s.name === me.name));
+
+/** 지금 결재 차례인 단계의 인덱스(없으면 -1). 순번상 앞 단계가 모두 승인된 첫 pending 결재 단계. */
+export function currentStepIndex(doc) {
+  if (doc.status !== 'pending' && doc.status !== 'reviewing') return -1;
+  const line = Array.isArray(doc.approvalLine) ? doc.approvalLine : [];
+  for (let i = 0; i < line.length; i++) {
+    const s = line[i];
+    if (isPassive(s.role)) continue;
+    if (s.status === 'approved' || s.status === 'done') continue;
+    return s.status === 'pending' ? i : -1;
+  }
+  return -1;
+}
+export function myTurn(doc, me) {
+  const i = currentStepIndex(doc); if (i < 0) return false;
+  return isMyStep(doc.approvalLine[i], me);
+}
+export function canProxy(doc, me) { return me.admin && currentStepIndex(doc) >= 0 && !myTurn(doc, me); }
+
+/** 문서가 속하는 결재함 탭들 */
+export function tabsOf(doc, me) {
+  const line = Array.isArray(doc.approvalLine) ? doc.approvalLine : [];
+  const mine = doc.authorUid === me.uid;
+  const cc = !mine && line.some(s => isPassive(s.role) && s.role !== '작성' && isMyStep(s, me));
+  return { todo: myTurn(doc, me), mine, cc, all: me.admin ? true : doc.status === 'posted' };
+}
+export function tabDefs(me) {
+  return [
+    { key: 'todo', label: '결재할 문서' },
+    { key: 'mine', label: '내가 올린' },
+    { key: 'cc', label: '참조·회람' },
+    { key: 'all', label: me.admin ? '전체' : '게시 문서' }
+  ];
+}
+
+export function summaryOf(d) {
+  switch (d.dtype) {
+    case 'daily': return [d.pjtCode, d.pjtName].filter(Boolean).join(' · ');
+    case 'leave': {
+      const range = fmtYmd(d.startDate) + (d.endDate && d.endDate !== d.startDate ? ' ~ ' + fmtYmd(d.endDate) : '');
+      return [d.leaveType || '연차', range, d.days ? '(' + d.days + '일)' : ''].filter(Boolean).join(' ');
+    }
+    case 'resign': return [d.leaveKind, fmtYmd(d.lastDate)].filter(Boolean).join(' · ');
+    case 'cert': return d.purpose || '';
+    case 'purchase': return [d.item, d.qty ? '× ' + d.qty : ''].filter(Boolean).join(' ');
+    case 'expense': return [d.category, won(d.amount) ? won(d.amount) + '원' : '', d.vendor].filter(Boolean).join(' · ');
+    default: return '';
+  }
+}
+
+export function filterDocs(docs, me, f) {
+  const tg = TYPE_GROUPS.find(g => g.key === (f.type || 'all')) || TYPE_GROUPS[0];
+  const sg = STATUS_GROUPS.find(g => g.key === (f.status || 'all')) || STATUS_GROUPS[0];
+  const tab = f.tab || 'todo';
+  const q = String(f.q || '').trim().toLowerCase();
+  return docs.filter(d => {
+    if (!tabsOf(d, me)[tab]) return false;
+    if (tg.types.indexOf(d.dtype) === -1) return false;
+    if (sg.statuses && sg.statuses.indexOf(d.status) === -1) return false;
+    if (q) {
+      const hay = [d.title, d.authorName, d.authorDept, summaryOf(d)].join(' ').toLowerCase();
+      if (hay.indexOf(q) === -1) return false;
+    }
+    return true;
+  });
+}
+export function tabCounts(docs, me) {
+  const c = { todo: 0, mine: 0, cc: 0, all: 0 };
+  docs.forEach(d => { const t = tabsOf(d, me); Object.keys(c).forEach(k => { if (t[k]) c[k]++; }); });
+  return c;
+}
+export function stepState(doc, i) {
+  const s = doc.approvalLine[i];
+  if (s.role === '작성') return 'done';
+  if (isPassive(s.role)) return 'ref';
+  if (s.status === 'approved' || s.status === 'done') return 'done';
+  if (s.status === 'rejected') return 'rejected';
+  return currentStepIndex(doc) === i ? 'current' : 'pending';
+}
