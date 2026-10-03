@@ -1,5 +1,5 @@
-import { esc } from './ui.js';
-import { LEGACY_PORTAL_URL, IS_TEST } from './config.js';
+import { esc } from './ui.js?v=20261003c';
+import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261003c';
 
 export function renderLogin(root, { onSubmit, message }) {
   root.innerHTML =
