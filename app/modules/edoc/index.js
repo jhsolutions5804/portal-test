@@ -1,7 +1,7 @@
-import { fetchAll, fetchOne } from './data.js?v=20261003c';
-import { listHtml, detailHtml, qs } from './views.js?v=20261003c';
-import { tabCounts } from './logic.js?v=20261003c';
-import { buildHash } from '../../core/router.js?v=20261003c';
+import { fetchAll, fetchOne } from './data.js?v=20261003d';
+import { listHtml, detailHtml } from './views.js?v=20261003d';
+import { tabCounts } from './logic.js?v=20261003d';
+import { buildHash } from '../../core/router.js?v=20261003d';
 
 const URL_DEFAULTS = { tab: 'todo', type: 'all', status: 'all' };   // 주소에서 생략하는 기본값
 

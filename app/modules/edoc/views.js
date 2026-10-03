@@ -1,9 +1,9 @@
-import { esc, escMultiline, money } from '../../core/ui.js?v=20261003c';
+import { esc, escMultiline, money } from '../../core/ui.js?v=20261003d';
 import {
   TYPE_LABEL, TYPE_GROUPS, STATUS_LABEL, STATUS_GROUPS, tabDefs, tabCounts, filterDocs, summaryOf,
   myTurn, canProxy, currentStepIndex, stepState, fmtDate, fmtDateTime, fmtYmd, isPassive, tabsOf
-} from './logic.js?v=20261003c';
-import { FORMS } from './forms.js?v=20261003c';
+} from './logic.js?v=20261003d';
+import { FORMS } from './forms.js?v=20261003d';
 
 export function badgeHtml(status) {
   return '<span class="jh-badge" data-status="' + esc(status) + '">' + esc(STATUS_LABEL[status] || status || '-') + '</span>';
