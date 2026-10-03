@@ -1,0 +1,20 @@
+/* 디자인 토큰 — 이 파일만 바꿔도 전체 색·글꼴·간격이 바뀐다 */
+:root {
+  --font-sans: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif;
+  --c-primary: #1D5BA6;  --c-primary-ink: #ffffff;  --c-primary-weak: #E6F1FB;  --c-primary-strong: #0C447C;
+  --c-ink: #1A2540;      --c-ink-2: #5C6F8A;        --c-ink-3: #9AAABF;
+  --c-bg: #F4F7FB;       --c-surface: #ffffff;      --c-line: #DDE4EF;   --c-line-strong: #C3CFE0;
+  --c-side: #12305A;     --c-side-ink: #DCE7F7;     --c-side-active: #1D5BA6;
+  --c-success: #16A34A;  --c-warn: #F59E0B;         --c-danger: #DC2626;
+  --st-draft-bg: #F1EFE8;    --st-draft-fg: #444441;
+  --st-pending-bg: #FAEEDA;  --st-pending-fg: #633806;
+  --st-reviewing-bg: #E6F1FB; --st-reviewing-fg: #0C447C;
+  --st-approved-bg: #EAF3DE; --st-approved-fg: #27500A;
+  --st-rejected-bg: #FCEBEB; --st-rejected-fg: #791F1F;
+  --st-posted-bg: #E1F5EE;   --st-posted-fg: #085041;
+  --radius-sm: 8px; --radius: 12px; --radius-lg: 16px;
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
+  --fs-xs: 12px; --fs-sm: 13px; --fs-md: 15px; --fs-lg: 18px; --fs-xl: 22px;
+  --shadow-1: 0 1px 2px rgba(18, 48, 90, .06), 0 2px 8px rgba(18, 48, 90, .05);
+  --bp-wide: 900px;
+}
