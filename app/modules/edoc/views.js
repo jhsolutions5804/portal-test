@@ -1,11 +1,11 @@
-import { esc, escMultiline, money } from '../../core/ui.js?v=20261004d';
+import { esc, escMultiline, money } from '../../core/ui.js?v=20261004f';
 import {
   TYPE_LABEL, TYPE_GROUPS, STATUS_LABEL, STATUS_GROUPS, tabDefs, tabCounts, filterDocs, summaryOf,
   myTurn, canProxy, currentStepIndex, stepState, fmtDate, fmtDateTime, fmtYmd, isPassive, tabsOf, docTitle,
   PAGE_SIZES, normalizeSize, paginate, pageNumbers, pageOfIndex, legacyCurrentStep, availableActions
-} from './logic.js?v=20261004d';
-import { actionbarHtml } from './compose-view.js?v=20261004d';
-import { FORMS } from './forms.js?v=20261004d';
+} from './logic.js?v=20261004f';
+import { actionbarHtml } from './compose-view.js?v=20261004f';
+import { FORMS } from './forms.js?v=20261004f';
 
 export function badgeHtml(status) {
   return '<span class="jh-badge" data-status="' + esc(status) + '">' + esc(STATUS_LABEL[status] || status || '-') + '</span>';
@@ -89,7 +89,7 @@ export function timelineHtml(d) {
     const st = stepState(d, i);
     const when = s.approvedAt ? fmtDateTime(s.approvedAt) : '';
     return '<li class="jh-step" data-state="' + st + '">' +
-      '<span class="jh-step__role">' + esc(s.role || '') + '</span>' +
+      '<span class="jh-step__role">' + esc(s.role || '') + (s.deputy ? '·업무대리' : '') + '</span>' +
       '<span class="jh-step__name">' + esc(s.name || '미지정') + (s.rank ? ' <small>' + esc(s.rank) + '</small>' : '') + '</span>' +
       '<span class="jh-step__state">' + esc(st === 'done' && s.role === '작성' ? '작성' : label[st]) + '</span>' +
       (when ? '<span class="jh-step__time">' + esc(when) + '</span>' : '') +

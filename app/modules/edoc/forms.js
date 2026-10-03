@@ -1,4 +1,7 @@
 /* 문서 종류별 상세 표시 정의 (읽기 전용 단계). fmt: text | multiline | date | money | days | list */
+/** 프로젝트 표시(회계 처리용) — 없으면 표시 안 함 */
+function pjtLine(d) { return d.pjtId ? [d.pjtCode, d.pjtName].filter(Boolean).join(' · ') : ''; }
+
 /** 품목 줄 만들기 — 새 형식(items 배열)과 옛 형식(item·qty·unitPrice) 둘 다 */
 function itemLines(d) {
   const won = (n) => Number(n).toLocaleString('ko-KR');
@@ -22,6 +25,7 @@ export const FORMS = {
     { label: '기간', get: d => (d.startDate ? d.startDate + (d.endDate && d.endDate !== d.startDate ? ' ~ ' + d.endDate : '') : ''), fmt: 'dateRange' },
     { label: '일수', key: 'days', fmt: 'days' },
     { label: '사유', get: d => d.reason || d.note || '', fmt: 'multiline' },
+    { label: '업무 대리인', get: d => (d.deputyName ? d.deputyName + (d.deputyRank ? ' ' + d.deputyRank : '') : '') },
     { label: '비상연락처', key: 'contact' }
   ] },
   resign: { rows: [
@@ -37,6 +41,7 @@ export const FORMS = {
   ] },
   purchase: { rows: [
     { label: '공급업체', key: 'vendor' },
+    { label: '프로젝트', get: pjtLine },
     { label: '구매 목적', key: 'purpose', fmt: 'multiline' },
     { label: '필요일', key: 'dueDate', fmt: 'date' },
     { label: '품목', get: itemLines, fmt: 'list' },
@@ -47,6 +52,7 @@ export const FORMS = {
     { label: '지출 구분', key: 'category' },
     { label: '금액(원)', key: 'amount', fmt: 'money' },
     { label: '거래처', key: 'vendor' },
+    { label: '프로젝트', get: pjtLine },
     { label: '지출 목적', key: 'purpose', fmt: 'multiline' },
     { label: '증빙', key: 'receipt' },
     { label: '품목', get: itemLines, fmt: 'list' }

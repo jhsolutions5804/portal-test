@@ -31,6 +31,7 @@ jh-actionbar jh-actionbar__primary jh-actionbar__danger jh-actionbar__secondary
 jh-dashboard jh-kpi-grid jh-kpi jh-kpi__label jh-kpi__value jh-kpi__hint jh-dashboard__grid jh-panel jh-panel__head
 jh-settings jh-settings__card jh-settings__row jh-settings__type
 jh-paper jh-paper__title jh-stamps jh-stamp jh-stamp__role jh-stamp__sign jh-stamp__name jh-paper__table
+jh-noprint jh-paper__body jh-paper__sub jh-paper__company jh-paper__date jh-paper__seal
 jh-pager jh-pager__info jh-pager__nav jh-pager__btn jh-pager__page jh-pager__gap jh-pager__status jh-pager__size""".split()
 ATTRS = {
   # 기본값(draft 배지, pending 단계, secondary 버튼, approver 줄)은 기본 클래스 스타일로 갈음해도 되어 검사에서 제외
@@ -40,7 +41,7 @@ ATTRS = {
   'data-tone': ['accent','warn','info','danger'],
   'data-kind': ['author','cc'],
   'data-locked': ['true'], 'data-diff': ['true'], 'data-invalid': ['true'],
-  'data-view': ['list','detail'], 'data-cols': ['1'],
+  'data-view': ['list','detail'], 'data-cols': ['1','3','4','narrow-first'],
   'aria-pressed': ['true'], 'aria-current': ['page'], 'aria-selected': ['true'],
 }
 problems = []; ok = []

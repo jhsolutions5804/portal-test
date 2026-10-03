@@ -18,41 +18,47 @@ export const COMPOSE_TYPES = [
 export const typeOfDtype = (dtype) => (dtype === 'purchase' || dtype === 'expense' ? 'spend' : dtype);
 export const composeType = (key) => COMPOSE_TYPES.find((t) => t.key === key) || null;
 
-/* 양식 정의. type: text|textarea|date|select|number|money|items. showIf: 다른 항목 값에 따라 표시 */
+/* 양식 정의. type: text|textarea|date|select|number|money|items|project|person.
+ * row: 같은 row 값을 가진 항목은 한 줄에 나란히 놓는다(폰에서는 세로로). showIf: 다른 항목 값에 따라 표시 */
 const F = {
   leave: [
-    { key: 'leaveType', label: '휴가 종류', type: 'select', opts: LEAVE_TYPES, required: true },
-    { key: 'startDate', label: '시작일', type: 'date', required: true },
-    { key: 'endDate', label: '종료일', type: 'date', required: true },
-    { key: 'days', label: '일수', type: 'number', ph: '0.5 / 1 / 2…', required: true, hint: '날짜를 고르면 주말을 뺀 일수가 자동으로 들어갑니다. 필요하면 직접 고치세요.' },
-    { key: 'reason', label: '사유', type: 'textarea', ph: '휴가 사유를 입력하세요', required: true },
-    { key: 'contact', label: '비상연락처', type: 'text', ph: '휴가 중 연락처', hint: '비상 연락이 가능한 번호를 적어 주세요.' }
+    { key: 'leaveType', label: '휴가 종류', type: 'select', opts: LEAVE_TYPES, required: true, row: 'a' },
+    { key: 'startDate', label: '시작일', type: 'date', required: true, row: 'a' },
+    { key: 'endDate', label: '종료일', type: 'date', required: true, row: 'a' },
+    { key: 'days', label: '일수', type: 'number', ph: '0.5 / 1 / 2…', required: true, row: 'a', hint: '날짜를 고르면 주말을 뺀 일수가 자동으로 들어갑니다.' },
+    { key: 'reason', label: '사유', type: 'textarea', ph: '휴가 사유를 입력하세요', required: true, row: 'b' },
+    { key: 'deputyUid', label: '업무 대리인', type: 'person', required: true, row: 'c', hint: '휴가 중 업무를 맡을 사람입니다. 이 문서의 참조로 자동 포함됩니다.' },
+    { key: 'contact', label: '비상연락처', type: 'text', ph: '휴가 중 연락처', row: 'c' }
   ],
   resign: [
-    { key: 'leaveKind', label: '구분', type: 'select', opts: ['퇴직', '휴직'], required: true },
-    { key: 'lastDate', label: '퇴직/휴직 예정일', type: 'date', required: true },
-    { key: 'returnDate', label: '복직 예정일', type: 'date', required: true, showIf: { key: 'leaveKind', equals: '휴직' } },
-    { key: 'reason', label: '사유', type: 'textarea', ph: '사유를 입력하세요', required: true }
+    { key: 'leaveKind', label: '구분', type: 'select', opts: ['퇴직', '휴직'], required: true, row: 'a' },
+    { key: 'lastDate', label: '퇴직/휴직 예정일', type: 'date', required: true, row: 'a' },
+    { key: 'returnDate', label: '복직 예정일', type: 'date', required: true, showIf: { key: 'leaveKind', equals: '휴직' }, row: 'a' },
+    { key: 'reason', label: '사유', type: 'textarea', ph: '사유를 입력하세요', required: true, row: 'b' }
   ],
   cert: [
-    { key: 'purpose', label: '용도', type: 'text', ph: '예) 금융기관 제출용', required: true },
-    { key: 'language', label: '발급 언어', type: 'select', opts: ['한국어', '영문(English)'], required: true },
-    { key: 'copies', label: '부수', type: 'number', ph: '1', required: true }
+    { key: 'purpose', label: '용도', type: 'text', ph: '예) 금융기관 제출용', required: true, row: 'a' },
+    { key: 'language', label: '발급 언어', type: 'select', opts: ['한국어', '영문(English)'], required: true, row: 'a' },
+    { key: 'copies', label: '부수', type: 'number', ph: '1', required: true, row: 'a' }
   ],
   daily: [
-    { key: 'date', label: '작성일', type: 'date', required: true },
-    { key: 'pjtId', label: '프로젝트', type: 'project', required: true },
-    { key: 'todayWork', label: '금일 업무', type: 'textarea', ph: '오늘 한 일을 시간 순서대로 적어 주세요', required: true },
-    { key: 'tomorrowWork', label: '명일 계획', type: 'textarea', ph: '내일 할 일' },
-    { key: 'issue', label: '특이사항', type: 'textarea', ph: '안전·품질·자재 이슈 등' }
+    { key: 'date', label: '작성일', type: 'date', required: true, row: 'a', layout: 'narrow-first' },
+    { key: 'pjtId', label: '프로젝트', type: 'project', required: true, row: 'a' },
+    { key: 'todayWork', label: '금일 업무', type: 'textarea', ph: '오늘 한 일을 시간 순서대로 적어 주세요', required: true, row: 'b' },
+    { key: 'tomorrowWork', label: '명일 계획', type: 'textarea', ph: '내일 할 일', row: 'c' },
+    { key: 'issue', label: '특이사항', type: 'textarea', ph: '안전·품질·자재 이슈 등', row: 'd' }
   ],
-  spendBase: [{ key: 'vendor', label: '공급업체 / 거래처', type: 'text', ph: '업체명', required: true }, { key: 'purpose', label: '목적', type: 'textarea', ph: '사유를 입력하세요', required: true }],
-  purchase: [{ key: 'dueDate', label: '필요일', type: 'date', required: true }, { key: 'items', label: '구매 품목', type: 'items' }],
+  spendBase: [
+    { key: 'vendor', label: '공급업체 / 거래처', type: 'text', ph: '업체명', required: true, row: 'a' },
+    { key: 'pjtId', label: '프로젝트 (회계 처리용)', type: 'project', allowCommon: true, required: true, row: 'a', hint: '어느 프로젝트 비용인지 고르세요. 프로젝트와 무관하면 "공통"을 고릅니다.' },
+    { key: 'purpose', label: '목적', type: 'textarea', ph: '사유를 입력하세요', required: true, row: 'b' }
+  ],
+  purchase: [{ key: 'dueDate', label: '필요일', type: 'date', required: true, row: 'c' }, { key: 'items', label: '구매 품목', type: 'items' }],
   expense: [
-    { key: 'expDate', label: '지출일', type: 'date', required: true },
-    { key: 'category', label: '지출 구분', type: 'select', opts: SPEND_CATEGORIES, required: true },
-    { key: 'amount', label: '금액 (원)', type: 'money', ph: '0', required: true },
-    { key: 'receipt', label: '증빙 구비', type: 'select', opts: RECEIPTS, required: true },
+    { key: 'expDate', label: '지출일', type: 'date', required: true, row: 'c' },
+    { key: 'category', label: '지출 구분', type: 'select', opts: SPEND_CATEGORIES, required: true, row: 'c' },
+    { key: 'amount', label: '금액 (원)', type: 'money', ph: '0', required: true, row: 'c' },
+    { key: 'receipt', label: '증빙 구비', type: 'select', opts: RECEIPTS, required: true, row: 'c' },
     { key: 'items', label: '구매 품목', type: 'items' }
   ]
 };
@@ -64,6 +70,16 @@ export function fieldsFor(type, values) {
     return F.spendBase.concat(F[kind]).filter((f) => visible(f, values));
   }
   return (F[type] || []).filter((f) => visible(f, values));
+}
+/** 화면에 놓을 줄 목록: [{ cols, layout, fields }] — 같은 row 값끼리 한 줄(최대 4칸) */
+export function fieldRows(type, values) {
+  const list = fieldsFor(type, values); const rows = []; let cur = null;
+  list.forEach((f) => {
+    if (f.type === 'items') { cur = null; rows.push({ cols: 1, items: true, fields: [f] }); return; }
+    if (cur && cur.row === f.row && cur.fields.length < 4) { cur.fields.push(f); cur.cols = cur.fields.length; }
+    else { cur = { row: f.row, cols: 1, layout: f.layout || '', fields: [f] }; rows.push(cur); }
+  });
+  return rows;
 }
 function visible(f, values) { return !f.showIf || (values && values[f.showIf.key] === f.showIf.equals); }
 export function dtypeOf(type, values) { return type === 'spend' ? (values && values.kind === 'expense' ? 'expense' : 'purchase') : type; }
@@ -81,14 +97,20 @@ export function calcLeaveDays(startDate, endDate, leaveType) {
   return n;
 }
 
+/** 오늘이 토·일이면 다음 월요일, 아니면 오늘 (연차 기본 날짜) */
+export function nextBusinessDay(now) {
+  const d = new Date(now || new Date()); d.setHours(0, 0, 0, 0);
+  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+  return ymd(d);
+}
 export function defaultValues(type, me, now) {
   const today = ymd(now || new Date());
   const v = {};
-  if (type === 'leave') Object.assign(v, { leaveType: '연차(유급)', startDate: today, endDate: today, days: calcLeaveDays(today, today, '연차(유급)'), reason: '', contact: '' });
+  if (type === 'leave') { const nb = nextBusinessDay(now); Object.assign(v, { leaveType: '연차(유급)', startDate: nb, endDate: nb, days: calcLeaveDays(nb, nb, '연차(유급)'), reason: '', contact: '', deputyUid: '' }); }
   else if (type === 'resign') Object.assign(v, { leaveKind: '퇴직', lastDate: '', returnDate: '', reason: '' });
   else if (type === 'cert') Object.assign(v, { purpose: '', language: '한국어', copies: 1 });
   else if (type === 'daily') Object.assign(v, { date: today, pjtId: '', todayWork: '', tomorrowWork: '', issue: '' });
-  else if (type === 'spend') Object.assign(v, { kind: 'purchase', vendor: '', purpose: '', dueDate: '', expDate: today, category: SPEND_CATEGORIES[0], amount: '', receipt: RECEIPTS[0], items: [] });
+  else if (type === 'spend') Object.assign(v, { kind: 'purchase', vendor: '', pjtId: '', purpose: '', dueDate: '', expDate: today, category: SPEND_CATEGORIES[0], amount: '', receipt: RECEIPTS[0], items: [] });
   return v;
 }
 export const emptyItem = () => ({ name: '', qty: '', unitPrice: '', link: '' });
@@ -117,17 +139,22 @@ export function validate(type, values, opts) {
       return;
     }
     const empty = val == null || String(val).trim() === '';
-    if (f.required && empty) { if (!draft) err[f.key] = josa(f.label, '을', '를') + ' ' + (f.type === 'select' || f.type === 'project' || f.type === 'date' ? (f.type === 'date' ? '입력해' : '선택해') : '입력해') + ' 주세요.'; return; }
+    if (f.required && empty) { if (!draft) err[f.key] = josa(f.label.replace(/ \(.*\)$/, ''), '을', '를') + ' ' + (f.type === 'select' || f.type === 'project' || f.type === 'person' ? '선택해' : '입력해') + ' 주세요.'; return; }
     if (empty) return;
     if ((f.type === 'number' || f.type === 'money') && !(num(val) > 0) && f.key !== 'amount') err[f.key] = josa(f.label, '은', '는') + ' 0보다 커야 합니다.';
     if (f.key === 'amount' && !(num(val) > 0)) err[f.key] = '금액은 0보다 커야 합니다.';
     if (f.key === 'copies' && (!Number.isInteger(num(val)) || num(val) > 20)) err[f.key] = '부수는 1~20 사이의 정수여야 합니다.';
     if (f.key === 'days' && num(val) % 0.5 !== 0) err[f.key] = '일수는 0.5 단위로 입력해 주세요.';
+    if (f.key === 'days' && !(num(val) > 0)) err[f.key] = '일수가 0입니다. 선택한 기간이 주말뿐이라면 날짜를 다시 확인해 주세요.';
     if (f.type === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(String(val))) err[f.key] = f.label + ' 형식이 올바르지 않습니다.';
   });
   if (type === 'leave' && !err.startDate && !err.endDate && v.startDate > v.endDate) err.endDate = '종료일이 시작일보다 빠릅니다.';
   if (type === 'resign' && v.leaveKind === '휴직' && !err.lastDate && !err.returnDate && v.returnDate && v.returnDate <= v.lastDate) err.returnDate = '복직 예정일은 휴직 예정일 이후여야 합니다.';
-  if (type === 'daily' && opts && opts.projects && v.pjtId && !opts.projects.some((p) => p.id === v.pjtId)) err.pjtId = '선택할 수 없는 프로젝트입니다.';
+  if ((type === 'daily' || type === 'spend') && opts && opts.projects && v.pjtId && !(type === 'spend' && v.pjtId === 'common') && !opts.projects.some((p) => p.id === v.pjtId)) err.pjtId = '선택할 수 없는 프로젝트입니다.';
+  if (type === 'leave' && v.deputyUid && opts && opts.users && !err.deputyUid) {
+    const u = opts.users.find((x) => x.uid === v.deputyUid);
+    if (!u || (opts.meUid && u.uid === opts.meUid)) err.deputyUid = '업무 대리인으로 지정할 수 없는 사람입니다.';
+  }
   return err;
 }
 
@@ -150,12 +177,15 @@ export function buildDocData(type, values, me, ctx) {
   const proj = (ctx && ctx.projects || []).find((p) => p.id === v.pjtId);
   const d = { dtype, authorUid: me.uid, authorName: me.name || '', authorRank: me.rank || '', authorDept: me.dept || '', authorEmail: me.email || '' };
   const text = (k) => String(v[k] == null ? '' : v[k]).trim();
-  if (type === 'leave') Object.assign(d, { leaveType: text('leaveType'), startDate: v.startDate, endDate: v.endDate, days: num(v.days), reason: text('reason'), contact: text('contact') });
+  if (type === 'leave') {
+    const dep = (ctx && ctx.users || []).find((u) => u.uid === v.deputyUid);
+    Object.assign(d, { leaveType: text('leaveType'), startDate: v.startDate, endDate: v.endDate, days: num(v.days), reason: text('reason'), contact: text('contact'), deputyUid: v.deputyUid || '', deputyName: dep ? dep.name : '', deputyRank: dep ? dep.rank || '' : '' });
+  }
   else if (type === 'resign') Object.assign(d, { leaveKind: text('leaveKind'), lastDate: v.lastDate, returnDate: v.leaveKind === '휴직' ? (v.returnDate || '') : '', reason: text('reason') });
   else if (type === 'cert') Object.assign(d, { purpose: text('purpose'), language: text('language'), copies: num(v.copies) });
   else if (type === 'daily') Object.assign(d, { date: v.date, pjtId: v.pjtId, pjtCode: proj ? proj.pjtCode || proj.code || '' : '', pjtName: proj ? proj.name || '' : '', todayWork: String(v.todayWork || '').trim(), tomorrowWork: String(v.tomorrowWork || '').trim(), issue: String(v.issue || '').trim() });
   else if (type === 'spend') {
-    Object.assign(d, { vendor: text('vendor'), purpose: text('purpose') });
+    Object.assign(d, { vendor: text('vendor'), purpose: text('purpose'), pjtId: v.pjtId || '', pjtCode: v.pjtId === 'common' ? '공통' : proj ? proj.pjtCode || proj.code || '' : '', pjtName: v.pjtId === 'common' ? '프로젝트 무관(본사 경비)' : proj ? proj.name || '' : '' });
     const items = (v.items || []).filter((r) => r.name || r.qty || r.unitPrice || r.link).map((r) => ({ name: String(r.name || '').trim(), qty: num(r.qty), unitPrice: num(r.unitPrice), amount: num(r.qty) * num(r.unitPrice), link: String(r.link || '').trim() }));
     if (v.kind === 'expense') Object.assign(d, { expDate: v.expDate, category: text('category'), amount: num(v.amount), receipt: text('receipt'), items });
     else Object.assign(d, { dueDate: v.dueDate, items });
@@ -219,9 +249,18 @@ export function addCc(state, uid, ctx) {
   if (state.cc.length >= MAX_CC) return { state, error: '참조는 최대 ' + MAX_CC + '명까지 지정할 수 있습니다.' };
   return { state: { approvers: state.approvers, cc: state.cc.concat(uid) } };
 }
-export const isLocked = (uid, ctx) => requiredFor(ctx).indexOf(uid) !== -1;
+export const isLocked = (uid, ctx) => requiredFor(ctx).indexOf(uid) !== -1 || (!!ctx.deputy && uid === ctx.deputy);
+/** 업무 대리인을 정하면 참조로 자동 포함한다. prevAuto: 이전에 자동으로 넣었던 사람(바꾸면 빼 준다) → { state, auto, error } */
+export function setDeputy(state, newUid, prevAuto, ctx) {
+  let cc = state.cc.filter((u) => u !== prevAuto || u === newUid); let auto = null; let error = '';
+  if (newUid && state.approvers.indexOf(newUid) === -1 && cc.indexOf(newUid) === -1) {
+    if (cc.length >= MAX_CC) error = '참조가 가득 차서 업무 대리인을 넣지 못했습니다. 참조를 줄여 주세요.';
+    else { cc = cc.concat(newUid); auto = newUid; }
+  } else if (newUid && prevAuto === newUid) auto = newUid;
+  return { state: { approvers: state.approvers, cc }, auto, error };
+}
 export function removeFromLine(state, uid, ctx) {
-  if (isLocked(uid, ctx)) return { state, error: '필수 결재자는 뺄 수 없습니다.' };
+  if (isLocked(uid, ctx)) return { state, error: ctx.deputy && uid === ctx.deputy ? '업무 대리인은 참조로 고정됩니다. 바꾸려면 위쪽 "업무 대리인"을 변경하세요.' : '필수 결재자는 뺄 수 없습니다.' };
   return { state: { approvers: state.approvers.filter((u) => u !== uid), cc: state.cc.filter((u) => u !== uid) } };
 }
 export function moveApprover(state, uid, dir) {
@@ -233,6 +272,7 @@ export function applyGuide(ctx) { return initialLine(ctx); }
 /** 상신 전에 막아야 하는 문제 목록(서버 검증과 동일) */
 export function lineIssues(state, ctx) {
   const out = [];
+  if (ctx.deputy && state.approvers.indexOf(ctx.deputy) === -1 && state.cc.indexOf(ctx.deputy) === -1) out.push('업무 대리인이 결재선에 빠졌습니다.');
   if (!state.approvers.length) out.push('결재자를 한 명 이상 지정해 주세요.');
   requiredFor(ctx).forEach((u) => { if (state.approvers.indexOf(u) === -1) out.push('필수 결재자(' + ((ctx.byUid[u] && ctx.byUid[u].name) || '지정자') + ')가 결재선에 빠졌습니다.'); });
   if (state.approvers.length > MAX_APPROVERS) out.push('결재자는 최대 ' + MAX_APPROVERS + '명입니다.');

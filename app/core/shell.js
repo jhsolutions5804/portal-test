@@ -1,6 +1,6 @@
-import { esc } from './ui.js?v=20261004d';
-import { openSettings } from './settings.js?v=20261004d';
-import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261004d';
+import { esc } from './ui.js?v=20261004f';
+import { openSettings } from './settings.js?v=20261004f';
+import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261004f';
 
 export function renderLogin(root, { onSubmit, message }) {
   root.innerHTML =

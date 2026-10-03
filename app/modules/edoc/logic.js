@@ -88,6 +88,7 @@ export function availableActions(doc, me) {
     const actives = line.filter((s) => !isPassive(s.role)); const last = actives[actives.length - 1];
     if (me.admin || me.isRequired || isMyStep(last, me)) out.push({ key: 'post', label: '게시', variant: 'primary', group: 'primary' });
   }
+  if (st === 'approved' || st === 'posted') out.push({ key: 'print', label: '인쇄 · PDF', variant: st === 'approved' && out.some(a => a.key === 'post') ? 'secondary' : 'primary', group: 'secondary' });
   if ((mine && st === 'draft') || me.admin) out.push({ key: 'delete', label: '삭제', variant: 'ghost', group: 'danger' });
   return out;
 }

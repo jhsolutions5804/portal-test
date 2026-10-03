@@ -1,14 +1,15 @@
-import { fetchAll, fetchOne } from './data.js?v=20261004d';
-import { listHtml, detailHtml } from './views.js?v=20261004d';
-import { tabCounts } from './logic.js?v=20261004d';
-import { buildHash, navigate } from '../../core/router.js?v=20261004d';
-import { db, collection, doc, addDoc, updateDoc, serverTimestamp } from '../../core/firebase.js?v=20261004d';
-import { toast } from '../../core/ui.js?v=20261004d';
-import { confirmDialog } from '../../core/dialog.js?v=20261004d';
-import { loadDirectory } from './directory.js?v=20261004d';
-import { act } from './api.js?v=20261004d';
-import * as C from './compose.js?v=20261004d';
-import { chooserHtml, composeHtml, lineEditorHtml } from './compose-view.js?v=20261004d';
+import { fetchAll, fetchOne } from './data.js?v=20261004f';
+import { listHtml, detailHtml } from './views.js?v=20261004f';
+import { tabCounts } from './logic.js?v=20261004f';
+import { buildHash, navigate } from '../../core/router.js?v=20261004f';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261004f';
+import { toast } from '../../core/ui.js?v=20261004f';
+import { confirmDialog } from '../../core/dialog.js?v=20261004f';
+import { loadDirectory } from './directory.js?v=20261004f';
+import { act } from './api.js?v=20261004f';
+import * as C from './compose.js?v=20261004f';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261004f';
+import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml } from './compose-view.js?v=20261004f';
 
 const URL_DEFAULTS = { tab: 'todo', type: 'all', status: 'all', page: '1', size: '20' };   // 주소에서 생략하는 기본값
 
@@ -46,6 +47,7 @@ async function withPolicy(me) {
 export async function mount(root, route, ctx) {
   const kind = route.segs[0];
   if (kind === 'new' || kind === 'edit') return mountCompose(root, route, ctx);
+  if (kind === 'print') return mountPrint(root, route, ctx);
   return mountBox(root, route, ctx);
 }
 
@@ -100,6 +102,7 @@ async function mountBox(root, route, ctx) {
       catch (e) { toast(e.message); root.querySelectorAll('[data-do]').forEach(b => { b.disabled = false; }); }
     };
     if (key === 'edit') { navigate('#/edoc/edit/' + d.dtype + '/' + d.id, { state: { jh: 'fromList' } }); return; }
+    if (key === 'print') { navigate('#/edoc/print/' + d.dtype + '/' + d.id, { state: { jh: 'fromList' } }); return; }
     if (key === 'approve') {
       const r = await confirmDialog({ title: '승인', body: '"' + (d.title || '이 문서') + '"을(를) 승인합니다.', confirmLabel: '승인' });
       if (r.ok) await call({ action: 'approve' }, '승인했습니다.'); return;
@@ -199,6 +202,10 @@ async function mountCompose(root, route, ctx) {
   }
 
   const paint = () => { root.innerHTML = '<div class="jh-card">' + composeHtml(S) + '</div>'; };
+  const applyDeputy = () => {   // 업무 대리인을 정하면 참조로 자동 포함, 바꾸면 이전 사람은 뺀다
+    const r = C.setDeputy(S.line, S.values.deputyUid || null, S.autoCc || null, S.ctx);
+    S.line = r.state; S.autoCc = r.auto; S.ctx.deputy = S.values.deputyUid || null; S.ui.lineError = r.error || '';
+  };
   const paintLine = () => {
     const sec = root.querySelector('#edoc-line-section'); if (!sec) return;
     sec.innerHTML = '<h3 class="jh-form__h">결재선</h3>' + lineEditorHtml(S.line, S.ctx, S.ui);
@@ -209,12 +216,13 @@ async function mountCompose(root, route, ctx) {
       const [i, k] = el.getAttribute('data-item').split('.'); if (S.values.items && S.values.items[+i]) S.values.items[+i][k] = el.value;
     });
   };
+  if (S.type === 'leave' && S.values.deputyUid) applyDeputy();   // 불러온 문서의 업무 대리인 반영
   paint();
 
   const firstInvalid = () => { const el = root.querySelector('[data-invalid="true"]'); if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); const inp = el.querySelector('input,select,textarea'); if (inp) inp.focus({ preventScroll: true }); } };
 
   async function persist() {
-    const base = { projects: dir.projects, now: S.createdMs ? new Date(S.createdMs) : new Date() };
+    const base = { projects: dir.projects, users: dir.users, now: S.createdMs ? new Date(S.createdMs) : new Date() };
     const data = C.buildDocData(S.type, S.values, me, base);
     if (S.docRef) {
       await updateDoc(doc(db, 'edoc_' + S.docRef.dtype, S.docRef.id), Object.assign({}, data, { updatedAt: serverTimestamp() }));
@@ -229,9 +237,10 @@ async function mountCompose(root, route, ctx) {
 
   root.oninput = (ev) => {
     const t = ev.target;
-    if (t.hasAttribute('data-line-search')) {
-      S.ui.search = t.value.trim(); S.ui.picked = null; S.ui.lineError = ''; paintLine();
-      const el = root.querySelector('[data-line-search]'); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+    if (t.hasAttribute('data-line-search')) {   // 입력창은 그대로 두고 검색 결과만 바꾼다 — 다시 그리면 한글 조합이 끊긴다
+      S.ui.search = t.value.trim(); S.ui.picked = null; S.ui.lineError = '';
+      const box = root.querySelector('[data-suggest-box]'); if (box) box.innerHTML = suggestHtml(S.line, S.ctx, S.ui);
+      root.querySelectorAll('[data-add]').forEach((b) => { b.disabled = true; });
       return;
     }
     if (t.hasAttribute('data-input')) { S.values[t.getAttribute('data-input')] = t.value; clear(t); }
@@ -246,6 +255,7 @@ async function mountCompose(root, route, ctx) {
       if (d !== '') { S.values.days = d; const el = root.querySelector('#f-days'); if (el) el.value = d; }
     }
     if (key === 'leaveKind') { sync(); paint(); }   // 휴직이면 복직 예정일 항목이 나타난다
+    if (key === 'deputyUid') { applyDeputy(); paintLine(); }
   };
 
   root.onclick = async (ev) => {
@@ -255,7 +265,12 @@ async function mountCompose(root, route, ctx) {
     if (t.hasAttribute('data-remove-item')) { sync(); S.values.items.splice(+t.getAttribute('data-remove-item'), 1); paint(); return; }
     if (t.hasAttribute('data-move')) { const [uid, d] = t.getAttribute('data-move').split(':'); S.line = C.moveApprover(S.line, uid, +d); paintLine(); return; }
     if (t.hasAttribute('data-remove')) { const r = C.removeFromLine(S.line, t.getAttribute('data-remove'), S.ctx); S.line = r.state; S.ui.lineError = r.error || ''; paintLine(); return; }
-    if (t.hasAttribute('data-pick')) { S.ui.picked = t.getAttribute('data-pick'); S.ui.lineError = ''; paintLine(); return; }
+    if (t.hasAttribute('data-pick')) {
+      S.ui.picked = t.getAttribute('data-pick'); S.ui.lineError = '';
+      const box = root.querySelector('[data-suggest-box]'); if (box) box.innerHTML = suggestHtml(S.line, S.ctx, S.ui);
+      root.querySelectorAll('[data-add]').forEach((b) => { b.disabled = false; });
+      return;
+    }
     if (t.hasAttribute('data-add')) {
       const fn = t.getAttribute('data-add') === 'cc' ? C.addCc : C.addApprover;
       const r = fn(S.line, S.ui.picked, S.ctx); S.line = r.state; S.ui.lineError = r.error || ''; if (!r.error) { S.ui.search = ''; S.ui.picked = null; } paintLine(); return;
@@ -267,7 +282,7 @@ async function mountCompose(root, route, ctx) {
       if (S.busy) return;
       sync(); S.formError = ''; S.errors = {};
       const submit = act_ === 'submit';
-      S.errors = submit ? C.validate(S.type, S.values, { projects: dir.projects }) : quickErrors();
+      S.errors = submit ? C.validate(S.type, S.values, { projects: dir.projects, users: dir.users, meUid: me.uid }) : quickErrors();
       const lineProblems = submit ? C.lineIssues(S.line, S.ctx) : [];
       if (Object.keys(S.errors).length || lineProblems.length) {
         S.formError = Object.keys(S.errors).length ? '입력 내용을 확인해 주세요. 빨간 표시된 항목을 고치면 됩니다.' : lineProblems[0];
@@ -285,6 +300,42 @@ async function mountCompose(root, route, ctx) {
         if (S.docRef) S.formError += ' (작성한 내용은 임시저장되어 있습니다.)';
         paint(); const el = root.querySelector('#edoc-form-error'); if (el) el.scrollIntoView({ block: 'center' });
       }
+    }
+  };
+}
+
+/* ───────────────────────── 인쇄 · PDF ───────────────────────── */
+async function mountPrint(root, route, ctx) {
+  const { me } = ctx; const [, dtype, id] = route.segs;
+  const back = () => { const st = history.state; if (st && st.jh === 'fromList') history.back(); else navigate('#/edoc/doc/' + dtype + '/' + id, { replace: true }); };
+  root.onclick = null; root.onchange = null; root.oninput = null;
+  root.innerHTML = '<div class="jh-empty">불러오는 중…</div>'; window.scrollTo(0, 0);
+  let d = null; try { d = await fetchOne(dtype, id); } catch (e) { d = null; }
+  if (!d) { root.innerHTML = '<div class="jh-empty">문서를 찾을 수 없거나 열람 권한이 없습니다.</div><button type="button" class="jh-btn" data-variant="ghost" data-back2>← 돌아가기</button>'; root.onclick = (ev) => { if (ev.target.closest('[data-back2]')) back(); }; return; }
+  if (!canPrint(d)) { root.innerHTML = '<div class="jh-empty">승인된 문서만 인쇄할 수 있습니다. (현재 상태: 결재 진행 중)</div><button type="button" class="jh-btn" data-variant="ghost" data-back2>← 돌아가기</button>'; root.onclick = (ev) => { if (ev.target.closest('[data-back2]')) back(); }; return; }
+  let company = {};
+  try { const s = await getDoc(doc(db, 'edoc_settings', 'company')); if (s.exists()) company = s.data(); } catch (e) { company = {}; }
+  const todayStr = C.ymd(new Date());
+  const info = { hireDate: '', issueDate: todayStr };
+  const draw = () => {
+    root.innerHTML = '<div class="jh-card jh-noprint">' + printPanelHtml(d, info, company, me.admin) + '</div>' +
+      '<div class="jh-actionbar jh-noprint"><div class="jh-actionbar__primary"><button type="button" class="jh-btn" data-variant="primary" data-print>인쇄 / PDF 저장</button></div><div class="jh-actionbar__secondary"><button type="button" class="jh-btn" data-variant="ghost" data-back2>← 돌아가기</button></div></div>' +
+      '<div id="edoc-paper">' + paperHtml(d, info, company) + '</div>';
+  };
+  const redrawPaper = () => { const el = root.querySelector('#edoc-paper'); if (el) el.innerHTML = paperHtml(d, info, company); };
+  draw();
+  root.oninput = (ev) => {
+    const t = ev.target; const k = t.getAttribute && t.getAttribute('data-print'); if (!k) return;
+    if (k === 'hireDate' || k === 'issueDate') info[k] = t.value; else company = Object.assign({}, company, { [k.replace('co-', '')]: t.value });
+    redrawPaper();
+  };
+  root.onclick = async (ev) => {
+    const t = ev.target.closest('[data-print],[data-back2],[data-save-company]'); if (!t) return;
+    if (t.hasAttribute('data-back2')) { back(); return; }
+    if (t.hasAttribute('data-print')) { window.print(); return; }
+    if (t.hasAttribute('data-save-company')) {
+      try { await setDoc(doc(db, 'edoc_settings', 'company'), { name: (company.name || '').trim(), ceo: (company.ceo || '').trim(), bizNo: (company.bizNo || '').trim(), address: (company.address || '').trim(), updatedAt: serverTimestamp() }, { merge: true }); toast('회사 정보를 저장했습니다.'); }
+      catch (e) { toast('저장하지 못했습니다. 권한을 확인해 주세요.'); }
     }
   };
 }

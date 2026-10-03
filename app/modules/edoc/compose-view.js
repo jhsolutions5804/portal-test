@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261004d';
-import { COMPOSE_TYPES, composeType, fieldsFor, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261004d';
+import { esc } from '../../core/ui.js?v=20261004f';
+import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261004f';
 
 const uname = (ctx, uid) => { const u = ctx.byUid[uid]; return u ? esc(u.name) + (u.rank ? ' <small>' + esc(u.rank) + '</small>' : '') : '(알 수 없음)'; };
 
@@ -17,7 +17,8 @@ function control(f, v, errs, ctx) {
   const common = ' id="' + id + '" data-input="' + esc(f.key) + '"' + (f.required ? ' aria-required="true"' : '');
   if (f.type === 'textarea') return '<textarea class="jh-textarea"' + common + ' placeholder="' + esc(f.ph || '') + '">' + esc(val) + '</textarea>';
   if (f.type === 'select') return '<select class="jh-select"' + common + '>' + f.opts.map((o) => '<option value="' + esc(o) + '"' + (o === val ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select>';
-  if (f.type === 'project') return '<select class="jh-select"' + common + '><option value="">프로젝트를 선택하세요</option>' + (ctx.projects || []).map((p) => '<option value="' + esc(p.id) + '"' + (p.id === val ? ' selected' : '') + '>' + esc((p.code ? p.code + ' · ' : '') + p.name) + '</option>').join('') + '</select>';
+  if (f.type === 'person') return '<select class="jh-select"' + common + '><option value="">대리인을 선택하세요</option>' + (ctx.users || []).filter((u) => u.uid !== ctx.me.uid && !/^guest/i.test(u.empNo || '')).map((u) => '<option value="' + esc(u.uid) + '"' + (u.uid === val ? ' selected' : '') + '>' + esc(u.name + (u.rank ? ' ' + u.rank : '') + (u.dept ? ' · ' + u.dept : '')) + '</option>').join('') + '</select>';
+  if (f.type === 'project') return '<select class="jh-select"' + common + '><option value="">프로젝트를 선택하세요</option>' + (f.allowCommon ? '<option value="common"' + (val === 'common' ? ' selected' : '') + '>공통 · 프로젝트 무관(본사 경비)</option>' : '') + (ctx.projects || []).map((p) => '<option value="' + esc(p.id) + '"' + (p.id === val ? ' selected' : '') + '>' + esc((p.code ? p.code + ' · ' : '') + p.name) + '</option>').join('') + '</select>';
   if (f.type === 'date') return '<input class="jh-input" type="date"' + common + ' value="' + esc(val) + '">';
   if (f.type === 'number') return '<input class="jh-input" type="number" inputmode="decimal" step="0.5" min="0"' + common + ' value="' + esc(val) + '" placeholder="' + esc(f.ph || '') + '">';
   if (f.type === 'money') return '<input class="jh-input" type="text" inputmode="numeric"' + common + ' value="' + esc(val) + '" placeholder="' + esc(f.ph || '') + '">';
@@ -41,17 +42,20 @@ function itemsHtml(f, v, errs) {
     '<div><button type="button" class="jh-btn" data-variant="secondary" data-add-item' + (rows.length >= 20 ? ' disabled' : '') + '>+ 품목 추가</button></div></div>';
 }
 function fieldsBlock(type, v, errs, ctx) {
-  const list = fieldsFor(type, v); let out = ''; let buf = [];
-  const flush = () => { if (buf.length) { out += '<div class="jh-form__row">' + buf.join('') + '</div>'; buf = []; } };
-  list.forEach((f) => {
-    if (f.type === 'items') { flush(); out += itemsHtml(f, v, errs); return; }
-    const full = f.type === 'textarea' || f.type === 'project';
-    if (full) { flush(); out += '<div class="jh-form__row" data-cols="1">' + fieldHtml(f, v, errs, ctx) + '</div>'; return; }
-    buf.push(fieldHtml(f, v, errs, ctx)); if (buf.length === 2) flush();
-  });
-  flush(); return out;
+  return fieldRows(type, v).map((row) => {
+    if (row.items) return itemsHtml(row.fields[0], v, errs);
+    return '<div class="jh-form__row" data-cols="' + (row.layout || row.cols) + '">' + row.fields.map((f) => fieldHtml(f, v, errs, ctx)).join('') + '</div>';
+  }).join('');
 }
 
+/** 검색 결과 목록 — 입력창과 따로 갱신한다(입력 중인 한글이 끊기지 않게) */
+export function suggestHtml(line, ctx, ui) {
+  const q = (ui && ui.search) || ''; const picked = ui && ui.picked;
+  const taken = new Set([ctx.me.uid].concat(line.approvers, line.cc));
+  const cands = q ? ctx.users.filter((u) => !taken.has(u.uid) && (u.name.indexOf(q) !== -1 || (u.dept || '').indexOf(q) !== -1)).slice(0, 8) : [];
+  return cands.length ? '<ul class="jh-suggest" role="listbox">' + cands.map((u) => '<li class="jh-suggest__item" role="option" data-pick="' + esc(u.uid) + '" aria-selected="' + (u.uid === picked) + '"><span>' + esc(u.name) + ' <small>' + esc(u.rank) + '</small></span><span>' + esc(u.dept) + '</span></li>').join('') + '</ul>'
+    : (q ? '<div class="jh-field__hint">검색 결과가 없습니다.</div>' : '');
+}
 export function lineEditorHtml(line, ctx, ui) {
   const me = ctx.me; const gs = guideStatus(line, ctx);
   const issues = lineIssues(line, ctx);
@@ -65,14 +69,11 @@ export function lineEditorHtml(line, ctx, ui) {
         '<button type="button" class="jh-iconbtn" data-move="' + esc(uid) + ':1" aria-label="아래로"' + (i === line.approvers.length - 1 ? ' disabled' : '') + '>↓</button>' +
         '<button type="button" class="jh-iconbtn" data-remove="' + esc(uid) + '" aria-label="빼기"' + (locked ? ' disabled' : '') + '>×</button></span></li>';
   }).join('');
-  const ccItems = line.cc.map((uid) => '<li class="jh-line-item" data-kind="cc" data-uid="' + esc(uid) + '"><span class="jh-line-item__order">참조</span><span class="jh-line-item__name">' + uname(ctx, uid) + '</span><span class="jh-line-item__tag">열람</span>' +
-    '<span class="jh-line-item__actions"><button type="button" class="jh-iconbtn" data-remove="' + esc(uid) + '" aria-label="빼기">×</button></span></li>').join('');
+  const ccItems = line.cc.map((uid) => { const dep = !!ctx.deputy && uid === ctx.deputy;
+    return '<li class="jh-line-item" data-kind="cc" data-uid="' + esc(uid) + '"' + (dep ? ' data-locked="true"' : '') + '><span class="jh-line-item__order">참조</span><span class="jh-line-item__name">' + uname(ctx, uid) + '</span><span class="jh-line-item__tag">' + (dep ? '업무대리' : '열람') + '</span>' +
+    '<span class="jh-line-item__actions"><button type="button" class="jh-iconbtn" data-remove="' + esc(uid) + '" aria-label="빼기"' + (dep ? ' disabled' : '') + '>×</button></span></li>'; }).join('');
   const q = (ui && ui.search) || '';
-  const taken = new Set([me.uid].concat(line.approvers, line.cc));
-  const cands = q ? ctx.users.filter((u) => !taken.has(u.uid) && (u.name.indexOf(q) !== -1 || (u.dept || '').indexOf(q) !== -1)).slice(0, 8) : [];
   const picked = ui && ui.picked;
-  const suggest = cands.length ? '<ul class="jh-suggest" role="listbox">' + cands.map((u) => '<li class="jh-suggest__item" role="option" data-pick="' + esc(u.uid) + '" aria-selected="' + (u.uid === picked) + '"><span>' + esc(u.name) + ' <small>' + esc(u.rank) + '</small></span><span>' + esc(u.dept) + '</span></li>').join('') + '</ul>'
-    : (q ? '<div class="jh-field__hint">검색 결과가 없습니다.</div>' : '');
   const guide = gs.hasGuide ? '<div class="jh-guide"' + (gs.matches ? '' : ' data-diff="true"') + '><div class="jh-guide__title">권장 결재선</div><div class="jh-guide__line">' +
       gs.names.map((n, i) => (i ? '<span class="jh-guide__arrow" aria-hidden="true">→</span>' : '') + '<span class="jh-guide__step">' + esc(n) + '</span>').join('') + '</div>' +
       (gs.note ? '<p class="jh-guide__note">' + esc(gs.note) + '</p>' : '') +
@@ -81,9 +82,10 @@ export function lineEditorHtml(line, ctx, ui) {
   return '<div class="jh-line-editor"><ol class="jh-line-editor__list">' +
       '<li class="jh-line-item" data-kind="author"><span class="jh-line-item__order">작성</span><span class="jh-line-item__name">' + esc(me.name) + (me.rank ? ' <small>' + esc(me.rank) + '</small>' : '') + '</span><span class="jh-line-item__tag">작성자</span></li>' +
       approverItems + ccItems + '</ol>' +
-    '<div class="jh-line-editor__add"><input class="jh-input" type="search" data-line-search placeholder="이름 또는 부서로 직원 검색" value="' + esc(q) + '" aria-label="결재선에 추가할 직원 검색">' +
+    '<div class="jh-line-editor__add"><input class="jh-input" type="search" data-line-search placeholder="이름 또는 부서로 직원 검색" value="' + esc(q) + '" aria-label="결재선에 추가할 직원 검색" autocomplete="off">' +
       '<button type="button" class="jh-btn" data-variant="secondary" data-add="approver"' + (picked && line.approvers.length < MAX_APPROVERS ? '' : ' disabled') + '>결재자로 추가</button>' +
-      '<button type="button" class="jh-btn" data-variant="secondary" data-add="cc"' + (picked && line.cc.length < MAX_CC ? '' : ' disabled') + '>참조로 추가</button></div>' + suggest +
+      '<button type="button" class="jh-btn" data-variant="secondary" data-add="cc"' + (picked && line.cc.length < MAX_CC ? '' : ' disabled') + '>참조로 추가</button></div>' +
+    '<div data-suggest-box>' + suggestHtml(line, ctx, ui) + '</div>' +
     (ui && ui.lineError ? '<div class="jh-alert" data-tone="danger" role="alert">' + esc(ui.lineError) + '</div>' : '') +
     (issues.length ? '<div class="jh-alert" data-tone="warn" role="alert">' + issues.map(esc).join('<br>') + '</div>' : '') + guide + '</div>';
 }
