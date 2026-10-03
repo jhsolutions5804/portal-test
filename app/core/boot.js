@@ -1,8 +1,8 @@
-import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261003e';
-import { register, visibleFor, get } from './registry.js?v=20261003e';
-import { parseHash, onChange } from './router.js?v=20261003e';
-import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261003e';
-import * as edoc from '../modules/edoc/index.js?v=20261003e';
+import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261004a';
+import { register, visibleFor, get } from './registry.js?v=20261004a';
+import { parseHash, onChange } from './router.js?v=20261004a';
+import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261004a';
+import * as edoc from '../modules/edoc/index.js?v=20261004a';
 
 register(Object.assign({}, edoc.manifest, { mount: edoc.mount }));
 

@@ -1,10 +1,10 @@
-import { esc, escMultiline, money } from '../../core/ui.js?v=20261003e';
+import { esc, escMultiline, money } from '../../core/ui.js?v=20261004a';
 import {
   TYPE_LABEL, TYPE_GROUPS, STATUS_LABEL, STATUS_GROUPS, tabDefs, tabCounts, filterDocs, summaryOf,
   myTurn, canProxy, currentStepIndex, stepState, fmtDate, fmtDateTime, fmtYmd, isPassive, tabsOf, docTitle,
-  PAGE_SIZES, normalizeSize, paginate, pageNumbers, pageOfIndex
-} from './logic.js?v=20261003e';
-import { FORMS } from './forms.js?v=20261003e';
+  PAGE_SIZES, normalizeSize, paginate, pageNumbers, pageOfIndex, legacyCurrentStep
+} from './logic.js?v=20261004a';
+import { FORMS } from './forms.js?v=20261004a';
 
 export function badgeHtml(status) {
   return '<span class="jh-badge" data-status="' + esc(status) + '">' + esc(STATUS_LABEL[status] || status || '-') + '</span>';
@@ -104,6 +104,7 @@ export function detailHtml(ctx) {
   const notes = [];
   if (myTurn(d, me)) notes.push('<span class="jh-chip" data-tone="accent">내 차례</span>');
   else if (canProxy(d, me)) notes.push('<span class="jh-chip">관리자 대리 승인 대상</span>');
+  if (legacyCurrentStep(d)) notes.push('<span class="jh-chip" data-tone="warn">계정 정보 없는 구 문서 · 관리자 확인 필요</span>');
   return '<article class="jh-detail">' +
     '<button type="button" class="jh-btn jh-detail__back" data-variant="ghost" data-back>← 목록</button>' +
     '<header class="jh-detail__head">' +

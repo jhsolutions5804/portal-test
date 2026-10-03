@@ -45,7 +45,13 @@ function won(n) {
   return isFinite(v) && String(n).trim() !== '' ? v.toLocaleString('ko-KR') : '';
 }
 
-export const isMyStep = (s, me) => !!s && ((s.uid && s.uid === me.uid) || (!s.uid && s.name && s.name === me.name));
+/** 담당자 판정은 계정 번호(uid)로만 한다(서버 규칙과 동일). 이름만 있는 구 단계는 누구의 차례로도 보지 않는다. */
+export const isMyStep = (s, me) => !!s && typeof s.uid === 'string' && s.uid !== '' && s.uid === me.uid;
+/** 지금 차례인 단계에 계정 번호가 없는 구 문서 — 서버가 처리하지 않으므로 관리자 확인이 필요하다 */
+export function legacyCurrentStep(doc) {
+  const i = currentStepIndex(doc);
+  return i >= 0 && !(typeof doc.approvalLine[i].uid === 'string' && doc.approvalLine[i].uid !== '');
+}
 
 /** 지금 결재 차례인 단계의 인덱스(없으면 -1). 순번상 앞 단계가 모두 승인된 첫 pending 결재 단계. */
 export function currentStepIndex(doc) {

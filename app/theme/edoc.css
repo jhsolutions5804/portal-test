@@ -205,3 +205,11 @@
   .jh-pager__status { display: block; }
   .jh-pager__size .jh-select { min-height: var(--u-44); }
 }
+
+/* ── PC: 오른쪽 상세 패널이 목록을 스크롤해도 화면에 떠서 따라온다(sticky). 내용이 화면보다 길면 패널 안에서 스크롤 ── */
+@media (min-width: 900px) {
+  .jh-split__detail { position: sticky; top: var(--sp-4); align-self: start; max-height: calc(100vh - var(--sp-4) * 2); overflow-y: auto; overscroll-behavior: contain; }
+}
+@media print {
+  .jh-split__detail { position: static; max-height: none; overflow: visible; }
+}
