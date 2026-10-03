@@ -1,15 +1,18 @@
-import { fetchAll, fetchOne } from './data.js?v=20261004f';
-import { listHtml, detailHtml } from './views.js?v=20261004f';
-import { tabCounts } from './logic.js?v=20261004f';
-import { buildHash, navigate } from '../../core/router.js?v=20261004f';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261004f';
-import { toast } from '../../core/ui.js?v=20261004f';
-import { confirmDialog } from '../../core/dialog.js?v=20261004f';
-import { loadDirectory } from './directory.js?v=20261004f';
-import { act } from './api.js?v=20261004f';
-import * as C from './compose.js?v=20261004f';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261004f';
-import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml } from './compose-view.js?v=20261004f';
+import { fetchAll, fetchOne } from './data.js?v=20261004g';
+import { listHtml, detailHtml } from './views.js?v=20261004g';
+import { tabCounts } from './logic.js?v=20261004g';
+import { buildHash, navigate } from '../../core/router.js?v=20261004g';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261004g';
+import { toast } from '../../core/ui.js?v=20261004g';
+import { confirmDialog } from '../../core/dialog.js?v=20261004g';
+import { loadDirectory } from './directory.js?v=20261004g';
+import { act } from './api.js?v=20261004g';
+import * as C from './compose.js?v=20261004g';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261004g';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml } from './home-view.js?v=20261004g';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261004g';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261004g';
+import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml } from './compose-view.js?v=20261004g';
 
 const URL_DEFAULTS = { tab: 'todo', type: 'all', status: 'all', page: '1', size: '20' };   // 주소에서 생략하는 기본값
 
@@ -18,7 +21,7 @@ export const manifest = {
   title: '전자결재',
   icon: '✍',
   perm: (me) => me.admin || (me.perms && me.perms.edoc === true),
-  defaultHash: '#/edoc/box'
+  defaultHash: '#/edoc/home'
 };
 
 let cache = { uid: null, docs: null };
@@ -47,6 +50,7 @@ async function withPolicy(me) {
 export async function mount(root, route, ctx) {
   const kind = route.segs[0];
   if (kind === 'new' || kind === 'edit') return mountCompose(root, route, ctx);
+  if (kind === 'home') return mountHome(root, route, ctx);
   if (kind === 'print') return mountPrint(root, route, ctx);
   return mountBox(root, route, ctx);
 }
@@ -132,7 +136,8 @@ async function mountBox(root, route, ctx) {
   }
 
   root.onclick = (ev) => {
-    const t = ev.target.closest('[data-tab],[data-open],[data-back],[data-refresh],[data-page],[data-new],[data-do]'); if (!t) return;
+    const t = ev.target.closest('[data-tab],[data-open],[data-back],[data-refresh],[data-page],[data-new],[data-do],[data-home]'); if (!t) return;
+    if (t.hasAttribute('data-home')) { navigate('#/edoc/home', { replace: true }); return; }
     if (t.hasAttribute('data-do')) { runAction(t.getAttribute('data-do'), t); return; }
     if (t.hasAttribute('data-new')) { navigate('#/edoc/new', { state: { jh: 'fromList' } }); return; }
     if (t.hasAttribute('data-tab')) return goBox({ tab: t.getAttribute('data-tab'), page: '1' });
@@ -316,7 +321,11 @@ async function mountPrint(root, route, ctx) {
   let company = {};
   try { const s = await getDoc(doc(db, 'edoc_settings', 'company')); if (s.exists()) company = s.data(); } catch (e) { company = {}; }
   const todayStr = C.ymd(new Date());
-  const info = { hireDate: '', issueDate: todayStr };
+  const info = { hireDate: '', issueDate: todayStr, dept: '', rank: '', fromRoster: false };
+  try {   // 작성자의 입사일·소속·직위를 인사 명부(일반 정보)에서 자동으로 채운다 — 주민번호 등 개인정보는 쓰지 않는다
+    const w = findWorker(await loadWorkers(false), { uid: d.authorUid, email: d.authorEmail, name: d.authorName });
+    if (w) { info.hireDate = w.hireDate || ''; info.dept = w.dept || ''; info.rank = w.rank || ''; info.fromRoster = !!w.hireDate; }
+  } catch (e) { /* 못 불러오면 직접 입력 */ }
   const draw = () => {
     root.innerHTML = '<div class="jh-card jh-noprint">' + printPanelHtml(d, info, company, me.admin) + '</div>' +
       '<div class="jh-actionbar jh-noprint"><div class="jh-actionbar__primary"><button type="button" class="jh-btn" data-variant="primary" data-print>인쇄 / PDF 저장</button></div><div class="jh-actionbar__secondary"><button type="button" class="jh-btn" data-variant="ghost" data-back2>← 돌아가기</button></div></div>' +
@@ -337,5 +346,47 @@ async function mountPrint(root, route, ctx) {
       try { await setDoc(doc(db, 'edoc_settings', 'company'), { name: (company.name || '').trim(), ceo: (company.ceo || '').trim(), bizNo: (company.bizNo || '').trim(), address: (company.address || '').trim(), updatedAt: serverTimestamp() }, { merge: true }); toast('회사 정보를 저장했습니다.'); }
       catch (e) { toast('저장하지 못했습니다. 권한을 확인해 주세요.'); }
     }
+  };
+}
+
+/* ───────────────────────── 전자결재 홈 ───────────────────────── */
+async function mountHome(root, route, ctx) {
+  const { me } = ctx;
+  root.onclick = null; root.onchange = null; root.oninput = null;
+  const now = new Date(); const ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  const model = { me, lists: { approve: [], inbox: [], mine: [], posted: [] }, work: { state: 'loading', month: ym }, leave: { state: 'loading' } };
+  root.innerHTML = '<div class="jh-empty">불러오는 중…</div>';
+  const [docs] = await Promise.all([ensureDocs(me, false), withPolicy(me)]);
+  ctx.setBadge('edoc', tabCounts(docs, me).todo);
+  model.lists = homeLists(docs, me);
+  root.innerHTML = homeHtml(model);
+  const setBox = (id, html) => { const el = root.querySelector('#' + id); if (el) el.innerHTML = html; };
+
+  // 근로자 명부 → 입사일(연차)·근무자 번호(근로시간). 칸마다 따로 채워서 한쪽이 실패해도 다른 쪽은 보인다
+  (async () => {
+    let worker = null;
+    try { worker = findWorker(await loadWorkers(false), me); } catch (e) { worker = null; }
+    try {   // 연차 현황
+      if (!worker || !worker.hireDate) model.leave = { state: 'nohire' };
+      else model.leave = { state: 'ok', balance: calcLeaveBalance(worker.hireDate, leaveDocsOf(docs, me)) };
+    } catch (e) { console.error('연차 현황', e); model.leave = { state: 'error' }; }
+    setBox('edoc-leavebox', leaveBoxHtml(model.leave));
+    try {   // 이번 달 근로시간
+      if (!worker || !worker.linked) { model.work = { state: 'unlinked', month: ym }; }
+      else {
+        const [att, hol] = await Promise.all([loadMonthAttendance(worker.id, ym), loadHolidays()]);
+        const leaveHours = computeLeaveHoursForMonth(leaveDocsOf(docs, me).map((d) => Object.assign({}, d, { authorName: me.name })), me.name, now.getFullYear(), now.getMonth() + 1);
+        model.work = { state: 'ok', month: ym, summary: worktimeSummary(att.hours, leaveHours, monthlyStandardHours(now.getFullYear(), now.getMonth() + 1, hol), monthlyMaxOvertimeHours(now.getFullYear(), now.getMonth() + 1)) };
+      }
+    } catch (e) { console.error('근로시간', e); model.work = { state: 'error', month: ym }; }
+    setBox('edoc-work', worktimeHtml(model.work));
+  })();
+
+  root.onclick = (ev) => {
+    const t = ev.target.closest('[data-go],[data-open],[data-new]'); if (!t) return;
+    if (t.hasAttribute('data-new')) { navigate('#/edoc/new', { state: { jh: 'fromList' } }); return; }
+    if (t.hasAttribute('data-open')) { const [dt, did] = t.getAttribute('data-open').split('/'); navigate('#/edoc/doc/' + dt + '/' + did + '?tab=all', { state: { jh: 'fromList' } }); return; }
+    const to = { todo: '#/edoc/box', cc: '#/edoc/box?tab=cc', mine: '#/edoc/box?tab=mine', posted: me.admin ? '#/edoc/box?tab=all&status=posted' : '#/edoc/box?tab=all' }[t.getAttribute('data-go')];
+    if (to) navigate(to, { state: { jh: 'fromList' } });
   };
 }

@@ -240,3 +240,10 @@
   .jh-paper { width: 210mm; max-width: none; min-height: 0; margin: 0; padding: 18mm 16mm; box-shadow: none; }
   .jh-paper__table tr { break-inside: avoid; }
 }
+
+/* ── 전자결재 홈: 3칸 통계(근로시간·연차), 건수 카드는 눌러서 이동 ── */
+.jh-kpi-grid[data-cols="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+button.jh-kpi { text-align: left; font-family: inherit; color: inherit; cursor: pointer; }
+button.jh-kpi:hover { border-color: var(--c-primary); }
+.jh-kpi__value small { font-size: var(--fs-sm); font-weight: 600; color: var(--c-ink-2); }
+@media (max-width: 899px) { .jh-kpi-grid[data-cols="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

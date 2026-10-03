@@ -1,6 +1,6 @@
-import { esc, escMultiline } from '../../core/ui.js?v=20261004f';
-import { TYPE_LABEL, fmtYmd, fmtDateTime, isPassive, toMillis } from './logic.js?v=20261004f';
-import { FORMS } from './forms.js?v=20261004f';
+import { esc, escMultiline } from '../../core/ui.js?v=20261004g';
+import { TYPE_LABEL, fmtYmd, fmtDateTime, isPassive, toMillis } from './logic.js?v=20261004g';
+import { FORMS } from './forms.js?v=20261004g';
 
 /* 인쇄·PDF 양식 — 승인(또는 게시)된 문서만 뽑는다. 화면의 .jh-paper 는 어느 테마에서도 흰 종이(A4)다. */
 const dotted = (s) => String(s || '').replace(/-/g, '. ');
@@ -36,6 +36,7 @@ function companyBlock(co, who) {
 /** info: { hireDate, issueDate } 화면에서 입력한 인쇄용 정보, company: 회사 정보 */
 export function paperHtml(doc, info, company) {
   const I = info || {}; const today = I.issueDate || new Date().toISOString().slice(0, 10);
+  doc = Object.assign({}, doc, { authorDept: nz(doc.authorDept, I.dept), authorRank: nz(doc.authorRank, I.rank) });   // 문서에 없으면 인사 명부 값
   const t = doc.dtype;
   if (t === 'cert') {
     const en = String(doc.language || '').indexOf('영문') !== -1;
@@ -82,7 +83,7 @@ export function printPanelHtml(doc, info, company, isAdmin) {
   const fld = (id, label, val, type, hint) => '<div class="jh-field"><label class="jh-field__label" for="' + id + '">' + esc(label) + '</label><input class="jh-input" id="' + id + '" data-print="' + id + '" type="' + (type || 'text') + '" value="' + esc(val || '') + '">' + (hint ? '<span class="jh-field__hint">' + esc(hint) + '</span>' : '') + '</div>';
   return '<div class="jh-form jh-noprint"><header class="jh-form__head"><h2 class="jh-form__title">인쇄 · PDF</h2><p class="jh-form__sub">아래 양식을 확인하고 "인쇄 / PDF 저장"을 누르세요. 인쇄 창에서 대상을 "PDF로 저장"으로 고르면 PDF 파일이 됩니다.</p></header>' +
     (needs ? '<section class="jh-form__section"><h3 class="jh-form__h">발급 정보 <small>(이 화면에서만 쓰며 저장되지 않습니다)</small></h3><div class="jh-form__row">' +
-      fld('hireDate', '입사일', info.hireDate, 'date') + fld('issueDate', doc.dtype === 'cert' ? '발급일' : '작성일', info.issueDate, 'date') + '</div></section>' : '') +
+      fld('hireDate', '입사일', info.hireDate, 'date', info.fromRoster ? '인사 명부에서 불러왔습니다. 다르면 고쳐 주세요.' : '인사 명부에 입사일이 없어 직접 입력합니다.') + fld('issueDate', doc.dtype === 'cert' ? '발급일' : '작성일', info.issueDate, 'date') + '</div></section>' : '') +
     (needs && isAdmin ? '<section class="jh-form__section"><h3 class="jh-form__h">회사 정보 <small>(관리자만 수정 · 모든 증명서에 공통)</small></h3>' +
       '<div class="jh-form__row">' + fld('co-name', '상호', c.name || 'JH솔루션즈') + fld('co-ceo', '대표자', c.ceo) + '</div><div class="jh-form__row">' + fld('co-bizNo', '사업자등록번호', c.bizNo) + fld('co-address', '주소', c.address) + '</div>' +
       '<div><button type="button" class="jh-btn" data-variant="secondary" data-save-company>회사 정보 저장</button></div></section>' : '') +

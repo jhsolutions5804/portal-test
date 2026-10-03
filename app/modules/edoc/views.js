@@ -1,11 +1,11 @@
-import { esc, escMultiline, money } from '../../core/ui.js?v=20261004f';
+import { esc, escMultiline, money } from '../../core/ui.js?v=20261004g';
 import {
   TYPE_LABEL, TYPE_GROUPS, STATUS_LABEL, STATUS_GROUPS, tabDefs, tabCounts, filterDocs, summaryOf,
   myTurn, canProxy, currentStepIndex, stepState, fmtDate, fmtDateTime, fmtYmd, isPassive, tabsOf, docTitle,
   PAGE_SIZES, normalizeSize, paginate, pageNumbers, pageOfIndex, legacyCurrentStep, availableActions
-} from './logic.js?v=20261004f';
-import { actionbarHtml } from './compose-view.js?v=20261004f';
-import { FORMS } from './forms.js?v=20261004f';
+} from './logic.js?v=20261004g';
+import { actionbarHtml } from './compose-view.js?v=20261004g';
+import { FORMS } from './forms.js?v=20261004g';
 
 export function badgeHtml(status) {
   return '<span class="jh-badge" data-status="' + esc(status) + '">' + esc(STATUS_LABEL[status] || status || '-') + '</span>';
@@ -29,6 +29,21 @@ export function pagerHtml(p) {
       '<span class="jh-pager__status">' + p.page + ' / ' + p.pages + '</span>' + btn('다음', p.page + 1, p.page >= p.pages) + '</nav>' + size + '</div>';
 }
 
+/** 문서 목록 한 줄 — 결재함과 전자결재 홈이 함께 쓴다 */
+export function docRowHtml(d, me, selectedKey) {
+  const key = d.dtype + '/' + d.id;
+  const mine = myTurn(d, me) || canProxy(d, me);
+  return '<button type="button" class="jh-docrow' + (key === selectedKey ? ' is-selected' : '') + '" data-open="' + esc(key) + '">' +
+    '<span class="jh-docrow__main">' +
+      '<span class="jh-docrow__title">' + esc(docTitle(d) || '(제목 없음)') + '</span>' +
+      '<span class="jh-docrow__summary">' + esc(summaryOf(d)) + '</span>' +
+      '<span class="jh-docrow__meta">' + esc(TYPE_LABEL[d.dtype] || d.dtype) + ' · ' + esc(d.authorName || '-') +
+        (d.authorDept ? ' · ' + esc(d.authorDept) : '') + ' · ' + fmtDate(d._ms) + '</span>' +
+    '</span>' +
+    '<span class="jh-docrow__side">' + (mine ? '<span class="jh-chip" data-tone="accent">' + (myTurn(d, me) ? '내 차례' : '대리 가능') + '</span>' : '') + badgeHtml(d.status) + '</span>' +
+  '</button>';
+}
+
 export function listHtml(ctx) {
   const { docs, me, query, selectedKey } = ctx;
   const tab = query.tab || 'todo';
@@ -43,21 +58,10 @@ export function listHtml(ctx) {
   if (!want && selectedKey) want = pageOfIndex(all.findIndex(d => d.dtype + '/' + d.id === selectedKey), size);
   const pg = paginate(all, want, size);
   const rows = pg.rows;
-  const body = rows.length ? rows.map(d => {
-    const key = d.dtype + '/' + d.id;
-    const mine = myTurn(d, me);
-    return '<button type="button" class="jh-docrow' + (key === selectedKey ? ' is-selected' : '') + '" data-open="' + esc(key) + '">' +
-      '<span class="jh-docrow__main">' +
-        '<span class="jh-docrow__title">' + esc(docTitle(d) || '(제목 없음)') + '</span>' +
-        '<span class="jh-docrow__summary">' + esc(summaryOf(d)) + '</span>' +
-        '<span class="jh-docrow__meta">' + esc(TYPE_LABEL[d.dtype] || d.dtype) + ' · ' + esc(d.authorName || '-') +
-          (d.authorDept ? ' · ' + esc(d.authorDept) : '') + ' · ' + fmtDate(d._ms) + '</span>' +
-      '</span>' +
-      '<span class="jh-docrow__side">' + (mine ? '<span class="jh-chip" data-tone="accent">내 차례</span>' : '') + badgeHtml(d.status) + '</span>' +
-    '</button>';
-  }).join('') : '<div class="jh-empty">조건에 맞는 문서가 없습니다.</div>';
+  const body = rows.length ? rows.map(d => docRowHtml(d, me, selectedKey)).join('') : '<div class="jh-empty">조건에 맞는 문서가 없습니다.</div>';
   return '<div class="jh-edoc-tabs" role="tablist">' + tabs + '</div>' +
     '<div class="jh-filters">' +
+      '<button type="button" class="jh-btn" data-variant="ghost" data-home>‹ 전자결재 홈</button>' +
       '<button type="button" class="jh-btn" data-variant="primary" data-new>＋ 새 문서 작성</button>' +
       '<select class="jh-select" data-filter="type" aria-label="문서 종류">' + optionList(TYPE_GROUPS, query.type) + '</select>' +
       '<select class="jh-select" data-filter="status" aria-label="상태">' + optionList(STATUS_GROUPS, query.status) + '</select>' +
