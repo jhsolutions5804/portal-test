@@ -176,7 +176,7 @@ const sec = (n, t, body, box = true) => `<div class="pv-sec"><p class="pv-h">${n
 const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>전자결재 v2 UI 미리보기 (가짜 샘플 데이터)</title>
 <link rel="stylesheet" href="theme/tokens.css"><link rel="stylesheet" href="theme/base.css"><link rel="stylesheet" href="theme/components.css"><link rel="stylesheet" href="theme/shell.css"><link rel="stylesheet" href="theme/edoc.css">
-<style>.pv-sec{max-width:1200px;margin:32px auto;padding:0 16px}.pv-h{font-size:14px;color:#5C6F8A;margin:0 0 8px;font-weight:700}.pv-cap{font-size:12px;color:#5C6F8A;margin:12px 0 4px}.pv-box{background:var(--c-bg);padding:16px;border:1px dashed var(--c-line-strong);border-radius:12px}.pv-card{background:var(--c-surface);border:1px solid var(--c-line);border-radius:12px;max-width:760px}</style></head><body>
+<style>.pv-sec{max-width:1200px;margin:32px auto;padding:0 16px}.pv-h{font-size:14px;color:var(--c-ink-2);margin:0 0 8px;font-weight:700}.pv-cap{font-size:12px;color:var(--c-ink-2);margin:12px 0 4px}.pv-box{background:var(--c-bg);padding:16px;border:1px dashed var(--c-line-strong);border-radius:12px}.pv-card{background:var(--c-surface);border:1px solid var(--c-line);border-radius:12px;max-width:760px}</style></head><body>
 ${sec(1, '앱 셸 + 결재함 + 상세 (900px 이상 PC 배치 / 미만 모바일 배치) — 1단계, 이미 구현됨', shellHtml, false)}
 ${sec(2, '로그인 (오류 메시지 표시 상태) — 1단계', loginHtml)}
 ${sec(3, '상태 배지 6종', statuses)}

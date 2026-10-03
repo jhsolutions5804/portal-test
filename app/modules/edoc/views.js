@@ -1,10 +1,10 @@
-import { esc, escMultiline, money } from '../../core/ui.js?v=20261004a';
+import { esc, escMultiline, money } from '../../core/ui.js?v=20261004b';
 import {
   TYPE_LABEL, TYPE_GROUPS, STATUS_LABEL, STATUS_GROUPS, tabDefs, tabCounts, filterDocs, summaryOf,
   myTurn, canProxy, currentStepIndex, stepState, fmtDate, fmtDateTime, fmtYmd, isPassive, tabsOf, docTitle,
   PAGE_SIZES, normalizeSize, paginate, pageNumbers, pageOfIndex, legacyCurrentStep
-} from './logic.js?v=20261004a';
-import { FORMS } from './forms.js?v=20261004a';
+} from './logic.js?v=20261004b';
+import { FORMS } from './forms.js?v=20261004b';
 
 export function badgeHtml(status) {
   return '<span class="jh-badge" data-status="' + esc(status) + '">' + esc(STATUS_LABEL[status] || status || '-') + '</span>';

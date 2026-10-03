@@ -63,6 +63,38 @@ for pat, label in [(r'!important', '!important'), (r'(^|[\s,}])#[A-Za-z_][\w-]*\
 widths = set(re.findall(r'@media\s*\(\s*max-width:\s*(\d+)px', body)) | set(re.findall(r'@media\s*\(\s*min-width:\s*(\d+)px', body))
 bad_w = [w for w in widths if w not in ('899', '900')]
 (problems if bad_w else ok).append('기준 폭 외 미디어쿼리: %s' % bad_w if bad_w else '미디어쿼리 기준 폭: %s' % sorted(widths))
+# 다크 테마: 라이트에서 정의한 색 토큰이 다크 블록에서도 모두 다시 정의되어 있고, 글자-바탕 조합이 모두 4.5:1 이상인지
+tok = nocomment(css['tokens'])
+def parse_vars(block):
+    return {k: v.strip() for k, v in re.findall(r'(--[a-z0-9-]+)\s*:\s*([^;]+);', block)}
+m_light = re.search(r':root\s*\{(.*?)\n\}', tok, flags=re.S)
+m_dark = re.search(r'@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*:root:not\(\[data-theme="light"\]\)\s*\{(.*?)\n  \}\s*\}', tok, flags=re.S)
+if not m_light: problems.append('tokens.css 에서 :root 블록을 찾지 못함')
+elif not m_dark: problems.append('다크 테마 블록(@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { … } })이 없음')
+else:
+    L = parse_vars(m_light.group(1)); D = parse_vars(m_dark.group(1))
+    is_color = lambda v: bool(re.match(r'^(#|rgba?\()', v))
+    FIXED = {'--c-on-primary', '--c-hover-on-dark', '--paper-bg', '--paper-ink', '--paper-line', '--paper-head', '--c-side-active'}   # 테마가 달라도 같아도 되는 색
+    missing = [k for k, v in L.items() if is_color(v) and k not in D and k not in FIXED]
+    (problems if missing else ok).append('다크 블록에 다시 정의되지 않은 색 토큰: %s' % missing if missing else '다크 블록이 라이트의 색 토큰을 모두 다시 정의함(%d개)' % len(D))
+    if 'color-scheme' not in tok: problems.append(':root 에 color-scheme: light dark 가 없음')
+    def lum(h):
+        h = h.lstrip('#'); h = h * 2 if len(h) == 3 else h
+        r, g, b = [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+        f = lambda x: x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4
+        return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+    def ratio(a, b): la, lb = lum(a), lum(b); hi, lo = max(la, lb), min(la, lb); return (hi + 0.05) / (lo + 0.05)
+    PAIRS = [('ink','surface'),('ink','bg'),('ink-2','surface'),('ink-2','bg'),('ink-2','primary-weak'),('ink-3','surface'),('ink-3','bg'),('primary','surface'),('primary','bg'),('primary','primary-weak'),('primary-strong','primary-weak'),
+             ('success','surface'),('danger','surface'),('warn-ink','warn-weak'),('warn-ink','warn-bg'),('primary-ink','primary'),('on-danger','danger'),('on-primary','side-active'),('side-ink','side'),('toast-ink','toast-bg'),
+             ('st-draft-fg','st-draft-bg'),('st-pending-fg','st-pending-bg'),('st-reviewing-fg','st-reviewing-bg'),('st-approved-fg','st-approved-bg'),('st-rejected-fg','st-rejected-bg'),('st-posted-fg','st-posted-bg'),('st-rejected-fg','surface')]
+    for name, T in (('라이트', dict(L)), ('다크', {**L, **D})):
+        low = []
+        for f, b in PAIRS:
+            fv = T.get('--c-' + f) or T.get('--' + f); bv = T.get('--c-' + b) or T.get('--' + b)
+            if fv and bv and fv.startswith('#') and bv.startswith('#'):
+                r = ratio(fv, bv)
+                if r < 4.5: low.append('%s/%s %.2f' % (f, b, r))
+        (problems if low else ok).append('%s 테마 글자-바탕 대비 4.5 미달: %s' % (name, low) if low else '%s 테마 글자-바탕 %d조합 모두 4.5:1 이상' % (name, len(PAIRS)))
 pv = os.path.join(theme, '..', 'preview.html')
 if os.path.exists(pv):
     h = open(pv, encoding='utf-8').read()

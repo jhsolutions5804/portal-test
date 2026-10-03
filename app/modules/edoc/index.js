@@ -1,7 +1,7 @@
-import { fetchAll, fetchOne } from './data.js?v=20261004a';
-import { listHtml, detailHtml } from './views.js?v=20261004a';
-import { tabCounts } from './logic.js?v=20261004a';
-import { buildHash } from '../../core/router.js?v=20261004a';
+import { fetchAll, fetchOne } from './data.js?v=20261004b';
+import { listHtml, detailHtml } from './views.js?v=20261004b';
+import { tabCounts } from './logic.js?v=20261004b';
+import { buildHash, navigate } from '../../core/router.js?v=20261004b';
 
 const URL_DEFAULTS = { tab: 'todo', type: 'all', status: 'all', page: '1', size: '20' };   // 주소에서 생략하는 기본값
 
@@ -14,6 +14,7 @@ export const manifest = {
 };
 
 let cache = { uid: null, docs: null };
+let listScroll = null;   // 문서를 열기 직전 목록 스크롤 위치(뒤로 오면 복원)
 let loading = null;
 
 async function ensureDocs(me, force) {
@@ -41,11 +42,14 @@ export async function mount(root, route, ctx) {
   const listEl = root.querySelector('#edoc-list');
   const detailEl = root.querySelector('#edoc-detail');
   const q = route.query;
-  const goBox = (patch) => { location.hash = buildHash('edoc', '/box', Object.assign({}, q, patch), URL_DEFAULTS); };
+  const boxHash = (patch) => buildHash('edoc', '/box', Object.assign({}, q, patch), URL_DEFAULTS);
+  const goBox = (patch) => navigate(boxHash(patch), { replace: true });   // 탭·필터·쪽 이동은 기록을 쌓지 않는다
 
   const docs = await ensureDocs(me, false);
   ctx.setBadge('edoc', tabCounts(docs, me).todo);
   listEl.innerHTML = listHtml({ docs, me, query: q, selectedKey });
+  if (!isDetail && listScroll != null) { window.scrollTo(0, listScroll); listScroll = null; }   // 상세에서 뒤로 오면 보던 위치로
+  if (isDetail && window.matchMedia('(max-width: 899px)').matches) window.scrollTo(0, 0);        // 폰: 상세는 맨 위부터
 
   if (isDetail) {
     detailEl.innerHTML = detailHtml({ me, loading: true });
@@ -61,9 +65,16 @@ export async function mount(root, route, ctx) {
     if (t.hasAttribute('data-page')) return goBox({ page: t.getAttribute('data-page') });
     if (t.hasAttribute('data-open')) {
       const [dt, did] = t.getAttribute('data-open').split('/');
-      location.hash = buildHash('edoc', '/doc/' + dt + '/' + did, q, URL_DEFAULTS); return;
+      const target = buildHash('edoc', '/doc/' + dt + '/' + did, q, URL_DEFAULTS);
+      if (isDetail) navigate(target, { replace: true });                       // PC: 다른 문서를 고를 때는 기록을 쌓지 않는다
+      else { listScroll = window.scrollY; navigate(target, { state: { jh: 'fromList' } }); }   // 목록 → 문서: 새 화면이므로 기록을 쌓는다
+      return;
     }
-    if (t.hasAttribute('data-back')) return goBox({});
+    if (t.hasAttribute('data-back')) {
+      const st = history.state;
+      if (st && st.jh === 'fromList') { history.back(); return; }   // 목록에서 들어왔으면 뒤로가기와 똑같이
+      navigate(boxHash({}), { replace: true }); return;              // 주소로 바로 들어왔으면 목록으로 바꿔 놓는다
+    }
     if (t.hasAttribute('data-refresh')) {
       cache = { uid: null, docs: null };
       mount(root, route, ctx);

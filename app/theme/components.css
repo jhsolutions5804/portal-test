@@ -1,6 +1,6 @@
 .jh-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: var(--u-40); padding: 0 var(--sp-4); border-radius: var(--radius-sm); border: var(--u-1) solid var(--c-line-strong); background: var(--c-surface); font-size: var(--fs-sm); font-weight: 600; }
 .jh-btn[data-variant="primary"] { background: var(--c-primary); border-color: var(--c-primary); color: var(--c-primary-ink); }
-.jh-btn[data-variant="danger"] { background: var(--c-danger); border-color: var(--c-danger); color: var(--c-on-primary); }
+.jh-btn[data-variant="danger"] { background: var(--c-danger); border-color: var(--c-danger); color: var(--c-on-danger); }
 .jh-btn[data-variant="ghost"] { background: transparent; border-color: transparent; color: var(--c-ink-2); }
 .jh-btn:disabled { opacity: .55; cursor: default; }
 .jh-card { background: var(--c-surface); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); box-shadow: var(--shadow-1); }
@@ -18,7 +18,7 @@
 .jh-chip[data-tone="accent"] { background: var(--c-primary-weak); color: var(--c-primary-strong); border-color: transparent; }
 .jh-chip[data-tone="warn"] { background: var(--c-warn-bg); color: var(--c-warn-ink); border-color: transparent; }
 .jh-empty { padding: var(--sp-6) var(--sp-4); text-align: center; color: var(--c-ink-3); font-size: var(--fs-sm); }
-.jh-toast { position: fixed; left: 50%; bottom: var(--u-84); transform: translate(-50%, var(--u-12)); opacity: 0; transition: var(--duration-fast); background: var(--c-ink); color: var(--c-on-primary); padding: var(--u-10) var(--u-16); border-radius: var(--u-999); font-size: var(--fs-sm); z-index: var(--z-toast); pointer-events: none; }
+.jh-toast { position: fixed; left: 50%; bottom: var(--u-84); transform: translate(-50%, var(--u-12)); opacity: 0; transition: var(--duration-fast); background: var(--c-toast-bg); color: var(--c-toast-ink); padding: var(--u-10) var(--u-16); border-radius: var(--u-999); font-size: var(--fs-sm); z-index: var(--z-toast); pointer-events: none; }
 .jh-toast.is-show { opacity: 1; transform: translate(-50%, 0); }
 
 /* ── 2단계 공통 컴포넌트 ── */

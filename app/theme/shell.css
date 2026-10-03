@@ -13,7 +13,7 @@
 .jh-nav__item.is-active { background: var(--c-side-active); color: var(--c-on-primary); }
 .jh-nav__icon { width: var(--u-20); text-align: center; }
 .jh-nav__label { min-width: 0; }
-.jh-nav__badge { margin-left: auto; min-width: var(--u-20); padding: 0 var(--u-6); border-radius: var(--u-999); background: var(--c-danger); color: var(--c-on-primary); font-size: var(--fs-xs); text-align: center; font-weight: 700; }
+.jh-nav__badge { margin-left: auto; min-width: var(--u-20); padding: 0 var(--u-6); border-radius: var(--u-999); background: var(--c-danger); color: var(--c-on-danger); font-size: var(--fs-xs); text-align: center; font-weight: 700; }
 .jh-sidebar__foot { margin-top: auto; display: grid; gap: var(--sp-2); }
 .jh-sidebar .jh-btn[data-variant="ghost"] { color: var(--c-side-ink); justify-content: flex-start; }
 .jh-userchip { font-size: var(--fs-sm); font-weight: 600; }
