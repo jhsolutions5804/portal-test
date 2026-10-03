@@ -3,6 +3,8 @@ import { listHtml, detailHtml, qs } from './views.js';
 import { tabCounts } from './logic.js';
 import { buildHash } from '../../core/router.js';
 
+const URL_DEFAULTS = { tab: 'todo', type: 'all', status: 'all' };   // 주소에서 생략하는 기본값
+
 export const manifest = {
   id: 'edoc',
   title: '전자결재',
@@ -39,7 +41,7 @@ export async function mount(root, route, ctx) {
   const listEl = root.querySelector('#edoc-list');
   const detailEl = root.querySelector('#edoc-detail');
   const q = route.query;
-  const goBox = (patch) => { location.hash = buildHash('edoc', '/box', Object.assign({}, q, patch)); };
+  const goBox = (patch) => { location.hash = buildHash('edoc', '/box', Object.assign({}, q, patch), URL_DEFAULTS); };
 
   const docs = await ensureDocs(me, false);
   ctx.setBadge('edoc', tabCounts(docs, me).todo);
@@ -58,7 +60,7 @@ export async function mount(root, route, ctx) {
     if (t.hasAttribute('data-tab')) return goBox({ tab: t.getAttribute('data-tab') });
     if (t.hasAttribute('data-open')) {
       const [dt, did] = t.getAttribute('data-open').split('/');
-      location.hash = buildHash('edoc', '/doc/' + dt + '/' + did, q); return;
+      location.hash = buildHash('edoc', '/doc/' + dt + '/' + did, q, URL_DEFAULTS); return;
     }
     if (t.hasAttribute('data-back')) return goBox({});
     if (t.hasAttribute('data-refresh')) {

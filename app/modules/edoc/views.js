@@ -8,12 +8,6 @@ import { FORMS } from './forms.js';
 export function badgeHtml(status) {
   return '<span class="jh-badge" data-status="' + esc(status) + '">' + esc(STATUS_LABEL[status] || status || '-') + '</span>';
 }
-export function qs(query) {
-  const p = new URLSearchParams();
-  Object.keys(query || {}).forEach(k => { const v = query[k]; if (v != null && v !== '' && v !== 'all') p.set(k, v); });
-  const s = p.toString(); return s ? '?' + s : '';
-}
-
 function optionList(groups, current) {
   return groups.map(g => '<option value="' + esc(g.key) + '"' + (g.key === (current || 'all') ? ' selected' : '') + '>' + esc(g.label) + '</option>').join('');
 }
