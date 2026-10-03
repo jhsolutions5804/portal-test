@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- holiday-shared: 20261001 공휴일 목록을 공용 파일(holidays.js) 한 곳으로 일원화 --><!-- holiday-data: 20261001 공휴일 정비(2025~2027): 누락·오류 보정 --><!-- GUEST 사번(사번이 guest로 시작): 일정 등록·수정·삭제·완료 체크 불가(함수 차단, 서버 보안규칙도 차단) · 이전:  build: 20261002a · ver: 3.8.2 · 설정 탭 관리자 전용(일반 계정은 탭·화면 숨김) / 직전: build: 20260930c · ver: 3.8.1 · PC 본문 하단 잘림(프로젝트 종료 버튼) 수정, 발주처·시공사·협력사 한 줄 배치 / 직전: ver 3.8.0 · 프로젝트 기본정보 통일(PJT 코드·내용·현장명·발주처·시공사·협력사) — 기획↔PJT관리 양방향 반영 / 직전: ver 3.7.0 · 경량PJT 공정표 PPT 추가 + 일정관리 PC 레이아웃 통일 / 직전: ver 3.6.0 · 공사일보 조회 모달 중앙정렬+목록 간소화(날짜만), 설정에서 현장정보 전체 수정 가능, 근태관리 탭 날짜 클릭 이동, 사용장비 하드코딩(FAB 지게차번호) 제거→자유입력 · 이전: 20260925a ver 3.5.0 -->
+<!DOCTYPE html><!-- holiday-shared: 20261001 공휴일 목록을 공용 파일(holidays.js) 한 곳으로 일원화 --><!-- holiday-data: 20261001 공휴일 정비(2025~2027): 누락·오류 보정 --><!-- GUEST 사번(사번이 guest로 시작): 일정 등록·수정·삭제·완료 체크 불가(함수 차단, 서버 보안규칙도 차단) · 이전:  build: 20261002d · ver: 3.8.3 · 공정 체크·출역 체크·공수 입력은 일반 계정도 가능(GUEST 는 조회만, 단 팀장 지정 GUEST 는 자기 팀원의 출역·공수와 공정 체크 가능) / 직전: build: 20261002a · ver: 3.8.2 · 설정 탭 관리자 전용(일반 계정은 탭·화면 숨김) / 직전: build: 20260930c · ver: 3.8.1 · PC 본문 하단 잘림(프로젝트 종료 버튼) 수정, 발주처·시공사·협력사 한 줄 배치 / 직전: ver 3.8.0 · 프로젝트 기본정보 통일(PJT 코드·내용·현장명·발주처·시공사·협력사) — 기획↔PJT관리 양방향 반영 / 직전: ver 3.7.0 · 경량PJT 공정표 PPT 추가 + 일정관리 PC 레이아웃 통일 / 직전: ver 3.6.0 · 공사일보 조회 모달 중앙정렬+목록 간소화(날짜만), 설정에서 현장정보 전체 수정 가능, 근태관리 탭 날짜 클릭 이동, 사용장비 하드코딩(FAB 지게차번호) 제거→자유입력 · 이전: 20260925a ver 3.5.0 -->
 <html lang="ko">
 <head><script src="../holidays.js?v=20261001"></script>
 <meta charset="UTF-8">
@@ -774,6 +774,8 @@ const params = new URLSearchParams(location.search);
 const pjtId = params.get('pjtId');
 // ⚠️ isAdmin은 더 이상 URL 파라미터(?admin=1)로 판단하지 않는다 — 아래 접근 검증에서 portal_users.admin 값을 확인한 뒤에만 true로 바뀐다.
 let isAdmin=false;
+let teamLeaderIds=[];            // 관리자가 이 계정에 지정한 팀장(master_workers) id — GUEST 중 팀장 지정 계정은 자기 팀만 입력 가능
+let teamMasterIds=new Set();     // 자기 팀 소속 master id(팀장 본인 + 팀원)
 let isGuest=false;   // GUEST 사번(사번이 guest로 시작): 일정은 읽기 전용
 const DEFAULT_STAGES = ['반입','설치','시운전'];
 
@@ -819,6 +821,7 @@ onAuthStateChanged(auth, async function(user){
     isAdmin=!!(uData && uData.admin===true);
     document.body.classList.toggle('is-admin',isAdmin);   // 설정 탭은 관리자 전용
     isGuest=!!(uData && typeof uData.empNo==='string' && /^guest/i.test(uData.empNo.trim()));
+    teamLeaderIds=(uData && Array.isArray(uData.teamLeaderIds))?uData.teamLeaderIds.slice():[];
     loginUserLabel=uData?((uData.name||'')+' '+(uData.rank||'')).trim():'';
     currentUid=user.uid;
     currentUserName=uData?(uData.name||''):'';
@@ -843,7 +846,6 @@ async function init(){
       document.getElementById('item-add-btn').style.display='inline-block';
       document.getElementById('item-bulk-btn').style.display='inline-block';
       document.getElementById('worker-mgmt-btn').style.display='inline-block';
-      document.getElementById('att-bulk-row').style.display='flex';
       document.getElementById('e-code').value=pjtData.name||'';
       document.getElementById('e-site').value=pjtData.site||'';
       document.getElementById('e-client').value=pjtData.client||'';
@@ -855,7 +857,9 @@ async function init(){
       document.getElementById('e-start').value=pjtData.startDate||'';
       renderStageTags();
     }
+    if(canWorkAny()) document.getElementById('att-bulk-row').style.display='flex';   // 출역·공수 입력은 일반 계정도 가능(GUEST 제외)
     document.getElementById('ks-open-btn').style.display='block';
+    if(isGuest && teamLeaderIds.length) await loadTeamMasters();   // 팀장 지정 GUEST: 자기 팀 범위 확인
     loadItems();
     loadWorkers().then(function(){ renderAttGrid(); loadWorkerTotals(); });
     attDate=getToday(); renderAttDay();
@@ -1237,7 +1241,7 @@ async function renderItemGrid(){
     html+='<tr><td class="item-name">'+escapeHtml(it.name)+'</td>';
     stageList.forEach(function(s){
       const done=stages[s];
-      const clickable=isAdmin && editable;
+      const clickable=editable && canCheckStage();   // 공정 체크는 일반 계정도 가능(GUEST 는 조회만)
       html+='<td><button class="chk-cell'+(done?' done':'')+'" '+(clickable?('onclick="toggleItemStage(\''+it.id+'\',\''+encodeURIComponent(s)+'\')"'):'disabled')+'>'+(done?'✓':'')+'</button></td>';
     });
     if(isAdmin && today) html+='<td><button class="del-btn" onclick="deleteItem(\''+it.id+'\')">삭제</button></td>';
@@ -1462,6 +1466,17 @@ window.deleteWorker=async function(id){
   try{ await deleteDoc(doc(db,'pjt_registry',pjtId,'workers',id)); await loadWorkers(); renderAttGrid(); renderWorkerMgmtListLight(); loadWorkerTotals(); }
   catch(e){ toast('삭제 실패: '+e.message); }
 };
+// ── 입력 권한: 일반 계정은 전체, GUEST 는 조회만, 단 팀장 지정 GUEST 는 자기 팀원의 출역·공수와 공정 체크만 ──
+function canCheckStage(){ return !isGuest || teamLeaderIds.length>0; }
+function canWork(w){ if(!isGuest) return true; if(!teamLeaderIds.length) return false; return teamMasterIds.has(w.masterId||w.id); }
+function canWorkAny(){ return !isGuest || teamLeaderIds.length>0; }
+async function loadTeamMasters(){
+  teamMasterIds=new Set(teamLeaderIds);   // 팀장 본인
+  try{
+    const snap=await getDocs(collection(db,'master_workers'));
+    snap.forEach(function(d){ const m=d.data(); if(m.leaderId && teamLeaderIds.indexOf(m.leaderId)!==-1) teamMasterIds.add(d.id); });   // 그 팀장의 팀원
+  }catch(e){ /* 조회 실패 시 본인(팀장)만 */ }
+}
 async function loadWorkers(){
   try{
     const snap=await getDocs(query(collection(db,'pjt_registry',pjtId,'workers'), orderBy('order','asc')));
@@ -1561,13 +1576,15 @@ window.toggleAttCheck=function(wid){
   _attWriteManday();
 };
 window.toggleAllAttCheck=function(){
-  if(!workersCache.length) return;
-  const allChecked=workersCache.every(function(w){ return attChecks.indexOf(w.id)!==-1; });
+  const targets=workersCache.filter(canWork);   // 팀장 GUEST 는 자기 팀원만 대상
+  if(!targets.length) return;
+  const allChecked=targets.every(function(w){ return attChecks.indexOf(w.id)!==-1; });
+  const tIds=targets.map(function(w){ return w.id; });
   if(allChecked){
-    attChecks=[];
+    attChecks=attChecks.filter(function(id){ return tIds.indexOf(id)===-1; });
   } else {
-    attChecks=workersCache.map(function(w){ return w.id; });
-    workersCache.forEach(function(w){ if(attManday[w.id]==null) attManday[w.id]=1; });
+    tIds.forEach(function(id){ if(attChecks.indexOf(id)===-1) attChecks.push(id); });
+    targets.forEach(function(w){ if(attManday[w.id]==null) attManday[w.id]=1; });
   }
   renderAttGrid();
   _attWriteChecks();
@@ -1582,7 +1599,7 @@ window.applyAllAttManday=function(){
   if(isNaN(v)||v<0) v=0;
   if(v>3) v=3;
   v=Math.round(v*10)/10;
-  workersCache.forEach(function(w){
+  workersCache.filter(canWork).forEach(function(w){   // 팀장 GUEST 는 자기 팀원만 대상
     if(v===0) delete attManday[w.id]; else attManday[w.id]=v;
   });
   renderAttGrid();
@@ -1610,7 +1627,8 @@ function renderAttGrid(){
   if(countEl) countEl.textContent='출역 '+attChecks.length+'명 / 전체 '+workersCache.length+'명';
   const allBtn=document.getElementById('att-toggle-all-btn');
   if(allBtn){
-    const allChecked=workersCache.length>0 && workersCache.every(function(w){ return attChecks.indexOf(w.id)!==-1; });
+    const _tg=workersCache.filter(canWork);
+    const allChecked=_tg.length>0 && _tg.every(function(w){ return attChecks.indexOf(w.id)!==-1; });
     allBtn.textContent=allChecked?'✕ 전체 출역 해제':'✓ 전체 출역 체크';
     allBtn.style.borderColor=allChecked?'#c0392b':'#1D5BA6';
     allBtn.style.color=allChecked?'#c0392b':'#1D5BA6';
@@ -1621,14 +1639,14 @@ function renderAttGrid(){
     const checked=attChecks.indexOf(w.id)!==-1;
     const md=attManday[w.id]||0;
     const birthPart = w.birth ? '' : (isAdmin?('<input type="date" style="font-size:11px;padding:3px 6px;border:1px solid #ffd699;border-radius:6px;margin-left:6px;background:#fff8ea;min-width:120px" title="생년월일 미입력 — 입력하면 다른 PJT 공수와 합산됩니다" onclick="event.stopPropagation()" onchange="event.stopPropagation();updateWorkerBirth(\''+w.id+'\',this.value)">'):'');
-    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:#f5f5f7;border-radius:10px;margin-bottom:6px;cursor:pointer;user-select:none" '+(isAdmin?('onclick="toggleAttCheck(\''+w.id+'\')"'):'')+'>'
+    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:#f5f5f7;border-radius:10px;margin-bottom:6px;cursor:pointer;user-select:none" '+(canWork(w)?('onclick="toggleAttCheck(\''+w.id+'\')"'):'')+'>'
       +'<div style="width:22px;height:22px;border-radius:6px;border:1.5px solid '+(checked?'#1D5BA6':'#d1d1d6')+';background:'+(checked?'#1D5BA6':'#fff')+';flex-shrink:0;display:flex;align-items:center;justify-content:center">'
       +(checked?'<div style="width:11px;height:7px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg) translate(1px,-1px)"></div>':'')+'</div>'
       +'<span style="font-size:13px;font-weight:600;color:'+(checked?'#1D5BA6':'#1d1d1f')+'">'+escapeHtml(w.name)+'</span>'+birthPart
       +'<div style="margin-left:auto;display:flex;align-items:center;gap:4px" onclick="event.stopPropagation()">'
-      +(isAdmin?('<button class="md-adj-btn" onclick="adjustMandayLight(\''+w.id+'\',-0.5)">－</button>'):'')
-      +'<input class="md-input" type="number" inputmode="decimal" step="0.5" min="0" max="3" data-wid="'+w.id+'" value="'+(md?md.toFixed(1):'')+'" placeholder="0" '+(isAdmin?('onchange="setMandayInputLight(\''+w.id+'\',this.value)"'):'disabled')+' style="width:44px;text-align:center;padding:5px 3px;border:1px solid #dde4ef;border-radius:6px;font-size:12px">'
-      +(isAdmin?('<button class="md-adj-btn" onclick="adjustMandayLight(\''+w.id+'\',0.5)">＋</button>'):'')
+      +(canWork(w)?('<button class="md-adj-btn" onclick="adjustMandayLight(\''+w.id+'\',-0.5)">－</button>'):'')
+      +'<input class="md-input" type="number" inputmode="decimal" step="0.5" min="0" max="3" data-wid="'+w.id+'" value="'+(md?md.toFixed(1):'')+'" placeholder="0" '+(canWork(w)?('onchange="setMandayInputLight(\''+w.id+'\',this.value)"'):'disabled')+' style="width:44px;text-align:center;padding:5px 3px;border:1px solid #dde4ef;border-radius:6px;font-size:12px">'
+      +(canWork(w)?('<button class="md-adj-btn" onclick="adjustMandayLight(\''+w.id+'\',0.5)">＋</button>'):'')
       +'</div></div>';
   }).join('');
 }
