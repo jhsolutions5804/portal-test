@@ -1,9 +1,9 @@
-import { fetchAll, fetchOne } from './data.js?v=20261003d';
-import { listHtml, detailHtml } from './views.js?v=20261003d';
-import { tabCounts } from './logic.js?v=20261003d';
-import { buildHash } from '../../core/router.js?v=20261003d';
+import { fetchAll, fetchOne } from './data.js?v=20261003e';
+import { listHtml, detailHtml } from './views.js?v=20261003e';
+import { tabCounts } from './logic.js?v=20261003e';
+import { buildHash } from '../../core/router.js?v=20261003e';
 
-const URL_DEFAULTS = { tab: 'todo', type: 'all', status: 'all' };   // 주소에서 생략하는 기본값
+const URL_DEFAULTS = { tab: 'todo', type: 'all', status: 'all', page: '1', size: '20' };   // 주소에서 생략하는 기본값
 
 export const manifest = {
   id: 'edoc',
@@ -56,8 +56,9 @@ export async function mount(root, route, ctx) {
   }
 
   root.onclick = (ev) => {
-    const t = ev.target.closest('[data-tab],[data-open],[data-back],[data-refresh]'); if (!t) return;
-    if (t.hasAttribute('data-tab')) return goBox({ tab: t.getAttribute('data-tab') });
+    const t = ev.target.closest('[data-tab],[data-open],[data-back],[data-refresh],[data-page]'); if (!t) return;
+    if (t.hasAttribute('data-tab')) return goBox({ tab: t.getAttribute('data-tab'), page: '1' });
+    if (t.hasAttribute('data-page')) return goBox({ page: t.getAttribute('data-page') });
     if (t.hasAttribute('data-open')) {
       const [dt, did] = t.getAttribute('data-open').split('/');
       location.hash = buildHash('edoc', '/doc/' + dt + '/' + did, q, URL_DEFAULTS); return;
@@ -69,7 +70,8 @@ export async function mount(root, route, ctx) {
     }
   };
   root.onchange = (ev) => {
+    if (ev.target.hasAttribute && ev.target.hasAttribute('data-pagesize')) return goBox({ size: ev.target.value, page: '1' });
     const f = ev.target.getAttribute && ev.target.getAttribute('data-filter'); if (!f) return;
-    goBox({ [f]: ev.target.value });
+    goBox({ [f]: ev.target.value, page: '1' });
   };
 }

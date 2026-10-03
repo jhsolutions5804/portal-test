@@ -54,7 +54,7 @@ export function currentStepIndex(doc) {
   for (let i = 0; i < line.length; i++) {
     const s = line[i];
     if (isPassive(s.role)) continue;
-    if (s.status === 'approved' || s.status === 'done') continue;
+    if (s.status === 'approved' || s.status === 'done' || s.status === 'skipped') continue;
     return s.status === 'pending' ? i : -1;
   }
   return -1;
@@ -79,6 +79,13 @@ export function tabDefs(me) {
     { key: 'cc', label: '참조·회람' },
     { key: 'all', label: me.admin ? '전체' : '게시 문서' }
   ];
+}
+
+/** 제목이 비어 있는 구 문서도 목록·상세에서 알아볼 수 있게 '일자 작성자 종류'로 만든다 */
+export function docTitle(d) {
+  if (d.title && String(d.title).trim()) return String(d.title).trim();
+  const ymd = (d.startDate || d.expDate || d.dueDate || d.date || '').replace(/-/g, '') || (toMillis(d.createdAt) ? fmtDate(d.createdAt).replace(/\./g, '') : '');
+  return [ymd, d.authorName, TYPE_LABEL[d.dtype] || ''].filter(Boolean).join(' ');
 }
 
 export function summaryOf(d) {
@@ -106,12 +113,38 @@ export function filterDocs(docs, me, f) {
     if (tg.types.indexOf(d.dtype) === -1) return false;
     if (sg.statuses && sg.statuses.indexOf(d.status) === -1) return false;
     if (q) {
-      const hay = [d.title, d.authorName, d.authorDept, summaryOf(d)].join(' ').toLowerCase();
+      const hay = [docTitle(d), d.authorName, d.authorDept, summaryOf(d)].join(' ').toLowerCase();
       if (hay.indexOf(q) === -1) return false;
     }
     return true;
   });
 }
+/* ── 페이지 구분: 한 번에 10·20·30건씩 끊어서 보여준다 ── */
+export const PAGE_SIZES = [10, 20, 30];
+export const DEFAULT_PAGE_SIZE = 20;
+export function normalizeSize(v) { const n = parseInt(v, 10); return PAGE_SIZES.indexOf(n) !== -1 ? n : DEFAULT_PAGE_SIZE; }
+export function pageOfIndex(index, size) { return index < 0 ? 1 : Math.floor(index / size) + 1; }
+/** rows 를 page(1부터)·size 로 자른다. 범위를 벗어난 page 는 가까운 쪽으로 보정한다. */
+export function paginate(rows, page, size) {
+  const sz = normalizeSize(size);
+  const total = rows.length;
+  const pages = Math.max(1, Math.ceil(total / sz));
+  const p = Math.min(pages, Math.max(1, parseInt(page, 10) || 1));
+  const start = (p - 1) * sz;
+  return { rows: rows.slice(start, start + sz), page: p, pages, total, size: sz, from: total ? start + 1 : 0, to: Math.min(total, start + sz) };
+}
+/** 번호 버튼 목록. 예) page 6/12 → [1,'…',4,5,6,7,8,'…',12] (앞뒤 2개씩, 처음·끝은 항상) */
+export function pageNumbers(page, pages) {
+  const out = []; let last = 0;
+  for (let i = 1; i <= pages; i++) {
+    if (i === 1 || i === pages || Math.abs(i - page) <= 2) {
+      if (i - last > 1) out.push(i - last === 2 ? last + 1 : '…');
+      out.push(i); last = i;
+    }
+  }
+  return out;
+}
+
 export function tabCounts(docs, me) {
   const c = { todo: 0, mine: 0, cc: 0, all: 0 };
   docs.forEach(d => { const t = tabsOf(d, me); Object.keys(c).forEach(k => { if (t[k]) c[k]++; }); });
@@ -122,6 +155,7 @@ export function stepState(doc, i) {
   if (s.role === '작성') return 'done';
   if (isPassive(s.role)) return 'ref';
   if (s.status === 'approved' || s.status === 'done') return 'done';
+  if (s.status === 'skipped') return 'skipped';
   if (s.status === 'rejected') return 'rejected';
   return currentStepIndex(doc) === i ? 'current' : 'pending';
 }

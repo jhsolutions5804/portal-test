@@ -1,15 +1,31 @@
-import { esc, escMultiline, money } from '../../core/ui.js?v=20261003d';
+import { esc, escMultiline, money } from '../../core/ui.js?v=20261003e';
 import {
   TYPE_LABEL, TYPE_GROUPS, STATUS_LABEL, STATUS_GROUPS, tabDefs, tabCounts, filterDocs, summaryOf,
-  myTurn, canProxy, currentStepIndex, stepState, fmtDate, fmtDateTime, fmtYmd, isPassive, tabsOf
-} from './logic.js?v=20261003d';
-import { FORMS } from './forms.js?v=20261003d';
+  myTurn, canProxy, currentStepIndex, stepState, fmtDate, fmtDateTime, fmtYmd, isPassive, tabsOf, docTitle,
+  PAGE_SIZES, normalizeSize, paginate, pageNumbers, pageOfIndex
+} from './logic.js?v=20261003e';
+import { FORMS } from './forms.js?v=20261003e';
 
 export function badgeHtml(status) {
   return '<span class="jh-badge" data-status="' + esc(status) + '">' + esc(STATUS_LABEL[status] || status || '-') + '</span>';
 }
 function optionList(groups, current) {
   return groups.map(g => '<option value="' + esc(g.key) + '"' + (g.key === (current || 'all') ? ' selected' : '') + '>' + esc(g.label) + '</option>').join('');
+}
+
+export function pagerHtml(p) {
+  if (!p.total) return '';
+  const info = '<span class="jh-pager__info">총 ' + p.total + '건 · ' + p.from + '–' + p.to + '</span>';
+  const size = '<label class="jh-pager__size"><span>페이지당</span><select class="jh-select" data-pagesize aria-label="페이지당 건수">' +
+    PAGE_SIZES.map(n => '<option value="' + n + '"' + (n === p.size ? ' selected' : '') + '>' + n + '건</option>').join('') + '</select></label>';
+  if (p.pages <= 1) return '<div class="jh-pager">' + info + size + '</div>';
+  const btn = (label, to, off) => '<button type="button" class="jh-pager__btn" data-page="' + to + '"' + (off ? ' disabled' : '') + '>' + label + '</button>';
+  const nums = pageNumbers(p.page, p.pages).map(n => n === '…'
+    ? '<span class="jh-pager__gap" aria-hidden="true">…</span>'
+    : '<button type="button" class="jh-pager__page" data-page="' + n + '"' + (n === p.page ? ' aria-current="page"' : '') + ' aria-label="' + n + '페이지">' + n + '</button>').join('');
+  return '<div class="jh-pager">' + info +
+    '<nav class="jh-pager__nav" aria-label="페이지">' + btn('이전', p.page - 1, p.page <= 1) + nums +
+      '<span class="jh-pager__status">' + p.page + ' / ' + p.pages + '</span>' + btn('다음', p.page + 1, p.page >= p.pages) + '</nav>' + size + '</div>';
 }
 
 export function listHtml(ctx) {
@@ -19,13 +35,19 @@ export function listHtml(ctx) {
   const tabs = tabDefs(me).map(t =>
     '<button type="button" class="jh-tab' + (t.key === tab ? ' is-active' : '') + '" data-tab="' + t.key + '">' +
     esc(t.label) + '<span class="jh-tab__count">' + counts[t.key] + '</span></button>').join('');
-  const rows = filterDocs(docs, me, query);
+  const all = filterDocs(docs, me, query);
+  // 주소로 문서를 바로 열었는데 page 가 없으면, 그 문서가 있는 페이지를 보여준다
+  const size = normalizeSize(query.size);
+  let want = query.page;
+  if (!want && selectedKey) want = pageOfIndex(all.findIndex(d => d.dtype + '/' + d.id === selectedKey), size);
+  const pg = paginate(all, want, size);
+  const rows = pg.rows;
   const body = rows.length ? rows.map(d => {
     const key = d.dtype + '/' + d.id;
     const mine = myTurn(d, me);
     return '<button type="button" class="jh-docrow' + (key === selectedKey ? ' is-selected' : '') + '" data-open="' + esc(key) + '">' +
       '<span class="jh-docrow__main">' +
-        '<span class="jh-docrow__title">' + esc(d.title || '(제목 없음)') + '</span>' +
+        '<span class="jh-docrow__title">' + esc(docTitle(d) || '(제목 없음)') + '</span>' +
         '<span class="jh-docrow__summary">' + esc(summaryOf(d)) + '</span>' +
         '<span class="jh-docrow__meta">' + esc(TYPE_LABEL[d.dtype] || d.dtype) + ' · ' + esc(d.authorName || '-') +
           (d.authorDept ? ' · ' + esc(d.authorDept) : '') + ' · ' + fmtDate(d._ms) + '</span>' +
@@ -40,7 +62,7 @@ export function listHtml(ctx) {
       '<input class="jh-input" type="search" data-filter="q" placeholder="제목·작성자 검색" value="' + esc(query.q || '') + '" aria-label="검색">' +
       '<button type="button" class="jh-btn" data-variant="ghost" data-refresh>새로고침</button>' +
     '</div>' +
-    '<div class="jh-doclist">' + body + '</div>';
+    '<div class="jh-doclist">' + body + '</div>' + pagerHtml(pg);
 }
 
 function fmtValue(row, d) {
@@ -60,7 +82,7 @@ function fmtValue(row, d) {
 export function timelineHtml(d) {
   const line = Array.isArray(d.approvalLine) ? d.approvalLine : [];
   if (!line.length) return '<div class="jh-empty">결재선 정보가 없습니다.</div>';
-  const label = { done: '완료', current: '결재 차례', pending: '대기', rejected: '반려', ref: '열람' };
+  const label = { done: '완료', current: '결재 차례', pending: '대기', rejected: '반려', ref: '열람', skipped: '전결 생략' };
   return '<ol class="jh-timeline">' + line.map((s, i) => {
     const st = stepState(d, i);
     const when = s.approvedAt ? fmtDateTime(s.approvedAt) : '';
@@ -86,7 +108,7 @@ export function detailHtml(ctx) {
     '<button type="button" class="jh-btn jh-detail__back" data-variant="ghost" data-back>← 목록</button>' +
     '<header class="jh-detail__head">' +
       '<div class="jh-detail__type">' + esc(TYPE_LABEL[d.dtype] || d.dtype) + '</div>' +
-      '<h2 class="jh-detail__title">' + esc(d.title || '(제목 없음)') + '</h2>' +
+      '<h2 class="jh-detail__title">' + esc(docTitle(d) || '(제목 없음)') + '</h2>' +
       '<div class="jh-detail__meta">' + esc(d.authorName || '-') + (d.authorRank ? ' ' + esc(d.authorRank) : '') +
         (d.authorDept ? ' · ' + esc(d.authorDept) : '') + ' · ' + fmtDateTime(d._ms) + '</div>' +
       '<div class="jh-detail__state">' + badgeHtml(d.status) + notes.join('') + '</div>' +
