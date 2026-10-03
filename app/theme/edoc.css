@@ -213,3 +213,6 @@
 @media print {
   .jh-split__detail { position: static; max-height: none; overflow: visible; }
 }
+
+/* 목록 위 '새 문서 작성' 버튼은 한 줄 전체 폭 */
+.jh-filters [data-new] { grid-column: 1 / -1; }

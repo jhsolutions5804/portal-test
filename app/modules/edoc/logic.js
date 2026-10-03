@@ -69,14 +69,35 @@ export function myTurn(doc, me) {
   const i = currentStepIndex(doc); if (i < 0) return false;
   return isMyStep(doc.approvalLine[i], me);
 }
-export function canProxy(doc, me) { return me.admin && currentStepIndex(doc) >= 0 && !myTurn(doc, me); }
+/** 대리 승인은 정책(edoc_settings/policy)의 대리 권한자만 — me.isProxy 는 화면이 정책을 읽어 채운다 */
+export function canProxy(doc, me) { return me.isProxy === true && currentStepIndex(doc) >= 0 && !legacyCurrentStep(doc) && !myTurn(doc, me); }
+
+/** 이 문서에서 내가 누를 수 있는 처리 버튼(화면 안내용 — 실제 허용은 서버가 다시 판단한다) */
+export function availableActions(doc, me) {
+  const out = []; const st = doc.status; const mine = doc.authorUid === me.uid;
+  if (mine && (st === 'draft' || st === 'rejected')) out.push({ key: 'edit', label: st === 'rejected' ? '수정·재상신' : '수정·상신', variant: 'primary', group: 'primary' });
+  const my = myTurn(doc, me); const proxy = canProxy(doc, me);
+  if ((my || proxy) && !legacyCurrentStep(doc)) {
+    out.push({ key: 'approve', label: proxy && !my ? '대리 승인' : '승인', variant: 'primary', group: 'primary' });
+    if (me.isProxy || me.isRequired) out.push({ key: 'approve_post', label: '승인 후 게시(전결)', variant: 'secondary', group: 'primary' });
+    out.push({ key: 'reject', label: proxy && !my ? '대리 반려' : '반려', variant: 'danger', group: 'danger' });
+  }
+  if (mine && (st === 'pending' || st === 'reviewing') && !my) out.push({ key: 'recall', label: '회수', variant: 'secondary', group: 'secondary' });
+  if (st === 'approved') {
+    const line = Array.isArray(doc.approvalLine) ? doc.approvalLine : [];
+    const actives = line.filter((s) => !isPassive(s.role)); const last = actives[actives.length - 1];
+    if (me.admin || me.isRequired || isMyStep(last, me)) out.push({ key: 'post', label: '게시', variant: 'primary', group: 'primary' });
+  }
+  if ((mine && st === 'draft') || me.admin) out.push({ key: 'delete', label: '삭제', variant: 'ghost', group: 'danger' });
+  return out;
+}
 
 /** 문서가 속하는 결재함 탭들 */
 export function tabsOf(doc, me) {
   const line = Array.isArray(doc.approvalLine) ? doc.approvalLine : [];
   const mine = doc.authorUid === me.uid;
   const cc = !mine && line.some(s => isPassive(s.role) && s.role !== '작성' && isMyStep(s, me));
-  return { todo: myTurn(doc, me), mine, cc, all: me.admin ? true : doc.status === 'posted' };
+  return { todo: myTurn(doc, me) || canProxy(doc, me), mine, cc, all: me.admin ? true : doc.status === 'posted' };
 }
 export function tabDefs(me) {
   return [

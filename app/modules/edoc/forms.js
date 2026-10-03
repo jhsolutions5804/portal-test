@@ -1,4 +1,14 @@
 /* 문서 종류별 상세 표시 정의 (읽기 전용 단계). fmt: text | multiline | date | money | days | list */
+/** 품목 줄 만들기 — 새 형식(items 배열)과 옛 형식(item·qty·unitPrice) 둘 다 */
+function itemLines(d) {
+  const won = (n) => Number(n).toLocaleString('ko-KR');
+  if (Array.isArray(d.items) && d.items.length) {
+    return d.items.map((r) => (r.name || '') + (r.qty ? ' × ' + r.qty : '') + (r.unitPrice ? ' @ ' + won(r.unitPrice) + '원' : '') + (r.qty && r.unitPrice ? ' = ' + won(r.qty * r.unitPrice) + '원' : '')).filter(Boolean);
+  }
+  if (d.item) return [d.item + (d.qty ? ' × ' + d.qty : '') + (d.unitPrice ? ' @ ' + won(d.unitPrice) + '원' : '')];
+  return [];
+}
+
 export const FORMS = {
   daily: { rows: [
     { label: '프로젝트', get: d => [d.pjtCode, d.pjtName].filter(Boolean).join(' · ') },
@@ -29,10 +39,8 @@ export const FORMS = {
     { label: '공급업체', key: 'vendor' },
     { label: '구매 목적', key: 'purpose', fmt: 'multiline' },
     { label: '필요일', key: 'dueDate', fmt: 'date' },
-    { label: '품목', key: 'item' },
-    { label: '수량', key: 'qty' },
-    { label: '단가(원)', key: 'unitPrice', fmt: 'money' },
-    { label: '참고 링크', key: 'refUrls', fmt: 'list' }
+    { label: '품목', get: itemLines, fmt: 'list' },
+    { label: '참고 링크', get: d => (d.refUrls && d.refUrls.length ? d.refUrls : (Array.isArray(d.items) ? d.items.map(r => r.link).filter(Boolean) : [])), fmt: 'list' }
   ] },
   expense: { rows: [
     { label: '지출일', key: 'expDate', fmt: 'date' },
@@ -40,6 +48,7 @@ export const FORMS = {
     { label: '금액(원)', key: 'amount', fmt: 'money' },
     { label: '거래처', key: 'vendor' },
     { label: '지출 목적', key: 'purpose', fmt: 'multiline' },
-    { label: '증빙', key: 'receipt' }
+    { label: '증빙', key: 'receipt' },
+    { label: '품목', get: itemLines, fmt: 'list' }
   ] }
 };

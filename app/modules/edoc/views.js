@@ -1,10 +1,11 @@
-import { esc, escMultiline, money } from '../../core/ui.js?v=20261004c';
+import { esc, escMultiline, money } from '../../core/ui.js?v=20261004d';
 import {
   TYPE_LABEL, TYPE_GROUPS, STATUS_LABEL, STATUS_GROUPS, tabDefs, tabCounts, filterDocs, summaryOf,
   myTurn, canProxy, currentStepIndex, stepState, fmtDate, fmtDateTime, fmtYmd, isPassive, tabsOf, docTitle,
-  PAGE_SIZES, normalizeSize, paginate, pageNumbers, pageOfIndex, legacyCurrentStep
-} from './logic.js?v=20261004c';
-import { FORMS } from './forms.js?v=20261004c';
+  PAGE_SIZES, normalizeSize, paginate, pageNumbers, pageOfIndex, legacyCurrentStep, availableActions
+} from './logic.js?v=20261004d';
+import { actionbarHtml } from './compose-view.js?v=20261004d';
+import { FORMS } from './forms.js?v=20261004d';
 
 export function badgeHtml(status) {
   return '<span class="jh-badge" data-status="' + esc(status) + '">' + esc(STATUS_LABEL[status] || status || '-') + '</span>';
@@ -57,6 +58,7 @@ export function listHtml(ctx) {
   }).join('') : '<div class="jh-empty">조건에 맞는 문서가 없습니다.</div>';
   return '<div class="jh-edoc-tabs" role="tablist">' + tabs + '</div>' +
     '<div class="jh-filters">' +
+      '<button type="button" class="jh-btn" data-variant="primary" data-new>＋ 새 문서 작성</button>' +
       '<select class="jh-select" data-filter="type" aria-label="문서 종류">' + optionList(TYPE_GROUPS, query.type) + '</select>' +
       '<select class="jh-select" data-filter="status" aria-label="상태">' + optionList(STATUS_GROUPS, query.status) + '</select>' +
       '<input class="jh-input" type="search" data-filter="q" placeholder="제목·작성자 검색" value="' + esc(query.q || '') + '" aria-label="검색">' +
@@ -103,7 +105,7 @@ export function detailHtml(ctx) {
   const rows = form.rows.map(r => { const v = fmtValue(r, d); return v ? '<div class="jh-kv__row"><dt>' + esc(r.label) + '</dt><dd>' + v + '</dd></div>' : ''; }).join('');
   const notes = [];
   if (myTurn(d, me)) notes.push('<span class="jh-chip" data-tone="accent">내 차례</span>');
-  else if (canProxy(d, me)) notes.push('<span class="jh-chip">관리자 대리 승인 대상</span>');
+  else if (canProxy(d, me)) notes.push('<span class="jh-chip">대리 승인 가능</span>');
   if (legacyCurrentStep(d)) notes.push('<span class="jh-chip" data-tone="warn">계정 정보 없는 구 문서 · 관리자 확인 필요</span>');
   return '<article class="jh-detail">' +
     '<button type="button" class="jh-btn jh-detail__back" data-variant="ghost" data-back>← 목록</button>' +
@@ -114,8 +116,9 @@ export function detailHtml(ctx) {
         (d.authorDept ? ' · ' + esc(d.authorDept) : '') + ' · ' + fmtDateTime(d._ms) + '</div>' +
       '<div class="jh-detail__state">' + badgeHtml(d.status) + notes.join('') + '</div>' +
     '</header>' +
+    (d.status === 'rejected' && d.rejectReason ? '<div class="jh-alert" data-tone="danger" role="alert"><strong>반려 사유</strong><br>' + escMultiline(d.rejectReason) + '</div>' : '') +
     '<section class="jh-detail__body"><dl class="jh-kv">' + (rows || '<div class="jh-empty">표시할 내용이 없습니다.</div>') + '</dl></section>' +
     '<section class="jh-detail__line"><h3 class="jh-detail__h">결재선</h3>' + timelineHtml(d) + '</section>' +
-    '<footer class="jh-detail__foot">1단계(읽기 전용): 승인·반려·작성은 다음 단계에서 열립니다.</footer>' +
+    actionbarHtml(availableActions(d, me)) +
   '</article>';
 }
