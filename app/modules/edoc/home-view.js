@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261004m';
-import { myTurn, canProxy, tabsOf } from './logic.js?v=20261004m';
-import { docRowHtml } from './views.js?v=20261004m';
-import { pipeCounts, todoCounts } from './home-stats.js?v=20261004m';
+import { esc } from '../../core/ui.js?v=20261004n';
+import { myTurn, canProxy, tabsOf } from './logic.js?v=20261004n';
+import { docRowHtml } from './views.js?v=20261004n';
+import { pipeCounts, todoCounts } from './home-stats.js?v=20261004n';
 
 /** 홈에 보여 줄 문서 묶음 — 결재할 문서 / 수신함(참조·회람) / 내가 작성한 문서 / 게시된 문건 */
 export function homeLists(docs, me) {
@@ -91,7 +91,7 @@ export function recentHtml(model) {
 export function homeHtml(model) {
   return '<div class="jh-dashboard">' +
     '<div class="jh-pagehead"><header class="jh-form__head"><h2 class="jh-form__title">전자결재 홈</h2><p class="jh-form__sub">내 근무 현황과 결재 문서를 한눈에</p></header>' +
-      '<button type="button" class="jh-btn jh-pc-only" data-variant="primary" data-new>＋ 새 문서 작성</button></div>' +
+      '<div class="jh-pagehead__actions">' + (model.me && model.me.admin ? '<button type="button" class="jh-btn" data-variant="ghost" data-admin>⚙ 관리자 설정</button>' : '') + '<button type="button" class="jh-btn jh-pc-only" data-variant="primary" data-new>＋ 새 문서 작성</button></div></div>' +
     '<div class="jh-dashboard__grid"><div id="edoc-work">' + worktimeHtml(model.work) + '</div><div id="edoc-leavebox">' + leaveBoxHtml(model.leave) + '</div></div>' +
     '<div id="edoc-todo">' + todoHtml(model.todo) + '</div>' +
     '<div id="edoc-pipe">' + pipelineHtml(model) + '</div>' +

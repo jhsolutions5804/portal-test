@@ -1,12 +1,12 @@
-import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261004m';
-import { register, visibleFor, get } from './registry.js?v=20261004m';
-import { parseHash, onChange } from './router.js?v=20261004m';
-import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261004m';
-import { initTheme } from './theme.js?v=20261004m';
-import { checkForUpdate } from './update.js?v=20261004m';
-import * as edoc from '../modules/edoc/index.js?v=20261004m';
-import * as attendance from '../modules/attendance/index.js?v=20261004m';
-import { mountPlatformHome } from './home.js?v=20261004m';
+import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261004n';
+import { register, visibleFor, get } from './registry.js?v=20261004n';
+import { parseHash, onChange } from './router.js?v=20261004n';
+import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261004n';
+import { initTheme } from './theme.js?v=20261004n';
+import { checkForUpdate } from './update.js?v=20261004n';
+import * as edoc from '../modules/edoc/index.js?v=20261004n';
+import * as attendance from '../modules/attendance/index.js?v=20261004n';
+import { mountPlatformHome } from './home.js?v=20261004n';
 
 initTheme();   // 이 기기에 저장된 화면 모드(자동·라이트·다크) 적용
 register(Object.assign({}, edoc.manifest, { mount: edoc.mount }));

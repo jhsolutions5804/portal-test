@@ -1,11 +1,11 @@
-import { esc, escMultiline, money } from '../../core/ui.js?v=20261004m';
+import { esc, escMultiline, money } from '../../core/ui.js?v=20261004n';
 import {
   TYPE_LABEL, TYPE_GROUPS, STATUS_LABEL, STATUS_GROUPS, tabDefs, tabCounts, filterDocs, summaryOf,
   myTurn, canProxy, currentStepIndex, stepState, fmtDate, fmtDateTime, fmtYmd, isPassive, tabsOf, docTitle,
   PAGE_SIZES, normalizeSize, paginate, pageNumbers, pageOfIndex, legacyCurrentStep, availableActions
-} from './logic.js?v=20261004m';
-import { actionbarHtml } from './compose-view.js?v=20261004m';
-import { FORMS } from './forms.js?v=20261004m';
+} from './logic.js?v=20261004n';
+import { actionbarHtml } from './compose-view.js?v=20261004n';
+import { FORMS } from './forms.js?v=20261004n';
 
 export function badgeHtml(status) {
   return '<span class="jh-badge" data-status="' + esc(status) + '">' + esc(STATUS_LABEL[status] || status || '-') + '</span>';

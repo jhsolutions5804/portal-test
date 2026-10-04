@@ -1,20 +1,22 @@
-import { fetchAll, fetchOne } from './data.js?v=20261004m';
-import { listHtml, detailHtml } from './views.js?v=20261004m';
-import { tabCounts } from './logic.js?v=20261004m';
-import { buildHash, navigate } from '../../core/router.js?v=20261004m';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261004m';
-import { toast } from '../../core/ui.js?v=20261004m';
-import { confirmDialog } from '../../core/dialog.js?v=20261004m';
-import { loadDirectory } from './directory.js?v=20261004m';
-import { act } from './api.js?v=20261004m';
-import * as C from './compose.js?v=20261004m';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261004m';
-import { loadRecord as loadAttendRecord } from '../attendance/data.js?v=20261004m';
-import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget } from './home-view.js?v=20261004m';
-import { todoCounts } from './home-stats.js?v=20261004m';
-import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261004m';
-import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261004m';
-import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml } from './compose-view.js?v=20261004m';
+import { fetchAll, fetchOne } from './data.js?v=20261004n';
+import { listHtml, detailHtml } from './views.js?v=20261004n';
+import { tabCounts } from './logic.js?v=20261004n';
+import { buildHash, navigate } from '../../core/router.js?v=20261004n';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261004n';
+import { toast } from '../../core/ui.js?v=20261004n';
+import { confirmDialog } from '../../core/dialog.js?v=20261004n';
+import { loadDirectory, resetDirectory } from './directory.js?v=20261004n';
+import { act } from './api.js?v=20261004n';
+import * as C from './compose.js?v=20261004n';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261004n';
+import { loadRecord as loadAttendRecord } from '../attendance/data.js?v=20261004n';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget } from './home-view.js?v=20261004n';
+import { todoCounts } from './home-stats.js?v=20261004n';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261004n';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261004n';
+import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261004n';
+import * as SL from './settings-logic.js?v=20261004n';
+import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml } from './compose-view.js?v=20261004n';
 
 const URL_DEFAULTS = { tab: 'todo', type: 'all', status: 'all', page: '1', size: '20' };   // 주소에서 생략하는 기본값
 
@@ -25,7 +27,7 @@ export const manifest = {
   perm: (me) => me.admin || (me.perms && me.perms.edoc === true),
   defaultHash: '#/edoc/home',
   quick: { label: '새 문서 작성', icon: '✍', hash: '#/edoc/new' },   // 폰 하단 막대 버튼
-  hideQuickOn: ['new', 'edit', 'print'],                                // 이미 작성·인쇄 중인 화면에서는 숨김
+  hideQuickOn: ['new', 'edit', 'print', 'admin'],                                // 이미 작성·인쇄 중인 화면에서는 숨김
   widgets: [{ id: 'leave', order: 15, mount: mountLeaveWidget }, { id: 'todo', order: 20, wide: true, mount: mountTodoWidget }]   // 플랫폼 홈에 놓이는 위젯
 };
 
@@ -58,6 +60,7 @@ export async function mount(root, route, ctx) {
   if (kind === 'new' || kind === 'edit') return mountCompose(root, route, ctx);
   if (kind === 'home') return mountHome(root, route, ctx);
   if (kind === 'print') return mountPrint(root, route, ctx);
+  if (kind === 'admin') return mountAdmin(root, route, ctx);
   return mountBox(root, route, ctx);
 }
 
@@ -378,8 +381,49 @@ async function mountPrint(root, route, ctx) {
     if (t.hasAttribute('data-back2')) { back(); return; }
     if (t.hasAttribute('data-print')) { window.print(); return; }
     if (t.hasAttribute('data-save-company')) {
-      try { await setDoc(doc(db, 'edoc_settings', 'company'), { name: (company.name || '').trim(), ceo: (company.ceo || '').trim(), bizNo: (company.bizNo || '').trim(), address: (company.address || '').trim(), updatedAt: serverTimestamp() }, { merge: true }); toast('회사 정보를 저장했습니다.'); }
-      catch (e) { toast('저장하지 못했습니다. 권한을 확인해 주세요.'); }
+      // 설정은 서버 함수가 검증해 저장한다(직원 화면이 직접 쓰지 않음)
+      try { await act({ action: 'saveSettings', kind: 'company', company: { name: (company.name || '').trim(), ceo: (company.ceo || '').trim(), bizNo: (company.bizNo || '').trim(), address: (company.address || '').trim() } }); toast('회사 정보를 저장했습니다.'); }
+      catch (e) { toast(e.message || '저장하지 못했습니다. 권한을 확인해 주세요.'); }
+    }
+  };
+}
+
+/* ───────────────────────── 관리자 설정 ───────────────────────── */
+async function mountAdmin(root, route, ctx) {
+  const { me } = ctx;
+  root.onclick = null; root.onchange = null; root.oninput = null; window.scrollTo(0, 0);
+  if (!me.admin) { root.innerHTML = '<div class="jh-empty">관리자만 열 수 있는 화면입니다.</div><button type="button" class="jh-btn" data-variant="ghost" data-back>← 전자결재 홈</button>'; root.onclick = (ev) => { if (ev.target.closest('[data-back]')) navigate('#/edoc/home'); }; return; }
+  root.innerHTML = '<div class="jh-empty">불러오는 중…</div>';
+  let dir = null; let company = {};
+  try { dir = await loadDirectory(true); const s = await getDoc(doc(db, 'edoc_settings', 'company')); if (s.exists()) company = s.data(); }
+  catch (e) { console.error('설정 조회 오류', e); root.innerHTML = '<div class="jh-empty">설정을 불러오지 못했습니다. 새로고침해 주세요.</div>'; return; }
+  const S = SL.initState(dir, company, me);
+  const redraw = () => { const y = window.scrollY; root.innerHTML = adminHtml(S); window.scrollTo(0, y); };
+  const target = (scope) => { const [a, b] = scope.split('.'); return a === 'policy' ? { list: S.policy[b], set: (v) => { S.policy[b] = v; }, max: SL.LIMITS[b], approver: true } : { list: S.guides[a][b], set: (v) => { S.guides[a][b] = v; }, max: b === 'steps' ? SL.LIMITS.approvers : SL.LIMITS.cc, approver: b === 'steps' }; };
+  redraw();
+  root.oninput = (ev) => {
+    const t = ev.target; if (!t.getAttribute) return;
+    const note = t.getAttribute('data-note'); const co = t.getAttribute('data-co');
+    if (note) { S.guides[note].note = t.value; const bar = t.closest('section').querySelector('[data-save]'); const st = t.closest('section').querySelector('.jh-admin__state'); const d = SL.isDirty(S, 'guides', note); if (bar) bar.disabled = !d; if (st) { st.dataset.dirty = d ? 'true' : 'false'; st.textContent = d ? '저장하지 않은 변경이 있습니다' : '변경 없음'; } }
+    if (co) { S.company[co] = t.value; const sec = t.closest('section'); const d = SL.isDirty(S, 'company'); const bar = sec.querySelector('[data-save]'); const st = sec.querySelector('.jh-admin__state'); if (bar) bar.disabled = !d; if (st) { st.dataset.dirty = d ? 'true' : 'false'; st.textContent = d ? '저장하지 않은 변경이 있습니다' : '변경 없음'; } }
+  };
+  root.onclick = async (ev) => {
+    const t = ev.target.closest('[data-back],[data-toggle],[data-add],[data-remove],[data-move],[data-save]'); if (!t) return;
+    if (t.hasAttribute('data-back')) { navigate('#/edoc/home'); return; }
+    if (t.hasAttribute('data-toggle')) { const k = t.getAttribute('data-toggle'); S.open = S.open === k ? '' : k; redraw(); return; }
+    if (t.hasAttribute('data-add')) {
+      const scope = t.getAttribute('data-add'); const sel = root.querySelector('[data-add-sel="' + scope + '"]'); const tg = target(scope);
+      const r = SL.addTo(tg.list, sel && sel.value, tg.max); if (r.error) { toast(r.error); return; }
+      tg.set(r.list); redraw(); return;
+    }
+    if (t.hasAttribute('data-remove')) { const [scope, uid] = t.getAttribute('data-remove').split(':'); const tg = target(scope); tg.set(SL.removeFrom(tg.list, uid)); redraw(); return; }
+    if (t.hasAttribute('data-move')) { const [scope, uid, dir2] = t.getAttribute('data-move').split(':'); const tg = target(scope); tg.set(SL.moveIn(tg.list, uid, Number(dir2))); redraw(); return; }
+    if (t.hasAttribute('data-save')) {
+      const [section, key] = t.getAttribute('data-save').split(':'); const bad = SL.validateSection(S, section, key); if (bad) { toast(bad); return; }
+      S.saving = section + ':' + (key || ''); redraw();
+      try { await act(SL.payloadFor(section, S, key)); SL.markSaved(S, section, key); toast('저장했습니다.'); resetDirectory(); }
+      catch (e) { toast(e.message || '저장하지 못했습니다.'); }
+      S.saving = ''; redraw();
     }
   };
 }
@@ -421,7 +465,8 @@ async function mountHome(root, route, ctx) {
 
   const TO = (go) => homeTarget(go, me);
   root.onclick = (ev) => {
-    const t = ev.target.closest('[data-go],[data-open],[data-new],[data-scope],[data-recent],[data-pipe]'); if (!t) return;
+    const t = ev.target.closest('[data-go],[data-open],[data-new],[data-scope],[data-recent],[data-pipe],[data-admin]'); if (!t) return;
+    if (t.hasAttribute('data-admin')) { navigate('#/edoc/admin'); return; }
     if (t.hasAttribute('data-new')) { navigate('#/edoc/new', { state: { jh: 'fromList' } }); return; }
     if (t.hasAttribute('data-open')) { const [dt, did] = t.getAttribute('data-open').split('/'); navigate('#/edoc/doc/' + dt + '/' + did + '?tab=all', { state: { jh: 'fromList' } }); return; }
     if (t.hasAttribute('data-scope')) { model.scope = homeMemo.scope = t.getAttribute('data-scope'); setBox('edoc-pipe', pipelineHtml(model)); return; }

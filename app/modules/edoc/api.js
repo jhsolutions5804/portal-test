@@ -1,4 +1,4 @@
-import { functions, httpsCallable } from '../../core/firebase.js?v=20261004m';
+import { functions, httpsCallable } from '../../core/firebase.js?v=20261004n';
 
 /* 서버 함수 edocAct 호출 — 상신·승인·반려·회수·게시·삭제는 모두 서버가 검증해 처리한다 */
 const call = httpsCallable(functions, 'edocAct');
@@ -24,6 +24,7 @@ export async function act(payload) {
     let msg = errorMessage(e);
     // 서버 함수가 아직 옛 버전이면 새 문서 종류(근태 기록 수정 요청)를 모른다 — 원인을 알아볼 수 있게 안내한다
     if (payload && payload.dtype === 'attend' && /문서 종류가 올바르지 않습니다/.test(msg)) msg = '근태 기록 수정 요청은 서버 함수를 최신 버전으로 다시 배포한 뒤에 상신할 수 있습니다. (임시저장은 되어 있습니다)';
+    if (payload && payload.action === 'saveSettings' && /문서 종류가 올바르지 않습니다/.test(msg)) msg = '설정 저장은 서버 함수를 최신 버전으로 다시 배포한 뒤에 사용할 수 있습니다.';
     const err = new Error(msg); err.code = e && e.code; throw err;
   }
 }

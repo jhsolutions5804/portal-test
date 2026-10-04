@@ -1,4 +1,4 @@
-import { tabsOf, availableActions, NO_POST_TYPES } from './logic.js?v=20261004m';
+import { tabsOf, availableActions, NO_POST_TYPES } from './logic.js?v=20261004n';
 
 /** 문서 현황 단계: 임시저장 → 결재 진행 → 승인(게시 대기) → 게시, 그리고 반려 */
 export const PIPE_STEPS = [

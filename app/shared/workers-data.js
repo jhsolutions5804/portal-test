@@ -1,4 +1,4 @@
-import { db, collection, getDocs, query, where } from '../core/firebase.js?v=20261004m';
+import { db, collection, getDocs, query, where } from '../core/firebase.js?v=20261004n';
 
 /* 전자결재 홈이 쓰는 기준 자료: 근로자 명부(이름·부서·직급·입사일 등 일반 정보), 월 근태 기록, 공휴일 */
 let workersCache = null;

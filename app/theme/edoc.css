@@ -317,3 +317,23 @@ button.jh-kpi:hover { border-color: var(--c-primary); }
 .jh-comment__meta { margin-left: auto; font-size: var(--fs-xs); color: var(--c-ink-2); }
 .jh-comment__body { margin-top: var(--u-4); font-size: var(--fs-md); line-height: 1.6; overflow-wrap: anywhere; }
 .jh-detail__comments { display: grid; gap: var(--sp-2); }
+
+/* ── 전자결재 관리자 설정 ── */
+.jh-admin { display: grid; gap: var(--sp-4); }
+.jh-pagehead__actions { display: flex; gap: var(--sp-2); align-items: center; flex-wrap: wrap; }
+.jh-admin__section { display: grid; gap: var(--sp-3); }
+.jh-admin__h { margin: 0; font-size: var(--fs-md); font-weight: 700; }
+.jh-admin__h small, .jh-admin__h2 small { display: block; margin-top: var(--u-2); font-size: var(--fs-xs); font-weight: 400; color: var(--c-ink-2); }
+.jh-admin__h--top { margin-top: var(--sp-2); }
+.jh-admin__h2 { margin: 0 0 var(--sp-2); font-size: var(--fs-sm); font-weight: 700; }
+.jh-admin__group { display: grid; gap: var(--sp-2); }
+.jh-admin__add { display: grid; grid-template-columns: 1fr auto; gap: var(--sp-2); align-items: center; }
+.jh-admin__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-3); }
+.jh-admin__save { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); flex-wrap: wrap; padding-top: var(--sp-2); border-top: var(--u-1) solid var(--c-line); }
+.jh-admin__state { font-size: var(--fs-xs); color: var(--c-ink-2); }
+.jh-admin__state[data-dirty="true"] { color: var(--c-primary); font-weight: 700; }
+.jh-admin__toggle { display: grid; gap: var(--u-4); width: 100%; text-align: left; background: none; border: 0; padding: 0; cursor: pointer; color: inherit; font: inherit; min-height: var(--u-44); }
+.jh-admin__title { font-weight: 700; font-size: var(--fs-md); }
+.jh-admin__sum { font-size: var(--fs-xs); color: var(--c-ink-2); overflow-wrap: anywhere; }
+.jh-admin__body { display: grid; gap: var(--sp-3); padding-top: var(--sp-3); border-top: var(--u-1) solid var(--c-line); }
+@media (max-width: 899px) { .jh-admin__grid { grid-template-columns: 1fr; } .jh-admin__add { grid-template-columns: 1fr; } }
