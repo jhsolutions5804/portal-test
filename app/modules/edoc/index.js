@@ -1,18 +1,19 @@
-import { fetchAll, fetchOne } from './data.js?v=20261004g';
-import { listHtml, detailHtml } from './views.js?v=20261004g';
-import { tabCounts } from './logic.js?v=20261004g';
-import { buildHash, navigate } from '../../core/router.js?v=20261004g';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261004g';
-import { toast } from '../../core/ui.js?v=20261004g';
-import { confirmDialog } from '../../core/dialog.js?v=20261004g';
-import { loadDirectory } from './directory.js?v=20261004g';
-import { act } from './api.js?v=20261004g';
-import * as C from './compose.js?v=20261004g';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261004g';
-import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml } from './home-view.js?v=20261004g';
-import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261004g';
-import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261004g';
-import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml } from './compose-view.js?v=20261004g';
+import { fetchAll, fetchOne } from './data.js?v=20261004h';
+import { listHtml, detailHtml } from './views.js?v=20261004h';
+import { tabCounts } from './logic.js?v=20261004h';
+import { buildHash, navigate } from '../../core/router.js?v=20261004h';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261004h';
+import { toast } from '../../core/ui.js?v=20261004h';
+import { confirmDialog } from '../../core/dialog.js?v=20261004h';
+import { loadDirectory } from './directory.js?v=20261004h';
+import { act } from './api.js?v=20261004h';
+import * as C from './compose.js?v=20261004h';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261004h';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml } from './home-view.js?v=20261004h';
+import { todoCounts } from './home-stats.js?v=20261004h';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261004h';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261004h';
+import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml } from './compose-view.js?v=20261004h';
 
 const URL_DEFAULTS = { tab: 'todo', type: 'all', status: 'all', page: '1', size: '20' };   // 주소에서 생략하는 기본값
 
@@ -25,6 +26,7 @@ export const manifest = {
 };
 
 let cache = { uid: null, docs: null };
+const homeMemo = { tab: null, scope: 'mine' };   // 홈에서 마지막으로 고른 탭·현황 범위(상세에 다녀와도 유지)
 let listScroll = null;   // 문서를 열기 직전 목록 스크롤 위치(뒤로 오면 복원)
 let loading = null;
 
@@ -207,6 +209,7 @@ async function mountCompose(root, route, ctx) {
   }
 
   const paint = () => { root.innerHTML = '<div class="jh-card">' + composeHtml(S) + '</div>'; };
+  const updateBalance = () => { const el = root.querySelector('#edoc-balance'); if (el) el.innerHTML = balanceHintHtml(S.balance, S.values.days, S.values.leaveType); };
   const applyDeputy = () => {   // 업무 대리인을 정하면 참조로 자동 포함, 바꾸면 이전 사람은 뺀다
     const r = C.setDeputy(S.line, S.values.deputyUid || null, S.autoCc || null, S.ctx);
     S.line = r.state; S.autoCc = r.auto; S.ctx.deputy = S.values.deputyUid || null; S.ui.lineError = r.error || '';
@@ -223,6 +226,14 @@ async function mountCompose(root, route, ctx) {
   };
   if (S.type === 'leave' && S.values.deputyUid) applyDeputy();   // 불러온 문서의 업무 대리인 반영
   paint();
+  if (S.type === 'leave') {   // 내 잔여 연차를 불러와 신청 화면에 안내(명부에 입사일이 없으면 안내 생략)
+    (async () => {
+      try {
+        const w = findWorker(await loadWorkers(false), me); if (!w || !w.hireDate) return;
+        S.balance = calcLeaveBalance(w.hireDate, leaveDocsOf(await ensureDocs(me, false), me)); updateBalance();
+      } catch (e) { /* 안내만 생략 */ }
+    })();
+  }
 
   const firstInvalid = () => { const el = root.querySelector('[data-invalid="true"]'); if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); const inp = el.querySelector('input,select,textarea'); if (inp) inp.focus({ preventScroll: true }); } };
 
@@ -248,7 +259,7 @@ async function mountCompose(root, route, ctx) {
       root.querySelectorAll('[data-add]').forEach((b) => { b.disabled = true; });
       return;
     }
-    if (t.hasAttribute('data-input')) { S.values[t.getAttribute('data-input')] = t.value; clear(t); }
+    if (t.hasAttribute('data-input')) { S.values[t.getAttribute('data-input')] = t.value; clear(t); if (t.getAttribute('data-input') === 'days') updateBalance(); }
     else if (t.hasAttribute('data-item')) { const [i, k] = t.getAttribute('data-item').split('.'); S.values.items[+i][k] = t.value; clear(t); }
   };
   const clear = (el) => { const f = el.closest('[data-invalid="true"]'); if (f) { f.removeAttribute('data-invalid'); } };
@@ -258,6 +269,7 @@ async function mountCompose(root, route, ctx) {
     if (S.type === 'leave' && (key === 'leaveType' || key === 'startDate' || key === 'endDate')) {
       const d = C.calcLeaveDays(S.values.startDate, S.values.endDate, S.values.leaveType);
       if (d !== '') { S.values.days = d; const el = root.querySelector('#f-days'); if (el) el.value = d; }
+      updateBalance();
     }
     if (key === 'leaveKind') { sync(); paint(); }   // 휴직이면 복직 예정일 항목이 나타난다
     if (key === 'deputyUid') { applyDeputy(); paintLine(); }
@@ -354,11 +366,13 @@ async function mountHome(root, route, ctx) {
   const { me } = ctx;
   root.onclick = null; root.onchange = null; root.oninput = null;
   const now = new Date(); const ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
-  const model = { me, lists: { approve: [], inbox: [], mine: [], posted: [] }, work: { state: 'loading', month: ym }, leave: { state: 'loading' } };
+  const model = { me, docs: [], lists: { approve: [], inbox: [], mine: [], posted: [] }, todo: { approve: 0, rejected: 0, postWait: 0, inbox: 0 }, scope: 'mine', tab: 'approve', work: { state: 'loading', month: ym }, leave: { state: 'loading' } };
   root.innerHTML = '<div class="jh-empty">불러오는 중…</div>';
   const [docs] = await Promise.all([ensureDocs(me, false), withPolicy(me)]);
   ctx.setBadge('edoc', tabCounts(docs, me).todo);
-  model.lists = homeLists(docs, me);
+  model.docs = docs; model.lists = homeLists(docs, me); model.todo = todoCounts(docs, me);
+  model.tab = homeMemo.tab || (model.lists.approve.length ? 'approve' : (model.lists.inbox.length ? 'inbox' : 'mine'));   // 마지막에 본 탭, 없으면 할 일이 있는 목록을 먼저
+  model.scope = me.admin && homeMemo.scope === 'all' ? 'all' : 'mine';
   root.innerHTML = homeHtml(model);
   const setBox = (id, html) => { const el = root.querySelector('#' + id); if (el) el.innerHTML = html; };
 
@@ -382,11 +396,20 @@ async function mountHome(root, route, ctx) {
     setBox('edoc-work', worktimeHtml(model.work));
   })();
 
+  const TO = (go) => ({
+    todo: '#/edoc/box', cc: '#/edoc/box?tab=cc', mine: '#/edoc/box?tab=mine', posted: me.admin ? '#/edoc/box?tab=all&status=posted' : '#/edoc/box?tab=all',
+    rejected: '#/edoc/box?tab=mine&status=rejected', approved: me.admin ? '#/edoc/box?tab=all&status=approved' : '#/edoc/box?tab=mine&status=approved'
+  })[go];
   root.onclick = (ev) => {
-    const t = ev.target.closest('[data-go],[data-open],[data-new]'); if (!t) return;
+    const t = ev.target.closest('[data-go],[data-open],[data-new],[data-scope],[data-recent],[data-pipe]'); if (!t) return;
     if (t.hasAttribute('data-new')) { navigate('#/edoc/new', { state: { jh: 'fromList' } }); return; }
     if (t.hasAttribute('data-open')) { const [dt, did] = t.getAttribute('data-open').split('/'); navigate('#/edoc/doc/' + dt + '/' + did + '?tab=all', { state: { jh: 'fromList' } }); return; }
-    const to = { todo: '#/edoc/box', cc: '#/edoc/box?tab=cc', mine: '#/edoc/box?tab=mine', posted: me.admin ? '#/edoc/box?tab=all&status=posted' : '#/edoc/box?tab=all' }[t.getAttribute('data-go')];
-    if (to) navigate(to, { state: { jh: 'fromList' } });
+    if (t.hasAttribute('data-scope')) { model.scope = homeMemo.scope = t.getAttribute('data-scope'); setBox('edoc-pipe', pipelineHtml(model)); return; }
+    if (t.hasAttribute('data-recent')) { model.tab = homeMemo.tab = t.getAttribute('data-recent'); setBox('edoc-recent', recentHtml(model)); return; }
+    if (t.hasAttribute('data-pipe')) {   // 문서 현황 단계 → 결재함의 해당 상태 목록(범위에 맞는 탭)
+      const key = t.getAttribute('data-pipe'); const tab = model.scope === 'all' && me.admin ? 'all' : 'mine';
+      navigate('#/edoc/box?tab=' + tab + '&status=' + key, { state: { jh: 'fromList' } }); return;
+    }
+    const to = TO(t.getAttribute('data-go')); if (to) navigate(to, { state: { jh: 'fromList' } });
   };
 }

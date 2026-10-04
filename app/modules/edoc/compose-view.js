@@ -1,5 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261004g';
-import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261004g';
+import { esc } from '../../core/ui.js?v=20261004h';
+import { isAnnualType } from './home-calc.js?v=20261004h';
+import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261004h';
 
 const uname = (ctx, uid) => { const u = ctx.byUid[uid]; return u ? esc(u.name) + (u.rank ? ' <small>' + esc(u.rank) + '</small>' : '') : '(알 수 없음)'; };
 
@@ -90,6 +91,15 @@ export function lineEditorHtml(line, ctx, ui) {
     (issues.length ? '<div class="jh-alert" data-tone="warn" role="alert">' + issues.map(esc).join('<br>') + '</div>' : '') + guide + '</div>';
 }
 
+/** 연차 신청 화면의 잔여 연차 안내 — 신청 일수를 넣으면 신청 후 잔여를 바로 보여 준다(막지는 않음) */
+export function balanceHintHtml(b, req, type) {
+  if (!b) return '';
+  if (!isAnnualType(type)) return '<div class="jh-alert" data-tone="info">이 휴가는 연차에서 차감되지 않습니다.</div>';
+  const n = Number(req) || 0; const after = b.remain - n; const over = n > 0 && after < 0;
+  return '<div class="jh-alert" data-tone="' + (over ? 'warn' : 'info') + '" role="status">내 연차 — 부여 ' + b.granted + '일 · 사용 ' + b.used + '일 · 잔여 ' + b.remain + '일' +
+    (n > 0 ? ' · 이번 신청 ' + n + '일 → 신청 후 잔여 ' + Math.max(after, 0) + '일' : '') + (over ? '. 잔여 연차를 ' + (-after) + '일 초과합니다. 사유에 이유를 적어 주세요.' : '') + '</div>';
+}
+
 export function composeHtml(s) {
   const { type, values, errors, ctx, edit, rejectReason } = s; const t = composeType(type);
   const kind = type === 'spend' ? '<div class="jh-form__section"><div class="jh-segmented" role="group" aria-label="구분">' +
@@ -98,7 +108,7 @@ export function composeHtml(s) {
   return '<form class="jh-form" data-compose="' + esc(type) + '" novalidate autocomplete="off">' +
     '<header class="jh-form__head"><h2 class="jh-form__title">' + esc(t ? t.label : '') + (edit ? ' 수정' : ' 작성') + '</h2><p class="jh-form__sub">작성자: ' + esc(ctx.me.name) + (ctx.me.rank ? ' ' + esc(ctx.me.rank) : '') + (ctx.me.dept ? ' · ' + esc(ctx.me.dept) : '') + '</p></header>' +
     (rejectReason ? '<div class="jh-alert" data-tone="danger" role="alert"><strong>반려 사유</strong><br>' + esc(rejectReason).replace(/\n/g, '<br>') + '</div>' : '') +
-    kind + '<section class="jh-form__section"><h3 class="jh-form__h">내용</h3>' + fieldsBlock(type, values, errors || {}, ctx) + '</section>' +
+    kind + '<section class="jh-form__section"><h3 class="jh-form__h">내용</h3>' + fieldsBlock(type, values, errors || {}, ctx) + (type === 'leave' ? '<div id="edoc-balance" aria-live="polite">' + balanceHintHtml(s.balance, values.days, values.leaveType) + '</div>' : '') + '</section>' +
     '<section class="jh-form__section" id="edoc-line-section"><h3 class="jh-form__h">결재선</h3>' + lineEditorHtml(s.line, ctx, s.ui) + '</section>' +
     (s.formError ? '<div class="jh-alert" data-tone="danger" role="alert" id="edoc-form-error">' + esc(s.formError) + '</div>' : '') +
     '<div class="jh-form__foot"><button type="button" class="jh-btn" data-variant="ghost" data-act="cancel">취소</button>' +

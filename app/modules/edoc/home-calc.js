@@ -162,3 +162,6 @@ export function findWorker(list, who) {
   w = (list || []).find((x) => em && String(x.email || '').toLowerCase() === em) || (list || []).find((x) => u.name && x.name === u.name);
   return w ? Object.assign({ linked: false }, w) : null;
 }
+
+/** 연차에서 차감되는 휴가인지(연차·반차, 종류가 비어 있는 옛 문서 포함) */
+export function isAnnualType(type) { const t = String(type || '').trim(); return !t || t.startsWith('연차') || t.startsWith('반차'); }
