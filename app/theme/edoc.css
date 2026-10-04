@@ -337,3 +337,14 @@ button.jh-kpi:hover { border-color: var(--c-primary); }
 .jh-admin__sum { font-size: var(--fs-xs); color: var(--c-ink-2); overflow-wrap: anywhere; }
 .jh-admin__body { display: grid; gap: var(--sp-3); padding-top: var(--sp-3); border-top: var(--u-1) solid var(--c-line); }
 @media (max-width: 899px) { .jh-admin__grid { grid-template-columns: 1fr; } .jh-admin__add { grid-template-columns: 1fr; } }
+
+/* ── 첨부파일 ── */
+.jh-attach { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
+.jh-attach__item { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); border: var(--u-1) solid var(--c-line); border-radius: var(--radius-sm); background: var(--c-surface); min-height: var(--u-44); }
+.jh-attach__item[data-uploading="true"] { border-style: dashed; color: var(--c-ink-2); }
+.jh-attach__name { flex: 1; min-width: 0; font-size: var(--fs-sm); font-weight: 700; overflow-wrap: anywhere; }
+.jh-attach__size { font-size: var(--fs-xs); color: var(--c-ink-2); white-space: nowrap; }
+.jh-attach__actions { display: flex; gap: var(--sp-1); }
+.jh-attach__add { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.jh-detail__attach { display: grid; gap: var(--sp-2); }
+.jh-form__h small, .jh-detail__h small { font-size: var(--fs-xs); font-weight: 400; color: var(--c-ink-2); }

@@ -1,4 +1,4 @@
-import { BREAK_MINUTES, dateKey, nowHHMM, snapTo10Min, validHHMM, calcWorkHours, calcManualHours } from '../../shared/worktime.js?v=20261004n';
+import { BREAK_MINUTES, dateKey, nowHHMM, snapTo10Min, validHHMM, calcWorkHours, calcManualHours } from '../../shared/worktime.js?v=20261004o';
 
 /* 출퇴근 순수 로직 — 화면·네트워크 없음(시험하기 쉽게 분리).
  * 규칙: 휴게는 점심 2시간(120분) 고정 · 기록 시각은 10분 단위 · 오늘 기록은 본인이 원터치/직접 입력,

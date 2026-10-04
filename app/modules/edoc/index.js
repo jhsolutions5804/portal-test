@@ -1,22 +1,24 @@
-import { fetchAll, fetchOne } from './data.js?v=20261004n';
-import { listHtml, detailHtml } from './views.js?v=20261004n';
-import { tabCounts } from './logic.js?v=20261004n';
-import { buildHash, navigate } from '../../core/router.js?v=20261004n';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261004n';
-import { toast } from '../../core/ui.js?v=20261004n';
-import { confirmDialog } from '../../core/dialog.js?v=20261004n';
-import { loadDirectory, resetDirectory } from './directory.js?v=20261004n';
-import { act } from './api.js?v=20261004n';
-import * as C from './compose.js?v=20261004n';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261004n';
-import { loadRecord as loadAttendRecord } from '../attendance/data.js?v=20261004n';
-import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget } from './home-view.js?v=20261004n';
-import { todoCounts } from './home-stats.js?v=20261004n';
-import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261004n';
-import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261004n';
-import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261004n';
-import * as SL from './settings-logic.js?v=20261004n';
-import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml } from './compose-view.js?v=20261004n';
+import { fetchAll, fetchOne } from './data.js?v=20261004o';
+import { listHtml, detailHtml } from './views.js?v=20261004o';
+import { tabCounts } from './logic.js?v=20261004o';
+import { buildHash, navigate } from '../../core/router.js?v=20261004o';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261004o';
+import { toast } from '../../core/ui.js?v=20261004o';
+import { confirmDialog } from '../../core/dialog.js?v=20261004o';
+import { loadDirectory, resetDirectory } from './directory.js?v=20261004o';
+import { act } from './api.js?v=20261004o';
+import * as C from './compose.js?v=20261004o';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261004o';
+import { loadRecord as loadAttendRecord } from '../attendance/data.js?v=20261004o';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget } from './home-view.js?v=20261004o';
+import { todoCounts } from './home-stats.js?v=20261004o';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261004o';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261004o';
+import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261004o';
+import * as AT from './attach-logic.js?v=20261004o';
+import { uploadFile, removeFile, openFile } from './attach.js?v=20261004o';
+import * as SL from './settings-logic.js?v=20261004o';
+import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261004o';
 
 const URL_DEFAULTS = { tab: 'todo', type: 'all', status: 'all', page: '1', size: '20' };   // 주소에서 생략하는 기본값
 
@@ -145,7 +147,8 @@ async function mountBox(root, route, ctx) {
   }
 
   root.onclick = (ev) => {
-    const t = ev.target.closest('[data-tab],[data-open],[data-back],[data-refresh],[data-page],[data-new],[data-do],[data-home]'); if (!t) return;
+    const t = ev.target.closest('[data-tab],[data-open],[data-back],[data-refresh],[data-page],[data-new],[data-do],[data-home],[data-file]'); if (!t) return;
+    if (t.hasAttribute('data-file')) { openFile(t.getAttribute('data-file')).catch((e) => toast((e && e.message) || '파일을 열지 못했습니다.')); return; }
     if (t.hasAttribute('data-home')) { navigate('#/edoc/home', { replace: true }); return; }
     if (t.hasAttribute('data-do')) { runAction(t.getAttribute('data-do'), t); return; }
     if (t.hasAttribute('data-new')) { navigate('#/edoc/new', { state: { jh: 'fromList' } }); return; }
@@ -196,7 +199,7 @@ async function mountCompose(root, route, ctx) {
   try { dir = await loadDirectory(false); }
   catch (e) { root.innerHTML = '<div class="jh-card"><div class="jh-empty">작성에 필요한 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div><button type="button" class="jh-btn" data-variant="ghost" data-act="cancel">돌아가기</button></div>'; root.onclick = (ev) => { if (ev.target.closest('[data-act=cancel]')) leave(); }; return; }
 
-  const S = { type: null, values: null, errors: {}, line: null, ui: { search: '', picked: null, lineError: '' }, edit: null, rejectReason: '', formError: '', busy: false, ctx: null, docRef: null, createdMs: null };
+  const S = { files: [], uploading: [], attachError: '', type: null, values: null, errors: {}, line: null, ui: { search: '', picked: null, lineError: '' }, edit: null, rejectReason: '', formError: '', busy: false, ctx: null, docRef: null, createdMs: null };
   const lc = (type) => Object.assign(C.lineContext(me, dir.policy, dir.guides, dir.users, type), { projects: dir.projects });
 
   if (route.segs[0] === 'edit') {
@@ -208,7 +211,7 @@ async function mountCompose(root, route, ctx) {
     }
     const v = C.valuesFromDoc(d); S.type = v.type; S.values = v.values; S.ctx = lc(S.type);
     S.line = (d.approvalLine && d.approvalLine.length) ? C.lineFromDoc(d, S.ctx) : C.initialLine(S.ctx);
-    S.edit = { dtype: d.dtype, id: d.id }; S.docRef = S.edit; S.rejectReason = d.status === 'rejected' ? (d.rejectReason || '') : ''; S.createdMs = d._ms;
+    S.files = AT.sanitizeList(d.attachments); S.edit = { dtype: d.dtype, id: d.id }; S.docRef = S.edit; S.rejectReason = d.status === 'rejected' ? (d.rejectReason || '') : ''; S.createdMs = d._ms;
   } else {
     const type = route.segs[1];
     if (!C.composeType(type)) { navigate('#/edoc/new', { replace: true }); return; }
@@ -263,9 +266,43 @@ async function mountCompose(root, route, ctx) {
 
   const firstInvalid = () => { const el = root.querySelector('[data-invalid="true"]'); if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); const inp = el.querySelector('input,select,textarea'); if (inp) inp.focus({ preventScroll: true }); } };
 
+  const paintAttach = () => { const el = root.querySelector('#edoc-attach'); if (el) el.innerHTML = attachHtml(S); };
+  /** 첨부는 문서 번호가 필요하므로, 새 문서면 먼저 임시저장해 번호를 만든다 */
+  async function ensureDoc() {
+    if (S.docRef) return S.docRef;
+    sync(); const bad = quickErrors();
+    if (Object.keys(bad).length) { S.errors = bad; paint(); throw new Error('입력 형식이 올바르지 않은 항목을 먼저 고쳐 주세요.'); }
+    await persist(); S.edit = S.docRef; toast('첨부를 위해 임시저장했습니다.'); return S.docRef;
+  }
+  const saveAttachments = () => updateDoc(doc(db, 'edoc_' + S.docRef.dtype, S.docRef.id), { attachments: S.files.slice(), updatedAt: serverTimestamp() });
+  async function addFiles(fileList) {
+    S.attachError = ''; const picked = Array.from(fileList || []); if (!picked.length) return;
+    const accepted = []; const errors = [];
+    picked.forEach((f) => { const r = AT.checkFile(f, S.files.concat(S.uploading, accepted)); if (r.ok) accepted.push(f); else errors.push(r.error); });
+    if (errors.length) S.attachError = errors.join('\n');
+    if (!accepted.length) { paintAttach(); return; }
+    let ref; try { ref = await ensureDoc(); } catch (e) { S.attachError = (e && e.message) || '첨부할 수 없습니다.'; paintAttach(); return; }
+    accepted.forEach((f) => { f.__u = { name: f.name, pct: 0 }; S.uploading.push(f.__u); }); paintAttach();
+    for (const f of accepted) {
+      try {
+        const meta = await uploadFile({ dtype: ref.dtype, docId: ref.id, file: f, onProgress: (p) => { f.__u.pct = p; paintAttach(); } });
+        S.files = S.files.concat(meta);
+        S.uploading = S.uploading.filter((u) => u !== f.__u); await saveAttachments();
+      } catch (e) { S.uploading = S.uploading.filter((u) => u !== f.__u); S.attachError = (S.attachError ? S.attachError + '\n' : '') + '"' + f.name + '": ' + ((e && e.message) || '올리지 못했습니다.'); }
+      paintAttach();
+    }
+  }
+  async function dropFile(id) {
+    const f = S.files.find((x) => x.id === id); if (!f) return;
+    S.attachError = '';
+    try { await removeFile(f.path); S.files = S.files.filter((x) => x.id !== id); if (S.docRef) await saveAttachments(); }
+    catch (e) { S.attachError = (e && e.message) || '지우지 못했습니다.'; }
+    paintAttach();
+  }
+
   async function persist() {
     const base = { projects: dir.projects, users: dir.users, worker: S.worker, now: S.createdMs ? new Date(S.createdMs) : new Date() };
-    const data = C.buildDocData(S.type, S.values, me, base);
+    const data = Object.assign(C.buildDocData(S.type, S.values, me, base), { attachments: S.files.slice() });
     if (S.docRef) {
       await updateDoc(doc(db, 'edoc_' + S.docRef.dtype, S.docRef.id), Object.assign({}, data, { updatedAt: serverTimestamp() }));
     } else {
@@ -290,7 +327,9 @@ async function mountCompose(root, route, ctx) {
   };
   const clear = (el) => { const f = el.closest('[data-invalid="true"]'); if (f) { f.removeAttribute('data-invalid'); } };
   root.onchange = (ev) => {
-    const t = ev.target; if (!t.hasAttribute('data-input')) return;
+    const t = ev.target;
+    if (t.hasAttribute && t.hasAttribute('data-attach-input')) { const fl = Array.from(t.files || []); t.value = ''; addFiles(fl); return; }
+    if (!t.hasAttribute('data-input')) return;
     const key = t.getAttribute('data-input'); S.values[key] = t.value;
     if (S.type === 'leave' && (key === 'leaveType' || key === 'startDate' || key === 'endDate')) {
       const d = C.calcLeaveDays(S.values.startDate, S.values.endDate, S.values.leaveType);
@@ -302,7 +341,10 @@ async function mountCompose(root, route, ctx) {
   };
 
   root.onclick = async (ev) => {
-    const t = ev.target.closest('[data-act],[data-kind],[data-add-item],[data-remove-item],[data-move],[data-remove],[data-pick],[data-add]'); if (!t) return;
+    const t = ev.target.closest('[data-act],[data-kind],[data-add-item],[data-remove-item],[data-move],[data-remove],[data-pick],[data-add],[data-attach-pick],[data-attach-remove],[data-attach-open]'); if (!t) return;
+    if (t.hasAttribute('data-attach-pick')) { const inp = root.querySelector('#edoc-file-input'); if (inp) inp.click(); return; }
+    if (t.hasAttribute('data-attach-remove')) { dropFile(t.getAttribute('data-attach-remove')); return; }
+    if (t.hasAttribute('data-attach-open')) { openFile(t.getAttribute('data-attach-open')).catch((e) => { S.attachError = (e && e.message) || '파일을 열지 못했습니다.'; paintAttach(); }); return; }
     if (t.hasAttribute('data-kind')) { if (S.edit) return; sync(); S.values.kind = t.getAttribute('data-kind'); S.errors = {}; paint(); return; }
     if (t.hasAttribute('data-add-item')) { sync(); S.values.items = (S.values.items || []).concat(C.emptyItem()); paint(); const last = root.querySelectorAll('[data-item$=".name"]'); if (last.length) last[last.length - 1].focus(); return; }
     if (t.hasAttribute('data-remove-item')) { sync(); S.values.items.splice(+t.getAttribute('data-remove-item'), 1); paint(); return; }
@@ -323,6 +365,7 @@ async function mountCompose(root, route, ctx) {
     if (act_ === 'cancel') { leave(); return; }
     if (act_ === 'save' || act_ === 'submit') {
       if (S.busy) return;
+      if (S.uploading.length) { toast('파일을 올리는 중입니다. 잠시 후 다시 눌러 주세요.'); return; }
       sync(); S.formError = ''; S.errors = {};
       const submit = act_ === 'submit';
       S.errors = submit ? C.validate(S.type, S.values, { projects: dir.projects, users: dir.users, meUid: me.uid, worker: S.worker }) : quickErrors();

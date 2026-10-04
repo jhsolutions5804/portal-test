@@ -1,6 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261004n';
-import { isAnnualType } from './home-calc.js?v=20261004n';
-import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261004n';
+import { esc } from '../../core/ui.js?v=20261004o';
+import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261004o';
+import { isAnnualType } from './home-calc.js?v=20261004o';
+import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261004o';
 
 const uname = (ctx, uid) => { const u = ctx.byUid[uid]; return u ? esc(u.name) + (u.rank ? ' <small>' + esc(u.rank) + '</small>' : '') : '(알 수 없음)'; };
 
@@ -110,6 +111,20 @@ export function attendHintHtml(a) {
   return '<div class="jh-alert" data-tone="info" role="status">' + [hrs, cur].filter(Boolean).map(esc).join('<br>') + '</div>';
 }
 
+/** 첨부파일 영역: 붙은 파일, 올리는 중인 파일(진행률), 오류 */
+export function attachHtml(s) {
+  const files = s.files || []; const up = s.uploading || []; const full = files.length + up.length >= MAX_FILES;
+  const rows = files.map((f) => '<li class="jh-attach__item" data-file-id="' + esc(f.id) + '"><span class="jh-attach__name">📎 ' + esc(f.name) + '</span><span class="jh-attach__size">' + esc(fmtSize(f.size)) + '</span>' +
+    '<span class="jh-attach__actions"><button type="button" class="jh-iconbtn" data-attach-open="' + esc(f.path) + '" aria-label="열기">↗</button><button type="button" class="jh-iconbtn" data-attach-remove="' + esc(f.id) + '" aria-label="지우기"' + (s.busy ? ' disabled' : '') + '>×</button></span></li>').join('') +
+    up.map((u) => '<li class="jh-attach__item" data-uploading="true"><span class="jh-attach__name">⏳ ' + esc(u.name) + '</span><span class="jh-attach__size">' + esc(String(u.pct)) + '%</span></li>').join('');
+  return '<h3 class="jh-form__h">첨부파일 <small>' + files.length + '/' + MAX_FILES + '</small></h3>' +
+    (rows ? '<ul class="jh-attach">' + rows + '</ul>' : '<p class="jh-field__hint">증빙 자료가 있으면 붙여 주세요. (선택)</p>') +
+    '<div class="jh-attach__add"><input type="file" id="edoc-file-input" data-attach-input multiple accept="' + esc(ACCEPT) + '" hidden>' +
+    '<button type="button" class="jh-btn" data-variant="secondary" data-attach-pick' + (full || s.busy || up.length ? ' disabled' : '') + '>＋ 파일 붙이기</button>' +
+    '<span class="jh-field__hint">파일당 10MB · 최대 ' + MAX_FILES + '개 · PDF·이미지·오피스·한글·압축·텍스트</span></div>' +
+    (s.attachError ? '<div class="jh-alert" data-tone="danger" role="alert">' + esc(s.attachError) + '</div>' : '');
+}
+
 export function composeHtml(s) {
   const { type, values, errors, ctx, edit, rejectReason } = s; const t = composeType(type);
   const kind = type === 'spend' ? '<div class="jh-form__section"><div class="jh-segmented" role="group" aria-label="구분">' +
@@ -119,6 +134,7 @@ export function composeHtml(s) {
     '<header class="jh-form__head"><h2 class="jh-form__title">' + esc(t ? t.label : '') + (edit ? ' 수정' : ' 작성') + '</h2><p class="jh-form__sub">작성자: ' + esc(ctx.me.name) + (ctx.me.rank ? ' ' + esc(ctx.me.rank) : '') + (ctx.me.dept ? ' · ' + esc(ctx.me.dept) : '') + '</p></header>' +
     (rejectReason ? '<div class="jh-alert" data-tone="danger" role="alert"><strong>반려 사유</strong><br>' + esc(rejectReason).replace(/\n/g, '<br>') + '</div>' : '') +
     kind + '<section class="jh-form__section"><h3 class="jh-form__h">내용</h3>' + fieldsBlock(type, values, errors || {}, ctx) + (type === 'leave' ? '<div id="edoc-balance" aria-live="polite">' + balanceHintHtml(s.balance, values.days, values.leaveType) + '</div>' : '') + (type === 'attend' ? '<div id="edoc-attend-hint" aria-live="polite">' + attendHintHtml(s.attend) + '</div>' : '') + '</section>' +
+    '<section class="jh-form__section" id="edoc-attach">' + attachHtml(s) + '</section>' +
     '<section class="jh-form__section" id="edoc-line-section"><h3 class="jh-form__h">결재선</h3>' + lineEditorHtml(s.line, ctx, s.ui) + '</section>' +
     (s.formError ? '<div class="jh-alert" data-tone="danger" role="alert" id="edoc-form-error">' + esc(s.formError) + '</div>' : '') +
     '<div class="jh-form__foot"><button type="button" class="jh-btn" data-variant="ghost" data-act="cancel">취소</button>' +

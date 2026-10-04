@@ -1,11 +1,12 @@
-import { esc, escMultiline, money } from '../../core/ui.js?v=20261004n';
+import { esc, escMultiline, money } from '../../core/ui.js?v=20261004o';
 import {
   TYPE_LABEL, TYPE_GROUPS, STATUS_LABEL, STATUS_GROUPS, tabDefs, tabCounts, filterDocs, summaryOf,
   myTurn, canProxy, currentStepIndex, stepState, fmtDate, fmtDateTime, fmtYmd, isPassive, tabsOf, docTitle,
   PAGE_SIZES, normalizeSize, paginate, pageNumbers, pageOfIndex, legacyCurrentStep, availableActions
-} from './logic.js?v=20261004n';
-import { actionbarHtml } from './compose-view.js?v=20261004n';
-import { FORMS } from './forms.js?v=20261004n';
+} from './logic.js?v=20261004o';
+import { actionbarHtml } from './compose-view.js?v=20261004o';
+import { FORMS } from './forms.js?v=20261004o';
+import { fmtSize as fmtFileSize } from './attach-logic.js?v=20261004o';
 
 export function badgeHtml(status) {
   return '<span class="jh-badge" data-status="' + esc(status) + '">' + esc(STATUS_LABEL[status] || status || '-') + '</span>';
@@ -112,6 +113,14 @@ export function commentsHtml(d) {
     '<div class="jh-comment__body">' + escMultiline(s.comment) + '</div></li>').join('') + '</ul></section>';
 }
 
+/** 상세의 첨부파일 목록(열기는 저장소 권한을 거쳐 새 창으로) */
+export function attachmentsHtml(d) {
+  const list = Array.isArray(d.attachments) ? d.attachments.filter((a) => a && a.path) : [];
+  if (!list.length) return '';
+  return '<section class="jh-detail__attach"><h3 class="jh-detail__h">첨부파일 <small>' + list.length + '개</small></h3><ul class="jh-attach">' + list.map((a) =>
+    '<li class="jh-attach__item"><span class="jh-attach__name">📎 ' + esc(a.name || '파일') + '</span><span class="jh-attach__size">' + esc(fmtFileSize(a.size)) + '</span><span class="jh-attach__actions"><button type="button" class="jh-btn" data-variant="secondary" data-file="' + esc(a.path) + '">열기</button></span></li>').join('') + '</ul></section>';
+}
+
 export function detailHtml(ctx) {
   const { doc: d, me } = ctx;
   if (ctx.loading) return '<div class="jh-empty">불러오는 중…</div>';
@@ -133,7 +142,7 @@ export function detailHtml(ctx) {
     '</header>' +
     (d.status === 'rejected' && d.rejectReason ? '<div class="jh-alert" data-tone="danger" role="alert"><strong>반려 사유</strong><br>' + escMultiline(d.rejectReason) + '</div>' : '') +
     '<section class="jh-detail__body"><dl class="jh-kv">' + (rows || '<div class="jh-empty">표시할 내용이 없습니다.</div>') + '</dl></section>' +
-    '<section class="jh-detail__line"><h3 class="jh-detail__h">결재선</h3>' + timelineHtml(d) + '</section>' + commentsHtml(d) +
+    attachmentsHtml(d) + '<section class="jh-detail__line"><h3 class="jh-detail__h">결재선</h3>' + timelineHtml(d) + '</section>' + commentsHtml(d) +
     actionbarHtml(availableActions(d, me)) +
   '</article>';
 }
