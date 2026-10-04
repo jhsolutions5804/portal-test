@@ -112,56 +112,9 @@ export function computeLeaveHoursForMonth(leaveDocs, workerName, year, month) {
   return hours;
 }
 
-export function monthlyStandardHours(year, month, holidays) {
-  const EDOC_KR_HOLIDAYS = holidays instanceof Set ? holidays : new Set(holidays || []);
-  const first = new Date(year, month-1, 1);
-  const last  = new Date(year, month, 0);
-  let workDays = 0;
-  const cur = new Date(first);
-  while (cur <= last) {
-    const dow = cur.getDay();
-    // ⚠️ toISOString()은 UTC 변환이라 KST 브라우저에서 날짜가 하루 밀린다 — 로컬 연/월/일로 직접 문자열 생성
-    const key = cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0');
-    if (dow!==0 && dow!==6 && !EDOC_KR_HOLIDAYS.has(key)) workDays++;
-    cur.setDate(cur.getDate()+1);
-  }
-  return workDays*8;
-}
-function edocIsoWeekKey(d) {
-  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNum = (t.getUTCDay()+6)%7;
-  t.setUTCDate(t.getUTCDate()-dayNum+3);
-  const firstThursday = new Date(Date.UTC(t.getUTCFullYear(),0,4));
-  const weekNum = 1 + Math.round(((t-firstThursday)/86400000 - 3 + (firstThursday.getUTCDay()+6)%7)/7);
-  return `${t.getUTCFullYear()}-W${weekNum}`;
-}
-export function monthlyMaxOvertimeHours(year, month) {
-  const first = new Date(year, month-1, 1);
-  const last  = new Date(year, month, 0);
-  const weeks = new Set();
-  const cur = new Date(first);
-  while (cur <= last) { weeks.add(edocIsoWeekKey(cur)); cur.setDate(cur.getDate()+1); }
-  return weeks.size*12;
-}
-
 export const leaveDocsOf = (docs, me) => (docs || []).filter((d) => d.dtype === 'leave' && (d.authorUid === me.uid || (!d.authorUid && (d.authorName || d.name) === me.name)));
-
-/** 이번 달 근로시간: 출퇴근 기록 합계 + 유급휴가 환산 → 누계·소정·잔여(정규) */
-export function worktimeSummary(attHours, leaveHours, standard, maxOt) {
-  const total = (Number(attHours) || 0) + (Number(leaveHours) || 0);
-  const remain = Math.max(0, standard - Math.min(total, standard));
-  const ot = Math.max(0, total - standard);
-  return { total, standard, remain, leaveHours: Number(leaveHours) || 0, overtime: ot, maxOt: maxOt || 0, otRemain: Math.max(0, (maxOt || 0) - ot) };
-}
-
-/** 계정 ↔ 근로자 연결: 인사에서 연동한 portalUid(가장 정확) → 이메일 → 이름 순. linked=true 면 portalUid 로 확인된 연동 */
-export function findWorker(list, who) {
-  const u = who || {}; const em = String(u.email || '').toLowerCase();
-  let w = (list || []).find((x) => u.uid && x.portalUid === u.uid);
-  if (w) return Object.assign({ linked: true }, w);
-  w = (list || []).find((x) => em && String(x.email || '').toLowerCase() === em) || (list || []).find((x) => u.name && x.name === u.name);
-  return w ? Object.assign({ linked: false }, w) : null;
-}
 
 /** 연차에서 차감되는 휴가인지(연차·반차, 종류가 비어 있는 옛 문서 포함) */
 export function isAnnualType(type) { const t = String(type || '').trim(); return !t || t.startsWith('연차') || t.startsWith('반차'); }
+
+export { monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, findWorker } from '../../shared/worktime.js?v=20261004l';

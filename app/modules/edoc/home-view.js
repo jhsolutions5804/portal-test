@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261004k';
-import { myTurn, canProxy, tabsOf } from './logic.js?v=20261004k';
-import { docRowHtml } from './views.js?v=20261004k';
-import { pipeCounts, todoCounts } from './home-stats.js?v=20261004k';
+import { esc } from '../../core/ui.js?v=20261004l';
+import { myTurn, canProxy, tabsOf } from './logic.js?v=20261004l';
+import { docRowHtml } from './views.js?v=20261004l';
+import { pipeCounts, todoCounts } from './home-stats.js?v=20261004l';
 
 /** 홈에 보여 줄 문서 묶음 — 결재할 문서 / 수신함(참조·회람) / 내가 작성한 문서 / 게시된 문건 */
 export function homeLists(docs, me) {
@@ -30,7 +30,7 @@ export function worktimeHtml(w) {
     '<div class="jh-kpi-grid" data-cols="3">' + stat('근무시간 누계', h1(s.total), 'accent') + stat('소정근로시간', h1(s.standard)) + stat('정규 잔여', h1(s.remain)) + '</div>' +
     (s.leaveHours > 0 ? '<span class="jh-field__hint">유급휴가 ' + h1(s.leaveHours) + ' 포함 (연차 1일=8h, 반차=4h)</span>' : '') +
     (s.overtime > 0 ? '<span class="jh-field__hint">소정근로시간을 ' + h1(s.overtime) + ' 초과했습니다. (초과근로 가능 잔여 ' + h1(s.otRemain) + ')</span>' : '') +
-    '<div><a class="jh-link" href="' + esc(w.attendanceUrl || '../attendance/') + '">출퇴근 기록하러 가기 ›</a></div></div></div>';
+    '<div><a class="jh-link" href="' + esc(w.attendanceUrl || '#/attendance/input') + '">출퇴근 기록 확인·수정 ›</a></div></div></div>';
 }
 
 /** 연차 링 그래프: 부여 대비 **남은** 비율이 호로 그려지고(다 쓰면 호가 사라짐), 가운데에 잔여 일수 */
@@ -96,4 +96,12 @@ export function homeHtml(model) {
     '<div id="edoc-todo">' + todoHtml(model.todo) + '</div>' +
     '<div id="edoc-pipe">' + pipelineHtml(model) + '</div>' +
     '<div id="edoc-recent">' + recentHtml(model) + '</div></div>';
+}
+
+/** 카드·단계·"전체 보기"가 가는 결재함 주소(홈과 플랫폼 홈 위젯이 함께 쓴다) */
+export function homeTarget(go, me) {
+  return ({
+    todo: '#/edoc/box', cc: '#/edoc/box?tab=cc', mine: '#/edoc/box?tab=mine', posted: me.admin ? '#/edoc/box?tab=all&status=posted' : '#/edoc/box?tab=all',
+    rejected: '#/edoc/box?tab=mine&status=rejected', approved: me.admin ? '#/edoc/box?tab=all&type=nodaily&status=approved' : '#/edoc/box?tab=mine&type=nodaily&status=approved'
+  })[go];
 }

@@ -1,19 +1,19 @@
-import { fetchAll, fetchOne } from './data.js?v=20261004k';
-import { listHtml, detailHtml } from './views.js?v=20261004k';
-import { tabCounts } from './logic.js?v=20261004k';
-import { buildHash, navigate } from '../../core/router.js?v=20261004k';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261004k';
-import { toast } from '../../core/ui.js?v=20261004k';
-import { confirmDialog } from '../../core/dialog.js?v=20261004k';
-import { loadDirectory } from './directory.js?v=20261004k';
-import { act } from './api.js?v=20261004k';
-import * as C from './compose.js?v=20261004k';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261004k';
-import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml } from './home-view.js?v=20261004k';
-import { todoCounts } from './home-stats.js?v=20261004k';
-import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261004k';
-import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261004k';
-import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml } from './compose-view.js?v=20261004k';
+import { fetchAll, fetchOne } from './data.js?v=20261004l';
+import { listHtml, detailHtml } from './views.js?v=20261004l';
+import { tabCounts } from './logic.js?v=20261004l';
+import { buildHash, navigate } from '../../core/router.js?v=20261004l';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261004l';
+import { toast } from '../../core/ui.js?v=20261004l';
+import { confirmDialog } from '../../core/dialog.js?v=20261004l';
+import { loadDirectory } from './directory.js?v=20261004l';
+import { act } from './api.js?v=20261004l';
+import * as C from './compose.js?v=20261004l';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261004l';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget } from './home-view.js?v=20261004l';
+import { todoCounts } from './home-stats.js?v=20261004l';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261004l';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261004l';
+import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml } from './compose-view.js?v=20261004l';
 
 const URL_DEFAULTS = { tab: 'todo', type: 'all', status: 'all', page: '1', size: '20' };   // 주소에서 생략하는 기본값
 
@@ -24,7 +24,8 @@ export const manifest = {
   perm: (me) => me.admin || (me.perms && me.perms.edoc === true),
   defaultHash: '#/edoc/home',
   quick: { label: '새 문서 작성', icon: '✍', hash: '#/edoc/new' },   // 폰 하단 막대 버튼
-  hideQuickOn: ['new', 'edit', 'print']                                 // 이미 작성·인쇄 중인 화면에서는 숨김
+  hideQuickOn: ['new', 'edit', 'print'],                                // 이미 작성·인쇄 중인 화면에서는 숨김
+  widgets: [{ id: 'leave', order: 15, mount: mountLeaveWidget }, { id: 'todo', order: 20, wide: true, mount: mountTodoWidget }]   // 플랫폼 홈에 놓이는 위젯
 };
 
 let cache = { uid: null, docs: null };
@@ -398,10 +399,7 @@ async function mountHome(root, route, ctx) {
     setBox('edoc-work', worktimeHtml(model.work));
   })();
 
-  const TO = (go) => ({
-    todo: '#/edoc/box', cc: '#/edoc/box?tab=cc', mine: '#/edoc/box?tab=mine', posted: me.admin ? '#/edoc/box?tab=all&status=posted' : '#/edoc/box?tab=all',
-    rejected: '#/edoc/box?tab=mine&status=rejected', approved: me.admin ? '#/edoc/box?tab=all&status=approved' : '#/edoc/box?tab=mine&status=approved'
-  })[go];
+  const TO = (go) => homeTarget(go, me);
   root.onclick = (ev) => {
     const t = ev.target.closest('[data-go],[data-open],[data-new],[data-scope],[data-recent],[data-pipe]'); if (!t) return;
     if (t.hasAttribute('data-new')) { navigate('#/edoc/new', { state: { jh: 'fromList' } }); return; }
@@ -414,4 +412,31 @@ async function mountHome(root, route, ctx) {
     }
     const to = TO(t.getAttribute('data-go')); if (to) navigate(to, { state: { jh: 'fromList' } });
   };
+}
+
+/* ───────────────────────── 플랫폼 홈 위젯 ───────────────────────── */
+const widgetShell = (title, link, body) => '<div class="jh-panel jh-card"><div class="jh-panel__head"><h3>' + title + '</h3>' + (link || '') + '</div>' + body + '</div>';
+const loadingBox = (title) => widgetShell(title, '', '<div class="jh-empty">불러오는 중…</div>');
+const failBox = (title) => widgetShell(title, '', '<div class="jh-form"><div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div></div>');
+
+/** 결재 현황 위젯: 결재 요청·반려·게시 대기·수신함 카드(눌러서 결재함으로) */
+async function mountTodoWidget(slot, ctx) {
+  const { me } = ctx; const T = '✍️ 전자결재';
+  slot.innerHTML = loadingBox(T);
+  try {
+    const [docs] = await Promise.all([ensureDocs(me, false), withPolicy(me)]);
+    ctx.setBadge('edoc', tabCounts(docs, me).todo);
+    slot.innerHTML = widgetShell(T, '<a class="jh-link" href="#/edoc/home">전자결재 홈 ›</a>', '<div class="jh-form">' + todoHtml(todoCounts(docs, me)) + '</div>');
+    slot.addEventListener('click', (ev) => { const t = ev.target.closest('[data-go]'); if (!t) return; const to = homeTarget(t.getAttribute('data-go'), me); if (to) navigate(to, { state: { jh: 'fromList' } }); });
+  } catch (e) { console.error('결재 현황 위젯', e); slot.innerHTML = failBox(T); }
+}
+/** 내 연차 현황 위젯: 링 그래프 + 부여·사용·잔여 */
+async function mountLeaveWidget(slot, ctx) {
+  const { me } = ctx;
+  slot.innerHTML = leaveBoxHtml({ state: 'loading' });
+  try {
+    const docs = await ensureDocs(me, false); let worker = null;
+    try { worker = findWorker(await loadWorkers(false), me); } catch (e) { worker = null; }
+    slot.innerHTML = leaveBoxHtml(!worker || !worker.hireDate ? { state: 'nohire' } : { state: 'ok', balance: calcLeaveBalance(worker.hireDate, leaveDocsOf(docs, me)) });
+  } catch (e) { console.error('연차 위젯', e); slot.innerHTML = leaveBoxHtml({ state: 'error' }); }
 }

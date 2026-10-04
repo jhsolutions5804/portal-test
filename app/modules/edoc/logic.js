@@ -6,7 +6,8 @@ export const TYPE_GROUPS = [
   { key: 'leave', label: '연차', types: ['leave'] },
   { key: 'resign', label: '휴직/퇴직', types: ['resign'] },
   { key: 'cert', label: '재직증명', types: ['cert'] },
-  { key: 'spend', label: '구매·지출', types: ['purchase', 'expense'] }
+  { key: 'spend', label: '구매·지출', types: ['purchase', 'expense'] },
+  { key: 'nodaily', label: '업무일지 제외', types: DOC_TYPES.filter(t => t !== 'daily') }   // 업무일지는 승인으로 끝나고 게시하지 않아서, 나머지 문서만 볼 때 쓴다
 ];
 export const STATUS_LABEL = { draft: '임시저장', pending: '결재대기', reviewing: '검토중', approved: '승인', rejected: '반려', posted: '게시' };
 export const STATUS_GROUPS = [

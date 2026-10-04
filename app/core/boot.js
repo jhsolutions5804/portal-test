@@ -1,13 +1,16 @@
-import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261004k';
-import { register, visibleFor, get } from './registry.js?v=20261004k';
-import { parseHash, onChange } from './router.js?v=20261004k';
-import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261004k';
-import { initTheme } from './theme.js?v=20261004k';
-import { checkForUpdate } from './update.js?v=20261004k';
-import * as edoc from '../modules/edoc/index.js?v=20261004k';
+import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261004l';
+import { register, visibleFor, get } from './registry.js?v=20261004l';
+import { parseHash, onChange } from './router.js?v=20261004l';
+import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261004l';
+import { initTheme } from './theme.js?v=20261004l';
+import { checkForUpdate } from './update.js?v=20261004l';
+import * as edoc from '../modules/edoc/index.js?v=20261004l';
+import * as attendance from '../modules/attendance/index.js?v=20261004l';
+import { mountPlatformHome } from './home.js?v=20261004l';
 
 initTheme();   // 이 기기에 저장된 화면 모드(자동·라이트·다크) 적용
 register(Object.assign({}, edoc.manifest, { mount: edoc.mount }));
+register(Object.assign({}, attendance.manifest, { mount: attendance.mount }));
 
 const root = document.getElementById('jh-root');
 let me = null; let shell = null; let mods = [];
@@ -15,8 +18,12 @@ let me = null; let shell = null; let mods = [];
 function route() {
   if (!me || !shell) return;
   const r = parseHash();
-  const mod = r.module ? get(r.module) : null;
-  if (!mod || mods.indexOf(mod) === -1) { location.replace(mods[0].defaultHash); return; }
+  if (!r.module || r.module === 'home') {   // 플랫폼 홈: 모듈이 등록한 위젯을 모아 보여 준다
+    shell.setActive('home'); shell.setTitle('홈', '#/home'); shell.setQuickVisible(true);
+    mountPlatformHome(shell.main, { me, setBadge: shell.setBadge }); return;
+  }
+  const mod = get(r.module);
+  if (!mod || mods.indexOf(mod) === -1) { location.replace('#/home'); return; }
   shell.setActive(mod.id); shell.setTitle(mod.title, mod.defaultHash);
   shell.setQuickVisible(!(mod.hideQuickOn && mod.hideQuickOn.indexOf(r.segs[0]) !== -1));
   mod.mount(shell.main, r, { me, setBadge: shell.setBadge });

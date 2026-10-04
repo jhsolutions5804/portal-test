@@ -59,3 +59,17 @@
   .jh-tabbar .jh-btn { flex: 1; min-height: var(--u-44); text-decoration: none; }
   .jh-app[data-noquick] { padding-bottom: calc(var(--u-64) + env(safe-area-inset-bottom, 0)); }
 }
+
+/* ── 플랫폼 홈: 위젯 격자 · 출퇴근 위젯 ── */
+.jh-widget { min-width: 0; }
+.jh-dashboard__grid > .jh-widget[data-wide="true"] { grid-column: 1 / -1; }
+.jh-clock { display: grid; justify-items: center; gap: var(--sp-1); padding: var(--sp-2) 0; text-align: center; }
+.jh-clock__date { font-size: var(--fs-sm); color: var(--c-ink-2); font-weight: 600; }
+.jh-clock__time { font-size: calc(var(--fs-xl) * 1.7); font-weight: 800; line-height: 1.1; letter-spacing: var(--u-1); }
+.jh-clock__actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+.jh-clock__actions .jh-btn { min-height: var(--u-56); font-size: var(--fs-lg); font-weight: 800; }
+@media (max-width: 899px) {
+  .jh-tabbar .jh-nav__item { flex: 0 0 var(--u-64); height: var(--u-44); min-height: var(--u-44); padding: 0 var(--u-4); gap: 0; }   /* 막대 전체 높이를 56px+1px로 고정(처리 버튼 줄과 겹치지 않게) */
+  .jh-tabbar .jh-btn { height: var(--u-44); }
+  .jh-tabbar .jh-btn { min-width: 0; }
+}

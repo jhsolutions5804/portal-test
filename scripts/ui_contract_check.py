@@ -31,7 +31,7 @@ jh-actionbar jh-actionbar__primary jh-actionbar__danger jh-actionbar__secondary
 jh-dashboard jh-kpi-grid jh-kpi jh-kpi__label jh-kpi__value jh-kpi__hint jh-dashboard__grid jh-panel jh-panel__head
 jh-settings jh-settings__card jh-settings__row jh-settings__type
 jh-paper jh-paper__title jh-stamps jh-stamp jh-stamp__role jh-stamp__sign jh-stamp__name jh-paper__table
-jh-pagehead jh-pc-only jh-todo-grid jh-todo jh-todo__top jh-todo__icon jh-todo__value jh-todo__label jh-todo__hint jh-pipeline jh-pipe jh-pipe__count jh-pipe__label jh-ring jh-ring__track jh-ring__bar jh-ring__center jh-progress jh-progress__bar jh-statrow
+jh-widget jh-clock jh-clock__date jh-clock__time jh-clock__actions jh-pagehead jh-pc-only jh-todo-grid jh-todo jh-todo__top jh-todo__icon jh-todo__value jh-todo__label jh-todo__hint jh-pipeline jh-pipe jh-pipe__count jh-pipe__label jh-ring jh-ring__track jh-ring__bar jh-ring__center jh-progress jh-progress__bar jh-statrow
 jh-noprint jh-paper__body jh-paper__sub jh-paper__company jh-paper__date jh-paper__seal
 jh-pager jh-pager__info jh-pager__nav jh-pager__btn jh-pager__page jh-pager__gap jh-pager__status jh-pager__size""".split()
 ATTRS = {
