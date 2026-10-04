@@ -5,7 +5,7 @@
      ⑤ 기준 폭 899px 외 미디어쿼리 ⑥ 미리보기 HTML이 쓰는 클래스가 CSS에 정의됨(preview.html 이 있으면)"""
 import re, os, sys
 theme = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), '..', 'app', 'theme')
-files = ['tokens', 'base', 'components', 'shell', 'edoc']
+files = ['tokens', 'base', 'components', 'shell', 'edoc', 'legacy']
 css = {}
 for f in files:
     p = os.path.join(theme, f + '.css')
@@ -31,7 +31,7 @@ jh-actionbar jh-actionbar__primary jh-actionbar__danger jh-actionbar__secondary
 jh-dashboard jh-kpi-grid jh-kpi jh-kpi__label jh-kpi__value jh-kpi__hint jh-dashboard__grid jh-panel jh-panel__head
 jh-settings jh-settings__card jh-settings__row jh-settings__type
 jh-paper jh-paper__title jh-stamps jh-stamp jh-stamp__role jh-stamp__sign jh-stamp__name jh-paper__table
-jh-attach jh-attach__item jh-attach__name jh-attach__size jh-attach__actions jh-attach__add jh-detail__attach jh-admin jh-pagehead__actions jh-admin__section jh-admin__h jh-admin__h2 jh-admin__group jh-admin__add jh-admin__grid jh-admin__save jh-admin__state jh-admin__toggle jh-admin__title jh-admin__sum jh-admin__body jh-comments jh-comment jh-comment__head jh-comment__meta jh-comment__body jh-detail__comments jh-widget jh-clock jh-clock__date jh-clock__time jh-clock__actions jh-pagehead jh-pc-only jh-todo-grid jh-todo jh-todo__top jh-todo__icon jh-todo__value jh-todo__label jh-todo__hint jh-pipeline jh-pipe jh-pipe__count jh-pipe__label jh-ring jh-ring__track jh-ring__bar jh-ring__center jh-progress jh-progress__bar jh-statrow
+jh-main--legacy jh-legacy jh-legacy__nav jh-legacy__nav--wide jh-legacy__chip jh-legacy__frame jh-attach jh-attach__item jh-attach__name jh-attach__size jh-attach__actions jh-attach__add jh-detail__attach jh-admin jh-pagehead__actions jh-admin__section jh-admin__h jh-admin__h2 jh-admin__group jh-admin__add jh-admin__grid jh-admin__save jh-admin__state jh-admin__toggle jh-admin__title jh-admin__sum jh-admin__body jh-comments jh-comment jh-comment__head jh-comment__meta jh-comment__body jh-detail__comments jh-widget jh-clock jh-clock__date jh-clock__time jh-clock__actions jh-pagehead jh-pc-only jh-todo-grid jh-todo jh-todo__top jh-todo__icon jh-todo__value jh-todo__label jh-todo__hint jh-pipeline jh-pipe jh-pipe__count jh-pipe__label jh-ring jh-ring__track jh-ring__bar jh-ring__center jh-progress jh-progress__bar jh-statrow
 jh-noprint jh-paper__body jh-paper__sub jh-paper__company jh-paper__date jh-paper__seal
 jh-pager jh-pager__info jh-pager__nav jh-pager__btn jh-pager__page jh-pager__gap jh-pager__status jh-pager__size""".split()
 ATTRS = {

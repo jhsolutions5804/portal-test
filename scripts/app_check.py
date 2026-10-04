@@ -29,6 +29,10 @@ for f in files:
         for n in [x.strip().split(' as ')[0].strip() for x in (m.group(1) or '').split(',') if x.strip()]:
             if n not in exports[target]: problems.append('없는 export %s → %s : %s' % (os.path.relpath(f, root), m.group(2), n))
 if len(versions) > 1: problems.append('버전 불일치: ' + str(versions))
+import subprocess
+mc = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'module_check.py'), root], capture_output=True, text=True)
+print(mc.stdout.strip())
+if mc.returncode: problems.append('모듈 규약 위반 (module_check.py)')
 print('점검 파일', len(files), '개 / 버전', versions, '/', '이상 없음' if not problems else '문제 %d건' % len(problems))
 for p in problems: print('  -', p)
 sys.exit(1 if problems else 0)
