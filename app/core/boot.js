@@ -1,9 +1,10 @@
-import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261004h';
-import { register, visibleFor, get } from './registry.js?v=20261004h';
-import { parseHash, onChange } from './router.js?v=20261004h';
-import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261004h';
-import { initTheme } from './theme.js?v=20261004h';
-import * as edoc from '../modules/edoc/index.js?v=20261004h';
+import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261004j';
+import { register, visibleFor, get } from './registry.js?v=20261004j';
+import { parseHash, onChange } from './router.js?v=20261004j';
+import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261004j';
+import { initTheme } from './theme.js?v=20261004j';
+import { checkForUpdate } from './update.js?v=20261004j';
+import * as edoc from '../modules/edoc/index.js?v=20261004j';
 
 initTheme();   // 이 기기에 저장된 화면 모드(자동·라이트·다크) 적용
 register(Object.assign({}, edoc.manifest, { mount: edoc.mount }));
@@ -16,7 +17,8 @@ function route() {
   const r = parseHash();
   const mod = r.module ? get(r.module) : null;
   if (!mod || mods.indexOf(mod) === -1) { location.replace(mods[0].defaultHash); return; }
-  shell.setActive(mod.id); shell.setTitle(mod.title);
+  shell.setActive(mod.id); shell.setTitle(mod.title, mod.defaultHash);
+  shell.setQuickVisible(!(mod.hideQuickOn && mod.hideQuickOn.indexOf(r.segs[0]) !== -1));
   mod.mount(shell.main, r, { me, setBadge: shell.setBadge });
 }
 
@@ -37,3 +39,4 @@ watchMe((user, reason) => {
   route();
 });
 onChange(route);
+checkForUpdate();   // 폰·앱 안 브라우저가 옛 화면을 붙들고 있으면 새 버전으로 바꾼다

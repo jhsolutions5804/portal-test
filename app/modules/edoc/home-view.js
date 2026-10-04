@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261004h';
-import { myTurn, canProxy, tabsOf } from './logic.js?v=20261004h';
-import { docRowHtml } from './views.js?v=20261004h';
-import { pipeCounts, todoCounts } from './home-stats.js?v=20261004h';
+import { esc } from '../../core/ui.js?v=20261004j';
+import { myTurn, canProxy, tabsOf } from './logic.js?v=20261004j';
+import { docRowHtml } from './views.js?v=20261004j';
+import { pipeCounts, todoCounts } from './home-stats.js?v=20261004j';
 
 /** 홈에 보여 줄 문서 묶음 — 결재할 문서 / 수신함(참조·회람) / 내가 작성한 문서 / 게시된 문건 */
 export function homeLists(docs, me) {
@@ -71,7 +71,7 @@ export function pipelineHtml(model) {
   const { docs, me, scope } = model; const rows = pipeCounts(docs, me, scope);
   const seg = me.admin ? '<div class="jh-segmented" role="group" aria-label="현황 범위">' +
     [['mine', '내 문서'], ['all', '전체']].map(([k, l]) => '<button type="button" class="jh-segmented__item" data-scope="' + k + '" aria-pressed="' + (scope === k) + '">' + l + '</button>').join('') + '</div>' : '';
-  return '<section class="jh-panel jh-card"><div class="jh-panel__head"><h3>📊 문서 현황</h3>' + seg + '</div><div class="jh-form">' +
+  return '<section class="jh-panel jh-card"><div class="jh-panel__head"><h3>📊 ' + (me.admin ? '문서 현황' : '내 문서 현황') + '</h3>' + seg + '</div><div class="jh-form">' +
     '<div class="jh-pipeline">' + rows.map((r) => '<button type="button" class="jh-pipe" data-status="' + r.key + '" data-pipe="' + r.key + '"><span class="jh-pipe__count">' + r.count + '</span><span class="jh-pipe__label">' + esc(r.label) + '</span></button>').join('') + '</div>' +
     '<span class="jh-field__hint">' + (scope === 'all' ? '내가 볼 수 있는 모든 문서의 상태별 건수입니다.' : '내가 작성한 문서의 상태별 건수입니다.') + ' 게시되지 않은 문서도 단계를 눌러 바로 볼 수 있습니다.</span></div></section>';
 }
@@ -90,10 +90,10 @@ export function recentHtml(model) {
 /** 홈 전체. 근로시간·연차는 따로 채워질 수 있어(명부·근태 조회) 칸마다 자리 표시를 둔다 */
 export function homeHtml(model) {
   return '<div class="jh-dashboard">' +
-    '<header class="jh-form__head"><h2 class="jh-form__title">전자결재 홈</h2><p class="jh-form__sub">내 근무 현황과 결재 문서를 한눈에</p></header>' +
+    '<div class="jh-pagehead"><header class="jh-form__head"><h2 class="jh-form__title">전자결재 홈</h2><p class="jh-form__sub">내 근무 현황과 결재 문서를 한눈에</p></header>' +
+      '<button type="button" class="jh-btn" data-variant="primary" data-new>＋ 새 문서 작성</button></div>' +
     '<div class="jh-dashboard__grid"><div id="edoc-work">' + worktimeHtml(model.work) + '</div><div id="edoc-leavebox">' + leaveBoxHtml(model.leave) + '</div></div>' +
     '<div id="edoc-todo">' + todoHtml(model.todo) + '</div>' +
     '<div id="edoc-pipe">' + pipelineHtml(model) + '</div>' +
-    '<div id="edoc-recent">' + recentHtml(model) + '</div>' +
-    '<div><button type="button" class="jh-btn" data-variant="primary" data-new>＋ 새 문서 작성</button></div></div>';
+    '<div id="edoc-recent">' + recentHtml(model) + '</div></div>';
 }

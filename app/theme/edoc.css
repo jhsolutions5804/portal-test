@@ -163,7 +163,7 @@
 .jh-line-item__actions { display: flex; gap: var(--sp-2); margin-left: auto; }
 .jh-guide[data-diff="true"] { border-width: var(--u-2); }
 @media (max-width: 899px) {
- .jh-actionbar { position: fixed; left: 0; right: 0; bottom: calc(var(--u-56) + env(safe-area-inset-bottom, 0)); z-index: var(--z-actionbar); padding: var(--sp-3) var(--sp-4); box-shadow: var(--shadow-up); }
+ .jh-actionbar { position: fixed; left: 0; right: 0; bottom: calc(var(--u-56) + var(--u-1) + env(safe-area-inset-bottom, 0)); z-index: var(--z-actionbar); padding: var(--sp-3) var(--sp-4); box-shadow: var(--shadow-up); }
  .jh-actionbar__primary, .jh-actionbar__danger, .jh-actionbar__secondary { flex-wrap: wrap; }
  .jh-actionbar__secondary { margin-left: 0; }
  .jh-actionbar .jh-btn { min-height: var(--u-44); }
@@ -294,4 +294,17 @@ button.jh-kpi:hover { border-color: var(--c-primary); }
   .jh-pipeline { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .jh-statrow { justify-content: center; }
   .jh-statrow .jh-kpi-grid { flex: 1 1 100%; }
+}
+
+/* ── 페이지 머리: 제목 + 오른쪽 주요 버튼(전자결재 홈의 '새 문서 작성') ── */
+.jh-pagehead { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+.jh-pagehead .jh-form__head { flex: 1 1 var(--u-140); min-width: 0; }
+.jh-pagehead .jh-btn { flex: none; }
+
+/* 폰: 3칸 통계(근무시간 누계·소정근로시간·정규 잔여 등)가 한 글자씩 꺾이지 않게 안쪽 여백과 글자를 줄인다 */
+@media (max-width: 899px) {
+  .jh-kpi-grid[data-cols="3"] { gap: var(--sp-2); }
+  .jh-kpi-grid[data-cols="3"] .jh-kpi { padding: var(--sp-3) var(--sp-2); }
+  .jh-kpi-grid[data-cols="3"] .jh-kpi__label { font-size: var(--fs-xs); word-break: keep-all; }
+  .jh-kpi-grid[data-cols="3"] .jh-kpi__value { font-size: var(--fs-lg); }
 }

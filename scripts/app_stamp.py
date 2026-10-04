@@ -19,6 +19,11 @@ s = open(idx, encoding='utf-8').read()
 t = re.sub(r'(href="theme/[a-z]+\.css)(\?v=[^"]*)?"', lambda m: m.group(1) + '?v=' + ver + '"', s)
 t = re.sub(r'(src="core/boot\.js)(\?v=[^"]*)?"', lambda m: m.group(1) + '?v=' + ver + '"', t)
 if t != s: open(idx, 'w', encoding='utf-8', newline='').write(t); n += 1
+# 새 버전 자동 확인용: index.html 의 jh-build 와 version.json 도 같은 값으로
+s2 = open(idx, encoding='utf-8').read()
+t2 = re.sub(r'(<meta name="jh-build" content=")[^"]*(")', lambda m: m.group(1) + ver + m.group(2), s2)
+if t2 != s2: open(idx, 'w', encoding='utf-8', newline='').write(t2)
+open(os.path.join(root, 'version.json'), 'w', encoding='utf-8', newline='').write('{ "build": "' + ver + '" }\n')
 # 검사: 상대 import 가 모두 같은 버전인지
 bad = []
 for f in glob.glob(root + '/**/*.js', recursive=True):

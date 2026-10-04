@@ -1,5 +1,5 @@
-import { esc } from './ui.js?v=20261004h';
-import { MODES, getMode, setMode, effectiveTheme } from './theme.js?v=20261004h';
+import { esc } from './ui.js?v=20261004j';
+import { MODES, getMode, setMode, effectiveTheme } from './theme.js?v=20261004j';
 
 const HINT = {
   auto: () => '이 기기의 라이트/다크 설정을 따릅니다. (지금: ' + (effectiveTheme() === 'dark' ? '다크' : '라이트') + ')',

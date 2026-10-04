@@ -1,6 +1,6 @@
-import { esc } from './ui.js?v=20261004h';
-import { openSettings } from './settings.js?v=20261004h';
-import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261004h';
+import { esc } from './ui.js?v=20261004j';
+import { openSettings } from './settings.js?v=20261004j';
+import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261004j';
 
 export function renderLogin(root, { onSubmit, message }) {
   root.innerHTML =
@@ -35,6 +35,10 @@ export function renderShell(root, me, mods, { onLogout }) {
       '<span class="jh-nav__icon" aria-hidden="true">' + esc(m.icon || '') + '</span>' +
       '<span class="jh-nav__label">' + esc(m.title) + '</span>' +
       '<span class="jh-nav__badge" hidden></span></a>').join('');
+  // 폰 하단 막대: 현재 모듈의 '빠른 작업'(전자결재는 새 문서 작성). 모듈 이동은 PC 사이드바·상단 제목으로
+  const quick = mods.filter(m => m.quick).map(m =>
+    '<a class="jh-btn" data-variant="primary" href="' + esc(m.quick.hash) + '" data-mod-quick="' + esc(m.id) + '">' +
+      '<span aria-hidden="true">' + esc(m.quick.icon || '＋') + '</span> ' + esc(m.quick.label) + '</a>').join('') || items;
   const who = esc(me.name || '') + (me.rank ? ' <small>' + esc(me.rank) + '</small>' : '');
   root.innerHTML =
     '<div class="jh-app">' +
@@ -49,16 +53,18 @@ export function renderShell(root, me, mods, { onLogout }) {
         '</div>' +
       '</aside>' +
       '<div class="jh-body">' +
-        '<header class="jh-topbar"><h1 class="jh-topbar__title" id="jh-title"></h1><div class="jh-topbar__tools"><div class="jh-userchip">' + who + '</div><button type="button" class="jh-iconbtn" data-open-settings aria-label="화면 설정">⚙</button></div></header>' +
+        '<header class="jh-topbar"><h1 class="jh-topbar__title"><a id="jh-title" href="' + esc(mods[0].defaultHash) + '"></a></h1><div class="jh-topbar__tools"><div class="jh-userchip">' + who + '</div><button type="button" class="jh-iconbtn" data-open-settings aria-label="화면 설정">⚙</button></div></header>' +
         '<main class="jh-main" id="jh-main"></main>' +
       '</div>' +
-      '<nav class="jh-tabbar" aria-label="모듈 탭">' + items + '</nav>' +
+      '<nav class="jh-tabbar" aria-label="빠른 작업">' + quick + '</nav>' +
     '</div>';
   root.querySelectorAll('#jh-logout').forEach(b => b.addEventListener('click', onLogout));
   root.querySelectorAll('[data-open-settings]').forEach(b => b.addEventListener('click', () => openSettings(b)));
   return {
     main: root.querySelector('#jh-main'),
-    setTitle(t) { root.querySelector('#jh-title').textContent = t; },
+    setTitle(t, hash) { const a = root.querySelector('#jh-title'); a.textContent = t; if (hash) a.setAttribute('href', hash); },
+    /** 작성·인쇄 화면에서는 하단 '새 문서 작성' 막대를 숨긴다(같은 일을 이미 하고 있으므로) */
+    setQuickVisible(v) { root.querySelectorAll('.jh-tabbar').forEach(n => { n.hidden = !v; }); root.querySelector('.jh-app').toggleAttribute('data-noquick', !v); },
     setActive(id) { root.querySelectorAll('[data-mod]').forEach(a => a.classList.toggle('is-active', a.getAttribute('data-mod') === id)); },
     setBadge(id, n) {
       root.querySelectorAll('[data-mod="' + id + '"] .jh-nav__badge').forEach(b => { b.textContent = n > 99 ? '99+' : String(n); b.hidden = !n; });

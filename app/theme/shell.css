@@ -50,4 +50,12 @@
  .jh-tabbar .jh-nav__item { min-height: var(--u-56); }
 }
 
-
+/* ── 상단 제목은 모듈 홈 링크, 폰 하단 막대는 '빠른 작업' 버튼 ── */
+.jh-topbar__title a { color: inherit; text-decoration: none; }
+.jh-topbar__title a:hover { text-decoration: underline; }
+.jh-tabbar[hidden] { display: none; }
+@media (max-width: 899px) {
+  .jh-tabbar { align-items: center; padding: var(--u-6) var(--sp-3) calc(var(--u-6) + env(safe-area-inset-bottom, 0)); gap: var(--sp-2); }
+  .jh-tabbar .jh-btn { flex: 1; min-height: var(--u-44); text-decoration: none; }
+  .jh-app[data-noquick] { padding-bottom: calc(var(--u-64) + env(safe-area-inset-bottom, 0)); }
+}

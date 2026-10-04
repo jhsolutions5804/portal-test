@@ -1,19 +1,19 @@
-import { fetchAll, fetchOne } from './data.js?v=20261004h';
-import { listHtml, detailHtml } from './views.js?v=20261004h';
-import { tabCounts } from './logic.js?v=20261004h';
-import { buildHash, navigate } from '../../core/router.js?v=20261004h';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261004h';
-import { toast } from '../../core/ui.js?v=20261004h';
-import { confirmDialog } from '../../core/dialog.js?v=20261004h';
-import { loadDirectory } from './directory.js?v=20261004h';
-import { act } from './api.js?v=20261004h';
-import * as C from './compose.js?v=20261004h';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261004h';
-import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml } from './home-view.js?v=20261004h';
-import { todoCounts } from './home-stats.js?v=20261004h';
-import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261004h';
-import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261004h';
-import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml } from './compose-view.js?v=20261004h';
+import { fetchAll, fetchOne } from './data.js?v=20261004j';
+import { listHtml, detailHtml } from './views.js?v=20261004j';
+import { tabCounts } from './logic.js?v=20261004j';
+import { buildHash, navigate } from '../../core/router.js?v=20261004j';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261004j';
+import { toast } from '../../core/ui.js?v=20261004j';
+import { confirmDialog } from '../../core/dialog.js?v=20261004j';
+import { loadDirectory } from './directory.js?v=20261004j';
+import { act } from './api.js?v=20261004j';
+import * as C from './compose.js?v=20261004j';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261004j';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml } from './home-view.js?v=20261004j';
+import { todoCounts } from './home-stats.js?v=20261004j';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261004j';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261004j';
+import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml } from './compose-view.js?v=20261004j';
 
 const URL_DEFAULTS = { tab: 'todo', type: 'all', status: 'all', page: '1', size: '20' };   // 주소에서 생략하는 기본값
 
@@ -22,7 +22,9 @@ export const manifest = {
   title: '전자결재',
   icon: '✍',
   perm: (me) => me.admin || (me.perms && me.perms.edoc === true),
-  defaultHash: '#/edoc/home'
+  defaultHash: '#/edoc/home',
+  quick: { label: '새 문서 작성', icon: '✍', hash: '#/edoc/new' },   // 폰 하단 막대 버튼
+  hideQuickOn: ['new', 'edit', 'print']                                 // 이미 작성·인쇄 중인 화면에서는 숨김
 };
 
 let cache = { uid: null, docs: null };
