@@ -1,10 +1,10 @@
-import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261004j';
-import { register, visibleFor, get } from './registry.js?v=20261004j';
-import { parseHash, onChange } from './router.js?v=20261004j';
-import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261004j';
-import { initTheme } from './theme.js?v=20261004j';
-import { checkForUpdate } from './update.js?v=20261004j';
-import * as edoc from '../modules/edoc/index.js?v=20261004j';
+import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261004k';
+import { register, visibleFor, get } from './registry.js?v=20261004k';
+import { parseHash, onChange } from './router.js?v=20261004k';
+import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261004k';
+import { initTheme } from './theme.js?v=20261004k';
+import { checkForUpdate } from './update.js?v=20261004k';
+import * as edoc from '../modules/edoc/index.js?v=20261004k';
 
 initTheme();   // 이 기기에 저장된 화면 모드(자동·라이트·다크) 적용
 register(Object.assign({}, edoc.manifest, { mount: edoc.mount }));

@@ -64,5 +64,5 @@
 .jh-toast { z-index: var(--z-toast); }
 @media (prefers-reduced-motion: reduce) { .jh-btn, .jh-toast { transition: none; } }
 
-
-
+/* 폰에서는 숨기는 요소(PC 전용). 폰은 하단 막대의 '새 문서 작성'이 같은 일을 한다 */
+@media (max-width: 899px) { .jh-pc-only { display: none; } }

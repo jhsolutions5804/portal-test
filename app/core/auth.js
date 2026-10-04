@@ -1,5 +1,5 @@
-import { auth, db, doc, getDoc, onAuthStateChanged, signInWithEmailAndPassword, signOut } from './firebase.js?v=20261004j';
-import { DOMAIN } from './config.js?v=20261004j';
+import { auth, db, doc, getDoc, onAuthStateChanged, signInWithEmailAndPassword, signOut } from './firebase.js?v=20261004k';
+import { DOMAIN } from './config.js?v=20261004k';
 
 export function authErrorMessage(code) {
   const m = {

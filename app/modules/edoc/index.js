@@ -1,19 +1,19 @@
-import { fetchAll, fetchOne } from './data.js?v=20261004j';
-import { listHtml, detailHtml } from './views.js?v=20261004j';
-import { tabCounts } from './logic.js?v=20261004j';
-import { buildHash, navigate } from '../../core/router.js?v=20261004j';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261004j';
-import { toast } from '../../core/ui.js?v=20261004j';
-import { confirmDialog } from '../../core/dialog.js?v=20261004j';
-import { loadDirectory } from './directory.js?v=20261004j';
-import { act } from './api.js?v=20261004j';
-import * as C from './compose.js?v=20261004j';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261004j';
-import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml } from './home-view.js?v=20261004j';
-import { todoCounts } from './home-stats.js?v=20261004j';
-import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261004j';
-import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261004j';
-import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml } from './compose-view.js?v=20261004j';
+import { fetchAll, fetchOne } from './data.js?v=20261004k';
+import { listHtml, detailHtml } from './views.js?v=20261004k';
+import { tabCounts } from './logic.js?v=20261004k';
+import { buildHash, navigate } from '../../core/router.js?v=20261004k';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261004k';
+import { toast } from '../../core/ui.js?v=20261004k';
+import { confirmDialog } from '../../core/dialog.js?v=20261004k';
+import { loadDirectory } from './directory.js?v=20261004k';
+import { act } from './api.js?v=20261004k';
+import * as C from './compose.js?v=20261004k';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261004k';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml } from './home-view.js?v=20261004k';
+import { todoCounts } from './home-stats.js?v=20261004k';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261004k';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261004k';
+import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml } from './compose-view.js?v=20261004k';
 
 const URL_DEFAULTS = { tab: 'todo', type: 'all', status: 'all', page: '1', size: '20' };   // 주소에서 생략하는 기본값
 
