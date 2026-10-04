@@ -1,11 +1,11 @@
-import { esc, escMultiline, money } from '../../core/ui.js?v=20261004l';
+import { esc, escMultiline, money } from '../../core/ui.js?v=20261004m';
 import {
   TYPE_LABEL, TYPE_GROUPS, STATUS_LABEL, STATUS_GROUPS, tabDefs, tabCounts, filterDocs, summaryOf,
   myTurn, canProxy, currentStepIndex, stepState, fmtDate, fmtDateTime, fmtYmd, isPassive, tabsOf, docTitle,
   PAGE_SIZES, normalizeSize, paginate, pageNumbers, pageOfIndex, legacyCurrentStep, availableActions
-} from './logic.js?v=20261004l';
-import { actionbarHtml } from './compose-view.js?v=20261004l';
-import { FORMS } from './forms.js?v=20261004l';
+} from './logic.js?v=20261004m';
+import { actionbarHtml } from './compose-view.js?v=20261004m';
+import { FORMS } from './forms.js?v=20261004m';
 
 export function badgeHtml(status) {
   return '<span class="jh-badge" data-status="' + esc(status) + '">' + esc(STATUS_LABEL[status] || status || '-') + '</span>';
@@ -101,6 +101,17 @@ export function timelineHtml(d) {
   }).join('') + '</ol>';
 }
 
+/** 결재 의견: 승인·반려 때 남긴 글을 단계별로 모아 보여 준다(반려 사유는 상단 경고에도 나오므로 여기서는 반려 의견만 표시하지 않고 승인 의견 위주) */
+export function commentsHtml(d) {
+  const line = Array.isArray(d.approvalLine) ? d.approvalLine : [];
+  const rows = line.filter((s) => s.comment && String(s.comment).trim() && s.status === 'approved');
+  if (!rows.length) return '';
+  return '<section class="jh-detail__comments"><h3 class="jh-detail__h">결재 의견</h3><ul class="jh-comments">' + rows.map((s) =>
+    '<li class="jh-comment"><div class="jh-comment__head"><strong>' + esc(s.name || s.approvedBy || '') + '</strong>' + (s.rank ? ' <small>' + esc(s.rank) + '</small>' : '') +
+    '<span class="jh-comment__meta">' + esc(s.role || '') + (s.proxyByName ? ' · 대리 ' + esc(s.proxyByName) : '') + (s.approvedAt ? ' · ' + esc(fmtDateTime(s.approvedAt)) : '') + '</span></div>' +
+    '<div class="jh-comment__body">' + escMultiline(s.comment) + '</div></li>').join('') + '</ul></section>';
+}
+
 export function detailHtml(ctx) {
   const { doc: d, me } = ctx;
   if (ctx.loading) return '<div class="jh-empty">불러오는 중…</div>';
@@ -122,7 +133,7 @@ export function detailHtml(ctx) {
     '</header>' +
     (d.status === 'rejected' && d.rejectReason ? '<div class="jh-alert" data-tone="danger" role="alert"><strong>반려 사유</strong><br>' + escMultiline(d.rejectReason) + '</div>' : '') +
     '<section class="jh-detail__body"><dl class="jh-kv">' + (rows || '<div class="jh-empty">표시할 내용이 없습니다.</div>') + '</dl></section>' +
-    '<section class="jh-detail__line"><h3 class="jh-detail__h">결재선</h3>' + timelineHtml(d) + '</section>' +
+    '<section class="jh-detail__line"><h3 class="jh-detail__h">결재선</h3>' + timelineHtml(d) + '</section>' + commentsHtml(d) +
     actionbarHtml(availableActions(d, me)) +
   '</article>';
 }

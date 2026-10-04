@@ -13,7 +13,8 @@ export const COMPOSE_TYPES = [
   { key: 'spend', label: '구매·지출 결의서', icon: '🧾', guide: 'spend', desc: '구매품의 / 지출결의' },
   { key: 'daily', label: '업무일지', icon: '📝', guide: 'daily', desc: '프로젝트별 금일·명일 업무' },
   { key: 'cert', label: '재직증명서', icon: '🪪', guide: 'cert', desc: '제출처·부수 지정' },
-  { key: 'resign', label: '휴직/퇴직', icon: '📤', guide: 'resign', desc: '휴직·퇴직 신청' }
+  { key: 'resign', label: '휴직/퇴직', icon: '📤', guide: 'resign', desc: '휴직·퇴직 신청' },
+  { key: 'attend', label: '근태 기록 수정 요청', icon: '⏰', guide: 'attend', desc: '지난 출퇴근 기록 입력·수정' }
 ];
 export const typeOfDtype = (dtype) => (dtype === 'purchase' || dtype === 'expense' ? 'spend' : dtype);
 export const composeType = (key) => COMPOSE_TYPES.find((t) => t.key === key) || null;
@@ -47,6 +48,12 @@ const F = {
     { key: 'todayWork', label: '금일 업무', type: 'textarea', ph: '오늘 한 일을 시간 순서대로 적어 주세요', required: true, row: 'b' },
     { key: 'tomorrowWork', label: '명일 계획', type: 'textarea', ph: '내일 할 일', row: 'c' },
     { key: 'issue', label: '특이사항', type: 'textarea', ph: '안전·품질·자재 이슈 등', row: 'd' }
+  ],
+  attend: [
+    { key: 'date', label: '수정할 날짜', type: 'date', required: true, row: 'a', hint: '지난 날짜만, 최근 60일 이내입니다. 오늘 기록은 출퇴근 기록 화면에서 직접 입력하세요.' },
+    { key: 'checkIn', label: '출근', type: 'time', required: true, row: 'a' },
+    { key: 'checkOut', label: '퇴근', type: 'time', required: true, row: 'a' },
+    { key: 'reason', label: '사유', type: 'textarea', ph: '예) 퇴근 기록을 누르지 못했습니다', required: true, row: 'b' }
   ],
   spendBase: [
     { key: 'vendor', label: '공급업체 / 거래처', type: 'text', ph: '업체명', required: true, row: 'a' },
@@ -109,10 +116,13 @@ export function defaultValues(type, me, now) {
   if (type === 'leave') { const nb = nextBusinessDay(now); Object.assign(v, { leaveType: '연차(유급)', startDate: nb, endDate: nb, days: calcLeaveDays(nb, nb, '연차(유급)'), reason: '', contact: '', deputyUid: '' }); }
   else if (type === 'resign') Object.assign(v, { leaveKind: '퇴직', lastDate: '', returnDate: '', reason: '' });
   else if (type === 'cert') Object.assign(v, { purpose: '', language: '한국어', copies: 1 });
+  else if (type === 'attend') { const y = new Date(now || new Date()); y.setDate(y.getDate() - 1); Object.assign(v, { date: ymd(y), checkIn: '', checkOut: '', reason: '' }); }
   else if (type === 'daily') Object.assign(v, { date: today, pjtId: '', todayWork: '', tomorrowWork: '', issue: '' });
   else if (type === 'spend') Object.assign(v, { kind: 'purchase', vendor: '', pjtId: '', purpose: '', dueDate: '', expDate: today, category: SPEND_CATEGORIES[0], amount: '', receipt: RECEIPTS[0], items: [] });
   return v;
 }
+/** 근태 요청의 근무시간(휴게 점심 2시간 고정, 퇴근이 더 이르면 다음 날 퇴근) */
+export function attendHoursOf(ci, co) { const [ih, im] = String(ci).split(':').map(Number); const [oh, om] = String(co).split(':').map(Number); let m = (oh * 60 + om) - (ih * 60 + im); if (m <= 0) m += 1440; return Math.max(0, m - 120) / 60; }
 export const emptyItem = () => ({ name: '', qty: '', unitPrice: '', link: '' });
 
 /** 한글 받침에 맞는 조사: josa('금액','을','를') → '금액을', josa('사유','을','를') → '사유를' */
@@ -148,6 +158,14 @@ export function validate(type, values, opts) {
     if (f.key === 'days' && !(num(val) > 0)) err[f.key] = '일수가 0입니다. 선택한 기간이 주말뿐이라면 날짜를 다시 확인해 주세요.';
     if (f.type === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(String(val))) err[f.key] = f.label + ' 형식이 올바르지 않습니다.';
   });
+  if (type === 'attend' && !draft) {
+    const today = ymd((opts && opts.now) || new Date()); const t = (s) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(s || ''));
+    if (!err.date) { const back = new Date(today + 'T00:00:00'); back.setDate(back.getDate() - 60);
+      if (v.date >= today) err.date = '지난 날짜만 요청할 수 있습니다. 오늘 기록은 출퇴근 기록 화면에서 직접 입력해 주세요.'; else if (v.date < ymd(back)) err.date = '최근 60일 이내의 날짜만 요청할 수 있습니다. 관리자에게 직접 입력을 요청해 주세요.'; }
+    if (!err.checkIn && !t(v.checkIn)) err.checkIn = '출근 시각 형식이 올바르지 않습니다.'; if (!err.checkOut && !t(v.checkOut)) err.checkOut = '퇴근 시각 형식이 올바르지 않습니다.';
+    if (!err.checkIn && !err.checkOut) { if (v.checkIn === v.checkOut) err.checkOut = '출근과 퇴근 시각이 같습니다.'; else if (attendHoursOf(v.checkIn, v.checkOut) > 16) err.checkOut = '근무시간이 16시간을 넘습니다. 시각을 확인해 주세요.'; }
+    if (opts && opts.worker === null) err.date = err.date || '근무자 명부와 연동된 계정만 요청할 수 있습니다. 인사 담당자에게 연동을 요청해 주세요.';
+  }
   if (type === 'leave' && !err.startDate && !err.endDate && v.startDate > v.endDate) err.endDate = '종료일이 시작일보다 빠릅니다.';
   if (type === 'resign' && v.leaveKind === '휴직' && !err.lastDate && !err.returnDate && v.returnDate && v.returnDate <= v.lastDate) err.returnDate = '복직 예정일은 휴직 예정일 이후여야 합니다.';
   if ((type === 'daily' || type === 'spend') && opts && opts.projects && v.pjtId && !(type === 'spend' && v.pjtId === 'common') && !opts.projects.some((p) => p.id === v.pjtId)) err.pjtId = '선택할 수 없는 프로젝트입니다.';
@@ -166,6 +184,7 @@ export function buildTitle(type, values, me, now) {
   if (type === 'leave') return today + ' ' + name + ' ' + (v.leaveType || '연차') + ' 신청서';
   if (type === 'daily') { const d = String(v.date || '').replace(/-/g, '').slice(2); return '(' + (v.pjtCode || '') + ') ' + d + ' ' + name + ' 업무일지'; }
   if (type === 'cert') return today + ' ' + name + ' 재직증명서';
+  if (type === 'attend') return String(v.date || '').replace(/-/g, '') + ' ' + name + ' 근태 기록 수정 요청';
   if (type === 'resign') return today + ' ' + name + ' ' + (v.leaveKind || '휴직/퇴직') + ' 신청서';
   if (type === 'spend') return today + ' ' + name + (v.kind === 'expense' ? ' 지출결의서' : ' 구매품의서');
   return today + ' ' + name;
@@ -183,6 +202,7 @@ export function buildDocData(type, values, me, ctx) {
   }
   else if (type === 'resign') Object.assign(d, { leaveKind: text('leaveKind'), lastDate: v.lastDate, returnDate: v.leaveKind === '휴직' ? (v.returnDate || '') : '', reason: text('reason') });
   else if (type === 'cert') Object.assign(d, { purpose: text('purpose'), language: text('language'), copies: num(v.copies) });
+  else if (type === 'attend') Object.assign(d, { date: v.date, checkIn: v.checkIn, checkOut: v.checkOut, reason: text('reason'), workerId: (ctx && ctx.worker && ctx.worker.id) || '', workHours: attendHoursOf(v.checkIn, v.checkOut), breakMinutes: 120 });
   else if (type === 'daily') Object.assign(d, { date: v.date, pjtId: v.pjtId, pjtCode: proj ? proj.pjtCode || proj.code || '' : '', pjtName: proj ? proj.name || '' : '', todayWork: String(v.todayWork || '').trim(), tomorrowWork: String(v.tomorrowWork || '').trim(), issue: String(v.issue || '').trim() });
   else if (type === 'spend') {
     Object.assign(d, { vendor: text('vendor'), purpose: text('purpose'), pjtId: v.pjtId || '', pjtCode: v.pjtId === 'common' ? '공통' : proj ? proj.pjtCode || proj.code || '' : '', pjtName: v.pjtId === 'common' ? '프로젝트 무관(본사 경비)' : proj ? proj.name || '' : '' });

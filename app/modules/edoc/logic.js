@@ -1,5 +1,7 @@
-export const DOC_TYPES = ['daily', 'leave', 'resign', 'cert', 'purchase', 'expense'];
-export const TYPE_LABEL = { daily: '업무일지', leave: '연차신청서', resign: '휴직/퇴직', cert: '재직증명서', purchase: '구매품의서', expense: '지출결의서' };
+export const DOC_TYPES = ['daily', 'leave', 'resign', 'cert', 'purchase', 'expense', 'attend'];
+/** 승인으로 끝나고 게시하지 않는 문서(업무일지, 근태 기록 수정 요청 — 승인되면 출퇴근 기록에 바로 반영) */
+export const NO_POST_TYPES = ['daily', 'attend'];
+export const TYPE_LABEL = { daily: '업무일지', leave: '연차신청서', resign: '휴직/퇴직', cert: '재직증명서', purchase: '구매품의서', expense: '지출결의서', attend: '근태 기록 수정 요청' };
 export const TYPE_GROUPS = [
   { key: 'all', label: '전체', types: DOC_TYPES },
   { key: 'daily', label: '업무일지', types: ['daily'] },
@@ -7,7 +9,8 @@ export const TYPE_GROUPS = [
   { key: 'resign', label: '휴직/퇴직', types: ['resign'] },
   { key: 'cert', label: '재직증명', types: ['cert'] },
   { key: 'spend', label: '구매·지출', types: ['purchase', 'expense'] },
-  { key: 'nodaily', label: '업무일지 제외', types: DOC_TYPES.filter(t => t !== 'daily') }   // 업무일지는 승인으로 끝나고 게시하지 않아서, 나머지 문서만 볼 때 쓴다
+  { key: 'attend', label: '근태 수정', types: ['attend'] },
+  { key: 'nodaily', label: '게시 대상만 (업무일지·근태 제외)', types: DOC_TYPES.filter(t => NO_POST_TYPES.indexOf(t) === -1) }   // 업무일지는 승인으로 끝나고 게시하지 않아서, 나머지 문서만 볼 때 쓴다
 ];
 export const STATUS_LABEL = { draft: '임시저장', pending: '결재대기', reviewing: '검토중', approved: '승인', rejected: '반려', posted: '게시' };
 export const STATUS_GROUPS = [
@@ -80,11 +83,11 @@ export function availableActions(doc, me) {
   const my = myTurn(doc, me); const proxy = canProxy(doc, me);
   if ((my || proxy) && !legacyCurrentStep(doc)) {
     out.push({ key: 'approve', label: proxy && !my ? '대리 승인' : '승인', variant: 'primary', group: 'primary' });
-    if (me.isProxy || me.isRequired) out.push({ key: 'approve_post', label: '승인 후 게시(전결)', variant: 'secondary', group: 'primary' });
+    if ((me.isProxy || me.isRequired) && doc.dtype !== 'attend') out.push({ key: 'approve_post', label: '승인 후 게시(전결)', variant: 'secondary', group: 'primary' });
     out.push({ key: 'reject', label: proxy && !my ? '대리 반려' : '반려', variant: 'danger', group: 'danger' });
   }
   if (mine && (st === 'pending' || st === 'reviewing') && !my) out.push({ key: 'recall', label: '회수', variant: 'secondary', group: 'secondary' });
-  if (st === 'approved') {
+  if (st === 'approved' && doc.dtype !== 'attend') {   // 근태 기록 수정 요청은 승인되면 바로 출퇴근 기록에 반영되므로 게시하지 않는다
     const line = Array.isArray(doc.approvalLine) ? doc.approvalLine : [];
     const actives = line.filter((s) => !isPassive(s.role)); const last = actives[actives.length - 1];
     if (me.admin || me.isRequired || isMyStep(last, me)) out.push({ key: 'post', label: '게시', variant: 'primary', group: 'primary' });
@@ -127,6 +130,7 @@ export function summaryOf(d) {
     case 'resign': return [d.leaveKind, fmtYmd(d.lastDate)].filter(Boolean).join(' · ');
     case 'cert': return d.purpose || '';
     case 'purchase': return [d.item, d.qty ? '× ' + d.qty : ''].filter(Boolean).join(' ');
+    case 'attend': return [d.date, (d.checkIn || '--:--') + ' ~ ' + (d.checkOut || '--:--'), d.workHours != null ? Number(d.workHours).toFixed(1) + 'h' : ''].filter(Boolean).join(' · ');
     case 'expense': return [d.category, won(d.amount) ? won(d.amount) + '원' : '', d.vendor].filter(Boolean).join(' · ');
     default: return '';
   }

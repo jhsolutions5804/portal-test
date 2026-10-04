@@ -1,4 +1,4 @@
-import { tabsOf, availableActions } from './logic.js?v=20261004l';
+import { tabsOf, availableActions, NO_POST_TYPES } from './logic.js?v=20261004m';
 
 /** 문서 현황 단계: 임시저장 → 결재 진행 → 승인(게시 대기) → 게시, 그리고 반려 */
 export const PIPE_STEPS = [
@@ -25,7 +25,7 @@ export function todoCounts(docs, me) {
     const t = tabsOf(d, me);
     if (t.todo) approve++;
     if (d.authorUid === me.uid && d.status === 'rejected') rejected++;
-    if (d.status === 'approved' && d.dtype !== 'daily' && (d.authorUid === me.uid || availableActions(d, me).some((a) => a.key === 'post'))) postWait++;
+    if (d.status === 'approved' && NO_POST_TYPES.indexOf(d.dtype) === -1 && (d.authorUid === me.uid || availableActions(d, me).some((a) => a.key === 'post'))) postWait++;
     if (t.cc && d.status !== 'draft' && d.status !== 'rejected') inbox++;
   });
   return { approve, rejected, postWait, inbox };

@@ -1,9 +1,9 @@
-import { loadWorkers, loadHolidays } from '../../shared/workers-data.js?v=20261004l';
-import { findWorker, dateKey, monthlyStandardHours } from '../../shared/worktime.js?v=20261004l';
-import { loadRecord, loadMonth, writeClockIn, writeClockOut, writeManual } from './data.js?v=20261004l';
-import { clockState, buildClockIn, buildClockOut, validateManual, editPermission, yesterdayKey, recentMonths, monthTotals, dayLabel } from './logic.js?v=20261004l';
-import { clockWidgetHtml, inputPageHtml } from './view.js?v=20261004l';
-import { toast, esc } from '../../core/ui.js?v=20261004l';
+import { loadWorkers, loadHolidays } from '../../shared/workers-data.js?v=20261004m';
+import { findWorker, dateKey, monthlyStandardHours } from '../../shared/worktime.js?v=20261004m';
+import { loadRecord, loadMonth, writeClockIn, writeClockOut, writeManual } from './data.js?v=20261004m';
+import { clockState, buildClockIn, buildClockOut, validateManual, editPermission, yesterdayKey, recentMonths, monthTotals, dayLabel } from './logic.js?v=20261004m';
+import { clockWidgetHtml, inputPageHtml, msgHtml } from './view.js?v=20261004m';
+import { toast, esc } from '../../core/ui.js?v=20261004m';
 
 const WD = ['일', '월', '화', '수', '목', '금', '토'];
 export const dateText = (d) => (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + WD[d.getDay()] + '요일';
@@ -79,7 +79,7 @@ export async function mount(root, route, ctx) {
   const refreshForm = () => {   // 입력 중에는 폼을 다시 그리지 않고 결과 칸만 갱신한다
     const v = recompute(); const set = (sel, html) => { const el = root.querySelector(sel); if (el) el.innerHTML = html; };
     const hrs = root.querySelector('[data-att-hours]'); if (hrs) hrs.textContent = (S.form.hours || 0).toFixed(1) + 'h';
-    set('[data-att-msg]', !S.perm.ok ? '<div class="jh-alert" data-tone="info" role="status">' + esc(S.perm.reason) + (S.perm.code === 'needs-approval' ? ' (결재 요청 기능은 다음 업데이트에서 열립니다.)' : '') + '</div>' : (v.errors.checkOut ? '<div class="jh-alert" data-tone="warn" role="status">' + esc(v.errors.checkOut) + '</div>' : ''));
+    set('[data-att-msg]', !S.perm.ok ? msgHtml(S.perm, S.form) : (v.errors.checkOut ? '<div class="jh-alert" data-tone="warn" role="status">' + esc(v.errors.checkOut) + '</div>' : ''));
     const sb = root.querySelector('[data-att-save]'); if (sb) sb.disabled = !S.perm.ok;
   };
   root.oninput = root.onchange = async (ev) => {
@@ -93,7 +93,10 @@ export async function mount(root, route, ctx) {
     if (t.hasAttribute && t.hasAttribute('data-worker')) { S.worker = list.find((w) => w.id === t.value) || S.worker; S.form = { date: today, checkIn: '', checkOut: '', hours: 0 }; S.ym = today.slice(0, 7); await load(); }
   };
   root.onclick = async (ev) => {
-    const e = ev.target.closest('[data-edit],[data-att-save]'); if (!e) return;
+    const e = ev.target.closest('[data-edit],[data-att-save],[data-att-request]'); if (!e) return;
+    if (e.hasAttribute('data-att-request')) {   // 지난 날짜는 근태 기록 수정 요청(결재)으로 — 입력한 값을 채워서 넘긴다
+      const q = new URLSearchParams({ date: S.form.date, in: S.form.checkIn || '', out: S.form.checkOut || '' }); location.hash = '#/edoc/new/attend?' + q.toString(); return;
+    }
     if (e.hasAttribute('data-edit')) { const r = S.rows.find((x) => x.date === e.getAttribute('data-edit')); if (r) { S.form = { date: r.date, checkIn: r.checkIn, checkOut: r.checkOut, hours: r.workHours }; recompute(); paint(); window.scrollTo(0, 0); } return; }
     const v = recompute(); const first = Object.values(v.errors)[0];
     if (first) { toast(first); return; }

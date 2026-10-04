@@ -1,19 +1,20 @@
-import { fetchAll, fetchOne } from './data.js?v=20261004l';
-import { listHtml, detailHtml } from './views.js?v=20261004l';
-import { tabCounts } from './logic.js?v=20261004l';
-import { buildHash, navigate } from '../../core/router.js?v=20261004l';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261004l';
-import { toast } from '../../core/ui.js?v=20261004l';
-import { confirmDialog } from '../../core/dialog.js?v=20261004l';
-import { loadDirectory } from './directory.js?v=20261004l';
-import { act } from './api.js?v=20261004l';
-import * as C from './compose.js?v=20261004l';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261004l';
-import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget } from './home-view.js?v=20261004l';
-import { todoCounts } from './home-stats.js?v=20261004l';
-import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261004l';
-import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261004l';
-import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml } from './compose-view.js?v=20261004l';
+import { fetchAll, fetchOne } from './data.js?v=20261004m';
+import { listHtml, detailHtml } from './views.js?v=20261004m';
+import { tabCounts } from './logic.js?v=20261004m';
+import { buildHash, navigate } from '../../core/router.js?v=20261004m';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261004m';
+import { toast } from '../../core/ui.js?v=20261004m';
+import { confirmDialog } from '../../core/dialog.js?v=20261004m';
+import { loadDirectory } from './directory.js?v=20261004m';
+import { act } from './api.js?v=20261004m';
+import * as C from './compose.js?v=20261004m';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261004m';
+import { loadRecord as loadAttendRecord } from '../attendance/data.js?v=20261004m';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget } from './home-view.js?v=20261004m';
+import { todoCounts } from './home-stats.js?v=20261004m';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261004m';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261004m';
+import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml } from './compose-view.js?v=20261004m';
 
 const URL_DEFAULTS = { tab: 'todo', type: 'all', status: 'all', page: '1', size: '20' };   // 주소에서 생략하는 기본값
 
@@ -113,14 +114,14 @@ async function mountBox(root, route, ctx) {
     if (key === 'edit') { navigate('#/edoc/edit/' + d.dtype + '/' + d.id, { state: { jh: 'fromList' } }); return; }
     if (key === 'print') { navigate('#/edoc/print/' + d.dtype + '/' + d.id, { state: { jh: 'fromList' } }); return; }
     if (key === 'approve') {
-      const r = await confirmDialog({ title: '승인', body: '"' + (d.title || '이 문서') + '"을(를) 승인합니다.', confirmLabel: '승인' });
-      if (r.ok) await call({ action: 'approve' }, '승인했습니다.'); return;
+      const r = await confirmDialog({ title: '승인', body: '"' + (d.title || '이 문서') + '"을(를) 승인합니다.' + (d.dtype === 'attend' ? '\n마지막 결재자가 승인하면 출퇴근 기록에 바로 반영됩니다.' : ''), confirmLabel: '승인', reason: { label: '결재 의견 (선택)', placeholder: '작성자와 다음 결재자에게 전할 말이 있으면 적어 주세요', required: false } });
+      if (r.ok) await call({ action: 'approve', comment: r.reason }, '승인했습니다.'); return;
     }
     if (key === 'approve_post') {
       const line = d.approvalLine || []; const cur = line.findIndex(s => s.status === 'pending' && /^결재/.test(s.role));
       const rest = line.filter((s, i) => i > cur && /^결재/.test(s.role) && s.status === 'pending').length;
-      const r = await confirmDialog({ title: '승인 후 게시(전결)', body: '내 단계를 승인하고 문서를 바로 게시합니다.' + (rest ? '\n남은 결재 ' + rest + '단계는 건너뜁니다(전결 생략으로 기록).' : ''), confirmLabel: '승인 후 게시' });
-      if (r.ok) await call({ action: 'approve', post: true }, '승인하고 게시했습니다.'); return;
+      const r = await confirmDialog({ title: '승인 후 게시(전결)', body: '내 단계를 승인하고 문서를 바로 게시합니다.' + (rest ? '\n남은 결재 ' + rest + '단계는 건너뜁니다(전결 생략으로 기록).' : ''), confirmLabel: '승인 후 게시', reason: { label: '결재 의견 (선택)', placeholder: '남길 의견이 있으면 적어 주세요', required: false } });
+      if (r.ok) await call({ action: 'approve', post: true, comment: r.reason }, '승인하고 게시했습니다.'); return;
     }
     if (key === 'reject') {
       const r = await confirmDialog({ title: '반려', body: '반려하면 작성자가 수정해 다시 상신할 수 있습니다.', confirmLabel: '반려', variant: 'danger', reason: { label: '반려 사유', placeholder: '작성자가 알아볼 수 있게 구체적으로 적어 주세요', required: true } });
@@ -209,9 +210,27 @@ async function mountCompose(root, route, ctx) {
     const type = route.segs[1];
     if (!C.composeType(type)) { navigate('#/edoc/new', { replace: true }); return; }
     S.type = type; S.values = C.defaultValues(type, me); S.ctx = lc(type); S.line = C.initialLine(S.ctx);
+    if (type === 'attend' && route.query) {   // 출퇴근 기록 화면에서 넘어온 값으로 미리 채운다(날짜·출근·퇴근)
+      const q = route.query; if (/^\d{4}-\d{2}-\d{2}$/.test(q.date || '')) S.values.date = q.date;
+      if (/^\d{2}:\d{2}$/.test(q.in || '')) S.values.checkIn = q.in; if (/^\d{2}:\d{2}$/.test(q.out || '')) S.values.checkOut = q.out;
+    }
   }
+  S.worker = undefined;   // 근태 기록 수정 요청: 근무자 명부와 연동된 계정만(서버도 다시 확인)
+  if (S.type === 'attend') { try { const w = findWorker(await loadWorkers(false), me); S.worker = w && w.linked ? w : null; } catch (e) { S.worker = null; } }
 
   const paint = () => { root.innerHTML = '<div class="jh-card">' + composeHtml(S) + '</div>'; };
+  let attendSeq = 0;
+  const updateAttend = async () => {   // 근태 요청: 근무시간 계산과 그 날의 현재 기록(날짜가 바뀌면 다시 조회)
+    const v = S.values; const ok = /^([01]\d|2[0-3]):[0-5]\d$/;
+    const hours = ok.test(v.checkIn || '') && ok.test(v.checkOut || '') && v.checkIn !== v.checkOut ? C.attendHoursOf(v.checkIn, v.checkOut) : null;
+    S.attend = Object.assign({}, S.attend, { date: v.date, hours });
+    const el = () => root.querySelector('#edoc-attend-hint'); if (el()) el().innerHTML = attendHintHtml(S.attend);
+    if (S.attend.loadedDate !== v.date && /^\d{4}-\d{2}-\d{2}$/.test(v.date || '') && S.worker) {
+      const seq = ++attendSeq; S.attend.loadedDate = v.date;
+      try { const cur = await loadAttendRecord(S.worker.id, v.date); if (seq !== attendSeq) return; S.attend.current = cur && cur.checkIn ? cur : null; } catch (e) { S.attend.current = null; }
+      if (el()) el().innerHTML = attendHintHtml(S.attend);
+    }
+  };
   const updateBalance = () => { const el = root.querySelector('#edoc-balance'); if (el) el.innerHTML = balanceHintHtml(S.balance, S.values.days, S.values.leaveType); };
   const applyDeputy = () => {   // 업무 대리인을 정하면 참조로 자동 포함, 바꾸면 이전 사람은 뺀다
     const r = C.setDeputy(S.line, S.values.deputyUid || null, S.autoCc || null, S.ctx);
@@ -229,6 +248,7 @@ async function mountCompose(root, route, ctx) {
   };
   if (S.type === 'leave' && S.values.deputyUid) applyDeputy();   // 불러온 문서의 업무 대리인 반영
   paint();
+  if (S.type === 'attend') updateAttend();
   if (S.type === 'leave') {   // 내 잔여 연차를 불러와 신청 화면에 안내(명부에 입사일이 없으면 안내 생략)
     (async () => {
       try {
@@ -241,7 +261,7 @@ async function mountCompose(root, route, ctx) {
   const firstInvalid = () => { const el = root.querySelector('[data-invalid="true"]'); if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); const inp = el.querySelector('input,select,textarea'); if (inp) inp.focus({ preventScroll: true }); } };
 
   async function persist() {
-    const base = { projects: dir.projects, users: dir.users, now: S.createdMs ? new Date(S.createdMs) : new Date() };
+    const base = { projects: dir.projects, users: dir.users, worker: S.worker, now: S.createdMs ? new Date(S.createdMs) : new Date() };
     const data = C.buildDocData(S.type, S.values, me, base);
     if (S.docRef) {
       await updateDoc(doc(db, 'edoc_' + S.docRef.dtype, S.docRef.id), Object.assign({}, data, { updatedAt: serverTimestamp() }));
@@ -262,7 +282,7 @@ async function mountCompose(root, route, ctx) {
       root.querySelectorAll('[data-add]').forEach((b) => { b.disabled = true; });
       return;
     }
-    if (t.hasAttribute('data-input')) { S.values[t.getAttribute('data-input')] = t.value; clear(t); if (t.getAttribute('data-input') === 'days') updateBalance(); }
+    if (t.hasAttribute('data-input')) { S.values[t.getAttribute('data-input')] = t.value; clear(t); if (t.getAttribute('data-input') === 'days') updateBalance(); if (S.type === 'attend') updateAttend(); }
     else if (t.hasAttribute('data-item')) { const [i, k] = t.getAttribute('data-item').split('.'); S.values.items[+i][k] = t.value; clear(t); }
   };
   const clear = (el) => { const f = el.closest('[data-invalid="true"]'); if (f) { f.removeAttribute('data-invalid'); } };
@@ -302,7 +322,7 @@ async function mountCompose(root, route, ctx) {
       if (S.busy) return;
       sync(); S.formError = ''; S.errors = {};
       const submit = act_ === 'submit';
-      S.errors = submit ? C.validate(S.type, S.values, { projects: dir.projects, users: dir.users, meUid: me.uid }) : quickErrors();
+      S.errors = submit ? C.validate(S.type, S.values, { projects: dir.projects, users: dir.users, meUid: me.uid, worker: S.worker }) : quickErrors();
       const lineProblems = submit ? C.lineIssues(S.line, S.ctx) : [];
       if (Object.keys(S.errors).length || lineProblems.length) {
         S.formError = Object.keys(S.errors).length ? '입력 내용을 확인해 주세요. 빨간 표시된 항목을 고치면 됩니다.' : lineProblems[0];

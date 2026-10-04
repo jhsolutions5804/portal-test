@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261004l';
-import { sourceLabel, dayLabel, fmtH, monthTotals } from './logic.js?v=20261004l';
+import { esc } from '../../core/ui.js?v=20261004m';
+import { sourceLabel, dayLabel, fmtH, monthTotals } from './logic.js?v=20261004m';
 
 const head = (t, link) => '<div class="jh-panel__head"><h3>' + t + '</h3>' + (link || '') + '</div>';
 const note = (tone, text) => '<div class="jh-form"><div class="jh-alert" data-tone="' + tone + '"' + (tone === 'danger' ? ' role="alert"' : '') + '>' + esc(text) + '</div></div>';
@@ -31,13 +31,21 @@ const rowHtml = (r, sel) => '<button type="button" class="jh-docrow' + (r.date =
   '<span class="jh-docrow__summary">근무 ' + fmtH(r.workHours) + ' · 휴게 ' + r.breakMinutes + '분' + (r.checkIn && !r.checkOut ? ' · 퇴근 기록 없음' : '') + '</span></span>' +
   '<span class="jh-docrow__side"><span class="jh-chip">' + esc(sourceLabel(r.source)) + '</span></span></button>';
 
+/** 권한 안내 + (일반 직원이 지난 날짜를 고른 경우) 결재 요청 작성 버튼 */
+export function msgHtml(perm, f) {
+  if (perm.ok) return '';
+  const dis = perm.code === 'needs-approval' && f && /^\d{2}:\d{2}$/.test(f.checkIn || '') && /^\d{2}:\d{2}$/.test(f.checkOut || '') ? '' : (perm.code === 'needs-approval' ? ' disabled' : '');
+  return '<div class="jh-alert" data-tone="info" role="status">' + esc(perm.reason) + '</div>' +
+    (perm.code === 'needs-approval' ? '<div><button type="button" class="jh-btn" data-variant="secondary" data-att-request' + dis + '>이 내용으로 결재 요청 작성</button>' + (dis ? '<span class="jh-field__hint"> 출근·퇴근 시각을 먼저 입력하면 요청서에 그대로 채워집니다.</span>' : '') + '</div>' : '');
+}
+
 /** 출퇴근 기록 화면: 한 달 요약 · 직접 입력/수정 · 기록 목록 */
 export function inputPageHtml(m) {
   const me = m.me; const tot = monthTotals(m.rows);
   const monthOpts = m.months.map((x) => '<option value="' + x + '"' + (x === m.ym ? ' selected' : '') + '>' + x.replace('-', '년 ') + '월</option>').join('');
   const workerSel = me.admin ? '<label class="jh-field" data-field="worker"><span class="jh-field__label">근로자 (관리자)</span><select class="jh-select" data-worker>' + m.workers.map((w) => '<option value="' + esc(w.id) + '"' + (w.id === m.worker.id ? ' selected' : '') + '>' + esc(w.name + (w.rank ? ' ' + w.rank : '')) + '</option>').join('') + '</select></label>' : '';
   const perm = m.perm; const f = m.form;
-  const msg = !perm.ok ? '<div class="jh-alert" data-tone="info" role="status">' + esc(perm.reason) + (perm.code === 'needs-approval' ? ' (결재 요청 기능은 다음 업데이트에서 열립니다.)' : '') + '</div>' : '';
+  const msg = msgHtml(perm, f);
   return '<div class="jh-dashboard">' +
     '<div class="jh-pagehead"><header class="jh-form__head"><h2 class="jh-form__title">출퇴근 기록</h2><p class="jh-form__sub">' + (me.admin ? '관리자는 모든 근로자의 기록을 날짜에 상관없이 입력·수정할 수 있습니다.' : '오늘 기록은 직접 입력·수정할 수 있고, 지난 날짜는 결재 요청 또는 관리자 입력으로 처리합니다.') + '</p></header>' +
       '<label class="jh-field"><span class="jh-field__label">월</span><select class="jh-select" data-month>' + monthOpts + '</select></label></div>' +

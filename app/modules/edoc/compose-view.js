@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261004l';
-import { isAnnualType } from './home-calc.js?v=20261004l';
-import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261004l';
+import { esc } from '../../core/ui.js?v=20261004m';
+import { isAnnualType } from './home-calc.js?v=20261004m';
+import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261004m';
 
 const uname = (ctx, uid) => { const u = ctx.byUid[uid]; return u ? esc(u.name) + (u.rank ? ' <small>' + esc(u.rank) + '</small>' : '') : '(알 수 없음)'; };
 
@@ -21,6 +21,7 @@ function control(f, v, errs, ctx) {
   if (f.type === 'person') return '<select class="jh-select"' + common + '><option value="">대리인을 선택하세요</option>' + (ctx.users || []).filter((u) => u.uid !== ctx.me.uid && !/^guest/i.test(u.empNo || '')).map((u) => '<option value="' + esc(u.uid) + '"' + (u.uid === val ? ' selected' : '') + '>' + esc(u.name + (u.rank ? ' ' + u.rank : '') + (u.dept ? ' · ' + u.dept : '')) + '</option>').join('') + '</select>';
   if (f.type === 'project') return '<select class="jh-select"' + common + '><option value="">프로젝트를 선택하세요</option>' + (f.allowCommon ? '<option value="common"' + (val === 'common' ? ' selected' : '') + '>공통 · 프로젝트 무관(본사 경비)</option>' : '') + (ctx.projects || []).map((p) => '<option value="' + esc(p.id) + '"' + (p.id === val ? ' selected' : '') + '>' + esc((p.code ? p.code + ' · ' : '') + p.name) + '</option>').join('') + '</select>';
   if (f.type === 'date') return '<input class="jh-input" type="date"' + common + ' value="' + esc(val) + '">';
+  if (f.type === 'time') return '<input class="jh-input" type="time" step="600"' + common + ' value="' + esc(val) + '">';
   if (f.type === 'number') return '<input class="jh-input" type="number" inputmode="decimal" step="0.5" min="0"' + common + ' value="' + esc(val) + '" placeholder="' + esc(f.ph || '') + '">';
   if (f.type === 'money') return '<input class="jh-input" type="text" inputmode="numeric"' + common + ' value="' + esc(val) + '" placeholder="' + esc(f.ph || '') + '">';
   return '<input class="jh-input" type="text"' + common + ' value="' + esc(val) + '" placeholder="' + esc(f.ph || '') + '" maxlength="200">';
@@ -100,6 +101,15 @@ export function balanceHintHtml(b, req, type) {
     (n > 0 ? ' · 이번 신청 ' + n + '일 → 신청 후 잔여 ' + Math.max(after, 0) + '일' : '') + (over ? '. 잔여 연차를 ' + (-after) + '일 초과합니다. 사유에 이유를 적어 주세요.' : '') + '</div>';
 }
 
+/** 근태 기록 수정 요청 화면의 안내: 계산된 근무시간 + 그 날의 현재 기록 */
+export function attendHintHtml(a) {
+  if (!a) return '';
+  const cur = a.current ? '현재 기록: ' + (a.current.checkIn || '--:--') + ' ~ ' + (a.current.checkOut || '--:--') + ' (' + (Number(a.current.workHours) || 0).toFixed(1) + 'h) — 승인되면 이 값이 요청 내용으로 바뀝니다.' : (a.date ? '그 날짜에는 기록이 없습니다. 승인되면 새로 만들어집니다.' : '');
+  const hrs = a.hours != null ? '요청 근무시간 ' + a.hours.toFixed(1) + 'h (휴게 점심 2시간 제외, 시각은 10분 단위로 맞춰집니다)' : '';
+  if (!cur && !hrs) return '';
+  return '<div class="jh-alert" data-tone="info" role="status">' + [hrs, cur].filter(Boolean).map(esc).join('<br>') + '</div>';
+}
+
 export function composeHtml(s) {
   const { type, values, errors, ctx, edit, rejectReason } = s; const t = composeType(type);
   const kind = type === 'spend' ? '<div class="jh-form__section"><div class="jh-segmented" role="group" aria-label="구분">' +
@@ -108,7 +118,7 @@ export function composeHtml(s) {
   return '<form class="jh-form" data-compose="' + esc(type) + '" novalidate autocomplete="off">' +
     '<header class="jh-form__head"><h2 class="jh-form__title">' + esc(t ? t.label : '') + (edit ? ' 수정' : ' 작성') + '</h2><p class="jh-form__sub">작성자: ' + esc(ctx.me.name) + (ctx.me.rank ? ' ' + esc(ctx.me.rank) : '') + (ctx.me.dept ? ' · ' + esc(ctx.me.dept) : '') + '</p></header>' +
     (rejectReason ? '<div class="jh-alert" data-tone="danger" role="alert"><strong>반려 사유</strong><br>' + esc(rejectReason).replace(/\n/g, '<br>') + '</div>' : '') +
-    kind + '<section class="jh-form__section"><h3 class="jh-form__h">내용</h3>' + fieldsBlock(type, values, errors || {}, ctx) + (type === 'leave' ? '<div id="edoc-balance" aria-live="polite">' + balanceHintHtml(s.balance, values.days, values.leaveType) + '</div>' : '') + '</section>' +
+    kind + '<section class="jh-form__section"><h3 class="jh-form__h">내용</h3>' + fieldsBlock(type, values, errors || {}, ctx) + (type === 'leave' ? '<div id="edoc-balance" aria-live="polite">' + balanceHintHtml(s.balance, values.days, values.leaveType) + '</div>' : '') + (type === 'attend' ? '<div id="edoc-attend-hint" aria-live="polite">' + attendHintHtml(s.attend) + '</div>' : '') + '</section>' +
     '<section class="jh-form__section" id="edoc-line-section"><h3 class="jh-form__h">결재선</h3>' + lineEditorHtml(s.line, ctx, s.ui) + '</section>' +
     (s.formError ? '<div class="jh-alert" data-tone="danger" role="alert" id="edoc-form-error">' + esc(s.formError) + '</div>' : '') +
     '<div class="jh-form__foot"><button type="button" class="jh-btn" data-variant="ghost" data-act="cancel">취소</button>' +

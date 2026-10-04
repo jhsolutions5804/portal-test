@@ -308,3 +308,12 @@ button.jh-kpi:hover { border-color: var(--c-primary); }
   .jh-kpi-grid[data-cols="3"] .jh-kpi__label { font-size: var(--fs-xs); word-break: keep-all; }
   .jh-kpi-grid[data-cols="3"] .jh-kpi__value { font-size: var(--fs-lg); }
 }
+
+/* ── 결재 의견 목록(상세) ── */
+.jh-comments { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
+.jh-comment { padding: var(--sp-3) var(--sp-4); border: var(--u-1) solid var(--c-line); border-radius: var(--radius-sm); background: var(--c-surface); }
+.jh-comment__head { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; font-size: var(--fs-sm); }
+.jh-comment__head small { color: var(--c-ink-2); }
+.jh-comment__meta { margin-left: auto; font-size: var(--fs-xs); color: var(--c-ink-2); }
+.jh-comment__body { margin-top: var(--u-4); font-size: var(--fs-md); line-height: 1.6; overflow-wrap: anywhere; }
+.jh-detail__comments { display: grid; gap: var(--sp-2); }
