@@ -29,6 +29,23 @@ for f in files:
         for n in [x.strip().split(' as ')[0].strip() for x in (m.group(1) or '').split(',') if x.strip()]:
             if n not in exports[target]: problems.append('없는 export %s → %s : %s' % (os.path.relpath(f, root), m.group(2), n))
 if len(versions) > 1: problems.append('버전 불일치: ' + str(versions))
+# 줄 끝에 붙인 주석이 뒤따르는 코드를 삼키는 실수(두 번 있었음) 방지: 한 줄에 주석 표시(//)가 둘 이상이면 의심
+def _strip_strings(l):
+    out = []; q = None; i = 0
+    while i < len(l):
+        c = l[i]
+        if q:
+            if c == '\\': i += 2; continue
+            if c == q: q = None
+            i += 1; continue
+        if c in "'\"`": q = c; i += 1; continue
+        out.append(c); i += 1
+    return ''.join(out)
+for f in files:
+    for n, l in enumerate(open(f, encoding='utf-8').read().split('\n')):
+        t = re.sub(r'https?://', '', _strip_strings(l))
+        if t.count('//') >= 2 and not t.lstrip().startswith(('//', '*', '/*')):
+            problems.append('주석 뒤에 코드가 삼켜졌을 수 있음 %s:%d : %s' % (os.path.relpath(f, root), n + 1, l.strip()[:80]))
 import subprocess
 mc = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'module_check.py'), root], capture_output=True, text=True)
 print(mc.stdout.strip())
