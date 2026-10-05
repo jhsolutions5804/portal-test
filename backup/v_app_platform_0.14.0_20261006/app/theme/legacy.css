@@ -1,0 +1,19 @@
+/* 옛 모듈 어댑터: 플랫폼 본문 안에 옛 페이지(iframe)를 꽉 채워 넣는다.
+   옛 페이지가 자기 스크롤을 가지므로, 어댑터가 열려 있는 동안 틀(.jh-app[data-legacy])은 화면 높이에 맞추고
+   본문(.jh-main--legacy)이 남은 높이를 채운다 — 상단바 높이를 숫자로 빼지 않아 기기마다 어긋나지 않는다. */
+.jh-app[data-legacy] { box-sizing: border-box; height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }
+.jh-app[data-legacy] .jh-body { min-height: 0; }
+.jh-main--legacy { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; padding: 0; }
+.jh-legacy { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+.jh-legacy__nav { display: flex; flex: 0 0 auto; gap: var(--sp-2); padding: var(--sp-2) var(--sp-4); overflow-x: auto; background: var(--c-surface); border-bottom: var(--u-1) solid var(--c-line); }
+.jh-legacy__chip { display: inline-flex; flex: 0 0 auto; align-items: center; min-height: var(--u-44); padding: 0 var(--sp-4); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); color: var(--c-ink-2); font-size: var(--fs-sm); font-weight: 700; white-space: nowrap; text-decoration: none; }
+.jh-legacy__chip[aria-current="page"] { background: var(--c-primary); border-color: var(--c-primary); color: var(--c-on-primary); }
+.jh-legacy__frame { display: block; flex: 1 1 auto; width: 100%; min-height: 0; border: 0; background: var(--c-surface); }
+@media (max-width: 899px) {
+  .jh-app[data-legacy] { padding-bottom: calc(var(--u-56) + var(--u-1) + env(safe-area-inset-bottom, 0px)); }   /* 하단 막대(고정) 높이만큼 비움 */
+  .jh-legacy__nav--wide { display: none; }   /* 기획은 폰에서 자체 탭이 보이므로 플랫폼 칩은 PC에서만 */
+}
+/* 폰 PJT 바로가기(출역·공수 체크 / 일정 확인): 폰의 PJT 홈에서만 보인다 */
+.jh-legacy__quick { display: none; flex: 0 0 auto; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); background: var(--c-surface); border-bottom: var(--u-1) solid var(--c-line); }
+.jh-legacy__quick .jh-btn { flex: 1 1 0; min-width: 0; min-height: var(--u-56); font-weight: 800; text-decoration: none; }
+@media (max-width: 899px) { .jh-legacy__quick[data-show="true"] { display: flex; } }
