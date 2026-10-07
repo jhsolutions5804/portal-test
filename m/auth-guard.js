@@ -38,7 +38,7 @@
       localStorage.removeItem(LAST_KEY);
     }catch(e){}
     var moved = false;
-    function go(){ if(moved) return; moved = true; location.replace('../index.html'); }
+    function go(){ if(moved) return; moved = true; location.replace('../classic.html'); }
     try{
       var req = indexedDB.deleteDatabase('firebaseLocalStorageDb');
       req.onsuccess = go; req.onerror = go; req.onblocked = go;
@@ -68,7 +68,7 @@
         sessionStorage.setItem('jh_gate_redir', String(_rc + 1));
         sessionStorage.setItem('jh_return_to', location.pathname.split('/').pop() + location.search);
       }catch(e){}
-      location.replace('../index.html');
+      location.replace('../classic.html');
       return;
     }
     // 2회 유도에도 로그인 정보가 없으면 루프로 간주하고 통과시켜 최소한 화면은 뜨게 한다.
