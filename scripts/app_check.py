@@ -19,6 +19,13 @@ for f in files:
             n = n.strip().split(' as ')[-1].strip()
             if n: names.add(n)
     exports[os.path.abspath(f)] = names
+# export * from './x.js' (재내보내기)를 따라가 이름을 합친다(여러 단계도 반복해서 처리)
+for _ in range(4):
+    for f in files:
+        t0 = open(f, encoding='utf-8').read()
+        for m in re.finditer(r"export\s*\*\s*from\s*'(\.{1,2}/[^'?]+)(?:\?v=[^']*)?'", t0):
+            tgt = os.path.abspath(os.path.join(os.path.dirname(f), m.group(1)))
+            if tgt in exports: exports[os.path.abspath(f)] |= exports[tgt]
 versions = set()
 for f in files:
     t = open(f, encoding='utf-8').read()
