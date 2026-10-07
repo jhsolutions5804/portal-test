@@ -3,6 +3,7 @@
 사용: python3 scripts/ui_contract_check.py [theme 폴더 경로]   (기본: app/theme)
 검사: ① 계약 클래스 전부 정의 ② data-* 속성 값 스타일 존재 ③ tokens.css 밖 색 직접 값 ④ !important·ID 선택자·@import·외부 url
      ⑤ 기준 폭 899px 외 미디어쿼리 ⑥ 미리보기 HTML이 쓰는 클래스가 CSS에 정의됨(preview.html 이 있으면)"""
+import glob
 import re, os, sys
 theme = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), '..', 'app', 'theme')
 files = ['tokens', 'base', 'components', 'shell', 'edoc', 'legacy', 'calendar', 'company']
@@ -31,7 +32,7 @@ jh-actionbar jh-actionbar__primary jh-actionbar__danger jh-actionbar__secondary
 jh-dashboard jh-kpi-grid jh-kpi jh-kpi__label jh-kpi__value jh-kpi__hint jh-dashboard__grid jh-panel jh-panel__head
 jh-settings jh-settings__card jh-settings__row jh-settings__type
 jh-paper jh-paper__title jh-stamps jh-stamp jh-stamp__role jh-stamp__sign jh-stamp__name jh-paper__table
-jh-cal jh-cal__bar jh-cal__nav jh-cal__title jh-cal__legend jh-cal__toggle jh-cal__dot jh-cal__grid  jh-cal__wd jh-cal__day jh-cal__num jh-cal__hol jh-cal__ev jh-cal__more  jh-cal__dayhead jh-cal__list jh-cal__row jh-cal__time jh-cal__what jh-cal__name jh-cal__meta jh-cal__todo jh-cal__check jh-cal__acts jh-cal__two jh-cal__time-pick jh-cal__form jh-cal__split jh-cal__views jh-cal__filter jh-cal__filter-sum jh-cal__agenda jh-cal__daysec jh-cal__dayh jh-cal__none jh-cal__newtxt  jh-cal__gridwrap jh-cal__dayarea jh-sheet jh-sheet__backdrop jh-sheet__panel jh-sheet__item jh-sheet__sep jh-fab jh-profile jh-profile__body jh-profile__dl jh-profile__sec jh-profile__row jh-company jh-company__tabs jh-company__bar jh-company__search jh-company__dept jh-company__people jh-company__person jh-company__meta jh-company__ruletabs jh-company__ruletab jh-company__name jh-md jh-md__h jh-md__p jh-md__list jh-md__hr jh-md__tablewrap jh-md__table jh-keep jh-idle jh-legacy jh-legacy__quick jh-legacy__nav jh-legacy__nav--wide jh-legacy__chip jh-legacy__frame jh-attach jh-attach__item jh-attach__name jh-attach__size jh-attach__actions jh-attach__add jh-detail__attach jh-admin jh-pagehead__actions jh-admin__section jh-admin__h jh-admin__h2 jh-admin__group jh-admin__add jh-admin__grid jh-admin__save jh-admin__state jh-admin__toggle jh-admin__title jh-admin__sum jh-admin__body jh-comments jh-comment jh-comment__head jh-comment__meta jh-comment__body jh-detail__comments jh-widget jh-clock jh-clock__date jh-clock__time jh-clock__actions jh-pagehead jh-pc-only jh-todo-grid jh-todo jh-todo__top jh-todo__icon jh-todo__value jh-todo__label jh-todo__hint jh-pipeline jh-pipe jh-pipe__count jh-pipe__label jh-ring jh-ring__track jh-ring__bar jh-ring__center jh-progress jh-progress__bar jh-statrow
+jh-cal jh-cal__bar jh-cal__nav jh-cal__title jh-cal__legend jh-cal__toggle jh-cal__dot jh-cal__grid  jh-cal__wd jh-cal__day jh-cal__num jh-cal__hol jh-cal__ev jh-cal__more  jh-cal__dayhead jh-cal__list jh-cal__row jh-cal__time jh-cal__what jh-cal__name jh-cal__meta jh-cal__todo jh-cal__check jh-cal__acts jh-cal__two jh-cal__time-pick jh-cal__form jh-cal__split jh-cal__views jh-cal__filter jh-cal__filter-sum jh-cal__agenda jh-cal__daysec jh-cal__dayh jh-cal__none jh-cal__newtxt  jh-cal__gridwrap jh-cal__dayarea jh-sheet jh-sheet__backdrop jh-sheet__panel jh-sheet__item jh-sheet__sep jh-fab jh-org jh-org__node jh-org__node--ceo jh-org__node--hq jh-org__node--extra jh-org__title jh-org__people jh-org__p jh-org__empty jh-company__views jh-profile__details jh-profile jh-profile__body jh-profile__dl jh-profile__sec jh-profile__row jh-company jh-company__tabs jh-company__bar jh-company__search jh-company__dept jh-company__people jh-company__person jh-company__meta jh-company__ruletabs jh-company__ruletab jh-company__name jh-md jh-md__h jh-md__p jh-md__list jh-md__hr jh-md__tablewrap jh-md__table jh-keep jh-idle jh-legacy jh-legacy__quick jh-legacy__nav jh-legacy__nav--wide jh-legacy__chip jh-legacy__frame jh-attach jh-attach__item jh-attach__name jh-attach__size jh-attach__actions jh-attach__add jh-detail__attach jh-admin jh-pagehead__actions jh-admin__section jh-admin__h jh-admin__h2 jh-admin__group jh-admin__add jh-admin__grid jh-admin__save jh-admin__state jh-admin__toggle jh-admin__title jh-admin__sum jh-admin__body jh-comments jh-comment jh-comment__head jh-comment__meta jh-comment__body jh-detail__comments jh-widget jh-clock jh-clock__date jh-clock__time jh-clock__actions jh-pagehead jh-pc-only jh-todo-grid jh-todo jh-todo__top jh-todo__icon jh-todo__value jh-todo__label jh-todo__hint jh-pipeline jh-pipe jh-pipe__count jh-pipe__label jh-ring jh-ring__track jh-ring__bar jh-ring__center jh-progress jh-progress__bar jh-statrow
 jh-noprint jh-paper__body jh-paper__sub jh-paper__company jh-paper__date jh-paper__seal
 jh-pager jh-pager__info jh-pager__nav jh-pager__btn jh-pager__page jh-pager__gap jh-pager__status jh-pager__size""".split()
 ATTRS = {
@@ -103,6 +104,14 @@ if os.path.exists(pv):
     used = set(c for m in re.finditer(r'class="([^"]+)"', h) for c in m.group(1).split() if c.startswith('jh-'))
     undefined = sorted(c for c in used if c not in defined)
     (problems if undefined else ok).append('미리보기가 쓰는데 CSS에 없는 클래스: %s' % undefined if undefined else '미리보기 사용 클래스 %d개 모두 정의됨' % len(used))
+# 정의되지 않은 CSS 변수 검사: var(--x) 로 쓰는데 어디에도 정의가 없으면 그 속성이 통째로 무시된다(연결선이 안 보이거나 폭 제한이 사라짐). 대체값이 있는 var(--x, 값)은 제외.
+_defs = set(); _uses = {}
+for _f in glob.glob(os.path.join(theme, '*.css')):
+    _t = open(_f, encoding='utf-8').read()
+    _defs |= set(re.findall(r'(--[A-Za-z0-9-]+)\s*:', _t))
+    for _m in re.finditer(r'var\((--[A-Za-z0-9-]+)\s*\)', _t): _uses.setdefault(_m.group(1), os.path.basename(_f))
+_undef = sorted((k, v) for k, v in _uses.items() if k not in _defs)
+(problems if _undef else ok).append('정의되지 않은 CSS 변수 %d개: %s' % (len(_undef), _undef) if _undef else 'CSS 변수 사용 %d개 모두 정의됨' % len(_uses))
 print('# UI 계약 점검 —', os.path.abspath(theme))
 for o in ok: print('  OK  ', o)
 for p in problems: print('  FAIL', p)
