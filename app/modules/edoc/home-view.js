@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261007f';
-import { myTurn, canProxy, tabsOf } from './logic.js?v=20261007f';
-import { docRowHtml } from './views.js?v=20261007f';
-import { pipeCounts, todoCounts } from './home-stats.js?v=20261007f';
+import { esc } from '../../core/ui.js?v=20261007g';
+import { myTurn, canProxy, tabsOf } from './logic.js?v=20261007g';
+import { docRowHtml } from './views.js?v=20261007g';
+import { pipeCounts, todoCounts } from './home-stats.js?v=20261007g';
 
 /** 홈에 보여 줄 문서 묶음 — 결재할 문서 / 수신함(참조·회람) / 내가 작성한 문서 / 게시된 문건 */
 export function homeLists(docs, me) {

@@ -1,12 +1,12 @@
-import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261007f';
-import { register, visibleFor, get } from './registry.js?v=20261007f';
-import { parseHash, onChange } from './router.js?v=20261007f';
-import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261007f';
-import { initTheme } from './theme.js?v=20261007f';
-import { checkForUpdate } from './update.js?v=20261007f';
-import { MODULES } from '../modules/index.js?v=20261007f';
-import { mountPlatformHome } from './home.js?v=20261007f';
-import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261007f';
+import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261007g';
+import { register, visibleFor, get } from './registry.js?v=20261007g';
+import { parseHash, onChange } from './router.js?v=20261007g';
+import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261007g';
+import { initTheme } from './theme.js?v=20261007g';
+import { checkForUpdate } from './update.js?v=20261007g';
+import { MODULES } from '../modules/index.js?v=20261007g';
+import { mountPlatformHome } from './home.js?v=20261007g';
+import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261007g';
 
 initTheme();   // 이 기기에 저장된 화면 모드(자동·라이트·다크) 적용
 MODULES.forEach((m) => register(Object.assign({}, m.manifest, { mount: m.mount })));
@@ -51,7 +51,7 @@ watchMe((user, reason) => {
   mods = visibleFor(me);
   if (!mods.length) { renderDenied(root, '이 계정에는 사용할 수 있는 모듈이 없습니다.', logout); return; }
   shell = renderShell(root, me, mods, { onLogout: logout });
-  startIdle({ onExpire: logout });   // 30분 무동작 자동 로그아웃(옛 모듈 화면 안의 활동도 센다)
+  startIdle({ onExpire: logout });   // 1시간 무동작 자동 로그아웃(옛 모듈 화면 안의 활동도 센다)
   route();
 });
 onChange(route);
