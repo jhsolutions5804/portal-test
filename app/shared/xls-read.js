@@ -1,6 +1,6 @@
 /* 옛 형식 엑셀(.xls, BIFF8)·HTML로 저장된 .xls·.xlsx 를 한 함수로 읽는다 — 홈택스는 .xls 로 내려준다.
  * 반환은 xlsx-read.js 와 같은 모양: { sheets:[{ name, rows:[[셀…]…] }] } (문자열 또는 숫자, 빈 칸 ''). 외부 라이브러리 없음. */
-import { readXlsx } from './xlsx-read.js?v=20261008e';
+import { readXlsx } from './xlsx-read.js?v=20261008f';
 const u8 = (b, o) => b[o]; const u16 = (b, o) => b[o] | (b[o + 1] << 8); const u32 = (b, o) => (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0; const i32 = (b, o) => b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24);
 const dv = (b, o) => new DataView(b.buffer, b.byteOffset + o, 8).getFloat64(0, true);
 const ENDOFCHAIN = 0xFFFFFFFE;

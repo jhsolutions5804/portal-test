@@ -2,6 +2,7 @@
 .jh-finance { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); max-width: calc(var(--u-440) * 2.5); }   /* 화면이 아무리 넓어도 내용은 약 1100px 안에서 */
 .jh-finance__body { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); }
 .jh-finance__two > * { min-width: 0; }
+.jh-finance__two > div { display: grid; gap: var(--sp-3); align-content: start; }   /* 양식 칸 사이 간격 */
 .jh-finance__tabs { width: fit-content; max-width: 100%; overflow-x: auto; }
 .jh-finance__tabs .jh-segmented__item { text-decoration: none; display: inline-flex; align-items: center; white-space: nowrap; }
 .jh-finance__bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); }
@@ -27,6 +28,49 @@
 .jh-finance__split { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--sp-4); align-items: start; }
 .jh-finance__col { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); min-width: 0; }
 .jh-fin-table--narrow { min-width: 0; }
+/* 카드 안쪽 여백·정보 조각 */
+.jh-finance__pad { padding: var(--sp-4); display: grid; gap: var(--sp-3); }
+.jh-finance__pad .jh-field { margin-bottom: 0; }
+.jh-finance__facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+.jh-finance__fact { display: grid; gap: var(--u-2); min-width: 0; }
+.jh-finance__fact > span { font-size: var(--fs-xs); color: var(--c-ink-2); font-weight: 600; }
+.jh-finance__fact > strong { font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.jh-finance__memo { margin: 0; padding: var(--sp-3); border-radius: var(--radius-sm); background: var(--c-bg); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.jh-finance__rev { display: grid; gap: var(--sp-2); padding-top: var(--sp-3); border-top: var(--u-1) solid var(--c-line); }
+.jh-finance__rev h4 { font-size: var(--fs-sm); }
+.jh-finance__quick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+.jh-finance__quick .jh-btn { text-decoration: none; }
+.jh-finance__stat { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-3); }
+.jh-finance__stat .jh-finance__fact > strong { font-size: var(--fs-md); }
+/* 세로 목록(최근 가져오기·최근 입력·영수증 진행) */
+.jh-finance__list { list-style: none; margin: 0; padding: 0; display: grid; }
+.jh-finance__li { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-top: var(--u-1) solid var(--c-line); }
+.jh-finance__li:first-child { border-top: 0; }
+.jh-finance__li[data-entry] { cursor: pointer; }
+.jh-finance__li[data-entry]:hover { background: var(--c-primary-weak); }
+.jh-finance__li > div { display: grid; gap: var(--u-2); min-width: 0; overflow-wrap: anywhere; }
+.jh-finance__li strong { font-size: var(--fs-sm); }
+.jh-finance__amt { font-variant-numeric: tabular-nums; font-weight: 700; font-size: var(--fs-sm); white-space: nowrap; }
+.jh-finance__steps { margin: 0; padding-left: var(--sp-4); display: grid; gap: var(--sp-2); font-size: var(--fs-sm); color: var(--c-ink-2); }
+/* 가져오기 종류 카드·끌어다 놓는 칸 */
+.jh-finance__kinds { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--u-140), 1fr)); gap: var(--sp-3); }
+.jh-finance__kind { display: grid; gap: var(--u-2); justify-items: start; text-align: left; padding: var(--sp-3) var(--sp-4); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); color: inherit; font: inherit; cursor: pointer; }
+.jh-finance__kind > span:first-child { font-size: var(--fs-xl); line-height: var(--line-height-tight); }
+.jh-finance__kind > span:last-child { font-size: var(--fs-xs); color: var(--c-ink-2); }
+.jh-finance__kind[aria-pressed="true"] { border-color: var(--c-primary); background: var(--c-primary-weak); }
+.jh-finance__drop { position: relative; display: grid; justify-items: center; gap: var(--sp-2); padding: var(--sp-5) var(--sp-4); border: var(--u-2) dashed var(--c-line-strong); border-radius: var(--radius); background: var(--c-bg); text-align: center; cursor: pointer; }
+.jh-finance__drop:hover, .jh-finance__drop.is-over { border-color: var(--c-primary); background: var(--c-primary-weak); }
+.jh-finance__drop:focus-within { outline: var(--u-2) solid var(--c-primary); }
+.jh-finance__drop input[type="file"] { position: absolute; width: var(--u-1); height: var(--u-1); opacity: 0; overflow: hidden; }
+.jh-finance__drop-ic { font-size: var(--fs-xl); line-height: var(--line-height-tight); }
+/* 대화창: 표가 들어가므로 기본(440)보다 넓게 */
+.jh-finance__dialog .jh-dialog__panel { max-width: calc(var(--u-440) * 1.7); max-height: calc(100vh - var(--sp-6) * 2); overflow-y: auto; }
+.jh-finance__dialog .jh-fin-table { min-width: 0; }
+.jh-finance__dialog .jh-dialog__body { display: grid; gap: var(--sp-3); min-width: 0; }
+.jh-fin-table--form .jh-select, .jh-fin-table--form .jh-input { min-width: 0; width: 100%; }
+.jh-fin-table--form th:nth-child(2), .jh-fin-table--form td:nth-child(2) { width: var(--u-96); }
+.jh-fin-table--form th:nth-child(3), .jh-fin-table--form td:nth-child(3) { width: var(--u-140); }
+.jh-fin-table--form .jh-select { padding-right: var(--sp-5); }
 /* 영수증 원본 */
 .jh-finance__thumb { max-width: 100%; max-height: var(--u-320); object-fit: contain; border: var(--u-1) solid var(--c-line); border-radius: var(--radius-sm); background: var(--c-surface); }
 .jh-finance__pdf { width: 100%; height: var(--u-420); border: var(--u-1) solid var(--c-line); border-radius: var(--radius-sm); }
