@@ -1,0 +1,119 @@
+.jh-login { min-height: 100vh; display: grid; place-items: center; padding: var(--sp-5); }
+.jh-login__card { width: 100%; max-width: var(--u-380); background: var(--c-surface); border: var(--u-1) solid var(--c-line); border-radius: var(--radius-lg); padding: var(--sp-6); box-shadow: var(--shadow-1); display: grid; gap: var(--sp-2); }
+.jh-login__brand { font-size: var(--fs-xl); font-weight: 800; color: var(--c-primary); }
+.jh-login__sub { margin: 0 0 var(--sp-3); color: var(--c-ink-2); font-size: var(--fs-sm); }
+.jh-login__msg { min-height: var(--u-20); margin: 0; color: var(--c-danger); font-size: var(--fs-sm); }
+
+.jh-app { display: grid; grid-template-columns: var(--u-220) 1fr; min-height: 100vh; }
+.jh-sidebar { background: var(--c-side); color: var(--c-side-ink); display: flex; flex-direction: column; padding: var(--sp-4); gap: var(--sp-4); position: sticky; top: 0; height: 100vh; }
+.jh-sidebar__brand { font-size: var(--fs-lg); font-weight: 800; color: var(--c-on-primary); display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2); }
+.jh-nav { display: grid; gap: var(--sp-1); }
+.jh-nav__item { background: transparent; border: 0; color: inherit; font-family: inherit; text-align: left; width: 100%; cursor: pointer; display: flex; align-items: center; gap: var(--sp-3); padding: var(--u-10) var(--sp-3); border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 600; }
+.jh-nav__item:hover { background: var(--c-hover-on-dark); }
+.jh-nav__item.is-active { background: var(--c-side-active); color: var(--c-on-primary); }
+.jh-nav__icon { width: var(--u-20); text-align: center; }
+.jh-nav__label { min-width: 0; }
+.jh-nav__badge { margin-left: auto; min-width: var(--u-20); padding: 0 var(--u-6); border-radius: var(--u-999); background: var(--c-danger); color: var(--c-on-danger); font-size: var(--fs-xs); text-align: center; font-weight: 700; }
+.jh-sidebar__foot { margin-top: auto; display: grid; gap: var(--sp-2); }
+.jh-sidebar .jh-btn[data-variant="ghost"] { color: var(--c-side-ink); justify-content: flex-start; }
+.jh-userchip { font-size: var(--fs-sm); font-weight: 600; }
+.jh-sidebar .jh-userchip { padding: 0 var(--sp-2); }
+.jh-body { min-width: 0; display: flex; flex-direction: column; }
+.jh-topbar { display: flex; align-items: center; justify-content: space-between; padding: var(--sp-4) var(--sp-5); background: var(--c-surface); border-bottom: var(--u-1) solid var(--c-line); }
+.jh-topbar__title { font-size: var(--fs-lg); }
+.jh-topbar__tools { display: flex; align-items: center; gap: var(--sp-3); }
+.jh-topbar .jh-userchip { display: none; }
+.jh-topbar__tools .jh-iconbtn { display: none; }
+.jh-main { padding: var(--sp-5); min-width: 0; }
+.jh-tabbar { display: none; }
+
+@media (max-width: 899px) {
+  .jh-app { grid-template-columns: 1fr; padding-bottom: var(--u-64); }
+  .jh-sidebar { display: none; }
+  .jh-topbar { position: sticky; top: 0; z-index: var(--z-topbar); padding: var(--sp-3) var(--sp-4); }
+  .jh-topbar .jh-userchip { display: block; color: var(--c-ink-2); }
+  .jh-topbar__tools .jh-iconbtn { display: inline-grid; }
+  .jh-main { padding: var(--sp-3); }
+  .jh-tabbar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-tabbar); background: var(--c-surface); border-top: var(--u-1) solid var(--c-line); padding-bottom: env(safe-area-inset-bottom, 0); }
+  .jh-tabbar .jh-nav__item { flex: 1; flex-direction: column; gap: var(--u-2); padding: var(--u-8) var(--u-4); border-radius: 0; color: var(--c-ink-2); font-size: var(--fs-xs); justify-content: center; position: relative; }
+  .jh-tabbar .jh-nav__item.is-active { background: transparent; color: var(--c-primary); }
+  .jh-tabbar .jh-nav__badge { position: absolute; top: var(--u-4); right: 30%; margin: 0; }
+}
+
+.jh-sidebar { width: var(--u-220); }
+.jh-nav__item { min-height: var(--u-44); }
+.jh-topbar { min-height: var(--u-64); }
+@media (max-width: 899px) {
+ .jh-app { padding-bottom: calc(var(--u-144) + env(safe-area-inset-bottom, 0)); }
+ .jh-topbar { z-index: var(--z-topbar); }
+ .jh-tabbar { z-index: var(--z-tabbar); }
+ .jh-tabbar .jh-nav__item { min-height: var(--u-56); }
+}
+
+/* ── 상단 제목은 모듈 홈 링크, 폰 하단 막대는 '빠른 작업' 버튼 ── */
+.jh-topbar__title a { color: inherit; text-decoration: none; }
+.jh-topbar__title a:hover { text-decoration: underline; }
+.jh-tabbar[hidden] { display: none; }
+@media (max-width: 899px) {
+  .jh-tabbar { align-items: center; padding: var(--u-6) var(--sp-3) calc(var(--u-6) + env(safe-area-inset-bottom, 0)); gap: var(--sp-2); }
+  .jh-tabbar .jh-btn { flex: 1; min-height: var(--u-44); text-decoration: none; }
+  .jh-app[data-noquick] { padding-bottom: calc(var(--u-64) + env(safe-area-inset-bottom, 0)); }
+}
+
+/* ── 플랫폼 홈: 위젯 격자 · 출퇴근 위젯 ── */
+/* 같은 줄의 카드는 같은 높이, 내용은 세로 가운데. 불러오기 전에도 자리를 잡아 아래 카드가 밀리지 않게(data-reserve) */
+.jh-dashboard__grid { align-items: stretch; }
+.jh-widget { display: flex; min-width: 0; }
+.jh-widget > .jh-panel { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; }
+.jh-widget > .jh-panel > .jh-form { flex: 1 1 auto; align-content: center; }
+.jh-widget[data-reserve="tall"] { min-height: calc(var(--u-380) + var(--u-4)); }   /* 출퇴근·연차 현황이 다 불러와진 높이(384) */
+.jh-widget[data-reserve="medium"] { min-height: var(--u-220); }
+.jh-widget[data-reserve="todo"] { min-height: calc(var(--u-440) + var(--u-120) + var(--u-8)); }   /* 전자결재 카드(할 일 4칸 + 업무일지 최근 5건)의 가장 큰 높이 — 불러온 뒤 아래 카드가 밀리지 않게 */
+.jh-widget[data-reserve="large"] { min-height: calc(var(--u-440) + var(--u-220)); }   /* 일정 달력(6주) + 날짜 목록 */
+.jh-widget[data-reserve="huge"] { min-height: calc(var(--u-440) + var(--u-380)); }   /* 전체 화면과 같은 일정 달력(6주, 칸마다 일정 이름) — 실제 높이에 맞춘 값 */
+@media (max-width: 899px) { .jh-widget[data-reserve="huge"] { min-height: calc(var(--u-440) + var(--u-380) + var(--u-20) + var(--u-6)); } }   /* 폰: 달력 아래에 날짜 목록이 쌓임(846) */
+@media (max-width: 899px) { .jh-widget[data-reserve="todo"] { min-height: calc(var(--u-440) + var(--u-220) - var(--u-14)); } }
+@media (max-width: 899px) { .jh-widget[data-reserve="tall"] { min-height: calc(var(--u-320) + var(--u-44) + var(--u-4)); } }
+.jh-dashboard__grid > .jh-widget[data-wide="true"] { grid-column: 1 / -1; }
+.jh-clock { display: grid; justify-items: center; gap: var(--sp-1); padding: var(--sp-2) 0; text-align: center; }
+.jh-clock__date { font-size: var(--fs-sm); color: var(--c-ink-2); font-weight: 600; }
+.jh-clock__time { font-size: calc(var(--fs-xl) * 1.7); font-weight: 800; line-height: 1.1; letter-spacing: var(--u-1); }
+.jh-clock__actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+.jh-clock__actions .jh-btn { min-height: var(--u-56); font-size: var(--fs-lg); font-weight: 800; }
+@media (max-width: 899px) {
+  .jh-tabbar .jh-nav__item { flex: 0 0 var(--u-64); height: var(--u-44); min-height: var(--u-44); padding: 0 var(--u-4); gap: 0; }   /* 막대 전체 높이를 56px+1px로 고정(처리 버튼 줄과 겹치지 않게) */
+  .jh-tabbar .jh-btn { height: var(--u-44); }
+  .jh-tabbar .jh-btn { min-width: 0; }
+}
+
+/* ── 폰 하단 메뉴: 더보기 시트 · 모듈 빠른 작업 버튼(FAB) · 폰 홈 위젯 순서 ── */
+.jh-sheet { position: fixed; inset: 0; z-index: var(--z-dialog); display: none; }   /* PC 에서는 열리지 않는다(폰 하단 막대에서만 연다) */
+.jh-sheet__backdrop { position: absolute; inset: 0; background: var(--c-overlay); }
+.jh-sheet__panel { position: absolute; left: 0; right: 0; bottom: 0; display: grid; gap: var(--u-2); max-height: 80vh; max-height: 80dvh; overflow-y: auto; padding: var(--sp-3) var(--sp-4) calc(var(--sp-4) + env(safe-area-inset-bottom, 0px)); background: var(--c-surface); border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+.jh-sheet__item { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--u-52); padding: 0 var(--sp-3); border: 0; border-radius: var(--radius); background: none; color: var(--c-ink); font: inherit; font-weight: 700; text-align: left; text-decoration: none; cursor: pointer; }
+.jh-sheet__item:hover, .jh-sheet__item:focus-visible { background: var(--c-primary-weak); }
+.jh-sheet__sep { height: var(--u-1); margin: var(--sp-2) 0; background: var(--c-line); }
+.jh-fab { position: fixed; right: var(--sp-4); bottom: calc(var(--u-64) + var(--sp-4) + env(safe-area-inset-bottom, 0px)); z-index: var(--z-tabbar); display: none; align-items: center; gap: var(--sp-2); min-height: var(--u-52); padding: 0 var(--sp-5); border-radius: var(--u-999); background: var(--c-primary); color: var(--c-primary-ink); font-weight: 800; text-decoration: none; box-shadow: 0 var(--u-4) var(--u-12) var(--c-overlay); }
+/* 하단 막대 칸: 옛 막대(홈+빠른 작업)의 고정 너비 규칙을 덮어 4칸을 같은 너비로, 글자는 한 줄 */
+.jh-tabbar .jh-nav__item { flex: 1 1 0; min-width: 0; height: auto; min-height: var(--u-44); padding: var(--u-2); background: none; border: 0; font: inherit; font-size: var(--fs-xs); cursor: pointer; }
+.jh-tabbar .jh-nav__label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; word-break: keep-all; }
+.jh-tabbar .jh-nav__icon { font-size: var(--fs-lg); line-height: 1; }
+@media (max-width: 899px) {
+  .jh-fab:not([hidden]) { display: inline-flex; }
+  .jh-sheet:not([hidden]) { display: block; }
+  .jh-widget { order: var(--m-order, 9); }   /* 폰 홈: 출퇴근 → 전자결재 → 일정 (PC 순서와 별개) */
+  .jh-widget[data-mobile-hide="true"] { display: none; }   /* 폰에서는 숨기는 위젯(연차 현황 — 전자결재 홈에 있음) */
+}
+
+/* ── 넓은 홈(본문 폭 900px 이상): 왼쪽에 출퇴근 · 전자결재 · 연차 현황을 세로로, 오른쪽에 일정(달력 아래에 선택한 날 목록).
+   화면 폭이 아니라 본문 폭(컨테이너)으로 판단해 사이드바가 있어도 정확하고, 규약의 단일 기준 폭(899px)은 그대로 둔다 ── */
+.jh-dashboard { container-type: inline-size; container-name: dash; }
+@container dash (min-width: 900px) {
+  .jh-dashboard .jh-dashboard__grid { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-rows: auto auto auto 1fr; align-items: start; }   /* 4번째 빈 줄(1fr)이 일정 카드가 더 커질 때의 여분을 흡수해, 왼쪽 카드들이 일정 로딩 때문에 밀리지 않는다 */
+  .jh-dashboard .jh-dashboard__grid > .jh-widget, .jh-dashboard .jh-dashboard__grid > .jh-widget[data-wide="true"] { grid-column: 1; }
+  .jh-dashboard .jh-dashboard__grid > .jh-widget[data-widget="calendar/month"] { grid-column: 2; grid-row: 1 / span 4; }
+  .jh-dashboard .jh-cal[data-in-widget="true"] .jh-cal__split { grid-template-columns: minmax(0, 1fr); }
+  .jh-dashboard .jh-cal[data-in-widget="true"][data-view="month"] [data-cal-day] { min-height: var(--u-220); max-height: var(--u-220); overflow-y: auto; }   /* 달력 아래 날짜 목록은 높이를 고정하고(일정이 많으면 안에서 스크롤) 날짜를 바꿔도 위젯 높이가 흔들리지 않게 한다 */
+  .jh-dashboard .jh-widget[data-reserve="huge"] { min-height: calc(var(--u-440) * 2 + var(--u-140) + var(--u-44)); }
+  .jh-dashboard .jh-widget[data-reserve="medium"] { min-height: calc(var(--u-220) + var(--u-16)); }
+}
