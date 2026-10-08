@@ -1,8 +1,8 @@
 /* 프로젝트 설정 탭의 "참여 부서·개인" 구역 — FAB·SUP·경량 PJT 화면이 각자의 설정 탭(관리자 전용)에서 불러다 쓴다.
  * 순수 규칙(toggleTeam 등)은 시험하고, mountParticipants 는 화면을 만든다(옛 화면과 같은 모양이 되도록 자체 스타일을 넣는다).
  * 저장 위치: 고정 PJT = pjt_settings/{p4ph2|p4ph4}, 경량 PJT = pjt_registry/{id} 의 participants (보안 규칙이 이미 관리자만 허용). */
-import { participantsOf, normalizeParticipants } from './pjt-access.js?v=20261008h';
-import { isGuestUser, byRank, NO_DEPT, deptOptions } from './org.js?v=20261008h';
+import { participantsOf, normalizeParticipants } from './pjt-access.js?v=20261008i';
+import { isGuestUser, byRank, NO_DEPT, deptOptions } from './org.js?v=20261008i';
 
 export const toggleTeam = (p, team) => { const t = participantsOf({ participants: p }); const i = t.teams.indexOf(team); if (i === -1) t.teams.push(team); else t.teams.splice(i, 1); return t; };
 export const addMember = (p, uid) => { const t = participantsOf({ participants: p }); if (uid && t.members.indexOf(uid) === -1) t.members.push(uid); return t; };

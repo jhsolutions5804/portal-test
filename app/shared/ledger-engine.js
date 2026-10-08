@@ -162,3 +162,23 @@ export const VEHICLE = { cost: 89870000, rate: 0.451, residual: 1000, schedule: 
 /** 연도 말까지 누적 상각액, 해당 연도의 월할 상각액(1~months월) */
 export function vehicleAccumulated(throughYear) { return VEHICLE.schedule.filter((s) => s.year <= throughYear).reduce((a, s) => a + s.dep, 0); }
 export function vehicleDepreciationYtd(year, months) { const s = VEHICLE.schedule.find((x) => x.year === year); return s ? Math.round(s.dep * months / 12) : 0; }
+
+/** 현금흐름표(간접법) — 기간 from~to. 개시(기초) 전표는 "기초 잔액"으로 보고 흐름에서 뺀다.
+ *  모든 비현금 재무상태표 계정의 증감을 현금 영향으로 바꿔 영업·투자·재무로 나눈다: 기초 현금 + 영업 + 투자 + 재무 = 기말 현금(= 재무상태표 현금). 대표자 인출금(3020)과 대표자 개인카드 미지급금(2021)은 합쳐 "대표자 인출·정산(순)" 으로 재무활동에 둔다 */
+const CF_OP = [['1100', '외상매출금 증감'], ['1110', '미수금 증감'], ['1120', '선급금 증감'], ['1130', '부가세대급금 증감'], ['1140', '선급비용 증감'], ['1200', '재고자산 증감'], ['2010', '외상매입금 증감'], ['2020', '미지급금 증감'], ['2030', '예수금 증감'], ['2040', '부가세예수금 증감'], ['2050', '선수금 증감'], ['2070', '미지급비용 증감']];
+const CF_INV = [['1500', '차량운반구 취득(−)·처분'], ['1510', '비품 취득(−)·처분']];
+const CF_FIN = [['2100', '단기차입금 증감'], ['2200', '장기차입금 증감'], ['2210', '차량할부금 증감(상환은 −)'], ['3010', '자본금 증감']];
+export function cashFlowStatement(entries, from, to) {
+  const all = (entries || []).filter((e) => !e.invalid && (!to || e.date <= to)); const isOpen = (e) => e.source && e.source.kind === 'opening';
+  const beginT = totals(all.filter((e) => e.date < from || isOpen(e)), null, null); const endT = totals(all, null, null);
+  const ds = (t, c) => { const x = t[c]; return x ? x.debit - x.credit : 0; }; const eff = (c) => -(ds(endT, c) - ds(beginT, c));   // 현금에 미친 영향(+는 늘림)
+  const cashB = ds(beginT, '1010') + ds(beginT, '1020'), cashE = ds(endT, '1010') + ds(endT, '1020');
+  const ni = incomeStatement(all.filter((e) => !isOpen(e)), from, to).netIncome; const pick = (list) => list.map(([c, n]) => ({ code: c, name: n, amount: eff(c) })).filter((r) => r.amount !== 0);
+  const known = new Set(['1010', '1020', '1590', '2021', '3020'].concat(CF_OP.map((x) => x[0]), CF_INV.map((x) => x[0]), CF_FIN.map((x) => x[0])));
+  const other = ACCOUNTS.filter((a) => ['asset', 'liab', 'equity'].includes(a.type) && !known.has(a.code)).reduce((s, a) => s + eff(a.code), 0);
+  const dep = eff('1590'); const owner = eff('3020') + eff('2021');
+  const operating = [{ code: 'ni', name: '당기순이익', amount: ni }].concat(dep ? [{ code: '1590', name: '감가상각비(현금 지출 없음)', amount: dep }] : [], pick(CF_OP), other ? [{ code: 'other', name: '기타 증감(분류 외)', amount: other }] : []);
+  const investing = pick(CF_INV); const financing = pick(CF_FIN).concat(owner ? [{ code: 'owner', name: '대표자 인출·정산(순)', amount: owner }] : []);
+  const sum = (l) => l.reduce((s, r) => s + r.amount, 0); const opT = sum(operating), invT = sum(investing), finT = sum(financing); const change = cashE - cashB;
+  return { from, to, beginCash: cashB, endCash: cashE, netIncome: ni, operating, operatingTotal: opT, investing, investingTotal: invT, financing, financingTotal: finT, change, diff: change - (opT + invT + finT), balanced: change === opT + invT + finT };
+}

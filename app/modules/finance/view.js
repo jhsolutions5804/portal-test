@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261008h';
-import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday } from './logic.js?v=20261008h';
+import { esc } from '../../core/ui.js?v=20261008i';
+import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday } from './logic.js?v=20261008i';
 
 /* 재무회계 화면 조각 — 모든 값은 esc() 로 감싸 HTML 로 만든다. 스타일은 theme/finance.css 와 공용 클래스를 쓴다 */
 const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['opening', '개시 재산'], ['settings', '설정']];
@@ -106,7 +106,7 @@ function previewHtml(st) {
 
 
 /* ───────── 재무제표 ───────── */
-const STM = [['is', '손익계산서'], ['bs', '재무상태표'], ['tb', '합계잔액시산표']];
+const STM = [['is', '손익계산서'], ['bs', '재무상태표'], ['cf', '현금흐름표'], ['tb', '합계잔액시산표']];
 export function reportsHtml(st) {
   const s = st.stm; const kind = st.rep.kind;
   const bar = '<div class="jh-finance__bar"><div class="jh-segmented" role="group" aria-label="재무제표">' + STM.map(([c, l]) => '<button type="button" class="jh-segmented__item" data-rep-kind="' + c + '" aria-pressed="' + (c === kind) + '">' + l + '</button>').join('') + '</div><input class="jh-input" type="date" data-rep="from" value="' + esc(st.rep.from) + '" aria-label="시작일"><input class="jh-input" type="date" data-rep="to" value="' + esc(st.rep.to) + '" aria-label="종료일"><button type="button" class="jh-btn" data-variant="ghost" data-act="csv">엑셀(CSV)로 받기</button><button type="button" class="jh-btn" data-variant="ghost" data-act="print">인쇄</button></div>';
@@ -120,6 +120,13 @@ export function reportsHtml(st) {
     r.push(row('Ⅱ. 매출원가(당기총공사비)', i.costOfSales, true), row('Ⅲ. 매출총이익', i.grossProfit, true)); i.sga.forEach((x) => r.push(row('   ' + x.name, x.amount))); r.push(row('Ⅳ. 판매비와관리비', i.sgaTotal, true), row('Ⅴ. 영업이익', i.operatingIncome, true));
     i.nonopRevenue.forEach((x) => r.push(row('   ' + x.name, x.amount))); i.nonopExpense.forEach((x) => r.push(row('   ' + x.name, -x.amount))); r.push(row('Ⅵ. 당기순이익(세무조정 전)', i.netIncome, true));
     body = tbl([['손익계산서(공사원가명세서 포함) ' + s.from + ' ~ ' + s.to], ['금액', 'num']], r);
+  } else if (kind === 'cf') {
+    const c = s.cf; const row = (l, v, bo) => '<tr' + (bo ? ' class="is-strong"' : '') + '><td>' + esc(l) + '</td>' + num(v) + '</tr>'; const r = [row('기초 현금(보통예금+현금)', c.beginCash, true)];
+    r.push('<tr><td colspan="2" class="jh-field__hint">Ⅰ. 영업활동 — 당기순이익에서 시작해 현금이 안 움직인 것(감가상각)과 외상·미지급 같은 시차를 되돌립니다</td></tr>'); c.operating.forEach((x) => r.push(row('   ' + x.name, x.amount))); r.push(row('영업활동 현금흐름', c.operatingTotal, true));
+    r.push('<tr><td colspan="2" class="jh-field__hint">Ⅱ. 투자활동 — 차량·비품 같은 오래 쓰는 자산을 사고판 돈</td></tr>'); if (c.investing.length) c.investing.forEach((x) => r.push(row('   ' + x.name, x.amount))); r.push(row('투자활동 현금흐름', c.investingTotal, true));
+    r.push('<tr><td colspan="2" class="jh-field__hint">Ⅲ. 재무활동 — 빌린 돈·갚은 돈, 대표님 인출·정산</td></tr>'); if (c.financing.length) c.financing.forEach((x) => r.push(row('   ' + x.name, x.amount))); r.push(row('재무활동 현금흐름', c.financingTotal, true));
+    r.push(row('현금 증감 (Ⅰ+Ⅱ+Ⅲ)', c.change, true), row('기말 현금', c.endCash, true), row('검산: 재무상태표 현금과의 차이', c.diff, true));
+    body = tbl([['현금흐름표(간접법) ' + s.from + ' ~ ' + s.to], ['금액', 'num']], r) + alertHtml(c.balanced ? 'info' : 'danger', c.balanced ? '재무상태표의 현금과 일치합니다.' : '재무상태표의 현금과 ' + won(c.diff) + ' 차이가 있습니다 — 계정 분류를 확인해야 합니다.');
   } else if (kind === 'bs') {
     const b = s.bs; const row = (l, v, bo) => '<tr' + (bo ? ' class="is-strong"' : '') + '><td>' + esc(l) + '</td>' + num(v) + '</tr>'; const r = [];
     b.assets.forEach((x) => r.push(row('   ' + x.name, x.amount))); r.push(row('자산 총계', b.assetsTotal, true)); b.liabs.forEach((x) => r.push(row('   ' + x.name, x.amount))); r.push(row('부채 총계', b.liabsTotal, true)); b.equity.forEach((x) => r.push(row('   ' + x.name, x.amount))); r.push(row('자본 총계', b.equityTotal, true), row('검산: 자산 − (부채 + 자본)', b.diff, true));

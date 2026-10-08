@@ -1,13 +1,13 @@
-import { esc, toast } from '../../core/ui.js?v=20261008h';
-import { confirmDialog } from '../../core/dialog.js?v=20261008h';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261008h';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261008h';
-import { parseBankRows } from '../../shared/bank-import.js?v=20261008h';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261008h';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261008h';
-import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll } from './logic.js?v=20261008h';
-import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll } from './data.js?v=20261008h';
-import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml } from './view.js?v=20261008h';
+import { esc, toast } from '../../core/ui.js?v=20261008i';
+import { confirmDialog } from '../../core/dialog.js?v=20261008i';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261008i';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261008i';
+import { parseBankRows } from '../../shared/bank-import.js?v=20261008i';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261008i';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261008i';
+import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll } from './logic.js?v=20261008i';
+import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll } from './data.js?v=20261008i';
+import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml } from './view.js?v=20261008i';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
 export const manifest = {
@@ -186,7 +186,7 @@ export async function mount(root, route, ctx) {
       try { const res = await readPayroll(m); S.imp.raw = { payroll: res, fileName: '포털 급여명세서 ' + m }; await buildPreview(); setImp({ busy: false }); } catch (e) { setImp({ busy: false, error: e.message }); }
     }
     else if (act === 'commit') await commit();
-    else if (act === 'csv') { const st = stmNow(); const kind = S.rep.kind; download(({ is: '손익계산서', bs: '재무상태표', tb: '합계잔액시산표' })[kind] + '_' + S.rep.from + '_' + S.rep.to + '.csv', statementCsv(st, kind)); }
+    else if (act === 'csv') { const st = stmNow(); const kind = S.rep.kind; download(({ is: '손익계산서', bs: '재무상태표', cf: '현금흐름표', tb: '합계잔액시산표' })[kind] + '_' + S.rep.from + '_' + S.rep.to + '.csv', statementCsv(st, kind)); }
     else if (act === 'print') window.print();
     else if (act === 'open-save') {
       const vals = {}; body.querySelectorAll('[data-open]').forEach((i) => { vals[i.getAttribute('data-open')] = i.value; }); const r = openingFromForm(body.querySelector('[data-open-date]').value, vals);

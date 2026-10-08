@@ -117,4 +117,4 @@ export const leaveDocsOf = (docs, me) => (docs || []).filter((d) => d.dtype === 
 /** 연차에서 차감되는 휴가인지(연차·반차, 종류가 비어 있는 옛 문서 포함) */
 export function isAnnualType(type) { const t = String(type || '').trim(); return !t || t.startsWith('연차') || t.startsWith('반차'); }
 
-export { monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, findWorker } from '../../shared/worktime.js?v=20261008h';
+export { monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, findWorker } from '../../shared/worktime.js?v=20261008i';

@@ -1,9 +1,9 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount } from '../../shared/ledger-engine.js?v=20261008h';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261008h';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261008h';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261008h';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261008h';
-import { merchantKey } from '../../shared/merchant-table.js?v=20261008h';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261008i';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261008i';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261008i';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261008i';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261008i';
+import { merchantKey } from '../../shared/merchant-table.js?v=20261008i';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -25,10 +25,11 @@ export const monthEnd = (ym) => { const [y, m] = ym.split('-').map(Number); retu
 export const yearOf = (d) => String(d || kstToday()).slice(0, 4);
 
 /** 재무제표 4종 계산(엔진 그대로) — 기간 from~to, 재무상태표는 to 기준 */
-export function statements(entries, from, to) { const E = (entries || []).filter((e) => !e.invalid); return { is: incomeStatement(E, from, to), cc: constructionCost(E, from, to), bs: balanceSheet(E, to, from), tb: trialBalance(E, to), from, to }; }
+export function statements(entries, from, to) { const E = (entries || []).filter((e) => !e.invalid); return { is: incomeStatement(E, from, to), cc: constructionCost(E, from, to), bs: balanceSheet(E, to, from), tb: trialBalance(E, to), cf: cashFlowStatement(E, from, to), from, to }; }
 export function statementCsv(st, kind) {
   const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; const L = [];
   if (kind === 'is') { const s = st.is; L.push(['구분', '계정', '금액']); s.revenue.forEach((r) => L.push(['매출', r.name, r.amount])); L.push(['', '매출액', s.sales]); st.cc.groups.forEach((g) => { g.items.forEach((r) => L.push([g.label, r.name, r.amount])); L.push([g.label, '소계', g.subtotal]); }); L.push(['', '매출원가(당기총공사비)', s.costOfSales], ['', '매출총이익', s.grossProfit]); s.sga.forEach((r) => L.push(['판관비', r.name, r.amount])); L.push(['', '판관비 합계', s.sgaTotal], ['', '영업이익', s.operatingIncome]); s.nonopRevenue.forEach((r) => L.push(['영업외수익', r.name, r.amount])); s.nonopExpense.forEach((r) => L.push(['영업외비용', r.name, r.amount])); L.push(['', '당기순이익(세무조정 전)', s.netIncome]); }
+  else if (kind === 'cf') { const c = st.cf; L.push(['구분', '항목', '금액']); L.push(['', '기초 현금', c.beginCash]); c.operating.forEach((r) => L.push(['영업활동', r.name, r.amount])); L.push(['', '영업활동 현금흐름', c.operatingTotal]); c.investing.forEach((r) => L.push(['투자활동', r.name, r.amount])); L.push(['', '투자활동 현금흐름', c.investingTotal]); c.financing.forEach((r) => L.push(['재무활동', r.name, r.amount])); L.push(['', '재무활동 현금흐름', c.financingTotal], ['', '현금 증감', c.change], ['', '기말 현금', c.endCash], ['', '검산(재무상태표 현금과의 차이)', c.diff]); }
   else if (kind === 'bs') { const b = st.bs; L.push(['구분', '계정', '금액']); b.assets.forEach((r) => L.push(['자산', r.name, r.amount])); L.push(['', '자산 총계', b.assetsTotal]); b.liabs.forEach((r) => L.push(['부채', r.name, r.amount])); L.push(['', '부채 총계', b.liabsTotal]); b.equity.forEach((r) => L.push(['자본', r.name, r.amount])); L.push(['', '자본 총계', b.equityTotal], ['', '검산(자산−부채−자본)', b.diff]); }
   else { L.push(['계정코드', '계정과목', '차변 합계', '대변 합계', '잔액(차변)', '잔액(대변)']); st.tb.rows.forEach((r) => L.push([r.code, r.name, r.debit, r.credit, r.balDebit, r.balCredit])); L.push(['', '합계', st.tb.totals.debit, st.tb.totals.credit, st.tb.totals.balDebit, st.tb.totals.balCredit]); }
   return '\uFEFF' + L.map((r) => r.map(q).join(',')).join('\r\n');
