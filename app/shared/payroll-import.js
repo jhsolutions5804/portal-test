@@ -23,7 +23,7 @@ export function parsePayslipWorkbook(wb) {
 }
 
 /* ───────── 포털 급여명세서(payslips/{근로자}/months/{월}) → 전표 초안 ───────── */
-import { validateEntry } from './ledger-engine.js?v=20261008a';
+import { validateEntry } from './ledger-engine.js?v=20261008b';
 const lastDay = (ym) => { const [y, m] = ym.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10); };
 const R = (v) => Math.round(Number(v) || 0);
 /** 포털 급여명세서 문서 1건 → 귀속월 말일자 전표. 현장 직원(부서 현장관리팀·PJT 또는 유형 field)은 현장노무비, 그 밖은 급여(판관비).

@@ -1,4 +1,4 @@
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261008a';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261008b';
 /* 옛 모듈 어댑터의 목록과 규칙 — 화면(DOM)·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 옛 모듈이 새 모듈로 바뀌면 여기서 항목을 지우고 modules/index.js 의 새 모듈 목록으로 옮긴다. */
 export const PJT_FIXED = [
@@ -8,9 +8,9 @@ export const PJT_FIXED = [
 const isAdmin = (me) => !!(me && me.admin);
 
 export const LEGACY_DEFS = [
-  { id: 'plan', order: 10, title: '기획', icon: '🧭', tabbed: true, ownNavMobile: true, url: 'gihoek/', perm: isAdmin,
+  { id: 'plan', order: 10, title: '영업기획', icon: '🧭', tabbed: true, ownNavMobile: true, url: 'gihoek/', perm: isAdmin,
     nav: [['home', '기획 홈'], ['pjt', '프로젝트'], ['comp', '거래처'], ['est', '견적'], ['settle', '정산'], ['acct', '회계']].map(([key, label]) => ({ key, label })) },
-  { id: 'hr', order: 20, title: '인사', icon: '👥', tabbed: true, ownNav: true, url: 'hr/', perm: isAdmin, nav: [{ key: 'home', label: '인사 홈' }] },
+  { id: 'hr', order: 20, title: '인사총무', icon: '👥', tabbed: true, ownNav: true, url: 'hr/', perm: isAdmin, nav: [{ key: 'home', label: '인사 홈' }] },
   { id: 'pjt', order: 40, mobileTab: { order: 2, label: 'PJT', icon: '🏗️' }, title: 'PJT 관리', icon: '🏗️', tabbed: false, dynamicNav: true, perm: (me) => !!(me && (me.admin || (me.perms && me.perms.pjt) || (Array.isArray(me.pjtKeys) && me.pjtKeys.length > 0))) },   // PJT 권한자·관리자, 또는 어느 프로젝트든 참여자로 지정된 사람
   { id: 'myteam', order: 90, title: '내 팀 공수표', icon: '👷', tabbed: false, url: 'team/',
     perm: (me) => !!(me && (me.admin || (Array.isArray(me.teamLeaderIds) && me.teamLeaderIds.length > 0))), nav: [{ key: 'main', label: '내 팀 공수표' }] }
