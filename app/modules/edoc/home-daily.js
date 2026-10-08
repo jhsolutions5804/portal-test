@@ -1,5 +1,5 @@
 /* 홈 전자결재 카드의 "업무일지" 구역 — 오늘 작성 여부 + 최근 5건. 화면·네트워크 없이 시험한다 */
-import { summaryOf } from './logic.js?v=20261008f';
+import { summaryOf } from './logic.js?v=20261008g';
 
 const WD = ['일', '월', '화', '수', '목', '금', '토'];
 /** 한국 날짜(YYYY-MM-DD) — 기기 시간대와 상관없이 한국 시각 기준 */

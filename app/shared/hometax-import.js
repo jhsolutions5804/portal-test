@@ -1,6 +1,6 @@
 /* 홈택스 전자(세금)계산서 목록 엑셀 → 표준 형태 + 전표 초안. 양식 이름이 조금 달라도 읽도록 머리글을 글자 포함 여부로 찾는다.
  * 매출(내가 공급자)·매입(내가 공급받는자) 모두. 승인번호가 같은 건은 한 번만 가져온다(중복 방지). */
-import { validateEntry, suggestPurchaseAccount } from './ledger-engine.js?v=20261008f';
+import { validateEntry, suggestPurchaseAccount } from './ledger-engine.js?v=20261008g';
 const squash = (s) => String(s == null ? '' : s).replace(/[\s\u00a0]/g, '');
 const HEAD = { writeDate: ['작성일자', '작성일'], issueDate: ['발급일자', '발급일'], approvalNo: ['승인번호'], supBiz: ['공급자사업자등록번호', '공급자등록번호'], supName: ['공급자상호', '공급자회사'], buyBiz: ['공급받는자사업자등록번호', '공급받는자등록번호'], buyName: ['공급받는자상호', '공급받는자회사'], total: ['합계금액'], supply: ['공급가액'], tax: ['세액'], cls: ['전자세금계산서분류', '세금계산서분류'], kind: ['전자세금계산서종류', '세금계산서종류'], memo: ['비고'] };
 const num = (v) => { if (typeof v === 'number') return Math.round(v); const s = squash(v).replace(/[,원]/g, ''); if (s === '' || s === '-') return 0; const n = Number(s.replace(/^\((.*)\)$/, '-$1')); return isNaN(n) ? NaN : Math.round(n); };

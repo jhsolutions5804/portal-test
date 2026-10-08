@@ -1,13 +1,13 @@
-import { esc, toast } from '../../core/ui.js?v=20261008f';
-import { confirmDialog } from '../../core/dialog.js?v=20261008f';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261008f';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261008f';
-import { parseBankRows } from '../../shared/bank-import.js?v=20261008f';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261008f';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261008f';
-import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm } from './logic.js?v=20261008f';
-import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile } from './data.js?v=20261008f';
-import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml } from './view.js?v=20261008f';
+import { esc, toast } from '../../core/ui.js?v=20261008g';
+import { confirmDialog } from '../../core/dialog.js?v=20261008g';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261008g';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261008g';
+import { parseBankRows } from '../../shared/bank-import.js?v=20261008g';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261008g';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261008g';
+import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm } from './logic.js?v=20261008g';
+import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile } from './data.js?v=20261008g';
+import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml } from './view.js?v=20261008g';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
 export const manifest = {
