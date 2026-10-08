@@ -1,4 +1,4 @@
-import { db, collection, getDocs, query, where } from '../core/firebase.js?v=20261008d';
+import { db, collection, getDocs, query, where } from '../core/firebase.js?v=20261008e';
 
 /* 전자결재 홈이 쓰는 기준 자료: 근로자 명부(이름·부서·직급·입사일 등 일반 정보), 월 근태 기록, 공휴일 */
 let workersCache = null;
@@ -15,4 +15,4 @@ export async function loadMonthAttendance(workerId, ym) {
   return { hours, days };
 }
 /** 공휴일은 shared/holidays.js 가 단일 창구 — 기존 import 경로 호환용 재내보내기 */
-export { loadHolidays } from './holidays.js?v=20261008d';
+export { loadHolidays } from './holidays.js?v=20261008e';

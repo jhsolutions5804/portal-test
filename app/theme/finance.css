@@ -1,5 +1,5 @@
 /* 재무회계 — 이 모듈만의 스타일. 색·간격은 theme/tokens.css 의 변수만 쓴다. 기준 폭은 899px 하나뿐. */
-.jh-finance { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); }
+.jh-finance { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); max-width: calc(var(--u-440) * 2.5); }   /* 화면이 아무리 넓어도 내용은 약 1100px 안에서 */
 .jh-finance__body { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); }
 .jh-finance__two > * { min-width: 0; }
 .jh-finance__tabs { width: fit-content; max-width: 100%; overflow-x: auto; }
@@ -23,11 +23,16 @@
 .jh-fin-table--click td:nth-child(-n+2) { white-space: nowrap; }
 .jh-fin-table--click tbody tr:hover { background: var(--c-primary-weak); }
 .jh-fin-table .jh-select, .jh-fin-table .jh-input { min-width: var(--u-120); }
+/* 비용 입력: 왼쪽 직접 입력 → 영수증 가져오기, 오른쪽 최근 입력 */
+.jh-finance__split { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--sp-4); align-items: start; }
+.jh-finance__col { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); min-width: 0; }
+.jh-fin-table--narrow { min-width: 0; }
 /* 영수증 원본 */
 .jh-finance__thumb { max-width: 100%; max-height: var(--u-320); object-fit: contain; border: var(--u-1) solid var(--c-line); border-radius: var(--radius-sm); background: var(--c-surface); }
 .jh-finance__pdf { width: 100%; height: var(--u-420); border: var(--u-1) solid var(--c-line); border-radius: var(--radius-sm); }
 @media (max-width: 899px) {
   .jh-finance__two { grid-template-columns: minmax(0, 1fr); }
+  .jh-finance__split { grid-template-columns: minmax(0, 1fr); }
 }
 @media print {
   .jh-finance__tabs, .jh-finance__bar, .jh-alert { display: none; }
