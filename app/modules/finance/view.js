@@ -1,8 +1,8 @@
-import { esc } from '../../core/ui.js?v=20261008b';
-import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS } from './logic.js?v=20261008b';
+import { esc } from '../../core/ui.js?v=20261008c';
+import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday } from './logic.js?v=20261008c';
 
 /* 재무회계 화면 조각 — 모든 값은 esc() 로 감싸 HTML 로 만든다. 스타일은 theme/finance.css 와 공용 클래스를 쓴다 */
-const TABS = [['home', '개요'], ['entries', '전표'], ['import', '가져오기'], ['reports', '재무제표'], ['opening', '개시 재산'], ['settings', '설정']];
+const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['opening', '개시 재산'], ['settings', '설정']];
 export const tabsHtml = (cur) => '<div class="jh-segmented jh-finance__tabs" role="group" aria-label="재무회계">' + TABS.map(([k, l]) => '<a class="jh-segmented__item" href="#/finance/' + k + '" aria-pressed="' + (k === cur) + '">' + l + '</a>').join('') + '</div>';
 const alertHtml = (tone, html) => '<div class="jh-alert" data-tone="' + tone + '" role="status">' + html + '</div>';
 const tbl = (head, rows, cls) => '<div class="jh-finance__scroll"><table class="jh-fin-table' + (cls ? ' ' + cls : '') + '"><thead><tr>' + head.map((h) => '<th' + (h[1] ? ' class="' + h[1] + '"' : '') + '>' + esc(h[0]) + '</th>').join('') + '</tr></thead><tbody>' + rows.join('') + '</tbody></table></div>';
@@ -116,4 +116,18 @@ export function settingsHtml(st) {
   const s = st.settings; const admin = st.admin;
   return '<section class="jh-card jh-form"><div class="jh-panel__head"><h3>회사 설정</h3></div><div class="jh-field"><label class="jh-field__label" for="set-biz">내 사업자등록번호</label><input class="jh-input" id="set-biz" data-set="ownBiz" value="' + esc(s.ownBiz || '') + '" inputmode="numeric" placeholder="000-00-00000"' + (admin ? '' : ' disabled') + '><span class="jh-field__hint">홈택스 파일의 공급자(매출)·공급받는자(매입) 번호가 이 번호와 같아야 가져옵니다.</span></div><div class="jh-field"><label class="jh-field__label" for="set-name">상호</label><input class="jh-input" id="set-name" data-set="ownName" value="' + esc(s.ownName || '') + '"' + (admin ? '' : ' disabled') + '></div>' + (admin ? '<div class="jh-finance__bar"><button type="button" class="jh-btn" data-variant="primary" data-act="set-save">설정 저장</button></div>' : '<div class="jh-field__hint">설정은 관리자만 바꿉니다.</div>') + '</section>' +
     '<section class="jh-card jh-form"><div class="jh-panel__head"><h3>결산 마감</h3></div><p class="jh-field__hint">마감일까지의 전표는 새로 만들 수 없게 잠급니다(수정은 마감 다음 날 이후 일자로 역분개). 마감일은 앞당길 수 없습니다. 현재 마감일: <strong>' + esc(s.lockedThrough || '없음') + '</strong></p>' + (admin ? '<div class="jh-finance__bar"><input class="jh-input" type="date" data-lock-date aria-label="마감일"><button type="button" class="jh-btn" data-variant="danger" data-act="lock">결산 마감</button></div>' : '<div class="jh-field__hint">결산 마감은 관리자만 합니다.</div>') + '</section>';
+}
+
+/* ───────── 비용 입력 ───────── */
+export function expenseHtml(st) {
+  const cats = EXPENSE_CATS.map(([l, a]) => '<option value="' + a + '">' + esc(l) + '</option>').join(''); const pays = PAY_METHODS.map(([k, l]) => '<option value="' + k + '">' + esc(l) + '</option>').join(''); const ev = EVIDENCE.map((e) => '<option>' + esc(e) + '</option>').join('');
+  const f = (label, html, hint) => '<div class="jh-field"><label class="jh-field__label">' + esc(label) + '</label>' + html + (hint ? '<span class="jh-field__hint">' + esc(hint) + '</span>' : '') + '</div>';
+  const proj = '<datalist id="fin-proj">' + (st.projects || []).map((p) => '<option value="' + esc(p.code) + '">' + esc(p.name) + '</option>').join('') + '</datalist>';
+  const recent = st.entries.filter((e) => e.source && e.source.kind === 'expense').sort((a, b) => b.createdMs - a.createdMs).slice(0, 10);
+  const rows = recent.map((e) => '<tr data-entry="' + esc(e.id) + '" tabindex="0"><td>' + esc(e.date) + '</td><td>' + esc(e.memo) + '</td><td>' + esc(accountName((e.lines[0] || {}).account)) + '</td>' + num(entryDebit(e)) + '</tr>');
+  return '<section class="jh-card jh-form"><div class="jh-panel__head"><h3>비용 입력</h3></div><p class="jh-field__hint">영수증·현금 지출처럼 파일이 없는 지출을 입력하면 바로 전표가 되어 재무제표에 반영됩니다. <strong>카드·통장·홈택스 내역은 "가져오기"로 올리는 것이 정확합니다</strong> — 같은 지출을 두 번 넣지 마세요. 저장한 전표는 고칠 수 없고 역분개로만 바로잡습니다.</p>' + proj +
+    '<div class="jh-finance__two"><div>' + f('일자', '<input class="jh-input" type="date" data-x="date" value="' + esc(kstToday()) + '">') + f('가맹점·내용', '<input class="jh-input" data-x="what" maxlength="60" placeholder="예: 현장 안전모 구입(거상)">') + f('구분', '<select class="jh-select" data-x="account">' + cats + '</select>') + f('결제수단', '<select class="jh-select" data-x="pay">' + pays + '</select>', '카드는 이용 시점에 미지급금으로 쌓이고, 카드 대금 이체 때 정리됩니다.') + '</div><div>' +
+    f('금액(합계, 부가세 포함)', '<input class="jh-input" data-x="total" inputmode="numeric" placeholder="0">') + '<div class="jh-field"><label class="jh-finance__check"><input type="checkbox" data-x="deduct"> 부가세 공제 대상(세금계산서·사업용 카드로 받은 영수증)</label><div class="jh-finance__bar"><input class="jh-input" data-x="vat" inputmode="numeric" placeholder="부가세 금액"><button type="button" class="jh-btn" data-variant="ghost" data-act="vat10">10% 계산</button></div><span class="jh-field__hint">접대비·기부금·개인 지출은 공제가 안 되어 자동으로 비용에 포함됩니다. 모르면 비워 두세요.</span></div>' +
+    f('프로젝트(선택)', '<input class="jh-input" data-x="pjt" list="fin-proj" placeholder="프로젝트 코드">') + f('증빙 종류', '<select class="jh-select" data-x="evidence">' + ev + '</select>', '간이영수증·증빙 없음은 "확인 필요"로 표시됩니다.') + f('메모(선택)', '<input class="jh-input" data-x="memo" maxlength="80">') + '</div></div><div class="jh-alert" data-tone="info" data-x-result>입력하면 전표 모양이 여기에 나옵니다.</div><div class="jh-finance__bar"><button type="button" class="jh-btn" data-variant="primary" data-act="exp-save">전표로 저장</button></div></section>' +
+    '<section class="jh-card"><div class="jh-panel__head"><h3>최근 입력 ' + recent.length + '건</h3></div>' + (rows.length ? tbl([['일자'], ['내용'], ['구분'], ['금액', 'num']], rows, 'jh-fin-table--click') : '<div class="jh-empty">아직 입력한 비용이 없습니다.</div>') + '</section>';
 }

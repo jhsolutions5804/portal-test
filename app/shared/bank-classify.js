@@ -1,6 +1,6 @@
 /* 통장 거래 → 분류 규칙(상대방·내용으로 계정 후보) + 전표 초안. 규칙은 "초안"이며 사람이 확인·수정하고 한 번 정하면 기억한다(설계서 §18).
  * 분류 결과: { cat, account(상대 계정), partner, status:'auto'|'review', note } — 출금은 차변=상대 계정/대변=보통예금, 입금은 차변=보통예금/대변=상대 계정 */
-import { validateEntry, solveMonthlyRate, annuitySchedule } from './ledger-engine.js?v=20261008b';
+import { validateEntry, solveMonthlyRate, annuitySchedule } from './ledger-engine.js?v=20261008c';
 const STAFF = ['정다애', '윤석원', '이한영', '김영서', '형일우'];   // 급여 지급 대상(급여명세서·급여 시트 기준) — 설정 화면에서 관리
 const rules = [
   { dir: 'in', re: /과오납/, cat: '국민연금 과오납 환급', account: '6110', status: 'review', note: '연금 보험료 환급 — 회사부담·직원부담 구분 확인(회사부담분이면 보험료 차감)' },

@@ -1,11 +1,11 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount } from '../../shared/ledger-engine.js?v=20261008b';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261008b';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261008b';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261008b';
-import { merchantKey } from '../../shared/merchant-table.js?v=20261008b';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount } from '../../shared/ledger-engine.js?v=20261008c';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261008c';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261008c';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261008c';
+import { merchantKey } from '../../shared/merchant-table.js?v=20261008c';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
-export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 장부', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
+export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
 export const sourceLabel = (k) => SOURCE_LABEL[k] || k || '수기';
 export const won = (n) => { const v = Math.round(Number(n) || 0); return (v < 0 ? '−' : '') + Math.abs(v).toLocaleString('ko-KR'); };
 export const accountName = (code) => (ACCOUNT_BY_CODE[code] ? ACCOUNT_BY_CODE[code].name : code);
@@ -93,4 +93,26 @@ export function parseEntriesJson(text) {
 }
 /** 수기 전표 입력값 검사 */
 export function manualEntry(date, memo, lines) { const L = (lines || []).filter((l) => l.account || l.amount).map((l) => ({ account: String(l.account || ''), side: l.side === 'C' ? 'C' : 'D', amount: Number(String(l.amount == null ? '' : l.amount).replace(/[,\s원]/g, '')), partner: String(l.partner || '').trim() })); const e = { date, memo: String(memo || '').trim(), source: { kind: 'manual' }, lines: L }; const v = validateEntry(e); return { entry: e, ok: v.ok, errors: v.errors, debit: v.debit, credit: v.credit }; }
+/* ───────── 비용 입력(영수증·현금 지출을 손으로) ───────── */
+export const EXPENSE_CATS = [['식대(업무·직원)', '6020'], ['현장 식대(야간조 등)', '5350'], ['거래처 접대·선물', '6040'], ['소모품·사무용품', '6090'], ['현장 소모품·안전용품', '5340'], ['자재·공구', '5010'], ['외주·용역', '5210'], ['차량 유류·정비', '6120'], ['통신비', '6050'], ['보험료', '6110'], ['임차료·관리비(사무)', '6060'], ['현장 창고·숙소', '5380'], ['지급수수료', '6100'], ['기부금', '8030'], ['기타 현장경비', '5390'], ['기타 판관비', '6190'], ['개인 지출(인출금)', '3020']];
+/** [키, 이름, 대변 계정, 거래처 표시] — 카드는 이용 시점에 미지급금으로 쌓고 카드 대금 이체 때 정리 */
+export const PAY_METHODS = [['ibk', 'IBK(기업은행) 회사카드', '2020', 'IBK카드'], ['nh', '농협 개인카드(대표님)', '2021', '농협카드(대표자)'], ['card', '현대·삼성 등 다른 카드', '2020', '카드'], ['cash', '현금', '1010', ''], ['bank', '사업용 통장 이체', '1020', ''], ['credit', '외상·미지급(나중에 지급)', '2020', ''], ['owner', '대표님 개인 돈', '2021', '대표자']];
+export const EVIDENCE = ['카드전표', '세금계산서', '현금영수증', '간이영수증', '증빙 없음'];
+/** 부가세 공제를 기본으로 켜 두면 안 되는 구분(접대·기부·개인·승용차 유류) */
+export const NO_VAT_CATS = ['6040', '8030', '3020', '6120'];
+const intOf = (v) => { const s = String(v == null ? '' : v).replace(/[,\s원]/g, ''); return s === '' ? NaN : Number(s); };
+/** 비용 입력 양식 → 전표(차 비용 + 부가세대급금 / 대 결제수단). 부가세 공제를 켜지 않으면 부가세를 비용에 포함 */
+export function expenseEntryFromForm(f, now) {
+  const errors = []; const cat = EXPENSE_CATS.find((c) => c[1] === f.account); const pay = PAY_METHODS.find((p) => p[0] === f.pay); const total = intOf(f.total); const vatRaw = intOf(f.vat); const what = String(f.what || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(f.date || '')) errors.push('일자를 입력해 주세요.'); if (!what) errors.push('가맹점·내용을 입력해 주세요.'); if (!cat) errors.push('구분을 골라 주세요.'); if (!pay) errors.push('결제수단을 골라 주세요.');
+  if (!Number.isInteger(total) || total <= 0) errors.push('금액은 1원 이상의 정수로 입력해 주세요.');
+  const deduct = !!f.deduct && f.account !== '3020' && f.account !== '8030' && f.account !== '6040'; let vat = deduct && Number.isFinite(vatRaw) ? vatRaw : 0;
+  if (deduct && vatRaw === vatRaw && (!Number.isInteger(vatRaw) || vatRaw < 0)) errors.push('부가세는 0 이상의 정수로 입력해 주세요.'); if (Number.isInteger(total) && vat >= total) errors.push('부가세가 금액보다 작아야 합니다.');
+  if (errors.length) return { errors, ok: false };
+  const supply = total - vat; const pjt = String(f.pjt || '').trim().slice(0, 128); const partnerSide = (f.partner || '').trim() || pay[3] || ''; const stamp = (now || Date.now()).toString(36) + Math.random().toString(36).slice(2, 7);
+  const lines = [{ account: cat[1], side: 'D', amount: supply, partner: what.slice(0, 40), pjt }]; if (vat > 0) lines.push({ account: '1130', side: 'D', amount: vat, partner: what.slice(0, 40) }); lines.push({ account: pay[2], side: 'C', amount: total, partner: partnerSide });
+  const memo = what + (f.evidence ? ' [' + f.evidence + ']' : '') + (f.memo ? ' · ' + String(f.memo).trim() : '');
+  const entry = { date: f.date, memo: memo.slice(0, 200), source: { kind: 'expense', id: 'in_' + f.date + '_' + stamp }, needsReview: f.evidence === '증빙 없음' || f.evidence === '간이영수증', lines };
+  const v = validateEntry(entry); return v.ok ? { entry, ok: true, errors: [], supply, vat, total } : { ok: false, errors: v.errors };
+}
 export { ACCOUNTS, ACCOUNT_BY_CODE };

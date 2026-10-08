@@ -1,13 +1,13 @@
-import { esc, toast } from '../../core/ui.js?v=20261008b';
-import { confirmDialog } from '../../core/dialog.js?v=20261008b';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261008b';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261008b';
-import { parseBankRows } from '../../shared/bank-import.js?v=20261008b';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261008b';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261008b';
-import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, entryDocId, monthEnd, kstToday } from './logic.js?v=20261008b';
-import { loadLedger, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport } from './data.js?v=20261008b';
-import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml } from './view.js?v=20261008b';
+import { esc, toast } from '../../core/ui.js?v=20261008c';
+import { confirmDialog } from '../../core/dialog.js?v=20261008c';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261008c';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261008c';
+import { parseBankRows } from '../../shared/bank-import.js?v=20261008c';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261008c';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261008c';
+import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday } from './logic.js?v=20261008c';
+import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport } from './data.js?v=20261008c';
+import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml } from './view.js?v=20261008c';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
 export const manifest = {
@@ -39,18 +39,18 @@ const msgHtml = (tone, t) => '<div class="jh-alert" data-tone="' + tone + '" rol
 
 export async function mount(root, route, ctx) {
   const me = (ctx && ctx.me) || {}; S.admin = me.admin === true;
-  const tab = ['home', 'entries', 'import', 'reports', 'opening', 'settings'].includes(route.segs[0]) ? route.segs[0] : 'home';
+  const tab = ['home', 'entries', 'expense', 'import', 'reports', 'opening', 'settings'].includes(route.segs[0]) ? route.segs[0] : 'home';
   root.onclick = null; root.onchange = null; root.oninput = null;
   root.innerHTML = '<div class="jh-finance">' + tabsHtml(tab) + '<div id="fin-body" class="jh-finance__body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
   const body = root.querySelector('#fin-body');
   const paint = () => {
     S.data.entries.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.seq || 0) - (b.seq || 0)));
-    const sum = summarize(S.data.entries); const stm = stmNow(); const st = Object.assign({}, S, S.data, { sum, stm, list: filterEntries(S.data.entries, S.filter) });
-    body.innerHTML = tab === 'home' ? homeHtml(st) : tab === 'entries' ? entriesHtml(st) : tab === 'import' ? importHtml(st) : tab === 'reports' ? reportsHtml(st) : tab === 'opening' ? openingHtml(st) : settingsHtml(st);
+    const sum = summarize(S.data.entries); const stm = stmNow(); const st = Object.assign({}, S, S.data, { projects: S.projects || [], sum, stm, list: filterEntries(S.data.entries, S.filter) });
+    body.innerHTML = tab === 'home' ? homeHtml(st) : tab === 'entries' ? entriesHtml(st) : tab === 'expense' ? expenseHtml(st) : tab === 'import' ? importHtml(st) : tab === 'reports' ? reportsHtml(st) : tab === 'opening' ? openingHtml(st) : settingsHtml(st);
     body.removeAttribute('aria-busy');
   };
   const reload = async () => { S.data = await loadLedger(); };
-  try { await reload(); paint(); } catch (e) { console.error('재무회계 불러오기', e); body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다. 재무회계 권한이 있는 계정인지 확인해 주세요. (' + esc(e.code || e.message) + ')</div>'; return; }
+  try { await reload(); if (tab === 'expense' && !S.projects) S.projects = await loadProjects(); paint(); } catch (e) { console.error('재무회계 불러오기', e); body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다. 재무회계 권한이 있는 계정인지 확인해 주세요. (' + esc(e.code || e.message) + ')</div>'; return; }
 
   /* ───── 가져오기 ───── */
   const setImp = (patch) => { Object.assign(S.imp, patch); paint(); };
@@ -111,6 +111,10 @@ export async function mount(root, route, ctx) {
     });
   }
 
+  /* ───── 비용 입력 ───── */
+  const expRead = () => { const g = (k) => { const el = body.querySelector('[data-x="' + k + '"]'); return el ? (el.type === 'checkbox' ? el.checked : el.value) : ''; }; return expenseEntryFromForm({ date: g('date'), what: g('what'), account: g('account'), pay: g('pay'), total: g('total'), vat: g('vat'), deduct: g('deduct'), pjt: g('pjt'), evidence: g('evidence'), memo: g('memo') }); };
+  const expShow = (tone, text) => { const out = body.querySelector('[data-x-result]'); if (out) { out.setAttribute('data-tone', tone); out.textContent = text; } };
+  const expPreview = () => { const m = expRead(); if (!m.ok) { expShow('info', m.errors[0]); return; } expShow('info', '차변 ' + m.entry.lines.filter((l) => l.side === 'D').map((l) => accountName(l.account) + ' ' + l.amount.toLocaleString('ko-KR')).join(' + ') + ' / 대변 ' + accountName(m.entry.lines[m.entry.lines.length - 1].account) + ' ' + m.total.toLocaleString('ko-KR')); };
   /* ───── 이벤트(위임) ───── */
   root.onclick = async (ev) => {
     const t = ev.target;
@@ -124,6 +128,11 @@ export async function mount(root, route, ctx) {
       const ids = filterEntries(S.data.entries, S.filter).filter((e) => e.needsReview).map((e) => e.id); if (!ids.length) return;
       const ok = await confirmDialog({ title: '확인 완료로 표시', body: '지금 목록의 ' + ids.length + '건을 모두 확인 완료로 표시합니다. 전표의 금액·계정은 바뀌지 않습니다.', confirmLabel: '표시' }); if (!ok.ok) return;
       try { const n = await markReviewed(ids, true); toast(n + '건을 확인 완료로 표시했습니다.'); await reload(); paint(); } catch (e) { toast(e.message); }
+    }
+    else if (act === 'vat10') { const t = Number(String(body.querySelector('[data-x="total"]').value).replace(/[,\s원]/g, '')); if (t > 0) { body.querySelector('[data-x="vat"]').value = Math.round(t / 11).toLocaleString('ko-KR'); body.querySelector('[data-x="deduct"]').checked = true; expPreview(); } }
+    else if (act === 'exp-save') {
+      if (a.disabled) return; const m = expRead(); if (!m.ok) { expShow('danger', m.errors[0]); return; } a.disabled = true;
+      try { const r = await postEntries([m.entry]); if (r.rejected.length) throw new Error(r.rejected[0].errors[0]); toast('전표로 저장했습니다.'); await reload(); paint(); } catch (e) { a.disabled = false; expShow('danger', e.message); }
     }
     else if (act === 'commit') await commit();
     else if (act === 'csv') { const st = stmNow(); const kind = S.rep.kind; download(({ is: '손익계산서', bs: '재무상태표', tb: '합계잔액시산표' })[kind] + '_' + S.rep.from + '_' + S.rep.to + '.csv', statementCsv(st, kind)); }
@@ -147,11 +156,14 @@ export async function mount(root, route, ctx) {
     if (t.matches('[data-file2]')) { await onFile2(t); return; }
     if (t.matches('[data-sup]')) { S.imp.acctBySupplier[t.getAttribute('data-sup')] = t.value; await buildPreview(); paint(); return; }
     if (t.matches('[data-merch]')) { const [issuer, key] = t.getAttribute('data-merch').split('|'); S.imp.userRules[issuer + '|' + key] = { issuer, key, account: t.value, label: '화면에서 선택', memo: '' }; await buildPreview(); paint(); return; }
+    if (t.matches('[data-x="total"],[data-x="vat"],[data-open]')) { const n = Number(String(t.value).replace(/[,\s원]/g, '')); if (t.value.trim() !== '' && Number.isFinite(n)) t.value = n.toLocaleString('ko-KR'); }   // 금액 칸은 천 단위 쉼표
+    if (t.matches('[data-x]')) { expPreview(); return; }
     if (t.matches('[data-f]')) { const k = t.getAttribute('data-f'); S.filter[k] = t.type === 'checkbox' ? t.checked : t.value; S.limit = 100; paint(); if (k === 'q') { const q = body.querySelector('[data-f="q"]'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } } return; }
     if (t.matches('[data-rep]')) { S.rep[t.getAttribute('data-rep')] = t.value; paint(); return; }
   };
   root.oninput = (ev) => {
     const t = ev.target;
+    if (t.matches('[data-x]')) { expPreview(); return; }
     if (t.matches('[data-open],[data-open-date]')) { const vals = {}; body.querySelectorAll('[data-open]').forEach((i) => { vals[i.getAttribute('data-open')] = i.value; }); const r = openingFromForm(body.querySelector('[data-open-date]').value, vals); const out = body.querySelector('[data-open-result]'); out.setAttribute('data-tone', r.errors ? 'warn' : 'info'); out.textContent = r.errors ? r.errors[0] : '자본(차액) ' + r.equity.toLocaleString('ko-KR') + '원' + (r.equity < 0 ? ' — 마이너스(자본잠식)입니다' : ''); }
   };
 }

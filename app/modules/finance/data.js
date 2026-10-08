@@ -1,5 +1,5 @@
-import { db, functions, httpsCallable, collection, getDocs, getDoc, doc, query, orderBy, limit } from '../../core/firebase.js?v=20261008b';
-import { docToEntry, chunk, postPayload } from './logic.js?v=20261008b';
+import { db, functions, httpsCallable, collection, getDocs, getDoc, doc, query, orderBy, limit } from '../../core/firebase.js?v=20261008c';
+import { docToEntry, chunk, postPayload } from './logic.js?v=20261008c';
 
 /* 재무회계 데이터 읽기·쓰기 — Firestore 를 만지는 코드는 이 파일에만 둔다.
  * 읽기: ledger_entries(전표)·ledger_meta(설정·마감일·가맹점 규칙)·ledger_imports(가져오기 이력) — 보안 규칙상 관리자·재무회계팀(dept)·perms.finance 만 읽는다.
@@ -14,6 +14,8 @@ export async function loadLedger() {
   const imports = []; im.forEach((d) => { const x = d.data(); imports.push({ id: d.id, kind: x.kind, fileName: x.fileName || '', rows: x.rows || 0, posted: x.posted || 0, duplicates: x.duplicates || 0, byName: x.byName || '', ms: tsMs(x.at) }); });
   return { entries, settings: st.exists() ? st.data() : {}, rules: rl.exists() ? (rl.data().rules || []) : [], imports };
 }
+/** 프로젝트 코드 목록(기획의 gihoek_projects) — 읽기 권한이 없으면 빈 목록(직접 입력) */
+export async function loadProjects() { try { const s = await getDocs(collection(db, 'gihoek_projects')); const out = []; s.forEach((x) => { const v = x.data(); if (v && v.code) out.push({ id: x.id, code: v.code, name: v.name || '' }); }); return out.sort((a, b) => String(a.code).localeCompare(String(b.code))); } catch (e) { return []; } }
 const friendly = (e) => { const m = String((e && e.message) || ''); return m.replace(/^(functions\/)?[a-z-]+:\s*/i, '') || '처리하지 못했습니다. 잠시 후 다시 시도해 주세요.'; };
 export async function ledgerCall(data) { try { const r = await httpsCallable(functions, 'ledgerAct')(data); return r.data; } catch (e) { throw new Error(friendly(e)); } }
 /** 전표 묶음 저장 — 100건씩 나누어 서버에 보낸다. 같은 원천(승인번호 등)은 서버가 한 번만 받는다 */
