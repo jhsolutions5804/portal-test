@@ -1,7 +1,7 @@
-import { auth, db, doc, getDoc, getDocs, updateDoc, collection, query, where, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from './firebase.js?v=20261007m';
-import { esc, toast } from './ui.js?v=20261007m';
-import { validateNewPassword, passwordErrorMessage, fmtPhone, isPhone, maskJumin, fmtJumin, maskAccount } from './profile-logic.js?v=20261007m';
-import { revealOwn, maskView, identityErrorText } from '../shared/identity.js?v=20261007m';
+import { auth, db, doc, getDoc, getDocs, updateDoc, collection, query, where, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from './firebase.js?v=20261008a';
+import { esc, toast } from './ui.js?v=20261008a';
+import { validateNewPassword, passwordErrorMessage, fmtPhone, isPhone, maskJumin, fmtJumin, maskAccount } from './profile-logic.js?v=20261008a';
+import { revealOwn, maskView, identityErrorText } from '../shared/identity.js?v=20261008a';
 
 /** 내 정보 창 — 전화번호·비밀번호 변경, 내 인사 정보(주민번호·주소·계좌) 보기.
  *  비밀번호는 현재 비밀번호로 다시 인증한 뒤 바꾸며, 어디에도 따로 저장하지 않는다(옛 포털은 사본을 portal_secrets 에 남겼다). */
