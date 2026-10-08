@@ -1,4 +1,4 @@
-import { db, collection, doc, getDoc, getDocs } from '../../core/firebase.js?v=20261008g';
+import { db, collection, doc, getDoc, getDocs } from '../../core/firebase.js?v=20261008h';
 
 /* 작성 화면이 쓰는 기준 정보: 직원 명단, 정책(필수 결재자·대리 권한자), 권장 결재선, 프로젝트 */
 let cache = null;

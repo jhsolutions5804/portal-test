@@ -1,5 +1,5 @@
-import { db, functions, httpsCallable, collection, getDocs, getDoc, doc, query, orderBy, limit } from '../../core/firebase.js?v=20261008g';
-import { docToEntry, chunk, postPayload } from './logic.js?v=20261008g';
+import { db, functions, httpsCallable, collection, getDocs, getDoc, doc, query, orderBy, limit } from '../../core/firebase.js?v=20261008h';
+import { docToEntry, chunk, postPayload } from './logic.js?v=20261008h';
 
 /* 재무회계 데이터 읽기·쓰기 — Firestore 를 만지는 코드는 이 파일에만 둔다.
  * 읽기: ledger_entries(전표)·ledger_meta(설정·마감일·가맹점 규칙)·ledger_imports(가져오기 이력) — 보안 규칙상 관리자·재무회계팀(dept)·perms.finance 만 읽는다.
@@ -30,6 +30,8 @@ export const markReviewed = async (ids, done) => { let n = 0; for (let i = 0; i 
 /** 영수증 사진·PDF 한 장을 서버에 올려 읽기(원본 보관 + 값 추출). 전표는 만들지 않는다 */
 export async function readReceipt(fileName, mime, dataBase64) { try { const r = await httpsCallable(functions, 'ledgerReceipt')({ action: 'read', fileName, mime, dataBase64 }); return r.data; } catch (e) { throw new Error(friendly(e)); } }
 export async function getReceiptFile(id) { try { const r = await httpsCallable(functions, 'ledgerReceipt')({ action: 'file', id }); return r.data; } catch (e) { throw new Error(friendly(e)); } }
+/** 포털 급여명세서(해당 월) 읽기 — 서버가 관리자에게만 돌려준다 */
+export const readPayroll = (month) => ledgerCall({ action: 'payrollRead', month });
 export const reverseEntry = (id, date, memo) => ledgerCall({ action: 'reverse', id, date, memo });
 export const lockThrough = (through) => ledgerCall({ action: 'lock', through });
 export const saveSettings = (ownBiz, ownName) => ledgerCall({ action: 'saveSettings', ownBiz, ownName });

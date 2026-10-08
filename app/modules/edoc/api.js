@@ -1,4 +1,4 @@
-import { functions, httpsCallable } from '../../core/firebase.js?v=20261008g';
+import { functions, httpsCallable } from '../../core/firebase.js?v=20261008h';
 
 /* 서버 함수 edocAct 호출 — 상신·승인·반려·회수·게시·삭제는 모두 서버가 검증해 처리한다 */
 const call = httpsCallable(functions, 'edocAct');

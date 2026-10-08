@@ -1,13 +1,13 @@
-import { esc, toast } from '../../core/ui.js?v=20261008g';
-import { confirmDialog } from '../../core/dialog.js?v=20261008g';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261008g';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261008g';
-import { parseBankRows } from '../../shared/bank-import.js?v=20261008g';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261008g';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261008g';
-import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm } from './logic.js?v=20261008g';
-import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile } from './data.js?v=20261008g';
-import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml } from './view.js?v=20261008g';
+import { esc, toast } from '../../core/ui.js?v=20261008h';
+import { confirmDialog } from '../../core/dialog.js?v=20261008h';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261008h';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261008h';
+import { parseBankRows } from '../../shared/bank-import.js?v=20261008h';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261008h';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261008h';
+import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll } from './logic.js?v=20261008h';
+import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll } from './data.js?v=20261008h';
+import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml } from './view.js?v=20261008h';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
 export const manifest = {
@@ -62,6 +62,7 @@ export async function mount(root, route, ctx) {
     if (k === 'taxsales' || k === 'taxpurchase') { const p = previewTaxInvoices(raw.parsed, k === 'taxsales' ? 'sales' : 'purchase', S.data.settings.ownBiz, have, S.imp.acctBySupplier); S.imp.preview = p; }
     else if (k === 'bank') { const ctx2 = { ownerSettle: raw.nh ? ownerSettlementKeys(raw.bank.txns, raw.nh.txns) : undefined }; const p = previewBank(raw.bank.txns, ctx2, have); p.bank = raw.bank; p.warnings = []; if (raw.bank.balanceBreaks) p.warnings.push('통장 잔액이 이어지지 않는 곳이 ' + raw.bank.balanceBreaks + '곳 있습니다 — 빠진 거래가 있는지 확인해 주세요.'); if (raw.bank.totalsOk === false) p.warnings.push('파일의 합계 줄과 거래 합계가 다릅니다.'); if (raw.nh) p.warnings.push('농협 개인 계좌 거래내역을 참고해 개인카드 대금 정산 이체를 짝지었습니다.'); S.imp.preview = p; }
     else if (k === 'card') { const merged = {}; S.data.rules.forEach((r) => { merged[r.issuer + '|' + r.key] = r; }); Object.assign(merged, S.imp.userRules); const p = previewCards(raw.items, Object.values(merged), have); p.warnings = raw.warnings || []; S.imp.preview = p; }
+    else if (k === 'payroll') { S.imp.preview = previewPayroll(raw.payroll, have, S.data.entries); }
     else if (k === 'json') { const have2 = have; const fresh = raw.entries.filter((e) => { const id = entryDocId(e); return !(id && have2.has(id)); }); S.imp.preview = { entries: raw.entries, errors: raw.errors, fresh, dupCount: raw.entries.length - fresh.length }; }
   }
   async function onFile(input) {
@@ -180,6 +181,10 @@ export async function mount(root, route, ctx) {
       try { const r = await postEntries([m.entry]); if (r.rejected.length) throw new Error(r.rejected[0].errors[0]); toast(r.duplicates ? '이미 저장된 영수증입니다.' : '전표로 저장했습니다.'); if (RC.current) rcFinish(RC.current, 'done'); await reload(); paint(); rcShow(); rcRender(); } catch (e) { a.disabled = false; expShow('danger', e.message); }
     }
     else if (act === 'rc-skip') { if (RC.current) { rcFinish(RC.current, 'skip'); paint(); rcShow(); rcRender(); } }
+    else if (act === 'pay-load') {
+      const m = body.querySelector('[data-pay-month]').value; if (!m) { toast('귀속월을 골라 주세요.'); return; } setImp({ busy: true, error: '', preview: null });
+      try { const res = await readPayroll(m); S.imp.raw = { payroll: res, fileName: '포털 급여명세서 ' + m }; await buildPreview(); setImp({ busy: false }); } catch (e) { setImp({ busy: false, error: e.message }); }
+    }
     else if (act === 'commit') await commit();
     else if (act === 'csv') { const st = stmNow(); const kind = S.rep.kind; download(({ is: '손익계산서', bs: '재무상태표', tb: '합계잔액시산표' })[kind] + '_' + S.rep.from + '_' + S.rep.to + '.csv', statementCsv(st, kind)); }
     else if (act === 'print') window.print();

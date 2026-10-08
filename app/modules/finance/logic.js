@@ -1,8 +1,9 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount } from '../../shared/ledger-engine.js?v=20261008g';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261008g';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261008g';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261008g';
-import { merchantKey } from '../../shared/merchant-table.js?v=20261008g';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount } from '../../shared/ledger-engine.js?v=20261008h';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261008h';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261008h';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261008h';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261008h';
+import { merchantKey } from '../../shared/merchant-table.js?v=20261008h';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -83,6 +84,18 @@ export function previewCards(items, rules, existing) {
   (items || []).forEach((c) => { if (c.cancelled) { skipped.push(c); return; } const e = entryFromCard(c); if (!e) return; if (e.invalid) { skipped.push(c); return; } list.push(e); const k = c.issuer + '|' + merchantKey(c.merchant); const cl = classifyCardItem(c); const g = groups.get(k) || { issuer: c.issuer, key: merchantKey(c.merchant), name: c.merchant, n: 0, sum: 0, account: cl.account, review: cl.review }; g.n++; g.sum += c.amount; groups.set(k, g); });
   const seen = {}; list.forEach((e) => { const k = e.source.id; seen[k] = (seen[k] || 0) + 1; if (seen[k] > 1) e.source.id = k + '#' + seen[k]; });   /* 같은 날 같은 금액을 같은 가맹점에서 여러 번 결제한 건(승인번호가 없는 카드)은 번호를 붙여 서로 다른 전표로 */
   const { fresh, dup } = splitNew(list, existing); return { fresh, dup, dupCount: dup.length, skipped, groups: [...groups.values()].sort((a, b) => b.sum - a.sum), total: (items || []).reduce((s, c) => s + (c.cancelled ? 0 : c.amount), 0) };
+}
+/** 포털 급여명세서(서버가 읽어 온 해당 월 문서) 미리보기 — 직원별 전표 초안·합계·중복·"다른 경로로 이미 올린 급여" 막기 */
+export function previewPayroll(res, existing, entries) {
+  const ym = res.month; const rows = []; const PAYK = ['pension', 'health', 'ltcare', 'employ', 'incomeTax', 'localTax'];
+  (res.payslips || []).forEach((p) => { const e = entryFromPortalPayslip(p, p.workerId); rows.push({ p, entry: e, ok: !e.invalid, why: e.invalid ? e.invalid[0] : '', ded: PAYK.reduce((s, k) => s + (Number(p[k]) || 0), 0), site: !e.invalid && e.lines[0].account === '5110' }); });
+  const good = rows.filter((r) => r.ok); const { fresh, dup } = splitNew(good.map((r) => r.entry), existing);
+  const ids = new Set(good.map((r) => entryDocId(r.entry))); const other = (entries || []).filter((e) => e.source && e.source.kind === 'payslip' && String(e.date).slice(0, 7) === ym && !ids.has(e.id));
+  const warnings = []; if (!rows.length) warnings.push(ym + ' 급여명세서가 없습니다(근로자 ' + (res.workers || 0) + '명 중 0명). 인사에서 급여명세서를 먼저 저장했는지 확인해 주세요.');
+  if (rows.some((r) => !r.ok)) warnings.push('총지급 ≠ 공제 + 기숙사비 + 실지급인 ' + rows.filter((r) => !r.ok).length + '건은 제외했습니다(금액 확인 필요).');
+  if (other.length) warnings.push(ym + ' 급여 전표가 이미 ' + other.length + '건 있습니다(엑셀·묶음 파일 등 다른 경로). 이중으로 잡히는 것을 막기 위해 가져오지 않습니다. 바꾸려면 그 전표를 역분개한 뒤 다시 가져오세요.');
+  const sum = (k) => good.reduce((s, r) => s + (Number(r.p[k]) || 0), 0);
+  return { rows, fresh: other.length ? [] : fresh, dup, dupCount: dup.length, conflict: other.length, warnings, totals: { gross: sum('grossPay'), ded: good.reduce((s, r) => s + r.ded, 0), dorm: sum('dormitory'), net: sum('netPay') }, month: ym };
 }
 /** 전표 묶음(JSON) 검사 — 계정·차대·금액 */
 export function parseEntriesJson(text) {
