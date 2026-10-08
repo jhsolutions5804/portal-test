@@ -1,5 +1,5 @@
-import { db, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, where, serverTimestamp } from '../../core/firebase.js?v=20261008c';
-import { addDays, fromLegacyDoc, toCompanyDoc } from './logic.js?v=20261008c';
+import { db, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, where, serverTimestamp } from '../../core/firebase.js?v=20261008d';
+import { addDays, fromLegacyDoc, toCompanyDoc } from './logic.js?v=20261008d';
 
 /* 회사 일정(company_schedules): 프로젝트에 속하지 않는 일정 + 전자결재가 연차 승인 때 서버에서 기록하는 연차·휴무(source:'edoc_leave').
  * 보안 규칙: 읽기는 GUEST 제외(연차·휴무 tag off·leave 만 GUEST 도 읽음), 쓰기는 승인된 비GUEST. 규칙은 필터가 아니라 조건 증명이라

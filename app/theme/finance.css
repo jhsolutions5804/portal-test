@@ -23,6 +23,9 @@
 .jh-fin-table--click td:nth-child(-n+2) { white-space: nowrap; }
 .jh-fin-table--click tbody tr:hover { background: var(--c-primary-weak); }
 .jh-fin-table .jh-select, .jh-fin-table .jh-input { min-width: var(--u-120); }
+/* 영수증 원본 */
+.jh-finance__thumb { max-width: 100%; max-height: var(--u-320); object-fit: contain; border: var(--u-1) solid var(--c-line); border-radius: var(--radius-sm); background: var(--c-surface); }
+.jh-finance__pdf { width: 100%; height: var(--u-420); border: var(--u-1) solid var(--c-line); border-radius: var(--radius-sm); }
 @media (max-width: 899px) {
   .jh-finance__two { grid-template-columns: minmax(0, 1fr); }
 }

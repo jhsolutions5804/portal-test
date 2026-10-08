@@ -1,6 +1,6 @@
 /* 주민(외국인)등록번호 열람·저장 — 서버 함수 identityAct 호출(설계서 §50). 번호는 저장·기록하지 않고 호출한 쪽이 화면에만 잠깐 보여 준다.
  * 열람마다 서버가 열람 기록(누가·누구의 번호·사유·시각·접속지)을 남긴다. */
-import { functions, httpsCallable } from '../core/firebase.js?v=20261008c';
+import { functions, httpsCallable } from '../core/firebase.js?v=20261008d';
 export const REASONS = ['4대보험 신고', '원천징수', '신분 확인', '기타'];
 const call = async (data) => (await httpsCallable(functions, 'identityAct')(data)).data;
 /** 서버가 준 한글 안내는 그대로, 그 밖(함수 미배포·네트워크)은 일반 안내 */

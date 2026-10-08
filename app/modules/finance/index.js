@@ -1,13 +1,13 @@
-import { esc, toast } from '../../core/ui.js?v=20261008c';
-import { confirmDialog } from '../../core/dialog.js?v=20261008c';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261008c';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261008c';
-import { parseBankRows } from '../../shared/bank-import.js?v=20261008c';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261008c';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261008c';
-import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday } from './logic.js?v=20261008c';
-import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport } from './data.js?v=20261008c';
-import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml } from './view.js?v=20261008c';
+import { esc, toast } from '../../core/ui.js?v=20261008d';
+import { confirmDialog } from '../../core/dialog.js?v=20261008d';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261008d';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261008d';
+import { parseBankRows } from '../../shared/bank-import.js?v=20261008d';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261008d';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261008d';
+import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm } from './logic.js?v=20261008d';
+import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile } from './data.js?v=20261008d';
+import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml } from './view.js?v=20261008d';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
 export const manifest = {
@@ -37,6 +37,7 @@ function openPanel(title, bodyHtml, actions) {
 }
 const msgHtml = (tone, t) => '<div class="jh-alert" data-tone="' + tone + '" role="alert">' + esc(t) + '</div>';
 
+function RC_RESET() { if (S.rc) S.rc.current = null; }
 export async function mount(root, route, ctx) {
   const me = (ctx && ctx.me) || {}; S.admin = me.admin === true;
   const tab = ['home', 'entries', 'expense', 'import', 'reports', 'opening', 'settings'].includes(route.segs[0]) ? route.segs[0] : 'home';
@@ -50,7 +51,8 @@ export async function mount(root, route, ctx) {
     body.removeAttribute('aria-busy');
   };
   const reload = async () => { S.data = await loadLedger(); };
-  try { await reload(); if (tab === 'expense' && !S.projects) S.projects = await loadProjects(); paint(); } catch (e) { console.error('재무회계 불러오기', e); body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다. 재무회계 권한이 있는 계정인지 확인해 주세요. (' + esc(e.code || e.message) + ')</div>'; return; }
+  RC_RESET();
+  try { await reload(); if (tab === 'expense' && !S.projects) S.projects = await loadProjects(); paint(); if (tab === 'expense') setTimeout(() => rcShow(), 0); } catch (e) { console.error('재무회계 불러오기', e); body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다. 재무회계 권한이 있는 계정인지 확인해 주세요. (' + esc(e.code || e.message) + ')</div>'; return; }
 
   /* ───── 가져오기 ───── */
   const setImp = (patch) => { Object.assign(S.imp, patch); paint(); };
@@ -92,6 +94,7 @@ export async function mount(root, route, ctx) {
     const e = S.data.entries.find((x) => x.id === id); if (!e) return; const locked = S.data.settings.lockedThrough || '';
     const p = openPanel('전표 ' + (e.no || ''), entryDialogHtml(e, !e.reversedBy && !e.reverses, locked), []);
     p.el.addEventListener('click', async (ev) => {
+      if (ev.target.closest('[data-act="rc-view"]')) { await viewReceipt(e, p.el); return; }
       if (ev.target.closest('[data-act="reviewed"]')) { try { await markReviewed([id], true); toast('확인 완료로 표시했습니다.'); p.close(); await reload(); paint(); } catch (er) { p.msg(msgHtml('danger', er.message)); } return; }
       if (!ev.target.closest('[data-act="reverse"]')) return; const date = p.el.querySelector('[data-rev-date]').value; const memo = p.el.querySelector('[data-rev-memo]').value;
       if (!date) { p.msg(msgHtml('danger', '역분개 일자를 입력해 주세요.')); return; }
@@ -111,8 +114,48 @@ export async function mount(root, route, ctx) {
     });
   }
 
+  /* ───── 영수증 사진·PDF ───── */
+  const RC = S.rc || (S.rc = { items: [], current: null, total: 0, done: 0 });
+  const rcStatus = (t) => { const el = body.querySelector('[data-rc-status]'); if (el) el.textContent = t; };
+  const toB64 = (blob) => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = rej; r.readAsDataURL(blob); });
+  /** 사진은 긴 변 1800px·JPEG 로 줄여 올린다(전송·읽기 비용 절약). 줄일 수 없으면 원본 그대로 */
+  async function prepare(file) {
+    const mime = file.type || (/\.pdf$/i.test(file.name) ? 'application/pdf' : 'image/jpeg');
+    if (mime !== 'application/pdf' && typeof createImageBitmap === 'function' && typeof document.createElement('canvas').getContext === 'function') {
+      try { const bmp = await createImageBitmap(file); const k = Math.min(1, 1800 / Math.max(bmp.width, bmp.height)); const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k); const g = c.getContext('2d'); if (g) { g.drawImage(bmp, 0, 0, c.width, c.height); const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.85)); if (blob && blob.size < file.size * 1.2) return { name: file.name, mime: 'image/jpeg', b64: await toB64(blob), blob }; } } catch (e) { /* 줄이기 실패 → 원본 */ }
+    }
+    return { name: file.name, mime, b64: await toB64(file), blob: file };
+  }
+  const blobUrl = (b) => { try { return b && typeof URL.createObjectURL === 'function' ? URL.createObjectURL(b) : ''; } catch (e) { return ''; } };   // 미리보기 주소를 못 만들어도 읽기는 계속
+  function rcShow() {
+    if (RC.current) return; const item = RC.items.find((x) => !x.done && !x.error); if (!item || !body.querySelector('[data-rc-banner]')) return; RC.current = item;
+    const f = receiptToForm(item.extracted); const set = (k, v) => { const el = body.querySelector('[data-x="' + k + '"]'); if (el) { if (el.type === 'checkbox') el.checked = !!v; else el.value = v; } };
+    ['date', 'what', 'account', 'pay', 'total', 'vat', 'evidence'].forEach((k) => set(k, f[k])); set('deduct', f.deduct); set('memo', ''); set('pjt', '');
+    const pending = RC.items.filter((x) => !x.done && !x.error).length; const warn = (item.warnings || []).concat(f.cardNote ? [f.cardNote] : []).map((w) => '<div class="jh-alert" data-tone="warn" role="status">⚠ ' + esc(w) + '</div>').join('');
+    const thumb = item.url && item.mime !== 'application/pdf' ? '<img class="jh-finance__thumb" src="' + esc(item.url) + '" alt="영수증 원본">' : '<div class="jh-field__hint">📄 ' + esc(item.name) + ' (PDF — 저장 뒤 전표 상세에서 원본을 볼 수 있습니다)</div>';
+    body.querySelector('[data-rc-banner]').innerHTML = '<div class="jh-alert" data-tone="info" role="status">📷 영수증 ' + (RC.done + 1) + '/' + RC.total + ' · ' + esc(item.name) + ' — 아래 양식에 읽은 값을 채웠습니다. 원본과 비교해 고친 뒤 <strong>전표로 저장</strong>하세요. <span data-rc-rest></span> <button type="button" class="jh-btn" data-variant="ghost" data-act="rc-skip">이 영수증 건너뛰기</button></div>' + warn + thumb;
+    rcRest(); expPreview();
+  }
+  /** "남은 영수증 N장" — 뒤 장이 읽히는 대로 갱신 */
+  function rcRest() { const el = body.querySelector('[data-rc-rest]'); if (!el) return; const left = RC.items.filter((x) => !x.done && !x.error && x !== RC.current).length; el.textContent = left ? '(남은 영수증 ' + left + '장)' : ''; }
+  function rcFinish(item) { item.done = true; RC.done++; RC.current = null; const b = body.querySelector('[data-rc-banner]'); if (b) b.innerHTML = ''; }
+  async function onReceipts(input) {
+    const files = [...(input.files || [])]; if (!files.length) return; const todo = []; const notes = [];
+    files.forEach((f) => { const p = receiptFileProblem(f); if (p) notes.push(p); else todo.push(f); });
+    if (!RC.items.some((x) => !x.done && !x.error)) { RC.items = []; RC.total = 0; RC.done = 0; RC.current = null; }   // 앞 묶음을 다 처리했으면 번호를 처음부터
+    RC.total += todo.length; let n = 0;
+    for (const f of todo) {
+      n++; rcStatus('읽는 중 ' + n + '/' + todo.length + ' — ' + f.name + (notes.length ? ' · ' + notes.join(' · ') : ''));
+      try { const prep = await prepare(f); const r = await readReceipt(prep.name, prep.mime, prep.b64); RC.items.push({ id: r.id, name: f.name, mime: prep.mime, extracted: r.extracted, warnings: r.warnings, url: blobUrl(prep.blob) }); rcShow(); rcRest(); }
+      catch (e) { RC.items.push({ name: f.name, error: e.message }); RC.total--; notes.push(f.name + ': ' + e.message); }
+    }
+    rcStatus((todo.length ? todo.length + '장 읽기를 마쳤습니다.' : '') + (notes.length ? ' ' + notes.join(' · ') : ''));
+  }
+  async function viewReceipt(entry, scope) {
+    try { const f = await getReceiptFile(String(entry.source.id).replace(/^rc_/, '')); const url = 'data:' + f.mime + ';base64,' + f.dataBase64; const p = openPanel('원본 영수증 — ' + (f.fileName || ''), f.mime === 'application/pdf' ? '<iframe class="jh-finance__pdf" title="영수증 PDF" src="' + url + '"></iframe>' : '<img class="jh-finance__thumb" src="' + url + '" alt="영수증 원본">', []); return p; } catch (e) { toast(e.message); }
+  }
   /* ───── 비용 입력 ───── */
-  const expRead = () => { const g = (k) => { const el = body.querySelector('[data-x="' + k + '"]'); return el ? (el.type === 'checkbox' ? el.checked : el.value) : ''; }; return expenseEntryFromForm({ date: g('date'), what: g('what'), account: g('account'), pay: g('pay'), total: g('total'), vat: g('vat'), deduct: g('deduct'), pjt: g('pjt'), evidence: g('evidence'), memo: g('memo') }); };
+  const expRead = () => { const g = (k) => { const el = body.querySelector('[data-x="' + k + '"]'); return el ? (el.type === 'checkbox' ? el.checked : el.value) : ''; }; return expenseEntryFromForm({ date: g('date'), what: g('what'), account: g('account'), pay: g('pay'), total: g('total'), vat: g('vat'), deduct: g('deduct'), pjt: g('pjt'), evidence: g('evidence'), memo: g('memo'), receiptId: RC.current ? RC.current.id : '' }); };
   const expShow = (tone, text) => { const out = body.querySelector('[data-x-result]'); if (out) { out.setAttribute('data-tone', tone); out.textContent = text; } };
   const expPreview = () => { const m = expRead(); if (!m.ok) { expShow('info', m.errors[0]); return; } expShow('info', '차변 ' + m.entry.lines.filter((l) => l.side === 'D').map((l) => accountName(l.account) + ' ' + l.amount.toLocaleString('ko-KR')).join(' + ') + ' / 대변 ' + accountName(m.entry.lines[m.entry.lines.length - 1].account) + ' ' + m.total.toLocaleString('ko-KR')); };
   /* ───── 이벤트(위임) ───── */
@@ -132,8 +175,9 @@ export async function mount(root, route, ctx) {
     else if (act === 'vat10') { const t = Number(String(body.querySelector('[data-x="total"]').value).replace(/[,\s원]/g, '')); if (t > 0) { body.querySelector('[data-x="vat"]').value = Math.round(t / 11).toLocaleString('ko-KR'); body.querySelector('[data-x="deduct"]').checked = true; expPreview(); } }
     else if (act === 'exp-save') {
       if (a.disabled) return; const m = expRead(); if (!m.ok) { expShow('danger', m.errors[0]); return; } a.disabled = true;
-      try { const r = await postEntries([m.entry]); if (r.rejected.length) throw new Error(r.rejected[0].errors[0]); toast('전표로 저장했습니다.'); await reload(); paint(); } catch (e) { a.disabled = false; expShow('danger', e.message); }
+      try { const r = await postEntries([m.entry]); if (r.rejected.length) throw new Error(r.rejected[0].errors[0]); toast(r.duplicates ? '이미 저장된 영수증입니다.' : '전표로 저장했습니다.'); if (RC.current) rcFinish(RC.current); await reload(); paint(); rcShow(); } catch (e) { a.disabled = false; expShow('danger', e.message); }
     }
+    else if (act === 'rc-skip') { if (RC.current) { rcFinish(RC.current); paint(); rcShow(); } }
     else if (act === 'commit') await commit();
     else if (act === 'csv') { const st = stmNow(); const kind = S.rep.kind; download(({ is: '손익계산서', bs: '재무상태표', tb: '합계잔액시산표' })[kind] + '_' + S.rep.from + '_' + S.rep.to + '.csv', statementCsv(st, kind)); }
     else if (act === 'print') window.print();
@@ -152,6 +196,7 @@ export async function mount(root, route, ctx) {
   };
   root.onchange = async (ev) => {
     const t = ev.target;
+    if (t.matches('[data-rc-file]')) { await onReceipts(t); return; }
     if (t.matches('[data-file]')) { await onFile(t); return; }
     if (t.matches('[data-file2]')) { await onFile2(t); return; }
     if (t.matches('[data-sup]')) { S.imp.acctBySupplier[t.getAttribute('data-sup')] = t.value; await buildPreview(); paint(); return; }

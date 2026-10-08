@@ -1,8 +1,8 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount } from '../../shared/ledger-engine.js?v=20261008c';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261008c';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261008c';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261008c';
-import { merchantKey } from '../../shared/merchant-table.js?v=20261008c';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount } from '../../shared/ledger-engine.js?v=20261008d';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261008d';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261008d';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261008d';
+import { merchantKey } from '../../shared/merchant-table.js?v=20261008d';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -111,8 +111,19 @@ export function expenseEntryFromForm(f, now) {
   if (errors.length) return { errors, ok: false };
   const supply = total - vat; const pjt = String(f.pjt || '').trim().slice(0, 128); const partnerSide = (f.partner || '').trim() || pay[3] || ''; const stamp = (now || Date.now()).toString(36) + Math.random().toString(36).slice(2, 7);
   const lines = [{ account: cat[1], side: 'D', amount: supply, partner: what.slice(0, 40), pjt }]; if (vat > 0) lines.push({ account: '1130', side: 'D', amount: vat, partner: what.slice(0, 40) }); lines.push({ account: pay[2], side: 'C', amount: total, partner: partnerSide });
-  const memo = what + (f.evidence ? ' [' + f.evidence + ']' : '') + (f.memo ? ' · ' + String(f.memo).trim() : '');
-  const entry = { date: f.date, memo: memo.slice(0, 200), source: { kind: 'expense', id: 'in_' + f.date + '_' + stamp }, needsReview: f.evidence === '증빙 없음' || f.evidence === '간이영수증', lines };
+  const memo = what + (f.evidence ? ' [' + f.evidence + ']' : '') + (f.receiptId ? ' [영수증 첨부]' : '') + (f.memo ? ' · ' + String(f.memo).trim() : '');
+  const entry = { date: f.date, memo: memo.slice(0, 200), source: { kind: 'expense', id: f.receiptId ? 'rc_' + String(f.receiptId).replace(/[^A-Za-z0-9]/g, '').slice(0, 40) : 'in_' + f.date + '_' + stamp }, needsReview: f.evidence === '증빙 없음' || f.evidence === '간이영수증', lines };
   const v = validateEntry(entry); return v.ok ? { entry, ok: true, errors: [], supply, vat, total } : { ok: false, errors: v.errors };
+}
+/* ───────── 영수증 사진·PDF ───────── */
+export const RECEIPT_MAX = 7 * 1024 * 1024; export const RECEIPT_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+/** 올리기 전 검사 — 문제가 있으면 안내 문구, 없으면 '' */
+export function receiptFileProblem(f) { if (!f) return '파일이 없습니다.'; const mime = f.type || ''; const okType = RECEIPT_MIME.includes(mime) || (!mime && /\.(jpe?g|png|webp|gif|pdf)$/i.test(f.name || '')); if (!okType) return (f.name || '파일') + ': 사진(JPG·PNG·WEBP) 또는 PDF만 올릴 수 있습니다.'; if (f.size > RECEIPT_MAX * 6) return (f.name || '파일') + ': 파일이 너무 큽니다(최대 약 40MB).'; if (mime === 'application/pdf' && f.size > RECEIPT_MAX) return f.name + ': PDF가 7MB를 넘습니다. 쪽 수를 줄이거나 해상도를 낮춰 다시 만들어 주세요.'; return ''; }
+const EV_BY_TYPE = { 카드전표: '카드전표', 현금영수증: '현금영수증', 간이영수증: '간이영수증', 세금계산서: '세금계산서', 기타: '증빙 없음' };
+/** 서버가 읽어 준 값 → 비용 입력 양식 값(사람이 확인·수정하기 전의 초안) */
+export function receiptToForm(ex) {
+  const e = ex || {}; const pay = e.payment === '현금' ? 'cash' : (e.payment === '카드' ? 'ibk' : 'card'); const deduct = !!e.vat && ['카드전표', '현금영수증', '세금계산서'].includes(e.docType) && !['6040', '8030', '3020', '6120'].includes(e.category);
+  const items = (e.items || []).filter((i) => i.name).map((i) => i.name); const what = [e.merchant, items.length ? items.slice(0, 2).join('·') + (items.length > 2 ? ' 외' : '') : ''].filter(Boolean).join(' — ');
+  return { date: e.date || '', what: what.slice(0, 60), account: e.category || '6190', pay, total: e.total ? Number(e.total).toLocaleString('ko-KR') : '', vat: e.vat ? Number(e.vat).toLocaleString('ko-KR') : '', deduct, evidence: EV_BY_TYPE[e.docType] || '증빙 없음', cardNote: e.cardLast4 ? '카드 끝 4자리 ' + e.cardLast4 + ' — 결제수단이 맞는지 확인하세요.' : '' };
 }
 export { ACCOUNTS, ACCOUNT_BY_CODE };
