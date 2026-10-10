@@ -27,6 +27,8 @@
 /* 비용 입력: 왼쪽 직접 입력 → 영수증 가져오기, 오른쪽 최근 입력 */
 .jh-finance__split { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--sp-4); align-items: start; }
 .jh-finance__col { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); min-width: 0; }
+/* 오른쪽 칸은 스크롤을 따라 내려와 항상 보이게(잔액·최근 내역 등). 칸이 화면보다 길면 안에서 스크롤 */
+.jh-finance__split > .jh-finance__col:last-child { position: sticky; top: var(--sp-4); max-height: calc(100vh - var(--sp-5) * 2); overflow-y: auto; }
 .jh-fin-table--narrow { min-width: 0; }
 /* 카드 안쪽 여백·정보 조각 */
 .jh-finance__pad { padding: var(--sp-4); display: grid; gap: var(--sp-3); }
@@ -77,6 +79,7 @@
 @media (max-width: 899px) {
   .jh-finance__two { grid-template-columns: minmax(0, 1fr); }
   .jh-finance__split { grid-template-columns: minmax(0, 1fr); }
+  .jh-finance__split > .jh-finance__col:last-child { position: static; max-height: none; overflow: visible; }
 }
 @media print {
   .jh-finance__tabs, .jh-finance__bar, .jh-alert { display: none; }

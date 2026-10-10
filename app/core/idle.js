@@ -1,9 +1,9 @@
 /* 자동 로그아웃(1시간 무동작) — 옛 포털에는 있고 새 플랫폼에는 없던 기능(홈 대장 H-05).
  * 옛 포털과 다른 점: ① 옛 모듈 화면(iframe) 안에서 일하는 것도 "활동"으로 센다 ② 1분 전에 알려 주고 "계속 사용"으로 연장할 수 있다
  * ③ 마지막 활동 시각을 이 기기의 localStorage 에 두어 같은 브라우저의 다른 창에서 일하고 있으면 이 창도 유지된다 ④ 시계 기준이라 잠자기·백그라운드 뒤에 돌아와도 즉시 판단한다. */
-import { IS_TEST } from './config.js?v=20261008n';
-import { esc } from './ui.js?v=20261008n';
-import { idleStatus, createIdleWatch, IDLE_LIMIT_MS, IDLE_WARN_MS, durationText } from './idle-logic.js?v=20261008n';
+import { IS_TEST } from './config.js?v=20261008p';
+import { esc } from './ui.js?v=20261008p';
+import { idleStatus, createIdleWatch, IDLE_LIMIT_MS, IDLE_WARN_MS, durationText } from './idle-logic.js?v=20261008p';
 export { idleStatus, createIdleWatch, IDLE_LIMIT_MS, IDLE_WARN_MS, durationText };
 
 const KEY = 'jh_last_active';

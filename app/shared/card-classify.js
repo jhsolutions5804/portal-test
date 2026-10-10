@@ -1,7 +1,7 @@
 /* 카드 이용 1건 → 전표 초안. 가맹점 이름·종류로 계정 후보를 정하고, 확실하지 않으면 needsReview. 규칙은 초안이며 대표님이 가맹점별로 정하면 그 값이 우선.
  * 부가세: IBK 카드 매출내역은 건별 매출세액이 있어 공제 가능한 비용에만 부가세대급금으로 분리, 다른 카드는 사업용카드 등록 여부를 알 수 없어 부가세를 비용에 포함(불공제로 가정). */
-import { validateEntry, cardCreditAccount } from './ledger-engine.js?v=20261008n';
-import { merchantKey } from './merchant-table.js?v=20261008n';
+import { validateEntry, cardCreditAccount } from './ledger-engine.js?v=20261008p';
+import { merchantKey } from './merchant-table.js?v=20261008p';
 let USER_RULES = new Map();
 /** 대표님이 가맹점 분류표에서 고른 규칙(카드사+가맹점 키) — 일반 규칙보다 먼저 적용 */
 export function setMerchantRules(rules) { USER_RULES = new Map((rules || []).map((r) => [r.issuer + '|' + r.key, r])); }

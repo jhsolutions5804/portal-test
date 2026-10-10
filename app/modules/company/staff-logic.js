@@ -1,6 +1,6 @@
 /* 직원 관리(관리자)의 순수 규칙 — 화면·네트워크 없이 시험한다 */
-import { byEmpNo, RANK_ORDER } from '../../shared/org.js?v=20261008n';
-import { isPhone } from '../../core/profile-logic.js?v=20261008n';
+import { byEmpNo, RANK_ORDER } from '../../shared/org.js?v=20261008p';
+import { isPhone } from '../../core/profile-logic.js?v=20261008p';
 
 /** 포털 모듈 권한(옛 포털의 MODULES 와 같은 키). 관리자는 권한과 무관하게 모두 열린다 */
 export const PERM_KEYS = [['plan', '영업기획'], ['hr', '인사총무'], ['finance', '재무회계'], ['edoc', '전자결재'], ['pjt', 'PJT']];

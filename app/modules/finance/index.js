@@ -1,14 +1,14 @@
-import { esc, toast } from '../../core/ui.js?v=20261008n';
-import { confirmDialog } from '../../core/dialog.js?v=20261008n';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261008n';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261008n';
-import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261008n';
-import { parseBankSheets } from '../../shared/bank-import.js?v=20261008n';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261008n';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261008n';
-import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261008n';
-import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261008n';
-import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml } from './view.js?v=20261008n';
+import { esc, toast } from '../../core/ui.js?v=20261008p';
+import { confirmDialog } from '../../core/dialog.js?v=20261008p';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261008p';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261008p';
+import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261008p';
+import { parseBankSheets } from '../../shared/bank-import.js?v=20261008p';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261008p';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261008p';
+import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261008p';
+import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261008p';
+import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml } from './view.js?v=20261008p';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
 export const manifest = {
@@ -42,7 +42,7 @@ function RC_RESET() { if (S.rc) S.rc.current = null; }
 export async function mount(root, route, ctx) {
   const me = (ctx && ctx.me) || {}; S.admin = me.admin === true;
   const tab = ['home', 'entries', 'expense', 'import', 'reports', 'gap', 'rules', 'opening', 'settings'].includes(route.segs[0]) ? route.segs[0] : 'home';
-  root.onclick = null; root.onchange = null; root.oninput = null; root.ondragover = null; root.ondragleave = null; root.ondrop = null;
+  root.onclick = null; root.onchange = null; root.oninput = null; root.ondragover = null; root.ondragleave = null; root.ondrop = null; if (root.__finFocusOut) { root.removeEventListener('focusout', root.__finFocusOut); root.__finFocusOut = null; } root.onkeydown = null;
   root.innerHTML = '<div class="jh-finance">' + tabsHtml(tab) + '<div id="fin-body" class="jh-finance__body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
   const body = root.querySelector('#fin-body');
   const paint = () => {
@@ -51,6 +51,11 @@ export async function mount(root, route, ctx) {
     body.innerHTML = tab === 'home' ? homeHtml(st) : tab === 'entries' ? entriesHtml(st) : tab === 'expense' ? expenseHtml(st) : tab === 'import' ? importHtml(st) : tab === 'reports' ? reportsHtml(st) : tab === 'opening' ? openingHtml(st) : tab === 'gap' ? gapHtml(st) : tab === 'rules' ? rulesHtml(st) : settingsHtml(st);
     body.removeAttribute('aria-busy');
   };
+  /* 날짜 입력: 한 글자·한 칸마다 화면을 다시 그리면 입력이 끊기므로, 올바른 날짜가 된 뒤 잠깐 멈추거나(0.7초) 칸을 나갈 때 한 번만 적용 */
+  let dTimer = 0, dPending = null;
+  const validDate = (v) => v === '' || (/^\d{4}-\d{2}-\d{2}$/.test(v) && Number(v.slice(0, 4)) >= 1990 && Number(v.slice(0, 4)) <= 2100);
+  const dateFlush = () => { clearTimeout(dTimer); dTimer = 0; const el = dPending; dPending = null; const sel = el && (el.getAttribute('data-f') ? '[data-f="' + el.getAttribute('data-f') + '"]' : '[data-rep="' + el.getAttribute('data-rep') + '"]'); const had = !!el && document.activeElement === el; paint(); if (had && sel) { const n = body.querySelector(sel); if (n) n.focus(); } };
+  const dateApply = (t, apply) => { dPending = t; clearTimeout(dTimer); dTimer = 0; if (!validDate(t.value)) return; apply(); dTimer = setTimeout(dateFlush, 700); };
   const rlInit = () => { S.rl = { merchant: S.data.rules.map((r) => Object.assign({}, r)), purchase: (S.data.purchaseRules || []).map((r) => Object.assign({}, r)), q: '', dirtyM: false, dirtyP: false, upload: null, error: '' }; };
   const reload = async () => { S.data = await loadLedger(); if (tab === 'rules') rlInit(); if (!S.chkDate) S.chkDate = monthEnd((lastDate() || kstToday()).slice(0, 7)); };
   RC_RESET();
@@ -101,30 +106,34 @@ export async function mount(root, route, ctx) {
     const pn = openPanel(r.name, inner, []); const old = pn.close; pn.el.addEventListener('click', (ev) => { if (ev.target.closest('[data-close]')) URL.revokeObjectURL(url); });
   }
   function openEntry(id) {
-    const e = S.data.entries.find((x) => x.id === id); if (!e) return; const locked = S.data.settings.lockedThrough || '';
-    const p = openPanel('전표 ' + (e.no || ''), entryDialogHtml(e, !e.reversedBy && !e.reverses, locked), []);
-    const reopen = async () => { p.close(); await reload(); paint(); openEntry(id); };
+    const cur = () => S.data.entries.find((x) => x.id === id); const first = cur(); if (!first) return; const locked = () => S.data.settings.lockedThrough || '';
+    const p = openPanel('전표 ' + (first.no || ''), entryDialogHtml(first, !first.reversedBy && !first.reverses, locked()), []);
+    /** 저장한 뒤 창을 닫지 않고 그 자리에서 내용만 새로 고침(여러 가지를 이어서 쓸 수 있게) */
+    const refresh = async (note) => {
+      await reload(); paint(); const e2 = cur(); if (!e2) { p.close(); return; } const panel = p.el.querySelector('.jh-dialog__panel'); const bodyEl = p.el.querySelector('.jh-dialog__body'); const sc = panel.scrollTop, sb = bodyEl.scrollTop;
+      bodyEl.innerHTML = entryDialogHtml(e2, !e2.reversedBy && !e2.reverses, locked()) + '<div data-panel-msg></div>'; panel.scrollTop = sc; bodyEl.scrollTop = sb; if (note) p.msg(msgHtml('info', note));
+    };
     p.el.addEventListener('change', async (ev) => {
       const f = ev.target.closest('[data-att-file]'); if (!f || !f.files || !f.files[0]) return; const file = f.files[0]; const st = p.el.querySelector('[data-att-status]'); const ext = (file.name.split('.').pop() || '').toLowerCase(); const mime = ATT_EXT[ext] || file.type;
       if (!Object.values(ATT_EXT).includes(mime)) { st.textContent = '사진·PDF·엑셀(.xlsx)·워드(.docx)만 붙일 수 있습니다.'; f.value = ''; return; } if (file.size > 7 * 1024 * 1024) { st.textContent = '파일이 너무 큽니다(7MB 이하).'; f.value = ''; return; }
-      st.textContent = '올리는 중…'; try { await attachEvidence(id, file.name, mime, await toB64(file)); toast('증빙을 붙였습니다.'); await reopen(); } catch (er) { st.textContent = er.message; f.value = ''; }
+      st.textContent = '올리는 중…'; try { await attachEvidence(id, file.name, mime, await toB64(file)); toast('증빙을 붙였습니다.'); await refresh('증빙을 붙였습니다: ' + file.name); } catch (er) { st.textContent = er.message; f.value = ''; }
     });
     p.el.addEventListener('click', async (ev) => {
       const av = ev.target.closest('[data-att-view]'); if (av) { try { await showAttachment(id, av.getAttribute('data-att-view')); } catch (er) { p.msg(msgHtml('danger', er.message)); } return; }
-      if (ev.target.closest('[data-act="rc-view"]')) { await viewReceipt(e, p.el); return; }
-      if (ev.target.closest('[data-act="assign"]')) { const nm = p.el.querySelector('[data-assignee]').value.trim(); try { await assignEntries([id], nm); toast(nm ? '담당자를 ' + nm + '(으)로 지정했습니다.' : '담당자를 해제했습니다.'); p.close(); await reload(); paint(); } catch (er) { p.msg(msgHtml('danger', er.message)); } return; }
-      if (ev.target.closest('[data-act="reviewed"]')) { const note = (p.el.querySelector('[data-review-note]') || { value: '' }).value; try { await markReviewed([id], true, note); toast('확인 완료로 표시했습니다.'); p.close(); await reload(); paint(); } catch (er) { p.msg(msgHtml('danger', er.message)); } return; }
-      if (ev.target.closest('[data-act="reclass-open"]')) { const box = p.el.querySelector('[data-reclass]'); if (box.innerHTML) { box.innerHTML = ''; return; } const nextOk = locked ? new Date(Date.parse(locked + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10) : ''; const today = kstToday(); box.innerHTML = reclassHtml(e, nextOk && today < nextOk ? nextOk : today); return; }
+      if (ev.target.closest('[data-act="rc-view"]')) { await viewReceipt(cur(), p.el); return; }
+      if (ev.target.closest('[data-act="assign"]')) { const nm = p.el.querySelector('[data-assignee]').value.trim(); try { await assignEntries([id], nm); toast(nm ? '담당자를 ' + nm + '(으)로 지정했습니다.' : '담당자를 해제했습니다.'); await refresh(nm ? '담당자를 ' + nm + '(으)로 지정했습니다.' : '담당자를 해제했습니다.'); } catch (er) { p.msg(msgHtml('danger', er.message)); } return; }
+      if (ev.target.closest('[data-act="reviewed"]')) { const note = (p.el.querySelector('[data-review-note]') || { value: '' }).value; try { await markReviewed([id], true, note); toast('확인 완료로 표시했습니다.'); await refresh('확인 완료로 표시했습니다.'); } catch (er) { p.msg(msgHtml('danger', er.message)); } return; }
+      if (ev.target.closest('[data-act="reclass-open"]')) { const box = p.el.querySelector('[data-reclass]'); if (box.innerHTML) { box.innerHTML = ''; return; } const lk = locked(); const nextOk = lk ? new Date(Date.parse(lk + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10) : ''; const today = kstToday(); box.innerHTML = reclassHtml(cur(), nextOk && today < nextOk ? nextOk : today); return; }
       if (ev.target.closest('[data-act="reclass-save"]')) {
-        const changes = {}; p.el.querySelectorAll('[data-rc-acc]').forEach((sel) => { const k = Number(sel.getAttribute('data-rc-acc')); if (sel.value !== e.lines[k].account) changes[k] = sel.value; }); const r = reclassLines(e, changes); if (!r.ok) { p.msg(msgHtml('danger', r.errors[0])); return; }
+        const e = cur(); const changes = {}; p.el.querySelectorAll('[data-rc-acc]').forEach((sel) => { const k = Number(sel.getAttribute('data-rc-acc')); if (sel.value !== e.lines[k].account) changes[k] = sel.value; }); const r = reclassLines(e, changes); if (!r.ok) { p.msg(msgHtml('danger', r.errors[0])); return; }
         const date = p.el.querySelector('[data-rc-date]').value; if (!date) { p.msg(msgHtml('danger', '새 전표 일자를 입력해 주세요.')); return; } const memo = p.el.querySelector('[data-rc-memo]').value.trim();
         const ok = await confirmDialog({ title: '계정 바꾸기(재분류)', body: e.no + ' 전표의 계정 ' + r.changed + '곳을 바꿉니다. 원 전표는 ' + date + ' 자로 역분개되고 같은 날짜의 새 전표가 만들어집니다.', confirmLabel: '재분류' }); if (!ok.ok) return;
-        try { const res = await reclassifyEntry(id, date, memo, r.lines); toast('재분류했습니다 — 새 전표 ' + res.no); p.close(); await reload(); paint(); } catch (er) { p.msg(msgHtml('danger', er.message)); } return;
+        try { const res = await reclassifyEntry(id, date, memo, r.lines); toast('재분류했습니다 — 새 전표 ' + res.no); await refresh('재분류했습니다 — 새 전표 ' + res.no + '. 이 전표는 역분개되었습니다.'); } catch (er) { p.msg(msgHtml('danger', er.message)); } return;
       }
-      if (!ev.target.closest('[data-act="reverse"]')) return; const date = p.el.querySelector('[data-rev-date]').value; const memo = p.el.querySelector('[data-rev-memo]').value;
+      if (!ev.target.closest('[data-act="reverse"]')) return; const e = cur(); const date = p.el.querySelector('[data-rev-date]').value; const memo = p.el.querySelector('[data-rev-memo]').value;
       if (!date) { p.msg(msgHtml('danger', '역분개 일자를 입력해 주세요.')); return; }
       const ok = await confirmDialog({ title: '역분개', body: e.no + ' 전표를 ' + date + ' 자로 역분개합니다. 원 전표는 그대로 남고 차변·대변을 뒤집은 새 전표가 생깁니다.', confirmLabel: '역분개', variant: 'danger' }); if (!ok.ok) return;
-      try { await reverseEntry(id, date, memo); toast('역분개했습니다.'); p.close(); await reload(); paint(); } catch (er) { p.msg(msgHtml('danger', er.message)); }
+      try { await reverseEntry(id, date, memo); toast('역분개했습니다.'); await refresh('역분개했습니다.'); } catch (er) { p.msg(msgHtml('danger', er.message)); }
     });
   }
   /* ───── 규칙·이엔지 정산·마감 점검·개시 수정 ───── */
@@ -274,9 +283,12 @@ export async function mount(root, route, ctx) {
     if (t.matches('[data-merch]')) { const [issuer, key] = t.getAttribute('data-merch').split('|'); S.imp.userRules[issuer + '|' + key] = { issuer, key, account: t.value, label: '화면에서 선택', memo: '' }; await buildPreview(); paint(); return; }
     if (t.matches('[data-x="total"],[data-x="vat"],[data-open]')) { const n = Number(String(t.value).replace(/[,\s원]/g, '')); if (t.value.trim() !== '' && Number.isFinite(n)) t.value = n.toLocaleString('ko-KR'); }   // 금액 칸은 천 단위 쉼표
     if (t.matches('[data-x]')) { expPreview(); return; }
+    if (t.matches('[data-f]') && t.type === 'date') { const k = t.getAttribute('data-f'); dateApply(t, () => { S.filter[k] = t.value; S.limit = 100; }); return; }
     if (t.matches('[data-f]')) { const k = t.getAttribute('data-f'); S.filter[k] = t.type === 'checkbox' ? t.checked : t.value; S.limit = 100; paint(); if (k === 'q') { const q = body.querySelector('[data-f="q"]'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } } return; }
-    if (t.matches('[data-rep]')) { S.rep[t.getAttribute('data-rep')] = t.value; paint(); return; }
+    if (t.matches('[data-rep]')) { const k = t.getAttribute('data-rep'); dateApply(t, () => { S.rep[k] = t.value; }); return; }
   };
+  if (root.__finFocusOut) root.removeEventListener('focusout', root.__finFocusOut); root.__finFocusOut = (ev) => { if (dTimer && ev.target === dPending) dateFlush(); }; root.addEventListener('focusout', root.__finFocusOut);   // 입력을 마치고 칸을 나가면 바로 적용(브라우저에 onfocusout 속성이 없어 이벤트 등록)
+  root.onkeydown = (ev) => { if (ev.key === 'Enter' && dTimer && ev.target === dPending) dateFlush(); };
   root.ondragover = (ev) => { const z = ev.target.closest && ev.target.closest('[data-drop]'); if (z) { ev.preventDefault(); z.classList.add('is-over'); } };
   root.ondragleave = (ev) => { const z = ev.target.closest && ev.target.closest('[data-drop]'); if (z) z.classList.remove('is-over'); };
   root.ondrop = async (ev) => {   // 파일을 끌어다 놓기 — 영수증 칸이면 영수증으로, 가져오기 칸이면 그 종류의 파일로
