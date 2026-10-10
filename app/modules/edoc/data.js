@@ -1,5 +1,5 @@
-import { db, collection, doc, getDoc, getDocs, query, where } from '../../core/firebase.js?v=20261008i';
-import { DOC_TYPES, toMillis } from './logic.js?v=20261008i';
+import { db, collection, doc, getDoc, getDocs, query, where } from '../../core/firebase.js?v=20261008j';
+import { DOC_TYPES, toMillis } from './logic.js?v=20261008j';
 
 /* Firestore 규칙과 일치하지 않는 무제한 목록 쿼리는 거부되므로 작성자 / 결재선(viewerUids) / 게시 또는 관리자 세 갈래로 조회해 합친다 */
 export async function fetchAll(me) {

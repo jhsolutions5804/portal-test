@@ -1,5 +1,5 @@
-import { storage, storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from '../../core/firebase.js?v=20261008i';
-import { storagePath, newFileId, metaOf } from './attach-logic.js?v=20261008i';
+import { storage, storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from '../../core/firebase.js?v=20261008j';
+import { storagePath, newFileId, metaOf } from './attach-logic.js?v=20261008j';
 
 /** 파일 하나 올리기. 진행률은 onProgress(0~100)로 알린다. 성공하면 문서에 저장할 첨부 정보를 돌려준다. */
 export function uploadFile({ dtype, docId, file, onProgress }) {

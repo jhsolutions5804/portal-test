@@ -1,5 +1,5 @@
 /* 회사 영역(조직도·규정)의 순수 규칙 — 화면·네트워크 없이 시험한다. 조직 구조·직원 정렬 규칙은 shared/org.js */
-export * from '../../shared/org.js?v=20261008i';
+export * from '../../shared/org.js?v=20261008j';
 /** 전화번호 표시용(숫자만 → 010-1234-5678). 해석 못 하면 그대로 */
 export function fmtTel(v) {
   const d = String(v || '').replace(/\D/g, ''); if (!d) return '';

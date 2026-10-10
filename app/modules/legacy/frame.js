@@ -1,8 +1,8 @@
-import { LEGACY_BASE } from '../../core/config.js?v=20261008i';
-import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261008i';
-import { esc } from '../../core/ui.js?v=20261008i';
-import { attachActivity } from '../../core/idle.js?v=20261008i';
-import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS } from './list.js?v=20261008i';
+import { LEGACY_BASE } from '../../core/config.js?v=20261008j';
+import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261008j';
+import { esc } from '../../core/ui.js?v=20261008j';
+import { attachActivity } from '../../core/idle.js?v=20261008j';
+import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS } from './list.js?v=20261008j';
 
 const base = () => new URL(LEGACY_BASE, location.href).href;
 const states = new Map();   // 모듈 id → { def, wrap, frame, key, tab, me, dyn }  — 작업탭 유지: 떠나도 지우지 않고 숨긴다

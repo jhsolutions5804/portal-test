@@ -1,13 +1,13 @@
-import { esc, toast } from '../../core/ui.js?v=20261008i';
-import { confirmDialog } from '../../core/dialog.js?v=20261008i';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261008i';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261008i';
-import { parseBankRows } from '../../shared/bank-import.js?v=20261008i';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261008i';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261008i';
-import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll } from './logic.js?v=20261008i';
-import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll } from './data.js?v=20261008i';
-import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml } from './view.js?v=20261008i';
+import { esc, toast } from '../../core/ui.js?v=20261008j';
+import { confirmDialog } from '../../core/dialog.js?v=20261008j';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261008j';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261008j';
+import { parseBankSheets } from '../../shared/bank-import.js?v=20261008j';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261008j';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261008j';
+import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll } from './logic.js?v=20261008j';
+import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll } from './data.js?v=20261008j';
+import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml } from './view.js?v=20261008j';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
 export const manifest = {
@@ -70,7 +70,7 @@ export async function mount(root, route, ctx) {
     try {
       const k = S.imp.kind; let raw;
       if (k === 'taxsales' || k === 'taxpurchase') { const wb = await readSpreadsheet(await readBuf(files[0])); const parsed = parseTaxInvoiceWorkbook(wb); if (parsed.error) throw new Error(parsed.error); raw = { parsed, fileName: files[0].name }; }
-      else if (k === 'bank') { const wb = await readSpreadsheet(await readBuf(files[0])); const bank = parseBankRows(wb.sheets[0].rows); if (bank.error) throw new Error(bank.error); raw = { bank, fileName: files[0].name }; }
+      else if (k === 'bank') { const wb = await readSpreadsheet(await readBuf(files[0])); const bank = parseBankSheets(wb.sheets); if (bank.error) throw new Error(bank.error); raw = { bank, fileName: files[0].name }; }
       else if (k === 'card') { const items = []; const warnings = []; for (const f of files) { const r = parseCardWorkbook(await readSpreadsheet(await readBuf(f))); if (r.error) { warnings.push(f.name + ': ' + r.error); continue; } if (r.issuer === 'ibk_approval') { warnings.push(f.name + ': IBK 승인내역은 대조용이라 건너뜁니다(매출내역 파일을 올려 주세요).'); continue; } items.push(...r.items); } if (!items.length) throw new Error('읽을 수 있는 카드 이용내역이 없습니다. ' + warnings.join(' ')); raw = { items, warnings, fileName: files.map((f) => f.name).join(', ') }; }
       else { const r = parseEntriesJson(await readText(files[0])); if (!r.entries.length) throw new Error(r.errors[0] || '읽을 수 있는 전표가 없습니다.'); raw = { entries: r.entries, errors: r.errors, fileName: files[0].name }; }
       S.imp.raw = raw; S.imp.userRules = {}; S.imp.acctBySupplier = {}; await buildPreview(); setImp({ busy: false });
@@ -78,7 +78,7 @@ export async function mount(root, route, ctx) {
   }
   async function onFile2(input) {
     const f = input.files && input.files[0]; if (!f || !S.imp.raw || S.imp.kind !== 'bank') return;
-    try { const nh = parseBankRows((await readSpreadsheet(await readBuf(f))).sheets[0].rows); if (nh.error) throw new Error(nh.error); S.imp.raw.nh = nh; await buildPreview(); paint(); } catch (e) { setImp({ error: e.message }); }
+    try { const nh = parseBankSheets((await readSpreadsheet(await readBuf(f))).sheets); if (nh.error) throw new Error(nh.error); S.imp.raw.nh = nh; await buildPreview(); paint(); } catch (e) { setImp({ error: e.message }); }
   }
   async function commit() {
     const p = S.imp.preview; if (!p || !p.fresh.length) return; const btn = body.querySelector('[data-act="commit"]'); if (btn) btn.disabled = true;

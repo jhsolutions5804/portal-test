@@ -54,4 +54,13 @@ ok(cf.operatingTotal === 600 + 100 - 500 + 130 + 100 - 30 && cf.investing.length
 ok(f(cf.financing, '차량할부금') === 2000 - 150 && f(cf.financing, '대표자 인출·정산') === -150 && cf.financingTotal === 1850 - 150, '재무활동: 할부 +2,000−150, 대표자 인출·정산(순) = 실제로 나간 돈(카드 정산 50 + 직접 인출 100) → −150');
 const cf2 = cashFlowStatement(cfE, '2026-04-01', '2026-06-30'); ok(cf2.balanced && cf2.beginCash === 1000 + 600 - 200 && cf2.netIncome === 0, '기간을 4~6월로 줄여도 개시·앞 기간 잔액을 기초로 이어지고 검산 일치');
 ok(cashFlowStatement([], '2026-01-01', '2026-12-31').balanced && cashFlowStatement(cfE.filter((e) => e.id !== 'op'), '2026-01-01', '2026-06-30').balanced, '전표가 없거나 개시가 없어도 오류 없이 일치');
+/* ───── 신한 SOHO 사업자통장(쪽마다 시트, 거래일자+거래시간 머리글) ───── */
+import { parseBankSheets, parseBankRows } from '../app/shared/bank-import.js';
+const hdr = [['', '거래일자', '거래시간', '', '적요', '출금', '', '입금', '', '내용', '잔액', '', '거래점']];
+const sh1 = [['', '계좌거래내역 조회'], [''], ['', '조회기간', '', '', '2024.01.01 ~ 2024.01.31'], ['', '계좌번호', '', '', '110-323-174086']].concat(hdr, [['', '2024-01-20', '10:00:00', '', '기업뱅킹 이체', 300, '', '', '', '직원A', 700], ['', '2024-01-10', '09:00:00', '', '인터넷뱅킹', '', '', 1000, '', '이엔지', 1000]]);
+const sh0 = [['', '계좌거래내역 조회'], [''], ['', '조회기간', '', '', '2024.01.01 ~ 2024.01.31'], ['', '계좌번호', '', '', '110-323-174086']].concat(hdr, [['', '2024-02-02', '11:30:00', '', '기업뱅킹 이체', 100, '', '', '', '직원B', 500], ['', '2024-01-20', '15:00:00', '', '기업뱅킹 이체', 100, '', '', '', '직원A', 600]]);
+const bk = parseBankSheets([{ rows: sh0 }, { rows: sh1 }]);
+ok(!bk.error && bk.txns.length === 4 && bk.sheets === 2 && bk.balanceBreaks === 0 && bk.opening === 0 && bk.closing === 500 && bk.from === '2024-01-10' && bk.to === '2024-02-02', '★ 신한 사업자통장 양식: 거래일자+거래시간 머리글, 쪽마다 시트를 이어 읽음(최신이 위 순서 → 오래된 순, 잔액 이어짐 검증)');
+ok(bk.txns[0].desc === '이엔지' && bk.txns[0].in === 1000 && bk.txns[0].time === '09:00:00' && bk.txns[3].out === 100 && bk.account === '110-323-174086', '날짜·시각·입출금·상대방 이름·계좌번호를 올바르게 읽음');
+const brk = parseBankSheets([{ rows: sh0.slice(0, 6) }, { rows: sh1 }]); ok(brk.balanceBreaks === 1, '시트 쪽이 빠지면 잔액 끊김 1곳으로 알려 줌'); ok(parseBankSheets([{ rows: [['x']] }]).error !== undefined && parseBankRows(sh1).txns.length === 2, '은행 파일이 아니면 안내, 한 시트만 읽는 기존 호출도 동작');
 console.log(fail ? '\n실패 ' + fail + '/' + n : '\n전부 통과 (' + n + '건)'); process.exit(fail ? 1 : 0);
