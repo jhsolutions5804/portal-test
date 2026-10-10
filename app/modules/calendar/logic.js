@@ -1,6 +1,6 @@
 /* 일정 모듈의 순수 규칙 — 화면(DOM)·네트워크 없이 시험한다.
  * 공통 일정 형식: { id, source, title, start, end, startTime, endTime, tag, tagLabel, project, place, isTodo, done, link, editable, ref } */
-import { pad, ymd, dateKey, isYmd, isHHMM, addDays, TAG_LABEL, tagLabelOf, makeEvent, fromLegacyDoc } from '../../shared/calendar-event.js?v=20261008j';
+import { pad, ymd, dateKey, isYmd, isHHMM, addDays, TAG_LABEL, tagLabelOf, makeEvent, fromLegacyDoc } from '../../shared/calendar-event.js?v=20261008k';
 export { pad, ymd, dateKey, isYmd, isHHMM, addDays, TAG_LABEL, tagLabelOf, makeEvent, fromLegacyDoc };
 export const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 export const dayOfWeek = (key) => new Date(+key.slice(0, 4), +key.slice(5, 7) - 1, +key.slice(8, 10)).getDay();

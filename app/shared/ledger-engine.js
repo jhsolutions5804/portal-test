@@ -12,7 +12,7 @@ export const ACCOUNTS = [
   { code: '2030', name: '예수금', type: 'liab', normal: 'C' }, { code: '2040', name: '부가세예수금', type: 'liab', normal: 'C' }, { code: '2050', name: '선수금', type: 'liab', normal: 'C' }, { code: '2070', name: '미지급비용(이자)', type: 'liab', normal: 'C' }, { code: '2210', name: '차량할부금', type: 'liab', normal: 'C' },
   { code: '2100', name: '단기차입금', type: 'liab', normal: 'C' }, { code: '2200', name: '장기차입금', type: 'liab', normal: 'C' },
   { code: '3010', name: '자본금', type: 'equity', normal: 'C' }, { code: '3020', name: '인출금', type: 'equity', normal: 'D' },
-  { code: '4010', name: '공사수입', type: 'revenue', normal: 'C' },
+  { code: '4010', name: '공사수입', type: 'revenue', normal: 'C' }, { code: '4090', name: '이엔지 정산 차액(증빙 없음)', type: 'revenue', normal: 'D' },
   { code: '5010', name: '공사자재비', type: 'cost', normal: 'D', costGroup: 'material' },
   { code: '5110', name: '현장노무비', type: 'cost', normal: 'D', costGroup: 'labor' },
   { code: '5210', name: '외주공사비', type: 'cost', normal: 'D', costGroup: 'subcon' },
@@ -56,7 +56,7 @@ export function totals(entries, from, to) {
 }
 /** 정상 잔액 방향 기준 금액(정상 쪽이 +) */
 const net = (code, t) => { const a = ACCOUNT_BY_CODE[code]; const x = t[code] || { debit: 0, credit: 0 }; return a.normal === 'D' ? x.debit - x.credit : x.credit - x.debit; };
-const sumType = (t, type, filter) => ACCOUNTS.filter((a) => a.type === type && (!filter || filter(a))).map((a) => ({ code: a.code, name: a.name, amount: (type === 'asset' && a.normal === 'C' ? -1 : 1) * net(a.code, t), costGroup: a.costGroup })).filter((r) => r.amount !== 0);   // 자산 차감 계정(감가상각누계액)은 음수로
+const sumType = (t, type, filter) => ACCOUNTS.filter((a) => a.type === type && (!filter || filter(a))).map((a) => ({ code: a.code, name: a.name, amount: ((type === 'asset' && a.normal === 'C') || (type === 'revenue' && a.normal === 'D') ? -1 : 1) * net(a.code, t), costGroup: a.costGroup })).filter((r) => r.amount !== 0);   // 자산 차감 계정(감가상각누계액)은 음수로
 const total = (rows) => rows.reduce((s, r) => s + r.amount, 0);
 
 /** 합계잔액시산표 — as of to(포함) 누적. 합계(차·대)와 잔액(차·대), 전체 합이 서로 같아야 한다 */

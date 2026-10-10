@@ -1,6 +1,6 @@
-import { LEGACY_DEFS } from './list.js?v=20261008j';
-import { mountLegacy } from './frame.js?v=20261008j';
-import { CAL_SOURCES } from './calendar-sources.js?v=20261008j';
+import { LEGACY_DEFS } from './list.js?v=20261008k';
+import { mountLegacy } from './frame.js?v=20261008k';
+import { CAL_SOURCES } from './calendar-sources.js?v=20261008k';
 
 /** 옛 모듈을 플랫폼 틀 안에 끼워 넣는 어댑터. 화면 틀은 항상 플랫폼이고, 옛 페이지는 틀 안쪽(iframe)에서 임베드 모드(via=portal)로 열린다 */
 export const modules = LEGACY_DEFS.map((def) => ({
