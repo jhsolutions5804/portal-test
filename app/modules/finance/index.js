@@ -1,14 +1,14 @@
-import { esc, toast } from '../../core/ui.js?v=20261008p';
-import { confirmDialog } from '../../core/dialog.js?v=20261008p';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261008p';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261008p';
-import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261008p';
-import { parseBankSheets } from '../../shared/bank-import.js?v=20261008p';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261008p';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261008p';
-import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261008p';
-import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261008p';
-import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml } from './view.js?v=20261008p';
+import { esc, toast } from '../../core/ui.js?v=20261011a';
+import { confirmDialog } from '../../core/dialog.js?v=20261011a';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261011a';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261011a';
+import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011a';
+import { parseBankSheets } from '../../shared/bank-import.js?v=20261011a';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261011a';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261011a';
+import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261011a';
+import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261011a';
+import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml } from './view.js?v=20261011a';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
 export const manifest = {
@@ -125,9 +125,9 @@ export async function mount(root, route, ctx) {
       if (ev.target.closest('[data-act="reviewed"]')) { const note = (p.el.querySelector('[data-review-note]') || { value: '' }).value; try { await markReviewed([id], true, note); toast('확인 완료로 표시했습니다.'); await refresh('확인 완료로 표시했습니다.'); } catch (er) { p.msg(msgHtml('danger', er.message)); } return; }
       if (ev.target.closest('[data-act="reclass-open"]')) { const box = p.el.querySelector('[data-reclass]'); if (box.innerHTML) { box.innerHTML = ''; return; } const lk = locked(); const nextOk = lk ? new Date(Date.parse(lk + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10) : ''; const today = kstToday(); box.innerHTML = reclassHtml(cur(), nextOk && today < nextOk ? nextOk : today); return; }
       if (ev.target.closest('[data-act="reclass-save"]')) {
-        const e = cur(); const changes = {}; p.el.querySelectorAll('[data-rc-acc]').forEach((sel) => { const k = Number(sel.getAttribute('data-rc-acc')); if (sel.value !== e.lines[k].account) changes[k] = sel.value; }); const r = reclassLines(e, changes); if (!r.ok) { p.msg(msgHtml('danger', r.errors[0])); return; }
+        const e = cur(); const changes = {}; p.el.querySelectorAll('[data-rc-acc]').forEach((sel) => { const k = Number(sel.getAttribute('data-rc-acc')); if (sel.value !== e.lines[k].account) changes[k] = sel.value; }); const partners = {}; p.el.querySelectorAll('[data-rc-partner]').forEach((inp) => { const k = Number(inp.getAttribute('data-rc-partner')); if (inp.value.trim() !== (inp.getAttribute('data-rc-init') || '')) partners[k] = inp.value.trim(); }); const r = reclassLines(e, changes, partners); if (!r.ok) { p.msg(msgHtml('danger', r.errors[0])); return; }
         const date = p.el.querySelector('[data-rc-date]').value; if (!date) { p.msg(msgHtml('danger', '새 전표 일자를 입력해 주세요.')); return; } const memo = p.el.querySelector('[data-rc-memo]').value.trim();
-        const ok = await confirmDialog({ title: '계정 바꾸기(재분류)', body: e.no + ' 전표의 계정 ' + r.changed + '곳을 바꿉니다. 원 전표는 ' + date + ' 자로 역분개되고 같은 날짜의 새 전표가 만들어집니다.', confirmLabel: '재분류' }); if (!ok.ok) return;
+        const ok = await confirmDialog({ title: '계정 바꾸기(재분류)', body: e.no + ' 전표의 ' + r.changed + '줄(계정·거래처)을 바꿉니다. 원 전표는 ' + date + ' 자로 역분개되고 같은 날짜의 새 전표가 만들어집니다.', confirmLabel: '재분류' }); if (!ok.ok) return;
         try { const res = await reclassifyEntry(id, date, memo, r.lines); toast('재분류했습니다 — 새 전표 ' + res.no); await refresh('재분류했습니다 — 새 전표 ' + res.no + '. 이 전표는 역분개되었습니다.'); } catch (er) { p.msg(msgHtml('danger', er.message)); } return;
       }
       if (!ev.target.closest('[data-act="reverse"]')) return; const e = cur(); const date = p.el.querySelector('[data-rev-date]').value; const memo = p.el.querySelector('[data-rev-memo]').value;

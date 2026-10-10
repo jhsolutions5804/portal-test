@@ -1,9 +1,9 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261008p';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261008p';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261008p';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261008p';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261008p';
-import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261008p';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011a';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011a';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011a';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011a';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011a';
+import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011a';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -178,10 +178,11 @@ export function applyMerchantTable(sheetsRows, existing) {
   return { rules: mergeRules(existing, incoming.map((r) => ({ issuer: r.issuer, key: r.key, account: r.account, label: r.label, memo: r.memo })), merchantRuleKey), incoming: incoming.length, filled, added, changed, same, unknown: [...new Set(unknown)] };
 }
 /* ───────── 재분류(계정 바꾸기) ───────── */
-/** 원 전표 줄들에서 계정만 바꾼 새 줄 — changes: { 줄 번호: 새 계정 코드 }. 바뀐 줄이 없으면 오류 */
-export function reclassLines(entry, changes) {
-  const lines = entry.lines.map((l, i) => Object.assign({}, l, { account: changes && changes[i] ? changes[i] : l.account })); const diff = lines.filter((l, i) => l.account !== entry.lines[i].account).length;
-  if (!diff) return { ok: false, errors: ['바꾼 계정이 없습니다.'] }; const e = { date: '2026-01-01', memo: '', source: { kind: 'manual' }, lines: lines.map((l) => ({ account: l.account, side: l.side, amount: l.amount, partner: l.partner || '', pjt: l.pjt || '' })) }; const v = validateEntry(e); return v.ok ? { ok: true, lines: e.lines, changed: diff } : { ok: false, errors: v.errors };
+/** 원 전표 줄들에서 계정(·거래처)만 바꾼 새 줄 — changes: { 줄 번호: 새 계정 코드 }, partners: { 줄 번호: 새 거래처 }(고른 줄만).
+ *  계정을 바꾸는데 거래처를 따로 정하지 않았고 옛 거래처가 '분류 대기: …' 표시이면 그 표시는 지운다(분류가 끝났으므로) */
+export function reclassLines(entry, changes, partners) {
+  const lines = entry.lines.map((l, i) => { const acc = changes && changes[i] ? changes[i] : l.account; let partner = l.partner || ''; if (partners && Object.prototype.hasOwnProperty.call(partners, i)) partner = String(partners[i] || '').trim(); else if (acc !== l.account && /^분류 대기/.test(partner)) partner = ''; return Object.assign({}, l, { account: acc, partner }); }); const diff = lines.filter((l, i) => l.account !== entry.lines[i].account || (l.partner || '') !== (entry.lines[i].partner || '')).length;
+  if (!diff) return { ok: false, errors: ['바꾼 계정·거래처가 없습니다.'] }; const e = { date: '2026-01-01', memo: '', source: { kind: 'manual' }, lines: lines.map((l) => ({ account: l.account, side: l.side, amount: l.amount, partner: l.partner || '', pjt: l.pjt || '' })) }; const v = validateEntry(e); return v.ok ? { ok: true, lines: e.lines, changed: diff } : { ok: false, errors: v.errors };
 }
 /** 개시 전표 줄 → 입력 양식 값({계정코드: 금액}) — 자본(3010·3020)은 차액이라 뺀다 */
 export function openingToForm(entry) { const v = {}; (entry.lines || []).forEach((l) => { if (l.account === '3010' || l.account === '3020') return; v[l.account] = Number(l.amount).toLocaleString('ko-KR'); }); return v; }

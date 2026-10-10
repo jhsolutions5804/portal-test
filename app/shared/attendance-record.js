@@ -1,5 +1,5 @@
 /* 출퇴근 기록 한 줄의 화면용 모양 — 전자결재·출퇴근 모듈이 함께 쓴다(모듈끼리 직접 참조하지 않기 위해 공용으로 둔다) */
-import { BREAK_MINUTES } from './worktime.js?v=20261008p';
+import { BREAK_MINUTES } from './worktime.js?v=20261011a';
 
 export function toMs(v) {
   if (v == null || v === '') return 0; if (typeof v === 'number') return v;

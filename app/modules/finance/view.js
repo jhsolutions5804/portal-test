@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261008p';
-import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList } from './logic.js?v=20261008p';
-import { CHOICES } from '../../shared/merchant-table.js?v=20261008p';
+import { esc } from '../../core/ui.js?v=20261011a';
+import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList } from './logic.js?v=20261011a';
+import { CHOICES } from '../../shared/merchant-table.js?v=20261011a';
 
 /* 재무회계 화면 조각 — 모든 값은 esc() 로 감싸 HTML 로 만든다. 스타일은 theme/finance.css 와 공용 클래스를 쓴다 */
 const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['gap', '이엔지 정산'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];
@@ -205,6 +205,6 @@ export function closeCheckHtml(result, through) {
 
 /** 전표 상세 안 "계정 바꾸기" 패널 — 줄마다 계정을 고르고 일자·메모를 정해 저장(역분개 + 새 전표) */
 export function reclassHtml(e, defaultDate) {
-  const rows = e.lines.map((l, i) => '<tr><td><select class="jh-select" data-rc-acc="' + i + '">' + accOptions(l.account) + '</select></td><td>' + esc(l.partner || '') + '</td><td>' + esc(l.side === 'D' ? '차변' : '대변') + '</td>' + num(l.amount) + '</tr>');
-  return '<div class="jh-finance__pad">' + alertHtml('info', '원 전표를 역분개하고 고른 계정으로 새 전표를 만듭니다. 원 전표와 역분개 전표는 그대로 남아 기록이 지워지지 않습니다.') + tbl([['계정'], ['거래처'], ['차/대'], ['금액', 'num']], rows, 'jh-fin-table--form') + '<div class="jh-finance__bar"><input class="jh-input" type="date" data-rc-date value="' + esc(defaultDate) + '" aria-label="새 전표 일자"><input class="jh-input jh-finance__q" data-rc-memo maxlength="200" placeholder="사유·메모(선택)"><button type="button" class="jh-btn" data-variant="primary" data-act="reclass-save">재분류 저장</button></div><div class="jh-field__hint">일자는 마감일 다음 날 이후여야 하며, 역분개 전표와 새 전표가 이 날짜로 만들어집니다.</div></div>';
+  const rows = e.lines.map((l, i) => '<tr><td><select class="jh-select" data-rc-acc="' + i + '">' + accOptions(l.account) + '</select></td><td><input class="jh-input" data-rc-partner="' + i + '" data-rc-init="' + esc(/^분류 대기/.test(l.partner || '') ? '' : (l.partner || '')) + '" value="' + esc(/^분류 대기/.test(l.partner || '') ? '' : (l.partner || '')) + '" maxlength="60" placeholder="거래처(선택)" aria-label="거래처"></td><td>' + esc(l.side === 'D' ? '차변' : '대변') + '</td>' + num(l.amount) + '</tr>');
+  return '<div class="jh-finance__pad">' + alertHtml('info', '원 전표를 역분개하고 고른 계정·거래처로 새 전표를 만듭니다. 원 전표와 역분개 전표는 그대로 남아 기록이 지워지지 않습니다. 옛 분류 대기 거래처 표시는 계정을 바꾸면 지워집니다.') + tbl([['계정'], ['거래처'], ['차/대'], ['금액', 'num']], rows, 'jh-fin-table--form') + '<div class="jh-finance__bar"><input class="jh-input" type="date" data-rc-date value="' + esc(defaultDate) + '" aria-label="새 전표 일자"><input class="jh-input jh-finance__q" data-rc-memo maxlength="200" placeholder="사유·메모(선택)"><button type="button" class="jh-btn" data-variant="primary" data-act="reclass-save">재분류 저장</button></div><div class="jh-field__hint">일자는 마감일 다음 날 이후여야 하며, 역분개 전표와 새 전표가 이 날짜로 만들어집니다.</div></div>';
 }
