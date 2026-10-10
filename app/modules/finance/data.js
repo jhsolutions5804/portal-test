@@ -1,18 +1,18 @@
-import { db, functions, httpsCallable, collection, getDocs, getDoc, doc, query, orderBy, limit } from '../../core/firebase.js?v=20261008k';
-import { docToEntry, chunk, postPayload } from './logic.js?v=20261008k';
+import { db, functions, httpsCallable, collection, getDocs, getDoc, doc, query, orderBy, limit } from '../../core/firebase.js?v=20261008m';
+import { docToEntry, chunk, postPayload } from './logic.js?v=20261008m';
 
 /* 재무회계 데이터 읽기·쓰기 — Firestore 를 만지는 코드는 이 파일에만 둔다.
  * 읽기: ledger_entries(전표)·ledger_meta(설정·마감일·가맹점 규칙)·ledger_imports(가져오기 이력) — 보안 규칙상 관리자·재무회계팀(dept)·perms.finance 만 읽는다.
  * 쓰기: 전부 서버 함수 ledgerAct 로만(전표는 만든 뒤 고치거나 지울 수 없고, 잘못은 역분개로). 규칙: rules_ledger_test.rules */
 const tsMs = (t) => (t && t.seconds ? t.seconds * 1000 : 0);
 export async function loadLedger() {
-  const [es, st, rl, im] = await Promise.all([
-    getDocs(query(collection(db, 'ledger_entries'), orderBy('date'))), getDoc(doc(db, 'ledger_meta', 'settings')), getDoc(doc(db, 'ledger_meta', 'merchant_rules')),
+  const [es, st, rl, pr, im] = await Promise.all([
+    getDocs(query(collection(db, 'ledger_entries'), orderBy('date'))), getDoc(doc(db, 'ledger_meta', 'settings')), getDoc(doc(db, 'ledger_meta', 'merchant_rules')), getDoc(doc(db, 'ledger_meta', 'purchase_rules')),
     getDocs(query(collection(db, 'ledger_imports'), orderBy('at', 'desc'), limit(15)))
   ]);
   const entries = []; es.forEach((d) => entries.push(docToEntry(d.id, d.data())));
   const imports = []; im.forEach((d) => { const x = d.data(); imports.push({ id: d.id, kind: x.kind, fileName: x.fileName || '', rows: x.rows || 0, posted: x.posted || 0, duplicates: x.duplicates || 0, byName: x.byName || '', ms: tsMs(x.at) }); });
-  return { entries, settings: st.exists() ? st.data() : {}, rules: rl.exists() ? (rl.data().rules || []) : [], imports };
+  return { entries, settings: st.exists() ? st.data() : {}, rules: rl.exists() ? (rl.data().rules || []) : [], purchaseRules: pr.exists() ? (pr.data().rules || []) : [], imports };
 }
 /** 프로젝트 코드 목록(기획의 gihoek_projects) — 읽기 권한이 없으면 빈 목록(직접 입력) */
 export async function loadProjects() { try { const s = await getDocs(collection(db, 'gihoek_projects')); const out = []; s.forEach((x) => { const v = x.data(); if (v && v.code) out.push({ id: x.id, code: v.code, name: v.name || '' }); }); return out.sort((a, b) => String(a.code).localeCompare(String(b.code))); } catch (e) { return []; } }
@@ -26,7 +26,7 @@ export async function postEntries(entries, onProgress) {
   }
   return out;
 }
-export const markReviewed = async (ids, done) => { let n = 0; for (let i = 0; i < ids.length; i += 200) { const r = await ledgerCall({ action: 'review', ids: ids.slice(i, i + 200), done }); n += r.count; } return n; };
+export const markReviewed = async (ids, done, note) => { let n = 0; for (let i = 0; i < ids.length; i += 200) { const r = await ledgerCall({ action: 'review', ids: ids.slice(i, i + 200), done, note: note || '' }); n += r.count; } return n; };
 /** 영수증 사진·PDF 한 장을 서버에 올려 읽기(원본 보관 + 값 추출). 전표는 만들지 않는다 */
 export async function readReceipt(fileName, mime, dataBase64) { try { const r = await httpsCallable(functions, 'ledgerReceipt')({ action: 'read', fileName, mime, dataBase64 }); return r.data; } catch (e) { throw new Error(friendly(e)); } }
 export async function getReceiptFile(id) { try { const r = await httpsCallable(functions, 'ledgerReceipt')({ action: 'file', id }); return r.data; } catch (e) { throw new Error(friendly(e)); } }
@@ -37,3 +37,9 @@ export const lockThrough = (through) => ledgerCall({ action: 'lock', through });
 export const saveSettings = (ownBiz, ownName) => ledgerCall({ action: 'saveSettings', ownBiz, ownName });
 export const saveMerchantRules = (rules) => ledgerCall({ action: 'saveMerchantRules', rules });
 export const recordImport = (rec) => ledgerCall(Object.assign({ action: 'recordImport' }, rec));
+/** 재분류(계정 바꾸기): 원 전표를 역분개하고 바른 줄로 새 전표를 한 번에 만든다 */
+export const reclassifyEntry = (id, date, memo, lines) => ledgerCall({ action: 'reclassify', id, date, memo, lines });
+export const savePurchaseRules = (rules) => ledgerCall({ action: 'savePurchaseRules', rules });
+/** 전표 증빙 파일 붙이기·열람(서버 저장소에 보관, 전표에는 파일 정보만) */
+export async function attachEvidence(entryId, fileName, mime, dataBase64) { try { const r = await httpsCallable(functions, 'ledgerReceipt')({ action: 'attach', entryId, fileName, mime, dataBase64 }); return r.data; } catch (e) { throw new Error(friendly(e)); } }
+export async function getAttachment(entryId, aid) { try { const r = await httpsCallable(functions, 'ledgerReceipt')({ action: 'attachFile', entryId, aid }); return r.data; } catch (e) { throw new Error(friendly(e)); } }

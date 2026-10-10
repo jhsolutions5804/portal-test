@@ -1,20 +1,21 @@
-import { esc, toast } from '../../core/ui.js?v=20261008k';
-import { confirmDialog } from '../../core/dialog.js?v=20261008k';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261008k';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261008k';
-import { parseBankSheets } from '../../shared/bank-import.js?v=20261008k';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261008k';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261008k';
-import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll } from './logic.js?v=20261008k';
-import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll } from './data.js?v=20261008k';
-import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml } from './view.js?v=20261008k';
+import { esc, toast } from '../../core/ui.js?v=20261008m';
+import { confirmDialog } from '../../core/dialog.js?v=20261008m';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261008m';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261008m';
+import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261008m';
+import { parseBankSheets } from '../../shared/bank-import.js?v=20261008m';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261008m';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261008m';
+import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, openingToForm, closeCheck } from './logic.js?v=20261008m';
+import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, attachEvidence, getAttachment } from './data.js?v=20261008m';
+import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml } from './view.js?v=20261008m';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
 export const manifest = {
   id: 'finance', order: 25, title: '재무회계', icon: '📒', defaultHash: '#/finance/home',
   perm: (me) => !!me && !me.isGuest && (me.admin === true || me.dept === '재무회계팀' || !!(me.perms && me.perms.finance === true))
 };
-const S = { data: null, filter: { from: '', to: '', source: '', review: false, q: '' }, limit: 100, imp: { kind: 'taxsales', busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }, rep: { kind: 'is', from: '', to: '' }, openDate: '2026-01-01', admin: false };
+const S = { data: null, filter: { from: '', to: '', source: '', review: false, q: '' }, limit: 100, imp: { kind: 'taxsales', busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }, rep: { kind: 'is', from: '', to: '' }, openDate: '2026-01-01', admin: false, rl: null, chk: null, chkDate: '', openEditId: '' };
 const existingIds = () => new Set(S.data.entries.map((e) => e.id));
 const lastDate = () => S.data.entries.reduce((m, e) => (e.date > m ? e.date : m), '');
 function stmNow() {
@@ -40,17 +41,18 @@ const msgHtml = (tone, t) => '<div class="jh-alert" data-tone="' + tone + '" rol
 function RC_RESET() { if (S.rc) S.rc.current = null; }
 export async function mount(root, route, ctx) {
   const me = (ctx && ctx.me) || {}; S.admin = me.admin === true;
-  const tab = ['home', 'entries', 'expense', 'import', 'reports', 'opening', 'settings'].includes(route.segs[0]) ? route.segs[0] : 'home';
+  const tab = ['home', 'entries', 'expense', 'import', 'reports', 'gap', 'rules', 'opening', 'settings'].includes(route.segs[0]) ? route.segs[0] : 'home';
   root.onclick = null; root.onchange = null; root.oninput = null; root.ondragover = null; root.ondragleave = null; root.ondrop = null;
   root.innerHTML = '<div class="jh-finance">' + tabsHtml(tab) + '<div id="fin-body" class="jh-finance__body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
   const body = root.querySelector('#fin-body');
   const paint = () => {
     S.data.entries.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.seq || 0) - (b.seq || 0)));
     const sum = summarize(S.data.entries); const stm = stmNow(); const st = Object.assign({}, S, S.data, { projects: S.projects || [], sum, stm, list: filterEntries(S.data.entries, S.filter) });
-    body.innerHTML = tab === 'home' ? homeHtml(st) : tab === 'entries' ? entriesHtml(st) : tab === 'expense' ? expenseHtml(st) : tab === 'import' ? importHtml(st) : tab === 'reports' ? reportsHtml(st) : tab === 'opening' ? openingHtml(st) : settingsHtml(st);
+    body.innerHTML = tab === 'home' ? homeHtml(st) : tab === 'entries' ? entriesHtml(st) : tab === 'expense' ? expenseHtml(st) : tab === 'import' ? importHtml(st) : tab === 'reports' ? reportsHtml(st) : tab === 'opening' ? openingHtml(st) : tab === 'gap' ? gapHtml(st) : tab === 'rules' ? rulesHtml(st) : settingsHtml(st);
     body.removeAttribute('aria-busy');
   };
-  const reload = async () => { S.data = await loadLedger(); };
+  const rlInit = () => { S.rl = { merchant: S.data.rules.map((r) => Object.assign({}, r)), purchase: (S.data.purchaseRules || []).map((r) => Object.assign({}, r)), q: '', dirtyM: false, dirtyP: false, upload: null, error: '' }; };
+  const reload = async () => { S.data = await loadLedger(); if (tab === 'rules') rlInit(); if (!S.chkDate) S.chkDate = monthEnd((lastDate() || kstToday()).slice(0, 7)); };
   RC_RESET();
   try { await reload(); if (tab === 'expense' && !S.projects) S.projects = await loadProjects(); paint(); if (tab === 'expense') setTimeout(() => { rcShow(); rcRender(); }, 0); } catch (e) { console.error('재무회계 불러오기', e); body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다. 재무회계 권한이 있는 계정인지 확인해 주세요. (' + esc(e.code || e.message) + ')</div>'; return; }
 
@@ -59,7 +61,7 @@ export async function mount(root, route, ctx) {
   async function buildPreview() {
     const k = S.imp.kind; const raw = S.imp.raw; if (!raw) return;
     const have = existingIds();
-    if (k === 'taxsales' || k === 'taxpurchase') { const p = previewTaxInvoices(raw.parsed, k === 'taxsales' ? 'sales' : 'purchase', S.data.settings.ownBiz, have, S.imp.acctBySupplier); S.imp.preview = p; }
+    if (k === 'taxsales' || k === 'taxpurchase') { const p = previewTaxInvoices(raw.parsed, k === 'taxsales' ? 'sales' : 'purchase', S.data.settings.ownBiz, have, S.imp.acctBySupplier, S.data.purchaseRules); S.imp.preview = p; }
     else if (k === 'bank') { const ctx2 = { ownerSettle: raw.nh ? ownerSettlementKeys(raw.bank.txns, raw.nh.txns) : undefined }; const p = previewBank(raw.bank.txns, ctx2, have); p.bank = raw.bank; p.warnings = []; if (raw.bank.balanceBreaks) p.warnings.push('통장 잔액이 이어지지 않는 곳이 ' + raw.bank.balanceBreaks + '곳 있습니다 — 빠진 거래가 있는지 확인해 주세요.'); if (raw.bank.totalsOk === false) p.warnings.push('파일의 합계 줄과 거래 합계가 다릅니다.'); if (raw.nh) p.warnings.push('농협 개인 계좌 거래내역을 참고해 개인카드 대금 정산 이체를 짝지었습니다.'); S.imp.preview = p; }
     else if (k === 'card') { const merged = {}; S.data.rules.forEach((r) => { merged[r.issuer + '|' + r.key] = r; }); Object.assign(merged, S.imp.userRules); const p = previewCards(raw.items, Object.values(merged), have); p.warnings = raw.warnings || []; S.imp.preview = p; }
     else if (k === 'payroll') { S.imp.preview = previewPayroll(raw.payroll, have, S.data.entries); }
@@ -84,6 +86,7 @@ export async function mount(root, route, ctx) {
     const p = S.imp.preview; if (!p || !p.fresh.length) return; const btn = body.querySelector('[data-act="commit"]'); if (btn) btn.disabled = true;
     try {
       if (S.imp.kind === 'card') { const merged = {}; S.data.rules.forEach((r) => { merged[r.issuer + '|' + r.key] = r; }); Object.assign(merged, S.imp.userRules); if (Object.keys(S.imp.userRules).length) await saveMerchantRules(Object.values(merged)); }
+      if (S.imp.kind === 'taxpurchase' && S.imp.remember && Object.keys(S.imp.remember).length) { const add = []; p.rows.forEach((row) => { if (S.imp.remember[row.supKey]) add.push({ key: purchaseKey(row.inv), name: row.inv.supplier.name, account: S.imp.acctBySupplier[row.supKey] || row.account, memo: '가져오기에서 저장' }); }); if (add.length) { const merged = mergeRules(S.data.purchaseRules || [], add, (x) => x.key); await savePurchaseRules(merged); S.imp.remember = {}; } }
       const r = await postEntries(p.fresh); const msg = '저장 ' + r.posted + '건 · 이미 있어 건너뜀 ' + r.duplicates + '건' + (r.rejected.length ? ' · 거부 ' + r.rejected.length + '건(' + r.rejected[0].errors[0] + ')' : '');
       try { await recordImport({ kind: S.imp.kind, fileName: (S.imp.raw && S.imp.raw.fileName) || '', rows: p.fresh.length + (p.dupCount || 0), posted: r.posted, duplicates: r.duplicates }); } catch (e) { /* 이력 기록 실패는 무시 */ }
       toast(msg); await reload(); S.imp.preview = null; S.imp.raw = null; S.imp.error = ''; S.imp.done = msg; paint(); body.insertAdjacentHTML('afterbegin', '<div class="jh-alert" data-tone="info" role="status">✅ ' + esc(msg) + '</div>');
@@ -91,18 +94,48 @@ export async function mount(root, route, ctx) {
   }
 
   /* ───── 전표: 상세·역분개·수기 입력 ───── */
+  const ATT_EXT = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' };
+  async function showAttachment(entryId, aid) {
+    const r = await getAttachment(entryId, aid); const bin = atob(r.dataBase64); const u8 = new Uint8Array(bin.length); for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k); const url = URL.createObjectURL(new Blob([u8], { type: r.mime }));
+    const inner = /^image\//.test(r.mime) ? '<img src="' + url + '" alt="' + esc(r.name) + '" style="max-width:100%">' : (r.mime === 'application/pdf' ? '<iframe src="' + url + '" title="' + esc(r.name) + '" style="width:100%;height:60vh;border:0"></iframe>' : '<a class="jh-btn" data-variant="primary" href="' + url + '" download="' + esc(r.name) + '">내려받기 — ' + esc(r.name) + '</a>');
+    const pn = openPanel(r.name, inner, []); const old = pn.close; pn.el.addEventListener('click', (ev) => { if (ev.target.closest('[data-close]')) URL.revokeObjectURL(url); });
+  }
   function openEntry(id) {
     const e = S.data.entries.find((x) => x.id === id); if (!e) return; const locked = S.data.settings.lockedThrough || '';
     const p = openPanel('전표 ' + (e.no || ''), entryDialogHtml(e, !e.reversedBy && !e.reverses, locked), []);
+    const reopen = async () => { p.close(); await reload(); paint(); openEntry(id); };
+    p.el.addEventListener('change', async (ev) => {
+      const f = ev.target.closest('[data-att-file]'); if (!f || !f.files || !f.files[0]) return; const file = f.files[0]; const st = p.el.querySelector('[data-att-status]'); const ext = (file.name.split('.').pop() || '').toLowerCase(); const mime = ATT_EXT[ext] || file.type;
+      if (!Object.values(ATT_EXT).includes(mime)) { st.textContent = '사진·PDF·엑셀(.xlsx)·워드(.docx)만 붙일 수 있습니다.'; f.value = ''; return; } if (file.size > 7 * 1024 * 1024) { st.textContent = '파일이 너무 큽니다(7MB 이하).'; f.value = ''; return; }
+      st.textContent = '올리는 중…'; try { await attachEvidence(id, file.name, mime, await toB64(file)); toast('증빙을 붙였습니다.'); await reopen(); } catch (er) { st.textContent = er.message; f.value = ''; }
+    });
     p.el.addEventListener('click', async (ev) => {
+      const av = ev.target.closest('[data-att-view]'); if (av) { try { await showAttachment(id, av.getAttribute('data-att-view')); } catch (er) { p.msg(msgHtml('danger', er.message)); } return; }
       if (ev.target.closest('[data-act="rc-view"]')) { await viewReceipt(e, p.el); return; }
-      if (ev.target.closest('[data-act="reviewed"]')) { try { await markReviewed([id], true); toast('확인 완료로 표시했습니다.'); p.close(); await reload(); paint(); } catch (er) { p.msg(msgHtml('danger', er.message)); } return; }
+      if (ev.target.closest('[data-act="reviewed"]')) { const note = (p.el.querySelector('[data-review-note]') || { value: '' }).value; try { await markReviewed([id], true, note); toast('확인 완료로 표시했습니다.'); p.close(); await reload(); paint(); } catch (er) { p.msg(msgHtml('danger', er.message)); } return; }
+      if (ev.target.closest('[data-act="reclass-open"]')) { const box = p.el.querySelector('[data-reclass]'); if (box.innerHTML) { box.innerHTML = ''; return; } const nextOk = locked ? new Date(Date.parse(locked + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10) : ''; const today = kstToday(); box.innerHTML = reclassHtml(e, nextOk && today < nextOk ? nextOk : today); return; }
+      if (ev.target.closest('[data-act="reclass-save"]')) {
+        const changes = {}; p.el.querySelectorAll('[data-rc-acc]').forEach((sel) => { const k = Number(sel.getAttribute('data-rc-acc')); if (sel.value !== e.lines[k].account) changes[k] = sel.value; }); const r = reclassLines(e, changes); if (!r.ok) { p.msg(msgHtml('danger', r.errors[0])); return; }
+        const date = p.el.querySelector('[data-rc-date]').value; if (!date) { p.msg(msgHtml('danger', '새 전표 일자를 입력해 주세요.')); return; } const memo = p.el.querySelector('[data-rc-memo]').value.trim();
+        const ok = await confirmDialog({ title: '계정 바꾸기(재분류)', body: e.no + ' 전표의 계정 ' + r.changed + '곳을 바꿉니다. 원 전표는 ' + date + ' 자로 역분개되고 같은 날짜의 새 전표가 만들어집니다.', confirmLabel: '재분류' }); if (!ok.ok) return;
+        try { const res = await reclassifyEntry(id, date, memo, r.lines); toast('재분류했습니다 — 새 전표 ' + res.no); p.close(); await reload(); paint(); } catch (er) { p.msg(msgHtml('danger', er.message)); } return;
+      }
       if (!ev.target.closest('[data-act="reverse"]')) return; const date = p.el.querySelector('[data-rev-date]').value; const memo = p.el.querySelector('[data-rev-memo]').value;
       if (!date) { p.msg(msgHtml('danger', '역분개 일자를 입력해 주세요.')); return; }
       const ok = await confirmDialog({ title: '역분개', body: e.no + ' 전표를 ' + date + ' 자로 역분개합니다. 원 전표는 그대로 남고 차변·대변을 뒤집은 새 전표가 생깁니다.', confirmLabel: '역분개', variant: 'danger' }); if (!ok.ok) return;
       try { await reverseEntry(id, date, memo); toast('역분개했습니다.'); p.close(); await reload(); paint(); } catch (er) { p.msg(msgHtml('danger', er.message)); }
     });
   }
+  /* ───── 규칙·이엔지 정산·마감 점검·개시 수정 ───── */
+  async function onRulesFile(input) {
+    const f = (input.files || [])[0]; if (!f) return; S.rl.error = ''; S.rl.upload = null;
+    try { const wb = await readSpreadsheet(await readBuf(f)); const r = applyMerchantTable(wb.sheets.map((s) => s.rows), S.rl.merchant); if (r.error) S.rl.error = r.error; else S.rl.upload = r; } catch (e) { S.rl.error = '파일을 읽지 못했습니다: ' + e.message; }
+    paint();
+  }
+  function gapRead() { const g = (k) => body.querySelector('[data-g="' + k + '"]').value; return gapEntry(g('type'), g('date'), g('amount'), g('memo'), g('evidence')); }
+  function gapPreview() { const out = body.querySelector('[data-g-result]'); if (!out) return; const r = gapRead(); out.setAttribute('data-tone', r.ok ? 'info' : 'warn'); out.textContent = r.ok ? '차변 ' + accountName(r.entry.lines[0].account) + ' ' + r.entry.lines[0].amount.toLocaleString('ko-KR') + '원 / 대변 외상매출금 ' + r.entry.lines[1].amount.toLocaleString('ko-KR') + '원' : r.errors[0]; }
+  function refocus(sel) { const el = body.querySelector(sel); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }
+
   function openManual() {
     let rows = 4; const p = openPanel('수기 전표', manualDialogHtml(rows), [{ act: 'save', label: '전표 저장' }]);
     const gather = () => [...p.el.querySelectorAll('tbody tr')].map((tr) => ({ account: tr.querySelector('[data-ml="account"]').value, side: tr.querySelector('[data-ml="side"]').value, amount: tr.querySelector('[data-ml="amount"]').value, partner: tr.querySelector('[data-ml="partner"]').value }));
@@ -166,6 +199,8 @@ export async function mount(root, route, ctx) {
     const t = ev.target;
     const row = t.closest('[data-entry]'); if (row) { openEntry(row.getAttribute('data-entry')); return; }
     const ik = t.closest('[data-imp-kind]'); if (ik) { S.imp = { kind: ik.getAttribute('data-imp-kind'), busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }; paint(); return; }
+    const md = t.closest('[data-mr-del]'); if (md) { S.rl.merchant.splice(Number(md.getAttribute('data-mr-del')), 1); S.rl.dirtyM = true; paint(); return; }
+    const pd = t.closest('[data-pr-del]'); if (pd) { S.rl.purchase.splice(Number(pd.getAttribute('data-pr-del')), 1); S.rl.dirtyP = true; paint(); return; }
     const rk = t.closest('[data-rep-kind]'); if (rk) { S.rep.kind = rk.getAttribute('data-rep-kind'); paint(); return; }
     const a = t.closest('[data-act]'); if (!a) return; const act = a.getAttribute('data-act');
     if (act === 'manual') openManual();
@@ -191,19 +226,41 @@ export async function mount(root, route, ctx) {
     else if (act === 'open-save') {
       const vals = {}; body.querySelectorAll('[data-open]').forEach((i) => { vals[i.getAttribute('data-open')] = i.value; }); const r = openingFromForm(body.querySelector('[data-open-date]').value, vals);
       if (r.errors) { body.querySelector('[data-open-result]').setAttribute('data-tone', 'danger'); body.querySelector('[data-open-result]').textContent = r.errors[0]; return; }
-      const ok = await confirmDialog({ title: '개시 전표 저장', body: '개시 일자 ' + r.entry.date + ' · 자본(차액) ' + r.equity.toLocaleString('ko-KR') + '원으로 저장합니다. 저장한 전표는 고치거나 지울 수 없고 역분개로만 바로잡습니다.', confirmLabel: '저장' }); if (!ok.ok) return;
-      try { const res = await postEntries([r.entry]); if (res.rejected.length) throw new Error(res.rejected[0].errors[0]); toast(res.duplicates ? '같은 날짜의 개시 전표가 이미 있어 건너뛰었습니다.' : '개시 전표를 저장했습니다.'); await reload(); location.hash = '#/finance/home'; } catch (e) { body.querySelector('[data-open-result]').setAttribute('data-tone', 'danger'); body.querySelector('[data-open-result]').textContent = e.message; }
+      const ok = await confirmDialog({ title: S.openEditId ? '개시 전표 정정' : '개시 전표 저장', body: '개시 일자 ' + r.entry.date + ' · 자본(차액) ' + r.equity.toLocaleString('ko-KR') + '원으로 ' + (S.openEditId ? '정정합니다. 기존 개시 전표는 역분개로 남고 같은 일자의 새 개시 전표가 만들어집니다.' : '저장합니다. 저장한 전표는 고치거나 지울 수 없고 역분개로만 바로잡습니다.'), confirmLabel: S.openEditId ? '정정' : '저장' }); if (!ok.ok) return;
+      try { if (S.openEditId) { const res = await reclassifyEntry(S.openEditId, r.entry.date, '개시 정정 — 숫자 수정', r.entry.lines); S.openEditId = ''; toast('개시 전표를 정정했습니다(' + res.no + ').'); await reload(); location.hash = '#/finance/home'; return; } const res = await postEntries([r.entry]); if (res.rejected.length) throw new Error(res.rejected[0].errors[0]); toast(res.duplicates ? '같은 날짜의 개시 전표가 이미 있어 건너뛰었습니다.' : '개시 전표를 저장했습니다.'); await reload(); location.hash = '#/finance/home'; } catch (e) { body.querySelector('[data-open-result]').setAttribute('data-tone', 'danger'); body.querySelector('[data-open-result]').textContent = e.message; }
+    }
+    else if (act === 'rules-apply') { try { await saveMerchantRules(S.rl.upload.rules); toast('가맹점 규칙 ' + S.rl.upload.rules.length + '개를 저장했습니다.'); await reload(); paint(); } catch (e) { S.rl.error = e.message; paint(); } }
+    else if (act === 'rules-save-m') { try { await saveMerchantRules(S.rl.merchant); toast('가맹점 규칙을 저장했습니다.'); await reload(); paint(); } catch (e) { toast(e.message); } }
+    else if (act === 'rules-save-p') { try { await savePurchaseRules(S.rl.purchase); toast('매입 거래처 규칙을 저장했습니다.'); await reload(); paint(); } catch (e) { toast(e.message); } }
+    else if (act === 'pr-add') {
+      const raw = body.querySelector('[data-pr-key]').value.trim(); if (!raw) { toast('사업자번호나 상호를 입력해 주세요.'); return; } const digits = raw.replace(/\D/g, ''); const key = digits.length === 10 ? digits : raw.replace(/\(주\)|주식회사|\s/g, '').slice(0, 30); const account = body.querySelector('[data-pr-acc]').value;
+      const k = S.rl.purchase.findIndex((r) => r.key === key); const item = { key, name: digits.length === 10 ? '' : raw, account, memo: '' }; if (k >= 0) S.rl.purchase[k] = Object.assign(S.rl.purchase[k], item); else S.rl.purchase.push(item); S.rl.dirtyP = true; paint();
+    }
+    else if (act === 'gap-save') {
+      const r = gapRead(); if (!r.ok) { toast(r.errors[0]); return; } const ok = await confirmDialog({ title: '이엔지 정산 차액 처리', body: r.entry.memo + ' — ' + r.entry.lines[0].amount.toLocaleString('ko-KR') + '원을 외상매출금에서 처리합니다. 저장한 전표는 고치거나 지울 수 없고 역분개로만 바로잡습니다.', confirmLabel: '저장', variant: r.entry.needsReview ? 'danger' : undefined }); if (!ok.ok) return;
+      try { const res = await postEntries([r.entry]); if (res.rejected.length) throw new Error(res.rejected[0].errors[0]); toast(res.duplicates ? '같은 일자·금액·방식의 처리 전표가 이미 있어 건너뛰었습니다.' : '처리 전표를 저장했습니다.'); await reload(); paint(); } catch (e) { toast(e.message); }
+    }
+    else if (act === 'chk-run') { const d = body.querySelector('[data-chk-date]').value; if (!d) { toast('점검 기준일을 입력해 주세요.'); return; } S.chkDate = d; S.chk = closeCheck(S.data.entries, d); paint(); }
+    else if (act === 'open-edit') {
+      const en = S.data.entries.find((x) => x.id === a.getAttribute('data-open-id')); if (!en) return; const vals = openingToForm(en); body.querySelectorAll('[data-open]').forEach((inp) => { inp.value = vals[inp.getAttribute('data-open')] || ''; }); body.querySelector('[data-open-date]').value = en.date; S.openEditId = en.id;
+      const btn = body.querySelector('[data-act="open-save"]'); if (btn) btn.textContent = '정정 개시 전표 저장(기존 전표는 역분개)'; body.querySelector('[data-open-date]').dispatchEvent(new window.Event('input', { bubbles: true })); body.querySelector('[data-open-date]').scrollIntoView && body.querySelector('[data-open-date]').scrollIntoView({ block: 'center' });
     }
     else if (act === 'set-save') { try { await saveSettings(body.querySelector('[data-set="ownBiz"]').value, body.querySelector('[data-set="ownName"]').value); toast('설정을 저장했습니다.'); await reload(); paint(); } catch (e) { toast(e.message); } }
     else if (act === 'lock') {
       const d = body.querySelector('[data-lock-date]').value; if (!d) { toast('마감일을 입력해 주세요.'); return; }
-      const ok = await confirmDialog({ title: '결산 마감', body: d + ' 까지의 전표를 잠급니다. 이 날짜 이전으로는 새 전표를 만들 수 없고, 마감일은 앞당길 수 없습니다.', confirmLabel: '마감', variant: 'danger' }); if (!ok.ok) return;
+      const cc = closeCheck(S.data.entries, d); S.chkDate = d; S.chk = cc; if (cc.bad) { paint(); toast('마감 전 점검에 문제 ' + cc.bad + '건이 있습니다. 위 점검 결과를 확인해 주세요.'); return; }
+      const ok = await confirmDialog({ title: '결산 마감', body: d + ' 까지의 전표를 잠급니다. 이 날짜 이전으로는 새 전표를 만들 수 없고, 마감일은 앞당길 수 없습니다.' + (cc.warn ? ' (점검에서 확인할 것 ' + cc.warn + '건이 남아 있습니다.)' : ' 점검은 모두 통과했습니다.'), confirmLabel: '마감', variant: 'danger' }); if (!ok.ok) return;
       try { await lockThrough(d); toast('마감했습니다.'); await reload(); paint(); } catch (e) { toast(e.message); }
     }
   };
   root.onchange = async (ev) => {
     const t = ev.target;
     if (t.matches('[data-rc-file]')) { await onReceipts(t); return; }
+    if (t.matches('[data-rules-file]')) { await onRulesFile(t); return; }
+    if (t.matches('[data-mr]')) { const k = Number(t.getAttribute('data-mr')); S.rl.merchant[k].label = t.value; S.rl.merchant[k].account = CHOICE_ACCOUNT[t.value] || S.rl.merchant[k].account; S.rl.dirtyM = true; paint(); return; }
+    if (t.matches('[data-pr]')) { S.rl.purchase[Number(t.getAttribute('data-pr'))].account = t.value; S.rl.dirtyP = true; paint(); return; }
+    if (t.matches('[data-sup-remember]')) { S.imp.remember = S.imp.remember || {}; if (t.checked) S.imp.remember[t.getAttribute('data-sup-remember')] = true; else delete S.imp.remember[t.getAttribute('data-sup-remember')]; return; }
+    if (t.matches('[data-g]')) { if (t.matches('[data-g="amount"]')) { const n = Number(String(t.value).replace(/[,\s원]/g, '')); if (t.value.trim() !== '' && Number.isFinite(n)) t.value = n.toLocaleString('ko-KR'); } gapPreview(); return; }
     if (t.matches('[data-file]')) { await onFile(t); return; }
     if (t.matches('[data-file2]')) { await onFile2(t); return; }
     if (t.matches('[data-sup]')) { S.imp.acctBySupplier[t.getAttribute('data-sup')] = t.value; await buildPreview(); paint(); return; }
@@ -218,11 +275,13 @@ export async function mount(root, route, ctx) {
   root.ondrop = async (ev) => {   // 파일을 끌어다 놓기 — 영수증 칸이면 영수증으로, 가져오기 칸이면 그 종류의 파일로
     const z = ev.target.closest && ev.target.closest('[data-drop]'); if (!z) return; ev.preventDefault(); z.classList.remove('is-over');
     const files = [...((ev.dataTransfer && ev.dataTransfer.files) || [])]; if (!files.length) return;
-    if (z.getAttribute('data-drop') === 'rc') await onReceipts({ files }); else await onFile({ files: S.imp.kind === 'card' ? files : files.slice(0, 1) });
+    if (z.getAttribute('data-drop') === 'rc') await onReceipts({ files }); else if (z.getAttribute('data-drop') === 'rules') await onRulesFile({ files: files.slice(0, 1) }); else await onFile({ files: S.imp.kind === 'card' ? files : files.slice(0, 1) });
   };
   root.oninput = (ev) => {
     const t = ev.target;
     if (t.matches('[data-x]')) { expPreview(); return; }
+    if (t.matches('[data-g]')) { gapPreview(); return; }
+    if (t.matches('[data-rl-q]')) { S.rl.q = t.value; paint(); refocus('[data-rl-q]'); return; }
     if (t.matches('[data-open],[data-open-date]')) { const vals = {}; body.querySelectorAll('[data-open]').forEach((i) => { vals[i.getAttribute('data-open')] = i.value; }); const r = openingFromForm(body.querySelector('[data-open-date]').value, vals); const out = body.querySelector('[data-open-result]'); out.setAttribute('data-tone', r.errors ? 'warn' : 'info'); out.textContent = r.errors ? r.errors[0] : '자본(차액) ' + r.equity.toLocaleString('ko-KR') + '원' + (r.equity < 0 ? ' — 마이너스(자본잠식)입니다' : ''); }
   };
 }

@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261008k';
-import { fmtTel, telHref, mailHref } from './logic.js?v=20261008k';
-import { renderMarkdown } from '../../shared/markdown.js?v=20261008k';
+import { esc } from '../../core/ui.js?v=20261008m';
+import { fmtTel, telHref, mailHref } from './logic.js?v=20261008m';
+import { renderMarkdown } from '../../shared/markdown.js?v=20261008m';
 
 export const tabsHtml = (cur, isAdmin) => '<div class="jh-segmented jh-company__tabs" role="group" aria-label="회사 정보">' + [['org', '조직도'], ['rules', '규정']].concat(isAdmin ? [['staff', '직원 관리'], ['alog', '열람 기록']] : []).map(([k, l]) => '<a class="jh-segmented__item" href="#/company/' + k + '" aria-pressed="' + (k === cur) + '">' + l + '</a>').join('') + '</div>';
 export function orgHtml(groups, total, query) {
