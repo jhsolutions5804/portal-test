@@ -1,5 +1,5 @@
-import { db, functions, httpsCallable, collection, getDocs, getDoc, doc, query, orderBy, limit } from '../../core/firebase.js?v=20261008m';
-import { docToEntry, chunk, postPayload } from './logic.js?v=20261008m';
+import { db, functions, httpsCallable, collection, getDocs, getDoc, doc, query, orderBy, limit } from '../../core/firebase.js?v=20261008n';
+import { docToEntry, chunk, postPayload } from './logic.js?v=20261008n';
 
 /* 재무회계 데이터 읽기·쓰기 — Firestore 를 만지는 코드는 이 파일에만 둔다.
  * 읽기: ledger_entries(전표)·ledger_meta(설정·마감일·가맹점 규칙)·ledger_imports(가져오기 이력) — 보안 규칙상 관리자·재무회계팀(dept)·perms.finance 만 읽는다.
@@ -43,3 +43,4 @@ export const savePurchaseRules = (rules) => ledgerCall({ action: 'savePurchaseRu
 /** 전표 증빙 파일 붙이기·열람(서버 저장소에 보관, 전표에는 파일 정보만) */
 export async function attachEvidence(entryId, fileName, mime, dataBase64) { try { const r = await httpsCallable(functions, 'ledgerReceipt')({ action: 'attach', entryId, fileName, mime, dataBase64 }); return r.data; } catch (e) { throw new Error(friendly(e)); } }
 export async function getAttachment(entryId, aid) { try { const r = await httpsCallable(functions, 'ledgerReceipt')({ action: 'attachFile', entryId, aid }); return r.data; } catch (e) { throw new Error(friendly(e)); } }
+export const assignEntries = (ids, assignee) => ledgerCall({ action: 'assign', ids, assignee });

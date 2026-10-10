@@ -1,21 +1,21 @@
-import { esc, toast } from '../../core/ui.js?v=20261008m';
-import { confirmDialog } from '../../core/dialog.js?v=20261008m';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261008m';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261008m';
-import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261008m';
-import { parseBankSheets } from '../../shared/bank-import.js?v=20261008m';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261008m';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261008m';
-import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, openingToForm, closeCheck } from './logic.js?v=20261008m';
-import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, attachEvidence, getAttachment } from './data.js?v=20261008m';
-import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml } from './view.js?v=20261008m';
+import { esc, toast } from '../../core/ui.js?v=20261008n';
+import { confirmDialog } from '../../core/dialog.js?v=20261008n';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261008n';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261008n';
+import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261008n';
+import { parseBankSheets } from '../../shared/bank-import.js?v=20261008n';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261008n';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261008n';
+import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261008n';
+import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261008n';
+import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml } from './view.js?v=20261008n';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
 export const manifest = {
   id: 'finance', order: 25, title: '재무회계', icon: '📒', defaultHash: '#/finance/home',
   perm: (me) => !!me && !me.isGuest && (me.admin === true || me.dept === '재무회계팀' || !!(me.perms && me.perms.finance === true))
 };
-const S = { data: null, filter: { from: '', to: '', source: '', review: false, q: '' }, limit: 100, imp: { kind: 'taxsales', busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }, rep: { kind: 'is', from: '', to: '' }, openDate: '2026-01-01', admin: false, rl: null, chk: null, chkDate: '', openEditId: '' };
+const S = { data: null, filter: { from: '', to: '', source: '', review: false, reviewed: false, assignee: '', q: '' }, limit: 100, imp: { kind: 'taxsales', busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }, rep: { kind: 'is', from: '', to: '' }, openDate: '2026-01-01', admin: false, rl: null, chk: null, chkDate: '', openEditId: '' };
 const existingIds = () => new Set(S.data.entries.map((e) => e.id));
 const lastDate = () => S.data.entries.reduce((m, e) => (e.date > m ? e.date : m), '');
 function stmNow() {
@@ -112,6 +112,7 @@ export async function mount(root, route, ctx) {
     p.el.addEventListener('click', async (ev) => {
       const av = ev.target.closest('[data-att-view]'); if (av) { try { await showAttachment(id, av.getAttribute('data-att-view')); } catch (er) { p.msg(msgHtml('danger', er.message)); } return; }
       if (ev.target.closest('[data-act="rc-view"]')) { await viewReceipt(e, p.el); return; }
+      if (ev.target.closest('[data-act="assign"]')) { const nm = p.el.querySelector('[data-assignee]').value.trim(); try { await assignEntries([id], nm); toast(nm ? '담당자를 ' + nm + '(으)로 지정했습니다.' : '담당자를 해제했습니다.'); p.close(); await reload(); paint(); } catch (er) { p.msg(msgHtml('danger', er.message)); } return; }
       if (ev.target.closest('[data-act="reviewed"]')) { const note = (p.el.querySelector('[data-review-note]') || { value: '' }).value; try { await markReviewed([id], true, note); toast('확인 완료로 표시했습니다.'); p.close(); await reload(); paint(); } catch (er) { p.msg(msgHtml('danger', er.message)); } return; }
       if (ev.target.closest('[data-act="reclass-open"]')) { const box = p.el.querySelector('[data-reclass]'); if (box.innerHTML) { box.innerHTML = ''; return; } const nextOk = locked ? new Date(Date.parse(locked + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10) : ''; const today = kstToday(); box.innerHTML = reclassHtml(e, nextOk && today < nextOk ? nextOk : today); return; }
       if (ev.target.closest('[data-act="reclass-save"]')) {
@@ -129,7 +130,7 @@ export async function mount(root, route, ctx) {
   /* ───── 규칙·이엔지 정산·마감 점검·개시 수정 ───── */
   async function onRulesFile(input) {
     const f = (input.files || [])[0]; if (!f) return; S.rl.error = ''; S.rl.upload = null;
-    try { const wb = await readSpreadsheet(await readBuf(f)); const r = applyMerchantTable(wb.sheets.map((s) => s.rows), S.rl.merchant); if (r.error) S.rl.error = r.error; else S.rl.upload = r; } catch (e) { S.rl.error = '파일을 읽지 못했습니다: ' + e.message; }
+    try { const isCsv = /\.csv$/i.test(f.name || ''); const sheets = isCsv ? [parseCsvRows(await readText(f))] : (await readSpreadsheet(await readBuf(f))).sheets.map((s) => s.rows); const r = applyMerchantTable(sheets, S.rl.merchant); if (r.error) S.rl.error = r.error; else S.rl.upload = r; } catch (e) { S.rl.error = '파일을 읽지 못했습니다: ' + e.message; }
     paint();
   }
   function gapRead() { const g = (k) => body.querySelector('[data-g="' + k + '"]').value; return gapEntry(g('type'), g('date'), g('amount'), g('memo'), g('evidence')); }
@@ -205,6 +206,11 @@ export async function mount(root, route, ctx) {
     const a = t.closest('[data-act]'); if (!a) return; const act = a.getAttribute('data-act');
     if (act === 'manual') openManual();
     else if (act === 'more') { S.limit += 200; paint(); }
+    else if (act === 'assign-all') {
+      const ids = S.filter.review ? filterEntries(S.data.entries, S.filter).map((e) => e.id) : []; if (!ids.length) return;
+      const pn = openPanel('담당자 지정 — ' + ids.length + '건', '<div class="jh-field"><label class="jh-field__label">담당자 이름</label><input class="jh-input" data-asg-name maxlength="30" placeholder="예: 김민서"><span class="jh-field__hint">지금 거른 확인 필요 전표 ' + ids.length + '건에 같은 담당자를 지정합니다. 빈 칸으로 저장하면 해제됩니다.</span></div><div class="jh-finance__bar"><button type="button" class="jh-btn" data-variant="primary" data-asg-save>저장</button></div>', []);
+      pn.el.addEventListener('click', async (ev) => { if (!ev.target.closest('[data-asg-save]')) return; const nm = pn.el.querySelector('[data-asg-name]').value.trim(); try { for (let k = 0; k < ids.length; k += 200) await assignEntries(ids.slice(k, k + 200), nm); toast('담당자를 지정했습니다.'); pn.close(); await reload(); paint(); } catch (er) { pn.msg(msgHtml('danger', er.message)); } });
+    }
     else if (act === 'review-all') {
       const ids = filterEntries(S.data.entries, S.filter).filter((e) => e.needsReview).map((e) => e.id); if (!ids.length) return;
       const ok = await confirmDialog({ title: '확인 완료로 표시', body: '지금 목록의 ' + ids.length + '건을 모두 확인 완료로 표시합니다. 전표의 금액·계정은 바뀌지 않습니다.', confirmLabel: '표시' }); if (!ok.ok) return;
@@ -229,6 +235,7 @@ export async function mount(root, route, ctx) {
       const ok = await confirmDialog({ title: S.openEditId ? '개시 전표 정정' : '개시 전표 저장', body: '개시 일자 ' + r.entry.date + ' · 자본(차액) ' + r.equity.toLocaleString('ko-KR') + '원으로 ' + (S.openEditId ? '정정합니다. 기존 개시 전표는 역분개로 남고 같은 일자의 새 개시 전표가 만들어집니다.' : '저장합니다. 저장한 전표는 고치거나 지울 수 없고 역분개로만 바로잡습니다.'), confirmLabel: S.openEditId ? '정정' : '저장' }); if (!ok.ok) return;
       try { if (S.openEditId) { const res = await reclassifyEntry(S.openEditId, r.entry.date, '개시 정정 — 숫자 수정', r.entry.lines); S.openEditId = ''; toast('개시 전표를 정정했습니다(' + res.no + ').'); await reload(); location.hash = '#/finance/home'; return; } const res = await postEntries([r.entry]); if (res.rejected.length) throw new Error(res.rejected[0].errors[0]); toast(res.duplicates ? '같은 날짜의 개시 전표가 이미 있어 건너뛰었습니다.' : '개시 전표를 저장했습니다.'); await reload(); location.hash = '#/finance/home'; } catch (e) { body.querySelector('[data-open-result]').setAttribute('data-tone', 'danger'); body.querySelector('[data-open-result]').textContent = e.message; }
     }
+    else if (act === 'table-csv') { const p = S.imp.preview; if (!p || !p.groups) return; download('가맹점_분류표_' + kstToday() + '.csv', merchantTableCsv(p.groups)); toast('분류표를 내려받았습니다. 엑셀에서 "대표님 분류" 칸을 채워 규칙 탭에 올려 주세요.'); }
     else if (act === 'rules-apply') { try { await saveMerchantRules(S.rl.upload.rules); toast('가맹점 규칙 ' + S.rl.upload.rules.length + '개를 저장했습니다.'); await reload(); paint(); } catch (e) { S.rl.error = e.message; paint(); } }
     else if (act === 'rules-save-m') { try { await saveMerchantRules(S.rl.merchant); toast('가맹점 규칙을 저장했습니다.'); await reload(); paint(); } catch (e) { toast(e.message); } }
     else if (act === 'rules-save-p') { try { await savePurchaseRules(S.rl.purchase); toast('매입 거래처 규칙을 저장했습니다.'); await reload(); paint(); } catch (e) { toast(e.message); } }

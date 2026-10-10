@@ -1,9 +1,9 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261008m';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261008m';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261008m';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261008m';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261008m';
-import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261008m';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261008n';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261008n';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261008n';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261008n';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261008n';
+import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261008n';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -13,14 +13,16 @@ export const accountName = (code) => (ACCOUNT_BY_CODE[code] ? ACCOUNT_BY_CODE[co
 export const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
 
 /** Firestore 문서 → 화면용 전표 */
-export function docToEntry(id, d) { return { id, no: d.no || '', seq: d.seq || 0, date: d.date || '', memo: d.memo || '', source: d.source || { kind: 'manual' }, lines: (d.lines || []).map((l) => ({ account: l.account, side: l.side, amount: l.amount, partner: l.partner || '', pjt: l.pjt || '' })), status: d.status || 'posted', reverses: d.reverses || '', reversesNo: d.reversesNo || '', reversedBy: d.reversedBy || '', reversedByNo: d.reversedByNo || '', createdByName: d.createdByName || '', createdMs: d.createdAt && d.createdAt.seconds ? d.createdAt.seconds * 1000 : 0, needsReview: !!d.needsReview, reviewNote: d.reviewNote || '', replaces: d.replaces || '', replacesNo: d.replacesNo || '', attachments: (d.attachments || []).map((a) => ({ id: a.id, name: a.name, mime: a.mime, size: a.size, byName: a.byName || '', atMs: a.atMs || 0 })) }; }
+export function docToEntry(id, d) { return { id, no: d.no || '', seq: d.seq || 0, date: d.date || '', memo: d.memo || '', source: d.source || { kind: 'manual' }, lines: (d.lines || []).map((l) => ({ account: l.account, side: l.side, amount: l.amount, partner: l.partner || '', pjt: l.pjt || '' })), status: d.status || 'posted', reverses: d.reverses || '', reversesNo: d.reversesNo || '', reversedBy: d.reversedBy || '', reversedByNo: d.reversedByNo || '', createdByName: d.createdByName || '', createdMs: d.createdAt && d.createdAt.seconds ? d.createdAt.seconds * 1000 : 0, needsReview: !!d.needsReview, reviewNote: d.reviewNote || '', assignee: d.assignee || '', reviewedByName: d.reviewedByName || '', reviewedMs: d.reviewedAt && d.reviewedAt.seconds ? d.reviewedAt.seconds * 1000 : 0, replaces: d.replaces || '', replacesNo: d.replacesNo || '', attachments: (d.attachments || []).map((a) => ({ id: a.id, name: a.name, mime: a.mime, size: a.size, byName: a.byName || '', atMs: a.atMs || 0 })) }; }
 export const entryDebit = (e) => (e.lines || []).reduce((s, l) => s + (l.side === 'D' ? l.amount : 0), 0);
 export function summarize(entries) { const by = {}; let review = 0, d = 0, c = 0, from = '', to = ''; (entries || []).forEach((e) => { const k = (e.source && e.source.kind) || 'manual'; by[k] = (by[k] || 0) + 1; if (e.needsReview) review++; (e.lines || []).forEach((l) => { if (l.side === 'D') d += l.amount; else c += l.amount; }); if (!from || e.date < from) from = e.date; if (!to || e.date > to) to = e.date; }); return { count: (entries || []).length, review, by, debit: d, credit: c, balanced: d === c, from, to }; }
 /** 목록 거르기: 기간(from~to)·원천·확인 필요·검색어(메모·거래처·계정·전표번호) */
 export function filterEntries(entries, f) {
   const q = String((f && f.q) || '').trim().toLowerCase();
-  return (entries || []).filter((e) => (!f.from || e.date >= f.from) && (!f.to || e.date <= f.to) && (!f.source || (e.source && e.source.kind) === f.source) && (!f.review || e.needsReview) && (!q || (e.memo + ' ' + e.no + ' ' + e.lines.map((l) => (l.partner || '') + ' ' + accountName(l.account)).join(' ')).toLowerCase().includes(q))).sort((a, b) => (b.date < a.date ? -1 : b.date > a.date ? 1 : (b.seq || 0) - (a.seq || 0)));
+  return (entries || []).filter((e) => (!f.from || e.date >= f.from) && (!f.to || e.date <= f.to) && (!f.source || (e.source && e.source.kind) === f.source) && (!f.review || e.needsReview) && (!f.reviewed || (!e.needsReview && !!e.reviewedByName)) && (!f.assignee || (f.assignee === '__none' ? (e.needsReview && !e.assignee) : e.assignee === f.assignee)) && (!q || (e.memo + ' ' + e.no + ' ' + (e.assignee || '') + ' ' + e.lines.map((l) => (l.partner || '') + ' ' + accountName(l.account)).join(' ')).toLowerCase().includes(q))).sort((a, b) => (b.date < a.date ? -1 : b.date > a.date ? 1 : (b.seq || 0) - (a.seq || 0)));
 }
+/** 확인 필요 전표에 붙은 담당자 이름 목록(가나다) */
+export const assigneeList = (entries) => [...new Set((entries || []).filter((e) => e.assignee).map((e) => e.assignee))].sort();
 export const monthEnd = (ym) => { const [y, m] = ym.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10); };
 export const yearOf = (d) => String(d || kstToday()).slice(0, 4);
 
@@ -140,6 +142,25 @@ export function receiptToForm(ex) {
   const items = (e.items || []).filter((i) => i.name).map((i) => i.name); const what = [e.merchant, items.length ? items.slice(0, 2).join('·') + (items.length > 2 ? ' 외' : '') : ''].filter(Boolean).join(' — ');
   return { date: e.date || '', what: what.slice(0, 60), account: e.category || '6190', pay, total: e.total ? Number(e.total).toLocaleString('ko-KR') : '', vat: e.vat ? Number(e.vat).toLocaleString('ko-KR') : '', deduct, evidence: EV_BY_TYPE[e.docType] || '증빙 없음', cardNote: e.cardLast4 ? '카드 끝 4자리 ' + e.cardLast4 + ' — 결제수단이 맞는지 확인하세요.' : '' };
 }
+/* ───────── 가맹점 분류표 내려받기(CSV)·CSV 읽기 ───────── */
+const CARD_CODE_LABEL = { nonghyup: '농협', ibk_sales: 'IBK', ibk_approval: 'IBK', samsung: '삼성', hyundai: '현대' };
+export const MERCHANT_TABLE_HEADER = ['번호', '가맹점', '카드', '건수', '결제금액', '처음', '마지막', '추정', '', '대표님 분류', '메모', '카드사 코드', '가맹점 키'];
+/** 카드 미리보기의 가맹점 묶음(groups) → 분류표 행들. 분류가 필요한 곳(확인 표시)만, 금액이 큰 순. 안내 2줄 + 머리글 + 데이터 */
+export function merchantTableRows(groups) {
+  const need = (groups || []).filter((g) => g.review); const rows = [['가맹점 분류표'], ['"대표님 분류" 칸에 아래 보기 중 하나를 그대로 적어 주세요(모르면 "모름" 또는 빈 칸): ' + CHOICES.map((c) => c[0]).join(' / ')], MERCHANT_TABLE_HEADER.slice()];
+  need.forEach((g, i) => rows.push([i + 1, g.name, CARD_CODE_LABEL[g.issuer] || g.issuer, g.n, g.sum, '', '', ACCOUNT_BY_CODE[g.account] ? ACCOUNT_BY_CODE[g.account].name : '', '', '', '', g.issuer, g.key]));
+  return rows;
+}
+const csvQ = (v) => { const s = String(v == null ? '' : v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+/** 엑셀에서 한글이 깨지지 않도록 앞에 BOM 을 붙인 CSV 문자열 */
+export const merchantTableCsv = (groups) => '\ufeff' + merchantTableRows(groups).map((r) => r.map(csvQ).join(',')).join('\r\n') + '\r\n';
+/** CSV 문자열 → 행 배열(따옴표·쉼표·줄바꿈·BOM 처리) */
+export function parseCsvRows(text) {
+  const s = String(text || '').replace(/^\ufeff/, ''); const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < s.length; i++) { const c = s[i]; if (q) { if (c === '"') { if (s[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; } else if (c === '"') q = true; else if (c === ',') { row.push(cur); cur = ''; } else if (c === '\n' || c === '\r') { if (c === '\r' && s[i + 1] === '\n') i++; row.push(cur); rows.push(row); row = []; cur = ''; } else cur += c; }
+  if (cur !== '' || row.length) { row.push(cur); rows.push(row); } return rows.filter((r) => r.some((v) => String(v).trim() !== ''));
+}
+
 /* ───────── 규칙 관리(가맹점·매입 거래처) ───────── */
 const bizOf = (v) => String(v || '').replace(/\D/g, '');
 /** 매입 거래처 규칙 키: 사업자번호(10자리)가 있으면 그것, 없으면 상호 */
