@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261012b';
-import { isOffDay } from '../../shared/holidays.js?v=20261012b';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261012b';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta } from './logic.js?v=20261012b';
+import { esc } from '../../core/ui.js?v=20261012c';
+import { isOffDay } from '../../shared/holidays.js?v=20261012c';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261012c';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted } from './logic.js?v=20261012c';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -129,4 +129,17 @@ export function jobFormHtml(st) {
     + '<div class="jh-field"><label class="jh-field__label">상태</label><select class="jh-select" data-j-f="status">' + Object.keys(JOB_STATUS).map((k) => '<option value="' + k + '"' + (f.status === k ? ' selected' : '') + '>' + JOB_STATUS[k] + (k === 'open' ? ' (홈페이지에 표시)' : k === 'draft' ? ' (홈페이지에 숨김)' : ' (홈페이지에서 내림)') + '</option>').join('') + '</select></div>'
     + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-j-act="save">저장</button><button type="button" class="jh-btn" data-variant="ghost" data-j-act="cancel">취소</button></div></div>';
   return card(id ? '공고 수정' : '공고 등록', body);
+}
+
+/** 근로자 면담 */
+export function interviewsHtml(st) {
+  if (st.ivSel) return interviewDetailHtml(st);
+  const list = st.ivWorkers.map((w) => { const lt = st.ivLatest[w.id]; return '<tr class="jh-hr__row" data-i-open="' + esc(w.id) + '"><td>' + esc(w.empNo || '-') + '</td><td><strong>' + esc(w.name || '-') + '</strong></td><td>' + esc(w.dept || '-') + '</td><td>' + esc(w.rank || '-') + '</td><td>' + (lt ? esc(lt.date) + (lt.followUp ? ' ' + chip('후속조치 필요', 'warn') : '') : '<span class="jh-field__hint">면담 기록 없음</span>') + '</td></tr>'; }).join('');
+  return card('근로자 면담', '<div class="jh-hr__pad"><div class="jh-field__hint">근로자 명부에 등록된 재직자와의 면담 내용을 기록·관리합니다. 이름을 누르면 면담 이력 조회·신규 기록을 합니다.</div></div>' + (list ? '<div class="jh-hr__scroll"><table class="jh-hr-table jh-hr-table--click"><thead><tr><th>사원번호</th><th>이름</th><th>소속</th><th>직급</th><th>최근 면담</th></tr></thead><tbody>' + list + '</tbody></table></div>' : '<div class="jh-empty">등록된 근로자가 없습니다.</div>'));
+}
+export function interviewDetailHtml(st) {
+  const w = st.ivWorkers.find((x) => x.id === st.ivSel) || { name: '' }; const f = st.ivForm; const recs = interviewsSorted(st.ivRecords);
+  const form = '<div class="jh-hr__pad"><div class="jh-hr__grid"><div class="jh-field"><label class="jh-field__label">면담일</label><input class="jh-input" type="date" data-i-f="date" value="' + esc(f.date) + '" max="' + esc(st.today) + '"></div><div></div></div><div class="jh-field"><label class="jh-field__label">면담 내용</label><textarea class="jh-textarea" data-i-f="memo" rows="4" placeholder="면담 내용, 근로자 의견, 특이사항 등을 입력하세요">' + esc(f.memo) + '</textarea></div><label class="jh-field__hint"><input type="checkbox" data-i-fc="followUp"' + (f.followUp ? ' checked' : '') + '> 후속조치 필요</label><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-i-act="save">저장</button><button type="button" class="jh-btn" data-variant="ghost" data-i-act="back">← 목록</button></div></div>';
+  const hist = recs.length ? '<div class="jh-hr__pad">' + recs.map((d) => '<div class="jh-hr__post"><div class="jh-hr__bar"><strong>' + esc(d.date) + '</strong>' + (d.followUp ? ' ' + chip('후속조치 필요', 'warn') : '') + '</div>' + (d.memo ? '<div style="white-space:pre-wrap">' + esc(d.memo) + '</div>' : '') + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-i-del="' + esc(d.id) + '">삭제</button></div></div>').join('') + '</div>' : '<div class="jh-empty">기록된 면담이 없습니다.</div>';
+  return card((w.name || '') + ' · 면담 기록', form) + card('지난 면담 이력', hist);
 }

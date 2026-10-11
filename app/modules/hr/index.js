@@ -1,8 +1,8 @@
-import { db, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012b';
-import { confirmDialog } from '../../core/dialog.js?v=20261012b';
-import { esc, toast } from '../../core/ui.js?v=20261012b';
-import { JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012b';
-import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml } from './view.js?v=20261012b';
+import { db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012c';
+import { confirmDialog } from '../../core/dialog.js?v=20261012c';
+import { esc, toast } from '../../core/ui.js?v=20261012c';
+import { NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012c';
+import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml } from './view.js?v=20261012c';
 
 /** 인사(플랫폼 기본 모듈): 근로자 명부 새 화면. 인사총무 틀 안의 구역으로만 열린다(modules/index.js 의 hostNative). 구포털 인사 화면은 그대로 두고 하나씩 옮기는 중이다. 관리자 전용 */
 export const manifest = { id: 'hr', order: 21, title: '인사', icon: '👥', defaultHash: '#/hr/workers', perm: (me) => !!me && me.admin === true };
@@ -164,4 +164,34 @@ export async function mountPostings(root, route, ctx) {
   root.oninput = (ev) => { const t = ev.target; if (!(t instanceof Element) || !st.jf) return; if (t.matches('[data-j-f]')) { st.jf.f[t.getAttribute('data-j-f')] = t.value; return; } if (t.matches('[data-j-o]') && t.tagName === 'INPUT') { st.jf.o[t.getAttribute('data-j-o')] = t.value; preview(); } };
   root.onchange = (ev) => { const t = ev.target; if (!(t instanceof Element) || !st.jf) return; if (t.matches('[data-j-f]')) { st.jf.f[t.getAttribute('data-j-f')] = t.value; return; } if (t.matches('[data-j-o]')) { st.jf.o[t.getAttribute('data-j-o')] = t.value; paint(); return; } if (t.matches('[data-j-oc]')) { st.jf.o[t.getAttribute('data-j-oc')] = t.checked; paint(); } };
   paint();
+}
+
+/** 근로자 면담(새 화면) — interviews/{근로자}/records. 재직자 목록(최근 면담)과 근로자별 이력·신규 기록·삭제 */
+export async function mountInterviews(root, route, ctx) {
+  root.onclick = null; root.oninput = null; root.onchange = null;
+  const st = { today: kstToday(), ivWorkers: [], ivLatest: {}, ivSel: '', ivForm: NEW_INTERVIEW(kstToday()), ivRecords: [] };
+  root.innerHTML = '<div class="jh-hr"><div id="i-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
+  const body = root.querySelector('#i-body');
+  const loadList = async () => {
+    const ws = await getDocs(collection(db, 'workers')); const list = []; ws.forEach((d) => { const x = Object.assign({ id: d.id }, d.data()); if (x.status !== 'resigned') list.push(x); });
+    list.sort((a, b) => String(a.empNo || '').localeCompare(String(b.empNo || ''))); const latest = {};
+    await Promise.all(list.map(async (w) => { try { const s = await getDocs(query(collection(db, 'interviews/' + w.id + '/records'), orderBy('date', 'desc'), limit(1))); latest[w.id] = s.empty ? null : s.docs[0].data(); } catch (e) { latest[w.id] = null; } }));
+    st.ivWorkers = list; st.ivLatest = latest;
+  };
+  const loadRecords = async (wid) => { const s = await getDocs(query(collection(db, 'interviews/' + wid + '/records'), orderBy('date', 'desc'))); const l = []; s.forEach((d) => { const x = d.data(); l.push(Object.assign({ id: d.id }, x, { createdMs: x.createdAt && x.createdAt.toMillis ? x.createdAt.toMillis() : 0 })); }); st.ivRecords = l; };
+  try { await loadList(); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
+  body.removeAttribute('aria-busy');
+  const paint = () => { body.innerHTML = interviewsHtml(st); };
+  const open = async (wid) => { st.ivSel = wid; st.ivForm = NEW_INTERVIEW(st.today); st.ivRecords = []; try { await loadRecords(wid); } catch (e) { toast('이력을 불러오지 못했습니다: ' + ((e && e.message) || '')); } paint(); };
+  root.onclick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    const o = t.closest('[data-i-open]'); if (o) { await open(o.getAttribute('data-i-open')); return; }
+    const a = t.closest('[data-i-act]');
+    if (a && a.getAttribute('data-i-act') === 'back') { st.ivSel = ''; await loadList(); paint(); return; }
+    if (a && a.getAttribute('data-i-act') === 'save') { const r = buildInterview(st.ivForm, st.today); if (!r.ok) { toast(r.errors[0]); return; } try { await addDoc(collection(db, 'interviews/' + st.ivSel + '/records'), Object.assign({}, r.data, { createdAt: serverTimestamp() })); toast('면담을 기록했습니다.'); st.ivForm = NEW_INTERVIEW(st.today); await loadRecords(st.ivSel); paint(); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); } return; }
+    const d = t.closest('[data-i-del]'); if (d) { const ok = await confirmDialog({ title: '면담 기록 삭제', body: '이 면담 기록을 삭제합니다. 되돌릴 수 없습니다.', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return; try { await deleteDoc(doc(db, 'interviews/' + st.ivSel + '/records', d.getAttribute('data-i-del'))); toast('삭제했습니다.'); await loadRecords(st.ivSel); paint(); } catch (e) { toast('삭제하지 못했습니다: ' + ((e && e.message) || '')); } }
+  };
+  root.oninput = (ev) => { const t = ev.target; if (t instanceof Element && t.matches('[data-i-f]')) st.ivForm[t.getAttribute('data-i-f')] = t.value; };
+  root.onchange = (ev) => { const t = ev.target; if (!(t instanceof Element)) return; if (t.matches('[data-i-f]')) st.ivForm[t.getAttribute('data-i-f')] = t.value; if (t.matches('[data-i-fc]')) st.ivForm[t.getAttribute('data-i-fc')] = t.checked; };
+  paint(); if (route.segs && route.segs[0]) await open(route.segs[0]);
 }
