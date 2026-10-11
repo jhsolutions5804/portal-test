@@ -1,7 +1,7 @@
 /* 인사 — 근로자 명부(새 화면). 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 데이터: workers/{id}(일반 정보) + worker_private/{id}(주민번호·계좌·주소·서명, 읽을 때 합쳐 쓰고 저장할 때 다시 가른다)
  *         labor_contracts/{id}/contracts · annual_contracts/{id}/contracts(endDate), workers/{id}/history(직급·부서 변경 이력) */
-import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261012c';
+import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261012d';
 export const WP_FIELDS = ['jumin', 'bankAccount', 'address', 'signData'];   // worker_private 에 따로 두는 필드
 export const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')) && new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
@@ -206,3 +206,32 @@ export function buildInterview(form, today) {
 export const interviewsSorted = (list) => (list || []).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || (Number(b.createdMs) || 0) - (Number(a.createdMs) || 0));
 /** 근로자 목록의 "최근 면담" 칸 */
 export const latestInterview = (records) => interviewsSorted(records)[0] || null;
+
+/* ───────── 휴직/퇴직 원서 — 전자결재(edoc_resign)에서 상신된 원서를 인사 담당자가 확인·출력 ───────── */
+export const RRQ_STATUS = { draft: '임시저장', pending: '결재중', reviewing: '검토중', approved: '승인', posted: '승인·게시', done: '완료', rejected: '반려' };
+export const rrqKindOf = (d) => (d && d.leaveKind) || '퇴직';
+export const rrqDone = (d) => ['approved', 'posted', 'done'].includes(d && d.status);
+const rrqInStat = (d, stat) => (stat === 'all' ? true : stat === 'active' ? !['draft', 'rejected'].includes(d.status) : d.status === stat);
+export const rrqFilter = (docs, kind, stat) => (docs || []).filter((d) => (kind === 'all' || rrqKindOf(d) === kind) && rrqInStat(d, stat));
+/** 구분·상태 버튼에 붙는 개수(서로의 선택을 반영) */
+export function rrqCounts(docs, kind, stat) {
+  const all = docs || []; const byKind = {}; ['all', '퇴직', '휴직'].forEach((k) => { byKind[k] = all.filter((d) => (k === 'all' || rrqKindOf(d) === k) && rrqInStat(d, stat)).length; });
+  const byStat = {}; ['active', 'rejected', 'draft', 'all'].forEach((s2) => { byStat[s2] = all.filter((d) => (kind === 'all' || rrqKindOf(d) === kind) && rrqInStat(d, s2)).length; }); return { byKind, byStat };
+}
+/** 원서 작성자 → 근로자 명부(포털 계정 우선, 없으면 이름) */
+export const rrqFindWorker = (workers, d) => (workers || []).find((x) => d.authorUid && x.portalUid === d.authorUid) || (workers || []).find((x) => x.name === d.authorName) || null;
+export const korDate = (s) => { const m = String(s || '').slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? Number(m[1]) + '년 ' + Number(m[2]) + '월 ' + Number(m[3]) + '일' : '____년 __월 __일'; };
+export const dotDate = (s) => { const m = String(s || '').slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? m[1] + '.' + m[2] + '.' + m[3] : '-'; };
+const hx = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+/** 퇴직원·휴직원 A4 서식(구포털과 같은 문구) — 새 창에 써서 인쇄/PDF 로 저장한다. filedDate: 접수일(YYYY-MM-DD, 없으면 today) */
+export function resignPrintHtml(d, worker, filedDate, today) {
+  const k = rrqKindOf(d); const dept = d.authorDept || (worker && worker.dept) || '', rank = d.authorRank || (worker && worker.rank) || '';
+  const row = (th, td) => '<tr><th>' + th + '</th><td>' + td + '</td></tr>'; const title = k === '휴직' ? '휴 직 원' : '퇴 직 원';
+  const period = k === '휴직' ? row('휴직 기간', korDate(d.lastDate) + ' 부터' + (d.returnDate ? ' &nbsp;(복직 예정일 ' + korDate(d.returnDate) + ')' : '')) : row('퇴직 예정일', korDate(d.lastDate));
+  const stLabel = (a) => (a.status === 'approved' ? '승인' : a.status === 'rejected' ? '반려' : '결재중'); const line = (d.approvalLine || []).filter((a) => a && a.role);
+  const apv = line.length ? '<table style="border-collapse:collapse;margin:26px 0 0 auto;font-size:9.5pt;text-align:center;"><tr>' + line.map((a) => '<th style="border:1px solid #333;background:#F0F3F8;padding:4px 14px;min-width:78px;">' + hx(a.role) + '</th>').join('') + '</tr><tr>' + line.map((a) => '<td style="border:1px solid #333;padding:8px 6px;height:34px;"><b>' + hx(a.name || '') + '</b><br><span style="font-size:8.5pt;color:#555;">' + hx(a.rank || '') + '</span></td>').join('') + '</tr><tr>' + line.map((a) => '<td style="border:1px solid #333;padding:4px 6px;font-size:8.5pt;color:' + (a.status === 'approved' ? '#166534' : a.status === 'rejected' ? '#B91C1C' : '#92400E') + ';">' + stLabel(a) + (a.approvedDate ? '<br>' + dotDate(a.approvedDate) : '') + '</td>').join('') + '</tr></table>' : '';
+  const filed = filedDate && filedDate !== '-' ? filedDate : ''; const body = '<h1>' + title + '</h1><div class="ul"></div><table class="kv">' + row('소&nbsp;&nbsp;&nbsp;&nbsp;속', hx(dept) || '-') + row('직&nbsp;&nbsp;&nbsp;&nbsp;급', hx(rank) || '-') + row('성&nbsp;&nbsp;&nbsp;&nbsp;명', hx(d.authorName) || '-') + (worker && worker.empNo ? row('사&nbsp;&nbsp;&nbsp;&nbsp;번', hx(worker.empNo)) : '') + (worker && worker.hireDate ? row('입&nbsp;사&nbsp;일', korDate(worker.hireDate)) : '') + period + row('사&nbsp;&nbsp;&nbsp;&nbsp;유', '<div style="white-space:pre-wrap;min-height:70px;">' + (hx(d.reason) || '-') + '</div>') + '</table>'
+    + '<p style="text-align:center;margin:34px 0 8px;font-size:11pt;">위와 같은 사유로 ' + (k === '휴직' ? '휴직' : '퇴직') + '하고자 하오니 허락하여 주시기 바랍니다.</p><p style="text-align:center;margin:18px 0 0;font-size:11pt;">' + korDate(filed || today) + '</p><p style="text-align:right;margin:26px 0 0;font-size:11pt;">작성자 : <b>' + (hx(d.authorName) || '') + '</b> &nbsp;(서명)</p><p style="margin:34px 0 0;font-size:12pt;font-weight:700;">제이에이치솔루션 대표 귀하</p>' + apv + '<p style="margin:22px 0 0;font-size:8.5pt;color:#777;">※ 전자결재 상태: ' + (RRQ_STATUS[d.status] || d.status || '-') + ' · 접수일 ' + (filed || '-') + '</p>';
+  const docTitle = hx((k === '휴직' ? '휴직원' : '퇴직원') + '_' + (d.authorName || ''));
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + docTitle + '</title><style>body{margin:0;font-family:\'Malgun Gothic\',Arial,sans-serif;background:#888;display:flex;flex-direction:column;align-items:center;padding:20px;}.a4{width:210mm;min-height:297mm;background:#fff;padding:20mm 22mm;box-shadow:0 4px 24px rgba(0,0,0,.2);font-size:10.5pt;line-height:1.8;color:#1A2540;box-sizing:border-box;}h1{text-align:center;font-size:20pt;letter-spacing:6px;margin:0 0 6px;}.ul{width:60px;height:2px;background:#333;margin:8px auto 24px;}table.kv{width:100%;border-collapse:collapse;margin:10px 0;}table.kv th{border:1px solid #333;background:#F0F3F8;padding:7px 10px;width:130px;text-align:left;font-size:10pt;vertical-align:top;}table.kv td{border:1px solid #333;padding:7px 10px;font-size:10.5pt;}@media print{body{background:#fff;padding:0;}.toolbar{display:none;}.a4{box-shadow:none;padding:15mm 20mm;width:100%;}}</style></head><body><div class="toolbar" style="margin-bottom:12px;display:flex;gap:8px;"><button onclick="window.close()" style="padding:8px 16px;background:#fff;border:1px solid #DDE4EF;border-radius:8px;cursor:pointer;">← 닫기</button><button onclick="window.print()" style="padding:8px 16px;background:#1D5BA6;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;">🖨 인쇄/PDF</button></div><div class="a4">' + body + '</div></body></html>';
+}

@@ -1,8 +1,8 @@
-import { db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012c';
-import { confirmDialog } from '../../core/dialog.js?v=20261012c';
-import { esc, toast } from '../../core/ui.js?v=20261012c';
-import { NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012c';
-import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml } from './view.js?v=20261012c';
+import { db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012d';
+import { confirmDialog } from '../../core/dialog.js?v=20261012d';
+import { esc, toast } from '../../core/ui.js?v=20261012d';
+import { rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012d';
+import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml } from './view.js?v=20261012d';
 
 /** 인사(플랫폼 기본 모듈): 근로자 명부 새 화면. 인사총무 틀 안의 구역으로만 열린다(modules/index.js 의 hostNative). 구포털 인사 화면은 그대로 두고 하나씩 옮기는 중이다. 관리자 전용 */
 export const manifest = { id: 'hr', order: 21, title: '인사', icon: '👥', defaultHash: '#/hr/workers', perm: (me) => !!me && me.admin === true };
@@ -194,4 +194,30 @@ export async function mountInterviews(root, route, ctx) {
   root.oninput = (ev) => { const t = ev.target; if (t instanceof Element && t.matches('[data-i-f]')) st.ivForm[t.getAttribute('data-i-f')] = t.value; };
   root.onchange = (ev) => { const t = ev.target; if (!(t instanceof Element)) return; if (t.matches('[data-i-f]')) st.ivForm[t.getAttribute('data-i-f')] = t.value; if (t.matches('[data-i-fc]')) st.ivForm[t.getAttribute('data-i-fc')] = t.checked; };
   paint(); if (route.segs && route.segs[0]) await open(route.segs[0]);
+}
+
+/** 휴직/퇴직 원서(새 화면) — 전자결재 edoc_resign 을 읽어 목록·상세·원서 출력. 결재 처리는 전자결재에서. 승인된 퇴직원서의 인사 캘린더 퇴사 일정 반영은 기존대로 인사 홈·캘린더를 열 때 처리된다 */
+export async function mountResignReq(root, route, ctx) {
+  root.onclick = null; root.oninput = null; root.onchange = null;
+  const st = { today: kstToday(), rrDocs: [], rrKind: 'all', rrStat: 'active', rrSel: (route.segs && route.segs[0]) || '' };
+  root.innerHTML = '<div class="jh-hr"><div id="r-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
+  const body = root.querySelector('#r-body');
+  try { const s = await getDocs(query(collection(db, 'edoc_resign'), orderBy('createdAt', 'desc'))); const l = []; s.forEach((d) => { const x = d.data(); l.push(Object.assign({ id: d.id }, x, { filed: fmtTs(x.createdAt).replace(/\./g, '-'), approvalLine: (x.approvalLine || []).map((a) => Object.assign({}, a, { approvedDate: a.approvedAt ? fmtTs(a.approvedAt).replace(/\./g, '-') : '' })) })); }); st.rrDocs = l; }
+  catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '<br>전자결재 문서 열람은 관리자 권한이 필요합니다.</div>'; return; }
+  body.removeAttribute('aria-busy');
+  const paint = () => { body.innerHTML = resignReqHtml(st); };
+  root.onclick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    const k = t.closest('[data-r-kind]'); if (k) { st.rrKind = k.getAttribute('data-r-kind'); paint(); return; }
+    const s2 = t.closest('[data-r-stat]'); if (s2) { st.rrStat = s2.getAttribute('data-r-stat'); paint(); return; }
+    const o = t.closest('[data-r-open]'); if (o) { st.rrSel = o.getAttribute('data-r-open'); paint(); const f = body.querySelector('.jh-hr__line'); if (f) f.scrollIntoView({ block: 'center' }); return; }
+    const a = t.closest('[data-r-act]'); if (!a) return; const act = a.getAttribute('data-r-act');
+    if (act === 'close') { st.rrSel = ''; paint(); return; }
+    if (act === 'print') {
+      const d = st.rrDocs.find((x) => x.id === st.rrSel); if (!d) return; const win = window.open('', '_blank'); if (!win) { toast('팝업이 차단되어 출력 창을 열 수 없습니다. 팝업을 허용한 뒤 다시 시도해 주세요.'); return; }
+      win.document.write('<p style="font-family:sans-serif;padding:24px;">문서를 준비하는 중...</p>'); let w = null; try { const ws = []; (await getDocs(collection(db, 'workers'))).forEach((x) => ws.push(Object.assign({ id: x.id }, x.data()))); w = rrqFindWorker(ws, d); } catch (e) { /* 명부를 못 읽어도 원서는 출력 */ }
+      win.document.open(); win.document.write(resignPrintHtml(d, w, d.filed, st.today)); win.document.close();
+    }
+  };
+  paint();
 }

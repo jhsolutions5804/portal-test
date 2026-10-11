@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261012c';
-import { isOffDay } from '../../shared/holidays.js?v=20261012c';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261012c';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted } from './logic.js?v=20261012c';
+import { esc } from '../../core/ui.js?v=20261012d';
+import { isOffDay } from '../../shared/holidays.js?v=20261012d';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261012d';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts } from './logic.js?v=20261012d';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -142,4 +142,22 @@ export function interviewDetailHtml(st) {
   const form = '<div class="jh-hr__pad"><div class="jh-hr__grid"><div class="jh-field"><label class="jh-field__label">면담일</label><input class="jh-input" type="date" data-i-f="date" value="' + esc(f.date) + '" max="' + esc(st.today) + '"></div><div></div></div><div class="jh-field"><label class="jh-field__label">면담 내용</label><textarea class="jh-textarea" data-i-f="memo" rows="4" placeholder="면담 내용, 근로자 의견, 특이사항 등을 입력하세요">' + esc(f.memo) + '</textarea></div><label class="jh-field__hint"><input type="checkbox" data-i-fc="followUp"' + (f.followUp ? ' checked' : '') + '> 후속조치 필요</label><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-i-act="save">저장</button><button type="button" class="jh-btn" data-variant="ghost" data-i-act="back">← 목록</button></div></div>';
   const hist = recs.length ? '<div class="jh-hr__pad">' + recs.map((d) => '<div class="jh-hr__post"><div class="jh-hr__bar"><strong>' + esc(d.date) + '</strong>' + (d.followUp ? ' ' + chip('후속조치 필요', 'warn') : '') + '</div>' + (d.memo ? '<div style="white-space:pre-wrap">' + esc(d.memo) + '</div>' : '') + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-i-del="' + esc(d.id) + '">삭제</button></div></div>').join('') + '</div>' : '<div class="jh-empty">기록된 면담이 없습니다.</div>';
   return card((w.name || '') + ' · 면담 기록', form) + card('지난 면담 이력', hist);
+}
+
+/** 휴직/퇴직 원서 */
+const rtone = (s) => (['approved', 'posted', 'done'].includes(s) ? 'accent' : s === 'rejected' ? 'danger' : ['pending', 'reviewing'].includes(s) ? 'warn' : 'muted');
+export function resignReqHtml(st) {
+  const c = rrqCounts(st.rrDocs, st.rrKind, st.rrStat); const rows = rrqFilter(st.rrDocs, st.rrKind, st.rrStat);
+  const btn = (grp, val, label, n, cur) => '<button type="button" class="jh-segmented__item" data-r-' + grp + '="' + esc(val) + '" aria-pressed="' + (cur === val) + '">' + esc(label) + ' (' + n + ')</button>';
+  const filters = '<div class="jh-hr__pad"><div class="jh-hr__bar"><div class="jh-segmented" role="group" aria-label="구분">' + btn('kind', 'all', '전체 구분', c.byKind.all, st.rrKind) + btn('kind', '퇴직', '퇴직', c.byKind['퇴직'], st.rrKind) + btn('kind', '휴직', '휴직', c.byKind['휴직'], st.rrKind) + '</div><div class="jh-segmented" role="group" aria-label="상태">' + btn('stat', 'active', '진행·완료', c.byStat.active, st.rrStat) + btn('stat', 'rejected', '반려', c.byStat.rejected, st.rrStat) + btn('stat', 'draft', '임시저장', c.byStat.draft, st.rrStat) + btn('stat', 'all', '전체', c.byStat.all, st.rrStat) + '</div></div><div class="jh-field__hint">전자결재 > 휴직/퇴직에서 작성·상신된 원서를 인사 담당자가 확인합니다. 결재 처리는 전자결재에서 진행하세요.</div></div>';
+  const table = rows.length ? '<div class="jh-hr__scroll"><table class="jh-hr-table jh-hr-table--click"><thead><tr><th>작성자</th><th>소속</th><th>구분</th><th>예정일</th><th>복직예정일</th><th>상태</th><th>접수일</th></tr></thead><tbody>' + rows.map((d) => { const k = rrqKindOf(d); return '<tr class="jh-hr__row" data-r-open="' + esc(d.id) + '"><td><strong>' + esc(d.authorName || '-') + '</strong></td><td>' + esc((d.authorDept || '-') + (d.authorRank ? ' · ' + d.authorRank : '')) + '</td><td>' + chip(k, k === '휴직' ? 'accent' : 'danger') + '</td><td>' + esc(d.lastDate || '-') + '</td><td>' + (k === '휴직' ? esc(d.returnDate || '-') : '-') + '</td><td>' + chip(RRQ_STATUS[d.status] || d.status || '-', rtone(d.status)) + '</td><td>' + esc(d.filed || '-') + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<div class="jh-empty">해당하는 원서가 없습니다.</div>';
+  return (st.rrSel ? resignReqDetailHtml(st) : '') + card('휴직/퇴직 원서', filters + table);
+}
+export function resignReqDetailHtml(st) {
+  const d = st.rrDocs.find((x) => x.id === st.rrSel); if (!d) return ''; const k = rrqKindOf(d); const done = rrqDone(d);
+  const line = (d.approvalLine || []).map((a) => row((a.role || ''), esc((a.name || '') + ' ' + (a.rank || '')) + ' ' + chip(a.status === 'approved' ? '승인' : a.status === 'rejected' ? '반려' : '대기', a.status === 'approved' ? 'accent' : a.status === 'rejected' ? 'danger' : 'muted'))).join('');
+  const body = '<div class="jh-hr__pad">' + row('제목', esc(d.title || '-')) + row('작성자', esc((d.authorName || '') + ' ' + (d.authorRank || '') + ' · ' + (d.authorDept || '-'))) + row('구분', esc(k)) + row(k + ' 예정일', esc(d.lastDate || '-')) + (k === '휴직' ? row('복직 예정일', esc(d.returnDate || '-')) : '') + row('상태', chip(RRQ_STATUS[d.status] || d.status || '-', rtone(d.status))) + row('접수일', esc(d.filed || '-'))
+    + '<h4 class="jh-hr__sub">사유</h4><div style="white-space:pre-wrap">' + (esc(d.reason) || '(내용 없음)') + '</div><h4 class="jh-hr__sub">결재 현황</h4>' + (line || '<div class="jh-field__hint">결재선 정보 없음</div>')
+    + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-r-act="print">🖨 ' + esc(k) + '원서 출력</button>' + (k === '퇴직' && done ? '<a class="jh-btn" data-variant="secondary" href="#/hr/retire">퇴직금 정산으로(기존 화면)</a>' : '') + '<a class="jh-btn" data-variant="ghost" href="#/hr/workers">근로자 명부</a><button type="button" class="jh-btn" data-variant="ghost" data-r-act="close">닫기</button></div>' + (k === '퇴직' && !done ? '<div class="jh-field__hint">※ 결재가 완료(승인)되면 퇴직금 정산으로 이동할 수 있습니다.</div>' : '') + '</div>';
+  return card(k + ' 원서 — ' + (d.authorName || ''), body);
 }
