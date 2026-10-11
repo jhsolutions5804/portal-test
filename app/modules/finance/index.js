@@ -1,21 +1,21 @@
-import { esc, toast } from '../../core/ui.js?v=20261011b';
-import { confirmDialog } from '../../core/dialog.js?v=20261011b';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261011b';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261011b';
-import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011b';
-import { parseBankSheets } from '../../shared/bank-import.js?v=20261011b';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261011b';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261011b';
-import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261011b';
-import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261011b';
-import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml } from './view.js?v=20261011b';
+import { esc, toast } from '../../core/ui.js?v=20261011c';
+import { confirmDialog } from '../../core/dialog.js?v=20261011c';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261011c';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261011c';
+import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011c';
+import { parseBankSheets } from '../../shared/bank-import.js?v=20261011c';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261011c';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261011c';
+import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261011c';
+import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261011c';
+import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261011c';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
 export const manifest = {
   id: 'finance', order: 25, title: '재무회계', icon: '📒', defaultHash: '#/finance/home',
   perm: (me) => !!me && !me.isGuest && (me.admin === true || me.dept === '재무회계팀' || !!(me.perms && me.perms.finance === true))
 };
-const S = { data: null, filter: { from: '', to: '', source: '', review: false, reviewed: false, assignee: '', q: '' }, limit: 100, imp: { kind: 'taxsales', busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }, rep: { kind: 'is', from: '', to: '' }, openDate: '2026-01-01', admin: false, rl: null, chk: null, chkDate: '', openEditId: '' };
+const S = { data: null, filter: { from: '', to: '', source: '', review: false, reviewed: false, assignee: '', q: '' }, limit: 100, imp: { kind: 'taxsales', busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }, rep: { kind: 'is', from: '', to: '' }, openDate: '2026-01-01', admin: false, rl: null, chk: null, chkDate: '', openEditId: '', sel: new Set() };
 const existingIds = () => new Set(S.data.entries.map((e) => e.id));
 const lastDate = () => S.data.entries.reduce((m, e) => (e.date > m ? e.date : m), '');
 function stmNow() {
@@ -123,7 +123,7 @@ export async function mount(root, route, ctx) {
       if (ev.target.closest('[data-act="rc-view"]')) { await viewReceipt(cur(), p.el); return; }
       if (ev.target.closest('[data-act="assign"]')) { const nm = p.el.querySelector('[data-assignee]').value.trim(); try { await assignEntries([id], nm); toast(nm ? '담당자를 ' + nm + '(으)로 지정했습니다.' : '담당자를 해제했습니다.'); await refresh(nm ? '담당자를 ' + nm + '(으)로 지정했습니다.' : '담당자를 해제했습니다.'); } catch (er) { p.msg(msgHtml('danger', er.message)); } return; }
       if (ev.target.closest('[data-act="reviewed"]')) { const note = (p.el.querySelector('[data-review-note]') || { value: '' }).value; try { await markReviewed([id], true, note); toast('확인 완료로 표시했습니다.'); await refresh('확인 완료로 표시했습니다.'); } catch (er) { p.msg(msgHtml('danger', er.message)); } return; }
-      if (ev.target.closest('[data-act="reclass-open"]')) { const box = p.el.querySelector('[data-reclass]'); if (box.innerHTML) { box.innerHTML = ''; return; } const lk = locked(); const nextOk = lk ? new Date(Date.parse(lk + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10) : ''; const today = kstToday(); box.innerHTML = reclassHtml(cur(), nextOk && today < nextOk ? nextOk : today); return; }
+      if (ev.target.closest('[data-act="reclass-open"]')) { const box = p.el.querySelector('[data-reclass]'); if (box.innerHTML) { box.innerHTML = ''; return; } const lk = locked(); const nextOk = lk ? new Date(Date.parse(lk + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10) : ''; const today = kstToday(); box.innerHTML = reclassHtml(cur(), reclassDefaultDate(cur(), lk, today)); return; }
       if (ev.target.closest('[data-act="reclass-save"]')) {
         const e = cur(); const changes = {}; p.el.querySelectorAll('[data-rc-acc]').forEach((sel) => { const k = Number(sel.getAttribute('data-rc-acc')); if (sel.value !== e.lines[k].account) changes[k] = sel.value; }); const partners = {}; p.el.querySelectorAll('[data-rc-partner]').forEach((inp) => { const k = Number(inp.getAttribute('data-rc-partner')); if (inp.value.trim() !== (inp.getAttribute('data-rc-init') || '')) partners[k] = inp.value.trim(); }); const r = reclassLines(e, changes, partners); if (!r.ok) { p.msg(msgHtml('danger', r.errors[0])); return; }
         const date = p.el.querySelector('[data-rc-date]').value; if (!date) { p.msg(msgHtml('danger', '새 전표 일자를 입력해 주세요.')); return; } const memo = p.el.querySelector('[data-rc-memo]').value.trim();
@@ -207,7 +207,7 @@ export async function mount(root, route, ctx) {
   /* ───── 이벤트(위임) ───── */
   root.onclick = async (ev) => {
     const t = ev.target;
-    const row = t.closest('[data-entry]'); if (row) { openEntry(row.getAttribute('data-entry')); return; }
+    if (t.closest('[data-sel]')) return; const row = t.closest('[data-entry]'); if (row) { openEntry(row.getAttribute('data-entry')); return; }
     const ik = t.closest('[data-imp-kind]'); if (ik) { S.imp = { kind: ik.getAttribute('data-imp-kind'), busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }; paint(); return; }
     const md = t.closest('[data-mr-del]'); if (md) { S.rl.merchant.splice(Number(md.getAttribute('data-mr-del')), 1); S.rl.dirtyM = true; paint(); return; }
     const pd = t.closest('[data-pr-del]'); if (pd) { S.rl.purchase.splice(Number(pd.getAttribute('data-pr-del')), 1); S.rl.dirtyP = true; paint(); return; }
@@ -215,6 +215,31 @@ export async function mount(root, route, ctx) {
     const a = t.closest('[data-act]'); if (!a) return; const act = a.getAttribute('data-act');
     if (act === 'manual') openManual();
     else if (act === 'more') { S.limit += 200; paint(); }
+    else if (act === 'sel-all') { filterEntries(S.data.entries, S.filter).filter((e) => !e.reversedBy && !e.reverses).forEach((e) => S.sel.add(e.id)); paint(); }
+    else if (act === 'sel-clear') { S.sel.clear(); paint(); }
+    else if (act === 'bulk-reclass') {
+      const sel = S.data.entries.filter((e) => S.sel.has(e.id) && !e.reversedBy && !e.reverses); if (!sel.length) return;
+      const cnt = {}; sel.forEach((e) => e.lines.forEach((l) => { cnt[l.account] = (cnt[l.account] || 0) + 1; }));
+      const fromOptions = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]).map((c) => ({ code: c, name: accountName(c), n: cnt[c] }));
+      const defaultFrom = cnt['1110'] ? '1110' : ((fromOptions.find((o) => o.code !== '1020') || fromOptions[0]).code);
+      const lk = S.data.settings.lockedThrough || '';
+      const pn = openPanel('일괄 재분류 — ' + sel.length + '건', bulkReclassHtml({ count: sel.length, total: sel.reduce((s, e) => s + entryDebit(e), 0), fromOptions, defaultFrom, lockedNote: lk ? '마감일(' + lk + ') 이전 일자는 마감일 다음 날로 자동 조정됩니다.' : '' }), []);
+      pn.el.addEventListener('change', (ev) => { if (ev.target.matches('[data-bk-datemode]')) { const fx = pn.el.querySelector('[data-bk-datemode][value="fixed"]').checked; pn.el.querySelector('[data-bk-date]').disabled = !fx; } });
+      pn.el.addEventListener('click', async (ev) => {
+        if (!ev.target.closest('[data-bk-run]')) return;
+        const q = (s) => pn.el.querySelector(s); const memo = q('[data-bk-memo]').value.trim();
+        const plan = bulkReclassPlan(sel, { from: q('[data-bk-from]').value, to: q('[data-bk-to]').value, partner: q('[data-bk-partner]').value, dateMode: q('[data-bk-datemode][value="fixed"]').checked ? 'fixed' : 'keep', fixedDate: q('[data-bk-date]').value, lockedThrough: S.data.settings.lockedThrough || '', today: kstToday() });
+        if (plan.errors.length) { pn.msg(msgHtml('danger', plan.errors[0])); return; }
+        if (!plan.items.length) { pn.msg(msgHtml('danger', '바꿀 수 있는 전표가 없습니다(' + (plan.skipped[0] ? plan.skipped[0].reason : '') + ').')); return; }
+        const shifted = plan.items.filter((i) => i.shifted).length;
+        const ok = await confirmDialog({ title: '일괄 재분류', body: plan.items.length + '건을 ' + accountName(q('[data-bk-from]').value) + ' → ' + accountName(q('[data-bk-to]').value) + '(으)로 바꿉니다. 전표마다 역분개 전표와 새 전표가 만들어집니다.' + (plan.skipped.length ? ' 제외 ' + plan.skipped.length + '건.' : '') + (shifted ? ' 마감일 때문에 일자가 조정되는 전표 ' + shifted + '건.' : ''), confirmLabel: '실행' }); if (!ok.ok) return;
+        const run = q('[data-bk-run]'); run.disabled = true; const prog = q('[data-bk-progress]'); const done = [], failed = [];
+        for (let k = 0; k < plan.items.length; k++) { const it = plan.items[k]; prog.textContent = (k + 1) + '/' + plan.items.length + ' 처리 중… ' + it.entry.no; try { const res = await reclassifyEntry(it.entry.id, it.date, memo, it.lines); done.push(it.entry.id); } catch (er) { failed.push(it.entry.no + ': ' + er.message); } }
+        done.forEach((d) => S.sel.delete(d)); await reload(); paint(); run.disabled = false; prog.textContent = '';
+        toast('일괄 재분류 ' + done.length + '건 완료' + (failed.length ? ', 실패 ' + failed.length + '건' : ''));
+        pn.msg(msgHtml(failed.length ? 'danger' : 'info', '성공 ' + done.length + '건' + (failed.length ? ' · 실패 ' + failed.length + '건 — ' + failed.slice(0, 3).join(' / ') : '') + (plan.skipped.length ? ' · 제외 ' + plan.skipped.length + '건' : '')));
+      });
+    }
     else if (act === 'assign-all') {
       const ids = S.filter.review ? filterEntries(S.data.entries, S.filter).map((e) => e.id) : []; if (!ids.length) return;
       const pn = openPanel('담당자 지정 — ' + ids.length + '건', '<div class="jh-field"><label class="jh-field__label">담당자 이름</label><input class="jh-input" data-asg-name maxlength="30" placeholder="예: 김민서"><span class="jh-field__hint">지금 거른 확인 필요 전표 ' + ids.length + '건에 같은 담당자를 지정합니다. 빈 칸으로 저장하면 해제됩니다.</span></div><div class="jh-finance__bar"><button type="button" class="jh-btn" data-variant="primary" data-asg-save>저장</button></div>', []);
@@ -283,6 +308,7 @@ export async function mount(root, route, ctx) {
     if (t.matches('[data-merch]')) { const [issuer, key] = t.getAttribute('data-merch').split('|'); S.imp.userRules[issuer + '|' + key] = { issuer, key, account: t.value, label: '화면에서 선택', memo: '' }; await buildPreview(); paint(); return; }
     if (t.matches('[data-x="total"],[data-x="vat"],[data-open]')) { const n = Number(String(t.value).replace(/[,\s원]/g, '')); if (t.value.trim() !== '' && Number.isFinite(n)) t.value = n.toLocaleString('ko-KR'); }   // 금액 칸은 천 단위 쉼표
     if (t.matches('[data-x]')) { expPreview(); return; }
+    if (t.matches('[data-sel]')) { const sid = t.getAttribute('data-sel'); if (t.checked) S.sel.add(sid); else S.sel.delete(sid); paint(); return; }
     if (t.matches('[data-f]') && t.type === 'date') { const k = t.getAttribute('data-f'); dateApply(t, () => { S.filter[k] = t.value; S.limit = 100; }); return; }
     if (t.matches('[data-f]')) { const k = t.getAttribute('data-f'); S.filter[k] = t.type === 'checkbox' ? t.checked : t.value; S.limit = 100; paint(); if (k === 'q') { const q = body.querySelector('[data-f="q"]'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } } return; }
     if (t.matches('[data-rep]')) { const k = t.getAttribute('data-rep'); dateApply(t, () => { S.rep[k] = t.value; }); return; }

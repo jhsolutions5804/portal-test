@@ -85,3 +85,7 @@
   .jh-finance__tabs, .jh-finance__bar, .jh-alert { display: none; }
 }
 .jh-financerow { padding: var(--sp-2) 0; border-top: var(--u-1) solid var(--c-line); overflow-wrap: anywhere; }
+
+/* 전표 목록 선택 칸(일괄 재분류) */
+.jh-fin-table td.jh-fin-sel, .jh-fin-table th.jh-fin-sel { width: 2.6rem; text-align: center; }
+.jh-fin-sel input[type=checkbox] { inline-size: 1.1rem; block-size: 1.1rem; cursor: pointer; }

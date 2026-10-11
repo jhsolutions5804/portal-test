@@ -1,9 +1,9 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011b';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011b';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011b';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011b';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011b';
-import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011b';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011c';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011c';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011c';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011c';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011c';
+import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011c';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -178,6 +178,31 @@ export function applyMerchantTable(sheetsRows, existing) {
   return { rules: mergeRules(existing, incoming.map((r) => ({ issuer: r.issuer, key: r.key, account: r.account, label: r.label, memo: r.memo })), merchantRuleKey), incoming: incoming.length, filled, added, changed, same, unknown: [...new Set(unknown)] };
 }
 /* ───────── 재분류(계정 바꾸기) ───────── */
+/** 재분류 새 전표의 기본 일자 — 원 전표 일자(마감일 이후일 때), 마감일 이전이면 마감일 다음 날. 날짜가 없으면 오늘 */
+export function reclassDefaultDate(entry, lockedThrough, today) {
+  const nextOk = lockedThrough ? new Date(Date.parse(lockedThrough + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10) : '';
+  const d = entry && /^\d{4}-\d{2}-\d{2}$/.test(entry.date || '') ? entry.date : (today || '');
+  return nextOk && d < nextOk ? nextOk : d;
+}
+/** 일괄 재분류 계획 — 고른 전표들에서 from 계정 줄을 to 계정(·거래처)으로 바꾼 새 줄과 일자를 전표마다 만든다.
+ *  opts: { from, to, partner, dateMode: 'keep'|'fixed', fixedDate, lockedThrough, today } — 바꿀 수 없는 전표는 skipped 에 이유와 함께 담는다 */
+export function bulkReclassPlan(entries, opts) {
+  const o = opts || {}; const items = [], skipped = [];
+  if (!o.from || !o.to) return { items, skipped, errors: ['바꿀 계정과 새 계정을 모두 골라 주세요.'] };
+  if (o.from === o.to && !String(o.partner || '').trim()) return { items, skipped, errors: ['계정이 같으면 거래처를 입력해야 바뀝니다.'] };
+  if (o.dateMode === 'fixed' && !/^\d{4}-\d{2}-\d{2}$/.test(o.fixedDate || '')) return { items, skipped, errors: ['새 전표 일자를 입력해 주세요.'] };
+  (entries || []).forEach((e) => {
+    if (e.reversedBy) { skipped.push({ no: e.no, reason: '이미 역분개된 전표' }); return; }
+    if (e.reverses) { skipped.push({ no: e.no, reason: '역분개 전표' }); return; }
+    const changes = {}, partners = {}; e.lines.forEach((l, i) => { if (l.account === o.from) { changes[i] = o.to; if (String(o.partner || '').trim()) partners[i] = String(o.partner).trim(); } });
+    if (!Object.keys(changes).length) { skipped.push({ no: e.no, reason: o.from + ' 계정 줄이 없음' }); return; }
+    const r = reclassLines(e, changes, partners);
+    if (!r.ok) { skipped.push({ no: e.no, reason: r.errors[0] }); return; }
+    const date = o.dateMode === 'fixed' ? o.fixedDate : reclassDefaultDate(e, o.lockedThrough, o.today);
+    items.push({ entry: e, lines: r.lines, date, shifted: o.dateMode !== 'fixed' && date !== e.date });
+  });
+  return { items, skipped, errors: [] };
+}
 /** 원 전표 줄들에서 계정(·거래처)만 바꾼 새 줄 — changes: { 줄 번호: 새 계정 코드 }, partners: { 줄 번호: 새 거래처 }(고른 줄만).
  *  계정을 바꾸는데 거래처를 따로 정하지 않았고 옛 거래처가 '분류 대기: …' 표시이면 그 표시는 지운다(분류가 끝났으므로) */
 export function reclassLines(entry, changes, partners) {
