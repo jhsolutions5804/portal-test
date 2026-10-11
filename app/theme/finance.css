@@ -118,3 +118,7 @@
 .jh-np__item { max-inline-size: 20rem; overflow-wrap: anywhere; }
 .jh-np__off td { color: var(--c-ink-3); }
 .jh-np__tbl .jh-select { min-inline-size: 9.5rem; }
+
+/* 월간 수지 */
+.jh-mp__amt { text-align: right; inline-size: 8.5rem; max-inline-size: 100%; }
+.jh-mp__amt[data-over] { border-color: var(--c-warn); }

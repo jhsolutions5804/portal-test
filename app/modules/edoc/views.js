@@ -1,12 +1,12 @@
-import { esc, escMultiline, money } from '../../core/ui.js?v=20261011n';
+import { esc, escMultiline, money } from '../../core/ui.js?v=20261011o';
 import {
   TYPE_LABEL, TYPE_GROUPS, STATUS_LABEL, STATUS_GROUPS, tabDefs, tabCounts, filterDocs, summaryOf,
   myTurn, canProxy, currentStepIndex, stepState, fmtDate, fmtDateTime, fmtYmd, isPassive, tabsOf, docTitle,
   PAGE_SIZES, normalizeSize, paginate, pageNumbers, pageOfIndex, legacyCurrentStep, availableActions
-} from './logic.js?v=20261011n';
-import { actionbarHtml } from './compose-view.js?v=20261011n';
-import { FORMS } from './forms.js?v=20261011n';
-import { fmtSize as fmtFileSize } from './attach-logic.js?v=20261011n';
+} from './logic.js?v=20261011o';
+import { actionbarHtml } from './compose-view.js?v=20261011o';
+import { FORMS } from './forms.js?v=20261011o';
+import { fmtSize as fmtFileSize } from './attach-logic.js?v=20261011o';
 
 export function badgeHtml(status) {
   return '<span class="jh-badge" data-status="' + esc(status) + '">' + esc(STATUS_LABEL[status] || status || '-') + '</span>';

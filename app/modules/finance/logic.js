@@ -1,9 +1,9 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011n';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011n';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011n';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011n';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011n';
-import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011n';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011o';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011o';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011o';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011o';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011o';
+import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011o';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -209,6 +209,60 @@ export function ledgerCsv(kind, data) {
   else if (kind === 'bk') { L.push(['월', '통장 마지막 거래일', '통장 잔액', '장부 보통예금(1020)', '차이(장부-통장)']); data.months.slice().reverse().forEach((m) => L.push([m.month, m.date, m.bankBal, m.ledgerBal, m.diff])); }
   else { L.push(['거래처', '차변 합계', '대변 합계', '잔액', '건수', '마지막 거래일']); data.rows.forEach((r) => L.push([r.partner, r.debit, r.credit, r.balance, r.n, r.last])); L.push(['합계', data.debit, data.credit, data.balance, '', '']); }
   return '\uFEFF' + L.map((r) => r.map(q).join(',')).join('\r\n');
+}
+/* ───────── 월간 수지: 매달 나갈 돈(고정지출 항목)과 받을 돈(이엔지 용역비)을 한 화면에 — 엑셀 '월 손익계산서'(갑지) 대체 ───────── */
+export const MP_GROUPS = ['급여', '외주·구매', '임대·관리', '구독·보험', '할부·대출', '4대보험', '카드대금', '기타'];
+const mpIt = (id, name, group, amount, day, method, match, note, from) => ({ id, name, group, amount, day, method, match, note: note || '', active: true, from: from || '', to: '' });
+/** 엑셀(26-10 손익계산서)의 항목으로 만든 첫 목록 — 금액은 엑셀에 있던 값, 변동 항목은 0(이번 달 금액을 직접 입력) */
+export const MP_SEED = [
+  mpIt('s01', '급여 — 윤석원', '급여', 3055256, 0, '계좌이체', '윤석원&급여|윤석원&직원앞'), mpIt('s02', '급여 — 정다애', '급여', 2382224, 0, '계좌이체', '정다애&급여|정다애&직원앞'), mpIt('s03', '급여 — 이한영', '급여', 2643830, 0, '계좌이체', '이한영&급여|이한영&직원앞'), mpIt('s04', '급여 — 김영서', '급여', 2384844, 0, '계좌이체', '김영서&급여|김영서&직원앞'), mpIt('s05', '급여 — 형일우', '급여', 2384844, 0, '계좌이체', '형일우&급여|형일우&직원앞'),
+  mpIt('s06', '외주 용역비 — 에스제이(서민우)', '외주·구매', 0, 0, '계좌이체', '에스제이|서민우', '변동 — 이번 달 지급 예정액을 입력'), mpIt('s07', '거상 구매비', '외주·구매', 0, 0, '계좌이체', '거상', '변동'), mpIt('s08', '넘버원 구매비', '외주·구매', 0, 0, '계좌이체', '넘버원', '변동'),
+  mpIt('s09', '창고 임대 B111 (이순옥)', '임대·관리', 220000, 0, '계좌이체', '이순옥'), mpIt('s10', '창고 임대 B110 (이연주)', '임대·관리', 200000, 0, '계좌이체', '이연주'), mpIt('s11', '창고 관리비', '임대·관리', 158940, 0, '계좌이체', '관리비', '변동 — 임대료와 같이 이체되는 달은 임대 항목에 합쳐짐'),
+  mpIt('s12', '마이크로소프트 365', '구독·보험', 199650, 5, '자동이체 (기업)', '마이크로소프트|삼정데이타', '삼정데이타서비스 경유 결제'), mpIt('s13', '노란우산', '구독·보험', 0, 6, '자동이체 (신한)', '노란우산', '월 납입액을 입력(엑셀: 현재 누적 60만원)'),
+  mpIt('s14', '현대캐피탈 (1313)', '할부·대출', 559130, 25, '자동이체 (기업)', '현대캐피탈'), mpIt('s15', '하나캐피탈 (3695)', '할부·대출', 1623950, 5, '자동이체 (기업)', '하나캐피탈', '3월부터 적용', '2026-03'), mpIt('s16', '농협 대출', '할부·대출', 250000, 28, '자동이체 (농협)', '농협대출|농협 대출'), mpIt('s17', '기업은행 대출 이자', '할부·대출', 0, 21, '자동이체 (기업)', '대출이자|대출 이자|진흥기금', '이자 변동'), mpIt('s18', '김민서 대출', '할부·대출', 1324559, 0, '계좌이체', '김민서'),
+  mpIt('s19', '건강보험', '4대보험', 0, 0, '계좌이체', '건강보험', '변동'), mpIt('s20', '국민연금', '4대보험', 0, 0, '계좌이체', '국민연금', '변동'), mpIt('s21', '고용·산재보험', '4대보험', 0, 0, '계좌이체', '고용|산재|근로복지', '변동'),
+  mpIt('s22', '삼성카드', '카드대금', 0, 1, '자동이체 (기업)', '삼성카드', '변동'), mpIt('s23', '농협카드', '카드대금', 0, 1, '자동이체 (농협)', '농협카드', '변동'), mpIt('s24', '현대카드', '카드대금', 0, 12, '자동이체 (기업)', '현대카드', '1일~31일 사용분, 변동'), mpIt('s25', '기업카드', '카드대금', 0, 23, '자동이체 (기업)', '기업카드|IBK카드|BC카드|비씨카드', '명세서 4일, 변동')
+];
+/** 항목의 찾는 말: '|' 은 또는, '&' 는 그리고(공백 무시) — 예) '윤석원&급여|김영서' */
+export function mpMatch(spec, hay) {
+  const h = String(hay || '').replace(/\s+/g, ''); const alts = String(spec || '').split('|').map((a) => a.split('&').map((t) => t.replace(/\s+/g, '')).filter(Boolean)).filter((a) => a.length);
+  return alts.length > 0 && alts.some((a) => a.every((t) => h.includes(t)));
+}
+const mpBank = (e) => { let o = 0, has = false; (e.lines || []).forEach((l) => { if (l.account === '1020') { has = true; o += (l.side === 'C' ? 1 : -1) * (Number(l.amount) || 0); } }); return has ? o : 0; };
+/** 한 달의 월간 수지 — plan = { items, overrides }, ym = 'YYYY-MM' */
+export function monthlyView(entries, plan, ym, today) {
+  const t = today || kstToday(); const cur = t.slice(0, 7); const P = plan || { items: [], overrides: {} }; const ov = (P.overrides && P.overrides[ym]) || {}; const ovi = ov.items || {};
+  const es = (entries || []).filter((e) => !e.invalid && e.lines && String(e.date).slice(0, 7) === ym);
+  const items = (P.items || []).filter((x) => x.active !== false && (!x.from || ym >= x.from) && (!x.to || ym <= x.to));
+  const paid = {}; const hits = {}; const others = new Map(); let unmatchedTotal = 0; let salesIn = 0; const sales = []; let salesSupply = 0, salesTax = 0;
+  es.forEach((e) => {
+    const k = e.source && e.source.kind;
+    if (k === 'taxinv_sales') { let supply = 0, tax = 0, partner = ''; e.lines.forEach((l) => { const sg = (l.side === 'D' ? 1 : -1) * (Number(l.amount) || 0); if (l.account === '4010') { supply += -sg; partner = partner || l.partner || ''; } else if (l.account === '2040') tax += -sg; }); sales.push({ date: e.date, no: e.no, partner, memo: e.memo, supply, tax, total: supply + tax }); salesSupply += supply; salesTax += tax; }
+    let d1020 = 0, c1100 = 0; e.lines.forEach((l) => { if (l.account === '1020' && l.side === 'D') d1020 += Number(l.amount) || 0; if (l.account === '1100' && l.side === 'C') c1100 += Number(l.amount) || 0; }); if (d1020 > 0 && c1100 > 0) salesIn += Math.min(d1020, c1100);
+    const net = mpBank(e); if (net <= 0 || (d1020 > 0 && c1100 > 0)) return;
+    const hay = String(e.memo || '') + ' ' + e.lines.map((l) => l.partner || '').join(' ');
+    const it = items.find((x) => mpMatch(x.match || x.name, hay));
+    if (it) { paid[it.id] = (paid[it.id] || 0) + net; (hits[it.id] = hits[it.id] || []).push({ date: e.date, no: e.no, memo: e.memo, amount: net }); }
+    else { const pl = e.lines.find((l) => l.account !== '1020' && l.partner); const key = (pl && pl.partner) || String(e.memo || '').split('·')[0].trim() || '(이름 없음)'; const g = others.get(key) || { name: key, n: 0, total: 0, rows: [] }; g.n++; g.total += net; g.rows.push({ date: e.date, no: e.no, memo: e.memo, amount: net }); others.set(key, g); unmatchedTotal += net; }
+  });
+  const rows = items.map((x) => {
+    const o = ovi[x.id] || {}; const skip = o.skip === true; const base = Number(x.amount) || 0; const exp = skip ? 0 : (o.amount !== undefined ? Number(o.amount) : base); const got = paid[x.id] || 0;
+    const dueDay = Number(x.day) || 0; const due = dueDay ? ym + '-' + String(Math.min(dueDay, 28)).padStart(2, '0') : '';
+    let state; if (skip) state = 'skip'; else if (got > 0 && exp > 0) state = Math.abs(got - exp) <= Math.max(1000, exp * 0.01) ? 'ok' : 'diff'; else if (got > 0) state = 'paid'; else if (exp === 0) state = 'noamt'; else if (ym < cur) state = 'missing'; else if (ym === cur && due && t >= due) state = 'late'; else state = 'plan';
+    return { item: x, group: x.group, exp, base, override: o.amount !== undefined, skip, paid: got, state, due, hits: hits[x.id] || [], note: o.note || '' };
+  });
+  const groups = MP_GROUPS.map((g) => { const rs = rows.filter((r) => r.group === g); return { group: g, rows: rs, exp: rs.reduce((s, r) => s + r.exp, 0), paid: rs.reduce((s, r) => s + r.paid, 0) }; }).filter((g) => g.rows.length);
+  const expTotal = rows.reduce((s, r) => s + r.exp, 0); const paidMatched = rows.reduce((s, r) => s + r.paid, 0); const expEff = rows.reduce((s, r) => s + (r.skip ? 0 : Math.max(r.exp, r.paid)), 0); const revPlan = ov.rev !== undefined ? ov.rev : salesSupply + salesTax;
+  return { ym, sales, salesSupply, salesTax, salesTotal: salesSupply + salesTax, salesIn, revPlan, revOverride: ov.rev !== undefined, groups, rows, expTotal, expEff, expAll: expEff + unmatchedTotal, paidMatched, others: [...others.values()].sort((a, b) => b.total - a.total), unmatchedTotal, paidAll: paidMatched + unmatchedTotal, balance: revPlan - (expEff + unmatchedTotal), planBalance: revPlan - expTotal, actualBalance: salesIn - (paidMatched + unmatchedTotal) };
+}
+/** 월간 수지 엑셀(CSV) */
+export function monthlyCsv(v) {
+  const q = (x) => '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"'; const L = [['월간 수지', v.ym], [], ['[받을 돈 — 매출 세금계산서]'], ['작성일', '거래처', '내용', '공급가액', '부가세', '합계']];
+  v.sales.forEach((s) => L.push([s.date, s.partner, s.memo, s.supply, s.tax, s.total])); L.push(['입금 예정(합계)', '', '', '', '', v.revPlan], ['실제 입금(통장)', '', '', '', '', v.salesIn], [], ['[나갈 돈 — 고정지출]'], ['구분', '내용', '결제일', '방법', '예정 금액', '지급(장부)', '상태', '비고']);
+  const ST = { ok: '지급 완료', diff: '금액 다름', paid: '지급됨', skip: '이번 달 없음', noamt: '금액 미정', missing: '장부에 없음', late: '결제일 지남', plan: '예정' };
+  v.groups.forEach((g) => g.rows.forEach((r) => L.push([g.group, r.item.name, r.due || (r.item.day ? r.item.day + '일' : ''), r.item.method, r.exp, r.paid, ST[r.state], r.item.note || r.note])));
+  L.push(['', '고정지출 예정 합계', '', '', v.expTotal, v.paidMatched], ['', '등록 안 된 지출(장부)', '', '', '', v.unmatchedTotal], ['', '예상 총지출(예정 또는 이미 지급 + 등록 안 된 지출)', '', '', v.expAll], [], ['', '차액(입금 예정 − 예상 총지출)', '', '', v.balance]);
+  return '\uFEFF' + L.map((x) => x.map(q).join(',')).join('\r\n');
 }
 /* ───────── 네이버페이 영수증(통합 카드영수증·주문 상세) 여러 장 → 전표 초안: 읽은 값으로 중복·취소·포인트 결제를 걸러내고 업무/개인 분류를 사람이 확인해 저장 ───────── */
 const NP_PERS = /비타민|크레아틴|체지방|헤어|보스턴|햇반|비비고|포카리|현미밥|쌀|톡|홀더|생선|식이|프로틴|단백질|팔찌|치약|매트리스|토퍼|양말|운동|덤벨|샴푸|화장|올리브|사이다|쉐이빙|니베아|영양제|오메가|유산균/;

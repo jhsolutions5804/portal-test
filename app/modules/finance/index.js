@@ -1,21 +1,21 @@
-import { esc, toast } from '../../core/ui.js?v=20261011n';
-import { confirmDialog } from '../../core/dialog.js?v=20261011n';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261011n';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261011n';
-import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011n';
-import { parseBankSheets } from '../../shared/bank-import.js?v=20261011n';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261011n';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261011n';
-import { npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261011n';
-import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261011n';
-import { tabsHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261011n';
+import { esc, toast } from '../../core/ui.js?v=20261011o';
+import { confirmDialog } from '../../core/dialog.js?v=20261011o';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261011o';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261011o';
+import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011o';
+import { parseBankSheets } from '../../shared/bank-import.js?v=20261011o';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261011o';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261011o';
+import { monthlyView, monthlyCsv, MP_SEED, npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261011o';
+import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, saveMonthlyPlan, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261011o';
+import { tabsHtml, monthlyHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261011o';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
 export const manifest = {
   id: 'finance', order: 25, title: '재무회계', icon: '📒', defaultHash: '#/finance/home',
   perm: (me) => !!me && !me.isGuest && (me.admin === true || me.dept === '재무회계팀' || !!(me.perms && me.perms.finance === true))
 };
-const S = { data: null, filter: { from: '', to: '', source: '', review: false, reviewed: false, assignee: '', q: '' }, limit: 100, imp: { kind: 'taxsales', busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }, rep: { kind: 'is', from: '', to: '', acct: '2010', pacct: '2010', q: '', zero: false, vatKey: '', vatForm: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_vatform_v1') || '{}') || {}; } catch (e) { return {}; } })() }, openDate: '2026-01-01', admin: false, rl: null, chk: null, chkDate: '', openEditId: '', sel: new Set(), fc: { over: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_fc_v1') || '{}') || {}; } catch (e) { return {}; } })(), scen: 'base' } };
+const S = { data: null, filter: { from: '', to: '', source: '', review: false, reviewed: false, assignee: '', q: '' }, limit: 100, imp: { kind: 'taxsales', busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }, rep: { kind: 'is', from: '', to: '', acct: '2010', pacct: '2010', q: '', zero: false, vatKey: '', vatForm: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_vatform_v1') || '{}') || {}; } catch (e) { return {}; } })() }, openDate: '2026-01-01', admin: false, rl: null, chk: null, chkDate: '', openEditId: '', sel: new Set(), mp: { ym: kstToday().slice(0, 7), manage: false, draft: null, view: null }, fc: { over: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_fc_v1') || '{}') || {}; } catch (e) { return {}; } })(), scen: 'base' } };
 const existingIds = () => new Set(S.data.entries.map((e) => e.id));
 const lastDate = () => S.data.entries.reduce((m, e) => (e.date > m ? e.date : m), '');
 function stmNow() {
@@ -41,15 +41,16 @@ const msgHtml = (tone, t) => '<div class="jh-alert" data-tone="' + tone + '" rol
 function RC_RESET() { if (S.rc) S.rc.current = null; }
 export async function mount(root, route, ctx) {
   const me = (ctx && ctx.me) || {}; S.admin = me.admin === true;
-  const tab = ['home', 'entries', 'expense', 'import', 'reports', 'forecast', 'gap', 'rules', 'opening', 'settings'].includes(route.segs[0]) ? route.segs[0] : 'home';
+  const tab = ['home', 'entries', 'expense', 'import', 'reports', 'monthly', 'forecast', 'gap', 'rules', 'opening', 'settings'].includes(route.segs[0]) ? route.segs[0] : 'home';
   root.onclick = null; root.onchange = null; root.oninput = null; root.ondragover = null; root.ondragleave = null; root.ondrop = null; if (root.__finFocusOut) { root.removeEventListener('focusout', root.__finFocusOut); root.__finFocusOut = null; } root.onkeydown = null;
   root.innerHTML = '<div class="jh-finance">' + tabsHtml(tab) + '<div id="fin-body" class="jh-finance__body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
   const body = root.querySelector('#fin-body');
   const paint = () => {
     S.data.entries.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.seq || 0) - (b.seq || 0)));
     const sum = summarize(S.data.entries); const stm = stmNow(); const st = Object.assign({}, S, S.data, { projects: S.projects || [], sum, stm, list: filterEntries(S.data.entries, S.filter) });
+    if (tab === 'monthly') { S.data.plan = S.data.plan || { items: [], overrides: {} }; S.mp.view = monthlyView(S.data.entries, S.data.plan, S.mp.ym); st.mp = S.mp; st.plan = S.data.plan; }
     if (tab === 'forecast') { const base = forecastBase(S.data.entries); const as = forecastAssume(base, S.fc.over); const runs = {}; as.scen.forEach((sc) => { runs[sc.key] = forecastRun(base, as.A, sc); }); st.fc = S.fc; st.fcm = { base, A: as.A, auto: as.auto, scen: as.scen, runs }; S.fcm = st.fcm; }
-    body.innerHTML = tab === 'home' ? homeHtml(st) : tab === 'entries' ? entriesHtml(st) : tab === 'expense' ? expenseHtml(st) : tab === 'import' ? importHtml(st) : tab === 'reports' ? reportsHtml(st) : tab === 'forecast' ? forecastHtml(st) : tab === 'opening' ? openingHtml(st) : tab === 'gap' ? gapHtml(st) : tab === 'rules' ? rulesHtml(st) : settingsHtml(st);
+    body.innerHTML = tab === 'home' ? homeHtml(st) : tab === 'entries' ? entriesHtml(st) : tab === 'expense' ? expenseHtml(st) : tab === 'import' ? importHtml(st) : tab === 'reports' ? reportsHtml(st) : tab === 'monthly' ? monthlyHtml(st) : tab === 'forecast' ? forecastHtml(st) : tab === 'opening' ? openingHtml(st) : tab === 'gap' ? gapHtml(st) : tab === 'rules' ? rulesHtml(st) : settingsHtml(st);
     body.removeAttribute('aria-busy');
   };
   /* 날짜 입력: 한 글자·한 칸마다 화면을 다시 그리면 입력이 끊기므로, 올바른 날짜가 된 뒤 잠깐 멈추거나(0.7초) 칸을 나갈 때 한 번만 적용 */
@@ -73,6 +74,14 @@ export async function mount(root, route, ctx) {
     else if (k === 'payroll') { S.imp.preview = previewPayroll(raw.payroll, have, S.data.entries); }
     else if (k === 'json') { const have2 = have; const fresh = raw.entries.filter((e) => { const id = entryDocId(e); return !(id && have2.has(id)); }); S.imp.preview = { entries: raw.entries, errors: raw.errors, fresh, dupCount: raw.entries.length - fresh.length }; }
   }
+  /* ───── 월간 수지: 고정지출 항목·월별 조정 저장(서버 함수 경유, 순서대로) ───── */
+  let mpChain = Promise.resolve();
+  const mpPlan = () => { S.data.plan = S.data.plan || { items: [], overrides: {} }; S.data.plan.overrides = S.data.plan.overrides || {}; return S.data.plan; };
+  const mpSave = () => { const plan = JSON.parse(JSON.stringify(mpPlan())); mpChain = mpChain.then(() => saveMonthlyPlan(plan)).then(() => toast('월간 수지를 저장했습니다.'), (e) => toast((e && e.message) || '저장하지 못했습니다.')); return mpChain; };
+  const mpOv = (ym) => { const p = mpPlan(); p.overrides[ym] = p.overrides[ym] || {}; p.overrides[ym].items = p.overrides[ym].items || {}; return p.overrides[ym]; };
+  const mpClean = (ym) => { const p = mpPlan(); const o = p.overrides[ym]; if (!o) return; Object.keys(o.items || {}).forEach((id) => { const e = o.items[id]; if (!e || (e.amount === undefined && !e.skip && !e.note)) delete o.items[id]; }); if (o.items && !Object.keys(o.items).length) delete o.items; if (o.rev === undefined && !o.items) delete p.overrides[ym]; };
+  const mpNum = (v) => { const n = Number(String(v).replace(/[,\s원]/g, '')); return Number.isFinite(n) && n >= 0 ? Math.round(n) : null; };
+  const mpDraftRead = () => { const d = S.mp.draft; if (!d) return null; body.querySelectorAll('[data-mpf]').forEach((i) => { d[i.getAttribute('data-mpf')] = i.value; }); return d; };
   /* ───── 네이버페이 영수증 여러 장 읽기(서버가 한 장씩 읽어 값만 돌려줌 — 동시에 3장) ───── */
   const NPAY_MAX = 200;
   function npayRebuild() { const n = S.imp.npay; if (!n) return; const plan = npayPlan(n.items, S.data.entries); S.imp.preview = { npay: true, plan, fresh: plan.entries, dupCount: plan.counts.dup + plan.counts.dupfile, warnings: [] }; S.imp.raw = { fileName: '네이버페이 영수증 ' + n.items.length + '장' }; }
@@ -236,6 +245,10 @@ export async function mount(root, route, ctx) {
   /* ───── 이벤트(위임) ───── */
   root.onclick = async (ev) => {
     const t = ev.target;
+    const mpn = t.closest('[data-mp-nav]'); if (mpn) { const k = Number(mpn.getAttribute('data-mp-nav')); if (k === 0) S.mp.ym = kstToday().slice(0, 7); else { const [y, m] = S.mp.ym.split('-').map(Number); const d = new Date(Date.UTC(y, m - 1 + k, 1)); S.mp.ym = d.toISOString().slice(0, 7); } paint(); return; }
+    const mpe = t.closest('[data-mp-edit]'); if (mpe) { const it = mpPlan().items.find((x) => x.id === mpe.getAttribute('data-mp-edit')); if (it) { S.mp.manage = true; S.mp.draft = Object.assign({ isNew: false }, it); paint(); } return; }
+    const mpd = t.closest('[data-mp-del]'); if (mpd) { const p = mpPlan(); const it = p.items.find((x) => x.id === mpd.getAttribute('data-mp-del')); if (!it) return; const ok = await confirmDialog({ title: '고정지출 항목 삭제', body: '"' + it.name + '" 항목을 목록에서 지웁니다. 장부 전표에는 영향이 없습니다.', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return; p.items = p.items.filter((x) => x.id !== it.id); Object.keys(p.overrides).forEach((ym) => { if (p.overrides[ym].items) delete p.overrides[ym].items[it.id]; mpClean(ym); }); await mpSave(); paint(); return; }
+    const mpa = t.closest('[data-mp-addfrom]'); if (mpa) { S.mp.manage = true; S.mp.draft = { isNew: true, id: '', name: mpa.getAttribute('data-mp-addfrom'), group: '기타', amount: Number(mpa.getAttribute('data-mp-amount')) || 0, day: 0, method: '', match: mpa.getAttribute('data-mp-addfrom'), note: '', active: true, from: '', to: '' }; paint(); return; }
     const npa = t.closest('[data-np-all]'); if (npa) { const n = S.imp.npay; if (n) { const v = npa.getAttribute('data-np-all'); n.items.forEach((it) => { if (it.status === 'ok' && (!it.choice || it.choice === 'ask')) it.choice = v; }); npayRebuild(); paint(); } return; }
     const vfa = t.closest('[data-vf-apply]'); if (vfa) { const pk = vatPick(S.data.entries, S.rep.vatKey).key; S.rep.vatForm = Object.assign({}, S.rep.vatForm); S.rep.vatForm[pk] = Object.assign({}, S.rep.vatForm[pk], { f14a: Number(vfa.getAttribute('data-vf-amt')) || 0, f14t: Number(vfa.getAttribute('data-vf-tax')) || 0 }); try { localStorage.setItem('jh_fin_vatform_v1', JSON.stringify(S.rep.vatForm)); } catch (e) { /* 무시 */ } paint(); return; }
     const fcr = t.closest('[data-fc-reset]'); if (fcr) { delete S.fc.over[fcr.getAttribute('data-fc-reset')]; try { localStorage.setItem('jh_fin_fc_v1', JSON.stringify(S.fc.over)); } catch (e) { /* 무시 */ } paint(); return; }
@@ -300,6 +313,17 @@ export async function mount(root, route, ctx) {
     }
     else if (act === 'commit') await commit();
     else if (act === 'np-retry') await npayRetry();
+    else if (act === 'mp-manage') { S.mp.manage = !S.mp.manage; S.mp.draft = null; paint(); }
+    else if (act === 'mp-add') { S.mp.draft = { isNew: true, id: '', name: '', group: '기타', amount: 0, day: 0, method: '', match: '', note: '', active: true, from: '', to: '' }; paint(); }
+    else if (act === 'mp-cancel') { S.mp.draft = null; paint(); }
+    else if (act === 'mp-seed') { const p = mpPlan(); if (p.items.length) return; p.items = JSON.parse(JSON.stringify(MP_SEED)); await mpSave(); paint(); }
+    else if (act === 'mp-save-item') {
+      const d = mpDraftRead(); if (!d || !String(d.name || '').trim()) { toast('내용(이름)을 입력해 주세요.'); return; } const p = mpPlan(); const amt = mpNum(d.amount); const day = Number(String(d.day || 0).replace(/\D/g, '')) || 0; if (amt === null) { toast('금액이 올바르지 않습니다.'); return; } if (day < 0 || day > 31) { toast('결제일은 1~31 사이로 입력해 주세요.'); return; }
+      const ymOk = (v) => !v || /^\d{4}-(0[1-9]|1[0-2])$/.test(String(v).trim()); if (!ymOk(d.from) || !ymOk(d.to)) { toast('시작·끝 월은 YYYY-MM 형식으로 입력해 주세요.'); return; }
+      const item = { id: d.id || ('m' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5)), name: String(d.name).trim(), group: d.group, amount: amt, day, method: String(d.method || '').trim(), match: String(d.match || '').trim(), note: String(d.note || '').trim(), active: d.active !== false, from: String(d.from || '').trim(), to: String(d.to || '').trim() };
+      const i = p.items.findIndex((x) => x.id === item.id); if (i >= 0) p.items[i] = item; else p.items.push(item); S.mp.draft = null; await mpSave(); paint();
+    }
+    else if (act === 'mp-csv') { const v = S.mp.view; if (v) download('월간수지_' + v.ym + '.csv', monthlyCsv(v)); }
     else if (act === 'csv' && S.rep.kind === 'vat') { const P = vatPick(S.data.entries, S.rep.vatKey); { const vr = vatReport(S.data.entries, P.from, P.to, 0); download('부가세신고서_' + P.from + '_' + P.to + '.csv', vatCsv(vr, vatForm(vr, (S.rep.vatForm && S.rep.vatForm[P.key]) || {}))); } }
     else if (act === 'csv' && S.rep.kind === 'bk') { download('통장대사_월별.csv', ledgerCsv('bk', bankReconcile(S.data.entries))); }
     else if (act === 'csv' && (S.rep.kind === 'gl' || S.rep.kind === 'pt')) { const gl = S.rep.kind === 'gl'; const data = gl ? accountLedger(S.data.entries, S.rep.acct, S.rep.from, S.rep.to, S.rep.q) : partnerBalances(S.data.entries, S.rep.pacct, S.rep.to, S.rep.zero); download((gl ? '계정별원장_' + data.account + '_' + (S.rep.from || '처음') + '_' + S.rep.to : '거래처별잔액_' + data.account + '_' + S.rep.to) + '.csv', ledgerCsv(S.rep.kind, data)); }
@@ -354,6 +378,11 @@ export async function mount(root, route, ctx) {
       else { const [sk, f] = t.getAttribute('data-fc-scn').split('.'); const n = num(t.value); if (n !== null && n > 0) { S.fc.over.scn = S.fc.over.scn || {}; S.fc.over.scn[sk] = Object.assign({}, S.fc.over.scn[sk], { [f]: n }); } }
       saveFc(); setTimeout(() => { const ae = document.activeElement; const key = ae && ae.getAttribute ? (ae.getAttribute('data-fc') || ae.getAttribute('data-fc-pct') || ae.getAttribute('data-fc-scn')) : ''; paint(); if (key) { const nn = body.querySelector('[data-fc="' + key + '"],[data-fc-pct="' + key + '"],[data-fc-scn="' + key + '"]'); if (nn) nn.focus(); } }, 0); return;
     }
+    if (t.matches('[data-mp-ym]')) { if (/^\d{4}-\d{2}$/.test(t.value)) { S.mp.ym = t.value; paint(); } return; }
+    if (t.matches('[data-mp-amt]')) { const id = t.getAttribute('data-mp-amt'); const it = mpPlan().items.find((x) => x.id === id); const n = t.value.trim() === '' ? null : mpNum(t.value); const o = mpOv(S.mp.ym); o.items[id] = o.items[id] || {}; if (n === null || (it && n === Number(it.amount))) delete o.items[id].amount; else o.items[id].amount = n; mpClean(S.mp.ym); mpSave(); paint(); return; }
+    if (t.matches('[data-mp-skip]')) { const id = t.getAttribute('data-mp-skip'); const o = mpOv(S.mp.ym); o.items[id] = o.items[id] || {}; if (t.checked) o.items[id].skip = true; else delete o.items[id].skip; mpClean(S.mp.ym); mpSave(); paint(); return; }
+    if (t.matches('[data-mp-rev]')) { const n = t.value.trim() === '' ? null : mpNum(t.value); const p = mpPlan(); p.overrides[S.mp.ym] = p.overrides[S.mp.ym] || {}; if (n === null) delete p.overrides[S.mp.ym].rev; else p.overrides[S.mp.ym].rev = n; mpClean(S.mp.ym); mpSave(); paint(); return; }
+    if (t.matches('[data-mpf]')) { mpDraftRead(); return; }
     if (t.matches('[data-np]')) { const n = S.imp.npay; const it = n && n.items.find((x) => x.idx === Number(t.getAttribute('data-np'))); if (it) { it.choice = t.value; it.touched = true; npayRebuild(); paint(); } return; }
     if (t.matches('[data-vat]')) { S.rep.vatKey = t.value; paint(); return; }
     if (t.matches('[data-vf]')) {
