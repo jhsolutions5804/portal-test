@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261012a';
-import { isOffDay } from '../../shared/holidays.js?v=20261012a';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261012a';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents } from './logic.js?v=20261012a';
+import { esc } from '../../core/ui.js?v=20261012b';
+import { isOffDay } from '../../shared/holidays.js?v=20261012b';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261012b';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta } from './logic.js?v=20261012b';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -95,4 +95,38 @@ export function changeHtml(st) {
   const list = ev.length ? '<div class="jh-hr__scroll"><table class="jh-hr-table"><thead><tr><th>일자</th><th>이름</th><th>구분</th><th>내용</th></tr></thead><tbody>' + ev.map((e) => '<tr><td>' + esc(e.date || '-') + '</td><td><strong>' + esc(e.name) + '</strong></td><td>' + chip(KIND_LABEL[e.kind] || '변동', 'accent') + '</td><td>' + esc(e.text) + (e.reason ? '<div class="jh-field__hint">' + esc(e.reason) + '</div>' : '') + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="jh-empty">변동 이력이 없습니다.</div>';
   const filt = '<div class="jh-hr__pad"><div class="jh-hr__bar"><select class="jh-select" data-c-type style="max-width:11rem">' + [['all', '전체 유형'], ['rank', '직급'], ['dept', '소속'], ['salary', '연봉']].map(([k, l]) => '<option value="' + k + '"' + (st.chType === k ? ' selected' : '') + '>' + l + '</option>').join('') + '</select><label class="jh-field__hint"><input type="checkbox" data-c-only' + (st.chOnlySel ? ' checked' : '') + '> 선택한 근로자만</label><span class="jh-field__hint">직급·소속: 변경 이력 · 연봉: 저장된 연봉계약서 기준</span></div></div>';
   return card('변동 처리', '<div class="jh-hr__pad">' + picker + cur + form + '</div>') + card('변동 현황', filt + list);
+}
+
+/** 공고 관리 */
+const jtone = (s) => (s === 'open' ? 'accent' : s === 'draft' ? 'warn' : 'muted');
+export function postingsHtml(st) {
+  if (st.jf) return jobFormHtml(st);
+  const pages = '<div class="jh-hr__bar">' + JOB_PAGES.map((p) => '<button type="button" class="jh-btn" data-variant="secondary" data-j-page="' + esc(p.file) + '" title="' + esc(p.desc) + '">' + esc(p.icon + ' ' + p.name) + ' ↗</button>').join('') + '</div>';
+  const list = jobOrder(st.jobs).map((j) => '<div class="jh-hr__post"><div class="jh-hr__bar">' + chip(JOB_STATUS[j.status] || JOB_STATUS.draft, jtone(j.status)) + (j.team ? ' ' + chip(j.team, 'accent') : '') + '</div><div><strong>' + esc(j.title || '') + '</strong></div><div class="jh-field__hint">' + esc(jobMeta(j) || '—') + '</div><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="secondary" data-j-page="recruit.html:' + esc(j.id) + '">지원 페이지 ↗</button><button type="button" class="jh-btn" data-variant="ghost" data-j-edit="' + esc(j.id) + '">수정</button><button type="button" class="jh-btn" data-variant="ghost" data-j-toggle="' + esc(j.id) + '">' + (j.status === 'open' ? '마감 처리' : '게시') + '</button><button type="button" class="jh-btn" data-variant="ghost" data-j-del="' + esc(j.id) + '">삭제</button></div></div>').join('');
+  return card('공고 관리', '<div class="jh-hr__pad"><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-j-new>＋ 공고 등록</button></div><div class="jh-field__hint">홈페이지 채용 페이지 바로가기(새 창)</div>' + pages + (list || '<div class="jh-empty">등록된 공고가 없습니다. 위의 "＋ 공고 등록"으로 첫 공고를 만들어 보세요.</div>') + '</div>');
+}
+export function jobFormHtml(st) {
+  const { f, o, id } = st.jf; const hint = ' <span class="jh-field__hint">(한 줄에 한 항목)</span>';
+  const t = (k, label, ph) => '<div class="jh-field"><label class="jh-field__label">' + label + '</label><input class="jh-input" data-j-f="' + k + '" value="' + esc(f[k]) + '" placeholder="' + esc(ph || '') + '"></div>';
+  const a = (k, label, rows) => '<div class="jh-field"><label class="jh-field__label">' + label + '</label><textarea class="jh-textarea" data-j-f="' + k + '" rows="' + rows + '">' + esc(f[k]) + '</textarea></div>';
+  const chips = (g, list, isOn, multi) => '<div class="jh-hr__bar">' + list.map((x) => { const val = Array.isArray(x) ? x[0] : x, lab = Array.isArray(x) ? x[1] : x; return '<button type="button" class="jh-chip" data-j-chip="' + g + ':' + esc(val) + '" data-multi="' + (multi ? 1 : 0) + '" data-tone="' + (isOn(val) ? 'accent' : 'muted') + '" aria-pressed="' + isOn(val) + '" style="cursor:pointer">' + esc(lab) + '</button>'; }).join('') + '</div>';
+  const note = (k, val) => '<input class="jh-input" data-j-o="' + k + '" value="' + esc(val || '') + '" placeholder="추가 안내(선택) — 홈페이지에 덧붙여 표시">';
+  const sel = (k, opts, val, empty) => '<select class="jh-select" data-j-o="' + k + '" style="max-width:12rem"><option value="">' + esc(empty) + '</option>' + opts.map((x) => '<option value="' + esc(x[0]) + '"' + (String(val) === x[0] ? ' selected' : '') + '>' + esc(x[1]) + '</option>').join('') + '</select>';
+  const ck = (k, label, on) => '<label class="jh-field__hint"><input type="checkbox" data-j-oc="' + k + '"' + (on ? ' checked' : '') + '> ' + esc(label) + '</label>';
+  const num = (k, ph, val) => '<input class="jh-input" type="number" min="0" max="40" data-j-o="' + k + '" value="' + esc(val || '') + '" placeholder="' + ph + '" style="max-width:6rem">';
+  const pv = (k) => '<div class="jh-alert" data-tone="info" id="jp-pv-' + k + '" role="status"></div>';
+  const c = jobCompose(o); const yrs = ['경력', '신입·경력'].includes(o.careerType);
+  const body = '<div class="jh-hr__pad"><div class="jh-field__hint">사람인 공고 양식과 같은 순서입니다. 새 공고에는 기본 문구가 채워져 있으니 필요한 부분만 고쳐 쓰세요. 비워 둔 항목은 홈페이지에 표시되지 않습니다.</div>'
+    + '<h4 class="jh-hr__sub">기본 정보</h4>' + t('title', '모집 제목 *', '예) 공조설비 납품 PJT 팀원을 모집합니다') + t('team', '모집 분야 (태그)', '예) 공조설비 납품 PJT 팀원')
+    + '<h4 class="jh-hr__sub">지원 조건</h4><div class="jh-field"><label class="jh-field__label">경력</label>' + chips('career', JOB_OPT.career, (x) => o.careerType === x, false) + (yrs ? '<div class="jh-hr__bar">경력 연차 ' + num('careerMin', '최소', o.careerMin) + ' ~ ' + num('careerMax', '최대', o.careerMax) + ' 년 <span class="jh-field__hint">(한쪽만 입력하면 ‘N년 이상/이하’)</span></div>' : '') + note('careerNote', o.careerNote) + pv('career') + '</div>'
+    + '<div class="jh-field"><label class="jh-field__label">학력</label>' + chips('edu', JOB_OPT.edu, (x) => o.eduLevel === x, false) + '<div class="jh-hr__bar">' + (o.eduLevel !== '학력무관' ? ck('eduAbove', '이상', o.eduAbove) : '') + ck('eduGrad', '졸업 예정자 가능', o.eduGrad) + '</div>' + note('eduNote', o.eduNote) + pv('education') + '</div>'
+    + '<div class="jh-field"><label class="jh-field__label">고용 형태 (복수 선택 가능)</label>' + chips('emp', JOB_OPT.emp, (x) => (o.emp || []).includes(x), true) + '<div class="jh-hr__bar">' + ((o.emp || []).includes('정규직') ? '정규직 수습 기간 ' + sel('probation', JOB_OPT.probation.map((x) => [x, x + '개월']), o.probation, '수습 없음') : '') + ((o.emp || []).includes('계약직') ? '계약직 기간 ' + sel('contractMonths', JOB_OPT.contract.map((x) => [x, x + '개월']), o.contractMonths, '기간 미정') + ck('convert', '정규직 전환 가능', o.convert) : '') + '</div>' + note('empNote', o.empNote) + pv('empType') + '</div>'
+    + '<h4 class="jh-hr__sub">근무 조건</h4>' + t('salary', '급여', '예) 면접 후 결정 / 연 3,600만원') + t('location', '근무지', '근무지 주소')
+    + '<div class="jh-field"><label class="jh-field__label">근무 일시</label><div class="jh-hr__bar">' + sel('days', JOB_OPT.days.map((x) => [x, x]), o.days, '근무 요일 선택') + '<input class="jh-input" type="time" data-j-o="start" value="' + esc(o.start) + '" style="max-width:9rem"> ~ <input class="jh-input" type="time" data-j-o="end" value="' + esc(o.end) + '" style="max-width:9rem">' + ck('timeNeg', '시간 협의 가능', o.timeNeg) + '</div>' + note('workNote', o.workNote) + pv('workTime') + '</div>'
+    + '<h4 class="jh-hr__sub">상세 요강</h4>' + a('duties', '주요 업무' + hint, 4) + a('requirements', '자격 요건' + hint, 7) + a('preferred', '우대 사항' + hint, 3) + a('benefits', '이 공고만의 복지·혜택' + hint + ' <span class="jh-field__hint">— 공통 복지는 채용 소개 페이지에 게시되어 있어 비워 두셔도 됩니다</span>', 2)
+    + '<h4 class="jh-hr__sub">채용 절차</h4>' + t('process', '전형 절차', '예) 서류전형 → 면접 → 최종합격') + t('documents', '제출 서류', '예) 홈페이지 지원서') + a('notes', '유의 사항' + hint, 3)
+    + '<h4 class="jh-hr__sub">접수 기간 · 상태</h4><div class="jh-hr__grid"><div class="jh-field"><label class="jh-field__label">접수 시작일 (비우면 즉시)</label><input class="jh-input" type="date" data-j-f="startDate" value="' + esc(f.startDate) + '"></div><div class="jh-field"><label class="jh-field__label">접수 마감일 (비우면 상시 모집)</label><input class="jh-input" type="date" data-j-f="deadline" value="' + esc(f.deadline) + '"></div></div>'
+    + '<div class="jh-field"><label class="jh-field__label">상태</label><select class="jh-select" data-j-f="status">' + Object.keys(JOB_STATUS).map((k) => '<option value="' + k + '"' + (f.status === k ? ' selected' : '') + '>' + JOB_STATUS[k] + (k === 'open' ? ' (홈페이지에 표시)' : k === 'draft' ? ' (홈페이지에 숨김)' : ' (홈페이지에서 내림)') + '</option>').join('') + '</select></div>'
+    + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-j-act="save">저장</button><button type="button" class="jh-btn" data-variant="ghost" data-j-act="cancel">취소</button></div></div>';
+  return card(id ? '공고 수정' : '공고 등록', body);
 }
