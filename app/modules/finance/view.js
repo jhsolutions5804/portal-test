@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261011a';
-import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList } from './logic.js?v=20261011a';
-import { CHOICES } from '../../shared/merchant-table.js?v=20261011a';
+import { esc } from '../../core/ui.js?v=20261011b';
+import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList } from './logic.js?v=20261011b';
+import { CHOICES } from '../../shared/merchant-table.js?v=20261011b';
 
 /* 재무회계 화면 조각 — 모든 값은 esc() 로 감싸 HTML 로 만든다. 스타일은 theme/finance.css 와 공용 클래스를 쓴다 */
 const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['gap', '이엔지 정산'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];

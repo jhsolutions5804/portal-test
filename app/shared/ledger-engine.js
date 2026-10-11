@@ -7,7 +7,7 @@ export const ACCOUNTS = [
   { code: '1010', name: '현금', type: 'asset', normal: 'D' }, { code: '1020', name: '보통예금(사업용계좌)', type: 'asset', normal: 'D' },
   { code: '1100', name: '외상매출금', type: 'asset', normal: 'D' }, { code: '1110', name: '미수금', type: 'asset', normal: 'D' }, { code: '1120', name: '선급금', type: 'asset', normal: 'D' },
   { code: '1130', name: '부가세대급금', type: 'asset', normal: 'D' }, { code: '1140', name: '선급비용', type: 'asset', normal: 'D' }, { code: '1200', name: '재고자산(미사용 자재)', type: 'asset', normal: 'D' },
-  { code: '1500', name: '차량운반구', type: 'asset', normal: 'D' }, { code: '1510', name: '비품', type: 'asset', normal: 'D' }, { code: '1590', name: '감가상각누계액', type: 'asset', normal: 'C' },
+  { code: '1500', name: '차량운반구', type: 'asset', normal: 'D' }, { code: '1510', name: '비품', type: 'asset', normal: 'D' }, { code: '1590', name: '감가상각누계액', type: 'asset', normal: 'C' }, { code: '1610', name: '임차보증금', type: 'asset', normal: 'D' },
   { code: '2010', name: '외상매입금', type: 'liab', normal: 'C' }, { code: '2020', name: '미지급금', type: 'liab', normal: 'C' }, { code: '2021', name: '미지급금(대표자 개인카드)', type: 'liab', normal: 'C' },
   { code: '2030', name: '예수금', type: 'liab', normal: 'C' }, { code: '2040', name: '부가세예수금', type: 'liab', normal: 'C' }, { code: '2050', name: '선수금', type: 'liab', normal: 'C' }, { code: '2070', name: '미지급비용(이자)', type: 'liab', normal: 'C' }, { code: '2210', name: '차량할부금', type: 'liab', normal: 'C' },
   { code: '2100', name: '단기차입금', type: 'liab', normal: 'C' }, { code: '2200', name: '장기차입금', type: 'liab', normal: 'C' },
@@ -166,7 +166,7 @@ export function vehicleDepreciationYtd(year, months) { const s = VEHICLE.schedul
 /** 현금흐름표(간접법) — 기간 from~to. 개시(기초) 전표는 "기초 잔액"으로 보고 흐름에서 뺀다.
  *  모든 비현금 재무상태표 계정의 증감을 현금 영향으로 바꿔 영업·투자·재무로 나눈다: 기초 현금 + 영업 + 투자 + 재무 = 기말 현금(= 재무상태표 현금). 대표자 인출금(3020)과 대표자 개인카드 미지급금(2021)은 합쳐 "대표자 인출·정산(순)" 으로 재무활동에 둔다 */
 const CF_OP = [['1100', '외상매출금 증감'], ['1110', '미수금 증감'], ['1120', '선급금 증감'], ['1130', '부가세대급금 증감'], ['1140', '선급비용 증감'], ['1200', '재고자산 증감'], ['2010', '외상매입금 증감'], ['2020', '미지급금 증감'], ['2030', '예수금 증감'], ['2040', '부가세예수금 증감'], ['2050', '선수금 증감'], ['2070', '미지급비용 증감']];
-const CF_INV = [['1500', '차량운반구 취득(−)·처분'], ['1510', '비품 취득(−)·처분']];
+const CF_INV = [['1500', '차량운반구 취득(−)·처분'], ['1510', '비품 취득(−)·처분'], ['1610', '임차보증금 증감(보증금 지급 −·반환)']];
 const CF_FIN = [['2100', '단기차입금 증감'], ['2200', '장기차입금 증감'], ['2210', '차량할부금 증감(상환은 −)'], ['3010', '자본금 증감']];
 export function cashFlowStatement(entries, from, to) {
   const all = (entries || []).filter((e) => !e.invalid && (!to || e.date <= to)); const isOpen = (e) => e.source && e.source.kind === 'opening';

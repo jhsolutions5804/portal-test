@@ -1,9 +1,9 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011a';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011a';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011a';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011a';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011a';
-import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011a';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011b';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011b';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011b';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011b';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011b';
+import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011b';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -39,7 +39,7 @@ export function statementCsv(st, kind) {
 
 /* ───────── 개시(기초) 재산 목록 ───────── */
 export const OPENING_FIELDS = [
-  { code: '1020', label: '보통예금(사업용 통장 잔액)', side: 'A' }, { code: '1010', label: '현금', side: 'A' }, { code: '1100', label: '받을 돈(외상매출금)', side: 'A' }, { code: '1110', label: '미수금', side: 'A' }, { code: '1120', label: '선급금', side: 'A' }, { code: '1200', label: '재고자산(남은 자재)', side: 'A' }, { code: '1500', label: '차량운반구(취득가)', side: 'A' }, { code: '1510', label: '비품(취득가)', side: 'A' }, { code: '1590', label: '감가상각누계액(차감)', side: 'A' },
+  { code: '1020', label: '보통예금(사업용 통장 잔액)', side: 'A' }, { code: '1010', label: '현금', side: 'A' }, { code: '1100', label: '받을 돈(외상매출금)', side: 'A' }, { code: '1110', label: '미수금', side: 'A' }, { code: '1120', label: '선급금', side: 'A' }, { code: '1200', label: '재고자산(남은 자재)', side: 'A' }, { code: '1500', label: '차량운반구(취득가)', side: 'A' }, { code: '1510', label: '비품(취득가)', side: 'A' }, { code: '1590', label: '감가상각누계액(차감)', side: 'A' }, { code: '1610', label: '임차보증금(창고·사무실 보증금)', side: 'A' },
   { code: '2010', label: '갚을 돈(외상매입금)', side: 'L' }, { code: '2020', label: '미지급금(급여·카드사 등)', side: 'L' }, { code: '2021', label: '미지급금(대표자 개인카드)', side: 'L' }, { code: '2030', label: '예수금(4대보험·원천세)', side: 'L' }, { code: '2050', label: '선수금', side: 'L' }, { code: '2100', label: '단기차입금', side: 'L' }, { code: '2200', label: '장기차입금', side: 'L' }, { code: '2210', label: '차량할부금', side: 'L' }
 ];
 /** 입력값({코드: 금액}) → 개시 전표(자본금은 차액). 숫자가 아닌 입력은 오류로 알린다 */
