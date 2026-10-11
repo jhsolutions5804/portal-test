@@ -106,3 +106,9 @@
 .jh-fc__dot { display: inline-block; inline-size: 0.9rem; block-size: 0; border-top: 3px solid; border-radius: 2px; vertical-align: middle; }
 .jh-fc__dot.jh-fc__line--low { border-color: var(--c-danger); } .jh-fc__dot.jh-fc__line--base { border-color: var(--c-primary); } .jh-fc__dot.jh-fc__line--high { border-color: var(--c-success); } .jh-fc__dot.jh-fc__min { border-color: var(--c-warn); border-top-style: dashed; }
 .jh-fc__tbl td:first-child, .jh-fc__tbl th:first-child { position: sticky; inset-inline-start: 0; background: var(--c-surface); min-inline-size: 13rem; z-index: 1; }
+
+/* 부가세 신고서 양식 */
+.jh-vat__tbl td.jh-vat__no { inline-size: 3rem; text-align: center; color: var(--c-ink-2); white-space: nowrap; }
+.jh-vat__tbl .jh-vat__grp td { background: var(--c-bg); border-block: 1px solid var(--c-line); }
+.jh-vat__dim { color: var(--c-ink-3); }
+.jh-vat__in { text-align: right; inline-size: 9.5rem; max-inline-size: 100%; }

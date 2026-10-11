@@ -1,9 +1,9 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011l';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011l';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011l';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011l';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011l';
-import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011l';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011m';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011m';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011m';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011m';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011m';
+import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011m';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -245,12 +245,58 @@ export function vatReport(entries, from, to, deny) {
   const paid = pay.reduce((s, x) => s + x.amount, 0); const rows = (m) => [...m.values()].sort((a, b) => b.supply - a.supply);
   return { from, to, sales: { supply: sales.supply, tax: sales.tax, n: sales.n, rows: rows(sales.rows) }, pur: { general: pur.general, fixed: pur.fixed, exempt: pur.exempt, rows: rows(pur.rows) }, cand, monthly: [...monthly.values()].sort((a, b) => (a.month < b.month ? -1 : 1)), pay, off, paid, summary: { outputTax, inputTax, deny: denyV, deductible, payable, supply: sales.supply } };
 }
-/** 신고 보조표 엑셀(CSV): 신고서 요약 + 매출처별 + 매입처별 */
-export function vatCsv(r) {
+/** 신용카드 지출 참고 — 업무 비용 계정으로 쓴 카드 전표의 합계와 10/110 추정 세액(공제 가능 여부는 업종·증빙에 따라 달라 자동 공제하지 않음) */
+export function vatCardRef(entries, from, to) {
+  const skip = new Set(['6040', '6020', '5350', '6070', '6110', '6080', '6010', '5110', '3020']); let n = 0, total = 0;
+  (entries || []).filter((e) => !e.invalid && e.date >= from && e.date <= to && e.source && e.source.kind === 'card').forEach((e) => { let hit = 0; e.lines.forEach((l) => { const a = String(l.account); if (l.side === 'D' && (a[0] === '5' || a[0] === '6') && !skip.has(a)) hit += Number(l.amount) || 0; }); if (hit > 0) { n++; total += hit; } });
+  const tax = Math.round(total * 10 / 110); return { n, total, tax, supply: total - tax };
+}
+/** 일반과세자 부가가치세 확정신고서 양식(①~㉗)으로 채운 표 — 세금계산서 전표로 자동 채우는 칸과 직접 입력 칸(I)을 합쳐 합계를 서식의 계산식대로 계산 */
+export function vatForm(v, I) {
+  const g = (k) => Number((I && I[k]) || 0) || 0; const s = v.sales, p = v.pur; const R = [];
+  const add = (o) => { R.push(Object.assign({ amt: 0, tax: 0 }, o)); return R[R.length - 1]; };
+  const G1 = '과세표준 및 매출세액', G2 = '매입세액', G3 = '납부(환급)세액·경감·공제·가산세';
+  const r1 = add({ grp: G1, sub: '과세 · 세금계산서 발급분', no: '①', amt: s.supply, tax: s.tax, rate: '10/100', auto: true });
+  const r2 = add({ sub: '과세 · 매입자발행 세금계산서', no: '②', amtKey: 'f2a', taxKey: 'f2t', amt: g('f2a'), tax: g('f2t'), rate: '10/100' });
+  const r3 = add({ sub: '과세 · 신용카드·현금영수증 발행분', no: '③', amtKey: 'f3a', taxKey: 'f3t', amt: g('f3a'), tax: g('f3t'), rate: '10/100' });
+  const r4 = add({ sub: '과세 · 기타(정규영수증 외 매출분)', no: '④', amtKey: 'f4a', taxKey: 'f4t', amt: g('f4a'), tax: g('f4t'), rate: '10/100' });
+  const r5 = add({ sub: '영세율 · 세금계산서 발급분', no: '⑤', amtKey: 'f5a', amt: g('f5a'), rate: '0/100' });
+  const r6 = add({ sub: '영세율 · 기타', no: '⑥', amtKey: 'f6a', amt: g('f6a'), rate: '0/100' });
+  const r7 = add({ sub: '예정신고 누락분', no: '⑦', amtKey: 'f7a', taxKey: 'f7t', amt: g('f7a'), tax: g('f7t') });
+  const r8 = add({ sub: '대손세액 가감', no: '⑧', taxKey: 'f8t', tax: g('f8t') });
+  const r9 = add({ sub: '합계', no: '⑨', bold: true, amt: r1.amt + r2.amt + r3.amt + r4.amt + r5.amt + r6.amt + r7.amt, tax: r1.tax + r2.tax + r3.tax + r4.tax + r7.tax + r8.tax });
+  const r10 = add({ grp: G2, sub: '세금계산서 수취분 · 일반매입', no: '⑩', amt: p.general.supply, tax: p.general.tax, auto: true });
+  const r101 = add({ sub: '세금계산서 수취분 · 수출기업 수입분 납부유예', no: '⑩-1', amtKey: 'f101a', taxKey: 'f101t', amt: g('f101a'), tax: g('f101t') });
+  const r11 = add({ sub: '세금계산서 수취분 · 고정자산 매입', no: '⑪', amt: p.fixed.supply, tax: p.fixed.tax, auto: true });
+  const r12 = add({ sub: '예정신고 누락분', no: '⑫', amtKey: 'f12a', taxKey: 'f12t', amt: g('f12a'), tax: g('f12t') });
+  const r13 = add({ sub: '매입자발행 세금계산서', no: '⑬', amtKey: 'f13a', taxKey: 'f13t', amt: g('f13a'), tax: g('f13t') });
+  const r14 = add({ sub: '그 밖의 공제매입세액(신용카드 매입 등)', no: '⑭', amtKey: 'f14a', taxKey: 'f14t', amt: g('f14a'), tax: g('f14t') });
+  const r15 = add({ sub: '합계 (⑩+⑩-1+⑪+⑫+⑬+⑭)', no: '⑮', bold: true, amt: r10.amt + r101.amt + r11.amt + r12.amt + r13.amt + r14.amt, tax: r10.tax + r101.tax + r11.tax + r12.tax + r13.tax + r14.tax });
+  const r16 = add({ sub: '공제받지 못할 매입세액', no: '⑯', amtKey: 'f16a', taxKey: 'f16t', amt: g('f16a'), tax: g('f16t') });
+  const r17 = add({ sub: '차감계 (⑮−⑯)', no: '⑰', bold: true, amt: r15.amt - r16.amt, tax: r15.tax - r16.tax });
+  const c = r9.tax - r17.tax;
+  const rc = add({ grp: G3, sub: '납부(환급)세액 (매출세액 ㉮ − 매입세액 ㉯)', no: '㉰', bold: true, tax: c });
+  const r18 = add({ sub: '그 밖의 경감·공제세액', no: '⑱', taxKey: 'f18t', tax: g('f18t') });
+  const r19 = add({ sub: '신용카드매출전표등 발행공제 등', no: '⑲', taxKey: 'f19t', tax: g('f19t') });
+  const r20 = add({ sub: '합계 (⑱+⑲)', no: '⑳', bold: true, tax: r18.tax + r19.tax });
+  const r201 = add({ sub: '소규모 개인사업자 부가가치세 감면세액', no: '⑳-1', taxKey: 'f201t', tax: g('f201t') });
+  const r21 = add({ sub: '예정신고 미환급세액', no: '㉑', taxKey: 'f21t', tax: g('f21t') });
+  const r22 = add({ sub: '예정고지세액', no: '㉒', taxKey: 'f22t', tax: g('f22t') });
+  const r23 = add({ sub: '사업양수자가 대리납부한 세액', no: '㉓', taxKey: 'f23t', tax: g('f23t') });
+  const r24 = add({ sub: '매입자 납부특례 기납부세액', no: '㉔', taxKey: 'f24t', tax: g('f24t') });
+  const r25 = add({ sub: '신용카드업자가 대리납부한 세액', no: '㉕', taxKey: 'f25t', tax: g('f25t') });
+  const r26 = add({ sub: '가산세액계', no: '㉖', taxKey: 'f26t', tax: g('f26t') });
+  const f27 = c - r20.tax - r201.tax - r21.tax - r22.tax - r23.tax - r24.tax - r25.tax + r26.tax;
+  const r27 = add({ sub: '차가감하여 납부할 세액(환급받을 세액) (㉰−⑳−⑳-1−㉑−㉒−㉓−㉔−㉕+㉖)', no: '㉗', bold: true, tax: f27 });
+  return { rows: R, t: { outputTax: r9.tax, inputTax: r17.tax, taxBase: r9.amt, c, deduct: r20.tax, final: f27 } };
+}
+/** 신고 보조표 엑셀(CSV): 신고서 양식 + 매출처별 + 매입처별 (form 이 없으면 간추린 요약) */
+export function vatCsv(r, form) {
   const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; const L = []; const s = r.summary;
-  L.push(['부가가치세 신고 보조표(일반과세자)', r.from + ' ~ ' + r.to], [], ['구분', '건수', '공급가액', '세액']);
-  L.push(['매출 — 세금계산서 발급분', r.sales.n, r.sales.supply, r.sales.tax], ['매입 — 세금계산서 일반매입', r.pur.general.n, r.pur.general.supply, r.pur.general.tax], ['매입 — 세금계산서 고정자산 매입', r.pur.fixed.n, r.pur.fixed.supply, r.pur.fixed.tax], ['매입 — 계산서(면세) 매입', r.pur.exempt.n, r.pur.exempt.supply, 0]);
-  L.push(['매출세액', '', '', s.outputTax], ['매입세액 합계', '', '', s.inputTax], ['공제받지 못할 매입세액(입력)', '', '', s.deny], ['공제받을 매입세액', '', '', s.deductible], ['납부(환급)세액', '', '', s.payable], [], ['매출처별 세금계산서 합계표'], ['거래처', '건수', '공급가액', '세액']);
+  L.push(['부가가치세 신고 보조표(일반과세자)', r.from + ' ~ ' + r.to], []);
+  if (form) { L.push(['번호', '항목', '금액', '세액']); form.rows.forEach((x) => L.push([x.no, x.sub, x.amt || '', x.tax || ''])); }
+  else { L.push(['구분', '건수', '공급가액', '세액']); L.push(['매출 — 세금계산서 발급분', r.sales.n, r.sales.supply, r.sales.tax], ['매입 — 세금계산서 일반매입', r.pur.general.n, r.pur.general.supply, r.pur.general.tax], ['매입 — 세금계산서 고정자산 매입', r.pur.fixed.n, r.pur.fixed.supply, r.pur.fixed.tax], ['매입 — 계산서(면세) 매입', r.pur.exempt.n, r.pur.exempt.supply, 0]); L.push(['매출세액', '', '', s.outputTax], ['매입세액 합계', '', '', s.inputTax], ['공제받지 못할 매입세액(입력)', '', '', s.deny], ['공제받을 매입세액', '', '', s.deductible], ['납부(환급)세액', '', '', s.payable]); }
+  L.push([], ['매출처별 세금계산서 합계표'], ['거래처', '건수', '공급가액', '세액']);
   r.sales.rows.forEach((x) => L.push([x.partner, x.n, x.supply, x.tax])); L.push([], ['매입처별 세금계산서 합계표'], ['거래처', '건수', '공급가액', '세액']); r.pur.rows.forEach((x) => L.push([x.partner, x.n, x.supply, x.tax]));
   return '\uFEFF' + L.map((x) => x.map(q).join(',')).join('\r\n');
 }

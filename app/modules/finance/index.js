@@ -1,21 +1,21 @@
-import { esc, toast } from '../../core/ui.js?v=20261011l';
-import { confirmDialog } from '../../core/dialog.js?v=20261011l';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261011l';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261011l';
-import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011l';
-import { parseBankSheets } from '../../shared/bank-import.js?v=20261011l';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261011l';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261011l';
-import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261011l';
-import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261011l';
-import { tabsHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261011l';
+import { esc, toast } from '../../core/ui.js?v=20261011m';
+import { confirmDialog } from '../../core/dialog.js?v=20261011m';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261011m';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261011m';
+import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011m';
+import { parseBankSheets } from '../../shared/bank-import.js?v=20261011m';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261011m';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261011m';
+import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261011m';
+import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261011m';
+import { tabsHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261011m';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
 export const manifest = {
   id: 'finance', order: 25, title: '재무회계', icon: '📒', defaultHash: '#/finance/home',
   perm: (me) => !!me && !me.isGuest && (me.admin === true || me.dept === '재무회계팀' || !!(me.perms && me.perms.finance === true))
 };
-const S = { data: null, filter: { from: '', to: '', source: '', review: false, reviewed: false, assignee: '', q: '' }, limit: 100, imp: { kind: 'taxsales', busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }, rep: { kind: 'is', from: '', to: '', acct: '2010', pacct: '2010', q: '', zero: false, vatKey: '', vatDeny: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_vatdeny_v1') || '{}') || {}; } catch (e) { return {}; } })() }, openDate: '2026-01-01', admin: false, rl: null, chk: null, chkDate: '', openEditId: '', sel: new Set(), fc: { over: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_fc_v1') || '{}') || {}; } catch (e) { return {}; } })(), scen: 'base' } };
+const S = { data: null, filter: { from: '', to: '', source: '', review: false, reviewed: false, assignee: '', q: '' }, limit: 100, imp: { kind: 'taxsales', busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }, rep: { kind: 'is', from: '', to: '', acct: '2010', pacct: '2010', q: '', zero: false, vatKey: '', vatForm: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_vatform_v1') || '{}') || {}; } catch (e) { return {}; } })() }, openDate: '2026-01-01', admin: false, rl: null, chk: null, chkDate: '', openEditId: '', sel: new Set(), fc: { over: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_fc_v1') || '{}') || {}; } catch (e) { return {}; } })(), scen: 'base' } };
 const existingIds = () => new Set(S.data.entries.map((e) => e.id));
 const lastDate = () => S.data.entries.reduce((m, e) => (e.date > m ? e.date : m), '');
 function stmNow() {
@@ -208,6 +208,7 @@ export async function mount(root, route, ctx) {
   /* ───── 이벤트(위임) ───── */
   root.onclick = async (ev) => {
     const t = ev.target;
+    const vfa = t.closest('[data-vf-apply]'); if (vfa) { const pk = vatPick(S.data.entries, S.rep.vatKey).key; S.rep.vatForm = Object.assign({}, S.rep.vatForm); S.rep.vatForm[pk] = Object.assign({}, S.rep.vatForm[pk], { f14a: Number(vfa.getAttribute('data-vf-amt')) || 0, f14t: Number(vfa.getAttribute('data-vf-tax')) || 0 }); try { localStorage.setItem('jh_fin_vatform_v1', JSON.stringify(S.rep.vatForm)); } catch (e) { /* 무시 */ } paint(); return; }
     const fcr = t.closest('[data-fc-reset]'); if (fcr) { delete S.fc.over[fcr.getAttribute('data-fc-reset')]; try { localStorage.setItem('jh_fin_fc_v1', JSON.stringify(S.fc.over)); } catch (e) { /* 무시 */ } paint(); return; }
     const fcs = t.closest('[data-fc-scen]'); if (fcs) { S.fc.scen = fcs.getAttribute('data-fc-scen'); paint(); return; }
     if (t.closest('[data-sel]')) return; const row = t.closest('[data-entry]'); if (row) { openEntry(row.getAttribute('data-entry')); return; }
@@ -222,6 +223,7 @@ export async function mount(root, route, ctx) {
     else if (act === 'more') { S.limit += 200; paint(); }
     else if (act === 'sel-all') { filterEntries(S.data.entries, S.filter).filter((e) => !e.reversedBy && !e.reverses).forEach((e) => S.sel.add(e.id)); paint(); }
     else if (act === 'sel-clear') { S.sel.clear(); paint(); }
+    else if (act === 'vat-clear') { const pk = vatPick(S.data.entries, S.rep.vatKey).key; const ok = await confirmDialog({ title: '입력값 지우기', body: '이 과세기간에 직접 입력한 신고서 칸을 모두 지웁니다.', confirmLabel: '지우기', variant: 'danger' }); if (!ok.ok) return; S.rep.vatForm = Object.assign({}, S.rep.vatForm); delete S.rep.vatForm[pk]; try { localStorage.setItem('jh_fin_vatform_v1', JSON.stringify(S.rep.vatForm)); } catch (e) { /* 무시 */ } paint(); }
     else if (act === 'fc-reset-all') { S.fc.over = {}; try { localStorage.removeItem('jh_fin_fc_v1'); } catch (e) { /* 무시 */ } paint(); }
     else if (act === 'fc-csv') { const m = S.fcm; if (m) { const sc = m.scen.find((s) => s.key === S.fc.scen) || m.scen[1]; download('예측_' + sc.name + '_' + m.runs[sc.key].labels[0] + '_' + m.runs[sc.key].labels[11] + '.csv', forecastCsv(m.runs[sc.key], sc.name)); } }
     else if (act === 'bulk-reclass') {
@@ -268,7 +270,7 @@ export async function mount(root, route, ctx) {
       try { const res = await readPayroll(m); S.imp.raw = { payroll: res, fileName: '포털 급여명세서 ' + m }; await buildPreview(); setImp({ busy: false }); } catch (e) { setImp({ busy: false, error: e.message }); }
     }
     else if (act === 'commit') await commit();
-    else if (act === 'csv' && S.rep.kind === 'vat') { const P = vatPick(S.data.entries, S.rep.vatKey); download('부가세신고_보조표_' + P.from + '_' + P.to + '.csv', vatCsv(vatReport(S.data.entries, P.from, P.to, (S.rep.vatDeny && S.rep.vatDeny[P.key]) || 0))); }
+    else if (act === 'csv' && S.rep.kind === 'vat') { const P = vatPick(S.data.entries, S.rep.vatKey); { const vr = vatReport(S.data.entries, P.from, P.to, 0); download('부가세신고서_' + P.from + '_' + P.to + '.csv', vatCsv(vr, vatForm(vr, (S.rep.vatForm && S.rep.vatForm[P.key]) || {}))); } }
     else if (act === 'csv' && S.rep.kind === 'bk') { download('통장대사_월별.csv', ledgerCsv('bk', bankReconcile(S.data.entries))); }
     else if (act === 'csv' && (S.rep.kind === 'gl' || S.rep.kind === 'pt')) { const gl = S.rep.kind === 'gl'; const data = gl ? accountLedger(S.data.entries, S.rep.acct, S.rep.from, S.rep.to, S.rep.q) : partnerBalances(S.data.entries, S.rep.pacct, S.rep.to, S.rep.zero); download((gl ? '계정별원장_' + data.account + '_' + (S.rep.from || '처음') + '_' + S.rep.to : '거래처별잔액_' + data.account + '_' + S.rep.to) + '.csv', ledgerCsv(S.rep.kind, data)); }
     else if (act === 'csv') { const st = stmNow(); const kind = S.rep.kind; download(({ is: '손익계산서', bs: '재무상태표', cf: '현금흐름표', tb: '합계잔액시산표' })[kind] + '_' + S.rep.from + '_' + S.rep.to + '.csv', statementCsv(st, kind)); }
@@ -322,7 +324,13 @@ export async function mount(root, route, ctx) {
       else { const [sk, f] = t.getAttribute('data-fc-scn').split('.'); const n = num(t.value); if (n !== null && n > 0) { S.fc.over.scn = S.fc.over.scn || {}; S.fc.over.scn[sk] = Object.assign({}, S.fc.over.scn[sk], { [f]: n }); } }
       saveFc(); setTimeout(() => { const ae = document.activeElement; const key = ae && ae.getAttribute ? (ae.getAttribute('data-fc') || ae.getAttribute('data-fc-pct') || ae.getAttribute('data-fc-scn')) : ''; paint(); if (key) { const nn = body.querySelector('[data-fc="' + key + '"],[data-fc-pct="' + key + '"],[data-fc-scn="' + key + '"]'); if (nn) nn.focus(); } }, 0); return;
     }
-    if (t.matches('[data-vat]')) { const k = t.getAttribute('data-vat'); if (k === 'period') S.rep.vatKey = t.value; else { const n = Number(String(t.value).replace(/[,\s원]/g, '')); const pk = vatPick(S.data.entries, S.rep.vatKey).key; S.rep.vatDeny = Object.assign({}, S.rep.vatDeny); if (Number.isFinite(n) && n > 0) S.rep.vatDeny[pk] = n; else delete S.rep.vatDeny[pk]; try { localStorage.setItem('jh_fin_vatdeny_v1', JSON.stringify(S.rep.vatDeny)); } catch (e) { /* 저장 실패는 무시 */ } } paint(); return; }
+    if (t.matches('[data-vat]')) { S.rep.vatKey = t.value; paint(); return; }
+    if (t.matches('[data-vf]')) {
+      const pk = vatPick(S.data.entries, S.rep.vatKey).key; const f = t.getAttribute('data-vf'); const n = Number(String(t.value).replace(/[,\s원]/g, '')); S.rep.vatForm = Object.assign({}, S.rep.vatForm); S.rep.vatForm[pk] = Object.assign({}, S.rep.vatForm[pk]);
+      if (Number.isFinite(n) && n !== 0) S.rep.vatForm[pk][f] = n; else delete S.rep.vatForm[pk][f];
+      try { localStorage.setItem('jh_fin_vatform_v1', JSON.stringify(S.rep.vatForm)); } catch (e) { /* 저장 실패는 무시 */ }
+      setTimeout(() => { const ae = document.activeElement; const key = ae && ae.getAttribute ? ae.getAttribute('data-vf') : ''; paint(); if (key) { const nn = body.querySelector('[data-vf="' + key + '"]'); if (nn) nn.focus(); } }, 0); return;
+    }
     if (t.matches('[data-gl]')) { const k = t.getAttribute('data-gl'); S.rep[k] = t.type === 'checkbox' ? t.checked : t.value; paint(); if (k === 'q') { const qq = body.querySelector('[data-gl="q"]'); if (qq) { qq.focus(); qq.setSelectionRange(qq.value.length, qq.value.length); } } return; }
     if (t.matches('[data-br]')) { S.rl.bank[Number(t.getAttribute('data-br'))].account = t.value; S.rl.dirtyB = true; paint(); return; }
     if (t.matches('[data-pr]')) { S.rl.purchase[Number(t.getAttribute('data-pr'))].account = t.value; S.rl.dirtyP = true; paint(); return; }
