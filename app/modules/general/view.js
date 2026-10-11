@@ -1,8 +1,8 @@
-import { esc } from '../../core/ui.js?v=20261011q';
-import { GTYPES, GKEYS, dday, won, leasePayState, dueList, homeSummary, leaseMonthly } from './logic.js?v=20261011q';
+import { esc } from '../../core/ui.js?v=20261011r';
+import { GTYPES, GKEYS, dday, won, leasePayState, dueList, homeSummary, leaseMonthly } from './logic.js?v=20261011r';
 
 const TABS = [['home', '개요'], ['lease', '임대'], ['vehicle', '차량'], ['asset', '자산·장비'], ['renewal', '갱신 일정']];
-export const tabsHtml = (cur) => '<div class="jh-segmented jh-gen__tabs" role="group" aria-label="총무">' + TABS.map(([k, l]) => '<a class="jh-segmented__item" href="#/general/' + k + '" aria-pressed="' + (k === cur) + '">' + esc(l) + '</a>').join('') + '</div>';
+export const tabsHtml = (cur, base) => '<div class="jh-segmented jh-gen__tabs" role="group" aria-label="총무">' + TABS.map(([k, l]) => '<a class="jh-segmented__item" href="' + esc(base || '#/general') + '/' + k + '" aria-pressed="' + (k === cur) + '">' + esc(l) + '</a>').join('') + '</div>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const alertHtml = (tone, html) => '<div class="jh-alert" data-tone="' + tone + '" role="status">' + html + '</div>';
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
@@ -12,7 +12,7 @@ const ddayText = (n) => (n === 0 ? 'D-day' : n > 0 ? 'D-' + n : 'D+' + Math.abs(
 export function homeHtml(st) {
   const data = st.data; const s = homeSummary(data); const dues = dueList(data, st.today, 90); const total = GKEYS.reduce((n, k) => n + (data[k] || []).length, 0);
   const kpi = [['임대', s.leaseN + '건', '월 ' + won(s.leaseMonthly) + '원(관리비 포함)', 'lease'], ['차량', s.vehicleN + '대', '월 ' + won(s.vehicleMonthly) + '원', 'vehicle'], ['자산·장비', s.assetN + '점', '구입가 합계 ' + won(s.assetCost) + '원', 'asset'], ['갱신 일정', s.renewalN + '건', '연 환산 ' + won(s.renewalYear) + '원', 'renewal']];
-  const k = '<div class="jh-kpi-grid">' + kpi.map(([l, v, h, key]) => '<a class="jh-kpi jh-gen__kpi" href="#/general/' + key + '"><span class="jh-kpi__label">' + esc(l) + '</span><span class="jh-kpi__value">' + esc(v) + '</span><span class="jh-kpi__hint">' + esc(h) + '</span></a>').join('') + '</div>';
+  const k = '<div class="jh-kpi-grid">' + kpi.map(([l, v, h, key]) => '<a class="jh-kpi jh-gen__kpi" href="' + esc(st.base || '#/general') + '/' + key + '"><span class="jh-kpi__label">' + esc(l) + '</span><span class="jh-kpi__value">' + esc(v) + '</span><span class="jh-kpi__hint">' + esc(h) + '</span></a>').join('') + '</div>';
   const rows = dues.map((x) => '<tr class="jh-gen__row" data-g-go="' + esc(x.type) + '" data-g-id="' + esc(x.id) + '"><td>' + chip(ddayText(x.d), x.tone === 'muted' ? 'muted' : x.tone) + '</td><td>' + esc(x.date) + '</td><td>' + esc(GTYPES[x.type].title) + '</td><td>' + esc(x.label) + '</td><td>' + esc(x.what) + '</td></tr>').join('');
   const body = dues.length ? '<div class="jh-gen__scroll"><table class="jh-gen-table jh-gen-table--click"><thead><tr><th>남은 날</th><th>일자</th><th>구분</th><th>항목</th><th>내용</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<div class="jh-empty">앞으로 90일 안에 다가오는 만기·갱신이 없습니다.</div>';
   const first = total === 0 ? alertHtml('info', '아직 입력된 항목이 없습니다. 각 탭에서 항목을 추가하거나, <strong>임대·갱신 일정</strong> 탭의 "엑셀 기준 첫 목록 넣기"로 월간 손익계산서 엑셀에 있던 항목을 한 번에 넣을 수 있습니다.') : '';

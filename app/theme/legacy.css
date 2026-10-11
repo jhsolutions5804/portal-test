@@ -20,3 +20,6 @@
 @media (max-width: 899px) { .jh-legacy__quick[data-show="true"] { display: flex; } }
 /* 자동 로그아웃 예고 창(.jh-idle): 일반 대화창 위에 한 겹 더 — 옛 모듈 화면(iframe)보다 항상 위 */
 .jh-idle { z-index: var(--z-toast); }
+
+.jh-legacy__frame[hidden], .jh-legacy__native[hidden] { display: none; }
+.jh-legacy__native { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--sp-4); }

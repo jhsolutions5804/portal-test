@@ -1,10 +1,13 @@
-import { LEGACY_BASE } from '../../core/config.js?v=20261011q';
-import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261011q';
-import { esc } from '../../core/ui.js?v=20261011q';
-import { attachActivity } from '../../core/idle.js?v=20261011q';
-import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS } from './list.js?v=20261011q';
+import { LEGACY_BASE } from '../../core/config.js?v=20261011r';
+import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261011r';
+import { esc } from '../../core/ui.js?v=20261011r';
+import { attachActivity } from '../../core/idle.js?v=20261011r';
+import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS } from './list.js?v=20261011r';
 
 const base = () => new URL(LEGACY_BASE, location.href).href;
+const NATIVE = new Map();   // '모듈id/구역' → 그 구역을 새 모듈이 그리는 함수(modules/index.js 가 hostNative 로 등록)
+export const hostNative = (defId, key, fn) => { NATIVE.set(defId + '/' + key, fn); };
+const isNativeKey = (def, key) => !!(def.sections && def.sections.some((s) => s.native && s.key === key));
 const states = new Map();   // 모듈 id → { def, wrap, frame, key, tab, me, dyn }  — 작업탭 유지: 떠나도 지우지 않고 숨긴다
 let keepRoot = null; let listening = false;
 
@@ -22,7 +25,8 @@ async function loadPjtDyn() {
 }
 function highlight(st) {
   const q = st.wrap.querySelector('.jh-legacy__quick'); if (q) q.setAttribute('data-show', String(st.key === 'home'));   // 폰 바로가기는 PJT 홈에서만
-  st.wrap.querySelectorAll('.jh-legacy__chip').forEach((a) => { if (a.getAttribute('data-key') === st.key) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  st.wrap.querySelectorAll('.jh-legacy__chip').forEach((a) => { const cur = a.hasAttribute('data-home') ? !isNativeKey(st.def, st.key) : a.getAttribute('data-key') === st.key; if (cur) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  if (st.native && st.frame) { const nat = isNativeKey(st.def, st.key); st.native.hidden = !nat; st.frame.hidden = nat; }
 }
 const stateOfSource = (src) => { for (const st of states.values()) { if (st.frame && st.frame.contentWindow === src) return st; } return null; };
 function listen() {
@@ -34,6 +38,7 @@ function listen() {
       return;
     }
     if (d.action === 'openNewTab') { window.open(buildUrl(st.def, resolveItem(st.def, d.key, st.me, st.dyn), st.me, base(), Date.now()), '_blank', 'noopener'); return; }
+    if (isNativeKey(st.def, st.key)) return;   // 총무 구역을 보는 중이면 숨은 옛 화면의 알림은 무시
     if (d.key && st.def.tabbed && d.key !== st.key && !st.wrap.hidden) {   // 옛 모듈 안에서 탭을 옮김 → 주소·강조만 맞춘다(다시 불러오지 않음). 숨겨진 화면의 알림은 무시
       st.key = d.key; highlight(st); history.replaceState(history.state, '', '#/' + st.def.id + '/' + d.key);
     } else if (d.key && st.def.tabbed && d.key !== st.key) { st.key = d.key; highlight(st); }
@@ -69,7 +74,19 @@ export async function mountLegacy(def, keep, route, ctx) {
   // 주소에 칸이 없으면(#/hr) 마지막으로 보던 칸을 그대로 이어서 보여 준다 — 사이드바·하단 메뉴로 돌아왔을 때 보던 자리
   const item = (want ? resolveItem(def, want, me, st.dyn) : null) || (!want && st.key ? resolveItem(def, st.key, me, st.dyn) : null) || resolveItem(def, firstKey(def, me, st.dyn), me, st.dyn);
   if (!item) { keep.insertAdjacentHTML('beforeend', '<div class="jh-card"><div class="jh-empty">열 수 있는 화면이 없습니다.</div></div>'); return; }
+  const nat = isNativeKey(def, item.key);
+  if (nat) {   // 새 모듈이 그리는 구역(총무) — 옛 화면 틀(칩 메뉴)은 그대로 두고 안쪽만 바꾼다. 옛 화면(iframe)은 숨겨서 살려 둔다
+    if (fresh || !st.wrap || !keep.contains(st.wrap)) {
+      const w = document.createElement('div'); w.className = 'jh-legacy'; w.setAttribute('data-legacy-mod', def.id);
+      w.innerHTML = navHtml(def, itemsFor(def, me, st.dyn), item.key, esc) + '<iframe class="jh-legacy__frame" title="' + esc(def.title) + '" data-legacy-frame="' + esc(def.id) + '" src="' + esc(buildUrl(def, resolveItem(def, 'home', me, st.dyn), me, base(), Date.now())) + '" hidden></iframe><div class="jh-legacy__native"></div>';
+      keep.appendChild(w); st.wrap = w; st.frame = w.querySelector('iframe'); st.native = w.querySelector('.jh-legacy__native');
+      st.frame.addEventListener('load', () => { try { attachActivity(st.frame.contentDocument); } catch (e) { /* 같은 출처가 아니면 센 수 없다 */ } });
+    }
+    st.key = item.key; st.tab = ''; highlight(st); const fn = NATIVE.get(def.id + '/' + item.key);
+    if (fn) await fn(st.native, { segs: (route.segs || []).slice(1), query: route.query || {} }, ctx); return;
+  }
   if (!fresh && st.wrap && keep.contains(st.wrap)) {   // 이미 열려 있는 모듈 — 보이기만 하고, 칸이 다를 때만 이동
+    if (st.native && st.frame) { st.native.hidden = true; st.frame.hidden = false; }   // 총무에서 인사로 돌아옴
     if (st.key === item.key && (st.tab || '') === tabQ) { highlight(st); canonical(st); return; }
     const was = st.key; st.key = item.key; st.tab = tabQ; highlight(st); canonical(st);
     if (!def.tabbed && was === item.key && !tabQ) return;   // 같은 화면, 탭 값만 사라진 경우는 다시 불러오지 않음
@@ -80,8 +97,8 @@ export async function mountLegacy(def, keep, route, ctx) {
   st.key = item.key; st.tab = tabQ;
   const quick = def.dynamicNav ? '<div class="jh-legacy__quick" data-show="' + (item.key === 'home') + '"><button type="button" class="jh-btn" data-variant="primary" data-pjt-pick>👷 출역·공수 체크</button><a class="jh-btn" data-variant="secondary" href="#/calendar/month">📅 일정 확인</a></div>' : '';
   const wrap = document.createElement('div'); wrap.className = 'jh-legacy'; wrap.setAttribute('data-legacy-mod', def.id);
-  wrap.innerHTML = quick + navHtml(def, itemsFor(def, me, st.dyn), item.key, esc) + '<iframe class="jh-legacy__frame" title="' + esc(def.title) + '" data-legacy-frame="' + esc(def.id) + '" src="' + esc(buildUrl(def, item, me, base(), Date.now(), tabQ)) + '"></iframe>';
-  keep.appendChild(wrap); st.wrap = wrap; st.frame = wrap.querySelector('iframe'); if (st.dyn && st.dyn.loaded) wrap.setAttribute('data-dyn', 'ready'); canonical(st);
+  wrap.innerHTML = quick + navHtml(def, itemsFor(def, me, st.dyn), item.key, esc) + '<iframe class="jh-legacy__frame" title="' + esc(def.title) + '" data-legacy-frame="' + esc(def.id) + '" src="' + esc(buildUrl(def, item, me, base(), Date.now(), tabQ)) + '"></iframe>' + (def.sections ? '<div class="jh-legacy__native" hidden></div>' : '');
+  keep.appendChild(wrap); st.wrap = wrap; st.frame = wrap.querySelector('iframe'); st.native = wrap.querySelector('.jh-legacy__native'); if (st.dyn && st.dyn.loaded) wrap.setAttribute('data-dyn', 'ready'); canonical(st);
   st.frame.addEventListener('load', () => { try { attachActivity(st.frame.contentDocument); } catch (e) { /* 같은 출처가 아니면 센 수 없다 */ } });   // 옛 화면 안에서 일하는 것도 "활동"(자동 로그아웃)
   const pick = wrap.querySelector('[data-pjt-pick]'); if (pick) pick.addEventListener('click', () => openAttendPicker(st));
 }
