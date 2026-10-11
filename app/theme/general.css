@@ -1,0 +1,21 @@
+/* 총무 모듈 */
+.jh-general { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); max-width: calc(var(--u-440) * 2.5); }
+.jh-gen__tabs { width: fit-content; max-width: 100%; overflow-x: auto; }
+.jh-gen__tabs .jh-segmented__item { text-decoration: none; display: inline-flex; align-items: center; white-space: nowrap; }
+.jh-gen__bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); }
+.jh-gen__bar .jh-gen__q { flex: 1 1 var(--u-220); max-width: var(--u-420); }
+.jh-gen__pad { padding: var(--sp-3) var(--sp-4); display: grid; gap: var(--sp-3); }
+.jh-gen__scroll { overflow-x: auto; }
+.jh-gen__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3) var(--sp-4); }
+.jh-gen__grid .jh-gen__wide { grid-column: 1 / -1; }
+.jh-gen__sub { margin: var(--sp-3) 0 0; font-size: var(--fs-md); }
+.jh-gen-table { width: 100%; min-width: var(--u-440); border-collapse: collapse; font-size: var(--fs-sm); }
+.jh-gen-table th { text-align: left; padding: var(--sp-2) var(--sp-3); border-bottom: var(--u-1) solid var(--c-line-strong); color: var(--c-ink-2); font-weight: 700; white-space: nowrap; }
+.jh-gen-table td { padding: var(--sp-2) var(--sp-3); border-top: var(--u-1) solid var(--c-line); vertical-align: middle; overflow-wrap: anywhere; }
+.jh-gen-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.jh-gen-table .jh-input, .jh-gen-table .jh-select { min-width: var(--u-120); }
+.jh-gen-table--click tbody tr { cursor: pointer; }
+.jh-gen-table--click tbody tr:hover { background: var(--c-primary-weak); }
+.jh-gen__off td { color: var(--c-ink-3); }
+.jh-gen__kpi { text-decoration: none; color: inherit; cursor: pointer; }
+@media (max-width: 720px) { .jh-gen__grid { grid-template-columns: minmax(0, 1fr); } }
