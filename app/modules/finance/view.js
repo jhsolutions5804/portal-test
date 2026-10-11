@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261011h';
-import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile } from './logic.js?v=20261011h';
-import { CHOICES } from '../../shared/merchant-table.js?v=20261011h';
+import { esc } from '../../core/ui.js?v=20261011i';
+import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile } from './logic.js?v=20261011i';
+import { CHOICES } from '../../shared/merchant-table.js?v=20261011i';
 
 /* 재무회계 화면 조각 — 모든 값은 esc() 로 감싸 HTML 로 만든다. 스타일은 theme/finance.css 와 공용 클래스를 쓴다 */
 const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['gap', '이엔지 정산'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];
@@ -83,7 +83,7 @@ export function importHtml(st) {
   const payForm = '<div class="jh-finance__pad"><div class="jh-field"><label class="jh-field__label" for="pay-month">귀속월</label><input class="jh-input" id="pay-month" type="month" data-pay-month value="' + prevM + '"><span class="jh-field__hint">급여를 받는 달이 아니라 일한 달(예: 9월 근무분)입니다. 월말 일자 전표로 만들어집니다.</span></div><div class="jh-finance__bar"><button type="button" class="jh-btn" data-variant="primary" data-act="pay-load">불러오기</button></div>' + (st.imp.busy ? '<div class="jh-skeleton" style="height:var(--u-44)"></div>' : '') + (st.imp.error ? alertHtml('danger', esc(st.imp.error)) : '') + '</div>';
   const up = k === 'payroll' ? payForm : '<div class="jh-finance__pad">' + dropHtml('imp', accept, multi, hint, 'data-file') + extra + (st.imp.busy ? '<div class="jh-skeleton" style="height:var(--u-44)"></div>' : '') + (st.imp.error ? alertHtml('danger', esc(st.imp.error)) : '') + '</div>';
   const guide = '<div class="jh-finance__pad"><ol class="jh-finance__steps">' + GUIDE[k].map((g) => '<li>' + esc(g) + '</li>').join('') + '</ol></div>';
-  return kinds + '<div class="jh-finance__split"><div class="jh-finance__col">' + card(info[2] + (k === 'payroll' ? ' 불러오기' : ' 올리기'), up) + '</div><div class="jh-finance__col">' + card('이렇게 받으세요', guide) + card('최근 가져오기', importListHtml(st.imports), '', true) + '</div></div>' + (st.imp.preview ? previewHtml(st) : '');
+  return kinds + '<div class="jh-finance__split"><div class="jh-finance__col">' + card(info[2] + (k === 'payroll' ? ' 불러오기' : ' 올리기'), up) + (st.imp.preview ? previewHtml(st) : '') + '</div><div class="jh-finance__col">' + card('이렇게 받으세요', guide) + card('최근 가져오기', importListHtml(st.imports), '', true) + '</div></div>';
 }
 function previewHtml(st) {
   const p = st.imp.preview; const k = st.imp.kind; const warn = (p.warnings || []).map((w) => alertHtml('warn', '⚠ ' + esc(w))).join('');
