@@ -1,0 +1,20 @@
+/* 인사 — 근로자 명부(새 화면) */
+.jh-hr { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); max-width: calc(var(--u-440) * 2.5); }
+#w-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); }
+.jh-hr__bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); }
+.jh-hr__bar .jh-hr__q { flex: 1 1 var(--u-220); max-width: var(--u-420); }
+.jh-hr__bar .jh-segmented { flex-wrap: wrap; max-width: 100%; }
+.jh-hr__pad { padding: var(--sp-3) var(--sp-4); display: grid; gap: var(--sp-3); }
+.jh-hr__scroll { overflow-x: auto; }
+.jh-hr__sub { margin: var(--sp-3) 0 0; font-size: var(--fs-md); }
+.jh-hr__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3) var(--sp-4); }
+.jh-hr__line { display: flex; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-2) 0; border-bottom: var(--u-1) solid var(--c-line); font-size: var(--fs-sm); align-items: center; }
+.jh-hr__label { color: var(--c-ink-2); font-weight: 600; }
+.jh-hr__hist { margin: 0; padding-left: var(--sp-4); display: grid; gap: var(--sp-2); font-size: var(--fs-sm); }
+.jh-hr-table { width: 100%; min-width: var(--u-440); border-collapse: collapse; font-size: var(--fs-sm); }
+.jh-hr-table th { text-align: left; padding: var(--sp-2) var(--sp-3); border-bottom: var(--u-1) solid var(--c-line-strong); color: var(--c-ink-2); font-weight: 700; white-space: nowrap; }
+.jh-hr-table td { padding: var(--sp-2) var(--sp-3); border-top: var(--u-1) solid var(--c-line); vertical-align: middle; }
+.jh-hr-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.jh-hr-table--click tbody tr { cursor: pointer; }
+.jh-hr-table--click tbody tr:hover { background: var(--c-primary-weak); }
+@media (max-width: 720px) { .jh-hr__grid { grid-template-columns: minmax(0, 1fr); } }

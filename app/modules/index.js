@@ -1,12 +1,13 @@
 /* 플랫폼에 꽂는 모듈 목록 — 모듈을 더하거나 빼는 일은 이 파일 한 곳만 고친다.
  * 각 항목은 { manifest, mount }. 핵심부(core/)는 모듈 폴더를 직접 알지 못하고 이 목록만 읽는다. */
-import * as edoc from './edoc/index.js?v=20261011w';
-import * as attendance from './attendance/index.js?v=20261011w';
-import * as calendar from './calendar/index.js?v=20261011w';
-import * as company from './company/index.js?v=20261011w';
-import * as finance from './finance/index.js?v=20261011w';
-import * as general from './general/index.js?v=20261011w';
-import { modules as legacy, hostNative } from './legacy/index.js?v=20261011w';
+import * as edoc from './edoc/index.js?v=20261011x';
+import * as attendance from './attendance/index.js?v=20261011x';
+import * as calendar from './calendar/index.js?v=20261011x';
+import * as company from './company/index.js?v=20261011x';
+import * as finance from './finance/index.js?v=20261011x';
+import * as general from './general/index.js?v=20261011x';
+import * as hr from './hr/index.js?v=20261011x';
+import { modules as legacy, hostNative } from './legacy/index.js?v=20261011x';
 
 export const MODULES = [
   { manifest: edoc.manifest, mount: edoc.mount },
@@ -16,3 +17,4 @@ export const MODULES = [
   { manifest: finance.manifest, mount: finance.mount }
 ].concat(legacy);   // 옛 모듈(기획·인사·PJT·내 팀 공수표)은 어댑터로 입주 — 새 모듈로 바뀌면 이 줄에서 빠지고 위 목록으로 옮긴다
 hostNative('hr', 'general', general.mountSection);   // 총무는 사이드바에 따로 두지 않고 인사총무 안의 구역으로 연다
+hostNative('hr', 'workers', hr.mountWorkers);   // 근로자 명부 새 화면 — 구포털 인사 화면을 탭 하나씩 옮기는 중(옮기는 동안 기존 화면도 그대로 쓸 수 있다)
