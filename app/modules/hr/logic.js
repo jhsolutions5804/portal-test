@@ -1,6 +1,7 @@
 /* 인사 — 근로자 명부(새 화면). 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 데이터: workers/{id}(일반 정보) + worker_private/{id}(주민번호·계좌·주소·서명, 읽을 때 합쳐 쓰고 저장할 때 다시 가른다)
  *         labor_contracts/{id}/contracts · annual_contracts/{id}/contracts(endDate), workers/{id}/history(직급·부서 변경 이력) */
+import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261011z';
 export const WP_FIELDS = ['jumin', 'bankAccount', 'address', 'signData'];   // worker_private 에 따로 두는 필드
 export const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')) && new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
@@ -100,3 +101,18 @@ export function linkCandidate(users, name) {
   if (m.length > 1) return { state: 'multi', message: '"' + name + '" 이름의 포털 계정이 ' + m.length + '개입니다. 관리자에게 문의해 주세요.' };
   return { state: 'one', user: m[0] };
 }
+
+/* ───────── 연차 현황 — 근로자 명부의 입사일 + 전자결재 연차신청서(승인·게시)로 회계연도 기준 부여·사용·잔여 ───────── */
+const LEAVE_OK = ['approved', 'posted'];
+/** 근로자 한 명의 연차 문서(승인·게시만): 포털 계정이 연동돼 있으면 작성자 계정으로, 아니면 이름으로 찾는다 */
+export function leaveDocsOf(worker, docs) {
+  return (docs || []).filter((d) => LEAVE_OK.includes(d.status) && ((worker.portalUid && d.authorUid === worker.portalUid) || (!worker.portalUid || !d.authorUid) && (d.authorName || d.name || '') === worker.name));
+}
+export function leaveRows(workers, docs, today, includeResigned) {
+  return (workers || []).filter((w) => includeResigned || !isResigned(w)).sort((a, b) => String(a.empNo || 'zzz').localeCompare(String(b.empNo || 'zzz'))).map((w) => {
+    const mine = leaveDocsOf(w, docs); const noHire = !isDate(w.hireDate); const g = noHire ? null : calcLeaveBalance(w.hireDate, mine, today);
+    return { id: w.id, name: w.name || '', empNo: w.empNo || '', dept: w.dept || '', rank: w.rank || '', hireDate: w.hireDate || '', resigned: isResigned(w), noHire, detail: noHire ? '' : g.detail, granted: noHire ? null : g.granted, used: noHire ? null : g.used, planned: noHire ? 0 : g.planned, remain: noHire ? null : g.remain, tracks: noHire ? [] : g.tracks, docs: mine };
+  });
+}
+export const leaveEntries = (docs) => (docs || []).map((d) => ({ id: d.id, status: d.status === 'posted' ? '게시' : '승인', title: d.title || d.leaveType || '-', type: d.leaveType || '', start: d.startDate || d.sdate || '', end: d.endDate || d.edate || '', days: parseFloat(d.days || d.leaveDays || 0) || 0, annual: jhLeaveIsAnnual(d.leaveType) })).sort((a, b) => (a.start < b.start ? 1 : a.start > b.start ? -1 : 0));
+export function leaveTotals(rows) { const r = (rows || []).filter((x) => !x.noHire); return { n: (rows || []).length, noHire: (rows || []).length - r.length, granted: r.reduce((s, x) => s + x.granted, 0), used: r.reduce((s, x) => s + x.used, 0), remain: r.reduce((s, x) => s + x.remain, 0) }; }
