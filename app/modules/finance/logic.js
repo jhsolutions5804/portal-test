@@ -1,9 +1,9 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011c';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011c';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011c';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011c';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011c';
-import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011c';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011d';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011d';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011d';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011d';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011d';
+import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011d';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -178,6 +178,14 @@ export function applyMerchantTable(sheetsRows, existing) {
   return { rules: mergeRules(existing, incoming.map((r) => ({ issuer: r.issuer, key: r.key, account: r.account, label: r.label, memo: r.memo })), merchantRuleKey), incoming: incoming.length, filled, added, changed, same, unknown: [...new Set(unknown)] };
 }
 /* ───────── 재분류(계정 바꾸기) ───────── */
+/** 통장 거래처 규칙 입력 검사 — key(상대방·내용에 포함된 글자) 2~40자, 방향 in/out/any, 존재하는 계정 */
+export function bankRuleFromForm(key, dir, account, partner, memo) {
+  const k = String(key || '').trim(); const errors = [];
+  if (k.length < 2) errors.push('상대방·내용 글자를 2자 이상 입력해 주세요.'); if (k.length > 40) errors.push('글자는 40자까지 입니다.');
+  if (!['in', 'out', 'any'].includes(dir)) errors.push('방향을 골라 주세요.');
+  if (!accountName(account) || accountName(account) === account) errors.push('계정을 골라 주세요.');
+  return { ok: !errors.length, errors, rule: { key: k, dir: dir || 'any', account: String(account || ''), partner: String(partner || '').trim().slice(0, 60), memo: String(memo || '').trim().slice(0, 100) } };
+}
 /** 재분류 새 전표의 기본 일자 — 원 전표 일자(마감일 이후일 때), 마감일 이전이면 마감일 다음 날. 날짜가 없으면 오늘 */
 export function reclassDefaultDate(entry, lockedThrough, today) {
   const nextOk = lockedThrough ? new Date(Date.parse(lockedThrough + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10) : '';

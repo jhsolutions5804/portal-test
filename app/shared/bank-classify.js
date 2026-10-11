@@ -1,6 +1,6 @@
 /* 통장 거래 → 분류 규칙(상대방·내용으로 계정 후보) + 전표 초안. 규칙은 "초안"이며 사람이 확인·수정하고 한 번 정하면 기억한다(설계서 §18).
  * 분류 결과: { cat, account(상대 계정), partner, status:'auto'|'review', note } — 출금은 차변=상대 계정/대변=보통예금, 입금은 차변=보통예금/대변=상대 계정 */
-import { validateEntry, solveMonthlyRate, annuitySchedule } from './ledger-engine.js?v=20261011c';
+import { validateEntry, solveMonthlyRate, annuitySchedule } from './ledger-engine.js?v=20261011d';
 const STAFF = ['정다애', '윤석원', '이한영', '김영서', '형일우'];   // 급여 지급 대상(급여명세서·급여 시트 기준) — 설정 화면에서 관리
 const rules = [
   { dir: 'in', re: /과오납/, cat: '국민연금 과오납 환급', account: '6110', status: 'review', note: '연금 보험료 환급 — 회사부담·직원부담 구분 확인(회사부담분이면 보험료 차감)' },
@@ -45,7 +45,16 @@ export function payslipMatchKeys(bankTxns, slips) {
   return keys;
 }
 export const bankTxnKey = (t) => ['bank', t.date, t.time, t.out, t.in, t.balance].join('_');
+/** 규칙 탭에서 정한 통장 거래처 규칙 — 상대방·내용에 key 가 들어 있고 방향이 맞으면 내장 규칙보다 먼저 적용(긴 key 우선) */
+export function userBankRuleFor(t, userRules) {
+  const list = (userRules || []).filter((r) => r && r.key && r.account); if (!list.length) return null;
+  const text = ((t.counterName || '') + ' ' + (t.desc || '') + ' ' + (t.memo || '')).replace(/\s+/g, '');
+  const dirNow = t.out > 0 ? 'out' : 'in';
+  return list.slice().sort((a, b) => String(b.key).length - String(a.key).length).find((r) => (!r.dir || r.dir === 'any' || r.dir === dirNow) && text.includes(String(r.key).replace(/\s+/g, ''))) || null;
+}
 export function classifyBankTxn(t, ctx) {
+  const ur = userBankRuleFor(t, ctx && ctx.userRules);
+  if (ur) return { cat: ur.memo || ('통장 거래처 규칙: ' + ur.key), account: ur.account, partner: ur.partner || t.counterName || t.desc, status: 'auto', note: '규칙 탭의 통장 거래처 규칙', split: '' };
   if (ctx && ctx.payslipMatch && t.out > 0 && /정다애|윤석원|이한영|김영서|형일우/.test((t.counterName || '') + (t.desc || ''))) { const m = ctx.payslipMatch.has(bankTxnKey(t)); return { cat: m ? '급여 지급(명세서 실지급액과 일치)' : '직원 앞 지급 — 명세서 실지급액과 다름(확인)', account: '2020', partner: t.counterName || t.desc, status: m ? 'auto' : 'review', note: m ? '' : '급여 차액·개인카드 사용 정산·기타 지급일 수 있음 — 금액이 다른 이유 확인', split: '' }; }
   if (t.out === 10020944 && t.date === '2026-02-02' && !(t.counterName || t.desc)) return { cat: '기존 기업은행 대출 상환(원금 10,000,000 + 이자 20,944)', account: '2100', partner: '기업은행', status: 'auto', note: '대표님 확인: 기존 대출을 갚고 40,000,000을 새로 받음(2/11). 2025-12-31 개시 재산 목록에 기존 차입금 10,000,000이 있어야 함', split: 'oldloan' };
   if (ctx && ctx.ownerSettle && ctx.ownerSettle.has(bankTxnKey(t))) return { cat: '개인카드 대금 정산(대표자 농협 계좌로 이체)', account: '2021', partner: '김종화(대표자)', status: 'auto', note: '농협카드 사용분(미지급금-대표자)을 갚은 것' };
