@@ -22,7 +22,7 @@ export const GTYPES = {
       { k: 'deposit', l: '보증금(원)', t: 'money' }, { k: 'rent', l: '월 임대료(원, 부가세 별도)', t: 'money' }, { k: 'vat', l: '월 부가세(원)', t: 'money' }, { k: 'fee', l: '월 관리비(원, 평균)', t: 'money' }, { k: 'payDay', l: '납부일(1~31, 모르면 비움)', t: 'int', min: 1, max: 31 },
       { k: 'start', l: '계약 시작일', t: 'date' }, { k: 'end', l: '계약 만료일', t: 'date' }, { k: 'status', l: '상태', t: 'select', o: ['사용중', '종료'], d: '사용중' }, { k: 'note', l: '비고', t: 'area' }],
     log: { k: 'payments', l: '입금 이력', cols: [{ k: 'ym', l: '귀속 월(YYYY-MM)', t: 'ym', req: true }, { k: 'date', l: '입금일', t: 'date' }, { k: 'amount', l: '금액(원)', t: 'money' }, { k: 'memo', l: '메모', t: 'text' }], newRow: (d) => ({ amount: leaseMonthlyOf(d) || '' }) },
-    cols: [['이름', (d) => d.name], ['종류', (d) => d.kind], ['월 납부액(부가세 포함)', (d) => (leaseMonthlyOf(d) ? won(leaseMonthlyOf(d)) + '원' : ''), 'num'], ['납부일', (d) => (d.payDay ? d.payDay + '일' : '')], ['계약 만료', (d) => d.end || ''], ['입금 상태', (d, today) => (leasePayState(d, today) || {}).text || '']],
+    cols: [['이름', (d) => d.name], ['종류', (d) => d.kind], ['월 납부액(부가세 포함)', (d) => (leaseMonthlyOf(d) ? won(leaseMonthlyOf(d)) + '원' : ''), 'num'], ['납부일', (d) => (d.payDay ? d.payDay + '일' : '')], ['계약 만료', (d) => d.end || '']],
     dues: (d) => [{ what: '계약 만료', date: d.end, lead: 60 }]
   },
   vehicle: {

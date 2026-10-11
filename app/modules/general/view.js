@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261011p';
-import { GTYPES, GKEYS, dday, won, leasePayState, dueList, homeSummary, leaseMonthly } from './logic.js?v=20261011p';
+import { esc } from '../../core/ui.js?v=20261011q';
+import { GTYPES, GKEYS, dday, won, leasePayState, dueList, homeSummary, leaseMonthly } from './logic.js?v=20261011q';
 
 const TABS = [['home', '개요'], ['lease', '임대'], ['vehicle', '차량'], ['asset', '자산·장비'], ['renewal', '갱신 일정']];
 export const tabsHtml = (cur) => '<div class="jh-segmented jh-gen__tabs" role="group" aria-label="총무">' + TABS.map(([k, l]) => '<a class="jh-segmented__item" href="#/general/' + k + '" aria-pressed="' + (k === cur) + '">' + esc(l) + '</a>').join('') + '</div>';
@@ -45,7 +45,7 @@ export function editHtml(st) {
 export function tableHtml(st, type) {
   const T = GTYPES[type]; const q = (st.q || '').trim().toLowerCase(); const all = st.data[type] || [];
   const list = all.filter((d) => (!st.onlyActive || T.active(d)) && (!q || JSON.stringify(d).toLowerCase().includes(q)));
-  const head = T.cols.map((c) => '<th' + (c[2] ? ' class="' + c[2] + '"' : '') + '>' + esc(c[0]) + '</th>').join('') + '<th>알림</th>';
+  const head = T.cols.map((c) => '<th' + (c[2] ? ' class="' + c[2] + '"' : '') + '>' + esc(c[0]) + '</th>').join('') + '<th>상태·알림</th>';
   const rows = list.map((d) => {
     const dues = T.dues(d).map((du) => { const n = dday(du.date, st.today); return n === null ? null : { n, what: du.what, lead: du.lead }; }).filter(Boolean).sort((a, b) => a.n - b.n)[0];
     let badge = '';

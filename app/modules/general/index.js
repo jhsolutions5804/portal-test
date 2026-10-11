@@ -1,8 +1,8 @@
-import { db, auth, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261011p';
-import { esc, toast } from '../../core/ui.js?v=20261011p';
-import { confirmDialog } from '../../core/dialog.js?v=20261011p';
-import { GTYPES, GKEYS, kstToday, formToDoc, docToForm, newDefaults, SEED } from './logic.js?v=20261011p';
-import { tabsHtml, homeHtml, listHtml, tableHtml } from './view.js?v=20261011p';
+import { db, auth, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261011q';
+import { esc, toast } from '../../core/ui.js?v=20261011q';
+import { confirmDialog } from '../../core/dialog.js?v=20261011q';
+import { GTYPES, GKEYS, kstToday, formToDoc, docToForm, newDefaults, SEED } from './logic.js?v=20261011q';
+import { tabsHtml, homeHtml, listHtml, tableHtml } from './view.js?v=20261011q';
 
 /** 총무(플랫폼 기본 모듈): 임대·차량·자산·갱신 일정을 한 곳에서. 관리자 전용 — 데이터는 general_* 컬렉션(보안 규칙에서 관리자 전용으로 잠가야 한다) */
 export const manifest = { id: 'general', order: 25, title: '총무', icon: '🗂️', defaultHash: '#/general/home', perm: (me) => !!me && me.admin === true };

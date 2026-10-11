@@ -1,12 +1,12 @@
 /* 플랫폼에 꽂는 모듈 목록 — 모듈을 더하거나 빼는 일은 이 파일 한 곳만 고친다.
  * 각 항목은 { manifest, mount }. 핵심부(core/)는 모듈 폴더를 직접 알지 못하고 이 목록만 읽는다. */
-import * as edoc from './edoc/index.js?v=20261011p';
-import * as attendance from './attendance/index.js?v=20261011p';
-import * as calendar from './calendar/index.js?v=20261011p';
-import * as company from './company/index.js?v=20261011p';
-import * as finance from './finance/index.js?v=20261011p';
-import * as general from './general/index.js?v=20261011p';
-import { modules as legacy } from './legacy/index.js?v=20261011p';
+import * as edoc from './edoc/index.js?v=20261011q';
+import * as attendance from './attendance/index.js?v=20261011q';
+import * as calendar from './calendar/index.js?v=20261011q';
+import * as company from './company/index.js?v=20261011q';
+import * as finance from './finance/index.js?v=20261011q';
+import * as general from './general/index.js?v=20261011q';
+import { modules as legacy } from './legacy/index.js?v=20261011q';
 
 export const MODULES = [
   { manifest: edoc.manifest, mount: edoc.mount },
