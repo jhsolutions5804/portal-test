@@ -92,3 +92,17 @@
 
 /* 보조 제목(통장 대사 등) */
 .jh-finance__sub { margin: var(--sp-4) 0 var(--sp-2); font-size: var(--fs-sm); font-weight: 700; color: var(--c-ink); }
+
+/* 예측 탭 */
+.jh-fc__svg { inline-size: 100%; block-size: auto; }
+.jh-fc__grid { stroke: var(--c-line); stroke-width: 1; }
+.jh-fc__ax { fill: var(--c-ink-2); font-size: 10px; }
+.jh-fc__line { fill: none; stroke-width: 2.4; stroke-linejoin: round; }
+.jh-fc__line--low { stroke: var(--c-danger); }
+.jh-fc__line--base { stroke: var(--c-primary); }
+.jh-fc__line--high { stroke: var(--c-success); }
+.jh-fc__min { stroke: var(--c-warn); stroke-width: 1.4; stroke-dasharray: 5 4; }
+.jh-fc__legend { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; font-size: var(--fs-xs); color: var(--c-ink-2); }
+.jh-fc__dot { display: inline-block; inline-size: 0.9rem; block-size: 0; border-top: 3px solid; border-radius: 2px; vertical-align: middle; }
+.jh-fc__dot.jh-fc__line--low { border-color: var(--c-danger); } .jh-fc__dot.jh-fc__line--base { border-color: var(--c-primary); } .jh-fc__dot.jh-fc__line--high { border-color: var(--c-success); } .jh-fc__dot.jh-fc__min { border-color: var(--c-warn); border-top-style: dashed; }
+.jh-fc__tbl td:first-child, .jh-fc__tbl th:first-child { position: sticky; inset-inline-start: 0; background: var(--c-surface); min-inline-size: 13rem; z-index: 1; }

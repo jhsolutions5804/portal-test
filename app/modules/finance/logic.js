@@ -1,9 +1,9 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011i';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011i';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011i';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011i';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011i';
-import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011i';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011j';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011j';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011j';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011j';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011j';
+import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011j';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -209,6 +209,74 @@ export function ledgerCsv(kind, data) {
   else if (kind === 'bk') { L.push(['월', '통장 마지막 거래일', '통장 잔액', '장부 보통예금(1020)', '차이(장부-통장)']); data.months.slice().reverse().forEach((m) => L.push([m.month, m.date, m.bankBal, m.ledgerBal, m.diff])); }
   else { L.push(['거래처', '차변 합계', '대변 합계', '잔액', '건수', '마지막 거래일']); data.rows.forEach((r) => L.push([r.partner, r.debit, r.credit, r.balance, r.n, r.last])); L.push(['합계', data.debit, data.credit, data.balance, '', '']); }
   return '\uFEFF' + L.map((r) => r.map(q).join(',')).join('\r\n');
+}
+/* ───────── 예측(12개월): 장부 실적에서 가정을 뽑아 손익·현금흐름·간이 재무상태표를 시나리오별로 ───────── */
+const ymAdd = (ym, k) => { let [y, m] = ym.split('-').map(Number); m += k; y += Math.floor((m - 1) / 12); m = (((m - 1) % 12) + 12) % 12 + 1; return y + '-' + String(m).padStart(2, '0'); };
+export const FC_DEFAULT = { method: 1, vat: 0.1, g: 0, sgaG: 0, hana: 1250000, ibk: 0, tax: 0, minCash: 5000000, p0: 0.4, p1: 0.4, q0: 0.4 };
+export const FC_SCEN = [{ key: 'low', name: '보수', rev: 0.8, cost: 1.05 }, { key: 'base', name: '기본', rev: 1, cost: 1 }, { key: 'high', name: '낙관', rev: 1.2, cost: 0.97 }];
+/** 장부에서 가정의 바탕이 되는 값 — 최근 12개월(이번 달 제외, 완결된 달)의 합계와 기초 잔액 */
+export function forecastBase(entries, today) {
+  const t = today || kstToday(); const cur = t.slice(0, 7); const end = ymAdd(cur, -1); const start = ymAdd(end, -11);
+  const es = (entries || []).filter((e) => !e.invalid && e.lines);
+  const w = { rev: 0, adj: 0, cost: 0, sga: 0, nonop: 0, rec: 0, owner: 0 }; const bal = {}; const dep = new Map();
+  es.forEach((e) => {
+    const ym = String(e.date).slice(0, 7); const inWin = ym >= start && ym <= end;
+    let d1020 = 0, c1100 = 0, net1020 = 0; const others = [];
+    e.lines.forEach((l) => {
+      const a = String(l.account); const amt = Number(l.amount) || 0; const sg = (l.side === 'D' ? 1 : -1) * amt; bal[a] = (bal[a] || 0) + sg;
+      if (a === '6080') dep.set(e.date, (dep.get(e.date) || 0) + sg);
+      if (a === '1020') { net1020 += sg; if (l.side === 'D') d1020 += amt; } else others.push(l);
+      if (a === '1100' && l.side === 'C') c1100 += amt;
+      if (!inWin) return;
+      if (a === '4010') w.rev += -sg; else if (a === '4090') w.adj += -sg; else if (a[0] === '5') w.cost += sg; else if (a[0] === '6' && a !== '6080') w.sga += sg; else if (a[0] === '7' || a[0] === '8') w.nonop += -sg;
+    });
+    if (inWin && d1020 > 0 && c1100 > 0) w.rec += Math.min(d1020, c1100);
+    if (inWin && net1020 !== 0 && others.length) { const tot = others.reduce((s, l) => s + (Number(l.amount) || 0), 0) || 1; others.forEach((l) => { if (l.account === '3020' || l.account === '2021') w.owner += -(net1020 * (Number(l.amount) || 0) / tot); }); }
+  });
+  let depMonthly = 0; if (dep.size) { const dates = [...dep.keys()].sort(); const last = dates[dates.length - 1]; const yr = last.slice(0, 4); const tot = dates.filter((d) => d.startsWith(yr)).reduce((s, d) => s + dep.get(d), 0); const mo = Number(last.slice(5, 7)) || 12; depMonthly = Math.round(tot / mo); }
+  const g = (...a) => a.reduce((s, k) => s + (bal[k] || 0), 0);
+  const cash = g('1020'), ar = g('1100'), other = g('1110', '1120', '1130', '1140', '1200', '1510', '1610'), veh = g('1500', '1590'); const ap = -g('2010', '2020', '2021', '2030', '2040', '2050', '2070'); const debt = -g('2100', '2200', '2210');
+  return { start, end, today: t, startForecast: ymAdd(cur, 1), rev12: w.rev, adj12: w.adj, cost12: w.cost, sga12: w.sga, nonop12: w.nonop, rec12: w.rec, owner12: w.owner, dep: depMonthly, opening: { cash, ar, other, veh, ap, debt, equity: cash + ar + other + veh - ap - debt } };
+}
+/** 자동값 + 대표님이 바꾼 값(over)을 합친 가정. auto 는 비교·안내용 */
+export function forecastAssume(base, over) {
+  const o = over || {}; const A = Object.assign({}, FC_DEFAULT); Object.keys(o).forEach((k) => { if (o[k] !== null && o[k] !== undefined && o[k] !== '' && k !== 'scn') A[k] = o[k]; });
+  const m = Number(A.method) || 1; const vat = Number(A.vat) || 0;
+  const revAuto = (m === 2 ? base.rev12 : m === 3 ? base.rev12 + base.adj12 : base.rec12 / (1 + vat)) / 12;
+  const auto = { rev: revAuto, cr: revAuto ? base.cost12 / 12 / revAuto : 0, sga: base.sga12 / 12, nonop: -base.nonop12 / 12, owner: base.owner12 / 12, dep: base.dep };
+  ['rev', 'cr', 'sga', 'nonop', 'owner', 'dep'].forEach((k) => { A[k] = (o[k] !== null && o[k] !== undefined && o[k] !== '') ? Number(o[k]) : auto[k]; });
+  const sc = FC_SCEN.map((s) => Object.assign({}, s, (o.scn && o.scn[s.key]) || {}));
+  return { A, auto, scen: sc };
+}
+/** 12개월 예측 한 시나리오 — 엑셀 예측 모델(예측모델_초안_r1)과 같은 수식 */
+export function forecastRun(base, A, scen) {
+  const n = 12; const R = A.rev; const p2 = 1 - A.p0 - A.p1; const q1 = 1 - A.q0; const o = base.opening;
+  const z = () => new Array(n).fill(0); const r = { rev: z(), cogs: z(), gp: z(), sga: z(), dep: z(), op: z(), nonop: z(), ni: z(), rec: z(), pay: z(), intr: z(), prin: z(), draw: z(), tax: z(), net: z(), cash: z(), flag: new Array(n).fill(false), ar: z(), oth: z(), veh: z(), ta: z(), ap: z(), debt: z(), tl: z(), eq: z(), tle: z(), chk: z(), topup: z(), adj: z() };
+  const extraRec = z(); extraRec[0] = R * (A.p1 + p2); extraRec[1] = R * p2; const extraPay = z(); extraPay[0] = (R * A.cr * 1 + A.sga) * q1;
+  if (Array.isArray(A.extraRec)) A.extraRec.forEach((v, i) => { if (i < n && v !== null && v !== undefined) extraRec[i] = Number(v) || 0; });
+  if (Array.isArray(A.extraPay)) A.extraPay.forEach((v, i) => { if (i < n && v !== null && v !== undefined) extraPay[i] = Number(v) || 0; });
+  let cash = o.cash, ar = o.ar, veh = o.veh, ap = o.ap, debt = o.debt, eq = o.equity, adj = o.cash;
+  for (let i = 0; i < n; i++) {
+    const k = i + 1; const rev = R * Math.pow(1 + A.g, k) * scen.rev; const cogs = rev * A.cr * scen.cost; const sga = A.sga * Math.pow(1 + A.sgaG, k);
+    r.rev[i] = rev; r.cogs[i] = cogs; r.gp[i] = rev - cogs; r.sga[i] = sga; r.dep[i] = A.dep; r.op[i] = rev - cogs - sga - A.dep; r.nonop[i] = A.nonop; r.ni[i] = r.op[i] - A.nonop;
+    const rec = rev * A.p0 + (i >= 1 ? r.rev[i - 1] * A.p1 : 0) + (i >= 2 ? r.rev[i - 2] * p2 : 0) + extraRec[i];
+    const pay = (cogs + sga) * A.q0 + (i >= 1 ? (r.cogs[i - 1] + r.sga[i - 1]) * q1 : 0) + extraPay[i];
+    r.rec[i] = rec; r.pay[i] = -pay; r.intr[i] = -A.nonop; r.prin[i] = -(A.hana + A.ibk); r.draw[i] = -A.owner; r.tax[i] = -A.tax;
+    r.net[i] = rec - pay - A.nonop - (A.hana + A.ibk) - A.owner - A.tax; cash += r.net[i]; r.cash[i] = cash; r.flag[i] = cash < A.minCash;
+    ar += rev - rec; veh -= A.dep; ap += cogs + sga - pay; debt -= (A.hana + A.ibk); eq += r.ni[i] - A.owner - A.tax;
+    r.ar[i] = ar; r.oth[i] = o.other; r.veh[i] = veh; r.ta[i] = cash + ar + o.other + veh; r.ap[i] = ap; r.debt[i] = debt; r.tl[i] = ap + debt; r.eq[i] = eq; r.tle[i] = ap + debt + eq; r.chk[i] = r.ta[i] - r.tle[i];
+    r.topup[i] = Math.max(0, A.minCash - (adj + r.net[i])); adj = adj + r.net[i] + r.topup[i]; r.adj[i] = adj;
+  }
+  const sum = (a) => a.reduce((s, v) => s + v, 0); const minCash = Math.min(...r.cash); const labels = []; for (let i = 0; i < n; i++) labels.push(ymAdd(base.startForecast, i));
+  r.labels = labels;
+  r.summary = { rev: sum(r.rev), op: sum(r.op), ni: sum(r.ni), rec: sum(r.rec), owner: A.owner * n, endCash: r.cash[n - 1], minCash, minMonth: labels[r.cash.indexOf(minCash)], short: r.flag.filter(Boolean).length, topup: sum(r.topup), topupAvg: sum(r.topup) / n, endEquity: r.eq[n - 1], chk: Math.max(...r.chk.map((v) => Math.abs(Math.round(v)))) };
+  return r;
+}
+/** 예측 월별 표 엑셀(CSV) */
+export function forecastCsv(r, name) {
+  const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; const rows = [['항목(' + name + ' 시나리오, 원)'].concat(r.labels)];
+  [['매출', 'rev'], ['매출원가', 'cogs'], ['매출총이익', 'gp'], ['판관비(감가상각 제외)', 'sga'], ['감가상각비', 'dep'], ['영업이익', 'op'], ['영업외 순비용', 'nonop'], ['당기순이익', 'ni'], ['수금', 'rec'], ['원가·판관비 지급', 'pay'], ['영업외비용 지급', 'intr'], ['차입금 원금 상환', 'prin'], ['대표자 현금 순유출', 'draw'], ['기타 세금 지출', 'tax'], ['순현금흐름', 'net'], ['기말 현금', 'cash'], ['외상매출금(순)', 'ar'], ['선급금·기타자산', 'oth'], ['차량운반구(순)', 'veh'], ['자산 총계', 'ta'], ['매입채무·미지급금 등', 'ap'], ['차입금', 'debt'], ['부채 총계', 'tl'], ['자본', 'eq'], ['필요 추가 입금(이엔지)', 'topup'], ['조정 후 기말 현금', 'adj']].forEach(([l, k]) => rows.push([l].concat(r[k].map((v) => Math.round(v)))));
+  return '\uFEFF' + rows.map((x) => x.map(q).join(',')).join('\r\n');
 }
 /** 통장 잔액 대사 — 통장 전표의 원천 ID(bank_날짜_시각_출금_입금_거래후잔액)에서 거래별 잔액을 읽어 ①잔액이 끊김 없이 이어지는지 ②날짜별 통장 마지막 잔액과 장부 보통예금(1020)이 같은지 본다.
  *  같은 초에 찍힌 거래는 잔액이 이어지는 순서로 맞춘다(일괄 이체는 순서가 뒤섞여 있음). 끊김은 빠진 거래나 계좌 바뀜(예: 신한→기업은행)의 흔적 */

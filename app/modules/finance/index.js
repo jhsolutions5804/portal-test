@@ -1,21 +1,21 @@
-import { esc, toast } from '../../core/ui.js?v=20261011i';
-import { confirmDialog } from '../../core/dialog.js?v=20261011i';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261011i';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261011i';
-import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011i';
-import { parseBankSheets } from '../../shared/bank-import.js?v=20261011i';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261011i';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261011i';
-import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261011i';
-import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261011i';
-import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261011i';
+import { esc, toast } from '../../core/ui.js?v=20261011j';
+import { confirmDialog } from '../../core/dialog.js?v=20261011j';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261011j';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261011j';
+import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011j';
+import { parseBankSheets } from '../../shared/bank-import.js?v=20261011j';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261011j';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261011j';
+import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261011j';
+import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261011j';
+import { tabsHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261011j';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
 export const manifest = {
   id: 'finance', order: 25, title: '재무회계', icon: '📒', defaultHash: '#/finance/home',
   perm: (me) => !!me && !me.isGuest && (me.admin === true || me.dept === '재무회계팀' || !!(me.perms && me.perms.finance === true))
 };
-const S = { data: null, filter: { from: '', to: '', source: '', review: false, reviewed: false, assignee: '', q: '' }, limit: 100, imp: { kind: 'taxsales', busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }, rep: { kind: 'is', from: '', to: '', acct: '2010', pacct: '2010', q: '', zero: false }, openDate: '2026-01-01', admin: false, rl: null, chk: null, chkDate: '', openEditId: '', sel: new Set() };
+const S = { data: null, filter: { from: '', to: '', source: '', review: false, reviewed: false, assignee: '', q: '' }, limit: 100, imp: { kind: 'taxsales', busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }, rep: { kind: 'is', from: '', to: '', acct: '2010', pacct: '2010', q: '', zero: false }, openDate: '2026-01-01', admin: false, rl: null, chk: null, chkDate: '', openEditId: '', sel: new Set(), fc: { over: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_fc_v1') || '{}') || {}; } catch (e) { return {}; } })(), scen: 'base' } };
 const existingIds = () => new Set(S.data.entries.map((e) => e.id));
 const lastDate = () => S.data.entries.reduce((m, e) => (e.date > m ? e.date : m), '');
 function stmNow() {
@@ -41,14 +41,15 @@ const msgHtml = (tone, t) => '<div class="jh-alert" data-tone="' + tone + '" rol
 function RC_RESET() { if (S.rc) S.rc.current = null; }
 export async function mount(root, route, ctx) {
   const me = (ctx && ctx.me) || {}; S.admin = me.admin === true;
-  const tab = ['home', 'entries', 'expense', 'import', 'reports', 'gap', 'rules', 'opening', 'settings'].includes(route.segs[0]) ? route.segs[0] : 'home';
+  const tab = ['home', 'entries', 'expense', 'import', 'reports', 'forecast', 'gap', 'rules', 'opening', 'settings'].includes(route.segs[0]) ? route.segs[0] : 'home';
   root.onclick = null; root.onchange = null; root.oninput = null; root.ondragover = null; root.ondragleave = null; root.ondrop = null; if (root.__finFocusOut) { root.removeEventListener('focusout', root.__finFocusOut); root.__finFocusOut = null; } root.onkeydown = null;
   root.innerHTML = '<div class="jh-finance">' + tabsHtml(tab) + '<div id="fin-body" class="jh-finance__body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
   const body = root.querySelector('#fin-body');
   const paint = () => {
     S.data.entries.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.seq || 0) - (b.seq || 0)));
     const sum = summarize(S.data.entries); const stm = stmNow(); const st = Object.assign({}, S, S.data, { projects: S.projects || [], sum, stm, list: filterEntries(S.data.entries, S.filter) });
-    body.innerHTML = tab === 'home' ? homeHtml(st) : tab === 'entries' ? entriesHtml(st) : tab === 'expense' ? expenseHtml(st) : tab === 'import' ? importHtml(st) : tab === 'reports' ? reportsHtml(st) : tab === 'opening' ? openingHtml(st) : tab === 'gap' ? gapHtml(st) : tab === 'rules' ? rulesHtml(st) : settingsHtml(st);
+    if (tab === 'forecast') { const base = forecastBase(S.data.entries); const as = forecastAssume(base, S.fc.over); const runs = {}; as.scen.forEach((sc) => { runs[sc.key] = forecastRun(base, as.A, sc); }); st.fc = S.fc; st.fcm = { base, A: as.A, auto: as.auto, scen: as.scen, runs }; S.fcm = st.fcm; }
+    body.innerHTML = tab === 'home' ? homeHtml(st) : tab === 'entries' ? entriesHtml(st) : tab === 'expense' ? expenseHtml(st) : tab === 'import' ? importHtml(st) : tab === 'reports' ? reportsHtml(st) : tab === 'forecast' ? forecastHtml(st) : tab === 'opening' ? openingHtml(st) : tab === 'gap' ? gapHtml(st) : tab === 'rules' ? rulesHtml(st) : settingsHtml(st);
     body.removeAttribute('aria-busy');
   };
   /* 날짜 입력: 한 글자·한 칸마다 화면을 다시 그리면 입력이 끊기므로, 올바른 날짜가 된 뒤 잠깐 멈추거나(0.7초) 칸을 나갈 때 한 번만 적용 */
@@ -207,6 +208,8 @@ export async function mount(root, route, ctx) {
   /* ───── 이벤트(위임) ───── */
   root.onclick = async (ev) => {
     const t = ev.target;
+    const fcr = t.closest('[data-fc-reset]'); if (fcr) { delete S.fc.over[fcr.getAttribute('data-fc-reset')]; try { localStorage.setItem('jh_fin_fc_v1', JSON.stringify(S.fc.over)); } catch (e) { /* 무시 */ } paint(); return; }
+    const fcs = t.closest('[data-fc-scen]'); if (fcs) { S.fc.scen = fcs.getAttribute('data-fc-scen'); paint(); return; }
     if (t.closest('[data-sel]')) return; const row = t.closest('[data-entry]'); if (row) { openEntry(row.getAttribute('data-entry')); return; }
     const ik = t.closest('[data-imp-kind]'); if (ik) { S.imp = { kind: ik.getAttribute('data-imp-kind'), busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }; paint(); return; }
     const md = t.closest('[data-mr-del]'); if (md) { S.rl.merchant.splice(Number(md.getAttribute('data-mr-del')), 1); S.rl.dirtyM = true; paint(); return; }
@@ -219,6 +222,8 @@ export async function mount(root, route, ctx) {
     else if (act === 'more') { S.limit += 200; paint(); }
     else if (act === 'sel-all') { filterEntries(S.data.entries, S.filter).filter((e) => !e.reversedBy && !e.reverses).forEach((e) => S.sel.add(e.id)); paint(); }
     else if (act === 'sel-clear') { S.sel.clear(); paint(); }
+    else if (act === 'fc-reset-all') { S.fc.over = {}; try { localStorage.removeItem('jh_fin_fc_v1'); } catch (e) { /* 무시 */ } paint(); }
+    else if (act === 'fc-csv') { const m = S.fcm; if (m) { const sc = m.scen.find((s) => s.key === S.fc.scen) || m.scen[1]; download('예측_' + sc.name + '_' + m.runs[sc.key].labels[0] + '_' + m.runs[sc.key].labels[11] + '.csv', forecastCsv(m.runs[sc.key], sc.name)); } }
     else if (act === 'bulk-reclass') {
       const sel = S.data.entries.filter((e) => S.sel.has(e.id) && !e.reversedBy && !e.reverses); if (!sel.length) return;
       const cnt = {}; sel.forEach((e) => e.lines.forEach((l) => { cnt[l.account] = (cnt[l.account] || 0) + 1; }));
@@ -308,6 +313,14 @@ export async function mount(root, route, ctx) {
     if (t.matches('[data-rc-file]')) { await onReceipts(t); return; }
     if (t.matches('[data-rules-file]')) { await onRulesFile(t); return; }
     if (t.matches('[data-mr]')) { const k = Number(t.getAttribute('data-mr')); S.rl.merchant[k].label = t.value; S.rl.merchant[k].account = CHOICE_ACCOUNT[t.value] || S.rl.merchant[k].account; S.rl.dirtyM = true; paint(); return; }
+    if (t.matches('[data-fc],[data-fc-pct],[data-fc-scn]')) {
+      const saveFc = () => { try { localStorage.setItem('jh_fin_fc_v1', JSON.stringify(S.fc.over)); } catch (e) { /* 저장 실패는 무시 */ } };
+      const num = (v) => { const n = Number(String(v).replace(/[,\s원%]/g, '')); return Number.isFinite(n) ? n : null; };
+      if (t.matches('[data-fc]')) { const k = t.getAttribute('data-fc'); const n = num(t.value); if (t.value.trim() === '') delete S.fc.over[k]; else if (n !== null) S.fc.over[k] = k === 'method' ? Math.min(3, Math.max(1, Math.round(n))) : n; }
+      else if (t.matches('[data-fc-pct]')) { const k = t.getAttribute('data-fc-pct'); const n = num(t.value); if (t.value.trim() === '') delete S.fc.over[k]; else if (n !== null) S.fc.over[k] = Math.min(1000, Math.max(-100, n)) / 100; }
+      else { const [sk, f] = t.getAttribute('data-fc-scn').split('.'); const n = num(t.value); if (n !== null && n > 0) { S.fc.over.scn = S.fc.over.scn || {}; S.fc.over.scn[sk] = Object.assign({}, S.fc.over.scn[sk], { [f]: n }); } }
+      saveFc(); setTimeout(() => { const ae = document.activeElement; const key = ae && ae.getAttribute ? (ae.getAttribute('data-fc') || ae.getAttribute('data-fc-pct') || ae.getAttribute('data-fc-scn')) : ''; paint(); if (key) { const nn = body.querySelector('[data-fc="' + key + '"],[data-fc-pct="' + key + '"],[data-fc-scn="' + key + '"]'); if (nn) nn.focus(); } }, 0); return;
+    }
     if (t.matches('[data-gl]')) { const k = t.getAttribute('data-gl'); S.rep[k] = t.type === 'checkbox' ? t.checked : t.value; paint(); if (k === 'q') { const qq = body.querySelector('[data-gl="q"]'); if (qq) { qq.focus(); qq.setSelectionRange(qq.value.length, qq.value.length); } } return; }
     if (t.matches('[data-br]')) { S.rl.bank[Number(t.getAttribute('data-br'))].account = t.value; S.rl.dirtyB = true; paint(); return; }
     if (t.matches('[data-pr]')) { S.rl.purchase[Number(t.getAttribute('data-pr'))].account = t.value; S.rl.dirtyP = true; paint(); return; }

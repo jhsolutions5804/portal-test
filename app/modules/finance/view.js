@@ -1,9 +1,9 @@
-import { esc } from '../../core/ui.js?v=20261011i';
-import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile } from './logic.js?v=20261011i';
-import { CHOICES } from '../../shared/merchant-table.js?v=20261011i';
+import { esc } from '../../core/ui.js?v=20261011j';
+import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile } from './logic.js?v=20261011j';
+import { CHOICES } from '../../shared/merchant-table.js?v=20261011j';
 
 /* 재무회계 화면 조각 — 모든 값은 esc() 로 감싸 HTML 로 만든다. 스타일은 theme/finance.css 와 공용 클래스를 쓴다 */
-const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['gap', '이엔지 정산'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];
+const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['forecast', '예측'], ['gap', '이엔지 정산'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];
 export const tabsHtml = (cur) => '<div class="jh-segmented jh-finance__tabs" role="group" aria-label="재무회계">' + TABS.map(([k, l]) => '<a class="jh-segmented__item" href="#/finance/' + k + '" aria-pressed="' + (k === cur) + '">' + l + '</a>').join('') + '</div>';
 
 /** 카드 한 장: 제목 줄 + 안쪽 여백이 일정한 내용. flush=true 면 표처럼 가장자리까지 채우는 내용 */
@@ -170,6 +170,42 @@ export function reportsHtml(st) {
   return bar + note + '<section class="jh-card jh-finance__paper">' + body + '</section>';
 }
 
+/* ───────── 예측 ───────── */
+const FCW = (v) => Math.round(v).toLocaleString('ko-KR');
+function fcChart(runs, minCash) {
+  const W = 640, H = 230, P = { l: 70, r: 12, t: 12, b: 26 }; const all = []; Object.values(runs).forEach((r) => r.cash.forEach((v) => all.push(v))); all.push(minCash, 0);
+  const lo = Math.min(...all), hi = Math.max(...all); const span = (hi - lo) || 1; const x = (i) => P.l + (i * (W - P.l - P.r)) / 11; const y = (v) => P.t + ((hi - v) * (H - P.t - P.b)) / span;
+  const grid = [0, 0.25, 0.5, 0.75, 1].map((f) => { const v = lo + f * span; return '<line x1="' + P.l + '" x2="' + (W - P.r) + '" y1="' + y(v).toFixed(1) + '" y2="' + y(v).toFixed(1) + '" class="jh-fc__grid"/><text x="' + (P.l - 6) + '" y="' + (y(v) + 3).toFixed(1) + '" text-anchor="end" class="jh-fc__ax">' + esc((v / 1e6).toFixed(0)) + '</text>'; }).join('');
+  const lines = [['low', '보수'], ['base', '기본'], ['high', '낙관']].map(([k, n]) => '<polyline class="jh-fc__line jh-fc__line--' + k + '" points="' + runs[k].cash.map((v, i) => x(i).toFixed(1) + ',' + y(v).toFixed(1)).join(' ') + '"><title>' + n + '</title></polyline>').join('');
+  const labs = runs.base.labels.map((m, i) => (i % 2 === 0 ? '<text x="' + x(i).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" class="jh-fc__ax">' + esc(m.slice(2)) + '</text>' : '')).join('');
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="jh-fc__svg" role="img" aria-label="기말 현금 시나리오 비교(백만 원)">' + grid + '<line x1="' + P.l + '" x2="' + (W - P.r) + '" y1="' + y(minCash).toFixed(1) + '" y2="' + y(minCash).toFixed(1) + '" class="jh-fc__min"/>' + lines + labs + '</svg><div class="jh-fc__legend"><span class="jh-fc__dot jh-fc__line--low"></span>보수 <span class="jh-fc__dot jh-fc__line--base"></span>기본 <span class="jh-fc__dot jh-fc__line--high"></span>낙관 <span class="jh-fc__dot jh-fc__min"></span>최소 유지 현금 · 세로축 백만 원</div>';
+}
+export function forecastHtml(st) {
+  const m = st.fcm; if (!m) return '<div class="jh-empty">장부를 불러오는 중입니다.</div>';
+  const { base, A, auto, scen, runs } = m; const over = (st.fc && st.fc.over) || {}; const sel = (st.fc && st.fc.scen) || 'base'; const r = runs[sel]; const sc = scen.find((s) => s.key === sel);
+  const reset = (k) => (over[k] !== undefined && over[k] !== null && over[k] !== '' ? ' · <button type="button" class="jh-btn" data-variant="ghost" data-fc-reset="' + k + '">자동값으로</button>' : '');
+  const amt = (k, label, hint) => '<div class="jh-field"><label class="jh-field__label">' + esc(label) + '</label><input class="jh-input" data-fc="' + k + '" inputmode="numeric" value="' + esc(FCW(A[k])) + '"><span class="jh-field__hint">' + (auto[k] !== undefined ? '자동 ' + esc(FCW(auto[k])) + ' · ' : '') + esc(hint) + reset(k) + '</span></div>';
+  const pc = (k, label, hint, auto2) => '<div class="jh-field"><label class="jh-field__label">' + esc(label) + '</label><input class="jh-input" data-fc-pct="' + k + '" inputmode="decimal" value="' + esc(String(Math.round(A[k] * 1000) / 10)) + '"><span class="jh-field__hint">' + (auto2 !== undefined ? '자동 ' + esc(String(Math.round(auto2 * 1000) / 10)) + '% · ' : '') + esc(hint) + reset(k) + '</span></div>';
+  const methodSel = '<div class="jh-field"><label class="jh-field__label">매출 산정 방식</label><select class="jh-select" data-fc="method"><option value="1"' + (Number(A.method) === 1 ? ' selected' : '') + '>1 · 통장 수금을 공급가액으로 환산(기본)</option><option value="2"' + (Number(A.method) === 2 ? ' selected' : '') + '>2 · 장부 매출(4010) 총액</option><option value="3"' + (Number(A.method) === 3 ? ' selected' : '') + '>3 · 장부 매출 + 이엔지 정산 차액(4090)</option></select><span class="jh-field__hint">이엔지 정산 처리 전이라 기본은 실제 입금 기준입니다.</span></div>';
+  const form = '<div class="jh-finance__pad">' + methodSel + pc('vat', '부가세율', '수금(부가세 포함)을 공급가액으로 나눌 때 사용') + amt('rev', '월 매출(공급가액, 원)', '기준 구간 12개월 평균') + pc('g', '월 매출 성장률', '월 복리, 기본 0%') + pc('cr', '원가율(매출원가 ÷ 매출)', '5xxx 12개월 합계 ÷ 매출', auto.cr)
+    + amt('sga', '월 판관비(감가상각 제외, 원)', '6xxx 월평균') + pc('sgaG', '월 판관비 상승률', '기본 0%') + amt('dep', '월 감가상각비(원, 현금 아님)', '결산 정리 전표 기준') + amt('nonop', '월 영업외 순비용(이자 등, 원)', '7·8xxx 월평균')
+    + amt('owner', '월 대표자 현금 순유출(원)', '통장 기준 3020 인출·입금 + 2021 개인카드 정산') + amt('hana', '월 하나캐피탈 원금 상환(원)', '월 1,623,950 중 원금') + amt('ibk', '월 기업은행 대출 원금 상환(원)', '상환 시작 시점·금액을 알면 입력') + amt('tax', '월 기타 세금 지출(원)', '부가세·소득세 납부를 월 환산해 입력') + amt('minCash', '최소 유지 현금(원)', '이 아래면 "부족"으로 표시')
+    + pc('p0', '수금: 당월 비율', '2026-07~09 청구 대비 입금 패턴') + pc('p1', '수금: 익월 비율', '나머지(' + Math.round((1 - A.p0 - A.p1) * 1000) / 10 + '%)는 익익월') + pc('q0', '지급: 당월 비율(원가·판관비)', '나머지는 익월 지급(급여·용역비 익월 말일 지급 원칙)')
+    + '<div class="jh-field"><label class="jh-field__label">시나리오 배수(매출 / 원가율)</label>' + scen.map((s) => '<div class="jh-finance__bar"><strong>' + esc(s.name) + '</strong><input class="jh-input" data-fc-scn="' + s.key + '.rev" inputmode="decimal" value="' + esc(String(s.rev)) + '" aria-label="' + esc(s.name) + ' 매출 배수"><input class="jh-input" data-fc-scn="' + s.key + '.cost" inputmode="decimal" value="' + esc(String(s.cost)) + '" aria-label="' + esc(s.name) + ' 원가율 배수"></div>').join('') + '</div>'
+    + '<div class="jh-finance__bar"><button type="button" class="jh-btn" data-variant="ghost" data-act="fc-reset-all">모두 자동값으로 되돌리기</button></div></div>';
+  const S0 = (k) => runs[k].summary; const head = '<tr><th></th>' + scen.map((s) => '<th class="num">' + esc(s.name) + '</th>').join('') + '</tr>';
+  const line = (l, fn, strong) => '<tr' + (strong ? ' class="is-strong"' : '') + '><td>' + esc(l) + '</td>' + scen.map((s) => '<td class="num">' + fn(S0(s.key)) + '</td>').join('') + '</tr>';
+  const sumTbl = '<div class="jh-finance__scroll"><table class="jh-fin-table"><thead>' + head + '</thead><tbody>' + line('12개월 매출', (x) => esc(FCW(x.rev))) + line('12개월 영업이익', (x) => esc(FCW(x.op))) + line('12개월 당기순이익', (x) => esc(FCW(x.ni))) + line('12개월 수금', (x) => esc(FCW(x.rec))) + line('12개월 대표자 현금 순유출', (x) => esc(FCW(x.owner)))
+    + line('12개월 뒤 기말 현금', (x) => esc(FCW(x.endCash)), true) + line('최저 현금(그 달)', (x) => esc(FCW(x.minCash) + ' (' + x.minMonth + ')')) + line('이엔지에 추가로 받아야 할 입금 — 12개월', (x) => esc(FCW(x.topup)), true) + line('이엔지에 추가로 받아야 할 입금 — 월평균', (x) => esc(FCW(x.topupAvg))) + line('12개월 뒤 자본', (x) => esc(FCW(x.endEquity))) + line('재무상태표 검산(0이어야 함)', (x) => esc(FCW(x.chk))) + '</tbody></table></div>';
+  const rows = [['【손익】'], ['매출', 'rev'], ['매출원가', 'cogs'], ['매출총이익', 'gp', 1], ['판관비(감가상각 제외)', 'sga'], ['감가상각비', 'dep'], ['영업이익', 'op', 1], ['영업외 순비용', 'nonop'], ['당기순이익', 'ni', 1], ['【현금흐름】'], ['수금', 'rec'], ['원가·판관비 지급', 'pay'], ['영업외비용 지급', 'intr'], ['차입금 원금 상환', 'prin'], ['대표자 현금 순유출', 'draw'], ['기타 세금 지출', 'tax'], ['순현금흐름', 'net', 1], ['기말 현금', 'cash', 1], ['【간이 재무상태표(기말)】'], ['외상매출금(순)', 'ar'], ['선급금·기타자산', 'oth'], ['차량운반구(순)', 'veh'], ['자산 총계', 'ta', 1], ['매입채무·미지급금 등', 'ap'], ['차입금', 'debt'], ['자본', 'eq'], ['【이엔지 창구 — 필요한 입금】'], ['필요 추가 입금', 'topup', 1], ['조정 후 기말 현금', 'adj']];
+  const mHead = '<tr><th>' + esc(sc.name) + ' 시나리오(원)</th>' + r.labels.map((l) => '<th class="num">' + esc(l) + '</th>').join('') + '</tr>';
+  const mRows = rows.map((x) => (x.length === 1 ? '<tr><td colspan="13" class="jh-field__hint"><strong>' + esc(x[0]) + '</strong></td></tr>' : '<tr' + (x[2] ? ' class="is-strong"' : '') + '><td>' + esc(x[0]) + '</td>' + r[x[1]].map((v, i) => '<td class="num"' + (x[1] === 'cash' && r.flag[i] ? ' style="color:var(--c-danger)"' : '') + '>' + esc(FCW(v)) + '</td>').join('') + '</tr>')).join('');
+  const segs = '<div class="jh-segmented" role="group" aria-label="시나리오">' + scen.map((s) => '<button type="button" class="jh-segmented__item" data-fc-scen="' + s.key + '" aria-pressed="' + (s.key === sel) + '">' + esc(s.name) + '</button>').join('') + '</div>';
+  const left = alertHtml('info', '<strong>법인 전환 전, 이엔지를 창구로 쓰는 현재 구조 기준입니다.</strong> 입금이 대표님 지출에 맞춰 들어오므로 "부족"은 외부 자금이 아니라 "이엔지에서 그만큼 더 받아야 한다"는 뜻입니다. 기준 구간 ' + esc(base.start) + ' ~ ' + esc(base.end) + '(12개월), 예측 ' + esc(r.labels[0]) + ' ~ ' + esc(r.labels[11]) + '. 이 숫자는 예측이며, 가정을 바꾸면 크게 달라집니다.')
+    + card('시나리오 비교', sumTbl) + card('기말 현금 — 시나리오 비교', '<div class="jh-finance__pad">' + fcChart(runs, A.minCash) + '</div>')
+    + card('월별 예측', '<div class="jh-finance__bar">' + segs + '<button type="button" class="jh-btn" data-variant="ghost" data-act="fc-csv">엑셀(CSV)로 받기</button></div><div class="jh-finance__scroll"><table class="jh-fin-table jh-fc__tbl"><thead>' + mHead + '</thead><tbody>' + mRows + '</tbody></table></div>');
+  return '<div class="jh-finance__split"><div class="jh-finance__col">' + left + '</div><div class="jh-finance__col">' + card('가정 — 바꾸면 바로 다시 계산합니다', form) + '</div></div>';
+}
 /* ───────── 개시 재산 / 설정 ───────── */
 export function openingHtml(st) {
   const done = st.entries.filter((e) => e.source && e.source.kind === 'opening' && !e.reversedBy).sort((a, b) => (a.date < b.date ? 1 : -1))[0];
