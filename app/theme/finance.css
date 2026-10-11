@@ -112,3 +112,9 @@
 .jh-vat__tbl .jh-vat__grp td { background: var(--c-bg); border-block: 1px solid var(--c-line); }
 .jh-vat__dim { color: var(--c-ink-3); }
 .jh-vat__in { text-align: right; inline-size: 9.5rem; max-inline-size: 100%; }
+
+/* 네이버페이 영수증 미리보기 */
+.jh-np__tbl td { vertical-align: top; }
+.jh-np__item { max-inline-size: 20rem; overflow-wrap: anywhere; }
+.jh-np__off td { color: var(--c-ink-3); }
+.jh-np__tbl .jh-select { min-inline-size: 9.5rem; }

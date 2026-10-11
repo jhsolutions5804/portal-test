@@ -1,14 +1,14 @@
-import { esc, toast } from '../../core/ui.js?v=20261011m';
-import { confirmDialog } from '../../core/dialog.js?v=20261011m';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261011m';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261011m';
-import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011m';
-import { parseBankSheets } from '../../shared/bank-import.js?v=20261011m';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261011m';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261011m';
-import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261011m';
-import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261011m';
-import { tabsHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261011m';
+import { esc, toast } from '../../core/ui.js?v=20261011n';
+import { confirmDialog } from '../../core/dialog.js?v=20261011n';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261011n';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261011n';
+import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011n';
+import { parseBankSheets } from '../../shared/bank-import.js?v=20261011n';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261011n';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261011n';
+import { npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261011n';
+import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261011n';
+import { tabsHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261011n';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
 export const manifest = {
@@ -73,8 +73,36 @@ export async function mount(root, route, ctx) {
     else if (k === 'payroll') { S.imp.preview = previewPayroll(raw.payroll, have, S.data.entries); }
     else if (k === 'json') { const have2 = have; const fresh = raw.entries.filter((e) => { const id = entryDocId(e); return !(id && have2.has(id)); }); S.imp.preview = { entries: raw.entries, errors: raw.errors, fresh, dupCount: raw.entries.length - fresh.length }; }
   }
+  /* ───── 네이버페이 영수증 여러 장 읽기(서버가 한 장씩 읽어 값만 돌려줌 — 동시에 3장) ───── */
+  const NPAY_MAX = 200;
+  function npayRebuild() { const n = S.imp.npay; if (!n) return; const plan = npayPlan(n.items, S.data.entries); S.imp.preview = { npay: true, plan, fresh: plan.entries, dupCount: plan.counts.dup + plan.counts.dupfile, warnings: [] }; S.imp.raw = { fileName: '네이버페이 영수증 ' + n.items.length + '장' }; }
+  async function npayRun(list) {   // list: [{ f: File, idx }]
+    const n = S.imp.npay; const queue = list.slice(); let fatal = '', streak = 0, last = '', done = 0; const total = list.length;
+    const prog = () => { const el = body.querySelector('[data-np-prog]'); if (el) el.textContent = '영수증을 읽는 중… ' + done + ' / ' + total + '장'; };
+    const worker = async () => {
+      while (queue.length && !fatal) {
+        const { f, idx } = queue.shift(); const it = { idx, fileName: f.name, file: f };
+        try { const prob = receiptFileProblem(f); if (prob) throw new Error(prob); const pf = await prepare(f); const r = await readNpay(pf.name, pf.mime, pf.b64); it.status = 'ok'; it.ex = r.extracted; it.warnings = r.warnings || []; it.choice = npayGuess(it.ex.item, it.ex.seller) || 'ask'; streak = 0; last = ''; }
+        catch (e) { it.status = 'error'; it.error = e.message || '읽지 못했습니다.'; if (it.error === last) streak++; else { last = it.error; streak = 1; } if (streak >= 3 && /키|설정|크레딧|한도|권한|서비스|연결/.test(it.error)) fatal = it.error; }
+        n.items = n.items.filter((x) => x.idx !== idx); n.items.push(it); done++; prog();
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]);
+    queue.forEach(({ f, idx }) => { n.items = n.items.filter((x) => x.idx !== idx); n.items.push({ idx, fileName: f.name, file: f, status: 'error', error: '읽지 않음(중단됨)' }); });
+    return fatal;
+  }
+  async function onNpay(files) {
+    if (files.length > NPAY_MAX) { setImp({ error: '한 번에 ' + NPAY_MAX + '장까지 읽을 수 있습니다(' + files.length + '장을 골랐습니다). 나눠서 올려 주세요.' }); return; }
+    S.imp.npay = { items: [] }; setImp({ busy: true, error: '', preview: null, raw: null });
+    const fatal = await npayRun(files.map((f, idx) => ({ f, idx })));
+    npayRebuild(); setImp({ busy: false, error: fatal ? fatal + ' (남은 영수증은 읽지 않았습니다. 해결한 뒤 "다시 읽기"를 누르세요.)' : '' });
+  }
+  async function npayRetry() {
+    const n = S.imp.npay; if (!n) return; const bad = n.items.filter((x) => x.status === 'error' && x.file); if (!bad.length) return; setImp({ busy: true, error: '' });
+    const fatal = await npayRun(bad.map((x) => ({ f: x.file, idx: x.idx }))); npayRebuild(); setImp({ busy: false, error: fatal || '' });
+  }
   async function onFile(input) {
-    const files = [...(input.files || [])]; if (!files.length) return; setImp({ busy: true, error: '', preview: null, raw: null });
+    const files = [...(input.files || [])]; if (!files.length) return; if (S.imp.kind === 'npay') { await onNpay(files); return; } setImp({ busy: true, error: '', preview: null, raw: null });
     try {
       const k = S.imp.kind; let raw;
       if (k === 'taxsales' || k === 'taxpurchase') { const wb = await readSpreadsheet(await readBuf(files[0])); const parsed = parseTaxInvoiceWorkbook(wb); if (parsed.error) throw new Error(parsed.error); raw = { parsed, fileName: files[0].name }; }
@@ -95,7 +123,7 @@ export async function mount(root, route, ctx) {
       if (S.imp.kind === 'taxpurchase' && S.imp.remember && Object.keys(S.imp.remember).length) { const add = []; p.rows.forEach((row) => { if (S.imp.remember[row.supKey]) add.push({ key: purchaseKey(row.inv), name: row.inv.supplier.name, account: S.imp.acctBySupplier[row.supKey] || row.account, memo: '가져오기에서 저장' }); }); if (add.length) { const merged = mergeRules(S.data.purchaseRules || [], add, (x) => x.key); await savePurchaseRules(merged); S.imp.remember = {}; } }
       const r = await postEntries(p.fresh); const msg = '저장 ' + r.posted + '건 · 이미 있어 건너뜀 ' + r.duplicates + '건' + (r.rejected.length ? ' · 거부 ' + r.rejected.length + '건(' + r.rejected[0].errors[0] + ')' : '');
       try { await recordImport({ kind: S.imp.kind, fileName: (S.imp.raw && S.imp.raw.fileName) || '', rows: p.fresh.length + (p.dupCount || 0), posted: r.posted, duplicates: r.duplicates }); } catch (e) { /* 이력 기록 실패는 무시 */ }
-      toast(msg); await reload(); S.imp.preview = null; S.imp.raw = null; S.imp.error = ''; S.imp.done = msg; paint(); body.insertAdjacentHTML('afterbegin', '<div class="jh-alert" data-tone="info" role="status">✅ ' + esc(msg) + '</div>');
+      toast(msg); await reload(); S.imp.preview = null; S.imp.raw = null; S.imp.npay = null; S.imp.error = ''; S.imp.done = msg; paint(); body.insertAdjacentHTML('afterbegin', '<div class="jh-alert" data-tone="info" role="status">✅ ' + esc(msg) + '</div>');
     } catch (e) { setImp({ error: e.message }); }
   }
 
@@ -208,6 +236,7 @@ export async function mount(root, route, ctx) {
   /* ───── 이벤트(위임) ───── */
   root.onclick = async (ev) => {
     const t = ev.target;
+    const npa = t.closest('[data-np-all]'); if (npa) { const n = S.imp.npay; if (n) { const v = npa.getAttribute('data-np-all'); n.items.forEach((it) => { if (it.status === 'ok' && (!it.choice || it.choice === 'ask')) it.choice = v; }); npayRebuild(); paint(); } return; }
     const vfa = t.closest('[data-vf-apply]'); if (vfa) { const pk = vatPick(S.data.entries, S.rep.vatKey).key; S.rep.vatForm = Object.assign({}, S.rep.vatForm); S.rep.vatForm[pk] = Object.assign({}, S.rep.vatForm[pk], { f14a: Number(vfa.getAttribute('data-vf-amt')) || 0, f14t: Number(vfa.getAttribute('data-vf-tax')) || 0 }); try { localStorage.setItem('jh_fin_vatform_v1', JSON.stringify(S.rep.vatForm)); } catch (e) { /* 무시 */ } paint(); return; }
     const fcr = t.closest('[data-fc-reset]'); if (fcr) { delete S.fc.over[fcr.getAttribute('data-fc-reset')]; try { localStorage.setItem('jh_fin_fc_v1', JSON.stringify(S.fc.over)); } catch (e) { /* 무시 */ } paint(); return; }
     const fcs = t.closest('[data-fc-scen]'); if (fcs) { S.fc.scen = fcs.getAttribute('data-fc-scen'); paint(); return; }
@@ -270,6 +299,7 @@ export async function mount(root, route, ctx) {
       try { const res = await readPayroll(m); S.imp.raw = { payroll: res, fileName: '포털 급여명세서 ' + m }; await buildPreview(); setImp({ busy: false }); } catch (e) { setImp({ busy: false, error: e.message }); }
     }
     else if (act === 'commit') await commit();
+    else if (act === 'np-retry') await npayRetry();
     else if (act === 'csv' && S.rep.kind === 'vat') { const P = vatPick(S.data.entries, S.rep.vatKey); { const vr = vatReport(S.data.entries, P.from, P.to, 0); download('부가세신고서_' + P.from + '_' + P.to + '.csv', vatCsv(vr, vatForm(vr, (S.rep.vatForm && S.rep.vatForm[P.key]) || {}))); } }
     else if (act === 'csv' && S.rep.kind === 'bk') { download('통장대사_월별.csv', ledgerCsv('bk', bankReconcile(S.data.entries))); }
     else if (act === 'csv' && (S.rep.kind === 'gl' || S.rep.kind === 'pt')) { const gl = S.rep.kind === 'gl'; const data = gl ? accountLedger(S.data.entries, S.rep.acct, S.rep.from, S.rep.to, S.rep.q) : partnerBalances(S.data.entries, S.rep.pacct, S.rep.to, S.rep.zero); download((gl ? '계정별원장_' + data.account + '_' + (S.rep.from || '처음') + '_' + S.rep.to : '거래처별잔액_' + data.account + '_' + S.rep.to) + '.csv', ledgerCsv(S.rep.kind, data)); }
@@ -324,6 +354,7 @@ export async function mount(root, route, ctx) {
       else { const [sk, f] = t.getAttribute('data-fc-scn').split('.'); const n = num(t.value); if (n !== null && n > 0) { S.fc.over.scn = S.fc.over.scn || {}; S.fc.over.scn[sk] = Object.assign({}, S.fc.over.scn[sk], { [f]: n }); } }
       saveFc(); setTimeout(() => { const ae = document.activeElement; const key = ae && ae.getAttribute ? (ae.getAttribute('data-fc') || ae.getAttribute('data-fc-pct') || ae.getAttribute('data-fc-scn')) : ''; paint(); if (key) { const nn = body.querySelector('[data-fc="' + key + '"],[data-fc-pct="' + key + '"],[data-fc-scn="' + key + '"]'); if (nn) nn.focus(); } }, 0); return;
     }
+    if (t.matches('[data-np]')) { const n = S.imp.npay; const it = n && n.items.find((x) => x.idx === Number(t.getAttribute('data-np'))); if (it) { it.choice = t.value; it.touched = true; npayRebuild(); paint(); } return; }
     if (t.matches('[data-vat]')) { S.rep.vatKey = t.value; paint(); return; }
     if (t.matches('[data-vf]')) {
       const pk = vatPick(S.data.entries, S.rep.vatKey).key; const f = t.getAttribute('data-vf'); const n = Number(String(t.value).replace(/[,\s원]/g, '')); S.rep.vatForm = Object.assign({}, S.rep.vatForm); S.rep.vatForm[pk] = Object.assign({}, S.rep.vatForm[pk]);
@@ -354,7 +385,7 @@ export async function mount(root, route, ctx) {
   root.ondrop = async (ev) => {   // 파일을 끌어다 놓기 — 영수증 칸이면 영수증으로, 가져오기 칸이면 그 종류의 파일로
     const z = ev.target.closest && ev.target.closest('[data-drop]'); if (!z) return; ev.preventDefault(); z.classList.remove('is-over');
     const files = [...((ev.dataTransfer && ev.dataTransfer.files) || [])]; if (!files.length) return;
-    if (z.getAttribute('data-drop') === 'rc') await onReceipts({ files }); else if (z.getAttribute('data-drop') === 'rules') await onRulesFile({ files: files.slice(0, 1) }); else await onFile({ files: S.imp.kind === 'card' ? files : files.slice(0, 1) });
+    if (z.getAttribute('data-drop') === 'rc') await onReceipts({ files }); else if (z.getAttribute('data-drop') === 'rules') await onRulesFile({ files: files.slice(0, 1) }); else await onFile({ files: (S.imp.kind === 'card' || S.imp.kind === 'npay') ? files : files.slice(0, 1) });
   };
   root.oninput = (ev) => {
     const t = ev.target;

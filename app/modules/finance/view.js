@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261011m';
-import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport, vatForm, vatCardRef } from './logic.js?v=20261011m';
-import { CHOICES } from '../../shared/merchant-table.js?v=20261011m';
+import { esc } from '../../core/ui.js?v=20261011n';
+import { NPAY_CHOICES, ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport, vatForm, vatCardRef } from './logic.js?v=20261011n';
+import { CHOICES } from '../../shared/merchant-table.js?v=20261011n';
 
 /* 재무회계 화면 조각 — 모든 값은 esc() 로 감싸 HTML 로 만든다. 스타일은 theme/finance.css 와 공용 클래스를 쓴다 */
 const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['forecast', '예측'], ['gap', '이엔지 정산'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];
@@ -8,7 +8,7 @@ export const tabsHtml = (cur) => '<div class="jh-segmented jh-finance__tabs" rol
 
 /** 카드 한 장: 제목 줄 + 안쪽 여백이 일정한 내용. flush=true 면 표처럼 가장자리까지 채우는 내용 */
 const card = (title, bodyHtml, right, flush) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + (flush ? bodyHtml : bodyHtml) + '</section>';
-const IMP_KIND = { taxsales: '홈택스 매출', taxpurchase: '홈택스 매입', bank: '통장', card: '카드', json: '전표 묶음', sales: '홈택스 매출', purchase: '홈택스 매입' };
+const IMP_KIND = { npay: '네이버페이 영수증', taxsales: '홈택스 매출', taxpurchase: '홈택스 매입', bank: '통장', card: '카드', json: '전표 묶음', sales: '홈택스 매출', purchase: '홈택스 매입' };
 /** 최근 가져오기 — 세로 목록(오른쪽 칸용) */
 function importListHtml(list) {
   if (!list || !list.length) return '<div class="jh-empty">가져오기 이력이 없습니다.</div>';
@@ -62,30 +62,47 @@ export function manualDialogHtml(n) {
   return '<div class="jh-finance__bar"><input class="jh-input" type="date" data-m="date" aria-label="일자"><input class="jh-input jh-finance__q" data-m="memo" placeholder="메모(예: 대출 이자 정리)"></div>' + tbl([['계정'], ['차/대'], ['금액'], ['거래처']], rows, 'jh-fin-table--form') + '<div class="jh-finance__bar"><button type="button" class="jh-btn" data-variant="ghost" data-act="addline">+ 줄 추가</button><span class="jh-field__hint" data-m-sum></span></div>';
 }
 /* ───────── 가져오기 ───────── */
-const KINDS = [['payroll', '💼', '급여명세서', '포털 급여명세서(관리자)'], ['taxsales', '🧾', '홈택스 매출', '매출 세금계산서 엑셀'], ['taxpurchase', '🧾', '홈택스 매입', '매입 세금계산서 엑셀'], ['bank', '🏦', '통장 거래내역', '기업은행 엑셀(+농협)'], ['card', '💳', '카드 이용내역', '농협·삼성·현대·IBK'], ['json', '📦', '전표 묶음', '내보낸 JSON 파일']];
+const KINDS = [['payroll', '💼', '급여명세서', '포털 급여명세서(관리자)'], ['taxsales', '🧾', '홈택스 매출', '매출 세금계산서 엑셀'], ['taxpurchase', '🧾', '홈택스 매입', '매입 세금계산서 엑셀'], ['bank', '🏦', '통장 거래내역', '기업은행 엑셀(+농협)'], ['card', '💳', '카드 이용내역', '농협·삼성·현대·IBK'], ['npay', '🛍️', '네이버페이 영수증', '카드영수증 PDF·사진 여러 장'], ['json', '📦', '전표 묶음', '내보낸 JSON 파일']];
 const GUIDE = {
   payroll: ['인사에서 해당 월 급여명세서를 먼저 저장해 두세요', '귀속월을 고르고 불러오면 직원별 전표 초안이 나옵니다(총지급·공제·기숙사비·실지급)', '현장 직원은 현장노무비, 그 밖은 급여(판관비)로, 4대보험·세금은 예수금으로 잡힙니다', '이미 엑셀·묶음으로 올린 달은 이중으로 잡히지 않게 막습니다. 관리자만 쓸 수 있습니다'],
   taxsales: ['홈택스 로그인 → 조회/발급 → 전자(세금)계산서 목록조회', '"매출"을 고르고 기간을 정해 조회', '엑셀로 내려받은 파일(.xls·.xlsx)을 위에 올리기', '내 사업자번호와 다른 건은 자동으로 제외됩니다'],
   taxpurchase: ['홈택스 로그인 → 조회/발급 → 전자(세금)계산서 목록조회', '"매입"을 고르고 기간을 정해 조회', '엑셀로 내려받은 파일(.xls·.xlsx)을 위에 올리기', '거래처별 계정은 미리보기에서 바꿀 수 있습니다'],
   bank: ['기업은행 인터넷뱅킹 → 거래내역 조회 → 엑셀로 저장', '대표님 개인 농협 계좌 엑셀은 선택입니다(개인카드 대금 정산 짝짓기용, 장부에는 안 들어감)', '올리면 자동·확인·미정 분류 현황이 먼저 나옵니다', '저장을 누르기 전까지 장부에는 들어가지 않습니다'],
   card: ['농협·삼성·현대 카드 이용내역 또는 IBK 카드 매출내역 엑셀', '여러 파일을 한 번에 고를 수 있습니다', '가맹점별 계정을 바꾸면 그 가맹점 전체가 바뀌고 규칙으로 기억됩니다', '취소 건은 자동으로 빠집니다'],
+  npay: ['네이버 → 네이버페이 → 결제내역에서 "카드 영수증"을 PDF로 저장합니다', '여러 장을 한 번에 올리면(최대 200장) 카드사·승인번호·금액·상품을 읽어 옵니다', '이미 장부에 있는 건·취소·포인트 결제·같은 영수증 사본은 자동으로 빠집니다', '업무/개인은 상품명으로 추정해 두었으니 확인하고, 모르는 건 "미정"으로 두면 저장되지 않습니다', '원본 파일은 서버에 저장되지 않으니 직접 보관하세요(읽기에 AI를 쓰며 하루 400장까지)'],
   json: ['이 화면에서 내보냈거나 작업 묶음에 들어 있는 전표 묶음 파일(.json)', '계정·차대 검사를 통과한 전표만 올라갑니다', '이미 올린 건은 중복으로 건너뜁니다']
 };
 const dropHtml = (kind, accept, multi, hint, attrs) => '<label class="jh-finance__drop" data-drop="' + kind + '"><input type="file" ' + attrs + (multi ? ' multiple' : '') + ' accept="' + accept + '"><span class="jh-finance__drop-ic" aria-hidden="true">' + (kind === 'rc' ? '📷' : '📂') + '</span><strong>' + (kind === 'rc' ? '영수증 사진·PDF 올리기' : '파일을 끌어다 놓거나 눌러서 선택') + '</strong><span class="jh-field__hint">' + esc(hint) + '</span></label>';
 export function importHtml(st) {
   const k = st.imp.kind; const info = KINDS.find((x) => x[0] === k);
   const kinds = '<div class="jh-finance__kinds" role="group" aria-label="가져오기 종류">' + KINDS.filter((x) => x[0] !== 'payroll' || st.admin).map(([c, ic, l, d]) => '<button type="button" class="jh-finance__kind" data-imp-kind="' + c + '" aria-pressed="' + (c === k) + '"><span aria-hidden="true">' + ic + '</span><strong>' + esc(l) + '</strong><span>' + esc(d) + '</span></button>').join('') + '</div>';
-  const accept = k === 'json' ? '.json,application/json' : '.xls,.xlsx'; const multi = k === 'card';
-  const hint = k === 'card' ? '.xls·.xlsx · 여러 파일 가능' : (k === 'json' ? '.json 파일' : '.xls·.xlsx 파일');
+  const accept = k === 'json' ? '.json,application/json' : k === 'npay' ? '.pdf,.png,.jpg,.jpeg,.webp,.gif,application/pdf,image/*' : '.xls,.xlsx'; const multi = k === 'card' || k === 'npay';
+  const hint = k === 'npay' ? 'PDF·사진 · 여러 장 가능(최대 200장)' : k === 'card' ? '.xls·.xlsx · 여러 파일 가능' : (k === 'json' ? '.json 파일' : '.xls·.xlsx 파일');
   let extra = '';
   if (k === 'bank') extra = '<div class="jh-field"><label class="jh-field__label">농협 통장 거래내역(선택)</label><input class="jh-input" type="file" data-file2 accept=".xls,.xlsx"><span class="jh-field__hint">개인카드 대금 정산 이체를 짝짓는 데만 씁니다. 먼저 위에 기업은행 파일을 올리세요.</span></div>';
   const prevM = (() => { const t = new Date(Date.now() + 9 * 3600000); t.setUTCDate(1); t.setUTCMonth(t.getUTCMonth() - 1); return t.toISOString().slice(0, 7); })();
   const payForm = '<div class="jh-finance__pad"><div class="jh-field"><label class="jh-field__label" for="pay-month">귀속월</label><input class="jh-input" id="pay-month" type="month" data-pay-month value="' + prevM + '"><span class="jh-field__hint">급여를 받는 달이 아니라 일한 달(예: 9월 근무분)입니다. 월말 일자 전표로 만들어집니다.</span></div><div class="jh-finance__bar"><button type="button" class="jh-btn" data-variant="primary" data-act="pay-load">불러오기</button></div>' + (st.imp.busy ? '<div class="jh-skeleton" style="height:var(--u-44)"></div>' : '') + (st.imp.error ? alertHtml('danger', esc(st.imp.error)) : '') + '</div>';
-  const up = k === 'payroll' ? payForm : '<div class="jh-finance__pad">' + dropHtml('imp', accept, multi, hint, 'data-file') + extra + (st.imp.busy ? '<div class="jh-skeleton" style="height:var(--u-44)"></div>' : '') + (st.imp.error ? alertHtml('danger', esc(st.imp.error)) : '') + '</div>';
+  const up = k === 'payroll' ? payForm : '<div class="jh-finance__pad">' + dropHtml('imp', accept, multi, hint, 'data-file') + extra + (st.imp.busy ? (k === 'npay' ? '<div class="jh-field__hint" role="status" data-np-prog>영수증을 읽는 중… 잠시만 기다려 주세요.</div>' : '<div class="jh-skeleton" style="height:var(--u-44)"></div>') : '') + (st.imp.error ? alertHtml('danger', esc(st.imp.error)) : '') + '</div>';
   const guide = '<div class="jh-finance__pad"><ol class="jh-finance__steps">' + GUIDE[k].map((g) => '<li>' + esc(g) + '</li>').join('') + '</ol></div>';
   return kinds + '<div class="jh-finance__split"><div class="jh-finance__col">' + card(info[2] + (k === 'payroll' ? ' 불러오기' : ' 올리기'), up) + (st.imp.preview ? previewHtml(st) : '') + '</div><div class="jh-finance__col">' + card('이렇게 받으세요', guide) + card('최근 가져오기', importListHtml(st.imports), '', true) + '</div></div>';
 }
+function npayPreviewHtml(st) {
+  const p = st.imp.preview; const pl = p.plan; const c = pl.counts;
+  const opts = (sel) => '<option value="ask"' + (sel === 'ask' ? ' selected' : '') + '>미정 — 선택하세요</option>' + NPAY_CHOICES.map(([v, l]) => '<option value="' + v + '"' + (sel === v ? ' selected' : '') + '>' + esc(l) + '</option>').join('');
+  const ST = { dup: '이미 장부에 있음', dupfile: '같은 영수증 사본', cancel: '취소 영수증', points: '포인트 결제(금액 없음)', error: '읽지 못함' };
+  const rows = pl.rows.map((r) => {
+    const ex = r.item.ex || {}; const w = (r.item.warnings || []).join(' · ');
+    const sel = r.state === 'new' ? '<select class="jh-select" data-np="' + r.item.idx + '" aria-label="분류">' + opts(r.soft && !r.item.touched ? 'skip' : r.choice) + '</select>' : '<span class="jh-chip" data-tone="' + (r.state === 'error' ? 'danger' : 'muted') + '">' + esc(ST[r.state]) + '</span>';
+    const memo = r.state === 'error' ? (r.msg || r.item.error || '') : (r.soft ? '비슷한 전표(같은 날·같은 금액)가 있어 기본은 제외 — 확인하세요. ' : '') + w;
+    return '<tr' + (r.state === 'new' ? '' : ' class="jh-np__off"') + '><td>' + esc(ex.date || '') + '</td><td>' + esc((ex.issuer || '카드사 미확인') + (ex.cardLast4 ? ' ' + ex.cardLast4 : '')) + '</td><td>' + esc(ex.approval || (ex.orderNo ? '주문 ' + ex.orderNo : '')) + '</td>' + num(ex.amount || 0) + '<td class="jh-np__item">' + esc((ex.item || r.item.fileName || '')) + (ex.seller ? ' <span class="jh-field__hint">' + esc(ex.seller) + '</span>' : '') + '</td><td>' + sel + '</td><td class="jh-np__item jh-field__hint">' + esc(memo) + '</td></tr>';
+  });
+  const acct = Object.keys(pl.byAcct).map((a) => esc((NPAY_CHOICES.find((x) => x[0] === a) || [a, a])[1]) + ' ' + esc(won(pl.byAcct[a])) + '원').join(' · ');
+  const sumTxt = '읽음 ' + pl.rows.length + '장 · 저장 대상 ' + c.include + '건(' + esc(won(pl.total)) + '원)' + (acct ? ' — ' + acct : '') + (c.ask ? ' · 미정 ' + c.ask + '건(선택해야 저장됩니다)' : '') + (c.dup ? ' · 이미 장부에 있음 ' + c.dup : '') + (c.dupfile ? ' · 사본 ' + c.dupfile : '') + (c.cancel ? ' · 취소 ' + c.cancel : '') + (c.points ? ' · 포인트 결제 ' + c.points : '') + (c.error ? ' · 읽지 못함 ' + c.error : '');
+  const bar = '<div class="jh-finance__bar"><button type="button" class="jh-btn" data-variant="primary" data-act="commit"' + (pl.entries.length ? '' : ' disabled') + '>전표로 저장 (' + pl.entries.length + '건)</button>' + (c.ask ? '<button type="button" class="jh-btn" data-variant="ghost" data-np-all="3020">미정을 모두 개인으로</button><button type="button" class="jh-btn" data-variant="ghost" data-np-all="6090">미정을 모두 업무로</button>' : '') + (c.error ? '<button type="button" class="jh-btn" data-variant="ghost" data-act="np-retry">읽지 못한 ' + c.error + '장 다시 읽기</button>' : '') + '<span class="jh-field__hint">저장한 전표는 고치거나 지울 수 없고 역분개로만 바로잡습니다. 읽은 값이 틀릴 수 있으니 금액·승인번호를 원본과 한 번 비교해 주세요.</span></div>';
+  return '<section class="jh-card"><div class="jh-panel__head"><h3>미리보기 — 네이버페이 영수증 ' + pl.rows.length + '장</h3></div>' + alertHtml('info', sumTxt) + (pl.errors.length ? alertHtml('warn', '⚠ 형식 오류 ' + pl.errors.length + '건은 제외: ' + esc(pl.errors.slice(0, 3).join(' · '))) : '') + bar + '<div class="jh-finance__scroll"><table class="jh-fin-table jh-np__tbl"><thead><tr><th>일자</th><th>카드</th><th>승인번호</th><th class="num">금액</th><th>상품 · 판매자</th><th>분류</th><th>비고</th></tr></thead><tbody>' + rows.join('') + '</tbody></table></div>' + bar + '</section>';
+}
 function previewHtml(st) {
+  if (st.imp.preview && st.imp.preview.npay) return npayPreviewHtml(st);
   const p = st.imp.preview; const k = st.imp.kind; const warn = (p.warnings || []).map((w) => alertHtml('warn', '⚠ ' + esc(w))).join('');
   const go = (n, label) => '<div class="jh-finance__bar"><button type="button" class="jh-btn" data-variant="primary" data-act="commit"' + (n ? '' : ' disabled') + '>' + esc(label) + ' (' + n + '건)</button><span class="jh-field__hint">' + (p.dupCount ? '이미 올린 ' + p.dupCount + '건은 건너뜁니다. ' : '') + '저장한 전표는 고치거나 지울 수 없고 역분개로만 바로잡습니다.</span></div>';
   if (k === 'taxsales' || k === 'taxpurchase') {

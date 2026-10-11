@@ -1,5 +1,5 @@
-import { db, functions, httpsCallable, collection, getDocs, getDoc, doc, query, orderBy, limit } from '../../core/firebase.js?v=20261011m';
-import { docToEntry, chunk, postPayload } from './logic.js?v=20261011m';
+import { db, functions, httpsCallable, collection, getDocs, getDoc, doc, query, orderBy, limit } from '../../core/firebase.js?v=20261011n';
+import { docToEntry, chunk, postPayload } from './logic.js?v=20261011n';
 
 /* 재무회계 데이터 읽기·쓰기 — Firestore 를 만지는 코드는 이 파일에만 둔다.
  * 읽기: ledger_entries(전표)·ledger_meta(설정·마감일·가맹점 규칙)·ledger_imports(가져오기 이력) — 보안 규칙상 관리자·재무회계팀(dept)·perms.finance 만 읽는다.
@@ -29,6 +29,8 @@ export async function postEntries(entries, onProgress) {
 export const markReviewed = async (ids, done, note) => { let n = 0; for (let i = 0; i < ids.length; i += 200) { const r = await ledgerCall({ action: 'review', ids: ids.slice(i, i + 200), done, note: note || '' }); n += r.count; } return n; };
 /** 영수증 사진·PDF 한 장을 서버에 올려 읽기(원본 보관 + 값 추출). 전표는 만들지 않는다 */
 export async function readReceipt(fileName, mime, dataBase64) { try { const r = await httpsCallable(functions, 'ledgerReceipt')({ action: 'read', fileName, mime, dataBase64 }); return r.data; } catch (e) { throw new Error(friendly(e)); } }
+/** 네이버페이 영수증 한 장 읽기 — 서버는 원본을 보관하지 않고 읽은 값(카드사·승인번호·금액·상품·취소 여부)만 돌려준다 */
+export async function readNpay(fileName, mime, dataBase64) { try { const r = await httpsCallable(functions, 'ledgerReceipt')({ action: 'npayRead', fileName, mime, dataBase64 }); return r.data; } catch (e) { throw new Error(friendly(e)); } }
 export async function getReceiptFile(id) { try { const r = await httpsCallable(functions, 'ledgerReceipt')({ action: 'file', id }); return r.data; } catch (e) { throw new Error(friendly(e)); } }
 /** 포털 급여명세서(해당 월) 읽기 — 서버가 관리자에게만 돌려준다 */
 export const readPayroll = (month) => ledgerCall({ action: 'payrollRead', month });

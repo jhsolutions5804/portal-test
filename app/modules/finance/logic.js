@@ -1,9 +1,9 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011m';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011m';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011m';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011m';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011m';
-import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011m';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011n';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011n';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011n';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011n';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011n';
+import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011n';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -209,6 +209,42 @@ export function ledgerCsv(kind, data) {
   else if (kind === 'bk') { L.push(['월', '통장 마지막 거래일', '통장 잔액', '장부 보통예금(1020)', '차이(장부-통장)']); data.months.slice().reverse().forEach((m) => L.push([m.month, m.date, m.bankBal, m.ledgerBal, m.diff])); }
   else { L.push(['거래처', '차변 합계', '대변 합계', '잔액', '건수', '마지막 거래일']); data.rows.forEach((r) => L.push([r.partner, r.debit, r.credit, r.balance, r.n, r.last])); L.push(['합계', data.debit, data.credit, data.balance, '', '']); }
   return '\uFEFF' + L.map((r) => r.map(q).join(',')).join('\r\n');
+}
+/* ───────── 네이버페이 영수증(통합 카드영수증·주문 상세) 여러 장 → 전표 초안: 읽은 값으로 중복·취소·포인트 결제를 걸러내고 업무/개인 분류를 사람이 확인해 저장 ───────── */
+const NP_PERS = /비타민|크레아틴|체지방|헤어|보스턴|햇반|비비고|포카리|현미밥|쌀|톡|홀더|생선|식이|프로틴|단백질|팔찌|치약|매트리스|토퍼|양말|운동|덤벨|샴푸|화장|올리브|사이다|쉐이빙|니베아|영양제|오메가|유산균/;
+const NP_BIZ = /장갑|리벳|코팅|수직|추세|공구|테이프|드릴|볼트|너트|케이블|안전|토치|니트릴|사다리|낙상|비계|와이어|렌치|비트|절단|그라인|전동|배터리|충전기|랜선|멀티탭|작업|마스크|말비계|툴스|쓰레받기|노트북/;
+export const NPAY_CHOICES = [['6090', '업무 · 소모품비'], ['3020', '개인 · 인출금'], ['6020', '복리후생비'], ['skip', '제외']];
+const NP_ACCT = ['6090', '3020', '6020'];
+/** 상품명·판매자로 업무/개인을 짐작(확정이 아니라 첫 제안) — 개인 3020, 업무 6090, 모르면 '' */
+export function npayGuess(item, seller) { const s = String(item || '') + ' ' + String(seller || ''); return NP_PERS.test(s) ? '3020' : NP_BIZ.test(s) ? '6090' : ''; }
+/** 원천 ID — 이전에 올린 네이버페이 전표(card_카드사_일자_NPAY_승인번호_금액)와 같은 모양이라 같은 영수증이면 겹쳐 올라가지 않는다 */
+export function npayId(ex) { const key = ex.approval ? ex.approval : (ex.orderNo ? 'O' + ex.orderNo : 'X'); return ['card', ex.issuerKey || 'unknown', ex.date, 'NPAY', key, ex.amount].join('_'); }
+/** 읽은 영수증 목록 → 계획: 건마다 상태(new·dup·dupfile·cancel·points·error)와 포함 여부, 저장할 전표 */
+export function npayPlan(items, entries) {
+  const have = new Set(); const softSet = new Set();
+  (entries || []).forEach((e) => { if (e.invalid || !e.source || e.source.kind !== 'card') return; const p = String(e.source.id || '').split('_'); if (p.length >= 6) have.add(p[p.length - 2] + '_' + p[p.length - 1]); const d = (e.lines || []).find((l) => l.side === 'D'); if (d) softSet.add(e.date + '_' + Number(d.amount)); });
+  const seen = new Set(); const rows = []; const raw = [];
+  const sorted = (items || []).slice().sort((a, b) => ((a.ex && a.ex.date) || '9999') < ((b.ex && b.ex.date) || '9999') ? -1 : ((a.ex && a.ex.date) || '9999') > ((b.ex && b.ex.date) || '9999') ? 1 : a.idx - b.idx);
+  sorted.forEach((it) => {
+    const row = { item: it, state: 'new', include: false, soft: false, id: '', choice: it.choice || 'ask' };
+    if (it.status !== 'ok' || !it.ex) { row.state = 'error'; rows.push(row); return; }
+    const ex = it.ex;
+    if (ex.cancelled) row.state = 'cancel';
+    else if (ex.payment === 'points_only' || !ex.amount) row.state = 'points';
+    else if (!ex.date) row.state = 'error', row.msg = '날짜를 읽지 못했습니다';
+    else {
+      row.id = npayId(ex); const key = ex.approval ? ex.approval + '_' + ex.amount : '';
+      if (key && have.has(key)) row.state = 'dup';
+      else if (seen.has(row.id)) row.state = 'dupfile';
+      else { seen.add(row.id); row.soft = !ex.approval && softSet.has(ex.date + '_' + ex.amount); }
+    }
+    if (row.state === 'new') { const eff = (row.soft && !it.touched) ? 'skip' : row.choice; row.include = NP_ACCT.includes(eff); if (row.include) { const issuer = ex.issuer || '카드(카드사 확인 필요)'; raw.push({ date: ex.date, memo: (ex.seller || '네이버페이') + ' · ' + (ex.item || '상품명 미상') + ' — 네이버페이 영수증(' + issuer + (ex.approval ? ', 승인 ' + ex.approval : ex.orderNo ? ', 주문 ' + ex.orderNo : '') + ')', source: { kind: 'card', id: row.id }, needsReview: !ex.issuer || ex.confidence < 0.6 || (it.warnings || []).length > 0, lines: [{ account: eff, side: 'D', amount: ex.amount, partner: ex.seller || '네이버페이' }, { account: '2020', side: 'C', amount: ex.amount, partner: issuer }] }); row.eff = eff; } }
+    rows.push(row);
+  });
+  const counts = { new: 0, include: 0, ask: 0, skip: 0, dup: 0, dupfile: 0, cancel: 0, points: 0, error: 0 }; const byAcct = {}; let total = 0;
+  rows.forEach((r) => { counts[r.state] = (counts[r.state] || 0) + 1; if (r.state === 'new') { if (r.include) { counts.include++; total += r.item.ex.amount; byAcct[r.eff] = (byAcct[r.eff] || 0) + r.item.ex.amount; } else if (r.choice === 'ask' && !(r.soft && !r.item.touched)) counts.ask++; else counts.skip++; } });
+  const parsed = raw.length ? parseEntriesJson(JSON.stringify(raw)) : { entries: [], errors: [] };
+  return { rows, entries: parsed.entries, errors: parsed.errors, counts, total, byAcct };
 }
 /* ───────── 부가세 신고 보조표(일반과세자): 세금계산서 전표에서 매출세액·매입세액·납부세액과 매출처·매입처별 합계표 ───────── */
 const VAT_FIXED = ['1500', '1510']; const VAT_CAND = [['접대비 관련 매입세액(6040) — 접대비는 공제받지 못합니다', ['6040']], ['차량 구입·유지·렌트 관련(1500·5330·5360·6120·6130) — 비영업용 소형승용차면 공제받지 못합니다', ['1500', '5330', '5360', '6120', '6130']]];
