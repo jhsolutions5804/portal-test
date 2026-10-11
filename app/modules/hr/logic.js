@@ -1,7 +1,7 @@
 /* 인사 — 근로자 명부(새 화면). 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 데이터: workers/{id}(일반 정보) + worker_private/{id}(주민번호·계좌·주소·서명, 읽을 때 합쳐 쓰고 저장할 때 다시 가른다)
  *         labor_contracts/{id}/contracts · annual_contracts/{id}/contracts(endDate), workers/{id}/history(직급·부서 변경 이력) */
-import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261011z';
+import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261012a';
 export const WP_FIELDS = ['jumin', 'bankAccount', 'address', 'signData'];   // worker_private 에 따로 두는 필드
 export const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')) && new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
@@ -116,3 +116,36 @@ export function leaveRows(workers, docs, today, includeResigned) {
 }
 export const leaveEntries = (docs) => (docs || []).map((d) => ({ id: d.id, status: d.status === 'posted' ? '게시' : '승인', title: d.title || d.leaveType || '-', type: d.leaveType || '', start: d.startDate || d.sdate || '', end: d.endDate || d.edate || '', days: parseFloat(d.days || d.leaveDays || 0) || 0, annual: jhLeaveIsAnnual(d.leaveType) })).sort((a, b) => (a.start < b.start ? 1 : a.start > b.start ? -1 : 0));
 export function leaveTotals(rows) { const r = (rows || []).filter((x) => !x.noHire); return { n: (rows || []).length, noHire: (rows || []).length - r.length, granted: r.reduce((s, x) => s + x.granted, 0), used: r.reduce((s, x) => s + x.used, 0), remain: r.reduce((s, x) => s + x.remain, 0) }; }
+
+/* ───────── 인사 변동(직급·소속·연봉) ───────── */
+export const wonText = (n) => (Number(n) ? Math.round(Number(n)).toLocaleString('ko-KR') + '원' : '-');
+/** 변동 처리: 바뀐 직급·소속과 시행일(오늘 이전)을 검사하고 저장할 내용을 만든다. 직급이 바뀌면 호봉을 1로 초기화(구포털 규칙) */
+export function buildChange(worker, form, today, year) {
+  const w = worker || {}; const f = form || {}; const errors = []; const oldRank = w.rank || '', oldDept = w.dept || '';
+  const newRank = String(f.rank || '').trim() || oldRank; const newDept = String(f.dept || '').trim() || oldDept;
+  const rankChanged = newRank !== oldRank, deptChanged = newDept !== oldDept;
+  if (!w.id) errors.push('근로자를 선택해 주세요.'); else if (!rankChanged && !deptChanged) errors.push('변경된 직급·소속이 없습니다.');
+  const date = String(f.date || '').trim(); const t = today || kstToday();
+  if (!isDate(date)) errors.push('시행일을 입력해 주세요.'); else if (date > t) errors.push('시행일은 오늘 이전 날짜만 입력할 수 있습니다(저장 즉시 명부에 반영됩니다).');
+  if (errors.length) return { ok: false, errors };
+  const y = year || Number(t.slice(0, 4)); const patch = {}; if (rankChanged) { patch.rank = newRank; patch.step = 1; patch.stepYear = y; } if (deptChanged) patch.dept = newDept;
+  const history = { type: rankChanged && deptChanged ? 'both' : rankChanged ? 'rank' : 'dept', fromRank: oldRank, toRank: newRank, fromDept: oldDept, toDept: newDept, reason: String(f.reason || '').trim().slice(0, 300), effectiveDate: date };
+  const label = [rankChanged ? '직급 ' + (oldRank || '-') + ' → ' + newRank : '', deptChanged ? '소속 ' + (oldDept || '-') + ' → ' + newDept : ''].filter(Boolean).join(' · ');
+  return { ok: true, errors: [], patch, history, label, stepReset: rankChanged, portal: w.portalUid ? { uid: w.portalUid, fields: { name: w.name || '', rank: newRank, dept: newDept } } : null };
+}
+/** 연봉 변동: 저장된 연봉계약서의 계약연봉이 시행일 순으로 달라진 지점(같은 시행일은 나중에 저장한 것) — 별도 기록 없이 계약서에서 산출 */
+export function salaryEvents(worker, contracts) {
+  const raw = []; (contracts || []).forEach((c) => { const s = Number(c.salary || 0); if (s && c.startDate) raw.push({ start: c.startDate, salary: s, saved: String(c.savedAt || '') }); });
+  raw.sort((a, b) => a.start.localeCompare(b.start) || a.saved.localeCompare(b.saved));
+  const arr = []; raw.forEach((c) => { if (arr.length && arr[arr.length - 1].start === c.start) arr[arr.length - 1] = c; else arr.push(c); });
+  const events = []; arr.forEach((c, i) => { if (i > 0 && c.salary !== arr[i - 1].salary) events.push({ wid: worker.id, name: worker.name || '', date: c.start, kind: 'salary', text: '연봉 ' + wonText(arr[i - 1].salary) + ' → ' + wonText(c.salary), reason: '' }); });
+  return { events, current: arr.length ? arr[arr.length - 1].salary : null };
+}
+/** 직급·소속 변경 이력 → 변동 줄 (tsDate: 변경 시각을 YYYY.MM.DD 로 바꾼 값) */
+export function historyEvent(worker, h, tsDate) {
+  const parts = historyText(h); if (!parts) return null;
+  return { wid: worker.id, name: worker.name || '', date: h.effectiveDate || tsDate || '', kind: h.type === 'both' ? 'both' : (h.type || 'rank'), text: parts, reason: h.reason || '' };
+}
+export function filterEvents(events, f) {
+  const t = (f && f.type) || 'all'; return (events || []).filter((e) => { if (f && f.onlySel && f.sel && e.wid !== f.sel) return false; if (t === 'all') return true; if (t === 'rank') return e.kind === 'rank' || e.kind === 'both'; if (t === 'dept') return e.kind === 'dept' || e.kind === 'both'; return e.kind === t; }).sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))).slice(0, 200);
+}

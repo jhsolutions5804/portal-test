@@ -1,8 +1,8 @@
-import { db, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261011z';
-import { confirmDialog } from '../../core/dialog.js?v=20261011z';
-import { esc, toast } from '../../core/ui.js?v=20261011z';
-import { leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261011z';
-import { listHtml, tableHtml, leaveHtml } from './view.js?v=20261011z';
+import { db, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012a';
+import { confirmDialog } from '../../core/dialog.js?v=20261012a';
+import { esc, toast } from '../../core/ui.js?v=20261012a';
+import { buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012a';
+import { listHtml, tableHtml, leaveHtml, changeHtml } from './view.js?v=20261012a';
 
 /** 인사(플랫폼 기본 모듈): 근로자 명부 새 화면. 인사총무 틀 안의 구역으로만 열린다(modules/index.js 의 hostNative). 구포털 인사 화면은 그대로 두고 하나씩 옮기는 중이다. 관리자 전용 */
 export const manifest = { id: 'hr', order: 21, title: '인사', icon: '👥', defaultHash: '#/hr/workers', perm: (me) => !!me && me.admin === true };
@@ -93,4 +93,45 @@ export async function mountLeaves(root, route, ctx) {
   root.onclick = (ev) => { const t = ev.target; if (!(t instanceof Element)) return; const o = t.closest('[data-l-open]'); if (o) { st.leaveSel = o.getAttribute('data-l-open'); paint(); const k = body.querySelector('.jh-kpi'); if (k) k.scrollIntoView({ block: 'center' }); return; } if (t.closest('[data-l-close]')) { st.leaveSel = ''; paint(); } };
   root.onchange = (ev) => { const t = ev.target; if (t instanceof Element && t.matches('[data-l-all]')) { st.leaveAll = t.checked; paint(); } };
   paint();
+}
+
+/** 인사 변동(새 화면) — 직급·소속 변경(이력·호봉 초기화·포털 반영)과 변동 현황 */
+export async function mountChange(root, route, ctx) {
+  root.onclick = null; root.oninput = null; root.onchange = null;
+  const st = { today: kstToday(), chWorkers: [], chEvents: [], chSalary: {}, chSel: (route.segs && route.segs[0]) || '', chForm: { rank: '', dept: '', date: kstToday(), reason: '' }, chType: 'all', chOnlySel: false };
+  root.innerHTML = '<div class="jh-hr"><div id="c-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
+  const body = root.querySelector('#c-body');
+  const load = async () => {
+    const ws = await getDocs(collection(db, 'workers')); const list = []; ws.forEach((d) => { const x = Object.assign({ id: d.id }, d.data()); if (x.status !== 'resigned') list.push(x); });
+    list.sort((a, b) => String(a.empNo || 'zzz').localeCompare(String(b.empNo || 'zzz'))); const events = []; const salary = {};
+    await Promise.all(list.map(async (w) => {
+      try { const hs = await getDocs(collection(db, 'workers/' + w.id + '/history')); hs.forEach((d) => { const h = d.data(); const e = historyEvent(w, h, fmtTs(h.changedAt)); if (e) events.push(e); }); } catch (e) { /* 이력이 없거나 못 읽으면 건너뜀 */ }
+      try { const as = await getDocs(collection(db, 'annual_contracts/' + w.id + '/contracts')); const cs = []; as.forEach((d) => cs.push(d.data())); const r = salaryEvents(w, cs); r.events.forEach((e) => events.push(e)); if (r.current) salary[w.id] = r.current; } catch (e) { /* 연봉계약서 없음 */ }
+    }));
+    st.chWorkers = list; st.chEvents = events; st.chSalary = salary;
+  };
+  try { await load(); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
+  body.removeAttribute('aria-busy');
+  const select = (id) => { st.chSel = id; const w = st.chWorkers.find((x) => x.id === id); st.chForm = { rank: w ? w.rank || '' : '', dept: w ? w.dept || '' : '', date: st.today, reason: '' }; };
+  const paint = () => { body.innerHTML = changeHtml(st); };
+  root.onchange = (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    if (t.matches('[data-c-sel]')) { select(t.value); paint(); return; }
+    if (t.matches('[data-c-f]')) { st.chForm[t.getAttribute('data-c-f')] = t.value; if (['rank', 'dept'].includes(t.getAttribute('data-c-f'))) paint(); return; }
+    if (t.matches('[data-c-type]')) { st.chType = t.value; paint(); return; }
+    if (t.matches('[data-c-only]')) { st.chOnlySel = t.checked; paint(); }
+  };
+  root.oninput = (ev) => { const t = ev.target; if (t instanceof Element && t.matches('[data-c-f]')) st.chForm[t.getAttribute('data-c-f')] = t.value; };
+  root.onclick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element) || !t.closest('[data-c-act="save"]')) return;
+    const w = st.chWorkers.find((x) => x.id === st.chSel); const r = buildChange(w, st.chForm, st.today); if (!r.ok) { toast(r.errors[0]); return; }
+    const ok = await confirmDialog({ title: '인사 변동 저장', body: (w.name || '') + '님: ' + r.label + ' (시행일 ' + r.history.effectiveDate + ')' + (r.stepReset ? '. 직급 변경으로 호봉이 1호봉으로 초기화됩니다.' : '.'), confirmLabel: '저장' }); if (!ok.ok) return;
+    try {
+      await setDoc(doc(db, 'workers', w.id), Object.assign({}, r.patch, { updatedAt: serverTimestamp() }), { merge: true });
+      await addDoc(collection(db, 'workers/' + w.id + '/history'), Object.assign({}, r.history, { changedAt: serverTimestamp() }));
+      if (r.portal) { try { await updateDoc(doc(db, 'portal_users', r.portal.uid), r.portal.fields); } catch (e) { toast('저장했지만 포털 계정 정보는 갱신하지 못했습니다: ' + ((e && e.message) || '')); } }
+      toast('인사 변동을 저장했습니다.' + (r.stepReset ? ' 호봉을 1호봉으로 초기화했습니다.' : '')); const keep = w.id; await load(); select(keep); paint();
+    } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); }
+  };
+  if (st.chSel) select(st.chSel); paint();
 }

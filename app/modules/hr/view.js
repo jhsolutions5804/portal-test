@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261011z';
-import { isOffDay } from '../../shared/holidays.js?v=20261011z';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261011z';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals } from './logic.js?v=20261011z';
+import { esc } from '../../core/ui.js?v=20261012a';
+import { isOffDay } from '../../shared/holidays.js?v=20261012a';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261012a';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents } from './logic.js?v=20261012a';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -75,4 +75,24 @@ export function leaveHtml(st) {
   const t = leaveTotals(st.leaveRows);
   const bar = '<div class="jh-hr__pad"><div class="jh-hr__bar"><label class="jh-field__hint"><input type="checkbox" data-l-all' + (st.leaveAll ? ' checked' : '') + '> 퇴직자 포함</label></div><div class="jh-kpi-grid"><div class="jh-kpi"><span class="jh-kpi__label">대상</span><span class="jh-kpi__value">' + t.n + '명</span><span class="jh-kpi__hint">' + (t.noHire ? '입사일 미등록 ' + t.noHire + '명' : '') + '</span></div><div class="jh-kpi"><span class="jh-kpi__label">부여 합계</span><span class="jh-kpi__value">' + n1(t.granted) + '일</span></div><div class="jh-kpi"><span class="jh-kpi__label">사용 합계</span><span class="jh-kpi__value">' + n1(t.used) + '일</span></div><div class="jh-kpi"><span class="jh-kpi__label">잔여 합계</span><span class="jh-kpi__value">' + n1(t.remain) + '일</span></div></div></div>';
   return (st.leaveSel ? leaveDetailHtml(st) : '') + card('전체 직원 연차 현황', bar + leaveTableHtml(st) + '<div class="jh-field__hint jh-hr__pad">회계연도(1.1~12.31) 기준·근로기준법 자동 산정입니다. 입사 첫 1년은 1개월 개근당 1일(최대 11일), 입사 다음 해 1/1은 첫해 재직일수 비례, 이후 매년 1/1에 15일 + 3년 이상 2년마다 +1일(최대 25일). 사용일수는 해당 연차 구간에 시작한 승인·게시 연차·반차만 차감하며(병가·생리휴가 등은 차감 안 함) 승인된 미래 일정도 사용으로 봅니다. 입사일이 미등록인 직원은 근로자 명부에서 입사일을 입력해 주세요.</div>');
+}
+
+/** 인사 변동 */
+const KIND_LABEL = { rank: '직급', dept: '소속', both: '직급·소속', salary: '연봉' };
+export function changeHtml(st) {
+  const w = st.chWorkers.find((x) => x.id === st.chSel); const f = st.chForm;
+  const ranks = RANK_ORDER.slice(); st.chWorkers.forEach((x) => { if (x.rank && !ranks.includes(x.rank)) ranks.push(x.rank); }); if (f.rank && !ranks.includes(f.rank)) ranks.push(f.rank);
+  const depts = deptOptions(st.chWorkers.map((x) => ({ dept: x.dept }))); st.chWorkers.forEach((x) => { if (x.dept && !depts.includes(x.dept)) depts.push(x.dept); }); if (f.dept && !depts.includes(f.dept)) depts.push(f.dept);
+  const opt = (list, cur) => list.map((x) => '<option value="' + esc(x) + '"' + (x === cur ? ' selected' : '') + '>' + esc(x) + '</option>').join('');
+  const picker = '<select class="jh-select" data-c-sel aria-label="근로자"><option value="">근로자를 선택하세요</option>' + st.chWorkers.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === st.chSel ? ' selected' : '') + '>' + esc((x.empNo || '-') + ' · ' + (x.name || '') + (x.rank ? ' (' + x.rank + ')' : '')) + '</option>').join('') + '</select>';
+  const s = w ? stepNow(w) : null; const sal = w ? st.chSalary[w.id] : null; const rankChg = w && f.rank && f.rank !== (w.rank || '');
+  const cur = w ? '<div class="jh-hr__lines">' + [['소속', w.dept || '-'], ['직급', w.rank || '-'], ['호봉', s == null ? '-' : s + '호봉'], ['현재 계약연봉', sal ? wonText(sal) : '연봉계약서 없음']].map(([l, x]) => row(l, esc(x))).join('') + '</div>' : '';
+  const form = w ? '<div class="jh-hr__grid"><div class="jh-field"><label class="jh-field__label">변경 직급</label><select class="jh-select" data-c-f="rank">' + opt(ranks, f.rank) + '</select></div><div class="jh-field"><label class="jh-field__label">변경 소속</label><select class="jh-select" data-c-f="dept">' + opt(depts, f.dept) + '</select></div></div>'
+    + (rankChg ? '<div class="jh-alert" data-tone="warn" role="status">직급이 바뀌면 호봉이 1호봉으로 초기화됩니다.</div>' : '')
+    + '<div class="jh-hr__grid"><div class="jh-field"><label class="jh-field__label">시행일(오늘 이전)</label><input class="jh-input" type="date" data-c-f="date" max="' + esc(st.today) + '" value="' + esc(f.date || '') + '"></div><div class="jh-field"><label class="jh-field__label">사유(선택)</label><input class="jh-input" data-c-f="reason" value="' + esc(f.reason || '') + '" placeholder="예: 정기 승진, 현장 배치 전환"></div></div>'
+    + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-c-act="save">직급·소속 변경 저장</button><a class="jh-btn" data-variant="secondary" href="#/hr/labor">연봉 조정(근로계약서 작성, 기존 화면)</a></div><div class="jh-field__hint">연봉은 근로계약서의 시급/월급/연봉 입력에서 산정되어 연봉계약서로 이어집니다. 서명 문서는 자동 생성되지 않습니다.</div>' : '';
+  const ev = filterEvents(st.chEvents, { type: st.chType, sel: st.chSel, onlySel: st.chOnlySel });
+  const list = ev.length ? '<div class="jh-hr__scroll"><table class="jh-hr-table"><thead><tr><th>일자</th><th>이름</th><th>구분</th><th>내용</th></tr></thead><tbody>' + ev.map((e) => '<tr><td>' + esc(e.date || '-') + '</td><td><strong>' + esc(e.name) + '</strong></td><td>' + chip(KIND_LABEL[e.kind] || '변동', 'accent') + '</td><td>' + esc(e.text) + (e.reason ? '<div class="jh-field__hint">' + esc(e.reason) + '</div>' : '') + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="jh-empty">변동 이력이 없습니다.</div>';
+  const filt = '<div class="jh-hr__pad"><div class="jh-hr__bar"><select class="jh-select" data-c-type style="max-width:11rem">' + [['all', '전체 유형'], ['rank', '직급'], ['dept', '소속'], ['salary', '연봉']].map(([k, l]) => '<option value="' + k + '"' + (st.chType === k ? ' selected' : '') + '>' + l + '</option>').join('') + '</select><label class="jh-field__hint"><input type="checkbox" data-c-only' + (st.chOnlySel ? ' checked' : '') + '> 선택한 근로자만</label><span class="jh-field__hint">직급·소속: 변경 이력 · 연봉: 저장된 연봉계약서 기준</span></div></div>';
+  return card('변동 처리', '<div class="jh-hr__pad">' + picker + cur + form + '</div>') + card('변동 현황', filt + list);
 }

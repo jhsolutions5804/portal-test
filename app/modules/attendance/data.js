@@ -1,7 +1,7 @@
-import { db, collection, doc, getDocs, query, where, setDoc, updateDoc, serverTimestamp } from '../../core/firebase.js?v=20261011z';
-import { recordOf, sortRows } from './logic.js?v=20261011z';
-import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261011z';
-import { breakFor } from '../../shared/worktime.js?v=20261011z';
+import { db, collection, doc, getDocs, query, where, setDoc, updateDoc, serverTimestamp } from '../../core/firebase.js?v=20261012a';
+import { recordOf, sortRows } from './logic.js?v=20261012a';
+import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261012a';
+import { breakFor } from '../../shared/worktime.js?v=20261012a';
 
 const COL = 'worker_attendance_log';
 export const recId = (workerId, date) => workerId + '_' + date;
