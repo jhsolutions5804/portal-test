@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261011r';
-import { GTYPES, GKEYS, dday, won, leasePayState, dueList, homeSummary, leaseMonthly } from './logic.js?v=20261011r';
+import { esc } from '../../core/ui.js?v=20261011s';
+import { GTYPES, GKEYS, dday, won, leasePayState, dueList, homeSummary, leaseMonthly } from './logic.js?v=20261011s';
 
 const TABS = [['home', '개요'], ['lease', '임대'], ['vehicle', '차량'], ['asset', '자산·장비'], ['renewal', '갱신 일정']];
 export const tabsHtml = (cur, base) => '<div class="jh-segmented jh-gen__tabs" role="group" aria-label="총무">' + TABS.map(([k, l]) => '<a class="jh-segmented__item" href="' + esc(base || '#/general') + '/' + k + '" aria-pressed="' + (k === cur) + '">' + esc(l) + '</a>').join('') + '</div>';

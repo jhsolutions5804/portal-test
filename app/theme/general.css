@@ -19,3 +19,4 @@
 .jh-gen__off td { color: var(--c-ink-3); }
 .jh-gen__kpi { text-decoration: none; color: inherit; cursor: pointer; }
 @media (max-width: 720px) { .jh-gen__grid { grid-template-columns: minmax(0, 1fr); } }
+#g-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); }
