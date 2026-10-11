@@ -212,7 +212,7 @@ export function parseDriveHistory(text) {
 /** 이식한 월 문서 → 취합 화면용 줄(전자결재 일지와 같은 모양, 승인된 기록으로 취급) */
 export function historyRows(hist, vehById) {
   const out = []; (hist || []).forEach((m) => (m.rows || []).forEach((r, i) => { const v = (vehById && vehById[r.vehicleId]) || {};
-    out.push({ id: 'h_' + (m.ym || m.id) + '_' + i, date: r.date, time: r.time || '', vehicleId: r.vehicleId || '', vehicle: v.name || '', plate: v.plate || '', driver: r.who || '', pjtKey: '', pjt: '(프로젝트 없음)', origin: r.origin || '', destination: r.destination || '', kind: r.kind || '', odoStart: Number(r.odoStart) || 0, odoEnd: Number(r.odoEnd) || 0, distance: Number(r.distance) || 0, bizKm: r.kind === '비업무용' ? 0 : Number(r.distance) || 0, purpose: r.purpose || '', note: [r.note, Number(r.amount) ? '금액 ' + won(r.amount) + '원' : '', (r.flags || []).join(' / ')].filter(Boolean).join(' · '), status: 'approved', source: 'legacy', docNo: '', createdMs: 0 });
+    out.push({ id: 'h_' + (m.ym || m.id) + '_' + i, date: r.date, time: r.time || '', vehicleId: r.vehicleId || '', vehicle: v.name || '', plate: v.plate || '', driver: r.who || '', pjtKey: r.pjtId || '', pjt: r.pjtId === 'common' ? '공통(프로젝트 무관)' : r.pjtId ? ([r.pjtCode, r.pjtName].filter(Boolean).join(' · ') || '(프로젝트)') : '(프로젝트 없음)', origin: r.origin || '', destination: r.destination || '', kind: r.kind || '', odoStart: Number(r.odoStart) || 0, odoEnd: Number(r.odoEnd) || 0, distance: Number(r.distance) || 0, bizKm: r.kind === '비업무용' ? 0 : Number(r.distance) || 0, purpose: r.purpose || '', note: [r.note, Number(r.amount) ? '금액 ' + won(r.amount) + '원' : '', (r.flags || []).join(' / ')].filter(Boolean).join(' · '), status: 'approved', source: 'legacy', docNo: '', createdMs: 0 });
   }));
   return out;
 }
@@ -220,4 +220,26 @@ export function historyRows(hist, vehById) {
 export function driveAllRows(docs, hist, vehById, opt) {
   const a = driveRows(docs, opt).map((x) => Object.assign({ source: 'edoc', time: '' }, x)); const h = historyRows(hist, vehById);
   return a.concat(h).sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : x.odoStart - y.odoStart || (x.time < y.time ? -1 : x.time > y.time ? 1 : 0)));
+}
+
+/* ───────── 이식한 과거 기록에 프로젝트 일괄 지정 — 내용에 들어 있는 말(예: #5, 2게이트)로 줄을 찾아 프로젝트를 정한다 ───────── */
+const rowText = (r) => [r.purpose, r.origin, r.destination, r.note].filter(Boolean).join(' ').replace(/\s+/g, '').toLowerCase();
+const SKIP_WORDS = new Set(['출근', '퇴근', '개인', '주유', '세차', '출퇴근', '개인사용', '요소수', '인계', '사무실', '기숙사', '숙소']);
+/** 아직 프로젝트가 없는 이식 줄의 내용에서 자주 나오는 말(많은 순) — 지정할 키워드를 고르는 데 쓴다 */
+export function driveKeywordStats(hist, limit) {
+  const m = new Map(); (hist || []).forEach((mo) => (mo.rows || []).forEach((r) => { if (r.pjtId) return; const seen = new Set(String([r.purpose, r.origin, r.destination].filter(Boolean).join(' ')).match(/[#A-Za-z0-9가-힣]+/g) || []); seen.forEach((w) => { if (w.length < 2 && w[0] !== '#') return; if (SKIP_WORDS.has(w)) return; const g = m.get(w) || { word: w, n: 0, km: 0 }; g.n++; g.km += Number(r.distance) || 0; m.set(w, g); }); }));
+  return [...m.values()].sort((a, b) => b.n - a.n || b.km - a.km).slice(0, limit || 24);
+}
+/** 규칙에 맞는 줄을 찾는다(저장하지 않음). rule = { kw, from, to, over(이미 지정된 줄도 바꿈) } */
+export function matchHistory(hist, rule) {
+  const kw = String((rule && rule.kw) || '').replace(/\s+/g, '').toLowerCase(); if (!kw) return { n: 0, km: 0, months: 0, hits: [] };
+  const hits = []; (hist || []).forEach((mo) => (mo.rows || []).forEach((r, i) => { if (!rule.over && r.pjtId) return; if (rule.from && r.date < rule.from) return; if (rule.to && r.date > rule.to) return; if (!rowText(r).includes(kw)) return; hits.push({ ym: mo.ym || mo.id, i, km: Number(r.distance) || 0 }); }));
+  return { n: hits.length, km: hits.reduce((s, h) => s + h.km, 0), months: new Set(hits.map((h) => h.ym)).size, hits };
+}
+/** 일괄 지정 결과: 바뀐 월 문서(rows 전체)만 돌려준다. project = { id, code, name } — id 'common' 은 프로젝트 무관 */
+export function assignProject(hist, rule, project) {
+  const mt = matchHistory(hist, rule); if (!mt.n || !project || !project.id) return { n: 0, km: 0, changed: [] };
+  const by = new Map(); mt.hits.forEach((h) => { (by.get(h.ym) || by.set(h.ym, new Set()).get(h.ym)).add(h.i); });
+  const changed = []; (hist || []).forEach((mo) => { const set = by.get(mo.ym || mo.id); if (!set) return; changed.push({ ym: mo.ym || mo.id, rows: (mo.rows || []).map((r, i) => (set.has(i) ? Object.assign({}, r, { pjtId: project.id, pjtCode: project.id === 'common' ? '공통' : project.code || '', pjtName: project.id === 'common' ? '프로젝트 무관' : project.name || '' }) : r)) }); });
+  return { n: mt.n, km: mt.km, changed };
 }

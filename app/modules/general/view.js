@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261011v';
-import { GTYPES, GKEYS, dday, won, leasePayState, dueList, homeSummary, leaseMonthly, driveAllRows, driveFilter, driveTotals, driveByProject, driveByMonth, driveOdoCheck, driveRange, weekStart, DRIVE_STATUS } from './logic.js?v=20261011v';
+import { esc } from '../../core/ui.js?v=20261011w';
+import { GTYPES, GKEYS, dday, won, leasePayState, dueList, homeSummary, leaseMonthly, driveAllRows, driveFilter, driveTotals, driveByProject, driveByMonth, driveOdoCheck, driveRange, weekStart, DRIVE_STATUS, driveKeywordStats, matchHistory } from './logic.js?v=20261011w';
 
 const TABS = [['home', '개요'], ['lease', '임대'], ['vehicle', '차량'], ['drive', '운행일지'], ['asset', '자산·장비'], ['renewal', '갱신 일정']];
 export const tabsHtml = (cur, base) => '<div class="jh-segmented jh-gen__tabs" role="group" aria-label="총무">' + TABS.map(([k, l]) => '<a class="jh-segmented__item" href="' + esc(base || '#/general') + '/' + k + '" aria-pressed="' + (k === cur) + '">' + esc(l) + '</a>').join('') + '</div>';
@@ -79,6 +79,18 @@ function importPreviewHtml(st) {
   const notes = [rp.skippedBlankTemplateRows ? '빈 양식 줄 ' + rp.skippedBlankTemplateRows + '개는 뺐습니다.' : '', rp.dateNotes && rp.dateNotes['모호(10·20·30일 가능)'] ? '날짜가 "5.2"처럼 모호한 칸 ' + rp.dateNotes['모호(10·20·30일 가능)'] + '곳은 앞뒤 순서로 확정했습니다.' : '', rp.dateNotes && rp.dateNotes['연도 보정'] ? '연도가 잘못된 날짜 ' + rp.dateNotes['연도 보정'] + '곳을 바로잡았습니다.' : '', (rp.anomalies || []).length ? '주행거리 칸과 계기판 차이가 다른 ' + rp.anomalies.length + '줄은 계기판 기준으로 반영했습니다.' : '', '주행거리는 모두 계기판 차이로 계산했습니다.'].filter(Boolean);
   return card('과거 일지 가져오기 — 미리보기', '<div class="jh-gen__pad"><div class="jh-alert" data-tone="info" role="status">' + s.rows + '줄 · ' + s.months + '개월(' + esc(s.from) + ' ~ ' + esc(s.to) + ')을 가져옵니다. 차량이 없으면 새로 등록하고, 이미 있는 달은 덮어씁니다(여러 번 가져와도 겹치지 않습니다).' + (exists ? ' 현재 이식된 달 ' + exists + '개.' : '') + '</div>' + vt + '<ul class="jh-gen__sub" style="font-size:var(--fs-sm)">' + notes.map((n) => '<li>' + esc(n) + '</li>').join('') + '</ul><div class="jh-gen__bar"><button type="button" class="jh-btn" data-variant="primary" data-d-imp-go>가져오기</button><button type="button" class="jh-btn" data-variant="ghost" data-d-imp-cancel>취소</button></div></div>');
 }
+/** 이식한 과거 기록에 프로젝트 일괄 지정 카드 */
+function assignHtml(st) {
+  const f = st.drive; const hist = f.hist || []; if (!hist.length) return '';
+  const pa = f.pa; const total = hist.reduce((s, m) => s + (m.rows || []).length, 0); const none = hist.reduce((s, m) => s + (m.rows || []).filter((r) => !r.pjtId).length, 0);
+  const mt = matchHistory(hist, pa); const stats = driveKeywordStats(hist, 20);
+  const chips = stats.length ? '<div class="jh-gen__bar">' + stats.map((x) => '<button type="button" class="jh-chip" data-tone="muted" data-d-kw="' + esc(x.word) + '" style="cursor:pointer" title="' + x.n + '줄 · ' + dKm(x.km) + 'km">' + esc(x.word) + ' ' + x.n + '</button>').join('') + '</div>' : '';
+  const opts = '<option value="">프로젝트를 고르세요</option><option value="common"' + (pa.pjt === 'common' ? ' selected' : '') + '>공통 · 프로젝트 무관</option>' + (f.projects || []).map((p) => '<option value="' + esc(p.id) + '"' + (p.id === pa.pjt ? ' selected' : '') + '>' + esc((p.code ? p.code + ' · ' : '') + p.name) + '</option>').join('');
+  const body = '<div class="jh-gen__pad"><div class="jh-field__hint">이식한 ' + total + '줄 중 프로젝트가 아직 없는 줄은 ' + none + '줄입니다. 내용에 들어 있는 말(예: #5, 2게이트)로 줄을 찾아 한 번에 프로젝트를 지정합니다. 아래 말을 누르면 입력됩니다(숫자는 그 말이 들어 있는 줄 수).</div>' + chips
+    + '<div class="jh-gen__bar"><input class="jh-input" data-d-pa="kw" placeholder="내용에 들어 있는 말(예: #5)" value="' + esc(pa.kw) + '" aria-label="찾을 말"><select class="jh-select" data-d-pa="pjt" aria-label="프로젝트">' + opts + '</select><input class="jh-input" type="date" data-d-pa="from" value="' + esc(pa.from) + '" aria-label="시작일"><input class="jh-input" type="date" data-d-pa="to" value="' + esc(pa.to) + '" aria-label="종료일"><label class="jh-field__hint"><input type="checkbox" data-d-pa-over' + (pa.over ? ' checked' : '') + '> 이미 지정된 줄도 바꿈</label></div>'
+    + '<div class="jh-gen__bar"><span class="jh-field__hint">' + (pa.kw ? '찾은 줄 <strong>' + mt.n + '줄</strong> · ' + dKm(mt.km) + ' km · ' + mt.months + '개월' : '찾을 말을 입력하세요') + '</span><button type="button" class="jh-btn" data-variant="primary" data-d-pa-go' + (mt.n && pa.pjt ? '' : ' disabled') + '>프로젝트 지정</button></div></div>';
+  return card('이식한 과거 기록에 프로젝트 지정', body);
+}
 export function driveHtml(st) {
   const f = st.drive; const veh = st.data.vehicle || []; const vById = {}; veh.forEach((v) => { vById[v.id] = v; }); const all = driveAllRows(f.docs, f.hist, vById, { approvedOnly: f.approvedOnly }); const vsel = veh.find((v) => v.id === f.vehicleId) || null;
   const from = vsel && vsel.delivery ? vsel.delivery : ''; const anchor = f.mode === 'month' ? f.ym : f.anchor;
@@ -111,6 +123,6 @@ export function driveHtml(st) {
     body = (rows.length ? mt + '<h4 class="jh-gen__sub">운행 내역 — 시간 순</h4><div class="jh-gen__scroll"><table class="jh-gen-table"><thead><tr><th>일자</th><th>차량</th><th>사용자</th><th>프로젝트</th><th>출발 → 도착</th><th>구분</th><th class="num">계기판(km)</th><th class="num">주행</th><th class="num">업무용</th><th>목적</th><th>상태</th></tr></thead><tbody>' + lines + '</tbody></table></div>' : '<div class="jh-empty">조건에 맞는 운행일지가 없습니다.</div>');
   }
   const hint = all.length === 0 ? '<div class="jh-alert" data-tone="info" role="status">아직 올라온 운행일지가 없습니다. 직원은 <strong>전자결재 → 작성 → 차량 운행일지</strong>에서 운행 후에 쓰고 <strong>기록하기</strong>만 누르면(결재 없음) 바로 여기에 시간 순으로 모입니다. 차량은 먼저 <strong>차량 탭에서 등록(출고일·출고 시 계기판 포함)</strong>해야 선택할 수 있습니다.</div>' : '';
-  return importPreviewHtml(st) + hint + card('차량 운행일지 취합', bar + '<div class="jh-gen__pad">' + k + notice + '</div>' + body);
+  return importPreviewHtml(st) + hint + assignHtml(st) + card('차량 운행일지 취합', bar + '<div class="jh-gen__pad">' + k + notice + '</div>' + body);
 }
 export { leaseMonthly };

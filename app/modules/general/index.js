@@ -1,8 +1,8 @@
-import { db, auth, functions, httpsCallable, collection, getDocs, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261011v';
-import { esc, toast } from '../../core/ui.js?v=20261011v';
-import { confirmDialog } from '../../core/dialog.js?v=20261011v';
-import { GTYPES, GKEYS, kstToday, formToDoc, docToForm, newDefaults, SEED, driveCsv, addDays, parseDriveHistory } from './logic.js?v=20261011v';
-import { tabsHtml, homeHtml, listHtml, tableHtml, driveHtml, driveSelect } from './view.js?v=20261011v';
+import { db, auth, functions, httpsCallable, collection, getDocs, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261011w';
+import { esc, toast } from '../../core/ui.js?v=20261011w';
+import { confirmDialog } from '../../core/dialog.js?v=20261011w';
+import { GTYPES, GKEYS, kstToday, formToDoc, docToForm, newDefaults, SEED, driveCsv, addDays, parseDriveHistory, assignProject, matchHistory } from './logic.js?v=20261011w';
+import { tabsHtml, homeHtml, listHtml, tableHtml, driveHtml, driveSelect } from './view.js?v=20261011w';
 
 /** 총무(플랫폼 기본 모듈): 임대·차량·자산·갱신 일정을 한 곳에서. 관리자 전용 — 데이터는 general_* 컬렉션(보안 규칙에서 관리자 전용으로 잠가야 한다) */
 /* 사이드바에는 따로 올리지 않는다(modules/index.js 의 MODULES 에 없음) — 인사총무 구역으로만 열린다. manifest 는 모듈 규약상 남겨 둔다 */
@@ -13,11 +13,11 @@ export const mountSection = (root, route, ctx) => mount(root, route, ctx, { base
 export async function mount(root, route, ctx, opts) {
   const BASE = (opts && opts.base) || '#/general'; const want = route.segs[0]; const tab = want === 'home' || want === 'drive' || GKEYS.includes(want) ? want : 'home'; const openId = route.segs[1] || '';
   root.onclick = null; root.oninput = null; root.onchange = null;
-  const st = { drive: { mode: 'all', anchor: kstToday(), ym: kstToday().slice(0, 7), vehicleId: '', driver: '', pjtKey: '', approvedOnly: false, docs: [], hist: [], imp: null }, base: BASE, data: {}, today: kstToday(), q: '', onlyActive: true, edit: null, seed: { lease: SEED.lease.length, vehicle: SEED.vehicle.length, asset: SEED.asset.length, renewal: SEED.renewal.length } };
+  const st = { drive: { mode: 'all', anchor: kstToday(), ym: kstToday().slice(0, 7), vehicleId: '', driver: '', pjtKey: '', approvedOnly: false, docs: [], hist: [], imp: null, projects: [], pa: { kw: '', pjt: '', from: '', to: '', over: false } }, base: BASE, data: {}, today: kstToday(), q: '', onlyActive: true, edit: null, seed: { lease: SEED.lease.length, vehicle: SEED.vehicle.length, asset: SEED.asset.length, renewal: SEED.renewal.length } };
   root.innerHTML = '<div class="jh-general">' + tabsHtml(tab, BASE) + '<div id="g-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
   const body = root.querySelector('#g-body'); const need = tab === 'home' ? GKEYS : tab === 'drive' ? ['vehicle'] : [tab];
   const load = async () => { await Promise.all(need.map(async (k) => { const s = await getDocs(collection(db, GTYPES[k].coll)); const arr = []; s.forEach((d) => arr.push(Object.assign({ id: d.id }, d.data()))); arr.sort((a, b) => String(GTYPES[k].label(a)).localeCompare(String(GTYPES[k].label(b)), 'ko')); st.data[k] = arr; })); };
-  const loadDrive = async () => { const s = await getDocs(collection(db, 'edoc_drive')); const arr = []; s.forEach((d) => { const x = d.data(); arr.push(Object.assign({ id: d.id }, x, { createdMs: x.createdAt && x.createdAt.toMillis ? x.createdAt.toMillis() : 0 })); }); st.drive.docs = arr; const hs = await getDocs(collection(db, 'general_drive_history')); const ha = []; hs.forEach((d) => ha.push(Object.assign({ id: d.id }, d.data()))); st.drive.hist = ha; };
+  const loadDrive = async () => { const s = await getDocs(collection(db, 'edoc_drive')); const arr = []; s.forEach((d) => { const x = d.data(); arr.push(Object.assign({ id: d.id }, x, { createdMs: x.createdAt && x.createdAt.toMillis ? x.createdAt.toMillis() : 0 })); }); st.drive.docs = arr; const hs = await getDocs(collection(db, 'general_drive_history')); const ha = []; hs.forEach((d) => ha.push(Object.assign({ id: d.id }, d.data()))); st.drive.hist = ha; try { const ps = await getDocs(collection(db, 'gihoek_projects')); const pl = []; ps.forEach((d) => { const x = d.data(); if (x && x.name) pl.push({ id: d.id, code: x.code || '', name: x.name || '' }); }); st.drive.projects = pl.sort((a, b) => (a.code + a.name).localeCompare(b.code + b.name, 'ko')); } catch (e) { st.drive.projects = []; } };
   try { await load(); if (tab === 'drive') { await loadDrive(); const actv = (st.data.vehicle || []).filter(GTYPES.vehicle.active); if (actv.length === 1) st.drive.vehicleId = actv[0].id; } } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '<br>보안 규칙에 총무 컬렉션(관리자 허용)이 반영되었는지 확인해 주세요.</div>'; return; }
   body.removeAttribute('aria-busy');
   const paint = () => { body.innerHTML = tab === 'home' ? homeHtml(st) : tab === 'drive' ? driveHtml(st) : listHtml(st, tab); if (st.edit) { const e = body.querySelector('[data-gf]'); if (e && st.edit.fresh) { st.edit.fresh = false; e.scrollIntoView({ block: 'center' }); } } };
@@ -42,6 +42,14 @@ export async function mount(root, route, ctx, opts) {
     const t = ev.target; if (!(t instanceof Element)) return;
     if (tab === 'drive') {
       const f = st.drive;
+      const kwb = t.closest('[data-d-kw]'); if (kwb) { f.pa.kw = kwb.getAttribute('data-d-kw'); paint(); return; }
+      if (t.closest('[data-d-pa-go]')) {
+        const p = f.pa; const proj = p.pjt === 'common' ? { id: 'common' } : (f.projects || []).find((x) => x.id === p.pjt); const mt = matchHistory(f.hist, p); if (!proj || !mt.n) return;
+        const ok = await confirmDialog({ title: '프로젝트 지정', body: '내용에 "' + p.kw + '"가 들어 있는 ' + mt.n + '줄(' + Math.round(mt.km).toLocaleString('ko-KR') + 'km, ' + mt.months + '개월)을 ' + (proj.id === 'common' ? '"공통(프로젝트 무관)"' : '"' + ((proj.code ? proj.code + ' · ' : '') + proj.name) + '"') + '(으)로 지정합니다.' + (p.over ? ' 이미 지정된 줄도 바꿉니다.' : ''), confirmLabel: '지정' }); if (!ok.ok) return;
+        try { const r = assignProject(f.hist, p, proj); for (const m of r.changed) await updateDoc(doc(db, 'general_drive_history', m.ym), { rows: m.rows, updatedAt: serverTimestamp(), updatedBy: uidNow() }); toast(r.n + '줄에 프로젝트를 지정했습니다.'); await loadDrive(); f.pa.kw = ''; paint(); }
+        catch (e) { toast('지정하지 못했습니다: ' + ((e && e.message) || '')); }
+        return;
+      }
       if (t.closest('[data-d-imp-cancel]')) { f.imp = null; paint(); return; }
       if (t.closest('[data-d-imp-go]') && f.imp && f.imp.ok) {
         const b = f.imp.bundle; const ok = await confirmDialog({ title: '과거 일지 가져오기', body: f.imp.summary.rows + '줄(' + f.imp.summary.from + ' ~ ' + f.imp.summary.to + ')을 가져옵니다. 차량이 없으면 새로 등록하고, 이미 가져온 달은 덮어씁니다.', confirmLabel: '가져오기' }); if (!ok.ok) return;
@@ -85,6 +93,8 @@ export async function mount(root, route, ctx, opts) {
     const t = ev.target; if (!(t instanceof Element)) return;
     if (tab === 'drive') {
       const f = st.drive;
+      if (t.matches('[data-d-pa]')) { f.pa[t.getAttribute('data-d-pa')] = t.value; paint(); return; }
+      if (t.matches('[data-d-pa-over]')) { f.pa.over = t.checked; paint(); return; }
       if (t.matches('[data-d-import]')) { const file = t.files && t.files[0]; t.value = ''; if (!file) return; file.text().then((txt) => { f.imp = parseDriveHistory(txt); paint(); }).catch(() => { f.imp = { ok: false, errors: ['파일을 읽지 못했습니다.'] }; paint(); }); return; }
       if (t.matches('[data-d-anchor]')) { if (/^\d{4}-\d{2}-\d{2}$/.test(t.value)) { f.anchor = t.value; paint(); } return; }
       if (t.matches('[data-d-ym]')) { if (/^\d{4}-\d{2}$/.test(t.value)) { f.ym = t.value; paint(); } return; }

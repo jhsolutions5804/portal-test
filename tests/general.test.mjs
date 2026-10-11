@@ -1,4 +1,4 @@
-import { GTYPES, GKEYS, dday, won, formToDoc, docToForm, newDefaults, leaseMonthly, leaseLast, leasePayState, dueList, homeSummary, SEED, driveRows, weekStart, addDays, driveRange, driveFilter, driveTotals, driveByProject, driveByMonth, driveOdoCheck, driveCsv, parseDriveHistory, historyRows, driveAllRows } from '../app/modules/general/logic.js';
+import { GTYPES, GKEYS, dday, won, formToDoc, docToForm, newDefaults, leaseMonthly, leaseLast, leasePayState, dueList, homeSummary, SEED, driveRows, weekStart, addDays, driveRange, driveFilter, driveTotals, driveByProject, driveByMonth, driveOdoCheck, driveCsv, parseDriveHistory, historyRows, driveAllRows, driveKeywordStats, matchHistory, assignProject } from '../app/modules/general/logic.js';
 let pass = 0, fail = 0;
 const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const T0 = '2026-10-12';
@@ -67,6 +67,20 @@ ok(hRows.length === 4 && hRows[0].status === 'approved' && hRows[0].source === '
 const merged = driveAllRows([dv('n1', '2025-05-07', '한가나', 'p2', 'P4PH2', 351, 360, 9, 'approved', { vehicleId: 'veh1' })], histDocs, { veh1: { name: 'GMC 시에라', plate: '12가 3456' } });
 ok(merged.length === 5 && merged.map((x) => x.date + x.odoStart).join() === '2025-04-03116,2025-04-03116,2025-05-01131,2025-05-07340,2025-05-07351' && merged[4].source === 'edoc' && driveAllRows([], histDocs, {}, { approvedOnly: true }).length === 4, '★ 취합: 전자결재 일지와 이식한 과거 기록을 날짜·계기판 순으로 합침(승인된 것만 보기에도 이식 기록 포함)');
 const oc3 = driveOdoCheck(merged.filter((x) => x.vehicleId === 'veh1'), 116); ok(oc3.gaps.length === 0 && oc3.last === 360 && oc3.sinceDelivery === 244, '이식 기록 + 새 일지: 계기판이 이어져 빈 구간 없음, 출고 이후 누적');
+
+// ───────── 이식한 과거 기록에 프로젝트 일괄 지정 ─────────
+const pr = (date, purpose, dist, extra) => Object.assign({ v: 'staria', vehicleId: 'veh1', date, time: '', who: '김종화', odoStart: 0, odoEnd: dist, distance: dist, kind: '일반 업무용', origin: '', destination: '', purpose, amount: 0, note: '', flags: [] }, extra || {});
+const pHist = [{ id: '2025-05', ym: '2025-05', rows: [pr('2025-05-07', '사무실↔#5', 7), pr('2025-05-08', '사무실→#5→숙소', 9), pr('2025-05-09', '사무실↔#2게이트', 6), pr('2025-05-10', '출근', 3), pr('2025-05-11', '사무실 ↔ # 5', 4, { pjtId: 'p9', pjtCode: 'P9', pjtName: '이미 지정' })] }, { id: '2025-06', ym: '2025-06', rows: [pr('2025-06-01', '숙소→#5', 5), pr('2025-06-02', '청주→평택', 80, { origin: '청주', destination: '평택' })] }];
+const ks = driveKeywordStats(pHist, 10);
+ok(ks[0].word === '#5' && ks[0].n === 3 && ks[0].km === 21 && !ks.some((x) => x.word === '출근' || x.word === '사무실') && ks.find((x) => x.word === '청주').n === 1, '프로젝트 일괄 지정: 아직 지정 안 된 줄에서 자주 나오는 말(#5 3줄 21km), 출근·사무실 같은 흔한 말은 뺌, 이미 지정된 줄은 세지 않음');
+const m1 = matchHistory(pHist, { kw: '#5' }); const m2 = matchHistory(pHist, { kw: '# 5', over: true }); const m3 = matchHistory(pHist, { kw: '#5', from: '2025-06-01' }); const m4 = matchHistory(pHist, { kw: '청주' });
+ok(m1.n === 3 && m1.km === 21 && m1.months === 2 && m2.n === 4 && m3.n === 1 && m4.n === 1 && matchHistory(pHist, { kw: '' }).n === 0 && matchHistory(pHist, { kw: '없는말' }).n === 0, '★ 프로젝트 일괄 지정: 내용(출발·도착 포함)에 말이 들어 있는 줄 찾기 — 공백 무시, 이미 지정된 줄 제외(덮어쓰기 선택 시 포함), 기간 제한');
+const as1 = assignProject(pHist, { kw: '#5' }, { id: 'p4', code: 'P4PH4', name: 'P4 Ph4' });
+ok(as1.n === 3 && as1.km === 21 && as1.changed.length === 2 && as1.changed[0].rows.filter((r) => r.pjtId === 'p4').length === 2 && as1.changed[0].rows[2].pjtId === undefined && as1.changed[0].rows[4].pjtId === 'p9' && as1.changed[1].rows[1].pjtId === undefined && as1.changed[0].rows[0].pjtCode === 'P4PH4' && pHist[0].rows[0].pjtId === undefined, '★ 프로젝트 일괄 지정: 맞는 줄에만 프로젝트 기록, 이미 지정된 줄·다른 줄은 그대로, 원본은 바뀌지 않음');
+ok(assignProject(pHist, { kw: '#5' }, null).n === 0 && assignProject(pHist, { kw: '없는말' }, { id: 'p4' }).changed.length === 0 && assignProject(pHist, { kw: '#2' }, { id: 'common' }).changed[0].rows[2].pjtCode === '공통', '프로젝트 일괄 지정: 프로젝트를 안 고르면 아무것도 안 함, 찾은 줄이 없으면 변경 없음, "공통" 지정');
+const hr2 = historyRows(as1.changed.map((c) => ({ id: c.ym, ym: c.ym, rows: c.rows })), { veh1: { name: '현대 스타리아' } });
+ok(hr2[0].pjtKey === 'p4' && hr2[0].pjt === 'P4PH4 · P4 Ph4' && hr2[2].pjt === '(프로젝트 없음)' && historyRows([{ ym: '2025-05', rows: [pr('2025-05-07', 'x', 1, { pjtId: 'common', pjtCode: '공통' })] }], {})[0].pjt === '공통(프로젝트 무관)', '이식 줄의 프로젝트 표시: 지정한 프로젝트·공통·없음');
+const byp = driveByProject(driveAllRows([], as1.changed.map((c) => ({ id: c.ym, ym: c.ym, rows: c.rows })), {})); ok(byp.find((x) => x.key === 'p4').distance === 21 && byp.find((x) => x.key === 'p4').n === 3, '프로젝트별 보기에 지정한 과거 기록이 모임');
 
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)');
 if (fail) process.exit(1);
