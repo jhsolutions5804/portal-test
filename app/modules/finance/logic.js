@@ -1,9 +1,9 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011e';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011e';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011e';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011e';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011e';
-import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011e';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011f';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011f';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011f';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011f';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011f';
+import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011f';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -206,8 +206,28 @@ export function partnerBalances(entries, account, asOf, includeZero) {
 export function ledgerCsv(kind, data) {
   const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; const L = [];
   if (kind === 'gl') { L.push(['일자', '번호', '메모', '거래처', '차변', '대변', '잔액']); L.push(['', '', '기초 잔액', '', '', '', data.opening]); data.rows.forEach((r) => L.push([r.date, r.no, r.memo, r.partner, r.debit, r.credit, r.balance])); L.push(['', '', '합계 / 기말 잔액', '', data.debit, data.credit, data.closing]); }
+  else if (kind === 'bk') { L.push(['월', '통장 마지막 거래일', '통장 잔액', '장부 보통예금(1020)', '차이(장부-통장)']); data.months.forEach((m) => L.push([m.month, m.date, m.bankBal, m.ledgerBal, m.diff])); }
   else { L.push(['거래처', '차변 합계', '대변 합계', '잔액', '건수', '마지막 거래일']); data.rows.forEach((r) => L.push([r.partner, r.debit, r.credit, r.balance, r.n, r.last])); L.push(['합계', data.debit, data.credit, data.balance, '', '']); }
   return '\uFEFF' + L.map((r) => r.map(q).join(',')).join('\r\n');
+}
+/** 통장 잔액 대사 — 통장 전표의 원천 ID(bank_날짜_시각_출금_입금_거래후잔액)에서 거래별 잔액을 읽어 ①잔액이 끊김 없이 이어지는지 ②날짜별 통장 마지막 잔액과 장부 보통예금(1020)이 같은지 본다.
+ *  같은 초에 찍힌 거래는 잔액이 이어지는 순서로 맞춘다(일괄 이체는 순서가 뒤섞여 있음). 끊김은 빠진 거래나 계좌 바뀜(예: 신한→기업은행)의 흔적 */
+export function bankReconcile(entries, acct) {
+  const account = acct || '1020'; const re = /^bank_(\d{4}-\d{2}-\d{2})_(\d{2})[:_](\d{2})[:_](\d{2})_(\d+)_(\d+)_(-?\d+)/; const map = new Map();
+  (entries || []).filter((e) => !e.invalid).forEach((e) => { const sid = (e.source && e.source.id) || ''; if (!e.source || e.source.kind !== 'bank') return; const m = re.exec(sid); if (!m || map.has(m[0])) return; map.set(m[0], { date: m[1], time: m[2] + ':' + m[3] + ':' + m[4], out: Number(m[5]), inn: Number(m[6]), bal: Number(m[7]) }); });
+  const txns = [...map.values()].sort((a, b) => (a.date + a.time < b.date + b.time ? -1 : a.date + a.time > b.date + b.time ? 1 : 0));
+  const ordered = [], breaks = []; let cur = null; let i = 0;
+  while (i < txns.length) { let j = i; while (j < txns.length && txns[j].date === txns[i].date && txns[j].time === txns[i].time) j++; const rest = txns.slice(i, j); i = j;
+    while (rest.length) { let k = cur === null ? -1 : rest.findIndex((t) => cur + t.inn - t.out === t.bal);
+      if (k < 0) { k = rest.findIndex((t) => !rest.some((o) => o !== t && o.bal === t.bal - t.inn + t.out)); if (k < 0) k = 0; const t = rest[k]; if (cur !== null) breaks.push({ afterDate: ordered[ordered.length - 1].date, afterTime: ordered[ordered.length - 1].time, afterBal: cur, date: t.date, time: t.time, startBal: t.bal - t.inn + t.out, gap: t.bal - t.inn + t.out - cur }); }
+      const t = rest.splice(k, 1)[0]; ordered.push(t); cur = t.bal; } }
+  const bankEnd = new Map(); ordered.forEach((t) => bankEnd.set(t.date, t.bal));
+  const chg = new Map(); (entries || []).filter((e) => !e.invalid).forEach((e) => e.lines.forEach((l) => { if (l.account !== account) return; chg.set(e.date, (chg.get(e.date) || 0) + (l.side === 'D' ? 1 : -1) * Number(l.amount)); }));
+  const days = [...new Set([...chg.keys(), ...bankEnd.keys()])].sort(); let run = 0; const led = new Map(); days.forEach((d) => { run += chg.get(d) || 0; led.set(d, run); });
+  const bankDays = [...bankEnd.keys()].sort(); const changes = [], months = new Map(); let prev = null;
+  bankDays.forEach((d) => { const diff = led.get(d) - bankEnd.get(d); if (prev === null ? diff !== 0 : diff !== prev) changes.push({ date: d, bankBal: bankEnd.get(d), ledgerBal: led.get(d), diff, delta: diff - (prev || 0) }); prev = diff; months.set(d.slice(0, 7), { month: d.slice(0, 7), date: d, bankBal: bankEnd.get(d), ledgerBal: led.get(d), diff }); });
+  const lastDiff = prev === null ? 0 : prev;
+  return { count: ordered.length, first: ordered.length ? ordered[0].date : '', last: ordered.length ? ordered[ordered.length - 1].date : '', breaks, changes, months: [...months.values()], lastDiff, ledgerNow: run, ok: !!ordered.length && lastDiff === 0 };
 }
 /** 통장 거래처 규칙 입력 검사 — key(상대방·내용에 포함된 글자) 2~40자, 방향 in/out/any, 존재하는 계정 */
 export function bankRuleFromForm(key, dir, account, partner, memo) {

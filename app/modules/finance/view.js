@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261011e';
-import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances } from './logic.js?v=20261011e';
-import { CHOICES } from '../../shared/merchant-table.js?v=20261011e';
+import { esc } from '../../core/ui.js?v=20261011f';
+import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile } from './logic.js?v=20261011f';
+import { CHOICES } from '../../shared/merchant-table.js?v=20261011f';
 
 /* 재무회계 화면 조각 — 모든 값은 esc() 로 감싸 HTML 로 만든다. 스타일은 theme/finance.css 와 공용 클래스를 쓴다 */
 const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['gap', '이엔지 정산'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];
@@ -111,15 +111,25 @@ function previewHtml(st) {
 
 
 /* ───────── 재무제표 ───────── */
-const STM = [['is', '손익계산서'], ['bs', '재무상태표'], ['cf', '현금흐름표'], ['tb', '합계잔액시산표'], ['gl', '계정별 원장'], ['pt', '거래처별 잔액']];
+const STM = [['is', '손익계산서'], ['bs', '재무상태표'], ['cf', '현금흐름표'], ['tb', '합계잔액시산표'], ['gl', '계정별 원장'], ['pt', '거래처별 잔액'], ['bk', '통장 대사']];
 export function reportsHtml(st) {
   const s = st.stm; const kind = st.rep.kind;
   const bar = '<div class="jh-finance__bar"><div class="jh-segmented" role="group" aria-label="재무제표">' + STM.map(([c, l]) => '<button type="button" class="jh-segmented__item" data-rep-kind="' + c + '" aria-pressed="' + (c === kind) + '">' + l + '</button>').join('') + '</div><input class="jh-input" type="date" data-rep="from" value="' + esc(st.rep.from) + '" aria-label="시작일"><input class="jh-input" type="date" data-rep="to" value="' + esc(st.rep.to) + '" aria-label="종료일"><button type="button" class="jh-btn" data-variant="ghost" data-act="csv">엑셀(CSV)로 받기</button><button type="button" class="jh-btn" data-variant="ghost" data-act="print">인쇄</button></div>';
-  const ledgerKind = kind === 'gl' || kind === 'pt';
+  const ledgerKind = kind === 'gl' || kind === 'pt' || kind === 'bk';
   const accSel = (attr, sel) => '<select class="jh-select" data-gl="' + attr + '" aria-label="계정">' + ACCOUNTS.map((a) => '<option value="' + a.code + '"' + (a.code === sel ? ' selected' : '') + '>' + esc(a.code + ' ' + a.name) + '</option>').join('') + '</select>';
   if (ledgerKind) {
     const R = st.rep; let body2 = '', extra = '';
-    if (kind === 'gl') {
+    if (kind === 'bk') {
+      const b = bankReconcile(st.entries); const diffTxt = (n) => (n === 0 ? '일치' : (n > 0 ? '장부가 ' + won(n) + '원 많음' : '장부가 ' + won(-n) + '원 적음'));
+      const sum = b.count ? alertHtml(b.ok && !b.breaks.length ? 'info' : 'warn', '통장 거래 ' + b.count + '건(' + b.first + ' ~ ' + b.last + ') · 잔액이 이어지지 않는 곳 ' + b.breaks.length + '곳 · 마지막 통장 잔액과 장부 보통예금(1020) ' + diffTxt(b.lastDiff)) : alertHtml('warn', '통장에서 가져온 전표가 없습니다.');
+      const brRows = b.breaks.map((x) => '<tr><td>' + esc(x.afterDate + ' ' + x.afterTime) + '</td>' + num(x.afterBal) + '<td>' + esc(x.date + ' ' + x.time) + '</td>' + num(x.startBal) + num(x.gap) + '</tr>');
+      const chRows = b.changes.map((x) => '<tr><td>' + esc(x.date) + '</td>' + num(x.bankBal) + num(x.ledgerBal) + num(x.diff) + num(x.delta) + '<td><button type="button" class="jh-btn" data-variant="ghost" data-bk-go="' + esc(x.date) + '">그 날 전표 보기</button></td></tr>');
+      const moRows = b.months.map((m) => '<tr><td>' + esc(m.month) + '</td><td>' + esc(m.date) + '</td>' + num(m.bankBal) + num(m.ledgerBal) + num(m.diff) + '</tr>');
+      body2 = sum + '<div class="jh-field__hint jh-finance__pad">통장 전표의 원천 정보에 들어 있는 거래 후 잔액을 읽어 계산합니다. 통장 파일을 다시 올릴 필요가 없습니다.</div>'
+        + (b.breaks.length ? '<h4 class="jh-finance__sub">잔액이 이어지지 않는 곳 — 빠진 거래이거나 계좌가 바뀐 곳(예: 신한→기업은행)</h4>' + tbl([['앞 거래'], ['앞 잔액', 'num'], ['이 거래'], ['이 거래 직전 잔액', 'num'], ['차이', 'num']], brRows) : '')
+        + (b.changes.length ? '<h4 class="jh-finance__sub">장부와 통장의 차이가 생기거나 바뀐 날 — 이 날 전표가 빠졌거나 통장 밖 거래가 섞인 곳</h4>' + tbl([['날짜'], ['통장 마지막 잔액', 'num'], ['장부 1020', 'num'], ['차이(장부-통장)', 'num'], ['차이 변화', 'num'], ['']], chRows) : (b.count ? '<div class="jh-empty">장부 보통예금이 통장 잔액과 모든 날짜에서 일치합니다.</div>' : ''))
+        + (b.months.length ? '<h4 class="jh-finance__sub">월별 대사(그 달 통장 마지막 거래일 기준)</h4>' + tbl([['월'], ['기준일'], ['통장 잔액', 'num'], ['장부 보통예금(1020)', 'num'], ['차이', 'num']], moRows) : '');
+    } else if (kind === 'gl') {
       const g = accountLedger(st.entries, R.acct || '2010', R.from, R.to, R.q); const cap = 1000; const show = g.rows.slice(0, cap);
       extra = accSel('acct', R.acct || '2010') + '<input class="jh-input jh-finance__q" data-gl="q" value="' + esc(R.q || '') + '" placeholder="거래처 이름으로 좁히기(선택)">';
       const trs = ['<tr class="is-strong"><td colspan="6">기초 잔액 (' + esc(R.from || '처음부터') + ' 앞)</td>' + num(g.opening) + '</tr>'].concat(show.map((r) => '<tr data-entry="' + esc(r.id) + '" tabindex="0"><td>' + esc(r.date) + '</td><td>' + esc(r.no) + '</td><td>' + esc(r.memo) + '</td><td>' + esc(r.partner) + '</td>' + num(r.debit) + num(r.credit) + num(r.balance) + '</tr>'), ['<tr class="is-strong"><td colspan="4">합계 / 기말 잔액</td>' + num(g.debit) + num(g.credit) + num(g.closing) + '</tr>']);
@@ -130,7 +140,7 @@ export function reportsHtml(st) {
       const trs = p.rows.map((r) => '<tr><td>' + esc(r.partner) + '</td>' + num(r.debit) + num(r.credit) + num(r.balance) + '<td class="num">' + r.n + '</td><td>' + esc(r.last) + '</td></tr>').concat(['<tr class="is-strong"><td>합계</td>' + num(p.debit) + num(p.credit) + num(p.balance) + '<td></td><td></td></tr>']);
       body2 = '<div class="jh-field__hint jh-finance__pad">' + esc(p.name) + ' — ' + esc(R.to || '전체') + ' 기준, 잔액은 ' + (p.normal === 'C' ? '대변' : '차변') + ' 기준입니다.' + (p.hidden ? ' 잔액 0인 거래처 ' + p.hidden + '곳은 숨겼습니다.' : '') + '</div>' + (p.rows.length ? tbl([['거래처'], ['차변 합계', 'num'], ['대변 합계', 'num'], ['잔액', 'num'], ['건수', 'num'], ['마지막 거래일']], trs) : '<div class="jh-empty">이 계정에 거래처별로 남은 잔액이 없습니다.</div>');
     }
-    const bar2 = '<div class="jh-finance__bar"><div class="jh-segmented" role="group" aria-label="재무제표">' + STM.map(([c, l]) => '<button type="button" class="jh-segmented__item" data-rep-kind="' + c + '" aria-pressed="' + (c === kind) + '">' + l + '</button>').join('') + '</div>' + (kind === 'gl' ? '<input class="jh-input" type="date" data-rep="from" value="' + esc(R.from) + '" aria-label="시작일">' : '') + '<input class="jh-input" type="date" data-rep="to" value="' + esc(R.to) + '" aria-label="' + (kind === 'gl' ? '종료일' : '기준일') + '"><button type="button" class="jh-btn" data-variant="ghost" data-act="csv">엑셀(CSV)로 받기</button><button type="button" class="jh-btn" data-variant="ghost" data-act="print">인쇄</button></div><div class="jh-finance__bar">' + extra + '</div>';
+    const bar2 = '<div class="jh-finance__bar"><div class="jh-segmented" role="group" aria-label="재무제표">' + STM.map(([c, l]) => '<button type="button" class="jh-segmented__item" data-rep-kind="' + c + '" aria-pressed="' + (c === kind) + '">' + l + '</button>').join('') + '</div>' + (kind === 'bk' ? '' : kind === 'gl' ? '<input class="jh-input" type="date" data-rep="from" value="' + esc(R.from) + '" aria-label="시작일">' : '') + (kind === 'bk' ? '' : '<input class="jh-input" type="date" data-rep="to" value="' + esc(R.to) + '" aria-label="' + (kind === 'gl' ? '종료일' : '기준일') + '">') + '<button type="button" class="jh-btn" data-variant="ghost" data-act="csv">엑셀(CSV)로 받기</button><button type="button" class="jh-btn" data-variant="ghost" data-act="print">인쇄</button></div><div class="jh-finance__bar">' + extra + '</div>';
     return bar2 + '<section class="jh-card jh-finance__paper">' + body2 + '</section>';
   }
   const note = alertHtml('warn', '⚠ 초안입니다 — 세무조정(업무용승용차 한도·접대비 한도·가계성 지출 제외 등)이 반영되지 않았고, 확정 전 전표(확인 필요 ' + st.sum.review + '건)가 섞여 있습니다. 소득세 신고 전 세무사 검토가 필요합니다.');

@@ -89,3 +89,6 @@
 /* 전표 목록 선택 칸(일괄 재분류) */
 .jh-fin-table td.jh-fin-sel, .jh-fin-table th.jh-fin-sel { width: 2.6rem; text-align: center; }
 .jh-fin-sel input[type=checkbox] { inline-size: 1.1rem; block-size: 1.1rem; cursor: pointer; }
+
+/* 보조 제목(통장 대사 등) */
+.jh-finance__sub { margin: var(--sp-4) 0 var(--sp-2); font-size: var(--fs-sm); font-weight: 700; color: var(--c-ink-1); }

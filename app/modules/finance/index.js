@@ -1,14 +1,14 @@
-import { esc, toast } from '../../core/ui.js?v=20261011e';
-import { confirmDialog } from '../../core/dialog.js?v=20261011e';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261011e';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261011e';
-import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011e';
-import { parseBankSheets } from '../../shared/bank-import.js?v=20261011e';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261011e';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261011e';
-import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, accountLedger, partnerBalances, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261011e';
-import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261011e';
-import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261011e';
+import { esc, toast } from '../../core/ui.js?v=20261011f';
+import { confirmDialog } from '../../core/dialog.js?v=20261011f';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261011f';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261011f';
+import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011f';
+import { parseBankSheets } from '../../shared/bank-import.js?v=20261011f';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261011f';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261011f';
+import { summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261011f';
+import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261011f';
+import { tabsHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261011f';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
 export const manifest = {
@@ -210,6 +210,7 @@ export async function mount(root, route, ctx) {
     if (t.closest('[data-sel]')) return; const row = t.closest('[data-entry]'); if (row) { openEntry(row.getAttribute('data-entry')); return; }
     const ik = t.closest('[data-imp-kind]'); if (ik) { S.imp = { kind: ik.getAttribute('data-imp-kind'), busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }; paint(); return; }
     const md = t.closest('[data-mr-del]'); if (md) { S.rl.merchant.splice(Number(md.getAttribute('data-mr-del')), 1); S.rl.dirtyM = true; paint(); return; }
+    const bg = t.closest('[data-bk-go]'); if (bg) { const dd = bg.getAttribute('data-bk-go'); S.filter = { from: dd, to: dd, source: '', review: false, reviewed: false, assignee: '', q: '' }; S.limit = 100; location.hash = '#/finance/entries'; return; }
     const bd = t.closest('[data-br-del]'); if (bd) { S.rl.bank.splice(Number(bd.getAttribute('data-br-del')), 1); S.rl.dirtyB = true; paint(); return; }
     const pd = t.closest('[data-pr-del]'); if (pd) { S.rl.purchase.splice(Number(pd.getAttribute('data-pr-del')), 1); S.rl.dirtyP = true; paint(); return; }
     const rk = t.closest('[data-rep-kind]'); if (rk) { S.rep.kind = rk.getAttribute('data-rep-kind'); paint(); return; }
@@ -262,6 +263,7 @@ export async function mount(root, route, ctx) {
       try { const res = await readPayroll(m); S.imp.raw = { payroll: res, fileName: '포털 급여명세서 ' + m }; await buildPreview(); setImp({ busy: false }); } catch (e) { setImp({ busy: false, error: e.message }); }
     }
     else if (act === 'commit') await commit();
+    else if (act === 'csv' && S.rep.kind === 'bk') { download('통장대사_월별.csv', ledgerCsv('bk', bankReconcile(S.data.entries))); }
     else if (act === 'csv' && (S.rep.kind === 'gl' || S.rep.kind === 'pt')) { const gl = S.rep.kind === 'gl'; const data = gl ? accountLedger(S.data.entries, S.rep.acct, S.rep.from, S.rep.to, S.rep.q) : partnerBalances(S.data.entries, S.rep.pacct, S.rep.to, S.rep.zero); download((gl ? '계정별원장_' + data.account + '_' + (S.rep.from || '처음') + '_' + S.rep.to : '거래처별잔액_' + data.account + '_' + S.rep.to) + '.csv', ledgerCsv(S.rep.kind, data)); }
     else if (act === 'csv') { const st = stmNow(); const kind = S.rep.kind; download(({ is: '손익계산서', bs: '재무상태표', cf: '현금흐름표', tb: '합계잔액시산표' })[kind] + '_' + S.rep.from + '_' + S.rep.to + '.csv', statementCsv(st, kind)); }
     else if (act === 'print') window.print();
