@@ -1,7 +1,7 @@
 /* 인사 — 근로자 명부(새 화면). 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 데이터: workers/{id}(일반 정보) + worker_private/{id}(주민번호·계좌·주소·서명, 읽을 때 합쳐 쓰고 저장할 때 다시 가른다)
  *         labor_contracts/{id}/contracts · annual_contracts/{id}/contracts(endDate), workers/{id}/history(직급·부서 변경 이력) */
-import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261012d';
+import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261012e';
 export const WP_FIELDS = ['jumin', 'bankAccount', 'address', 'signData'];   // worker_private 에 따로 두는 필드
 export const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')) && new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
@@ -234,4 +234,38 @@ export function resignPrintHtml(d, worker, filedDate, today) {
     + '<p style="text-align:center;margin:34px 0 8px;font-size:11pt;">위와 같은 사유로 ' + (k === '휴직' ? '휴직' : '퇴직') + '하고자 하오니 허락하여 주시기 바랍니다.</p><p style="text-align:center;margin:18px 0 0;font-size:11pt;">' + korDate(filed || today) + '</p><p style="text-align:right;margin:26px 0 0;font-size:11pt;">작성자 : <b>' + (hx(d.authorName) || '') + '</b> &nbsp;(서명)</p><p style="margin:34px 0 0;font-size:12pt;font-weight:700;">제이에이치솔루션 대표 귀하</p>' + apv + '<p style="margin:22px 0 0;font-size:8.5pt;color:#777;">※ 전자결재 상태: ' + (RRQ_STATUS[d.status] || d.status || '-') + ' · 접수일 ' + (filed || '-') + '</p>';
   const docTitle = hx((k === '휴직' ? '휴직원' : '퇴직원') + '_' + (d.authorName || ''));
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + docTitle + '</title><style>body{margin:0;font-family:\'Malgun Gothic\',Arial,sans-serif;background:#888;display:flex;flex-direction:column;align-items:center;padding:20px;}.a4{width:210mm;min-height:297mm;background:#fff;padding:20mm 22mm;box-shadow:0 4px 24px rgba(0,0,0,.2);font-size:10.5pt;line-height:1.8;color:#1A2540;box-sizing:border-box;}h1{text-align:center;font-size:20pt;letter-spacing:6px;margin:0 0 6px;}.ul{width:60px;height:2px;background:#333;margin:8px auto 24px;}table.kv{width:100%;border-collapse:collapse;margin:10px 0;}table.kv th{border:1px solid #333;background:#F0F3F8;padding:7px 10px;width:130px;text-align:left;font-size:10pt;vertical-align:top;}table.kv td{border:1px solid #333;padding:7px 10px;font-size:10.5pt;}@media print{body{background:#fff;padding:0;}.toolbar{display:none;}.a4{box-shadow:none;padding:15mm 20mm;width:100%;}}</style></head><body><div class="toolbar" style="margin-bottom:12px;display:flex;gap:8px;"><button onclick="window.close()" style="padding:8px 16px;background:#fff;border:1px solid #DDE4EF;border-radius:8px;cursor:pointer;">← 닫기</button><button onclick="window.print()" style="padding:8px 16px;background:#1D5BA6;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;">🖨 인쇄/PDF</button></div><div class="a4">' + body + '</div></body></html>';
+}
+
+/* ───────── 인사 캘린더 — hr_calendar_events(지정 담당자만, 규칙에서도 같은 목록으로 막음) + 연차(company_schedules, 읽기만) ───────── */
+export const HC_TYPES = { interview: '면접', offerreply: '연봉제안서 회신', salarynego: '연봉협상', eval: '인사평가', resign: '퇴사', etc: '기타' };
+const pad2 = (n) => String(n).padStart(2, '0');
+export const hcMonthRange = (ym) => { const [y, m] = ym.split('-').map(Number); return { a: ym + '-01', b: ym + '-' + pad2(new Date(y, m, 0).getDate()) }; };
+export const hcMove = (ym, delta) => { const [y, m] = ym.split('-').map(Number); const d = new Date(y, m - 1 + delta, 1); return d.getFullYear() + '-' + pad2(d.getMonth() + 1); };
+/** 달력 칸: 앞쪽 빈 칸(요일 수)과 날짜 칸 — dow 0=일 */
+export function hcGrid(ym, today) { const [y, m] = ym.split('-').map(Number); const first = new Date(y, m - 1, 1).getDay(); const days = new Date(y, m, 0).getDate(); const cells = []; for (let i = 0; i < first; i++) cells.push(null); for (let d = 1; d <= days; d++) { const ds = ym + '-' + pad2(d); cells.push({ ds, d, dow: new Date(y, m - 1, d).getDay(), today: ds === today }); } return cells; }
+export function hcByDate(events) { const m = {}; (events || []).forEach((e) => { (m[e.date] = m[e.date] || []).push(e); }); Object.keys(m).forEach((k) => m[k].sort((p, q) => String(p.time || '99').localeCompare(String(q.time || '99')))); return m; }
+export const hcSort = (events) => (events || []).slice().sort((p, q) => String(p.date || '').localeCompare(String(q.date || '')) || String(p.time || '99').localeCompare(String(q.time || '99')));
+export function hcValidate(f) {
+  const g = (k) => String((f && f[k]) == null ? '' : f[k]).trim(); const errors = [];
+  if (!HC_TYPES[g('type')]) errors.push('구분을 선택해 주세요.'); if (!g('title')) errors.push('제목을 입력해 주세요.'); if (!isDate(g('date'))) errors.push('날짜를 입력해 주세요.');
+  if (g('endTime') && !g('time')) errors.push('종료 시간은 시작 시간과 함께 입력해 주세요.'); else if (g('endTime') && g('endTime') <= g('time')) errors.push('종료 시간이 시작 시간보다 늦어야 합니다.');
+  if (g('title').length > 100) errors.push('제목은 100자 이내로 입력해 주세요.'); if (g('note').length > 1000) errors.push('메모는 1,000자 이내로 입력해 주세요.');
+  if (errors.length) return { ok: false, errors }; return { ok: true, errors: [], data: { type: g('type'), title: g('title'), person: g('person').slice(0, 40), date: g('date'), time: g('time'), endTime: g('endTime'), note: g('note') } };
+}
+/** 연차: company_schedules(분류 off·leave)를 날짜별로 펼친다. 2일 이상 이어진 연차는 주말·공휴일을 건너뛴다 */
+export function hcExpandLeaves(schedules, monthStart, monthEnd, isHol) {
+  const out = {}; (schedules || []).forEach((x) => {
+    if (!['off', 'leave'].includes(x.tag) || !x.sdate) return; const sd = x.sdate, ed = x.edate && x.edate >= x.sdate ? x.edate : x.sdate; if (ed < monthStart) return; const multi = ed > sd;
+    const from = sd > monthStart ? sd : monthStart; const to = ed < monthEnd ? ed : monthEnd; let cur = Date.parse(from + 'T00:00:00Z'); const end = Date.parse(to + 'T00:00:00Z');
+    for (; cur <= end; cur += 86400000) { const dt = new Date(cur); const ds = dt.toISOString().slice(0, 10); const dow = dt.getUTCDay(); if (multi && (dow === 0 || dow === 6 || (isHol && isHol(ds)))) continue; (out[ds] = out[ds] || []).push({ name: x.att || '', kind: x.tagLabel || '연차', text: x.text || '', sdate: sd, edate: ed }); }
+  });
+  Object.keys(out).forEach((k) => out[k].sort((p, q) => p.name.localeCompare(q.name, 'ko'))); return out;
+}
+/** 승인된 퇴직원서(edoc_resign) → 인사 캘린더 '퇴사' 일정 계획. 일정 번호를 resign_<원서번호>로 고정해 같은 원서는 중복되지 않고, 승인이 풀리면 자동 등록분만 지운다 */
+export function hcResignPlan(docs, existing) {
+  const upserts = [], deletes = []; (docs || []).forEach((d) => {
+    if ((d.leaveKind || '퇴직') !== '퇴직') return; const id = 'resign_' + d.id; const ok = ['approved', 'posted', 'done'].includes(d.status) && /^\d{4}-\d{2}-\d{2}$/.test(d.lastDate || ''); const old = (existing || {})[id] || null;
+    if (ok) { const data = { type: 'resign', title: (d.authorName || '') + ' 퇴사', person: d.authorName || '', date: d.lastDate, time: '', endTime: '', note: '전자결재 퇴직원서 승인', auto: true, sourceId: d.id }; if (old && old.date === data.date && old.person === data.person && old.type === 'resign') return; upserts.push({ id, data }); }
+    else if (old && old.auto) deletes.push(id);
+  }); return { upserts, deletes };
 }

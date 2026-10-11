@@ -18,3 +18,19 @@
 .jh-hr-table--click tbody tr { cursor: pointer; }
 .jh-hr-table--click tbody tr:hover { background: var(--c-primary-weak); }
 @media (max-width: 720px) { .jh-hr__grid { grid-template-columns: minmax(0, 1fr); } }
+/* 인사 캘린더 */
+.jh-hc__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--sp-1); }
+.jh-hc__dow { text-align: center; font-size: var(--fs-sm); font-weight: 700; padding: var(--sp-2) 0; color: var(--c-ink-2); }
+.jh-hc__dow[data-d="0"], .jh-hc__num[data-d="0"] { color: var(--c-danger); }
+.jh-hc__dow[data-d="6"], .jh-hc__num[data-d="6"] { color: var(--c-primary); }
+.jh-hc__cell { min-height: calc(var(--u-56) * 1.6); padding: var(--sp-1) var(--sp-2); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); cursor: pointer; overflow: hidden; }
+.jh-hc__cell--blank { background: transparent; border-color: transparent; cursor: default; }
+.jh-hc__cell.is-today { border-color: var(--c-primary); }
+.jh-hc__cell.is-sel { outline: 2px solid var(--c-primary); background: var(--c-primary-weak); }
+.jh-hc__num { font-size: var(--fs-sm); font-weight: 700; }
+.jh-hc__hol { font-size: var(--fs-xs, 0.7rem); font-weight: 500; color: var(--c-danger); }
+.jh-hc__chip { font-size: var(--fs-xs, 0.75rem); line-height: 1.35; padding: 2px 6px; margin-top: 3px; border-radius: 5px; border-left: 3px solid var(--hc, var(--c-ink-3)); background: var(--c-bg); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; }
+.jh-hc__tag { display: inline-block; font-size: var(--fs-xs, 0.75rem); font-weight: 600; padding: 3px 9px; border-radius: 7px; border-left: 3px solid var(--hc, var(--c-ink-3)); background: var(--c-bg); white-space: nowrap; }
+[data-t="interview"] { --hc: #1D5BA6; } [data-t="offerreply"] { --hc: #D97706; } [data-t="salarynego"] { --hc: #16A34A; } [data-t="eval"] { --hc: #7C3AED; } [data-t="resign"] { --hc: #DC2626; } [data-t="etc"] { --hc: #64748B; } [data-t="leave"] { --hc: #0F9D6B; }
+.jh-hc__row { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-top: var(--u-1) solid var(--c-line); cursor: pointer; }
+.jh-hc__row:hover { background: var(--c-primary-weak); }

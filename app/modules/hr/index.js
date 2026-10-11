@@ -1,8 +1,9 @@
-import { db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012d';
-import { confirmDialog } from '../../core/dialog.js?v=20261012d';
-import { esc, toast } from '../../core/ui.js?v=20261012d';
-import { rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012d';
-import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml } from './view.js?v=20261012d';
+import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012e';
+import { confirmDialog } from '../../core/dialog.js?v=20261012e';
+import { holidayName } from '../../shared/holidays.js?v=20261012e';
+import { esc, toast } from '../../core/ui.js?v=20261012e';
+import { hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012e';
+import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml } from './view.js?v=20261012e';
 
 /** 인사(플랫폼 기본 모듈): 근로자 명부 새 화면. 인사총무 틀 안의 구역으로만 열린다(modules/index.js 의 hostNative). 구포털 인사 화면은 그대로 두고 하나씩 옮기는 중이다. 관리자 전용 */
 export const manifest = { id: 'hr', order: 21, title: '인사', icon: '👥', defaultHash: '#/hr/workers', perm: (me) => !!me && me.admin === true };
@@ -219,5 +220,53 @@ export async function mountResignReq(root, route, ctx) {
       win.document.open(); win.document.write(resignPrintHtml(d, w, d.filed, st.today)); win.document.close();
     }
   };
+  paint();
+}
+
+/** 인사 캘린더(새 화면) — 지정 담당자(hr_calendar_access/config 의 emails)만. 일정 등록·수정·삭제, 연차 표시(읽기), 승인된 퇴직원서의 퇴사 일정 자동 반영(1분 간격) */
+let lastResignSync = 0;
+export async function mountCalendar(root, route, ctx) {
+  root.onclick = null; root.oninput = null; root.onchange = null;
+  const today = kstToday(); const st = { today, hcYm: today.slice(0, 7), hcSel: today, hcEvents: [], hcLeaves: {}, hcLeaveOn: true, hcLeaveErr: false, hcOk: false, hcForm: null };
+  root.innerHTML = '<div class="jh-hr"><div id="h-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
+  const body = root.querySelector('#h-body'); const me = String((auth.currentUser && auth.currentUser.email) || '').toLowerCase();
+  const syncResign = async () => {
+    if (Date.now() - lastResignSync < 60000) return; lastResignSync = Date.now();
+    try { const ds = await getDocs(collection(db, 'edoc_resign')); const docs = []; ds.forEach((d) => docs.push(Object.assign({ id: d.id }, d.data()))); const existing = {};
+      await Promise.all(docs.filter((d) => (d.leaveKind || '퇴직') === '퇴직').map(async (d) => { try { const sn = await getDoc(doc(db, 'hr_calendar_events', 'resign_' + d.id)); if (sn.exists()) existing['resign_' + d.id] = sn.data(); } catch (e) { /* 없음 */ } }));
+      const plan = hcResignPlan(docs, existing); const now = new Date().toISOString();
+      for (const u of plan.upserts) await setDoc(doc(db, 'hr_calendar_events', u.id), Object.assign({}, u.data, { createdAt: (existing[u.id] || {}).createdAt || now, createdBy: (existing[u.id] || {}).createdBy || me, updatedAt: now, updatedBy: me }));
+      for (const id of plan.deletes) await deleteDoc(doc(db, 'hr_calendar_events', id));
+    } catch (e) { /* 전자결재 문서를 읽을 권한이 없으면 조용히 건너뜀 */ }
+  };
+  const load = async () => {
+    const { a, b } = hcMonthRange(st.hcYm); const s = await getDocs(query(collection(db, 'hr_calendar_events'), where('date', '>=', a), where('date', '<=', b))); const l = []; s.forEach((d) => l.push(Object.assign({ id: d.id }, d.data()))); st.hcEvents = l;
+    st.hcLeaves = {}; st.hcLeaveErr = false; try { const back = new Date(a + 'T00:00:00Z'); back.setUTCDate(back.getUTCDate() - 45); const from = back.toISOString().slice(0, 10); const ss = await getDocs(query(collection(db, 'company_schedules'), where('sdate', '>=', from), where('sdate', '<=', b))); const sc = []; ss.forEach((d) => sc.push(d.data())); st.hcLeaves = hcExpandLeaves(sc, a, b, (ds) => !!holidayName(ds)); } catch (e) { st.hcLeaveErr = true; }
+  };
+  try {
+    let emails = []; try { const cfg = await getDoc(doc(db, 'hr_calendar_access', 'config')); emails = ((cfg.exists() && cfg.data().emails) || []).map((x) => String(x).toLowerCase()); } catch (e) { emails = []; }
+    st.hcOk = !!me && emails.includes(me); if (st.hcOk) { await syncResign(); await load(); }
+  } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
+  body.removeAttribute('aria-busy');
+  const paint = () => { body.innerHTML = calendarHtml(st); };
+  const reload = async () => { try { await load(); } catch (e) { toast('불러오지 못했습니다: ' + ((e && e.message) || '')); } paint(); };
+  root.onclick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    const mv = t.closest('[data-hc-move]'); if (mv) { const n = Number(mv.getAttribute('data-hc-move')); if (n === 0) { st.hcYm = st.today.slice(0, 7); st.hcSel = st.today; } else { st.hcYm = hcMove(st.hcYm, n); st.hcSel = st.hcYm === st.today.slice(0, 7) ? st.today : ''; } st.hcForm = null; await reload(); return; }
+    const ed = t.closest('[data-hc-edit]'); if (ed) { const e = st.hcEvents.find((x) => x.id === ed.getAttribute('data-hc-edit')); if (e) { st.hcForm = Object.assign({}, e); paint(); } return; }
+    const ad = t.closest('[data-hc-add]'); if (ad) { st.hcForm = { id: '', type: 'interview', title: '', person: '', date: ad.getAttribute('data-hc-add'), time: '', endTime: '', note: '' }; paint(); const f0 = body.querySelector('[data-hc-f]'); if (f0) f0.scrollIntoView({ block: 'center' }); return; }
+    const sl = t.closest('[data-hc-sel]'); if (sl) { st.hcSel = sl.getAttribute('data-hc-sel'); paint(); return; }
+    const a = t.closest('[data-hc-act]'); if (!a || !st.hcForm) return; const act = a.getAttribute('data-hc-act');
+    if (act === 'cancel') { st.hcForm = null; paint(); return; }
+    if (act === 'delete') { const ok = await confirmDialog({ title: '일정 삭제', body: '이 일정을 삭제합니다.', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return; try { await deleteDoc(doc(db, 'hr_calendar_events', st.hcForm.id)); toast('삭제했습니다.'); st.hcForm = null; await reload(); } catch (e) { toast('삭제하지 못했습니다: ' + ((e && e.message) || '')); } return; }
+    if (act === 'save') {
+      const r = hcValidate(st.hcForm); if (!r.ok) { toast(r.errors[0]); return; }
+      try { const now = new Date().toISOString(); const old = st.hcForm.id ? (st.hcEvents.find((x) => x.id === st.hcForm.id) || {}) : {}; const ref = st.hcForm.id ? doc(db, 'hr_calendar_events', st.hcForm.id) : doc(collection(db, 'hr_calendar_events'));
+        await setDoc(ref, Object.assign({}, r.data, { createdAt: old.createdAt || now, createdBy: old.createdBy || me, updatedAt: now, updatedBy: me }));
+        toast('저장했습니다.'); if (r.data.date.slice(0, 7) !== st.hcYm) st.hcYm = r.data.date.slice(0, 7); st.hcSel = r.data.date; st.hcForm = null; await reload(); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); }
+    }
+  };
+  root.oninput = (ev) => { const t = ev.target; if (t instanceof Element && t.matches('[data-hc-f]') && st.hcForm) st.hcForm[t.getAttribute('data-hc-f')] = t.value; };
+  root.onchange = (ev) => { const t = ev.target; if (!(t instanceof Element)) return; if (t.matches('[data-hc-f]') && st.hcForm) { st.hcForm[t.getAttribute('data-hc-f')] = t.value; return; } if (t.matches('[data-hc-leave]')) { st.hcLeaveOn = t.checked; paint(); } };
   paint();
 }

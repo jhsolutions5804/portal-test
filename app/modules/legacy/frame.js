@@ -1,8 +1,8 @@
-import { LEGACY_BASE } from '../../core/config.js?v=20261012d';
-import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261012d';
-import { esc } from '../../core/ui.js?v=20261012d';
-import { attachActivity } from '../../core/idle.js?v=20261012d';
-import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS } from './list.js?v=20261012d';
+import { LEGACY_BASE } from '../../core/config.js?v=20261012e';
+import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261012e';
+import { esc } from '../../core/ui.js?v=20261012e';
+import { attachActivity } from '../../core/idle.js?v=20261012e';
+import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS } from './list.js?v=20261012e';
 
 const base = () => new URL(LEGACY_BASE, location.href).href;
 const NATIVE = new Map();   // '모듈id/구역' → 그 구역을 새 모듈이 그리는 함수(modules/index.js 가 hostNative 로 등록)

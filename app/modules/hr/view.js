@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261012d';
-import { isOffDay } from '../../shared/holidays.js?v=20261012d';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261012d';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts } from './logic.js?v=20261012d';
+import { esc } from '../../core/ui.js?v=20261012e';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261012e';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261012e';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort } from './logic.js?v=20261012e';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -160,4 +160,30 @@ export function resignReqDetailHtml(st) {
     + '<h4 class="jh-hr__sub">사유</h4><div style="white-space:pre-wrap">' + (esc(d.reason) || '(내용 없음)') + '</div><h4 class="jh-hr__sub">결재 현황</h4>' + (line || '<div class="jh-field__hint">결재선 정보 없음</div>')
     + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-r-act="print">🖨 ' + esc(k) + '원서 출력</button>' + (k === '퇴직' && done ? '<a class="jh-btn" data-variant="secondary" href="#/hr/retire">퇴직금 정산으로(기존 화면)</a>' : '') + '<a class="jh-btn" data-variant="ghost" href="#/hr/workers">근로자 명부</a><button type="button" class="jh-btn" data-variant="ghost" data-r-act="close">닫기</button></div>' + (k === '퇴직' && !done ? '<div class="jh-field__hint">※ 결재가 완료(승인)되면 퇴직금 정산으로 이동할 수 있습니다.</div>' : '') + '</div>';
   return card(k + ' 원서 — ' + (d.authorName || ''), body);
+}
+
+/** 인사 캘린더 */
+const hcChip = (ev) => '<div class="jh-hc__chip" data-t="' + esc(ev.type) + '" data-hc-edit="' + esc(ev.id) + '" title="' + esc(ev.title || '') + '">' + esc((ev.time ? ev.time + ' ' : '') + (ev.person ? ev.person + ' · ' : '') + (HC_TYPES[ev.type] || HC_TYPES.etc)) + '</div>';
+const hcRowHtml = (ev, showDate) => '<div class="jh-hc__row" data-hc-edit="' + esc(ev.id) + '"><span class="jh-hc__tag" data-t="' + esc(ev.type) + '">' + esc(HC_TYPES[ev.type] || HC_TYPES.etc) + '</span><div><div><strong>' + esc(ev.title) + '</strong></div><div class="jh-field__hint">' + esc((showDate ? ev.date.slice(5).replace('-', '/') + ' ' : '') + (ev.time ? ev.time + (ev.endTime ? '~' + ev.endTime : '') : '시간 미정') + (ev.person ? ' · ' + ev.person : '') + (ev.note ? ' · ' + ev.note : '')) + '</div></div></div>';
+const WK = ['일', '월', '화', '수', '목', '금', '토'];
+export function calendarHtml(st) {
+  if (!st.hcOk) return card('인사 캘린더', '<div class="jh-empty">🔒 인사 캘린더는 지정된 담당자만 볼 수 있습니다.</div>');
+  const [y, m] = st.hcYm.split('-').map(Number); const by = hcByDate(st.hcEvents); const sel = st.hcSel && st.hcSel.slice(0, 7) === st.hcYm ? st.hcSel : '';
+  const head = WK.map((w, i) => '<div class="jh-hc__dow" data-d="' + i + '">' + w + '</div>').join('');
+  const cells = hcGrid(st.hcYm, st.today).map((c) => { if (!c) return '<div class="jh-hc__cell jh-hc__cell--blank"></div>'; const evs = by[c.ds] || []; const hn = holidayName(c.ds); const lv = st.hcLeaveOn ? st.hcLeaves[c.ds] || [] : [];
+    const lvChip = lv.length ? '<div class="jh-hc__chip" data-t="leave" title="' + esc(lv.map((l) => l.name + ' ' + l.kind).join(', ')) + '">🌴 ' + esc(lv.length === 1 ? lv[0].name + ' ' + lv[0].kind : '연차 ' + lv.length + '명') + '</div>' : '';
+    return '<div class="jh-hc__cell' + (c.ds === sel ? ' is-sel' : '') + (c.today ? ' is-today' : '') + (hn ? ' is-hol' : '') + '" data-hc-sel="' + c.ds + '"><div class="jh-hc__num" data-d="' + (hn ? 0 : c.dow) + '">' + c.d + (hn ? ' <span class="jh-hc__hol">' + esc(hn) + '</span>' : '') + '</div>' + evs.slice(0, 2).map(hcChip).join('') + lvChip + (evs.length > 2 ? '<div class="jh-field__hint">+' + (evs.length - 2) + '건 더 있음</div>' : '') + '</div>'; }).join('');
+  let panel;
+  if (sel) { const evs = by[sel] || []; const lvs = st.hcLeaveOn ? st.hcLeaves[sel] || [] : []; const sd = new Date(y, m - 1, Number(sel.slice(8))); const hn = holidayName(sel);
+    panel = card(m + '월 ' + sd.getDate() + '일 (' + WK[sd.getDay()] + ') 일정 ' + evs.length + '건' + (hn ? ' · ' + hn : ''), '<div class="jh-hr__pad"><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-hc-sel="">' + m + '월 전체 보기</button><button type="button" class="jh-btn" data-variant="primary" data-hc-add="' + sel + '">＋ 이 날짜에 등록</button></div></div>' + (evs.length ? evs.map((e) => hcRowHtml(e, false)).join('') : '<div class="jh-empty">이 날짜에 등록된 인사 일정이 없습니다.</div>') + (lvs.length ? '<div class="jh-hr__pad"><strong>🌴 연차 사용 ' + lvs.length + '명</strong> <span class="jh-field__hint">· 수정은 전자결재 연차신청서에서</span>' + lvs.map((l) => '<div>' + esc(l.name) + ' ' + chip(l.kind, 'accent') + (l.edate > l.sdate ? ' <span class="jh-field__hint">' + esc(l.sdate + ' ~ ' + l.edate) + '</span>' : '') + '</div>').join('') + '</div>' : '')); }
+  else { const all = hcSort(st.hcEvents); panel = card(m + '월 전체 일정 (' + all.length + '건)', all.length ? all.map((e) => hcRowHtml(e, true)).join('') : '<div class="jh-empty">이 달에 등록된 일정이 없습니다.</div>'); }
+  const legend = Object.keys(HC_TYPES).map((k) => '<span class="jh-hc__tag" data-t="' + k + '">' + esc(HC_TYPES[k]) + '</span>').join(' ') + ' <span class="jh-hc__tag" data-t="leave">🌴 연차</span><label class="jh-field__hint"><input type="checkbox" data-hc-leave' + (st.hcLeaveOn ? ' checked' : '') + '> 연차 표시</label>' + (st.hcLeaveErr ? ' <span class="jh-field__hint">(연차를 불러오지 못했습니다)</span>' : '');
+  const nav = '<div class="jh-hr__pad"><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-hc-move="-1" aria-label="이전 달">‹</button><strong>' + y + '년 ' + m + '월</strong><button type="button" class="jh-btn" data-variant="ghost" data-hc-move="1" aria-label="다음 달">›</button><button type="button" class="jh-btn" data-variant="ghost" data-hc-move="0">오늘</button><button type="button" class="jh-btn" data-variant="primary" data-hc-add="' + (sel || (st.hcYm === st.today.slice(0, 7) ? st.today : st.hcYm + '-01')) + '">＋ 일정 등록</button></div><div class="jh-hr__bar">' + legend + '</div><div class="jh-hc__grid">' + head + cells + '</div></div>';
+  return (st.hcForm ? hcFormHtml(st) : '') + card('인사 캘린더', nav) + panel;
+}
+export function hcFormHtml(st) {
+  const f = st.hcForm; const isEdit = !!f.id;
+  const t = (k, label, attr) => '<div class="jh-field"><label class="jh-field__label">' + label + '</label><input class="jh-input" data-hc-f="' + k + '" value="' + esc(f[k] || '') + '" ' + (attr || '') + '></div>';
+  const body = '<div class="jh-hr__pad"><div class="jh-hr__grid"><div class="jh-field"><label class="jh-field__label">구분</label><select class="jh-select" data-hc-f="type">' + Object.keys(HC_TYPES).map((k) => '<option value="' + k + '"' + ((f.type || 'interview') === k ? ' selected' : '') + '>' + esc(HC_TYPES[k]) + '</option>').join('') + '</select></div>' + t('date', '날짜', 'type="date"') + '</div>' + t('title', '제목', 'placeholder="예) 현장관리 면접"') + t('person', '대상자(선택)', 'placeholder="예) 홍길동"') + '<div class="jh-hr__grid">' + t('time', '시작(선택)', 'type="time"') + t('endTime', '종료(선택)', 'type="time"') + '</div><div class="jh-field"><label class="jh-field__label">메모(선택)</label><textarea class="jh-textarea" data-hc-f="note" rows="3">' + esc(f.note || '') + '</textarea></div><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-hc-act="save">저장</button><button type="button" class="jh-btn" data-variant="ghost" data-hc-act="cancel">취소</button>' + (isEdit ? '<button type="button" class="jh-btn" data-variant="ghost" data-hc-act="delete">삭제</button>' : '') + '</div></div>';
+  return card(isEdit ? '일정 수정' : '일정 등록', body);
 }
