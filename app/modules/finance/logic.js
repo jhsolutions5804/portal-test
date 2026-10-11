@@ -1,9 +1,9 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011d';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011d';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011d';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011d';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011d';
-import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011d';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011e';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011e';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011e';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011e';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011e';
+import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011e';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -178,6 +178,37 @@ export function applyMerchantTable(sheetsRows, existing) {
   return { rules: mergeRules(existing, incoming.map((r) => ({ issuer: r.issuer, key: r.key, account: r.account, label: r.label, memo: r.memo })), merchantRuleKey), incoming: incoming.length, filled, added, changed, same, unknown: [...new Set(unknown)] };
 }
 /* ───────── 재분류(계정 바꾸기) ───────── */
+/** 계정별 원장 — 기간 앞의 잔액(기초)에서 시작해 그 계정이 들어간 전표 줄을 날짜·번호 순으로 쌓는다.
+ *  잔액은 계정의 정상 방향(자산·비용은 차변, 부채·자본·수익은 대변) 기준. partnerQ 가 있으면 그 글자가 들어간 거래처 줄만 */
+export function accountLedger(entries, account, from, to, partnerQ) {
+  const acc = ACCOUNTS.find((a) => a.code === account); const sign = acc && acc.normal === 'C' ? -1 : 1; const q = String(partnerQ || '').trim().toLowerCase();
+  const sorted = (entries || []).filter((e) => !e.invalid).slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : ((a.seq || 0) - (b.seq || 0)) || (a.no < b.no ? -1 : a.no > b.no ? 1 : 0)));
+  let opening = 0, bal = 0, debit = 0, credit = 0; const rows = [];
+  sorted.forEach((e) => { e.lines.forEach((l) => {
+    if (l.account !== account || (q && !String(l.partner || '').toLowerCase().includes(q))) return; const d = l.side === 'D' ? Number(l.amount) : 0; const c = l.side === 'C' ? Number(l.amount) : 0;
+    if (to && e.date > to) return;
+    if (from && e.date < from) { opening += sign * (d - c); bal = opening; return; }
+    bal += sign * (d - c); debit += d; credit += c; rows.push({ id: e.id, date: e.date, no: e.no, memo: e.memo || '', partner: l.partner || '', debit: d, credit: c, balance: bal });
+  }); });
+  return { account, name: acc ? acc.name : account, normal: acc ? acc.normal : 'D', from: from || '', to: to || '', opening, rows, debit, credit, closing: bal };
+}
+/** 거래처별 잔액 — 기준일까지 그 계정의 거래처마다 차변·대변 합계와 잔액(정상 방향 기준). 잔액 0인 거래처는 기본으로 숨김 */
+export function partnerBalances(entries, account, asOf, includeZero) {
+  const acc = ACCOUNTS.find((a) => a.code === account); const sign = acc && acc.normal === 'C' ? -1 : 1; const map = new Map();
+  (entries || []).filter((e) => !e.invalid && (!asOf || e.date <= asOf)).forEach((e) => e.lines.forEach((l) => {
+    if (l.account !== account) return; const p = String(l.partner || '').trim() || '(거래처 없음)'; const g = map.get(p) || { partner: p, debit: 0, credit: 0, n: 0, last: '' };
+    if (l.side === 'D') g.debit += Number(l.amount); else g.credit += Number(l.amount); g.n++; if (e.date > g.last) g.last = e.date; map.set(p, g);
+  }));
+  const all = [...map.values()].map((g) => Object.assign(g, { balance: sign * (g.debit - g.credit) })); const rows = all.filter((g) => includeZero || g.balance !== 0).sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance) || (a.partner < b.partner ? -1 : 1));
+  return { account, name: acc ? acc.name : account, normal: acc ? acc.normal : 'D', asOf: asOf || '', rows, hidden: all.length - rows.length, debit: rows.reduce((s, r) => s + r.debit, 0), credit: rows.reduce((s, r) => s + r.credit, 0), balance: rows.reduce((s, r) => s + r.balance, 0) };
+}
+/** 원장·거래처 잔액 엑셀(CSV) — 한글이 깨지지 않게 BOM */
+export function ledgerCsv(kind, data) {
+  const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; const L = [];
+  if (kind === 'gl') { L.push(['일자', '번호', '메모', '거래처', '차변', '대변', '잔액']); L.push(['', '', '기초 잔액', '', '', '', data.opening]); data.rows.forEach((r) => L.push([r.date, r.no, r.memo, r.partner, r.debit, r.credit, r.balance])); L.push(['', '', '합계 / 기말 잔액', '', data.debit, data.credit, data.closing]); }
+  else { L.push(['거래처', '차변 합계', '대변 합계', '잔액', '건수', '마지막 거래일']); data.rows.forEach((r) => L.push([r.partner, r.debit, r.credit, r.balance, r.n, r.last])); L.push(['합계', data.debit, data.credit, data.balance, '', '']); }
+  return '\uFEFF' + L.map((r) => r.map(q).join(',')).join('\r\n');
+}
 /** 통장 거래처 규칙 입력 검사 — key(상대방·내용에 포함된 글자) 2~40자, 방향 in/out/any, 존재하는 계정 */
 export function bankRuleFromForm(key, dir, account, partner, memo) {
   const k = String(key || '').trim(); const errors = [];
