@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261011j';
-import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile } from './logic.js?v=20261011j';
-import { CHOICES } from '../../shared/merchant-table.js?v=20261011j';
+import { esc } from '../../core/ui.js?v=20261011k';
+import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport } from './logic.js?v=20261011k';
+import { CHOICES } from '../../shared/merchant-table.js?v=20261011k';
 
 /* 재무회계 화면 조각 — 모든 값은 esc() 로 감싸 HTML 로 만든다. 스타일은 theme/finance.css 와 공용 클래스를 쓴다 */
 const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['forecast', '예측'], ['gap', '이엔지 정산'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];
@@ -111,15 +111,33 @@ function previewHtml(st) {
 
 
 /* ───────── 재무제표 ───────── */
-const STM = [['is', '손익계산서'], ['bs', '재무상태표'], ['cf', '현금흐름표'], ['tb', '합계잔액시산표'], ['gl', '계정별 원장'], ['pt', '거래처별 잔액'], ['bk', '통장 대사']];
+const STM = [['is', '손익계산서'], ['bs', '재무상태표'], ['cf', '현금흐름표'], ['tb', '합계잔액시산표'], ['gl', '계정별 원장'], ['pt', '거래처별 잔액'], ['bk', '통장 대사'], ['vat', '부가세 신고표']];
 export function reportsHtml(st) {
   const s = st.stm; const kind = st.rep.kind;
   const bar = '<div class="jh-finance__bar"><div class="jh-segmented" role="group" aria-label="재무제표">' + STM.map(([c, l]) => '<button type="button" class="jh-segmented__item" data-rep-kind="' + c + '" aria-pressed="' + (c === kind) + '">' + l + '</button>').join('') + '</div><input class="jh-input" type="date" data-rep="from" value="' + esc(st.rep.from) + '" aria-label="시작일"><input class="jh-input" type="date" data-rep="to" value="' + esc(st.rep.to) + '" aria-label="종료일"><button type="button" class="jh-btn" data-variant="ghost" data-act="csv">엑셀(CSV)로 받기</button><button type="button" class="jh-btn" data-variant="ghost" data-act="print">인쇄</button></div>';
-  const ledgerKind = kind === 'gl' || kind === 'pt' || kind === 'bk';
+  const ledgerKind = kind === 'gl' || kind === 'pt' || kind === 'bk' || kind === 'vat';
   const accSel = (attr, sel) => '<select class="jh-select" data-gl="' + attr + '" aria-label="계정">' + ACCOUNTS.map((a) => '<option value="' + a.code + '"' + (a.code === sel ? ' selected' : '') + '>' + esc(a.code + ' ' + a.name) + '</option>').join('') + '</select>';
   if (ledgerKind) {
     const R = st.rep; let body2 = '', extra = '';
-    if (kind === 'bk') {
+    if (kind === 'vat') {
+      const P = vatPick(st.entries, R.vatKey); const v = vatReport(st.entries, P.from, P.to, R.vatDeny); const s = v.summary; const periods = vatPeriods(st.entries);
+      extra = '<select class="jh-select" data-vat="period" aria-label="과세기간">' + periods.map((p) => '<option value="' + esc(p.key) + '"' + (p.key === P.key ? ' selected' : '') + '>' + esc(p.label) + '</option>').join('') + '</select><label class="jh-field__label" for="vat-deny">공제받지 못할 매입세액(원)</label><input class="jh-input" id="vat-deny" data-vat="deny" inputmode="numeric" value="' + esc(won(s.deny)) + '" placeholder="0">';
+      const tr = (l, n, a, b, strong) => '<tr' + (strong ? ' class="is-strong"' : '') + '><td>' + esc(l) + '</td><td class="num">' + (n === '' ? '' : esc(String(n))) + '</td>' + (a === '' ? '<td></td>' : num(a)) + num(b) + '</tr>';
+      const sumRows = [tr('① 과세 매출 — 세금계산서 발급분', v.sales.n, v.sales.supply, v.sales.tax), tr('② 매입 — 세금계산서 일반매입', v.pur.general.n, v.pur.general.supply, v.pur.general.tax), tr('③ 매입 — 세금계산서 고정자산 매입', v.pur.fixed.n, v.pur.fixed.supply, v.pur.fixed.tax), tr('(참고) 매입 — 계산서(면세) 매입', v.pur.exempt.n, v.pur.exempt.supply, 0),
+        tr('매출세액 (A)', '', '', s.outputTax, true), tr('매입세액 합계 (B = ② + ③)', '', '', s.inputTax, true), tr('공제받지 못할 매입세액 (C, 직접 입력)', '', '', s.deny), tr('공제받을 매입세액 (D = B − C)', '', '', s.deductible, true), tr('납부(환급)세액 (A − D)', '', '', s.payable, true)];
+      const notice = alertHtml('warn', '이 표는 <strong>세금계산서 전표(홈택스 가져오기)만</strong> 집계한 보조 자료입니다. 신용카드 매입세액·의제매입 등은 들어 있지 않으니 홈택스 신고서 불러오기 값과 대조해 주세요. 기준 일자는 세금계산서 작성일이고, 수정 세금계산서는 음수로 상쇄됩니다. 공제 여부(접대비·승용차 관련 등)와 최종 신고는 담당자가 판단합니다.');
+      const payRows = v.pay.slice().sort((a, b) => (a.date < b.date ? -1 : 1)).map((x) => '<tr data-entry-no="' + esc(x.no) + '"><td>' + esc(x.date) + '</td><td>' + esc(x.no) + '</td><td>' + esc(x.memo) + '</td><td>' + esc(sourceLabel(x.kind)) + '</td>' + num(x.amount) + '</tr>');
+      const offTxt = v.off.length ? ' · 결산 정리로 매입세액과 상계한 금액 ' + won(v.off.reduce((a, x) => a + x.amount, 0)) + '원(참고)' : '';
+      const candRows = v.cand.map((c) => '<tr><td>' + esc(c.label) + '</td><td class="num">' + c.n + '</td>' + num(c.supply) + num(c.tax) + '</tr>');
+      const pRows = (rows) => rows.map((x) => '<tr><td>' + esc(x.partner) + '</td><td class="num">' + x.n + '</td>' + num(x.supply) + num(x.tax) + '</tr>');
+      const moRows = v.monthly.map((m) => '<tr><td>' + esc(m.month) + '</td>' + num(m.out) + num(m.inn) + num(m.out - m.inn) + '</tr>');
+      body2 = notice + '<h4 class="jh-finance__sub">신고서 항목 요약 — ' + esc(P.label) + '</h4>' + tbl([['구분'], ['건수', 'num'], ['공급가액', 'num'], ['세액', 'num']], sumRows)
+        + '<h4 class="jh-finance__sub">장부의 부가세 납부 기록(대사용)</h4><div class="jh-field__hint jh-finance__pad">통장·카드로 낸 국세 중 부가세로 본 금액의 합계 ' + esc(won(v.paid)) + '원 (' + v.pay.length + '건)' + esc(offTxt) + '. 카드·통장 납부는 부가세인지 소득세인지 확정하지 못해 "부가세로 가정"해 기록한 것이니, 실제 납부 내역(홈택스)과 맞춰 보세요.</div>' + (payRows.length ? tbl([['일자'], ['번호'], ['메모'], ['원천'], ['금액', 'num']], payRows) : '')
+        + '<h4 class="jh-finance__sub">공제받지 못할 매입세액 후보 — 판단해서 위 입력칸(C)에 넣으세요</h4>' + tbl([['구분'], ['건수', 'num'], ['공급가액', 'num'], ['매입세액', 'num']], candRows)
+        + '<h4 class="jh-finance__sub">매출처별 세금계산서 합계표</h4>' + (v.sales.rows.length ? tbl([['거래처'], ['건수', 'num'], ['공급가액', 'num'], ['세액', 'num']], pRows(v.sales.rows)) : '<div class="jh-empty">이 기간 매출 세금계산서가 없습니다.</div>')
+        + '<h4 class="jh-finance__sub">매입처별 세금계산서 합계표</h4>' + (v.pur.rows.length ? tbl([['거래처'], ['건수', 'num'], ['공급가액', 'num'], ['세액', 'num']], pRows(v.pur.rows)) : '<div class="jh-empty">이 기간 매입 세금계산서가 없습니다.</div>')
+        + (moRows.length ? '<h4 class="jh-finance__sub">월별 세액</h4>' + tbl([['월'], ['매출세액', 'num'], ['매입세액', 'num'], ['차이', 'num']], moRows) : '');
+    } else if (kind === 'bk') {
       const b = bankReconcile(st.entries); const diffTxt = (n) => (n === 0 ? '일치' : (n > 0 ? '장부가 ' + won(n) + '원 많음' : '장부가 ' + won(-n) + '원 적음'));
       const sum = b.count ? alertHtml(b.ok && !b.breaks.length ? 'info' : 'warn', '통장 거래 ' + b.count + '건(' + b.first + ' ~ ' + b.last + ') · 잔액이 이어지지 않는 곳 ' + b.breaks.length + '곳 · 마지막 통장 잔액과 장부 보통예금(1020) ' + diffTxt(b.lastDiff)) : alertHtml('warn', '통장에서 가져온 전표가 없습니다.');
       const brRows = b.breaks.map((x) => '<tr><td>' + esc(x.afterDate + ' ' + x.afterTime) + '</td>' + num(x.afterBal) + '<td>' + esc(x.date + ' ' + x.time) + '</td>' + num(x.startBal) + num(x.gap) + '</tr>');
@@ -140,7 +158,7 @@ export function reportsHtml(st) {
       const trs = p.rows.map((r) => '<tr><td>' + esc(r.partner) + '</td>' + num(r.debit) + num(r.credit) + num(r.balance) + '<td class="num">' + r.n + '</td><td>' + esc(r.last) + '</td></tr>').concat(['<tr class="is-strong"><td>합계</td>' + num(p.debit) + num(p.credit) + num(p.balance) + '<td></td><td></td></tr>']);
       body2 = '<div class="jh-field__hint jh-finance__pad">' + esc(p.name) + ' — ' + esc(R.to || '전체') + ' 기준, 잔액은 ' + (p.normal === 'C' ? '대변' : '차변') + ' 기준입니다.' + (p.hidden ? ' 잔액 0인 거래처 ' + p.hidden + '곳은 숨겼습니다.' : '') + '</div>' + (p.rows.length ? tbl([['거래처'], ['차변 합계', 'num'], ['대변 합계', 'num'], ['잔액', 'num'], ['건수', 'num'], ['마지막 거래일']], trs) : '<div class="jh-empty">이 계정에 거래처별로 남은 잔액이 없습니다.</div>');
     }
-    const bar2 = '<div class="jh-finance__bar"><div class="jh-segmented" role="group" aria-label="재무제표">' + STM.map(([c, l]) => '<button type="button" class="jh-segmented__item" data-rep-kind="' + c + '" aria-pressed="' + (c === kind) + '">' + l + '</button>').join('') + '</div>' + (kind === 'bk' ? '' : kind === 'gl' ? '<input class="jh-input" type="date" data-rep="from" value="' + esc(R.from) + '" aria-label="시작일">' : '') + (kind === 'bk' ? '' : '<input class="jh-input" type="date" data-rep="to" value="' + esc(R.to) + '" aria-label="' + (kind === 'gl' ? '종료일' : '기준일') + '">') + '<button type="button" class="jh-btn" data-variant="ghost" data-act="csv">엑셀(CSV)로 받기</button><button type="button" class="jh-btn" data-variant="ghost" data-act="print">인쇄</button></div><div class="jh-finance__bar">' + extra + '</div>';
+    const bar2 = '<div class="jh-finance__bar"><div class="jh-segmented" role="group" aria-label="재무제표">' + STM.map(([c, l]) => '<button type="button" class="jh-segmented__item" data-rep-kind="' + c + '" aria-pressed="' + (c === kind) + '">' + l + '</button>').join('') + '</div>' + (kind === 'bk' || kind === 'vat' ? '' : kind === 'gl' ? '<input class="jh-input" type="date" data-rep="from" value="' + esc(R.from) + '" aria-label="시작일">' : '') + (kind === 'bk' || kind === 'vat' ? '' : '<input class="jh-input" type="date" data-rep="to" value="' + esc(R.to) + '" aria-label="' + (kind === 'gl' ? '종료일' : '기준일') + '">') + '<button type="button" class="jh-btn" data-variant="ghost" data-act="csv">엑셀(CSV)로 받기</button><button type="button" class="jh-btn" data-variant="ghost" data-act="print">인쇄</button></div><div class="jh-finance__bar">' + extra + '</div>';
     return bar2 + '<section class="jh-card jh-finance__paper">' + body2 + '</section>';
   }
   const note = alertHtml('warn', '⚠ 초안입니다 — 세무조정(업무용승용차 한도·접대비 한도·가계성 지출 제외 등)이 반영되지 않았고, 확정 전 전표(확인 필요 ' + st.sum.review + '건)가 섞여 있습니다. 소득세 신고 전 세무사 검토가 필요합니다.');

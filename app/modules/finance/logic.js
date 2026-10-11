@@ -1,9 +1,9 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011j';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011j';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011j';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011j';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011j';
-import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011j';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261011k';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261011k';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261011k';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261011k';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261011k';
+import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261011k';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -209,6 +209,50 @@ export function ledgerCsv(kind, data) {
   else if (kind === 'bk') { L.push(['월', '통장 마지막 거래일', '통장 잔액', '장부 보통예금(1020)', '차이(장부-통장)']); data.months.slice().reverse().forEach((m) => L.push([m.month, m.date, m.bankBal, m.ledgerBal, m.diff])); }
   else { L.push(['거래처', '차변 합계', '대변 합계', '잔액', '건수', '마지막 거래일']); data.rows.forEach((r) => L.push([r.partner, r.debit, r.credit, r.balance, r.n, r.last])); L.push(['합계', data.debit, data.credit, data.balance, '', '']); }
   return '\uFEFF' + L.map((r) => r.map(q).join(',')).join('\r\n');
+}
+/* ───────── 부가세 신고 보조표(일반과세자): 세금계산서 전표에서 매출세액·매입세액·납부세액과 매출처·매입처별 합계표 ───────── */
+const VAT_FIXED = ['1500', '1510']; const VAT_CAND = [['접대비 관련 매입세액(6040) — 접대비는 공제받지 못합니다', ['6040']], ['차량 구입·유지·렌트 관련(1500·5330·5360·6120·6130) — 비영업용 소형승용차면 공제받지 못합니다', ['1500', '5330', '5360', '6120', '6130']]];
+/** 과세기간 목록(반기·분기) — 장부의 가장 이른 해부터 올해까지 */
+export function vatPeriods(entries, today) {
+  const t = today || kstToday(); const ys = (entries || []).map((e) => Number(String(e.date).slice(0, 4))).filter(Boolean); const y0 = ys.length ? Math.min(...ys) : Number(t.slice(0, 4)); const y1 = Number(t.slice(0, 4)); const out = [];
+  for (let y = y1; y >= y0; y--) { out.push({ key: y + '-2H', label: y + '년 2기 (7.1~12.31)', from: y + '-07-01', to: y + '-12-31', half: true }, { key: y + '-1H', label: y + '년 1기 (1.1~6.30)', from: y + '-01-01', to: y + '-06-30', half: true }); [[4, '10.1~12.31'], [3, '7.1~9.30'], [2, '4.1~6.30'], [1, '1.1~3.31']].forEach(([q, r]) => { const m0 = (q - 1) * 3 + 1; out.push({ key: y + '-Q' + q, label: y + '년 ' + q + '분기 (' + r + ')', from: y + '-' + String(m0).padStart(2, '0') + '-01', to: y + '-' + String(m0 + 2).padStart(2, '0') + '-' + ([3, 6, 9, 12].includes(m0 + 2) ? (m0 + 2 === 3 || m0 + 2 === 12 ? '31' : '30') : '30'), half: false }); }); }
+  return out;
+}
+/** 선택한 과세기간(key)을 찾는다 — 없으면 오늘 기준 가장 최근에 끝난 반기 */
+export function vatPick(entries, key, today) {
+  const t = today || kstToday(); const ps = vatPeriods(entries, t); return ps.find((p) => p.key === key) || ps.find((p) => p.half && p.to < t) || ps[0];
+}
+/** 기간 안의 세금계산서 전표로 신고 보조표를 만든다. deny = 사람이 정한 공제받지 못할 매입세액(원) */
+export function vatReport(entries, from, to, deny) {
+  const inP = (e) => !e.invalid && e.date >= from && e.date <= to; const es = (entries || []).filter(inP);
+  const sales = { supply: 0, tax: 0, n: 0, rows: new Map() }; const pur = { general: { supply: 0, tax: 0, n: 0 }, fixed: { supply: 0, tax: 0, n: 0 }, exempt: { supply: 0, n: 0 }, rows: new Map() }; const cand = VAT_CAND.map(([label, accs]) => ({ label, accs, tax: 0, supply: 0, n: 0 })); const monthly = new Map(); const pay = [], off = [];
+  const mm = (e) => { const k = String(e.date).slice(0, 7); if (!monthly.has(k)) monthly.set(k, { month: k, out: 0, inn: 0 }); return monthly.get(k); };
+  es.forEach((e) => {
+    const k = e.source && e.source.kind; const sg = (l) => (l.side === 'D' ? 1 : -1) * (Number(l.amount) || 0);
+    if (k === 'taxinv_sales') {
+      let supply = 0, tax = 0, partner = ''; e.lines.forEach((l) => { if (l.account === '4010') { supply += -sg(l); partner = partner || l.partner || ''; } else if (l.account === '2040') tax += -sg(l); else if (l.account === '1100' && !partner) partner = l.partner || ''; });
+      sales.supply += supply; sales.tax += tax; sales.n++; mm(e).out += tax; const key = partner || '(거래처 없음)'; const g = sales.rows.get(key) || { partner: key, n: 0, supply: 0, tax: 0 }; g.n++; g.supply += supply; g.tax += tax; sales.rows.set(key, g);
+    } else if (k === 'taxinv_purchase') {
+      let supply = 0, tax = 0, partner = '', fixed = false; const accs = new Set(); e.lines.forEach((l) => { if (l.account === '1130') tax += sg(l); else if (l.account === '2010') partner = partner || l.partner || ''; else { supply += sg(l); accs.add(l.account); if (VAT_FIXED.includes(l.account)) fixed = true; } });
+      const bucket = tax === 0 ? pur.exempt : (fixed ? pur.fixed : pur.general); bucket.supply += supply; if (bucket.tax !== undefined) bucket.tax += tax; bucket.n++; mm(e).inn += tax;
+      const key = partner || '(거래처 없음)'; const g = pur.rows.get(key) || { partner: key, n: 0, supply: 0, tax: 0 }; g.n++; g.supply += supply; g.tax += tax; pur.rows.set(key, g);
+      cand.forEach((c) => { if ([...accs].some((a) => c.accs.includes(a))) { c.tax += tax; c.supply += supply; c.n++; } });
+    } else if (e.lines.some((l) => l.account === '2040' && l.side === 'D')) {
+      const amt = e.lines.filter((l) => l.account === '2040' && l.side === 'D').reduce((s, l) => s + (Number(l.amount) || 0), 0); (k === 'accrual' ? off : pay).push({ date: e.date, no: e.no, memo: e.memo, kind: k, amount: amt });
+    }
+  });
+  const outputTax = sales.tax; const inputTax = pur.general.tax + pur.fixed.tax; const denyV = Math.max(0, Number(deny) || 0); const deductible = inputTax - denyV; const payable = outputTax - deductible;
+  const paid = pay.reduce((s, x) => s + x.amount, 0); const rows = (m) => [...m.values()].sort((a, b) => b.supply - a.supply);
+  return { from, to, sales: { supply: sales.supply, tax: sales.tax, n: sales.n, rows: rows(sales.rows) }, pur: { general: pur.general, fixed: pur.fixed, exempt: pur.exempt, rows: rows(pur.rows) }, cand, monthly: [...monthly.values()].sort((a, b) => (a.month < b.month ? -1 : 1)), pay, off, paid, summary: { outputTax, inputTax, deny: denyV, deductible, payable, supply: sales.supply } };
+}
+/** 신고 보조표 엑셀(CSV): 신고서 요약 + 매출처별 + 매입처별 */
+export function vatCsv(r) {
+  const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; const L = []; const s = r.summary;
+  L.push(['부가가치세 신고 보조표(일반과세자)', r.from + ' ~ ' + r.to], [], ['구분', '건수', '공급가액', '세액']);
+  L.push(['매출 — 세금계산서 발급분', r.sales.n, r.sales.supply, r.sales.tax], ['매입 — 세금계산서 일반매입', r.pur.general.n, r.pur.general.supply, r.pur.general.tax], ['매입 — 세금계산서 고정자산 매입', r.pur.fixed.n, r.pur.fixed.supply, r.pur.fixed.tax], ['매입 — 계산서(면세) 매입', r.pur.exempt.n, r.pur.exempt.supply, 0]);
+  L.push(['매출세액', '', '', s.outputTax], ['매입세액 합계', '', '', s.inputTax], ['공제받지 못할 매입세액(입력)', '', '', s.deny], ['공제받을 매입세액', '', '', s.deductible], ['납부(환급)세액', '', '', s.payable], [], ['매출처별 세금계산서 합계표'], ['거래처', '건수', '공급가액', '세액']);
+  r.sales.rows.forEach((x) => L.push([x.partner, x.n, x.supply, x.tax])); L.push([], ['매입처별 세금계산서 합계표'], ['거래처', '건수', '공급가액', '세액']); r.pur.rows.forEach((x) => L.push([x.partner, x.n, x.supply, x.tax]));
+  return '\uFEFF' + L.map((x) => x.map(q).join(',')).join('\r\n');
 }
 /* ───────── 예측(12개월): 장부 실적에서 가정을 뽑아 손익·현금흐름·간이 재무상태표를 시나리오별로 ───────── */
 const ymAdd = (ym, k) => { let [y, m] = ym.split('-').map(Number); m += k; y += Math.floor((m - 1) / 12); m = (((m - 1) % 12) + 12) % 12 + 1; return y + '-' + String(m).padStart(2, '0'); };
