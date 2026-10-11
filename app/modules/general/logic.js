@@ -184,3 +184,40 @@ export function driveCsv(rows, title) {
   const t = driveTotals(rows); L.push([], ['합계', '', '', '', '', '', '', '', '', '', t.distance, t.bizKm, '업무사용비율 ' + t.bizRate + '%']);
   return '\uFEFF' + L.map((x) => x.map(q).join(',')).join('\r\n');
 }
+
+/* ───────── 과거 운행일지(종이·엑셀) 이식 — 보정을 마친 JSON 파일을 미리보기 후 general_vehicles / general_drive_history(월 단위 문서)에 넣는다 ───────── */
+export const DRIVE_KINDS = ['일반 업무용', '출퇴근용', '비업무용'];
+export function parseDriveHistory(text) {
+  let b; try { b = JSON.parse(text); } catch (e) { return { ok: false, errors: ['JSON 파일이 아닙니다.'], bundle: null, summary: null }; }
+  if (!b || b.kind !== 'jh-vehicle-drive-history' || b.version !== 1) return { ok: false, errors: ['운행일지 과거 기록 파일이 아닙니다(kind·version 확인).'], bundle: null, summary: null };
+  const errors = []; const vk = new Set();
+  (b.vehicles || []).forEach((v, i) => { if (!v || !v.key || !v.name || vk.has(v.key)) { errors.push('차량 ' + (i + 1) + '번의 key·이름이 올바르지 않거나 겹칩니다.'); return; } vk.add(v.key); const r = formToDoc('vehicle', v, []); if (r.errors.length) errors.push('차량 "' + v.name + '": ' + r.errors[0]); });
+  let rows = 0; const per = {}; let from = '9999-99-99', to = '0000-00-00'; const yms = new Set();
+  (b.months || []).forEach((m) => {
+    if (!m || !isYm(m.ym) || !Array.isArray(m.rows)) { errors.push('월 "' + (m && m.ym) + '"의 형식이 올바르지 않습니다.'); return; }
+    if (yms.has(m.ym)) errors.push('월 ' + m.ym + '이 두 번 들어 있습니다.'); yms.add(m.ym);
+    m.rows.forEach((r, i) => {
+      rows++; const tag = m.ym + ' ' + (i + 1) + '번째 줄: ';
+      if (!r || !vk.has(r.v)) { errors.push(tag + '차량 key가 없습니다.'); return; }
+      if (!isDate(r.date) || r.date.slice(0, 7) !== m.ym) errors.push(tag + '날짜가 올바르지 않거나 월과 다릅니다.');
+      if (!Number.isInteger(r.odoStart) || !Number.isInteger(r.odoEnd) || r.odoStart < 0 || r.odoEnd < r.odoStart) errors.push(tag + '계기판 값이 올바르지 않습니다.');
+      if (!Number.isInteger(r.distance) || r.distance < 0 || r.distance !== r.odoEnd - r.odoStart) errors.push(tag + '주행거리가 계기판 차이와 다릅니다.');
+      if (!DRIVE_KINDS.includes(r.kind)) errors.push(tag + '구분 값이 올바르지 않습니다.');
+      if (isDate(r.date)) { if (r.date < from) from = r.date; if (r.date > to) to = r.date; } per[r.v] = (per[r.v] || { n: 0, km: 0, biz: 0 }); per[r.v].n++; per[r.v].km += Number(r.distance) || 0; per[r.v].biz += r.kind === '비업무용' ? 0 : Number(r.distance) || 0;
+    });
+  });
+  const summary = { vehicles: (b.vehicles || []).map((v) => ({ key: v.key, name: v.name, n: (per[v.key] || {}).n || 0, km: (per[v.key] || {}).km || 0, biz: (per[v.key] || {}).biz || 0, delivery: v.delivery || '', deliveryOdo: v.deliveryOdo || 0 })), rows, months: yms.size, from: rows ? from : '', to: rows ? to : '', report: b.report || null };
+  return { ok: errors.length === 0 && rows > 0, errors: rows === 0 ? errors.concat(['가져올 운행 줄이 없습니다.']).slice(0, 10) : errors.slice(0, 10), bundle: b, summary };
+}
+/** 이식한 월 문서 → 취합 화면용 줄(전자결재 일지와 같은 모양, 승인된 기록으로 취급) */
+export function historyRows(hist, vehById) {
+  const out = []; (hist || []).forEach((m) => (m.rows || []).forEach((r, i) => { const v = (vehById && vehById[r.vehicleId]) || {};
+    out.push({ id: 'h_' + (m.ym || m.id) + '_' + i, date: r.date, time: r.time || '', vehicleId: r.vehicleId || '', vehicle: v.name || '', plate: v.plate || '', driver: r.who || '', pjtKey: '', pjt: '(프로젝트 없음)', origin: r.origin || '', destination: r.destination || '', kind: r.kind || '', odoStart: Number(r.odoStart) || 0, odoEnd: Number(r.odoEnd) || 0, distance: Number(r.distance) || 0, bizKm: r.kind === '비업무용' ? 0 : Number(r.distance) || 0, purpose: r.purpose || '', note: [r.note, Number(r.amount) ? '금액 ' + won(r.amount) + '원' : '', (r.flags || []).join(' / ')].filter(Boolean).join(' · '), status: 'approved', source: 'legacy', docNo: '', createdMs: 0 });
+  }));
+  return out;
+}
+/** 전자결재 일지 + 이식한 과거 기록을 하나로, 날짜·계기판 순으로 */
+export function driveAllRows(docs, hist, vehById, opt) {
+  const a = driveRows(docs, opt).map((x) => Object.assign({ source: 'edoc', time: '' }, x)); const h = historyRows(hist, vehById);
+  return a.concat(h).sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : x.odoStart - y.odoStart || (x.time < y.time ? -1 : x.time > y.time ? 1 : 0)));
+}

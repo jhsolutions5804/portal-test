@@ -1,14 +1,14 @@
-import { db, auth, functions, httpsCallable, sendPasswordResetEmail, collection, getDocs, getDoc, query, where, orderBy, limit, doc, updateDoc } from '../../core/firebase.js?v=20261011t';
-import { esc, toast } from '../../core/ui.js?v=20261011t';
-import { fmtPhone } from '../../core/profile-logic.js?v=20261011t';
-import { deptOptions } from '../../shared/org.js?v=20261011t';
-import { PERM_KEYS, validateStaffForm, staffUpdate, linkedWorkerOf, findWorkerMatch, workerSync, validateNewAccount, newAccountPayload, callMessage, resetMailMessage } from './staff-logic.js?v=20261011t';
-import { staffListHtml, staffDialogHtml, newAccountDialogHtml, secretDialogHtml } from './staff-view.js?v=20261011t';
-import { accessLogHtml } from './accesslog-view.js?v=20261011t';
-import { toEntry, filterEntries, summarize, monthRange, addMonth, kstYm, kstText, tsMs } from './accesslog-logic.js?v=20261011t';
-import { markChecked, identityErrorText } from '../../shared/identity.js?v=20261011t';
-import { groupOrg, sortPolicies, buildOrgTree, isGuestUser } from './logic.js?v=20261011t';
-import { tabsHtml, orgHtml, rulesHtml, orgChartHtml, orgViewHtml, personCardHtml } from './view.js?v=20261011t';
+import { db, auth, functions, httpsCallable, sendPasswordResetEmail, collection, getDocs, getDoc, query, where, orderBy, limit, doc, updateDoc } from '../../core/firebase.js?v=20261011u';
+import { esc, toast } from '../../core/ui.js?v=20261011u';
+import { fmtPhone } from '../../core/profile-logic.js?v=20261011u';
+import { deptOptions } from '../../shared/org.js?v=20261011u';
+import { PERM_KEYS, validateStaffForm, staffUpdate, linkedWorkerOf, findWorkerMatch, workerSync, validateNewAccount, newAccountPayload, callMessage, resetMailMessage } from './staff-logic.js?v=20261011u';
+import { staffListHtml, staffDialogHtml, newAccountDialogHtml, secretDialogHtml } from './staff-view.js?v=20261011u';
+import { accessLogHtml } from './accesslog-view.js?v=20261011u';
+import { toEntry, filterEntries, summarize, monthRange, addMonth, kstYm, kstText, tsMs } from './accesslog-logic.js?v=20261011u';
+import { markChecked, identityErrorText } from '../../shared/identity.js?v=20261011u';
+import { groupOrg, sortPolicies, buildOrgTree, isGuestUser } from './logic.js?v=20261011u';
+import { tabsHtml, orgHtml, rulesHtml, orgChartHtml, orgViewHtml, personCardHtml } from './view.js?v=20261011u';
 
 /** 회사 영역(플랫폼 기본 모듈): 조직도·규정을 읽기 전용으로. GUEST 계정에는 보이지 않는다(연락처·내부 규정) */
 export const manifest = { id: 'company', order: 45, title: '회사', icon: '🏢', defaultHash: '#/company/org', perm: (me) => !!me && !me.isGuest };

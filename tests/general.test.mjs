@@ -1,4 +1,4 @@
-import { GTYPES, GKEYS, dday, won, formToDoc, docToForm, newDefaults, leaseMonthly, leaseLast, leasePayState, dueList, homeSummary, SEED, driveRows, weekStart, addDays, driveRange, driveFilter, driveTotals, driveByProject, driveByMonth, driveOdoCheck, driveCsv } from '../app/modules/general/logic.js';
+import { GTYPES, GKEYS, dday, won, formToDoc, docToForm, newDefaults, leaseMonthly, leaseLast, leasePayState, dueList, homeSummary, SEED, driveRows, weekStart, addDays, driveRange, driveFilter, driveTotals, driveByProject, driveByMonth, driveOdoCheck, driveCsv, parseDriveHistory, historyRows, driveAllRows } from '../app/modules/general/logic.js';
 let pass = 0, fail = 0;
 const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const T0 = '2026-10-12';
@@ -51,6 +51,22 @@ const oc2 = driveOdoCheck([rowsD[1], rowsD[2]].map((x) => Object.assign({}, x)),
 ok(oc2.gaps.length === 0 && oc2.sinceDelivery === null && ov.gaps.length === 1 && ov.gaps[0].overlap === true, '운행일지 계기판 연속성: 출고 계기판이 없으면 첫 일지부터, 앞 일지와 겹치거나 거꾸로 가면 겹침으로 표시');
 const csv = driveCsv(rowsD, '시험'); ok(csv.charCodeAt(0) === 0xFEFF && csv.includes('사용일자') && csv.includes('업무용 사용거리(km)') && csv.includes('"2026-10-05","GMC 시에라","12가 3456","한가나"') && csv.includes('업무사용비율 95.5%') && csv.includes('결재대기'), '운행기록부 엑셀(CSV): 사용일자·차량·사용자·계기판·주행거리·업무용 거리·결재 상태·업무사용비율');
 ok(GTYPES.vehicle.fields.some((f) => f.k === 'delivery' && f.t === 'date') && GTYPES.vehicle.fields.some((f) => f.k === 'deliveryOdo' && f.t === 'int') && formToDoc('vehicle', { name: '시에라', delivery: '2026-03-10', deliveryOdo: '1,200' }, []).doc.deliveryOdo === 1200, '총무 차량: 출고일·출고 시 계기판 항목');
+
+// ───────── 과거 일지 이식 ─────────
+const hv = { key: 'sierra', name: 'GMC 시에라', plate: '', kind: '할부', company: '하나캐피탈', ref: '3695', monthly: 1623950, payDay: 5, delivery: '2025-04-03', deliveryOdo: 116, odo: 330, status: '운행', note: '' };
+const hr = (date, time, who, s, e, kind, purpose, extra) => Object.assign({ v: 'sierra', date, time, who, odoStart: s, odoEnd: e, distance: e - s, kind, origin: '', destination: '', purpose, amount: 0, note: '', flags: [] }, extra || {});
+const bundle = { kind: 'jh-vehicle-drive-history', version: 1, source: '시험', vehicles: [hv], months: [{ ym: '2025-04', rows: [hr('2025-04-03', '15:40', '김종화', 116, 116, '일반 업무용', '인계'), hr('2025-04-03', '18:47', '김종화', 116, 131, '일반 업무용', '주유', { amount: 100000 })] }, { ym: '2025-05', rows: [hr('2025-05-01', '', '김종화', 131, 340, '비업무용', '개인'), hr('2025-05-07', '06:57', '김종화', 340, 351, '출퇴근용', '출근')] }] };
+const ph = parseDriveHistory(JSON.stringify(bundle));
+ok(ph.ok && ph.summary.rows === 4 && ph.summary.months === 2 && ph.summary.from === '2025-04-03' && ph.summary.to === '2025-05-07' && ph.summary.vehicles[0].km === 235 && ph.summary.vehicles[0].biz === 26 && ph.summary.vehicles[0].n === 4, '★ 과거 일지 가져오기 미리보기: 줄·월·기간·차량별 주행거리와 업무용 거리 합계');
+const bad1 = parseDriveHistory(JSON.stringify(Object.assign({}, bundle, { months: [{ ym: '2025-04', rows: [hr('2025-05-03', '', 'x', 1, 5, '일반 업무용', 'a'), hr('2025-04-03', '', 'x', 5, 3, '일반 업무용', 'b'), Object.assign(hr('2025-04-04', '', 'x', 1, 9, '일반 업무용', 'c'), { distance: 4 }), Object.assign(hr('2025-04-05', '', 'x', 1, 2, '아무거나', 'd')), Object.assign(hr('2025-04-06', '', 'x', 1, 2, '개인', 'e'), { v: 'zzz' })] }] })));
+ok(!bad1.ok && bad1.errors.length >= 5 && bad1.errors.some((e) => /월과 다릅니다/.test(e)) && bad1.errors.some((e) => /계기판 값/.test(e)) && bad1.errors.some((e) => /계기판 차이와 다릅니다/.test(e)) && bad1.errors.some((e) => /구분 값/.test(e)) && bad1.errors.some((e) => /차량 key/.test(e)), '★ 과거 일지 가져오기 검증: 월과 다른 날짜·계기판 역행·주행거리≠계기판 차이·구분 값·없는 차량을 걸러냄');
+ok(!parseDriveHistory('abc').ok && !parseDriveHistory(JSON.stringify({ kind: 'x', version: 1 })).ok && !parseDriveHistory(JSON.stringify(Object.assign({}, bundle, { months: [] }))).ok && !parseDriveHistory(JSON.stringify(Object.assign({}, bundle, { vehicles: [hv, hv] }))).ok && !parseDriveHistory(JSON.stringify(Object.assign({}, bundle, { months: [bundle.months[0], bundle.months[0]] }))).ok, '과거 일지 가져오기 검증: JSON 아님·다른 파일·줄 없음·차량 key 겹침·같은 달 두 번');
+const histDocs = bundle.months.map((m) => ({ id: m.ym, ym: m.ym, rows: m.rows.map((r) => Object.assign({}, r, { vehicleId: 'veh1' })) }));
+const hRows = historyRows(histDocs, { veh1: { name: 'GMC 시에라', plate: '12가 3456' } });
+ok(hRows.length === 4 && hRows[0].status === 'approved' && hRows[0].source === 'legacy' && hRows[0].vehicle === 'GMC 시에라' && hRows[0].plate === '12가 3456' && hRows[1].note.includes('금액 100,000원') && hRows[2].bizKm === 0 && hRows[2].distance === 209 && hRows[3].bizKm === 11 && hRows[0].pjt === '(프로젝트 없음)', '과거 일지 → 취합 줄: 승인 기록·이식 표시, 비업무용은 업무용 0, 금액은 비고에');
+const merged = driveAllRows([dv('n1', '2025-05-07', '한가나', 'p2', 'P4PH2', 351, 360, 9, 'approved', { vehicleId: 'veh1' })], histDocs, { veh1: { name: 'GMC 시에라', plate: '12가 3456' } });
+ok(merged.length === 5 && merged.map((x) => x.date + x.odoStart).join() === '2025-04-03116,2025-04-03116,2025-05-01131,2025-05-07340,2025-05-07351' && merged[4].source === 'edoc' && driveAllRows([], histDocs, {}, { approvedOnly: true }).length === 4, '★ 취합: 전자결재 일지와 이식한 과거 기록을 날짜·계기판 순으로 합침(승인된 것만 보기에도 이식 기록 포함)');
+const oc3 = driveOdoCheck(merged.filter((x) => x.vehicleId === 'veh1'), 116); ok(oc3.gaps.length === 0 && oc3.last === 360 && oc3.sinceDelivery === 244, '이식 기록 + 새 일지: 계기판이 이어져 빈 구간 없음, 출고 이후 누적');
 
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)');
 if (fail) process.exit(1);
