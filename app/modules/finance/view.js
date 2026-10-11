@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261011g';
-import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile } from './logic.js?v=20261011g';
-import { CHOICES } from '../../shared/merchant-table.js?v=20261011g';
+import { esc } from '../../core/ui.js?v=20261011h';
+import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile } from './logic.js?v=20261011h';
+import { CHOICES } from '../../shared/merchant-table.js?v=20261011h';
 
 /* 재무회계 화면 조각 — 모든 값은 esc() 로 감싸 HTML 로 만든다. 스타일은 theme/finance.css 와 공용 클래스를 쓴다 */
 const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['gap', '이엔지 정산'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];
@@ -124,11 +124,11 @@ export function reportsHtml(st) {
       const sum = b.count ? alertHtml(b.ok && !b.breaks.length ? 'info' : 'warn', '통장 거래 ' + b.count + '건(' + b.first + ' ~ ' + b.last + ') · 잔액이 이어지지 않는 곳 ' + b.breaks.length + '곳 · 마지막 통장 잔액과 장부 보통예금(1020) ' + diffTxt(b.lastDiff)) : alertHtml('warn', '통장에서 가져온 전표가 없습니다.');
       const brRows = b.breaks.map((x) => '<tr><td>' + esc(x.afterDate + ' ' + x.afterTime) + '</td>' + num(x.afterBal) + '<td>' + esc(x.date + ' ' + x.time) + '</td>' + num(x.startBal) + num(x.gap) + '</tr>');
       const chRows = b.changes.map((x) => '<tr><td>' + esc(x.date) + '</td>' + num(x.bankBal) + num(x.ledgerBal) + num(x.diff) + num(x.delta) + '<td><button type="button" class="jh-btn" data-variant="ghost" data-bk-go="' + esc(x.date) + '">그 날 전표 보기</button></td></tr>');
-      const moRows = b.months.map((m) => '<tr><td>' + esc(m.month) + '</td><td>' + esc(m.date) + '</td>' + num(m.bankBal) + num(m.ledgerBal) + num(m.diff) + '</tr>');
+      const moRows = b.months.slice().reverse().map((m) => '<tr><td>' + esc(m.month) + '</td><td>' + esc(m.date) + '</td>' + num(m.bankBal) + num(m.ledgerBal) + num(m.diff) + '</tr>');
       body2 = sum + '<div class="jh-field__hint jh-finance__pad">통장 전표의 원천 정보에 들어 있는 거래 후 잔액을 읽어 계산합니다. 통장 파일을 다시 올릴 필요가 없습니다.</div>'
         + (b.breaks.length ? '<h4 class="jh-finance__sub">잔액이 이어지지 않는 곳 — 빠진 거래이거나 계좌가 바뀐 곳(예: 신한→기업은행)</h4>' + tbl([['앞 거래'], ['앞 잔액', 'num'], ['이 거래'], ['이 거래 직전 잔액', 'num'], ['차이', 'num']], brRows) : '')
         + (b.changes.length ? '<h4 class="jh-finance__sub">장부와 통장의 차이가 생기거나 바뀐 날 — 이 날 전표가 빠졌거나 통장 밖 거래가 섞인 곳</h4>' + tbl([['날짜'], ['통장 마지막 잔액', 'num'], ['장부 1020', 'num'], ['차이(장부-통장)', 'num'], ['차이 변화', 'num'], ['']], chRows) : (b.count ? '<div class="jh-empty">장부 보통예금이 통장 잔액과 모든 날짜에서 일치합니다.</div>' : ''))
-        + (b.months.length ? '<h4 class="jh-finance__sub">월별 대사(그 달 통장 마지막 거래일 기준)</h4>' + tbl([['월'], ['기준일'], ['통장 잔액', 'num'], ['장부 보통예금(1020)', 'num'], ['차이', 'num']], moRows) : '');
+        + (b.months.length ? '<h4 class="jh-finance__sub">월별 대사(그 달 통장 마지막 거래일 기준, 최근 달이 위)</h4>' + tbl([['월'], ['기준일'], ['통장 잔액', 'num'], ['장부 보통예금(1020)', 'num'], ['차이', 'num']], moRows) : '');
     } else if (kind === 'gl') {
       const g = accountLedger(st.entries, R.acct || '2010', R.from, R.to, R.q); const cap = 1000; const show = g.rows.slice(0, cap);
       extra = accSel('acct', R.acct || '2010') + '<input class="jh-input jh-finance__q" data-gl="q" value="' + esc(R.q || '') + '" placeholder="거래처 이름으로 좁히기(선택)">';
