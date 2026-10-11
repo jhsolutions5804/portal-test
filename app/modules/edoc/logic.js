@@ -1,7 +1,7 @@
-export const DOC_TYPES = ['daily', 'leave', 'resign', 'cert', 'purchase', 'expense', 'attend'];
+export const DOC_TYPES = ['daily', 'leave', 'resign', 'cert', 'purchase', 'expense', 'attend', 'drive'];
 /** 승인으로 끝나고 게시하지 않는 문서(업무일지, 근태 기록 수정 요청 — 승인되면 출퇴근 기록에 바로 반영) */
-export const NO_POST_TYPES = ['daily', 'attend'];
-export const TYPE_LABEL = { daily: '업무일지', leave: '연차신청서', resign: '휴직/퇴직', cert: '재직증명서', purchase: '구매품의서', expense: '지출결의서', attend: '근태 기록 수정 요청' };
+export const NO_POST_TYPES = ['daily', 'attend', 'drive'];   // 차량 운행일지도 승인으로 끝(게시 안 함) — 총무가 운행기록부로 취합
+export const TYPE_LABEL = { daily: '업무일지', leave: '연차신청서', resign: '휴직/퇴직', cert: '재직증명서', purchase: '구매품의서', expense: '지출결의서', attend: '근태 기록 수정 요청', drive: '차량 운행일지' };
 export const TYPE_GROUPS = [
   { key: 'all', label: '전체', types: DOC_TYPES },
   { key: 'daily', label: '업무일지', types: ['daily'] },
@@ -10,6 +10,7 @@ export const TYPE_GROUPS = [
   { key: 'cert', label: '재직증명', types: ['cert'] },
   { key: 'spend', label: '구매·지출', types: ['purchase', 'expense'] },
   { key: 'attend', label: '근태 수정', types: ['attend'] },
+  { key: 'drive', label: '운행일지', types: ['drive'] },
   { key: 'nodaily', label: '게시 대상만 (업무일지·근태 제외)', types: DOC_TYPES.filter(t => NO_POST_TYPES.indexOf(t) === -1) }   // 업무일지는 승인으로 끝나고 게시하지 않아서, 나머지 문서만 볼 때 쓴다
 ];
 export const STATUS_LABEL = { draft: '임시저장', pending: '결재대기', reviewing: '검토중', approved: '승인', rejected: '반려', posted: '게시' };

@@ -20,3 +20,6 @@
 .jh-gen__kpi { text-decoration: none; color: inherit; cursor: pointer; }
 @media (max-width: 720px) { .jh-gen__grid { grid-template-columns: minmax(0, 1fr); } }
 #g-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); }
+
+.jh-gen__cell { max-inline-size: 16rem; }
+.jh-gen__bar .jh-segmented { flex-wrap: wrap; max-width: 100%; }

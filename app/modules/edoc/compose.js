@@ -6,6 +6,7 @@ export const MAX_CC = 10;
 export const LEAVE_TYPES = ['연차(유급)', '반차-오전(유급)', '반차-오후(유급)', '생리휴가(무급)', '출산전후휴가(유급)', '배우자출산휴가(유급)', '유산·사산휴가(유급)', '육아휴직(무급)', '가족돌봄휴가(무급)', '병가(무급)', '예비군/민방위(유급)'];
 export const SPEND_CATEGORIES = ['식대', '교통비', '소모품', '공구/자재', '접대비', '기타'];
 export const RECEIPTS = ['영수증 첨부', '카드전표', '세금계산서', '없음'];
+export const DRIVE_KINDS = ['일반 업무용', '출퇴근용', '비업무용'];   // 업무용승용차 운행기록부의 구분(비업무용은 업무 사용거리 0)
 
 /** 작성할 수 있는 문서 종류. spend 는 구매품의·지출결의를 한 양식으로 합친 것(저장은 기존 컬렉션 그대로). */
 export const COMPOSE_TYPES = [
@@ -14,7 +15,8 @@ export const COMPOSE_TYPES = [
   { key: 'daily', label: '업무일지', icon: '📝', guide: 'daily', desc: '프로젝트별 금일·명일 업무' },
   { key: 'cert', label: '재직증명서', icon: '🪪', guide: 'cert', desc: '제출처·부수 지정' },
   { key: 'resign', label: '휴직/퇴직', icon: '📤', guide: 'resign', desc: '휴직·퇴직 신청' },
-  { key: 'attend', label: '근태 기록 수정 요청', icon: '⏰', guide: 'attend', desc: '지난 출퇴근 기록 입력·수정' }
+  { key: 'attend', label: '근태 기록 수정 요청', icon: '⏰', guide: 'attend', desc: '지난 출퇴근 기록 입력·수정' },
+  { key: 'drive', label: '차량 운행일지', icon: '🚙', guide: 'drive', desc: '운행 후 작성 · 사후결재' }
 ];
 export const typeOfDtype = (dtype) => (dtype === 'purchase' || dtype === 'expense' ? 'spend' : dtype);
 export const composeType = (key) => COMPOSE_TYPES.find((t) => t.key === key) || null;
@@ -48,6 +50,19 @@ const F = {
     { key: 'todayWork', label: '금일 업무', type: 'textarea', ph: '오늘 한 일을 시간 순서대로 적어 주세요', required: true, row: 'b' },
     { key: 'tomorrowWork', label: '명일 계획', type: 'textarea', ph: '내일 할 일', row: 'c' },
     { key: 'issue', label: '특이사항', type: 'textarea', ph: '안전·품질·자재 이슈 등', row: 'd' }
+  ],
+  drive: [
+    { key: 'date', label: '운행일자', type: 'date', required: true, row: 'a', layout: 'narrow-first' },
+    { key: 'vehicleId', label: '차량', type: 'vehicle', required: true, row: 'a' },
+    { key: 'pjtId', label: '프로젝트', type: 'project', allowCommon: true, required: true, row: 'a', hint: '업무용 운행이 어느 프로젝트인지 고르세요. 프로젝트와 무관하면 "공통"을 고릅니다.' },
+    { key: 'origin', label: '출발지', type: 'text', ph: '예) 본사 창고', required: true, row: 'b' },
+    { key: 'destination', label: '도착지', type: 'text', ph: '예) P4 Ph2 현장', required: true, row: 'b' },
+    { key: 'kind', label: '구분', type: 'select', opts: DRIVE_KINDS, required: true, row: 'b' },
+    { key: 'odoStart', label: '주행 전 계기판(km)', type: 'number', zeroOk: true, required: true, row: 'c' },
+    { key: 'odoEnd', label: '주행 후 계기판(km)', type: 'number', zeroOk: true, required: true, row: 'c' },
+    { key: 'bizKm', label: '업무용 사용거리(km)', type: 'number', zeroOk: true, row: 'c', hint: '비우면 주행거리 전체가 업무용입니다. 일부만 업무용이면 그 거리만 적으세요(비업무용 구분은 0).' },
+    { key: 'purpose', label: '운행 목적', type: 'textarea', ph: '예) 현장 자재 운반, 협력업체 방문', required: true, row: 'd' },
+    { key: 'note', label: '비고 (주유·통행료 등)', type: 'textarea', row: 'e' }
   ],
   attend: [
     { key: 'date', label: '수정할 날짜', type: 'date', required: true, row: 'a', hint: '지난 날짜만, 최근 60일 이내입니다. 오늘 기록은 출퇴근 기록 화면에서 직접 입력하세요.' },
@@ -118,6 +133,7 @@ export function defaultValues(type, me, now) {
   else if (type === 'cert') Object.assign(v, { purpose: '', language: '한국어', copies: 1 });
   else if (type === 'attend') { const y = new Date(now || new Date()); y.setDate(y.getDate() - 1); Object.assign(v, { date: ymd(y), checkIn: '', checkOut: '', reason: '' }); }
   else if (type === 'daily') Object.assign(v, { date: today, pjtId: '', todayWork: '', tomorrowWork: '', issue: '' });
+  else if (type === 'drive') Object.assign(v, { date: today, vehicleId: '', pjtId: '', origin: '', destination: '', kind: DRIVE_KINDS[0], odoStart: '', odoEnd: '', bizKm: '', purpose: '', note: '' });
   else if (type === 'spend') Object.assign(v, { kind: 'purchase', vendor: '', pjtId: '', purpose: '', dueDate: '', expDate: today, category: SPEND_CATEGORIES[0], amount: '', receipt: RECEIPTS[0], items: [] });
   return v;
 }
@@ -134,7 +150,15 @@ export function josa(word, withFinal, noFinal) {
 const num = (x) => { const n = Number(String(x == null ? '' : x).replace(/[^0-9.\-]/g, '')); return isNaN(n) ? 0 : n; };
 
 /** 입력값 검증 → { 항목키: 오류문구 } (비어 있으면 통과) */
-export function validate(type, values, opts) {
+/** 차량 운행일지 전용 검사 — 계기판 전·후, 업무용 거리, 미래 날짜 */
+function driveChecks(v, err) {
+  const has = (x) => x !== '' && x != null; const a = num(v.odoStart), b = num(v.odoEnd);
+  if (has(v.odoStart) && has(v.odoEnd) && !err.odoEnd && b < a) err.odoEnd = '주행 후 계기판이 주행 전보다 작을 수 없습니다.';
+  if (has(v.bizKm) && !err.bizKm) { const dist = b - a; if (num(v.bizKm) < 0) err.bizKm = '업무용 사용거리가 올바르지 않습니다.'; else if (has(v.odoStart) && has(v.odoEnd) && dist >= 0 && num(v.bizKm) > dist) err.bizKm = '업무용 사용거리(' + num(v.bizKm) + 'km)가 주행거리(' + dist + 'km)보다 클 수 없습니다.'; }
+  if (v.date && !err.date && v.date > ymd(new Date())) err.date = '운행일자가 오늘보다 뒤입니다. 운행 후에 작성해 주세요.';
+}
+export function validate(type, values, opts) { const err = validateBase(type, values, opts); if (type === 'drive') driveChecks(values || {}, err); return err; }
+function validateBase(type, values, opts) {
   const err = {}; const v = values || {}; const draft = !!(opts && opts.draft);   // 임시저장은 필수 항목이 비어 있어도 되고 형식만 본다
   fieldsFor(type, v).forEach((f) => {
     const val = v[f.key];
@@ -151,7 +175,7 @@ export function validate(type, values, opts) {
     const empty = val == null || String(val).trim() === '';
     if (f.required && empty) { if (!draft) err[f.key] = josa(f.label.replace(/ \(.*\)$/, ''), '을', '를') + ' ' + (f.type === 'select' || f.type === 'project' || f.type === 'person' ? '선택해' : '입력해') + ' 주세요.'; return; }
     if (empty) return;
-    if ((f.type === 'number' || f.type === 'money') && !(num(val) > 0) && f.key !== 'amount') err[f.key] = josa(f.label, '은', '는') + ' 0보다 커야 합니다.';
+    if ((f.type === 'number' || f.type === 'money') && !(num(val) > 0) && f.key !== 'amount' && !f.zeroOk) err[f.key] = josa(f.label, '은', '는') + ' 0보다 커야 합니다.';
     if (f.key === 'amount' && !(num(val) > 0)) err[f.key] = '금액은 0보다 커야 합니다.';
     if (f.key === 'copies' && (!Number.isInteger(num(val)) || num(val) > 20)) err[f.key] = '부수는 1~20 사이의 정수여야 합니다.';
     if (f.key === 'days' && num(val) % 0.5 !== 0) err[f.key] = '일수는 0.5 단위로 입력해 주세요.';
@@ -183,6 +207,7 @@ export function buildTitle(type, values, me, now) {
   const v = values || {};
   if (type === 'leave') return today + ' ' + name + ' ' + (v.leaveType || '연차') + ' 신청서';
   if (type === 'daily') { const d = String(v.date || '').replace(/-/g, '').slice(2); return '(' + (v.pjtCode || '') + ') ' + d + ' ' + name + ' 업무일지'; }
+  if (type === 'drive') return String(v.date || '').replace(/-/g, '') + ' ' + name + ' 차량 운행일지' + (v.vehicleName ? ' (' + v.vehicleName + ')' : '');
   if (type === 'cert') return today + ' ' + name + ' 재직증명서';
   if (type === 'attend') return String(v.date || '').replace(/-/g, '') + ' ' + name + ' 근태 기록 수정 요청';
   if (type === 'resign') return today + ' ' + name + ' ' + (v.leaveKind || '휴직/퇴직') + ' 신청서';
@@ -204,13 +229,18 @@ export function buildDocData(type, values, me, ctx) {
   else if (type === 'cert') Object.assign(d, { purpose: text('purpose'), language: text('language'), copies: num(v.copies) });
   else if (type === 'attend') Object.assign(d, { date: v.date, checkIn: v.checkIn, checkOut: v.checkOut, reason: text('reason'), workerId: (ctx && ctx.worker && ctx.worker.id) || '', workHours: attendHoursOf(v.checkIn, v.checkOut), breakMinutes: 120 });
   else if (type === 'daily') Object.assign(d, { date: v.date, pjtId: v.pjtId, pjtCode: proj ? proj.pjtCode || proj.code || '' : '', pjtName: proj ? proj.name || '' : '', todayWork: String(v.todayWork || '').trim(), tomorrowWork: String(v.tomorrowWork || '').trim(), issue: String(v.issue || '').trim() });
+  else if (type === 'drive') {
+    const veh = (ctx && ctx.vehicles || []).find((x) => x.id === v.vehicleId); const a = num(v.odoStart), b = num(v.odoEnd); const dist = b >= a ? b - a : 0;
+    const biz = v.kind === '비업무용' ? 0 : (v.bizKm === '' || v.bizKm == null ? dist : Math.min(num(v.bizKm), dist));
+    Object.assign(d, { date: v.date, vehicleId: v.vehicleId || '', vehicleName: veh ? veh.name : '', vehiclePlate: veh ? veh.plate || '' : '', pjtId: v.pjtId || '', pjtCode: v.pjtId === 'common' ? '공통' : proj ? proj.pjtCode || proj.code || '' : '', pjtName: v.pjtId === 'common' ? '프로젝트 무관' : proj ? proj.name || '' : '', origin: text('origin'), destination: text('destination'), kind: text('kind'), odoStart: a, odoEnd: b, distance: dist, bizKm: biz, purpose: text('purpose'), note: text('note') });
+  }
   else if (type === 'spend') {
     Object.assign(d, { vendor: text('vendor'), purpose: text('purpose'), pjtId: v.pjtId || '', pjtCode: v.pjtId === 'common' ? '공통' : proj ? proj.pjtCode || proj.code || '' : '', pjtName: v.pjtId === 'common' ? '프로젝트 무관(본사 경비)' : proj ? proj.name || '' : '' });
     const items = (v.items || []).filter((r) => r.name || r.qty || r.unitPrice || r.link).map((r) => ({ name: String(r.name || '').trim(), qty: num(r.qty), unitPrice: num(r.unitPrice), amount: num(r.qty) * num(r.unitPrice), link: String(r.link || '').trim() }));
     if (v.kind === 'expense') Object.assign(d, { expDate: v.expDate, category: text('category'), amount: num(v.amount), receipt: text('receipt'), items });
     else Object.assign(d, { dueDate: v.dueDate, items });
   }
-  d.title = buildTitle(type, Object.assign({}, v, { pjtCode: d.pjtCode }), me, ctx && ctx.now);
+  d.title = buildTitle(type, Object.assign({}, v, { pjtCode: d.pjtCode, vehicleName: d.vehicleName }), me, ctx && ctx.now);
   return d;
 }
 

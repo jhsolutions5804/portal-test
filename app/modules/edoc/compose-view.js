@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261011s';
-import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261011s';
-import { isAnnualType } from './home-calc.js?v=20261011s';
-import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261011s';
+import { esc } from '../../core/ui.js?v=20261011t';
+import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261011t';
+import { isAnnualType } from './home-calc.js?v=20261011t';
+import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261011t';
 
 const uname = (ctx, uid) => { const u = ctx.byUid[uid]; return u ? esc(u.name) + (u.rank ? ' <small>' + esc(u.rank) + '</small>' : '') : '(알 수 없음)'; };
 
@@ -20,6 +20,7 @@ function control(f, v, errs, ctx) {
   if (f.type === 'textarea') return '<textarea class="jh-textarea"' + common + ' placeholder="' + esc(f.ph || '') + '">' + esc(val) + '</textarea>';
   if (f.type === 'select') return '<select class="jh-select"' + common + '>' + f.opts.map((o) => '<option value="' + esc(o) + '"' + (o === val ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select>';
   if (f.type === 'person') return '<select class="jh-select"' + common + '><option value="">대리인을 선택하세요</option>' + (ctx.users || []).filter((u) => u.uid !== ctx.me.uid && !/^guest/i.test(u.empNo || '')).map((u) => '<option value="' + esc(u.uid) + '"' + (u.uid === val ? ' selected' : '') + '>' + esc(u.name + (u.rank ? ' ' + u.rank : '') + (u.dept ? ' · ' + u.dept : '')) + '</option>').join('') + '</select>';
+  if (f.type === 'vehicle') return '<select class="jh-select"' + common + '><option value="">차량을 선택하세요</option>' + (ctx.vehicles || []).map((x) => '<option value="' + esc(x.id) + '"' + (x.id === val ? ' selected' : '') + '>' + esc(x.name + (x.plate ? ' (' + x.plate + ')' : '')) + '</option>').join('') + '</select>' + ((ctx.vehicles || []).length ? '' : '<div class="jh-field__hint">등록된 차량이 없습니다. 총무 > 차량에서 관리자가 등록해야 선택할 수 있습니다.</div>');
   if (f.type === 'project') return '<select class="jh-select"' + common + '><option value="">프로젝트를 선택하세요</option>' + (f.allowCommon ? '<option value="common"' + (val === 'common' ? ' selected' : '') + '>공통 · 프로젝트 무관(본사 경비)</option>' : '') + (ctx.projects || []).map((p) => '<option value="' + esc(p.id) + '"' + (p.id === val ? ' selected' : '') + '>' + esc((p.code ? p.code + ' · ' : '') + p.name) + '</option>').join('') + '</select>';
   if (f.type === 'date') return '<input class="jh-input" type="date"' + common + ' value="' + esc(val) + '">';
   if (f.type === 'time') return '<input class="jh-input" type="time" step="600"' + common + ' value="' + esc(val) + '">';

@@ -31,7 +31,7 @@ export const GTYPES = {
     fields: [
       { k: 'name', l: '차량명(모델)', t: 'text', req: true, ph: '예) GMC 시에라' }, { k: 'plate', l: '차량번호', t: 'text' }, { k: 'kind', l: '구분', t: 'select', o: ['렌트', '할부', '리스', '소유'], d: '렌트' }, { k: 'company', l: '금융사·렌트사', t: 'text', ph: '예) 현대캐피탈' },
       { k: 'ref', l: '계약·계좌 번호(끝자리)', t: 'text' }, { k: 'monthly', l: '월 납부액(원)', t: 'money' }, { k: 'payDay', l: '납부일(1~31)', t: 'int', min: 1, max: 31 }, { k: 'start', l: '계약 시작일', t: 'date' }, { k: 'end', l: '계약 만료일', t: 'date' },
-      { k: 'deposit', l: '보증금·선수금(원)', t: 'money' }, { k: 'driver', l: '사용자(운전자)', t: 'text' }, { k: 'odo', l: '현재 주행거리(km)', t: 'int', min: 0 },
+      { k: 'deposit', l: '보증금·선수금(원)', t: 'money' }, { k: 'driver', l: '사용자(운전자)', t: 'text' }, { k: 'delivery', l: '출고일(운행일지 시작일)', t: 'date' }, { k: 'deliveryOdo', l: '출고 시 계기판(km)', t: 'int', min: 0 }, { k: 'odo', l: '현재 주행거리(km)', t: 'int', min: 0 },
       { k: 'insCompany', l: '보험사', t: 'text' }, { k: 'insExpire', l: '보험 만기일', t: 'date' }, { k: 'insPremium', l: '연 보험료(원)', t: 'money' }, { k: 'inspect', l: '다음 정기검사일', t: 'date' }, { k: 'status', l: '상태', t: 'select', o: ['운행', '반납·매각'], d: '운행' }, { k: 'note', l: '비고', t: 'area' }],
     log: { k: 'service', l: '정비·점검 이력', cols: [{ k: 'date', l: '일자', t: 'date', req: true }, { k: 'item', l: '내용', t: 'text', req: true }, { k: 'cost', l: '비용(원)', t: 'money' }, { k: 'odo', l: '주행거리(km)', t: 'int' }, { k: 'shop', l: '정비소', t: 'text' }, { k: 'memo', l: '메모', t: 'text' }] },
     cols: [['차량', (d) => d.name + (d.plate ? ' (' + d.plate + ')' : '')], ['구분', (d) => d.kind], ['금융사', (d) => (d.company || '') + (d.ref ? ' ' + d.ref : '')], ['월 납부액', (d) => (Number(d.monthly) ? won(d.monthly) + '원' : ''), 'num'], ['보험 만기', (d) => d.insExpire || ''], ['정기검사', (d) => d.inspect || ''], ['계약 만료', (d) => d.end || '']],
@@ -135,3 +135,52 @@ export const SEED = {
     { name: '노란우산(소기업소상공인 공제)', kind: '보험·공제', vendor: '중소기업중앙회', amount: 0, cycle: '월', nextDate: '', lead: 30, pay: '자동이체', payNote: '자동이체 (신한) 6일', owner: '', status: '사용중', note: '월 납입액을 입력하세요(현재 누적 약 60만원)', history: [] }
   ]
 };
+
+/* ───────── 차량 운행일지 취합 — 전자결재 edoc_drive 문서를 시간 순으로 모아 일간·주간·월간·프로젝트별로 본다 ───────── */
+export const DRIVE_STATUS = { pending: '결재대기', reviewing: '검토중', approved: '승인', posted: '승인', rejected: '반려', draft: '임시저장' };
+/** 취합 대상: 기본은 상신된 문서(결재대기·승인) — 임시저장·반려는 뺀다. approvedOnly 면 승인된 것만 */
+export function driveRows(docs, opt) {
+  const o = opt || {}; return (docs || []).filter((d) => d && d.date && isDate(d.date) && ['pending', 'reviewing', 'approved', 'posted'].includes(d.status) && (!o.approvedOnly || ['approved', 'posted'].includes(d.status)))
+    .map((d) => ({ id: d.id, date: d.date, vehicleId: d.vehicleId || '', vehicle: d.vehicleName || '', plate: d.vehiclePlate || '', driver: d.authorName || '', pjtKey: d.pjtId || '', pjt: d.pjtId === 'common' ? '공통(프로젝트 무관)' : [d.pjtCode, d.pjtName].filter(Boolean).join(' · ') || '(프로젝트 없음)', origin: d.origin || '', destination: d.destination || '', kind: d.kind || '', odoStart: Number(d.odoStart) || 0, odoEnd: Number(d.odoEnd) || 0, distance: Number(d.distance) || 0, bizKm: Number(d.bizKm) || 0, purpose: d.purpose || '', note: d.note || '', status: d.status, docNo: d.docNo || d.no || '', createdMs: Number(d.createdMs) || 0 }))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.odoStart - b.odoStart || a.createdMs - b.createdMs));
+}
+/** 그 날이 속한 주의 월요일(YYYY-MM-DD) — 주간은 월요일 시작 */
+export function weekStart(date) { const t = new Date(date + 'T00:00:00Z'); const dow = (t.getUTCDay() + 6) % 7; t.setUTCDate(t.getUTCDate() - dow); return t.toISOString().slice(0, 10); }
+export function addDays(date, n) { const t = new Date(date + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
+/** 기간 거름: mode = all | day | week | month, anchor = 기준 날짜(day·week) 또는 YYYY-MM(month), from = 출고일 등 시작 하한 */
+export function driveRange(mode, anchor, from) {
+  let a = '0000-00-00', b = '9999-99-99';
+  if (mode === 'day') { a = b = anchor; } else if (mode === 'week') { a = weekStart(anchor); b = addDays(a, 6); } else if (mode === 'month') { a = anchor + '-01'; b = anchor + '-31'; }
+  if (from && from > a) a = from; return { from: a, to: b };
+}
+export function driveFilter(rows, f) {
+  const r = driveRange(f.mode, f.anchor, f.from); return rows.filter((x) => x.date >= r.from && x.date <= r.to && (!f.vehicleId || x.vehicleId === f.vehicleId) && (!f.driver || x.driver === f.driver) && (!f.pjtKey || x.pjtKey === f.pjtKey));
+}
+const km = (n) => Math.round(n * 10) / 10;
+export function driveTotals(rows) {
+  const distance = rows.reduce((s, x) => s + x.distance, 0), biz = rows.reduce((s, x) => s + x.bizKm, 0);
+  return { n: rows.length, distance: km(distance), bizKm: km(biz), nonBizKm: km(distance - biz), bizRate: distance > 0 ? Math.round((biz / distance) * 1000) / 10 : 0, days: new Set(rows.map((x) => x.date)).size };
+}
+/** 프로젝트별 합계(주행거리 많은 순) */
+export function driveByProject(rows) {
+  const m = new Map(); rows.forEach((x) => { const g = m.get(x.pjtKey) || { key: x.pjtKey, pjt: x.pjt, n: 0, distance: 0, bizKm: 0, last: '' }; g.n++; g.distance += x.distance; g.bizKm += x.bizKm; if (x.date > g.last) g.last = x.date; m.set(x.pjtKey, g); });
+  return [...m.values()].map((g) => Object.assign(g, { distance: km(g.distance), bizKm: km(g.bizKm) })).sort((a, b) => b.distance - a.distance || (a.pjt < b.pjt ? -1 : 1));
+}
+/** 월별 합계(오래된 달부터) — 출고 이후 전체 흐름 */
+export function driveByMonth(rows) {
+  const m = new Map(); rows.forEach((x) => { const k = x.date.slice(0, 7); const g = m.get(k) || { ym: k, n: 0, distance: 0, bizKm: 0 }; g.n++; g.distance += x.distance; g.bizKm += x.bizKm; m.set(k, g); });
+  return [...m.values()].map((g) => Object.assign(g, { distance: km(g.distance), bizKm: km(g.bizKm), bizRate: g.distance > 0 ? Math.round((g.bizKm / g.distance) * 1000) / 10 : 0 })).sort((a, b) => (a.ym < b.ym ? -1 : 1));
+}
+/** 출고 시점부터의 누적: 출고 시 계기판 → 가장 최근 일지의 주행 후 계기판, 일지 사이 빈 거리(이어지지 않는 구간) 알림 */
+export function driveOdoCheck(rows, deliveryOdo) {
+  const list = rows.slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.odoStart - b.odoStart)); const gaps = []; let prevEnd = Number(deliveryOdo) > 0 ? Number(deliveryOdo) : null;
+  list.forEach((x) => { if (prevEnd !== null && x.odoStart > prevEnd) gaps.push({ date: x.date, from: prevEnd, to: x.odoStart, km: x.odoStart - prevEnd }); else if (prevEnd !== null && x.odoStart < prevEnd) gaps.push({ date: x.date, from: prevEnd, to: x.odoStart, km: x.odoStart - prevEnd, overlap: true }); prevEnd = x.odoEnd; });
+  const last = list.length ? list[list.length - 1].odoEnd : null; return { gaps, last, sinceDelivery: Number(deliveryOdo) > 0 && last !== null ? last - Number(deliveryOdo) : null };
+}
+/** 운행기록부 엑셀(CSV) — 업무용승용차 운행기록부 항목(사용일자·사용자·주행 전/후·주행거리·업무용 거리·출발·도착·목적) */
+export function driveCsv(rows, title) {
+  const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; const L = [[title || '차량 운행기록부'], [], ['사용일자', '차량', '차량번호', '사용자', '프로젝트', '구분', '출발지', '도착지', '주행 전 계기판(km)', '주행 후 계기판(km)', '주행거리(km)', '업무용 사용거리(km)', '운행 목적', '비고', '결재 상태']];
+  rows.forEach((x) => L.push([x.date, x.vehicle, x.plate, x.driver, x.pjt, x.kind, x.origin, x.destination, x.odoStart, x.odoEnd, x.distance, x.bizKm, x.purpose, x.note, DRIVE_STATUS[x.status] || x.status]));
+  const t = driveTotals(rows); L.push([], ['합계', '', '', '', '', '', '', '', '', '', t.distance, t.bizKm, '업무사용비율 ' + t.bizRate + '%']);
+  return '\uFEFF' + L.map((x) => x.map(q).join(',')).join('\r\n');
+}

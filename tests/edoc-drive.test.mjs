@@ -1,0 +1,25 @@
+import { composeType, COMPOSE_TYPES, defaultValues, validate, buildDocData, buildTitle, fieldsFor, valuesFromDoc, DRIVE_KINDS } from '../app/modules/edoc/compose.js';
+import { DOC_TYPES, NO_POST_TYPES, TYPE_LABEL, TYPE_GROUPS } from '../app/modules/edoc/logic.js';
+import { GUIDE_TYPES } from '../app/modules/edoc/settings-logic.js';
+import { FORMS } from '../app/modules/edoc/forms.js';
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
+const me = { uid: 'u1', name: '한가나', rank: '사원', dept: '시공팀', email: 'han@jhsol.kr' };
+const projects = [{ id: 'p1', code: 'P4PH2', pjtCode: 'P4PH2', name: 'P4 Ph2' }]; const vehicles = [{ id: 'v1', name: 'GMC 시에라', plate: '12가 3456' }];
+const good = () => Object.assign(defaultValues('drive', me, new Date('2026-10-12T09:00:00')), { date: '2026-10-10', vehicleId: 'v1', pjtId: 'p1', origin: '본사 창고', destination: 'P4 Ph2 현장', odoStart: '12000', odoEnd: '12048', purpose: '자재 운반' });
+
+ok(DOC_TYPES.includes('drive') && NO_POST_TYPES.includes('drive') && TYPE_LABEL.drive === '차량 운행일지' && TYPE_GROUPS.some((g) => g.key === 'drive' && g.types[0] === 'drive') && !TYPE_GROUPS.find((g) => g.key === 'nodaily').types.includes('drive'), '★ 차량 운행일지: 문서 종류·이름·목록 묶음에 등록, 승인으로 끝(게시 대상 아님)');
+ok(composeType('drive') && composeType('drive').guide === 'drive' && COMPOSE_TYPES.some((t) => t.key === 'drive' && /사후결재/.test(t.desc)) && GUIDE_TYPES.some((t) => t.key === 'drive'), '차량 운행일지: 작성 종류 목록·권장 결재선 설정 항목');
+ok(fieldsFor('drive', {}).map((f) => f.key).join() === 'date,vehicleId,pjtId,origin,destination,kind,odoStart,odoEnd,bizKm,purpose,note' && defaultValues('drive', me, new Date('2026-10-12T09:00:00')).date === '2026-10-12', '차량 운행일지: 입력 항목과 기본값(오늘 날짜)');
+ok(Object.keys(validate('drive', good(), { projects })).length === 0, '★ 차량 운행일지 검증: 올바른 입력은 통과');
+const e1 = validate('drive', Object.assign(good(), { odoEnd: '11990' }), { projects }); ok(/작을 수 없/.test(e1.odoEnd || ''), '차량 운행일지 검증: 주행 후 계기판이 전보다 작으면 거부');
+const e2 = validate('drive', Object.assign(good(), { bizKm: '60' }), { projects }); ok(/클 수 없/.test(e2.bizKm || '') && !validate('drive', Object.assign(good(), { bizKm: '0' }), { projects }).bizKm && !validate('drive', Object.assign(good(), { odoStart: '0', odoEnd: '10' }), { projects }).odoStart, '차량 운행일지 검증: 업무용 거리가 주행거리보다 크면 거부, 0 은 허용(비업무용·새 차)');
+const future = new Date(Date.now() + 5 * 86400000); const fy = future.getFullYear() + '-' + String(future.getMonth() + 1).padStart(2, '0') + '-' + String(future.getDate()).padStart(2, '0');
+ok(/뒤/.test(validate('drive', Object.assign(good(), { date: fy }), { projects }).date || '') && validate('drive', Object.assign(good(), { vehicleId: '', origin: '', purpose: '' }), { projects }).vehicleId && validate('drive', Object.assign(good(), { vehicleId: '', origin: '' }), { projects, draft: true }).vehicleId === undefined, '차량 운행일지 검증: 미래 날짜 거부, 필수 항목(차량·출발지·목적), 임시저장은 필수 면제');
+const d1 = buildDocData('drive', good(), me, { projects, vehicles, now: new Date('2026-10-12T09:00:00') });
+ok(d1.dtype === 'drive' && d1.vehicleName === 'GMC 시에라' && d1.vehiclePlate === '12가 3456' && d1.pjtCode === 'P4PH2' && d1.pjtName === 'P4 Ph2' && d1.odoStart === 12000 && d1.odoEnd === 12048 && d1.distance === 48 && d1.bizKm === 48 && d1.kind === DRIVE_KINDS[0] && d1.authorName === '한가나' && d1.title === '20261010 한가나 차량 운행일지 (GMC 시에라)', '★ 차량 운행일지 저장 문서: 차량·프로젝트 이름, 주행거리 = 후 − 전, 업무용 거리 기본은 전체, 제목 자동');
+const d2 = buildDocData('drive', Object.assign(good(), { kind: '비업무용', bizKm: '30' }), me, { projects, vehicles }); const d3 = buildDocData('drive', Object.assign(good(), { bizKm: '30' }), me, { projects, vehicles }); const d4 = buildDocData('drive', Object.assign(good(), { pjtId: 'common' }), me, { projects, vehicles });
+ok(d2.bizKm === 0 && d3.bizKm === 30 && d4.pjtCode === '공통' && d4.pjtName === '프로젝트 무관', '차량 운행일지 저장 문서: 비업무용은 업무용 거리 0, 일부만 업무용이면 그 거리, 프로젝트 무관 = 공통');
+const back = valuesFromDoc(Object.assign({}, d1, { id: 'x' })); ok(back.type === 'drive' && back.values.odoEnd === 12048 && back.values.vehicleId === 'v1', '차량 운행일지: 임시저장·반려 문서를 작성 화면으로 다시 불러옴');
+const rows = FORMS.drive.rows; ok(rows.some((r) => r.label === '주행거리' && r.get(d1) === '48 km (업무용 48 km)') && rows.find((r) => r.label === '출발 → 도착').get(d1) === '본사 창고 → P4 Ph2 현장' && rows.find((r) => r.label === '계기판(km)').get(d1) === '12,000 → 12,048' && rows.find((r) => r.label === '차량').get(d1) === 'GMC 시에라 (12가 3456)', '차량 운행일지: 결재 문서 상세 표시(차량·출발→도착·계기판·주행거리)');
+ok(buildTitle('drive', { date: '2026-10-10' }, me) === '20261010 한가나 차량 운행일지', '차량 운행일지: 차량 이름이 없을 때 제목');
+console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

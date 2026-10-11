@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261011s';
-import { GTYPES, GKEYS, dday, won, leasePayState, dueList, homeSummary, leaseMonthly } from './logic.js?v=20261011s';
+import { esc } from '../../core/ui.js?v=20261011t';
+import { GTYPES, GKEYS, dday, won, leasePayState, dueList, homeSummary, leaseMonthly, driveRows, driveFilter, driveTotals, driveByProject, driveByMonth, driveOdoCheck, driveRange, weekStart, DRIVE_STATUS } from './logic.js?v=20261011t';
 
-const TABS = [['home', '개요'], ['lease', '임대'], ['vehicle', '차량'], ['asset', '자산·장비'], ['renewal', '갱신 일정']];
+const TABS = [['home', '개요'], ['lease', '임대'], ['vehicle', '차량'], ['drive', '운행일지'], ['asset', '자산·장비'], ['renewal', '갱신 일정']];
 export const tabsHtml = (cur, base) => '<div class="jh-segmented jh-gen__tabs" role="group" aria-label="총무">' + TABS.map(([k, l]) => '<a class="jh-segmented__item" href="' + esc(base || '#/general') + '/' + k + '" aria-pressed="' + (k === cur) + '">' + esc(l) + '</a>').join('') + '</div>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const alertHtml = (tone, html) => '<div class="jh-alert" data-tone="' + tone + '" role="status">' + html + '</div>';
@@ -57,8 +57,51 @@ export function tableHtml(st, type) {
 }
 export function listHtml(st, type) {
   const T = GTYPES[type]; const hasSeed = (st.seed || {})[type] > 0 && !(st.data[type] || []).length;
-  const bar = '<div class="jh-gen__bar"><button type="button" class="jh-btn" data-variant="primary" data-g-add>' + esc(T.add) + '</button><input class="jh-input jh-gen__q" data-g-q placeholder="검색" value="' + esc(st.q || '') + '" aria-label="검색"><label class="jh-field__hint"><input type="checkbox" data-g-active' + (st.onlyActive ? ' checked' : '') + '> ' + esc(T.activeFilter) + '만 보기</label>' + (hasSeed ? '<button type="button" class="jh-btn" data-variant="ghost" data-g-seed>엑셀 기준 첫 목록 넣기</button>' : '') + '</div>';
-  const extra = type === 'lease' ? '<div class="jh-field__hint jh-gen__pad">월 납부액 = 월 임대료 + 월 부가세. 입금 이력은 항목을 열면 "귀속 월"별로 기록합니다.</div>' : '';
+  const bar = '<div class="jh-gen__bar"><button type="button" class="jh-btn" data-variant="primary" data-g-add>' + esc(T.add) + '</button><input class="jh-input jh-gen__q" data-g-q placeholder="검색" value="' + esc(st.q || '') + '" aria-label="검색"><label class="jh-field__hint"><input type="checkbox" data-g-active' + (st.onlyActive ? ' checked' : '') + '> ' + esc(T.activeFilter) + '만 보기</label>' + (hasSeed ? '<button type="button" class="jh-btn" data-variant="ghost" data-g-seed>엑셀 기준 첫 목록 넣기</button>' : '') + (type === 'vehicle' ? '<button type="button" class="jh-btn" data-variant="ghost" data-g-sync>운행일지 차량 목록 동기화</button>' : '') + '</div>';
+  const extra = type === 'lease' ? '<div class="jh-field__hint jh-gen__pad">월 납부액 = 월 임대료 + 월 부가세. 입금 이력은 항목을 열면 "귀속 월"별로 기록합니다.</div>' : type === 'vehicle' ? '<div class="jh-field__hint jh-gen__pad">차량을 저장하면 전자결재 "차량 운행일지"의 차량 선택 목록이 자동으로 갱신됩니다(사용 중인 차량만). 출고일·출고 시 계기판을 넣어 두면 운행일지가 그 시점부터 집계됩니다.</div>' : '';
   return (st.edit && st.edit.type === type ? editHtml(st) : '') + card(T.title + ' (' + (st.data[type] || []).length + ')', '<div class="jh-gen__pad">' + bar + '</div><div id="g-table">' + tableHtml(st, type) + '</div>' + extra);
+}
+/** 차량 운행일지 취합 — 전자결재로 올라온 일지를 시간 순으로 모아 일간·주간·월간·프로젝트별로 본다 */
+const D_MODES = [['all', '전체(출고 이후)'], ['day', '일간'], ['week', '주간'], ['month', '월간'], ['project', '프로젝트별']];
+const dKm = (n) => (Number(n) || 0).toLocaleString('ko-KR');
+/** 운행일지 화면과 엑셀이 같은 거름 결과를 쓰도록 한 곳에서 계산 */
+export function driveSelect(st) {
+  const f = st.drive; const all = driveRows(f.docs, { approvedOnly: f.approvedOnly }); const veh = st.data.vehicle || []; const vsel = veh.find((v) => v.id === f.vehicleId) || null; const from = vsel && vsel.delivery ? vsel.delivery : '';
+  const anchor = f.mode === 'month' ? f.ym : f.anchor; const base = driveFilter(all, { mode: f.mode === 'project' ? 'all' : f.mode, anchor, from, vehicleId: f.vehicleId, driver: f.driver, pjtKey: '' });
+  return { all, veh, vsel, from, anchor, base, rows: f.pjtKey ? base.filter((x) => x.pjtKey === f.pjtKey) : base };
+}
+export function driveHtml(st) {
+  const f = st.drive; const all = driveRows(st.drive.docs, { approvedOnly: f.approvedOnly }); const veh = st.data.vehicle || []; const vsel = veh.find((v) => v.id === f.vehicleId) || null;
+  const from = vsel && vsel.delivery ? vsel.delivery : ''; const anchor = f.mode === 'month' ? f.ym : f.anchor;
+  const base = driveFilter(all, { mode: f.mode === 'project' ? 'all' : f.mode, anchor, from, vehicleId: f.vehicleId, driver: f.driver, pjtKey: '' });
+  const rows = f.pjtKey ? base.filter((x) => x.pjtKey === f.pjtKey) : base; const t = driveTotals(rows);
+  const range = driveRange(f.mode === 'project' ? 'all' : f.mode, anchor, from);
+  const drivers = [...new Set(all.map((x) => x.driver).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ko'));
+  const mode = '<div class="jh-segmented" role="group" aria-label="보기">' + D_MODES.map(([k, l]) => '<button type="button" class="jh-segmented__item" data-d-mode="' + k + '" aria-pressed="' + (f.mode === k) + '">' + esc(l) + '</button>').join('') + '</div>';
+  const pick = f.mode === 'day' ? '<button type="button" class="jh-btn" data-variant="ghost" data-d-nav="-1" aria-label="전날">◀</button><input class="jh-input" type="date" data-d-anchor value="' + esc(f.anchor) + '" aria-label="날짜"><button type="button" class="jh-btn" data-variant="ghost" data-d-nav="1" aria-label="다음 날">▶</button>'
+    : f.mode === 'week' ? '<button type="button" class="jh-btn" data-variant="ghost" data-d-nav="-1" aria-label="지난주">◀</button><span class="jh-field__hint">' + esc(weekStart(f.anchor) + ' ~ ' + range.to) + '</span><button type="button" class="jh-btn" data-variant="ghost" data-d-nav="1" aria-label="다음 주">▶</button>'
+    : f.mode === 'month' ? '<button type="button" class="jh-btn" data-variant="ghost" data-d-nav="-1" aria-label="지난달">◀</button><input class="jh-input" type="month" data-d-ym value="' + esc(f.ym) + '" aria-label="월"><button type="button" class="jh-btn" data-variant="ghost" data-d-nav="1" aria-label="다음 달">▶</button>' : '';
+  const sel = (key, label, opts, cur) => '<select class="jh-select" data-d-f="' + key + '" aria-label="' + esc(label) + '"><option value="">' + esc(label) + ' 전체</option>' + opts.map(([v, l]) => '<option value="' + esc(v) + '"' + (v === cur ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select>';
+  const bar = '<div class="jh-gen__pad"><div class="jh-gen__bar">' + mode + pick + '</div><div class="jh-gen__bar">' + sel('vehicleId', '차량', veh.map((v) => [v.id, v.name + (v.plate ? ' (' + v.plate + ')' : '')]), f.vehicleId) + sel('driver', '사용자', drivers.map((d) => [d, d]), f.driver)
+    + (f.pjtKey ? '<button type="button" class="jh-btn" data-variant="ghost" data-d-pjt="">프로젝트 거름 해제 ✕</button>' : '') + '<label class="jh-field__hint"><input type="checkbox" data-d-approved' + (f.approvedOnly ? ' checked' : '') + '> 승인된 것만</label><button type="button" class="jh-btn" data-variant="ghost" data-g-act="d-csv">운행기록부 엑셀(CSV)</button></div></div>';
+  const kpi = [['운행 건수', t.n + '건', t.days + '일 운행'], ['주행거리', dKm(t.distance) + ' km', '비업무용 ' + dKm(t.nonBizKm) + ' km'], ['업무용 사용거리', dKm(t.bizKm) + ' km', '업무사용비율 ' + t.bizRate + '%'], ['기간', (range.from === '0000-00-00' ? '처음' : range.from) + ' ~ ' + (range.to === '9999-99-99' ? '현재' : range.to), from ? '출고일 ' + from + '부터' : '출고일 기준은 차량을 고르면 적용']];
+  const k = '<div class="jh-kpi-grid">' + kpi.map(([l, v, h]) => '<div class="jh-kpi"><span class="jh-kpi__label">' + esc(l) + '</span><span class="jh-kpi__value">' + esc(v) + '</span><span class="jh-kpi__hint">' + esc(h) + '</span></div>').join('') + '</div>';
+  let notice = '';
+  const target = vsel ? all.filter((x) => x.vehicleId === vsel.id) : (veh.length === 1 ? all.filter((x) => x.vehicleId === veh[0].id) : null);
+  if (target && target.length) { const oc = driveOdoCheck(target, (vsel || veh[0]).deliveryOdo); const gaps = oc.gaps.filter((g) => !g.overlap); const ov = oc.gaps.filter((g) => g.overlap);
+    notice = (gaps.length ? '<div class="jh-alert" data-tone="warn" role="status">⚠ 일지가 이어지지 않는 구간이 ' + gaps.length + '곳 있습니다(계기판 전 일지의 "주행 후"와 다음 일지의 "주행 전"이 다름 — 일지가 빠졌거나 다른 사람이 운행했을 수 있습니다): ' + gaps.slice(0, 4).map((g) => esc(g.date + ' ' + dKm(g.from) + '→' + dKm(g.to) + 'km(+' + dKm(g.km) + ')')).join(' · ') + (gaps.length > 4 ? ' 외 ' + (gaps.length - 4) + '곳' : '') + '</div>' : '')
+      + (ov.length ? '<div class="jh-alert" data-tone="danger" role="status">⚠ 계기판이 거꾸로 가거나 겹치는 일지가 ' + ov.length + '건 있습니다: ' + ov.slice(0, 3).map((g) => esc(g.date + ' ' + dKm(g.from) + '→' + dKm(g.to))).join(' · ') + '</div>' : '')
+      + (oc.sinceDelivery !== null ? '<div class="jh-alert" data-tone="info" role="status">출고 이후 일지로 확인되는 계기판: ' + esc(dKm((vsel || veh[0]).deliveryOdo)) + ' → ' + esc(dKm(oc.last)) + ' km (+' + esc(dKm(oc.sinceDelivery)) + ' km)</div>' : ''); }
+  const stChip = (s) => '<span class="jh-chip" data-tone="' + (s === 'approved' || s === 'posted' ? 'accent' : 'muted') + '">' + esc(DRIVE_STATUS[s] || s) + '</span>';
+  let body;
+  if (f.mode === 'project' && !f.pjtKey) {
+    const g = driveByProject(base); body = g.length ? '<div class="jh-gen__scroll"><table class="jh-gen-table jh-gen-table--click"><thead><tr><th>프로젝트</th><th class="num">건수</th><th class="num">주행거리(km)</th><th class="num">업무용(km)</th><th>최근 운행</th></tr></thead><tbody>' + g.map((x) => '<tr class="jh-gen__row" data-d-pjt="' + esc(x.key) + '"><td>' + esc(x.pjt) + '</td><td class="num">' + x.n + '</td><td class="num">' + dKm(x.distance) + '</td><td class="num">' + dKm(x.bizKm) + '</td><td>' + esc(x.last) + '</td></tr>').join('') + '</tbody></table></div><div class="jh-field__hint jh-gen__pad">프로젝트를 누르면 그 프로젝트의 운행 내역만 시간 순으로 봅니다.</div>' : '<div class="jh-empty">조건에 맞는 운행일지가 없습니다.</div>';
+  } else {
+    const months = f.mode === 'all' ? driveByMonth(rows) : []; const mt = months.length > 1 ? '<h4 class="jh-gen__sub">월별 합계</h4><div class="jh-gen__scroll"><table class="jh-gen-table"><thead><tr><th>월</th><th class="num">건수</th><th class="num">주행거리(km)</th><th class="num">업무용(km)</th><th class="num">업무사용비율</th></tr></thead><tbody>' + months.map((m) => '<tr><td>' + esc(m.ym) + '</td><td class="num">' + m.n + '</td><td class="num">' + dKm(m.distance) + '</td><td class="num">' + dKm(m.bizKm) + '</td><td class="num">' + m.bizRate + '%</td></tr>').join('') + '</tbody></table></div>' : '';
+    const lines = rows.map((x) => '<tr><td>' + esc(x.date) + '</td><td>' + esc(x.vehicle + (x.plate ? ' ' + x.plate : '')) + '</td><td>' + esc(x.driver) + '</td><td class="jh-gen__cell">' + esc(x.pjt) + '</td><td class="jh-gen__cell">' + esc(x.origin + ' → ' + x.destination) + '</td><td>' + esc(x.kind) + '</td><td class="num">' + dKm(x.odoStart) + ' → ' + dKm(x.odoEnd) + '</td><td class="num">' + dKm(x.distance) + '</td><td class="num">' + dKm(x.bizKm) + '</td><td class="jh-gen__cell">' + esc(x.purpose) + '</td><td>' + stChip(x.status) + '</td></tr>').join('');
+    body = (rows.length ? mt + '<h4 class="jh-gen__sub">운행 내역 — 시간 순</h4><div class="jh-gen__scroll"><table class="jh-gen-table"><thead><tr><th>일자</th><th>차량</th><th>사용자</th><th>프로젝트</th><th>출발 → 도착</th><th>구분</th><th class="num">계기판(km)</th><th class="num">주행</th><th class="num">업무용</th><th>목적</th><th>상태</th></tr></thead><tbody>' + lines + '</tbody></table></div>' : '<div class="jh-empty">조건에 맞는 운행일지가 없습니다.</div>');
+  }
+  const hint = all.length === 0 ? '<div class="jh-alert" data-tone="info" role="status">아직 올라온 운행일지가 없습니다. 직원은 <strong>전자결재 → 작성 → 차량 운행일지</strong>에서 운행 후에 작성·상신하고, 결재가 끝나면 여기에 시간 순으로 모입니다. 차량은 먼저 <strong>차량 탭에서 등록(출고일·출고 시 계기판 포함)</strong>해야 선택할 수 있습니다.</div>' : '';
+  return hint + card('차량 운행일지 취합', bar + '<div class="jh-gen__pad">' + k + notice + '</div>' + body);
 }
 export { leaseMonthly };

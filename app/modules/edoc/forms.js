@@ -20,6 +20,17 @@ export const FORMS = {
     { label: '명일 계획', key: 'tomorrowWork', fmt: 'multiline' },
     { label: '특이사항', key: 'issue', fmt: 'multiline' }
   ] },
+  drive: { rows: [
+    { label: '운행일자', key: 'date', fmt: 'date' },
+    { label: '차량', get: d => [d.vehicleName, d.vehiclePlate ? '(' + d.vehiclePlate + ')' : ''].filter(Boolean).join(' ') },
+    { label: '프로젝트', get: pjtLine },
+    { label: '구분', key: 'kind' },
+    { label: '출발 → 도착', get: d => [d.origin, d.destination].filter(Boolean).join(' → ') },
+    { label: '계기판(km)', get: d => (d.odoStart != null && d.odoEnd != null ? Number(d.odoStart).toLocaleString('ko-KR') + ' → ' + Number(d.odoEnd).toLocaleString('ko-KR') : '') },
+    { label: '주행거리', get: d => (d.distance != null ? Number(d.distance).toLocaleString('ko-KR') + ' km (업무용 ' + Number(d.bizKm || 0).toLocaleString('ko-KR') + ' km)' : '') },
+    { label: '운행 목적', key: 'purpose', fmt: 'multiline' },
+    { label: '비고', key: 'note', fmt: 'multiline' }
+  ] },
   attend: { rows: [
     { label: '수정할 날짜', key: 'date', fmt: 'date' },
     { label: '출근', key: 'checkIn' },
