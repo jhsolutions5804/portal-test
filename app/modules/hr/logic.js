@@ -57,6 +57,7 @@ export function buildEdit(orig, form, opt) {
   const rankChanged = String(o.rank || '').trim() !== '' && rank !== (o.rank || ''); const deptChanged = String(o.dept || '').trim() !== '' && dept !== (o.dept || '');
   const stepCur = stepNow(o, opt && opt.year); const stepEdited = stepIn !== null && stepIn !== stepCur;
   const pub = { name, empNo, hireDate: hire, email, phone, empType, rank, dept, job: T(f.job, 60, '담당업무') }; const priv = { address: T(f.address, 120, '주소'), bankAccount: T(f.bankAccount, 60, '계좌번호') };
+  const jIn = String(f.jumin || '').replace(/[^0-9]/g, ''); if (jIn) { if (jIn.length !== 13) errors.push('주민등록번호 13자리를 입력해 주세요(바꾸지 않으려면 비워 두세요).'); else if (jIn !== String(o.jumin || '').replace(/[^0-9]/g, '')) { const dupJ = ((opt && opt.others) || []).find((x) => x.id !== o.id && x.name === name && String(x.jumin || '').replace(/[^0-9]/g, '') === jIn); if (dupJ) errors.push('같은 이름·주민번호의 근로자가 이미 있습니다.'); else priv.jumin = fmtJumin(jIn); } }
   if (errors.length) return { ok: false, errors };
   const year = (opt && opt.year) || Number(kstToday().slice(0, 4));
   if (stepEdited) { pub.step = stepIn; pub.stepYear = year; } else if (rankChanged) { pub.step = 1; pub.stepYear = year; }
@@ -66,3 +67,36 @@ export function buildEdit(orig, form, opt) {
 }
 /** 변경 이력 줄 글 */
 export function historyText(h) { const out = []; if ((h.fromRank || '') !== (h.toRank || '')) out.push('직급 ' + (h.fromRank || '-') + ' → ' + (h.toRank || '-')); if ((h.fromDept || '') !== (h.toDept || '')) out.push('소속 ' + (h.fromDept || '-') + ' → ' + (h.toDept || '-')); return out.join(' · '); }
+
+/* ───────── 신규 등록 · 퇴직 · 재직 복구 · 포털 연동 · 주민번호 ───────── */
+export const fmtJumin = (v) => { const d = String(v || '').replace(/[^0-9]/g, '').slice(0, 13); return d.length > 6 ? d.slice(0, 6) + '-' + d.slice(6) : d; };
+const jDigits = (v) => String(v || '').replace(/[^0-9]/g, '');
+/** 사원번호 규칙: 입사 연도 2자리 + 그 해 순번 3자리(yynnn) — 같은 해로 시작하는 5자리 사번의 최댓값 + 1 */
+export function nextEmpNo(list, hireDate) {
+  const yy = String(hireDate || kstToday()).slice(2, 4); let max = 0;
+  (list || []).forEach((w) => { const no = String(w.empNo || ''); if (no.length === 5 && no.slice(0, 2) === yy) { const n = parseInt(no.slice(2), 10); if (n > max) max = n; } });
+  return yy + String(max + 1).padStart(3, '0');
+}
+/** 주민번호가 들어가지 않는 임의 문서 번호: w_ + 16자리 16진수 */
+export const newWorkerId = (rand) => 'w_' + Array.from(rand || [], (x) => (x & 255).toString(16).padStart(2, '0')).join('').slice(0, 16).padEnd(16, '0');
+export const NEW_FORM = () => ({ name: '', jumin: '', phone: '', email: '', address: '', dept: '', rank: '', job: '', empType: '', hireDate: '', bankAccount: '' });
+export function buildNew(form, list, opt) {
+  const f = form || {}; const errors = []; const T = (v, max, label) => { const s = String(v == null ? '' : v).trim(); if (s.length > max) errors.push(label + '은(는) ' + max + '자 이내로 입력해 주세요.'); return s; };
+  const name = T(f.name, 40, '이름'); if (!name) errors.push('이름을 입력해 주세요.');
+  const jd = jDigits(f.jumin); if (jd.length !== 13) errors.push('주민등록번호 13자리를 입력해 주세요.');
+  const hire = String(f.hireDate || '').trim() || ((opt && opt.today) || kstToday()); if (!isDate(hire)) errors.push('입사일 형식이 올바르지 않습니다.');
+  const email = T(f.email, 80, '이메일'); if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('이메일 형식이 올바르지 않습니다.');
+  const phone = fmtPhone(f.phone); if (String(f.phone || '').trim() && phone.replace(/-/g, '').length < 9) errors.push('휴대폰 번호가 올바르지 않습니다.');
+  const empType = String(f.empType || ''); if (!EMP_TYPES.some((x) => x[0] === empType)) errors.push('직원 구분이 올바르지 않습니다.');
+  const dup = (list || []).find((w) => w.name === name && jDigits(w.jumin) === jd && jd.length === 13); if (dup) errors.push('이미 명부에 등록된 근로자입니다(사번 ' + (dup.empNo || '-') + (isResigned(dup) ? ', 퇴사 처리됨 — 재직 복구를 쓰세요' : '') + ').');
+  if (errors.length) return { ok: false, errors };
+  const empNo = nextEmpNo(list, hire);
+  return { ok: true, errors: [], empNo, pub: { name, phone, email, dept: T(f.dept, 40, '소속'), rank: T(f.rank, 20, '직급'), job: T(f.job, 60, '담당업무'), empType, hireDate: hire, empNo, registeredAt: (opt && opt.nowIso) || new Date().toISOString() }, priv: { jumin: fmtJumin(f.jumin), address: T(f.address, 120, '주소'), bankAccount: T(f.bankAccount, 60, '계좌번호') } };
+}
+export function buildResign(date) { const d = String(date || '').trim(); if (!isDate(d)) return { ok: false, error: '퇴직일 형식이 올바르지 않습니다. 예: 2026-09-16' }; return { ok: true, patch: { status: 'resigned', resignDate: d } }; }
+/** 포털 계정 연동 후보: 이름이 같은 승인 계정이 정확히 한 명일 때만 */
+export function linkCandidate(users, name) {
+  const m = (users || []).filter((u) => u.name === name); if (m.length === 0) return { state: 'none', message: '포털에 "' + name + '" 계정이 없습니다. 포털 관리에서 먼저 계정을 만들어 주세요.' };
+  if (m.length > 1) return { state: 'multi', message: '"' + name + '" 이름의 포털 계정이 ' + m.length + '개입니다. 관리자에게 문의해 주세요.' };
+  return { state: 'one', user: m[0] };
+}
