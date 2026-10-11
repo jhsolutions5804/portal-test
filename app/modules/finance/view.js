@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261011k';
-import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport } from './logic.js?v=20261011k';
-import { CHOICES } from '../../shared/merchant-table.js?v=20261011k';
+import { esc } from '../../core/ui.js?v=20261011l';
+import { ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport } from './logic.js?v=20261011l';
+import { CHOICES } from '../../shared/merchant-table.js?v=20261011l';
 
 /* 재무회계 화면 조각 — 모든 값은 esc() 로 감싸 HTML 로 만든다. 스타일은 theme/finance.css 와 공용 클래스를 쓴다 */
 const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['forecast', '예측'], ['gap', '이엔지 정산'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];
@@ -120,7 +120,7 @@ export function reportsHtml(st) {
   if (ledgerKind) {
     const R = st.rep; let body2 = '', extra = '';
     if (kind === 'vat') {
-      const P = vatPick(st.entries, R.vatKey); const v = vatReport(st.entries, P.from, P.to, R.vatDeny); const s = v.summary; const periods = vatPeriods(st.entries);
+      const P = vatPick(st.entries, R.vatKey); const v = vatReport(st.entries, P.from, P.to, (R.vatDeny && R.vatDeny[P.key]) || 0); const s = v.summary; const periods = vatPeriods(st.entries);
       extra = '<select class="jh-select" data-vat="period" aria-label="과세기간">' + periods.map((p) => '<option value="' + esc(p.key) + '"' + (p.key === P.key ? ' selected' : '') + '>' + esc(p.label) + '</option>').join('') + '</select><label class="jh-field__label" for="vat-deny">공제받지 못할 매입세액(원)</label><input class="jh-input" id="vat-deny" data-vat="deny" inputmode="numeric" value="' + esc(won(s.deny)) + '" placeholder="0">';
       const tr = (l, n, a, b, strong) => '<tr' + (strong ? ' class="is-strong"' : '') + '><td>' + esc(l) + '</td><td class="num">' + (n === '' ? '' : esc(String(n))) + '</td>' + (a === '' ? '<td></td>' : num(a)) + num(b) + '</tr>';
       const sumRows = [tr('① 과세 매출 — 세금계산서 발급분', v.sales.n, v.sales.supply, v.sales.tax), tr('② 매입 — 세금계산서 일반매입', v.pur.general.n, v.pur.general.supply, v.pur.general.tax), tr('③ 매입 — 세금계산서 고정자산 매입', v.pur.fixed.n, v.pur.fixed.supply, v.pur.fixed.tax), tr('(참고) 매입 — 계산서(면세) 매입', v.pur.exempt.n, v.pur.exempt.supply, 0),
