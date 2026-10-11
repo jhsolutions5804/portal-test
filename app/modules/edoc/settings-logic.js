@@ -5,8 +5,7 @@ export const GUIDE_TYPES = [
   { key: 'daily', label: '업무일지', icon: '📝' },
   { key: 'cert', label: '재직증명서', icon: '🪪' },
   { key: 'resign', label: '휴직/퇴직', icon: '📤' },
-  { key: 'attend', label: '근태 기록 수정 요청', icon: '⏰' },
-  { key: 'drive', label: '차량 운행일지(사후결재)', icon: '🚙' }
+  { key: 'attend', label: '근태 기록 수정 요청', icon: '⏰' }
 ];
 export const LIMITS = { required: 3, proxy: 3, approvers: 5, cc: 10 };
 const clone = (x) => JSON.parse(JSON.stringify(x));

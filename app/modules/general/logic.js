@@ -137,7 +137,7 @@ export const SEED = {
 };
 
 /* ───────── 차량 운행일지 취합 — 전자결재 edoc_drive 문서를 시간 순으로 모아 일간·주간·월간·프로젝트별로 본다 ───────── */
-export const DRIVE_STATUS = { pending: '결재대기', reviewing: '검토중', approved: '승인', posted: '승인', rejected: '반려', draft: '임시저장' };
+export const DRIVE_STATUS = { pending: '결재대기', reviewing: '검토중', approved: '기록', posted: '기록', rejected: '반려', draft: '임시저장' };   // 운행일지는 결재 없이 기록 — 결재대기는 결재 방식이던 때 올린 문서
 /** 취합 대상: 기본은 상신된 문서(결재대기·승인) — 임시저장·반려는 뺀다. approvedOnly 면 승인된 것만 */
 export function driveRows(docs, opt) {
   const o = opt || {}; return (docs || []).filter((d) => d && d.date && isDate(d.date) && ['pending', 'reviewing', 'approved', 'posted'].includes(d.status) && (!o.approvedOnly || ['approved', 'posted'].includes(d.status)))

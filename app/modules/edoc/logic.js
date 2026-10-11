@@ -88,7 +88,7 @@ export function availableActions(doc, me) {
     out.push({ key: 'reject', label: proxy && !my ? '대리 반려' : '반려', variant: 'danger', group: 'danger' });
   }
   if (mine && (st === 'pending' || st === 'reviewing') && !my) out.push({ key: 'recall', label: '회수', variant: 'secondary', group: 'secondary' });
-  if (st === 'approved' && doc.dtype !== 'attend') {   // 근태 기록 수정 요청은 승인되면 바로 출퇴근 기록에 반영되므로 게시하지 않는다
+  if (st === 'approved' && doc.dtype !== 'attend' && doc.dtype !== 'drive') {   // 근태 기록 수정 요청은 승인되면 바로 출퇴근 기록에 반영되므로 게시하지 않는다
     const line = Array.isArray(doc.approvalLine) ? doc.approvalLine : [];
     const actives = line.filter((s) => !isPassive(s.role)); const last = actives[actives.length - 1];
     if (me.admin || me.isRequired || isMyStep(last, me)) out.push({ key: 'post', label: '게시', variant: 'primary', group: 'primary' });

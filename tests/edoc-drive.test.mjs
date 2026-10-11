@@ -1,5 +1,6 @@
 import { composeType, COMPOSE_TYPES, defaultValues, validate, buildDocData, buildTitle, fieldsFor, valuesFromDoc, DRIVE_KINDS } from '../app/modules/edoc/compose.js';
-import { DOC_TYPES, NO_POST_TYPES, TYPE_LABEL, TYPE_GROUPS } from '../app/modules/edoc/logic.js';
+import { DOC_TYPES, NO_POST_TYPES, TYPE_LABEL, TYPE_GROUPS, availableActions } from '../app/modules/edoc/logic.js';
+import { badgeHtml } from '../app/modules/edoc/views.js';
 import { GUIDE_TYPES } from '../app/modules/edoc/settings-logic.js';
 import { FORMS } from '../app/modules/edoc/forms.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
@@ -8,7 +9,7 @@ const projects = [{ id: 'p1', code: 'P4PH2', pjtCode: 'P4PH2', name: 'P4 Ph2' }]
 const good = () => Object.assign(defaultValues('drive', me, new Date('2026-10-12T09:00:00')), { date: '2026-10-10', vehicleId: 'v1', pjtId: 'p1', origin: '본사 창고', destination: 'P4 Ph2 현장', odoStart: '12000', odoEnd: '12048', purpose: '자재 운반' });
 
 ok(DOC_TYPES.includes('drive') && NO_POST_TYPES.includes('drive') && TYPE_LABEL.drive === '차량 운행일지' && TYPE_GROUPS.some((g) => g.key === 'drive' && g.types[0] === 'drive') && !TYPE_GROUPS.find((g) => g.key === 'nodaily').types.includes('drive'), '★ 차량 운행일지: 문서 종류·이름·목록 묶음에 등록, 승인으로 끝(게시 대상 아님)');
-ok(composeType('drive') && composeType('drive').guide === 'drive' && COMPOSE_TYPES.some((t) => t.key === 'drive' && /사후결재/.test(t.desc)) && GUIDE_TYPES.some((t) => t.key === 'drive'), '차량 운행일지: 작성 종류 목록·권장 결재선 설정 항목');
+ok(composeType('drive') && COMPOSE_TYPES.some((t) => t.key === 'drive' && /결재 없음/.test(t.desc)) && !GUIDE_TYPES.some((t) => t.key === 'drive'), '★ 차량 운행일지: 작성 종류 목록에 "결재 없음"으로 표시, 권장 결재선 설정 항목은 없음(결재선을 쓰지 않음)');
 ok(fieldsFor('drive', {}).map((f) => f.key).join() === 'date,vehicleId,pjtId,origin,destination,kind,odoStart,odoEnd,bizKm,purpose,note' && defaultValues('drive', me, new Date('2026-10-12T09:00:00')).date === '2026-10-12', '차량 운행일지: 입력 항목과 기본값(오늘 날짜)');
 ok(Object.keys(validate('drive', good(), { projects })).length === 0, '★ 차량 운행일지 검증: 올바른 입력은 통과');
 const e1 = validate('drive', Object.assign(good(), { odoEnd: '11990' }), { projects }); ok(/작을 수 없/.test(e1.odoEnd || ''), '차량 운행일지 검증: 주행 후 계기판이 전보다 작으면 거부');
@@ -22,4 +23,6 @@ ok(d2.bizKm === 0 && d3.bizKm === 30 && d4.pjtCode === '공통' && d4.pjtName ==
 const back = valuesFromDoc(Object.assign({}, d1, { id: 'x' })); ok(back.type === 'drive' && back.values.odoEnd === 12048 && back.values.vehicleId === 'v1', '차량 운행일지: 임시저장·반려 문서를 작성 화면으로 다시 불러옴');
 const rows = FORMS.drive.rows; ok(rows.some((r) => r.label === '주행거리' && r.get(d1) === '48 km (업무용 48 km)') && rows.find((r) => r.label === '출발 → 도착').get(d1) === '본사 창고 → P4 Ph2 현장' && rows.find((r) => r.label === '계기판(km)').get(d1) === '12,000 → 12,048' && rows.find((r) => r.label === '차량').get(d1) === 'GMC 시에라 (12가 3456)', '차량 운행일지: 결재 문서 상세 표시(차량·출발→도착·계기판·주행거리)');
 ok(buildTitle('drive', { date: '2026-10-10' }, me) === '20261010 한가나 차량 운행일지', '차량 운행일지: 차량 이름이 없을 때 제목');
+const recDoc = { dtype: 'drive', status: 'approved', recorded: true, authorUid: 'u1', approvalLine: [{ role: '작성', uid: 'u1', status: 'done' }] };
+ok(badgeHtml('approved', recDoc).includes('기록') && badgeHtml('approved', { dtype: 'leave' }).includes('승인') && badgeHtml('approved').includes('승인') && !availableActions(recDoc, { uid: 'adm', admin: true, isRequired: true }).some((a) => a.key === 'post') && availableActions({ dtype: 'leave', status: 'approved', authorUid: 'u1', approvalLine: [{ role: '결재', uid: 'a', status: 'done' }] }, { uid: 'adm', admin: true }).some((a) => a.key === 'post'), '★ 차량 운행일지: 상태는 "기록"으로 표시, 관리자에게도 게시 버튼이 나오지 않음(다른 문서는 그대로)');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

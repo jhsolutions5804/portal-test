@@ -1,15 +1,16 @@
-import { esc, escMultiline, money } from '../../core/ui.js?v=20261011u';
+import { esc, escMultiline, money } from '../../core/ui.js?v=20261011v';
 import {
   TYPE_LABEL, TYPE_GROUPS, STATUS_LABEL, STATUS_GROUPS, tabDefs, tabCounts, filterDocs, summaryOf,
   myTurn, canProxy, currentStepIndex, stepState, fmtDate, fmtDateTime, fmtYmd, isPassive, tabsOf, docTitle,
   PAGE_SIZES, normalizeSize, paginate, pageNumbers, pageOfIndex, legacyCurrentStep, availableActions
-} from './logic.js?v=20261011u';
-import { actionbarHtml } from './compose-view.js?v=20261011u';
-import { FORMS } from './forms.js?v=20261011u';
-import { fmtSize as fmtFileSize } from './attach-logic.js?v=20261011u';
+} from './logic.js?v=20261011v';
+import { actionbarHtml } from './compose-view.js?v=20261011v';
+import { FORMS } from './forms.js?v=20261011v';
+import { fmtSize as fmtFileSize } from './attach-logic.js?v=20261011v';
 
-export function badgeHtml(status) {
-  return '<span class="jh-badge" data-status="' + esc(status) + '">' + esc(STATUS_LABEL[status] || status || '-') + '</span>';
+export function badgeHtml(status, doc) {
+  const label = doc && doc.recorded === true && (status === 'approved' || status === 'posted') ? '기록' : (STATUS_LABEL[status] || status || '-');   // 결재 없이 기록으로 남는 문서(차량 운행일지)
+  return '<span class="jh-badge" data-status="' + esc(status) + '">' + esc(label) + '</span>';
 }
 function optionList(groups, current) {
   return groups.map(g => '<option value="' + esc(g.key) + '"' + (g.key === (current || 'all') ? ' selected' : '') + '>' + esc(g.label) + '</option>').join('');
@@ -41,7 +42,7 @@ export function docRowHtml(d, me, selectedKey) {
       '<span class="jh-docrow__meta">' + esc(TYPE_LABEL[d.dtype] || d.dtype) + ' · ' + esc(d.authorName || '-') +
         (d.authorDept ? ' · ' + esc(d.authorDept) : '') + ' · ' + fmtDate(d._ms) + '</span>' +
     '</span>' +
-    '<span class="jh-docrow__side">' + (mine ? '<span class="jh-chip" data-tone="accent">' + (myTurn(d, me) ? '내 차례' : '대리 가능') + '</span>' : '') + badgeHtml(d.status) + '</span>' +
+    '<span class="jh-docrow__side">' + (mine ? '<span class="jh-chip" data-tone="accent">' + (myTurn(d, me) ? '내 차례' : '대리 가능') + '</span>' : '') + badgeHtml(d.status, d) + '</span>' +
   '</button>';
 }
 
@@ -138,7 +139,7 @@ export function detailHtml(ctx) {
       '<h2 class="jh-detail__title">' + esc(docTitle(d) || '(제목 없음)') + '</h2>' +
       '<div class="jh-detail__meta">' + esc(d.authorName || '-') + (d.authorRank ? ' ' + esc(d.authorRank) : '') +
         (d.authorDept ? ' · ' + esc(d.authorDept) : '') + ' · ' + fmtDateTime(d._ms) + '</div>' +
-      '<div class="jh-detail__state">' + badgeHtml(d.status) + notes.join('') + '</div>' +
+      '<div class="jh-detail__state">' + badgeHtml(d.status, d) + notes.join('') + '</div>' +
     '</header>' +
     (d.status === 'rejected' && d.rejectReason ? '<div class="jh-alert" data-tone="danger" role="alert"><strong>반려 사유</strong><br>' + escMultiline(d.rejectReason) + '</div>' : '') +
     '<section class="jh-detail__body"><dl class="jh-kv">' + (rows || '<div class="jh-empty">표시할 내용이 없습니다.</div>') + '</dl></section>' +

@@ -1,26 +1,26 @@
-import { fetchAll, fetchOne } from './data.js?v=20261011u';
-import { listHtml, detailHtml } from './views.js?v=20261011u';
-import { tabCounts } from './logic.js?v=20261011u';
-import { buildHash, navigate } from '../../core/router.js?v=20261011u';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261011u';
-import { toast } from '../../core/ui.js?v=20261011u';
-import { confirmDialog } from '../../core/dialog.js?v=20261011u';
-import { loadDirectory, resetDirectory } from './directory.js?v=20261011u';
-import { act } from './api.js?v=20261011u';
-import * as C from './compose.js?v=20261011u';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261011u';
-import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261011u';
-import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261011u';
-import { kstKey } from './home-daily.js?v=20261011u';
-import { isOffDay } from '../../shared/holidays.js?v=20261011u';
-import { todoCounts } from './home-stats.js?v=20261011u';
-import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261011u';
-import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261011u';
-import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261011u';
-import * as AT from './attach-logic.js?v=20261011u';
-import { uploadFile, removeFile, openFile } from './attach.js?v=20261011u';
-import * as SL from './settings-logic.js?v=20261011u';
-import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261011u';
+import { fetchAll, fetchOne } from './data.js?v=20261011v';
+import { listHtml, detailHtml } from './views.js?v=20261011v';
+import { tabCounts } from './logic.js?v=20261011v';
+import { buildHash, navigate } from '../../core/router.js?v=20261011v';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261011v';
+import { toast } from '../../core/ui.js?v=20261011v';
+import { confirmDialog } from '../../core/dialog.js?v=20261011v';
+import { loadDirectory, resetDirectory } from './directory.js?v=20261011v';
+import { act } from './api.js?v=20261011v';
+import * as C from './compose.js?v=20261011v';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261011v';
+import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261011v';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261011v';
+import { kstKey } from './home-daily.js?v=20261011v';
+import { isOffDay } from '../../shared/holidays.js?v=20261011v';
+import { todoCounts } from './home-stats.js?v=20261011v';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261011v';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261011v';
+import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261011v';
+import * as AT from './attach-logic.js?v=20261011v';
+import { uploadFile, removeFile, openFile } from './attach.js?v=20261011v';
+import * as SL from './settings-logic.js?v=20261011v';
+import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261011v';
 
 const URL_DEFAULTS = { tab: 'todo', type: 'all', status: 'all', page: '1', size: '20' };   // 주소에서 생략하는 기본값
 
@@ -373,7 +373,7 @@ async function mountCompose(root, route, ctx) {
       sync(); S.formError = ''; S.errors = {};
       const submit = act_ === 'submit';
       S.errors = submit ? C.validate(S.type, S.values, { projects: dir.projects, users: dir.users, meUid: me.uid, worker: S.worker }) : quickErrors();
-      const lineProblems = submit ? C.lineIssues(S.line, S.ctx) : [];
+      const lineProblems = submit && S.type !== 'drive' ? C.lineIssues(S.line, S.ctx) : [];
       if (Object.keys(S.errors).length || lineProblems.length) {
         S.formError = Object.keys(S.errors).length ? '입력 내용을 확인해 주세요. 빨간 표시된 항목을 고치면 됩니다.' : lineProblems[0];
         paint(); firstInvalid(); return;
@@ -382,8 +382,8 @@ async function mountCompose(root, route, ctx) {
       try {
         const ref = await persist();
         if (!submit) { toast('임시저장했습니다.'); S.busy = false; navigate('#/edoc/edit/' + ref.dtype + '/' + ref.id, { replace: true }); return; }
-        await act({ dtype: ref.dtype, docId: ref.id, action: 'submit', line: S.line.approvers, cc: S.line.cc });
-        dropCache(); toast('상신했습니다. 결재 대기 중입니다.');
+        await act({ dtype: ref.dtype, docId: ref.id, action: 'submit', line: S.type === 'drive' ? [] : S.line.approvers, cc: S.type === 'drive' ? [] : S.line.cc });
+        dropCache(); toast(S.type === 'drive' ? '운행일지를 기록했습니다.' : '상신했습니다. 결재 대기 중입니다.');
         navigate('#/edoc/doc/' + ref.dtype + '/' + ref.id + '?tab=mine', { replace: true });
       } catch (e) {
         S.busy = false; S.formError = (e && e.message) || '처리하지 못했습니다.';

@@ -16,7 +16,7 @@ export const COMPOSE_TYPES = [
   { key: 'cert', label: '재직증명서', icon: '🪪', guide: 'cert', desc: '제출처·부수 지정' },
   { key: 'resign', label: '휴직/퇴직', icon: '📤', guide: 'resign', desc: '휴직·퇴직 신청' },
   { key: 'attend', label: '근태 기록 수정 요청', icon: '⏰', guide: 'attend', desc: '지난 출퇴근 기록 입력·수정' },
-  { key: 'drive', label: '차량 운행일지', icon: '🚙', guide: 'drive', desc: '운행 후 작성 · 사후결재' }
+  { key: 'drive', label: '차량 운행일지', icon: '🚙', guide: 'drive', desc: '운행 후 바로 기록 · 결재 없음' }
 ];
 export const typeOfDtype = (dtype) => (dtype === 'purchase' || dtype === 'expense' ? 'spend' : dtype);
 export const composeType = (key) => COMPOSE_TYPES.find((t) => t.key === key) || null;

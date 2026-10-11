@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261011u';
-import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261011u';
-import { isAnnualType } from './home-calc.js?v=20261011u';
-import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261011u';
+import { esc } from '../../core/ui.js?v=20261011v';
+import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261011v';
+import { isAnnualType } from './home-calc.js?v=20261011v';
+import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261011v';
 
 const uname = (ctx, uid) => { const u = ctx.byUid[uid]; return u ? esc(u.name) + (u.rank ? ' <small>' + esc(u.rank) + '</small>' : '') : '(알 수 없음)'; };
 
@@ -136,11 +136,11 @@ export function composeHtml(s) {
     (rejectReason ? '<div class="jh-alert" data-tone="danger" role="alert"><strong>반려 사유</strong><br>' + esc(rejectReason).replace(/\n/g, '<br>') + '</div>' : '') +
     kind + '<section class="jh-form__section"><h3 class="jh-form__h">내용</h3>' + fieldsBlock(type, values, errors || {}, ctx) + (type === 'leave' ? '<div id="edoc-balance" aria-live="polite">' + balanceHintHtml(s.balance, values.days, values.leaveType) + '</div>' : '') + (type === 'attend' ? '<div id="edoc-attend-hint" aria-live="polite">' + attendHintHtml(s.attend) + '</div>' : '') + '</section>' +
     '<section class="jh-form__section" id="edoc-attach">' + attachHtml(s) + '</section>' +
-    '<section class="jh-form__section" id="edoc-line-section"><h3 class="jh-form__h">결재선</h3>' + lineEditorHtml(s.line, ctx, s.ui) + '</section>' +
+    (s.type === 'drive' ? '<section class="jh-form__section"><div class="jh-alert" data-tone="info" role="status">결재 없이 <strong>기록하기</strong>를 누르면 바로 기록됩니다. 총무가 모든 사람의 운행일지를 시간 순으로 모아 봅니다.</div></section>' : '<section class="jh-form__section" id="edoc-line-section"><h3 class="jh-form__h">결재선</h3>' + lineEditorHtml(s.line, ctx, s.ui) + '</section>') +
     (s.formError ? '<div class="jh-alert" data-tone="danger" role="alert" id="edoc-form-error">' + esc(s.formError) + '</div>' : '') +
     '<div class="jh-form__foot"><button type="button" class="jh-btn" data-variant="ghost" data-act="cancel">취소</button>' +
       '<button type="button" class="jh-btn" data-act="save"' + (s.busy ? ' disabled' : '') + '>임시저장</button>' +
-      '<button type="button" class="jh-btn" data-variant="primary" data-act="submit"' + (s.busy ? ' disabled' : '') + '>' + (s.busy ? '처리 중…' : '결재 상신') + '</button></div></form>';
+      '<button type="button" class="jh-btn" data-variant="primary" data-act="submit"' + (s.busy ? ' disabled' : '') + '>' + (s.busy ? '처리 중…' : (s.type === 'drive' ? '기록하기' : '결재 상신')) + '</button></div></form>';
 }
 export { emptyItem };
 
