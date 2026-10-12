@@ -1,7 +1,7 @@
 /* 인사 — 근로자 명부(새 화면). 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 데이터: workers/{id}(일반 정보) + worker_private/{id}(주민번호·계좌·주소·서명, 읽을 때 합쳐 쓰고 저장할 때 다시 가른다)
  *         labor_contracts/{id}/contracts · annual_contracts/{id}/contracts(endDate), workers/{id}/history(직급·부서 변경 이력) */
-import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261012f';
+import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261012g';
 export const WP_FIELDS = ['jumin', 'bankAccount', 'address', 'signData'];   // worker_private 에 따로 두는 필드
 export const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')) && new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
@@ -288,3 +288,31 @@ export const evalSorted = (list) => (list || []).slice().sort((a, b) => (Number(
 export const evalLatestRegular = (list) => evalSorted((list || []).filter((r) => r.type === 'regular'))[0] || null;
 /** 호봉 직접 입력: 비우면 자동 계산으로 되돌림(기준값 삭제), 1~60 정수만 */
 export function buildStepInput(val, year) { const s = String(val == null ? '' : val).trim(); const y = year || Number(kstToday().slice(0, 4)); if (s === '') return { ok: true, patch: { step: null, stepYear: y } }; const n = Number(s); if (!(Number.isInteger(n) && n >= 1 && n <= 60)) return { ok: false, error: '호봉은 1~60 사이의 정수여야 합니다.' }; return { ok: true, patch: { step: n, stepYear: y } }; }
+
+/* ───────── 채용 지원자 — recruit_applicants(홈페이지 지원 폼 → 비로그인 저장, 읽기·수정·삭제는 관리자) ───────── */
+export const APP_STATUS = { new: '신규', review: '검토중', pass: '합격', fail: '불합격' };
+export const appStatusOf = (a) => (a && a.status && APP_STATUS[a.status] ? a.status : 'new');
+export const appFilter = (list, f) => (!f || f === 'all' ? (list || []) : (list || []).filter((a) => appStatusOf(a) === f));
+export function appCounts(list) { const c = { all: (list || []).length, new: 0, review: 0, pass: 0, fail: 0 }; (list || []).forEach((a) => { c[appStatusOf(a)]++; }); return c; }
+/** 면접 일시: 날짜 + 24시간 시간 두 칸 → 'YYYY-MM-DDTHH:MM'. 둘 다 올바를 때만 만든다 */
+export function joinInterview(d, t) { const date = String(d || '').trim(), time = String(t || '').trim(); if (!isDate(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return null; return date + 'T' + time; }
+export function splitInterview(v) { const [d, t] = String(v || '').split('T'); return { date: d || '', time: t ? t.slice(0, 5) : '' }; }
+/** 면접 일정 → 인사 캘린더(hr_calendar_events/interview_<지원자번호>). 일시를 비우면 일정을 지운다 */
+export function interviewCalendar(a, v) {
+  const id = 'interview_' + a.id; if (!v) return { id, remove: true }; const { date, time } = splitInterview(v);
+  return { id, remove: false, data: { type: 'interview', title: '[면접] ' + (a.name || '') + (a.jobTitle ? ' · ' + a.jobTitle : ''), person: a.name || '', date, time: time || '', endTime: '', note: '채용 지원자 화면에서 자동 등록', source: 'applicant', srcId: a.id } };
+}
+export const prefillFromApplicant = (a) => ({ name: a.name || '', phone: a.phone || '', email: a.email || '', address: a.address || '' });
+/** 이력서 한 줄 목록(학력·경력·자격) */
+const RESUME_SECTIONS = [['학 력 사 항', 'educations', [['기간', 'period'], ['학교명/전공', 'school'], ['소재지', 'location'], ['졸업구분', 'grad']]], ['경 력 사 항', 'careers', [['근무기간', 'period'], ['근무처', 'company'], ['담당업무', 'duty'], ['직위', 'position']]], ['자격 및 면허사항', 'certs', [['취득일자', 'date'], ['자격/면허명', 'name'], ['발행처', 'issuer'], ['등급', 'grade']]]];
+export const resumeSections = (a) => RESUME_SECTIONS.map(([title, key, cols]) => ({ title, cols: cols.map((c) => c[0]), rows: (a[key] || []).map((it) => cols.map((c) => String(it[c[1]] == null ? '' : it[c[1]]))) }));
+/** 이력서 A4 — 새 창에 써서 인쇄/PDF 로 저장(구포털과 같은 구성) */
+export function resumePrintHtml(a) {
+  const e = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); const m = a.military || {};
+  const td = (v, cs) => '<td' + (cs ? ' colspan="' + cs + '"' : '') + ' style="padding:6px 8px;border:1px solid #ccc;">' + e(v) + '</td>'; const th = (l) => '<th style="padding:6px 8px;border:1px solid #ccc;background:#EAF3FD;color:#1D5BA6;font-size:12px;white-space:nowrap;">' + l + '</th>';
+  const sec = (l) => '<div style="background:#1D5BA6;color:#fff;font-weight:700;padding:6px 10px;font-size:12px;margin-top:14px;">' + l + '</div>';
+  const tables = resumeSections(a).map((s2) => sec(s2.title) + '<table><tr>' + s2.cols.map(th).join('') + '</tr>' + (s2.rows.length ? s2.rows.map((r) => '<tr>' + r.map((x) => td(x)).join('') + '</tr>').join('') : '<tr><td colspan="' + s2.cols.length + '" style="padding:6px 8px;border:1px solid #ccc;color:#999;font-style:italic;">입력된 내용이 없습니다</td></tr>') + '</table>').join('');
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + e(a.name) + ' 이력서</title><style>body{margin:0;font-family:\'Noto Sans KR\',Arial,sans-serif;background:#888;display:flex;flex-direction:column;align-items:center;padding:20px;}.toolbar{margin-bottom:12px;display:flex;gap:8px;}.toolbar button{padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;border:none;}.btn-print{background:#1D5BA6;color:#fff;font-weight:700;}.btn-back{background:#fff;border:1px solid #DDE4EF !important;}.a4{width:794px;min-height:1123px;background:#fff;padding:50px 60px;box-shadow:0 4px 24px rgba(0,0,0,0.2);box-sizing:border-box;}table{width:100%;border-collapse:collapse;font-size:12px;}@media print{body{background:#fff;padding:0;}.toolbar{display:none;}.a4{box-shadow:none;padding:30px 40px;width:auto;}}</style></head><body><div class="toolbar"><button class="btn-back" onclick="window.close()">← 돌아가기</button><button class="btn-print" onclick="window.print()">🖨 인쇄 / PDF 저장</button></div><div class="a4"><div style="text-align:center;margin-bottom:28px;"><div style="font-size:22px;font-weight:800;color:#1D5BA6;letter-spacing:6px;">이 력 서</div></div>'
+    + sec('인 적 사 항') + '<table><tr>' + th('성명') + td(a.name) + th('생년월일') + td(a.birth) + '</tr><tr>' + th('연락처') + td(a.phone) + th('성별') + td(a.gender) + '</tr><tr>' + th('이메일') + td(a.email) + th('최종학력') + td(a.eduLevel) + '</tr><tr>' + th('주소') + td(a.address, 3) + '</tr>' + (a.notes ? '<tr>' + th('특이사항') + td(a.notes, 3) + '</tr>' : '') + '</table>' + tables
+    + sec('병 역 사 항') + '<table><tr>' + th('군별') + td(m.branch) + th('제대구분') + td(m.discharge) + '</tr><tr>' + th('복무기간') + td(m.period) + th('비고') + td(m.exempt) + '</tr></table></div></body></html>';
+}

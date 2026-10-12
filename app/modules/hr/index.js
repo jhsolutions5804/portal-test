@@ -1,9 +1,9 @@
-import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012f';
-import { confirmDialog } from '../../core/dialog.js?v=20261012f';
-import { holidayName } from '../../shared/holidays.js?v=20261012f';
-import { esc, toast } from '../../core/ui.js?v=20261012f';
-import { NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012f';
-import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml } from './view.js?v=20261012f';
+import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012g';
+import { confirmDialog } from '../../core/dialog.js?v=20261012g';
+import { holidayName } from '../../shared/holidays.js?v=20261012g';
+import { esc, toast } from '../../core/ui.js?v=20261012g';
+import { appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012g';
+import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml } from './view.js?v=20261012g';
 
 /** 인사(플랫폼 기본 모듈): 근로자 명부 새 화면. 인사총무 틀 안의 구역으로만 열린다(modules/index.js 의 hostNative). 구포털 인사 화면은 그대로 두고 하나씩 옮기는 중이다. 관리자 전용 */
 export const manifest = { id: 'hr', order: 21, title: '인사', icon: '👥', defaultHash: '#/hr/workers', perm: (me) => !!me && me.admin === true };
@@ -303,4 +303,40 @@ export async function mountEvals(root, route, ctx) {
     if (t.matches('[data-e-step]')) { const r = buildStepInput(t.value); if (!r.ok) { toast(r.error); return; } try { await setDoc(doc(db, 'workers', t.getAttribute('data-e-step')), r.patch, { merge: true }); toast('호봉을 저장했습니다.'); await loadList(); paint(); } catch (e) { toast('호봉을 저장하지 못했습니다: ' + ((e && e.message) || '')); } }
   };
   paint(); if (route.segs && route.segs[0]) await open(route.segs[0]);
+}
+
+/** 채용 지원자(새 화면) — recruit_applicants 목록·상태·면접 일정(인사 캘린더 자동 등록)·이력서 보기/인쇄·명부 등록 이동·삭제 */
+export async function mountApplicants(root, route, ctx) {
+  root.onclick = null; root.oninput = null; root.onchange = null;
+  const st = { apList: [], apFilter: 'all', apSel: (route.segs && route.segs[0]) || '' };
+  root.innerHTML = '<div class="jh-hr"><div id="a-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
+  const body = root.querySelector('#a-body'); const me = String((auth.currentUser && auth.currentUser.email) || '').toLowerCase();
+  const dt = (ts) => { const d = ts && ts.toDate ? ts.toDate() : ts ? new Date(ts) : null; return d && !Number.isNaN(d.getTime()) ? d.getFullYear() + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0') + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') : '-'; };
+  const load = async () => { const s = await getDocs(query(collection(db, 'recruit_applicants'), orderBy('createdAt', 'desc'))); const l = []; s.forEach((d) => { const x = d.data(); l.push(Object.assign({ id: d.id }, x, { created: dt(x.createdAt) })); }); st.apList = l; };
+  try { await load(); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
+  body.removeAttribute('aria-busy');
+  const paint = () => { body.innerHTML = applicantsHtml(st); };
+  const calSync = async (a, v) => {   // 면접 일정을 인사 캘린더에 반영(성공 여부)
+    try { const c = interviewCalendar(a, v); const ref = doc(db, 'hr_calendar_events', c.id); if (c.remove) { await deleteDoc(ref); return true; } let old = {}; try { const sn = await getDoc(ref); if (sn.exists()) old = sn.data(); } catch (e) { /* 새 일정 */ } const now = new Date().toISOString(); await setDoc(ref, Object.assign({}, c.data, { createdAt: old.createdAt || now, createdBy: old.createdBy || me, updatedAt: now, updatedBy: me })); return true; } catch (e) { return false; }
+  };
+  const setInterview = async (a, v) => { try { await updateDoc(doc(db, 'recruit_applicants', a.id), { interviewAt: v }); a.interviewAt = v; } catch (e) { toast('면접일을 저장하지 못했습니다: ' + ((e && e.message) || '')); return; } const ok = await calSync(a, v); if (!ok) toast('면접일은 저장됐지만 인사 캘린더에는 반영하지 못했습니다(캘린더 접근 권한을 확인해 주세요).'); else toast(v ? '면접 일정을 인사 캘린더에 등록했습니다.' : '면접 일정을 해제했습니다.'); paint(); };
+  root.onclick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    const f = t.closest('[data-a-filter]'); if (f) { st.apFilter = f.getAttribute('data-a-filter'); paint(); return; }
+    const o = t.closest('[data-a-open]'); if (o) { st.apSel = o.getAttribute('data-a-open'); paint(); return; }
+    const dl = t.closest('[data-a-del]'); if (dl) { const a = st.apList.find((x) => x.id === dl.getAttribute('data-a-del')); if (!a) return; const ok = await confirmDialog({ title: '지원자 삭제', body: "'" + (a.name || '(이름 없음)') + "' 지원자를 삭제합니다. 이력서 내용과 면접 일정이 함께 삭제되며 되돌릴 수 없습니다." + (appStatusOf(a) === 'pass' ? ' ※ 합격 처리된 지원자입니다.' : ''), confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return;
+      try { await deleteDoc(doc(db, 'recruit_applicants', a.id)); } catch (e) { toast('삭제하지 못했습니다: ' + ((e && e.message) || '')); return; } const cal = await calSync(a, ''); st.apList = st.apList.filter((x) => x.id !== a.id); st.apSel = ''; paint(); toast(cal ? '삭제했습니다.' : '지원자는 삭제됐지만 인사 캘린더의 면접 일정은 지우지 못했습니다. 인사 캘린더에서 직접 확인해 주세요.'); return; }
+    const a2 = t.closest('[data-a-act]'); if (!a2) return; const act = a2.getAttribute('data-a-act'); const a = st.apList.find((x) => x.id === st.apSel); if (act === 'back') { st.apSel = ''; paint(); return; } if (!a) return;
+    if (act === 'roster') { try { sessionStorage.setItem('jh_roster_prefill', JSON.stringify(prefillFromApplicant(a))); } catch (e) { /* 저장소를 못 쓰면 빈 양식으로 열림 */ } location.hash = '#/hr/workers'; return; }
+    if (act === 'print') { const win = window.open('', '_blank'); if (!win) { toast('팝업이 차단되어 출력 창을 열 수 없습니다. 팝업을 허용한 뒤 다시 시도해 주세요.'); return; } win.document.write(resumePrintHtml(a)); win.document.close(); }
+  };
+  root.onchange = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    if (t.matches('[data-a-status]')) { const a = st.apList.find((x) => x.id === t.getAttribute('data-a-status')); if (!a) return; try { await updateDoc(doc(db, 'recruit_applicants', a.id), { status: t.value }); a.status = t.value; toast('상태를 바꿨습니다.'); paint(); } catch (e) { toast('상태를 바꾸지 못했습니다: ' + ((e && e.message) || '')); } return; }
+    const idD = t.getAttribute('data-a-ivd'), idT = t.getAttribute('data-a-ivt'); const id = idD || idT; if (!id) return; const a = st.apList.find((x) => x.id === id); if (!a) return;
+    const row = t.closest('tr'); const d = (row.querySelector('[data-a-ivd]') || {}).value || ''; const tm = (row.querySelector('[data-a-ivt]') || {}).value || '';
+    if (!d) { if (a.interviewAt) await setInterview(a, ''); return; }   // 날짜를 지우면 면접 일정 해제(이미 등록된 경우만)
+    const v = joinInterview(d, tm); if (!v) return; await setInterview(a, v);   // 날짜·시간이 모두 올바를 때만 저장
+  };
+  paint();
 }
