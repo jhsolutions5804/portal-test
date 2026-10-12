@@ -37,6 +37,7 @@ globalThis.__FS = {
   deleteField: () => ({ __del: 1 }), serverTimestamp: () => ({ toDate: () => new Date(), toMillis: () => Date.now() }), getFirestore: () => ({}), Timestamp: { fromMillis: (n) => ({ toMillis: () => n, toDate: () => new Date(n) }) },
   writeBatch: () => ({ set() {}, update() {}, delete() {}, commit: async () => {} }),
 };
+let __done = false; process.on('exit', (code) => { if (!__done) { console.log('\n✗ 점검이 끝까지 실행되지 않았습니다(중간에 오류로 멈춤) — 위 출력과 미처리 오류를 확인하세요'); process.exitCode = 1; } });
 const errors = []; process.on('unhandledRejection', (e) => errors.push('미처리 오류: ' + String((e && e.stack) || e).split('\n').slice(0, 3).join(' | '))); process.on('uncaughtException', (e) => errors.push('예외: ' + String((e && e.stack) || e).split('\n').slice(0, 3).join(' | ')));
 const ce = console.error; console.error = (...a) => { errors.push('console.error: ' + a.map((x) => String((x && x.stack) || x)).join(' ').slice(0, 260)); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -63,7 +64,7 @@ for (const [name, fn] of targets) {
 {
   const V = '?v=' + (fs.readFileSync(new URL('../../app/modules/index.js', import.meta.url), 'utf8').match(/\?v=(\w+)/) || [])[1];   // 앱과 같은 주소(버전 표시 포함)로 불러와야 같은 모듈 인스턴스를 쓴다
   await import(new URL('../../app/modules/index.js' + V, import.meta.url).href); const { mountLegacy } = await import(new URL('../../app/modules/legacy/frame.js' + V, import.meta.url).href); const { LEGACY_DEFS } = await import(new URL('../../app/modules/legacy/list.js' + V, import.meta.url).href);
-  const def = LEGACY_DEFS.find((d) => d.id === 'hr'); const keys = def.groups[0].clusters.flatMap((c) => c.keys).concat(['home', 'hrcal']);   // hrcal(인사 캘린더)은 메뉴에서 빼고 주소로만 연다 let bad = 0; const keep = document.createElement('div'); document.body.appendChild(keep);
+  const def = LEGACY_DEFS.find((d) => d.id === 'hr'); const keys = def.groups[0].clusters.flatMap((c) => c.keys).concat(['home', 'hrcal']); /* hrcal(인사 캘린더)은 메뉴에서 빼고 주소로만 연다 */ let bad = 0; const keep = document.createElement('div'); document.body.appendChild(keep);
   const routes = keys.map((k) => ({ segs: [k], query: {} })).concat(['home', 'lease', 'vehicle', 'drive', 'asset', 'renewal'].map((t) => ({ segs: ['general', t], query: {} })));
   for (const r of routes) { errors.length = 0; try { await Promise.race([mountLegacy(def, keep, r, ctx), sleep(2500)]); await sleep(60); } catch (e) { errors.push('껍데기 예외: ' + String((e && e.stack) || e).split('\n').slice(0, 2).join(' | ')); }
     const wrap = keep.querySelector('.jh-legacy'); const nat = wrap && wrap.querySelector('.jh-legacy__native'); const frame = wrap && wrap.querySelector('iframe'); const cur = wrap && wrap.querySelector('.jh-sidenav__item[aria-current="page"]');
@@ -71,4 +72,4 @@ for (const [name, fn] of targets) {
     if (errors.length) problems.push(errors[0].slice(0, 160)); if (problems.length) { bad++; console.log('✗ 껍데기', r.segs.join('/').padEnd(22), problems.join(' · ')); } }
   console.log(bad ? '✗ 껍데기 점검: 문제 ' + bad + '건 / ' + routes.length + '개 메뉴' : '✓ 껍데기 점검: 인사 ' + keys.length + '개 + 총무 6개 메뉴를 사이드바 껍데기로 열어 봄 — 새 화면이 그려지고 옛 화면(iframe)은 불러오지 않음'); if (bad) failed++;
 }
-console.log('\n' + (failed ? '문제가 있는 화면 ' + failed + '개' : '모든 화면이 열림')); process.exit(failed ? 1 : 0);
+__done = true; console.log('\n' + (failed ? '문제가 있는 화면 ' + failed + '개' : '모든 화면이 열림')); process.exit(failed ? 1 : 0);
