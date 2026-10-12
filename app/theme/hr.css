@@ -40,3 +40,9 @@
 .jh-hr__tenure { display: flex; align-items: center; gap: var(--sp-1); font-weight: 400; font-size: var(--fs-sm); }
 .jh-hr__tenure .jh-input { max-width: 4.2rem; padding: 2px 6px; }
 @media (max-width: 960px) { .jh-hr__split { grid-template-columns: minmax(0, 1fr); } }
+
+/* 연봉 제안서 */
+.jh-hr__offer { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-4); align-items: start; }
+.jh-hr__col { display: grid; gap: var(--sp-4); min-width: 0; }
+.jh-hr__col#o-result { position: sticky; top: var(--sp-3); }
+@media (max-width: 1100px) { .jh-hr__offer { grid-template-columns: minmax(0, 1fr); } .jh-hr__col#o-result { position: static; } }

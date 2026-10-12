@@ -1,9 +1,10 @@
-import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012j';
-import { confirmDialog } from '../../core/dialog.js?v=20261012j';
-import { holidayName } from '../../shared/holidays.js?v=20261012j';
-import { esc, toast } from '../../core/ui.js?v=20261012j';
-import { salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012j';
-import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml } from './view.js?v=20261012j';
+import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012k';
+import { confirmDialog } from '../../core/dialog.js?v=20261012k';
+import { holidayName } from '../../shared/holidays.js?v=20261012k';
+import { esc, toast } from '../../core/ui.js?v=20261012k';
+import { offerNewForm, offerCalc, offerSwitchMode, offerPayload, offerFormFromSaved, offerCalendar, offerFillCurrent, offerBuildHtml } from './offer.js?v=20261012k';
+import { salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012k';
+import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml, offersHtml, offerResultHtml, offerStateText } from './view.js?v=20261012k';
 
 /** 인사(플랫폼 기본 모듈): 근로자 명부 새 화면. 인사총무 틀 안의 구역으로만 열린다(modules/index.js 의 hostNative). 구포털 인사 화면은 그대로 두고 하나씩 옮기는 중이다. 관리자 전용 */
 export const manifest = { id: 'hr', order: 21, title: '인사', icon: '👥', defaultHash: '#/hr/workers', perm: (me) => !!me && me.admin === true };
@@ -324,6 +325,7 @@ export async function mountApplicants(root, route, ctx) {
     const t = ev.target; if (!(t instanceof Element)) return;
     const f = t.closest('[data-a-filter]'); if (f) { st.apFilter = f.getAttribute('data-a-filter'); paint(); return; }
     const o = t.closest('[data-a-open]'); if (o) { st.apSel = o.getAttribute('data-a-open'); paint(); return; }
+    const ofr = t.closest('[data-a-offer]'); if (ofr) { const a0 = st.apList.find((x) => x.id === ofr.getAttribute('data-a-offer')); if (a0) { try { sessionStorage.setItem('jh_offer_prefill', JSON.stringify({ kind: 'new', applicantId: a0.id, name: a0.name || '', job: a0.jobTitle || '' })); } catch (e) { /* 저장소를 못 쓰면 빈 양식으로 열림 */ } location.hash = '#/hr/offers'; } return; }
     const dl = t.closest('[data-a-del]'); if (dl) { const a = st.apList.find((x) => x.id === dl.getAttribute('data-a-del')); if (!a) return; const ok = await confirmDialog({ title: '지원자 삭제', body: "'" + (a.name || '(이름 없음)') + "' 지원자를 삭제합니다. 이력서 내용과 면접 일정이 함께 삭제되며 되돌릴 수 없습니다." + (appStatusOf(a) === 'pass' ? ' ※ 합격 처리된 지원자입니다.' : ''), confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return;
       try { await deleteDoc(doc(db, 'recruit_applicants', a.id)); } catch (e) { toast('삭제하지 못했습니다: ' + ((e && e.message) || '')); return; } const cal = await calSync(a, ''); st.apList = st.apList.filter((x) => x.id !== a.id); st.apSel = ''; paint(); toast(cal ? '삭제했습니다.' : '지원자는 삭제됐지만 인사 캘린더의 면접 일정은 지우지 못했습니다. 인사 캘린더에서 직접 확인해 주세요.'); return; }
     const a2 = t.closest('[data-a-act]'); if (!a2) return; const act = a2.getAttribute('data-a-act'); const a = st.apList.find((x) => x.id === st.apSel); if (act === 'back') { st.apSel = ''; paint(); return; } if (!a) return;
@@ -362,4 +364,70 @@ export async function mountSalary(root, route, ctx) {
     if (act === 'save') { try { await setDoc(doc(db, 'company_settings', 'salaryTable'), st.sal); toast('저장했습니다.'); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); } }
   };
   paint();
+}
+
+/** 연봉 제안서(새 화면) — 작성·자동 계산·A4 출력(미리보기, 저장 안 됨)·저장(salary_offers, 같은 건은 덮어쓰기)·인사 캘린더 회신기한 연동·지난 제안서(재출력·열어서 수정·삭제). 이메일 발송(링크 서명)은 기존 화면 */
+export async function mountOffers(root, route, ctx) {
+  root.onclick = null; root.oninput = null; root.onchange = null;
+  const today = kstToday(); const st = { view: 'form', of: offerNewForm(today), hint: '', workers: [], applicants: [], minWage: 0, perCert: 50000, stamp: '', allOffers: [], allWorkers: [], allApplicants: [], histTab: 'active', person: null };
+  root.innerHTML = '<div class="jh-hr"><div id="o-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
+  const body = root.querySelector('#o-body'); const me = String((auth.currentUser && auth.currentUser.email) || '').toLowerCase(); const logo = new URL('../../theme/assets/jh-logo.png', import.meta.url).href;
+  const snapList = (s) => { const l = []; s.forEach((d) => l.push(Object.assign({ id: d.id }, d.data()))); return l; };
+  try {
+    const [ws, as] = await Promise.all([getDocs(collection(db, 'workers')), getDocs(collection(db, 'recruit_applicants')).catch(() => null)]);
+    st.workers = snapList(ws).filter((w) => !w.resignDate || w.resignDate >= today).sort((a, b) => String(a.empNo || '').localeCompare(String(b.empNo || ''))); st.applicants = as ? snapList(as).filter((a) => ['review', 'pass'].includes(a.status || 'new')) : [];
+    try { const sn = await getDoc(doc(db, 'company_settings', 'salaryTable')); if (sn.exists()) { st.minWage = Number(sn.data().minWage) || 0; st.perCert = Number(sn.data().techAllowancePerCert) || 50000; } } catch (e) { /* 기본값 */ }
+    try { const sg = await getDoc(doc(db, 'company_settings', 'signatures')); if (sg.exists()) st.stamp = sg.data().kjh || ''; } catch (e) { /* 직인 없이 출력 */ }
+  } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
+  body.removeAttribute('aria-busy');
+  try { const pf = sessionStorage.getItem('jh_offer_prefill'); if (pf) { sessionStorage.removeItem('jh_offer_prefill'); const p = JSON.parse(pf); st.of = Object.assign(offerNewForm(today), { kind: p.kind || 'new', applicantId: p.applicantId || '', workerId: p.workerId || '', name: p.name || '', job: p.job || '' }); } } catch (e) { /* 프리필 없음 */ }   // 채용 지원자 → 연봉 제안서
+  const paint = () => { body.innerHTML = offersHtml(st); };
+  const refresh = () => { const r = body.querySelector('#o-result'); if (r) r.innerHTML = offerResultHtml(st); const s = body.querySelector('#o-state'); if (s) s.textContent = offerStateText(st.of); };
+  const contractsOf = async (wid) => { try { return snapList(await getDocs(collection(db, 'annual_contracts/' + wid + '/contracts'))); } catch (e) { return []; } };
+  const fillCurrent = async () => { const res = offerFillCurrent(st.of, st.of.kind !== 'new' && st.of.workerId ? await contractsOf(st.of.workerId) : []); st.of = res.form; st.hint = res.hint; paint(); };
+  const ctxOf = () => ({ worker: st.workers.find((x) => x.id === st.of.workerId), perCert: st.perCert, stamp: st.stamp, logo });
+  const openPrint = (f) => { const r = offerCalc(f); if (r.err) { toast(r.err); return; } if (!r.ok) { toast('연봉 또는 시급을 먼저 입력해 주세요.'); return; } const win = window.open('', '_blank'); if (!win) { toast('팝업이 차단되어 출력 창을 열 수 없습니다. 팝업을 허용한 뒤 다시 시도해 주세요.'); return; } win.document.write(offerBuildHtml(f, r, ctxOf())); win.document.close(); };
+  const calSync = async (f) => { try { const c = offerCalendar(f); if (!c) return false; const ref = doc(db, 'hr_calendar_events', c.id); if (c.remove) { await deleteDoc(ref); return true; } let old = {}; try { const sn = await getDoc(ref); if (sn.exists()) old = sn.data(); } catch (e) { /* 새 일정 */ } const now = new Date().toISOString(); await setDoc(ref, Object.assign({}, c.data, { createdAt: old.createdAt || now, createdBy: old.createdBy || me, updatedAt: now, updatedBy: me })); return true; } catch (e) { return false; } };
+  const saveDoc = async (f) => { const data = offerPayload(f); if (f._id) await setDoc(doc(db, 'salary_offers', f._id), Object.assign({}, data, { updatedAt: serverTimestamp() }), { merge: true }); else { const ref = await addDoc(collection(db, 'salary_offers'), Object.assign({}, data, { createdAt: serverTimestamp() })); f._id = ref.id; } f._saved = true; return calSync(f); };
+  const loadHist = async () => { const [os, ws, as] = await Promise.all([getDocs(query(collection(db, 'salary_offers'), orderBy('createdAt', 'desc'))), getDocs(collection(db, 'workers')), getDocs(collection(db, 'recruit_applicants')).catch(() => null)]); st.allOffers = snapList(os); st.allWorkers = snapList(ws); st.allApplicants = as ? snapList(as) : []; };
+  const showPerson = (kind, id) => { if (kind === 'w') { const w = st.allWorkers.find((x) => x.id === id); st.person = { kind, id, name: w ? w.name || '' : '', ref: w, list: st.allOffers.filter((o) => o.workerId === id) }; } else { const a = st.allApplicants.find((x) => x.id === id); st.person = { kind, id, name: a ? a.name || '' : '', ref: a, list: st.allOffers.filter((o) => o.applicantId === id) }; } st.view = 'person'; paint(); };
+  root.oninput = (ev) => {
+    const t = ev.target; if (!(t instanceof Element) || st.view !== 'form') return;
+    if (t.matches('[data-o-f]')) { st.of[t.getAttribute('data-o-f')] = t.value; st.of._saved = false; refresh(); return; }
+    if (t.matches('[data-o-m]')) { st.of[t.getAttribute('data-o-m')] = t.value.replace(/,/g, '').replace(/[^0-9.]/g, ''); st.of._saved = false; refresh(); }
+  };
+  root.onchange = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element) || st.view !== 'form') return;
+    if (t.matches('[data-o-m]')) { paint(); return; }   // 입력이 끝나면 천 단위 쉼표로 다시 그림
+    if (t.matches('[data-o-ck]')) { st.of[t.getAttribute('data-o-ck')] = t.checked; st.of._saved = false; refresh(); return; }
+    if (t.matches('[data-o-r]')) { const [key, val] = t.getAttribute('data-o-r').split('|'); st.of._saved = false;
+      if (key === 'kind') { st.of.kind = val; st.of.workerId = ''; st.of.applicantId = ''; st.hint = ''; await fillCurrent(); return; }
+      if (key === 'mode') { st.of = offerSwitchMode(st.of, val); paint(); return; }
+      st.of[key] = val; if (key === 'wageType') paint(); else refresh(); return; }
+    if (t.matches('[data-o-pick]')) { const f = st.of; f._saved = false; const id = t.value;
+      if (f.kind === 'new') { f.applicantId = id || ''; f.workerId = ''; const a = st.applicants.find((x) => x.id === id); if (a) { f.name = a.name || ''; f.job = a.jobTitle || f.job; } paint(); return; }
+      f.workerId = id || ''; f.applicantId = ''; const w = st.workers.find((x) => x.id === id); if (w) { f.name = w.name || ''; f.empNo = w.empNo || ''; f.dept = w.dept || ''; f.rank = w.rank || ''; f.job = w.job || f.job; f.hireDate = w.hireDate || f.hireDate; f.curRank = w.rank || ''; } await fillCurrent(); }
+  };
+  root.onclick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    const tab = t.closest('[data-o-tab]'); if (tab) { st.histTab = tab.getAttribute('data-o-tab'); paint(); return; }
+    const per = t.closest('[data-o-person]'); if (per) { const [k, id] = per.getAttribute('data-o-person').split('|'); showPerson(k, id); return; }
+    const rp = t.closest('[data-o-reprint]'); if (rp) { const o = st.allOffers.find((x) => x.id === rp.getAttribute('data-o-reprint')); if (o) openPrint(o); return; }
+    const ed = t.closest('[data-o-edit]'); if (ed) { const o = st.allOffers.find((x) => x.id === ed.getAttribute('data-o-edit')); if (o) { st.of = offerFormFromSaved(o, today); st.hint = ''; st.view = 'form'; paint(); } return; }
+    const dl = t.closest('[data-o-del]'); if (dl) { const o = st.allOffers.find((x) => x.id === dl.getAttribute('data-o-del')); if (!o) return; const ok = await confirmDialog({ title: '제안서 삭제', body: "'" + (o.name || '(이름 없음)') + "' 연봉 제안서(" + (o.offerDate || '-') + ")를 삭제합니다. 인사 캘린더의 회신기한 일정도 함께 삭제되며 되돌릴 수 없습니다.", confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return;
+      try { await deleteDoc(doc(db, 'salary_offers', o.id)); } catch (e) { toast('삭제하지 못했습니다: ' + ((e && e.message) || '')); return; } let cal = true; try { await deleteDoc(doc(db, 'hr_calendar_events', 'offerreply_' + o.id)); } catch (e) { cal = false; } st.allOffers = st.allOffers.filter((x) => x.id !== o.id); if (st.person) st.person.list = st.person.list.filter((x) => x.id !== o.id); paint(); toast(cal ? '삭제했습니다.' : '제안서는 삭제됐지만 인사 캘린더의 회신기한 일정은 지우지 못했습니다. 인사 캘린더에서 직접 확인해 주세요.'); return; }
+    const a = t.closest('[data-o-act]'); if (!a) return; const act = a.getAttribute('data-o-act');
+    if (act === 'hist') { try { await loadHist(); } catch (e) { toast('불러오지 못했습니다: ' + ((e && e.message) || '')); return; } st.histTab = 'active'; st.view = 'hist'; paint(); return; }
+    if (act === 'form') { st.view = 'form'; paint(); return; }
+    if (act === 'histback') { st.view = 'hist'; paint(); return; }
+    if (act === 'newfor') { const p = st.person; if (!p) return; st.of = offerNewForm(today); if (p.kind === 'w') Object.assign(st.of, { kind: 'renew', workerId: p.id, name: p.name, dept: p.ref ? p.ref.dept || '' : '', rank: p.ref ? p.ref.rank || '' : '' }); else Object.assign(st.of, { kind: 'new', applicantId: p.id, name: p.name, job: p.ref ? p.ref.jobTitle || '' : '' }); st.view = 'form'; st.hint = ''; await fillCurrent(); return; }
+    if (act === 'reset') { const ok = await confirmDialog({ title: '초기화', body: '입력한 내용을 모두 지우고 처음 상태로 되돌릴까요?', confirmLabel: '초기화' }); if (!ok.ok) return; st.of = offerNewForm(today); st.hint = ''; paint(); return; }
+    if (act === 'print') { if (!String(st.of.name || '').trim()) { const ok = await confirmDialog({ title: '성명 없음', body: '성명이 비어 있습니다. 빈칸으로 출력할까요?', confirmLabel: '출력' }); if (!ok.ok) return; } openPrint(st.of); return; }
+    if (act === 'save') {
+      const r = offerCalc(st.of); if (r.err) { toast(r.err); return; } if (!r.ok) { toast('연봉 또는 시급을 먼저 입력해 주세요.'); return; }
+      if (!String(st.of.name || '').trim()) { const ok = await confirmDialog({ title: '성명 없음', body: '성명이 비어 있습니다. 이대로 저장할까요?', confirmLabel: '저장' }); if (!ok.ok) return; }
+      try { const calOk = await saveDoc(st.of); refresh(); toast(calOk ? '저장했습니다. 회신기한이 인사 캘린더에 반영되었습니다.' : '저장했습니다. (인사 캘린더에는 반영하지 못했습니다 — 캘린더 접근 권한을 확인해 주세요)'); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); }
+    }
+  };
+  paint(); if (st.of.kind !== 'new' && st.of.workerId) await fillCurrent();
 }

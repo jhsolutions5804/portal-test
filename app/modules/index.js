@@ -1,13 +1,13 @@
 /* 플랫폼에 꽂는 모듈 목록 — 모듈을 더하거나 빼는 일은 이 파일 한 곳만 고친다.
  * 각 항목은 { manifest, mount }. 핵심부(core/)는 모듈 폴더를 직접 알지 못하고 이 목록만 읽는다. */
-import * as edoc from './edoc/index.js?v=20261012j';
-import * as attendance from './attendance/index.js?v=20261012j';
-import * as calendar from './calendar/index.js?v=20261012j';
-import * as company from './company/index.js?v=20261012j';
-import * as finance from './finance/index.js?v=20261012j';
-import * as general from './general/index.js?v=20261012j';
-import * as hr from './hr/index.js?v=20261012j';
-import { modules as legacy, hostNative } from './legacy/index.js?v=20261012j';
+import * as edoc from './edoc/index.js?v=20261012k';
+import * as attendance from './attendance/index.js?v=20261012k';
+import * as calendar from './calendar/index.js?v=20261012k';
+import * as company from './company/index.js?v=20261012k';
+import * as finance from './finance/index.js?v=20261012k';
+import * as general from './general/index.js?v=20261012k';
+import * as hr from './hr/index.js?v=20261012k';
+import { modules as legacy, hostNative } from './legacy/index.js?v=20261012k';
 
 export const MODULES = [
   { manifest: edoc.manifest, mount: edoc.mount },
@@ -27,3 +27,4 @@ hostNative('hr', 'hrcal', hr.mountCalendar);   // 인사 캘린더 새 화면(�
 hostNative('hr', 'evals', hr.mountEvals);   // 인사평가 새 화면
 hostNative('hr', 'applicants', hr.mountApplicants);   // 채용 지원자 새 화면(구포털 탭 키 그대로 — 지원자 링크가 새 화면으로 열린다)
 hostNative('hr', 'salarytable', hr.mountSalary);   // 급여테이블 새 화면(구포털 탭 키 그대로)
+hostNative('hr', 'offers', hr.mountOffers);   // 연봉 제안서 새 화면(이메일 발송만 기존 '연봉 제안서' 화면에서)
