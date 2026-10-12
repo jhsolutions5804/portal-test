@@ -34,3 +34,9 @@
 [data-t="interview"] { --hc: #1D5BA6; } [data-t="offerreply"] { --hc: #D97706; } [data-t="salarynego"] { --hc: #16A34A; } [data-t="eval"] { --hc: #7C3AED; } [data-t="resign"] { --hc: #DC2626; } [data-t="etc"] { --hc: #64748B; } [data-t="leave"] { --hc: #0F9D6B; }
 .jh-hc__row { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-top: var(--u-1) solid var(--c-line); cursor: pointer; }
 .jh-hc__row:hover { background: var(--c-primary-weak); }
+
+/* 급여테이블 — 좌 기준 설정 · 우 호봉표(세로 배치) */
+.jh-hr__split { display: grid; grid-template-columns: minmax(var(--u-280, 18rem), 24rem) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+.jh-hr__tenure { display: flex; align-items: center; gap: var(--sp-1); font-weight: 400; font-size: var(--fs-sm); }
+.jh-hr__tenure .jh-input { max-width: 4.2rem; padding: 2px 6px; }
+@media (max-width: 960px) { .jh-hr__split { grid-template-columns: minmax(0, 1fr); } }

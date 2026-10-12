@@ -1,9 +1,9 @@
-import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012i';
-import { confirmDialog } from '../../core/dialog.js?v=20261012i';
-import { holidayName } from '../../shared/holidays.js?v=20261012i';
-import { esc, toast } from '../../core/ui.js?v=20261012i';
-import { salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012i';
-import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml } from './view.js?v=20261012i';
+import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012j';
+import { confirmDialog } from '../../core/dialog.js?v=20261012j';
+import { holidayName } from '../../shared/holidays.js?v=20261012j';
+import { esc, toast } from '../../core/ui.js?v=20261012j';
+import { salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012j';
+import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml } from './view.js?v=20261012j';
 
 /** 인사(플랫폼 기본 모듈): 근로자 명부 새 화면. 인사총무 틀 안의 구역으로만 열린다(modules/index.js 의 hostNative). 구포털 인사 화면은 그대로 두고 하나씩 옮기는 중이다. 관리자 전용 */
 export const manifest = { id: 'hr', order: 21, title: '인사', icon: '👥', defaultHash: '#/hr/workers', perm: (me) => !!me && me.admin === true };
@@ -146,7 +146,7 @@ export async function mountPostings(root, route, ctx) {
   const load = async () => { const s = await getDocs(collection(db, 'job_postings')); const l = []; s.forEach((d) => { const x = d.data(); l.push(Object.assign({ id: d.id }, x, { createdMs: x.createdAt && x.createdAt.toMillis ? x.createdAt.toMillis() : 0 })); }); st.jobs = l; };
   try { await load(); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
   body.removeAttribute('aria-busy');
-  const preview = () => { if (!st.jf) return; const c = jobCompose(normalizeOpt(st.jf.o)); [['career', c.career], ['education', c.education], ['empType', c.empType], ['workTime', c.workTime]].forEach(([k, v]) => { const e = body.querySelector('#jp-pv-' + k); if (e) e.textContent = '홈페이지 표시: ' + (v || '(선택 없음)'); }); };
+  const preview = () => { if (!st.jf) return; const c = jobCompose(normalizeOpt(st.jf.o)); [['career', c.career], ['empType', c.empType], ['workTime', c.workTime]].forEach(([k, v]) => { const e = body.querySelector('#jp-pv-' + k); if (e) e.textContent = '홈페이지 표시: ' + (v || '(선택 없음)'); }); };
   const paint = () => { body.innerHTML = postingsHtml(st); preview(); };
   const openForm = (id) => { const j = id ? st.jobs.find((x) => x.id === id) : null; if (id && !j) return; const r = jobFormOf(j); st.jf = { id: id || '', f: r.f, o: r.o }; paint(); };
   root.onclick = async (ev) => {
@@ -156,7 +156,7 @@ export async function mountPostings(root, route, ctx) {
     const ed = t.closest('[data-j-edit]'); if (ed) { openForm(ed.getAttribute('data-j-edit')); return; }
     const tg = t.closest('[data-j-toggle]'); if (tg) { const j = st.jobs.find((x) => x.id === tg.getAttribute('data-j-toggle')); if (!j) return; const next = j.status === 'open' ? 'closed' : 'open'; const ok = await confirmDialog({ title: next === 'open' ? '공고 게시' : '공고 마감', body: '「' + (j.title || '') + '」 공고를 ' + (next === 'open' ? '게시' : '마감 처리') + '합니다.', confirmLabel: next === 'open' ? '게시' : '마감 처리' }); if (!ok.ok) return; try { await updateDoc(doc(db, 'job_postings', j.id), { status: next, updatedAt: serverTimestamp() }); toast(next === 'open' ? '게시했습니다.' : '마감 처리했습니다.'); await load(); paint(); } catch (e) { toast('처리하지 못했습니다: ' + ((e && e.message) || '')); } return; }
     const dl = t.closest('[data-j-del]'); if (dl) { const j = st.jobs.find((x) => x.id === dl.getAttribute('data-j-del')); if (!j) return; const ok = await confirmDialog({ title: '공고 삭제', body: '「' + (j.title || '') + '」 공고를 삭제합니다. 홈페이지에서도 사라지고 되돌릴 수 없습니다(이미 접수된 지원서는 그대로 유지됩니다).', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return; try { await deleteDoc(doc(db, 'job_postings', j.id)); toast('삭제했습니다.'); await load(); paint(); } catch (e) { toast('삭제하지 못했습니다: ' + ((e && e.message) || '')); } return; }
-    const ch = t.closest('[data-j-chip]'); if (ch && st.jf) { const [g, val] = ch.getAttribute('data-j-chip').split(':'); const o = st.jf.o; if (g === 'career') o.careerType = val; else if (g === 'edu') o.eduLevel = val; else if (g === 'emp') { const s = new Set(o.emp || []); if (s.has(val)) s.delete(val); else s.add(val); o.emp = [...s]; } paint(); return; }
+    const ch = t.closest('[data-j-chip]'); if (ch && st.jf) { const [g, val] = ch.getAttribute('data-j-chip').split(':'); const o = st.jf.o; if (g === 'career') o.careerType = val; else if (g === 'emp') { const s = new Set(o.emp || []); if (s.has(val)) s.delete(val); else s.add(val); o.emp = [...s]; } paint(); return; }
     const a = t.closest('[data-j-act]'); if (!a || !st.jf) return;
     if (a.getAttribute('data-j-act') === 'cancel') { st.jf = null; paint(); return; }
     const r = buildJob(st.jf.f, st.jf.o); if (!r.ok) { toast(r.errors[0]); return; }

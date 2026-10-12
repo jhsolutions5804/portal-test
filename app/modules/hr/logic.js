@@ -1,7 +1,7 @@
 /* 인사 — 근로자 명부(새 화면). 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 데이터: workers/{id}(일반 정보) + worker_private/{id}(주민번호·계좌·주소·서명, 읽을 때 합쳐 쓰고 저장할 때 다시 가른다)
  *         labor_contracts/{id}/contracts · annual_contracts/{id}/contracts(endDate), workers/{id}/history(직급·부서 변경 이력) */
-import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261012i';
+import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261012j';
 export const WP_FIELDS = ['jumin', 'bankAccount', 'address', 'signData'];   // worker_private 에 따로 두는 필드
 export const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')) && new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
@@ -151,30 +151,29 @@ export function filterEvents(events, f) {
 }
 
 /* ───────── 공고 관리 — job_postings(홈페이지 recruit-jobs·recruit 가 open 공고만 읽어 보여 준다) ─────────
- * 경력·학력·고용형태·근무일시는 선택지로 고르고, 저장할 때 홈페이지 표시 문장으로 조합해 career/education/empType/workTime 에 저장(선택값은 opt 에 보관) — 구포털과 같은 규칙. */
+ * 경력·고용형태·근무일시는 선택지로 고르고, 저장할 때 홈페이지 표시 문장으로 조합해 career/empType/workTime 에 저장(선택값은 opt 에 보관) — 구포털과 같은 규칙.
+ * 학력은 공고에 요건으로 두지 않는다(대표님 결정 2026-10-12 — 학력 차별 소지 검토). 지원서에서는 학력 사항을 그대로 받는다. education 키는 홈페이지 호환을 위해 빈 값으로만 남긴다. */
 export const JOB_HOME_BASE = 'https://jhsolutions5804.github.io';
 export const JOB_PAGES = [{ file: 'careers.html', icon: '🌐', name: '채용 소개 (랜딩)', desc: '인재상·EVP 소개 첫 화면' }, { file: 'recruit-jobs.html', icon: '📋', name: '채용 공고', desc: '진행 중인 공고 목록' }, { file: 'recruit.html', icon: '✍️', name: '지원 폼', desc: '지원서 입력 화면' }];
 export const JOB_STATUS = { open: '게시 중', closed: '마감', draft: '임시저장' };
-export const JOB_OPT = { career: ['경력무관', '신입', '경력', '신입·경력'], edu: [['학력무관', '학력무관'], ['고졸', '고졸'], ['초대졸', '초대졸 (2~3년제)'], ['대졸', '대졸 (4년제)'], ['석사', '석사'], ['박사', '박사']], emp: ['정규직', '계약직', '일용직', '인턴', '프리랜서', '아르바이트'], days: ['주 5일 (월~금)', '주 6일 (월~토)', '주 4일', '주 3일', '주 2일', '교대근무', '격주 근무', '요일 협의'], probation: ['1', '2', '3', '6'], contract: ['1', '2', '3', '6', '9', '12'] };
-export const JOB_OPT_DEFAULT = () => ({ careerType: '경력무관', careerMin: '', careerMax: '', careerNote: '', eduLevel: '학력무관', eduAbove: true, eduGrad: true, eduNote: '', emp: ['정규직', '계약직'], probation: '3', contractMonths: '3', convert: true, empNote: '', days: '주 5일 (월~금)', start: '07:00', end: '17:00', timeNeg: false, workNote: '' });
+export const JOB_OPT = { career: ['경력무관', '신입', '경력', '신입·경력'], emp: ['정규직', '계약직', '일용직', '인턴', '프리랜서', '아르바이트'], days: ['주 5일 (월~금)', '주 6일 (월~토)', '주 4일', '주 3일', '주 2일', '교대근무', '격주 근무', '요일 협의'], probation: ['1', '2', '3', '6'], contract: ['1', '2', '3', '6', '9', '12'] };
+export const JOB_OPT_DEFAULT = () => ({ careerType: '경력무관', careerMin: '', careerMax: '', careerNote: '', emp: ['정규직', '계약직'], probation: '3', contractMonths: '3', convert: true, empNote: '', days: '주 5일 (월~금)', start: '07:00', end: '17:00', timeNeg: false, workNote: '' });
 /** 새 공고에 자동으로 채우는 기본 문구(공고마다 수정). 공통 복지는 홈페이지 채용 소개에 있어 비워 둔다 */
-export const JOB_DEFAULTS = { salary: '면접 후 결정', location: '경기 평택시 고덕중앙로 320 원희캐슬고덕 지식산업센터', duties: '공조설비 납품 일정과 공정 관리해요\n입고 현황을 관리해요\n협력사와 품질 사항 점검해요', requirements: '경력 무관 (신입 지원 가능)\n학력무관, 졸업 예정자 지원가능\n현장 소통을 원활히 하시는 분\n도면과 시방서 이해할 수 있는 분\n일정·자재를 꼼꼼히 관리하시는 분\n기본 문서작성과 보고가 가능하신 분\n안전수칙을 준수하며 일하시는 분', preferred: '공조·냉동 설비 유관 경험 가진 분\n납품·설치 프로젝트 참여해보신 분\n협력사 관리와 조율에 익숙하신 분', benefits: '', process: '서류전형 → 면접 → 최종합격', documents: '홈페이지 지원서 (입력하신 정보로 이력서 자동 생성)', notes: '합격자에 한 해 연락 드립니다.\n입사지원 서류에 허위사실이 발견될 경우, 채용확정 이후라도 채용이 취소될 수 있습니다.' };
+export const JOB_DEFAULTS = { salary: '면접 후 결정', location: '경기 평택시 고덕중앙로 320 원희캐슬고덕 지식산업센터', duties: '공조설비 납품 일정과 공정 관리해요\n입고 현황을 관리해요\n협력사와 품질 사항 점검해요', requirements: '경력 무관 (신입 지원 가능)\n현장 소통을 원활히 하시는 분\n도면과 시방서 이해할 수 있는 분\n일정·자재를 꼼꼼히 관리하시는 분\n기본 문서작성과 보고가 가능하신 분\n안전수칙을 준수하며 일하시는 분', preferred: '공조·냉동 설비 유관 경험 가진 분\n납품·설치 프로젝트 참여해보신 분\n협력사 관리와 조율에 익숙하신 분', benefits: '', process: '서류전형 → 면접 → 최종합격', documents: '홈페이지 지원서 (입력하신 정보로 이력서 자동 생성)', notes: '합격자에 한 해 연락 드립니다.\n입사지원 서류에 허위사실이 발견될 경우, 채용확정 이후라도 채용이 취소될 수 있습니다.' };
 /** 선택값(opt) → 홈페이지 표시 문장 */
 export function jobCompose(o) {
   const yrs = o.careerMin && o.careerMax ? o.careerMin + '~' + o.careerMax + '년' : o.careerMin ? o.careerMin + '년 이상' : o.careerMax ? o.careerMax + '년 이하' : '';
   let career = o.careerType === '경력무관' ? '경력무관 (신입 포함)' : (o.careerType || ''); if (o.careerType === '경력') career = '경력' + (yrs ? ' ' + yrs : ''); if (o.careerType === '신입·경력') career = '신입·경력' + (yrs ? ' (경력 ' + yrs + ')' : ''); if (o.careerNote) career += ' · ' + o.careerNote;
-  let education = o.eduLevel === '학력무관' ? '학력무관' : (o.eduLevel || '') + (o.eduAbove ? ' 이상' : ''); if (o.eduGrad) education += ' (졸업 예정자 가능)'; if (o.eduNote) education += ' · ' + o.eduNote;
   const emp = JOB_OPT.emp.filter((t) => (o.emp || []).includes(t)).map((t) => { if (t === '정규직') return '정규직' + (o.probation ? '(수습 ' + o.probation + '개월)' : ''); if (t === '계약직') return '계약직' + (o.contractMonths ? ' ' + o.contractMonths + '개월' : '') + '(' + [o.convert ? '정규직 전환 가능' : '', '기간제'].filter(Boolean).join(', ') + ')'; return t; });
   let empType = emp.join(', '); if (o.empNote) empType += (empType ? ' · ' : '') + o.empNote;
   let workTime = [o.days, o.start && o.end ? o.start + '~' + o.end : ''].filter(Boolean).join(' '); if (o.timeNeg) workTime += ' (시간 협의 가능)'; if (o.workNote) workTime += (workTime ? ' · ' : '') + o.workNote;
-  return { career, education, empType, workTime };
+  return { career, education: '', empType, workTime };   // education 은 홈페이지 호환을 위한 빈 값(학력 요건은 두지 않음)
 }
 /** 선택값 없이 저장된 옛 공고 → 문구에서 선택값 추정(수정 화면을 열 때만) */
 export function jobParseLegacy(j) {
   const o = JOB_OPT_DEFAULT(); const t = (x) => String(x || ''); const c = t(j.career);
   if (c.includes('무관')) o.careerType = '경력무관'; else if (c.includes('신입') && c.includes('경력')) o.careerType = '신입·경력'; else if (c.includes('신입')) o.careerType = '신입'; else if (c.includes('경력')) o.careerType = '경력';
   const yr = c.match(/(\d+)\s*~\s*(\d+)\s*년/), yu = c.match(/(\d+)\s*년\s*이상/), yd = c.match(/(\d+)\s*년\s*이하/); if (yr) { o.careerMin = yr[1]; o.careerMax = yr[2]; } else if (yu) o.careerMin = yu[1]; else if (yd) o.careerMax = yd[1];
-  const e = t(j.education); const lv = ['박사', '석사', '대졸', '초대졸', '고졸'].find((x) => e.includes(x)); o.eduLevel = lv || '학력무관'; o.eduAbove = e.includes('이상'); o.eduGrad = e.includes('예정자');
   const m = t(j.empType); o.emp = JOB_OPT.emp.filter((x) => m.includes(x)); o.probation = (m.match(/수습\s*(\d+)\s*개월/) || [])[1] || ''; o.contractMonths = (m.match(/계약직\s*(\d+)\s*개월/) || [])[1] || ''; o.convert = m.includes('전환 가능');
   const w = t(j.workTime); o.days = JOB_OPT.days.find((x) => w.includes(x.replace(/ /g, '')) || w.includes(x)) || ''; const tm = w.match(/(\d{1,2}):(\d{2})\s*~\s*(\d{1,2}):(\d{2})/); o.start = tm ? tm[1].padStart(2, '0') + ':' + tm[2] : ''; o.end = tm ? tm[3].padStart(2, '0') + ':' + tm[4] : ''; o.timeNeg = w.includes('협의');
   return o;
@@ -182,14 +181,15 @@ export function jobParseLegacy(j) {
 /** 화면에서 읽은 선택값을 정리 — 해당하지 않는 항목은 비움 */
 export function normalizeOpt(o0) {
   const o = Object.assign(JOB_OPT_DEFAULT(), o0 || {}); o.emp = Array.isArray(o.emp) ? o.emp.slice() : [];
-  if (!['경력', '신입·경력'].includes(o.careerType)) { o.careerMin = ''; o.careerMax = ''; } if (o.eduLevel === '학력무관') o.eduAbove = false; if (!o.emp.includes('정규직')) o.probation = ''; if (!o.emp.includes('계약직')) { o.contractMonths = ''; o.convert = false; } return o;
+  ['eduLevel', 'eduAbove', 'eduGrad', 'eduNote'].forEach((k) => { delete o[k]; });   // 옛 공고에 남아 있던 학력 선택값은 저장할 때 정리
+  if (!['경력', '신입·경력'].includes(o.careerType)) { o.careerMin = ''; o.careerMax = ''; } if (!o.emp.includes('정규직')) o.probation = ''; if (!o.emp.includes('계약직')) { o.contractMonths = ''; o.convert = false; } return o;
 }
 const JOB_TEXT = ['title', 'team', 'salary', 'location', 'duties', 'requirements', 'preferred', 'benefits', 'process', 'documents', 'notes', 'startDate', 'deadline'];
 export function jobFormOf(j) { const isNew = !j || !j.id; const f = { status: isNew ? 'open' : (j.status || 'open') }; JOB_TEXT.forEach((k) => { f[k] = isNew ? (JOB_DEFAULTS[k] != null ? JOB_DEFAULTS[k] : '') : (j[k] == null ? '' : String(j[k])); }); if (isNew) { f.title = ''; f.team = ''; f.startDate = ''; f.deadline = ''; } return { f, o: isNew ? JOB_OPT_DEFAULT() : (j.opt ? Object.assign(JOB_OPT_DEFAULT(), j.opt) : jobParseLegacy(j)) }; }
 export function buildJob(f, o0) {
   const errors = []; const v = (k) => String((f && f[k]) == null ? '' : f[k]).trim(); if (!v('title')) errors.push('모집 제목을 입력해 주세요.');
   if (v('startDate') && !isDate(v('startDate'))) errors.push('접수 시작일 형식이 올바르지 않습니다.'); if (v('deadline') && !isDate(v('deadline'))) errors.push('접수 마감일 형식이 올바르지 않습니다.'); if (isDate(v('startDate')) && isDate(v('deadline')) && v('deadline') < v('startDate')) errors.push('접수 마감일이 시작일보다 빠릅니다.');
-  const opt = normalizeOpt(o0); if (!opt.careerType || !opt.eduLevel) errors.push('경력과 학력을 선택해 주세요.'); const st = v('status') || 'open'; if (!JOB_STATUS[st]) errors.push('상태가 올바르지 않습니다.');
+  const opt = normalizeOpt(o0); if (!opt.careerType) errors.push('경력을 선택해 주세요.'); const st = v('status') || 'open'; if (!JOB_STATUS[st]) errors.push('상태가 올바르지 않습니다.');
   if (errors.length) return { ok: false, errors }; const data = Object.assign({ status: st, opt }, jobCompose(opt)); JOB_TEXT.forEach((k) => { data[k] = v(k); }); return { ok: true, errors: [], data };
 }
 export const jobOrder = (list) => (list || []).slice().sort((a, b) => ({ open: 0, draft: 1, closed: 2 }[a.status] ?? 3) - ({ open: 0, draft: 1, closed: 2 }[b.status] ?? 3) || ((b.createdMs || 0) - (a.createdMs || 0)));
@@ -345,5 +345,11 @@ export function salNormalize(raw) {
 export function salSetField(data, field, value) { if (!['minWage', 'standardRate', 'perfRateMin', 'perfRateMax', 'techAllowancePerCert'].includes(field)) return data; const d = clone(data); d[field] = Number(value) || 0; return ['minWage', 'standardRate'].includes(field) ? salRegenerate(d, false) : d; }
 export function salSetTenure(data, pos, value) { if (!SAL_POSITIONS.includes(pos)) return data; const d = clone(data); d.tenure = d.tenure || {}; d.tenure[pos] = Math.max(1, Math.min(30, Math.floor(Number(value)) || 1)); return salRegenerate(d, false); }
 export function salEditCell(data, tid, key, value) { const d = clone(data); const t = d.tracks.find((x) => x.id === tid); if (!t || (t.pinned && key === '사원-1')) return data; const n = Number(value); t.cellsHourly[key] = Number.isFinite(n) && n >= 0 ? Math.round(n) : 0; return d; }
+/** 세로 배치용 표: 직급을 열(사원·대리·과장·차장), 호봉을 행(1호봉~)으로. 체류연한보다 큰 호봉 칸은 없음(exists=false) */
+export function salMatrix(d) {
+  const t = (d.tracks && d.tracks[0]) || { id: 'standard', cellsHourly: {} }; const cols = SAL_POSITIONS.map((pos) => ({ pos, years: Math.max(1, Number(d.tenure && d.tenure[pos]) || 1) })); const max = Math.max.apply(null, cols.map((c) => c.years)); const rows = [];
+  for (let step = 1; step <= max; step++) rows.push({ step, cells: cols.map((c) => { if (step > c.years) return { exists: false }; const key = c.pos + '-' + step; const hourly = Number(t.cellsHourly && t.cellsHourly[key]) || 0; return { exists: true, tid: t.id, key, hourly, annual: salAnnual(hourly), pinned: !!(t.pinned && key === '사원-1'), below: hourly > 0 && hourly < (Number(d.minWage) || 0) }; }) });
+  return { cols, rows };
+}
 /** 표 줄(직급·호봉)과 칸(시급·연봉·최저임금 미달 여부) */
 export function salRows(d) { const out = []; SAL_POSITIONS.forEach((pos, pi) => { const years = Math.max(1, Number(d.tenure && d.tenure[pos]) || 1); for (let step = 1; step <= years; step++) { const key = pos + '-' + step; out.push({ pos, step, key, band: pi % 2, cells: d.tracks.map((t) => { const hourly = Number(t.cellsHourly && t.cellsHourly[key]) || 0; return { tid: t.id, hourly, annual: salAnnual(hourly), pinned: !!(t.pinned && key === '사원-1'), below: hourly > 0 && hourly < (Number(d.minWage) || 0) }; }) }); } }); return out; }
