@@ -1,14 +1,14 @@
 /* 플랫폼에 꽂는 모듈 목록 — 모듈을 더하거나 빼는 일은 이 파일 한 곳만 고친다.
  * 각 항목은 { manifest, mount }. 핵심부(core/)는 모듈 폴더를 직접 알지 못하고 이 목록만 읽는다. */
-import * as edoc from './edoc/index.js?v=20261013zb';
-import * as attendance from './attendance/index.js?v=20261013zb';
-import * as calendar from './calendar/index.js?v=20261013zb';
-import * as company from './company/index.js?v=20261013zb';
-import * as finance from './finance/index.js?v=20261013zb';
-import * as plan from './plan/index.js?v=20261013zb';
-import * as general from './general/index.js?v=20261013zb';
-import * as hr from './hr/index.js?v=20261013zb';
-import { modules as legacy, hostNative } from './legacy/index.js?v=20261013zb';
+import * as edoc from './edoc/index.js?v=20261013zc';
+import * as attendance from './attendance/index.js?v=20261013zc';
+import * as calendar from './calendar/index.js?v=20261013zc';
+import * as company from './company/index.js?v=20261013zc';
+import * as finance from './finance/index.js?v=20261013zc';
+import * as plan from './plan/index.js?v=20261013zc';
+import * as general from './general/index.js?v=20261013zc';
+import * as hr from './hr/index.js?v=20261013zc';
+import { modules as legacy, hostNative } from './legacy/index.js?v=20261013zc';
 
 export const MODULES = [
   { manifest: edoc.manifest, mount: edoc.mount },
@@ -27,6 +27,7 @@ hostNative('plan', 'teamlabor', plan.mountTeamLabor);   // 팀별 노무비 새 
 hostNative('plan', 'est', plan.mountEstimates);   // 견적 새 화면(개정 이력·비교)
 hostNative('plan', 'comp', plan.mountCompanies);   // 거래처 새 화면 — 구포털 기획을 탭 하나씩 옮기는 중
 hostNative('plan', 'partners', plan.mountPartners);   // 협력사(지급 대상) 새 화면
+hostNative('plan', 'contracts', plan.mountContracts);   // 협력사 위탁(하도급) 계약서(신규)
 hostNative('hr', 'general', general.mountSection);   // 총무는 사이드바에 따로 두지 않고 인사총무 안의 구역으로 연다
 hostNative('hr', 'workers', hr.mountWorkers);   // 근로자 명부 새 화면 — 구포털 인사 화면을 탭 하나씩 옮기는 중(옮기는 동안 기존 화면도 그대로 쓸 수 있다)
 hostNative('hr', 'leaves', hr.mountLeaves);   // 연차 현황 새 화면

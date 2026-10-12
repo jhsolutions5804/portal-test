@@ -1,28 +1,31 @@
-import { db, collection, getDocs, getDoc, query, where, documentId, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, writeBatch } from '../../core/firebase.js?v=20261013zb';
-import { toast } from '../../core/ui.js?v=20261013zb';
-import { confirmDialog } from '../../core/dialog.js?v=20261013zb';
-import { compNew, compToForm, compBuild, fmtTel, fmtTelBlur, kstToday } from './logic.js?v=20261013zb';
-import { companiesListHtml, companyFormHtml } from './view.js?v=20261013zb';
-import { projNew, projToForm, projectBuild } from './projects.js?v=20261013zb';
-import { projectsListHtml, projectDetailHtml, projectFormHtml } from './projects-view.js?v=20261013zb';
-import { uiState, pushHash } from './ui.js?v=20261013zb';
-import { itemAmt, blankItem, itemSetQty, itemSetPrice, itemSetAmount, applySupplyEdit, draftTotals, newDraft, draftFromEstimate, buildEstimate, closePatch, reopenPatch, estGroup, sortEstimates } from './estimates.js?v=20261013zb';
-import { estimatesListHtml, estimateDetailHtml, estimateFormHtml, itemRowHtml } from './estimates-view.js?v=20261013zb';
-import { estDocHtml } from './estimate-doc.js?v=20261013zb';
-import { sortProjects } from './projects.js?v=20261013zb';
-import { linkPlan, donePatch, undonePatch, voidPatch, doneConfirm, undoneConfirm, doneToast, projectBalance, acctMonthInput } from './settlements.js?v=20261013zb';
-import { settlementsListHtml, settlementDetailHtml } from './settlements-view.js?v=20261013zb';
-import { settleDocPage } from './settlement-doc.js?v=20261013zb';
-import { teamLaborHtml } from './teamlabor-view.js?v=20261013zb';
-import { homeHtml } from './home-view.js?v=20261013zb';
-import { closingHtml, closingPrintHtml } from './closing-view.js?v=20261013zb';
-import { acctHtml } from './acct-view.js?v=20261013zb';
-import { reconcileExpenses, missingToJson, tagTableCsv } from './acct-reconcile.js?v=20261013zb';
-import { shiftYm, closingCsv } from './closing.js?v=20261013zb';
-import { shiftMonth, monthRange, rosterEntry, aggregateMandays, parseTeamRate, ratePatch, rateSaveMessage, FAB_LABEL, SUP_LABEL } from './teamlabor.js?v=20261013zb';
-import { issueFormHtml, qtyBlocksHtml, totalsHtml, manualRowHtml, mandayRowsHtml, mandayInfoHtml, progressBlocksHtml } from './issue-view.js?v=20261013zb';
-import { progressDayKeys, accumulateChecks, mergePastProgress, applyProgress as applyProgressChecks, setProgressZone, toggleProgressDeposit, setProgressBill } from './progress.js?v=20261013zb';
-import { progressProfile, mandaySource, monthDays, sumMandayDays, duplicateSources, applyMandayFetch, setMandayInput, setMandayForPjt, setRateForPjtValue, setMandayBaseRate, newIssueDraft, togglePjt, toggleEst, setQty, setQtyAmount, setSupplyOverride, setVatOverride, resetTotals, buildSettlement, itemSetQty as isItemQty, itemSetPrice as isItemPrice, itemSetAmount as isItemAmount, blankItem as isBlank } from './issue.js?v=20261013zb';
+import { db, collection, getDocs, getDoc, query, where, documentId, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, writeBatch } from '../../core/firebase.js?v=20261013zc';
+import { toast } from '../../core/ui.js?v=20261013zc';
+import { confirmDialog } from '../../core/dialog.js?v=20261013zc';
+import { compNew, compToForm, compBuild, fmtTel, fmtTelBlur, kstToday } from './logic.js?v=20261013zc';
+import { companiesListHtml, companyFormHtml } from './view.js?v=20261013zc';
+import { projNew, projToForm, projectBuild } from './projects.js?v=20261013zc';
+import { projectsListHtml, projectDetailHtml, projectFormHtml } from './projects-view.js?v=20261013zc';
+import { uiState, pushHash } from './ui.js?v=20261013zc';
+import { itemAmt, blankItem, itemSetQty, itemSetPrice, itemSetAmount, applySupplyEdit, draftTotals, newDraft, draftFromEstimate, buildEstimate, closePatch, reopenPatch, estGroup, sortEstimates } from './estimates.js?v=20261013zc';
+import { estimatesListHtml, estimateDetailHtml, estimateFormHtml, itemRowHtml } from './estimates-view.js?v=20261013zc';
+import { estDocHtml } from './estimate-doc.js?v=20261013zc';
+import { sortProjects } from './projects.js?v=20261013zc';
+import { linkPlan, donePatch, undonePatch, voidPatch, doneConfirm, undoneConfirm, doneToast, projectBalance, acctMonthInput } from './settlements.js?v=20261013zc';
+import { settlementsListHtml, settlementDetailHtml } from './settlements-view.js?v=20261013zc';
+import { settleDocPage } from './settlement-doc.js?v=20261013zc';
+import { teamLaborHtml } from './teamlabor-view.js?v=20261013zc';
+import { homeHtml } from './home-view.js?v=20261013zc';
+import { closingHtml, closingPrintHtml } from './closing-view.js?v=20261013zc';
+import { acctHtml } from './acct-view.js?v=20261013zc';
+import { contractsListHtml, contractFormHtml, contractDetailHtml } from './contracts-view.js?v=20261013zc';
+import { contractDocPage } from './contract-doc.js?v=20261013zc';
+import { flattenContracts, nextContractNo, newContract, validateContract, upsertContract, issueBlockers, changeFrom } from './contracts.js?v=20261013zc';
+import { reconcileExpenses, missingToJson, tagTableCsv } from './acct-reconcile.js?v=20261013zc';
+import { shiftYm, closingCsv } from './closing.js?v=20261013zc';
+import { shiftMonth, monthRange, rosterEntry, aggregateMandays, parseTeamRate, ratePatch, rateSaveMessage, FAB_LABEL, SUP_LABEL } from './teamlabor.js?v=20261013zc';
+import { issueFormHtml, qtyBlocksHtml, totalsHtml, manualRowHtml, mandayRowsHtml, mandayInfoHtml, progressBlocksHtml } from './issue-view.js?v=20261013zc';
+import { progressDayKeys, accumulateChecks, mergePastProgress, applyProgress as applyProgressChecks, setProgressZone, toggleProgressDeposit, setProgressBill } from './progress.js?v=20261013zc';
+import { progressProfile, mandaySource, monthDays, sumMandayDays, duplicateSources, applyMandayFetch, setMandayInput, setMandayForPjt, setRateForPjtValue, setMandayBaseRate, newIssueDraft, togglePjt, toggleEst, setQty, setQtyAmount, setSupplyOverride, setVatOverride, resetTotals, buildSettlement, itemSetQty as isItemQty, itemSetPrice as isItemPrice, itemSetAmount as isItemAmount, blankItem as isBlank } from './issue.js?v=20261013zc';
 
 /** 영업기획(플랫폼 기본 모듈): 구포털 기획(gihoek)을 탭 하나씩 새 화면으로 옮기는 중. 관리자 전용 — 데이터는 gihoek_* 컬렉션 그대로.
  *  사이드바는 옛 화면 틀(legacy/frame.js)이 그린다 — 이 모듈은 틀 안의 구역(거래처·협력사)을 그리는 함수만 내보내고 modules/index.js 가 hostNative 로 연결한다. */
@@ -385,6 +388,62 @@ export async function mountAcct(root, route, ctx) {
     else if (act === 'tags') { download('비용장부_프로젝트표시_대조표.csv', 'text/csv', tagTableCsv(st.rows, st.projects)); toast('프로젝트 표시 대조표를 내려받았습니다.'); }
   };
   root.onchange = (ev) => { const t = ev.target; if (!(t instanceof Element)) return; const fk = t.getAttribute('data-ac-filter'); if (fk) { st.filter[fk] = t.value; st.page = 1; paint(); return; } const op = t.getAttribute('data-ac-opt'); if (op) { st.opts[op] = t.checked; paint(); } };
+}
+
+/** 협력사 위탁(하도급) 계약서(신규): 작성·수정(작성 중) → 양쪽 서명 후 서면 발급 기록 → 변경 계약서·폐기. 계약서는 협력사 문서(gihoek_companies/<협력사>)의 contracts 배열에 저장한다(새 컬렉션 없음) */
+export async function mountContracts(root, route, ctx) {
+  root.onclick = null; root.oninput = null; root.onchange = null; root.onkeydown = null;
+  const me = (ctx && ctx.me) || {}; const base = '#/plan/contracts'; const segs = (route && route.segs) || [];
+  const st = { companies: [], projects: [], contracts: [], view: 'list', sel: '', form: null, filter: { partner: '', status: '' }, today: kstToday() };
+  root.innerHTML = '<div id="ct-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#ct-body');
+  const load = async () => { const [a, b] = await Promise.all([getDocs(collection(db, 'gihoek_companies')), getDocs(collection(db, 'gihoek_projects'))]); st.companies = lst(a).sort((x, y) => String(x.company || '').localeCompare(String(y.company || ''), 'ko')); st.projects = sortProjects(lst(b)); st.contracts = flattenContracts(st.companies); };
+  try { await load(); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + ((e && e.message) || '') + '</div>'; return; }
+  body.removeAttribute('aria-busy');
+  const paint = () => { body.innerHTML = st.view === 'form' ? contractFormHtml(st) : st.view === 'detail' ? contractDetailHtml(st) : contractsListHtml(st); window.scrollTo(0, 0); };
+  const goList = (push) => { st.view = 'list'; st.sel = ''; st.form = null; if (push) pushHash(base); paint(); };
+  const goDetail = (id, push) => { st.view = 'detail'; st.sel = id; st.form = null; if (push) pushHash(base + '/' + id); paint(); };
+  const openForm = (c, push) => { st.view = 'form'; st.form = JSON.parse(JSON.stringify(c)); if (push) pushHash(base + (c.no ? '/' + c.id + '/edit' : '/new')); paint(); };
+  const blank = () => { const issuers = st.companies.filter((c) => c.roleSupplier); const iss = issuers.find((c) => c.company === '제이에이치솔루션') || issuers[0]; return newContract({ issuer: iss, partner: null, today: st.today }); };
+  const cur = () => st.contracts.find((x) => x.id === st.sel);
+  const write = async (partnerId, list) => { await setDoc(doc(db, 'gihoek_companies', partnerId), { contracts: list }, { merge: true }); };
+  const persist = async (k) => { const partner = st.companies.find((c) => c.id === k.partnerId); const clean = Object.assign({}, k); delete clean.partnerName; clean.updatedAt = new Date().toISOString(); clean.author = me.name || ''; clean.authorUid = me.uid || '';
+    const old = st.contracts.find((x) => x.id === k.id); await write(k.partnerId, upsertContract(partner.contracts, clean)); if (old && old.partnerId !== k.partnerId) { const op = st.companies.find((c) => c.id === old.partnerId); if (op) await write(op.id, (op.contracts || []).filter((x) => x.id !== k.id)); } await load();
+    const np = st.companies.find((c) => c.id === k.partnerId); if (np && !(np.contracts || []).some((x) => x.id === clean.id && x.updatedAt === clean.updatedAt)) { np.contracts = upsertContract(np.contracts, clean); st.contracts = flattenContracts(st.companies); } };   // 방금 저장한 계약서가 읽기에 아직 없으면 그대로 보여 준다
+  if (segs[0] === 'new') openForm(blank(), false); else if (segs[0] && st.contracts.some((x) => x.id === segs[0])) { if (segs[1] === 'edit' && st.contracts.find((x) => x.id === segs[0]).status === 'draft') openForm(st.contracts.find((x) => x.id === segs[0]), false); else goDetail(segs[0], false); } else paint();
+  const setPath = (f, path, val) => { const p = path.split('.'); let o = f; while (p.length > 1) o = o[p.shift()]; o[p[0]] = val; };
+  root.onclick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return; const row = t.closest('[data-ct-open]'); if (row) { goDetail(row.getAttribute('data-ct-open'), true); return; }
+    const a = t.closest('[data-ct-act]'); if (!a) return; const act = a.getAttribute('data-ct-act'); const k = cur();
+    if (act === 'new') { openForm(blank(), true); return; } if (act === 'list') { goList(true); return; }
+    if (act === 'cancel') { if (st.form && st.form.no) goDetail(st.form.id, true); else goList(true); return; }
+    if (act === 'edit' && k && k.status === 'draft') { openForm(k, true); return; }
+    if (act === 'print' && k) { const w = window.open('', '_blank'); if (!w) { toast('팝업이 차단되었습니다.'); return; } const p = st.projects.find((x) => x.id === k.pjtId); w.document.write(contractDocPage(k, { projectName: p ? p.code + ' ' + (p.name || '') : '' })); w.document.close(); return; }
+    if (act === 'change' && k && k.status === 'issued') { openForm(changeFrom(k, st.today, Date.now()), true); return; }
+    if (act === 'save' && st.form) {
+      const f = st.form; const v = validateContract(f); if (!v.ok) { toast(v.errors[0]); return; }
+      const partner = st.companies.find((c) => c.id === f.partnerId), issuer = st.companies.find((c) => c.id === f.issuerId); const sn = (c) => ({ company: c.company || '', ceo: c.ceo || '', bizno: c.bizno || '', address: c.address || '', tel: c.tel || '' });
+      f.partner = sn(partner); f.issuer = sn(issuer); if (!f.no) f.no = nextContractNo(st.contracts, st.today);
+      a.disabled = true; try { await persist(f); toast('계약서 ' + f.no + '를 저장했습니다.'); goDetail(f.id, true); } catch (e) { a.disabled = false; toast('저장 실패: ' + ((e && (e.code || e.message)) || '')); } return;
+    }
+    if (!k) return;
+    if (act === 'issue' && k.status === 'draft') {
+      const q = (n) => { const el = body.querySelector('[data-ci="' + n + '"]'); return el ? el.value : ''; }; const c2 = Object.assign({}, k, { issuerSignedDate: q('issuerSignedDate'), partnerSignedDate: q('partnerSignedDate'), issuedDate: q('issuedDate') });
+      const r = issueBlockers(c2, st.today); if (r.blockers.length) { toast(r.blockers[0] + (r.blockers.length > 1 ? ' 외 ' + (r.blockers.length - 1) + '건' : '')); return; }
+      for (const wn of r.warnings) { const ok = await confirmDialog({ title: '서면 발급 시기', body: wn + '\n그래도 발급으로 기록할까요?', confirmLabel: '기록' }); if (!ok.ok) return; }
+      c2.status = 'issued'; try { await persist(c2); toast('서면 발급으로 기록했습니다.'); goDetail(k.id, false); } catch (e) { toast('저장 실패: ' + ((e && (e.code || e.message)) || '')); } return;
+    }
+    if (act === 'void' && k.status !== 'void') { const ok = await confirmDialog({ title: '계약서 폐기', body: k.no + ' 계약서를 폐기할까요? 폐기해도 기록은 남습니다.', confirmLabel: '폐기', tone: 'danger' }); if (!ok.ok) return; try { await persist(Object.assign({}, k, { status: 'void' })); toast('폐기했습니다.'); goDetail(k.id, false); } catch (e) { toast('저장 실패: ' + ((e && (e.code || e.message)) || '')); } return; }
+    if (act === 'delete' && k.status === 'draft') { const ok = await confirmDialog({ title: '계약서 삭제', body: (k.no || '') + ' 작성 중 계약서를 삭제할까요? 되돌릴 수 없습니다.', confirmLabel: '삭제', tone: 'danger' }); if (!ok.ok) return; try { const p = st.companies.find((c) => c.id === k.partnerId); await write(p.id, (p.contracts || []).filter((x) => x.id !== k.id)); await load(); p.contracts = (p.contracts || []).filter((x) => x.id !== k.id); st.contracts = flattenContracts(st.companies); toast('삭제했습니다.'); goList(true); } catch (e) { toast('삭제 실패: ' + ((e && (e.code || e.message)) || '')); } }
+  };
+  root.onkeydown = (ev) => { if (ev.key !== 'Enter') return; const t = ev.target; if (!(t instanceof Element)) return; const row = t.closest('[data-ct-open]'); if (row) goDetail(row.getAttribute('data-ct-open'), true); };
+  root.oninput = (ev) => { const t = ev.target; if (!(t instanceof Element) || !st.form) return; const key = t.getAttribute('data-cf'); if (!key || t.tagName === 'SELECT' || t.type === 'checkbox') return;
+    if (key === 'supply' || key === 'vatOverride') { const raw = t.value.replace(/[^0-9]/g, ''); t.value = raw ? Number(raw).toLocaleString('ko-KR') : ''; setPath(st.form, key, key === 'vatOverride' && raw === '' ? null : Number(raw || 0)); const tot = body.querySelector('[data-cf="vatOverride"]'); const hint = tot && tot.closest('.jh-field') && tot.closest('.jh-field').querySelector('.jh-field__hint'); if (hint) { const sup = st.form.supply, vat = st.form.vatOverride != null ? st.form.vatOverride : Math.round(sup * 0.1); hint.textContent = '합계 ' + (sup + vat).toLocaleString('ko-KR') + '원'; } return; }
+    setPath(st.form, key, t.value); };
+  root.onchange = (ev) => { const t = ev.target; if (!(t instanceof Element)) return;
+    const fk = t.getAttribute('data-ct-filter'); if (fk) { st.filter[fk] = t.value; paint(); return; }
+    const key = t.getAttribute('data-cf'); if (!key || !st.form) return;
+    if (key === 'materials.provided') { st.form.materials.provided = t.checked; const sy = window.scrollY; paint(); window.scrollTo(0, sy); return; }
+    if (t.tagName === 'SELECT') setPath(st.form, key, t.value); };
 }
 export const mountCompanies = (root, route, ctx) => mountCompaniesView(root, route, ctx, 'all');
 export const mountPartners = (root, route, ctx) => mountCompaniesView(root, route, ctx, 'partners');

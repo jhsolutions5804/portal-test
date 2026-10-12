@@ -1,9 +1,9 @@
-import { LEGACY_BASE } from '../../core/config.js?v=20261013zb';
-import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261013zb';
-import { esc } from '../../core/ui.js?v=20261013zb';
-import { attachActivity } from '../../core/idle.js?v=20261013zb';
-import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey } from './list.js?v=20261013zb';
-import { setSideCurrent } from '../../shared/sidenav.js?v=20261013zb';
+import { LEGACY_BASE } from '../../core/config.js?v=20261013zc';
+import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261013zc';
+import { esc } from '../../core/ui.js?v=20261013zc';
+import { attachActivity } from '../../core/idle.js?v=20261013zc';
+import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey } from './list.js?v=20261013zc';
+import { setSideCurrent } from '../../shared/sidenav.js?v=20261013zc';
 
 const base = () => new URL(LEGACY_BASE, location.href).href;
 const NATIVE = new Map();   // '모듈id/구역' → 그 구역을 새 모듈이 그리는 함수(modules/index.js 가 hostNative 로 등록)
