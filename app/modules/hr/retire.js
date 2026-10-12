@@ -2,7 +2,7 @@
  * 1일 평균임금 = (퇴직 전 3개월: 기본근로수당+고정연장+고정야간+주휴수당+상여금) ÷ 그 기간 일수 — 특별성과급·특근수당 제외, 정기상여·연차수당 가산 없음
  * 평균임금 < 통상임금이면 통상임금(1일 = 통상시급×8) 적용 · 계속근로 1년 미만 0원 · 퇴직금 = 적용 1일 평균임금 × 30 × (재직일수 ÷ 365)
  * ⚠️ 자동 산정 결과는 참고용이다 — 실제 지급 전 노무사 또는 관할 고용센터에 확인한다. */
-import { annualSalary } from './offer.js?v=20261013a';
+import { annualSalary } from './offer.js?v=20261013b';
 export const rtWon = (n) => Math.round(Number(n) || 0).toLocaleString('ko-KR');
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')) && new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
 const daysInMonth = (ym) => { const [y, m] = ym.split('-').map(Number); return new Date(y, m, 0).getDate(); };

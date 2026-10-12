@@ -1,5 +1,5 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261013a';
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261013a';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261013b';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261013b';
 /* 옛 모듈 어댑터의 목록과 규칙 — 화면(DOM)·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 옛 모듈이 새 모듈로 바뀌면 여기서 항목을 지우고 modules/index.js 의 새 모듈 목록으로 옮긴다. */
 export const PJT_FIXED = [
@@ -64,9 +64,12 @@ export function groupOfKey(def, key) { const g = (def.groups || []).find((x) => 
 export function sideCurrentKey(def, activeKey, sub) { if (activeKey === 'general') return 'general/' + (sub || 'home'); const g = (def.groups || []).find((x) => x.clusters && x.clusters.some((c) => c.keys.includes(activeKey))); return g ? activeKey : 'home'; }
 export function sideConfig(def, activeKey, sub) {
   const labelOf = (k) => { const s = (def.sections || []).find((x) => x.key === k); return s ? s.label : k; };
-  return { label: def.title + ' 메뉴', title: (def.icon ? def.icon + ' ' : '') + def.title, current: sideCurrentKey(def, activeKey, sub), sections: def.groups.map((g) => (g.clusters
-    ? { title: g.label, items: g.home ? [{ key: g.home.key, label: g.home.label, href: '#/' + def.id + '/' + g.home.key, hint: g.home.hint }] : [], clusters: g.clusters.map((c) => ({ label: c.label, items: c.keys.map((k) => ({ key: k, label: labelOf(k), href: '#/' + def.id + '/' + k })) })) }
-    : { title: g.label, items: (g.items || []).map(([k, l]) => ({ key: g.key + '/' + k, label: l, href: '#/' + def.id + '/' + g.key + '/' + k })) })) };
+  const sections = [];   // 재무회계 사이드바처럼 묶음마다 머리글 + 구분선: 인사 · 채용 · 입사 · 재직 · 변동 · 퇴사 · 총무
+  def.groups.forEach((g) => {
+    if (g.clusters) { sections.push({ title: g.label, items: g.home ? [{ key: g.home.key, label: g.home.label, href: '#/' + def.id + '/' + g.home.key, hint: g.home.hint }] : [] }); g.clusters.forEach((c) => sections.push({ title: c.label, items: c.keys.map((k) => ({ key: k, label: labelOf(k), href: '#/' + def.id + '/' + k })) })); }
+    else sections.push({ title: g.label, items: (g.items || []).map(([k, l]) => ({ key: g.key + '/' + k, label: l, href: '#/' + def.id + '/' + g.key + '/' + k })) });
+  });
+  return { label: def.title + ' 메뉴', title: (def.icon ? def.icon + ' ' : '') + def.title, current: sideCurrentKey(def, activeKey, sub), sections };
 }
 function groupNavHtml(def, activeKey, esc, sub) { return sidenavHtml(sideConfig(def, activeKey, sub), 'jh-legacy__nav'); }
 export function navHtml(def, items, activeKey, esc, sub) {
