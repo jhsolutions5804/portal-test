@@ -1,4 +1,4 @@
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261012m';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261012n';
 /* 옛 모듈 어댑터의 목록과 규칙 — 화면(DOM)·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 옛 모듈이 새 모듈로 바뀌면 여기서 항목을 지우고 modules/index.js 의 새 모듈 목록으로 옮긴다. */
 export const PJT_FIXED = [
@@ -10,7 +10,7 @@ const isAdmin = (me) => !!(me && me.admin);
 export const LEGACY_DEFS = [
   { id: 'plan', order: 10, title: '영업기획', icon: '🧭', tabbed: true, ownNavMobile: true, url: 'gihoek/', perm: isAdmin,
     nav: [['home', '기획 홈'], ['pjt', '프로젝트'], ['comp', '거래처'], ['est', '견적'], ['settle', '정산'], ['acct', '회계']].map(([key, label]) => ({ key, label })) },
-  { id: 'hr', order: 20, title: '인사총무', icon: '👥', tabbed: true, ownNav: true, url: 'hr/', perm: isAdmin, nav: [{ key: 'home', label: '인사 홈' }], homeLabel: '인사', sections: [{ key: 'workers', label: '근로자 명부', native: true }, { key: 'leaves', label: '연차 현황', native: true }, { key: 'change', label: '인사 변동', native: true }, { key: 'postings', label: '공고 관리', native: true }, { key: 'applicants', label: '채용 지원자', native: true }, { key: 'offers', label: '연봉 제안서', native: true }, { key: 'interviews', label: '근로자 면담', native: true }, { key: 'resignreqs', label: '휴직/퇴직 원서', native: true }, { key: 'retire', label: '퇴직금 정산', native: true }, { key: 'dismissal', label: '해고예고통지서', native: true }, { key: 'hrcal', label: '인사 캘린더', native: true }, { key: 'evals', label: '인사평가', native: true }, { key: 'salarytable', label: '급여테이블', native: true }, { key: 'general', label: '총무', native: true }] },
+  { id: 'hr', order: 20, title: '인사총무', icon: '👥', tabbed: true, ownNav: true, url: 'hr/', perm: isAdmin, nav: [{ key: 'home', label: '인사 홈' }], homeLabel: '인사', groups: [{ key: 'hr', label: '인사', home: { key: 'home', label: '인사 홈', hint: '근로계약서·연봉계약서·근로시간·급여명세서는 아직 인사 홈(기존 화면)에서 엽니다' }, clusters: [{ label: '채용', keys: ['applicants', 'postings'] }, { label: '입사', keys: ['offers', 'workers'] }, { label: '재직', keys: ['leaves', 'evals', 'interviews', 'salarytable', 'hrcal'] }, { label: '변동', keys: ['change'] }, { label: '퇴사', keys: ['resignreqs', 'retire', 'dismissal'] }] }, { key: 'general', label: '총무', keys: ['general'] }], sections: [{ key: 'workers', label: '근로자 명부', native: true }, { key: 'leaves', label: '연차 현황', native: true }, { key: 'change', label: '인사 변동', native: true }, { key: 'postings', label: '공고 관리', native: true }, { key: 'applicants', label: '채용 지원자', native: true }, { key: 'offers', label: '연봉 제안서', native: true }, { key: 'interviews', label: '근로자 면담', native: true }, { key: 'resignreqs', label: '휴직/퇴직 원서', native: true }, { key: 'retire', label: '퇴직금 정산', native: true }, { key: 'dismissal', label: '해고예고통지서', native: true }, { key: 'hrcal', label: '인사 캘린더', native: true }, { key: 'evals', label: '인사평가', native: true }, { key: 'salarytable', label: '급여테이블', native: true }, { key: 'general', label: '총무', native: true }] },
   { id: 'pjt', order: 40, mobileTab: { order: 2, label: 'PJT', icon: '🏗️' }, title: 'PJT 관리', icon: '🏗️', tabbed: false, dynamicNav: true, perm: (me) => !!(me && (me.admin || (me.perms && me.perms.pjt) || (Array.isArray(me.pjtKeys) && me.pjtKeys.length > 0))) },   // PJT 권한자·관리자, 또는 어느 프로젝트든 참여자로 지정된 사람
   { id: 'myteam', order: 90, title: '내 팀 공수표', icon: '👷', tabbed: false, url: 'team/',
     perm: (me) => !!(me && (me.admin || (Array.isArray(me.teamLeaderIds) && me.teamLeaderIds.length > 0))), nav: [{ key: 'main', label: '내 팀 공수표' }] }
@@ -57,7 +57,21 @@ export function buildUrl(def, item, me, base, cacheBust, tab) {
   if (cacheBust) u += '&_cb=' + cacheBust;
   return u;
 }
+/** 두 단계 메뉴(def.groups): 위 줄은 큰 갈래(인사·총무), 아래 줄은 고른 갈래 안의 메뉴를 단계별(채용·입사·재직…)로 묶어 보여 준다. 갈래에 속하지 않은 key(옛 화면의 탭)는 첫 갈래의 "홈"으로 본다 */
+export function groupOfKey(def, key) { const g = (def.groups || []).find((x) => (x.keys || []).includes(key) || (x.clusters || []).some((c) => c.keys.includes(key))); return g ? g.key : (def.groups && def.groups[0] ? def.groups[0].key : ''); }
+function groupNavHtml(def, activeKey, esc) {
+  const cur = groupOfKey(def, activeKey); const labelOf = (k) => { const s = (def.sections || []).find((x) => x.key === k); return s ? s.label : k; };
+  const link = (key, label, on, cls, extra) => '<a class="jh-legacy__chip ' + cls + '" href="#/' + esc(def.id) + '/' + esc(key) + '" data-key="' + esc(key) + '"' + (extra || '') + (on ? ' aria-current="page"' : '') + '>' + esc(label) + '</a>';
+  const top = def.groups.map((g) => { const first = g.home ? g.home.key : (g.keys || [])[0]; return '<a class="jh-legacy__chip jh-legacy__chip--group" href="#/' + esc(def.id) + '/' + esc(first) + '" data-group="' + esc(g.key) + '"' + (g.key === cur ? ' aria-current="page"' : '') + '>' + esc(g.label) + '</a>'; }).join('');
+  const g = def.groups.find((x) => x.key === cur); let sub = '';
+  if (g && g.clusters) {
+    const inHr = !g.clusters.some((c) => c.keys.includes(activeKey));   // 옛 화면 탭이면 "인사 홈"이 눌린 것
+    sub = (g.home ? link(g.home.key, g.home.label, inHr, 'jh-legacy__chip--sub', ' data-home="1"' + (g.home.hint ? ' title="' + esc(g.home.hint) + '"' : '')) : '') + g.clusters.map((c) => '<span class="jh-legacy__grp">' + esc(c.label) + '</span>' + c.keys.map((k) => link(k, labelOf(k), k === activeKey, 'jh-legacy__chip--sub', '')).join('')).join('') + (g.home && g.home.hint ? '<span class="jh-legacy__hint">' + esc(g.home.hint) + '</span>' : '');
+  }
+  return '<nav class="jh-legacy__nav jh-legacy__nav--groups" aria-label="' + esc(def.title) + ' 구역"><div class="jh-legacy__row">' + top + '</div>' + (sub ? '<div class="jh-legacy__row jh-legacy__row--sub">' + sub + '</div>' : '') + '</nav>';
+}
 export function navHtml(def, items, activeKey, esc) {
+  if (def.groups && def.groups.length) return groupNavHtml(def, activeKey, esc);
   if (def.sections && def.sections.length) {   // 옛 화면은 자기 메뉴를 쓰고, 플랫폼은 구역(인사 / 총무)만 고르게 한다 — 구역 key 는 새 모듈이 직접 그리는 화면
     const nat = def.sections.map((s) => s.key); const chips = [{ key: 'home', label: def.homeLabel || def.title, home: true }].concat(def.sections);
     return '<nav class="jh-legacy__nav" aria-label="' + esc(def.title) + ' 구역">' + chips.map((it) => '<a class="jh-legacy__chip" href="#/' + esc(def.id) + '/' + esc(it.key) + '" data-key="' + esc(it.key) + '"' + (it.home ? ' data-home="1"' : '') + ((it.home ? nat.indexOf(activeKey) === -1 : it.key === activeKey) ? ' aria-current="page"' : '') + '>' + esc(it.label) + '</a>').join('') + '</nav>';

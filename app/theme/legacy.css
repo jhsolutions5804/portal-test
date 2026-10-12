@@ -23,3 +23,12 @@
 
 .jh-legacy__frame[hidden], .jh-legacy__native[hidden] { display: none; }
 .jh-legacy__native { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--sp-4); }
+
+/* 두 단계 메뉴(인사 / 총무): 위 줄은 큰 갈래, 아래 줄은 단계별(채용·입사·재직·변동·퇴사) 메뉴 */
+.jh-legacy__nav--groups { flex-direction: column; flex-wrap: nowrap; overflow: visible; gap: var(--sp-2); }
+.jh-legacy__row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.jh-legacy__chip--group { padding: 0 var(--sp-6); font-size: var(--fs-md); }
+.jh-legacy__row--sub { padding-top: var(--sp-2); border-top: var(--u-1) solid var(--c-line); }
+.jh-legacy__chip--sub { min-height: var(--u-36, 2.25rem); padding: 0 var(--sp-3); font-weight: 600; }
+.jh-legacy__grp { margin-left: var(--sp-3); padding-left: var(--sp-3); border-left: var(--u-1) solid var(--c-line-strong); color: var(--c-ink-3); font-size: var(--fs-xs); font-weight: 700; white-space: nowrap; }
+.jh-legacy__hint { margin-left: var(--sp-3); color: var(--c-ink-3); font-size: var(--fs-xs); }

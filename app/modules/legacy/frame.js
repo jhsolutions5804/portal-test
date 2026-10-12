@@ -1,8 +1,8 @@
-import { LEGACY_BASE } from '../../core/config.js?v=20261012m';
-import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261012m';
-import { esc } from '../../core/ui.js?v=20261012m';
-import { attachActivity } from '../../core/idle.js?v=20261012m';
-import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS } from './list.js?v=20261012m';
+import { LEGACY_BASE } from '../../core/config.js?v=20261012n';
+import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261012n';
+import { esc } from '../../core/ui.js?v=20261012n';
+import { attachActivity } from '../../core/idle.js?v=20261012n';
+import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS } from './list.js?v=20261012n';
 
 const base = () => new URL(LEGACY_BASE, location.href).href;
 const NATIVE = new Map();   // '모듈id/구역' → 그 구역을 새 모듈이 그리는 함수(modules/index.js 가 hostNative 로 등록)
@@ -25,7 +25,8 @@ async function loadPjtDyn() {
 }
 function highlight(st) {
   const q = st.wrap.querySelector('.jh-legacy__quick'); if (q) q.setAttribute('data-show', String(st.key === 'home'));   // 폰 바로가기는 PJT 홈에서만
-  st.wrap.querySelectorAll('.jh-legacy__chip').forEach((a) => { const cur = a.hasAttribute('data-home') ? !isNativeKey(st.def, st.key) : a.getAttribute('data-key') === st.key; if (cur) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  if (st.def.groups) { const nav = st.wrap.querySelector('.jh-legacy__nav'); if (nav) nav.outerHTML = navHtml(st.def, [], st.key, esc); }   // 인사/총무 두 단계 메뉴는 통째로 다시 그린다(아래 줄이 갈래마다 달라서)
+  else st.wrap.querySelectorAll('.jh-legacy__chip').forEach((a) => { const cur = a.hasAttribute('data-home') ? !isNativeKey(st.def, st.key) : a.getAttribute('data-key') === st.key; if (cur) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   if (st.native && st.frame) { const nat = isNativeKey(st.def, st.key); st.native.hidden = !nat; st.frame.hidden = nat; }
 }
 const stateOfSource = (src) => { for (const st of states.values()) { if (st.frame && st.frame.contentWindow === src) return st; } return null; };
