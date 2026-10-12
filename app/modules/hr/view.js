@@ -1,12 +1,13 @@
-import { esc } from '../../core/ui.js?v=20261012t';
-import { rtWon, retireRecordsSorted } from './retire.js?v=20261012t';
-import { otSummary, otPerson, otAmount } from './overtime.js?v=20261012t';
-import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, payslipCalc, travelItemAmount, psTplVer } from './payslip.js?v=20261012t';
-import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261012t';
-import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261012t';
-import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261012t';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261012t';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261012t';
+import { esc } from '../../core/ui.js?v=20261012u';
+import { rtWon, retireRecordsSorted } from './retire.js?v=20261012u';
+import { otSummary, otPerson, otAmount } from './overtime.js?v=20261012u';
+import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, payslipCalc, travelItemAmount } from './payslip.js?v=20261012u';
+import { docTplVer, DOC_TPL_CURRENT } from './frozen-docs.js?v=20261012u';
+import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261012u';
+import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261012u';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261012u';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261012u';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261012u';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -446,6 +447,6 @@ export function payslipHtml2(st) {
 export function payslipListHtml(st) {
   const left = card('근로자 목록', '<div class="jh-hr__pad">' + st.pWorkers.map((x) => '<button type="button" class="jh-btn" data-variant="' + (x.id === st.pListWid ? 'primary' : 'secondary') + '" data-p-listworker="' + esc(x.id) + '" style="justify-content:flex-start;width:100%">' + esc((x.name || '') + (x.rank ? ' ' + x.rank : '')) + '</button>').join('') + '</div>');
   const w = st.pWorkers.find((x) => x.id === st.pListWid);
-  const right = !w ? '<div class="jh-empty">좌측에서 근로자를 선택하세요</div>' : card(esc(w.name) + ' 급여명세서', st.pSlips.length ? '<div class="jh-hr__pad">' + st.pSlips.map((d) => { const ver = psTplVer(d); return '<div class="jh-hr__post"><div class="jh-hr__bar"><strong>' + esc(d.month) + '</strong>' + chip(ver, ver === 'v5' ? 'muted' : 'warn') + '<span class="jh-field__hint">지급일 ' + esc(d.payDate || '-') + '</span></div><div style="font-size:var(--fs-lg);font-weight:800">' + pw(d.netPay) + '원</div><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="secondary" data-p-print="' + esc(d.id) + '">🖨 PDF 출력</button><button type="button" class="jh-btn" data-variant="ghost" data-p-del="' + esc(d.id) + '">삭제</button></div>' + (ver !== 'v5' ? '<div class="jh-field__hint">저장 당시 양식 ' + esc(ver) + ' — 이 화면은 현재 양식(v5)으로 출력합니다. 옛 양식 그대로 필요하면 기존 화면에서 출력하세요.</div>' : '') + '</div>'; }).join('') + '</div>' : '<div class="jh-empty">' + esc(w.name) + '의 급여명세서가 없습니다.</div>');
-  return '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-p-act="write">✏️ 작성</button><a class="jh-btn" data-variant="ghost" href="#/hr/payslip" title="메일 발송·링크/QR·옛 양식 출력은 기존 화면">📧 메일 발송·링크(기존 화면)</a></div><div class="jh-hr__split"><div class="jh-hr__col">' + left + '</div><div class="jh-hr__col">' + right + '</div></div>';
+  const right = !w ? '<div class="jh-empty">좌측에서 근로자를 선택하세요</div>' : card(esc(w.name) + ' 급여명세서', st.pSlips.length ? '<div class="jh-hr__pad">' + st.pSlips.map((d) => { const ver = docTplVer(d); return '<div class="jh-hr__post"><div class="jh-hr__bar"><strong>' + esc(d.month) + '</strong>' + chip(ver, ver === DOC_TPL_CURRENT ? 'muted' : 'accent') + '<span class="jh-field__hint">지급일 ' + esc(d.payDate || '-') + '</span></div><div style="font-size:var(--fs-lg);font-weight:800">' + pw(d.netPay) + '원</div><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="secondary" data-p-print="' + esc(d.id) + '">🖨 PDF 출력</button><button type="button" class="jh-btn" data-variant="ghost" data-p-del="' + esc(d.id) + '">삭제</button></div>' + (ver !== DOC_TPL_CURRENT ? '<div class="jh-field__hint">저장 당시 양식 ' + esc(ver) + ' 그대로 출력합니다(양식 동결).</div>' : '') + '</div>'; }).join('') + '</div>' : '<div class="jh-empty">' + esc(w.name) + '의 급여명세서가 없습니다.</div>');
+  return '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-p-act="write">✏️ 작성</button><a class="jh-btn" data-variant="ghost" href="#/hr/payslip" title="메일 발송·링크/QR 은 아직 기존 화면에서 합니다">📧 메일 발송·링크(기존 화면)</a></div><div class="jh-hr__split"><div class="jh-hr__col">' + left + '</div><div class="jh-hr__col">' + right + '</div></div>';
 }
