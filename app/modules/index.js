@@ -1,13 +1,13 @@
 /* 플랫폼에 꽂는 모듈 목록 — 모듈을 더하거나 빼는 일은 이 파일 한 곳만 고친다.
  * 각 항목은 { manifest, mount }. 핵심부(core/)는 모듈 폴더를 직접 알지 못하고 이 목록만 읽는다. */
-import * as edoc from './edoc/index.js?v=20261012s';
-import * as attendance from './attendance/index.js?v=20261012s';
-import * as calendar from './calendar/index.js?v=20261012s';
-import * as company from './company/index.js?v=20261012s';
-import * as finance from './finance/index.js?v=20261012s';
-import * as general from './general/index.js?v=20261012s';
-import * as hr from './hr/index.js?v=20261012s';
-import { modules as legacy, hostNative } from './legacy/index.js?v=20261012s';
+import * as edoc from './edoc/index.js?v=20261012t';
+import * as attendance from './attendance/index.js?v=20261012t';
+import * as calendar from './calendar/index.js?v=20261012t';
+import * as company from './company/index.js?v=20261012t';
+import * as finance from './finance/index.js?v=20261012t';
+import * as general from './general/index.js?v=20261012t';
+import * as hr from './hr/index.js?v=20261012t';
+import { modules as legacy, hostNative } from './legacy/index.js?v=20261012t';
 
 export const MODULES = [
   { manifest: edoc.manifest, mount: edoc.mount },
@@ -32,3 +32,4 @@ hostNative('hr', 'retire', hr.mountRetire);   // 퇴직금 정산 새 화면(구
 hostNative('hr', 'dismissal', hr.mountDismissal);   // 해고예고통지서 새 화면(구포털 탭 키 그대로)
 hostNative('hr', 'overtimes', hr.mountOvertime);   // 초과근로 현황 새 화면(근로시간 1단계 — 전자결재 자동연동 포함)
 hostNative('hr', 'attendcal', hr.mountAttendCal);   // 출퇴근 달력 새 화면(근로시간 2단계)
+hostNative('hr', 'payslips', hr.mountPayslip);   // 급여명세서 새 화면(메일 발송·링크/QR 만 기존 '급여명세서'에서)

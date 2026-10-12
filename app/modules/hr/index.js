@@ -1,14 +1,15 @@
-import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012s';
-import { confirmDialog } from '../../core/dialog.js?v=20261012s';
-import { holidayName } from '../../shared/holidays.js?v=20261012s';
-import { esc, toast } from '../../core/ui.js?v=20261012s';
-import { retireCalc } from './retire.js?v=20261012s';
-import { buildAttRecord, attDefaultBreak, attKey, holidaySetOf } from './attendance.js?v=20261012s';
-import { otYm, otMoveMonth, otSyncPlan, otWage, otNewForm, otFormFromRecord, buildOvertime, otAmount } from './overtime.js?v=20261012s';
-import { dsNewForm, dsFindHourly, dsCalc, dsValidate, dsBuildData, dsFormFromDraft, dsHtmlByVer } from './dismissal.js?v=20261012s';
-import { offerNewForm, offerCalc, offerSwitchMode, offerPayload, offerFormFromSaved, offerCalendar, offerFillCurrent, offerBuildHtml } from './offer.js?v=20261012s';
-import { salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012s';
-import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml, offersHtml, offerResultHtml, offerStateText, retireHtml, dismissalHtml, dsCalcHtml, overtimeHtml } from './view.js?v=20261012s';
+import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012t';
+import { confirmDialog } from '../../core/dialog.js?v=20261012t';
+import { holidayName } from '../../shared/holidays.js?v=20261012t';
+import { esc, toast } from '../../core/ui.js?v=20261012t';
+import { retireCalc } from './retire.js?v=20261012t';
+import { psPayDate, techAllowance, attendanceData, travelFromTrips, travelTotal, travelSet, payslipRecord, psSavedPs, psSavedC, payslipHtml } from './payslip.js?v=20261012t';
+import { buildAttRecord, attDefaultBreak, attKey, holidaySetOf } from './attendance.js?v=20261012t';
+import { otYm, otMoveMonth, otSyncPlan, otWage, otNewForm, otFormFromRecord, buildOvertime, otAmount } from './overtime.js?v=20261012t';
+import { dsNewForm, dsFindHourly, dsCalc, dsValidate, dsBuildData, dsFormFromDraft, dsHtmlByVer } from './dismissal.js?v=20261012t';
+import { offerNewForm, offerCalc, offerSwitchMode, offerPayload, offerFormFromSaved, offerCalendar, offerFillCurrent, offerBuildHtml } from './offer.js?v=20261012t';
+import { salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012t';
+import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml, offersHtml, offerResultHtml, offerStateText, retireHtml, dismissalHtml, dsCalcHtml, overtimeHtml } from './view.js?v=20261012t';
 
 /** 인사(플랫폼 기본 모듈): 근로자 명부 새 화면. 인사총무 틀 안의 구역으로만 열린다(modules/index.js 의 hostNative). 구포털 인사 화면은 그대로 두고 하나씩 옮기는 중이다. 관리자 전용 */
 export const manifest = { id: 'hr', order: 21, title: '인사', icon: '👥', defaultHash: '#/hr/workers', perm: (me) => !!me && me.admin === true };
@@ -585,5 +586,59 @@ export async function mountAttendCal(root, route, ctx) {
     if (t.matches('[data-ac-f]')) { const k = t.getAttribute('data-ac-f'); st.acForm[k] = t.value; if (k === 'checkIn' || k === 'checkOut') { st.acForm.breakMinutes = String(attDefaultBreak(st.acForm.checkIn, st.acForm.checkOut)); paint(); } }   // 출퇴근 시각을 바꾸면 휴게 기본값을 다시 맞춘다(직접 고친 휴게는 시각을 바꾸기 전까지 유지)
   };
   if (st.acW) { try { await load(); } catch (e) { toast('불러오지 못했습니다: ' + ((e && e.message) || '')); } }
+  paint();
+}
+
+/** 급여명세서(새 화면) — 근로자·기준월을 고르면 연봉계약서·출퇴근 기록·초과근로·휴가·자격증을 자동으로 불러와 계산하고(지급·공제 항목은 직접 고칠 수 있음), 미리보기(A4)·저장(payslips/{근로자}/months/{월})·조회·삭제. 메일 발송·링크/QR 은 기존 화면 */
+export async function mountPayslip(root, route, ctx) {
+  root.onclick = null; root.oninput = null; root.onchange = null;
+  const now = new Date(); const ym0 = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  const st = { pView: 'write', pMonth: ym0, pPayDate: psPayDate(ym0), pWorkers: [], pWid: '', pW: null, pAnnual: null, pBank: '', pHol: new Set(), pPerCert: 50000, pAtt: { attHours: 0, leaveHours: 0, nightHours: 0, attDates: new Set(), leaveDocs: [], holidayRecords: [], businessTrips: [] }, pIn: { bonus: '', specialBonus: '', extraPay: '', techAllowance: '', dormitory: '' }, pO: {}, pTravel: [], pTravelTotal: 0, pListWid: '', pSlips: [] };
+  root.innerHTML = '<div class="jh-hr"><div id="p-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
+  const body = root.querySelector('#p-body'); const lst = (s) => { const l = []; s.forEach((d) => l.push(Object.assign({ id: d.id }, d.data()))); return l; }; const logo = new URL('../../theme/assets/jh-logo.png', import.meta.url).href; const num = (v) => Number(String(v == null ? '' : v).replace(/[^0-9.\-]/g, '')) || 0;
+  try { st.pWorkers = lst(await getDocs(collection(db, 'workers'))).filter((w) => w.status !== 'resigned').sort((a, b) => String(a.empNo || 'zzz').localeCompare(String(b.empNo || 'zzz'))); try { const sn = await getDoc(doc(db, 'company_settings', 'salaryTable')); if (sn.exists()) st.pPerCert = Number(sn.data().techAllowancePerCert) || 50000; } catch (e) { /* 기본값 */ } }
+  catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
+  body.removeAttribute('aria-busy');
+  const paint = () => { body.innerHTML = payslipHtml2(st); };
+  const recalcTravel = () => { st.pTravelTotal = travelTotal(st.pTravel); };
+  const loadWorker = async () => {
+    const w = st.pWorkers.find((x) => x.id === st.pWid); st.pW = w || null; st.pAnnual = null; st.pO = {}; st.pTravel = []; st.pTravelTotal = 0; st.pIn = { bonus: '', specialBonus: '', extraPay: '', techAllowance: '', dormitory: '' }; st.pAtt = { attHours: 0, leaveHours: 0, nightHours: 0, attDates: new Set(), leaveDocs: [], holidayRecords: [], businessTrips: [] };
+    const [y, m] = st.pMonth.split('-').map(Number); st.pHol = new Set(); if (y && m) for (let d = 1; d <= new Date(y, m, 0).getDate(); d++) { const ds = y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0'); if (holidayName(ds)) st.pHol.add(ds); }
+    if (!w) return; st.pBank = w.bankAccount || ''; st.pIn.techAllowance = String(techAllowance(w, st.pPerCert) || '');
+    try { const cs = await getDocs(query(collection(db, 'annual_contracts/' + w.id + '/contracts'), orderBy('contractDate', 'desc'), limit(1))); st.pAnnual = cs.empty ? null : cs.docs[0].data(); } catch (e) { st.pAnnual = null; }
+    try { const os = await getDocs(query(collection(db, 'overtime'), where('workerId', '==', w.id), where('yearMonth', '==', st.pMonth))); let amt = 0; os.forEach((d) => { amt += Number(d.data().amount) || 0; }); if (amt > 0) st.pIn.bonus = String(amt); } catch (e) { /* 초과근로 없음 */ }
+    try { const as = lst(await getDocs(query(collection(db, 'worker_attendance_log'), where('workerId', '==', w.id), where('yearMonth', '==', st.pMonth)))); let lv = []; try { lv = lst(await getDocs(collection(db, 'edoc_leave'))); } catch (e) { lv = []; } st.pAtt = attendanceData(as, lv, w.name, st.pMonth, st.pHol); } catch (e) { toast('출퇴근 기록을 불러오지 못했습니다: ' + ((e && e.message) || '')); }
+  };
+  const loadSlips = async () => { st.pSlips = []; if (!st.pListWid) return; try { st.pSlips = lst(await getDocs(query(collection(db, 'payslips/' + st.pListWid + '/months'), orderBy('month', 'desc')))); } catch (e) { toast('불러오지 못했습니다: ' + ((e && e.message) || '')); } };
+  const openWin = (html) => { const win = window.open('', '_blank'); if (!win) { toast('팝업이 차단되어 출력 창을 열 수 없습니다. 팝업을 허용한 뒤 다시 시도해 주세요.'); return; } win.document.write(html); win.document.close(); };
+  root.onchange = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element) || st.pView !== 'write') return;
+    if (t.matches('[data-p-month]')) { if (!t.value) return; st.pMonth = t.value; st.pPayDate = psPayDate(st.pMonth); await loadWorker(); paint(); return; }
+    if (t.matches('[data-p-paydate]')) { st.pPayDate = t.value; return; }
+    if (t.matches('[data-p-worker]')) { st.pWid = t.value; await loadWorker(); paint(); return; }
+    if (t.matches('[data-p-bank]')) { st.pBank = t.value; return; }
+    if (t.matches('[data-p-in]')) { st.pIn[t.getAttribute('data-p-in')] = String(num(t.value) || ''); paint(); return; }
+    if (t.matches('[data-p-o]')) { const k = t.getAttribute('data-p-o'); if (String(t.value).trim() === '') delete st.pO[k]; else st.pO[k] = num(t.value); paint(); return; }
+    if (t.matches('[data-p-tr]')) { const [i, f] = t.getAttribute('data-p-tr').split('|'); st.pTravel[Number(i)] = travelSet(st.pTravel[Number(i)], f, t.value); recalcTravel(); paint(); }
+  };
+  root.onclick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    const lw = t.closest('[data-p-listworker]'); if (lw) { st.pListWid = lw.getAttribute('data-p-listworker'); await loadSlips(); paint(); return; }
+    const pr = t.closest('[data-p-print]'); if (pr) { const d = st.pSlips.find((x) => x.id === pr.getAttribute('data-p-print')); if (d) { const ps0 = psSavedPs(d); const hw = st.pWorkers.find((x) => x.id === st.pListWid); if (hw) { ps0.workerData.hireDate = ''; } openWin(payslipHtml(ps0, psSavedC(d), { logo })); } return; }
+    const dl = t.closest('[data-p-del]'); if (dl) { const d = st.pSlips.find((x) => x.id === dl.getAttribute('data-p-del')); if (!d) return; const ok = await confirmDialog({ title: '급여명세서 삭제', body: (d.name || '') + ' ' + d.month + ' 급여명세서를 삭제하시겠습니까? 되돌릴 수 없습니다.', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return; try { await deleteDoc(doc(db, 'payslips/' + st.pListWid + '/months', d.id)); toast('삭제했습니다.'); await loadSlips(); paint(); } catch (e) { toast('삭제하지 못했습니다: ' + ((e && e.message) || '')); } return; }
+    const td = t.closest('[data-p-trdel]'); if (td) { st.pTravel.splice(Number(td.getAttribute('data-p-trdel')), 1); recalcTravel(); paint(); return; }
+    const a = t.closest('[data-p-act]'); if (!a) return; const act = a.getAttribute('data-p-act');
+    if (act === 'list') { st.pView = 'list'; paint(); return; }
+    if (act === 'write') { st.pView = 'write'; paint(); return; }
+    if (act === 'travel-add') { st.pTravel.push({ type: '', days: 1, tripCount: 1, perTrip: 0, amount: 0 }); recalcTravel(); paint(); return; }
+    if (act === 'travel-import') { if (!st.pW || !st.pMonth) { toast('근로자와 기준월을 먼저 선택해 주세요.'); return; } const trips = st.pAtt.businessTrips || []; if (!trips.length) { toast(st.pMonth + ' 출퇴근 기록에 출장으로 체크된 날짜가 없습니다. 출퇴근 달력에서 해당 날짜를 출장으로 체크해 주세요.'); return; } if (st.pTravel.length) { const ok = await confirmDialog({ title: '여비교통비 다시 채우기', body: '현재 등록된 여비교통비 항목 ' + st.pTravel.length + '개를 지우고, 출퇴근 기록의 출장 ' + trips.length + '일로 다시 채울까요?', confirmLabel: '다시 채우기' }); if (!ok.ok) return; } st.pTravel = travelFromTrips(trips); recalcTravel(); paint(); return; }
+    if (act === 'preview' || act === 'save') {
+      if (!st.pW) { toast('근로자를 선택해 주세요.'); return; } if (!st.pMonth) { toast('기준월을 선택해 주세요.'); return; } const c = payslipCalcOf(st);
+      if (act === 'preview') { const ps0 = { workerData: st.pW, month: st.pMonth, payDate: st.pPayDate, bankAccount: st.pBank, travelItems: st.pTravel }; openWin(payslipHtml(ps0, c, { logo })); return; }
+      if (!st.pAnnual) { const ok0 = await confirmDialog({ title: '연봉계약서 없음', body: '연봉계약서가 없어 급여가 0원으로 저장됩니다. 계속하시겠습니까?', confirmLabel: '저장' }); if (!ok0.ok) return; }
+      const ok = await confirmDialog({ title: '급여명세서 저장', body: (st.pW.name || '') + '님의 ' + st.pMonth + ' 급여명세서를 저장하시겠습니까? 같은 월에 저장한 명세서는 덮어씁니다.', confirmLabel: '저장' }); if (!ok.ok) return;
+      try { await setDoc(doc(db, 'payslips/' + st.pW.id + '/months', st.pMonth), payslipRecord(st.pW, st.pAnnual, st.pMonth, st.pPayDate, st.pBank, c, st.pTravel)); toast('✅ 급여명세서 저장 완료!'); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); }
+    }
+  };
   paint();
 }
