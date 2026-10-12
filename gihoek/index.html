@@ -1301,7 +1301,7 @@ window.resetSettleFilter=function(){ window.settleFilter={docType:'',pjtId:'',cl
 window.setSettlePage=function(p){ settlePage=p; renderSettle(); const el=document.querySelector('#v-settle .sec-h'); if(el) el.scrollIntoView({block:'start'}); };
 
 // 새 영업기획 화면에서 정산서 구분(청구서/지급예정서)을 정해 발행 화면을 연다 — 지급예정서는 공수 연동으로 시작
-window.newSettleOf=function(pjtId, docType){ window.newSettle(pjtId||undefined); if(docType==='payment' && settleDraft){ settleDraft.docType='payment'; settleDraft.method='manday'; drawSettleForm(); } };
+window.newSettleOf=function(pjtId, docType, method){ window.newSettle(pjtId||undefined); if(!settleDraft) return; if(docType==='payment'){ settleDraft.docType='payment'; settleDraft.method='manday'; } if(method&&['progress','qty','manday','manual'].indexOf(method)>=0) settleDraft.method=method; drawSettleForm(); };
 window.newSettle=function(pjtId){
   if(!projects.length){ toast('먼저 프로젝트를 등록하세요.'); tab('pjt'); return; }
   const sup=supplierList();

@@ -1,18 +1,20 @@
-import { db, collection, getDocs, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, writeBatch } from '../../core/firebase.js?v=20261013u';
-import { toast } from '../../core/ui.js?v=20261013u';
-import { confirmDialog } from '../../core/dialog.js?v=20261013u';
-import { compNew, compToForm, compBuild, fmtTel, fmtTelBlur, kstToday } from './logic.js?v=20261013u';
-import { companiesListHtml, companyFormHtml } from './view.js?v=20261013u';
-import { projNew, projToForm, projectBuild } from './projects.js?v=20261013u';
-import { projectsListHtml, projectDetailHtml, projectFormHtml } from './projects-view.js?v=20261013u';
-import { uiState, pushHash } from './ui.js?v=20261013u';
-import { itemAmt, blankItem, itemSetQty, itemSetPrice, itemSetAmount, applySupplyEdit, draftTotals, newDraft, draftFromEstimate, buildEstimate, closePatch, reopenPatch, estGroup, sortEstimates } from './estimates.js?v=20261013u';
-import { estimatesListHtml, estimateDetailHtml, estimateFormHtml, itemRowHtml } from './estimates-view.js?v=20261013u';
-import { estDocHtml } from './estimate-doc.js?v=20261013u';
-import { sortProjects } from './projects.js?v=20261013u';
-import { linkPlan, donePatch, undonePatch, voidPatch, doneConfirm, undoneConfirm, doneToast, projectBalance, acctMonthInput } from './settlements.js?v=20261013u';
-import { settlementsListHtml, settlementDetailHtml } from './settlements-view.js?v=20261013u';
-import { settleDocPage } from './settlement-doc.js?v=20261013u';
+import { db, collection, getDocs, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, writeBatch } from '../../core/firebase.js?v=20261013v';
+import { toast } from '../../core/ui.js?v=20261013v';
+import { confirmDialog } from '../../core/dialog.js?v=20261013v';
+import { compNew, compToForm, compBuild, fmtTel, fmtTelBlur, kstToday } from './logic.js?v=20261013v';
+import { companiesListHtml, companyFormHtml } from './view.js?v=20261013v';
+import { projNew, projToForm, projectBuild } from './projects.js?v=20261013v';
+import { projectsListHtml, projectDetailHtml, projectFormHtml } from './projects-view.js?v=20261013v';
+import { uiState, pushHash } from './ui.js?v=20261013v';
+import { itemAmt, blankItem, itemSetQty, itemSetPrice, itemSetAmount, applySupplyEdit, draftTotals, newDraft, draftFromEstimate, buildEstimate, closePatch, reopenPatch, estGroup, sortEstimates } from './estimates.js?v=20261013v';
+import { estimatesListHtml, estimateDetailHtml, estimateFormHtml, itemRowHtml } from './estimates-view.js?v=20261013v';
+import { estDocHtml } from './estimate-doc.js?v=20261013v';
+import { sortProjects } from './projects.js?v=20261013v';
+import { linkPlan, donePatch, undonePatch, voidPatch, doneConfirm, undoneConfirm, doneToast, projectBalance, acctMonthInput } from './settlements.js?v=20261013v';
+import { settlementsListHtml, settlementDetailHtml } from './settlements-view.js?v=20261013v';
+import { settleDocPage } from './settlement-doc.js?v=20261013v';
+import { issueFormHtml, qtyBlocksHtml, totalsHtml, manualRowHtml } from './issue-view.js?v=20261013v';
+import { newIssueDraft, togglePjt, toggleEst, setQty, setQtyAmount, setSupplyOverride, setVatOverride, resetTotals, buildSettlement, itemSetQty as isItemQty, itemSetPrice as isItemPrice, itemSetAmount as isItemAmount, blankItem as isBlank } from './issue.js?v=20261013v';
 
 /** 영업기획(플랫폼 기본 모듈): 구포털 기획(gihoek)을 탭 하나씩 새 화면으로 옮기는 중. 관리자 전용 — 데이터는 gihoek_* 컬렉션 그대로.
  *  사이드바는 옛 화면 틀(legacy/frame.js)이 그린다 — 이 모듈은 틀 안의 구역(거래처·협력사)을 그리는 함수만 내보내고 modules/index.js 가 hostNative 로 연결한다. */
@@ -85,8 +87,8 @@ export async function mountProjects(root, route, ctx) {
     if (act === 'edit') { const p = st.projects.find((x) => x.id === st.sel); if (!p) return; st.form = projToForm(p); show('form'); return; }
     if (act === 'cancel') { show(st.sel ? 'detail' : 'list'); return; }
     if (act === 'new-est') { location.hash = '#/plan/est/new/' + st.sel; return; }
-    if (act === 'new-inv') { openLegacy('settle', 'newSettleOf', [st.sel, 'invoice']); return; }
-    if (act === 'new-pay') { openLegacy('settle', 'newSettleOf', [st.sel, 'payment']); return; }
+    if (act === 'new-inv') { location.hash = '#/plan/billing/new/' + st.sel; return; }
+    if (act === 'new-pay') { location.hash = '#/plan/payout/new/' + st.sel; return; }
     if (act === 'del') {
       const p = st.projects.find((x) => x.id === st.sel); if (!p) return; const ok = await confirmDialog({ title: '프로젝트 삭제', body: '이 프로젝트를 삭제할까요? (견적·정산 데이터는 남습니다)', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return;
       try { await deleteDoc(doc(db, 'gihoek_projects', p.id)); toast('삭제했습니다.'); st.sel = ''; await load(); show('list', ''); } catch (e) { toast('삭제 실패: ' + ((e && (e.code || e.message)) || '')); } return;
@@ -155,7 +157,7 @@ export async function mountEstimates(root, route, ctx) {
         const data = Object.assign({}, r.payload, { createdAt: serverTimestamp() });
         if (r.voidPatch) { const batch = writeBatch(db); batch.set(doc(db, 'gihoek_estimates', r.id), data); batch.set(doc(db, 'gihoek_estimates', r.voidPatch.id), Object.assign({}, r.voidPatch.patch, { voidedAt: serverTimestamp() }), { merge: true }); await batch.commit(); }   // 개정본 저장과 원본 폐기를 한 번에
         else await setDoc(doc(db, 'gihoek_estimates', r.id), data);
-        toast(r.message); await load(); goDetail(r.id, true);
+        toast(r.message); await load(); if (!st.estimates.some((x) => x.id === r.id)) st.estimates.push(Object.assign({ id: r.id }, r.payload)); goDetail(r.id, true);
       } catch (e) { a.disabled = false; toast('저장 실패: ' + ((e && (e.code || e.message)) || '')); }
     }
   };
@@ -183,28 +185,45 @@ export async function mountEstimates(root, route, ctx) {
  *  정산서를 새로 발행하는 일(공정 자동·수량정산·공수·직접입력 계산)은 새 화면으로 옮기기 전까지 구포털 기획 화면이 맡는다 — 같은 방식으로 문서를 넘겨 연다. */
 async function mountSettlementsView(root, route, ctx, kind) {
   root.onclick = null; root.oninput = null; root.onchange = null;
-  const st = { kind, settlements: [], projects: [], estimates: [], filter: { pjtId: '', client: '', month: '', status: '' }, page: 1, view: 'list', sel: '', origin: '', linkOpen: false, linkSel: {}, editAcct: false };
+  const me = (ctx && ctx.me) || {};
+  const st = { kind, settlements: [], projects: [], estimates: [], companies: [], draft: null, filter: { pjtId: '', client: '', month: '', status: '' }, page: 1, view: 'list', sel: '', origin: '', linkOpen: false, linkSel: {}, editAcct: false };
   const KEY = 'jh_plan_set_ui_' + kind; const saved = uiState.load(KEY) || {}; if (saved.filter) Object.assign(st.filter, saved.filter); if (saved.page) st.page = saved.page; let restoreY = saved.scroll || 0; const remember = (scroll) => uiState.save(KEY, { filter: st.filter, page: st.page, scroll: scroll || 0 });
   const base = kind === 'invoice' ? '#/plan/billing' : '#/plan/payout';
   root.innerHTML = '<div id="sl-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#sl-body');
-  const load = async () => { const [a, b, c] = await Promise.all([getDocs(collection(db, 'gihoek_settlements')), getDocs(collection(db, 'gihoek_projects')), getDocs(collection(db, 'gihoek_estimates'))]); st.settlements = lst(a); st.projects = sortProjects(lst(b)); st.estimates = lst(c); };
+  const load = async () => { const [a, b, c, d] = await Promise.all([getDocs(collection(db, 'gihoek_settlements')), getDocs(collection(db, 'gihoek_projects')), getDocs(collection(db, 'gihoek_estimates')), getDocs(collection(db, 'gihoek_companies'))]); st.settlements = lst(a); st.projects = sortProjects(lst(b)); st.estimates = lst(c); st.companies = lst(d).sort((x, y) => String(x.company || '').localeCompare(String(y.company || ''), 'ko')); };
   try { await load(); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + ((e && e.message) || '') + '</div>'; return; }
   body.removeAttribute('aria-busy');
-  const paint = () => { body.innerHTML = st.view === 'detail' ? settlementDetailHtml(st) : settlementsListHtml(st); window.scrollTo(0, st.view === 'list' ? restoreY : 0); restoreY = 0; };
-  const goList = (push) => { st.view = 'list'; st.sel = ''; st.origin = ''; st.linkOpen = false; st.editAcct = false; if (push) pushHash(base); paint(); };
+  const paint = () => { body.innerHTML = st.view === 'issue' ? issueFormHtml(st) : st.view === 'detail' ? settlementDetailHtml(st) : settlementsListHtml(st); window.scrollTo(0, st.view === 'list' ? restoreY : 0); restoreY = 0; };
+  const startIssue = (pjtId) => { if (!st.projects.length) { toast('먼저 프로젝트를 등록하세요.'); location.hash = '#/plan/projects'; return; } st.draft = newIssueDraft({ docType: kind, pjtId: pjtId || st.projects[0].id, companies: st.companies, today: kstToday() }); st.view = 'issue'; st.sel = ''; paint(); };
+  const goList = (push) => { st.view = 'list'; st.sel = ''; st.draft = null; st.origin = ''; st.linkOpen = false; st.editAcct = false; if (push) pushHash(base); paint(); };
   const goDetail = (id, push) => { if (push && st.view === 'list') remember(window.scrollY || 0); st.view = 'detail'; st.sel = id; st.linkOpen = false; st.linkSel = {}; st.editAcct = false; if (push) pushHash(base + '/' + id + (st.origin ? '/from/' + st.origin : '')); paint(); };
   const goBack = () => { if (st.origin) { location.hash = '#/plan/projects/' + st.origin; return; } goList(true); };
   const segs = (route && route.segs) || []; const s0 = segs[0];
-  if (s0 && st.settlements.some((x) => x.id === s0)) { if (segs[1] === 'from' && segs[2]) st.origin = segs[2]; st.view = 'detail'; st.sel = s0; }
-  paint();
+  if (s0 === 'new') startIssue(segs[1] || ''); else if (s0 && st.settlements.some((x) => x.id === s0)) { if (segs[1] === 'from' && segs[2]) st.origin = segs[2]; st.view = 'detail'; st.sel = s0; paint(); } else paint();
+  const refreshTot = () => { const el = body.querySelector('#is-tot'); if (el) el.innerHTML = totalsHtml(st); };
   const patch = async (id, data, msg, after) => { try { await setDoc(doc(db, 'gihoek_settlements', id), data, { merge: true }); toast(msg); await load(); after(); } catch (e) { toast('실패: ' + ((e && (e.code || e.message)) || '')); } };
   root.onclick = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
     const pg = t.closest('[data-sl-page]'); if (pg) { st.page = Number(pg.getAttribute('data-sl-page').split(':')[1]); remember(0); paint(); return; }
     const op = t.closest('[data-sl-open]'); if (op) { goDetail(op.getAttribute('data-sl-open'), true); return; }
+    const ia = t.closest('[data-is-act]'); if (ia && st.draft) {
+      const iact = ia.getAttribute('data-is-act'); const d = st.draft;
+      if (iact === 'cancel') { goList(true); return; }
+      if (iact === 'legacy') { openLegacy('settle', 'newSettleOf', [d.pjtId, d.docType, d.method]); return; }
+      if (iact === 'add-row') { d.manualItems.push(isBlank()); const r = body.querySelector('#is-rows'); if (r) r.innerHTML = d.manualItems.map(manualRowHtml).join(''); refreshTot(); return; }
+      if (iact === 'reset-tot') { resetTotals(d); refreshTot(); return; }
+      if (iact === 'publish') {
+        const r = buildSettlement(d, { settlements: st.settlements, estimates: st.estimates, companies: st.companies, me: { name: me.name, uid: me.uid }, now: Date.now() }); if (!r.ok) { toast(r.errors[0]); return; }
+        if (r.warnings.length) { const ok = await confirmDialog({ title: '수신자 미선택', body: r.warnings[0], confirmLabel: '발행' }); if (!ok.ok) return; }
+        ia.disabled = true;
+        try { await setDoc(doc(db, 'gihoek_settlements', r.id), Object.assign({}, r.payload, { createdAt: serverTimestamp() })); toast(r.message); await load(); /* 방금 저장한 문서가 목록에 아직 없으면(지연) 그대로 보여 준다 */ if (!st.settlements.some((x) => x.id === r.id)) st.settlements.push(Object.assign({ id: r.id }, r.payload)); st.draft = null; goDetail(r.id, true); } catch (e) { ia.disabled = false; toast('발행 실패: ' + ((e && (e.code || e.message)) || '')); }
+      }
+      return;
+    }
+    const idl = t.closest('[data-is-del]'); if (idl && st.draft) { st.draft.manualItems.splice(Number(idl.getAttribute('data-is-del')), 1); if (!st.draft.manualItems.length) st.draft.manualItems.push(isBlank()); const r = body.querySelector('#is-rows'); if (r) r.innerHTML = st.draft.manualItems.map(manualRowHtml).join(''); refreshTot(); return; }
     const a = t.closest('[data-sl-act]'); if (!a) return; const act = a.getAttribute('data-sl-act'); const cur = st.settlements.find((x) => x.id === st.sel);
     if (act === 'reset') { st.filter = { pjtId: '', client: '', month: '', status: '' }; st.page = 1; remember(0); paint(); return; }
-    if (act === 'new') { openLegacy('settle', 'newSettleOf', ['', kind]); return; }
+    if (act === 'new') { startIssue(''); return; }
     if (act === 'team') { openLegacy('settle', 'setSettleView', ['team']); return; }
     if (act === 'back') { goBack(); return; }
     if (!cur) return;
@@ -220,8 +239,24 @@ async function mountSettlementsView(root, route, ctx, kind) {
     if (act === 'void') { const ok = await confirmDialog({ title: '정산서 폐기', body: '이 정산서를 폐기할까요? 집계에서 제외됩니다.', confirmLabel: '폐기', variant: 'danger' }); if (!ok.ok) return; await patch(cur.id, Object.assign(voidPatch(), { voidedAt: serverTimestamp() }), '폐기했습니다.', goBack); return; }
     if (act === 'del') { const ok = await confirmDialog({ title: '정산서 삭제', body: '폐기된 정산서를 완전히 삭제할까요?\n이 작업은 되돌릴 수 없습니다.', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return; try { await deleteDoc(doc(db, 'gihoek_settlements', cur.id)); toast('삭제했습니다.'); await load(); goBack(); } catch (e) { toast('삭제 실패: ' + ((e && (e.code || e.message)) || '')); } }
   };
+  root.oninput = (ev) => {
+    const t = ev.target; if (!(t instanceof Element) || !st.draft) return; const c = t.getAttribute('data-is-it'); if (!c) return; const [i, k] = c.split(':'); const it = st.draft.manualItems[Number(i)]; if (!it) return;
+    if (k === 'name' || k === 'spec') { it[k] = t.value; return; }
+    if (k === 'price' || k === 'amount') { const raw = t.value.replace(/[^0-9]/g, ''); t.value = raw ? Number(raw).toLocaleString('ko-KR') : ''; }
+    if (k === 'qty') isItemQty(it, t.value); else if (k === 'price') isItemPrice(it, t.value); else isItemAmount(it, t.value);
+    const set = (kk, v) => { if (kk === k) return; const el = body.querySelector('[data-is-it="' + i + ':' + kk + '"]'); if (el) el.value = Math.round(v).toLocaleString('ko-KR'); }; set('price', it.price); set('amount', it.amount); refreshTot();
+  };
   root.onchange = (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
+    if (st.draft) {
+      const d = st.draft; const pj = t.getAttribute('data-is-pjt'); if (pj) { const err = togglePjt(d, pj, st.estimates); if (err) { toast(err); t.checked = true; return; } paint(); return; }
+      const es = t.getAttribute('data-is-est'); if (es) { toggleEst(d, es); paint(); return; }
+      const q = t.getAttribute('data-is-q'); if (q) { const [eid, idx] = q.split(':'); setQty(d, eid, Number(idx), t.value); const qb = body.querySelector('#is-qty'); if (qb) qb.innerHTML = qtyBlocksHtml(st); refreshTot(); return; }
+      const qa = t.getAttribute('data-is-qa'); if (qa) { const [eid, idx] = qa.split(':'); setQtyAmount(d, eid, Number(idx), t.value); const qb = body.querySelector('#is-qty'); if (qb) qb.innerHTML = qtyBlocksHtml(st); refreshTot(); return; }
+      if (t.hasAttribute('data-is-supply')) { setSupplyOverride(d, t.value); refreshTot(); return; }
+      if (t.hasAttribute('data-is-vat')) { setVatOverride(d, t.value); refreshTot(); return; }
+      const f = t.getAttribute('data-is-f'); if (f) { d[f] = t.value; if (f === 'senderId') d.senderContact = ''; if (f === 'recipientId') d.recipientContact = ''; if (['method', 'baseMonth', 'senderId', 'recipientId'].includes(f)) paint(); return; }
+    }
     const fk = t.getAttribute('data-sl-filter'); if (fk) { st.filter[fk] = t.value; st.page = 1; remember(0); paint(); return; }
     const lk = t.getAttribute('data-sl-link'); if (lk != null) st.linkSel[lk] = t.value;
   };

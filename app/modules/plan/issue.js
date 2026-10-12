@@ -1,0 +1,92 @@
+/* 영업기획 정산서 발행 — 순수 규칙(화면·네트워크 없이 시험 가능). 구포털 기획(gihoek)의 발행 계산을 그대로 옮겼다.
+ * 이번에 옮긴 방식: 직접 입력(manual), 수량 정산(qty). 공정 연동(progress)·공수 연동(manday)은 계산 원본 대조를 마친 뒤 같은 모양으로 더한다 — 그 전에는 옛 발행 화면으로 연결한다.
+ * 번호: yymm + 세 자리, 청구서·지급예정서 따로 센다(구포털은 "개수 + 1" 이라 삭제 뒤 같은 번호가 다시 나올 수 있어 "가장 큰 번호 + 1" 로 한다 — 빈 번호가 없으면 결과는 같다). */
+import { itemAmt } from './projects.js?v=20261013v';
+import { num, blankItem, itemSetQty, itemSetPrice, itemSetAmount, partySnap, suppliers, clients, DEFAULT_ISSUER } from './estimates.js?v=20261013v';
+export { num, blankItem, itemSetQty, itemSetPrice, itemSetAmount, suppliers, clients };
+export const SUPPORTED = { invoice: ['manual', 'qty'], payment: ['manual', 'qty'] };   // 새 화면에서 계산하는 방식
+export const METHOD_OPTIONS = { invoice: [['progress', '공정 연동 (반입·설치 자동) — 옛 화면'], ['qty', '수량 정산 (견적 품목별)'], ['manual', '직접 입력']], payment: [['manday', '공수 연동 — 옛 화면'], ['qty', '수량 정산 (견적 품목별)'], ['manual', '직접 입력']] };
+export const isSupported = (docType, method) => (SUPPORTED[docType] || []).includes(method);
+const DATE = /^\d{4}-\d{2}-\d{2}$/, MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
+/** 지급예정일이 비었을 때(지급예정서): 기준월의 익월 말일, 토·일이면 금요일(구포털 defaultPayDate) */
+export function defaultPayDate(baseMonth) {
+  const [y, m] = String(baseMonth).split('-').map(Number); const d = new Date(y, m + 1, 0); const dow = d.getDay();
+  if (dow === 6) d.setDate(d.getDate() - 1); else if (dow === 0) d.setDate(d.getDate() - 2);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+/** 새 발행 초안(구포털 newSettle): 기준월·발행일은 오늘(한국 시간), 발신자는 제이에이치솔루션(없으면 첫 발행처), 수신자는 비어 있음 */
+export function newIssueDraft(o) {
+  const x = o || {}; const sup = suppliers(x.companies); const today = x.today || ''; const kind = x.docType === 'payment' ? 'payment' : 'invoice';
+  return { docType: kind, pjtId: x.pjtId || '', pjtIds: [x.pjtId || ''], method: kind === 'payment' ? 'manual' : 'manual', baseMonth: today.slice(0, 7), issueDate: today, payDate: '',
+    senderId: ((sup.find((c) => c.company === DEFAULT_ISSUER) || sup[0]) || {}).id || '', recipientId: '', senderContact: '', recipientContact: '', estIds: [], qtyInput: {}, qtyAmt: {}, supplyOverride: null, vatOverride: null, manualItems: [blankItem(), blankItem()] };
+}
+/** 프로젝트 다중 선택(구포털 toggleSettlePjt): 최소 1개, 바뀌면 선택된 견적 중 빠진 프로젝트의 것은 해제. 반환: 오류 문구 또는 '' */
+export function togglePjt(d, pid, estimates) {
+  d.pjtIds = d.pjtIds && d.pjtIds.length ? d.pjtIds : [d.pjtId]; const i = d.pjtIds.indexOf(pid);
+  if (i < 0) d.pjtIds.push(pid); else { if (d.pjtIds.length <= 1) return '최소 1개 프로젝트는 선택되어야 합니다.'; d.pjtIds.splice(i, 1); }
+  d.pjtId = d.pjtIds[0]; d.estIds = (d.estIds || []).filter((id) => { const e = (estimates || []).find((x) => x.id === id); return e && d.pjtIds.includes(e.pjtId); }); return '';
+}
+/** 선택한 프로젝트의 유효 견적(수량 정산에서 고를 수 있는 견적) */
+export const pickableEstimates = (d, estimates) => (estimates || []).filter((e) => (d.pjtIds || [d.pjtId]).includes(e.pjtId) && e.status !== 'void' && e.status !== 'closed');
+export function toggleEst(d, id) { const i = d.estIds.indexOf(id); if (i < 0) { d.estIds.push(id); d.qtyInput[id] = d.qtyInput[id] || {}; d.qtyAmt[id] = d.qtyAmt[id] || {}; } else d.estIds.splice(i, 1); }
+/* ── 수량 정산 ── */
+/** 기청구 수량: 이미 발행된(폐기 아닌) 청구서에서 그 견적 품목에 정산한 수량 합(구포털 priorQty) */
+export const priorQty = (settlements, estId, idx) => (settlements || []).filter((s) => s.status !== 'void' && s.docType === 'invoice' && s.perItem && s.perItem[estId] && s.perItem[estId][idx]).reduce((a, s) => a + (s.perItem[estId][idx].qty || 0), 0);
+export const qtyValue = (d, estId, idx) => (d.qtyInput[estId] && d.qtyInput[estId][idx] != null ? d.qtyInput[estId][idx] : 0);
+export function qtyAmount(d, estId, idx, it) { const o = d.qtyAmt[estId] && d.qtyAmt[estId][idx]; if (o != null) return o; return Math.round(qtyValue(d, estId, idx) * ((it && it.price) || 0)); }
+export function setQty(d, estId, idx, v) { d.qtyInput[estId] = d.qtyInput[estId] || {}; d.qtyInput[estId][idx] = Math.max(0, num(v)); if (d.qtyAmt[estId]) delete d.qtyAmt[estId][idx]; }
+export function setQtyAmount(d, estId, idx, v) { d.qtyAmt[estId] = d.qtyAmt[estId] || {}; d.qtyAmt[estId][idx] = Math.max(0, num(v)); }
+/** 선택 견적 품목 안의 한 행: 단가·총 수량·기청구·이번 수량·금액·잔여 */
+export function qtyRow(d, e, idx, settlements) { const it = (e.items || [])[idx]; const prior = priorQty(settlements, e.id, idx); return { name: it.name, price: it.price || 0, total: it.qty || 0, prior, remain: (it.qty || 0) - prior, qty: qtyValue(d, e.id, idx), amount: qtyAmount(d, e.id, idx, it) }; }
+/* ── 합계 ── */
+export function autoSupply(d, estimates) {
+  if (d.method === 'manual') return d.manualItems.reduce((s, it) => s + itemAmt(it), 0);
+  if (d.method === 'qty') return d.estIds.reduce((s, id) => { const e = (estimates || []).find((x) => x.id === id); if (!e) return s; return s + (e.items || []).reduce((a, it, idx) => a + qtyAmount(d, id, idx, it), 0); }, 0);
+  return 0;
+}
+export const effSupply = (d, estimates) => (d.supplyOverride != null ? d.supplyOverride : autoSupply(d, estimates));
+export const effVat = (d, estimates) => (d.vatOverride != null ? d.vatOverride : Math.round(effSupply(d, estimates) * 0.1));
+export const setSupplyOverride = (d, v) => { d.supplyOverride = Math.max(0, num(v)); };
+export const setVatOverride = (d, v) => { d.vatOverride = Math.max(0, num(v)); };
+export const resetTotals = (d) => { d.supplyOverride = null; d.vatOverride = null; };
+export const issueTotals = (d, estimates) => { const supply = effSupply(d, estimates), vat = effVat(d, estimates); return { supply, vat, total: supply + vat, auto: autoSupply(d, estimates), overridden: d.supplyOverride != null || d.vatOverride != null }; };
+/** 정산서 내역(lines)(구포털 settleLines): 직접 입력은 이름이 있는 줄만, 수량 정산은 수량 또는 금액이 있는 품목만 */
+export function issueLines(d, estimates) {
+  if (d.method === 'manual') return d.manualItems.filter((i) => (i.name || '').trim()).map((i) => ({ name: i.name.trim(), spec: i.spec || '', qty: i.qty || 0, price: i.price || 0, amount: Math.round(itemAmt(i)) }));
+  if (d.method === 'qty') { const lines = []; d.estIds.forEach((id) => { const e = (estimates || []).find((x) => x.id === id); if (!e) return; (e.items || []).forEach((it, idx) => { const q = qtyValue(d, id, idx); const amt = qtyAmount(d, id, idx, it); if (q > 0 || amt > 0) lines.push({ name: it.name, spec: (it.spec || '') + ' · 수량 ' + q, qty: q, price: it.price || 0, amount: amt }); }); }); return lines; }
+  return [];
+}
+/** 새 정산서 번호: yymm + 세 자리, 같은 구분(청구서/지급예정서) 안에서 그 달 가장 큰 번호 + 1 */
+export function nextSettleNo(settlements, docType, issueDate) {
+  const yymm = String(issueDate).slice(2, 4) + String(issueDate).slice(5, 7); let max = 0;
+  (settlements || []).forEach((s) => { const no = String(s.no || ''); if (s.docType === docType && no.startsWith(yymm) && /^\d+$/.test(no.slice(4))) max = Math.max(max, parseInt(no.slice(4), 10)); });
+  return yymm + String(max + 1).padStart(3, '0');
+}
+/** 발행 저장 계획(구포털 publishSettle). 금액이 0이면 오류, 수신자가 없으면 확인 요청(warnings). 프로젝트별 몫(perPjtAmount)은 여러 프로젝트를 묶을 때 각 프로젝트 상세의 누계에 자기 몫만 반영되게 한다 */
+export function buildSettlement(d, o) {
+  const x = o || {}; const estimates = x.estimates || [], me = x.me || {}; const errors = [], warnings = [];
+  if (!isSupported(d.docType, d.method)) return { ok: false, errors: ['이 정산 방식은 아직 옛 발행 화면에서 발행합니다.'], warnings };
+  const sup = effSupply(d, estimates); if (!(sup > 0)) errors.push('정산 금액이 없습니다.');
+  if (!DATE.test(String(d.issueDate || ''))) errors.push('발행일을 입력하세요.'); if (!MONTH.test(String(d.baseMonth || ''))) errors.push('기준월을 입력하세요.'); if (d.payDate && !DATE.test(d.payDate)) errors.push('지급일 형식이 올바르지 않습니다.');
+  const pjtIds = d.pjtIds && d.pjtIds.length ? d.pjtIds : [d.pjtId]; if (!pjtIds[0]) errors.push('프로젝트를 선택하세요.');
+  if (errors.length) return { ok: false, errors, warnings };
+  if (!d.recipientId) warnings.push('수신자(거래처)가 선택되지 않았습니다. 그래도 발행할까요?');
+  const no = nextSettleNo(x.settlements, d.docType, d.issueDate); const comp = (id) => (x.companies || []).find((c) => c.id === id) || null;
+  const perEst = {}, perItem = {};
+  if (d.method === 'qty') d.estIds.forEach((eid) => { const e = estimates.find((y) => y.id === eid); if (!e) return; perItem[eid] = {}; let es = 0; (e.items || []).forEach((it, idx) => { const q = qtyValue(d, eid, idx), amt = qtyAmount(d, eid, idx, it); if (q > 0 || amt > 0) { perItem[eid][idx] = { qty: q, amount: amt }; es += amt; } }); perEst[eid] = es; });
+  const perPjtAmount = {};
+  if (d.method === 'qty' && pjtIds.length > 1) { pjtIds.forEach((pid) => { perPjtAmount[pid] = 0; }); Object.keys(perEst).forEach((eid) => { const e = estimates.find((y) => y.id === eid); if (!e) return; perPjtAmount[e.pjtId] = (perPjtAmount[e.pjtId] || 0) + (perEst[eid] || 0); }); } else perPjtAmount[d.pjtId] = sup;
+  const vat = effVat(d, estimates); let payDate = d.payDate || ''; if (d.docType === 'payment' && !payDate && d.baseMonth) payDate = defaultPayDate(d.baseMonth);
+  const acctMonth = (payDate || d.issueDate || d.baseMonth || '').slice(0, 7);
+  const payload = { pjtId: d.pjtId, pjtIds, perPjtAmount, no, docType: d.docType, method: d.method, baseMonth: d.baseMonth, issueDate: d.issueDate, payDate, acctMonth,
+    senderId: d.senderId || '', sender: partySnap(comp(d.senderId), d.senderContact) || {}, recipientId: d.recipientId || '', recipient: partySnap(comp(d.recipientId), d.recipientContact) || {},
+    estIds: d.estIds || [], perEst, perItem, mandayUsed: 0, lines: issueLines(d, estimates), supply: sup, vat, total: sup + vat, amount: sup, status: 'active', author: me.name || '', authorUid: me.uid || '' };
+  return { ok: true, errors: [], warnings, id: 'set_' + (x.now || Date.now()), no, payload, message: (d.docType === 'invoice' ? '대금청구서' : '지급예정서') + ' ' + no + ' 발행' };
+}
+/** 저장된 정산서로 발행 초안을 되짚어 만든다(점검·대조용): 직접 입력은 내역을 품목으로, 수량 정산은 perItem 의 수량·금액으로 */
+export function draftFromSettlement(s) {
+  const d = { docType: s.docType, pjtId: s.pjtId, pjtIds: s.pjtIds || [s.pjtId], method: s.method, baseMonth: s.baseMonth, issueDate: s.issueDate, payDate: s.payDate || '', senderId: s.senderId || '', recipientId: s.recipientId || '', senderContact: (s.sender && s.sender.contact) || '', recipientContact: (s.recipient && s.recipient.contact) || '', estIds: (s.estIds || []).slice(), qtyInput: {}, qtyAmt: {}, supplyOverride: null, vatOverride: null, manualItems: [] };
+  if (s.method === 'manual') d.manualItems = (s.lines || []).map((l) => ({ name: l.name, spec: l.spec || '', qty: l.qty, price: l.price, amount: l.amount }));
+  if (s.method === 'qty') Object.keys(s.perItem || {}).forEach((eid) => { d.qtyInput[eid] = {}; d.qtyAmt[eid] = {}; Object.keys(s.perItem[eid]).forEach((idx) => { d.qtyInput[eid][idx] = s.perItem[eid][idx].qty; d.qtyAmt[eid][idx] = s.perItem[eid][idx].amount; }); });
+  return d;
+}
