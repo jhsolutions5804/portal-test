@@ -6,7 +6,8 @@
  * · 평균임금 < 통상임금이면 통상임금(1일 = 통상시급×8; 연봉계약서 기본·연장·야간·주휴 + 기술수당) · 계속근로 1년 미만 0원 · 퇴직금 = 적용 1일 평균임금 × 30 × (재직일수 ÷ 365)
  * · 퇴직금은 퇴직 후 14일 이내 지급(근로기준법 제36조), 지연 시 연 20% 지연이자 — 지급기한을 함께 안내한다.
  * ⚠️ 자동 산정 결과는 참고용이다 — 실제 지급 전 노무사 또는 관할 고용센터에 확인한다(docs/statutory-alignment.md). */
-import { annualSalary } from './offer.js?v=20261013n';
+import { annualSalary } from './offer.js?v=20261013p';
+import { lpDay, lpEvalWorker } from './leave-promo.js?v=20261013p';
 export const rtWon = (n) => Math.round(Number(n) || 0).toLocaleString('ko-KR');
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')) && new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
 const T = (s) => Date.parse(s + 'T00:00:00Z'); const ymd = (ms) => new Date(ms).toISOString().slice(0, 10); const DAY = 86400000;
@@ -50,3 +51,14 @@ export function retireCalc(worker, lastWorkDay, payslips, contracts, opt) {
 }
 /** 저장한 정산 내역을 퇴직일 최신순으로 */
 export const retireRecordsSorted = (list) => (list || []).slice().sort((a, b) => String(b.id || b.retireDate || '').localeCompare(String(a.id || a.retireDate || '')));
+
+/** 퇴직 시 미사용 연차 정산(참고용) — 법적 퇴직일 기준 연차 현황(구간별 부여·사용·잔여)에서 잔여일 × 통상일급.
+ *  연차사용촉진 절차를 이행한 구간(2차 지정통보 완료 또는 사용계획 회신 완료)은 미사용 연차가 소멸해 수당 지급 의무가 없을 수 있어 대상에서 뺀다(상태는 그대로 보여 준다).
+ *  ⚠️ 퇴직 시 미사용 연차수당의 법적 처리(퇴직금 평균임금 3/12 가산 대상 여부, 회계연도 기준 부여분의 정산 방식)는 노무사 확인이 필요하다 — 결과는 "연차수당 합계" 입력에 넣어 볼 수 있는 참고 값이다. */
+export function retireLeavePay(worker, legalRetire, leaves, recs, ordDaily) {
+  const w = worker || {}; const today = lpDay(legalRetire); if (!today || !w.hireDate) return { ok: false, reason: '입사일 또는 퇴직일이 없어 계산할 수 없습니다.' };
+  const ev = lpEvalWorker(w, today, leaves || [], recs || []); if (ev.skip) return { ok: false, reason: ev.skip };
+  const rows = ev.list.map((e) => { const exempt = !!(e.r2 || e.state === 'replied' || e.state === 'done'); return { cat: e.p.cat, title: e.p.title || e.p.cat, granted: e.granted, used: e.used, remain: e.remain, exempt, label: e.label, payDays: exempt ? 0 : e.remain }; });
+  const days = rows.reduce((s, x) => s + x.payDays, 0); const perDay = NUM(ordDaily) > 0 ? NUM(ordDaily) : 0;
+  return { ok: true, rows, days, perDay, hasPerDay: perDay > 0, amount: Math.round(days * perDay) };
+}

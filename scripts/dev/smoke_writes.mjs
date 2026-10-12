@@ -138,4 +138,11 @@ await scenario('인사평가 — 호봉 직접 입력: 근로자 호봉(step·st
   const root = await mountFresh(hrMod.mountEvals); await setv(root, '[data-e-step="w1"]', '7'); await sleep(250); const el = root.querySelector('[data-e-step="w1"]'); el.dispatchEvent(new w.Event('blur', { bubbles: true })); el.dispatchEvent(new w.Event('focusout', { bubbles: true })); await sleep(250);
   const u = WR().filter((x) => /^workers\/w1$/.test(x.path)); check(u.length >= 1 && u.some((x) => Number(x.data.step) === 7 && !!x.data.stepYear), '호봉 7 이 workers/w1 에 step·stepYear 로 저장되어야 함: ' + JSON.stringify(WR().map((x) => x.op + ' ' + x.path + JSON.stringify(x.data || {}).slice(0, 70))));
 });
+
+await scenario('퇴직금 정산 — 미사용 연차 정산(참고) 카드와 "연차수당 합계에 넣기": 입력칸이 채워지고 평균임금에 가산 반영, 저장은 일어나지 않음', async (check) => {
+  const root = await mountFresh(hrMod.mountRetire); await setv(root, '[data-t-date]', '2026-09-30'); await setv(root, '[data-t-worker]', 'w1'); await sleep(900);
+  check(/미사용 연차 정산/.test(root.textContent), '④ 미사용 연차 정산 카드가 보여야 함'); const before = root.textContent.includes('연차수당 가산');
+  await click(root, '[data-t-leavefill]', 400); await sleep(500);
+  const inp = root.querySelector('[data-t-opt="leave12"]'); check(inp && /\d/.test(inp.value), '연차수당 합계 입력칸이 채워져야 함: ' + (inp && inp.value)); check(!before && /연차 상여·연차수당 가산|상여·연차수당 가산/.test(root.textContent), '평균임금 산정 표에 연간 상여·연차수당 가산 줄이 나타나야 함'); check(WR().filter((x) => x.op === 'set' && /^severance\//.test(x.path)).length === 0, '넣기 버튼은 정산을 저장하면 안 됨');
+});
 markDone(); console.log('\n' + (failed ? '문제가 있는 저장 동작 ' + failed + '건' : '모든 저장 동작이 올바른 경로·값으로 기록됨')); process.exit(failed ? 1 : 0);

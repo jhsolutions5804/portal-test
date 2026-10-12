@@ -1,22 +1,22 @@
-import { esc } from '../../core/ui.js?v=20261013n';
-import { rtWon, retireRecordsSorted } from './retire.js?v=20261013n';
-import { otSummary, otPerson, otAmount } from './overtime.js?v=20261013n';
-import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261013n';
-import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261013n';
-import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261013n';
-import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261013n';
-import { sendLogText } from './sign.js?v=20261013n';
-import { maskedView } from './identity.js?v=20261013n';
-import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261013n';
-import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261013n';
-import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261013n';
-import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261013n';
-import { _hzDot } from './leave-promo-docs.js?v=20261013n';
-import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261013n';
-import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261013n';
-import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261013n';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261013n';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261013n';
+import { esc } from '../../core/ui.js?v=20261013p';
+import { rtWon, retireRecordsSorted } from './retire.js?v=20261013p';
+import { otSummary, otPerson, otAmount } from './overtime.js?v=20261013p';
+import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261013p';
+import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261013p';
+import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261013p';
+import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261013p';
+import { sendLogText } from './sign.js?v=20261013p';
+import { maskedView } from './identity.js?v=20261013p';
+import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261013p';
+import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261013p';
+import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261013p';
+import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261013p';
+import { _hzDot } from './leave-promo-docs.js?v=20261013p';
+import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261013p';
+import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261013p';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261013p';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261013p';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261013p';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -317,6 +317,14 @@ export function offerPersonHtml(st) {
 export function offersHtml(st) { return st.view === 'hist' ? offerHistHtml(st) : st.view === 'person' ? offerPersonHtml(st) : offerFormHtml(st); }
 
 /** 퇴직금 정산 */
+/** 퇴직 시 미사용 연차 정산(참고) 카드 — 구간별 부여·사용·잔여·촉진 상태와 지급 대상 일수·금액, 연차수당 입력칸에 넣는 버튼 */
+function retireLeaveHtml(lp) {
+  if (!lp) return ''; if (!lp.ok) return card('④ 미사용 연차 정산 (참고)', '<div class="jh-hr__pad"><div class="jh-field__hint">' + esc(lp.reason || '계산할 수 없습니다.') + '</div></div>');
+  const rows = lp.rows.map((x) => '<tr><td>' + esc(x.title) + '</td><td class="num">' + x.granted + '</td><td class="num">' + x.used + '</td><td class="num">' + x.remain + '</td><td>' + esc(x.label || '') + (x.exempt ? ' <span class="jh-field__hint">(수당 대상 제외)</span>' : '') + '</td><td class="num"><strong>' + x.payDays + '</strong></td></tr>').join('');
+  return card('④ 미사용 연차 정산 (참고)', '<div class="jh-hr__pad"><div class="jh-hr__scroll"><table class="jh-hr-table"><thead><tr><th>구간</th><th class="num">부여</th><th class="num">사용</th><th class="num">잔여</th><th>촉진 상태</th><th class="num">대상 일수</th></tr></thead><tbody>' + rows + '<tr><td colspan="5"><strong>합계</strong></td><td class="num"><strong>' + lp.days + '일</strong></td></tr></tbody></table></div>'
+    + (lp.hasPerDay ? '<div class="jh-hr__line"><span><span class="jh-hr__label">예상 연차수당</span><div class="jh-field__hint">대상 ' + lp.days + '일 × 통상일급 ' + rtWon(lp.perDay) + '원</div></span><span class="jh-hr__val"><strong>' + rtWon(lp.amount) + ' 원</strong></span></div>' : '<div class="jh-field__hint">연봉계약서가 없어 통상일급을 알 수 없습니다(일수만 표시).</div>')
+    + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="secondary" data-t-leavefill' + (lp.amount ? '' : ' disabled') + '>연차수당 합계에 넣기</button></div><div class="jh-field__hint">현재 연차 현황·촉진 기록 기준의 참고 값입니다. 퇴직 시 미사용 연차수당의 정산 방식과 평균임금 3/12 가산 대상 여부는 노무사 확인이 필요합니다.</div></div>');
+}
 export function retireHtml(st) {
   const opts = '<option value="">근로자 선택</option>' + st.rtWorkers.map((w) => '<option value="' + esc(w.id) + '"' + (w.id === st.rtWid ? ' selected' : '') + '>' + esc((w.empNo ? '[' + w.empNo + '] ' : '') + (w.name || '-') + (w.dept ? ' · ' + w.dept : '') + (w.rank ? ' ' + w.rank : '') + (w.status === 'resigned' ? ' (퇴직)' : '')) + '</option>').join('');
   const cond = card('산정 조건', '<div class="jh-hr__pad"><div class="jh-field"><label class="jh-field__label">근로자</label><select class="jh-select" data-t-worker>' + opts + '</select></div><div class="jh-field"><label class="jh-field__label">퇴직일(마지막 근무일)</label><input class="jh-input" type="date" data-t-date value="' + esc(st.rtDate) + '"><div class="jh-field__hint">법적 퇴직일(근로관계 종료일)은 마지막 근무일의 다음 날로 계산합니다.</div></div><div class="jh-field"><label class="jh-field__label">연간 상여금 합계(원, 선택)</label><input class="jh-input" inputmode="numeric" data-t-opt="bonus12" value="' + esc(st.rtOpt.bonus12) + '" placeholder="0" style="text-align:right"></div><div class="jh-field"><label class="jh-field__label">연차수당 합계(원, 선택)</label><input class="jh-input" inputmode="numeric" data-t-opt="leave12" value="' + esc(st.rtOpt.leave12) + '" placeholder="0" style="text-align:right"><div class="jh-field__hint">퇴직 전 12개월 중 평균임금 3개월 밖에 지급한 연간 상여·연차수당 합계입니다. × 3/12 를 평균임금에 더합니다(월 급여에 이미 들어간 상여는 넣지 않습니다).</div></div></div>');
@@ -334,6 +342,7 @@ export function retireHtml(st) {
     right = card('① 평균임금 산정 (퇴직일 이전 3개월)', '<div class="jh-hr__pad"><div class="jh-field__hint">산정기간 ' + esc(r.periodStart.replace(/-/g, '.')) + ' ~ ' + esc(r.retireDate.replace(/-/g, '.')) + ' (' + r.periodDays + '일) · 급여명세서 지급계(임금총액) 기준</div><div class="jh-hr__scroll"><table class="jh-hr-table"><thead><tr><th>기준월</th><th class="num">임금총액(지급계)</th><th class="num">산정기간 일수</th><th class="num">반영액</th></tr></thead><tbody>' + tr + (r.addon ? '<tr><td colspan="3">연간 상여·연차수당 가산 (' + rtWon(r.bonus12 + r.leave12) + ' × 3/12)</td><td class="num"><strong>' + rtWon(r.addon) + '</strong></td></tr>' : '') + '<tr><td><strong>합계</strong></td><td colspan="2" class="num jh-field__hint">임금 총액 →</td><td class="num"><strong>' + rtWon(r.includedTotal + r.addon) + '</strong></td></tr></tbody></table></div>' + row('1일 평균임금', rtWon(r.avgDaily) + ' 원', '임금 총액 ÷ ' + r.periodDays + '일') + (r.hasAnnual ? row('1일 통상임금', rtWon(r.ordDaily) + ' 원', '통상시급 × 8h (비교용)') : '') + (r.substituted ? '<div class="jh-alert" data-tone="info" role="status">평균임금이 통상임금보다 낮아 통상임금을 적용했습니다.</div>' : '') + '</div>')
       + card('② 재직기간', '<div class="jh-hr__pad">' + row('입사일', esc(String(r.hireDate).replace(/-/g, '.'))) + row('퇴직일(마지막 근무일)', esc(String(r.retireDate).replace(/-/g, '.'))) + row('법적 퇴직일(다음 날)', esc(String(r.legalRetire).replace(/-/g, '.'))) + row('계속근로기간', r.serviceDays + '일', esc(r.yLabel)) + '</div>')
       + card('③ 퇴직금', '<div class="jh-hr__pad"><div class="jh-field__hint">적용 1일 평균임금 ' + rtWon(r.appliedDaily) + '원 × 30일 × (' + r.serviceDays + '일 ÷ 365)</div><div class="jh-alert" data-tone="info" role="status" style="font-size:var(--fs-lg)"><strong>예상 퇴직금 ' + rtWon(r.severance) + ' 원</strong></div><div class="jh-field__hint">지급기한: 퇴직 후 14일 이내(' + esc(String(r.payDeadline).replace(/-/g, '.')) + '까지) · 늦으면 연 20% 지연이자(근로기준법 제36조, 시행령 제17조)</div></div>')
+      + retireLeaveHtml(st.rtLeavePay)
       + (r.warns.length ? '<div class="jh-alert" data-tone="warn" role="status">' + r.warns.map((x) => '• ' + esc(x)).join('<br>') + '</div>' : '') + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-t-act="save">✅ 정산 내역 저장</button></div>';
   }
   return '<div class="jh-hr__bar"><a class="jh-btn" data-variant="ghost" href="#/hr/resignreqs">📋 휴직/퇴직 원서 확인</a><span class="jh-field__hint">재직기간 × 평균임금 기준 자동 산정</span></div><div class="jh-hr__split">' + left + '<div class="jh-hr__col">' + right + '</div></div>';

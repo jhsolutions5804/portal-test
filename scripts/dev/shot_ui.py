@@ -64,7 +64,7 @@ def serve():
     with socketserver.TCPServer(('127.0.0.1',PORT),Q) as s: s.serve_forever()
 threading.Thread(target=serve,daemon=True).start()
 routes=sys.argv[1].split(',') ; size=sys.argv[2] if len(sys.argv)>2 else 'pc'
-vw={'pc':(1440,900),'phone':(390,844)}[size]
+vw={'pc':(1440,900),'phone':(390,844),'tall':(1440,2000)}[size]
 with sync_playwright() as p:
     b=p.chromium.launch(); ctx=b.new_context(viewport={'width':vw[0],'height':vw[1]}); ctx.add_init_script('window.__DATA='+json.dumps(D)+';')
     ctx.route('https://www.gstatic.com/firebasejs/**',handler); ctx.route(re.compile(r'https://(?!www\.gstatic).*'),lambda r: r.fulfill(status=200,body='',content_type='text/plain') if r.request.url.startswith('https://') else r.continue_())
