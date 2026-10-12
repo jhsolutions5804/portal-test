@@ -1,19 +1,20 @@
-import { esc } from '../../core/ui.js?v=20261013c';
-import { rtWon, retireRecordsSorted } from './retire.js?v=20261013c';
-import { otSummary, otPerson, otAmount } from './overtime.js?v=20261013c';
-import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, payslipCalc, travelItemAmount } from './payslip.js?v=20261013c';
-import { docTplVer, DOC_TPL_CURRENT } from './frozen-docs.js?v=20261013c';
-import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261013c';
-import { sendLogText } from './sign.js?v=20261013c';
-import { maskedView } from './identity.js?v=20261013c';
-import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261013c';
-import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261013c';
-import { _hzDot } from './leave-promo-docs.js?v=20261013c';
-import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261013c';
-import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261013c';
-import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261013c';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261013c';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261013c';
+import { esc } from '../../core/ui.js?v=20261013d';
+import { rtWon, retireRecordsSorted } from './retire.js?v=20261013d';
+import { otSummary, otPerson, otAmount } from './overtime.js?v=20261013d';
+import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, payslipCalc, travelItemAmount } from './payslip.js?v=20261013d';
+import { docTplVer, DOC_TPL_CURRENT } from './frozen-docs.js?v=20261013d';
+import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261013d';
+import { sendLogText } from './sign.js?v=20261013d';
+import { maskedView } from './identity.js?v=20261013d';
+import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261013d';
+import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261013d';
+import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261013d';
+import { _hzDot } from './leave-promo-docs.js?v=20261013d';
+import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261013d';
+import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261013d';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261013d';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261013d';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261013d';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -454,7 +455,7 @@ export function payslipListHtml(st) {
   const left = card('근로자 목록', '<div class="jh-hr__pad">' + st.pWorkers.map((x) => '<button type="button" class="jh-btn" data-variant="' + (x.id === st.pListWid ? 'primary' : 'secondary') + '" data-p-listworker="' + esc(x.id) + '" style="justify-content:flex-start;width:100%">' + esc((x.name || '') + (x.rank ? ' ' + x.rank : '')) + '</button>').join('') + '</div>');
   const w = st.pWorkers.find((x) => x.id === st.pListWid);
   const right = !w ? '<div class="jh-empty">좌측에서 근로자를 선택하세요</div>' : card(esc(w.name) + ' 급여명세서', st.pSlips.length ? '<div class="jh-hr__pad">' + st.pSlips.map((d) => { const ver = docTplVer(d); return '<div class="jh-hr__post"><div class="jh-hr__bar"><strong>' + esc(d.month) + '</strong>' + chip(ver, ver === DOC_TPL_CURRENT ? 'muted' : 'accent') + '<span class="jh-field__hint">지급일 ' + esc(d.payDate || '-') + '</span></div><div style="font-size:var(--fs-lg);font-weight:800">' + pw(d.netPay) + '원</div><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="secondary" data-p-print="' + esc(d.id) + '">🖨 PDF 출력</button><button type="button" class="jh-btn" data-variant="ghost" data-p-del="' + esc(d.id) + '">삭제</button></div><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-p-mail="' + esc(d.id) + '">📧 메일 발송</button><button type="button" class="jh-btn" data-variant="ghost" data-p-link="' + esc(d.id) + '">🔗 열람 링크·QR</button></div><div class="jh-field__hint">' + esc(sendLogText((st.pLog || {})['payslip:' + d.id])) + '</div>' + (ver !== DOC_TPL_CURRENT ? '<div class="jh-field__hint">저장 당시 양식 ' + esc(ver) + ' 그대로 출력합니다(양식 동결).</div>' : '') + '</div>'; }).join('') + '</div>' : '<div class="jh-empty">' + esc(w.name) + '의 급여명세서가 없습니다.</div>');
-  return '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-p-act="write">✏️ 작성</button></div><div class="jh-hr__split"><div class="jh-hr__col">' + left + '</div><div class="jh-hr__col">' + right + '</div></div>';
+  return (st.pTpl ? tplHistoryHtml('payslip', '급여명세서') : '') + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-p-act="write">✏️ 작성</button><button type="button" class="jh-btn" data-variant="ghost" data-p-act="tpl">📜 양식 이력</button></div><div class="jh-hr__split"><div class="jh-hr__col">' + left + '</div><div class="jh-hr__col">' + right + '</div></div>';
 }
 
 /** 연봉계약서 */
@@ -465,7 +466,7 @@ export function annualHtml(st) {
   const seg = '<div class="jh-segmented" role="group" aria-label="구분"><button type="button" class="jh-segmented__item" data-an-filter="active" aria-pressed="' + (st.aFilter === 'active') + '">🟢 재직자 (' + act + ')</button><button type="button" class="jh-segmented__item" data-an-filter="resigned" aria-pressed="' + (st.aFilter === 'resigned') + '">🔴 퇴사자 (' + res + ')</button></div>';
   const rows = ws.map((w) => { const i = st.aInfo[w.id] || {}; const s = annualStatus(i, st.today); const et = w.empType === 'field' ? chip('현장', 'warn') : w.empType === 'office' ? chip('사무', 'accent') : chip('미지정', 'muted');
     return '<tr class="jh-hr__row" data-an-open="' + esc(w.id) + '"><td>' + esc(w.empNo || '-') + '</td><td><strong>' + esc(w.name || '-') + '</strong></td><td>' + esc(w.dept || '-') + '</td><td>' + esc(w.rank || '-') + '</td><td>' + et + '</td><td>' + esc(anD(i.contractDate)) + '</td><td>' + (i.cnt ? i.cnt + '건' : '-') + '</td><td>' + chip(s.text, s.key === 'expired' ? 'danger' : s.key === 'valid' ? 'accent' : s.key === 'check' ? 'warn' : 'muted') + '</td></tr>'; }).join('');
-  return card('📋 ' + (st.aLabel || '연봉계약서'), '<div class="jh-hr__pad"><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-an-act="new">➕ 신규 작성</button>' + seg + '</div><div class="jh-field__hint">이름을 누르면 계약서 조회·출력을 합니다.</div></div>' + (ws.length ? '<div class="jh-hr__scroll"><table class="jh-hr-table jh-hr-table--click"><thead><tr><th>사원번호</th><th>이름</th><th>소속</th><th>직급</th><th>구분</th><th>최신 계약일</th><th>계약 수</th><th>상태</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<div class="jh-empty">' + (st.aFilter === 'resigned' ? '퇴사 처리된 근로자가 없습니다.' : '등록된 근로자가 없습니다. 근로자 명부에 먼저 등록하세요.') + '</div>'));
+  return (st.aTpl ? tplHistoryHtml(st.aDocType || 'annual', st.aLabel || '연봉계약서') : '') + card('📋 ' + (st.aLabel || '연봉계약서'), '<div class="jh-hr__pad"><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-an-act="new">➕ 신규 작성</button><button type="button" class="jh-btn" data-variant="ghost" data-an-act="tpl">📜 양식 이력</button>' + seg + '</div><div class="jh-field__hint">이름을 누르면 계약서 조회·출력을 합니다.</div></div>' + (ws.length ? '<div class="jh-hr__scroll"><table class="jh-hr-table jh-hr-table--click"><thead><tr><th>사원번호</th><th>이름</th><th>소속</th><th>직급</th><th>구분</th><th>최신 계약일</th><th>계약 수</th><th>상태</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<div class="jh-empty">' + (st.aFilter === 'resigned' ? '퇴사 처리된 근로자가 없습니다.' : '등록된 근로자가 없습니다. 근로자 명부에 먼저 등록하세요.') + '</div>'));
 }
 export function annualFormHtml(st) {
   const f = st.aForm; const sal = st.aSal; const conv = payConv(f); const basis = f.payBasis || 'hourly'; const isOff = f.empType === 'office';
@@ -553,4 +554,28 @@ export function leavePromoHistHtml(st) {
   const w = st.lpWorkers.find((x) => x.id === st.lpHist) || {}; const recs = lpRecsSorted(st.lpRecs[st.lpHist] || []);
   const list = recs.length ? recs.map((r) => '<div class="jh-hr__post"><div class="jh-hr__bar"><strong>' + esc(LP_STAGE[r.stage] || r.stage) + '</strong>' + chip('통보 ' + esc(r.noticeDate), 'muted') + (r.recordOnly ? chip('기록만', 'muted') : '') + '</div><div class="jh-field__hint">연차 기간 ' + _hzDot(r.periodStart) + '~' + _hzDot(r.periodEnd) + ' · 미사용 ' + esc(r.unusedDays) + '일 · ' + esc(r.method || '') + '<br>' + (r.stage === 'p2' ? '지정일: ' + esc((r.designatedDates || []).map(_hzDot).join(', ') || '-') : '회신: ' + esc(LP_REPLY_LABEL[r.replyStatus] || '미기록') + ((r.replyDates && r.replyDates.length) ? ' (' + esc(r.replyDates.map(_hzDot).join(', ')) + ')' : '') + ' · 회신기한 ' + _hzDot(r.replyDue)) + '<br>수령 확인: ' + (r.receivedAt ? _hzDot(r.receivedAt) : '<span style="color:var(--c-danger)">미기록</span>') + '</div><div class="jh-hr__bar">' + (r.recordOnly ? '' : '<button type="button" class="jh-btn" data-variant="secondary" data-lp-reprint="' + esc(r.id) + '">🖨 다시 출력</button>') + (r.stage !== 'p2' ? '<button type="button" class="jh-btn" data-variant="ghost" data-lp-reply="' + esc(r.id) + '">회신 기록</button>' : '') + '<button type="button" class="jh-btn" data-variant="ghost" data-lp-recv="' + esc(r.id) + '">수령 확인 기록</button><button type="button" class="jh-btn" data-variant="ghost" data-lp-del="' + esc(r.id) + '">삭제</button></div></div>').join('') : '<div class="jh-empty">기록된 촉진 이력이 없습니다.</div>';
   return card('📂 ' + esc(w.name || '') + ' · 촉진 이력', '<div class="jh-hr__pad"><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-lp-act="hist-close">닫기</button></div>' + list + '</div>');
+}
+
+/** 인사 홈 */
+export function homeAlertHtml(s) { return s.noAnnual.length ? '<div class="jh-alert" data-tone="warn" role="status"><b>⚠️ 연봉계약서 없는 재직자 ' + s.noAnnual.length + '명</b> — 급여·초과근로 통상임금이 0원으로 계산됩니다 <a class="jh-btn" data-variant="secondary" href="#/hr/annualc">지금 작성</a></div>' : ''; }
+export function homeKpiHtml(s) {
+  const k = (kind, label, val, unit, act, warn) => '<button type="button" class="jh-kpi" data-hm-kpi="' + kind + '"' + (warn ? ' data-warn="true"' : '') + ' style="text-align:left;cursor:pointer"><span class="jh-kpi__label">' + label + '</span><span class="jh-kpi__value">' + val + '<small> ' + unit + '</small></span><span class="jh-kpi__hint">' + act + ' ›</span></button>';
+  return '<div class="jh-kpi-grid">' + k('roster', '재직 인원', s.headcount, '명', '명부 보기') + k('renew', '계약 갱신 필요', s.renew.length, '명 · D-30 이내', '갱신하러 가기', s.renew.length > 0) + k('paymissing', '이번 달 급여명세서', s.payDone, '/ ' + s.headcount + ' 작성', '작성하러 가기', s.payDone < s.headcount) + k('overtime', '이번 달 초과근로수당', s.otHours, 'h · ' + s.otMan + '만원', '현황 보기') + '</div>';
+}
+export function homeListHtml(kind, s) {
+  if (!kind) return ''; const m = HOME_LISTS[kind]; const rows = homeListRows(kind, s);
+  return card(esc(m.title) + ' <span class="jh-field__hint">(' + rows.length + ')</span>', '<div class="jh-hr__pad"><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-hm-close>닫기</button><a class="jh-btn" data-variant="secondary" href="#/hr/' + m.go + '">화면으로 이동 ›</a></div>' + (rows.length ? rows.map((r) => '<div class="jh-hr__post"><div class="jh-hr__bar">' + chip(esc(r.badge), r.tone === 'danger' ? 'danger' : r.tone === 'warn' ? 'warn' : r.tone === 'accent' ? 'accent' : 'muted') + '<strong>' + esc(r.title) + '</strong><span class="jh-field__hint">' + esc(r.meta) + '</span><span class="jh-field__hint" style="margin-left:auto">' + esc(r.right) + '</span></div></div>').join('') : '<div class="jh-empty">' + esc(m.empty) + '</div>') + '</div>');
+}
+export function homeSealHtml(seals, admin) {
+  if (!admin) return '';
+  return card('🖊️ 서명/도장 관리 (관리자)', '<div class="jh-hr__pad">' + SEAL_KEYS.map((k) => { const img = seals[k.key]; return '<div class="jh-hr__bar"><strong>' + esc(k.label) + '</strong>' + (img ? '<img src="' + esc(img) + '" alt="' + esc(k.label) + ' 도장" style="height:40px;max-width:100px;object-fit:contain">' : '<span class="jh-field__hint" style="display:inline-block;min-width:100px;height:40px;border:var(--u-1) dashed var(--c-line-strong);text-align:center;line-height:40px">없음</span>') + '<button type="button" class="jh-btn" data-variant="secondary" data-hm-seal="' + esc(k.key) + '">' + (img ? '교체' : '등록') + '</button>' + (img ? '<button type="button" class="jh-btn" data-variant="ghost" data-hm-sealdel="' + esc(k.key) + '">삭제</button>' : '') + '</div>'; }).join('') + '<div class="jh-field__hint">계약서(갑 서명란)·연차사용촉진 통보서 등에 찍히는 대표 도장입니다. 배경이 투명한 PNG 를 권장하며, 큰 이미지는 자동으로 줄여 저장합니다(300KB 이하).</div></div>');
+}
+export function homeHtml() {
+  return '<div id="hm-alert"></div><div id="hm-kpi"><div class="jh-skeleton" style="height:var(--u-100, 6rem)"></div></div><div id="hm-list"></div>' + card('📅 인사 캘린더', '<div id="hm-cal" class="jh-hr__pad"></div>') + '<div id="hm-seal"></div>';
+}
+
+/** 양식 변경 이력(📜): 저장 서류는 저장 당시 양식으로만 그려진다는 원칙과 버전별 변경 내용 */
+export function tplHistoryHtml(kind, label) {
+  const rows = DOC_TPL_HISTORY.slice().reverse().map((h) => '<div class="jh-hr__post"><div class="jh-hr__bar"><strong>' + esc(h.ver) + (h.ver === DOC_TPL_CURRENT ? ' · 현재 적용중' : '') + '</strong><span class="jh-field__hint">' + (h.from ? esc(String(h.from).slice(0, 16).replace('T', ' ')) + ' 부터' : '최초 양식') + '</span></div><div class="jh-field__hint">' + esc(h[kind] || '-') + '</div></div>').join('');
+  return card('📜 ' + esc(label) + ' 양식 변경 이력', '<div class="jh-hr__pad"><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-tpl-close>닫기</button></div><div class="jh-field__hint">이미 저장된 서류는 저장 당시 양식(아래 버전) 그대로 조회·출력됩니다 — 양식이 바뀌어도 과거에 서명·저장한 서류의 내용은 바뀌지 않습니다.</div>' + rows + '</div>');
 }

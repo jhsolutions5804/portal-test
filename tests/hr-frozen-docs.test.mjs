@@ -47,4 +47,5 @@ const rec = payslipRecord({ name: '김가나', dept: '사업본부', rank: '대�
 const html = M.docHtmlByVer(M.__PS_TPL, rec); const won = (n) => '₩' + Math.round(n).toLocaleString();
 ok(rec.tplVer === M.DOC_TPL_CURRENT && html.includes('급 여 명 세 서') && html.includes('김가나') && html.includes('25002') && html.includes('신한 110-1') && html.includes(won(c.netPay)) && html.includes(won(c.totalPay)) && html.includes(won(c.sal.basic)) && html.includes('3일×₩10,000') && orig('docHtmlByVer(__PS_TPL, __d)', rec) === html, '★ 미리보기와 저장본 출력: 새 화면이 만든 저장 문서(v5)를 원본 양식으로 그려도 값(실지급액·지급계·기본근로수당·여비교통비)이 그대로 나오고 원본과 같은 출력');
 
+ok(M.DOC_TPL_HISTORY.map((h) => h.ver).join() === 'v0,v1,v2,v3,v4,v5,v6' && M.DOC_TPL_HISTORY[0].from === null && M.DOC_TPL_HISTORY[6].ver === M.DOC_TPL_CURRENT && M.DOC_TPL_HISTORY[6].labor.includes('제8조') && M.DOC_TPL_HISTORY.every((h) => typeof h.payslip === 'string' && typeof h.labor === 'string' && typeof h.annual === 'string'), '양식 변경 이력 데이터(📜 화면): v0~v6 각 버전의 급여명세서·근로계약서·연봉계약서 변경 내용, 현재 양식 v6 는 제8조(퇴직금) 정비');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);
