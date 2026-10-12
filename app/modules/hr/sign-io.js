@@ -1,0 +1,82 @@
+/* 원격 서명·열람 링크·메일 발송 — Firestore·메일 서비스를 쓰는 부분(규칙·판단은 sign.js, 시험은 거기서).
+ * 서명 페이지(sign.html)는 별도 공개 페이지이고, 이 파일은 관리자 화면 쪽(링크 만들기·서명 결과 반영·메일 보내기·발송 이력)만 맡는다. */
+import { db, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp, Timestamp, addDoc, updateDoc } from '../../core/firebase.js?v=20261012x';
+import { confirmDialog } from '../../core/dialog.js?v=20261012x';
+import { toast, esc } from '../../core/ui.js?v=20261012x';
+import { configureFrozenDocs, docHtmlByVer, __ANNUAL_TPL, __LABOR_TPL, __PS_TPL } from './frozen-docs.js?v=20261012x';
+import { phoneE164, maskJumin, contractContentHash, buildSignLink, buildViewLink, NO_PHONE_ERROR, syncDecision, isEmail, sendLogEntry, summarizeSendLog, qrUrl, EMAILJS, DOC_LABEL } from './sign.js?v=20261012x';
+export const signBase = () => new URL('../../../sign.html', import.meta.url).href;   // 이 앱이 올라가 있는 곳(테섭·본섭)의 서명 페이지
+const logoUrl = () => new URL('../../theme/assets/jh-logo.png', import.meta.url).href;
+const COLL = { annual: 'annual_contracts', labor: 'labor_contracts' };
+/** 받는 사람 메일 주소: 명부/지원서에 있는 값 → (근로자라면) 연결된 포털 로그인 계정 주소 */
+export async function recipientEmail(kind, id) {
+  if (!id) return { email: '', source: '' };
+  try { const snap = await getDoc(doc(db, kind === 'applicant' ? 'recruit_applicants' : 'workers', id)); if (!snap.exists()) return { email: '', source: '' }; const w = snap.data(); if (w.email) return { email: w.email, source: 'record' };
+    if (kind === 'worker' && w.portalUid) { const ps = await getDoc(doc(db, 'portal_users', w.portalUid)); if (ps.exists() && ps.data().email) return { email: ps.data().email, source: 'login' }; } } catch (e) { /* 주소 없음 */ }
+  return { email: '', source: '' };
+}
+/** 링크 만들기(서명 요청 또는 열람 전용) → 토큰. 인증용 휴대폰 번호: 문서 → 근로자 명부 → 채용 지원서 순 */
+export async function createDocLink({ docType, workerId, contractId, offerId, payslipWid, payslipMonth, workerName, recipient, viewOnly }) {
+  let srcRef, coll = ''; if (docType === 'labor' || docType === 'annual') { coll = COLL[docType]; srcRef = doc(db, coll + '/' + workerId + '/contracts', contractId); } else if (docType === 'offer') srcRef = doc(db, 'salary_offers', offerId); else if (docType === 'payslip') srcRef = doc(db, 'payslips/' + payslipWid + '/months', payslipMonth); else throw new Error('지원하지 않는 문서 종류입니다.');
+  const srcSnap = await getDoc(srcRef); if (!srcSnap.exists()) throw new Error('원본 문서를 찾을 수 없습니다. 먼저 저장해 주세요.'); const src = srcSnap.data();
+  let e164 = phoneE164(src.phone); const tryRec = async (c, id) => { if (e164 || !id) return; try { const s = await getDoc(doc(db, c, id)); if (s.exists()) e164 = phoneE164(s.data().phone); } catch (e) { /* 다음 후보 */ } };
+  await tryRec('workers', workerId || payslipWid || src.workerId || (recipient && recipient.kind === 'worker' ? recipient.id : '')); await tryRec('recruit_applicants', src.applicantId || (recipient && recipient.kind === 'applicant' ? recipient.id : '')); if (!e164) throw new Error(NO_PHONE_ERROR);
+  let seal = {}; try { const cs = await getDoc(doc(db, 'company_settings', 'signatures')); if (cs.exists()) seal = cs.data(); } catch (e) { /* 직인 없이 */ }
+  const ref = doc(collection(db, 'sign_links')); const batch = writeBatch(db);
+  if (viewOnly) {
+    configureFrozenDocs({ signatures: seal, logo: logoUrl() }); const snapDoc = Object.assign({}, src); if ('jumin' in snapDoc) snapDoc.jumin = maskJumin(snapDoc.jumin);
+    const html = docHtmlByVer(docType === 'annual' ? __ANNUAL_TPL : docType === 'payslip' ? __PS_TPL : __LABOR_TPL, snapDoc); const r = buildViewLink({ docType, src, workerName, e164, html }); if (!r.ok) throw new Error(r.error);
+    batch.set(ref, Object.assign({}, r.meta, { createdAt: serverTimestamp(), expiresTs: Timestamp.fromMillis(r.expMs) })); batch.set(doc(db, 'sign_links/' + ref.id + '/secure/payload'), Object.assign({}, r.payload, { createdAt: serverTimestamp() }));
+  } else {
+    const r = buildSignLink({ docType, src, workerName, e164, seal, coll, workerId, contractId, contentHash: coll ? await contractContentHash(src) : '' }); if (!r.ok) throw new Error(r.error);
+    batch.set(ref, Object.assign({}, r.meta, { createdAt: serverTimestamp(), expiresTs: Timestamp.fromMillis(r.expMs) })); batch.set(doc(db, 'sign_links/' + ref.id + '/secure/payload'), Object.assign({}, r.payload, { createdAt: serverTimestamp() }));
+  }
+  await batch.commit(); return ref.id;
+}
+let syncBusy = false;
+/** 근로자가 원격으로 서명한 결과(sign_links/{token}/secure/result)를 계약서 원본에 반영 — 관리자 화면에서만. 링크 이후 계약 내용이 바뀌었으면 자동 반영하지 않고 conflict 로 표시 */
+export async function syncSignedLinks() {
+  const out = { applied: 0, conflict: 0 }; if (syncBusy) return out; syncBusy = true;
+  try {
+    const snap = await getDocs(query(collection(db, 'sign_links'), where('status', '==', 'signed'), where('synced', '==', false)));
+    for (const d of snap.docs) {
+      try {
+        const l = d.data(); if (l.docType !== 'labor' && l.docType !== 'annual') { await updateDoc(d.ref, { synced: true }); continue; }
+        const [pay, res] = await Promise.all([getDoc(doc(db, 'sign_links/' + d.id + '/secure/payload')), getDoc(doc(db, 'sign_links/' + d.id + '/secure/result'))]); if (!pay.exists() || !res.exists()) continue;
+        const ref = pay.data().ref || {}; const cref = doc(db, ref.coll + '/' + ref.workerId + '/contracts', ref.contractId); const cs = await getDoc(cref);
+        const dec = await syncDecision(l, pay.data(), res.data(), cs.exists() ? cs.data() : null); if (!dec) continue; if (dec.patch) { await updateDoc(cref, dec.patch); out.applied++; } if (dec.synced === 'conflict') out.conflict++; await updateDoc(d.ref, { synced: dec.synced });
+      } catch (e) { console.warn('서명 반영 실패:', d.id, e.message); }
+    }
+  } catch (e) { console.warn('서명 반영 조회 실패:', e.message); } finally { syncBusy = false; }
+  return out;
+}
+export async function loadSendLog(wid) { try { const snap = await getDocs(query(collection(db, 'doc_send_log'), where('workerId', '==', wid))); const l = []; snap.forEach((d) => l.push(d.data())); return summarizeSendLog(l); } catch (e) { return {}; } }
+let emailReady = null;
+function ensureEmailJs() {
+  if (emailReady) return emailReady;
+  emailReady = new Promise((resolve, reject) => { const init = () => { try { globalThis.emailjs.init({ publicKey: EMAILJS.publicKey }); resolve(); } catch (e) { reject(e); } }; if (globalThis.emailjs) { init(); return; } const s = document.createElement('script'); s.src = EMAILJS.sdk; s.onload = init; s.onerror = () => { emailReady = null; reject(new Error('EmailJS SDK 로드 실패')); }; document.head.appendChild(s); });
+  return emailReady;
+}
+/** 링크 팝업(QR + 복사) */
+export function showLinkModal(token, name, opts) {
+  const o = opts || {}; const isView = !!o.view; const url = signBase() + '?token=' + token; const old = document.getElementById('jh-link-modal'); if (old) old.remove();
+  const wrap = document.createElement('div'); wrap.id = 'jh-link-modal'; wrap.className = 'jh-dialog'; wrap.setAttribute('role', 'dialog'); wrap.setAttribute('aria-modal', 'true');
+  wrap.innerHTML = '<div class="jh-dialog__backdrop" data-close></div><div class="jh-dialog__panel"><h3 class="jh-dialog__title">' + (isView ? '📄 ' : '🔗 ') + esc(name || '') + '님 ' + (isView ? esc((o.label || '서류') + ' 열람 링크') : '서명 링크') + '</h3><div class="jh-dialog__body" style="text-align:center"><div class="jh-field__hint">' + (isView ? '180일 동안 유효합니다' : '72시간 동안 유효합니다') + '</div><img src="' + esc(qrUrl(url)) + '" alt="QR 코드" width="180" height="180" style="margin:var(--sp-3) auto;display:block"><input class="jh-input" readonly value="' + esc(url) + '" id="jh-link-input"><div class="jh-field__hint">' + (isView ? '이 링크(또는 QR)를 근로자 본인에게 전달하세요. 링크를 열면 등록된 휴대폰 번호로 문자 인증을 거친 뒤 저장된 서류를 열람·인쇄할 수 있습니다. (서명·수정 불가)' : '이 링크(또는 QR)를 근로자 본인에게 전달하세요. 링크를 열면 등록된 휴대폰 번호로 문자 인증을 거친 뒤 서류를 확인하고 서명할 수 있습니다.') + '</div></div><div class="jh-dialog__actions"><button type="button" class="jh-btn" data-variant="secondary" data-copy>링크 복사</button><button type="button" class="jh-btn" data-variant="primary" data-close>닫기</button></div></div>';
+  wrap.addEventListener('click', (ev) => { const t = ev.target; if (!(t instanceof Element)) return; if (t.closest('[data-close]')) wrap.remove(); else if (t.closest('[data-copy]')) { try { navigator.clipboard.writeText(url); toast('링크를 복사했습니다.'); } catch (e) { const i = wrap.querySelector('#jh-link-input'); i.select(); } } }); document.body.appendChild(wrap);
+}
+/** 메일로 링크 보내기: 주소 확인(없으면 입력받아 명부/지원서에 저장) → 링크 생성 → 메일 서비스로 발송 → 발송 이력(원본 문서에는 아무것도 쓰지 않음) */
+export async function sendDocLinkByEmail({ kind, id, toEmail, toName, docLabel, linkParams }) {
+  try {
+    let email = toEmail || ''; let fromRecord = false; let srcNote = ''; const srcLabel = kind === 'applicant' ? '지원서' : '근로자 명부';
+    if (!email && id) { const r = await recipientEmail(kind, id); email = r.email; fromRecord = !!email; srcNote = r.source === 'login' ? ' · 로그인 계정 주소' : ''; }
+    if (!email) { const ask = await confirmDialog({ title: '이메일 주소 입력', body: (toName || '') + '님의 이메일 주소가 ' + srcLabel + '에 등록되어 있지 않습니다. 발송할 이메일 주소를 입력해 주세요.' + (id ? ' (발송 후 ' + srcLabel + '에 함께 저장되어 다음부터 자동 입력됩니다)' : ''), confirmLabel: '다음', reason: { label: '이메일 주소', placeholder: 'name@example.com', required: true } }); if (!ask.ok) return { ok: false, cancelled: true }; email = ask.reason; }
+    email = String(email).trim(); if (!isEmail(email)) { toast('이메일 주소 형식이 올바르지 않습니다.'); return { ok: false }; }
+    if (fromRecord) { const c = await confirmDialog({ title: '확인 링크 발송', body: (toName || '') + '님 (' + email + srcNote + ')에게 ' + docLabel + ' 확인 링크를 이메일로 발송합니다.', confirmLabel: '발송' }); if (!c.ok) return { ok: false, cancelled: true }; }
+    const token = await createDocLink(Object.assign({}, linkParams, { workerName: toName, recipient: { kind, id } })); const link = signBase() + '?token=' + token;
+    await ensureEmailJs(); await globalThis.emailjs.send(EMAILJS.serviceId, EMAILJS.templateId, { to_email: email, to_name: toName || '', doc_label: docLabel, company_name: 'JH솔루션', link });
+    if (!fromRecord && !toEmail && id) { try { await updateDoc(doc(db, kind === 'applicant' ? 'recruit_applicants' : 'workers', id), { email }); } catch (e) { /* 저장 실패해도 발송은 완료 */ } }
+    try { await addDoc(collection(db, 'doc_send_log'), Object.assign(sendLogEntry({ kind, id, docLabel, linkParams, email }), { sentAt: serverTimestamp() })); } catch (e) { /* 이력 기록 실패 */ }
+    toast('✅ ' + email + ' 주소로 ' + docLabel + ' 확인 링크가 발송되었습니다.'); return { ok: true, email };
+  } catch (e) { toast('이메일 발송 오류: ' + ((e && e.message) || e) + ' (메일 서비스 설정이 안 되어 있다면 관리자에게 문의하세요)'); return { ok: false, error: e }; }
+}
+export const labelOf = (docType) => DOC_LABEL[docType] || '서류';
