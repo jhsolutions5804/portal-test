@@ -8,6 +8,7 @@
 | `smoke_ui.mjs` (+ `smoke_register.mjs`, `smoke_hooks.mjs`) | 가짜 브라우저·가짜 저장소로 인사·총무·재무회계 화면을 전부 열고(`--click` 이면 버튼도 눌러) 오류 화면을 찾는다 |
 | `smoke_writes.mjs` (+ `smoke_env.mjs`) | **저장·삭제 동작 점검**: 화면을 실제로 조작(입력→저장→확인 창 승인)하고 가짜 저장소에 "올바른 문서 경로·값이 써졌는가"를 확인(근로자 등록·수정·퇴직, 급여명세서, 퇴직금, 연봉·근로계약서, 초과근로, 연차 등록, 촉진, 급여테이블, 해고예고, 총무 차량, 공고, 인사 변동, 연봉 제안서, 채용 지원자, 인사평가 호봉, 면담, 본인 열람 링크, 총무 임대·자산·갱신 일정 — 24개). `--verbose` 로 쓰기 기록 출력 |
 | `shot_ui.py` | 실제 브라우저(Chromium)로 화면을 띄워 **캡처** — 가짜 로그인·샘플 데이터. 화면 모양(겹침·잘림·글자 깨짐)을 눈으로 확인 |
+| (shot_ui.py 사용) | `ACTIONS` 에 `{"expect_frame":"글자","wait":ms}` 를 넣으면 옛 화면(iframe) 안에 그 글자가 나타나는지 확인 — 새 화면에서 옛 화면을 여는 연결(예: 프로젝트→견적 열기)의 종단 확인 |
 | `build_frozen_docs.mjs` · `build_leave_promo_docs.mjs` | 구포털 동결 양식(근로·연봉계약서·급여명세서 / 연차사용촉진 통보서)을 원본 그대로 옮기는 생성기 |
 
 배포 전 게이트: `tests/*.test.mjs` 전부 + `static_names_check.mjs` + `smoke_ui.mjs` + `smoke_writes.mjs` + `scripts/*.py` 점검. 화면을 바꿨으면 `shot_ui.py` 로 캡처해 눈으로도 확인한다.

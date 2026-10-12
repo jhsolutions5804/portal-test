@@ -188,4 +188,28 @@ await scenario('영업기획 거래처 — 수정(협력사 지정)·삭제: 해
   const u = wrote('set', /^gihoek_companies\/sj$/); check(u.length === 1 && u[0].data.roleVendor === true && u[0].data.roleClient === true && u[0].data.company === '에스제이', '에스제이에 협력사 지정이 병합 저장되고 수신처 역할은 유지: ' + JSON.stringify(u[0] && u[0].data).slice(0, 200));
   WR().length = 0; const r2 = await mountFresh(planMod.mountCompanies); await click(r2, '[data-pc-open="sj"]'); await click(r2, '[data-pc-act="del"]'); await confirmOk(); const del = WR().filter((x) => x.op === 'delete'); check(del.length === 1 && del[0].path === 'gihoek_companies/sj', '삭제는 gihoek_companies/sj 한 건만: ' + JSON.stringify(del.map((x) => x.path)));
 });
+
+await scenario('영업기획 프로젝트 — 등록(연동 자동 생성): PJT관리에 같은 이름의 경량 PJT 가 생기고 프로젝트가 그 현장에 연결됨', async (check) => {
+  const root = await mountFresh(planMod.mountProjects); await click(root, '[data-pj-act="new"]'); const f = { code: 'P5 Ph1 (복합동) PAC', name: 'AHU 2EA 증설', site: 'P3 Ret', client: '삼성전자', contractor: '삼성중공업', partner: '귀뚜라미범양냉방' };
+  for (const [k, v] of Object.entries(f)) await setv(root, '[data-pj-f="' + k + '"]', v); await setv(root, '[data-pj-f="type"]', 'fcu'); check(root.querySelector('[data-pj-f="link"]').value === 'auto', '연동 PJT 기본값은 "새 PJT관리 항목 자동 생성"이어야 함');
+  await click(root, '[data-pj-act="save"]', 300); await sleep(200);
+  const reg = WR().filter((x) => x.op === 'add' && /^pjt_registry\/[^/]+$/.test(x.path)); check(reg.length === 1, 'pjt_registry 에 항목이 1건 만들어져야 함(실제 ' + reg.length + '): ' + JSON.stringify(WR().map((x) => x.op + ' ' + x.path)));
+  if (reg[0]) { const d = reg[0].data; check(d.name === f.code && d.content === f.name && d.site === f.site && d.client === f.client && d.contractor === f.contractor && d.partner === f.partner && d.status === 'active' && d.progress === 0 && d.manday === 0 && !!d.createdAt, 'PJT관리 항목 값(이름=PJT 코드·내용·현장·발주처·시공사·협력사·진행중) 이상: ' + JSON.stringify(d).slice(0, 260)); }
+  const pj = wrote('set', /^gihoek_projects\/pjt_\d+$/); check(pj.length === 1 && pj[0].merge === false, 'gihoek_projects/pjt_<시각> 이 새로 저장되어야 함: ' + JSON.stringify(pj.map((x) => x.path)));
+  if (pj[0] && reg[0]) { const d = pj[0].data; check(d.code === f.code && d.name === f.name && d.type === 'fcu' && d.status === 'run' && d.linkPjt === 'reg_' + reg[0].path.split('/')[1] && d.progProfile === '' && d.mandayCol === '' && !!d.createdAt, '프로젝트가 방금 만든 PJT관리 항목(reg_<번호>)에 연결되어야 함: ' + JSON.stringify(d).slice(0, 260)); }
+});
+await scenario('영업기획 프로젝트 — 수정(이미 연동): 기본정보 6항목이 PJT관리 항목에도 그대로 반영되고 새로 만들지 않음', async (check) => {
+  const root = await mountFresh(planMod.mountProjects); await click(root, '[data-pj-open="pjt_1784786243034"]'); await click(root, '[data-pj-act="edit"]'); check(root.querySelector('[data-pj-f="link"]').value === 'reg_REG1', '수정 폼의 연동이 기존 PJT관리 항목(reg_REG1)이어야 함');
+  await setv(root, '[data-pj-f="site"]', 'H3 17L 신관'); await setv(root, '[data-pj-f="partner"]', ''); await setv(root, '[data-pj-f="client"]', '삼성전자(주)'); await click(root, '[data-pj-act="save"]', 300); await sleep(200);
+  check(WR().filter((x) => x.op === 'add' && /pjt_registry/.test(x.path)).length === 0, '이미 연동된 프로젝트를 수정할 때 PJT관리 항목을 새로 만들면 안 됨');
+  const up = WR().filter((x) => x.op === 'update' && x.path === 'pjt_registry/REG1'); check(up.length === 1 && JSON.stringify(up[0].data) === JSON.stringify({ name: 'H17L Gas RM. 전환공사', content: 'AHU 설치 공사', site: 'H3 17L 신관', client: '삼성전자(주)', contractor: '삼성중공업', partner: '' }), '기본정보 6항목(비운 협력사 포함)이 pjt_registry/REG1 에 반영되어야 함: ' + JSON.stringify(up[0] && up[0].data));
+  const pj = wrote('set', /^gihoek_projects\/pjt_1784786243034$/); check(pj.length === 1 && pj[0].merge === true && pj[0].data.site === 'H3 17L 신관' && pj[0].data.linkPjt === 'reg_REG1' && !('createdAt' in pj[0].data), '프로젝트는 병합 저장(등록일은 그대로)되고 연동은 유지: ' + JSON.stringify(pj[0] && pj[0].data).slice(0, 220));
+});
+await scenario('영업기획 프로젝트 — 삭제와 PJT 코드 필수, 견적·정산서 열기 연결', async (check) => {
+  const root = await mountFresh(planMod.mountProjects); await click(root, '[data-pj-act="new"]'); await click(root, '[data-pj-act="save"]', 200); check(WR().length === 0, 'PJT 코드가 비어 있으면 저장하면 안 됨');
+  const r2 = await mountFresh(planMod.mountProjects); await click(r2, '[data-pj-open="pjt_1782285557624"]'); check(/요약/.test(r2.textContent) && /청구 누계/.test(r2.textContent) && /견적 내역 \(3\)/.test(r2.textContent) && /청구서 \(2\)/.test(r2.textContent) && /지급예정서 \(1\)/.test(r2.textContent), '상세에 요약과 견적 3·청구서 2·지급예정서 1 이 보여야 함');
+  await click(r2, '[data-pj-est="est2"]'); check(sessionStorage.getItem('jh_plan_open') === JSON.stringify({ fn: 'openEst', args: ['est2', 'pjt_1782285557624'] }) && location.hash === '#/plan/est', '견적을 누르면 옛 견적 화면이 그 견적을 열도록 넘겨야 함: ' + sessionStorage.getItem('jh_plan_open') + ' ' + location.hash); sessionStorage.removeItem('jh_plan_open');
+  const r3 = await mountFresh(planMod.mountProjects); await click(r3, '[data-pj-open="pjt_1782285557624"]'); await click(r3, '[data-pj-act="new-est"]'); check(sessionStorage.getItem('jh_plan_open') === JSON.stringify({ fn: 'newEst', args: ['pjt_1782285557624'] }), '+ 견적 작성이 해당 프로젝트로 새 견적 작성을 열어야 함'); sessionStorage.removeItem('jh_plan_open');
+  WR().length = 0; const r4 = await mountFresh(planMod.mountProjects); await click(r4, '[data-pj-filter="all"]'); await click(r4, '[data-pj-open="pjt_1790924923339"]'); await click(r4, '[data-pj-act="del"]'); await confirmOk(); const del = WR().filter((x) => x.op === 'delete'); check(del.length === 1 && del[0].path === 'gihoek_projects/pjt_1790924923339', '삭제는 gihoek_projects/pjt_1790924923339 한 건만(PJT관리 항목·견적·정산서는 남김): ' + JSON.stringify(del.map((x) => x.path)));
+});
 markDone(); console.log('\n' + (failed ? '문제가 있는 저장 동작 ' + failed + '건' : '모든 저장 동작이 올바른 경로·값으로 기록됨')); process.exit(failed ? 1 : 0);

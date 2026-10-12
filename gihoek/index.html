@@ -261,6 +261,7 @@ onAuthStateChanged(auth, async user => {
           const t0 = new URLSearchParams(location.search).get('tab');
           if (t0 && ['home','pjt','comp','est','settle','acct'].includes(t0)) tab(t0);
           else renderPlanHome();
+          jhConsumeOpen();   // 새 프로젝트 화면에서 넘겨 준 "열 문서"가 있으면 연다(포털 안에서 열릴 때의 시작 경로)
         } else {
           await startApp();
         }
@@ -296,7 +297,13 @@ async function startApp(){
   if(params.get('via')==='portal') document.documentElement.classList.add('portal-embed');
   const t0=params.get('tab');
   if(t0 && ['home','pjt','comp','est','settle','acct'].includes(t0)) tab(t0); else renderPlanHome();
+  jhConsumeOpen();
 }
+// 새 영업기획 화면(프로젝트)에서 넘겨 준 "열 문서" 처리 — sessionStorage jh_plan_open = {fn, args}. 데이터가 불러와질 때까지 잠깐 기다렸다가(최대 약 4초) 허용된 함수만 부른다.
+function jhConsumeOpen(){ let o=null; try{ const raw=sessionStorage.getItem('jh_plan_open'); if(!raw) return; sessionStorage.removeItem('jh_plan_open'); o=JSON.parse(raw); }catch(e){ return; }
+  if(!o||!Array.isArray(o.args)||['openEst','newEst','openSettle','newSettle'].indexOf(o.fn)===-1) return; const args=o.args.map(String); let tries=0;
+  const ready=()=>{ if(o.fn==='openEst') return estimates.some(e=>e.id===args[0]); if(o.fn==='openSettle') return settlements.some(x=>x.id===args[0]); return projects.some(x=>x.id===args[0]); };
+  const run=()=>{ if(ready()){ try{ window[o.fn].apply(null,args); }catch(e){ console.warn('[기획] 열기 실패', e); } } else if(++tries<27) setTimeout(run,150); }; run(); }
 
 let curTab='home';
 function tab(t){ curTab=t; detailId=null; estDraft=null; viewEstId=null; pjtForm=false; compForm=false; settleDraft=null; viewSetId=null;
@@ -308,7 +315,7 @@ function tab(t){ curTab=t; detailId=null; estDraft=null; viewEstId=null; pjtForm
   ({home:renderPlanHome, pjt:renderPjt, comp:renderComp, est:renderEst, settle:renderSettle, acct:renderAcct})[t](); window.scrollTo(0,0); }
 function tabSilent(t){ curTab=t; document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on', x.dataset.tab===t)); document.querySelectorAll('.view').forEach(v=>v.classList.remove('on')); $('v-'+t).classList.add('on'); }
 // 포털 사이드바에서 보낸 탭 전환 메시지 수신
-window.addEventListener('message',(e)=>{ const d=e.data; if(d&&d.source==='jh-portal'&&d.action==='goTab'&&['home','pjt','comp','est','settle','acct'].includes(d.key)) tab(d.key); });
+window.addEventListener('message',(e)=>{ const d=e.data; if(d&&d.source==='jh-portal'&&d.action==='goTab'&&['home','pjt','comp','est','settle','acct'].includes(d.key)){ tab(d.key); jhConsumeOpen(); } });
 
 // ── 기획 홈 대시보드 ──
 // ===== 기획 홈 KPI 목록 팝업 (B안 디자인) =====

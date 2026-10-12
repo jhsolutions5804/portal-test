@@ -16,3 +16,29 @@
 
 .jh-plan__line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
 .jh-plan__gtitle .jh-field__hint { display: inline; margin-left: var(--sp-1); }
+
+/* 프로젝트(허브) */
+.jh-plan__filters { display: inline-flex; flex-wrap: wrap; gap: var(--sp-2); }
+.jh-plan__filter { min-height: var(--u-36, 2.25rem); padding: 0 var(--sp-3); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); color: var(--c-ink-2); font: inherit; font-weight: 700; cursor: pointer; }
+.jh-plan__filter[aria-pressed="true"] { background: var(--c-primary); border-color: var(--c-primary); color: var(--c-primary-ink); }
+.jh-plan__q { min-width: var(--u-220); }
+.jh-plan__pjt { display: grid; gap: var(--sp-2); width: 100%; padding: var(--sp-3) var(--sp-4); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); color: var(--c-ink); text-align: left; cursor: pointer; font: inherit; }
+.jh-plan__pjt:hover { background: var(--c-primary-weak); }
+.jh-plan__sum { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-3); }
+.jh-plan__sum--5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.jh-plan__sumcell { display: grid; gap: var(--u-2); min-width: 0; }
+.jh-plan__sumcell strong { font-size: var(--fs-md); overflow-wrap: anywhere; }
+.jh-plan__sumcell strong[data-tone="pos"] { color: var(--c-ok, #16a34a); }
+.jh-plan__sumcell strong[data-tone="neg"] { color: var(--c-danger, #dc2626); }
+.jh-plan__chip[data-tone="blue"] { background: var(--c-primary-weak); color: var(--c-primary-strong, var(--c-primary)); }
+.jh-plan__chip[data-tone="gray"] { background: var(--c-bg); color: var(--c-ink-3); }
+.jh-plan__chip[data-tone="green"] { background: #e8f6ee; color: #16a34a; }
+.jh-plan__chip[data-tone="amber"] { background: #fff4e0; color: #b45309; }
+.jh-plan__two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-4); align-items: start; }
+.jh-plan__col { display: grid; gap: var(--sp-4); min-width: 0; }
+.jh-plan__grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-3); }
+.jh-plan__big { font-size: var(--fs-lg); }
+.jh-plan__center { text-align: center; }
+.jh-plan__pager { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-1); }
+.jh-plan__row[data-void="true"] { opacity: 0.6; }
+@media (max-width: 899px) { .jh-plan__sum, .jh-plan__sum--5 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .jh-plan__two, .jh-plan__grid3 { grid-template-columns: minmax(0, 1fr); } }

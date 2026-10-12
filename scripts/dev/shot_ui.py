@@ -28,6 +28,10 @@ D={
  'hr_calendar_access':{'config':{'emails':['admin@jhsol.kr']}},'evaluations/w1/records':{'v1':{'type':'regular','grade':'A','date':today}},'interviews/w1/records':{'i1':{'date':today,'topic':'면담'}},
  'edoc_overtime':{'e1':{'status':'approved','date':today,'name':'이다라','rank':'사원','workerId':'w2','hours':1,'amount':10000,'rate':10000}},
  'gihoek_companies':{'jheng':{'company':'제이에이치이엔지','ceo':'김영희','roleSupplier':True,'roleClient':True,'contacts':[{'name':'김','tel':'010-1111-2222','email':'a@b.c'}],'tel':'010-3735-7891'},'jhsol':{'company':'제이에이치솔루션','roleSupplier':True,'roleClient':False,'contacts':[]},'daram':{'company':'다람이엔지','roleSupplier':False,'roleClient':True,'ceo':'박대표','bizno':'123-45-67890','contacts':[]},'sj':{'company':'에스제이','roleSupplier':False,'roleClient':True,'roleVendor':True,'contacts':[]},'gtr':{'company':'귀뚜라미범양냉방','roleSupplier':False,'roleClient':True,'contacts':[]}},
+ 'gihoek_projects':{'pjt_1782285557624':{'code':'P4 Ph2 (FAB동) FCU','name':'FCU 183대 설치','site':'P4 Ph2','client':'귀뚜라미범양냉방','type':'fcu','status':'run','linkPjt':'p4ph2','createdAt':{'seconds':1782285557}},'pjt_1784786243034':{'code':'H17L Gas RM. 전환공사','name':'AHU 설치 공사','site':'H3 17L','client':'삼성전자','contractor':'삼성중공업','type':'general','status':'run','linkPjt':'reg_REG1','createdAt':{'seconds':1784786243}},'pjt_1790924923339':{'code':'M14 CTH','name':'CTH 13대 설치','site':'이천 M14','client':'SK하이닉스','type':'fcu','status':'done','linkPjt':'none','createdAt':{'seconds':1790924923}}},
+ 'pjt_registry':{'REG1':{'name':'H17L Gas RM. 전환공사','status':'active'},'REG2':{'name':'다른 현장','status':'active'}},
+ 'gihoek_estimates':{'est1':{'no':'EST-2026-001','title':'FCU 183대 설치 견적','pjtId':'pjt_1782285557624','date':'2026-05-10','status':'active','rev':1,'items':[{'qty':183,'price':100000}],'client':{'company':'다람이엔지'}},'est2':{'no':'EST-2026-001-r2','title':'FCU 183대 설치 견적','pjtId':'pjt_1782285557624','date':'2026-05-20','status':'active','rev':2,'items':[{'qty':183,'price':95000}],'client':{'company':'다람이엔지'}},'est3':{'no':'EST-2026-005','title':'구 견적','pjtId':'pjt_1782285557624','date':'2026-01-10','status':'void','items':[{'amount':1000}]}},
+ 'gihoek_settlements':{'set1':{'no':'2606001','docType':'invoice','status':'done','pjtId':'pjt_1782285557624','amount':5000000,'baseMonth':'2026-05','issueDate':'2026-06-30'},'set2':{'no':'2607001','docType':'invoice','status':'active','pjtId':'pjt_1782285557624','pjtIds':['pjt_1782285557624','pjt_1784786243034'],'amount':2000000,'perPjtAmount':{'pjt_1782285557624':1200000,'pjt_1784786243034':800000},'baseMonth':'2026-06','issueDate':'2026-07-31'},'set3':{'no':'2607002','docType':'payment','status':'done','pjtId':'pjt_1782285557624','amount':3000000,'baseMonth':'2026-06','issueDate':'2026-07-31'}},
  'general_leases':{'g1':{'name':'원희캐슬 B111','kind':'office','deposit':10000000,'rent':800000,'status':'active'}},'general_vehicles':{'v1':{'name':'스타리아','plate':'12가3456','status':'active'}},
 }
 FS = '''
@@ -43,6 +47,12 @@ export const updateDoc=async(r,data)=>{const o=(D[r.coll]||{})[r.id];if(o)Object
 export const deleteField=()=>({__del:1}); export const serverTimestamp=()=>({toDate:()=>new Date(),toMillis:()=>Date.now()}); export const Timestamp={fromMillis:(n)=>({toMillis:()=>n,toDate:()=>new Date(n)})};
 export const writeBatch=()=>({set(){},update(){},delete(){},commit:async()=>{}}); export const onSnapshot=(q,cb)=>{setTimeout(()=>cb(q.__t==='doc'?{exists:()=>false,data:()=>null}:snap(q.path,rows(q.path))),0);return ()=>{};};
 '''
+# 구포털 페이지(iframe 으로 열리는 gihoek 등)가 가져오는 이름도 가짜 모듈에 넣는다
+for _hf in ['gihoek/index.html']:
+    try:
+        for _m in re.finditer(r"import\s*\{([^}]*)\}\s*from\s*'https://[^']*'",open(os.path.join(ROOT,_hf),encoding='utf-8',errors='replace').read(),re.S):
+            NAMES=sorted(set(NAMES)|{_n.strip().split(' as ')[0].strip() for _n in _m.group(1).split(',') if _n.strip()})
+    except Exception: pass
 def dummies(skip): return '\n'.join(f'export const {n} = (...a) => ({{__stub:"{n}"}});' for n in NAMES if n not in skip)
 MODS={
  'firebase-app.js':'export const initializeApp=(c)=>({options:c}); export const getApp=()=>({}); export default {};',
@@ -77,6 +87,8 @@ with sync_playwright() as p:
                 if 'click' in a: pg.click(a['click'],timeout=3000)
                 elif 'select' in a: pg.select_option(a['select'][0],a['select'][1])
                 elif 'fill' in a: pg.fill(a['fill'][0],a['fill'][1])
+                elif 'expect_frame' in a:
+                    pg.wait_for_timeout(a.get('wait',2500)); found=any(a['expect_frame'] in (f.inner_text('body') if f!=pg.main_frame else '') for f in pg.frames if f!=pg.main_frame); print('   iframe 안에 "'+a['expect_frame']+'" 있음:',found); (errs.append('iframe 에 없음: '+a['expect_frame']) if not found else None)
                 pg.wait_for_timeout(a.get('wait',500))
             except Exception as e: errs.append('ACTION '+str(a)[:80]+' → '+str(e)[:100])
         fn=f'/tmp/jh_shot/{size}_'+rt.replace('/','_')+os.environ.get('TAG','')+'.png'; pg.screenshot(path=fn); print(rt,'→',fn,'| 오류',len(errs),(errs[:2] if errs else ''))
