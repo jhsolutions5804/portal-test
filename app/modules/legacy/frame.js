@@ -1,9 +1,9 @@
-import { LEGACY_BASE } from '../../core/config.js?v=20261013f';
-import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261013f';
-import { esc } from '../../core/ui.js?v=20261013f';
-import { attachActivity } from '../../core/idle.js?v=20261013f';
-import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey } from './list.js?v=20261013f';
-import { setSideCurrent } from '../../shared/sidenav.js?v=20261013f';
+import { LEGACY_BASE } from '../../core/config.js?v=20261013g';
+import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261013g';
+import { esc } from '../../core/ui.js?v=20261013g';
+import { attachActivity } from '../../core/idle.js?v=20261013g';
+import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey } from './list.js?v=20261013g';
+import { setSideCurrent } from '../../shared/sidenav.js?v=20261013g';
 
 const base = () => new URL(LEGACY_BASE, location.href).href;
 const NATIVE = new Map();   // '모듈id/구역' → 그 구역을 새 모듈이 그리는 함수(modules/index.js 가 hostNative 로 등록)
@@ -80,7 +80,7 @@ export async function mountLegacy(def, keep, route, ctx) {
   if (nat) {   // 새 모듈이 그리는 구역(총무) — 옛 화면 틀(칩 메뉴)은 그대로 두고 안쪽만 바꾼다. 옛 화면(iframe)은 숨겨서 살려 둔다
     if (fresh || !st.wrap || !keep.contains(st.wrap)) {
       const w = document.createElement('div'); w.className = 'jh-legacy'; w.setAttribute('data-legacy-mod', def.id); if (def.groups) w.setAttribute('data-side', '');
-      w.innerHTML = navHtml(def, itemsFor(def, me, st.dyn), item.key, esc, (route.segs || [])[1] || '') + '<iframe class="jh-legacy__frame" title="' + esc(def.title) + '" data-legacy-frame="' + esc(def.id) + '" src="' + esc(buildUrl(def, resolveItem(def, 'home', me, st.dyn), me, base(), Date.now())) + '" hidden></iframe><div class="jh-legacy__native"></div>';
+      w.innerHTML = navHtml(def, itemsFor(def, me, st.dyn), item.key, esc, (route.segs || [])[1] || '') + '<iframe class="jh-legacy__frame" title="' + esc(def.title) + '" data-legacy-frame="' + esc(def.id) + '" data-lazy="1" hidden></iframe><div class="jh-legacy__native"></div>';
       keep.appendChild(w); st.wrap = w; st.frame = w.querySelector('iframe'); st.native = w.querySelector('.jh-legacy__native');
       st.frame.addEventListener('load', () => { try { attachActivity(st.frame.contentDocument); } catch (e) { /* 같은 출처가 아니면 센 수 없다 */ } });
     }
@@ -91,6 +91,7 @@ export async function mountLegacy(def, keep, route, ctx) {
     if (st.native && st.frame) { st.native.hidden = true; st.frame.hidden = false; }   // 총무에서 인사로 돌아옴
     if (st.key === item.key && (st.tab || '') === tabQ) { highlight(st); canonical(st); return; }
     const was = st.key; st.key = item.key; st.tab = tabQ; highlight(st); canonical(st);
+    if (st.frame.hasAttribute('data-lazy')) { st.frame.removeAttribute('data-lazy'); st.frame.src = buildUrl(def, item, me, base(), Date.now(), tabQ); return; }   // 옛 화면은 처음 열 때 비로소 불러온다(새 화면만 쓰는 동안은 옛 인사 화면과 그 자동 동기화가 돌지 않는다)
     if (!def.tabbed && was === item.key && !tabQ) return;   // 같은 화면, 탭 값만 사라진 경우는 다시 불러오지 않음
     if (def.tabbed) { try { st.frame.contentWindow.postMessage({ source: 'jh-portal', action: 'goTab', key: item.key }, '*'); } catch (e) { st.frame.src = buildUrl(def, item, me, base(), Date.now()); } }
     else st.frame.src = buildUrl(def, item, me, base(), Date.now(), tabQ);
