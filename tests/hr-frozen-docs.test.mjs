@@ -24,16 +24,16 @@ const slips = [
   { month: '2026-09', payDate: '2026-10-31', name: '박마바', travelType: 'longtrip', travelTripCount: 2, travelPerTrip: 50000, basic: 1500000, grossPay: 1500000, netPay: 1400000, weekly: 300000, weeklyQualifyingWeeks: 3, weeklyTotalWeeks: 4, shortHours: 12, shortDeduct: 144000, actualHours: 148, standardHours: 160 },
   {},
 ];
-const vers = ['v0', 'v1', 'v2', 'v3', 'v4', 'v5'];
+const vers = ['v0', 'v1', 'v2', 'v3', 'v4', 'v5', 'v6'];
 let compared = 0, same = 0; const diffs = [];
 const cmp = (label, a, b) => { compared++; if (a === b) same++; else diffs.push(label + ' (원본 ' + a.length + '자 / 모듈 ' + b.length + '자)'); };
 for (const v of vers) for (const [i, d] of contracts.entries()) { const dd = Object.assign({}, d, { tplVer: v }); cmp('근로계약서 ' + v + ' #' + i, orig('docHtmlByVer(__LABOR_TPL, __d)', dd), M.docHtmlByVer(M.__LABOR_TPL, dd)); cmp('연봉계약서 ' + v + ' #' + i, orig('docHtmlByVer(__ANNUAL_TPL, __d)', dd), M.docHtmlByVer(M.__ANNUAL_TPL, dd)); }
 for (const v of vers) for (const [i, d] of slips.entries()) { const dd = Object.assign({}, d, { tplVer: v }); cmp('급여명세서 ' + v + ' #' + i, orig('docHtmlByVer(__PS_TPL, __d)', dd), M.docHtmlByVer(M.__PS_TPL, dd)); }
-ok(compared === 6 * 3 * 2 + 6 * 4 && same === compared && diffs.length === 0, '★ 동결 양식 원본과 모듈의 출력이 글자 하나까지 같음: 근로계약서·연봉계약서 3종 문서 × v0~v5, 급여명세서 4종 × v0~v5 = ' + compared + '건 비교 ' + (diffs.length ? '(다른 것: ' + diffs.slice(0, 3).join('; ') + ')' : ''));
+ok(compared === 7 * 3 * 2 + 7 * 4 && same === compared && diffs.length === 0, '★ 동결 양식 원본과 모듈의 출력이 글자 하나까지 같음: 근로계약서·연봉계약서 3종 문서 × v0~v6, 급여명세서 4종 × v0~v6 = ' + compared + '건 비교 ' + (diffs.length ? '(다른 것: ' + diffs.slice(0, 3).join('; ') + ')' : ''));
 // tplVer 없는 옛 문서: 저장 시각으로 양식 판정
-const eras = ['2026-08-01T00:00:00Z', '2026-08-30T00:00:00+09:00', '2026-09-01T12:00:00+09:00', '2026-09-03T00:00:00+09:00', '2026-09-23T18:30:00+09:00', '2026-09-24T00:00:00+09:00', ''];
+const eras = ['2026-08-01T00:00:00Z', '2026-08-30T00:00:00+09:00', '2026-09-01T12:00:00+09:00', '2026-09-03T00:00:00+09:00', '2026-09-23T18:30:00+09:00', '2026-09-24T00:00:00+09:00', '2026-09-30T23:00:00+09:00', '2026-10-01T18:00:51+09:00', '2026-10-12T00:00:00Z', ''];
 let eraSame = 0; for (const t of eras) { const d = Object.assign({}, contracts[0], { savedAt: t }); const a = [orig('docTplVer(__d)', d), orig('docHtmlByVer(__LABOR_TPL, __d)', d), orig('docHtmlByVer(__ANNUAL_TPL, __d)', d)]; const b = [M.docTplVer(d), M.docHtmlByVer(M.__LABOR_TPL, d), M.docHtmlByVer(M.__ANNUAL_TPL, d)]; if (JSON.stringify(a) === JSON.stringify(b)) eraSame++; }
-ok(eraSame === eras.length && M.docTplVer({ savedAt: '2026-09-02T18:00:00+09:00' }) === 'v3' && M.docTplVer({}) === 'v0' && M.docTplVer({ tplVer: 'v4' }) === 'v4' && M.DOC_TPL_CURRENT === 'v5', '양식 버전 판정(tplVer 없으면 저장 시각 기준)과 그 버전으로 그린 출력이 원본과 같음, 현재 양식 v5');
+ok(eraSame === eras.length && M.docTplVer({ savedAt: '2026-09-02T18:00:00+09:00' }) === 'v3' && M.docTplVer({}) === 'v0' && M.docTplVer({ tplVer: 'v4' }) === 'v4' && M.DOC_TPL_CURRENT === 'v6' && M.docTplVer({ savedAt: '2026-10-05T00:00:00+09:00' }) === 'v6' && M.docTplVer({ savedAt: '2026-09-30T23:00:00+09:00' }) === 'v5', '양식 버전 판정(tplVer 없으면 저장 시각 기준)과 그 버전으로 그린 출력이 원본과 같음, 현재 양식 v6');
 const sv = slips[0]; ok(JSON.stringify(orig('[__psSavedPs(__d), __psSavedC(__d)]', sv)) === JSON.stringify([M.__psSavedPs(sv), M.__psSavedC(sv)]) && orig('docHtmlByVer(__PS_TPL, __d)', Object.assign({}, sv, { tplVer: 'zzz' })) === M.docHtmlByVer(M.__PS_TPL, Object.assign({}, sv, { tplVer: 'zzz' })), '저장본 복원 도우미와 알 수 없는 버전(현재 양식으로 대체)도 원본과 같음');
 // 원본 블록의 연봉 산식(v0·v1)도 같은 결과
 ok([0, 12000, 11000.5].every((h) => ['office', 'field'].every((et) => JSON.stringify(orig('__calcAnnualSalary_v0(' + h + ',"' + et + '")', {})) === JSON.stringify(M.__calcAnnualSalary_v0(h, et)) && JSON.stringify(orig('__calcAnnualSalary_v1(' + h + ',"' + et + '")', {})) === JSON.stringify(M.__calcAnnualSalary_v1(h, et)))), '동결된 옛 연봉 산식(v0 포괄·v1 비포괄)도 원본과 같은 값');

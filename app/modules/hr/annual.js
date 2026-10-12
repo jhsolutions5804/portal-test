@@ -1,10 +1,12 @@
 /* 연봉계약서 — 구포털(hr) 연봉계약서 작성·조회 규칙을 옮겼다(순수 함수, 화면·네트워크 없음).
  * 저장: annual_contracts/{근로자}/contracts/{계약일 YYYYMMDD} — 같은 계약일은 덮어쓴다. 출력은 동결 양식(frozen-docs.js)으로, 저장 당시 양식 버전(tplVer)으로만 그린다.
  * 급여 입력은 시급·월급(월 지급계)·연봉 중 하나로 하고, 월급·연봉은 시급으로 역산해 계산한다(시급 = 월 지급계 ÷ 208.56시간, 소수 그대로 — 연봉계약서·제안서와 같은 산식). */
-import { annualSalary } from './offer.js?v=20261013b';
-import { DOC_TPL_CURRENT } from './frozen-docs.js?v=20261013b';
+import { annualSalary } from './offer.js?v=20261013c';
+import { DOC_TPL_CURRENT } from './frozen-docs.js?v=20261013c';
 export const PAY_BASIS_LABELS = { hourly: '시급', monthly: '월급', annual: '연봉' };
 export const PAY_MONTH_FACTOR = 8 * 5 * 4.345 + 8 * 4.345;
+/** 계약서에 찍는 주민번호는 마스킹 값(앞 6자리-성별 자리******)만 — 전체 번호는 서버에만 있다. 옛 평문(jumin)이 남아 있어도 마스킹해서 쓴다 */
+export const contractJumin = (w) => { if (w && w.juminMasked) return w.juminMasked; const s = String((w && w.jumin) || '').replace(/\D/g, ''); return s.length >= 7 ? s.slice(0, 6) + '-' + s[6] + '******' : ''; };
 const pad = (n) => String(n).padStart(2, '0');
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')) && new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
 export const ymdLocal = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
@@ -20,7 +22,7 @@ export function payValueInput(f, value) { const v = String(value == null ? '' : 
 export function payConv(f) { const basis = f.payBasis || 'hourly'; const h = Number(f.hourly || 0); if (basis === 'hourly' || !h) return null; const sal = annualSalary(h); const actual = basis === 'monthly' ? sal.total : sal.annual; return { basis, hourly: h, actual, diff: Math.round(actual - Number(f.payInput || 0)) }; }
 /** 근로자 선택: 인적사항을 채우고, 급여는 비운 뒤 최근 근로계약서(계약일 기준)의 시급·급여 기준을 이어받는다 */
 export function annualFillFromWorker(f, w, laborContracts) {
-  const o = Object.assign({}, f, { workerId: w.id, name: w.name || '', jumin: w.jumin || '', address: w.address || '', dept: w.dept || '', rank: w.rank || '', empType: w.empType || 'field', hourly: '', payBasis: 'hourly', payInput: '', salary: '', wageType: 'noncomprehensive', fixedOT: '', fixedNight: '' });
+  const o = Object.assign({}, f, { workerId: w.id, name: w.name || '', jumin: contractJumin(w), address: w.address || '', dept: w.dept || '', rank: w.rank || '', empType: w.empType || 'field', hourly: '', payBasis: 'hourly', payInput: '', salary: '', wageType: 'noncomprehensive', fixedOT: '', fixedNight: '' });
   let latest = ''; (laborContracts || []).forEach((dd) => { if ((dd.contractDate || '') > latest) { latest = dd.contractDate || ''; if (dd.hourly) { o.hourly = dd.hourly; const pb = dd.payBasis, pi = Number(dd.payInput || 0); o.payBasis = (pb === 'monthly' || pb === 'annual') && pi ? pb : 'hourly'; o.payInput = o.payBasis === 'hourly' ? '' : pi; } if (dd.salary) o.salary = dd.salary; } }); return o;
 }
 export const annualContractId = (contractDate) => String(contractDate || '').replace(/-/g, '');

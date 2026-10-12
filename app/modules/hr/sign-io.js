@@ -1,10 +1,11 @@
 /* 원격 서명·열람 링크·메일 발송 — Firestore·메일 서비스를 쓰는 부분(규칙·판단은 sign.js, 시험은 거기서).
  * 서명 페이지(sign.html)는 별도 공개 페이지이고, 이 파일은 관리자 화면 쪽(링크 만들기·서명 결과 반영·메일 보내기·발송 이력)만 맡는다. */
-import { db, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp, Timestamp, addDoc, updateDoc } from '../../core/firebase.js?v=20261013b';
-import { confirmDialog } from '../../core/dialog.js?v=20261013b';
-import { toast, esc } from '../../core/ui.js?v=20261013b';
-import { configureFrozenDocs, docHtmlByVer, __ANNUAL_TPL, __LABOR_TPL, __PS_TPL } from './frozen-docs.js?v=20261013b';
-import { phoneE164, maskJumin, contractContentHash, buildSignLink, buildViewLink, NO_PHONE_ERROR, syncDecision, isEmail, sendLogEntry, summarizeSendLog, qrUrl, EMAILJS, DOC_LABEL } from './sign.js?v=20261013b';
+import { db, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp, Timestamp, addDoc, updateDoc } from '../../core/firebase.js?v=20261013c';
+import { confirmDialog } from '../../core/dialog.js?v=20261013c';
+import { toast, esc } from '../../core/ui.js?v=20261013c';
+import { configureFrozenDocs, docHtmlByVer, __ANNUAL_TPL, __LABOR_TPL, __PS_TPL } from './frozen-docs.js?v=20261013c';
+import { IS_TEST } from '../../core/config.js?v=20261013c';
+import { emailjsFor, phoneE164, maskJumin, contractContentHash, buildSignLink, buildViewLink, NO_PHONE_ERROR, syncDecision, isEmail, sendLogEntry, summarizeSendLog, qrUrl, EMAILJS, DOC_LABEL } from './sign.js?v=20261013c';
 export const signBase = () => new URL('../../../sign.html', import.meta.url).href;   // 이 앱이 올라가 있는 곳(테섭·본섭)의 서명 페이지
 const logoUrl = () => new URL('../../theme/assets/jh-logo.png', import.meta.url).href;
 const COLL = { annual: 'annual_contracts', labor: 'labor_contracts' };
@@ -53,7 +54,7 @@ export async function syncSignedLinks() {
 export async function loadSendLog(wid) { try { const snap = await getDocs(query(collection(db, 'doc_send_log'), where('workerId', '==', wid))); const l = []; snap.forEach((d) => l.push(d.data())); return summarizeSendLog(l); } catch (e) { return {}; } }
 let emailReady = null;
 function ensureEmailJs() {
-  if (emailReady) return emailReady;
+  if (emailReady) return emailReady; if (!emailjsFor(IS_TEST)) return Promise.reject(new Error('테섭에서는 메일 발송을 쓰지 않습니다(시험 중 실제 직원에게 메일이 나가지 않도록). 링크·QR 로 확인해 주세요. 본섭에서는 발송됩니다.'));
   emailReady = new Promise((resolve, reject) => { const init = () => { try { globalThis.emailjs.init({ publicKey: EMAILJS.publicKey }); resolve(); } catch (e) { reject(e); } }; if (globalThis.emailjs) { init(); return; } const s = document.createElement('script'); s.src = EMAILJS.sdk; s.onload = init; s.onerror = () => { emailReady = null; reject(new Error('EmailJS SDK 로드 실패')); }; document.head.appendChild(s); });
   return emailReady;
 }

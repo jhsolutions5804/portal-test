@@ -6,10 +6,13 @@ const src = fs.readFileSync(process.argv[2], 'utf8').split('\n');
 const b = src.findIndex((l) => l.includes('FROZEN-DOC-TEMPLATES:BEGIN')), e = src.findIndex((l) => l.includes('FROZEN-DOC-TEMPLATES:END'));
 const blk = src.slice(b, e + 1).join('\n');
 const ast = espree.parse(blk, { ecmaVersion: 2022, range: true, sourceType: 'script' });
-const want = new Set(['DOC_TPL_CURRENT', 'DOC_TPL_ERAS', 'DOC_TPL_HISTORY', 'docTplVer', '__psSavedPs', '__psSavedC', '__calcAnnualSalary_v0', '__calcAnnualSalary_v1', '__annualHtml_v0', '__annualHtml_v1', '__annualHtml_v2', '__annualHtml_v3', '__annualHtml_v4', '__annualHtml_v5', '__laborHtml_v0', '__laborHtml_v2', '__laborHtml_v4', '__laborHtml_v5', '__psHtml_v0', '__psHtml_v1', '__psHtml_v2', '__psHtml_v3', '__psHtml_v4', '__psHtml_v5', '__ANNUAL_TPL', '__LABOR_TPL', '__PS_TPL', 'docHtmlByVer']);
+const want = new Set(['DOC_TPL_CURRENT', 'DOC_TPL_ERAS', 'DOC_TPL_HISTORY', 'docTplVer', '__psSavedPs', '__psSavedC', '__calcAnnualSalary_v0', '__calcAnnualSalary_v1', '__annualHtml_v0', '__annualHtml_v1', '__annualHtml_v2', '__annualHtml_v3', '__annualHtml_v4', '__annualHtml_v5', '__laborHtml_v0', '__laborHtml_v2', '__laborHtml_v4', '__laborHtml_v5', '__psHtml_v0', '__psHtml_v1', '__psHtml_v2', '__psHtml_v3', '__psHtml_v4', '__psHtml_v5', '__laborHtml_v6', '__annualHtml_v6', '__psHtml_v6', '__ANNUAL_TPL', '__LABOR_TPL', '__PS_TPL', 'docHtmlByVer']);
+const optional = new Set(['__laborHtml_v6', '__annualHtml_v6', '__psHtml_v6']);   // 본섭 사본에는 아직 없는 v6(테섭 2026-10-01~) — 있으면 포함
 const parts = []; const got = new Set();
-for (const n of ast.body) { const name = n.type === 'FunctionDeclaration' ? n.id.name : n.type === 'VariableDeclaration' ? n.declarations[0].id.name : ''; if (want.has(name)) { parts.push(blk.slice(n.range[0], n.range[1])); got.add(name); } }
-const missing = [...want].filter((x) => !got.has(x)); if (missing.length) { console.error('빠진 정의:', missing.join(', ')); process.exit(1); }
+const last = new Map(); for (const n of ast.body) { const name = n.type === 'FunctionDeclaration' ? n.id.name : n.type === 'VariableDeclaration' ? n.declarations[0].id.name : ''; if (want.has(name)) last.set(name, blk.slice(n.range[0], n.range[1])); }   // 같은 이름이 두 번 정의돼 있으면 뒤의 것이 실제로 쓰인다(테섭 파일의 급여명세서 양식이 그렇다 — 내용은 같음)
+const order = []; for (const n of ast.body) { const name = n.type === 'FunctionDeclaration' ? n.id.name : n.type === 'VariableDeclaration' ? n.declarations[0].id.name : ''; if (last.has(name) && !order.includes(name)) order.push(name); }
+for (const name of order) { parts.push(last.get(name)); got.add(name); }
+const missing = [...want].filter((x) => !got.has(x) && !optional.has(x)); if (missing.length) { console.error('빠진 정의:', missing.join(', ')); process.exit(1); }
 const line = (re) => src.find((l) => re.test(l));
 const deps = [line(/^const psWonR = /), line(/^const PS_TRAVEL_PER_DAY = /)].join('\n') + '\n' + src.slice(src.findIndex((l) => /^const PS_TRAVEL_TYPE_LABEL = /.test(l)), src.findIndex((l) => /^const PS_TRAVEL_TYPE_LABEL = /.test(l)) + 6).join('\n');
 const out = `/* ⚠️ 자동 생성 파일 — 직접 수정 금지(동결). 생성기: scripts/dev/build_frozen_docs.mjs

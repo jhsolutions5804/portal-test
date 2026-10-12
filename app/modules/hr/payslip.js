@@ -5,12 +5,13 @@
  *  · 야간근로수당 = 22:00~06:00 실근무 × 시급 × 0.5, 주휴수당 = 시급×8×(그 주 소정근로일 개근한 주 수), 휴일근로수당 = 8h 이내 ×1.5 + 초과 ×2.0
  *  · 4대보험: 국민연금 4.5% · 건강보험 3.545% · 장기요양 건강보험료×12.81% · 고용보험 0.9%, 소득세 간이세액 근사 + 지방소득세 10%
  *  · 지급계(4대보험 산정 기준) = 급여 + 상여 + 특별성과급 + 특근수당 + 기술수당, 여비교통비는 실비변상이라 제외하고 실수령에만 더한다 */
-import { annualSalary } from './offer.js?v=20261013b';
-import { monthlyStandardHours } from '../../shared/worktime.js?v=20261013b';
-import { computeLeaveHoursForMonth } from '../../shared/leave-hours.js?v=20261013b';
+import { annualSalary } from './offer.js?v=20261013c';
+import { DOC_TPL_CURRENT } from './frozen-docs.js?v=20261013c';
+import { monthlyStandardHours } from '../../shared/worktime.js?v=20261013c';
+import { computeLeaveHoursForMonth } from '../../shared/leave-hours.js?v=20261013c';
 const pad = (n) => String(n).padStart(2, '0');
 const N = (v) => Number(v || 0) || 0;
-export const PS_DOC_VER = 'v5';
+export const PS_DOC_VER = DOC_TPL_CURRENT;   // 저장 당시 양식 버전 = 현재 양식(동결 양식 모듈)
 export const PS_TRAVEL_PER_DAY = { personal_near: 10000, personal_far: 20000, company_car: 10000 };
 export const PS_LONGTRIP_WEEKLY_MAX = 5;
 export const PS_TRAVEL_LABEL = { personal_near: '🚗 개인차량 · 40km 이내 (1만원/일)', personal_far: '🚗 개인차량 · 40km 초과 (2만원/일)', company_car: '🚙 회사차량 (거리무관 1만원/일)', longtrip: '🚄 지방장기출장 · 왕복KTX 실비' };

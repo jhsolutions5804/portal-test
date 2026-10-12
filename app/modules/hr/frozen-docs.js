@@ -15,13 +15,14 @@ const PS_TRAVEL_TYPE_LABEL = {
 };
 /** 직인(company_settings/signatures 의 문서 내용)과 로고 이미지 주소를 넣는다 */
 export function configureFrozenDocs(o) { const x = o || {}; if (x.signatures !== undefined) _compSignatures = x.signatures || {}; if (x.logo !== undefined) JH_LOGO = x.logo || ''; }
-const DOC_TPL_CURRENT = 'v5';
+const DOC_TPL_CURRENT = 'v6';
 const DOC_TPL_ERAS = [
   { ver:'v1', from:'2026-08-29T16:47:27+09:00' },
   { ver:'v2', from:'2026-09-01T11:33:06+09:00' },
   { ver:'v3', from:'2026-09-02T17:20:58+09:00' },
   { ver:'v4', from:'2026-09-23T18:00:00+09:00' },
   { ver:'v5', from:'2026-09-23T19:00:00+09:00' },
+  { ver:'v6', from:'2026-10-01T18:00:50+09:00' },
 ];
 const DOC_TPL_HISTORY = [
   { ver:'v0', from:null, payslip:'포괄임금제 양식 — 고정연장/고정야간수당 항목', labor:'포괄임금제 양식', annual:'포괄임금제 양식' },
@@ -30,6 +31,7 @@ const DOC_TPL_HISTORY = [
   { ver:'v3', from:'2026-09-02T17:20:58+09:00', payslip:'여비교통비 다중 유형 지원', labor:'포괄/비포괄 선택(wageType) 도입', annual:'포괄/비포괄 선택 도입' },
   { ver:'v4', from:'2026-09-23T18:00:00+09:00', payslip:'내용 변경 없음 (버전 동기화만)', labor:'개인정보 제3자 제공 동의서(별지) 자동 첨부', annual:'내용 변경 없음 (버전 동기화만)' },
   { ver:'v5', from:'2026-09-23T19:00:00+09:00', payslip:'내용 변경 없음 (버전 동기화만)', labor:'파견법 연상 표현("근로자보호 등에 관한 법률" 등) 삭제', annual:'내용 변경 없음 (버전 동기화만)' },
+  { ver:'v6', from:'2026-10-01T18:00:50+09:00', payslip:'내용 변경 없음 (버전 동기화만)', labor:'제8조 퇴직금(4대보험 미가입 시 불지급 삭제·법정 요건 명시)·제12조 손해배상(월급 3배 예정 삭제)·제18조 지급품(급여 임의 공제 삭제) 정비', annual:'내용 변경 없음 (버전 동기화만)' },
 ];
 function docTplVer(d) {
   if (d && d.tplVer) return d.tplVer;
@@ -849,7 +851,7 @@ function __psHtml_v0(d0) {
             <td style="padding:7px 10px;border:1px solid #DDE4EF;font-weight:600;color:#5C6F8A;">입사일</td>
             <td style="padding:7px 10px;border:1px solid #DDE4EF;">${w.hireDate||'-'}</td>
             <td style="padding:7px 10px;border:1px solid #DDE4EF;font-weight:600;color:#5C6F8A;">생년월일</td>
-            <td style="padding:7px 10px;border:1px solid #DDE4EF;">${w.jumin?(w.jumin.slice(0,2)+'.'+w.jumin.slice(2,4)+'.'+w.jumin.slice(4,6)):'-'}</td>
+            <td style="padding:7px 10px;border:1px solid #DDE4EF;">${w.birth6?(w.birth6.slice(0,2)+'.'+w.birth6.slice(2,4)+'.'+w.birth6.slice(4,6)):'-'}</td>
           </tr>
           <tr>
             <td style="padding:7px 10px;border:1px solid #DDE4EF;font-weight:600;color:#5C6F8A;">계좌번호</td>
@@ -998,7 +1000,7 @@ function __psHtml_v1(d0) {
             <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">입사일</td>
             <td style="padding:8px 10px;border:1px solid #E4EAF2;">${w.hireDate||'-'}</td>
             <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">생년월일</td>
-            <td style="padding:8px 10px;border:1px solid #E4EAF2;">${w.jumin?(w.jumin.slice(0,2)+'.'+w.jumin.slice(2,4)+'.'+w.jumin.slice(4,6)):'-'}</td>
+            <td style="padding:8px 10px;border:1px solid #E4EAF2;">${w.birth6?(w.birth6.slice(0,2)+'.'+w.birth6.slice(2,4)+'.'+w.birth6.slice(4,6)):'-'}</td>
           </tr>
           <tr>
             <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">계좌번호</td>
@@ -1154,7 +1156,7 @@ function __psHtml_v2(d0) {
             <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">입사일</td>
             <td style="padding:8px 10px;border:1px solid #E4EAF2;">${w.hireDate||'-'}</td>
             <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">생년월일</td>
-            <td style="padding:8px 10px;border:1px solid #E4EAF2;">${w.jumin?(w.jumin.slice(0,2)+'.'+w.jumin.slice(2,4)+'.'+w.jumin.slice(4,6)):'-'}</td>
+            <td style="padding:8px 10px;border:1px solid #E4EAF2;">${w.birth6?(w.birth6.slice(0,2)+'.'+w.birth6.slice(2,4)+'.'+w.birth6.slice(4,6)):'-'}</td>
           </tr>
           <tr>
             <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">계좌번호</td>
@@ -1312,7 +1314,7 @@ function __psHtml_v3(d0) {
             <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">입사일</td>
             <td style="padding:8px 10px;border:1px solid #E4EAF2;">${w.hireDate||'-'}</td>
             <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">생년월일</td>
-            <td style="padding:8px 10px;border:1px solid #E4EAF2;">${w.jumin?(w.jumin.slice(0,2)+'.'+w.jumin.slice(2,4)+'.'+w.jumin.slice(4,6)):'-'}</td>
+            <td style="padding:8px 10px;border:1px solid #E4EAF2;">${w.birth6?(w.birth6.slice(0,2)+'.'+w.birth6.slice(2,4)+'.'+w.birth6.slice(4,6)):'-'}</td>
           </tr>
           <tr>
             <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">계좌번호</td>
@@ -1475,7 +1477,7 @@ function __psHtml_v4(d0) {
             <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">입사일</td>
             <td style="padding:8px 10px;border:1px solid #E4EAF2;">${w.hireDate||'-'}</td>
             <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">생년월일</td>
-            <td style="padding:8px 10px;border:1px solid #E4EAF2;">${w.jumin?(w.jumin.slice(0,2)+'.'+w.jumin.slice(2,4)+'.'+w.jumin.slice(4,6)):'-'}</td>
+            <td style="padding:8px 10px;border:1px solid #E4EAF2;">${w.birth6?(w.birth6.slice(0,2)+'.'+w.birth6.slice(2,4)+'.'+w.birth6.slice(4,6)):'-'}</td>
           </tr>
           <tr>
             <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">계좌번호</td>
@@ -1639,7 +1641,7 @@ function __psHtml_v5(d0) {
             <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">입사일</td>
             <td style="padding:8px 10px;border:1px solid #E4EAF2;">${w.hireDate||'-'}</td>
             <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">생년월일</td>
-            <td style="padding:8px 10px;border:1px solid #E4EAF2;">${w.jumin?(w.jumin.slice(0,2)+'.'+w.jumin.slice(2,4)+'.'+w.jumin.slice(4,6)):'-'}</td>
+            <td style="padding:8px 10px;border:1px solid #E4EAF2;">${w.birth6?(w.birth6.slice(0,2)+'.'+w.birth6.slice(2,4)+'.'+w.birth6.slice(4,6)):'-'}</td>
           </tr>
           <tr>
             <td style="padding:8px 10px;border:1px solid #E4EAF2;font-weight:700;color:#5C6F8A;white-space:nowrap;">계좌번호</td>
@@ -1734,8 +1736,111 @@ function __psHtml_v5(d0) {
       </div>
     </div></body></html>`);
 }
-const __ANNUAL_TPL = { v0:__annualHtml_v0, v1:__annualHtml_v1, v2:__annualHtml_v2, v3:__annualHtml_v3, v4:__annualHtml_v4, v5:__annualHtml_v5 };
-const __LABOR_TPL  = { v0:__laborHtml_v0,  v1:__laborHtml_v0,  v2:__laborHtml_v2,  v3:__laborHtml_v2,  v4:__laborHtml_v4,  v5:__laborHtml_v5 };
-const __PS_TPL     = { v0:__psHtml_v0,     v1:__psHtml_v1,     v2:__psHtml_v2,     v3:__psHtml_v3,     v4:__psHtml_v4,     v5:__psHtml_v5 };
+function __laborHtml_v6(f0) {
+  // v5: 근로자보호 등에 관한 법률·사용사업주 등 파견법 연상 문구 정리 — 2026-09-23 추가
+  // v4: 개인정보 제3자 제공 동의서(별지) 근로계약서 뒤에 첨부 — 2026-09-23 추가
+  // v6: 제8조(퇴직금 2항 삭제·법정 요건 명시)·제12조(손해배상액 예정 삭제)·제18조(급여 임의 공제 삭제) 법정 요건 정비 — 2026-10-01 추가
+  const f=f0;
+  const fmtDp=s=>{if(!s)return'____년 __월 __일';const d=new Date(s);return`${d.getFullYear()}년 ${String(d.getMonth()+1).padStart(2,'0')}월 ${String(d.getDate()).padStart(2,'0')}일`;};
+  const ul=(v,w)=>`<span style="display:inline-block;min-width:${w||80}px;border-bottom:1px solid #333;text-align:center;padding:0 2px;">${v||''}</span>`;
+  const signImg=f.signData?`<img src="${f.signData}" style="width:100px;height:40px;object-fit:contain;opacity:0.9;vertical-align:middle;"/>`:`<span style="display:inline-block;width:100px;height:40px;border:1px dashed #ccc;vertical-align:middle;"></span>`;
+  return (`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>근로계약서 - ${f.name}</title>
+    <style>body{margin:0;font-family:'Malgun Gothic',Arial,sans-serif;background:#888;display:flex;flex-direction:column;align-items:center;padding:20px;}.a4{width:210mm;min-height:297mm;background:#fff;padding:20mm 22mm;box-shadow:0 4px 24px rgba(0,0,0,.2);font-size:10pt;line-height:1.9;color:#1A2540;}@media print{body{background:#fff;padding:0;}.toolbar{display:none;}.a4{box-shadow:none;padding:15mm 20mm;width:100%;}}</style>
+    </head><body>
+    <div class="toolbar" style="margin-bottom:12px;display:flex;gap:8px;">
+      <button onclick="window.close()" style="padding:8px 16px;background:#fff;border:1px solid #DDE4EF;border-radius:8px;cursor:pointer;">← 닫기</button>
+      <button onclick="window.print()" style="padding:8px 16px;background:#1D5BA6;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;">🖨 인쇄/PDF</button>
+    </div>
+    <div class="a4">
+      <div style="text-align:center;margin-bottom:28px;"><div style="font-size:20pt;font-weight:800;letter-spacing:6px;">근 로 계 약 서</div><div style="width:60px;height:2px;background:#333;margin:8px auto 0;"></div></div>
+      <p style="margin-bottom:12px;">제이에이치솔루션 (이하"갑"이라 한다.)과 근로자 ${ul(f.name,80)} (이하 "을"이라 한다.)는 다음과 같이 PJT 계약직 근로계약을 체결한다.</p>
+      <p style="font-weight:700;margin:14px 0 5px;">제1조 【의 무】</p><p style="margin-bottom:8px;">"을"은 "갑"의 정규직원으로서 "갑"의 사규에 따른 제규정 및 취업규칙에 정해진 근로조건을 승인하고 근로를 성실히 이행할 의무를 진다.</p>
+      <p style="font-weight:700;margin:14px 0 5px;">제2조 【근로기간】</p><p style="margin-bottom:4px;">1. 근로계약기간 : ${fmtDp(f.startDate)} ~ ${fmtDp(f.endDate)}</p><p style="margin-bottom:8px;">2. PJT계약근로기간이 만료되고 계속 근무의 필요가 있을 때에는 당사자간의 합의 하에 재계약 할 수 있다.</p>
+      <p style="font-weight:700;margin:14px 0 5px;">제3조 【근무장소 및 대상업무】</p><p style="margin-bottom:4px;">1. "을"은 "갑"이 제공하는 근무장소에서 근무하며, "을"은 이에 따른다.</p><p style="margin-bottom:4px;">&nbsp;&nbsp;1) 소속 : ${ul(f.dept,180)} &nbsp; 직급 : ${ul(f.rank,60)}</p><p style="margin-bottom:8px;">&nbsp;&nbsp;2) 담당 업무 : ${ul(f.job,160)}</p>
+      <p style="font-weight:700;margin:14px 0 5px;">제4조 【임 금】</p><p style="margin-bottom:4px;">- 계약연봉 : ${f.salary?`일금 ${Number(f.salary).toLocaleString()}원`:ul('',180)}</p><p style="margin-bottom:4px;">- 세부 지급 사항은 연봉계약서를 기준으로 한다. 임금 지급일 : 익월 말일</p><p style="margin-bottom:8px;">- 여비교통비(실비변상)와 국가기술자격증 보유에 따른 기술수당(월 5만원)은 임금과 별도로 지급하며, 세부 지급 기준은 연봉계약서 제2조의2에 따른다.</p>
+      <p style="font-weight:700;margin:14px 0 5px;">제5조 【사회보험】</p><p style="margin-bottom:8px;">☑ 고용보험 &nbsp; ☑ 산재보험 &nbsp; ☑ 국민연금 &nbsp; ☑ 건강보험</p>
+      <p style="font-weight:700;margin:12px 0 4px;">제6조 【근로시간】</p>
+      <p style="margin-bottom:6px;">근로기준법 제50조에 따라 주 40시간 근로를 원칙으로 한다. 다만 현장 여건에 따라 근로기준법 제53조에 의거하여 최대 12시간까지 연장하여 근로할 수 있다. (식사 및 휴게시간은 근로시간에서 제외)</p>
+      <p style="font-weight:700;margin:12px 0 4px;">제7조 【휴게시간】</p>
+      <p style="margin-bottom:6px;">4시간 근무마다 30분 휴식, 중식 1시간 의무지급을 원칙으로 한다. 다만, 현장 상황에 따라 유연하게 적용한다.</p>
+      <p style="font-weight:700;margin:12px 0 4px;">제8조 【퇴직금】</p>
+      <p style="margin-bottom:6px;">"갑"은 "을"의 계속근로기간이 1년 이상이고 4주간을 평균하여 1주간의 소정근로시간이 15시간 이상인 경우, 근로자퇴직급여 보장법에 따라 퇴직금(퇴직 전 3개월 평균임금의 30일분 이상)을 지급한다.</p>
+      <p style="font-weight:700;margin:12px 0 4px;">제9조 【휴일 및 휴가】</p>
+      <p style="margin-bottom:4px;">"을"의 휴일과 휴가는 근로자계약의 내용에 따라 결정되며, 회사는 연차휴가와 관련하여 근로자대표와의 합의에 의하여 특정일을 연차휴가로 대체할 수 있다.</p>
+      <p style="margin-bottom:4px;">- 계속 근로 1년 이상, 해당 기간 동안 80% 이상이 될 경우 15일의 유급휴가가 부여된다.</p>
+      <p style="margin-bottom:6px;">- "갑"은 계속하여 근로한 기간이 1년 미만인 근로자에게 1개월 개근 시 1일의 유급휴가를 부여한다.</p>
+      <p style="font-weight:700;margin:12px 0 4px;">제10조 【지휘감독 및 근로조건】</p>
+      <p style="margin-bottom:6px;">"을"은 "갑"의 소속 단기계약근로자로서 사업주의 지휘감독을 받으며, "갑"의 취업규칙 및 근무지의 제규정을 준수하여야 한다.</p>
+      <p style="font-weight:700;margin:12px 0 4px;">제11조 【귀책사유】</p>
+      <p style="margin-bottom:2px;">1. 직무상의 의무를 위반하거나 근무에 태만하였을 때</p>
+      <p style="margin-bottom:2px;">2. "갑"의 이미지를 크게 손상하거나 재산상의 피해를 주었을 때</p>
+      <p style="margin-bottom:2px;">3. 비밀누설 및 폭행, 파업 등 규율과 질서를 문란케 하였을 때</p>
+      <p style="margin-bottom:2px;">4. 취업기간 중 형사상 유죄판결을 받았을 때</p>
+      <p style="margin-bottom:2px;">5. 채용조건에 구비된 각종문서가 위조 또는 변조, 허위사실 등이 기재되었을 때</p>
+      <p style="margin-bottom:2px;">6. "갑"의 허가 없이 3일 이상 결근하였을 때</p>
+      <p style="margin-bottom:2px;">7. 무단지각, 조퇴, 외출을 월 3회 이상 하였을 때</p>
+      <p style="margin-bottom:6px;">8. 계약기간 내에 동종업체로 직접 계약 및 이직하였을 때</p>
+      <p style="font-weight:700;margin:12px 0 4px;">제12조 【손해배상】</p>
+      <p style="margin-bottom:6px;">"을"의 고의 또는 중대한 과실로 "갑"에게 손해를 끼친 경우 "갑"은 실제 손해를 입증하여 민사상 배상을 청구할 수 있다. 손해액을 미리 정하거나 임금에서 일방적으로 공제하지 아니한다.</p>
+      <p style="font-weight:700;margin:12px 0 4px;">제13조 【재정보증】</p>
+      <p style="margin-bottom:4px;">- "을"은 1명의 재정보증인을 설정 신고하거나 "갑"이 요구하는 금액의 신용보증보험에 가입하여야 한다.</p>
+      <p style="margin-bottom:6px;">- "갑"은 "을"에게 신용보증보험을 요구할 수 있으며, "을"은 회사의 요구 시 1주일 이내에 제출하여야 한다.</p>
+      <p style="font-weight:700;margin:12px 0 4px;">제14조 【안전 및 보건에 관한 사항】</p>
+      <p style="margin-bottom:4px;">1. "갑"은 근로자의 안전 및 보건에 관하여 관계 법령이 정하는 바에 따라 필요한 조치를 강구한다.</p>
+      <p style="margin-bottom:4px;">2. "을"은 신규 입사 시 즉시 채용신체검사서를 제출하여야 하며, 정기 건강진단을 관련법령에 의거 실시하고 "을"은 이에 반드시 응해야 한다.</p>
+      <p style="margin-bottom:6px;">3. "을"은 제반 법규 및 "갑"이 정한 제반 안전 교육사항 및 안전수칙을 준수하여야 한다.</p>
+      <p style="font-weight:700;margin:12px 0 4px;">제15조 【취업 전 고지】</p>
+      <p style="margin-bottom:6px;">"을"은 본 근로계약의 내용을 취업 전 충분히 숙지하고 이를 성실히 이행한다.</p>
+      <p style="font-weight:700;margin:12px 0 4px;">제16조 【근로조건의 결정】</p>
+      <p style="margin-bottom:6px;">"을"은 본 근로계약의 내용에 이의를 제기하지 아니하며 "을"의 근로조건은 "갑"의 취업규칙 및 근로자계약 범위 내에서 결정되는 것에 동의한다.</p>
+      <p style="font-weight:700;margin:12px 0 4px;">제17조 【계약의 해지】</p>
+      <p style="margin-bottom:4px;">다음 각 호에 해당하는 경우 갑과 을의 근로계약은 해지된다.</p>
+      <p style="margin-bottom:4px;">1. "갑"과 "을"의 상호 합의 하에 근무일을 지정하여 해당 날짜까지 근무 후 계약 종료</p>
+      <p style="margin-bottom:4px;">2. "을"의 계약종료 의사를 "갑"이 인지한 시점으로부터 당기 후의 1기가 지난 뒤 해지의 효력이 발생</p>
+      <p style="margin-bottom:6px;">3. 제11조 귀책사유 발생 시 "갑"은 일방적으로 "을"과의 근로계약을 해지할 수 있다.</p>
+      <p style="font-weight:700;margin:12px 0 4px;">제18조 【지급품의 반납】</p>
+      <p style="margin-bottom:6px;">퇴직 시 "을"은 "갑"으로부터 지급받은 장비, 피복, 기타 이에 준하는 지급품을 반납하여야 한다. 반납하지 않은 경우 "갑"은 반환 또는 실비 배상을 청구할 수 있으며, 임금에서 임의로 공제하지 아니한다.</p>
+      <p style="font-weight:700;margin:12px 0 4px;">제19조 【근로기준법의 적용】</p>
+      <p style="margin-bottom:6px;">본 계약에 명시되지 않은 사항은 회사의 취업규칙 및 근로기준법의 해석에 준하여 따른다.</p>
+      <p style="font-weight:700;margin:12px 0 4px;">제20조 【비밀유지】</p>
+      <p style="margin-bottom:4px;">1. "을"은 자신의 계약내용을 관계인에게 누설하지 않는다.</p>
+      <p style="margin-bottom:4px;">2. "을"은 근무지에서 발생하는 인사문제를 관리자에게 보고하여야 하며 조치 받을 수 있도록 한다.</p>
+      <p style="margin-bottom:6px;">3. "을"은 "갑"에서 발생하는 문제를 외부에 누설하지 않는다.</p>
+      <p style="font-weight:700;margin:12px 0 4px;">제21조 【계약의 유지】</p>
+      <p style="margin-bottom:12px;">"갑"과 "을"은 제2조의 계약기간을 원칙으로 하며 "을"은 이에 동의한다. 위 계약내용이 당사자의 자유로운 의사에 의하여 원만히 체결되었음을 상호 확인하고 각 1통씩 보관한다.</p>
+      <p style="font-weight:600;margin:20px 0 16px;">계약일자 : ${fmtDp(f.contractDate)}</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:16px;">
+        <div style="border-top:1px solid #333;padding-top:12px;"><p style="font-weight:700;margin-bottom:6px;">(갑)</p><p>사업체명 : 제이에이치솔루션</p><p style="display:flex;align-items:center;gap:4px;">대&nbsp;&nbsp;&nbsp;&nbsp;표 : 김 종 화&nbsp;${_compSignatures&&_compSignatures.kjh?`<img src="${_compSignatures.kjh}" style="height:34px;max-width:80px;object-fit:contain;vertical-align:middle;opacity:0.9;">`:`<span style="display:inline-block;width:56px;height:30px;border:1px dashed #ccc;vertical-align:middle;text-align:center;line-height:30px;font-size:10px;color:#aaa;">(인)</span>`}</p><p>사업자번호 : 383-09-02847</p></div>
+        <div style="border-top:1px solid #333;padding-top:12px;"><p style="font-weight:700;margin-bottom:6px;">(을)</p><p>주&nbsp;&nbsp;소 : ${ul(f.address,140)}</p><p>이&nbsp;&nbsp;름 : ${ul(f.name,80)}</p><p>주민등록번호 : ${ul(f.jumin,110)}</p><div style="margin-top:8px;display:flex;align-items:center;gap:8px;"><span>(인)</span>${signImg}</div></div>
+      </div>
+    </div>
+    <div class="a4" style="page-break-before:always;">
+      <div style="text-align:center;margin-bottom:28px;"><div style="font-size:18pt;font-weight:800;letter-spacing:4px;">개인정보 제3자 제공 동의서</div><div style="width:60px;height:2px;background:#333;margin:8px auto 0;"></div></div>
+      <p style="margin-bottom:16px;font-size:9.5pt;color:#556;">본 동의서는 근로계약서의 첨부서류로서, 근로계약 체결 시 근로계약서와 함께 작성합니다.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:10pt;margin-bottom:16px;">
+        <tr><td style="border:1px solid #333;padding:8px 10px;width:150px;background:#F5F7FA;font-weight:700;">제공받는 자</td><td style="border:1px solid #333;padding:8px 10px;">회사가 "을"을 배치하는 모든 현장의 발주처 및 관계 기관</td></tr>
+        <tr><td style="border:1px solid #333;padding:8px 10px;background:#F5F7FA;font-weight:700;">제공 목적</td><td style="border:1px solid #333;padding:8px 10px;">계약 이행에 따른 근로자 명부·자격증 확인, 출입증 발급 등 현장 출입·관리</td></tr>
+        <tr><td style="border:1px solid #333;padding:8px 10px;background:#F5F7FA;font-weight:700;">제공 항목</td><td style="border:1px solid #333;padding:8px 10px;">성명, 생년월일, 소속, 자격증 사항, 그 밖에 발주처가 계약상 요구하는 최소한의 정보</td></tr>
+        <tr><td style="border:1px solid #333;padding:8px 10px;background:#F5F7FA;font-weight:700;">보유·이용 기간</td><td style="border:1px solid #333;padding:8px 10px;">본 근로계약기간(제2조) 동안 : ${fmtDp(f.startDate)} ~ ${fmtDp(f.endDate)}</td></tr>
+      </table>
+      <p style="margin-bottom:14px;font-size:9.5pt;">귀하는 개인정보의 제3자 제공에 동의하지 않을 권리가 있습니다. 다만 위 정보는 발주처 현장 출입 및 계약 이행에 필요한 최소한의 정보이므로, 동의하지 않을 경우 현장 배치가 제한될 수 있습니다.</p>
+      <p style="margin-bottom:6px;">☐ 위 개인정보의 제3자 제공에 동의합니다.</p>
+      <p style="margin-bottom:24px;">☐ 위 개인정보의 제3자 제공에 동의하지 않습니다.</p>
+      <p style="text-align:right;margin-bottom:8px;">동의일자 : ${fmtDp(f.contractDate)}</p>
+      <p style="text-align:right;">근로자(정보주체) 성명 : ${ul(f.name,80)} &nbsp;&nbsp;(인) ${signImg}</p>
+    </div>
+    </body></html>`);
+}
+function __annualHtml_v6(f0){
+  // v6: 내용 변경 없음(근로계약서 법정 요건 정비에 따른 버전 동기화) — v5 동결본에 위임
+  return __annualHtml_v5(f0);
+}
+function __psHtml_v6(d0){
+  // v6: 내용 변경 없음(근로계약서 법정 요건 정비에 따른 버전 동기화) — v5 동결본에 위임
+  return __psHtml_v5(d0);
+}
+const __ANNUAL_TPL = { v0:__annualHtml_v0, v1:__annualHtml_v1, v2:__annualHtml_v2, v3:__annualHtml_v3, v4:__annualHtml_v4, v5:__annualHtml_v5, v6:__annualHtml_v6 };
+const __LABOR_TPL  = { v0:__laborHtml_v0,  v1:__laborHtml_v0,  v2:__laborHtml_v2,  v3:__laborHtml_v2,  v4:__laborHtml_v4,  v5:__laborHtml_v5, v6:__laborHtml_v6 };
+const __PS_TPL     = { v0:__psHtml_v0,     v1:__psHtml_v1,     v2:__psHtml_v2,     v3:__psHtml_v3,     v4:__psHtml_v4,     v5:__psHtml_v5, v6:__psHtml_v6 };
 function docHtmlByVer(map, d) { return (map[docTplVer(d)] || map[DOC_TPL_CURRENT])(d); }
 export { DOC_TPL_CURRENT, DOC_TPL_ERAS, DOC_TPL_HISTORY, docTplVer, __psSavedPs, __psSavedC, __calcAnnualSalary_v0, __calcAnnualSalary_v1, __ANNUAL_TPL, __LABOR_TPL, __PS_TPL, docHtmlByVer };

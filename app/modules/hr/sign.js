@@ -4,6 +4,8 @@
  *   서명 결과는 secure/result 에 기록되고, 관리자 화면이 계약서 원본에 반영한다(syncDecision). 서명 후 내용이 바뀌었는지 확인하려고 링크 생성 때 계약 내용 해시를 같이 저장한다.
  * · 열람 전용 링크는 저장 당시 양식(tplVer)으로 그린 HTML 만 담는다(양식 동결 원칙). 서명 링크 유효 72시간, 열람 링크 180일. */
 export const SIGN_TTL_MS = 72 * 3600 * 1000, VIEW_TTL_MS = 180 * 24 * 3600 * 1000, MAX_PAYLOAD = 900000;
+/** 메일 발송은 본섭에서만 — 테섭 구포털도 메일 설정이 자리표시 값이라 꺼져 있었다(시험 중 실제 직원에게 메일이 나가지 않게). 테섭에서는 링크·QR 로 확인한다 */
+export const emailjsFor = (isTest) => (isTest ? null : EMAILJS);
 export const EMAILJS = { serviceId: 'service_7iova18', templateId: 'template_jto208l', publicKey: 'VxJuVh6ZVpDoIurYp', sdk: 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js' };   // 공개 키(브라우저용)
 export const DOC_LABEL = { annual: '연봉계약서', labor: '근로계약서', payslip: '급여명세서', offer: '연봉제안서' };
 /** 휴대폰 번호 → +82 국제 형식(010·011·016~019 만), 올바르지 않으면 빈 문자열 */

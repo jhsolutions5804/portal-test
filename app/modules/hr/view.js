@@ -1,18 +1,19 @@
-import { esc } from '../../core/ui.js?v=20261013b';
-import { rtWon, retireRecordsSorted } from './retire.js?v=20261013b';
-import { otSummary, otPerson, otAmount } from './overtime.js?v=20261013b';
-import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, payslipCalc, travelItemAmount } from './payslip.js?v=20261013b';
-import { docTplVer, DOC_TPL_CURRENT } from './frozen-docs.js?v=20261013b';
-import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261013b';
-import { sendLogText } from './sign.js?v=20261013b';
-import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261013b';
-import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261013b';
-import { _hzDot } from './leave-promo-docs.js?v=20261013b';
-import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261013b';
-import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261013b';
-import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261013b';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261013b';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261013b';
+import { esc } from '../../core/ui.js?v=20261013c';
+import { rtWon, retireRecordsSorted } from './retire.js?v=20261013c';
+import { otSummary, otPerson, otAmount } from './overtime.js?v=20261013c';
+import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, payslipCalc, travelItemAmount } from './payslip.js?v=20261013c';
+import { docTplVer, DOC_TPL_CURRENT } from './frozen-docs.js?v=20261013c';
+import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261013c';
+import { sendLogText } from './sign.js?v=20261013c';
+import { maskedView } from './identity.js?v=20261013c';
+import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261013c';
+import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261013c';
+import { _hzDot } from './leave-promo-docs.js?v=20261013c';
+import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261013c';
+import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261013c';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261013c';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261013c';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261013c';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -24,7 +25,7 @@ export function tableHtml(st) {
   if (!list.length) return '<div class="jh-empty">' + (st.view === 'resigned' ? '퇴사 처리된 근로자가 없습니다.' : '조건에 맞는 근로자가 없습니다.') + '</div>';
   const rows = list.map((w) => {
     const c = st.contracts[w.id] || {}; const lb = contractState(c.laborEnd, c.laborN, st.today); const an = contractState(c.annualEnd, c.annualN, st.today); const s = stepNow(w);
-    return '<tr class="jh-hr__row" data-w-open="' + esc(w.id) + '"><td>' + esc(w.empNo || '-') + '</td><td><strong>' + esc(w.name || '-') + '</strong>' + (isResigned(w) ? ' ' + chip('퇴직 ' + (w.resignDate || ''), 'danger') : '') + '</td><td>' + esc(w.dept || '-') + '</td><td>' + esc(w.rank || '-') + '</td><td class="num">' + (s == null ? '-' : s + '호봉') + '</td><td>' + empBadge(w.empType) + '</td><td>' + esc(birthText(w.jumin)) + '</td><td>' + esc(w.phone || '-') + '</td><td>' + chip(lb.text + (lb.end ? ' ' + fmtD(lb.end) : ''), lb.tone) + '</td><td>' + chip(an.text + (an.end ? ' ' + fmtD(an.end) : ''), an.tone) + '</td><td>' + (w.portalUid ? chip('연동', 'accent') : chip('미연동', 'muted')) + '</td></tr>';
+    return '<tr class="jh-hr__row" data-w-open="' + esc(w.id) + '"><td>' + esc(w.empNo || '-') + '</td><td><strong>' + esc(w.name || '-') + '</strong>' + (isResigned(w) ? ' ' + chip('퇴직 ' + (w.resignDate || ''), 'danger') : '') + '</td><td>' + esc(w.dept || '-') + '</td><td>' + esc(w.rank || '-') + '</td><td class="num">' + (s == null ? '-' : s + '호봉') + '</td><td>' + empBadge(w.empType) + '</td><td>' + esc(birthText(w.birth6)) + '</td><td>' + esc(w.phone || '-') + '</td><td>' + chip(lb.text + (lb.end ? ' ' + fmtD(lb.end) : ''), lb.tone) + '</td><td>' + chip(an.text + (an.end ? ' ' + fmtD(an.end) : ''), an.tone) + '</td><td>' + (w.portalUid ? chip('연동', 'accent') : chip('미연동', 'muted')) + '</td></tr>';
   }).join('');
   return '<div class="jh-hr__scroll"><table class="jh-hr-table jh-hr-table--click"><thead><tr><th>사원번호</th><th>이름</th><th>소속</th><th>직급</th><th class="num">호봉</th><th>구분</th><th>생년월일</th><th>휴대폰</th><th>근로계약</th><th>연봉계약</th><th>포털</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
 }
@@ -49,7 +50,7 @@ export function detailHtml(st) {
     + '<div class="jh-field"><label class="jh-field__label">직원 구분</label>' + sel('empType', EMP_TYPES, f.empType) + '</div><div class="jh-field"><label class="jh-field__label">담당업무</label>' + inp('job', f.job) + '</div>'
     + '<div class="jh-field"><label class="jh-field__label">호봉</label>' + inp('step', f.step, 'inputmode="numeric"') + '<div class="jh-field__hint">직접 고치지 않으면 자동 계산값(' + (stepNow(w) == null ? '-' : stepNow(w) + '호봉') + ')을 씁니다.</div></div><div class="jh-field"><label class="jh-field__label">휴대폰</label>' + inp('phone', f.phone) + '</div>'
     + '<div class="jh-field"><label class="jh-field__label">이메일</label>' + inp('email', f.email) + '</div><div class="jh-field"><label class="jh-field__label">주소</label>' + inp('address', f.address) + '</div>'
-    + '<div class="jh-field"><label class="jh-field__label">계좌번호</label>' + inp('bankAccount', f.bankAccount) + '<div class="jh-field__hint">저장하지 않으면 그대로 유지됩니다. 현재: ' + esc(maskAccount(w.bankAccount) || '없음') + '</div></div><div class="jh-field"><label class="jh-field__label">주민등록번호</label><input class="jh-input" value="' + esc(maskJumin(w.jumin) || '없음') + '" disabled><div class="jh-field__hint">바꾸려면 아래에 새 번호를 입력하세요.</div></div><div class="jh-field"><label class="jh-field__label">주민등록번호 변경(선택)</label>' + inp('jumin', f.jumin, 'placeholder="000000-0000000" autocomplete="off"') + '</div></div>'
+    + '<div class="jh-field"><label class="jh-field__label">계좌번호</label>' + inp('bankAccount', f.bankAccount) + '<div class="jh-field__hint">저장하지 않으면 그대로 유지됩니다. 현재: ' + esc(maskAccount(w.bankAccount) || '없음') + '</div></div><div class="jh-field"><label class="jh-field__label">주민등록번호</label><div class="jh-hr__bar"><strong id="w-ji-view">' + esc(maskedView(w.juminMasked) || '없음') + '</strong>' + (w.juminMasked ? '<button type="button" class="jh-btn" data-variant="ghost" data-w-ji="reveal">보기(사유 선택)</button>' : '') + '</div><div class="jh-field__hint">전체 번호는 서버에 암호화되어 있고, 보면 열람 기록(누가·언제·사유)이 3년간 남습니다. 30초 뒤 다시 가려집니다.</div></div><div class="jh-field"><label class="jh-field__label">주민등록번호 ' + (w.juminMasked ? '변경' : '입력') + '(선택)</label>' + inp('jumin', f.jumin, 'placeholder="000000-0000000" autocomplete="off" maxlength="14"') + '<div class="jh-field__hint">13자리를 입력하면 저장 뒤 서버에 암호화해 보관합니다. 비워 두면 변경 없음.</div></div></div>'
     + '<div class="jh-field"><label class="jh-field__label">직급·소속 변경 사유(바꾼 경우에만 이력에 함께 저장)</label><textarea class="jh-textarea" data-w-f="reason" rows="2" placeholder="선택 입력">' + esc(f.reason || '') + '</textarea></div>';
   const hist = st.sel.history ? '<h4 class="jh-hr__sub">직급·소속 변경 이력</h4>' + (st.sel.history.length ? '<ul class="jh-hr__hist">' + st.sel.history.map((h) => '<li><span class="jh-field__hint">' + esc(h.date) + '</span> ' + esc(historyText(h)) + (h.reason ? '<div class="jh-field__hint">' + esc(h.reason) + '</div>' : '') + '</li>').join('') + '</ul>' : '<div class="jh-field__hint">변경 이력이 없습니다.</div>') : '';
   const manage = '<h4 class="jh-hr__sub">관리</h4><div class="jh-hr__bar">' + (res ? '<button type="button" class="jh-btn" data-variant="secondary" data-w-act="unresign">재직 상태로 복구</button>' : '<input class="jh-input" type="date" data-w-f="resignDate" value="' + esc(f.resignDate || st.today) + '" aria-label="퇴직일" style="max-width:11rem"><button type="button" class="jh-btn" data-variant="secondary" data-w-act="resign">퇴직 처리</button>') + (w.portalUid ? '' : '<button type="button" class="jh-btn" data-variant="secondary" data-w-act="link">포털 계정 연동</button>') + '<button type="button" class="jh-btn" data-variant="ghost" data-w-act="delete">명부에서 삭제</button></div><div class="jh-field__hint">퇴직 처리는 명부에서 지우지 않고 "퇴직"으로 표시합니다. 삭제하면 명부에서만 지워지고 계약서 자료는 남습니다.</div>';

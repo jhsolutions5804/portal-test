@@ -1,14 +1,19 @@
 /* 인사 — 근로자 명부(새 화면). 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 데이터: workers/{id}(일반 정보) + worker_private/{id}(주민번호·계좌·주소·서명, 읽을 때 합쳐 쓰고 저장할 때 다시 가른다)
  *         labor_contracts/{id}/contracts · annual_contracts/{id}/contracts(endDate), workers/{id}/history(직급·부서 변경 이력) */
-import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261013b';
-export const WP_FIELDS = ['jumin', 'bankAccount', 'address', 'signData'];   // worker_private 에 따로 두는 필드
+import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261013c';
+export const WP_FIELDS = ['bankAccount', 'address', 'signData'];   // worker_private 에 따로 두는 필드 — 주민번호(jumin)는 더 이상 여기 두지 않는다(테섭 2026-10-08): 서버 함수(identityAct)가 암호문으로 보관하고 마스킹 값(juminMasked)만 worker_private 에 남는다
+export const WP_NEVER_WRITE = ['jumin', 'juminMasked', 'juminUpdatedAt', 'birth6'];   // 화면에서 합쳐 만든 값·서버 전용 값은 문서에 쓰지 않는다
 export const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')) && new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
 const num = (v) => (v === '' || v == null ? null : Number(v));
 
 /** 저장 문서를 일반 / 개인정보 두 갈래로 가른다 */
-export function splitWorker(data) { const pub = {}, priv = {}; Object.keys(data || {}).forEach((k) => { (WP_FIELDS.includes(k) ? priv : pub)[k] = data[k]; }); return { pub, priv }; }
+export function splitWorker(data) { const pub = {}, priv = {}; Object.keys(data || {}).forEach((k) => { if (WP_NEVER_WRITE.includes(k)) return; (WP_FIELDS.includes(k) ? priv : pub)[k] = data[k]; }); return { pub, priv }; }
+/** 일반 정보 + 개인정보 문서를 합친 모양. 주민번호 전체는 없고(마스킹 값 juminMasked 와 생년월일 6자리 birth6 만), 이전 전 평문이 남아 있어도 화면 메모리에서는 버린다 */
+export function mergeWorker(pub, priv) { const x = Object.assign({}, pub, priv || {}); const src = x.juminMasked || x.jumin || ''; x.birth6 = String(src).replace(/\D/g, '').slice(0, 6); delete x.jumin; return x; }
+/** 같은 사람인지 비교용: 생년월일 6자리 + 성별 자리(마스킹 값 앞 7자리) — 전체 번호는 서버에만 있어 비교하지 않는다 */
+export const juminHead = (w) => String((w && (w.juminMasked || w.jumin)) || '').replace(/\D/g, '').slice(0, 7);
 
 /** 호봉: 저장된 기준(step·stepYear)이 있으면 그 해부터 매년 +1, 없으면 입사일로 추정 — 입사한 해는 1호봉, 다음 해부터 1~3분기 입사 2호봉·4분기 입사 1호봉으로 시작해 매년 1/1 +1 (구포털 hr 2.24.2 규칙 그대로) */
 export function stepSeed(hireDate) { if (!isDate(hireDate)) return null; const y = Number(hireDate.slice(0, 4)); const q = Math.ceil(Number(hireDate.slice(5, 7)) / 3); return { baseYear: y + 1, baseStep: q === 4 ? 1 : 2 }; }
@@ -58,13 +63,13 @@ export function buildEdit(orig, form, opt) {
   const rankChanged = String(o.rank || '').trim() !== '' && rank !== (o.rank || ''); const deptChanged = String(o.dept || '').trim() !== '' && dept !== (o.dept || '');
   const stepCur = stepNow(o, opt && opt.year); const stepEdited = stepIn !== null && stepIn !== stepCur;
   const pub = { name, empNo, hireDate: hire, email, phone, empType, rank, dept, job: T(f.job, 60, '담당업무') }; const priv = { address: T(f.address, 120, '주소'), bankAccount: T(f.bankAccount, 60, '계좌번호') };
-  const jIn = String(f.jumin || '').replace(/[^0-9]/g, ''); if (jIn) { if (jIn.length !== 13) errors.push('주민등록번호 13자리를 입력해 주세요(바꾸지 않으려면 비워 두세요).'); else if (jIn !== String(o.jumin || '').replace(/[^0-9]/g, '')) { const dupJ = ((opt && opt.others) || []).find((x) => x.id !== o.id && x.name === name && String(x.jumin || '').replace(/[^0-9]/g, '') === jIn); if (dupJ) errors.push('같은 이름·주민번호의 근로자가 이미 있습니다.'); else priv.jumin = fmtJumin(jIn); } }
+  let newJumin = ''; const jIn = String(f.jumin || '').replace(/[^0-9]/g, ''); if (jIn) { if (jIn.length !== 13) errors.push('주민등록번호 13자리를 입력해 주세요(바꾸지 않으려면 비워 두세요).'); else { const dupJ = ((opt && opt.others) || []).find((x) => x.id !== o.id && x.name === name && juminHead(x) === jIn.slice(0, 7)); if (dupJ) errors.push('같은 이름·주민번호의 근로자가 이미 있습니다.'); else newJumin = jIn; } }   // 번호는 문서에 쓰지 않고 저장 뒤 서버 함수로 암호화 보관(newJumin)
   if (errors.length) return { ok: false, errors };
   const year = (opt && opt.year) || Number(kstToday().slice(0, 4));
   if (stepEdited) { pub.step = stepIn; pub.stepYear = year; } else if (rankChanged) { pub.step = 1; pub.stepYear = year; }
   const history = rankChanged || deptChanged ? { type: rankChanged && deptChanged ? 'both' : rankChanged ? 'rank' : 'dept', fromRank: o.rank || '', toRank: rank, fromDept: o.dept || '', toDept: dept, reason: String((f.reason || '')).trim().slice(0, 300) } : null;
   const portal = o.portalUid ? { uid: o.portalUid, fields: { name, rank, dept, ...(empNo !== (o.empNo || '') ? { empNo } : {}) } } : null;
-  return { ok: true, errors: [], pub, priv, history, portal, stepReset: !stepEdited && rankChanged, empNoChanged: empNo !== (o.empNo || '') };
+  return { ok: true, errors: [], pub, priv, newJumin, history, portal, stepReset: !stepEdited && rankChanged, empNoChanged: empNo !== (o.empNo || '') };
 }
 /** 변경 이력 줄 글 */
 export function historyText(h) { const out = []; if ((h.fromRank || '') !== (h.toRank || '')) out.push('직급 ' + (h.fromRank || '-') + ' → ' + (h.toRank || '-')); if ((h.fromDept || '') !== (h.toDept || '')) out.push('소속 ' + (h.fromDept || '-') + ' → ' + (h.toDept || '-')); return out.join(' · '); }
@@ -89,10 +94,10 @@ export function buildNew(form, list, opt) {
   const email = T(f.email, 80, '이메일'); if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('이메일 형식이 올바르지 않습니다.');
   const phone = fmtPhone(f.phone); if (String(f.phone || '').trim() && phone.replace(/-/g, '').length < 9) errors.push('휴대폰 번호가 올바르지 않습니다.');
   const empType = String(f.empType || ''); if (!EMP_TYPES.some((x) => x[0] === empType)) errors.push('직원 구분이 올바르지 않습니다.');
-  const dup = (list || []).find((w) => w.name === name && jDigits(w.jumin) === jd && jd.length === 13); if (dup) errors.push('이미 명부에 등록된 근로자입니다(사번 ' + (dup.empNo || '-') + (isResigned(dup) ? ', 퇴사 처리됨 — 재직 복구를 쓰세요' : '') + ').');
+  const dup = (list || []).find((w) => w.name === name && jd.length === 13 && juminHead(w) === jd.slice(0, 7)); /* 같은 이름 + 생년월일·성별 자리가 같으면 중복(전체 번호는 서버에만 있어 비교하지 않음) */ if (dup) errors.push('이미 명부에 등록된 근로자입니다(사번 ' + (dup.empNo || '-') + (isResigned(dup) ? ', 퇴사 처리됨 — 재직 복구를 쓰세요' : '') + ').');
   if (errors.length) return { ok: false, errors };
   const empNo = nextEmpNo(list, hire);
-  return { ok: true, errors: [], empNo, pub: { name, phone, email, dept: T(f.dept, 40, '소속'), rank: T(f.rank, 20, '직급'), job: T(f.job, 60, '담당업무'), empType, hireDate: hire, empNo, registeredAt: (opt && opt.nowIso) || new Date().toISOString() }, priv: { jumin: fmtJumin(f.jumin), address: T(f.address, 120, '주소'), bankAccount: T(f.bankAccount, 60, '계좌번호') } };
+  return { ok: true, errors: [], empNo, jumin: jd, pub: { name, phone, email, dept: T(f.dept, 40, '소속'), rank: T(f.rank, 20, '직급'), job: T(f.job, 60, '담당업무'), empType, hireDate: hire, empNo, registeredAt: (opt && opt.nowIso) || new Date().toISOString() }, priv: { address: T(f.address, 120, '주소'), bankAccount: T(f.bankAccount, 60, '계좌번호') } };   // jumin(숫자 13자리)은 문서에 쓰지 않고 호출한 쪽이 서버 함수로 암호화 저장
 }
 export function buildResign(date) { const d = String(date || '').trim(); if (!isDate(d)) return { ok: false, error: '퇴직일 형식이 올바르지 않습니다. 예: 2026-09-16' }; return { ok: true, patch: { status: 'resigned', resignDate: d } }; }
 /** 포털 계정 연동 후보: 이름이 같은 승인 계정이 정확히 한 명일 때만 */
@@ -153,7 +158,9 @@ export function filterEvents(events, f) {
 /* ───────── 공고 관리 — job_postings(홈페이지 recruit-jobs·recruit 가 open 공고만 읽어 보여 준다) ─────────
  * 경력·고용형태·근무일시는 선택지로 고르고, 저장할 때 홈페이지 표시 문장으로 조합해 career/empType/workTime 에 저장(선택값은 opt 에 보관) — 구포털과 같은 규칙.
  * 학력은 공고에 요건으로 두지 않는다(대표님 결정 2026-10-12 — 학력 차별 소지 검토). 지원서에서는 학력 사항을 그대로 받는다. education 키는 홈페이지 호환을 위해 빈 값으로만 남긴다. */
-export const JOB_HOME_BASE = 'https://jhsolutions5804.github.io';
+export const JOB_HOME_BASE = 'https://jhsolutions5804.github.io';   // 본섭 홈페이지(채용 소개·공고·지원 폼) 본주소
+export const JOB_HOME_BASE_TEST = 'https://jhsolutions5804.github.io/portal-test/recruit-test';   // 테섭: 테섭 DB 에 연결된 사본 페이지(테섭에서 낸 공고·지원서가 본섭 홈페이지로 새지 않게)
+export const jobHomeBase = (isTest) => (isTest ? JOB_HOME_BASE_TEST : JOB_HOME_BASE);
 export const JOB_PAGES = [{ file: 'careers.html', icon: '🌐', name: '채용 소개 (랜딩)', desc: '인재상·EVP 소개 첫 화면' }, { file: 'recruit-jobs.html', icon: '📋', name: '채용 공고', desc: '진행 중인 공고 목록' }, { file: 'recruit.html', icon: '✍️', name: '지원 폼', desc: '지원서 입력 화면' }];
 export const JOB_STATUS = { open: '게시 중', closed: '마감', draft: '임시저장' };
 export const JOB_OPT = { career: ['경력무관', '신입', '경력', '신입·경력'], emp: ['정규직', '계약직', '일용직', '인턴', '프리랜서', '아르바이트'], days: ['주 5일 (월~금)', '주 6일 (월~토)', '주 4일', '주 3일', '주 2일', '교대근무', '격주 근무', '요일 협의'], probation: ['1', '2', '3', '6'], contract: ['1', '2', '3', '6', '9', '12'] };
