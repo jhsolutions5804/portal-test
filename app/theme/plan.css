@@ -65,3 +65,17 @@
 .jh-plan__acct { width: var(--u-140, 8.75rem); display: inline-block; }
 .jh-plan__pjtpick, .jh-plan__estpick { padding: var(--sp-2) var(--sp-3); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); }
 .jh-plan__pjtpick[data-on="true"], .jh-plan__estpick[data-on="true"] { border-color: var(--c-primary); background: var(--c-primary-weak); }
+
+/* 영업기획 홈 */
+.jh-plan__kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-3); }
+.jh-plan__kpi { display: grid; gap: var(--u-2); padding: var(--sp-3) var(--sp-4); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); color: var(--c-ink); text-align: left; cursor: pointer; font: inherit; }
+.jh-plan__kpi strong { font-size: var(--fs-lg); overflow-wrap: anywhere; } .jh-plan__kpi strong[data-tone="neg"] { color: var(--c-danger, #dc2626); } .jh-plan__kpi strong[data-tone="pos"] { color: var(--c-ok, #16a34a); }
+.jh-plan__kpi[aria-pressed="true"] { border-color: var(--c-primary); background: var(--c-primary-weak); }
+.jh-plan__links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+.jh-plan__link { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); color: var(--c-ink); text-decoration: none; }
+.jh-plan__link:hover, a.jh-plan__row:hover { background: var(--c-primary-weak); }
+.jh-plan__ic { font-size: var(--fs-lg); }
+a.jh-plan__row { text-decoration: none; }
+.jh-plan__chip[data-tone="red"] { background: #fdecec; color: #b91c1c; }
+@media (max-width: 899px) { .jh-plan__kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .jh-plan__links { grid-template-columns: minmax(0, 1fr); } }
+.jh-plan__kpi strong .jh-field__hint { display: inline; }

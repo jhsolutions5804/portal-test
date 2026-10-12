@@ -1,23 +1,24 @@
-import { db, collection, getDocs, getDoc, query, where, documentId, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, writeBatch } from '../../core/firebase.js?v=20261013y';
-import { toast } from '../../core/ui.js?v=20261013y';
-import { confirmDialog } from '../../core/dialog.js?v=20261013y';
-import { compNew, compToForm, compBuild, fmtTel, fmtTelBlur, kstToday } from './logic.js?v=20261013y';
-import { companiesListHtml, companyFormHtml } from './view.js?v=20261013y';
-import { projNew, projToForm, projectBuild } from './projects.js?v=20261013y';
-import { projectsListHtml, projectDetailHtml, projectFormHtml } from './projects-view.js?v=20261013y';
-import { uiState, pushHash } from './ui.js?v=20261013y';
-import { itemAmt, blankItem, itemSetQty, itemSetPrice, itemSetAmount, applySupplyEdit, draftTotals, newDraft, draftFromEstimate, buildEstimate, closePatch, reopenPatch, estGroup, sortEstimates } from './estimates.js?v=20261013y';
-import { estimatesListHtml, estimateDetailHtml, estimateFormHtml, itemRowHtml } from './estimates-view.js?v=20261013y';
-import { estDocHtml } from './estimate-doc.js?v=20261013y';
-import { sortProjects } from './projects.js?v=20261013y';
-import { linkPlan, donePatch, undonePatch, voidPatch, doneConfirm, undoneConfirm, doneToast, projectBalance, acctMonthInput } from './settlements.js?v=20261013y';
-import { settlementsListHtml, settlementDetailHtml } from './settlements-view.js?v=20261013y';
-import { settleDocPage } from './settlement-doc.js?v=20261013y';
-import { teamLaborHtml } from './teamlabor-view.js?v=20261013y';
-import { shiftMonth, monthRange, rosterEntry, aggregateMandays, parseTeamRate, ratePatch, rateSaveMessage, FAB_LABEL, SUP_LABEL } from './teamlabor.js?v=20261013y';
-import { issueFormHtml, qtyBlocksHtml, totalsHtml, manualRowHtml, mandayRowsHtml, mandayInfoHtml, progressBlocksHtml } from './issue-view.js?v=20261013y';
-import { progressDayKeys, accumulateChecks, mergePastProgress, applyProgress as applyProgressChecks, setProgressZone, toggleProgressDeposit, setProgressBill } from './progress.js?v=20261013y';
-import { progressProfile, mandaySource, monthDays, sumMandayDays, duplicateSources, applyMandayFetch, setMandayInput, setMandayForPjt, setRateForPjtValue, setMandayBaseRate, newIssueDraft, togglePjt, toggleEst, setQty, setQtyAmount, setSupplyOverride, setVatOverride, resetTotals, buildSettlement, itemSetQty as isItemQty, itemSetPrice as isItemPrice, itemSetAmount as isItemAmount, blankItem as isBlank } from './issue.js?v=20261013y';
+import { db, collection, getDocs, getDoc, query, where, documentId, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, writeBatch } from '../../core/firebase.js?v=20261013z';
+import { toast } from '../../core/ui.js?v=20261013z';
+import { confirmDialog } from '../../core/dialog.js?v=20261013z';
+import { compNew, compToForm, compBuild, fmtTel, fmtTelBlur, kstToday } from './logic.js?v=20261013z';
+import { companiesListHtml, companyFormHtml } from './view.js?v=20261013z';
+import { projNew, projToForm, projectBuild } from './projects.js?v=20261013z';
+import { projectsListHtml, projectDetailHtml, projectFormHtml } from './projects-view.js?v=20261013z';
+import { uiState, pushHash } from './ui.js?v=20261013z';
+import { itemAmt, blankItem, itemSetQty, itemSetPrice, itemSetAmount, applySupplyEdit, draftTotals, newDraft, draftFromEstimate, buildEstimate, closePatch, reopenPatch, estGroup, sortEstimates } from './estimates.js?v=20261013z';
+import { estimatesListHtml, estimateDetailHtml, estimateFormHtml, itemRowHtml } from './estimates-view.js?v=20261013z';
+import { estDocHtml } from './estimate-doc.js?v=20261013z';
+import { sortProjects } from './projects.js?v=20261013z';
+import { linkPlan, donePatch, undonePatch, voidPatch, doneConfirm, undoneConfirm, doneToast, projectBalance, acctMonthInput } from './settlements.js?v=20261013z';
+import { settlementsListHtml, settlementDetailHtml } from './settlements-view.js?v=20261013z';
+import { settleDocPage } from './settlement-doc.js?v=20261013z';
+import { teamLaborHtml } from './teamlabor-view.js?v=20261013z';
+import { homeHtml } from './home-view.js?v=20261013z';
+import { shiftMonth, monthRange, rosterEntry, aggregateMandays, parseTeamRate, ratePatch, rateSaveMessage, FAB_LABEL, SUP_LABEL } from './teamlabor.js?v=20261013z';
+import { issueFormHtml, qtyBlocksHtml, totalsHtml, manualRowHtml, mandayRowsHtml, mandayInfoHtml, progressBlocksHtml } from './issue-view.js?v=20261013z';
+import { progressDayKeys, accumulateChecks, mergePastProgress, applyProgress as applyProgressChecks, setProgressZone, toggleProgressDeposit, setProgressBill } from './progress.js?v=20261013z';
+import { progressProfile, mandaySource, monthDays, sumMandayDays, duplicateSources, applyMandayFetch, setMandayInput, setMandayForPjt, setRateForPjtValue, setMandayBaseRate, newIssueDraft, togglePjt, toggleEst, setQty, setQtyAmount, setSupplyOverride, setVatOverride, resetTotals, buildSettlement, itemSetQty as isItemQty, itemSetPrice as isItemPrice, itemSetAmount as isItemAmount, blankItem as isBlank } from './issue.js?v=20261013z';
 
 /** 영업기획(플랫폼 기본 모듈): 구포털 기획(gihoek)을 탭 하나씩 새 화면으로 옮기는 중. 관리자 전용 — 데이터는 gihoek_* 컬렉션 그대로.
  *  사이드바는 옛 화면 틀(legacy/frame.js)이 그린다 — 이 모듈은 틀 안의 구역(거래처·협력사)을 그리는 함수만 내보내고 modules/index.js 가 hostNative 로 연결한다. */
@@ -334,6 +335,16 @@ export async function mountTeamLabor(root, route, ctx) {
     }
   };
   await load();
+}
+
+/** 영업기획 홈: 요약 카드(프로젝트·유효 견적·총 청구액·미수금)를 누르면 목록, 연체 청구·지급 임박(챙길 일), 이번 달 발행, 바로가기 */
+export async function mountHome(root, route, ctx) {
+  root.onclick = null; root.oninput = null; root.onchange = null;
+  const st = { projects: [], estimates: [], settlements: [], open: '', today: kstToday() };
+  root.innerHTML = '<div id="hm-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#hm-body');
+  try { const [a, b, c] = await Promise.all([getDocs(collection(db, 'gihoek_projects')), getDocs(collection(db, 'gihoek_estimates')), getDocs(collection(db, 'gihoek_settlements'))]); st.projects = sortProjects(lst(a)); st.estimates = lst(b); st.settlements = lst(c); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + ((e && e.message) || '') + '</div>'; return; }
+  body.removeAttribute('aria-busy'); const paint = () => { body.innerHTML = homeHtml(st); }; paint();
+  root.onclick = (ev) => { const t = ev.target; if (!(t instanceof Element)) return; const k = t.closest('[data-hm-kpi]'); if (k) { const v = k.getAttribute('data-hm-kpi'); st.open = st.open === v ? '' : v; paint(); } };
 }
 export const mountCompanies = (root, route, ctx) => mountCompaniesView(root, route, ctx, 'all');
 export const mountPartners = (root, route, ctx) => mountCompaniesView(root, route, ctx, 'partners');

@@ -354,4 +354,12 @@ await scenario('영업기획 팀별 노무비: 월 이동·팀 집계(명부 밖
   check(/170,000원/.test(txt()) && !root.querySelector('[data-tl-rate]'), '저장하면 화면의 단가가 바뀌고 입력 칸이 닫힘');
   WR().length = 0; await click(root, '[data-tl-act="rate-edit"][data-tl-leader="L2"]'); await setv(root, '[data-tl-rate]', ''); await click(root, '[data-tl-act="rate-save"]', 300); await sleep(200); const z = wrote('set', /^team_rates\/L2$/); check(z.length === 1 && z[0].data.teamRate === 0, '비워서 저장하면 단가 0');
 });
+
+await scenario('영업기획 홈: 요약 카드·목록 이동·챙길 일(연체 청구·지급 임박)·바로가기 — 저장 없음', async (check) => {
+  const root = await mountFresh(planMod.mountHome); const txt = () => root.textContent.replace(/\s+/g, ' ');
+  check(/프로젝트 수\s*3 ?개/.test(txt()) && /유효 견적\s*1 ?건/.test(txt()) && /총 청구액\s*7,000/.test(txt()) && /미수금 \(청구−수금\)2,000,000/.test(txt()), '요약 카드: 프로젝트 3개, 유효 견적 1건, 총 청구액 7,000,000(공동 발행분은 프로젝트 몫), 미수금 2,000,000: ' + txt().slice(0, 260));
+  await click(root, '[data-hm-kpi="due"]'); check(/미수금 현황 \(2\)/.test(txt()) && !!root.querySelector('a.jh-plan__row[href^="#/plan/projects/"]'), '미수금 카드를 누르면 미수금이 있는 프로젝트 2개의 목록과 프로젝트 이동 링크'); await click(root, '[data-hm-kpi="due"]'); check(!/미수금 현황/.test(txt()), '같은 카드를 다시 누르면 목록이 닫힘');
+  await click(root, '[data-hm-kpi="bill"]'); check(!!root.querySelector('a.jh-plan__row[href^="#/plan/billing/"]') && /2606001/.test(txt()), '청구 내역 목록은 청구·수금 상세로 연결'); await click(root, '[data-hm-kpi="est"]'); check(!!root.querySelector('a.jh-plan__row[href^="#/plan/est/"]') && /유효 견적 \(1\)/.test(txt()) && !/청구 내역 \(/.test(txt()), '유효 견적 목록은 견적 상세로 연결, 카드는 하나씩만 열림');
+  check(/챙길 일/.test(txt()) && /2607001/.test(txt()) && /일 지남/.test(txt()) && /2608001/.test(txt()), '챙길 일: 지급요청일이 지난 청구서(2607001)와 지급 예정서(2608001)가 보임'); check(!!root.querySelector('a.jh-plan__link[href="#/plan/teamlabor"]') && !!root.querySelector('a.jh-plan__link[href="#/plan/billing"]') && root.querySelectorAll('a.jh-plan__link').length === 6, '바로가기 6개(프로젝트·거래처·견적·청구·수금·지급·정산·팀별 노무비)'); check(WR().length === 0, '홈은 아무것도 저장하지 않음');
+});
 markDone(); console.log('\n' + (failed ? '문제가 있는 저장 동작 ' + failed + '건' : '모든 저장 동작이 올바른 경로·값으로 기록됨')); process.exit(failed ? 1 : 0);
