@@ -1,10 +1,11 @@
-import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012k';
-import { confirmDialog } from '../../core/dialog.js?v=20261012k';
-import { holidayName } from '../../shared/holidays.js?v=20261012k';
-import { esc, toast } from '../../core/ui.js?v=20261012k';
-import { offerNewForm, offerCalc, offerSwitchMode, offerPayload, offerFormFromSaved, offerCalendar, offerFillCurrent, offerBuildHtml } from './offer.js?v=20261012k';
-import { salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012k';
-import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml, offersHtml, offerResultHtml, offerStateText } from './view.js?v=20261012k';
+import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012l';
+import { confirmDialog } from '../../core/dialog.js?v=20261012l';
+import { holidayName } from '../../shared/holidays.js?v=20261012l';
+import { esc, toast } from '../../core/ui.js?v=20261012l';
+import { retireCalc } from './retire.js?v=20261012l';
+import { offerNewForm, offerCalc, offerSwitchMode, offerPayload, offerFormFromSaved, offerCalendar, offerFillCurrent, offerBuildHtml } from './offer.js?v=20261012l';
+import { salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012l';
+import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml, offersHtml, offerResultHtml, offerStateText, retireHtml } from './view.js?v=20261012l';
 
 /** 인사(플랫폼 기본 모듈): 근로자 명부 새 화면. 인사총무 틀 안의 구역으로만 열린다(modules/index.js 의 hostNative). 구포털 인사 화면은 그대로 두고 하나씩 옮기는 중이다. 관리자 전용 */
 export const manifest = { id: 'hr', order: 21, title: '인사', icon: '👥', defaultHash: '#/hr/workers', perm: (me) => !!me && me.admin === true };
@@ -430,4 +431,33 @@ export async function mountOffers(root, route, ctx) {
     }
   };
   paint(); if (st.of.kind !== 'new' && st.of.workerId) await fillCurrent();
+}
+
+/** 퇴직금 정산(새 화면) — 퇴직 전 3개월 급여명세서(payslips)와 최근 연봉계약서로 평균임금·통상임금을 비교해 계산하고 severance/{근로자}/records/{퇴직일} 에 저장. 참고용 */
+export async function mountRetire(root, route, ctx) {
+  root.onclick = null; root.oninput = null; root.onchange = null;
+  const st = { rtWorkers: [], rtWid: '', rtDate: kstToday(), rtResult: null, rtRecords: [] };
+  root.innerHTML = '<div class="jh-hr"><div id="t-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
+  const body = root.querySelector('#t-body'); const lst = (s) => { const l = []; s.forEach((d) => l.push(Object.assign({ id: d.id }, d.data()))); return l; };
+  try { st.rtWorkers = lst(await getDocs(collection(db, 'workers'))).sort((a, b) => String(a.empNo || 'zzz').localeCompare(String(b.empNo || 'zzz'))); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
+  body.removeAttribute('aria-busy');
+  const paint = () => { body.innerHTML = retireHtml(st); };
+  const loadRecords = async () => { st.rtRecords = []; if (!st.rtWid) return; try { st.rtRecords = lst(await getDocs(collection(db, 'severance/' + st.rtWid + '/records'))); } catch (e) { st.rtRecords = []; } };
+  const compute = async () => {
+    st.rtResult = null; if (!st.rtWid || !st.rtDate) { paint(); return; }
+    try { const w = st.rtWorkers.find((x) => x.id === st.rtWid); const [ps, cs] = await Promise.all([getDocs(collection(db, 'payslips/' + st.rtWid + '/months')).catch(() => null), getDocs(collection(db, 'annual_contracts/' + st.rtWid + '/contracts')).catch(() => null)]);
+      const pays = []; if (ps) ps.forEach((d) => pays.push(Object.assign({ month: d.id }, d.data()))); st.rtResult = retireCalc(w, st.rtDate, pays, cs ? lst(cs) : []);
+    } catch (e) { st.rtResult = { ok: false, error: '계산 중 오류가 발생했습니다: ' + ((e && e.message) || '') }; }
+    await loadRecords(); paint();
+  };
+  root.onchange = async (ev) => { const t = ev.target; if (!(t instanceof Element)) return; if (t.matches('[data-t-worker]')) { st.rtWid = t.value; await compute(); return; } if (t.matches('[data-t-date]')) { st.rtDate = t.value; await compute(); } };
+  root.onclick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    const dl = t.closest('[data-t-del]'); if (dl) { const ok = await confirmDialog({ title: '정산 내역 삭제', body: '이 정산 내역을 삭제하시겠습니까?', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return; try { await deleteDoc(doc(db, 'severance/' + st.rtWid + '/records', dl.getAttribute('data-t-del'))); toast('삭제했습니다.'); await loadRecords(); paint(); } catch (e) { toast('삭제하지 못했습니다: ' + ((e && e.message) || '')); } return; }
+    const a = t.closest('[data-t-act="save"]'); if (!a) return; const r = st.rtResult; if (!r || !r.ok) { toast('먼저 근로자와 퇴직일을 선택해 주세요.'); return; }
+    const ok = await confirmDialog({ title: '정산 내역 저장', body: r.record.name + '님 퇴직금 정산(퇴직일 ' + r.record.retireDate + ')을 저장하시겠습니까? 같은 퇴직일의 기존 내역은 덮어씁니다.', confirmLabel: '저장' }); if (!ok.ok) return;
+    try { await setDoc(doc(db, 'severance/' + r.record.wid + '/records', r.record.retireDate), Object.assign({}, r.record, { savedAt: new Date().toISOString() })); toast('✅ 퇴직금 정산 저장 완료!'); await loadRecords(); paint(); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); }
+  };
+  try { const pf = sessionStorage.getItem('jh_retire_prefill'); if (pf) { sessionStorage.removeItem('jh_retire_prefill'); const p = JSON.parse(pf); if (p.workerId && st.rtWorkers.some((x) => x.id === p.workerId)) st.rtWid = p.workerId; if (/^\d{4}-\d{2}-\d{2}$/.test(p.retireDate || '')) st.rtDate = p.retireDate; } } catch (e) { /* 미리 채우기 없음 */ }   // 휴직/퇴직 원서 → 퇴직금 정산
+  if (st.rtWid) await compute(); else paint();
 }

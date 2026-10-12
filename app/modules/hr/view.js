@@ -1,8 +1,9 @@
-import { esc } from '../../core/ui.js?v=20261012k';
-import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261012k';
-import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261012k';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261012k';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261012k';
+import { esc } from '../../core/ui.js?v=20261012l';
+import { rtWon, retireRecordsSorted } from './retire.js?v=20261012l';
+import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261012l';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261012l';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261012l';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261012l';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -158,7 +159,7 @@ export function resignReqDetailHtml(st) {
   const line = (d.approvalLine || []).map((a) => row((a.role || ''), esc((a.name || '') + ' ' + (a.rank || '')) + ' ' + chip(a.status === 'approved' ? '승인' : a.status === 'rejected' ? '반려' : '대기', a.status === 'approved' ? 'accent' : a.status === 'rejected' ? 'danger' : 'muted'))).join('');
   const body = '<div class="jh-hr__pad">' + row('제목', esc(d.title || '-')) + row('작성자', esc((d.authorName || '') + ' ' + (d.authorRank || '') + ' · ' + (d.authorDept || '-'))) + row('구분', esc(k)) + row(k + ' 예정일', esc(d.lastDate || '-')) + (k === '휴직' ? row('복직 예정일', esc(d.returnDate || '-')) : '') + row('상태', chip(RRQ_STATUS[d.status] || d.status || '-', rtone(d.status))) + row('접수일', esc(d.filed || '-'))
     + '<h4 class="jh-hr__sub">사유</h4><div style="white-space:pre-wrap">' + (esc(d.reason) || '(내용 없음)') + '</div><h4 class="jh-hr__sub">결재 현황</h4>' + (line || '<div class="jh-field__hint">결재선 정보 없음</div>')
-    + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-r-act="print">🖨 ' + esc(k) + '원서 출력</button>' + (k === '퇴직' && done ? '<a class="jh-btn" data-variant="secondary" href="#/hr/retire">퇴직금 정산으로(기존 화면)</a>' : '') + '<a class="jh-btn" data-variant="ghost" href="#/hr/workers">근로자 명부</a><button type="button" class="jh-btn" data-variant="ghost" data-r-act="close">닫기</button></div>' + (k === '퇴직' && !done ? '<div class="jh-field__hint">※ 결재가 완료(승인)되면 퇴직금 정산으로 이동할 수 있습니다.</div>' : '') + '</div>';
+    + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-r-act="print">🖨 ' + esc(k) + '원서 출력</button>' + (k === '퇴직' && done ? '<button type="button" class="jh-btn" data-variant="secondary" data-r-act="retire">퇴직금 정산으로</button>' : '') + '<a class="jh-btn" data-variant="ghost" href="#/hr/workers">근로자 명부</a><button type="button" class="jh-btn" data-variant="ghost" data-r-act="close">닫기</button></div>' + (k === '퇴직' && !done ? '<div class="jh-field__hint">※ 결재가 완료(승인)되면 퇴직금 정산으로 이동할 수 있습니다.</div>' : '') + '</div>';
   return card(k + ' 원서 — ' + (d.authorName || ''), body);
 }
 
@@ -300,3 +301,26 @@ export function offerPersonHtml(st) {
   return card(esc(p.name) + ' · 연봉 제안서 이력', '<div class="jh-hr__pad"><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-o-act="histback">← 목록</button><button type="button" class="jh-btn" data-variant="primary" data-o-act="newfor">➕ 새 제안서 작성</button></div></div><div class="jh-hr__pad">' + list + '</div>');
 }
 export function offersHtml(st) { return st.view === 'hist' ? offerHistHtml(st) : st.view === 'person' ? offerPersonHtml(st) : offerFormHtml(st); }
+
+/** 퇴직금 정산 */
+export function retireHtml(st) {
+  const opts = '<option value="">근로자 선택</option>' + st.rtWorkers.map((w) => '<option value="' + esc(w.id) + '"' + (w.id === st.rtWid ? ' selected' : '') + '>' + esc((w.empNo ? '[' + w.empNo + '] ' : '') + (w.name || '-') + (w.dept ? ' · ' + w.dept : '') + (w.rank ? ' ' + w.rank : '') + (w.status === 'resigned' ? ' (퇴직)' : '')) + '</option>').join('');
+  const cond = card('산정 조건', '<div class="jh-hr__pad"><div class="jh-field"><label class="jh-field__label">근로자</label><select class="jh-select" data-t-worker>' + opts + '</select></div><div class="jh-field"><label class="jh-field__label">퇴직일</label><input class="jh-input" type="date" data-t-date value="' + esc(st.rtDate) + '"></div></div>');
+  const recs = retireRecordsSorted(st.rtRecords);
+  const hist = card('📂 정산 내역', '<div class="jh-hr__pad">' + (!st.rtWid ? '<div class="jh-field__hint">근로자를 선택하면 저장 내역을 확인할 수 있습니다.</div>' : recs.length ? recs.map((r) => '<div class="jh-hr__post"><div class="jh-hr__bar"><span class="jh-field__hint">퇴직일 ' + esc(String(r.retireDate || '').replace(/-/g, '.')) + '</span><button type="button" class="jh-btn" data-variant="ghost" data-t-del="' + esc(r.id) + '">삭제</button></div><div class="jh-hr__bar"><span class="jh-field__hint">' + esc(r.serviceDays) + '일 · 1일 ' + rtWon(r.appliedDaily) + '원</span><strong>' + rtWon(r.severance) + ' 원</strong></div></div>').join('') : '<div class="jh-field__hint">저장된 내역이 없습니다.</div>') + '</div>');
+  const warn = '<div class="jh-alert" data-tone="warn" role="note">⚠️ 자동 산정 결과는 참고용입니다. 실제 지급 전 노무사 또는 관할 고용센터에 확인하시기 바랍니다.</div>';
+  const left = '<div class="jh-hr__col">' + cond + hist + warn + '</div>';
+  let right;
+  const r = st.rtResult;
+  if (!r) right = '<div class="jh-empty">🧾 퇴직금 자동 산정<br><span class="jh-field__hint">좌측에서 근로자와 퇴직일을 선택하세요</span></div>';
+  else if (!r.ok) right = '<div class="jh-alert" data-tone="danger" role="alert">' + esc(r.error) + '</div>';
+  else {
+    const row = (l, val, sub) => '<div class="jh-hr__line"><span><span class="jh-hr__label">' + l + '</span>' + (sub ? '<div class="jh-field__hint">' + sub + '</div>' : '') + '</span><span class="jh-hr__val"><strong>' + val + '</strong></span></div>';
+    const tr = r.rows.length ? r.rows.map((x) => '<tr><td>' + esc(x.month) + '</td><td class="num">' + rtWon(x.base) + '</td><td class="num">' + rtWon(x.bonus) + '</td><td class="num"><strong>' + rtWon(x.inc) + '</strong></td><td class="num">' + x.dim + '일</td></tr>').join('') : '<tr><td colspan="5" class="jh-field__hint">퇴직 전 급여명세서가 없습니다.</td></tr>';
+    right = card('① 평균임금 산정 (퇴직 전 3개월)', '<div class="jh-hr__pad"><div class="jh-hr__scroll"><table class="jh-hr-table"><thead><tr><th>기준월</th><th class="num">기본+고정+주휴</th><th class="num">상여금</th><th class="num">소계</th><th class="num">일수</th></tr></thead><tbody>' + tr + '<tr><td><strong>합계</strong></td><td colspan="2" class="num jh-field__hint">임금 총액 →</td><td class="num"><strong>' + rtWon(r.includedTotal) + '</strong></td><td class="num">' + r.periodDays + '일</td></tr></tbody></table></div>' + row('1일 평균임금', rtWon(r.avgDaily) + ' 원', '임금 총액 ÷ 기간 일수') + (r.hasAnnual ? row('1일 통상임금', rtWon(r.ordDaily) + ' 원', '통상시급 × 8h (비교용)') : '') + (r.substituted ? '<div class="jh-alert" data-tone="info" role="status">평균임금이 통상임금보다 낮아 통상임금을 적용했습니다.</div>' : '') + '</div>')
+      + card('② 재직기간', '<div class="jh-hr__pad">' + row('입사일', esc(String(r.hireDate).replace(/-/g, '.'))) + row('퇴직일', esc(String(r.retireDate).replace(/-/g, '.'))) + row('계속근로기간', r.serviceDays + '일', esc(r.yLabel)) + '</div>')
+      + card('③ 퇴직금', '<div class="jh-hr__pad"><div class="jh-field__hint">적용 1일 평균임금 ' + rtWon(r.appliedDaily) + '원 × 30일 × (' + r.serviceDays + '일 ÷ 365)</div><div class="jh-alert" data-tone="info" role="status" style="font-size:var(--fs-lg)"><strong>예상 퇴직금 ' + rtWon(r.severance) + ' 원</strong></div></div>')
+      + (r.warns.length ? '<div class="jh-alert" data-tone="warn" role="status">' + r.warns.map((x) => '• ' + esc(x)).join('<br>') + '</div>' : '') + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-t-act="save">✅ 정산 내역 저장</button></div>';
+  }
+  return '<div class="jh-hr__bar"><a class="jh-btn" data-variant="ghost" href="#/hr/resignreqs">📋 휴직/퇴직 원서 확인</a><span class="jh-field__hint">재직기간 × 평균임금 기준 자동 산정</span></div><div class="jh-hr__split">' + left + '<div class="jh-hr__col">' + right + '</div></div>';
+}
