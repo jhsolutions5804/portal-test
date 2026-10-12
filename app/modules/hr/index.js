@@ -1,9 +1,9 @@
-import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012g';
-import { confirmDialog } from '../../core/dialog.js?v=20261012g';
-import { holidayName } from '../../shared/holidays.js?v=20261012g';
-import { esc, toast } from '../../core/ui.js?v=20261012g';
-import { appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012g';
-import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml } from './view.js?v=20261012g';
+import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012h';
+import { confirmDialog } from '../../core/dialog.js?v=20261012h';
+import { holidayName } from '../../shared/holidays.js?v=20261012h';
+import { esc, toast } from '../../core/ui.js?v=20261012h';
+import { salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012h';
+import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml } from './view.js?v=20261012h';
 
 /** 인사(플랫폼 기본 모듈): 근로자 명부 새 화면. 인사총무 틀 안의 구역으로만 열린다(modules/index.js 의 hostNative). 구포털 인사 화면은 그대로 두고 하나씩 옮기는 중이다. 관리자 전용 */
 export const manifest = { id: 'hr', order: 21, title: '인사', icon: '👥', defaultHash: '#/hr/workers', perm: (me) => !!me && me.admin === true };
@@ -337,6 +337,29 @@ export async function mountApplicants(root, route, ctx) {
     const row = t.closest('tr'); const d = (row.querySelector('[data-a-ivd]') || {}).value || ''; const tm = (row.querySelector('[data-a-ivt]') || {}).value || '';
     if (!d) { if (a.interviewAt) await setInterview(a, ''); return; }   // 날짜를 지우면 면접 일정 해제(이미 등록된 경우만)
     const v = joinInterview(d, tm); if (!v) return; await setInterview(a, v);   // 날짜·시간이 모두 올바를 때만 저장
+  };
+  paint();
+}
+
+/** 급여테이블(새 화면) — company_settings/salaryTable. 표준 시급 호봉표(내규용), 저장해도 급여명세서 계산에는 영향 없음 */
+export async function mountSalary(root, route, ctx) {
+  root.onclick = null; root.oninput = null; root.onchange = null;
+  const st = { sal: null };
+  root.innerHTML = '<div class="jh-hr"><div id="s-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
+  const body = root.querySelector('#s-body');
+  try { const sn = await getDoc(doc(db, 'company_settings', 'salaryTable')); st.sal = salNormalize(sn.exists() ? sn.data() : null); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
+  body.removeAttribute('aria-busy');
+  const paint = () => { body.innerHTML = salaryHtml(st); };
+  root.onchange = (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    if (t.matches('[data-s-field]')) { st.sal = salSetField(st.sal, t.getAttribute('data-s-field'), t.value); paint(); return; }
+    if (t.matches('[data-s-tenure]')) { st.sal = salSetTenure(st.sal, t.getAttribute('data-s-tenure'), t.value); paint(); return; }
+    if (t.matches('[data-s-cell]')) { const [tid, key] = t.getAttribute('data-s-cell').split('|'); st.sal = salEditCell(st.sal, tid, key, t.value); paint(); }
+  };
+  root.onclick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return; const a = t.closest('[data-s-act]'); if (!a) return; const act = a.getAttribute('data-s-act');
+    if (act === 'regen') { const ok = await confirmDialog({ title: '표 다시 생성', body: '직접 수정한 값을 포함해 전체 표를 표준공식 기준으로 다시 계산합니다.', confirmLabel: '다시 생성' }); if (!ok.ok) return; st.sal = salRegenerate(st.sal, true); paint(); return; }
+    if (act === 'save') { try { await setDoc(doc(db, 'company_settings', 'salaryTable'), st.sal); toast('저장했습니다.'); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); } }
   };
   paint();
 }

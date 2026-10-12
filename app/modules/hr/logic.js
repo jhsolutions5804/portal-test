@@ -1,7 +1,7 @@
 /* 인사 — 근로자 명부(새 화면). 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 데이터: workers/{id}(일반 정보) + worker_private/{id}(주민번호·계좌·주소·서명, 읽을 때 합쳐 쓰고 저장할 때 다시 가른다)
  *         labor_contracts/{id}/contracts · annual_contracts/{id}/contracts(endDate), workers/{id}/history(직급·부서 변경 이력) */
-import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261012g';
+import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261012h';
 export const WP_FIELDS = ['jumin', 'bankAccount', 'address', 'signData'];   // worker_private 에 따로 두는 필드
 export const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')) && new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
@@ -316,3 +316,28 @@ export function resumePrintHtml(a) {
     + sec('인 적 사 항') + '<table><tr>' + th('성명') + td(a.name) + th('생년월일') + td(a.birth) + '</tr><tr>' + th('연락처') + td(a.phone) + th('성별') + td(a.gender) + '</tr><tr>' + th('이메일') + td(a.email) + th('최종학력') + td(a.eduLevel) + '</tr><tr>' + th('주소') + td(a.address, 3) + '</tr>' + (a.notes ? '<tr>' + th('특이사항') + td(a.notes, 3) + '</tr>' : '') + '</table>' + tables
     + sec('병 역 사 항') + '<table><tr>' + th('군별') + td(m.branch) + th('제대구분') + td(m.discharge) + '</tr><tr>' + th('복무기간') + td(m.period) + th('비고') + td(m.exempt) + '</tr></table></div></body></html>';
 }
+
+/* ───────── 급여테이블 — 회사 내규(참고용 호봉표): 시급이 기준값, 연봉 = 시급×209시간×12개월 ─────────
+ * 고졸 사원 1호봉 시급 = 법정 최저시급 고정. 학력 트랙 간 시급 단계 차등(고졸→비전공대졸→전공대졸). 호봉마다 표준 인상률로 복리 인상, 직급이 바뀌어도 호봉은 이어서 계산.
+ * 저장: company_settings/salaryTable. 여기서 고쳐도 급여명세서 자동계산에는 영향을 주지 않는다(구포털과 같음). */
+export const SAL_POSITIONS = ['사원', '대리', '과장', '차장'];
+const clone = (x) => JSON.parse(JSON.stringify(x));
+export const salDefault = () => ({ minWage: 10320, standardRate: 3.5, eduGapRate: 10, perfRateMin: 2.0, perfRateMax: 5.0, techAllowancePerCert: 50000, tenure: { '사원': 3, '대리': 4, '과장': 5, '차장': 3 }, tracks: [{ id: 'high', label: '고졸', pinned: true, cellsHourly: {} }, { id: 'nonmajor', label: '비전공대졸', pinned: false, cellsHourly: {} }, { id: 'major', label: '전공대졸', pinned: false, cellsHourly: {} }] });
+export const salAnnual = (hourly) => Math.round((Number(hourly) || 0) * 209 * 12);
+function trackStart(track, d, all) { if (track.pinned) return Number(d.minWage) || 0; const idx = all.findIndex((t) => t.id === track.id); const prev = all[idx - 1]; const prevStart = prev ? trackStart(prev, d, all) : (Number(d.minWage) || 0); return Math.round(prevStart * (1 + ((Number(d.eduGapRate) || 0) / 100))); }
+function buildTrack(track, d, all) {
+  const rate = 1 + ((Number(d.standardRate) || 0) / 100); let cur = trackStart(track, d, all); const cells = {};
+  SAL_POSITIONS.forEach((pos) => { const years = Math.max(1, Number(d.tenure && d.tenure[pos]) || 1); for (let step = 1; step <= years; step++) { const key = pos + '-' + step; cells[key] = track.cellsHourly && track.cellsHourly[key] != null ? track.cellsHourly[key] : Math.round(cur); cur *= rate; } });
+  return cells;
+}
+/** 표 만들기: force 가 아니면 직접 고친 칸은 그대로 두고 빈 칸만 표준 공식으로 채운다. 고정 트랙(고졸)의 사원 1호봉은 항상 법정 최저시급 */
+export function salRegenerate(data, force) {
+  const d = clone(data); if (force) d.tracks.forEach((t) => { t.cellsHourly = {}; }); d.tracks.forEach((t) => { t.cellsHourly = buildTrack(t, d, d.tracks); }); d.tracks.forEach((t) => { if (t.pinned) t.cellsHourly['사원-1'] = Number(d.minWage) || 0; }); return d;
+}
+/** 저장된 문서(없거나 옛 모양이면 기본값) → 화면용 데이터 */
+export function salNormalize(raw) { if (raw && Array.isArray(raw.tracks) && raw.tracks[0] && raw.tracks[0].cellsHourly) { const d = Object.assign(salDefault(), clone(raw)); d.tenure = Object.assign(salDefault().tenure, d.tenure || {}); return d; } return salRegenerate(salDefault(), false); }
+export function salSetField(data, field, value) { if (!['minWage', 'standardRate', 'eduGapRate', 'perfRateMin', 'perfRateMax', 'techAllowancePerCert'].includes(field)) return data; const d = clone(data); d[field] = Number(value) || 0; return ['minWage', 'standardRate', 'eduGapRate'].includes(field) ? salRegenerate(d, false) : d; }
+export function salSetTenure(data, pos, value) { if (!SAL_POSITIONS.includes(pos)) return data; const d = clone(data); d.tenure = d.tenure || {}; d.tenure[pos] = Math.max(1, Math.min(30, Math.floor(Number(value)) || 1)); return salRegenerate(d, false); }
+export function salEditCell(data, tid, key, value) { const d = clone(data); const t = d.tracks.find((x) => x.id === tid); if (!t || (t.pinned && key === '사원-1')) return data; const n = Number(value); t.cellsHourly[key] = Number.isFinite(n) && n >= 0 ? Math.round(n) : 0; return d; }
+/** 표 줄(직급·호봉)과 칸(시급·연봉·최저임금 미달 여부) */
+export function salRows(d) { const out = []; SAL_POSITIONS.forEach((pos, pi) => { const years = Math.max(1, Number(d.tenure && d.tenure[pos]) || 1); for (let step = 1; step <= years; step++) { const key = pos + '-' + step; out.push({ pos, step, key, band: pi % 2, cells: d.tracks.map((t) => { const hourly = Number(t.cellsHourly && t.cellsHourly[key]) || 0; return { tid: t.id, hourly, annual: salAnnual(hourly), pinned: !!(t.pinned && key === '사원-1'), below: hourly > 0 && hourly < (Number(d.minWage) || 0) }; }) }); } }); return out; }
