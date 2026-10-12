@@ -1,8 +1,8 @@
 /* 연봉계약서 — 구포털(hr) 연봉계약서 작성·조회 규칙을 옮겼다(순수 함수, 화면·네트워크 없음).
  * 저장: annual_contracts/{근로자}/contracts/{계약일 YYYYMMDD} — 같은 계약일은 덮어쓴다. 출력은 동결 양식(frozen-docs.js)으로, 저장 당시 양식 버전(tplVer)으로만 그린다.
  * 급여 입력은 시급·월급(월 지급계)·연봉 중 하나로 하고, 월급·연봉은 시급으로 역산해 계산한다(시급 = 월 지급계 ÷ 208.56시간, 소수 그대로 — 연봉계약서·제안서와 같은 산식). */
-import { annualSalary } from './offer.js?v=20261013m';
-import { DOC_TPL_CURRENT } from './frozen-docs.js?v=20261013m';
+import { annualSalary } from './offer.js?v=20261013n';
+import { DOC_TPL_CURRENT } from './frozen-docs.js?v=20261013n';
 export const PAY_BASIS_LABELS = { hourly: '시급', monthly: '월급', annual: '연봉' };
 export const PAY_MONTH_FACTOR = 8 * 5 * 4.345 + 8 * 4.345;
 /** 계약서에 찍는 주민번호는 마스킹 값(앞 6자리-성별 자리******)만 — 전체 번호는 서버에만 있다. 옛 평문(jumin)이 남아 있어도 마스킹해서 쓴다 */
@@ -26,7 +26,8 @@ export function annualFillFromWorker(f, w, laborContracts) {
   let latest = ''; (laborContracts || []).forEach((dd) => { if ((dd.contractDate || '') > latest) { latest = dd.contractDate || ''; if (dd.hourly) { o.hourly = dd.hourly; const pb = dd.payBasis, pi = Number(dd.payInput || 0); o.payBasis = (pb === 'monthly' || pb === 'annual') && pi ? pb : 'hourly'; o.payInput = o.payBasis === 'hourly' ? '' : pi; } if (dd.salary) o.salary = dd.salary; } }); return o;
 }
 export const annualContractId = (contractDate) => String(contractDate || '').replace(/-/g, '');
-export function annualValidate(f) { const errors = []; if (!f.workerId) errors.push('근로자를 선택해 주세요.'); if (!isDate(f.contractDate)) errors.push('계약일자를 입력해 주세요.'); return { ok: !errors.length, errors }; }
+/** 저장 전 검사. requirePeriod=true 면 계약기간(시작일·종료일)도 필수 — 근로계약서는 계약기간이 필수 명시사항이라 비우면 저장하지 못한다(2026-10-13 대표님 결정; 구포털은 비워도 저장됐음) */
+export function annualValidate(f, requirePeriod) { const errors = []; if (!f.workerId) errors.push('근로자를 선택해 주세요.'); if (!isDate(f.contractDate)) errors.push('계약일자를 입력해 주세요.'); if (requirePeriod) { if (!isDate(f.startDate) || !isDate(f.endDate)) errors.push('계약기간(시작일·종료일)을 입력해 주세요.'); else if (f.endDate < f.startDate) errors.push('계약 종료일이 시작일보다 빠릅니다.'); } return { ok: !errors.length, errors }; }
 /** 저장 문서(구포털과 같은 필드 + 저장 시각·양식 버전). 계약연봉은 시급으로 다시 계산해 넣는다 */
 export function annualRecord(f, now) { return Object.assign({}, f, { salary: annualSalary(Number(f.hourly || 0)).annual, savedAt: now || new Date().toISOString(), savedBy: 'admin', tplVer: DOC_TPL_CURRENT }); }
 /** 근로자별 최신 계약 정보 → 목록의 상태 칸 */

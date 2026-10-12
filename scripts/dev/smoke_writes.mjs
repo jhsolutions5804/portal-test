@@ -65,12 +65,13 @@ await scenario('퇴직금 정산 — 저장: severance/{근로자}/records/{마�
 
 const contractScenario = (title, mountName, col, ver, needsPeriod) => scenario(title, async (check) => {
   const root = await mountFresh(hrMod[mountName]); await click(root, '[data-an-act="new"]'); await setv(root, '[data-an-worker]', 'w1'); await sleep(700); await setv(root, '[data-an-f="contractDate"]', '2026-10-13'); await setv(root, '[data-an-pay]', '12000');
+  if (mountName === 'mountLabor') { await click(root, '[data-an-act="save"]', 250); await confirmOk(); check(WR().filter((x) => x.op === 'set').length === 0, '계약기간을 비운 근로계약서는 저장되면 안 됨'); await setv(root, '[data-an-f="startDate"]', '2026-10-13'); await setv(root, '[data-an-f="endDate"]', '2027-10-12'); }
   await click(root, '[data-an-act="save"]', 250); await confirmOk(); await sleep(250);
   const c = WR().filter((x) => x.op === 'set' && new RegExp('^' + col + '/w1/contracts/').test(x.path)); check(c.length === 1, col + '/w1/contracts/<계약일> 이 1건 저장되어야 함(실제 ' + c.length + '): ' + JSON.stringify(WR().map((x) => x.path)));
   if (c[0]) { const d = c[0].data; check(d.workerId === 'w1' && d.name === '김가나' && d.tplVer === ver && !!d.savedAt && !!d.contractDate && (!needsPeriod || (!!d.startDate && !!d.endDate)), '계약서 값(근로자·이름·양식 ' + ver + '·저장시각·계약일' + (needsPeriod ? '·기간' : '') + ') 이상: ' + JSON.stringify(d).slice(0, 240)); check(!/\d{6}-?\d{7}/.test(JSON.stringify(d)), '계약서에 주민번호 전체가 들어감(마스킹이어야 함)'); check(c[0].path.endsWith('/' + String(d.contractDate).replace(/-/g, '')) || c[0].path.endsWith('/' + d.contractDate), '문서 번호가 계약일 기반이어야 함: ' + c[0].path); }
 });
 await contractScenario('연봉계약서 — 확정 저장: annual_contracts/{근로자}/contracts/{계약일}, 양식 v6', 'mountAnnual', 'annual_contracts', 'v6', true);
-await contractScenario('근로계약서 — 확정 저장: labor_contracts/{근로자}/contracts/{계약일}, 양식 v6', 'mountLabor', 'labor_contracts', 'v6', false);   // 근로계약서는 계약기간 없이도 저장된다(구포털과 같음 — 필수로 할지는 대표님 결정)
+await contractScenario('근로계약서 — 확정 저장: labor_contracts/{근로자}/contracts/{계약일}, 양식 v6', 'mountLabor', 'labor_contracts', 'v6', true);
 await scenario('초과근로 — 입력 저장 / 삭제: overtime 에 근로자·시간·금액·월, 삭제는 해당 문서만', async (check) => {
   const root = await mountFresh(hrMod.mountOvertime); await click(root, '[data-ot-new]'); await setv(root, '[data-ot-fw]', 'w1'); await setv(root, '[data-ot-f="date"]', '2026-10-13'); await setv(root, '[data-ot-f="hours"]', '2'); await setv(root, '[data-ot-f="reason"]', '야간 입고'); await sleep(300);
   await click(root, '[data-ot-act="save"]', 250); await confirmOk(); await sleep(200);
@@ -112,5 +113,29 @@ await scenario('공고 관리 — 등록: job_postings 에 제목·근무지, �
   await click(root, '[data-j-act="save"]', 250); await confirmOk(); await sleep(200);
   const j = WR().filter((x) => (x.op === 'add' || x.op === 'set') && /^job_postings\//.test(x.path)); check(j.length === 1, 'job_postings 가 1건 저장되어야 함(실제 ' + j.length + '): ' + JSON.stringify(WR().map((x) => x.op + ' ' + x.path)));
   if (j[0]) { const d = j[0].data; check(d.title === '전기 기능공 모집' && !!d.status, '공고 값(제목·상태) 이상: ' + JSON.stringify(d).slice(0, 240)); check(!/education|학력/.test(JSON.stringify(Object.keys(d))) || d.education === '' || d.education === undefined, '공고에 학력 선택지가 다시 들어가면 안 됨(education 은 빈 값만): ' + JSON.stringify(d.education)); }
+});
+
+await scenario('인사 변동 — 직급·소속 변경: workers 병합 저장 + 변경 이력 + 호봉 초기화 + 포털 계정 반영', async (check) => {
+  const root = await mountFresh(hrMod.mountChange); await setv(root, '[data-c-sel]', 'w1'); await sleep(200); await setv(root, '[data-c-f="rank"]', '과장'); await setv(root, '[data-c-f="reason"]', '정기 승진');
+  await click(root, '[data-c-act="save"]', 250); await confirmOk(); await sleep(250);
+  const w1 = wrote('set', /^workers\/w1$/).concat(wrote('update', /^workers\/w1$/)); check(w1.length >= 1 && w1.some((x) => x.data.rank === '과장'), 'workers/w1 에 직급 과장이 저장되어야 함: ' + JSON.stringify(WR().map((x) => x.op + ' ' + x.path)));
+  const h = WR().filter((x) => x.op === 'add' && /^workers\/w1\/history\//.test(x.path)); check(h.length === 1 && h[0].data.fromRank === '대리' && h[0].data.toRank === '과장' && h[0].data.reason === '정기 승진', '변경 이력(workers/w1/history)에 대리→과장·사유가 남아야 함: ' + JSON.stringify(h[0] && h[0].data));
+  check(w1.some((x) => x.data.step === 1) || WR().some((x) => x.data && x.data.step === 1), '직급이 바뀌면 호봉을 1로 초기화해야 함(별도 지정이 없으면)');
+  check(WR().some((x) => /^portal_users\/u2$/.test(x.path) && x.data.rank === '과장'), '연동된 포털 계정(portal_users/u2)에 직급이 반영되어야 함: ' + JSON.stringify(WR().filter((x) => /portal_users/.test(x.path)).map((x) => x.path + JSON.stringify(x.data))));
+});
+await scenario('연봉 제안서 — 저장: salary_offers 에 제안 내용, 이메일은 보내지 않음', async (check) => {
+  const root = await mountFresh(hrMod.mountOffers); await setv(root, '[data-o-f="name"]', '김후보'); await setv(root, '[data-o-f="dept"]', 'PJT팀'); await setv(root, '[data-o-f="rank"]', '사원'); await setv(root, '[data-o-m="amount"]', '36000000'); await sleep(200);
+  await click(root, '[data-o-act="save"]', 250); await confirmOk(); await sleep(250);
+  const o = WR().filter((x) => (x.op === 'add' || x.op === 'set') && /^salary_offers\//.test(x.path)); check(o.length === 1, 'salary_offers 가 1건 저장되어야 함(실제 ' + o.length + '): ' + JSON.stringify(WR().map((x) => x.op + ' ' + x.path)));
+  if (o[0]) check(o[0].data.name === '김후보' && o[0].data.kind === 'new' && !!(o[0].data.savedAt || o[0].data.createdAt), '제안서 값(이름·구분·저장 시각) 이상: ' + JSON.stringify(o[0].data).slice(0, 260));
+});
+await scenario('채용 지원자 — 상태 변경·삭제: recruit_applicants 문서의 status 만 바뀌고, 삭제는 해당 지원자와 그 면접 일정만', async (check) => {
+  const root = await mountFresh(hrMod.mountApplicants); await setv(root, '[data-a-status="a1"]', 'pass'); await sleep(250);
+  const u = WR().filter((x) => (x.op === 'update' || x.op === 'set') && x.path === 'recruit_applicants/a1'); check(u.length >= 1 && u.some((x) => x.data.status === 'pass'), '상태가 합격(pass)으로 저장되어야 함: ' + JSON.stringify(WR().map((x) => x.op + ' ' + x.path + JSON.stringify(x.data || {}).slice(0, 60))));
+  WR().length = 0; const r2 = await mountFresh(hrMod.mountApplicants); await click(r2, '[data-a-del="a1"]'); await confirmOk(); const del = WR().filter((x) => x.op === 'delete'); check(del.some((x) => x.path === 'recruit_applicants/a1') && del.every((x) => ['recruit_applicants/a1', 'hr_calendar_events/interview_a1'].includes(x.path)), '삭제는 지원자 문서와 그 면접 일정(hr_calendar_events/interview_a1)만: ' + JSON.stringify(del.map((x) => x.path)));
+});
+await scenario('인사평가 — 호봉 직접 입력: 근로자 호봉(step·stepYear)만 workers 에 병합 저장', async (check) => {
+  const root = await mountFresh(hrMod.mountEvals); await setv(root, '[data-e-step="w1"]', '7'); await sleep(250); const el = root.querySelector('[data-e-step="w1"]'); el.dispatchEvent(new w.Event('blur', { bubbles: true })); el.dispatchEvent(new w.Event('focusout', { bubbles: true })); await sleep(250);
+  const u = WR().filter((x) => /^workers\/w1$/.test(x.path)); check(u.length >= 1 && u.some((x) => Number(x.data.step) === 7 && !!x.data.stepYear), '호봉 7 이 workers/w1 에 step·stepYear 로 저장되어야 함: ' + JSON.stringify(WR().map((x) => x.op + ' ' + x.path + JSON.stringify(x.data || {}).slice(0, 70))));
 });
 markDone(); console.log('\n' + (failed ? '문제가 있는 저장 동작 ' + failed + '건' : '모든 저장 동작이 올바른 경로·값으로 기록됨')); process.exit(failed ? 1 : 0);
