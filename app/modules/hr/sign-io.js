@@ -1,11 +1,12 @@
 /* 원격 서명·열람 링크·메일 발송 — Firestore·메일 서비스를 쓰는 부분(규칙·판단은 sign.js, 시험은 거기서).
  * 서명 페이지(sign.html)는 별도 공개 페이지이고, 이 파일은 관리자 화면 쪽(링크 만들기·서명 결과 반영·메일 보내기·발송 이력)만 맡는다. */
-import { db, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp, Timestamp, addDoc, updateDoc } from '../../core/firebase.js?v=20261013i';
-import { confirmDialog } from '../../core/dialog.js?v=20261013i';
-import { toast, esc } from '../../core/ui.js?v=20261013i';
-import { configureFrozenDocs, docHtmlByVer, __ANNUAL_TPL, __LABOR_TPL, __PS_TPL } from './frozen-docs.js?v=20261013i';
-import { IS_TEST } from '../../core/config.js?v=20261013i';
-import { emailjsFor, phoneE164, maskJumin, contractContentHash, buildSignLink, buildViewLink, NO_PHONE_ERROR, syncDecision, isEmail, sendLogEntry, summarizeSendLog, qrUrl, EMAILJS, DOC_LABEL } from './sign.js?v=20261013i';
+import { db, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp, Timestamp, addDoc, updateDoc } from '../../core/firebase.js?v=20261013j';
+import { confirmDialog } from '../../core/dialog.js?v=20261013j';
+import { toast, esc } from '../../core/ui.js?v=20261013j';
+import { configureFrozenDocs, docHtmlByVer, __ANNUAL_TPL, __LABOR_TPL } from './frozen-docs.js?v=20261013j';
+import { psHtml } from './payslip-doc.js?v=20261013j';
+import { IS_TEST } from '../../core/config.js?v=20261013j';
+import { emailjsFor, phoneE164, maskJumin, contractContentHash, buildSignLink, buildViewLink, NO_PHONE_ERROR, syncDecision, isEmail, sendLogEntry, summarizeSendLog, qrUrl, EMAILJS, DOC_LABEL } from './sign.js?v=20261013j';
 export const signBase = () => new URL('../../../sign.html', import.meta.url).href;   // 이 앱이 올라가 있는 곳(테섭·본섭)의 서명 페이지
 const logoUrl = () => new URL('../../theme/assets/jh-logo.png', import.meta.url).href;
 const COLL = { annual: 'annual_contracts', labor: 'labor_contracts' };
@@ -26,7 +27,7 @@ export async function createDocLink({ docType, workerId, contractId, offerId, pa
   const ref = doc(collection(db, 'sign_links')); const batch = writeBatch(db);
   if (viewOnly) {
     configureFrozenDocs({ signatures: seal, logo: logoUrl() }); const snapDoc = Object.assign({}, src); if ('jumin' in snapDoc) snapDoc.jumin = maskJumin(snapDoc.jumin);
-    const html = docHtmlByVer(docType === 'annual' ? __ANNUAL_TPL : docType === 'payslip' ? __PS_TPL : __LABOR_TPL, snapDoc); const r = buildViewLink({ docType, src, workerName, e164, html }); if (!r.ok) throw new Error(r.error);
+    const html = docType === 'payslip' ? psHtml(snapDoc) : docHtmlByVer(docType === 'annual' ? __ANNUAL_TPL : __LABOR_TPL, snapDoc); const r = buildViewLink({ docType, src, workerName, e164, html }); if (!r.ok) throw new Error(r.error);
     batch.set(ref, Object.assign({}, r.meta, { createdAt: serverTimestamp(), expiresTs: Timestamp.fromMillis(r.expMs) })); batch.set(doc(db, 'sign_links/' + ref.id + '/secure/payload'), Object.assign({}, r.payload, { createdAt: serverTimestamp() }));
   } else {
     const r = buildSignLink({ docType, src, workerName, e164, seal, coll, workerId, contractId, contentHash: coll ? await contractContentHash(src) : '' }); if (!r.ok) throw new Error(r.error);

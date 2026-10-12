@@ -1,8 +1,8 @@
 /* 인사 — 근로자 명부(새 화면). 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 데이터: workers/{id}(일반 정보) + worker_private/{id}(주민번호·계좌·주소·서명, 읽을 때 합쳐 쓰고 저장할 때 다시 가른다)
  *         labor_contracts/{id}/contracts · annual_contracts/{id}/contracts(endDate), workers/{id}/history(직급·부서 변경 이력) */
-import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261013i';
-export const WP_FIELDS = ['bankAccount', 'address', 'signData'];   // worker_private 에 따로 두는 필드 — 주민번호(jumin)는 더 이상 여기 두지 않는다(테섭 2026-10-08): 서버 함수(identityAct)가 암호문으로 보관하고 마스킹 값(juminMasked)만 worker_private 에 남는다
+import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261013j';
+export const WP_FIELDS = ['bankAccount', 'address', 'signData', 'taxFamily', 'taxChildren', 'taxRate'];   // worker_private 에 따로 두는 필드 — 주민번호(jumin)는 더 이상 여기 두지 않는다(테섭 2026-10-08): 서버 함수(identityAct)가 암호문으로 보관하고 마스킹 값(juminMasked)만 worker_private 에 남는다
 export const WP_NEVER_WRITE = ['jumin', 'juminMasked', 'juminUpdatedAt', 'birth6'];   // 화면에서 합쳐 만든 값·서버 전용 값은 문서에 쓰지 않는다
 /** 보유 자격증 목록(기술수당 1개당): 저장된 배열, 없으면 옛 hasCertification 표시를 한 개로 */
 export const certsFromWorker = (w) => (w && Array.isArray(w.certifications) && w.certifications.length ? w.certifications.map((c) => String(c == null ? '' : c)) : (w && w.hasCertification ? ['(마이그레이션 필요) 기존 자격증'] : []));
@@ -17,6 +17,19 @@ export function splitWorker(data) { const pub = {}, priv = {}; Object.keys(data 
 export function mergeWorker(pub, priv) { const x = Object.assign({}, pub, priv || {}); const src = x.juminMasked || x.jumin || ''; x.birth6 = String(src).replace(/\D/g, '').slice(0, 6); delete x.jumin; return x; }
 /** 같은 사람인지 비교용: 생년월일 6자리 + 성별 자리(마스킹 값 앞 7자리) — 전체 번호는 서버에만 있어 비교하지 않는다 */
 export const juminHead = (w) => String((w && (w.juminMasked || w.jumin)) || '').replace(/\D/g, '').slice(0, 7);
+
+/** 소득세(간이세액표) 입력: 공제대상 가족 수(본인 포함, 1~15)·그중 8~20세 자녀 수(0~가족 수−1)·원천징수 비율(80·100·120). 빈 칸은 기본값(1·0·100) */
+export const TAX_RATES = [80, 100, 120];
+export function taxInfoFromForm(f) {
+  const x = f || {}; const errors = []; const toInt = (v, d) => (v === '' || v == null ? d : Number(v));
+  const fam = toInt(x.taxFamily, 1), kids = toInt(x.taxChildren, 0), rate = toInt(x.taxRate, 100);
+  if (!(Number.isInteger(fam) && fam >= 1 && fam <= 15)) errors.push('공제대상 가족 수는 본인을 포함해 1~15 사이의 정수로 입력해 주세요.');
+  else if (!(Number.isInteger(kids) && kids >= 0 && kids <= fam - 1)) errors.push('8~20세 자녀 수는 0 이상이고 공제대상 가족 수(본인 포함)보다 작아야 합니다.');
+  if (!TAX_RATES.includes(rate)) errors.push('원천징수 비율은 80·100·120 중에서 골라 주세요.');
+  return { errors, values: { taxFamily: fam, taxChildren: kids, taxRate: rate } };
+}
+/** 저장된 근로자 문서 → 소득세용 값(없으면 기본 1·0·100) */
+export const taxInfoOf = (w) => { const x = w || {}; const fam = Number(x.taxFamily), kids = Number(x.taxChildren), rate = Number(x.taxRate); return { family: fam >= 1 ? fam : 1, children: kids >= 0 ? kids : 0, rate: TAX_RATES.includes(rate) ? rate : 100 }; };
 
 /** 호봉: 저장된 기준(step·stepYear)이 있으면 그 해부터 매년 +1, 없으면 입사일로 추정 — 입사한 해는 1호봉, 다음 해부터 1~3분기 입사 2호봉·4분기 입사 1호봉으로 시작해 매년 1/1 +1 (구포털 hr 2.24.2 규칙 그대로) */
 export function stepSeed(hireDate) { if (!isDate(hireDate)) return null; const y = Number(hireDate.slice(0, 4)); const q = Math.ceil(Number(hireDate.slice(5, 7)) / 3); return { baseYear: y + 1, baseStep: q === 4 ? 1 : 2 }; }
@@ -67,6 +80,7 @@ export function buildEdit(orig, form, opt) {
   const stepCur = stepNow(o, opt && opt.year); const stepEdited = stepIn !== null && stepIn !== stepCur;
   const certs = (Array.isArray(f.certs) ? f.certs : certsFromWorker(o)).map((c) => String(c == null ? '' : c).trim()).filter(Boolean); if (certs.length > MAX_CERTS) errors.push('자격증은 ' + MAX_CERTS + '개까지 등록할 수 있습니다.'); if (certs.some((c) => c.length > 60)) errors.push('자격증 이름은 60자 이내로 입력해 주세요.');
   const pub = { name, empNo, hireDate: hire, email, phone, empType, rank, dept, job: T(f.job, 60, '담당업무'), certifications: certs, hasCertification: /* 옛 자격증 1개 표시는 새 목록으로 대체 — false 로 두어 모두 지웠을 때 기술수당이 남지 않게 */ false }; const priv = { address: T(f.address, 120, '주소'), bankAccount: T(f.bankAccount, 60, '계좌번호') };
+  const tx = taxInfoFromForm(f); tx.errors.forEach((e) => errors.push(e)); Object.assign(priv, tx.values);   // 소득세(간이세액표)용: 공제대상 가족 수·8~20세 자녀 수·원천징수 비율 — 급여 계산 연결은 간이세액표 도입 때
   let newJumin = ''; const jIn = String(f.jumin || '').replace(/[^0-9]/g, ''); if (jIn) { if (jIn.length !== 13) errors.push('주민등록번호 13자리를 입력해 주세요(바꾸지 않으려면 비워 두세요).'); else { const dupJ = ((opt && opt.others) || []).find((x) => x.id !== o.id && x.name === name && juminHead(x) === jIn.slice(0, 7)); if (dupJ) errors.push('같은 이름·주민번호의 근로자가 이미 있습니다.'); else newJumin = jIn; } }   // 번호는 문서에 쓰지 않고 저장 뒤 서버 함수로 암호화 보관(newJumin)
   if (errors.length) return { ok: false, errors };
   const year = (opt && opt.year) || Number(kstToday().slice(0, 4));

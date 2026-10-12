@@ -2,7 +2,8 @@
  * 글자 하나까지 같은지 비교한다. 서명·저장이 끝난 서류는 내용이 바뀌면 안 된다는 원칙의 자동 점검. */
 import fs from 'fs'; import vm from 'vm'; import { fileURLToPath } from 'url'; import path from 'path';
 import * as M from '../app/modules/hr/frozen-docs.js';
-import { payslipCalc, payslipRecord } from '../app/modules/hr/payslip.js';
+import { payslipCalc, payslipRecord, PS_DOC_VER } from '../app/modules/hr/payslip.js';
+import { psHtml, psHtmlV7, PS_HISTORY_V7 } from '../app/modules/hr/payslip-doc.js';
 const here = path.dirname(fileURLToPath(import.meta.url)); const code = fs.readFileSync(path.join(here, 'fixtures/frozen_block_original.js'), 'utf8');
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const LOGO = 'data:image/png;base64,LOGO'; const SIGS = { kjh: 'data:image/png;base64,KJHSIGN', other: 'x' };
@@ -44,8 +45,18 @@ M.configureFrozenDocs({ signatures: SIGS, logo: LOGO });   // 앞 시험이 바�
 // 새 급여명세서 화면의 미리보기 = 저장될 문서(payslipRecord)를 현재 양식(v5)으로 그린 것 — 저장 후 출력과 같은 서식·같은 값
 const c = payslipCalc({ hourly: 12000, hasContract: true, month: '2026-10', attHours: 170, holidaySet: new Set(['2026-10-05', '2026-10-09']), attDates: new Set(['2026-10-01']), workerName: '김가나', bonus: 100000, techAllowance: 100000, travelAllowance: 30000 });
 const rec = payslipRecord({ name: '김가나', dept: '사업본부', rank: '대리', empNo: '25002', empType: 'field' }, { hourly: 12000 }, '2026-10', '2026-11-30', '신한 110-1', c, [{ type: 'personal_near', days: 3 }]);
-const html = M.docHtmlByVer(M.__PS_TPL, rec); const won = (n) => '₩' + Math.round(n).toLocaleString();
-ok(rec.tplVer === M.DOC_TPL_CURRENT && html.includes('급 여 명 세 서') && html.includes('김가나') && html.includes('25002') && html.includes('신한 110-1') && html.includes(won(c.netPay)) && html.includes(won(c.totalPay)) && html.includes(won(c.sal.basic)) && html.includes('3일×₩10,000') && orig('docHtmlByVer(__PS_TPL, __d)', rec) === html, '★ 미리보기와 저장본 출력: 새 화면이 만든 저장 문서(v5)를 원본 양식으로 그려도 값(실지급액·지급계·기본근로수당·여비교통비)이 그대로 나오고 원본과 같은 출력');
+const html = psHtml(rec); const won = (n) => '₩' + Math.round(n).toLocaleString();
+ok(rec.tplVer === PS_DOC_VER && PS_DOC_VER === 'v7' && html.includes('급 여 명 세 서') && html.includes('김가나') && html.includes('25002') && html.includes('신한 110-1') && html.includes(won(c.netPay)) && html.includes(won(c.totalPay)) && html.includes(won(c.sal.basic)) && html.includes('3일×₩10,000') && orig('docHtmlByVer(__PS_TPL, __d)', Object.assign({}, rec, { tplVer: 'v6' })) === M.docHtmlByVer(M.__PS_TPL, Object.assign({}, rec, { tplVer: 'v6' })), '★ 미리보기와 저장본 출력: 새 화면이 만든 저장 문서(v5)를 원본 양식으로 그려도 값(실지급액·지급계·기본근로수당·여비교통비)이 그대로 나오고 (요율 표기 외에는 동결 양식 v6 과 같은 출력)');
 
 ok(M.DOC_TPL_HISTORY.map((h) => h.ver).join() === 'v0,v1,v2,v3,v4,v5,v6' && M.DOC_TPL_HISTORY[0].from === null && M.DOC_TPL_HISTORY[6].ver === M.DOC_TPL_CURRENT && M.DOC_TPL_HISTORY[6].labor.includes('제8조') && M.DOC_TPL_HISTORY.every((h) => typeof h.payslip === 'string' && typeof h.labor === 'string' && typeof h.annual === 'string'), '양식 변경 이력 데이터(📜 화면): v0~v6 각 버전의 급여명세서·근로계약서·연봉계약서 변경 내용, 현재 양식 v6 는 제8조(퇴직금) 정비');
+// ───────── 급여명세서 v7: 요율 표기만 법정 요율로 ─────────
+// payslip-doc.js 는 앱과 같은 주소(?v=버전)로 동결 양식을 불러오므로, 기준 출력도 같은 모듈 인스턴스에서 만든다
+const stampV = (fs.readFileSync(path.join(here, '../app/modules/hr/payslip-doc.js'), 'utf8').match(/frozen-docs\.js\?v=(\w+)/) || [])[1];
+const MV = await import('../app/modules/hr/frozen-docs.js?v=' + stampV); MV.configureFrozenDocs({ signatures: SIGS, logo: LOGO });
+const rr = { pension: 0.0475, health: 0.03595, ltcare: 0.1314, employ: 0.009 }; const dv = Object.assign({}, rec, { insRates: rr }); const v7 = psHtmlV7(dv); const v6 = MV.docHtmlByVer(MV.__PS_TPL, Object.assign({}, dv, { tplVer: 'v6' }));
+const strip = (x) => x.replace(/4\.75%|4\.5%|3\.595%|3\.545%|13\.14%|12\.81%/g, 'R');
+ok(v7 !== v6 && v7.includes('월 보수액 × 4.75%') && v7.includes('월 보수액 × 3.595%') && v7.includes('건강보험 × 13.14%') && v7.includes('월 보수액 × 0.9%') && v7.includes('국민연금: 지급계×4.75%') && v7.includes('건강보험: 지급계×3.595%') && v7.includes('장기요양: 건강보험×13.14%') && v7.includes('고용보험: 지급계×0.9%') && !v7.includes('× 4.5%') && !v7.includes('× 3.545%') && !v7.includes('× 12.81%') && strip(v7) === strip(v6), '★ 급여명세서 v7: 공제 비고 4곳과 산출식의 요율 표기만 그 월의 법정 요율(4.75·3.595·13.14·0.9%)로 바뀌고, 나머지(금액·서식)는 동결 양식 v6 과 글자까지 같음');
+const v25 = psHtmlV7(Object.assign({}, rec, { insRates: { pension: 0.045, health: 0.03545, ltcare: 0.1295, employ: 0.009 } })); ok(v25.includes('월 보수액 × 4.5%') && v25.includes('건강보험 × 12.95%') && v25.includes('월 보수액 × 3.545%') && psHtmlV7(Object.assign({}, rec, { insRates: null })) === MV.docHtmlByVer(MV.__PS_TPL, Object.assign({}, rec, { tplVer: 'v6' })), '2025년 월분은 2025 요율(건강보험 12.95%)로 표기, 요율 기록이 없으면 v6 그대로');
+const old6 = Object.assign({}, rec, { tplVer: 'v6' }), old5 = Object.assign({}, rec, { tplVer: 'v5' }); ok(psHtml(old6) === MV.docHtmlByVer(MV.__PS_TPL, old6) && psHtml(old5) === MV.docHtmlByVer(MV.__PS_TPL, old5) && psHtml(old6).includes('월 보수액 × 4.5%') && psHtml(Object.assign({}, rec, { insRates: rr })) === v7 && PS_HISTORY_V7.ver === 'v7' && PS_HISTORY_V7.payslip.includes('법정 요율'), '★ 이미 저장된 v0~v6 명세서는 저장 당시 양식 그대로(옛 요율 표기 유지), v7 만 새 표기 — 서명·저장된 서류는 바뀌지 않음');
+
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

@@ -5,16 +5,24 @@
  *  · 야간근로수당 = 22:00~06:00 실근무 × 시급 × 0.5, 주휴수당 = 시급×8×(그 주 소정근로일 개근한 주 수), 휴일근로수당 = 8h 이내 ×1.5 + 초과 ×2.0
  *  · 4대보험: 국민연금 4.5% · 건강보험 3.545% · 장기요양 건강보험료×12.81% · 고용보험 0.9%, 소득세 간이세액 근사 + 지방소득세 10%
  *  · 지급계(4대보험 산정 기준) = 급여 + 상여 + 특별성과급 + 특근수당 + 기술수당, 여비교통비는 실비변상이라 제외하고 실수령에만 더한다 */
-import { annualSalary } from './offer.js?v=20261013i';
-import { DOC_TPL_CURRENT } from './frozen-docs.js?v=20261013i';
-import { monthlyStandardHours } from '../../shared/worktime.js?v=20261013i';
-import { computeLeaveHoursForMonth } from '../../shared/leave-hours.js?v=20261013i';
+import { annualSalary } from './offer.js?v=20261013j';
+import { monthlyStandardHours } from '../../shared/worktime.js?v=20261013j';
+import { computeLeaveHoursForMonth } from '../../shared/leave-hours.js?v=20261013j';
 const pad = (n) => String(n).padStart(2, '0');
 const N = (v) => Number(v || 0) || 0;
-export const PS_DOC_VER = DOC_TPL_CURRENT;   // 저장 당시 양식 버전 = 현재 양식(동결 양식 모듈)
+export const PS_DOC_VER = 'v7';   // 급여명세서 양식 v7(2026-10-13~): 4대보험 요율을 급여 월의 법정 요율로 계산·표기(payslip-doc.js). 근로·연봉계약서는 v6 그대로
 export const PS_TRAVEL_PER_DAY = { personal_near: 10000, personal_far: 20000, company_car: 10000 };
 export const PS_LONGTRIP_WEEKLY_MAX = 5;
 export const PS_TRAVEL_LABEL = { personal_near: '🚗 개인차량 · 40km 이내 (1만원/일)', personal_far: '🚗 개인차량 · 40km 초과 (2만원/일)', company_car: '🚙 회사차량 (거리무관 1만원/일)', longtrip: '🚄 지방장기출장 · 왕복KTX 실비' };
+/** 4대보험 근로자 부담 요율(법정, 적용 시작 월 기준). 장기요양은 근로자 건강보험료에 곱하는 비율.
+ *  2025: 국민연금 4.5%·건강 3.545%·장기요양 12.95% / 2026: 국민연금 4.75%·건강 3.595%·장기요양 13.14%(국민연금 매년 0.5%p↑, 건강·장기요양은 고시) / 고용보험 0.9%.
+ *  첫 줄(~2024)은 이식 이전 구포털이 쓰던 값 — 오래된 월을 다시 만들 때 그대로 재현하려고 남겨 둔다. ※ 국민연금 기준소득월액 상·하한·단수 처리는 공단 고지서와 대조해 보완한다(docs/statutory-alignment.md). */
+export const INSURANCE_RATES = [
+  { from: '2000-01', label: '2024년까지(구포털 이식 값)', pension: 0.045, health: 0.03545, ltcare: 0.1281, employ: 0.009 },
+  { from: '2025-01', label: '2025년', pension: 0.045, health: 0.03545, ltcare: 0.1295, employ: 0.009 },
+  { from: '2026-01', label: '2026년', pension: 0.0475, health: 0.03595, ltcare: 0.1314, employ: 0.009 },
+];
+export function insuranceRates(month) { const m = /^\d{4}-\d{2}$/.test(month || '') ? month : '9999-12'; let r = INSURANCE_RATES[0]; INSURANCE_RATES.forEach((x) => { if (x.from <= m) r = x; }); return r; }
 /** 급여 지급일: 기준월의 다음 달 말일 */
 export function psPayDate(month) { if (!/^\d{4}-\d{2}$/.test(month || '')) return ''; const [y, m] = month.split('-').map(Number); const ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1; return ny + '-' + pad(nm) + '-' + pad(new Date(ny, nm, 0).getDate()); }
 /** 근로소득 간이세액표 근사(부양가족 1인) */
@@ -66,12 +74,12 @@ export function payslipCalc(inp) {
   const sal = Object.assign({}, sal0, { basic: pBasic, fixedOt: pOt, fixedNight: pNight, weekly: pWeekly, holidayPay: pHoliday, total: pBasic + pOt + pNight + pWeekly + pHoliday, isComprehensive: comp, attHours, leaveHours, nightHours: nightH, actualHours: actual, standardHours: threshold, otHours, shortHours, shortDeduct, holidayHours: hol.holidayHours, weeklyQualifyingWeeks: wk.qualifyingWeeks, weeklyTotalWeeks: wk.totalWeeks, weeklyEstimated: wk.estimated, weeklyDetails: wk.weekDetails });
   if (sal0.annual !== undefined) sal.annual = sal.total * 12;
   const bonus = N(x.bonus), specialBonus = N(x.specialBonus), extraPay = N(x.extraPay), tech = N(x.techAllowance), travel = N(x.travelAllowance); const totalPay = sal.total + bonus + specialBonus + extraPay + tech;
-  const health0 = Math.round(totalPay * 0.03545); const inTax0 = calcIncomeTax(totalPay);
-  const pension = pick('pension', Math.round(totalPay * 0.045)), health = pick('health', health0), ltcare = pick('ltcare', Math.round(health0 * 0.1281)), employ = pick('employ', Math.round(totalPay * 0.009)), incomeTax = pick('incomeTax', inTax0), localTax = pick('localTax', Math.round(inTax0 * 0.1));
+  const R = insuranceRates(x.month); const health0 = Math.round(totalPay * R.health); const inTax0 = calcIncomeTax(totalPay);
+  const pension = pick('pension', Math.round(totalPay * R.pension)), health = pick('health', health0), ltcare = pick('ltcare', Math.round(health0 * R.ltcare)), employ = pick('employ', Math.round(totalPay * R.employ)), incomeTax = pick('incomeTax', inTax0), localTax = pick('localTax', Math.round(inTax0 * 0.1));
   const dormitory = N(x.dormitory); const totalDeduct = pension + health + ltcare + employ + dormitory + incomeTax + localTax;
-  return { sal, bonus, specialBonus, extraPay, techAllowance: tech, travelAllowance: travel, totalPay, pension, health, ltcare, employ, dormitory, incomeTax, localTax, totalDeduct, netPay: totalPay - totalDeduct + travel };
+  return { sal, bonus, specialBonus, extraPay, techAllowance: tech, travelAllowance: travel, totalPay, pension, health, ltcare, employ, dormitory, incomeTax, localTax, totalDeduct, netPay: totalPay - totalDeduct + travel, rates: { pension: R.pension, health: R.health, ltcare: R.ltcare, employ: R.employ } };
 }
 /** 저장 문서(payslips/{근로자}/months/{YYYY-MM}) — 구포털과 같은 필드 */
 export function payslipRecord(w, annualData, month, payDate, bankAccount, c, travelItems, now) {
-  const x = w || {}; return Object.assign({ month, payDate, bankAccount: bankAccount || '', name: x.name || '', dept: x.dept || '', rank: x.rank || '', empNo: x.empNo || '', hourly: (annualData && annualData.hourly) || 0, empType: x.empType || 'field' }, c.sal, { bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay, techAllowance: c.techAllowance, travelAllowance: c.travelAllowance, travelItems: travelItems || [], grossPay: c.totalPay, pension: c.pension, health: c.health, ltcare: c.ltcare, employ: c.employ, dormitory: c.dormitory, incomeTax: c.incomeTax, localTax: c.localTax, totalDeduct: c.totalDeduct, netPay: c.netPay, savedAt: now || new Date().toISOString(), tplVer: PS_DOC_VER });
+  const x = w || {}; return Object.assign({ month, payDate, bankAccount: bankAccount || '', name: x.name || '', dept: x.dept || '', rank: x.rank || '', empNo: x.empNo || '', hourly: (annualData && annualData.hourly) || 0, empType: x.empType || 'field' }, c.sal, { bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay, techAllowance: c.techAllowance, travelAllowance: c.travelAllowance, travelItems: travelItems || [], grossPay: c.totalPay, pension: c.pension, health: c.health, ltcare: c.ltcare, employ: c.employ, dormitory: c.dormitory, incomeTax: c.incomeTax, localTax: c.localTax, totalDeduct: c.totalDeduct, netPay: c.netPay, insRates: c.rates || null, savedAt: now || new Date().toISOString(), tplVer: PS_DOC_VER });
 }
