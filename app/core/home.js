@@ -1,5 +1,5 @@
-import { widgetsFor } from './registry.js?v=20261012y';
-import { esc } from './ui.js?v=20261012y';
+import { widgetsFor } from './registry.js?v=20261012z';
+import { esc } from './ui.js?v=20261012z';
 
 const WD = ['일', '월', '화', '수', '목', '금', '토'];
 /** 플랫폼 홈 — 모듈이 등록한 위젯을 순서대로 모아 보여 준다(모듈이 늘어도 이 파일은 그대로) */

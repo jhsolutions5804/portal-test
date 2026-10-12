@@ -29,6 +29,7 @@
 | 인사 | `workers`, `worker_private`, `annual_contracts/{id}/contracts`, `labor_contracts/{id}/contracts`, `payslips/{id}/months`, `overtime`, `edoc_overtime`, `worker_attendance_log`, `severance/{id}/records`, `evaluations/{id}/records`, `interviews/{id}/records`, `dismissal_notices`, `salary_offers`, `job_postings`, `recruit_applicants`, `hr_calendar_events`, `hr_calendar_access`, `company_settings`(`salaryTable`, `signatures`) | 모두 구포털과 같은 이름·필드 |
 | 전자결재 연동 | `edoc_leave`, `edoc_resign`, `edoc_daily`, `edoc_overtime` (읽기; `edoc_overtime` 는 연동 표시 쓰기), `company_schedules`(연차 표시, 읽기) | 승인된 초과근로 자동연동은 **새 "초과근로 현황" 화면이 맡음** |
 | 총무(신설) | `general_leases`, `general_vehicles`, `general_assets`, `general_renewals`, `general_drive_history`, `edoc_drive` | 본섭에는 아직 없음 → 규칙 먼저 |
+| 연차사용촉진 | `leave_promotions/{근로자}/records`(구포털과 같은 위치·필드, 양식 `l1` 동결) | 본섭 기존 촉진 기록 그대로 읽음 |
 | 재무회계(신설) | `ledger_entries`, `ledger_imports`, `ledger_meta` | 본섭에 없음 |
 
 ## 3. 데이터 후처리·이전 목록
@@ -50,7 +51,7 @@
 - 구포털 인사 화면(`hr/index.html`)의 **"근로시간"(초과근로) 탭** — 새 "초과근로 현황 + 출퇴근 달력"과 겹침(자동연동 중복 위험). **가장 먼저 막을 것.**
 - 새 화면으로 대체된 탭: 근로자 명부, 연차 현황(등록·수정·사용촉진 제외), 인사 변동, 공고 관리, 채용 지원자, 연봉 제안서, 근로자 면담, 휴직/퇴직 원서, 퇴직금 정산, 해고예고통지서, 인사 캘린더, 인사평가, 급여테이블, 급여명세서, 연봉계약서, 근로계약서.
 - **원격 서명 링크·QR·본인 열람 링크·메일 발송**(연봉 제안서·급여명세서·연봉계약서·근로계약서)은 **새 화면으로 이식 완료**(`hr/sign.js`·`hr/sign-io.js`). 서명 페이지 `sign.html` 은 별도 공개 페이지로 그대로 쓴다(§9-1).
-- **아직 구포털에 남은 기능(제거 불가)**: 연차 등록·수정·사용촉진. 이것이 이식되기 전에는 구포털 hr 를 통째로 걷어낼 수 없다.
+- **연차 등록·수정·삭제, 연차사용촉진도 이식 완료** → **구포털 인사(`hr/index.html`)의 모든 기능이 새 화면으로 옮겨졌다.** 본섭 반영 후 QC 가 끝나면 구포털 hr 를 통째로 걷어낼 수 있다(단 `sign.html`·`sign_links` 규칙은 유지).
 
 ## 5. 복구(롤백) 절차
 
@@ -70,7 +71,8 @@
 | 연봉계약서 / 근로계약서 | 근로자 선택→저장→**저장본 출력이 저장 당시 양식**으로 나오는가, 직인 표시, 개인정보 동의서(별지) 첨부 |
 | 급여명세서 | 기준월·근로자 선택 시 자동 연동 값(시급·출퇴근·초과근로·기술수당·**계좌번호**), 저장·옛 저장본 출력 |
 | 출퇴근 달력 / 초과근로 현황 | 달력 색·월 요약, 근로 내역 수정, 승인된 초과근로 자동 반영(중복 없는지) |
-| 연차 현황 / 인사 변동 / 인사평가 / 면담 / 급여테이블 / 인사 캘린더 | 목록·저장·수정 한 번씩, 급여테이블은 열어 저장 1회 |
+| 연차 현황 / 연차사용촉진 | 연차 등록(관리자)·내역 수정, 촉진서 발행 후 **저장 당시 양식으로 다시 출력**, 촉진 기록(`leave_promotions`)이 본섭 기존 데이터와 같은 모양으로 보이는지 |
+| 인사 변동 / 인사평가 / 면담 / 급여테이블 / 인사 캘린더 | 목록·저장·수정 한 번씩, 급여테이블은 열어 저장 1회 |
 | 퇴직금 정산 / 휴직·퇴직 원서 / 해고예고통지서 | 계산 값 대조(§7-3), 원서 출력, 통지서 발행 이력 |
 | 총무 | 규칙 반영 후 직원 계정으로 **읽을 수 없는지** 확인, 운행일지 가져오기·기록하기 |
 | 인사총무 상단 메뉴 | [인사][총무] 두 갈래, 인사 아래 단계별 메뉴 정상, 좁은 화면 줄바꿈 |

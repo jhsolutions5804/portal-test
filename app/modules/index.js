@@ -1,13 +1,13 @@
 /* 플랫폼에 꽂는 모듈 목록 — 모듈을 더하거나 빼는 일은 이 파일 한 곳만 고친다.
  * 각 항목은 { manifest, mount }. 핵심부(core/)는 모듈 폴더를 직접 알지 못하고 이 목록만 읽는다. */
-import * as edoc from './edoc/index.js?v=20261012y';
-import * as attendance from './attendance/index.js?v=20261012y';
-import * as calendar from './calendar/index.js?v=20261012y';
-import * as company from './company/index.js?v=20261012y';
-import * as finance from './finance/index.js?v=20261012y';
-import * as general from './general/index.js?v=20261012y';
-import * as hr from './hr/index.js?v=20261012y';
-import { modules as legacy, hostNative } from './legacy/index.js?v=20261012y';
+import * as edoc from './edoc/index.js?v=20261012z';
+import * as attendance from './attendance/index.js?v=20261012z';
+import * as calendar from './calendar/index.js?v=20261012z';
+import * as company from './company/index.js?v=20261012z';
+import * as finance from './finance/index.js?v=20261012z';
+import * as general from './general/index.js?v=20261012z';
+import * as hr from './hr/index.js?v=20261012z';
+import { modules as legacy, hostNative } from './legacy/index.js?v=20261012z';
 
 export const MODULES = [
   { manifest: edoc.manifest, mount: edoc.mount },
@@ -35,3 +35,4 @@ hostNative('hr', 'attendcal', hr.mountAttendCal);   // 출퇴근 달력 새 화�
 hostNative('hr', 'payslips', hr.mountPayslip);   // 급여명세서 새 화면(메일 발송·링크/QR 만 기존 '급여명세서'에서)
 hostNative('hr', 'annualc', hr.mountAnnual);   // 연봉계약서 새 화면(원격 서명 링크·QR·메일만 기존 '연봉계약서'에서)
 hostNative('hr', 'laborc', hr.mountLabor);   // 근로계약서 새 화면(원격 서명 링크·QR·메일만 기존 '근로계약서'에서)
+hostNative('hr', 'leavepromo', hr.mountLeavePromo);   // 연차사용촉진 새 화면
