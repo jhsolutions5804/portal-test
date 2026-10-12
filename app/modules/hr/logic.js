@@ -1,7 +1,7 @@
 /* 인사 — 근로자 명부(새 화면). 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 데이터: workers/{id}(일반 정보) + worker_private/{id}(주민번호·계좌·주소·서명, 읽을 때 합쳐 쓰고 저장할 때 다시 가른다)
  *         labor_contracts/{id}/contracts · annual_contracts/{id}/contracts(endDate), workers/{id}/history(직급·부서 변경 이력) */
-import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261012e';
+import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261012f';
 export const WP_FIELDS = ['jumin', 'bankAccount', 'address', 'signData'];   // worker_private 에 따로 두는 필드
 export const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')) && new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
@@ -269,3 +269,22 @@ export function hcResignPlan(docs, existing) {
     else if (old && old.auto) deletes.push(id);
   }); return { upserts, deletes };
 }
+
+/* ───────── 인사평가 — evaluations/{근로자}/records: 정기평가(연 1회, 연봉협상 이전)·수시평가(PJT 동료평가 취합), 등급 S·A·B·C, 초안→확정 ───────── */
+export const EVAL_GRADES = { S: '탁월', A: '우수', B: '보통', C: '미흡' };
+export const gradeLabel = (g) => (EVAL_GRADES[g] ? g + '(' + EVAL_GRADES[g] + ')' : String(g || '-'));
+export const NEW_EVAL = (year) => ({ type: 'regular', year: year || Number(kstToday().slice(0, 4)), pjtName: '', grade: 'B', comment: '' });
+export function buildEval(form, confirmed) {
+  const f = form || {}; const errors = []; const type = f.type === 'adhoc' ? 'adhoc' : 'regular'; const year = Number(f.year);
+  if (type === 'regular' && !(Number.isInteger(year) && year >= 2000 && year <= 2100)) errors.push('평가연도를 입력해 주세요(2000~2100).');
+  const pjt = String(f.pjtName || '').trim(); if (type === 'adhoc' && !pjt) errors.push('관련 PJT명을 입력해 주세요.'); if (pjt.length > 80) errors.push('PJT명은 80자 이내로 입력해 주세요.');
+  if (!EVAL_GRADES[f.grade]) errors.push('평가등급을 선택해 주세요.'); const comment = String(f.comment == null ? '' : f.comment).trim(); if (comment.length > 2000) errors.push('코멘트는 2,000자 이내로 입력해 주세요.');
+  if (errors.length) return { ok: false, errors };
+  return { ok: true, errors: [], confirmed: !!confirmed, data: { type, year: type === 'regular' ? year : Number(kstToday().slice(0, 4)), pjtName: type === 'adhoc' ? pjt : '', grade: f.grade, comment, status: confirmed ? 'confirmed' : 'draft' } };
+}
+/** 평가 기록: 연도 최신순(같은 해는 나중에 쓴 것이 위) */
+export const evalSorted = (list) => (list || []).slice().sort((a, b) => (Number(b.year) || 0) - (Number(a.year) || 0) || (Number(b.createdMs) || 0) - (Number(a.createdMs) || 0));
+/** 근로자 목록의 "최근 정기평가" */
+export const evalLatestRegular = (list) => evalSorted((list || []).filter((r) => r.type === 'regular'))[0] || null;
+/** 호봉 직접 입력: 비우면 자동 계산으로 되돌림(기준값 삭제), 1~60 정수만 */
+export function buildStepInput(val, year) { const s = String(val == null ? '' : val).trim(); const y = year || Number(kstToday().slice(0, 4)); if (s === '') return { ok: true, patch: { step: null, stepYear: y } }; const n = Number(s); if (!(Number.isInteger(n) && n >= 1 && n <= 60)) return { ok: false, error: '호봉은 1~60 사이의 정수여야 합니다.' }; return { ok: true, patch: { step: n, stepYear: y } }; }

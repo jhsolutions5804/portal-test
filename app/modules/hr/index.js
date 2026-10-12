@@ -1,9 +1,9 @@
-import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012e';
-import { confirmDialog } from '../../core/dialog.js?v=20261012e';
-import { holidayName } from '../../shared/holidays.js?v=20261012e';
-import { esc, toast } from '../../core/ui.js?v=20261012e';
-import { hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012e';
-import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml } from './view.js?v=20261012e';
+import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012f';
+import { confirmDialog } from '../../core/dialog.js?v=20261012f';
+import { holidayName } from '../../shared/holidays.js?v=20261012f';
+import { esc, toast } from '../../core/ui.js?v=20261012f';
+import { NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012f';
+import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml } from './view.js?v=20261012f';
 
 /** 인사(플랫폼 기본 모듈): 근로자 명부 새 화면. 인사총무 틀 안의 구역으로만 열린다(modules/index.js 의 hostNative). 구포털 인사 화면은 그대로 두고 하나씩 옮기는 중이다. 관리자 전용 */
 export const manifest = { id: 'hr', order: 21, title: '인사', icon: '👥', defaultHash: '#/hr/workers', perm: (me) => !!me && me.admin === true };
@@ -269,4 +269,38 @@ export async function mountCalendar(root, route, ctx) {
   root.oninput = (ev) => { const t = ev.target; if (t instanceof Element && t.matches('[data-hc-f]') && st.hcForm) st.hcForm[t.getAttribute('data-hc-f')] = t.value; };
   root.onchange = (ev) => { const t = ev.target; if (!(t instanceof Element)) return; if (t.matches('[data-hc-f]') && st.hcForm) { st.hcForm[t.getAttribute('data-hc-f')] = t.value; return; } if (t.matches('[data-hc-leave]')) { st.hcLeaveOn = t.checked; paint(); } };
   paint();
+}
+
+/** 인사평가(새 화면) — evaluations/{근로자}/records. 재직자 목록(호봉 직접 수정·최근 정기평가), 근로자별 평가 작성(정기·수시, 초안/확정)·확정 처리·삭제 */
+export async function mountEvals(root, route, ctx) {
+  root.onclick = null; root.oninput = null; root.onchange = null;
+  const st = { today: kstToday(), evWorkers: [], evLatest: {}, evSel: '', evForm: NEW_EVAL(), evRecords: [] };
+  root.innerHTML = '<div class="jh-hr"><div id="e-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
+  const body = root.querySelector('#e-body');
+  const recsOf = async (wid) => { const s = await getDocs(collection(db, 'evaluations/' + wid + '/records')); const l = []; s.forEach((d) => { const x = d.data(); l.push(Object.assign({ id: d.id }, x, { createdMs: x.createdAt && x.createdAt.toMillis ? x.createdAt.toMillis() : 0 })); }); return l; };
+  const loadList = async () => {
+    const ws = await getDocs(collection(db, 'workers')); const list = []; ws.forEach((d) => { const x = Object.assign({ id: d.id }, d.data()); if (x.status !== 'resigned') list.push(x); }); list.sort((a, b) => String(a.empNo || '').localeCompare(String(b.empNo || ''))); const latest = {};
+    await Promise.all(list.map(async (w) => { try { latest[w.id] = evalLatestRegular(await recsOf(w.id)); } catch (e) { latest[w.id] = null; } })); st.evWorkers = list; st.evLatest = latest;
+  };
+  try { await loadList(); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
+  body.removeAttribute('aria-busy');
+  const paint = () => { body.innerHTML = evalsHtml(st); };
+  const open = async (wid) => { st.evSel = wid; st.evForm = NEW_EVAL(); st.evRecords = []; try { st.evRecords = await recsOf(wid); } catch (e) { toast('이력을 불러오지 못했습니다: ' + ((e && e.message) || '')); } paint(); };
+  const save = async (confirmed) => { const r = buildEval(st.evForm, confirmed); if (!r.ok) { toast(r.errors[0]); return; } try { await addDoc(collection(db, 'evaluations/' + st.evSel + '/records'), Object.assign({}, r.data, { createdAt: serverTimestamp(), confirmedAt: confirmed ? serverTimestamp() : null })); toast(confirmed ? '확정 저장했습니다.' : '초안으로 저장했습니다.'); st.evForm = NEW_EVAL(); st.evRecords = await recsOf(st.evSel); paint(); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); } };
+  root.onclick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    const o = t.closest('[data-e-open]'); if (o) { await open(o.getAttribute('data-e-open')); return; }
+    const ty = t.closest('[data-e-type]'); if (ty) { st.evForm.type = ty.getAttribute('data-e-type'); paint(); return; }
+    const gr = t.closest('[data-e-grade]'); if (gr) { st.evForm.grade = gr.getAttribute('data-e-grade'); paint(); return; }
+    const cf = t.closest('[data-e-confirm]'); if (cf) { try { await updateDoc(doc(db, 'evaluations/' + st.evSel + '/records', cf.getAttribute('data-e-confirm')), { status: 'confirmed', confirmedAt: serverTimestamp() }); toast('확정 처리했습니다.'); st.evRecords = await recsOf(st.evSel); paint(); } catch (e) { toast('확정 처리하지 못했습니다: ' + ((e && e.message) || '')); } return; }
+    const dl = t.closest('[data-e-del]'); if (dl) { const ok = await confirmDialog({ title: '평가 기록 삭제', body: '이 평가 기록을 삭제합니다. 되돌릴 수 없습니다.', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return; try { await deleteDoc(doc(db, 'evaluations/' + st.evSel + '/records', dl.getAttribute('data-e-del'))); toast('삭제했습니다.'); st.evRecords = await recsOf(st.evSel); paint(); } catch (e) { toast('삭제하지 못했습니다: ' + ((e && e.message) || '')); } return; }
+    const a = t.closest('[data-e-act]'); if (!a) return; const act = a.getAttribute('data-e-act');
+    if (act === 'back') { st.evSel = ''; try { await loadList(); } catch (e) { /* 목록은 이전 값 유지 */ } paint(); } else if (act === 'draft') await save(false); else if (act === 'confirm') await save(true);
+  };
+  root.oninput = (ev) => { const t = ev.target; if (t instanceof Element && t.matches('[data-e-f]')) st.evForm[t.getAttribute('data-e-f')] = t.value; };
+  root.onchange = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return; if (t.matches('[data-e-f]')) { st.evForm[t.getAttribute('data-e-f')] = t.value; return; }
+    if (t.matches('[data-e-step]')) { const r = buildStepInput(t.value); if (!r.ok) { toast(r.error); return; } try { await setDoc(doc(db, 'workers', t.getAttribute('data-e-step')), r.patch, { merge: true }); toast('호봉을 저장했습니다.'); await loadList(); paint(); } catch (e) { toast('호봉을 저장하지 못했습니다: ' + ((e && e.message) || '')); } }
+  };
+  paint(); if (route.segs && route.segs[0]) await open(route.segs[0]);
 }
