@@ -1,20 +1,20 @@
-import { db, collection, getDocs, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, writeBatch } from '../../core/firebase.js?v=20261013v';
-import { toast } from '../../core/ui.js?v=20261013v';
-import { confirmDialog } from '../../core/dialog.js?v=20261013v';
-import { compNew, compToForm, compBuild, fmtTel, fmtTelBlur, kstToday } from './logic.js?v=20261013v';
-import { companiesListHtml, companyFormHtml } from './view.js?v=20261013v';
-import { projNew, projToForm, projectBuild } from './projects.js?v=20261013v';
-import { projectsListHtml, projectDetailHtml, projectFormHtml } from './projects-view.js?v=20261013v';
-import { uiState, pushHash } from './ui.js?v=20261013v';
-import { itemAmt, blankItem, itemSetQty, itemSetPrice, itemSetAmount, applySupplyEdit, draftTotals, newDraft, draftFromEstimate, buildEstimate, closePatch, reopenPatch, estGroup, sortEstimates } from './estimates.js?v=20261013v';
-import { estimatesListHtml, estimateDetailHtml, estimateFormHtml, itemRowHtml } from './estimates-view.js?v=20261013v';
-import { estDocHtml } from './estimate-doc.js?v=20261013v';
-import { sortProjects } from './projects.js?v=20261013v';
-import { linkPlan, donePatch, undonePatch, voidPatch, doneConfirm, undoneConfirm, doneToast, projectBalance, acctMonthInput } from './settlements.js?v=20261013v';
-import { settlementsListHtml, settlementDetailHtml } from './settlements-view.js?v=20261013v';
-import { settleDocPage } from './settlement-doc.js?v=20261013v';
-import { issueFormHtml, qtyBlocksHtml, totalsHtml, manualRowHtml } from './issue-view.js?v=20261013v';
-import { newIssueDraft, togglePjt, toggleEst, setQty, setQtyAmount, setSupplyOverride, setVatOverride, resetTotals, buildSettlement, itemSetQty as isItemQty, itemSetPrice as isItemPrice, itemSetAmount as isItemAmount, blankItem as isBlank } from './issue.js?v=20261013v';
+import { db, collection, getDocs, getDoc, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, writeBatch } from '../../core/firebase.js?v=20261013w';
+import { toast } from '../../core/ui.js?v=20261013w';
+import { confirmDialog } from '../../core/dialog.js?v=20261013w';
+import { compNew, compToForm, compBuild, fmtTel, fmtTelBlur, kstToday } from './logic.js?v=20261013w';
+import { companiesListHtml, companyFormHtml } from './view.js?v=20261013w';
+import { projNew, projToForm, projectBuild } from './projects.js?v=20261013w';
+import { projectsListHtml, projectDetailHtml, projectFormHtml } from './projects-view.js?v=20261013w';
+import { uiState, pushHash } from './ui.js?v=20261013w';
+import { itemAmt, blankItem, itemSetQty, itemSetPrice, itemSetAmount, applySupplyEdit, draftTotals, newDraft, draftFromEstimate, buildEstimate, closePatch, reopenPatch, estGroup, sortEstimates } from './estimates.js?v=20261013w';
+import { estimatesListHtml, estimateDetailHtml, estimateFormHtml, itemRowHtml } from './estimates-view.js?v=20261013w';
+import { estDocHtml } from './estimate-doc.js?v=20261013w';
+import { sortProjects } from './projects.js?v=20261013w';
+import { linkPlan, donePatch, undonePatch, voidPatch, doneConfirm, undoneConfirm, doneToast, projectBalance, acctMonthInput } from './settlements.js?v=20261013w';
+import { settlementsListHtml, settlementDetailHtml } from './settlements-view.js?v=20261013w';
+import { settleDocPage } from './settlement-doc.js?v=20261013w';
+import { issueFormHtml, qtyBlocksHtml, totalsHtml, manualRowHtml, mandayRowsHtml, mandayInfoHtml } from './issue-view.js?v=20261013w';
+import { mandaySource, monthDays, sumMandayDays, duplicateSources, applyMandayFetch, setMandayInput, setMandayForPjt, setRateForPjtValue, setMandayBaseRate, newIssueDraft, togglePjt, toggleEst, setQty, setQtyAmount, setSupplyOverride, setVatOverride, resetTotals, buildSettlement, itemSetQty as isItemQty, itemSetPrice as isItemPrice, itemSetAmount as isItemAmount, blankItem as isBlank } from './issue.js?v=20261013w';
 
 /** 영업기획(플랫폼 기본 모듈): 구포털 기획(gihoek)을 탭 하나씩 새 화면으로 옮기는 중. 관리자 전용 — 데이터는 gihoek_* 컬렉션 그대로.
  *  사이드바는 옛 화면 틀(legacy/frame.js)이 그린다 — 이 모듈은 틀 안의 구역(거래처·협력사)을 그리는 함수만 내보내고 modules/index.js 가 hostNative 로 연결한다. */
@@ -201,6 +201,22 @@ async function mountSettlementsView(root, route, ctx, kind) {
   const segs = (route && route.segs) || []; const s0 = segs[0];
   if (s0 === 'new') startIssue(segs[1] || ''); else if (s0 && st.settlements.some((x) => x.id === s0)) { if (segs[1] === 'from' && segs[2]) st.origin = segs[2]; st.view = 'detail'; st.sel = s0; paint(); } else paint();
   const refreshTot = () => { const el = body.querySelector('#is-tot'); if (el) el.innerHTML = totalsHtml(st); };
+  const refreshMd = () => { const r = body.querySelector('#is-mdrows'); if (r) r.innerHTML = mandayRowsHtml(st); const i = body.querySelector('#is-mdinfo'); if (i) i.innerHTML = mandayInfoHtml(st); refreshTot(); };
+  const fetchManday = async () => {
+    const d = st.draft; const dups = duplicateSources(d.pjtIds, st.projects);
+    if (dups.length) { const names = dups.map((g) => g.map((pid) => { const p = st.projects.find((x) => x.id === pid); return p ? p.code : pid; }).join(' = ')).join(', '); const ok = await confirmDialog({ title: '같은 공수 출처', body: '⚠️ 다음 프로젝트들이 같은 공수 데이터로 연결되어 있어 똑같은 값이 중복 집계될 수 있습니다:\n' + names + '\n\n(프로젝트의 "연동 PJT" 설정을 확인해 주세요.)\n\n그래도 계속 불러올까요?', confirmLabel: '계속' }); if (!ok.ok) return; }
+    st.busy = true; paint(); toast('공수 불러오는 중...');
+    try {
+      const breakdown = {}; let ignored = 0;
+      for (const pid of d.pjtIds) {
+        const src = mandaySource(st.projects.find((x) => x.id === pid)); if (!src) { breakdown[pid] = 0; continue; }
+        let idSet = null; try { const rs = await getDocs(collection(db, src.rosterCol)); idSet = new Set(); rs.forEach((x) => idSet.add(x.id)); } catch (e) { idSet = null; }   // 명부를 못 읽으면 전부 더한다(구포털과 같음)
+        const maps = []; await Promise.all(monthDays(d.baseMonth).map(async (dk) => { try { const sn = await getDoc(doc(db, src.dayCol, dk)); if (sn.exists()) maps.push(sn.data().md || {}); } catch (e) { /* 그날 문서를 못 읽으면 건너뜀 */ } }));
+        const r = sumMandayDays(maps, idSet); breakdown[pid] = r.sum; ignored += r.ignored;
+      }
+      const auto = applyMandayFetch(d, breakdown); st.busy = false; paint(); toast('공수 ' + auto + ' 반영했습니다.' + (ignored > 0 ? ' (명부 외 ' + Math.round(ignored * 10) / 10 + ' 공수 제외)' : ''));
+    } catch (e) { st.busy = false; paint(); toast('불러오기 실패: ' + ((e && (e.code || e.message)) || '')); }
+  };
   const patch = async (id, data, msg, after) => { try { await setDoc(doc(db, 'gihoek_settlements', id), data, { merge: true }); toast(msg); await load(); after(); } catch (e) { toast('실패: ' + ((e && (e.code || e.message)) || '')); } };
   root.onclick = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
@@ -212,9 +228,10 @@ async function mountSettlementsView(root, route, ctx, kind) {
       if (iact === 'legacy') { openLegacy('settle', 'newSettleOf', [d.pjtId, d.docType, d.method]); return; }
       if (iact === 'add-row') { d.manualItems.push(isBlank()); const r = body.querySelector('#is-rows'); if (r) r.innerHTML = d.manualItems.map(manualRowHtml).join(''); refreshTot(); return; }
       if (iact === 'reset-tot') { resetTotals(d); refreshTot(); return; }
+      if (iact === 'fetch-md') { await fetchManday(); return; }
       if (iact === 'publish') {
-        const r = buildSettlement(d, { settlements: st.settlements, estimates: st.estimates, companies: st.companies, me: { name: me.name, uid: me.uid }, now: Date.now() }); if (!r.ok) { toast(r.errors[0]); return; }
-        if (r.warnings.length) { const ok = await confirmDialog({ title: '수신자 미선택', body: r.warnings[0], confirmLabel: '발행' }); if (!ok.ok) return; }
+        const r = buildSettlement(d, { settlements: st.settlements, estimates: st.estimates, projects: st.projects, companies: st.companies, me: { name: me.name, uid: me.uid }, now: Date.now() }); if (!r.ok) { toast(r.errors[0]); return; }
+        for (const w of r.warnings) { const ok = await confirmDialog({ title: '발행 확인', body: w, confirmLabel: '발행' }); if (!ok.ok) return; }
         ia.disabled = true;
         try { await setDoc(doc(db, 'gihoek_settlements', r.id), Object.assign({}, r.payload, { createdAt: serverTimestamp() })); toast(r.message); await load(); /* 방금 저장한 문서가 목록에 아직 없으면(지연) 그대로 보여 준다 */ if (!st.settlements.some((x) => x.id === r.id)) st.settlements.push(Object.assign({ id: r.id }, r.payload)); st.draft = null; goDetail(r.id, true); } catch (e) { ia.disabled = false; toast('발행 실패: ' + ((e && (e.code || e.message)) || '')); }
       }
@@ -255,6 +272,9 @@ async function mountSettlementsView(root, route, ctx, kind) {
       const qa = t.getAttribute('data-is-qa'); if (qa) { const [eid, idx] = qa.split(':'); setQtyAmount(d, eid, Number(idx), t.value); const qb = body.querySelector('#is-qty'); if (qb) qb.innerHTML = qtyBlocksHtml(st); refreshTot(); return; }
       if (t.hasAttribute('data-is-supply')) { setSupplyOverride(d, t.value); refreshTot(); return; }
       if (t.hasAttribute('data-is-vat')) { setVatOverride(d, t.value); refreshTot(); return; }
+      const mdv = t.getAttribute('data-is-md'); if (mdv != null) { if (mdv === '') setMandayInput(d, t.value); else setMandayForPjt(d, mdv, t.value); refreshMd(); return; }
+      const mdr = t.getAttribute('data-is-mdrate'); if (mdr) { setRateForPjtValue(d, mdr, t.value); refreshMd(); return; }
+      if (t.hasAttribute('data-is-rate')) { setMandayBaseRate(d, t.value); paint(); return; }
       const f = t.getAttribute('data-is-f'); if (f) { d[f] = t.value; if (f === 'senderId') d.senderContact = ''; if (f === 'recipientId') d.recipientContact = ''; if (['method', 'baseMonth', 'senderId', 'recipientId'].includes(f)) paint(); return; }
     }
     const fk = t.getAttribute('data-sl-filter'); if (fk) { st.filter[fk] = t.value; st.page = 1; remember(0); paint(); return; }

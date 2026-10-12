@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261013v';
-import { won, card, chip, fld, selectHtml } from './ui.js?v=20261013v';
-import { METHOD_OPTIONS, isSupported, suppliers, clients, pickableEstimates, qtyRow, issueTotals } from './issue.js?v=20261013v';
-import { estSupply, itemAmt } from './projects.js?v=20261013v';
+import { esc } from '../../core/ui.js?v=20261013w';
+import { won, card, chip, fld, selectHtml } from './ui.js?v=20261013w';
+import { METHOD_OPTIONS, isSupported, suppliers, clients, pickableEstimates, qtyRow, issueTotals, mandaySource, mdSingle, mdBaseRate, mdForPjt, rateForPjt, mandaySummary, priorManday, TEAM_RATE } from './issue.js?v=20261013w';
+import { estSupply, itemAmt } from './projects.js?v=20261013w';
 const money = (n) => Number(Math.round(n) || 0).toLocaleString('ko-KR');
 const companyOpts = (list, first) => [['', first]].concat(list.map((c) => [c.id, c.company + (c.ceo ? ' (' + c.ceo + ')' : '')]));
 const contactSel = (key, companyId, val, companies) => { if (!companyId) return ''; const c = companies.find((x) => x.id === companyId); const cts = (c && c.contacts) || []; return fld('담당자', selectHtml('data-is-f="' + key + '"', val, [['', cts.length ? '— 담당자 선택 (선택사항) —' : '— 담당자 없음 (거래처에서 추가 가능) —']].concat(cts.map((t) => [t.name, t.name + (t.tel ? ' · ' + t.tel : '') + (t.email ? ' · ' + t.email : '')])), cts.length ? '' : 'disabled')); };
@@ -17,6 +17,30 @@ export function totalsHtml(st) {
   return '<div class="jh-plan__totals"><span>금번 ' + label + ' 공급가액 <input class="jh-input jh-plan__num jh-plan__supply" inputmode="numeric" data-is-supply value="' + money(t.supply) + '"> 원</span><span>부가세 (10%) <input class="jh-input jh-plan__num jh-plan__supply" inputmode="numeric" data-is-vat value="' + money(t.vat) + '"> 원</span><span class="jh-plan__big">금번 ' + label + '금액 합계 <strong>' + won(t.total) + ' 원</strong></span></div>'
     + (t.overridden ? '<div class="jh-field__hint">✎ 수동 수정됨 (자동계산: 공급가액 ' + won(t.auto) + ' 원) · <button type="button" class="jh-btn" data-variant="ghost" data-is-act="reset-tot">자동계산으로 되돌리기</button></div>' : '');
 }
+/** 공수 연동(지급예정서): 기준월 공수를 읽어 와 공수 × 단가로 계산. 프로젝트가 하나면 한 줄, 여럿이면 프로젝트별 공수·단가 */
+export function mandayRowsHtml(st) {
+  const d = st.draft; const ids = d.pjtIds; const base = mdBaseRate(d); const sm = mandaySummary(d);
+  if (ids.length <= 1) { const md = mdSingle(d); const prior = priorManday(st.settlements);
+    return '<tr><td>' + esc(d.baseMonth) + ' 기술인력 투입</td><td><input class="jh-input jh-plan__num" inputmode="decimal" data-is-md="" value="' + esc(md) + '"></td><td class="jh-plan__num">' + won(base) + '</td><td class="jh-plan__num"><strong>' + won(Math.round(md * base)) + '</strong></td></tr>'
+      + (prior ? '<tr><td class="jh-field__hint">기발행 공수 합계(참고 — 이번 금액에서 빼지 않음)</td><td class="jh-plan__num jh-field__hint">' + esc(Math.round(prior * 10) / 10) + '</td><td></td><td></td></tr>' : ''); }
+  return ids.map((pid) => { const p = st.projects.find((x) => x.id === pid); const md = mdForPjt(d, pid), r = rateForPjt(d, pid);
+    return '<tr><td>' + esc(d.baseMonth) + ' 기술인력 투입 ' + chip(p ? p.code : pid, 'blue') + '</td><td><input class="jh-input jh-plan__num" inputmode="decimal" data-is-md="' + esc(pid) + '" value="' + esc(md) + '"></td><td><input class="jh-input jh-plan__num" inputmode="numeric" data-is-mdrate="' + esc(pid) + '" value="' + money(r) + '"></td><td class="jh-plan__num"><strong>' + won(Math.round(md * r)) + '</strong></td></tr>'; }).join('');
+}
+export function mandayInfoHtml(st) {
+  const d = st.draft; const sm = mandaySummary(d); const warn = d.mandayMonth && d.mandayMonth !== d.baseMonth ? '<div class="jh-alert" data-tone="warn" role="status">⚠️ 불러온 공수는 ' + esc(d.mandayMonth) + ' 기준입니다. 기준월이 ' + esc(d.baseMonth) + '(으)로 바뀌었으니 다시 불러와 주세요.</div>' : '';
+  if (d.pjtIds.length > 1) return warn + '<div class="jh-field__hint">합계: ' + esc(Math.round(sm.md * 10) / 10) + ' 공수 · ' + won(sm.amount) + '원 (' + esc(d.pjtIds.map((pid) => { const p = st.projects.find((x) => x.id === pid); return (p ? p.code : pid) + ' ' + mdForPjt(d, pid) + '×' + won(rateForPjt(d, pid)); }).join(' + ')) + ')</div>';
+  return warn + (d.mandayAuto != null ? '<div class="jh-field__hint">자동 집계: ' + esc(d.mandayAuto) + ' 공수</div>' : '');
+}
+export function mandayCardHtml(st) {
+  const d = st.draft; const labels = [...new Set(d.pjtIds.map((pid) => { const src = mandaySource(st.projects.find((x) => x.id === pid)); return src ? src.label : '연동 없음'; }))].join(' + ');
+  const noSrc = d.pjtIds.filter((pid) => !mandaySource(st.projects.find((x) => x.id === pid))).map((pid) => { const p = st.projects.find((x) => x.id === pid); return p ? p.code : pid; });
+  const right = '<button type="button" class="jh-btn" data-variant="secondary" data-is-act="fetch-md"' + (st.busy ? ' disabled' : '') + '>⟳ 공수 불러오기</button>';
+  const body = '<div class="jh-plan__pad"><div class="jh-alert" data-tone="warn" role="status">기준월(' + esc(d.baseMonth) + ') · 공수 출처 <strong>' + esc(labels) + '</strong> 에서 공수 합계를 읽어옵니다. 공수·단가 모두 직접 수정 가능합니다.</div>'
+    + (noSrc.length ? '<div class="jh-alert" data-tone="warn" role="status">' + esc(noSrc.join(', ')) + '은(는) 연동 PJT 가 없어 공수를 불러올 수 없습니다(0). 직접 입력해 주세요.</div>' : '')
+    + '<div class="jh-plan__line"><label class="jh-field__label">기술인력 단가 (원/공수)' + (d.pjtIds.length > 1 ? ' <span class="jh-field__hint">— 기본값. 프로젝트별로 아래 표에서 개별 수정 가능</span>' : '') + '</label><input class="jh-input jh-plan__num jh-plan__supply" inputmode="numeric" data-is-rate value="' + money(mdBaseRate(d)) + '"></div>'
+    + '<div class="jh-plan__scroll"><table class="jh-plan__table"><thead><tr><th>항목</th><th class="jh-plan__num">공수</th><th class="jh-plan__num">단가</th><th class="jh-plan__num">금액</th></tr></thead><tbody id="is-mdrows">' + mandayRowsHtml(st) + '</tbody></table></div><div id="is-mdinfo">' + mandayInfoHtml(st) + '</div></div>';
+  return card('공수 연동', body, right);
+}
 /** 정산서 발행 폼(청구서/지급예정서). st.draft, st.projects, st.companies, st.estimates, st.settlements */
 export function issueFormHtml(st) {
   const d = st.draft; const inv = d.docType === 'invoice'; const sups = suppliers(st.companies), clis = clients(st.companies); const ok = isSupported(d.docType, d.method);
@@ -26,7 +50,8 @@ export function issueFormHtml(st) {
     + fld(inv ? '지급요청일' : '지급예정일', '<input class="jh-input" type="date" data-is-f="payDate" value="' + esc(d.payDate) + '">', inv ? '' : '비우면 기준월 익월 말일 자동 (주말→금요일), 회계 반영월 기준')
     + '<div class="jh-plan__grid"><div>' + fld('발신자 (우리)', selectHtml('data-is-f="senderId"', d.senderId, companyOpts(sups, '— 선택 —'))) + contactSel('senderContact', d.senderId, d.senderContact, st.companies) + '</div><div>' + fld('수신자 (' + (inv ? '원청' : '하청') + ')', selectHtml('data-is-f="recipientId"', d.recipientId, companyOpts(clis, '— 거래처 선택 —'))) + contactSel('recipientContact', d.recipientId, d.recipientContact, st.companies) + '</div></div></div>';
   let body;
-  if (!ok) body = card('이 방식은 옛 화면에서', '<div class="jh-plan__pad"><div class="jh-alert" data-tone="warn" role="status">' + (d.method === 'progress' ? '"공정 연동" 방식은 섹터·장비 진척 데이터를 읽어 계산합니다. 아직 새 화면으로 옮기지 않아 옛 발행 화면에서 발행합니다.' : '"공수 연동" 방식은 근로자 공수와 단가로 계산합니다. 아직 새 화면으로 옮기지 않아 옛 발행 화면에서 발행합니다.') + '</div><div class="jh-plan__bar"><button type="button" class="jh-btn" data-variant="primary" data-is-act="legacy">옛 발행 화면에서 계속</button></div></div>');
+  if (!ok) body = card('이 방식은 옛 화면에서', '<div class="jh-plan__pad"><div class="jh-alert" data-tone="warn" role="status">' + (d.method === 'progress' ? '"공정 연동" 방식은 섹터·장비 진척 데이터를 읽어 계산합니다. 아직 새 화면으로 옮기지 않아 옛 발행 화면에서 발행합니다.' : '이 방식은 옛 발행 화면에서 발행합니다.') + '</div><div class="jh-plan__bar"><button type="button" class="jh-btn" data-variant="primary" data-is-act="legacy">옛 발행 화면에서 계속</button></div></div>');
+  else if (d.method === 'manday') body = mandayCardHtml(st);
   else if (d.method === 'manual') body = card('직접 입력', '<div class="jh-plan__pad"><div class="jh-plan__scroll"><table class="jh-plan__table jh-plan__items"><thead><tr><th>#</th><th>품명</th><th>규격</th><th class="jh-plan__num">수량</th><th class="jh-plan__num">단가</th><th class="jh-plan__num">금액</th><th></th></tr></thead><tbody id="is-rows">' + d.manualItems.map(manualRowHtml).join('') + '</tbody></table></div><div><button type="button" class="jh-btn" data-variant="ghost" data-is-act="add-row">+ 품목 추가</button></div></div>');
   else { const picks = pickableEstimates(d, st.estimates); body = card('견적 연동 (수량 정산)', '<div class="jh-plan__pad"><div class="jh-alert" data-tone="warn" role="status">견적서를 선택하면 품목이 펼쳐집니다. 품목별로 이번에 정산할 수량을 입력하면 단가×수량으로 금액이 계산되고, 기청구 수량은 차감됩니다. 금액은 직접 수정할 수 있습니다.</div>'
     + (picks.length ? picks.map((e) => '<label class="jh-plan__check jh-plan__estpick" data-on="' + d.estIds.includes(e.id) + '"><input type="checkbox" data-is-est="' + esc(e.id) + '"' + (d.estIds.includes(e.id) ? ' checked' : '') + '> <span><strong>' + esc(e.title) + '</strong> <span class="jh-field__hint">' + esc(e.no) + ' · 공급가 ' + won(estSupply(e)) + '</span></span></label>').join('') : '<div class="jh-empty">이 프로젝트의 유효 견적이 없습니다.</div>') + '<div id="is-qty">' + qtyBlocksHtml(st) + '</div></div>'); }
