@@ -35,7 +35,7 @@ globalThis.__FS = {
   getDoc: async (r) => { const d = (D[r.coll] || {})[r.id]; return { exists: () => !!d, data: () => d, id: r.id, ref: r }; },
   setDoc: async (r, data, o) => { globalThis.__WRITES.push({ op: 'set', path: r.path, data, merge: !!(o && o.merge) }); }, addDoc: async (c, data) => { const nid = id(); globalThis.__WRITES.push({ op: 'add', path: c.path + '/' + nid, data }); return { id: nid }; }, updateDoc: async (r, data) => { globalThis.__WRITES.push({ op: 'update', path: r.path, data }); }, deleteDoc: async (r) => { globalThis.__WRITES.push({ op: 'delete', path: r.path }); },
   deleteField: () => ({ __del: 1 }), serverTimestamp: () => ({ toDate: () => new Date(), toMillis: () => Date.now() }), getFirestore: () => ({}), Timestamp: { fromMillis: (n) => ({ toMillis: () => n, toDate: () => new Date(n) }) },
-  writeBatch: () => ({ set() {}, update() {}, delete() {}, commit: async () => {} }),
+  writeBatch: () => { const ops = []; return { set: (r, data) => { ops.push({ op: 'batch-set', path: r.path, data }); }, update: (r, data) => { ops.push({ op: 'batch-update', path: r.path, data }); }, delete: (r) => { ops.push({ op: 'batch-delete', path: r.path }); }, commit: async () => { ops.forEach((o) => globalThis.__WRITES.push(o)); } }; },
 };
 let __done = false; export const markDone = () => { __done = true; };
 process.on('exit', (code) => { if (!__done) { console.log('\n✗ 점검이 끝까지 실행되지 않았습니다(중간에 오류로 멈춤) — 위 출력과 미처리 오류를 확인하세요'); process.exitCode = 1; } });

@@ -2,7 +2,7 @@
  * "올바른 문서 경로에 올바른 값이 써졌는가"를 확인한다. smoke_ui 가 못 보는 쓰기 경로(저장 눌렀는데 아무것도 안 써지거나 엉뚱한 곳에 써지는 문제)를 잡는다.
  * 사용: cd scripts/dev && node --import ./smoke_register.mjs smoke_writes.mjs [--verbose]
  * 한계: 서버 함수·보안 규칙·실제 데이터는 못 본다(가짜 저장소는 모든 쓰기를 허용). */
-import { w, D, errors, sleep, markDone } from './smoke_env.mjs';
+import { w, D, errors, sleep, markDone, today } from './smoke_env.mjs';
 const verbose = process.argv.includes('--verbose');
 const hrMod = await import(new URL('../../app/modules/hr/index.js', import.meta.url).href); const genMod = await import(new URL('../../app/modules/general/index.js', import.meta.url).href);
 const ctx = { me: { admin: true, uid: 'u1', name: '관리자', email: 'a@jhsol.kr', perms: {} } };
@@ -145,4 +145,27 @@ await scenario('퇴직금 정산 — 미사용 연차 정산(참고) 카드와 "
   await click(root, '[data-t-leavefill]', 400); await sleep(500);
   const inp = root.querySelector('[data-t-opt="leave12"]'); check(inp && /\d/.test(inp.value), '연차수당 합계 입력칸이 채워져야 함: ' + (inp && inp.value)); check(!before && /연차 상여·연차수당 가산|상여·연차수당 가산/.test(root.textContent), '평균임금 산정 표에 연간 상여·연차수당 가산 줄이 나타나야 함'); check(WR().filter((x) => x.op === 'set' && /^severance\//.test(x.path)).length === 0, '넣기 버튼은 정산을 저장하면 안 됨');
 });
+
+await scenario('근로자 면담 — 기록 저장 / 삭제: interviews/{근로자}/records, 삭제는 해당 기록만', async (check) => {
+  const root = await mountFresh(hrMod.mountInterviews); await click(root, '[data-i-open="w1"]'); await setv(root, '[data-i-f="date"]', today); await setv(root, '[data-i-f="memo"]', '업무 적응 면담, 현장 배치 희망');
+  await click(root, '[data-i-act="save"]', 250); await confirmOk(); await sleep(200);
+  const i = WR().filter((x) => (x.op === 'add' || x.op === 'set') && /^interviews\/w1\/records\//.test(x.path)); check(i.length === 1, 'interviews/w1/records 가 1건 저장되어야 함(실제 ' + i.length + '): ' + JSON.stringify(WR().map((x) => x.op + ' ' + x.path)));
+  if (i[0]) check(i[0].data.date === today && /현장 배치/.test(i[0].data.memo || ''), '면담 값(날짜·내용) 이상: ' + JSON.stringify(i[0].data).slice(0, 240));
+  WR().length = 0; const r2 = await mountFresh(hrMod.mountInterviews); await click(r2, '[data-i-open="w1"]'); await click(r2, '[data-i-del="i1"]'); await confirmOk(); const del = WR().filter((x) => x.op === 'delete'); check(del.length === 1 && del[0].path === 'interviews/w1/records/i1', '삭제는 interviews/w1/records/i1 한 건만: ' + JSON.stringify(del.map((x) => x.path)));
+});
+await scenario('본인 열람 링크 — 연봉계약서: sign_links 에 열람 전용 링크, 문서 내용에 주민번호 전체 없음', async (check) => {
+  const root = await mountFresh(hrMod.mountAnnual); await click(root, '[data-an-open="w1"]'); await click(root, '[data-an-link="20260301"]', 300); await confirmOk(); await sleep(300);
+  const links = WR().filter((x) => /^sign_links\/[A-Za-z0-9]+$/.test(x.path)); check(links.length === 1, 'sign_links 문서가 1건 만들어져야 함(실제 ' + links.length + '): ' + JSON.stringify(WR().map((x) => x.op + ' ' + x.path)));
+  if (links[0]) { const d = links[0].data; check(d.docType === 'annual' && d.workerName === '김가나' && d.viewOnly === true && !!d.expiresAt && d.status === 'view' && !('jumin' in d) && !/\d{6}-?\d{7}/.test(JSON.stringify(d)), '링크 값(문서 종류·이름·열람 전용·만료·상태, 공개 필드에 민감정보 없음) 이상: ' + JSON.stringify(d).slice(0, 260)); }
+  const secure = WR().filter((x) => /^sign_links\/[A-Za-z0-9]+\/secure\//.test(x.path)); check(secure.length >= 1, '문서 내용(secure)이 함께 저장되어야 함'); check(!/\d{6}-?\d{7}/.test(JSON.stringify(secure.map((x) => x.data))), '링크에 담긴 문서에 주민번호 전체가 들어가면 안 됨(마스킹)');
+});
+const generalAdd = (title, tab, coll, fields) => scenario(title, async (check) => {
+  const root = await mountFresh(genMod.mountSection, { segs: [tab], query: {} }); await click(root, '[data-g-add]'); for (const [k, v] of Object.entries(fields)) await setv(root, '[data-gf="' + k + '"]', v);
+  await click(root, '[data-g-act="save"]', 250); await confirmOk(); await sleep(200);
+  const x = WR().filter((y) => (y.op === 'add' || y.op === 'set') && new RegExp('^' + coll + '/').test(y.path)); check(x.length === 1, coll + ' 가 1건 저장되어야 함(실제 ' + x.length + '): ' + JSON.stringify(WR().map((y) => y.op + ' ' + y.path)));
+  if (x[0]) check(Object.entries(fields).filter(([k]) => ['name'].includes(k)).every(([k, v]) => x[0].data[k] === v), '입력한 이름이 저장되어야 함: ' + JSON.stringify(x[0].data).slice(0, 240)); return x[0];
+});
+await generalAdd('총무 — 임대 추가: general_leases', 'lease', 'general_leases', { name: '원희캐슬 B111', rent: '800000', deposit: '10000000' });
+await generalAdd('총무 — 자산 추가: general_assets', 'asset', 'general_assets', { name: '노트북 LG그램', cost: '1800000', holder: '김가나' });
+await generalAdd('총무 — 갱신 일정 추가: general_renewals', 'renewal', 'general_renewals', { name: '사무실 임대 갱신', nextDate: '2027-03-01', amount: '9600000' });
 markDone(); console.log('\n' + (failed ? '문제가 있는 저장 동작 ' + failed + '건' : '모든 저장 동작이 올바른 경로·값으로 기록됨')); process.exit(failed ? 1 : 0);
