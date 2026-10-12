@@ -42,3 +42,22 @@
 .jh-plan__pager { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-1); }
 .jh-plan__row[data-void="true"] { opacity: 0.6; }
 @media (max-width: 899px) { .jh-plan__sum, .jh-plan__sum--5 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .jh-plan__two, .jh-plan__grid3 { grid-template-columns: minmax(0, 1fr); } }
+
+/* 견적 */
+.jh-plan__filters2 { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--sp-2); align-items: center; }
+.jh-plan__party { display: grid; gap: var(--u-2); padding: var(--sp-3); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-bg); min-width: 0; }
+.jh-plan__scroll { overflow-x: auto; }
+.jh-plan__table { width: 100%; border-collapse: collapse; }
+.jh-plan__table th, .jh-plan__table td { padding: var(--sp-2) var(--sp-3); border-bottom: var(--u-1) solid var(--c-line); text-align: left; vertical-align: middle; }
+.jh-plan__table th { font-size: var(--fs-xs); color: var(--c-ink-3); white-space: nowrap; }
+.jh-plan__table .jh-plan__num, .jh-plan__num { text-align: right; font-variant-numeric: tabular-nums; }
+.jh-plan__items input { min-width: var(--u-80, 5rem); }
+.jh-plan__totals { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--sp-4); padding-top: var(--sp-2); }
+.jh-plan__totals strong[data-tone="pos"] { color: var(--c-ok, #16a34a); } .jh-plan__totals strong[data-tone="neg"] { color: var(--c-danger, #dc2626); }
+.jh-plan__supply { width: var(--u-160, 10rem); display: inline-block; }
+.jh-plan__notes { white-space: pre-wrap; padding: var(--sp-3); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-bg); }
+.jh-plan__cmp { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.jh-plan__old { color: var(--c-ink-3); text-decoration: line-through; }
+.jh-plan__table tr[data-st="added"] td { background: #e8f6ee; } .jh-plan__table tr[data-st="removed"] td { background: var(--c-bg); color: var(--c-ink-3); } .jh-plan__table tr[data-st="changed"] td { background: #fff4e0; }
+.jh-plan__row[aria-current="true"] { border-color: var(--c-primary); background: var(--c-primary-weak); }
+@media (max-width: 899px) { .jh-plan__filters2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

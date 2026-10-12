@@ -1,10 +1,14 @@
-import { db, collection, getDocs, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261013s';
-import { toast } from '../../core/ui.js?v=20261013s';
-import { confirmDialog } from '../../core/dialog.js?v=20261013s';
-import { compNew, compToForm, compBuild, fmtTel, fmtTelBlur } from './logic.js?v=20261013s';
-import { companiesListHtml, companyFormHtml } from './view.js?v=20261013s';
-import { projNew, projToForm, projectBuild } from './projects.js?v=20261013s';
-import { projectsListHtml, projectDetailHtml, projectFormHtml } from './projects-view.js?v=20261013s';
+import { db, collection, getDocs, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, writeBatch } from '../../core/firebase.js?v=20261013t';
+import { toast } from '../../core/ui.js?v=20261013t';
+import { confirmDialog } from '../../core/dialog.js?v=20261013t';
+import { compNew, compToForm, compBuild, fmtTel, fmtTelBlur, kstToday } from './logic.js?v=20261013t';
+import { companiesListHtml, companyFormHtml } from './view.js?v=20261013t';
+import { projNew, projToForm, projectBuild } from './projects.js?v=20261013t';
+import { projectsListHtml, projectDetailHtml, projectFormHtml } from './projects-view.js?v=20261013t';
+import { itemAmt, blankItem, itemSetQty, itemSetPrice, itemSetAmount, applySupplyEdit, draftTotals, newDraft, draftFromEstimate, buildEstimate, closePatch, reopenPatch, estGroup, sortEstimates } from './estimates.js?v=20261013t';
+import { estimatesListHtml, estimateDetailHtml, estimateFormHtml, itemRowHtml } from './estimates-view.js?v=20261013t';
+import { estDocHtml } from './estimate-doc.js?v=20261013t';
+import { sortProjects } from './projects.js?v=20261013t';
 
 /** 영업기획(플랫폼 기본 모듈): 구포털 기획(gihoek)을 탭 하나씩 새 화면으로 옮기는 중. 관리자 전용 — 데이터는 gihoek_* 컬렉션 그대로.
  *  사이드바는 옛 화면 틀(legacy/frame.js)이 그린다 — 이 모듈은 틀 안의 구역(거래처·협력사)을 그리는 함수만 내보내고 modules/index.js 가 hostNative 로 연결한다. */
@@ -69,14 +73,14 @@ export async function mountProjects(root, route, ctx) {
     const fl = t.closest('[data-pj-filter]'); if (fl) { st.filter.status = fl.getAttribute('data-pj-filter'); paint(); return; }
     const op = t.closest('[data-pj-open]'); if (op) { show('detail', op.getAttribute('data-pj-open')); return; }
     const pg = t.closest('[data-pj-page]'); if (pg) { const [k, n] = pg.getAttribute('data-pj-page').split(':'); st.page[k] = Number(n); paint(); return; }
-    const es = t.closest('[data-pj-est]'); if (es) { openLegacy('est', 'openEst', [es.getAttribute('data-pj-est'), st.sel]); return; }
+    const es = t.closest('[data-pj-est]'); if (es) { location.hash = '#/plan/est/' + es.getAttribute('data-pj-est') + '/from/' + st.sel; return; }
     const se = t.closest('[data-pj-set]'); if (se) { openLegacy('settle', 'openSettle', [se.getAttribute('data-pj-set'), st.sel]); return; }
     const a = t.closest('[data-pj-act]'); if (!a) return; const act = a.getAttribute('data-pj-act');
     if (act === 'list') { show('list', ''); return; }
     if (act === 'new') { st.sel = ''; st.form = projNew(); show('form', ''); return; }
     if (act === 'edit') { const p = st.projects.find((x) => x.id === st.sel); if (!p) return; st.form = projToForm(p); show('form'); return; }
     if (act === 'cancel') { show(st.sel ? 'detail' : 'list'); return; }
-    if (act === 'new-est') { openLegacy('est', 'newEst', [st.sel]); return; }
+    if (act === 'new-est') { location.hash = '#/plan/est/new/' + st.sel; return; }
     if (act === 'new-set') { openLegacy('settle', 'newSettle', [st.sel]); return; }
     if (act === 'del') {
       const p = st.projects.find((x) => x.id === st.sel); if (!p) return; const ok = await confirmDialog({ title: '프로젝트 삭제', body: '이 프로젝트를 삭제할까요? (견적·정산 데이터는 남습니다)', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return;
@@ -97,6 +101,77 @@ export async function mountProjects(root, route, ctx) {
   root.oninput = (ev) => { const t = ev.target; if (!(t instanceof Element)) return; if (t.matches('[data-pj-f]') && st.form) { st.form[t.getAttribute('data-pj-f')] = t.value; return; } if (t.matches('[data-pj-q]')) { st.filter.q = t.value; const pos = t.selectionStart; paint(); const q = body.querySelector('[data-pj-q]'); if (q) { q.focus(); try { q.setSelectionRange(pos, pos); } catch (e) { /* 검색칸 형식에 따라 위치 지정이 안 될 수 있다 */ } } } };
   root.onchange = (ev) => { const t = ev.target; if (t instanceof Element && t.matches('[data-pj-f]') && st.form) st.form[t.getAttribute('data-pj-f')] = t.value; };
   paint();
+}
+
+/** 견적: 목록(필터·쪽 나눔) → 상세(개정 이력·비교, 종결·삭제·인쇄) → 작성·개정 발행. 주소: #/plan/est · #/plan/est/new[/프로젝트] · #/plan/est/<견적>[/from/<프로젝트>]
+ *  개정본을 발행하면 원본이 폐기되고(두 문서를 한 번에 저장), 프로젝트 화면에서 들어왔으면 돌아가기가 프로젝트로 간다. */
+export async function mountEstimates(root, route, ctx) {
+  root.onclick = null; root.oninput = null; root.onchange = null; if (root.__esPop) { window.removeEventListener('popstate', root.__esPop); root.__esPop = null; }
+  const me = (ctx && ctx.me) || {};
+  const st = { estimates: [], projects: [], companies: [], view: 'list', sel: '', draft: null, filter: { pjt: '', client: '', month: '', pjtStatus: '', status: '', hideReplaced: true }, page: 1, origin: '', cmp: { a: '', b: '' } };
+  root.innerHTML = '<div id="es-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#es-body');
+  const load = async () => { const [a, b, c] = await Promise.all([getDocs(collection(db, 'gihoek_estimates')), getDocs(collection(db, 'gihoek_projects')), getDocs(collection(db, 'gihoek_companies'))]); st.estimates = sortEstimates(lst(a)); st.projects = sortProjects(lst(b)); st.companies = lst(c).sort((x, y) => String(x.company || '').localeCompare(String(y.company || ''), 'ko')); };
+  try { await load(); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + ((e && e.message) || '') + '</div>'; return; }
+  body.removeAttribute('aria-busy');
+  const paint = () => { body.innerHTML = st.view === 'form' ? estimateFormHtml(st) : st.view === 'detail' ? estimateDetailHtml(st) : estimatesListHtml(st); window.scrollTo(0, 0); };
+  const today = () => kstToday();
+  const goList = () => { st.view = 'list'; st.sel = ''; st.draft = null; st.origin = ''; paint(); };
+  const goDetail = (id, push) => { st.view = 'detail'; st.sel = id; st.draft = null; st.cmp = { a: '', b: '' }; if (push) { try { history.pushState({ jhPlanEst: 1 }, ''); } catch (e) { /* 기록을 못 남겨도 화면은 보인다 */ } } paint(); };
+  const goBack = () => { if (st.origin) { location.hash = '#/plan/projects/' + st.origin; return; } goList(); };
+  root.__esPop = () => { if (st.view === 'detail') goBack(); }; window.addEventListener('popstate', root.__esPop);
+  const startNew = (pjtId) => { if (!st.projects.length) { toast('먼저 프로젝트를 등록하세요.'); location.hash = '#/plan/projects'; return; } st.draft = newDraft({ projects: st.projects, companies: st.companies, me, pjtId, today: today() }); st.view = 'form'; st.sel = ''; paint(); };
+  const segs = (route && route.segs) || []; const s0 = segs[0];
+  if (s0 === 'new') { st.origin = segs[1] || ''; startNew(segs[1] || ''); } else if (s0 && st.estimates.some((e) => e.id === s0)) { if (segs[1] === 'from' && segs[2]) st.origin = segs[2]; st.view = 'detail'; st.sel = s0; paint(); } else paint();
+  const rows = () => body.querySelector('#es-rows');
+  const refreshTotals = () => { const tt = draftTotals(st.draft.items); const sp = body.querySelector('#es-supply'); if (sp && document.activeElement !== sp) sp.value = Math.round(tt.supply).toLocaleString('ko-KR'); const v = body.querySelector('#es-vat'), tot = body.querySelector('#es-total'); if (v) v.textContent = Math.round(tt.vat).toLocaleString('ko-KR') + ' 원'; if (tot) tot.textContent = Math.round(tt.total).toLocaleString('ko-KR') + ' 원'; };
+  const refreshRow = (i) => { const it = st.draft.items[i]; const set = (k, v) => { const el = body.querySelector('[data-es-it="' + i + ':' + k + '"]'); if (el) el.value = Math.round(v).toLocaleString('ko-KR'); }; set('price', it.price); set('amount', itemAmt(it)); };
+  const drawRows = () => { rows().innerHTML = st.draft.items.map(itemRowHtml).join(''); refreshTotals(); };
+  const printEst = (e) => { const p = st.projects.find((x) => x.id === e.pjtId) || null; const w = window.open('', '_blank'); if (!w) { toast('팝업이 차단되었습니다.'); return; } w.document.write(estDocHtml(e, p)); w.document.close(); };
+  root.onclick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    const pg = t.closest('[data-es-page]'); if (pg) { st.page = Number(pg.getAttribute('data-es-page').split(':')[1]); paint(); return; }
+    const op = t.closest('[data-es-open]'); if (op) { goDetail(op.getAttribute('data-es-open'), st.view === 'list'); return; }
+    const dl = t.closest('[data-es-del]'); if (dl && st.draft) { st.draft.items.splice(Number(dl.getAttribute('data-es-del')), 1); if (!st.draft.items.length) st.draft.items.push(blankItem()); drawRows(); return; }
+    const a = t.closest('[data-es-act]'); if (!a) return; const act = a.getAttribute('data-es-act'); const cur = st.estimates.find((x) => x.id === st.sel);
+    if (act === 'reset') { st.filter = { pjt: '', client: '', month: '', pjtStatus: '', status: '', hideReplaced: true }; st.page = 1; paint(); return; }
+    if (act === 'new') { st.origin = ''; startNew(''); return; }
+    if (act === 'back') { if (history.state && history.state.jhPlanEst) history.back(); else goBack(); return; }
+    if (act === 'cancel') { if (st.draft && st.draft.editId) goDetail(st.draft.editId, false); else if (st.origin) goBack(); else goList(); return; }
+    if (act === 'add-row' && st.draft) { st.draft.items.push(blankItem()); drawRows(); return; }
+    if (act === 'edit' && cur) { st.draft = draftFromEstimate(cur, { me, companies: st.companies, today: today() }); st.view = 'form'; paint(); return; }
+    if (act === 'print' && cur) { printEst(cur); return; }
+    if (act === 'close' && cur) { const ok = await confirmDialog({ title: '견적 종결', body: '이 견적서를 종결 처리할까요?\n\n종결 시 유효 견적 집계·견적 합계에서 제외됩니다.\n(정산이 완료된 견적에 사용하세요)', confirmLabel: '종결' }); if (!ok.ok) return; try { await setDoc(doc(db, 'gihoek_estimates', cur.id), Object.assign(closePatch(), { closedAt: serverTimestamp() }), { merge: true }); toast('종결 처리했습니다.'); await load(); goDetail(cur.id, false); } catch (e) { toast('실패: ' + ((e && (e.code || e.message)) || '')); } return; }
+    if (act === 'reopen' && cur) { const ok = await confirmDialog({ title: '종결 취소', body: '종결을 취소하고 유효 상태로 되돌릴까요?', confirmLabel: '되돌리기' }); if (!ok.ok) return; try { await setDoc(doc(db, 'gihoek_estimates', cur.id), reopenPatch(), { merge: true }); toast('종결을 취소했습니다.'); await load(); goDetail(cur.id, false); } catch (e) { toast('실패: ' + ((e && (e.code || e.message)) || '')); } return; }
+    if (act === 'del' && cur) { const g = estGroup(st.estimates, cur.baseNo || cur.no).length; const ok = await confirmDialog({ title: '견적 삭제', body: '이 견적을 삭제할까요?' + (g > 1 ? '\n(같은 견적의 다른 개정 버전은 남습니다)' : ''), confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return; try { await deleteDoc(doc(db, 'gihoek_estimates', cur.id)); toast('삭제했습니다.'); await load(); goBack(); } catch (e) { toast('삭제 실패: ' + ((e && (e.code || e.message)) || '')); } return; }
+    if (act === 'save' && st.draft) {
+      const r = buildEstimate(st.draft, { estimates: st.estimates, companies: st.companies, me, now: Date.now() }); if (!r.ok) { toast(r.errors[0]); return; }
+      a.disabled = true;
+      try {
+        const data = Object.assign({}, r.payload, { createdAt: serverTimestamp() });
+        if (r.voidPatch) { const batch = writeBatch(db); batch.set(doc(db, 'gihoek_estimates', r.id), data); batch.set(doc(db, 'gihoek_estimates', r.voidPatch.id), Object.assign({}, r.voidPatch.patch, { voidedAt: serverTimestamp() }), { merge: true }); await batch.commit(); }   // 개정본 저장과 원본 폐기를 한 번에
+        else await setDoc(doc(db, 'gihoek_estimates', r.id), data);
+        toast(r.message); await load(); goDetail(r.id, false);
+      } catch (e) { a.disabled = false; toast('저장 실패: ' + ((e && (e.code || e.message)) || '')); }
+    }
+  };
+  root.oninput = (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    const f = t.getAttribute('data-es-f'); if (f && st.draft) { st.draft[f] = t.value; return; }
+    if (t.hasAttribute('data-es-supply')) { const raw = t.value.replace(/[^0-9]/g, ''); t.value = raw ? Number(raw).toLocaleString('ko-KR') : ''; return; }
+    const c = t.getAttribute('data-es-it'); if (!c || !st.draft) return; const [i, k] = c.split(':'); const it = st.draft.items[Number(i)]; if (!it) return;
+    if (k === 'name' || k === 'spec' || k === 'remark') { it[k] = t.value; return; }
+    if (k === 'price' || k === 'amount') { const raw = t.value.replace(/[^0-9]/g, ''); t.value = raw ? Number(raw).toLocaleString('ko-KR') : ''; }
+    if (k === 'qty') itemSetQty(it, t.value); else if (k === 'price') itemSetPrice(it, t.value); else itemSetAmount(it, t.value);
+    const set = (kk, v) => { if (kk === k) return; const el = body.querySelector('[data-es-it="' + i + ':' + kk + '"]'); if (el) el.value = Math.round(v).toLocaleString('ko-KR'); }; set('price', it.price); set('amount', it.amount); refreshTotals();
+  };
+  root.onchange = (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    const fk = t.getAttribute('data-es-filter'); if (fk) { st.filter[fk] = t.value; st.page = 1; paint(); return; }
+    if (t.hasAttribute('data-es-hide')) { st.filter.hideReplaced = t.checked; st.page = 1; paint(); return; }
+    const cm = t.getAttribute('data-es-cmp'); if (cm) { st.cmp[cm] = t.value; paint(); return; }
+    if (t.hasAttribute('data-es-supply') && st.draft) { if (applySupplyEdit(st.draft.items, t.value)) { st.draft.items.forEach((_, i) => refreshRow(i)); const li = st.draft.items.length - 1; const el = body.querySelector('[data-es-it="' + li + ':price"]'); if (el) el.value = Math.round(st.draft.items[li].price).toLocaleString('ko-KR'); const am = body.querySelector('[data-es-it="' + li + ':amount"]'); if (am) am.value = Math.round(st.draft.items[li].amount).toLocaleString('ko-KR'); refreshTotals(); toast('마지막 품목으로 차액을 반영했습니다.'); } return; }
+    const f = t.getAttribute('data-es-f'); if (f && st.draft) { st.draft[f] = t.value; if (f === 'issuerId') { st.draft.issuerContact = ''; paint(); } else if (f === 'clientId') { st.draft.clientContact = ''; paint(); } }
+  };
 }
 export const mountCompanies = (root, route, ctx) => mountCompaniesView(root, route, ctx, 'all');
 export const mountPartners = (root, route, ctx) => mountCompaniesView(root, route, ctx, 'partners');
