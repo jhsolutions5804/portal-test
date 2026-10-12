@@ -1,11 +1,11 @@
-import { esc } from '../../core/ui.js?v=20261012q';
-import { rtWon, retireRecordsSorted } from './retire.js?v=20261012q';
-import { otSummary, otPerson } from './overtime.js?v=20261012q';
-import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261012q';
-import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261012q';
-import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261012q';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261012q';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261012q';
+import { esc } from '../../core/ui.js?v=20261012r';
+import { rtWon, retireRecordsSorted } from './retire.js?v=20261012r';
+import { otSummary, otPerson, otAmount } from './overtime.js?v=20261012r';
+import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261012r';
+import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261012r';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261012r';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261012r';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261012r';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -356,12 +356,12 @@ const otN = (n) => Number(n || 0).toLocaleString('ko-KR');
 function otMonthBar(st) { return '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-ot-month="-1" aria-label="이전 달">◀</button><strong>' + st.otY + '년 ' + st.otM + '월</strong><button type="button" class="jh-btn" data-variant="ghost" data-ot-month="1" aria-label="다음 달">▶</button></div>'; }
 function otRowsTable(rows, withName, withDel) {
   if (!rows.length) return '<div class="jh-empty">이 달 초과근로 내역이 없습니다.</div>';
-  return '<div class="jh-hr__scroll"><table class="jh-hr-table jh-hr-table--click"><thead><tr><th>날짜</th>' + (withName ? '<th>이름</th>' : '') + '<th class="num">시간</th><th class="num">수당</th><th>사유</th>' + (withDel ? '<th></th>' : '') + '</tr></thead><tbody>' + rows.map((r) => '<tr class="jh-hr__row" data-ot-open="' + esc(r.id) + '"><td>' + esc(String(r.date || '').slice(5).replace('-', '/')) + '</td>' + (withName ? '<td>' + esc(r.name) + '</td>' : '') + '<td class="num">' + esc(r.hours) + 'h</td><td class="num">' + otN(r.amount) + '원</td><td class="jh-hr__cell">' + (r.reason ? esc(r.reason) : '<span class="jh-field__hint">-</span>') + '</td>' + (withDel ? '<td><button type="button" class="jh-btn" data-variant="ghost" data-ot-del="' + esc(r.id) + '">삭제</button></td>' : '') + '</tr>').join('') + '</tbody></table></div>';
+  return '<div class="jh-hr__scroll"><table class="jh-hr-table jh-hr-table--click"><thead><tr><th>날짜</th>' + (withName ? '<th>이름</th>' : '') + '<th class="num">시간</th><th class="num">수당</th><th>사유</th>' + (withDel ? '<th></th>' : '') + '</tr></thead><tbody>' + rows.map((r) => '<tr class="jh-hr__row" data-ot-open="' + esc(r.id) + '"><td>' + esc(String(r.date || '').slice(5).replace('-', '/')) + '</td>' + (withName ? '<td>' + esc(r.name) + '</td>' : '') + '<td class="num">' + esc(r.hours) + 'h</td><td class="num">' + otN(r.amount) + '원</td><td class="jh-hr__cell">' + (r.reason ? esc(r.reason) : '<span class="jh-field__hint">-</span>') + '</td>' + (withDel ? '<td><button type="button" class="jh-btn" data-variant="ghost" data-ot-edit="' + esc(r.id) + '">수정</button> <button type="button" class="jh-btn" data-variant="ghost" data-ot-del="' + esc(r.id) + '">삭제</button></td>' : '') + '</tr>').join('') + '</tbody></table></div>';
 }
 export function overtimeHtml(st) {
   const tabs = '<div class="jh-segmented" role="group" aria-label="보기"><button type="button" class="jh-segmented__item" data-ot-view="sum" aria-pressed="' + (st.otView === 'sum') + '">📊 전체 현황</button><button type="button" class="jh-segmented__item" data-ot-view="person" aria-pressed="' + (st.otView === 'person' || st.otView === 'detail') + '">🔍 직원별 조회</button></div>';
   const banner = st.otBanner ? '<div class="jh-alert" data-tone="' + st.otBanner.tone + '" role="status">' + esc(st.otBanner.text) + '</div>' : '';
-  const head = card('⏱ 초과근로 현황', '<div class="jh-hr__pad"><div class="jh-hr__bar">' + tabs + '</div><div class="jh-field__hint">전자결재에서 승인된 초과근로는 이 화면을 열 때 자동으로 반영됩니다. 출퇴근 달력·초과근로 입력·수정은 기존 인사 홈의 "근로시간"에서 합니다(순서대로 옮기는 중).</div>' + banner + '</div>');
+  const head = card('⏱ 초과근로 현황', '<div class="jh-hr__pad"><div class="jh-hr__bar">' + tabs + '</div><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-ot-new>➕ 초과근로 입력</button></div><div class="jh-field__hint">전자결재에서 승인된 초과근로는 이 화면을 열 때 자동으로 반영됩니다. 출퇴근 기록 수정은 "출퇴근 달력"에서 합니다.</div>' + banner + '</div>');
   let body;
   if (st.otView === 'sum') {
     const s = otSummary(st.otRows);
@@ -376,7 +376,13 @@ export function overtimeHtml(st) {
     body = card('🔍 ' + esc((w.name || '') + ' ' + (w.rank || '')) + ' — 초과근로 내역', '<div class="jh-hr__pad"><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-ot-view="person">← 목록</button></div>' + otMonthBar(st) + wageHtml + '<div class="jh-kpi-grid"><div class="jh-kpi"><span class="jh-kpi__label">누계 시간</span><span class="jh-kpi__value">' + p.totalHours + 'h</span></div><div class="jh-kpi"><span class="jh-kpi__label">누계 수당</span><span class="jh-kpi__value">' + otN(p.totalAmount) + '원</span></div></div></div>' + otRowsTable(p.rows, false, true));
   }
   const detail = st.otOpen ? (() => { const r = st.otRows.find((x) => x.id === st.otOpen); return r ? card(esc(r.name || '-') + ' ' + esc(r.rank || '') + ' · ' + esc(r.date || ''), '<div class="jh-hr__pad"><div class="jh-kpi-grid"><div class="jh-kpi"><span class="jh-kpi__label">시간</span><span class="jh-kpi__value">' + esc(r.hours || 0) + 'h</span></div><div class="jh-kpi"><span class="jh-kpi__label">수당</span><span class="jh-kpi__value">' + otN(r.amount) + '원</span></div></div><div class="jh-field__label">사유</div><div style="white-space:pre-wrap">' + (r.reason ? esc(r.reason) : '<span class="jh-field__hint">(사유 없음)</span>') + '</div><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-ot-close>닫기</button></div></div>') : ''; })() : '';
-  return detail + head + body;
+  return otFormHtml(st) + detail + head + body;
+}
+export function otFormHtml(st) {
+  const f = st.otForm; if (!f) return ''; const w = st.workers.find((x) => x.id === f.workerId); const wg = st.otFormWage; const h = parseFloat(f.hours);
+  const wageLine = !f.workerId ? '' : wg ? '<div class="jh-field__hint">통상임금 <strong>' + otN(wg.rate) + '원/h</strong> <span>(기본+연장+야간+주휴) ÷ 209</span></div>' : '<div class="jh-alert" data-tone="warn" role="status">⚠️ 연봉계약서 없음 — 수당이 0원으로 저장됩니다</div>';
+  const prev = wg && h > 0 ? '<div class="jh-alert" data-tone="info" role="status"><strong>예상 수당 <span id="ot-prev">' + otN(otAmount(wg.rate, h)) + '</span>원</strong></div>' : '<div id="ot-prev-wrap"></div>';
+  return card(f.id ? '✏️ 초과근로 수정' : '➕ 초과근로 입력', '<div class="jh-hr__pad"><div class="jh-field"><label class="jh-field__label">날짜</label><input class="jh-input" type="date" data-ot-f="date" value="' + esc(f.date) + '"></div><div class="jh-field"><label class="jh-field__label">직원</label><select class="jh-select" data-ot-fw><option value="">-- 직원 선택 --</option>' + st.workers.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === f.workerId ? ' selected' : '') + '>' + esc((x.name || '') + (x.rank ? ' ' + x.rank : '')) + '</option>').join('') + '</select>' + wageLine + '</div><div class="jh-field"><label class="jh-field__label">시간 (h)</label><input class="jh-input" type="number" min="0.5" max="24" step="0.5" data-ot-f="hours" value="' + esc(f.hours) + '" placeholder="예: 2"></div><div class="jh-field"><label class="jh-field__label">사유 (선택)</label><textarea class="jh-textarea" rows="2" data-ot-f="reason" placeholder="초과근로 사유를 입력하세요">' + esc(f.reason) + '</textarea></div><div id="ot-prevbox">' + prev + '</div><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-ot-act="save">' + (f.id ? '수정 저장' : '저장') + '</button><button type="button" class="jh-btn" data-variant="ghost" data-ot-act="cancel">취소</button></div></div>');
 }
 
 /** 출퇴근 달력(관리자) */

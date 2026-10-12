@@ -1,8 +1,8 @@
-/* 초과근로 현황 — 구포털(hr)의 "초과근로수당" 탭 중 월별 전체 현황·직원별 조회·전자결재 자동연동을 옮겼다(1단계).
- * 출퇴근 달력(관리자 근태 수정)과 초과근로 입력·수정은 2·3단계에서 옮긴다.
+/* 초과근로 현황 — 구포털(hr)의 "초과근로수당" 탭 중 월별 전체 현황·직원별 조회·전자결재 자동연동(1단계)과 초과근로 입력·수정(3단계)을 옮겼다.
+ * 출퇴근 달력(관리자 근태 수정)은 attendance.js(2단계).
  * 데이터: overtime(기록: date·name·rank·workerId·hours·amount·rate·reason·yearMonth), edoc_overtime(전자결재 초과근로 신청 — 승인된 건을 overtime 으로 한 번씩 반영).
  * 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다. */
-import { annualSalary } from './offer.js?v=20261012q';
+import { annualSalary } from './offer.js?v=20261012r';
 const pad = (n) => String(n).padStart(2, '0');
 export const otYm = (y, m) => y + '-' + pad(m);
 export function otMoveMonth(y, m, delta) { const d = new Date(y, m - 1 + delta, 1); return { y: d.getFullYear(), m: d.getMonth() + 1 }; }
@@ -30,3 +30,18 @@ export function otSummary(rows) {
   return { totals, names, totalHours: round(names.reduce((s, n) => s + totals[n].hours, 0)), totalAmount: names.reduce((s, n) => s + totals[n].amount, 0), rows: (rows || []).slice().sort(byDate) };
 }
 export function otPerson(rows, name) { const mine = (rows || []).filter((r) => r.name === name).sort(byDate); return { rows: mine, totalHours: Math.round(mine.reduce((s, r) => s + Number(r.hours || 0), 0) * 100) / 100, totalAmount: mine.reduce((s, r) => s + Number(r.amount || 0), 0) }; }
+
+/** 수당 = 시간당 통상임금 × 시간 (원 단위 반올림) */
+export const otAmount = (rate, hours) => Math.round((Number(rate) || 0) * (Number(hours) || 0));
+export const OT_MAX_HOURS = 24;
+export const otNewForm = (today) => ({ id: '', date: today || '', workerId: '', hours: '', reason: '' });
+/** 저장된 기록 → 수정 양식(workerId 가 없는 옛 기록은 이름으로 근로자를 찾는다) */
+export function otFormFromRecord(r, workers) { const w = (workers || []).find((x) => x.id === r.workerId) || (workers || []).find((x) => x.name === r.name); return { id: r.id, date: r.date || '', workerId: (w && w.id) || r.workerId || '', hours: String(r.hours == null ? '' : r.hours), reason: r.reason || '' }; }
+/** 입력·수정 저장 내용. 연봉계약서(통상임금)가 없으면 수당 0원 — 호출한 쪽에서 확인을 받는다(noWage). 시간은 0 초과 24 이하 */
+export function buildOvertime(form, worker, wage) {
+  const f = form || {}; const errors = []; const hours = parseFloat(f.hours);
+  if (!isDate(f.date)) errors.push('날짜를 입력해 주세요.'); if (!worker) errors.push('직원을 선택해 주세요.');
+  if (!(hours > 0)) errors.push('시간을 입력해 주세요.'); else if (hours > OT_MAX_HOURS) errors.push('시간은 24시간 이하로 입력해 주세요.');
+  if (errors.length) return { ok: false, errors };
+  const rate = wage ? Number(wage.rate) || 0 : 0; return { ok: true, errors: [], noWage: !wage, data: { date: f.date, name: worker.name || '', rank: worker.rank || '', workerId: worker.id, hours, amount: otAmount(rate, hours), rate, reason: String(f.reason || '').trim(), yearMonth: f.date.slice(0, 7) } };
+}

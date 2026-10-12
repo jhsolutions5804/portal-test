@@ -1,14 +1,14 @@
-import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012q';
-import { confirmDialog } from '../../core/dialog.js?v=20261012q';
-import { holidayName } from '../../shared/holidays.js?v=20261012q';
-import { esc, toast } from '../../core/ui.js?v=20261012q';
-import { retireCalc } from './retire.js?v=20261012q';
-import { buildAttRecord, attDefaultBreak, attKey, holidaySetOf } from './attendance.js?v=20261012q';
-import { otYm, otMoveMonth, otSyncPlan, otWage } from './overtime.js?v=20261012q';
-import { dsNewForm, dsFindHourly, dsCalc, dsValidate, dsBuildData, dsFormFromDraft, dsHtmlByVer } from './dismissal.js?v=20261012q';
-import { offerNewForm, offerCalc, offerSwitchMode, offerPayload, offerFormFromSaved, offerCalendar, offerFillCurrent, offerBuildHtml } from './offer.js?v=20261012q';
-import { salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012q';
-import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml, offersHtml, offerResultHtml, offerStateText, retireHtml, dismissalHtml, dsCalcHtml, overtimeHtml } from './view.js?v=20261012q';
+import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012r';
+import { confirmDialog } from '../../core/dialog.js?v=20261012r';
+import { holidayName } from '../../shared/holidays.js?v=20261012r';
+import { esc, toast } from '../../core/ui.js?v=20261012r';
+import { retireCalc } from './retire.js?v=20261012r';
+import { buildAttRecord, attDefaultBreak, attKey, holidaySetOf } from './attendance.js?v=20261012r';
+import { otYm, otMoveMonth, otSyncPlan, otWage, otNewForm, otFormFromRecord, buildOvertime, otAmount } from './overtime.js?v=20261012r';
+import { dsNewForm, dsFindHourly, dsCalc, dsValidate, dsBuildData, dsFormFromDraft, dsHtmlByVer } from './dismissal.js?v=20261012r';
+import { offerNewForm, offerCalc, offerSwitchMode, offerPayload, offerFormFromSaved, offerCalendar, offerFillCurrent, offerBuildHtml } from './offer.js?v=20261012r';
+import { salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012r';
+import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml, offersHtml, offerResultHtml, offerStateText, retireHtml, dismissalHtml, dsCalcHtml, overtimeHtml } from './view.js?v=20261012r';
 
 /** 인사(플랫폼 기본 모듈): 근로자 명부 새 화면. 인사총무 틀 안의 구역으로만 열린다(modules/index.js 의 hostNative). 구포털 인사 화면은 그대로 두고 하나씩 옮기는 중이다. 관리자 전용 */
 export const manifest = { id: 'hr', order: 21, title: '인사', icon: '👥', defaultHash: '#/hr/workers', perm: (me) => !!me && me.admin === true };
@@ -511,7 +511,7 @@ export async function mountDismissal(root, route, ctx) {
 /** 초과근로 현황(새 화면, 1단계) — overtime 월별 전체 현황·직원별 조회·삭제, 그리고 전자결재 승인 초과근로의 자동연동(이 화면이 맡는다: 문서 번호 고정 번호로 한 번만 반영) */
 export async function mountOvertime(root, route, ctx) {
   root.onclick = null; root.oninput = null; root.onchange = null;
-  const now = new Date(); const st = { otView: 'sum', otY: now.getFullYear(), otM: now.getMonth() + 1, otRows: [], workers: [], otWid: '', otWage: null, otOpen: '', otBanner: null };
+  const now = new Date(); const st = { otView: 'sum', otY: now.getFullYear(), otM: now.getMonth() + 1, otRows: [], workers: [], otWid: '', otWage: null, otOpen: '', otBanner: null, otForm: null, otFormWage: null };
   root.innerHTML = '<div class="jh-hr"><div id="ov-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
   const body = root.querySelector('#ov-body'); const lst = (s) => { const l = []; s.forEach((d) => l.push(Object.assign({ id: d.id }, d.data()))); return l; };
   const syncFromEdoc = async () => {
@@ -524,7 +524,8 @@ export async function mountOvertime(root, route, ctx) {
     } catch (e) { return { tone: 'danger', text: '⚠️ 전자결재 자동연동을 확인하지 못했습니다: ' + ((e && (e.code || e.message)) || String(e)) }; }
   };
   const loadMonth = async () => { st.otRows = lst(await getDocs(query(collection(db, 'overtime'), where('yearMonth', '==', otYm(st.otY, st.otM))))); };
-  const loadWage = async () => { st.otWage = null; if (!st.otWid) return; try { const s = await getDocs(query(collection(db, 'annual_contracts/' + st.otWid + '/contracts'), orderBy('contractDate', 'desc'), limit(1))); st.otWage = s.empty ? null : otWage(s.docs[0].data(), st.otWid); } catch (e) { st.otWage = null; } };
+  const wageOf = async (wid) => { if (!wid) return null; try { const s = await getDocs(query(collection(db, 'annual_contracts/' + wid + '/contracts'), orderBy('contractDate', 'desc'), limit(1))); return s.empty ? null : otWage(s.docs[0].data(), wid); } catch (e) { return null; } };
+  const loadWage = async () => { st.otWage = await wageOf(st.otWid); };
   try { st.workers = lst(await getDocs(collection(db, 'workers'))).sort((a, b) => String(a.empNo || 'zzz').localeCompare(String(b.empNo || 'zzz'))); st.otBanner = await syncFromEdoc(); await loadMonth(); }
   catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
   body.removeAttribute('aria-busy');
@@ -535,9 +536,18 @@ export async function mountOvertime(root, route, ctx) {
     const vw = t.closest('[data-ot-view]'); if (vw) { st.otView = vw.getAttribute('data-ot-view'); st.otOpen = ''; paint(); return; }
     const pr = t.closest('[data-ot-person]'); if (pr) { st.otWid = pr.getAttribute('data-ot-person'); st.otView = 'detail'; await loadWage(); paint(); return; }
     const dl = t.closest('[data-ot-del]'); if (dl) { const r = st.otRows.find((x) => x.id === dl.getAttribute('data-ot-del')); if (!r) return; const ok = await confirmDialog({ title: '초과근로 내역 삭제', body: (r.name || '') + ' ' + (r.date || '') + ' ' + (r.hours || 0) + 'h 내역을 삭제하시겠습니까? 되돌릴 수 없습니다.', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return; try { await deleteDoc(doc(db, 'overtime', r.id)); toast('삭제했습니다.'); await loadMonth(); paint(); } catch (e) { toast('삭제하지 못했습니다: ' + ((e && e.message) || '')); } return; }
+    if (t.closest('[data-ot-new]')) { st.otForm = otNewForm(kstToday()); st.otFormWage = null; paint(); const f0 = body.querySelector('[data-ot-f]'); if (f0) f0.scrollIntoView({ block: 'center' }); return; }
+    const ed = t.closest('[data-ot-edit]'); if (ed) { const r = st.otRows.find((x) => x.id === ed.getAttribute('data-ot-edit')); if (!r) return; st.otForm = otFormFromRecord(r, st.workers); st.otFormWage = await wageOf(st.otForm.workerId); paint(); const f0 = body.querySelector('[data-ot-f]'); if (f0) f0.scrollIntoView({ block: 'center' }); return; }
+    const fa = t.closest('[data-ot-act]'); if (fa && st.otForm) { const act = fa.getAttribute('data-ot-act'); if (act === 'cancel') { st.otForm = null; paint(); return; }
+      const w = st.workers.find((x) => x.id === st.otForm.workerId); const r = buildOvertime(st.otForm, w, st.otFormWage); if (!r.ok) { toast(r.errors[0]); return; }
+      if (r.noWage) { const ok = await confirmDialog({ title: '연봉계약서 없음', body: '연봉계약서가 없어 수당이 0원으로 저장됩니다. 계속하시겠습니까?', confirmLabel: '저장' }); if (!ok.ok) return; }
+      try { if (st.otForm.id) await updateDoc(doc(db, 'overtime', st.otForm.id), r.data); else await addDoc(collection(db, 'overtime'), Object.assign({}, r.data, { savedAt: serverTimestamp() }));
+        toast(st.otForm.id ? '수정되었습니다.' : '저장되었습니다.'); const ym = r.data.yearMonth; const [yy, mm] = ym.split('-').map(Number); if (yy !== st.otY || mm !== st.otM) { st.otY = yy; st.otM = mm; } st.otForm = null; await loadMonth(); paint(); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); } return; }
     const op = t.closest('[data-ot-open]'); if (op && !t.closest('button')) { st.otOpen = op.getAttribute('data-ot-open'); paint(); return; }
     if (t.closest('[data-ot-close]')) { st.otOpen = ''; paint(); }
   };
+  root.oninput = (ev) => { const t = ev.target; if (!(t instanceof Element) || !st.otForm) return; if (t.matches('[data-ot-f]')) { const k = t.getAttribute('data-ot-f'); st.otForm[k] = t.value; if (k === 'hours') { const h = parseFloat(t.value); const box = body.querySelector('#ot-prevbox'); if (box) box.innerHTML = st.otFormWage && h > 0 ? '<div class="jh-alert" data-tone="info" role="status"><strong>예상 수당 ' + Math.round((Number(st.otFormWage.rate) || 0) * h).toLocaleString('ko-KR') + '원</strong></div>' : ''; } } };
+  root.onchange = async (ev) => { const t = ev.target; if (!(t instanceof Element) || !st.otForm) return; if (t.matches('[data-ot-f]')) { st.otForm[t.getAttribute('data-ot-f')] = t.value; return; } if (t.matches('[data-ot-fw]')) { st.otForm.workerId = t.value; st.otFormWage = await wageOf(t.value); paint(); } };
   paint();
 }
 
