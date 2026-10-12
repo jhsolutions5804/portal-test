@@ -1,11 +1,11 @@
-import { esc } from '../../core/ui.js?v=20261012o';
-import { rtWon, retireRecordsSorted } from './retire.js?v=20261012o';
-import { otSummary, otPerson } from './overtime.js?v=20261012o';
-import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261012o';
-import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261012o';
-import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261012o';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261012o';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261012o';
+import { esc } from '../../core/ui.js?v=20261012q';
+import { rtWon, retireRecordsSorted } from './retire.js?v=20261012q';
+import { otSummary, otPerson } from './overtime.js?v=20261012q';
+import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261012q';
+import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261012q';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261012q';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261012q';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261012q';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -377,4 +377,32 @@ export function overtimeHtml(st) {
   }
   const detail = st.otOpen ? (() => { const r = st.otRows.find((x) => x.id === st.otOpen); return r ? card(esc(r.name || '-') + ' ' + esc(r.rank || '') + ' · ' + esc(r.date || ''), '<div class="jh-hr__pad"><div class="jh-kpi-grid"><div class="jh-kpi"><span class="jh-kpi__label">시간</span><span class="jh-kpi__value">' + esc(r.hours || 0) + 'h</span></div><div class="jh-kpi"><span class="jh-kpi__label">수당</span><span class="jh-kpi__value">' + otN(r.amount) + '원</span></div></div><div class="jh-field__label">사유</div><div style="white-space:pre-wrap">' + (r.reason ? esc(r.reason) : '<span class="jh-field__hint">(사유 없음)</span>') + '</div><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-ot-close>닫기</button></div></div>') : ''; })() : '';
   return detail + head + body;
+}
+
+/** 출퇴근 달력(관리자) */
+const acH = (n) => (Math.round((Number(n) || 0) * 10) / 10) + 'h';
+export function attendCalHtml(st) {
+  const list = card('근로자', '<div class="jh-hr__pad">' + (st.acWorkers.length ? st.acWorkers.map((w) => '<button type="button" class="jh-btn" data-variant="' + (w.id === st.acW ? 'primary' : 'secondary') + '" data-ac-worker="' + esc(w.id) + '" style="justify-content:flex-start;width:100%">' + esc((w.empNo ? w.empNo + ' · ' : '') + (w.name || '') + (w.rank ? ' (' + w.rank + ')' : '')) + '</button>').join('') : '<div class="jh-empty">재직 중인 근로자가 없습니다.</div>') + '</div>');
+  const w = st.acWorkers.find((x) => x.id === st.acW); let right;
+  if (!w) right = '<div class="jh-empty">좌측에서 근로자를 선택하면 출퇴근 달력이 나옵니다.</div>';
+  else {
+    const today = st.today; const cells = attCalendar(st.acY, st.acM, st.acRows, st.acLeaves, st.acHol, today); const sm = attMonthSummary(st.acY, st.acM, st.acRows, st.acLeaves, w.name, st.acHol);
+    const kpi = '<div class="jh-kpi-grid"><div class="jh-kpi"><span class="jh-kpi__label">소정근로시간</span><span class="jh-kpi__value">' + sm.standard + 'h</span><span class="jh-kpi__hint">평일 × 8h (공휴일 제외)</span></div><div class="jh-kpi"><span class="jh-kpi__label">근무 + 유급휴가</span><span class="jh-kpi__value">' + acH(sm.total) + '</span><span class="jh-kpi__hint">근무 ' + acH(sm.attHours) + ' · 휴가 ' + acH(sm.leaveHours) + ' · ' + sm.days + '일</span></div><div class="jh-kpi"><span class="jh-kpi__label">초과 / 잔여</span><span class="jh-kpi__value">' + acH(sm.overtime) + ' / ' + acH(sm.remain) + '</span><span class="jh-kpi__hint">최대 초과 ' + sm.maxOt + 'h</span></div><div class="jh-kpi"><span class="jh-kpi__label">급여 연장근로 산정</span><span class="jh-kpi__value">' + acH(sm.otPayHours) + '</span><span class="jh-kpi__hint">평일 근무+휴가−소정 · 휴일근무 ' + acH(sm.holidayHours) + '</span></div></div>';
+    const dow = ['일', '월', '화', '수', '목', '금', '토'].map((d, i) => '<div class="jh-hc__dow" data-d="' + i + '">' + d + '</div>').join('');
+    const grid = '<div class="jh-hc__grid">' + dow + cells.map((c) => !c ? '<div></div>' : '<div class="jh-ac__cell' + (c.today ? ' is-today' : '') + (c.ds === st.acSel ? ' is-sel' : '') + '" data-s="' + c.state + '" data-ac-day="' + c.ds + '" title="' + esc([c.leaveType ? (c.rec ? '반차 사용 후 근무: ' : '') + c.leaveType : '', c.trip ? '출장' : ''].filter(Boolean).join(' · ')) + '">' + (c.admin ? '<span class="jh-ac__dot"></span>' : '') + '<div>' + c.d + '</div>' + (c.rec ? '<div class="jh-ac__sub">' + (c.trip ? '✈️ ' : '') + (c.leaveType ? '🌴 ' : '') + acH(c.hours) + '</div>' : c.leaveType ? '<div class="jh-ac__sub">' + esc(String(c.leaveType).replace(/\(.+?\)/, '')) + '</div>' : '') + '</div>').join('') + '</div>';
+    const legend = '<div class="jh-field__hint">파란 칸 평일 근무 · 보라 칸 휴일 근무 · 노란 칸 연차·휴가 · 빨간 칸 평일 기록·휴가 없음(결근 의심) · 점은 관리자가 입력·수정한 기록 · 날짜를 누르면 입력·수정</div>';
+    right = card(esc(w.name || '') + ' 출퇴근 달력', '<div class="jh-hr__pad"><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-ac-month="-1" aria-label="이전 달">◀</button><strong>' + st.acY + '년 ' + st.acM + '월</strong><button type="button" class="jh-btn" data-variant="ghost" data-ac-month="1" aria-label="다음 달">▶</button></div>' + kpi + grid + legend + '</div>');
+    if (st.acSel) right += attendEditHtml(st, w);
+  }
+  return '<div class="jh-hr__bar"><span class="jh-field__hint">출퇴근 모듈과 같은 근무시간 규칙(점심 120분 고정, 출근~퇴근 5시간 이하는 휴게 없음)으로 계산합니다. 휴가 등록·수정은 연차 현황(기존 화면)에서 합니다.</span></div><div class="jh-hr__split">' + '<div class="jh-hr__col">' + list + '</div><div class="jh-hr__col">' + right + '</div></div>';
+}
+export function attendEditHtml(st, w) {
+  const f = st.acForm; const ex = st.acRows.find((r) => r.date === st.acSel); const lv = (st.acLeaves || []).find((l) => l.startDate && l.endDate && st.acSel >= l.startDate && st.acSel <= l.endDate);
+  const leaveBlock = lv ? '<div class="jh-alert" data-tone="warn" role="status">🌴 이 날짜는 <b>' + esc(lv.leaveType || '휴가') + '</b> 기간입니다 (' + esc(lv.startDate) + '~' + esc(lv.endDate) + ') · 휴가 수정·삭제는 연차 현황(기존 화면)에서 합니다.</div>' : '';
+  const hint = '자동 계산 휴게 ' + attDefaultBreak(f.checkIn, f.checkOut) + '분';
+  const body = '<div class="jh-hr__pad">' + leaveBlock + '<div class="jh-hr__grid"><div class="jh-field"><label class="jh-field__label">날짜</label><input class="jh-input" type="date" value="' + esc(st.acSel) + '" disabled></div><div></div><div class="jh-field"><label class="jh-field__label">출근시간</label><input class="jh-input" type="time" step="600" data-ac-f="checkIn" value="' + esc(f.checkIn) + '"></div><div class="jh-field"><label class="jh-field__label">퇴근시간</label><input class="jh-input" type="time" step="600" data-ac-f="checkOut" value="' + esc(f.checkOut) + '"></div><div class="jh-field"><label class="jh-field__label">휴게시간(분)</label><input class="jh-input" type="number" min="0" step="10" data-ac-f="breakMinutes" value="' + esc(f.breakMinutes) + '"><div class="jh-field__hint" id="ac-hint">' + esc(hint) + '</div></div></div>'
+    + '<div class="jh-field" style="border:var(--u-1) solid var(--c-line);border-radius:var(--radius);padding:var(--sp-3)"><label class="jh-field__hint"><input type="checkbox" data-ac-ck="isBusinessTrip"' + (f.isBusinessTrip ? ' checked' : '') + '> ✈️ 출장 (외근·타 현장 파견 등)</label>' + (f.isBusinessTrip ? '<select class="jh-select" data-ac-f="tripType">' + Object.keys(TRIP_TYPES).map((t) => '<option value="' + t + '"' + (f.tripType === t ? ' selected' : '') + '>' + esc(TRIP_TYPES[t]) + '</option>').join('') + '</select><div class="jh-field__hint">여기서 고른 이동유형은 급여명세서 작성 시 "근로시간에서 불러오기"로 한 번에 반영할 수 있습니다.</div>' : '') + '</div>'
+    + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-ac-act="save">저장</button>' + (ex ? '<button type="button" class="jh-btn" data-variant="ghost" data-ac-act="delete">삭제</button>' : '') + '<button type="button" class="jh-btn" data-variant="ghost" data-ac-act="daily">📋 업무일지</button><button type="button" class="jh-btn" data-variant="ghost" data-ac-act="close">닫기</button></div>'
+    + (st.acDaily ? '<h4 class="jh-hr__sub">' + esc(st.acSel) + ' 업무일지</h4>' + (st.acDaily.length ? st.acDaily.map((d) => '<div class="jh-hr__post"><strong>' + esc(d.title || '(제목없음)') + (d.pjtName ? ' · ' + esc(d.pjtName) : '') + '</strong><div class="jh-field__hint"><b>금일 진행:</b> ' + esc(d.todayWork || '-') + '<br><b>익일 예정:</b> ' + esc(d.tomorrowWork || '-') + (d.issue ? '<br><b>특이사항:</b> ' + esc(d.issue) : '') + '</div></div>').join('') : '<div class="jh-field__hint">해당 날짜에 작성된 업무일지가 없습니다.</div>') : '') + '</div>';
+  return card(esc(w.name || '') + ' 근로 내역 ' + (ex ? '수정' : '추가'), body);
 }
