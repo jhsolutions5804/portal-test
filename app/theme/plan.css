@@ -82,3 +82,4 @@ a.jh-plan__row { text-decoration: none; }
 
 .jh-plan__ckhead { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); width: 100%; padding: 0; border: 0; background: transparent; color: var(--c-ink); font: inherit; text-align: left; cursor: pointer; }
 .jh-plan__table strong[data-tone="pos"] { color: var(--c-ok, #16a34a); } .jh-plan__table strong[data-tone="neg"] { color: var(--c-danger, #dc2626); }
+.jh-plan__sum--5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }

@@ -374,4 +374,15 @@ await scenario('영업기획 월말 마감: 월 이동·한 달 요약·점검 �
   check(href.startsWith('data:text/csv;charset=utf-8,') && csv.includes('2607001') && csv.includes('2607002') && csv.includes('"번호","구분"'), 'CSV 내려받기는 7월 발행 정산서(2607001·2607002 …)를 담음');
   let html = ''; const oldOpen = w.open; w.open = () => ({ document: { write: (x) => { html += x; }, close() {} } }); await click(root, '[data-cl-act="print"]'); w.open = oldOpen; check(/월말 마감 2026-07/.test(html) && /점검 항목/.test(html) && /window\.print/.test(html), '인쇄는 월말 마감 요약 문서(월·점검 항목·프로젝트별 표)를 새 창에 씀'); check(WR().length === 0, '월말 마감은 아무것도 저장하지 않음');
 });
+
+await scenario('영업기획 비용장부 대조(재무회계 이관): 일치·날짜 어긋남·중복 의심·없음 구분, 가져오기 JSON(옵션)·프로젝트 표시 대조표 — 저장 없음', async (check) => {
+  const root = await mountFresh(planMod.mountAcct); const txt = () => root.textContent.replace(/\s+/g, ' ');
+  check(/비용장부 ?7건/.test(txt()) && /전표와 일치 ?2건/.test(txt()) && /날짜 어긋남 ?1건/.test(txt()) && /중복 의심 ?1건/.test(txt()) && /전표에 없음 ?3건/.test(txt()) && /1,275,000원/.test(txt()), '요약: 비용장부 7건 → 일치 2·날짜 어긋남 1·중복 의심 1·전표에 없음 3(금액 1,275,000원): ' + txt().slice(0, 500));
+  check(/통째로 옮기면 같은 지출이 두 번 계상/.test(txt()) && /가져오기 JSON \(1건\)/.test(txt()), '이중 계상 경고가 보이고, 기본 가져오기 JSON 은 1건(공구상사만 — 외상거래·급여·중복 의심 제외)');
+  await check_(root, '[data-ac-opt="credit"]', true); await sleep(60); check(/가져오기 JSON \(2건\)/.test(txt()), '외상거래 포함을 켜면 2건'); await check_(root, '[data-ac-opt="dup"]', true); await sleep(60); check(/가져오기 JSON \(3건\)/.test(txt()), '중복 의심 포함까지 켜면 3건');
+  await setv(root, '[data-ac-filter="status"]', 'dup'); check(root.querySelectorAll('tbody tr').length === 1 && /편의점/.test(txt()) && /2026-0101/.test(txt()), '상태 필터 "중복 의심": 편의점 1건과 짝지어진 전표 번호'); await click(root, '[data-ac-act="reset"]'); check(root.querySelectorAll('tbody tr').length === 7, '초기화하면 7건');
+  let href = '', name = ''; const oldClick = w.HTMLAnchorElement.prototype.click; w.HTMLAnchorElement.prototype.click = function () { href = this.href; name = this.download; };
+  await click(root, '[data-ac-act="json"]'); const json = JSON.parse(decodeURIComponent(href.split(',').slice(1).join(','))); check(name === '비용장부_이관_가져오기.json' && href.startsWith('data:application/json;charset=utf-8,') && json.entries.length === 3 && json.entries.every((e) => e.needsReview === true && e.source.kind === 'manual' && /비용장부 이관/.test(e.memo)) && json.entries.some((e) => e.date === '2026-07-11' && e.lines[0].account === '5010') && json.entries.every((e) => e.lines.reduce((a, l) => a + (l.side === 'D' ? l.amount : -l.amount), 0) === 0), '가져오기 JSON 내려받기: 옵션대로 3건, 모두 검토 필요·차변=대변·"[비용장부 이관]" 표시');
+  await click(root, '[data-ac-act="tags"]'); const csv = decodeURIComponent(href.split(',').slice(1).join(',')); w.HTMLAnchorElement.prototype.click = oldClick; check(name === '비용장부_프로젝트표시_대조표.csv' && csv.includes('"일치"') && csv.includes('2026-0100') && csv.includes('"날짜 어긋남"') && csv.includes('"없음"'), '프로젝트 표시 대조표 CSV: 일치·날짜 어긋남·없음과 전표 번호'); check(WR().length === 0, '비용장부 대조는 아무것도 저장하지 않음');
+});
 markDone(); console.log('\n' + (failed ? '문제가 있는 저장 동작 ' + failed + '건' : '모든 저장 동작이 올바른 경로·값으로 기록됨')); process.exit(failed ? 1 : 0);

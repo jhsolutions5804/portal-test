@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261013za';
-import { GUIDE_TYPES, LIMITS, canEditPolicy, candidates, personLabel, guideNotes, isDirty } from './settings-logic.js?v=20261013za';
+import { esc } from '../../core/ui.js?v=20261013zb';
+import { GUIDE_TYPES, LIMITS, canEditPolicy, candidates, personLabel, guideNotes, isDirty } from './settings-logic.js?v=20261013zb';
 
 const itemHtml = (state, scope, uid, idx, len, opts) => {
   const o = opts || {};
