@@ -1,9 +1,9 @@
-import { LEGACY_BASE } from '../../core/config.js?v=20261013g';
-import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261013g';
-import { esc } from '../../core/ui.js?v=20261013g';
-import { attachActivity } from '../../core/idle.js?v=20261013g';
-import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey } from './list.js?v=20261013g';
-import { setSideCurrent } from '../../shared/sidenav.js?v=20261013g';
+import { LEGACY_BASE } from '../../core/config.js?v=20261013h';
+import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261013h';
+import { esc } from '../../core/ui.js?v=20261013h';
+import { attachActivity } from '../../core/idle.js?v=20261013h';
+import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey } from './list.js?v=20261013h';
+import { setSideCurrent } from '../../shared/sidenav.js?v=20261013h';
 
 const base = () => new URL(LEGACY_BASE, location.href).href;
 const NATIVE = new Map();   // '모듈id/구역' → 그 구역을 새 모듈이 그리는 함수(modules/index.js 가 hostNative 로 등록)
@@ -26,7 +26,7 @@ async function loadPjtDyn() {
 }
 function highlight(st) {
   const q = st.wrap.querySelector('.jh-legacy__quick'); if (q) q.setAttribute('data-show', String(st.key === 'home'));   // 폰 바로가기는 PJT 홈에서만
-  if (st.def.groups) { st.wrap.setAttribute('data-side', ''); setSideCurrent(st.wrap.querySelector('.jh-legacy__nav'), sideCurrentKey(st.def, st.key, st.sub)); }   // 인사총무: 왼쪽 사이드바 — 다시 그리지 않고 현재 표시만 옮겨 긴 메뉴의 스크롤 위치를 유지
+  if (st.def.groups) { st.wrap.setAttribute('data-side', ''); const nv = st.wrap.querySelector('.jh-legacy__nav'); setSideCurrent(nv, sideCurrentKey(st.def, st.key, st.sub)); const cu = nv && nv.querySelector('[aria-current="page"]'); if (cu && cu.scrollIntoView) cu.scrollIntoView({ block: 'nearest', inline: 'center' }); }   // 인사총무: 왼쪽 사이드바 — 다시 그리지 않고 현재 표시만 옮겨 긴 메뉴의 스크롤 위치를 유지
   else st.wrap.querySelectorAll('.jh-legacy__chip').forEach((a) => { const cur = a.hasAttribute('data-home') ? !isNativeKey(st.def, st.key) : a.getAttribute('data-key') === st.key; if (cur) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   if (st.native && st.frame) { const nat = isNativeKey(st.def, st.key); st.native.hidden = !nat; st.frame.hidden = nat; }
 }

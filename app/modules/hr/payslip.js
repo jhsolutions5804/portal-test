@@ -5,10 +5,10 @@
  *  · 야간근로수당 = 22:00~06:00 실근무 × 시급 × 0.5, 주휴수당 = 시급×8×(그 주 소정근로일 개근한 주 수), 휴일근로수당 = 8h 이내 ×1.5 + 초과 ×2.0
  *  · 4대보험: 국민연금 4.5% · 건강보험 3.545% · 장기요양 건강보험료×12.81% · 고용보험 0.9%, 소득세 간이세액 근사 + 지방소득세 10%
  *  · 지급계(4대보험 산정 기준) = 급여 + 상여 + 특별성과급 + 특근수당 + 기술수당, 여비교통비는 실비변상이라 제외하고 실수령에만 더한다 */
-import { annualSalary } from './offer.js?v=20261013g';
-import { DOC_TPL_CURRENT } from './frozen-docs.js?v=20261013g';
-import { monthlyStandardHours } from '../../shared/worktime.js?v=20261013g';
-import { computeLeaveHoursForMonth } from '../../shared/leave-hours.js?v=20261013g';
+import { annualSalary } from './offer.js?v=20261013h';
+import { DOC_TPL_CURRENT } from './frozen-docs.js?v=20261013h';
+import { monthlyStandardHours } from '../../shared/worktime.js?v=20261013h';
+import { computeLeaveHoursForMonth } from '../../shared/leave-hours.js?v=20261013h';
 const pad = (n) => String(n).padStart(2, '0');
 const N = (v) => Number(v || 0) || 0;
 export const PS_DOC_VER = DOC_TPL_CURRENT;   // 저장 당시 양식 버전 = 현재 양식(동결 양식 모듈)
