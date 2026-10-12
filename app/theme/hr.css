@@ -58,3 +58,8 @@
 .jh-ac__cell.is-sel { outline: 2px solid var(--c-primary); }
 .jh-ac__sub { font-size: var(--fs-xs, 0.7rem); font-weight: 600; }
 .jh-ac__dot { position: absolute; top: 3px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: #F59E0B; }
+
+/* 급여명세서: 조건(기준월·지급일·근로자·계좌)은 한 줄로, 지급 내역과 공제 내역은 좌우로 나란히 */
+.jh-hr__condbar { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: var(--sp-3); align-items: end; }
+.jh-hr__two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-4); align-items: start; }
+@media (max-width: 1100px) { .jh-hr__two { grid-template-columns: minmax(0, 1fr); } }

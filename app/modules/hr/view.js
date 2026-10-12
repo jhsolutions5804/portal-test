@@ -1,22 +1,22 @@
-import { esc } from '../../core/ui.js?v=20261013j';
-import { rtWon, retireRecordsSorted } from './retire.js?v=20261013j';
-import { otSummary, otPerson, otAmount } from './overtime.js?v=20261013j';
-import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261013j';
-import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261013j';
-import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261013j';
-import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261013j';
-import { sendLogText } from './sign.js?v=20261013j';
-import { maskedView } from './identity.js?v=20261013j';
-import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261013j';
-import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261013j';
-import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261013j';
-import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261013j';
-import { _hzDot } from './leave-promo-docs.js?v=20261013j';
-import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261013j';
-import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261013j';
-import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261013j';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261013j';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261013j';
+import { esc } from '../../core/ui.js?v=20261013k';
+import { rtWon, retireRecordsSorted } from './retire.js?v=20261013k';
+import { otSummary, otPerson, otAmount } from './overtime.js?v=20261013k';
+import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261013k';
+import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261013k';
+import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261013k';
+import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261013k';
+import { sendLogText } from './sign.js?v=20261013k';
+import { maskedView } from './identity.js?v=20261013k';
+import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261013k';
+import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261013k';
+import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261013k';
+import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261013k';
+import { _hzDot } from './leave-promo-docs.js?v=20261013k';
+import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261013k';
+import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261013k';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261013k';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261013k';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261013k';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -443,16 +443,18 @@ export function payslipHtml2(st) {
   const w = st.pW; const c = payslipCalcOf(st); const s = c.sal;
   const mny = (key, label, hint) => '<div class="jh-field"><label class="jh-field__label">' + label + (hint ? ' <span class="jh-field__hint">' + hint + '</span>' : '') + '</label><input class="jh-input" inputmode="numeric" data-p-in="' + key + '" value="' + (st.pIn[key] ? pw(st.pIn[key]) : '') + '" placeholder="0" style="text-align:right"></div>';
   const ovr = (key, label, val) => '<div class="jh-hr__line"><span class="jh-hr__label">' + label + '</span><input class="jh-input" inputmode="numeric" data-p-o="' + key + '" value="' + pw(val) + '" style="max-width:9rem;text-align:right;font-weight:600"' + (st.pO[key] !== undefined ? ' title="직접 고친 값 — 비우면 자동값으로 돌아갑니다" aria-invalid="false"' : '') + '></div>';
-  const left = card('기준월 · 근로자', '<div class="jh-hr__pad"><div class="jh-field"><label class="jh-field__label">기준월</label><input class="jh-input" type="month" data-p-month value="' + esc(st.pMonth) + '"></div><div class="jh-field"><label class="jh-field__label">지급일</label><input class="jh-input" type="date" data-p-paydate value="' + esc(st.pPayDate) + '"></div><div class="jh-field"><label class="jh-field__label">근로자</label><select class="jh-select" data-p-worker><option value="">— 선택 —</option>' + st.pWorkers.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === st.pWid ? ' selected' : '') + '>' + esc((x.empNo ? x.empNo + ' · ' : '') + (x.name || '') + (x.rank ? ' (' + x.rank + ')' : '')) + '</option>').join('') + '</select></div>'
-    + (w ? '<div class="jh-field__hint"><b>' + esc(w.name) + '</b> ' + esc(w.rank || '') + '<br>' + esc(w.dept || '') + '</div><div class="jh-field"><label class="jh-field__label">계좌번호</label><input class="jh-input" data-p-bank value="' + esc(st.pBank) + '" placeholder="계좌 미등록"></div>' + (st.pAnnual ? '<div class="jh-field__hint">연봉계약서 시급 ' + pw(st.pAnnual.hourly) + '원' + (st.pAnnual.wageType === 'comprehensive' ? ' · 포괄임금제' : '') + '</div>' : '<div class="jh-alert" data-tone="warn" role="status">⚠️ 연봉계약서가 없어 급여를 계산할 수 없습니다.</div>') : '') + '</div>');
-  if (!w) return '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-p-act="list">📂 급여명세서 조회</button></div><div class="jh-hr__split"><div class="jh-hr__col">' + left + '</div><div class="jh-hr__col"><div class="jh-empty">좌측에서 근로자를 선택하세요</div></div></div>';
+  const fld = (label, inner) => '<div class="jh-field"><label class="jh-field__label">' + label + '</label>' + inner + '</div>';
+  const workerSel = '<select class="jh-select" data-p-worker><option value="">— 선택 —</option>' + st.pWorkers.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === st.pWid ? ' selected' : '') + '>' + esc((x.empNo ? x.empNo + ' · ' : '') + (x.name || '') + (x.rank ? ' (' + x.rank + ')' : '')) + '</option>').join('') + '</select>';
+  const left = card('기준월 · 근로자', '<div class="jh-hr__pad"><div class="jh-hr__condbar">' + fld('기준월', '<input class="jh-input" type="month" data-p-month value="' + esc(st.pMonth) + '">') + fld('지급일', '<input class="jh-input" type="date" data-p-paydate value="' + esc(st.pPayDate) + '">') + fld('근로자', workerSel) + (w ? fld('계좌번호', '<input class="jh-input" data-p-bank value="' + esc(st.pBank) + '" placeholder="계좌 미등록">') : '') + '</div>'
+    + (w ? '<div class="jh-field__hint"><b>' + esc(w.name) + '</b> ' + esc(w.rank || '') + ' · ' + esc(w.dept || '') + (st.pAnnual ? ' · 연봉계약서 시급 ' + pw(st.pAnnual.hourly) + '원' + (st.pAnnual.wageType === 'comprehensive' ? ' · 포괄임금제' : '') : '') + '</div>' + (st.pAnnual ? '' : '<div class="jh-alert" data-tone="warn" role="status">⚠️ 연봉계약서가 없어 급여를 계산할 수 없습니다.</div>') : '') + '</div>');
+  if (!w) return '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-p-act="list">📂 급여명세서 조회</button></div>' + left + '<div class="jh-empty">위에서 근로자를 선택하세요</div>';
   const info = '실근무 ' + (s.attHours || 0).toFixed(1) + 'h + 유급휴가 ' + (s.leaveHours || 0).toFixed(1) + 'h = 인정 ' + (s.actualHours || 0).toFixed(1) + 'h (기준 ' + (s.standardHours || 209) + 'h)' + ((s.otHours || 0) > 0 ? ' · 연장 ' + s.otHours.toFixed(1) + 'h' : '') + ((s.shortHours || 0) > 0 ? ' · 부족 ' + s.shortHours.toFixed(1) + 'h' : '') + ((s.nightHours || 0) > 0 ? ' · 야간 ' + s.nightHours.toFixed(1) + 'h' : '') + ((s.holidayHours || 0) > 0 ? ' · 휴일 ' + s.holidayHours.toFixed(1) + 'h' : '') + '<br>주휴: ' + (s.weeklyEstimated ? '출퇴근기록 없어 추정값' : '개근 ' + s.weeklyQualifyingWeeks + '/' + s.weeklyTotalWeeks + '주');
   const pay = card('💳 지급 내역', '<div class="jh-hr__pad">' + [['기본근로수당', 'basic'], ['연장근로수당', 'fixedOt'], ['야간근로수당', 'fixedNight'], ['주휴수당', 'weekly'], ['휴일근로수당', 'holidayPay']].map(([l, k]) => ovr(k, l, s[k] || 0)).join('') + '<div class="jh-field__hint">' + info + '</div>' + mny('bonus', '상여금(초과근로)', '전자결재·초과근로 수당 합계 자동') + mny('specialBonus', '특별상여') + mny('extraPay', '기타수당') + mny('techAllowance', '기술수당', '(자격증 ' + ((w.certifications || []).filter((x) => x && String(x).trim()).length) + '개 × ' + pw(st.pPerCert) + '원)')
     + '<div class="jh-field"><label class="jh-field__label">여비교통비 <span class="jh-field__hint">(비과세, 지급계 미포함, 여러 유형 동시 등록 가능)</span></label>' + psTravelHtml(st) + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-p-act="travel-add">+ 이동유형 추가</button><button type="button" class="jh-btn" data-variant="secondary" data-p-act="travel-import">📥 근로시간에서 불러오기' + (st.pAtt.businessTrips.length ? ' (' + st.pAtt.businessTrips.length + '일)' : '') + '</button></div><div class="jh-hr__line"><span class="jh-hr__label">여비교통비 합계</span><strong>' + pw(st.pTravelTotal) + '원</strong></div></div><div class="jh-hr__line" style="border-top:2px solid var(--c-line)"><strong>지급계</strong><strong>' + pw(c.totalPay) + '원</strong></div></div>');
   const ded = card('➖ 공제 내역', '<div class="jh-hr__pad">' + [['국민연금', 'pension'], ['건강보험', 'health'], ['장기요양', 'ltcare'], ['고용보험', 'employ'], ['소득세', 'incomeTax'], ['지방소득세', 'localTax']].map(([l, k]) => ovr(k, l, c[k] || 0)).join('') + mny('dormitory', '기숙사') + '<div class="jh-hr__line" style="border-top:2px solid var(--c-line)"><strong>공제계</strong><strong style="color:var(--c-danger)">' + pw(c.totalDeduct) + '원</strong></div></div>');
   const net = '<div class="jh-alert" data-tone="info" role="status" style="text-align:center"><div>실 지급액</div><div style="font-size:var(--fs-xl, 1.6rem);font-weight:800">₩' + pw(c.netPay) + '</div></div>';
   const bar = '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="secondary" data-p-act="preview">📄 미리보기</button><button type="button" class="jh-btn" data-variant="primary" data-p-act="save">✅ 확정 저장</button></div>';
-  return '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-p-act="list">📂 급여명세서 조회</button></div><div class="jh-hr__split"><div class="jh-hr__col">' + left + '</div><div class="jh-hr__col">' + '<div class="jh-hr__col" style="gap:var(--sp-4)">' + pay + ded + net + bar + '</div></div></div>';
+  return '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-p-act="list">📂 급여명세서 조회</button></div>' + left + '<div class="jh-hr__two">' + pay + ded + '</div>' + net + bar;
 }
 export function payslipListHtml(st) {
   const left = card('근로자 목록', '<div class="jh-hr__pad">' + st.pWorkers.map((x) => '<button type="button" class="jh-btn" data-variant="' + (x.id === st.pListWid ? 'primary' : 'secondary') + '" data-p-listworker="' + esc(x.id) + '" style="justify-content:flex-start;width:100%">' + esc((x.name || '') + (x.rank ? ' ' + x.rank : '')) + '</button>').join('') + '</div>');

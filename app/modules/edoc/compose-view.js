@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261013j';
-import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261013j';
-import { isAnnualType } from './home-calc.js?v=20261013j';
-import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261013j';
+import { esc } from '../../core/ui.js?v=20261013k';
+import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261013k';
+import { isAnnualType } from './home-calc.js?v=20261013k';
+import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261013k';
 
 const uname = (ctx, uid) => { const u = ctx.byUid[uid]; return u ? esc(u.name) + (u.rank ? ' <small>' + esc(u.rank) + '</small>' : '') : '(알 수 없음)'; };
 

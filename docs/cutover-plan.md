@@ -37,8 +37,10 @@
 2. **서버 함수 재배포**: `identityAct`(주민번호 암호화 보관 — §0-1, 본섭에 없으면 근로자 등록·번호 변경·열람이 실패) 및 `edoc-functions-ledger_20261011h.zip` (저장소 `portal-functions` 2a65615 이후). 내용: 운행일지(`drive`) 문서는 결재 없이 즉시 확정, 월간 수지 `saveMonthlyPlan`. 
    `firebase deploy --only functions:edoc --project <본섭 프로젝트>` (테섭에서는 `--project test` 로 같은 절차를 이미 쓴다).
 3. **보안 규칙 반영**(`firestore.rules`, 테섭·본섭 모두):
-   - `isEdocCollection()` 목록에 `'edoc_drive'` 추가
-   - `isAdminOnlyCollection()` 목록에 `'general_leases'`, `'general_vehicles'`, `'general_assets'`, `'general_renewals'`, `'general_drive_history'` 추가 (추가 전에는 직원 누구나 읽을 수 있으므로 **총무 데이터를 넣기 전에** 반영)
+   - ⚠️ 규칙의 `isEdocCollection()`·`isAdminOnlyCollection()` 은 "기본 허용(승인 계정 전체)에서 **제외**"하는 목록일 뿐 접근을 **허용하지 않는다**. 제외만 하면 관리자에게도 막힌다(2026-10-13 테섭에서 겪음). 아래 세 가지를 **모두** 해야 한다.
+   - ① 총무 컬렉션 5개(`'general_leases'`, `'general_vehicles'`, `'general_assets'`, `'general_renewals'`, `'general_drive_history'`)를 **`isAdminOnlyCollection()`**(기본 허용에서 제외) 과 **`isHrDataCollection()`**(관리자 읽기·쓰기 허용 — `match /{hrCol}/{document=**}` 가 이 목록을 씀) **둘 다**에 추가. 추가 전에는 직원 누구나 읽을 수 있으므로 **총무 데이터를 넣기 전에** 반영.
+   - ② 운행일지: `isEdocCollection()` 목록에 `'edoc_drive'` 를 넣고, **`match /edoc_overtime/{docId}` 아래에 전용 블록**을 추가 — `match /edoc_drive/{docId} { allow read: if canViewEdocDoc(); allow create: if canCreateEdocDraft(); allow update: if canEditEdocDraft(); allow delete: if false; }` (다른 전자결재 문서와 같은 규칙).
+   - ③ 반영 후 총무 화면(임대·차량·자산·갱신 일정)과 운행일지가 **관리자 계정으로 열리는지**, 일반 직원 계정으로는 막히는지 확인.
    - 인사 새 화면이 쓰는 컬렉션은 모두 구포털이 이미 쓰던 것이라 별도 규칙 추가는 없다(§2 표). 단 `hr_calendar_access/config` 의 이메일 목록은 **본섭 값 그대로** 유지.
 4. **코드 반영**: 테섭 저장소(`jhsolutions5804/portal-test`) 최종 빌드를 본섭 저장소에 반영. 반영 전 `app/core/config.js` 등 **환경 설정이 본섭 Firebase 를 가리키는지** 확인(테섭 설정이 섞여 올라가지 않게). 빌드 번호·`version.json` 확인.
 5. **데이터 후처리**(§3) → **QC**(§6) → 구포털 제거 대상 정리(§4).
