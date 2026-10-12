@@ -1,21 +1,23 @@
-import { db, collection, getDocs, getDoc, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, writeBatch } from '../../core/firebase.js?v=20261013x';
-import { toast } from '../../core/ui.js?v=20261013x';
-import { confirmDialog } from '../../core/dialog.js?v=20261013x';
-import { compNew, compToForm, compBuild, fmtTel, fmtTelBlur, kstToday } from './logic.js?v=20261013x';
-import { companiesListHtml, companyFormHtml } from './view.js?v=20261013x';
-import { projNew, projToForm, projectBuild } from './projects.js?v=20261013x';
-import { projectsListHtml, projectDetailHtml, projectFormHtml } from './projects-view.js?v=20261013x';
-import { uiState, pushHash } from './ui.js?v=20261013x';
-import { itemAmt, blankItem, itemSetQty, itemSetPrice, itemSetAmount, applySupplyEdit, draftTotals, newDraft, draftFromEstimate, buildEstimate, closePatch, reopenPatch, estGroup, sortEstimates } from './estimates.js?v=20261013x';
-import { estimatesListHtml, estimateDetailHtml, estimateFormHtml, itemRowHtml } from './estimates-view.js?v=20261013x';
-import { estDocHtml } from './estimate-doc.js?v=20261013x';
-import { sortProjects } from './projects.js?v=20261013x';
-import { linkPlan, donePatch, undonePatch, voidPatch, doneConfirm, undoneConfirm, doneToast, projectBalance, acctMonthInput } from './settlements.js?v=20261013x';
-import { settlementsListHtml, settlementDetailHtml } from './settlements-view.js?v=20261013x';
-import { settleDocPage } from './settlement-doc.js?v=20261013x';
-import { issueFormHtml, qtyBlocksHtml, totalsHtml, manualRowHtml, mandayRowsHtml, mandayInfoHtml, progressBlocksHtml } from './issue-view.js?v=20261013x';
-import { progressDayKeys, accumulateChecks, mergePastProgress, applyProgress as applyProgressChecks, setProgressZone, toggleProgressDeposit, setProgressBill } from './progress.js?v=20261013x';
-import { progressProfile, mandaySource, monthDays, sumMandayDays, duplicateSources, applyMandayFetch, setMandayInput, setMandayForPjt, setRateForPjtValue, setMandayBaseRate, newIssueDraft, togglePjt, toggleEst, setQty, setQtyAmount, setSupplyOverride, setVatOverride, resetTotals, buildSettlement, itemSetQty as isItemQty, itemSetPrice as isItemPrice, itemSetAmount as isItemAmount, blankItem as isBlank } from './issue.js?v=20261013x';
+import { db, collection, getDocs, getDoc, query, where, documentId, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, writeBatch } from '../../core/firebase.js?v=20261013y';
+import { toast } from '../../core/ui.js?v=20261013y';
+import { confirmDialog } from '../../core/dialog.js?v=20261013y';
+import { compNew, compToForm, compBuild, fmtTel, fmtTelBlur, kstToday } from './logic.js?v=20261013y';
+import { companiesListHtml, companyFormHtml } from './view.js?v=20261013y';
+import { projNew, projToForm, projectBuild } from './projects.js?v=20261013y';
+import { projectsListHtml, projectDetailHtml, projectFormHtml } from './projects-view.js?v=20261013y';
+import { uiState, pushHash } from './ui.js?v=20261013y';
+import { itemAmt, blankItem, itemSetQty, itemSetPrice, itemSetAmount, applySupplyEdit, draftTotals, newDraft, draftFromEstimate, buildEstimate, closePatch, reopenPatch, estGroup, sortEstimates } from './estimates.js?v=20261013y';
+import { estimatesListHtml, estimateDetailHtml, estimateFormHtml, itemRowHtml } from './estimates-view.js?v=20261013y';
+import { estDocHtml } from './estimate-doc.js?v=20261013y';
+import { sortProjects } from './projects.js?v=20261013y';
+import { linkPlan, donePatch, undonePatch, voidPatch, doneConfirm, undoneConfirm, doneToast, projectBalance, acctMonthInput } from './settlements.js?v=20261013y';
+import { settlementsListHtml, settlementDetailHtml } from './settlements-view.js?v=20261013y';
+import { settleDocPage } from './settlement-doc.js?v=20261013y';
+import { teamLaborHtml } from './teamlabor-view.js?v=20261013y';
+import { shiftMonth, monthRange, rosterEntry, aggregateMandays, parseTeamRate, ratePatch, rateSaveMessage, FAB_LABEL, SUP_LABEL } from './teamlabor.js?v=20261013y';
+import { issueFormHtml, qtyBlocksHtml, totalsHtml, manualRowHtml, mandayRowsHtml, mandayInfoHtml, progressBlocksHtml } from './issue-view.js?v=20261013y';
+import { progressDayKeys, accumulateChecks, mergePastProgress, applyProgress as applyProgressChecks, setProgressZone, toggleProgressDeposit, setProgressBill } from './progress.js?v=20261013y';
+import { progressProfile, mandaySource, monthDays, sumMandayDays, duplicateSources, applyMandayFetch, setMandayInput, setMandayForPjt, setRateForPjtValue, setMandayBaseRate, newIssueDraft, togglePjt, toggleEst, setQty, setQtyAmount, setSupplyOverride, setVatOverride, resetTotals, buildSettlement, itemSetQty as isItemQty, itemSetPrice as isItemPrice, itemSetAmount as isItemAmount, blankItem as isBlank } from './issue.js?v=20261013y';
 
 /** 영업기획(플랫폼 기본 모듈): 구포털 기획(gihoek)을 탭 하나씩 새 화면으로 옮기는 중. 관리자 전용 — 데이터는 gihoek_* 컬렉션 그대로.
  *  사이드바는 옛 화면 틀(legacy/frame.js)이 그린다 — 이 모듈은 틀 안의 구역(거래처·협력사)을 그리는 함수만 내보내고 modules/index.js 가 hostNative 로 연결한다. */
@@ -253,7 +255,7 @@ async function mountSettlementsView(root, route, ctx, kind) {
     const a = t.closest('[data-sl-act]'); if (!a) return; const act = a.getAttribute('data-sl-act'); const cur = st.settlements.find((x) => x.id === st.sel);
     if (act === 'reset') { st.filter = { pjtId: '', client: '', month: '', status: '' }; st.page = 1; remember(0); paint(); return; }
     if (act === 'new') { startIssue(''); return; }
-    if (act === 'team') { openLegacy('settle', 'setSettleView', ['team']); return; }
+    if (act === 'team') { location.hash = '#/plan/teamlabor'; return; }
     if (act === 'back') { goBack(); return; }
     if (!cur) return;
     if (act === 'print') { const w = window.open('', '_blank'); if (!w) { toast('팝업이 차단되었습니다.'); return; } w.document.write(settleDocPage(cur, st.projects)); w.document.close(); return; }
@@ -298,6 +300,41 @@ async function mountSettlementsView(root, route, ctx, kind) {
 }
 export const mountBilling = (root, route, ctx) => mountSettlementsView(root, route, ctx, 'invoice');
 export const mountPayout = (root, route, ctx) => mountSettlementsView(root, route, ctx, 'payment');
+
+/** 팀별 노무비(기획): 월별로 팀(팀장+팀원)의 공수 × 팀 단가. 팀 단가는 관리자 전용 문서와 팀장 조회용 문서 두 곳에 저장한다 */
+export async function mountTeamLabor(root, route, ctx) {
+  root.onclick = null; root.oninput = null; root.onchange = null;
+  const now = new Date(Date.now() + 9 * 3600000); const st = { ym: { y: now.getUTCFullYear(), m: now.getUTCMonth() }, data: null, err: '', editing: '' }; let seq = 0;
+  root.innerHTML = '<div id="tl-body"></div>'; const body = root.querySelector('#tl-body'); const paint = () => { body.innerHTML = teamLaborHtml(st); };
+  const load = async () => {
+    const my = ++seq; st.data = null; st.err = ''; st.editing = ''; paint();
+    try {
+      const { lo, hi } = monthRange(st.ym); const [ms, ps] = await Promise.all([getDocs(collection(db, 'master_workers')), getDocs(collection(db, 'master_worker_private'))]);
+      const masters = [], mm = {}; ms.forEach((d) => { const o = Object.assign({ id: d.id }, d.data()); masters.push(o); mm[d.id] = o; }); const rate = {}; ps.forEach((d) => { const v = d.data(); if (v.teamRate != null) rate[d.id] = Number(v.teamRate) || 0; });
+      const failed = [], roster = [];
+      const pull = async (path, label, kind, regId) => { try { const sn = await getDocs(collection(db, path)); sn.forEach((d) => roster.push(rosterEntry(d.id, d.data(), mm[d.id], label, kind, regId))); } catch (e) { failed.push(label); } };
+      await pull('pjt_workers_fab', FAB_LABEL, 'fab'); await pull('pjt_workers_ph4', SUP_LABEL, 'sup');
+      const regs = []; try { const rs = await getDocs(collection(db, 'pjt_registry')); rs.forEach((d) => { const x = d.data(); if (x.status !== 'ended') regs.push({ id: d.id, name: x.name || 'PJT' }); }); } catch (e) { failed.push('경량 PJT 목록'); }
+      for (const rg of regs) await pull('pjt_registry/' + rg.id + '/workers', rg.name, 'light', rg.id);
+      const monthDocs = async (path, label) => { try { const snap = await getDocs(query(collection(db, path), where(documentId(), '>=', lo), where(documentId(), '<=', hi))); const rows = []; snap.forEach((d) => rows.push([d.id, (d.data().md) || {}])); return rows; } catch (e) { failed.push(label + ' 공수'); return []; } };
+      const fabRows = await monthDocs('worker_manday', FAB_LABEL), supRows = await monthDocs('ph4_manday', SUP_LABEL); const lightRows = {}; for (const rg of regs) lightRows[rg.id] = await monthDocs('pjt_registry/' + rg.id + '/manday', rg.name);
+      if (my !== seq) return; st.data = { masters, rate, pmap: aggregateMandays({ roster, fabRows, supRows, lightRows, regs }), failed };
+    } catch (e) { if (my !== seq) return; st.err = (e && e.message) || ''; }
+    paint();
+  };
+  root.onclick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return; const a = t.closest('[data-tl-act]'); if (!a) return; const act = a.getAttribute('data-tl-act'); const leader = a.getAttribute('data-tl-leader');
+    if (act === 'prev') { st.ym = shiftMonth(st.ym, -1); await load(); return; } if (act === 'next') { st.ym = shiftMonth(st.ym, 1); await load(); return; } if (act === 'reload') { await load(); return; }
+    if (act === 'rate-edit') { st.editing = leader; paint(); return; } if (act === 'rate-cancel') { st.editing = ''; paint(); return; }
+    if (act === 'rate-save' && st.data) {
+      const inp = body.querySelector('[data-tl-rate]'); const v = parseTeamRate(inp ? inp.value : ''); let okPriv = false, okRate = false, err = '';
+      try { await setDoc(doc(db, 'master_worker_private', leader), ratePatch(v), { merge: true }); okPriv = true; } catch (e) { err = '관리자 문서: ' + ((e && (e.code || e.message)) || ''); }
+      try { await setDoc(doc(db, 'team_rates', leader), Object.assign(ratePatch(v), { updatedAt: serverTimestamp() }), { merge: true }); okRate = true; } catch (e) { err += (err ? ' / ' : '') + '팀장 조회용 문서: ' + ((e && (e.code || e.message)) || ''); }
+      if (okPriv) { st.data.rate[leader] = v; st.editing = ''; paint(); } toast(rateSaveMessage(okPriv, okRate, err));
+    }
+  };
+  await load();
+}
 export const mountCompanies = (root, route, ctx) => mountCompaniesView(root, route, ctx, 'all');
 export const mountPartners = (root, route, ctx) => mountCompaniesView(root, route, ctx, 'partners');
 /** 모듈 규약상의 기본 진입점 — 실제 화면은 옛 화면 틀(legacy/frame.js)이 사이드바와 함께 위 구역 함수를 직접 부른다. 주소가 #/plan/partners 면 협력사, 그 밖에는 거래처 */
