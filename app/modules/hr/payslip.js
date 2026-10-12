@@ -1,0 +1,76 @@
+/* 급여명세서 계산 — 구포털(hr) psCalcAll 과 근태 집계(psFetchAttendanceData)·야간/주휴/휴일 수당·여비교통비를 그대로 옮긴 순수 함수.
+ * 화면·네트워크 없이 시험할 수 있다. 기준(구포털과 같음):
+ *  · 기본근로수당 금액은 시급×173.8h(연봉계약서 산식), 초과/부족 판정은 그 달 소정근로시간(평일×8h, 공휴일 제외) 대비 실근무+유급휴가
+ *  · 충족하면 초과분 × 시급 × 1.5 = 연장근로수당, 못 채우면 부족분 × 시급을 기본근로수당에서 차감
+ *  · 야간근로수당 = 22:00~06:00 실근무 × 시급 × 0.5, 주휴수당 = 시급×8×(그 주 소정근로일 개근한 주 수), 휴일근로수당 = 8h 이내 ×1.5 + 초과 ×2.0
+ *  · 4대보험: 국민연금 4.5% · 건강보험 3.545% · 장기요양 건강보험료×12.81% · 고용보험 0.9%, 소득세 간이세액 근사 + 지방소득세 10%
+ *  · 지급계(4대보험 산정 기준) = 급여 + 상여 + 특별성과급 + 특근수당 + 기술수당, 여비교통비는 실비변상이라 제외하고 실수령에만 더한다 */
+import { annualSalary } from './offer.js?v=20261012s';
+import { monthlyStandardHours } from '../../shared/worktime.js?v=20261012s';
+import { computeLeaveHoursForMonth } from '../../shared/leave-hours.js?v=20261012s';
+const pad = (n) => String(n).padStart(2, '0');
+const N = (v) => Number(v || 0) || 0;
+export const PS_DOC_VER = 'v5';
+export const PS_TRAVEL_PER_DAY = { personal_near: 10000, personal_far: 20000, company_car: 10000 };
+export const PS_LONGTRIP_WEEKLY_MAX = 5;
+export const PS_TRAVEL_LABEL = { personal_near: '🚗 개인차량 · 40km 이내 (1만원/일)', personal_far: '🚗 개인차량 · 40km 초과 (2만원/일)', company_car: '🚙 회사차량 (거리무관 1만원/일)', longtrip: '🚄 지방장기출장 · 왕복KTX 실비' };
+/** 급여 지급일: 기준월의 다음 달 말일 */
+export function psPayDate(month) { if (!/^\d{4}-\d{2}$/.test(month || '')) return ''; const [y, m] = month.split('-').map(Number); const ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1; return ny + '-' + pad(nm) + '-' + pad(new Date(ny, nm, 0).getDate()); }
+/** 근로소득 간이세액표 근사(부양가족 1인) */
+export function calcIncomeTax(taxable) {
+  if (taxable <= 1060000) return 0; if (taxable <= 1500000) return Math.round(taxable * 0.006); if (taxable <= 3000000) return Math.round(taxable * 0.010);
+  if (taxable <= 4500000) return Math.round(taxable * 0.150 - 420000); if (taxable <= 7800000) return Math.round(taxable * 0.240 - 825000); return Math.round(taxable * 0.350 - 1680000);
+}
+/** 기술수당 = 근로자 명부 자격증 개수(빈 항목 제외, 옛 hasCertification 은 1개) × 자격증 1개당 단가 */
+export function techAllowance(worker, perCert) { if (!worker) return 0; const certs = worker.certifications && worker.certifications.length ? worker.certifications.filter((c) => c && String(c).trim()) : (worker.hasCertification ? ['(구버전 등록분)'] : []); return certs.length * (perCert == null ? 50000 : perCert); }
+/** 22:00~익일 06:00 근무시간(h) — 자정을 넘기는 근무와 새벽대 근무(03:00~11:00) 모두 처리 */
+export function nightHours(checkIn, checkOut) {
+  if (!checkIn || !checkOut) return 0; const [ih, im] = checkIn.split(':').map(Number); const [oh, om] = checkOut.split(':').map(Number); const startMin = ih * 60 + im; let endMin = oh * 60 + om; if (endMin <= startMin) endMin += 24 * 60; let mins = 0;
+  for (const [ws, we] of [[-120, 360], [1320, 1800]]) { const os = Math.max(startMin, ws), oe = Math.min(endMin, we); if (oe > os) mins += oe - os; } return mins / 60;
+}
+function isoWeekKey(d) { const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); const dayNum = (t.getUTCDay() + 6) % 7; t.setUTCDate(t.getUTCDate() - dayNum + 3); const ft = new Date(Date.UTC(t.getUTCFullYear(), 0, 4)); const wn = 1 + Math.round(((t - ft) / 86400000 - 3 + (ft.getUTCDay() + 6) % 7) / 7); return t.getUTCFullYear() + '-W' + wn; }
+/** 주휴수당(근기법 55조): 그 주 소정근로일(평일, 공휴일 제외)을 모두 출근 또는 승인된 휴가로 채운 주만 인정, 1주 = 시급×8. 그 달 출퇴근 기록이 전혀 없으면 고정값(fallbackWeekly)으로 추정 */
+export function weeklyHolidayPay(hourly, year, month, attDates, leaveDocs, workerName, fallbackWeekly, holidaySet) {
+  if (!attDates || attDates.size === 0) return { weeklyPay: Math.round(fallbackWeekly || 0), qualifyingWeeks: null, totalWeeks: null, weekDetails: [], estimated: true };
+  const covered = (ds) => (leaveDocs || []).some((lv) => (lv.status === 'approved' || lv.status === 'posted') && (lv.authorName || lv.name || '') === workerName && lv.startDate && lv.endDate && ds >= lv.startDate && ds <= lv.endDate);
+  const weekMap = {}; const last = new Date(year, month, 0);
+  for (let cur = new Date(year, month - 1, 1); cur <= last; cur.setDate(cur.getDate() + 1)) { const dow = cur.getDay(); const ds = cur.getFullYear() + '-' + pad(cur.getMonth() + 1) + '-' + pad(cur.getDate()); if (dow !== 0 && dow !== 6 && !(holidaySet && holidaySet.has(ds))) (weekMap[isoWeekKey(cur)] = weekMap[isoWeekKey(cur)] || []).push(ds); }
+  let q = 0; const weekDetails = []; for (const [wk, dates] of Object.entries(weekMap)) { const allPresent = dates.every((d) => attDates.has(d) || covered(d)); if (allPresent) q++; weekDetails.push({ week: wk, dates, allPresent, meetsHours: true, qualifies: allPresent }); }
+  return { weeklyPay: Math.round((hourly || 0) * 8 * q), qualifyingWeeks: q, totalWeeks: Object.keys(weekMap).length, weekDetails, estimated: false };
+}
+/** 휴일근로수당(근기법 56조 2항): 8시간 이내 ×1.5, 초과 ×2.0 — 그 시간의 정상임금 포함 총액 */
+export function holidayPay(hourly, records) { if (!hourly || !records || !records.length) return { holidayPay: 0, holidayHours: 0 }; let pay = 0, hours = 0; for (const r of records) { const h = Number(r.workHours) || 0; if (h <= 0) continue; hours += h; pay += Math.round(hourly * Math.min(h, 8) * 1.5) + Math.round(hourly * Math.max(0, h - 8) * 2.0); } return { holidayPay: pay, holidayHours: hours }; }
+/** 그 달 출퇴근 기록(worker_attendance_log)·휴가 문서로 급여 계산용 근태 집계 — 주말·공휴일 근무는 평일 시간에서 빼고 휴일근로로 따로 모은다 */
+export function attendanceData(rows, leaveDocs, workerName, month, holidaySet) {
+  const [year, mm] = String(month || '').split('-').map(Number); const out = { attHours: 0, leaveHours: 0, nightHours: 0, attDates: new Set(), leaveDocs: leaveDocs || [], holidayRecords: [], businessTrips: [] };
+  (rows || []).forEach((d) => { const hrs = Number(d.workHours) || 0; if (d.date) out.attDates.add(d.date); const dow = d.date ? new Date(d.date + 'T00:00:00').getDay() : -1; const off = dow === 0 || dow === 6 || (d.date && holidaySet && holidaySet.has(d.date)); if (off) out.holidayRecords.push({ date: d.date, workHours: hrs }); else out.attHours += hrs; out.nightHours += nightHours(d.checkIn, d.checkOut); if (d.isBusinessTrip) out.businessTrips.push({ date: d.date, tripType: d.tripType || 'personal_near' }); });
+  if (workerName && year && mm) out.leaveHours = computeLeaveHoursForMonth(leaveDocs || [], workerName, year, mm); return out;
+}
+/** 여비교통비 */
+export function travelItemAmount(item) { if (!item) return 0; if (item.type === 'longtrip') return N(item.tripCount) * N(item.perTrip); const per = PS_TRAVEL_PER_DAY[item.type]; if (per !== undefined) return per * N(item.days); return N(item.amount); }
+export const travelTotal = (items) => (items || []).reduce((s, it) => s + travelItemAmount(it), 0);
+/** 근태의 출장 기록 → 이동유형별 여비교통비 항목(장거리는 왕복 횟수만 채우고 1회 비용은 직접 입력) */
+export function travelFromTrips(trips) { const counts = {}; (trips || []).forEach((t) => { const k = t.tripType || 'personal_near'; counts[k] = (counts[k] || 0) + 1; }); return Object.keys(counts).map((type) => (type === 'longtrip' ? { type: 'longtrip', tripCount: counts[type], perTrip: 0 } : { type, days: counts[type] })); }
+export function travelSet(item, field, value) { const it = Object.assign({}, item); if (field === 'type') it.type = value; else it[field] = Math.max(0, Number(value) || 0); return it; }
+/** 급여 계산. in: { hourly, wageType, fixedOT, fixedNight, month, attHours, leaveHours, nightHours, attDates, leaveDocs, workerName, holidayRecords, holidaySet, bonus, specialBonus, extraPay, techAllowance, travelAllowance, dormitory, o: {직접 고친 값 basic·fixedOt·fixedNight·weekly·holidayPay·pension·health·ltcare·employ·incomeTax·localTax} } */
+export function payslipCalc(inp) {
+  const x = inp || {}; const o = x.o || {}; const hourly = N(x.hourly); const hasContract = hourly > 0 || x.hasContract; const sal0 = hasContract ? annualSalary(hourly) : { basic: 0, fixedOt: 0, fixedNight: 0, weekly: 0, total: 0 };
+  const attHours = N(x.attHours), leaveHours = N(x.leaveHours), nightH = N(x.nightHours); const actual = attHours + leaveHours; const [py, pm] = String(x.month || '').split('-').map(Number); const threshold = py && pm ? monthlyStandardHours(py, pm, x.holidaySet) : 209; const diff = actual - threshold; const comp = x.wageType === 'comprehensive';
+  let basicAuto = sal0.basic, otHours = 0, otPayAuto = 0, shortHours = 0, shortDeduct = 0;
+  if (hourly > 0 && hasContract) { if (diff >= 0) { otHours = diff; otPayAuto = comp ? N(x.fixedOT) : Math.round(hourly * otHours * 1.5); } else { shortHours = -diff; shortDeduct = Math.round(hourly * shortHours); basicAuto = Math.max(0, sal0.basic - shortDeduct); otPayAuto = comp ? N(x.fixedOT) : 0; } }
+  const nightPayAuto = comp ? N(x.fixedNight) : (hourly > 0 ? Math.round(hourly * nightH * 0.5) : 0);
+  const wk = py && pm ? weeklyHolidayPay(hourly, py, pm, x.attDates, x.leaveDocs, x.workerName, sal0.weekly, x.holidaySet) : { weeklyPay: sal0.weekly, qualifyingWeeks: null, totalWeeks: null, weekDetails: [], estimated: true };
+  const hol = holidayPay(hourly, x.holidayRecords); const pick = (k, auto) => (o[k] !== undefined && o[k] !== null ? Number(o[k]) : auto);
+  const pBasic = pick('basic', basicAuto), pOt = pick('fixedOt', otPayAuto), pNight = pick('fixedNight', nightPayAuto), pWeekly = pick('weekly', wk.weeklyPay), pHoliday = pick('holidayPay', hol.holidayPay);
+  const sal = Object.assign({}, sal0, { basic: pBasic, fixedOt: pOt, fixedNight: pNight, weekly: pWeekly, holidayPay: pHoliday, total: pBasic + pOt + pNight + pWeekly + pHoliday, isComprehensive: comp, attHours, leaveHours, nightHours: nightH, actualHours: actual, standardHours: threshold, otHours, shortHours, shortDeduct, holidayHours: hol.holidayHours, weeklyQualifyingWeeks: wk.qualifyingWeeks, weeklyTotalWeeks: wk.totalWeeks, weeklyEstimated: wk.estimated, weeklyDetails: wk.weekDetails });
+  if (sal0.annual !== undefined) sal.annual = sal.total * 12;
+  const bonus = N(x.bonus), specialBonus = N(x.specialBonus), extraPay = N(x.extraPay), tech = N(x.techAllowance), travel = N(x.travelAllowance); const totalPay = sal.total + bonus + specialBonus + extraPay + tech;
+  const health0 = Math.round(totalPay * 0.03545); const inTax0 = calcIncomeTax(totalPay);
+  const pension = pick('pension', Math.round(totalPay * 0.045)), health = pick('health', health0), ltcare = pick('ltcare', Math.round(health0 * 0.1281)), employ = pick('employ', Math.round(totalPay * 0.009)), incomeTax = pick('incomeTax', inTax0), localTax = pick('localTax', Math.round(inTax0 * 0.1));
+  const dormitory = N(x.dormitory); const totalDeduct = pension + health + ltcare + employ + dormitory + incomeTax + localTax;
+  return { sal, bonus, specialBonus, extraPay, techAllowance: tech, travelAllowance: travel, totalPay, pension, health, ltcare, employ, dormitory, incomeTax, localTax, totalDeduct, netPay: totalPay - totalDeduct + travel };
+}
+/** 저장 문서(payslips/{근로자}/months/{YYYY-MM}) — 구포털과 같은 필드 */
+export function payslipRecord(w, annualData, month, payDate, bankAccount, c, travelItems, now) {
+  const x = w || {}; return Object.assign({ month, payDate, bankAccount: bankAccount || '', name: x.name || '', dept: x.dept || '', rank: x.rank || '', empNo: x.empNo || '', hourly: (annualData && annualData.hourly) || 0, empType: x.empType || 'field' }, c.sal, { bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay, techAllowance: c.techAllowance, travelAllowance: c.travelAllowance, travelItems: travelItems || [], grossPay: c.totalPay, pension: c.pension, health: c.health, ltcare: c.ltcare, employ: c.employ, dormitory: c.dormitory, incomeTax: c.incomeTax, localTax: c.localTax, totalDeduct: c.totalDeduct, netPay: c.netPay, savedAt: now || new Date().toISOString(), tplVer: PS_DOC_VER });
+}
