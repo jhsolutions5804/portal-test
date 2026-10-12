@@ -66,3 +66,22 @@
 
 /* 폰에서는 숨기는 요소(PC 전용). 폰은 하단 막대의 '새 문서 작성'이 같은 일을 한다 */
 @media (max-width: 899px) { .jh-pc-only { display: none; } }
+
+/* 공용 사이드 내비게이션(shared/sidenav.js): 넓은 화면은 왼쪽 세로 메뉴, 899px 이하는 위쪽 가로 스크롤 메뉴 */
+.jh-sidenav { display: flex; flex-direction: column; flex: 0 0 var(--u-220); width: var(--u-220); box-sizing: border-box; gap: var(--u-2); padding: var(--sp-3); overflow-y: auto; background: var(--c-surface); border-right: var(--u-1) solid var(--c-line); }
+.jh-sidenav__title { padding: var(--sp-2) var(--sp-3); font-size: var(--fs-md); font-weight: 800; color: var(--c-ink); }
+.jh-sidenav__sec { display: flex; flex-direction: column; gap: var(--u-2); }
+.jh-sidenav__sec + .jh-sidenav__sec { margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: var(--u-1) solid var(--c-line); }
+.jh-sidenav__head { padding: var(--sp-1) var(--sp-3); font-size: var(--fs-xs); font-weight: 800; color: var(--c-ink-3); letter-spacing: 0.04em; }
+.jh-sidenav__sub { padding: var(--sp-2) var(--sp-3) var(--u-2); font-size: var(--fs-xs); font-weight: 700; color: var(--c-ink-3); }
+.jh-sidenav__item { display: flex; align-items: center; min-height: var(--u-36, 2.25rem); padding: 0 var(--sp-3); border-radius: var(--radius); color: var(--c-ink-2); font-size: var(--fs-sm); font-weight: 600; text-decoration: none; }
+.jh-sidenav__item:hover { background: var(--c-primary-weak); color: var(--c-ink); }
+.jh-sidenav__item[aria-current="page"] { background: var(--c-primary); color: var(--c-primary-ink); }
+@media (max-width: 899px) {
+  .jh-sidenav { flex-direction: row; flex: 0 0 auto; width: auto; align-items: center; gap: var(--sp-2); overflow-x: auto; overflow-y: hidden; border-right: 0; border-bottom: var(--u-1) solid var(--c-line); }
+  .jh-sidenav__title { display: none; }
+  .jh-sidenav__sec { flex-direction: row; align-items: center; flex: 0 0 auto; gap: var(--sp-2); }
+  .jh-sidenav__sec + .jh-sidenav__sec { margin: 0 0 0 var(--sp-3); padding: 0 0 0 var(--sp-3); border-top: 0; border-left: var(--u-1) solid var(--c-line-strong); }
+  .jh-sidenav__head, .jh-sidenav__sub { padding: 0 var(--sp-1); white-space: nowrap; }
+  .jh-sidenav__item { flex: 0 0 auto; min-height: var(--u-44); white-space: nowrap; }
+}

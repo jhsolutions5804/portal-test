@@ -1,10 +1,15 @@
-import { esc } from '../../core/ui.js?v=20261012z';
-import { MP_GROUPS, NPAY_CHOICES, ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport, vatForm, vatCardRef } from './logic.js?v=20261012z';
-import { CHOICES } from '../../shared/merchant-table.js?v=20261012z';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261013a';
+import { esc } from '../../core/ui.js?v=20261013a';
+import { MP_GROUPS, NPAY_CHOICES, ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport, vatForm, vatCardRef } from './logic.js?v=20261013a';
+import { CHOICES } from '../../shared/merchant-table.js?v=20261013a';
 
 /* 재무회계 화면 조각 — 모든 값은 esc() 로 감싸 HTML 로 만든다. 스타일은 theme/finance.css 와 공용 클래스를 쓴다 */
 const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['monthly', '월간 수지'], ['forecast', '예측'], ['gap', '이엔지 정산'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];
 export const tabsHtml = (cur) => '<div class="jh-segmented jh-finance__tabs" role="group" aria-label="재무회계">' + TABS.map(([k, l]) => '<a class="jh-segmented__item" href="#/finance/' + k + '" aria-pressed="' + (k === cur) + '">' + l + '</a>').join('') + '</div>';
+/** 재무회계 사이드바(상단 탭 대신): 현황·입력·보고·정산·설정으로 묶어 보여 준다 */
+export const FIN_SIDE = [{ title: '현황', keys: ['home'] }, { title: '입력', keys: ['entries', 'expense', 'import'] }, { title: '보고', keys: ['reports', 'monthly', 'forecast'] }, { title: '정산', keys: ['gap'] }, { title: '설정', keys: ['rules', 'opening', 'settings'] }];
+export const financeSideCfg = (cur) => ({ label: '재무회계 메뉴', title: '📊 재무회계', current: cur, sections: FIN_SIDE.map((s) => ({ title: s.title, items: s.keys.map((k) => ({ key: k, label: (TABS.find((t) => t[0] === k) || [k, k])[1], href: '#/finance/' + k })) })) });
+export const sideHtml = (cur) => sidenavHtml(financeSideCfg(cur));
 
 /** 카드 한 장: 제목 줄 + 안쪽 여백이 일정한 내용. flush=true 면 표처럼 가장자리까지 채우는 내용 */
 const card = (title, bodyHtml, right, flush) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + (flush ? bodyHtml : bodyHtml) + '</section>';

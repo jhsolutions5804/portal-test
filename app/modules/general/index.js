@@ -1,20 +1,20 @@
-import { db, auth, functions, httpsCallable, collection, getDocs, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261012z';
-import { esc, toast } from '../../core/ui.js?v=20261012z';
-import { confirmDialog } from '../../core/dialog.js?v=20261012z';
-import { GTYPES, GKEYS, kstToday, formToDoc, docToForm, newDefaults, SEED, driveCsv, addDays, parseDriveHistory, assignProject, matchHistory } from './logic.js?v=20261012z';
-import { tabsHtml, homeHtml, listHtml, tableHtml, driveHtml, driveSelect } from './view.js?v=20261012z';
+import { db, auth, functions, httpsCallable, collection, getDocs, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261013a';
+import { esc, toast } from '../../core/ui.js?v=20261013a';
+import { confirmDialog } from '../../core/dialog.js?v=20261013a';
+import { GTYPES, GKEYS, kstToday, formToDoc, docToForm, newDefaults, SEED, driveCsv, addDays, parseDriveHistory, assignProject, matchHistory } from './logic.js?v=20261013a';
+import { tabsHtml, homeHtml, listHtml, tableHtml, driveHtml, driveSelect } from './view.js?v=20261013a';
 
 /** 총무(플랫폼 기본 모듈): 임대·차량·자산·갱신 일정을 한 곳에서. 관리자 전용 — 데이터는 general_* 컬렉션(보안 규칙에서 관리자 전용으로 잠가야 한다) */
 /* 사이드바에는 따로 올리지 않는다(modules/index.js 의 MODULES 에 없음) — 인사총무 구역으로만 열린다. manifest 는 모듈 규약상 남겨 둔다 */
 export const manifest = { id: 'general', order: 25, title: '총무', icon: '🗂️', defaultHash: '#/general/home', perm: (me) => !!me && me.admin === true };
 const strRow = (r) => { const o = {}; Object.keys(r || {}).forEach((k) => { o[k] = r[k] == null ? '' : String(r[k]); }); return o; };
 /** 인사총무 틀 안의 총무 구역으로 열기 — 주소는 #/hr/general/… */
-export const mountSection = (root, route, ctx) => mount(root, route, ctx, { base: '#/hr/general' });
+export const mountSection = (root, route, ctx) => mount(root, route, ctx, { base: '#/hr/general', noTabs: true });   // 인사총무 안에서는 왼쪽 사이드바가 총무 메뉴를 대신한다
 export async function mount(root, route, ctx, opts) {
   const BASE = (opts && opts.base) || '#/general'; const want = route.segs[0]; const tab = want === 'home' || want === 'drive' || GKEYS.includes(want) ? want : 'home'; const openId = route.segs[1] || '';
   root.onclick = null; root.oninput = null; root.onchange = null;
   const st = { drive: { mode: 'all', anchor: kstToday(), ym: kstToday().slice(0, 7), vehicleId: '', driver: '', pjtKey: '', approvedOnly: false, docs: [], hist: [], imp: null, projects: [], pa: { kw: '', pjt: '', from: '', to: '', over: false } }, base: BASE, data: {}, today: kstToday(), q: '', onlyActive: true, edit: null, seed: { lease: SEED.lease.length, vehicle: SEED.vehicle.length, asset: SEED.asset.length, renewal: SEED.renewal.length } };
-  root.innerHTML = '<div class="jh-general">' + tabsHtml(tab, BASE) + '<div id="g-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
+  root.innerHTML = '<div class="jh-general">' + ((opts && opts.noTabs) ? '' : tabsHtml(tab, BASE)) + '<div id="g-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
   const body = root.querySelector('#g-body'); const need = tab === 'home' ? GKEYS : tab === 'drive' ? ['vehicle'] : [tab];
   const load = async () => { await Promise.all(need.map(async (k) => { const s = await getDocs(collection(db, GTYPES[k].coll)); const arr = []; s.forEach((d) => arr.push(Object.assign({ id: d.id }, d.data()))); arr.sort((a, b) => String(GTYPES[k].label(a)).localeCompare(String(GTYPES[k].label(b)), 'ko')); st.data[k] = arr; })); };
   const loadDrive = async () => { const s = await getDocs(collection(db, 'edoc_drive')); const arr = []; s.forEach((d) => { const x = d.data(); arr.push(Object.assign({ id: d.id }, x, { createdMs: x.createdAt && x.createdAt.toMillis ? x.createdAt.toMillis() : 0 })); }); st.drive.docs = arr; const hs = await getDocs(collection(db, 'general_drive_history')); const ha = []; hs.forEach((d) => ha.push(Object.assign({ id: d.id }, d.data()))); st.drive.hist = ha; try { const ps = await getDocs(collection(db, 'gihoek_projects')); const pl = []; ps.forEach((d) => { const x = d.data(); if (x && x.name) pl.push({ id: d.id, code: x.code || '', name: x.name || '' }); }); st.drive.projects = pl.sort((a, b) => (a.code + a.name).localeCompare(b.code + b.name, 'ko')); } catch (e) { st.drive.projects = []; } };

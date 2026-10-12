@@ -32,3 +32,9 @@
 .jh-legacy__chip--sub { min-height: var(--u-36, 2.25rem); padding: 0 var(--sp-3); font-weight: 600; }
 .jh-legacy__grp { margin-left: var(--sp-3); padding-left: var(--sp-3); border-left: var(--u-1) solid var(--c-line-strong); color: var(--c-ink-3); font-size: var(--fs-xs); font-weight: 700; white-space: nowrap; }
 .jh-legacy__hint { margin-left: var(--sp-3); color: var(--c-ink-3); font-size: var(--fs-xs); }
+
+/* 인사총무: 메뉴를 왼쪽 사이드바로(넓은 화면). 화면(iframe·새 화면 영역)은 사이드바 오른쪽을 채운다 */
+.jh-legacy[data-side] { flex-direction: row; }
+.jh-legacy[data-side] > .jh-sidenav { align-self: stretch; }
+.jh-legacy[data-side] > .jh-legacy__frame, .jh-legacy[data-side] > .jh-legacy__native { flex: 1 1 0; min-width: 0; }
+@media (max-width: 899px) { .jh-legacy[data-side] { flex-direction: column; } .jh-legacy[data-side] > .jh-legacy__frame, .jh-legacy[data-side] > .jh-legacy__native { flex: 1 1 auto; min-height: 0; } }

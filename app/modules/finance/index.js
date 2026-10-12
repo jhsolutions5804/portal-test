@@ -1,14 +1,14 @@
-import { esc, toast } from '../../core/ui.js?v=20261012z';
-import { confirmDialog } from '../../core/dialog.js?v=20261012z';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261012z';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261012z';
-import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261012z';
-import { parseBankSheets } from '../../shared/bank-import.js?v=20261012z';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261012z';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261012z';
-import { monthlyView, monthlyCsv, MP_SEED, npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261012z';
-import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, saveMonthlyPlan, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261012z';
-import { tabsHtml, monthlyHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261012z';
+import { esc, toast } from '../../core/ui.js?v=20261013a';
+import { confirmDialog } from '../../core/dialog.js?v=20261013a';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261013a';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261013a';
+import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261013a';
+import { parseBankSheets } from '../../shared/bank-import.js?v=20261013a';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261013a';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261013a';
+import { monthlyView, monthlyCsv, MP_SEED, npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261013a';
+import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, saveMonthlyPlan, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261013a';
+import { sideHtml, monthlyHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261013a';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
 export const manifest = {
@@ -43,7 +43,7 @@ export async function mount(root, route, ctx) {
   const me = (ctx && ctx.me) || {}; S.admin = me.admin === true;
   const tab = ['home', 'entries', 'expense', 'import', 'reports', 'monthly', 'forecast', 'gap', 'rules', 'opening', 'settings'].includes(route.segs[0]) ? route.segs[0] : 'home';
   root.onclick = null; root.onchange = null; root.oninput = null; root.ondragover = null; root.ondragleave = null; root.ondrop = null; if (root.__finFocusOut) { root.removeEventListener('focusout', root.__finFocusOut); root.__finFocusOut = null; } root.onkeydown = null;
-  root.innerHTML = '<div class="jh-finance">' + tabsHtml(tab) + '<div id="fin-body" class="jh-finance__body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
+  root.innerHTML = '<div class="jh-finance jh-finance--side">' + sideHtml(tab) + '<div class="jh-finance__main"><div id="fin-body" class="jh-finance__body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div></div>';
   const body = root.querySelector('#fin-body');
   const paint = () => {
     S.data.entries.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.seq || 0) - (b.seq || 0)));

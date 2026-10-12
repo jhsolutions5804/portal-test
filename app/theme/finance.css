@@ -122,3 +122,9 @@
 /* 월간 수지 */
 .jh-mp__amt { text-align: right; inline-size: 8.5rem; max-inline-size: 100%; }
 .jh-mp__amt[data-over] { border-color: var(--c-warn); }
+
+/* 재무회계: 상세 메뉴를 왼쪽 사이드바로 — 사이드바(고정 폭) + 본문(기존 폭 제한 유지) */
+.jh-finance--side { max-width: none; grid-template-columns: var(--u-220) minmax(0, 1fr); align-items: start; gap: var(--sp-4); }
+.jh-finance--side > .jh-sidenav { position: sticky; top: var(--sp-4); max-height: calc(100vh - var(--sp-5) * 2); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); }
+.jh-finance__main { min-width: 0; max-width: calc(var(--u-440) * 2.5); }
+@media (max-width: 899px) { .jh-finance--side { grid-template-columns: minmax(0, 1fr); } .jh-finance--side > .jh-sidenav { position: static; max-height: none; } }
