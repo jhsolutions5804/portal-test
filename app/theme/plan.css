@@ -1,0 +1,18 @@
+/* 영업기획 — 이 모듈만의 스타일. 색·간격은 theme/tokens.css 의 변수만 쓴다. 기준 폭은 899px 하나뿐. */
+.jh-plan { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); max-width: calc(var(--u-440) * 2.5); }
+.jh-plan__pad { display: grid; gap: var(--sp-3); padding: var(--sp-4); }
+.jh-plan__bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.jh-plan__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+.jh-plan__group { display: grid; gap: var(--sp-2); }
+.jh-plan__gtitle { font-size: var(--fs-sm); font-weight: 800; color: var(--c-ink-2); padding-top: var(--sp-2); }
+.jh-plan__row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); width: 100%; padding: var(--sp-3) var(--sp-4); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); color: var(--c-ink); text-align: left; cursor: pointer; font: inherit; }
+.jh-plan__row:hover { background: var(--c-primary-weak); }
+.jh-plan__main { display: grid; gap: var(--u-2); min-width: 0; }
+.jh-plan__chip { display: inline-block; padding: 0 var(--sp-2); border-radius: var(--radius-sm); background: var(--c-primary-weak); color: var(--c-ink-2); font-size: var(--fs-xs); font-weight: 700; }
+.jh-plan__checks { display: flex; flex-wrap: wrap; gap: var(--sp-4); }
+.jh-plan__check { display: inline-flex; align-items: center; gap: var(--sp-2); cursor: pointer; }
+.jh-plan__ct { display: grid; grid-template-columns: 1fr 1.2fr 1.8fr auto; gap: var(--sp-2); margin-top: var(--sp-2); align-items: center; }
+@media (max-width: 899px) { .jh-plan__grid { grid-template-columns: minmax(0, 1fr); } .jh-plan__ct { grid-template-columns: minmax(0, 1fr) auto; } .jh-plan__ct > input:nth-child(1), .jh-plan__ct > input:nth-child(2), .jh-plan__ct > input:nth-child(3) { grid-column: 1 / 2; } .jh-plan__ct > button { grid-column: 2 / 3; grid-row: 1 / 4; } }
+
+.jh-plan__line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.jh-plan__gtitle .jh-field__hint { display: inline; margin-left: var(--sp-1); }

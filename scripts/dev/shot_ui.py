@@ -27,6 +27,7 @@ D={
  'leave_promotions/w1/records':{'r1':{'stage':'p1','category':'y1','periodStart':'2026-01-01','noticeDate':'2026-07-01','unusedDays':10,'method':'직접 교부(수령 서명)'}},
  'hr_calendar_access':{'config':{'emails':['admin@jhsol.kr']}},'evaluations/w1/records':{'v1':{'type':'regular','grade':'A','date':today}},'interviews/w1/records':{'i1':{'date':today,'topic':'면담'}},
  'edoc_overtime':{'e1':{'status':'approved','date':today,'name':'이다라','rank':'사원','workerId':'w2','hours':1,'amount':10000,'rate':10000}},
+ 'gihoek_companies':{'jheng':{'company':'제이에이치이엔지','ceo':'김영희','roleSupplier':True,'roleClient':True,'contacts':[{'name':'김','tel':'010-1111-2222','email':'a@b.c'}],'tel':'010-3735-7891'},'jhsol':{'company':'제이에이치솔루션','roleSupplier':True,'roleClient':False,'contacts':[]},'daram':{'company':'다람이엔지','roleSupplier':False,'roleClient':True,'ceo':'박대표','bizno':'123-45-67890','contacts':[]},'sj':{'company':'에스제이','roleSupplier':False,'roleClient':True,'roleVendor':True,'contacts':[]},'gtr':{'company':'귀뚜라미범양냉방','roleSupplier':False,'roleClient':True,'contacts':[]}},
  'general_leases':{'g1':{'name':'원희캐슬 B111','kind':'office','deposit':10000000,'rent':800000,'status':'active'}},'general_vehicles':{'v1':{'name':'스타리아','plate':'12가3456','status':'active'}},
 }
 FS = '''

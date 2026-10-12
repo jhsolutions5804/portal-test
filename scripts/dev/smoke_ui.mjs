@@ -4,9 +4,10 @@
  * 한계: 로그인·보안 규칙·실제 데이터 모양은 보지 못한다 — 마지막 확인은 테섭에서 직접 열어 본다. */
 import { w, D, put, errors, sleep, markDone } from './smoke_env.mjs';
 import fs from 'node:fs';
+const plan = await import(new URL('../../app/modules/plan/index.js', import.meta.url).href);
 const hr = await import(new URL('../../app/modules/hr/index.js', import.meta.url).href); const gen = await import(new URL('../../app/modules/general/index.js', import.meta.url).href); const fin = await import(new URL('../../app/modules/finance/index.js', import.meta.url).href);
 const ctx = { me: { admin: true, uid: 'u1', name: '관리자', email: 'a@jhsol.kr', perms: {} } };
-const targets = [...Object.keys(hr).filter((k) => /^mount/.test(k)).map((k) => ['hr.' + k, hr[k]]), ['general.mountSection', gen.mountSection]]; for (const t of ['home', 'entries', 'expense', 'import', 'reports', 'monthly', 'forecast', 'gap', 'rules', 'opening', 'settings']) targets.push(['finance/' + t, (root, route, c) => fin.mount(root, { segs: [t], query: {} }, c)]);
+const targets = [...Object.keys(hr).filter((k) => /^mount/.test(k)).map((k) => ['hr.' + k, hr[k]]), ['general.mountSection', gen.mountSection], ['plan.mountCompanies', plan.mountCompanies], ['plan.mountPartners', plan.mountPartners]]; for (const t of ['home', 'entries', 'expense', 'import', 'reports', 'monthly', 'forecast', 'gap', 'rules', 'opening', 'settings']) targets.push(['finance/' + t, (root, route, c) => fin.mount(root, { segs: [t], query: {} }, c)]);
 let failed = 0; const clickMode = process.argv.includes('--click');
 for (const [name, fn] of targets) {
   errors.length = 0; const root = document.createElement('div'); document.body.appendChild(root);
@@ -34,5 +35,16 @@ for (const [name, fn] of targets) {
     const problems = []; if (!wrap) problems.push('틀 없음'); else { if (wrap.querySelector('.jh-sidenav') == null) problems.push('사이드바 없음'); if (!nat || nat.hidden || nat.innerHTML.length < 50) problems.push('새 화면 영역이 비어 있음'); if (frame && frame.getAttribute('src')) problems.push('옛 화면(iframe)이 불러와짐'); if (!cur) problems.push('현재 메뉴 표시 없음'); }
     if (errors.length) problems.push(errors[0].slice(0, 160)); if (problems.length) { bad++; console.log('✗ 껍데기', r.segs.join('/').padEnd(22), problems.join(' · ')); } }
   console.log(bad ? '✗ 껍데기 점검: 문제 ' + bad + '건 / ' + routes.length + '개 메뉴' : '✓ 껍데기 점검: 인사 ' + keys.length + '개 + 총무 6개 메뉴를 사이드바 껍데기로 열어 봄 — 새 화면이 그려지고 옛 화면(iframe)은 불러오지 않음'); if (bad) failed++;
+}
+
+// ── 영업기획 껍데기: 사이드바 + 새 화면(거래처·협력사). 옛 화면 탭(홈·프로젝트·견적·정산·회계)은 iframe 이 열리는 것이 정상이라 틀·사이드바·현재 메뉴 표시만 확인 ──
+{
+  const V = '?v=' + (fs.readFileSync(new URL('../../app/modules/index.js', import.meta.url), 'utf8').match(/\?v=(\w+)/) || [])[1]; const { mountLegacy } = await import(new URL('../../app/modules/legacy/frame.js' + V, import.meta.url).href); const { LEGACY_DEFS } = await import(new URL('../../app/modules/legacy/list.js' + V, import.meta.url).href);
+  const def = LEGACY_DEFS.find((d) => d.id === 'plan'); const keep = document.createElement('div'); document.body.appendChild(keep); let bad = 0;
+  for (const key of ['comp', 'partners', 'home', 'pjt', 'est', 'settle', 'acct']) { errors.length = 0; try { await Promise.race([mountLegacy(def, keep, { segs: [key], query: {} }, ctx), sleep(2500)]); await sleep(60); } catch (e) { errors.push('껍데기 예외: ' + String((e && e.stack) || e).split('\n').slice(0, 2).join(' | ')); }
+    const wrap = keep.querySelector('[data-legacy-mod="plan"]'); const nat = wrap && wrap.querySelector('.jh-legacy__native'); const frame = wrap && wrap.querySelector('iframe'); const cur = wrap && wrap.querySelector('.jh-sidenav__item[aria-current="page"]'); const native = ['comp', 'partners'].includes(key); const problems = [];
+    if (!wrap) problems.push('틀 없음'); else { if (!wrap.querySelector('.jh-sidenav')) problems.push('사이드바 없음'); if (!cur || cur.getAttribute('data-key') !== key) problems.push('현재 메뉴 표시가 ' + key + ' 가 아님'); if (native) { if (!nat || nat.hidden || nat.innerHTML.length < 50) problems.push('새 화면 영역이 비어 있음'); if (frame && frame.getAttribute('src')) problems.push('새 화면인데 옛 화면(iframe)이 불러와짐'); } else if (!frame || !frame.getAttribute('src') || !/gihoek\/.*tab=/.test(frame.getAttribute('src'))) problems.push('옛 화면 주소(탭 값 포함)가 없음: ' + (frame && frame.getAttribute('src'))); }
+    if (errors.length) problems.push(errors[0].slice(0, 160)); if (problems.length) { bad++; console.log('✗ 영업기획 껍데기', key.padEnd(10), problems.join(' · ')); } }
+  console.log(bad ? '✗ 영업기획 껍데기 점검: 문제 ' + bad + '건' : '✓ 영업기획 껍데기 점검: 새 화면 2개는 그려지고 옛 화면 탭 5개는 탭 값이 붙은 주소로 열림, 사이드바 현재 메뉴 표시 일치'); if (bad) failed++;
 }
 markDone(); console.log('\n' + (failed ? '문제가 있는 화면 ' + failed + '개' : '모든 화면이 열림')); process.exit(failed ? 1 : 0);

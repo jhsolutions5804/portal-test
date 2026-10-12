@@ -4,7 +4,7 @@
  * 한계: 서버 함수·보안 규칙·실제 데이터는 못 본다(가짜 저장소는 모든 쓰기를 허용). */
 import { w, D, errors, sleep, markDone, today } from './smoke_env.mjs';
 const verbose = process.argv.includes('--verbose');
-const hrMod = await import(new URL('../../app/modules/hr/index.js', import.meta.url).href); const genMod = await import(new URL('../../app/modules/general/index.js', import.meta.url).href);
+const planMod = await import(new URL('../../app/modules/plan/index.js', import.meta.url).href); const hrMod = await import(new URL('../../app/modules/hr/index.js', import.meta.url).href); const genMod = await import(new URL('../../app/modules/general/index.js', import.meta.url).href);
 const ctx = { me: { admin: true, uid: 'u1', name: '관리자', email: 'a@jhsol.kr', perms: {} } };
 const idCalls = []; globalThis.JH_IDENTITY = { save: async (kind, id, jumin) => { idCalls.push({ kind, id, jumin }); return { ok: true }; }, reveal: async () => ({ found: true, jumin: '9001011234567' }), maskView: (m) => m };
 const WR = () => globalThis.__WRITES;
@@ -168,4 +168,24 @@ const generalAdd = (title, tab, coll, fields) => scenario(title, async (check) =
 await generalAdd('총무 — 임대 추가: general_leases', 'lease', 'general_leases', { name: '원희캐슬 B111', rent: '800000', deposit: '10000000' });
 await generalAdd('총무 — 자산 추가: general_assets', 'asset', 'general_assets', { name: '노트북 LG그램', cost: '1800000', holder: '김가나' });
 await generalAdd('총무 — 갱신 일정 추가: general_renewals', 'renewal', 'general_renewals', { name: '사무실 임대 갱신', nextDate: '2027-03-01', amount: '9600000' });
+
+const check_ = async (root, sel, on) => { const el = root.querySelector(sel); if (!el) throw new Error('체크 칸 없음: ' + sel); el.checked = on; el.dispatchEvent(new w.Event('change', { bubbles: true })); await sleep(40); };
+const blur = async (root, sel) => { const el = root.querySelector(sel); el.dispatchEvent(new w.Event('focusout', { bubbles: true })); await sleep(40); };
+await scenario('영업기획 거래처 — 등록: gihoek_companies 에 구포털과 같은 필드(+협력사 표시), 담당자 전화 정리', async (check) => {
+  const root = await mountFresh(planMod.mountCompanies); await click(root, '[data-pc-act="new"]'); await setv(root, '[data-pc-f="company"]', '새협력(주)'); await setv(root, '[data-pc-f="ceo"]', '홍길동'); await setv(root, '[data-pc-f="bizno"]', '123-45-67890'); await check_(root, '[data-pc-role="roleClient"]', true);
+  await click(root, '[data-pc-act="ct-add"]'); await setv(root, '[data-pc-ct="0:name"]', '김담당'); await setv(root, '[data-pc-ct="0:tel"]', '12345678'); await blur(root, '[data-pc-ct="0:tel"]'); await setv(root, '[data-pc-ct="0:email"]', 'k@x.kr');
+  await click(root, '[data-pc-act="save"]', 250); await confirmOk(); await sleep(200);
+  const c = wrote('set', /^gihoek_companies\/co_\d+$/); check(c.length === 1 && c[0].merge === true, 'gihoek_companies/co_<시각> 이 병합 저장되어야 함: ' + JSON.stringify(WR().map((x) => x.op + ' ' + x.path)));
+  if (c[0]) { const d = c[0].data; check(d.company === '새협력(주)' && d.ceo === '홍길동' && d.bizno === '123-45-67890' && d.roleClient === true && d.roleSupplier === false && d.roleVendor === false, '값(회사명·대표·사업자번호·역할) 이상: ' + JSON.stringify(d).slice(0, 220)); check(d.contacts.length === 1 && d.contacts[0].name === '김담당' && d.contacts[0].tel === '010-1234-5678' && d.contacts[0].email === 'k@x.kr', '담당자 전화가 010-1234-5678 로 정리되어야 함: ' + JSON.stringify(d.contacts)); check(!('tel' in d) && !('email' in d), '구포털처럼 최상위 tel·email 은 건드리지 않음(병합 저장)'); }
+});
+await scenario('영업기획 거래처 — 역할 미지정이면 확인 창, 협력사 보기에서 등록하면 협력사로 지정', async (check) => {
+  const root = await mountFresh(planMod.mountCompanies); await click(root, '[data-pc-act="new"]'); await setv(root, '[data-pc-f="company"]', '역할없음상사'); await click(root, '[data-pc-act="save"]', 250);
+  check(!!document.querySelector('.jh-dialog') && /역할이 지정되지 않았습니다/.test(document.querySelector('.jh-dialog').textContent), '역할이 없으면 구포털과 같은 확인 창이 떠야 함'); check(WR().filter((x) => x.op === 'set').length === 0, '확인 전에는 저장하면 안 됨'); await confirmOk(); await sleep(200); check(wrote('set', /^gihoek_companies\/co_/).length === 1, '확인하면 저장되어야 함');
+  WR().length = 0; const r2 = await mountFresh(planMod.mountPartners); await click(r2, '[data-pc-act="new"]'); await setv(r2, '[data-pc-f="company"]', '새 하도급사'); check(r2.querySelector('[data-pc-role="roleVendor"]').checked === true, '협력사 보기에서 새로 등록하면 협력사에 체크되어 있어야 함'); await click(r2, '[data-pc-act="save"]', 250); await confirmOk(); const v = wrote('set', /^gihoek_companies\/co_/); check(v.length === 1 && v[0].data.roleVendor === true && !document.querySelector('.jh-dialog'), '협력사로 지정되면 역할 확인 없이 저장: ' + JSON.stringify(v[0] && v[0].data.roleVendor));
+});
+await scenario('영업기획 거래처 — 수정(협력사 지정)·삭제: 해당 문서만, 다른 역할은 유지', async (check) => {
+  const root = await mountFresh(planMod.mountCompanies); await click(root, '[data-pc-open="sj"]'); check(root.querySelector('[data-pc-f="company"]').value === '에스제이' && root.querySelector('[data-pc-role="roleClient"]').checked === true, '수정 폼에 기존 값이 채워져야 함'); await check_(root, '[data-pc-role="roleVendor"]', true); await click(root, '[data-pc-act="save"]', 250); await confirmOk(); await sleep(200);
+  const u = wrote('set', /^gihoek_companies\/sj$/); check(u.length === 1 && u[0].data.roleVendor === true && u[0].data.roleClient === true && u[0].data.company === '에스제이', '에스제이에 협력사 지정이 병합 저장되고 수신처 역할은 유지: ' + JSON.stringify(u[0] && u[0].data).slice(0, 200));
+  WR().length = 0; const r2 = await mountFresh(planMod.mountCompanies); await click(r2, '[data-pc-open="sj"]'); await click(r2, '[data-pc-act="del"]'); await confirmOk(); const del = WR().filter((x) => x.op === 'delete'); check(del.length === 1 && del[0].path === 'gihoek_companies/sj', '삭제는 gihoek_companies/sj 한 건만: ' + JSON.stringify(del.map((x) => x.path)));
+});
 markDone(); console.log('\n' + (failed ? '문제가 있는 저장 동작 ' + failed + '건' : '모든 저장 동작이 올바른 경로·값으로 기록됨')); process.exit(failed ? 1 : 0);
