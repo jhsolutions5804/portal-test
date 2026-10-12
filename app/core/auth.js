@@ -1,6 +1,6 @@
-import { auth, db, doc, getDoc, getDocs, collection, onAuthStateChanged, signInWithEmailAndPassword, signOut } from './firebase.js?v=20261012n';
-import { accessibleKeys } from '../shared/pjt-access.js?v=20261012n';
-import { DOMAIN } from './config.js?v=20261012n';
+import { auth, db, doc, getDoc, getDocs, collection, onAuthStateChanged, signInWithEmailAndPassword, signOut } from './firebase.js?v=20261012o';
+import { accessibleKeys } from '../shared/pjt-access.js?v=20261012o';
+import { DOMAIN } from './config.js?v=20261012o';
 
 export function authErrorMessage(code) {
   const m = {

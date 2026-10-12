@@ -1,12 +1,13 @@
-import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012n';
-import { confirmDialog } from '../../core/dialog.js?v=20261012n';
-import { holidayName } from '../../shared/holidays.js?v=20261012n';
-import { esc, toast } from '../../core/ui.js?v=20261012n';
-import { retireCalc } from './retire.js?v=20261012n';
-import { dsNewForm, dsFindHourly, dsCalc, dsValidate, dsBuildData, dsFormFromDraft, dsHtmlByVer } from './dismissal.js?v=20261012n';
-import { offerNewForm, offerCalc, offerSwitchMode, offerPayload, offerFormFromSaved, offerCalendar, offerFillCurrent, offerBuildHtml } from './offer.js?v=20261012n';
-import { salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012n';
-import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml, offersHtml, offerResultHtml, offerStateText, retireHtml, dismissalHtml, dsCalcHtml } from './view.js?v=20261012n';
+import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012o';
+import { confirmDialog } from '../../core/dialog.js?v=20261012o';
+import { holidayName } from '../../shared/holidays.js?v=20261012o';
+import { esc, toast } from '../../core/ui.js?v=20261012o';
+import { retireCalc } from './retire.js?v=20261012o';
+import { otYm, otMoveMonth, otSyncPlan, otWage } from './overtime.js?v=20261012o';
+import { dsNewForm, dsFindHourly, dsCalc, dsValidate, dsBuildData, dsFormFromDraft, dsHtmlByVer } from './dismissal.js?v=20261012o';
+import { offerNewForm, offerCalc, offerSwitchMode, offerPayload, offerFormFromSaved, offerCalendar, offerFillCurrent, offerBuildHtml } from './offer.js?v=20261012o';
+import { salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012o';
+import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml, offersHtml, offerResultHtml, offerStateText, retireHtml, dismissalHtml, dsCalcHtml, overtimeHtml } from './view.js?v=20261012o';
 
 /** 인사(플랫폼 기본 모듈): 근로자 명부 새 화면. 인사총무 틀 안의 구역으로만 열린다(modules/index.js 의 hostNative). 구포털 인사 화면은 그대로 두고 하나씩 옮기는 중이다. 관리자 전용 */
 export const manifest = { id: 'hr', order: 21, title: '인사', icon: '👥', defaultHash: '#/hr/workers', perm: (me) => !!me && me.admin === true };
@@ -502,6 +503,39 @@ export async function mountDismissal(root, route, ctx) {
     if (act === 'form') { st.dsView = 'form'; paint(); return; }
     if (act === 'reset') { const ok = await confirmDialog({ title: '초기화', body: '입력한 내용을 모두 지우고 새로 시작할까요?', confirmLabel: '초기화' }); if (!ok.ok) return; st.ds = dsNewForm(today); paint(); return; }
     if (act === 'draft') await save(false); else if (act === 'issue') await save(true);
+  };
+  paint();
+}
+
+/** 초과근로 현황(새 화면, 1단계) — overtime 월별 전체 현황·직원별 조회·삭제, 그리고 전자결재 승인 초과근로의 자동연동(이 화면이 맡는다: 문서 번호 고정 번호로 한 번만 반영) */
+export async function mountOvertime(root, route, ctx) {
+  root.onclick = null; root.oninput = null; root.onchange = null;
+  const now = new Date(); const st = { otView: 'sum', otY: now.getFullYear(), otM: now.getMonth() + 1, otRows: [], workers: [], otWid: '', otWage: null, otOpen: '', otBanner: null };
+  root.innerHTML = '<div class="jh-hr"><div id="ov-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
+  const body = root.querySelector('#ov-body'); const lst = (s) => { const l = []; s.forEach((d) => l.push(Object.assign({ id: d.id }, d.data()))); return l; };
+  const syncFromEdoc = async () => {
+    try {
+      const plan = otSyncPlan(lst(await getDocs(collection(db, 'edoc_overtime')))); if (!plan.items.length && !plan.skipped.length) return null; let ok = 0, firstErr = '';
+      for (const it of plan.items) { try { await setDoc(doc(db, 'overtime', it.otId), Object.assign({}, it.record, { savedAt: serverTimestamp() })); await setDoc(doc(db, 'edoc_overtime', it.id), { linkedToOvertime: true }, { merge: true }); ok++; } catch (e) { if (!firstErr) firstErr = (e && (e.code || e.message)) || String(e); } }
+      if (firstErr) return { tone: 'danger', text: '⚠️ 전자결재 자동연동 중 ' + (plan.items.length - ok) + '건을 반영하지 못했습니다: ' + firstErr };
+      if (ok) return { tone: 'accent', text: '✅ 전자결재에서 승인된 초과근로 ' + ok + '건을 자동으로 반영했습니다.' + (plan.skipped.length ? ' (날짜가 올바르지 않은 ' + plan.skipped.length + '건은 건너뜀)' : '') };
+      return plan.skipped.length ? { tone: 'warn', text: '⚠️ 날짜가 올바르지 않은 승인 건 ' + plan.skipped.length + '건은 반영하지 못했습니다. 전자결재 문서를 확인해 주세요.' } : null;
+    } catch (e) { return { tone: 'danger', text: '⚠️ 전자결재 자동연동을 확인하지 못했습니다: ' + ((e && (e.code || e.message)) || String(e)) }; }
+  };
+  const loadMonth = async () => { st.otRows = lst(await getDocs(query(collection(db, 'overtime'), where('yearMonth', '==', otYm(st.otY, st.otM))))); };
+  const loadWage = async () => { st.otWage = null; if (!st.otWid) return; try { const s = await getDocs(query(collection(db, 'annual_contracts/' + st.otWid + '/contracts'), orderBy('contractDate', 'desc'), limit(1))); st.otWage = s.empty ? null : otWage(s.docs[0].data(), st.otWid); } catch (e) { st.otWage = null; } };
+  try { st.workers = lst(await getDocs(collection(db, 'workers'))).sort((a, b) => String(a.empNo || 'zzz').localeCompare(String(b.empNo || 'zzz'))); st.otBanner = await syncFromEdoc(); await loadMonth(); }
+  catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
+  body.removeAttribute('aria-busy');
+  const paint = () => { body.innerHTML = overtimeHtml(st); };
+  root.onclick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    const mv = t.closest('[data-ot-month]'); if (mv) { const n = otMoveMonth(st.otY, st.otM, Number(mv.getAttribute('data-ot-month'))); st.otY = n.y; st.otM = n.m; st.otOpen = ''; try { await loadMonth(); } catch (e) { toast('불러오지 못했습니다: ' + ((e && e.message) || '')); } paint(); return; }
+    const vw = t.closest('[data-ot-view]'); if (vw) { st.otView = vw.getAttribute('data-ot-view'); st.otOpen = ''; paint(); return; }
+    const pr = t.closest('[data-ot-person]'); if (pr) { st.otWid = pr.getAttribute('data-ot-person'); st.otView = 'detail'; await loadWage(); paint(); return; }
+    const dl = t.closest('[data-ot-del]'); if (dl) { const r = st.otRows.find((x) => x.id === dl.getAttribute('data-ot-del')); if (!r) return; const ok = await confirmDialog({ title: '초과근로 내역 삭제', body: (r.name || '') + ' ' + (r.date || '') + ' ' + (r.hours || 0) + 'h 내역을 삭제하시겠습니까? 되돌릴 수 없습니다.', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return; try { await deleteDoc(doc(db, 'overtime', r.id)); toast('삭제했습니다.'); await loadMonth(); paint(); } catch (e) { toast('삭제하지 못했습니다: ' + ((e && e.message) || '')); } return; }
+    const op = t.closest('[data-ot-open]'); if (op && !t.closest('button')) { st.otOpen = op.getAttribute('data-ot-open'); paint(); return; }
+    if (t.closest('[data-ot-close]')) { st.otOpen = ''; paint(); }
   };
   paint();
 }

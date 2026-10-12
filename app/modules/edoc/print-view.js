@@ -1,6 +1,6 @@
-import { esc, escMultiline } from '../../core/ui.js?v=20261012n';
-import { TYPE_LABEL, fmtYmd, fmtDateTime, isPassive, toMillis } from './logic.js?v=20261012n';
-import { FORMS } from './forms.js?v=20261012n';
+import { esc, escMultiline } from '../../core/ui.js?v=20261012o';
+import { TYPE_LABEL, fmtYmd, fmtDateTime, isPassive, toMillis } from './logic.js?v=20261012o';
+import { FORMS } from './forms.js?v=20261012o';
 
 /* 인쇄·PDF 양식 — 승인(또는 게시)된 문서만 뽑는다. 화면의 .jh-paper 는 어느 테마에서도 흰 종이(A4)다. */
 const dotted = (s) => String(s || '').replace(/-/g, '. ');

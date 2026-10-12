@@ -1,10 +1,11 @@
-import { esc } from '../../core/ui.js?v=20261012n';
-import { rtWon, retireRecordsSorted } from './retire.js?v=20261012n';
-import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261012n';
-import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261012n';
-import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261012n';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261012n';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261012n';
+import { esc } from '../../core/ui.js?v=20261012o';
+import { rtWon, retireRecordsSorted } from './retire.js?v=20261012o';
+import { otSummary, otPerson } from './overtime.js?v=20261012o';
+import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261012o';
+import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261012o';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261012o';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261012o';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261012o';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -348,4 +349,32 @@ export function dismissalHtml(st) {
 export function dismissalHistHtml(st) {
   const list = st.dsHist; const rows = list.map((d) => '<tr><td><strong>' + esc(d.workerName || '') + '</strong></td><td>' + esc(d.noticeDate || '') + '</td><td>' + esc(d.dismissalDate || '') + '</td><td>' + esc(DS_REASON[d.reasonType] || '') + '</td><td>' + chip(d.status === 'issued' ? '발행' : '임시저장', d.status === 'issued' ? 'accent' : 'muted') + '</td><td><button type="button" class="jh-btn" data-variant="secondary" data-d-reprint="' + esc(d.id) + '">🖨 출력</button>' + (d.status !== 'issued' ? ' <button type="button" class="jh-btn" data-variant="ghost" data-d-edit="' + esc(d.id) + '">이어쓰기</button> <button type="button" class="jh-btn" data-variant="ghost" data-d-del="' + esc(d.id) + '">삭제</button>' : '') + '</td></tr>').join('');
   return card('📂 해고예고통지서 발행 이력', '<div class="jh-hr__pad"><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-d-act="form">← 작성</button></div></div>' + (list.length ? '<div class="jh-hr__scroll"><table class="jh-hr-table"><thead><tr><th>근로자</th><th>통지일</th><th>해고일</th><th>사유</th><th>상태</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div><div class="jh-field__hint jh-hr__pad">※ 발행된 통지서는 법적 기록이므로 삭제할 수 없습니다. 임시저장만 삭제·이어쓰기 가능합니다.</div>' : '<div class="jh-empty">발행된 통지서가 없습니다.</div>'));
+}
+
+/** 초과근로 현황 */
+const otN = (n) => Number(n || 0).toLocaleString('ko-KR');
+function otMonthBar(st) { return '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-ot-month="-1" aria-label="이전 달">◀</button><strong>' + st.otY + '년 ' + st.otM + '월</strong><button type="button" class="jh-btn" data-variant="ghost" data-ot-month="1" aria-label="다음 달">▶</button></div>'; }
+function otRowsTable(rows, withName, withDel) {
+  if (!rows.length) return '<div class="jh-empty">이 달 초과근로 내역이 없습니다.</div>';
+  return '<div class="jh-hr__scroll"><table class="jh-hr-table jh-hr-table--click"><thead><tr><th>날짜</th>' + (withName ? '<th>이름</th>' : '') + '<th class="num">시간</th><th class="num">수당</th><th>사유</th>' + (withDel ? '<th></th>' : '') + '</tr></thead><tbody>' + rows.map((r) => '<tr class="jh-hr__row" data-ot-open="' + esc(r.id) + '"><td>' + esc(String(r.date || '').slice(5).replace('-', '/')) + '</td>' + (withName ? '<td>' + esc(r.name) + '</td>' : '') + '<td class="num">' + esc(r.hours) + 'h</td><td class="num">' + otN(r.amount) + '원</td><td class="jh-hr__cell">' + (r.reason ? esc(r.reason) : '<span class="jh-field__hint">-</span>') + '</td>' + (withDel ? '<td><button type="button" class="jh-btn" data-variant="ghost" data-ot-del="' + esc(r.id) + '">삭제</button></td>' : '') + '</tr>').join('') + '</tbody></table></div>';
+}
+export function overtimeHtml(st) {
+  const tabs = '<div class="jh-segmented" role="group" aria-label="보기"><button type="button" class="jh-segmented__item" data-ot-view="sum" aria-pressed="' + (st.otView === 'sum') + '">📊 전체 현황</button><button type="button" class="jh-segmented__item" data-ot-view="person" aria-pressed="' + (st.otView === 'person' || st.otView === 'detail') + '">🔍 직원별 조회</button></div>';
+  const banner = st.otBanner ? '<div class="jh-alert" data-tone="' + st.otBanner.tone + '" role="status">' + esc(st.otBanner.text) + '</div>' : '';
+  const head = card('⏱ 초과근로 현황', '<div class="jh-hr__pad"><div class="jh-hr__bar">' + tabs + '</div><div class="jh-field__hint">전자결재에서 승인된 초과근로는 이 화면을 열 때 자동으로 반영됩니다. 출퇴근 달력·초과근로 입력·수정은 기존 인사 홈의 "근로시간"에서 합니다(순서대로 옮기는 중).</div>' + banner + '</div>');
+  let body;
+  if (st.otView === 'sum') {
+    const s = otSummary(st.otRows);
+    const kpi = '<div class="jh-kpi-grid"><div class="jh-kpi"><span class="jh-kpi__label">총 초과근로</span><span class="jh-kpi__value">' + s.totalHours + 'h</span></div><div class="jh-kpi"><span class="jh-kpi__label">총 수당</span><span class="jh-kpi__value">' + otN(s.totalAmount) + '원</span></div></div>';
+    const tt = s.names.length ? '<div class="jh-hr__scroll"><table class="jh-hr-table"><thead><tr><th>이름</th><th>직급</th><th class="num">시간</th><th class="num">수당</th></tr></thead><tbody>' + s.names.map((n) => '<tr><td><strong>' + esc(n) + '</strong></td><td>' + esc(s.totals[n].rank) + '</td><td class="num">' + Math.round(s.totals[n].hours * 100) / 100 + 'h</td><td class="num">' + otN(s.totals[n].amount) + '원</td></tr>').join('') + '<tr><td colspan="2"><strong>합계</strong></td><td class="num"><strong>' + s.totalHours + 'h</strong></td><td class="num"><strong>' + otN(s.totalAmount) + '원</strong></td></tr></tbody></table></div>' : '';
+    body = card('📊 전체 현황', '<div class="jh-hr__pad">' + otMonthBar(st) + kpi + tt + '<h4 class="jh-hr__sub">날짜별 상세 내역</h4></div>' + otRowsTable(s.rows, true, true));
+  } else if (st.otView === 'person') {
+    body = card('🔍 직원별 조회', st.workers.length ? '<div class="jh-hr__pad">' + st.workers.map((w) => '<button type="button" class="jh-btn" data-variant="secondary" data-ot-person="' + esc(w.id) + '" style="justify-content:space-between;width:100%">' + esc((w.name || '') + (w.rank ? ' · ' + w.rank : '')) + ' ▶</button>').join('') + '</div>' : '<div class="jh-empty">근로자 명부에 등록된 직원이 없습니다.</div>');
+  } else {
+    const w = st.workers.find((x) => x.id === st.otWid) || {}; const p = otPerson(st.otRows, w.name); const wg = st.otWage;
+    const wageHtml = wg ? '<div class="jh-alert" data-tone="info" role="note"><strong>📐 통상임금 계산 기준</strong><br>기본근로수당 ' + otN(wg.basic) + '원 · 주휴수당 ' + otN(wg.weekly) + '원<br><strong>시간당 통상임금 ' + otN(wg.rate) + '원/h</strong></div>' : '<div class="jh-alert" data-tone="warn" role="note">⚠️ 연봉계약서가 없습니다. 연봉계약서 등록 후 사용 가능합니다.</div>';
+    body = card('🔍 ' + esc((w.name || '') + ' ' + (w.rank || '')) + ' — 초과근로 내역', '<div class="jh-hr__pad"><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-ot-view="person">← 목록</button></div>' + otMonthBar(st) + wageHtml + '<div class="jh-kpi-grid"><div class="jh-kpi"><span class="jh-kpi__label">누계 시간</span><span class="jh-kpi__value">' + p.totalHours + 'h</span></div><div class="jh-kpi"><span class="jh-kpi__label">누계 수당</span><span class="jh-kpi__value">' + otN(p.totalAmount) + '원</span></div></div></div>' + otRowsTable(p.rows, false, true));
+  }
+  const detail = st.otOpen ? (() => { const r = st.otRows.find((x) => x.id === st.otOpen); return r ? card(esc(r.name || '-') + ' ' + esc(r.rank || '') + ' · ' + esc(r.date || ''), '<div class="jh-hr__pad"><div class="jh-kpi-grid"><div class="jh-kpi"><span class="jh-kpi__label">시간</span><span class="jh-kpi__value">' + esc(r.hours || 0) + 'h</span></div><div class="jh-kpi"><span class="jh-kpi__label">수당</span><span class="jh-kpi__value">' + otN(r.amount) + '원</span></div></div><div class="jh-field__label">사유</div><div style="white-space:pre-wrap">' + (r.reason ? esc(r.reason) : '<span class="jh-field__hint">(사유 없음)</span>') + '</div><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-ot-close>닫기</button></div></div>') : ''; })() : '';
+  return detail + head + body;
 }
