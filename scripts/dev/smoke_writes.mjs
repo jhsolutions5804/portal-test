@@ -362,4 +362,16 @@ await scenario('영업기획 홈: 요약 카드·목록 이동·챙길 일(연�
   await click(root, '[data-hm-kpi="bill"]'); check(!!root.querySelector('a.jh-plan__row[href^="#/plan/billing/"]') && /2606001/.test(txt()), '청구 내역 목록은 청구·수금 상세로 연결'); await click(root, '[data-hm-kpi="est"]'); check(!!root.querySelector('a.jh-plan__row[href^="#/plan/est/"]') && /유효 견적 \(1\)/.test(txt()) && !/청구 내역 \(/.test(txt()), '유효 견적 목록은 견적 상세로 연결, 카드는 하나씩만 열림');
   check(/챙길 일/.test(txt()) && /2607001/.test(txt()) && /일 지남/.test(txt()) && /2608001/.test(txt()), '챙길 일: 지급요청일이 지난 청구서(2607001)와 지급 예정서(2608001)가 보임'); check(!!root.querySelector('a.jh-plan__link[href="#/plan/teamlabor"]') && !!root.querySelector('a.jh-plan__link[href="#/plan/billing"]') && root.querySelectorAll('a.jh-plan__link').length === 6, '바로가기 6개(프로젝트·거래처·견적·청구·수금·지급·정산·팀별 노무비)'); check(WR().length === 0, '홈은 아무것도 저장하지 않음');
 });
+
+await scenario('영업기획 월말 마감: 월 이동·한 달 요약·점검 항목(연체 청구서)·프로젝트별 요약·CSV·인쇄 — 저장 없음', async (check) => {
+  const root = await mountFresh(planMod.mountClosing); const txt = () => root.textContent.replace(/\s+/g, ' ');
+  for (let i = 0; i < 14 && !/2026년 7월/.test(txt()); i++) { await click(root, '[data-cl-act="prev"]', 100); }
+  check(/2026년 7월/.test(txt()), '이전 달 버튼으로 2026년 7월까지 이동');
+  check(/청구서 발행 ?1건 · 2,200,000원/.test(txt()) && /지급예정서 발행 ?1건 · 3,300,000원/.test(txt()) && /수금\(완결\) ?1건 · 5,500,000원/.test(txt()) && /지급완료 ?1건 · 3,300,000원/.test(txt()), '7월 요약: 청구서 1건(폐기 제외) 2,200,000, 지급예정서 1건 3,300,000, 완결 처리한 달이 7월인 수금 5,500,000·지급완료 3,300,000: ' + txt().slice(0, 420));
+  check(/처리가 필요한 점검 항목이 \d+개/.test(txt()) && /연체 청구서 ?1건/.test(txt()), '점검 항목: 연체 청구서 1건(2607001, 지급요청일 8월 31일)이 처리 필요로 표시'); await click(root, '[data-cl-ck="overdueInvoices"]'); check(!!root.querySelector('a.jh-plan__row[href="#/plan/billing/set2"]') && /일 지남/.test(txt()), '항목을 누르면 연체 청구서 목록과 상세 이동 링크');
+  check(/P4 Ph2/.test(txt()) && /H17L/.test(txt()) && /합계/.test(txt()), '프로젝트별 월 요약 표(공동 발행분은 프로젝트 몫)');
+  let href = ''; const oldClick = w.HTMLAnchorElement.prototype.click; w.HTMLAnchorElement.prototype.click = function () { href = this.href; }; await click(root, '[data-cl-act="csv"]'); w.HTMLAnchorElement.prototype.click = oldClick; const csv = decodeURIComponent((href.split(',').slice(1)).join(','));
+  check(href.startsWith('data:text/csv;charset=utf-8,') && csv.includes('2607001') && csv.includes('2607002') && csv.includes('"번호","구분"'), 'CSV 내려받기는 7월 발행 정산서(2607001·2607002 …)를 담음');
+  let html = ''; const oldOpen = w.open; w.open = () => ({ document: { write: (x) => { html += x; }, close() {} } }); await click(root, '[data-cl-act="print"]'); w.open = oldOpen; check(/월말 마감 2026-07/.test(html) && /점검 항목/.test(html) && /window\.print/.test(html), '인쇄는 월말 마감 요약 문서(월·점검 항목·프로젝트별 표)를 새 창에 씀'); check(WR().length === 0, '월말 마감은 아무것도 저장하지 않음');
+});
 markDone(); console.log('\n' + (failed ? '문제가 있는 저장 동작 ' + failed + '건' : '모든 저장 동작이 올바른 경로·값으로 기록됨')); process.exit(failed ? 1 : 0);

@@ -79,3 +79,6 @@ a.jh-plan__row { text-decoration: none; }
 .jh-plan__chip[data-tone="red"] { background: #fdecec; color: #b91c1c; }
 @media (max-width: 899px) { .jh-plan__kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .jh-plan__links { grid-template-columns: minmax(0, 1fr); } }
 .jh-plan__kpi strong .jh-field__hint { display: inline; }
+
+.jh-plan__ckhead { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); width: 100%; padding: 0; border: 0; background: transparent; color: var(--c-ink); font: inherit; text-align: left; cursor: pointer; }
+.jh-plan__table strong[data-tone="pos"] { color: var(--c-ok, #16a34a); } .jh-plan__table strong[data-tone="neg"] { color: var(--c-danger, #dc2626); }
