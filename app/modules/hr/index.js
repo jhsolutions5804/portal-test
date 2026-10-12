@@ -1,11 +1,12 @@
-import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012l';
-import { confirmDialog } from '../../core/dialog.js?v=20261012l';
-import { holidayName } from '../../shared/holidays.js?v=20261012l';
-import { esc, toast } from '../../core/ui.js?v=20261012l';
-import { retireCalc } from './retire.js?v=20261012l';
-import { offerNewForm, offerCalc, offerSwitchMode, offerPayload, offerFormFromSaved, offerCalendar, offerFillCurrent, offerBuildHtml } from './offer.js?v=20261012l';
-import { salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012l';
-import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml, offersHtml, offerResultHtml, offerStateText, retireHtml } from './view.js?v=20261012l';
+import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261012m';
+import { confirmDialog } from '../../core/dialog.js?v=20261012m';
+import { holidayName } from '../../shared/holidays.js?v=20261012m';
+import { esc, toast } from '../../core/ui.js?v=20261012m';
+import { retireCalc } from './retire.js?v=20261012m';
+import { dsNewForm, dsFindHourly, dsCalc, dsValidate, dsBuildData, dsFormFromDraft, dsHtmlByVer } from './dismissal.js?v=20261012m';
+import { offerNewForm, offerCalc, offerSwitchMode, offerPayload, offerFormFromSaved, offerCalendar, offerFillCurrent, offerBuildHtml } from './offer.js?v=20261012m';
+import { salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261012m';
+import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml, offersHtml, offerResultHtml, offerStateText, retireHtml, dismissalHtml, dsCalcHtml } from './view.js?v=20261012m';
 
 /** 인사(플랫폼 기본 모듈): 근로자 명부 새 화면. 인사총무 틀 안의 구역으로만 열린다(modules/index.js 의 hostNative). 구포털 인사 화면은 그대로 두고 하나씩 옮기는 중이다. 관리자 전용 */
 export const manifest = { id: 'hr', order: 21, title: '인사', icon: '👥', defaultHash: '#/hr/workers', perm: (me) => !!me && me.admin === true };
@@ -460,4 +461,47 @@ export async function mountRetire(root, route, ctx) {
   };
   try { const pf = sessionStorage.getItem('jh_retire_prefill'); if (pf) { sessionStorage.removeItem('jh_retire_prefill'); const p = JSON.parse(pf); if (p.workerId && st.rtWorkers.some((x) => x.id === p.workerId)) st.rtWid = p.workerId; if (/^\d{4}-\d{2}-\d{2}$/.test(p.retireDate || '')) st.rtDate = p.retireDate; } } catch (e) { /* 미리 채우기 없음 */ }   // 휴직/퇴직 원서 → 퇴직금 정산
   if (st.rtWid) await compute(); else paint();
+}
+
+/** 해고예고통지서(새 화면) — dismissal_notices 에 임시저장·발행(양식 버전 d1 동결, 발행분은 삭제 불가)하고 A4 로 출력. 이메일 발송 기능은 없음(종이 교부 원칙) */
+export async function mountDismissal(root, route, ctx) {
+  root.onclick = null; root.oninput = null; root.onchange = null;
+  const today = kstToday(); const st = { dsView: 'form', ds: dsNewForm(today), dsWorkers: [], dsHist: [], stamp: '' };
+  root.innerHTML = '<div class="jh-hr"><div id="x-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
+  const body = root.querySelector('#x-body'); const lst = (s) => { const l = []; s.forEach((d) => l.push(Object.assign({ id: d.id }, d.data()))); return l; };
+  try { st.dsWorkers = lst(await getDocs(collection(db, 'workers'))).filter((w) => w.status !== 'resigned').sort((a, b) => String(a.empNo || 'zzz').localeCompare(String(b.empNo || 'zzz'))); try { const sg = await getDoc(doc(db, 'company_settings', 'signatures')); if (sg.exists()) st.stamp = sg.data().kjh || ''; } catch (e) { /* 직인 없이 출력 */ } }
+  catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
+  body.removeAttribute('aria-busy');
+  const paint = () => { body.innerHTML = dismissalHtml(st); };
+  const recalc = () => { const el = body.querySelector('#d-calc'); if (el) el.innerHTML = dsCalcHtml(st); };
+  const openPrint = (d) => { const win = window.open('', '_blank'); if (!win) { toast('팝업이 차단되어 출력 창을 열 수 없습니다. 팝업을 허용한 뒤 다시 시도해 주세요.'); return; } win.document.write(dsHtmlByVer(d, { stamp: st.stamp })); win.document.close(); };
+  const loadHist = async () => { st.dsHist = lst(await getDocs(query(collection(db, 'dismissal_notices'), orderBy('createdAt', 'desc')))); };
+  const hourlyOf = async (wid) => { const get = async (coll) => { try { return lst(await getDocs(collection(db, coll + '/' + wid + '/contracts'))); } catch (e) { return []; } }; return dsFindHourly(await get('annual_contracts'), await get('labor_contracts')); };
+  const save = async (issue) => {
+    const f = st.ds; const w = st.dsWorkers.find((x) => x.id === f.workerId); const c = dsCalc(f, w); const v = dsValidate(f, w, c, issue); if (!v.ok) { toast(v.error); return; }
+    if (issue) { const ok = await confirmDialog({ title: '통지서 발행', body: w.name + '님 해고예고통지서를 발행하시겠습니까? · 해고는 정당한 이유가 있어야 유효합니다(제23조). 이 서류만으로 정당해지지 않습니다. · 취업규칙상 징계 절차(소명 기회 등)를 거쳤는지 확인하셨나요?', confirmLabel: '발행' }); if (!ok.ok) return; }
+    const data = dsBuildData(f, w, c, issue);
+    try { if (f.id) await setDoc(doc(db, 'dismissal_notices', f.id), Object.assign({}, data, { updatedAt: serverTimestamp() }), { merge: true }); else { const r = await addDoc(collection(db, 'dismissal_notices'), Object.assign({}, data, { createdAt: serverTimestamp() })); f.id = r.id; }
+      if (issue) { toast('발행했습니다. 출력 창을 확인하세요.'); openPrint(data); } else toast('✅ 임시저장 되었습니다.'); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); }
+  };
+  root.oninput = (ev) => { const t = ev.target; if (!(t instanceof Element) || st.dsView !== 'form') return; if (t.matches('[data-d-f]')) { st.ds[t.getAttribute('data-d-f')] = t.value; return; } if (t.matches('[data-d-hourly]')) { st.ds.hourly = String(t.value || '').replace(/[^0-9.]/g, ''); recalc(); } };
+  root.onchange = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element) || st.dsView !== 'form') return;
+    if (t.matches('[data-d-f]')) { st.ds[t.getAttribute('data-d-f')] = t.value; recalc(); return; }
+    if (t.matches('[data-d-ex]')) { st.ds.exemptType = t.getAttribute('data-d-ex'); recalc(); return; }
+    if (t.matches('[data-d-rs]')) { st.ds.reasonType = t.getAttribute('data-d-rs'); return; }
+    if (t.matches('[data-d-pick]')) { const id = t.value; st.ds.workerId = id; st.ds.hourly = ''; paint(); if (id) { try { const h = await hourlyOf(id); if (h && st.ds.workerId === id) { st.ds.hourly = String(h); paint(); } } catch (e) { /* 시급은 직접 입력 */ } } }
+  };
+  root.onclick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    const rp = t.closest('[data-d-reprint]'); if (rp) { const d = st.dsHist.find((x) => x.id === rp.getAttribute('data-d-reprint')); if (d) openPrint(d); return; }
+    const ed = t.closest('[data-d-edit]'); if (ed) { const d = st.dsHist.find((x) => x.id === ed.getAttribute('data-d-edit')); if (d) { st.ds = dsFormFromDraft(d, today); st.dsView = 'form'; paint(); } return; }
+    const dl = t.closest('[data-d-del]'); if (dl) { const d = st.dsHist.find((x) => x.id === dl.getAttribute('data-d-del')); if (!d || d.status === 'issued') return; const ok = await confirmDialog({ title: '임시저장 삭제', body: '이 임시저장을 삭제할까요?', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return; try { await deleteDoc(doc(db, 'dismissal_notices', d.id)); await loadHist(); toast('삭제했습니다.'); paint(); } catch (e) { toast('삭제하지 못했습니다: ' + ((e && e.message) || '')); } return; }
+    const a = t.closest('[data-d-act]'); if (!a) return; const act = a.getAttribute('data-d-act');
+    if (act === 'hist') { try { await loadHist(); } catch (e) { toast('불러오지 못했습니다: ' + ((e && e.message) || '')); return; } st.dsView = 'hist'; paint(); return; }
+    if (act === 'form') { st.dsView = 'form'; paint(); return; }
+    if (act === 'reset') { const ok = await confirmDialog({ title: '초기화', body: '입력한 내용을 모두 지우고 새로 시작할까요?', confirmLabel: '초기화' }); if (!ok.ok) return; st.ds = dsNewForm(today); paint(); return; }
+    if (act === 'draft') await save(false); else if (act === 'issue') await save(true);
+  };
+  paint();
 }
