@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261013t';
-import { TYPE_LABEL, SETTLE_TYPE_LABEL, filterProjects, paginate, pjtSummary, pjtEstimates, pjtSettlements, estTotal, estTag, settleState, settleAmountForPjt, linkOptions, sortProjects } from './projects.js?v=20261013t';
+import { esc } from '../../core/ui.js?v=20261013u';
+import { TYPE_LABEL, SETTLE_TYPE_LABEL, filterProjects, paginate, pjtSummary, pjtEstimates, pjtSettlements, estTotal, estTag, settleState, settleAmountForPjt, linkOptions, sortProjects } from './projects.js?v=20261013u';
 const won = (n) => (Math.round(Number(n) || 0)).toLocaleString('ko-KR');
 const signed = (n) => (n >= 0 ? '+' : '') + won(n);
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -29,7 +29,7 @@ export function projectDetailHtml(st) {
   const invBody = '<div class="jh-plan__pad">' + (inv.items.length ? inv.items.map((x) => setRow(x, p.id)).join('') : '<div class="jh-empty">아직 청구서가 없습니다.</div>') + pager(inv, 'inv') + '</div>';
   const payBody = '<div class="jh-plan__pad">' + (pay.items.length ? pay.items.map((x) => setRow(x, p.id)).join('') : '<div class="jh-empty">아직 지급예정서가 없습니다.</div>') + pager(pay, 'pay') + '</div>';
   const btn = (label, act) => '<button type="button" class="jh-btn" data-variant="secondary" data-pj-act="' + act + '">' + label + '</button>';
-  return '<div class="jh-plan"><div class="jh-plan__bar"><button type="button" class="jh-btn" data-variant="ghost" data-pj-act="list">← 프로젝트 목록</button></div>' + card('프로젝트', head) + card('요약', sum) + '<div class="jh-plan__two">' + card('견적 내역 (' + ests.total + ')', estBody, btn('+ 견적 작성', 'new-est')) + '<div class="jh-plan__col">' + card('청구서 (' + inv.total + ')', invBody, btn('+ 청구서 발행', 'new-set')) + card('지급예정서 (' + pay.total + ')', payBody, btn('+ 지급예정서 발행', 'new-set')) + '</div></div></div>';
+  return '<div class="jh-plan"><div class="jh-plan__bar"><button type="button" class="jh-btn" data-variant="ghost" data-pj-act="list">← 프로젝트 목록</button></div>' + card('프로젝트', head) + card('요약', sum) + '<div class="jh-plan__two">' + card('견적 내역 (' + ests.total + ')', estBody, btn('+ 견적 작성', 'new-est')) + '<div class="jh-plan__col">' + card('청구서 (' + inv.total + ')', invBody, btn('+ 청구서 발행', 'new-inv')) + card('지급예정서 (' + pay.total + ')', payBody, btn('+ 지급예정서 발행', 'new-pay')) + '</div></div></div>';
 }
 const fld = (label, inner, hint) => '<div class="jh-field"><label class="jh-field__label">' + esc(label) + '</label>' + inner + (hint ? '<div class="jh-field__hint">' + esc(hint) + '</div>' : '') + '</div>';
 const inp = (k, v, ph) => '<input class="jh-input" data-pj-f="' + k + '" value="' + esc(v == null ? '' : v) + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + '>';

@@ -1,0 +1,35 @@
+/* 영업기획 정산서(대금청구서·지급예정서) 양식 — 구포털 기획의 양식을 그대로 옮겼다(동결). 원본과 같은 결과가 나오는지는 tests/plan-settlement-doc.test.mjs 가 원본 함수(tests/fixtures/gihoek_settle_doc.js.txt)와 대조한다.
+ * 원본과 다른 점은 하나뿐: 원본은 입력값을 그대로 HTML 에 넣었는데, 안전하게 모든 입력값(내역·비고·거래처·담당자 등)을 이스케이프한다(일반 글자는 결과가 같다). */
+const won = (n) => (Math.round(n) || 0).toLocaleString('ko-KR');
+const h = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+export const SET_DOC_CSS = `*{box-sizing:border-box;font-family:'Malgun Gothic',sans-serif}body{margin:0;color:#1a2330;font-size:12px}
+  h1{text-align:center;font-size:25px;letter-spacing:10px;margin:0 0 16px;font-weight:800}
+  .meta{display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:10px}
+  .parties{display:flex;gap:10px;margin-bottom:12px}.pcard{flex:1;border:1px solid #cfd8e6;border-radius:6px;padding:10px 12px}
+  .pcard .h{font-size:10px;color:#1D5BA6;font-weight:700;margin-bottom:5px}.pcard .nm{font-size:14px;font-weight:800}.pcard .ln{font-size:11px;color:#444;margin-top:2px}
+  .info{border:1px solid #cfd8e6;border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:11.5px;line-height:1.9}
+  table{width:100%;border-collapse:collapse;margin-top:4px}th,td{border:1px solid #cfd8e6;padding:7px 8px;font-size:11.5px}
+  th{background:#eaf2fc;color:#1D5BA6}tfoot td{font-weight:700;background:#f6f9fd}.stamp{margin-top:22px;text-align:right;font-size:12px}`;
+const pjtCode = (projects, id) => { const p = (projects || []).find((x) => x.id === id); return p ? p.code : id; };
+/** 정산서 한 장의 본문 HTML. s: 정산서 문서, projects: 프로젝트 목록(프로젝트 표시용) */
+export function settleDocHtml(s, projects) {
+  const title = s.docType === 'invoice' ? '대 금 청 구 서' : '지 급 예 정 서';
+  const dateLabel = s.docType === 'invoice' ? '지급요청일' : '지급예정일'; const sd = s.sender || {}, rc = s.recipient || {}; const p = (projects || []).find((x) => x.id === s.pjtId);
+  const pjtLabel = (s.pjtIds && s.pjtIds.length > 1) ? s.pjtIds.map((pid) => { const pp = (projects || []).find((x) => x.id === pid); return pp ? pp.code : pid; }).join(' + ') : (p ? p.code : '-');
+  const rows = (s.lines || []).map((it, i) => `<tr><td style="text-align:center">${i + 1}</td><td>${h(it.name)}</td><td>${h(it.spec || '')}</td><td style="text-align:right">${won(it.amount)}</td></tr>`).join('');
+  return `<h1>${title}</h1>
+  <div class="meta"><span>발행번호: ${h(s.no)}</span><span>발행일: ${h(s.issueDate)}</span></div>
+  <div class="parties">
+    <div class="pcard"><div class="h">${s.docType === 'invoice' ? '수신 (원청)' : '수신 (하청)'}</div><div class="nm">${h(rc.company || '-')}</div><div class="ln">${rc.ceo ? '대표 ' + h(rc.ceo) : ''}${rc.bizno ? ' / ' + h(rc.bizno) : ''}</div>${rc.contact ? `<div class="ln">${rc.contactTel ? h(rc.contactTel) + ' ' : ''}(${h(rc.contact)})</div>` : (rc.tel ? `<div class="ln">${h(rc.tel)}</div>` : '')}</div>
+    <div class="pcard"><div class="h">발신 (공급자)</div><div class="nm">${h(sd.company || '-')}</div><div class="ln">${sd.ceo ? '대표 ' + h(sd.ceo) : ''}${sd.bizno ? ' / ' + h(sd.bizno) : ''}</div>${sd.tel ? `<div class="ln">${h(sd.tel)}</div>` : ''}</div></div>
+  <div class="info"><b>프로젝트</b> : ${h(pjtLabel)} &nbsp;&nbsp; <b>기준월</b> : ${h(s.baseMonth)} &nbsp;&nbsp; <b>${dateLabel}</b> : ${h(s.payDate || '-')}</div>
+  <table><thead><tr><th style="width:34px">No</th><th>내역</th><th>비고</th><th style="width:130px">금액</th></tr></thead><tbody>${rows}</tbody>
+  <tfoot><tr><td colspan="3" style="text-align:right">공급가액</td><td style="text-align:right">${won(s.supply)}</td></tr>
+    <tr><td colspan="3" style="text-align:right">부가세 (10%)</td><td style="text-align:right">${won(s.vat)}</td></tr>
+    <tr><td colspan="3" style="text-align:right;font-size:14px">${s.docType === 'invoice' ? '청구금액 합계' : '지급금액 합계'}</td><td style="text-align:right;font-size:14px">${won(s.total)}</td></tr></tfoot></table>
+  <div class="stamp">위와 같이 ${s.docType === 'invoice' ? '청구' : '지급 예정 통보'}합니다.<br><br>${h(sd.company || '')}　${sd.ceo ? '대표 ' + h(sd.ceo) + ' (인)' : ''} ${sd.contact ? '<br><span style="font-size:11px;color:#555">담당: ' + h(sd.contact) + (sd.contactTel ? ' &nbsp;' + h(sd.contactTel) : '') + (sd.contactEmail ? ' &nbsp;' + h(sd.contactEmail) : '') + '</span>' : ''}</div>`;
+}
+/** 인쇄 창에 쓰는 전체 페이지(구포털 pvPrint): A4 여백 16mm + 양식 CSS + 본문 + 자동 인쇄 */
+export function settleDocPage(s, projects) {
+  return `<!doctype html><meta charset="utf-8"><title>${s.docType === 'invoice' ? '대금청구서' : '지급예정서'} ${h(s.no)}</title><style>@page{size:A4;margin:16mm}${SET_DOC_CSS}</style>${settleDocHtml(s, projects)}<scr` + `ipt>window.onload=function(){setTimeout(function(){window.print();},250);}</scr` + `ipt>`;
+}

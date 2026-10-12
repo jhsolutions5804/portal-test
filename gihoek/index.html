@@ -301,8 +301,8 @@ async function startApp(){
 }
 // 새 영업기획 화면(프로젝트)에서 넘겨 준 "열 문서" 처리 — sessionStorage jh_plan_open = {fn, args}. 데이터가 불러와질 때까지 잠깐 기다렸다가(최대 약 4초) 허용된 함수만 부른다.
 function jhConsumeOpen(){ let o=null; try{ const raw=sessionStorage.getItem('jh_plan_open'); if(!raw) return; sessionStorage.removeItem('jh_plan_open'); o=JSON.parse(raw); }catch(e){ return; }
-  if(!o||!Array.isArray(o.args)||['openEst','newEst','openSettle','newSettle'].indexOf(o.fn)===-1) return; const args=o.args.map(String); let tries=0;
-  const ready=()=>{ if(o.fn==='openEst') return estimates.some(e=>e.id===args[0]); if(o.fn==='openSettle') return settlements.some(x=>x.id===args[0]); return projects.some(x=>x.id===args[0]); };
+  if(!o||!Array.isArray(o.args)||['openEst','newEst','openSettle','newSettle','newSettleOf','setSettleView'].indexOf(o.fn)===-1) return; const args=o.args.map(String); let tries=0;
+  const ready=()=>{ if(o.fn==='setSettleView') return true; if(o.fn==='openEst') return estimates.some(e=>e.id===args[0]); if(o.fn==='openSettle') return settlements.some(x=>x.id===args[0]); return args[0] ? projects.some(x=>x.id===args[0]) : projects.length>0; };
   const run=()=>{ if(ready()){ try{ window[o.fn].apply(null,args); }catch(e){ console.warn('[기획] 열기 실패', e); } } else if(++tries<27) setTimeout(run,150); }; run(); }
 
 let curTab='home';
@@ -1300,6 +1300,8 @@ window.setSettleFilter=function(key,val){ if(!window.settleFilter) window.settle
 window.resetSettleFilter=function(){ window.settleFilter={docType:'',pjtId:'',client:'',status:'',month:''}; settlePage=1; renderSettle(); };
 window.setSettlePage=function(p){ settlePage=p; renderSettle(); const el=document.querySelector('#v-settle .sec-h'); if(el) el.scrollIntoView({block:'start'}); };
 
+// 새 영업기획 화면에서 정산서 구분(청구서/지급예정서)을 정해 발행 화면을 연다 — 지급예정서는 공수 연동으로 시작
+window.newSettleOf=function(pjtId, docType){ window.newSettle(pjtId||undefined); if(docType==='payment' && settleDraft){ settleDraft.docType='payment'; settleDraft.method='manday'; drawSettleForm(); } };
 window.newSettle=function(pjtId){
   if(!projects.length){ toast('먼저 프로젝트를 등록하세요.'); tab('pjt'); return; }
   const sup=supplierList();

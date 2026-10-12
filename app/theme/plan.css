@@ -61,3 +61,5 @@
 .jh-plan__table tr[data-st="added"] td { background: #e8f6ee; } .jh-plan__table tr[data-st="removed"] td { background: var(--c-bg); color: var(--c-ink-3); } .jh-plan__table tr[data-st="changed"] td { background: #fff4e0; }
 .jh-plan__row[aria-current="true"] { border-color: var(--c-primary); background: var(--c-primary-weak); }
 @media (max-width: 899px) { .jh-plan__filters2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.jh-plan__sum--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.jh-plan__acct { width: var(--u-140, 8.75rem); display: inline-block; }
