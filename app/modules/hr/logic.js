@@ -1,9 +1,12 @@
 /* 인사 — 근로자 명부(새 화면). 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 데이터: workers/{id}(일반 정보) + worker_private/{id}(주민번호·계좌·주소·서명, 읽을 때 합쳐 쓰고 저장할 때 다시 가른다)
  *         labor_contracts/{id}/contracts · annual_contracts/{id}/contracts(endDate), workers/{id}/history(직급·부서 변경 이력) */
-import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261013d';
+import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261013e';
 export const WP_FIELDS = ['bankAccount', 'address', 'signData'];   // worker_private 에 따로 두는 필드 — 주민번호(jumin)는 더 이상 여기 두지 않는다(테섭 2026-10-08): 서버 함수(identityAct)가 암호문으로 보관하고 마스킹 값(juminMasked)만 worker_private 에 남는다
 export const WP_NEVER_WRITE = ['jumin', 'juminMasked', 'juminUpdatedAt', 'birth6'];   // 화면에서 합쳐 만든 값·서버 전용 값은 문서에 쓰지 않는다
+/** 보유 자격증 목록(기술수당 1개당): 저장된 배열, 없으면 옛 hasCertification 표시를 한 개로 */
+export const certsFromWorker = (w) => (w && Array.isArray(w.certifications) && w.certifications.length ? w.certifications.map((c) => String(c == null ? '' : c)) : (w && w.hasCertification ? ['(마이그레이션 필요) 기존 자격증'] : []));
+export const MAX_CERTS = 30;
 export const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')) && new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
 const num = (v) => (v === '' || v == null ? null : Number(v));
@@ -62,7 +65,8 @@ export function buildEdit(orig, form, opt) {
   if (errors.length) return { ok: false, errors };
   const rankChanged = String(o.rank || '').trim() !== '' && rank !== (o.rank || ''); const deptChanged = String(o.dept || '').trim() !== '' && dept !== (o.dept || '');
   const stepCur = stepNow(o, opt && opt.year); const stepEdited = stepIn !== null && stepIn !== stepCur;
-  const pub = { name, empNo, hireDate: hire, email, phone, empType, rank, dept, job: T(f.job, 60, '담당업무') }; const priv = { address: T(f.address, 120, '주소'), bankAccount: T(f.bankAccount, 60, '계좌번호') };
+  const certs = (Array.isArray(f.certs) ? f.certs : certsFromWorker(o)).map((c) => String(c == null ? '' : c).trim()).filter(Boolean); if (certs.length > MAX_CERTS) errors.push('자격증은 ' + MAX_CERTS + '개까지 등록할 수 있습니다.'); if (certs.some((c) => c.length > 60)) errors.push('자격증 이름은 60자 이내로 입력해 주세요.');
+  const pub = { name, empNo, hireDate: hire, email, phone, empType, rank, dept, job: T(f.job, 60, '담당업무'), certifications: certs, hasCertification: /* 옛 자격증 1개 표시는 새 목록으로 대체 — false 로 두어 모두 지웠을 때 기술수당이 남지 않게 */ false }; const priv = { address: T(f.address, 120, '주소'), bankAccount: T(f.bankAccount, 60, '계좌번호') };
   let newJumin = ''; const jIn = String(f.jumin || '').replace(/[^0-9]/g, ''); if (jIn) { if (jIn.length !== 13) errors.push('주민등록번호 13자리를 입력해 주세요(바꾸지 않으려면 비워 두세요).'); else { const dupJ = ((opt && opt.others) || []).find((x) => x.id !== o.id && x.name === name && juminHead(x) === jIn.slice(0, 7)); if (dupJ) errors.push('같은 이름·주민번호의 근로자가 이미 있습니다.'); else newJumin = jIn; } }   // 번호는 문서에 쓰지 않고 저장 뒤 서버 함수로 암호화 보관(newJumin)
   if (errors.length) return { ok: false, errors };
   const year = (opt && opt.year) || Number(kstToday().slice(0, 4));

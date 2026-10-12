@@ -1,32 +1,32 @@
-import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261013d';
-import { confirmDialog } from '../../core/dialog.js?v=20261013d';
-import { IS_TEST } from '../../core/config.js?v=20261013d';
-import { holidayName } from '../../shared/holidays.js?v=20261013d';
-import { esc, toast } from '../../core/ui.js?v=20261013d';
-import { retireCalc } from './retire.js?v=20261013d';
-import { homeStats, fitSize, validateSeal, SEAL_MAX_BYTES } from './home.js?v=20261013d';
-import { saveJumin, revealJumin, maskedView } from './identity.js?v=20261013d';
-import { lpTargets, lpFormNew, lpFormCtx, lpValidateIssue, lpBuildRecord, lpReplyUpdate, lpReceivedUpdate, lpDay } from './leave-promo.js?v=20261013d';
-import { configureLeavePromoDocs, leavePromoHtmlByVer } from './leave-promo-docs.js?v=20261013d';
-import { defaultDays, adminLeaveNew, adminLeaveFromDoc, buildAdminLeave, entryEditFromDoc, buildEntryEdit } from './leave-admin.js?v=20261013d';
-import { createDocLink, syncSignedLinks, loadSendLog, showLinkModal, sendDocLinkByEmail } from './sign-io.js?v=20261013d';
-import { annualNewForm, annualEnd, annualFillFromWorker, annualValidate, annualRecord, annualContractId, annualSummary, payBasisChange, payValueInput } from './annual.js?v=20261013d';
-import { annualSalary } from './offer.js?v=20261013d';
-import { __ANNUAL_TPL, __LABOR_TPL } from './frozen-docs.js?v=20261013d';
-import { laborNewForm, laborFillFromWorker, laborRecord } from './labor.js?v=20261013d';
-import { psPayDate, techAllowance, attendanceData, travelFromTrips, travelTotal, travelSet, payslipRecord } from './payslip.js?v=20261013d';
-import { configureFrozenDocs, docHtmlByVer, __PS_TPL } from './frozen-docs.js?v=20261013d';
-import { buildAttRecord, attDefaultBreak, attKey, holidaySetOf } from './attendance.js?v=20261013d';
-import { otYm, otMoveMonth, otSyncPlan, otWage, otNewForm, otFormFromRecord, buildOvertime, otAmount } from './overtime.js?v=20261013d';
-import { dsNewForm, dsFindHourly, dsCalc, dsValidate, dsBuildData, dsFormFromDraft, dsHtmlByVer } from './dismissal.js?v=20261013d';
-import { offerNewForm, offerCalc, offerSwitchMode, offerPayload, offerFormFromSaved, offerCalendar, offerFillCurrent, offerBuildHtml } from './offer.js?v=20261013d';
-import { mergeWorker, salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobHomeBase, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261013d';
-import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml, offersHtml, offerResultHtml, offerStateText, retireHtml, dismissalHtml, dsCalcHtml, overtimeHtml } from './view.js?v=20261013d';
+import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261013e';
+import { confirmDialog } from '../../core/dialog.js?v=20261013e';
+import { IS_TEST } from '../../core/config.js?v=20261013e';
+import { holidayName } from '../../shared/holidays.js?v=20261013e';
+import { esc, toast } from '../../core/ui.js?v=20261013e';
+import { retireCalc } from './retire.js?v=20261013e';
+import { homeStats, fitSize, validateSeal, SEAL_MAX_BYTES } from './home.js?v=20261013e';
+import { saveJumin, revealJumin, maskedView } from './identity.js?v=20261013e';
+import { lpTargets, lpFormNew, lpFormCtx, lpValidateIssue, lpBuildRecord, lpReplyUpdate, lpReceivedUpdate, lpDay } from './leave-promo.js?v=20261013e';
+import { configureLeavePromoDocs, leavePromoHtmlByVer } from './leave-promo-docs.js?v=20261013e';
+import { defaultDays, adminLeaveNew, adminLeaveFromDoc, buildAdminLeave, entryEditFromDoc, buildEntryEdit } from './leave-admin.js?v=20261013e';
+import { createDocLink, syncSignedLinks, loadSendLog, showLinkModal, sendDocLinkByEmail } from './sign-io.js?v=20261013e';
+import { annualNewForm, annualEnd, annualFillFromWorker, annualValidate, annualRecord, annualContractId, annualSummary, payBasisChange, payValueInput } from './annual.js?v=20261013e';
+import { annualSalary } from './offer.js?v=20261013e';
+import { __ANNUAL_TPL, __LABOR_TPL } from './frozen-docs.js?v=20261013e';
+import { laborNewForm, laborFillFromWorker, laborRecord } from './labor.js?v=20261013e';
+import { psPayDate, techAllowance, attendanceData, travelFromTrips, travelTotal, travelSet, payslipRecord } from './payslip.js?v=20261013e';
+import { configureFrozenDocs, docHtmlByVer, __PS_TPL } from './frozen-docs.js?v=20261013e';
+import { buildAttRecord, attDefaultBreak, attKey, holidaySetOf } from './attendance.js?v=20261013e';
+import { otYm, otMoveMonth, otSyncPlan, otWage, otNewForm, otFormFromRecord, buildOvertime, otAmount } from './overtime.js?v=20261013e';
+import { dsNewForm, dsFindHourly, dsCalc, dsValidate, dsBuildData, dsFormFromDraft, dsHtmlByVer } from './dismissal.js?v=20261013e';
+import { offerNewForm, offerCalc, offerSwitchMode, offerPayload, offerFormFromSaved, offerCalendar, offerFillCurrent, offerBuildHtml } from './offer.js?v=20261013e';
+import { certsFromWorker, mergeWorker, salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobHomeBase, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261013e';
+import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml, offersHtml, offerResultHtml, offerStateText, retireHtml, dismissalHtml, dsCalcHtml, overtimeHtml } from './view.js?v=20261013e';
 
 /** 인사(플랫폼 기본 모듈): 근로자 명부 새 화면. 인사총무 틀 안의 구역으로만 열린다(modules/index.js 의 hostNative). 구포털 인사 화면은 그대로 두고 하나씩 옮기는 중이다. 관리자 전용 */
 export const manifest = { id: 'hr', order: 21, title: '인사', icon: '👥', defaultHash: '#/hr/workers', perm: (me) => !!me && me.admin === true };
 const FORM_KEYS = ['name', 'empNo', 'dept', 'rank', 'empType', 'job', 'phone', 'email', 'address', 'bankAccount', 'hireDate'];
-const toForm = (w) => { const f = {}; FORM_KEYS.forEach((k) => { f[k] = w[k] == null ? '' : String(w[k]); }); f.step = stepNow(w) == null ? '' : String(stepNow(w)); f.reason = ''; return f; };
+const toForm = (w) => { const f = {}; FORM_KEYS.forEach((k) => { f[k] = w[k] == null ? '' : String(w[k]); }); f.certs = certsFromWorker(w); f.step = stepNow(w) == null ? '' : String(stepNow(w)); f.reason = ''; return f; };
 const fmtTs = (ts) => { const d = ts && ts.toDate ? ts.toDate() : ts ? new Date(ts) : null; return d && !Number.isNaN(d.getTime()) ? d.getFullYear() + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + String(d.getDate()).padStart(2, '0') : '-'; };
 export const mountWorkers = (root, route, ctx) => mount(root, route, ctx, { base: '#/hr/workers' });
 export async function mount(root, route, ctx, opts) {
@@ -53,6 +53,8 @@ export async function mount(root, route, ctx, opts) {
     const o = t.closest('[data-w-open]'); if (o) { open(o.getAttribute('data-w-open')); return; }
     const a0 = t.closest('[data-w-act]'); const act0 = a0 && a0.getAttribute('data-w-act');
     if (act0 === 'reg-new') { st.sel = null; st.reg = { form: NEW_FORM() }; paint(); const f0 = body.querySelector('[data-w-rf]'); if (f0) f0.scrollIntoView({ block: 'center' }); return; }
+    if (act0 === 'cert-add' && st.sel) { st.sel.form.certs = (st.sel.form.certs || []).concat(['']); paint(); const ci = body.querySelectorAll('[data-w-cert]'); if (ci.length) ci[ci.length - 1].focus(); return; }
+    const cd = t.closest('[data-w-certdel]'); if (cd && st.sel) { st.sel.form.certs.splice(Number(cd.getAttribute('data-w-certdel')), 1); paint(); return; }
     if (act0 === 'reg-cancel') { st.reg = null; paint(); return; }
     if (act0 === 'reg-save' && st.reg) {
       const r = buildNew(st.reg.form, st.workers, { today: st.today }); if (!r.ok) { toast(r.errors[0]); return; }
@@ -91,6 +93,7 @@ export async function mount(root, route, ctx, opts) {
   };
   root.oninput = (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
+    if (t.matches('[data-w-cert]') && st.sel) { st.sel.form.certs[Number(t.getAttribute('data-w-cert'))] = t.value; return; }
     if (t.matches('[data-w-f]') && st.sel) { st.sel.form[t.getAttribute('data-w-f')] = t.value; return; }
     if (t.matches('[data-w-rf]') && st.reg) { st.reg.form[t.getAttribute('data-w-rf')] = t.value; return; }
     if (t.matches('[data-w-q]')) { st.q = t.value; const tb = body.querySelector('#w-table'); if (tb) tb.innerHTML = tableHtml(st); }
@@ -99,7 +102,7 @@ export async function mount(root, route, ctx, opts) {
   paint(); if (openId) open(openId);
 }
 
-/** 연차 현황(새 화면) — 근로자 명부 + 전자결재 연차신청서. 읽기 전용(등록·수정·사용촉진은 기존 화면) */
+/** 연차 현황(새 화면) — 근로자 명부 + 전자결재 연차신청서 + 관리자 연차 등록·수정·삭제(사용촉진은 연차사용촉진 화면) */
 export async function mountLeaves(root, route, ctx) {
   root.onclick = null; root.oninput = null; root.onchange = null;
   const st = { today: kstToday(), workers: [], docs: [], leaveAll: false, leaveRows: [], leaveSel: (route.segs && route.segs[0]) || '', lvForm: null, lvEdit: null };
@@ -250,6 +253,7 @@ export async function mountResignReq(root, route, ctx) {
   try { const s = await getDocs(query(collection(db, 'edoc_resign'), orderBy('createdAt', 'desc'))); const l = []; s.forEach((d) => { const x = d.data(); l.push(Object.assign({ id: d.id }, x, { filed: fmtTs(x.createdAt).replace(/\./g, '-'), approvalLine: (x.approvalLine || []).map((a) => Object.assign({}, a, { approvedDate: a.approvedAt ? fmtTs(a.approvedAt).replace(/\./g, '-') : '' })) })); }); st.rrDocs = l; }
   catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '<br>전자결재 문서 열람은 관리자 권한이 필요합니다.</div>'; return; }
   body.removeAttribute('aria-busy');
+  try { const wl = []; (await getDocs(collection(db, 'workers'))).forEach((d) => wl.push(Object.assign({ id: d.id }, d.data()))); st.rrWorkers = wl; } catch (e) { st.rrWorkers = []; }   // 원서 작성자 → 근로자 명부 연결용
   const paint = () => { body.innerHTML = resignReqHtml(st); };
   root.onclick = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
@@ -258,6 +262,10 @@ export async function mountResignReq(root, route, ctx) {
     const o = t.closest('[data-r-open]'); if (o) { st.rrSel = o.getAttribute('data-r-open'); paint(); const f = body.querySelector('.jh-hr__line'); if (f) f.scrollIntoView({ block: 'center' }); return; }
     const a = t.closest('[data-r-act]'); if (!a) return; const act = a.getAttribute('data-r-act');
     if (act === 'close') { st.rrSel = ''; paint(); return; }
+    if (act === 'retire' || act === 'roster') {   // 원서 작성자를 명부에서 찾아 퇴직금 정산(퇴직일은 원서의 퇴직 예정일)·근로자 명부로 이동
+      const d0 = st.rrDocs.find((x) => x.id === st.rrSel); if (!d0) return; const w0 = rrqFindWorker(st.rrWorkers, d0); if (!w0) { toast('근로자 명부에서 ' + (d0.authorName || '') + '님을 찾지 못했습니다. 명부에 등록되어 있는지 확인해 주세요.'); return; }
+      if (act === 'retire') { try { sessionStorage.setItem('jh_retire_prefill', JSON.stringify({ workerId: w0.id, retireDate: d0.lastDate || '' })); } catch (e) { /* 미리 채우기 실패해도 이동 */ } location.hash = '#/hr/retire'; } else location.hash = '#/hr/workers/' + w0.id; return;
+    }
     if (act === 'print') {
       const d = st.rrDocs.find((x) => x.id === st.rrSel); if (!d) return; const win = window.open('', '_blank'); if (!win) { toast('팝업이 차단되어 출력 창을 열 수 없습니다. 팝업을 허용한 뒤 다시 시도해 주세요.'); return; }
       win.document.write('<p style="font-family:sans-serif;padding:24px;">문서를 준비하는 중...</p>'); let w = null; try { const ws = []; (await getDocs(collection(db, 'workers'))).forEach((x) => ws.push(Object.assign({ id: x.id }, x.data()))); w = rrqFindWorker(ws, d); } catch (e) { /* 명부를 못 읽어도 원서는 출력 */ }
@@ -409,7 +417,7 @@ export async function mountSalary(root, route, ctx) {
   paint();
 }
 
-/** 연봉 제안서(새 화면) — 작성·자동 계산·A4 출력(미리보기, 저장 안 됨)·저장(salary_offers, 같은 건은 덮어쓰기)·인사 캘린더 회신기한 연동·지난 제안서(재출력·열어서 수정·삭제). 이메일 발송(링크 서명)은 기존 화면 */
+/** 연봉 제안서(새 화면) — 작성·자동 계산·A4 출력(미리보기, 저장 안 됨)·저장(salary_offers, 같은 건은 덮어쓰기)·인사 캘린더 회신기한 연동·지난 제안서(재출력·열어서 수정·삭제). 이메일 발송(확인 링크) */
 export async function mountOffers(root, route, ctx) {
   root.onclick = null; root.oninput = null; root.onchange = null;
   const today = kstToday(); const st = { view: 'form', of: offerNewForm(today), hint: '', workers: [], applicants: [], minWage: 0, perCert: 50000, stamp: '', allOffers: [], allWorkers: [], allApplicants: [], histTab: 'active', person: null };
@@ -633,7 +641,7 @@ export async function mountAttendCal(root, route, ctx) {
   paint();
 }
 
-/** 급여명세서(새 화면) — 근로자·기준월을 고르면 연봉계약서·출퇴근 기록·초과근로·휴가·자격증을 자동으로 불러와 계산하고(지급·공제 항목은 직접 고칠 수 있음), 미리보기(A4)·저장(payslips/{근로자}/months/{월})·조회·삭제. 메일 발송·링크/QR 은 기존 화면 */
+/** 급여명세서(새 화면) — 근로자·기준월을 고르면 연봉계약서·출퇴근 기록·초과근로·휴가·자격증을 자동으로 불러와 계산하고(지급·공제 항목은 직접 고칠 수 있음), 미리보기(A4)·저장(payslips/{근로자}/months/{월})·조회·삭제. 메일 발송·열람 링크/QR */
 export async function mountPayslip(root, route, ctx) {
   root.onclick = null; root.oninput = null; root.onchange = null;
   const now = new Date(); const ym0 = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
@@ -691,7 +699,7 @@ export async function mountPayslip(root, route, ctx) {
   paint();
 }
 
-/** 연봉계약서·근로계약서(새 화면, 같은 틀) — 목록(재직/퇴사·최신 계약일·만료 상태)·작성(시급/월급/연봉 입력, 비포괄/포괄, 현장 서명)·미리보기·저장(annual_contracts/{근로자}/contracts/{계약일})·근로자별 조회(동결 양식으로 PDF 출력)·삭제. 원격 서명 링크·QR·메일은 기존 화면 */
+/** 연봉계약서·근로계약서(새 화면, 같은 틀) — 목록(재직/퇴사·최신 계약일·만료 상태)·작성(시급/월급/연봉 입력, 비포괄/포괄, 현장 서명)·미리보기·저장(annual_contracts/{근로자}/contracts/{계약일})·근로자별 조회(동결 양식으로 PDF 출력)·삭제. 원격 서명 링크·QR·메일 발송 */
 export async function mountContract(root, route, ctx, kind) {
   const K = contractKind(kind); root.onclick = null; root.oninput = null; root.onchange = null;
   const today = kstToday(); const st = { aView: 'list', aFilter: 'active', today, aWorkers: [], aInfo: {}, aForm: K.newForm(today), aSal: annualSalary(0), aSel: '', aDocs: [], aSigning: false, aDocType: kind === 'labor' ? 'labor' : 'annual', aLog: {}, aLabel: K.label === '근로계약서' ? '근로계약서' : '연봉계약서' };
@@ -761,6 +769,8 @@ export async function mountContract(root, route, ctx, kind) {
     if (t.matches('[data-an-pay]')) { paint(); }
   };
   root.oninput = (ev) => { const t = ev.target; if (!(t instanceof Element) || st.aView !== 'form') return; if (t.matches('[data-an-pay]')) { st.aForm = payValueInput(st.aForm, t.value); recalc(); const el = body.querySelector('#an-conv'); if (el) { const tmp = document.createElement('div'); tmp.innerHTML = K.html(st); const n = tmp.querySelector('#an-conv'); if (n) el.outerHTML = n.outerHTML; } } };
+  const w0 = (route.segs && route.segs[0]) || '';   // 주소로 근로자 지정: #/hr/<laborc|annualc>/<근로자 번호> → 그 사람의 계약서, …/new → 새 계약서 작성(명부·인사 변동에서 이동)
+  if (w0 && st.aWorkers.some((x) => x.id === w0)) { st.aSel = w0; if ((route.segs[1] || '') === 'new') { await startForm(w0); } else { await loadDocs(); st.aView = 'worker'; } }
   paint();
 }
 const contractKind = (kind) => (kind === 'labor'
