@@ -1,9 +1,9 @@
-import { esc } from '../../core/ui.js?v=20261013zm';
-import { calcAll, cellState, keyOf } from './progress.js?v=20261013zm';
-import { holidayName } from '../../shared/holidays.js?v=20261013zm';
-import { structureEditorHtml } from './structure-view.js?v=20261013zm';
-import { layoutEditorHtml } from './layout-view.js?v=20261013zm';
-import { snapToTuesday, weekNo, weekRange } from './layout.js?v=20261013zm';
+import { esc } from '../../core/ui.js?v=20261013zn';
+import { calcAll, cellState, keyOf } from './progress.js?v=20261013zn';
+import { holidayName } from '../../shared/holidays.js?v=20261013zn';
+import { structureEditorHtml } from './structure-view.js?v=20261013zn';
+import { layoutEditorHtml } from './layout-view.js?v=20261013zn';
+import { snapToTuesday, weekNo, weekRange } from './layout.js?v=20261013zn';
 const f1 = (n) => (Math.round((Number(n) || 0) * 10) / 10).toFixed(1);
 const chip = (t, tone) => '<span class="jh-pjt__chip" data-tone="' + esc(tone || '') + '">' + esc(t) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -23,17 +23,20 @@ export function progressHtml(st) {
   // 요약: 모든 프로젝트 같은 칸 — 전체 공정율, 총 물량, 단계마다 누적 완료 수
   const stageTotals = S.stages.map((s) => [s.name + ' 누적', A.groups.reduce((n, x) => n + ((x.calc.stages.find((y) => y.name === s.name) || {}).done || 0), 0) + unit]);
   const sum = '<div class="jh-pjt__cells jh-pjt__kpis">' + [['전체 공정율', f1(A.pct) + '%'], ['총 물량', A.items + unit]].concat(stageTotals).map(([l, x]) => '<div><span class="jh-field__hint">' + esc(l) + '</span><strong>' + esc(x) + '</strong></div>').join('') + '</div>';
-  const body = A.groups.map((x) => groupHtml(st, x)).join('') || '<div class="jh-empty">등록된 품목이 없습니다.</div>';
-  const empty = !S.leafCols.length ? '<div class="jh-empty">공정 단계가 설정되지 않았습니다. (설정에서 단계를 정하세요)</div>' : '';
-  return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide">' + head + dateBar + note + weeklyPanel + card('공정 현황', '<div class="jh-pjt__pad">' + sum + '</div>') + empty + body + '</div></div>';
+  // 넓은 화면: 왼쪽에 섹터 카드(요약·단계 막대) 목록, 오른쪽에 고른 섹터의 체크표(여백 없이 균형). 좁은 화면(폰): 카드 안에 표가 펼쳐짐
+  const wide = st.wide !== false; const selId = [...st.open][0] || (A.groups[0] && A.groups[0].group.id); const selX = A.groups.find((x) => x.group.id === selId) || A.groups[0];
+  const cards = A.groups.map((x) => groupHtml(st, x, x.group.id === selId, wide)).join('') || '<div class="jh-empty">등록된 품목이 없습니다.</div>';
+  const empty = !S.leafCols.length ? '<div class="jh-empty">공정 단계가 설정되지 않았습니다. (구조 설정에서 단계를 정하세요)</div>' : '';
+  const pane = wide && selX ? '<div class="jh-pjt__pane">' + card((selX.group.name || '전체') + ' 체크표', '<div class="jh-pjt__panebody">' + tableHtml(st, selX.group, selX.calc, st.states[selX.group.id] || {}) + '</div>') + '</div>' : '';
+  return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide">' + head + dateBar + note + weeklyPanel + card('공정 현황', '<div class="jh-pjt__pad">' + sum + '</div>') + empty + '<div class="jh-pjt__split"><div class="jh-pjt__cards">' + cards + '</div>' + pane + '</div></div></div>';
 }
-function groupHtml(st, x) {
-  const S = st.structure; const g = x.group, c = x.calc; const open = st.open.has(g.id); const state = st.states[g.id] || {}; const unit = S.unit || '대';
-  const steps = c.stages.map((s) => '<div class="jh-pjt__step"><span class="jh-field__hint">' + esc(s.name) + ' ' + (s.subs ? s.done + '/' + s.total : s.done + '/' + s.total) + '</span>' + bar(s.pct) + '</div>').join('');
+function groupHtml(st, x, selected, wide) {
+  const S = st.structure; const g = x.group, c = x.calc; const unit = S.unit || '대';
+  const steps = c.stages.map((s) => '<div class="jh-pjt__step"><span class="jh-field__hint">' + esc(s.name) + ' ' + s.done + '/' + s.total + '</span>' + bar(s.pct) + '</div>').join('');
   const title = esc(g.name || '전체') + ' <span class="jh-field__hint">(' + g.items.length + unit + ')</span>';
-  const headBtn = '<button type="button" class="jh-pjt__ghead" data-pg-open="' + esc(g.id) + '" aria-expanded="' + open + '"><span><strong>' + title + '</strong></span><span class="jh-pjt__pill">' + f1(c.pct) + '%</span></button>';
-  const table = open ? tableHtml(st, g, c, state) : '';
-  return '<section class="jh-card jh-pjt__group">' + headBtn + '<div class="jh-pjt__steps">' + steps + '</div>' + table + '</section>';
+  const headBtn = '<button type="button" class="jh-pjt__ghead" data-pg-open="' + esc(g.id) + '" aria-expanded="' + selected + '"><span><strong>' + title + '</strong></span><span class="jh-pjt__pill">' + f1(c.pct) + '%</span></button>';
+  const table = !wide && selected ? tableHtml(st, g, c, st.states[g.id] || {}) : '';
+  return '<section class="jh-card jh-pjt__group" data-sel="' + selected + '">' + headBtn + '<div class="jh-pjt__steps">' + steps + '</div>' + table + '</section>';
 }
 function tableHtml(st, g, c, state) {
   const S = st.structure; const editable = !st.readonly; const cols = S.leafCols;

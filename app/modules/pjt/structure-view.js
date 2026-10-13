@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261013zm';
-import { diffStructure, hasChanges } from './structure.js?v=20261013zm';
-import { featuresOf } from './adapter.js?v=20261013zm';
+import { esc } from '../../core/ui.js?v=20261013zn';
+import { diffStructure, hasChanges } from './structure.js?v=20261013zn';
+import { featuresOf } from './adapter.js?v=20261013zn';
 const chip = (t, tone) => '<span class="jh-pjt__chip" data-tone="' + esc(tone || '') + '">' + esc(t) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 /** 변경 요약 문구(확인 창·편집기 아래쪽) */
@@ -22,5 +22,5 @@ export function structureEditorHtml(st) {
     return '<div class="jh-plan__party"><div class="jh-pjt__bar"><span class="jh-plan__line"><button type="button" class="jh-btn" data-variant="ghost" data-st-gopen="' + esc(g.id) + '" aria-expanded="' + open + '">' + (open ? '▾' : '▸') + '</button><input class="jh-input" data-st-gname="' + esc(g.id) + '" value="' + esc(g.name) + '" aria-label="섹터 이름"><span class="jh-field__hint">' + g.items.length + unit + '</span></span><button type="button" class="jh-btn" data-variant="ghost" data-st-gdel="' + esc(g.id) + '">섹터 삭제</button></div>' + items + '</div>'; }).join('') || '<div class="jh-empty">섹터가 없습니다. 섹터를 나누지 않으면 "전체" 하나를 만드세요.</div>';
   const groupCard = card('섹터와 품목', '<div class="jh-pjt__pad">' + groups + '<div class="jh-pjt__bar"><input class="jh-input" data-st-newgroup placeholder="새 섹터 이름 (예: 3F FIZ, 복합동, 전체)"><button type="button" class="jh-btn" data-variant="primary" data-st-act="add-group">섹터 추가</button></div></div>');
   const foot = '<div class="jh-pjt__bar"><span class="jh-field__hint">' + (changed ? esc(diffText(d)) : '변경 내용이 없습니다.') + '</span><span class="jh-plan__line"><button type="button" class="jh-btn" data-variant="ghost" data-st-act="cancel">닫기</button><button type="button" class="jh-btn" data-variant="primary" data-st-act="save"' + (changed ? '' : ' disabled') + '>저장</button></span></div>';
-  return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide"><div class="jh-pjt__proj"><span class="jh-pjt__projlabel">🏗️ ' + esc(st.label) + '</span><span class="jh-field__hint">공정 구조 설정</span></div>' + note + pptCard + featCard + stageCard + groupCard + foot + '</div></div>';
+  return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide jh-pjt__narrow"><div class="jh-pjt__proj"><span class="jh-pjt__projlabel">🏗️ ' + esc(st.label) + '</span><span class="jh-field__hint">공정 구조 설정</span></div>' + note + pptCard + featCard + stageCard + groupCard + foot + '</div></div>';
 }

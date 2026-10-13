@@ -92,3 +92,19 @@
 .jh-pjt__lmbox { position: absolute; background: rgba(220, 38, 38, 0.18); border: 1.5px solid #f0a0a0; pointer-events: none; font-size: 9px; line-height: 1.1; color: #7a1010; overflow: hidden; }
 .jh-pjt__lmbox[data-cur="true"] { background: rgba(220, 38, 38, 0.35); border-color: #dc2626; }
 .jh-pjt__lmdrag { position: absolute; border: 1.5px dashed var(--c-primary); background: rgba(29, 91, 166, 0.15); pointer-events: none; }
+
+/* 공정 탭 균형: 요약은 모아서, 넓은 화면에서는 왼쪽 섹터 카드 + 오른쪽 체크표 */
+.jh-pjt__kpis { grid-template-columns: repeat(auto-fit, minmax(var(--u-96), max-content)); column-gap: var(--sp-6); }
+.jh-pjt__narrow { max-width: var(--u-440); max-width: 60rem; }
+.jh-pjt__split { display: grid; gap: var(--sp-3); }
+.jh-pjt__cards { display: grid; gap: var(--sp-3); align-content: start; min-width: 0; }
+.jh-pjt__group[data-sel="true"] { border-color: var(--c-primary); }
+.jh-pjt__pane { min-width: 0; }
+.jh-pjt__panebody { overflow: auto; max-height: 80vh; padding: var(--sp-2) 0; }
+.jh-pjt__panebody .jh-pjt__ctable { margin: 0 var(--sp-4); }
+@media (min-width: 1000px) {
+  .jh-pjt__split { grid-template-columns: minmax(0, var(--u-420)) minmax(0, 1fr); align-items: start; column-gap: var(--sp-4); }
+  .jh-pjt__pane { position: sticky; top: var(--sp-3); }
+  .jh-pjt__steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.jh-pjt__panebody .jh-pjt__ctable { width: calc(100% - var(--sp-5) - var(--sp-3)); }

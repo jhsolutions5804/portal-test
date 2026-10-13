@@ -1,24 +1,24 @@
 /* PJT 관리(통합 새 모듈) — 설계서 docs/pjt-design.md. Ph2·Ph4·경량PJT를 한 모듈로 합친다.
  * 지금 새 화면은 "출역·공수"(근태·공수 탭) 하나다 — 구포털 PJT 메뉴에서 프로젝트를 고르면 그 아래 "👷 출역·공수 (새)" 탭으로 열린다(legacy/frame.js 의 nativeSubs, modules/index.js hostNative). 프로젝트는 화면 안에서 고르지 않는다. 나머지 탭은 만들면서 구포털 항목을 하나씩 교체한다.
  * 저장 형식은 구포털 그대로(출역 { checks }, 공수 { md }, 날짜별 문서) — 영업기획의 공수 연동·팀별 노무비가 읽는다. 경로는 adapter.js, 규칙은 attendance.js. */
-import { db, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zm';
-import { esc, toast } from '../../core/ui.js?v=20261013zm';
-import { confirmDialog } from '../../core/dialog.js?v=20261013zm';
-import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zm';
-import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zm';
-import { visibleProjects } from './projects.js?v=20261013zm';
-import { loadHolidays } from '../../shared/holidays.js?v=20261013zm';
-import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zm';
-import { normalizeDayFixed, normalizeDayLight, stateAt, lightState, cellState, toggledDayChecks, lightItemStages, lightProgress, daysThrough, PROGRESS_START, keyOf, stagesOf } from './progress.js?v=20261013zm';
-import { structureFor, planSave, makeItemIdFactory } from './structure-store.js?v=20261013zm';
-import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, setFeature, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261013zm';
-import { progressHtml } from './progress-view.js?v=20261013zm';
-import { diffText } from './structure-view.js?v=20261013zm';
-import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261013zm';
-import { buildWeekly } from './weekly-ppt.js?v=20261013zm';
-import { boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, remapByOrder, unmatchedKeys, snapToTuesday, weekNo, weekRange } from './layout.js?v=20261013zm';
-import { fileToDataUrl, imageInfo } from './image-tools.js?v=20261013zm';
-import { layoutEditorHtml } from './layout-view.js?v=20261013zm';
+import { db, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zn';
+import { esc, toast } from '../../core/ui.js?v=20261013zn';
+import { confirmDialog } from '../../core/dialog.js?v=20261013zn';
+import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zn';
+import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zn';
+import { visibleProjects } from './projects.js?v=20261013zn';
+import { loadHolidays } from '../../shared/holidays.js?v=20261013zn';
+import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zn';
+import { normalizeDayFixed, normalizeDayLight, stateAt, lightState, cellState, toggledDayChecks, lightItemStages, lightProgress, daysThrough, PROGRESS_START, keyOf, stagesOf } from './progress.js?v=20261013zn';
+import { structureFor, planSave, makeItemIdFactory } from './structure-store.js?v=20261013zn';
+import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, setFeature, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261013zn';
+import { progressHtml } from './progress-view.js?v=20261013zn';
+import { diffText } from './structure-view.js?v=20261013zn';
+import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261013zn';
+import { buildWeekly } from './weekly-ppt.js?v=20261013zn';
+import { boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, remapByOrder, unmatchedKeys, snapToTuesday, weekNo, weekRange } from './layout.js?v=20261013zn';
+import { fileToDataUrl, imageInfo } from './image-tools.js?v=20261013zn';
+import { layoutEditorHtml } from './layout-view.js?v=20261013zn';
 
 export const manifest = { id: 'pjt', order: 40, title: 'PJT 관리', icon: '🏗️', defaultHash: '#/pjt/attend', perm: (me) => !!me && me.admin === true };
 export async function mount(root) { root.innerHTML = '<div class="jh-empty">PJT 화면은 구포털 틀 안의 메뉴로 열립니다.</div>'; }
@@ -124,6 +124,8 @@ export async function mountProgress(root, route, ctx) {
   const guest = !(me.admin || (me.perms && me.perms.pjt)); const leaderIds = Array.isArray(me.teamLeaderIds) ? me.teamLeaderIds : [];
   const st = { projects: [], proj: '', label: '', date: isDateKey(segs[1]) ? segs[1] : appToday(), structure: null, items: [], projDoc: null, days: {}, states: {}, open: new Set(), editMode: false, isToday: true, ready: false, loadingNote: '', readonly: guest && !leaderIds.length, busy: false, canEditStructure: !!me.admin, editor: null, layoutEd: null, weekly: null, features: {} };
   root.innerHTML = '<div id="pg-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#pg-body');
+  // 넓은 화면(1000px 이상)이면 섹터 카드 옆에 체크표를 둔다 — 폭이 바뀌면 다시 그린다
+  const mq = window.matchMedia ? window.matchMedia('(min-width: 1000px)') : null; st.wide = mq ? mq.matches : true; if (root.__pgMqOff) root.__pgMqOff(); if (mq && mq.addEventListener) { const onMq = (e) => { st.wide = e.matches; if (!st.editor && !st.layoutEd && st.ready) paint(); }; mq.addEventListener('change', onMq); root.__pgMqOff = () => mq.removeEventListener('change', onMq); }
   const paint = () => { const y = window.scrollY; st.features = st.structData ? featuresOf(st.proj, { features: st.structData.features }) : {}; body.innerHTML = progressHtml(st); window.scrollTo(0, y); if (st.layoutEd) bindOverlay(); };
   try { await Promise.race([loadHolidays(), new Promise((r) => setTimeout(r, 1500))]); } catch (e) { /* 공휴일을 못 불러오면 날짜 표시만 빠진다 */ }
   try { st.projects = visibleProjects(me, await loadDyn()); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
@@ -272,7 +274,7 @@ export async function mountProgress(root, route, ctx) {
     if (st.layoutEd) { await layoutClick(ev); return; }
     const t = ev.target; if (!(t instanceof Element)) return;
     const ck = t.closest('[data-pg-ck]'); if (ck) { const [g, it, col] = ck.getAttribute('data-pg-ck').split('|'); await toggle(g, it, col); return; }
-    const op = t.closest('[data-pg-open]'); if (op) { const id = op.getAttribute('data-pg-open'); if (st.open.has(id)) st.open.delete(id); else st.open.add(id); paint(); return; }
+    const op = t.closest('[data-pg-open]'); if (op) { const id = op.getAttribute('data-pg-open'); st.open = (st.open.has(id) && st.wide === false) ? new Set() : new Set([id]); paint(); return; }
     const a = t.closest('[data-pg-act]'); if (!a) return; const act = a.getAttribute('data-pg-act');
     if (act === 'prev') await goDate(shiftDate(st.date, -1)); else if (act === 'next') await goDate(shiftDate(st.date, 1)); else if (act === 'today') await goDate(appToday()); else if (act === 'edit') { st.editMode = !st.editMode; paint(); } else if (act === 'structure') openEditor(); else if (act === 'ppt') await makePpt(); else if (act === 'layout') await openLayout(); else if (act === 'weekly') { st.weekly = st.weekly ? null : { date: snapToTuesday(st.date) }; paint(); } else if (act === 'weekly-make') await makeWeekly();
   };
