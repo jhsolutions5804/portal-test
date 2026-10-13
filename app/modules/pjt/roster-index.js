@@ -1,9 +1,9 @@
 /* 근로자 연명부(새 화면) — 구포털 PJT 메뉴의 "근로자 연명부" 칸. 주소 #/pjt/roster(목록) · #/pjt/roster/<근로자 id>(상세 조회).
  * 읽기만 하는 1단계: 목록(요약·필터·검색·정렬)과 상세 조회. 등록·수정·삭제·첨부·검진·교육 입력은 다음 단계에서 같은 화면에 붙인다. 규칙은 roster.js, 표시는 roster-view.js. */
-import { db, collection, getDocs } from '../../core/firebase.js?v=20261014d';
-import { esc } from '../../core/ui.js?v=20261014d';
-import { mergePrivs, summaryOf, visibleList, rowOf, todayKey, birthFromJumin } from './roster.js?v=20261014d';
-import { rosterListHtml, rosterDetailHtml } from './roster-view.js?v=20261014d';
+import { db, collection, getDocs } from '../../core/firebase.js?v=20261014e';
+import { esc } from '../../core/ui.js?v=20261014e';
+import { mergePrivs, summaryOf, visibleList, rowOf, todayKey, birthFromJumin } from './roster.js?v=20261014e';
+import { rosterListHtml, rosterDetailHtml } from './roster-view.js?v=20261014e';
 const pushHash = (h) => { if (location.hash === h) return; try { history.replaceState(null, '', h); } catch (e) { location.hash = h; } };
 const lst = (snap) => { const a = []; snap.forEach((d) => a.push({ id: d.id, data: d.data() })); return a; };
 export async function mountRoster(root, route, ctx) {

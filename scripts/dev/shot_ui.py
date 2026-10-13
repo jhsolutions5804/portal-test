@@ -10,6 +10,8 @@ NAMES=sorted({n.strip().split(' as ')[0].strip() for f in __import__('glob').glo
 today='2026-10-13'
 def ago(y): return f'{2026-y}-10-13'
 D={
+ 'master_workers':{'L1':{'name':'김종화','birth':'1992-08-24','gender':'남','hireDate':'2020-01-01'},'L2':{'name':'서민우','birth':'1985-06-23'},'M1':{'name':'김영서','birth':'2005-02-17','leaderId':'L1'},'M2':{'name':'윤석원','birth':'1985-08-30','leaderId':'L1'},'R1':{'name':'김혁','birth':'1993-06-19','leaderId':'L2','resigned':True,'resignedDate':'2026-08-15'}},
+ 'master_worker_info':{'L1':{'phone':'010-1111-2222','juminMasked':'920824-1******','health':[{'type':'general','date':'2026-01-10','expiry':'2027-01-10'}],'certs':[{'co':'samsung','name':'용접기능사','contractor':'삼성물산','expiry':'2036-12-31'}],'legalEdu':[{'co':'samsung','contractor':'삼성물산','type':'정기안전교육','date':'2026-02-10','hours':6}],'inhouseEdu':{'e1':True,'e2':True,'e3':True,'e4':True},'files':{'photo':{'name':'p.jpg','size':50000}}},'M1':{'phone':'010-3333-4444','inhouseEdu':{'e1':True}}},
  'portal_users':{'u1':{'name':'김짜장','email':'admin@jhsol.kr','status':'approved','admin':True,'empNo':'10001','rank':'대표','dept':'경영지원본부','perms':{}},'u2':{'name':'김가나','email':'a@jhsol.kr','status':'approved','empNo':'20001'}},
  'workers':{'w1':{'name':'김가나','empNo':'20001','rank':'대리','dept':'PJT팀','empType':'field','hireDate':ago(5),'email':'a@jhsol.kr','phone':'010-1111-2222','status':'active','portalUid':'u2','certifications':['기능사'],'step':5,'stepYear':2026},
             'w2':{'name':'이다라','empNo':'25002','rank':'사원','dept':'영업기획팀','empType':'office','hireDate':ago(1),'status':'active'},

@@ -197,3 +197,27 @@
 .jh-ro__note { padding: var(--sp-3); white-space: pre-wrap; }
 .jh-ro__detail h4 { margin: var(--sp-3) var(--sp-3) var(--sp-1); }
 .jh-ro__detail .jh-ro__t, .jh-ro__detail .jh-pjt__cats { margin: 0 var(--sp-3) var(--sp-3); width: calc(100% - 2 * var(--sp-3)); }
+
+/* 근로자 연명부 — 보정(실화면 점검): 요약 카드·필터·표 줄바꿈 */
+.jh-ro .jh-pjt__cat { --cat: var(--c-primary); }
+.jh-ro__kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--u-220), 1fr)); gap: var(--sp-3); }
+.jh-ro__kpi { border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); padding: var(--sp-3) var(--sp-4); }
+.jh-ro__kpi span { display: block; font-size: var(--fs-xs); color: var(--c-ink-3); }
+.jh-ro__kpi strong { font-size: var(--fs-xl); }
+.jh-ro__kpi small { font-size: var(--fs-sm); font-weight: 400; color: var(--c-ink-3); }
+.jh-ro__kpi[data-warn="1"] strong { color: var(--c-warn-ink); }
+.jh-ro__q { flex: 1 1 var(--u-220); max-width: var(--u-440); }
+.jh-ro__cnt { color: var(--c-ink-3); font-size: var(--fs-sm); }
+.jh-ro__legacy { margin-left: auto; font-size: var(--fs-sm); color: var(--c-primary); text-decoration: none; }
+.jh-ro__legacy small { color: var(--c-ink-3); }
+.jh-ro__nw { white-space: nowrap; }
+.jh-ro__t td .jh-pjt__chip, .jh-ro__t td .jh-pjt__chips { white-space: nowrap; }
+.jh-ro__t th, .jh-ro__t td { padding: var(--sp-2); }
+@media (max-width: 760px) {
+  .jh-ro__kpis { grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+  .jh-ro__kpi { padding: var(--sp-2) var(--sp-3); }
+  .jh-ro__kpi strong { font-size: var(--fs-lg); }
+  .jh-ro__sortbar span, .jh-ro__sortbar .jh-btn { white-space: nowrap; }
+  .jh-ro__sortbar select { flex: 1; min-width: 0; }
+  .jh-ro__legacy { margin-left: 0; }
+}
