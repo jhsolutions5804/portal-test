@@ -150,3 +150,7 @@
 .jh-pjt__todo[data-on="true"] { background: var(--c-primary-weak); border-color: var(--c-primary); color: var(--c-primary); }
 .jh-pjt__fsave { width: 100%; padding: var(--sp-3); font-size: var(--fs-md); }
 .jh-pjt__flabel .jh-field__hint { display: inline; font-weight: 400; }
+
+/* 공사일보: 문서 미리보기(종이 느낌) */
+.jh-pjt__doc { background: #fff; color: #111; padding: var(--sp-5); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); overflow-x: auto; }
+.jh-pjt__doc table { width: 100%; }

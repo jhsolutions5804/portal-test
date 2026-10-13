@@ -1,26 +1,29 @@
 /* PJT 관리(통합 새 모듈) — 설계서 docs/pjt-design.md. Ph2·Ph4·경량PJT를 한 모듈로 합친다.
  * 지금 새 화면은 "출역·공수"(근태·공수 탭) 하나다 — 구포털 PJT 메뉴에서 프로젝트를 고르면 그 아래 "👷 출역·공수 (새)" 탭으로 열린다(legacy/frame.js 의 nativeSubs, modules/index.js hostNative). 프로젝트는 화면 안에서 고르지 않는다. 나머지 탭은 만들면서 구포털 항목을 하나씩 교체한다.
  * 저장 형식은 구포털 그대로(출역 { checks }, 공수 { md }, 날짜별 문서) — 영업기획의 공수 연동·팀별 노무비가 읽는다. 경로는 adapter.js, 규칙은 attendance.js. */
-import { db, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zp';
-import { esc, toast } from '../../core/ui.js?v=20261013zp';
-import { confirmDialog } from '../../core/dialog.js?v=20261013zp';
-import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zp';
-import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zp';
-import { visibleProjects } from './projects.js?v=20261013zp';
-import { loadHolidays } from '../../shared/holidays.js?v=20261013zp';
-import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zp';
-import { normalizeDayFixed, normalizeDayLight, stateAt, lightState, cellState, toggledDayChecks, lightItemStages, lightProgress, daysThrough, PROGRESS_START, keyOf, stagesOf } from './progress.js?v=20261013zp';
-import { structureFor, planSave, makeItemIdFactory } from './structure-store.js?v=20261013zp';
-import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, setFeature, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261013zp';
-import { progressHtml } from './progress-view.js?v=20261013zp';
-import { diffText } from './structure-view.js?v=20261013zp';
-import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261013zp';
-import { buildWeekly } from './weekly-ppt.js?v=20261013zp';
-import { boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, remapByOrder, unmatchedKeys, snapToTuesday, weekNo, weekRange } from './layout.js?v=20261013zp';
-import { fileToDataUrl, imageInfo } from './image-tools.js?v=20261013zp';
-import { layoutEditorHtml } from './layout-view.js?v=20261013zp';
-import { scheduleHtml } from './schedule-view.js?v=20261013zp';
-import { itemsForKey, buildDoc, formOf, detectCat, addDays, weekDays, isKey } from './schedule.js?v=20261013zp';
+import { db, functions, httpsCallable, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zq';
+import { esc, toast } from '../../core/ui.js?v=20261013zq';
+import { confirmDialog } from '../../core/dialog.js?v=20261013zq';
+import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zq';
+import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zq';
+import { visibleProjects } from './projects.js?v=20261013zq';
+import { loadHolidays } from '../../shared/holidays.js?v=20261013zq';
+import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zq';
+import { normalizeDayFixed, normalizeDayLight, stateAt, lightState, cellState, toggledDayChecks, lightItemStages, lightProgress, daysThrough, PROGRESS_START, keyOf, stagesOf } from './progress.js?v=20261013zq';
+import { structureFor, planSave, makeItemIdFactory } from './structure-store.js?v=20261013zq';
+import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, setFeature, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261013zq';
+import { progressHtml } from './progress-view.js?v=20261013zq';
+import { diffText } from './structure-view.js?v=20261013zq';
+import { activeWorkersForDate } from './attendance.js?v=20261013zq';
+import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261013zq';
+import { buildWeekly } from './weekly-ppt.js?v=20261013zq';
+import { boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, remapByOrder, unmatchedKeys, snapToTuesday, weekNo, weekRange } from './layout.js?v=20261013zq';
+import { fileToDataUrl, imageInfo } from './image-tools.js?v=20261013zq';
+import { layoutEditorHtml } from './layout-view.js?v=20261013zq';
+import { scheduleHtml } from './schedule-view.js?v=20261013zq';
+import { reportHtml } from './report-view.js?v=20261013zq';
+import { fromStored, toStored, totalOf, attendanceSummary, autoContent, docHtml, docTitle, isLegacyDoc, dateText, SUGGEST_EQUIPS } from './report.js?v=20261013zq';
+import { itemsForKey, buildDoc, formOf, detectCat, addDays, weekDays, isKey } from './schedule.js?v=20261013zq';
 
 export const manifest = { id: 'pjt', order: 40, title: 'PJT 관리', icon: '🏗️', defaultHash: '#/pjt/attend', perm: (me) => !!me && me.admin === true };
 export async function mount(root) { root.innerHTML = '<div class="jh-empty">PJT 화면은 구포털 틀 안의 메뉴로 열립니다.</div>'; }
@@ -335,3 +338,64 @@ export async function mountSchedule(root, route, ctx) {
   };
 }
 const TAG_LABEL_OF = { edu: '교육', meeting: '회의', in: '반입', fcu: '설치', off: '휴무', safety: '안전', quality: '품질', admin: '기타' };
+
+/** 공사일보(공사일보 탭): 프로젝트 아래의 탭 — 주소 #/pjt/<프로젝트>/report/<날짜>. 모든 프로젝트 같은 양식·같은 화면.
+ *  저장은 날짜 키 문서 하나(Ph2 daily_report_docs, Ph4 ph4_reports, 경량 pjt_registry/<id>/reports)에 구포털 일보 필드와 경량 일보 필드를 함께 담는다. 옛 형식 일보는 조회·인쇄만 되고 "새 양식으로 편집"하면 이어서 고칠 수 있다.
+ *  경량 프로젝트는 저장하면 전자결재 업무일지도 서버 함수가 만든다(구포털 경량과 같음 — Ph2·Ph4 도 같게 할지는 대표님 결정 D10). */
+export async function mountReport(root, route, ctx) {
+  root.onclick = null; root.onchange = null; root.onkeydown = null; root.oninput = null;
+  const me = (ctx && ctx.me) || {}; const segs = (route && route.segs) || []; const guest = !(me.admin || (me.perms && me.perms.pjt)); const today = appToday(); const date0 = isDateKey(segs[1]) ? segs[1] : today; const [y0, m0] = date0.split('-').map(Number);
+  const st = { projects: [], proj: '', label: '', date: date0, today, month: { y: y0, m: m0 - 1 }, dates: new Set(), form: null, exists: false, ready: false, manage: !guest, readonly: guest, busy: false, preview: false, equipHistory: [], ctx: {} };
+  root.innerHTML = '<div id="rp-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#rp-body');
+  const paint = () => { const y = window.scrollY; body.innerHTML = reportHtml(st); window.scrollTo(0, y); };
+  try { await Promise.race([loadHolidays(), new Promise((r) => setTimeout(r, 1500))]); } catch (e) { /* 공휴일 없이 주말만 표시 */ }
+  try { st.projects = visibleProjects(me, await loadDyn()); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
+  body.removeAttribute('aria-busy'); st.proj = st.projects.some((p) => p.key === segs[0]) ? segs[0] : ''; if (!st.proj) { paint(); return; }
+  const P = pathsFor(st.proj); const pr = st.projects.find((p) => p.key === st.proj); st.label = pr.label;
+  const loadStructureR = async () => { const ps = await getDoc(doc(db, P.settings.col, P.settings.id)); const pd = ps.exists() ? ps.data() : (pr.doc || {}); const items = []; if (P.kind === 'light') { const is = await getDocs(collection(db, P.progress.items)); is.forEach((d) => items.push(Object.assign({ id: d.id }, d.data()))); } const r = structureFor(st.proj, pd, items); st.structure = toRuntime(r.S, st.label, stagesOf); st.client = (r.S.ppt && r.S.ppt.client) || ''; st.ctx = { site: st.label, client: st.client, kind: P.kind, dateKey: st.date }; };
+  const loadList = async () => { const snap = await getDocs(collection(db, P.reports)); st.dates = new Set(); const eq = new Set(); snap.forEach((d) => { if (isKey(d.id)) st.dates.add(d.id); String((d.data() || {}).equip || '').split(',').forEach((e) => { const t = e.trim(); if (t && t !== '—') eq.add(t); }); }); st.equipHistory = [...eq]; };
+  const readDay = async (date) => { const [a, m] = await Promise.all([getDoc(doc(db, P.attendance, date)), getDoc(doc(db, P.manday, date))]); return { checks: a.exists() ? (a.data().checks || []) : [], md: m.exists() ? (m.data().md || {}) : {} }; };
+  const activeIds = async (date) => { try { const [rs, ms] = await Promise.all([getDocs(collection(db, P.roster)), getDocs(collection(db, 'master_workers'))]); const resigned = {}; ms.forEach((d) => { const x = d.data(); if (x.resigned) resigned[d.id] = { resigned: true, resignedDate: x.resignedDate || '' }; }); const roster = []; rs.forEach((d) => roster.push(Object.assign({ id: d.id }, d.data()))); return activeWorkersForDate(roster, resigned, date).map((w) => w.id); } catch (e) { return null; } };
+  const attSummary = async (date) => { const d = await readDay(date); return attendanceSummary(d.checks, d.md, await activeIds(date)); };
+  const newChecks = async (date) => { try { if (P.progress.model === 'zones') { const snap = await getDocs(collection(db, P.progress.checks(date))); const docs = []; snap.forEach((x) => docs.push({ id: x.id, data: x.data() })); return normalizeDayFixed(docs); } const s = await getDoc(doc(db, P.progress.checks, date)); const flat = normalizeDayLight(s.exists() ? s.data() : {})['']; const out = {}; st.structure.groups.forEach((g) => { out[g.id] = flat; }); return out; } catch (e) { return {}; } };   // 경량은 날짜 문서 하나에 모든 품목의 키가 있다 — 섹터마다 같은 맵을 준다(자기 품목만 세어짐)
+  const loadDay = async () => {
+    st.preview = false; st.ctx = Object.assign({}, st.ctx, { dateKey: st.date }); const s = await getDoc(doc(db, P.reports, st.date)); st.exists = s.exists();
+    if (s.exists()) { st.form = fromStored(s.data()); return; }
+    const [att, nc] = await Promise.all([attSummary(st.date), newChecks(st.date)]);   // 저장된 일보가 없으면 그날의 공정 체크와 출역·공수로 미리 채운다
+    st.form = { legacy: false, author: me.name || '', checkIn: '', checkOut: '', content: autoContent(st.structure, nc), tomorrow: '', headcount: att.headcount, manday: att.manday, mandayTotal: att.mandayTotal, equip: [], note: '' };
+  };
+  try { await loadStructureR(); await loadList(); await loadDay(); st.ready = true; } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && (e.code || e.message)) || '') + '</div>'; return; }
+  paint();
+  const go = async (d) => { if (!isKey(d)) return; st.date = d; const [y, m] = d.split('-').map(Number); st.month = { y, m: m - 1 }; pushHash('#/pjt/' + st.proj + '/report/' + d); st.ready = false; paint(); try { await loadDay(); } catch (e) { toast('불러오기 실패: ' + ((e && (e.code || e.message)) || '')); } st.ready = true; paint(); };
+  const readForm = () => { const f = st.form; if (!f || f.legacy) return; body.querySelectorAll('[data-rp-f]').forEach((el) => { const k = el.getAttribute('data-rp-f'); if (k === 'manday') f.manday = parseFloat(el.value) || 0; else if (/^(ci|co)[HM]$/.test(k)) f['_' + k] = el.value; else f[k] = el.value; });
+    if (f._ciH !== undefined) { f.checkIn = f._ciH && f._ciM ? f._ciH + ':' + f._ciM : (f._ciH ? f._ciH + ':00' : ''); f.checkOut = f._coH && f._coM ? f._coH + ':' + f._coM : (f._coH ? f._coH + ':00' : ''); } };
+  const printDoc = (html, title) => {
+    let pa = document.getElementById('pjt-print-area'); if (pa) pa.remove(); pa = document.createElement('div'); pa.id = 'pjt-print-area'; pa.innerHTML = '<style>@media screen{#pjt-print-area{display:none}}@media print{body>*:not(#pjt-print-area){display:none!important}#pjt-print-area{display:block!important}}@page{size:A4;margin:18mm}</style>' + html; document.body.appendChild(pa);
+    const ot = document.title; document.title = title; try { window.print(); } catch (e) { toast('인쇄를 시작하지 못했습니다.'); } setTimeout(() => { const x = document.getElementById('pjt-print-area'); if (x) x.remove(); document.title = ot; }, 500);
+  };
+  const defaultSync = async (d) => { const call = httpsCallable(functions, 'edocAct'); return call({ action: 'syncDaily', pjtId: P.registryId, date: st.date, title: st.label + ' 공사일보 (' + dateText(st.date) + ')', pjtName: st.label, todayWork: d.content || '', tomorrowWork: d.tomorrow || '', issue: d.note || '' }); };
+  const save = async () => {
+    readForm(); if (st.busy) return; st.busy = true;
+    try {
+      const doc0 = toStored(st.form, st.ctx); await setDoc(doc(db, P.reports, st.date), Object.assign({}, doc0, { updatedAt: serverTimestamp(), savedAt: serverTimestamp() }), { merge: true }); st.dates.add(st.date); st.exists = true; st.form.legacy = false; toast('저장했습니다.');
+      if (P.kind === 'light') { try { await (ctx && ctx.syncDaily ? ctx.syncDaily(doc0) : defaultSync(doc0)); } catch (e) { console.warn('[공사일보→업무일지 연동 실패]', (e && e.message) || e); } }   // 업무일지 연동 실패는 일보 저장을 막지 않는다
+    } catch (e) { toast('저장 실패: ' + ((e && (e.code || e.message)) || '')); }
+    st.busy = false; paint();
+  };
+  root.onclick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return; let el;
+    if ((el = t.closest('[data-rp-day]'))) { await go(el.getAttribute('data-rp-day')); return; }
+    if ((el = t.closest('[data-rp-nav]'))) { const v = el.getAttribute('data-rp-nav'); if (v === 'today') { await go(st.today); return; } let { y, m } = st.month; m += Number(v); if (m > 11) { m = 0; y++; } if (m < 0) { m = 11; y--; } st.month = { y, m }; paint(); return; }
+    if ((el = t.closest('[data-rp-hc]')) && st.manage) { readForm(); st.form.headcount = Math.max(0, (parseInt(st.form.headcount, 10) || 0) + Number(el.getAttribute('data-rp-hc'))); paint(); return; }
+    if ((el = t.closest('[data-rp-rmeq]')) && st.manage) { readForm(); st.form.equip.splice(Number(el.getAttribute('data-rp-rmeq')), 1); paint(); return; }
+    if (!(el = t.closest('[data-rp-act]'))) return; const act = el.getAttribute('data-rp-act');
+    if (act === 'closeprev') { st.preview = false; paint(); return; } if (act === 'preview') { readForm(); st.preview = true; paint(); return; } if (act === 'print') { readForm(); printDoc(docHtml(st.form, st.ctx), docTitle(st.date, st.label)); return; }
+    if (act === 'upgrade' && st.manage) { st.form.legacy = false; paint(); return; } if (act === 'save' && st.manage) { await save(); return; }
+    if (act === 'addeq' && st.manage) { readForm(); const inp = body.querySelector('[data-rp-eqin]'); const v = inp ? inp.value.trim() : ''; if (v && st.form.equip.indexOf(v) === -1) st.form.equip.push(v); paint(); return; }
+    if (act === 'att' && st.manage) { readForm(); const a = await attSummary(st.date); st.form.headcount = a.headcount; st.form.manday = a.manday; st.form.mandayTotal = a.mandayTotal; toast('출역·공수에서 불러왔습니다(' + a.headcount + '명, 합계 ' + a.mandayTotal + '공수).'); paint(); return; }
+    if (act === 'auto' && st.manage) { readForm(); const text = autoContent(st.structure, await newChecks(st.date)); if (!text) { toast('이 날짜에 체크된 공정 항목이 없습니다.'); return; } if (st.form.content.trim()) { const ok = await confirmDialog({ title: '자동 채우기', body: '금일 작업에 쓴 내용을 공정 체크 내용으로 바꿉니다. 바꿀까요?', confirmLabel: '바꾸기' }); if (!ok.ok) return; } st.form.content = text; paint(); }
+  };
+  root.onchange = (ev) => { const t = ev.target; if (!(t instanceof Element) || !st.manage) return; if (t.hasAttribute('data-rp-eqsel')) { const v = t.value; if (v) { readForm(); if (st.form.equip.indexOf(v) === -1) st.form.equip.push(v); paint(); } } };
+  root.oninput = (ev) => { const t = ev.target; if (!(t instanceof Element) || t.getAttribute('data-rp-f') !== 'manday') return; const tot = body.querySelector('[data-rp-total]'); const hc = body.querySelector('[data-rp-hc-val]'); if (tot && hc) tot.textContent = totalOf(parseInt(hc.textContent, 10) || 0, parseFloat(t.value) || 0).toFixed(1); };
+  root.onkeydown = (ev) => { const t = ev.target; if (ev.key === 'Enter' && t instanceof Element && t.hasAttribute('data-rp-eqin')) { ev.preventDefault(); const b = body.querySelector('[data-rp-act="addeq"]'); if (b) b.click(); } };
+}

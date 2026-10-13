@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261013zp';
-import { ACTION_LABEL, ROLE_LABEL, KIND_LABEL, RESULT_LABEL, kstText } from './accesslog-logic.js?v=20261013zp';
+import { esc } from '../../core/ui.js?v=20261013zq';
+import { ACTION_LABEL, ROLE_LABEL, KIND_LABEL, RESULT_LABEL, kstText } from './accesslog-logic.js?v=20261013zq';
 
 export function accessLogHtml(st) {
   const s = st.sum; const chk = st.check;

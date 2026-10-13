@@ -1,0 +1,43 @@
+import { esc } from '../../core/ui.js?v=20261013zq';
+import { holidayName } from '../../shared/holidays.js?v=20261013zq';
+import { monthGrid, dowOf } from './schedule.js?v=20261013zq';
+import { SUGGEST_EQUIPS, docHtml, dateText, totalOf } from './report.js?v=20261013zq';
+const DOW = ['일', '월', '화', '수', '목', '금', '토'];
+const hrs = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')), mins = ['00', '10', '20', '30', '40', '50'];
+const split = (t) => { const [h, m] = String(t || '').split(':'); return t ? { h: (h || '00').padStart(2, '0'), m: String(Math.floor((parseInt(m, 10) || 0) / 10) * 10).padStart(2, '0') } : { h: '', m: '' }; };
+const tsel = (attr, val, opts, suffix) => '<select class="jh-select jh-pjt__tsel" ' + attr + '><option value="">--</option>' + opts.map((o) => '<option value="' + o + '"' + (o === val ? ' selected' : '') + '>' + o + suffix + '</option>').join('') + '</select>';
+const offKind = (k) => (holidayName(k) || dowOf(k) === 0 ? 'red' : dowOf(k) === 6 ? 'sat' : '');
+function calHtml(st) {
+  const { y, m } = st.month; const weeks = monthGrid(y, m);
+  const head = DOW.map((d, i) => '<div class="jh-pjt__calh" data-off="' + (i === 0 ? 'red' : i === 6 ? 'sat' : '') + '">' + d + '</div>').join('');
+  const cells = weeks.flat().map((k) => { if (!k) return '<div class="jh-pjt__calc" data-empty="1"></div>'; const has = st.dates.has(k); const hn = holidayName(k);
+    return '<button type="button" class="jh-pjt__calc" data-rp-day="' + k + '" data-sel="' + (k === st.date) + '" data-today="' + (k === st.today) + '" data-off="' + offKind(k) + '"><span class="jh-pjt__calnum">' + Number(k.slice(8)) + '</span>' + (hn ? '<span class="jh-pjt__calhol">' + esc(hn) + '</span>' : '') + '<span class="jh-pjt__dots">' + (has ? '<span class="jh-pjt__dot" style="background:#16A34A"></span>' : '') + '</span></button>'; }).join('');
+  return '<section class="jh-card"><div class="jh-panel__head"><h3>' + y + '년 ' + (m + 1) + '월</h3><span class="jh-pjt__tools"><button type="button" class="jh-btn" data-variant="ghost" data-rp-nav="-1" aria-label="이전 달">‹</button><button type="button" class="jh-btn" data-variant="ghost" data-rp-nav="1" aria-label="다음 달">›</button><button type="button" class="jh-btn" data-variant="secondary" data-rp-nav="today">오늘</button></span></div><div class="jh-pjt__pad"><div class="jh-pjt__calgrid">' + head + cells + '</div><div class="jh-field__hint"><span class="jh-pjt__dot" style="background:#16A34A;display:inline-block"></span> 일보가 작성된 날</div></div></section>';
+}
+function legacyView(st) {
+  const f = st.form; return '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(dateText(st.date)) + ' 공사일보 <span class="jh-pjt__chip" data-tone="gray">옛 양식</span></h3></div><div class="jh-pjt__pad"><div class="jh-pjt__doc">' + docHtml(f, st.ctx) + '</div><div class="jh-field__hint">구포털 양식으로 작성된 일보입니다. 조회·인쇄는 그대로 되고, 고치려면 새 양식으로 편집하세요(내용은 이어지고, 저장하면 새 양식으로 바뀝니다).</div><div class="jh-pjt__bar"><span></span><span class="jh-plan__line"><button type="button" class="jh-btn" data-variant="secondary" data-rp-act="print">PDF·인쇄</button>' + (st.manage ? '<button type="button" class="jh-btn" data-variant="primary" data-rp-act="upgrade">새 양식으로 편집</button>' : '') + '</span></div></div></section>';
+}
+function formHtml(st) {
+  const f = st.form; const ro = !st.manage; const dis = ro ? ' disabled' : ''; const ci = split(f.checkIn), co = split(f.checkOut);
+  const row = (label, opt, inner) => '<div class="jh-pjt__frow"><label class="jh-pjt__flabel">' + label + (opt ? ' <span class="jh-field__hint">' + opt + '</span>' : '') + '</label>' + inner + '</div>';
+  const chips = f.equip.map((e, i) => '<span class="jh-pjt__itchip">' + esc(e) + (ro ? '' : '<button type="button" data-rp-rmeq="' + i + '" aria-label="' + esc(e) + ' 삭제">×</button>') + '</span>').join('') || '<span class="jh-field__hint">장비를 추가하세요</span>';
+  const sugg = [...new Set(SUGGEST_EQUIPS.concat(st.equipHistory || []))].filter((e) => f.equip.indexOf(e) === -1); const pick = '<select class="jh-select" data-rp-eqsel' + dis + '><option value="">+ 장비 선택</option>' + sugg.map((e) => '<option value="' + esc(e) + '">' + esc(e) + '</option>').join('') + '</select>';
+  const total = totalOf(f.headcount, f.manday);
+  return '<section class="jh-card jh-pjt__sform"><div class="jh-panel__head"><h3>' + esc(dateText(st.date)) + ' 공사일보' + (st.exists ? '' : ' <span class="jh-pjt__chip" data-tone="amber">작성 전</span>') + '</h3></div><div class="jh-pjt__pad">'
+    + row('작성자', '', '<input class="jh-input" data-rp-f="author" value="' + esc(f.author) + '" placeholder="본인 이름"' + dis + '>')
+    + row('근무시간', '(선택)', '<div class="jh-pjt__bar"><span class="jh-plan__line">' + tsel('data-rp-f="ciH"' + dis, ci.h, hrs, '시') + tsel('data-rp-f="ciM"' + dis, ci.m, mins, '분') + '<span>~</span>' + tsel('data-rp-f="coH"' + dis, co.h, hrs, '시') + tsel('data-rp-f="coM"' + dis, co.m, mins, '분') + '</span></div>')
+    + row('금일 작업', '', '<textarea class="jh-input" rows="5" data-rp-f="content" placeholder="금일 작업 내용"' + dis + '>' + esc(f.content) + '</textarea>' + (ro ? '' : '<div class="jh-pjt__bar"><span class="jh-field__hint" data-rp-autohint></span><button type="button" class="jh-btn" data-variant="secondary" data-rp-act="auto">🔄 공정 체크로 자동 채우기</button></div>'))
+    + row('명일 예정', '', '<textarea class="jh-input" rows="3" data-rp-f="tomorrow" placeholder="명일 작업 예정"' + dis + '>' + esc(f.tomorrow) + '</textarea>')
+    + row('투입 인원 · 공수', '(출역·공수 탭 값으로 자동 채움 · 고칠 수 있음)', '<div class="jh-pjt__bar"><span class="jh-plan__line"><button type="button" class="jh-btn" data-variant="ghost" data-rp-hc="-1"' + dis + ' aria-label="인원 감소">−</button><strong data-rp-hc-val>' + (parseInt(f.headcount, 10) || 0) + '</strong><span>명</span><button type="button" class="jh-btn" data-variant="ghost" data-rp-hc="1"' + dis + ' aria-label="인원 증가">＋</button></span><span class="jh-plan__line"><span class="jh-field__hint">1인당</span><input class="jh-input jh-pjt__mdin" inputmode="decimal" data-rp-f="manday" value="' + (f.manday ? Number(f.manday).toFixed(1) : '') + '" placeholder="0.0"' + dis + '><span class="jh-field__hint">공수 → 합계</span><strong data-rp-total>' + total.toFixed(1) + '</strong></span><button type="button" class="jh-btn" data-variant="ghost" data-rp-act="att"' + (ro ? ' disabled' : '') + '>출역·공수에서 다시 불러오기</button></div>')
+    + row('사용 장비', '', '<div class="jh-pjt__chips">' + chips + '</div>' + (ro ? '' : '<div class="jh-pjt__bar">' + pick + '<span class="jh-plan__line"><input class="jh-input" data-rp-eqin placeholder="직접 입력 (예: 지게차 (00가0000))"><button type="button" class="jh-btn" data-variant="secondary" data-rp-act="addeq">추가</button></span></div>'))
+    + row('특이사항', '', '<textarea class="jh-input" rows="3" data-rp-f="note" placeholder="안전·품질·민원 등 특이사항"' + dis + '>' + esc(f.note) + '</textarea>')
+    + '<div class="jh-pjt__bar"><button type="button" class="jh-btn" data-variant="secondary" data-rp-act="preview">미리보기</button><span class="jh-plan__line"><button type="button" class="jh-btn" data-variant="secondary" data-rp-act="print">PDF·인쇄</button>' + (st.manage ? '<button type="button" class="jh-btn" data-variant="primary" data-rp-act="save">저장</button>' : '') + '</span></div></div></section>';
+}
+/** 공사일보 탭: 왼쪽 큰 달력(작성한 날 표시, 스크롤해도 고정), 오른쪽 그날의 일보(작성 폼 / 옛 양식 조회). 모든 프로젝트 같은 화면 */
+export function reportHtml(st) {
+  if (!st.proj) return '<div class="jh-pjt"><div class="jh-alert" data-tone="warn" role="status">이 프로젝트를 열 수 없습니다. 위 메뉴에서 프로젝트를 고른 뒤 "공사일보" 탭을 여세요.</div></div>';
+  const head = '<div class="jh-pjt__proj"><span class="jh-pjt__projlabel">🏗️ ' + esc(st.label) + '</span><span class="jh-field__hint">공사일보</span></div>';
+  if (!st.ready) return '<div class="jh-pjt">' + head + '<div class="jh-empty">불러오는 중...</div></div>';
+  const right = st.preview ? '<section class="jh-card"><div class="jh-panel__head"><h3>미리보기</h3><button type="button" class="jh-btn" data-variant="ghost" data-rp-act="closeprev">닫기</button></div><div class="jh-pjt__pad"><div class="jh-pjt__doc">' + docHtml(st.form, st.ctx) + '</div><div class="jh-pjt__bar"><span></span><button type="button" class="jh-btn" data-variant="primary" data-rp-act="print">PDF·인쇄</button></div></div></section>' : (st.form.legacy ? legacyView(st) : formHtml(st));
+  return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide">' + head + (st.readonly ? '<div class="jh-field__hint">조회만 할 수 있습니다(작성·수정은 관리자·PJT 담당 계정).</div>' : '') + '<div class="jh-pjt__split jh-pjt__splitcal"><div class="jh-pjt__calcol">' + calHtml(st) + '</div><div>' + right + '</div></div></div></div>';
+}

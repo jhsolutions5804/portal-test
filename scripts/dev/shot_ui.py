@@ -37,6 +37,7 @@ D={
  'progress_checks_2026-07-01':{'fiz':{'checks':{'801_반입':True,'802_반입':True,'801_입고검사':True}}},'progress_checks_2026-07-02':{'fiz':{'checks':{'803_반입':True,'801_내진스토퍼':True}},'c4':{'checks':{'302A_반입':True}}},
  'zone_layouts':{'fiz':{'points':{'801':{'x':0.10,'y':0.30,'w':0.014,'h':0.12},'802':{'x':0.16,'y':0.30,'w':0.014,'h':0.12},'803':{'x':0.22,'y':0.30,'w':0.014,'h':0.12},'804':{'x':0.28,'y':0.30,'w':0.014,'h':0.12}}}},
  'user_schedules':{'s1':{'text':'안전팀장 회의','tag':'meeting','tagLabel':'회의','sdate':'2026-09-02','edate':'2026-09-02','stime':'13:00','etime':'14:00','place':'대회의실','reg':'김짜장'},'s2':{'text':'FCU 반입 (4층 J57열)','tag':'in','tagLabel':'반입','sdate':'2026-09-02','edate':'2026-09-02','stime':'19:00','etime':'05:00','place':'4층','att':'서민우 팀','reg':'이대리'},'s3':{'text':'현장 안전교육','tag':'edu','tagLabel':'교육','sdate':'2026-09-08','edate':'2026-09-09','stime':'09:00','etime':'12:00'},'s4':{'text':'서류 제출','tag':'admin','tagLabel':'기타','sdate':'2026-09-02','edate':'2026-09-02','isTodo':True,'done':False}},
+ 'daily_report_docs':{'2026-09-03':{'site':'P4 Ph2 (FAB)','date':'2026. 9. 3 (목)','author':'김짜장','today':'[3F FIZ] 반입 2개 (801~802호기)','tomorrow':'입고검사','count':'7','equip':'지게차 (004나6452)','remarks':'특이 없음','dateKey':'2026-09-03'}},
  'general_leases':{'g1':{'name':'원희캐슬 B111','kind':'office','deposit':10000000,'rent':800000,'status':'active'}},'general_vehicles':{'v1':{'name':'스타리아','plate':'12가3456','status':'active'}},
 }
 FS = '''
