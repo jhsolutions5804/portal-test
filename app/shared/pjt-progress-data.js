@@ -4,6 +4,7 @@
 export const PROGRESS_PROFILES = {
   'p4ph2': {
     label: 'P4 Ph2 (FAB)',
+    client: '귀뚜라미 범양냉방', pptTitle: 'FCU 설치',   // 공정표 PPT 표지 기본 문구
     progCol: 'progress_checks_',
     mandayCol: 'worker_manday',
     checkCols: ['반입','입고검사','내진스토퍼','다이크','실링','동판','결선','시공검측'],
@@ -19,6 +20,7 @@ export const PROGRESS_PROFILES = {
   },
   'p4ph4': {
     label: 'P4 Ph4 (SUP)',
+    client: '귀뚜라미 범양냉방', pptTitle: 'EHU 설치',
     progCol: 'ph4_progress_',
     mandayCol: 'ph4_manday',
     checkCols: ['반입','입고검사','내진스토퍼','시공검측'],

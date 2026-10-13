@@ -1,19 +1,20 @@
 /* PJT 관리(통합 새 모듈) — 설계서 docs/pjt-design.md. Ph2·Ph4·경량PJT를 한 모듈로 합친다.
  * 지금 새 화면은 "출역·공수"(근태·공수 탭) 하나다 — 구포털 PJT 메뉴에서 프로젝트를 고르면 그 아래 "👷 출역·공수 (새)" 탭으로 열린다(legacy/frame.js 의 nativeSubs, modules/index.js hostNative). 프로젝트는 화면 안에서 고르지 않는다. 나머지 탭은 만들면서 구포털 항목을 하나씩 교체한다.
  * 저장 형식은 구포털 그대로(출역 { checks }, 공수 { md }, 날짜별 문서) — 영업기획의 공수 연동·팀별 노무비가 읽는다. 경로는 adapter.js, 규칙은 attendance.js. */
-import { db, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zk';
-import { esc, toast } from '../../core/ui.js?v=20261013zk';
-import { confirmDialog } from '../../core/dialog.js?v=20261013zk';
-import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zk';
-import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zk';
-import { visibleProjects } from './projects.js?v=20261013zk';
-import { loadHolidays } from '../../shared/holidays.js?v=20261013zk';
-import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zk';
-import { normalizeDayFixed, normalizeDayLight, stateAt, lightState, cellState, toggledDayChecks, lightItemStages, lightProgress, daysThrough, PROGRESS_START, keyOf, stagesOf } from './progress.js?v=20261013zk';
-import { structureFor, planSave, makeItemIdFactory } from './structure-store.js?v=20261013zk';
-import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261013zk';
-import { progressHtml } from './progress-view.js?v=20261013zk';
-import { diffText } from './structure-view.js?v=20261013zk';
+import { db, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zl';
+import { esc, toast } from '../../core/ui.js?v=20261013zl';
+import { confirmDialog } from '../../core/dialog.js?v=20261013zl';
+import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zl';
+import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zl';
+import { visibleProjects } from './projects.js?v=20261013zl';
+import { loadHolidays } from '../../shared/holidays.js?v=20261013zl';
+import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zl';
+import { normalizeDayFixed, normalizeDayLight, stateAt, lightState, cellState, toggledDayChecks, lightItemStages, lightProgress, daysThrough, PROGRESS_START, keyOf, stagesOf } from './progress.js?v=20261013zl';
+import { structureFor, planSave, makeItemIdFactory } from './structure-store.js?v=20261013zl';
+import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261013zl';
+import { progressHtml } from './progress-view.js?v=20261013zl';
+import { diffText } from './structure-view.js?v=20261013zl';
+import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261013zl';
 
 export const manifest = { id: 'pjt', order: 40, title: 'PJT 관리', icon: '🏗️', defaultHash: '#/pjt/attend', perm: (me) => !!me && me.admin === true };
 export async function mount(root) { root.innerHTML = '<div class="jh-empty">PJT 화면은 구포털 틀 안의 메뉴로 열립니다.</div>'; }
@@ -194,14 +195,26 @@ export async function mountProgress(root, route, ctx) {
   };
   const editorChange = (ev) => { const t = ev.target; if (!(t instanceof Element) || !st.editor) return; const E = st.editor;
     if (t.hasAttribute('data-st-inst')) { apply(toggleInstall(E.S, t.getAttribute('data-st-inst'), t.checked)); keepFocus(); return; }
+    if (t.hasAttribute('data-st-ppt')) { apply(setPpt(E.S, t.getAttribute('data-st-ppt'), t.value)); keepFocus(); return; }
     if (t.hasAttribute('data-st-gname')) { if (!apply(renameGroup(E.S, t.getAttribute('data-st-gname'), t.value))) keepFocus(); else keepFocus(); } };
+  // 공정표 PPT: 지금 보고 있는 날짜 기준. 날짜 문서가 없는 옛 체크(경량 품목의 현재 상태)는 "기준일에 새로 체크한 것"으로 세지 않도록, 전일 대비는 날짜별 문서의 변화만 쓴다
+  const makePpt = async () => {
+    if (st.busy) return; st.busy = true; toast('공정표 PPT를 만드는 중...');
+    try {
+      const Pptx = await loadPptxGen(); const S = st.structure; const states = {};
+      S.groups.forEach((g) => { const cur = st.states[g.id] || {}; const docs = zones ? cur : stateAt(st.days, st.date, '', 'light'); states[g.id] = { merged: cur.merged || {}, todayOnly: docs.todayOnly || {}, pastOnly: docs.pastOnly || {} }; });
+      const pres = new Pptx(); const meta = { client: (S.ppt && S.ppt.client) || '', label: st.label, title: (S.ppt && S.ppt.title) || '', unit: S.unit || '대', isToday: st.isToday };
+      const r = buildDeck(pres, meta, S, states, st.date); await pres.writeFile({ fileName: r.fileName }); toast('"' + r.fileName + '" 다운로드를 시작했습니다.');
+    } catch (e) { toast('PPT를 만들지 못했습니다: ' + ((e && e.message) || '')); }
+    st.busy = false;
+  };
   root.onclick = async (ev) => {
     if (st.editor) { await editorClick(ev); return; }
     const t = ev.target; if (!(t instanceof Element)) return;
     const ck = t.closest('[data-pg-ck]'); if (ck) { const [g, it, col] = ck.getAttribute('data-pg-ck').split('|'); await toggle(g, it, col); return; }
     const op = t.closest('[data-pg-open]'); if (op) { const id = op.getAttribute('data-pg-open'); if (st.open.has(id)) st.open.delete(id); else st.open.add(id); paint(); return; }
     const a = t.closest('[data-pg-act]'); if (!a) return; const act = a.getAttribute('data-pg-act');
-    if (act === 'prev') await goDate(shiftDate(st.date, -1)); else if (act === 'next') await goDate(shiftDate(st.date, 1)); else if (act === 'today') await goDate(appToday()); else if (act === 'edit') { st.editMode = !st.editMode; paint(); } else if (act === 'structure') openEditor();
+    if (act === 'prev') await goDate(shiftDate(st.date, -1)); else if (act === 'next') await goDate(shiftDate(st.date, 1)); else if (act === 'today') await goDate(appToday()); else if (act === 'edit') { st.editMode = !st.editMode; paint(); } else if (act === 'structure') openEditor(); else if (act === 'ppt') await makePpt();
   };
   root.onchange = async (ev) => { if (st.editor) { editorChange(ev); return; } const t = ev.target; if (t instanceof Element && t.hasAttribute('data-pg-date')) await goDate(t.value); };
 }

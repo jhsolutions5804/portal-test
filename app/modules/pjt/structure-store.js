@@ -1,8 +1,8 @@
 /* PJT 공정 구조의 읽기·쓰기 계획(순수) — 구조 데이터의 모양은 모든 프로젝트가 같고(shared/pjt-structure.js), 어디에 어떻게 쓰는지는 이 파일이 정한다.
  * 단일 출처: 프로젝트 문서의 progressStructure 필드(고정 프로젝트 = pjt_settings/<키>, 경량 = pjt_registry/<id>). 아직 없으면 구포털의 옛 구조(코드 상수 또는 경량의 stageList·품목 문서)에서 만든다.
  * 옛 화면 호환(경량): 단계 목록(stageList)과 품목 문서(이름·순서·섹터)도 함께 쓴다 — 기존 화면·공사일보가 계속 읽는다. 고정 프로젝트의 구포털 화면은 코드 상수를 쓰므로 거기에는 쓸 수 없다(영업기획은 이 구조를 읽는다). */
-import { PROGRESS_PROFILES } from '../../shared/pjt-progress-data.js?v=20261013zk';
-import { normalizeStructure, structureFromProfile } from '../../shared/pjt-structure.js?v=20261013zk';
+import { PROGRESS_PROFILES } from '../../shared/pjt-progress-data.js?v=20261013zl';
+import { normalizeStructure, structureFromProfile } from '../../shared/pjt-structure.js?v=20261013zl';
 const clone = (o) => JSON.parse(JSON.stringify(o));
 /** 경량: 구조 데이터에 옛 화면에서 바뀐 것을 맞춘다 — 구조에 없는 품목 문서는 문서에 적힌 섹터(없으면 첫 섹터)에 더하고, 문서가 지워진 품목은 빼고, 옛 단계 목록(stageList)에서 늘거나 줄어든 단계를 반영 */
 export function reconcileLight(S, itemDocs, stageList) {
@@ -20,7 +20,7 @@ export function structureFor(key, projDoc, itemDocs) {
   if (d.progressStructure) return { S: reconcileLight(normalizeStructure(d.progressStructure), itemDocs, d.stageList), source: 'data' };
   const groups = (d.progressGroups && d.progressGroups.length ? d.progressGroups : [{ id: 'g1', name: '전체' }]).map((g) => ({ id: String(g.id), name: g.name || '전체', kw: [], items: [] }));
   (itemDocs || []).slice().sort((a, b) => (a.order == null ? 9999 : a.order) - (b.order == null ? 9999 : b.order)).forEach((it) => { const g = groups.find((x) => x.id === it.group) || groups[0]; g.items.push({ id: it.id, name: it.name || it.id }); });
-  return { S: normalizeStructure({ stages: d.stageList || [], installCols: d.installCols || [], groups }), source: 'legacy' };
+  return { S: normalizeStructure({ ppt: { client: d.client || '', title: '품목' }, stages: d.stageList || [], installCols: d.installCols || [], groups }), source: 'legacy' };
 }
 /** 저장 계획(실행은 화면 쪽): 쓰기 목록 [{ op: 'set'|'update'|'delete', col, id, data?, merge? }]. 'TS' 는 서버 시각 자리표시.
  *  고정 프로젝트: 설정 문서에 구조만. 경량: 품목 문서(이름·순서·섹터)와 단계 목록을 옛 화면 호환으로 함께 쓴 뒤 마지막에 구조 */
