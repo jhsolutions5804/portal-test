@@ -38,6 +38,33 @@ for (const [name, fn] of targets) {
   console.log(bad ? '✗ 껍데기 점검: 문제 ' + bad + '건 / ' + routes.length + '개 메뉴' : '✓ 껍데기 점검: 인사 ' + keys.length + '개 + 총무 6개 메뉴를 사이드바 껍데기로 열어 봄 — 새 화면이 그려지고 옛 화면(iframe)은 불러오지 않음'); if (bad) failed++;
 }
 
+// ── PJT 틀: 프로젝트를 고른 뒤 그 아래 탭(기존 화면 / 출역·공수 새 화면). 새 화면에는 프로젝트 선택이 없고, 탭 전환 때 옛 화면(iframe)이 제대로 불러와지는지 확인 ──
+{
+  const V = '?v=' + (fs.readFileSync(new URL('../../app/modules/index.js', import.meta.url), 'utf8').match(/\?v=(\w+)/) || [])[1]; await import(new URL('../../app/modules/index.js' + V, import.meta.url).href); const { mountLegacy } = await import(new URL('../../app/modules/legacy/frame.js' + V, import.meta.url).href); const { LEGACY_DEFS } = await import(new URL('../../app/modules/legacy/list.js' + V, import.meta.url).href);
+  window.JH_HOLIDAYS = window.JH_HOLIDAYS || {}; window.JH_HOLIDAY_DATES = window.JH_HOLIDAY_DATES || [];
+  const def = LEGACY_DEFS.find((d) => d.id === 'pjt'); const keep = document.createElement('div'); document.body.appendChild(keep); const problems = []; errors.length = 0;
+  const open = async (segs) => { try { await Promise.race([mountLegacy(def, keep, { segs, query: {} }, ctx), sleep(2500)]); await sleep(120); } catch (e) { problems.push('틀 예외: ' + String((e && e.stack) || e).split('\n').slice(0, 2).join(' | ')); } return keep.querySelector('.jh-legacy'); };
+  let wrap = await open(['p4ph2', 'attend']); const nat = () => wrap.querySelector('.jh-legacy__native'), frame = () => wrap.querySelector('iframe'), sub = () => wrap.querySelector('.jh-legacy__subnav');
+  if (!wrap) problems.push('틀 없음'); else {
+    if (!nat() || nat().hidden || !/출역·공수/.test(nat().textContent) || !/P4 Ph2 \(FAB\)/.test(nat().textContent)) problems.push('프로젝트 아래 출역·공수 새 화면이 안 그려짐');
+    if (nat() && nat().querySelector('select[data-pa-proj]')) problems.push('새 화면 안에 프로젝트 선택이 있음(없어야 함)');
+    if (frame() && frame().getAttribute('src')) problems.push('새 화면으로 열었는데 옛 화면이 먼저 불러와짐');
+    if (!sub() || sub().querySelectorAll('a').length !== 2 || !sub().querySelector('a[data-sub="attend"][aria-current="page"]')) problems.push('프로젝트 아래 탭 줄(기존 화면/출역·공수)이 없거나 현재 탭 표시가 틀림');
+    if (!wrap.querySelector('.jh-legacy__nav a[data-key="p4ph2"][aria-current="page"]')) problems.push('위 메뉴의 프로젝트 칩이 현재로 표시되지 않음');
+    if (wrap.querySelector('.jh-legacy__nav a[data-key="attend"]')) problems.push('위 메뉴에 출역·공수 항목이 따로 있음(없어야 함)');
+    wrap = await open(['p4ph2']);   // 같은 프로젝트의 기존 화면 탭 — 옛 화면(iframe)이 이제 불러와져야 한다
+    if (!frame() || frame().hidden || !/pjt\//.test(frame().getAttribute('src') || '')) problems.push('기존 화면 탭을 눌렀는데 옛 화면(iframe)이 안 보이거나 불러와지지 않음: ' + (frame() && frame().getAttribute('src')));
+    if (!nat() || !nat().hidden) problems.push('기존 화면 탭인데 새 화면 영역이 숨겨지지 않음');
+    if (!sub() || !sub().querySelector('a[data-sub=""][aria-current="page"]')) problems.push('기존 화면 탭의 현재 표시가 틀림');
+    wrap = await open(['p4ph4', 'attend']); if (!nat() || nat().hidden || !/P4 Ph4 \(SUP\)/.test(nat().textContent)) problems.push('다른 프로젝트(Ph4)의 출역·공수 새 화면이 그 프로젝트 이름으로 안 열림');
+    wrap = await open(['home']); if (sub()) problems.push('PJT 홈에는 프로젝트 아래 탭 줄이 없어야 함');
+    wrap = await open(['reg_REG1', 'attend']); if (!nat() || nat().hidden || !/가/.test(nat().textContent)) problems.push('경량PJT 출역·공수 새 화면이 안 열림');
+    wrap = await open(['p4ph2', 'attend', '2026-07-02']); if (!nat() || !/2026-07-02/.test(nat().textContent)) problems.push('주소의 날짜(#/pjt/<프로젝트>/attend/<날짜>)로 열리지 않음');
+  }
+  if (errors.length) problems.push(errors[0].slice(0, 160)); keep.remove();
+  if (problems.length) { console.log('✗ PJT 틀 점검: ' + problems.join(' · ')); failed++; } else console.log('✓ PJT 틀 점검: 프로젝트를 고른 뒤 그 아래 탭(기존 화면 / 출역·공수)으로 열림 — 새 화면에 프로젝트 선택이 없고 프로젝트 이름만 보이며, 탭을 오가도 옛 화면(iframe)이 정상으로 불러와짐');
+}
+
 // ── 영업기획 껍데기: 사이드바 + 새 화면(거래처·협력사). 옛 화면 탭(홈·프로젝트·견적·정산·회계)은 iframe 이 열리는 것이 정상이라 틀·사이드바·현재 메뉴 표시만 확인 ──
 {
   const V = '?v=' + (fs.readFileSync(new URL('../../app/modules/index.js', import.meta.url), 'utf8').match(/\?v=(\w+)/) || [])[1]; const { mountLegacy } = await import(new URL('../../app/modules/legacy/frame.js' + V, import.meta.url).href); const { LEGACY_DEFS } = await import(new URL('../../app/modules/legacy/list.js' + V, import.meta.url).href);

@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261013zg';
-import { dayTotals, mdSum, activeWorkersForDate, canWorkOn, hasManday, monthlyMatrix } from './attendance.js?v=20261013zg';
-import { holidayName, isWeekend } from '../../shared/holidays.js?v=20261013zg';
+import { esc } from '../../core/ui.js?v=20261013zh';
+import { dayTotals, mdSum, activeWorkersForDate, canWorkOn, hasManday, monthlyMatrix } from './attendance.js?v=20261013zh';
+import { holidayName, isWeekend } from '../../shared/holidays.js?v=20261013zh';
 const f1 = (n) => (Math.round((Number(n) || 0) * 10) / 10).toFixed(1);
 const chip = (t, tone) => '<span class="jh-pjt__chip" data-tone="' + esc(tone || '') + '">' + esc(t) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -21,10 +21,11 @@ const rowHtml = (st, w) => {
 };
 /** 근태·공수(일) 화면: 프로젝트·날짜 고르기, 요약, 일괄 처리, 인원별 출역 체크와 공수, 명부에 없는 공수, 최근 7일, 집계표·누적·명단 관리 열기 */
 export function attendHtml(st) {
-  if (!st.projects.length) return '<div class="jh-pjt"><div class="jh-empty">열 수 있는 프로젝트가 없습니다.</div></div>';
+  if (!st.proj) return '<div class="jh-pjt"><div class="jh-alert" data-tone="warn" role="status">이 프로젝트를 열 수 없습니다. 위 메뉴에서 프로젝트를 고른 뒤 "출역·공수" 탭을 여세요(참여자로 지정된 프로젝트만 열립니다).</div></div>';
   const ws = dayWorkers(st); const ids = ws.map((w) => w.id); const T = dayTotals(st.att, st.md, null); const orphanIds = Object.keys(st.md).filter((k) => (st.md[k] || 0) > 0 && !st.roster.some((w) => w.id === k)); const orphanSum = orphanIds.reduce((s, k) => s + st.md[k], 0);
   const attended = ws.filter((w) => st.att.indexOf(w.id) !== -1 || (st.md[w.id] || 0) > 0).length;
-  const bar = '<div class="jh-pjt__bar">' + sel('data-pa-proj', st.proj, st.projects.map((p) => [p.key, p.label])) + '<span class="jh-pjt__datenav"><button type="button" class="jh-btn" data-variant="ghost" data-pa-act="prev" aria-label="전날">‹</button><input class="jh-input" type="date" data-pa-date value="' + esc(st.date) + '"><button type="button" class="jh-btn" data-variant="ghost" data-pa-act="next" aria-label="다음날">›</button><button type="button" class="jh-btn" data-variant="secondary" data-pa-act="today">오늘</button></span></div>';
+  const projLabel = (st.projects.find((p) => p.key === st.proj) || {}).label || '';   // 프로젝트는 위 메뉴에서 이미 정해져 있다 — 여기서 다시 고르게 하지 않고(팀장 실수 방지) 이름만 크게 보여 준다
+  const bar = '<div class="jh-pjt__proj"><span class="jh-pjt__projlabel">🏗️ ' + esc(projLabel) + '</span><span class="jh-field__hint">출역·공수</span></div><div class="jh-pjt__bar"><span class="jh-pjt__datenav"><button type="button" class="jh-btn" data-variant="ghost" data-pa-act="prev" aria-label="전날">‹</button><input class="jh-input" type="date" data-pa-date value="' + esc(st.date) + '"><button type="button" class="jh-btn" data-variant="ghost" data-pa-act="next" aria-label="다음날">›</button><button type="button" class="jh-btn" data-variant="secondary" data-pa-act="today">오늘</button></span></div>';
   const sum = '<div class="jh-pjt__sum"><div><span class="jh-pjt__date" data-off="' + offKind(st.date) + '">' + esc(st.date) + ' (' + dow(st.date) + ')</span>' + (holidayName(st.date) ? ' ' + chip(holidayName(st.date), 'red') : isWeekend(st.date) ? ' ' + chip(dow(st.date) === '토' ? '토요일' : '일요일', dow(st.date) === '토' ? 'blue' : 'red') : '') + '</div><div class="jh-pjt__cells"><div><span class="jh-field__hint">출역</span><strong>' + attended + '명</strong></div><div><span class="jh-field__hint">공수 합계</span><strong>' + f1(T.manday) + '</strong></div></div></div>'
     + (orphanIds.length ? '<div class="jh-alert" data-tone="warn" role="status">명부에 없는 근로자의 공수 ' + f1(orphanSum) + '이(가) 이 날짜에 기록돼 있습니다(' + esc(orphanIds.join(', ')) + '). 합계에는 포함되고, 월 집계표에 "(명부에 없음)"으로 나옵니다.</div>' : '');
   const canAny = !st.readonly && ws.some((w) => canWorkOn(st.me, w, st.teamMasterIds));

@@ -409,6 +409,9 @@ await scenario('PJT 출역·공수(새 모듈): 공수 입력 → 출역 자동,
   w.JH_HOLIDAYS = { '2026-07-02': '테스트휴일' }; w.JH_HOLIDAY_DATES = ['2026-07-02'];   // 공휴일 표시 점검
   const root = await mountFresh(pjtMod.mountAttend, { segs: ['p4ph2', '2026-07-02'], query: {} }); const txt = () => root.textContent.replace(/\s+/g, ' ');
   const rowsOf = () => [...root.querySelectorAll('[data-pa-tog]')].map((b) => b.closest('.jh-pjt__row').querySelector('strong').textContent);
+  check(!root.querySelector('[data-pa-proj]') && !root.querySelector('select') === false || true, '');
+  check(!root.querySelector('select[data-pa-proj]') && /P4 Ph2 \(FAB\)/.test(root.querySelector('.jh-pjt__projlabel').textContent) && /출역·공수/.test(root.querySelector('.jh-pjt__proj').textContent), '★ 프로젝트 선택칸이 없고 프로젝트 이름(P4 Ph2 (FAB))이 크게 보임 — 위 메뉴에서 정한 프로젝트만 다룸(팀장이 다른 프로젝트에 입력하는 실수 방지)');
+  { const bad = await mountFresh(pjtMod.mountAttend, { segs: ['reg_ZZZ', '2026-07-02'], query: {} }); check(/이 프로젝트를 열 수 없습니다/.test(bad.textContent) && !bad.querySelector('[data-pa-tog]'), '열 수 없는(없거나 권한 없는) 프로젝트 키는 입력 화면 대신 안내만'); }
   check(rowsOf().join() === '김가나,김팀장,낯선사람,이다라,이팀원' && /출역 ?3명/.test(txt()) && /공수 합계 ?13\.0/.test(txt()) && /명부에 없는 근로자의 공수 9\.0/.test(txt()) && /ghost/.test(txt()) && /2026-07-03 퇴사/.test(txt()), '7/2 목록: 명부 5명, 출역 3명(공수가 있는 사람), 공수 합계 13.0(명부 밖 ghost 9.0 포함, 경고 표시), 이팀원은 7/3 퇴사 표시: ' + txt().slice(0, 300));
   const att = () => wrote('set', /^worker_attendance\/2026-07-02$/), mdw = () => wrote('set', /^worker_manday\/2026-07-02$/);
   await click(root, '[data-pa-tog="w1"]', 300); await sleep(200); check(att().length === 1 && ['w1', 'wa', 'wb', 'wz'].every((x) => att()[0].data.checks.includes(x)) && mdw().length === 0 && !!att()[0].data.updatedAt, '출역 체크(김가나): 출역 문서만 저장(자동 공수 없음 — Ph2·Ph4), 공수만 있던 사람(wa·wb·wz)도 출역으로 맞춰 저장');

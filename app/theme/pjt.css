@@ -53,3 +53,6 @@
 .jh-pjt__table th[data-off="sat"], .jh-pjt__table td[data-off="sat"] { color: var(--c-primary); background: var(--c-primary-weak); }
 .jh-pjt__table [data-cur="true"] { background: var(--c-primary-weak); }
 .jh-pjt__chip[data-tone="red"] { background: #fdecec; color: #b91c1c; } .jh-pjt__chip[data-tone="blue"] { background: var(--c-primary-weak); color: var(--c-primary); }
+
+.jh-pjt__proj { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-3); }
+.jh-pjt__projlabel { font-size: var(--fs-xl); font-weight: 700; color: var(--c-primary); }

@@ -1,5 +1,5 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261013zg';
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261013zg';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261013zh';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261013zh';
 /* 옛 모듈 어댑터의 목록과 규칙 — 화면(DOM)·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 옛 모듈이 새 모듈로 바뀌면 여기서 항목을 지우고 modules/index.js 의 새 모듈 목록으로 옮긴다. */
 export const PJT_FIXED = [
@@ -14,7 +14,7 @@ export const LEGACY_DEFS = [
     groups: [{ key: 'plan', label: '영업기획', home: { key: 'home', label: '홈', hint: '진행 프로젝트·유효 견적·청구·미수금 요약' }, clusters: [{ label: '프로젝트', keys: ['projects'] }, { label: '월말 마감', keys: ['closing'] }, { label: '영업', keys: ['comp', 'est', 'billing'] }, { label: '기획', keys: ['payout', 'teamlabor', 'partners', 'contracts'] }, { label: '이관 예정', keys: ['acct'] }] }],
     sections: [{ key: 'home', label: '홈', native: true }, { key: 'projects', label: '프로젝트', native: true }, { key: 'closing', label: '월말 마감', native: true }, { key: 'comp', label: '거래처', native: true }, { key: 'est', label: '견적', native: true }, { key: 'billing', label: '청구·수금', native: true }, { key: 'payout', label: '지급·정산', native: true }, { key: 'teamlabor', label: '팀별 노무비', native: true }, { key: 'partners', label: '협력사', native: true }, { key: 'contracts', label: '위탁 계약서', native: true }, { key: 'acct', label: '비용장부 대조', native: true }] },
   { id: 'hr', order: 20, title: '인사총무', icon: '👥', tabbed: true, ownNav: true, url: 'hr/', perm: isAdmin, nav: [{ key: 'home', label: '인사 홈' }], homeLabel: '인사', groups: [{ key: 'hr', label: '인사', home: { key: 'home', label: '인사 홈', hint: '요약 카드·인사 캘린더·서명/도장 관리. 세부 업무는 아래 메뉴에서 엽니다' }, clusters: [{ label: '채용', keys: ['applicants', 'postings'] }, { label: '입사', keys: ['offers', 'laborc', 'annualc', 'workers'] }, { label: '재직', keys: ['leaves', 'leavepromo', 'attendcal', 'overtimes', 'payslips', 'evals', 'interviews', 'salarytable'] }, { label: '변동', keys: ['change'] }, { label: '퇴사', keys: ['resignreqs', 'retire', 'dismissal'] }] }, { key: 'general', label: '총무', keys: ['general'], items: [['home', '개요'], ['lease', '임대'], ['vehicle', '차량'], ['drive', '운행일지'], ['asset', '자산·장비'], ['renewal', '갱신 일정']] }], sections: [{ key: 'home', label: '인사 홈', native: true }, { key: 'workers', label: '근로자 명부', native: true }, { key: 'leaves', label: '연차 현황', native: true }, { key: 'change', label: '인사 변동', native: true }, { key: 'postings', label: '공고 관리', native: true }, { key: 'applicants', label: '채용 지원자', native: true }, { key: 'offers', label: '연봉 제안서', native: true }, { key: 'annualc', label: '연봉계약서', native: true }, { key: 'laborc', label: '근로계약서', native: true }, { key: 'interviews', label: '근로자 면담', native: true }, { key: 'resignreqs', label: '휴직/퇴직 원서', native: true }, { key: 'retire', label: '퇴직금 정산', native: true }, { key: 'dismissal', label: '해고예고통지서', native: true }, { key: 'hrcal', label: '인사 캘린더', native: true }, { key: 'overtimes', label: '초과근로 현황', native: true }, { key: 'attendcal', label: '출퇴근 달력', native: true }, { key: 'leavepromo', label: '연차사용촉진', native: true }, { key: 'payslips', label: '급여명세서', native: true }, { key: 'evals', label: '인사평가', native: true }, { key: 'salarytable', label: '급여테이블', native: true }, { key: 'general', label: '총무', native: true }] },
-  { id: 'pjt', order: 40, mobileTab: { order: 2, label: 'PJT', icon: '🏗️' }, title: 'PJT 관리', icon: '🏗️', tabbed: false, dynamicNav: true, nativeKeys: ['attend'], perm: (me) => !!(me && (me.admin || (me.perms && me.perms.pjt) || (Array.isArray(me.pjtKeys) && me.pjtKeys.length > 0))) },   // PJT 권한자·관리자, 또는 어느 프로젝트든 참여자로 지정된 사람
+  { id: 'pjt', order: 40, mobileTab: { order: 2, label: 'PJT', icon: '🏗️' }, title: 'PJT 관리', icon: '🏗️', tabbed: false, dynamicNav: true, nativeSubs: ['attend'], perm: (me) => !!(me && (me.admin || (me.perms && me.perms.pjt) || (Array.isArray(me.pjtKeys) && me.pjtKeys.length > 0))) },   // PJT 권한자·관리자, 또는 어느 프로젝트든 참여자로 지정된 사람
   { id: 'myteam', order: 90, title: '내 팀 공수표', icon: '👷', tabbed: false, url: 'team/',
     perm: (me) => !!(me && (me.admin || (Array.isArray(me.teamLeaderIds) && me.teamLeaderIds.length > 0))), nav: [{ key: 'main', label: '내 팀 공수표' }] }
 ];
@@ -24,7 +24,7 @@ export const defById = (id) => LEGACY_DEFS.find((d) => d.id === id) || null;
  *  dyn = { ended: { p4ph2: bool, p4ph4: bool }, registry: [{ id, name, client, content, site, url }] } */
 export function pjtNav(me, dyn) {
   const d = dyn || { ended: {}, registry: [] }; const loading = dyn && dyn.loaded === false;   // 프로젝트 정보를 아직 못 읽었으면 프로젝트 칩은 읽은 뒤에 보여 준다(참여자 지정 확인 전에는 숨김)
-  const items = [{ key: 'home', label: 'PJT 홈', url: 'classic.html?embed=pjt-home' }, { key: 'attend', label: '👷 출역·공수 (새)' }];   // 새 PJT 모듈의 화면(modules/pjt) — 구포털 항목을 하나씩 교체하는 동안 같이 둔다
+  const items = [{ key: 'home', label: 'PJT 홈', url: 'classic.html?embed=pjt-home' }];
   const can = (proj) => !dyn || dyn.loaded === undefined ? true : canAccessProject(me, proj);   // dyn 이 없던 옛 호출(시험)은 지금까지처럼 모두 보임
   if (!loading) {
     PJT_FIXED.forEach((f) => { if (!(d.ended && d.ended[f.key]) && can(d.settings && d.settings[f.key])) items.push({ key: f.key, label: f.label, url: f.url }); });
@@ -48,6 +48,8 @@ export function resolveItem(def, key, me, dyn) {
   return it[0] || null;
 }
 /** 옛 페이지 주소: 기본 폴더 + 항목 주소 + via=portal(임베드 모드) + tab(탭형만) + admin=1(관리자). base 는 LEGACY_BASE 를 해석한 절대 주소 */
+/** 프로젝트 키(고정 PJT·경량 PJT) — 프로젝트 아래의 새 화면 탭(nativeSubs)은 이 키에서만 열린다 */
+export const isProjectKey = (k) => /^(p4ph2|p4ph4|reg_[A-Za-z0-9_-]{1,64})$/.test(String(k == null ? '' : k));
 export const PJT_TABS = ['attend', 'schedule', 'att', 'sched'];   // 주소로 바로 열 수 있는 PJT 탭: 근태(출역·공수 체크)·일정 (FAB·SUP = attend·schedule, 경량 = att·sched)
 export function buildUrl(def, item, me, base, cacheBust, tab) {
   const rel = (item && item.url) || def.url || '';
@@ -87,7 +89,7 @@ export function navHtml(def, items, activeKey, esc, sub) {
 /** 출역·공수 체크할 프로젝트 목록(폰 바로가기): 종료되지 않은 고정 PJT + 경량 PJT. hash 는 해당 프로젝트의 근태 탭 */
 export function attendTargets(dyn, me) {
   const d = dyn || { ended: {}, registry: [] }; const out = []; const can = (proj) => !me || !dyn || dyn.loaded === undefined ? true : canAccessProject(me, proj);   // 참여자로 지정되지 않은 프로젝트는 고르지 못한다
-  PJT_FIXED.forEach((f) => { if (!(d.ended && d.ended[f.key]) && can(d.settings && d.settings[f.key])) out.push({ key: f.key, label: f.label, hash: '#/pjt/' + f.key + '?tab=attend' }); });
-  (d.registry || []).forEach((r) => { if (can(r)) out.push({ key: 'reg_' + r.id, label: r.name || 'PJT', hash: '#/pjt/reg_' + encodeURIComponent(r.id) + '?tab=att' }); });
+  PJT_FIXED.forEach((f) => { if (!(d.ended && d.ended[f.key]) && can(d.settings && d.settings[f.key])) out.push({ key: f.key, label: f.label, hash: '#/pjt/' + f.key + '/attend' }); });   // 프로젝트 아래의 새 출역·공수 탭
+  (d.registry || []).forEach((r) => { if (can(r)) out.push({ key: 'reg_' + r.id, label: r.name || 'PJT', hash: '#/pjt/reg_' + encodeURIComponent(r.id) + '/attend' }); });
   return out;
 }

@@ -1,14 +1,14 @@
 /* PJT 관리(통합 새 모듈) — 설계서 docs/pjt-design.md. Ph2·Ph4·경량PJT를 한 모듈로 합친다.
- * 지금 새 화면은 "출역·공수"(근태·공수 탭) 하나다 — 구포털 PJT 메뉴 안에 "👷 출역·공수 (새)" 항목으로 열린다(legacy/list.js pjtNav, modules/index.js hostNative). 나머지 탭은 만들면서 구포털 항목을 하나씩 교체한다.
+ * 지금 새 화면은 "출역·공수"(근태·공수 탭) 하나다 — 구포털 PJT 메뉴에서 프로젝트를 고르면 그 아래 "👷 출역·공수 (새)" 탭으로 열린다(legacy/frame.js 의 nativeSubs, modules/index.js hostNative). 프로젝트는 화면 안에서 고르지 않는다. 나머지 탭은 만들면서 구포털 항목을 하나씩 교체한다.
  * 저장 형식은 구포털 그대로(출역 { checks }, 공수 { md }, 날짜별 문서) — 영업기획의 공수 연동·팀별 노무비가 읽는다. 경로는 adapter.js, 규칙은 attendance.js. */
-import { db, collection, doc, getDoc, getDocs, setDoc, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zg';
-import { esc, toast } from '../../core/ui.js?v=20261013zg';
-import { confirmDialog } from '../../core/dialog.js?v=20261013zg';
-import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zg';
-import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zg';
-import { visibleProjects } from './projects.js?v=20261013zg';
-import { loadHolidays } from '../../shared/holidays.js?v=20261013zg';
-import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zg';
+import { db, collection, doc, getDoc, getDocs, setDoc, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zh';
+import { esc, toast } from '../../core/ui.js?v=20261013zh';
+import { confirmDialog } from '../../core/dialog.js?v=20261013zh';
+import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zh';
+import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zh';
+import { visibleProjects } from './projects.js?v=20261013zh';
+import { loadHolidays } from '../../shared/holidays.js?v=20261013zh';
+import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zh';
 
 export const manifest = { id: 'pjt', order: 40, title: 'PJT 관리', icon: '🏗️', defaultHash: '#/pjt/attend', perm: (me) => !!me && me.admin === true };
 export async function mount(root) { root.innerHTML = '<div class="jh-empty">PJT 화면은 구포털 틀 안의 메뉴로 열립니다.</div>'; }
@@ -23,7 +23,7 @@ async function loadDyn() {
 }
 const uniq = (a) => [...new Set(a)];
 
-/** 출역·공수(근태·공수 탭): 주소 #/pjt/attend/<프로젝트>/<날짜> */
+/** 출역·공수(근태·공수 탭): 프로젝트 아래의 탭 — 주소 #/pjt/<프로젝트>/attend/<날짜>. 틀(legacy/frame.js)이 route.segs 를 [프로젝트, 날짜]로 넘긴다 */
 export async function mountAttend(root, route, ctx) {
   root.onclick = null; root.onchange = null; root.onkeydown = null;
   const me = (ctx && ctx.me) || {}; const segs = (route && route.segs) || [];
@@ -34,8 +34,8 @@ export async function mountAttend(root, route, ctx) {
   const P = () => pathsFor(st.proj); const feat = () => featuresOf(st.proj, st.projDoc);
   try { st.projects = visibleProjects(me, await loadDyn()); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
   body.removeAttribute('aria-busy');
-  if (!st.projects.length) { paint(); return; }
-  st.proj = st.projects.some((p) => p.key === segs[0]) ? segs[0] : st.projects[0].key;
+  st.proj = st.projects.some((p) => p.key === segs[0]) ? segs[0] : '';   // 프로젝트는 주소(위 메뉴에서 고른 프로젝트)로만 정한다 — 화면 안에서 바꾸지 못한다
+  if (!st.proj) { paint(); return; }   // 없거나 열 수 없는 프로젝트면 입력 화면 대신 안내만
   const loadProject = async () => {
     const p = P(); st.projDoc = (st.projects.find((x) => x.key === st.proj) || {}).doc || null;
     const [rs, ms] = await Promise.all([getDocs(collection(db, p.roster)), getDocs(collection(db, 'master_workers'))]);
@@ -49,7 +49,7 @@ export async function mountAttend(root, route, ctx) {
     const snaps = await Promise.all(days.map((k) => getDoc(doc(db, p.manday, k)).catch(() => null))); const byDay = {}; days.forEach((k, i) => { byDay[k] = snaps[i] && snaps[i].exists() ? (snaps[i].data().md || {}) : {}; }); byDay[st.date] = st.md; st.recentDays = byDay; st.recent = recentTotals(byDay, st.date, 7);
   };
   const reload = async () => { try { await loadDay(); } catch (e) { toast('불러오기 실패: ' + ((e && e.message) || '')); } paint(); };
-  try { await loadHolidays(); } catch (e) { /* 공휴일을 못 불러오면 주말만 표시된다 */ }
+  try { await Promise.race([loadHolidays(), new Promise((r) => setTimeout(r, 1500))]); } catch (e) { /* 공휴일을 못 불러오거나 오래 걸리면 주말만 표시된다 — 현장 입력 화면이 공휴일 파일 때문에 멈추면 안 된다 */ }
   try { await loadProject(); await loadDay(); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
   paint();
   // 오른쪽 탭(집계표·누적)은 입력할 때마다 문서를 다시 읽지 않고, 이미 읽은 날짜별 공수에 방금 바꾼 날을 끼워 넣어 다시 계산한다
@@ -77,7 +77,7 @@ export async function mountAttend(root, route, ctx) {
   };
   const targets = () => dayWorkers(st).filter((w) => canWorkOn(st.me, w, st.teamMasterIds) && !st.readonly).map((w) => w.id);
   const can = (id) => { const w = st.roster.find((x) => x.id === id); return !!w && canWorkOn(st.me, w, st.teamMasterIds) && !st.readonly; };
-  const goDate = async (d) => { if (!isDateKey(d)) return; st.date = d; pushHash('#/pjt/attend/' + st.proj + '/' + d); await reload(); const [y, m] = d.split('-').map(Number); if (y !== st.month.y || m - 1 !== st.month.m) { st.month = { y, m: m - 1 }; st.sheet = null; st.sheetByDay = null; if (st.panel === 'sheet') await loadSheet(); } else if (st.cumDocs) { st.cumDocs[d] = st.md; } };
+  const goDate = async (d) => { if (!isDateKey(d)) return; st.date = d; pushHash('#/pjt/' + st.proj + '/attend/' + d); await reload(); const [y, m] = d.split('-').map(Number); if (y !== st.month.y || m - 1 !== st.month.m) { st.month = { y, m: m - 1 }; st.sheet = null; st.sheetByDay = null; if (st.panel === 'sheet') await loadSheet(); } else if (st.cumDocs) { st.cumDocs[d] = st.md; } };
   root.onclick = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
     const tog = t.closest('[data-pa-tog]'); if (tog) { const id = tog.getAttribute('data-pa-tog'); if (!can(id)) return;
@@ -100,7 +100,6 @@ export async function mountAttend(root, route, ctx) {
   };
   root.onchange = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
-    if (t.hasAttribute('data-pa-proj')) { st.proj = t.value; pushHash('#/pjt/attend/' + st.proj + '/' + st.date); try { await loadProject(); await loadDay(); } catch (e) { toast('불러오기 실패: ' + ((e && e.message) || '')); } paint(); return; }
     if (t.hasAttribute('data-pa-date')) { await goDate(t.value); return; }
     const md = t.getAttribute('data-pa-md'); if (md) { if (!can(md)) { paint(); return; } const raw = t.value.trim(); await edit((n) => applyManday(n.checks, n.md, md, raw)); }
   };

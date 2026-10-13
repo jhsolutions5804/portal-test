@@ -38,3 +38,5 @@
 .jh-legacy[data-side] > .jh-sidenav { align-self: stretch; }
 .jh-legacy[data-side] > .jh-legacy__frame, .jh-legacy[data-side] > .jh-legacy__native { flex: 1 1 0; min-width: 0; }
 @media (max-width: 899px) { .jh-legacy[data-side] { flex-direction: column; } .jh-legacy[data-side] > .jh-legacy__frame, .jh-legacy[data-side] > .jh-legacy__native { flex: 1 1 auto; min-height: 0; } }
+
+.jh-legacy__subnav { display: flex; flex: 0 0 auto; gap: var(--sp-2); padding: var(--sp-2) var(--sp-4); overflow-x: auto; background: var(--c-surface); border-bottom: var(--u-1) solid var(--c-line); }
