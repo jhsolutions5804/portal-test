@@ -1,6 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261013zj';
-import { calcAll, cellState, keyOf } from './progress.js?v=20261013zj';
-import { holidayName } from '../../shared/holidays.js?v=20261013zj';
+import { esc } from '../../core/ui.js?v=20261013zk';
+import { calcAll, cellState, keyOf } from './progress.js?v=20261013zk';
+import { holidayName } from '../../shared/holidays.js?v=20261013zk';
+import { structureEditorHtml } from './structure-view.js?v=20261013zk';
 const f1 = (n) => (Math.round((Number(n) || 0) * 10) / 10).toFixed(1);
 const chip = (t, tone) => '<span class="jh-pjt__chip" data-tone="' + esc(tone || '') + '">' + esc(t) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -9,10 +10,11 @@ const bar = (pct) => '<span class="jh-pjt__bar2"><span style="width:' + Math.max
 /** 공정 탭: 날짜·수정 모드, 전체 요약, 그룹(섹터)별 카드(단계별 진행 막대 + 눌러 펼치는 체크표) — Ph2·Ph4(섹터 × 장비 × 단계)와 경량PJT(품목 × 단계) 같은 화면 */
 export function progressHtml(st) {
   if (!st.proj) return '<div class="jh-pjt"><div class="jh-alert" data-tone="warn" role="status">이 프로젝트를 열 수 없습니다. 위 메뉴에서 프로젝트를 고른 뒤 "공정" 탭을 여세요.</div></div>';
+  if (st.editor) return structureEditorHtml(st);
   const S = st.structure; if (!st.ready) return '<div class="jh-pjt"><div class="jh-pjt__proj"><span class="jh-pjt__projlabel">🏗️ ' + esc(st.label) + '</span><span class="jh-field__hint">공정</span></div><div class="jh-empty">' + esc(st.loadingNote || '불러오는 중...') + '</div></div>';
   const A = calcAll(S, st.states); const unit = S.unit || '대';
   const head = '<div class="jh-pjt__proj"><span class="jh-pjt__projlabel">🏗️ ' + esc(st.label) + '</span><span class="jh-field__hint">공정</span></div>';
-  const hol = holidayName(st.date); const dateBar = '<div class="jh-pjt__bar"><span class="jh-pjt__datenav"><button type="button" class="jh-btn" data-variant="ghost" data-pg-act="prev" aria-label="전날">‹</button><input class="jh-input" type="date" data-pg-date value="' + esc(st.date) + '"><button type="button" class="jh-btn" data-variant="ghost" data-pg-act="next" aria-label="다음날">›</button><button type="button" class="jh-btn" data-variant="secondary" data-pg-act="today">오늘</button></span><span class="jh-pjt__tools">' + (hol ? chip(hol, 'red') : '') + '<button type="button" class="jh-btn" data-variant="' + (st.editMode ? 'primary' : 'secondary') + '" data-pg-act="edit" aria-pressed="' + st.editMode + '">✏️ 수정 모드' + (st.editMode ? ' (켜짐)' : '') + '</button></span></div>';
+  const hol = holidayName(st.date); const dateBar = '<div class="jh-pjt__bar"><span class="jh-pjt__datenav"><button type="button" class="jh-btn" data-variant="ghost" data-pg-act="prev" aria-label="전날">‹</button><input class="jh-input" type="date" data-pg-date value="' + esc(st.date) + '"><button type="button" class="jh-btn" data-variant="ghost" data-pg-act="next" aria-label="다음날">›</button><button type="button" class="jh-btn" data-variant="secondary" data-pg-act="today">오늘</button></span><span class="jh-pjt__tools">' + (hol ? chip(hol, 'red') : '') + '<button type="button" class="jh-btn" data-variant="' + (st.editMode ? 'primary' : 'secondary') + '" data-pg-act="edit" aria-pressed="' + st.editMode + '">✏️ 수정 모드' + (st.editMode ? ' (켜짐)' : '') + '</button>' + (st.canEditStructure ? '<button type="button" class="jh-btn" data-variant="secondary" data-pg-act="structure">⚙️ 구조 설정</button>' : '') + '</span></div>';
   const note = !st.isToday ? '<div class="jh-alert" data-tone="warn" role="status">' + esc(st.date) + ' (' + dow(st.date) + ') 기준으로 보는 중입니다 — ' + (st.editMode ? '수정 모드: 이 날짜의 체크를 고칠 수 있습니다(이전 날짜에서 체크된 칸은 그 날짜로 가서 고치세요).' : '읽기 전용입니다. 고치려면 "수정 모드"를 켜세요.') + '</div>' : (st.readonly ? '<div class="jh-field__hint">조회만 할 수 있습니다(팀장 지정이 없는 게스트 계정).</div>' : '');
   // 요약: 모든 프로젝트 같은 칸 — 전체 공정율, 총 물량, 단계마다 누적 완료 수
   const stageTotals = S.stages.map((s) => [s.name + ' 누적', A.groups.reduce((n, x) => n + ((x.calc.stages.find((y) => y.name === s.name) || {}).done || 0), 0) + unit]);

@@ -76,3 +76,7 @@
 .jh-pjt__sumrow td { background: var(--c-primary-weak); font-weight: 700; } .jh-pjt__sumrow td[data-full="true"] { color: var(--c-ok, #16a34a); }
 .jh-pjt__ghead .jh-field__hint, .jh-pjt__itname .jh-field__hint { display: inline; }
 .jh-pjt__itname .jh-field__hint { display: block; }
+
+.jh-pjt__chips { display: flex; flex-wrap: wrap; gap: var(--sp-1); max-height: var(--u-220); overflow-y: auto; }
+.jh-pjt__itchip { display: inline-flex; align-items: center; gap: var(--sp-1); padding: var(--u-2) var(--sp-2); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); font-size: var(--fs-sm); }
+.jh-pjt__itchip button { border: 0; background: transparent; color: var(--c-danger, #dc2626); font: inherit; cursor: pointer; }

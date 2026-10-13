@@ -1,31 +1,34 @@
-import { db, collection, getDocs, getDoc, query, where, documentId, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, writeBatch } from '../../core/firebase.js?v=20261013zj';
-import { toast } from '../../core/ui.js?v=20261013zj';
-import { confirmDialog } from '../../core/dialog.js?v=20261013zj';
-import { compNew, compToForm, compBuild, fmtTel, fmtTelBlur, kstToday } from './logic.js?v=20261013zj';
-import { companiesListHtml, companyFormHtml } from './view.js?v=20261013zj';
-import { projNew, projToForm, projectBuild } from './projects.js?v=20261013zj';
-import { projectsListHtml, projectDetailHtml, projectFormHtml } from './projects-view.js?v=20261013zj';
-import { uiState, pushHash } from './ui.js?v=20261013zj';
-import { itemAmt, blankItem, itemSetQty, itemSetPrice, itemSetAmount, applySupplyEdit, draftTotals, newDraft, draftFromEstimate, buildEstimate, closePatch, reopenPatch, estGroup, sortEstimates } from './estimates.js?v=20261013zj';
-import { estimatesListHtml, estimateDetailHtml, estimateFormHtml, itemRowHtml } from './estimates-view.js?v=20261013zj';
-import { estDocHtml } from './estimate-doc.js?v=20261013zj';
-import { sortProjects } from './projects.js?v=20261013zj';
-import { linkPlan, donePatch, undonePatch, voidPatch, doneConfirm, undoneConfirm, doneToast, projectBalance, acctMonthInput } from './settlements.js?v=20261013zj';
-import { settlementsListHtml, settlementDetailHtml } from './settlements-view.js?v=20261013zj';
-import { settleDocPage } from './settlement-doc.js?v=20261013zj';
-import { teamLaborHtml } from './teamlabor-view.js?v=20261013zj';
-import { homeHtml } from './home-view.js?v=20261013zj';
-import { closingHtml, closingPrintHtml } from './closing-view.js?v=20261013zj';
-import { acctHtml } from './acct-view.js?v=20261013zj';
-import { contractsListHtml, contractFormHtml, contractDetailHtml } from './contracts-view.js?v=20261013zj';
-import { contractDocPage } from './contract-doc.js?v=20261013zj';
-import { flattenContracts, nextContractNo, newContract, validateContract, upsertContract, issueBlockers, changeFrom } from './contracts.js?v=20261013zj';
-import { reconcileExpenses, missingToJson, tagTableCsv } from './acct-reconcile.js?v=20261013zj';
-import { shiftYm, closingCsv } from './closing.js?v=20261013zj';
-import { shiftMonth, monthRange, rosterEntry, aggregateMandays, parseTeamRate, ratePatch, rateSaveMessage, FAB_LABEL, SUP_LABEL } from './teamlabor.js?v=20261013zj';
-import { issueFormHtml, qtyBlocksHtml, totalsHtml, manualRowHtml, mandayRowsHtml, mandayInfoHtml, progressBlocksHtml } from './issue-view.js?v=20261013zj';
-import { progressDayKeys, accumulateChecks, mergePastProgress, applyProgress as applyProgressChecks, setProgressZone, toggleProgressDeposit, setProgressBill } from './progress.js?v=20261013zj';
-import { progressProfile, mandaySource, monthDays, sumMandayDays, duplicateSources, applyMandayFetch, setMandayInput, setMandayForPjt, setRateForPjtValue, setMandayBaseRate, newIssueDraft, togglePjt, toggleEst, setQty, setQtyAmount, setSupplyOverride, setVatOverride, resetTotals, buildSettlement, itemSetQty as isItemQty, itemSetPrice as isItemPrice, itemSetAmount as isItemAmount, blankItem as isBlank } from './issue.js?v=20261013zj';
+import { db, collection, getDocs, getDoc, query, where, documentId, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, writeBatch } from '../../core/firebase.js?v=20261013zk';
+import { toast } from '../../core/ui.js?v=20261013zk';
+import { confirmDialog } from '../../core/dialog.js?v=20261013zk';
+import { compNew, compToForm, compBuild, fmtTel, fmtTelBlur, kstToday } from './logic.js?v=20261013zk';
+import { companiesListHtml, companyFormHtml } from './view.js?v=20261013zk';
+import { projNew, projToForm, projectBuild } from './projects.js?v=20261013zk';
+import { projectsListHtml, projectDetailHtml, projectFormHtml } from './projects-view.js?v=20261013zk';
+import { uiState, pushHash } from './ui.js?v=20261013zk';
+import { itemAmt, blankItem, itemSetQty, itemSetPrice, itemSetAmount, applySupplyEdit, draftTotals, newDraft, draftFromEstimate, buildEstimate, closePatch, reopenPatch, estGroup, sortEstimates } from './estimates.js?v=20261013zk';
+import { estimatesListHtml, estimateDetailHtml, estimateFormHtml, itemRowHtml } from './estimates-view.js?v=20261013zk';
+import { estDocHtml } from './estimate-doc.js?v=20261013zk';
+import { sortProjects } from './projects.js?v=20261013zk';
+import { linkPlan, donePatch, undonePatch, voidPatch, doneConfirm, undoneConfirm, doneToast, projectBalance, acctMonthInput } from './settlements.js?v=20261013zk';
+import { settlementsListHtml, settlementDetailHtml } from './settlements-view.js?v=20261013zk';
+import { settleDocPage } from './settlement-doc.js?v=20261013zk';
+import { teamLaborHtml } from './teamlabor-view.js?v=20261013zk';
+import { homeHtml } from './home-view.js?v=20261013zk';
+import { closingHtml, closingPrintHtml } from './closing-view.js?v=20261013zk';
+import { setProgressOverrides } from './progress.js?v=20261013zk';
+import { PROGRESS_PROFILES } from '../../shared/pjt-progress-data.js?v=20261013zk';
+import { toProfile } from '../../shared/pjt-structure.js?v=20261013zk';
+import { acctHtml } from './acct-view.js?v=20261013zk';
+import { contractsListHtml, contractFormHtml, contractDetailHtml } from './contracts-view.js?v=20261013zk';
+import { contractDocPage } from './contract-doc.js?v=20261013zk';
+import { flattenContracts, nextContractNo, newContract, validateContract, upsertContract, issueBlockers, changeFrom } from './contracts.js?v=20261013zk';
+import { reconcileExpenses, missingToJson, tagTableCsv } from './acct-reconcile.js?v=20261013zk';
+import { shiftYm, closingCsv } from './closing.js?v=20261013zk';
+import { shiftMonth, monthRange, rosterEntry, aggregateMandays, parseTeamRate, ratePatch, rateSaveMessage, FAB_LABEL, SUP_LABEL } from './teamlabor.js?v=20261013zk';
+import { issueFormHtml, qtyBlocksHtml, totalsHtml, manualRowHtml, mandayRowsHtml, mandayInfoHtml, progressBlocksHtml } from './issue-view.js?v=20261013zk';
+import { progressDayKeys, accumulateChecks, mergePastProgress, applyProgress as applyProgressChecks, setProgressZone, toggleProgressDeposit, setProgressBill } from './progress.js?v=20261013zk';
+import { progressProfile, mandaySource, monthDays, sumMandayDays, duplicateSources, applyMandayFetch, setMandayInput, setMandayForPjt, setRateForPjtValue, setMandayBaseRate, newIssueDraft, togglePjt, toggleEst, setQty, setQtyAmount, setSupplyOverride, setVatOverride, resetTotals, buildSettlement, itemSetQty as isItemQty, itemSetPrice as isItemPrice, itemSetAmount as isItemAmount, blankItem as isBlank } from './issue.js?v=20261013zk';
 
 /** 영업기획(플랫폼 기본 모듈): 구포털 기획(gihoek)을 탭 하나씩 새 화면으로 옮기는 중. 관리자 전용 — 데이터는 gihoek_* 컬렉션 그대로.
  *  사이드바는 옛 화면 틀(legacy/frame.js)이 그린다 — 이 모듈은 틀 안의 구역(거래처·협력사)을 그리는 함수만 내보내고 modules/index.js 가 hostNative 로 연결한다. */
@@ -201,7 +204,8 @@ async function mountSettlementsView(root, route, ctx, kind) {
   const KEY = 'jh_plan_set_ui_' + kind; const saved = uiState.load(KEY) || {}; if (saved.filter) Object.assign(st.filter, saved.filter); if (saved.page) st.page = saved.page; let restoreY = saved.scroll || 0; const remember = (scroll) => uiState.save(KEY, { filter: st.filter, page: st.page, scroll: scroll || 0 });
   const base = kind === 'invoice' ? '#/plan/billing' : '#/plan/payout';
   root.innerHTML = '<div id="sl-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#sl-body');
-  const load = async () => { const [a, b, c, d] = await Promise.all([getDocs(collection(db, 'gihoek_settlements')), getDocs(collection(db, 'gihoek_projects')), getDocs(collection(db, 'gihoek_estimates')), getDocs(collection(db, 'gihoek_companies'))]); st.settlements = lst(a); st.projects = sortProjects(lst(b)); st.estimates = lst(c); st.companies = lst(d).sort((x, y) => String(x.company || '').localeCompare(String(y.company || ''), 'ko')); };
+  const load = async () => { const [a, b, c, d] = await Promise.all([getDocs(collection(db, 'gihoek_settlements')), getDocs(collection(db, 'gihoek_projects')), getDocs(collection(db, 'gihoek_estimates')), getDocs(collection(db, 'gihoek_companies'))]); st.settlements = lst(a); st.projects = sortProjects(lst(b)); st.estimates = lst(c); st.companies = lst(d).sort((x, y) => String(x.company || '').localeCompare(String(y.company || ''), 'ko'));
+    const ov = {}; for (const k of ['p4ph2', 'p4ph4']) { try { const s = await getDoc(doc(db, 'pjt_settings', k)); const x = s.exists() ? s.data() : null; if (x && x.progressStructure) ov[k] = toProfile(x.progressStructure, PROGRESS_PROFILES[k]); } catch (e) { /* 구조 데이터를 못 읽으면 코드 상수로 계산 */ } } setProgressOverrides(ov); };   // PJT 공정 구조 설정이 저장돼 있으면 청구서 공정 연동도 그 구조(섹터·장비·단계)를 쓴다
   try { await load(); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + ((e && e.message) || '') + '</div>'; return; }
   body.removeAttribute('aria-busy');
   const paint = () => { body.innerHTML = st.view === 'issue' ? issueFormHtml(st) : st.view === 'detail' ? settlementDetailHtml(st) : settlementsListHtml(st); window.scrollTo(0, st.view === 'list' ? restoreY : 0); restoreY = 0; };

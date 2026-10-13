@@ -90,5 +90,16 @@ import('../app/modules/plan/progress.js').then(async (pg) => {
   const d4 = Object.assign(newIssueDraft({ docType: 'invoice', pjtId: 'p1', companies: C, today: '2026-09-30' }), { method: 'progress', pjtIds: ['p1', 'p2'], recipientId: 'dr' }); toggleEst2(d4, 'f1', PJ2, EP); toggleEst2(d4, 'h1', PJ2, EP); setProgressBill(d4, 'f1', '1000000'); setProgressBill(d4, 'h1', '500000');
   const b4 = buildSettlement(d4, { settlements: [], estimates: EP, projects: PJ2, companies: C, me: {}, now: 1 }); ok(b4.ok && JSON.stringify(b4.payload.perPjtAmount) === '{"p1":1000000,"p2":500000}' && b4.payload.supply === 1500000, '공정 연동 여러 프로젝트: 견적의 프로젝트별로 몫을 나눠 저장(P4 Ph2 100만 · P4 Ph4 50만)');
   const rb3 = draftFromSettlement(b4.payload); ok(effSupply(rb3, EP, PJ2, []) === 1500000 && buildSettlement(Object.assign(rb3, { recipientId: 'dr' }), { settlements: [], estimates: EP, projects: PJ2, companies: C, me: {}, now: 1 }).payload.perEst.f1 === 1000000, '저장된 공정 연동 정산서의 견적별 청구액으로 되짚기(점검용)');
+});
+
+// ── PJT 공정 구조 설정(progressStructure)을 영업기획 공정 연동이 읽음 ──
+import('../app/modules/plan/progress.js').then(async (pg2) => {
+  const { toProfile } = await import('../app/shared/pjt-structure.js'); const { PROGRESS_PROFILES } = await import('../app/shared/pjt-progress-data.js');
+  const struct = { stages: ['반입', '입고검사', '설치', '시공검측'], installCols: ['설치'], groups: [{ id: 'fiz', name: '3F FIZ(수정)', kw: ['FIZ'], items: ['801', '802', '803'].map((x) => ({ id: x, name: x })) }, { id: 'new', name: '신축동', kw: [], items: [{ id: 'n1', name: 'n1' }] }] };
+  const before = pg2.getProgProfile({ id: 'p1', linkPjt: 'p4ph2' }); pg2.setProgressOverrides({ p4ph2: toProfile(struct, PROGRESS_PROFILES.p4ph2) }); const after = pg2.getProgProfile({ id: 'p1', linkPjt: 'p4ph2' }), ph4 = pg2.getProgProfile({ id: 'p2', linkPjt: 'p4ph4' });
+  ok(before.zones.length === 6 && after.zones.length === 2 && after.zones[0].total === 3 && after.zones[0].eqs.join() === '801,802,803' && after.checkCols.join() === '반입,입고검사,설치,시공검측' && after.installCols.join() === '설치' && after.progCol === 'progress_checks_' && after.mandayCol === 'worker_manday' && ph4.zones.length === 4, '★ 영업기획 공정 연동: PJT 공정 구조 설정이 저장돼 있으면 그 구조(섹터·장비·열·설치 묶음)로 계산(컬렉션 이름은 기존 그대로), 설정이 없는 프로젝트는 코드 상수');
+  const dd = Object.assign(newIssueDraft({ docType: 'invoice', pjtId: 'p1', companies: C, today: '2026-09-30' }), { method: 'progress' }); const EPX = [{ id: 'f1', pjtId: 'p1', title: '3F FIZ 견적', items: [{ amount: 3000000 }] }]; toggleEst2(dd, 'f1', [{ id: 'p1', code: 'P', linkPjt: 'p4ph2' }], EPX); dd.prog.f1 = { banip: 3, install: 0 };
+  ok(dd.estZone.f1 === 'fiz' && calcProgressRow(dd, EPX[0], pg2.getProgProfile({ id: 'p1', linkPjt: 'p4ph2' }).zones, []).qty === 3 && calcProgressRow(dd, EPX[0], pg2.getProgProfile({ id: 'p1', linkPjt: 'p4ph2' }).zones, []).cum === 2400000, '구조가 바뀐 섹터(3대)의 견적 계산: 반입 3/3 × 80% = 공급가의 80%');
+  pg2.setProgressOverrides({}); ok(pg2.getProgProfile({ id: 'p1', linkPjt: 'p4ph2' }).zones.length === 6, '설정을 지우면 다시 코드 상수');
   console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);
 });

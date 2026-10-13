@@ -1,14 +1,17 @@
 /* 영업기획 공정 연동 청구서 — 순수 규칙(화면·네트워크 없이 시험 가능). 구포털 기획(gihoek)의 공정 자동 청구 계산을 그대로 옮겼다.
  * 견적 공급가액의 반입 80% + 설치 20% (+ 보증금 10%) 를 장비 수 대비 진척(반입 b/전체, 설치 i/전체)으로 계산하고, 이미 청구한 금액(기청구)을 뺀 값이 이번 청구액이다.
  * 반입·설치 진척은 날짜별 공정 체크 문서를 2026-05-01부터 기준월 말일까지 한 번이라도 체크된 것으로 모아 센다(구포털 그대로). */
-import { PROGRESS_PROFILES, PAST_PROGRESS_DAILY } from './progress-data.js?v=20261013zj';
-import { estSupply, getLinkPjt } from './projects.js?v=20261013zj';
+import { PROGRESS_PROFILES, PAST_PROGRESS_DAILY } from './progress-data.js?v=20261013zk';
+import { estSupply, getLinkPjt } from './projects.js?v=20261013zk';
 export { PROGRESS_PROFILES };
 export const BANIP_RATE = 0.8, INSTALL_RATE = 0.2, DEPOSIT_RATE = 0.1;
 export const PROGRESS_SINCE = '2026-05-01';   // 구포털이 누적 진척을 읽기 시작하는 날(고정)
 const num = (v) => { const n = parseFloat(String(v == null ? '' : v).replace(/[^0-9.\-]/g, '')); return Number.isNaN(n) ? 0 : n; };
 /** 프로젝트의 공정 프로파일(섹터·장비 목록, 공정 체크 컬렉션): 연동 없음이면 P4 Ph2 기본, 모르는 연동도 P4 Ph2 */
-export function getProgProfile(project) { let key = getLinkPjt(project); if (key === 'none') key = 'p4ph2'; return PROGRESS_PROFILES[key] || PROGRESS_PROFILES.p4ph2; }
+let OVERRIDES = {};
+/** PJT 공정 구조 설정(프로젝트 문서의 progressStructure)으로 만든 프로파일 — 있으면 코드 상수보다 먼저 쓴다. 청구서 화면을 열 때 PJT 가 저장한 구조를 읽어 여기에 넣는다 */
+export const setProgressOverrides = (m) => { OVERRIDES = m || {}; };
+export function getProgProfile(project) { let key = getLinkPjt(project); if (key === 'none') key = 'p4ph2'; const k = PROGRESS_PROFILES[key] ? key : 'p4ph2'; return OVERRIDES[k] || PROGRESS_PROFILES[k]; }
 /** 섹터·장비 자동추적이 되는 프로젝트(연동 PJT 가 P4 Ph2·Ph4) — 공정 연동 방식은 이 프로젝트의 견적에서만 쓴다 */
 export const isTrackable = (project) => { const k = getLinkPjt(project); return k === 'p4ph2' || k === 'p4ph4'; };
 /** 견적 제목에서 섹터 추정(구포털 zoneGuess): 섹터의 키워드가 제목에 들어 있으면 그 섹터, 없으면 '' */

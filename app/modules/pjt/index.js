@@ -1,16 +1,19 @@
 /* PJT 관리(통합 새 모듈) — 설계서 docs/pjt-design.md. Ph2·Ph4·경량PJT를 한 모듈로 합친다.
  * 지금 새 화면은 "출역·공수"(근태·공수 탭) 하나다 — 구포털 PJT 메뉴에서 프로젝트를 고르면 그 아래 "👷 출역·공수 (새)" 탭으로 열린다(legacy/frame.js 의 nativeSubs, modules/index.js hostNative). 프로젝트는 화면 안에서 고르지 않는다. 나머지 탭은 만들면서 구포털 항목을 하나씩 교체한다.
  * 저장 형식은 구포털 그대로(출역 { checks }, 공수 { md }, 날짜별 문서) — 영업기획의 공수 연동·팀별 노무비가 읽는다. 경로는 adapter.js, 규칙은 attendance.js. */
-import { db, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zj';
-import { esc, toast } from '../../core/ui.js?v=20261013zj';
-import { confirmDialog } from '../../core/dialog.js?v=20261013zj';
-import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zj';
-import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zj';
-import { visibleProjects } from './projects.js?v=20261013zj';
-import { loadHolidays } from '../../shared/holidays.js?v=20261013zj';
-import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zj';
-import { fixedStructure, lightStructure, normalizeDayFixed, normalizeDayLight, stateAt, lightState, cellState, toggledDayChecks, lightItemStages, lightProgress, daysThrough, PROGRESS_START, keyOf } from './progress.js?v=20261013zj';
-import { progressHtml } from './progress-view.js?v=20261013zj';
+import { db, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zk';
+import { esc, toast } from '../../core/ui.js?v=20261013zk';
+import { confirmDialog } from '../../core/dialog.js?v=20261013zk';
+import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zk';
+import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zk';
+import { visibleProjects } from './projects.js?v=20261013zk';
+import { loadHolidays } from '../../shared/holidays.js?v=20261013zk';
+import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zk';
+import { normalizeDayFixed, normalizeDayLight, stateAt, lightState, cellState, toggledDayChecks, lightItemStages, lightProgress, daysThrough, PROGRESS_START, keyOf, stagesOf } from './progress.js?v=20261013zk';
+import { structureFor, planSave, makeItemIdFactory } from './structure-store.js?v=20261013zk';
+import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261013zk';
+import { progressHtml } from './progress-view.js?v=20261013zk';
+import { diffText } from './structure-view.js?v=20261013zk';
 
 export const manifest = { id: 'pjt', order: 40, title: 'PJT 관리', icon: '🏗️', defaultHash: '#/pjt/attend', perm: (me) => !!me && me.admin === true };
 export async function mount(root) { root.innerHTML = '<div class="jh-empty">PJT 화면은 구포털 틀 안의 메뉴로 열립니다.</div>'; }
@@ -114,7 +117,7 @@ export async function mountProgress(root, route, ctx) {
   root.onclick = null; root.onchange = null; root.onkeydown = null;
   const me = (ctx && ctx.me) || {}; const segs = (route && route.segs) || [];
   const guest = !(me.admin || (me.perms && me.perms.pjt)); const leaderIds = Array.isArray(me.teamLeaderIds) ? me.teamLeaderIds : [];
-  const st = { projects: [], proj: '', label: '', date: isDateKey(segs[1]) ? segs[1] : appToday(), structure: null, items: [], projDoc: null, days: {}, states: {}, open: new Set(), editMode: false, isToday: true, ready: false, loadingNote: '', readonly: guest && !leaderIds.length, busy: false };
+  const st = { projects: [], proj: '', label: '', date: isDateKey(segs[1]) ? segs[1] : appToday(), structure: null, items: [], projDoc: null, days: {}, states: {}, open: new Set(), editMode: false, isToday: true, ready: false, loadingNote: '', readonly: guest && !leaderIds.length, busy: false, canEditStructure: !!me.admin, editor: null };
   root.innerHTML = '<div id="pg-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#pg-body');
   const paint = () => { const y = window.scrollY; body.innerHTML = progressHtml(st); window.scrollTo(0, y); };
   try { await Promise.race([loadHolidays(), new Promise((r) => setTimeout(r, 1500))]); } catch (e) { /* 공휴일을 못 불러오면 날짜 표시만 빠진다 */ }
@@ -129,9 +132,11 @@ export async function mountProgress(root, route, ctx) {
       for (let i = 0; i < need.length; i += 25) { const part = need.slice(i, i + 25); await Promise.all(part.map(async (d) => { try { const snap = await getDocs(collection(db, P.progress.checks(d))); const docs = []; snap.forEach((x) => docs.push({ id: x.id, data: x.data() })); st.days[d] = normalizeDayFixed(docs); } catch (e) { st.days[d] = {}; } })); done += part.length; st.loadingNote = '공정 이력 불러오는 중... ' + done + '/' + need.length; if (!st.ready) { paint(); } }
     } else if (!st.daysLoaded) { try { const snap = await getDocs(collection(db, P.progress.checks)); snap.forEach((x) => { st.days[x.id] = normalizeDayLight(x.data()); }); } catch (e) { /* 날짜별 문서가 없는 프로젝트 — 현재 상태만으로 본다 */ } st.daysLoaded = true; }
   };
+  // 구조(섹터·품목·단계)는 모든 프로젝트가 같은 데이터 형식·같은 읽기 경로다 — 프로젝트 문서의 progressStructure, 아직 없으면 옛 구조에서 만든 같은 모양
   const loadStructure = async () => {
-    if (zones) { st.structure = fixedStructure(st.proj); return; }
-    const [ps, is] = await Promise.all([getDoc(doc(db, P.settings.col, P.settings.id)), getDocs(collection(db, P.progress.items))]); st.projDoc = ps.exists() ? Object.assign({ id: P.settings.id }, ps.data()) : pr.doc; st.items = []; is.forEach((d) => st.items.push(Object.assign({ id: d.id }, d.data()))); st.structure = lightStructure(st.projDoc, st.items);
+    const ps = await getDoc(doc(db, P.settings.col, P.settings.id)); st.projDoc = ps.exists() ? Object.assign({ id: P.settings.id }, ps.data()) : (pr.doc || {}); st.items = [];
+    if (!zones) { const is = await getDocs(collection(db, P.progress.items)); is.forEach((d) => st.items.push(Object.assign({ id: d.id }, d.data()))); }
+    const r = structureFor(st.proj, st.projDoc, st.items); st.structData = r.S; st.structSource = r.source; st.structure = toRuntime(r.S, st.label, stagesOf);
   };
   const openDefault = () => { st.open = new Set(); const S = st.structure; if (S.groups.length === 1) { st.open.add(S.groups[0].id); return; } const first = S.groups.find((g) => { const c = (st.states[g.id] || {}).merged || {}; const n = g.items.reduce((s, it) => s + S.leafCols.filter((col) => c[keyOf(it.id, col)]).length, 0); return n > 0 && n < g.items.length * S.leafCols.length; }) || S.groups[0]; if (first) st.open.add(first.id); };
   try { await loadStructure(); await loadDays(); recompute(); openDefault(); st.ready = true; } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
@@ -149,18 +154,54 @@ export async function mountProgress(root, route, ctx) {
         const stages = lightItemStages(item.stages, col, on); await updateDoc(doc(db, P.progress.items, itemId), { stages }); item.stages = stages;   // 품목의 현재 상태(구포털 공사일보·옛 화면과 호환)
         if (st.isToday) { const cref = doc(db, P.progress.itemChecks, st.date); if (on) await setDoc(cref, { [itemId]: { [col]: true } }, { merge: true }); else { try { await updateDoc(cref, { [itemId + '.' + col]: deleteField() }); } catch (e) { /* 없으면 무시 */ } } }
         const cur = st.days[st.date] || {}; const m = Object.assign({}, cur[''] || {}); if (on) m[key] = true; else delete m[key]; st.days[st.date] = { '': m };
-        st.structure = lightStructure(st.projDoc, st.items); const stagesBy = {}; st.items.forEach((x) => { stagesBy[x.id] = x.stages || {}; }); try { await updateDoc(doc(db, P.settings.col, P.settings.id), { progress: lightProgress(st.structure, stagesBy) }); } catch (e) { /* 진행률 갱신 실패는 체크 저장을 막지 않는다 */ }
+        st.structure = toRuntime(structureFor(st.proj, st.projDoc, st.items).S, st.label, stagesOf); const stagesBy = {}; st.items.forEach((x) => { stagesBy[x.id] = x.stages || {}; }); try { await updateDoc(doc(db, P.settings.col, P.settings.id), { progress: lightProgress(st.structure, stagesBy) }); } catch (e) { /* 진행률 갱신 실패는 체크 저장을 막지 않는다 */ }
       }
       recompute();
     } catch (e) { toast('저장 실패: ' + ((e && (e.code || e.message)) || '')); }
     st.busy = false; paint();
   };
+  // ── 공정 구조 설정(섹터·품목·단계 편집) — 모든 프로젝트 같은 편집기. 편집 중 구조(st.editor.S)는 저장 전까지 아무것도 쓰지 않는다 ──
+  const cloneS = (o) => JSON.parse(JSON.stringify(o));
+  const openEditor = () => { if (!st.canEditStructure) return; st.editor = { S: cloneS(st.structData), orig: cloneS(st.structData), open: new Set(st.structData.groups.length === 1 ? [st.structData.groups[0].id] : []), source: st.structSource }; paint(); };
+  const apply = (r) => { if (r.error) { toast(r.error); return false; } st.editor.S = r.S; if (r.added && r.skipped && r.skipped.length) toast('이미 있어 건너뜀: ' + r.skipped.join(', ')); if (r.bad && r.bad.length) toast('쓸 수 없는 이름 건너뜀(_ / . # $ [ ] 금지): ' + r.bad.join(', ')); return true; };
+  const keepFocus = () => paint();
+  const saveStructure = async () => {
+    const E = st.editor; const v = validateStructure(E.S); if (!v.ok) { toast(v.errors[0]); return; } const d = diffStructure(E.orig, E.S); if (!hasChanges(d)) { toast('변경 내용이 없습니다.'); return; }
+    const merged = {}; Object.keys(st.states).forEach((g) => { merged[g] = st.states[g].merged; }); const imp = impactOf(E.orig, d, merged);
+    const ok = await confirmDialog({ title: '공정 구조 저장', body: diffText(d) + (imp.cells ? '\n\n지워지는 단계·품목에 이미 체크된 ' + imp.cells + '칸은 기록은 남지만 더 이상 공정율에 세지 않습니다.' : '') + '\n\n저장하면 영업기획의 청구서 공정 연동도 이 구조를 씁니다. 저장할까요?', confirmLabel: '저장' }); if (!ok.ok) return;
+    st.busy = true; try {
+      const writes = planSave(P, E.S, zones ? [] : st.items, me.name || ''); for (const w of writes) { const ref = doc(db, w.col, w.id); const data = w.data ? Object.fromEntries(Object.entries(w.data).map(([k, x]) => [k, x === 'TS' ? serverTimestamp() : x])) : null;
+        if (w.op === 'delete') await deleteDoc(ref); else if (w.op === 'update') await updateDoc(ref, data); else await setDoc(ref, data, w.merge ? { merge: true } : undefined); }
+      // 방금 쓴 값을 그대로 화면 상태에 반영한다(다시 읽지 않아도 같은 결과 — 쓰기 직후 읽기 지연에도 흔들리지 않음)
+      st.projDoc = Object.assign({}, st.projDoc, { progressStructure: E.S }); if (!zones) { st.projDoc.stageList = E.S.stages.slice(); writes.forEach((w) => { if (w.col !== P.progress.items) return; if (w.op === 'delete') st.items = st.items.filter((x) => x.id !== w.id); else if (w.op === 'update') st.items = st.items.map((x) => (x.id === w.id ? Object.assign({}, x, w.data) : x)); else st.items = st.items.filter((x) => x.id !== w.id).concat([Object.assign({ id: w.id }, w.data, { createdAt: null })]); }); }
+      const rs = structureFor(st.proj, st.projDoc, st.items); st.structData = rs.S; st.structSource = 'data'; st.structure = toRuntime(rs.S, st.label, stagesOf); recompute(); st.editor = null; st.open = new Set(); openDefault(); toast('공정 구조를 저장했습니다.');
+    } catch (e) { toast('저장 실패: ' + ((e && (e.code || e.message)) || '')); }
+    st.busy = false; paint();
+  };
+  const editorClick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element) || !st.editor) return; const E = st.editor; const q = (a) => t.closest('[' + a + ']'); let el;
+    if ((el = q('data-st-up'))) { apply(moveStage(E.S, el.getAttribute('data-st-up'), -1)); keepFocus(); return; } if ((el = q('data-st-down'))) { apply(moveStage(E.S, el.getAttribute('data-st-down'), 1)); keepFocus(); return; }
+    if ((el = q('data-st-sdel'))) { apply(removeStage(E.S, el.getAttribute('data-st-sdel'))); keepFocus(); return; }
+    if ((el = q('data-st-gopen'))) { const id = el.getAttribute('data-st-gopen'); if (E.open.has(id)) E.open.delete(id); else E.open.add(id); keepFocus(); return; }
+    if ((el = q('data-st-gdel'))) { const id = el.getAttribute('data-st-gdel'); const g = E.S.groups.find((x) => x.id === id); if (g && g.items.length) { const ok = await confirmDialog({ title: '섹터 삭제', body: g.name + ' 섹터와 품목 ' + g.items.length + '개를 삭제할까요? (저장 전에는 아무것도 지워지지 않습니다)', confirmLabel: '삭제' }); if (!ok.ok) return; } apply(removeGroup(E.S, id)); keepFocus(); return; }
+    if ((el = q('data-st-idel'))) { const [g, id] = el.getAttribute('data-st-idel').split('|'); apply(removeItem(E.S, g, id)); keepFocus(); return; }
+    if ((el = q('data-st-iadd'))) { const gid = el.getAttribute('data-st-iadd'); const ta = body.querySelector('[data-st-itext="' + gid + '"]'); const names = parseItemList(ta ? ta.value : ''); if (!names.length) { toast('추가할 품목을 입력하세요.'); return; } const r = addItems(E.S, gid, names, zones ? null : makeItemIdFactory()); if (apply(r)) { toast(r.added.length + '개 추가'); keepFocus(); } return; }
+    if ((el = q('data-st-act'))) { const act = el.getAttribute('data-st-act');
+      if (act === 'add-stage') { const inp = body.querySelector('[data-st-newstage]'); if (apply(addStage(E.S, inp ? inp.value : ''))) keepFocus(); return; }
+      if (act === 'add-group') { const inp = body.querySelector('[data-st-newgroup]'); const r = addGroup(E.S, inp ? inp.value : ''); if (apply(r)) { const g = r.S.groups[r.S.groups.length - 1]; E.open.add(g.id); keepFocus(); } return; }
+      if (act === 'cancel') { if (hasChanges(diffStructure(E.orig, E.S))) { const ok = await confirmDialog({ title: '편집 닫기', body: '저장하지 않은 변경이 사라집니다. 닫을까요?', confirmLabel: '닫기' }); if (!ok.ok) return; } st.editor = null; paint(); return; }
+      if (act === 'save') await saveStructure(); }
+  };
+  const editorChange = (ev) => { const t = ev.target; if (!(t instanceof Element) || !st.editor) return; const E = st.editor;
+    if (t.hasAttribute('data-st-inst')) { apply(toggleInstall(E.S, t.getAttribute('data-st-inst'), t.checked)); keepFocus(); return; }
+    if (t.hasAttribute('data-st-gname')) { if (!apply(renameGroup(E.S, t.getAttribute('data-st-gname'), t.value))) keepFocus(); else keepFocus(); } };
   root.onclick = async (ev) => {
+    if (st.editor) { await editorClick(ev); return; }
     const t = ev.target; if (!(t instanceof Element)) return;
     const ck = t.closest('[data-pg-ck]'); if (ck) { const [g, it, col] = ck.getAttribute('data-pg-ck').split('|'); await toggle(g, it, col); return; }
     const op = t.closest('[data-pg-open]'); if (op) { const id = op.getAttribute('data-pg-open'); if (st.open.has(id)) st.open.delete(id); else st.open.add(id); paint(); return; }
     const a = t.closest('[data-pg-act]'); if (!a) return; const act = a.getAttribute('data-pg-act');
-    if (act === 'prev') await goDate(shiftDate(st.date, -1)); else if (act === 'next') await goDate(shiftDate(st.date, 1)); else if (act === 'today') await goDate(appToday()); else if (act === 'edit') { st.editMode = !st.editMode; paint(); }
+    if (act === 'prev') await goDate(shiftDate(st.date, -1)); else if (act === 'next') await goDate(shiftDate(st.date, 1)); else if (act === 'today') await goDate(appToday()); else if (act === 'edit') { st.editMode = !st.editMode; paint(); } else if (act === 'structure') openEditor();
   };
-  root.onchange = async (ev) => { const t = ev.target; if (t instanceof Element && t.hasAttribute('data-pg-date')) await goDate(t.value); };
+  root.onchange = async (ev) => { if (st.editor) { editorChange(ev); return; } const t = ev.target; if (t instanceof Element && t.hasAttribute('data-pg-date')) await goDate(t.value); };
 }
