@@ -1,32 +1,34 @@
 /* PJT 관리(통합 새 모듈) — 설계서 docs/pjt-design.md. Ph2·Ph4·경량PJT를 한 모듈로 합친다.
  * 지금 새 화면은 "출역·공수"(근태·공수 탭) 하나다 — 구포털 PJT 메뉴에서 프로젝트를 고르면 그 아래 "👷 출역·공수 (새)" 탭으로 열린다(legacy/frame.js 의 nativeSubs, modules/index.js hostNative). 프로젝트는 화면 안에서 고르지 않는다. 나머지 탭은 만들면서 구포털 항목을 하나씩 교체한다.
  * 저장 형식은 구포털 그대로(출역 { checks }, 공수 { md }, 날짜별 문서) — 영업기획의 공수 연동·팀별 노무비가 읽는다. 경로는 adapter.js, 규칙은 attendance.js. */
-import { db, functions, httpsCallable, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zs';
-import { esc, toast } from '../../core/ui.js?v=20261013zs';
-import { confirmDialog } from '../../core/dialog.js?v=20261013zs';
-import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zs';
-import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zs';
-import { visibleProjects } from './projects.js?v=20261013zs';
-import { loadHolidays } from '../../shared/holidays.js?v=20261013zs';
-import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zs';
-import { normalizeDayFixed, normalizeDayLight, stateAt, lightState, cellState, toggledDayChecks, lightItemStages, lightProgress, daysThrough, PROGRESS_START, keyOf, stagesOf } from './progress.js?v=20261013zs';
-import { structureFor, planSave, makeItemIdFactory } from './structure-store.js?v=20261013zs';
-import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, setFeature, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261013zs';
-import { progressHtml } from './progress-view.js?v=20261013zs';
-import { diffText } from './structure-view.js?v=20261013zs';
-import { activeWorkersForDate } from './attendance.js?v=20261013zs';
-import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261013zs';
-import { buildWeekly } from './weekly-ppt.js?v=20261013zs';
-import { boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, remapByOrder, unmatchedKeys, snapToTuesday, weekNo, weekRange } from './layout.js?v=20261013zs';
-import { fileToDataUrl, imageInfo } from './image-tools.js?v=20261013zs';
-import { layoutEditorHtml } from './layout-view.js?v=20261013zs';
-import { scheduleHtml } from './schedule-view.js?v=20261013zs';
-import { reportHtml } from './report-view.js?v=20261013zs';
-import { homeHtml } from './home-view.js?v=20261013zs';
-import { dday, monthMandayTotal, latestReports } from './home.js?v=20261013zs';
-import { calcAll } from './progress.js?v=20261013zs';
-import { fromStored, toStored, totalOf, attendanceSummary, autoContent, docHtml, docTitle, isLegacyDoc, dateText, WORK_SHIFTS, authorLabel, normalizeEquip, withEditor } from './report.js?v=20261013zs';
-import { itemsForKey, buildDoc, formOf, detectCat, addDays, weekDays, isKey } from './schedule.js?v=20261013zs';
+import { db, functions, httpsCallable, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zt';
+import { esc, toast } from '../../core/ui.js?v=20261013zt';
+import { confirmDialog } from '../../core/dialog.js?v=20261013zt';
+import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zt';
+import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zt';
+import { visibleProjects } from './projects.js?v=20261013zt';
+import { loadHolidays } from '../../shared/holidays.js?v=20261013zt';
+import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zt';
+import { normalizeDayFixed, normalizeDayLight, stateAt, lightState, cellState, toggledDayChecks, lightItemStages, lightProgress, daysThrough, PROGRESS_START, keyOf, stagesOf } from './progress.js?v=20261013zt';
+import { structureFor, planSave, makeItemIdFactory } from './structure-store.js?v=20261013zt';
+import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, setFeature, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261013zt';
+import { progressHtml } from './progress-view.js?v=20261013zt';
+import { diffText } from './structure-view.js?v=20261013zt';
+import { activeWorkersForDate } from './attendance.js?v=20261013zt';
+import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261013zt';
+import { buildWeekly } from './weekly-ppt.js?v=20261013zt';
+import { boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, remapByOrder, unmatchedKeys, snapToTuesday, weekNo, weekRange } from './layout.js?v=20261013zt';
+import { fileToDataUrl, imageInfo } from './image-tools.js?v=20261013zt';
+import { layoutEditorHtml } from './layout-view.js?v=20261013zt';
+import { scheduleHtml } from './schedule-view.js?v=20261013zt';
+import { reportHtml } from './report-view.js?v=20261013zt';
+import { homeHtml } from './home-view.js?v=20261013zt';
+import { settingsHtml } from './settings-view.js?v=20261013zt';
+import { formOf as settingsFormOf, buildData as settingsBuild, changedFields, endText } from './settings.js?v=20261013zt';
+import { dday, monthMandayTotal, latestReports } from './home.js?v=20261013zt';
+import { calcAll } from './progress.js?v=20261013zt';
+import { fromStored, toStored, totalOf, attendanceSummary, autoContent, docHtml, docTitle, isLegacyDoc, dateText, WORK_SHIFTS, authorLabel, normalizeEquip, withEditor } from './report.js?v=20261013zt';
+import { itemsForKey, buildDoc, formOf, detectCat, addDays, weekDays, isKey } from './schedule.js?v=20261013zt';
 
 export const manifest = { id: 'pjt', order: 40, title: 'PJT 관리', icon: '🏗️', defaultHash: '#/pjt/attend', perm: (me) => !!me && me.admin === true };
 export async function mount(root) { root.innerHTML = '<div class="jh-empty">PJT 화면은 구포털 틀 안의 메뉴로 열립니다.</div>'; }
@@ -434,4 +436,37 @@ export async function mountHome(root, route, ctx) {
     const states = {}; S.groups.forEach((g) => { states[g.id] = P.progress.model === 'zones' ? stateAt(days, today, g.id, st.proj) : lightState(days, today, items2, true); }); const A = calcAll(S, states); st.progress = { pct: A.pct, items: A.items };
   } catch (e) { st.progressNote = '계산 실패'; }
   paint();
+}
+
+/** 설정(설정 탭, 관리자 전용): 기본정보 수정·프로젝트 종료/재개·참여 부서·개인(공용 화면)·공정 구조 안내. 주소 #/pjt/<프로젝트>/settings. 모든 프로젝트 같은 화면.
+ *  저장 위치는 고정 PJT = pjt_settings/<키>, 경량 = pjt_registry/<id>(필드 같음, 기본정보만 병합 저장 — 참여자·상태·구조 데이터는 건드리지 않음) */
+export async function mountSettings(root, route, ctx) {
+  root.onclick = null; root.oninput = null;
+  const me = (ctx && ctx.me) || {}; const segs = (route && route.segs) || [];
+  const st = { projects: [], proj: '', label: '', admin: !!me.admin, doc: null, form: {}, ended: false, ready: false, busy: false, msg: '', msgBad: false };
+  root.innerHTML = '<div id="se-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#se-body'); let pptEl = null;   // 참여자 지정 화면은 한 번만 만들고, 다시 그릴 때는 같은 요소를 옮겨 붙인다(다시 불러오지 않고 고르던 내용도 유지)
+  const paint = () => { const y = window.scrollY; if (pptEl && pptEl.parentNode) pptEl.parentNode.removeChild(pptEl); body.innerHTML = settingsHtml(st); window.scrollTo(0, y); const ph = body.querySelector('[data-ppt-host]'); if (ph && st.ready && st.admin && st.proj) { if (pptEl) ph.replaceWith(pptEl); else { pptEl = ph; mountPpt(ph); } } };
+  try { st.projects = visibleProjects(me, await loadDyn()); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
+  body.removeAttribute('aria-busy'); st.proj = st.projects.some((p) => p.key === segs[0]) ? segs[0] : ''; if (!st.proj) { paint(); return; }
+  const P = pathsFor(st.proj); st.label = st.projects.find((p) => p.key === st.proj).label; if (!st.admin) { paint(); return; }
+  const ref = doc(db, P.settings.col, P.settings.id);
+  const load = async () => { const s = await getDoc(ref); st.doc = s.exists() ? s.data() : {}; st.form = settingsFormOf(st.doc); st.ended = st.doc.status === 'ended'; };
+  const mountPpt = (box) => { Promise.resolve().then(async () => { const mp = (ctx && ctx.mountParticipants) || (await import('../../shared/pjt-participants.js?v=20261013zs')).mountParticipants; await mp(box, { db, kind: P.kind === 'light' ? 'light' : 'fixed', id: P.settings.id, me: { uid: me.uid } }); }).catch((e) => { box.innerHTML = '<div class="jh-field__hint">참여자 지정 구역을 불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; }); };
+  try { await load(); st.ready = true; } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">설정을 불러오지 못했습니다: ' + esc((e && (e.code || e.message)) || '') + '</div>'; return; }
+  paint();
+  const readForm = () => { body.querySelectorAll('[data-st-f]').forEach((el) => { st.form[el.getAttribute('data-st-f')] = el.value; }); };
+  const say = (t, bad) => { st.msg = t; st.msgBad = !!bad; };
+  root.onclick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return; const el = t.closest('[data-st-act]'); if (!el || st.busy) return; const act = el.getAttribute('data-st-act');
+    if (act === 'save') {
+      readForm(); const r = settingsBuild(st.form, P.kind); if (r.error) { say(r.error, true); paint(); return; } const ch = changedFields(st.doc, st.form); if (!ch.length) { say('바뀐 내용이 없습니다.', false); paint(); return; }
+      st.busy = true; try { await setDoc(ref, Object.assign({}, r.data, { updatedAt: serverTimestamp() }), { merge: true }); st.doc = Object.assign({}, st.doc, r.data); st.form = settingsFormOf(st.doc); say('저장했습니다 (' + ch.join('·') + ')', false); toast('저장했습니다.'); } catch (e) { say('저장 실패: ' + ((e && (e.code || e.message)) || ''), true); }
+      st.busy = false; paint(); return;
+    }
+    if (act === 'end') {
+      const toEnded = !st.ended; const ok = await confirmDialog({ title: toEnded ? '프로젝트 종료' : '프로젝트 재개', body: endText(st.ended, st.label), confirmLabel: toEnded ? '종료' : '재개' }); if (!ok.ok) return;
+      st.busy = true; try { await setDoc(ref, { status: toEnded ? 'ended' : 'active', updatedAt: serverTimestamp() }, { merge: true }); st.ended = toEnded; st.doc = Object.assign({}, st.doc, { status: toEnded ? 'ended' : 'active' }); toast(toEnded ? '종료 처리했습니다.' : '재개 처리했습니다.'); if (toEnded) { st.busy = false; pushHash('#/pjt/home'); return; } } catch (e) { toast('처리 실패: ' + ((e && (e.code || e.message)) || '')); }
+      st.busy = false; paint();
+    }
+  };
 }

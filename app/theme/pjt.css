@@ -164,3 +164,7 @@
 .jh-pjt__quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--u-140), 1fr)); gap: var(--sp-2); }
 .jh-pjt__qbtn { display: grid; gap: var(--u-2); padding: var(--sp-3); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); color: var(--c-ink); text-decoration: none; }
 .jh-pjt__qbtn:hover { border-color: var(--c-primary); background: var(--c-primary-weak); }
+
+/* 설정 */
+.jh-pjt__f3c { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--u-140), 1fr)); gap: var(--sp-3); }
+@media (min-width: 1000px) { .jh-pjt__splitset { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }

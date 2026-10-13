@@ -1,9 +1,9 @@
-import { LEGACY_BASE } from '../../core/config.js?v=20261013zs';
-import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261013zs';
-import { esc } from '../../core/ui.js?v=20261013zs';
-import { attachActivity } from '../../core/idle.js?v=20261013zs';
-import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS, PJT_LEGACY_LABEL } from './list.js?v=20261013zs';
-import { setSideCurrent } from '../../shared/sidenav.js?v=20261013zs';
+import { LEGACY_BASE } from '../../core/config.js?v=20261013zt';
+import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261013zt';
+import { esc } from '../../core/ui.js?v=20261013zt';
+import { attachActivity } from '../../core/idle.js?v=20261013zt';
+import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS, PJT_LEGACY_LABEL } from './list.js?v=20261013zt';
+import { setSideCurrent } from '../../shared/sidenav.js?v=20261013zt';
 
 const base = () => new URL(LEGACY_BASE, location.href).href;
 const NATIVE = new Map();   // '모듈id/구역' → 그 구역을 새 모듈이 그리는 함수(modules/index.js 가 hostNative 로 등록)
@@ -60,7 +60,7 @@ function openAttendPicker(st) {
 /** 프로젝트 아래의 탭 줄: 프로젝트를 고른 뒤 "기존 화면 / 출역·공수(새)" 를 고른다. 프로젝트는 위 메뉴에서 이미 정해져 있어 새 화면 안에서 프로젝트를 다시 고르지 않는다(팀장이 다른 프로젝트에 입력하는 실수 방지) */
 const subnavHtml = (st) => {
   if (!st.def.nativeSubs || !isProjectKey(st.key)) return ''; const k = encodeURIComponent(st.key);
-  const subs = st.def.nativeSubs.map((s) => '<a class="jh-legacy__chip" href="#/pjt/' + k + '/' + s + '" data-sub="' + s + '"' + (st.nativeSub && st.sub === s ? ' aria-current="page"' : '') + '>' + (PJT_SUB_LABELS[s] || s) + '</a>').join('');
+  const subs = st.def.nativeSubs.filter((s) => s !== 'settings' || (st.me && st.me.admin)).map((s) => '<a class="jh-legacy__chip" href="#/pjt/' + k + '/' + s + '" data-sub="' + s + '"' + (st.nativeSub && st.sub === s ? ' aria-current="page"' : '') + '>' + (PJT_SUB_LABELS[s] || s) + '</a>').join('');
   return '<nav class="jh-legacy__subnav" aria-label="프로젝트 화면">' + subs + '<a class="jh-legacy__chip" href="#/pjt/' + k + '/legacy" data-sub="legacy"' + (st.nativeSub ? '' : ' aria-current="page"') + '>' + PJT_LEGACY_LABEL + '</a></nav>';
 };
 function paintSubnav(st) {
@@ -88,6 +88,7 @@ export async function mountLegacy(def, keep, route, ctx) {
   // 주소에 칸이 없으면(#/hr) 마지막으로 보던 칸을 그대로 이어서 보여 준다 — 사이드바·하단 메뉴로 돌아왔을 때 보던 자리
   const item = (want ? resolveItem(def, want, me, st.dyn) : null) || (!want && st.key ? resolveItem(def, st.key, me, st.dyn) : null) || resolveItem(def, firstKey(def, me, st.dyn), me, st.dyn);
   if (!item) { keep.insertAdjacentHTML('beforeend', '<div class="jh-card"><div class="jh-empty">열 수 있는 화면이 없습니다.</div></div>'); return; }
+  st.me = me;   // 프로젝트 아래 탭 중 설정은 관리자에게만 보인다
   const rawSub = (route.segs || [])[1] || ''; const sub = isProjectKey(item.key) && !rawSub && def.defaultSub ? def.defaultSub : rawSub; const nativeSub = !!(def.nativeSubs && def.nativeSubs.indexOf(sub) !== -1 && isProjectKey(item.key));   // 프로젝트 아래의 새 화면 탭(#/pjt/<프로젝트>/attend) — 프로젝트를 고르면 새 홈이 기본이고 기존 화면은 /legacy
   const nat = isNativeKey(def, item.key) || nativeSub;
   if (nat) {   // 새 모듈이 그리는 구역(총무) — 옛 화면 틀(칩 메뉴)은 그대로 두고 안쪽만 바꾼다. 옛 화면(iframe)은 숨겨서 살려 둔다

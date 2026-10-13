@@ -591,4 +591,24 @@ await scenario('PJT 프로젝트 홈(새 기본 화면): 요약 카드·오늘 �
   check(/H17LGasRM\.전환공사/.test(tl) && /전체공정율25\.0%/.test(tl) && /총물량2대/.test(tl) && /프로젝트D\+|시작일미설정/.test(tl) && !/주간공정회의PPT/.test(tl), '경량 프로젝트도 같은 홈: 공정율 25.0%·총 물량 2대(품목 현재 상태 기준), 선택 기능이 꺼져 있어 해당 바로가기는 없음');
   const bad = await mountFresh(pjtMod.mountHome, { segs: ['reg_ZZZ'], query: {} }); check(/이 프로젝트를 열 수 없습니다/.test(bad.textContent), '열 수 없는 프로젝트는 안내만');
 });
+
+await scenario('PJT 설정 탭(관리자 전용, 모든 프로젝트 같은 화면): 기본정보 저장·검증, 프로젝트 종료·재개, 참여자 지정 공용 화면 연결', async (check) => {
+  const mounts = []; ctx.mountParticipants = async (box, o) => { mounts.push(o); box.innerHTML = '<div>참여자 지정 화면(stub)</div>'; };
+  const root = await mountFresh(pjtMod.mountSettings, { segs: ['p4ph2'], query: {} }); const txt = () => root.textContent.replace(/\s+/g, ' '); WR().length = 0; const fv = (k) => root.querySelector('[data-st-f="' + k + '"]');
+  check(/P4 Ph2 \(FAB\)/.test(txt()) && /기본정보/.test(txt()) && fv('name').value === 'P4 Ph2 FCU' && fv('client').value === '귀뚜라미 범양냉방' && fv('qty').value === '183' && fv('startDate').value === '2026-06-17' && !!fv('code') && !!fv('contractor') && !!fv('partner') && /진행 중/.test(txt()) && /참여 부서·개인/.test(txt()) && /공정 탭의 ⚙️ 구조 설정/.test(txt()), '★ 설정 탭: 기본정보 10개 항목(프로젝트 설정 문서의 값), 프로젝트 상태(진행 중), 참여 부서·개인, 공정 구조 안내');
+  fv('client').value = '임시'; await click(root, '[data-st-act="save"]', 100); fv('client').value = '귀뚜라미 범양냉방'; check(mounts.length === 1 && mounts[0].kind === 'fixed' && mounts[0].id === 'p4ph2' && mounts[0].me.uid === 'u1' && /참여자 지정 화면\(stub\)/.test(root.querySelector('#ppt-box').textContent), '참여자 지정은 공용 화면을 그대로 연결(고정 프로젝트 = pjt_settings/p4ph2)');
+  WR().length = 0; fv('client').value = '삼성전자'; fv('qty').value = '190'; fv('code').value = ' 2610001 '; await click(root, '[data-st-act="save"]', 300); await sleep(200); const sv = wrote('set', /^pjt_settings\/p4ph2$/);
+  check(sv.length === 1 && sv[0].merge === true && sv[0].data.client === '삼성전자' && sv[0].data.qty === 190 && sv[0].data.code === '2610001' && sv[0].data.name === 'P4 Ph2 FCU' && sv[0].data.startDate === '2026-06-17' && !('status' in sv[0].data) && !('participants' in sv[0].data) && !!sv[0].data.updatedAt && /저장했습니다 \(PJT 코드·거래처\(발주처\)·물량\)/.test(txt()), '★ 저장: 기본정보만 병합 저장(상태·참여자·공정 구조는 건드리지 않음), 바뀐 항목(PJT 코드·거래처·물량) 안내');
+  WR().length = 0; await click(root, '[data-st-act="save"]', 200); check(wrote('set', /pjt_settings/).length === 0 && /바뀐 내용이 없습니다/.test(txt()), '바뀐 내용이 없으면 저장하지 않음');
+  fv('qty').value = 'abc'; await click(root, '[data-st-act="save"]', 200); check(wrote('set', /pjt_settings/).length === 0 && /물량은 0 이상의 정수/.test(txt()), '검증: 물량이 숫자가 아니면 저장하지 않고 안내');
+  fv('qty').value = '190'; fv('startDate').value = '2026-06-17';
+  await click(root, '[data-st-act="end"]', 150); check(!!document.querySelector('.jh-dialog') && /종료 처리합니다/.test(document.querySelector('.jh-dialog').textContent) && /보존/.test(document.querySelector('.jh-dialog').textContent) && wrote('set', /pjt_settings/).length === 0, '종료 확인 창(데이터는 보존된다고 안내, 확인 전에는 저장 안 됨)'); await confirmOk(); await sleep(250); const en = wrote('set', /^pjt_settings\/p4ph2$/);
+  check(en.length === 1 && en[0].merge === true && en[0].data.status === 'ended' && Object.keys(en[0].data).sort().join() === 'status,updatedAt' && location.hash === '#/pjt/home', '★ 종료: status 만 "ended" 로 병합 저장하고 PJT 전체 홈으로 이동');
+  const rl = await mountFresh(pjtMod.mountSettings, { segs: ['reg_REG1'], query: {} }); WR().length = 0; const lv = (k) => rl.querySelector('[data-st-f="' + k + '"]');
+  check(lv('name').value === 'H17L Gas RM. 전환공사' && mounts.length === 2 && mounts[1].kind === 'light' && mounts[1].id === 'REG1', '경량 프로젝트도 같은 설정 화면(프로젝트 문서 pjt_registry/REG1), 참여자 지정은 경량 방식으로 연결');
+  lv('name').value = ' '; await click(rl, '[data-st-act="save"]', 200); check(/프로젝트명을 입력하세요/.test(rl.textContent) && wrote('set', /pjt_registry/).length === 0, '경량은 프로젝트명이 필수(메뉴에 표시되는 이름)'); lv('name').value = 'H17L Gas RM. 전환공사'; lv('contractor').value = '삼성물산'; await click(rl, '[data-st-act="save"]', 300); await sleep(200); const ls = wrote('set', /^pjt_registry\/REG1$/);
+  check(ls.length === 1 && ls[0].merge === true && ls[0].data.contractor === '삼성물산' && !('status' in ls[0].data), '경량 기본정보 저장(시공사): pjt_registry/REG1 에 병합');
+  const sv0 = ctx.me; ctx.me = { admin: false, uid: 'g1', name: '담당', perms: { pjt: true }, teamLeaderIds: [] }; try { const rn = await mountFresh(pjtMod.mountSettings, { segs: ['reg_REG1'], query: {} }); check(/설정은 관리자만/.test(rn.textContent) && !rn.querySelector('[data-st-f]') && !rn.querySelector('[data-st-act]'), '관리자가 아니면 안내만(입력칸·버튼 없음)'); } finally { ctx.me = sv0; }
+  const bad = await mountFresh(pjtMod.mountSettings, { segs: ['reg_ZZZ'], query: {} }); check(/이 프로젝트를 열 수 없습니다/.test(bad.textContent), '열 수 없는 프로젝트는 안내만'); delete ctx.mountParticipants;
+});
 markDone(); console.log('\n' + (failed ? '문제가 있는 저장 동작 ' + failed + '건' : '모든 저장 동작이 올바른 경로·값으로 기록됨')); process.exit(failed ? 1 : 0);
