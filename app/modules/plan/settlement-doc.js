@@ -27,6 +27,7 @@ export function settleDocHtml(s, projects) {
   <tfoot><tr><td colspan="3" style="text-align:right">공급가액</td><td style="text-align:right">${won(s.supply)}</td></tr>
     <tr><td colspan="3" style="text-align:right">부가세 (10%)</td><td style="text-align:right">${won(s.vat)}</td></tr>
     <tr><td colspan="3" style="text-align:right;font-size:14px">${s.docType === 'invoice' ? '청구금액 합계' : '지급금액 합계'}</td><td style="text-align:right;font-size:14px">${won(s.total)}</td></tr></tfoot></table>
+  ${s.notes ? `<div style="margin-top:14px;border:1px solid #cfd8e6;border-radius:6px;padding:10px 12px"><div style="font-size:10px;color:#1D5BA6;font-weight:700;margin-bottom:4px;letter-spacing:1px">특이사항</div><div style="font-size:11.5px;white-space:pre-wrap">${h(s.notes)}</div></div>` : ''}
   <div class="stamp">위와 같이 ${s.docType === 'invoice' ? '청구' : '지급 예정 통보'}합니다.<br><br>${h(sd.company || '')}　${sd.ceo ? '대표 ' + h(sd.ceo) + ' (인)' : ''} ${sd.contact ? '<br><span style="font-size:11px;color:#555">담당: ' + h(sd.contact) + (sd.contactTel ? ' &nbsp;' + h(sd.contactTel) : '') + (sd.contactEmail ? ' &nbsp;' + h(sd.contactEmail) : '') + '</span>' : ''}</div>`;
 }
 /** 인쇄 창에 쓰는 전체 페이지(구포털 pvPrint): A4 여백 16mm + 양식 CSS + 본문 + 자동 인쇄 */

@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261014a';
-import { won, card, chip, fld, selectHtml, pagerHtml } from './ui.js?v=20261014a';
-import { SETTLE_PAGE_SIZE, SETTLE_LABEL, METHOD_LABEL, filterSettlements, sortSettlements, settleFilterOptions, settleSummary, projectLabel, isMulti, acctMonthOf, canLinkEst, linkedEstimates, linkableEstimates, settleLinesOf, setActive, projectBalance } from './settlements.js?v=20261014a';
-import { paginate } from './projects.js?v=20261014a';
+import { esc } from '../../core/ui.js?v=20261014b';
+import { won, card, chip, fld, selectHtml, pagerHtml } from './ui.js?v=20261014b';
+import { SETTLE_PAGE_SIZE, SETTLE_LABEL, METHOD_LABEL, filterSettlements, sortSettlements, settleFilterOptions, settleSummary, projectLabel, isMulti, acctMonthOf, canLinkEst, linkedEstimates, linkableEstimates, settleLinesOf, setActive, projectBalance } from './settlements.js?v=20261014b';
+import { paginate } from './projects.js?v=20261014b';
 const sumCell = (label, v, tone) => '<div class="jh-plan__sumcell"><span class="jh-field__hint">' + esc(label) + '</span><strong' + (tone ? ' data-tone="' + tone + '"' : '') + '>' + v + '</strong></div>';
 const filterSel = (key, val, label, opts) => selectHtml('data-sl-filter="' + key + '"', val, [['', label]].concat(opts));
 /** 청구·수금(kind=invoice) / 지급·정산(kind=payment) 목록: 합계 카드 + 필터 + 10건씩 쪽 나눔 */
@@ -39,7 +39,7 @@ export function settlementDetailHtml(st) {
     + '<div class="jh-field__hint">' + esc('기준월 ' + (s.baseMonth || '-') + ' · ' + (inv ? '지급요청일' : '지급예정일') + ' ' + (s.payDate || '-') + ' · 정산방식 ' + (METHOD_LABEL[s.method] || '-')) + '</div>' + (acct ? '<div class="jh-plan__line">' + acct + '</div>' : '')
     + (linked.length ? '<div class="jh-alert" data-tone="warn" role="status">🔗 견적 연결됨: ' + esc(linked.map((id) => { const e = st.estimates.find((x) => x.id === id); return (e ? e.title : id) + ' ' + won(s.perEst[id]) + '원'; }).join(', ')) + ' — 이후 이 견적의 공정 정산서에서 기청구로 반영됩니다.</div>' : '')
     + '<div class="jh-plan__scroll"><table class="jh-plan__table"><thead><tr><th>#</th><th>내역</th><th>비고</th><th class="jh-plan__num">금액</th></tr></thead><tbody>' + (s.lines || []).map((it, i) => '<tr><td>' + (i + 1) + '</td><td>' + esc(it.name) + '</td><td>' + esc(it.spec || '-') + '</td><td class="jh-plan__num"><strong>' + won(it.amount) + '</strong></td></tr>').join('') + '</tbody></table></div>'
-    + '<div class="jh-plan__totals"><span>공급가액 <strong>' + won(s.supply) + ' 원</strong></span><span>부가세 (10%) <strong>' + won(s.vat) + ' 원</strong></span><span class="jh-plan__big">' + (inv ? '청구금액' : '지급금액') + ' 합계 <strong>' + won(s.total) + ' 원</strong></span></div></div>';
+    + '<div class="jh-plan__totals"><span>공급가액 <strong>' + won(s.supply) + ' 원</strong></span><span>부가세 (10%) <strong>' + won(s.vat) + ' 원</strong></span><span class="jh-plan__big">' + (inv ? '청구금액' : '지급금액') + ' 합계 <strong>' + won(s.total) + ' 원</strong></span></div>' + (s.notes ? '<div class="jh-field"><label class="jh-field__label">특이사항</label><div class="jh-plan__notes">' + esc(s.notes) + '</div></div>' : '') + '</div>';
   const back = st.origin ? '← 프로젝트로 돌아가기' : (inv ? '← 청구·수금 목록' : '← 지급·정산 목록');
   return '<div class="jh-plan"><div class="jh-plan__bar"><button type="button" class="jh-btn" data-variant="ghost" data-sl-act="back">' + back + '</button></div>' + card(SETTLE_LABEL[s.docType] || '정산서', head) + (st.linkOpen ? linkPanelHtml(st, s) : '') + '</div>';
 }
