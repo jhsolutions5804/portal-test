@@ -108,3 +108,30 @@
   .jh-pjt__steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .jh-pjt__panebody .jh-pjt__ctable { width: calc(100% - var(--sp-5) - var(--sp-3)); }
+
+/* 일정 */
+.jh-pjt__calgrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--u-2); }
+.jh-pjt__calh { text-align: center; padding: var(--sp-1) 0; font-size: var(--fs-sm); font-weight: 700; color: var(--c-ink); } .jh-pjt__calh[data-off="red"] { color: var(--c-danger, #dc2626); } .jh-pjt__calh[data-off="sat"] { color: var(--c-primary); }
+.jh-pjt__calc { display: flex; flex-direction: column; align-items: center; gap: var(--u-2); min-height: var(--u-64); padding: var(--sp-1); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); font: inherit; cursor: pointer; }
+.jh-pjt__calc[data-empty="1"] { border: 0; background: transparent; cursor: default; }
+.jh-pjt__calc[data-sel="true"] { background: var(--c-primary-weak); border-color: var(--c-primary); } .jh-pjt__calc[data-today="true"] .jh-pjt__calnum { background: var(--c-primary); color: var(--c-surface); border-radius: var(--u-999); padding: 0 var(--sp-2); }
+.jh-pjt__calc[data-off="red"] .jh-pjt__calnum { color: var(--c-danger, #dc2626); } .jh-pjt__calc[data-off="sat"] .jh-pjt__calnum { color: var(--c-primary); } .jh-pjt__calc[data-today="true"][data-off] .jh-pjt__calnum { color: var(--c-surface); }
+.jh-pjt__calnum { font-weight: 700; font-size: var(--fs-sm); } .jh-pjt__calhol { font-size: var(--fs-xs); color: var(--c-danger, #dc2626); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jh-pjt__dots { display: flex; gap: var(--u-2); flex-wrap: wrap; justify-content: center; } .jh-pjt__dot { width: var(--u-6); height: var(--u-6); border-radius: var(--u-999); }
+.jh-pjt__dayh[data-off="red"] { color: var(--c-danger, #dc2626); } .jh-pjt__dayh[data-off="sat"] { color: var(--c-primary); }
+.jh-pjt__srow { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-2) 0; border-bottom: var(--u-1) solid var(--c-line); } .jh-pjt__srow[data-done="true"] .jh-pjt__stitle { text-decoration: line-through; opacity: .6; }
+.jh-pjt__sbody { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; } .jh-pjt__stitle { font-weight: 600; } .jh-pjt__stime { color: var(--c-primary); font-weight: 700; }
+.jh-pjt__sact { flex: none; display: inline-flex; } .jh-pjt__tag { flex: none; padding: var(--u-2) var(--sp-2); border-radius: var(--radius); font-size: var(--fs-xs); font-weight: 700; }
+.jh-pjt__cats { display: flex; flex-wrap: wrap; gap: var(--sp-2); } .jh-pjt__cat { padding: var(--sp-1) var(--sp-3); border: var(--u-1) solid var(--cat); border-radius: var(--u-999); background: var(--c-surface); color: var(--cat); font: inherit; font-size: var(--fs-sm); cursor: pointer; } .jh-pjt__cat[aria-pressed="true"] { background: var(--cat); color: var(--c-surface); }
+.jh-pjt__tsel { width: auto; }
+@media (min-width: 1000px) { .jh-pjt__splitcal { grid-template-columns: minmax(0, var(--u-440)) minmax(0, 1fr); align-items: start; column-gap: var(--sp-4); } }
+
+/* 일정 분류 색(칩) — 분류마다 --cat 한 값 */
+.jh-pjt__cat[data-sc-cat="in"] { --cat: #1D5BA6; }
+.jh-pjt__cat[data-sc-cat="edu"] { --cat: #5e35b1; }
+.jh-pjt__cat[data-sc-cat="meeting"] { --cat: #5D3A00; }
+.jh-pjt__cat[data-sc-cat="fcu"] { --cat: #0A3D7A; }
+.jh-pjt__cat[data-sc-cat="safety"] { --cat: #8D6E00; }
+.jh-pjt__cat[data-sc-cat="off"] { --cat: #c0392b; }
+.jh-pjt__cat[data-sc-cat="quality"] { --cat: #00695C; }
+.jh-pjt__cat[data-sc-cat="admin"] { --cat: #7A8AA0; }
