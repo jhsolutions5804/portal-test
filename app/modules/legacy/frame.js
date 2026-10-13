@@ -1,14 +1,14 @@
-import { LEGACY_BASE } from '../../core/config.js?v=20261014b';
-import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261014b';
-import { esc } from '../../core/ui.js?v=20261014b';
-import { attachActivity } from '../../core/idle.js?v=20261014b';
-import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS } from './list.js?v=20261014b';
-import { setSideCurrent } from '../../shared/sidenav.js?v=20261014b';
+import { LEGACY_BASE } from '../../core/config.js?v=20261014c';
+import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261014c';
+import { esc } from '../../core/ui.js?v=20261014c';
+import { attachActivity } from '../../core/idle.js?v=20261014c';
+import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS } from './list.js?v=20261014c';
+import { setSideCurrent } from '../../shared/sidenav.js?v=20261014c';
 
 const base = () => new URL(LEGACY_BASE, location.href).href;
 const NATIVE = new Map();   // '모듈id/구역' → 그 구역을 새 모듈이 그리는 함수(modules/index.js 가 hostNative 로 등록)
 export const hostNative = (defId, key, fn) => { NATIVE.set(defId + '/' + key, fn); };
-const isNativeKey = (def, key) => !!(def.sections && def.sections.some((s) => s.native && s.key === key));   // 인사·영업기획은 sections 가 새 화면. PJT 는 프로젝트 아래의 탭(nativeSubs, 예: #/pjt/p4ph2/attend)이 새 화면
+const isNativeKey = (def, key) => !!((def.sections && def.sections.some((s) => s.native && s.key === key)) || (def.nativeKeys && def.nativeKeys.indexOf(key) !== -1));   // 인사·영업기획은 sections 가 새 화면. PJT 는 프로젝트 아래의 탭(nativeSubs, 예: #/pjt/p4ph2/attend)이 새 화면
 const states = new Map();   // 모듈 id → { def, wrap, frame, key, tab, me, dyn }  — 작업탭 유지: 떠나도 지우지 않고 숨긴다
 let keepRoot = null; let listening = false;
 

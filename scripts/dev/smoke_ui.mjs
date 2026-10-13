@@ -57,6 +57,7 @@ for (const [name, fn] of targets) {
     wrap = await open(['p4ph2', 'legacy']); chk('p4ph2', 'home', /프로젝트 홈/, 'P4 Ph2 (FAB)');   // 옛 화면 주소도 홈(옛 화면은 없음)
     wrap = await open(['p4ph4', 'attend']); chk('p4ph4', 'attend', /출역/, 'P4 Ph4 (SUP)');
     wrap = await open(['home']); if (sub()) problems.push('PJT 홈에는 프로젝트 아래 탭 줄이 없어야 함');   // (메뉴의 "PJT 홈"은 프로젝트가 아닌 전체 화면)
+    wrap = await open(['roster']); await sleep(300); if (!nat() || nat().hidden || !/근로자 연명부/.test(nat().textContent) || !/재직 인원/.test(nat().textContent) || (frame() && !frame().hidden)) problems.push('메뉴의 근로자 연명부가 새 화면으로 안 열림(옛 화면이 열리거나 목록이 안 그려짐)'); if (sub()) problems.push('근로자 연명부에는 프로젝트 아래 탭 줄이 없어야 함');
     wrap = await open(['REG1', 'attend']); chk('REG1', 'attend', /가/, 'H17L Gas RM. 전환공사');   // 모든 프로젝트가 같은 화면
     wrap = await open(['p4ph2', 'attend', '2026-07-02']); if (!nat() || !/2026-07-02/.test(nat().textContent)) problems.push('주소의 날짜(#/pjt/<프로젝트>/attend/<날짜>)로 열리지 않음');
   }

@@ -168,3 +168,32 @@
 /* 설정 */
 .jh-pjt__f3c { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--u-140), 1fr)); gap: var(--sp-3); }
 @media (min-width: 1000px) { .jh-pjt__splitset { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+
+/* 근로자 연명부 */
+.jh-ro__tbl { overflow-x: auto; }
+.jh-ro__t { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.jh-ro__t th, .jh-ro__t td { padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--c-line); text-align: left; vertical-align: top; }
+.jh-ro__t th { white-space: nowrap; color: var(--c-ink-3); font-weight: 600; }
+.jh-ro__th { cursor: pointer; user-select: none; }
+.jh-ro__th[aria-sort] { color: var(--c-primary); }
+.jh-ro__arr { opacity: .6; font-size: .85em; }
+.jh-ro__t tr[data-resigned="1"] td { opacity: .6; }
+.jh-ro__t tr[data-subtotal="1"] td { font-weight: 600; background: var(--c-primary-weak); }
+.jh-ro__nm { background: none; border: 0; padding: 0; font: inherit; font-weight: 700; color: var(--c-primary); cursor: pointer; text-align: left; }
+.jh-ro__cards { display: none; }
+.jh-ro__card { border: 1px solid var(--c-line); border-radius: var(--radius); padding: var(--sp-3); margin-bottom: var(--sp-3); }
+.jh-ro__card[data-resigned="1"] { opacity: .6; }
+.jh-ro__ch { display: flex; justify-content: space-between; gap: var(--sp-2); }
+.jh-ro__cg { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); margin: var(--sp-2) 0; font-size: var(--fs-sm); }
+.jh-ro__cg span { display: block; color: var(--c-ink-3); font-size: var(--fs-xs); }
+.jh-ro__chips { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+.jh-ro__sortbar { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+@media (max-width: 760px) { .jh-ro__tbl { display: none; } .jh-ro__cards { display: block; } }
+.jh-ro__detail { display: grid; gap: var(--sp-4); }
+.jh-ro__kvs { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--u-220), 1fr)); gap: var(--sp-3); padding: var(--sp-3); }
+.jh-ro__kv > span { display: block; color: var(--c-ink-3); font-size: var(--fs-xs); margin-bottom: 2px; }
+.jh-ro__kv[data-wide="1"] { grid-column: 1 / -1; }
+.jh-ro__edu { display: flex; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-1) var(--sp-3); }
+.jh-ro__note { padding: var(--sp-3); white-space: pre-wrap; }
+.jh-ro__detail h4 { margin: var(--sp-3) var(--sp-3) var(--sp-1); }
+.jh-ro__detail .jh-ro__t, .jh-ro__detail .jh-pjt__cats { margin: 0 var(--sp-3) var(--sp-3); width: calc(100% - 2 * var(--sp-3)); }
