@@ -1,14 +1,15 @@
 /* 플랫폼에 꽂는 모듈 목록 — 모듈을 더하거나 빼는 일은 이 파일 한 곳만 고친다.
  * 각 항목은 { manifest, mount }. 핵심부(core/)는 모듈 폴더를 직접 알지 못하고 이 목록만 읽는다. */
-import * as edoc from './edoc/index.js?v=20261013zc';
-import * as attendance from './attendance/index.js?v=20261013zc';
-import * as calendar from './calendar/index.js?v=20261013zc';
-import * as company from './company/index.js?v=20261013zc';
-import * as finance from './finance/index.js?v=20261013zc';
-import * as plan from './plan/index.js?v=20261013zc';
-import * as general from './general/index.js?v=20261013zc';
-import * as hr from './hr/index.js?v=20261013zc';
-import { modules as legacy, hostNative } from './legacy/index.js?v=20261013zc';
+import * as edoc from './edoc/index.js?v=20261013zd';
+import * as attendance from './attendance/index.js?v=20261013zd';
+import * as calendar from './calendar/index.js?v=20261013zd';
+import * as company from './company/index.js?v=20261013zd';
+import * as finance from './finance/index.js?v=20261013zd';
+import * as plan from './plan/index.js?v=20261013zd';
+import * as general from './general/index.js?v=20261013zd';
+import * as hr from './hr/index.js?v=20261013zd';
+import * as pjt from './pjt/index.js?v=20261013zd';
+import { modules as legacy, hostNative } from './legacy/index.js?v=20261013zd';
 
 export const MODULES = [
   { manifest: edoc.manifest, mount: edoc.mount },
@@ -17,6 +18,7 @@ export const MODULES = [
   { manifest: company.manifest, mount: company.mount },
   { manifest: finance.manifest, mount: finance.mount }
 ].concat(legacy);   // 옛 모듈(기획·인사·PJT·내 팀 공수표)은 어댑터로 입주 — 새 모듈로 바뀌면 이 줄에서 빠지고 위 목록으로 옮긴다
+hostNative('pjt', 'attend', pjt.mountAttend);   // PJT 새 모듈의 첫 화면 — 출역·공수(구포털 PJT 메뉴 안에서 열린다)
 hostNative('plan', 'home', plan.mountHome);   // 영업기획 홈 새 화면
 hostNative('plan', 'acct', plan.mountAcct);   // 비용장부 대조(재무회계 이관) 새 화면
 hostNative('plan', 'closing', plan.mountClosing);   // 월말 마감(신규)

@@ -70,3 +70,9 @@ export function monthSheet(roster, resigned, mdByDay, y, m) {
   const dayTotals2 = keys.map((k, i) => Math.round(rows.reduce((a, r) => a + r.values[i], 0) * 10) / 10);
   return { days, keys, rows, dayTotals: dayTotals2, grand: Math.round(rows.reduce((a, r) => a + r.total, 0) * 10) / 10 };
 }
+/** 구포털 Ph2 의 "오늘": 한국 시간 새벽 6시 전이면 전날(야간조가 밤 12시를 넘겨 일해도 그 근무일로 기록). now = 밀리초(생략하면 지금) */
+export function appToday(now) {
+  const kst = new Date((now == null ? Date.now() : now) + 9 * 3600000); if (kst.getUTCHours() < 6) kst.setUTCDate(kst.getUTCDate() - 1);
+  return kst.getUTCFullYear() + '-' + String(kst.getUTCMonth() + 1).padStart(2, '0') + '-' + String(kst.getUTCDate()).padStart(2, '0');
+}
+export function shiftDate(dateKey, delta) { const [y, m, d] = String(dateKey).split('-').map(Number); const dt = new Date(Date.UTC(y, m - 1, d + delta)); return dt.getUTCFullYear() + '-' + String(dt.getUTCMonth() + 1).padStart(2, '0') + '-' + String(dt.getUTCDate()).padStart(2, '0'); }

@@ -1,14 +1,14 @@
-import { LEGACY_BASE } from '../../core/config.js?v=20261013zc';
-import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261013zc';
-import { esc } from '../../core/ui.js?v=20261013zc';
-import { attachActivity } from '../../core/idle.js?v=20261013zc';
-import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey } from './list.js?v=20261013zc';
-import { setSideCurrent } from '../../shared/sidenav.js?v=20261013zc';
+import { LEGACY_BASE } from '../../core/config.js?v=20261013zd';
+import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261013zd';
+import { esc } from '../../core/ui.js?v=20261013zd';
+import { attachActivity } from '../../core/idle.js?v=20261013zd';
+import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey } from './list.js?v=20261013zd';
+import { setSideCurrent } from '../../shared/sidenav.js?v=20261013zd';
 
 const base = () => new URL(LEGACY_BASE, location.href).href;
 const NATIVE = new Map();   // '모듈id/구역' → 그 구역을 새 모듈이 그리는 함수(modules/index.js 가 hostNative 로 등록)
 export const hostNative = (defId, key, fn) => { NATIVE.set(defId + '/' + key, fn); };
-const isNativeKey = (def, key) => !!(def.sections && def.sections.some((s) => s.native && s.key === key));
+const isNativeKey = (def, key) => !!(def.sections && def.sections.some((s) => s.native && s.key === key)) || !!(def.nativeKeys && def.nativeKeys.indexOf(key) !== -1);   // 인사·영업기획은 sections, PJT 는 메뉴 항목 중 일부(nativeKeys)가 새 화면
 const states = new Map();   // 모듈 id → { def, wrap, frame, key, tab, me, dyn }  — 작업탭 유지: 떠나도 지우지 않고 숨긴다
 let keepRoot = null; let listening = false;
 
@@ -84,6 +84,7 @@ export async function mountLegacy(def, keep, route, ctx) {
       keep.appendChild(w); st.wrap = w; st.frame = w.querySelector('iframe'); st.native = w.querySelector('.jh-legacy__native');
       st.frame.addEventListener('load', () => { try { attachActivity(st.frame.contentDocument); } catch (e) { /* 같은 출처가 아니면 센 수 없다 */ } });
     }
+    if (!st.native && st.wrap) { const nd = document.createElement('div'); nd.className = 'jh-legacy__native'; st.wrap.appendChild(nd); st.native = nd; if (!st.frame) st.frame = st.wrap.querySelector('iframe'); }   // 옛 화면으로 먼저 열린 틀에는 새 화면 자리가 없다 — 만든다
     st.key = item.key; st.tab = ''; st.sub = (route.segs || [])[1] || ''; highlight(st); const fn = NATIVE.get(def.id + '/' + item.key);
     if (fn) await fn(st.native, { segs: (route.segs || []).slice(1), query: route.query || {} }, ctx); return;
   }
@@ -100,7 +101,7 @@ export async function mountLegacy(def, keep, route, ctx) {
   st.key = item.key; st.tab = tabQ;
   const quick = def.dynamicNav ? '<div class="jh-legacy__quick" data-show="' + (item.key === 'home') + '"><button type="button" class="jh-btn" data-variant="primary" data-pjt-pick>👷 출역·공수 체크</button><a class="jh-btn" data-variant="secondary" href="#/calendar/month">📅 일정 확인</a></div>' : '';
   const wrap = document.createElement('div'); wrap.className = 'jh-legacy'; wrap.setAttribute('data-legacy-mod', def.id);
-  wrap.innerHTML = quick + navHtml(def, itemsFor(def, me, st.dyn), item.key, esc) + '<iframe class="jh-legacy__frame" title="' + esc(def.title) + '" data-legacy-frame="' + esc(def.id) + '" src="' + esc(buildUrl(def, item, me, base(), Date.now(), tabQ)) + '"></iframe>' + (def.sections ? '<div class="jh-legacy__native" hidden></div>' : '');
+  wrap.innerHTML = quick + navHtml(def, itemsFor(def, me, st.dyn), item.key, esc) + '<iframe class="jh-legacy__frame" title="' + esc(def.title) + '" data-legacy-frame="' + esc(def.id) + '" src="' + esc(buildUrl(def, item, me, base(), Date.now(), tabQ)) + '"></iframe>' + (def.sections || def.nativeKeys ? '<div class="jh-legacy__native" hidden></div>' : '');
   keep.appendChild(wrap); st.wrap = wrap; st.frame = wrap.querySelector('iframe'); st.native = wrap.querySelector('.jh-legacy__native'); if (st.dyn && st.dyn.loaded) wrap.setAttribute('data-dyn', 'ready'); if (def.groups) wrap.setAttribute('data-side', ''); canonical(st);
   st.frame.addEventListener('load', () => { try { attachActivity(st.frame.contentDocument); } catch (e) { /* 같은 출처가 아니면 센 수 없다 */ } });   // 옛 화면 안에서 일하는 것도 "활동"(자동 로그아웃)
   const pick = wrap.querySelector('[data-pjt-pick]'); if (pick) pick.addEventListener('click', () => openAttendPicker(st));
