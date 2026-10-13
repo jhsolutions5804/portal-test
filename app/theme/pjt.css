@@ -252,3 +252,12 @@
 .jh-ro__card-actions { display: flex; gap: var(--sp-2); }
 .jh-ro__danger { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); flex-wrap: wrap; padding: var(--sp-3) var(--sp-4); border: var(--u-1) dashed var(--c-line); border-radius: var(--radius); }
 .jh-ro__danger > .jh-field__hint { flex: 1 1 var(--u-220); }
+/* 근로자 연명부 — 첨부 */
+.jh-ro__files { display: grid; }
+.jh-ro__frow { display: grid; grid-template-columns: var(--u-120) minmax(0, 1fr); gap: var(--sp-2) var(--sp-3); align-items: baseline; padding: var(--sp-3) var(--sp-4); border-bottom: var(--u-1) solid var(--c-line); }
+.jh-ro__fl2 { font-weight: 700; }
+.jh-ro__fi { min-width: 0; overflow-wrap: anywhere; }
+.jh-ro__fa { grid-column: 1 / -1; display: flex; gap: var(--sp-1); flex-wrap: wrap; }
+.jh-ro__fa label.jh-btn { cursor: pointer; }
+.jh-ro__ph { width: 92vw; max-width: 860px; }
+.jh-ro__img { max-width: 100%; max-height: 70vh; border-radius: var(--radius); display: block; margin: 0 auto; }

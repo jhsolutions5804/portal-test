@@ -1,18 +1,19 @@
 /* 근로자 연명부(새 화면) — 구포털 PJT 메뉴의 "근로자 연명부" 칸. 주소 #/pjt/roster(목록) · #/pjt/roster/<근로자 id>(상세 조회).
  * 왼쪽 명단(재직·조치 필요·퇴사·전체, 검색, 정렬) + 오른쪽(사람을 고르면 상세, 아니면 조치 필요 현황). 2단계: 카드마다 따로 수정(인적사항·급여/계좌·비고), 신규 등록, 삭제(관리자), 퇴사·팀장 연결, 주민번호 저장·보기(사유 선택, 서버 함수).
  * 첨부·건강검진·원청별 교육·자격 입력은 다음 단계. 규칙은 roster.js, 표시는 roster-view.js. */
-import { db, storage, collection, doc, getDocs, writeBatch, deleteField, serverTimestamp, arrayUnion, arrayRemove, storageRef, deleteObject } from '../../core/firebase.js?v=20261014h';
-import { esc, toast } from '../../core/ui.js?v=20261014h';
-import { confirmDialog } from '../../core/dialog.js?v=20261014h';
-import { revealWorker, saveJumin } from '../../shared/identity.js?v=20261014h';
-import { mergePrivs, summaryOf, visibleList, rowOf, todayKey, birthFromJumin, parseJumin, fmtJumin, fmtPhone, fmtMoney, blankForm, formOfMaster, validateWorker, payOf, deleteBlock, pdfPathsOf, slotDocId, FILE_SLOTS } from './roster.js?v=20261014h';
-import { rosterHtml } from './roster-view.js?v=20261014h';
+import { db, storage, collection, doc, getDoc, getDocs, writeBatch, deleteField, serverTimestamp, arrayUnion, arrayRemove, storageRef, deleteObject } from '../../core/firebase.js?v=20261014i';
+import { esc, toast } from '../../core/ui.js?v=20261014i';
+import { confirmDialog } from '../../core/dialog.js?v=20261014i';
+import { revealWorker, saveJumin } from '../../shared/identity.js?v=20261014i';
+import { compressImage } from './roster-image.js?v=20261014i';
+import { mergePrivs, summaryOf, visibleList, rowOf, todayKey, birthFromJumin, parseJumin, fmtJumin, fmtPhone, fmtMoney, blankForm, formOfMaster, validateWorker, payOf, deleteBlock, pdfPathsOf, slotDocId, FILE_SLOTS, slotOf, filesMeta, fileMetaOf, photoDocOf, anyFile, downloadName, canEditSlot } from './roster.js?v=20261014i';
+import { rosterHtml } from './roster-view.js?v=20261014i';
 const pushHash = (h) => { if (location.hash === h) return; try { history.replaceState(null, '', h); } catch (e) { location.hash = h; } };
 const lst = (snap) => { const a = []; snap.forEach((d) => a.push({ id: d.id, data: d.data() })); return a; };
 export async function mountRoster(root, route, ctx) {
   root.onclick = null; root.oninput = null; root.onchange = null;
   const me = (ctx && ctx.me) || {}; const segs = (route && route.segs) || [];
-  const st = { allowed: !!(me.admin || (me.perms && me.perms.pjt)), admin: !!me.admin, ready: false, err: '', masters: [], privs: {}, accounts: [], hr: {}, filter: 'active', query: '', sortKey: null, sortDir: 1, sel: segs[0] || '', canEdit: !!(me.admin || (me.perms && me.perms.pjt)), busy: false, edit: null, jr: null, allRows: [], alertRows: [], counts: { active: 0, resigned: 0, all: 0, alert: 0 }, coTab: 'samsung', coSub: 'legal', reveal: new Set(), today: todayKey(), rows: [], summary: { active: 0, resigned: 0, noHealth: 0, eduLack: 0 } };
+  const st = { allowed: !!(me.admin || (me.perms && me.perms.pjt)), admin: !!me.admin, ready: false, err: '', masters: [], privs: {}, accounts: [], hr: {}, filter: 'active', query: '', sortKey: null, sortDir: 1, sel: segs[0] || '', canEdit: !!(me.admin || (me.perms && me.perms.pjt)), busy: false, edit: null, jr: null, photo: null, allRows: [], alertRows: [], counts: { active: 0, resigned: 0, all: 0, alert: 0 }, coTab: 'samsung', coSub: 'legal', reveal: new Set(), today: todayKey(), rows: [], summary: { active: 0, resigned: 0, noHealth: 0, eduLack: 0 } };
   st.accountOf = (id) => st.accounts.find((u) => u.teamLeaderIds.indexOf(id) !== -1) || null; st.hrMatch = (name, birth) => (name && birth ? st.hr[String(name).trim() + '|' + birth] || null : null);
   root.innerHTML = '<div id="ro-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#ro-body');
   const recompute = () => {
@@ -93,6 +94,31 @@ export async function mountRoster(root, route, ctx) {
     try { const r = await ident.reveal('roster', st.sel, j.reason); if (!r || !r.found || !r.jumin) j.err = '저장된 번호가 없습니다.'; else { st.jr = { id: st.sel, value: fmtJumin(r.jumin) }; st.jrTimer = setTimeout(() => { st.jr = null; st.jrTimer = null; paint(); }, 20000); } }   // 번호는 화면에만 20초 보이고 어디에도 저장하지 않는다
     catch (err) { j.err = (err && err.message) || '열람하지 못했습니다.'; } st.busy = false; paint();
   };
+  // ── 서류·사진 첨부: 파일을 고르면 줄여서 바로 저장(이미지 문서 + 실무자 문서의 files 메타), 삭제도 바로 ──
+  const compress = (ctx && ctx.compressImage) || compressImage;
+  const metaWrite = (m, files, b) => b.set(doc(db, 'master_worker_info', m.id), { files, hasPhoto: anyFile(files), photoName: '', photoSize: 0, photoW: 0, photoH: 0, updatedAt: serverTimestamp() }, { merge: true });   // 예전 단일 사진 필드는 files 로 통합되어 비운다
+  const uploadFile = async (slot, file) => {
+    const m = masterOf(st.sel); if (!m || !file || !canEditSlot(slot, st.admin, st.canEdit)) return;
+    if (!/^image\//.test(file.type || '')) { toast('이미지 파일만 선택할 수 있습니다.'); return; }
+    st.busy = true; paint();
+    try {
+      const r = await compress(file); const meta = fileMetaOf(file.name, slot, r.dataUrl, r.w, r.h); const files = Object.assign({}, filesMeta(st.privs[m.id]), { [slot]: meta });
+      const b = writeBatch(db); b.set(doc(db, 'master_worker_photos', slotDocId(m.id, slot)), Object.assign(photoDocOf(slot, meta, r.dataUrl), { updatedAt: serverTimestamp() })); metaWrite(m, files, b); await b.commit();
+      await reload(); toast(slotOf(slot).label + '을(를) 저장했습니다.');
+    } catch (err) { toast('저장 실패: ' + ((err && (err.code || err.message)) || '')); }
+    st.busy = false; paint();
+  };
+  const deleteFile = async (slot) => {
+    const m = masterOf(st.sel); if (!m || !canEditSlot(slot, st.admin, st.canEdit)) return; const label = slotOf(slot).label;
+    const ok = await confirmDialog({ title: label + ' 삭제', body: m.name + '님의 ' + label + ' 파일을 삭제할까요?', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return;
+    st.busy = true; paint();
+    try { const files = Object.assign({}, filesMeta(st.privs[m.id]), { [slot]: null }); const b = writeBatch(db); b.delete(doc(db, 'master_worker_photos', slotDocId(m.id, slot))); metaWrite(m, files, b); await b.commit(); await reload(); toast(label + '을(를) 삭제했습니다.'); }
+    catch (err) { toast('삭제 실패: ' + ((err && (err.code || err.message)) || '')); }
+    st.busy = false; paint();
+  };
+  const fetchPhoto = async (slot) => { const m = masterOf(st.sel); if (!m) return null; try { const snap = await getDoc(doc(db, 'master_worker_photos', slotDocId(m.id, slot))); if (!snap.exists()) { toast('저장된 파일을 찾을 수 없습니다.'); return null; } return { m, d: snap.data() }; } catch (err) { toast('파일을 불러오지 못했습니다: ' + ((err && (err.code || err.message)) || '')); return null; } };
+  const viewFile = async (slot) => { const r = await fetchPhoto(slot); if (!r) return; st.photo = { slot, title: (r.m.name || '') + ' ' + slotOf(slot).label, src: r.d.dataUrl }; paint(); };   // 파일은 [보기]를 눌렀을 때만 읽어 화면에 연다
+  const downloadFile = async (slot) => { const r = (st.photo && st.photo.slot === slot) ? { m: masterOf(st.sel), d: { dataUrl: st.photo.src } } : await fetchPhoto(slot); if (!r || !r.m) return; const a = document.createElement('a'); a.href = r.d.dataUrl; a.download = downloadName(r.m.name, slot); document.body.appendChild(a); a.click(); a.remove(); };
   const setField = (t) => {
     if (!st.edit || !t.hasAttribute('data-ro-f')) return false; const k = t.getAttribute('data-ro-f'); st.edit.form[k] = t.value;
     if (k === 'jumin') { const pj = parseJumin(t.value); if (pj.valid) { const f = st.edit.form; if (!f.birth || f.birth !== pj.birth) { f.birth = pj.birth; const bi = body.querySelector('[data-ro-f="birth"]'); if (bi) bi.value = pj.birth; } if (!f.gender) { f.gender = pj.gender; const gi = body.querySelector('[data-ro-f="gender"]'); if (gi) gi.value = pj.gender; } } }   // 주민번호를 넣으면 생년월일·성별을 자동으로
@@ -100,8 +126,8 @@ export async function mountRoster(root, route, ctx) {
   };
   root.onclick = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return; let el;
-    if ((el = t.closest('[data-ro-open]'))) { st.sel = el.getAttribute('data-ro-open'); st.reveal = new Set(); st.coTab = 'samsung'; st.coSub = 'legal'; st.edit = null; clearJr(); pushHash('#/pjt/roster/' + encodeURIComponent(st.sel)); paint(); if (window.matchMedia && window.matchMedia('(max-width: 899px)').matches) window.scrollTo(0, 0); return; }
-    if (t.closest('[data-ro-back]')) { st.sel = ''; st.edit = null; clearJr(); pushHash('#/pjt/roster'); paint(); return; }
+    if ((el = t.closest('[data-ro-open]'))) { st.sel = el.getAttribute('data-ro-open'); st.reveal = new Set(); st.coTab = 'samsung'; st.coSub = 'legal'; st.edit = null; st.photo = null; clearJr(); pushHash('#/pjt/roster/' + encodeURIComponent(st.sel)); paint(); if (window.matchMedia && window.matchMedia('(max-width: 899px)').matches) window.scrollTo(0, 0); return; }
+    if (t.closest('[data-ro-back]')) { st.sel = ''; st.edit = null; st.photo = null; clearJr(); pushHash('#/pjt/roster'); paint(); return; }
     if (t.closest('[data-ro-new]')) { st.sel = ''; clearJr(); st.edit = { card: 'new', form: blankForm(), msg: '', jchange: true }; pushHash('#/pjt/roster'); paint(); return; }
     if ((el = t.closest('[data-ro-edit]'))) { openEdit(el.getAttribute('data-ro-edit')); return; }
     if (t.closest('[data-ro-cancel]')) { st.edit = null; paint(); return; }
@@ -111,6 +137,10 @@ export async function mountRoster(root, route, ctx) {
     if (t.closest('[data-ro-jask]')) { clearJr(); st.jr = { id: st.sel, ask: true, reason: '4대보험 신고' }; paint(); return; }
     if (t.closest('[data-ro-jgo]') && !st.busy) { await revealJumin(); return; }
     if (t.closest('[data-ro-jhide]')) { clearJr(); paint(); return; }
+    if ((el = t.closest('[data-ro-fview]')) && !st.busy) { await viewFile(el.getAttribute('data-ro-fview')); return; }
+    if ((el = t.closest('[data-ro-fdl]'))) { await downloadFile(el.getAttribute('data-ro-fdl')); return; }
+    if ((el = t.closest('[data-ro-fdel]')) && !st.busy) { await deleteFile(el.getAttribute('data-ro-fdel')); return; }
+    if (t.closest('[data-ro-fclose]')) { st.photo = null; paint(); return; }
     if ((el = t.closest('[data-ro-filter]'))) { st.filter = el.getAttribute('data-ro-filter'); recompute(); paint(); return; }
     if (t.closest('[data-ro-dir]')) { if (!st.sortKey) return; st.sortDir = -st.sortDir; recompute(); paint(); return; }
     if ((el = t.closest('[data-ro-cotab]'))) { st.coTab = el.getAttribute('data-ro-cotab'); paint(); return; }
@@ -121,6 +151,7 @@ export async function mountRoster(root, route, ctx) {
   root.onchange = (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
     if (t.hasAttribute('data-ro-jreason')) { if (st.jr) st.jr.reason = t.value; return; }
+    if (t.hasAttribute('data-ro-file')) { const f = t.files && t.files[0]; const slot = t.getAttribute('data-ro-file'); t.value = ''; if (f) uploadFile(slot, f); return; }
     if (setField(t)) { const k = t.getAttribute('data-ro-f'); if (k === 'phone') { st.edit.form.phone = fmtPhone(t.value); t.value = st.edit.form.phone; } if (k === 'leaderId') paint(); return; }   // 소속을 바꾸면 팀장 포털 계정 칸이 달라진다(인사 연동 주소는 저장할 때 이름·생년월일로 다시 판정)
     if (t.hasAttribute('data-ro-sortm')) { st.sortKey = t.value || null; if (!st.sortKey) st.sortDir = 1; recompute(); paint(); }
   };

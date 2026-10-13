@@ -679,4 +679,29 @@ await scenario('PJT 근로자 연명부 2단계(등록·수정·삭제): 카드�
   // 권한: 실무자(관리자 아님)
   const sv = ctx.me; ctx.me = { admin: false, uid: 'g2', name: '실무자', perms: { pjt: true }, teamLeaderIds: [] }; try { const rn = await mountFresh(pjtMod.mountRoster, { segs: ['L1'], query: {} }); check(!!rn.querySelector('[data-ro-edit="personal"]') && !!rn.querySelector('[data-ro-edit="note"]') && !rn.querySelector('[data-ro-edit="pay"]') && !rn.querySelector('[data-ro-del]') && !!rn.querySelector('[data-ro-new]'), '★ 실무자(PJT 권한, 관리자 아님): 인적사항·비고 수정과 신규 등록은 되고, 급여 수정·삭제 버튼은 없음'); ctx.me = { admin: false, uid: 'g3', name: '손님', perms: {}, teamLeaderIds: [] }; const rg = await mountFresh(pjtMod.mountRoster, { segs: ['L1'], query: {} }); check(!rg.querySelector('[data-ro-edit]') && !rg.querySelector('[data-ro-new]'), 'PJT 권한이 없으면 아무것도 보이지 않음(안내만)'); } finally { ctx.me = sv; delete ctx.identity; }
 });
+
+await scenario('PJT 근로자 연명부 3단계(서류·사진 첨부): 칸별 상태, 올리기(줄여서 바로 저장)·보기·다운로드·삭제, 통장사본은 관리자만, 이미지만 허용', async (check) => {
+  ctx.compressImage = async (file) => ({ dataUrl: 'data:image/jpeg;base64,' + 'A'.repeat(400), w: 300, h: 400 });
+  const dls = []; const oc = w.HTMLAnchorElement.prototype.click; w.HTMLAnchorElement.prototype.click = function () { dls.push([this.download, String(this.href).slice(0, 24)]); };
+  try {
+    const root = await mountFresh(pjtMod.mountRoster, { segs: ['L1'], query: {} }); const txt = () => root.textContent.replace(/\s+/g, ' '); WR().length = 0; const rowOf = (label) => [...root.querySelectorAll('.jh-ro__frow')].find((r) => r.querySelector('.jh-ro__fl2').textContent === label);
+    check(root.querySelectorAll('.jh-ro__frow').length === 4 && /p\.jpg · 300×400 · 49KB/.test(rowOf('사진').textContent) && !!rowOf('사진').querySelector('[data-ro-fview="photo"]') && !!rowOf('사진').querySelector('[data-ro-fdel="photo"]') && /교체/.test(rowOf('사진').textContent) && /등록된 파일 없음/.test(rowOf('건설기초이수증').textContent) && /파일 선택/.test(rowOf('건설기초이수증').textContent) && !rowOf('건설기초이수증').querySelector('[data-ro-fview]') && !!rowOf('통장사본'), '★ 서류·사진 카드: 칸마다 상태(파일 이름·크기)와 [보기][다운로드][교체][삭제], 없으면 [파일 선택], 통장사본 칸은 관리자에게만');
+    check(!root.querySelector('img') && !/data:image/.test(root.innerHTML.replace(/data-[^=]*="[^"]*"/g, '')), '파일은 화면에 바로 표시하지 않음(보기를 누르기 전에는 이미지가 없음)');
+    // 보기·다운로드
+    await click(root, '[data-ro-fview="photo"]', 200); const img = document.querySelector('.jh-ro__img'); check(!!img && img.getAttribute('src') === 'data:image/jpeg;base64,/9j/4AAQSkZJRg==' && /김팀장 사진/.test(document.body.textContent), '★ [보기]: 그때 파일을 읽어 창에 열고 제목은 "이름 칸이름"'); await click(document.body, '.jh-ro__ph [data-ro-fdl="photo"]', 100); check(dls.length === 1 && dls[0][0] === '김팀장_사진.jpg', '창 안의 [다운로드]: 파일 이름은 이름_칸이름.jpg'); await click(document.body, '.jh-ro__ph [data-ro-fclose]', 100); check(!document.querySelector('.jh-ro__img'), '[닫기]로 이미지 창이 닫힘');
+    await click(root, '[data-ro-fdl="idcard"]', 100); check(dls.length === 1 || dls.length === 2, ''); 
+    // 올리기: 파일 선택 → 줄여서 바로 저장
+    WR().length = 0; const up = async (slot, file) => { const inp = root.querySelector('[data-ro-file="' + slot + '"]'); Object.defineProperty(inp, 'files', { value: [file], configurable: true }); inp.dispatchEvent(new w.Event('change', { bubbles: true })); await sleep(250); };
+    await up('cert', { name: '이수증 사진.PNG', type: 'image/png' }); const pd = wrote('batch-set', /^master_worker_photos\/L1__cert$/), pi = wrote('batch-set', /^master_worker_info\/L1$/);
+    check(pd.length === 1 && pd[0].data.slot === 'cert' && pd[0].data.mime === 'image/jpeg' && pd[0].data.fileName === '이수증 사진.jpg' && pd[0].data.size === 300 && /^data:image\/jpeg;base64,A{400}$/.test(pd[0].data.dataUrl) && !!pd[0].data.updatedAt && pi.length === 1 && pi[0].merge === true && pi[0].data.hasPhoto === true && pi[0].data.files.cert.name === '이수증 사진.jpg' && pi[0].data.files.cert.w === 300 && pi[0].data.files.photo.name === 'p.jpg' && pi[0].data.files.idcard.name === 'id.jpg' && pi[0].data.photoName === '', '★ 올리기: 이미지 문서(master_worker_photos/<id>__cert)와 실무자 문서의 첨부 메타(files)를 한 번에 저장 — 기존 칸은 그대로, 예전 단일 사진 필드는 비움');
+    WR().length = 0; await up('bankbook', { name: '통장.jpg', type: 'image/jpeg' }); check(wrote('batch-set', /^master_worker_photos\/L1__bank$/).length === 1, '통장사본은 관리자가 올리면 __bank 문서에 저장');
+    WR().length = 0; await up('photo', { name: '문서.pdf', type: 'application/pdf' }); check(WR().length === 0 && /이미지 파일만 선택할 수 있습니다/.test(document.body.textContent), '이미지가 아니면 저장하지 않고 안내');
+    // 삭제
+    WR().length = 0; await click(root, '[data-ro-fdel="idcard"]', 150); check(!!document.querySelector('.jh-dialog') && /신분증 파일을 삭제할까요/.test(document.querySelector('.jh-dialog').textContent) && WR().length === 0, '삭제 확인 창(확인 전에는 저장 안 함)'); await confirmOk(); await sleep(250);
+    const dd = wrote('batch-delete', /^master_worker_photos\/L1__idcard$/), di = wrote('batch-set', /^master_worker_info\/L1$/); check(dd.length === 1 && di.length === 1 && di[0].data.files.idcard === null && di[0].data.files.photo.name === 'p.jpg' && di[0].data.hasPhoto === true, '★ 삭제: 이미지 문서를 지우고 메타는 그 칸만 비움(다른 칸은 그대로)');
+    // 권한
+    const sv = ctx.me; ctx.me = { admin: false, uid: 'g2', name: '실무자', perms: { pjt: true }, teamLeaderIds: [] };
+    try { const rn = await mountFresh(pjtMod.mountRoster, { segs: ['L1'], query: {} }); const rr = (l) => [...rn.querySelectorAll('.jh-ro__frow')].find((r) => r.querySelector('.jh-ro__fl2').textContent === l); check(rn.querySelectorAll('.jh-ro__frow').length === 3 && !rr('통장사본') && !!rr('사진').querySelector('[data-ro-file="photo"]') && !!rr('사진').querySelector('[data-ro-fdel="photo"]') && !rn.querySelector('[data-ro-file="bankbook"]'), '★ 실무자(관리자 아님): 통장사본 칸은 없고, 사진·신분증·이수증은 올리고 지울 수 있음'); } finally { ctx.me = sv; }
+  } finally { w.HTMLAnchorElement.prototype.click = oc; delete ctx.compressImage; }
+});
 markDone(); console.log('\n' + (failed ? '문제가 있는 저장 동작 ' + failed + '건' : '모든 저장 동작이 올바른 경로·값으로 기록됨')); process.exit(failed ? 1 : 0);

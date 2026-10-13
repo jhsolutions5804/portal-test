@@ -1,9 +1,9 @@
-import { LEGACY_BASE } from '../../core/config.js?v=20261014h';
-import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261014h';
-import { esc } from '../../core/ui.js?v=20261014h';
-import { attachActivity } from '../../core/idle.js?v=20261014h';
-import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS } from './list.js?v=20261014h';
-import { setSideCurrent } from '../../shared/sidenav.js?v=20261014h';
+import { LEGACY_BASE } from '../../core/config.js?v=20261014i';
+import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261014i';
+import { esc } from '../../core/ui.js?v=20261014i';
+import { attachActivity } from '../../core/idle.js?v=20261014i';
+import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS } from './list.js?v=20261014i';
+import { setSideCurrent } from '../../shared/sidenav.js?v=20261014i';
 
 const base = () => new URL(LEGACY_BASE, location.href).href;
 const NATIVE = new Map();   // '모듈id/구역' → 그 구역을 새 모듈이 그리는 함수(modules/index.js 가 hostNative 로 등록)

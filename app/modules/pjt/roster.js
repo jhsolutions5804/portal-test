@@ -162,3 +162,18 @@ export const payOf = (f) => ({ bank: String(f.bank || '').trim(), account: Strin
 export const deleteBlock = (m, masters) => ((masters || []).some((x) => x.leaderId === m.id) ? m.name + '님은 팀장으로 지정된 인원이 있어 삭제할 수 없습니다. 먼저 팀원들의 소속을 변경해주세요.' : '');
 /** 삭제할 때 함께 지울 Storage 파일 경로(검진 결과·화학물질안전원 수료증 PDF) */
 export const pdfPathsOf = (p) => [].concat(((p && p.health) || []).map((h) => h.pdf && h.pdf.path), ((p && p.chemEdu) || []).map((c) => c.pdf && c.pdf.path)).filter(Boolean);
+
+// ── 3단계: 서류·사진 첨부(구포털 규칙 그대로) ──
+export const PHOTO_MAX_CHARS = 950000;   // 데이터 URL 문자 수 상한(≈ 원본 710KB) — 보안 규칙 1,000,000자 미만, Firestore 문서 1MiB 한도 여유
+export const PHOTO_MAX_EDGE = 2000;      // 긴 변 최대 픽셀
+export const dataUrlBytes = (u) => Math.round((String(u || '').length - 23) * 3 / 4);
+/** 첨부 한 칸의 메타(실무자 문서 files.<칸>): 파일 이름은 원래 이름 + .jpg(줄이면서 JPEG 로 바꾸므로) */
+export function fileMetaOf(fileName, slot, dataUrl, w, h) { const label = slotOf(slot).label; return { name: String(fileName || label).replace(/\.[^.]+$/, '') + '.jpg', size: dataUrlBytes(dataUrl), w: w || 0, h: h || 0 }; }
+/** 첨부 이미지 문서(master_worker_photos/<근로자 id><접미사>) */
+export const photoDocOf = (slot, meta, dataUrl) => ({ dataUrl, mime: 'image/jpeg', fileName: meta.name, size: meta.size, slot });
+/** 칸을 하나라도 쓰고 있는가(hasPhoto) */
+export const anyFile = (files) => FILE_SLOTS.some((x) => !!(files || {})[x.k]);
+/** 내려받을 때 파일 이름: 이름_칸이름.jpg (파일 이름에 못 쓰는 문자는 _ 로) */
+export const downloadName = (name, slot) => ((name || '근로자') + '_' + slotOf(slot).label + '.jpg').replace(/[\\/:*?"<>|]/g, '_');
+/** 이 사람이 이 칸을 고칠 수 있는가: 통장사본은 관리자만, 나머지는 PJT 권한자 */
+export const canEditSlot = (slot, admin, canEdit) => (slotOf(slot).admin ? !!admin : !!canEdit);
