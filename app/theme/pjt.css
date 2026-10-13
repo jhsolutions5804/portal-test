@@ -154,3 +154,7 @@
 /* 공사일보: 문서 미리보기(종이 느낌) */
 .jh-pjt__doc { background: #fff; color: #111; padding: var(--sp-5); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); overflow-x: auto; }
 .jh-pjt__doc table { width: 100%; }
+
+.jh-pjt__shift { padding: var(--sp-1) var(--sp-3); border: var(--u-1) solid var(--c-primary); border-radius: var(--u-999); background: var(--c-surface); color: var(--c-primary); font: inherit; font-size: var(--fs-sm); font-weight: 700; cursor: pointer; }
+.jh-pjt__shift .jh-field__hint { display: inline; font-weight: 400; color: inherit; } .jh-pjt__shift[aria-pressed="true"] { background: var(--c-primary); color: var(--c-surface); }
+.jh-pjt__shift:disabled, .jh-pjt__cat:disabled { opacity: .6; cursor: default; }

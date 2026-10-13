@@ -2,7 +2,14 @@
  * 저장(동결): 날짜 키 문서 하나(어댑터 P.reports/<날짜>) — 구포털 Ph2·Ph4 일보(today·count·remarks…)와 경량 일보(content·headcount·note…)의 필드를 **모두 담은 문서(fmt 2)**로 쓴다. 어느 쪽 옛 화면이 읽어도 내용이 보인다.
  * 옛 문서(Ph2·Ph4 형식)는 읽을 때 새 양식으로 환산해 보여 주고(legacy 표시), 고쳐 저장하면 새 형식(두 필드 세트)으로 바뀐다. */
 export const REPORT_FMT = 2;
-export const SUGGEST_EQUIPS = ['지게차 (004나6452)', '지게차 (004나8334)', '지게차 (004라7402)', '지게차 (경기04로8396)', '지게차 (경기04보6471)'];   // 구포털 Ph2·Ph4 일보의 사용 장비 선택 목록(제안 — 직접 입력도 됨)
+/** 근무시간 구분(대표님 지정 2026-10-14): 고르면 시작·종료 시간이 채워지고, 그 뒤 시·분을 직접 고칠 수 있다. 시간이 구분과 정확히 맞으면 구분 이름이 표시되고, 고쳐서 맞지 않으면 시간만 남는다 */
+export const WORK_SHIFTS = [{ name: '주간', from: '07:00', to: '17:00' }, { name: '조출', from: '05:00', to: '07:00' }, { name: '연장', from: '17:00', to: '19:00' }, { name: '야간', from: '19:00', to: '21:00' }, { name: '조출주간', from: '05:00', to: '17:00' }, { name: '주간연장', from: '07:00', to: '19:00' }, { name: '철야', from: '19:00', to: '05:00' }];
+export const shiftOf = (checkIn, checkOut) => { const s = WORK_SHIFTS.find((x) => x.from === checkIn && x.to === checkOut); return s ? s.name : ''; };
+/** 사용 장비는 지게차·크레인 중 하나만 고른다(장비 번호는 쓰지 않음) */
+export const EQUIPS = ['지게차', '크레인'];
+export const normalizeEquip = (v) => { const t = (Array.isArray(v) ? v.join(' ') : String(v == null ? '' : v)); const f = EQUIPS.find((e) => t.indexOf(e) !== -1); return f ? [f] : []; };
+/** 작성자는 로그인한 계정 정보에서 가져온다: "이름 직급" */
+export const authorLabel = (me) => String((me && me.name) || '').trim() + (me && me.rank ? ' ' + String(me.rank).trim() : '');
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const r1 = (n) => Math.round((Number(n) || 0) * 10) / 10;
 const splitEquip = (v) => (Array.isArray(v) ? v : String(v == null ? '' : v).split(',')).map((s) => String(s).trim()).filter((s) => s && s !== '—');
@@ -14,12 +21,12 @@ export function isLegacyDoc(d) { return !!d && d.fmt == null && d.content === un
 export function fromStored(d) {
   const x = d || {}; const legacy = isLegacyDoc(x);
   const headcount = legacy ? (parseInt(x.count, 10) || 0) : (parseInt(x.headcount, 10) || 0); const per = legacy ? 0 : r1(x.manday); const total = legacy ? 0 : (x.mandayTotal != null ? r1(x.mandayTotal) : r1(headcount * per));
-  return { legacy, author: String(x.author || ''), checkIn: String(x.checkIn || ''), checkOut: String(x.checkOut || ''), content: String((legacy ? x.today : x.content) || ''), tomorrow: String(x.tomorrow || ''), headcount, manday: per, mandayTotal: total, equip: splitEquip(x.equip), note: String((legacy ? x.remarks : x.note) || '') };
+  return { legacy, author: String(x.author || ''), checkIn: String(x.checkIn || ''), checkOut: String(x.checkOut || ''), shift: shiftOf(String(x.checkIn || ''), String(x.checkOut || '')), content: String((legacy ? x.today : x.content) || ''), tomorrow: String(x.tomorrow || ''), headcount, manday: per, mandayTotal: total, equip: normalizeEquip(x.equip), equipText: legacy ? splitEquip(x.equip).join(', ') : '', note: String((legacy ? x.remarks : x.note) || '') };   // 옛 형식은 장비 번호가 든 원래 문구를 equipText 로 보여 주고, 새 양식으로 고치면 지게차·크레인 중 하나로 바뀐다
 }
 /** 화면 모델 → 저장할 문서(두 필드 세트). kind: 'p4ph2'|'p4ph4'|'light' — 옛 화면이 읽는 date 필드가 다르다(Ph2·Ph4 는 날짜 문구, 경량은 날짜 키) */
 export function toStored(m, ctx) {
-  const c = ctx || {}; const headcount = parseInt(m.headcount, 10) || 0; const manday = r1(m.manday); const total = r1(headcount * manday); const equip = splitEquip(m.equip); const fixed = c.kind === 'p4ph2' || c.kind === 'p4ph4';
-  return { fmt: REPORT_FMT, dateKey: c.dateKey, date: fixed ? dateText(c.dateKey) : c.dateKey, site: c.site || '', author: String(m.author || '').trim(), checkIn: m.checkIn || '', checkOut: m.checkOut || '',
+  const c = ctx || {}; const headcount = parseInt(m.headcount, 10) || 0; const manday = r1(m.manday); const total = r1(headcount * manday); const equip = normalizeEquip(m.equip); const fixed = c.kind === 'p4ph2' || c.kind === 'p4ph4';
+  return { fmt: REPORT_FMT, dateKey: c.dateKey, date: fixed ? dateText(c.dateKey) : c.dateKey, site: c.site || '', author: String(m.author || '').trim(), checkIn: m.checkIn || '', checkOut: m.checkOut || '', shift: shiftOf(m.checkIn || '', m.checkOut || ''),
     content: String(m.content || '').trim(), tomorrow: String(m.tomorrow || '').trim(), headcount, manday, mandayTotal: total, equip: fixed ? (equip.length ? equip.join(', ') : '—') : equip.join(', '), note: String(m.note || '').trim(),
     today: String(m.content || '').trim(), count: String(headcount), remarks: String(m.note || '').trim() };
 }
@@ -49,8 +56,8 @@ export function docHtml(m, ctx) {
   const c = ctx || {}; const td = 'style="border:1px solid #ccc;padding:8px 12px;white-space:pre-wrap"', th = 'style="border:1px solid #ccc;padding:8px 12px;background:#f5f5f5;width:110px;text-align:left"'; const row = (k, v) => '<tr><th ' + th + '>' + k + '</th><td ' + td + '>' + (esc(v) || '—') + '</td></tr>';
   const people = m.headcount || m.headcount === 0 ? m.headcount + '명' + (m.manday ? ' × ' + r1(m.manday).toFixed(1) + '공수 = 합계 ' + r1((parseInt(m.headcount, 10) || 0) * m.manday).toFixed(1) : '') : '—';   // 합계는 항상 인원 × 1인당 공수(저장하는 값과 같음)
   return '<div style="text-align:center;margin-bottom:20px"><h2 style="font-size:22px;font-weight:700;letter-spacing:4px">공 사 일 보</h2><p style="font-size:12px;color:#555;margin-top:4px">' + esc(c.site || '') + (c.client ? ' · ' + esc(c.client) : '') + '</p></div>'
-    + '<table style="width:100%;border-collapse:collapse;font-size:13px">' + row('현장명', c.site) + row('작성일자', c.dateKey ? dateText(c.dateKey) : '') + row('작성자', m.author) + (m.checkIn || m.checkOut ? row('근무시간', (m.checkIn || '—') + ' ~ ' + (m.checkOut || '—')) : '')
-    + row('금일 작업', m.content) + row('명일 예정', m.tomorrow) + '<tr><th ' + th + '>투입 인원 · 공수</th><td ' + td + '>' + esc(people) + '</td></tr>' + row('사용 장비', splitEquip(m.equip).join(', ')) + row('특이사항', m.note) + '</table>';
+    + '<table style="width:100%;border-collapse:collapse;font-size:13px">' + row('현장명', c.site) + row('작성일자', c.dateKey ? dateText(c.dateKey) : '') + row('작성자', m.author) + (m.checkIn || m.checkOut ? row('근무시간', (shiftOf(m.checkIn, m.checkOut) ? shiftOf(m.checkIn, m.checkOut) + ' (' : '') + (m.checkIn || '—') + ' ~ ' + (m.checkOut || '—') + (shiftOf(m.checkIn, m.checkOut) ? ')' : '')) : '')
+    + row('금일 작업', m.content) + row('명일 예정', m.tomorrow) + '<tr><th ' + th + '>투입 인원 · 공수</th><td ' + td + '>' + esc(people) + '</td></tr>' + row('사용 장비', m.equipText || normalizeEquip(m.equip).join(', ') || splitEquip(m.equip).join(', ')) + row('특이사항', m.note) + '</table>';
 }
 /** 일보 파일 이름(인쇄 제목): 20260902_<프로젝트>_공사일보 */
 export const docTitle = (dateKey, site) => dateKey.replace(/-/g, '') + (site ? '_' + String(site).replace(/\s+/g, '') : '') + '_공사일보';
