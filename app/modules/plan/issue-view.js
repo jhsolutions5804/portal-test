@@ -1,8 +1,8 @@
-import { esc } from '../../core/ui.js?v=20261013zo';
-import { won, card, chip, fld, selectHtml } from './ui.js?v=20261013zo';
-import { METHOD_OPTIONS, isSupported, suppliers, clients, pickableEstimates, qtyRow, issueTotals, progressExcluded, progressProfile, calcProgressRow, mandaySource, mdSingle, mdBaseRate, mdForPjt, rateForPjt, mandaySummary, priorManday, TEAM_RATE } from './issue.js?v=20261013zo';
-import { estSupply, itemAmt } from './projects.js?v=20261013zo';
-import { compactRanges } from './progress.js?v=20261013zo';
+import { esc } from '../../core/ui.js?v=20261013zp';
+import { won, card, chip, fld, selectHtml } from './ui.js?v=20261013zp';
+import { METHOD_OPTIONS, isSupported, suppliers, clients, pickableEstimates, qtyRow, issueTotals, progressExcluded, progressProfile, calcProgressRow, mandaySource, mdSingle, mdBaseRate, mdForPjt, rateForPjt, mandaySummary, priorManday, TEAM_RATE } from './issue.js?v=20261013zp';
+import { estSupply, itemAmt } from './projects.js?v=20261013zp';
+import { compactRanges } from './progress.js?v=20261013zp';
 const money = (n) => Number(Math.round(n) || 0).toLocaleString('ko-KR');
 const companyOpts = (list, first) => [['', first]].concat(list.map((c) => [c.id, c.company + (c.ceo ? ' (' + c.ceo + ')' : '')]));
 const contactSel = (key, companyId, val, companies) => { if (!companyId) return ''; const c = companies.find((x) => x.id === companyId); const cts = (c && c.contacts) || []; return fld('담당자', selectHtml('data-is-f="' + key + '"', val, [['', cts.length ? '— 담당자 선택 (선택사항) —' : '— 담당자 없음 (거래처에서 추가 가능) —']].concat(cts.map((t) => [t.name, t.name + (t.tel ? ' · ' + t.tel : '') + (t.email ? ' · ' + t.email : '')])), cts.length ? '' : 'disabled')); };

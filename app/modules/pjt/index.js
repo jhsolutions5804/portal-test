@@ -1,26 +1,26 @@
 /* PJT 관리(통합 새 모듈) — 설계서 docs/pjt-design.md. Ph2·Ph4·경량PJT를 한 모듈로 합친다.
  * 지금 새 화면은 "출역·공수"(근태·공수 탭) 하나다 — 구포털 PJT 메뉴에서 프로젝트를 고르면 그 아래 "👷 출역·공수 (새)" 탭으로 열린다(legacy/frame.js 의 nativeSubs, modules/index.js hostNative). 프로젝트는 화면 안에서 고르지 않는다. 나머지 탭은 만들면서 구포털 항목을 하나씩 교체한다.
  * 저장 형식은 구포털 그대로(출역 { checks }, 공수 { md }, 날짜별 문서) — 영업기획의 공수 연동·팀별 노무비가 읽는다. 경로는 adapter.js, 규칙은 attendance.js. */
-import { db, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zo';
-import { esc, toast } from '../../core/ui.js?v=20261013zo';
-import { confirmDialog } from '../../core/dialog.js?v=20261013zo';
-import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zo';
-import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zo';
-import { visibleProjects } from './projects.js?v=20261013zo';
-import { loadHolidays } from '../../shared/holidays.js?v=20261013zo';
-import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zo';
-import { normalizeDayFixed, normalizeDayLight, stateAt, lightState, cellState, toggledDayChecks, lightItemStages, lightProgress, daysThrough, PROGRESS_START, keyOf, stagesOf } from './progress.js?v=20261013zo';
-import { structureFor, planSave, makeItemIdFactory } from './structure-store.js?v=20261013zo';
-import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, setFeature, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261013zo';
-import { progressHtml } from './progress-view.js?v=20261013zo';
-import { diffText } from './structure-view.js?v=20261013zo';
-import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261013zo';
-import { buildWeekly } from './weekly-ppt.js?v=20261013zo';
-import { boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, remapByOrder, unmatchedKeys, snapToTuesday, weekNo, weekRange } from './layout.js?v=20261013zo';
-import { fileToDataUrl, imageInfo } from './image-tools.js?v=20261013zo';
-import { layoutEditorHtml } from './layout-view.js?v=20261013zo';
-import { scheduleHtml } from './schedule-view.js?v=20261013zo';
-import { itemsForKey, buildDoc, formOf, detectCat, addDays, weekDays, isKey } from './schedule.js?v=20261013zo';
+import { db, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zp';
+import { esc, toast } from '../../core/ui.js?v=20261013zp';
+import { confirmDialog } from '../../core/dialog.js?v=20261013zp';
+import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zp';
+import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zp';
+import { visibleProjects } from './projects.js?v=20261013zp';
+import { loadHolidays } from '../../shared/holidays.js?v=20261013zp';
+import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zp';
+import { normalizeDayFixed, normalizeDayLight, stateAt, lightState, cellState, toggledDayChecks, lightItemStages, lightProgress, daysThrough, PROGRESS_START, keyOf, stagesOf } from './progress.js?v=20261013zp';
+import { structureFor, planSave, makeItemIdFactory } from './structure-store.js?v=20261013zp';
+import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, setFeature, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261013zp';
+import { progressHtml } from './progress-view.js?v=20261013zp';
+import { diffText } from './structure-view.js?v=20261013zp';
+import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261013zp';
+import { buildWeekly } from './weekly-ppt.js?v=20261013zp';
+import { boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, remapByOrder, unmatchedKeys, snapToTuesday, weekNo, weekRange } from './layout.js?v=20261013zp';
+import { fileToDataUrl, imageInfo } from './image-tools.js?v=20261013zp';
+import { layoutEditorHtml } from './layout-view.js?v=20261013zp';
+import { scheduleHtml } from './schedule-view.js?v=20261013zp';
+import { itemsForKey, buildDoc, formOf, detectCat, addDays, weekDays, isKey } from './schedule.js?v=20261013zp';
 
 export const manifest = { id: 'pjt', order: 40, title: 'PJT 관리', icon: '🏗️', defaultHash: '#/pjt/attend', perm: (me) => !!me && me.admin === true };
 export async function mount(root) { root.innerHTML = '<div class="jh-empty">PJT 화면은 구포털 틀 안의 메뉴로 열립니다.</div>'; }
@@ -325,7 +325,7 @@ export async function mountSchedule(root, route, ctx) {
   };
   root.onchange = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
-    if (t.hasAttribute('data-sc-todo')) { readForm(); paint(); return; }
+    if (t.hasAttribute('data-sc-todo')) { readForm(); if (st.form.isTodo) Object.assign(st.form, { sh: '00', sm: '00', eh: '24', em: '00' }); paint(); return; }
     if (t.hasAttribute('data-sc-done') && st.manage) { const id = t.getAttribute('data-sc-done'); const done = t.checked; const u = st.items.find((x) => x.id === id); if (u) u.done = done;
       try { await setDoc(doc(db, P.schedules, id), { done, doneUpdatedAt: serverTimestamp() }, { merge: true }); } catch (e) { if (u) u.done = !done; toast('완료 처리 실패: ' + ((e && (e.code || e.message)) || '')); } paint(); }
   };

@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261013zo';
-import { holidayName } from '../../shared/holidays.js?v=20261013zo';
-import { CATS, TAG_LABEL, TAG_COLOR, itemsForKey, rangeText, dotsFor, monthGrid, weekDays, dowOf } from './schedule.js?v=20261013zo';
+import { esc } from '../../core/ui.js?v=20261013zp';
+import { holidayName } from '../../shared/holidays.js?v=20261013zp';
+import { CATS, TAG_LABEL, TAG_COLOR, itemsForKey, rangeText, dotsFor, monthGrid, weekDays, dowOf } from './schedule.js?v=20261013zp';
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const hrs = Array.from({ length: 25 }, (_, i) => String(i).padStart(2, '0')), mins = ['00', '10', '20', '30', '40', '50'];
 const sel = (attr, val, opts, suffix) => '<select class="jh-select jh-pjt__tsel" ' + attr + '>' + opts.map((o) => '<option value="' + o + '"' + (o === val ? ' selected' : '') + '>' + o + (suffix || '') + '</option>').join('') + '</select>';
@@ -26,15 +26,18 @@ function monthHtml(st) {
   return '<section class="jh-card"><div class="jh-pjt__pad"><div class="jh-pjt__calgrid">' + head + cells + '</div></div></section>';
 }
 function listHtml(st, n) { return weekDays(st.date, n).map((k) => dayBlock(st, k)).join(''); }
+/** 일정 등록·수정 창 — 구포털 등록 창과 같은 순서: 내용 → 카테고리 → 할 일(00~24시) → 시작·종료(날짜 + 시 + 분) → 장소 → 참석자 → 등록자 → 등록하기. 할 일을 켜면 시간 칸이 00시~24시로 잠긴다 */
 function formHtml(st) {
   const f = st.form; const cats = CATS.map(([t, l]) => '<button type="button" class="jh-pjt__cat" data-sc-cat="' + t + '" aria-pressed="' + (f.tag === t) + '">' + esc(l) + '</button>').join('');
-  const time = f.isTodo ? '' : '<div class="jh-pjt__bar"><span class="jh-plan__line"><span class="jh-field__hint">시작</span>' + sel('data-sc-f="sh"', f.sh, hrs, '시') + sel('data-sc-f="sm"', f.sm, mins, '분') + '</span><span class="jh-plan__line"><span class="jh-field__hint">종료</span>' + sel('data-sc-f="eh"', f.eh, hrs, '시') + sel('data-sc-f="em"', f.em, mins, '분') + '</span></div>';
-  return '<section class="jh-card"><div class="jh-panel__head"><h3>' + (f.id ? '일정 수정' : '일정 등록') + '</h3></div><div class="jh-pjt__pad">'
-    + '<input class="jh-input" data-sc-f="text" value="' + esc(f.text) + '" placeholder="일정 내용 (예: FCU 반입, 안전팀장 회의)" aria-label="내용">'
-    + '<div class="jh-pjt__cats">' + cats + '</div><div class="jh-field__hint" data-sc-hint></div>'
-    + '<div class="jh-pjt__bar"><span class="jh-plan__line"><input class="jh-input" type="date" data-sc-f="sdate" value="' + esc(f.sdate) + '" aria-label="시작일"><span>~</span><input class="jh-input" type="date" data-sc-f="edate" value="' + esc(f.edate) + '" aria-label="종료일"></span><label class="jh-plan__check"><input type="checkbox" data-sc-todo' + (f.isTodo ? ' checked' : '') + '> <span>할 일(시간 없음)</span></label></div>' + time
-    + '<div class="jh-pjt__bar"><input class="jh-input" data-sc-f="place" value="' + esc(f.place) + '" placeholder="장소" aria-label="장소"><input class="jh-input" data-sc-f="att" value="' + esc(f.att) + '" placeholder="참석자" aria-label="참석자"><input class="jh-input" data-sc-f="reg" value="' + esc(f.reg) + '" placeholder="등록자" aria-label="등록자"></div>'
-    + '<div class="jh-pjt__bar"><span></span><span class="jh-plan__line"><button type="button" class="jh-btn" data-variant="ghost" data-sc-act="cancel">취소</button><button type="button" class="jh-btn" data-variant="primary" data-sc-act="save">' + (f.id ? '수정 저장' : '등록하기') + '</button></span></div></div></section>';
+  const dis = f.isTodo ? ' disabled' : ''; const row = (label, opt, inner) => '<div class="jh-pjt__frow"><label class="jh-pjt__flabel">' + label + (opt ? ' <span class="jh-field__hint">' + opt + '</span>' : '') + '</label>' + inner + '</div>';
+  const three = (d, h, m) => '<div class="jh-pjt__f3"><input class="jh-input" type="date" data-sc-f="' + d + '" value="' + esc(f[d]) + '">' + sel('data-sc-f="' + h + '"' + dis, f[h], hrs, '시') + sel('data-sc-f="' + m + '"' + dis, f[m], mins, '분') + '</div>';
+  return '<section class="jh-card jh-pjt__sform"><div class="jh-panel__head"><h3>' + (f.id ? '일정 수정' : '일정 등록') + '</h3><button type="button" class="jh-btn" data-variant="ghost" data-sc-act="cancel" aria-label="닫기">✕</button></div><div class="jh-pjt__pad">'
+    + row('일정 내용', '(공란 가능)', '<input class="jh-input" data-sc-f="text" value="' + esc(f.text) + '" placeholder="예: FCU 야간 설치 작업"><div class="jh-field__hint" data-sc-hint></div>')
+    + row('카테고리', '(자동 추정 · 탭해서 변경)', '<div class="jh-pjt__cats">' + cats + '</div>')
+    + '<div class="jh-pjt__frow"><label class="jh-pjt__todo" data-on="' + !!f.isTodo + '"><input type="checkbox" data-sc-todo' + (f.isTodo ? ' checked' : '') + '> <span>할 일 (00~24시 · 체크리스트로 등록)</span></label></div>'
+    + row('시작', '', three('sdate', 'sh', 'sm')) + row('종료', '(다중일 가능 · 같은 날이면 비워도 됨)', three('edate', 'eh', 'em'))
+    + row('장소', '(공란 가능)', '<input class="jh-input" data-sc-f="place" value="' + esc(f.place) + '" placeholder="예: 가동 1층 대회의실">') + row('참석자', '(공란 가능)', '<input class="jh-input" data-sc-f="att" value="' + esc(f.att) + '" placeholder="예: 서민우 팀장, 김혁">') + row('등록자', '(상세에서만 표시)', '<input class="jh-input" data-sc-f="reg" value="' + esc(f.reg) + '" placeholder="본인 이름">')
+    + '<button type="button" class="jh-btn jh-pjt__fsave" data-variant="primary" data-sc-act="save">' + (f.id ? '수정 저장' : '등록하기') + '</button></div></section>';
 }
 /** 일정 탭: 달력(월)·주간·2주 보기, 날짜별 일정 목록, 등록·수정·삭제·완료(할 일). 모든 프로젝트 같은 화면 */
 export function scheduleHtml(st) {
@@ -43,6 +46,7 @@ export function scheduleHtml(st) {
   const views = [['month', '달력'], ['week', '주간'], ['two', '2주']]; const title = st.view === 'month' ? st.month.y + '년 ' + (st.month.m + 1) + '월' : (() => { const d = weekDays(st.date, st.view === 'two' ? 14 : 7); const md = (k) => Number(k.slice(5, 7)) + '/' + Number(k.slice(8)); return md(d[0]) + ' ~ ' + md(d[d.length - 1]); })();
   const bar = '<div class="jh-pjt__bar"><span class="jh-pjt__tabs" role="tablist">' + views.map(([k, l]) => '<button type="button" role="tab" class="jh-pjt__tab" data-sc-view="' + k + '" aria-selected="' + (st.view === k) + '">' + l + '</button>').join('') + '</span><span class="jh-pjt__datenav"><button type="button" class="jh-btn" data-variant="ghost" data-sc-nav="-1" aria-label="이전">‹</button><strong>' + esc(title) + '</strong><button type="button" class="jh-btn" data-variant="ghost" data-sc-nav="1" aria-label="다음">›</button><button type="button" class="jh-btn" data-variant="secondary" data-sc-nav="today">오늘</button></span>' + (st.manage ? '<button type="button" class="jh-btn" data-variant="primary" data-sc-new="' + esc(st.date) + '">＋ 일정 등록</button>' : '') + '</div>';
   const head = '<div class="jh-pjt__proj"><span class="jh-pjt__projlabel">🏗️ ' + esc(st.label) + '</span><span class="jh-field__hint">일정</span></div>';
-  const body = st.view === 'month' ? '<div class="jh-pjt__split jh-pjt__splitcal"><div>' + monthHtml(st) + '</div><div>' + dayBlock(st, st.date) + '</div></div>' : listHtml(st, st.view === 'two' ? 14 : 7);
-  return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide">' + head + bar + (st.readonly ? '<div class="jh-field__hint">조회만 할 수 있습니다(등록·수정은 관리자·PJT 담당 계정).</div>' : '') + (st.form ? formHtml(st) : '') + body + '</div></div>';
+  // 월 보기: 왼쪽 큰 달력(스크롤해도 화면에 고정), 오른쪽은 그날 목록 — 등록·수정 창은 목록 자리에 나온다. 주간·2주 보기는 위쪽에 창이 나온다
+  const body = st.view === 'month' ? '<div class="jh-pjt__split jh-pjt__splitcal"><div class="jh-pjt__calcol">' + monthHtml(st) + '</div><div>' + (st.form ? formHtml(st) : dayBlock(st, st.date)) + '</div></div>' : (st.form ? formHtml(st) : '') + listHtml(st, st.view === 'two' ? 14 : 7);
+  return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide">' + head + bar + (st.readonly ? '<div class="jh-field__hint">조회만 할 수 있습니다(등록·수정은 관리자·PJT 담당 계정).</div>' : '') + body + '</div></div>';
 }

@@ -17,7 +17,7 @@ export function detectCat(text) {
   if (/안전|점검|대피|소방|TBM/.test(t)) return 'safety'; if (/품질|QC|공정회의|KISCO/.test(t)) return 'quality'; return 'admin';
 }
 /** 하루에 해당하는 일정(여러 날에 걸친 것 포함). 시작일 다음 날 새벽에 끝나는 야간 일정(19:00~05:00)은 시작일에만 보인다(원본 종료일·시간은 그대로 보존).
- *  표시 시간: 하루짜리는 시작 시간, 여러 날이면 첫날 시작 시간·마지막 날 종료 시간·중간 날 "00~24". 할 일(isTodo)은 시간 없음 */
+ *  표시 시간: 하루짜리는 시작 시간, 여러 날이면 첫날 시작 시간·마지막 날 종료 시간·중간 날 "00~24". 할 일(isTodo)은 하루 종일 = "00~24" */
 export function itemsForKey(items, key) {
   const out = [];
   (items || []).forEach((u) => {
@@ -25,16 +25,16 @@ export function itemsForKey(items, key) {
     if (!u.isTodo && rawEd !== sd && u.stime && u.etime) { const diff = Math.round((ms(rawEd) - ms(sd)) / 86400000); if (diff === 1 && u.etime <= u.stime) ed = sd; }
     if (key < sd || key > ed) return;
     const multi = sd !== ed; let time = null, pos = 'single';
-    if (u.isTodo) { time = null; } else if (!multi) time = u.stime || null; else if (key === sd) { time = u.stime || null; pos = 'start'; } else if (key === ed) { time = u.etime || null; pos = 'end'; } else { time = '00~24'; pos = 'mid'; }
+    if (u.isTodo) { time = '00~24'; } else if (!multi) time = u.stime || null; else if (key === sd) { time = u.stime || null; pos = 'start'; } else if (key === ed) { time = u.etime || null; pos = 'end'; } else { time = '00~24'; pos = 'mid'; }
     out.push(Object.assign({}, u, { time, _pos: pos, _sd: sd, _ed: rawEd }));
   });
-  const rank = (x) => (x.isTodo ? 3 : x.time === '00~24' ? 0 : x.time ? 1 : 2);
-  return out.sort((a, b) => rank(a) - rank(b) || String(a.time || '').localeCompare(String(b.time || '')) || String(a.text || '').localeCompare(String(b.text || ''), 'ko'));
+  const rank = (x) => (x.time === '00~24' ? 0 : x.time ? 1 : 2);   // 하루 종일(00~24 — 할 일·여러 날 중간 날) → 시간 있는 것 → 시간 미정
+  return out.sort((a, b) => rank(a) - rank(b) || (a.isTodo ? 1 : 0) - (b.isTodo ? 1 : 0) || String(a.time || '').localeCompare(String(b.time || '')) || String(a.text || '').localeCompare(String(b.text || ''), 'ko'));
 }
 /** "7/2 13:00 ~ 15:00" 형태의 일시 문구 */
 export function rangeText(u) {
   const f = (s) => { if (!s) return ''; const [, m, d] = s.split('-'); return (+m) + '/' + (+d); }; const sd = u.sdate || '', ed = u.edate || sd; const noT = (t) => !t || t === '미정';
-  if (u.isTodo) return f(sd) + (ed !== sd ? ' ~ ' + f(ed) : '') + ' (할 일)';
+  if (u.isTodo) return f(sd) + (ed !== sd ? ' ~ ' + f(ed) : '') + ' (할 일 · 00~24)';
   if (sd === ed) { if (noT(u.stime)) return f(sd) + ' (시간 미정)'; return f(sd) + ' ' + u.stime + (!noT(u.etime) ? ' ~ ' + u.etime : ''); }
   return f(sd) + (noT(u.stime) ? '' : ' ' + u.stime) + ' ~ ' + f(ed) + (noT(u.etime) ? '' : ' ' + u.etime);
 }
@@ -47,10 +47,11 @@ export function weekDays(dateKey, n) { const dow = dowOf(dateKey); const monday 
 const TIME = /^([01]\d|2[0-4]):[0-5]\d$/;
 /** 폼 값 → 저장할 일정 문서. form = { text, tag, sdate, edate, isTodo, sh, sm, eh, em, place, att, reg } — 실패하면 { error } */
 export function buildDoc(form, defaults) {
-  const f = form || {}; const text = String(f.text || '').trim(); if (!text) return { error: '일정 내용을 입력하세요.' };
+  const f = form || {}; const text = String(f.text || '').trim();   // 내용은 비워도 된다(구포털 "공란 가능" — 목록에는 "(내용 없음)")
   let sdate = f.sdate && isKey(f.sdate) ? f.sdate : (defaults && defaults.today) || ''; if (!sdate) return { error: '날짜를 입력하세요.' }; let edate = f.edate && isKey(f.edate) ? f.edate : sdate; if (edate < sdate) edate = sdate;
-  const tag = TAG_LABEL[f.tag] && CATS.some((c) => c[0] === f.tag) ? f.tag : detectCat(text); const isTodo = !!f.isTodo; const t = (h, m) => pad(Math.max(0, Math.min(24, parseInt(h, 10) || 0))) + ':' + pad(Math.max(0, Math.min(59, parseInt(m, 10) || 0)));
-  const stime = isTodo ? null : t(f.sh, f.sm), etime = isTodo ? null : t(f.eh, f.em); if (!isTodo && (!TIME.test(stime) || !TIME.test(etime))) return { error: '시간 형식이 올바르지 않습니다.' };
+  const tag = CATS.some((c) => c[0] === f.tag) ? f.tag : detectCat(text); const isTodo = !!f.isTodo; const t = (h, m) => pad(Math.max(0, Math.min(24, parseInt(h, 10) || 0))) + ':' + pad(Math.max(0, Math.min(59, parseInt(m, 10) || 0)));
+  const stime = isTodo ? '00:00' : t(f.sh, f.sm), etime = isTodo ? '24:00' : t(f.eh, f.em);   // 할 일은 하루 종일(00:00~24:00)로 저장 — 구포털은 할 일의 시간을 쓰지 않으므로 호환된다
+  if (!TIME.test(stime) || !TIME.test(etime)) return { error: '시간 형식이 올바르지 않습니다.' };
   return { data: { reg: String(f.reg || '').trim(), text, place: String(f.place || '').trim(), att: String(f.att || '').trim(), tag, tagLabel: TAG_LABEL[tag], sdate, edate, isTodo, stime, etime } };
 }
 /** 일정 문서 → 폼 값(수정용) */

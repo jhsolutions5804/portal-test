@@ -1,13 +1,13 @@
-import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261013zo';
-import { register, visibleFor, get } from './registry.js?v=20261013zo';
-import { parseHash, onChange } from './router.js?v=20261013zo';
-import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261013zo';
-import { initTheme } from './theme.js?v=20261013zo';
-import { checkForUpdate } from './update.js?v=20261013zo';
-import { MODULES } from '../modules/index.js?v=20261013zo';
-import { mountPlatformHome } from './home.js?v=20261013zo';
-import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261013zo';
-import { ensureTime24 } from '../shared/time24.js?v=20261013zo';
+import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261013zp';
+import { register, visibleFor, get } from './registry.js?v=20261013zp';
+import { parseHash, onChange } from './router.js?v=20261013zp';
+import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261013zp';
+import { initTheme } from './theme.js?v=20261013zp';
+import { checkForUpdate } from './update.js?v=20261013zp';
+import { MODULES } from '../modules/index.js?v=20261013zp';
+import { mountPlatformHome } from './home.js?v=20261013zp';
+import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261013zp';
+import { ensureTime24 } from '../shared/time24.js?v=20261013zp';
 
 initTheme();   // 이 기기에 저장된 화면 모드(자동·라이트·다크) 적용
 MODULES.forEach((m) => register(Object.assign({}, m.manifest, { mount: m.mount })));

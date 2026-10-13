@@ -135,3 +135,18 @@
 .jh-pjt__cat[data-sc-cat="off"] { --cat: #c0392b; }
 .jh-pjt__cat[data-sc-cat="quality"] { --cat: #00695C; }
 .jh-pjt__cat[data-sc-cat="admin"] { --cat: #7A8AA0; }
+
+/* 일정: 큰 달력(스크롤해도 고정) + 구포털식 등록 창 */
+@media (min-width: 1000px) {
+  .jh-pjt__splitcal { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+  .jh-pjt__calcol { position: sticky; top: var(--sp-3); align-self: start; }
+}
+.jh-pjt__calc { min-height: var(--u-96); padding: var(--sp-2); } .jh-pjt__calnum { font-size: var(--fs-md); } .jh-pjt__calh { font-size: var(--fs-md); padding: var(--sp-2) 0; }
+.jh-pjt__calhol { font-size: var(--fs-sm); } .jh-pjt__dot { width: var(--u-8); height: var(--u-8); }
+.jh-pjt__sform .jh-pjt__pad { gap: var(--sp-4); }
+.jh-pjt__frow { display: grid; gap: var(--sp-1); } .jh-pjt__flabel { font-weight: 700; font-size: var(--fs-sm); }
+.jh-pjt__f3 { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-2); } .jh-pjt__f3 .jh-select { width: 100%; }
+.jh-pjt__todo { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-3); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); cursor: pointer; font-weight: 600; }
+.jh-pjt__todo[data-on="true"] { background: var(--c-primary-weak); border-color: var(--c-primary); color: var(--c-primary); }
+.jh-pjt__fsave { width: 100%; padding: var(--sp-3); font-size: var(--fs-md); }
+.jh-pjt__flabel .jh-field__hint { display: inline; font-weight: 400; }
