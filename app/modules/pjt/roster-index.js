@@ -1,13 +1,13 @@
 /* 근로자 연명부(새 화면) — 구포털 PJT 메뉴의 "근로자 연명부" 칸. 주소 #/pjt/roster(목록) · #/pjt/roster/<근로자 id>(상세 조회).
  * 왼쪽 명단(재직·조치 필요·퇴사·전체, 검색, 정렬) + 오른쪽(사람을 고르면 상세, 아니면 조치 필요 현황). 2단계: 카드마다 따로 수정(인적사항·급여/계좌·비고), 신규 등록, 삭제(관리자), 퇴사·팀장 연결, 주민번호 저장·보기(사유 선택, 서버 함수).
  * 첨부·건강검진·원청별 교육·자격 입력은 다음 단계. 규칙은 roster.js, 표시는 roster-view.js. */
-import { db, storage, collection, doc, getDoc, getDocs, writeBatch, deleteField, serverTimestamp, arrayUnion, arrayRemove, storageRef, deleteObject } from '../../core/firebase.js?v=20261014i';
-import { esc, toast } from '../../core/ui.js?v=20261014i';
-import { confirmDialog } from '../../core/dialog.js?v=20261014i';
-import { revealWorker, saveJumin } from '../../shared/identity.js?v=20261014i';
-import { compressImage } from './roster-image.js?v=20261014i';
-import { mergePrivs, summaryOf, visibleList, rowOf, todayKey, birthFromJumin, parseJumin, fmtJumin, fmtPhone, fmtMoney, blankForm, formOfMaster, validateWorker, payOf, deleteBlock, pdfPathsOf, slotDocId, FILE_SLOTS, slotOf, filesMeta, fileMetaOf, photoDocOf, anyFile, downloadName, canEditSlot } from './roster.js?v=20261014i';
-import { rosterHtml } from './roster-view.js?v=20261014i';
+import { db, storage, collection, doc, getDoc, getDocs, writeBatch, deleteField, serverTimestamp, arrayUnion, arrayRemove, storageRef, uploadBytesResumable, deleteObject, getBlob } from '../../core/firebase.js?v=20261014j';
+import { esc, toast } from '../../core/ui.js?v=20261014j';
+import { confirmDialog } from '../../core/dialog.js?v=20261014j';
+import { revealWorker, saveJumin } from '../../shared/identity.js?v=20261014j';
+import { compressImage } from './roster-image.js?v=20261014j';
+import { mergePrivs, summaryOf, visibleList, rowOf, todayKey, birthFromJumin, parseJumin, fmtJumin, fmtPhone, fmtMoney, blankForm, formOfMaster, validateWorker, payOf, deleteBlock, pdfPathsOf, slotDocId, FILE_SLOTS, slotOf, filesMeta, fileMetaOf, photoDocOf, anyFile, downloadName, canEditSlot, healthRowsOf, blankHealthRow, healthRowSet, planHealth, checkPdf, pdfStoragePath, pdfMeta, pdfDownloadName, fmtKB } from './roster.js?v=20261014j';
+import { rosterHtml } from './roster-view.js?v=20261014j';
 const pushHash = (h) => { if (location.hash === h) return; try { history.replaceState(null, '', h); } catch (e) { location.hash = h; } };
 const lst = (snap) => { const a = []; snap.forEach((d) => a.push({ id: d.id, data: d.data() })); return a; };
 export async function mountRoster(root, route, ctx) {
@@ -48,6 +48,7 @@ export async function mountRoster(root, route, ctx) {
     const m = masterOf(st.sel); if (!m) return; const p = st.privs[m.id] || {};
     if (card === 'personal') { const acc = !m.leaderId ? st.accountOf(m.id) : null; st.edit = { card, form: formOfMaster(m, p, acc ? acc.uid : ''), msg: '', jchange: false }; }
     else if (card === 'pay') { const r = p.dailyRate != null ? p.dailyRate : m.dailyRate; st.edit = { card, form: { rate: r ? fmtMoney(r) : '', bank: p.bank || '', account: p.account || '' }, msg: '' }; }
+    else if (card === 'health') st.edit = { card, rows: healthRowsOf(p), msg: '' };
     else st.edit = { card: 'note', form: { note: p.note || '' }, msg: '' };
     paint();
   };
@@ -119,6 +120,27 @@ export async function mountRoster(root, route, ctx) {
   const fetchPhoto = async (slot) => { const m = masterOf(st.sel); if (!m) return null; try { const snap = await getDoc(doc(db, 'master_worker_photos', slotDocId(m.id, slot))); if (!snap.exists()) { toast('저장된 파일을 찾을 수 없습니다.'); return null; } return { m, d: snap.data() }; } catch (err) { toast('파일을 불러오지 못했습니다: ' + ((err && (err.code || err.message)) || '')); return null; } };
   const viewFile = async (slot) => { const r = await fetchPhoto(slot); if (!r) return; st.photo = { slot, title: (r.m.name || '') + ' ' + slotOf(slot).label, src: r.d.dataUrl }; paint(); };   // 파일은 [보기]를 눌렀을 때만 읽어 화면에 연다
   const downloadFile = async (slot) => { const r = (st.photo && st.photo.slot === slot) ? { m: masterOf(st.sel), d: { dataUrl: st.photo.src } } : await fetchPhoto(slot); if (!r || !r.m) return; const a = document.createElement('a'); a.href = r.d.dataUrl; a.download = downloadName(r.m.name, slot); document.body.appendChild(a); a.click(); a.remove(); };
+  // ── 건강검진(줄 편집기 + 결과 PDF): [저장]을 눌러야 반영. PDF 는 Storage(roster_health/<id>/…), 로그인한 권한으로 직접 내려받는다 ──
+  const store = (ctx && ctx.store) || { upload: (path, file) => new Promise((res, rej) => { const t = uploadBytesResumable(storageRef(storage, path), file, { contentType: 'application/pdf' }); t.on('state_changed', null, rej, () => res()); }), remove: (path) => deleteObject(storageRef(storage, path)), blob: (path) => getBlob(storageRef(storage, path)) };
+  const rnd = () => Math.random().toString(36).slice(2, 8);
+  const saveHealth = async () => {
+    const m = masterOf(st.sel); if (!m) return; const e = st.edit; const plan = planHealth(e.rows, (st.privs[m.id] || {}).health);
+    if (!plan.ok) { e.msg = plan.error; paint(); return; }
+    st.busy = true; e.msg = ''; paint(); const newPaths = [];
+    try {
+      for (const u of plan.uploads) { const path = pdfStoragePath(m.id, '', Date.now(), rnd()); await store.upload(path, u.file); newPaths.push(path); plan.health[u.index].pdf = pdfMeta(path, u.file, new Date().toISOString()); }   // PDF 가 하나라도 못 올라가면 저장 전체를 멈춘다
+      const b = writeBatch(db); b.set(doc(db, 'master_worker_info', m.id), { health: plan.health, updatedAt: serverTimestamp() }, { merge: true }); await b.commit();
+      for (const path of plan.oldPaths) { try { await store.remove(path); } catch (err) { /* 옛 파일이 이미 없어도 저장은 유효 */ } }   // 저장이 성공한 뒤에야 옛 PDF 를 지운다
+      await reload(); st.edit = null; toast('저장했습니다.');
+    } catch (err) { for (const path of newPaths) { try { await store.remove(path); } catch (e2) { /* 되돌리기 실패는 무시 */ } } e.msg = '저장 실패: ' + ((err && (err.code || err.message)) || ''); }   // 실패하면 방금 올린 새 PDF 는 지워 찌꺼기를 남기지 않는다
+    st.busy = false; paint();
+  };
+  const downloadPdf = async (path) => {
+    const m = masterOf(st.sel); if (!m) return; const h = ((st.privs[m.id] || {}).health || []).find((x) => x.pdf && x.pdf.path === path); const name = pdfDownloadName(m.name, h && h.type, h && h.date);
+    try { const blob = await store.blob(path); const url = (URL.createObjectURL ? URL.createObjectURL(new Blob([blob], { type: 'application/pdf' })) : '#'); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); if (URL.revokeObjectURL) setTimeout(() => URL.revokeObjectURL(url), 30000); }
+    catch (err) { toast('다운로드 실패: ' + ((err && (err.code || err.message)) || '') + ' (권한이 있는 계정인지 확인해 주세요)'); }
+  };
+  const hfSet = (t) => { const [i, f] = String(t.getAttribute('data-ro-hf')).split('|'); const e = st.edit; if (!e || !e.rows || !e.rows[+i]) return false; e.rows[+i] = healthRowSet(e.rows[+i], f, t.value); paint(); return true; };
   const setField = (t) => {
     if (!st.edit || !t.hasAttribute('data-ro-f')) return false; const k = t.getAttribute('data-ro-f'); st.edit.form[k] = t.value;
     if (k === 'jumin') { const pj = parseJumin(t.value); if (pj.valid) { const f = st.edit.form; if (!f.birth || f.birth !== pj.birth) { f.birth = pj.birth; const bi = body.querySelector('[data-ro-f="birth"]'); if (bi) bi.value = pj.birth; } if (!f.gender) { f.gender = pj.gender; const gi = body.querySelector('[data-ro-f="gender"]'); if (gi) gi.value = pj.gender; } } }   // 주민번호를 넣으면 생년월일·성별을 자동으로
@@ -132,11 +154,18 @@ export async function mountRoster(root, route, ctx) {
     if ((el = t.closest('[data-ro-edit]'))) { openEdit(el.getAttribute('data-ro-edit')); return; }
     if (t.closest('[data-ro-cancel]')) { st.edit = null; paint(); return; }
     if (t.closest('[data-ro-jchange]')) { if (st.edit) { st.edit.jchange = true; paint(); } return; }
-    if ((el = t.closest('[data-ro-save]')) && !st.busy) { const c = el.getAttribute('data-ro-save'); if (c === 'personal' || c === 'new') await savePersonal(); else if (c === 'pay') await savePay(); else if (c === 'note') await saveNote(); return; }
+    if ((el = t.closest('[data-ro-save]')) && !st.busy) { const c = el.getAttribute('data-ro-save'); if (c === 'personal' || c === 'new') await savePersonal(); else if (c === 'pay') await savePay(); else if (c === 'note') await saveNote(); else if (c === 'health') await saveHealth(); return; }
     if (t.closest('[data-ro-del]') && !st.busy) { await deleteWorker(); return; }
     if (t.closest('[data-ro-jask]')) { clearJr(); st.jr = { id: st.sel, ask: true, reason: '4대보험 신고' }; paint(); return; }
     if (t.closest('[data-ro-jgo]') && !st.busy) { await revealJumin(); return; }
     if (t.closest('[data-ro-jhide]')) { clearJr(); paint(); return; }
+    if (t.closest('[data-ro-hadd]') && st.edit && st.edit.rows) { st.edit.rows.push(blankHealthRow()); paint(); return; }
+    if ((el = t.closest('[data-ro-hdelrow]')) && st.edit && st.edit.rows) { st.edit.rows.splice(+el.getAttribute('data-ro-hdelrow'), 1); paint(); return; }
+    if ((el = t.closest('[data-ro-hreset]')) && st.edit && st.edit.rows) { const i = +el.getAttribute('data-ro-hreset'); st.edit.rows[i] = healthRowSet(st.edit.rows[i], 'reset'); paint(); return; }
+    if ((el = t.closest('[data-ro-hpdfx]')) && st.edit && st.edit.rows) { st.edit.rows[+el.getAttribute('data-ro-hpdfx')].pdfRemove = true; paint(); return; }
+    if ((el = t.closest('[data-ro-hpdfu]')) && st.edit && st.edit.rows) { st.edit.rows[+el.getAttribute('data-ro-hpdfu')].pdfRemove = false; paint(); return; }
+    if ((el = t.closest('[data-ro-hpdfc]')) && st.edit && st.edit.rows) { st.edit.rows[+el.getAttribute('data-ro-hpdfc')].pdfNew = null; paint(); return; }
+    if ((el = t.closest('[data-ro-hdl]'))) { await downloadPdf(el.getAttribute('data-ro-hdl')); return; }
     if ((el = t.closest('[data-ro-fview]')) && !st.busy) { await viewFile(el.getAttribute('data-ro-fview')); return; }
     if ((el = t.closest('[data-ro-fdl]'))) { await downloadFile(el.getAttribute('data-ro-fdl')); return; }
     if ((el = t.closest('[data-ro-fdel]')) && !st.busy) { await deleteFile(el.getAttribute('data-ro-fdel')); return; }
@@ -151,6 +180,8 @@ export async function mountRoster(root, route, ctx) {
   root.onchange = (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
     if (t.hasAttribute('data-ro-jreason')) { if (st.jr) st.jr.reason = t.value; return; }
+    if (t.hasAttribute('data-ro-hf')) { hfSet(t); return; }
+    if (t.hasAttribute('data-ro-hpdf')) { const f = t.files && t.files[0]; const i = +t.getAttribute('data-ro-hpdf'); const row = st.edit && st.edit.rows && st.edit.rows[i]; t.value = ''; if (!f || !row) return; if (!row.date) { st.edit.msg = '검진 실시일을 먼저 입력해 주세요.'; paint(); return; } const why = checkPdf(f); if (why) { st.edit.msg = why; paint(); return; } row.pdfNew = f; row.pdfRemove = false; st.edit.msg = ''; paint(); return; }
     if (t.hasAttribute('data-ro-file')) { const f = t.files && t.files[0]; const slot = t.getAttribute('data-ro-file'); t.value = ''; if (f) uploadFile(slot, f); return; }
     if (setField(t)) { const k = t.getAttribute('data-ro-f'); if (k === 'phone') { st.edit.form.phone = fmtPhone(t.value); t.value = st.edit.form.phone; } if (k === 'leaderId') paint(); return; }   // 소속을 바꾸면 팀장 포털 계정 칸이 달라진다(인사 연동 주소는 저장할 때 이름·생년월일로 다시 판정)
     if (t.hasAttribute('data-ro-sortm')) { st.sortKey = t.value || null; if (!st.sortKey) st.sortDir = 1; recompute(); paint(); }

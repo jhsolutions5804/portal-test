@@ -177,3 +177,41 @@ export const anyFile = (files) => FILE_SLOTS.some((x) => !!(files || {})[x.k]);
 export const downloadName = (name, slot) => ((name || '근로자') + '_' + slotOf(slot).label + '.jpg').replace(/[\\/:*?"<>|]/g, '_');
 /** 이 사람이 이 칸을 고칠 수 있는가: 통장사본은 관리자만, 나머지는 PJT 권한자 */
 export const canEditSlot = (slot, admin, canEdit) => (slotOf(slot).admin ? !!admin : !!canEdit);
+
+// ── 4단계-①: 건강검진 입력(구포털 규칙 그대로) ──
+export const PDF_MAX = 15 * 1024 * 1024;   // 검진 결과·수료증 PDF 는 15MB 미만만
+const fmtSize = (n) => (n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB');
+/** PDF 파일 검사 → 문제 문구(없으면 ''). file = { name, type, size } */
+export function checkPdf(file) {
+  if (!file) return '파일을 선택해 주세요.';
+  if (!(file.type === 'application/pdf' || /\.pdf$/i.test(file.name || ''))) return 'PDF 파일만 첨부할 수 있습니다.';
+  if ((file.size || 0) >= PDF_MAX) return '파일이 너무 큽니다. (' + fmtSize(file.size) + ') 15MB 미만 PDF만 첨부할 수 있습니다.';
+  return '';
+}
+/** 저장된 검진 → 입력 줄(만료일이 비어 있으면 실시일 + 1년으로 채움, manual = 직접 고친 만료일) */
+export const healthRowsOf = (p) => ((p && p.health) || []).map((h) => ({ type: h.type === 'preplace' ? 'preplace' : 'general', date: h.date || '', expiry: h.expiry || addYearsYmd(h.date || '', HEALTH_VALID_YEARS), manual: !!h.expiryManual, pdf: h.pdf || null, pdfNew: null, pdfRemove: false }));
+export const blankHealthRow = () => ({ type: 'general', date: '', expiry: '', manual: false, pdf: null, pdfNew: null, pdfRemove: false });
+/** 입력 한 칸이 바뀐 결과(새 줄을 돌려준다): 실시일을 바꾸면 직접 고치지 않은 만료일이 따라 바뀌고, 만료일을 자동 계산과 다르게 고치면 "수정됨", 같아지면 자동으로 돌아간다 */
+export function healthRowSet(row, field, value) {
+  const r = Object.assign({}, row);
+  if (field === 'type') r.type = value === 'preplace' ? 'preplace' : 'general';
+  else if (field === 'date') { r.date = value || ''; if (!r.manual) r.expiry = addYearsYmd(r.date, HEALTH_VALID_YEARS); }
+  else if (field === 'expiry') { r.expiry = value || ''; r.manual = !!value && value !== addYearsYmd(r.date, HEALTH_VALID_YEARS); }
+  else if (field === 'reset') { r.manual = false; r.expiry = addYearsYmd(r.date, HEALTH_VALID_YEARS); }
+  return r;
+}
+/** 저장 검증·변환 → { ok, error, health(저장할 줄, 실시일 순, pdf 는 아직 비어 있음), uploads: [{ index, file }], oldPaths: [지울 PDF 경로] }
+ *  prev = 저장돼 있던 검진 줄들(삭제된 줄의 PDF 를 함께 지우기 위해) */
+export function planHealth(rows, prev) {
+  const pending = rows.filter((h) => h.pdfNew && !h.date); if (pending.length) return { ok: false, error: '실시일이 없는 검진 줄에 첨부한 PDF가 있습니다. 실시일을 입력하거나 첨부를 취소해 주세요.', health: [], uploads: [], oldPaths: [] };
+  const kept = rows.filter((h) => h.date).map((h) => ({ src: h, row: { type: h.type, date: h.date, expiry: h.expiry || addYearsYmd(h.date, HEALTH_VALID_YEARS), expiryManual: !!h.manual } })).sort((a, b) => a.row.date.localeCompare(b.row.date));
+  const uploads = [], oldPaths = [];
+  kept.forEach((k, i) => { const h = k.src; if (h.pdfNew) { uploads.push({ index: i, file: h.pdfNew }); if (h.pdf) oldPaths.push(h.pdf.path); } else if (h.pdf && !h.pdfRemove) k.row.pdf = h.pdf; else if (h.pdf && h.pdfRemove) oldPaths.push(h.pdf.path); });
+  const keptPaths = new Set(kept.map((k) => k.row.pdf && k.row.pdf.path).filter(Boolean));
+  ((prev) || []).forEach((oh) => { if (oh.pdf && !keptPaths.has(oh.pdf.path) && oldPaths.indexOf(oh.pdf.path) === -1) oldPaths.push(oh.pdf.path); });   // 줄을 지우면서 남은 PDF 도 정리
+  return { ok: true, error: '', health: kept.map((k) => k.row), uploads, oldPaths };
+}
+/** Storage 에 올릴 PDF 경로: roster_health/<근로자 id>/<접두사><시각>_<무작위>.pdf (기존 Storage 규칙 위치 그대로) */
+export const pdfStoragePath = (id, prefix, now, rnd) => 'roster_health/' + id + '/' + (prefix || '') + now + '_' + rnd + '.pdf';
+export const pdfMeta = (path, file, nowIso) => ({ path, name: file.name, size: file.size, uploadedAt: nowIso });
+export const pdfDownloadName = (name, type, date) => ((name || '근로자') + '_' + (HEALTH_TYPES[type] || '검진') + '_' + date + '.pdf').replace(/[\\/:*?"<>|]/g, '_');

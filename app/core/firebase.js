@@ -1,10 +1,10 @@
-import { FIREBASE_CONFIG } from './config.js?v=20261014i';
+import { FIREBASE_CONFIG } from './config.js?v=20261014j';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, collection, doc, getDoc, getDocs, query, where, orderBy, limit, documentId, addDoc, updateDoc, setDoc, serverTimestamp, deleteDoc, deleteField, writeBatch, Timestamp, arrayUnion, arrayRemove }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject }
+import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject, getBlob }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
 import { getFunctions, httpsCallable }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js';
@@ -16,4 +16,4 @@ export const storage = getStorage(app);   // 전자결재 첨부파일(edoc/{문
 export const functions = getFunctions(app, 'asia-northeast3');   // 전자결재 서버 함수(edocAct)가 있는 지역
 export { updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail };
 export { onAuthStateChanged, signInWithEmailAndPassword, signOut, collection, doc, getDoc, getDocs, query, where, orderBy, limit, documentId, addDoc, updateDoc, setDoc, deleteDoc, deleteField, serverTimestamp, httpsCallable, writeBatch, Timestamp, arrayUnion, arrayRemove };
-export { storageRef, uploadBytesResumable, getDownloadURL, deleteObject };
+export { storageRef, uploadBytesResumable, getDownloadURL, deleteObject, getBlob };

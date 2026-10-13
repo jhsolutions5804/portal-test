@@ -704,4 +704,38 @@ await scenario('PJT 근로자 연명부 3단계(서류·사진 첨부): 칸별 �
     try { const rn = await mountFresh(pjtMod.mountRoster, { segs: ['L1'], query: {} }); const rr = (l) => [...rn.querySelectorAll('.jh-ro__frow')].find((r) => r.querySelector('.jh-ro__fl2').textContent === l); check(rn.querySelectorAll('.jh-ro__frow').length === 3 && !rr('통장사본') && !!rr('사진').querySelector('[data-ro-file="photo"]') && !!rr('사진').querySelector('[data-ro-fdel="photo"]') && !rn.querySelector('[data-ro-file="bankbook"]'), '★ 실무자(관리자 아님): 통장사본 칸은 없고, 사진·신분증·이수증은 올리고 지울 수 있음'); } finally { ctx.me = sv; }
   } finally { w.HTMLAnchorElement.prototype.click = oc; delete ctx.compressImage; }
 });
+
+await scenario('PJT 근로자 연명부 4단계-①(건강검진): 줄 편집기, 만료일 자동 계산·수정됨·되돌리기, 결과 PDF 올리기·교체·삭제·내려받기, 저장 실패 시 되돌리기', async (check) => {
+  const log = { up: [], rm: [], blob: [] }; let failAt = 0; ctx.store = { upload: async (path, file) => { log.up.push([path, file.name]); if (failAt && log.up.length === failAt) throw new Error('업로드 실패(시험)'); }, remove: async (path) => { log.rm.push(path); }, blob: async (path) => { log.blob.push(path); return 'pdf-bytes'; } };
+  const dls = []; const oc = w.HTMLAnchorElement.prototype.click; w.HTMLAnchorElement.prototype.click = function () { dls.push(this.download); };
+  try {
+    const root = await mountFresh(pjtMod.mountRoster, { segs: ['L1'], query: {} }); const txt = () => root.textContent.replace(/\s+/g, ' '); WR().length = 0;
+    const setH = async (i, f, v) => { const el = root.querySelector('[data-ro-hf="' + i + '|' + f + '"]'); el.value = v; el.dispatchEvent(new w.Event('change', { bubbles: true })); await sleep(40); };
+    const pick = async (i, file) => { const inp = root.querySelector('[data-ro-hpdf="' + i + '"]'); Object.defineProperty(inp, 'files', { value: [file], configurable: true }); inp.dispatchEvent(new w.Event('change', { bubbles: true })); await sleep(60); };
+    check(!!root.querySelector('[data-ro-edit="health"]') && !!root.querySelector('[data-ro-hdl="roster_health/L1/a.pdf"]') && /검진\.pdf/.test(txt()), '건강검진 카드: ✏️ 수정 버튼과 결과 PDF 내려받기 버튼(조회)');
+    await click(root, '[data-ro-hdl="roster_health/L1/a.pdf"]', 150); check(log.blob.join() === 'roster_health/L1/a.pdf' && dls.join() === '김팀장_배치전검진_2025-06-01.pdf', '★ PDF 내려받기: 링크를 발급하지 않고 로그인한 권한으로 Storage 에서 직접 받고, 파일 이름은 이름_검진종류_실시일.pdf');
+    await click(root, '[data-ro-edit="health"]', 150); check(root.querySelectorAll('.jh-ro__hrow').length === 2 && root.querySelector('[data-ro-hf="0|date"]').value === '2026-01-10' && root.querySelector('[data-ro-hf="0|expiry"]').value === '2027-01-10' && /실시일 \+ 1년/.test(txt()), '수정 폼: 저장된 검진이 줄로 나오고 만료일은 실시일 + 1년');
+    // 줄 추가 + 만료일 규칙
+    await click(root, '[data-ro-hadd]', 100); check(root.querySelectorAll('.jh-ro__hrow').length === 3, '＋ 검진 추가'); await setH(2, 'date', '2026-10-01'); check(root.querySelector('[data-ro-hf="2|expiry"]').value === '2027-10-01' && !/수정됨/.test(txt()), '★ 실시일을 넣으면 만료일이 실시일 + 1년으로 자동 계산');
+    await setH(2, 'expiry', '2027-12-31'); check(root.querySelector('[data-ro-hf="2|expiry"]').value === '2027-12-31' && /수정됨/.test(txt()) && !!root.querySelector('[data-ro-hreset="2"]'), '만료일을 직접 고치면 "수정됨" + ↺ 버튼'); await setH(2, 'date', '2026-11-01'); check(root.querySelector('[data-ro-hf="2|expiry"]').value === '2027-12-31', '직접 고친 만료일은 실시일을 바꿔도 유지'); await click(root, '[data-ro-hreset="2"]', 100); check(root.querySelector('[data-ro-hf="2|expiry"]').value === '2027-11-01' && !/수정됨/.test(txt()), '↺ 를 누르면 자동 계산으로 복귀');
+    // PDF 선택 검사
+    await click(root, '[data-ro-hadd]', 100); await pick(3, { name: 'x.pdf', type: 'application/pdf', size: 100 }); check(/검진 실시일을 먼저 입력해 주세요/.test(txt()) && !root.querySelector('[data-ro-hpdfc]'), '실시일이 없는 줄에는 PDF 를 붙일 수 없음'); await click(root, '[data-ro-hdelrow="3"]', 100);
+    await pick(2, { name: '사진.jpg', type: 'image/jpeg', size: 100 }); check(/PDF 파일만 첨부할 수 있습니다/.test(txt()), 'PDF 가 아니면 안내'); await pick(2, { name: 'big.pdf', type: 'application/pdf', size: 16 * 1048576 }); check(/15MB 미만 PDF만 첨부할 수 있습니다/.test(txt()), '15MB 이상이면 안내');
+    await pick(2, { name: 'new.pdf', type: 'application/pdf', size: 2048 }); check(/new\.pdf/.test(txt()) && /저장 시 업로드/.test(txt()) && !!root.querySelector('[data-ro-hpdfc="2"]') && log.up.length === 0, '새 PDF 는 고른 것만 표시하고 [저장]할 때 올림(그 전에는 올리지 않음)');
+    await pick(1, { name: 'replace.pdf', type: 'application/pdf', size: 1024 }); check(!!root.querySelector('[data-ro-hpdfc="1"]'), '기존 PDF 가 있는 줄에서 다른 파일로 교체 선택');
+    // 저장: 새 PDF 2개 업로드, 옛 PDF(교체됨) 정리
+    await click(root, '[data-ro-save="health"]', 300); await sleep(200); const hs = wrote('batch-set', /^master_worker_info\/L1$/);
+    check(log.up.length === 2 && log.up.every((u) => /^roster_health\/L1\/\d+_[a-z0-9]+\.pdf$/.test(u[0])) && log.up.map((u) => u[1]).sort().join() === 'new.pdf,replace.pdf' && hs.length === 1 && hs[0].merge === true && hs[0].data.health.map((h) => h.date).join() === '2025-06-01,2026-01-10,2026-11-01' && hs[0].data.health[0].type === 'preplace' && hs[0].data.health[0].pdf.name === 'replace.pdf' && /^roster_health\/L1\//.test(hs[0].data.health[0].pdf.path) && hs[0].data.health[2].pdf.name === 'new.pdf' && hs[0].data.health[2].expiry === '2027-11-01' && hs[0].data.health[1].pdf === undefined && !!hs[0].data.updatedAt && log.rm.join() === 'roster_health/L1/a.pdf', '★ 저장: 새·교체 PDF 를 roster_health/<id>/ 에 올리고, 실시일 순으로 정렬한 검진 줄(만료일·수정됨·PDF 정보)을 병합 저장한 뒤 교체된 옛 PDF 를 지움');
+    check(!root.querySelector('[data-ro-hf="0|date"]'), '저장하면 수정 폼이 닫힘');
+    // 실패하면 되돌리기: 두 번째 업로드 실패
+    log.up.length = 0; log.rm.length = 0; WR().length = 0; await click(root, '[data-ro-edit="health"]', 150); await click(root, '[data-ro-hadd]', 80); await setH(2, 'date', '2026-12-01'); await pick(2, { name: 'p1.pdf', type: 'application/pdf', size: 500 }); await click(root, '[data-ro-hadd]', 80); await setH(3, 'date', '2026-12-05'); await pick(3, { name: 'p2.pdf', type: 'application/pdf', size: 500 });
+    failAt = 2; await click(root, '[data-ro-save="health"]', 300); await sleep(200); failAt = 0;
+    check(log.up.length === 2 && log.rm.length === 1 && log.rm[0] === log.up[0][0] && wrote('batch-set', /master_worker_info/).length === 0 && /저장 실패: 업로드 실패\(시험\)/.test(txt()) && !!root.querySelector('[data-ro-hf="0|date"]'), '★ PDF 업로드가 하나라도 실패하면 저장하지 않고, 먼저 올라간 새 PDF 는 지워 찌꺼기를 남기지 않으며, 입력 중이던 폼은 그대로');
+    // 줄 삭제 + PDF 정리, 빈 줄은 버림
+    log.up.length = 0; log.rm.length = 0; WR().length = 0; await click(root, '[data-ro-hdelrow="3"]', 80); await click(root, '[data-ro-hdelrow="2"]', 80); await click(root, '[data-ro-hdelrow="1"]', 80); await click(root, '[data-ro-hadd]', 80); await click(root, '[data-ro-save="health"]', 300); await sleep(200); const hd = wrote('batch-set', /^master_worker_info\/L1$/);
+    check(hd.length === 1 && hd[0].data.health.length === 1 && hd[0].data.health[0].date === '2026-01-10' && log.up.length === 0 && log.rm.join() === 'roster_health/L1/a.pdf', '줄을 지우고 저장: 지운 줄의 PDF 는 함께 정리, 실시일이 없는 빈 줄은 저장하지 않음');
+    // 권한: 실무자
+    const sv = ctx.me; ctx.me = { admin: false, uid: 'g2', name: '실무자', perms: { pjt: true }, teamLeaderIds: [] }; try { const rn = await mountFresh(pjtMod.mountRoster, { segs: ['L1'], query: {} }); check(!!rn.querySelector('[data-ro-edit="health"]') && !!rn.querySelector('[data-ro-hdl]'), '실무자(PJT 권한): 건강검진 수정과 PDF 내려받기 가능'); } finally { ctx.me = sv; }
+  } finally { w.HTMLAnchorElement.prototype.click = oc; delete ctx.store; }
+});
 markDone(); console.log('\n' + (failed ? '문제가 있는 저장 동작 ' + failed + '건' : '모든 저장 동작이 올바른 경로·값으로 기록됨')); process.exit(failed ? 1 : 0);

@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261014i';
-import { EDU, EDU_SK, EDU_OF, PORTAL_OF, COMPANIES, CO_TABS, HEALTH_TYPES, CHEM_REQ_HOURS, FILE_SLOTS, certCo, fmtKB, fmtMoney, fmtH, maskedOf, healthExpiry, eduStateOf, eduInfo, chemYearSum, legalAgg, filesMeta, SORT_OPTS, leaderChoices, canEditSlot } from './roster.js?v=20261014i';
+import { esc } from '../../core/ui.js?v=20261014j';
+import { EDU, EDU_SK, EDU_OF, PORTAL_OF, COMPANIES, CO_TABS, HEALTH_TYPES, CHEM_REQ_HOURS, FILE_SLOTS, certCo, fmtKB, fmtMoney, fmtH, maskedOf, healthExpiry, eduStateOf, eduInfo, chemYearSum, legalAgg, filesMeta, SORT_OPTS, leaderChoices, canEditSlot, addYearsYmd, pdfDownloadName } from './roster.js?v=20261014j';
 const chip = (tone, text, title) => '<span class="jh-pjt__chip" data-tone="' + tone + '"' + (title ? ' title="' + esc(title) + '"' : '') + '>' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const stateChip = (r) => (r.state === 'expired' ? chip('red', '만료됨 (D+' + Math.abs(r.d) + ')') : r.state === 'soon' ? chip('amber', 'D-' + r.d) : r.chk && r.exp ? chip('blue', '유효') : '');
@@ -41,6 +41,21 @@ const juminTool = (st, m) => {
   if (j && j.ask) return '<div class="jh-ro__reason" role="group" aria-label="열람 사유">' + REASONS.map((r) => '<label><input type="radio" name="jh-ro-reason" data-ro-jreason value="' + esc(r) + '"' + (j.reason === r ? ' checked' : '') + '> ' + esc(r) + '</label>').join('') + '<div><button type="button" class="jh-btn" data-variant="primary" data-ro-jgo' + (st.busy ? ' disabled' : '') + '>보기</button> <button type="button" class="jh-btn" data-variant="secondary" data-ro-jhide>취소</button></div><small class="jh-field__hint">열람 기록(누가·누구의 번호·언제·사유)이 3년간 남습니다. 업무상 필요할 때만 보세요.</small>' + (j.err ? '<div class="jh-ro__msg" data-bad="1" role="alert">' + esc(j.err) + '</div>' : '') + '</div>';
   return ' <button type="button" class="jh-btn" data-variant="secondary" data-ro-jask>보기 (사유 선택)</button>';
 };
+
+/** 건강검진 수정(줄 편집기): 종류·실시일·만료일(실시일+1년 자동, 직접 고치면 "수정됨")·결과 PDF — [저장]을 눌러야 반영 */
+const healthForm = (st) => {
+  const rows = st.edit.rows; const pdfCell = (h, i) => {
+    if (h.pdfNew) return '<span class="jh-pjt__chip" data-tone="amber">📎 ' + esc(h.pdfNew.name) + ' · ' + fmtKB(h.pdfNew.size) + ' · 저장 시 업로드</span> <button type="button" class="jh-btn" data-variant="secondary" data-ro-hpdfc="' + i + '">취소</button>';
+    if (h.pdf && h.pdfRemove) return '<span class="jh-field__hint">파일 삭제 예정</span> <button type="button" class="jh-btn" data-variant="secondary" data-ro-hpdfu="' + i + '">되돌리기</button>';
+    if (h.pdf) return '<span class="jh-pjt__chip" data-tone="gray">📄 ' + esc(h.pdf.name) + '</span> <button type="button" class="jh-btn" data-variant="secondary" data-ro-hdl="' + esc(h.pdf.path) + '" title="다운로드">⬇</button> <label class="jh-btn" data-variant="secondary" title="다른 파일로 교체">↻<input type="file" accept="application/pdf,.pdf" hidden data-ro-hpdf="' + i + '"></label> <button type="button" class="jh-btn" data-variant="danger" data-ro-hpdfx="' + i + '" title="파일 삭제">✕</button>';
+    return '<label class="jh-btn" data-variant="secondary" title="검진 결과 PDF 첨부 (PJT 권한자 열람 · 15MB 미만)">📎 PDF<input type="file" accept="application/pdf,.pdf" hidden data-ro-hpdf="' + i + '"></label>';
+  };
+  const list = rows.length ? rows.map((h, i) => '<div class="jh-ro__hrow"><select class="jh-input" data-ro-hf="' + i + '|type">' + Object.keys(HEALTH_TYPES).map((k) => '<option value="' + k + '"' + (h.type === k ? ' selected' : '') + '>' + esc(HEALTH_TYPES[k]) + '</option>').join('') + '</select>'
+    + '<label class="jh-ro__hl">실시일<input class="jh-input" type="date" data-ro-hf="' + i + '|date" value="' + esc(h.date) + '"></label><label class="jh-ro__hl">만료일<input class="jh-input" type="date" data-ro-hf="' + i + '|expiry" value="' + esc(h.expiry || '') + '"></label>'
+    + '<span class="jh-ro__hs">' + (h.manual ? chip('amber', '수정됨') + ' <button type="button" class="jh-btn" data-variant="secondary" data-ro-hreset="' + i + '" title="자동 계산으로 되돌리기">↺</button> ' : '') + (h.expiry ? stateChip(eduStateOf(true, h.expiry, st.today)) : '') + '</span>'
+    + '<span class="jh-ro__hp">' + pdfCell(h, i) + '</span><button type="button" class="jh-btn" data-variant="danger" data-ro-hdelrow="' + i + '">삭제</button></div>').join('') : '<div class="jh-field__hint jh-ro__pad">등록된 검진 이력이 없습니다.</div>';
+  return '<div class="jh-field__hint jh-ro__pad">만료일은 <b>실시일 + 1년</b>으로 자동 계산됩니다. 다르면 직접 고치세요(↺ 로 자동 계산 복귀). 결과 PDF 는 <b>📎 PDF</b> 로 첨부합니다 — PJT 권한자 열람, 15MB 미만.</div><div class="jh-ro__hrows">' + list + '</div><div class="jh-ro__pad"><button type="button" class="jh-btn" data-variant="secondary" data-ro-hadd>＋ 검진 추가</button></div>' + saveBar(st, 'health');
+};
 /** 신규 등록(오른쪽 영역 전체) */
 const newPanel = (st) => '<div class="jh-ro__newhd"><button type="button" class="jh-btn jh-ro__back" data-variant="secondary" data-ro-cancel>← 명단</button></div>' + card('신규 근로자 등록', personalForm(st, null));
 /** 왼쪽 명단: 필터(재직·퇴사·전체·조치 필요) + 검색 + 정렬 + 사람 목록 */
@@ -76,7 +91,7 @@ function detailPanel(st) {
     return '<div class="jh-ro__frow"><div class="jh-ro__fl2">' + esc(x.label) + '</div><div class="jh-ro__fi">' + info + '</div><div class="jh-ro__fa">' + acts + '</div></div>'; };
   const files = card('서류·사진', '<div class="jh-ro__files">' + FILE_SLOTS.filter((x) => !x.admin || st.admin).map(slotRow).join('') + '</div><div class="jh-field__hint jh-ro__pad">파일은 화면에 바로 표시하지 않고 보관하며, [보기]를 눌렀을 때만 열립니다. 올리면 긴 변 2000px·약 700KB 이하로 줄여 저장합니다(이미지 파일만).</div>');
   const pay = st.admin ? (st.edit && st.edit.card === 'pay') ? card('급여·계좌 수정 (관리자 전용)', payForm(st)) : card('급여·계좌 (관리자 전용)', '<div class="jh-ro__kvs">' + kv2('일당', (p.dailyRate != null ? p.dailyRate : m.dailyRate) ? esc(fmtMoney(p.dailyRate != null ? p.dailyRate : m.dailyRate)) + '원' : '') + kv2('은행', esc(p.bank || '')) + kv2('계좌번호', esc(p.account || '')) + '</div>', editBtn(st, 'pay')) : '';
-  const health = card('건강검진', healthHtml(p, st.today));
+  const health = (st.edit && st.edit.card === 'health') ? card('건강검진 수정', healthForm(st)) : card('건강검진', healthHtml(p, st.today), editBtn(st, 'health'));
   const company = card('원청별 교육 · 자격 · 계정', companyHtml(st, p));
   const note = (st.edit && st.edit.card === 'note') ? card('비고 수정', noteForm(st)) : card('비고', p.note ? '<div class="jh-ro__note">' + esc(p.note) + '</div>' : '<div class="jh-field__hint jh-ro__pad">비고가 없습니다.</div>', editBtn(st, 'note'));
   const danger = st.admin ? '<div class="jh-ro__danger"><span class="jh-field__hint">연명부에서 이 근로자와 그 정보(개인정보·검진·사진 등)를 지웁니다. 각 프로젝트의 근태·공수 기록은 남습니다.</span><button type="button" class="jh-btn" data-variant="danger" data-ro-del>이 근로자 삭제</button></div>' : '';
@@ -94,7 +109,7 @@ const kv = (label, val, wide) => '<div class="jh-ro__kv"' + (wide ? ' data-wide=
 const dateRow = (s) => esc(s || '—');
 function healthHtml(p, today) {
   const rows = ((p && p.health) || []).filter((h) => h.date).slice().sort((a, b) => b.date.localeCompare(a.date)); if (!rows.length) return '<div class="jh-field__hint">등록된 검진 이력이 없습니다.</div>';
-  return '<table class="jh-ro__t"><thead><tr><th>종류</th><th>실시일</th><th>만료일</th><th>상태</th><th>결과 PDF</th></tr></thead><tbody>' + rows.map((h) => { const exp = h.expiry || healthExpiry({ health: [h] }, h.type); return '<tr><td>' + esc(HEALTH_TYPES[h.type] || h.type) + '</td><td>' + esc(h.date) + '</td><td>' + esc(exp || '—') + (h.expiryManual ? ' ' + chip('amber', '수정됨') : '') + '</td><td>' + (exp ? stateChip(eduStateOf(true, exp, today)) : '') + '</td><td>' + (h.pdf ? '📄 ' + esc(h.pdf.name || '') : '<span class="jh-field__hint">—</span>') + '</td></tr>'; }).join('') + '</tbody></table>';
+  return '<table class="jh-ro__t"><thead><tr><th>종류</th><th>실시일</th><th>만료일</th><th>상태</th><th>결과 PDF</th></tr></thead><tbody>' + rows.map((h) => { const exp = h.expiry || healthExpiry({ health: [h] }, h.type); return '<tr><td>' + esc(HEALTH_TYPES[h.type] || h.type) + '</td><td>' + esc(h.date) + '</td><td>' + esc(exp || '—') + (h.expiryManual ? ' ' + chip('amber', '수정됨') : '') + '</td><td>' + (exp ? stateChip(eduStateOf(true, exp, today)) : '') + '</td><td>' + (h.pdf ? '<button type="button" class="jh-btn" data-variant="secondary" data-ro-hdl="' + esc(h.pdf.path) + '">⬇ ' + esc(h.pdf.name || 'PDF') + '</button>' : '<span class="jh-field__hint">—</span>') + '</td></tr>'; }).join('') + '</tbody></table>';
 }
 function legalHtml(p, co, year) {
   const rows = ((p && p.legalEdu) || []).filter((r) => certCo(r) === co).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
