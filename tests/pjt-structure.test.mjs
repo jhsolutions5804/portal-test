@@ -1,5 +1,6 @@
 import { emptyStructure, normalizeStructure, structureFromProfile, toRuntime, toProfile, parseItemList, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, diffStructure, hasChanges, impactOf, validateStructure } from '../app/modules/pjt/structure.js';
-import { fixedStructure, stagesOf } from '../app/modules/pjt/progress.js';
+import { stagesOf } from '../app/modules/pjt/progress.js';
+import { fixedStructure } from './_fixtures.mjs';
 import { PROGRESS_PROFILES } from '../app/shared/pjt-progress-data.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const j = (x) => JSON.stringify(x);

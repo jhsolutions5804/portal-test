@@ -1,8 +1,6 @@
 /* 영업기획 팀별 노무비 — 순수 규칙(화면·네트워크 없이 시험 가능). 구포털 기획(gihoek)의 팀별 노무비 집계를 그대로 옮겼다.
  * 팀 = 팀장(근로자 마스터에서 leaderId 가 없는 사람) + 팀원. 팀 공수 = 팀장+팀원 공수 합계, 노무비 = 팀 공수 × 팀 단가(원/공수, 팀장별).
- * 공수는 P4 Ph2(FAB)·P4 Ph4(SUP)·종료되지 않은 경량 PJT 의 일자별 공수 문서(md 맵: 근로자 id → 공수)를 읽고, 각 출처의 근로자 명부에 있는 사람만 더한다. 같은 사람은 이름|생년월일로 묶는다. */
-export const FAB_LABEL = 'P4 Ph2 (FAB)';
-export const SUP_LABEL = 'P4 Ph4 (SUP)';
+ * 공수는 종료되지 않은 모든 PJT 프로젝트(pjt_registry/<id>)의 일자별 공수 문서(md 맵: 근로자 id → 공수)를 읽고, 각 프로젝트의 근로자 명부에 있는 사람만 더한다. 같은 사람은 이름|생년월일로 묶는다. */
 const pad = (n) => String(n).padStart(2, '0');
 /** 월 이동(구포털 tlShift): m 은 0~11 */
 export function shiftMonth(ym, dir) { let y = ym.y, m = ym.m + dir; if (m > 11) { m = 0; y++; } if (m < 0) { m = 11; y--; } return { y, m }; }
@@ -10,15 +8,11 @@ export function shiftMonth(ym, dir) { let y = ym.y, m = ym.m + dir; if (m > 11) 
 export const monthRange = (ym) => ({ lo: ym.y + '-' + pad(ym.m + 1) + '-01', hi: ym.y + '-' + pad(ym.m + 1) + '-31' });
 export const monthLabel = (ym) => ym.y + '년 ' + (ym.m + 1) + '월';
 /** 명부 한 줄: 근로자 마스터가 있으면 마스터의 이름·생년월일, 없으면 명부의 값(둘 다 없으면 이름 없음) */
-export const rosterEntry = (id, w, master, label, kind, regId) => ({ id, name: (master && master.name) || (w && w.name) || '(이름없음)', birth: (master && master.birth) || (w && w.birth) || '', label, kind, regId });
-/** 일자별 공수 문서들을 근로자(이름|생년월일)별로 합산. rows: [[날짜, md 맵], …] */
+export const rosterEntry = (id, w, master, label, regId) => ({ id, name: (master && master.name) || (w && w.name) || '(이름없음)', birth: (master && master.birth) || (w && w.birth) || '', label, regId });
+/** 일자별 공수 문서들을 근로자(이름|생년월일)별로 합산. o = { roster: [rosterEntry…], rows: { <프로젝트 id>: [[날짜, md 맵], …] }, regs: [{ id, name }] } */
 export function aggregateMandays(o) {
   const pmap = {}; const add = (w, a, pn) => { const k = (w.name || '').trim() + '|' + (w.birth || 'MISSING'); const P = pmap[k] || (pmap[k] = { name: w.name, birth: w.birth, total: 0, byPjt: {} }); P.total += a; P.byPjt[pn] = (P.byPjt[pn] || 0) + a; };
-  const byKind = (k) => { const x = {}; (o.roster || []).filter((w) => w.kind === k).forEach((w) => { x[w.id] = w; }); return x; };
-  const fabById = byKind('fab'), supById = byKind('sup');
-  (o.fabRows || []).forEach(([dk, md]) => Object.keys(md).forEach((id) => { const a = parseFloat(md[id]) || 0; if (a && fabById[id]) add(fabById[id], a, FAB_LABEL); }));
-  (o.supRows || []).forEach(([dk, md]) => Object.keys(md).forEach((id) => { const a = parseFloat(md[id]) || 0; if (a && supById[id]) add(supById[id], a, SUP_LABEL); }));
-  (o.regs || []).forEach((rg) => { const by = {}; (o.roster || []).filter((w) => w.kind === 'light' && w.regId === rg.id).forEach((w) => { by[w.id] = w; }); ((o.lightRows || {})[rg.id] || []).forEach(([dk, md]) => Object.keys(md).forEach((id) => { const a = parseFloat(md[id]) || 0; if (a && by[id]) add(by[id], a, rg.name); })); });
+  (o.regs || []).forEach((rg) => { const by = {}; (o.roster || []).filter((w) => w.regId === rg.id).forEach((w) => { by[w.id] = w; }); ((o.rows || {})[rg.id] || []).forEach(([dk, md]) => Object.keys(md).forEach((id) => { const a = parseFloat(md[id]) || 0; if (a && by[id]) add(by[id], a, rg.name); })); });
   return pmap;
 }
 export const teamRateOf = (leader, rate) => (rate && rate[leader.id] != null ? rate[leader.id] : (Number(leader.teamRate) || 0));

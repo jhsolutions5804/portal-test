@@ -1,8 +1,8 @@
 /* 프로젝트 설정 탭의 "참여 부서·개인" 구역 — FAB·SUP·경량 PJT 화면이 각자의 설정 탭(관리자 전용)에서 불러다 쓴다.
  * 순수 규칙(toggleTeam 등)은 시험하고, mountParticipants 는 화면을 만든다(옛 화면과 같은 모양이 되도록 자체 스타일을 넣는다).
- * 저장 위치: 고정 PJT = pjt_settings/{p4ph2|p4ph4}, 경량 PJT = pjt_registry/{id} 의 participants (보안 규칙이 이미 관리자만 허용). */
-import { participantsOf, normalizeParticipants } from './pjt-access.js?v=20261013zt';
-import { isGuestUser, byRank, NO_DEPT, deptOptions } from './org.js?v=20261013zt';
+ * 저장 위치: pjt_registry/{id} 의 participants — 모든 프로젝트 같은 위치(보안 규칙이 이미 관리자만 허용). */
+import { participantsOf, normalizeParticipants } from './pjt-access.js?v=20261014a';
+import { isGuestUser, byRank, NO_DEPT, deptOptions } from './org.js?v=20261014a';
 
 export const toggleTeam = (p, team) => { const t = participantsOf({ participants: p }); const i = t.teams.indexOf(team); if (i === -1) t.teams.push(team); else t.teams.splice(i, 1); return t; };
 export const addMember = (p, uid) => { const t = participantsOf({ participants: p }); if (uid && t.members.indexOf(uid) === -1) t.members.push(uid); return t; };
@@ -51,8 +51,8 @@ const draw = (box, S) => {
 export async function mountParticipants(box, opts) {
   if (!box) return; if (!document.getElementById('ppt-style')) { const st = document.createElement('style'); st.id = 'ppt-style'; st.textContent = CSS; document.head.appendChild(st); }
   box.innerHTML = '<div class="ppt"><div class="ppt-hint">참여자 지정을 불러오는 중…</div></div>';
-  const fs = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js'); const { db, kind, id, me } = opts;
-  const col = kind === 'fixed' ? 'pjt_settings' : 'pjt_registry'; const ref = fs.doc(db, col, id);
+  const fs = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js'); const { db, id, me } = opts;
+  const ref = fs.doc(db, 'pjt_registry', id);
   const [ps, us] = await Promise.all([fs.getDoc(ref), fs.getDocs(fs.collection(db, 'portal_users'))]);
   const users = []; us.forEach((d) => users.push(Object.assign({ uid: d.id }, d.data()))); const byUid = {}; users.forEach((u) => { byUid[u.uid] = u; });
   const saved = normalizeParticipants(ps.exists() ? ps.data().participants : null);

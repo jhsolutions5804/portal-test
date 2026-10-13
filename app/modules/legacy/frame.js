@@ -1,9 +1,9 @@
-import { LEGACY_BASE } from '../../core/config.js?v=20261013zt';
-import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261013zt';
-import { esc } from '../../core/ui.js?v=20261013zt';
-import { attachActivity } from '../../core/idle.js?v=20261013zt';
-import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS, PJT_LEGACY_LABEL } from './list.js?v=20261013zt';
-import { setSideCurrent } from '../../shared/sidenav.js?v=20261013zt';
+import { LEGACY_BASE } from '../../core/config.js?v=20261014a';
+import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261014a';
+import { esc } from '../../core/ui.js?v=20261014a';
+import { attachActivity } from '../../core/idle.js?v=20261014a';
+import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS } from './list.js?v=20261014a';
+import { setSideCurrent } from '../../shared/sidenav.js?v=20261014a';
 
 const base = () => new URL(LEGACY_BASE, location.href).href;
 const NATIVE = new Map();   // '모듈id/구역' → 그 구역을 새 모듈이 그리는 함수(modules/index.js 가 hostNative 로 등록)
@@ -12,15 +12,12 @@ const isNativeKey = (def, key) => !!(def.sections && def.sections.some((s) => s.
 const states = new Map();   // 모듈 id → { def, wrap, frame, key, tab, me, dyn }  — 작업탭 유지: 떠나도 지우지 않고 숨긴다
 let keepRoot = null; let listening = false;
 
-/** 경량 PJT 목록·고정 PJT 종료 여부 — 읽기에 실패하면 고정 메뉴만 보인다 */
+/** 프로젝트 목록(종료되지 않은 것, 등록 순) — 모든 프로젝트가 pjt_registry 문서 하나씩이다. 읽기에 실패하면 프로젝트 칩 없이 PJT 홈·종료 PJT 만 보인다 */
 async function loadPjtDyn() {
-  const dyn = { ended: {}, settings: {}, registry: [], loaded: true };
-  for (const k of ['p4ph2', 'p4ph4']) {
-    try { const s = await getDoc(doc(db, 'pjt_settings', k)); dyn.ended[k] = s.exists() && s.data().status === 'ended'; dyn.settings[k] = { participants: s.exists() ? (s.data().participants || null) : null }; } catch (e) { /* 권한 없음 — 종료 아님·지정 없음으로 본다 */ }
-  }
+  const dyn = { registry: [], loaded: true };
   try {
     const s = await getDocs(query(collection(db, 'pjt_registry'), orderBy('createdAt', 'asc')));
-    s.forEach((d) => { const x = d.data(); if (x.status !== 'ended') dyn.registry.push({ id: d.id, name: x.name || 'PJT', client: x.client || '', content: x.content || '', site: x.site || '', url: x.url || '', participants: x.participants || null }); });
+    s.forEach((d) => { const x = d.data(); if (x.status !== 'ended') dyn.registry.push({ id: d.id, name: x.name || 'PJT', client: x.client || '', content: x.content || '', site: x.site || '', participants: x.participants || null }); });
   } catch (e) { /* 권한 없음 */ }
   return dyn;
 }
@@ -57,11 +54,11 @@ function openAttendPicker(st) {
   wrap.addEventListener('click', (ev) => { if (ev.target.closest('[data-sheet-close]') || ev.target.closest('[data-sheet-link]')) close(); });
   document.body.appendChild(wrap); document.body.style.overflow = 'hidden'; document.addEventListener('keydown', onKey, true); const first = wrap.querySelector('a'); if (first) first.focus();
 }
-/** 프로젝트 아래의 탭 줄: 프로젝트를 고른 뒤 "기존 화면 / 출역·공수(새)" 를 고른다. 프로젝트는 위 메뉴에서 이미 정해져 있어 새 화면 안에서 프로젝트를 다시 고르지 않는다(팀장이 다른 프로젝트에 입력하는 실수 방지) */
+/** 프로젝트 아래의 탭 줄: 프로젝트를 고른 뒤 홈·일정·공정·출역·공수·공사일보·설정 중에서 고른다. 프로젝트는 위 메뉴에서 이미 정해져 있어 새 화면 안에서 프로젝트를 다시 고르지 않는다(팀장이 다른 프로젝트에 입력하는 실수 방지) */
 const subnavHtml = (st) => {
   if (!st.def.nativeSubs || !isProjectKey(st.key)) return ''; const k = encodeURIComponent(st.key);
   const subs = st.def.nativeSubs.filter((s) => s !== 'settings' || (st.me && st.me.admin)).map((s) => '<a class="jh-legacy__chip" href="#/pjt/' + k + '/' + s + '" data-sub="' + s + '"' + (st.nativeSub && st.sub === s ? ' aria-current="page"' : '') + '>' + (PJT_SUB_LABELS[s] || s) + '</a>').join('');
-  return '<nav class="jh-legacy__subnav" aria-label="프로젝트 화면">' + subs + '<a class="jh-legacy__chip" href="#/pjt/' + k + '/legacy" data-sub="legacy"' + (st.nativeSub ? '' : ' aria-current="page"') + '>' + PJT_LEGACY_LABEL + '</a></nav>';
+  return '<nav class="jh-legacy__subnav" aria-label="프로젝트 화면">' + subs + '</nav>';
 };
 function paintSubnav(st) {
   if (!st.wrap) return; const old = st.wrap.querySelector('.jh-legacy__subnav'); const html = subnavHtml(st);
@@ -72,7 +69,7 @@ function paintNav(st) {
   if (old) { old.outerHTML = html || ''; } else if (html) st.wrap.insertAdjacentHTML('afterbegin', html);
   paintSubnav(st);
 }
-const canonical = (st) => { const h = '#/' + st.def.id + '/' + st.key + (st.def.defaultSub && isProjectKey(st.key) ? '/legacy' : '') + (st.tab ? '?tab=' + st.tab : ''); if (location.hash !== h) history.replaceState(history.state, '', h); };
+const canonical = (st) => { const h = '#/' + st.def.id + '/' + st.key + (st.tab ? '?tab=' + st.tab : ''); if (location.hash !== h) history.replaceState(history.state, '', h); };
 
 /** 옛 모듈을 플랫폼 틀 안에 연다. 모듈마다 틀(wrap)을 하나씩 만들어 keep 층에 두고, 다른 화면으로 가면 숨기기만 한다 — 입력 중이던 내용·열려 있던 탭이 그대로 남는다. */
 export async function mountLegacy(def, keep, route, ctx) {
@@ -89,7 +86,7 @@ export async function mountLegacy(def, keep, route, ctx) {
   const item = (want ? resolveItem(def, want, me, st.dyn) : null) || (!want && st.key ? resolveItem(def, st.key, me, st.dyn) : null) || resolveItem(def, firstKey(def, me, st.dyn), me, st.dyn);
   if (!item) { keep.insertAdjacentHTML('beforeend', '<div class="jh-card"><div class="jh-empty">열 수 있는 화면이 없습니다.</div></div>'); return; }
   st.me = me;   // 프로젝트 아래 탭 중 설정은 관리자에게만 보인다
-  const rawSub = (route.segs || [])[1] || ''; const sub = isProjectKey(item.key) && !rawSub && def.defaultSub ? def.defaultSub : rawSub; const nativeSub = !!(def.nativeSubs && def.nativeSubs.indexOf(sub) !== -1 && isProjectKey(item.key));   // 프로젝트 아래의 새 화면 탭(#/pjt/<프로젝트>/attend) — 프로젝트를 고르면 새 홈이 기본이고 기존 화면은 /legacy
+  const rawSub = (route.segs || [])[1] || ''; const sub = isProjectKey(item.key) && def.nativeSubs && def.nativeSubs.indexOf(rawSub) === -1 ? def.defaultSub : rawSub; const nativeSub = !!(def.nativeSubs && def.nativeSubs.indexOf(sub) !== -1 && isProjectKey(item.key));   // 프로젝트 아래의 새 화면 탭(#/pjt/<프로젝트>/attend) — 탭 이름이 없거나 모르는 값이면 프로젝트 홈
   const nat = isNativeKey(def, item.key) || nativeSub;
   if (nat) {   // 새 모듈이 그리는 구역(총무) — 옛 화면 틀(칩 메뉴)은 그대로 두고 안쪽만 바꾼다. 옛 화면(iframe)은 숨겨서 살려 둔다
     if (fresh || !st.wrap || !keep.contains(st.wrap)) {

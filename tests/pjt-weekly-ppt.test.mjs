@@ -1,5 +1,5 @@
 import { buildWeekly, weeklyStats, weeklyFileName } from '../app/modules/pjt/weekly-ppt.js';
-import { fixedStructure, lightStructure } from '../app/modules/pjt/progress.js';
+import { fixedStructure, lightStructure } from './_fixtures.mjs';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const mkPres = () => { const slides = []; return { __slides: slides, layout: '', addSlide() { const s = { texts: [], shapes: [], images: [], tables: [], addText(t, o) { s.texts.push(String(t)); }, addShape(k, o) { s.shapes.push({ k, o }); }, addImage(o) { s.images.push(o); }, addTable(rows, o) { s.tables.push({ rows, o }); } }; slides.push(s); return s; } }; };
 ok(weeklyFileName(38, '귀뚜라미 범양냉방', 'P4 Ph2 (FAB)') === '38주차_귀뚜라미범양냉방_P4_Ph2(FAB)_주간공정회의자료.pptx' && weeklyFileName(5, '', '청주 현장') === '5주차_청주_현장_주간공정회의자료.pptx', '파일 이름: 주차_발주처_프로젝트_주간공정회의자료.pptx');

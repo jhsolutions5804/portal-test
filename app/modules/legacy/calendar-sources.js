@@ -1,9 +1,9 @@
 /* 임시 연결부 — 아직 새 모듈로 바뀌지 않은 PJT·인사가 일정을 내놓는 방법(옛 컬렉션 읽기).
  * PJT·인사가 새 모듈이 되면 그 모듈의 manifest.calendar 로 옮기고 이 파일을 지운다. 공개 범위는 컬렉션의 보안 규칙이 정한다. */
-import { db, collection, getDocs, getDoc, doc, query, where, orderBy } from '../../core/firebase.js?v=20261013zt';
-import { addDays, fromLegacyDoc, makeEvent, TAG_LABEL } from '../../shared/calendar-event.js?v=20261013zt';
-import { buildExpiryEvents } from '../../shared/expiry-events.js?v=20261013zt';
-import { canSeeProject } from '../../shared/pjt-access.js?v=20261013zt';
+import { db, collection, getDocs, query, where, orderBy } from '../../core/firebase.js?v=20261014a';
+import { addDays, fromLegacyDoc, makeEvent, TAG_LABEL } from '../../shared/calendar-event.js?v=20261014a';
+import { buildExpiryEvents } from '../../shared/expiry-events.js?v=20261014a';
+import { canSeeProject } from '../../shared/pjt-access.js?v=20261014a';
 
 const overlaps = (sd, ed, range) => !!sd && (ed || sd) >= range.from && sd <= range.to;
 async function rows(path, range) {            // 시작일 기준 범위 조회(여러 날 일정이 앞 달에서 시작했을 수 있어 45일 앞까지) 후 겹치는 것만
@@ -13,13 +13,10 @@ async function rows(path, range) {            // 시작일 기준 범위 조회(
 export const pjtProvider = { id: 'pjt', label: 'PJT 일정', order: 30, defaultOn: true,
   /** 프로젝트에 참여자 지정이 있으면 그 참여자(와 관리자)만 일정이 보이고, 지정이 없으면 예전처럼 모두에게 보인다 */
   async load(range, ctx) {
-    const me = ctx && ctx.me; const out = []; const jobs = []; const set = {};
-    await Promise.all(['p4ph2', 'p4ph4'].map((k) => getDoc(doc(db, 'pjt_settings', k)).then((s) => { set[k] = s.exists() ? s.data() : null; }).catch(() => { set[k] = null; })));
-    if (canSeeProject(me, set.p4ph2)) jobs.push(rows(['user_schedules'], range).then((r) => r.forEach((x) => out.push(fromLegacyDoc('fab_' + x.id, x.d, 'pjt', 'P4 Ph2 (FAB)', { link: '#/pjt/p4ph2' })))));
-    if (canSeeProject(me, set.p4ph4)) jobs.push(rows(['ph4_schedules'], range).then((r) => r.forEach((x) => out.push(fromLegacyDoc('sup_' + x.id, x.d, 'pjt', 'P4 Ph4 (SUP)', { link: '#/pjt/p4ph4' })))));
-    jobs.push(getDocs(query(collection(db, 'pjt_registry'), orderBy('createdAt', 'asc'))).then(async (reg) => {
+    const me = ctx && ctx.me; const out = []; const jobs = [];
+    jobs.push(getDocs(query(collection(db, 'pjt_registry'), orderBy('createdAt', 'asc'))).then(async (reg) => {   // 모든 프로젝트가 같은 위치(pjt_registry/<id>/schedules)
       const subs = []; reg.forEach((d) => { const x = d.data(); if (x.status !== 'ended' && canSeeProject(me, x)) subs.push({ id: d.id, name: x.name || 'PJT' }); });
-      await Promise.all(subs.map((p) => rows(['pjt_registry', p.id, 'schedules'], range).then((r) => r.forEach((x) => out.push(fromLegacyDoc('reg_' + p.id + '_' + x.id, x.d, 'pjt', p.name, { link: '#/pjt/reg_' + encodeURIComponent(p.id) })))).catch(() => { /* 한 프로젝트가 막혀도 나머지는 표시 */ })));
+      await Promise.all(subs.map((p) => rows(['pjt_registry', p.id, 'schedules'], range).then((r) => r.forEach((x) => out.push(fromLegacyDoc(p.id + '_' + x.id, x.d, 'pjt', p.name, { link: '#/pjt/' + encodeURIComponent(p.id) })))).catch(() => { /* 한 프로젝트가 막혀도 나머지는 표시 */ })));
     }));
     const res = await Promise.allSettled(jobs); if (res.every((r) => r.status === 'rejected') && res.length) throw res[0].reason;   // 전부 실패했을 때만 제공자 실패로 알림
     return out;

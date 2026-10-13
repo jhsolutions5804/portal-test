@@ -1,44 +1,43 @@
 /* PJT 관리(통합 새 모듈) — 설계서 docs/pjt-design.md. Ph2·Ph4·경량PJT를 한 모듈로 합친다.
  * 지금 새 화면은 "출역·공수"(근태·공수 탭) 하나다 — 구포털 PJT 메뉴에서 프로젝트를 고르면 그 아래 "👷 출역·공수 (새)" 탭으로 열린다(legacy/frame.js 의 nativeSubs, modules/index.js hostNative). 프로젝트는 화면 안에서 고르지 않는다. 나머지 탭은 만들면서 구포털 항목을 하나씩 교체한다.
  * 저장 형식은 구포털 그대로(출역 { checks }, 공수 { md }, 날짜별 문서) — 영업기획의 공수 연동·팀별 노무비가 읽는다. 경로는 adapter.js, 규칙은 attendance.js. */
-import { db, functions, httpsCallable, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zt';
-import { esc, toast } from '../../core/ui.js?v=20261013zt';
-import { confirmDialog } from '../../core/dialog.js?v=20261013zt';
-import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zt';
-import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zt';
-import { visibleProjects } from './projects.js?v=20261013zt';
-import { loadHolidays } from '../../shared/holidays.js?v=20261013zt';
-import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zt';
-import { normalizeDayFixed, normalizeDayLight, stateAt, lightState, cellState, toggledDayChecks, lightItemStages, lightProgress, daysThrough, PROGRESS_START, keyOf, stagesOf } from './progress.js?v=20261013zt';
-import { structureFor, planSave, makeItemIdFactory } from './structure-store.js?v=20261013zt';
-import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, setFeature, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261013zt';
-import { progressHtml } from './progress-view.js?v=20261013zt';
-import { diffText } from './structure-view.js?v=20261013zt';
-import { activeWorkersForDate } from './attendance.js?v=20261013zt';
-import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261013zt';
-import { buildWeekly } from './weekly-ppt.js?v=20261013zt';
-import { boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, remapByOrder, unmatchedKeys, snapToTuesday, weekNo, weekRange } from './layout.js?v=20261013zt';
-import { fileToDataUrl, imageInfo } from './image-tools.js?v=20261013zt';
-import { layoutEditorHtml } from './layout-view.js?v=20261013zt';
-import { scheduleHtml } from './schedule-view.js?v=20261013zt';
-import { reportHtml } from './report-view.js?v=20261013zt';
-import { homeHtml } from './home-view.js?v=20261013zt';
-import { settingsHtml } from './settings-view.js?v=20261013zt';
-import { formOf as settingsFormOf, buildData as settingsBuild, changedFields, endText } from './settings.js?v=20261013zt';
-import { dday, monthMandayTotal, latestReports } from './home.js?v=20261013zt';
-import { calcAll } from './progress.js?v=20261013zt';
-import { fromStored, toStored, totalOf, attendanceSummary, autoContent, docHtml, docTitle, isLegacyDoc, dateText, WORK_SHIFTS, authorLabel, normalizeEquip, withEditor } from './report.js?v=20261013zt';
-import { itemsForKey, buildDoc, formOf, detectCat, addDays, weekDays, isKey } from './schedule.js?v=20261013zt';
+import { db, functions, httpsCallable, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261014a';
+import { esc, toast } from '../../core/ui.js?v=20261014a';
+import { confirmDialog } from '../../core/dialog.js?v=20261014a';
+import { pathsFor, featuresOf, defaultMandayOf, isDateKey } from './adapter.js?v=20261014a';
+import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261014a';
+import { visibleProjects } from './projects.js?v=20261014a';
+import { loadHolidays } from '../../shared/holidays.js?v=20261014a';
+import { attendHtml, dayWorkers } from './attend-view.js?v=20261014a';
+import { normalizeDay, stateAt, cellState, keyOf, stagesOf } from './progress.js?v=20261014a';
+import { structureFor, planSave } from './structure-store.js?v=20261014a';
+import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, setFeature, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261014a';
+import { progressHtml } from './progress-view.js?v=20261014a';
+import { diffText } from './structure-view.js?v=20261014a';
+import { activeWorkersForDate } from './attendance.js?v=20261014a';
+import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261014a';
+import { buildWeekly } from './weekly-ppt.js?v=20261014a';
+import { boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, remapByOrder, unmatchedKeys, snapToTuesday, weekNo, weekRange } from './layout.js?v=20261014a';
+import { fileToDataUrl, imageInfo } from './image-tools.js?v=20261014a';
+import { layoutEditorHtml } from './layout-view.js?v=20261014a';
+import { scheduleHtml } from './schedule-view.js?v=20261014a';
+import { reportHtml } from './report-view.js?v=20261014a';
+import { homeHtml } from './home-view.js?v=20261014a';
+import { settingsHtml } from './settings-view.js?v=20261014a';
+import { formOf as settingsFormOf, buildData as settingsBuild, changedFields, endText, parseDefaultManday } from './settings.js?v=20261014a';
+import { dday, monthMandayTotal, latestReports } from './home.js?v=20261014a';
+import { calcAll } from './progress.js?v=20261014a';
+import { fromStored, toStored, totalOf, attendanceSummary, autoContent, docHtml, docTitle, isLegacyDoc, dateText, WORK_SHIFTS, authorLabel, normalizeEquip, withEditor } from './report.js?v=20261014a';
+import { itemsForKey, buildDoc, formOf, detectCat, addDays, weekDays, isKey } from './schedule.js?v=20261014a';
 
 export const manifest = { id: 'pjt', order: 40, title: 'PJT 관리', icon: '🏗️', defaultHash: '#/pjt/attend', perm: (me) => !!me && me.admin === true };
 export async function mount(root) { root.innerHTML = '<div class="jh-empty">PJT 화면은 구포털 틀 안의 메뉴로 열립니다.</div>'; }
 const pushHash = (h) => { if (location.hash === h) return; try { history.replaceState(null, '', h); } catch (e) { location.hash = h; } };
 
-/** 프로젝트 정보 읽기(구포털 틀의 loadPjtDyn 과 같은 규칙): 고정 PJT 종료 여부·참여자 지정, 경량 PJT 목록 */
+/** 프로젝트 목록 읽기(구포털 틀의 loadPjtDyn 과 같은 규칙): 종료되지 않은 프로젝트 전부(참여자 지정 포함) — 모든 프로젝트가 pjt_registry 문서 하나씩이다 */
 async function loadDyn() {
-  const dyn = { ended: {}, settings: {}, registry: [] };
-  for (const k of ['p4ph2', 'p4ph4']) { try { const s = await getDoc(doc(db, 'pjt_settings', k)); const x = s.exists() ? s.data() : null; dyn.ended[k] = !!x && x.status === 'ended'; dyn.settings[k] = { participants: x ? (x.participants || null) : null }; } catch (e) { /* 권한 없음 — 종료 아님·지정 없음으로 본다 */ } }
-  try { const s = await getDocs(collection(db, 'pjt_registry')); const arr = []; s.forEach((d) => { const x = d.data(); if (x.status !== 'ended') arr.push({ id: d.id, name: x.name || 'PJT', participants: x.participants || null, createdAt: x.createdAt }); }); arr.sort((a, b) => ((a.createdAt && a.createdAt.seconds) || 0) - ((b.createdAt && b.createdAt.seconds) || 0)); dyn.registry = arr; } catch (e) { /* 권한 없음 */ }
+  const dyn = { registry: [] };
+  try { const s = await getDocs(collection(db, 'pjt_registry')); const arr = []; s.forEach((d) => { const x = d.data(); if (x.status !== 'ended') arr.push(Object.assign({}, x, { id: d.id, name: x.name || 'PJT' })); }); arr.sort((a, b) => ((a.createdAt && a.createdAt.seconds) || 0) - ((b.createdAt && b.createdAt.seconds) || 0)); dyn.registry = arr; } catch (e) { /* 권한 없음 */ }
   return dyn;
 }
 const uniq = (a) => [...new Set(a)];
@@ -51,7 +50,7 @@ export async function mountAttend(root, route, ctx) {
   const st = { projects: [], proj: '', date: isDateKey(segs[1]) ? segs[1] : appToday(), roster: [], masters: {}, resigned: {}, att: [], md: {}, recent: [], panel: 'sheet', sheet: null, sheetByDay: null, cum: null, cumDocs: null, month: { y: 0, m: 0 }, me: { guest, teamLeaderIds: leaderIds }, teamMasterIds: new Set(leaderIds), readonly: guest && !leaderIds.length, manage: !guest, busy: false };
   root.innerHTML = '<div id="pa-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#pa-body');
   const paint = () => { const y = window.scrollY; body.innerHTML = attendHtml(st); window.scrollTo(0, y); };
-  const P = () => pathsFor(st.proj); const feat = () => featuresOf(st.proj, st.projDoc);
+  const P = () => pathsFor(st.proj); const feat = () => ({ defaultManday: defaultMandayOf(st.projDoc) });   // 출역 체크 시 자동 공수는 프로젝트 문서의 설정값(모든 프로젝트 같은 코드)
   try { st.projects = visibleProjects(me, await loadDyn()); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
   body.removeAttribute('aria-busy');
   st.proj = st.projects.some((p) => p.key === segs[0]) ? segs[0] : '';   // 프로젝트는 주소(위 메뉴에서 고른 프로젝트)로만 정한다 — 화면 안에서 바꾸지 못한다
@@ -136,50 +135,34 @@ export async function mountProgress(root, route, ctx) {
   root.innerHTML = '<div id="pg-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#pg-body');
   // 넓은 화면(1000px 이상)이면 섹터 카드 옆에 체크표를 둔다 — 폭이 바뀌면 다시 그린다
   const mq = window.matchMedia ? window.matchMedia('(min-width: 1000px)') : null; st.wide = mq ? mq.matches : true; if (root.__pgMqOff) root.__pgMqOff(); if (mq && mq.addEventListener) { const onMq = (e) => { st.wide = e.matches; if (!st.editor && !st.layoutEd && st.ready) paint(); }; mq.addEventListener('change', onMq); root.__pgMqOff = () => mq.removeEventListener('change', onMq); }
-  const paint = () => { const y = window.scrollY; st.features = st.structData ? featuresOf(st.proj, { features: st.structData.features }) : {}; body.innerHTML = progressHtml(st); window.scrollTo(0, y); if (st.layoutEd) bindOverlay(); };
+  const paint = () => { const y = window.scrollY; st.features = st.structData ? featuresOf(st.structData.features) : {}; body.innerHTML = progressHtml(st); window.scrollTo(0, y); if (st.layoutEd) bindOverlay(); };
   try { await Promise.race([loadHolidays(), new Promise((r) => setTimeout(r, 1500))]); } catch (e) { /* 공휴일을 못 불러오면 날짜 표시만 빠진다 */ }
   try { st.projects = visibleProjects(me, await loadDyn()); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
   body.removeAttribute('aria-busy');
   st.proj = st.projects.some((p) => p.key === segs[0]) ? segs[0] : ''; if (!st.proj) { paint(); return; }
-  const P = pathsFor(st.proj); const pr = st.projects.find((p) => p.key === st.proj); st.label = pr.label; st.projDoc = pr.doc; const zones = P.progress.model === 'zones';   // 저장 경로만 다르다(섹터별 문서 / 날짜별 문서 하나) — 화면·규칙은 모든 프로젝트 같다
-  const recompute = () => { st.isToday = st.date === appToday(); const S = st.structure; st.states = {}; S.groups.forEach((g) => { st.states[g.id] = zones ? stateAt(st.days, st.date, g.id, st.proj) : lightState(st.days, st.date, st.items, st.isToday); }); };
-  const loadDays = async (upTo) => {
-    if (zones) {
-      const start = PROGRESS_START[st.proj] || '2026-06-17'; const need = daysThrough(start, upTo || st.date).filter((d) => !st.days[d]); let done = 0;
-      for (let i = 0; i < need.length; i += 25) { const part = need.slice(i, i + 25); await Promise.all(part.map(async (d) => { try { const snap = await getDocs(collection(db, P.progress.checks(d))); const docs = []; snap.forEach((x) => docs.push({ id: x.id, data: x.data() })); st.days[d] = normalizeDayFixed(docs); } catch (e) { st.days[d] = {}; } })); done += part.length; st.loadingNote = '공정 이력 불러오는 중... ' + done + '/' + need.length; if (!st.ready) { paint(); } }
-    } else if (!st.daysLoaded) { try { const snap = await getDocs(collection(db, P.progress.checks)); snap.forEach((x) => { st.days[x.id] = normalizeDayLight(x.data()); }); } catch (e) { /* 날짜별 문서가 없는 프로젝트 — 현재 상태만으로 본다 */ } st.daysLoaded = true; }
-  };
-  // 구조(섹터·품목·단계)는 모든 프로젝트가 같은 데이터 형식·같은 읽기 경로다 — 프로젝트 문서의 progressStructure, 아직 없으면 옛 구조에서 만든 같은 모양
-  const loadStructure = async () => {
-    const ps = await getDoc(doc(db, P.settings.col, P.settings.id)); st.projDoc = ps.exists() ? Object.assign({ id: P.settings.id }, ps.data()) : (pr.doc || {}); st.items = [];
-    if (!zones) { const is = await getDocs(collection(db, P.progress.items)); is.forEach((d) => st.items.push(Object.assign({ id: d.id }, d.data()))); }
-    const r = structureFor(st.proj, st.projDoc, st.items); st.structData = r.S; st.structSource = r.source; st.structure = toRuntime(r.S, st.label, stagesOf);
-  };
+  const P = pathsFor(st.proj); const pr = st.projects.find((p) => p.key === st.proj); st.label = pr.label; st.projDoc = pr.doc;
+  const recompute = () => { st.isToday = st.date === appToday(); const S = st.structure; st.states = {}; S.groups.forEach((g) => { st.states[g.id] = stateAt(st.days, st.date, g.id); }); };
+  // 날짜별 공정 체크는 컬렉션 하나(progress_days)를 한 번에 읽는다
+  const loadDays = async () => { if (st.daysLoaded) return; try { const snap = await getDocs(collection(db, P.progress.days)); snap.forEach((x) => { st.days[x.id] = normalizeDay(x.data()); }); } catch (e) { /* 아직 체크가 없는 프로젝트 */ } st.daysLoaded = true; };
+  // 구조(섹터·품목·단계)는 프로젝트 문서의 progressStructure 하나에서 읽는다
+  const loadStructure = async () => { const ps = await getDoc(doc(db, P.settings.col, P.settings.id)); st.projDoc = ps.exists() ? Object.assign({ id: P.settings.id }, ps.data()) : (pr.doc || {}); const r = structureFor(st.projDoc); st.structData = r.S; st.structure = toRuntime(r.S, st.label, stagesOf); };
   const openDefault = () => { st.open = new Set(); const S = st.structure; if (S.groups.length === 1) { st.open.add(S.groups[0].id); return; } const first = S.groups.find((g) => { const c = (st.states[g.id] || {}).merged || {}; const n = g.items.reduce((s, it) => s + S.leafCols.filter((col) => c[keyOf(it.id, col)]).length, 0); return n > 0 && n < g.items.length * S.leafCols.length; }) || S.groups[0]; if (first) st.open.add(first.id); };
   try { await loadStructure(); await loadDays(); recompute(); openDefault(); st.ready = true; } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
   paint();
   const goDate = async (d) => { if (!isDateKey(d)) return; st.date = d; pushHash('#/pjt/' + st.proj + '/progress/' + d); st.ready = false; paint(); try { await loadDays(); } catch (e) { toast('불러오기 실패: ' + ((e && e.message) || '')); } recompute(); st.ready = true; paint(); };
   const toggle = async (gid, itemId, col) => {
-    if (st.busy || st.readonly) return; const S = st.structure; const key = keyOf(itemId, col); const cs = cellState(st.states[gid], key, st.isToday, st.editMode); if (!cs.canToggle) return; const on = !cs.done; st.busy = true;
+    if (st.busy || st.readonly) return; const key = keyOf(itemId, col); const cs = cellState(st.states[gid], key, st.isToday, st.editMode); if (!cs.canToggle) return; const on = !cs.done; st.busy = true;
     try {
-      if (zones) {
-        const ref = doc(db, P.progress.checks(st.date), gid); const snap = await getDoc(ref); const latest = snap.exists() ? ((snap.data() || {}).checks || {}) : {}; const checks = toggledDayChecks(latest, key, on);
-        await setDoc(ref, { checks, updatedAt: serverTimestamp() }); st.days[st.date] = Object.assign({}, st.days[st.date] || {}, { [gid]: checks });
-      } else {
-        const ref = doc(db, P.progress.checks, st.date); const item = st.items.find((x) => x.id === itemId); if (!item) { st.busy = false; return; }
-        if (on) await setDoc(ref, { [key]: true }, { merge: true }); else { try { await updateDoc(ref, { [key]: deleteField() }); } catch (e) { /* 문서·필드가 없으면 무시 */ } }
-        const stages = lightItemStages(item.stages, col, on); await updateDoc(doc(db, P.progress.items, itemId), { stages }); item.stages = stages;   // 품목의 현재 상태(구포털 공사일보·옛 화면과 호환)
-        if (st.isToday) { const cref = doc(db, P.progress.itemChecks, st.date); if (on) await setDoc(cref, { [itemId]: { [col]: true } }, { merge: true }); else { try { await updateDoc(cref, { [itemId + '.' + col]: deleteField() }); } catch (e) { /* 없으면 무시 */ } } }
-        const cur = st.days[st.date] || {}; const m = Object.assign({}, cur[''] || {}); if (on) m[key] = true; else delete m[key]; st.days[st.date] = { '': m };
-        st.structure = toRuntime(structureFor(st.proj, st.projDoc, st.items).S, st.label, stagesOf); const stagesBy = {}; st.items.forEach((x) => { stagesBy[x.id] = x.stages || {}; }); try { await updateDoc(doc(db, P.settings.col, P.settings.id), { progress: lightProgress(st.structure, stagesBy) }); } catch (e) { /* 진행률 갱신 실패는 체크 저장을 막지 않는다 */ }
-      }
-      recompute();
+      // 그날 문서에 그 칸 하나만 병합 저장한다 — 다른 사람이 동시에 체크한 칸을 덮어쓰지 않는다
+      await setDoc(doc(db, P.progress.days, st.date), { groups: { [gid]: { [key]: on ? true : deleteField() } }, updatedAt: serverTimestamp() }, { merge: true });
+      const cur = Object.assign({}, st.days[st.date] || {}); const m = Object.assign({}, cur[gid] || {}); if (on) m[key] = true; else delete m[key]; cur[gid] = m; st.days[st.date] = cur; recompute();
+      try { const A = calcAll(st.structure, st.states); await updateDoc(doc(db, P.settings.col, P.settings.id), { progress: Math.round(A.pct * 10) / 10 }); } catch (e) { /* 프로젝트 목록의 진행률 갱신 실패는 체크 저장을 막지 않는다 */ }
     } catch (e) { toast('저장 실패: ' + ((e && (e.code || e.message)) || '')); }
     st.busy = false; paint();
   };
   // ── 공정 구조 설정(섹터·품목·단계 편집) — 모든 프로젝트 같은 편집기. 편집 중 구조(st.editor.S)는 저장 전까지 아무것도 쓰지 않는다 ──
   const cloneS = (o) => JSON.parse(JSON.stringify(o));
-  const openEditor = () => { if (!st.canEditStructure) return; st.editor = { S: cloneS(st.structData), orig: cloneS(st.structData), open: new Set(st.structData.groups.length === 1 ? [st.structData.groups[0].id] : []), source: st.structSource }; paint(); };
+  const openEditor = () => { if (!st.canEditStructure) return; st.editor = { S: cloneS(st.structData), orig: cloneS(st.structData), open: new Set(st.structData.groups.length === 1 ? [st.structData.groups[0].id] : []), }; paint(); };
   const apply = (r) => { if (r.error) { toast(r.error); return false; } st.editor.S = r.S; if (r.added && r.skipped && r.skipped.length) toast('이미 있어 건너뜀: ' + r.skipped.join(', ')); if (r.bad && r.bad.length) toast('쓸 수 없는 이름 건너뜀(_ / . # $ [ ] 금지): ' + r.bad.join(', ')); return true; };
   const keepFocus = () => paint();
   const saveStructure = async () => {
@@ -187,11 +170,11 @@ export async function mountProgress(root, route, ctx) {
     const merged = {}; Object.keys(st.states).forEach((g) => { merged[g] = st.states[g].merged; }); const imp = impactOf(E.orig, d, merged);
     const ok = await confirmDialog({ title: '공정 구조 저장', body: diffText(d) + (imp.cells ? '\n\n지워지는 단계·품목에 이미 체크된 ' + imp.cells + '칸은 기록은 남지만 더 이상 공정율에 세지 않습니다.' : '') + '\n\n저장하면 영업기획의 청구서 공정 연동도 이 구조를 씁니다. 저장할까요?', confirmLabel: '저장' }); if (!ok.ok) return;
     st.busy = true; try {
-      const writes = planSave(P, E.S, zones ? [] : st.items, me.name || ''); for (const w of writes) { const ref = doc(db, w.col, w.id); const data = w.data ? Object.fromEntries(Object.entries(w.data).map(([k, x]) => [k, x === 'TS' ? serverTimestamp() : x])) : null;
+      const writes = planSave(P, E.S, me.name || ''); for (const w of writes) { const ref = doc(db, w.col, w.id); const data = w.data ? Object.fromEntries(Object.entries(w.data).map(([k, x]) => [k, x === 'TS' ? serverTimestamp() : x])) : null;
         if (w.op === 'delete') await deleteDoc(ref); else if (w.op === 'update') await updateDoc(ref, data); else await setDoc(ref, data, w.merge ? { merge: true } : undefined); }
       // 방금 쓴 값을 그대로 화면 상태에 반영한다(다시 읽지 않아도 같은 결과 — 쓰기 직후 읽기 지연에도 흔들리지 않음)
-      st.projDoc = Object.assign({}, st.projDoc, { progressStructure: E.S }); if (!zones) { st.projDoc.stageList = E.S.stages.slice(); writes.forEach((w) => { if (w.col !== P.progress.items) return; if (w.op === 'delete') st.items = st.items.filter((x) => x.id !== w.id); else if (w.op === 'update') st.items = st.items.map((x) => (x.id === w.id ? Object.assign({}, x, w.data) : x)); else st.items = st.items.filter((x) => x.id !== w.id).concat([Object.assign({ id: w.id }, w.data, { createdAt: null })]); }); }
-      const rs = structureFor(st.proj, st.projDoc, st.items); st.structData = rs.S; st.structSource = 'data'; st.structure = toRuntime(rs.S, st.label, stagesOf); recompute(); st.editor = null; st.open = new Set(); openDefault(); toast('공정 구조를 저장했습니다.');
+      st.projDoc = Object.assign({}, st.projDoc, { progressStructure: E.S });
+      const rs = structureFor(st.projDoc); st.structData = rs.S; st.structure = toRuntime(rs.S, st.label, stagesOf); recompute(); st.editor = null; st.open = new Set(); openDefault(); toast('공정 구조를 저장했습니다.');
     } catch (e) { toast('저장 실패: ' + ((e && (e.code || e.message)) || '')); }
     st.busy = false; paint();
   };
@@ -202,7 +185,7 @@ export async function mountProgress(root, route, ctx) {
     if ((el = q('data-st-gopen'))) { const id = el.getAttribute('data-st-gopen'); if (E.open.has(id)) E.open.delete(id); else E.open.add(id); keepFocus(); return; }
     if ((el = q('data-st-gdel'))) { const id = el.getAttribute('data-st-gdel'); const g = E.S.groups.find((x) => x.id === id); if (g && g.items.length) { const ok = await confirmDialog({ title: '섹터 삭제', body: g.name + ' 섹터와 품목 ' + g.items.length + '개를 삭제할까요? (저장 전에는 아무것도 지워지지 않습니다)', confirmLabel: '삭제' }); if (!ok.ok) return; } apply(removeGroup(E.S, id)); keepFocus(); return; }
     if ((el = q('data-st-idel'))) { const [g, id] = el.getAttribute('data-st-idel').split('|'); apply(removeItem(E.S, g, id)); keepFocus(); return; }
-    if ((el = q('data-st-iadd'))) { const gid = el.getAttribute('data-st-iadd'); const ta = body.querySelector('[data-st-itext="' + gid + '"]'); const names = parseItemList(ta ? ta.value : ''); if (!names.length) { toast('추가할 품목을 입력하세요.'); return; } const r = addItems(E.S, gid, names, zones ? null : makeItemIdFactory()); if (apply(r)) { toast(r.added.length + '개 추가'); keepFocus(); } return; }
+    if ((el = q('data-st-iadd'))) { const gid = el.getAttribute('data-st-iadd'); const ta = body.querySelector('[data-st-itext="' + gid + '"]'); const names = parseItemList(ta ? ta.value : ''); if (!names.length) { toast('추가할 품목을 입력하세요.'); return; } const r = addItems(E.S, gid, names); if (apply(r)) { toast(r.added.length + '개 추가'); keepFocus(); } return; }
     if ((el = q('data-st-act'))) { const act = el.getAttribute('data-st-act');
       if (act === 'add-stage') { const inp = body.querySelector('[data-st-newstage]'); if (apply(addStage(E.S, inp ? inp.value : ''))) keepFocus(); return; }
       if (act === 'add-group') { const inp = body.querySelector('[data-st-newgroup]'); const r = addGroup(E.S, inp ? inp.value : ''); if (apply(r)) { const g = r.S.groups[r.S.groups.length - 1]; E.open.add(g.id); keepFocus(); } return; }
@@ -216,16 +199,15 @@ export async function mountProgress(root, route, ctx) {
     if (t.hasAttribute('data-st-gname')) { if (!apply(renameGroup(E.S, t.getAttribute('data-st-gname'), t.value))) keepFocus(); else keepFocus(); } };
 
   // ── 선택 기능: 장비 배치도(도면 매핑)·주간 공정회의 PPT — 프로젝트 설정에서 켜고 끈다(Ph2 기본 켜짐). 모든 프로젝트 같은 동작 ──
-  const feat = () => featuresOf(st.proj, { features: (st.structData || {}).features });
+  const feat = () => featuresOf((st.structData || {}).features);
   const readImg = (ctx && ctx.readImage) || fileToDataUrl, imgInfo = (ctx && ctx.imageInfo) || imageInfo;
-  const staticUrl = (gid) => { const rel = P.progress.floorplan(gid); return rel ? new URL('../../../' + rel, import.meta.url).href : null; };
-  const loadLayoutDoc = async (gid) => { try { const s = await getDoc(doc(db, P.progress.layouts, P.progress.layoutId(gid))); return s.exists() ? s.data() : { points: {} }; } catch (e) { return { points: {} }; } };
-  const srcOf = (gid, d) => (d && d.image) || staticUrl(gid);
+  const loadLayoutDoc = async (gid) => { try { const s = await getDoc(doc(db, P.progress.layouts, gid)); return s.exists() ? s.data() : { points: {} }; } catch (e) { return { points: {} }; } };
+  const srcOf = (gid, d) => (d && d.image) || null;   // 도면 이미지는 배치도 문서의 image 에 둔다(모든 프로젝트 같은 방식)
   const lyGroup = () => { const E = st.layoutEd; return st.structure.groups.find((x) => x.id === E.gid) || st.structure.groups[0]; };
   const ensureLayout = async (gid) => { const E = st.layoutEd; if (E.docs[gid]) return; const d = await loadLayoutDoc(gid); E.docs[gid] = d; E.src[gid] = srcOf(gid, d); };
   const openLayout = async () => { if (!st.canEditStructure || !feat().layoutMap) return; const g0 = st.structure.groups[0]; if (!g0) return; st.layoutEd = { gid: g0.id, cur: 0, zoom: 1, docs: {}, src: {} }; paint(); await ensureLayout(g0.id); paint(); };
   const saveLayoutDoc = async (gid, mutate) => {   // 방금 읽은 최신 문서에서 한 가지만 바꿔 문서 전체를 쓴다(구포털과 같은 방식 — 다른 좌표·이미지는 그대로)
-    const ref = doc(db, P.progress.layouts, P.progress.layoutId(gid)); const snap = await getDoc(ref); const latest = snap.exists() ? snap.data() : { points: {} }; const next = mutate(Object.assign({ points: {} }, latest)); await setDoc(ref, Object.assign({}, next, { updatedAt: serverTimestamp() }));
+    const ref = doc(db, P.progress.layouts, gid); const snap = await getDoc(ref); const latest = snap.exists() ? snap.data() : { points: {} }; const next = mutate(Object.assign({ points: {} }, latest)); await setDoc(ref, Object.assign({}, next, { updatedAt: serverTimestamp() }));
     st.layoutEd.docs[gid] = next; st.layoutEd.src[gid] = srcOf(gid, next);
   };
   const placeBox = async (s0, end, size) => {
@@ -250,7 +232,7 @@ export async function mountProgress(root, route, ctx) {
     if (act === 'delall') { const n = Object.keys(dc.points || {}).length; if (!n) { toast('이 섹터엔 매핑된 좌표가 없습니다.'); return; } const ok = await confirmDialog({ title: '좌표 전체 삭제', body: (g.name || '전체') + ' 섹터에 매핑된 좌표 ' + n + '개를 전부 삭제할까요? 되돌릴 수 없습니다.', confirmLabel: '전체 삭제' }); if (!ok.ok) return; await run(() => saveLayoutDoc(g.id, (d) => Object.assign({}, d, { points: {} })), '좌표를 전부 삭제했습니다.'); return; }
     if (act === 'norm') { const nz = normalizeSizes(dc.points); if (!nz) { toast('보정하려면 박스가 2개 이상 있어야 합니다.'); return; } const ok = await confirmDialog({ title: '크기 일괄 보정', body: '박스 ' + Object.keys(nz.points).length + '개를 모두 같은 크기(' + (nz.w * 100).toFixed(1) + '% × ' + (nz.h * 100).toFixed(1) + '%)로 맞춥니다. 각 박스의 중심 위치는 그대로입니다.', confirmLabel: '보정' }); if (!ok.ok) return; await run(() => saveLayoutDoc(g.id, (d) => Object.assign({}, d, { points: nz.points })), '보정했습니다.'); return; }
     if (act === 'remap') { const rm = remapByOrder(dc.points, g.items); if (!rm.pairs.length) { toast('맞출 좌표가 없습니다.'); return; } const ok = await confirmDialog({ title: '좌표 번호 맞추기', body: '맞지 않는 좌표 ' + rm.pairs.length + '개의 번호를 품목 번호에 순서대로 맞춥니다(예: ' + rm.pairs.slice(0, 3).map((p) => p[0] + ' → ' + p[1]).join(', ') + '). 번호 순서가 같을 때만 맞는 방법입니다. 맞춘 뒤 도면에서 위치를 확인하세요.', confirmLabel: '맞추기' }); if (!ok.ok) return; await run(() => saveLayoutDoc(g.id, (d) => Object.assign({}, d, { points: remapByOrder(d.points, g.items).points })), '번호를 맞췄습니다.'); return; }
-    if (act === 'rmimg') { const ok = await confirmDialog({ title: '올린 도면 이미지 지우기', body: '올린 이미지를 지웁니다(좌표는 그대로). 기본 도면이 있는 프로젝트는 기본 도면으로 돌아갑니다.', confirmLabel: '지우기' }); if (!ok.ok) return; await run(() => saveLayoutDoc(g.id, (d) => { const o = Object.assign({}, d); delete o.image; return o; })); }
+    if (act === 'rmimg') { const ok = await confirmDialog({ title: '올린 도면 이미지 지우기', body: '올린 이미지를 지웁니다(좌표는 그대로). 다시 올려야 도면이 보입니다.', confirmLabel: '지우기' }); if (!ok.ok) return; await run(() => saveLayoutDoc(g.id, (d) => { const o = Object.assign({}, d); delete o.image; return o; })); }
   };
   const layoutChange = async (ev) => {
     const t = ev.target; if (!(t instanceof Element) || !t.hasAttribute('data-ly-file') || !st.layoutEd) return; const f = t.files && t.files[0]; if (!f) return; const g = lyGroup(); st.busy = true;
@@ -261,7 +243,7 @@ export async function mountProgress(root, route, ctx) {
     if (st.busy || !st.weekly) return; st.busy = true; toast('주간 공정회의 PPT를 만드는 중...');
     try {
       const Pptx = await loadPptxGen(); const S = st.structure; const tue = snapToTuesday(st.weekly.date), wr = weekRange(tue); const today = appToday(); await loadDays(tue);
-      const stNow = {}, stLast = {}; S.groups.forEach((g) => { stNow[g.id] = zones ? stateAt(st.days, tue, g.id, st.proj) : (tue >= today ? lightState(st.days, tue, st.items, true) : stateAt(st.days, tue, '', 'light')); stLast[g.id] = zones ? stateAt(st.days, wr.last, g.id, st.proj) : stateAt(st.days, wr.last, '', 'light'); });
+      const stNow = {}, stLast = {}; S.groups.forEach((g) => { stNow[g.id] = stateAt(st.days, tue, g.id); stLast[g.id] = stateAt(st.days, wr.last, g.id); });
       const layouts = {}, images = {}; await Promise.all(S.groups.map(async (g) => { const d = await loadLayoutDoc(g.id); layouts[g.id] = d; const src = srcOf(g.id, d); if (!src) return; const info = await imgInfo(src); if (info && info.exists) images[g.id] = Object.assign({ w: info.w, h: info.h }, src.indexOf('data:') === 0 ? { data: src.slice(5) } : { path: src }); }));
       const pres = new Pptx(); const no = weekNo(tue); const meta = { client: (S.ppt && S.ppt.client) || '', label: st.label, title: (S.ppt && S.ppt.title) || '', unit: S.unit || '대' };
       const r = buildWeekly(pres, meta, S, { no, from: wr.from, to: wr.to }, stNow, stLast, layouts, images); await pres.writeFile({ fileName: r.fileName }); toast('"' + r.fileName + '" 다운로드를 시작했습니다.');
@@ -273,7 +255,7 @@ export async function mountProgress(root, route, ctx) {
     if (st.busy) return; st.busy = true; toast('공정표 PPT를 만드는 중...');
     try {
       const Pptx = await loadPptxGen(); const S = st.structure; const states = {};
-      S.groups.forEach((g) => { const cur = st.states[g.id] || {}; const docs = zones ? cur : stateAt(st.days, st.date, '', 'light'); states[g.id] = { merged: cur.merged || {}, todayOnly: docs.todayOnly || {}, pastOnly: docs.pastOnly || {} }; });
+      S.groups.forEach((g) => { const cur = st.states[g.id] || {}; states[g.id] = { merged: cur.merged || {}, todayOnly: cur.todayOnly || {}, pastOnly: cur.pastOnly || {} }; });
       const pres = new Pptx(); const meta = { client: (S.ppt && S.ppt.client) || '', label: st.label, title: (S.ppt && S.ppt.title) || '', unit: S.unit || '대', isToday: st.isToday };
       const r = buildDeck(pres, meta, S, states, st.date); await pres.writeFile({ fileName: r.fileName }); toast('"' + r.fileName + '" 다운로드를 시작했습니다.');
     } catch (e) { toast('PPT를 만들지 못했습니다: ' + ((e && e.message) || '')); }
@@ -357,12 +339,12 @@ export async function mountReport(root, route, ctx) {
   try { st.projects = visibleProjects(me, await loadDyn()); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
   body.removeAttribute('aria-busy'); st.proj = st.projects.some((p) => p.key === segs[0]) ? segs[0] : ''; if (!st.proj) { paint(); return; }
   const P = pathsFor(st.proj); const pr = st.projects.find((p) => p.key === st.proj); st.label = pr.label;
-  const loadStructureR = async () => { const ps = await getDoc(doc(db, P.settings.col, P.settings.id)); const pd = ps.exists() ? ps.data() : (pr.doc || {}); const items = []; if (P.kind === 'light') { const is = await getDocs(collection(db, P.progress.items)); is.forEach((d) => items.push(Object.assign({ id: d.id }, d.data()))); } const r = structureFor(st.proj, pd, items); st.structure = toRuntime(r.S, st.label, stagesOf); st.client = (r.S.ppt && r.S.ppt.client) || ''; st.ctx = { site: st.label, client: st.client, kind: P.kind, dateKey: st.date }; };
+  const loadStructureR = async () => { const ps = await getDoc(doc(db, P.settings.col, P.settings.id)); const pd = ps.exists() ? ps.data() : (pr.doc || {}); const r = structureFor(pd); st.structure = toRuntime(r.S, st.label, stagesOf); st.client = (r.S.ppt && r.S.ppt.client) || ''; st.ctx = { site: st.label, client: st.client, dateKey: st.date }; };
   const loadList = async () => { const snap = await getDocs(collection(db, P.reports)); st.dates = new Set(); const eq = new Set(); snap.forEach((d) => { if (isKey(d.id)) st.dates.add(d.id); String((d.data() || {}).equip || '').split(',').forEach((e) => { const t = e.trim(); if (t && t !== '—') eq.add(t); }); }); st.equipHistory = [...eq]; };   // (사용 안 함 — 장비는 지게차·크레인 중 하나)
   const readDay = async (date) => { const [a, m] = await Promise.all([getDoc(doc(db, P.attendance, date)), getDoc(doc(db, P.manday, date))]); return { checks: a.exists() ? (a.data().checks || []) : [], md: m.exists() ? (m.data().md || {}) : {} }; };
   const activeIds = async (date) => { try { const [rs, ms] = await Promise.all([getDocs(collection(db, P.roster)), getDocs(collection(db, 'master_workers'))]); const resigned = {}; ms.forEach((d) => { const x = d.data(); if (x.resigned) resigned[d.id] = { resigned: true, resignedDate: x.resignedDate || '' }; }); const roster = []; rs.forEach((d) => roster.push(Object.assign({ id: d.id }, d.data()))); return activeWorkersForDate(roster, resigned, date).map((w) => w.id); } catch (e) { return null; } };
   const attSummary = async (date) => { const d = await readDay(date); return attendanceSummary(d.checks, d.md, await activeIds(date)); };
-  const newChecks = async (date) => { try { if (P.progress.model === 'zones') { const snap = await getDocs(collection(db, P.progress.checks(date))); const docs = []; snap.forEach((x) => docs.push({ id: x.id, data: x.data() })); return normalizeDayFixed(docs); } const s = await getDoc(doc(db, P.progress.checks, date)); const flat = normalizeDayLight(s.exists() ? s.data() : {})['']; const out = {}; st.structure.groups.forEach((g) => { out[g.id] = flat; }); return out; } catch (e) { return {}; } };   // 경량은 날짜 문서 하나에 모든 품목의 키가 있다 — 섹터마다 같은 맵을 준다(자기 품목만 세어짐)
+  const newChecks = async (date) => { try { const s = await getDoc(doc(db, P.progress.days, date)); return normalizeDay(s.exists() ? s.data() : {}); } catch (e) { return {}; } };
   const loadDay = async () => {
     st.preview = false; st.ctx = Object.assign({}, st.ctx, { dateKey: st.date }); const s = await getDoc(doc(db, P.reports, st.date)); st.exists = s.exists();
     if (s.exists()) { st.form = fromStored(s.data()); if (!st.form.author) st.form.author = authorLabel(me); return; }   // 작성자는 로그인 계정에서(이미 쓴 일보는 쓴 사람 그대로)
@@ -379,13 +361,13 @@ export async function mountReport(root, route, ctx) {
     let pa = document.getElementById('pjt-print-area'); if (pa) pa.remove(); pa = document.createElement('div'); pa.id = 'pjt-print-area'; pa.innerHTML = '<style>@media screen{#pjt-print-area{display:none}}@media print{body>*:not(#pjt-print-area){display:none!important}#pjt-print-area{display:block!important}}@page{size:A4;margin:18mm}</style>' + html; document.body.appendChild(pa);
     const ot = document.title; document.title = title; try { window.print(); } catch (e) { toast('인쇄를 시작하지 못했습니다.'); } setTimeout(() => { const x = document.getElementById('pjt-print-area'); if (x) x.remove(); document.title = ot; }, 500);
   };
-  const defaultSync = async (d) => { const call = httpsCallable(functions, 'edocAct'); return call({ action: 'syncDaily', pjtId: P.registryId, date: st.date, title: st.label + ' 공사일보 (' + dateText(st.date) + ')', pjtName: st.label, todayWork: d.content || '', tomorrowWork: d.tomorrow || '', issue: d.note || '' }); };
+  const defaultSync = async (d) => { const call = httpsCallable(functions, 'edocAct'); return call({ action: 'syncDaily', pjtId: P.id, date: st.date, title: st.label + ' 공사일보 (' + dateText(st.date) + ')', pjtName: st.label, todayWork: d.content || '', tomorrowWork: d.tomorrow || '', issue: d.note || '' }); };
   const save = async () => {
     readForm(); if (st.busy) return; st.busy = true;
     try {
       if (st.exists) st.form.editors = withEditor(st.form.editors, st.form.author, authorLabel(me), new Date().toISOString());   // 이미 있는 일보를 최초 작성자가 아닌 사람이 고치면 수정자로 기록
       const doc0 = toStored(st.form, st.ctx); await setDoc(doc(db, P.reports, st.date), Object.assign({}, doc0, { updatedAt: serverTimestamp(), savedAt: serverTimestamp() }), { merge: true }); st.dates.add(st.date); st.exists = true; st.form.legacy = false; toast('저장했습니다.');
-      if (P.kind === 'light') { try { await (ctx && ctx.syncDaily ? ctx.syncDaily(doc0) : defaultSync(doc0)); } catch (e) { console.warn('[공사일보→업무일지 연동 실패]', (e && e.message) || e); } }   // 업무일지 연동 실패는 일보 저장을 막지 않는다
+      try { await (ctx && ctx.syncDaily ? ctx.syncDaily(doc0) : defaultSync(doc0)); } catch (e) { console.warn('[공사일보→업무일지 연동 실패]', (e && e.message) || e); }   // 모든 프로젝트가 저장하면 전자결재 업무일지도 만든다 — 연동 실패는 일보 저장을 막지 않는다
     } catch (e) { toast('저장 실패: ' + ((e && (e.code || e.message)) || '')); }
     st.busy = false; paint();
   };
@@ -420,8 +402,8 @@ export async function mountHome(root, route, ctx) {
   body.removeAttribute('aria-busy'); st.proj = st.projects.some((p) => p.key === segs[0]) ? segs[0] : ''; if (!st.proj) { paint(); return; }
   const P = pathsFor(st.proj); const pr = st.projects.find((p) => p.key === st.proj); st.label = pr.label; const [ty, tm] = today.split('-'); const ym = ty + '-' + tm;
   try {
-    const ps = await getDoc(doc(db, P.settings.col, P.settings.id)); st.doc = ps.exists() ? ps.data() : (pr.doc || {}); const items = []; if (P.kind === 'light') { const is = await getDocs(collection(db, P.progress.items)); is.forEach((d) => items.push(Object.assign({ id: d.id }, d.data()))); }
-    const sr = structureFor(st.proj, st.doc, items); st.structure = toRuntime(sr.S, st.label, stagesOf); st.unit = sr.S.unit || '대'; st.features = featuresOf(st.proj, { features: sr.S.features }) || {};
+    const ps = await getDoc(doc(db, P.settings.col, P.settings.id)); st.doc = ps.exists() ? ps.data() : (pr.doc || {});
+    const sr = structureFor(st.doc); st.structure = toRuntime(sr.S, st.label, stagesOf); st.unit = sr.S.unit || '대'; st.features = featuresOf(sr.S.features);
     const rd = async () => { const [a, m] = await Promise.all([getDoc(doc(db, P.attendance, today)), getDoc(doc(db, P.manday, today))]); return { checks: a.exists() ? (a.data().checks || []) : [], md: m.exists() ? (m.data().md || {}) : {} }; };
     const monthDocs = async () => { try { const s = await getDocs(query(collection(db, P.manday), where(documentId(), '>=', ym + '-01'), where(documentId(), '<=', ym + '-31'))); const o = {}; s.forEach((d) => { o[d.id] = (d.data().md) || {}; }); return o; } catch (e) { return {}; } };
     const [t, mm, ss, rr] = await Promise.all([rd(), monthDocs(), getDocs(collection(db, P.schedules)), getDocs(collection(db, P.reports))]);
@@ -430,10 +412,8 @@ export async function mountHome(root, route, ctx) {
   paint();
   // 공정율 — 날짜별 체크를 모두 읽어야 해서 화면을 먼저 보여 준 뒤 계산한다
   try {
-    const days = {}; const S = st.structure; if (P.progress.model === 'zones') { const start = PROGRESS_START[st.proj] || '2026-06-17'; const need = daysThrough(start, today); for (let i = 0; i < need.length; i += 25) { await Promise.all(need.slice(i, i + 25).map(async (d) => { try { const snap = await getDocs(collection(db, P.progress.checks(d))); const docs = []; snap.forEach((x) => docs.push({ id: x.id, data: x.data() })); days[d] = normalizeDayFixed(docs); } catch (e) { days[d] = {}; } })); } }
-    else { try { const snap = await getDocs(collection(db, P.progress.checks)); snap.forEach((x) => { days[x.id] = normalizeDayLight(x.data()); }); } catch (e) { /* 날짜별 문서 없음 */ } }
-    const items2 = []; if (P.kind === 'light') { const is = await getDocs(collection(db, P.progress.items)); is.forEach((d) => items2.push(Object.assign({ id: d.id }, d.data()))); }
-    const states = {}; S.groups.forEach((g) => { states[g.id] = P.progress.model === 'zones' ? stateAt(days, today, g.id, st.proj) : lightState(days, today, items2, true); }); const A = calcAll(S, states); st.progress = { pct: A.pct, items: A.items };
+    const days = {}; const S = st.structure; try { const snap = await getDocs(collection(db, P.progress.days)); snap.forEach((x) => { days[x.id] = normalizeDay(x.data()); }); } catch (e) { /* 아직 체크가 없는 프로젝트 */ }
+    const states = {}; S.groups.forEach((g) => { states[g.id] = stateAt(days, today, g.id); }); const A = calcAll(S, states); st.progress = { pct: A.pct, items: A.items };
   } catch (e) { st.progressNote = '계산 실패'; }
   paint();
 }
@@ -443,15 +423,15 @@ export async function mountHome(root, route, ctx) {
 export async function mountSettings(root, route, ctx) {
   root.onclick = null; root.oninput = null;
   const me = (ctx && ctx.me) || {}; const segs = (route && route.segs) || [];
-  const st = { projects: [], proj: '', label: '', admin: !!me.admin, doc: null, form: {}, ended: false, ready: false, busy: false, msg: '', msgBad: false };
+  const st = { projects: [], proj: '', label: '', admin: !!me.admin, doc: null, form: {}, ended: false, ready: false, busy: false, msg: '', msgBad: false, mandayText: '' };
   root.innerHTML = '<div id="se-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#se-body'); let pptEl = null;   // 참여자 지정 화면은 한 번만 만들고, 다시 그릴 때는 같은 요소를 옮겨 붙인다(다시 불러오지 않고 고르던 내용도 유지)
   const paint = () => { const y = window.scrollY; if (pptEl && pptEl.parentNode) pptEl.parentNode.removeChild(pptEl); body.innerHTML = settingsHtml(st); window.scrollTo(0, y); const ph = body.querySelector('[data-ppt-host]'); if (ph && st.ready && st.admin && st.proj) { if (pptEl) ph.replaceWith(pptEl); else { pptEl = ph; mountPpt(ph); } } };
   try { st.projects = visibleProjects(me, await loadDyn()); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
   body.removeAttribute('aria-busy'); st.proj = st.projects.some((p) => p.key === segs[0]) ? segs[0] : ''; if (!st.proj) { paint(); return; }
   const P = pathsFor(st.proj); st.label = st.projects.find((p) => p.key === st.proj).label; if (!st.admin) { paint(); return; }
   const ref = doc(db, P.settings.col, P.settings.id);
-  const load = async () => { const s = await getDoc(ref); st.doc = s.exists() ? s.data() : {}; st.form = settingsFormOf(st.doc); st.ended = st.doc.status === 'ended'; };
-  const mountPpt = (box) => { Promise.resolve().then(async () => { const mp = (ctx && ctx.mountParticipants) || (await import('../../shared/pjt-participants.js?v=20261013zs')).mountParticipants; await mp(box, { db, kind: P.kind === 'light' ? 'light' : 'fixed', id: P.settings.id, me: { uid: me.uid } }); }).catch((e) => { box.innerHTML = '<div class="jh-field__hint">참여자 지정 구역을 불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; }); };
+  const load = async () => { const s = await getDoc(ref); st.doc = s.exists() ? s.data() : {}; st.form = settingsFormOf(st.doc); st.ended = st.doc.status === 'ended'; st.mandayText = defaultMandayOf(st.doc) == null ? '' : String(defaultMandayOf(st.doc)); };
+  const mountPpt = (box) => { Promise.resolve().then(async () => { const mp = (ctx && ctx.mountParticipants) || (await import('../../shared/pjt-participants.js?v=20261013zs')).mountParticipants; await mp(box, { db, id: P.settings.id, me: { uid: me.uid } }); }).catch((e) => { box.innerHTML = '<div class="jh-field__hint">참여자 지정 구역을 불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; }); };
   try { await load(); st.ready = true; } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">설정을 불러오지 못했습니다: ' + esc((e && (e.code || e.message)) || '') + '</div>'; return; }
   paint();
   const readForm = () => { body.querySelectorAll('[data-st-f]').forEach((el) => { st.form[el.getAttribute('data-st-f')] = el.value; }); };
@@ -459,8 +439,13 @@ export async function mountSettings(root, route, ctx) {
   root.onclick = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return; const el = t.closest('[data-st-act]'); if (!el || st.busy) return; const act = el.getAttribute('data-st-act');
     if (act === 'save') {
-      readForm(); const r = settingsBuild(st.form, P.kind); if (r.error) { say(r.error, true); paint(); return; } const ch = changedFields(st.doc, st.form); if (!ch.length) { say('바뀐 내용이 없습니다.', false); paint(); return; }
+      readForm(); const r = settingsBuild(st.form); if (r.error) { say(r.error, true); paint(); return; } const ch = changedFields(st.doc, st.form); if (!ch.length) { say('바뀐 내용이 없습니다.', false); paint(); return; }
       st.busy = true; try { await setDoc(ref, Object.assign({}, r.data, { updatedAt: serverTimestamp() }), { merge: true }); st.doc = Object.assign({}, st.doc, r.data); st.form = settingsFormOf(st.doc); say('저장했습니다 (' + ch.join('·') + ')', false); toast('저장했습니다.'); } catch (e) { say('저장 실패: ' + ((e && (e.code || e.message)) || ''), true); }
+      st.busy = false; paint(); return;
+    }
+    if (act === 'savemd') {
+      const inp = body.querySelector('[data-st-md]'); const r = parseDefaultManday(inp ? inp.value : ''); st.mandayText = inp ? inp.value : ''; if (r.error) { toast(r.error); return; }
+      st.busy = true; try { await setDoc(ref, { defaultManday: r.value, updatedAt: serverTimestamp() }, { merge: true }); st.doc = Object.assign({}, st.doc, { defaultManday: r.value }); st.mandayText = r.value == null ? '' : String(r.value); toast(r.value == null ? '자동 공수를 해제했습니다.' : '자동 공수를 ' + r.value + '로 저장했습니다.'); } catch (e) { toast('저장 실패: ' + ((e && (e.code || e.message)) || '')); }
       st.busy = false; paint(); return;
     }
     if (act === 'end') {

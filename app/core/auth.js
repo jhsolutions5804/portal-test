@@ -1,6 +1,6 @@
-import { auth, db, doc, getDoc, getDocs, collection, onAuthStateChanged, signInWithEmailAndPassword, signOut } from './firebase.js?v=20261013zt';
-import { accessibleKeys } from '../shared/pjt-access.js?v=20261013zt';
-import { DOMAIN } from './config.js?v=20261013zt';
+import { auth, db, doc, getDoc, getDocs, collection, onAuthStateChanged, signInWithEmailAndPassword, signOut } from './firebase.js?v=20261014a';
+import { accessibleKeys } from '../shared/pjt-access.js?v=20261014a';
+import { DOMAIN } from './config.js?v=20261014a';
 
 export function authErrorMessage(code) {
   const m = {
@@ -32,11 +32,11 @@ export async function login(idOrEmail, pw) {
 }
 export function logout() { return signOut(auth); }
 
-/** 종료되지 않은 프로젝트 중 이 사람이 접근할 수 있는 것의 key 목록(p4ph2·p4ph4·reg_<id>). 읽기에 실패하면 빈 목록(PJT 권한자는 perms.pjt 로 그대로 들어간다) */
+/** 종료되지 않은 프로젝트 중 이 사람이 접근할 수 있는 것의 key(=등록 id) 목록 — 모든 프로젝트가 pjt_registry 문서 하나씩이다. 읽기에 실패하면 빈 목록(PJT 권한자는 perms.pjt 로 그대로 들어간다) */
 export async function loadPjtAccess(me) {
   try {
-    const [ss, rs] = await Promise.all([getDocs(collection(db, 'pjt_settings')), getDocs(collection(db, 'pjt_registry'))]); const projects = [];
-    ss.forEach((d) => projects.push(Object.assign({ key: d.id }, d.data()))); rs.forEach((d) => projects.push(Object.assign({ key: 'reg_' + d.id }, d.data())));
+    const rs = await getDocs(collection(db, 'pjt_registry')); const projects = [];
+    rs.forEach((d) => projects.push(Object.assign({ key: d.id }, d.data())));
     return accessibleKeys(me, projects.filter((p) => p.status !== 'ended'));
   } catch (e) { console.warn('프로젝트 접근 목록 읽기 실패', e); return []; }
 }

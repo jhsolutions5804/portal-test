@@ -48,27 +48,23 @@ export const estTag = (e) => (e.status === 'void' ? { text: '폐기', tone: 'gra
 export const settleState = (s) => (s.status === 'void' ? { text: '폐기', tone: 'gray' } : s.status === 'done' ? { text: '완결', tone: 'green' } : { text: '유효', tone: 'blue' });
 export const SETTLE_TYPE_LABEL = { invoice: '대금청구서', payment: '지급예정서' };
 
-/** 연동 PJT 기본값(구포털 getLinkPjt): 새 프로젝트는 자동 생성, 옛 데이터는 progProfile/mandayCol 로 추정 */
-export function getLinkPjt(p) {
-  if (!p) return 'auto'; if (p.linkPjt) return p.linkPjt; if (p.progProfile === 'p4ph4' || p.mandayCol === 'ph4_manday') return 'p4ph4'; if (p.mandayCol === '' && !p.progProfile) return 'none'; return 'p4ph2';
-}
-export const linkExtras = (link) => ({ progProfile: link === 'none' ? '' : (link === 'p4ph4' ? 'p4ph4' : (link === 'p4ph2' ? 'p4ph2' : '')), mandayCol: link === 'p4ph4' ? 'ph4_manday' : (link === 'p4ph2' ? 'worker_manday' : '') });
+/** 연동 PJT(구포털 getLinkPjt): 새 프로젝트는 자동 생성(auto), 그 밖에는 연결된 PJT관리 프로젝트의 id(모든 프로젝트 같은 규칙 — p4ph2·p4ph4 도 등록 id 다), 연결이 없으면 none */
+export function getLinkPjt(p) { if (!p) return 'auto'; return p.linkPjt || 'none'; }
 export function linkOptions(registry) {
-  return [{ value: 'auto', label: '🆕 새 PJT관리 항목 자동 생성' }, { value: 'p4ph2', label: 'P4 Ph2 (FAB) — 6섹터 183대 · 공수' }, { value: 'p4ph4', label: 'P4 Ph4 (SUP) — 4섹터 11대 EHU · 공수' }]
-    .concat((registry || []).map((r) => ({ value: 'reg_' + r.id, label: (r.name || '(이름없음)') + ' — 기존 PJT관리 항목에 연결' }))).concat([{ value: 'none', label: '(연동 없음 / 직접 입력)' }]);
+  return [{ value: 'auto', label: '🆕 새 PJT관리 항목 자동 생성' }].concat((registry || []).map((r) => ({ value: r.id, label: (r.name || '(이름없음)') + ' — PJT관리 항목에 연결' }))).concat([{ value: 'none', label: '(연동 없음 / 직접 입력)' }]);
 }
 export const projNew = () => ({ code: '', name: '', site: '', client: '', contractor: '', partner: '', type: 'general', status: 'run', link: 'auto' });
 export const projToForm = (p) => { const x = p || {}; return { code: x.code || '', name: x.name || '', site: x.site || '', client: x.client || '', contractor: x.contractor || '', partner: x.partner || '', type: x.type === 'fcu' ? 'fcu' : 'general', status: x.status === 'done' ? 'done' : 'run', link: getLinkPjt(p) }; };
-/** 저장 계획(구포털 savePjt): PJT 코드 필수. 연동이 "자동 생성"이면 PJT관리(pjt_registry)에 같은 이름의 경량 PJT 를 새로 만들고(registry), 이미 연동된 reg_ 항목이면
+/** 저장 계획(구포털 savePjt): PJT 코드 필수. 연동이 "자동 생성"이면 PJT관리(pjt_registry)에 같은 이름의 프로젝트를 새로 만들고(registry), 이미 연동된 프로젝트면
  *  기본정보 6항목(PJT 코드·내용·현장명·발주처·시공사·협력사)을 그대로 반영한다(syncPatch). 새 프로젝트 번호는 pjt_<시각>. 호출한 쪽이 순서대로 쓴다. */
 export function projectBuild(form, opt) {
   const f = form || {}; const o = opt || {}; const errors = []; const T = (v, max, label) => { const s = String(v == null ? '' : v).trim(); if (s.length > max) errors.push(label + '은(는) ' + max + '자 이내로 입력해 주세요.'); return s; };
   const code = T(f.code, 80, 'PJT 코드'); if (!code) errors.push('PJT 코드를 입력하세요.');
   const data = { code, name: T(f.name, 120, '내용'), site: T(f.site, 120, '현장명'), client: T(f.client, 80, '발주처'), contractor: T(f.contractor, 80, '시공사'), partner: T(f.partner, 80, '협력사'), type: f.type === 'fcu' ? 'fcu' : 'general', status: f.status === 'done' ? 'done' : 'run' };
   if (errors.length) return { ok: false, errors };
-  const link = String(f.link || 'auto'); const valid = link === 'auto' || link === 'p4ph2' || link === 'p4ph4' || link === 'none' || /^reg_[A-Za-z0-9_-]+$/.test(link); if (!valid) return { ok: false, errors: ['연동 PJT 값이 올바르지 않습니다.'] };
-  const registry = link === 'auto' ? { name: data.code || data.name, site: data.site || '', client: data.client || '', contractor: data.contractor || '', partner: data.partner || '', content: data.name || '', item: '', qty: 0, startDate: '', url: '', progress: 0, manday: 0, status: 'active' } : null;
-  const syncPatch = link.indexOf('reg_') === 0 ? { name: data.code, content: data.name, site: data.site, client: data.client, contractor: data.contractor, partner: data.partner } : null;
+  const link = String(f.link || 'auto'); const valid = link === 'auto' || link === 'none' || /^[A-Za-z0-9_-]{1,64}$/.test(link); if (!valid) return { ok: false, errors: ['연동 PJT 값이 올바르지 않습니다.'] };
+  const registry = link === 'auto' ? { name: data.code || data.name, site: data.site || '', client: data.client || '', contractor: data.contractor || '', partner: data.partner || '', content: data.name || '', item: '', qty: 0, startDate: '', progress: 0, status: 'active' } : null;
+  const syncPatch = link !== 'auto' && link !== 'none' ? { name: data.code, content: data.name, site: data.site, client: data.client, contractor: data.contractor, partner: data.partner } : null;
   const isNew = !o.id;
-  return { ok: true, errors: [], isNew, id: o.id || ('pjt_' + (o.now || Date.now())), link, data: Object.assign({}, data, linkExtras(link)), registry, syncPatch, message: isNew ? (link === 'auto' ? '프로젝트를 등록했습니다. (PJT관리에도 자동 생성됨)' : '프로젝트를 등록했습니다.') : (link === 'auto' ? '수정했습니다. (PJT관리에 신규 항목 생성됨)' : '수정했습니다.') };
+  return { ok: true, errors: [], isNew, id: o.id || ('pjt_' + (o.now || Date.now())), link, data: Object.assign({}, data), registry, syncPatch, message: isNew ? (link === 'auto' ? '프로젝트를 등록했습니다. (PJT관리에도 자동 생성됨)' : '프로젝트를 등록했습니다.') : (link === 'auto' ? '수정했습니다. (PJT관리에 신규 항목 생성됨)' : '수정했습니다.') };
 }

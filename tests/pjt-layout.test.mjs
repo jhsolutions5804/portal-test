@@ -1,5 +1,5 @@
 import { unmatchedKeys, remapByOrder, CLICK_PX, refSize, snapToAlignment, boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, mappedCount, reachedStage, frontierIndex, fitContain, WEEK_ANCHOR, snapToTuesday, weekNo, weekRange } from '../app/modules/pjt/layout.js';
-import { fixedStructure } from '../app/modules/pjt/progress.js';
+import { fixedStructure } from './_fixtures.mjs';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const near = (a, b) => Math.abs(a - b) < 1e-9; const j = JSON.stringify;
 const P = { a: { x: 0.1, y: 0.5, w: 0.04, h: 0.05 }, b: { x: 0.2, y: 0.5, w: 0.06, h: 0.07 } };

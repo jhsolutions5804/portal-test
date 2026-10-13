@@ -1,6 +1,6 @@
 /* PJT 공사일보 — 순수 규칙(화면·네트워크 없이 시험 가능). 모든 프로젝트 같은 양식: 작성자·근무시간·금일 작업·명일 예정·투입 인원·1인당 공수·사용 장비·특이사항.
- * 저장(동결): 날짜 키 문서 하나(어댑터 P.reports/<날짜>) — 구포털 Ph2·Ph4 일보(today·count·remarks…)와 경량 일보(content·headcount·note…)의 필드를 **모두 담은 문서(fmt 2)**로 쓴다. 어느 쪽 옛 화면이 읽어도 내용이 보인다.
- * 옛 문서(Ph2·Ph4 형식)는 읽을 때 새 양식으로 환산해 보여 주고(legacy 표시), 고쳐 저장하면 새 형식(두 필드 세트)으로 바뀐다. */
+ * 저장(동결): 날짜 키 문서 하나(어댑터 P.reports/<날짜>), 모든 프로젝트 같은 형식(fmt 2).
+ * 옛 형식 문서(구포털 일보의 today·count·remarks 필드)는 읽을 때 새 양식으로 환산해 보여 주고(옛 양식 표시), 고쳐 저장하면 새 형식으로 바뀐다 — 문서의 나이에 따른 처리이며 프로젝트 종류와 무관하다. */
 export const REPORT_FMT = 2;
 /** 근무시간 구분(대표님 지정 2026-10-14): 고르면 시작·종료 시간이 채워지고, 그 뒤 시·분을 직접 고칠 수 있다. 시간이 구분과 정확히 맞으면 구분 이름이 표시되고, 고쳐서 맞지 않으면 시간만 남는다 */
 export const WORK_SHIFTS = [{ name: '주간', from: '07:00', to: '17:00' }, { name: '조출', from: '05:00', to: '07:00' }, { name: '연장', from: '17:00', to: '19:00' }, { name: '야간', from: '19:00', to: '21:00' }, { name: '조출주간', from: '05:00', to: '17:00' }, { name: '주간연장', from: '07:00', to: '19:00' }, { name: '철야', from: '19:00', to: '05:00' }];
@@ -30,12 +30,11 @@ export function fromStored(d) {
   const headcount = legacy ? (parseInt(x.count, 10) || 0) : (parseInt(x.headcount, 10) || 0); const per = legacy ? 0 : r1(x.manday); const total = legacy ? 0 : (x.mandayTotal != null ? r1(x.mandayTotal) : r1(headcount * per));
   return { legacy, author: String(x.author || ''), checkIn: String(x.checkIn || ''), checkOut: String(x.checkOut || ''), shift: shiftOf(String(x.checkIn || ''), String(x.checkOut || '')), content: String((legacy ? x.today : x.content) || ''), tomorrow: String(x.tomorrow || ''), headcount, manday: per, mandayTotal: total, equip: normalizeEquip(x.equip), equipText: legacy ? splitEquip(x.equip).join(', ') : '', editors: Array.isArray(x.editors) ? x.editors.filter((e) => e && e.by).map((e) => ({ by: String(e.by), at: String(e.at || '') })) : [], note: String((legacy ? x.remarks : x.note) || '') };   // 옛 형식은 장비 번호가 든 원래 문구를 equipText 로 보여 주고(고치면 칩으로 이어짐), editors = 최초 작성자 외에 고친 사람들(수정자 기록)
 }
-/** 화면 모델 → 저장할 문서(두 필드 세트). kind: 'p4ph2'|'p4ph4'|'light' — 옛 화면이 읽는 date 필드가 다르다(Ph2·Ph4 는 날짜 문구, 경량은 날짜 키) */
+/** 화면 모델 → 저장할 문서(fmt 2). 모든 프로젝트 같은 형식 — 날짜 키 문서(pjt_registry/<id>/reports/<날짜>)에 쓴다 */
 export function toStored(m, ctx) {
-  const c = ctx || {}; const headcount = parseInt(m.headcount, 10) || 0; const manday = r1(m.manday); const total = r1(headcount * manday); const equip = normalizeEquip(m.equip); const fixed = c.kind === 'p4ph2' || c.kind === 'p4ph4';
-  return { fmt: REPORT_FMT, dateKey: c.dateKey, date: fixed ? dateText(c.dateKey) : c.dateKey, site: c.site || '', author: String(m.author || '').trim(), checkIn: m.checkIn || '', checkOut: m.checkOut || '', shift: shiftOf(m.checkIn || '', m.checkOut || ''),
-    content: String(m.content || '').trim(), tomorrow: String(m.tomorrow || '').trim(), headcount, manday, mandayTotal: total, equip: fixed ? (equip.length ? equip.join(', ') : '—') : equip.join(', '), note: String(m.note || '').trim(), editors: (m.editors || []).slice(-20),
-    today: String(m.content || '').trim(), count: String(headcount), remarks: String(m.note || '').trim() };
+  const c = ctx || {}; const headcount = parseInt(m.headcount, 10) || 0; const manday = r1(m.manday); const total = r1(headcount * manday); const equip = normalizeEquip(m.equip);
+  return { fmt: REPORT_FMT, dateKey: c.dateKey, date: c.dateKey, site: c.site || '', author: String(m.author || '').trim(), checkIn: m.checkIn || '', checkOut: m.checkOut || '', shift: shiftOf(m.checkIn || '', m.checkOut || ''),
+    content: String(m.content || '').trim(), tomorrow: String(m.tomorrow || '').trim(), headcount, manday, mandayTotal: total, equip: equip.join(', '), note: String(m.note || '').trim(), editors: (m.editors || []).slice(-20) };
 }
 export const totalOf = (headcount, per) => r1((parseInt(headcount, 10) || 0) * (Number(per) || 0));
 export const perPersonOf = (total, headcount) => ((parseInt(headcount, 10) || 0) > 0 ? r1(total / headcount) : 0);

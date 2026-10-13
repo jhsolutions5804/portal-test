@@ -1,5 +1,6 @@
 import { buildDeck, deckData, prevMergedOf, summaryStages, isoWeek, fmtDate, prevKey, deckFileName, stageColor, PALETTE } from '../app/modules/pjt/progress-ppt.js';
-import { fixedStructure, lightStructure, stateAt, keyOf } from '../app/modules/pjt/progress.js';
+import { stateAt, keyOf } from '../app/modules/pjt/progress.js';
+import { fixedStructure, lightStructure } from './_fixtures.mjs';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 // 가짜 PptxGenJS: 슬라이드마다 텍스트·도형을 기록한다
 const mkPres = () => { const slides = []; return { __slides: slides, layout: '', shapes: { RECTANGLE: 'rect', ROUNDED_RECTANGLE: 'rrect', OVAL: 'oval' }, addSlide() { const s = { texts: [], shapes: [], background: null, addText(t, o) { s.texts.push({ t: String(t), o }); }, addShape(k, o) { s.shapes.push({ k, o }); } }; slides.push(s); return s; } }; };
@@ -9,7 +10,7 @@ const F4 = fixedStructure('p4ph4'); const days = { '2026-07-10': { core20: { '1_
 // Ph4 섹터 core20 장비 id 확인
 const eq = F4.groups[0].items.map((i) => i.id);
 const dd = { '2026-07-09': { core20: { [keyOf(eq[0], '반입')]: true, [keyOf(eq[0], '입고검사')]: true } }, '2026-07-10': { core20: { [keyOf(eq[1], '반입')]: true, [keyOf(eq[0], '내진스토퍼')]: true } } };
-const states = {}; F4.groups.forEach((g) => { states[g.id] = stateAt(dd, '2026-07-10', g.id, 'p4ph4'); });
+const states = {}; F4.groups.forEach((g) => { states[g.id] = stateAt(dd, '2026-07-10', g.id); });
 const pm = prevMergedOf(states.core20); ok(Object.keys(pm).sort().join() === Object.keys({ [keyOf(eq[0], '반입')]: 1, [keyOf(eq[0], '입고검사')]: 1 }).sort().join() && Object.keys(states.core20.merged).length === 4, '전일 누적 = 기준일 누적에서 기준일에 새로 체크한 키를 뺀 것(7/9 까지 2칸, 7/10 에 2칸 추가)');
 const D = deckData(F4, states);
 ok(D.qty === 11 && D.groups.length === 4 && D.groups[0].calc.totalChecked === 4 && D.groups[0].prev.totalChecked === 2 && Math.abs(D.pct - 4 / 44 * 100) < 1e-9 && Math.abs(D.prevPct - 2 / 44 * 100) < 1e-9 && D.stageTotal('반입') === 2 && D.stageTotal('설치') === 1 && summaryStages(F4).join() === '반입,설치' && summaryStages({ stages: [{ name: '완료' }] }).join() === '완료' && summaryStages({ stages: [{ name: '반입' }, { name: '검수' }] }).join() === '반입,검수' && summaryStages({ stages: [] }).length === 0, '전체 수치: 총 물량 11대, 공정율 4/44 (전일 2/44), 누적 반입 2·설치 1, 요약 카드용 단계(첫 단계 + 설치, 설치가 없으면 마지막 단계)');
@@ -25,7 +26,7 @@ const big = { unit: '개', label: 'X', groups: Array.from({ length: 7 }, (_, i) 
 const stB = {}; big.groups.forEach((g) => { stB[g.id] = { merged: { a_반입: true }, todayOnly: { a_반입: true }, pastOnly: {} }; });
 const pres2 = mkPres(); buildDeck(pres2, { client: '', label: '큰 프로젝트', title: '', unit: '개', isToday: true }, big, stB, '2026-09-01'); const S2 = pres2.__slides;
 ok(S2.length === 1 + 2 + 7 && /섹터0/.test(allText(S2[1])) && /\(계속\)/.test(allText(S2[2])) && /섹터6/.test(allText(S2[2])) && S2[1].shapes.filter((x) => x.k === 'oval').length === 6 && /오늘/.test(allText(S2[1])) && /^공정 진행율/.test(S2[0].texts.find((x) => /공정 진행율/.test(x.t)).t) && S2[3].texts.filter((x) => x.t.indexOf('.') === -1 && ['반입', '검수', '안착', '설치', '결선', '시공검측'].indexOf(x.t) !== -1).length === 6, '★ 단계 6개·섹터 7개: 현황 슬라이드가 2장으로 나뉘고("계속"), 범례 6개, 섹터 상세는 단계 6행, 발주처·작업 이름이 비어도 제목은 "공정 진행율"');
-const L = lightStructure({ name: '청주 M15X', stageList: ['완료'] }, [{ id: 'i1', name: 'A', order: 0 }, { id: 'i2', name: 'B', order: 1 }]); const stL = { '': { merged: { i1_완료: true }, todayOnly: {}, pastOnly: {} } };
+const L = lightStructure({ name: '청주 M15X', stageList: ['완료'] }, [{ id: 'i1', name: 'A', order: 0 }, { id: 'i2', name: 'B', order: 1 }]); const stL = { g1: { merged: { i1_완료: true }, todayOnly: {}, pastOnly: {} } };
 const pres3 = mkPres(); const r3 = buildDeck(pres3, { client: '삼성전자', label: '청주 M15X', title: '', unit: '대', isToday: true }, L, stL, '2026-10-14'); const S3 = pres3.__slides;
 ok(S3.length === 3 && S3[0].shapes.filter((x) => x.k === 'rrect').length === 3 && /전체 \(2대\)|전체 공정율/.test(allText(S3[0])) && /전체 공정 진행율/.test(allText(S3[2])) && r3.slideCount === 3 && /50\.0%/.test(allText(S3[0])), '섹터를 나누지 않은 프로젝트도 같은 양식: 표지(카드 3개 — 단계가 하나뿐이라 누적 카드 하나) + 공정 현황 + "전체 공정 진행율" 상세 1장, 공정율 50.0%');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

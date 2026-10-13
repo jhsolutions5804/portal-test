@@ -1,11 +1,9 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261013zt';
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261013zt';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261014a';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261014a';
+import { isProjectKey } from '../../shared/pjt-key.js?v=20261014a';
+export { isProjectKey };
 /* 옛 모듈 어댑터의 목록과 규칙 — 화면(DOM)·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 옛 모듈이 새 모듈로 바뀌면 여기서 항목을 지우고 modules/index.js 의 새 모듈 목록으로 옮긴다. */
-export const PJT_FIXED = [
-  { key: 'p4ph2', label: 'P4 Ph2 (FAB)', url: 'pjt/' },
-  { key: 'p4ph4', label: 'P4 Ph4 (SUP)', url: 'pjt_ph4/' }
-];
 const isAdmin = (me) => !!(me && me.admin);
 
 export const LEGACY_DEFS = [
@@ -20,16 +18,13 @@ export const LEGACY_DEFS = [
 ];
 export const defById = (id) => LEGACY_DEFS.find((d) => d.id === id) || null;
 
-/** PJT 세부 메뉴: 고정 PJT(종료되지 않은 것) → 경량 PJT(등록 순) → 연명부(관리자) → 종료 PJT.
- *  dyn = { ended: { p4ph2: bool, p4ph4: bool }, registry: [{ id, name, client, content, site, url }] } */
+/** PJT 세부 메뉴: PJT 홈 → 프로젝트(종료되지 않은 것, 등록 순 — 모든 프로젝트가 같은 규칙) → 연명부(관리자) → 종료 PJT.
+ *  프로젝트는 위 메뉴에서 고르면 새 화면(프로젝트 홈·일정·공정·출역·공수·공사일보·설정)이 열린다. dyn = { loaded, registry: [{ id, name, … 프로젝트 문서 }] } */
 export function pjtNav(me, dyn) {
-  const d = dyn || { ended: {}, registry: [] }; const loading = dyn && dyn.loaded === false;   // 프로젝트 정보를 아직 못 읽었으면 프로젝트 칩은 읽은 뒤에 보여 준다(참여자 지정 확인 전에는 숨김)
+  const d = dyn || { registry: [] }; const loading = dyn && dyn.loaded === false;   // 프로젝트 정보를 아직 못 읽었으면 프로젝트 칩은 읽은 뒤에 보여 준다(참여자 지정 확인 전에는 숨김)
   const items = [{ key: 'home', label: 'PJT 홈', url: 'classic.html?embed=pjt-home' }];
   const can = (proj) => !dyn || dyn.loaded === undefined ? true : canAccessProject(me, proj);   // dyn 이 없던 옛 호출(시험)은 지금까지처럼 모두 보임
-  if (!loading) {
-    PJT_FIXED.forEach((f) => { if (!(d.ended && d.ended[f.key]) && can(d.settings && d.settings[f.key])) items.push({ key: f.key, label: f.label, url: f.url }); });
-    (d.registry || []).forEach((r) => { if (can(r)) items.push({ key: 'reg_' + r.id, label: r.name || 'PJT', url: r.url || ('pjt_light/index.html?pjtId=' + encodeURIComponent(r.id)) }); });
-  }
+  if (!loading) (d.registry || []).forEach((r) => { if (can(r)) items.push({ key: r.id, label: r.name || 'PJT', url: '' }); });
   if (me && (me.admin || (me.perms && me.perms.pjt)) || !me) items.push({ key: 'roster', label: '근로자 연명부', url: 'pjt_roster/' });   // 연명부는 PJT 권한자·관리자(프로젝트 참여자 지정만으로는 열리지 않음 — 모든 근로자 정보를 다룬다)
   items.push({ key: 'ended', label: '종료 PJT', url: 'classic.html?embed=pjt-ended' });
   return items;
@@ -41,19 +36,13 @@ export function resolveItem(def, key, me, dyn) {
   const it = itemsFor(def, me, dyn) || [];
   const hit = it.find((x) => x.key === key); if (hit) return hit;
   // 프로젝트 정보를 아직 읽는 중(칩이 아직 없음)에 주소가 프로젝트를 가리키면 그대로 연다 — 일정 링크·북마크로 처음 들어와도 PJT 홈으로 떨어지지 않게. 접근 여부는 각 프로젝트 화면의 입장 검사가 다시 판정한다.
-  if (def.dynamicNav && dyn && dyn.loaded === false && key) {
-    const fx = PJT_FIXED.find((f) => f.key === key); if (fx) return { key: fx.key, label: fx.label, url: fx.url };
-    if (/^reg_[A-Za-z0-9_-]{1,40}$/.test(key)) return { key, label: 'PJT', url: 'pjt_light/index.html?pjtId=' + encodeURIComponent(key.slice(4)) };
-  }
+  if (def.dynamicNav && dyn && dyn.loaded === false && isProjectKey(key)) return { key, label: 'PJT', url: '' };
   return it[0] || null;
 }
 /** 옛 페이지 주소: 기본 폴더 + 항목 주소 + via=portal(임베드 모드) + tab(탭형만) + admin=1(관리자). base 는 LEGACY_BASE 를 해석한 절대 주소 */
-/** 프로젝트 키(고정 PJT·경량 PJT) — 프로젝트 아래의 새 화면 탭(nativeSubs)은 이 키에서만 열린다 */
-export const isProjectKey = (k) => /^(p4ph2|p4ph4|reg_[A-Za-z0-9_-]{1,64})$/.test(String(k == null ? '' : k));
-/** 프로젝트 아래의 새 화면 탭(순서대로 "기존 화면" 다음에 보인다) — 공정·출역·공수를 새로 만들 때마다 여기에 하나씩 더한다 */
-export const PJT_LEGACY_LABEL = '📋 기존 화면 (임시)';
+/** 프로젝트 아래의 새 화면 탭(순서대로) — 프로젝트 키는 shared/pjt-key.js 의 규칙(등록 id) */
 export const PJT_SUB_LABELS = { home: '🏠 프로젝트 홈', schedule: '📅 일정 (새)', progress: '📊 공정 (새)', attend: '👷 출역·공수 (새)', report: '📝 공사일보 (새)', settings: '⚙️ 설정' };
-export const PJT_TABS = ['attend', 'schedule', 'att', 'sched'];   // 주소로 바로 열 수 있는 PJT 탭: 근태(출역·공수 체크)·일정 (FAB·SUP = attend·schedule, 경량 = att·sched)
+export const PJT_TABS = ['attend', 'schedule'];   // 주소로 바로 열 수 있는 PJT 탭: 출역·공수 체크·일정
 export function buildUrl(def, item, me, base, cacheBust, tab) {
   const rel = (item && item.url) || def.url || '';
   let u = String(base || '') + rel;
@@ -91,8 +80,7 @@ export function navHtml(def, items, activeKey, esc, sub) {
 }
 /** 출역·공수 체크할 프로젝트 목록(폰 바로가기): 종료되지 않은 고정 PJT + 경량 PJT. hash 는 해당 프로젝트의 근태 탭 */
 export function attendTargets(dyn, me) {
-  const d = dyn || { ended: {}, registry: [] }; const out = []; const can = (proj) => !me || !dyn || dyn.loaded === undefined ? true : canAccessProject(me, proj);   // 참여자로 지정되지 않은 프로젝트는 고르지 못한다
-  PJT_FIXED.forEach((f) => { if (!(d.ended && d.ended[f.key]) && can(d.settings && d.settings[f.key])) out.push({ key: f.key, label: f.label, hash: '#/pjt/' + f.key + '/attend' }); });   // 프로젝트 아래의 새 출역·공수 탭
-  (d.registry || []).forEach((r) => { if (can(r)) out.push({ key: 'reg_' + r.id, label: r.name || 'PJT', hash: '#/pjt/reg_' + encodeURIComponent(r.id) + '/attend' }); });
+  const d = dyn || { registry: [] }; const out = []; const can = (proj) => !me || !dyn || dyn.loaded === undefined ? true : canAccessProject(me, proj);   // 참여자로 지정되지 않은 프로젝트는 고르지 못한다
+  (d.registry || []).forEach((r) => { if (can(r)) out.push({ key: r.id, label: r.name || 'PJT', hash: '#/pjt/' + encodeURIComponent(r.id) + '/attend' }); });   // 프로젝트 아래의 출역·공수 탭 — 모든 프로젝트 같은 규칙
   return out;
 }

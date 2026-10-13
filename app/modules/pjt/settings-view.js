@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261013zt';
-import { FIELDS } from './settings.js?v=20261013zt';
+import { esc } from '../../core/ui.js?v=20261014a';
+import { FIELDS } from './settings.js?v=20261014a';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 /** 설정 탭(관리자 전용): 기본정보 수정, 프로젝트 상태(종료·재개), 참여 부서·개인(공용 화면), 공정 구조·선택 기능으로 가는 안내. 모든 프로젝트 같은 화면 */
 export function settingsHtml(st) {
@@ -9,8 +9,9 @@ export function settingsHtml(st) {
   if (!st.ready) return '<div class="jh-pjt">' + head + '<div class="jh-empty">불러오는 중...</div></div>';
   const f = st.form; const inp = (k, label, extra) => '<div class="jh-pjt__frow"><label class="jh-pjt__flabel" for="st-' + k + '">' + esc(label) + '</label><input class="jh-input" id="st-' + k + '" data-st-f="' + k + '" value="' + esc(f[k]) + '" ' + (extra || '') + '></div>';
   const basic = card('📋 기본정보', '<div class="jh-pjt__pad">' + inp('code', 'PJT 코드', 'placeholder="예: 2610001"') + inp('name', '프로젝트명', 'placeholder="메뉴·화면에 표시되는 이름"') + inp('site', '현장명') + '<div class="jh-pjt__f3c">' + inp('client', '거래처(발주처)') + inp('contractor', '시공사') + inp('partner', '협력사') + '</div>' + inp('content', 'PJT 내용', 'placeholder="예: FCU 설치"') + '<div class="jh-pjt__f3c">' + inp('item', '품목') + inp('qty', '물량', 'inputmode="numeric" placeholder="숫자"') + inp('startDate', '공사 시작일', 'type="date"') + '</div>' + (st.msg ? '<div class="jh-field__hint" data-tone="' + (st.msgBad ? 'danger' : 'ok') + '" role="status">' + esc(st.msg) + '</div>' : '') + '<button type="button" class="jh-btn jh-pjt__fsave" data-variant="primary" data-st-act="save">저장</button></div>');
+  const manday = card('출역 체크 시 자동 공수', '<div class="jh-pjt__pad"><div class="jh-pjt__frow"><label class="jh-pjt__flabel" for="st-defaultManday">자동 입력 공수 <span class="jh-field__hint">(비우면 자동 입력 없음)</span></label><input class="jh-input" id="st-defaultManday" data-st-md value="' + esc(st.mandayText) + '" inputmode="decimal" placeholder="예: 1"></div><div class="jh-field__hint">출역·공수 탭에서 출역을 체크할 때 공수 칸에 이 값을 자동으로 넣습니다. 모든 프로젝트가 같은 방식이고 값만 프로젝트마다 정합니다.</div><button type="button" class="jh-btn" data-variant="secondary" data-st-act="savemd">자동 공수 저장</button></div>');
   const status = card('프로젝트 상태', '<div class="jh-pjt__pad"><div class="jh-pjt__bar"><span><span class="jh-pjt__chip" data-tone="' + (st.ended ? 'gray' : 'blue') + '">' + (st.ended ? '종료' : '진행 중') + '</span></span><button type="button" class="jh-btn" data-variant="secondary" data-st-act="end">' + (st.ended ? '🟢 프로젝트 재개' : '🔴 프로젝트 종료') + '</button></div><div class="jh-field__hint">종료하면 위 메뉴에서 "종료 PJT"로 옮겨지고 하위 화면은 열 수 없게 됩니다(데이터는 그대로 보존).</div></div>');
   const ppt = card('참여 부서·개인', '<div class="jh-pjt__pad"><div id="ppt-box" data-ppt-host><div class="jh-field__hint">불러오는 중…</div></div></div>');
   const struct = card('공정 구조·선택 기능', '<div class="jh-pjt__pad"><div class="jh-field__hint">공정 단계·섹터·품목, 공정표 PPT 표지, 장비 배치도·주간 공정회의 PPT 켜기는 <strong>공정 탭의 ⚙️ 구조 설정</strong>에서 고칩니다.</div><a class="jh-btn" data-variant="secondary" href="#/pjt/' + encodeURIComponent(st.proj) + '/progress">공정 탭으로 가기</a></div>');
-  return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide">' + head + '<div class="jh-pjt__split jh-pjt__splitset"><div class="jh-pjt__cards">' + basic + '</div><div class="jh-pjt__cards">' + status + ppt + struct + '</div></div></div></div>';
+  return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide">' + head + '<div class="jh-pjt__split jh-pjt__splitset"><div class="jh-pjt__cards">' + basic + '</div><div class="jh-pjt__cards">' + manday + status + ppt + struct + '</div></div></div></div>';
 }

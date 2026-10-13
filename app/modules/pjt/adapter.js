@@ -1,45 +1,30 @@
-/* PJT 데이터 접근 어댑터 — 프로젝트 하나(Ph2·Ph4·경량PJT)가 데이터를 어느 경로에 두는지를 한 곳에서 정한다(순수 규칙, 화면·네트워크 없음).
- * 새 PJT 모듈의 화면은 Firestore 경로를 직접 쓰지 않고 이 어댑터가 돌려주는 경로만 쓴다. 그러면 화면과 코드는 한 벌이고, 프로젝트 종류는 "경로 + 켜기/끄기"로만 다르다.
- * 경로는 구포털 PJT 3개 앱이 실제로 쓰는 것을 그대로 옮겼다(동결): 영업기획의 공정 연동·공수 연동·팀별 노무비가 같은 경로를 읽는다 — 이 파일의 값을 바꾸면 그 계산이 어긋난다.
- * 키: 'p4ph2'(FAB) · 'p4ph4'(SUP) · 'reg_<등록 id>'(경량PJT, 앞으로 생길 새 프로젝트도 같은 형식). */
-const ID = /^[A-Za-z0-9_-]{1,64}$/;
+/* PJT 데이터 접근 어댑터 — 모든 프로젝트가 같은 저장 구조를 쓴다(순수 규칙, 화면·네트워크 없음).
+ * 프로젝트 하나 = pjt_registry/<id> 문서 하나 + 그 아래 하위 컬렉션들. 프로젝트 키는 등록 id 그대로이고(예: p4ph2 · p4ph4 · 새로 만든 프로젝트의 문서 id), 프로젝트마다 다른 것은 내용(구조·설정값·데이터)뿐이다 —
+ * 코드에는 "프로젝트 종류"가 없다. 화면은 Firestore 경로를 직접 쓰지 않고 이 어댑터의 경로만 쓴다.
+ *   pjt_registry/<id>                      프로젝트 문서(기본정보·상태·참여자·progressStructure·defaultManday)
+ *   pjt_registry/<id>/workers/<근로자 id>   참여 근로자 명부
+ *   pjt_registry/<id>/attendance/<날짜>     출역 { checks }          pjt_registry/<id>/manday/<날짜>   공수 { md }
+ *   pjt_registry/<id>/progress_days/<날짜>  그날 새로 체크한 공정 { groups: { <섹터 id>: { '<품목>_<단계>': true } } }
+ *   pjt_registry/<id>/schedules/<일정 id>   일정               pjt_registry/<id>/reports/<날짜>  공사일보
+ *   pjt_registry/<id>/layouts/<섹터 id>     장비 배치도 { points, image? }
+ * 이 구조는 영업기획의 공정·공수 연동과 포털 홈 통합 캘린더가 함께 읽는다 — 바꾸면 그 계산이 어긋난다. */
+import { isProjectKey, RESERVED_KEYS } from '../../shared/pjt-key.js?v=20261014a';
+export { isProjectKey, RESERVED_KEYS };
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-export const FIXED_KEYS = ['p4ph2', 'p4ph4'];
-/** 키를 풀어 종류와 등록 id 를 돌려준다. 모르는 키·위험한 문자는 null */
-export function parseKey(key) {
-  const k = String(key == null ? '' : key);
-  if (k === 'p4ph2') return { kind: 'p4ph2', id: '' };
-  if (k === 'p4ph4') return { kind: 'p4ph4', id: '' };
-  if (k.indexOf('reg_') === 0 && ID.test(k.slice(4))) return { kind: 'light', id: k.slice(4) };
-  return null;
-}
-export const keyOfRegistry = (id) => (ID.test(String(id)) ? 'reg_' + id : null);
-/* 장비 배치도(도면 매핑) 저장: 섹터마다 문서 하나 [progress.layouts 컬렉션, progress.layoutId(섹터 id)] — Ph2 는 구포털 zone_layouts/<섹터>(도면 이미지는 저장소의 pjt/assets/floorplans/<섹터>.png), Ph4 는 같은 컬렉션에 ph4_<섹터>, 경량은 pjt_registry/<id>/layouts/<섹터>. 도면 이미지를 올리면 같은 문서의 image 필드(데이터 URL)에 둔다 */
-/** 프로젝트가 켜 둔 기능: 장비 배치도·주간 공정회의 PPT 는 Ph2 에서만 켜져 있다(설정에서 켜는 선택 기능으로 다른 프로젝트도 쓸 수 있게 열어 둔다).
- *  defaultManday: 출역을 체크할 때 공수 칸에 자동으로 넣는 값(경량PJT 는 1, Ph2·Ph4 는 지금까지처럼 자동 입력 없음 = null) */
-export function featuresOf(key, settings) {
-  const p = parseKey(key); if (!p) return null; const s = settings || {};
-  const base = { zones: p.kind !== 'light', layoutMap: p.kind === 'p4ph2', weeklyReportPpt: p.kind === 'p4ph2', defaultManday: p.kind === 'light' ? 1 : null };
-  if (s.features) Object.keys(base).forEach((f) => { if (s.features[f] !== undefined) base[f] = s.features[f]; });
-  return base;
-}
-/** 프로젝트의 데이터 경로. 컬렉션은 'a/b/c' 문자열(홀수 토막), 날짜별 문서는 doc(db, 컬렉션, 날짜)로 읽는다 */
+/** 프로젝트의 데이터 경로. 컬렉션은 'a/b/c' 문자열(홀수 토막), 날짜별 문서는 doc(db, 컬렉션, 날짜)로 읽는다. 모르는 키·위험한 문자는 null */
 export function pathsFor(key) {
-  const p = parseKey(key); if (!p) return null;
-  if (p.kind === 'p4ph2') return { key, kind: 'p4ph2', label: 'P4 Ph2 (FAB)', settings: { col: 'pjt_settings', id: 'p4ph2' }, roster: 'pjt_workers_fab', attendance: 'worker_attendance', manday: 'worker_manday', schedules: 'user_schedules', reports: 'daily_report_docs',
-    progress: { model: 'zones', checks: (d) => 'progress_checks_' + d, checklist: 'checklist_state', layouts: 'zone_layouts', layoutId: (g) => g, floorplan: (g) => 'pjt/assets/floorplans/' + g + '.png' }, legacyReports: (d) => 'daily_reports_' + d };
-  if (p.kind === 'p4ph4') return { key, kind: 'p4ph4', label: 'P4 Ph4 (SUP)', settings: { col: 'pjt_settings', id: 'p4ph4' }, roster: 'pjt_workers_ph4', attendance: 'ph4_attendance', manday: 'ph4_manday', schedules: 'ph4_schedules', reports: 'ph4_reports',
-    progress: { model: 'zones', checks: (d) => 'ph4_progress_' + d, checklist: 'ph4_checklist', layouts: 'zone_layouts', layoutId: (g) => 'ph4_' + g, floorplan: () => null }, legacyReports: (d) => 'ph4_daily_' + d };
-  const r = 'pjt_registry/' + p.id + '/';
-  return { key, kind: 'light', label: '경량PJT', registryId: p.id, settings: { col: 'pjt_registry', id: p.id }, roster: r + 'workers', attendance: r + 'attendance', manday: r + 'manday', schedules: r + 'schedules', reports: r + 'reports',
-    progress: { model: 'items', items: r + 'items', checks: r + 'progress_checks', itemChecks: r + 'item_checks', layouts: r + 'layouts', layoutId: (g) => g, floorplan: () => null }, legacyReports: null };
+  if (!isProjectKey(key)) return null; const r = 'pjt_registry/' + key + '/';
+  return { key, id: key, settings: { col: 'pjt_registry', id: key }, roster: r + 'workers', attendance: r + 'attendance', manday: r + 'manday', schedules: r + 'schedules', reports: r + 'reports', progress: { days: r + 'progress_days', layouts: r + 'layouts' } };
 }
 /** 날짜 키(YYYY-MM-DD) 검사 — 경로에 들어가므로 형식이 맞지 않으면 쓰지 않는다 */
 export const isDateKey = (d) => DATE.test(String(d || ''));
-/** 한 날짜의 문서 위치 [컬렉션, 문서 id] — 출역·공수·공사일보·일정(날짜 문서가 아닌 일정은 제외) */
+/** 한 날짜의 문서 위치 [컬렉션, 문서 id] — 출역·공수·공정·공사일보 */
 export function dayDoc(key, what, dateKey) {
   const P = pathsFor(key); if (!P || !isDateKey(dateKey)) return null;
-  if (what === 'attendance') return [P.attendance, dateKey]; if (what === 'manday') return [P.manday, dateKey]; if (what === 'report') return [P.reports, dateKey];
-  if (what === 'progress') return P.progress.model === 'zones' ? { collection: P.progress.checks(dateKey), perZone: true } : [P.progress.checks, dateKey];
+  if (what === 'attendance') return [P.attendance, dateKey]; if (what === 'manday') return [P.manday, dateKey]; if (what === 'report') return [P.reports, dateKey]; if (what === 'progress') return [P.progress.days, dateKey];
   return null;
 }
+/** 프로젝트가 켜 둔 선택 기능(구조 데이터의 features): 장비 배치도·주간 공정회의 PPT — 정하지 않았으면 꺼짐. 모든 프로젝트가 같은 기본값이고 설정에서만 바꾼다 */
+export function featuresOf(features) { const f = features || {}; return { layoutMap: f.layoutMap === true, weeklyReportPpt: f.weeklyReportPpt === true }; }
+/** 출역을 체크할 때 공수 칸에 자동으로 넣는 값(프로젝트 문서의 defaultManday) — 정하지 않았으면 자동 입력 없음(null). 프로젝트마다 설정에서 정한다 */
+export function defaultMandayOf(projDoc) { const v = projDoc && projDoc.defaultManday; return typeof v === 'number' && isFinite(v) && v > 0 ? v : null; }

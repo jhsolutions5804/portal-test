@@ -1,34 +1,33 @@
-import { db, collection, getDocs, getDoc, query, where, documentId, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, writeBatch } from '../../core/firebase.js?v=20261013zt';
-import { toast } from '../../core/ui.js?v=20261013zt';
-import { confirmDialog } from '../../core/dialog.js?v=20261013zt';
-import { compNew, compToForm, compBuild, fmtTel, fmtTelBlur, kstToday } from './logic.js?v=20261013zt';
-import { companiesListHtml, companyFormHtml } from './view.js?v=20261013zt';
-import { projNew, projToForm, projectBuild } from './projects.js?v=20261013zt';
-import { projectsListHtml, projectDetailHtml, projectFormHtml } from './projects-view.js?v=20261013zt';
-import { uiState, pushHash } from './ui.js?v=20261013zt';
-import { itemAmt, blankItem, itemSetQty, itemSetPrice, itemSetAmount, applySupplyEdit, draftTotals, newDraft, draftFromEstimate, buildEstimate, closePatch, reopenPatch, estGroup, sortEstimates } from './estimates.js?v=20261013zt';
-import { estimatesListHtml, estimateDetailHtml, estimateFormHtml, itemRowHtml } from './estimates-view.js?v=20261013zt';
-import { estDocHtml } from './estimate-doc.js?v=20261013zt';
-import { sortProjects } from './projects.js?v=20261013zt';
-import { linkPlan, donePatch, undonePatch, voidPatch, doneConfirm, undoneConfirm, doneToast, projectBalance, acctMonthInput } from './settlements.js?v=20261013zt';
-import { settlementsListHtml, settlementDetailHtml } from './settlements-view.js?v=20261013zt';
-import { settleDocPage } from './settlement-doc.js?v=20261013zt';
-import { teamLaborHtml } from './teamlabor-view.js?v=20261013zt';
-import { homeHtml } from './home-view.js?v=20261013zt';
-import { closingHtml, closingPrintHtml } from './closing-view.js?v=20261013zt';
-import { setProgressOverrides } from './progress.js?v=20261013zt';
-import { PROGRESS_PROFILES } from '../../shared/pjt-progress-data.js?v=20261013zt';
-import { toProfile } from '../../shared/pjt-structure.js?v=20261013zt';
-import { acctHtml } from './acct-view.js?v=20261013zt';
-import { contractsListHtml, contractFormHtml, contractDetailHtml } from './contracts-view.js?v=20261013zt';
-import { contractDocPage } from './contract-doc.js?v=20261013zt';
-import { flattenContracts, nextContractNo, newContract, validateContract, upsertContract, issueBlockers, changeFrom } from './contracts.js?v=20261013zt';
-import { reconcileExpenses, missingToJson, tagTableCsv } from './acct-reconcile.js?v=20261013zt';
-import { shiftYm, closingCsv } from './closing.js?v=20261013zt';
-import { shiftMonth, monthRange, rosterEntry, aggregateMandays, parseTeamRate, ratePatch, rateSaveMessage, FAB_LABEL, SUP_LABEL } from './teamlabor.js?v=20261013zt';
-import { issueFormHtml, qtyBlocksHtml, totalsHtml, manualRowHtml, mandayRowsHtml, mandayInfoHtml, progressBlocksHtml } from './issue-view.js?v=20261013zt';
-import { progressDayKeys, accumulateChecks, mergePastProgress, applyProgress as applyProgressChecks, setProgressZone, toggleProgressDeposit, setProgressBill } from './progress.js?v=20261013zt';
-import { progressProfile, mandaySource, monthDays, sumMandayDays, duplicateSources, applyMandayFetch, setMandayInput, setMandayForPjt, setRateForPjtValue, setMandayBaseRate, newIssueDraft, togglePjt, toggleEst, setQty, setQtyAmount, setSupplyOverride, setVatOverride, resetTotals, buildSettlement, itemSetQty as isItemQty, itemSetPrice as isItemPrice, itemSetAmount as isItemAmount, blankItem as isBlank } from './issue.js?v=20261013zt';
+import { db, collection, getDocs, getDoc, query, where, documentId, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, writeBatch } from '../../core/firebase.js?v=20261014a';
+import { toast } from '../../core/ui.js?v=20261014a';
+import { confirmDialog } from '../../core/dialog.js?v=20261014a';
+import { compNew, compToForm, compBuild, fmtTel, fmtTelBlur, kstToday } from './logic.js?v=20261014a';
+import { companiesListHtml, companyFormHtml } from './view.js?v=20261014a';
+import { getLinkPjt, projNew, projToForm, projectBuild } from './projects.js?v=20261014a';
+import { projectsListHtml, projectDetailHtml, projectFormHtml } from './projects-view.js?v=20261014a';
+import { uiState, pushHash } from './ui.js?v=20261014a';
+import { itemAmt, blankItem, itemSetQty, itemSetPrice, itemSetAmount, applySupplyEdit, draftTotals, newDraft, draftFromEstimate, buildEstimate, closePatch, reopenPatch, estGroup, sortEstimates } from './estimates.js?v=20261014a';
+import { estimatesListHtml, estimateDetailHtml, estimateFormHtml, itemRowHtml } from './estimates-view.js?v=20261014a';
+import { estDocHtml } from './estimate-doc.js?v=20261014a';
+import { sortProjects } from './projects.js?v=20261014a';
+import { linkPlan, donePatch, undonePatch, voidPatch, doneConfirm, undoneConfirm, doneToast, projectBalance, acctMonthInput } from './settlements.js?v=20261014a';
+import { settlementsListHtml, settlementDetailHtml } from './settlements-view.js?v=20261014a';
+import { settleDocPage } from './settlement-doc.js?v=20261014a';
+import { teamLaborHtml } from './teamlabor-view.js?v=20261014a';
+import { homeHtml } from './home-view.js?v=20261014a';
+import { closingHtml, closingPrintHtml } from './closing-view.js?v=20261014a';
+import { setProgressOverrides } from './progress.js?v=20261014a';
+import { toProfile } from '../../shared/pjt-structure.js?v=20261014a';
+import { acctHtml } from './acct-view.js?v=20261014a';
+import { contractsListHtml, contractFormHtml, contractDetailHtml } from './contracts-view.js?v=20261014a';
+import { contractDocPage } from './contract-doc.js?v=20261014a';
+import { flattenContracts, nextContractNo, newContract, validateContract, upsertContract, issueBlockers, changeFrom } from './contracts.js?v=20261014a';
+import { reconcileExpenses, missingToJson, tagTableCsv } from './acct-reconcile.js?v=20261014a';
+import { shiftYm, closingCsv } from './closing.js?v=20261014a';
+import { shiftMonth, monthRange, rosterEntry, aggregateMandays, parseTeamRate, ratePatch, rateSaveMessage } from './teamlabor.js?v=20261014a';
+import { issueFormHtml, qtyBlocksHtml, totalsHtml, manualRowHtml, mandayRowsHtml, mandayInfoHtml, progressBlocksHtml } from './issue-view.js?v=20261014a';
+import { accumulateDays, applyProgress as applyProgressChecks, setProgressZone, toggleProgressDeposit, setProgressBill } from './progress.js?v=20261014a';
+import { progressProfile, mandaySource, monthDays, sumMandayDays, duplicateSources, applyMandayFetch, setMandayInput, setMandayForPjt, setRateForPjtValue, setMandayBaseRate, newIssueDraft, togglePjt, toggleEst, setQty, setQtyAmount, setSupplyOverride, setVatOverride, resetTotals, buildSettlement, itemSetQty as isItemQty, itemSetPrice as isItemPrice, itemSetAmount as isItemAmount, blankItem as isBlank } from './issue.js?v=20261014a';
 
 /** 영업기획(플랫폼 기본 모듈): 구포털 기획(gihoek)을 탭 하나씩 새 화면으로 옮기는 중. 관리자 전용 — 데이터는 gihoek_* 컬렉션 그대로.
  *  사이드바는 옛 화면 틀(legacy/frame.js)이 그린다 — 이 모듈은 틀 안의 구역(거래처·협력사)을 그리는 함수만 내보내고 modules/index.js 가 hostNative 로 연결한다. */
@@ -111,9 +110,9 @@ export async function mountProjects(root, route, ctx) {
       const r = projectBuild(st.form, { id: st.sel }); if (!r.ok) { toast(r.errors[0]); return; }
       try {
         let link = r.link; const data = Object.assign({}, r.data);
-        if (r.registry) { const ref = await addDoc(collection(db, 'pjt_registry'), Object.assign({}, r.registry, { createdAt: serverTimestamp() })); link = 'reg_' + ref.id; }   // PJT관리에 같은 이름의 경량 PJT 자동 생성
+        if (r.registry) { const ref = await addDoc(collection(db, 'pjt_registry'), Object.assign({}, r.registry, { createdAt: serverTimestamp() })); link = ref.id; }   // PJT관리에 같은 이름의 프로젝트 자동 생성
         data.linkPjt = link;
-        if (r.syncPatch) { try { await updateDoc(doc(db, 'pjt_registry', link.slice(4)), r.syncPatch); } catch (e) { console.warn('[영업기획] 연동 PJT 동기화 실패:', e && e.message); } }   // 기본정보 6항목은 기획 ↔ PJT관리가 같은 값
+        if (r.syncPatch) { try { await updateDoc(doc(db, 'pjt_registry', link), r.syncPatch); } catch (e) { console.warn('[영업기획] 연동 PJT 동기화 실패:', e && e.message); } }   // 기본정보 6항목은 기획 ↔ PJT관리가 같은 값
         if (r.isNew) await setDoc(doc(db, 'gihoek_projects', r.id), Object.assign({}, data, { createdAt: serverTimestamp() })); else await setDoc(doc(db, 'gihoek_projects', r.id), data, { merge: true });
         toast(r.message); await load(); if (r.isNew) show('list', ''); else show('detail', r.id);
       } catch (e) { toast('저장 실패: ' + ((e && (e.code || e.message)) || '')); }
@@ -205,7 +204,7 @@ async function mountSettlementsView(root, route, ctx, kind) {
   const base = kind === 'invoice' ? '#/plan/billing' : '#/plan/payout';
   root.innerHTML = '<div id="sl-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#sl-body');
   const load = async () => { const [a, b, c, d] = await Promise.all([getDocs(collection(db, 'gihoek_settlements')), getDocs(collection(db, 'gihoek_projects')), getDocs(collection(db, 'gihoek_estimates')), getDocs(collection(db, 'gihoek_companies'))]); st.settlements = lst(a); st.projects = sortProjects(lst(b)); st.estimates = lst(c); st.companies = lst(d).sort((x, y) => String(x.company || '').localeCompare(String(y.company || ''), 'ko'));
-    const ov = {}; for (const k of ['p4ph2', 'p4ph4']) { try { const s = await getDoc(doc(db, 'pjt_settings', k)); const x = s.exists() ? s.data() : null; if (x && x.progressStructure) ov[k] = toProfile(x.progressStructure, PROGRESS_PROFILES[k]); } catch (e) { /* 구조 데이터를 못 읽으면 코드 상수로 계산 */ } } setProgressOverrides(ov); };   // PJT 공정 구조 설정이 저장돼 있으면 청구서 공정 연동도 그 구조(섹터·장비·단계)를 쓴다
+    const ov = {}; try { const rs = await getDocs(collection(db, 'pjt_registry')); rs.forEach((d) => { const x = d.data(); if (x.progressStructure) ov[d.id] = toProfile(x.progressStructure); }); } catch (e) { /* 구조를 못 읽으면 공정 연동은 쓸 수 없다 */ } setProgressOverrides(ov); };   // PJT 공정 구조 설정이 저장돼 있으면 청구서 공정 연동도 그 구조(섹터·장비·단계)를 쓴다
   try { await load(); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + ((e && e.message) || '') + '</div>'; return; }
   body.removeAttribute('aria-busy');
   const paint = () => { body.innerHTML = st.view === 'issue' ? issueFormHtml(st) : st.view === 'detail' ? settlementDetailHtml(st) : settlementsListHtml(st); window.scrollTo(0, st.view === 'list' ? restoreY : 0); restoreY = 0; };
@@ -221,10 +220,10 @@ async function mountSettlementsView(root, route, ctx, kind) {
     const d = st.draft; if (!d.estIds.length) { toast('견적을 먼저 선택하세요.'); return; }
     st.busy = true; paint(); toast('공정 데이터 불러오는 중...');
     try {
-      const prof = progressProfile(d, st.projects); const zoneIds = [...new Set(d.estIds.map((id) => d.estZone[id]))]; const docs = [];
-      await Promise.all(progressDayKeys(d.baseMonth).map(async (dk) => { try { const snap = await getDocs(collection(db, prof.progCol + dk)); snap.forEach((zd) => { docs.push({ zone: zd.id, checks: (zd.data() || {}).checks || {} }); }); } catch (e) { /* 그날 공정 체크를 못 읽으면 건너뜀 */ } }));
+      const prof = progressProfile(d, st.projects); const zoneIds = [...new Set(d.estIds.map((id) => d.estZone[id]))]; const docs = []; const linkId = getLinkPjt(st.projects.find((p) => p.id === d.pjtId));
+      try { const snap = await getDocs(collection(db, 'pjt_registry/' + linkId + '/progress_days')); snap.forEach((x) => docs.push({ id: x.id, data: x.data() })); } catch (e) { /* 공정 체크를 못 읽으면 0 으로 */ }
       const [y, m] = d.baseMonth.split('-').map(Number); const endKey = y + '-' + String(m).padStart(2, '0') + '-' + String(new Date(y, m, 0).getDate()).padStart(2, '0');
-      const cum = mergePastProgress(accumulateChecks(docs, zoneIds), endKey, prof.progCol); applyProgressChecks(d, cum, prof); st.busy = false; paint(); toast('반입·설치 장비번호를 반영했습니다.');
+      const cum = accumulateDays(docs, zoneIds, endKey); applyProgressChecks(d, cum, prof); st.busy = false; paint(); toast('반입·설치 장비번호를 반영했습니다.');
     } catch (e) { st.busy = false; paint(); toast('불러오기 실패: ' + ((e && (e.code || e.message)) || '')); }
   };
   const fetchManday = async () => {
@@ -324,13 +323,12 @@ export async function mountTeamLabor(root, route, ctx) {
       const { lo, hi } = monthRange(st.ym); const [ms, ps] = await Promise.all([getDocs(collection(db, 'master_workers')), getDocs(collection(db, 'master_worker_private'))]);
       const masters = [], mm = {}; ms.forEach((d) => { const o = Object.assign({ id: d.id }, d.data()); masters.push(o); mm[d.id] = o; }); const rate = {}; ps.forEach((d) => { const v = d.data(); if (v.teamRate != null) rate[d.id] = Number(v.teamRate) || 0; });
       const failed = [], roster = [];
-      const pull = async (path, label, kind, regId) => { try { const sn = await getDocs(collection(db, path)); sn.forEach((d) => roster.push(rosterEntry(d.id, d.data(), mm[d.id], label, kind, regId))); } catch (e) { failed.push(label); } };
-      await pull('pjt_workers_fab', FAB_LABEL, 'fab'); await pull('pjt_workers_ph4', SUP_LABEL, 'sup');
-      const regs = []; try { const rs = await getDocs(collection(db, 'pjt_registry')); rs.forEach((d) => { const x = d.data(); if (x.status !== 'ended') regs.push({ id: d.id, name: x.name || 'PJT' }); }); } catch (e) { failed.push('경량 PJT 목록'); }
-      for (const rg of regs) await pull('pjt_registry/' + rg.id + '/workers', rg.name, 'light', rg.id);
+      const pull = async (path, label, regId) => { try { const sn = await getDocs(collection(db, path)); sn.forEach((d) => roster.push(rosterEntry(d.id, d.data(), mm[d.id], label, regId))); } catch (e) { failed.push(label); } };
+      const regs = []; try { const rs = await getDocs(collection(db, 'pjt_registry')); rs.forEach((d) => { const x = d.data(); if (x.status !== 'ended') regs.push({ id: d.id, name: x.name || 'PJT' }); }); } catch (e) { failed.push('프로젝트 목록'); }
+      for (const rg of regs) await pull('pjt_registry/' + rg.id + '/workers', rg.name, rg.id);
       const monthDocs = async (path, label) => { try { const snap = await getDocs(query(collection(db, path), where(documentId(), '>=', lo), where(documentId(), '<=', hi))); const rows = []; snap.forEach((d) => rows.push([d.id, (d.data().md) || {}])); return rows; } catch (e) { failed.push(label + ' 공수'); return []; } };
-      const fabRows = await monthDocs('worker_manday', FAB_LABEL), supRows = await monthDocs('ph4_manday', SUP_LABEL); const lightRows = {}; for (const rg of regs) lightRows[rg.id] = await monthDocs('pjt_registry/' + rg.id + '/manday', rg.name);
-      if (my !== seq) return; st.data = { masters, rate, pmap: aggregateMandays({ roster, fabRows, supRows, lightRows, regs }), failed };
+      const rows = {}; for (const rg of regs) rows[rg.id] = await monthDocs('pjt_registry/' + rg.id + '/manday', rg.name);
+      if (my !== seq) return; st.data = { masters, rate, pmap: aggregateMandays({ roster, rows, regs }), failed };
     } catch (e) { if (my !== seq) return; st.err = (e && e.message) || ''; }
     paint();
   };
