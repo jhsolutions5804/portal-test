@@ -1,14 +1,16 @@
 /* PJT 관리(통합 새 모듈) — 설계서 docs/pjt-design.md. Ph2·Ph4·경량PJT를 한 모듈로 합친다.
  * 지금 새 화면은 "출역·공수"(근태·공수 탭) 하나다 — 구포털 PJT 메뉴에서 프로젝트를 고르면 그 아래 "👷 출역·공수 (새)" 탭으로 열린다(legacy/frame.js 의 nativeSubs, modules/index.js hostNative). 프로젝트는 화면 안에서 고르지 않는다. 나머지 탭은 만들면서 구포털 항목을 하나씩 교체한다.
  * 저장 형식은 구포털 그대로(출역 { checks }, 공수 { md }, 날짜별 문서) — 영업기획의 공수 연동·팀별 노무비가 읽는다. 경로는 adapter.js, 규칙은 attendance.js. */
-import { db, collection, doc, getDoc, getDocs, setDoc, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zh';
-import { esc, toast } from '../../core/ui.js?v=20261013zh';
-import { confirmDialog } from '../../core/dialog.js?v=20261013zh';
-import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zh';
-import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zh';
-import { visibleProjects } from './projects.js?v=20261013zh';
-import { loadHolidays } from '../../shared/holidays.js?v=20261013zh';
-import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zh';
+import { db, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zi';
+import { esc, toast } from '../../core/ui.js?v=20261013zi';
+import { confirmDialog } from '../../core/dialog.js?v=20261013zi';
+import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zi';
+import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zi';
+import { visibleProjects } from './projects.js?v=20261013zi';
+import { loadHolidays } from '../../shared/holidays.js?v=20261013zi';
+import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zi';
+import { fixedStructure, lightStructure, normalizeDayFixed, normalizeDayLight, stateAt, lightState, cellState, toggledDayChecks, lightItemStages, lightProgress, daysThrough, PROGRESS_START, keyOf } from './progress.js?v=20261013zi';
+import { progressHtml } from './progress-view.js?v=20261013zi';
 
 export const manifest = { id: 'pjt', order: 40, title: 'PJT 관리', icon: '🏗️', defaultHash: '#/pjt/attend', perm: (me) => !!me && me.admin === true };
 export async function mount(root) { root.innerHTML = '<div class="jh-empty">PJT 화면은 구포털 틀 안의 메뉴로 열립니다.</div>'; }
@@ -104,4 +106,61 @@ export async function mountAttend(root, route, ctx) {
     const md = t.getAttribute('data-pa-md'); if (md) { if (!can(md)) { paint(); return; } const raw = t.value.trim(); await edit((n) => applyManday(n.checks, n.md, md, raw)); }
   };
   root.onkeydown = (ev) => { const t = ev.target; if (ev.key === 'Enter' && t instanceof Element && (t.hasAttribute('data-pa-md') || t.hasAttribute('data-pa-bulk'))) { ev.preventDefault(); if (t.hasAttribute('data-pa-bulk')) { const b = root.querySelector('[data-pa-act="bulk"]'); if (b) b.click(); } else t.blur(); } };
+}
+
+/** 공정(공정 탭): 프로젝트 아래의 탭 — 주소 #/pjt/<프로젝트>/progress/<날짜>. Ph2·Ph4(섹터 × 장비 × 단계)와 경량PJT(품목 × 단계)를 같은 화면으로 보고 체크한다.
+ *  저장은 구포털과 같은 형식: Ph2·Ph4 는 progress_checks_<날짜>/<섹터> { checks }, 경량은 pjt_registry/<id>/progress_checks/<날짜> { 키: true } + 품목의 현재 상태(items.stages)·공사일보용 item_checks·프로젝트 진행률(progress). */
+export async function mountProgress(root, route, ctx) {
+  root.onclick = null; root.onchange = null; root.onkeydown = null;
+  const me = (ctx && ctx.me) || {}; const segs = (route && route.segs) || [];
+  const guest = !(me.admin || (me.perms && me.perms.pjt)); const leaderIds = Array.isArray(me.teamLeaderIds) ? me.teamLeaderIds : [];
+  const st = { projects: [], proj: '', label: '', date: isDateKey(segs[1]) ? segs[1] : appToday(), structure: null, items: [], projDoc: null, days: {}, states: {}, open: new Set(), editMode: false, isToday: true, ready: false, loadingNote: '', readonly: guest && !leaderIds.length, busy: false };
+  root.innerHTML = '<div id="pg-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#pg-body');
+  const paint = () => { const y = window.scrollY; body.innerHTML = progressHtml(st); window.scrollTo(0, y); };
+  try { await Promise.race([loadHolidays(), new Promise((r) => setTimeout(r, 1500))]); } catch (e) { /* 공휴일을 못 불러오면 날짜 표시만 빠진다 */ }
+  try { st.projects = visibleProjects(me, await loadDyn()); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
+  body.removeAttribute('aria-busy');
+  st.proj = st.projects.some((p) => p.key === segs[0]) ? segs[0] : ''; if (!st.proj) { paint(); return; }
+  const P = pathsFor(st.proj); const pr = st.projects.find((p) => p.key === st.proj); st.label = pr.label; st.projDoc = pr.doc; const zones = P.progress.model === 'zones';
+  const recompute = () => { st.isToday = st.date === appToday(); const S = st.structure; st.states = {}; S.groups.forEach((g) => { st.states[g.id] = zones ? stateAt(st.days, st.date, g.id, st.proj) : lightState(st.days, st.date, st.items, st.isToday); }); };
+  const loadDays = async () => {
+    if (zones) {
+      const start = PROGRESS_START[st.proj] || '2026-06-17'; const need = daysThrough(start, st.date).filter((d) => !st.days[d]); let done = 0;
+      for (let i = 0; i < need.length; i += 25) { const part = need.slice(i, i + 25); await Promise.all(part.map(async (d) => { try { const snap = await getDocs(collection(db, P.progress.checks(d))); const docs = []; snap.forEach((x) => docs.push({ id: x.id, data: x.data() })); st.days[d] = normalizeDayFixed(docs); } catch (e) { st.days[d] = {}; } })); done += part.length; st.loadingNote = '공정 이력 불러오는 중... ' + done + '/' + need.length; if (!st.ready) { paint(); } }
+    } else if (!st.daysLoaded) { try { const snap = await getDocs(collection(db, P.progress.checks)); snap.forEach((x) => { st.days[x.id] = normalizeDayLight(x.data()); }); } catch (e) { /* 날짜별 문서가 없는 프로젝트 — 현재 상태만으로 본다 */ } st.daysLoaded = true; }
+  };
+  const loadStructure = async () => {
+    if (zones) { st.structure = fixedStructure(st.proj); return; }
+    const [ps, is] = await Promise.all([getDoc(doc(db, P.settings.col, P.settings.id)), getDocs(collection(db, P.progress.items))]); st.projDoc = ps.exists() ? Object.assign({ id: P.settings.id }, ps.data()) : pr.doc; st.items = []; is.forEach((d) => st.items.push(Object.assign({ id: d.id }, d.data()))); st.structure = lightStructure(st.projDoc, st.items);
+  };
+  const openDefault = () => { st.open = new Set(); const S = st.structure; if (S.groups.length === 1) { st.open.add(S.groups[0].id); return; } const first = S.groups.find((g) => { const c = (st.states[g.id] || {}).merged || {}; const n = g.items.reduce((s, it) => s + S.leafCols.filter((col) => c[keyOf(it.id, col)]).length, 0); return n > 0 && n < g.items.length * S.leafCols.length; }) || S.groups[0]; if (first) st.open.add(first.id); };
+  try { await loadStructure(); await loadDays(); recompute(); openDefault(); st.ready = true; } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
+  paint();
+  const goDate = async (d) => { if (!isDateKey(d)) return; st.date = d; pushHash('#/pjt/' + st.proj + '/progress/' + d); st.ready = false; paint(); try { await loadDays(); } catch (e) { toast('불러오기 실패: ' + ((e && e.message) || '')); } recompute(); st.ready = true; paint(); };
+  const toggle = async (gid, itemId, col) => {
+    if (st.busy || st.readonly) return; const S = st.structure; const key = keyOf(itemId, col); const cs = cellState(st.states[gid], key, st.isToday, st.editMode, S.model); if (!cs.canToggle) return; const on = !cs.done; st.busy = true;
+    try {
+      if (zones) {
+        const ref = doc(db, P.progress.checks(st.date), gid); const snap = await getDoc(ref); const latest = snap.exists() ? ((snap.data() || {}).checks || {}) : {}; const checks = toggledDayChecks(latest, key, on);
+        await setDoc(ref, { checks, updatedAt: serverTimestamp() }); st.days[st.date] = Object.assign({}, st.days[st.date] || {}, { [gid]: checks });
+      } else {
+        const ref = doc(db, P.progress.checks, st.date); const item = st.items.find((x) => x.id === itemId); if (!item) { st.busy = false; return; }
+        if (on) await setDoc(ref, { [key]: true }, { merge: true }); else { try { await updateDoc(ref, { [key]: deleteField() }); } catch (e) { /* 문서·필드가 없으면 무시 */ } }
+        const stages = lightItemStages(item.stages, col, on); await updateDoc(doc(db, P.progress.items, itemId), { stages }); item.stages = stages;   // 품목의 현재 상태(구포털 공사일보·옛 화면과 호환)
+        if (st.isToday) { const cref = doc(db, P.progress.itemChecks, st.date); if (on) await setDoc(cref, { [itemId]: { [col]: true } }, { merge: true }); else { try { await updateDoc(cref, { [itemId + '.' + col]: deleteField() }); } catch (e) { /* 없으면 무시 */ } } }
+        const cur = st.days[st.date] || {}; const m = Object.assign({}, cur[''] || {}); if (on) m[key] = true; else delete m[key]; st.days[st.date] = { '': m };
+        st.structure = lightStructure(st.projDoc, st.items); const stagesBy = {}; st.items.forEach((x) => { stagesBy[x.id] = x.stages || {}; }); try { await updateDoc(doc(db, P.settings.col, P.settings.id), { progress: lightProgress(st.structure, stagesBy) }); } catch (e) { /* 진행률 갱신 실패는 체크 저장을 막지 않는다 */ }
+      }
+      recompute();
+    } catch (e) { toast('저장 실패: ' + ((e && (e.code || e.message)) || '')); }
+    st.busy = false; paint();
+  };
+  root.onclick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    const ck = t.closest('[data-pg-ck]'); if (ck) { const [g, it, col] = ck.getAttribute('data-pg-ck').split('|'); await toggle(g, it, col); return; }
+    const op = t.closest('[data-pg-open]'); if (op) { const id = op.getAttribute('data-pg-open'); if (st.open.has(id)) st.open.delete(id); else st.open.add(id); paint(); return; }
+    const a = t.closest('[data-pg-act]'); if (!a) return; const act = a.getAttribute('data-pg-act');
+    if (act === 'prev') await goDate(shiftDate(st.date, -1)); else if (act === 'next') await goDate(shiftDate(st.date, 1)); else if (act === 'today') await goDate(appToday()); else if (act === 'edit') { st.editMode = !st.editMode; paint(); }
+  };
+  root.onchange = async (ev) => { const t = ev.target; if (t instanceof Element && t.hasAttribute('data-pg-date')) await goDate(t.value); };
 }

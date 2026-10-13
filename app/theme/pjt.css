@@ -56,3 +56,23 @@
 
 .jh-pjt__proj { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-3); }
 .jh-pjt__projlabel { font-size: var(--fs-xl); font-weight: 700; color: var(--c-primary); }
+
+/* 공정 탭 */
+.jh-pjt--prog { display: block; } .jh-pjt__mainwide { display: grid; gap: var(--sp-3); max-width: 100%; }
+.jh-pjt__kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--u-120), 1fr)); gap: var(--sp-3); }
+.jh-pjt__group { display: grid; gap: var(--sp-2); padding-bottom: var(--sp-2); }
+.jh-pjt__ghead { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); width: 100%; padding: var(--sp-3) var(--sp-4); border: 0; background: transparent; color: var(--c-ink); font: inherit; text-align: left; cursor: pointer; }
+.jh-pjt__pill { padding: var(--u-2) var(--sp-3); border-radius: var(--u-999); background: var(--c-primary-weak); color: var(--c-primary); font-weight: 700; }
+.jh-pjt__steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--u-140), 1fr)); gap: var(--sp-2) var(--sp-4); padding: 0 var(--sp-4); }
+.jh-pjt__step { display: grid; gap: var(--u-4); }
+.jh-pjt__bar2 { display: block; height: var(--u-8); border-radius: var(--u-999); background: var(--c-line); overflow: hidden; } .jh-pjt__bar2 > span { display: block; height: 100%; background: var(--c-primary); }
+.jh-pjt__ctable { border-collapse: collapse; font-size: var(--fs-sm); margin: var(--sp-2) var(--sp-4); }
+.jh-pjt__ctable th, .jh-pjt__ctable td { padding: var(--sp-1) var(--sp-2); border: var(--u-1) solid var(--c-line); text-align: center; white-space: nowrap; }
+.jh-pjt__ctable th { background: var(--c-primary-weak); } .jh-pjt__itname { text-align: left !important; }
+.jh-pjt__ck { width: var(--u-40); height: var(--u-36); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); color: var(--c-surface); font: inherit; font-weight: 700; cursor: pointer; }
+.jh-pjt__ck[data-state="new"] { background: var(--c-primary); border-color: var(--c-primary); }
+.jh-pjt__ck[data-state="past"] { background: var(--c-line); color: var(--c-ink); }
+.jh-pjt__ck:disabled { cursor: default; opacity: .75; }
+.jh-pjt__sumrow td { background: var(--c-primary-weak); font-weight: 700; } .jh-pjt__sumrow td[data-full="true"] { color: var(--c-ok, #16a34a); }
+.jh-pjt__ghead .jh-field__hint, .jh-pjt__itname .jh-field__hint { display: inline; }
+.jh-pjt__itname .jh-field__hint { display: block; }

@@ -1,9 +1,9 @@
-import { LEGACY_BASE } from '../../core/config.js?v=20261013zh';
-import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261013zh';
-import { esc } from '../../core/ui.js?v=20261013zh';
-import { attachActivity } from '../../core/idle.js?v=20261013zh';
-import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey } from './list.js?v=20261013zh';
-import { setSideCurrent } from '../../shared/sidenav.js?v=20261013zh';
+import { LEGACY_BASE } from '../../core/config.js?v=20261013zi';
+import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261013zi';
+import { esc } from '../../core/ui.js?v=20261013zi';
+import { attachActivity } from '../../core/idle.js?v=20261013zi';
+import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS } from './list.js?v=20261013zi';
+import { setSideCurrent } from '../../shared/sidenav.js?v=20261013zi';
 
 const base = () => new URL(LEGACY_BASE, location.href).href;
 const NATIVE = new Map();   // '모듈id/구역' → 그 구역을 새 모듈이 그리는 함수(modules/index.js 가 hostNative 로 등록)
@@ -60,7 +60,8 @@ function openAttendPicker(st) {
 /** 프로젝트 아래의 탭 줄: 프로젝트를 고른 뒤 "기존 화면 / 출역·공수(새)" 를 고른다. 프로젝트는 위 메뉴에서 이미 정해져 있어 새 화면 안에서 프로젝트를 다시 고르지 않는다(팀장이 다른 프로젝트에 입력하는 실수 방지) */
 const subnavHtml = (st) => {
   if (!st.def.nativeSubs || !isProjectKey(st.key)) return ''; const k = encodeURIComponent(st.key);
-  return '<nav class="jh-legacy__subnav" aria-label="프로젝트 화면"><a class="jh-legacy__chip" href="#/pjt/' + k + '" data-sub=""' + (st.nativeSub ? '' : ' aria-current="page"') + '>📋 프로젝트 화면 (기존)</a><a class="jh-legacy__chip" href="#/pjt/' + k + '/attend" data-sub="attend"' + (st.nativeSub ? ' aria-current="page"' : '') + '>👷 출역·공수 (새)</a></nav>';
+  const subs = st.def.nativeSubs.map((s) => '<a class="jh-legacy__chip" href="#/pjt/' + k + '/' + s + '" data-sub="' + s + '"' + (st.nativeSub && st.sub === s ? ' aria-current="page"' : '') + '>' + (PJT_SUB_LABELS[s] || s) + '</a>').join('');
+  return '<nav class="jh-legacy__subnav" aria-label="프로젝트 화면"><a class="jh-legacy__chip" href="#/pjt/' + k + '" data-sub=""' + (st.nativeSub ? '' : ' aria-current="page"') + '>📋 프로젝트 화면 (기존)</a>' + subs + '</nav>';
 };
 function paintSubnav(st) {
   if (!st.wrap) return; const old = st.wrap.querySelector('.jh-legacy__subnav'); const html = subnavHtml(st);
