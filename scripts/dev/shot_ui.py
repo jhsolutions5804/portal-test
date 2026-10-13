@@ -35,6 +35,7 @@ D={
  'worker_manday':{'2026-09-02':{'md':{'w1':1,'w2':1,'x9':5}},'2026-09-03':{'md':{'w1':1,'w2':0.5}},'2026-09-04':{'md':{'w1':2,'w2':2}},'2026-09-07':{'md':{'w1':2,'w2':1.5}}},'pjt_workers_fab':{'w1':{'name':'김가나'},'w2':{'name':'이다라'}},
  'progress_checks_2026-07-10':{'fiz':{'checks':{'801_반입':True,'802_반입':True,'801_내진스토퍼':True,'801_다이크':True,'801_실링':True,'801_동판':True,'801_결선':True}}},
  'progress_checks_2026-07-01':{'fiz':{'checks':{'801_반입':True,'802_반입':True,'801_입고검사':True}}},'progress_checks_2026-07-02':{'fiz':{'checks':{'803_반입':True,'801_내진스토퍼':True}},'c4':{'checks':{'302A_반입':True}}},
+ 'zone_layouts':{'fiz':{'points':{'801':{'x':0.10,'y':0.30,'w':0.014,'h':0.12},'802':{'x':0.16,'y':0.30,'w':0.014,'h':0.12},'803':{'x':0.22,'y':0.30,'w':0.014,'h':0.12},'804':{'x':0.28,'y':0.30,'w':0.014,'h':0.12}}}},
  'general_leases':{'g1':{'name':'원희캐슬 B111','kind':'office','deposit':10000000,'rent':800000,'status':'active'}},'general_vehicles':{'v1':{'name':'스타리아','plate':'12가3456','status':'active'}},
 }
 FS = '''

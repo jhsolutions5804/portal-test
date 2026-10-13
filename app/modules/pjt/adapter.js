@@ -14,6 +14,7 @@ export function parseKey(key) {
   return null;
 }
 export const keyOfRegistry = (id) => (ID.test(String(id)) ? 'reg_' + id : null);
+/* 장비 배치도(도면 매핑) 저장: 섹터마다 문서 하나 [progress.layouts 컬렉션, progress.layoutId(섹터 id)] — Ph2 는 구포털 zone_layouts/<섹터>(도면 이미지는 저장소의 pjt/assets/floorplans/<섹터>.png), Ph4 는 같은 컬렉션에 ph4_<섹터>, 경량은 pjt_registry/<id>/layouts/<섹터>. 도면 이미지를 올리면 같은 문서의 image 필드(데이터 URL)에 둔다 */
 /** 프로젝트가 켜 둔 기능: 장비 배치도·주간 공정회의 PPT 는 Ph2 에서만 켜져 있다(설정에서 켜는 선택 기능으로 다른 프로젝트도 쓸 수 있게 열어 둔다).
  *  defaultManday: 출역을 체크할 때 공수 칸에 자동으로 넣는 값(경량PJT 는 1, Ph2·Ph4 는 지금까지처럼 자동 입력 없음 = null) */
 export function featuresOf(key, settings) {
@@ -26,12 +27,12 @@ export function featuresOf(key, settings) {
 export function pathsFor(key) {
   const p = parseKey(key); if (!p) return null;
   if (p.kind === 'p4ph2') return { key, kind: 'p4ph2', label: 'P4 Ph2 (FAB)', settings: { col: 'pjt_settings', id: 'p4ph2' }, roster: 'pjt_workers_fab', attendance: 'worker_attendance', manday: 'worker_manday', schedules: 'user_schedules', reports: 'daily_report_docs',
-    progress: { model: 'zones', checks: (d) => 'progress_checks_' + d, checklist: 'checklist_state', layouts: 'zone_layouts' }, legacyReports: (d) => 'daily_reports_' + d };
+    progress: { model: 'zones', checks: (d) => 'progress_checks_' + d, checklist: 'checklist_state', layouts: 'zone_layouts', layoutId: (g) => g, floorplan: (g) => 'pjt/assets/floorplans/' + g + '.png' }, legacyReports: (d) => 'daily_reports_' + d };
   if (p.kind === 'p4ph4') return { key, kind: 'p4ph4', label: 'P4 Ph4 (SUP)', settings: { col: 'pjt_settings', id: 'p4ph4' }, roster: 'pjt_workers_ph4', attendance: 'ph4_attendance', manday: 'ph4_manday', schedules: 'ph4_schedules', reports: 'ph4_reports',
-    progress: { model: 'zones', checks: (d) => 'ph4_progress_' + d, checklist: 'ph4_checklist', layouts: null }, legacyReports: (d) => 'ph4_daily_' + d };
+    progress: { model: 'zones', checks: (d) => 'ph4_progress_' + d, checklist: 'ph4_checklist', layouts: 'zone_layouts', layoutId: (g) => 'ph4_' + g, floorplan: () => null }, legacyReports: (d) => 'ph4_daily_' + d };
   const r = 'pjt_registry/' + p.id + '/';
   return { key, kind: 'light', label: '경량PJT', registryId: p.id, settings: { col: 'pjt_registry', id: p.id }, roster: r + 'workers', attendance: r + 'attendance', manday: r + 'manday', schedules: r + 'schedules', reports: r + 'reports',
-    progress: { model: 'items', items: r + 'items', checks: r + 'progress_checks', itemChecks: r + 'item_checks' }, legacyReports: null };
+    progress: { model: 'items', items: r + 'items', checks: r + 'progress_checks', itemChecks: r + 'item_checks', layouts: r + 'layouts', layoutId: (g) => g, floorplan: () => null }, legacyReports: null };
 }
 /** 날짜 키(YYYY-MM-DD) 검사 — 경로에 들어가므로 형식이 맞지 않으면 쓰지 않는다 */
 export const isDateKey = (d) => DATE.test(String(d || ''));
