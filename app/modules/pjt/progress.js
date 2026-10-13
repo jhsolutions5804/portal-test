@@ -2,7 +2,7 @@
  *  구조: 프로젝트 → 그룹(섹터 — 섹터를 나누지 않는 프로젝트는 "전체" 하나) → 품목(장비) → 단계(열). 체크의 키는 항상 "<품목 id>_<열>" 이고, 단계는 "설치"처럼 하위 열 여러 개를 묶은 합성 단계일 수 있다(예: 내진스토퍼·다이크·실링·동판·결선).
  *  저장(동결): 날짜마다 그날 새로 체크한 키만 담는다 — Ph2·Ph4: progress_checks_<날짜>/<섹터> { checks: { 키: true } }, 경량: pjt_registry/<id>/progress_checks/<날짜> { 키: true } — 누적 = 그 날짜까지 모든 날의 합집합. 영업기획 청구서 공정 연동이 같은 문서를 읽는다.
  *  계산: 공정율 = 체크된 칸 / (품목 수 × 열 수)(구포털 Ph2 calcZone 과 경량 recalcProgress 가 같은 식), 설치 = 하위 열이 모두 체크된 품목 수 / 전체 품목 수. */
-import { PROGRESS_PROFILES, PAST_PROGRESS_DAILY } from '../../shared/pjt-progress-data.js?v=20261013zr';
+import { PROGRESS_PROFILES, PAST_PROGRESS_DAILY } from '../../shared/pjt-progress-data.js?v=20261013zs';
 export const keyOf = (itemId, col) => itemId + '_' + col;
 const truthy = (m) => { const o = {}; Object.keys(m || {}).forEach((k) => { if (m[k] === true && k.indexOf('_') > 0) o[k] = true; }); return o; };
 /** 단계 목록: 열(leafCols)을 앞에서부터 보며, 설치 하위 열(installCols)은 처음 나오는 자리에 합성 단계 "설치"(subs)로 묶는다 */

@@ -158,3 +158,9 @@
 .jh-pjt__shift { padding: var(--sp-1) var(--sp-3); border: var(--u-1) solid var(--c-primary); border-radius: var(--u-999); background: var(--c-surface); color: var(--c-primary); font: inherit; font-size: var(--fs-sm); font-weight: 700; cursor: pointer; }
 .jh-pjt__shift .jh-field__hint { display: inline; font-weight: 400; color: inherit; } .jh-pjt__shift[aria-pressed="true"] { background: var(--c-primary); color: var(--c-surface); }
 .jh-pjt__shift:disabled, .jh-pjt__cat:disabled { opacity: .6; cursor: default; }
+
+/* 프로젝트 홈 */
+@media (min-width: 1000px) { .jh-pjt__splithome { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; column-gap: var(--sp-4); } }
+.jh-pjt__quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--u-140), 1fr)); gap: var(--sp-2); }
+.jh-pjt__qbtn { display: grid; gap: var(--u-2); padding: var(--sp-3); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); color: var(--c-ink); text-decoration: none; }
+.jh-pjt__qbtn:hover { border-color: var(--c-primary); background: var(--c-primary-weak); }

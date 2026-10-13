@@ -1,9 +1,9 @@
-import { LEGACY_BASE } from '../../core/config.js?v=20261013zr';
-import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261013zr';
-import { esc } from '../../core/ui.js?v=20261013zr';
-import { attachActivity } from '../../core/idle.js?v=20261013zr';
-import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS } from './list.js?v=20261013zr';
-import { setSideCurrent } from '../../shared/sidenav.js?v=20261013zr';
+import { LEGACY_BASE } from '../../core/config.js?v=20261013zs';
+import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261013zs';
+import { esc } from '../../core/ui.js?v=20261013zs';
+import { attachActivity } from '../../core/idle.js?v=20261013zs';
+import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS, PJT_LEGACY_LABEL } from './list.js?v=20261013zs';
+import { setSideCurrent } from '../../shared/sidenav.js?v=20261013zs';
 
 const base = () => new URL(LEGACY_BASE, location.href).href;
 const NATIVE = new Map();   // '모듈id/구역' → 그 구역을 새 모듈이 그리는 함수(modules/index.js 가 hostNative 로 등록)
@@ -61,7 +61,7 @@ function openAttendPicker(st) {
 const subnavHtml = (st) => {
   if (!st.def.nativeSubs || !isProjectKey(st.key)) return ''; const k = encodeURIComponent(st.key);
   const subs = st.def.nativeSubs.map((s) => '<a class="jh-legacy__chip" href="#/pjt/' + k + '/' + s + '" data-sub="' + s + '"' + (st.nativeSub && st.sub === s ? ' aria-current="page"' : '') + '>' + (PJT_SUB_LABELS[s] || s) + '</a>').join('');
-  return '<nav class="jh-legacy__subnav" aria-label="프로젝트 화면"><a class="jh-legacy__chip" href="#/pjt/' + k + '" data-sub=""' + (st.nativeSub ? '' : ' aria-current="page"') + '>📋 프로젝트 화면 (기존)</a>' + subs + '</nav>';
+  return '<nav class="jh-legacy__subnav" aria-label="프로젝트 화면">' + subs + '<a class="jh-legacy__chip" href="#/pjt/' + k + '/legacy" data-sub="legacy"' + (st.nativeSub ? '' : ' aria-current="page"') + '>' + PJT_LEGACY_LABEL + '</a></nav>';
 };
 function paintSubnav(st) {
   if (!st.wrap) return; const old = st.wrap.querySelector('.jh-legacy__subnav'); const html = subnavHtml(st);
@@ -72,7 +72,7 @@ function paintNav(st) {
   if (old) { old.outerHTML = html || ''; } else if (html) st.wrap.insertAdjacentHTML('afterbegin', html);
   paintSubnav(st);
 }
-const canonical = (st) => { const h = '#/' + st.def.id + '/' + st.key + (st.tab ? '?tab=' + st.tab : ''); if (location.hash !== h) history.replaceState(history.state, '', h); };
+const canonical = (st) => { const h = '#/' + st.def.id + '/' + st.key + (st.def.defaultSub && isProjectKey(st.key) ? '/legacy' : '') + (st.tab ? '?tab=' + st.tab : ''); if (location.hash !== h) history.replaceState(history.state, '', h); };
 
 /** 옛 모듈을 플랫폼 틀 안에 연다. 모듈마다 틀(wrap)을 하나씩 만들어 keep 층에 두고, 다른 화면으로 가면 숨기기만 한다 — 입력 중이던 내용·열려 있던 탭이 그대로 남는다. */
 export async function mountLegacy(def, keep, route, ctx) {
@@ -88,7 +88,7 @@ export async function mountLegacy(def, keep, route, ctx) {
   // 주소에 칸이 없으면(#/hr) 마지막으로 보던 칸을 그대로 이어서 보여 준다 — 사이드바·하단 메뉴로 돌아왔을 때 보던 자리
   const item = (want ? resolveItem(def, want, me, st.dyn) : null) || (!want && st.key ? resolveItem(def, st.key, me, st.dyn) : null) || resolveItem(def, firstKey(def, me, st.dyn), me, st.dyn);
   if (!item) { keep.insertAdjacentHTML('beforeend', '<div class="jh-card"><div class="jh-empty">열 수 있는 화면이 없습니다.</div></div>'); return; }
-  const sub = (route.segs || [])[1] || ''; const nativeSub = !!(def.nativeSubs && def.nativeSubs.indexOf(sub) !== -1 && isProjectKey(item.key));   // 프로젝트 아래의 새 화면 탭(#/pjt/<프로젝트>/attend)
+  const rawSub = (route.segs || [])[1] || ''; const sub = isProjectKey(item.key) && !rawSub && def.defaultSub ? def.defaultSub : rawSub; const nativeSub = !!(def.nativeSubs && def.nativeSubs.indexOf(sub) !== -1 && isProjectKey(item.key));   // 프로젝트 아래의 새 화면 탭(#/pjt/<프로젝트>/attend) — 프로젝트를 고르면 새 홈이 기본이고 기존 화면은 /legacy
   const nat = isNativeKey(def, item.key) || nativeSub;
   if (nat) {   // 새 모듈이 그리는 구역(총무) — 옛 화면 틀(칩 메뉴)은 그대로 두고 안쪽만 바꾼다. 옛 화면(iframe)은 숨겨서 살려 둔다
     if (fresh || !st.wrap || !keep.contains(st.wrap)) {

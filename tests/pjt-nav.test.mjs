@@ -1,9 +1,9 @@
-import { LEGACY_DEFS, pjtNav, attendTargets, isProjectKey, resolveItem } from '../app/modules/legacy/list.js';
+import { LEGACY_DEFS, pjtNav, attendTargets, isProjectKey, resolveItem, PJT_LEGACY_LABEL, PJT_SUB_LABELS } from '../app/modules/legacy/list.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const def = LEGACY_DEFS.find((d) => d.id === 'pjt'); const admin = { admin: true, uid: 'u1' };
 const dyn = { loaded: true, ended: {}, settings: { p4ph2: { participants: null }, p4ph4: { participants: null } }, registry: [{ id: 'R1', name: '청주 M15X', participants: null }, { id: 'R2', name: '비공개 현장', participants: { teams: [], members: ['u9'] } }] };
 ok(isProjectKey('p4ph2') && isProjectKey('p4ph4') && isProjectKey('reg_R1') && isProjectKey('reg_a-b_9') && !isProjectKey('home') && !isProjectKey('roster') && !isProjectKey('ended') && !isProjectKey('reg_') && !isProjectKey('reg_a/b') && !isProjectKey('reg_../x') && !isProjectKey(null) && !isProjectKey('attend'), '프로젝트 키 판정: p4ph2·p4ph4·reg_<id> 만(홈·연명부·종료 PJT·위험한 문자는 아님)');
-ok(Array.isArray(def.nativeSubs) && def.nativeSubs.join() === 'schedule,progress,attend,report' && !def.nativeKeys && def.dynamicNav === true, 'PJT 정의: 프로젝트 아래의 새 화면 탭(nativeSubs: schedule·progress·attend·report), 옛 방식(메뉴 항목 자체가 새 화면)은 없음');
+ok(Array.isArray(def.nativeSubs) && def.nativeSubs.join() === 'home,schedule,progress,attend,report' && def.defaultSub === 'home' && PJT_SUB_LABELS.home === '🏠 프로젝트 홈' && /기존 화면/.test(PJT_LEGACY_LABEL) && !def.nativeKeys && def.dynamicNav === true, 'PJT 정의: 프로젝트 아래의 새 화면 탭(nativeSubs: home·schedule·progress·attend·report, 기본 탭은 새 홈), 옛 방식(메뉴 항목 자체가 새 화면)은 없음');
 const items = pjtNav(admin, dyn).map((i) => i.key);
 ok(items.join() === 'home,p4ph2,p4ph4,reg_R1,reg_R2,roster,ended' && !items.includes('attend') && resolveItem(def, 'attend', admin, dyn).key !== 'attend', '★ 위 메뉴에는 "출역·공수" 항목이 따로 없다 — 프로젝트를 고른 뒤 그 아래 탭으로만 열린다(프로젝트를 새 화면 안에서 다시 고르지 않음)');
 const t = attendTargets(dyn, admin);

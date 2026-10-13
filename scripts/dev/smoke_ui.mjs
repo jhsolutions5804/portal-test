@@ -49,18 +49,19 @@ for (const [name, fn] of targets) {
     if (!nat() || nat().hidden || !/출역·공수/.test(nat().textContent) || !/P4 Ph2 \(FAB\)/.test(nat().textContent)) problems.push('프로젝트 아래 출역·공수 새 화면이 안 그려짐');
     if (nat() && nat().querySelector('select[data-pa-proj]')) problems.push('새 화면 안에 프로젝트 선택이 있음(없어야 함)');
     if (frame() && frame().getAttribute('src')) problems.push('새 화면으로 열었는데 옛 화면이 먼저 불러와짐');
-    if (!sub() || sub().querySelectorAll('a').length !== 5 || !sub().querySelector('a[data-sub="attend"][aria-current="page"]')) problems.push('프로젝트 아래 탭 줄(기존 화면/출역·공수)이 없거나 현재 탭 표시가 틀림');
+    if (!sub() || sub().querySelectorAll('a').length !== 6 || !sub().querySelector('a[data-sub="attend"][aria-current="page"]')) problems.push('프로젝트 아래 탭 줄(기존 화면/출역·공수)이 없거나 현재 탭 표시가 틀림');
     if (!wrap.querySelector('.jh-legacy__nav a[data-key="p4ph2"][aria-current="page"]')) problems.push('위 메뉴의 프로젝트 칩이 현재로 표시되지 않음');
     if (wrap.querySelector('.jh-legacy__nav a[data-key="attend"]')) problems.push('위 메뉴에 출역·공수 항목이 따로 있음(없어야 함)');
     wrap = await open(['p4ph2', 'report']); if (!nat() || nat().hidden || !/공사일보/.test(nat().textContent) || !/P4 Ph2 \(FAB\)/.test(nat().textContent) || !sub().querySelector('a[data-sub="report"][aria-current="page"]')) problems.push('프로젝트 아래 공사일보 새 화면이 안 열리거나 현재 탭 표시가 틀림');
     wrap = await open(['p4ph2', 'schedule']); if (!nat() || nat().hidden || !/일정/.test(nat().textContent) || !/P4 Ph2 \(FAB\)/.test(nat().textContent) || !sub().querySelector('a[data-sub="schedule"][aria-current="page"]')) problems.push('프로젝트 아래 일정 새 화면이 안 열리거나 현재 탭 표시가 틀림');
     wrap = await open(['p4ph2', 'progress']); if (!nat() || nat().hidden || !/공정 현황/.test(nat().textContent) || !/P4 Ph2 \(FAB\)/.test(nat().textContent) || !sub().querySelector('a[data-sub="progress"][aria-current="page"]')) problems.push('프로젝트 아래 공정 새 화면이 안 열리거나 현재 탭 표시가 틀림');
-    wrap = await open(['p4ph2']);   // 같은 프로젝트의 기존 화면 탭 — 옛 화면(iframe)이 이제 불러와져야 한다
+    wrap = await open(['p4ph2']); if (!nat() || nat().hidden || !/프로젝트 홈/.test(nat().textContent) || !/P4 Ph2 \(FAB\)/.test(nat().textContent) || !sub().querySelector('a[data-sub="home"][aria-current="page"]')) problems.push('프로젝트를 고르면 새 프로젝트 홈이 기본으로 열려야 함(기존 화면이 아님)');
+    wrap = await open(['p4ph2', 'legacy']);   // 기존 화면은 맨 끝 칩 — 옛 화면(iframe)이 이제 불러와져야 한다
     if (!frame() || frame().hidden || !/pjt\//.test(frame().getAttribute('src') || '')) problems.push('기존 화면 탭을 눌렀는데 옛 화면(iframe)이 안 보이거나 불러와지지 않음: ' + (frame() && frame().getAttribute('src')));
     if (!nat() || !nat().hidden) problems.push('기존 화면 탭인데 새 화면 영역이 숨겨지지 않음');
-    if (!sub() || !sub().querySelector('a[data-sub=""][aria-current="page"]')) problems.push('기존 화면 탭의 현재 표시가 틀림');
+    if (!sub() || !sub().querySelector('a[data-sub="legacy"][aria-current="page"]')) problems.push('기존 화면 탭의 현재 표시가 틀림');
     wrap = await open(['p4ph4', 'attend']); if (!nat() || nat().hidden || !/P4 Ph4 \(SUP\)/.test(nat().textContent)) problems.push('다른 프로젝트(Ph4)의 출역·공수 새 화면이 그 프로젝트 이름으로 안 열림');
-    wrap = await open(['home']); if (sub()) problems.push('PJT 홈에는 프로젝트 아래 탭 줄이 없어야 함');
+    wrap = await open(['home']); if (sub()) problems.push('PJT 홈에는 프로젝트 아래 탭 줄이 없어야 함');   // (메뉴의 "PJT 홈"은 프로젝트가 아닌 전체 화면)
     wrap = await open(['reg_REG1', 'attend']); if (!nat() || nat().hidden || !/가/.test(nat().textContent)) problems.push('경량PJT 출역·공수 새 화면이 안 열림');
     wrap = await open(['p4ph2', 'attend', '2026-07-02']); if (!nat() || !/2026-07-02/.test(nat().textContent)) problems.push('주소의 날짜(#/pjt/<프로젝트>/attend/<날짜>)로 열리지 않음');
   }

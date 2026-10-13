@@ -1,29 +1,32 @@
 /* PJT 관리(통합 새 모듈) — 설계서 docs/pjt-design.md. Ph2·Ph4·경량PJT를 한 모듈로 합친다.
  * 지금 새 화면은 "출역·공수"(근태·공수 탭) 하나다 — 구포털 PJT 메뉴에서 프로젝트를 고르면 그 아래 "👷 출역·공수 (새)" 탭으로 열린다(legacy/frame.js 의 nativeSubs, modules/index.js hostNative). 프로젝트는 화면 안에서 고르지 않는다. 나머지 탭은 만들면서 구포털 항목을 하나씩 교체한다.
  * 저장 형식은 구포털 그대로(출역 { checks }, 공수 { md }, 날짜별 문서) — 영업기획의 공수 연동·팀별 노무비가 읽는다. 경로는 adapter.js, 규칙은 attendance.js. */
-import { db, functions, httpsCallable, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zr';
-import { esc, toast } from '../../core/ui.js?v=20261013zr';
-import { confirmDialog } from '../../core/dialog.js?v=20261013zr';
-import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zr';
-import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zr';
-import { visibleProjects } from './projects.js?v=20261013zr';
-import { loadHolidays } from '../../shared/holidays.js?v=20261013zr';
-import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zr';
-import { normalizeDayFixed, normalizeDayLight, stateAt, lightState, cellState, toggledDayChecks, lightItemStages, lightProgress, daysThrough, PROGRESS_START, keyOf, stagesOf } from './progress.js?v=20261013zr';
-import { structureFor, planSave, makeItemIdFactory } from './structure-store.js?v=20261013zr';
-import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, setFeature, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261013zr';
-import { progressHtml } from './progress-view.js?v=20261013zr';
-import { diffText } from './structure-view.js?v=20261013zr';
-import { activeWorkersForDate } from './attendance.js?v=20261013zr';
-import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261013zr';
-import { buildWeekly } from './weekly-ppt.js?v=20261013zr';
-import { boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, remapByOrder, unmatchedKeys, snapToTuesday, weekNo, weekRange } from './layout.js?v=20261013zr';
-import { fileToDataUrl, imageInfo } from './image-tools.js?v=20261013zr';
-import { layoutEditorHtml } from './layout-view.js?v=20261013zr';
-import { scheduleHtml } from './schedule-view.js?v=20261013zr';
-import { reportHtml } from './report-view.js?v=20261013zr';
-import { fromStored, toStored, totalOf, attendanceSummary, autoContent, docHtml, docTitle, isLegacyDoc, dateText, WORK_SHIFTS, authorLabel, normalizeEquip } from './report.js?v=20261013zr';
-import { itemsForKey, buildDoc, formOf, detectCat, addDays, weekDays, isKey } from './schedule.js?v=20261013zr';
+import { db, functions, httpsCallable, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zs';
+import { esc, toast } from '../../core/ui.js?v=20261013zs';
+import { confirmDialog } from '../../core/dialog.js?v=20261013zs';
+import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zs';
+import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zs';
+import { visibleProjects } from './projects.js?v=20261013zs';
+import { loadHolidays } from '../../shared/holidays.js?v=20261013zs';
+import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zs';
+import { normalizeDayFixed, normalizeDayLight, stateAt, lightState, cellState, toggledDayChecks, lightItemStages, lightProgress, daysThrough, PROGRESS_START, keyOf, stagesOf } from './progress.js?v=20261013zs';
+import { structureFor, planSave, makeItemIdFactory } from './structure-store.js?v=20261013zs';
+import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, setFeature, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261013zs';
+import { progressHtml } from './progress-view.js?v=20261013zs';
+import { diffText } from './structure-view.js?v=20261013zs';
+import { activeWorkersForDate } from './attendance.js?v=20261013zs';
+import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261013zs';
+import { buildWeekly } from './weekly-ppt.js?v=20261013zs';
+import { boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, remapByOrder, unmatchedKeys, snapToTuesday, weekNo, weekRange } from './layout.js?v=20261013zs';
+import { fileToDataUrl, imageInfo } from './image-tools.js?v=20261013zs';
+import { layoutEditorHtml } from './layout-view.js?v=20261013zs';
+import { scheduleHtml } from './schedule-view.js?v=20261013zs';
+import { reportHtml } from './report-view.js?v=20261013zs';
+import { homeHtml } from './home-view.js?v=20261013zs';
+import { dday, monthMandayTotal, latestReports } from './home.js?v=20261013zs';
+import { calcAll } from './progress.js?v=20261013zs';
+import { fromStored, toStored, totalOf, attendanceSummary, autoContent, docHtml, docTitle, isLegacyDoc, dateText, WORK_SHIFTS, authorLabel, normalizeEquip, withEditor } from './report.js?v=20261013zs';
+import { itemsForKey, buildDoc, formOf, detectCat, addDays, weekDays, isKey } from './schedule.js?v=20261013zs';
 
 export const manifest = { id: 'pjt', order: 40, title: 'PJT 관리', icon: '🏗️', defaultHash: '#/pjt/attend', perm: (me) => !!me && me.admin === true };
 export async function mount(root) { root.innerHTML = '<div class="jh-empty">PJT 화면은 구포털 틀 안의 메뉴로 열립니다.</div>'; }
@@ -378,6 +381,7 @@ export async function mountReport(root, route, ctx) {
   const save = async () => {
     readForm(); if (st.busy) return; st.busy = true;
     try {
+      if (st.exists) st.form.editors = withEditor(st.form.editors, st.form.author, authorLabel(me), new Date().toISOString());   // 이미 있는 일보를 최초 작성자가 아닌 사람이 고치면 수정자로 기록
       const doc0 = toStored(st.form, st.ctx); await setDoc(doc(db, P.reports, st.date), Object.assign({}, doc0, { updatedAt: serverTimestamp(), savedAt: serverTimestamp() }), { merge: true }); st.dates.add(st.date); st.exists = true; st.form.legacy = false; toast('저장했습니다.');
       if (P.kind === 'light') { try { await (ctx && ctx.syncDaily ? ctx.syncDaily(doc0) : defaultSync(doc0)); } catch (e) { console.warn('[공사일보→업무일지 연동 실패]', (e && e.message) || e); } }   // 업무일지 연동 실패는 일보 저장을 막지 않는다
     } catch (e) { toast('저장 실패: ' + ((e && (e.code || e.message)) || '')); }
@@ -389,12 +393,45 @@ export async function mountReport(root, route, ctx) {
     if ((el = t.closest('[data-rp-nav]'))) { const v = el.getAttribute('data-rp-nav'); if (v === 'today') { await go(st.today); return; } let { y, m } = st.month; m += Number(v); if (m > 11) { m = 0; y++; } if (m < 0) { m = 11; y--; } st.month = { y, m }; paint(); return; }
     if ((el = t.closest('[data-rp-hc]')) && st.manage) { readForm(); st.form.headcount = Math.max(0, (parseInt(st.form.headcount, 10) || 0) + Number(el.getAttribute('data-rp-hc'))); paint(); return; }
     if ((el = t.closest('[data-rp-shift]')) && st.manage) { readForm(); const sh = WORK_SHIFTS.find((x) => x.name === el.getAttribute('data-rp-shift')); if (sh) { st.form.checkIn = sh.from; st.form.checkOut = sh.to; delete st.form._ciH; delete st.form._ciM; delete st.form._coH; delete st.form._coM; } paint(); return; }   // 근무시간 구분 → 시작·종료 시간 채우기(그 뒤 시·분 직접 수정 가능)
-    if ((el = t.closest('[data-rp-equip]')) && st.manage) { readForm(); const v = el.getAttribute('data-rp-equip'); st.form.equip = st.form.equip[0] === v ? [] : [v]; paint(); return; }   // 지게차·크레인 중 하나(다시 누르면 해제)
+    if ((el = t.closest('[data-rp-equip]')) && st.manage) { readForm(); const v = el.getAttribute('data-rp-equip'); st.form.equip = st.form.equip.indexOf(v) !== -1 ? st.form.equip.filter((x) => x !== v) : st.form.equip.concat([v]); paint(); return; }   // 지게차·크레인은 둘 다 고를 수 있다(다시 누르면 해제)
+    if ((el = t.closest('[data-rp-rmeq]')) && st.manage) { readForm(); const v = el.getAttribute('data-rp-rmeq'); st.form.equip = st.form.equip.filter((x) => x !== v); paint(); return; }
     if (!(el = t.closest('[data-rp-act]'))) return; const act = el.getAttribute('data-rp-act');
     if (act === 'closeprev') { st.preview = false; paint(); return; } if (act === 'preview') { readForm(); st.preview = true; paint(); return; } if (act === 'print') { readForm(); printDoc(docHtml(st.form, st.ctx), docTitle(st.date, st.label)); return; }
-    if (act === 'upgrade' && st.manage) { st.form.legacy = false; st.form.equipText = ''; paint(); return; } if (act === 'save' && st.manage) { await save(); return; }
+    if (act === 'upgrade' && st.manage) { st.form.legacy = false; st.form.equipText = ''; paint(); return; }
+    if (act === 'addeq' && st.manage) { readForm(); const inp = body.querySelector('[data-rp-eqin]'); const v = inp ? inp.value.trim() : ''; if (v && st.form.equip.indexOf(v) === -1) st.form.equip.push(v); paint(); return; } if (act === 'save' && st.manage) { await save(); return; }
     if (act === 'att' && st.manage) { readForm(); const a = await attSummary(st.date); st.form.headcount = a.headcount; st.form.manday = a.manday; st.form.mandayTotal = a.mandayTotal; toast('출역·공수에서 불러왔습니다(' + a.headcount + '명, 합계 ' + a.mandayTotal + '공수).'); paint(); return; }
     if (act === 'auto' && st.manage) { readForm(); const text = autoContent(st.structure, await newChecks(st.date)); if (!text) { toast('이 날짜에 체크된 공정 항목이 없습니다.'); return; } if (st.form.content.trim()) { const ok = await confirmDialog({ title: '자동 채우기', body: '금일 작업에 쓴 내용을 공정 체크 내용으로 바꿉니다. 바꿀까요?', confirmLabel: '바꾸기' }); if (!ok.ok) return; } st.form.content = text; paint(); }
   };
+  root.onkeydown = (ev) => { const t = ev.target; if (ev.key === 'Enter' && t instanceof Element && t.hasAttribute('data-rp-eqin')) { ev.preventDefault(); const b = body.querySelector('[data-rp-act="addeq"]'); if (b) b.click(); } };
   root.oninput = (ev) => { const t = ev.target; if (!(t instanceof Element) || t.getAttribute('data-rp-f') !== 'manday') return; const tot = body.querySelector('[data-rp-total]'); const hc = body.querySelector('[data-rp-hc-val]'); if (tot && hc) tot.textContent = totalOf(parseInt(hc.textContent, 10) || 0, parseFloat(t.value) || 0).toFixed(1); };
+}
+
+/** 프로젝트 홈: 프로젝트를 고르면 처음 보이는 새 화면(주소 #/pjt/<프로젝트> 또는 #/pjt/<프로젝트>/home). 요약 카드(공정율·D+·이달 공수·오늘 출역)·오늘 일정·공사일보·바로가기·기본정보 — 모든 프로젝트 같은 형식.
+ *  느린 계산(공정율: Ph2·Ph4 는 날짜별 컬렉션을 하나씩 읽음)은 화면을 먼저 보여 준 뒤 채운다. */
+export async function mountHome(root, route, ctx) {
+  root.onclick = null; root.onchange = null;
+  const me = (ctx && ctx.me) || {}; const segs = (route && route.segs) || []; const today = appToday();
+  const st = { projects: [], proj: '', label: '', today, doc: null, unit: '대', ready: false, progress: null, progressNote: '', att: { headcount: 0, mandayTotal: 0 }, monthMd: 0, schedules: [], reports: [], features: {} };
+  root.innerHTML = '<div id="hm-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#hm-body'); const paint = () => { body.innerHTML = homeHtml(st); };
+  try { await Promise.race([loadHolidays(), new Promise((r) => setTimeout(r, 1500))]); } catch (e) { /* 공휴일 없이 표시 */ }
+  try { st.projects = visibleProjects(me, await loadDyn()); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
+  body.removeAttribute('aria-busy'); st.proj = st.projects.some((p) => p.key === segs[0]) ? segs[0] : ''; if (!st.proj) { paint(); return; }
+  const P = pathsFor(st.proj); const pr = st.projects.find((p) => p.key === st.proj); st.label = pr.label; const [ty, tm] = today.split('-'); const ym = ty + '-' + tm;
+  try {
+    const ps = await getDoc(doc(db, P.settings.col, P.settings.id)); st.doc = ps.exists() ? ps.data() : (pr.doc || {}); const items = []; if (P.kind === 'light') { const is = await getDocs(collection(db, P.progress.items)); is.forEach((d) => items.push(Object.assign({ id: d.id }, d.data()))); }
+    const sr = structureFor(st.proj, st.doc, items); st.structure = toRuntime(sr.S, st.label, stagesOf); st.unit = sr.S.unit || '대'; st.features = featuresOf(st.proj, { features: sr.S.features }) || {};
+    const rd = async () => { const [a, m] = await Promise.all([getDoc(doc(db, P.attendance, today)), getDoc(doc(db, P.manday, today))]); return { checks: a.exists() ? (a.data().checks || []) : [], md: m.exists() ? (m.data().md || {}) : {} }; };
+    const monthDocs = async () => { try { const s = await getDocs(query(collection(db, P.manday), where(documentId(), '>=', ym + '-01'), where(documentId(), '<=', ym + '-31'))); const o = {}; s.forEach((d) => { o[d.id] = (d.data().md) || {}; }); return o; } catch (e) { return {}; } };
+    const [t, mm, ss, rr] = await Promise.all([rd(), monthDocs(), getDocs(collection(db, P.schedules)), getDocs(collection(db, P.reports))]);
+    st.att = attendanceSummary(t.checks, t.md, null); st.monthMd = monthMandayTotal(mm, ym); st.schedules = []; ss.forEach((d) => st.schedules.push(Object.assign({ id: d.id }, d.data()))); const rdocs = []; rr.forEach((d) => rdocs.push({ id: d.id, data: d.data() })); st.reports = latestReports(rdocs, 3); st.ready = true;
+  } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && (e.code || e.message)) || '') + '</div>'; return; }
+  paint();
+  // 공정율 — 날짜별 체크를 모두 읽어야 해서 화면을 먼저 보여 준 뒤 계산한다
+  try {
+    const days = {}; const S = st.structure; if (P.progress.model === 'zones') { const start = PROGRESS_START[st.proj] || '2026-06-17'; const need = daysThrough(start, today); for (let i = 0; i < need.length; i += 25) { await Promise.all(need.slice(i, i + 25).map(async (d) => { try { const snap = await getDocs(collection(db, P.progress.checks(d))); const docs = []; snap.forEach((x) => docs.push({ id: x.id, data: x.data() })); days[d] = normalizeDayFixed(docs); } catch (e) { days[d] = {}; } })); } }
+    else { try { const snap = await getDocs(collection(db, P.progress.checks)); snap.forEach((x) => { days[x.id] = normalizeDayLight(x.data()); }); } catch (e) { /* 날짜별 문서 없음 */ } }
+    const items2 = []; if (P.kind === 'light') { const is = await getDocs(collection(db, P.progress.items)); is.forEach((d) => items2.push(Object.assign({ id: d.id }, d.data()))); }
+    const states = {}; S.groups.forEach((g) => { states[g.id] = P.progress.model === 'zones' ? stateAt(days, today, g.id, st.proj) : lightState(days, today, items2, true); }); const A = calcAll(S, states); st.progress = { pct: A.pct, items: A.items };
+  } catch (e) { st.progressNote = '계산 실패'; }
+  paint();
 }

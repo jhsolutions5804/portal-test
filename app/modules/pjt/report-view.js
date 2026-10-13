@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261013zr';
-import { holidayName } from '../../shared/holidays.js?v=20261013zr';
-import { monthGrid, dowOf } from './schedule.js?v=20261013zr';
-import { WORK_SHIFTS, shiftOf, EQUIPS, docHtml, dateText, totalOf } from './report.js?v=20261013zr';
+import { esc } from '../../core/ui.js?v=20261013zs';
+import { holidayName } from '../../shared/holidays.js?v=20261013zs';
+import { monthGrid, dowOf } from './schedule.js?v=20261013zs';
+import { WORK_SHIFTS, shiftOf, EQUIPS, docHtml, dateText, totalOf, fmtAt } from './report.js?v=20261013zs';
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const hrs = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')), mins = ['00', '10', '20', '30', '40', '50'];
 const split = (t) => { const [h, m] = String(t || '').split(':'); return t ? { h: (h || '00').padStart(2, '0'), m: String(Math.floor((parseInt(m, 10) || 0) / 10) * 10).padStart(2, '0') } : { h: '', m: '' }; };
@@ -20,15 +20,16 @@ function legacyView(st) {
 function formHtml(st) {
   const f = st.form; const ro = !st.manage; const dis = ro ? ' disabled' : ''; const ci = split(f.checkIn), co = split(f.checkOut);
   const row = (label, opt, inner) => '<div class="jh-pjt__frow"><label class="jh-pjt__flabel">' + label + (opt ? ' <span class="jh-field__hint">' + opt + '</span>' : '') + '</label>' + inner + '</div>';
-  const eqBtns = EQUIPS.map((e) => '<button type="button" class="jh-pjt__cat" data-rp-equip="' + e + '" aria-pressed="' + (f.equip[0] === e) + '"' + dis + '>' + e + '</button>').join('');
+  const eqBtns = EQUIPS.map((e) => '<button type="button" class="jh-pjt__cat" data-rp-equip="' + e + '" aria-pressed="' + (f.equip.indexOf(e) !== -1) + '"' + dis + '>' + e + '</button>').join('');
+  const others = f.equip.filter((e) => EQUIPS.indexOf(e) === -1); const chips = others.map((e) => '<span class="jh-pjt__itchip">' + esc(e) + (ro ? '' : '<button type="button" data-rp-rmeq="' + esc(e) + '" aria-label="' + esc(e) + ' 삭제">×</button>') + '</span>').join('');
   const total = totalOf(f.headcount, f.manday);
   return '<section class="jh-card jh-pjt__sform"><div class="jh-panel__head"><h3>' + esc(dateText(st.date)) + ' 공사일보' + (st.exists ? '' : ' <span class="jh-pjt__chip" data-tone="amber">작성 전</span>') + '</h3></div><div class="jh-pjt__pad">'
-    + row('작성자', '(로그인 계정 자동)', '<input class="jh-input" data-rp-f="author" value="' + esc(f.author) + '" readonly aria-readonly="true">')
+    + row('작성자', '(로그인 계정 자동 · 최초 작성자 그대로)', '<input class="jh-input" data-rp-f="author" value="' + esc(f.author) + '" readonly aria-readonly="true">' + ((f.editors || []).length ? '<div class="jh-field__hint" data-rp-editors>수정자: ' + f.editors.map((e) => esc(e.by) + (e.at ? ' (' + esc(fmtAt(e.at)) + ')' : '')).join(', ') + '</div>' : ''))
     + row('근무시간', '(구분을 고르면 시간이 채워지고, 시·분은 직접 고칠 수 있음)', '<div class="jh-pjt__cats">' + WORK_SHIFTS.map((s) => '<button type="button" class="jh-pjt__shift" data-rp-shift="' + esc(s.name) + '" aria-pressed="' + (shiftOf(f.checkIn, f.checkOut) === s.name) + '"' + dis + '>' + esc(s.name) + ' <span class="jh-field__hint">' + s.from + '~' + s.to + '</span></button>').join('') + '</div><div class="jh-pjt__bar"><span class="jh-plan__line">' + tsel('data-rp-f="ciH"' + dis, ci.h, hrs, '시') + tsel('data-rp-f="ciM"' + dis, ci.m, mins, '분') + '<span>~</span>' + tsel('data-rp-f="coH"' + dis, co.h, hrs, '시') + tsel('data-rp-f="coM"' + dis, co.m, mins, '분') + '</span></div>')
     + row('금일 작업', '', '<textarea class="jh-input" rows="5" data-rp-f="content" placeholder="금일 작업 내용"' + dis + '>' + esc(f.content) + '</textarea>' + (ro ? '' : '<div class="jh-pjt__bar"><span class="jh-field__hint" data-rp-autohint></span><button type="button" class="jh-btn" data-variant="secondary" data-rp-act="auto">🔄 공정 체크로 자동 채우기</button></div>'))
     + row('명일 예정', '', '<textarea class="jh-input" rows="3" data-rp-f="tomorrow" placeholder="명일 작업 예정"' + dis + '>' + esc(f.tomorrow) + '</textarea>')
     + row('투입 인원 · 공수', '(출역·공수 탭 값으로 자동 채움 · 고칠 수 있음)', '<div class="jh-pjt__bar"><span class="jh-plan__line"><button type="button" class="jh-btn" data-variant="ghost" data-rp-hc="-1"' + dis + ' aria-label="인원 감소">−</button><strong data-rp-hc-val>' + (parseInt(f.headcount, 10) || 0) + '</strong><span>명</span><button type="button" class="jh-btn" data-variant="ghost" data-rp-hc="1"' + dis + ' aria-label="인원 증가">＋</button></span><span class="jh-plan__line"><span class="jh-field__hint">1인당</span><input class="jh-input jh-pjt__mdin" inputmode="decimal" data-rp-f="manday" value="' + (f.manday ? Number(f.manday).toFixed(1) : '') + '" placeholder="0.0"' + dis + '><span class="jh-field__hint">공수 → 합계</span><strong data-rp-total>' + total.toFixed(1) + '</strong></span><button type="button" class="jh-btn" data-variant="ghost" data-rp-act="att"' + (ro ? ' disabled' : '') + '>출역·공수에서 다시 불러오기</button></div>')
-    + row('사용 장비', '(지게차·크레인 중 하나)', '<div class="jh-pjt__cats">' + eqBtns + '</div>')
+    + row('사용 장비', '(지게차·크레인은 둘 다 고를 수 있고, 장비 번호 등은 직접 입력)', '<div class="jh-pjt__cats">' + eqBtns + '</div>' + (chips ? '<div class="jh-pjt__chips">' + chips + '</div>' : '') + (ro ? '' : '<div class="jh-pjt__bar"><span class="jh-plan__line"><input class="jh-input" data-rp-eqin placeholder="장비 번호·이름 직접 입력 (예: 지게차 (00가0000))"><button type="button" class="jh-btn" data-variant="secondary" data-rp-act="addeq">추가</button></span></div>'))
     + row('특이사항', '', '<textarea class="jh-input" rows="3" data-rp-f="note" placeholder="안전·품질·민원 등 특이사항"' + dis + '>' + esc(f.note) + '</textarea>')
     + '<div class="jh-pjt__bar"><button type="button" class="jh-btn" data-variant="secondary" data-rp-act="preview">미리보기</button><span class="jh-plan__line"><button type="button" class="jh-btn" data-variant="secondary" data-rp-act="print">PDF·인쇄</button>' + (st.manage ? '<button type="button" class="jh-btn" data-variant="primary" data-rp-act="save">저장</button>' : '') + '</span></div></div></section>';
 }
