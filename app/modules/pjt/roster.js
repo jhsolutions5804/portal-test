@@ -106,9 +106,24 @@ export function rowOf(m, p, ctx) {
   const extra = []; const ns = eduDoneCount(p, EDU_SK, today); if (ns > 0) extra.push({ k: 'sk', n: ns, total: EDU_SK.length, expired: eduCountBy(p, 'expired', EDU_SK, today), soon: eduCountBy(p, 'soon', EDU_SK, today) });
   const cr = p.chemEdu || []; if (cr.length) { const y = +today.slice(0, 4); const s = chemYearSum(cr, y); extra.push({ k: 'chem', hours: Math.round(s * 100) / 100, ok: s >= CHEM_REQ_HOURS, pdf: cr.some((r) => r.pdf) }); }
   const fm = filesMeta(p);
-  return { m, p, team: m.leaderId ? { kind: 'member', leader: leader ? leader.name : '?' } : { kind: 'lead', account: acc ? acc.name : '' },
+  const issues = m.resigned ? [] : issuesOf(p, today); return { m, p, issues, level: worstLevel(issues), team: m.leaderId ? { kind: 'member', leader: leader ? leader.name : '?' } : { kind: 'lead', account: acc ? acc.name : '' },
     general: { date: latestHealth(p, 'general'), exp: healthExpiry(p, 'general'), pdf: !!(latestHealthRow(p, 'general') || {}).pdf }, preplace: { date: latestHealth(p, 'preplace'), exp: healthExpiry(p, 'preplace'), pdf: !!(latestHealthRow(p, 'preplace') || {}).pdf },
     edu: { n, total: EDU.length, expired: ex, soon: so }, extra,
     certs: COMPANIES.map((co) => { const cs = (p.certs || []).filter((c) => certCo(c) === co.k); return cs.length ? { co, n: cs.length, expired: cs.filter((c) => eduStateOf(true, c.expiry || '', today).state === 'expired').length } : null; }).filter(Boolean),
     files: PHOTO_SLOTS.map((x) => ({ slot: x, has: !!fm[x.k] })), masked: maskedOf(p) };
 }
+
+/** 조치 필요 항목(재직자 기준): 검진·사내화 교육·자격의 만료(danger)·30일 이내 임박(warn), 일반검진 기록 없음(info — 알림에는 세지 않음, 입력이 덜 된 상태라 모두에게 뜨면 의미가 없다).
+ *  반환: [{ k: 'health'|'edu'|'cert', level: 'danger'|'warn'|'info', text }] — 위험한 것부터 */
+export function issuesOf(p, today) {
+  p = p || {}; const out = [];
+  const hs = (type, label) => { const e = healthExpiry(p, type); if (!e) { if (type === 'general') out.push({ k: 'health', level: 'info', text: label + ' 기록 없음' }); return; } const r = eduStateOf(true, e, today); if (r.state === 'expired') out.push({ k: 'health', level: 'danger', text: label + ' 만료 (D+' + Math.abs(r.d) + ')' }); else if (r.state === 'soon') out.push({ k: 'health', level: 'warn', text: label + ' 만료 임박 (D-' + r.d + ')' }); };
+  hs('general', '일반검진'); hs('preplace', '배치전검진');
+  [['삼성전자', EDU], ['SK하이닉스', EDU_SK]].forEach(([label, list]) => { const ex = eduCountBy(p, 'expired', list, today), so = eduCountBy(p, 'soon', list, today); if (ex) out.push({ k: 'edu', level: 'danger', text: label + ' 사내화 교육 ' + ex + '건 만료' }); if (so) out.push({ k: 'edu', level: 'warn', text: label + ' 사내화 교육 ' + so + '건 만료 임박' }); });
+  const cs = (p.certs || []).map((c) => ({ c, r: eduStateOf(true, c.expiry || '', today) })); const nm = (a) => a.map((x) => x.c.name || '자격').join('·');
+  const cex = cs.filter((x) => x.r.state === 'expired'), cso = cs.filter((x) => x.r.state === 'soon');
+  if (cex.length) out.push({ k: 'cert', level: 'danger', text: '자격·인증 만료: ' + nm(cex) }); if (cso.length) out.push({ k: 'cert', level: 'warn', text: '자격·인증 만료 임박: ' + nm(cso) });
+  const rank = { danger: 0, warn: 1, info: 2 }; return out.sort((a, b) => rank[a.level] - rank[b.level]);
+}
+/** 가장 심각한 단계: 'danger' | 'warn' | ''(문제 없음, info 는 제외) */
+export const worstLevel = (issues) => ((issues || []).some((i) => i.level === 'danger') ? 'danger' : (issues || []).some((i) => i.level === 'warn') ? 'warn' : '');

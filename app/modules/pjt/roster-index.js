@@ -1,19 +1,30 @@
 /* 근로자 연명부(새 화면) — 구포털 PJT 메뉴의 "근로자 연명부" 칸. 주소 #/pjt/roster(목록) · #/pjt/roster/<근로자 id>(상세 조회).
- * 읽기만 하는 1단계: 목록(요약·필터·검색·정렬)과 상세 조회. 등록·수정·삭제·첨부·검진·교육 입력은 다음 단계에서 같은 화면에 붙인다. 규칙은 roster.js, 표시는 roster-view.js. */
-import { db, collection, getDocs } from '../../core/firebase.js?v=20261014e';
-import { esc } from '../../core/ui.js?v=20261014e';
-import { mergePrivs, summaryOf, visibleList, rowOf, todayKey, birthFromJumin } from './roster.js?v=20261014e';
-import { rosterListHtml, rosterDetailHtml } from './roster-view.js?v=20261014e';
+ * 읽기만 하는 1단계: 왼쪽 명단(재직·조치 필요·퇴사·전체, 검색, 정렬) + 오른쪽(사람을 고르면 상세, 아니면 조치 필요 현황). 등록·수정·삭제·첨부·검진·교육 입력은 다음 단계에서 같은 화면에 붙인다. 규칙은 roster.js, 표시는 roster-view.js. */
+import { db, collection, getDocs } from '../../core/firebase.js?v=20261014f';
+import { esc } from '../../core/ui.js?v=20261014f';
+import { mergePrivs, summaryOf, visibleList, rowOf, todayKey, birthFromJumin } from './roster.js?v=20261014f';
+import { rosterHtml } from './roster-view.js?v=20261014f';
 const pushHash = (h) => { if (location.hash === h) return; try { history.replaceState(null, '', h); } catch (e) { location.hash = h; } };
 const lst = (snap) => { const a = []; snap.forEach((d) => a.push({ id: d.id, data: d.data() })); return a; };
 export async function mountRoster(root, route, ctx) {
   root.onclick = null; root.oninput = null; root.onchange = null;
   const me = (ctx && ctx.me) || {}; const segs = (route && route.segs) || [];
-  const st = { allowed: !!(me.admin || (me.perms && me.perms.pjt)), admin: !!me.admin, ready: false, err: '', masters: [], privs: {}, accounts: [], hr: {}, filter: 'active', query: '', sortKey: null, sortDir: 1, sel: segs[0] || '', coTab: 'samsung', coSub: 'legal', reveal: new Set(), today: todayKey(), rows: [], summary: { active: 0, resigned: 0, noHealth: 0, eduLack: 0 } };
+  const st = { allowed: !!(me.admin || (me.perms && me.perms.pjt)), admin: !!me.admin, ready: false, err: '', masters: [], privs: {}, accounts: [], hr: {}, filter: 'active', query: '', sortKey: null, sortDir: 1, sel: segs[0] || '', allRows: [], alertRows: [], counts: { active: 0, resigned: 0, all: 0, alert: 0 }, coTab: 'samsung', coSub: 'legal', reveal: new Set(), today: todayKey(), rows: [], summary: { active: 0, resigned: 0, noHealth: 0, eduLack: 0 } };
   st.accountOf = (id) => st.accounts.find((u) => u.teamLeaderIds.indexOf(id) !== -1) || null; st.hrMatch = (name, birth) => (name && birth ? st.hr[String(name).trim() + '|' + birth] || null : null);
   root.innerHTML = '<div id="ro-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#ro-body');
-  const recompute = () => { const byId = (id) => st.masters.find((m) => m.id === id); const ctx2 = { today: st.today, masterById: byId, accountOf: st.accountOf }; st.summary = summaryOf(st.masters, st.privs, st.today); st.rows = visibleList({ masters: st.masters, privs: st.privs, filter: st.filter, query: st.query, sortKey: st.sortKey, sortDir: st.sortDir, today: st.today }).map((m) => rowOf(m, st.privs[m.id], ctx2)); };
-  const paint = () => { const y = window.scrollY; const f = body.querySelector('[data-ro-q]'); const keep = f && document.activeElement === f ? f.selectionStart : -1; body.innerHTML = st.sel ? rosterDetailHtml(st) : rosterListHtml(st); window.scrollTo(0, y); if (keep >= 0) { const g = body.querySelector('[data-ro-q]'); if (g) { g.focus(); try { g.setSelectionRange(keep, keep); } catch (e) { /* 일부 입력 형식은 커서 위치를 못 정함 */ } } } };
+  const recompute = () => {
+    const byId = (id) => st.masters.find((m) => m.id === id); const c2 = { today: st.today, masterById: byId, accountOf: st.accountOf }; st.summary = summaryOf(st.masters, st.privs, st.today);
+    st.allRows = st.masters.map((m) => rowOf(m, st.privs[m.id], c2)); const rowById = new Map(st.allRows.map((r) => [r.m.id, r]));
+    const base = visibleList({ masters: st.masters, privs: st.privs, filter: st.filter === 'alert' ? 'active' : st.filter, query: st.query, sortKey: st.sortKey, sortDir: st.sortDir, today: st.today }).map((m) => rowById.get(m.id));
+    st.rows = st.filter === 'alert' ? base.filter((r) => r.level) : base;   // 조치 필요 = 재직자 중 만료·임박이 있는 사람
+    st.alertRows = st.allRows.filter((r) => !r.m.resigned && r.level).sort((a, b) => (a.level === 'danger' ? 0 : 1) - (b.level === 'danger' ? 0 : 1) || (a.m.name || '').localeCompare(b.m.name || '', 'ko'));
+    st.counts = { active: st.summary.active, resigned: st.summary.resigned, all: st.masters.length, alert: st.alertRows.length };
+  };
+  const paint = () => {   // 다시 그려도 보던 위치(페이지·명단 스크롤)와 검색칸 커서를 유지한다
+    const y = window.scrollY; const f = body.querySelector('[data-ro-q]'); const keep = f && document.activeElement === f ? f.selectionStart : -1; const ls = body.querySelector('.jh-ro__items'); const lsTop = ls ? ls.scrollTop : 0;
+    body.innerHTML = rosterHtml(st); window.scrollTo(0, y); const ls2 = body.querySelector('.jh-ro__items'); if (ls2) ls2.scrollTop = lsTop;
+    if (keep >= 0) { const g = body.querySelector('[data-ro-q]'); if (g) { g.focus(); try { g.setSelectionRange(keep, keep); } catch (e) { /* 일부 입력 형식은 커서 위치를 못 정함 */ } } }
+  };
   if (!st.allowed) { body.removeAttribute('aria-busy'); paint(); return; }
   const load = async () => {
     const [ms, info, pay, users, ws, wp] = await Promise.all([getDocs(collection(db, 'master_workers')), getDocs(collection(db, 'master_worker_info')), st.admin ? getDocs(collection(db, 'master_worker_private')).catch(() => null) : Promise.resolve(null), st.admin ? getDocs(collection(db, 'portal_users')).catch(() => null) : Promise.resolve(null), st.admin ? getDocs(collection(db, 'workers')).catch(() => null) : Promise.resolve(null), st.admin ? getDocs(collection(db, 'worker_private')).catch(() => null) : Promise.resolve(null)]);
@@ -25,10 +36,9 @@ export async function mountRoster(root, route, ctx) {
   body.removeAttribute('aria-busy'); paint();
   root.onclick = (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return; let el;
-    if ((el = t.closest('[data-ro-open]'))) { st.sel = el.getAttribute('data-ro-open'); st.reveal = new Set(); st.coTab = 'samsung'; st.coSub = 'legal'; pushHash('#/pjt/roster/' + encodeURIComponent(st.sel)); paint(); window.scrollTo(0, 0); return; }
+    if ((el = t.closest('[data-ro-open]'))) { st.sel = el.getAttribute('data-ro-open'); st.reveal = new Set(); st.coTab = 'samsung'; st.coSub = 'legal'; pushHash('#/pjt/roster/' + encodeURIComponent(st.sel)); paint(); if (window.matchMedia && window.matchMedia('(max-width: 899px)').matches) window.scrollTo(0, 0); return; }
     if (t.closest('[data-ro-back]')) { st.sel = ''; pushHash('#/pjt/roster'); paint(); return; }
     if ((el = t.closest('[data-ro-filter]'))) { st.filter = el.getAttribute('data-ro-filter'); recompute(); paint(); return; }
-    if ((el = t.closest('[data-ro-sort]'))) { const k = el.getAttribute('data-ro-sort'); if (st.sortKey !== k) { st.sortKey = k; st.sortDir = 1; } else if (st.sortDir === 1) st.sortDir = -1; else { st.sortKey = null; st.sortDir = 1; } recompute(); paint(); return; }
     if (t.closest('[data-ro-dir]')) { if (!st.sortKey) return; st.sortDir = -st.sortDir; recompute(); paint(); return; }
     if ((el = t.closest('[data-ro-cotab]'))) { st.coTab = el.getAttribute('data-ro-cotab'); paint(); return; }
     if ((el = t.closest('[data-ro-cosub]'))) { st.coSub = el.getAttribute('data-ro-cosub'); paint(); return; }

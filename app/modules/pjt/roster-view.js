@@ -1,36 +1,54 @@
-import { esc } from '../../core/ui.js?v=20261014e';
-import { EDU, EDU_SK, EDU_OF, PORTAL_OF, COMPANIES, CO_TABS, HEALTH_TYPES, CHEM_REQ_HOURS, FILE_SLOTS, PHOTO_SLOTS, certCo, fmtKB, fmtMoney, fmtH, maskedOf, healthExpiry, eduStateOf, eduInfo, chemYearSum, legalAgg, filesMeta, latestHealthRow, SORT_OPTS } from './roster.js?v=20261014e';
+import { esc } from '../../core/ui.js?v=20261014f';
+import { EDU, EDU_SK, EDU_OF, PORTAL_OF, COMPANIES, CO_TABS, HEALTH_TYPES, CHEM_REQ_HOURS, FILE_SLOTS, certCo, fmtKB, fmtMoney, fmtH, maskedOf, healthExpiry, eduStateOf, eduInfo, chemYearSum, legalAgg, filesMeta, SORT_OPTS } from './roster.js?v=20261014f';
 const chip = (tone, text, title) => '<span class="jh-pjt__chip" data-tone="' + tone + '"' + (title ? ' title="' + esc(title) + '"' : '') + '>' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const stateChip = (r) => (r.state === 'expired' ? chip('red', '만료됨 (D+' + Math.abs(r.d) + ')') : r.state === 'soon' ? chip('amber', 'D-' + r.d) : r.chk && r.exp ? chip('blue', '유효') : '');
-const healthCell = (h) => (h.exp ? stateChip(eduStateOf(true, h.exp, h.today)) + '<div class="jh-field__hint">~' + esc(h.exp) + (h.pdf ? ' 📄결과' : '') + '</div>' : (h.pdf ? '<div class="jh-field__hint">📄결과</div>' : ''));
-const teamHtml = (t) => (t.kind === 'lead' ? chip('blue', '팀장/독립') + (t.account ? ' ' + chip('gray', '🔗 ' + t.account, '내 팀 공수표 조회 계정') : '') : chip('gray', t.leader + ' 팀'));
-const eduHtml = (r) => { const e = r.edu; let h = chip(e.n === e.total ? 'blue' : e.n === 0 ? 'red' : 'amber', e.n === e.total ? e.total + '/' + e.total + ' 완료' : e.n + '/' + e.total); if (e.expired) h += ' ' + chip('red', '만료 ' + e.expired); else if (e.soon) h += ' ' + chip('amber', '임박 ' + e.soon); return h; };
-const extraHtml = (r) => r.extra.map((x) => (x.k === 'sk' ? chip(x.n === x.total ? 'blue' : 'amber', 'SK ' + x.n + '/' + x.total, 'SK하이닉스 사내화 교육') + (x.expired ? ' ' + chip('red', '만료 ' + x.expired) : x.soon ? ' ' + chip('amber', '임박 ' + x.soon) : '') : chip(x.ok ? 'blue' : 'amber', '화안원 ' + x.hours + '/' + CHEM_REQ_HOURS + 'h' + (x.pdf ? ' 📄' : ''), '화학물질안전원 종사자 교육과정(연 ' + CHEM_REQ_HOURS + '시간)'))).join(' ');
-const certsHtml = (r) => r.certs.map((c) => chip(c.expired ? 'red' : 'gray', c.co.short + ' ' + c.n + (c.expired ? ' ⚠' : ''), c.co.label + ' 자격·인증 ' + c.n + '건' + (c.expired ? ' (만료 ' + c.expired + ')' : ''))).join(' ') || '<span class="jh-field__hint">—</span>';
-const filesHtml = (r) => r.files.map((f) => chip(f.has ? 'blue' : 'gray', f.slot.short, f.slot.label + (f.has ? ' 등록' : ' 없음'))).join(' ');
-const th = (st, k, label) => { const on = st.sortKey === k, arr = !on ? '↕' : st.sortDir === 1 ? '▲' : '▼'; return '<th class="jh-ro__th" data-ro-sort="' + k + '" title="클릭: 오름차순 → 내림차순 → 기본"' + (on ? ' aria-sort="' + (st.sortDir === 1 ? 'ascending' : 'descending') + '"' : '') + '>' + label + ' <span class="jh-ro__arr">' + arr + '</span></th>'; };
-const head = (st, right) => '<div class="jh-pjt__proj"><span class="jh-pjt__projlabel">👷 근로자 연명부</span>' + (right || '') + '</div>';
 const wrap = (inner) => '<div class="jh-pjt jh-pjt--prog jh-ro"><div class="jh-pjt__main jh-pjt__mainwide">' + inner + '</div></div>';   // .jh-pjt 는 넓은 화면에서 2단(왼쪽 좁게)이라 전체 폭 화면은 --prog 로 감싼다
 const legacyLink = '<a class="jh-ro__legacy" href="../pjt_roster/" target="_blank" rel="noopener" title="새 화면에서는 아직 조회만 됩니다. 등록·수정은 구포털 연명부에서 하세요(같은 데이터).">구포털 연명부 열기 ↗ <small>등록·수정은 임시로 여기서</small></a>';
-/** 연명부 목록: 요약 카드 · 재직/퇴사/전체 · 검색 · 정렬 · 표(넓은 화면)와 카드(폰) */
-export function rosterListHtml(st) {
-  if (!st.allowed) return wrap(head(st) + '<div class="jh-alert" data-tone="warn" role="status">연명부는 PJT 권한이 있는 직원과 관리자만 볼 수 있습니다.</div>');
-  if (!st.ready) return wrap(head(st) + (st.err ? '<div class="jh-alert" data-tone="danger" role="alert">' + esc(st.err) + '</div>' : '<div class="jh-empty">불러오는 중...</div>'));
-  const S = st.summary; const kc = (label, n, warn) => '<div class="jh-ro__kpi"' + (warn && n ? ' data-warn="1"' : '') + '><span>' + label + '</span><strong>' + n + '<small> 명</small></strong></div>';
-  const kpis = '<div class="jh-ro__kpis">' + kc('재직 인원', S.active) + kc('퇴사 인원', S.resigned) + kc('일반검진 기록 없음 (재직)', S.noHealth, 1) + kc('사내화 교육(삼성전자) 미완료·만료 (재직)', S.eduLack, 1) + '</div>';
-  const tabs = [['active', '재직'], ['resigned', '퇴사'], ['all', '전체']].map(([k, l]) => '<button type="button" class="jh-pjt__cat" data-ro-filter="' + k + '"' + (st.filter === k ? ' aria-pressed="true"' : '') + '>' + l + '</button>').join('');
-  const bar = '<div class="jh-pjt__bar"><div class="jh-pjt__cats">' + tabs + '</div><input class="jh-input jh-ro__q" type="search" data-ro-q placeholder="이름·전화번호·자격 검색" value="' + esc(st.query) + '" aria-label="검색"><span class="jh-ro__cnt">' + st.rows.length + '명</span></div>';
-  let body;
-  if (!st.rows.length) body = '<div class="jh-empty">' + (st.masters.length ? '조건에 맞는 근로자가 없습니다.' : '등록된 근로자가 없습니다.') + '</div>';
-  else {
-    const trs = st.rows.map((r) => { const m = r.m, p = r.p; return '<tr' + (m.resigned ? ' data-resigned="1"' : '') + '><td class="jh-ro__nw"><button type="button" class="jh-ro__nm" data-ro-open="' + esc(m.id) + '" title="상세 정보 보기">' + esc(m.name) + '</button> ' + (m.resigned ? chip('gray', '퇴사 ' + (m.resignedDate || '')) : '') + '<div class="jh-field__hint">' + esc(m.birth || '생년월일 없음') + '</div></td><td class="jh-ro__nw">' + esc(m.gender || '—') + '</td><td class="jh-ro__nw">' + esc(r.masked) + '</td><td class="jh-ro__nw">' + esc(p.phone || '—') + '</td><td class="jh-ro__nw">' + esc(m.hireDate || '—') + '</td><td>' + teamHtml(r.team) + '</td><td>' + esc(r.general.date || '—') + ' ' + healthCell(Object.assign({ today: st.today }, r.general)) + '</td><td>' + esc(r.preplace.date || '—') + ' ' + healthCell(Object.assign({ today: st.today }, r.preplace)) + '</td><td>' + eduHtml(r) + (r.extra.length ? '<div>' + extraHtml(r) + '</div>' : '') + '</td><td class="jh-ro__nw">' + certsHtml(r) + '</td><td class="jh-ro__nw">' + filesHtml(r) + '</td></tr>'; }).join('');
-    const table = '<div class="jh-ro__tbl"><table class="jh-ro__t"><thead><tr>' + th(st, 'name', '이름') + th(st, 'gender', '성별') + th(st, 'jumin', '주민등록번호') + th(st, 'phone', '전화번호') + th(st, 'hire', '입사일') + th(st, 'team', '소속') + th(st, 'general', '일반검진') + th(st, 'preplace', '배치전검진') + th(st, 'edu', '사내화 교육 (삼성전자)') + th(st, 'cert', '자격·인증') + th(st, 'files', '첨부') + '</tr></thead><tbody>' + trs + '</tbody></table></div>';
-    const sortbar = '<div class="jh-ro__sortbar"><span>정렬</span><select class="jh-input" data-ro-sortm>' + SORT_OPTS.map((o) => '<option value="' + o[0] + '"' + ((st.sortKey || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select><button type="button" class="jh-btn" data-variant="secondary" data-ro-dir' + (st.sortKey ? '' : ' disabled') + '>' + (st.sortDir === 1 ? '▲ 오름' : '▼ 내림') + '</button></div>';
-    const cards = st.rows.map((r) => { const m = r.m, p = r.p; return '<div class="jh-ro__card"' + (m.resigned ? ' data-resigned="1"' : '') + '><div class="jh-ro__ch"><div><button type="button" class="jh-ro__nm" data-ro-open="' + esc(m.id) + '">' + esc(m.name) + '</button> ' + (m.resigned ? chip('gray', '퇴사 ' + (m.resignedDate || '')) : '') + '<div class="jh-field__hint">' + esc(m.birth || '생년월일 없음') + (m.gender ? ' · ' + esc(m.gender) : '') + '</div></div><div>' + teamHtml(r.team) + '</div></div><div class="jh-ro__cg"><div><span>연락처</span>' + esc(p.phone || '—') + '</div><div><span>입사일</span>' + esc(m.hireDate || '—') + '</div><div><span>일반검진</span>' + esc(r.general.date || '—') + ' ' + healthCell(Object.assign({ today: st.today }, r.general)) + '</div><div><span>배치전검진</span>' + esc(r.preplace.date || '—') + ' ' + healthCell(Object.assign({ today: st.today }, r.preplace)) + '</div></div><div class="jh-ro__chips">' + eduHtml(r) + ' ' + extraHtml(r) + ' ' + certsHtml(r) + ' ' + filesHtml(r) + '</div></div>'; }).join('');
-    body = table + '<div class="jh-ro__cards">' + sortbar + cards + '</div>';
-  }
-  return wrap(head(st, legacyLink) + kpis + card('근로자 명단', bar + body));
+const head = (right) => '<div class="jh-pjt__proj"><span class="jh-pjt__projlabel">👷 근로자 연명부</span>' + (right || '') + '</div>';
+const initialOf = (n) => esc(String(n || '?').trim().slice(0, 1));
+const lvTone = (lv) => (lv === 'danger' ? 'red' : lv === 'warn' ? 'amber' : 'gray');
+const teamChip = (r) => (r.team.kind === 'lead' ? chip('blue', '팀장/독립') + (r.team.account ? ' ' + chip('gray', '🔗 ' + r.team.account, '내 팀 공수표 조회 계정') : '') : chip('gray', r.team.leader + ' 팀'));
+const countOf = (r, lv) => r.issues.filter((i) => i.level === lv).length;
+const flagHtml = (r) => (r.m.resigned ? chip('gray', '퇴사') : countOf(r, 'danger') ? chip('red', '만료 ' + countOf(r, 'danger')) : countOf(r, 'warn') ? chip('amber', '임박 ' + countOf(r, 'warn')) : '');
+/** 왼쪽 명단: 필터(재직·퇴사·전체·조치 필요) + 검색 + 정렬 + 사람 목록 */
+function listPanel(st) {
+  const C = st.counts; const f = (k, label, n) => '<button type="button" class="jh-pjt__cat" data-ro-filter="' + k + '"' + (st.filter === k ? ' aria-pressed="true"' : '') + '>' + label + ' <small>' + n + '</small></button>';
+  const filters = '<div class="jh-pjt__cats">' + f('active', '재직', C.active) + f('alert', '⚠ 조치 필요', C.alert) + f('resigned', '퇴사', C.resigned) + f('all', '전체', C.all) + '</div>';
+  const tools = '<div class="jh-ro__tools"><input class="jh-input jh-ro__q" type="search" data-ro-q placeholder="이름·전화번호·자격 검색" value="' + esc(st.query) + '" aria-label="검색"><select class="jh-input" data-ro-sortm aria-label="정렬">' + SORT_OPTS.map((o) => '<option value="' + o[0] + '"' + ((st.sortKey || '') === o[0] ? ' selected' : '') + '>' + (o[0] ? '정렬: ' : '') + o[1] + '</option>').join('') + '</select><button type="button" class="jh-btn" data-variant="secondary" data-ro-dir' + (st.sortKey ? '' : ' disabled') + ' title="정렬 방향">' + (st.sortDir === 1 ? '▲' : '▼') + '</button></div>';
+  const items = st.rows.length ? st.rows.map((r) => { const m = r.m; return '<button type="button" class="jh-ro__it" data-ro-open="' + esc(m.id) + '"' + (st.sel === m.id ? ' aria-current="true"' : '') + (m.resigned ? ' data-resigned="1"' : '') + '><span class="jh-ro__av" data-lv="' + r.level + '">' + initialOf(m.name) + '</span><span class="jh-ro__tx"><strong class="jh-ro__nm">' + esc(m.name) + '</strong><small>' + esc(r.team.kind === 'lead' ? '팀장/독립' : r.team.leader + ' 팀') + (m.hireDate ? ' · ' + esc(m.hireDate) : '') + '</small></span><span class="jh-ro__fl">' + flagHtml(r) + '</span></button>'; }).join('') : '<div class="jh-empty">' + (st.masters.length ? '조건에 맞는 근로자가 없습니다.' : '등록된 근로자가 없습니다.') + '</div>';
+  return '<aside class="jh-ro__list jh-card">' + filters + tools + '<div class="jh-ro__items">' + items + '</div></aside>';
+}
+/** 오른쪽 기본 화면: 조치 필요 현황(누가 무엇이 만료·임박인지) */
+function dashboard(st) {
+  const rows = st.alertRows; const S = st.summary;
+  const kpis = '<div class="jh-ro__kpis">' + [['재직 인원', S.active, ''], ['조치 필요', rows.length, rows.length ? 'danger' : ''], ['일반검진 기록 없음', S.noHealth, ''], ['사내화 교육(삼성) 미완료·만료', S.eduLack, '']].map(([l, n, w]) => '<div class="jh-ro__kpi"' + (w ? ' data-warn="1"' : '') + '><span>' + l + '</span><strong>' + n + '<small> 명</small></strong></div>').join('') + '</div>';
+  const body = rows.length ? '<div class="jh-ro__issues">' + rows.map((r) => '<button type="button" class="jh-ro__ir" data-ro-open="' + esc(r.m.id) + '"><span class="jh-ro__av" data-lv="' + r.level + '">' + initialOf(r.m.name) + '</span><span class="jh-ro__tx"><strong class="jh-ro__nm">' + esc(r.m.name) + '</strong><small>' + esc(r.team.kind === 'lead' ? '팀장/독립' : r.team.leader + ' 팀') + '</small></span><span class="jh-ro__ichips">' + r.issues.filter((i) => i.level !== 'info').map((i) => chip(lvTone(i.level), i.text)).join(' ') + '</span></button>').join('') + '</div>' : '<div class="jh-empty">✓ 만료됐거나 30일 안에 만료되는 검진·교육·자격이 없습니다.</div>';
+  return kpis + card('조치 필요 현황', body, '<span class="jh-field__hint">만료됐거나 30일 안에 만료되는 항목 · 재직자 기준</span>');
+}
+const kv2 = (label, val, wide) => '<div class="jh-ro__kv"' + (wide ? ' data-wide="1"' : '') + '><span>' + esc(label) + '</span><div>' + (val === '' || val == null ? '<span class="jh-field__hint">—</span>' : val) + '</div></div>';
+/** 오른쪽 상세: 머리 카드 → 조치 필요 → 카드들(인적사항·서류·건강검진·원청별·급여·비고) */
+function detailPanel(st) {
+  const r = st.rows.find((x) => x.m.id === st.sel) || st.allRows.find((x) => x.m.id === st.sel); const back = '<button type="button" class="jh-btn jh-ro__back" data-variant="secondary" data-ro-back>← 명단</button>';
+  if (!r) return back + '<div class="jh-alert" data-tone="warn" role="status">찾을 수 없는 근로자입니다.</div>';
+  const m = r.m, p = r.p; const members = !m.leaderId ? st.masters.filter((x) => x.leaderId === m.id) : []; const acc = !m.leaderId ? st.accountOf(m.id) : null; const hm = st.hrMatch(m.name, m.birth); const fm = filesMeta(p);
+  const meta = [m.birth, m.gender, m.hireDate ? '입사 ' + m.hireDate : '', p.phone].filter(Boolean).map(esc).join(' · ');
+  const top = '<div class="jh-ro__top jh-card"><span class="jh-ro__av jh-ro__av--lg" data-lv="' + r.level + '">' + initialOf(m.name) + '</span><div class="jh-ro__ti"><h2>' + esc(m.name) + (m.resigned ? ' ' + chip('gray', '퇴사 ' + (m.resignedDate || '')) : '') + '</h2><div>' + teamChip(r) + '</div><div class="jh-field__hint">' + (meta || '인적사항이 비어 있습니다') + '</div></div>' + back + '</div>';
+  const iss = r.issues; const issBody = iss.length ? '<div class="jh-ro__ichips jh-ro__ichips--pad">' + iss.map((i) => chip(lvTone(i.level), i.text)).join(' ') + '</div>' : '<div class="jh-ro__ok">✓ 만료됐거나 임박한 검진·교육·자격이 없습니다.</div>';
+  const issues = card(r.level ? '조치 필요' : '상태', m.resigned ? '<div class="jh-field__hint jh-ro__pad">퇴사자는 알림 대상이 아닙니다.</div>' : issBody);
+  const personal = card('인적사항', '<div class="jh-ro__kvs">' + kv2('생년월일', esc(m.birth || '')) + kv2('성별', esc(m.gender || '')) + kv2('입사일', esc(m.hireDate || '')) + kv2('퇴사일', m.resigned ? esc(m.resignedDate || '(일자 없음)') : '재직 중') + kv2('주민(외국인)등록번호', esc(maskedOf(p))) + kv2('전화번호', esc(p.phone || '')) + kv2('주소' + (hm ? ' · 인사 명단 연동' : ''), hm ? (hm.address ? esc(hm.address) : '<span class="jh-field__hint">인사 명단에 주소가 없습니다</span>') : esc(p.address || ''), true) + (!m.leaderId ? kv2('팀원', members.length ? esc(members.map((x) => x.name).join(', ')) : '') + (st.admin ? kv2('팀장 포털 계정', acc ? esc(acc.name + (acc.rank ? ' (' + acc.rank + ')' : '') + ' · ' + acc.email) : '') : '') : '') + '</div>');
+  const files = card('서류·사진', '<div class="jh-ro__kvs">' + FILE_SLOTS.filter((x) => !x.admin || st.admin).map((x) => kv2(x.label, fm[x.k] ? '📎 ' + esc(fm[x.k].name || '') + (fm[x.k].w ? ' · ' + fm[x.k].w + '×' + fm[x.k].h : '') + (fm[x.k].size ? ' · ' + fmtKB(fm[x.k].size) : '') : '')).join('') + '</div>');
+  const pay = st.admin ? card('급여·계좌 (관리자 전용)', '<div class="jh-ro__kvs">' + kv2('일당', (p.dailyRate != null ? p.dailyRate : m.dailyRate) ? esc(fmtMoney(p.dailyRate != null ? p.dailyRate : m.dailyRate)) + '원' : '') + kv2('은행', esc(p.bank || '')) + kv2('계좌번호', esc(p.account || '')) + '</div>') : '';
+  const health = card('건강검진', healthHtml(p, st.today));
+  const company = card('원청별 교육 · 자격 · 계정', companyHtml(st, p));
+  const note = card('비고', p.note ? '<div class="jh-ro__note">' + esc(p.note) + '</div>' : '<div class="jh-field__hint jh-ro__pad">비고가 없습니다.</div>');
+  return top + issues + '<div class="jh-ro__grid">' + personal + files + '</div>' + health + company + '<div class="jh-ro__grid">' + pay + note + '</div>';
+}
+/** 연명부 화면 전체: 왼쪽 명단 + 오른쪽(사람을 고르면 상세, 아니면 조치 필요 현황). 폰에서는 둘 중 하나만 보인다 */
+export function rosterHtml(st) {
+  if (!st.allowed) return wrap(head() + '<div class="jh-alert" data-tone="warn" role="status">연명부는 PJT 권한이 있는 직원과 관리자만 볼 수 있습니다.</div>');
+  if (!st.ready) return wrap(head() + (st.err ? '<div class="jh-alert" data-tone="danger" role="alert">' + esc(st.err) + '</div>' : '<div class="jh-empty">불러오는 중...</div>'));
+  return wrap(head(legacyLink) + '<div class="jh-ro__shell" data-view="' + (st.sel ? 'detail' : 'list') + '">' + listPanel(st) + '<div class="jh-ro__main">' + (st.sel ? detailPanel(st) : dashboard(st)) + '</div></div>');
 }
 const kv = (label, val, wide) => '<div class="jh-ro__kv"' + (wide ? ' data-wide="1"' : '') + '><span>' + esc(label) + '</span><div>' + (val === '' || val == null ? '<span class="jh-field__hint">—</span>' : val) + '</div></div>';
 const dateRow = (s) => esc(s || '—');
@@ -73,17 +91,4 @@ function companyHtml(st, p) {
   const subs = [['legal', '법정교육', legalCnt(co.k)], ['cert', '자격 · 인증', certCnt(co.k)], ['edu', '사내화 교육 · ' + pt.label, eduCnt(co.k)]];
   const subTabs = '<div class="jh-pjt__cats">' + subs.map(([k, l, n]) => '<button type="button" class="jh-pjt__cat" data-ro-cosub="' + k + '"' + (st.coSub === k ? ' aria-pressed="true"' : '') + '>' + esc(l) + ' <small>' + n + '</small></button>').join('') + '</div>';
   return tabs + subTabs + (st.coSub === 'cert' ? '<h4>자격 · 인증 <small>(' + esc(co.label) + ')</small></h4>' + certHtml(p, co.k) : st.coSub === 'edu' ? eduPortalHtml(st, p, co.k) : legalHtml(p, co.k, year));
-}
-/** 근로자 상세(조회): 기본·개인정보·첨부·건강검진·원청별 교육/자격/계정·비고 */
-export function rosterDetailHtml(st) {
-  const m = st.masters.find((x) => x.id === st.sel); const back = '<button type="button" class="jh-btn" data-variant="secondary" data-ro-back>← 목록</button>';
-  if (!m) return wrap(head(st, back) + '<div class="jh-alert" data-tone="warn" role="status">찾을 수 없는 근로자입니다.</div>');
-  const p = st.privs[m.id] || {}; const leader = m.leaderId ? st.masters.find((x) => x.id === m.leaderId) : null; const members = !m.leaderId ? st.masters.filter((x) => x.leaderId === m.id) : []; const acc = !m.leaderId ? st.accountOf(m.id) : null; const hm = st.hrMatch(m.name, m.birth); const fm = filesMeta(p);
-  const basic = card('기본 정보', '<div class="jh-ro__kvs">' + kv('이름', esc(m.name) + (m.resigned ? ' ' + chip('gray', '퇴사') : '')) + kv('생년월일', esc(m.birth || '')) + kv('성별', esc(m.gender || '')) + kv('입사일', esc(m.hireDate || '')) + kv('퇴사일', m.resigned ? esc(m.resignedDate || '(일자 없음)') : '재직 중') + kv('소속', m.leaderId ? chip('gray', (leader ? leader.name : '?') + ' 팀') : chip('blue', '팀장/독립') + (members.length ? ' <span class="jh-field__hint">팀원 ' + members.length + '명: ' + esc(members.map((x) => x.name).join(', ')) + '</span>' : '')) + (st.admin && !m.leaderId ? kv('팀장 포털 계정', acc ? esc(acc.name + (acc.rank ? ' (' + acc.rank + ')' : '') + ' · ' + acc.email) : '', true) : '') + '</div>');
-  const personal = card('개인정보', '<div class="jh-ro__kvs">' + kv('주민(외국인)등록번호', esc(maskedOf(p))) + kv('전화번호', esc(p.phone || '')) + kv('주소' + (hm ? ' · 인사 명단 연동' : ''), hm ? (hm.address ? esc(hm.address) : '<span class="jh-field__hint">인사 명단에 주소가 없습니다</span>') : esc(p.address || ''), true) + (st.admin ? kv('일당', (p.dailyRate != null ? p.dailyRate : m.dailyRate) ? esc(fmtMoney(p.dailyRate != null ? p.dailyRate : m.dailyRate)) + '원' : '')   /* 구포털과 같게: 0 이거나 없으면 빈칸 */ + kv('은행', esc(p.bank || '')) + kv('계좌번호', esc(p.account || '')) : '') + '</div>' + (st.admin ? '' : '<div class="jh-field__hint">일당·은행·계좌는 관리자만 볼 수 있습니다.</div>'));
-  const files = card('첨부 파일', '<div class="jh-ro__kvs">' + FILE_SLOTS.filter((x) => !x.admin || st.admin).map((x) => kv(x.label, fm[x.k] ? '📎 ' + esc(fm[x.k].name || '') + (fm[x.k].w ? ' · ' + fm[x.k].w + '×' + fm[x.k].h : '') + (fm[x.k].size ? ' · ' + fmtKB(fm[x.k].size) : '') : '')).join('') + '</div>');
-  const health = card('건강검진', healthHtml(p, st.today));
-  const company = card('원청별 교육 · 자격 · 계정', companyHtml(st, p));
-  const note = card('비고', p.note ? '<div class="jh-ro__note">' + esc(p.note) + '</div>' : '<div class="jh-field__hint">비고가 없습니다.</div>');
-  return wrap(head(st, back + ' ' + legacyLink) + '<div class="jh-ro__detail">' + basic + personal + files + health + company + note + '</div>');
 }
