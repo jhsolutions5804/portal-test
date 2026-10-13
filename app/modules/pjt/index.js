@@ -1,13 +1,14 @@
 /* PJT 관리(통합 새 모듈) — 설계서 docs/pjt-design.md. Ph2·Ph4·경량PJT를 한 모듈로 합친다.
  * 지금 새 화면은 "출역·공수"(근태·공수 탭) 하나다 — 구포털 PJT 메뉴 안에 "👷 출역·공수 (새)" 항목으로 열린다(legacy/list.js pjtNav, modules/index.js hostNative). 나머지 탭은 만들면서 구포털 항목을 하나씩 교체한다.
  * 저장 형식은 구포털 그대로(출역 { checks }, 공수 { md }, 날짜별 문서) — 영업기획의 공수 연동·팀별 노무비가 읽는다. 경로는 adapter.js, 규칙은 attendance.js. */
-import { db, collection, doc, getDoc, getDocs, setDoc, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zf';
-import { esc, toast } from '../../core/ui.js?v=20261013zf';
-import { confirmDialog } from '../../core/dialog.js?v=20261013zf';
-import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zf';
-import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zf';
-import { visibleProjects } from './projects.js?v=20261013zf';
-import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zf';
+import { db, collection, doc, getDoc, getDocs, setDoc, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zg';
+import { esc, toast } from '../../core/ui.js?v=20261013zg';
+import { confirmDialog } from '../../core/dialog.js?v=20261013zg';
+import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zg';
+import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zg';
+import { visibleProjects } from './projects.js?v=20261013zg';
+import { loadHolidays } from '../../shared/holidays.js?v=20261013zg';
+import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zg';
 
 export const manifest = { id: 'pjt', order: 40, title: 'PJT 관리', icon: '🏗️', defaultHash: '#/pjt/attend', perm: (me) => !!me && me.admin === true };
 export async function mount(root) { root.innerHTML = '<div class="jh-empty">PJT 화면은 구포털 틀 안의 메뉴로 열립니다.</div>'; }
@@ -48,17 +49,18 @@ export async function mountAttend(root, route, ctx) {
     const snaps = await Promise.all(days.map((k) => getDoc(doc(db, p.manday, k)).catch(() => null))); const byDay = {}; days.forEach((k, i) => { byDay[k] = snaps[i] && snaps[i].exists() ? (snaps[i].data().md || {}) : {}; }); byDay[st.date] = st.md; st.recentDays = byDay; st.recent = recentTotals(byDay, st.date, 7);
   };
   const reload = async () => { try { await loadDay(); } catch (e) { toast('불러오기 실패: ' + ((e && e.message) || '')); } paint(); };
+  try { await loadHolidays(); } catch (e) { /* 공휴일을 못 불러오면 주말만 표시된다 */ }
   try { await loadProject(); await loadDay(); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
   paint();
   // 오른쪽 탭(집계표·누적)은 입력할 때마다 문서를 다시 읽지 않고, 이미 읽은 날짜별 공수에 방금 바꾼 날을 끼워 넣어 다시 계산한다
   const recomputeSheet = () => { if (st.sheetByDay) st.sheet = monthSheet(st.roster, st.resigned, st.sheetByDay, st.month.y, st.month.m); };
-  const syncCaches = () => { const [y, m] = st.date.split('-').map(Number); if (st.sheetByDay && y === st.month.y && m - 1 === st.month.m) { st.sheetByDay[st.date] = st.md; recomputeSheet(); } if (st.cumDocs) { st.cumDocs[st.date] = st.md; st.cum = cumulativeByWorker(Object.values(st.cumDocs)); } };
+  const syncCaches = () => { const [y, m] = st.date.split('-').map(Number); if (st.sheetByDay && y === st.month.y && m - 1 === st.month.m) { st.sheetByDay[st.date] = st.md; recomputeSheet(); } if (st.cumDocs) st.cumDocs[st.date] = st.md; };   // 월별 누적은 화면을 그릴 때 이 날짜별 값으로 계산한다
   const loadSheet = async () => {
     const { y, m } = st.month; const pad = (n) => String(n).padStart(2, '0'); const p = P(); st.sheet = null; if (st.panel === 'sheet') paint();
     try { const snap = await getDocs(query(collection(db, p.manday), where(documentId(), '>=', y + '-' + pad(m + 1) + '-01'), where(documentId(), '<=', y + '-' + pad(m + 1) + '-31'))); const byDay = {}; snap.forEach((d) => { byDay[d.id] = (d.data().md) || {}; }); byDay[st.date] = (st.date.slice(0, 7) === y + '-' + pad(m + 1)) ? st.md : byDay[st.date]; st.sheetByDay = byDay; recomputeSheet(); } catch (e) { toast('집계표를 불러오지 못했습니다: ' + ((e && e.message) || '')); }
     if (st.panel === 'sheet') paint();
   };
-  const loadCum = async () => { st.cum = null; if (st.panel === 'cum') paint(); try { const snap = await getDocs(collection(db, P().manday)); const docs = {}; snap.forEach((d) => { docs[d.id] = (d.data().md) || {}; }); docs[st.date] = st.md; st.cumDocs = docs; st.cum = cumulativeByWorker(Object.values(docs)); } catch (e) { toast('불러오지 못했습니다: ' + ((e && e.message) || '')); } if (st.panel === 'cum') paint(); };
+  const loadCum = async () => { st.cumDocs = null; if (st.panel === 'cum') paint(); try { const snap = await getDocs(collection(db, P().manday)); const docs = {}; snap.forEach((d) => { docs[d.id] = (d.data().md) || {}; }); docs[st.date] = st.md; st.cumDocs = docs; } catch (e) { toast('불러오지 못했습니다: ' + ((e && e.message) || '')); } if (st.panel === 'cum') paint(); };
   if (st.panel === 'sheet') loadSheet();   // 처음 열면 오른쪽에 이달 공수 집계표가 바로 보인다
   /** 한 번의 변경: 그날의 최신 문서를 읽어 → 규칙대로 고쳐 → 바뀐 문서만 저장(구포털처럼 문서를 통째로 쓰되, 방금 읽은 최신 값에서 한 사람만 고친다) */
   const edit = async (fn) => {
@@ -86,7 +88,7 @@ export async function mountAttend(root, route, ctx) {
     const end = t.closest('[data-pa-end]'); if (end && st.manage) { const id = end.getAttribute('data-pa-end'); const w = st.roster.find((x) => x.id === id); const ok = await confirmDialog({ title: '투입 종료', body: (w ? w.name : id) + '을(를) 이 프로젝트 투입에서 종료할까요? 명단에서 지우지 않으며 지금까지의 출역·공수는 그대로 남습니다.', confirmLabel: '투입 종료' }); if (!ok.ok) return;
       try { await setDoc(doc(db, P().roster, id), { active: false, endedDate: st.date }, { merge: true }); if (w) { w.active = false; w.endedDate = st.date; } recomputeSheet(); toast('투입을 종료했습니다.'); } catch (e) { toast('저장 실패: ' + ((e && (e.code || e.message)) || '')); } paint(); return; }
     const rej = t.closest('[data-pa-rejoin]'); if (rej && st.manage) { const id = rej.getAttribute('data-pa-rejoin'); const w = st.roster.find((x) => x.id === id); try { await setDoc(doc(db, P().roster, id), { active: true, endedDate: '' }, { merge: true }); if (w) { w.active = true; w.endedDate = ''; } toast('다시 투입했습니다.'); } catch (e) { toast('저장 실패: ' + ((e && (e.code || e.message)) || '')); } paint(); return; }
-    const tab = t.closest('[data-pa-tab]'); if (tab) { st.panel = tab.getAttribute('data-pa-tab'); paint(); if (st.panel === 'sheet' && !st.sheet) await loadSheet(); if (st.panel === 'cum' && !st.cum) await loadCum(); return; }
+    const tab = t.closest('[data-pa-tab]'); if (tab) { st.panel = tab.getAttribute('data-pa-tab'); paint(); if (st.panel === 'sheet' && !st.sheet) await loadSheet(); if (st.panel === 'cum' && !st.cumDocs) await loadCum(); return; }
     const a = t.closest('[data-pa-act]'); if (!a) return; const act = a.getAttribute('data-pa-act');
     if (act === 'prev') { await goDate(shiftDate(st.date, -1)); return; } if (act === 'next') { await goDate(shiftDate(st.date, 1)); return; } if (act === 'today') { await goDate(appToday()); return; }
     if (act === 'all') { const ids = targets(); if (!ids.length) return;

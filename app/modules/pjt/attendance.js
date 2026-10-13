@@ -76,3 +76,13 @@ export function appToday(now) {
   return kst.getUTCFullYear() + '-' + String(kst.getUTCMonth() + 1).padStart(2, '0') + '-' + String(kst.getUTCDate()).padStart(2, '0');
 }
 export function shiftDate(dateKey, delta) { const [y, m, d] = String(dateKey).split('-').map(Number); const dt = new Date(Date.UTC(y, m - 1, d + delta)); return dt.getUTCFullYear() + '-' + String(dt.getUTCMonth() + 1).padStart(2, '0') + '-' + String(dt.getUTCDate()).padStart(2, '0'); }
+/** 월별 누적 공수(프로젝트 전체 기간): 행 = 사람, 열 = 공수가 기록된 달(오래된 달부터), 오른쪽 합계와 아래 월 합계. 공수가 있는 사람만 행으로 — 명부 순서 뒤에, 명부에 없는 사람은 "(명부에 없음)"으로 맨 아래.
+ *  mdByDay = { 'YYYY-MM-DD': md 맵 } (그 프로젝트의 모든 공수 문서) */
+export function monthlyMatrix(roster, mdByDay) {
+  const months = [...new Set(Object.keys(mdByDay || {}).filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k) && mdSum(mdByDay[k]) > 0).map((k) => k.slice(0, 7)))].sort(); const idx = {}; months.forEach((m, i) => { idx[m] = i; });
+  const sums = {}; Object.keys(mdByDay || {}).forEach((k) => { const mi = idx[k.slice(0, 7)]; if (mi == null) return; Object.keys(mdByDay[k] || {}).forEach((id) => { const v = num(mdByDay[k][id]); if (!v) return; (sums[id] = sums[id] || months.map(() => 0))[mi] += v; }); });
+  const r1 = (n) => Math.round(n * 10) / 10; const known = new Set((roster || []).map((w) => w.id)); const mk = (id, name, orphan) => { const values = (sums[id] || []).map(r1); return { id, name, orphan, values, total: r1(values.reduce((a, b) => a + b, 0)) }; };
+  const rows = (roster || []).filter((w) => sums[w.id]).map((w) => mk(w.id, w.name || w.id, false)).concat(Object.keys(sums).filter((id) => !known.has(id)).sort().map((id) => mk(id, '(명부에 없음) ' + id, true)));
+  const monthTotals = months.map((m, i) => r1(rows.reduce((a, r) => a + r.values[i], 0)));
+  return { months, rows, monthTotals, grand: r1(rows.reduce((a, r) => a + r.total, 0)) };
+}
