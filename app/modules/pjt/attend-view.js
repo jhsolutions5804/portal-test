@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261013ze';
-import { dayTotals, mdSum, activeWorkersForDate, canWorkOn, hasManday } from './attendance.js?v=20261013ze';
+import { esc } from '../../core/ui.js?v=20261013zf';
+import { dayTotals, mdSum, activeWorkersForDate, canWorkOn, hasManday } from './attendance.js?v=20261013zf';
 const f1 = (n) => (Math.round((Number(n) || 0) * 10) / 10).toFixed(1);
 const chip = (t, tone) => '<span class="jh-pjt__chip" data-tone="' + esc(tone || '') + '">' + esc(t) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -28,10 +28,16 @@ export function attendHtml(st) {
   const bulk = '<div class="jh-pjt__bulk"><button type="button" class="jh-btn" data-variant="secondary" data-pa-act="all"' + (canAny ? '' : ' disabled') + '>전체 출역 체크/해제</button><span class="jh-pjt__bulkmd"><input class="jh-input jh-pjt__mdin" inputmode="decimal" data-pa-bulk placeholder="공수"' + (canAny ? '' : ' disabled') + '><button type="button" class="jh-btn" data-variant="secondary" data-pa-act="bulk"' + (canAny ? '' : ' disabled') + '>전원 적용</button></span></div>';
   const rows = ws.length ? ws.map((w) => rowHtml(st, w)).join('') : '<div class="jh-empty">이 날짜에 투입된 인원이 없습니다.</div>';
   const note = '<div class="jh-field__hint">공수를 입력하면 출역도 함께 체크되고, 출역을 해제하면 그 사람의 공수도 비워집니다. 퇴사일 전날까지는 공수가 나오고 퇴사일부터는 입력 대상에서 빠집니다.</div>';
+  const tabs = [['sheet', '📋 이달 공수 집계표'], ['cum', '👤 인원별 누적'], ['recent', '최근 7일']].concat(st.manage ? [['manage', '⚙️ 명단 관리']] : []);
+  const tabBar = '<div class="jh-pjt__tabs" role="tablist" aria-label="공수 보기">' + tabs.map(([k, l]) => '<button type="button" role="tab" class="jh-pjt__tab" data-pa-tab="' + k + '" aria-selected="' + (st.panel === k) + '">' + esc(l) + '</button>').join('') + '</div>';
+  const panel = st.panel === 'cum' ? cumHtml(st) : st.panel === 'recent' ? recentHtml(st) : st.panel === 'manage' && st.manage ? manageHtml(st) : sheetHtml(st);
+  // 넓은 화면: 왼쪽은 일하는 영역(좁게), 오른쪽은 공수 집계표·인원별 누적·최근 7일·명단 관리를 탭으로 항상 보여 준다(입력하면 바로 갱신). 폰은 한 열(일하는 영역 아래)
+  return '<div class="jh-pjt"><div class="jh-pjt__main">' + bar + card('👷 출역·공수', '<div class="jh-pjt__pad">' + sum + bulk + '<div class="jh-pjt__list">' + rows + '</div>' + note + '</div>') + '</div><div class="jh-pjt__side">' + tabBar + '<div id="pa-panel">' + panel + '</div></div></div>';
+}
+/** 최근 7일 공수 합계(선택한 날짜까지) */
+export function recentHtml(st) {
   const recent = st.recent.map((r) => '<div class="jh-pjt__rec"><span>' + esc(r.date.slice(5)) + ' (' + dow(r.date) + ')</span><strong>' + f1(r.sum) + '</strong></div>').join('');
-  const tools = '<div class="jh-pjt__bar"><span class="jh-pjt__tools"><button type="button" class="jh-btn" data-variant="secondary" data-pa-act="sheet">📋 이달 공수 집계표</button><button type="button" class="jh-btn" data-variant="secondary" data-pa-act="cum">👤 인원별 누적 공수</button></span>' + (st.manage ? '<button type="button" class="jh-btn" data-variant="ghost" data-pa-act="manage">⚙️ 명단 관리</button>' : '') + '</div>';
-  // 넓은 화면에서는 일하는 영역(왼쪽)을 좁게 모으고, 최근 7일·도구는 오른쪽 열로 — 이름과 공수 칸이 멀리 떨어져 눈이 오래 움직이던 문제. 폰은 한 열
-  return '<div class="jh-pjt"><div class="jh-pjt__main">' + bar + card('👷 출역·공수', '<div class="jh-pjt__pad">' + sum + bulk + '<div class="jh-pjt__list">' + rows + '</div>' + note + '</div>') + '</div><div class="jh-pjt__side">' + card('최근 7일 공수 합계', '<div class="jh-pjt__pad jh-pjt__recent">' + recent + '</div>') + '<div class="jh-pjt__pad jh-pjt__tool">' + tools + '</div></div><div class="jh-pjt__wide" id="pa-panel">' + (st.panel === 'sheet' ? sheetHtml(st) : st.panel === 'cum' ? cumHtml(st) : st.panel === 'manage' ? manageHtml(st) : '') + '</div></div>';
+  return card('최근 7일 공수 합계', '<div class="jh-pjt__pad jh-pjt__recent">' + recent + '</div>');
 }
 /** 월 공수 집계표: 월 이동, 인원별 날짜별 공수와 합계 */
 export function sheetHtml(st) {
