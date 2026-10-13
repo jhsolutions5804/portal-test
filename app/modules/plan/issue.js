@@ -1,13 +1,16 @@
 /* 영업기획 정산서 발행 — 순수 규칙(화면·네트워크 없이 시험 가능). 구포털 기획(gihoek)의 발행 계산을 그대로 옮겼다.
  * 방식: 직접 입력(manual), 수량 정산(qty), 공수 연동(manday, 지급예정서), 공정 연동(progress, 청구서) — 구포털의 정산서 발행 4방식을 모두 옮겼다.
  * 번호: yymm + 세 자리, 청구서·지급예정서 따로 센다(구포털은 "개수 + 1" 이라 삭제 뒤 같은 번호가 다시 나올 수 있어 "가장 큰 번호 + 1" 로 한다 — 빈 번호가 없으면 결과는 같다). */
-import { itemAmt, getLinkPjt } from './projects.js?v=20261013zt';
-import { getProgProfile, isTrackable, zoneGuess, calcProgressRow, toggleProgressEst, setProgressZone, toggleProgressDeposit, setProgressBill, applyProgress, progressLine } from './progress.js?v=20261013zt';
-import { num, blankItem, itemSetQty, itemSetPrice, itemSetAmount, partySnap, suppliers, clients, DEFAULT_ISSUER } from './estimates.js?v=20261013zt';
+import { itemAmt, getLinkPjt } from './projects.js?v=20261013zu';
+import { getProgProfile, isTrackable, zoneGuess, calcProgressRow, toggleProgressEst, setProgressZone, toggleProgressDeposit, setProgressBill, applyProgress, progressLine } from './progress.js?v=20261013zu';
+import { num, blankItem, itemSetQty, itemSetPrice, itemSetAmount, partySnap, suppliers, clients, DEFAULT_ISSUER } from './estimates.js?v=20261013zu';
 export { num, blankItem, itemSetQty, itemSetPrice, itemSetAmount, suppliers, clients, getProgProfile, isTrackable, zoneGuess, calcProgressRow, toggleProgressEst, setProgressZone, toggleProgressDeposit, setProgressBill, applyProgress };
 export const SUPPORTED = { invoice: ['progress', 'manual', 'qty'], payment: ['manday', 'manual', 'qty'] };   // 새 화면에서 계산하는 방식
 export const METHOD_OPTIONS = { invoice: [['progress', '공정 연동 (반입·설치 자동)'], ['qty', '수량 정산 (견적 품목별)'], ['manual', '직접 입력']], payment: [['manday', '공수 연동'], ['qty', '수량 정산 (견적 품목별)'], ['manual', '직접 입력']] };
 export const isSupported = (docType, method) => (SUPPORTED[docType] || []).includes(method);
+export const NOTES_MAX = 2000;   // 특이사항 최대 글자 수(견적 특기사항과 같음)
+/** 금액 입력칸 서식: 숫자만 남겨 천 단위 쉼표를 붙인다. allowNeg 이면 맨 앞의 - 또는 −(유니코드 마이너스)를 부호로 인정한다(네고·할인 줄). '-'만 입력한 중간 상태는 그대로 둔다 */
+export function formatMoneyInput(v, allowNeg) { const s = String(v == null ? '' : v).replace(/[−–]/g, '-'); const neg = !!allowNeg && /^\s*-/.test(s); const raw = s.replace(/[^0-9]/g, ''); return (neg ? '-' : '') + (raw ? Number(raw).toLocaleString('ko-KR') : ''); }
 const DATE = /^\d{4}-\d{2}-\d{2}$/, MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 /** 지급예정일이 비었을 때(지급예정서): 기준월의 익월 말일, 토·일이면 금요일(구포털 defaultPayDate) */
 export function defaultPayDate(baseMonth) {
@@ -19,7 +22,7 @@ export function defaultPayDate(baseMonth) {
 export function newIssueDraft(o) {
   const x = o || {}; const sup = suppliers(x.companies); const today = x.today || ''; const kind = x.docType === 'payment' ? 'payment' : 'invoice';
   return { docType: kind, pjtId: x.pjtId || '', pjtIds: [x.pjtId || ''], method: kind === 'payment' ? 'manday' : 'manual', baseMonth: today.slice(0, 7), issueDate: today, payDate: '',
-    senderId: ((sup.find((c) => c.company === DEFAULT_ISSUER) || sup[0]) || {}).id || '', recipientId: '', senderContact: '', recipientContact: '', estIds: [], qtyInput: {}, qtyAmt: {}, supplyOverride: null, vatOverride: null, manualItems: [blankItem(), blankItem()], mandayRate: null, mandayInput: null, mandayAuto: null, mandayBreakdown: {}, mandayOverride: {}, mandayRateOverride: {}, mandayMonth: '', estZone: {}, prog: {}, eqs: {}, deposit: {}, billOverride: {} };
+    senderId: ((sup.find((c) => c.company === DEFAULT_ISSUER) || sup[0]) || {}).id || '', recipientId: '', senderContact: '', recipientContact: '', estIds: [], qtyInput: {}, qtyAmt: {}, supplyOverride: null, vatOverride: null, manualItems: [blankItem(), blankItem()], notes: '', mandayRate: null, mandayInput: null, mandayAuto: null, mandayBreakdown: {}, mandayOverride: {}, mandayRateOverride: {}, mandayMonth: '', estZone: {}, prog: {}, eqs: {}, deposit: {}, billOverride: {} };
 }
 /** 프로젝트 다중 선택(구포털 toggleSettlePjt): 최소 1개, 바뀌면 선택된 견적 중 빠진 프로젝트의 것은 해제. 반환: 오류 문구 또는 '' */
 export function togglePjt(d, pid, estimates) {
@@ -124,6 +127,7 @@ export function buildSettlement(d, o) {
   const sup = effSupply(d, estimates, x.projects, x.settlements); if (!(sup > 0)) errors.push('정산 금액이 없습니다.');
   if (!DATE.test(String(d.issueDate || ''))) errors.push('발행일을 입력하세요.'); if (!MONTH.test(String(d.baseMonth || ''))) errors.push('기준월을 입력하세요.'); if (d.payDate && !DATE.test(d.payDate)) errors.push('지급일 형식이 올바르지 않습니다.');
   const pjtIds = d.pjtIds && d.pjtIds.length ? d.pjtIds : [d.pjtId]; if (!pjtIds[0]) errors.push('프로젝트를 선택하세요.');
+  const notes = String(d.notes || '').trim(); if (notes.length > NOTES_MAX) errors.push('특이사항은 ' + NOTES_MAX.toLocaleString('ko-KR') + '자 이내로 입력해 주세요.');
   if (errors.length) return { ok: false, errors, warnings };
   if (!d.recipientId) warnings.push('수신자(거래처)가 선택되지 않았습니다. 그래도 발행할까요?');
   if (d.method === 'manday' && d.mandayMonth && d.mandayMonth !== d.baseMonth) warnings.push('불러온 공수의 기준월(' + d.mandayMonth + ')과 정산서 기준월(' + d.baseMonth + ')이 다릅니다. 그래도 발행할까요?');
@@ -139,12 +143,12 @@ export function buildSettlement(d, o) {
   const acctMonth = (payDate || d.issueDate || d.baseMonth || '').slice(0, 7);
   const payload = { pjtId: d.pjtId, pjtIds, perPjtAmount, no, docType: d.docType, method: d.method, baseMonth: d.baseMonth, issueDate: d.issueDate, payDate, acctMonth,
     senderId: d.senderId || '', sender: partySnap(comp(d.senderId), d.senderContact) || {}, recipientId: d.recipientId || '', recipient: partySnap(comp(d.recipientId), d.recipientContact) || {},
-    estIds: d.estIds || [], perEst, perItem, mandayUsed, lines: issueLines(d, estimates, x.projects, x.settlements), supply: sup, vat, total: sup + vat, amount: sup, status: 'active', author: me.name || '', authorUid: me.uid || '' };
+    estIds: d.estIds || [], perEst, perItem, mandayUsed, lines: issueLines(d, estimates, x.projects, x.settlements), supply: sup, vat, total: sup + vat, amount: sup, status: 'active', author: me.name || '', authorUid: me.uid || '', notes };
   return { ok: true, errors: [], warnings, id: 'set_' + (x.now || Date.now()), no, payload, message: (d.docType === 'invoice' ? '대금청구서' : '지급예정서') + ' ' + no + ' 발행' };
 }
 /** 저장된 정산서로 발행 초안을 되짚어 만든다(점검·대조용): 직접 입력은 내역을 품목으로, 수량 정산은 perItem 의 수량·금액으로 */
 export function draftFromSettlement(s) {
-  const d = { docType: s.docType, pjtId: s.pjtId, pjtIds: s.pjtIds || [s.pjtId], method: s.method, baseMonth: s.baseMonth, issueDate: s.issueDate, payDate: s.payDate || '', senderId: s.senderId || '', recipientId: s.recipientId || '', senderContact: (s.sender && s.sender.contact) || '', recipientContact: (s.recipient && s.recipient.contact) || '', estIds: (s.estIds || []).slice(), qtyInput: {}, qtyAmt: {}, supplyOverride: null, vatOverride: null, manualItems: [], mandayRate: null, mandayInput: null, mandayAuto: null, mandayBreakdown: {}, mandayOverride: {}, mandayRateOverride: {}, mandayMonth: '', estZone: {}, prog: {}, eqs: {}, deposit: {}, billOverride: {} };
+  const d = { notes: s.notes || '', docType: s.docType, pjtId: s.pjtId, pjtIds: s.pjtIds || [s.pjtId], method: s.method, baseMonth: s.baseMonth, issueDate: s.issueDate, payDate: s.payDate || '', senderId: s.senderId || '', recipientId: s.recipientId || '', senderContact: (s.sender && s.sender.contact) || '', recipientContact: (s.recipient && s.recipient.contact) || '', estIds: (s.estIds || []).slice(), qtyInput: {}, qtyAmt: {}, supplyOverride: null, vatOverride: null, manualItems: [], mandayRate: null, mandayInput: null, mandayAuto: null, mandayBreakdown: {}, mandayOverride: {}, mandayRateOverride: {}, mandayMonth: '', estZone: {}, prog: {}, eqs: {}, deposit: {}, billOverride: {} };
   if (s.method === 'manual') d.manualItems = (s.lines || []).map((l) => ({ name: l.name, spec: l.spec || '', qty: l.qty, price: l.price, amount: l.amount }));
   if (s.method === 'manday') { const ids = s.pjtIds || [s.pjtId]; if (ids.length > 1) { d.mandayOverride = {}; d.mandayRateOverride = {}; ids.forEach((pid, i) => { const l = (s.lines || [])[i] || {}; d.mandayOverride[pid] = l.qty; d.mandayRateOverride[pid] = l.price; }); } else { const l = (s.lines || [])[0] || {}; d.mandayInput = s.mandayUsed != null ? s.mandayUsed : l.qty; d.mandayRate = l.price; } }
   if (s.method === 'progress') { d.billOverride = {}; Object.keys(s.perEst || {}).forEach((eid) => { d.billOverride[eid] = s.perEst[eid]; }); }
