@@ -20,6 +20,8 @@ export const todayKey = (now) => { const d = new Date((now == null ? Date.now() 
 export const fmtMoney = (n) => (n || 0).toLocaleString('ko-KR');
 export const parseMoney = (s) => parseInt(String(s || '').replace(/[^0-9]/g, ''), 10) || 0;
 export const makeId = (name, birth) => (String(name || '') + '_' + String(birth || '')).replace(/[^a-zA-Z0-9가-힣_]/g, '');
+/** 주민번호 13자리 → 900101-1234567 */
+export const fmtJumin = (d) => { const x = String(d || '').replace(/[^0-9]/g, ''); return x.length > 6 ? x.slice(0, 6) + '-' + x.slice(6, 13) : x; };
 export const fmtPhone = (v) => { const d = String(v || '').replace(/[^0-9]/g, '').slice(0, 11); if (d.length <= 3) return d; if (d.length <= 7) return d.slice(0, 3) + '-' + d.slice(3); return d.length === 11 ? d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7) : d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6); };
 export const fmtKB = (b) => (b >= 1048576 ? (b / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(b / 1024)) + 'KB');
 /** 주민(외국인)등록번호 검증: 13자리·생년월일·성별 자리·검증번호 → { valid, digits, birth, gender, foreign, checksumOk } */
@@ -127,3 +129,36 @@ export function issuesOf(p, today) {
 }
 /** 가장 심각한 단계: 'danger' | 'warn' | ''(문제 없음, info 는 제외) */
 export const worstLevel = (issues) => ((issues || []).some((i) => i.level === 'danger') ? 'danger' : (issues || []).some((i) => i.level === 'warn') ? 'warn' : '');
+
+// ── 2단계: 등록·수정 규칙(구포털 saveWorker 의 검증 순서·문구 그대로) ──
+export const blankForm = () => ({ name: '', birth: '', gender: '', hireDate: '', leaderId: '', resignedDate: '', phone: '', address: '', jumin: '', portalUid: '' });
+/** 마스터·실무자 문서 → 인적사항 수정 폼 값(주민번호는 문서에 없고 서버에만 있다 — 비워 두면 변경 없음) */
+export const formOfMaster = (m, p, portalUid) => ({ name: m.name || '', birth: m.birth || '', gender: m.gender || '', hireDate: m.hireDate || '', leaderId: m.leaderId || '', resignedDate: m.resigned ? (m.resignedDate || '') : '', phone: (p && p.phone) || '', address: (p && p.address) || '', jumin: '', portalUid: portalUid || '' });
+/** 소속 선택지: 팀장/독립인 사람(자기 자신 제외) — 이름순. 지금 소속된 팀장이 퇴사했어도 목록에 남긴다 */
+export function leaderChoices(masters, selfId, currentId) { return (masters || []).filter((m) => !m.leaderId && m.id !== selfId && (!m.resigned || m.id === currentId)).sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ko')); }
+/** 인적사항 저장 검증 → { ok, errors[], confirms[], id, base, info, digits }
+ *  o = { editing: 수정 중인 마스터 | null, masters, hrLinked(이름·생년월일이 인사 명단과 맞아 주소를 인사가 관리하면 true) }. confirms 는 "그래도 저장할까요?" 확인이 필요한 경고 */
+export function validateWorker(f, o) {
+  const errors = [], confirms = []; const name = String(f.name || '').trim(); const editing = o.editing || null; const masters = o.masters || [];
+  if (!name) return { ok: false, errors: ['이름을 입력하세요.'], confirms, id: '', base: null, info: null, digits: '' };
+  const pj = f.jumin ? parseJumin(f.jumin) : null; if (f.jumin && !pj.valid) return { ok: false, errors: ['주민(외국인)등록번호 형식이 올바르지 않습니다. (13자리, 생년월일 확인)'], confirms, id: '', base: null, info: null, digits: '' };
+  const birth = f.birth || (pj && pj.birth) || ''; if (!birth) return { ok: false, errors: ['생년월일을 입력하세요. (주민등록번호를 입력하면 자동으로 채워집니다)'], confirms, id: '', base: null, info: null, digits: '' };
+  if (pj && pj.birth !== birth) confirms.push('입력한 생년월일(' + birth + ')이 주민등록번호의 생년월일(' + pj.birth + ')과 다릅니다.\n그대로 저장할까요?');
+  if (pj && !pj.checksumOk) confirms.push('주민(외국인)등록번호 검증번호가 일치하지 않습니다' + (pj.foreign ? ' (외국인등록번호는 정상일 수 있습니다)' : '') + '.\n그대로 저장할까요?');
+  const id = editing ? editing.id : makeId(name, birth); if (!id) return { ok: false, errors: ['이름 또는 생년월일이 올바르지 않습니다.'], confirms, id: '', base: null, info: null, digits: '' };
+  if (!editing && masters.some((m) => m.id === id)) errors.push('같은 이름·생년월일의 근로자가 이미 등록되어 있습니다.');
+  const isLeader = masters.some((m) => m.leaderId === id);
+  if (editing && f.leaderId && isLeader) errors.push(name + '님은 팀장으로 지정된 인원이 있어 다른 팀 소속으로 변경할 수 없습니다. 먼저 팀원들의 소속을 변경해주세요.');
+  const resigned = !!f.resignedDate;   // 퇴사일을 넣으면 퇴사, 비우면 재직
+  if (editing && resigned && !editing.resigned && isLeader) errors.push(name + '님은 팀장으로 지정된 인원이 있어 퇴사 처리할 수 없습니다. 먼저 팀원들의 소속을 변경해주세요.');
+  const gender = f.gender || (pj && pj.gender) || '';
+  const base = { name, birth, gender, hireDate: f.hireDate || '', leaderId: f.leaderId || '', resigned, resignedDate: resigned ? f.resignedDate : null };
+  const info = { phone: String(f.phone || '').trim() }; if (!o.hrLinked) info.address = String(f.address || '').trim();   // 인사 명단과 연동된 직원의 주소는 인사에서 관리 — 연명부에는 저장하지 않음
+  return { ok: !errors.length, errors, confirms, id, base, info, digits: pj ? pj.digits : '' };
+}
+/** 급여·계좌(관리자 전용 문서) 저장 값 */
+export const payOf = (f) => ({ bank: String(f.bank || '').trim(), account: String(f.account || '').trim(), dailyRate: parseMoney(f.rate) });
+/** 삭제 가능 여부: 팀장으로 지정된 팀원이 남아 있으면 불가 */
+export const deleteBlock = (m, masters) => ((masters || []).some((x) => x.leaderId === m.id) ? m.name + '님은 팀장으로 지정된 인원이 있어 삭제할 수 없습니다. 먼저 팀원들의 소속을 변경해주세요.' : '');
+/** 삭제할 때 함께 지울 Storage 파일 경로(검진 결과·화학물질안전원 수료증 PDF) */
+export const pdfPathsOf = (p) => [].concat(((p && p.health) || []).map((h) => h.pdf && h.pdf.path), ((p && p.chemEdu) || []).map((c) => c.pdf && c.pdf.path)).filter(Boolean);

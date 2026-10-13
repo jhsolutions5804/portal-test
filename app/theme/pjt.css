@@ -231,3 +231,24 @@
   .jh-ro__legacy { margin-left: 0; }
   .jh-ro__top { flex-wrap: wrap; }
 }
+
+/* 근로자 연명부 — 입력 폼(2단계) */
+.jh-ro__lh { padding: var(--sp-3); border-bottom: var(--u-1) solid var(--c-line); }
+.jh-ro__lh .jh-btn { width: 100%; }
+.jh-ro__newhd { display: flex; }
+.jh-ro__form { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--u-220), 1fr)); gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); }
+.jh-ro__fld { display: grid; gap: var(--u-2); align-content: start; min-width: 0; }
+.jh-ro__fld[data-wide="1"] { grid-column: 1 / -1; }
+.jh-ro__fld label { font-size: var(--fs-xs); color: var(--c-ink-3); }
+.jh-ro__fld label b { color: var(--c-danger); }
+.jh-ro__fld small { color: var(--c-ink-3); font-size: var(--fs-xs); }
+.jh-ro__ro { padding: var(--sp-2) var(--sp-3); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-primary-weak); }
+.jh-ro__fbar { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-4) var(--sp-4); flex-wrap: wrap; }
+.jh-ro__msg { color: var(--c-ink-3); font-size: var(--fs-sm); }
+.jh-ro__msg[data-bad="1"] { color: var(--c-danger); }
+.jh-ro__reason { display: grid; gap: var(--sp-2); margin-top: var(--sp-2); padding: var(--sp-3); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); }
+.jh-ro__reason label { display: flex; gap: var(--sp-2); align-items: center; }
+.jh-ro__jv { font-size: var(--fs-md); font-weight: 700; letter-spacing: .5px; }
+.jh-ro__card-actions { display: flex; gap: var(--sp-2); }
+.jh-ro__danger { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); flex-wrap: wrap; padding: var(--sp-3) var(--sp-4); border: var(--u-1) dashed var(--c-line); border-radius: var(--radius); }
+.jh-ro__danger > .jh-field__hint { flex: 1 1 var(--u-220); }

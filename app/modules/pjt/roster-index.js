@@ -1,15 +1,18 @@
 /* 근로자 연명부(새 화면) — 구포털 PJT 메뉴의 "근로자 연명부" 칸. 주소 #/pjt/roster(목록) · #/pjt/roster/<근로자 id>(상세 조회).
- * 읽기만 하는 1단계: 왼쪽 명단(재직·조치 필요·퇴사·전체, 검색, 정렬) + 오른쪽(사람을 고르면 상세, 아니면 조치 필요 현황). 등록·수정·삭제·첨부·검진·교육 입력은 다음 단계에서 같은 화면에 붙인다. 규칙은 roster.js, 표시는 roster-view.js. */
-import { db, collection, getDocs } from '../../core/firebase.js?v=20261014g';
-import { esc } from '../../core/ui.js?v=20261014g';
-import { mergePrivs, summaryOf, visibleList, rowOf, todayKey, birthFromJumin } from './roster.js?v=20261014g';
-import { rosterHtml } from './roster-view.js?v=20261014g';
+ * 왼쪽 명단(재직·조치 필요·퇴사·전체, 검색, 정렬) + 오른쪽(사람을 고르면 상세, 아니면 조치 필요 현황). 2단계: 카드마다 따로 수정(인적사항·급여/계좌·비고), 신규 등록, 삭제(관리자), 퇴사·팀장 연결, 주민번호 저장·보기(사유 선택, 서버 함수).
+ * 첨부·건강검진·원청별 교육·자격 입력은 다음 단계. 규칙은 roster.js, 표시는 roster-view.js. */
+import { db, storage, collection, doc, getDocs, writeBatch, deleteField, serverTimestamp, arrayUnion, arrayRemove, storageRef, deleteObject } from '../../core/firebase.js?v=20261014h';
+import { esc, toast } from '../../core/ui.js?v=20261014h';
+import { confirmDialog } from '../../core/dialog.js?v=20261014h';
+import { revealWorker, saveJumin } from '../../shared/identity.js?v=20261014h';
+import { mergePrivs, summaryOf, visibleList, rowOf, todayKey, birthFromJumin, parseJumin, fmtJumin, fmtPhone, fmtMoney, blankForm, formOfMaster, validateWorker, payOf, deleteBlock, pdfPathsOf, slotDocId, FILE_SLOTS } from './roster.js?v=20261014h';
+import { rosterHtml } from './roster-view.js?v=20261014h';
 const pushHash = (h) => { if (location.hash === h) return; try { history.replaceState(null, '', h); } catch (e) { location.hash = h; } };
 const lst = (snap) => { const a = []; snap.forEach((d) => a.push({ id: d.id, data: d.data() })); return a; };
 export async function mountRoster(root, route, ctx) {
   root.onclick = null; root.oninput = null; root.onchange = null;
   const me = (ctx && ctx.me) || {}; const segs = (route && route.segs) || [];
-  const st = { allowed: !!(me.admin || (me.perms && me.perms.pjt)), admin: !!me.admin, ready: false, err: '', masters: [], privs: {}, accounts: [], hr: {}, filter: 'active', query: '', sortKey: null, sortDir: 1, sel: segs[0] || '', allRows: [], alertRows: [], counts: { active: 0, resigned: 0, all: 0, alert: 0 }, coTab: 'samsung', coSub: 'legal', reveal: new Set(), today: todayKey(), rows: [], summary: { active: 0, resigned: 0, noHealth: 0, eduLack: 0 } };
+  const st = { allowed: !!(me.admin || (me.perms && me.perms.pjt)), admin: !!me.admin, ready: false, err: '', masters: [], privs: {}, accounts: [], hr: {}, filter: 'active', query: '', sortKey: null, sortDir: 1, sel: segs[0] || '', canEdit: !!(me.admin || (me.perms && me.perms.pjt)), busy: false, edit: null, jr: null, allRows: [], alertRows: [], counts: { active: 0, resigned: 0, all: 0, alert: 0 }, coTab: 'samsung', coSub: 'legal', reveal: new Set(), today: todayKey(), rows: [], summary: { active: 0, resigned: 0, noHealth: 0, eduLack: 0 } };
   st.accountOf = (id) => st.accounts.find((u) => u.teamLeaderIds.indexOf(id) !== -1) || null; st.hrMatch = (name, birth) => (name && birth ? st.hr[String(name).trim() + '|' + birth] || null : null);
   root.innerHTML = '<div id="ro-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#ro-body');
   const recompute = () => {
@@ -34,16 +37,91 @@ export async function mountRoster(root, route, ctx) {
   };
   try { await load(); st.ready = true; recompute(); } catch (e) { st.err = '불러오지 못했습니다: ' + ((e && (e.code || e.message)) || ''); }
   body.removeAttribute('aria-busy'); paint();
-  root.onclick = (ev) => {
+  const ident = (ctx && ctx.identity) || { reveal: revealWorker, save: saveJumin };   // 주민번호는 서버 함수만 안다(점검에서는 가짜로 바꿔 끼운다)
+  const reload = async () => { await load(); recompute(); };
+  const masterOf = (id) => st.masters.find((m) => m.id === id);
+  /** 팀장 ↔ 포털 계정 연결(portal_users.teamLeaderIds — 관리자만 고칠 수 있는 필드): 이 팀장에게 연결된 계정을 newUid 하나로 맞춘다 */
+  const syncLeaderLink = async (leaderId, newUid) => { for (const u of st.accounts) { const has = u.teamLeaderIds.indexOf(leaderId) !== -1; if (has && u.uid !== newUid) { const b = writeBatch(db); b.set(doc(db, 'portal_users', u.uid), { teamLeaderIds: arrayRemove(leaderId) }, { merge: true }); await b.commit(); } else if (!has && u.uid === newUid) { const b = writeBatch(db); b.set(doc(db, 'portal_users', u.uid), { teamLeaderIds: arrayUnion(leaderId) }, { merge: true }); await b.commit(); } } };
+  const clearJr = () => { if (st.jrTimer) { clearTimeout(st.jrTimer); st.jrTimer = null; } st.jr = null; };
+  const openEdit = (card) => {
+    const m = masterOf(st.sel); if (!m) return; const p = st.privs[m.id] || {};
+    if (card === 'personal') { const acc = !m.leaderId ? st.accountOf(m.id) : null; st.edit = { card, form: formOfMaster(m, p, acc ? acc.uid : ''), msg: '', jchange: false }; }
+    else if (card === 'pay') { const r = p.dailyRate != null ? p.dailyRate : m.dailyRate; st.edit = { card, form: { rate: r ? fmtMoney(r) : '', bank: p.bank || '', account: p.account || '' }, msg: '' }; }
+    else st.edit = { card: 'note', form: { note: p.note || '' }, msg: '' };
+    paint();
+  };
+  const savePersonal = async () => {
+    const e = st.edit, isNew = e.card === 'new'; const m = isNew ? null : masterOf(st.sel); const f = e.form;
+    const guessBirth = f.birth || (f.jumin && parseJumin(f.jumin).birth) || '';
+    const v = validateWorker(f, { editing: m, masters: st.masters, hrLinked: !!st.hrMatch(String(f.name || '').trim(), guessBirth) });
+    if (!v.ok) { e.msg = v.errors[0]; paint(); return; }
+    for (const c of v.confirms) { const ok = await confirmDialog({ title: '확인', body: c, confirmLabel: '그대로 저장' }); if (!ok.ok) return; }
+    st.busy = true; e.msg = ''; paint();
+    try {
+      const b = writeBatch(db); b.set(doc(db, 'master_workers', v.id), v.base, { merge: true }); b.set(doc(db, 'master_worker_info', v.id), Object.assign({}, v.info, { updatedAt: serverTimestamp() }), { merge: true }); await b.commit();
+      let warn = '';
+      if (v.digits) { try { await ident.save('roster', v.id, v.digits); } catch (err) { warn = '근로자 정보는 저장했지만 주민번호는 저장하지 못했습니다: ' + ((err && err.message) || '') + ' — 다시 열어 [번호 변경]으로 입력해 주세요.'; } }
+      if (st.admin) { try { await syncLeaderLink(v.id, f.leaderId ? '' : (f.portalUid || '')); } catch (err) { warn += (warn ? ' / ' : '') + '저장은 완료됐지만 포털 계정 연결에 실패했습니다: ' + ((err && err.message) || ''); } }   // 팀원이 된 경우엔 팀장 연결을 해제
+      await reload(); st.edit = null; st.sel = v.id; pushHash('#/pjt/roster/' + encodeURIComponent(v.id)); toast(warn || (isNew ? '등록했습니다.' : '저장했습니다.'));
+    } catch (err) { e.msg = '저장 실패: ' + ((err && (err.code || err.message)) || ''); }
+    st.busy = false; paint();
+  };
+  const savePay = async () => {
+    const m = masterOf(st.sel); if (!m || !st.admin) return; const e = st.edit; const pay = payOf(e.form); st.busy = true; e.msg = ''; paint();
+    try { const b = writeBatch(db); b.set(doc(db, 'master_worker_private', m.id), pay, { merge: true }); b.set(doc(db, 'master_workers', m.id), { dailyRate: deleteField() }, { merge: true }); await b.commit(); await reload(); st.edit = null; toast('저장했습니다.'); }   // 일당은 모든 직원이 읽는 마스터가 아니라 관리자 전용 문서에만 둔다(예전 값은 함께 지움)
+    catch (err) { e.msg = '저장 실패: ' + ((err && (err.code || err.message)) || ''); } st.busy = false; paint();
+  };
+  const saveNote = async () => {
+    const m = masterOf(st.sel); if (!m) return; const e = st.edit; st.busy = true; e.msg = ''; paint();
+    try { const b = writeBatch(db); b.set(doc(db, 'master_worker_info', m.id), { note: String(e.form.note || '').trim(), updatedAt: serverTimestamp() }, { merge: true }); await b.commit(); await reload(); st.edit = null; toast('저장했습니다.'); }
+    catch (err) { e.msg = '저장 실패: ' + ((err && (err.code || err.message)) || ''); } st.busy = false; paint();
+  };
+  const deleteWorker = async () => {
+    const m = masterOf(st.sel); if (!m || !st.admin) return; const why = deleteBlock(m, st.masters); if (why) { toast(why); return; }
+    const ok = await confirmDialog({ title: '근로자 삭제', body: m.name + '님을 연명부에서 삭제할까요?\n개인정보·검진·사진 등 이 화면에서 관리하는 정보가 함께 삭제됩니다.\n(각 프로젝트에 이미 등록된 근태·공수 기록은 그대로 남습니다)', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return;
+    st.busy = true; paint();
+    try {
+      const b = writeBatch(db); b.delete(doc(db, 'master_workers', m.id)); b.delete(doc(db, 'master_worker_info', m.id)); b.delete(doc(db, 'master_worker_private', m.id)); FILE_SLOTS.forEach((x) => b.delete(doc(db, 'master_worker_photos', slotDocId(m.id, x.k)))); await b.commit();
+      for (const path of pdfPathsOf(st.privs[m.id])) { try { await deleteObject(storageRef(storage, path)); } catch (err) { /* 파일이 이미 없어도 삭제는 계속 */ } }
+      try { await syncLeaderLink(m.id, ''); } catch (err) { /* 연결 해제 실패는 삭제를 막지 않는다 */ }
+      await reload(); st.sel = ''; st.edit = null; clearJr(); pushHash('#/pjt/roster'); toast('삭제했습니다.');
+    } catch (err) { toast('삭제 실패: ' + ((err && (err.code || err.message)) || '')); }
+    st.busy = false; paint();
+  };
+  const revealJumin = async () => {
+    const j = st.jr; if (!j || !st.sel) return; st.busy = true; j.err = ''; paint();
+    try { const r = await ident.reveal('roster', st.sel, j.reason); if (!r || !r.found || !r.jumin) j.err = '저장된 번호가 없습니다.'; else { st.jr = { id: st.sel, value: fmtJumin(r.jumin) }; st.jrTimer = setTimeout(() => { st.jr = null; st.jrTimer = null; paint(); }, 20000); } }   // 번호는 화면에만 20초 보이고 어디에도 저장하지 않는다
+    catch (err) { j.err = (err && err.message) || '열람하지 못했습니다.'; } st.busy = false; paint();
+  };
+  const setField = (t) => {
+    if (!st.edit || !t.hasAttribute('data-ro-f')) return false; const k = t.getAttribute('data-ro-f'); st.edit.form[k] = t.value;
+    if (k === 'jumin') { const pj = parseJumin(t.value); if (pj.valid) { const f = st.edit.form; if (!f.birth || f.birth !== pj.birth) { f.birth = pj.birth; const bi = body.querySelector('[data-ro-f="birth"]'); if (bi) bi.value = pj.birth; } if (!f.gender) { f.gender = pj.gender; const gi = body.querySelector('[data-ro-f="gender"]'); if (gi) gi.value = pj.gender; } } }   // 주민번호를 넣으면 생년월일·성별을 자동으로
+    return true;
+  };
+  root.onclick = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return; let el;
-    if ((el = t.closest('[data-ro-open]'))) { st.sel = el.getAttribute('data-ro-open'); st.reveal = new Set(); st.coTab = 'samsung'; st.coSub = 'legal'; pushHash('#/pjt/roster/' + encodeURIComponent(st.sel)); paint(); if (window.matchMedia && window.matchMedia('(max-width: 899px)').matches) window.scrollTo(0, 0); return; }
-    if (t.closest('[data-ro-back]')) { st.sel = ''; pushHash('#/pjt/roster'); paint(); return; }
+    if ((el = t.closest('[data-ro-open]'))) { st.sel = el.getAttribute('data-ro-open'); st.reveal = new Set(); st.coTab = 'samsung'; st.coSub = 'legal'; st.edit = null; clearJr(); pushHash('#/pjt/roster/' + encodeURIComponent(st.sel)); paint(); if (window.matchMedia && window.matchMedia('(max-width: 899px)').matches) window.scrollTo(0, 0); return; }
+    if (t.closest('[data-ro-back]')) { st.sel = ''; st.edit = null; clearJr(); pushHash('#/pjt/roster'); paint(); return; }
+    if (t.closest('[data-ro-new]')) { st.sel = ''; clearJr(); st.edit = { card: 'new', form: blankForm(), msg: '', jchange: true }; pushHash('#/pjt/roster'); paint(); return; }
+    if ((el = t.closest('[data-ro-edit]'))) { openEdit(el.getAttribute('data-ro-edit')); return; }
+    if (t.closest('[data-ro-cancel]')) { st.edit = null; paint(); return; }
+    if (t.closest('[data-ro-jchange]')) { if (st.edit) { st.edit.jchange = true; paint(); } return; }
+    if ((el = t.closest('[data-ro-save]')) && !st.busy) { const c = el.getAttribute('data-ro-save'); if (c === 'personal' || c === 'new') await savePersonal(); else if (c === 'pay') await savePay(); else if (c === 'note') await saveNote(); return; }
+    if (t.closest('[data-ro-del]') && !st.busy) { await deleteWorker(); return; }
+    if (t.closest('[data-ro-jask]')) { clearJr(); st.jr = { id: st.sel, ask: true, reason: '4대보험 신고' }; paint(); return; }
+    if (t.closest('[data-ro-jgo]') && !st.busy) { await revealJumin(); return; }
+    if (t.closest('[data-ro-jhide]')) { clearJr(); paint(); return; }
     if ((el = t.closest('[data-ro-filter]'))) { st.filter = el.getAttribute('data-ro-filter'); recompute(); paint(); return; }
     if (t.closest('[data-ro-dir]')) { if (!st.sortKey) return; st.sortDir = -st.sortDir; recompute(); paint(); return; }
     if ((el = t.closest('[data-ro-cotab]'))) { st.coTab = el.getAttribute('data-ro-cotab'); paint(); return; }
     if ((el = t.closest('[data-ro-cosub]'))) { st.coSub = el.getAttribute('data-ro-cosub'); paint(); return; }
     if ((el = t.closest('[data-ro-pw]'))) { const k = el.getAttribute('data-ro-pw'); if (st.reveal.has(k)) st.reveal.delete(k); else st.reveal.add(k); paint(); }
   };
-  root.oninput = (ev) => { const t = ev.target; if (t instanceof Element && t.hasAttribute('data-ro-q')) { st.query = t.value.trim(); recompute(); paint(); } };
-  root.onchange = (ev) => { const t = ev.target; if (t instanceof Element && t.hasAttribute('data-ro-sortm')) { st.sortKey = t.value || null; if (!st.sortKey) st.sortDir = 1; recompute(); paint(); } };
+  root.oninput = (ev) => { const t = ev.target; if (!(t instanceof Element)) return; if (setField(t)) return; if (t.hasAttribute('data-ro-q')) { st.query = t.value.trim(); recompute(); paint(); } };
+  root.onchange = (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    if (t.hasAttribute('data-ro-jreason')) { if (st.jr) st.jr.reason = t.value; return; }
+    if (setField(t)) { const k = t.getAttribute('data-ro-f'); if (k === 'phone') { st.edit.form.phone = fmtPhone(t.value); t.value = st.edit.form.phone; } if (k === 'leaderId') paint(); return; }   // 소속을 바꾸면 팀장 포털 계정 칸이 달라진다(인사 연동 주소는 저장할 때 이름·생년월일로 다시 판정)
+    if (t.hasAttribute('data-ro-sortm')) { st.sortKey = t.value || null; if (!st.sortKey) st.sortDir = 1; recompute(); paint(); }
+  };
 }
