@@ -29,3 +29,13 @@
 .jh-pjt__datenav { flex-wrap: nowrap; }
 .jh-pjt__datenav .jh-input { width: auto; flex: 1 1 var(--u-140); min-width: 0; }
 .jh-pjt__datenav .jh-btn { flex: none; width: auto; }
+
+/* 넓은 화면: 일하는 영역(왼쪽)은 좁게, 최근 7일·도구는 오른쪽 열, 집계표 같은 넓은 표는 아래 전체 폭 */
+.jh-pjt__main, .jh-pjt__side { display: grid; gap: var(--sp-3); align-content: start; min-width: 0; }
+.jh-pjt__wide { min-width: 0; }
+.jh-pjt__recent { grid-template-columns: 1fr; }
+@media (min-width: 900px) {
+  .jh-pjt { grid-template-columns: minmax(0, var(--u-440)) minmax(0, var(--u-320)); align-items: start; justify-content: start; column-gap: var(--sp-5); }
+  .jh-pjt__wide { grid-column: 1 / -1; }
+  .jh-pjt__tool { padding: 0; } .jh-pjt__tool .jh-pjt__bar { flex-direction: column; align-items: stretch; } .jh-pjt__tool .jh-pjt__tools { flex-direction: column; align-items: stretch; }
+}

@@ -1,13 +1,13 @@
 /* PJT 관리(통합 새 모듈) — 설계서 docs/pjt-design.md. Ph2·Ph4·경량PJT를 한 모듈로 합친다.
  * 지금 새 화면은 "출역·공수"(근태·공수 탭) 하나다 — 구포털 PJT 메뉴 안에 "👷 출역·공수 (새)" 항목으로 열린다(legacy/list.js pjtNav, modules/index.js hostNative). 나머지 탭은 만들면서 구포털 항목을 하나씩 교체한다.
  * 저장 형식은 구포털 그대로(출역 { checks }, 공수 { md }, 날짜별 문서) — 영업기획의 공수 연동·팀별 노무비가 읽는다. 경로는 adapter.js, 규칙은 attendance.js. */
-import { db, collection, doc, getDoc, getDocs, setDoc, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013zd';
-import { esc, toast } from '../../core/ui.js?v=20261013zd';
-import { confirmDialog } from '../../core/dialog.js?v=20261013zd';
-import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013zd';
-import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013zd';
-import { visibleProjects } from './projects.js?v=20261013zd';
-import { attendHtml, dayWorkers } from './attend-view.js?v=20261013zd';
+import { db, collection, doc, getDoc, getDocs, setDoc, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261013ze';
+import { esc, toast } from '../../core/ui.js?v=20261013ze';
+import { confirmDialog } from '../../core/dialog.js?v=20261013ze';
+import { pathsFor, featuresOf, isDateKey } from './adapter.js?v=20261013ze';
+import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261013ze';
+import { visibleProjects } from './projects.js?v=20261013ze';
+import { attendHtml, dayWorkers } from './attend-view.js?v=20261013ze';
 
 export const manifest = { id: 'pjt', order: 40, title: 'PJT 관리', icon: '🏗️', defaultHash: '#/pjt/attend', perm: (me) => !!me && me.admin === true };
 export async function mount(root) { root.innerHTML = '<div class="jh-empty">PJT 화면은 구포털 틀 안의 메뉴로 열립니다.</div>'; }
