@@ -1,36 +1,36 @@
 /* PJT 관리(통합 새 모듈) — 설계서 docs/pjt-design.md. Ph2·Ph4·경량PJT를 한 모듈로 합친다.
  * 지금 새 화면은 "출역·공수"(근태·공수 탭) 하나다 — 구포털 PJT 메뉴에서 프로젝트를 고르면 그 아래 "👷 출역·공수 (새)" 탭으로 열린다(legacy/frame.js 의 nativeSubs, modules/index.js hostNative). 프로젝트는 화면 안에서 고르지 않는다. 나머지 탭은 만들면서 구포털 항목을 하나씩 교체한다.
  * 저장 형식은 구포털 그대로(출역 { checks }, 공수 { md }, 날짜별 문서) — 영업기획의 공수 연동·팀별 노무비가 읽는다. 경로는 adapter.js, 규칙은 attendance.js. */
-import { db, functions, httpsCallable, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261014f';
-import { esc, toast } from '../../core/ui.js?v=20261014f';
-import { confirmDialog } from '../../core/dialog.js?v=20261014f';
-import { pathsFor, featuresOf, defaultMandayOf, isDateKey } from './adapter.js?v=20261014f';
-import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261014f';
-import { visibleProjects } from './projects.js?v=20261014f';
-import { loadHolidays } from '../../shared/holidays.js?v=20261014f';
-import { attendHtml, dayWorkers } from './attend-view.js?v=20261014f';
-import { normalizeDay, stateAt, cellState, keyOf, stagesOf } from './progress.js?v=20261014f';
-import { structureFor, planSave } from './structure-store.js?v=20261014f';
-import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, setFeature, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261014f';
-import { progressHtml } from './progress-view.js?v=20261014f';
-import { diffText } from './structure-view.js?v=20261014f';
-import { activeWorkersForDate } from './attendance.js?v=20261014f';
-import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261014f';
-import { buildWeekly } from './weekly-ppt.js?v=20261014f';
-import { boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, remapByOrder, unmatchedKeys, snapToTuesday, weekNo, weekRange } from './layout.js?v=20261014f';
-import { fileToDataUrl, imageInfo } from './image-tools.js?v=20261014f';
-import { layoutEditorHtml } from './layout-view.js?v=20261014f';
-import { scheduleHtml } from './schedule-view.js?v=20261014f';
-import { reportHtml } from './report-view.js?v=20261014f';
-import { homeHtml } from './home-view.js?v=20261014f';
-import { settingsHtml } from './settings-view.js?v=20261014f';
-import { formOf as settingsFormOf, buildData as settingsBuild, changedFields, endText, parseDefaultManday } from './settings.js?v=20261014f';
-import { dday, monthMandayTotal, latestReports } from './home.js?v=20261014f';
-import { calcAll } from './progress.js?v=20261014f';
-import { fromStored, toStored, totalOf, attendanceSummary, autoContent, docHtml, docTitle, isLegacyDoc, dateText, WORK_SHIFTS, authorLabel, normalizeEquip, withEditor } from './report.js?v=20261014f';
-import { itemsForKey, buildDoc, formOf, detectCat, addDays, weekDays, isKey } from './schedule.js?v=20261014f';
+import { db, functions, httpsCallable, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261014g';
+import { esc, toast } from '../../core/ui.js?v=20261014g';
+import { confirmDialog } from '../../core/dialog.js?v=20261014g';
+import { pathsFor, featuresOf, defaultMandayOf, isDateKey } from './adapter.js?v=20261014g';
+import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261014g';
+import { visibleProjects } from './projects.js?v=20261014g';
+import { loadHolidays } from '../../shared/holidays.js?v=20261014g';
+import { attendHtml, dayWorkers } from './attend-view.js?v=20261014g';
+import { normalizeDay, stateAt, cellState, keyOf, stagesOf } from './progress.js?v=20261014g';
+import { structureFor, planSave } from './structure-store.js?v=20261014g';
+import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, setFeature, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261014g';
+import { progressHtml } from './progress-view.js?v=20261014g';
+import { diffText } from './structure-view.js?v=20261014g';
+import { activeWorkersForDate } from './attendance.js?v=20261014g';
+import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261014g';
+import { buildWeekly } from './weekly-ppt.js?v=20261014g';
+import { boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, remapByOrder, unmatchedKeys, snapToTuesday, weekNo, weekRange } from './layout.js?v=20261014g';
+import { fileToDataUrl, imageInfo } from './image-tools.js?v=20261014g';
+import { layoutEditorHtml } from './layout-view.js?v=20261014g';
+import { scheduleHtml } from './schedule-view.js?v=20261014g';
+import { reportHtml } from './report-view.js?v=20261014g';
+import { homeHtml } from './home-view.js?v=20261014g';
+import { settingsHtml } from './settings-view.js?v=20261014g';
+import { formOf as settingsFormOf, buildData as settingsBuild, changedFields, endText, parseDefaultManday } from './settings.js?v=20261014g';
+import { dday, monthMandayTotal, latestReports } from './home.js?v=20261014g';
+import { calcAll } from './progress.js?v=20261014g';
+import { fromStored, toStored, totalOf, attendanceSummary, autoContent, docHtml, docTitle, isLegacyDoc, dateText, WORK_SHIFTS, authorLabel, normalizeEquip, withEditor } from './report.js?v=20261014g';
+import { itemsForKey, buildDoc, formOf, detectCat, addDays, weekDays, isKey } from './schedule.js?v=20261014g';
 
-export { mountRoster } from './roster-index.js?v=20261014f';
+export { mountRoster } from './roster-index.js?v=20261014g';
 export const manifest = { id: 'pjt', order: 40, title: 'PJT 관리', icon: '🏗️', defaultHash: '#/pjt/attend', perm: (me) => !!me && me.admin === true };
 export async function mount(root) { root.innerHTML = '<div class="jh-empty">PJT 화면은 구포털 틀 안의 메뉴로 열립니다.</div>'; }
 const pushHash = (h) => { if (location.hash === h) return; try { history.replaceState(null, '', h); } catch (e) { location.hash = h; } };
