@@ -1,4 +1,4 @@
-import { monthRange, aggregateMonth, personSheet, migrationGroups, planMigration, planMerge, rekeyMd, rekeyChecks, unknownGroups, planLink } from '../app/modules/pjt/roster-tools.js';
+import { endedYmOf, visibleInMonth, monthRange, aggregateMonth, personSheet, migrationGroups, planMigration, planMerge, rekeyMd, rekeyChecks, unknownGroups, planLink } from '../app/modules/pjt/roster-tools.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 ok(JSON.stringify(monthRange(2026, 9)) === '{"lo":"2026-10-01","hi":"2026-10-31"}' && monthRange(2026, 0).lo === '2026-01-01', '월 범위(문서 id 가 날짜라서 범위 조회)');
 const M = { m1: { name: '김종화', birth: '1992-08-24' }, m2: { name: '서민우', birth: '1985-06-23' } };
@@ -31,4 +31,13 @@ ok(UG.length === 3 && UG[0].pjtKey === 'b' && UG[0].id === 'w4' && UG[0].total =
 const PK = { key: 'a', roster: { m1: {} } };
 const L1 = planLink(UG[1], 'm1', M, PK), L2 = planLink(UG[1], 'm2', M, PK);
 ok(!L1.error && L1.workerSets.length === 0 && L1.rekeys.length === 1 && L1.rekeys[0].pjtKey === 'a' && L1.rekeys[0].from === 'w4' && L1.rekeys[0].to === 'm1' && !L2.error && L2.workerSets.length === 1 && L2.workerSets[0].id === 'm2' && L2.workerSets[0].data.name === '서민우' && L2.workerSets[0].data.masterId === 'm2' && planLink(UG[1], 'zz', M, PK).error === '연결할 근로자를 고르세요.' && planLink(null, 'm1', M, PK).error !== '', '★ 연결 계획: 그 프로젝트 명단에 마스터 id 가 이미 있으면 새로 만들지 않고, 없으면 마스터 id 로 명단 문서를 만들며, 그 프로젝트의 모든 날짜의 옛 id 기록을 마스터 id 로 바꿈');
+// 월간 공수: 종료된 프로젝트는 종료한 달까지만 보이고 그다음 달부터 숨김(대표님 결정 2026-10-14)
+const sec = (iso) => ({ seconds: Date.parse(iso) / 1000 });
+ok(endedYmOf(sec('2026-09-20T10:00:00+09:00')) === 2026 * 12 + 8 && endedYmOf(sec('2026-09-30T23:30:00+09:00')) === 2026 * 12 + 8 && endedYmOf(sec('2026-09-30T16:00:00Z')) === 2026 * 12 + 9 && endedYmOf(null) === null && endedYmOf({ seconds: 900 }) === null && endedYmOf({ _seconds: Date.parse('2026-03-05T00:00:00+09:00') / 1000 }) === 2026 * 12 + 2, '종료한 달 = 한국 시간 기준(9/30 23:30 → 9월, UTC 9/30 16:00 = 한국 10/1 → 10월), 시각이 없거나 2000년 이전 값은 모름(null)');
+const ended9 = { ended: true, endedYm: 2026 * 12 + 8 }; const live = { ended: false };
+ok(visibleInMonth(ended9, 2026, 7, false) === true && visibleInMonth(ended9, 2026, 8, false) === true && visibleInMonth(ended9, 2026, 9, false) === false && visibleInMonth(ended9, 2026, 9, true) === false && visibleInMonth(ended9, 2027, 0, true) === false && visibleInMonth(live, 2026, 9, false) === true && visibleInMonth(live, 2030, 0, false) === true, '★ 9월에 종료된 프로젝트: 8월·9월 월간 공수에는 보이고, 10월부터는 기록이 있어도 보이지 않음(진행 중 프로젝트는 항상 보임)');
+ok(visibleInMonth({ ended: true, endedYm: null }, 2026, 9, true) === true && visibleInMonth({ ended: true, endedYm: null }, 2026, 9, false) === false && visibleInMonth(null, 2026, 9, false) === true, '종료한 달을 모르는 옛 종료 프로젝트는 그 달에 공수 기록이 있을 때만 보임');
+const proj = (o) => Object.assign({ roster: { a: { name: '가', birth: '1990-01-01' } }, rows: [['2026-10-02', { a: 1 }]] }, o);
+const shown = [proj({ key: 'live', name: '진행', ended: false }), proj({ key: 'e9', name: '9월 종료', ended: true, endedYm: 2026 * 12 + 8 })].filter((p) => visibleInMonth(p, 2026, 9, (p.rows || []).length > 0));
+ok(aggregateMonth(shown, {}).pjtTotals.map((x) => x.key).join() === 'live' && aggregateMonth(shown, {}).grand === 1, '10월 집계에서 9월 종료 프로젝트가 빠짐(프로젝트별·전체 합계 모두)');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

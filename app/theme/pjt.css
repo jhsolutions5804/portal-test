@@ -382,15 +382,13 @@
 .jh-ov__rail .jh-ov__ch h3 { font-size: var(--fs-md); }
 .jh-ov__rail .jh-ov__kpi strong { font-size: var(--fs-md); }
 .jh-ov__rail .jh-ov__cf { justify-content: flex-end; }
-/* 프로젝트 홈: 인사 홈·전자결재 홈과 같은 구성 — 왼쪽 요약 카드(세로) | 오늘 일정·공사일보 | 기본정보(넓은 화면에서 오른쪽, 아니면 아래) */
-.jh-phome { display: grid; grid-template-columns: 17rem minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
-.jh-phome__side { display: grid; gap: var(--sp-3); align-content: start; position: sticky; top: var(--sp-3); }
-.jh-phome__side .jh-kpi-grid { grid-template-columns: minmax(0, 1fr); }
-.jh-phome__main, .jh-phome__detail { display: grid; gap: var(--sp-4); min-width: 0; align-content: start; }
-.jh-phome__detail { grid-column: 2; }
-.jh-phome .jh-pjt__bar2 { margin-top: var(--sp-1); }
-@media (min-width: 1500px) { .jh-phome { grid-template-columns: 17rem minmax(0, 1fr) var(--u-320); } .jh-phome__detail { grid-column: auto; } }
-@media (max-width: 1099px) { .jh-phome { grid-template-columns: minmax(0, 1fr); } .jh-phome__side { position: static; } .jh-phome__side .jh-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .jh-phome__detail { grid-column: auto; } }
+/* 프로젝트 홈: 왼쪽 월 캘린더 | 오른쪽 고른 날짜의 일정·공사일보·기본정보(요약 카드 없음). 좁은 화면은 위아래 */
+.jh-phome2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(var(--u-320), 26rem); gap: var(--sp-4); align-items: start; }
+.jh-phome2__cal { position: sticky; top: var(--sp-3); min-width: 0; }
+.jh-phome2__cal .jh-pjt__calc { min-height: var(--u-96); }
+.jh-phome2__side { display: grid; gap: var(--sp-4); min-width: 0; align-content: start; }
+@media (max-width: 1099px) { .jh-phome2 { grid-template-columns: minmax(0, 1fr); } .jh-phome2__cal { position: static; } }
+
 /* 일정 2주 달력: 칸이 커서 그날 일정 제목을 보여 준다 */
 .jh-pjt__calc--two { min-height: var(--u-120); align-items: stretch; text-align: left; justify-content: flex-start; }
 .jh-pjt__calc--two .jh-pjt__calnum { align-self: flex-start; }
@@ -414,13 +412,32 @@
 .jh-pa__kpi { display: grid; gap: var(--u-2); min-width: var(--u-96); padding: var(--sp-2) var(--sp-4); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); }
 .jh-pa__kpi strong { font-size: var(--fs-xl); }
 .jh-pjt__table td:first-child, .jh-pjt__table th:first-child { position: sticky; left: 0; background: var(--c-surface); z-index: 1; }   /* 집계표: 이름 열 고정(날짜가 많아 옆으로 밀어도 누구인지 보이게) */
-/* 공사일보: 일보 카드가 주인공(위쪽 강조선·큰 제목), 달력은 작게. 일보가 있는 날은 달력에서 초록 칸 */
-@media (min-width: 1000px) { .jh-pjt__splitrep { grid-template-columns: minmax(0, 20rem) minmax(0, 1fr); align-items: start; column-gap: var(--sp-4); } .jh-pjt__calcol--compact { position: sticky; top: var(--sp-3); align-self: start; } }
-.jh-pjt__calcol--compact .jh-pjt__calc { min-height: var(--u-52); padding: var(--u-2); }
-.jh-pjt__calcol--compact .jh-pjt__calnum { font-size: var(--fs-sm); }
-.jh-pjt__calcol--compact .jh-pjt__calh { font-size: var(--fs-xs); padding: var(--sp-1) 0; }
+/* 공사일보: 일보 카드가 주인공(위쪽 강조선·큰 제목), 달력은 26rem. 일보가 있는 날은 달력에서 초록 칸 */
+@media (min-width: 1000px) { .jh-pjt__splitrep { grid-template-columns: minmax(0, 26rem) minmax(0, 1fr); align-items: start; column-gap: var(--sp-4); } .jh-pjt__calcol--compact { position: sticky; top: var(--sp-3); align-self: start; } }
+.jh-pjt__calcol--compact .jh-pjt__calc { min-height: var(--u-64); padding: var(--u-2); }
+.jh-pjt__calcol--compact .jh-pjt__calnum { font-size: var(--fs-md); }
+.jh-pjt__calcol--compact .jh-pjt__calh { font-size: var(--fs-sm); padding: var(--sp-1) 0; }
 .jh-pjt__calc[data-has="true"] { background: #E8F7EE; border-color: #16A34A; }
 .jh-pjt__calc[data-has="true"][data-sel="true"] { background: var(--c-primary-weak); border-color: var(--c-primary); }
 .jh-pjt__rpt { border-top: var(--u-4) solid var(--c-primary); box-shadow: 0 var(--u-4) var(--u-16) var(--c-overlay); }
 .jh-pjt__rpt .jh-panel__head h3 { font-size: var(--fs-xl); }
+/* 공정: 스크롤을 내려 체크할 때 왼쪽 섹터 카드가 따라온다(floating) */
+@media (min-width: 1000px) { .jh-pjt__splitprog > .jh-pjt__cards { position: sticky; top: var(--sp-3); align-self: start; max-height: calc(100vh - var(--sp-6)); overflow-y: auto; } }
+/* 출역·공수: 오른쪽 탭은 한 줄(줄바꿈 없음) — 왼쪽 입력 칸을 24rem 으로 줄여 오른쪽을 넓힌다 */
+@media (min-width: 900px) { .jh-pa.jh-pjt { grid-template-columns: minmax(0, 24rem) minmax(0, 1fr); } }
+.jh-pa .jh-ro__ftabs { flex-wrap: nowrap; overflow: hidden; }
+.jh-pa .jh-ro__ftab { white-space: nowrap; padding-left: var(--sp-3); padding-right: var(--sp-3); }
+/* 이달 공수 달력 */
+.jh-pa__calc { min-height: var(--u-84); align-items: center; }
+.jh-pa__md { font-size: var(--fs-md); color: var(--c-primary); }
+.jh-pa__people { width: 100%; }
+/* 월간 공수: 프로젝트별 진행률 막대 */
+.jh-ro__pcell { min-width: var(--u-160, 10rem); }
+.jh-ro__pct { display: inline-block; min-width: var(--u-52); font-weight: 700; }
+.jh-ro__pcell .jh-pjt__bar2 { display: inline-block; width: calc(100% - var(--u-56)); vertical-align: middle; }
+/* 종료 PJT: 목록(표) */
+.jh-ov__listbox { border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); overflow-x: auto; }
+.jh-ov__list { width: 100%; }
+.jh-ov__lcontent { max-width: var(--u-320); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jh-ov__lact { white-space: nowrap; text-align: right; }
 

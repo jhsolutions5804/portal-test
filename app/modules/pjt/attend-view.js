@@ -1,6 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261014zl';
-import { dayTotals, mdSum, activeWorkersForDate, canWorkOn, hasManday, monthlyMatrix } from './attendance.js?v=20261014zl';
-import { holidayName, isWeekend } from '../../shared/holidays.js?v=20261014zl';
+import { esc } from '../../core/ui.js?v=20261014zm';
+import { dayTotals, mdSum, activeWorkersForDate, canWorkOn, hasManday, monthlyMatrix } from './attendance.js?v=20261014zm';
+import { holidayName, isWeekend } from '../../shared/holidays.js?v=20261014zm';
+import { monthGrid } from './schedule.js?v=20261014zm';
 const f1 = (n) => (Math.round((Number(n) || 0) * 10) / 10).toFixed(1);
 const chip = (t, tone) => '<span class="jh-pjt__chip" data-tone="' + esc(tone || '') + '">' + esc(t) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -44,14 +45,18 @@ export function recentHtml(st) {
   const recent = st.recent.map((r) => '<div class="jh-pjt__rec"><span>' + esc(r.date.slice(5)) + ' (' + dow(r.date) + ')</span><strong>' + f1(r.sum) + '</strong></div>').join('');
   return card('최근 7일 공수 합계', '<div class="jh-pjt__pad jh-pjt__recent">' + recent + '</div>');
 }
-/** 월 공수 집계표: 월 이동, 인원별 날짜별 공수와 합계 */
+/** 이달 공수: 월 달력(칸마다 그날 공수 합계·출역 인원, 날짜를 누르면 그 날짜 입력으로 이동) + 인원별 이달 합계. 옆으로 스크롤되는 31열 표 대신 */
 export function sheetHtml(st) {
-  const s = st.sheet; if (!s) return card('이달 공수 집계표', '<div class="jh-pjt__pad"><div class="jh-empty">불러오는 중...</div></div>');
-  const off = s.keys.map(offKind); const dayTitle = (k) => (holidayName(k) ? holidayName(k) + ' (' + dow(k) + ')' : dow(k) + '요일');
-  const head = '<tr><th rowspan="2">이름</th>' + s.keys.map((k, i) => '<th class="jh-pjt__num jh-pjt__day" data-off="' + off[i] + '" title="' + esc(dayTitle(k)) + '">' + (i + 1) + '</th>').join('') + '<th class="jh-pjt__num" rowspan="2">합계</th></tr><tr>' + s.keys.map((k, i) => '<th class="jh-pjt__num jh-pjt__day jh-pjt__dow" data-off="' + off[i] + '" title="' + esc(dayTitle(k)) + '">' + dow(k) + '</th>').join('') + '</tr>';
-  const body = s.rows.map((r) => '<tr' + (r.orphan ? ' data-orphan="1"' : '') + '><td>' + esc(r.name) + '</td>' + r.values.map((v, i) => '<td class="jh-pjt__num" data-off="' + off[i] + '">' + (v ? f1(v) : '') + '</td>').join('') + '<td class="jh-pjt__num"><strong>' + f1(r.total) + '</strong></td></tr>').join('') + '<tr><td><strong>합계</strong></td>' + s.dayTotals.map((v, i) => '<td class="jh-pjt__num" data-off="' + off[i] + '">' + (v ? f1(v) : '') + '</td>').join('') + '<td class="jh-pjt__num"><strong>' + f1(s.grand) + '</strong></td></tr>';
+  const s = st.sheet; if (!s) return card('이달 공수', '<div class="jh-pjt__pad"><div class="jh-empty">불러오는 중...</div></div>');
+  const at = {}; s.keys.forEach((k, i) => { at[k] = i; });
+  const day = (k) => { const i = at[k]; if (i == null) return { md: 0, n: 0 }; return { md: s.dayTotals[i] || 0, n: s.rows.filter((r) => (r.values[i] || 0) > 0).length }; };
+  const dowH = ['일', '월', '화', '수', '목', '금', '토'].map((d, i) => '<div class="jh-pjt__calh" data-off="' + (i === 0 ? 'red' : i === 6 ? 'sat' : '') + '">' + d + '</div>').join('');
+  const cells = monthGrid(st.month.y, st.month.m).flat().map((k) => { if (!k) return '<div class="jh-pjt__calc" data-empty="1"></div>'; const d = day(k); const hn = holidayName(k);
+    return '<button type="button" class="jh-pjt__calc jh-pa__calc" data-pa-goday="' + k + '" data-sel="' + (k === st.date) + '" data-off="' + offKind(k) + '" title="' + esc(hn || '') + '"><span class="jh-pjt__calnum">' + Number(k.slice(8)) + '</span>' + (d.md > 0 ? '<strong class="jh-pa__md">' + f1(d.md) + '</strong><span class="jh-field__hint">' + d.n + '명</span>' : '') + '</button>'; }).join('');
+  const people = s.rows.map((r) => { const days = r.values.filter((v) => v > 0).length; return '<tr' + (r.orphan ? ' data-orphan="1"' : '') + '><td>' + esc(r.name) + '</td><td class="jh-pjt__num">' + days + '일</td><td class="jh-pjt__num"><strong>' + f1(r.total) + '</strong></td></tr>'; }).join('');
   const right = '<span class="jh-pjt__tools"><button type="button" class="jh-btn" data-variant="ghost" data-pa-act="mprev" aria-label="이전 달">‹</button><strong>' + st.month.y + '년 ' + (st.month.m + 1) + '월</strong><button type="button" class="jh-btn" data-variant="ghost" data-pa-act="mnext" aria-label="다음 달">›</button></span>';
-  return card('이달 공수 집계표', '<div class="jh-pjt__pad"><div class="jh-pjt__scroll"><table class="jh-pjt__table"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div><div class="jh-field__hint">빨간 열은 일요일·공휴일, 파란 열은 토요일입니다(머리글에 마우스를 올리면 공휴일 이름). 그 달 1일에 재직 중이던 인원(월 중 퇴사자 포함)과, 명부에서 빠졌어도 공수가 기록된 사람이 모두 나옵니다.</div></div>', right);
+  return card('이달 공수', '<div class="jh-pjt__pad"><div class="jh-pjt__calgrid">' + dowH + cells + '</div><div class="jh-field__hint">칸의 숫자는 그날 공수 합계와 출역 인원입니다. 날짜를 누르면 그 날짜의 출역·공수 입력으로 이동합니다. 그 달 1일에 재직 중이던 인원(월 중 퇴사자 포함)과, 명부에서 빠졌어도 공수가 기록된 사람이 모두 나옵니다.</div>'
+    + '<div class="jh-pjt__scroll"><table class="jh-pjt__table jh-pa__people"><thead><tr><th>이름</th><th class="jh-pjt__num">출역</th><th class="jh-pjt__num">이달 공수</th></tr></thead><tbody>' + people + '<tr><td><strong>합계</strong></td><td></td><td class="jh-pjt__num"><strong>' + f1(s.grand) + '</strong></td></tr></tbody></table></div></div>', right);
 }
 /** 월별 누적 공수(프로젝트 전체 기간): 사람 × 달, 오른쪽 합계·아래 월 합계. 보고 있는 날짜의 달 열을 강조 */
 export function cumHtml(st) {

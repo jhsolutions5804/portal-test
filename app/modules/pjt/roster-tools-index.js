@@ -1,18 +1,19 @@
 /* 근로자 연명부 도구 — 주소 #/pjt/roster/_manday(월간 공수 보기) · #/pjt/roster/_migrate(기존 인원 마이그레이션). 연명부 진입(roster-index.js)이 넘겨준다.
  * 모든 프로젝트(종료된 것 포함)의 명단·공수는 pjt_registry/<id>/… 에서 읽는다. 마이그레이션 쓰기 순서: 마스터·새 명단 문서 → 공수·출역 기록의 id 이전 → 옛 명단 문서 삭제(맨 마지막, 중간에 멈춰도 다시 실행할 수 있게). */
-import { db, collection, doc, getDocs, writeBatch, deleteField } from '../../core/firebase.js?v=20261014zl';
-import { toast } from '../../core/ui.js?v=20261014zl';
-import { confirmDialog } from '../../core/dialog.js?v=20261014zl';
-import { loadBase, loadRows } from './month-data.js?v=20261014zl';
-import { pathsFor } from './adapter.js?v=20261014zl';
-import { appToday } from './attendance.js?v=20261014zl';
-import { aggregateMonth, migrationGroups, planMigration, planMerge, planLink, unknownGroups, rekeyMd, rekeyChecks } from './roster-tools.js?v=20261014zl';
-import { shiftMonth } from './overview.js?v=20261014zl';
-import { mandayHtml, migrateHtml } from './roster-tools-view.js?v=20261014zl';
+import { db, collection, doc, getDocs, writeBatch, deleteField } from '../../core/firebase.js?v=20261014zm';
+import { toast } from '../../core/ui.js?v=20261014zm';
+import { confirmDialog } from '../../core/dialog.js?v=20261014zm';
+import { loadBase, loadRows } from './month-data.js?v=20261014zm';
+import { pathsFor } from './adapter.js?v=20261014zm';
+import { appToday } from './attendance.js?v=20261014zm';
+import { aggregateMonth, migrationGroups, planMigration, planMerge, planLink, unknownGroups, rekeyMd, rekeyChecks, visibleInMonth } from './roster-tools.js?v=20261014zm';
+import { loadProgressPct } from './progress-stat.js?v=20261014zm';
+import { shiftMonth } from './overview.js?v=20261014zm';
+import { mandayHtml, migrateHtml } from './roster-tools-view.js?v=20261014zm';
 export async function mountRosterTools(root, route, ctx, mode) {
   root.onclick = null; root.oninput = null; root.onchange = null;
   const me = (ctx && ctx.me) || {}; const t0 = appToday().split('-').map(Number);
-  const st = { mode, allowed: !!(me.admin || (me.perms && me.perms.pjt)), admin: !!me.admin, canEdit: !!(me.admin || (me.perms && me.perms.pjt)), ready: false, err: '', failed: [], y: t0[0], m: t0[1] - 1, seq: 0, projects: [], masters: {}, agg: null, sheet: '', groups: [], form: null, msg: '', busy: false };
+  const st = { mode, allowed: !!(me.admin || (me.perms && me.perms.pjt)), admin: !!me.admin, canEdit: !!(me.admin || (me.perms && me.perms.pjt)), ready: false, err: '', failed: [], y: t0[0], m: t0[1] - 1, seq: 0, projects: [], shown: [], prog: {}, masters: {}, agg: null, sheet: '', groups: [], form: null, msg: '', busy: false };
   root.innerHTML = '<div id="rt-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#rt-body');
   const paint = () => { const y = window.scrollY; body.innerHTML = (st.mode === '_manday' ? mandayHtml : migrateHtml)(st); window.scrollTo(0, y); };
   if (!st.allowed) { body.removeAttribute('aria-busy'); paint(); return; }
@@ -21,7 +22,9 @@ export async function mountRosterTools(root, route, ctx, mode) {
   const loadMonth = async () => {
     const seq = ++st.seq; st.ready = false; paint(); const failed = st.baseFailed.slice(); failed.push.apply(failed, await loadRows(st.projects, st.y, st.m));
     if (seq !== st.seq) return;   // 그 사이 달을 바꾼 경우 이전 결과는 버린다
-    st.failed = failed; st.agg = aggregateMonth(st.projects, st.masters); st.ready = true; paint();
+    st.failed = failed; st.shown = st.projects.filter((p) => visibleInMonth(p, st.y, st.m, (p.rows || []).length > 0));   // 종료된 프로젝트는 종료한 달까지만 보인다
+    st.agg = aggregateMonth(st.shown, st.masters); st.ready = true; paint();
+    st.shown.forEach((p) => { if (st.prog[p.key] === undefined) { st.prog[p.key] = 'wait'; loadProgressPct(p.doc || { id: p.key }, p.name, appToday()).then((v) => { st.prog[p.key] = v; if (body.isConnected) paint(); }); } });   // 프로젝트별 진행률은 늦게 도착하는 대로 채운다
   };
   const loadMigrate = async () => { st.ready = false; paint(); st.baseFailed = await loadBaseSt(); st.failed = st.baseFailed.slice(); st.groups = migrationGroups(st.projects, st.masters); st.ready = true; paint(); };
   try { st.baseFailed = await loadBaseSt(); body.removeAttribute('aria-busy'); if (mode === '_manday') await loadMonth(); else { st.failed = st.baseFailed.slice(); st.groups = migrationGroups(st.projects, st.masters); st.ready = true; paint(); } } catch (e) { body.removeAttribute('aria-busy'); st.err = '불러오지 못했습니다: ' + ((e && (e.code || e.message)) || ''); paint(); }

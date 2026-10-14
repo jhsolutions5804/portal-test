@@ -5,6 +5,10 @@ const num = (v) => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
 const r1 = (n) => Math.round(n * 10) / 10;
 /** 월 범위(문서 id 가 날짜라서 범위 조회로 그 달 문서만 읽는다) */
 export const monthRange = (y, m) => ({ lo: y + '-' + pad(m + 1) + '-01', hi: y + '-' + pad(m + 1) + '-31' });
+/** 종료 시각(파이어스토어 시각 {seconds}) → 종료한 달의 번호(연×12+월0~11, 한국 시간). 시각이 없거나 2000년 이전 값이면 null */
+export function endedYmOf(endedAt) { const sec = endedAt && (endedAt.seconds != null ? endedAt.seconds : endedAt._seconds); if (!sec || sec < 946684800) return null; const d = new Date(sec * 1000 + 9 * 3600 * 1000); return d.getUTCFullYear() * 12 + d.getUTCMonth(); }
+/** 그 달(y, m=0~11)에 월간 공수에 보여 줄 프로젝트인가: 진행 중이면 항상, 종료된 프로젝트는 종료한 달까지만(예: 9월에 종료 → 9월까지 보이고 10월부터 숨김). 종료한 달을 모르면(옛 데이터) 그 달에 공수 기록이 있을 때만 */
+export function visibleInMonth(p, y, m, hasData) { if (!p || !p.ended) return true; if (p.endedYm == null) return !!hasData; return y * 12 + m <= p.endedYm; }
 /** 월간 공수 집계.
  *  projects: [{ key, name, ended, roster: { 직원id: { name, birth } }, rows: [[날짜, { 직원id: 공수 }], …] }] · masters: { id: { name, birth } }
  *  → { grand, pjtTotals[{key,name,ended,workerCount,total}], persons[{key,name,birth,masterId,total,byPjt,byDate}], unknown[{pjt,date,id,amount}], unknownTotal, missingBirth[{pjt,id,name}] } */

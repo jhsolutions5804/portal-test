@@ -1,39 +1,39 @@
 /* PJT 관리(통합 새 모듈) — 설계서 docs/pjt-design.md. Ph2·Ph4·경량PJT를 한 모듈로 합친다.
  * 지금 새 화면은 "출역·공수"(근태·공수 탭) 하나다 — 구포털 PJT 메뉴에서 프로젝트를 고르면 그 아래 "👷 출역·공수 (새)" 탭으로 열린다(legacy/frame.js 의 nativeSubs, modules/index.js hostNative). 프로젝트는 화면 안에서 고르지 않는다. 나머지 탭은 만들면서 구포털 항목을 하나씩 교체한다.
  * 저장 형식은 구포털 그대로(출역 { checks }, 공수 { md }, 날짜별 문서) — 영업기획의 공수 연동·팀별 노무비가 읽는다. 경로는 adapter.js, 규칙은 attendance.js. */
-import { db, functions, httpsCallable, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261014zl';
-import { esc, toast } from '../../core/ui.js?v=20261014zl';
-import { confirmDialog } from '../../core/dialog.js?v=20261014zl';
-import { pathsFor, featuresOf, defaultMandayOf, isDateKey } from './adapter.js?v=20261014zl';
-import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261014zl';
-import { visibleProjects } from './projects.js?v=20261014zl';
-import { loadHolidays } from '../../shared/holidays.js?v=20261014zl';
-import { attendHtml, dayWorkers } from './attend-view.js?v=20261014zl';
-import { normalizeDay, stateAt, cellState, keyOf, stagesOf } from './progress.js?v=20261014zl';
-import { structureFor, planSave } from './structure-store.js?v=20261014zl';
-import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, setFeature, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261014zl';
-import { progressHtml } from './progress-view.js?v=20261014zl';
-import { diffText } from './structure-view.js?v=20261014zl';
-import { activeWorkersForDate } from './attendance.js?v=20261014zl';
-import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261014zl';
-import { buildWeekly } from './weekly-ppt.js?v=20261014zl';
-import { boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, remapByOrder, unmatchedKeys, snapToTuesday, weekNo, weekRange } from './layout.js?v=20261014zl';
-import { fileToDataUrl, imageInfo } from './image-tools.js?v=20261014zl';
-import { layoutEditorHtml } from './layout-view.js?v=20261014zl';
-import { scheduleHtml } from './schedule-view.js?v=20261014zl';
-import { reportHtml } from './report-view.js?v=20261014zl';
-import { homeHtml } from './home-view.js?v=20261014zl';
-import { settingsHtml } from './settings-view.js?v=20261014zl';
-import { formOf as settingsFormOf, buildData as settingsBuild, changedFields, endText, parseDefaultManday } from './settings.js?v=20261014zl';
-import { dday, monthMandayTotal, latestReports } from './home.js?v=20261014zl';
-import { calcAll } from './progress.js?v=20261014zl';
-import { fromStored, toStored, totalOf, attendanceSummary, autoContent, docHtml, docTitle, isLegacyDoc, dateText, WORK_SHIFTS, authorLabel, normalizeEquip, withEditor } from './report.js?v=20261014zl';
-import { itemsForKey, buildDoc, formOf, detectCat, addDays, weekDays, isKey } from './schedule.js?v=20261014zl';
+import { db, functions, httpsCallable, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261014zm';
+import { esc, toast } from '../../core/ui.js?v=20261014zm';
+import { confirmDialog } from '../../core/dialog.js?v=20261014zm';
+import { pathsFor, featuresOf, defaultMandayOf, isDateKey } from './adapter.js?v=20261014zm';
+import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261014zm';
+import { visibleProjects } from './projects.js?v=20261014zm';
+import { loadHolidays } from '../../shared/holidays.js?v=20261014zm';
+import { attendHtml, dayWorkers } from './attend-view.js?v=20261014zm';
+import { normalizeDay, stateAt, cellState, keyOf, stagesOf } from './progress.js?v=20261014zm';
+import { structureFor, planSave } from './structure-store.js?v=20261014zm';
+import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, setFeature, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261014zm';
+import { progressHtml } from './progress-view.js?v=20261014zm';
+import { diffText } from './structure-view.js?v=20261014zm';
+import { activeWorkersForDate } from './attendance.js?v=20261014zm';
+import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261014zm';
+import { buildWeekly } from './weekly-ppt.js?v=20261014zm';
+import { boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, remapByOrder, unmatchedKeys, snapToTuesday, weekNo, weekRange } from './layout.js?v=20261014zm';
+import { fileToDataUrl, imageInfo } from './image-tools.js?v=20261014zm';
+import { layoutEditorHtml } from './layout-view.js?v=20261014zm';
+import { scheduleHtml } from './schedule-view.js?v=20261014zm';
+import { reportHtml } from './report-view.js?v=20261014zm';
+import { homeHtml } from './home-view.js?v=20261014zm';
+import { settingsHtml } from './settings-view.js?v=20261014zm';
+import { formOf as settingsFormOf, buildData as settingsBuild, changedFields, endText, parseDefaultManday } from './settings.js?v=20261014zm';
+import { dday, monthMandayTotal, latestReports } from './home.js?v=20261014zm';
+import { calcAll } from './progress.js?v=20261014zm';
+import { fromStored, toStored, totalOf, attendanceSummary, autoContent, docHtml, docTitle, isLegacyDoc, dateText, WORK_SHIFTS, authorLabel, normalizeEquip, withEditor } from './report.js?v=20261014zm';
+import { itemsForKey, buildDoc, formOf, detectCat, addDays, weekDays, isKey } from './schedule.js?v=20261014zm';
 
-export { mountRoster } from './roster-index.js?v=20261014zl';
-export { mountEnded } from './overview-index.js?v=20261014zl';
-export { mountTeam } from './team-index.js?v=20261014zl';
-import { mountOverview, notifyPjtChanged } from './overview-index.js?v=20261014zl';
+export { mountRoster } from './roster-index.js?v=20261014zm';
+export { mountEnded } from './overview-index.js?v=20261014zm';
+export { mountTeam } from './team-index.js?v=20261014zm';
+import { mountOverview, notifyPjtChanged } from './overview-index.js?v=20261014zm';
 export const manifest = { id: 'pjt', order: 40, title: 'PJT 관리', icon: '🏗️', defaultHash: '#/pjt/attend', perm: (me) => !!me && me.admin === true };
 export async function mount(root) { root.innerHTML = '<div class="jh-empty">PJT 화면은 구포털 틀 안의 메뉴로 열립니다.</div>'; }
 const pushHash = (h) => { if (location.hash === h) return; try { history.replaceState(null, '', h); } catch (e) { location.hash = h; } };
@@ -111,6 +111,7 @@ export async function mountAttend(root, route, ctx) {
     const end = t.closest('[data-pa-end]'); if (end && st.manage) { const id = end.getAttribute('data-pa-end'); const w = st.roster.find((x) => x.id === id); const ok = await confirmDialog({ title: '투입 종료', body: (w ? w.name : id) + '을(를) 이 프로젝트 투입에서 종료할까요? 명단에서 지우지 않으며 지금까지의 출역·공수는 그대로 남습니다.', confirmLabel: '투입 종료' }); if (!ok.ok) return;
       try { await setDoc(doc(db, P().roster, id), { active: false, endedDate: st.date }, { merge: true }); if (w) { w.active = false; w.endedDate = st.date; } recomputeSheet(); toast('투입을 종료했습니다.'); } catch (e) { toast('저장 실패: ' + ((e && (e.code || e.message)) || '')); } paint(); return; }
     const rej = t.closest('[data-pa-rejoin]'); if (rej && st.manage) { const id = rej.getAttribute('data-pa-rejoin'); const w = st.roster.find((x) => x.id === id); try { await setDoc(doc(db, P().roster, id), { active: true, endedDate: '' }, { merge: true }); if (w) { w.active = true; w.endedDate = ''; } toast('다시 투입했습니다.'); } catch (e) { toast('저장 실패: ' + ((e && (e.code || e.message)) || '')); } paint(); return; }
+    const gd = t.closest('[data-pa-goday]'); if (gd) { await goDate(gd.getAttribute('data-pa-goday')); return; }   // 이달 공수 달력의 날짜 → 그 날짜의 출역·공수 입력
     const tab = t.closest('[data-pa-tab]'); if (tab) { st.panel = tab.getAttribute('data-pa-tab'); paint(); if (st.panel === 'sheet' && !st.sheet) await loadSheet(); if (st.panel === 'cum' && !st.cumDocs) await loadCum(); return; }
     const a = t.closest('[data-pa-act]'); if (!a) return; const act = a.getAttribute('data-pa-act');
     if (act === 'prev') { await goDate(shiftDate(st.date, -1)); return; } if (act === 'next') { await goDate(shiftDate(st.date, 1)); return; } if (act === 'today') { await goDate(appToday()); return; }
@@ -397,34 +398,29 @@ export async function mountReport(root, route, ctx) {
 /** 프로젝트 홈: 프로젝트를 고르면 처음 보이는 새 화면(주소 #/pjt/<프로젝트> 또는 #/pjt/<프로젝트>/home). 요약 카드(공정율·D+·이달 공수·오늘 출역)·오늘 일정·공사일보·바로가기·기본정보 — 모든 프로젝트 같은 형식.
  *  느린 계산(공정율: Ph2·Ph4 는 날짜별 컬렉션을 하나씩 읽음)은 화면을 먼저 보여 준 뒤 채운다. */
 export async function mountHome(root, route, ctx) {
-  if (!(((route && route.segs) || [])[0])) return mountOverview(root, route, ctx);   // 프로젝트를 고르지 않은 PJT 홈(#/pjt/home) = 전체 홈(프로젝트 카드·통합 일정·신규 프로젝트)
+  if (!(((route && route.segs) || [])[0])) return mountOverview(root, route, ctx);   // 프로젝트를 고르지 않은 PJT 홈(#/pjt/home) = 전체 홈(통합 일정 달력·프로젝트 목록·신규 프로젝트)
   root.onclick = null; root.onchange = null;
-  const me = (ctx && ctx.me) || {}; const segs = (route && route.segs) || []; const today = appToday();
-  const st = { projects: [], proj: '', label: '', today, doc: null, unit: '대', ready: false, progress: null, progressNote: '', att: { headcount: 0, mandayTotal: 0 }, monthMd: 0, schedules: [], reports: [], features: {} };
-  root.innerHTML = '<div id="hm-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#hm-body'); const paint = () => { body.innerHTML = homeHtml(st); };
+  const me = (ctx && ctx.me) || {}; const segs = (route && route.segs) || []; const today = appToday(); const [ty, tm] = today.split('-').map(Number);
+  const st = { projects: [], proj: '', label: '', today, date: today, month: { y: ty, m: tm - 1 }, doc: null, unit: '대', ready: false, schedules: [], reports: [], reportDates: new Set(), features: {} };   // 홈 = 월 캘린더 + 고른 날짜의 일정(요약 카드 없음)
+  root.innerHTML = '<div id="hm-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#hm-body'); const paint = () => { const y = window.scrollY; body.innerHTML = homeHtml(st); window.scrollTo(0, y); };
   try { await Promise.race([loadHolidays(), new Promise((r) => setTimeout(r, 1500))]); } catch (e) { /* 공휴일 없이 표시 */ }
   try { st.projects = visibleProjects(me, await loadDyn()); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
   body.removeAttribute('aria-busy'); st.proj = st.projects.some((p) => p.key === segs[0]) ? segs[0] : ''; if (!st.proj) { paint(); return; }
-  const P = pathsFor(st.proj); const pr = st.projects.find((p) => p.key === st.proj); st.label = pr.label; const [ty, tm] = today.split('-'); const ym = ty + '-' + tm;
+  const P = pathsFor(st.proj); const pr = st.projects.find((p) => p.key === st.proj); st.label = pr.label;
   try {
     const ps = await getDoc(doc(db, P.settings.col, P.settings.id)); st.doc = ps.exists() ? ps.data() : (pr.doc || {});
-    const sr = structureFor(st.doc); st.structure = toRuntime(sr.S, st.label, stagesOf); st.unit = sr.S.unit || '대'; st.features = featuresOf(sr.S.features);
-    const rd = async () => { const [a, m] = await Promise.all([getDoc(doc(db, P.attendance, today)), getDoc(doc(db, P.manday, today))]); return { checks: a.exists() ? (a.data().checks || []) : [], md: m.exists() ? (m.data().md || {}) : {} }; };
-    const monthDocs = async () => { try { const s = await getDocs(query(collection(db, P.manday), where(documentId(), '>=', ym + '-01'), where(documentId(), '<=', ym + '-31'))); const o = {}; s.forEach((d) => { o[d.id] = (d.data().md) || {}; }); return o; } catch (e) { return {}; } };
-    const [t, mm, ss, rr] = await Promise.all([rd(), monthDocs(), getDocs(collection(db, P.schedules)), getDocs(collection(db, P.reports))]);
-    st.att = attendanceSummary(t.checks, t.md, null); st.monthMd = monthMandayTotal(mm, ym); st.schedules = []; ss.forEach((d) => st.schedules.push(Object.assign({ id: d.id }, d.data()))); const rdocs = []; rr.forEach((d) => rdocs.push({ id: d.id, data: d.data() })); st.reports = latestReports(rdocs, 3); st.ready = true;
+    const sr = structureFor(st.doc); st.unit = sr.S.unit || '대'; st.features = featuresOf(sr.S.features);
+    const [ss, rr] = await Promise.all([getDocs(collection(db, P.schedules)), getDocs(collection(db, P.reports))]);
+    st.schedules = []; ss.forEach((d) => st.schedules.push(Object.assign({ id: d.id }, d.data()))); const rdocs = []; rr.forEach((d) => rdocs.push({ id: d.id, data: d.data() })); st.reports = latestReports(rdocs, 3); st.reportDates = new Set(rdocs.map((d) => d.id)); st.ready = true;
   } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && (e.code || e.message)) || '') + '</div>'; return; }
   paint();
-  // 공정율 — 날짜별 체크를 모두 읽어야 해서 화면을 먼저 보여 준 뒤 계산한다
-  try {
-    const days = {}; const S = st.structure; try { const snap = await getDocs(collection(db, P.progress.days)); snap.forEach((x) => { days[x.id] = normalizeDay(x.data()); }); } catch (e) { /* 아직 체크가 없는 프로젝트 */ }
-    const states = {}; S.groups.forEach((g) => { states[g.id] = stateAt(days, today, g.id); }); const A = calcAll(S, states); st.progress = { pct: A.pct, items: A.items };
-  } catch (e) { st.progressNote = '계산 실패'; }
-  paint();
+  root.onclick = (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return; let el;
+    if ((el = t.closest('[data-hm-day]'))) { st.date = el.getAttribute('data-hm-day'); paint(); return; }
+    if ((el = t.closest('[data-hm-nav]'))) { const v = el.getAttribute('data-hm-nav'); if (v === 'today') { st.date = today; st.month = { y: ty, m: tm - 1 }; } else { let { y, m } = st.month; m += Number(v); if (m > 11) { m = 0; y++; } if (m < 0) { m = 11; y--; } st.month = { y, m }; const dd = new Date(Date.UTC(y, m + 1, 0)).getUTCDate(); st.date = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(Math.min(Number(st.date.slice(8)), dd)).padStart(2, '0'); } paint(); }
+  };
 }
 
-/** 설정(설정 탭, 관리자 전용): 기본정보 수정·프로젝트 종료/재개·참여 부서·개인(공용 화면)·공정 구조 안내. 주소 #/pjt/<프로젝트>/settings. 모든 프로젝트 같은 화면.
- *  저장 위치는 고정 PJT = pjt_settings/<키>, 경량 = pjt_registry/<id>(필드 같음, 기본정보만 병합 저장 — 참여자·상태·구조 데이터는 건드리지 않음) */
 export async function mountSettings(root, route, ctx) {
   root.onclick = null; root.oninput = null;
   const me = (ctx && ctx.me) || {}; const segs = (route && route.segs) || [];

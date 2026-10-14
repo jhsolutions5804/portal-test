@@ -1,9 +1,9 @@
 /* PJT 전체 홈·종료 PJT 화면(표시만). 규칙은 overview.js, 불러오기·저장·이벤트는 overview-index.js. */
-import { esc } from '../../core/ui.js?v=20261014zl';
-import { holidayName } from '../../shared/holidays.js?v=20261014zl';
-import { monthGrid, itemsForKey, dowOf } from './schedule.js?v=20261014zl';
-import { FIELDS } from './settings.js?v=20261014zl';
-import { colorOf, blockDays, blockLabel, monthLabel, groupByDay, legendOf, cardOf } from './overview.js?v=20261014zl';
+import { esc } from '../../core/ui.js?v=20261014zm';
+import { holidayName } from '../../shared/holidays.js?v=20261014zm';
+import { monthGrid, itemsForKey, dowOf } from './schedule.js?v=20261014zm';
+import { FIELDS } from './settings.js?v=20261014zm';
+import { colorOf, blockDays, blockLabel, monthLabel, groupByDay, legendOf, cardOf } from './overview.js?v=20261014zm';
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const dayHead = (k) => { const [, m, d] = k.split('-').map(Number); return m + '/' + d; };
 const offKind = (k) => (holidayName(k) || dowOf(k) === 0 ? 'red' : dowOf(k) === 6 ? 'sat' : '');
@@ -57,8 +57,8 @@ export function overviewHtml(st) {
 /** 종료 PJT 목록 */
 export function endedHtml(st) {
   if (!st.ready) return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide"><div class="jh-pjt__proj"><span class="jh-pjt__projlabel">🗄️ 종료 PJT</span></div>' + (st.err ? '<div class="jh-alert" data-tone="danger" role="alert">' + esc(st.err) + '</div>' : '<div class="jh-empty">불러오는 중...</div>') + '</div></div>';
-  const card = (d) => { const info = [d.client, d.site].filter(Boolean); const ended = d.endedAt && d.endedAt.seconds > 946684800 ? new Date(d.endedAt.seconds * 1000) : null;   /* 2000년 이전 값은 날짜로 보지 않는다 */ const et = ended ? ended.getFullYear() + '-' + String(ended.getMonth() + 1).padStart(2, '0') + '-' + String(ended.getDate()).padStart(2, '0') : '';
-    return '<article class="jh-ov__card" data-ended="1"><div class="jh-ov__ch"><h3>' + esc(d.name || '(이름 없음)') + '</h3><span class="jh-pjt__chip" data-tone="gray">종료' + (et ? ' ' + et : '') + '</span></div><div class="jh-ov__info">' + (info.length ? info.map((x) => '<span class="jh-pjt__chip" data-tone="gray">' + esc(x) + '</span>').join(' ') : '') + '</div>' + (d.content ? '<div class="jh-field__hint">' + esc(d.content) + '</div>' : '')
-      + (st.admin ? '<div class="jh-ov__cf"><button type="button" class="jh-btn" data-variant="secondary" data-ov-resume="' + esc(d.id) + '"' + (st.busy ? ' disabled' : '') + '>재개</button><button type="button" class="jh-btn" data-variant="danger" data-ov-del="' + esc(d.id) + '"' + (st.busy ? ' disabled' : '') + '>🗑 완전삭제</button></div>' : '') + '</article>'; };
-  return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide"><div class="jh-pjt__proj"><span class="jh-pjt__projlabel">🗄️ 종료 PJT</span><span class="jh-field__hint">' + (st.admin ? '재개하면 진행 중 프로젝트로 돌아갑니다. 완전삭제는 되돌릴 수 없습니다.' : '종료된 프로젝트 목록(재개·삭제는 관리자)') + '</span></div>' + (st.list.length ? '<div class="jh-ov__cards">' + st.list.map(card).join('') + '</div>' : '<div class="jh-empty">종료된 프로젝트가 없습니다.</div>') + '</div></div>';
+  const row = (d) => { const info = [d.client, d.site].filter(Boolean); const ended = d.endedAt && d.endedAt.seconds > 946684800 ? new Date(d.endedAt.seconds * 1000) : null;   /* 2000년 이전 값은 날짜로 보지 않는다 */ const et = ended ? ended.getFullYear() + '-' + String(ended.getMonth() + 1).padStart(2, '0') + '-' + String(ended.getDate()).padStart(2, '0') : '';
+    return '<tr data-ended="1"><td><strong>' + esc(d.name || '(이름 없음)') + '</strong></td><td>' + (info.length ? info.map((x) => '<span class="jh-pjt__chip" data-tone="gray">' + esc(x) + '</span>').join(' ') : '<span class="jh-field__hint">—</span>') + '</td><td>' + (et ? esc(et) : '<span class="jh-field__hint">—</span>') + '</td><td class="jh-ov__lcontent">' + (d.content ? esc(d.content) : '<span class="jh-field__hint">—</span>') + '</td>'
+      + (st.admin ? '<td class="jh-ov__lact"><button type="button" class="jh-btn" data-variant="secondary" data-ov-resume="' + esc(d.id) + '"' + (st.busy ? ' disabled' : '') + '>재개</button> <button type="button" class="jh-btn" data-variant="danger" data-ov-del="' + esc(d.id) + '"' + (st.busy ? ' disabled' : '') + '>🗑 완전삭제</button></td>' : '') + '</tr>'; };
+  return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide"><div class="jh-pjt__proj"><span class="jh-pjt__projlabel">🗄️ 종료 PJT</span><span class="jh-field__hint">' + (st.admin ? '재개하면 진행 중 프로젝트로 돌아갑니다. 완전삭제는 되돌릴 수 없습니다.' : '종료된 프로젝트 목록(재개·삭제는 관리자)') + '</span></div>' + (st.list.length ? '<div class="jh-ov__listbox"><table class="jh-ro__t jh-ov__list"><thead><tr><th>프로젝트</th><th>거래처·현장</th><th>종료일</th><th>내용</th>' + (st.admin ? '<th></th>' : '') + '</tr></thead><tbody>' + st.list.map(row).join('') + '</tbody></table></div>' : '<div class="jh-empty">종료된 프로젝트가 없습니다.</div>') + '</div></div>';
 }
