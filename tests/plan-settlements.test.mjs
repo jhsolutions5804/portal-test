@@ -23,4 +23,11 @@ ok(JSON.stringify(donePatch()) === '{"status":"done"}' && JSON.stringify(undoneP
 const c1 = doneConfirm(S[0], 1234567), c0 = doneConfirm(S[0], 0), cp = doneConfirm(S[3], 5);
 ok(c1.body.includes('현재 프로젝트 미수금: 1,234,567') && c1.body.includes('수동 완결 가능') && c0.body.includes('완결 권장 상태') && !c0.body.includes('미수금:') && cp.body.includes('실제 송금이 완료된 경우에만') && cp.label === '지급완료' && undoneConfirm(S[0]).includes('회계 매출 인식에서 제외') && undoneConfirm(S[3]).includes('직접비(용역비)'), '확인 문구(구포털 그대로): 미수금이 남은 완결·권장 완결·지급완료·취소');
 ok(projectBalance(S, 'p1') === (8000000 + 1200000) - 3000000 && projectBalance(S, 'p2') === 800000 - 1000000 && projectBalance(S, 'zz') === 0, '프로젝트 잔액(완결 확인 창의 미수금): 청구 누계(공급가액 몫, 폐기 제외) − 지급 누계');
+// ── 정산서 프로젝트 없음('해당 없음') — 본섭 gihoek 20261013c 와 같은 표시·필터 ──
+{
+  const SN = [{ id: 'a', docType: 'invoice', pjtId: 'p1', pjtIds: ['p1'], status: 'active' }, { id: 'b', docType: 'invoice', pjtId: '', pjtIds: [], status: 'active' }, { id: 'c', docType: 'invoice', pjtId: 'p1', pjtIds: ['p1', 'p2'], status: 'active' }];
+  const PN = [{ id: 'p1', code: '가현장' }, { id: 'p2', code: '나현장' }];
+  ok(filterSettlements(SN, { pjtId: '__none' }).map((s) => s.id).join() === 'b' && filterSettlements(SN, { pjtId: 'p1' }).map((s) => s.id).join() === 'a,c' && filterSettlements(SN, {}).length === 3, '정산 목록 필터 "해당 없음"은 프로젝트 없는 정산서만, 프로젝트 필터는 기존대로');
+  ok(projectLabel(SN[1], PN) === '해당 없음' && projectLabel(SN[0], PN) === '가현장' && projectLabel({ pjtId: 'gone', pjtIds: ['gone'] }, PN) === '-' && projectLabel(SN[2], PN) === '가현장+나현장', '프로젝트 라벨: 없으면 "해당 없음", 삭제된 프로젝트는 기존대로 "-", 여러 프로젝트는 +로 이음');
+}
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

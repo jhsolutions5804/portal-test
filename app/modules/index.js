@@ -1,15 +1,15 @@
 /* 플랫폼에 꽂는 모듈 목록 — 모듈을 더하거나 빼는 일은 이 파일 한 곳만 고친다.
  * 각 항목은 { manifest, mount }. 핵심부(core/)는 모듈 폴더를 직접 알지 못하고 이 목록만 읽는다. */
-import * as edoc from './edoc/index.js?v=20261014q';
-import * as attendance from './attendance/index.js?v=20261014q';
-import * as calendar from './calendar/index.js?v=20261014q';
-import * as company from './company/index.js?v=20261014q';
-import * as finance from './finance/index.js?v=20261014q';
-import * as plan from './plan/index.js?v=20261014q';
-import * as general from './general/index.js?v=20261014q';
-import * as hr from './hr/index.js?v=20261014q';
-import * as pjt from './pjt/index.js?v=20261014q';
-import { modules as legacy, hostNative } from './legacy/index.js?v=20261014q';
+import * as edoc from './edoc/index.js?v=20261014r';
+import * as attendance from './attendance/index.js?v=20261014r';
+import * as calendar from './calendar/index.js?v=20261014r';
+import * as company from './company/index.js?v=20261014r';
+import * as finance from './finance/index.js?v=20261014r';
+import * as plan from './plan/index.js?v=20261014r';
+import * as general from './general/index.js?v=20261014r';
+import * as hr from './hr/index.js?v=20261014r';
+import * as pjt from './pjt/index.js?v=20261014r';
+import { modules as legacy, hostNative } from './legacy/index.js?v=20261014r';
 
 export const MODULES = [
   { manifest: edoc.manifest, mount: edoc.mount },

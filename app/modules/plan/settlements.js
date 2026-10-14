@@ -1,7 +1,7 @@
 /* 영업기획 정산서(청구서·지급예정서) — 순수 규칙(화면·네트워크 없이 시험 가능). 구포털 기획(gihoek)의 정산 목록·상세·상태 처리 규칙을 그대로 옮겼다.
  * 상태: active(유효) → done(청구서는 "완결 = 수금", 지급예정서는 "지급완료") → 취소하면 active. 폐기(void)는 집계에서 제외되고, 폐기된 정산서만 삭제할 수 있다.
  * 지급예정서가 완결되면 회계 장부의 직접비(용역비)로 반영되고 그때의 계상월은 acctMonth(없으면 지급일→발행일→기준월 순)다. */
-import { setActive, settleAmountForPjt } from './projects.js?v=20261014q';
+import { setActive, settleAmountForPjt } from './projects.js?v=20261014r';
 export { setActive, settleAmountForPjt };
 export const SETTLE_PAGE_SIZE = 10;
 export const SETTLE_LABEL = { invoice: '대금청구서', payment: '지급예정서' };
@@ -12,7 +12,8 @@ export function filterSettlements(list, f) {
   const o = f || {};
   return (list || []).filter((s) => {
     if (o.docType && s.docType !== o.docType) return false;
-    if (o.pjtId && !(s.pjtId === o.pjtId || (s.pjtIds && s.pjtIds.includes(o.pjtId)))) return false;
+    if (o.pjtId === '__none') { if (s.pjtId || (s.pjtIds && s.pjtIds.length)) return false; }   // 프로젝트 없는 정산서('해당 없음')
+    else if (o.pjtId && !(s.pjtId === o.pjtId || (s.pjtIds && s.pjtIds.includes(o.pjtId)))) return false;
     if (o.client && (s.recipient && s.recipient.company) !== o.client) return false;
     if (o.status && (o.status === 'done' ? s.status !== 'done' : s.status === 'done')) return false;
     if (o.month && !String(s.issueDate || '').startsWith(o.month)) return false;
@@ -33,7 +34,7 @@ export function settleSummary(filtered) {
   const invDone = sum((s) => s.docType === 'invoice' && s.status === 'done'), payDone = sum((s) => s.docType === 'payment' && s.status === 'done');
   return { inv, pay, invDone, payDone, receivable: inv - invDone, payable: pay - payDone };
 }
-export const projectLabel = (s, projects) => ((s.pjtIds && s.pjtIds.length > 1) ? s.pjtIds.map((pid) => { const pp = (projects || []).find((x) => x.id === pid); return pp ? pp.code : pid; }).join('+') : ((((projects || []).find((x) => x.id === s.pjtId)) || {}).code || '-'));
+export const projectLabel = (s, projects) => ((s.pjtIds && s.pjtIds.length > 1) ? s.pjtIds.map((pid) => { const pp = (projects || []).find((x) => x.id === pid); return pp ? pp.code : pid; }).join('+') : ((((projects || []).find((x) => x.id === s.pjtId)) || {}).code || (s.pjtId ? '-' : '해당 없음')));
 export const isMulti = (s) => !!(s && s.pjtIds && s.pjtIds.length > 1);
 export const acctMonthOf = (s) => s.acctMonth || (s.payDate || s.issueDate || s.baseMonth || '').slice(0, 7);
 export const validAcctMonth = (t) => /^\d{4}-(0[1-9]|1[0-2])$/.test(String(t || ''));

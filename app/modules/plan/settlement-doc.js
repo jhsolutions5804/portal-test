@@ -15,7 +15,7 @@ const pjtCode = (projects, id) => { const p = (projects || []).find((x) => x.id 
 export function settleDocHtml(s, projects) {
   const title = s.docType === 'invoice' ? '대 금 청 구 서' : '지 급 예 정 서';
   const dateLabel = s.docType === 'invoice' ? '지급요청일' : '지급예정일'; const sd = s.sender || {}, rc = s.recipient || {}; const p = (projects || []).find((x) => x.id === s.pjtId);
-  const pjtLabel = (s.pjtIds && s.pjtIds.length > 1) ? s.pjtIds.map((pid) => { const pp = (projects || []).find((x) => x.id === pid); return pp ? pp.code : pid; }).join(' + ') : (p ? p.code : '-');
+  const pjtLabel = (s.pjtIds && s.pjtIds.length > 1) ? s.pjtIds.map((pid) => { const pp = (projects || []).find((x) => x.id === pid); return pp ? pp.code : pid; }).join(' + ') : (p ? p.code : (s.pjtId ? '-' : '해당 없음'));
   const rows = (s.lines || []).map((it, i) => `<tr><td style="text-align:center">${i + 1}</td><td>${h(it.name)}</td><td>${h(it.spec || '')}</td><td style="text-align:right">${won(it.amount)}</td></tr>`).join('');
   return `<h1>${title}</h1>
   <div class="meta"><span>발행번호: ${h(s.no)}</span><span>발행일: ${h(s.issueDate)}</span></div>

@@ -1,9 +1,9 @@
 /* 영업기획 정산서 발행 — 순수 규칙(화면·네트워크 없이 시험 가능). 구포털 기획(gihoek)의 발행 계산을 그대로 옮겼다.
  * 방식: 직접 입력(manual), 수량 정산(qty), 공수 연동(manday, 지급예정서), 공정 연동(progress, 청구서) — 구포털의 정산서 발행 4방식을 모두 옮겼다.
  * 번호: yymm + 세 자리, 청구서·지급예정서 따로 센다(구포털은 "개수 + 1" 이라 삭제 뒤 같은 번호가 다시 나올 수 있어 "가장 큰 번호 + 1" 로 한다 — 빈 번호가 없으면 결과는 같다). */
-import { itemAmt, getLinkPjt } from './projects.js?v=20261014q';
-import { setProgressOverrides, getProgProfile, isTrackable, zoneGuess, calcProgressRow, toggleProgressEst, setProgressZone, toggleProgressDeposit, setProgressBill, applyProgress, progressLine } from './progress.js?v=20261014q';
-import { num, blankItem, itemSetQty, itemSetPrice, itemSetAmount, partySnap, suppliers, clients, DEFAULT_ISSUER } from './estimates.js?v=20261014q';
+import { itemAmt, getLinkPjt } from './projects.js?v=20261014r';
+import { setProgressOverrides, getProgProfile, isTrackable, zoneGuess, calcProgressRow, toggleProgressEst, setProgressZone, toggleProgressDeposit, setProgressBill, applyProgress, progressLine } from './progress.js?v=20261014r';
+import { num, blankItem, itemSetQty, itemSetPrice, itemSetAmount, partySnap, suppliers, clients, DEFAULT_ISSUER } from './estimates.js?v=20261014r';
 export { num, blankItem, itemSetQty, itemSetPrice, itemSetAmount, suppliers, clients, setProgressOverrides, getProgProfile, isTrackable, zoneGuess, calcProgressRow, toggleProgressEst, setProgressZone, toggleProgressDeposit, setProgressBill, applyProgress };
 export const SUPPORTED = { invoice: ['progress', 'manual', 'qty'], payment: ['manday', 'manual', 'qty'] };   // 새 화면에서 계산하는 방식
 export const METHOD_OPTIONS = { invoice: [['progress', '공정 연동 (반입·설치 자동)'], ['qty', '수량 정산 (견적 품목별)'], ['manual', '직접 입력']], payment: [['manday', '공수 연동'], ['qty', '수량 정산 (견적 품목별)'], ['manual', '직접 입력']] };
@@ -21,19 +21,22 @@ export function defaultPayDate(baseMonth) {
 /** 새 발행 초안(구포털 newSettle): 기준월·발행일은 오늘(한국 시간), 발신자는 제이에이치솔루션(없으면 첫 발행처), 수신자는 비어 있음 */
 export function newIssueDraft(o) {
   const x = o || {}; const sup = suppliers(x.companies); const today = x.today || ''; const kind = x.docType === 'payment' ? 'payment' : 'invoice';
-  return { docType: kind, pjtId: x.pjtId || '', pjtIds: [x.pjtId || ''], method: kind === 'payment' ? 'manday' : 'manual', baseMonth: today.slice(0, 7), issueDate: today, payDate: '',
+  return { docType: kind, pjtId: x.pjtId || '', pjtIds: x.pjtId ? [x.pjtId] : [], method: kind === 'payment' && x.pjtId ? 'manday' : 'manual', baseMonth: today.slice(0, 7), issueDate: today, payDate: '',
     senderId: ((sup.find((c) => c.company === DEFAULT_ISSUER) || sup[0]) || {}).id || '', recipientId: '', senderContact: '', recipientContact: '', estIds: [], qtyInput: {}, qtyAmt: {}, supplyOverride: null, vatOverride: null, manualItems: [blankItem(), blankItem()], notes: '', mandayRate: null, mandayInput: null, mandayAuto: null, mandayBreakdown: {}, mandayOverride: {}, mandayRateOverride: {}, mandayMonth: '', estZone: {}, prog: {}, eqs: {}, deposit: {}, billOverride: {} };
 }
 /** 프로젝트 다중 선택(구포털 toggleSettlePjt): 최소 1개, 바뀌면 선택된 견적 중 빠진 프로젝트의 것은 해제. 반환: 오류 문구 또는 '' */
 export function togglePjt(d, pid, estimates) {
-  d.pjtIds = d.pjtIds && d.pjtIds.length ? d.pjtIds : [d.pjtId]; const i = d.pjtIds.indexOf(pid);
-  if (i < 0) d.pjtIds.push(pid); else { if (d.pjtIds.length <= 1) return '최소 1개 프로젝트는 선택되어야 합니다.'; d.pjtIds.splice(i, 1); }
-  d.pjtId = d.pjtIds[0]; d.estIds = (d.estIds || []).filter((id) => { const e = (estimates || []).find((x) => x.id === id); return e && d.pjtIds.includes(e.pjtId); }); return '';
+  d.pjtIds = Array.isArray(d.pjtIds) ? d.pjtIds.filter(Boolean) : (d.pjtId ? [d.pjtId] : []); const i = d.pjtIds.indexOf(pid);
+  if (i < 0) d.pjtIds.push(pid); else d.pjtIds.splice(i, 1);   // 모두 해제하면 프로젝트 없는 정산서(공정·공수 연동은 프로젝트가 있어야 하므로 직접 입력으로 바꾼다)
+  d.pjtId = d.pjtIds[0] || ''; if (!d.pjtIds.length && needsProject(d.method)) d.method = 'manual';
+  d.estIds = (d.estIds || []).filter((id) => { const e = (estimates || []).find((x) => x.id === id); return e && (d.pjtIds.length ? d.pjtIds.includes(e.pjtId) : !e.pjtId); }); return '';
 }
+/** 프로젝트가 있어야 쓸 수 있는 정산 방식(공정 연동은 섹터·장비 추적, 공수 연동은 프로젝트의 공수 출처) */
+export const needsProject = (method) => method === 'progress' || method === 'manday';
 /** 선택한 프로젝트의 유효 견적(수량 정산에서 고를 수 있는 견적) */
 export function pickableEstimates(d, estimates, projects) {
-  const ids = d.pjtIds || [d.pjtId]; const ok = d.method === 'progress' ? ids.filter((pid) => isTrackable((projects || []).find((p) => p.id === pid))) : ids;
-  return (estimates || []).filter((e) => ok.includes(e.pjtId) && e.status !== 'void' && e.status !== 'closed');
+  const ids = (d.pjtIds || [d.pjtId]).filter(Boolean); const ok = d.method === 'progress' ? ids.filter((pid) => isTrackable((projects || []).find((p) => p.id === pid))) : ids;
+  return (estimates || []).filter((e) => (ids.length ? ok.includes(e.pjtId) : !e.pjtId) && e.status !== 'void' && e.status !== 'closed');   // 프로젝트를 고르지 않으면 프로젝트 없는 견적만
 }
 /** 공정 연동에서 제외되는 프로젝트(섹터·장비 자동추적 연동이 없는 프로젝트)의 이름 */
 export const progressExcluded = (d, projects) => (d.pjtIds || [d.pjtId]).filter((pid) => !isTrackable((projects || []).find((p) => p.id === pid))).map((pid) => { const p = (projects || []).find((x) => x.id === pid); return p ? p.code : pid; });
@@ -123,7 +126,7 @@ export function buildSettlement(d, o) {
   if (!isSupported(d.docType, d.method)) return { ok: false, errors: ['이 정산 방식은 아직 옛 발행 화면에서 발행합니다.'], warnings };
   const sup = effSupply(d, estimates, x.projects, x.settlements); if (!(sup > 0)) errors.push('정산 금액이 없습니다.');
   if (!DATE.test(String(d.issueDate || ''))) errors.push('발행일을 입력하세요.'); if (!MONTH.test(String(d.baseMonth || ''))) errors.push('기준월을 입력하세요.'); if (d.payDate && !DATE.test(d.payDate)) errors.push('지급일 형식이 올바르지 않습니다.');
-  const pjtIds = d.pjtIds && d.pjtIds.length ? d.pjtIds : [d.pjtId]; if (!pjtIds[0]) errors.push('프로젝트를 선택하세요.');
+  const pjtIds = Array.isArray(d.pjtIds) ? d.pjtIds.filter(Boolean) : (d.pjtId ? [d.pjtId] : []);   // 프로젝트 없이 발행하는 정산서는 빈 목록
   const notes = String(d.notes || '').trim(); if (notes.length > NOTES_MAX) errors.push('특이사항은 ' + NOTES_MAX.toLocaleString('ko-KR') + '자 이내로 입력해 주세요.');
   if (errors.length) return { ok: false, errors, warnings };
   if (!d.recipientId) warnings.push('수신자(거래처)가 선택되지 않았습니다. 그래도 발행할까요?');
@@ -135,7 +138,7 @@ export function buildSettlement(d, o) {
   const perPjtAmount = {}; let mandayUsed = 0;
   if (d.method === 'manday') mandayUsed = pjtIds.length > 1 ? pjtIds.reduce((s, pid) => s + mdForPjt(d, pid), 0) : mdSingle(d);
   if (d.method === 'manday' && pjtIds.length > 1) pjtIds.forEach((pid) => { perPjtAmount[pid] = Math.round(mdForPjt(d, pid) * rateForPjt(d, pid)); });
-  else if ((d.method === 'qty' || d.method === 'progress') && pjtIds.length > 1) { pjtIds.forEach((pid) => { perPjtAmount[pid] = 0; }); Object.keys(perEst).forEach((eid) => { const e = estimates.find((y) => y.id === eid); if (!e) return; perPjtAmount[e.pjtId] = (perPjtAmount[e.pjtId] || 0) + (perEst[eid] || 0); }); } else perPjtAmount[d.pjtId] = sup;
+  else if ((d.method === 'qty' || d.method === 'progress') && pjtIds.length > 1) { pjtIds.forEach((pid) => { perPjtAmount[pid] = 0; }); Object.keys(perEst).forEach((eid) => { const e = estimates.find((y) => y.id === eid); if (!e) return; perPjtAmount[e.pjtId] = (perPjtAmount[e.pjtId] || 0) + (perEst[eid] || 0); }); } else if (d.pjtId) perPjtAmount[d.pjtId] = sup;   // 프로젝트 없는 정산서는 프로젝트별 몫을 두지 않는다
   const vat = effVat(d, estimates, x.projects, x.settlements); let payDate = d.payDate || ''; if (d.docType === 'payment' && !payDate && d.baseMonth) payDate = defaultPayDate(d.baseMonth);
   const acctMonth = (payDate || d.issueDate || d.baseMonth || '').slice(0, 7);
   const payload = { pjtId: d.pjtId, pjtIds, perPjtAmount, no, docType: d.docType, method: d.method, baseMonth: d.baseMonth, issueDate: d.issueDate, payDate, acctMonth,

@@ -1,7 +1,7 @@
 /* 영업기획 월말 마감(신규) — 순수 규칙(화면·네트워크 없이 시험 가능). 한 달의 청구·수금·지급 현황을 모으고, 마감 전에 챙길 점검 항목을 찾는다. 저장하는 데이터는 없다(조회·내려받기·인쇄만).
  * 월 기준: 청구서·지급예정서는 "발행일"이 그 달인 것, 수금·지급완료는 "완결 시각(doneAt)"이 그 달인 것(한국 시간). 프로젝트별 금액은 공급가액 기준(공동 발행분은 프로젝트 몫), 잔액은 합계금액(부가세 포함) 기준으로 청구·수금 화면과 같다. */
-import { sortProjects, settleAmountForPjt, settleBelongsToPjt, isEstActive, estSupply } from './projects.js?v=20261014q';
-import { acctMonthOf, SETTLE_LABEL, METHOD_LABEL } from './settlements.js?v=20261014q';
+import { sortProjects, settleAmountForPjt, settleBelongsToPjt, isEstActive, estSupply } from './projects.js?v=20261014r';
+import { acctMonthOf, SETTLE_LABEL, METHOD_LABEL } from './settlements.js?v=20261014r';
 const T = (n) => Number(n) || 0; const active = (s) => !!s && s.status !== 'void'; const done = (s) => !!s && s.status === 'done';
 const pad = (n) => String(n).padStart(2, '0');
 /** Timestamp({seconds}) 또는 ISO 문자열의 한국 시간 월(YYYY-MM), 없으면 '' */
@@ -40,7 +40,7 @@ export function closingChecks(ym, today, projects, estimates, settlements) {
 const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
 /** 그 달 발행 정산서 목록 CSV(엑셀에서 한글이 깨지지 않게 맨 앞에 BOM): 세무사·회계 전달용 */
 export function closingCsv(ym, projects, settlements) {
-  const P = projects || []; const label = (s) => ((s.pjtIds && s.pjtIds.length > 1) ? s.pjtIds : [s.pjtId]).map((id) => { const p = P.find((x) => x.id === id); return p ? p.code : id; }).join(' + ');
+  const P = projects || []; const label = (s) => ((s.pjtIds && s.pjtIds.length > 1) ? s.pjtIds : [s.pjtId]).map((id) => { const p = P.find((x) => x.id === id); return p ? p.code : (id || '해당 없음'); }).join(' + ');
   const head = ['번호', '구분', '상태', '프로젝트', '거래처', '기준월', '발행일', '지급일', '공급가액', '부가세', '합계', '회계 계상월'];
   const rows = (settlements || []).filter((s) => String(s.issueDate || '').startsWith(ym)).sort((a, b) => String(a.issueDate || '').localeCompare(String(b.issueDate || '')) || String(a.no || '').localeCompare(String(b.no || ''))).map((s) => [s.no, SETTLE_LABEL[s.docType] || s.docType, s.status === 'void' ? '폐기' : s.status === 'done' ? (s.docType === 'invoice' ? '완결' : '지급완료') : '유효', label(s), (s.recipient && s.recipient.company) || '', s.baseMonth || '', s.issueDate || '', s.payDate || '', T(s.supply), T(s.vat), T(s.total), s.docType === 'payment' ? acctMonthOf(s) : '']);
   return '\ufeff' + [head].concat(rows).map((r) => r.map(q).join(',')).join('\r\n') + '\r\n';

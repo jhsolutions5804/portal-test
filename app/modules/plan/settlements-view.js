@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261014q';
-import { won, card, chip, fld, selectHtml, pagerHtml } from './ui.js?v=20261014q';
-import { SETTLE_PAGE_SIZE, SETTLE_LABEL, METHOD_LABEL, filterSettlements, sortSettlements, settleFilterOptions, settleSummary, projectLabel, isMulti, acctMonthOf, canLinkEst, linkedEstimates, linkableEstimates, settleLinesOf, setActive, projectBalance } from './settlements.js?v=20261014q';
-import { paginate } from './projects.js?v=20261014q';
+import { esc } from '../../core/ui.js?v=20261014r';
+import { won, card, chip, fld, selectHtml, pagerHtml } from './ui.js?v=20261014r';
+import { SETTLE_PAGE_SIZE, SETTLE_LABEL, METHOD_LABEL, filterSettlements, sortSettlements, settleFilterOptions, settleSummary, projectLabel, isMulti, acctMonthOf, canLinkEst, linkedEstimates, linkableEstimates, settleLinesOf, setActive, projectBalance } from './settlements.js?v=20261014r';
+import { paginate } from './projects.js?v=20261014r';
 const sumCell = (label, v, tone) => '<div class="jh-plan__sumcell"><span class="jh-field__hint">' + esc(label) + '</span><strong' + (tone ? ' data-tone="' + tone + '"' : '') + '>' + v + '</strong></div>';
 const filterSel = (key, val, label, opts) => selectHtml('data-sl-filter="' + key + '"', val, [['', label]].concat(opts));
 /** 청구·수금(kind=invoice) / 지급·정산(kind=payment) 목록: 합계 카드 + 필터 + 10건씩 쪽 나눔 */
@@ -10,7 +10,7 @@ export function settlementsListHtml(st) {
   const list = sortSettlements(filterSettlements(all, f)); const pg = paginate(list, st.page, SETTLE_PAGE_SIZE); const sm = settleSummary(filterSettlements(all, f));
   const cards = inv ? sumCell('대금청구 누계', won(sm.inv)) + sumCell('수금(완결) 합계', won(sm.invDone)) + sumCell('미수금 (청구−수금)', won(sm.receivable), sm.receivable > 0 ? 'neg' : 'pos')
     : sumCell('지급예정 누계', won(sm.pay)) + sumCell('지급완료 합계', won(sm.payDone)) + sumCell('미지급 (예정−완료)', won(sm.payable), sm.payable > 0 ? 'neg' : 'pos');
-  const filters = '<div class="jh-plan__filters2">' + filterSel('pjtId', f.pjtId, '현장명 전체', st.projects.map((p) => [p.id, p.code])) + filterSel('client', f.client, '거래처 전체', opt.clients.map((c) => [c, c])) + filterSel('month', f.month, '발행월 전체', opt.months.map((m) => [m, m])) + filterSel('status', f.status, '상태 전체', [['done', inv ? '✓ 완결(수금)' : '✓ 지급완료'], ['pending', '미결']]) + '<button type="button" class="jh-btn" data-variant="ghost" data-sl-act="reset">초기화</button></div>';
+  const filters = '<div class="jh-plan__filters2">' + filterSel('pjtId', f.pjtId, '현장명 전체', st.projects.map((p) => [p.id, p.code]).concat([['__none', '해당 없음']])) + filterSel('client', f.client, '거래처 전체', opt.clients.map((c) => [c, c])) + filterSel('month', f.month, '발행월 전체', opt.months.map((m) => [m, m])) + filterSel('status', f.status, '상태 전체', [['done', inv ? '✓ 완결(수금)' : '✓ 지급완료'], ['pending', '미결']]) + '<button type="button" class="jh-btn" data-variant="ghost" data-sl-act="reset">초기화</button></div>';
   const isFiltered = f.pjtId || f.client || f.month || f.status;
   const rows = pg.items.length ? pg.items.map((s) => { const v = !setActive(s); return '<button type="button" class="jh-plan__row" data-sl-open="' + esc(s.id) + '" data-void="' + v + '"><span class="jh-plan__main"><span class="jh-plan__line"><strong>' + esc(SETTLE_LABEL[s.docType] || '정산서') + '</strong><span class="jh-field__hint">' + esc(s.no || '') + '</span>' + (v ? chip('폐기', 'gray') : '') + (s.status === 'done' ? chip('✓ 완결', 'green') : '') + '</span><span class="jh-plan__line">' + chip(projectLabel(s, st.projects), 'blue') + '<span class="jh-field__hint">' + esc('기준월 ' + (s.baseMonth || '-') + ' · 발행 ' + (s.issueDate || '-') + (s.recipient && s.recipient.company ? ' · ' + s.recipient.company : '')) + '</span></span></span><strong>' + won(s.total) + '</strong></button>'; }).join('')
     : '<div class="jh-empty">' + (isFiltered ? '조건에 맞는 정산서가 없습니다.' : (inv ? '발행된 청구서가 없습니다.' : '발행된 지급예정서가 없습니다.')) + '</div>';

@@ -1,8 +1,8 @@
-import { esc } from '../../core/ui.js?v=20261014q';
-import { won, card, chip, fld, selectHtml } from './ui.js?v=20261014q';
-import { METHOD_OPTIONS, isSupported, suppliers, clients, pickableEstimates, qtyRow, issueTotals, progressExcluded, progressProfile, calcProgressRow, mandaySource, mdSingle, mdBaseRate, mdForPjt, rateForPjt, mandaySummary, priorManday, TEAM_RATE } from './issue.js?v=20261014q';
-import { estSupply, itemAmt } from './projects.js?v=20261014q';
-import { compactRanges } from './progress.js?v=20261014q';
+import { esc } from '../../core/ui.js?v=20261014r';
+import { won, card, chip, fld, selectHtml } from './ui.js?v=20261014r';
+import { METHOD_OPTIONS, isSupported, suppliers, clients, pickableEstimates, qtyRow, issueTotals, progressExcluded, needsProject, progressProfile, calcProgressRow, mandaySource, mdSingle, mdBaseRate, mdForPjt, rateForPjt, mandaySummary, priorManday, TEAM_RATE } from './issue.js?v=20261014r';
+import { estSupply, itemAmt } from './projects.js?v=20261014r';
+import { compactRanges } from './progress.js?v=20261014r';
 const money = (n) => Number(Math.round(n) || 0).toLocaleString('ko-KR');
 const companyOpts = (list, first) => [['', first]].concat(list.map((c) => [c.id, c.company + (c.ceo ? ' (' + c.ceo + ')' : '')]));
 const contactSel = (key, companyId, val, companies) => { if (!companyId) return ''; const c = companies.find((x) => x.id === companyId); const cts = (c && c.contacts) || []; return fld('담당자', selectHtml('data-is-f="' + key + '"', val, [['', cts.length ? '— 담당자 선택 (선택사항) —' : '— 담당자 없음 (거래처에서 추가 가능) —']].concat(cts.map((t) => [t.name, t.name + (t.tel ? ' · ' + t.tel : '') + (t.email ? ' · ' + t.email : '')])), cts.length ? '' : 'disabled')); };
@@ -52,9 +52,9 @@ export function mandayCardHtml(st) {
 }
 /** 정산서 발행 폼(청구서/지급예정서). st.draft, st.projects, st.companies, st.estimates, st.settlements */
 export function issueFormHtml(st) {
-  const d = st.draft; const inv = d.docType === 'invoice'; const sups = suppliers(st.companies), clis = clients(st.companies); const ok = isSupported(d.docType, d.method);
+  const d = st.draft; const noPjt = !(d.pjtIds || []).filter(Boolean).length; const inv = d.docType === 'invoice'; const sups = suppliers(st.companies), clis = clients(st.companies); const ok = isSupported(d.docType, d.method);
   const pjtChips = st.projects.map((p) => { const on = d.pjtIds.includes(p.id); return '<label class="jh-plan__check jh-plan__pjtpick" data-on="' + on + '"><input type="checkbox" data-is-pjt="' + esc(p.id) + '"' + (on ? ' checked' : '') + '> <span>' + esc(p.code) + '</span></label>'; }).join('');
-  const head = '<div class="jh-plan__pad"><div class="jh-plan__grid">' + fld('프로젝트 (다중 선택 가능)', '<div class="jh-plan__checks">' + pjtChips + '</div>') + fld('정산 방식', selectHtml('data-is-f="method"', d.method, METHOD_OPTIONS[d.docType])) + '</div>'
+  const head = '<div class="jh-plan__pad"><div class="jh-plan__grid">' + fld('프로젝트 (다중 선택 가능)', '<div class="jh-plan__checks">' + pjtChips + '</div>', noPjt ? '프로젝트 없이 발행합니다 — 공정·공수 연동은 쓸 수 없고, 프로젝트 없는 견적(해당 없음)만 정산 견적으로 고를 수 있습니다.' : '선택하지 않아도 발행할 수 있습니다(프로젝트 없는 정산서).') + fld('정산 방식', selectHtml('data-is-f="method"', d.method, METHOD_OPTIONS[d.docType].filter(([v]) => !noPjt || !needsProject(v)))) + '</div>'
     + '<div class="jh-plan__grid">' + fld('기준월', '<input class="jh-input" type="month" data-is-f="baseMonth" value="' + esc(d.baseMonth) + '">') + fld('발행일', '<input class="jh-input" type="date" data-is-f="issueDate" value="' + esc(d.issueDate) + '">') + '</div>'
     + fld(inv ? '지급요청일' : '지급예정일', '<input class="jh-input" type="date" data-is-f="payDate" value="' + esc(d.payDate) + '">', inv ? '' : '비우면 기준월 익월 말일 자동 (주말→금요일), 회계 반영월 기준')
     + '<div class="jh-plan__grid"><div>' + fld('발신자 (우리)', selectHtml('data-is-f="senderId"', d.senderId, companyOpts(sups, '— 선택 —'))) + contactSel('senderContact', d.senderId, d.senderContact, st.companies) + '</div><div>' + fld('수신자 (' + (inv ? '원청' : '하청') + ')', selectHtml('data-is-f="recipientId"', d.recipientId, companyOpts(clis, '— 거래처 선택 —'))) + contactSel('recipientContact', d.recipientId, d.recipientContact, st.companies) + '</div></div></div>';

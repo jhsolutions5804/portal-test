@@ -1,7 +1,7 @@
-/* 구포털 기획(gihoek/index.html)의 정산서(대금청구서·지급예정서) 양식 원본 — settleDocHTML·SET_DOC_CSS·pvPrint. 새 영업기획의 정산서 양식이 같은 결과를 내는지 대조하는 기준(2026-10-13). 수정하지 않는다. 2026-10-13 갱신: 본섭 정산서 특이사항 추가(gihoek 20261013a, 본섭 커밋 f4bc259)를 반영한 원본. */
+/* 구포털 기획(gihoek/index.html)의 정산서(대금청구서·지급예정서) 양식 원본 — settleDocHTML·SET_DOC_CSS·pvPrint. 새 영업기획의 정산서 양식이 같은 결과를 내는지 대조하는 기준(2026-10-13). 수정하지 않는다. 2026-10-13 갱신: 본섭 정산서 특이사항 추가(gihoek 20261013a, 본섭 커밋 f4bc259)와 정산서 프로젝트 없음 표기(gihoek 20261013c)를 반영한 원본. */
 function settleDocHTML(s){ const title=s.docType==='invoice'?'대 금 청 구 서':'지 급 예 정 서';
   const dateLabel=s.docType==='invoice'?'지급요청일':'지급예정일'; const sd=s.sender||{}, rc=s.recipient||{}; const p=projects.find(x=>x.id===s.pjtId);
-  const pjtLabel=(s.pjtIds&&s.pjtIds.length>1)? s.pjtIds.map(pid=>{const pp=projects.find(x=>x.id===pid);return pp?pp.code:pid;}).join(' + ') : (p?p.code:'-');
+  const pjtLabel=(s.pjtIds&&s.pjtIds.length>1)? s.pjtIds.map(pid=>{const pp=projects.find(x=>x.id===pid);return pp?pp.code:pid;}).join(' + ') : (p?p.code:(s.pjtId?'-':'해당 없음'));
   const rows=(s.lines||[]).map((it,i)=>`<tr><td style="text-align:center">${i+1}</td><td>${it.name}</td><td>${it.spec||''}</td><td style="text-align:right">${won(it.amount)}</td></tr>`).join('');
   return `<h1>${title}</h1>
   <div class="meta"><span>발행번호: ${s.no}</span><span>발행일: ${s.issueDate}</span></div>
