@@ -5,6 +5,8 @@ import { twoWeeks } from '../app/modules/pjt/schedule.js';
 import { sheetHtml } from '../app/modules/pjt/attend-view.js';
 import { endedHtml } from '../app/modules/pjt/overview-view.js';
 import { mandayHtml } from '../app/modules/pjt/roster-tools-view.js';
+import { reportHtml } from '../app/modules/pjt/report-view.js';
+import { fromStored } from '../app/modules/pjt/report.js';
 import fs from 'node:fs';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const idx = (h, s) => h.indexOf(s);
@@ -55,4 +57,17 @@ const mst = { allowed: true, canEdit: true, ready: true, y: 2026, m: 8, failed: 
 const mh = mandayHtml(mst); const cellsP = [...mh.matchAll(/<td class="jh-ro__pcell">([^]*?)<\/td>/g)].map((m) => m[1]);
 ok(mh.includes('<table class="jh-ro__t jh-ro__pj">') && mh.includes('<th>진행률</th>') && cellsP.length === 3 && cellsP[0].includes('10.9%') && cellsP[0].includes('width:11%') && cellsP[1].includes('100.0%') && cellsP[1].includes('width:100%') && cellsP[2].includes('계산 중') && mandayHtml(Object.assign({}, mst, { prog: {} })).includes('<span class="jh-field__hint">—</span>'), '★ 월간 공수 프로젝트별 합계에 각 프로젝트의 진행률(숫자+막대): 10.9%·100.0%, 계산 중이면 "계산 중…", 모르면 "—"');
 ok(/\.jh-pjt__splitprog > \.jh-pjt__cards \{ scrollbar-width: none;/.test(css) && /\.jh-pjt__splitprog > \.jh-pjt__cards::-webkit-scrollbar \{ display: none; \}/.test(css) && /\.jh-pjt__rec a \{ white-space: nowrap; flex: none; \}/.test(css), '공정 floating 카드 목록은 자체 스크롤바를 숨김, 프로젝트 홈 오른쪽의 "보기" 링크는 줄바꿈 없음');
+// ⑧ 공사일보: 작성 완료본은 인쇄 미리보기처럼, [수정]을 눌러야 수정 화면 · 근무시간 드롭박스 · 장비별 차량번호 · 선택 버튼 색
+const stored = { fmt: 2, author: '관리자 대표', checkIn: '07:00', checkOut: '17:00', content: '반입 작업', tomorrow: '입고검사', headcount: 3, manday: 1.5, equip: '지게차 (12가3456), 크레인 (34나5678)', note: '특이 없음' };
+const rst = (o) => Object.assign({ proj: 'p4ph2', label: 'P4 Ph2 (FAB)', ready: true, date: '2026-10-14', today: '2026-10-14', month: { y: 2026, m: 9 }, dates: new Set(['2026-10-14']), exists: true, editing: false, preview: false, manage: true, readonly: false, ctx: { site: 'P4 Ph2 (FAB)', client: '귀뚜라미 범양냉방', dateKey: '2026-10-14' }, form: fromStored(stored) }, o || {});
+const rv = reportHtml(rst()); const rside = rv.slice(idx(rv, 'jh-pjt__rpt'));
+ok(rside.includes('jh-pjt__paper') && rside.includes('공 사 일 보') && rside.includes('반입 작업') && rside.includes('지게차 (12가3456), 크레인 (34나5678)') && rside.includes('07:00 ~ 17:00') && rside.includes('작성됨') && rside.includes('data-rp-act="edit"') && rside.includes('data-rp-act="print"') && !rside.includes('data-rp-f="content"') && !rside.includes('data-rp-act="save"') && !rside.includes('data-rp-shiftsel'), '★ 작성 완료된 일보는 입력 칸 없이 인쇄(PDF) 미리보기 같은 문서로 보이고, [수정]·[PDF·인쇄] 버튼만 있음');
+ok(reportHtml(rst({ readonly: true, manage: false })).indexOf('data-rp-act="edit"') === -1 && reportHtml(rst({ readonly: true, manage: false })).includes('jh-pjt__paper'), '조회 전용 계정은 [수정] 없이 문서만 봄');
+const rf = reportHtml(rst({ editing: true })); const fm = rf.slice(idx(rf, 'jh-pjt__sform'));
+ok(fm.includes('data-rp-f="content"') && fm.includes('data-rp-act="save"') && fm.includes('data-rp-act="cancel-edit"') && !fm.includes('jh-pjt__paper'), '[수정]을 누르면(editing) 수정 화면: 입력 칸·저장·취소');
+ok(reportHtml(rst({ exists: false, form: Object.assign(fromStored({}), { author: '관리자' }) })).includes('data-rp-f="content"') && reportHtml(rst({ exists: false, form: Object.assign(fromStored({}), { author: '관리자' }) })).indexOf('data-rp-act="cancel-edit"') === -1 && reportHtml(rst({ exists: false, form: Object.assign(fromStored({}), { author: '관리자' }) })).includes('작성 전'), '작성 전 일보는 바로 입력 화면(취소 버튼 없음)');
+ok(!fm.includes('data-rp-shift="') && /<select class="jh-select jh-pjt__shiftsel" data-rp-shiftsel/.test(fm) && (fm.match(/<option value="[^"]*"[^>]*>[^<]*<\/option>/g) || []).filter((o) => /\d\d:\d\d~\d\d:\d\d/.test(o)).length >= 7 && fm.includes('<option value="주간" selected>주간 (07:00~17:00)</option>') && fm.includes('>철야 (19:00~05:00)</option>') && fm.includes('구분 선택…'), '★ 근무시간 구분은 드롭박스: 구분 선택… + 주간·조출·연장·야간·조출주간·주간연장·철야(시간 표시), 지금 시간과 맞는 구분(주간)이 선택됨');
+ok(/data-rp-eqno="지게차" value="12가3456"/.test(fm) && /data-rp-eqno="크레인" value="34나5678"/.test(fm) && fm.includes('지게차 차량번호') && fm.includes('크레인 차량번호') && (fm.match(/data-rp-eqno=/g) || []).length === 2 && /data-rp-equip="지게차" aria-pressed="true"/.test(fm), '★ 지게차·크레인을 고르면 각각 차량번호 입력칸이 따로 나오고(값 유지), 고른 장비 버튼은 눌린 상태');
+const rf2 = reportHtml(rst({ editing: true, form: Object.assign(fromStored({}), { equip: ['크레인'], eqNo: {} }) })); ok((rf2.match(/data-rp-eqno=/g) || []).length === 1 && rf2.includes('data-rp-eqno="크레인"') && !rf2.includes('data-rp-eqno="지게차"') && rf2.includes('그 밖의 장비 직접 입력'), '고르지 않은 장비의 번호 칸은 안 나옴(크레인만 고르면 크레인 칸 하나), 그 밖의 장비는 따로 직접 입력');
+ok(/\.jh-pjt__cat \{ --cat: var\(--c-primary\); \}/.test(css) && /\.jh-pjt__cat\[aria-pressed="true"\] \{ background: var\(--cat\); color: var\(--c-primary-ink\);/.test(css) && /\.jh-pjt__eqnos \{ display: grid;/.test(css) && /\.jh-pjt__paper \{ max-width: 52rem;/.test(css), '★ 스타일 보호: 지게차·크레인 선택 버튼은 기본 색(주 색)을 갖고 눌리면 배경이 채워지며 글자는 대비 색(이전에는 색 변수가 없어 흰 글자가 안 보임), 차량번호 칸·종이 모양 미리보기');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

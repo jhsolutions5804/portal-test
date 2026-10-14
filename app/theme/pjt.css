@@ -442,4 +442,14 @@
 .jh-pjt__splitprog > .jh-pjt__cards::-webkit-scrollbar { display: none; }
 /* 프로젝트 홈 오른쪽 좁은 칸: "보기" 같은 링크가 글자 단위로 줄바꿈되지 않게 */
 .jh-pjt__rec a { white-space: nowrap; flex: none; }
+/* 공사일보: 지게차·크레인 선택 버튼 — 색 변수가 없어 눌렀을 때 글자만 흰색이 되어 안 보이던 것을 기본 색(주 색)으로 */
+.jh-pjt__cat { --cat: var(--c-primary); }
+.jh-pjt__cat[aria-pressed="true"] { background: var(--cat); color: var(--c-primary-ink); font-weight: 700; }
+.jh-pjt__shiftsel { max-width: var(--u-320); }
+/* 장비마다 차량번호 */
+.jh-pjt__eqnos { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--u-220), 1fr)); gap: var(--sp-3); }
+.jh-pjt__eqno { display: grid; gap: var(--u-4); }
+.jh-pjt__eqnolabel { font-size: var(--fs-sm); font-weight: 700; color: var(--c-primary); }
+/* 작성 완료된 일보: 인쇄(PDF) 미리보기 같은 종이 모양 */
+.jh-pjt__paper { max-width: 52rem; width: 100%; margin: 0 auto; padding: var(--sp-6); border: var(--u-1) solid var(--c-line-strong); box-shadow: 0 var(--u-4) var(--u-16) var(--c-overlay); }
 

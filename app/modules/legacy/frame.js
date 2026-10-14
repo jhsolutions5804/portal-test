@@ -1,10 +1,10 @@
-import { LEGACY_BASE } from '../../core/config.js?v=20261014zq';
-import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261014zq';
-import { esc } from '../../core/ui.js?v=20261014zq';
-import { attachActivity } from '../../core/idle.js?v=20261014zq';
-import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS, nativeViewKey } from './list.js?v=20261014zq';
-import { workTabs } from '../../core/worktabs.js?v=20261014zq';
-import { setSideCurrent } from '../../shared/sidenav.js?v=20261014zq';
+import { LEGACY_BASE } from '../../core/config.js?v=20261014zr';
+import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261014zr';
+import { esc } from '../../core/ui.js?v=20261014zr';
+import { attachActivity } from '../../core/idle.js?v=20261014zr';
+import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS, nativeViewKey } from './list.js?v=20261014zr';
+import { workTabs } from '../../core/worktabs.js?v=20261014zr';
+import { setSideCurrent } from '../../shared/sidenav.js?v=20261014zr';
 
 const base = () => new URL(LEGACY_BASE, location.href).href;
 const NATIVE = new Map();   // '모듈id/구역' → 그 구역을 새 모듈이 그리는 함수(modules/index.js 가 hostNative 로 등록)
