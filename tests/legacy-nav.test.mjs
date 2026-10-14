@@ -1,4 +1,5 @@
 import { LEGACY_DEFS, navHtml, sideCurrentKey, sideConfig } from '../app/modules/legacy/list.js';
+import * as listMod from '../app/modules/legacy/list.js';
 import { sidenavHtml, setSideCurrent, sideKeys } from '../app/shared/sidenav.js';
 import fs from 'fs';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
@@ -25,4 +26,7 @@ const fin = LEGACY_DEFS.find((d) => d.id === 'finance'); const fcfg = sideConfig
 ok(!!fin && ftabs.length === 11 && fkeys.length === 11 && new Set(fkeys).size === 11 && ftabs.every((k) => fkeys.includes(k)) && ftabs.join() === ['home', 'entries', 'expense', 'import', 'reports', 'monthly', 'forecast', 'gap', 'rules', 'opening', 'settings'].join() && fcfg.sections.map((x) => x.title).join() === '현황,입력,보고,정산,설정' && fcfg.title === '📒 재무회계' && fcfg.sections.flatMap((s) => s.items).every((i) => i.href === '#/finance/' + i.key) && fcfg.sections[0].items[0].label === '개요' && fin.sections.every((s) => s.native), '★ 재무회계는 인사총무와 같은 공용 틀(사이드바)을 쓴다: 기존 탭 11개(개요·전표·비용 입력·가져오기·재무제표·월간 수지·예측·이엔지 정산·규칙·개시 재산·설정)가 빠짐·중복 없이 현황·입력·보고·정산·설정으로 묶이고 모두 새 화면(구역)');
 const fp = fin.perm; ok(fp({ admin: true }) === true && fp({ dept: '재무회계팀' }) === true && fp({ perms: { finance: true } }) === true && fp({ admin: true, isGuest: true }) === false && fp({ dept: '영업기획팀' }) === false && fp(null) === false && fp({}) === false, '재무회계 권한: 관리자·재무회계팀·재무회계 권한자만(게스트·그 밖은 불가) — 공용 틀 정의와 모듈이 같은 함수');
 ok(navHtml({ id: 'pjt', title: 'PJT', tabbed: true, ownNav: false }, [{ key: 'a', label: 'A' }, { key: 'b', label: 'B' }], 'a', esc).includes('data-key="a" aria-current="page"') && !navHtml({ id: 'pjt', title: 'PJT', tabbed: true }, [{ key: 'a', label: 'A' }], 'a', esc).includes('jh-sidenav'), '사이드바를 쓰지 않는 다른 모듈(PJT 등)의 상단 칩 메뉴는 그대로');
+// 틀(frame.js)이 목록 파일(list.js)에서 가져오는 이름이 하나라도 빠지면 영업기획·인사총무·PJT·재무회계 틀이 전부 열리지 않는다 — 가져오는 이름이 모두 내보내져 있는지
+const frameSrc = fs.readFileSync(new URL('../app/modules/legacy/frame.js', import.meta.url), 'utf8'); const imp = frameSrc.match(/import \{([^}]+)\} from '\.\/list\.js[^']*'/); const wanted = imp ? imp[1].split(',').map((x) => x.trim()).filter(Boolean) : [];
+ok(wanted.length >= 10 && wanted.every((n) => typeof listMod[n] !== 'undefined') && typeof listMod.nativeViewKey === 'function', '★ 틀(frame.js)이 list.js 에서 가져오는 이름 ' + wanted.length + '개가 모두 내보내져 있음 — 빠진 이름: ' + (wanted.filter((n) => typeof listMod[n] === 'undefined').join(',') || '없음'));
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

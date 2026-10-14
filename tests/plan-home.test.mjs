@@ -1,4 +1,5 @@
-import { homeKpis, homeRows, homeTodo, homeMonth, HOME_TITLES, HOME_LINKS } from '../app/modules/plan/home.js';
+import { homeKpis, homeRows, homeTodo, homeMonth, HOME_TITLES } from '../app/modules/plan/home.js';
+import * as homeMod from '../app/modules/plan/home.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const P = [{ id: 'p1', code: 'P4 Ph2', name: 'FCU 183대', site: 'P4 Ph2', client: '귀뚜라미', type: 'fcu', status: 'run', createdAt: { seconds: 1 } }, { id: 'p2', code: 'H17L', name: '', site: '', client: '삼성', status: 'done', createdAt: { seconds: 2 } }, { id: 'p3', code: '', name: '이름만', createdAt: { seconds: 3 } }];
 const E = [{ id: 'e1', pjtId: 'p1', status: 'active', no: 'EST-1', title: '견적1', items: [{ amount: 1000 }], client: { company: '다람' } }, { id: 'e2', pjtId: 'p1', status: 'void', items: [{ amount: 9 }] }, { id: 'e3', pjtId: 'p2', status: 'closed', items: [{ amount: 7 }] }, { id: 'e4', pjtId: 'p2', items: [{ amount: 500 }] }];
@@ -15,5 +16,5 @@ const td2 = homeTodo([{ id: 'a', docType: 'payment', status: 'active', payDate: 
 ok(td2.payments.map((r) => r.no + ':' + r.days).join() === 'x:11,y:0' && td2.overdue.map((r) => r.no + ':' + r.days).join() === 'w:41,v:1' && homeTodo([], '2026-10-12').overdue.length === 0 && homeTodo(null, '2026-10-12').payments.length === 0, '챙길 일 정렬·경계: 오래 지난 것부터, 오늘이 지급일인 청구서는 아직 연체가 아님·지급예정서는 "오늘"');
 const mo = homeMonth(S, '2026-10');
 ok(mo.invoice.count === 1 && mo.invoice.total === 11 && mo.payment.count === 2 && mo.payment.total === 1101 && homeMonth(S, '2026-07').invoice.count === 1 && homeMonth(S, '2026-07').payment.total === 3300 && homeMonth([], '2026-10').invoice.count === 0, '이번 달 발행 요약: 발행일이 그 달인 유효 청구서·지급예정서의 건수와 합계금액(폐기 제외)');
-ok(HOME_LINKS.length === 6 && HOME_LINKS.map((x) => x[2]).join() === '#/plan/projects,#/plan/comp,#/plan/est,#/plan/billing,#/plan/payout,#/plan/teamlabor', '바로가기는 새 메뉴 구성(프로젝트·거래처·견적·청구·수금·지급·정산·팀별 노무비)');
+ok(homeMod.HOME_LINKS === undefined, '영업기획 홈의 바로가기(화면 이동 링크 6개)는 없어졌다 — 사이드 메뉴와 겹침');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

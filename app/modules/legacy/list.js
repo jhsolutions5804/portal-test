@@ -1,7 +1,7 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261014zj';
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261014zj';
-import { financePerm } from '../../shared/finance-perm.js?v=20261014zj';
-import { isProjectKey } from '../../shared/pjt-key.js?v=20261014zj';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261014zk';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261014zk';
+import { financePerm } from '../../shared/finance-perm.js?v=20261014zk';
+import { isProjectKey } from '../../shared/pjt-key.js?v=20261014zk';
 export { isProjectKey };
 /* 옛 모듈 어댑터의 목록과 규칙 — 화면(DOM)·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 옛 모듈이 새 모듈로 바뀌면 여기서 항목을 지우고 modules/index.js 의 새 모듈 목록으로 옮긴다. */
@@ -51,12 +51,13 @@ export const PJT_SUB_LABELS = { home: '🏠 프로젝트 홈', schedule: '📅 �
  *  items = pjtNav 결과, activeKey = 'home' | 프로젝트 id | 'roster' | 'ended', sub = 프로젝트 화면(home·schedule·…) 또는 연명부의 _manday·_migrate. 모든 프로젝트가 같은 모양이다. */
 export function pjtSideConfig(def, items, activeKey, sub, me) {
   const list = items || []; const enc = encodeURIComponent; const projects = list.filter((i) => isProjectKey(i.key)); const act = projects.find((p) => p.key === activeKey);
-  const sections = [{ items: [{ key: 'home', label: '🏠 PJT 홈', href: '#/pjt/home', hint: '프로젝트 카드·통합 일정' }] }];
+  const plain = (l) => String(l || '').replace(/^[^\p{L}\p{N}]+/u, '').replace(/ \(새\)$/, '');   // 재무회계·인사총무처럼 메뉴 항목은 글자만(앞의 이모지·"(새)" 표기 없음)
+  const sections = [{ title: '현황', items: [{ key: 'home', label: 'PJT 홈', href: '#/pjt/home', hint: '프로젝트 카드·통합 일정' }] }];
   if (projects.length) sections.push({ title: '프로젝트', items: projects.map((p) => ({ key: 'p/' + p.key, label: p.label, href: '#/pjt/' + enc(p.key) + '/home', active: p.key === activeKey })) });
   const subKey = (act && ((def.nativeSubs || []).indexOf(sub) !== -1 ? sub : def.defaultSub || 'home')) || '';
-  if (act) sections.push({ title: '📍 ' + act.label, items: (def.nativeSubs || []).filter((s) => s !== 'settings' || (me && me.admin)).map((s) => ({ key: 's/' + s, label: String(PJT_SUB_LABELS[s] || s).replace(/ \(새\)$/, ''), href: '#/pjt/' + enc(act.key) + '/' + s })) });
-  if (list.some((i) => i.key === 'roster')) sections.push({ title: '근로자 연명부', items: [{ key: 'roster', label: '👷 명부', href: '#/pjt/roster' }, { key: 'roster/_manday', label: '📊 월간 공수', href: '#/pjt/roster/_manday' }, { key: 'roster/_migrate', label: '🔄 기존 인원 마이그레이션', href: '#/pjt/roster/_migrate' }] });
-  sections.push({ items: [{ key: 'ended', label: '🗄️ 종료 PJT', href: '#/pjt/ended' }] });
+  if (act) sections.push({ title: act.label, kind: 'project', items: (def.nativeSubs || []).filter((s) => s !== 'settings' || (me && me.admin)).map((s) => ({ key: 's/' + s, label: plain(PJT_SUB_LABELS[s] || s), href: '#/pjt/' + enc(act.key) + '/' + s })) });   // 보는 프로젝트의 화면들(머리글 = 프로젝트 이름)
+  if (list.some((i) => i.key === 'roster')) sections.push({ title: '근로자 연명부', items: [{ key: 'roster', label: '명부', href: '#/pjt/roster' }, { key: 'roster/_manday', label: '월간 공수', href: '#/pjt/roster/_manday' }, { key: 'roster/_migrate', label: '기존 인원 마이그레이션', href: '#/pjt/roster/_migrate' }] });
+  sections.push({ title: '보관', items: [{ key: 'ended', label: '종료 PJT', href: '#/pjt/ended' }] });
   const current = act ? 's/' + subKey : activeKey === 'roster' ? (sub === '_manday' || sub === '_migrate' ? 'roster/' + sub : 'roster') : activeKey === 'ended' ? 'ended' : 'home';
   return { label: def.title + ' 메뉴', title: (def.icon ? def.icon + ' ' : '') + def.title, current, sections };
 }

@@ -23,11 +23,11 @@ export function parseStored(raw) { try { const a = JSON.parse(raw || '[]'); retu
 const KEY = (uid) => 'jh_recent_v1_' + (uid || 'anon');
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const visible = (el) => !!el && el.offsetParent !== null;
-/** 지금 화면에서 메뉴 이름을 읽는다: 상단 제목(모듈) + 사이드 내비게이션의 보는 프로젝트·현재 항목 */
+/** 지금 화면에서 메뉴 이름을 읽는다: 상단 제목(모듈) + 사이드 내비게이션의 보는 프로젝트 묶음(머리글 data-kind=project)·현재 항목 */
 export function describeNow(doc) {
   const d = doc || document; const title = (d.querySelector('#jh-title') || {}).textContent || '';
   const navs = [...d.querySelectorAll('.jh-sidenav')].filter(visible); const nav = navs[0]; let proj = '', cur = '';
-  if (nav) { const c = nav.querySelector('[aria-current="page"]'); cur = c ? c.textContent : ''; const heads = [...nav.querySelectorAll('.jh-sidenav__head')].filter((h) => /^📍/.test(h.textContent)); proj = heads[0] ? heads[0].textContent : ''; }
+  if (nav) { const c = nav.querySelector('[aria-current="page"]'); cur = c ? c.textContent : ''; const heads = [...nav.querySelectorAll('.jh-sidenav__head[data-kind="project"]')]; proj = heads[0] ? heads[0].textContent : ''; }
   return labelOf([title, proj, cur]);
 }
 /** 셸에 floating 패널을 붙인다. 이미 붙어 있으면 새 사용자로 갈아 끼운다. 반환: { touch(hash, modTitle) } */

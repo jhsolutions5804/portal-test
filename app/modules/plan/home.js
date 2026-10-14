@@ -1,6 +1,6 @@
 /* 영업기획 홈 — 순수 규칙(화면·네트워크 없이 시험 가능). 구포털 기획 홈의 요약(프로젝트 수·유효 견적·총 청구액·미수금)과 목록을 그대로 옮기고, "챙길 일"(연체 청구·지급 임박)을 새로 더했다.
  * 총 청구액·미수금은 프로젝트별 집계(projects.js pjtSummary)의 합이다: 청구 누계는 공급가액 기준(폐기 제외, 공동 발행분은 프로젝트 몫만), 미수금 = 청구 − 완결된 청구. */
-import { sortProjects, pjtSummary, estSupply, isEstActive, TYPE_LABEL } from './projects.js?v=20261014zj';
+import { sortProjects, pjtSummary, estSupply, isEstActive, TYPE_LABEL } from './projects.js?v=20261014zk';
 const T = (n) => Number(n) || 0;
 const STATUS = { run: '진행중', done: '종료' };
 /** 요약 카드: 프로젝트 수(진행중·종료), 유효 견적 수·공급가액 합, 총 청구액·지급·미수금(프로젝트별 합) */
@@ -32,4 +32,3 @@ export function homeMonth(settlements, ym) {
   const m = (settlements || []).filter((s) => s.status !== 'void' && String(s.issueDate || '').startsWith(ym)); const sum = (kind) => { const l = m.filter((s) => s.docType === kind); return { count: l.length, total: l.reduce((a, s) => a + (T(s.total) || T(s.amount)), 0) }; };
   return { invoice: sum('invoice'), payment: sum('payment') };
 }
-export const HOME_LINKS = [['📁', '프로젝트', '#/plan/projects', '프로젝트 등록 및 견적·정산 현황'], ['🏢', '거래처', '#/plan/comp', '발행처·수신처 업체 관리'], ['📄', '견적', '#/plan/est', '견적서 작성·개정 및 조회'], ['💳', '청구·수금', '#/plan/billing', '청구서 발행·완결(수금)'], ['🧾', '지급·정산', '#/plan/payout', '지급예정서 발행·지급완료'], ['👷', '팀별 노무비', '#/plan/teamlabor', '팀 공수 × 팀 단가']];
