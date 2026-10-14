@@ -31,7 +31,7 @@
 .jh-finance__split > .jh-finance__col:last-child { position: sticky; top: var(--sp-4); max-height: calc(100vh - var(--sp-5) * 2); overflow-y: auto; }
 .jh-fin-table--narrow { min-width: 0; }
 /* 카드 안쪽 여백·정보 조각 */
-.jh-finance__pad { padding: var(--sp-4); display: grid; gap: var(--sp-3); }
+.jh-finance__pad { padding: var(--sp-4) calc(var(--sp-4) + var(--sp-1)); display: grid; gap: var(--sp-4); }
 .jh-finance__pad .jh-field { margin-bottom: 0; }
 .jh-finance__facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
 .jh-finance__fact { display: grid; gap: var(--u-2); min-width: 0; }

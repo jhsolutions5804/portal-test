@@ -101,15 +101,15 @@
 /* ── 전자결재 홈 ── */
 .jh-dashboard { display: grid; gap: var(--sp-4); }
 .jh-kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-3); }
-.jh-kpi { display: grid; gap: var(--u-2); padding: var(--sp-4); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); }
+.jh-kpi { display: grid; gap: var(--sp-1); padding: var(--sp-4) calc(var(--sp-4) + var(--sp-1)); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); }
 .jh-kpi[data-tone="accent"] { border-color: var(--c-primary); background: var(--c-primary-weak); }
 .jh-kpi__label { font-size: var(--fs-xs); color: var(--c-ink-2); font-weight: 600; }
 .jh-kpi__value { font-size: var(--fs-xl); font-weight: 800; }
 .jh-kpi__hint { font-size: var(--fs-xs); color: var(--c-ink-3); }
 .jh-dashboard__grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
 .jh-panel { overflow: hidden; }
-.jh-panel__head { display: flex; align-items: center; justify-content: space-between; padding: var(--sp-3) var(--sp-4); border-bottom: var(--u-1) solid var(--c-line); }
-.jh-panel__head h3 { font-size: var(--fs-sm); }
+.jh-panel__head { display: flex; align-items: center; justify-content: space-between; padding: var(--sp-4) calc(var(--sp-4) + var(--sp-1)); border-bottom: var(--u-1) solid var(--c-line); }   /* 카드 안쪽 여백 기준: 위아래 16px · 좌우 20px (머리글·본문·표 모두 같은 왼쪽 선) */
+.jh-panel__head h3 { font-size: var(--fs-md); font-weight: 700; }
 
 /* ── 관리자 설정 ── */
 .jh-settings { display: grid; gap: var(--sp-4); }

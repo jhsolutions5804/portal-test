@@ -123,3 +123,10 @@
 @media (max-width: 899px) { .jh-worktabs { display: none; } }
 @media print { .jh-worktabs { display: none; } }
 .jh-body > .jh-main, .jh-body > .jh-keep { flex: 1 1 auto; }   /* 작업 탭 바가 항상 아래쪽에 붙도록 본문이 남는 높이를 차지 */
+
+/* 카드 안에서 표·안내문이 카드 가장자리에 바로 붙는 경우(표 상자·재무 표·월간 공수 표·안내 문구): 머리글 제목과 같은 좌우 여백(20px)에 맞춘다 */
+.jh-card > :is(.jh-hr__scroll, .jh-finance__scroll) { padding-bottom: var(--sp-2); }
+.jh-card > :is(.jh-hr__scroll, .jh-finance__scroll) :is(th, td):first-child, .jh-card > .jh-ro__t :is(th, td):first-child { padding-left: calc(var(--sp-4) + var(--sp-1)); }
+.jh-card > :is(.jh-hr__scroll, .jh-finance__scroll) :is(th, td):last-child, .jh-card > .jh-ro__t :is(th, td):last-child { padding-right: calc(var(--sp-4) + var(--sp-1)); }
+.jh-card > .jh-field__hint { padding: var(--sp-3) calc(var(--sp-4) + var(--sp-1)) var(--sp-2); }
+

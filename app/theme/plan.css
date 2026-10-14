@@ -1,6 +1,6 @@
 /* 영업기획 — 이 모듈만의 스타일. 색·간격은 theme/tokens.css 의 변수만 쓴다. 기준 폭은 899px 하나뿐. */
 .jh-plan { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); max-width: calc(var(--u-440) * 2.5); }
-.jh-plan__pad { display: grid; gap: var(--sp-3); padding: var(--sp-4); }
+.jh-plan__pad { display: grid; gap: var(--sp-4); padding: var(--sp-4) calc(var(--sp-4) + var(--sp-1)); }
 .jh-plan__bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); }
 .jh-plan__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
 .jh-plan__group { display: grid; gap: var(--sp-2); }

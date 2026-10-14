@@ -1,6 +1,6 @@
 /* PJT 새 모듈 화면 — 색·간격은 theme/tokens.css 의 변수만 쓴다. 폰 기준으로 먼저 그리고 넓은 화면에서 늘린다. */
 .jh-pjt { display: grid; gap: var(--sp-3); }
-.jh-pjt__pad { padding: var(--sp-3) var(--sp-4); display: grid; gap: var(--sp-3); }
+.jh-pjt__pad { padding: var(--sp-4) calc(var(--sp-4) + var(--sp-1)); display: grid; gap: var(--sp-4); }
 .jh-pjt__bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); }
 .jh-pjt__datenav, .jh-pjt__tools, .jh-pjt__bulkmd { display: inline-flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .jh-pjt__sum { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); }
@@ -61,9 +61,9 @@
 .jh-pjt--prog { display: block; } .jh-pjt__mainwide { display: grid; gap: var(--sp-3); max-width: 100%; }
 .jh-pjt__kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--u-120), 1fr)); gap: var(--sp-3); }
 .jh-pjt__group { display: grid; gap: var(--sp-2); padding-bottom: var(--sp-2); }
-.jh-pjt__ghead { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); width: 100%; padding: var(--sp-3) var(--sp-4); border: 0; background: transparent; color: var(--c-ink); font: inherit; text-align: left; cursor: pointer; }
+.jh-pjt__ghead { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); width: 100%; padding: var(--sp-3) calc(var(--sp-4) + var(--sp-1)); border: 0; background: transparent; color: var(--c-ink); font: inherit; text-align: left; cursor: pointer; }
 .jh-pjt__pill { padding: var(--u-2) var(--sp-3); border-radius: var(--u-999); background: var(--c-primary-weak); color: var(--c-primary); font-weight: 700; }
-.jh-pjt__steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--u-140), 1fr)); gap: var(--sp-2) var(--sp-4); padding: 0 var(--sp-4); }
+.jh-pjt__steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--u-140), 1fr)); gap: var(--sp-2) var(--sp-4); padding: 0 calc(var(--sp-4) + var(--sp-1)); }
 .jh-pjt__step { display: grid; gap: var(--u-4); }
 .jh-pjt__bar2 { display: block; height: var(--u-8); border-radius: var(--u-999); background: var(--c-line); overflow: hidden; } .jh-pjt__bar2 > span { display: block; height: 100%; background: var(--c-primary); }
 .jh-pjt__ctable { border-collapse: collapse; font-size: var(--fs-sm); margin: var(--sp-2) var(--sp-4); }
@@ -200,7 +200,7 @@
 .jh-ro__ichips { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
 .jh-ro__ichips--pad { padding: var(--sp-3) var(--sp-4); }
 .jh-ro__ok { padding: var(--sp-3) var(--sp-4); color: var(--c-success); }
-.jh-ro__pad { padding: var(--sp-3) var(--sp-4); }
+.jh-ro__pad { padding: var(--sp-4) calc(var(--sp-4) + var(--sp-1)); }
 .jh-ro__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--u-320), 1fr)); gap: var(--sp-3); align-items: stretch; }   /* 나란히 놓인 카드는 높이를 맞춘다 */
 .jh-ro__kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--u-140), 1fr)); gap: var(--sp-3); }
 .jh-ro__kpi { border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); padding: var(--sp-3) var(--sp-4); }
