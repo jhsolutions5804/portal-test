@@ -63,3 +63,58 @@
 .jh-hr__condbar { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: var(--sp-3); align-items: end; }
 .jh-hr__two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-4); align-items: start; }
 @media (max-width: 1100px) { .jh-hr__two { grid-template-columns: minmax(0, 1fr); } }
+
+/* ── 표 셀 정렬 근본 수정: .jh-field__hint 는 display:block 이라 표 셀(td)에 쓰면 행에서 빠져나와 줄이 어긋난다 ── */
+.jh-hr-table td.jh-field__hint, .jh-hr-table th.jh-field__hint { display: table-cell; margin: 0; }
+.jh-hr-table td.jh-hr__muted { color: var(--c-ink-3); font-size: var(--fs-xs); }
+.jh-hr-table--top td { vertical-align: top; }
+.jh-hr-table--nowrap td { white-space: nowrap; }
+.jh-hr--wide { max-width: none; }
+/* 인사 홈: 요약 카드는 왼쪽에 세로로, 캘린더는 오른쪽 */
+.jh-hr__home { display: grid; grid-template-columns: var(--u-320) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+.jh-hr__homeside { display: grid; gap: var(--sp-3); align-content: start; position: sticky; top: var(--sp-3); }
+.jh-hr__homeside .jh-kpi-grid { grid-template-columns: minmax(0, 1fr); }
+.jh-hr__homemain { display: grid; gap: var(--sp-4); min-width: 0; }
+@media (max-width: 1099px) { .jh-hr__home { grid-template-columns: minmax(0, 1fr); } .jh-hr__homeside { position: static; } .jh-hr__homeside .jh-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* 채용 지원자: 면접일 날짜·시간은 한 줄 */
+.jh-hr__iv { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--sp-1); }
+.jh-hr__iv .jh-input { width: auto; min-width: 0; }
+.jh-hr__iv .jh-input[type="date"] { flex: 0 0 var(--u-160, 9.5rem); }
+.jh-hr__iv .jh-input[type="time"] { flex: 0 0 var(--u-120, 6.5rem); }
+.jh-hr__stsel { width: auto; min-width: var(--u-100, 6rem); }
+.jh-hr__trunc { display: inline-block; max-width: var(--u-220); overflow: hidden; vertical-align: middle; }
+.jh-hr__trunc .jh-chip { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 저장된 계약서: 테두리 있는 카드(여러 건이면 나란히) */
+.jh-hr__post { display: grid; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); }
+.jh-hr__cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--u-320), 1fr)); gap: var(--sp-3); align-items: start; }
+.jh-hr__contract { border-left: var(--u-3) solid var(--c-primary); }
+.jh-hr__kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--u-4) var(--sp-3); margin: 0; font-size: var(--fs-sm); }
+.jh-hr__kv dt { color: var(--c-ink-3); font-weight: 600; }
+.jh-hr__kv dd { margin: 0; color: var(--c-ink); overflow-wrap: anywhere; }
+.jh-hr__acts { gap: var(--sp-2); }
+/* 연차사용촉진: 촉진 일정 열 — 1차·2차·추가분 줄이 라벨/날짜 두 칸으로 정렬 */
+.jh-hr__sched { display: grid; grid-template-columns: max-content max-content; gap: var(--u-2) var(--sp-2); font-size: var(--fs-xs); white-space: nowrap; }
+.jh-hr__sched span:nth-child(odd) { color: var(--c-ink-3); font-weight: 700; }
+
+/* 출퇴근 달력 + 초과근로: 3단(근로자 명단 | 달력 | 근로 내역 추가·수정 + 초과근로) */
+.jh-ac__head { justify-content: flex-start; gap: var(--sp-4); }
+.jh-ac__month { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.jh-ac__help { flex: 1 1 var(--u-320); margin: 0; }
+.jh-ac__layout { display: grid; grid-template-columns: var(--u-220) minmax(0, 1fr) minmax(var(--u-320), 26rem); gap: var(--sp-4); align-items: start; }
+.jh-ac__layout[data-mode="ot"] > .jh-ac__wide { grid-column: 2 / 4; }
+.jh-ac__center, .jh-ac__side, .jh-ac__wide { display: grid; gap: var(--sp-4); min-width: 0; align-content: start; }
+.jh-ac__layout > .jh-card:first-child { position: sticky; top: var(--sp-3); max-height: calc(100vh - var(--sp-6)); overflow-y: auto; }
+.jh-ac__wlist { display: grid; gap: var(--u-4); padding: var(--sp-2); }
+.jh-ac__wbtn { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); width: 100%; padding: var(--sp-2) var(--sp-3); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); color: var(--c-ink); font: inherit; font-size: var(--fs-sm); text-align: left; cursor: pointer; }
+.jh-ac__wbtn:hover { background: var(--c-primary-weak); }
+.jh-ac__wbtn[aria-pressed="true"] { background: var(--c-primary); border-color: var(--c-primary); color: var(--c-primary-ink); font-weight: 700; }
+.jh-ac__wname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jh-ac__center .jh-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.jh-ac__ot { font-size: var(--fs-xs, 0.7rem); font-weight: 700; color: #B45309; }
+.jh-ac__cell[data-s="work"] .jh-ac__ot, .jh-ac__cell[data-s="holidayWork"] .jh-ac__ot { color: inherit; }
+.jh-ac__otlist { display: grid; gap: var(--sp-2); }
+.jh-ac__otrow { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-bg); font-size: var(--fs-sm); cursor: pointer; }
+.jh-ac__otrow:hover { background: var(--c-primary-weak); }
+@media (max-width: 1279px) { .jh-ac__layout { grid-template-columns: var(--u-220) minmax(0, 1fr); } .jh-ac__layout > .jh-ac__side { grid-column: 2; } .jh-ac__layout[data-mode="ot"] > .jh-ac__wide { grid-column: 2; } }
+@media (max-width: 899px) { .jh-ac__layout, .jh-ac__layout[data-mode="ot"] { grid-template-columns: minmax(0, 1fr); } .jh-ac__layout > .jh-ac__side, .jh-ac__layout[data-mode="ot"] > .jh-ac__wide { grid-column: auto; } .jh-ac__layout > .jh-card:first-child { position: static; max-height: none; } .jh-ac__center .jh-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+

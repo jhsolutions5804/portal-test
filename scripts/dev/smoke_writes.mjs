@@ -81,6 +81,32 @@ await scenario('초과근로 — 입력 저장 / 삭제: overtime 에 근로자�
   if (o[0]) { const d = o[0].data; check(d.workerId === 'w1' && d.name === '김가나' && Number(d.hours) === 2 && d.date === '2026-10-13' && String(d.yearMonth || d.date).slice(0, 7) === '2026-10' && Number(d.amount) > 0 && d.reason === '야간 입고', '초과근로 값(근로자·이름·시간·날짜·월·금액·사유) 이상: ' + JSON.stringify(d).slice(0, 260)); }
   WR().length = 0; const root2 = await mountFresh(hrMod.mountOvertime); await click(root2, '[data-ot-del="o1"]'); await confirmOk(); const del = WR().filter((x) => x.op === 'delete'); check(del.length === 1 && del[0].path === 'overtime/o1', '삭제는 overtime/o1 한 건만: ' + JSON.stringify(del.map((x) => x.path)));
 });
+await scenario('근로자 명부 — 직원 상세는 주소를 가짐: 열면 #/hr/workers/<번호>(뒤로가기로 돌아옴), 닫으면 목록 주소, 계약서 링크는 ?from=workers, 계약서 화면은 \"← 직원 상세\"', async (check) => {
+  location.hash = '#/hr/workers'; const root = await mountFresh(hrMod.mountWorkers, { segs: [], query: {} });
+  await click(root, '[data-w-open="w1"]'); await sleep(100);
+  check(location.hash === '#/hr/workers/w1', '직원 상세를 열면 주소가 #/hr/workers/w1 이 되어야 함: ' + location.hash);
+  check(/href="#\/hr\/annualc\/w1\?from=workers"/.test(root.innerHTML) && /href="#\/hr\/laborc\/w1\?from=workers"/.test(root.innerHTML), '직원 상세의 계약서 링크에 ?from=workers 가 있어야 함');
+  await click(root, '[data-w-act="close"]'); await sleep(60); check(location.hash === '#/hr/workers' && !root.querySelector('[data-w-f="name"]'), '상세를 닫으면 주소도 목록(#/hr/workers)으로: ' + location.hash);
+  const r2 = await mountFresh(hrMod.mountWorkers, { segs: ['w1'], query: {} }); check(!!r2.querySelector('[data-w-f="name"]'), '뒤로가기로 #/hr/workers/w1 에 돌아오면 직원 상세가 바로 열려야 함');
+  const r3 = await mountFresh(hrMod.mountAnnual, { segs: ['w1'], query: { from: 'workers' } }); await sleep(200); check(!!r3.querySelector('a[href="#/hr/workers/w1"]') && /← 직원 상세/.test(r3.textContent), '직원 상세에서 온 계약서 화면에는 "← 직원 상세" 링크가 있어야 함');
+  const r4 = await mountFresh(hrMod.mountAnnual, { segs: ['w1'], query: {} }); await sleep(200); check(!/← 직원 상세/.test(r4.textContent), '직접 연 계약서 화면에는 "← 직원 상세"가 없어야 함');
+});
+await scenario('출퇴근 달력 + 초과근로 통합 — 3단 화면에서 근로 내역·초과근로를 같은 화면에서 입력, 월 현황 보기 전환, 옛 주소(초과근로 현황)도 같은 화면', async (check) => {
+  WR().length = 0; const root = await mountFresh(hrMod.mountAttendCal);
+  const lay = root.querySelector('.jh-ac__layout'); const kids = lay ? [...lay.children] : [];
+  check(kids.length === 3 && kids[0].classList.contains('jh-card') && kids[1].classList.contains('jh-ac__center') && kids[2].classList.contains('jh-ac__side'), '3단 구성(근로자 명단 | 달력 | 입력·초과근로)이어야 함: ' + kids.map((k) => k.className).join(' / '));
+  const sel = root.querySelector('.jh-ac__wbtn[aria-pressed="true"]'); const wid = sel && sel.getAttribute('data-ac-worker'); check(!!wid && root.querySelectorAll('.jh-ac__cell').length >= 28, '첫 근로자가 미리 선택되어 달력이 바로 보여야 함');
+  await click(root, '[data-ac-day]'); check(!!root.querySelector('.jh-ac__side [data-ac-f="checkIn"]') && !root.querySelector('.jh-ac__center [data-ac-f="checkIn"]'), '날짜를 누르면 오른쪽(3단째)에 근로 내역 입력·수정이 열려야 함');
+  await click(root, '[data-ac-act="save"]', 250); const att = WR().filter((x) => x.op === 'set' && /^worker_attendance_log\//.test(x.path)); check(att.length === 1 && att[0].data.workerId === wid && att[0].merge === true, '근로 내역 저장은 worker_attendance_log 한 건(병합): ' + JSON.stringify(WR().map((x) => x.op + ' ' + x.path)));
+  await click(root, '[data-ot-new]'); const fw = root.querySelector('.jh-ac__side [data-ot-fw]'); check(!!fw && fw.value === wid, '초과근로 입력 폼은 오른쪽에 열리고 직원은 선택한 근로자로 시작해야 함');
+  const ym = root.querySelector('.jh-ac__month strong').textContent.match(/(\d+)년 (\d+)월/); const date = ym[1] + '-' + String(ym[2]).padStart(2, '0') + '-15';
+  await setv(root, '[data-ot-f="date"]', date); await setv(root, '[data-ot-f="hours"]', '3'); await sleep(250); WR().length = 0; await click(root, '[data-ot-act="save"]', 250); await confirmOk(); await sleep(150);
+  const ot = WR().filter((x) => x.op === 'add' && /^overtime\//.test(x.path)); check(ot.length === 1 && ot[0].data.workerId === wid && Number(ot[0].data.hours) === 3 && ot[0].data.date === date && ot[0].data.yearMonth === date.slice(0, 7), '같은 화면에서 입력한 초과근로가 overtime 에 1건 저장되어야 함: ' + JSON.stringify(ot.map((x) => x.data)).slice(0, 240));
+  await click(root, '[data-ac-mode="ot"]'); check(root.querySelector('.jh-ac__layout').getAttribute('data-mode') === 'ot' && !!root.querySelector('.jh-ac__wide') && !root.querySelector('.jh-ac__side') && !!root.querySelector('.jh-ac__wide [data-ot-new]'), '"월 초과근로 현황" 보기: 넓은 한 칸(총계·직원별·날짜별), 입력 버튼');
+  const nm = root.querySelector('.jh-ac__wide [data-ac-worker]'); if (nm) { await click(root, '.jh-ac__wide [data-ac-worker]'); check(root.querySelector('.jh-ac__layout').getAttribute('data-mode') === 'cal' && !!root.querySelector('.jh-ac__center'), '현황의 이름을 누르면 그 근로자의 달력으로'); }
+  const old = await mountFresh(hrMod.mountOvertime); check(old.querySelector('.jh-ac__layout') && old.querySelector('.jh-ac__layout').getAttribute('data-mode') === 'ot', '옛 주소(초과근로 현황)는 같은 화면의 월 현황 보기로 열려야 함');
+  const lp = await mountFresh(hrMod.mountLeavePromo); await sleep(200); check(!lp.querySelector('.jh-hr-table td.jh-field__hint') && !!lp.querySelector('.jh-hr-table .jh-hr__sched, .jh-hr-table tbody tr'), '연차사용촉진 표의 셀에 jh-field__hint(display:block)를 쓰지 않아야 함(촉진 일정은 .jh-hr__sched 로 정렬)');
+});
 await scenario('연차 현황 — 관리자 등록: edoc_leave 에 관리자 등록분으로 저장(근로자·종류·기간·일수)', async (check) => {
   const root = await mountFresh(hrMod.mountLeaves, { segs: ['w1'], query: {} }); await click(root, '[data-l-new="김가나"]'); await sleep(150);
   await setv(root, '[data-lv-f="startDate"]', '2026-10-20'); await setv(root, '[data-lv-f="endDate"]', '2026-10-21'); await setv(root, '[data-lv-f="note"]', '개인 사유');

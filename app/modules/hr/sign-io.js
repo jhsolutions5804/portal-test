@@ -1,12 +1,14 @@
 /* 원격 서명·열람 링크·메일 발송 — Firestore·메일 서비스를 쓰는 부분(규칙·판단은 sign.js, 시험은 거기서).
  * 서명 페이지(sign.html)는 별도 공개 페이지이고, 이 파일은 관리자 화면 쪽(링크 만들기·서명 결과 반영·메일 보내기·발송 이력)만 맡는다. */
-import { db, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp, Timestamp, addDoc, updateDoc } from '../../core/firebase.js?v=20261014x';
-import { confirmDialog } from '../../core/dialog.js?v=20261014x';
-import { toast, esc } from '../../core/ui.js?v=20261014x';
-import { configureFrozenDocs, docHtmlByVer, __ANNUAL_TPL, __LABOR_TPL } from './frozen-docs.js?v=20261014x';
-import { psHtml } from './payslip-doc.js?v=20261014x';
-import { IS_TEST } from '../../core/config.js?v=20261014x';
-import { emailjsFor, phoneE164, maskJumin, contractContentHash, buildSignLink, buildViewLink, NO_PHONE_ERROR, syncDecision, isEmail, sendLogEntry, summarizeSendLog, qrUrl, EMAILJS, DOC_LABEL } from './sign.js?v=20261014x';
+import { db, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp, Timestamp, addDoc, updateDoc } from '../../core/firebase.js?v=20261014y';
+import { confirmDialog } from '../../core/dialog.js?v=20261014y';
+import { toast, esc } from '../../core/ui.js?v=20261014y';
+import { configureFrozenDocs, docHtmlByVer, __ANNUAL_TPL, __LABOR_TPL } from './frozen-docs.js?v=20261014y';
+import { psHtml } from './payslip-doc.js?v=20261014y';
+import { leavePromoHtmlByVer, configureLeavePromoDocs } from './leave-promo-docs.js?v=20261014y';
+import { LP_STAGE } from './leave-promo.js?v=20261014y';
+import { IS_TEST } from '../../core/config.js?v=20261014y';
+import { emailjsFor, phoneE164, maskJumin, contractContentHash, buildSignLink, buildViewLink, NO_PHONE_ERROR, syncDecision, isEmail, sendLogEntry, summarizeSendLog, qrUrl, EMAILJS, DOC_LABEL } from './sign.js?v=20261014y';
 export const signBase = () => new URL('../../../sign.html', import.meta.url).href;   // 이 앱이 올라가 있는 곳(테섭·본섭)의 서명 페이지
 const logoUrl = () => new URL('../../theme/assets/jh-logo.png', import.meta.url).href;
 const COLL = { annual: 'annual_contracts', labor: 'labor_contracts' };
@@ -19,7 +21,7 @@ export async function recipientEmail(kind, id) {
 }
 /** 링크 만들기(서명 요청 또는 열람 전용) → 토큰. 인증용 휴대폰 번호: 문서 → 근로자 명부 → 채용 지원서 순 */
 export async function createDocLink({ docType, workerId, contractId, offerId, payslipWid, payslipMonth, workerName, recipient, viewOnly }) {
-  let srcRef, coll = ''; if (docType === 'labor' || docType === 'annual') { coll = COLL[docType]; srcRef = doc(db, coll + '/' + workerId + '/contracts', contractId); } else if (docType === 'offer') srcRef = doc(db, 'salary_offers', offerId); else if (docType === 'payslip') srcRef = doc(db, 'payslips/' + payslipWid + '/months', payslipMonth); else throw new Error('지원하지 않는 문서 종류입니다.');
+  let srcRef, coll = ''; if (docType === 'labor' || docType === 'annual') { coll = COLL[docType]; srcRef = doc(db, coll + '/' + workerId + '/contracts', contractId); } else if (docType === 'offer') srcRef = doc(db, 'salary_offers', offerId); else if (docType === 'payslip') srcRef = doc(db, 'payslips/' + payslipWid + '/months', payslipMonth); else if (docType === 'leavepromo') { if (!viewOnly) throw new Error('연차사용촉진 서면은 열람 링크만 만들 수 있습니다.'); srcRef = doc(db, 'leave_promotions/' + workerId + '/records', contractId); } else throw new Error('지원하지 않는 문서 종류입니다.');
   const srcSnap = await getDoc(srcRef); if (!srcSnap.exists()) throw new Error('원본 문서를 찾을 수 없습니다. 먼저 저장해 주세요.'); const src = srcSnap.data();
   let e164 = phoneE164(src.phone); const tryRec = async (c, id) => { if (e164 || !id) return; try { const s = await getDoc(doc(db, c, id)); if (s.exists()) e164 = phoneE164(s.data().phone); } catch (e) { /* 다음 후보 */ } };
   await tryRec('workers', workerId || payslipWid || src.workerId || (recipient && recipient.kind === 'worker' ? recipient.id : '')); await tryRec('recruit_applicants', src.applicantId || (recipient && recipient.kind === 'applicant' ? recipient.id : '')); if (!e164) throw new Error(NO_PHONE_ERROR);
@@ -27,7 +29,8 @@ export async function createDocLink({ docType, workerId, contractId, offerId, pa
   const ref = doc(collection(db, 'sign_links')); const batch = writeBatch(db);
   if (viewOnly) {
     configureFrozenDocs({ signatures: seal, logo: logoUrl() }); const snapDoc = Object.assign({}, src); if ('jumin' in snapDoc) snapDoc.jumin = maskJumin(snapDoc.jumin);
-    const html = docType === 'payslip' ? psHtml(snapDoc) : docHtmlByVer(docType === 'annual' ? __ANNUAL_TPL : __LABOR_TPL, snapDoc); const r = buildViewLink({ docType, src, workerName, e164, html }); if (!r.ok) throw new Error(r.error);
+    if (docType === 'leavepromo') configureLeavePromoDocs({ signatures: seal });   // 도장(직인)은 저장본 HTML 에 들어간다
+    const html = docType === 'payslip' ? psHtml(snapDoc) : docType === 'leavepromo' ? leavePromoHtmlByVer(snapDoc) : docHtmlByVer(docType === 'annual' ? __ANNUAL_TPL : __LABOR_TPL, snapDoc); const r = buildViewLink({ docType, src, workerName, e164, html, title: docType === 'leavepromo' ? (LP_STAGE[src.stage] || '연차사용촉진') + ' 서면 통지' : '' }); if (!r.ok) throw new Error(r.error);
     batch.set(ref, Object.assign({}, r.meta, { createdAt: serverTimestamp(), expiresTs: Timestamp.fromMillis(r.expMs) })); batch.set(doc(db, 'sign_links/' + ref.id + '/secure/payload'), Object.assign({}, r.payload, { createdAt: serverTimestamp() }));
   } else {
     const r = buildSignLink({ docType, src, workerName, e164, seal, coll, workerId, contractId, contentHash: coll ? await contractContentHash(src) : '' }); if (!r.ok) throw new Error(r.error);

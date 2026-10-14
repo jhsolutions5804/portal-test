@@ -1,28 +1,28 @@
-import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261014x';
-import { confirmDialog } from '../../core/dialog.js?v=20261014x';
-import { IS_TEST } from '../../core/config.js?v=20261014x';
-import { holidayName } from '../../shared/holidays.js?v=20261014x';
-import { esc, toast } from '../../core/ui.js?v=20261014x';
-import { retireLeavePay, retireCalc } from './retire.js?v=20261014x';
-import { homeStats, fitSize, validateSeal, SEAL_MAX_BYTES } from './home.js?v=20261014x';
-import { saveJumin, revealJumin, maskedView } from './identity.js?v=20261014x';
-import { lpTargets, lpFormNew, lpFormCtx, lpValidateIssue, lpBuildRecord, lpReplyUpdate, lpReceivedUpdate, lpDay } from './leave-promo.js?v=20261014x';
-import { configureLeavePromoDocs, leavePromoHtmlByVer } from './leave-promo-docs.js?v=20261014x';
-import { weekdayDays, defaultDays, adminLeaveNew, adminLeaveFromDoc, buildAdminLeave, entryEditFromDoc, buildEntryEdit } from './leave-admin.js?v=20261014x';
-import { createDocLink, syncSignedLinks, loadSendLog, showLinkModal, sendDocLinkByEmail } from './sign-io.js?v=20261014x';
-import { annualNewForm, annualEnd, annualFillFromWorker, annualValidate, annualRecord, annualContractId, annualSummary, payBasisChange, payValueInput } from './annual.js?v=20261014x';
-import { annualSalary } from './offer.js?v=20261014x';
-import { __ANNUAL_TPL, __LABOR_TPL } from './frozen-docs.js?v=20261014x';
-import { laborNewForm, laborFillFromWorker, laborRecord } from './labor.js?v=20261014x';
-import { psPayDate, techAllowance, attendanceData, travelFromTrips, travelTotal, travelSet, payslipRecord } from './payslip.js?v=20261014x';
-import { configureFrozenDocs, docHtmlByVer } from './frozen-docs.js?v=20261014x';
-import { psHtml } from './payslip-doc.js?v=20261014x';
-import { buildAttRecord, attDefaultBreak, attKey, holidaySetOf } from './attendance.js?v=20261014x';
-import { otYm, otMoveMonth, otSyncPlan, otWage, otNewForm, otFormFromRecord, buildOvertime, otAmount } from './overtime.js?v=20261014x';
-import { dsNewForm, dsFindHourly, dsCalc, dsValidate, dsBuildData, dsFormFromDraft, dsHtmlByVer } from './dismissal.js?v=20261014x';
-import { offerNewForm, offerCalc, offerSwitchMode, offerPayload, offerFormFromSaved, offerCalendar, offerFillCurrent, offerBuildHtml } from './offer.js?v=20261014x';
-import { certsFromWorker, mergeWorker, salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobHomeBase, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261014x';
-import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml, offersHtml, offerResultHtml, offerStateText, retireHtml, dismissalHtml, dsCalcHtml, overtimeHtml, attendCalHtml, payslipHtml2, payslipCalcOf, annualHtml, laborHtml, leavePromoHtml, homeHtml, homeSealHtml, homeListHtml, homeAlertHtml, homeKpiHtml } from './view.js?v=20261014x';
+import { auth, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp } from '../../core/firebase.js?v=20261014y';
+import { confirmDialog } from '../../core/dialog.js?v=20261014y';
+import { IS_TEST } from '../../core/config.js?v=20261014y';
+import { holidayName } from '../../shared/holidays.js?v=20261014y';
+import { esc, toast } from '../../core/ui.js?v=20261014y';
+import { retireLeavePay, retireCalc } from './retire.js?v=20261014y';
+import { homeStats, fitSize, validateSeal, SEAL_MAX_BYTES } from './home.js?v=20261014y';
+import { saveJumin, revealJumin, maskedView } from './identity.js?v=20261014y';
+import { lpTargets, lpFormNew, lpFormCtx, lpValidateIssue, lpBuildRecord, lpReplyUpdate, lpReceivedUpdate, lpDay, LP_STAGE } from './leave-promo.js?v=20261014y';
+import { configureLeavePromoDocs, leavePromoHtmlByVer } from './leave-promo-docs.js?v=20261014y';
+import { weekdayDays, defaultDays, adminLeaveNew, adminLeaveFromDoc, buildAdminLeave, entryEditFromDoc, buildEntryEdit } from './leave-admin.js?v=20261014y';
+import { createDocLink, syncSignedLinks, loadSendLog, showLinkModal, sendDocLinkByEmail } from './sign-io.js?v=20261014y';
+import { annualNewForm, annualEnd, annualFillFromWorker, annualValidate, annualRecord, annualContractId, annualSummary, payBasisChange, payValueInput } from './annual.js?v=20261014y';
+import { annualSalary } from './offer.js?v=20261014y';
+import { __ANNUAL_TPL, __LABOR_TPL } from './frozen-docs.js?v=20261014y';
+import { laborNewForm, laborFillFromWorker, laborRecord } from './labor.js?v=20261014y';
+import { psPayDate, techAllowance, attendanceData, travelFromTrips, travelTotal, travelSet, payslipRecord } from './payslip.js?v=20261014y';
+import { configureFrozenDocs, docHtmlByVer } from './frozen-docs.js?v=20261014y';
+import { psHtml } from './payslip-doc.js?v=20261014y';
+import { buildAttRecord, attDefaultBreak, attKey, holidaySetOf } from './attendance.js?v=20261014y';
+import { otYm, otMoveMonth, otSyncPlan, otWage, otNewForm, otFormFromRecord, buildOvertime, otAmount } from './overtime.js?v=20261014y';
+import { dsNewForm, dsFindHourly, dsCalc, dsValidate, dsBuildData, dsFormFromDraft, dsHtmlByVer } from './dismissal.js?v=20261014y';
+import { offerNewForm, offerCalc, offerSwitchMode, offerPayload, offerFormFromSaved, offerCalendar, offerFillCurrent, offerBuildHtml } from './offer.js?v=20261014y';
+import { certsFromWorker, mergeWorker, salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobHomeBase, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, linkCandidate } from './logic.js?v=20261014y';
+import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml, offersHtml, offerResultHtml, offerStateText, retireHtml, dismissalHtml, dsCalcHtml, attendCalHtml, payslipHtml2, payslipCalcOf, annualHtml, laborHtml, leavePromoHtml, homeHtml, homeSealHtml, homeListHtml, homeAlertHtml, homeKpiHtml } from './view.js?v=20261014y';
 
 /** 인사(플랫폼 기본 모듈): 근로자 명부 새 화면. 인사총무 틀 안의 구역으로만 열린다(modules/index.js 의 hostNative). 구포털 인사 화면은 그대로 두고 하나씩 옮기는 중이다. 관리자 전용 */
 export const manifest = { id: 'hr', order: 21, title: '인사', icon: '👥', defaultHash: '#/hr/workers', perm: (me) => !!me && me.admin === true };
@@ -45,8 +45,10 @@ export async function mount(root, route, ctx, opts) {
   };
   try { await load(); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
   body.removeAttribute('aria-busy');
-  const paint = () => { body.innerHTML = listHtml(st); };
-  const open = (id) => { const w = st.workers.find((x) => x.id === id); if (!w) return; st.sel = { id, orig: w, form: toForm(w), history: null }; if (st.workers.find((x) => x.id === id) && isRes(w) && st.view !== 'resigned') st.view = 'resigned'; paint(); const f = body.querySelector('[data-w-f]'); if (f) f.scrollIntoView({ block: 'center' }); };
+  // 직원 상세도 주소를 가진다(#/hr/workers/<번호>): 계약서 등 다른 화면에 갔다가 뒤로가기를 누르면 직원 상세로 돌아온다. 주소 표시만 바꾸고 화면은 다시 그리지 않는다(pushState 는 화면 전환 이벤트를 일으키지 않음)
+  const setUrl = (h, push) => { if (location.hash === h) return; try { history[push ? 'pushState' : 'replaceState'](history.state, '', h); } catch (e) { /* 주소 표시만 못 바꾼다 */ } };
+  const paint = () => { body.innerHTML = listHtml(st); if (!st.sel && location.hash.indexOf(BASE + '/') === 0) setUrl(BASE, false); };   // 상세를 닫으면(닫기·저장·퇴직·삭제 모두) 주소도 목록으로 — 뒤로가기 기록은 쌓지 않는다
+  const open = (id, fromUrl) => { const w = st.workers.find((x) => x.id === id); if (!w) return; st.sel = { id, orig: w, form: toForm(w), history: null }; if (!fromUrl) setUrl(BASE + '/' + encodeURIComponent(id), true); if (st.workers.find((x) => x.id === id) && isRes(w) && st.view !== 'resigned') st.view = 'resigned'; paint(); const f = body.querySelector('[data-w-f]'); if (f) f.scrollIntoView({ block: 'center' }); };
   const isRes = (w) => w.status === 'resigned';
   root.onclick = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
@@ -100,7 +102,7 @@ export async function mount(root, route, ctx, opts) {
     if (t.matches('[data-w-q]')) { st.q = t.value; const tb = body.querySelector('#w-table'); if (tb) tb.innerHTML = tableHtml(st); }
   };
   root.onchange = (ev) => { const t = ev.target; if (t instanceof Element && t.matches('[data-w-rf]') && st.reg) { st.reg.form[t.getAttribute('data-w-rf')] = t.value; if (t.getAttribute('data-w-rf') === 'hireDate') paint(); return; } if (t instanceof Element && t.matches('[data-w-f]') && st.sel) { st.sel.form[t.getAttribute('data-w-f')] = t.value; if (t.getAttribute('data-w-f') === 'hireDate') paint(); } };
-  paint(); if (openId) open(openId);
+  paint(); if (openId) open(openId, true);
 }
 
 /** 연차 현황(새 화면) — 근로자 명부 + 전자결재 연차신청서 + 관리자 연차 등록·수정·삭제(사용촉진은 연차사용촉진 화면) */
@@ -564,11 +566,14 @@ export async function mountDismissal(root, route, ctx) {
 }
 
 /** 초과근로 현황(새 화면, 1단계) — overtime 월별 전체 현황·직원별 조회·삭제, 그리고 전자결재 승인 초과근로의 자동연동(이 화면이 맡는다: 문서 번호 고정 번호로 한 번만 반영) */
-export async function mountOvertime(root, route, ctx) {
+/** 출퇴근 달력 + 초과근로(새 화면) — 3단: 근로자 명단 | 달력 | 근로 내역 추가·수정(+ 그 달 초과근로). "월 초과근로 현황"은 같은 화면의 다른 보기(#/hr/attendcal?view=ot, 옛 주소 #/hr/overtimes 도 여기로).
+ *  worker_attendance_log 는 출퇴근 모듈과 같은 문서(근로자번호_날짜), overtime 은 초과근로 기록 — 전자결재에서 승인된 건은 이 화면을 열 때 자동 반영된다 */
+export async function mountAttendCal(root, route, ctx, opts) {
   root.onclick = null; root.oninput = null; root.onchange = null;
-  const now = new Date(); const st = { otView: 'sum', otY: now.getFullYear(), otM: now.getMonth() + 1, otRows: [], workers: [], otWid: '', otWage: null, otOpen: '', otBanner: null, otForm: null, otFormWage: null };
-  root.innerHTML = '<div class="jh-hr"><div id="ov-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
-  const body = root.querySelector('#ov-body'); const lst = (s) => { const l = []; s.forEach((d) => l.push(Object.assign({ id: d.id }, d.data()))); return l; };
+  const now = new Date(); const q0 = (route && route.query) || {};
+  const st = { today: kstToday(), workers: [], acWorkers: [], acW: (route && route.segs && route.segs[0]) || '', acMode: (opts && opts.mode) || (q0.view === 'ot' ? 'ot' : 'cal'), acY: now.getFullYear(), acM: now.getMonth() + 1, acRows: [], acLeaves: [], acHol: new Set(), acSel: '', acForm: null, acDaily: null, otRows: [], otWage: null, otOpen: '', otBanner: null, otForm: null, otFormWage: null };
+  root.innerHTML = '<div class="jh-hr jh-hr--wide"><div id="ac-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
+  const body = root.querySelector('#ac-body'); const lst = (s2) => { const l = []; s2.forEach((d) => l.push(Object.assign({ id: d.id }, d.data()))); return l; };
   const syncFromEdoc = async () => {
     try {
       const plan = otSyncPlan(lst(await getDocs(collection(db, 'edoc_overtime')))); if (!plan.items.length && !plan.skipped.length) return null; let ok = 0, firstErr = '';
@@ -578,71 +583,65 @@ export async function mountOvertime(root, route, ctx) {
       return plan.skipped.length ? { tone: 'warn', text: '⚠️ 날짜가 올바르지 않은 승인 건 ' + plan.skipped.length + '건은 반영하지 못했습니다. 전자결재 문서를 확인해 주세요.' } : null;
     } catch (e) { return { tone: 'danger', text: '⚠️ 전자결재 자동연동을 확인하지 못했습니다: ' + ((e && (e.code || e.message)) || String(e)) }; }
   };
-  const loadMonth = async () => { st.otRows = lst(await getDocs(query(collection(db, 'overtime'), where('yearMonth', '==', otYm(st.otY, st.otM))))); };
-  const wageOf = async (wid) => { if (!wid) return null; try { const s = await getDocs(query(collection(db, 'annual_contracts/' + wid + '/contracts'), orderBy('contractDate', 'desc'), limit(1))); return s.empty ? null : otWage(s.docs[0].data(), wid); } catch (e) { return null; } };
-  const loadWage = async () => { st.otWage = await wageOf(st.otWid); };
-  try { st.workers = lst(await getDocs(collection(db, 'workers'))).sort((a, b) => String(a.empNo || 'zzz').localeCompare(String(b.empNo || 'zzz'))); st.otBanner = await syncFromEdoc(); await loadMonth(); }
-  catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
+  const wageOf = async (wid) => { if (!wid) return null; try { const s2 = await getDocs(query(collection(db, 'annual_contracts/' + wid + '/contracts'), orderBy('contractDate', 'desc'), limit(1))); return s2.empty ? null : otWage(s2.docs[0].data(), wid); } catch (e) { return null; } };
+  try {
+    st.workers = lst(await getDocs(collection(db, 'workers'))).sort((a2, b2) => String(a2.empNo || 'zzz').localeCompare(String(b2.empNo || 'zzz'))); st.acWorkers = st.workers.filter((w) => w.status !== 'resigned');
+    if (!st.acW && st.acMode === 'cal' && st.acWorkers.length) st.acW = st.acWorkers[0].id;   // 3단 화면이 비어 보이지 않게 첫 근로자를 미리 선택
+    st.otBanner = await syncFromEdoc();
+  } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
   body.removeAttribute('aria-busy');
-  const paint = () => { body.innerHTML = overtimeHtml(st); };
-  root.onclick = async (ev) => {
-    const t = ev.target; if (!(t instanceof Element)) return;
-    const mv = t.closest('[data-ot-month]'); if (mv) { const n = otMoveMonth(st.otY, st.otM, Number(mv.getAttribute('data-ot-month'))); st.otY = n.y; st.otM = n.m; st.otOpen = ''; try { await loadMonth(); } catch (e) { toast('불러오지 못했습니다: ' + ((e && e.message) || '')); } paint(); return; }
-    const vw = t.closest('[data-ot-view]'); if (vw) { st.otView = vw.getAttribute('data-ot-view'); st.otOpen = ''; paint(); return; }
-    const pr = t.closest('[data-ot-person]'); if (pr) { st.otWid = pr.getAttribute('data-ot-person'); st.otView = 'detail'; await loadWage(); paint(); return; }
-    const dl = t.closest('[data-ot-del]'); if (dl) { const r = st.otRows.find((x) => x.id === dl.getAttribute('data-ot-del')); if (!r) return; const ok = await confirmDialog({ title: '초과근로 내역 삭제', body: (r.name || '') + ' ' + (r.date || '') + ' ' + (r.hours || 0) + 'h 내역을 삭제하시겠습니까? 되돌릴 수 없습니다.', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return; try { await deleteDoc(doc(db, 'overtime', r.id)); toast('삭제했습니다.'); await loadMonth(); paint(); } catch (e) { toast('삭제하지 못했습니다: ' + ((e && e.message) || '')); } return; }
-    if (t.closest('[data-ot-new]')) { st.otForm = otNewForm(kstToday()); st.otFormWage = null; paint(); const f0 = body.querySelector('[data-ot-f]'); if (f0) f0.scrollIntoView({ block: 'center' }); return; }
-    const ed = t.closest('[data-ot-edit]'); if (ed) { const r = st.otRows.find((x) => x.id === ed.getAttribute('data-ot-edit')); if (!r) return; st.otForm = otFormFromRecord(r, st.workers); st.otFormWage = await wageOf(st.otForm.workerId); paint(); const f0 = body.querySelector('[data-ot-f]'); if (f0) f0.scrollIntoView({ block: 'center' }); return; }
-    const fa = t.closest('[data-ot-act]'); if (fa && st.otForm) { const act = fa.getAttribute('data-ot-act'); if (act === 'cancel') { st.otForm = null; paint(); return; }
-      const w = st.workers.find((x) => x.id === st.otForm.workerId); const r = buildOvertime(st.otForm, w, st.otFormWage); if (!r.ok) { toast(r.errors[0]); return; }
-      if (r.noWage) { const ok = await confirmDialog({ title: '연봉계약서 없음', body: '연봉계약서가 없어 수당이 0원으로 저장됩니다. 계속하시겠습니까?', confirmLabel: '저장' }); if (!ok.ok) return; }
-      try { if (st.otForm.id) await updateDoc(doc(db, 'overtime', st.otForm.id), r.data); else await addDoc(collection(db, 'overtime'), Object.assign({}, r.data, { savedAt: serverTimestamp() }));
-        toast(st.otForm.id ? '수정되었습니다.' : '저장되었습니다.'); const ym = r.data.yearMonth; const [yy, mm] = ym.split('-').map(Number); if (yy !== st.otY || mm !== st.otM) { st.otY = yy; st.otM = mm; } st.otForm = null; await loadMonth(); paint(); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); } return; }
-    const op = t.closest('[data-ot-open]'); if (op && !t.closest('button')) { st.otOpen = op.getAttribute('data-ot-open'); paint(); return; }
-    if (t.closest('[data-ot-close]')) { st.otOpen = ''; paint(); }
-  };
-  root.oninput = (ev) => { const t = ev.target; if (!(t instanceof Element) || !st.otForm) return; if (t.matches('[data-ot-f]')) { const k = t.getAttribute('data-ot-f'); st.otForm[k] = t.value; if (k === 'hours') { const h = parseFloat(t.value); const box = body.querySelector('#ot-prevbox'); if (box) box.innerHTML = st.otFormWage && h > 0 ? '<div class="jh-alert" data-tone="info" role="status"><strong>예상 수당 ' + Math.round((Number(st.otFormWage.rate) || 0) * h).toLocaleString('ko-KR') + '원</strong></div>' : ''; } } };
-  root.onchange = async (ev) => { const t = ev.target; if (!(t instanceof Element) || !st.otForm) return; if (t.matches('[data-ot-f]')) { st.otForm[t.getAttribute('data-ot-f')] = t.value; return; } if (t.matches('[data-ot-fw]')) { st.otForm.workerId = t.value; st.otFormWage = await wageOf(t.value); paint(); } };
-  paint();
-}
-
-/** 출퇴근 달력(새 화면, 2단계) — 근로자별 월 달력·근로 내역 추가/수정/삭제·출장 표시·업무일지 보기. worker_attendance_log 는 출퇴근 모듈과 같은 문서(근로자번호_날짜)를 쓴다 */
-export async function mountAttendCal(root, route, ctx) {
-  root.onclick = null; root.oninput = null; root.onchange = null;
-  const now = new Date(); const st = { today: kstToday(), acWorkers: [], acW: (route.segs && route.segs[0]) || '', acY: now.getFullYear(), acM: now.getMonth() + 1, acRows: [], acLeaves: [], acHol: new Set(), acSel: '', acForm: null, acDaily: null };
-  root.innerHTML = '<div class="jh-hr"><div id="ac-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
-  const body = root.querySelector('#ac-body'); const lst = (s) => { const l = []; s.forEach((d) => l.push(Object.assign({ id: d.id }, d.data()))); return l; };
-  try { st.acWorkers = lst(await getDocs(collection(db, 'workers'))).filter((w) => w.status !== 'resigned').sort((a, b) => String(a.empNo || 'zzz').localeCompare(String(b.empNo || 'zzz'))); }
-  catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
-  body.removeAttribute('aria-busy');
-  const paint = () => { body.innerHTML = attendCalHtml(st); };
-  const load = async () => {
+  const paint = () => { const y = window.scrollY; body.innerHTML = attendCalHtml(st); window.scrollTo(0, y); };
+  const loadOt = async () => { st.otRows = lst(await getDocs(query(collection(db, 'overtime'), where('yearMonth', '==', otYm(st.acY, st.acM))))); };
+  const loadAtt = async () => {
     st.acHol = holidaySetOf(st.acY, st.acM, (ds) => !!holidayName(ds)); st.acRows = []; st.acLeaves = []; const w = st.acWorkers.find((x) => x.id === st.acW); if (!w) return;
     st.acRows = lst(await getDocs(query(collection(db, 'worker_attendance_log'), where('workerId', '==', w.id), where('yearMonth', '==', st.acY + '-' + String(st.acM).padStart(2, '0')))));
     try { st.acLeaves = lst(await getDocs(collection(db, 'edoc_leave'))).filter((l) => (l.authorName || l.name || '') === w.name && ['approved', 'posted'].includes(l.status)); } catch (e) { st.acLeaves = []; }
   };
+  const reload = async () => { try { await Promise.all([loadAtt(), loadOt()]); st.otWage = st.acW ? await wageOf(st.acW) : null; } catch (e) { toast('불러오지 못했습니다: ' + ((e && e.message) || '')); } };
   const openDay = (ds) => { const ex = st.acRows.find((r) => r.date === ds); st.acSel = ds; st.acDaily = null; st.acForm = ex ? { checkIn: ex.checkIn || '07:00', checkOut: ex.checkOut || '18:00', breakMinutes: String(ex.breakMinutes == null ? attDefaultBreak(ex.checkIn || '07:00', ex.checkOut || '18:00') : ex.breakMinutes), isBusinessTrip: !!ex.isBusinessTrip, tripType: ex.tripType || 'personal_near' } : { checkIn: '07:00', checkOut: '18:00', breakMinutes: String(attDefaultBreak('07:00', '18:00')), isBusinessTrip: false, tripType: 'personal_near' }; paint(); };
+  const defaultOtDate = () => { const ym = otYm(st.acY, st.acM); if (st.acSel && st.acSel.slice(0, 7) === ym) return st.acSel; if (st.today.slice(0, 7) === ym) return st.today; return ym + '-01'; };
   root.onclick = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
-    const wk = t.closest('[data-ac-worker]'); if (wk) { st.acW = wk.getAttribute('data-ac-worker'); st.acSel = ''; st.acForm = null; try { await load(); } catch (e) { toast('불러오지 못했습니다: ' + ((e && e.message) || '')); } paint(); return; }
-    const mv = t.closest('[data-ac-month]'); if (mv) { const d = new Date(st.acY, st.acM - 1 + Number(mv.getAttribute('data-ac-month')), 1); st.acY = d.getFullYear(); st.acM = d.getMonth() + 1; st.acSel = ''; st.acForm = null; try { await load(); } catch (e) { toast('불러오지 못했습니다: ' + ((e && e.message) || '')); } paint(); return; }
+    const md = t.closest('[data-ac-mode]'); if (md) { st.acMode = md.getAttribute('data-ac-mode'); st.otOpen = ''; st.otForm = null; st.acSel = ''; st.acForm = null; if (st.acMode === 'cal' && !st.acW && st.acWorkers.length) { st.acW = st.acWorkers[0].id; await reload(); } paint(); return; }
+    const wk = t.closest('[data-ac-worker]'); if (wk) { st.acW = wk.getAttribute('data-ac-worker'); st.acMode = 'cal'; st.acSel = ''; st.acForm = null; st.otOpen = ''; st.otForm = null; await reload(); paint(); return; }
+    const mv = t.closest('[data-ac-month]'); if (mv) { const d = new Date(st.acY, st.acM - 1 + Number(mv.getAttribute('data-ac-month')), 1); st.acY = d.getFullYear(); st.acM = d.getMonth() + 1; st.acSel = ''; st.acForm = null; st.otOpen = ''; st.otForm = null; await reload(); paint(); return; }
     const lvb = t.closest('[data-ac-leave]'); if (lvb) { const [mode, eid] = lvb.getAttribute('data-ac-leave').split('|'); const w0 = st.acWorkers.find((x) => x.id === st.acW); try { sessionStorage.setItem('jh_leave_prefill', JSON.stringify(mode === 'edit' ? { editId: eid } : { workerName: w0 ? w0.name : '', date: st.acSel })); } catch (e) { /* 미리 채우기 실패해도 이동 */ } location.hash = '#/hr/leaves'; return; }
-    const dy = t.closest('[data-ac-day]'); if (dy) { openDay(dy.getAttribute('data-ac-day')); const f0 = body.querySelector('[data-ac-f]'); if (f0) f0.scrollIntoView({ block: 'center' }); return; }
+    const dy = t.closest('[data-ac-day]'); if (dy) { openDay(dy.getAttribute('data-ac-day')); return; }
+    // ── 초과근로(같은 화면) ──
+    const dl = t.closest('[data-ot-del]'); if (dl) { const r = st.otRows.find((x) => x.id === dl.getAttribute('data-ot-del')); if (!r) return; const ok = await confirmDialog({ title: '초과근로 내역 삭제', body: (r.name || '') + ' ' + (r.date || '') + ' ' + (r.hours || 0) + 'h 내역을 삭제하시겠습니까? 되돌릴 수 없습니다.', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return; try { await deleteDoc(doc(db, 'overtime', r.id)); toast('삭제했습니다.'); st.otOpen = ''; await loadOt(); paint(); } catch (e) { toast('삭제하지 못했습니다: ' + ((e && e.message) || '')); } return; }
+    if (t.closest('[data-ot-new]')) { st.otForm = Object.assign(otNewForm(defaultOtDate()), { workerId: st.acMode === 'cal' ? st.acW : '' }); st.otFormWage = st.acMode === 'cal' ? st.otWage : null; st.otOpen = ''; paint(); const f0 = body.querySelector('[data-ot-f]'); if (f0) f0.scrollIntoView({ block: 'nearest' }); return; }
+    const ed = t.closest('[data-ot-edit]'); if (ed) { const r = st.otRows.find((x) => x.id === ed.getAttribute('data-ot-edit')); if (!r) return; st.otForm = otFormFromRecord(r, st.workers); st.otFormWage = await wageOf(st.otForm.workerId); st.otOpen = ''; paint(); const f0 = body.querySelector('[data-ot-f]'); if (f0) f0.scrollIntoView({ block: 'nearest' }); return; }
+    const fa = t.closest('[data-ot-act]'); if (fa && st.otForm) { const act = fa.getAttribute('data-ot-act'); if (act === 'cancel') { st.otForm = null; paint(); return; }
+      const w = st.workers.find((x) => x.id === st.otForm.workerId); const r = buildOvertime(st.otForm, w, st.otFormWage); if (!r.ok) { toast(r.errors[0]); return; }
+      if (r.noWage) { const ok = await confirmDialog({ title: '연봉계약서 없음', body: '연봉계약서가 없어 수당이 0원으로 저장됩니다. 계속하시겠습니까?', confirmLabel: '저장' }); if (!ok.ok) return; }
+      try { if (st.otForm.id) await updateDoc(doc(db, 'overtime', st.otForm.id), r.data); else await addDoc(collection(db, 'overtime'), Object.assign({}, r.data, { savedAt: serverTimestamp() }));
+        toast(st.otForm.id ? '수정되었습니다.' : '저장되었습니다.'); const [yy, mm] = r.data.yearMonth.split('-').map(Number); const moved = yy !== st.acY || mm !== st.acM; if (moved) { st.acY = yy; st.acM = mm; st.acSel = ''; st.acForm = null; } st.otForm = null; if (moved) await reload(); else await loadOt(); paint(); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); } return; }
+    const op = t.closest('[data-ot-open]'); if (op && !t.closest('button')) { st.otOpen = op.getAttribute('data-ot-open'); paint(); return; }
+    if (t.closest('[data-ot-close]')) { st.otOpen = ''; paint(); return; }
+    // ── 근로 내역(출퇴근) ──
     const a = t.closest('[data-ac-act]'); if (!a || !st.acSel) return; const act = a.getAttribute('data-ac-act'); const w = st.acWorkers.find((x) => x.id === st.acW); if (!w) return;
     if (act === 'close') { st.acSel = ''; st.acForm = null; paint(); return; }
     if (act === 'daily') { try { st.acDaily = lst(await getDocs(query(collection(db, 'edoc_daily'), where('authorName', '==', w.name), where('date', '==', st.acSel)))); } catch (e) { st.acDaily = []; toast('업무일지를 불러오지 못했습니다: ' + ((e && e.message) || '')); } paint(); return; }
-    if (act === 'delete') { const ex = st.acRows.find((r) => r.date === st.acSel); if (!ex) return; const ok = await confirmDialog({ title: '근로 내역 삭제', body: w.name + '님 ' + st.acSel + ' 근로 내역을 삭제하시겠습니까?', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return; try { await deleteDoc(doc(db, 'worker_attendance_log', ex.id)); toast('삭제했습니다.'); st.acSel = ''; st.acForm = null; await load(); paint(); } catch (e) { toast('삭제하지 못했습니다: ' + ((e && e.message) || '')); } return; }
-    if (act === 'save') { const r = buildAttRecord(w.id, w.name, st.acSel, st.acForm); if (!r.ok) { toast(r.errors[0]); return; } try { await setDoc(doc(db, 'worker_attendance_log', r.key), Object.assign({}, r.data, { updatedAt: serverTimestamp() }), { merge: true }); toast('저장했습니다.'); st.acSel = ''; st.acForm = null; await load(); paint(); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); } }
+    if (act === 'delete') { const ex = st.acRows.find((r) => r.date === st.acSel); if (!ex) return; const ok = await confirmDialog({ title: '근로 내역 삭제', body: w.name + '님 ' + st.acSel + ' 근로 내역을 삭제하시겠습니까?', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return; try { await deleteDoc(doc(db, 'worker_attendance_log', ex.id)); toast('삭제했습니다.'); st.acSel = ''; st.acForm = null; await loadAtt(); paint(); } catch (e) { toast('삭제하지 못했습니다: ' + ((e && e.message) || '')); } return; }
+    if (act === 'save') { const r = buildAttRecord(w.id, w.name, st.acSel, st.acForm); if (!r.ok) { toast(r.errors[0]); return; } try { await setDoc(doc(db, 'worker_attendance_log', r.key), Object.assign({}, r.data, { updatedAt: serverTimestamp() }), { merge: true }); toast('저장했습니다.'); st.acSel = ''; st.acForm = null; await loadAtt(); paint(); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); } }
   };
-  root.oninput = (ev) => { const t = ev.target; if (!(t instanceof Element) || !st.acForm) return; if (t.matches('[data-ac-f]')) { st.acForm[t.getAttribute('data-ac-f')] = t.value; } };
-  root.onchange = (ev) => {
-    const t = ev.target; if (!(t instanceof Element) || !st.acForm) return;
+  root.oninput = (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    if (st.otForm && t.matches('[data-ot-f]')) { const k = t.getAttribute('data-ot-f'); st.otForm[k] = t.value; if (k === 'hours') { const h = parseFloat(t.value); const box = body.querySelector('#ot-prevbox'); if (box) box.innerHTML = st.otFormWage && h > 0 ? '<div class="jh-alert" data-tone="info" role="status"><strong>예상 수당 ' + Math.round((Number(st.otFormWage.rate) || 0) * h).toLocaleString('ko-KR') + '원</strong></div>' : ''; } return; }
+    if (st.acForm && t.matches('[data-ac-f]')) st.acForm[t.getAttribute('data-ac-f')] = t.value;
+  };
+  root.onchange = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    if (st.otForm && t.matches('[data-ot-f]')) { st.otForm[t.getAttribute('data-ot-f')] = t.value; return; }
+    if (st.otForm && t.matches('[data-ot-fw]')) { st.otForm.workerId = t.value; st.otFormWage = await wageOf(t.value); paint(); return; }
+    if (!st.acForm) return;
     if (t.matches('[data-ac-ck]')) { st.acForm[t.getAttribute('data-ac-ck')] = t.checked; paint(); return; }
     if (t.matches('[data-ac-f]')) { const k = t.getAttribute('data-ac-f'); st.acForm[k] = t.value; if (k === 'checkIn' || k === 'checkOut') { st.acForm.breakMinutes = String(attDefaultBreak(st.acForm.checkIn, st.acForm.checkOut)); paint(); } }   // 출퇴근 시각을 바꾸면 휴게 기본값을 다시 맞춘다(직접 고친 휴게는 시각을 바꾸기 전까지 유지)
   };
-  if (st.acW) { try { await load(); } catch (e) { toast('불러오지 못했습니다: ' + ((e && e.message) || '')); } }
-  paint();
+  await reload(); paint();
 }
+/** 옛 주소(#/hr/overtimes) — 초과근로 현황은 출퇴근 달력 화면의 "월 초과근로 현황" 보기로 합쳐졌다 */
+export const mountOvertime = (root, route, ctx) => mountAttendCal(root, route, ctx, { mode: 'ot' });
 
 /** 급여명세서(새 화면) — 근로자·기준월을 고르면 연봉계약서·출퇴근 기록·초과근로·휴가·자격증을 자동으로 불러와 계산하고(지급·공제 항목은 직접 고칠 수 있음), 미리보기(A4)·저장(payslips/{근로자}/months/{월})·조회·삭제. 메일 발송·열람 링크/QR */
 export async function mountPayslip(root, route, ctx) {
@@ -772,7 +771,8 @@ export async function mountContract(root, route, ctx, kind) {
     if (t.matches('[data-an-pay]')) { paint(); }
   };
   root.oninput = (ev) => { const t = ev.target; if (!(t instanceof Element) || st.aView !== 'form') return; if (t.matches('[data-an-pay]')) { st.aForm = payValueInput(st.aForm, t.value); recalc(); const el = body.querySelector('#an-conv'); if (el) { const tmp = document.createElement('div'); tmp.innerHTML = K.html(st); const n = tmp.querySelector('#an-conv'); if (n) el.outerHTML = n.outerHTML; } } };
-  const w0 = (route.segs && route.segs[0]) || '';   // 주소로 근로자 지정: #/hr/<laborc|annualc>/<근로자 번호> → 그 사람의 계약서, …/new → 새 계약서 작성(명부·인사 변동에서 이동)
+  const w0 = (route.segs && route.segs[0]) || ''; st.aFrom = (route.query && route.query.from === 'workers' && w0) ? '#/hr/workers/' + encodeURIComponent(w0) : '';   // 근로자 명부 상세에서 왔으면 "← 직원 상세"로 돌아간다
+     // 주소로 근로자 지정: #/hr/<laborc|annualc>/<근로자 번호> → 그 사람의 계약서, …/new → 새 계약서 작성(명부·인사 변동에서 이동)
   if (w0 && st.aWorkers.some((x) => x.id === w0)) { st.aSel = w0; if ((route.segs[1] || '') === 'new') { await startForm(w0); } else { await loadDocs(); st.aView = 'worker'; } }
   paint();
 }
@@ -785,7 +785,7 @@ export const mountLabor = (root, route, ctx) => mountContract(root, route, ctx, 
 /** 연차사용촉진(새 화면, 근로기준법 제61조) — 대상 구간·일정·진행 상태, 1차·추가 1차·2차 통보서 발행(저장 + A4 출력, 양식 l1 동결)·기록만 등록, 이력(다시 출력·근로자 회신·수령 확인·삭제). 저장: leave_promotions/{근로자}/records */
 export async function mountLeavePromo(root, route, ctx) {
   root.onclick = null; root.oninput = null; root.onchange = null;
-  const st = { lpToday: lpDay(kstToday()), lpWorkers: [], lpLeaves: [], lpRecs: {}, lpForm: null, lpHist: '' };
+  const st = { lpToday: lpDay(kstToday()), lpWorkers: [], lpLeaves: [], lpRecs: {}, lpForm: null, lpHist: '', lpLog: {} };
   root.innerHTML = '<div class="jh-hr"><div id="lp-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
   const body = root.querySelector('#lp-body'); const lst = (s) => { const l = []; s.forEach((d) => l.push(Object.assign({ id: d.id }, d.data()))); return l; };
   try {
@@ -801,7 +801,9 @@ export async function mountLeavePromo(root, route, ctx) {
   root.onclick = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
     const op = t.closest('[data-lp-open]'); if (op) { const [wid, stage, cat] = op.getAttribute('data-lp-open').split('|'); st.lpForm = lpFormNew(wid, stage, cat, kstToday()); st.lpHist = ''; paint(); return; }
-    const hs = t.closest('[data-lp-hist]'); if (hs) { st.lpHist = hs.getAttribute('data-lp-hist'); st.lpForm = null; paint(); return; }
+    const hs = t.closest('[data-lp-hist]'); if (hs) { st.lpHist = hs.getAttribute('data-lp-hist'); st.lpForm = null; st.lpLog = await loadSendLog(st.lpHist); paint(); return; }
+    const ml = t.closest('[data-lp-mail]'); if (ml) { const r = (st.lpRecs[st.lpHist] || []).find((x) => x.id === ml.getAttribute('data-lp-mail')); const w = st.lpWorkers.find((x) => x.id === st.lpHist) || {}; if (!r) return; await sendDocLinkByEmail({ kind: 'worker', id: st.lpHist, toName: w.name || '', docLabel: (LP_STAGE[r.stage] || '연차사용촉진') + ' 서면 통지', linkParams: { docType: 'leavepromo', workerId: st.lpHist, contractId: r.id, viewOnly: true } }); st.lpLog = await loadSendLog(st.lpHist); paint(); return; }   // 확인 링크 메일(저장 당시 양식 그대로, 문자 인증 후 열람) — 테섭은 메일이 막혀 있어 링크로 확인
+    const lk = t.closest('[data-lp-link]'); if (lk) { const r = (st.lpRecs[st.lpHist] || []).find((x) => x.id === lk.getAttribute('data-lp-link')); const w = st.lpWorkers.find((x) => x.id === st.lpHist) || {}; if (!r) return; try { const token = await createDocLink({ docType: 'leavepromo', workerId: st.lpHist, contractId: r.id, workerName: w.name || '', recipient: { kind: 'worker', id: st.lpHist }, viewOnly: true }); showLinkModal(token, w.name, { view: true, label: (LP_STAGE[r.stage] || '연차사용촉진') + ' 서면 통지' }); } catch (e) { toast('열람 링크 생성 오류: ' + ((e && e.message) || '')); } return; }
     const dd = t.closest('[data-lp-datedel]'); if (dd && st.lpForm) { st.lpForm.dates.splice(Number(dd.getAttribute('data-lp-datedel')), 1); if (!st.lpForm.dates.length) st.lpForm.dates = ['']; paint(); return; }
     const rp = t.closest('[data-lp-reprint]'); if (rp) { const r = (st.lpRecs[st.lpHist] || []).find((x) => x.id === rp.getAttribute('data-lp-reprint')); if (r) openWin(r); return; }   // 저장 당시 양식(동결) 그대로
     const rl = t.closest('[data-lp-reply]'); if (rl) { const r = (st.lpRecs[st.lpHist] || []).find((x) => x.id === rl.getAttribute('data-lp-reply')); if (!r) return; const ask = await confirmDialog({ title: '근로자 회신 기록', body: '근로자가 회신한 연차 사용 예정일을 쉼표로 구분해 입력하세요. (예: 2026-11-10, 2026-11-11) 회신이 없었으면 비워 두고 확인을 누르세요. 현재: ' + ((r.replyDates || []).join(', ') || '없음'), confirmLabel: '저장', reason: { label: '사용 예정일', placeholder: '2026-11-10, 2026-11-11', required: false } }); if (!ask.ok) return; const u = lpReplyUpdate(r, ask.reason); if (!u.ok) { toast(u.error); return; } try { await patchRec(st.lpHist, r.id, u.patch); paint(); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); } return; }
@@ -813,7 +815,8 @@ export async function mountLeavePromo(root, route, ctx) {
       const c = ctxNow(); const v = lpValidateIssue(c); if (!v.ok) { toast(v.errors[0]); return; }
       if (v.warns.length) { const ok = await confirmDialog({ title: '확인이 필요한 사항이 있습니다', body: v.warns.map((x) => '· ' + x).join('\n') + '\n\n그래도 ' + (st.lpForm.recordOnly ? '기록을 등록' : '발행') + '하시겠습니까?', confirmLabel: st.lpForm.recordOnly ? '기록 등록' : '발행' }); if (!ok.ok) return; }
       const rec = lpBuildRecord(c, v.dates);
-      try { const r = await addDoc(collection(db, 'leave_promotions/' + st.lpForm.wid + '/records'), Object.assign({}, rec, { createdAt: serverTimestamp() })); (st.lpRecs[st.lpForm.wid] = st.lpRecs[st.lpForm.wid] || []).push(Object.assign({ id: r.id }, rec)); const only = st.lpForm.recordOnly; st.lpForm = null; paint(); if (!only) openWin(rec); toast(only ? '기록을 등록했습니다.' : '발행했습니다. 출력 창을 확인하세요.'); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); }
+      try { const r = await addDoc(collection(db, 'leave_promotions/' + st.lpForm.wid + '/records'), Object.assign({}, rec, { createdAt: serverTimestamp() })); (st.lpRecs[st.lpForm.wid] = st.lpRecs[st.lpForm.wid] || []).push(Object.assign({ id: r.id }, rec)); const only = st.lpForm.recordOnly, mailOn = !!st.lpForm.mailOn, wid0 = st.lpForm.wid; st.lpForm = null; paint(); if (!only) openWin(rec); toast(only ? '기록을 등록했습니다.' : '발행했습니다. 출력 창을 확인하세요.');
+        if (mailOn && !only) { const w1 = st.lpWorkers.find((x) => x.id === wid0) || {}; await sendDocLinkByEmail({ kind: 'worker', id: wid0, toName: w1.name || '', docLabel: (LP_STAGE[rec.stage] || '연차사용촉진') + ' 서면 통지', linkParams: { docType: 'leavepromo', workerId: wid0, contractId: r.id, viewOnly: true } }); } } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); }
     }
   };
   root.oninput = (ev) => { const t = ev.target; if (!(t instanceof Element) || !st.lpForm) return; if (t.matches('[data-lp-f="memo"]')) st.lpForm.memo = t.value; };
@@ -821,7 +824,8 @@ export async function mountLeavePromo(root, route, ctx) {
     const t = ev.target; if (!(t instanceof Element) || !st.lpForm) return;
     if (t.matches('[data-lp-f]')) { st.lpForm[t.getAttribute('data-lp-f')] = t.value; if (t.getAttribute('data-lp-f') === 'noticeDate') paint(); return; }
     if (t.matches('[data-lp-date]')) { st.lpForm.dates[Number(t.getAttribute('data-lp-date'))] = t.value; const el = body.querySelector('#lp-info'); if (el) { const tmp = document.createElement('div'); tmp.innerHTML = leavePromoHtml(st); const n = tmp.querySelector('#lp-info'); if (n) el.innerHTML = n.innerHTML; } return; }
-    if (t.matches('[data-lp-rec]')) { st.lpForm.recordOnly = t.checked; paint(); }
+    if (t.matches('[data-lp-rec]')) { st.lpForm.recordOnly = t.checked; if (t.checked) st.lpForm.mailOn = false; paint(); return; }
+    if (t.matches('[data-lp-mailon]')) { st.lpForm.mailOn = t.checked; if (t.checked) st.lpForm.method = '이메일 + 수령 확인'; paint(); }
   };
   paint();
 }
@@ -830,7 +834,7 @@ export async function mountLeavePromo(root, route, ctx) {
 export async function mountHome(root, route, ctx) {
   root.onclick = null; root.oninput = null; root.onchange = null;
   const st = { stats: null, list: '', seals: {} }; const admin = !!(ctx && ctx.me && ctx.me.admin);
-  root.innerHTML = '<div class="jh-hr">' + homeHtml() + '</div>';
+  root.innerHTML = '<div class="jh-hr jh-hr--wide">' + homeHtml() + '</div>';
   const q = (id) => root.querySelector(id); const lst = (s) => { const l = []; s.forEach((d) => l.push(Object.assign({ id: d.id }, d.data()))); return l; };
   const paintSeal = () => { const el = q('#hm-seal'); if (el) el.innerHTML = homeSealHtml(st.seals, admin); }; const paintList = () => { const el = q('#hm-list'); if (el && st.stats) el.innerHTML = homeListHtml(st.list, st.stats); };
   try { const sg = await getDoc(doc(db, 'company_settings', 'signatures')); st.seals = sg.exists() ? sg.data() : {}; } catch (e) { st.seals = {}; } paintSeal();
