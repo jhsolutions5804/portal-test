@@ -123,8 +123,15 @@
 .jh-mp__amt { text-align: right; inline-size: 8.5rem; max-inline-size: 100%; }
 .jh-mp__amt[data-over] { border-color: var(--c-warn); }
 
-/* 재무회계: 상세 메뉴를 왼쪽 사이드바로 — 사이드바(고정 폭) + 본문(기존 폭 제한 유지) */
-.jh-finance--side { max-width: none; grid-template-columns: var(--u-220) minmax(0, 1fr); align-items: start; gap: var(--sp-4); }
-.jh-finance--side > .jh-sidenav { position: sticky; top: var(--sp-4); max-height: calc(100vh - var(--sp-5) * 2); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); }
-.jh-finance__main { min-width: 0; max-width: calc(var(--u-440) * 2.5); }
-@media (max-width: 899px) { .jh-finance--side { grid-template-columns: minmax(0, 1fr); } .jh-finance--side > .jh-sidenav { position: static; max-height: none; } }
+/* 재무회계 홈: 인사 홈과 같은 구성 — 왼쪽 요약 카드(세로) | 본문 | 오른쪽 보조 카드(넓은 화면). 사이드바·내용 영역은 공용 틀(인사총무와 같음)이 그린다 */
+.jh-finance--wide { max-width: none; }
+.jh-fin__home { display: grid; grid-template-columns: 17rem minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+.jh-fin__homeside { display: grid; gap: var(--sp-3); align-content: start; position: sticky; top: var(--sp-3); }
+.jh-fin__homeside .jh-kpi-grid { grid-template-columns: minmax(0, 1fr); }
+.jh-fin__homemain, .jh-fin__homedetail { display: grid; gap: var(--sp-4); min-width: 0; align-content: start; }
+.jh-fin__homedetail { grid-column: 2; }
+a.jh-kpi { color: inherit; text-decoration: none; cursor: pointer; }
+a.jh-kpi:hover { border-color: var(--c-primary); }
+@media (min-width: 1500px) { .jh-fin__home { grid-template-columns: 17rem minmax(0, 1fr) var(--u-320); } .jh-fin__homedetail { grid-column: auto; } }
+@media (max-width: 1099px) { .jh-fin__home { grid-template-columns: minmax(0, 1fr); } .jh-fin__homeside { position: static; } .jh-fin__homeside .jh-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .jh-fin__homedetail { grid-column: auto; } }
+

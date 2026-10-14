@@ -1,15 +1,11 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261014zb';
-import { esc } from '../../core/ui.js?v=20261014zb';
-import { MP_GROUPS, NPAY_CHOICES, ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport, vatForm, vatCardRef } from './logic.js?v=20261014zb';
-import { CHOICES } from '../../shared/merchant-table.js?v=20261014zb';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261014zc';
+import { esc } from '../../core/ui.js?v=20261014zc';
+import { MP_GROUPS, NPAY_CHOICES, ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport, vatForm, vatCardRef } from './logic.js?v=20261014zc';
+import { CHOICES } from '../../shared/merchant-table.js?v=20261014zc';
 
 /* 재무회계 화면 조각 — 모든 값은 esc() 로 감싸 HTML 로 만든다. 스타일은 theme/finance.css 와 공용 클래스를 쓴다 */
 const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['monthly', '월간 수지'], ['forecast', '예측'], ['gap', '이엔지 정산'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];
 export const tabsHtml = (cur) => '<div class="jh-segmented jh-finance__tabs" role="group" aria-label="재무회계">' + TABS.map(([k, l]) => '<a class="jh-segmented__item" href="#/finance/' + k + '" aria-pressed="' + (k === cur) + '">' + l + '</a>').join('') + '</div>';
-/** 재무회계 사이드바(상단 탭 대신): 현황·입력·보고·정산·설정으로 묶어 보여 준다 */
-export const FIN_SIDE = [{ title: '현황', keys: ['home'] }, { title: '입력', keys: ['entries', 'expense', 'import'] }, { title: '보고', keys: ['reports', 'monthly', 'forecast'] }, { title: '정산', keys: ['gap'] }, { title: '설정', keys: ['rules', 'opening', 'settings'] }];
-export const financeSideCfg = (cur) => ({ label: '재무회계 메뉴', title: '📊 재무회계', current: cur, sections: FIN_SIDE.map((s) => ({ title: s.title, items: s.keys.map((k) => ({ key: k, label: (TABS.find((t) => t[0] === k) || [k, k])[1], href: '#/finance/' + k })) })) });
-export const sideHtml = (cur) => sidenavHtml(financeSideCfg(cur));
 
 /** 카드 한 장: 제목 줄 + 안쪽 여백이 일정한 내용. flush=true 면 표처럼 가장자리까지 채우는 내용 */
 const card = (title, bodyHtml, right, flush) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + (flush ? bodyHtml : bodyHtml) + '</section>';
@@ -33,13 +29,14 @@ export function homeHtml(st) {
   if (!hasOpening) alerts.push(alertHtml('warn', '⚠ 개시(기초) 재산 목록이 아직 없습니다. <a class="jh-link" href="#/finance/opening">개시 재산</a>에서 먼저 입력해 주세요.'));
   if (!set.ownBiz) alerts.push(alertHtml('warn', '⚠ 내 사업자등록번호가 설정되어 있지 않습니다. 다른 회사 세금계산서가 섞이는 것을 막으려면 <a class="jh-link" href="#/finance/settings">설정</a>에서 입력해 주세요.'));
   if (!s.count) alerts.push(alertHtml('info', '아직 전표가 없습니다. <a class="jh-link" href="#/finance/import">가져오기</a>에서 홈택스·통장·카드 파일이나 전표 묶음 파일을 올려 주세요.'));
-  const kpi = [['전표', s.count + '건', s.from ? s.from + ' ~ ' + s.to : ''], ['확인 필요', s.review + '건', s.review ? '전표 탭에서 "확인 필요만" 보기' : '없음'], ['대차 일치', s.balanced ? '일치' : '불일치', '차변 ' + won(s.debit)], ['결산 마감', set.lockedThrough || '없음', set.lockedThrough ? '이 날짜 이전 전표는 못 만듭니다' : '관리자가 설정에서 마감']];
-  const k = '<div class="jh-kpi-grid">' + kpi.map(([l, v, h], i) => '<div class="jh-kpi"' + (i === 1 && s.review ? ' data-tone="accent"' : '') + '><span class="jh-kpi__label">' + esc(l) + '</span><span class="jh-kpi__value">' + esc(v) + '</span><span class="jh-kpi__hint">' + esc(h) + '</span></div>').join('') + '</div>';
+  const kpi = [['전표', s.count + '건', s.from ? s.from + ' ~ ' + s.to : '', '#/finance/entries', false], ['확인 필요', s.review + '건', s.review ? '전표 탭에서 "확인 필요만" 보기' : '없음', '#/finance/entries', s.review > 0], ['대차 일치', s.balanced ? '일치' : '불일치', '차변 ' + won(s.debit), '#/finance/reports', !s.balanced], ['결산 마감', set.lockedThrough || '없음', set.lockedThrough ? '이 날짜 이전 전표는 못 만듭니다' : '관리자가 설정에서 마감', '#/finance/settings', false]];
+  const k = '<div class="jh-kpi-grid">' + kpi.map(([l, v, h, href, tone]) => '<a class="jh-kpi" href="' + href + '"' + (tone ? ' data-tone="accent"' : '') + '><span class="jh-kpi__label">' + esc(l) + '</span><span class="jh-kpi__value">' + esc(v) + '</span><span class="jh-kpi__hint">' + (h ? esc(h) + ' ' : '') + '›</span></a>').join('') + '</div>';
   const i = stm.is, b = stm.bs; const mini = (head, rows) => tbl([[head], ['금액', 'num']], rows.map(([l, v]) => '<tr><td>' + esc(l) + '</td>' + num(v) + '</tr>'), 'jh-fin-table--narrow');
   const sum = mini('기간 ' + stm.from + ' ~ ' + stm.to, [['매출액', i.sales], ['매출원가(공사원가)', i.costOfSales], ['매출총이익', i.grossProfit], ['판매비와관리비', i.sgaTotal], ['영업이익', i.operatingIncome], ['당기순이익(세무조정 전)', i.netIncome]]);
   const bs = mini('재무상태표 ' + stm.to, [['자산 총계', b.assetsTotal], ['부채 총계', b.liabsTotal], ['자본 총계', b.equityTotal], ['검산(자산−부채−자본)', b.diff]]);
   const quick = '<div class="jh-finance__pad"><div class="jh-finance__quick"><a class="jh-btn" data-variant="primary" href="#/finance/expense">+ 비용 입력</a><a class="jh-btn" href="#/finance/import">가져오기</a><a class="jh-btn" href="#/finance/entries">전표 보기</a><a class="jh-btn" href="#/finance/reports">재무제표</a></div></div>';
-  return alerts.join('') + k + '<div class="jh-finance__split"><div class="jh-finance__col">' + card('손익 요약', sum, '<a class="jh-link" href="#/finance/reports">재무제표 ›</a>', true) + card('재무상태', bs, '', true) + '</div><div class="jh-finance__col">' + card('바로가기', quick) + card('최근 가져오기', importListHtml(st.imports), '', true) + '</div></div>';
+  // 인사 홈과 같은 구성: 경고 → 왼쪽 요약 카드(세로) → 본문 → 오른쪽 보조 카드
+  return alerts.join('') + '<div class="jh-fin__home"><aside class="jh-fin__homeside" aria-label="재무 요약">' + k + '</aside><div class="jh-fin__homemain">' + card('손익 요약', sum, '<a class="jh-link" href="#/finance/reports">재무제표 ›</a>', true) + card('재무상태', bs, '', true) + '</div><div class="jh-fin__homedetail">' + card('바로가기', quick) + card('최근 가져오기', importListHtml(st.imports), '', true) + '</div></div>';
 }
 /* ───────── 전표 ───────── */
 const selectable = (e) => !e.reversedBy && !e.reverses;   // 일괄 재분류는 살아 있는 일반 전표만

@@ -1,0 +1,13 @@
+import { homeHtml } from '../app/modules/finance/view.js';
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
+const idx = (h, s) => h.indexOf(s);
+const base = () => ({ sum: { count: 2041, from: '2024-01-01', to: '2026-10-21', review: 831, balanced: true, debit: 4531720457 }, stm: { from: '2026-01-01', to: '2026-10-31', is: { sales: 313166576, costOfSales: 235526308, grossProfit: 77640268, sgaTotal: 54617677, operatingIncome: 23022591, netIncome: 17731224 }, bs: { assetsTotal: 109608889, liabsTotal: 107158825, equityTotal: 2450064, diff: 0 } }, settings: { ownBiz: '123-45-67890', lockedThrough: '' }, entries: [{ source: { kind: 'opening' } }], imports: [] });
+const h = homeHtml(base());
+const side = h.slice(idx(h, 'jh-fin__homeside'), idx(h, 'jh-fin__homemain')), main = h.slice(idx(h, 'jh-fin__homemain'), idx(h, 'jh-fin__homedetail')), det = h.slice(idx(h, 'jh-fin__homedetail'));
+ok(h.startsWith('<div class="jh-fin__home">') && idx(h, 'jh-fin__homeside') < idx(h, 'jh-fin__homemain') && idx(h, 'jh-fin__homemain') < idx(h, 'jh-fin__homedetail'), '★ 재무회계 홈은 인사 홈과 같은 구성: 왼쪽 요약 카드 | 본문 | 오른쪽 보조 카드(경고가 없으면 곧바로 이 구성)');
+ok((side.match(/<a class="jh-kpi"/g) || []).length === 4 && side.includes('href="#/finance/entries"') && side.includes('href="#/finance/reports"') && side.includes('href="#/finance/settings"') && side.includes('2041건') && side.includes('831건') && /data-tone="accent"[^>]*><span class="jh-kpi__label">확인 필요/.test(side) && side.includes('일치') && side.includes('없음'), '왼쪽 요약 카드 4개(전표·확인 필요·대차 일치·결산 마감)는 해당 화면으로 가는 링크, 확인 필요가 있으면 강조');
+ok(main.includes('손익 요약') && main.includes('재무상태') && main.includes('313,166,576') && main.includes('109,608,889') && idx(main, '손익 요약') < idx(main, '재무상태') && !main.includes('바로가기'), '본문: 손익 요약 → 재무상태');
+ok(det.includes('바로가기') && det.includes('최근 가져오기') && det.includes('href="#/finance/expense"') && idx(det, '바로가기') < idx(det, '최근 가져오기'), '오른쪽: 바로가기 → 최근 가져오기');
+const al = homeHtml(Object.assign(base(), { entries: [], settings: { ownBiz: '', lockedThrough: '2026-09-30' }, sum: Object.assign(base().sum, { count: 0, review: 0, balanced: false, from: '', to: '' }) }));
+ok(idx(al, 'jh-alert') !== -1 && idx(al, 'jh-alert') < idx(al, 'jh-fin__home') && al.includes('개시(기초) 재산') && al.includes('사업자등록번호') && al.includes('아직 전표가 없습니다') && al.includes('2026-09-30') && />불일치</.test(al) && !/data-tone="accent"[^>]*><span class="jh-kpi__label">확인 필요/.test(al) && /data-tone="accent"[^>]*><span class="jh-kpi__label">대차 일치/.test(al), '경고(개시 재산·사업자등록번호·전표 없음)는 맨 위, 마감일이 있으면 표시, 대차 불일치는 강조·확인 필요가 없으면 강조하지 않음');
+console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

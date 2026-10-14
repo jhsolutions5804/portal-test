@@ -79,6 +79,17 @@ for (const [name, fn] of targets) {
   console.log(bad ? '✗ 영업기획 껍데기 점검: 문제 ' + bad + '건' : '✓ 영업기획 껍데기 점검: 새 화면 11개(홈·프로젝트·월말 마감·견적·청구·지급·팀별 노무비·거래처·협력사·위탁 계약서·비용장부 대조)는 모두 그려지고 옛 화면(iframe)에 의존하는 메뉴는 없음, 사이드바 현재 메뉴 표시 일치'); if (bad) failed++;
 }
 
+// ── 재무회계: 인사총무와 같은 공용 틀(사이드바 + 새 화면). 11개 화면이 모두 틀 안에서 열리고 사이드바의 현재 표시가 맞는지 ──
+{
+  const V = '?v=' + (fs.readFileSync(new URL('../../app/modules/index.js', import.meta.url), 'utf8').match(/\?v=(\w+)/) || [])[1]; await import(new URL('../../app/modules/index.js' + V, import.meta.url).href); const { mountLegacy } = await import(new URL('../../app/modules/legacy/frame.js' + V, import.meta.url).href); const { LEGACY_DEFS } = await import(new URL('../../app/modules/legacy/list.js' + V, import.meta.url).href);
+  const def = LEGACY_DEFS.find((d) => d.id === 'finance'); const keep = document.createElement('div'); document.body.appendChild(keep); let bad = 0;
+  for (const key of ['home', 'entries', 'expense', 'import', 'reports', 'monthly', 'forecast', 'gap', 'rules', 'opening', 'settings']) { errors.length = 0; try { await Promise.race([mountLegacy(def, keep, { segs: [key], query: {} }, ctx), sleep(2500)]); await sleep(80); } catch (e) { errors.push('틀 예외: ' + String((e && e.stack) || e).split('\n').slice(0, 2).join(' | ')); }
+    const wrap = keep.querySelector('[data-legacy-mod="finance"]'); const nat = wrap && [...wrap.querySelectorAll('.jh-legacy__native')].find((n) => !n.hidden); const cur = wrap && wrap.querySelector('.jh-sidenav__item[aria-current="page"]'); const frame = wrap && wrap.querySelector('iframe'); const problems = [];
+    if (!wrap) problems.push('틀 없음'); else { if (!wrap.hasAttribute('data-side') || !wrap.querySelector('.jh-sidenav')) problems.push('공용 사이드바가 없음'); if (!cur || cur.getAttribute('data-key') !== key) problems.push('현재 메뉴 표시가 ' + key + ' 가 아님'); if (!nat || nat.innerHTML.length < 50) problems.push('새 화면 영역이 비어 있음'); if (frame && frame.getAttribute('src')) problems.push('옛 화면(iframe)이 불러와짐'); if (wrap.querySelector('.jh-finance--side') || (nat && nat.querySelector('.jh-sidenav'))) problems.push('화면 안에 사이드바가 또 그려짐(틀이 그려야 함)'); }
+    if (errors.length) problems.push(errors[0].slice(0, 160)); if (problems.length) { bad++; console.log('✗ 재무회계 공용 틀', key.padEnd(9), problems.join(' · ')); } }
+  const w0 = keep.querySelector('[data-legacy-mod="finance"] .jh-sidenav'); const titles = w0 ? [...w0.querySelectorAll('.jh-sidenav__head')].map((h) => h.textContent).join() : ''; if (titles !== '현황,입력,보고,정산,설정' || !/📒 재무회계/.test(w0 ? w0.querySelector('.jh-sidenav__title').textContent : '')) { bad++; console.log('✗ 재무회계 사이드바 구성: ' + titles); }
+  keep.remove(); console.log(bad ? '✗ 재무회계 공용 틀 점검: 문제 ' + bad + '건' : '✓ 재무회계 공용 틀 점검: 화면 11개(개요·전표·비용 입력·가져오기·재무제표·월간 수지·예측·이엔지 정산·규칙·개시 재산·설정)가 인사총무와 같은 사이드바 틀 안에서 열리고, 화면 안에 사이드바를 또 그리지 않으며, 현황·입력·보고·정산·설정 묶음과 현재 메뉴 표시가 일치'); if (bad) failed++;
+}
 // ── 작업 탭(화면 살려 두기): 영업기획 견적을 보다가 PJT 관리에 다녀와도 견적 화면이 그대로(다시 그려지지 않음) ──
 {
   const V = '?v=' + (fs.readFileSync(new URL('../../app/modules/index.js', import.meta.url), 'utf8').match(/\?v=(\w+)/) || [])[1]; const { mountLegacy } = await import(new URL('../../app/modules/legacy/frame.js' + V, import.meta.url).href); const { LEGACY_DEFS } = await import(new URL('../../app/modules/legacy/list.js' + V, import.meta.url).href); const { workTabs } = await import(new URL('../../app/core/worktabs.js' + V, import.meta.url).href);

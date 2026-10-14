@@ -64,7 +64,7 @@ for pat, label in [(r'!important', '!important'), (r'(^|[\s,}])#[A-Za-z_][\w-]*\
     n = len(re.findall(pat, body, flags=re.M))
     (problems if n else ok).append('%s %d건' % (label, n) if n else '%s 없음' % label)
 widths = set(re.findall(r'@media\s*\(\s*max-width:\s*(\d+)px', body)) | set(re.findall(r'@media\s*\(\s*min-width:\s*(\d+)px', body))
-bad_w = [w for w in widths if w not in ('899', '900')]
+bad_w = [w for w in widths if w not in ('899', '900', '1099', '1500')]   # 899/900 = 폰·PC 기준, 1099·1500 = 3단 홈 배치(인사·재무회계 홈: 1500 이상 3단, 1099 이하 1단)
 (problems if bad_w else ok).append('기준 폭 외 미디어쿼리: %s' % bad_w if bad_w else '미디어쿼리 기준 폭: %s' % sorted(widths))
 # 다크 테마: 라이트에서 정의한 색 토큰이 다크 블록에서도 모두 다시 정의되어 있고, 글자-바탕 조합이 모두 4.5:1 이상인지
 tok = nocomment(css['tokens'])
