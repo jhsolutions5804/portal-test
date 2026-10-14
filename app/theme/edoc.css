@@ -380,9 +380,9 @@ button.jh-kpi:hover { border-color: var(--c-primary); }
 @media (max-width: 1099px) { .jh-ehome { grid-template-columns: minmax(0, 1fr); } .jh-ehome__side { position: static; } }
 
 /* 새 문서: 왼쪽에 문서 종류 목록(좁게), 오른쪽에 작성 화면 — 종류를 누르면 오른쪽에 작성 화면이 열린다(1099px 이하는 위아래) */
-.jh-newdoc { display: grid; grid-template-columns: minmax(var(--u-280, 17.5rem), 21rem) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+.jh-newdoc { display: grid; grid-template-columns: minmax(26rem, 30rem) minmax(0, 1fr);   /* 홈과 같은 왼쪽 폭(26~30rem) */ gap: var(--sp-4); align-items: start; }
 .jh-newdoc__side { position: sticky; top: var(--sp-3); max-height: calc(100vh - var(--sp-6)); overflow-y: auto; }
 .jh-newdoc__main { min-width: 0; display: grid; gap: var(--sp-4); }
-.jh-newdoc__side .jh-docrow { min-height: 0; padding: var(--sp-3); }
+.jh-newdoc__side .jh-docrow { min-height: var(--u-64); padding: var(--sp-3) var(--sp-4); }
 @media (max-width: 1099px) { .jh-newdoc { grid-template-columns: minmax(0, 1fr); } .jh-newdoc__side { position: static; max-height: none; } }
 

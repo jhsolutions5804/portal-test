@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261014zg';
-import { WEEKDAYS, ymd, dateKey, monthGrid, shiftMonth, fmtRange, expiryNote, expiryState, OWN_TAGS, TAG_LABEL, canWrite, canEditOwn, isHHMM, pad, VIEWS, dayLabel } from './logic.js?v=20261014zg';
-import { holidayName as holName } from '../../shared/holidays.js?v=20261014zg';
+import { esc } from '../../core/ui.js?v=20261014zh';
+import { WEEKDAYS, ymd, dateKey, monthGrid, shiftMonth, fmtRange, expiryNote, expiryState, OWN_TAGS, TAG_LABEL, canWrite, canEditOwn, isHHMM, pad, VIEWS, dayLabel } from './logic.js?v=20261014zh';
+import { holidayName as holName } from '../../shared/holidays.js?v=20261014zh';
 
 export const SRC_LABEL = { pjt: 'PJT', leave: '연차·휴무', company: '회사', expiry: '만료', hr: '인사' };
 const srcLabel = (s) => SRC_LABEL[s] || s;
