@@ -1,9 +1,9 @@
-import { LEGACY_BASE } from '../../core/config.js?v=20261014n';
-import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261014n';
-import { esc } from '../../core/ui.js?v=20261014n';
-import { attachActivity } from '../../core/idle.js?v=20261014n';
-import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS } from './list.js?v=20261014n';
-import { setSideCurrent } from '../../shared/sidenav.js?v=20261014n';
+import { LEGACY_BASE } from '../../core/config.js?v=20261014o';
+import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261014o';
+import { esc } from '../../core/ui.js?v=20261014o';
+import { attachActivity } from '../../core/idle.js?v=20261014o';
+import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS } from './list.js?v=20261014o';
+import { setSideCurrent } from '../../shared/sidenav.js?v=20261014o';
 
 const base = () => new URL(LEGACY_BASE, location.href).href;
 const NATIVE = new Map();   // '모듈id/구역' → 그 구역을 새 모듈이 그리는 함수(modules/index.js 가 hostNative 로 등록)
@@ -21,6 +21,8 @@ async function loadPjtDyn() {
   } catch (e) { /* 권한 없음 */ }
   return dyn;
 }
+/** 프로젝트가 바뀌었다는 알림('jh:pjt-changed')을 받으면 칩을 다시 읽는다 — 알린 쪽이 칩이 바뀐 뒤에 이동하도록 읽기가 끝날 때까지의 약속(detail.waits)을 넘겨받는다 */
+if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('jh:pjt-changed', (ev) => { const st = states.get('pjt'); if (!st || !st.def || !st.def.dynamicNav) return; const p = loadPjtDyn().then((dyn) => { if (states.get('pjt') === st) { st.dyn = dyn; if (st.wrap) paintNav(st); } }); if (ev && ev.detail && Array.isArray(ev.detail.waits)) ev.detail.waits.push(p); });
 function highlight(st) {
   const q = st.wrap.querySelector('.jh-legacy__quick'); if (q) q.setAttribute('data-show', String(st.key === 'home'));   // 폰 바로가기는 PJT 홈에서만
   if (st.def.groups) { st.wrap.setAttribute('data-side', ''); const nv = st.wrap.querySelector('.jh-legacy__nav'); setSideCurrent(nv, sideCurrentKey(st.def, st.key, st.sub)); const cu = nv && nv.querySelector('[aria-current="page"]'); if (cu && cu.scrollIntoView) cu.scrollIntoView({ block: 'nearest', inline: 'center' }); }   // 인사총무: 왼쪽 사이드바 — 다시 그리지 않고 현재 표시만 옮겨 긴 메뉴의 스크롤 위치를 유지
