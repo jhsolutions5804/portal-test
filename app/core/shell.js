@@ -1,8 +1,8 @@
-import { esc } from './ui.js?v=20261014w';
-import { openSettings } from './settings.js?v=20261014w';
-import { openProfile } from './profile.js?v=20261014w';
-import { phoneTabs } from './nav.js?v=20261014w';
-import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261014w';
+import { esc } from './ui.js?v=20261014x';
+import { openSettings } from './settings.js?v=20261014x';
+import { openProfile } from './profile.js?v=20261014x';
+import { phoneTabs } from './nav.js?v=20261014x';
+import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261014x';
 
 export function renderLogin(root, { onSubmit, message }) {
   root.innerHTML =
@@ -89,11 +89,14 @@ export function renderShell(root, me, mods, { onLogout }) {
   root.querySelectorAll('[data-open-settings]').forEach(b => b.addEventListener('click', () => openSettings(b)));
   root.querySelectorAll('[data-open-profile]').forEach(b => b.addEventListener('click', () => openProfile(me, b)));
   const mainEl = root.querySelector('#jh-main'); const keepEl = root.querySelector('#jh-keep'); const appEl = root.querySelector('.jh-app'); const tabsEl = root.querySelector('#jh-worktabs');
+  let resume = null;   // 사이드바에서 모듈을 눌렀을 때 직전에 작업하던 화면의 주소를 돌려주는 함수(boot 가 정한다)
+  root.querySelectorAll('.jh-nav__item[data-mod]').forEach((a) => a.addEventListener('click', (ev) => { const m = a.getAttribute('data-mod'); const h = resume && m !== 'home' ? resume(m) : null; if (h) { ev.preventDefault(); location.hash = h; } }));
   const views = new Map();   // 화면별 본문(작업 탭): key → <main class="jh-main"> — 다른 메뉴에 다녀와도 지우지 않고 숨겨 둔다
   return {
     main: mainEl,
     /** 하단 작업 탭 바 자리 */
     tabsEl,
+    setResume(fn) { resume = fn; },
     /** 화면별 본문을 새로 만든다(처음 열 때). 일반 본문(main)과 같은 모양(.jh-main) */
     newView(key) { const el = document.createElement('main'); el.className = 'jh-main'; el.setAttribute('data-view', key); el.hidden = true; keepEl.insertAdjacentElement('beforebegin', el); views.set(key, el); return el; },
     /** 이 화면별 본문만 보인다(일반 본문·옛 모듈 층·다른 화면은 숨김) */

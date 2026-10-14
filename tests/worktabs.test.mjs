@@ -1,4 +1,4 @@
-import { MAX_TABS, noteTab, overflowKeys, dropTab, nextAfterClose, relabelTab, showBar, barOrder, workTabs } from '../app/core/worktabs.js';
+import { MAX_TABS, noteTab, overflowKeys, dropTab, nextAfterClose, relabelTab, showBar, barOrder, resumeHash, workTabs } from '../app/core/worktabs.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 let L = noteTab([], { key: '#/plan/est', hash: '#/plan/est', label: '영업기획 › 견적', mod: 'plan' }, 1000); L = noteTab(L, { key: '#/pjt/home', hash: '#/pjt/home', label: 'PJT 관리', mod: 'pjt' }, 2000); L = noteTab(L, { key: '#/plan/est', hash: '#/plan/est/e1', label: '' }, 3000);
 ok(L.length === 2 && L[0].key === '#/plan/est' && L[0].hash === '#/plan/est/e1' && L[0].label === '영업기획 › 견적' && L[0].ts === 3000 && L[0].mod === 'plan' && L[1].key === '#/pjt/home', '★ 같은 화면은 한 탭으로(맨 앞으로, 주소·시각 갱신), 이름이 비어 오면 이전 이름·모듈을 유지');
@@ -9,6 +9,8 @@ ok(dropTab(L, '#/plan/est').length === 1 && nextAfterClose(L, '#/plan/est').key 
 ok(relabelTab(L, '#/pjt/home', 'PJT 관리 › P4 Ph2 › 공정')[1].label === 'PJT 관리 › P4 Ph2 › 공정' && relabelTab(L, '#/pjt/home', '')[1].label === 'PJT 관리' && relabelTab(L, '#/pjt/home', 'x')[1].ts === 2000, '이름만 고침(빈 이름으로는 안 지움, 시각 유지)');
 ok(showBar([]) === false && showBar([1]) === false && showBar([1, 2]) === true && showBar(null) === false, '탭 바는 탭이 둘 이상일 때만');
 ok(barOrder(['b', 'a', 'z'], [{ key: 'a' }, { key: 'b' }, { key: 'c' }]).join() === 'b,a,c' && barOrder([], [{ key: 'a' }, { key: 'b' }]).join() === 'a,b' && barOrder(null, null).length === 0, '탭 바 순서는 처음 연 순서 유지(새 탭은 뒤에)');
+const RL = [{ key: '#/edoc/box', hash: '#/edoc/box?tab=mine', mod: 'edoc', ts: 5 }, { key: '#/edoc/new', hash: '#/edoc/new', mod: 'edoc', ts: 9 }, { key: '#/plan/est', hash: '#/plan/est', mod: 'plan', ts: 7 }, { key: '#/pjt/home', hash: '#/pjt/home', mod: 'pjt', ts: 8 }];
+ok(resumeHash(RL, '#/pjt/home', 'edoc') === '#/edoc/new' && resumeHash(RL, '#/pjt/home', 'plan') === '#/plan/est' && resumeHash(RL, '#/edoc/new', 'edoc') === null && resumeHash(RL, '#/pjt/home', 'finance') === null && resumeHash(RL, '', 'plan') === '#/plan/est' && resumeHash([], 'x', 'plan') === null && resumeHash(null, '', 'plan') === null, '★ 사이드바로 모듈을 누르면 그 모듈에서 가장 최근에 쓴 화면으로(이미 그 모듈 안이면 모듈 홈으로, 연 적 없으면 기본 주소)');
 // 화면 없이도 안전: 붙이기 전에 불러도 오류가 없고, 닫기 처리기가 부른다
 let dropped = 0; workTabs.note({ key: '#/a/x', hash: '#/a/x', label: 'A' }, { drop: () => { dropped++; }, reload() {} }); workTabs.note({ key: '#/b/x', hash: '#/b/x', label: 'B' }, { drop: () => { dropped++; } });
 ok(workTabs.list().length === 2 && workTabs.currentKey() === '#/b/x' && workTabs.has('#/a/x') && !workTabs.has('zz'), '붙이기 전에도 기록 가능(현재 탭은 마지막으로 연 것)');

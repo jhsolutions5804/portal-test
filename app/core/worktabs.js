@@ -17,6 +17,11 @@ export const dropTab = (list, key) => (list || []).filter((x) => x.key !== key);
 /** 현재 탭을 닫았을 때 이어서 열 탭: 가장 최근에 쓴 다른 탭(없으면 null) */
 export function nextAfterClose(list, closedKey) { const o = (list || []).filter((x) => x.key !== closedKey).sort((a, b) => b.ts - a.ts); return o[0] || null; }
 export const relabelTab = (list, key, label) => (list || []).map((x) => (x.key === key && label ? Object.assign({}, x, { label }) : x));
+/** 사이드바에서 모듈을 눌렀을 때 돌아갈 곳: 그 모듈에서 가장 최근에 쓴 탭의 주소. 이미 그 모듈 안에 있으면 null(모듈 홈으로 간다) */
+export function resumeHash(list, currentKey, mod) {
+  const cur = (list || []).find((x) => x.key === currentKey); if (cur && cur.mod === mod) return null;
+  const last = (list || []).filter((x) => x.mod === mod).sort((a, b) => b.ts - a.ts)[0]; return last ? last.hash : null;
+}
 /** 탭 바를 보여 줄 조건: 탭이 둘 이상일 때(하나뿐이면 군더더기) */
 export const showBar = (list) => (list || []).length >= 2;
 /** 화면 순서가 흔들리지 않게, 탭 바는 처음 연 순서(키 등장 순)로 그린다 */
