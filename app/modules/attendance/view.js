@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261014y';
-import { sourceLabel, dayLabel, fmtH, monthTotals } from './logic.js?v=20261014y';
+import { esc } from '../../core/ui.js?v=20261014z';
+import { sourceLabel, dayLabel, fmtH, monthTotals } from './logic.js?v=20261014z';
 
 const head = (t, link) => '<div class="jh-panel__head"><h3>' + t + '</h3>' + (link || '') + '</div>';
 const note = (tone, text) => '<div class="jh-form"><div class="jh-alert" data-tone="' + tone + '"' + (tone === 'danger' ? ' role="alert"' : '') + '>' + esc(text) + '</div></div>';

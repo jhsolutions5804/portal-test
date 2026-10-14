@@ -107,6 +107,12 @@ await scenario('출퇴근 달력 + 초과근로 통합 — 3단 화면에서 근
   const old = await mountFresh(hrMod.mountOvertime); check(old.querySelector('.jh-ac__layout') && old.querySelector('.jh-ac__layout').getAttribute('data-mode') === 'ot', '옛 주소(초과근로 현황)는 같은 화면의 월 현황 보기로 열려야 함');
   const lp = await mountFresh(hrMod.mountLeavePromo); await sleep(200); check(!lp.querySelector('.jh-hr-table td.jh-field__hint') && !!lp.querySelector('.jh-hr-table .jh-hr__sched, .jh-hr-table tbody tr'), '연차사용촉진 표의 셀에 jh-field__hint(display:block)를 쓰지 않아야 함(촉진 일정은 .jh-hr__sched 로 정렬)');
 });
+await scenario('인사 홈·채용 지원자 — 폭 제한 해제: 인사 홈 안의 캘린더와 채용 지원자 표는 넓게(.jh-hr--wide), 인사 홈은 요약 카드 | 달력 | 일정 내용 구획', async (check) => {
+  const home = await mountFresh(hrMod.mountHome); await sleep(400); const hm = home.querySelector('.jh-hr__home');
+  check(!!hm && !!hm.querySelector('.jh-hr__homeside #hm-kpi') && !!hm.querySelector('.jh-hr__homemain #hm-cal') && !!hm.querySelector('#hm-cal .jh-hr--wide'), '인사 홈: 요약 카드(왼쪽 .jh-hr__homeside) | 달력 칸(.jh-hr__homemain #hm-cal), 홈 안의 캘린더는 폭 제한 해제(.jh-hr--wide) — 달력|일정 내용 구획은 담당자 권한이 있어야 나와 단위 시험에서 확인');
+  const ap = await mountFresh(hrMod.mountApplicants); check(!!ap.querySelector('.jh-hr.jh-hr--wide'), '채용 지원자 화면은 폭 제한을 풀어(.jh-hr--wide) 표가 카드 안에 들어가야 함');
+  const cal = await mountFresh(hrMod.mountCalendar); check(!!cal.querySelector('.jh-hr') && !cal.querySelector('.jh-hr--wide'), '단독 인사 캘린더 화면은 지금까지처럼 폭 제한 유지');
+});
 await scenario('연차 현황 — 관리자 등록: edoc_leave 에 관리자 등록분으로 저장(근로자·종류·기간·일수)', async (check) => {
   const root = await mountFresh(hrMod.mountLeaves, { segs: ['w1'], query: {} }); await click(root, '[data-l-new="김가나"]'); await sleep(150);
   await setv(root, '[data-lv-f="startDate"]', '2026-10-20'); await setv(root, '[data-lv-f="endDate"]', '2026-10-21'); await setv(root, '[data-lv-f="note"]', '개인 사유');
