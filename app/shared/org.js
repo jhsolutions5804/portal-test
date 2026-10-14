@@ -11,7 +11,7 @@ export function byEmpNo(a, b) {
 /** 승인 직원을 부서별로 묶는다. 순서: 미지정 → 정해진 부서 순서 → 목록에 없는 부서(가나다 순, 옛 화면은 이들을 "미지정"에 숨겼다) */
 export function groupOrg(users, query) {
   const q = String(query || '').trim().toLowerCase();
-  const list = (users || []).filter((u) => !u.status || u.status === 'approved').filter((u) => !q || [u.name, u.dept, u.rank, u.phone, u.email, u.empNo].some((v) => String(v || '').toLowerCase().indexOf(q) !== -1));
+  const list = (users || []).filter((u) => !u.status || u.status === 'approved').filter((u) => !isOrgHidden(u)).filter((u) => !q || [u.name, u.dept, u.rank, u.phone, u.email, u.empNo].some((v) => String(v || '').toLowerCase().indexOf(q) !== -1));
   const map = new Map();
   list.forEach((u) => { const d = (u.dept && String(u.dept).trim()) || NO_DEPT; if (!map.has(d)) map.set(d, []); map.get(d).push(u); });
   const rest = [...map.keys()].filter((d) => d !== NO_DEPT && DEPT_ORDER.indexOf(d) === -1).sort((a, b) => a.localeCompare(b, 'ko'));
@@ -23,12 +23,14 @@ export function groupOrg(users, query) {
 export const RANK_ORDER = ['대표', '부사장', '전무', '상무', '이사', '부장', '차장', '과장', '대리', '주임', '사원'];
 export const ORG_TREE = [{ dept: '사업본부', teams: ['영업기획팀', 'PJT팀'], pattern: /^PJT\s*\d+\s*팀$/ }, { dept: '경영지원본부', teams: ['인사총무팀', '재무회계팀'] }];   // pattern: 나중에 생길 PJT 1팀·2팀 등은 목록에 없어도 사업본부 아래에 자동으로 붙는다
 export const isGuestUser = (u) => /^guest/i.test(String((u && u.empNo) || '').trim());
+/** 시스템·시험용 계정(사번이 정확히 admin 또는 test)은 조직도·목록에 보이지 않는다(대표님 지시 2026-10-15). 계정 문서에 hideInOrg: true 를 두어도 숨긴다. 직원 관리에는 그대로 보인다 — 계정은 관리해야 하므로 */
+export const isOrgHidden = (u) => /^(admin|test)$/i.test(String((u && u.empNo) || '').trim()) || !!(u && u.hideInOrg === true);
 const rankIdx = (r) => { const i = RANK_ORDER.indexOf(String(r || '').trim()); return i === -1 ? 99 : i; };
 /** 높은 직급 먼저, 같으면 사번 순 */
 export const byRank = (a, b) => (rankIdx(a.rank) - rankIdx(b.rank)) || byEmpNo(a, b);
-/** 승인된 직원(GUEST 제외)으로 조직도 구조를 만든다. people 는 직급 순. 팀은 사람이 없어도 구조로 보여 준다 */
+/** 승인된 직원(GUEST·시험용 계정 제외)으로 조직도 구조를 만든다. people 는 직급 순. 팀은 사람이 없어도 구조로 보여 준다 */
 export function buildOrgTree(users) {
-  const list = (users || []).filter((u) => (!u.status || u.status === 'approved') && !isGuestUser(u));
+  const list = (users || []).filter((u) => (!u.status || u.status === 'approved') && !isGuestUser(u) && !isOrgHidden(u));
   const top = list.filter((u) => String(u.rank || '').trim() === '대표').sort(byRank);
   const rest = list.filter((u) => top.indexOf(u) === -1); const used = new Set();
   const pick = (dept) => { const r = rest.filter((u) => String(u.dept || '').trim() === dept).sort(byRank); r.forEach((u) => used.add(u)); return r; };

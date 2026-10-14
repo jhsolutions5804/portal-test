@@ -1,17 +1,17 @@
 /* 내 팀 공수표 — 새 화면(메뉴 "내 팀 공수표"). 팀장은 관리자가 지정한 자기 팀(portal_users.teamLeaderIds), 관리자는 전체 팀. 읽기 + 관리자 팀 단가 수정.
  * 공수는 모든 프로젝트(종료 포함)의 pjt_registry/<id>/{workers,manday} 를 마스터 id 로 합산한다(구포털은 옛 저장 위치를 함께 읽어 통일 뒤 이중 집계될 수 있었다).
  * 팀 단가 저장은 두 문서를 한 번에: master_worker_private/<팀장>.teamRate(관리자 전용, 영업기획·집계가 읽음) + team_rates/<팀장>(관리자 + 그 팀 팀장만 조회). */
-import { db, doc, getDoc, writeBatch, serverTimestamp } from '../../core/firebase.js?v=20261014zy';
-import { toast } from '../../core/ui.js?v=20261014zy';
-import { confirmDialog } from '../../core/dialog.js?v=20261014zy';
-import { loadHolidays } from '../../shared/holidays.js?v=20261014zy';
-import { appToday } from './attendance.js?v=20261014zy';
-import { aggregateMonth } from './roster-tools.js?v=20261014zy';
-import { loadBase, loadRows } from './month-data.js?v=20261014zy';
-import { shiftMonth, monthLabel } from './overview.js?v=20261014zy';
-import { teamsOf, teamView, parseRate, calendarOf, won } from './team.js?v=20261014zy';
-import { teamHtml } from './team-view.js?v=20261014zy';
-import { sheetPng } from './team-png.js?v=20261014zy';
+import { db, doc, getDoc, writeBatch, serverTimestamp } from '../../core/firebase.js?v=20261014zz';
+import { toast } from '../../core/ui.js?v=20261014zz';
+import { confirmDialog } from '../../core/dialog.js?v=20261014zz';
+import { loadHolidays } from '../../shared/holidays.js?v=20261014zz';
+import { appToday } from './attendance.js?v=20261014zz';
+import { aggregateMonth } from './roster-tools.js?v=20261014zz';
+import { loadBase, loadRows } from './month-data.js?v=20261014zz';
+import { shiftMonth, monthLabel } from './overview.js?v=20261014zz';
+import { teamsOf, teamView, parseRate, calendarOf, won } from './team.js?v=20261014zz';
+import { teamHtml } from './team-view.js?v=20261014zz';
+import { sheetPng } from './team-png.js?v=20261014zz';
 export async function mountTeam(root, route, ctx) {
   root.onclick = null; const me = (ctx && ctx.me) || {}; const t0 = appToday().split('-').map(Number);
   const ids = Array.isArray(me.teamLeaderIds) ? me.teamLeaderIds.filter((x) => typeof x === 'string' && x) : [];
