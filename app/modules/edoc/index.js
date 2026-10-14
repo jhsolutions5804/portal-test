@@ -1,28 +1,28 @@
-import { fetchAll, fetchOne } from './data.js?v=20261014zc';
-import { listHtml, detailHtml } from './views.js?v=20261014zc';
-import { tabCounts } from './logic.js?v=20261014zc';
-import { buildHash, navigate } from '../../core/router.js?v=20261014zc';
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261014zc';
-import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261014zc';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261014zc';
-import { toast } from '../../core/ui.js?v=20261014zc';
-import { confirmDialog } from '../../core/dialog.js?v=20261014zc';
-import { loadDirectory, resetDirectory } from './directory.js?v=20261014zc';
-import { act } from './api.js?v=20261014zc';
-import * as C from './compose.js?v=20261014zc';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261014zc';
-import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261014zc';
-import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261014zc';
-import { kstKey } from './home-daily.js?v=20261014zc';
-import { isOffDay } from '../../shared/holidays.js?v=20261014zc';
-import { todoCounts } from './home-stats.js?v=20261014zc';
-import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261014zc';
-import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261014zc';
-import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261014zc';
-import * as AT from './attach-logic.js?v=20261014zc';
-import { uploadFile, removeFile, openFile } from './attach.js?v=20261014zc';
-import * as SL from './settings-logic.js?v=20261014zc';
-import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261014zc';
+import { fetchAll, fetchOne } from './data.js?v=20261014zd';
+import { listHtml, detailHtml } from './views.js?v=20261014zd';
+import { tabCounts } from './logic.js?v=20261014zd';
+import { buildHash, navigate } from '../../core/router.js?v=20261014zd';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261014zd';
+import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261014zd';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261014zd';
+import { toast } from '../../core/ui.js?v=20261014zd';
+import { confirmDialog } from '../../core/dialog.js?v=20261014zd';
+import { loadDirectory, resetDirectory } from './directory.js?v=20261014zd';
+import { act } from './api.js?v=20261014zd';
+import * as C from './compose.js?v=20261014zd';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261014zd';
+import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261014zd';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261014zd';
+import { kstKey } from './home-daily.js?v=20261014zd';
+import { isOffDay } from '../../shared/holidays.js?v=20261014zd';
+import { todoCounts } from './home-stats.js?v=20261014zd';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261014zd';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261014zd';
+import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261014zd';
+import * as AT from './attach-logic.js?v=20261014zd';
+import { uploadFile, removeFile, openFile } from './attach.js?v=20261014zd';
+import * as SL from './settings-logic.js?v=20261014zd';
+import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261014zd';
 
 
 export const manifest = {
@@ -64,6 +64,7 @@ async function withPolicy(me) {
 /** route: { segs:['box'] | ['doc', dtype, id] | ['new'] | ['new', type] | ['edit', dtype, id], query } */
 export async function mount(root, route, ctx) {
   const kind = route.segs[0];
+  root.toggleAttribute('data-sided', kind !== 'print');   // 사이드 메뉴가 있는 화면은 인사총무처럼 본문 바깥 여백 없이 왼쪽 끝에 붙인다(스타일)
   if (kind === 'print') return mountPrint(root, route, ctx);   // 인쇄·PDF 화면은 메뉴 없이 종이만
   root.innerHTML = '<div class="jh-edoc--side">' + sidenavHtml(edocSideCfg(ctx.me, route)) + '<div class="jh-edoc__body"></div></div>';   // 왼쪽 사이드 내비게이션(다른 메뉴와 같은 너비) + 오른쪽 본문
   const body = root.querySelector('.jh-edoc__body');   // 화면별 본문이 여러 개 살아 있을 수 있어 id 대신 클래스로(요소 범위 안에서만 찾는다)

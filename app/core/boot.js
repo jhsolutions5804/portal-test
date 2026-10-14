@@ -1,15 +1,15 @@
-import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261014zc';
-import { register, visibleFor, get } from './registry.js?v=20261014zc';
-import { parseHash, onChange } from './router.js?v=20261014zc';
-import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261014zc';
-import { initTheme } from './theme.js?v=20261014zc';
-import { checkForUpdate } from './update.js?v=20261014zc';
-import { MODULES } from '../modules/index.js?v=20261014zc';
-import { mountPlatformHome } from './home.js?v=20261014zc';
-import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261014zc';
-import { ensureTime24 } from '../shared/time24.js?v=20261014zc';
-import { installRecent, describeNow } from './recent.js?v=20261014zc';
-import { workTabs, resumeHash } from './worktabs.js?v=20261014zc';
+import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261014zd';
+import { register, visibleFor, get } from './registry.js?v=20261014zd';
+import { parseHash, onChange } from './router.js?v=20261014zd';
+import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261014zd';
+import { initTheme } from './theme.js?v=20261014zd';
+import { checkForUpdate } from './update.js?v=20261014zd';
+import { MODULES } from '../modules/index.js?v=20261014zd';
+import { mountPlatformHome } from './home.js?v=20261014zd';
+import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261014zd';
+import { ensureTime24 } from '../shared/time24.js?v=20261014zd';
+import { installRecent, describeNow } from './recent.js?v=20261014zd';
+import { workTabs, resumeHash } from './worktabs.js?v=20261014zd';
 
 initTheme();   // 이 기기에 저장된 화면 모드(자동·라이트·다크) 적용
 MODULES.forEach((m) => register(Object.assign({}, m.manifest, { mount: m.mount })));
@@ -35,7 +35,7 @@ function route() {
   if (!mod || mods.indexOf(mod) === -1) { location.replace('#/home'); return; }
   const keepMode = !!mod.keepAlive;   // 옛 모듈 어댑터는 별도 층에 그려 다른 화면을 다녀와도 지워지지 않는다(그 안의 화면별 영역은 frame.js 가 살려 둔다)
   const viewMode = !keepMode && isDesktop();   // 일반 모듈: 데스크톱에서는 화면별 본문을 살려 둔다
-  if (!viewMode) { shell.showKeep(keepMode); if (!keepMode) { workTabs.leave(); shell.main.className = 'jh-main'; } }
+  if (!viewMode) { shell.showKeep(keepMode); if (!keepMode) { workTabs.leave(); shell.main.className = 'jh-main'; shell.main.removeAttribute('data-sided'); } }
   shell.setActive(mod.nav === false ? 'home' : mod.id); shell.setTitle(mod.title, mod.defaultHash);   // 사이드바에 없는 모듈(출퇴근·일정)은 '홈'이 켜진 채로
   shell.setQuickVisible(!(mod.hideQuickOn && mod.hideQuickOn.indexOf(r.segs[0]) !== -1)); shell.setFab(mod.quick || null);
   if (recent) recent.touch(location.hash, mod.title);   // 최근 사용 메뉴에 기록(이름은 화면이 그려진 뒤 더 정확하게 고친다)

@@ -1,0 +1,12 @@
+import { homeHtml } from '../app/modules/edoc/home-view.js';
+import fs from 'node:fs';
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
+const idx = (h, s) => h.indexOf(s);
+const model = { me: { admin: true, uid: 'u' }, work: { state: 'loading', month: '2026-10' }, leave: { state: 'loading' }, todo: { approve: 2, rejected: 0, postWait: 1, inbox: 0 }, docs: [], lists: { approve: [], inbox: [], mine: [], posted: [] }, scope: 'mine', tab: 'approve' };
+const h = homeHtml(model); const side = h.slice(idx(h, 'jh-ehome__side'), idx(h, 'jh-ehome__main')), main = h.slice(idx(h, 'jh-ehome__main'), idx(h, 'jh-ehome__detail')), det = h.slice(idx(h, 'jh-ehome__detail'));
+ok(idx(h, 'jh-pagehead') < idx(h, 'jh-ehome"') && idx(h, 'jh-ehome__side') < idx(h, 'jh-ehome__main') && idx(h, 'jh-ehome__main') < idx(h, 'jh-ehome__detail'), '★ 전자결재 홈은 인사 홈과 같은 구성: 제목 줄 아래 왼쪽 할 일 카드 | 본문 | 오른쪽');
+ok(side.includes('id="edoc-todo"') && (side.match(/class="jh-todo"/g) || []).length === 4 && !side.includes('edoc-work') && main.includes('id="edoc-work"') && main.includes('id="edoc-pipe"') && main.includes('id="edoc-recent"') && idx(main, 'edoc-work') < idx(main, 'edoc-pipe') && idx(main, 'edoc-pipe') < idx(main, 'edoc-recent') && det.includes('id="edoc-leavebox"') && !main.includes('edoc-leavebox'), '왼쪽: 할 일 카드 4개(세로) · 본문: 근무시간 → 문서 현황 → 최근 문서 · 오른쪽: 내 연차 현황(칸 id 는 그대로라 채우는 코드가 그대로 동작)');
+ok(h.includes('data-new') && h.includes('data-admin'), '제목 줄의 새 문서 작성·관리자 설정 버튼은 그대로');
+const css = fs.readFileSync(new URL('../app/theme/edoc.css', import.meta.url), 'utf8');
+ok(/\.jh-main\[data-sided\] \{ padding: 0; \}/.test(css) && /\.jh-edoc--side > \.jh-sidenav \{[^}]*border: 0; border-right: var\(--u-1\) solid var\(--c-line\); border-radius: 0/.test(css) && /@media \(min-width: 900px\) \{\s*\.jh-main\[data-sided\]/.test(css) && /\.jh-ehome__side \.jh-todo-grid \{ grid-template-columns: minmax\(0, 1fr\)/.test(css) && /@media \(min-width: 1500px\) \{ \.jh-ehome \{ grid-template-columns: 17rem minmax\(0, 1fr\) var\(--u-320\)/.test(css), '스타일 보호: 사이드 메뉴는 왼쪽 끝 전체 높이(테두리·모서리 없음, 데스크톱만, 본문 바깥 여백 0), 홈은 1500px 이상 3단');
+console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

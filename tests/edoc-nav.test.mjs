@@ -3,8 +3,8 @@ let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK 
 const ME = { uid: 'u', admin: false }, AD = { uid: 'a', admin: true };
 const keys = (cfg) => cfg.sections.flatMap((s) => s.items.map((i) => i.key));
 const C0 = edocSideCfg(ME, { segs: [], query: {} });
-ok(keys(C0).join() === 'new,home,box/todo,box/mine,box/cc,box/all,box/mine/draft,box/mine/rejected' && C0.title === '✍ 전자결재' && C0.sections.length === 3, '★ 전자결재 사이드 메뉴: 새 문서 작성·홈 / 결재함(결재할 문서·내가 올린·참조·회람·게시 문서) / 내 문서(임시저장·반려된 문서), 관리자가 아니면 관리 없음');
-ok(keys(edocSideCfg(AD, { segs: [], query: {} })).slice(-1)[0] === 'admin' && edocSideCfg(AD, { segs: [], query: {} }).sections.length === 4 && /전체/.test(JSON.stringify(edocSideCfg(AD, { segs: [], query: {} }).sections[1])), '관리자: 맨 아래 "관리", 결재함의 마지막 탭은 "전체"');
+ok(keys(C0).join() === 'home,box/todo,box/mine,box/cc,box/all,new,box/mine/draft,box/mine/rejected' && C0.title === '✍ 전자결재' && C0.sections.map((s) => s.title).join() === '현황,결재함,내 문서', '★ 전자결재 사이드 메뉴(인사총무·재무회계처럼 모든 묶음에 머리글): 현황(홈) / 결재함(결재할 문서·내가 올린·참조·회람·게시 문서) / 내 문서(새 문서 작성·임시저장·반려된 문서), 관리자가 아니면 설정 없음');
+ok(keys(edocSideCfg(AD, { segs: [], query: {} })).slice(-1)[0] === 'admin' && edocSideCfg(AD, { segs: [], query: {} }).sections.length === 4 && edocSideCfg(AD, { segs: [], query: {} }).sections[3].title === '설정' && /전체/.test(JSON.stringify(edocSideCfg(AD, { segs: [], query: {} }).sections[1])), '관리자: 맨 아래 "설정 › 관리", 결재함의 마지막 탭은 "전체"');
 const href = (cfg, key) => cfg.sections.flatMap((s) => s.items).find((i) => i.key === key).href;
 ok(href(C0, 'new') === '#/edoc/new' && href(C0, 'home') === '#/edoc/home' && href(C0, 'box/todo') === '#/edoc/box' && href(C0, 'box/mine') === '#/edoc/box?tab=mine' && href(C0, 'box/mine/draft') === '#/edoc/box?tab=mine&status=draft' && href(C0, 'box/mine/rejected') === '#/edoc/box?tab=mine&status=rejected' && href(C0, 'box/cc') === '#/edoc/box?tab=cc', '메뉴 주소는 결재함 주소 규칙(기본값 생략)을 그대로 따름');
 const cur = (me, segs, query) => edocSideCfg(me, { segs, query: query || {} }).current;
