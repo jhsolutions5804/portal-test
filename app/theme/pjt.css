@@ -304,7 +304,8 @@
 .jh-ov__info { display: flex; flex-wrap: wrap; gap: var(--sp-1); min-height: var(--u-20); }
 .jh-ov__kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-2); }
 .jh-ov__kpi { display: grid; gap: var(--u-2); align-content: start; }
-.jh-ov__kpi strong { font-size: var(--fs-lg); white-space: nowrap; }
+.jh-ov__kpi strong { font-size: var(--fs-lg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jh-ov__kpi { min-width: 0; }
 .jh-ov__kpi span { font-size: var(--fs-xs); color: var(--c-ink-3); }
 .jh-ov__bar { display: block; height: var(--u-4); border-radius: var(--u-999); background: var(--c-line); overflow: hidden; }
 .jh-ov__bar b { display: block; height: 100%; background: var(--pc); }
@@ -343,3 +344,13 @@
   .jh-ov__mc { min-height: var(--u-56); }
   .jh-ov__mc em, .jh-ov__mc small { display: none; }
 }
+/* 근로자 연명부 — 도구(월간 공수·마이그레이션) */
+.jh-ro__tools3 { margin-left: auto; display: inline-flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.jh-ro__tools3 .jh-btn { text-decoration: none; }
+.jh-ro__tools2 { display: grid; gap: var(--sp-3); }
+.jh-ro__det { padding: var(--sp-3) var(--sp-4); border: var(--u-1) solid var(--c-warn); border-radius: var(--radius); background: var(--c-warn-weak); }
+.jh-ro__det summary { cursor: pointer; }
+.jh-ro__det .jh-ro__t { margin-top: var(--sp-3); }
+.jh-ro__src { padding: var(--u-2) 0; color: var(--c-ink-2); font-size: var(--fs-sm); }
+.jh-ro__t tr[data-dim="1"] td { color: var(--c-ink-3); }
+.jh-ro__t tr[aria-current="true"] td { background: var(--c-primary-weak); }

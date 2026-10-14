@@ -1,10 +1,10 @@
-import { esc } from '../../core/ui.js?v=20261014o';
-import { EDU, EDU_SK, EDU_OF, PORTAL_OF, COMPANIES, CO_TABS, HEALTH_TYPES, CHEM_REQ_HOURS, FILE_SLOTS, certCo, fmtKB, fmtMoney, fmtH, maskedOf, healthExpiry, eduStateOf, eduInfo, chemYearSum, legalAgg, filesMeta, SORT_OPTS, leaderChoices, canEditSlot, addYearsYmd, pdfDownloadName, VALID_YEAR_CHOICES, LEGAL_TYPES, activeMembers } from './roster.js?v=20261014o';
+import { esc } from '../../core/ui.js?v=20261014p';
+import { EDU, EDU_SK, EDU_OF, PORTAL_OF, COMPANIES, CO_TABS, HEALTH_TYPES, CHEM_REQ_HOURS, FILE_SLOTS, certCo, fmtKB, fmtMoney, fmtH, maskedOf, healthExpiry, eduStateOf, eduInfo, chemYearSum, legalAgg, filesMeta, SORT_OPTS, leaderChoices, canEditSlot, addYearsYmd, pdfDownloadName, VALID_YEAR_CHOICES, LEGAL_TYPES, activeMembers } from './roster.js?v=20261014p';
 const chip = (tone, text, title) => '<span class="jh-pjt__chip" data-tone="' + tone + '"' + (title ? ' title="' + esc(title) + '"' : '') + '>' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const stateChip = (r) => (r.state === 'expired' ? chip('red', '만료됨 (D+' + Math.abs(r.d) + ')') : r.state === 'soon' ? chip('amber', 'D-' + r.d) : r.chk && r.exp ? chip('blue', '유효') : '');
 const wrap = (inner) => '<div class="jh-pjt jh-pjt--prog jh-ro"><div class="jh-pjt__main jh-pjt__mainwide">' + inner + '</div></div>';   // .jh-pjt 는 넓은 화면에서 2단(왼쪽 좁게)이라 전체 폭 화면은 --prog 로 감싼다
-const legacyLink = '<a class="jh-ro__legacy" href="../pjt_roster/" target="_blank" rel="noopener" title="새 화면에서는 아직 조회만 됩니다. 등록·수정은 구포털 연명부에서 하세요(같은 데이터).">구포털 연명부 열기 ↗ <small>등록·수정은 임시로 여기서</small></a>';
+const legacyLink = '<span class="jh-ro__tools3"><a class="jh-btn" data-variant="secondary" href="#/pjt/roster/_manday">📊 월간 공수</a><a class="jh-btn" data-variant="secondary" href="#/pjt/roster/_migrate">🔄 기존 인원 마이그레이션</a><a class="jh-ro__legacy" href="../pjt_roster/" target="_blank" rel="noopener" title="구포털 연명부(같은 데이터) — 비교용">구포털 연명부 ↗</a></span>';
 const head = (right) => '<div class="jh-pjt__proj"><span class="jh-pjt__projlabel">👷 근로자 연명부</span>' + (right || '') + '</div>';
 const initialOf = (n) => esc(String(n || '?').trim().slice(0, 1));
 const lvTone = (lv) => (lv === 'danger' ? 'red' : lv === 'warn' ? 'amber' : 'gray');

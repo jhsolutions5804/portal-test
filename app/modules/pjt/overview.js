@@ -1,9 +1,9 @@
 /* PJT 전체 홈·종료 PJT — 순수 규칙(화면·네트워크 없이 시험 가능). 모든 프로젝트 같은 규칙.
  * 전체 홈 = 내가 열 수 있는 프로젝트 카드(공정율·D+·누적 공수·오늘 출역) + 프로젝트 통합 일정(2주 / 월간, 프로젝트별 색) + 신규 프로젝트.
  * 종료 PJT = 종료된 프로젝트 목록(재개·완전삭제는 관리자). 프로젝트 문서는 pjt_registry/<id> 하나씩이다(설계서 ⑬). */
-import { weekDays, addDays, itemsForKey } from './schedule.js?v=20261014o';
-import { dday } from './home.js?v=20261014o';
-import { buildData } from './settings.js?v=20261014o';
+import { weekDays, addDays, itemsForKey } from './schedule.js?v=20261014p';
+import { dday } from './home.js?v=20261014p';
+import { buildData } from './settings.js?v=20261014p';
 export const PALETTE = ['#1D5BA6', '#2e7d32', '#e67e22', '#5e35b1', '#00695C', '#c0392b', '#8D6E00', '#d81b60'];   // 프로젝트별 색(등록 순서대로, 8개를 돌려 쓴다)
 export const colorOf = (keys, key) => PALETTE[Math.max(0, (keys || []).indexOf(key)) % PALETTE.length];
 /** 통합 일정(주간) — 이번 주 월요일부터 14일 블록, offset 만큼 블록 단위로 이동 */
@@ -20,7 +20,7 @@ export function groupByDay(items, days) {
 export function legendOf(map, projects) { const seen = new Set(); Object.keys(map || {}).forEach((k) => (map[k] || []).forEach((x) => seen.add(x.pjtKey))); return (projects || []).filter((p) => seen.has(p.key)); }
 /** 공수 문서들 [{ 직원id: 공수 }…] 의 총합(숫자가 아닌 칸은 무시) */
 export function totalManday(mdMaps) { let t = 0; (mdMaps || []).forEach((m) => Object.keys(m || {}).forEach((id) => { const v = parseFloat(m[id]); if (isFinite(v)) t += v; })); return Math.round(t * 10) / 10; }
-export const fmtDplus = (dd) => (dd == null ? '시작일 미설정' : dd >= 0 ? 'D+' + dd : 'D' + dd);
+export const fmtDplus = (dd) => (dd == null ? '미설정' : dd >= 0 ? 'D+' + dd : 'D' + dd);
 /** 프로젝트 카드 한 장의 표시값. stats 는 늦게 도착하므로 없으면 null 로 두어 화면이 "—"를 보인다 */
 export function cardOf(project, stats, today) {
   const d = (project && project.doc) || {}; const dd = dday(d.startDate, today);

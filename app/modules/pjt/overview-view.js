@@ -1,9 +1,9 @@
 /* PJT 전체 홈·종료 PJT 화면(표시만). 규칙은 overview.js, 불러오기·저장·이벤트는 overview-index.js. */
-import { esc } from '../../core/ui.js?v=20261014o';
-import { holidayName } from '../../shared/holidays.js?v=20261014o';
-import { monthGrid, itemsForKey, dowOf } from './schedule.js?v=20261014o';
-import { FIELDS } from './settings.js?v=20261014o';
-import { colorOf, blockDays, blockLabel, monthLabel, groupByDay, legendOf, cardOf } from './overview.js?v=20261014o';
+import { esc } from '../../core/ui.js?v=20261014p';
+import { holidayName } from '../../shared/holidays.js?v=20261014p';
+import { monthGrid, itemsForKey, dowOf } from './schedule.js?v=20261014p';
+import { FIELDS } from './settings.js?v=20261014p';
+import { colorOf, blockDays, blockLabel, monthLabel, groupByDay, legendOf, cardOf } from './overview.js?v=20261014p';
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const dayHead = (k) => { const [, m, d] = k.split('-').map(Number); return m + '/' + d; };
 const offKind = (k) => (holidayName(k) || dowOf(k) === 0 ? 'red' : dowOf(k) === 6 ? 'sat' : '');
@@ -22,7 +22,7 @@ function projectCard(st, p) {
   const kpi = (label, val, extra) => '<div class="jh-ov__kpi"><strong>' + val + '</strong><span>' + label + '</span>' + (extra || '') + '</div>';
   return '<article class="jh-ov__card" style="--pc:' + col + '" data-ov-open="' + esc(p.key) + '" tabindex="0" role="link" aria-label="' + esc(c.name) + ' 프로젝트 홈 열기"><div class="jh-ov__ch"><span class="jh-ov__dot" aria-hidden="true"></span><h3>' + esc(c.name) + '</h3>' + (st.admin ? '<button type="button" class="jh-btn" data-variant="secondary" data-ov-set="' + esc(p.key) + '" title="설정(관리자)">⚙️</button>' : '') + '</div>'
     + '<div class="jh-ov__info">' + (c.info.length ? c.info.map((x) => '<span class="jh-pjt__chip" data-tone="gray">' + esc(x) + '</span>').join(' ') : '<span class="jh-field__hint">거래처·현장 미입력</span>') + '</div>'
-    + '<div class="jh-ov__kpis">' + kpi('공정율', c.pct == null ? '—' : f1(c.pct) + '%', '<i class="jh-ov__bar"><b style="width:' + (c.pct == null ? 0 : Math.min(100, c.pct)) + '%"></b></i>') + kpi('프로젝트', c.dplus) + kpi('누적 공수', c.total == null ? '—' : f1(c.total)) + kpi('오늘 출역', c.headcount == null ? '—' : c.headcount + '명') + '</div>'
+    + '<div class="jh-ov__kpis">' + kpi('공정율', c.pct == null ? '—' : f1(c.pct) + '%', '<i class="jh-ov__bar"><b style="width:' + (c.pct == null ? 0 : Math.min(100, c.pct)) + '%"></b></i>') + kpi('시작일 D+', c.dplus) + kpi('누적 공수', c.total == null ? '—' : f1(c.total)) + kpi('오늘 출역', c.headcount == null ? '—' : c.headcount + '명') + '</div>'
     + '<div class="jh-ov__cf"><button type="button" class="jh-btn" data-variant="primary" data-ov-open="' + esc(p.key) + '">열기 →</button></div></article>';
 }
 const legendHtml = (list, st) => '<div class="jh-ov__legend">' + (list.length ? list.map((p) => '<span><i style="background:' + colorOf(keysOf(st), p.key) + '"></i>' + esc(p.label) + '</span>').join('') : '<span class="jh-field__hint">이 기간에 일정이 없습니다.</span>') + '</div>';
