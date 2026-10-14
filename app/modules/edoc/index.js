@@ -1,28 +1,29 @@
-import { fetchAll, fetchOne } from './data.js?v=20261014t';
-import { listHtml, detailHtml } from './views.js?v=20261014t';
-import { tabCounts } from './logic.js?v=20261014t';
-import { buildHash, navigate } from '../../core/router.js?v=20261014t';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261014t';
-import { toast } from '../../core/ui.js?v=20261014t';
-import { confirmDialog } from '../../core/dialog.js?v=20261014t';
-import { loadDirectory, resetDirectory } from './directory.js?v=20261014t';
-import { act } from './api.js?v=20261014t';
-import * as C from './compose.js?v=20261014t';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261014t';
-import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261014t';
-import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261014t';
-import { kstKey } from './home-daily.js?v=20261014t';
-import { isOffDay } from '../../shared/holidays.js?v=20261014t';
-import { todoCounts } from './home-stats.js?v=20261014t';
-import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261014t';
-import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261014t';
-import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261014t';
-import * as AT from './attach-logic.js?v=20261014t';
-import { uploadFile, removeFile, openFile } from './attach.js?v=20261014t';
-import * as SL from './settings-logic.js?v=20261014t';
-import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261014t';
+import { fetchAll, fetchOne } from './data.js?v=20261014u';
+import { listHtml, detailHtml } from './views.js?v=20261014u';
+import { tabCounts } from './logic.js?v=20261014u';
+import { buildHash, navigate } from '../../core/router.js?v=20261014u';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261014u';
+import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261014u';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261014u';
+import { toast } from '../../core/ui.js?v=20261014u';
+import { confirmDialog } from '../../core/dialog.js?v=20261014u';
+import { loadDirectory, resetDirectory } from './directory.js?v=20261014u';
+import { act } from './api.js?v=20261014u';
+import * as C from './compose.js?v=20261014u';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261014u';
+import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261014u';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261014u';
+import { kstKey } from './home-daily.js?v=20261014u';
+import { isOffDay } from '../../shared/holidays.js?v=20261014u';
+import { todoCounts } from './home-stats.js?v=20261014u';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261014u';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261014u';
+import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261014u';
+import * as AT from './attach-logic.js?v=20261014u';
+import { uploadFile, removeFile, openFile } from './attach.js?v=20261014u';
+import * as SL from './settings-logic.js?v=20261014u';
+import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261014u';
 
-const URL_DEFAULTS = { tab: 'todo', type: 'all', status: 'all', page: '1', size: '20' };   // 주소에서 생략하는 기본값
 
 export const manifest = {
   id: 'edoc',
@@ -63,11 +64,13 @@ async function withPolicy(me) {
 /** route: { segs:['box'] | ['doc', dtype, id] | ['new'] | ['new', type] | ['edit', dtype, id], query } */
 export async function mount(root, route, ctx) {
   const kind = route.segs[0];
-  if (kind === 'new' || kind === 'edit') return mountCompose(root, route, ctx);
-  if (kind === 'home') return mountHome(root, route, ctx);
-  if (kind === 'print') return mountPrint(root, route, ctx);
-  if (kind === 'admin') return mountAdmin(root, route, ctx);
-  return mountBox(root, route, ctx);
+  if (kind === 'print') return mountPrint(root, route, ctx);   // 인쇄·PDF 화면은 메뉴 없이 종이만
+  root.innerHTML = '<div class="jh-edoc--side">' + sidenavHtml(edocSideCfg(ctx.me, route)) + '<div class="jh-edoc__body" id="edoc-body"></div></div>';   // 왼쪽 사이드 내비게이션(다른 메뉴와 같은 너비) + 오른쪽 본문
+  const body = root.querySelector('#edoc-body');
+  if (kind === 'new' || kind === 'edit') return mountCompose(body, route, ctx);
+  if (kind === 'home') return mountHome(body, route, ctx);
+  if (kind === 'admin') return mountAdmin(body, route, ctx);
+  return mountBox(body, route, ctx);
 }
 
 /* ───────────────────────── 결재함 + 상세 ───────────────────────── */

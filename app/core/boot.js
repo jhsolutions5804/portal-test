@@ -1,19 +1,20 @@
-import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261014t';
-import { register, visibleFor, get } from './registry.js?v=20261014t';
-import { parseHash, onChange } from './router.js?v=20261014t';
-import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261014t';
-import { initTheme } from './theme.js?v=20261014t';
-import { checkForUpdate } from './update.js?v=20261014t';
-import { MODULES } from '../modules/index.js?v=20261014t';
-import { mountPlatformHome } from './home.js?v=20261014t';
-import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261014t';
-import { ensureTime24 } from '../shared/time24.js?v=20261014t';
+import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261014u';
+import { register, visibleFor, get } from './registry.js?v=20261014u';
+import { parseHash, onChange } from './router.js?v=20261014u';
+import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261014u';
+import { initTheme } from './theme.js?v=20261014u';
+import { checkForUpdate } from './update.js?v=20261014u';
+import { MODULES } from '../modules/index.js?v=20261014u';
+import { mountPlatformHome } from './home.js?v=20261014u';
+import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261014u';
+import { ensureTime24 } from '../shared/time24.js?v=20261014u';
+import { installRecent } from './recent.js?v=20261014u';
 
 initTheme();   // 이 기기에 저장된 화면 모드(자동·라이트·다크) 적용
 MODULES.forEach((m) => register(Object.assign({}, m.manifest, { mount: m.mount })));
 
 const root = document.getElementById('jh-root');
-let me = null; let shell = null; let mods = [];
+let me = null; let shell = null; let mods = []; let recent = null;   // recent: 화면 우측 floating 최근 사용 메뉴
 
 function route() {
   if (!me || !shell) return;
@@ -28,6 +29,7 @@ function route() {
   shell.showKeep(keepMode); if (!keepMode) shell.main.className = 'jh-main';
   shell.setActive(mod.nav === false ? 'home' : mod.id); shell.setTitle(mod.title, mod.defaultHash);   // 사이드바에 없는 모듈(출퇴근·일정)은 '홈'이 켜진 채로
   shell.setQuickVisible(!(mod.hideQuickOn && mod.hideQuickOn.indexOf(r.segs[0]) !== -1)); shell.setFab(mod.quick || null);
+  if (recent) recent.touch(location.hash, mod.title);   // 최근 사용 메뉴에 기록(이름은 화면이 그려진 뒤 더 정확하게 고친다)
   mod.mount(keepMode ? shell.keep : shell.main, r, { me, setBadge: shell.setBadge });
 }
 
@@ -44,7 +46,7 @@ ensureTime24();   // 시각 입력칸을 24시간(HH:MM) 입력으로(루트 tim
 let answered = false;   // 인증 응답이 한 번이라도 왔는가 — 6초 넘게 없으면 로딩 화면 대신 로그인 화면(응답이 늦게 오면 그때 이어서 처리)
 setTimeout(() => { if (!answered) renderLogin(root, { onSubmit: doLogin, message: REASONS.slow }); }, 6000);
 watchMe((user, reason) => {
-  answered = true; me = user; shell = null;
+  answered = true; me = user; shell = null; recent = null; const oldRecent = document.getElementById('jh-recent'); if (oldRecent) oldRecent.remove();
   if (!me) {
     stopIdle(); let msg = REASONS[reason] || '';
     try { const f = sessionStorage.getItem(OUT_FLAG); if (f) { msg = durationText(+f > 0 ? +f : IDLE_LIMIT_MS) + ' 동안 활동이 없어 자동 로그아웃되었습니다.'; sessionStorage.removeItem(OUT_FLAG); } } catch (e) { /* 표시를 못 읽어도 로그인 화면은 보인다 */ }
@@ -52,7 +54,7 @@ watchMe((user, reason) => {
   }
   mods = visibleFor(me);
   if (!mods.length) { renderDenied(root, '이 계정에는 사용할 수 있는 모듈이 없습니다.', logout); return; }
-  shell = renderShell(root, me, mods, { onLogout: logout });
+  shell = renderShell(root, me, mods, { onLogout: logout }); recent = installRecent(me);
   startIdle({ onExpire: logout });   // 1시간 무동작 자동 로그아웃(옛 모듈 화면 안의 활동도 센다)
   route();
 });

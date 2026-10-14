@@ -1,9 +1,9 @@
 /* PJT 전체 홈·종료 PJT 화면(표시만). 규칙은 overview.js, 불러오기·저장·이벤트는 overview-index.js. */
-import { esc } from '../../core/ui.js?v=20261014t';
-import { holidayName } from '../../shared/holidays.js?v=20261014t';
-import { monthGrid, itemsForKey, dowOf } from './schedule.js?v=20261014t';
-import { FIELDS } from './settings.js?v=20261014t';
-import { colorOf, blockDays, blockLabel, monthLabel, groupByDay, legendOf, cardOf } from './overview.js?v=20261014t';
+import { esc } from '../../core/ui.js?v=20261014u';
+import { holidayName } from '../../shared/holidays.js?v=20261014u';
+import { monthGrid, itemsForKey, dowOf } from './schedule.js?v=20261014u';
+import { FIELDS } from './settings.js?v=20261014u';
+import { colorOf, blockDays, blockLabel, monthLabel, groupByDay, legendOf, cardOf } from './overview.js?v=20261014u';
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const dayHead = (k) => { const [, m, d] = k.split('-').map(Number); return m + '/' + d; };
 const offKind = (k) => (holidayName(k) || dowOf(k) === 0 ? 'red' : dowOf(k) === 6 ? 'sat' : '');
@@ -39,13 +39,20 @@ function monthly(st) {
   const sel = st.sel && map[st.sel] ? map[st.sel] : (st.sel ? itemsForKey(st.items, st.sel) : []); const detail = st.sel ? '<div class="jh-ov__detail"><h4>' + dayHead(st.sel) + ' (' + DOW[dowOf(st.sel)] + ')' + (holidayName(st.sel) ? ' · ' + esc(holidayName(st.sel)) : '') + '</h4>' + (sel.length ? sel.map((s) => itemHtml(st, s)).join('') : '<div class="jh-field__hint">이 날 일정이 없습니다.</div>') + '</div>' : '<div class="jh-field__hint jh-ro__pad">날짜를 누르면 그날의 일정이 나옵니다.</div>';
   return '<div class="jh-ov__tool"><button type="button" class="jh-btn" data-variant="secondary" data-ov-shift="-1" aria-label="이전 달">‹</button><strong>' + monthLabel(st.y, st.m) + '</strong><button type="button" class="jh-btn" data-variant="secondary" data-ov-shift="1" aria-label="다음 달">›</button><span class="jh-ov__sp"></span><button type="button" class="jh-btn" data-variant="secondary" data-ov-today>이번 달</button></div>' + legendHtml(legendOf(map, st.projects), st) + dow + '<div class="jh-ov__month">' + cells + '</div>' + detail;
 }
-/** PJT 전체 홈 */
+/** 일정 영역 안쪽(주간/월간 탭 + 내용) — 주간·월간을 누를 때 이 부분만 다시 그린다(프로젝트 카드는 건드리지 않는다) */
+export function schedInner(st) {
+  const tabs = '<div class="jh-ro__ftabs" role="tablist" aria-label="일정 보기">' + [['weekly', '주간 (2주)'], ['monthly', '월간']].map(([k, l]) => '<button type="button" role="tab" class="jh-ro__ftab" data-ov-view="' + k + '" aria-selected="' + (st.view === k ? 'true' : 'false') + '">' + l + '</button>').join('') + '</div>';
+  return '<div class="jh-panel__head"><h3>프로젝트 통합 일정</h3><span class="jh-field__hint">일정은 각 프로젝트의 일정 탭에서 등록·수정합니다(항목을 누르면 이동)</span></div>' + tabs + '<div class="jh-ov__sched">' + (st.view === 'monthly' ? monthly(st) : weekly(st)) + '</div>';
+}
+/** 프로젝트 카드 영역 안쪽 — 통계가 늦게 도착할 때 이 부분만 다시 그린다 */
+export function railInner(st) {
+  return st.projects.length ? st.projects.map((p) => projectCard(st, p)).join('') : '<div class="jh-alert" data-tone="warn" role="status">열 수 있는 프로젝트가 없습니다. ' + (st.admin ? '[＋ 신규 프로젝트]로 만들 수 있습니다.' : '참여자로 지정된 프로젝트만 보입니다.') + '</div>';
+}
+/** PJT 전체 홈: 왼쪽에 프로젝트 카드를 세로로, 오른쪽에 통합 일정(좁은 화면은 위아래) */
 export function overviewHtml(st) {
   if (!st.ready) return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide">' + head() + (st.err ? '<div class="jh-alert" data-tone="danger" role="alert">' + esc(st.err) + '</div>' : '<div class="jh-empty">불러오는 중...</div>') + '</div></div>';
-  const tabs = '<div class="jh-ro__ftabs" role="tablist" aria-label="일정 보기">' + [['weekly', '주간 (2주)'], ['monthly', '월간']].map(([k, l]) => '<button type="button" role="tab" class="jh-ro__ftab" data-ov-view="' + k + '" aria-selected="' + (st.view === k ? 'true' : 'false') + '">' + l + '</button>').join('') + '</div>';
   return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide">' + head(st.admin ? '<button type="button" class="jh-btn" data-variant="primary" data-ov-new style="margin-left:auto"' + (st.form ? ' disabled' : '') + '>＋ 신규 프로젝트</button>' : '') + (st.form ? newForm(st) : '')
-    + (st.projects.length ? '<div class="jh-ov__cards">' + st.projects.map((p) => projectCard(st, p)).join('') + '</div>' : '<div class="jh-alert" data-tone="warn" role="status">열 수 있는 프로젝트가 없습니다. ' + (st.admin ? '[＋ 신규 프로젝트]로 만들 수 있습니다.' : '참여자로 지정된 프로젝트만 보입니다.') + '</div>')
-    + '<section class="jh-card"><div class="jh-panel__head"><h3>프로젝트 통합 일정</h3><span class="jh-field__hint">일정은 각 프로젝트의 일정 탭에서 등록·수정합니다(항목을 누르면 이동)</span></div>' + tabs + '<div class="jh-ov__sched">' + (st.view === 'monthly' ? monthly(st) : weekly(st)) + '</div></section></div></div>';
+    + '<div class="jh-ov__layout"><aside class="jh-ov__rail" id="ov-rail" aria-label="프로젝트">' + railInner(st) + '</aside><section class="jh-card jh-ov__main" id="ov-sched">' + schedInner(st) + '</section></div></div></div>';
 }
 /** 종료 PJT 목록 */
 export function endedHtml(st) {

@@ -1,6 +1,6 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261014t';
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261014t';
-import { isProjectKey } from '../../shared/pjt-key.js?v=20261014t';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261014u';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261014u';
+import { isProjectKey } from '../../shared/pjt-key.js?v=20261014u';
 export { isProjectKey };
 /* 옛 모듈 어댑터의 목록과 규칙 — 화면(DOM)·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 옛 모듈이 새 모듈로 바뀌면 여기서 항목을 지우고 modules/index.js 의 새 모듈 목록으로 옮긴다. */
@@ -42,6 +42,19 @@ export function resolveItem(def, key, me, dyn) {
 /** 옛 페이지 주소: 기본 폴더 + 항목 주소 + via=portal(임베드 모드) + tab(탭형만) + admin=1(관리자). base 는 LEGACY_BASE 를 해석한 절대 주소 */
 /** 프로젝트 아래의 새 화면 탭(순서대로) — 프로젝트 키는 shared/pjt-key.js 의 규칙(등록 id) */
 export const PJT_SUB_LABELS = { home: '🏠 프로젝트 홈', schedule: '📅 일정 (새)', progress: '📊 공정 (새)', attend: '👷 출역·공수 (새)', report: '📝 공사일보 (새)', settings: '⚙️ 설정' };
+/** PJT 관리 사이드 내비게이션 구성(순수): PJT 홈 → 프로젝트 목록 → 보는 프로젝트의 화면들 → 근로자 연명부 → 종료 PJT.
+ *  items = pjtNav 결과, activeKey = 'home' | 프로젝트 id | 'roster' | 'ended', sub = 프로젝트 화면(home·schedule·…) 또는 연명부의 _manday·_migrate. 모든 프로젝트가 같은 모양이다. */
+export function pjtSideConfig(def, items, activeKey, sub, me) {
+  const list = items || []; const enc = encodeURIComponent; const projects = list.filter((i) => isProjectKey(i.key)); const act = projects.find((p) => p.key === activeKey);
+  const sections = [{ items: [{ key: 'home', label: '🏠 PJT 홈', href: '#/pjt/home', hint: '프로젝트 카드·통합 일정' }] }];
+  if (projects.length) sections.push({ title: '프로젝트', items: projects.map((p) => ({ key: 'p/' + p.key, label: p.label, href: '#/pjt/' + enc(p.key) + '/home', active: p.key === activeKey })) });
+  const subKey = (act && ((def.nativeSubs || []).indexOf(sub) !== -1 ? sub : def.defaultSub || 'home')) || '';
+  if (act) sections.push({ title: '📍 ' + act.label, items: (def.nativeSubs || []).filter((s) => s !== 'settings' || (me && me.admin)).map((s) => ({ key: 's/' + s, label: String(PJT_SUB_LABELS[s] || s).replace(/ \(새\)$/, ''), href: '#/pjt/' + enc(act.key) + '/' + s })) });
+  if (list.some((i) => i.key === 'roster')) sections.push({ title: '근로자 연명부', items: [{ key: 'roster', label: '👷 명부', href: '#/pjt/roster' }, { key: 'roster/_manday', label: '📊 월간 공수', href: '#/pjt/roster/_manday' }, { key: 'roster/_migrate', label: '🔄 기존 인원 마이그레이션', href: '#/pjt/roster/_migrate' }] });
+  sections.push({ items: [{ key: 'ended', label: '🗄️ 종료 PJT', href: '#/pjt/ended' }] });
+  const current = act ? 's/' + subKey : activeKey === 'roster' ? (sub === '_manday' || sub === '_migrate' ? 'roster/' + sub : 'roster') : activeKey === 'ended' ? 'ended' : 'home';
+  return { label: def.title + ' 메뉴', title: (def.icon ? def.icon + ' ' : '') + def.title, current, sections };
+}
 export const PJT_TABS = ['attend', 'schedule'];   // 주소로 바로 열 수 있는 PJT 탭: 출역·공수 체크·일정
 export function buildUrl(def, item, me, base, cacheBust, tab) {
   const rel = (item && item.url) || def.url || '';
@@ -68,7 +81,8 @@ export function sideConfig(def, activeKey, sub) {
   return { label: def.title + ' 메뉴', title: (def.icon ? def.icon + ' ' : '') + def.title, current: sideCurrentKey(def, activeKey, sub), sections };
 }
 function groupNavHtml(def, activeKey, esc, sub) { return sidenavHtml(sideConfig(def, activeKey, sub), 'jh-legacy__nav'); }
-export function navHtml(def, items, activeKey, esc, sub) {
+export function navHtml(def, items, activeKey, esc, sub, me) {
+  if (def.dynamicNav) return sidenavHtml(pjtSideConfig(def, items, activeKey, sub, me), 'jh-legacy__nav');   // PJT 관리도 영업기획·인사총무·재무회계와 같은 공용 사이드 내비게이션(너비 220px 동일)
   if (def.groups && def.groups.length) return groupNavHtml(def, activeKey, esc, sub);
   if (def.sections && def.sections.length) {   // 옛 화면은 자기 메뉴를 쓰고, 플랫폼은 구역(인사 / 총무)만 고르게 한다 — 구역 key 는 새 모듈이 직접 그리는 화면
     const nat = def.sections.map((s) => s.key); const chips = [{ key: 'home', label: def.homeLabel || def.title, home: true }].concat(def.sections);

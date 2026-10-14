@@ -1,21 +1,21 @@
 /* PJT 전체 홈(주소 #/pjt/home)과 종료 PJT(#/pjt/ended) — 새 화면. 규칙은 overview.js, 표시는 overview-view.js.
  * 프로젝트를 만들거나 종료·재개·삭제하면 메뉴의 프로젝트 칩도 바뀌어야 하므로 'jh:pjt-changed' 알림을 보낸다(legacy/frame.js 가 받아 칩을 다시 읽는다). */
-import { db, collection, doc, getDocs, setDoc, addDoc, deleteDoc, deleteField, serverTimestamp } from '../../core/firebase.js?v=20261014t';
-import { esc, toast } from '../../core/ui.js?v=20261014t';
-import { confirmDialog } from '../../core/dialog.js?v=20261014t';
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261014t';
-import { loadHolidays, holidayName } from '../../shared/holidays.js?v=20261014t';
-import { pathsFor } from './adapter.js?v=20261014t';
-import { appToday } from './attendance.js?v=20261014t';
-import { visibleProjects } from './projects.js?v=20261014t';
-import { structureFor } from './structure-store.js?v=20261014t';
-import { toRuntime } from './structure.js?v=20261014t';
-import { normalizeDay, stateAt, calcAll, stagesOf } from './progress.js?v=20261014t';
-import { attendanceSummary } from './report.js?v=20261014t';
-import { dowOf } from './schedule.js?v=20261014t';
-import { overviewHtml, endedHtml } from './overview-view.js?v=20261014t';
-import { blockDays, blockLabel, colorOf, groupByDay, legendOf, totalManday, newProjectData, deleteConfirmed, endedSorted, shiftMonth } from './overview.js?v=20261014t';
-import { weeklyPng } from './overview-png.js?v=20261014t';
+import { db, collection, doc, getDocs, setDoc, addDoc, deleteDoc, deleteField, serverTimestamp } from '../../core/firebase.js?v=20261014u';
+import { esc, toast } from '../../core/ui.js?v=20261014u';
+import { confirmDialog } from '../../core/dialog.js?v=20261014u';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261014u';
+import { loadHolidays, holidayName } from '../../shared/holidays.js?v=20261014u';
+import { pathsFor } from './adapter.js?v=20261014u';
+import { appToday } from './attendance.js?v=20261014u';
+import { visibleProjects } from './projects.js?v=20261014u';
+import { structureFor } from './structure-store.js?v=20261014u';
+import { toRuntime } from './structure.js?v=20261014u';
+import { normalizeDay, stateAt, calcAll, stagesOf } from './progress.js?v=20261014u';
+import { attendanceSummary } from './report.js?v=20261014u';
+import { dowOf } from './schedule.js?v=20261014u';
+import { overviewHtml, schedInner, railInner, endedHtml } from './overview-view.js?v=20261014u';
+import { blockDays, blockLabel, colorOf, groupByDay, legendOf, totalManday, newProjectData, deleteConfirmed, endedSorted, shiftMonth } from './overview.js?v=20261014u';
+import { weeklyPng } from './overview-png.js?v=20261014u';
 const ts = (d) => (d.createdAt && d.createdAt.seconds) || 0;
 /** 프로젝트가 바뀌었음을 메뉴(legacy/frame.js)에 알리고, 메뉴가 칩을 다시 읽을 때까지 기다린다 */
 export async function notifyPjtChanged() { const waits = []; try { window.dispatchEvent(new CustomEvent('jh:pjt-changed', { detail: { waits } })); await Promise.all(waits); } catch (e) { /* 알림 실패는 화면 동작을 막지 않는다 */ } }
@@ -33,6 +33,8 @@ export async function mountOverview(root, route, ctx) {
   const st = { admin: !!me.admin, today, ready: false, err: '', projects: [], stats: {}, items: [], view: 'weekly', offset: 0, y: t0[0], m: t0[1] - 1, sel: '', form: null, msg: '', busy: false };
   root.innerHTML = '<div id="ov-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#ov-body');
   const paint = () => { const y = window.scrollY; body.innerHTML = overviewHtml(st); window.scrollTo(0, y); };
+  const paintSched = () => { const el = body.querySelector('#ov-sched'); if (el) el.innerHTML = schedInner(st); else paint(); };   // 주간·월간·이동은 일정 영역만(프로젝트 카드는 그대로)
+  const paintRail = () => { const el = body.querySelector('#ov-rail'); if (el) el.innerHTML = railInner(st); };   // 통계가 도착할 때는 카드 영역만
   const makePng = (ctx && ctx.makePng) || weeklyPng; const savePng = (ctx && ctx.savePng) || ((url, name) => { const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); });
   try { await Promise.race([loadHolidays(), new Promise((r) => setTimeout(r, 1500))]); } catch (e) { /* 공휴일 없이 표시 */ }
   const load = async () => {
@@ -41,7 +43,7 @@ export async function mountOverview(root, route, ctx) {
   };
   try { await load(); st.ready = true; } catch (e) { st.err = '불러오지 못했습니다: ' + ((e && (e.code || e.message)) || ''); }
   body.removeAttribute('aria-busy'); paint();
-  if (st.ready) { st.projects.forEach((p) => { loadStats(p, today).then((s) => { st.stats[p.key] = s; if (body.isConnected) paint(); }); }); }   // 통계는 프로젝트마다 따로 도착하는 대로 채운다
+  if (st.ready) { st.projects.forEach((p) => { loadStats(p, today).then((s) => { st.stats[p.key] = s; if (body.isConnected) paintRail(); }); }); }   // 통계는 프로젝트마다 따로 도착하는 대로 채운다
   const go = (h) => { location.hash = h; };
   const create = async () => {
     const r = newProjectData(st.form); if (r.error) { st.msg = r.error; paint(); return; }
@@ -59,11 +61,11 @@ export async function mountOverview(root, route, ctx) {
     if ((el = t.closest('[data-ov-set]'))) { go('#/pjt/' + encodeURIComponent(el.getAttribute('data-ov-set')) + '/settings'); return; }
     if ((el = t.closest('[data-ov-sched]'))) { go('#/pjt/' + encodeURIComponent(el.getAttribute('data-ov-sched')) + '/schedule'); return; }
     if ((el = t.closest('[data-ov-open]'))) { go('#/pjt/' + encodeURIComponent(el.getAttribute('data-ov-open')) + '/home'); return; }
-    if ((el = t.closest('[data-ov-view]'))) { st.view = el.getAttribute('data-ov-view'); paint(); return; }
-    if ((el = t.closest('[data-ov-shift]'))) { const d = +el.getAttribute('data-ov-shift'); if (st.view === 'monthly') { const n = shiftMonth(st.y, st.m, d); st.y = n.y; st.m = n.m; st.sel = ''; } else st.offset += d; paint(); return; }
-    if (t.closest('[data-ov-today]')) { st.offset = 0; st.y = t0[0]; st.m = t0[1] - 1; st.sel = st.view === 'monthly' ? today : ''; paint(); return; }
+    if ((el = t.closest('[data-ov-view]'))) { st.view = el.getAttribute('data-ov-view'); paintSched(); return; }
+    if ((el = t.closest('[data-ov-shift]'))) { const d = +el.getAttribute('data-ov-shift'); if (st.view === 'monthly') { const n = shiftMonth(st.y, st.m, d); st.y = n.y; st.m = n.m; st.sel = ''; } else st.offset += d; paintSched(); return; }
+    if (t.closest('[data-ov-today]')) { st.offset = 0; st.y = t0[0]; st.m = t0[1] - 1; st.sel = st.view === 'monthly' ? today : ''; paintSched(); return; }
     if (t.closest('[data-ov-png]')) { png(); return; }
-    if ((el = t.closest('[data-ov-day]'))) { st.sel = el.getAttribute('data-ov-day'); paint(); return; }
+    if ((el = t.closest('[data-ov-day]'))) { st.sel = el.getAttribute('data-ov-day'); paintSched(); return; }
     if (t.closest('[data-ov-new]')) { st.form = { name: '', code: '', site: '', client: '', contractor: '', partner: '', content: '', item: '', qty: '', startDate: '' }; st.msg = ''; paint(); return; }
     if (t.closest('[data-ov-cancel]')) { st.form = null; st.msg = ''; paint(); return; }
     if (t.closest('[data-ov-create]') && !st.busy) { create(); }

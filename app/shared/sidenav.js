@@ -3,7 +3,7 @@
  * cfg: { label(스크린리더용 이름), title(맨 위 제목, 선택), sections: [{ title, items:[{key,label,href,hint?}], clusters:[{label, items:[…]}] }], current(현재 항목 key) }
  * 항목 key 는 메뉴 전체에서 겹치지 않게 둔다. 현재 항목에는 aria-current="page" 를 붙인다. */
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-export const sideItemHtml = (it, current) => '<a class="jh-sidenav__item" href="' + esc(it.href) + '" data-key="' + esc(it.key) + '"' + (it.hint ? ' title="' + esc(it.hint) + '"' : '') + (it.key === current ? ' aria-current="page"' : '') + '>' + esc(it.label) + '</a>';
+export const sideItemHtml = (it, current) => '<a class="jh-sidenav__item" href="' + esc(it.href) + '" data-key="' + esc(it.key) + '"' + (it.hint ? ' title="' + esc(it.hint) + '"' : '') + (it.key === current ? ' aria-current="page"' : '') + (it.active ? ' data-active="1"' : '') + '>' + esc(it.label) + '</a>';   // active: 지금 보고 있는 항목의 상위(예: 보는 프로젝트) — 현재 화면 표시(aria-current)와 별개로 연하게 강조
 export function sidenavHtml(cfg, extraClass) {
   const c = cfg || {}; const cur = c.current;
   const secs = (c.sections || []).map((s) => '<div class="jh-sidenav__sec">' + (s.title ? '<div class="jh-sidenav__head">' + esc(s.title) + '</div>' : '') + (s.items || []).map((it) => sideItemHtml(it, cur)).join('') + (s.clusters || []).map((cl) => '<div class="jh-sidenav__sub">' + esc(cl.label) + '</div>' + (cl.items || []).map((it) => sideItemHtml(it, cur)).join('')).join('') + '</div>').join('');

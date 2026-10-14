@@ -1,0 +1,15 @@
+import { MAX_KEEP, MAX_SHOW, pushRecent, relabel, visibleRecent, timeAgo, labelOf, parseStored } from '../app/core/recent.js';
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
+let L = []; L = pushRecent(L, { hash: '#/pjt/home', label: 'PJT 관리' }, 1000); L = pushRecent(L, { hash: '#/edoc/box', label: '전자결재' }, 2000); L = pushRecent(L, { hash: '#/pjt/home', label: '' }, 3000);
+ok(L.length === 2 && L[0].hash === '#/pjt/home' && L[0].ts === 3000 && L[0].label === 'PJT 관리' && L[1].hash === '#/edoc/box', '★ 같은 주소는 하나로 맨 앞으로 올리고(시각 갱신), 이름이 비어 오면 이전 이름을 유지');
+ok(pushRecent([], { hash: '#/home', label: '홈' }, 1).length === 0 && pushRecent([], { hash: 'x', label: 'a' }, 1).length === 0 && pushRecent([], { hash: '', label: 'a' }, 1).length === 0 && pushRecent(null, null, 1).length === 0, '홈(#/home)·잘못된 주소는 기록하지 않음');
+let M = []; for (let i = 0; i < 20; i++) M = pushRecent(M, { hash: '#/m/' + i, label: '메뉴' + i }, i + 1);
+ok(M.length === MAX_KEEP && M[0].hash === '#/m/19' && M[MAX_KEEP - 1].hash === '#/m/' + (20 - MAX_KEEP), '저장은 최근 12개까지(오래된 것부터 밀려남)');
+const V = visibleRecent(M, '#/m/19');
+ok(V.length === MAX_SHOW && V[0].hash === '#/m/18' && !V.some((x) => x.hash === '#/m/19') && visibleRecent(M, '#/none').length === MAX_SHOW && visibleRecent([], '#/a').length === 0 && MAX_SHOW === 10, '★ 보여 주는 것은 지금 보는 화면을 뺀 최근 10개(현재 화면이 끼어 있어도 10개를 채움)');
+const R = relabel([{ hash: '#/a', label: '전자결재', ts: 5 }, { hash: '#/b', label: 'B', ts: 4 }], '#/a', '전자결재 › 결재할 문서');
+ok(R[0].label === '전자결재 › 결재할 문서' && R[0].ts === 5 && R[1].label === 'B' && relabel(R, '#/a', '')[0].label === '전자결재 › 결재할 문서', '이름만 고치고 순서·시각은 그대로(빈 이름으로는 지우지 않음)');
+const N = 1000000000000; ok(timeAgo(N - 10000, N) === '방금' && timeAgo(N - 180000, N) === '3분 전' && timeAgo(N - 7200000, N) === '2시간 전' && timeAgo(N - 100000000, N) === '어제' && timeAgo(N - 5 * 86400000, N) === '5일 전' && timeAgo(N + 5000, N) === '방금', '시간 표시(방금·분·시간·어제·일)');
+ok(labelOf(['PJT 관리', '📍 P4 Ph2 (FAB)', '📊 공정']) === 'PJT 관리 › P4 Ph2 (FAB) › 📊 공정' && labelOf(['전자결재', '', '전자결재']) === '전자결재' && labelOf(['A', null, 'B']) === 'A › B' && labelOf(null) === '', '메뉴 이름: 모듈 › 프로젝트 › 현재 메뉴(겹치는 말·빈 값은 정리)');
+ok(parseStored('[{"hash":"#/a","label":"A","ts":1},{"hash":"x","label":"B"},{"label":"C"},null]').length === 1 && parseStored('깨진').length === 0 && parseStored('{"a":1}').length === 0 && parseStored('').length === 0 && parseStored(null).length === 0, '저장값이 깨졌거나 형식이 다르면 빈 목록(형식이 맞는 것만 읽음)');
+console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

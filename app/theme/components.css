@@ -85,3 +85,27 @@
   .jh-sidenav__head, .jh-sidenav__sub { padding: 0 var(--sp-1); white-space: nowrap; }
   .jh-sidenav__item { flex: 0 0 auto; min-height: var(--u-44); white-space: nowrap; }
 }
+.jh-sidenav__item[data-active="1"]:not([aria-current="page"]) { background: var(--c-primary-weak); color: var(--c-ink); font-weight: 800; }   /* 지금 보는 프로젝트 등 상위 항목 */
+/* 전자결재: 왼쪽 사이드 내비게이션(공용, 220px) + 오른쪽 본문. 좁은 화면은 위쪽 가로 메뉴 + 아래 본문 */
+.jh-edoc--side { display: grid; grid-template-columns: var(--u-220) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+.jh-edoc--side > .jh-sidenav { position: sticky; top: var(--sp-4); max-height: calc(100vh - var(--sp-5) * 2); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); }
+.jh-edoc__body { min-width: 0; }
+@media (max-width: 899px) { .jh-edoc--side { grid-template-columns: minmax(0, 1fr); } .jh-edoc--side > .jh-sidenav { position: static; max-height: none; } }
+@media print { .jh-edoc--side { display: block; } .jh-edoc--side > .jh-sidenav { display: none; } }
+/* 최근 사용 메뉴: 화면 오른쪽 가장자리에 떠 있는 탭 → 누르면 최근 10개 목록(다시 넘어가기) */
+.jh-recent { position: fixed; right: 0; top: 50%; transform: translateY(-50%); z-index: var(--z-actionbar); display: flex; flex-direction: row-reverse; align-items: center; gap: var(--sp-2); pointer-events: none; }
+.jh-recent > * { pointer-events: auto; }
+.jh-recent__tab { writing-mode: vertical-rl; padding: var(--sp-3) var(--sp-2); border: var(--u-1) solid var(--c-line-strong); border-right: 0; border-radius: var(--radius) 0 0 var(--radius); background: var(--c-surface); color: var(--c-ink-2); font: inherit; font-size: var(--fs-sm); font-weight: 700; cursor: pointer; box-shadow: 0 var(--u-2) var(--u-8) var(--c-overlay); }
+.jh-recent__tab:hover, .jh-recent[data-open="true"] .jh-recent__tab { background: var(--c-primary); color: var(--c-primary-ink); border-color: var(--c-primary); }
+.jh-recent__panel { width: var(--u-320); max-height: 70vh; overflow-y: auto; margin-right: var(--sp-2); padding: var(--sp-3); border: var(--u-1) solid var(--c-line-strong); border-radius: var(--radius); background: var(--c-surface); box-shadow: 0 var(--u-4) var(--u-16) var(--c-overlay); }
+.jh-recent__panel[hidden] { display: none; }
+.jh-recent__head { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); padding-bottom: var(--sp-2); margin-bottom: var(--sp-2); border-bottom: var(--u-1) solid var(--c-line); }
+.jh-recent__clear { border: 0; background: none; color: var(--c-ink-3); font: inherit; font-size: var(--fs-xs); cursor: pointer; text-decoration: underline; }
+.jh-recent__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--u-2); }
+.jh-recent__list a { display: grid; gap: var(--u-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius); color: var(--c-ink); text-decoration: none; }
+.jh-recent__list a:hover { background: var(--c-primary-weak); }
+.jh-recent__label { font-size: var(--fs-sm); font-weight: 600; overflow-wrap: anywhere; }
+.jh-recent__list small { color: var(--c-ink-3); font-size: var(--fs-xs); }
+.jh-recent__empty { padding: var(--sp-3); color: var(--c-ink-3); font-size: var(--fs-sm); }
+@media (max-width: 899px) { .jh-recent { top: 40%; } .jh-recent__panel { width: min(var(--u-320), 78vw); } }
+@media print { .jh-recent { display: none; } }
