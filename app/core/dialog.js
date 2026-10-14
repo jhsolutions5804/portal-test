@@ -1,4 +1,4 @@
-import { esc } from './ui.js?v=20261014zr';
+import { esc } from './ui.js?v=20261014zs';
 
 /** 확인 창. opts: { title, body(HTML 아님·일반 글), confirmLabel, variant('primary'|'danger'), reason:{label, placeholder, required} }
  *  → Promise<{ ok:boolean, reason:string }> */
