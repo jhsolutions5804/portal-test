@@ -440,4 +440,9 @@
 .jh-ov__list { width: 100%; }
 .jh-ov__lcontent { max-width: var(--u-320); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .jh-ov__lact { white-space: nowrap; text-align: right; }
+/* 공정 왼쪽 카드: 따라오는(floating) 목록이 길 때도 자체 스크롤바는 보이지 않게(휠로는 스크롤) */
+.jh-pjt__splitprog > .jh-pjt__cards { scrollbar-width: none; -ms-overflow-style: none; }
+.jh-pjt__splitprog > .jh-pjt__cards::-webkit-scrollbar { display: none; }
+/* 프로젝트 홈 오른쪽 좁은 칸: "보기" 같은 링크가 글자 단위로 줄바꿈되지 않게 */
+.jh-pjt__rec a { white-space: nowrap; flex: none; }
 
