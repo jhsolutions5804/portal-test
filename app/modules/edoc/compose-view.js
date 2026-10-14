@@ -1,17 +1,22 @@
-import { esc } from '../../core/ui.js?v=20261014zf';
-import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261014zf';
-import { isAnnualType } from './home-calc.js?v=20261014zf';
-import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261014zf';
+import { esc } from '../../core/ui.js?v=20261014zg';
+import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261014zg';
+import { isAnnualType } from './home-calc.js?v=20261014zg';
+import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261014zg';
 
 const uname = (ctx, uid) => { const u = ctx.byUid[uid]; return u ? esc(u.name) + (u.rank ? ' <small>' + esc(u.rank) + '</small>' : '') : '(알 수 없음)'; };
 
 /** 새 문서 종류 고르기 */
-export function chooserHtml() {
+export function chooserHtml(sel) {
   return '<div class="jh-form"><header class="jh-form__head"><h2 class="jh-form__title">새 문서</h2><p class="jh-form__sub">작성할 문서 종류를 고르세요.</p></header>' +
     '<div class="jh-doclist">' + COMPOSE_TYPES.map((t) =>
-      '<button type="button" class="jh-docrow" data-new-type="' + esc(t.key) + '"><span class="jh-docrow__main"><span class="jh-docrow__title">' + esc(t.icon) + ' ' + esc(t.label) + '</span>' +
+      '<button type="button" class="jh-docrow' + (sel === t.key ? ' is-selected' : '') + '"' + (sel === t.key ? ' aria-current="true"' : '') + ' data-new-type="' + esc(t.key) + '"><span class="jh-docrow__main"><span class="jh-docrow__title">' + esc(t.icon) + ' ' + esc(t.label) + '</span>' +
       '<span class="jh-docrow__meta">' + esc(t.desc) + '</span></span><span class="jh-docrow__side"><span class="jh-chip" data-tone="accent">작성</span></span></button>').join('') +
     '</div><div class="jh-form__foot"><button type="button" class="jh-btn" data-variant="ghost" data-act="cancel">닫기</button></div></div>';
+}
+
+/** 새 문서 분할 화면: 왼쪽에 문서 종류 목록(좁게, 고른 종류 표시), 오른쪽에 작성 화면(고르기 전에는 안내) */
+export function newDocLayoutHtml(sel, rightHtml) {
+  return '<div class="jh-newdoc"><aside class="jh-newdoc__side" aria-label="문서 종류"><div class="jh-card">' + chooserHtml(sel) + '</div></aside><div class="jh-newdoc__main">' + (rightHtml || '<div class="jh-card"><div class="jh-empty">왼쪽에서 작성할 문서 종류를 고르면 이 자리에 작성 화면이 열립니다.</div></div>') + '</div></div>';
 }
 
 function control(f, v, errs, ctx) {

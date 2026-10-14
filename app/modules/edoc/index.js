@@ -1,28 +1,28 @@
-import { fetchAll, fetchOne } from './data.js?v=20261014zf';
-import { listHtml, detailHtml } from './views.js?v=20261014zf';
-import { tabCounts } from './logic.js?v=20261014zf';
-import { buildHash, navigate } from '../../core/router.js?v=20261014zf';
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261014zf';
-import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261014zf';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261014zf';
-import { toast } from '../../core/ui.js?v=20261014zf';
-import { confirmDialog } from '../../core/dialog.js?v=20261014zf';
-import { loadDirectory, resetDirectory } from './directory.js?v=20261014zf';
-import { act } from './api.js?v=20261014zf';
-import * as C from './compose.js?v=20261014zf';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261014zf';
-import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261014zf';
-import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261014zf';
-import { kstKey } from './home-daily.js?v=20261014zf';
-import { isOffDay } from '../../shared/holidays.js?v=20261014zf';
-import { todoCounts } from './home-stats.js?v=20261014zf';
-import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261014zf';
-import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261014zf';
-import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261014zf';
-import * as AT from './attach-logic.js?v=20261014zf';
-import { uploadFile, removeFile, openFile } from './attach.js?v=20261014zf';
-import * as SL from './settings-logic.js?v=20261014zf';
-import { chooserHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261014zf';
+import { fetchAll, fetchOne } from './data.js?v=20261014zg';
+import { listHtml, detailHtml } from './views.js?v=20261014zg';
+import { tabCounts } from './logic.js?v=20261014zg';
+import { buildHash, navigate } from '../../core/router.js?v=20261014zg';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261014zg';
+import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261014zg';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261014zg';
+import { toast } from '../../core/ui.js?v=20261014zg';
+import { confirmDialog } from '../../core/dialog.js?v=20261014zg';
+import { loadDirectory, resetDirectory } from './directory.js?v=20261014zg';
+import { act } from './api.js?v=20261014zg';
+import * as C from './compose.js?v=20261014zg';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261014zg';
+import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261014zg';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261014zg';
+import { kstKey } from './home-daily.js?v=20261014zg';
+import { isOffDay } from '../../shared/holidays.js?v=20261014zg';
+import { todoCounts } from './home-stats.js?v=20261014zg';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261014zg';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261014zg';
+import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261014zg';
+import * as AT from './attach-logic.js?v=20261014zg';
+import { uploadFile, removeFile, openFile } from './attach.js?v=20261014zg';
+import * as SL from './settings-logic.js?v=20261014zg';
+import { chooserHtml, newDocLayoutHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261014zg';
 
 
 export const manifest = {
@@ -193,7 +193,7 @@ async function mountCompose(root, route, ctx) {
 
   // 종류 고르기
   if (route.segs[0] === 'new' && !route.segs[1]) {
-    root.innerHTML = '<div class="jh-card">' + chooserHtml() + '</div>';
+    root.innerHTML = newDocLayoutHtml('', '');   // 종류 목록(왼쪽) + 안내(오른쪽)
     root.onclick = (ev) => {
       const t = ev.target.closest('[data-new-type],[data-act]'); if (!t) return;
       if (t.hasAttribute('data-new-type')) { navigate('#/edoc/new/' + t.getAttribute('data-new-type'), { replace: true }); return; }
@@ -202,7 +202,9 @@ async function mountCompose(root, route, ctx) {
     return;
   }
 
-  root.innerHTML = '<div class="jh-card"><div class="jh-empty">불러오는 중…</div></div>';
+  const isNewDoc = route.segs[0] === 'new', pickedType = isNewDoc ? route.segs[1] : '';   // 새 문서는 왼쪽에 종류 목록을 둔 분할 화면, 수정은 작성 화면만
+  const shell = (inner) => (isNewDoc ? newDocLayoutHtml(pickedType, inner) : inner);
+  root.innerHTML = shell('<div class="jh-card"><div class="jh-empty">불러오는 중…</div></div>');
   let dir;
   try { dir = await loadDirectory(false); }
   catch (e) { root.innerHTML = '<div class="jh-card"><div class="jh-empty">작성에 필요한 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div><button type="button" class="jh-btn" data-variant="ghost" data-act="cancel">돌아가기</button></div>'; root.onclick = (ev) => { if (ev.target.closest('[data-act=cancel]')) leave(); }; return; }
@@ -232,7 +234,7 @@ async function mountCompose(root, route, ctx) {
   S.worker = undefined;   // 근태 기록 수정 요청: 근무자 명부와 연동된 계정만(서버도 다시 확인)
   if (S.type === 'attend') { try { const w = findWorker(await loadWorkers(false), me); S.worker = w && w.linked ? w : null; } catch (e) { S.worker = null; } }
 
-  const paint = () => { root.innerHTML = '<div class="jh-card">' + composeHtml(S) + '</div>'; };
+  const paint = () => { root.innerHTML = shell('<div class="jh-card">' + composeHtml(S) + '</div>'); };
   let attendSeq = 0;
   const updateAttend = async () => {   // 근태 요청: 근무시간 계산과 그 날의 현재 기록(날짜가 바뀌면 다시 조회)
     const v = S.values; const ok = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -349,6 +351,7 @@ async function mountCompose(root, route, ctx) {
   };
 
   root.onclick = async (ev) => {
+    const nt = ev.target.closest('[data-new-type]'); if (nt) { navigate('#/edoc/new/' + nt.getAttribute('data-new-type'), { replace: true }); return; }   // 왼쪽 목록에서 다른 종류를 고르면 오른쪽 작성 화면이 바뀐다
     const t = ev.target.closest('[data-act],[data-kind],[data-add-item],[data-remove-item],[data-move],[data-remove],[data-pick],[data-add],[data-attach-pick],[data-attach-remove],[data-attach-open]'); if (!t) return;
     if (t.hasAttribute('data-attach-pick')) { const inp = root.querySelector('#edoc-file-input'); if (inp) inp.click(); return; }
     if (t.hasAttribute('data-attach-remove')) { dropFile(t.getAttribute('data-attach-remove')); return; }

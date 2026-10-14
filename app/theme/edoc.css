@@ -371,11 +371,18 @@ button.jh-kpi:hover { border-color: var(--c-primary); }
 }
 
 /* 전자결재 홈: 2단 — 왼쪽 내 근무·연차(개인 현황) | 오른쪽 문서 현황·최근 문서. 1099px 이하는 1단 */
-.jh-ehome { display: grid; grid-template-columns: minmax(var(--u-320), 24rem) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+.jh-ehome { display: grid; grid-template-columns: minmax(26rem, 30rem) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
 .jh-ehome__side { display: grid; gap: var(--sp-4); align-content: start; position: sticky; top: var(--sp-3); }
 .jh-ehome__main { display: grid; gap: var(--sp-4); min-width: 0; align-content: start; }
 .jh-ehome__side .jh-statrow { flex-direction: column; align-items: stretch; justify-content: center; }   /* 좁은 왼쪽 칸: 원형 그래프 위, 숫자 3칸 아래 */
 .jh-ehome__side .jh-statrow .jh-ring { align-self: center; }
 .jh-ehome__side .jh-statrow .jh-kpi-grid { flex: none; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 1099px) { .jh-ehome { grid-template-columns: minmax(0, 1fr); } .jh-ehome__side { position: static; } }
+
+/* 새 문서: 왼쪽에 문서 종류 목록(좁게), 오른쪽에 작성 화면 — 종류를 누르면 오른쪽에 작성 화면이 열린다(1099px 이하는 위아래) */
+.jh-newdoc { display: grid; grid-template-columns: minmax(var(--u-280, 17.5rem), 21rem) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+.jh-newdoc__side { position: sticky; top: var(--sp-3); max-height: calc(100vh - var(--sp-6)); overflow-y: auto; }
+.jh-newdoc__main { min-width: 0; display: grid; gap: var(--sp-4); }
+.jh-newdoc__side .jh-docrow { min-height: 0; padding: var(--sp-3); }
+@media (max-width: 1099px) { .jh-newdoc { grid-template-columns: minmax(0, 1fr); } .jh-newdoc__side { position: static; max-height: none; } }
 

@@ -1,10 +1,10 @@
-import { loadWorkers } from '../../shared/workers-data.js?v=20261014zf';
-import { loadHolidays } from '../../shared/holidays.js?v=20261014zf';
-import { findWorker, dateKey, monthlyStandardHours } from '../../shared/worktime.js?v=20261014zf';
-import { loadRecord, loadMonth, writeClockIn, writeClockOut, writeManual } from './data.js?v=20261014zf';
-import { clockState, buildClockIn, buildClockOut, validateManual, editPermission, yesterdayKey, recentMonths, monthTotals, dayLabel } from './logic.js?v=20261014zf';
-import { clockWidgetHtml, inputPageHtml, msgHtml } from './view.js?v=20261014zf';
-import { toast, esc } from '../../core/ui.js?v=20261014zf';
+import { loadWorkers } from '../../shared/workers-data.js?v=20261014zg';
+import { loadHolidays } from '../../shared/holidays.js?v=20261014zg';
+import { findWorker, dateKey, monthlyStandardHours } from '../../shared/worktime.js?v=20261014zg';
+import { loadRecord, loadMonth, writeClockIn, writeClockOut, writeManual } from './data.js?v=20261014zg';
+import { clockState, buildClockIn, buildClockOut, validateManual, editPermission, yesterdayKey, recentMonths, monthTotals, dayLabel } from './logic.js?v=20261014zg';
+import { clockWidgetHtml, inputPageHtml, msgHtml } from './view.js?v=20261014zg';
+import { toast, esc } from '../../core/ui.js?v=20261014zg';
 
 const WD = ['일', '월', '화', '수', '목', '금', '토'];
 export const dateText = (d) => (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + WD[d.getDay()] + '요일';
