@@ -1,14 +1,14 @@
 /* 근로자 연명부 도구 — 주소 #/pjt/roster/_manday(월간 공수 보기) · #/pjt/roster/_migrate(기존 인원 마이그레이션). 연명부 진입(roster-index.js)이 넘겨준다.
  * 모든 프로젝트(종료된 것 포함)의 명단·공수는 pjt_registry/<id>/… 에서 읽는다. 마이그레이션 쓰기 순서: 마스터·새 명단 문서 → 공수·출역 기록의 id 이전 → 옛 명단 문서 삭제(맨 마지막, 중간에 멈춰도 다시 실행할 수 있게). */
-import { db, collection, doc, getDocs, writeBatch, deleteField, query, where, documentId } from '../../core/firebase.js?v=20261014r';
-import { toast } from '../../core/ui.js?v=20261014r';
-import { confirmDialog } from '../../core/dialog.js?v=20261014r';
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261014r';
-import { pathsFor } from './adapter.js?v=20261014r';
-import { appToday } from './attendance.js?v=20261014r';
-import { monthRange, aggregateMonth, migrationGroups, planMigration, planMerge, rekeyMd, rekeyChecks } from './roster-tools.js?v=20261014r';
-import { shiftMonth } from './overview.js?v=20261014r';
-import { mandayHtml, migrateHtml } from './roster-tools-view.js?v=20261014r';
+import { db, collection, doc, getDocs, writeBatch, deleteField, query, where, documentId } from '../../core/firebase.js?v=20261014s';
+import { toast } from '../../core/ui.js?v=20261014s';
+import { confirmDialog } from '../../core/dialog.js?v=20261014s';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261014s';
+import { pathsFor } from './adapter.js?v=20261014s';
+import { appToday } from './attendance.js?v=20261014s';
+import { monthRange, aggregateMonth, migrationGroups, planMigration, planMerge, planLink, unknownGroups, rekeyMd, rekeyChecks } from './roster-tools.js?v=20261014s';
+import { shiftMonth } from './overview.js?v=20261014s';
+import { mandayHtml, migrateHtml } from './roster-tools-view.js?v=20261014s';
 const ts = (d) => (d.createdAt && d.createdAt.seconds) || 0;
 export async function mountRosterTools(root, route, ctx, mode) {
   root.onclick = null; root.oninput = null; root.onchange = null;
@@ -63,8 +63,17 @@ export async function mountRosterTools(root, route, ctx, mode) {
     try { const moved = await apply(plan, false); await loadBase().then((f) => { st.baseFailed = f; }); st.groups = migrationGroups(st.projects, st.masters); toast(name + '님을 마스터로 합쳤습니다.' + (moved ? ' (공수·출역 기록 ' + moved + '건의 ID를 바꿨습니다)' : '')); } catch (err) { toast('합치기 실패: ' + ((err && (err.code || err.message)) || '') + ' — 다시 눌러 이어서 진행할 수 있습니다.'); }
     st.busy = false; paint();
   };
+  const link = async (key) => {
+    const [pk, id] = key.split('|'); const sel = [...root.querySelectorAll('[data-rt-link-sel]')].find((x) => x.getAttribute('data-rt-link-sel') === key); const mid = sel ? sel.value : ''; const g = unknownGroups(st.agg.unknown).find((x) => x.pjtKey === pk && x.id === id); const plan = planLink(g, mid, st.masters, st.projects.find((p) => p.key === pk));
+    if (plan.error) { toast(plan.error); return; } const mm = st.masters[mid];
+    const ok = await confirmDialog({ title: '근로자에게 연결', body: g.pjt + '의 직원 id "' + id + '" 공수 기록 ' + g.count + '건(' + g.total.toFixed(1) + '공수, ' + g.first + (g.last !== g.first ? ' ~ ' + g.last : '') + ')을 "' + mm.name + '"' + (mm.birth ? '(' + mm.birth + ')' : '') + '님으로 연결합니다.\n이 프로젝트의 모든 달의 공수·출역 기록 id 가 바뀌고, 합계와 영업기획 집계에 들어갑니다.', confirmLabel: '연결' }); if (!ok.ok) return;
+    st.busy = true; paint();
+    try { const moved = await apply({ masterId: mid, workerSets: plan.workerSets, rekeys: plan.rekeys, workerDeletes: [] }, false); toast('연결했습니다. (공수·출역 기록 ' + moved + '건의 ID를 바꿨습니다)'); await loadMonth(); } catch (err) { toast('연결 실패: ' + ((err && (err.code || err.message)) || '') + ' — 다시 눌러 이어서 진행할 수 있습니다.'); }
+    st.busy = false; paint();
+  };
   root.onclick = (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return; let el;
+    if ((el = t.closest('[data-rt-link]')) && !st.busy) { link(el.getAttribute('data-rt-link')); return; }
     if ((el = t.closest('[data-rt-shift]'))) { const n = shiftMonth(st.y, st.m, +el.getAttribute('data-rt-shift')); st.y = n.y; st.m = n.m; st.sheet = ''; loadMonth(); return; }
     if (t.closest('[data-rt-reload]')) { if (st.mode === '_manday') loadMonth(); else loadMigrate(); return; }
     if ((el = t.closest('[data-rt-sheet]'))) { st.sheet = el.getAttribute('data-rt-sheet'); paint(); return; }

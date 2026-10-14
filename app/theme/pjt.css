@@ -354,3 +354,6 @@
 .jh-ro__src { padding: var(--u-2) 0; color: var(--c-ink-2); font-size: var(--fs-sm); }
 .jh-ro__t tr[data-dim="1"] td { color: var(--c-ink-3); }
 .jh-ro__t tr[aria-current="true"] td { background: var(--c-primary-weak); }
+.jh-ro__det2 { margin-top: var(--sp-3); }
+.jh-ro__det2 summary { cursor: pointer; color: var(--c-ink-3); }
+.jh-ro__det select { max-width: var(--u-220); }

@@ -15,7 +15,7 @@ export function aggregateMonth(projects, masters) {
     (p.rows || []).forEach(([date, md]) => Object.keys(md || {}).forEach((id) => {
       const a = num(md[id]); if (!a) return;
       const m = M[id], w = roster[id]; const who = m ? { name: m.name || (w && w.name) || '', birth: m.birth || (w && w.birth) || '' } : w ? { name: w.name || '', birth: w.birth || '' } : null;   // 마스터가 있으면 마스터 정보가 우선(프로젝트 명단에 없어도 마스터면 집계에 넣는다)
-      if (!who) { unknown.push({ pjt: p.name, date, id, amount: r1(a) }); return; }
+      if (!who) { unknown.push({ pjt: p.name, pjtKey: p.key, date, id, amount: r1(a) }); return; }
       t.total += a; const pk = m ? 'm:' + id : (who.name || '').trim() + '|' + (who.birth || 'MISSING');
       const P = persons[pk] || (persons[pk] = { key: pk, name: who.name, birth: who.birth, masterId: m ? id : '', total: 0, byPjt: {}, byDate: {} });
       P.total += a; P.byPjt[p.name] = (P.byPjt[p.name] || 0) + a; ((P.byDate[date] = P.byDate[date] || {})[p.name] = (P.byDate[date][p.name] || 0) + a);
@@ -58,4 +58,16 @@ export function planMerge(group, masterId, masters, projects) {
   const byKey = {}; (projects || []).forEach((p) => { byKey[p.key] = p; }); const workerSets = [], workerDeletes = [], rekeys = [];
   items.forEach((it) => { if (it.id === masterId) return; const has = byKey[it.pjtKey] && byKey[it.pjtKey].roster && byKey[it.pjtKey].roster[masterId]; if (!has) workerSets.push({ pjtKey: it.pjtKey, id: masterId, data: { name: m.name, birth: m.birth || '', masterId, order: 999 } }); workerDeletes.push({ pjtKey: it.pjtKey, id: it.id }); rekeys.push({ pjtKey: it.pjtKey, from: it.id, to: masterId }); });
   return { error: '', masterId, workerSets, workerDeletes, rekeys };
+}
+/** 명단 밖 공수 기록을 (프로젝트, 직원 id)별로 묶음 → [{ pjtKey, pjt, id, count, total, first, last }] 공수 큰 순 */
+export function unknownGroups(unknown) {
+  const g = {}; (unknown || []).forEach((u) => { const k = u.pjtKey + '|' + u.id; const o = g[k] || (g[k] = { pjtKey: u.pjtKey, pjt: u.pjt, id: u.id, count: 0, total: 0, first: u.date, last: u.date }); o.count++; o.total += u.amount; if (u.date < o.first) o.first = u.date; if (u.date > o.last) o.last = u.date; });
+  return Object.keys(g).map((k) => { const o = g[k]; o.total = r1(o.total); return o; }).sort((a, b) => b.total - a.total || String(a.id).localeCompare(String(b.id)));
+}
+/** 명단 밖 직원 id 를 마스터에게 연결하는 계획 → { error, workerSets, rekeys }. 그 프로젝트 명단에 마스터 id 가 없으면 새로 만들고(출역·공수 화면에 나오게), 그 프로젝트의 모든 날짜의 공수·출역 기록 id 를 마스터 id 로 바꾼다.
+ *  group = unknownGroups 의 한 항목, project = { key, roster } */
+export function planLink(group, masterId, masters, project) {
+  const m = (masters || {})[masterId]; if (!m) return { error: '연결할 근로자를 고르세요.' }; if (!group || !group.id) return { error: '연결할 공수 기록을 찾을 수 없습니다.' };
+  const has = project && project.roster && project.roster[masterId]; const workerSets = has ? [] : [{ pjtKey: group.pjtKey, id: masterId, data: { name: m.name, birth: m.birth || '', masterId, order: 999 } }];
+  return { error: '', workerSets, rekeys: [{ pjtKey: group.pjtKey, from: group.id, to: masterId }] };
 }
