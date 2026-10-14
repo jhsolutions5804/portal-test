@@ -42,6 +42,8 @@ export function rangeText(u) {
 export function dotsFor(items, key) { return [...new Set(itemsForKey(items, key).map((x) => x.tag || 'admin'))].filter((t) => t !== 'off'); }
 /** 달력: y, m(0~11) → 6주 × 7일 날짜 키(그 달이 아닌 칸은 null) — 일요일 시작 */
 export function monthGrid(y, m) { const first = new Date(Date.UTC(y, m, 1)).getUTCDay(); const days = new Date(Date.UTC(y, m + 1, 0)).getUTCDate(); const cells = []; for (let i = 0; i < first; i++) cells.push(null); for (let d = 1; d <= days; d++) cells.push(y + '-' + pad(m + 1) + '-' + pad(d)); while (cells.length % 7) cells.push(null); const weeks = []; for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7)); return weeks; }
+/** 2주 달력: 고른 날이 속한 주(일요일 시작 — 달력과 같은 요일 순서)와 다음 주, 14일 */
+export function twoWeeks(dateKey) { const sun = addDays(dateKey, -dowOf(dateKey)); return Array.from({ length: 14 }, (_, i) => addDays(sun, i)); }
 /** 월요일 시작 주의 날짜들(n일치) */
 export function weekDays(dateKey, n) { const dow = dowOf(dateKey); const monday = addDays(dateKey, -((dow + 6) % 7)); return Array.from({ length: n || 7 }, (_, i) => addDays(monday, i)); }
 const TIME = /^([01]\d|2[0-4]):[0-5]\d$/;

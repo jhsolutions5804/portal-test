@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261014zk';
-import { dayTotals, mdSum, activeWorkersForDate, canWorkOn, hasManday, monthlyMatrix } from './attendance.js?v=20261014zk';
-import { holidayName, isWeekend } from '../../shared/holidays.js?v=20261014zk';
+import { esc } from '../../core/ui.js?v=20261014zl';
+import { dayTotals, mdSum, activeWorkersForDate, canWorkOn, hasManday, monthlyMatrix } from './attendance.js?v=20261014zl';
+import { holidayName, isWeekend } from '../../shared/holidays.js?v=20261014zl';
 const f1 = (n) => (Math.round((Number(n) || 0) * 10) / 10).toFixed(1);
 const chip = (t, tone) => '<span class="jh-pjt__chip" data-tone="' + esc(tone || '') + '">' + esc(t) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -25,18 +25,19 @@ export function attendHtml(st) {
   const ws = dayWorkers(st); const ids = ws.map((w) => w.id); const T = dayTotals(st.att, st.md, null); const orphanIds = Object.keys(st.md).filter((k) => (st.md[k] || 0) > 0 && !st.roster.some((w) => w.id === k)); const orphanSum = orphanIds.reduce((s, k) => s + st.md[k], 0);
   const attended = ws.filter((w) => st.att.indexOf(w.id) !== -1 || (st.md[w.id] || 0) > 0).length;
   const projLabel = (st.projects.find((p) => p.key === st.proj) || {}).label || '';   // 프로젝트는 위 메뉴에서 이미 정해져 있다 — 여기서 다시 고르게 하지 않고(팀장 실수 방지) 이름만 크게 보여 준다
-  const bar = '<div class="jh-pjt__proj"><span class="jh-pjt__projlabel">🏗️ ' + esc(projLabel) + '</span><span class="jh-field__hint">출역·공수</span></div><div class="jh-pjt__bar"><span class="jh-pjt__datenav"><button type="button" class="jh-btn" data-variant="ghost" data-pa-act="prev" aria-label="전날">‹</button><input class="jh-input" type="date" data-pa-date value="' + esc(st.date) + '"><button type="button" class="jh-btn" data-variant="ghost" data-pa-act="next" aria-label="다음날">›</button><button type="button" class="jh-btn" data-variant="secondary" data-pa-act="today">오늘</button></span></div>';
-  const sum = '<div class="jh-pjt__sum"><div><span class="jh-pjt__date" data-off="' + offKind(st.date) + '">' + esc(st.date) + ' (' + dow(st.date) + ')</span>' + (holidayName(st.date) ? ' ' + chip(holidayName(st.date), 'red') : isWeekend(st.date) ? ' ' + chip(dow(st.date) === '토' ? '토요일' : '일요일', dow(st.date) === '토' ? 'blue' : 'red') : '') + '</div><div class="jh-pjt__cells"><div><span class="jh-field__hint">출역</span><strong>' + attended + '명</strong></div><div><span class="jh-field__hint">공수 합계</span><strong>' + f1(T.manday) + '</strong></div></div></div>'
-    + (orphanIds.length ? '<div class="jh-alert" data-tone="warn" role="status">명부에 없는 근로자의 공수 ' + f1(orphanSum) + '이(가) 이 날짜에 기록돼 있습니다(' + esc(orphanIds.join(', ')) + '). 합계에는 포함되고, 월 집계표에 "(명부에 없음)"으로 나옵니다.</div>' : '');
+  // 위쪽 한 줄(전체 폭): 프로젝트 이름 | 날짜 이동 + 날짜·휴일 표시 | 출역·공수 합계 — 아래는 왼쪽 인원별 입력, 오른쪽 집계표
+  const dateLbl = '<span class="jh-pjt__date" data-off="' + offKind(st.date) + '">' + esc(st.date) + ' (' + dow(st.date) + ')</span>' + (holidayName(st.date) ? ' ' + chip(holidayName(st.date), 'red') : isWeekend(st.date) ? ' ' + chip(dow(st.date) === '토' ? '토요일' : '일요일', dow(st.date) === '토' ? 'blue' : 'red') : '');
+  const top = '<div class="jh-pjt__wide jh-pa__top"><div class="jh-pa__id"><span class="jh-pjt__projlabel">🏗️ ' + esc(projLabel) + '</span><span class="jh-field__hint">출역·공수</span></div><span class="jh-pjt__datenav"><button type="button" class="jh-btn" data-variant="ghost" data-pa-act="prev" aria-label="전날">‹</button><input class="jh-input" type="date" data-pa-date value="' + esc(st.date) + '"><button type="button" class="jh-btn" data-variant="ghost" data-pa-act="next" aria-label="다음날">›</button><button type="button" class="jh-btn" data-variant="secondary" data-pa-act="today">오늘</button></span><span class="jh-pa__dl">' + dateLbl + '</span><div class="jh-pa__kpis"><div class="jh-pa__kpi"><span class="jh-field__hint">출역</span><strong>' + attended + '명</strong></div><div class="jh-pa__kpi"><span class="jh-field__hint">공수 합계</span><strong>' + f1(T.manday) + '</strong></div></div></div>';
+  const orphan = orphanIds.length ? '<div class="jh-alert" data-tone="warn" role="status">명부에 없는 근로자의 공수 ' + f1(orphanSum) + '이(가) 이 날짜에 기록돼 있습니다(' + esc(orphanIds.join(', ')) + '). 합계에는 포함되고, 월 집계표에 "(명부에 없음)"으로 나옵니다.</div>' : '';
   const canAny = !st.readonly && ws.some((w) => canWorkOn(st.me, w, st.teamMasterIds));
   const bulk = '<div class="jh-pjt__bulk"><button type="button" class="jh-btn" data-variant="secondary" data-pa-act="all"' + (canAny ? '' : ' disabled') + '>전체 출역 체크/해제</button><span class="jh-pjt__bulkmd"><input class="jh-input jh-pjt__mdin" inputmode="decimal" data-pa-bulk placeholder="공수"' + (canAny ? '' : ' disabled') + '><button type="button" class="jh-btn" data-variant="secondary" data-pa-act="bulk"' + (canAny ? '' : ' disabled') + '>전원 적용</button></span></div>';
   const rows = ws.length ? ws.map((w) => rowHtml(st, w)).join('') : '<div class="jh-empty">이 날짜에 투입된 인원이 없습니다.</div>';
   const note = '<div class="jh-field__hint">공수를 입력하면 출역도 함께 체크되고, 출역을 해제하면 그 사람의 공수도 비워집니다. 퇴사일 전날까지는 공수가 나오고 퇴사일부터는 입력 대상에서 빠집니다.</div>';
-  const tabs = [['sheet', '📋 이달 공수 집계표'], ['cum', '👤 월별 누적 공수'], ['recent', '최근 7일']].concat(st.manage ? [['manage', '⚙️ 명단 관리']] : []);
-  const tabBar = '<div class="jh-pjt__tabs" role="tablist" aria-label="공수 보기">' + tabs.map(([k, l]) => '<button type="button" role="tab" class="jh-pjt__tab" data-pa-tab="' + k + '" aria-selected="' + (st.panel === k) + '">' + esc(l) + '</button>').join('') + '</div>';
+  const tabs = [['sheet', '이달 공수 집계표'], ['cum', '월별 누적 공수'], ['recent', '최근 7일']].concat(st.manage ? [['manage', '명단 관리']] : []);
+  const tabBar = '<div class="jh-ro__ftabs" role="tablist" aria-label="공수 보기">' + tabs.map(([k, l]) => '<button type="button" role="tab" class="jh-ro__ftab" data-pa-tab="' + k + '" aria-selected="' + (st.panel === k) + '">' + esc(l) + '</button>').join('') + '</div>';
   const panel = st.panel === 'cum' ? cumHtml(st) : st.panel === 'recent' ? recentHtml(st) : st.panel === 'manage' && st.manage ? manageHtml(st) : sheetHtml(st);
-  // 넓은 화면: 왼쪽은 일하는 영역(좁게), 오른쪽은 공수 집계표·인원별 누적·최근 7일·명단 관리를 탭으로 항상 보여 준다(입력하면 바로 갱신). 폰은 한 열(일하는 영역 아래)
-  return '<div class="jh-pjt"><div class="jh-pjt__main">' + bar + card('👷 출역·공수', '<div class="jh-pjt__pad">' + sum + bulk + '<div class="jh-pjt__list">' + rows + '</div>' + note + '</div>') + '</div><div class="jh-pjt__side">' + tabBar + '<div id="pa-panel">' + panel + '</div></div></div>';
+  // 넓은 화면: 위쪽 한 줄 아래 왼쪽은 인원별 입력(좁게), 오른쪽은 공수 집계표·인원별 누적·최근 7일·명단 관리를 탭으로 항상 보여 준다(입력하면 바로 갱신). 폰은 한 열
+  return '<div class="jh-pjt jh-pa">' + top + '<div class="jh-pjt__main">' + card('인원별 출역·공수', '<div class="jh-pjt__pad">' + orphan + bulk + '<div class="jh-pjt__list">' + rows + '</div>' + note + '</div>') + '</div><div class="jh-pjt__side">' + tabBar + '<div id="pa-panel">' + panel + '</div></div></div>';
 }
 /** 최근 7일 공수 합계(선택한 날짜까지) */
 export function recentHtml(st) {

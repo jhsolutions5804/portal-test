@@ -295,7 +295,7 @@
 
 /* PJT 전체 홈·종료 PJT */
 .jh-ov__cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--u-320), 1fr)); gap: var(--sp-3); }   /* 종료 PJT 목록 */
-.jh-ov__layout { display: grid; grid-template-columns: var(--u-320) minmax(0, 1fr); gap: var(--sp-3); align-items: start; }   /* PJT 전체 홈: 왼쪽 카드 세로, 오른쪽 일정 */
+.jh-ov__layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(var(--u-320), 26rem); gap: var(--sp-4); align-items: start; }   /* PJT 전체 홈: 왼쪽 통합 일정 달력, 오른쪽 프로젝트 목록 */
 .jh-ov__rail { display: grid; gap: var(--sp-3); align-content: start; position: sticky; top: var(--sp-3); max-height: calc(100vh - var(--sp-6)); overflow-y: auto; }
 .jh-ov__main { min-width: 0; }
 @media (max-width: 1099px) { .jh-ov__layout { grid-template-columns: minmax(0, 1fr); } .jh-ov__rail { position: static; max-height: none; overflow: visible; } }
@@ -377,3 +377,50 @@
 .jh-tm__tot { display: flex; justify-content: space-between; align-items: baseline; padding-top: var(--sp-3); margin-top: var(--sp-3); border-top: var(--u-1) solid var(--c-line); }
 .jh-tm__tot strong { font-size: var(--fs-xl); color: var(--c-primary); }
 .jh-tm .jh-card > .jh-ro__kpis { padding: var(--sp-3) var(--sp-4); }
+/* PJT 전체 홈 오른쪽 프로젝트 목록: 카드를 목록처럼 촘촘하게(왼쪽 색 막대) */
+.jh-ov__rail .jh-ov__card { border-top: var(--u-1) solid var(--c-line); border-left: var(--u-4) solid var(--pc); padding: var(--sp-3); gap: var(--sp-2); }
+.jh-ov__rail .jh-ov__ch h3 { font-size: var(--fs-md); }
+.jh-ov__rail .jh-ov__kpi strong { font-size: var(--fs-md); }
+.jh-ov__rail .jh-ov__cf { justify-content: flex-end; }
+/* 프로젝트 홈: 인사 홈·전자결재 홈과 같은 구성 — 왼쪽 요약 카드(세로) | 오늘 일정·공사일보 | 기본정보(넓은 화면에서 오른쪽, 아니면 아래) */
+.jh-phome { display: grid; grid-template-columns: 17rem minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+.jh-phome__side { display: grid; gap: var(--sp-3); align-content: start; position: sticky; top: var(--sp-3); }
+.jh-phome__side .jh-kpi-grid { grid-template-columns: minmax(0, 1fr); }
+.jh-phome__main, .jh-phome__detail { display: grid; gap: var(--sp-4); min-width: 0; align-content: start; }
+.jh-phome__detail { grid-column: 2; }
+.jh-phome .jh-pjt__bar2 { margin-top: var(--sp-1); }
+@media (min-width: 1500px) { .jh-phome { grid-template-columns: 17rem minmax(0, 1fr) var(--u-320); } .jh-phome__detail { grid-column: auto; } }
+@media (max-width: 1099px) { .jh-phome { grid-template-columns: minmax(0, 1fr); } .jh-phome__side { position: static; } .jh-phome__side .jh-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .jh-phome__detail { grid-column: auto; } }
+/* 일정 2주 달력: 칸이 커서 그날 일정 제목을 보여 준다 */
+.jh-pjt__calc--two { min-height: var(--u-120); align-items: stretch; text-align: left; justify-content: flex-start; }
+.jh-pjt__calc--two .jh-pjt__calnum { align-self: flex-start; }
+.jh-pjt__calits { display: grid; gap: var(--u-2); min-width: 0; width: 100%; }
+.jh-pjt__calit { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 var(--u-4); border-left: var(--u-3) solid var(--tc, var(--c-primary)); border-radius: var(--u-2); background: var(--c-bg); font-size: var(--fs-xs); color: var(--c-ink); }
+.jh-pjt__calit b { font-weight: 800; color: var(--tc, var(--c-primary)); }
+/* 공정: 왼쪽 섹터 카드는 좁게(19rem), 오른쪽 체크표는 안쪽 스크롤바 없이 칸을 균등하게(가로 스크롤 없음, 길면 화면이 스크롤) */
+@media (min-width: 1000px) { .jh-pjt__splitprog { grid-template-columns: minmax(0, 19rem) minmax(0, 1fr); } .jh-pjt__splitprog .jh-pjt__pane { position: static; } }
+.jh-pjt__splitprog .jh-pjt__panebody { overflow: visible; max-height: none; }
+.jh-pjt__splitprog .jh-pjt__scroll { overflow: visible; }
+.jh-pjt__splitprog .jh-pjt__ctable { table-layout: fixed; width: calc(100% - var(--sp-5) - var(--sp-3)); }
+.jh-pjt__splitprog .jh-pjt__ctable th { white-space: normal; word-break: keep-all; font-size: var(--fs-xs); }
+.jh-pjt__splitprog .jh-pjt__ctable th:first-child { width: 7rem; }
+.jh-pjt__splitprog .jh-pjt__ctable th, .jh-pjt__splitprog .jh-pjt__ctable td { padding: var(--u-4) var(--u-2); }
+.jh-pjt__splitprog .jh-pjt__ck { width: 100%; max-width: var(--u-40); }
+/* 출역·공수: 위쪽 한 줄(이름·날짜 이동·합계) + 왼쪽 인원별 입력 | 오른쪽 집계표 탭 */
+.jh-pa__top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3) var(--sp-4); }
+.jh-pa__id { display: flex; align-items: baseline; gap: var(--sp-3); }
+.jh-pa__dl { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.jh-pa__kpis { margin-left: auto; display: flex; gap: var(--sp-3); }
+.jh-pa__kpi { display: grid; gap: var(--u-2); min-width: var(--u-96); padding: var(--sp-2) var(--sp-4); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); }
+.jh-pa__kpi strong { font-size: var(--fs-xl); }
+.jh-pjt__table td:first-child, .jh-pjt__table th:first-child { position: sticky; left: 0; background: var(--c-surface); z-index: 1; }   /* 집계표: 이름 열 고정(날짜가 많아 옆으로 밀어도 누구인지 보이게) */
+/* 공사일보: 일보 카드가 주인공(위쪽 강조선·큰 제목), 달력은 작게. 일보가 있는 날은 달력에서 초록 칸 */
+@media (min-width: 1000px) { .jh-pjt__splitrep { grid-template-columns: minmax(0, 20rem) minmax(0, 1fr); align-items: start; column-gap: var(--sp-4); } .jh-pjt__calcol--compact { position: sticky; top: var(--sp-3); align-self: start; } }
+.jh-pjt__calcol--compact .jh-pjt__calc { min-height: var(--u-52); padding: var(--u-2); }
+.jh-pjt__calcol--compact .jh-pjt__calnum { font-size: var(--fs-sm); }
+.jh-pjt__calcol--compact .jh-pjt__calh { font-size: var(--fs-xs); padding: var(--sp-1) 0; }
+.jh-pjt__calc[data-has="true"] { background: #E8F7EE; border-color: #16A34A; }
+.jh-pjt__calc[data-has="true"][data-sel="true"] { background: var(--c-primary-weak); border-color: var(--c-primary); }
+.jh-pjt__rpt { border-top: var(--u-4) solid var(--c-primary); box-shadow: 0 var(--u-4) var(--u-16) var(--c-overlay); }
+.jh-pjt__rpt .jh-panel__head h3 { font-size: var(--fs-xl); }
+

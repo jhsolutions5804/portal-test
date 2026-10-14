@@ -1,9 +1,9 @@
 /* PJT 전체 홈·종료 PJT 화면(표시만). 규칙은 overview.js, 불러오기·저장·이벤트는 overview-index.js. */
-import { esc } from '../../core/ui.js?v=20261014zk';
-import { holidayName } from '../../shared/holidays.js?v=20261014zk';
-import { monthGrid, itemsForKey, dowOf } from './schedule.js?v=20261014zk';
-import { FIELDS } from './settings.js?v=20261014zk';
-import { colorOf, blockDays, blockLabel, monthLabel, groupByDay, legendOf, cardOf } from './overview.js?v=20261014zk';
+import { esc } from '../../core/ui.js?v=20261014zl';
+import { holidayName } from '../../shared/holidays.js?v=20261014zl';
+import { monthGrid, itemsForKey, dowOf } from './schedule.js?v=20261014zl';
+import { FIELDS } from './settings.js?v=20261014zl';
+import { colorOf, blockDays, blockLabel, monthLabel, groupByDay, legendOf, cardOf } from './overview.js?v=20261014zl';
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const dayHead = (k) => { const [, m, d] = k.split('-').map(Number); return m + '/' + d; };
 const offKind = (k) => (holidayName(k) || dowOf(k) === 0 ? 'red' : dowOf(k) === 6 ? 'sat' : '');
@@ -48,11 +48,11 @@ export function schedInner(st) {
 export function railInner(st) {
   return st.projects.length ? st.projects.map((p) => projectCard(st, p)).join('') : '<div class="jh-alert" data-tone="warn" role="status">열 수 있는 프로젝트가 없습니다. ' + (st.admin ? '[＋ 신규 프로젝트]로 만들 수 있습니다.' : '참여자로 지정된 프로젝트만 보입니다.') + '</div>';
 }
-/** PJT 전체 홈: 왼쪽에 프로젝트 카드를 세로로, 오른쪽에 통합 일정(좁은 화면은 위아래) */
+/** PJT 전체 홈: 왼쪽에 통합 일정 달력, 오른쪽에 프로젝트 목록(좁은 화면은 위아래) */
 export function overviewHtml(st) {
   if (!st.ready) return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide">' + head() + (st.err ? '<div class="jh-alert" data-tone="danger" role="alert">' + esc(st.err) + '</div>' : '<div class="jh-empty">불러오는 중...</div>') + '</div></div>';
   return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide">' + head(st.admin ? '<button type="button" class="jh-btn" data-variant="primary" data-ov-new style="margin-left:auto"' + (st.form ? ' disabled' : '') + '>＋ 신규 프로젝트</button>' : '') + (st.form ? newForm(st) : '')
-    + '<div class="jh-ov__layout"><aside class="jh-ov__rail" id="ov-rail" aria-label="프로젝트">' + railInner(st) + '</aside><section class="jh-card jh-ov__main" id="ov-sched">' + schedInner(st) + '</section></div></div></div>';
+    + '<div class="jh-ov__layout"><section class="jh-card jh-ov__main" id="ov-sched">' + schedInner(st) + '</section><aside class="jh-ov__rail" id="ov-rail" aria-label="프로젝트 목록">' + railInner(st) + '</aside></div></div></div>';
 }
 /** 종료 PJT 목록 */
 export function endedHtml(st) {
