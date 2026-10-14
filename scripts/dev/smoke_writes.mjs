@@ -307,7 +307,7 @@ await scenario('영업기획 지급예정서 발행: 지급예정일 자동, 옛
   const c = wrote('set', /^gihoek_settlements\/set_\d+$/); check(c.length === 1 && c[0].data.docType === 'payment' && c[0].data.no === '2609001' && c[0].data.payDate === '2026-10-30' && c[0].data.acctMonth === '2026-10' && c[0].data.supply === 470000 && c[0].data.recipient.company === '에스제이', '지급예정서 저장 값(번호 2609001·지급예정일 2026-10-30 자동·계상월 2026-10): ' + JSON.stringify(c[0] && c[0].data).slice(0, 260));
   
   
-  const r4 = await mountFresh(planMod.mountBilling, { segs: ['new', 'pjt_1784786243034'], query: {} }); check(r4.querySelector('[data-is-pjt="pjt_1784786243034"]').checked && !r4.querySelector('[data-is-pjt="pjt_1782285557624"]').checked, '주소에 프로젝트가 있으면 그 프로젝트가 선택된 상태로 시작'); await click(r4, '[data-is-pjt="pjt_1784786243034"]'); check(/최소 1개 프로젝트/.test(document.body.textContent) || r4.querySelector('[data-is-pjt="pjt_1784786243034"]').checked, '프로젝트를 모두 해제할 수는 없음');
+  const r4 = await mountFresh(planMod.mountBilling, { segs: ['new', 'pjt_1784786243034'], query: {} }); check(r4.querySelector('[data-is-pjt="pjt_1784786243034"]').checked && !r4.querySelector('[data-is-pjt="pjt_1782285557624"]').checked, '주소에 프로젝트가 있으면 그 프로젝트가 선택된 상태로 시작'); await click(r4, '[data-is-pjt="pjt_1784786243034"]'); check(!r4.querySelector('[data-is-pjt="pjt_1784786243034"]').checked && !/최소 1개 프로젝트/.test(document.body.textContent), '★ 프로젝트를 모두 해제할 수 있음(프로젝트 없는 정산서 — 대표님 결정 2026-10-14: 견적서·대금청구서·지급예정서 모두 프로젝트 없음 허용. 대금청구서와 지급예정서는 같은 발행 화면·같은 규칙)');
   WR().length = 0; const r5 = await mountFresh(planMod.mountBilling); await click(r5, '[data-sl-act="new"]'); await click(r5, '[data-is-act="publish"]', 200); check(WR().length === 0, '금액이 없으면 발행하면 안 됨');
 });
 
