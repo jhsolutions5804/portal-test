@@ -1,8 +1,8 @@
-import { esc } from '../../core/ui.js?v=20261014ze';
-import { myTurn, canProxy, tabsOf } from './logic.js?v=20261014ze';
-import { docRowHtml, badgeHtml } from './views.js?v=20261014ze';
-import { dailyState, recentDaily, dateLabel, rowSummary } from './home-daily.js?v=20261014ze';
-import { pipeCounts, todoCounts } from './home-stats.js?v=20261014ze';
+import { esc } from '../../core/ui.js?v=20261014zf';
+import { myTurn, canProxy, tabsOf } from './logic.js?v=20261014zf';
+import { docRowHtml, badgeHtml } from './views.js?v=20261014zf';
+import { dailyState, recentDaily, dateLabel, rowSummary } from './home-daily.js?v=20261014zf';
+import { pipeCounts, todoCounts } from './home-stats.js?v=20261014zf';
 
 /** 홈에 보여 줄 문서 묶음 — 결재할 문서 / 수신함(참조·회람) / 내가 작성한 문서 / 게시된 문건 */
 export function homeLists(docs, me) {
@@ -93,10 +93,9 @@ export function homeHtml(model) {
   return '<div class="jh-dashboard">' +
     '<div class="jh-pagehead"><header class="jh-form__head"><h2 class="jh-form__title">전자결재 홈</h2><p class="jh-form__sub">내 근무 현황과 결재 문서를 한눈에</p></header>' +
       '<div class="jh-pagehead__actions">' + (model.me && model.me.admin ? '<button type="button" class="jh-btn" data-variant="ghost" data-admin>⚙ 관리자 설정</button>' : '') + '<button type="button" class="jh-btn jh-pc-only" data-variant="primary" data-new>＋ 새 문서 작성</button></div></div>' +
-    // 인사 홈과 같은 구성: 왼쪽 할 일 카드(세로) | 본문(근무시간·문서 현황·최근 문서) | 오른쪽(내 연차 현황)
-    '<div class="jh-ehome"><aside class="jh-ehome__side" aria-label="내 할 일"><div id="edoc-todo">' + todoHtml(model.todo) + '</div></aside>' +
-    '<div class="jh-ehome__main"><div id="edoc-work">' + worktimeHtml(model.work) + '</div><div id="edoc-pipe">' + pipelineHtml(model) + '</div><div id="edoc-recent">' + recentHtml(model) + '</div></div>' +
-    '<div class="jh-ehome__detail"><div id="edoc-leavebox">' + leaveBoxHtml(model.leave) + '</div></div></div></div>';
+    // 2단: 왼쪽 내 근무·연차(개인 현황) | 오른쪽 문서 현황·최근 문서 — 할 일 카드는 문서 현황·최근 문서 탭과 겹쳐 뺐다(플랫폼 홈 위젯에서는 그대로 씀)
+    '<div class="jh-ehome"><aside class="jh-ehome__side" aria-label="내 근무·연차"><div id="edoc-work">' + worktimeHtml(model.work) + '</div><div id="edoc-leavebox">' + leaveBoxHtml(model.leave) + '</div></aside>' +
+    '<div class="jh-ehome__main"><div id="edoc-pipe">' + pipelineHtml(model) + '</div><div id="edoc-recent">' + recentHtml(model) + '</div></div></div></div>';
 }
 
 /** 카드·단계·"전체 보기"가 가는 결재함 주소(홈과 플랫폼 홈 위젯이 함께 쓴다) */

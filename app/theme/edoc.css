@@ -369,15 +369,13 @@ button.jh-kpi:hover { border-color: var(--c-primary); }
   .jh-main[data-sided] .jh-edoc--side > .jh-sidenav { position: sticky; top: 0; height: 100vh; max-height: none; margin-bottom: calc(var(--sidenav-trim) * -1); border: 0; border-right: var(--u-1) solid var(--c-line); border-radius: 0; }
   .jh-main[data-sided] .jh-edoc__body { padding: var(--sp-4); }
 }
-/* 전자결재 홈: 인사 홈과 같은 구성 — 왼쪽 할 일 카드(세로) | 본문 | 오른쪽 내 연차 현황(1500px 이상 3단, 1099px 이하 1단) */
-.jh-ehome { display: grid; grid-template-columns: 17rem minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
-.jh-ehome__side { display: grid; gap: var(--sp-3); align-content: start; position: sticky; top: var(--sp-3); }
-.jh-ehome__side .jh-todo-grid { grid-template-columns: minmax(0, 1fr); }
-.jh-ehome__main, .jh-ehome__detail { display: grid; gap: var(--sp-4); min-width: 0; align-content: start; }
-.jh-ehome__detail { grid-column: 2; }
-@media (min-width: 1500px) { .jh-ehome { grid-template-columns: 17rem minmax(0, 1fr) var(--u-320); } .jh-ehome__detail { grid-column: auto; } }
-@media (max-width: 1099px) { .jh-ehome { grid-template-columns: minmax(0, 1fr); } .jh-ehome__side { position: static; } .jh-ehome__side .jh-todo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .jh-ehome__detail { grid-column: auto; } }
-.jh-ehome__detail .jh-statrow { flex-direction: column; align-items: stretch; justify-content: center; }   /* 오른쪽 좁은 칸: 원형 그래프 위, 숫자 3칸 아래 */
-.jh-ehome__detail .jh-statrow .jh-ring { align-self: center; }
-.jh-ehome__detail .jh-statrow .jh-kpi-grid { flex: none; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* 전자결재 홈: 2단 — 왼쪽 내 근무·연차(개인 현황) | 오른쪽 문서 현황·최근 문서. 1099px 이하는 1단 */
+.jh-ehome { display: grid; grid-template-columns: minmax(var(--u-320), 24rem) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+.jh-ehome__side { display: grid; gap: var(--sp-4); align-content: start; position: sticky; top: var(--sp-3); }
+.jh-ehome__main { display: grid; gap: var(--sp-4); min-width: 0; align-content: start; }
+.jh-ehome__side .jh-statrow { flex-direction: column; align-items: stretch; justify-content: center; }   /* 좁은 왼쪽 칸: 원형 그래프 위, 숫자 3칸 아래 */
+.jh-ehome__side .jh-statrow .jh-ring { align-self: center; }
+.jh-ehome__side .jh-statrow .jh-kpi-grid { flex: none; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1099px) { .jh-ehome { grid-template-columns: minmax(0, 1fr); } .jh-ehome__side { position: static; } }
 
