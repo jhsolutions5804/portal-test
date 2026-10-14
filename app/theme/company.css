@@ -1,7 +1,5 @@
 /* 회사 영역(조직도·규정) */
 .jh-company { display: grid; gap: var(--sp-4); }
-.jh-company__tabs { width: fit-content; }
-.jh-company__tabs .jh-segmented__item { text-decoration: none; }
 .jh-company__bar { display: flex; flex-wrap: wrap; align-items: end; gap: var(--sp-3); }
 .jh-company__search { flex: 1 1 var(--u-220); max-width: var(--u-420); }
 [data-org-list] { display: grid; gap: var(--sp-4); }

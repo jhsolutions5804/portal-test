@@ -1,8 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261014zs';
-import { fmtTel, telHref, mailHref } from './logic.js?v=20261014zs';
-import { renderMarkdown } from '../../shared/markdown.js?v=20261014zs';
+import { esc } from '../../core/ui.js?v=20261014zt';
+import { fmtTel, telHref, mailHref } from './logic.js?v=20261014zt';
+import { renderMarkdown } from '../../shared/markdown.js?v=20261014zt';
 
-export const tabsHtml = (cur, isAdmin) => '<div class="jh-segmented jh-company__tabs" role="group" aria-label="회사 정보">' + [['org', '조직도'], ['rules', '규정']].concat(isAdmin ? [['staff', '직원 관리'], ['alog', '열람 기록']] : []).map(([k, l]) => '<a class="jh-segmented__item" href="#/company/' + k + '" aria-pressed="' + (k === cur) + '">' + l + '</a>').join('') + '</div>';
 export function orgHtml(groups, total, query) {
   const body = groups.length ? groups.map((g) => '<section class="jh-card jh-company__dept"><div class="jh-panel__head"><h3>📂 ' + esc(g.dept) + '</h3><span class="jh-chip">' + g.people.length + '명</span></div><div class="jh-company__people">' +
     g.people.map((u, i) => {
