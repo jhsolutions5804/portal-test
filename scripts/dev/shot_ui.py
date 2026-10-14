@@ -95,6 +95,7 @@ with sync_playwright() as p:
             try:
                 if 'click' in a: pg.click(a['click'],timeout=3000)
                 elif 'select' in a: pg.select_option(a['select'][0],a['select'][1])
+                elif 'scroll' in a: pg.evaluate('(y)=>{ const els=[document.scrollingElement,...document.querySelectorAll("*")].filter(e=>e&&e.scrollHeight>e.clientHeight+50&&getComputedStyle(e).overflowY!=="visible"||e===document.scrollingElement); const el=els.sort((x,y2)=>y2.scrollHeight-x.scrollHeight)[0]; el.scrollTop=y; }', a['scroll'])   # 가장 긴 스크롤 영역을 y 만큼 내린다
                 elif 'fill' in a: pg.fill(a['fill'][0],a['fill'][1])
                 elif 'expect_frame' in a:
                     pg.wait_for_timeout(a.get('wait',2500)); found=any(a['expect_frame'] in (f.inner_text('body') if f!=pg.main_frame else '') for f in pg.frames if f!=pg.main_frame); print('   iframe 안에 "'+a['expect_frame']+'" 있음:',found); (errs.append('iframe 에 없음: '+a['expect_frame']) if not found else None)

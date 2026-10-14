@@ -291,3 +291,5 @@ export function planChem(rows, prev) {
 }
 export const chemAccountPatch = (f) => ({ kcId: String(f.id || '').trim(), kcPw: String(f.pw || '') });
 export const chemDownloadName = (name, date) => ((name || '근로자') + '_화학물질안전원교육_' + date + '.pdf').replace(/[\\/:*?"<>|]/g, '_');
+/** 팀장 밑의 재직 중인 팀원(퇴사자는 제외) */
+export const activeMembers = (masters, leaderId) => (masters || []).filter((x) => x.leaderId === leaderId && !x.resigned);
