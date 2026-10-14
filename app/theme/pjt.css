@@ -296,9 +296,8 @@
 /* PJT 전체 홈·종료 PJT */
 .jh-ov__cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--u-320), 1fr)); gap: var(--sp-3); }   /* 종료 PJT 목록 */
 .jh-ov__layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(var(--u-320), 26rem); gap: var(--sp-4); align-items: start; }   /* PJT 전체 홈: 왼쪽 통합 일정 달력, 오른쪽 프로젝트 목록 */
-.jh-ov__rail { display: grid; gap: var(--sp-3); align-content: start; position: sticky; top: var(--sp-3); max-height: calc(100vh - var(--sp-6)); overflow-y: auto; }
 .jh-ov__main { min-width: 0; }
-@media (max-width: 1099px) { .jh-ov__layout { grid-template-columns: minmax(0, 1fr); } .jh-ov__rail { position: static; max-height: none; overflow: visible; } }
+@media (max-width: 1099px) { .jh-ov__layout { grid-template-columns: minmax(0, 1fr); } .jh-ov__detailcard { position: static; } }
 .jh-ov__card { --pc: var(--c-primary); display: grid; gap: var(--sp-3); align-content: start; padding: var(--sp-4); border: var(--u-1) solid var(--c-line); border-top: var(--u-4) solid var(--pc); border-radius: var(--radius); background: var(--c-surface); cursor: pointer; }
 .jh-ov__card[data-ended="1"] { cursor: default; border-top-color: var(--c-line-strong); opacity: .9; }
 .jh-ov__card:hover:not([data-ended="1"]) { box-shadow: 0 var(--u-4) var(--u-16) var(--c-overlay); }
@@ -377,11 +376,9 @@
 .jh-tm__tot { display: flex; justify-content: space-between; align-items: baseline; padding-top: var(--sp-3); margin-top: var(--sp-3); border-top: var(--u-1) solid var(--c-line); }
 .jh-tm__tot strong { font-size: var(--fs-xl); color: var(--c-primary); }
 .jh-tm .jh-card > .jh-ro__kpis { padding: var(--sp-3) var(--sp-4); }
-/* PJT 전체 홈 오른쪽 프로젝트 목록: 카드를 목록처럼 촘촘하게(왼쪽 색 막대) */
-.jh-ov__rail .jh-ov__card { border-top: var(--u-1) solid var(--c-line); border-left: var(--u-4) solid var(--pc); padding: var(--sp-3); gap: var(--sp-2); }
-.jh-ov__rail .jh-ov__ch h3 { font-size: var(--fs-md); }
-.jh-ov__rail .jh-ov__kpi strong { font-size: var(--fs-md); }
-.jh-ov__rail .jh-ov__cf { justify-content: flex-end; }
+/* PJT 전체 홈 오른쪽: 달력에서 고른 날짜의 일정 목록 */
+.jh-ov__detailcard { position: sticky; top: var(--sp-3); min-width: 0; }
+.jh-ov__detail { padding: var(--sp-3) var(--sp-4) var(--sp-4); display: grid; gap: var(--sp-2); }
 /* 프로젝트 홈: 왼쪽 월 캘린더 | 오른쪽 고른 날짜의 일정·공사일보·기본정보(요약 카드 없음). 좁은 화면은 위아래 */
 .jh-phome2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(var(--u-320), 26rem); gap: var(--sp-4); align-items: start; }
 .jh-phome2__cal { position: sticky; top: var(--sp-3); min-width: 0; }
