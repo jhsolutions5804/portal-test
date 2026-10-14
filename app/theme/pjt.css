@@ -269,3 +269,9 @@
 .jh-ro__hrow .jh-ro__hl .jh-input { flex: 0 0 auto; width: var(--u-144); }
 .jh-ro__hs, .jh-ro__hp { display: inline-flex; align-items: center; gap: var(--sp-1); flex-wrap: wrap; }
 .jh-ro__hrow label.jh-btn { cursor: pointer; }
+/* 근로자 연명부 — 사내화 교육·계정 수정 */
+.jh-ro__sechd { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); padding-right: var(--sp-4); }
+.jh-ro__eduR { display: inline-flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.jh-ro__edu label { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.jh-ro__pwrow { display: flex; gap: var(--sp-2); }
+.jh-ro__pwrow .jh-input { flex: 1; min-width: 0; }

@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261014j';
-import { EDU, EDU_SK, EDU_OF, PORTAL_OF, COMPANIES, CO_TABS, HEALTH_TYPES, CHEM_REQ_HOURS, FILE_SLOTS, certCo, fmtKB, fmtMoney, fmtH, maskedOf, healthExpiry, eduStateOf, eduInfo, chemYearSum, legalAgg, filesMeta, SORT_OPTS, leaderChoices, canEditSlot, addYearsYmd, pdfDownloadName } from './roster.js?v=20261014j';
+import { esc } from '../../core/ui.js?v=20261014k';
+import { EDU, EDU_SK, EDU_OF, PORTAL_OF, COMPANIES, CO_TABS, HEALTH_TYPES, CHEM_REQ_HOURS, FILE_SLOTS, certCo, fmtKB, fmtMoney, fmtH, maskedOf, healthExpiry, eduStateOf, eduInfo, chemYearSum, legalAgg, filesMeta, SORT_OPTS, leaderChoices, canEditSlot, addYearsYmd, pdfDownloadName } from './roster.js?v=20261014k';
 const chip = (tone, text, title) => '<span class="jh-pjt__chip" data-tone="' + tone + '"' + (title ? ' title="' + esc(title) + '"' : '') + '>' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const stateChip = (r) => (r.state === 'expired' ? chip('red', '만료됨 (D+' + Math.abs(r.d) + ')') : r.state === 'soon' ? chip('amber', 'D-' + r.d) : r.chk && r.exp ? chip('blue', '유효') : '');
@@ -124,10 +124,17 @@ function certHtml(p, co) {
   const rows = ((p && p.certs) || []).filter((c) => certCo(c) === co); if (!rows.length) return '<div class="jh-field__hint">등록된 자격·인증이 없습니다.</div>';
   return '<table class="jh-ro__t"><thead><tr><th>자격/인증</th><th>현장</th><th>시공사</th><th>취득일</th><th>만료일</th><th>상태</th></tr></thead><tbody>' + rows.map((c) => '<tr><td>' + esc(c.name || '') + '</td><td>' + esc(c.site || '') + '</td><td>' + esc(c.contractor || '') + '</td><td>' + dateRow(c.acquired) + '</td><td>' + dateRow(c.expiry) + (c.expiryManual ? ' ' + chip('amber', '수정됨') : '') + '</td><td>' + (c.expiry ? stateChip(eduStateOf(true, c.expiry)) : '') + '</td></tr>').join('') + '</tbody></table>';
 }
+/** 원청 탭의 사내화 교육·업체 포털 계정 수정 폼(그 원청 항목과 계정만) */
+function eduEditHtml(st) {
+  const f = st.edit.form; const list = EDU_OF[f.co] || EDU; const pt = PORTAL_OF[f.co];
+  const rows = list.map((e) => { const on = !!f.edu[e.k]; const r = eduStateOf(on, f.exp[e.k] || '', st.today); return '<div class="jh-ro__edu"><label><input type="checkbox" data-ro-ef="chk|' + e.k + '"' + (on ? ' checked' : '') + '> ' + esc(e.label) + '</label><span class="jh-ro__eduR"><label class="jh-ro__hl">만료일<input class="jh-input" type="date" data-ro-ef="exp|' + e.k + '" value="' + esc(f.exp[e.k] || '') + '"' + (on ? '' : ' disabled') + '></label>' + stateChip(r) + '</span></div>'; }).join('');
+  const acct = '<div class="jh-ro__form"><div class="jh-ro__fld"><label>아이디</label><input class="jh-input" data-ro-ef="id" autocomplete="off" value="' + esc(f.id) + '"></div><div class="jh-ro__fld"><label>비밀번호</label><div class="jh-ro__pwrow"><input class="jh-input" type="password" data-ro-ef="pw" autocomplete="new-password" value="' + esc(f.pw) + '"><button type="button" class="jh-btn" data-variant="secondary" data-ro-pwt title="표시/숨김">👁</button><button type="button" class="jh-btn" data-variant="secondary" data-ro-pwc>복사</button></div></div></div><div class="jh-field__hint jh-ro__pad">⚠️ 비밀번호는 암호화되지 않고 저장됩니다. 개인 비밀번호가 아닌 업무용·초기 비밀번호만 보관해 주세요.</div>';
+  return '<h4>' + esc(pt.label) + ' 계정</h4>' + acct + '<h4>사내화 교육 이수 여부 · 만료일</h4>' + rows + '<div class="jh-field__hint jh-ro__pad">이수에 체크하면 만료일을 넣을 수 있습니다(비우면 만료 없음). 체크를 끄면 만료일은 지워집니다.</div>' + saveBar(st, 'edu');
+}
 function eduPortalHtml(st, p, co) {
   const list = EDU_OF[co] || EDU; const pt = PORTAL_OF[co]; const pw = (p || {})[pt.pwK] || ''; const shown = st.reveal.has(pt.pwK);
   const edu = list.map((e) => { const i = eduInfo(p, e.k, st.today); return '<div class="jh-ro__edu"><span>' + (i.chk ? '☑' : '☐') + ' ' + esc(e.label) + '</span><span>' + (i.chk && i.exp ? esc('만료 ' + i.exp) + ' ' : '') + stateChip(i) + '</span></div>'; }).join('');
-  return '<h4>' + esc(pt.label) + ' 계정</h4><div class="jh-ro__kvs">' + kv('아이디', esc((p || {})[pt.idK] || '')) + kv('비밀번호', pw ? (shown ? '<code>' + esc(pw) + '</code>' : '••••••') + ' <button type="button" class="jh-btn" data-variant="secondary" data-ro-pw="' + pt.pwK + '">' + (shown ? '숨기기' : '표시') + '</button>' : '') + '</div><div class="jh-field__hint">⚠️ 비밀번호는 암호화되지 않고 저장됩니다. 개인 비밀번호가 아닌 업무용·초기 비밀번호만 보관해 주세요.</div><h4>사내화 교육 이수 여부</h4>' + edu;
+  return '<div class="jh-ro__sechd"><h4>' + esc(pt.label) + ' 계정</h4>' + (st.canEdit && !st.edit ? '<button type="button" class="jh-btn" data-variant="secondary" data-ro-edit="edu">✏️ 수정</button>' : '') + '</div><div class="jh-ro__kvs">' + kv('아이디', esc((p || {})[pt.idK] || '')) + kv('비밀번호', pw ? (shown ? '<code>' + esc(pw) + '</code>' : '••••••') + ' <button type="button" class="jh-btn" data-variant="secondary" data-ro-pw="' + pt.pwK + '">' + (shown ? '숨기기' : '표시') + '</button>' : '') + '</div><div class="jh-field__hint">⚠️ 비밀번호는 암호화되지 않고 저장됩니다. 개인 비밀번호가 아닌 업무용·초기 비밀번호만 보관해 주세요.</div><h4>사내화 교육 이수 여부</h4>' + edu;
 }
 function chemHtml(st, p) {
   const rows = ((p && p.chemEdu) || []).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))); const y = +st.today.slice(0, 4); const ys = new Set([y]); rows.forEach((r) => { const m = /^(\d{4})-/.exec(r.date || ''); if (m) ys.add(+m[1]); });
@@ -145,5 +152,6 @@ function companyHtml(st, p) {
   const co = COMPANIES.find((x) => x.k === st.coTab) || COMPANIES[0]; const pt = PORTAL_OF[co.k];
   const subs = [['legal', '법정교육', legalCnt(co.k)], ['cert', '자격 · 인증', certCnt(co.k)], ['edu', '사내화 교육 · ' + pt.label, eduCnt(co.k)]];
   const subTabs = '<div class="jh-pjt__cats">' + subs.map(([k, l, n]) => '<button type="button" class="jh-pjt__cat" data-ro-cosub="' + k + '"' + (st.coSub === k ? ' aria-pressed="true"' : '') + '>' + esc(l) + ' <small>' + n + '</small></button>').join('') + '</div>';
+  if (st.edit && st.edit.card === 'edu' && st.edit.form.co === co.k && st.coSub === 'edu') return tabs + subTabs + eduEditHtml(st);
   return tabs + subTabs + (st.coSub === 'cert' ? '<h4>자격 · 인증 <small>(' + esc(co.label) + ')</small></h4>' + certHtml(p, co.k) : st.coSub === 'edu' ? eduPortalHtml(st, p, co.k) : legalHtml(p, co.k, year));
 }

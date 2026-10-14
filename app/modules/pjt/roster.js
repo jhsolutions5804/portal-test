@@ -215,3 +215,20 @@ export function planHealth(rows, prev) {
 export const pdfStoragePath = (id, prefix, now, rnd) => 'roster_health/' + id + '/' + (prefix || '') + now + '_' + rnd + '.pdf';
 export const pdfMeta = (path, file, nowIso) => ({ path, name: file.name, size: file.size, uploadedAt: nowIso });
 export const pdfDownloadName = (name, type, date) => ((name || '근로자') + '_' + (HEALTH_TYPES[type] || '검진') + '_' + date + '.pdf').replace(/[\\/:*?"<>|]/g, '_');
+
+// ── 4단계-②: 사내화 교육 이수·업체 포털 계정(원청별) ──
+/** 원청 한 곳의 입력 폼 값: 교육 이수 여부·만료일(그 원청 항목만)과 업체 포털 아이디·비밀번호 */
+export function eduFormOf(p, co) {
+  const list = EDU_OF[co] || EDU; const pt = PORTAL_OF[co] || PORTAL_OF.samsung; const edu = {}, exp = {};
+  list.forEach((e) => { edu[e.k] = !!((p && p.inhouseEdu) || {})[e.k]; exp[e.k] = edu[e.k] ? (((p && p.inhouseEduExp) || {})[e.k] || '') : ''; });
+  return { co, edu, exp, id: (p && p[pt.idK]) || '', pw: (p && p[pt.pwK]) || '' };
+}
+/** 이수 체크를 바꾼 결과(새 폼): 끄면 만료일을 비운다(만료일 칸은 이수했을 때만 의미가 있다) */
+export function eduToggle(f, k, checked) { const n = { co: f.co, edu: Object.assign({}, f.edu, { [k]: !!checked }), exp: Object.assign({}, f.exp), id: f.id, pw: f.pw }; if (!checked) n.exp[k] = ''; return n; }
+export const eduExpSet = (f, k, v) => ({ co: f.co, edu: f.edu, exp: Object.assign({}, f.exp, { [k]: v || '' }), id: f.id, pw: f.pw });
+/** 저장할 값(실무자 문서에 병합): 다른 원청 항목은 건드리지 않고 이 원청 항목만 바꾼다. 아이디는 공백 정리, 비밀번호는 입력한 그대로 */
+export function eduSavePatch(p, f) {
+  const co = f.co; const list = EDU_OF[co] || EDU; const pt = PORTAL_OF[co] || PORTAL_OF.samsung; const edu = Object.assign({}, (p && p.inhouseEdu) || {}), exp = Object.assign({}, (p && p.inhouseEduExp) || {});
+  list.forEach((e) => { edu[e.k] = !!f.edu[e.k]; exp[e.k] = edu[e.k] ? (f.exp[e.k] || '') : ''; });
+  return { inhouseEdu: edu, inhouseEduExp: exp, [pt.idK]: String(f.id || '').trim(), [pt.pwK]: String(f.pw || '') };
+}
