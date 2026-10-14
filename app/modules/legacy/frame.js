@@ -1,10 +1,10 @@
-import { LEGACY_BASE } from '../../core/config.js?v=20261014zx';
-import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261014zx';
-import { esc } from '../../core/ui.js?v=20261014zx';
-import { attachActivity } from '../../core/idle.js?v=20261014zx';
-import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS, nativeViewKey } from './list.js?v=20261014zx';
-import { workTabs } from '../../core/worktabs.js?v=20261014zx';
-import { setSideCurrent } from '../../shared/sidenav.js?v=20261014zx';
+import { LEGACY_BASE } from '../../core/config.js?v=20261014zy';
+import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261014zy';
+import { esc } from '../../core/ui.js?v=20261014zy';
+import { attachActivity } from '../../core/idle.js?v=20261014zy';
+import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS, nativeViewKey } from './list.js?v=20261014zy';
+import { workTabs } from '../../core/worktabs.js?v=20261014zy';
+import { setSideCurrent } from '../../shared/sidenav.js?v=20261014zy';
 
 const base = () => new URL(LEGACY_BASE, location.href).href;
 const NATIVE = new Map();   // '모듈id/구역' → 그 구역을 새 모듈이 그리는 함수(modules/index.js 가 hostNative 로 등록)
@@ -23,6 +23,8 @@ async function loadPjtDyn() {
   return dyn;
 }
 /** 프로젝트가 바뀌었다는 알림('jh:pjt-changed')을 받으면 칩을 다시 읽는다 — 알린 쪽이 칩이 바뀐 뒤에 이동하도록 읽기가 끝날 때까지의 약속(detail.waits)을 넘겨받는다 */
+/** 회사: 규정 문서 목록을 읽으면(회사 화면이 알려 준다) 사이드바의 "규정" 묶음을 문서마다 한 항목으로 다시 그린다 */
+if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('jh:company-policies', (ev) => { const st = states.get('company'); if (!st || !st.def) return; const list = (ev.detail && ev.detail.policies) || []; if (JSON.stringify(list) === JSON.stringify((st.dyn && st.dyn.policies) || [])) return; st.dyn = { policies: list, loaded: true }; if (st.wrap) paintNav(st); });
 if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('jh:pjt-changed', (ev) => { const st = states.get('pjt'); if (!st || !st.def || !st.def.dynamicNav) return; const p = loadPjtDyn().then((dyn) => { if (states.get('pjt') === st) { st.dyn = dyn; if (st.wrap) paintNav(st); } }); if (ev && ev.detail && Array.isArray(ev.detail.waits)) ev.detail.waits.push(p); });
 function highlight(st) {
   const q = st.wrap.querySelector('.jh-legacy__quick'); if (q) q.setAttribute('data-show', String(st.key === 'home'));   // 폰 바로가기는 PJT 홈에서만
@@ -70,7 +72,7 @@ function paintSubnav(st) {
   if (old) { if (html) old.outerHTML = html; else old.remove(); } else if (html) { const nv = st.wrap.querySelector('.jh-legacy__nav'); if (nv) nv.insertAdjacentHTML('afterend', html); else st.wrap.insertAdjacentHTML('afterbegin', html); }
 }
 function paintNav(st) {
-  const old = st.wrap.querySelector('.jh-legacy__nav'); const html = navHtml(st.def, itemsFor(st.def, st.me, st.dyn), st.key, esc, st.sub, st.me);
+  const old = st.wrap.querySelector('.jh-legacy__nav'); const html = navHtml(st.def, itemsFor(st.def, st.me, st.dyn), st.key, esc, st.sub, st.me, st.dyn);
   if (old) { old.outerHTML = html || ''; } else if (html) st.wrap.insertAdjacentHTML('afterbegin', html);
   paintSubnav(st);
 }
@@ -96,7 +98,7 @@ export async function mountLegacy(def, keep, route, ctx) {
   if (nat) {   // 새 모듈이 그리는 구역(총무) — 옛 화면 틀(칩 메뉴)은 그대로 두고 안쪽만 바꾼다. 옛 화면(iframe)은 숨겨서 살려 둔다
     if (fresh || !st.wrap || !keep.contains(st.wrap)) {
       const w = document.createElement('div'); w.className = 'jh-legacy'; w.setAttribute('data-legacy-mod', def.id); if (def.groups || def.dynamicNav) w.setAttribute('data-side', '');
-      w.innerHTML = navHtml(def, itemsFor(def, me, st.dyn), item.key, esc, (route.segs || [])[1] || '', me) + '<iframe class="jh-legacy__frame" title="' + esc(def.title) + '" data-legacy-frame="' + esc(def.id) + '" data-lazy="1" hidden></iframe><div class="jh-legacy__native"></div>';
+      w.innerHTML = navHtml(def, itemsFor(def, me, st.dyn), item.key, esc, (route.segs || [])[1] || '', me, st.dyn) + '<iframe class="jh-legacy__frame" title="' + esc(def.title) + '" data-legacy-frame="' + esc(def.id) + '" data-lazy="1" hidden></iframe><div class="jh-legacy__native"></div>';
       keep.appendChild(w); st.wrap = w; st.frame = w.querySelector('iframe'); st.native = w.querySelector('.jh-legacy__native'); st.natives = null; st.native0 = null; st.nv = null;
       st.frame.addEventListener('load', () => { try { attachActivity(st.frame.contentDocument); } catch (e) { /* 같은 출처가 아니면 센 수 없다 */ } });
     }

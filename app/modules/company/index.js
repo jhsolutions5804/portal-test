@@ -1,15 +1,15 @@
-import { db, auth, functions, httpsCallable, sendPasswordResetEmail, collection, getDocs, getDoc, query, where, orderBy, limit, doc, updateDoc } from '../../core/firebase.js?v=20261014zx';
-import { esc, toast } from '../../core/ui.js?v=20261014zx';
-import { fmtPhone } from '../../core/profile-logic.js?v=20261014zx';
-import { deptOptions } from '../../shared/org.js?v=20261014zx';
-import { PERM_KEYS, validateStaffForm, staffUpdate, linkedWorkerOf, findWorkerMatch, workerSync, validateNewAccount, newAccountPayload, callMessage, resetMailMessage } from './staff-logic.js?v=20261014zx';
-import { staffListHtml, staffDialogHtml, newAccountDialogHtml, secretDialogHtml } from './staff-view.js?v=20261014zx';
-import { accessLogHtml } from './accesslog-view.js?v=20261014zx';
-import { toEntry, filterEntries, summarize, monthRange, addMonth, kstYm, kstText, tsMs } from './accesslog-logic.js?v=20261014zx';
-import { companyPerm } from '../../shared/company-perm.js?v=20261014zx';
-import { markChecked, identityErrorText } from '../../shared/identity.js?v=20261014zx';
-import { groupOrg, sortPolicies, buildOrgTree, isGuestUser } from './logic.js?v=20261014zx';
-import { orgHtml, rulesHtml, orgChartHtml, orgViewHtml, personCardHtml } from './view.js?v=20261014zx';
+import { db, auth, functions, httpsCallable, sendPasswordResetEmail, collection, getDocs, getDoc, query, where, orderBy, limit, doc, updateDoc } from '../../core/firebase.js?v=20261014zy';
+import { esc, toast } from '../../core/ui.js?v=20261014zy';
+import { fmtPhone } from '../../core/profile-logic.js?v=20261014zy';
+import { deptOptions } from '../../shared/org.js?v=20261014zy';
+import { PERM_KEYS, validateStaffForm, staffUpdate, linkedWorkerOf, findWorkerMatch, workerSync, validateNewAccount, newAccountPayload, callMessage, resetMailMessage } from './staff-logic.js?v=20261014zy';
+import { staffListHtml, staffDialogHtml, newAccountDialogHtml, secretDialogHtml } from './staff-view.js?v=20261014zy';
+import { accessLogHtml } from './accesslog-view.js?v=20261014zy';
+import { toEntry, filterEntries, summarize, monthRange, addMonth, kstYm, kstText, tsMs } from './accesslog-logic.js?v=20261014zy';
+import { companyPerm } from '../../shared/company-perm.js?v=20261014zy';
+import { markChecked, identityErrorText } from '../../shared/identity.js?v=20261014zy';
+import { groupOrg, sortPolicies, buildOrgTree, isGuestUser } from './logic.js?v=20261014zy';
+import { orgHtml, rulesHtml, orgChartHtml, orgViewHtml, personCardHtml } from './view.js?v=20261014zy';
 
 /** 회사 영역(플랫폼 기본 모듈): 조직도·규정을 읽기 전용으로. GUEST 계정에는 보이지 않는다(연락처·내부 규정) */
 /** 실제 메뉴 등록은 공용 틀(modules/legacy/list.js 의 company 정의 — 인사총무와 같은 사이드바·내용 영역). 여기의 값은 규약(manifest+mount)용이며 권한은 같은 함수를 쓴다 */
@@ -25,12 +25,15 @@ async function loadPolicies() {
   if (fresh(polCache)) return polCache.v;
   const s = await getDocs(collection(db, 'company_policies')); const v = []; s.forEach((d) => v.push(Object.assign({ id: d.id }, d.data()))); polCache = { t: Date.now(), v: sortPolicies(v) }; return polCache.v;
 }
+/** 규정 문서 목록을 틀(사이드바)에 알린다 — 틀이 "규정" 묶음을 문서마다 한 항목으로 그린다 */
+function announcePolicies(list) { try { window.dispatchEvent(new CustomEvent('jh:company-policies', { detail: { policies: (list || []).map((p) => ({ id: p.id, title: String(p.title || p.id) })) } })); } catch (e) { /* 알림 실패는 화면 동작을 막지 않는다 */ } }
 export async function mount(root, route, ctx) {
   const me = (ctx && ctx.me) || {}; const want = route.segs[0]; const tab = want === 'rules' ? 'rules' : (want === 'staff' && me.admin ? 'staff' : (want === 'alog' && me.admin ? 'alog' : 'org'));
   if ((want === 'staff' || want === 'alog') && !me.admin) { location.replace('#/company/org'); return; }   // 직원 관리·열람 기록은 관리자만
   root.onclick = null; root.oninput = null;
   root.innerHTML = '<div class="jh-company"><div id="co-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
   const body = root.querySelector('#co-body');
+  if (tab !== 'rules') loadPolicies().then(announcePolicies, () => { /* 규정 목록을 못 읽어도 다른 화면은 그대로 */ });
   try {
     if (tab === 'org') {
       const users = (await loadUsers()).filter((u) => !isGuestUser(u)); let q = ''; let view = orgView;   // GUEST 계정은 조직도·목록에서 제외
@@ -146,7 +149,11 @@ export async function mount(root, route, ctx) {
         });
         const first = w.querySelector('#sf-name'); if (first) first.focus();
       };
-    } else { const list = await loadPolicies(); body.innerHTML = rulesHtml(list, route.query && route.query.doc); }
+    } else {
+      const list = await loadPolicies(); announcePolicies(list); const docId = route.segs[1] || (route.query && route.query.doc) || '';
+      if (!docId && list.length) { location.replace('#/company/rules/' + encodeURIComponent(list[0].id)); return; }   // 문서를 고르지 않고 들어오면 첫 문서(사이드바의 현재 표시도 맞게)
+      body.innerHTML = rulesHtml(list, docId);
+    }
     body.removeAttribute('aria-busy'); const top = document.getElementById('jh-main'); if (top && tab === 'rules') top.scrollTop = 0;
   } catch (e) { console.error('회사 영역 불러오기', e); body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다. 잠시 후 다시 시도해 주세요. (' + esc(e.code || e.message) + ')</div>'; body.removeAttribute('aria-busy'); }
 }

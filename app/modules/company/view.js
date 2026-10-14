@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261014zx';
-import { fmtTel, telHref, mailHref } from './logic.js?v=20261014zx';
-import { renderMarkdown } from '../../shared/markdown.js?v=20261014zx';
+import { esc } from '../../core/ui.js?v=20261014zy';
+import { fmtTel, telHref, mailHref } from './logic.js?v=20261014zy';
+import { renderMarkdown } from '../../shared/markdown.js?v=20261014zy';
 
 export function orgHtml(groups, total, query) {
   const body = groups.length ? groups.map((g) => '<section class="jh-card jh-company__dept"><div class="jh-panel__head"><h3>📂 ' + esc(g.dept) + '</h3><span class="jh-chip">' + g.people.length + '명</span></div><div class="jh-company__people">' +
@@ -11,11 +11,10 @@ export function orgHtml(groups, total, query) {
     }).join('') + '</div></section>').join('') : '<div class="jh-empty">' + (query ? '검색 결과가 없습니다.' : '등록된 직원이 없습니다.') + '</div>';
   return '<div class="jh-company__bar"><label class="jh-field jh-company__search"><span class="jh-field__label">검색</span><input class="jh-input" id="org-q" type="search" placeholder="이름·부서·직급·전화" value="' + esc(query || '') + '"></label><span class="jh-field__hint">승인된 직원 ' + total + '명</span></div><div data-org-list>' + body + '</div>';
 }
-export function rulesHtml(policies, cur) {
+export function rulesHtml(policies, cur) {   // 문서 선택은 사이드바의 "규정" 묶음이 맡는다 — 여기는 고른 문서만
   if (!policies.length) return '<div class="jh-empty">등록된 규정이 없습니다.</div>';
   const p = policies.find((x) => x.id === cur) || policies[0];
-  return '<div class="jh-company__ruletabs" role="tablist" aria-label="규정 목록">' + policies.map((x) => '<a class="jh-company__ruletab" role="tab" href="#/company/rules?doc=' + encodeURIComponent(x.id) + '" aria-selected="' + (x.id === p.id) + '">' + esc(x.title || x.id) + '</a>').join('') + '</div>' +
-    '<article class="jh-card jh-form jh-md" aria-label="' + esc(p.title || p.id) + '">' + renderMarkdown(p.markdown) + '</article>';
+  return '<article class="jh-card jh-form jh-md" aria-label="' + esc(p.title || p.id) + '">' + renderMarkdown(p.markdown) + '</article>';
 }
 
 /* ── 조직도 다이어그램 ── */

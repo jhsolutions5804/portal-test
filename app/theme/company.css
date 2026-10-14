@@ -74,7 +74,8 @@
 .jh-profile__details[open] { gap: var(--sp-3); }
 /* 직원 관리(관리자) */
 .jh-staff__list { display: grid; gap: var(--sp-3); }
-.jh-staff__row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto; gap: var(--sp-3); align-items: center; }
+.jh-staff__bar { padding-bottom: var(--sp-1); }
+.jh-staff__row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto; gap: var(--sp-4); align-items: center; padding: var(--sp-4) calc(var(--sp-4) + var(--sp-1)); }   /* 카드 안쪽 여백 기준(위아래 16px · 좌우 20px) */
 .jh-staff__who { display: grid; gap: var(--sp-1); min-width: 0; overflow-wrap: anywhere; }
 .jh-staff__name { min-width: 0; }
 .jh-staff__badges { display: flex; flex-wrap: wrap; gap: var(--sp-1); }

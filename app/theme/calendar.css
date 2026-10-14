@@ -108,4 +108,17 @@
 .jh-cal-list__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--sp-4) calc(var(--sp-4) + var(--sp-1)); }
 /* 홈의 일정 캘린더: 날짜 칸을 조금 낮춰 한 화면에 가깝게(폰은 기존 칸 높이 그대로) */
 @media (min-width: 900px) { .jh-cal[data-in-widget="true"] .jh-cal__day { min-height: var(--u-84); } }
+/* 홈 일정 목록 카드: 글자를 한 단계 줄이고 항목을 세로로 정돈(시간 → 제목 → 분류·장소 → 링크) */
+.jh-cal-list__body { font-size: var(--fs-sm); }
+.jh-cal-list .jh-cal__dayhead h3 { font-size: var(--fs-sm); font-weight: 700; }
+.jh-cal-list .jh-cal__dayhead small { font-size: var(--fs-xs); font-weight: 600; color: var(--c-ink-2); }
+.jh-cal-list .jh-cal__dayhead .jh-btn { font-size: var(--fs-xs); padding: var(--sp-1) var(--sp-3); min-height: var(--u-40); }
+.jh-cal-list .jh-cal__list { gap: var(--sp-2); margin-top: var(--sp-3); }
+.jh-cal-list .jh-cal__row { flex-direction: column; gap: var(--u-4); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius); }
+.jh-cal-list .jh-cal__time { flex: none; font-size: var(--fs-xs); font-weight: 600; color: var(--c-ink-3); }
+.jh-cal-list .jh-cal__name { font-size: var(--fs-sm); font-weight: 700; line-height: 1.35; }
+.jh-cal-list .jh-cal__meta { font-size: var(--fs-xs); color: var(--c-ink-2); display: flex; flex-wrap: wrap; align-items: center; gap: var(--u-4) var(--sp-1); }
+.jh-cal-list .jh-chip { font-size: var(--fs-xs); padding: 0 var(--sp-2); }
+.jh-cal-list .jh-link { font-size: var(--fs-xs); }
+.jh-cal-list .jh-empty { font-size: var(--fs-sm); padding: var(--sp-5) var(--sp-3); }
 

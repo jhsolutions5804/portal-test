@@ -1,15 +1,15 @@
 /* 플랫폼에 꽂는 모듈 목록 — 모듈을 더하거나 빼는 일은 이 파일 한 곳만 고친다.
  * 각 항목은 { manifest, mount }. 핵심부(core/)는 모듈 폴더를 직접 알지 못하고 이 목록만 읽는다. */
-import * as edoc from './edoc/index.js?v=20261014zx';
-import * as attendance from './attendance/index.js?v=20261014zx';
-import * as calendar from './calendar/index.js?v=20261014zx';
-import * as company from './company/index.js?v=20261014zx';
-import * as finance from './finance/index.js?v=20261014zx';
-import * as plan from './plan/index.js?v=20261014zx';
-import * as general from './general/index.js?v=20261014zx';
-import * as hr from './hr/index.js?v=20261014zx';
-import * as pjt from './pjt/index.js?v=20261014zx';
-import { modules as legacy, hostNative } from './legacy/index.js?v=20261014zx';
+import * as edoc from './edoc/index.js?v=20261014zy';
+import * as attendance from './attendance/index.js?v=20261014zy';
+import * as calendar from './calendar/index.js?v=20261014zy';
+import * as company from './company/index.js?v=20261014zy';
+import * as finance from './finance/index.js?v=20261014zy';
+import * as plan from './plan/index.js?v=20261014zy';
+import * as general from './general/index.js?v=20261014zy';
+import * as hr from './hr/index.js?v=20261014zy';
+import * as pjt from './pjt/index.js?v=20261014zy';
+import { modules as legacy, hostNative } from './legacy/index.js?v=20261014zy';
 
 export const MODULES = [
   { manifest: edoc.manifest, mount: edoc.mount },
@@ -17,7 +17,7 @@ export const MODULES = [
   { manifest: calendar.manifest, mount: calendar.mount },
 ].concat(legacy);   // 옛 모듈(기획·인사·PJT·내 팀 공수표)은 어댑터로 입주 — 새 모듈로 바뀌면 이 줄에서 빠지고 위 목록으로 옮긴다
 ['home', 'entries', 'expense', 'import', 'reports', 'monthly', 'forecast', 'gap', 'rules', 'opening', 'settings'].forEach((k) => hostNative('finance', k, (root, route, ctx) => finance.mount(root, { segs: [k], query: (route && route.query) || {} }, ctx)));   // 재무회계: 인사총무와 같은 공용 틀(사이드바·내용 영역) 안의 새 화면
-['org', 'rules', 'staff', 'alog'].forEach((k) => hostNative('company', k, (root, route, ctx) => company.mount(root, { segs: [k], query: (route && route.query) || {} }, ctx)));   // 회사: 인사총무와 같은 공용 틀(사이드바·내용 영역) 안의 새 화면
+['org', 'rules', 'staff', 'alog'].forEach((k) => hostNative('company', k, (root, route, ctx) => company.mount(root, { segs: [k].concat((route && route.segs) || []), query: (route && route.query) || {} }, ctx)));   // 회사: 인사총무와 같은 공용 틀(사이드바·내용 영역) 안의 새 화면
 hostNative('pjt', 'roster', pjt.mountRoster);   // 근로자 연명부(새 화면 — 목록·상세 조회)
 hostNative('pjt', 'settings', pjt.mountSettings);   // PJT 새 모듈 — 설정(관리자 전용)
 hostNative('myteam', 'main', pjt.mountTeam);   // 내 팀 공수표 — 새 화면(통일된 저장 구조만 읽음)

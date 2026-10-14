@@ -1,8 +1,8 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261014zx';
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261014zx';
-import { financePerm } from '../../shared/finance-perm.js?v=20261014zx';
-import { companyPerm } from '../../shared/company-perm.js?v=20261014zx';
-import { isProjectKey } from '../../shared/pjt-key.js?v=20261014zx';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261014zy';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261014zy';
+import { financePerm } from '../../shared/finance-perm.js?v=20261014zy';
+import { companyPerm } from '../../shared/company-perm.js?v=20261014zy';
+import { isProjectKey } from '../../shared/pjt-key.js?v=20261014zy';
 export { isProjectKey };
 /* 옛 모듈 어댑터의 목록과 규칙 — 화면(DOM)·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 옛 모듈이 새 모듈로 바뀌면 여기서 항목을 지우고 modules/index.js 의 새 모듈 목록으로 옮긴다. */
@@ -20,8 +20,8 @@ export const LEGACY_DEFS = [
     sections: [{ key: 'home', label: '개요', native: true }, { key: 'entries', label: '전표', native: true }, { key: 'expense', label: '비용 입력', native: true }, { key: 'import', label: '가져오기', native: true }, { key: 'reports', label: '재무제표', native: true }, { key: 'monthly', label: '월간 수지', native: true }, { key: 'forecast', label: '예측', native: true }, { key: 'gap', label: '이엔지 정산', native: true }, { key: 'rules', label: '규칙', native: true }, { key: 'opening', label: '개시 재산', native: true }, { key: 'settings', label: '설정', native: true }] },
   { id: 'company', order: 45, title: '회사', icon: '🏢', tabbed: true, ownNav: true, perm: companyPerm, nav: [{ key: 'org', label: '조직도' }], homeLabel: '회사',
     // 사이드바는 인사총무·재무회계와 같은 공용 틀 — 상단 탭이던 조직도·규정·직원 관리·열람 기록이 메뉴가 된다(직원 관리·열람 기록은 관리자만)
-    groups: [{ key: 'company', label: '회사 정보', home: { key: 'org', label: '조직도', hint: '본부·팀별 직원과 연락처' }, clusters: [{ label: '규정', keys: ['rules'] }, { label: '관리', admin: true, keys: ['staff', 'alog'] }] }],
-    sections: [{ key: 'org', label: '조직도', native: true }, { key: 'rules', label: '규정', native: true }, { key: 'staff', label: '직원 관리', native: true }, { key: 'alog', label: '열람 기록', native: true }] },
+    groups: [{ key: 'company', label: '회사 정보', home: { key: 'org', label: '조직도', hint: '본부·팀별 직원과 연락처' }, clusters: [{ label: '규정', dynamic: 'policies', keys: ['rules'] }, { label: '관리', admin: true, keys: ['staff', 'alog'] }] }],
+    sections: [{ key: 'org', label: '조직도', native: true }, { key: 'rules', label: '회사 내규', native: true }, { key: 'staff', label: '직원 관리', native: true }, { key: 'alog', label: '열람 기록', native: true }] },
   { id: 'pjt', order: 40, mobileTab: { order: 2, label: 'PJT', icon: '🏗️' }, title: 'PJT 관리', icon: '🏗️', tabbed: false, dynamicNav: true, defaultSub: 'home', nativeKeys: ['roster', 'home', 'ended'], nativeSubs: ['home', 'schedule', 'progress', 'attend', 'report', 'settings'], perm: (me) => !!(me && (me.admin || (me.perms && me.perms.pjt) || (Array.isArray(me.pjtKeys) && me.pjtKeys.length > 0))) },   // PJT 권한자·관리자, 또는 어느 프로젝트든 참여자로 지정된 사람
   { id: 'myteam', order: 90, title: '내 팀 공수표', icon: '👷', tabbed: false, url: 'team/', nativeKeys: ['main'],
     perm: (me) => !!(me && (me.admin || (Array.isArray(me.teamLeaderIds) && me.teamLeaderIds.length > 0))), nav: [{ key: 'main', label: '내 팀 공수표' }] }
@@ -88,20 +88,22 @@ export function buildUrl(def, item, me, base, cacheBust, tab) {
 /** 두 단계 메뉴(def.groups): 위 줄은 큰 갈래(인사·총무), 아래 줄은 고른 갈래 안의 메뉴를 단계별(채용·입사·재직…)로 묶어 보여 준다. 갈래에 속하지 않은 key(옛 화면의 탭)는 첫 갈래의 "홈"으로 본다 */
 export function groupOfKey(def, key) { const g = (def.groups || []).find((x) => (x.keys || []).includes(key) || (x.clusters || []).some((c) => c.keys.includes(key))); return g ? g.key : (def.groups && def.groups[0] ? def.groups[0].key : ''); }
 /** 사이드바에서 현재로 표시할 항목 key: 총무는 'general/<탭>', 인사 새 화면은 그 key, 옛 화면 탭은 인사 홈('home') */
-export function sideCurrentKey(def, activeKey, sub) { if (activeKey === 'general') return 'general/' + (sub || 'home'); const g = (def.groups || []).find((x) => x.clusters && (x.clusters.some((c) => c.keys.includes(activeKey)) || (x.home && x.home.key === activeKey))); return g ? activeKey : ((def.groups || [])[0] && def.groups[0].home ? def.groups[0].home.key : 'home'); }   // 구역 안의 화면이거나 그 구역의 첫 화면(홈 — 회사는 'org')이면 그 화면, 아니면 첫 화면
-export function sideConfig(def, activeKey, sub, me) {
+/** 사이드바의 현재 메뉴 항목. 회사 규정은 문서마다 항목(rules/<문서 id>)이다 */
+export function sideCurrentKey(def, activeKey, sub) { if (activeKey === 'general') return 'general/' + (sub || 'home'); if (def.id === 'company' && activeKey === 'rules') return sub ? 'rules/' + sub : 'rules'; const g = (def.groups || []).find((x) => x.clusters && (x.clusters.some((c) => c.keys.includes(activeKey)) || (x.home && x.home.key === activeKey))); return g ? activeKey : ((def.groups || [])[0] && def.groups[0].home ? def.groups[0].home.key : 'home'); }   // 구역 안의 화면이거나 그 구역의 첫 화면(홈 — 회사는 'org')이면 그 화면, 아니면 첫 화면
+export function sideConfig(def, activeKey, sub, me, dyn) {
   const labelOf = (k) => { const s = (def.sections || []).find((x) => x.key === k); return s ? s.label : k; };
   const sections = [];   // 재무회계 사이드바처럼 묶음마다 머리글 + 구분선: 인사 · 채용 · 입사 · 재직 · 변동 · 퇴사 · 총무
   def.groups.forEach((g) => {
-    if (g.clusters) { const top = { title: g.label, items: g.home ? [{ key: g.home.key, label: g.home.label, href: '#/' + def.id + '/' + g.home.key, hint: g.home.hint }] : [] }; sections.push(top); g.clusters.forEach((c) => { if (c.admin && !(me && me.admin)) return; const items = c.keys.map((k) => ({ key: k, label: labelOf(k), href: '#/' + def.id + '/' + k })); if (c.keys.length === 1 && labelOf(c.keys[0]) === c.label) top.items.push(items[0]); else sections.push({ title: c.label, items }); }); }   // 묶음 제목과 메뉴 이름이 같은 한 칸짜리 묶음(예: 프로젝트)은 맨 위 구역에 합친다
+    if (g.clusters) { const top = { title: g.label, items: g.home ? [{ key: g.home.key, label: g.home.label, href: '#/' + def.id + '/' + g.home.key, hint: g.home.hint }] : [] }; sections.push(top); g.clusters.forEach((c) => { if (c.admin && !(me && me.admin)) return; if (c.dynamic === 'policies' && dyn && dyn.policies && dyn.policies.length) { sections.push({ title: c.label, items: dyn.policies.map((p) => ({ key: 'rules/' + p.id, label: p.title || p.id, href: '#/' + def.id + '/rules/' + encodeURIComponent(p.id) })) }); return; }   // 규정 묶음: 서버에서 읽은 회사 내규 문서마다 한 항목(읽기 전에는 "회사 내규" 하나)
+    const items = c.keys.map((k) => ({ key: k, label: labelOf(k), href: '#/' + def.id + '/' + k })); if (c.keys.length === 1 && labelOf(c.keys[0]) === c.label) top.items.push(items[0]); else sections.push({ title: c.label, items }); }); }   // 묶음 제목과 메뉴 이름이 같은 한 칸짜리 묶음(예: 프로젝트)은 맨 위 구역에 합친다
     else sections.push({ title: g.label, items: (g.items || []).map(([k, l]) => ({ key: g.key + '/' + k, label: l, href: '#/' + def.id + '/' + g.key + '/' + k })) });
   });
   return { label: def.title + ' 메뉴', title: (def.icon ? def.icon + ' ' : '') + def.title, current: sideCurrentKey(def, activeKey, sub), sections };
 }
-function groupNavHtml(def, activeKey, esc, sub, me) { return sidenavHtml(sideConfig(def, activeKey, sub, me), 'jh-legacy__nav'); }
-export function navHtml(def, items, activeKey, esc, sub, me) {
+function groupNavHtml(def, activeKey, esc, sub, me, dyn) { return sidenavHtml(sideConfig(def, activeKey, sub, me, dyn), 'jh-legacy__nav'); }
+export function navHtml(def, items, activeKey, esc, sub, me, dyn) {
   if (def.dynamicNav) return sidenavHtml(pjtSideConfig(def, items, activeKey, sub, me), 'jh-legacy__nav');   // PJT 관리도 영업기획·인사총무·재무회계와 같은 공용 사이드 내비게이션(너비 220px 동일)
-  if (def.groups && def.groups.length) return groupNavHtml(def, activeKey, esc, sub, me);
+  if (def.groups && def.groups.length) return groupNavHtml(def, activeKey, esc, sub, me, dyn);
   if (def.sections && def.sections.length) {   // 옛 화면은 자기 메뉴를 쓰고, 플랫폼은 구역(인사 / 총무)만 고르게 한다 — 구역 key 는 새 모듈이 직접 그리는 화면
     const nat = def.sections.map((s) => s.key); const chips = [{ key: 'home', label: def.homeLabel || def.title, home: true }].concat(def.sections);
     return '<nav class="jh-legacy__nav" aria-label="' + esc(def.title) + ' 구역">' + chips.map((it) => '<a class="jh-legacy__chip" href="#/' + esc(def.id) + '/' + esc(it.key) + '" data-key="' + esc(it.key) + '"' + (it.home ? ' data-home="1"' : '') + ((it.home ? nat.indexOf(activeKey) === -1 : it.key === activeKey) ? ' aria-current="page"' : '') + '>' + esc(it.label) + '</a>').join('') + '</nav>';
