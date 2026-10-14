@@ -370,17 +370,20 @@ button.jh-kpi:hover { border-color: var(--c-primary); }
   .jh-main[data-sided] .jh-edoc__body { padding: var(--sp-4); }
 }
 
-/* 전자결재 홈: 2단 — 왼쪽 내 근무·연차(개인 현황) | 오른쪽 문서 현황·최근 문서. 1099px 이하는 1단 */
-.jh-ehome { display: grid; grid-template-columns: minmax(26rem, 30rem) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
-.jh-ehome__side { display: grid; gap: var(--sp-4); align-content: start; position: sticky; top: var(--sp-3); }
-.jh-ehome__main { display: grid; gap: var(--sp-4); min-width: 0; align-content: start; }
+/* 전자결재 홈: 2단 — 왼쪽 현황 카드 3장(내 근무시간·내 연차·문서 현황) | 오른쪽 최근 문서 목록(왼쪽 3장의 높이에 맞춰 늘어남). 1099px 이하는 1단 */
+.jh-ehome { display: grid; grid-template-columns: minmax(26rem, 30rem) minmax(0, 1fr); gap: var(--sp-4); align-items: stretch; }
+.jh-ehome__side { display: grid; gap: var(--sp-4); align-content: start; min-width: 0; }
+.jh-ehome__main { display: grid; grid-template-rows: minmax(0, 1fr); min-width: 0; }
+.jh-ehome__fill { display: grid; min-height: 0; }
 .jh-ehome__side .jh-statrow { flex-direction: column; align-items: stretch; justify-content: center; }   /* 좁은 왼쪽 칸: 원형 그래프 위, 숫자 3칸 아래 */
 .jh-ehome__side .jh-statrow .jh-ring { align-self: center; }
 .jh-ehome__side .jh-statrow .jh-kpi-grid { flex: none; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-@media (max-width: 1099px) { .jh-ehome { grid-template-columns: minmax(0, 1fr); } .jh-ehome__side { position: static; } }
+.jh-ehome__side .jh-pipeline { gap: var(--sp-1); }
+.jh-ehome__side .jh-pipe { padding: var(--sp-2); }
+@media (max-width: 1099px) { .jh-ehome { grid-template-columns: minmax(0, 1fr); } }
 
-/* 새 문서: 왼쪽에 문서 종류 목록(좁게), 오른쪽에 작성 화면 — 종류를 누르면 오른쪽에 작성 화면이 열린다(1099px 이하는 위아래) */
-.jh-newdoc { display: grid; grid-template-columns: minmax(26rem, 30rem) minmax(0, 1fr);   /* 홈과 같은 왼쪽 폭(26~30rem) */ gap: var(--sp-4); align-items: start; }
+/* 새 문서: 왼쪽에 문서 종류 목록, 오른쪽에 작성 화면 — 종류를 누르면 오른쪽에 작성 화면이 열린다(왼쪽 폭은 홈과 같은 26~30rem, 1099px 이하는 위아래) */
+.jh-newdoc { display: grid; grid-template-columns: minmax(26rem, 30rem) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
 .jh-newdoc__side { position: sticky; top: var(--sp-3); max-height: calc(100vh - var(--sp-6)); overflow-y: auto; }
 .jh-newdoc__main { min-width: 0; display: grid; gap: var(--sp-4); }
 .jh-newdoc__side .jh-docrow { min-height: var(--u-64); padding: var(--sp-3) var(--sp-4); }
