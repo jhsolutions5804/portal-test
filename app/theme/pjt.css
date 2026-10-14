@@ -357,3 +357,19 @@
 .jh-ro__det2 { margin-top: var(--sp-3); }
 .jh-ro__det2 summary { cursor: pointer; color: var(--c-ink-3); }
 .jh-ro__det select { max-width: var(--u-220); }
+/* 내 팀 공수표 */
+.jh-tm__mem { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-top: var(--u-1) solid var(--c-line); }
+.jh-tm__mem > div:first-child { flex: 1; min-width: 0; }
+.jh-tm__md { font-size: var(--fs-lg); font-weight: 700; color: var(--c-primary); }
+.jh-tm__money { color: var(--c-success); }
+.jh-tm__sheet { width: 92vw; max-width: 760px; }
+.jh-tm__cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--u-4); }
+.jh-tm__day { min-height: var(--u-56); padding: var(--u-4); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); display: grid; gap: var(--u-2); align-content: start; min-width: 0; }
+.jh-tm__day[data-on="1"] { background: var(--c-primary-weak); }
+.jh-tm__day[data-empty="1"] { border-color: transparent; }
+.jh-tm__day b { font-size: var(--fs-xs); }
+.jh-tm__day strong { color: var(--c-primary); font-size: var(--fs-sm); }
+.jh-tm__day small { color: var(--c-ink-3); font-size: var(--fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jh-tm__tot { display: flex; justify-content: space-between; align-items: baseline; padding-top: var(--sp-3); margin-top: var(--sp-3); border-top: var(--u-1) solid var(--c-line); }
+.jh-tm__tot strong { font-size: var(--fs-xl); color: var(--c-primary); }
+.jh-tm .jh-card > .jh-ro__kpis { padding: var(--sp-3) var(--sp-4); }

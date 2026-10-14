@@ -1,15 +1,14 @@
 /* 근로자 연명부 도구 — 주소 #/pjt/roster/_manday(월간 공수 보기) · #/pjt/roster/_migrate(기존 인원 마이그레이션). 연명부 진입(roster-index.js)이 넘겨준다.
  * 모든 프로젝트(종료된 것 포함)의 명단·공수는 pjt_registry/<id>/… 에서 읽는다. 마이그레이션 쓰기 순서: 마스터·새 명단 문서 → 공수·출역 기록의 id 이전 → 옛 명단 문서 삭제(맨 마지막, 중간에 멈춰도 다시 실행할 수 있게). */
-import { db, collection, doc, getDocs, writeBatch, deleteField, query, where, documentId } from '../../core/firebase.js?v=20261014s';
-import { toast } from '../../core/ui.js?v=20261014s';
-import { confirmDialog } from '../../core/dialog.js?v=20261014s';
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261014s';
-import { pathsFor } from './adapter.js?v=20261014s';
-import { appToday } from './attendance.js?v=20261014s';
-import { monthRange, aggregateMonth, migrationGroups, planMigration, planMerge, planLink, unknownGroups, rekeyMd, rekeyChecks } from './roster-tools.js?v=20261014s';
-import { shiftMonth } from './overview.js?v=20261014s';
-import { mandayHtml, migrateHtml } from './roster-tools-view.js?v=20261014s';
-const ts = (d) => (d.createdAt && d.createdAt.seconds) || 0;
+import { db, collection, doc, getDocs, writeBatch, deleteField } from '../../core/firebase.js?v=20261014t';
+import { toast } from '../../core/ui.js?v=20261014t';
+import { confirmDialog } from '../../core/dialog.js?v=20261014t';
+import { loadBase, loadRows } from './month-data.js?v=20261014t';
+import { pathsFor } from './adapter.js?v=20261014t';
+import { appToday } from './attendance.js?v=20261014t';
+import { aggregateMonth, migrationGroups, planMigration, planMerge, planLink, unknownGroups, rekeyMd, rekeyChecks } from './roster-tools.js?v=20261014t';
+import { shiftMonth } from './overview.js?v=20261014t';
+import { mandayHtml, migrateHtml } from './roster-tools-view.js?v=20261014t';
 export async function mountRosterTools(root, route, ctx, mode) {
   root.onclick = null; root.oninput = null; root.onchange = null;
   const me = (ctx && ctx.me) || {}; const t0 = appToday().split('-').map(Number);
@@ -17,21 +16,15 @@ export async function mountRosterTools(root, route, ctx, mode) {
   root.innerHTML = '<div id="rt-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#rt-body');
   const paint = () => { const y = window.scrollY; body.innerHTML = (st.mode === '_manday' ? mandayHtml : migrateHtml)(st); window.scrollTo(0, y); };
   if (!st.allowed) { body.removeAttribute('aria-busy'); paint(); return; }
-  /** 프로젝트(종료된 것 포함) 중 내가 열 수 있는 것 + 각 프로젝트의 명단, 마스터 명부 */
-  const loadBase = async () => {
-    const failed = []; const regs = []; (await getDocs(collection(db, 'pjt_registry'))).forEach((d) => regs.push(Object.assign({}, d.data(), { id: d.id, name: d.data().name || 'PJT' })));
-    const vis = regs.filter((r) => canAccessProject(me, r)).sort((a, b) => ((a.status === 'ended') - (b.status === 'ended')) || (ts(a) - ts(b)));
-    st.projects = await Promise.all(vis.map(async (r) => { const roster = {}; try { (await getDocs(collection(db, pathsFor(r.id).roster))).forEach((d) => { const w = d.data(); roster[d.id] = { name: w.name || '', birth: w.birth || '' }; }); } catch (e) { failed.push(r.name + ' 명단'); } return { key: r.id, name: r.name, ended: r.status === 'ended', roster, rows: [] }; }));
-    const ms = {}; try { (await getDocs(collection(db, 'master_workers'))).forEach((d) => { const w = d.data(); ms[d.id] = { name: w.name || '', birth: w.birth || '', leaderId: w.leaderId || '', resigned: !!w.resigned }; }); } catch (e) { failed.push('마스터 명부'); } st.masters = ms; return failed;
-  };
+  /** 프로젝트(종료 포함) 중 내가 열 수 있는 것 + 각 프로젝트의 명단, 마스터 명부(공용 불러오기) */
+  const loadBaseSt = async () => { const r = await loadBase(me); st.projects = r.projects; st.masters = r.masters; return r.failed; };
   const loadMonth = async () => {
-    const seq = ++st.seq; const { lo, hi } = monthRange(st.y, st.m); st.ready = false; paint(); const failed = st.baseFailed.slice();
-    await Promise.all(st.projects.map(async (p) => { try { const rows = []; (await getDocs(query(collection(db, pathsFor(p.key).manday), where(documentId(), '>=', lo), where(documentId(), '<=', hi)))).forEach((d) => rows.push([d.id, d.data().md || {}])); p.rows = rows; } catch (e) { p.rows = []; failed.push(p.name + ' 공수'); } }));
+    const seq = ++st.seq; st.ready = false; paint(); const failed = st.baseFailed.slice(); failed.push.apply(failed, await loadRows(st.projects, st.y, st.m));
     if (seq !== st.seq) return;   // 그 사이 달을 바꾼 경우 이전 결과는 버린다
     st.failed = failed; st.agg = aggregateMonth(st.projects, st.masters); st.ready = true; paint();
   };
-  const loadMigrate = async () => { st.ready = false; paint(); st.baseFailed = await loadBase(); st.failed = st.baseFailed.slice(); st.groups = migrationGroups(st.projects, st.masters); st.ready = true; paint(); };
-  try { st.baseFailed = await loadBase(); body.removeAttribute('aria-busy'); if (mode === '_manday') await loadMonth(); else { st.failed = st.baseFailed.slice(); st.groups = migrationGroups(st.projects, st.masters); st.ready = true; paint(); } } catch (e) { body.removeAttribute('aria-busy'); st.err = '불러오지 못했습니다: ' + ((e && (e.code || e.message)) || ''); paint(); }
+  const loadMigrate = async () => { st.ready = false; paint(); st.baseFailed = await loadBaseSt(); st.failed = st.baseFailed.slice(); st.groups = migrationGroups(st.projects, st.masters); st.ready = true; paint(); };
+  try { st.baseFailed = await loadBaseSt(); body.removeAttribute('aria-busy'); if (mode === '_manday') await loadMonth(); else { st.failed = st.baseFailed.slice(); st.groups = migrationGroups(st.projects, st.masters); st.ready = true; paint(); } } catch (e) { body.removeAttribute('aria-busy'); st.err = '불러오지 못했습니다: ' + ((e && (e.code || e.message)) || ''); paint(); }
   /** 옛 직원 id 의 공수·출역 기록을 마스터 id 로 옮긴다(그 프로젝트의 날짜 문서 전체를 훑는다) → 쓸 작업 목록 */
   const rekeyOps = async (rk) => {
     const P = pathsFor(rk.pjtKey); const ops = [];
@@ -53,14 +46,14 @@ export async function mountRosterTools(root, route, ctx, mode) {
     if (plan.error) { st.msg = plan.error; paint(); return; }
     if (plan.warnBirths.length) { const ok = await confirmDialog({ title: '확인', body: '생년월일이 서로 다른 항목이 있습니다 (' + plan.warnBirths.join(', ') + ').\n같은 사람으로 묶어 등록할까요?', confirmLabel: '같은 사람으로 등록' }); if (!ok.ok) return; }
     st.busy = true; st.msg = ''; paint();
-    try { const moved = await apply(plan, true); st.form = null; await loadBase().then((f) => { st.baseFailed = f; }); st.groups = migrationGroups(st.projects, st.masters); toast(g.name + '님을 마스터로 등록했습니다.' + (moved ? ' (공수·출역 기록 ' + moved + '건의 ID를 바꿨습니다)' : '')); } catch (err) { st.msg = '마이그레이션 실패: ' + ((err && (err.code || err.message)) || '') + ' — 다시 눌러 이어서 진행할 수 있습니다.'; }
+    try { const moved = await apply(plan, true); st.form = null; await loadBaseSt().then((f) => { st.baseFailed = f; }); st.groups = migrationGroups(st.projects, st.masters); toast(g.name + '님을 마스터로 등록했습니다.' + (moved ? ' (공수·출역 기록 ' + moved + '건의 ID를 바꿨습니다)' : '')); } catch (err) { st.msg = '마이그레이션 실패: ' + ((err && (err.code || err.message)) || '') + ' — 다시 눌러 이어서 진행할 수 있습니다.'; }
     st.busy = false; paint();
   };
   const merge = async (name, masterId) => {
     const g = st.groups.find((x) => x.name === name); if (!g) return; const plan = planMerge(g, masterId, st.masters, st.projects); if (plan.error) { toast(plan.error); return; }
     const mm = st.masters[masterId]; const ok = await confirmDialog({ title: '같은 사람으로 합치기', body: name + '님의 명단 항목 ' + g.items.length + '개(' + g.items.map((i) => i.pjtName).join(', ') + ')를 마스터 "' + mm.name + '"(' + (mm.birth || '생년월일 없음') + ')로 합칩니다.\n옛 id 의 공수·출역 기록도 마스터 id 로 바뀌고, 옛 명단 문서는 삭제됩니다.', confirmLabel: '합치기' }); if (!ok.ok) return;
     st.busy = true; paint();
-    try { const moved = await apply(plan, false); await loadBase().then((f) => { st.baseFailed = f; }); st.groups = migrationGroups(st.projects, st.masters); toast(name + '님을 마스터로 합쳤습니다.' + (moved ? ' (공수·출역 기록 ' + moved + '건의 ID를 바꿨습니다)' : '')); } catch (err) { toast('합치기 실패: ' + ((err && (err.code || err.message)) || '') + ' — 다시 눌러 이어서 진행할 수 있습니다.'); }
+    try { const moved = await apply(plan, false); await loadBaseSt().then((f) => { st.baseFailed = f; }); st.groups = migrationGroups(st.projects, st.masters); toast(name + '님을 마스터로 합쳤습니다.' + (moved ? ' (공수·출역 기록 ' + moved + '건의 ID를 바꿨습니다)' : '')); } catch (err) { toast('합치기 실패: ' + ((err && (err.code || err.message)) || '') + ' — 다시 눌러 이어서 진행할 수 있습니다.'); }
     st.busy = false; paint();
   };
   const link = async (key) => {

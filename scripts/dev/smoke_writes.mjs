@@ -886,4 +886,32 @@ await scenario('PJT 근로자 연명부 5단계(도구): 월간 공수 보기(�
   // 권한
   const sv = ctx.me; ctx.me = { admin: false, uid: 'g2', name: '실무자', perms: { pjt: true }, teamLeaderIds: [] }; try { const m2 = await mountFresh(pjtMod.mountRoster, { segs: ['_migrate'], query: {} }); await sleep(300); await click(m2, '[data-rt-open="동명"]', 100); check(!!m2.querySelector('[data-rt-f="birth"]') && !m2.querySelector('[data-rt-f="rate"]'), '실무자(관리자 아님): 마스터 등록은 되지만 일당 칸은 없음'); ctx.me = { admin: false, uid: 'g3', name: '손님', perms: {}, teamLeaderIds: [] }; const m3 = await mountFresh(pjtMod.mountRoster, { segs: ['_manday'], query: {} }); check(/PJT 권한이 있는 직원과 관리자만/.test(m3.textContent) && !m3.querySelector('.jh-ro__kpi'), 'PJT 권한이 없으면 안내만'); } finally { ctx.me = sv; }
 });
+
+await scenario('내 팀 공수표(새 화면): 팀장은 자기 팀·관리자는 전체 팀, 팀 공수·단가·노무비·프로젝트별 칩, 개인 공수표 달력·이미지 저장, 관리자 팀 단가 수정(두 문서 한 번에)', async (check) => {
+  const { appToday } = await import(new URL('../../app/modules/pjt/attendance.js', import.meta.url).href); const T = appToday(); const put2 = (col, id, data) => { (D[col] = D[col] || {})[id] = data; };
+  put2('pjt_registry/p4ph2/manday', T, { md: { L1: 1, M1: 2, M2: 0.5, ghost: 4 } }); put2('pjt_registry/REG1/manday', T, { md: { L1: 0.5, L2: 1 } }); put2('team_rates', 'L1', { teamRate: 200000 });
+  const sv = ctx.me; const txtOf = (r) => r.textContent.replace(/\s+/g, ' ');
+  try {
+    ctx.me = { admin: false, uid: 'tl1', name: '김팀장', rank: '차장', perms: {}, teamLeaderIds: ['L1'] }; WR().length = 0; const root = await mountFresh(pjtMod.mountTeam, { segs: [], query: {} }); await sleep(500); const txt = () => txtOf(root);
+    check(/내 팀 공수표/.test(txt()) && /김팀장 차장 · 팀 1개/.test(txt()) && root.querySelectorAll('.jh-card').length === 1 && /👑 김팀장 팀/.test(txt()) && /팀원 2명 \(팀장 포함 3명\)/.test(txt()) && !root.querySelector('[data-tm-rate]') && !/전체 팀 공수/.test(txt()), '★ 팀장: 지정된 자기 팀 하나만(팀 요약 카드 없음), 단가 수정 버튼은 관리자에게만');
+    const kv = (l) => [...root.querySelectorAll('.jh-ro__kpi')].find((k) => k.textContent.includes(l)); check(/4\.0/.test(kv('팀 공수').textContent) && /200,000원/.test(kv('팀 단가').textContent) && /800,000원/.test(kv('노무비').textContent), '★ 팀 공수 4.0 = 팀장 1.5(Ph2 1.0 + H17L 0.5) + 이팀원 2.0 + 최팀원 0.5, 팀 단가 200,000원(team_rates), 노무비 = 공수 × 단가 = 800,000원 — 명단 밖 id(ghost)와 다른 팀(박팀장)의 공수는 빠짐');
+    check(/P4 Ph2 \(FAB\) 3\.5공수 · 700,000원/.test(txt()) && /H17L Gas RM\. 전환공사 0\.5공수 · 100,000원/.test(txt()), '프로젝트별 칩: 공수와 금액(공수 × 단가)');
+    const mems = [...root.querySelectorAll('.jh-tm__mem')]; check(mems.length === 3 && /팀장/.test(mems[0].textContent) && /김팀장/.test(mems[0].textContent) && /이팀원/.test(mems[1].textContent) && /2\.0/.test(mems[1].textContent), '팀원 목록: 팀장 먼저, 이름순, 개인별 공수와 프로젝트별 내역');
+    const pngs = []; ctx.makePng = (o) => { pngs.push(o); return 'data:image/png;base64,AAAA'; }; const saved = []; ctx.savePng = (u, n) => saved.push([u, n]);
+    const root2 = await mountFresh(pjtMod.mountTeam, { segs: [], query: {} }); await sleep(400); await click(root2, '[data-tm-sheet="0|1"]', 150); const dlg = document.querySelector('.jh-tm__sheet'); const cellT = [...dlg.querySelectorAll('.jh-tm__day[data-on="1"]')];
+    check(!!dlg && /이팀원님/.test(dlg.textContent) && cellT.length === 1 && /2\.0/.test(cellT[0].textContent) && /FAB 2\.0/.test(cellT[0].textContent) && /이번 달 합계\s*2\.0 공수/.test(txtOf(dlg)), '★ 📋 공수표: 그 달 달력에 날짜별 공수와 프로젝트 약칭(FAB 2.0), 이번 달 합계'); await click(document.body, '[data-tm-png]', 100);
+    check(saved.length === 1 && /^이팀원_\d{6}_공수표\.png$/.test(saved[0][1]) && pngs.length === 1 && pngs[0].total === 2 && pngs[0].weeks.length >= 5 && pngs[0].chips[0].label === 'P4 Ph2 (FAB) 2.0' && /이팀원님/.test(pngs[0].title), '📷 이미지 저장: 달력·프로젝트별 공수·합계로 이름_연월_공수표.png'); await click(document.body, '[data-tm-close]', 80); check(!document.querySelector('.jh-tm__sheet'), '닫기'); delete ctx.makePng; delete ctx.savePng;
+    await click(root, '[data-tm-shift="-1"]', 300); check(!/\b4\.0\b/.test(kv('팀 공수') ? kv('팀 공수').textContent : '') || /0\.0/.test(kv('팀 공수').textContent), '‹ 로 이전 달(다시 읽음)');
+    check(WR().length === 0, '★ 팀장 화면은 읽기만 한다 — 저장 호출 없음');
+    // 관리자
+    ctx.me = { admin: true, uid: 'u1', name: '관리자', perms: {}, teamLeaderIds: [] }; const ad = await mountFresh(pjtMod.mountTeam, { segs: [], query: {} }); await sleep(500); const atxt = () => txtOf(ad);
+    check(ad.querySelectorAll('.jh-card').length >= 2 && /전체 팀 공수 \(\d+팀\)/.test(atxt()) && /노무비 합계 \(단가 있는 1팀\)/.test(atxt()) && /👑 김팀장 팀/.test(atxt()) && /👑 박팀장 팀/.test(atxt()) && /미설정/.test(atxt()) && ad.querySelectorAll('[data-tm-rate]').length === ad.querySelectorAll('.jh-card').length, '★ 관리자: 재직 팀장 전체의 팀, 전체 요약(단가 있는 팀 수 표시), 단가가 없는 팀은 "미설정", 팀마다 ✏️');
+    WR().length = 0; await click(ad, '[data-tm-rate="0"]', 150); const d2 = document.querySelector('.jh-dialog'); check(!!d2 && /김팀장 팀 단가/.test(d2.textContent) && /현재: 200,000원/.test(d2.textContent) && !!d2.querySelector('#jh-confirm-reason') && WR().length === 0, '단가 수정 창(현재 값 표시, 확인 전에는 저장 안 함)');
+    d2.querySelector('#jh-confirm-reason').value = 'abc'; await confirmOk(); await sleep(200); check(WR().length === 0 && /단가는 숫자로 입력해 주세요/.test(document.body.textContent), '숫자가 아니면 저장하지 않음');
+    await click(ad, '[data-tm-rate="0"]', 150); document.querySelector('.jh-dialog #jh-confirm-reason').value = '210,000원'; await confirmOk(); await sleep(300);
+    const wp = wrote('batch-set', /^master_worker_private\/L1$/), wt = wrote('batch-set', /^team_rates\/L1$/); check(wp.length === 1 && wp[0].merge === true && wp[0].data.teamRate === 210000 && wt.length === 1 && wt[0].merge === true && wt[0].data.teamRate === 210000 && !!wt[0].data.updatedAt && /840,000원/.test(atxt()), '★ 팀 단가 저장: 관리자 전용 문서(master_worker_private)와 팀장 조회용(team_rates)을 한 번에, 화면의 노무비가 바로 210,000 × 4.0 = 840,000원으로 바뀜');
+    // 권한 없음
+    ctx.me = { admin: false, uid: 'g3', name: '실무자', perms: { pjt: true }, teamLeaderIds: [] }; const gt = await mountFresh(pjtMod.mountTeam, { segs: [], query: {} }); check(/팀장 전용 화면입니다/.test(gt.textContent) && !gt.querySelector('.jh-card'), '팀장으로 지정되지 않은 일반 계정은 안내만(PJT 권한이 있어도)');
+  } finally { ctx.me = sv; delete ctx.makePng; delete ctx.savePng; }
+});
 markDone(); console.log('\n' + (failed ? '문제가 있는 저장 동작 ' + failed + '건' : '모든 저장 동작이 올바른 경로·값으로 기록됨')); process.exit(failed ? 1 : 0);
