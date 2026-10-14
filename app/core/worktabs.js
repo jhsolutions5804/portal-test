@@ -26,6 +26,18 @@ export function resumeHash(list, currentKey, mod) {
 export const showBar = (list) => (list || []).length >= 2;
 /** 화면 순서가 흔들리지 않게, 탭 바는 처음 연 순서(키 등장 순)로 그린다 */
 export function barOrder(order, list) { const keys = (list || []).map((x) => x.key); const kept = (order || []).filter((k) => keys.indexOf(k) !== -1); keys.forEach((k) => { if (kept.indexOf(k) === -1) kept.push(k); }); return kept; }
+/** 탭에 보이는 짧은 이름: 길게 저장된 이름("모듈 › 프로젝트 › 화면")을 줄여 "P4 Ph2 · 공정", "인사 · 출퇴근·초과근로", "결재 · 홈" 처럼 — 전체 이름은 마우스를 올리면(title) 나온다 */
+const MOD_SHORT = { 'PJT 관리': 'PJT', '영업기획': '영업', '인사총무': '인사', '재무회계': '재무', '전자결재': '결재', '내 팀 공수표': '팀 공수' };
+const cut = (t, n) => (t.length > n ? t.slice(0, n - 1) + '…' : t);
+export function shortLabel(label) {
+  const parts = String(label || '').split(' › ').map((x) => x.trim()).filter(Boolean); if (!parts.length) return '';
+  const mod = parts[0], ms = MOD_SHORT[mod] || cut(mod, 6); if (parts.length === 1) return ms;
+  let screen = parts[parts.length - 1]; const proj = parts.length >= 3 ? parts[1] : '';
+  [mod, ms].forEach((p) => { if (screen !== p && screen.indexOf(p + ' ') === 0) screen = screen.slice(p.length + 1); });   // "전자결재 홈" → "홈", "인사 홈" → "홈"
+  screen = cut(screen.replace(/\s*\(새\)\s*$/, ''), 12);
+  if (proj) { const name = cut(proj.replace(/\s*\([^)]*\)\s*/g, ' ').trim().split(/\s+/).slice(0, 2).join(' '), 10); return name + ' · ' + screen; }   // 프로젝트: 괄호 설명을 빼고 앞 두 단어("P4 Ph2 (FAB)" → "P4 Ph2")
+  return ms + ' · ' + screen;
+}
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 /** 싱글톤: 셸과 옛 모듈 틀이 같은 것을 쓴다. 닫기·새로고침은 등록한 쪽(화면을 살려 둔 쪽)이 처리한다 */
 function create() {
@@ -34,7 +46,7 @@ function create() {
     const app = host && host.closest('.jh-app'); const on = !!host && showBar(list);
     if (app) app.toggleAttribute('data-worktabs', on); if (!host) return; host.hidden = !on; if (!on) { host.innerHTML = ''; return; }
     const ord = (order = barOrder(order, list)); const byKey = {}; list.forEach((x) => { byKey[x.key] = x; });
-    host.innerHTML = '<ol class="jh-worktabs__list">' + ord.map((k) => { const t = byKey[k]; return '<li class="jh-worktabs__item"' + (t.key === current ? ' data-current="1"' : '') + '><a class="jh-worktabs__tab" href="' + esc(t.hash) + '" data-wt-key="' + esc(t.key) + '"' + (t.key === current ? ' aria-current="page"' : '') + ' title="' + esc(t.label) + '">' + esc(t.label) + '</a><button type="button" class="jh-worktabs__btn" data-wt-reload="' + esc(t.key) + '" aria-label="새로고침" title="새로고침(처음 상태로 다시 불러오기)">↻</button><button type="button" class="jh-worktabs__btn" data-wt-close="' + esc(t.key) + '" aria-label="탭 닫기" title="탭 닫기">✕</button></li>'; }).join('') + '</ol>';
+    host.innerHTML = '<ol class="jh-worktabs__list">' + ord.map((k) => { const t = byKey[k]; return '<li class="jh-worktabs__item"' + (t.key === current ? ' data-current="1"' : '') + '><a class="jh-worktabs__tab" href="' + esc(t.hash) + '" data-wt-key="' + esc(t.key) + '"' + (t.key === current ? ' aria-current="page"' : '') + ' title="' + esc(t.label) + '">' + esc(shortLabel(t.label)) + '</a><button type="button" class="jh-worktabs__btn" data-wt-reload="' + esc(t.key) + '" aria-label="새로고침" title="새로고침(처음 상태로 다시 불러오기)">↻</button><button type="button" class="jh-worktabs__btn" data-wt-close="' + esc(t.key) + '" aria-label="탭 닫기" title="탭 닫기">✕</button></li>'; }).join('') + '</ol>';
   };
   const close = (key) => { const wasCurrent = key === current; const next = wasCurrent ? nextAfterClose(list, key) : null; const h = handlers.get(key); handlers.delete(key); list = dropTab(list, key); order = order.filter((k) => k !== key); if (h && h.drop) { try { h.drop(); } catch (e) { /* 이미 없는 화면 */ } } if (wasCurrent) { current = ''; opts.navigate(next ? next.hash : '#/home'); } paint(); };
   return {

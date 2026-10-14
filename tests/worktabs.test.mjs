@@ -1,4 +1,5 @@
-import { MAX_TABS, noteTab, overflowKeys, dropTab, nextAfterClose, relabelTab, showBar, barOrder, resumeHash, workTabs } from '../app/core/worktabs.js';
+import { shortLabel, MAX_TABS, noteTab, overflowKeys, dropTab, nextAfterClose, relabelTab, showBar, barOrder, resumeHash, workTabs } from '../app/core/worktabs.js';
+import fs from 'node:fs';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 let L = noteTab([], { key: '#/plan/est', hash: '#/plan/est', label: '영업기획 › 견적', mod: 'plan' }, 1000); L = noteTab(L, { key: '#/pjt/home', hash: '#/pjt/home', label: 'PJT 관리', mod: 'pjt' }, 2000); L = noteTab(L, { key: '#/plan/est', hash: '#/plan/est/e1', label: '' }, 3000);
 ok(L.length === 2 && L[0].key === '#/plan/est' && L[0].hash === '#/plan/est/e1' && L[0].label === '영업기획 › 견적' && L[0].ts === 3000 && L[0].mod === 'plan' && L[1].key === '#/pjt/home', '★ 같은 화면은 한 탭으로(맨 앞으로, 주소·시각 갱신), 이름이 비어 오면 이전 이름·모듈을 유지');
@@ -18,4 +19,11 @@ let nav = ''; workTabs.attach(null, { navigate: (h) => { nav = h; } }); workTabs
 ok(dropped === 1 && nav === '#/a/x' && workTabs.list().length === 1 && workTabs.currentKey() === '', '★ 현재 탭을 닫으면 그 화면을 정리하고(drop) 가장 최근 다른 탭으로 이동');
 workTabs.note({ key: '#/a/x', hash: '#/a/x', label: 'A' }); workTabs.close('#/a/x'); ok(nav === '#/home' && dropped === 2, '마지막 탭(현재)을 닫으면 홈으로');   // 이동하면 화면이 다시 현재로 기록된다
 workTabs.note({ key: '#/c/x', hash: '#/c/x', label: 'C' }, { drop: () => { dropped++; } }); workTabs.reset(); ok(dropped === 3 && workTabs.list().length === 0, '모두 닫기(로그아웃·사용자 변경)는 모든 화면을 정리');
+// 탭 이름은 간략하게(그래도 무슨 화면인지 알 수 있게) — 전체 이름은 title
+const sl = shortLabel;
+ok(sl('PJT 관리 › P4 Ph2 (FAB) › 공정') === 'P4 Ph2 · 공정' && sl('PJT 관리 › 청주 M15X CUB동 A/S › 출역·공수') === '청주 M15X · 출역·공수' && sl('PJT 관리 › P5 Ph1 (복합동) › 프로젝트 홈') === 'P5 Ph1 · 프로젝트 홈' && sl('PJT 관리 › H17L Gas RM. 전환공사 › 공사일보') === 'H17L Gas · 공사일보' && sl('PJT 관리 › P4 Ph4 (SUP) › 일정') === 'P4 Ph4 · 일정', '★ PJT 탭: 프로젝트 괄호 설명과 뒤쪽 단어를 빼고 "프로젝트 · 화면" (P4 Ph2 · 공정, 청주 M15X · 출역·공수)');
+ok(sl('PJT 관리 › PJT 홈') === 'PJT · 홈' && sl('PJT 관리 › 월간 공수') === 'PJT · 월간 공수' && sl('PJT 관리 › 종료 PJT') === 'PJT · 종료 PJT' && sl('인사총무 › 인사 홈') === '인사 · 홈' && sl('인사총무 › 출퇴근·초과근로') === '인사 · 출퇴근·초과근로' && sl('전자결재 › 전자결재 홈') === '결재 · 홈' && sl('전자결재 › 새 문서 작성') === '결재 · 새 문서 작성' && sl('재무회계 › 개요') === '재무 · 개요' && sl('영업기획 › 견적') === '영업 · 견적', '그 밖의 모듈: "모듈 약칭 · 화면" (인사 · 출퇴근·초과근로, 결재 · 홈, 재무 · 개요, 영업 · 견적), 화면 이름 앞의 모듈 이름 중복은 뺌');
+ok(sl('영업기획') === '영업' && sl('') === '' && sl(null) === '' && sl('새 모듈 › 아주아주긴화면이름입니다정말로') === '새 모듈 · 아주아주긴화면이름입니…' && sl('알수없는모듈이름이길다 › 홈') === '알수없는모… · 홈' && sl('PJT 관리 › 아주아주아주긴프로젝트이름입니다 › 공정') === '아주아주아주긴프로… · 공정' && sl('PJT 관리 › 청주 M15X CUB동 A/S › 공정').length <= 22, '이름이 하나뿐이면 모듈 약칭만, 비어 있으면 빈 문자열, 너무 긴 화면·프로젝트·모듈 이름은 …로 줄임');
+const css = fs.readFileSync(new URL('../app/theme/components.css', import.meta.url), 'utf8'); const wcss = (css.match(/\.jh-worktabs \{[^}]*\}/) || [''])[0];
+ok(/overflow: hidden;/.test(wcss) && !/overflow-x: auto/.test(wcss) && /\.jh-worktabs__list \{[^}]*flex: 1 1 auto; min-width: 0/.test(css) && /\.jh-worktabs__item \{[^}]*flex: 0 1 auto; min-width: var\(--u-64\); max-width: var\(--u-220\)/.test(css) && /\.jh-worktabs__tab \{ flex: 1 1 auto;[^}]*overflow: hidden; text-overflow: ellipsis/.test(css) && /\.jh-worktabs__btn \{ flex: none;/.test(css), '★ 스타일 보호: 탭 바는 가로 스크롤 없이 화면 폭 안에서만(overflow hidden), 탭이 많아지면 폭을 나눠 좁아짐(shrink, 최소 64px·최대 220px, 글자는 …로 줄임), 닫기·새로고침 버튼은 고정 크기');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

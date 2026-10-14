@@ -110,14 +110,14 @@
 @media (max-width: 899px) { .jh-recent { top: 40%; } .jh-recent__panel { width: min(var(--u-320), 78vw); } }
 @media print { .jh-recent { display: none; } }
 /* 작업 탭 바(데스크톱 하단): 살려 둔 화면들을 탭으로 — 누르면 그 화면 그대로, ↻ 처음 상태로, ✕ 닫기 */
-.jh-worktabs { flex: 0 0 auto; position: sticky; bottom: 0; z-index: var(--z-tabbar); display: flex; align-items: stretch; min-height: var(--u-40); background: var(--c-surface); border-top: var(--u-1) solid var(--c-line-strong); overflow-x: auto; }
+.jh-worktabs { flex: 0 0 auto; position: sticky; bottom: 0; z-index: var(--z-tabbar); display: flex; align-items: stretch; min-height: var(--u-40); background: var(--c-surface); border-top: var(--u-1) solid var(--c-line-strong); overflow: hidden; }   /* 화면 폭 안에서만 — 가로 스크롤 없음 */
 .jh-worktabs[hidden] { display: none; }
-.jh-worktabs__list { display: flex; align-items: stretch; gap: var(--u-2); margin: 0; padding: var(--u-4) var(--sp-3) 0; list-style: none; }
-.jh-worktabs__item { display: flex; align-items: center; flex: 0 0 auto; max-width: var(--u-320); border: var(--u-1) solid var(--c-line); border-bottom: 0; border-radius: var(--radius) var(--radius) 0 0; background: var(--c-bg); }
+.jh-worktabs__list { display: flex; align-items: stretch; gap: var(--u-2); flex: 1 1 auto; min-width: 0; margin: 0; padding: var(--u-4) var(--sp-3) 0; list-style: none; }
+.jh-worktabs__item { display: flex; align-items: center; flex: 0 1 auto; min-width: var(--u-64); max-width: var(--u-220);   /* 탭이 많아지면 폭을 나눠 함께 좁아진다 */ border: var(--u-1) solid var(--c-line); border-bottom: 0; border-radius: var(--radius) var(--radius) 0 0; background: var(--c-bg); }
 .jh-worktabs__item[data-current="1"] { background: var(--c-surface); border-color: var(--c-primary); box-shadow: inset 0 var(--u-3) 0 var(--c-primary); }
-.jh-worktabs__tab { padding: 0 var(--sp-3); min-width: 0; max-width: var(--u-220); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-ink-2); font-size: var(--fs-sm); font-weight: 600; text-decoration: none; line-height: var(--u-36, 2.25rem); }
+.jh-worktabs__tab { flex: 1 1 auto; padding: 0 var(--sp-3); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-ink-2); font-size: var(--fs-sm); font-weight: 600; text-decoration: none; line-height: var(--u-36, 2.25rem); }
 .jh-worktabs__item[data-current="1"] .jh-worktabs__tab { color: var(--c-primary); font-weight: 800; }
-.jh-worktabs__btn { border: 0; background: none; padding: 0 var(--u-6); color: var(--c-ink-3); font: inherit; font-size: var(--fs-xs); cursor: pointer; line-height: var(--u-36, 2.25rem); }
+.jh-worktabs__btn { flex: none; border: 0; background: none; padding: 0 var(--u-6); color: var(--c-ink-3); font: inherit; font-size: var(--fs-xs); cursor: pointer; line-height: var(--u-36, 2.25rem); }
 .jh-worktabs__btn:hover { color: var(--c-ink); background: var(--c-primary-weak); }
 @media (max-width: 899px) { .jh-worktabs { display: none; } }
 @media print { .jh-worktabs { display: none; } }
