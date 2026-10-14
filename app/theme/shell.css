@@ -66,7 +66,7 @@
 .jh-widget { display: flex; min-width: 0; }
 .jh-widget > .jh-panel { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; }
 .jh-widget > .jh-panel > .jh-form { flex: 1 1 auto; align-content: center; }
-.jh-widget[data-reserve="tall"] { min-height: calc(var(--u-380) + var(--u-4)); }   /* 출퇴근이 다 불러와진 높이(384) — 불러온 뒤 아래 카드가 밀리지 않게. 그 밖의 카드는 내용 높이 */
+.jh-widget[data-reserve="tall"] { min-height: calc(var(--u-320) + var(--u-20)); }   /* 출퇴근이 다 불러와진 높이(약 350) — 불러온 뒤 아래 카드가 밀리지 않게. 그 밖의 카드는 내용 높이 */
 @media (max-width: 899px) { .jh-widget[data-reserve="tall"] { min-height: calc(var(--u-320) + var(--u-44) + var(--u-4)); } }
 .jh-dashboard__grid > .jh-widget[data-wide="true"] { grid-column: 1 / -1; }
 .jh-clock { display: grid; justify-items: center; gap: var(--sp-1); padding: var(--sp-2) 0; text-align: center; }
@@ -116,5 +116,7 @@
 .jh-widget > .jh-panel > .jh-form { padding: var(--sp-4) calc(var(--sp-4) + var(--sp-1)); gap: var(--sp-4); }
 .jh-widget__actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .jh-widget__actions .jh-btn { flex: 1 1 auto; justify-content: center; text-align: center; text-decoration: none; }
-.jh-widget[data-widget="edoc/todo"] .jh-todo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }   /* 좁은 왼쪽 칸: 할 일 4칸을 2×2로 */
+.jh-widget[data-widget="edoc/todo"] .jh-todo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }   /* 좁은 왼쪽 칸: 할 일 4칸을 2×2로, 칸은 낮게(안내 문구 생략) */
+.jh-widget[data-widget="edoc/todo"] .jh-todo { padding: var(--sp-3); min-height: 0; }
+.jh-widget[data-widget="edoc/todo"] .jh-todo__hint { display: none; }
 }

@@ -1,11 +1,11 @@
-import { calendarProvidersFor } from '../../core/registry.js?v=20261014zv';
-import { toast } from '../../core/ui.js?v=20261014zv';
-import { confirmDialog } from '../../core/dialog.js?v=20261014zv';
-import { loadHolidays, isHoliday } from '../../shared/holidays.js?v=20261014zv';
-import { dateKey, parseMonth, monthKey, shiftMonth, gridRange, groupByDay, mergeResults, visibleEvents, makeEvent, canWrite, isView, defaultView, viewRange, shiftAnchor, listDates, rangeTitle, AGENDA_DAYS } from './logic.js?v=20261014zv';
-import { leaveProvider, companyProvider, deleteCompanyEvent, setCompanyDone, invalidateCompany } from './data.js?v=20261014zv';
-import { gridHtml, dayHtml, noticeHtml, widgetFrameHtml, listFrameHtml, fullFrameHtml, agendaHtml, blankDraft, draftOf } from './view.js?v=20261014zv';
-import { openEventForm } from './form.js?v=20261014zv';
+import { calendarProvidersFor } from '../../core/registry.js?v=20261014zw';
+import { toast } from '../../core/ui.js?v=20261014zw';
+import { confirmDialog } from '../../core/dialog.js?v=20261014zw';
+import { loadHolidays, isHoliday } from '../../shared/holidays.js?v=20261014zw';
+import { dateKey, parseMonth, monthKey, shiftMonth, gridRange, groupByDay, mergeResults, visibleEvents, makeEvent, canWrite, isView, defaultView, viewRange, shiftAnchor, listDates, rangeTitle, AGENDA_DAYS } from './logic.js?v=20261014zw';
+import { leaveProvider, companyProvider, deleteCompanyEvent, setCompanyDone, invalidateCompany } from './data.js?v=20261014zw';
+import { gridHtml, dayHtml, noticeHtml, widgetFrameHtml, listFrameHtml, fullFrameHtml, agendaHtml, blankDraft, draftOf } from './view.js?v=20261014zw';
+import { openEventForm } from './form.js?v=20261014zw';
 
 /** 일정 모듈 = 플랫폼 기본 모듈. 자기 일정(회사 일정·연차·휴무)을 내놓고, 다른 모듈이 manifest.calendar 로 등록한 일정도 한 달력에 모은다.
  *  사이드바에는 두지 않는다(nav:false) — 홈의 일정 위젯과 그 안의 보기 방식(안건·하루·3일·월)으로 쓴다. */
@@ -51,7 +51,7 @@ function createCalendar(el, me, widget, route) {
   el.onclick = null; el.onchange = null; el.oninput = null;
   el.innerHTML = widget ? widgetFrameHtml(S, providers, me) : fullFrameHtml(S, providers, me);
   const $ = (s) => el.querySelector(s); const root = $('.jh-cal'); const grid = $('[data-cal-grid]'); let dayEl = $('[data-cal-day]'); const noteEl = $('[data-cal-notice]'); const titleEl = $('[data-cal-title]'); const filter = $('[data-cal-filter]');
-  if (filter) filter.open = !isPhone();   // 폰에서는 접어 둔다(화면을 덜 차지하고 칩이 잘리지 않게), PC는 펼침
+  if (filter) filter.open = widget ? false : !isPhone();   // 폰에서는 접어 둔다(화면을 덜 차지하고 칩이 잘리지 않게), PC는 펼침
   let bd = {};
   const reserve = () => { /* 홈은 카드를 내용 높이로 둔다(미리 큰 자리를 잡지 않음) */ };
   const recompute = () => { bd = groupByDay(visibleEvents(S.events, S.off), S.range, { isHoliday }); };

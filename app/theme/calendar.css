@@ -106,4 +106,6 @@
 /* 홈의 일정 목록 카드: 카드 높이를 다 쓰고 목록이 길면 카드 안에서만 스크롤 */
 .jh-cal-list { display: flex; flex-direction: column; min-height: 0; }
 .jh-cal-list__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--sp-4) calc(var(--sp-4) + var(--sp-1)); }
+/* 홈의 일정 캘린더: 날짜 칸을 조금 낮춰 한 화면에 가깝게(폰은 기존 칸 높이 그대로) */
+@media (min-width: 900px) { .jh-cal[data-in-widget="true"] .jh-cal__day { min-height: var(--u-84); } }
 
