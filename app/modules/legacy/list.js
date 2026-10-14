@@ -1,6 +1,6 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261014za';
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261014za';
-import { isProjectKey } from '../../shared/pjt-key.js?v=20261014za';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261014zb';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261014zb';
+import { isProjectKey } from '../../shared/pjt-key.js?v=20261014zb';
 export { isProjectKey };
 /* 옛 모듈 어댑터의 목록과 규칙 — 화면(DOM)·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 옛 모듈이 새 모듈로 바뀌면 여기서 항목을 지우고 modules/index.js 의 새 모듈 목록으로 옮긴다. */

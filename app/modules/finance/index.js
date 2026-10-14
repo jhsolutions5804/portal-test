@@ -1,14 +1,14 @@
-import { esc, toast } from '../../core/ui.js?v=20261014za';
-import { confirmDialog } from '../../core/dialog.js?v=20261014za';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261014za';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261014za';
-import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261014za';
-import { parseBankSheets } from '../../shared/bank-import.js?v=20261014za';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261014za';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261014za';
-import { monthlyView, monthlyCsv, MP_SEED, npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261014za';
-import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, saveMonthlyPlan, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261014za';
-import { sideHtml, monthlyHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261014za';
+import { esc, toast } from '../../core/ui.js?v=20261014zb';
+import { confirmDialog } from '../../core/dialog.js?v=20261014zb';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261014zb';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261014zb';
+import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261014zb';
+import { parseBankSheets } from '../../shared/bank-import.js?v=20261014zb';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261014zb';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261014zb';
+import { monthlyView, monthlyCsv, MP_SEED, npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261014zb';
+import { loadLedger, loadProjects, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, saveMonthlyPlan, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261014zb';
+import { sideHtml, monthlyHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261014zb';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
 export const manifest = {

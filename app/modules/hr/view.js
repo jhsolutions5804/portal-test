@@ -1,22 +1,22 @@
-import { esc } from '../../core/ui.js?v=20261014za';
-import { rtWon, retireRecordsSorted } from './retire.js?v=20261014za';
-import { otSummary, otPerson, otAmount } from './overtime.js?v=20261014za';
-import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261014za';
-import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261014za';
-import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261014za';
-import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261014za';
-import { sendLogText } from './sign.js?v=20261014za';
-import { maskedView } from './identity.js?v=20261014za';
-import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261014za';
-import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261014za';
-import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261014za';
-import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261014za';
-import { _hzDot } from './leave-promo-docs.js?v=20261014za';
-import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261014za';
-import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261014za';
-import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261014za';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261014za';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261014za';
+import { esc } from '../../core/ui.js?v=20261014zb';
+import { rtWon, retireRecordsSorted } from './retire.js?v=20261014zb';
+import { otSummary, otPerson, otAmount } from './overtime.js?v=20261014zb';
+import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261014zb';
+import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261014zb';
+import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261014zb';
+import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261014zb';
+import { sendLogText } from './sign.js?v=20261014zb';
+import { maskedView } from './identity.js?v=20261014zb';
+import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261014zb';
+import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261014zb';
+import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261014zb';
+import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261014zb';
+import { _hzDot } from './leave-promo-docs.js?v=20261014zb';
+import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261014zb';
+import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261014zb';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261014zb';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261014zb';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261014zb';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -510,9 +510,11 @@ export function annualFormHtml(st) {
 }
 export function annualWorkerHtml(st) {
   const w = st.aWorkers.find((x) => x.id === st.aSel) || {}; const docs = annualSorted(st.aDocs);
-  const kv = (k, vv) => '<dt>' + k + '</dt><dd>' + vv + '</dd>';
-  const card1 = (d) => '<article class="jh-hr__post jh-hr__contract"><div class="jh-hr__bar"><strong>계약일 ' + esc(anD(d.contractDate)) + '</strong>' + chip('✅ 저장됨', 'accent') + chip(docTplVer(d), docTplVer(d) === DOC_TPL_CURRENT ? 'muted' : 'accent') + '</div><dl class="jh-hr__kv">' + kv('계약기간', esc(anD(d.startDate)) + ' ~ ' + esc(anD(d.endDate))) + kv('계약연봉', d.salary ? an(d.salary) : '-') + kv('서명', d.signData ? '✍️ 서명 있음' + (d.remoteSigned ? ' (원격)' : '') : '<span class="jh-field__hint" style="display:inline">서명 없음</span>') + kv('발송', esc(sendLogText((st.aLog || {})[st.aDocType + ':' + d.id]))) + '</dl><div class="jh-hr__bar jh-hr__acts"><button type="button" class="jh-btn" data-variant="secondary" data-an-print="' + esc(d.id) + '">📄 PDF 출력</button><button type="button" class="jh-btn" data-variant="ghost" data-an-link="' + esc(d.id) + '">🔗 본인 열람 링크</button><button type="button" class="jh-btn" data-variant="ghost" data-an-resend="' + esc(d.id) + '">📧 메일 재전송</button><button type="button" class="jh-btn" data-variant="ghost" data-an-del="' + esc(d.id) + '">🗑 삭제</button></div></article>';
-  return '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-an-act="list">← 목록</button>' + (st.aFrom ? '<a class="jh-btn" data-variant="ghost" href="' + esc(st.aFrom) + '">← 직원 상세</a>' : '') + '<strong>' + esc(w.name || '') + ' · ' + esc(st.aLabel || '연봉계약서') + ' (' + docs.length + '건)</strong><button type="button" class="jh-btn" data-variant="primary" data-an-act="new-for">➕ 이 근로자 계약서 작성</button></div>' + (docs.length ? '<div class="jh-hr__cards">' + docs.map(card1).join('') + '</div>' : '<div class="jh-empty">' + (st.aLabel || '연봉계약서') + '가 없습니다.</div>');
+  const sign = (d) => (d.signData ? '✍️ 서명 있음' + (d.remoteSigned ? ' (원격)' : '') : '<span class="jh-hr__muted">서명 없음</span>');
+  const btn = (v, attr, id, label, title) => '<button type="button" class="jh-btn" data-variant="' + v + '" ' + attr + '="' + esc(id) + '" title="' + title + '">' + label + '</button>';
+  const rows = docs.map((d) => '<tr><td><strong>' + esc(anD(d.contractDate)) + '</strong></td><td>' + esc(anD(d.startDate)) + ' ~ ' + esc(anD(d.endDate)) + '</td><td class="num">' + (d.salary ? an(d.salary) : '-') + '</td><td>' + sign(d) + '</td><td>' + chip(docTplVer(d), docTplVer(d) === DOC_TPL_CURRENT ? 'muted' : 'accent') + '</td><td class="jh-hr__muted">' + esc(sendLogText((st.aLog || {})[st.aDocType + ':' + d.id])) + '</td><td><div class="jh-hr__acts">' + btn('secondary', 'data-an-print', d.id, '📄 PDF', 'PDF 출력') + btn('ghost', 'data-an-link', d.id, '🔗 링크', '본인 열람 링크') + btn('ghost', 'data-an-resend', d.id, '📧 메일', '메일 재전송') + btn('ghost', 'data-an-del', d.id, '🗑 삭제', '삭제') + '</div></td></tr>').join('');
+  const table = '<div class="jh-hr__listbox"><div class="jh-hr__scroll"><table class="jh-hr-table jh-hr-table--nowrap"><thead><tr><th>계약일</th><th>계약기간</th><th class="num">계약연봉</th><th>서명</th><th>양식</th><th>발송 이력</th><th>작업</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+  return '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-an-act="list">← 목록</button>' + (st.aFrom ? '<a class="jh-btn" data-variant="ghost" href="' + esc(st.aFrom) + '">← 직원 상세</a>' : '') + '<strong>' + esc(w.name || '') + ' · ' + esc(st.aLabel || '연봉계약서') + ' (' + docs.length + '건)</strong><button type="button" class="jh-btn" data-variant="primary" data-an-act="new-for">➕ 이 근로자 계약서 작성</button></div>' + (docs.length ? table : '<div class="jh-empty">' + (st.aLabel || '연봉계약서') + '가 없습니다.</div>');
 }
 
 /** 근로계약서 — 목록·근로자별 조회는 연봉계약서 화면과 같은 틀, 작성 양식만 다름 */

@@ -1,21 +1,21 @@
 /* PJT 전체 홈(주소 #/pjt/home)과 종료 PJT(#/pjt/ended) — 새 화면. 규칙은 overview.js, 표시는 overview-view.js.
  * 프로젝트를 만들거나 종료·재개·삭제하면 메뉴의 프로젝트 칩도 바뀌어야 하므로 'jh:pjt-changed' 알림을 보낸다(legacy/frame.js 가 받아 칩을 다시 읽는다). */
-import { db, collection, doc, getDocs, setDoc, addDoc, deleteDoc, deleteField, serverTimestamp } from '../../core/firebase.js?v=20261014za';
-import { esc, toast } from '../../core/ui.js?v=20261014za';
-import { confirmDialog } from '../../core/dialog.js?v=20261014za';
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261014za';
-import { loadHolidays, holidayName } from '../../shared/holidays.js?v=20261014za';
-import { pathsFor } from './adapter.js?v=20261014za';
-import { appToday } from './attendance.js?v=20261014za';
-import { visibleProjects } from './projects.js?v=20261014za';
-import { structureFor } from './structure-store.js?v=20261014za';
-import { toRuntime } from './structure.js?v=20261014za';
-import { normalizeDay, stateAt, calcAll, stagesOf } from './progress.js?v=20261014za';
-import { attendanceSummary } from './report.js?v=20261014za';
-import { dowOf } from './schedule.js?v=20261014za';
-import { overviewHtml, schedInner, railInner, endedHtml } from './overview-view.js?v=20261014za';
-import { blockDays, blockLabel, colorOf, groupByDay, legendOf, totalManday, newProjectData, deleteConfirmed, endedSorted, shiftMonth } from './overview.js?v=20261014za';
-import { weeklyPng } from './overview-png.js?v=20261014za';
+import { db, collection, doc, getDocs, setDoc, addDoc, deleteDoc, deleteField, serverTimestamp } from '../../core/firebase.js?v=20261014zb';
+import { esc, toast } from '../../core/ui.js?v=20261014zb';
+import { confirmDialog } from '../../core/dialog.js?v=20261014zb';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261014zb';
+import { loadHolidays, holidayName } from '../../shared/holidays.js?v=20261014zb';
+import { pathsFor } from './adapter.js?v=20261014zb';
+import { appToday } from './attendance.js?v=20261014zb';
+import { visibleProjects } from './projects.js?v=20261014zb';
+import { structureFor } from './structure-store.js?v=20261014zb';
+import { toRuntime } from './structure.js?v=20261014zb';
+import { normalizeDay, stateAt, calcAll, stagesOf } from './progress.js?v=20261014zb';
+import { attendanceSummary } from './report.js?v=20261014zb';
+import { dowOf } from './schedule.js?v=20261014zb';
+import { overviewHtml, schedInner, railInner, endedHtml } from './overview-view.js?v=20261014zb';
+import { blockDays, blockLabel, colorOf, groupByDay, legendOf, totalManday, newProjectData, deleteConfirmed, endedSorted, shiftMonth } from './overview.js?v=20261014zb';
+import { weeklyPng } from './overview-png.js?v=20261014zb';
 const ts = (d) => (d.createdAt && d.createdAt.seconds) || 0;
 /** 프로젝트가 바뀌었음을 메뉴(legacy/frame.js)에 알리고, 메뉴가 칩을 다시 읽을 때까지 기다린다 */
 export async function notifyPjtChanged() { const waits = []; try { window.dispatchEvent(new CustomEvent('jh:pjt-changed', { detail: { waits } })); await Promise.all(waits); } catch (e) { /* 알림 실패는 화면 동작을 막지 않는다 */ } }
