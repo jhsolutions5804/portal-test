@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261014l';
-import { EDU, EDU_SK, EDU_OF, PORTAL_OF, COMPANIES, CO_TABS, HEALTH_TYPES, CHEM_REQ_HOURS, FILE_SLOTS, certCo, fmtKB, fmtMoney, fmtH, maskedOf, healthExpiry, eduStateOf, eduInfo, chemYearSum, legalAgg, filesMeta, SORT_OPTS, leaderChoices, canEditSlot, addYearsYmd, pdfDownloadName, VALID_YEAR_CHOICES, LEGAL_TYPES } from './roster.js?v=20261014l';
+import { esc } from '../../core/ui.js?v=20261014m';
+import { EDU, EDU_SK, EDU_OF, PORTAL_OF, COMPANIES, CO_TABS, HEALTH_TYPES, CHEM_REQ_HOURS, FILE_SLOTS, certCo, fmtKB, fmtMoney, fmtH, maskedOf, healthExpiry, eduStateOf, eduInfo, chemYearSum, legalAgg, filesMeta, SORT_OPTS, leaderChoices, canEditSlot, addYearsYmd, pdfDownloadName, VALID_YEAR_CHOICES, LEGAL_TYPES } from './roster.js?v=20261014m';
 const chip = (tone, text, title) => '<span class="jh-pjt__chip" data-tone="' + tone + '"' + (title ? ' title="' + esc(title) + '"' : '') + '>' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const stateChip = (r) => (r.state === 'expired' ? chip('red', '만료됨 (D+' + Math.abs(r.d) + ')') : r.state === 'soon' ? chip('amber', 'D-' + r.d) : r.chk && r.exp ? chip('blue', '유효') : '');
@@ -140,13 +140,32 @@ function eduPortalHtml(st, p, co) {
   const edu = list.map((e) => { const i = eduInfo(p, e.k, st.today); return '<div class="jh-ro__edu"><span>' + (i.chk ? '☑' : '☐') + ' ' + esc(e.label) + '</span><span>' + (i.chk && i.exp ? esc('만료 ' + i.exp) + ' ' : '') + stateChip(i) + '</span></div>'; }).join('');
   return '<div class="jh-ro__sechd"><h4>' + esc(pt.label) + ' 계정</h4>' + (st.canEdit && !st.edit ? '<button type="button" class="jh-btn" data-variant="secondary" data-ro-edit="edu">✏️ 수정</button>' : '') + '</div><div class="jh-ro__kvs">' + kv('아이디', esc((p || {})[pt.idK] || '')) + kv('비밀번호', pw ? (shown ? '<code>' + esc(pw) + '</code>' : '••••••') + ' <button type="button" class="jh-btn" data-variant="secondary" data-ro-pw="' + pt.pwK + '">' + (shown ? '숨기기' : '표시') + '</button>' : '') + '</div><div class="jh-field__hint">⚠️ 비밀번호는 암호화되지 않고 저장됩니다. 개인 비밀번호가 아닌 업무용·초기 비밀번호만 보관해 주세요.</div><h4>사내화 교육 이수 여부</h4>' + edu;
 }
-function chemHtml(st, p) {
-  const rows = ((p && p.chemEdu) || []).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))); const y = +st.today.slice(0, 4); const ys = new Set([y]); rows.forEach((r) => { const m = /^(\d{4})-/.exec(r.date || ''); if (m) ys.add(+m[1]); });
+/** 연도별 이수 현황 표(연 2시간 이상이면 이수): rows 는 교육일·시간이 있는 줄 */
+function chemSumTable(rows, today) {
+  const y = +today.slice(0, 4); const ys = new Set([y]); rows.forEach((r) => { const m = /^(\d{4})-/.exec(r.date || ''); if (m) ys.add(+m[1]); });
   const sum = Array.from(ys).sort((a, b) => b - a).map((yy) => { const s = chemYearSum(rows, yy), ok = s >= CHEM_REQ_HOURS; return '<tr><td>' + yy + '년</td><td><b>' + fmtH(s) + '</b> / ' + CHEM_REQ_HOURS + 'h</td><td>' + (ok ? chip('blue', '이수') : yy === y ? chip('amber', '미이수 (잔여 ' + fmtH(CHEM_REQ_HOURS - s) + ')') : chip('red', '미이수')) + '</td></tr>'; }).join('');
-  const kcPw = (p || {}).kcPw || '', shown = st.reveal.has('kcPw');
-  return '<h4>화학물질안전원 교육시스템 계정</h4><div class="jh-ro__kvs">' + kv('아이디', esc((p || {}).kcId || '')) + kv('비밀번호', kcPw ? (shown ? '<code>' + esc(kcPw) + '</code>' : '••••••') + ' <button type="button" class="jh-btn" data-variant="secondary" data-ro-pw="kcPw">' + (shown ? '숨기기' : '표시') + '</button>' : '') + '</div>'
-    + '<h4>종사자 교육과정 <small>(연 ' + CHEM_REQ_HOURS + '시간)</small></h4>' + (rows.length ? '<table class="jh-ro__t"><thead><tr><th>교육일</th><th>시간</th><th>비고</th><th>수료증 PDF</th></tr></thead><tbody>' + rows.map((r) => '<tr><td>' + esc(r.date || '') + '</td><td>' + fmtH(Number(r.hours) || 0) + '</td><td>' + esc(r.note || '') + '</td><td>' + (r.pdf ? '📄 ' + esc(r.pdf.name || '') : '—') + '</td></tr>').join('') + '</tbody></table>' : '<div class="jh-field__hint">등록된 종사자 교육 이력이 없습니다.</div>')
-    + '<h4>연도별 이수 현황</h4><table class="jh-ro__t"><thead><tr><th>연도</th><th>누계 / 기준</th><th>상태</th></tr></thead><tbody>' + sum + '</tbody></table>';
+  return '<table class="jh-ro__t"><thead><tr><th>연도</th><th>누계 / 기준</th><th>상태</th></tr></thead><tbody>' + sum + '</tbody></table>';
+}
+function chemHtml(st, p) {
+  const rows = ((p && p.chemEdu) || []).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  const kcPw = (p || {}).kcPw || '', shown = st.reveal.has('kcPw'); const btn = st.canEdit && !st.edit ? '<button type="button" class="jh-btn" data-variant="secondary" data-ro-edit="chem">✏️ 수정</button>' : '';
+  return '<div class="jh-ro__sechd"><h4>화학물질안전원 교육시스템 계정</h4>' + btn + '</div><div class="jh-ro__kvs">' + kv('아이디', esc((p || {}).kcId || '')) + kv('비밀번호', kcPw ? (shown ? '<code>' + esc(kcPw) + '</code>' : '••••••') + ' <button type="button" class="jh-btn" data-variant="secondary" data-ro-pw="kcPw">' + (shown ? '숨기기' : '표시') + '</button>' : '') + '</div>'
+    + '<h4>종사자 교육과정 <small>(연 ' + CHEM_REQ_HOURS + '시간)</small></h4>' + (rows.length ? '<table class="jh-ro__t"><thead><tr><th>교육일</th><th>시간</th><th>비고</th><th>수료증 PDF</th></tr></thead><tbody>' + rows.map((r) => '<tr><td>' + esc(r.date || '') + '</td><td>' + fmtH(Number(r.hours) || 0) + '</td><td>' + esc(r.note || '') + '</td><td>' + (r.pdf ? '<button type="button" class="jh-btn" data-variant="secondary" data-ro-hdl="' + esc(r.pdf.path) + '">⬇ ' + esc(r.pdf.name || 'PDF') + '</button>' : '—') + '</td></tr>').join('') + '</tbody></table>' : '<div class="jh-field__hint">등록된 종사자 교육 이력이 없습니다.</div>')
+    + '<h4>연도별 이수 현황</h4>' + chemSumTable(rows, st.today);
+}
+/** 화학물질안전원 수정: 교육시스템 계정 + 종사자 교육 줄(교육일·시간·비고·수료증 PDF) — 연도별 이수 현황이 입력하는 대로 바뀐다. PDF 동작은 건강검진과 같다 */
+function chemEditHtml(st) {
+  const f = st.edit.form; const rows = st.edit.rows;
+  const pdfCell = (h, i) => {
+    if (h.pdfNew) return '<span class="jh-pjt__chip" data-tone="amber">📎 ' + esc(h.pdfNew.name) + ' · ' + fmtKB(h.pdfNew.size) + ' · 저장 시 업로드</span> <button type="button" class="jh-btn" data-variant="secondary" data-ro-hpdfc="' + i + '">취소</button>';
+    if (h.pdf && h.pdfRemove) return '<span class="jh-field__hint">파일 삭제 예정</span> <button type="button" class="jh-btn" data-variant="secondary" data-ro-hpdfu="' + i + '">되돌리기</button>';
+    if (h.pdf) return '<span class="jh-pjt__chip" data-tone="gray">📄 ' + esc(h.pdf.name) + '</span> <button type="button" class="jh-btn" data-variant="secondary" data-ro-hdl="' + esc(h.pdf.path) + '" title="다운로드">⬇</button> <label class="jh-btn" data-variant="secondary" title="다른 파일로 교체">↻<input type="file" accept="application/pdf,.pdf" hidden data-ro-hpdf="' + i + '"></label> <button type="button" class="jh-btn" data-variant="danger" data-ro-hpdfx="' + i + '" title="파일 삭제">✕</button>';
+    return '<label class="jh-btn" data-variant="secondary" title="수료증 PDF 첨부 (PJT 권한자 열람 · 15MB 미만)">📎 PDF<input type="file" accept="application/pdf,.pdf" hidden data-ro-hpdf="' + i + '"></label>';
+  };
+  const list = rows.length ? rows.map((r, i) => '<div class="jh-ro__hrow"><label class="jh-ro__hl">교육일<input class="jh-input" type="date" data-ro-hf="' + i + '|date" value="' + esc(r.date) + '"></label><label class="jh-ro__hl">시간(h)<input class="jh-input" inputmode="decimal" autocomplete="off" data-ro-hf="' + i + '|hours" value="' + esc(r.hours) + '" placeholder="예: 2"></label><label class="jh-ro__hl">비고<input class="jh-input" autocomplete="off" data-ro-hf="' + i + '|note" value="' + esc(r.note) + '" placeholder="선택 입력"></label><span class="jh-ro__hp">' + pdfCell(r, i) + '</span><button type="button" class="jh-btn" data-variant="danger" data-ro-hdelrow="' + i + '">삭제</button></div>').join('') : '<div class="jh-field__hint jh-ro__pad">등록된 종사자 교육 이력이 없습니다.</div>';
+  const kept = rows.filter((r) => r.date && parseFloat(String(r.hours || '').replace(/,/g, '')) > 0).map((r) => ({ date: r.date, hours: parseFloat(String(r.hours).replace(/,/g, '')) }));
+  const acct = '<div class="jh-ro__form"><div class="jh-ro__fld"><label>아이디</label><input class="jh-input" data-ro-ef="id" autocomplete="off" value="' + esc(f.id) + '"></div><div class="jh-ro__fld"><label>비밀번호</label><div class="jh-ro__pwrow"><input class="jh-input" type="password" data-ro-ef="pw" autocomplete="new-password" value="' + esc(f.pw) + '"><button type="button" class="jh-btn" data-variant="secondary" data-ro-pwt title="표시/숨김">👁</button><button type="button" class="jh-btn" data-variant="secondary" data-ro-pwc>복사</button></div></div></div><div class="jh-field__hint jh-ro__pad">⚠️ 비밀번호는 암호화되지 않고 저장됩니다. 개인 비밀번호가 아닌 업무용·초기 비밀번호만 보관해 주세요.</div>';
+  return '<h4>화학물질안전원 교육시스템 계정</h4>' + acct + '<h4>종사자 교육과정 수정 <small>(연 ' + CHEM_REQ_HOURS + '시간)</small></h4><div class="jh-ro__hrows">' + list + '</div><div class="jh-ro__pad"><button type="button" class="jh-btn" data-variant="secondary" data-ro-hadd>＋ 교육 이력 추가</button></div><h4>연도별 이수 현황 <small>(입력하는 대로 바뀝니다)</small></h4>' + chemSumTable(kept, st.today) + '<div class="jh-field__hint jh-ro__pad">교육일과 교육시간을 입력하면 연도별 누계가 계산되고, 연 ' + CHEM_REQ_HOURS + '시간 이상이면 "이수"로 표시됩니다. 수료증 PDF 는 PJT 권한자가 열람하며 15MB 미만만 첨부할 수 있습니다.</div>' + saveBar(st, 'chem');
 }
 /** 자격·인증 수정(원청별 줄 편집기): 취득일 + 유효기간(1·2·3·5년) → 만료일 자동 계산, 직접 고치면 "수정됨", ↺ 로 복귀 */
 function certEditHtml(st) {
@@ -170,7 +189,7 @@ function companyHtml(st, p) {
   const year = +st.today.slice(0, 4); const legalCnt = (k) => ((p && p.legalEdu) || []).filter((r) => certCo(r) === k).length, certCnt = (k) => ((p && p.certs) || []).filter((c) => certCo(c) === k).length, eduCnt = (k) => (EDU_OF[k] || []).filter((e) => eduInfo(p, e.k, st.today).chk).length;
   const tabCnt = (k) => (k === 'chem' ? ((p && p.chemEdu) || []).length : legalCnt(k) + certCnt(k));
   const tabs = '<div class="jh-pjt__cats">' + CO_TABS.map((x) => '<button type="button" class="jh-pjt__cat" data-ro-cotab="' + x.k + '"' + (st.coTab === x.k ? ' aria-pressed="true"' : '') + '>' + esc(x.label) + ' <small>' + tabCnt(x.k) + '</small></button>').join('') + '</div>';
-  if (st.coTab === 'chem') return tabs + chemHtml(st, p);
+  if (st.coTab === 'chem') return tabs + (st.edit && st.edit.card === 'chem' ? chemEditHtml(st) : chemHtml(st, p));
   const co = COMPANIES.find((x) => x.k === st.coTab) || COMPANIES[0]; const pt = PORTAL_OF[co.k];
   const subs = [['legal', '법정교육', legalCnt(co.k)], ['cert', '자격 · 인증', certCnt(co.k)], ['edu', '사내화 교육 · ' + pt.label, eduCnt(co.k)]];
   const subTabs = '<div class="jh-pjt__cats">' + subs.map(([k, l, n]) => '<button type="button" class="jh-pjt__cat" data-ro-cosub="' + k + '"' + (st.coSub === k ? ' aria-pressed="true"' : '') + '>' + esc(l) + ' <small>' + n + '</small></button>').join('') + '</div>';

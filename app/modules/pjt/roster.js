@@ -272,3 +272,22 @@ export function planLegal(p, co, rows) {
 }
 /** 시공사 입력 자동완성 목록: 모든 근로자의 자격·법정교육에 입력된 시공사(중복 없이, 이름순) */
 export function contractorsOf(privs) { const set = new Set(); Object.keys(privs || {}).forEach((id) => { const p = privs[id] || {}; (p.certs || []).forEach((c) => { if (c.contractor) set.add(String(c.contractor).trim()); }); (p.legalEdu || []).forEach((r) => { if (r.contractor) set.add(String(r.contractor).trim()); }); }); return Array.from(set).filter(Boolean).sort((a, b) => a.localeCompare(b, 'ko')); }
+
+// ── 4단계-④: 화학물질안전원 종사자 교육(연 2시간)·수료증 PDF·교육시스템 계정 ──
+export const chemRowsOf = (p) => ((p && p.chemEdu) || []).map((r) => ({ date: r.date || '', hours: r.hours != null ? String(r.hours) : '', note: r.note || '', pdf: r.pdf || null, pdfNew: null, pdfRemove: false }));
+export const blankChemRow = () => ({ date: '', hours: String(CHEM_REQ_HOURS), note: '', pdf: null, pdfNew: null, pdfRemove: false });
+export const chemFormOf = (p) => ({ id: (p && p.kcId) || '', pw: (p && p.kcPw) || '' });
+/** 저장 검증·변환 → { ok, error, chemEdu(교육일 순), uploads: [{ index, file }], oldPaths }.
+ *  교육일·시간(0 초과)이 모두 있어야 하고(교육일·비고·PDF 중 하나라도 입력한 줄이 덜 채워졌으면 막음), 교육일 없이 붙인 PDF 도 막는다. 시간만 있고 비어 있는 줄은 버린다 */
+export function planChem(rows, prev) {
+  const bad = rows.find((r) => (r.date || String(r.note || '').trim() || r.pdfNew || (r.pdf && !r.pdfRemove)) && !(r.date && hoursOf(r.hours) > 0));
+  if (bad) return { ok: false, error: '화학물질안전원 종사자 교육 입력이 덜 된 줄이 있습니다. 교육일과 교육시간(0보다 큰 값)을 입력하거나 줄을 삭제해 주세요.', chemEdu: [], uploads: [], oldPaths: [] };
+  const kept = rows.filter((r) => r.date && hoursOf(r.hours) > 0).map((r) => ({ src: r, row: { date: r.date, hours: hoursOf(r.hours), note: String(r.note || '').trim() } })).sort((a, b) => a.row.date.localeCompare(b.row.date));
+  const uploads = [], oldPaths = [];
+  kept.forEach((k, i) => { const r = k.src; if (r.pdfNew) { uploads.push({ index: i, file: r.pdfNew }); if (r.pdf) oldPaths.push(r.pdf.path); } else if (r.pdf && !r.pdfRemove) k.row.pdf = r.pdf; else if (r.pdf && r.pdfRemove) oldPaths.push(r.pdf.path); });
+  const keptPaths = new Set(kept.map((k) => k.row.pdf && k.row.pdf.path).filter(Boolean));
+  ((prev) || []).forEach((oc) => { if (oc.pdf && !keptPaths.has(oc.pdf.path) && oldPaths.indexOf(oc.pdf.path) === -1) oldPaths.push(oc.pdf.path); });
+  return { ok: true, error: '', chemEdu: kept.map((k) => k.row), uploads, oldPaths };
+}
+export const chemAccountPatch = (f) => ({ kcId: String(f.id || '').trim(), kcPw: String(f.pw || '') });
+export const chemDownloadName = (name, date) => ((name || '근로자') + '_화학물질안전원교육_' + date + '.pdf').replace(/[\\/:*?"<>|]/g, '_');
