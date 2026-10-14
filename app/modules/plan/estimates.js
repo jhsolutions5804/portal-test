@@ -1,7 +1,7 @@
 /* 영업기획 견적 — 순수 규칙(화면·네트워크 없이 시험 가능). 구포털 기획(gihoek)의 견적 규칙을 그대로 옮기고, 개정 이력 비교를 새로 더했다.
  * 번호: 새 견적 EST-<연도>-<세 자리>, 개정은 <기준 번호>-r<N>. 개정본을 발행하면 원본은 자동으로 폐기(void)되고 replacedBy 에 개정본 번호가 남는다.
  * 종결(closed)은 정산이 끝난 견적으로 유효 견적 집계에서 빠진다. 거래처·담당자 정보는 견적서에 그대로 복사(스냅샷)해 저장한다. */
-import { itemAmt, estSupply, estTotal, isEstActive, estTag, sortProjects } from './projects.js?v=20261014p';
+import { itemAmt, estSupply, estTotal, isEstActive, estTag, sortProjects } from './projects.js?v=20261014q';
 export { estSupply, estTotal, isEstActive, estTag, itemAmt };
 export const EST_PAGE_SIZE = 10;
 export const VAT_RATE = 0.1;
@@ -55,7 +55,7 @@ export function buildEstimate(d, o) {
   if (!items.length) errors.push('품목을 1개 이상 입력하세요.'); else if (items.length > 100) errors.push('품목은 100개까지 입력할 수 있습니다.');
   if (items.some((i) => i.name.length > 120 || String(i.spec).length > 120 || i.remark.length > 200)) errors.push('품명·규격·비고가 너무 깁니다.');
   if (items.some((i) => !Number.isFinite(i.amount) || Math.abs(i.amount) > 1e13 || !Number.isFinite(i.qty) || !Number.isFinite(i.price))) errors.push('금액이 올바르지 않습니다.');
-  if (!d.pjtId) errors.push('프로젝트를 선택하세요.'); if (!DATE.test(String(d.date || ''))) errors.push('작성일을 입력하세요.');
+  if (!DATE.test(String(d.date || ''))) errors.push('작성일을 입력하세요.');
   const notes = String(d.notes || '').trim(); if (notes.length > 2000) errors.push('특기사항은 2,000자 이내로 입력해 주세요.');
   if (errors.length) return { ok: false, errors };
   const all = x.estimates || []; let no, rev, baseNo;
@@ -69,17 +69,19 @@ export function buildEstimate(d, o) {
 export const closePatch = () => ({ status: 'closed' });   // + closedAt(서버 시각)
 export const reopenPatch = () => ({ status: 'active', closedAt: null });
 
+/** 프로젝트에 속하지 않는 견적(견적서 프로젝트 선택의 '해당 없음', pjtId 는 빈 문자열)을 목록 필터에서 가리키는 값 */
+export const NO_PJT = '__none';
 /** 목록 필터 선택지: 실제 쓰인 값만(현장명=연결 프로젝트, 거래처, 발행월) — 구포털 estFilterOptions */
 export function estFilterOptions(estimates, projects) {
   const pjt = new Map(), cl = new Set(), mo = new Set();
-  (estimates || []).forEach((e) => { const p = (projects || []).find((x) => x.id === e.pjtId); if (p) pjt.set(p.id, p.code || p.name || '(이름없음)'); else if (e.pjtId) pjt.set(e.pjtId, '삭제된 PJT'); if (e.client && e.client.company) cl.add(e.client.company); if (e.date && e.date.length >= 7) mo.add(e.date.slice(0, 7)); });
+  (estimates || []).forEach((e) => { const p = (projects || []).find((x) => x.id === e.pjtId); if (p) pjt.set(p.id, p.code || p.name || '(이름없음)'); else pjt.set(e.pjtId || NO_PJT, e.pjtId ? '삭제된 PJT' : '해당 없음'); if (e.client && e.client.company) cl.add(e.client.company); if (e.date && e.date.length >= 7) mo.add(e.date.slice(0, 7)); });
   return { pjtOptions: Array.from(pjt.entries()).sort((a, b) => a[1].localeCompare(b[1], 'ko')), clientOptions: Array.from(cl).sort((a, b) => a.localeCompare(b, 'ko')), monthOptions: Array.from(mo).sort((a, b) => b.localeCompare(a)) };
 }
 /** 목록 필터(구포털 estFilteredList). f: pjt·client·month·pjtStatus('run'|'done')·status('active'|'closed'|'void')·hideReplaced(개정 전 버전 숨김) */
 export function filterEstimates(estimates, projects, f) {
   const o = f || {};
   return (estimates || []).filter((e) => {
-    if (o.pjt && e.pjtId !== o.pjt) return false; if (o.client && !(e.client && e.client.company === o.client)) return false; if (o.month && !String(e.date || '').startsWith(o.month)) return false;
+    if (o.pjt && (o.pjt === NO_PJT ? !!e.pjtId : e.pjtId !== o.pjt)) return false; if (o.client && !(e.client && e.client.company === o.client)) return false; if (o.month && !String(e.date || '').startsWith(o.month)) return false;
     if (o.status) { const st = e.status === 'void' ? 'void' : e.status === 'closed' ? 'closed' : 'active'; if (st !== o.status) return false; }
     if (o.pjtStatus) { const p = (projects || []).find((x) => x.id === e.pjtId); const ps = p ? (p.status === 'done' ? 'done' : 'run') : null; if (ps !== o.pjtStatus) return false; }
     if (o.hideReplaced && isSuperseded(e)) return false;
