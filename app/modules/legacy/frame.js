@@ -1,10 +1,10 @@
-import { LEGACY_BASE } from '../../core/config.js?v=20261014v';
-import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261014v';
-import { esc } from '../../core/ui.js?v=20261014v';
-import { attachActivity } from '../../core/idle.js?v=20261014v';
-import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS, nativeViewKey } from './list.js?v=20261014v';
-import { workTabs } from '../../core/worktabs.js?v=20261014v';
-import { setSideCurrent } from '../../shared/sidenav.js?v=20261014v';
+import { LEGACY_BASE } from '../../core/config.js?v=20261014w';
+import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261014w';
+import { esc } from '../../core/ui.js?v=20261014w';
+import { attachActivity } from '../../core/idle.js?v=20261014w';
+import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS, nativeViewKey } from './list.js?v=20261014w';
+import { workTabs } from '../../core/worktabs.js?v=20261014w';
+import { setSideCurrent } from '../../shared/sidenav.js?v=20261014w';
 
 const base = () => new URL(LEGACY_BASE, location.href).href;
 const NATIVE = new Map();   // '모듈id/구역' → 그 구역을 새 모듈이 그리는 함수(modules/index.js 가 hostNative 로 등록)
@@ -112,7 +112,10 @@ export async function mountLegacy(def, keep, route, ctx) {
     }
     st.key = item.key; st.tab = ''; st.sub = sub; st.nativeSub = nativeSub; highlight(st); const fn = NATIVE.get(def.id + '/' + (nativeSub ? sub : item.key));
     if (nv) {
-      const full = (typeof location !== 'undefined' && location.hash.indexOf('#/' + def.id) === 0) ? location.hash : '#/' + def.id + ((route.segs || []).length ? '/' + route.segs.map((x) => encodeURIComponent(x)).join('/') : '') + (route.query && Object.keys(route.query).length ? '?' + new URLSearchParams(route.query).toString() : '');   // 실제 주소(없으면 route 로 만든 주소)
+      // 실제로 열리는 화면(메뉴·하위 화면·나머지 값·쿼리)으로 같은 화면인지 본다 — 사이드바로 돌아오면 주소가 '#/plan' 처럼 화면 이름 없이 올 수 있다
+      const restSegs = (route.segs || []).slice(nativeSub ? 2 : 1); const qs = route.query && Object.keys(route.query).length ? '?' + new URLSearchParams(route.query).toString() : '';
+      const full = '#/' + def.id + '/' + (nativeSub ? [item.key, sub] : [item.key]).concat(restSegs).map((x) => encodeURIComponent(x)).join('/') + qs;
+      if (typeof location !== 'undefined' && location.hash.indexOf('#/' + def.id) === 0 && location.hash !== full) { try { history.replaceState(history.state, '', full); } catch (e) { /* 주소 표시만 못 고친다 */ } }   // 주소창도 실제 화면을 가리키게
       nv.el.hidden = false; st.natives.forEach((v) => { if (v !== nv) v.el.hidden = true; });
       workTabs.note({ key: nv.key, hash: full, label: def.title, mod: def.id }, {
         drop: () => { const cur = st.nv === nv; if (nv.el.parentNode) { if (nv.el === st.native0) { nv.el.innerHTML = ''; nv.el.hidden = true; } else nv.el.remove(); } st.natives.delete(nv.key); if (cur) st.nv = null; },   // 첫 영역은 비워 두고 나머지는 지운다
