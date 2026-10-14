@@ -101,6 +101,21 @@ for (const [name, fn] of targets) {
   const w0 = keep.querySelector('[data-legacy-mod="company"] .jh-sidenav'); const titles = w0 ? [...w0.querySelectorAll('.jh-sidenav__head')].map((h) => h.textContent).join() : ''; const ttl = w0 && w0.querySelector('.jh-sidenav__title') ? w0.querySelector('.jh-sidenav__title').textContent : ''; if (titles !== '회사 정보,관리' || !/🏢 회사/.test(ttl)) { bad++; console.log('✗ 회사 사이드바 구성(관리자): ' + titles + ' / ' + ttl); }
   keep.remove(); console.log(bad ? '✗ 회사 공용 틀 점검: 문제 ' + bad + '건' : '✓ 회사 공용 틀 점검: 화면 4개(조직도·규정·직원 관리·열람 기록)가 인사총무와 같은 사이드바 틀 안에서 열리고, 옛 상단 탭을 또 그리지 않으며, 회사 정보·관리(관리자) 묶음과 현재 메뉴 표시가 일치'); if (bad) failed++;
 }
+// ── 메인 홈: 카드 4개(출퇴근·전자결재·일정 캘린더·일정 목록). 일정 목록은 달력과 분리된 카드에서 같은 달력 제어기로 움직인다 ──
+{
+  const V = '?v=' + (fs.readFileSync(new URL('../../app/modules/index.js', import.meta.url), 'utf8').match(/\?v=(\w+)/) || [])[1]; const { MODULES } = await import(new URL('../../app/modules/index.js' + V, import.meta.url).href); const reg = await import(new URL('../../app/core/registry.js' + V, import.meta.url).href); const { mountPlatformHome } = await import(new URL('../../app/core/home.js' + V, import.meta.url).href);
+  MODULES.forEach((m) => reg.register(m.manifest)); const host = document.createElement('div'); document.body.appendChild(host); errors.length = 0; let bad = 0; const problems = [];
+  try { mountPlatformHome(host, Object.assign({}, ctx, { setBadge: () => {} })); await sleep(1800); } catch (e) { problems.push('홈 예외: ' + String((e && e.stack) || e).split('\n').slice(0, 2).join(' | ')); }
+  const ids = [...host.querySelectorAll('[data-widget]')].map((x) => x.getAttribute('data-widget')); const slot = (id) => host.querySelector('[data-widget="' + id + '"]');
+  if (ids.join() !== 'attendance/clock,edoc/todo,calendar/month,calendar/list') problems.push('홈 카드가 4개(출퇴근·전자결재·일정 캘린더·일정 목록)가 아님: ' + ids.join());
+  const m = slot('calendar/month'), l = slot('calendar/list');
+  if (m) { if (m.querySelectorAll('[data-day]').length < 35) problems.push('일정 캘린더에 날짜 칸이 부족함'); if (m.querySelector('[data-cal-day]')) problems.push('일정 캘린더 카드 안에 날짜 목록이 또 있음(목록은 별도 카드여야 함)'); if (m.querySelector('.jh-cal__views')) problems.push('홈 달력에 보기 전환이 있음(월 달력만이어야 함)'); }
+  if (l) { if (!l.querySelector('.jh-cal-list [data-cal-day]')) problems.push('일정 목록 카드에 목록 칸이 없음'); else if (!l.querySelector('[data-cal-day] .jh-cal__dayhead')) problems.push('일정 목록 카드에 선택한 날짜(오늘)의 목록이 안 그려짐'); }
+  if (m && l && !problems.length) { const target = [...m.querySelectorAll('[data-day]')].find((d) => !d.hasAttribute('data-out') && d.getAttribute('data-day').endsWith('-15')); if (target) { const before = l.querySelector('.jh-cal__dayhead h3').textContent; target.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(120); const after = l.querySelector('.jh-cal__dayhead h3').textContent; if (!/15일/.test(after) || before === after && !/15일/.test(before)) problems.push('달력에서 날짜를 눌러도 옆 일정 목록이 바뀌지 않음: ' + before + ' → ' + after); } }
+  const tdo = slot('edoc/todo'); if (tdo && (!tdo.querySelector('a[href="#/edoc/new"]') || !tdo.querySelector('a[href="#/edoc/home"]'))) problems.push('전자결재 카드에 새 문서 작성·전자결재 홈 버튼이 없음');
+  if (errors.length) problems.push(errors[0].slice(0, 160)); host.remove();
+  if (problems.length) { bad++; console.log('✗ 메인 홈 구성: ' + problems.join(' · ')); } else console.log('✓ 메인 홈 구성: 카드 4개(출퇴근·전자결재·일정 캘린더·일정 목록)만, 일정 목록은 달력과 분리된 카드이고 날짜를 누르면 옆 목록이 바뀜, 전자결재 카드에 새 문서 작성·전자결재 홈 버튼'); if (bad) failed++;
+}
 // ── 작업 탭(화면 살려 두기): 영업기획 견적을 보다가 PJT 관리에 다녀와도 견적 화면이 그대로(다시 그려지지 않음) ──
 {
   const V = '?v=' + (fs.readFileSync(new URL('../../app/modules/index.js', import.meta.url), 'utf8').match(/\?v=(\w+)/) || [])[1]; const { mountLegacy } = await import(new URL('../../app/modules/legacy/frame.js' + V, import.meta.url).href); const { LEGACY_DEFS } = await import(new URL('../../app/modules/legacy/list.js' + V, import.meta.url).href); const { workTabs } = await import(new URL('../../app/core/worktabs.js' + V, import.meta.url).href);

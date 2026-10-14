@@ -1,18 +1,18 @@
-import { calendarProvidersFor } from '../../core/registry.js?v=20261014zu';
-import { toast } from '../../core/ui.js?v=20261014zu';
-import { confirmDialog } from '../../core/dialog.js?v=20261014zu';
-import { loadHolidays, isHoliday } from '../../shared/holidays.js?v=20261014zu';
-import { dateKey, parseMonth, monthKey, shiftMonth, gridRange, groupByDay, mergeResults, visibleEvents, makeEvent, canWrite, isView, defaultView, viewRange, shiftAnchor, listDates, rangeTitle, AGENDA_DAYS } from './logic.js?v=20261014zu';
-import { leaveProvider, companyProvider, deleteCompanyEvent, setCompanyDone, invalidateCompany } from './data.js?v=20261014zu';
-import { gridHtml, dayHtml, noticeHtml, widgetFrameHtml, fullFrameHtml, agendaHtml, blankDraft, draftOf } from './view.js?v=20261014zu';
-import { openEventForm } from './form.js?v=20261014zu';
+import { calendarProvidersFor } from '../../core/registry.js?v=20261014zv';
+import { toast } from '../../core/ui.js?v=20261014zv';
+import { confirmDialog } from '../../core/dialog.js?v=20261014zv';
+import { loadHolidays, isHoliday } from '../../shared/holidays.js?v=20261014zv';
+import { dateKey, parseMonth, monthKey, shiftMonth, gridRange, groupByDay, mergeResults, visibleEvents, makeEvent, canWrite, isView, defaultView, viewRange, shiftAnchor, listDates, rangeTitle, AGENDA_DAYS } from './logic.js?v=20261014zv';
+import { leaveProvider, companyProvider, deleteCompanyEvent, setCompanyDone, invalidateCompany } from './data.js?v=20261014zv';
+import { gridHtml, dayHtml, noticeHtml, widgetFrameHtml, listFrameHtml, fullFrameHtml, agendaHtml, blankDraft, draftOf } from './view.js?v=20261014zv';
+import { openEventForm } from './form.js?v=20261014zv';
 
 /** 일정 모듈 = 플랫폼 기본 모듈. 자기 일정(회사 일정·연차·휴무)을 내놓고, 다른 모듈이 manifest.calendar 로 등록한 일정도 한 달력에 모은다.
  *  사이드바에는 두지 않는다(nav:false) — 홈의 일정 위젯과 그 안의 보기 방식(안건·하루·3일·월)으로 쓴다. */
 export const manifest = {
   id: 'calendar', order: 70, nav: false, title: '일정', icon: '📅', defaultHash: '#/calendar/month',
   calendar: [leaveProvider, companyProvider],
-  widgets: [{ id: 'month', order: 90, mobileOrder: 3, wide: true, reserve: 'huge', mount: mountWidget }]
+  widgets: [{ id: 'month', order: 90, mobileOrder: 3, mount: mountWidget }, { id: 'list', order: 91, mobileOrder: 4, mount: mountListWidget }]   // 홈: 일정 캘린더 + 일정 목록(두 카드)
 };
 
 const OFF_KEY = 'jh_cal_off'; const VIEW_KEY = 'jh_cal_view';
@@ -35,12 +35,12 @@ async function loadRange(me, range, force) {
   const merged = mergeResults(results); merged.range = range; cache.set(ckey(me, range), { t: Date.now(), merged }); return merged;
 }
 
-/** 달력 제어기 — 전체 화면과 홈 위젯(widget=true)이 같은 코드·같은 모양을 쓴다. 위젯은 월 보기가 6주 고정·URL 주소 갱신 없음이 다를 뿐이다.
+/** 달력 제어기 — 전체 화면과 홈 위젯(widget=true)이 같은 코드·같은 모양을 쓴다(홈에서는 날짜 목록 dayEl 이 옆 "일정 목록" 카드에 붙는다). 위젯은 월 보기가 6주 고정·URL 주소 갱신 없음이 다를 뿐이다.
  *  화면이 흔들리지 않도록: 틀은 한 번만 그리고, 이동·보기 전환·날짜 선택·불러오기에서는 본문만 제자리에서 바꾼다. */
 function createCalendar(el, me, widget, route) {
   const now = new Date(); const q = (route && route.query) || {}; const today = dateKey(now);
   const asked = isView(q.v) ? q.v : (q.ym && !q.v ? 'month' : '');   // 주소에 보기가 있으면 그것, 월(ym)만 있으면 월 보기(옛 링크), 없으면 저장된 선택 → 기기별 기본
-  const view = widget ? defaultView(isPhone(), readView()) : (asked || defaultView(isPhone(), readView()));
+  const view = widget ? 'month' : (asked || defaultView(isPhone(), readView()));   // 홈 위젯은 월 달력만
   const pm = parseMonth(widget ? '' : q.ym, now); const weeks = widget ? 6 : 0;
   const S = { widget: !!widget, view, y: pm.y, m: pm.m, today, off: readOff(), events: [], failed: [], hidden: [], loading: true, seq: 0, weeks, extra: 0, limit: widget ? 5 : Infinity, title: '', sel: '', anchor: '', range: null };
   S.sel = widget ? today : (/^\d{4}-\d{2}-\d{2}$/.test(q.d || '') ? q.d : (pm.y === now.getFullYear() && pm.m === now.getMonth() + 1 ? today : monthKey(pm.y, pm.m) + '-01'));
@@ -50,17 +50,17 @@ function createCalendar(el, me, widget, route) {
   S.range = rangeOf(); S.title = S.view === 'month' ? S.y + '년 ' + S.m + '월' : rangeTitle(S.view, S.range);
   el.onclick = null; el.onchange = null; el.oninput = null;
   el.innerHTML = widget ? widgetFrameHtml(S, providers, me) : fullFrameHtml(S, providers, me);
-  const $ = (s) => el.querySelector(s); const root = $('.jh-cal'); const grid = $('[data-cal-grid]'); const dayEl = $('[data-cal-day]'); const noteEl = $('[data-cal-notice]'); const titleEl = $('[data-cal-title]'); const filter = $('[data-cal-filter]');
+  const $ = (s) => el.querySelector(s); const root = $('.jh-cal'); const grid = $('[data-cal-grid]'); let dayEl = $('[data-cal-day]'); const noteEl = $('[data-cal-notice]'); const titleEl = $('[data-cal-title]'); const filter = $('[data-cal-filter]');
   if (filter) filter.open = !isPhone();   // 폰에서는 접어 둔다(화면을 덜 차지하고 칩이 잘리지 않게), PC는 펼침
   let bd = {};
-  const reserve = () => { if (widget) el.setAttribute('data-reserve', S.view === 'month' ? 'huge' : 'medium'); };   // 월 보기만 높은 자리를 미리 잡는다
+  const reserve = () => { /* 홈은 카드를 내용 높이로 둔다(미리 큰 자리를 잡지 않음) */ };
   const recompute = () => { bd = groupByDay(visibleEvents(S.events, S.off), S.range, { isHoliday }); };
   const paintTitle = () => { S.title = S.view === 'month' ? S.y + '년 ' + S.m + '월' : rangeTitle(S.view, S.range); titleEl.textContent = S.title; };
   const paintViews = () => { root.setAttribute('data-view', S.view); el.querySelectorAll('[data-view]').forEach((b) => { if (b.classList.contains('jh-segmented__item')) b.setAttribute('aria-pressed', String(b.getAttribute('data-view') === S.view)); }); reserve(); };
   const paintFilterN = () => { const n = $('[data-cal-filter-n]'); if (n) n.textContent = providers.filter((p) => S.off.indexOf(p.id) === -1).length + '/' + providers.length; };
   const paintBody = () => {
-    if (S.view === 'month') { grid.innerHTML = gridHtml(S, bd); dayEl.innerHTML = S.loading ? '' : dayHtml(S, bd, me); }
-    else { const dates = listDates(S.view, bd, S.range, S.today); grid.innerHTML = agendaHtml(S, bd, me, dates, S.view === 'agenda' && !S.loading, S.limit); dayEl.innerHTML = ''; }
+    if (S.view === 'month') { grid.innerHTML = gridHtml(S, bd); if (dayEl) dayEl.innerHTML = S.loading ? '' : dayHtml(S, bd, me); }
+    else { const dates = listDates(S.view, bd, S.range, S.today); grid.innerHTML = agendaHtml(S, bd, me, dates, S.view === 'agenda' && !S.loading, S.limit); if (dayEl) dayEl.innerHTML = ''; }
     grid.setAttribute('aria-busy', S.loading ? 'true' : 'false');
   };
   const paintNote = () => { noteEl.innerHTML = noticeHtml(S, me); };
@@ -68,7 +68,7 @@ function createCalendar(el, me, widget, route) {
   const paintAll = () => { recompute(); paintViews(); paintTitle(); paintBody(); paintNote(); paintFilterN(); };
   const selectDay = (key) => {   // 월 보기에서 날짜를 누를 때는 달력을 다시 그리지 않고 선택 표시만 옮긴다(깜박임·스크롤 튐 없음)
     S.sel = key; const old = grid.querySelector('[aria-current="date"]'); if (old) old.removeAttribute('aria-current');
-    const nw = grid.querySelector('[data-day="' + key + '"]'); if (nw) nw.setAttribute('aria-current', 'date'); dayEl.innerHTML = dayHtml(S, bd, me); urlSync();
+    const nw = grid.querySelector('[data-day="' + key + '"]'); if (nw) nw.setAttribute('aria-current', 'date'); if (dayEl) dayEl.innerHTML = dayHtml(S, bd, me); urlSync();
   };
   const load = async (force) => {
     const seq = ++S.seq; S.range = rangeOf(); const hit = !force && cache.get(ckey(me, S.range));
@@ -89,7 +89,7 @@ function createCalendar(el, me, widget, route) {
 
   // 처리기는 addEventListener 가 아니라 el.onclick/onchange 로 붙인다: 전체 화면은 지속되는 본문 요소(#jh-main)에 그려지는데,
   // addEventListener 는 다른 화면으로 가도 남아 홈 위젯의 같은 버튼을 두 번 처리했다(등록 창이 두 개). 속성 처리기는 다음 화면이 el.onclick = null 로 지운다.
-  el.onclick = async (ev) => {
+  const onClick = async (ev) => {
     const t = ev.target;
     const vb = t.closest('.jh-segmented__item[data-view]'); if (vb) { setView(vb.getAttribute('data-view')); return; }
     const nav = t.closest('[data-cal-nav]'); if (nav) { const d = +nav.getAttribute('data-cal-nav'); if (S.view === 'month') { const n = shiftMonth(S.y, S.m, d); goMonth(n.y, n.m); } else { S.anchor = shiftAnchor(S.view, S.anchor, d); S.extra = 0; load(false); } return; }
@@ -105,15 +105,23 @@ function createCalendar(el, me, widget, route) {
       try { await deleteCompanyEvent(e.ref); clearCache(); toast('일정을 삭제했습니다.'); load(true); } catch (err) { console.error(err); toast('삭제하지 못했습니다.'); }
     }
   };
-  el.onchange = async (ev) => {
+  el.onclick = onClick;
+  const onChange = async (ev) => {
     const c = ev.target.closest('[data-done]'); if (!c || !canWrite(me)) return; const ref = c.getAttribute('data-done');
     try { await setCompanyDone(ref, c.checked); const e = S.events.find((x) => x.ref === ref); if (e) e.done = c.checked; clearCache(); recompute(); paintBody(); }
     catch (err) { console.error(err); c.checked = !c.checked; toast('완료 표시를 저장하지 못했습니다.'); }
   };
+  el.onchange = onChange;
+  if (widget) {   // 홈: 옆 "일정 목록" 카드가 붙으면 선택한 날의 목록을 거기에 그리고, 그 안의 수정·삭제·완료도 같은 처리기로
+    homeShare.attach = (slot) => { if (!el.isConnected || !slot.isConnected) return; slot.innerHTML = listFrameHtml(); dayEl = slot.querySelector('[data-cal-day]'); slot.onclick = onClick; slot.onchange = onChange; if (!S.loading) dayEl.innerHTML = dayHtml(S, bd, me); };
+    if (homeShare.listSlot && homeShare.listSlot.isConnected) homeShare.attach(homeShare.listSlot);
+  }
   return load(false);
 }
 
 /* 전체 화면 */
 export function mount(root, route, ctx) { root.className = 'jh-main'; return createCalendar(root, ctx.me, false, route); }
-/* 플랫폼 홈 위젯 */
+/* 플랫폼 홈 위젯: 일정 캘린더 + 일정 목록(두 카드가 한 달력 제어기를 함께 쓴다) */
+const homeShare = { listSlot: null, attach: null };
 async function mountWidget(slot, ctx) { return createCalendar(slot, ctx.me, true, null); }
+async function mountListWidget(slot) { homeShare.listSlot = slot; slot.innerHTML = listFrameHtml(); if (homeShare.attach) homeShare.attach(slot); }

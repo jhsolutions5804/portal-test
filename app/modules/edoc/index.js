@@ -1,28 +1,28 @@
-import { fetchAll, fetchOne } from './data.js?v=20261014zu';
-import { listHtml, detailHtml } from './views.js?v=20261014zu';
-import { tabCounts } from './logic.js?v=20261014zu';
-import { buildHash, navigate } from '../../core/router.js?v=20261014zu';
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261014zu';
-import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261014zu';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261014zu';
-import { toast } from '../../core/ui.js?v=20261014zu';
-import { confirmDialog } from '../../core/dialog.js?v=20261014zu';
-import { loadDirectory, resetDirectory } from './directory.js?v=20261014zu';
-import { act } from './api.js?v=20261014zu';
-import * as C from './compose.js?v=20261014zu';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261014zu';
-import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261014zu';
-import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261014zu';
-import { kstKey } from './home-daily.js?v=20261014zu';
-import { isOffDay } from '../../shared/holidays.js?v=20261014zu';
-import { todoCounts } from './home-stats.js?v=20261014zu';
-import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261014zu';
-import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261014zu';
-import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261014zu';
-import * as AT from './attach-logic.js?v=20261014zu';
-import { uploadFile, removeFile, openFile } from './attach.js?v=20261014zu';
-import * as SL from './settings-logic.js?v=20261014zu';
-import { chooserHtml, newDocLayoutHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261014zu';
+import { fetchAll, fetchOne } from './data.js?v=20261014zv';
+import { listHtml, detailHtml } from './views.js?v=20261014zv';
+import { tabCounts } from './logic.js?v=20261014zv';
+import { buildHash, navigate } from '../../core/router.js?v=20261014zv';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261014zv';
+import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261014zv';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261014zv';
+import { toast } from '../../core/ui.js?v=20261014zv';
+import { confirmDialog } from '../../core/dialog.js?v=20261014zv';
+import { loadDirectory, resetDirectory } from './directory.js?v=20261014zv';
+import { act } from './api.js?v=20261014zv';
+import * as C from './compose.js?v=20261014zv';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261014zv';
+import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261014zv';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261014zv';
+import { kstKey } from './home-daily.js?v=20261014zv';
+import { isOffDay } from '../../shared/holidays.js?v=20261014zv';
+import { todoCounts } from './home-stats.js?v=20261014zv';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261014zv';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261014zv';
+import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261014zv';
+import * as AT from './attach-logic.js?v=20261014zv';
+import { uploadFile, removeFile, openFile } from './attach.js?v=20261014zv';
+import * as SL from './settings-logic.js?v=20261014zv';
+import { chooserHtml, newDocLayoutHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261014zv';
 
 
 export const manifest = {
@@ -35,7 +35,7 @@ export const manifest = {
   defaultHash: '#/edoc/home',
   quick: { label: '새 문서 작성', icon: '✍', hash: '#/edoc/new' },   // 폰 하단 막대 버튼
   hideQuickOn: ['new', 'edit', 'print', 'admin'],                                // 이미 작성·인쇄 중인 화면에서는 숨김
-  widgets: [{ id: 'leave', order: 25, mobileHide: true, reserve: 'medium', mount: mountLeaveWidget }, { id: 'todo', order: 20, mobileOrder: 2, wide: true, reserve: 'todo', mount: mountTodoWidget }]   // 플랫폼 홈에 놓이는 위젯
+  widgets: [{ id: 'todo', order: 20, mobileOrder: 2, mount: mountTodoWidget }]   // 플랫폼 홈에 놓이는 위젯
 };
 
 let cache = { uid: null, docs: null };
@@ -545,21 +545,11 @@ async function mountTodoWidget(slot, ctx) {
   try {
     const [docs] = await Promise.all([ensureDocs(me, false), withPolicy(me), loadHolidays()]);   // 공휴일도 함께 읽는다(업무일지 "작성 전" 경고는 쉬는 날에 띄우지 않음)
     ctx.setBadge('edoc', tabCounts(docs, me).todo);
-    slot.innerHTML = widgetShell(T, '<a class="jh-link" href="#/edoc/home">전자결재 홈 ›</a>', '<div class="jh-form">' + todoHtml(todoCounts(docs, me)) + dailyHtml(docs, me, kstKey(), isOffDay(kstKey())) + '</div>');
+    slot.innerHTML = widgetShell(T, '', '<div class="jh-form">' + todoHtml(todoCounts(docs, me)) + '<div class="jh-widget__actions"><a class="jh-btn" data-variant="primary" href="#/edoc/new">＋ 새 문서 작성</a><a class="jh-btn" data-variant="secondary" href="#/edoc/home">전자결재 홈</a></div></div>');   // 홈 카드는 할 일 4칸 + 버튼 두 개만(업무일지 목록은 전자결재 홈에 있음)
     slot.addEventListener('click', (ev) => {
       if (ev.target.closest('[data-daily-new]')) { navigate('#/edoc/new/daily', { state: { jh: 'fromList' } }); return; }
       const op = ev.target.closest('[data-open]'); if (op) { const [dt, did] = op.getAttribute('data-open').split('/'); if (dt && did) navigate('#/edoc/doc/' + dt + '/' + did, { state: { jh: 'fromList' } }); return; }
       const t = ev.target.closest('[data-go]'); if (!t) return; const to = homeTarget(t.getAttribute('data-go'), me); if (to) navigate(to, { state: { jh: 'fromList' } });
     });
   } catch (e) { console.error('결재 현황 위젯', e); slot.innerHTML = failBox(T); }
-}
-/** 내 연차 현황 위젯: 링 그래프 + 부여·사용·잔여 */
-async function mountLeaveWidget(slot, ctx) {
-  const { me } = ctx;
-  slot.innerHTML = leaveBoxHtml({ state: 'loading' });
-  try {
-    const docs = await ensureDocs(me, false); let worker = null;
-    try { worker = findWorker(await loadWorkers(false), me); } catch (e) { worker = null; }
-    slot.innerHTML = leaveBoxHtml(!worker || !worker.hireDate ? { state: 'nohire' } : { state: 'ok', balance: calcLeaveBalance(worker.hireDate, leaveDocsOf(docs, me)) });
-  } catch (e) { console.error('연차 위젯', e); slot.innerHTML = leaveBoxHtml({ state: 'error' }); }
 }

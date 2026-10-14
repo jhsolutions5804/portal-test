@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261014zu';
-import { WEEKDAYS, ymd, dateKey, monthGrid, shiftMonth, fmtRange, expiryNote, expiryState, OWN_TAGS, TAG_LABEL, canWrite, canEditOwn, isHHMM, pad, VIEWS, dayLabel } from './logic.js?v=20261014zu';
-import { holidayName as holName } from '../../shared/holidays.js?v=20261014zu';
+import { esc } from '../../core/ui.js?v=20261014zv';
+import { WEEKDAYS, ymd, dateKey, monthGrid, shiftMonth, fmtRange, expiryNote, expiryState, OWN_TAGS, TAG_LABEL, canWrite, canEditOwn, isHHMM, pad, VIEWS, dayLabel } from './logic.js?v=20261014zv';
+import { holidayName as holName } from '../../shared/holidays.js?v=20261014zv';
 
 export const SRC_LABEL = { pjt: 'PJT', leave: '연차·휴무', company: '회사', expiry: '만료', hr: '인사' };
 const srcLabel = (s) => SRC_LABEL[s] || s;
@@ -11,19 +11,23 @@ export function barHtml(S, providers, me) {
   const tg = providers.map((p) => '<button type="button" class="jh-cal__toggle" data-prov="' + esc(p.id) + '" aria-pressed="' + (S.off.indexOf(p.id) === -1) + '"><span class="jh-cal__dot" data-src="' + esc(p.id) + '" aria-hidden="true"></span>' + esc(p.label) + '</button>').join('');
   const views = '<div class="jh-segmented jh-cal__views" role="group" aria-label="보기 방식">' + VIEWS.map(([k, label]) => '<button type="button" class="jh-segmented__item" data-view="' + k + '" aria-pressed="' + (S.view === k) + '">' + label + '</button>').join('') + '</div>';
   return '<div class="jh-cal__bar"><div class="jh-cal__nav"><button type="button" class="jh-iconbtn" data-cal-nav="-1" aria-label="이전">‹</button><strong class="jh-cal__title" data-cal-title>' + esc(S.title || '') + '</strong><button type="button" class="jh-iconbtn" data-cal-nav="1" aria-label="다음">›</button>' +
-    '<button type="button" class="jh-btn" data-variant="secondary" data-cal-today>오늘</button></div>' + views +
+    '<button type="button" class="jh-btn" data-variant="secondary" data-cal-today>오늘</button></div>' + (S.widget ? '' : views) +
     (canWrite(me) ? '<button type="button" class="jh-btn" data-variant="secondary" data-new data-bar-new aria-label="일정 등록">＋<span class="jh-cal__newtxt"> 등록</span></button>' : '') +
     '<details class="jh-cal__filter" data-cal-filter><summary class="jh-cal__filter-sum" title="표시할 일정">표시 <span data-cal-filter-n>' + on + '/' + providers.length + '</span></summary><div class="jh-cal__legend" role="group" aria-label="표시할 일정">' + tg + '</div></details></div>';
 }
 /** 달력 본체(막대 · 알림 · 본문 + (월 보기에서) 선택한 날 목록). 전체 화면과 홈 위젯이 똑같이 쓴다 */
 function bodyHtml(S, providers, me) {
   return '<div class="jh-cal" data-view="' + S.view + '"' + (S.widget ? ' data-in-widget="true"' : '') + '>' + barHtml(S, providers, me) + '<div data-cal-notice></div><div class="jh-cal__split"><div class="jh-cal__gridwrap" data-cal-grid aria-busy="true"></div>' +
-    '<section class="jh-card jh-form jh-cal__dayarea" aria-live="polite" data-cal-day></section></div></div>';
+    (S.widget ? '' : '<section class="jh-card jh-form jh-cal__dayarea" aria-live="polite" data-cal-day></section>') + '</div></div>';   // 홈에서는 날짜 목록이 따로 카드(listFrameHtml)
 }
 export function fullFrameHtml(S, providers, me) { return bodyHtml(S, providers, me); }
-/** 홈 위젯: 전체 화면과 같은 달력·같은 보기 방식. 카드 머리만 더한다 */
+/** 홈 위젯: 월 달력(보기 전환 없음) 카드. 선택한 날의 일정 목록은 옆 카드(listFrameHtml)에 나온다 */
 export function widgetFrameHtml(S, providers, me) {
-  return '<section class="jh-panel jh-card" aria-label="일정"><div class="jh-panel__head"><h3>📅 일정</h3></div><div class="jh-form">' + bodyHtml(S, providers, me) + '</div></section>';
+  return '<section class="jh-panel jh-card" aria-label="일정 캘린더"><div class="jh-panel__head"><h3>📅 일정 캘린더</h3></div><div class="jh-form">' + bodyHtml(S, providers, me) + '</div></section>';
+}
+/** 홈의 일정 목록 카드: 달력에서 고른 날짜의 일정(등록·수정·삭제·완료는 달력과 같은 처리기). 카드 높이를 다 쓰고 길면 안에서 스크롤 */
+export function listFrameHtml() {
+  return '<section class="jh-panel jh-card jh-cal-list" aria-label="일정 목록"><div class="jh-panel__head"><h3>📋 일정 목록</h3></div><div class="jh-cal__dayarea jh-cal-list__body" aria-live="polite" data-cal-day></div></section>';
 }
 /** 목록 보기(안건·하루·3일): 날짜 머리글 아래 그날의 일정. 이름·시간이 눌러 보지 않아도 보인다.
  *  limit = 보여 줄 일정 줄 수(홈 위젯은 처음 5줄만 — 목록이 길어도 위젯이 커지지 않게). 날짜는 쪼개지 않고, 남은 줄 수는 "N건 더 보기"로 알린다 */

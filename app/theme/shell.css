@@ -66,13 +66,7 @@
 .jh-widget { display: flex; min-width: 0; }
 .jh-widget > .jh-panel { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; }
 .jh-widget > .jh-panel > .jh-form { flex: 1 1 auto; align-content: center; }
-.jh-widget[data-reserve="tall"] { min-height: calc(var(--u-380) + var(--u-4)); }   /* 출퇴근·연차 현황이 다 불러와진 높이(384) */
-.jh-widget[data-reserve="medium"] { min-height: var(--u-220); }
-.jh-widget[data-reserve="todo"] { min-height: calc(var(--u-440) + var(--u-120) + var(--u-8)); }   /* 전자결재 카드(할 일 4칸 + 업무일지 최근 5건)의 가장 큰 높이 — 불러온 뒤 아래 카드가 밀리지 않게 */
-.jh-widget[data-reserve="large"] { min-height: calc(var(--u-440) + var(--u-220)); }   /* 일정 달력(6주) + 날짜 목록 */
-.jh-widget[data-reserve="huge"] { min-height: calc(var(--u-440) + var(--u-380)); }   /* 전체 화면과 같은 일정 달력(6주, 칸마다 일정 이름) — 실제 높이에 맞춘 값 */
-@media (max-width: 899px) { .jh-widget[data-reserve="huge"] { min-height: calc(var(--u-440) + var(--u-380) + var(--u-20) + var(--u-6)); } }   /* 폰: 달력 아래에 날짜 목록이 쌓임(846) */
-@media (max-width: 899px) { .jh-widget[data-reserve="todo"] { min-height: calc(var(--u-440) + var(--u-220) - var(--u-14)); } }
+.jh-widget[data-reserve="tall"] { min-height: calc(var(--u-380) + var(--u-4)); }   /* 출퇴근이 다 불러와진 높이(384) — 불러온 뒤 아래 카드가 밀리지 않게. 그 밖의 카드는 내용 높이 */
 @media (max-width: 899px) { .jh-widget[data-reserve="tall"] { min-height: calc(var(--u-320) + var(--u-44) + var(--u-4)); } }
 .jh-dashboard__grid > .jh-widget[data-wide="true"] { grid-column: 1 / -1; }
 .jh-clock { display: grid; justify-items: center; gap: var(--sp-1); padding: var(--sp-2) 0; text-align: center; }
@@ -105,15 +99,22 @@
   .jh-widget[data-mobile-hide="true"] { display: none; }   /* 폰에서는 숨기는 위젯(연차 현황 — 전자결재 홈에 있음) */
 }
 
-/* ── 넓은 홈(본문 폭 900px 이상): 왼쪽에 출퇴근 · 전자결재 · 연차 현황을 세로로, 오른쪽에 일정(달력 아래에 선택한 날 목록).
-   화면 폭이 아니라 본문 폭(컨테이너)으로 판단해 사이드바가 있어도 정확하고, 규약의 단일 기준 폭(899px)은 그대로 둔다 ── */
+/* ── 메인 홈: 카드 4개(출퇴근 · 전자결재 · 일정 캘린더 · 일정 목록). 본문 폭(컨테이너)으로 판단해 사이드바가 있어도 정확하고, 규약의 단일 기준 폭(899px)은 그대로 둔다.
+   · 넓은 홈(1100px 이상): 왼쪽에 출퇴근·전자결재를 세로로(내용 높이), 가운데 일정 캘린더, 오른쪽 일정 목록(칸 높이를 다 쓰고 길면 안에서 스크롤)
+   · 중간(900~1099px)·그 아래: 위쪽에 출퇴근 | 전자결재, 아래쪽에 일정 캘린더 | 일정 목록(2×2) — 폰은 1열 ── */
 .jh-dashboard { container-type: inline-size; container-name: dash; }
-@container dash (min-width: 900px) {
-  .jh-dashboard .jh-dashboard__grid { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-rows: auto auto auto 1fr; align-items: start; }   /* 4번째 빈 줄(1fr)이 일정 카드가 더 커질 때의 여분을 흡수해, 왼쪽 카드들이 일정 로딩 때문에 밀리지 않는다 */
-  .jh-dashboard .jh-dashboard__grid > .jh-widget, .jh-dashboard .jh-dashboard__grid > .jh-widget[data-wide="true"] { grid-column: 1; }
-  .jh-dashboard .jh-dashboard__grid > .jh-widget[data-widget="calendar/month"] { grid-column: 2; grid-row: 1 / span 4; }
-  .jh-dashboard .jh-cal[data-in-widget="true"] .jh-cal__split { grid-template-columns: minmax(0, 1fr); }
-  .jh-dashboard .jh-cal[data-in-widget="true"][data-view="month"] [data-cal-day] { min-height: var(--u-220); max-height: var(--u-220); overflow-y: auto; }   /* 달력 아래 날짜 목록은 높이를 고정하고(일정이 많으면 안에서 스크롤) 날짜를 바꿔도 위젯 높이가 흔들리지 않게 한다 */
-  .jh-dashboard .jh-widget[data-reserve="huge"] { min-height: calc(var(--u-440) * 2 + var(--u-140) + var(--u-44)); }
-  .jh-dashboard .jh-widget[data-reserve="medium"] { min-height: calc(var(--u-220) + var(--u-16)); }
+.jh-dashboard .jh-widget[data-widget="attendance/clock"], .jh-dashboard .jh-widget[data-widget="edoc/todo"] { align-self: start; }
+@container dash (min-width: 700px) { .jh-dashboard .jh-widget[data-widget="calendar/list"] { contain: size; min-height: calc(var(--u-380) + var(--u-4)); } }
+@container dash (min-width: 1100px) {
+  .jh-dashboard .jh-dashboard__grid { grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr) minmax(18rem, 24rem); grid-template-rows: auto 1fr; align-items: stretch; }
+  .jh-dashboard .jh-widget[data-widget="attendance/clock"] { grid-column: 1; grid-row: 1; }
+  .jh-dashboard .jh-widget[data-widget="edoc/todo"] { grid-column: 1; grid-row: 2; }
+  .jh-dashboard .jh-widget[data-widget="calendar/month"] { grid-column: 2; grid-row: 1 / span 2; }
+  .jh-dashboard .jh-widget[data-widget="calendar/list"] { grid-column: 3; grid-row: 1 / span 2; }
+}
+/* 홈 카드 안 여백: 다른 화면 카드와 같은 기준(위아래 16px · 좌우 20px) */
+.jh-widget > .jh-panel > .jh-form { padding: var(--sp-4) calc(var(--sp-4) + var(--sp-1)); gap: var(--sp-4); }
+.jh-widget__actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.jh-widget__actions .jh-btn { flex: 1 1 auto; justify-content: center; text-align: center; text-decoration: none; }
+.jh-widget[data-widget="edoc/todo"] .jh-todo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }   /* 좁은 왼쪽 칸: 할 일 4칸을 2×2로 */
 }

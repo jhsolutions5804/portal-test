@@ -103,3 +103,7 @@
   .jh-cal__filter-sum { display: inline-flex; }
   .jh-cal__filter .jh-cal__legend { justify-content: flex-start; margin-top: var(--sp-2); }
 }
+/* 홈의 일정 목록 카드: 카드 높이를 다 쓰고 목록이 길면 카드 안에서만 스크롤 */
+.jh-cal-list { display: flex; flex-direction: column; min-height: 0; }
+.jh-cal-list__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--sp-4) calc(var(--sp-4) + var(--sp-1)); }
+
