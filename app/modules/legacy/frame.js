@@ -1,9 +1,10 @@
-import { LEGACY_BASE } from '../../core/config.js?v=20261014u';
-import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261014u';
-import { esc } from '../../core/ui.js?v=20261014u';
-import { attachActivity } from '../../core/idle.js?v=20261014u';
-import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS } from './list.js?v=20261014u';
-import { setSideCurrent } from '../../shared/sidenav.js?v=20261014u';
+import { LEGACY_BASE } from '../../core/config.js?v=20261014v';
+import { db, collection, doc, getDoc, getDocs, query, orderBy } from '../../core/firebase.js?v=20261014v';
+import { esc } from '../../core/ui.js?v=20261014v';
+import { attachActivity } from '../../core/idle.js?v=20261014v';
+import { itemsFor, firstKey, resolveItem, buildUrl, navHtml, attendTargets, PJT_TABS, sideCurrentKey, isProjectKey, PJT_SUB_LABELS, nativeViewKey } from './list.js?v=20261014v';
+import { workTabs } from '../../core/worktabs.js?v=20261014v';
+import { setSideCurrent } from '../../shared/sidenav.js?v=20261014v';
 
 const base = () => new URL(LEGACY_BASE, location.href).href;
 const NATIVE = new Map();   // '모듈id/구역' → 그 구역을 새 모듈이 그리는 함수(modules/index.js 가 hostNative 로 등록)
@@ -28,7 +29,7 @@ function highlight(st) {
   if (st.def.dynamicNav) { st.wrap.setAttribute('data-side', ''); paintNav(st); const cu = st.wrap.querySelector('.jh-legacy__nav [aria-current="page"]'); if (cu && cu.scrollIntoView) cu.scrollIntoView({ block: 'nearest', inline: 'center' }); }   // PJT 관리: 사이드 내비게이션 — 프로젝트·화면에 따라 내용이 달라져 현재 상태로 다시 그린다
   else if (st.def.groups) { st.wrap.setAttribute('data-side', ''); const nv = st.wrap.querySelector('.jh-legacy__nav'); setSideCurrent(nv, sideCurrentKey(st.def, st.key, st.sub)); const cu = nv && nv.querySelector('[aria-current="page"]'); if (cu && cu.scrollIntoView) cu.scrollIntoView({ block: 'nearest', inline: 'center' }); }   // 인사총무: 왼쪽 사이드바 — 다시 그리지 않고 현재 표시만 옮겨 긴 메뉴의 스크롤 위치를 유지
   else st.wrap.querySelectorAll('.jh-legacy__chip').forEach((a) => { const cur = a.hasAttribute('data-home') ? !isNativeKey(st.def, st.key) : a.getAttribute('data-key') === st.key; if (cur) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
-  if (st.native && st.frame) { const nat = isNativeKey(st.def, st.key) || !!st.nativeSub; st.native.hidden = !nat; st.frame.hidden = nat; }
+  if (st.native && st.frame) { const nat = isNativeKey(st.def, st.key) || !!st.nativeSub; st.native.hidden = !nat; st.frame.hidden = nat; if (st.natives) st.natives.forEach((v) => { if (v.el !== st.native || !nat) v.el.hidden = true; }); }   // 살려 둔 다른 화면 영역은 숨긴다
   paintSubnav(st);
 }
 const stateOfSource = (src) => { for (const st of states.values()) { if (st.frame && st.frame.contentWindow === src) return st; } return null; };
@@ -96,14 +97,33 @@ export async function mountLegacy(def, keep, route, ctx) {
     if (fresh || !st.wrap || !keep.contains(st.wrap)) {
       const w = document.createElement('div'); w.className = 'jh-legacy'; w.setAttribute('data-legacy-mod', def.id); if (def.groups || def.dynamicNav) w.setAttribute('data-side', '');
       w.innerHTML = navHtml(def, itemsFor(def, me, st.dyn), item.key, esc, (route.segs || [])[1] || '', me) + '<iframe class="jh-legacy__frame" title="' + esc(def.title) + '" data-legacy-frame="' + esc(def.id) + '" data-lazy="1" hidden></iframe><div class="jh-legacy__native"></div>';
-      keep.appendChild(w); st.wrap = w; st.frame = w.querySelector('iframe'); st.native = w.querySelector('.jh-legacy__native');
+      keep.appendChild(w); st.wrap = w; st.frame = w.querySelector('iframe'); st.native = w.querySelector('.jh-legacy__native'); st.natives = null; st.native0 = null; st.nv = null;
       st.frame.addEventListener('load', () => { try { attachActivity(st.frame.contentDocument); } catch (e) { /* 같은 출처가 아니면 센 수 없다 */ } });
     }
     if (!st.native && st.wrap) { const nd = document.createElement('div'); nd.className = 'jh-legacy__native'; st.wrap.appendChild(nd); st.native = nd; if (!st.frame) st.frame = st.wrap.querySelector('iframe'); }   // 옛 화면으로 먼저 열린 틀에는 새 화면 자리가 없다 — 만든다
+    // 화면별 영역 살리기(데스크톱): 다른 메뉴에 다녀와도 입력 중이던 내용·스크롤이 그대로 — 같은 화면·같은 주소로 돌아오면 다시 그리지 않는다. 폰은 지금까지처럼 매번 새로 그린다
+    let nv = null; const keepViews = !!(window.matchMedia && window.matchMedia('(min-width: 900px)').matches);
+    if (keepViews) {
+      if (st.nv && st.nv.el) st.nv.scroll = st.nv.el.scrollTop;   // 떠나는 화면의 스크롤 위치
+      st.natives = st.natives || new Map(); if (!st.native0) st.native0 = st.native; const nk = nativeViewKey(def.id, item.key, nativeSub ? sub : '', (route.segs || [])[1] || '');
+      nv = st.natives.get(nk);
+      if (!nv) { let el = st.natives.size === 0 ? st.native0 : null; if (!el) { el = document.createElement('div'); el.className = 'jh-legacy__native'; st.wrap.appendChild(el); } nv = { el, key: nk, hash: null, scroll: 0, route: null }; st.natives.set(nk, nv); }
+      st.native = nv.el; st.nv = nv;
+    }
     st.key = item.key; st.tab = ''; st.sub = sub; st.nativeSub = nativeSub; highlight(st); const fn = NATIVE.get(def.id + '/' + (nativeSub ? sub : item.key));
+    if (nv) {
+      const full = (typeof location !== 'undefined' && location.hash.indexOf('#/' + def.id) === 0) ? location.hash : '#/' + def.id + ((route.segs || []).length ? '/' + route.segs.map((x) => encodeURIComponent(x)).join('/') : '') + (route.query && Object.keys(route.query).length ? '?' + new URLSearchParams(route.query).toString() : '');   // 실제 주소(없으면 route 로 만든 주소)
+      nv.el.hidden = false; st.natives.forEach((v) => { if (v !== nv) v.el.hidden = true; });
+      workTabs.note({ key: nv.key, hash: full, label: def.title, mod: def.id }, {
+        drop: () => { const cur = st.nv === nv; if (nv.el.parentNode) { if (nv.el === st.native0) { nv.el.innerHTML = ''; nv.el.hidden = true; } else nv.el.remove(); } st.natives.delete(nv.key); if (cur) st.nv = null; },   // 첫 영역은 비워 두고 나머지는 지운다
+        reload: () => { nv.hash = null; if (workTabs.currentKey() === nv.key && nv.route) mountLegacy(def, keep, nv.route, ctx); }   // 처음 상태로 다시 불러오기(보는 중이면 지금, 아니면 다음에 열 때)
+      });
+      if (nv.hash === full) { nv.el.scrollTop = nv.scroll || 0; return; }   // 같은 화면·같은 주소: 그대로 보여 준다
+      nv.hash = full; nv.route = route;
+    }
     if (fn) await fn(st.native, { segs: nativeSub ? [item.key].concat((route.segs || []).slice(2)) : (route.segs || []).slice(1), query: route.query || {} }, ctx); return;
   }
-  st.nativeSub = false;
+  st.nativeSub = false; workTabs.leave();   // 옛 화면(iframe)은 작업 탭이 아니다(iframe 자체가 살아 있다)
   if (!fresh && st.wrap && keep.contains(st.wrap)) {   // 이미 열려 있는 모듈 — 보이기만 하고, 칸이 다를 때만 이동
     if (st.native && st.frame) { st.native.hidden = true; st.frame.hidden = false; }   // 총무에서 인사로 돌아옴
     if (st.frame && st.frame.hasAttribute('data-lazy')) { st.frame.removeAttribute('data-lazy'); st.key = item.key; st.tab = tabQ; highlight(st); canonical(st); st.frame.src = buildUrl(def, item, me, base(), Date.now(), tabQ); return; }   // 새 화면으로 먼저 열려 옛 화면을 아직 안 불러온 틀 — 이제 불러온다

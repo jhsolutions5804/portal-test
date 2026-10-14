@@ -1,6 +1,6 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261014u';
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261014u';
-import { isProjectKey } from '../../shared/pjt-key.js?v=20261014u';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261014v';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261014v';
+import { isProjectKey } from '../../shared/pjt-key.js?v=20261014v';
 export { isProjectKey };
 /* 옛 모듈 어댑터의 목록과 규칙 — 화면(DOM)·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 옛 모듈이 새 모듈로 바뀌면 여기서 항목을 지우고 modules/index.js 의 새 모듈 목록으로 옮긴다. */
@@ -54,6 +54,12 @@ export function pjtSideConfig(def, items, activeKey, sub, me) {
   sections.push({ items: [{ key: 'ended', label: '🗄️ 종료 PJT', href: '#/pjt/ended' }] });
   const current = act ? 's/' + subKey : activeKey === 'roster' ? (sub === '_manday' || sub === '_migrate' ? 'roster/' + sub : 'roster') : activeKey === 'ended' ? 'ended' : 'home';
   return { label: def.title + ' 메뉴', title: (def.icon ? def.icon + ' ' : '') + def.title, current, sections };
+}
+/** 옛 모듈 틀 안에서 살려 두는 화면의 키(작업 탭 하나). 화면이 아닌 값(문서 번호·날짜·근로자 id)은 넣지 않아 같은 화면이 여러 탭으로 불어나지 않는다.
+ *  itemKey = 메뉴 항목(PJT 는 'home'·프로젝트 id·'roster'·'ended'), sub = 프로젝트 아래 화면, rawSub = 주소의 둘째 칸 */
+export function nativeViewKey(defId, itemKey, sub, rawSub) {
+  if (defId === 'pjt') { if (isProjectKey(itemKey)) return '#/pjt/' + itemKey + '/' + (sub || 'home'); if (itemKey === 'roster') return '#/pjt/roster' + (rawSub && rawSub[0] === '_' ? '/' + rawSub : ''); return '#/pjt/' + itemKey; }
+  return '#/' + defId + '/' + (itemKey || 'home');
 }
 export const PJT_TABS = ['attend', 'schedule'];   // 주소로 바로 열 수 있는 PJT 탭: 출역·공수 체크·일정
 export function buildUrl(def, item, me, base, cacheBust, tab) {

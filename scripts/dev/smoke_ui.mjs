@@ -78,4 +78,26 @@ for (const [name, fn] of targets) {
     if (errors.length) problems.push(errors[0].slice(0, 160)); if (problems.length) { bad++; console.log('✗ 영업기획 껍데기', key.padEnd(10), problems.join(' · ')); } }
   console.log(bad ? '✗ 영업기획 껍데기 점검: 문제 ' + bad + '건' : '✓ 영업기획 껍데기 점검: 새 화면 11개(홈·프로젝트·월말 마감·견적·청구·지급·팀별 노무비·거래처·협력사·위탁 계약서·비용장부 대조)는 모두 그려지고 옛 화면(iframe)에 의존하는 메뉴는 없음, 사이드바 현재 메뉴 표시 일치'); if (bad) failed++;
 }
+
+// ── 작업 탭(화면 살려 두기): 영업기획 견적을 보다가 PJT 관리에 다녀와도 견적 화면이 그대로(다시 그려지지 않음) ──
+{
+  const V = '?v=' + (fs.readFileSync(new URL('../../app/modules/index.js', import.meta.url), 'utf8').match(/\?v=(\w+)/) || [])[1]; const { mountLegacy } = await import(new URL('../../app/modules/legacy/frame.js' + V, import.meta.url).href); const { LEGACY_DEFS } = await import(new URL('../../app/modules/legacy/list.js' + V, import.meta.url).href); const { workTabs } = await import(new URL('../../app/core/worktabs.js' + V, import.meta.url).href);
+  const planDef = LEGACY_DEFS.find((d) => d.id === 'plan'), pjtDef = LEGACY_DEFS.find((d) => d.id === 'pjt'); const keep = document.createElement('div'); document.body.appendChild(keep); const problems = []; errors.length = 0;
+  const prevMM = window.matchMedia; window.matchMedia = (q) => ({ matches: /min-width/.test(q), media: q, addEventListener() {}, removeEventListener() {} });   // 데스크톱 폭
+  workTabs.reset(); const open = async (def, segs) => { try { await Promise.race([mountLegacy(def, keep, { segs, query: {} }, ctx), sleep(2500)]); await sleep(80); } catch (e) { problems.push('예외: ' + String((e && e.stack) || e).split('\n').slice(0, 2).join(' | ')); } };
+  const vis = (mod) => [...keep.querySelectorAll('[data-legacy-mod="' + mod + '"] .jh-legacy__native')].filter((n) => !n.hidden);
+  await open(planDef, ['est']); const est1 = vis('plan')[0]; if (!est1 || est1.innerHTML.length < 50) problems.push('견적 화면이 안 그려짐'); else { const probe = document.createElement('input'); probe.id = 'probe-draft'; probe.value = '작성 중인 견적 내용'; est1.appendChild(probe); est1.scrollTop = 0; }
+  await open(pjtDef, ['p4ph2', 'attend']); if (keep.querySelector('[data-legacy-mod="plan"]').hidden !== true) problems.push('PJT 로 가면 영업기획 틀이 숨겨져야 함'); if (!vis('pjt').length) problems.push('PJT 화면이 안 보임');
+  await open(planDef, ['est']); const est2 = vis('plan')[0]; if (est2 !== est1 || !est2.querySelector('#probe-draft') || est2.querySelector('#probe-draft').value !== '작성 중인 견적 내용') problems.push('★ 견적으로 돌아왔는데 화면이 다시 그려져 입력 중이던 내용이 사라짐');
+  await open(planDef, ['billing']); const bill = vis('plan')[0]; if (!bill || bill === est1 || vis('plan').length !== 1) problems.push('다른 화면(청구)은 따로 영역에 보여야 하고 한 번에 하나만 보여야 함'); if (est1.hidden !== true) problems.push('청구를 보는 동안 견적 영역은 숨겨져 있어야 함');
+  await open(planDef, ['est']); if (vis('plan')[0] !== est1 || !est1.querySelector('#probe-draft')) problems.push('견적↔청구를 오가도 견적 화면이 그대로여야 함');
+  const keys = workTabs.list().map((t) => t.key).sort().join(); if (keys !== '#/pjt/p4ph2/attend,#/plan/billing,#/plan/est') problems.push('작업 탭 기록이 견적·청구·PJT 출역 3개가 아님: ' + keys); if (workTabs.currentKey() !== '#/plan/est') problems.push('현재 탭이 견적이 아님: ' + workTabs.currentKey());
+  await open(pjtDef, ['p4ph2', 'attend', '2026-07-02']); if (!vis('pjt')[0] || !/2026-07-02/.test(vis('pjt')[0].textContent)) problems.push('같은 화면이라도 주소(날짜)가 바뀌면 새 주소로 다시 그려야 함');
+  await open(planDef, ['est']); if (!workTabs.list().find((t) => t.key === '#/plan/est')) problems.push('견적 탭이 없음');
+  workTabs.close('#/plan/billing'); await sleep(30); if (workTabs.has('#/plan/billing') || [...keep.querySelectorAll('[data-legacy-mod="plan"] .jh-legacy__native')].some((n) => n === bill)) problems.push('탭을 닫으면 그 화면 영역이 지워져야 함');
+  for (const k of ['projects', 'closing', 'payout', 'teamlabor', 'comp', 'partners', 'contracts', 'acct', 'home']) await open(planDef, [k]);
+  if (workTabs.list().length > 8) problems.push('작업 탭이 8개를 넘음: ' + workTabs.list().length);
+  window.matchMedia = prevMM; if (errors.length) problems.push(errors[0].slice(0, 160)); workTabs.reset(); keep.remove();
+  if (problems.length) { console.log('✗ 작업 탭(화면 살려 두기): ' + problems.join(' · ')); failed++; } else console.log('✓ 작업 탭(화면 살려 두기): 영업기획 견적에 입력하던 내용이 PJT 관리에 다녀와도(청구와 오가도) 그대로 — 같은 화면은 다시 그리지 않고, 주소가 바뀌면 다시 그리며, 탭 기록·닫기(영역 삭제)·8개 제한이 동작');
+}
 markDone(); console.log('\n' + (failed ? '문제가 있는 화면 ' + failed + '개' : '모든 화면이 열림')); process.exit(failed ? 1 : 0);

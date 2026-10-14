@@ -1,8 +1,8 @@
-import { esc } from './ui.js?v=20261014u';
-import { openSettings } from './settings.js?v=20261014u';
-import { openProfile } from './profile.js?v=20261014u';
-import { phoneTabs } from './nav.js?v=20261014u';
-import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261014u';
+import { esc } from './ui.js?v=20261014v';
+import { openSettings } from './settings.js?v=20261014v';
+import { openProfile } from './profile.js?v=20261014v';
+import { phoneTabs } from './nav.js?v=20261014v';
+import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261014v';
 
 export function renderLogin(root, { onSubmit, message }) {
   root.innerHTML =
@@ -63,6 +63,7 @@ export function renderShell(root, me, mods, { onLogout }) {
         '<header class="jh-topbar"><h1 class="jh-topbar__title"><a id="jh-title" href="#/home"></a></h1><div class="jh-topbar__tools"><div class="jh-userchip">' + who + '</div><button type="button" class="jh-iconbtn" data-open-profile aria-label="내 정보">👤</button><button type="button" class="jh-iconbtn" data-open-settings aria-label="화면 설정">⚙</button></div></header>' +
         '<main class="jh-main" id="jh-main"></main>' +
         '<div class="jh-keep" id="jh-keep" hidden></div>' +
+        '<nav class="jh-worktabs" id="jh-worktabs" aria-label="작업 탭" hidden></nav>' +
       '</div>' +
       '<nav class="jh-tabbar" aria-label="하단 메뉴">' + tabItems + '</nav>' +
       '<a class="jh-fab" id="jh-fab" hidden></a>' +
@@ -87,12 +88,20 @@ export function renderShell(root, me, mods, { onLogout }) {
   const paintFab = () => { if (fabQuick && barVisible) { fab.setAttribute('href', fabQuick.hash); fab.innerHTML = '<span aria-hidden="true">' + esc(fabQuick.icon || '＋') + '</span> ' + esc(fabQuick.label); fab.hidden = false; } else fab.hidden = true; };
   root.querySelectorAll('[data-open-settings]').forEach(b => b.addEventListener('click', () => openSettings(b)));
   root.querySelectorAll('[data-open-profile]').forEach(b => b.addEventListener('click', () => openProfile(me, b)));
-  const mainEl = root.querySelector('#jh-main'); const keepEl = root.querySelector('#jh-keep'); const appEl = root.querySelector('.jh-app');
+  const mainEl = root.querySelector('#jh-main'); const keepEl = root.querySelector('#jh-keep'); const appEl = root.querySelector('.jh-app'); const tabsEl = root.querySelector('#jh-worktabs');
+  const views = new Map();   // 화면별 본문(작업 탭): key → <main class="jh-main"> — 다른 메뉴에 다녀와도 지우지 않고 숨겨 둔다
   return {
     main: mainEl,
+    /** 하단 작업 탭 바 자리 */
+    tabsEl,
+    /** 화면별 본문을 새로 만든다(처음 열 때). 일반 본문(main)과 같은 모양(.jh-main) */
+    newView(key) { const el = document.createElement('main'); el.className = 'jh-main'; el.setAttribute('data-view', key); el.hidden = true; keepEl.insertAdjacentElement('beforebegin', el); views.set(key, el); return el; },
+    /** 이 화면별 본문만 보인다(일반 본문·옛 모듈 층·다른 화면은 숨김) */
+    showView(el) { keepEl.hidden = true; mainEl.hidden = true; views.forEach((e) => { e.hidden = e !== el; }); appEl.toggleAttribute('data-legacy', false); },
+    dropView(key) { const e = views.get(key); if (e) e.remove(); views.delete(key); },
     /** 작업탭 유지 층: 옛 모듈 화면(iframe)을 떠나도 지우지 않고 숨겨 두는 자리. 이 층을 켜면 일반 본문(main)은 숨는다 */
     keep: keepEl,
-    showKeep(v) { mainEl.hidden = !!v; keepEl.hidden = !v; appEl.toggleAttribute('data-legacy', !!v); },
+    showKeep(v) { mainEl.hidden = !!v; keepEl.hidden = !v; views.forEach((e) => { e.hidden = true; }); appEl.toggleAttribute('data-legacy', !!v); },
     setTitle(t, hash) { const a = root.querySelector('#jh-title'); a.textContent = t; if (hash) a.setAttribute('href', hash); },
     /** 작성·인쇄 화면에서는 하단 '새 문서 작성' 막대를 숨긴다(같은 일을 이미 하고 있으므로) */
     setQuickVisible(v) { barVisible = !!v; root.querySelectorAll('.jh-tabbar').forEach(n => { n.hidden = !v; }); root.querySelector('.jh-app').toggleAttribute('data-noquick', !v); paintFab(); },
