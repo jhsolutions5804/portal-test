@@ -382,8 +382,8 @@ button.jh-kpi:hover { border-color: var(--c-primary); }
 .jh-ehome__side .jh-pipe { padding: var(--sp-2); }
 @media (max-width: 1099px) { .jh-ehome { grid-template-columns: minmax(0, 1fr); } }
 
-/* 새 문서: 왼쪽에 문서 종류 목록, 오른쪽에 작성 화면 — 종류를 누르면 오른쪽에 작성 화면이 열린다(왼쪽 폭은 홈과 같은 26~30rem, 1099px 이하는 위아래) */
-.jh-newdoc { display: grid; grid-template-columns: minmax(26rem, 30rem) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+/* 새 문서: 왼쪽에 문서 종류 목록, 오른쪽에 작성 화면 — 종류를 누르면 오른쪽에 작성 화면이 열린다(왼쪽 폭은 결재함 분할 화면(.jh-split)과 같은 320~420px, 1099px 이하는 위아래) */
+.jh-newdoc { display: grid; grid-template-columns: minmax(var(--u-320), var(--u-420)) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
 .jh-newdoc__side { position: sticky; top: var(--sp-3); max-height: calc(100vh - var(--sp-6)); overflow-y: auto; }
 .jh-newdoc__main { min-width: 0; display: grid; gap: var(--sp-4); }
 .jh-newdoc__side .jh-docrow { min-height: var(--u-64); padding: var(--sp-3) var(--sp-4); }
