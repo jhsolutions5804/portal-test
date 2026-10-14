@@ -87,7 +87,9 @@ await scenario('근로자 명부 — 직원 상세는 주소를 가짐: 열면 #
   check(location.hash === '#/hr/workers/w1', '직원 상세를 열면 주소가 #/hr/workers/w1 이 되어야 함: ' + location.hash);
   check(/href="#\/hr\/annualc\/w1\?from=workers"/.test(root.innerHTML) && /href="#\/hr\/laborc\/w1\?from=workers"/.test(root.innerHTML), '직원 상세의 계약서 링크에 ?from=workers 가 있어야 함');
   await click(root, '[data-w-act="close"]'); await sleep(60); check(location.hash === '#/hr/workers' && !root.querySelector('[data-w-f="name"]'), '상세를 닫으면 주소도 목록(#/hr/workers)으로: ' + location.hash);
-  const r2 = await mountFresh(hrMod.mountWorkers, { segs: ['w1'], query: {} }); check(!!r2.querySelector('[data-w-f="name"]'), '뒤로가기로 #/hr/workers/w1 에 돌아오면 직원 상세가 바로 열려야 함');
+  location.hash = '#/hr/workers/w1'; const r2 = await mountFresh(hrMod.mountWorkers, { segs: ['w1'], query: {} }); check(!!r2.querySelector('[data-w-f="name"]'), '뒤로가기로 #/hr/workers/w1 에 돌아오면 직원 상세가 바로 열려야 함');
+  check(location.hash === '#/hr/workers/w1', '★ 주소로 직원 상세를 연 경우 주소가 그대로 #/hr/workers/w1 이어야 함(처음 그릴 때 목록 주소로 지워지면 새로고침·탭 복귀에서 상세가 풀림): ' + location.hash);
+  await click(r2, '[data-w-act="close"]'); await sleep(60); check(location.hash === '#/hr/workers', '그 상세를 닫으면 목록 주소로: ' + location.hash);
   const r3 = await mountFresh(hrMod.mountAnnual, { segs: ['w1'], query: { from: 'workers' } }); await sleep(200); check(!!r3.querySelector('a[href="#/hr/workers/w1"]') && /← 직원 상세/.test(r3.textContent), '직원 상세에서 온 계약서 화면에는 "← 직원 상세" 링크가 있어야 함');
   const r4 = await mountFresh(hrMod.mountAnnual, { segs: ['w1'], query: {} }); await sleep(200); check(!/← 직원 상세/.test(r4.textContent), '직접 연 계약서 화면에는 "← 직원 상세"가 없어야 함');
 });
