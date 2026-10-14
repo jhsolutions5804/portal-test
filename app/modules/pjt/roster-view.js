@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261014k';
-import { EDU, EDU_SK, EDU_OF, PORTAL_OF, COMPANIES, CO_TABS, HEALTH_TYPES, CHEM_REQ_HOURS, FILE_SLOTS, certCo, fmtKB, fmtMoney, fmtH, maskedOf, healthExpiry, eduStateOf, eduInfo, chemYearSum, legalAgg, filesMeta, SORT_OPTS, leaderChoices, canEditSlot, addYearsYmd, pdfDownloadName } from './roster.js?v=20261014k';
+import { esc } from '../../core/ui.js?v=20261014l';
+import { EDU, EDU_SK, EDU_OF, PORTAL_OF, COMPANIES, CO_TABS, HEALTH_TYPES, CHEM_REQ_HOURS, FILE_SLOTS, certCo, fmtKB, fmtMoney, fmtH, maskedOf, healthExpiry, eduStateOf, eduInfo, chemYearSum, legalAgg, filesMeta, SORT_OPTS, leaderChoices, canEditSlot, addYearsYmd, pdfDownloadName, VALID_YEAR_CHOICES, LEGAL_TYPES } from './roster.js?v=20261014l';
 const chip = (tone, text, title) => '<span class="jh-pjt__chip" data-tone="' + tone + '"' + (title ? ' title="' + esc(title) + '"' : '') + '>' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const stateChip = (r) => (r.state === 'expired' ? chip('red', '만료됨 (D+' + Math.abs(r.d) + ')') : r.state === 'soon' ? chip('amber', 'D-' + r.d) : r.chk && r.exp ? chip('blue', '유효') : '');
@@ -111,13 +111,17 @@ function healthHtml(p, today) {
   const rows = ((p && p.health) || []).filter((h) => h.date).slice().sort((a, b) => b.date.localeCompare(a.date)); if (!rows.length) return '<div class="jh-field__hint">등록된 검진 이력이 없습니다.</div>';
   return '<table class="jh-ro__t"><thead><tr><th>종류</th><th>실시일</th><th>만료일</th><th>상태</th><th>결과 PDF</th></tr></thead><tbody>' + rows.map((h) => { const exp = h.expiry || healthExpiry({ health: [h] }, h.type); return '<tr><td>' + esc(HEALTH_TYPES[h.type] || h.type) + '</td><td>' + esc(h.date) + '</td><td>' + esc(exp || '—') + (h.expiryManual ? ' ' + chip('amber', '수정됨') : '') + '</td><td>' + (exp ? stateChip(eduStateOf(true, exp, today)) : '') + '</td><td>' + (h.pdf ? '<button type="button" class="jh-btn" data-variant="secondary" data-ro-hdl="' + esc(h.pdf.path) + '">⬇ ' + esc(h.pdf.name || 'PDF') + '</button>' : '<span class="jh-field__hint">—</span>') + '</td></tr>'; }).join('') + '</tbody></table>';
 }
-function legalHtml(p, co, year) {
-  const rows = ((p && p.legalEdu) || []).filter((r) => certCo(r) === co).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-  const list = rows.length ? '<table class="jh-ro__t"><thead><tr><th>시공사</th><th>교육 종류</th><th>교육일</th><th>시간</th><th>비고</th></tr></thead><tbody>' + rows.map((r) => '<tr><td>' + esc(r.contractor || '—') + '</td><td>' + esc(r.type || '') + '</td><td>' + esc(r.date || '') + '</td><td>' + esc(fmtH(Number(r.hours) || 0)) + '</td><td>' + esc(r.note || '') + '</td></tr>').join('') + '</tbody></table>' : '<div class="jh-field__hint">등록된 법정교육 이력이 없습니다.</div>';
-  const agg = legalAgg((p && p.legalEdu) || [], co, year); let sum = '<div class="jh-field__hint">교육 이력이 있으면 시공사·교육 종류별 누계가 여기에 표시됩니다.</div>';
+function legalSumTable(agg, year) {
+  let sum = '<div class="jh-field__hint">교육 이력이 있으면 시공사·교육 종류별 누계가 여기에 표시됩니다.</div>';
   if (agg.length) { let rowsH = '', cur = null, sub = null; const flush = () => { if (sub && sub.rows > 1) rowsH += '<tr data-subtotal="1"><td colspan="2">' + esc(sub.c) + ' 소계</td><td>' + fmtH(sub.total) + '</td><td>' + fmtH(sub.year) + '</td><td></td></tr>'; };
     agg.forEach((o) => { if (!cur || cur !== o.c) { flush(); cur = o.c; sub = { c: o.c, total: 0, year: 0, rows: 0 }; } sub.total += o.total; sub.year += o.year; sub.rows++; rowsH += '<tr><td>' + esc(o.c) + '</td><td>' + esc(o.t) + ' <span class="jh-field__hint">(' + o.n + '회)</span></td><td><b>' + fmtH(o.total) + '</b></td><td>' + fmtH(o.year) + '</td><td>' + o.q.map((v, i) => (i + 1) + '분기 ' + fmtH(v)).join(' · ') + '</td></tr>'; }); flush();
     sum = '<table class="jh-ro__t"><thead><tr><th>시공사</th><th>교육 종류</th><th>누계</th><th>' + year + '년</th><th>' + year + '년 분기별</th></tr></thead><tbody>' + rowsH + '</tbody></table>'; }
+  return sum;
+}
+function legalHtml(p, co, year) {
+  const rows = ((p && p.legalEdu) || []).filter((r) => certCo(r) === co).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  const list = rows.length ? '<table class="jh-ro__t"><thead><tr><th>시공사</th><th>교육 종류</th><th>교육일</th><th>시간</th><th>비고</th></tr></thead><tbody>' + rows.map((r) => '<tr><td>' + esc(r.contractor || '—') + '</td><td>' + esc(r.type || '') + '</td><td>' + esc(r.date || '') + '</td><td>' + esc(fmtH(Number(r.hours) || 0)) + '</td><td>' + esc(r.note || '') + '</td></tr>').join('') + '</tbody></table>' : '<div class="jh-field__hint">등록된 법정교육 이력이 없습니다.</div>';
+  const agg = legalAgg((p && p.legalEdu) || [], co, year); const sum = legalSumTable(agg, year);
   return '<h4>법정교육</h4>' + list + '<h4>누계 <small>(시공사별로 따로 집계)</small></h4>' + sum;
 }
 function certHtml(p, co) {
@@ -144,6 +148,24 @@ function chemHtml(st, p) {
     + '<h4>종사자 교육과정 <small>(연 ' + CHEM_REQ_HOURS + '시간)</small></h4>' + (rows.length ? '<table class="jh-ro__t"><thead><tr><th>교육일</th><th>시간</th><th>비고</th><th>수료증 PDF</th></tr></thead><tbody>' + rows.map((r) => '<tr><td>' + esc(r.date || '') + '</td><td>' + fmtH(Number(r.hours) || 0) + '</td><td>' + esc(r.note || '') + '</td><td>' + (r.pdf ? '📄 ' + esc(r.pdf.name || '') : '—') + '</td></tr>').join('') + '</tbody></table>' : '<div class="jh-field__hint">등록된 종사자 교육 이력이 없습니다.</div>')
     + '<h4>연도별 이수 현황</h4><table class="jh-ro__t"><thead><tr><th>연도</th><th>누계 / 기준</th><th>상태</th></tr></thead><tbody>' + sum + '</tbody></table>';
 }
+/** 자격·인증 수정(원청별 줄 편집기): 취득일 + 유효기간(1·2·3·5년) → 만료일 자동 계산, 직접 고치면 "수정됨", ↺ 로 복귀 */
+function certEditHtml(st) {
+  const e = st.edit; const co = COMPANIES.find((x) => x.k === e.co) || COMPANIES[0];
+  const rows = e.rows.length ? e.rows.map((c, i) => { const r = eduStateOf(true, c.expiry || '', st.today); const f = (label, field, val, o) => '<div class="jh-ro__fld"><label>' + label + '</label><input class="jh-input"' + (o && o.type ? ' type="' + o.type + '"' : '') + (o && o.list ? ' list="' + o.list + '"' : '') + ' autocomplete="off" data-ro-rf="cert|' + i + '|' + field + '" value="' + esc(val) + '"' + (o && o.ph ? ' placeholder="' + esc(o.ph) + '"' : '') + '></div>';
+    return '<div class="jh-ro__crow">' + f('자격/인증명', 'name', c.name, { ph: '예: 굴착기운전기능사' }) + f('취득 현장명', 'site', c.site, { ph: '예: P4 Ph2 FAB' }) + f('시공사', 'contractor', c.contractor, { list: 'dl-contractor', ph: '예: 삼성물산' }) + f('취득일', 'acquired', c.acquired, { type: 'date' })
+      + '<div class="jh-ro__fld"><label>유효기간</label><select class="jh-input" data-ro-rf="cert|' + i + '|validYears">' + VALID_YEAR_CHOICES.map((v) => '<option value="' + v + '"' + (String(c.validYears || '') === v ? ' selected' : '') + '>' + (v ? v + '년' : '직접 입력') + '</option>').join('') + '</select></div>' + f('만료일' + (c.manual ? ' <span class="jh-pjt__chip" data-tone="amber">수정됨</span>' : ''), 'expiry', c.expiry, { type: 'date' })
+      + '<div class="jh-ro__cfoot">' + stateChip(r) + (c.manual && c.validYears ? ' <button type="button" class="jh-btn" data-variant="secondary" data-ro-rreset="' + i + '" title="자동 계산으로 되돌리기">↺</button>' : '') + ' <button type="button" class="jh-btn" data-variant="danger" data-ro-rdel="cert|' + i + '">삭제</button></div></div>'; }).join('') : '<div class="jh-field__hint jh-ro__pad">등록된 자격/인증이 없습니다.</div>';
+  return '<h4>자격 · 인증 수정 <small>(' + esc(co.label) + ')</small></h4><div class="jh-field__hint jh-ro__pad">유효기간을 고르면 취득일 기준으로 만료일이 자동 계산됩니다. 같은 자격이라도 시공사가 다르면 인정되지 않을 수 있어 시공사를 따로 기록합니다.</div><div class="jh-ro__crows">' + rows + '</div><div class="jh-ro__pad"><button type="button" class="jh-btn" data-variant="secondary" data-ro-radd="cert">＋ 자격/인증 추가</button></div>' + contractorList(st) + saveBar(st, 'cert');
+}
+const contractorList = (st) => '<datalist id="dl-contractor">' + (st.contractors || []).map((v) => '<option value="' + esc(v) + '">').join('') + '</datalist><datalist id="dl-legal-type">' + LEGAL_TYPES.map((v) => '<option value="' + esc(v) + '">').join('') + '</datalist>';
+/** 법정교육 수정(시공사별로 따로 집계): 줄을 고치면 아래 누계가 바로 바뀐다 */
+function legalEditHtml(st) {
+  const e = st.edit; const co = COMPANIES.find((x) => x.k === e.co) || COMPANIES[0]; const year = +st.today.slice(0, 4);
+  const rows = e.rows.length ? e.rows.map((r, i) => { const f = (label, field, val, o) => '<div class="jh-ro__fld"' + (o && o.wide ? ' data-wide="1"' : '') + '><label>' + label + '</label><input class="jh-input"' + (o && o.type ? ' type="' + o.type + '"' : '') + (o && o.list ? ' list="' + o.list + '"' : '') + (o && o.mode ? ' inputmode="' + o.mode + '"' : '') + ' autocomplete="off" data-ro-rf="legal|' + i + '|' + field + '" value="' + esc(val) + '"' + (o && o.ph ? ' placeholder="' + esc(o.ph) + '"' : '') + '></div>';
+    return '<div class="jh-ro__crow">' + f('시공사', 'contractor', r.contractor, { list: 'dl-contractor', ph: '예: 삼성물산' }) + f('교육 종류', 'type', r.type, { list: 'dl-legal-type', ph: '예: 정기안전교육' }) + f('교육일', 'date', r.date, { type: 'date' }) + f('교육시간(h)', 'hours', r.hours, { mode: 'decimal', ph: '예: 6' }) + f('비고', 'note', r.note, { ph: '선택 입력' }) + '<div class="jh-ro__cfoot"><button type="button" class="jh-btn" data-variant="danger" data-ro-rdel="legal|' + i + '">삭제</button></div></div>'; }).join('') : '<div class="jh-field__hint jh-ro__pad">등록된 법정교육 이력이 없습니다.</div>';
+  const agg = legalAgg(e.rows.map((r) => Object.assign({ co: e.co }, r)), e.co, year);
+  return '<h4>법정교육 수정 <small>(' + esc(co.label) + ')</small></h4><div class="jh-ro__crows">' + rows + '</div><div class="jh-ro__pad"><button type="button" class="jh-btn" data-variant="secondary" data-ro-radd="legal">＋ 교육 추가</button></div><h4>누계 <small>(시공사별로 따로 집계 · 입력하는 대로 바뀝니다)</small></h4>' + legalSumTable(agg, year) + contractorList(st) + saveBar(st, 'legal');
+}
 function companyHtml(st, p) {
   const year = +st.today.slice(0, 4); const legalCnt = (k) => ((p && p.legalEdu) || []).filter((r) => certCo(r) === k).length, certCnt = (k) => ((p && p.certs) || []).filter((c) => certCo(c) === k).length, eduCnt = (k) => (EDU_OF[k] || []).filter((e) => eduInfo(p, e.k, st.today).chk).length;
   const tabCnt = (k) => (k === 'chem' ? ((p && p.chemEdu) || []).length : legalCnt(k) + certCnt(k));
@@ -153,5 +175,8 @@ function companyHtml(st, p) {
   const subs = [['legal', '법정교육', legalCnt(co.k)], ['cert', '자격 · 인증', certCnt(co.k)], ['edu', '사내화 교육 · ' + pt.label, eduCnt(co.k)]];
   const subTabs = '<div class="jh-pjt__cats">' + subs.map(([k, l, n]) => '<button type="button" class="jh-pjt__cat" data-ro-cosub="' + k + '"' + (st.coSub === k ? ' aria-pressed="true"' : '') + '>' + esc(l) + ' <small>' + n + '</small></button>').join('') + '</div>';
   if (st.edit && st.edit.card === 'edu' && st.edit.form.co === co.k && st.coSub === 'edu') return tabs + subTabs + eduEditHtml(st);
-  return tabs + subTabs + (st.coSub === 'cert' ? '<h4>자격 · 인증 <small>(' + esc(co.label) + ')</small></h4>' + certHtml(p, co.k) : st.coSub === 'edu' ? eduPortalHtml(st, p, co.k) : legalHtml(p, co.k, year));
+  if (st.edit && st.edit.card === 'cert' && st.edit.co === co.k && st.coSub === 'cert') return tabs + subTabs + certEditHtml(st);
+  if (st.edit && st.edit.card === 'legal' && st.edit.co === co.k && st.coSub === 'legal') return tabs + subTabs + legalEditHtml(st);
+  const btn = (card) => (st.canEdit && !st.edit ? '<button type="button" class="jh-btn" data-variant="secondary" data-ro-edit="' + card + '">✏️ 수정</button>' : '');
+  return tabs + subTabs + (st.coSub === 'cert' ? '<div class="jh-ro__sechd"><h4>자격 · 인증 <small>(' + esc(co.label) + ')</small></h4>' + btn('cert') + '</div>' + certHtml(p, co.k) : st.coSub === 'edu' ? eduPortalHtml(st, p, co.k) : '<div class="jh-ro__sechd"><span></span>' + btn('legal') + '</div>' + legalHtml(p, co.k, year));
 }

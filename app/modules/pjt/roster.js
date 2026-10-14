@@ -232,3 +232,43 @@ export function eduSavePatch(p, f) {
   list.forEach((e) => { edu[e.k] = !!f.edu[e.k]; exp[e.k] = edu[e.k] ? (f.exp[e.k] || '') : ''; });
   return { inhouseEdu: edu, inhouseEduExp: exp, [pt.idK]: String(f.id || '').trim(), [pt.pwK]: String(f.pw || '') };
 }
+
+// ── 4단계-③: 자격·인증(원청별)·법정교육(시공사×교육 종류) 입력 ──
+export const VALID_YEAR_CHOICES = ['', '1', '2', '3', '5'];   // 유효기간(년) — 비우면 만료일 직접 입력
+export const LEGAL_TYPES = ['정기안전교육', '특별안전교육', '채용 시 교육', '작업내용 변경 시 교육'];
+const coLabel = (co) => ((COMPANIES.find((x) => x.k === co) || {}).label) || co;
+/** 원청 한 곳의 자격·인증 입력 줄 */
+export const certRowsOf = (p, co) => ((p && p.certs) || []).filter((c) => certCo(c) === co).map((c) => ({ name: c.name || '', site: c.site || '', contractor: c.contractor || '', acquired: c.acquired || '', expiry: c.expiry || '', validYears: c.validYears ? String(c.validYears) : '', manual: !!c.expiryManual }));
+export const blankCertRow = () => ({ name: '', site: '', contractor: '', acquired: '', expiry: '', validYears: '', manual: false });
+const certAuto = (c) => (c.validYears && c.acquired ? addYearsYmd(c.acquired, +c.validYears) : '');
+/** 입력 한 칸이 바뀐 결과(새 줄): 취득일·유효기간을 정하면 만료일이 자동 계산되고(직접 고치기 전까지), 만료일을 자동 계산과 다르게 고치면 "수정됨", ↺ 로 복귀 */
+export function certRowSet(row, field, value) {
+  const c = Object.assign({}, row);
+  if (field === 'acquired' || field === 'validYears') { c[field] = value || ''; const a = certAuto(c); if (a && !c.manual) c.expiry = a; }
+  else if (field === 'expiry') { if (value && !addYearsYmd(value, 0)) return c; c.expiry = value || ''; c.manual = !!(c.validYears && value && value !== certAuto(c)); }
+  else if (field === 'reset') { c.manual = false; const a = certAuto(c); if (a) c.expiry = a; }
+  else if (field === 'name' || field === 'site' || field === 'contractor') c[field] = value || '';
+  return c;
+}
+/** 자격·인증 저장 검증 → { ok, error, certs(저장할 전체 목록: 다른 원청 줄은 그대로 + 이 원청 줄) } — 이름이 빈 줄에 다른 칸이 차 있으면 막는다 */
+export function planCerts(p, co, rows) {
+  const bad = rows.find((c) => !String(c.name || '').trim() && (c.site || c.contractor || c.acquired || c.expiry));
+  if (bad) return { ok: false, error: '자격/인증명이 비어 있는 행이 있습니다. (' + coLabel(co) + ' 탭) 이름을 입력하거나 행을 삭제해 주세요.', certs: [] };
+  const mine = rows.filter((c) => String(c.name || '').trim()).map((c) => ({ co, name: c.name.trim(), site: String(c.site || '').trim(), contractor: String(c.contractor || '').trim(), acquired: c.acquired || '', expiry: c.expiry || '', validYears: c.validYears ? +c.validYears : '', expiryManual: !!c.manual }));
+  return { ok: true, error: '', certs: ((p && p.certs) || []).filter((c) => certCo(c) !== co).concat(mine) };
+}
+/** 원청 한 곳의 법정교육 입력 줄 */
+export const legalRowsOf = (p, co) => ((p && p.legalEdu) || []).filter((r) => certCo(r) === co).map((r) => ({ contractor: r.contractor || '', type: r.type || '', date: r.date || '', hours: r.hours != null ? String(r.hours) : '', note: r.note || '' }));
+/** 줄 추가: 같은 원청의 마지막 줄의 시공사·교육 종류를 이어받는다(같은 교육을 여러 번 입력하기 쉽게) */
+export const addLegalRow = (rows) => { const last = rows[rows.length - 1]; return rows.concat([{ contractor: last ? last.contractor : '', type: last ? last.type : '', date: '', hours: '', note: '' }]); };
+const hoursOf = (v) => parseFloat(String(v == null ? '' : v).replace(/,/g, ''));
+/** 법정교육 저장 검증 → { ok, error, legalEdu(전체: 다른 원청 줄은 그대로 + 이 원청 줄, 교육일 순) } — 교육 종류·교육일·시간(0 초과)이 모두 있어야 한다 */
+export function planLegal(p, co, rows) {
+  const bad = rows.find((r) => (r.contractor || r.type || r.date || r.hours || r.note) && !(String(r.type || '').trim() && r.date && hoursOf(r.hours) > 0));
+  if (bad) return { ok: false, error: '법정교육 입력이 덜 된 줄이 있습니다. 교육 종류·교육일·교육시간(0보다 큰 값)을 모두 입력하거나 줄을 삭제해 주세요.', legalEdu: [] };
+  const mine = rows.filter((r) => String(r.type || '').trim() && r.date && hoursOf(r.hours) > 0).map((r) => ({ co, contractor: String(r.contractor || '').trim(), type: r.type.trim(), date: r.date, hours: hoursOf(r.hours), note: String(r.note || '').trim() }));
+  const all = ((p && p.legalEdu) || []).filter((r) => certCo(r) !== co).concat(mine).sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+  return { ok: true, error: '', legalEdu: all };
+}
+/** 시공사 입력 자동완성 목록: 모든 근로자의 자격·법정교육에 입력된 시공사(중복 없이, 이름순) */
+export function contractorsOf(privs) { const set = new Set(); Object.keys(privs || {}).forEach((id) => { const p = privs[id] || {}; (p.certs || []).forEach((c) => { if (c.contractor) set.add(String(c.contractor).trim()); }); (p.legalEdu || []).forEach((r) => { if (r.contractor) set.add(String(r.contractor).trim()); }); }); return Array.from(set).filter(Boolean).sort((a, b) => a.localeCompare(b, 'ko')); }

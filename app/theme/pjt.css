@@ -275,3 +275,7 @@
 .jh-ro__edu label { display: inline-flex; align-items: center; gap: var(--sp-2); }
 .jh-ro__pwrow { display: flex; gap: var(--sp-2); }
 .jh-ro__pwrow .jh-input { flex: 1; min-width: 0; }
+/* 근로자 연명부 — 자격·법정교육 줄 편집기 */
+.jh-ro__crows { display: grid; }
+.jh-ro__crow { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--u-140), 1fr)); gap: var(--sp-2) var(--sp-3); padding: var(--sp-3) var(--sp-4); border-top: var(--u-1) solid var(--c-line); align-items: end; }
+.jh-ro__cfoot { display: flex; gap: var(--sp-1); align-items: center; justify-content: flex-end; flex-wrap: wrap; grid-column: 1 / -1; }
