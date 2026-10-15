@@ -22,8 +22,8 @@ s = adhocSummary(r, proj); ok(s.exec === 90 && s.execRaters === 2 && s.site === 
 r.confirmed = true; s = adhocSummary(r, proj); ok(s.final === 89.2 && s.grade === 'A' && s.status === 'confirmed', '★ 확정하면 수시 최종 = 현장 88.3 × 50% + 사장단 90 × 50% = 89.2, 등급 A');
 r.exec = { e1: { person: 4 }, e9: { person: 5 } }; ok(adhocSummary(r, proj).execRaters === 1, '프로젝트 성과 점수를 아직 안 준 사장단은 계산에서 빠짐(개인 점수와 프로젝트 성과 점수가 모두 있어야 함)');
 // ── 프로젝트 성과(프로젝트마다 별도)
-const A = adhocProjectPerf({ target: 12, snapshot: { billed: 2000, paid: 1700 } }), B = adhocProjectPerf({ target: 8, snapshot: { billed: 1000, paid: 950 }, bands: [{ min: 2, score: 5 }, { min: -Infinity, score: 2 }] }), C = adhocProjectPerf({ target: 10, snapshot: { billed: 1000, paid: 700, labor: 100, direct: 50 } }), D = adhocProjectPerf({ target: 10, snapshot: {} });
-ok(A.actual === 15 && A.diff === 3 && A.score === 5 && B.actual === 5 && B.diff === -3 && B.score === 2 && C.actual === 15 && C.score === 5 && D.actual === null && D.score === null, '★ 프로젝트 성과는 프로젝트마다 따로: A(목표 12%, 실현 15%, +3%p, 5점) / B(목표 8%, 실현 5%, 자체 구간으로 2점) / C(노무비·직접비 차감 후 15%) / 청구가 없으면 계산 안 함');
+const A = adhocProjectPerf({ target: 12, snapshot: { billed: 2000, paid: 1700 } }), B = adhocProjectPerf({ target: 8, snapshot: { billed: 1000, paid: 950 }, bands: [{ min: 2, score: 5 }, { min: -Infinity, score: 2 }] }), C = adhocProjectPerf({ target: 10, snapshot: { billed: 1000, paid: 700, ownLabor: 100, direct: 50 } }), D = adhocProjectPerf({ target: 10, snapshot: {} });
+ok(A.actual === 15 && A.diff === 3 && A.score === 5 && B.actual === 5 && B.diff === -3 && B.score === 2 && C.actual === 15 && C.score === 5 && D.actual === null && D.score === null, '★ 프로젝트 성과는 프로젝트마다 따로: A(목표 12%, 실현 15%, +3%p, 5점) / B(목표 8%, 실현 5%, 자체 구간으로 2점) / C(직접비·자체 인건비 포함 실투입비 차감 후 15%) / 청구가 없으면 계산 안 함');
 // ── 화면
 const me = { uid: 'M', name: '관리자 대표', rank: '대표', empNo: 'admin', admin: true, perms: {} };
 const projects = [{ id: 'P1', name: 'P4 Ph2 FAB', status: 'ended', linked: true, planId: 'pjt_1', members: [hr[0], hr[1]], memberWorkers: [hr[0], hr[1]], snapshot: { billed: 1000, paid: 850 }, targetMargin: 12, eval: {} }, { id: 'P2', name: '청주 M15X', status: 'active', linked: false, planId: '', members: [], memberWorkers: [], snapshot: {}, targetMargin: null, eval: {} }];
@@ -43,6 +43,7 @@ ok(/data-ad-act="mconfirm" disabled/.test(mem), '현장·사장단 점수가 아
 const stH = { evTab: 'adhoc', ad: Object.assign({}, st.ad, { me: { uid: 'H', name: '인사', rank: '대리', admin: true, perms: {} } }) }; const memH = adhocProjectHtml(stH);
 ok(/data-ad-score="item:progress\|5"[^>]*disabled/.test(memH) && /data-ad-act="msave" disabled/.test(memH) && memH.includes('인사팀은 열람·운영만') && /data-ad-act="psave"[^>]*disabled/.test(memH), '★ 인사팀이 보면 평가 입력·저장·프로젝트 성과 저장이 모두 잠김(열람·운영만)');
 st.ad.mdraft.confirmed = true; const memL = adhocProjectHtml(st); ok(/data-ad-score="item:progress\|5"[^>]*disabled/.test(memL) && memL.includes('확정된 평가는 수정할 수 없습니다') && memL.includes('data-ad-act="munconfirm"'), '확정된 수시평가는 입력이 잠기고 대표에게만 "확정 취소"가 보임');
+ok(pj.includes('실현 마진율 (잠정)') && pj.includes('지급(외주·노무)만') && pj.includes('직접비·자체 인건비 미반영'), '★ 수시평가 프로젝트 성과 카드에 "잠정" 표기 — 지급 기준 마진율을 최종 숫자로 오해하지 않게(직접비·자체 인건비 연결 전)');
 // ── 연결(소스) 확인
 const idx = fs.readFileSync(new URL('../app/modules/hr/index.js', import.meta.url), 'utf8');
 ok(idx.includes('createAdhocController(') && idx.includes('if (await adh.onClick(ev)) return;') && idx.includes("st.evTab === 'adhoc'") && idx.includes('adh.onInput(ev)') && idx.includes('adh.onChange(ev)'), '인사평가 화면에 수시평가 컨트롤러가 연결됨(클릭·입력·선택, 수시평가 처리가 정기평가보다 먼저)');

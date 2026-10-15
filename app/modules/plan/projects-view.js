@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261015d';
-import { TYPE_LABEL, SETTLE_TYPE_LABEL, filterProjects, paginate, pjtSummary, pjtMargin, pjtEstimates, pjtSettlements, estTotal, estTag, settleState, settleAmountForPjt, linkOptions, sortProjects } from './projects.js?v=20261015d';
+import { esc } from '../../core/ui.js?v=20261015e';
+import { TYPE_LABEL, SETTLE_TYPE_LABEL, filterProjects, paginate, pjtSummary, pjtMargin, pjtEstimates, pjtSettlements, estTotal, estTag, settleState, settleAmountForPjt, linkOptions, sortProjects } from './projects.js?v=20261015e';
 const won = (n) => (Math.round(Number(n) || 0)).toLocaleString('ko-KR');
 const signed = (n) => (n >= 0 ? '+' : '') + won(n);
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -19,10 +19,15 @@ const pager = (p, key) => (p.pages <= 1 ? (p.total ? '<div class="jh-field__hint
 const estRow = (e) => { const tg = estTag(e); return '<button type="button" class="jh-plan__row" data-pj-est="' + esc(e.id) + '" data-void="' + (e.status === 'void' || e.status === 'closed') + '"><span class="jh-plan__main"><span class="jh-plan__line"><strong>' + esc(e.title || '-') + '</strong>' + (tg ? chip(tg.text, tg.tone) : '') + '</span><span class="jh-field__hint">' + esc([e.no, e.date, e.client && e.client.company].filter(Boolean).join(' · ')) + '</span></span><strong>' + won(estTotal(e)) + '</strong></button>'; };
 const setRow = (s, pid) => { const st = settleState(s); const multi = !!(s.pjtIds && s.pjtIds.length > 1); return '<button type="button" class="jh-plan__row" data-pj-set="' + esc(s.id) + '" data-void="' + (s.status === 'void') + '"><span class="jh-plan__main"><span class="jh-plan__line"><strong>' + esc(SETTLE_TYPE_LABEL[s.docType] || '정산서') + '</strong><span class="jh-field__hint">' + esc(s.no || '') + '</span>' + chip(st.text, st.tone) + (multi ? '<span class="jh-field__hint">(공동 발행분)</span>' : '') + '</span><span class="jh-field__hint">' + esc('기준월 ' + (s.baseMonth || '-') + ' · 발행 ' + (s.issueDate || '-') + (s.docType === 'payment' ? ' · 지급' : '')) + '</span></span><strong>' + won(settleAmountForPjt(s, pid)) + '</strong></button>'; };
 /** 마진율 줄: 목표(프로젝트마다 입력)·실현(청구 − 지급 기준)·목표 대비. 청구가 없으면 계산 안 함 */
-export function marginHtml(p, s) {
-  const m = pjtMargin(s, { target: p && p.targetMargin }); const pct = (v) => (v == null ? '-' : v + '%');
+export function marginHtml(p, s, extra) {
+  // 실투입비 = 지급 누계 + 직접비(전표의 프로젝트 표시 현장 원가) + 자체 인력 인건비(공수 배분). 직접비·자체 인건비는 아직 연결되지 않았으면 빠져 있다(extra 가 없으면 "잠정")
+  const ex = extra || {}; const m = pjtMargin(s, { target: p && p.targetMargin, direct: ex.direct, ownLabor: ex.ownLabor }); const pct = (v) => (v == null ? '-' : v + '%');
   const diff = m.diff == null ? '-' : (m.diff > 0 ? '+' : '') + m.diff + '%p'; const tone = m.diff == null ? '' : m.diff >= 0 ? 'pos' : 'neg';
-  return '<div class="jh-plan__sum jh-plan__sum--3">' + sumCell('목표 마진율', m.target == null ? '미입력' : pct(m.target)) + sumCell('실현 마진율', pct(m.actual)) + sumCell('목표 대비', diff, tone) + '</div><div class="jh-field__hint">실현 마진율 = (청구 − 지급) ÷ 청구 · 목표는 "정보 수정"에서 프로젝트마다 입력합니다. 인사평가(수시평가)의 프로젝트 성과는 이 값을 읽어 점수를 냅니다.</div>';
+  const c = m.cost; const hasDirect = ex.direct != null, hasOwn = ex.ownLabor != null; const complete = hasDirect && hasOwn;
+  const part = (label, v, ok) => label + ' ' + (ok ? won(v) + '원' : '미연결');
+  const costLine = '<div class="jh-field__hint">실투입비 ' + won(c.total) + '원 = ' + part('지급(외주·노무)', c.paid, true) + ' + ' + part('직접비', c.direct, hasDirect) + ' + ' + part('자체 인력 인건비', c.ownLabor, hasOwn) + '</div>';
+  const warn = complete ? '' : '<div class="jh-field__hint" data-tone="warn">잠정: 직접비(전표의 프로젝트 표시)·자체 인력 인건비가 아직 반영되지 않아 <strong>지급(외주·노무) 기준</strong>입니다. 실제 마진율은 이보다 낮을 수 있습니다. 평가에 쓰기 전에 연결 여부를 확인하세요.</div>';
+  return '<div class="jh-plan__sum jh-plan__sum--3">' + sumCell('목표 마진율', m.target == null ? '미입력' : pct(m.target)) + sumCell('실현 마진율' + (complete ? '' : ' (잠정)'), pct(m.actual)) + sumCell('목표 대비', diff, tone) + '</div>' + costLine + warn + '<div class="jh-field__hint">실현 마진율 = (청구 − 실투입비) ÷ 청구 · 팀 공수 노무비는 지급예정서에 이미 들어 있어 따로 빼지 않습니다 · 목표는 "정보 수정"에서 프로젝트마다 입력합니다. 인사평가(수시평가)의 프로젝트 성과는 이 값을 읽어 점수를 냅니다.</div>';
 }
 /** 프로젝트 상세(허브): 기본정보·요약·견적·청구·지급 */
 export function projectDetailHtml(st) {

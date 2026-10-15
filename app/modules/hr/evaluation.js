@@ -87,7 +87,8 @@ export function finalizeScore(teamScore, ceoScore) {
 /** 프로젝트 실현 마진율(%) — 프로젝트마다 따로. 1단계: (청구 − 지급) ÷ 청구, 2단계: 노무비 차감, 3단계: 직접비 차감. 청구가 0 이하이면 null */
 export function projectMargin(p) {
   const x = p || {}; const billed = num(x.billed); if (!isFinite(billed) || billed <= 0) return null;
-  const cost = [x.paid, x.labor, x.direct].map((v) => (isFinite(num(v)) ? num(v) : 0)).reduce((a, b) => a + b, 0);
+  // 실투입비 = 지급 누계(노무 포함 — 따로 또 빼면 이중 차감) + 직접비(전표의 프로젝트 표시 현장 원가) + 자체 인력 인건비(공수 비율 배분). 옛 labor 입력은 받지 않는다
+  const cost = [x.paid, x.direct, x.ownLabor].map((v) => (isFinite(num(v)) ? num(v) : 0)).reduce((a, b) => a + b, 0);
   return Math.round((billed - cost) / billed * 1000) / 10;
 }
 export const DEFAULT_MARGIN_BANDS = [{ min: 3, score: 5 }, { min: 1, score: 4 }, { min: -1, score: 3 }, { min: -3, score: 2 }, { min: -Infinity, score: 1 }];
@@ -197,4 +198,4 @@ export function adhocSummary(rec, proj) {
   return { collab, site, exec, execRaters: rates.length, final, grade: final == null ? '' : gradeOf(final), status: final != null ? 'confirmed' : (site != null && exec != null) ? 'team_done' : any ? 'rating' : 'none' };
 }
 /** 프로젝트 성과(마진율): 목표 마진율·청구·지급·노무비·직접비를 프로젝트마다 따로 입력/집계 → 실현 마진율·차이·점수 */
-export function adhocProjectPerf(proj) { const p = proj || {}; const s = p.snapshot || {}; return projectPerformance({ target: p.target, billed: s.billed, paid: s.paid, labor: s.labor, direct: s.direct, bands: p.bands }); }
+export function adhocProjectPerf(proj) { const p = proj || {}; const s = p.snapshot || {}; return projectPerformance({ target: p.target, billed: s.billed, paid: s.paid, direct: s.direct, ownLabor: s.ownLabor, bands: p.bands }); }
