@@ -1,5 +1,5 @@
 /* 인사평가 — 정기평가 운영: 불러오기·저장·클릭/입력 처리. 저장 위치 = evaluations/{근로자}/cycles/{연도} (기존 관리자 전용 컬렉션 안이라 보안 규칙 변경 없음, 설계서 docs/hr-evaluation-design.md) */
-import { isEvalTarget, emptyCycle, setRating, evalAccess, cycleSummary, areaItems, teamTypeOf } from './evaluation.js?v=20261015i';
+import { isEvalTarget, emptyCycle, setRating, evalAccess, cycleSummary, areaItems, teamTypeOf, saveBody } from './evaluation.js?v=20261015j';
 const clone = (o) => JSON.parse(JSON.stringify(o));
 /** deps: { db, collection, getDocs, getDoc, setDoc, doc, serverTimestamp, toast, confirmDialog, paint, st, ctx } */
 export function createCycleController(deps) {
@@ -19,7 +19,7 @@ export function createCycleController(deps) {
   const save = async () => {
     const ec = st.ec; const w = target(); if (!w || !ec.draft) return; const a = access();
     if (!a.edit && !a.confirm) { toast('평가를 저장할 권한이 없습니다.'); return; }
-    try { await setDoc(doc(db, path(w.id)), Object.assign({}, ec.draft, { updatedAt: serverTimestamp(), updatedBy: me.uid || '' }), { merge: true }); ec.cycles[w.id] = clone(ec.draft); toast('저장했습니다.'); paint(); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); }
+    try { await setDoc(doc(db, path(w.id)), Object.assign(saveBody(ec.draft), { updatedAt: serverTimestamp(), updatedBy: me.uid || '' }), { merge: true }); ec.cycles[w.id] = clone(ec.draft); toast('저장했습니다.'); paint(); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); }
   };
   /** 클릭 처리: 처리했으면 true */
   const onClick = async (ev) => {
@@ -52,7 +52,6 @@ export function createCycleController(deps) {
   };
   const onChange = (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return false; const ec = st.ec; if (!ec.draft) return false;
-    if (t.matches('[data-ec-peer]')) { const a = access(); if (!a.edit || ec.draft.confirmed) return true; const [pid, idx] = t.getAttribute('data-ec-peer').split('|'); const cur = (ec.draft.peers && ec.draft.peers[pid]) ? ec.draft.peers[pid].slice() : [null, null, null]; const n = Number(t.value); cur[Number(idx)] = n >= 1 && n <= 5 ? n : null; ec.draft.peers = Object.assign({}, ec.draft.peers, { [pid]: cur }); paint(); return true; }
     return false;
   };
   return { load, onClick, onInput, onChange };

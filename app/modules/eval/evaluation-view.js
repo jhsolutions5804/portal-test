@@ -1,7 +1,7 @@
 /* 인사평가 — 정기평가 운영 화면(테섭 미리보기). 마크업만 만든다(저장·불러오기는 evaluation-io.js). 설계서 docs/hr-evaluation-design.md */
-import { esc } from '../../core/ui.js?v=20261015i';
-import { DEPT_ORDER } from '../../shared/org.js?v=20261015i';
-import { evalPeriod, teamCriteria, teamTypeOf, areaItems, AREA_LABELS, PEER_ITEMS, WEIGHTS_BY, cycleSummary, emptyCycle, STATUS_LABEL, gradeOf, teamLeaderOf, evalAccess } from './evaluation.js?v=20261015i';
+import { esc } from '../../core/ui.js?v=20261015j';
+import { DEPT_ORDER } from '../../shared/org.js?v=20261015j';
+import { evalPeriod, teamCriteria, teamTypeOf, areaItems, AREA_LABELS, WEIGHTS_BY, cycleSummary, peerAggNote, emptyCycle, STATUS_LABEL, gradeOf, teamLeaderOf, evalAccess } from './evaluation.js?v=20261015j';
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const gtone = (g) => (g === 'S' || g === 'A' ? 'accent' : g === 'C' ? 'danger' : 'muted');
@@ -48,8 +48,7 @@ export function evalPanelHtml(st) {
   const main = type === 'pjt'
     ? '<div class="jh-hr__sub">1차 평가 — 팀장' + (lead.name ? ' ' + esc(lead.name) : '') + ' <span class="jh-field__hint">(미리보기: 사장단 계정이 팀장 대신 입력)</span></div>' + areasHtml(d.team && d.team.areas, items, 'team:', dis)
     : '<div class="jh-hr__sub">사장단 평가 — ' + esc((ec.me && ec.me.name) || '내 평가') + ' <span class="jh-field__hint">(사장단 3명이 각자 평가하고 평균을 팀 점수로 사용 · 현재 완료 ' + sm.raters + '명)</span></div>' + areasHtml(execAreas, items, 'exec:', dis);
-  const peerRows = type === 'pjt' ? mem.filter((x) => x.id !== w.id).map((p) => { const v = (d.peers && d.peers[p.id]) || []; return '<div class="jh-hr-ev__peer"><span>' + esc(p.name || '-') + '</span>' + PEER_ITEMS.map((l, i) => '<select class="jh-select" aria-label="' + esc((p.name || '') + ' ' + l) + '" data-ec-peer="' + esc(p.id + '|' + i) + '"' + (dis ? ' disabled' : '') + '><option value="">' + esc(l) + '</option>' + [1, 2, 3, 4, 5].map((n) => '<option value="' + n + '"' + (v[i] === n ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>').join('') + '</div>'; }).join('') : '';
-  const peerBlock = type === 'pjt' ? '<div class="jh-hr-ev__area"><div class="jh-hr__sub">동료평가 <span class="jh-field__hint">같은 팀 안에서만 · 평가자별 점수는 비공개, 평균만 반영(2명 미만이면 반영 안 함) · 미리보기에서는 동료가 쓴 점수를 대신 입력</span></div>' + (peerRows || '<div class="jh-empty">같은 팀 동료가 없습니다.</div>') + '<div class="jh-field__hint">동료 평균: ' + esc(sm.peerAvg == null ? '아직 반영할 수 없음(동료 2명 이상의 입력 필요)' : sm.peerAvg + ' / 5') + '</div></div>' : '';
+  const pn = peerAggNote(sm, st.ca && st.ca.cycle && st.ca.cycle.status); const peerBlock = type === 'pjt' ? '<div class="jh-hr-ev__area"><div class="jh-hr__sub">동료평가 <span class="jh-field__hint">같은 팀 안에서만 · 직원이 "내 평가"에서 직접 입력 · 평가자별 점수는 누구도 볼 수 없고 평균만 반영(2명 미만이면 반영 안 함)</span></div><div class="jh-field__hint" data-tone="' + pn.tone + '">' + esc(pn.text) + '</div></div>' : '';
   const selfBlock = '<div class="jh-field"><label class="jh-field__label">자기평가 <span class="jh-field__hint">점수에 넣지 않고 면담 자료로 씁니다 (올해 성과·성장·개선 요청)</span></label><textarea class="jh-textarea" rows="3" data-ec-self' + (dis ? ' disabled' : '') + ' placeholder="미리보기: 직원이 직접 쓰는 칸입니다">' + esc((d.self && d.self.text) || '') + '</textarea></div>';
   const ceo = d.ceo || {}; const base = sm.teamScore;
   const ceoBlock = '<div class="jh-hr-ev__area"><div class="jh-hr__sub">최종 확정 — 대표 <span class="jh-field__hint">팀 점수 50% + 대표 점수 50% · "그대로 승인"이면 팀 점수 그대로</span></div>'

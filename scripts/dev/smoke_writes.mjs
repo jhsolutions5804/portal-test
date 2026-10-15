@@ -318,6 +318,40 @@ await scenario('평가 회차 — 팀원 수가 부족하거나 포털 계정이
   await withCycleAdmin(CEO2, async () => { D.eval_cycles = { 2026: { status: 'draft', year: 2026 } }; const root = await mountFresh(evalCycle); await sleep(400); check(/시작 전 확인/.test(root.textContent) && /평가자 2명 이상 필요|2명 미만/.test(root.textContent), '팀원이 부족하면 동료평가 평균을 못 낸다는 경고가 있어야 함: ' + root.textContent.slice(0, 200)); });
 });
 
+// ── 정기평가 패널의 동료평가: 직원이 낸 점수를 서버가 집계해 둔 값(peerAgg)만 보여 주고, 회차 상태가 패널까지 전달되어 안내가 맞게 나온다
+const openPanel = async (cycleStatus, aggDoc) => {
+  D.eval_cycles = { 2026: { status: cycleStatus, year: 2026 } }; const wid = Object.keys(D.workers || {}).find((k) => D.workers[k].dept === 'PJT팀' && D.workers[k].status !== 'resigned') || 't1';
+  // 가상 저장소는 문서를 "컬렉션 경로" 키 아래 문서 id 로 찾는다(evaluations/{근로자}/cycles → 2026)
+  const key = 'evaluations/' + wid + '/cycles'; const had = D[key]; if (aggDoc) D[key] = { 2026: aggDoc }; else delete D[key];
+  const root = await mountFresh(evalCycle); await sleep(400); const btn = root.querySelector('[data-ec-open="' + wid + '"]') || root.querySelector('[data-ec-open]'); if (btn) { btn.dispatchEvent(new w.MouseEvent('click', { bubbles: true })); await sleep(350); }
+  const out = { text: root.textContent, html: root.innerHTML, hadBtn: !!btn, wid }; if (had === undefined) delete D[key]; else D[key] = had; return out;
+};
+await scenario('★ 정기평가 패널 — 마감 후 서버 집계가 있으면 평균·평가자 수가 보이고 평가자별 입력 칸은 없음', async (check) => {
+  await withCycleAdmin(CEO2, async () => { const r = await openPanel('closed', { peerAgg: { avg: 4.2, n: 3 } });
+    check(r.hadBtn, '직원 행을 눌러 패널로 들어갈 수 있어야 함');
+    check(/동료 평균 4\.2 \/ 5 \(평가자 3명/.test(r.text), '서버 집계 평균 4.2·평가자 3명이 보여야 함: ' + r.text.slice(r.text.indexOf('동료평가'), r.text.indexOf('동료평가') + 160));
+    check(!/data-ec-peer/.test(r.html) && !/평가자별 점수를 입력/.test(r.text), '평가자별 동료 점수 입력 칸이 없어야 함'); }, mkTeam());
+});
+await scenario('★ 정기평가 패널 — 마감했는데 아직 집계 전이면 "동료평가 집계"를 누르라고 안내(회차 상태가 패널까지 전달됨)', async (check) => {
+  await withCycleAdmin(CEO2, async () => { const r = await openPanel('closed', null); check(r.hadBtn && /"동료평가 집계"를 눌러 주세요/.test(r.text), '마감 상태의 집계 전 안내가 보여야 함'); const r2 = await openPanel('open', null); check(/동료평가 진행 중입니다/.test(r2.text) && /짐작할 수 있어 막아/.test(r2.text), '진행 중에는 집계가 막혀 있다는 안내가 보여야 함'); }, mkTeam());
+});
+await scenario('정기평가 패널 — 평가자가 1명뿐이라 평균을 비운 경우 이유를 알려 줌', async (check) => {
+  await withCycleAdmin(CEO2, async () => { const r = await openPanel('closed', { peerAgg: { avg: null, n: 1 } }); check(/1명뿐이라 평균을 반영하지 않습니다/.test(r.text), '평가자 1명 안내가 보여야 함'); }, mkTeam());
+});
+// ── 점수를 저장해도 서버가 집계해 둔 동료 평균(peerAgg)은 건드리지 않는다 — 화면이 서버 전용 필드를 덮어쓰면 저장하는 순간 평균이 사라지거나 옛 값으로 돌아간다
+await scenario('★ 정기평가 저장 — 팀장·대표 점수를 저장해도 서버 전용 필드(peerAgg)는 쓰지 않음', async (check) => {
+  await withCycleAdmin(CEO2, async () => {
+    D.eval_cycles = { 2026: { status: 'closed', year: 2026 } }; const wid = Object.keys(D.workers || {}).find((k) => D.workers[k].dept === 'PJT팀' && D.workers[k].status !== 'resigned') || 't1'; const key = 'evaluations/' + wid + '/cycles';
+    D[key] = { 2026: { peerAgg: { avg: 4.2, n: 3 }, self: { text: '메모' } } };
+    const root = await mountFresh(evalCycle); await sleep(400); const btn = root.querySelector('[data-ec-open="' + wid + '"]') || root.querySelector('[data-ec-open]'); if (btn) { btn.dispatchEvent(new w.MouseEvent('click', { bubbles: true })); await sleep(350); }
+    // 패널을 열어 둔 사이 서버가 새로 집계했다고 가정(옛 복제본에는 4.2, 서버에는 이제 4.6)
+    D[key] = { 2026: { peerAgg: { avg: 4.6, n: 4 }, self: { text: '메모' } } };
+    WR().length = 0; const sc = root.querySelector('[data-ec-score]'); if (sc) { sc.dispatchEvent(new w.MouseEvent('click', { bubbles: true })); await sleep(250); }
+    const save = root.querySelector('[data-ec-act="save"]'); if (save) { save.dispatchEvent(new w.MouseEvent('click', { bubbles: true })); await sleep(300); }
+    const w2 = WR().filter((x) => x.op === 'set' && x.path === 'evaluations/' + wid + '/cycles/2026');
+    check(w2.length >= 1, '저장이 evaluations/' + wid + '/cycles/2026 에 일어나야 함(저장 ' + WR().length + '건: ' + JSON.stringify(WR().map((x) => x.path)) + ')');
+    check(w2.length >= 1 && !('peerAgg' in w2[0].data), '★ 저장 내용에 peerAgg 가 들어 있으면 안 됨(서버가 집계한 값을 화면의 옛 복제본으로 덮어쓰게 됨): 저장된 필드 = ' + JSON.stringify(w2[0] && Object.keys(w2[0].data))); }, mkTeam());
+});
 await scenario('인사평가(인사 모듈) — 분리 후: 개별 기록(호봉 입력)은 그대로이고 정기·수시평가 탭은 없음', async (check) => {
   const root = await mountFresh(hrMod.mountEvals); check(!!root.querySelector('[data-e-step="w1"]'), '인사 모듈의 인사평가는 기존 개별 기록(호봉 입력칸)이어야 함');
   check(!root.querySelector('[data-ec-tab]') && !root.querySelector('[data-ec-open]') && !root.querySelector('[data-ad-open]'), '정기·수시평가 운영 탭·버튼이 인사 모듈에 없어야 함(평가 메뉴로 분리됨)');

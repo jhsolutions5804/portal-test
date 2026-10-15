@@ -154,8 +154,11 @@ export function cycleSummary(cycle, info) {
   const complete = (r) => !!r && ['achievement', 'competency', 'conduct'].every((k) => itemAvg(r[k], it[k].length) != null);
   let teamScore = null, peerAvg = null, raters = 0, input = false;
   if (type === 'pjt') {
-    const peers = Object.values(c.peers || {}).map((a) => itemAvg(a, PEER_ITEMS.length)).filter((x) => x != null);
-    peerAvg = peerAverage(peers); const r = c.team && c.team.areas; input = hasInput(r) || peers.length > 0;
+    // 동료평가는 직원들이 "내 평가"에서 낸 점수를 서버(evalAct aggregatePeers)가 마감 뒤에 집계해 둔 값(peerAgg: 평균·평가자 수)만 쓴다 — 평가자별 점수는 화면에도 오가지 않는다(익명).
+    // 평가자가 2명 미만이면 서버가 평균을 비워(null) 두므로 팀 점수를 내지 않는다. 옛 방식(관리자가 평가자별로 대신 입력한 c.peers)은 더 이상 읽지 않는다.
+    const pa = c.peerAgg || {}; const paAvg = Number(pa.avg); peerAvg = (pa.avg !== null && pa.avg !== undefined && pa.avg !== '' && isFinite(paAvg) && paAvg >= 1 && paAvg <= 5) ? paAvg : null;
+    const paN = Number(pa.n); raters = isFinite(paN) && paN > 0 ? Math.floor(paN) : 0;
+    const r = c.team && c.team.areas; input = hasInput(r) || raters > 0;
     if (complete(r) && peerAvg != null) teamScore = regularTeamScore({ achievement: r.achievement, competency: r.competency, conduct: r.conduct, peer: [peerAvg] }, 'pjt');
   } else {
     const all = Object.values(c.exec || {}); input = all.some((e) => hasInput(e && e.areas)); const done = all.filter((e) => complete(e && e.areas)); raters = done.length;
@@ -167,6 +170,20 @@ export function cycleSummary(cycle, info) {
   input = input || !!(c.self && String(c.self.text || '').trim());
   const status = final != null ? 'confirmed' : teamScore != null ? 'team_done' : input ? 'rating' : 'none';
   return { type, teamScore, peerAvg, raters, ceoScore, decided, final, grade: final == null ? '' : gradeOf(final), status };
+}
+/** 서버(evalAct)만 쓰는 필드 — 화면은 읽기만 한다. 저장 본문에 넣으면 ① 패널을 열어 둔 사이 서버가 새로 집계한 값을 화면의 옛 복제본이 덮어쓰고 ② 관리자가 동료 평균을 임의로 저장(위조)할 수 있다. */
+export const SERVER_ONLY_FIELDS = ['peerAgg'];
+/** 저장할 문서 본문: 화면 상태의 복사본에서 서버 전용 필드를 뺀다(원본은 바꾸지 않는다) */
+export function saveBody(draft) { const o = Object.assign({}, draft || {}); SERVER_ONLY_FIELDS.forEach((k) => { delete o[k]; }); return o; }
+/** 정기평가 화면의 동료평가 집계 상태 안내 — 서버가 집계해 둔 값(peerAgg)만 본다. cycleStatus = 평가 회차 상태(draft·open·closed·published·'' )
+ *  반환: { tone: 'ok'|'wait'|'low', text } */
+export function peerAggNote(sm, cycleStatus) {
+  const s = sm || {}; const n = Number(s.raters) || 0; const st = String(cycleStatus || '');
+  if (s.peerAvg != null) return { tone: 'ok', text: '동료 평균 ' + s.peerAvg + ' / 5 (평가자 ' + n + '명, 평가자별 점수는 볼 수 없음)' };
+  if (n > 0 && n < 2) return { tone: 'low', text: '동료 평가자가 ' + n + '명뿐이라 평균을 반영하지 않습니다(2명 이상 필요). 익명 보호를 위해 평균을 만들지 않았습니다.' };
+  if (st === 'closed' || st === 'published') return { tone: 'wait', text: '아직 집계되지 않았습니다. 평가 회차 카드의 "동료평가 집계"를 눌러 주세요.' };
+  if (st === 'open') return { tone: 'wait', text: '동료평가 진행 중입니다. 평가를 마감한 뒤 집계하면 평균이 표시됩니다(진행 중에 집계하면 개인 점수를 짐작할 수 있어 막아 두었습니다).' };
+  return { tone: 'wait', text: '평가 회차가 시작되면 동료평가가 진행되고, 마감 후 집계하면 평균이 표시됩니다.' };
 }
 /** 팀의 1차 평가자: 직원 관리에서 "팀장"으로 지정된 사람, 없으면 팀 최상급자(관리자 제외)로 대신한다 */
 export function teamLeaderOf(dept, members, users) {

@@ -1,4 +1,4 @@
-import { teamCriteria, teamTypeOf, competencyItems, areaItems, blankAreas, emptyCycle, setRating, cycleSummary, teamLeaderOf, evalAccess, STATUS_LABEL } from '../app/modules/eval/evaluation.js';
+import { peerAggNote, saveBody, SERVER_ONLY_FIELDS, teamCriteria, teamTypeOf, competencyItems, areaItems, blankAreas, emptyCycle, setRating, cycleSummary, teamLeaderOf, evalAccess, STATUS_LABEL } from '../app/modules/eval/evaluation.js';
 import { evalBoardHtml, evalPanelHtml } from '../app/modules/eval/evaluation-view.js';
 import { PERM_KEYS, isTeamLead, teamLeadChanges } from '../app/modules/company/staff-logic.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
@@ -16,8 +16,35 @@ const wP = W(); const itP = areaItems(wP.dept, wP.rank); const cP = emptyCycle(w
 ok(cP.teamType === 'pjt' && cP.workerId === 'w1' && cP.confirmed === false && cycleSummary(cP, { teamType: 'pjt', items: itP }).status === 'none', '새 평가 기록은 미시작 상태, 팀 유형은 부서로 정해짐');
 cP.team.areas = full(itP, 4); let sP = cycleSummary(cP, { teamType: 'pjt', items: itP });
 ok(sP.status === 'rating' && sP.teamScore === null && sP.peerAvg === null, '★ PJT팀은 동료평가가 없으면 팀 점수를 내지 않음(입력 중)');
-cP.peers = { a: [4, 4, 4], b: [5, 5, 5] }; sP = cycleSummary(cP, { teamType: 'pjt', items: itP });
-ok(sP.peerAvg === 4.5 && sP.teamScore === 82 && sP.status === 'team_done' && sP.final === null && sP.grade === '', '★ PJT팀 팀 점수 = 업적 32 + 역량 16 + 태도 16 + 동료(평균 4.5) 18 = 82, 팀 평가 완료지만 대표 확정 전이라 최종 점수·등급은 없음');
+cP.peerAgg = { avg: 4.5, n: 2 }; sP = cycleSummary(cP, { teamType: 'pjt', items: itP });
+ok(sP.peerAvg === 4.5 && sP.teamScore === 82 && sP.status === 'team_done' && sP.final === null && sP.grade === '', '★ 동료 평균은 서버가 집계한 값(peerAgg 4.5)을 씀 — PJT팀 팀 점수 = 업적 32 + 역량 16 + 태도 16 + 동료(평균 4.5) 18 = 82, 팀 평가 완료지만 대표 확정 전이라 최종 점수·등급은 없음');
+// ── 동료평가는 서버 집계(peerAgg)만 쓴다: 평가자별 점수가 화면에 오가지 않고, 관리자가 대신 입력한 옛 값(peers)은 무시한다
+{ const base = () => { const c = emptyCycle({ id: 'w1', name: '김', dept: 'PJT팀', rank: '사원' }, 2026); c.team.areas = full(itP, 4); return c; };
+  const a = base(); a.peerAgg = { avg: 3.8, n: 3 }; const sa = cycleSummary(a, { teamType: 'pjt', items: itP });
+  ok(sa.peerAvg === 3.8 && sa.raters === 3 && sa.teamScore === 32 + 16 + 16 + 15.2 && sa.status === 'team_done', '★ 서버 집계 평균 3.8(평가자 3명) → 동료 3.8/5×20 = 15.2점, 팀 점수 79.2, 평가자 수(raters)가 3으로 나옴');
+  const b = base(); b.peerAgg = { avg: null, n: 1 }; const sb = cycleSummary(b, { teamType: 'pjt', items: itP });
+  ok(sb.peerAvg === null && sb.teamScore === null && sb.raters === 1 && sb.status === 'rating', '★ 평가자가 2명 미만이라 서버가 평균을 비웠으면(null) 팀 점수를 내지 않고 평가자 수 1명을 알려 줌(점수를 임의로 채우지 않음)');
+  const c = base(); c.peers = { x: [5, 5, 5], y: [5, 5, 5] }; const sc = cycleSummary(c, { teamType: 'pjt', items: itP });
+  ok(sc.peerAvg === null && sc.teamScore === null, '★ 옛 방식(관리자가 평가자별로 대신 입력한 peers)은 더 이상 점수에 반영되지 않음 — 서버 집계가 없으면 동료 평균이 없는 것으로 봄');
+  const d = base(); d.peers = { x: [1, 1, 1] }; d.peerAgg = { avg: 4, n: 3 }; ok(cycleSummary(d, { teamType: 'pjt', items: itP }).peerAvg === 4, '둘 다 있으면 서버 집계만 씀(옛 입력값이 섞이지 않음)');
+  const e = base(); e.peerAgg = { avg: 'abc', n: 'x' }; const se = cycleSummary(e, { teamType: 'pjt', items: itP }); ok(se.peerAvg === null && se.teamScore === null, '서버 값이 이상한 형식이어도 오류 없이 평균 없음으로 처리');
+  const f = base(); f.peerAgg = { avg: 6, n: 3 }; ok(cycleSummary(f, { teamType: 'pjt', items: itP }).peerAvg === null, '범위(1~5)를 벗어난 값은 평균으로 인정하지 않음');
+  const g = emptyCycle({ id: 'w2', name: '박', dept: '인사총무팀', rank: '사원' }, 2026); g.peerAgg = { avg: 5, n: 4 }; g.exec = { e1: { areas: full(areaItems('인사총무팀', '사원'), 4) } }; ok(cycleSummary(g, { teamType: 'nonpjt', items: areaItems('인사총무팀', '사원') }).peerAvg === null, '비프로젝트 팀은 동료평가를 쓰지 않으므로 peerAgg 가 있어도 무시');
+}
+// ── 동료평가 집계 상태 안내(peerAggNote)
+{ const n = (sm, st) => peerAggNote(sm, st);
+  ok(n({ peerAvg: 4.2, raters: 3 }, 'closed').tone === 'ok' && /동료 평균 4\.2 \/ 5 \(평가자 3명/.test(n({ peerAvg: 4.2, raters: 3 }, 'closed').text) && /볼 수 없음/.test(n({ peerAvg: 4.2, raters: 3 }, 'published').text), '집계됐으면 평균과 평가자 수를 보여 주고 평가자별 점수는 볼 수 없다고 안내');
+  ok(n({ peerAvg: null, raters: 1 }, 'closed').tone === 'low' && /1명뿐이라 평균을 반영하지 않습니다\(2명 이상 필요\)/.test(n({ peerAvg: null, raters: 1 }, 'closed').text), '★ 평가자가 1명이면 평균을 만들지 않았다고 이유와 함께 안내');
+  ok(/"동료평가 집계"를 눌러/.test(n({ peerAvg: null, raters: 0 }, 'closed').text) && /"동료평가 집계"를 눌러/.test(n({ peerAvg: null, raters: 0 }, 'published').text), '마감·공개 상태인데 아직 집계 전이면 집계 버튼을 누르라고 안내');
+  ok(/진행 중입니다/.test(n({ peerAvg: null, raters: 0 }, 'open').text) && /짐작할 수 있어 막아/.test(n({ peerAvg: null, raters: 0 }, 'open').text), '★ 진행 중에는 집계가 막혀 있는 이유(개인 점수 짐작 방지)를 안내');
+  ok(/회차가 시작되면/.test(n({ peerAvg: null, raters: 0 }, '').text) && /회차가 시작되면/.test(n({ peerAvg: null, raters: 0 }, 'draft').text) && /회차가 시작되면/.test(n(null, undefined).text), '회차가 없거나 준비 상태·빈 입력이어도 오류 없이 시작 안내');
+}
+// ── 저장 본문: 서버 전용 필드(peerAgg)는 화면이 쓰지 않는다
+{ const d = { year: 2026, workerId: 'w1', team: { areas: {} }, self: { text: '메모' }, peerAgg: { avg: 4.2, n: 3 }, confirmed: false }; const b = saveBody(d);
+  ok(!('peerAgg' in b) && b.year === 2026 && b.workerId === 'w1' && b.self.text === '메모' && b.confirmed === false && 'team' in b, '★ 저장 본문에서 peerAgg 만 빠지고 나머지 필드(연도·근로자·팀 평가·자기평가·확정)는 그대로');
+  ok('peerAgg' in d && d.peerAgg.avg === 4.2, '원본(화면 상태)은 바뀌지 않음 — 화면의 평균 표시는 유지됨');
+  ok(SERVER_ONLY_FIELDS.join() === 'peerAgg' && JSON.stringify(saveBody(null)) === '{}' && JSON.stringify(saveBody(undefined)) === '{}', '서버 전용 필드 목록과 빈 입력 안전 처리');
+}
 cP.ceo = { approved: true, score: null, comment: '' }; ok(cycleSummary(cP, { teamType: 'pjt', items: itP }).final === null, '대표가 승인해도 "확정" 전에는 최종 점수를 내지 않음');
 cP.confirmed = true; let sC = cycleSummary(cP, { teamType: 'pjt', items: itP }); ok(sC.final === 82 && sC.grade === 'A' && sC.status === 'confirmed' && sC.decided, '★ "팀 결과 그대로 승인" 확정 → 최종 = 팀 점수 82, 등급 A');
 cP.ceo = { approved: false, score: 90, comment: '' }; sC = cycleSummary(cP, { teamType: 'pjt', items: itP }); ok(sC.final === 86 && sC.grade === 'A' && sC.ceoScore === 90, '대표 점수 90점으로 확정 → (82 + 90) ÷ 2 = 86');
@@ -52,7 +79,9 @@ ok(b2.includes('권한이 없습니다') && !b2.includes('data-ec-open') && !b2.
 const b3 = evalBoardHtml({ evTab: 'cycle', ec: Object.assign({}, st.ec, { me: { uid: 'H', name: '인사', rank: '대리', admin: true, perms: {} } }) });
 ok(b3.includes('내 권한: 인사팀') && b3.includes('>보기<') && !b3.includes('>평가<'), '인사팀은 목록을 보되 버튼이 "보기"(입력은 사장단)');
 st.ec.sel = 'p1'; st.ec.draft = JSON.parse(JSON.stringify(st.ec.cycles.p1)); const pan = evalPanelHtml(st);
-ok(pan.includes('과장님 · PJT팀 · 과장') && pan.includes('1차 평가 — 팀장 과장님') && pan.includes('리더십') && pan.includes('동료평가') && pan.includes('data-ec-peer="p2|0"') && pan.includes('data-ec-peer="p3|2"') && !pan.includes('data-ec-peer="p1|') && pan.includes('data-ec-score="team:achievement|0|5"') && pan.includes('자기평가') && pan.includes('팀 결과 그대로 승인') && pan.includes('아직 반영할 수 없음'), '★ 평가 패널(PJT팀 과장): 팀장 1차 평가 항목(리더십 포함)·같은 팀 동료 입력(본인 제외)·자기평가·대표 확정 버튼, 동료 평균은 2명 이상 입력 전까지 "아직 반영할 수 없음"');
+ok(pan.includes('과장님 · PJT팀 · 과장') && pan.includes('1차 평가 — 팀장 과장님') && pan.includes('리더십') && pan.includes('동료평가') && pan.includes('data-ec-score="team:achievement|0|5"') && pan.includes('자기평가') && pan.includes('팀 결과 그대로 승인'), '★ 평가 패널(PJT팀 과장): 팀장 1차 평가 항목(리더십 포함)·자기평가·대표 확정 버튼이 그대로 있음');
+ok(!pan.includes('data-ec-peer') && !/<select[^>]*동료|협업·소통<\/option>/.test(pan) && pan.includes('직원이 "내 평가"에서 직접 입력') && pan.includes('평가자별 점수는 누구도 볼 수 없고 평균만 반영') && pan.includes('평가 회차가 시작되면 동료평가가 진행되고'), '★ 평가자별 동료 점수 입력 칸이 더 이상 없음(익명 약속과 화면 일치) — 대신 직원이 직접 입력한다는 안내와 집계 상태 문구(회차 전)가 보임');
+ok(!pan.includes('아직 반영할 수 없음') && !pan.includes('미리보기에서는 동료가 쓴 점수를 대신 입력'), '옛 미리보기 문구("대신 입력"·"아직 반영할 수 없음")가 남아 있지 않음');
 ok(pan.includes('aria-pressed="true"') && pan.match(/data-ec-score="team:achievement\|0\|4"[^>]*aria-pressed="true"/) !== null && pan.includes('disabled') === true && /data-ec-act="approve" disabled/.test(pan), '입력한 점수(4점)가 눌린 상태로 보이고, 팀 점수가 아직 없으면 "그대로 승인"은 잠김');
 const stN = { evTab: 'cycle', ec: Object.assign({}, st.ec, { sel: 'h1', draft: emptyCycle(E[3], 2026) }) }; const panN = evalPanelHtml(stN);
 ok(panN.includes('사장단 평가 — 관리자 대표') && panN.includes('data-ec-score="exec:achievement|4|3"') && !panN.includes('data-ec-peer') && !panN.includes('1차 평가 — 팀장') && panN.includes('사장단 3명이 각자 평가') && panN.includes('data-ec-score="exec:competency|3|5"'), '★ 평가 패널(인사총무팀): 사장단 평가(업적 5항목)이고 동료평가·팀장 평가 칸은 없음');
