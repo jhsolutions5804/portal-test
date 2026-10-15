@@ -1,4 +1,4 @@
-import { peerAggNote, saveBody, SERVER_ONLY_FIELDS, teamCriteria, teamTypeOf, competencyItems, areaItems, blankAreas, emptyCycle, setRating, cycleSummary, teamLeaderOf, evalAccess, STATUS_LABEL } from '../app/modules/eval/evaluation.js';
+import { leadAreasOf, leadNote, peerAggNote, saveBody, SERVER_ONLY_FIELDS, teamCriteria, teamTypeOf, competencyItems, areaItems, blankAreas, emptyCycle, setRating, cycleSummary, teamLeaderOf, evalAccess, STATUS_LABEL } from '../app/modules/eval/evaluation.js';
 import { evalBoardHtml, evalPanelHtml } from '../app/modules/eval/evaluation-view.js';
 import { PERM_KEYS, isTeamLead, teamLeadChanges } from '../app/modules/company/staff-logic.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
@@ -43,8 +43,26 @@ ok(sP.peerAvg === 4.5 && sP.teamScore === 82 && sP.status === 'team_done' && sP.
 { const d = { year: 2026, workerId: 'w1', team: { areas: {} }, self: { text: '메모' }, peerAgg: { avg: 4.2, n: 3 }, confirmed: false }; const b = saveBody(d);
   ok(!('peerAgg' in b) && b.year === 2026 && b.workerId === 'w1' && b.self.text === '메모' && b.confirmed === false && 'team' in b, '★ 저장 본문에서 peerAgg 만 빠지고 나머지 필드(연도·근로자·팀 평가·자기평가·확정)는 그대로');
   ok('peerAgg' in d && d.peerAgg.avg === 4.2, '원본(화면 상태)은 바뀌지 않음 — 화면의 평균 표시는 유지됨');
-  ok(SERVER_ONLY_FIELDS.join() === 'peerAgg' && JSON.stringify(saveBody(null)) === '{}' && JSON.stringify(saveBody(undefined)) === '{}', '서버 전용 필드 목록과 빈 입력 안전 처리');
+  ok(SERVER_ONLY_FIELDS.join() === 'peerAgg,leadAgg' && JSON.stringify(saveBody(null)) === '{}' && JSON.stringify(saveBody(undefined)) === '{}', '서버 전용 필드 목록과 빈 입력 안전 처리');
 }
+// ── 팀장 1차 평가(서버가 마감 후 집계해 둔 leadAgg: 영역 점수)가 팀 점수의 기초가 된다
+{ const base = (rank) => { const it = areaItems('PJT팀', rank); const c = emptyCycle({ id: 'w1', name: '김', dept: 'PJT팀', rank }, 2026); return { c, it }; };
+  const { c: c1, it: it1 } = base('사원'); c1.leadAgg = { areas: { achievement: 4, competency: 5, conduct: 3 }, n: 1, by: 'uLead' }; c1.peerAgg = { avg: 4, n: 3 };
+  const s1 = cycleSummary(c1, { teamType: 'pjt', items: it1 });
+  ok(s1.teamScore === 32 + 20 + 12 + 16 && s1.status === 'team_done' && s1.leadFrom === 'lead', '★ 팀장 영역 점수(업적 4·역량 5·태도 3) + 동료 평균 4.0 → 32 + 20 + 12 + 16 = 80점, 점수의 출처는 팀장 평가(lead)');
+  const ex = leadAreasOf(c1.leadAgg, it1); ok(ex && ex.achievement.length === 3 && ex.achievement.every((v) => v === 4) && ex.competency.length === it1.competency.length && ex.competency.every((v) => v === 5) && ex.conduct.length === it1.conduct.length && ex.conduct.every((v) => v === 3), '영역 점수를 그 영역의 세부 항목 개수만큼 펼침(업적 3개·역량 ' + it1.competency.length + '개·태도 ' + it1.conduct.length + '개) — 평균이 팀장이 준 영역 점수와 같음');
+  const { c: c2, it: it2 } = base('과장'); c2.leadAgg = { areas: { achievement: 4, competency: 5, conduct: 3 }, n: 1, by: 'u' }; c2.peerAgg = { avg: 4, n: 3 }; ok(it2.competency.length === it1.competency.length + 1 && cycleSummary(c2, { teamType: 'pjt', items: it2 }).teamScore === 80, '★ 과장 이상은 역량 항목이 하나 더(리더십) 있어도 같은 영역 점수면 같은 점수 80점(항목 개수가 달라도 어긋나지 않음)');
+  const { c: c3, it: it3 } = base('사원'); c3.team.areas = { achievement: [2, 2, 2], competency: it3.competency.map(() => 2), conduct: it3.conduct.map(() => 2) }; c3.peerAgg = { avg: 4, n: 3 };
+  ok(cycleSummary(c3, { teamType: 'pjt', items: it3 }).teamScore === 16 + 8 + 8 + 16 && cycleSummary(c3, { teamType: 'pjt', items: it3 }).leadFrom === 'manual', '★ 팀장 평가가 도착하지 않았으면 사장단이 입력해 둔 점수(team.areas)로 계산(출처 manual) — 팀장이 제출하지 않아도 평가가 막히지 않음');
+  const { c: c4, it: it4 } = base('사원'); c4.team.areas = { achievement: [2, 2, 2], competency: it4.competency.map(() => 2), conduct: it4.conduct.map(() => 2) }; c4.leadAgg = { areas: { achievement: 5, competency: 5, conduct: 5 }, n: 1, by: 'u' }; c4.peerAgg = { avg: 4, n: 3 };
+  ok(cycleSummary(c4, { teamType: 'pjt', items: it4 }).teamScore === 40 + 20 + 20 + 16, '★ 둘 다 있으면 팀장 평가(서버 집계)가 우선 — 사장단이 미리 입력해 둔 값이 팀장 평가를 덮지 못함');
+  for (const [bad, why] of [[{ areas: null, n: 0, by: null }, '영역 점수 없음'], [{ areas: { achievement: 6, competency: 5, conduct: 3 }, n: 1 }, '범위 밖'], [{ areas: { achievement: 4, competency: 5 }, n: 1 }, '영역 누락'], [{ areas: { achievement: 4.5, competency: 5, conduct: 3 }, n: 1 }, '정수 아님'], [{ areas: { achievement: '4', competency: 5, conduct: 3 }, n: 1 }, '숫자 아님'], [null, '없음'], ['x', '문자열']]) { const { c, it } = base('사원'); c.leadAgg = bad; c.peerAgg = { avg: 4, n: 3 }; ok(cycleSummary(c, { teamType: 'pjt', items: it }).teamScore === null && leadAreasOf(bad, it) === null, '팀장 집계가 올바르지 않으면(' + why + ') 점수를 만들지 않음'); }
+  const { c: c5, it: it5 } = base('사원'); c5.leadAgg = { areas: { achievement: 4, competency: 4, conduct: 4 }, n: 1, by: 'u' }; ok(cycleSummary(c5, { teamType: 'pjt', items: it5 }).teamScore === null && cycleSummary(c5, { teamType: 'pjt', items: it5 }).status === 'rating', '팀장 평가가 있어도 동료 평균이 없으면 팀 점수는 아직 없음(입력 중)');
+  const g = emptyCycle({ id: 'w2', name: '박', dept: '인사총무팀', rank: '사원' }, 2026); g.leadAgg = { areas: { achievement: 5, competency: 5, conduct: 5 }, n: 1, by: 'u' }; const itg = areaItems('인사총무팀', '사원'); g.exec = { e1: { areas: { achievement: itg.achievement.map(() => 4), competency: itg.competency.map(() => 4), conduct: itg.conduct.map(() => 4) } } }; ok(cycleSummary(g, { teamType: 'nonpjt', items: itg }).teamScore === 80, '비프로젝트 팀은 팀장 평가를 쓰지 않으므로 leadAgg 가 있어도 사장단 평가로만 계산(모두 4점 → 80점)');
+  const note = (sm, st) => leadNote(sm, st); ok(/팀장 평가가 반영되었습니다/.test(note({ leadFrom: 'lead' }, 'closed').text) && /제출하지 않았거나 아직 집계되지 않았습니다/.test(note({ leadFrom: 'manual', leadN: 0 }, 'closed').text) && /2건/.test(note({ leadFrom: 'none', leadN: 2 }, 'closed').text) && /마감한 뒤/.test(note({ leadFrom: 'none', leadN: 0 }, 'open').text), '팀장 평가 안내: 반영됨 / 마감 후 미제출(사장단 대신 입력 가능) / 중복 2건 / 진행 중');
+}
+// ── 저장 본문에서 서버 전용 필드 두 가지 모두 제외
+{ const b = saveBody({ year: 2026, peerAgg: { avg: 4 }, leadAgg: { areas: {} }, ceo: { approved: true } }); ok(!('peerAgg' in b) && !('leadAgg' in b) && b.ceo.approved === true && SERVER_ONLY_FIELDS.join() === 'peerAgg,leadAgg', '★ 저장 본문에서 peerAgg 와 leadAgg 둘 다 빠지고 나머지는 그대로'); }
 cP.ceo = { approved: true, score: null, comment: '' }; ok(cycleSummary(cP, { teamType: 'pjt', items: itP }).final === null, '대표가 승인해도 "확정" 전에는 최종 점수를 내지 않음');
 cP.confirmed = true; let sC = cycleSummary(cP, { teamType: 'pjt', items: itP }); ok(sC.final === 82 && sC.grade === 'A' && sC.status === 'confirmed' && sC.decided, '★ "팀 결과 그대로 승인" 확정 → 최종 = 팀 점수 82, 등급 A');
 cP.ceo = { approved: false, score: 90, comment: '' }; sC = cycleSummary(cP, { teamType: 'pjt', items: itP }); ok(sC.final === 86 && sC.grade === 'A' && sC.ceoScore === 90, '대표 점수 90점으로 확정 → (82 + 90) ÷ 2 = 86');
@@ -93,4 +111,15 @@ ok(/data-ec-score="team:achievement\|0\|5"[^>]*disabled/.test(panL) && panL.incl
 import fs from 'node:fs';
 const idx = fs.readFileSync(new URL('../app/modules/eval/ops.js', import.meta.url), 'utf8');
 ok(idx.includes('createCycleController(') && idx.includes('cyc.onClick(ev)') && idx.includes('cyc.onInput(ev)') && idx.includes('cyc.onChange(ev)') && idx.includes('evalBoardHtml') && idx.includes('evalPanelHtml'), '★ 평가 모듈의 운영 화면에 정기평가 컨트롤러·팀 보드·평가 패널이 연결됨(클릭·입력·선택)');
+// ── 패널: 팀장 평가가 서버에서 집계돼 왔으면 읽기 전용으로 보이고, 아니면 사장단이 대신 입력할 수 있다
+{ const emp = E[0]; const mkSt = (cyc, status) => ({ evTab: 'cycle', ca: { year: 2026, cycle: status ? { status } : null, plan: { members: [], noAccount: [], total: 0 }, canManage: true }, ec: Object.assign({}, st.ec, { sel: emp.id, draft: cyc }) });
+  const withLead = Object.assign(emptyCycle(emp, 2026), { leadAgg: { areas: { achievement: 4, competency: 5, conduct: 3 }, n: 1, by: 'uL' }, peerAgg: { avg: 4, n: 3 } });
+  const pl = evalPanelHtml(mkSt(withLead, 'closed')); const dots = (area, n) => new RegExp('data-ec-score="team:' + area + '\\|\\d+\\|' + n + '"[^>]*aria-pressed="true"[^>]*disabled|data-ec-score="team:' + area + '\\|\\d+\\|' + n + '"[^>]*disabled[^>]*aria-pressed="true"');
+  ok(pl.includes('팀장 평가가 반영되었습니다') && /data-ec-score="team:achievement\|0\|4"[^>]*aria-pressed="true"/.test(pl) && /data-ec-score="team:competency\|0\|5"[^>]*aria-pressed="true"/.test(pl) && /data-ec-score="team:conduct\|0\|3"[^>]*aria-pressed="true"/.test(pl), '★ 서버가 집계한 팀장 평가(업적 4·역량 5·태도 3)가 점수 버튼에 눌린 상태로 보이고 반영됐다는 안내가 있음');
+  ok(!/data-ec-score="team:[a-z]+\|\d+\|\d"(?![^>]*disabled)/.test(pl), '★ 서버 집계 팀장 평가의 점수 버튼은 모두 잠겨 있음(사장단이 이 화면에서 고칠 수 없음 — 조정은 대표 점수로)');
+  const manual = Object.assign(emptyCycle(emp, 2026), { peerAgg: { avg: 4, n: 3 } }); const pm = evalPanelHtml(mkSt(manual, 'closed'));
+  ok(/data-ec-score="team:achievement\|0\|5"(?![^>]*disabled)/.test(pm) && pm.includes('아직 집계되지 않았습니다') , '팀장 평가가 아직 집계되지 않았으면 기존처럼 사장단이 대신 입력할 수 있고 "동료평가 집계"를 누르라고 안내');
+  const open = evalPanelHtml(mkSt(manual, 'open')); ok(open.includes('팀장 평가 진행 중입니다') && open.includes('내 평가'), '진행 중에는 팀장이 "내 평가"에서 입력하는 중이라는 안내');
+  const dup = Object.assign(emptyCycle(emp, 2026), { leadAgg: { areas: null, n: 2, by: null } }); const pd = evalPanelHtml(mkSt(dup, 'closed')); ok(pd.includes('팀장 평가가 2건 제출되어') && /data-ec-score="team:achievement\|0\|5"(?![^>]*disabled)/.test(pd), '팀장 평가가 중복 제출됐으면 이유를 알리고 사장단이 대신 입력할 수 있게 둠');
+}
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

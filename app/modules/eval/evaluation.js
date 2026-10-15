@@ -153,13 +153,15 @@ export const STATUS_LABEL = { none: '미시작', rating: '입력 중', team_done
 export function cycleSummary(cycle, info) {
   const c = cycle || {}, i = info || {}; const type = i.teamType === 'pjt' ? 'pjt' : 'nonpjt'; const it = i.items || areaItems(i.dept, i.rank);
   const complete = (r) => !!r && ['achievement', 'competency', 'conduct'].every((k) => itemAvg(r[k], it[k].length) != null);
-  let teamScore = null, peerAvg = null, raters = 0, input = false;
+  let teamScore = null, peerAvg = null, raters = 0, input = false, leadFrom = 'none', leadN = 0;
   if (type === 'pjt') {
     // 동료평가는 직원들이 "내 평가"에서 낸 점수를 서버(evalAct aggregatePeers)가 마감 뒤에 집계해 둔 값(peerAgg: 평균·평가자 수)만 쓴다 — 평가자별 점수는 화면에도 오가지 않는다(익명).
     // 평가자가 2명 미만이면 서버가 평균을 비워(null) 두므로 팀 점수를 내지 않는다. 옛 방식(관리자가 평가자별로 대신 입력한 c.peers)은 더 이상 읽지 않는다.
     const pa = c.peerAgg || {}; const paAvg = Number(pa.avg); peerAvg = (pa.avg !== null && pa.avg !== undefined && pa.avg !== '' && isFinite(paAvg) && paAvg >= 1 && paAvg <= 5) ? paAvg : null;
     const paN = Number(pa.n); raters = isFinite(paN) && paN > 0 ? Math.floor(paN) : 0;
-    const r = c.team && c.team.areas; input = hasInput(r) || raters > 0;
+    // 팀장의 1차 평가: 서버가 마감 후 집계해 둔 값(leadAgg)이 올바르면 그것을 쓰고(서버만 쓰므로 위조 불가), 없으면 사장단이 화면에서 대신 입력한 값(team.areas)을 쓴다(팀장이 제출하지 않아도 평가가 막히지 않게)
+    const la = leadAreasOf(c.leadAgg, it); leadFrom = la ? 'lead' : (c.team && c.team.areas && hasInput(c.team.areas) ? 'manual' : 'none'); leadN = Number(c.leadAgg && c.leadAgg.n) || 0;
+    const r = la || (c.team && c.team.areas); input = hasInput(r) || raters > 0;
     if (complete(r) && peerAvg != null) teamScore = regularTeamScore({ achievement: r.achievement, competency: r.competency, conduct: r.conduct, peer: [peerAvg] }, 'pjt');
   } else {
     const all = Object.values(c.exec || {}); input = all.some((e) => hasInput(e && e.areas)); const done = all.filter((e) => complete(e && e.areas)); raters = done.length;
@@ -170,12 +172,28 @@ export function cycleSummary(cycle, info) {
   const final = c.confirmed === true && decided ? finalizeScore(teamScore, ceoScore) : null;
   input = input || !!(c.self && String(c.self.text || '').trim());
   const status = final != null ? 'confirmed' : teamScore != null ? 'team_done' : input ? 'rating' : 'none';
-  return { type, teamScore, peerAvg, raters, ceoScore, decided, final, grade: final == null ? '' : gradeOf(final), status };
+  return { type, teamScore, peerAvg, raters, leadFrom, leadN, ceoScore, decided, final, grade: final == null ? '' : gradeOf(final), status };
 }
 /** 서버(evalAct)만 쓰는 필드 — 화면은 읽기만 한다. 저장 본문에 넣으면 ① 패널을 열어 둔 사이 서버가 새로 집계한 값을 화면의 옛 복제본이 덮어쓰고 ② 관리자가 동료 평균을 임의로 저장(위조)할 수 있다. */
-export const SERVER_ONLY_FIELDS = ['peerAgg'];
+export const SERVER_ONLY_FIELDS = ['peerAgg', 'leadAgg'];
 /** 저장할 문서 본문: 화면 상태의 복사본에서 서버 전용 필드를 뺀다(원본은 바꾸지 않는다) */
 export function saveBody(draft) { const o = Object.assign({}, draft || {}); SERVER_ONLY_FIELDS.forEach((k) => { delete o[k]; }); return o; }
+/** 서버가 마감 후 집계해 둔 팀장 1차 평가(leadAgg: 영역 점수 업적·역량·태도 각 1~5 정수) → 세부 항목 점수 배열. 영역 안의 모든 항목에 같은 영역 점수를 채우므로
+ *  영역 평균이 팀장이 준 영역 점수와 정확히 같고, 팀·직급마다 항목 개수가 달라도(과장 이상은 리더십 추가) 어긋나지 않는다. 모양이 올바르지 않으면 null. */
+export function leadAreasOf(leadAgg, items) {
+  const a = leadAgg && typeof leadAgg === 'object' ? leadAgg.areas : null; if (!a || typeof a !== 'object' || !items) return null;
+  const out = {}; for (const k of ['achievement', 'competency', 'conduct']) { const v = a[k]; if (typeof v !== 'number' || !Number.isInteger(v) || v < 1 || v > 5 || !Array.isArray(items[k])) return null; out[k] = items[k].map(() => v); }
+  return out;
+}
+/** 정기평가 패널의 팀장 1차 평가 상태 안내 — sm = cycleSummary 결과(leadFrom: 'lead'(서버 집계) | 'manual'(사장단 입력) | 'none', leadN: 제출 건수), cycleStatus = 평가 회차 상태 */
+export function leadNote(sm, cycleStatus) {
+  const s = sm || {}; const st = String(cycleStatus || ''); const n = Number(s.leadN) || 0;
+  if (s.leadFrom === 'lead') return { tone: 'ok', text: '팀장 평가가 반영되었습니다(마감 후 서버가 집계한 값, 영역별 점수 — 이 화면에서는 고칠 수 없습니다). 조정이 필요하면 대표 점수로 반영해 주세요.' };
+  if (n > 1) return { tone: 'low', text: '팀장 평가가 ' + n + '건 제출되어 어느 것을 쓸지 정할 수 없습니다. 영역 점수를 반영하지 않았으니 인사팀에 확인해 주세요(사장단이 아래에 대신 입력할 수 있습니다).' };
+  if (st === 'closed' || st === 'published') return s.leadFrom === 'manual' ? { tone: 'wait', text: '팀장이 평가를 제출하지 않았거나 아직 집계되지 않았습니다. 지금은 사장단이 입력한 점수를 씁니다("동료평가 집계"를 누르면 제출된 팀장 평가를 반영합니다).' } : { tone: 'wait', text: '팀장 평가가 아직 집계되지 않았습니다. 평가 회차 카드의 "동료평가 집계"를 눌러 주세요(팀장이 제출하지 않았다면 사장단이 아래에 대신 입력할 수 있습니다).' };
+  if (st === 'open') return { tone: 'wait', text: '팀장 평가 진행 중입니다. 평가를 마감한 뒤 집계하면 반영됩니다.' };
+  return { tone: 'wait', text: '평가 회차가 시작되면 팀장이 "내 평가"에서 입력하고, 마감 후 집계하면 반영됩니다.' };
+}
 /** 정기평가 화면의 동료평가 집계 상태 안내 — 서버가 집계해 둔 값(peerAgg)만 본다. cycleStatus = 평가 회차 상태(draft·open·closed·published·'' )
  *  반환: { tone: 'ok'|'wait'|'low', text } */
 export function peerAggNote(sm, cycleStatus) {
