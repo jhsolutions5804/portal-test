@@ -10,13 +10,23 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
     // 평가 회차(열림/닫힘/공개): 승인된 직원이 읽고(내 평가 화면이 열렸는지 확인), 관리자만 쓴다
+    // 평가 회차를 만들고 단계를 바꾸는 권한은 **사장단 3명(송지훈·김종화·김영희)의 계정**으로만 한정한다 — 관리자 계정 누구나가 아니라(인사팀 관리자가 화면을 우회해 평가를 마감하는 것을 막음).
+    // 직급은 직원 관리에서 바뀌는 값이라 쓰지 않고, 바뀌지 않는 계정 식별자(uid)를 쓴다. 목록을 바꾸려면 이 규칙을 다시 게시해야 한다(관리자 화면으로는 못 바꾼다).
+    // 화면(app/shared/eval-perm.js CYCLE_MANAGERS)·서버(functions/eval-act.js CYCLE_MANAGERS)와 같은 목록이어야 하며 시험(tests/eval-managers.test.mjs)이 대조한다.
+    function isCycleManager() {
+      return isAdmin() && request.auth.uid in [
+        '202TPNudKZghsTPAeeG206f8vbJ3',   // 송지훈 (대표)
+        '8KuOuhqirGWmrYKw8eOCPnqtYBr2',   // 김종화 (부사장)
+        'muButMmunGX91id0HmHZVBMDq6B3'    // 김영희 (부사장)
+      ];
+    }
     // 상태는 draft(준비) → open(진행) → closed(마감) → published(공개) 순으로만 나아간다. **마감(closed)·공개(published)된 회차는 다시 열 수 없다**:
     // 다시 열어 제출을 받은 뒤 또 집계하면 평균 변화로 새 제출자의 점수를 역산할 수 있기 때문이다(서버 함수 aggregatePeers 가 마감 후에만 집계하는 이유와 같다).
     match /eval_cycles/{cycleId} {
       function rank(st) { return st == 'draft' ? 0 : st == 'open' ? 1 : st == 'closed' ? 2 : st == 'published' ? 3 : -1; }
       allow read: if isApproved();
-      allow create: if isAdmin() && request.resource.data.keys().hasOnly(['status', 'year', 'updatedAt', 'updatedBy']) && request.resource.data.status in ['draft', 'open'];
-      allow update: if isAdmin() && request.resource.data.keys().hasOnly(['status', 'year', 'updatedAt', 'updatedBy'])
+      allow create: if isCycleManager() && request.resource.data.keys().hasOnly(['status', 'year', 'updatedAt', 'updatedBy']) && request.resource.data.status in ['draft', 'open'];
+      allow update: if isCycleManager() && request.resource.data.keys().hasOnly(['status', 'year', 'updatedAt', 'updatedBy'])
         && rank(request.resource.data.status) >= rank(resource.data.get('status', 'draft'))
         && !(resource.data.get('status', 'draft') in ['closed', 'published'] && request.resource.data.status in ['draft', 'open']);
       allow delete: if false;

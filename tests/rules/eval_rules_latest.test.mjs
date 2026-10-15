@@ -4,11 +4,14 @@ import { doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, collection, query, 
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const env = await initializeTestEnvironment({ projectId: 'demo-eval', firestore: { rules: readFileSync(process.env.RULES_FILE || (process.cwd() + '/docs/rules/firestore.rules_테섭_평가추가본_2026-10-15.rules'), 'utf8'), host: '127.0.0.1', port: 8089 } });
 const A = 'ADMIN1', K = 'KIM1', Y = 'YOON1', P = 'PARK1', X = 'OUT1';
+// 사장단 3명(송지훈·김종화·김영희) — 규칙(isCycleManager)에 적힌 실제 계정 식별자. 시험은 이 계정으로 접속해 본다
+const EX1 = '202TPNudKZghsTPAeeG206f8vbJ3', EX2 = '8KuOuhqirGWmrYKw8eOCPnqtYBr2', EX3 = 'muButMmunGX91id0HmHZVBMDq6B3';
 const email = (u) => u.toLowerCase() + '@jhsol.kr';
 // 시험 데이터(규칙 우회로 직접 심는다): 계정·회차·과제
 await env.withSecurityRulesDisabled(async (ctx) => {
   const db = ctx.firestore();
   await setDoc(doc(db, 'portal_users/' + A), { status: 'approved', admin: true });
+  for (const u of [EX1, EX2, EX3]) await setDoc(doc(db, 'portal_users/' + u), { status: 'approved', admin: true });
   for (const u of [K, Y, P]) await setDoc(doc(db, 'portal_users/' + u), { status: 'approved' });
   await setDoc(doc(db, 'portal_users/' + X), { status: 'pending' });
   await setDoc(doc(db, 'eval_cycles/2026'), { status: 'open' }); await setDoc(doc(db, 'eval_cycles/2027'), { status: 'closed' });
@@ -73,27 +76,43 @@ await assertFails(getDoc(doc(as(Y), 'eval_tasks/2026__' + K))); ok(true, '★ �
 await assertSucceeds(getDoc(doc(as(A), 'eval_tasks/2026__' + K))); ok(true, '관리자는 과제 목록을 읽을 수 있음(독촉용)');
 await assertFails(setDoc(doc(as(K), 'eval_tasks/2026__' + K), { keys: ['2026__peer__wA'] })); ok(true, '★ 직원이 자기 과제 목록을 스스로 고칠 수 없음(관리자만)');
 await assertFails(setDoc(doc(as(K), 'eval_cycles/2026'), { status: 'open' })); ok(true, '직원이 평가 회차를 열고 닫을 수 없음');
-await assertSucceeds(setDoc(doc(as(A), 'eval_cycles/2028'), { status: 'draft' })); ok(true, '관리자는 평가 회차를 만들 수 있음');
+await assertSucceeds(setDoc(doc(as(EX1), 'eval_cycles/2028'), { status: 'draft' })); ok(true, '★ 사장단(송지훈)은 평가 회차를 만들 수 있음');
 await assertSucceeds(setDoc(doc(as(A), 'eval_tasks/2026__NEW1'), { keys: ['2026__self__wN'] })); ok(true, '관리자는 과제 목록을 만들 수 있음');
 await assertSucceeds(getDoc(doc(as(K), 'eval_cycles/2026'))); ok(true, '직원은 평가 회차(열림 여부)를 읽을 수 있음');
 await assertFails(getDoc(doc(as(X), 'eval_cycles/2026'))); ok(true, '승인되지 않은 계정은 회차도 읽을 수 없음');
 // ── 6-2. 평가 회차 상태 전이: draft → open → closed → published 로만 나아가고, 마감 뒤에는 다시 열 수 없다(재개방 후 재집계 → 평균 변화로 점수 역산 방지)
 await env.withSecurityRulesDisabled(async (ctx) => { const db = ctx.firestore(); await setDoc(doc(db, 'eval_cycles/2040'), { status: 'draft', year: 2040 }); await setDoc(doc(db, 'eval_cycles/2041'), { status: 'closed', year: 2041 }); await setDoc(doc(db, 'eval_cycles/2042'), { status: 'published', year: 2042 }); });
 const cy = (db, y) => doc(db, 'eval_cycles/' + y);
-await assertSucceeds(updateDoc(cy(as(A), 2040), { status: 'open' })); ok(true, '정상 전이: 준비(draft) → 진행(open)');
-await assertSucceeds(updateDoc(cy(as(A), 2040), { status: 'closed' })); ok(true, '정상 전이: 진행(open) → 마감(closed)');
-await assertSucceeds(updateDoc(cy(as(A), 2040), { status: 'published' })); ok(true, '정상 전이: 마감(closed) → 공개(published)');
-await assertFails(updateDoc(cy(as(A), 2041), { status: 'open' })); ok(true, '★★ 마감된 회차를 다시 열 수 없음(재개방 후 재집계로 개인 점수가 역산되는 것 방지)');
-await assertFails(updateDoc(cy(as(A), 2041), { status: 'draft' })); ok(true, '마감된 회차를 준비로 되돌릴 수 없음');
-await assertFails(updateDoc(cy(as(A), 2042), { status: 'closed' })); ok(true, '공개된 회차를 마감으로 되돌릴 수 없음');
-await assertFails(updateDoc(cy(as(A), 2042), { status: 'open' })); ok(true, '공개된 회차를 다시 열 수 없음');
-await assertSucceeds(updateDoc(cy(as(A), 2041), { status: 'published' })); ok(true, '마감 → 공개는 가능');
-await assertFails(updateDoc(cy(as(A), 2043), { status: 'bogus' })); ok(true, '없는 회차·알 수 없는 상태 값은 거부');
-await assertFails(setDoc(cy(as(A), 2044), { status: 'closed', year: 2044 })); ok(true, '처음부터 마감 상태로 만들 수 없음(draft·open 으로만 생성)');
-await assertSucceeds(setDoc(cy(as(A), 2044), { status: 'open', year: 2044 })); ok(true, '진행(open) 상태로 바로 만드는 것은 가능');
-await assertFails(updateDoc(cy(as(A), 2044), { status: 'open', hacker: 1 })); ok(true, '정의되지 않은 필드를 끼워 넣을 수 없음');
-await assertFails(deleteDoc(cy(as(A), 2044))); ok(true, '회차 문서는 지울 수 없음');
+await assertSucceeds(updateDoc(cy(as(EX1), 2040), { status: 'open' })); ok(true, '정상 전이: 준비(draft) → 진행(open)');
+await assertSucceeds(updateDoc(cy(as(EX1), 2040), { status: 'closed' })); ok(true, '정상 전이: 진행(open) → 마감(closed)');
+await assertSucceeds(updateDoc(cy(as(EX1), 2040), { status: 'published' })); ok(true, '정상 전이: 마감(closed) → 공개(published)');
+await assertFails(updateDoc(cy(as(EX1), 2041), { status: 'open' })); ok(true, '★★ 마감된 회차를 다시 열 수 없음(재개방 후 재집계로 개인 점수가 역산되는 것 방지)');
+await assertFails(updateDoc(cy(as(EX1), 2041), { status: 'draft' })); ok(true, '마감된 회차를 준비로 되돌릴 수 없음');
+await assertFails(updateDoc(cy(as(EX1), 2042), { status: 'closed' })); ok(true, '공개된 회차를 마감으로 되돌릴 수 없음');
+await assertFails(updateDoc(cy(as(EX1), 2042), { status: 'open' })); ok(true, '공개된 회차를 다시 열 수 없음');
+await assertSucceeds(updateDoc(cy(as(EX1), 2041), { status: 'published' })); ok(true, '마감 → 공개는 가능');
+await assertFails(updateDoc(cy(as(EX1), 2043), { status: 'bogus' })); ok(true, '없는 회차·알 수 없는 상태 값은 거부');
+await assertFails(setDoc(cy(as(EX1), 2044), { status: 'closed', year: 2044 })); ok(true, '처음부터 마감 상태로 만들 수 없음(draft·open 으로만 생성)');
+await assertSucceeds(setDoc(cy(as(EX1), 2044), { status: 'open', year: 2044 })); ok(true, '진행(open) 상태로 바로 만드는 것은 가능');
+await assertFails(updateDoc(cy(as(EX1), 2044), { status: 'open', hacker: 1 })); ok(true, '정의되지 않은 필드를 끼워 넣을 수 없음');
+await assertFails(deleteDoc(cy(as(EX1), 2044))); ok(true, '회차 문서는 지울 수 없음');
 await assertFails(updateDoc(cy(as(K), 2044), { status: 'closed' })); ok(true, '일반 직원은 회차를 바꿀 수 없음');
+// ── 6-3. 회차 관리는 사장단 3명(송지훈·김종화·김영희)의 계정만 — 관리자 계정이라도 사장단이 아니면 거부(인사팀 관리자가 화면을 우회해 평가를 마감하는 것 방지)
+await env.withSecurityRulesDisabled(async (ctx) => { const db = ctx.firestore(); await setDoc(doc(db, 'eval_cycles/2050'), { status: 'open', year: 2050 }); await setDoc(doc(db, 'eval_cycles/2051'), { status: 'draft', year: 2051 }); });
+await assertFails(updateDoc(cy(as(A), 2050), { status: 'closed' })); ok(true, '★★ 관리자 계정이라도 사장단이 아니면(인사팀 관리자) 회차를 마감할 수 없음');
+await assertFails(updateDoc(cy(as(A), 2051), { status: 'open' })); ok(true, '사장단이 아닌 관리자는 회차를 시작할 수도 없음');
+await assertFails(setDoc(cy(as(A), 2052), { status: 'draft', year: 2052 })); ok(true, '사장단이 아닌 관리자는 회차를 만들 수도 없음');
+await assertSucceeds(updateDoc(cy(as(EX1), 2050), { status: 'closed' })); ok(true, '사장단 송지훈은 회차를 마감할 수 있음');
+await assertSucceeds(updateDoc(cy(as(EX2), 2051), { status: 'open' })); ok(true, '사장단 김종화는 회차를 시작할 수 있음');
+await assertSucceeds(setDoc(cy(as(EX3), 2053), { status: 'draft', year: 2053 })); ok(true, '사장단 김영희는 회차를 만들 수 있음');
+await assertFails(updateDoc(cy(as(EX1), 2050), { status: 'open' })); ok(true, '사장단이라도 마감된 회차를 다시 열 수는 없음(재개방 금지는 사장단에게도 적용)');
+await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), 'portal_users/' + EX2), { status: 'approved', admin: false }); });
+await assertFails(updateDoc(cy(as(EX2), 2051), { status: 'closed' })); ok(true, '사장단 목록에 있어도 관리자 권한이 해제된 계정은 거부(목록 + 관리자 둘 다 필요)');
+await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), 'portal_users/' + EX2), { status: 'suspended', admin: true }); });
+await assertFails(updateDoc(cy(as(EX2), 2051), { status: 'closed' })); ok(true, '사장단이라도 사용 중지된 계정은 거부');
+await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), 'portal_users/' + EX2), { status: 'approved', admin: true }); });
+const FAKE_EXEC = 'ATTACKER1'; await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), 'portal_users/' + FAKE_EXEC), { status: 'approved', admin: true, rank: '대표', name: '송지훈', empNo: '00000' }); });
+await assertFails(updateDoc(cy(as(FAKE_EXEC), 2051), { status: 'closed' })); ok(true, '★ 직급을 "대표"로, 이름·사번을 사장단과 같게 적어도 계정 식별자가 다르면 거부(직급·이름은 직원 관리에서 바뀌는 값이라 믿지 않음)');
 // ── 7. 관리자가 직원 대신 쓰기·미승인
 await assertFails(setDoc(dk(as(A), K, 'wY', 'peer', 2026), sub(K, 'wY', 'peer'))); ok(true, '★ 관리자도 직원의 이름으로 평가를 대신 쓸 수 없음');
 await assertFails(setDoc(dk(as(X), X, 'wX', 'self'), sub(X, 'wX', 'self'))); ok(true, '승인되지 않은 계정은 쓸 수 없음');

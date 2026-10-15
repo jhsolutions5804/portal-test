@@ -1,7 +1,7 @@
 /* 인사평가 — 정기평가 운영 화면(테섭 미리보기). 마크업만 만든다(저장·불러오기는 evaluation-io.js). 설계서 docs/hr-evaluation-design.md */
-import { esc } from '../../core/ui.js?v=20261015h';
-import { DEPT_ORDER } from '../../shared/org.js?v=20261015h';
-import { evalPeriod, teamCriteria, teamTypeOf, areaItems, AREA_LABELS, PEER_ITEMS, WEIGHTS_BY, cycleSummary, emptyCycle, STATUS_LABEL, gradeOf, teamLeaderOf, evalAccess } from './evaluation.js?v=20261015h';
+import { esc } from '../../core/ui.js?v=20261015i';
+import { DEPT_ORDER } from '../../shared/org.js?v=20261015i';
+import { evalPeriod, teamCriteria, teamTypeOf, areaItems, AREA_LABELS, PEER_ITEMS, WEIGHTS_BY, cycleSummary, emptyCycle, STATUS_LABEL, gradeOf, teamLeaderOf, evalAccess } from './evaluation.js?v=20261015i';
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const gtone = (g) => (g === 'S' || g === 'A' ? 'accent' : g === 'C' ? 'danger' : 'muted');
