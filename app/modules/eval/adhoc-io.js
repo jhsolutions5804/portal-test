@@ -3,8 +3,9 @@
  * 저장 위치(기존 관리자 전용 컬렉션 evaluations 안이라 보안 규칙 변경 없음):
  *   프로젝트 성과 = evaluations/_pjt/adhoc/{프로젝트 id}   (사장단의 프로젝트 성과 점수만)
  *   참여자 평가   = evaluations/{근로자}/adhoc/{프로젝트 id} (현장 항목·동료 점수·사장단의 개인 점수·확정) */
-import { setRating, evalAccess, adhocParticipants, emptyAdhoc, adhocSummary } from './evaluation.js?v=20261015j';
-import { pjtSummary } from '../../shared/pjt-summary.js?v=20261015j';   // 청구·지급 집계(영업기획과 공용)
+import { withManage } from '../../shared/eval-perm.js?v=20261015k';
+import { setRating, evalAccess, adhocParticipants, emptyAdhoc, adhocSummary } from './evaluation.js?v=20261015k';
+import { pjtSummary } from '../../shared/pjt-summary.js?v=20261015k';   // 청구·지급 집계(영업기획과 공용)
 const clone = (o) => JSON.parse(JSON.stringify(o));
 /** deps: { db, collection, getDocs, getDoc, setDoc, doc, serverTimestamp, toast, confirmDialog, paint, st, ctx } */
 export function createAdhocController(deps) {
@@ -28,7 +29,7 @@ export function createAdhocController(deps) {
     out.sort((a, b) => (a.status === 'ended' ? 0 : 1) - (b.status === 'ended' ? 0 : 1) || String(a.name).localeCompare(String(b.name), 'ko'));
     ad.projects = out; ad.loaded = true;
   };
-  const access = () => evalAccess(me, { id: '' }, {});
+  const access = () => evalAccess(withManage(me), { id: '' }, {});
   const proj = () => (st.ad.projects || []).find((p) => p.id === st.ad.sel);
   const loadRecs = async (p) => { const recs = {}; await Promise.all((p.memberWorkers || []).map(async (w) => { try { const s = await getDoc(doc(db, mPath(w.id, p.id))); recs[w.id] = s.exists() ? s.data() : null; } catch (e) { recs[w.id] = null; } })); st.ad.recs = recs; };
   const saveProject = async () => {

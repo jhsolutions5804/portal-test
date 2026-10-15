@@ -397,7 +397,7 @@ await scenario('인사평가 — 정기평가 운영: 인사팀(직급이 대표
 });
 
 await scenario('인사평가 — 정기평가 운영: 영업기획팀(사장단 평가) 점수 입력 → 저장은 evaluations/{근로자}/cycles/2026 에 사장단 점수만 기록, 확정 전에는 최종 점수 없음', async (check) => {
-  const saved = ctx.me; ctx.me = Object.assign({}, saved, { rank: '대표', name: '관리자 대표' }); try {
+  const saved = ctx.me; ctx.me = Object.assign({}, saved, { uid: '202TPNudKZghsTPAeeG206f8vbJ3', rank: '대표', name: '송지훈' }); try {
   const root = await mountFresh(evalCycle); await sleep(500); await click(root, '[data-ec-open="w2"]', 300);
   check(/사장단 평가/.test(root.textContent) && !root.querySelector('[data-ec-peer]'), '비프로젝트 팀은 사장단 평가 칸이고 동료평가 칸이 없어야 함');
   const dots = [...root.querySelectorAll('[data-ec-score^="exec:"]')]; check(dots.length > 0, '사장단 점수 버튼이 있어야 함');
@@ -406,7 +406,7 @@ await scenario('인사평가 — 정기평가 운영: 영업기획팀(사장단 
   await sleep(200); check(/팀 점수[^0-9]*80/.test(root.textContent.replace(/\s+/g, '')) || root.textContent.includes('80'), '모든 항목에 4점이면 팀 점수 80점이 보여야 함');
   check(/확정 전/.test(root.textContent), '확정 전에는 최종 점수가 없어야 함'); const before = WR().length;
   await click(root, '[data-ec-act="save"]', 400); await sleep(300);
-  const c = WR().filter((x) => /^evaluations\/w2\/cycles\/2026$/.test(x.path)); check(c.length === 1 && c[0].data && c[0].data.year === 2026 && c[0].data.teamType === 'nonpjt' && c[0].data.exec && c[0].data.exec.u1 && c[0].data.exec.u1.areas, 'evaluations/w2/cycles/2026 에 사장단 점수가 저장되어야 함: ' + JSON.stringify(WR().slice(before).map((x) => x.op + ' ' + x.path)));
+  const c = WR().filter((x) => /^evaluations\/w2\/cycles\/2026$/.test(x.path)); check(c.length === 1 && c[0].data && c[0].data.year === 2026 && c[0].data.teamType === 'nonpjt' && c[0].data.exec && c[0].data.exec['202TPNudKZghsTPAeeG206f8vbJ3'] && c[0].data.exec['202TPNudKZghsTPAeeG206f8vbJ3'].areas, 'evaluations/w2/cycles/2026 에 사장단 점수가 저장되어야 함: ' + JSON.stringify(WR().slice(before).map((x) => x.op + ' ' + x.path)));
   check(WR().slice(before).every((x) => /^evaluations\/w2\/cycles\//.test(x.path)), '다른 문서는 건드리면 안 됨(근로자·계정·기존 평가 기록 그대로): ' + JSON.stringify(WR().slice(before).map((x) => x.path)));
   if (c[0]) check(c[0].data.confirmed === false && !(c[0].data.ceo && c[0].data.ceo.approved), '저장만으로는 확정되지 않아야 함');
   } finally { ctx.me = saved; }
@@ -419,14 +419,14 @@ await scenario('인사평가 — 수시평가: 탭을 열면 프로젝트 목록
 });
 
 await scenario('인사평가 — 수시평가: 프로젝트 성과 — 마진율은 영업기획 값을 읽기만 하고(입력칸 없음), 사장단의 프로젝트 성과 점수만 evaluations/_pjt/adhoc/{프로젝트} 에 저장', async (check) => {
-  const saved = ctx.me; ctx.me = Object.assign({}, saved, { rank: '대표', name: '관리자 대표' }); try {
+  const saved = ctx.me; ctx.me = Object.assign({}, saved, { uid: '202TPNudKZghsTPAeeG206f8vbJ3', rank: '대표', name: '송지훈' }); try {
   const root = await mountFresh(evalAdhoc); await sleep(500); await click(root, '[data-ad-open="p4ph2"]', 500); await sleep(300);
   const t = root.textContent; check(/프로젝트 성과 — /.test(t) && /읽기 전용/.test(t), '프로젝트 성과 카드가 읽기 전용 안내와 함께 보여야 함');
   check(!root.querySelector('[data-ad-proj]') && !root.querySelector('input[inputmode="decimal"]'), '마진율 입력칸(목표·청구·지급·노무비·직접비)이 없어야 함 — 입력은 영업기획에서');
   check(!!root.querySelector('a[href^="#/plan/projects/"]'), '영업기획 프로젝트 상세로 가는 링크가 있어야 함');
   const b = root.querySelector('[data-ad-score="pexec|4"]'); b.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(120);
   const before = WR().length; await click(root, '[data-ad-act="psave"]', 450); await sleep(300);
-  const c = WR().filter((x) => /^evaluations\/_pjt\/adhoc\/p4ph2$/.test(x.path)); check(c.length === 1 && c[0].data.exec && c[0].data.exec.u1 && c[0].data.exec.u1.project === 4, 'evaluations/_pjt/adhoc/p4ph2 에 사장단 프로젝트 성과 4점이 저장되어야 함: ' + JSON.stringify(WR().slice(before).map((x) => x.op + ' ' + x.path + JSON.stringify(x.data || {}).slice(0, 120))));
+  const c = WR().filter((x) => /^evaluations\/_pjt\/adhoc\/p4ph2$/.test(x.path)); check(c.length === 1 && c[0].data.exec && c[0].data.exec['202TPNudKZghsTPAeeG206f8vbJ3'] && c[0].data.exec['202TPNudKZghsTPAeeG206f8vbJ3'].project === 4, 'evaluations/_pjt/adhoc/p4ph2 에 사장단 프로젝트 성과 4점이 저장되어야 함: ' + JSON.stringify(WR().slice(before).map((x) => x.op + ' ' + x.path + JSON.stringify(x.data || {}).slice(0, 120))));
   check(c[0] && !('target' in c[0].data) && !('snapshot' in c[0].data) && !('targetMargin' in c[0].data), '★ 마진율·청구·지급은 저장하지 않아야 함(수시평가는 점수만 저장 — 숫자는 영업기획 한 곳에서만 관리): ' + JSON.stringify(c[0] && c[0].data).slice(0, 200));
   check(WR().slice(before).every((x) => /^evaluations\/_pjt\/adhoc\//.test(x.path)), '다른 문서는 건드리면 안 됨(프로젝트·영업기획·근로자 그대로): ' + JSON.stringify(WR().slice(before).map((x) => x.path)));
   } finally { ctx.me = saved; }

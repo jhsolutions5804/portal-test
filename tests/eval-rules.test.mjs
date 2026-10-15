@@ -37,11 +37,20 @@ ok(x1 === 87 && combineRegular(x1, [85]) === 86.2 && gradeOf(finalizeScore(combi
 ok(RANK_ORDER[0] === '대표' && RANK_ORDER.indexOf('과장') < RANK_ORDER.indexOf('대리') && RANK_ORDER.indexOf('대리') < RANK_ORDER.indexOf('사원'), '직급 순서는 조직도(shared/org.js)와 같은 기준(대표 → … → 과장 → 대리 → 사원)');
 // 열람·조작 권한(대표님: 인사팀은 인사평가를 볼 수 있어야 업무 처리)
 const V = (o) => Object.assign({ id: 'u1', empNo: '24001', rank: '대리', perms: {} }, o || {}); const T = (id) => ({ id: id || 'w9' });
-const ceo = evalAccess(V({ id: 'c', rank: '대표' }), T(), {}), vp = evalAccess(V({ id: 'v', rank: '부사장' }), T(), {}), hr = evalAccess(V({ perms: { hrEval: true } }), T(), {});
+// 사장단 계정(canManage — 보안 규칙 isCycleManager 와 같은 기준, withManage 가 붙임)
+const ceo = evalAccess(V({ id: 'c', rank: '대표', canManage: true }), T(), {}), vp = evalAccess(V({ id: 'v', rank: '부사장', canManage: true }), T(), {}), hr = evalAccess(V({ perms: { hrEval: true } }), T(), {});
 ok(ceo.level === 'exec' && ceo.viewScores && ceo.viewComments && ceo.edit && ceo.confirm && ceo.manage && vp.level === 'exec' && vp.viewScores && vp.edit && !vp.confirm && vp.manage, '★ 사장단(대표·부사장)은 모든 점수·코멘트를 보고 입력·수정하며, 최종 확정은 대표만');
 ok(hr.level === 'hr' && hr.viewScores && hr.viewComments && hr.manage && !hr.edit && !hr.confirm && !hr.viewPeerRaw, '★ 인사팀(hrEval 권한)은 다른 사람의 점수·코멘트를 모두 보고 양식 배포·진행 관리·집계·출력을 하지만(manage), 평가 입력·수정·확정은 못 함');
 const hrSelfBefore = evalAccess(V({ id: 'w9', perms: { hrEval: true } }), T('w9'), { published: false }), hrSelfAfter = evalAccess(V({ id: 'w9', perms: { hrEval: true } }), T('w9'), { published: true }), plainSelf = evalAccess(V({ id: 'w9' }), T('w9'), { published: false });
 ok(hrSelfBefore.level === 'self' && !hrSelfBefore.viewScores && !hrSelfBefore.viewComments && !hrSelfBefore.manage && hrSelfBefore.selfEval && hrSelfAfter.viewScores && hrSelfAfter.viewComments && !hrSelfAfter.edit && plainSelf.level === 'self' && !plainSelf.viewScores && plainSelf.selfEval, '★ 인사팀이라도 본인 평가는 확정·공개 전까지 가림(이해 충돌 방지), 공개 후에는 볼 수 있고, 본인은 자기평가를 쓸 수 있음');
 ok(evalAccess(V(), T(), { published: true }).level === 'none' && !evalAccess(V(), T(), { published: true }).viewScores && !evalAccess(V({ perms: { hrEval: false } }), T(), {}).manage && !evalAccess(V({ perms: { hrEval: 'yes' } }), T(), {}).manage && evalAccess(null, null, null).level === 'none', '권한이 없는 직원은 아무것도 못 봄(hrEval 은 true 일 때만 유효), 입력이 비어도 안전하게 none');
+// ── 점수 입력·확정은 보안 규칙(isCycleManager)과 같은 기준: 사장단 3명의 계정(관리자). 직급만 사장단인 계정은 열람·운영은 되지만 입력은 막힌다(저장이 규칙에서 거부되므로 "입력 칸은 열렸는데 저장 실패"를 만들지 않는다)
+{ const M = (o) => V(Object.assign({ canManage: true }, o)); const noList = (o) => V(Object.assign({}, o));
+  const ceoM = evalAccess(M({ id: 'c', rank: '대표' }), T(), {}), vpM = evalAccess(M({ id: 'v', rank: '부사장' }), T(), {});
+  ok(ceoM.edit && ceoM.confirm && ceoM.manage && vpM.edit && !vpM.confirm && vpM.manage, '★ 사장단 계정(canManage): 대표는 입력·최종 확정, 부사장은 입력만(확정은 대표만 — 기존 설계 그대로)');
+  const sys = evalAccess(noList({ empNo: 'admin', rank: '대표' }), T(), {}), rankOnly = evalAccess(noList({ id: 'x', rank: '부사장' }), T(), {});
+  ok(sys.level === 'exec' && sys.viewScores && sys.manage && !sys.edit && !sys.confirm && rankOnly.level === 'exec' && rankOnly.viewScores && rankOnly.manage && !rankOnly.edit && !rankOnly.confirm, '★ 직급이 대표·부사장이어도 사장단 계정 목록에 없으면(관리자 시스템 계정 등) 열람·운영은 되지만 입력·확정은 안 됨 — 보안 규칙이 저장을 거부하므로 화면도 열지 않음');
+  ok(!evalAccess(M({ rank: '대리' }), T(), {}).edit && !evalAccess(M({ rank: '사원', perms: { hrEval: true } }), T(), {}).edit && !evalAccess(M({ rank: '대리', admin: true }), T(), {}).confirm, '사장단 계정 표시(canManage)만 있고 직급이 사장단이 아니면 입력 불가(인사팀 관리자 등)');
+}
 ok(!ceo.viewPeerRaw && !vp.viewPeerRaw && !hr.viewPeerRaw && !hrSelfAfter.viewPeerRaw && evalAccess(V({ empNo: 'admin', rank: '대표' }), T(), {}).level === 'exec' && evalAccess(V({ empNo: 'admin', rank: '대표' }), T(), {}).viewPeerRaw === false, '★ 동료평가의 평가자별 점수는 사장단·인사팀을 포함해 누구에게도 보이지 않음(평균만). 관리자 대표 계정(사번 admin)도 대표 직급이면 사장단으로 일할 수 있음');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

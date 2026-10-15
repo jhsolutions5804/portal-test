@@ -1,7 +1,8 @@
 /* 인사평가 — 정기평가 운영 화면(테섭 미리보기). 마크업만 만든다(저장·불러오기는 evaluation-io.js). 설계서 docs/hr-evaluation-design.md */
-import { esc } from '../../core/ui.js?v=20261015j';
-import { DEPT_ORDER } from '../../shared/org.js?v=20261015j';
-import { evalPeriod, teamCriteria, teamTypeOf, areaItems, AREA_LABELS, WEIGHTS_BY, cycleSummary, peerAggNote, emptyCycle, STATUS_LABEL, gradeOf, teamLeaderOf, evalAccess } from './evaluation.js?v=20261015j';
+import { withManage } from '../../shared/eval-perm.js?v=20261015k';
+import { esc } from '../../core/ui.js?v=20261015k';
+import { DEPT_ORDER } from '../../shared/org.js?v=20261015k';
+import { evalPeriod, teamCriteria, teamTypeOf, areaItems, AREA_LABELS, WEIGHTS_BY, cycleSummary, peerAggNote, emptyCycle, STATUS_LABEL, gradeOf, teamLeaderOf, evalAccess } from './evaluation.js?v=20261015k';
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const gtone = (g) => (g === 'S' || g === 'A' ? 'accent' : g === 'C' ? 'danger' : 'muted');
@@ -11,7 +12,7 @@ export const LEVEL_LABEL = { exec: '사장단', hr: '인사팀', self: '본인',
 
 /** 팀별 보드: 팀(부서)마다 팀장·대상자·진행 상태·점수 */
 export function evalBoardHtml(st) {
-  const ec = st.ec; const per = evalPeriod(ec.year); const acc = evalAccess(ec.me, { id: '' }, {});
+  const ec = st.ec; const per = evalPeriod(ec.year); const acc = evalAccess(withManage(ec.me), { id: '' }, {});
   const note = '<div class="jh-hr__pad"><div class="jh-hr__bar">' + chip('평가 기간 ' + per.from + ' ~ ' + per.to, 'muted') + chip('올해(' + ec.year + ')는 참고자료로만 사용', 'warn') + chip('내 권한: ' + LEVEL_LABEL[acc.level], acc.level === 'none' ? 'danger' : 'accent') + '</div>'
     + '<div class="jh-field__hint">미리보기(테섭): 실제 운영에서는 팀장·동료·직원이 각자 로그인해 입력합니다. 여기서는 사장단 계정이 대신 입력해 화면과 계산을 확인합니다. 팀장은 <strong>직원 관리 → 팀장</strong>에서 팀마다 지정하고, 지정이 없으면 팀 최상급자가 1차 평가자가 됩니다. 평가 대상은 평가 기간 끝(' + per.to + ') 이전 입사자이며 올해 4분기 입사자는 제외됩니다.</div></div>';
   if (acc.level === 'none') return card('정기평가 ' + ec.year, note + '<div class="jh-empty">인사평가를 볼 수 있는 권한이 없습니다. 직원 관리에서 "인사평가" 권한을 받으면 열람할 수 있습니다.</div>');
@@ -41,7 +42,7 @@ const cell = (label, value, sub) => '<div class="jh-hr-ev__cell"><span class="jh
 export function evalPanelHtml(st) {
   const ec = st.ec; const w = (ec.eligible || []).find((x) => x.id === ec.sel); if (!w) return '';
   const d = ec.draft || emptyCycle(w, ec.year); const type = teamTypeOf(w.dept); const items = areaItems(w.dept, w.rank);
-  const acc = evalAccess(ec.me, { id: ec.meWorkerId || '' }, {}); const lock = d.confirmed === true; const canEdit = acc.edit && !lock; const dis = !canEdit;
+  const acc = evalAccess(withManage(ec.me), { id: ec.meWorkerId || '' }, {}); const lock = d.confirmed === true; const canEdit = acc.edit && !lock; const dis = !canEdit;
   const sm = cycleSummary(d, { teamType: type, items }); const mem = (ec.eligible || []).filter((x) => String(x.dept || '').trim() === String(w.dept || '').trim());
   const lead = teamLeaderOf(w.dept, mem, ec.users); const meUid = (ec.me && ec.me.uid) || '';
   const execAreas = (d.exec && d.exec[meUid] && d.exec[meUid].areas) || null;

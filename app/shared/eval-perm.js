@@ -16,3 +16,5 @@ export const CYCLE_MANAGERS = [
  *  - 보안 규칙(eval_cycles 쓰기)은 isAdmin()(관리자 계정)만 확인하므로, 화면이 관리자 계정을 요구하지 않으면 "버튼은 켜졌는데 저장이 거부"된다.
  *  - 직급만으로는 인사팀 관리자(대리급)가 빠지지만, 직급은 직원 관리에서 바뀔 수 있는 값이라 보안 경계가 아니다 → 규칙 쪽을 사장단 이메일 목록으로 좁히는 것은 대표님 결정 사항(docs/hr-evaluation-design.md 9-1). */
 export const canManageCycle = (me) => !!me && !me.isGuest && me.admin === true && !!me.uid && CYCLE_MANAGERS.some((m) => m.uid === me.uid);
+/** 로그인 사용자(me)에 canManage(사장단 계정 여부)를 붙여 evalAccess 에 넘긴다 — 순수 규칙 모듈(evaluation.js)이 계정 목록을 알 필요 없게 한다 */
+export const withManage = (me) => Object.assign({}, me || {}, { canManage: canManageCycle(me) });

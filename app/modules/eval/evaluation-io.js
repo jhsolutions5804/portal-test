@@ -1,5 +1,6 @@
 /* 인사평가 — 정기평가 운영: 불러오기·저장·클릭/입력 처리. 저장 위치 = evaluations/{근로자}/cycles/{연도} (기존 관리자 전용 컬렉션 안이라 보안 규칙 변경 없음, 설계서 docs/hr-evaluation-design.md) */
-import { isEvalTarget, emptyCycle, setRating, evalAccess, cycleSummary, areaItems, teamTypeOf, saveBody } from './evaluation.js?v=20261015j';
+import { withManage } from '../../shared/eval-perm.js?v=20261015k';
+import { isEvalTarget, emptyCycle, setRating, evalAccess, cycleSummary, areaItems, teamTypeOf, saveBody } from './evaluation.js?v=20261015k';
 const clone = (o) => JSON.parse(JSON.stringify(o));
 /** deps: { db, collection, getDocs, getDoc, setDoc, doc, serverTimestamp, toast, confirmDialog, paint, st, ctx } */
 export function createCycleController(deps) {
@@ -14,7 +15,7 @@ export function createCycleController(deps) {
     await Promise.all(ec.eligible.map(async (w) => { try { const s = await getDoc(doc(db, path(w.id))); ec.cycles[w.id] = s.exists() ? s.data() : null; } catch (e) { ec.cycles[w.id] = null; } }));
     const mine = (st.evWorkers || []).find((w) => (w.portalUid && w.portalUid === me.uid) || (w.empNo && me.empNo && String(w.empNo) === String(me.empNo))); ec.meWorkerId = mine ? mine.id : ''; ec.loaded = true;
   };
-  const access = () => evalAccess(me, { id: st.ec.sel }, {});
+  const access = () => evalAccess(withManage(me), { id: st.ec.sel }, {});
   const target = () => (st.ec.eligible || []).find((w) => w.id === st.ec.sel);
   const save = async () => {
     const ec = st.ec; const w = target(); if (!w || !ec.draft) return; const a = access();

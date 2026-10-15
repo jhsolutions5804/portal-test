@@ -1,6 +1,7 @@
 /* 인사평가 — 수시평가(프로젝트 종료 시) 화면(테섭 미리보기). 마크업만 만든다(저장·불러오기는 adhoc-io.js). 설계서 docs/hr-evaluation-design.md 5·6절 */
-import { esc } from '../../core/ui.js?v=20261015j';
-import { evalAccess, adhocSummary, adhocProjectPerf, adhocParticipants, pickAdhocEvaluator, emptyAdhoc, ADHOC_LABELS, ADHOC_ENTRY_ITEMS, PEER_ITEMS, STATUS_LABEL } from './evaluation.js?v=20261015j';
+import { withManage } from '../../shared/eval-perm.js?v=20261015k';
+import { esc } from '../../core/ui.js?v=20261015k';
+import { evalAccess, adhocSummary, adhocProjectPerf, adhocParticipants, pickAdhocEvaluator, emptyAdhoc, ADHOC_LABELS, ADHOC_ENTRY_ITEMS, PEER_ITEMS, STATUS_LABEL } from './evaluation.js?v=20261015k';
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const gtone = (g) => (g === 'S' || g === 'A' ? 'accent' : g === 'C' ? 'danger' : 'muted');
@@ -11,7 +12,7 @@ const BAND_TEXT = '목표 대비 +3%p 이상 5점 · +1%p 이상 4점 · ±1%p �
 
 /** 프로젝트 목록(종료된 프로젝트 + 진행 중 프로젝트) */
 export function adhocBoardHtml(st) {
-  const ad = st.ad; const acc = evalAccess(ad.me, { id: '' }, {});
+  const ad = st.ad; const acc = evalAccess(withManage(ad.me), { id: '' }, {});
   const head = '<div class="jh-hr__pad"><div class="jh-hr__bar">' + chip('프로젝트 종료 시마다 평가', 'muted') + chip('내 권한: ' + (acc.level === 'exec' ? '사장단' : acc.level === 'hr' ? '인사팀' : '권한 없음'), acc.level === 'none' ? 'danger' : 'accent') + '</div>'
     + '<div class="jh-field__hint">수시평가는 <strong>현장 평가(참여자 중 최상급자 + 동료) 50% + 사장단 평가(개인 60 · 프로젝트 성과 40) 50%</strong>입니다. 프로젝트 성과는 <strong>프로젝트마다 따로</strong> 정한 목표 마진율과 실현 마진율의 차이로 점수를 냅니다. 미리보기(테섭)에서는 사장단 계정이 현장 입력을 대신 입력합니다. 올해는 참고자료입니다.</div></div>';
   if (acc.level === 'none') return card('수시평가', head + '<div class="jh-empty">인사평가를 볼 수 있는 권한이 없습니다.</div>');
@@ -27,7 +28,7 @@ const cell = (label, value, sub) => '<div class="jh-hr-ev__cell"><span class="jh
 /** 프로젝트 한 건: 프로젝트 성과 카드 + 참여자 목록(+ 선택한 참여자 평가 패널) */
 export function adhocProjectHtml(st) {
   const ad = st.ad; const p = (ad.projects || []).find((x) => x.id === ad.sel); if (!p) return '';
-  const acc = evalAccess(ad.me, { id: '' }, {}); const dis = !acc.edit; const pe = ad.pdraft || {}; const snap = p.snapshot || {};
+  const acc = evalAccess(withManage(ad.me), { id: '' }, {}); const dis = !acc.edit; const pe = ad.pdraft || {}; const snap = p.snapshot || {};
   const perf = adhocProjectPerf({ target: p.targetMargin, snapshot: snap }); const meUid = (ad.me && ad.me.uid) || '';
   const myProj = pe.exec && pe.exec[meUid] ? pe.exec[meUid].project : null;
   const ro = (label, value, hint) => '<div class="jh-field"><span class="jh-field__label">' + esc(label) + '</span><strong>' + esc(value) + '</strong>' + (hint ? '<div class="jh-field__hint">' + esc(hint) + '</div>' : '') + '</div>';
@@ -47,7 +48,7 @@ export function adhocProjectHtml(st) {
 }
 function adhocMemberHtml(st, p, lead) {
   const ad = st.ad; const w = (p.memberWorkers || []).find((x) => x.id === ad.msel); if (!w) return '';
-  const acc = evalAccess(ad.me, { id: '' }, {}); const d = ad.mdraft || emptyAdhoc(w, p); const lock = d.confirmed === true; const canEdit = acc.edit && !lock; const dis = !canEdit;
+  const acc = evalAccess(withManage(ad.me), { id: '' }, {}); const d = ad.mdraft || emptyAdhoc(w, p); const lock = d.confirmed === true; const canEdit = acc.edit && !lock; const dis = !canEdit;
   const pe = ad.pdraft || {}; const sm = adhocSummary(d, pe); const meUid = (ad.me && ad.me.uid) || ''; const myPerson = d.exec && d.exec[meUid] ? d.exec[meUid].person : null;
   const peers = (p.memberWorkers || []).filter((x) => x.id !== w.id);
   const peerRows = peers.map((q) => { const v = (d.peers && d.peers[q.id]) || []; return '<div class="jh-hr-ev__peer"><span>' + esc(q.name || '-') + '</span>' + PEER_ITEMS.map((l, i) => '<select class="jh-select" aria-label="' + esc((q.name || '') + ' ' + l) + '" data-ad-peer="' + esc(q.id + '|' + i) + '"' + (dis ? ' disabled' : '') + '><option value="">' + esc(l) + '</option>' + [1, 2, 3, 4, 5].map((n) => '<option value="' + n + '"' + (v[i] === n ? ' selected' : '') + '>' + n + '</option>').join('') + '</select>').join('') + '</div>'; }).join('');

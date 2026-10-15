@@ -91,3 +91,31 @@
       // 지우기: 아무도 못 한다(제출 기록 보존). 서버 함수(관리자 SDK)만 정리할 수 있다.
       allow delete: if false;
     }
+
+// ── 평가 점수 문서(정기평가 cycles·수시평가 adhoc) 전용 조항 — 넓은 인사 데이터 조항(isHrDataCollection && isAdmin)에서 evaluations 를 빼야 효과가 있다(아래 첫 match 참고)
+    // evaluations 는 하위 컬렉션마다 아래 전용 조항이 맡는다(넓은 인사 데이터 조항에서 컬렉션째 제외).
+    //  조항이 겹치면 하나라도 허용 시 허용이라서, 넓은 조항에 evaluations 가 남아 있으면 관리자 계정 누구나 점수·동료 평균(peerAgg)·확정을 직접 쓸 수 있다.
+    match /{hrCol}/{document=**} {
+      allow read, write: if isHrDataCollection() && isAdmin() && hrCol != 'evaluations';
+    }
+    // 개별 평가 기록(인사 → 개별 기록 화면): 기존과 같음 — 관리자가 읽기·추가·수정·삭제
+    match /evaluations/{wid}/records/{rid} {
+      allow read, write: if isAdmin();
+    }
+    // 평가 점수 문서: 읽기는 관리자(기존과 같음), 쓰기는 사장단 3명의 계정만, 동료 평균(peerAgg)은 어떤 계정도 쓸 수 없다(서버 함수만 씀 — 관리자 SDK 는 규칙을 거치지 않는다).
+    //  · merge 저장도 "저장 뒤 문서"와 "기존 문서"를 비교하므로, 기존 peerAgg 를 그대로 둔 채 다른 필드만 바꾸는 저장은 통과한다.
+    //  · 삭제는 누구도 못 한다(점수 기록을 지워 평가를 되돌리는 것 방지).
+    function peerAggUntouched() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['peerAgg']);
+    }
+    match /evaluations/{wid}/cycles/{year} {
+      allow read: if isAdmin();
+      allow create: if isCycleManager() && !('peerAgg' in request.resource.data);
+      allow update: if isCycleManager() && peerAggUntouched();
+      allow delete: if false;
+    }
+    match /evaluations/{wid}/adhoc/{pid} {
+      allow read: if isAdmin();
+      allow create, update: if isCycleManager();
+      allow delete: if false;
+    }

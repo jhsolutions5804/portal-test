@@ -1,6 +1,6 @@
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
 import { readFileSync } from 'node:fs';
-import { doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, collection, query, where } from 'firebase/firestore';
+import { doc, setDoc, addDoc, getDoc, getDocs, updateDoc, deleteDoc, collection, query, where } from 'firebase/firestore';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const env = await initializeTestEnvironment({ projectId: 'demo-eval', firestore: { rules: readFileSync(process.env.RULES_FILE || (process.cwd() + '/docs/rules/firestore.rules_테섭_평가추가본_2026-10-15.rules'), 'utf8'), host: '127.0.0.1', port: 8089 } });
 const A = 'ADMIN1', K = 'KIM1', Y = 'YOON1', P = 'PARK1', X = 'OUT1';
@@ -113,6 +113,26 @@ await assertFails(updateDoc(cy(as(EX2), 2051), { status: 'closed' })); ok(true, 
 await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), 'portal_users/' + EX2), { status: 'approved', admin: true }); });
 const FAKE_EXEC = 'ATTACKER1'; await env.withSecurityRulesDisabled(async (ctx) => { await setDoc(doc(ctx.firestore(), 'portal_users/' + FAKE_EXEC), { status: 'approved', admin: true, rank: '대표', name: '송지훈', empNo: '00000' }); });
 await assertFails(updateDoc(cy(as(FAKE_EXEC), 2051), { status: 'closed' })); ok(true, '★ 직급을 "대표"로, 이름·사번을 사장단과 같게 적어도 계정 식별자가 다르면 거부(직급·이름은 직원 관리에서 바뀌는 값이라 믿지 않음)');
+// ── 6-4. 평가 점수 문서(정기평가 cycles·수시평가 adhoc): 쓰기는 사장단만, 동료 평균 peerAgg 는 어떤 계정도 못 씀, 개별 기록(records)은 기존대로 관리자
+const cyc = (db, w, y) => doc(db, 'evaluations/' + w + '/cycles/' + y), adh = (db, w, p) => doc(db, 'evaluations/' + w + '/adhoc/' + p), rec = (db, w, r) => doc(db, 'evaluations/' + w + '/records/' + r), adhP = (db, p) => doc(db, 'evaluations/_pjt/adhoc/' + p);
+await env.withSecurityRulesDisabled(async (ctx) => { const db = ctx.firestore(); await setDoc(cyc(db, 'wA', 2026), { year: 2026, team: { by: 'x' }, peerAgg: { avg: 4.2, n: 3 } }); await setDoc(adh(db, 'wA', 'p1'), { items: {} }); await setDoc(adhP(db, 'p1'), { perf: 3 }); await setDoc(rec(db, 'wA', 'r1'), { type: 'regular', grade: 'A' }); });
+await assertSucceeds(getDoc(cyc(as(A), 'wA', 2026))); ok(true, '사장단이 아닌 관리자도 정기평가 문서를 읽을 수 있음(기존과 같음)');
+await assertSucceeds(getDoc(adh(as(A), 'wA', 'p1'))); await assertSucceeds(getDoc(adhP(as(A), 'p1'))); ok(true, '사장단이 아닌 관리자도 수시평가 문서를 읽을 수 있음');
+await assertFails(getDoc(cyc(as(K), 'wA', 2026))); await assertFails(getDoc(adh(as(K), 'wA', 'p1'))); ok(true, '일반 직원은 정기·수시평가 문서를 읽을 수 없음');
+await assertFails(setDoc(cyc(as(A), 'wB', 2026), { year: 2026, team: {} })); ok(true, '★★ 관리자 계정이라도 사장단이 아니면 정기평가 점수 문서를 만들 수 없음');
+await assertFails(updateDoc(cyc(as(A), 'wA', 2026), { 'team.by': 'forged' })); ok(true, '★★ 사장단이 아닌 관리자는 정기평가 점수·확정을 고칠 수 없음');
+await assertFails(setDoc(adh(as(A), 'wA', 'p2'), { items: {} })); await assertFails(updateDoc(adhP(as(A), 'p1'), { perf: 5 })); ok(true, '사장단이 아닌 관리자는 수시평가도 쓸 수 없음');
+await assertFails(updateDoc(cyc(as(A), 'wA', 2026), { peerAgg: { avg: 5, n: 9 } })); ok(true, '★★ 사장단이 아닌 관리자는 동료 평균(peerAgg)을 위조할 수 없음');
+await assertSucceeds(setDoc(cyc(as(EX1), 'wB', 2026), { year: 2026, team: { by: 'e' } })); ok(true, '사장단은 정기평가 점수 문서를 만들 수 있음(peerAgg 없이)');
+await assertSucceeds(updateDoc(cyc(as(EX2), 'wA', 2026), { 'team.by': 'e2' })); ok(true, '사장단은 정기평가 점수를 고칠 수 있음');
+await assertSucceeds(setDoc(cyc(as(EX3), 'wA', 2026), { year: 2026, team: { by: 'e3' }, ceo: { approved: true } }, { merge: true })); ok(true, '★ 사장단의 merge 저장은 통과 — 기존 peerAgg 를 건드리지 않으므로 서버가 집계해 둔 값이 있어도 점수·확정 저장이 막히지 않음');
+await assertFails(updateDoc(cyc(as(EX1), 'wA', 2026), { peerAgg: { avg: 1, n: 1 } })); ok(true, '★★ 사장단이라도 동료 평균(peerAgg)은 쓸 수 없음(서버만 씀)');
+await assertFails(setDoc(cyc(as(EX1), 'wA', 2026), { year: 2026, peerAgg: { avg: 5, n: 5 } }, { merge: true })); ok(true, '사장단의 merge 로 peerAgg 를 바꾸려는 시도도 거부');
+await assertFails(setDoc(cyc(as(EX1), 'wC', 2026), { year: 2026, peerAgg: { avg: 5, n: 5 } })); ok(true, '처음 만들 때 peerAgg 를 끼워 넣는 것도 거부');
+await assertFails(deleteDoc(cyc(as(EX1), 'wA', 2026))); await assertFails(deleteDoc(adh(as(EX1), 'wA', 'p1'))); ok(true, '사장단도 점수 문서를 삭제할 수 없음(되돌리기 방지)');
+await assertSucceeds(setDoc(adh(as(EX1), 'wA', 'p3'), { items: { a: 1 } })); await assertSucceeds(setDoc(adhP(as(EX2), 'p1'), { perf: 4 }, { merge: true })); ok(true, '사장단은 수시평가(참여자·프로젝트 성과)를 쓸 수 있음');
+await assertSucceeds(getDoc(rec(as(A), 'wA', 'r1'))); await assertSucceeds(addDoc(collection(as(A), 'evaluations/wA/records'), { type: 'regular', grade: 'B' })); await assertSucceeds(updateDoc(rec(as(A), 'wA', 'r1'), { status: 'confirmed' })); await assertSucceeds(deleteDoc(rec(as(A), 'wA', 'r1'))); ok(true, '★ 기존 개별 기록(records)은 그대로 — 관리자가 읽기·추가·수정·삭제 모두 가능(이번 변경으로 인사 화면이 깨지지 않음)');
+await assertFails(getDoc(rec(as(K), 'wA', 'r1'))); await assertFails(setDoc(rec(as(K), 'wA', 'r9'), { grade: 'S' })); ok(true, '일반 직원은 개별 기록을 읽거나 쓸 수 없음');
 // ── 7. 관리자가 직원 대신 쓰기·미승인
 await assertFails(setDoc(dk(as(A), K, 'wY', 'peer', 2026), sub(K, 'wY', 'peer'))); ok(true, '★ 관리자도 직원의 이름으로 평가를 대신 쓸 수 없음');
 await assertFails(setDoc(dk(as(X), X, 'wX', 'self'), sub(X, 'wX', 'self'))); ok(true, '승인되지 않은 계정은 쓸 수 없음');

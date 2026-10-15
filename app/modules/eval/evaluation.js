@@ -116,7 +116,8 @@ export function evalAccess(viewer, target, ctx) {
   const hr = !exec && (v.admin === true || !!(v.perms && v.perms.hrEval === true));   // 인사 모듈 접근자(관리자)이거나 직원 관리에서 "인사평가" 권한을 받은 사람
   const same = v.id != null && t.id != null && String(v.id) === String(t.id);
   const none = { level: 'none', viewScores: false, viewComments: false, viewPeerRaw: false, edit: false, confirm: false, manage: false, selfEval: false };
-  if (exec) return { level: 'exec', viewScores: true, viewComments: true, viewPeerRaw: false, edit: true, confirm: rank === '대표', manage: true, selfEval: false };
+  // 입력·확정은 직급이 아니라 보안 규칙(isCycleManager)과 같은 "사장단 계정"(viewer.canManage — withManage 가 붙임)이어야 한다. 직급만 사장단인 계정(관리자 시스템 계정 등)은 열람·운영은 되지만 저장이 규칙에서 거부되므로 입력을 열지 않는다.
+  if (exec) return { level: 'exec', viewScores: true, viewComments: true, viewPeerRaw: false, edit: v.canManage === true, confirm: v.canManage === true && rank === '대표', manage: true, selfEval: false };
   if (same) return Object.assign({}, none, { level: 'self', viewScores: !!c.published, viewComments: !!c.published, selfEval: true });
   if (hr) return { level: 'hr', viewScores: true, viewComments: true, viewPeerRaw: false, edit: false, confirm: false, manage: true, selfEval: false };
   return none;
