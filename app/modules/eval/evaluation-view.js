@@ -1,7 +1,7 @@
 /* 인사평가 — 정기평가 운영 화면(테섭 미리보기). 마크업만 만든다(저장·불러오기는 evaluation-io.js). 설계서 docs/hr-evaluation-design.md */
-import { esc } from '../../core/ui.js?v=20261015f';
-import { DEPT_ORDER } from '../../shared/org.js?v=20261015f';
-import { evalPeriod, teamCriteria, teamTypeOf, areaItems, AREA_LABELS, PEER_ITEMS, WEIGHTS_BY, cycleSummary, emptyCycle, STATUS_LABEL, gradeOf, teamLeaderOf, evalAccess } from './evaluation.js?v=20261015f';
+import { esc } from '../../core/ui.js?v=20261015g';
+import { DEPT_ORDER } from '../../shared/org.js?v=20261015g';
+import { evalPeriod, teamCriteria, teamTypeOf, areaItems, AREA_LABELS, PEER_ITEMS, WEIGHTS_BY, cycleSummary, emptyCycle, STATUS_LABEL, gradeOf, teamLeaderOf, evalAccess } from './evaluation.js?v=20261015g';
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const gtone = (g) => (g === 'S' || g === 'A' ? 'accent' : g === 'C' ? 'danger' : 'muted');
@@ -9,11 +9,6 @@ const stone = (s) => (s === 'confirmed' ? 'accent' : s === 'team_done' ? 'accent
 const fmt = (n) => (n == null ? '-' : String(n));
 export const LEVEL_LABEL = { exec: '사장단', hr: '인사팀', self: '본인', none: '권한 없음' };
 
-/** 위쪽 탭: 정기평가 운영(새) / 개별 기록(기존 화면) */
-export function evalTabsHtml(st) {
-  const b = (k, l) => '<button type="button" class="jh-segmented__item" data-ec-tab="' + k + '" aria-pressed="' + (st.evTab === k) + '">' + esc(l) + '</button>';
-  return '<div class="jh-hr__pad"><div class="jh-segmented" role="group" aria-label="인사평가 화면">' + b('cycle', '정기평가 운영') + b('adhoc', '수시평가 (프로젝트 종료)') + b('records', '개별 기록 (기존)') + '</div></div>';
-}
 /** 팀별 보드: 팀(부서)마다 팀장·대상자·진행 상태·점수 */
 export function evalBoardHtml(st) {
   const ec = st.ec; const per = evalPeriod(ec.year); const acc = evalAccess(ec.me, { id: '' }, {});

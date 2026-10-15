@@ -1,5 +1,5 @@
 /* 인사평가 — 정기평가 운영: 불러오기·저장·클릭/입력 처리. 저장 위치 = evaluations/{근로자}/cycles/{연도} (기존 관리자 전용 컬렉션 안이라 보안 규칙 변경 없음, 설계서 docs/hr-evaluation-design.md) */
-import { isEvalTarget, emptyCycle, setRating, evalAccess, cycleSummary, areaItems, teamTypeOf } from './evaluation.js?v=20261015f';
+import { isEvalTarget, emptyCycle, setRating, evalAccess, cycleSummary, areaItems, teamTypeOf } from './evaluation.js?v=20261015g';
 const clone = (o) => JSON.parse(JSON.stringify(o));
 /** deps: { db, collection, getDocs, getDoc, setDoc, doc, serverTimestamp, toast, confirmDialog, paint, st, ctx } */
 export function createCycleController(deps) {
@@ -24,7 +24,6 @@ export function createCycleController(deps) {
   /** 클릭 처리: 처리했으면 true */
   const onClick = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return false; const ec = st.ec;
-    const tab = t.closest('[data-ec-tab]'); if (tab) { st.evTab = tab.getAttribute('data-ec-tab'); if (st.evTab === 'cycle' && !ec.loaded) { try { await load(); } catch (e) { toast('평가 정보를 불러오지 못했습니다: ' + ((e && e.message) || '')); } } paint(); return true; }
     const op = t.closest('[data-ec-open]'); if (op) { const wid = op.getAttribute('data-ec-open'); const w = (ec.eligible || []).find((x) => x.id === wid); if (!w) return true; ec.sel = wid; ec.draft = clone(ec.cycles[wid] || emptyCycle(w, ec.year)); paint(); return true; }
     const sc = t.closest('[data-ec-score]'); if (sc) {
       const a = access(); if (!a.edit || ec.draft.confirmed) return true; const [key, idx, val] = sc.getAttribute('data-ec-score').split('|'); const [who, area] = key.split(':');

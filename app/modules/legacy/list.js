@@ -1,8 +1,9 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261015f';
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261015f';
-import { financePerm } from '../../shared/finance-perm.js?v=20261015f';
-import { companyPerm } from '../../shared/company-perm.js?v=20261015f';
-import { isProjectKey } from '../../shared/pjt-key.js?v=20261015f';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261015g';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261015g';
+import { financePerm } from '../../shared/finance-perm.js?v=20261015g';
+import { isEvalUser, isEvalOps } from '../../shared/eval-perm.js?v=20261015g';
+import { companyPerm } from '../../shared/company-perm.js?v=20261015g';
+import { isProjectKey } from '../../shared/pjt-key.js?v=20261015g';
 export { isProjectKey };
 /* 옛 모듈 어댑터의 목록과 규칙 — 화면(DOM)·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 옛 모듈이 새 모듈로 바뀌면 여기서 항목을 지우고 modules/index.js 의 새 모듈 목록으로 옮긴다. */
@@ -22,6 +23,10 @@ export const LEGACY_DEFS = [
     // 사이드바는 인사총무·재무회계와 같은 공용 틀 — 상단 탭이던 조직도·규정·직원 관리·열람 기록이 메뉴가 된다(직원 관리·열람 기록은 관리자만)
     groups: [{ key: 'company', label: '회사 정보', home: { key: 'org', label: '조직도', hint: '본부·팀별 직원과 연락처' }, clusters: [{ label: '규정', dynamic: 'policies', keys: ['rules'] }, { label: '관리', admin: true, keys: ['staff', 'alog'] }] }],
     sections: [{ key: 'org', label: '조직도', native: true }, { key: 'rules', label: '회사 내규', native: true }, { key: 'staff', label: '직원 관리', native: true }, { key: 'alog', label: '열람 기록', native: true }] },
+  // 평가: 인사 모듈에서 분리한 독립 메뉴 — 내 평가(정직원 누구나, 폰에서도) · 평가 운영(사장단·관리자·"인사평가" 권한자). 인사 모듈은 관리자 전용이라 비관리자(인사총무팀 일부)에게 열면 급여·계약서 화면이 주소로 열릴 위험이 있어 따로 뺐다(설계서 docs/hr-evaluation-design.md 9-1절)
+  { id: 'eval', order: 47, title: '평가', icon: '📝', tabbed: true, ownNav: true, perm: isEvalUser, nav: [{ key: 'mine', label: '내 평가' }], homeLabel: '평가',
+    groups: [{ key: 'eval', label: '평가', home: { key: 'mine', label: '내 평가', hint: '나에게 배정된 평가를 폰에서도 작성합니다' }, clusters: [{ label: '평가 운영', perm: isEvalOps, keys: ['cycle', 'adhoc'] }] }],
+    sections: [{ key: 'mine', label: '내 평가', native: true }, { key: 'cycle', label: '정기평가', native: true }, { key: 'adhoc', label: '수시평가', native: true }] },
   { id: 'pjt', order: 40, mobileTab: { order: 2, label: 'PJT', icon: '🏗️' }, title: 'PJT 관리', icon: '🏗️', tabbed: false, dynamicNav: true, defaultSub: 'home', nativeKeys: ['roster', 'home', 'ended'], nativeSubs: ['home', 'schedule', 'progress', 'attend', 'report', 'settings'], perm: (me) => !!(me && (me.admin || (me.perms && me.perms.pjt) || (Array.isArray(me.pjtKeys) && me.pjtKeys.length > 0))) },   // PJT 권한자·관리자, 또는 어느 프로젝트든 참여자로 지정된 사람
   { id: 'myteam', order: 90, title: '내 팀 공수표', icon: '👷', tabbed: false, url: 'team/', nativeKeys: ['main'],
     perm: (me) => !!(me && (me.admin || (Array.isArray(me.teamLeaderIds) && me.teamLeaderIds.length > 0))), nav: [{ key: 'main', label: '내 팀 공수표' }] }
@@ -94,7 +99,7 @@ export function sideConfig(def, activeKey, sub, me, dyn) {
   const labelOf = (k) => { const s = (def.sections || []).find((x) => x.key === k); return s ? s.label : k; };
   const sections = [];   // 재무회계 사이드바처럼 묶음마다 머리글 + 구분선: 인사 · 채용 · 입사 · 재직 · 변동 · 퇴사 · 총무
   def.groups.forEach((g) => {
-    if (g.clusters) { const top = { title: g.label, items: g.home ? [{ key: g.home.key, label: g.home.label, href: '#/' + def.id + '/' + g.home.key, hint: g.home.hint }] : [] }; sections.push(top); g.clusters.forEach((c) => { if (c.admin && !(me && me.admin)) return; if (c.dynamic === 'policies' && dyn && dyn.policies && dyn.policies.length) { sections.push({ title: c.label, items: dyn.policies.map((p) => ({ key: 'rules/' + p.id, label: p.title || p.id, href: '#/' + def.id + '/rules/' + encodeURIComponent(p.id) })) }); return; }   // 규정 묶음: 서버에서 읽은 회사 내규 문서마다 한 항목(읽기 전에는 "회사 내규" 하나)
+    if (g.clusters) { const top = { title: g.label, items: g.home ? [{ key: g.home.key, label: g.home.label, href: '#/' + def.id + '/' + g.home.key, hint: g.home.hint }] : [] }; sections.push(top); g.clusters.forEach((c) => { if (c.admin && !(me && me.admin)) return; if (typeof c.perm === 'function' && !c.perm(me)) return; if (c.dynamic === 'policies' && dyn && dyn.policies && dyn.policies.length) { sections.push({ title: c.label, items: dyn.policies.map((p) => ({ key: 'rules/' + p.id, label: p.title || p.id, href: '#/' + def.id + '/rules/' + encodeURIComponent(p.id) })) }); return; }   // 규정 묶음: 서버에서 읽은 회사 내규 문서마다 한 항목(읽기 전에는 "회사 내규" 하나)
     const items = c.keys.map((k) => ({ key: k, label: labelOf(k), href: '#/' + def.id + '/' + k })); if (c.keys.length === 1 && labelOf(c.keys[0]) === c.label) top.items.push(items[0]); else sections.push({ title: c.label, items }); }); }   // 묶음 제목과 메뉴 이름이 같은 한 칸짜리 묶음(예: 프로젝트)은 맨 위 구역에 합친다
     else sections.push({ title: g.label, items: (g.items || []).map(([k, l]) => ({ key: g.key + '/' + k, label: l, href: '#/' + def.id + '/' + g.key + '/' + k })) });
   });

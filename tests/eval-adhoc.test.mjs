@@ -1,7 +1,6 @@
 import fs from 'node:fs';
-import { adhocParticipants, emptyAdhoc, adhocSummary, adhocProjectPerf, ADHOC_ENTRY_ITEMS, ADHOC_LABELS, evalAccess } from '../app/modules/hr/evaluation.js';
-import { adhocBoardHtml, adhocProjectHtml } from '../app/modules/hr/adhoc-view.js';
-import { evalTabsHtml } from '../app/modules/hr/evaluation-view.js';
+import { adhocParticipants, emptyAdhoc, adhocSummary, adhocProjectPerf, ADHOC_ENTRY_ITEMS, ADHOC_LABELS, evalAccess } from '../app/modules/eval/evaluation.js';
+import { adhocBoardHtml, adhocProjectHtml } from '../app/modules/eval/adhoc-view.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const W = (id, rank, o) => Object.assign({ id, name: id + '님', rank, empNo: id, dept: 'PJT팀', hireDate: '2023-01-01', status: 'active' }, o || {});
 // ── 참여자
@@ -28,7 +27,7 @@ ok(A.actual === 15 && A.diff === 3 && A.score === 5 && B.actual === 5 && B.diff 
 const me = { uid: 'M', name: '관리자 대표', rank: '대표', empNo: 'admin', admin: true, perms: {} };
 const projects = [{ id: 'P1', name: 'P4 Ph2 FAB', status: 'ended', linked: true, planId: 'pjt_1', members: [hr[0], hr[1]], memberWorkers: [hr[0], hr[1]], snapshot: { billed: 1000, paid: 850 }, targetMargin: 12, eval: {} }, { id: 'P2', name: '청주 M15X', status: 'active', linked: false, planId: '', members: [], memberWorkers: [], snapshot: {}, targetMargin: null, eval: {} }];
 const st = { evTab: 'adhoc', ad: { me, projects, sel: '', pdraft: null, msel: '', mdraft: null, recs: {} } };
-const tabs = evalTabsHtml(st); ok(tabs.includes('data-ec-tab="cycle"') && tabs.includes('data-ec-tab="adhoc"') && tabs.includes('data-ec-tab="records"') && /data-ec-tab="adhoc"[^>]*aria-pressed="true"/.test(tabs), '위쪽 탭이 정기평가 운영 / 수시평가 / 개별 기록 세 가지로 보임');
+const bd0 = adhocBoardHtml(st); ok(!bd0.includes('data-ec-tab') && !bd0.includes('jh-segmented'), '★ 수시평가 화면 안에 탭이 없음 — 메뉴(정기평가·수시평가)가 탭 역할을 하므로 화면 안 탭은 두지 않음');
 const bd = adhocBoardHtml(st); ok(bd.includes('현장 평가') && bd.includes('사장단 평가') && bd.includes('프로젝트마다 따로') && bd.includes('P4 Ph2 FAB') && bd.includes('종료') && bd.includes('12%') && bd.includes('15%') && bd.includes('5점') && bd.includes('data-ad-open="P1"') && bd.includes('청주 M15X') && bd.includes('목표 미입력') && bd.indexOf('P4 Ph2 FAB') < bd.indexOf('청주 M15X'), '★ 프로젝트 목록: 종료 프로젝트가 위, 목표·실현 마진율과 점수, 평가 방식 안내');
 const bdN = adhocBoardHtml({ evTab: 'adhoc', ad: Object.assign({}, st.ad, { me: { uid: 'Z', name: '일반', rank: '사원', perms: {} } }) }); ok(bdN.includes('권한이 없습니다') && !bdN.includes('data-ad-open'), '권한이 없는 직원에게는 프로젝트 목록이 보이지 않음');
 const bdH = adhocBoardHtml({ evTab: 'adhoc', ad: Object.assign({}, st.ad, { me: { uid: 'H', name: '인사', rank: '대리', admin: true, perms: {} } }) }); ok(bdH.includes('인사팀') && bdH.includes('>보기<') && !bdH.includes('>평가<'), '인사팀은 목록을 보되 버튼이 "보기"');
@@ -45,8 +44,8 @@ ok(/data-ad-score="item:progress\|5"[^>]*disabled/.test(memH) && /data-ad-act="m
 st.ad.mdraft.confirmed = true; const memL = adhocProjectHtml(st); ok(/data-ad-score="item:progress\|5"[^>]*disabled/.test(memL) && memL.includes('확정된 평가는 수정할 수 없습니다') && memL.includes('data-ad-act="munconfirm"'), '확정된 수시평가는 입력이 잠기고 대표에게만 "확정 취소"가 보임');
 ok(pj.includes('실현 마진율 (잠정)') && pj.includes('지급(외주·노무)만') && pj.includes('직접비·자체 인건비 미반영'), '★ 수시평가 프로젝트 성과 카드에 "잠정" 표기 — 지급 기준 마진율을 최종 숫자로 오해하지 않게(직접비·자체 인건비 연결 전)');
 // ── 연결(소스) 확인
-const idx = fs.readFileSync(new URL('../app/modules/hr/index.js', import.meta.url), 'utf8');
-ok(idx.includes('createAdhocController(') && idx.includes('if (await adh.onClick(ev)) return;') && idx.includes("st.evTab === 'adhoc'") && idx.includes('adh.onInput(ev)') && idx.includes('adh.onChange(ev)'), '인사평가 화면에 수시평가 컨트롤러가 연결됨(클릭·입력·선택, 수시평가 처리가 정기평가보다 먼저)');
-const io = fs.readFileSync(new URL('../app/modules/hr/adhoc-io.js', import.meta.url), 'utf8');
+const idx = fs.readFileSync(new URL('../app/modules/eval/ops.js', import.meta.url), 'utf8');
+ok(idx.includes('createAdhocController(') && idx.includes('adh.onClick(ev)') && idx.includes('adh.onInput(ev)') && idx.includes('adh.onChange(ev)') && idx.includes("kind === 'adhoc'"), '평가 모듈의 운영 화면에 수시평가 컨트롤러가 연결됨(클릭·입력·선택)');
+const io = fs.readFileSync(new URL('../app/modules/eval/adhoc-io.js', import.meta.url), 'utf8');
 ok(io.includes("'evaluations/_pjt/adhoc/'") && io.includes("'evaluations/' + wid + '/adhoc/'") && !/addDoc|deleteDoc|updateDoc/.test(io) && io.includes('pjtSummary(') && io.includes('link.targetMargin') && !io.includes('data-ad-proj'), '저장 위치는 기존 관리자 전용 컬렉션 안(evaluations/…/adhoc/…)이고 삭제·덮어쓰기성 쓰기는 없으며, 청구·지급은 영업기획 계산 함수로 집계');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

@@ -1,5 +1,5 @@
-import { teamCriteria, teamTypeOf, competencyItems, areaItems, blankAreas, emptyCycle, setRating, cycleSummary, teamLeaderOf, evalAccess, STATUS_LABEL } from '../app/modules/hr/evaluation.js';
-import { evalTabsHtml, evalBoardHtml, evalPanelHtml } from '../app/modules/hr/evaluation-view.js';
+import { teamCriteria, teamTypeOf, competencyItems, areaItems, blankAreas, emptyCycle, setRating, cycleSummary, teamLeaderOf, evalAccess, STATUS_LABEL } from '../app/modules/eval/evaluation.js';
+import { evalBoardHtml, evalPanelHtml } from '../app/modules/eval/evaluation-view.js';
 import { PERM_KEYS, isTeamLead, teamLeadChanges } from '../app/modules/company/staff-logic.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 // ── 부서별 기준
@@ -43,8 +43,8 @@ ok(evalAccess(V({ admin: true }), { id: 'x' }, {}).level === 'hr' && evalAccess(
 const me = { uid: 'M', name: '관리자 대표', rank: '대표', empNo: 'admin', admin: true, perms: {} };
 const E = [W({ id: 'p1', name: '과장님', rank: '과장' }), W({ id: 'p2', name: '대리님', rank: '대리', hireDate: '2024-03-01' }), W({ id: 'p3', name: '사원님', rank: '사원', hireDate: '2025-05-01' }), W({ id: 'h1', name: '인사대리', dept: '인사총무팀', rank: '대리' })];
 const st = { evTab: 'cycle', ec: { year: 2026, me, meWorkerId: '', eligible: E, cycles: { p1: Object.assign(emptyCycle(E[0], 2026), { team: { by: 'M', areas: full(areaItems('PJT팀', '과장'), 4) } }) }, users: [{ uid: 'U3', teamLead: true, dept: 'PJT팀', empNo: '23001', name: '과장님' }], sel: '', draft: null } };
-const tabs = evalTabsHtml(st), board = evalBoardHtml(st);
-ok(tabs.includes('data-ec-tab="cycle"') && tabs.includes('data-ec-tab="records"') && tabs.includes('aria-pressed="true"'), '위쪽 탭: 정기평가 운영 / 개별 기록(기존)');
+const board = evalBoardHtml(st);
+ok(!board.includes('data-ec-tab') && !board.includes('jh-segmented'), '★ 정기평가 화면 안에 탭이 없음 — 메뉴가 탭 역할을 하므로 화면 안 탭은 두지 않음');
 ok(board.includes('2025-10-01 ~ 2026-09-30') && board.includes('참고자료로만') && board.includes('PJT팀 · 3명') && board.includes('인사총무팀 · 1명') && board.includes('팀장(1차 평가자) 과장님') && board.includes('업적 40 · 역량 20 · 태도·근태·안전 20 · 동료 20') && board.includes('업적 40 · 역량 40 · 태도·근태·안전 20') && board.includes('입력 중') && board.includes('미시작') && board.includes('data-ec-open="p1"') && board.includes('사장단 평가') && board.includes('내 권한: 사장단'), '★ 팀 보드: 평가 기간·"올해는 참고자료" 안내, 팀별 인원·팀장·비중(PJT팀은 동료 20, 비프로젝트 팀은 4/4/2)·진행 상태, 평가 버튼');
 ok(!board.includes('올해 4분기') === false && board.includes('올해 4분기 입사자는 제외'), '대상 제외 규칙(올해 4분기 입사자) 안내가 보임');
 const b2 = evalBoardHtml({ evTab: 'cycle', ec: Object.assign({}, st.ec, { me: { uid: 'Z', name: '일반', rank: '사원', perms: {} } }) });
@@ -61,6 +61,6 @@ ok(/data-ec-score="team:achievement\|0\|5"[^>]*disabled/.test(panH) && /data-ec-
 const stL = { evTab: 'cycle', ec: Object.assign({}, st.ec, { sel: 'p1', draft: Object.assign(JSON.parse(JSON.stringify(st.ec.cycles.p1)), { confirmed: true, ceo: { approved: true } }) }) }; const panL = evalPanelHtml(stL);
 ok(/data-ec-score="team:achievement\|0\|5"[^>]*disabled/.test(panL) && panL.includes('확정된 평가는 수정할 수 없습니다') && panL.includes('data-ec-act="unconfirm"') && panL.includes('그대로 승인'), '확정된 평가는 입력이 잠기고 대표에게만 "확정 취소"가 보임');
 import fs from 'node:fs';
-const idx = fs.readFileSync(new URL('../app/modules/hr/index.js', import.meta.url), 'utf8');
-ok(/evRecords: \[\], evTab: 'records' \}/.test(idx) && idx.includes("createCycleController(") && idx.includes('if (await cyc.onClick(ev)) return;') && idx.includes("evalTabsHtml(st) + (st.evTab === 'cycle'"), '★ 인사평가 화면의 기본 탭은 기존 "개별 기록"(호봉 입력 등 기존 흐름 유지), 위쪽 탭으로 "정기평가 운영"에 들어가며 클릭·입력·선택 처리가 새 컨트롤러에 먼저 위임됨');
+const idx = fs.readFileSync(new URL('../app/modules/eval/ops.js', import.meta.url), 'utf8');
+ok(idx.includes('createCycleController(') && idx.includes('cyc.onClick(ev)') && idx.includes('cyc.onInput(ev)') && idx.includes('cyc.onChange(ev)') && idx.includes('evalBoardHtml') && idx.includes('evalPanelHtml'), '★ 평가 모듈의 운영 화면에 정기평가 컨트롤러·팀 보드·평가 패널이 연결됨(클릭·입력·선택)');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

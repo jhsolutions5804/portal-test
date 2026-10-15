@@ -1,4 +1,4 @@
-import { RANK_ORDER, REGULAR_WEIGHTS, WEIGHTS_BY, RATIOS, gradeOf, evalPeriod, isEvalTarget, areaScore, regularTeamScore, peerAverage, pickAdhocEvaluator, adhocSiteScore, execScore, adhocFinal, combineRegular, finalizeScore, projectMargin, marginScore, projectPerformance, DEFAULT_MARGIN_BANDS, evalAccess } from '../app/modules/hr/evaluation.js';
+import { RANK_ORDER, REGULAR_WEIGHTS, WEIGHTS_BY, RATIOS, gradeOf, evalPeriod, isEvalTarget, areaScore, regularTeamScore, peerAverage, pickAdhocEvaluator, adhocSiteScore, execScore, adhocFinal, combineRegular, finalizeScore, projectMargin, marginScore, projectPerformance, DEFAULT_MARGIN_BANDS, evalAccess } from '../app/modules/eval/evaluation.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 // 평가 기간·대상
 ok(JSON.stringify(evalPeriod(2026)) === '{"from":"2025-10-01","to":"2026-09-30"}' && evalPeriod(1999) === null && evalPeriod('x') === null, '★ 평가 기간 = 전년 10월 1일 ~ 당해 9월 30일 (2026년분 2025-10-01 ~ 2026-09-30)');

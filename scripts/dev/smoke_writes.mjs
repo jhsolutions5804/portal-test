@@ -4,7 +4,10 @@
  * 한계: 서버 함수·보안 규칙·실제 데이터는 못 본다(가짜 저장소는 모든 쓰기를 허용). */
 import { w, D, errors, sleep, markDone, today } from './smoke_env.mjs';
 const verbose = process.argv.includes('--verbose');
-const planMod = await import(new URL('../../app/modules/plan/index.js', import.meta.url).href); const pjtMod = await import(new URL('../../app/modules/pjt/index.js', import.meta.url).href); const hrMod = await import(new URL('../../app/modules/hr/index.js', import.meta.url).href); const genMod = await import(new URL('../../app/modules/general/index.js', import.meta.url).href);
+const planMod = await import(new URL('../../app/modules/plan/index.js', import.meta.url).href); const pjtMod = await import(new URL('../../app/modules/pjt/index.js', import.meta.url).href); const hrMod = await import(new URL('../../app/modules/hr/index.js', import.meta.url).href);
+const evalMod = await import(new URL('../../app/modules/eval/index.js', import.meta.url).href);   // 평가(내 평가·정기평가 운영·수시평가) — 인사 모듈에서 분리
+const evalMine = (root, route, c) => evalMod.mount(root, { segs: ['mine'], query: {} }, c);
+const evalCycle = (root, route, c) => evalMod.mount(root, { segs: ['cycle'], query: {} }, c), evalAdhoc = (root, route, c) => evalMod.mount(root, { segs: ['adhoc'], query: {} }, c); const genMod = await import(new URL('../../app/modules/general/index.js', import.meta.url).href);
 const ctx = { me: { admin: true, uid: 'u1', name: '관리자', email: 'a@jhsol.kr', perms: {} } };
 const idCalls = []; globalThis.JH_IDENTITY = { save: async (kind, id, jumin) => { idCalls.push({ kind, id, jumin }); return { ok: true }; }, reveal: async () => ({ found: true, jumin: '9001011234567' }), maskView: (m) => m };
 const WR = () => globalThis.__WRITES;
@@ -186,16 +189,141 @@ await scenario('인사평가 — 호봉 직접 입력: 근로자 호봉(step·st
   const u = WR().filter((x) => /^workers\/w1$/.test(x.path)); check(u.length >= 1 && u.some((x) => Number(x.data.step) === 7 && !!x.data.stepYear), '호봉 7 이 workers/w1 에 step·stepYear 로 저장되어야 함: ' + JSON.stringify(WR().map((x) => x.op + ' ' + x.path + JSON.stringify(x.data || {}).slice(0, 70))));
 });
 
-await scenario('인사평가 — 정기평가 운영 탭: 처음에는 기존 개별 기록, 탭을 누르면 팀 보드가 열리고 읽기만으로는 저장이 일어나지 않음', async (check) => {
-  const root = await mountFresh(hrMod.mountEvals); check(!!root.querySelector('[data-e-step="w1"]'), '기본 화면은 기존 개별 기록(호봉 입력칸)이어야 함'); check(!!root.querySelector('[data-ec-tab="cycle"]'), '위쪽에 "정기평가 운영" 탭이 보여야 함');
-  const before = WR().length; await click(root, '[data-ec-tab="cycle"]', 700); await sleep(500);
+// ── 내 평가(폰에서도 작성): 직원이 본인에게 배정된 평가를 쓴다. 가상 저장소는 보안 규칙을 적용하지 않으므로, 저장한 문서가 규칙이 허용하는 모양(문서 id·필드)인지는 여기서 확인하고 규칙 통과는 에뮬레이터 연결 시험(tests/rules)이 확인한다
+const RULE_FIELDS = ['year', 'raterUid', 'targetWid', 'kind', 'scores', 'text', 'status', 'updatedAt', 'submittedAt'];
+const withMyEval = async (open, fn) => {
+  const saved = ctx.me; ctx.me = { uid: 'kim', name: '김직원', rank: '사원', empNo: '24001', admin: false, isGuest: false, perms: {} };
+  const put3 = (col, id, d) => { (D[col] = D[col] || {})[id] = d; }; const dc = (x) => (x === undefined ? undefined : JSON.parse(JSON.stringify(x))); const bk = { c: dc(D.eval_cycles), t: dc(D.eval_tasks), s: dc(D.eval_submissions), w: dc(D.workers) };   // 깊은 복사로 백업(같은 객체를 되돌리면 시나리오가 심은 데이터가 남아 다른 시나리오를 깨뜨린다)
+  put3('workers', 'wK', { name: '김직원', empNo: '24001', status: 'active', dept: 'PJT팀', rank: '사원', hireDate: '2023-01-01' }); put3('workers', 'wY', { name: '윤동료', empNo: '24002', status: 'active', dept: 'PJT팀', rank: '사원', hireDate: '2023-01-01' }); put3('workers', 'wP', { name: '박동료', empNo: '24003', status: 'active', dept: 'PJT팀', rank: '사원', hireDate: '2023-01-01' });
+  put3('eval_cycles', '2026', { status: open }); put3('eval_tasks', '2026__kim', { keys: ['2026__self__wK', '2026__peer__wY', '2026__peer__wP'] }); D.eval_submissions = {};
+  try { await fn(); } finally { ctx.me = saved; for (const [k, v] of [['eval_cycles', bk.c], ['eval_tasks', bk.t], ['eval_submissions', bk.s], ['workers', bk.w]]) { if (v === undefined) delete D[k]; else D[k] = v; } globalThis.__READS.length = 0; }
+};
+await scenario('내 평가 — 목록: 본인에게 배정된 평가만 보이고 읽기만으로는 저장이 일어나지 않음', async (check) => {
+  await withMyEval('open', async () => { const w0 = WR().length; globalThis.__READS.length = 0; const root = await mountFresh(evalMine); await sleep(300); const t = root.textContent;
+    check(/내 평가 2026/.test(t) && /제출 0 \/ 3/.test(t), '진행 "제출 0 / 3"이 보여야 함: ' + t.slice(0, 120)); check(/나의 자기평가/.test(t) && /윤동료/.test(t) && /박동료/.test(t), '자기평가와 동료 두 명이 보여야 함');
+    check(!/김직원/.test(root.querySelector('[data-ev-open="2026__peer__wY"]').textContent), '동료평가 목록에 본인 이름은 없어야 함'); check(WR().length === w0, '목록을 열어 보기만 하면 저장이 일어나면 안 됨(실제 ' + (WR().length - w0) + '건)');
+    const mine = globalThis.__READS.filter((p) => /^eval_tasks\/2026__kim$/.test(p)); check(mine.length === 1, '내 과제 문서(eval_tasks/2026__kim)를 읽어야 함: ' + JSON.stringify(globalThis.__READS)); check(!globalThis.__READS.some((p) => /eval_tasks\/2026__(?!kim)/.test(p) || /payslips|worker_private|salary|contracts/.test(p)), '다른 사람의 과제·민감 컬렉션은 읽으면 안 됨: ' + JSON.stringify(globalThis.__READS)); });
+});
+await scenario('★ 내 평가 — 동료평가 작성: 점수를 누르면 즉시 임시저장(규칙이 요구하는 문서 id·필드), 제출하면 submitted 로 저장되고 잠김', async (check) => {
+  await withMyEval('open', async () => { const root = await mountFresh(evalMine); await sleep(300); await click(root, '[data-ev-open="2026__peer__wY"]', 200);
+    check(/동료평가 — 윤동료/.test(root.textContent) && /익명/.test(root.textContent), '작성 화면과 익명 안내가 보여야 함');
+    WR().length = 0; await click(root, '[data-ev-score="collab|4"]', 250); await sleep(100);
+    let w = WR().filter((x) => /^eval_submissions\//.test(x.path)); check(w.length === 1 && w[0].path === 'eval_submissions/2026__kim__wY__peer', '점수를 누르면 즉시 eval_submissions/2026__kim__wY__peer 에 저장되어야 함: ' + JSON.stringify(WR().map((x) => x.path)));
+    const d = w[0] && w[0].data; check(!!d && d.status === 'draft' && d.raterUid === 'kim' && d.targetWid === 'wY' && d.kind === 'peer' && d.year === 2026 && d.scores.collab === 4 && !('submittedAt' in d), '임시저장 문서: status draft, 평가자 kim, 대상 wY, 점수 collab=4, 제출 시각 없음: ' + JSON.stringify(d));
+    check(!!d && Object.keys(d).every((k) => RULE_FIELDS.includes(k)), '★ 저장 문서의 모든 필드가 보안 규칙이 허용하는 필드여야 함(모르는 필드가 있으면 규칙이 거부): ' + JSON.stringify(Object.keys(d || {})));
+    check(w[0] && w[0].merge !== true, '저장은 문서를 통째로 쓰는 방식이어야 함(부분 병합 아님 — 규칙이 전체 모양을 확인)');
+    await click(root, '[data-ev-score="trust|5"]', 200); await click(root, '[data-ev-score="support|3"]', 200);
+    WR().length = 0; await click(root, '[data-ev-act="submit"]', 150); await confirmOk(); await sleep(250);
+    w = WR().filter((x) => /^eval_submissions\//.test(x.path)); check(w.length === 1 && w[0].data.status === 'submitted' && w[0].data.scores.collab === 4 && w[0].data.scores.trust === 5 && w[0].data.scores.support === 3 && !!w[0].data.submittedAt, '제출하면 status submitted 로 저장되고 점수 3개·제출 시각이 있어야 함: ' + JSON.stringify(w.map((x) => x.data)));
+    check(/제출 1 \/ 3/.test(root.textContent) && /제출 완료/.test(root.textContent), '제출 후 목록에 진행과 "제출 완료"가 보여야 함');
+    await click(root, '[data-ev-open="2026__peer__wY"]', 200); check(!root.querySelector('[data-ev-act="submit"]') && !root.querySelector('[data-ev-act="save"]') && root.querySelector('[data-ev-score="collab|1"]').disabled === true, '제출한 평가를 다시 열면 점수 버튼이 잠기고 제출·저장 버튼이 없어야 함');
+    WR().length = 0; await click(root, '[data-ev-score="collab|1"]', 150); await sleep(100); check(WR().length === 0, '잠긴 점수를 눌러도 저장이 일어나면 안 됨(실제 ' + WR().length + '건)'); });
+});
+await scenario('내 평가 — 점수가 덜 찼으면 제출할 수 없고(확인 창도 안 뜸), 임시저장은 이어서 쓸 수 있음(다시 열면 채워져 있음)', async (check) => {
+  await withMyEval('open', async () => { const root = await mountFresh(evalMine); await sleep(300); await click(root, '[data-ev-open="2026__peer__wP"]', 200); await click(root, '[data-ev-score="collab|5"]', 250);
+    // 가상 저장소는 쓰기를 기록만 하고 보관하지 않으므로, 점수를 누른 직후 저장된 제출 문서를 실제 서버처럼 D 에 반영해 둔다(아래에서 화면을 새로 열어 읽어 오는 경로를 확인)
+    const saved1 = WR().filter((x) => /^eval_submissions\//.test(x.path)); check(saved1.length === 1 && saved1[0].data.scores.collab === 5 && saved1[0].data.status === 'draft', '점수를 누르면 임시저장 문서가 저장되어야 함: ' + JSON.stringify(saved1.map((x) => x.path))); saved1.forEach((x) => { (D.eval_submissions = D.eval_submissions || {})[x.path.split('/')[1]] = JSON.parse(JSON.stringify(x.data)); });
+    WR().length = 0; await click(root, '[data-ev-act="submit"]', 150); const dialog = await confirmOk(); await sleep(150); check(dialog === false && !WR().some((x) => /eval_submissions/.test(x.path)), '점수가 덜 찼으면 제출 확인 창이 뜨지 않고 저장도 없어야 함(실제 저장 ' + WR().length + '건, 창 ' + dialog + ')');
+    await click(root, '[data-ev-act="back"]', 200); check(/임시저장/.test(root.textContent) && /제출 0 \/ 3/.test(root.textContent), '목록에 "임시저장"이 보이고 제출은 0건이어야 함');
+    const root2 = await mountFresh(evalMine); await sleep(300); await click(root2, '[data-ev-open="2026__peer__wP"]', 200); check(root2.querySelector('[data-ev-score="collab|5"]').getAttribute('aria-pressed') === 'true', '★ 화면을 새로 열어도(앱을 닫았다 열어도) 이전에 누른 점수가 채워져 있어야 함'); });
+});
+await scenario('내 평가 — 자기평가: 서술만 쓰고 제출(점수 없이), 서술이 비면 제출할 수 없음', async (check) => {
+  await withMyEval('open', async () => { const root = await mountFresh(evalMine); await sleep(300); await click(root, '[data-ev-open="2026__self__wK"]', 200); check(!root.querySelector('[data-ev-score]'), '자기평가에는 점수 버튼이 없어야 함');
+    WR().length = 0; await click(root, '[data-ev-act="submit"]', 150); const d0 = await confirmOk(); await sleep(100); check(d0 === false && WR().length === 0, '서술이 비면 제출할 수 없어야 함');
+    await setv(root, '[data-ev-text]', '올해 FCU 설치 일정을 앞당겼습니다.'); await sleep(1100); const dr = WR().filter((x) => /eval_submissions\/2026__kim__wK__self/.test(x.path)); check(dr.length >= 1 && dr[dr.length - 1].data.status === 'draft' && /FCU/.test(dr[dr.length - 1].data.text), '서술은 입력이 멈춘 뒤(약 1초) 자동 임시저장되어야 함: ' + dr.length + '건');
+    WR().length = 0; await click(root, '[data-ev-act="submit"]', 150); await confirmOk(); await sleep(250); const sb = WR().filter((x) => /eval_submissions\/2026__kim__wK__self/.test(x.path)); check(sb.length === 1 && sb[0].data.status === 'submitted' && JSON.stringify(sb[0].data.scores) === '{}' && !!sb[0].data.submittedAt, '제출하면 submitted, 점수 없음, 제출 시각 포함'); });
+});
+await scenario('★ 내 평가 — 평가 기간이 아니면(마감·열리기 전) 점수를 눌러도 저장이 일어나지 않고 입력이 잠겨 있음', async (check) => {
+  for (const status of ['closed', 'draft']) await withMyEval(status, async () => { const root = await mountFresh(evalMine); await sleep(300); await click(root, '[data-ev-open="2026__peer__wY"]', 200); WR().length = 0;
+    check(root.querySelector('[data-ev-score="collab|3"]').disabled === true && !root.querySelector('[data-ev-act="submit"]'), status + ': 점수 버튼이 잠기고 제출 버튼이 없어야 함'); await click(root, '[data-ev-score="collab|3"]', 150); await sleep(100); check(WR().length === 0, status + ': 눌러도 저장이 일어나면 안 됨(실제 ' + WR().length + '건)'); });
+});
+await scenario('내 평가 — 저장이 실패하면 저장된 것처럼 보이지 않고 이유를 알림(제출 실패 시 제출 완료로 바뀌지 않음)', async (check) => {
+  await withMyEval('open', async () => { const root = await mountFresh(evalMine); await sleep(300); await click(root, '[data-ev-open="2026__peer__wY"]', 200); await click(root, '[data-ev-score="collab|4"]', 150); await click(root, '[data-ev-score="trust|4"]', 150); await click(root, '[data-ev-score="support|4"]', 150);
+    const orig = globalThis.__FAIL_SET; globalThis.__FAIL_SET = true; try { WR().length = 0; await click(root, '[data-ev-act="submit"]', 150); await confirmOk(); await sleep(250);
+      check(!/제출 완료/.test(root.querySelector('[data-ev-open]') ? root.textContent : '') || /제출 0 \/ 3/.test(root.textContent) || !!root.querySelector('[data-ev-act="submit"]'), '제출이 실패하면 제출 완료로 바뀌면 안 됨(작성 화면에 머물러 다시 시도할 수 있어야 함)'); check(!!root.querySelector('[data-ev-act="submit"]'), '실패 후에도 제출 버튼이 남아 있어 다시 시도할 수 있어야 함'); } finally { globalThis.__FAIL_SET = orig; } });
+});
+await scenario('내 평가 — GUEST 계정과 로그인 정보가 없는 경우는 막힘', async (check) => {
+  const saved = ctx.me; try { for (const me of [{ uid: 'g1', name: '게스트', empNo: 'GUEST01', isGuest: true, admin: false, perms: {} }, { name: '무명', admin: false, isGuest: false, perms: {} }]) { ctx.me = me; globalThis.__READS.length = 0; const root = await mountFresh(evalMine); await sleep(150); check(/정직원 계정으로만/.test(root.textContent) && globalThis.__READS.length === 0, (me.isGuest ? 'GUEST' : 'uid 없음') + ': 정직원 안내만 보이고 데이터를 읽지 않아야 함: ' + root.textContent.slice(0, 60)); } } finally { ctx.me = saved; }
+});
+
+// ── 평가 회차 관리(정기평가 운영 화면 맨 위): 사장단이 회차를 만들고 → 과제 배정(서버) → 시작 → 마감 → 집계(서버). 서버 호출은 가상 httpsCallable 이 값을 기록하고 정한 응답만 돌려준다
+const withCycleAdmin = async (me, fn, seed) => {
+  const saved = ctx.me; ctx.me = me; const dc = (x) => (x === undefined ? undefined : JSON.parse(JSON.stringify(x))); const bk = { c: dc(D.eval_cycles), t: dc(D.eval_tasks), w: dc(D.workers), u: dc(D.portal_users) };
+  globalThis.__CALLS = []; globalThis.__CALL_REPLY = {}; delete D.eval_cycles; delete D.eval_tasks; Object.assign(D, seed || {});
+  try { await fn(); } finally { ctx.me = saved; for (const [k, v] of [['eval_cycles', bk.c], ['eval_tasks', bk.t], ['workers', bk.w], ['portal_users', bk.u]]) { if (v === undefined) delete D[k]; else D[k] = v; } globalThis.__CALLS = []; globalThis.__CALL_REPLY = {}; }
+};
+const CEO2 = { uid: 'ceo1', name: '대표', rank: '대표', empNo: 'admin', admin: true, isGuest: false, perms: {} }, HRSTAFF = { uid: 'hr1', name: '인사', rank: '대리', empNo: '24050', admin: true, isGuest: false, perms: {} };
+const mkTeam = () => { const base = { status: 'active', dept: 'PJT팀', rank: '사원', hireDate: '2023-01-01' }; return { workers: { t1: Object.assign({}, base, { name: '팀장가', empNo: 'T1', rank: '과장' }), t2: Object.assign({}, base, { name: '팀원나', empNo: 'T2' }), t3: Object.assign({}, base, { name: '팀원다', empNo: 'T3' }) }, portal_users: { P1: { status: 'approved', name: '팀장가', empNo: 'T1', dept: 'PJT팀', teamLead: true }, P2: { status: 'approved', name: '팀원나', empNo: 'T2', dept: 'PJT팀' }, P3: { status: 'approved', name: '팀원다', empNo: 'T3', dept: 'PJT팀' } } }; };
+const acts = (root) => [...root.querySelectorAll('[data-cy-act]')].map((b) => b.getAttribute('data-cy-act'));
+await scenario('★ 평가 회차 — 사장단: 회차 만들기 → 과제 배정(서버로 구성원 전송) → 시작 → 마감, 각 단계가 eval_cycles/2026 에 저장되고 마감 뒤에는 다시 열기 버튼이 없음', async (check) => {
+  await withCycleAdmin(CEO2, async () => {
+    globalThis.__CALL_REPLY = { evalAct: (d) => (d.action === 'generateTasks' ? { ok: true, tasks: d.members.length, skipped: [] } : { ok: true, results: Object.fromEntries((d.targets || []).map((t) => [t, { avg: 4, n: 3 }])) }) };
+    let root = await mountFresh(evalCycle); await sleep(400); check(JSON.stringify(acts(root)) === '["create"]' && /회차 없음/.test(root.textContent), '회차가 없으면 "회차 만들기"만 있어야 함: ' + JSON.stringify(acts(root)));
+    WR().length = 0; await click(root, '[data-cy-act="create"]', 300); await sleep(150); let w = WR().filter((x) => x.path === 'eval_cycles/2026'); check(w.length === 1 && w[0].data.status === 'draft' && w[0].data.year === 2026 && w[0].data.updatedBy === 'ceo1' && Object.keys(w[0].data).every((k) => ['status', 'year', 'updatedAt', 'updatedBy'].includes(k)), '회차 만들기: eval_cycles/2026 에 준비(draft) 저장, 규칙이 허용하는 필드만: ' + JSON.stringify(w.map((x) => x.data)));
+    D.eval_cycles = { 2026: { status: 'draft', year: 2026 } }; root = await mountFresh(evalCycle); await sleep(400); check(JSON.stringify(acts(root)) === '["tasks","move:open"]', '준비 단계에는 과제 배정·평가 시작이 있어야 함: ' + JSON.stringify(acts(root)));
+    WR().length = 0; await click(root, '[data-cy-act="move:open"]', 200); const d0 = await confirmOk(); await sleep(150); check(d0 === false && !WR().some((x) => x.path === 'eval_cycles/2026'), '과제를 배정하기 전에는 평가를 시작할 수 없어야 함(확인 창도 안 뜸)');
+    globalThis.__CALLS.length = 0; await click(root, '[data-cy-act="tasks"]', 200); await confirmOk(); await sleep(250); const gc = globalThis.__CALLS.filter((c) => c.data && c.data.action === 'generateTasks'); check(gc.length === 1 && gc[0].name === 'evalAct' && gc[0].data.year === 2026 && gc[0].data.members.length === 3, '과제 배정: 서버 evalAct 에 generateTasks 와 구성원 3명이 전달되어야 함: ' + JSON.stringify(globalThis.__CALLS.map((c) => c.name + ':' + (c.data && c.data.action))));
+    const mem = gc[0] && gc[0].data.members; check(!!mem && mem.every((m) => Object.keys(m).sort().join() === 'isLead,name,team,uid,workerId') && mem.find((m) => m.workerId === 't1').isLead === true && mem.find((m) => m.workerId === 't1').uid === 'P1' && mem.filter((m) => m.isLead).length === 1, '구성원: 팀장(팀장가)만 isLead, 포털 계정 uid 가 사번으로 연결됨, 보내는 필드는 5개뿐: ' + JSON.stringify(mem));
+    D.eval_tasks = { '2026__P1': { keys: [] }, '2026__P2': { keys: [] }, '2026__P3': { keys: [] } }; root = await mountFresh(evalCycle); await sleep(400); WR().length = 0; await click(root, '[data-cy-act="move:open"]', 200); await confirmOk(); await sleep(200); w = WR().filter((x) => x.path === 'eval_cycles/2026'); check(w.length === 1 && w[0].data.status === 'open', '과제가 있으면 평가 시작이 eval_cycles/2026 에 open 으로 저장되어야 함: ' + JSON.stringify(w.map((x) => x.data)));
+    D.eval_cycles = { 2026: { status: 'open', year: 2026 } }; root = await mountFresh(evalCycle); await sleep(400); WR().length = 0; await click(root, '[data-cy-act="move:closed"]', 200); await confirmOk(); await sleep(200); w = WR().filter((x) => x.path === 'eval_cycles/2026'); check(w.length === 1 && w[0].data.status === 'closed', '평가 마감이 closed 로 저장되어야 함');
+    D.eval_cycles = { 2026: { status: 'closed', year: 2026 } }; root = await mountFresh(evalCycle); await sleep(400); check(JSON.stringify(acts(root)) === '["move:published","aggregate"]' && !acts(root).some((a) => /open|draft|create|tasks/.test(a)) && /다시 열 수 없습니다/.test(root.textContent), '★ 마감 뒤에는 결과 공개·집계만 있고 다시 열기·과제 배정 버튼이 없으며 되돌릴 수 없다는 안내가 있어야 함: ' + JSON.stringify(acts(root)));
+    globalThis.__CALLS.length = 0; await click(root, '[data-cy-act="aggregate"]', 200); await confirmOk(); await sleep(250); const ag = globalThis.__CALLS.filter((c) => c.data && c.data.action === 'aggregatePeers'); check(ag.length === 1 && ag[0].data.year === 2026 && ag[0].data.targets.sort().join() === 't1,t2,t3', '집계: 서버에 aggregatePeers 와 대상 근로자 3명이 전달되어야 함: ' + JSON.stringify(globalThis.__CALLS)); check(/평균 3명 반영/.test(root.textContent), '집계 결과 "평균 3명 반영"이 화면에 보여야 함');
+  }, mkTeam());
+});
+await scenario('★ 평가 회차 — 인사팀(관리자지만 사장단이 아님)은 모든 회차 버튼이 잠겨 있고, 눌러도 저장·서버 호출이 일어나지 않음', async (check) => {
+  await withCycleAdmin(HRSTAFF, async () => { D.eval_cycles = { 2026: { status: 'open', year: 2026 } }; globalThis.__CALL_REPLY = { evalAct: { ok: true, tasks: 1, skipped: [] } };
+    const root = await mountFresh(evalCycle); await sleep(400); const bs = [...root.querySelectorAll('[data-cy-act]')]; check(bs.length >= 2 && bs.every((b) => b.disabled === true) && /사장단만 할 수 있습니다/.test(root.textContent), '모든 회차 버튼이 잠기고 사장단 전용 안내가 있어야 함');
+    WR().length = 0; globalThis.__CALLS.length = 0; for (const b of bs) { b.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(60); } await confirmOk(); await sleep(150); check(WR().length === 0 && globalThis.__CALLS.length === 0, '눌러도 저장이 일어나면 안 되고 서버도 호출하면 안 됨(저장 ' + WR().length + '건, 호출 ' + globalThis.__CALLS.length + '건)'); }, mkTeam());
+});
+await scenario('평가 회차 — 서버 함수가 아직 배포되지 않았으면(not-found) 그 사실을 알리고, 저장이 실패하면 성공한 것처럼 보이지 않음', async (check) => {
+  await withCycleAdmin(CEO2, async () => { D.eval_cycles = { 2026: { status: 'draft', year: 2026 } }; globalThis.__CALL_REPLY = { evalAct: Object.assign(new Error('not found'), { code: 'functions/not-found' }) };
+    const root = await mountFresh(evalCycle); await sleep(400); await click(root, '[data-cy-act="tasks"]', 200); await confirmOk(); await sleep(300); const toastText = [...document.querySelectorAll('.jh-toast, [role="status"]')].map((n) => n.textContent).join(' ');
+    check(/아직 배포되지 않았습니다/.test(toastText) || /아직 배포되지 않았습니다/.test(document.body.textContent), '서버 함수 미배포 안내가 보여야 함: ' + toastText.slice(0, 120)); check(!/배정했습니다/.test(document.body.textContent), '실패했는데 "배정했습니다"가 보이면 안 됨');
+    const orig = globalThis.__FAIL_SET; globalThis.__FAIL_SET = true; try { D.eval_cycles = { 2026: { status: 'open', year: 2026 } }; D.eval_tasks = { '2026__P1': { keys: [] } }; const r2 = await mountFresh(evalCycle); await sleep(400); await click(r2, '[data-cy-act="move:closed"]', 200); await confirmOk(); await sleep(300); check(!/평가가 "마감" 단계가 되었습니다/.test(document.body.textContent), '저장이 실패하면 "마감 단계가 되었습니다"가 보이면 안 됨'); } finally { globalThis.__FAIL_SET = orig; } }, mkTeam());
+});
+await scenario('평가 회차 — 팀원 수가 부족하거나 포털 계정이 없는 직원이 있으면 시작 전 경고가 보임(PJT팀 1명뿐인 기본 데이터)', async (check) => {
+  await withCycleAdmin(CEO2, async () => { D.eval_cycles = { 2026: { status: 'draft', year: 2026 } }; const root = await mountFresh(evalCycle); await sleep(400); check(/시작 전 확인/.test(root.textContent) && /평가자 2명 이상 필요|2명 미만/.test(root.textContent), '팀원이 부족하면 동료평가 평균을 못 낸다는 경고가 있어야 함: ' + root.textContent.slice(0, 200)); });
+});
+
+await scenario('인사평가(인사 모듈) — 분리 후: 개별 기록(호봉 입력)은 그대로이고 정기·수시평가 탭은 없음', async (check) => {
+  const root = await mountFresh(hrMod.mountEvals); check(!!root.querySelector('[data-e-step="w1"]'), '인사 모듈의 인사평가는 기존 개별 기록(호봉 입력칸)이어야 함');
+  check(!root.querySelector('[data-ec-tab]') && !root.querySelector('[data-ec-open]') && !root.querySelector('[data-ad-open]'), '정기·수시평가 운영 탭·버튼이 인사 모듈에 없어야 함(평가 메뉴로 분리됨)');
+});
+await scenario('평가 모듈 — 정기평가 화면: 팀 보드가 열리고 읽기만으로는 저장이 일어나지 않음', async (check) => {
+  const before = WR().length; const root = await mountFresh(evalCycle); await sleep(500);
   const t = root.textContent; check(/정기평가 2026/.test(t) && /2025-10-01 ~ 2026-09-30/.test(t) && /참고자료로만/.test(t), '정기평가 안내(평가 기간·참고자료)가 보여야 함: ' + t.slice(0, 160));
   check(/PJT팀 · 1명/.test(t) && /영업기획팀 · 1명/.test(t) && !/박퇴사/.test(t), '퇴사자는 빠지고 팀별 대상자가 보여야 함(PJT팀 1명·영업기획팀 1명)');
-  check(!!root.querySelector('[data-ec-open="w1"]') && !!root.querySelector('[data-ec-open="w2"]'), '대상자마다 평가 버튼이 있어야 함'); check(WR().length === before, '탭을 열어 보기만 하면 저장이 일어나면 안 됨(실제 ' + (WR().length - before) + '건)');
+  check(!!root.querySelector('[data-ec-open="w1"]') && !!root.querySelector('[data-ec-open="w2"]'), '대상자마다 평가 버튼이 있어야 함'); check(WR().length === before, '화면을 열어 보기만 하면 저장이 일어나면 안 됨(실제 ' + (WR().length - before) + '건)');
+});
+await scenario('★ 평가 모듈 보안 — 일반 직원(인사평가 권한 없음)이 평가 운영 주소를 열어도 근로자·평가·계정 데이터를 읽지 않고 안내만 보임', async (check) => {
+  const saved = ctx.me; ctx.me = { uid: 'u9', name: '일반직원', rank: '사원', empNo: '24099', admin: false, isGuest: false, perms: {} }; try {
+    for (const [name, fn] of [['정기평가', evalCycle], ['수시평가', evalAdhoc]]) {
+      globalThis.__READS.length = 0; const w0 = WR().length; const root = await mountFresh(fn); await sleep(300);
+      check(/사장단·인사팀만 열 수 있습니다/.test(root.textContent), name + ': 권한 안내가 보여야 함: ' + root.textContent.slice(0, 100));
+      check(globalThis.__READS.length === 0, name + ': 권한이 없으면 어떤 데이터도 읽으면 안 됨 — 읽은 곳: ' + JSON.stringify(globalThis.__READS)); check(WR().length === w0, name + ': 저장도 없어야 함');
+      check(!root.querySelector('[data-ec-open]') && !root.querySelector('[data-ad-open]') && !root.querySelector('[data-ec-act]') && !root.querySelector('[data-ad-act]'), name + ': 평가 버튼이 하나도 없어야 함');
+    }
+  } finally { ctx.me = saved; }
+});
+await scenario('★ 평가 모듈 보안 — GUEST 계정은 평가 화면 자체가 막힘(내 평가·정기·수시 모두), 데이터를 읽지 않음', async (check) => {
+  const saved = ctx.me; ctx.me = { uid: 'g1', name: '게스트', rank: '사원', empNo: 'GUEST01', admin: false, isGuest: true, perms: { hrEval: true } }; try {
+    for (const k of ['mine', 'cycle', 'adhoc']) { globalThis.__READS.length = 0; const root = await mountFresh((r, route, c) => evalMod.mount(r, { segs: [k], query: {} }, c)); await sleep(200);
+      check(/정직원 계정으로만/.test(root.textContent), k + ': GUEST 는 정직원 안내가 보여야 함(hrEval 권한이 있어도): ' + root.textContent.slice(0, 80)); check(globalThis.__READS.length === 0, k + ': 데이터를 읽으면 안 됨 — ' + JSON.stringify(globalThis.__READS)); }
+  } finally { ctx.me = saved; }
+});
+await scenario('평가 모듈 보안 — "인사평가" 권한만 있는 비관리자(인사총무팀 직원)는 평가 운영 화면을 열람할 수 있지만 입력·저장은 못 하고, 인사 모듈의 민감 컬렉션은 읽지 않음', async (check) => {
+  const saved = ctx.me; ctx.me = { uid: 'hr1', name: '인사직원', rank: '사원', empNo: '24050', admin: false, isGuest: false, perms: { hrEval: true } }; try {
+    globalThis.__READS.length = 0; const w0 = WR().length; const root = await mountFresh(evalCycle); await sleep(500);
+    check(!!root.querySelector('[data-ec-open="w1"]') && /내 권한: 인사팀/.test(root.textContent.replace(/\s+/g, ' ')), '열람할 수 있고 권한이 인사팀으로 보여야 함: ' + root.textContent.slice(0, 120));
+    check(/>보기</.test(root.innerHTML) && !/>평가</.test(root.innerHTML), '버튼은 "보기"여야 함(입력은 사장단)');
+    const sensitive = globalThis.__READS.filter((p) => /payslips|salary_offers|annual_contracts|labor_contracts|worker_private|worker_identity|severance|dismissal_notices|master_worker_private/.test(p)); check(sensitive.length === 0, '급여·계약서·주민번호·퇴직금 같은 민감 컬렉션을 읽으면 안 됨 — ' + JSON.stringify(sensitive)); check(WR().length === w0, '열람만 하면 저장이 일어나면 안 됨');
+    await click(root, '[data-ec-open="w1"]', 300); const b = root.querySelector('[data-ec-score]'); if (b) { b.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(80); }
+    const sv = root.querySelector('[data-ec-act="save"]'); check(!sv || sv.disabled === true, '저장 버튼이 잠겨 있어야 함'); if (sv) { sv.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(100); } check(WR().length === w0, '열람 권한자의 입력·저장 시도로 저장이 일어나면 안 됨(실제 ' + (WR().length - w0) + '건)');
+  } finally { ctx.me = saved; }
 });
 
 await scenario('인사평가 — 정기평가 운영: 인사팀(직급이 대표가 아닌 관리자)은 점수를 눌러도 입력·저장되지 않음(열람·운영만)', async (check) => {
-  const root = await mountFresh(hrMod.mountEvals); await click(root, '[data-ec-tab="cycle"]', 700); await sleep(400); await click(root, '[data-ec-open="w2"]', 300); const before = WR().length;
+  const root = await mountFresh(evalCycle); await sleep(500); await click(root, '[data-ec-open="w2"]', 300); const before = WR().length;
   check(/내 권한: 인사팀/.test(root.textContent.replace(/\s+/g, ' ')) || /인사팀은 열람·운영만/.test(root.textContent), '현재 사용자는 인사팀으로 보여야 함');
   const b = root.querySelector('[data-ec-score^="exec:"]'); check(!!b && b.disabled === true, '점수 버튼이 잠겨 있어야 함'); b.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(100);
   const sv = root.querySelector('[data-ec-act="save"]'); check(!!sv && sv.disabled === true, '저장 버튼이 잠겨 있어야 함'); if (sv) sv.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(150); check(WR().length === before, '인사팀의 시도로 저장이 일어나면 안 됨(실제 ' + (WR().length - before) + '건)');
@@ -203,7 +331,7 @@ await scenario('인사평가 — 정기평가 운영: 인사팀(직급이 대표
 
 await scenario('인사평가 — 정기평가 운영: 영업기획팀(사장단 평가) 점수 입력 → 저장은 evaluations/{근로자}/cycles/2026 에 사장단 점수만 기록, 확정 전에는 최종 점수 없음', async (check) => {
   const saved = ctx.me; ctx.me = Object.assign({}, saved, { rank: '대표', name: '관리자 대표' }); try {
-  const root = await mountFresh(hrMod.mountEvals); await click(root, '[data-ec-tab="cycle"]', 700); await sleep(400); await click(root, '[data-ec-open="w2"]', 300);
+  const root = await mountFresh(evalCycle); await sleep(500); await click(root, '[data-ec-open="w2"]', 300);
   check(/사장단 평가/.test(root.textContent) && !root.querySelector('[data-ec-peer]'), '비프로젝트 팀은 사장단 평가 칸이고 동료평가 칸이 없어야 함');
   const dots = [...root.querySelectorAll('[data-ec-score^="exec:"]')]; check(dots.length > 0, '사장단 점수 버튼이 있어야 함');
   const keys = [...new Set(dots.map((d) => d.getAttribute('data-ec-score').split('|').slice(0, 2).join('|')))];
@@ -218,14 +346,14 @@ await scenario('인사평가 — 정기평가 운영: 영업기획팀(사장단 
 });
 
 await scenario('인사평가 — 수시평가: 탭을 열면 프로젝트 목록(영업기획 연결 프로젝트의 청구·지급 집계)이 보이고, 읽기만으로는 저장이 일어나지 않음', async (check) => {
-  const root = await mountFresh(hrMod.mountEvals); const before = WR().length; await click(root, '[data-ec-tab="adhoc"]', 900); await sleep(500);
+  const root = await mountFresh(evalAdhoc); await sleep(500); const before = WR().length;
   const t = root.textContent; check(/수시평가/.test(t) && /현장 평가/.test(t) && /프로젝트마다 따로/.test(t), '수시평가 안내가 보여야 함: ' + t.slice(0, 160));
   check(!!root.querySelector('[data-ad-open="p4ph2"]'), 'PJT 프로젝트(p4ph2)가 목록에 있어야 함'); check(WR().length === before, '탭을 열어 보기만 하면 저장이 일어나면 안 됨(실제 ' + (WR().length - before) + '건)');
 });
 
 await scenario('인사평가 — 수시평가: 프로젝트 성과 — 마진율은 영업기획 값을 읽기만 하고(입력칸 없음), 사장단의 프로젝트 성과 점수만 evaluations/_pjt/adhoc/{프로젝트} 에 저장', async (check) => {
   const saved = ctx.me; ctx.me = Object.assign({}, saved, { rank: '대표', name: '관리자 대표' }); try {
-  const root = await mountFresh(hrMod.mountEvals); await click(root, '[data-ec-tab="adhoc"]', 900); await sleep(400); await click(root, '[data-ad-open="p4ph2"]', 500); await sleep(300);
+  const root = await mountFresh(evalAdhoc); await sleep(500); await click(root, '[data-ad-open="p4ph2"]', 500); await sleep(300);
   const t = root.textContent; check(/프로젝트 성과 — /.test(t) && /읽기 전용/.test(t), '프로젝트 성과 카드가 읽기 전용 안내와 함께 보여야 함');
   check(!root.querySelector('[data-ad-proj]') && !root.querySelector('input[inputmode="decimal"]'), '마진율 입력칸(목표·청구·지급·노무비·직접비)이 없어야 함 — 입력은 영업기획에서');
   check(!!root.querySelector('a[href^="#/plan/projects/"]'), '영업기획 프로젝트 상세로 가는 링크가 있어야 함');
@@ -238,7 +366,7 @@ await scenario('인사평가 — 수시평가: 프로젝트 성과 — 마진율
 });
 
 await scenario('인사평가 — 수시평가: 인사팀(대표가 아닌 관리자)은 프로젝트 성과·참여자 평가를 입력·저장할 수 없음', async (check) => {
-  const root = await mountFresh(hrMod.mountEvals); await click(root, '[data-ec-tab="adhoc"]', 900); await sleep(400); await click(root, '[data-ad-open="p4ph2"]', 500); await sleep(300); const before = WR().length;
+  const root = await mountFresh(evalAdhoc); await sleep(500); await click(root, '[data-ad-open="p4ph2"]', 500); await sleep(300); const before = WR().length;
   const ps = root.querySelector('[data-ad-act="psave"]'); check(!!ps && ps.disabled === true, '프로젝트 성과 저장 버튼이 잠겨 있어야 함'); if (ps) ps.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(150);
   const b = root.querySelector('[data-ad-score="pexec|4"]'); check(!!b && b.disabled === true, '사장단 점수 버튼이 잠겨 있어야 함'); check(WR().length === before, '인사팀의 시도로 저장이 일어나면 안 됨(실제 ' + (WR().length - before) + '건)');
 });

@@ -6,7 +6,7 @@
 import glob
 import re, os, sys
 theme = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), '..', 'app', 'theme')
-files = ['tokens', 'base', 'components', 'shell', 'edoc', 'legacy', 'calendar', 'company', 'finance']
+files = ['tokens', 'base', 'components', 'shell', 'edoc', 'legacy', 'calendar', 'company', 'finance', 'eval']
 css = {}
 for f in files:
     p = os.path.join(theme, f + '.css')

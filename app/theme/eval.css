@@ -1,0 +1,47 @@
+/* 평가 — 평가 모듈 전용 스타일. 색·간격은 theme/tokens.css 의 변수만 쓴다. 기준 폭은 899px 하나뿐.
+ * 인사 모듈(hr.css)에 기대지 않도록 평가 화면이 쓰는 공용 클래스(jh-hr__*·jh-hr-table)와 평가 전용 규칙(jh-hr-ev__*)을 이 파일에 둔다(이름은 이전 그대로 — 이름 정리는 따로). */
+.jh-eval { display: grid; gap: var(--sp-4); }
+/* 인사 화면과 같은 모양의 공용 클래스 */
+.jh-hr__bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); }
+.jh-hr__bar .jh-hr__q { flex: 1 1 var(--u-220); max-width: var(--u-420); }
+.jh-hr__bar .jh-segmented { flex-wrap: wrap; max-width: 100%; }
+.jh-hr__pad { padding: var(--sp-4) calc(var(--sp-4) + var(--sp-1)); display: grid; gap: var(--sp-4); }
+.jh-hr__scroll { overflow-x: auto; }
+.jh-hr__sub { margin: var(--sp-3) 0 0; font-size: var(--fs-md); }
+.jh-hr__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3) var(--sp-4); }
+.jh-hr__label { color: var(--c-ink-2); font-weight: 600; }
+.jh-hr-table { width: 100%; min-width: var(--u-440); border-collapse: collapse; font-size: var(--fs-sm); }
+.jh-hr-table th { text-align: left; padding: var(--sp-2) var(--sp-3); border-bottom: var(--u-1) solid var(--c-line-strong); color: var(--c-ink-2); font-weight: 700; white-space: nowrap; }
+.jh-hr-table td { padding: var(--sp-2) var(--sp-3); border-top: var(--u-1) solid var(--c-line); vertical-align: middle; }
+.jh-hr-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.jh-hr-table td.jh-field__hint, .jh-hr-table th.jh-field__hint { display: table-cell; margin: 0; }
+.jh-hr-table td.jh-hr__muted { color: var(--c-ink-3); font-size: var(--fs-xs); }
+/* 인사평가 — 정기평가 운영(팀 보드·평가 패널) */
+.jh-hr-ev__area { display: grid; gap: var(--sp-1); }
+.jh-hr-ev__rate { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--sp-3); align-items: center; padding: var(--sp-2) 0; border-bottom: var(--u-1) solid var(--c-line); font-size: var(--fs-sm); }
+.jh-hr-ev__dots { display: inline-flex; gap: var(--sp-1); }
+.jh-hr-ev__dot { min-width: var(--u-36); min-height: var(--u-36); border: var(--u-1) solid var(--c-line); border-radius: var(--radius-sm); background: var(--c-surface); font-weight: 600; cursor: pointer; }
+.jh-hr-ev__dot[aria-pressed="true"] { background: var(--c-primary); border-color: var(--c-primary); color: var(--c-on-primary); }
+.jh-hr-ev__dot:disabled { cursor: not-allowed; opacity: .6; }
+.jh-hr-ev__score { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-3); }
+.jh-hr-ev__cell { display: grid; gap: var(--sp-1); padding: var(--sp-3); border-radius: var(--radius-sm); background: var(--c-primary-weak); }
+.jh-hr-ev__cell strong { font-size: var(--fs-lg); }
+.jh-hr-ev__peer { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, minmax(var(--u-64), 6rem)); gap: var(--sp-2); align-items: center; font-size: var(--fs-sm); }
+@media (max-width: 899px) { .jh-hr-ev__score { grid-template-columns: repeat(2, minmax(0, 1fr)); } .jh-hr-ev__rate { grid-template-columns: minmax(0, 1fr); } .jh-hr-ev__peer { grid-template-columns: minmax(0, 1fr); } }
+
+/* ── 내 평가(폰 우선): 목록 → 작성 → 제출. 터치 목표 44px 이상, 점수 버튼은 한 줄에 5개가 폭을 나눠 가진다, 가로 스크롤 없음 ── */
+.jh-eval-group { display: grid; gap: var(--sp-2); }
+.jh-eval-item { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); min-height: var(--u-52); padding: var(--sp-3) var(--sp-4); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); font-size: var(--fs-md); text-align: left; cursor: pointer; width: 100%; }
+.jh-eval-item:hover, .jh-eval-item:focus-visible { background: var(--c-primary-weak); }
+.jh-eval-item__name { font-weight: 600; overflow-wrap: anywhere; }
+.jh-eval-rate { display: grid; gap: var(--sp-2); padding: var(--sp-3) 0; border-bottom: var(--u-1) solid var(--c-line); }
+.jh-eval-rate__q { display: grid; gap: var(--sp-1); }
+.jh-eval-dots { display: flex; gap: var(--sp-2); }
+.jh-eval-dot { flex: 1 1 0; min-width: var(--u-44); min-height: var(--u-52); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); color: var(--c-ink); font-size: var(--fs-lg); font-weight: 700; cursor: pointer; }
+.jh-eval-dot[aria-pressed="true"] { background: var(--c-primary); border-color: var(--c-primary); color: var(--c-on-primary); }
+.jh-eval-dot:disabled { cursor: not-allowed; opacity: .6; }
+.jh-eval-scale { display: flex; justify-content: space-between; gap: var(--sp-2); color: var(--c-ink-3); font-size: var(--fs-xs); }
+.jh-eval-bar { display: flex; flex-wrap: wrap; gap: var(--sp-3); position: sticky; bottom: 0; padding: var(--sp-3) 0; background: var(--c-surface); border-top: var(--u-1) solid var(--c-line); }
+.jh-eval-bar .jh-btn { flex: 1 1 var(--u-140); min-height: var(--u-52); }
+.jh-eval .jh-textarea, .jh-eval textarea { width: 100%; min-height: var(--u-140); font-size: var(--fs-md); }
+@media (max-width: 899px) { .jh-eval-item { font-size: var(--fs-md); } .jh-eval-bar { padding-bottom: calc(var(--sp-3) + env(safe-area-inset-bottom, 0px)); } }
