@@ -64,7 +64,7 @@ service cloud.firestore {
     //  · 이전에는 아래 catch-all(승인된 직원 전체 허용)에 걸려 일반 직원도 개발자 도구로 읽고 쓸 수 있었다.
     //  · payslips 는 기획(gihoek) 급여 PJT 배분이 netPay 를 읽으므로, 기획 권한(perms.plan)자에게 읽기만 추가 허용한다.
     function isHrDataCollection() {
-      return request.path[3] in ['annual_contracts','labor_contracts','overtime','company_settings','dismissal_notices','doc_send_log','evaluations','interviews','invoice_history','leave_promotions','payment_history','salary_offers','severance','recruit_applicants','payslips'];
+      return request.path[3] in ['annual_contracts','labor_contracts','overtime','company_settings','dismissal_notices','doc_send_log','evaluations','interviews','invoice_history','leave_promotions','payment_history','salary_offers','severance','recruit_applicants','payslips','general_leases','general_vehicles','general_assets','general_renewals','general_drive_history'];
     }
     function hasPlanPerm() {
       return isApproved()
@@ -223,6 +223,12 @@ service cloud.firestore {
       allow delete: if false;
     }
     match /edoc_overtime/{docId} { allow read: if canViewEdocDoc(); allow write: if isApproved(); }
+    match /edoc_drive/{docId} {   // 차량 운행일지 — 다른 전자결재 문서와 같은 규칙(초안은 본인만 만들고 고침, 상신·확정은 서버 함수)
+      allow read: if canViewEdocDoc();
+      allow create: if canCreateEdocDraft();
+      allow update: if canEditEdocDraft();
+      allow delete: if false;
+    }
 
     // ══════════════════════════════════════════════════════════════════
     // 원격 서명 · 문서 확인 링크 (sign.html — 로그인 없이 접속, 휴대폰 문자 인증(OTP)으로 본인 확인)
@@ -407,8 +413,10 @@ service cloud.firestore {
     // 그 외 모든 컬렉션(현재+향후 전부, edoc_*·관리자 전용 제외): 승인된 @jhsol.kr 계정만 읽기/쓰기
 // ─────────────────────────────────────────────────────────────────────────────
 // 평가("내 평가") 전용 보안 규칙 블록 — 2026-10-15 (docs/hr-evaluation-design.md 9-1절)
-// ※ 이 파일은 "전체 규칙"이 아니라, 현재 게시된 규칙의 `match /databases/{database}/documents { ... }` 안에
-//    그대로 덧붙이는 블록입니다. (전체 규칙을 이 파일로 교체하면 재무회계·전자결재 규칙이 사라집니다.)
+// ※ 이 파일은 "전체 규칙"이 아니라 평가 전용 규칙 블록입니다. **단독으로 붙이면 안 됩니다.**
+//    기존 규칙 맨 아래의 `match /{document=**}`(승인된 직원이면 읽기·쓰기 허용)가 이 블록과 OR 로 합쳐져 평가 보호가 모두 사라집니다(에뮬레이터로 확인).
+//    그래서 ① isEvalCollection() 함수를 추가하고 ② 그 맨 아래 규칙의 read·write 조건에 `&& !isEvalCollection()` 을 더하고 ③ 이 블록을 그 규칙 앞에 넣어야 합니다.
+//    검증된 전체 파일: docs/rules/firestore.rules_테섭_평가추가본_2026-10-15.rules (2026-10-13 테섭 백업 기준), 절차: docs/rules/배포_절차_평가.md
 // 필요한 기존 함수: isApproved(), isAdmin()  — 이미 게시된 규칙에 있음.
 // 원칙: ① 직원은 본인에게 배정된 과제만 쓰고 본인 제출분만 읽는다 ② 동료평가(peer) 원점수는 관리자도 읽지 못한다(서버 함수만)
 //       ③ 열린 평가 기간에만 쓴다 ④ 제출하면 수정·삭제할 수 없다 ⑤ 모르는 필드·잘못된 값은 거부한다
