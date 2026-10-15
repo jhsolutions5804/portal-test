@@ -54,6 +54,39 @@ await scenario('근로자 명부 — 퇴직 처리: 삭제가 아니라 status=r
   await click(root, '[data-w-act="resign"]'); await confirmOk();
   const r = wrote('set', /^workers\/w1$/); check(r.length >= 1 && r[0].data.status === 'resigned' && /^\d{4}-\d{2}-\d{2}$/.test(r[0].data.resignDate) && r[0].merge === true, '퇴직 처리: workers/w1 에 status=resigned·resignDate 병합 저장: ' + JSON.stringify(r[0] && r[0].data)); check(wrote('delete', /^workers\//).length === 0, '퇴직 처리가 문서를 삭제하면 안 됨');
 });
+// ── 퇴직 처리 → 포털 계정 자동 중지(서버 adminAct): 명부 저장이 먼저, 서버 호출은 그 뒤. 퇴직일은 오늘이 언제든 흔들리지 않게 확실한 과거·미래로 잡는다
+const resignOnce = async (date, reply) => {
+  globalThis.__CALLS = []; globalThis.__CALL_REPLY = reply || {}; WR().length = 0;
+  const root = await mountFresh(hrMod.mountWorkers); await click(root, '[data-w-open=\"w1\"]'); await setv(root, '[data-w-f=\"resignDate\"]', date).catch(() => {});
+  await click(root, '[data-w-act=\"resign\"]'); const dlg = (document.querySelector('.jh-dialog') || {}).textContent || ''; await confirmOk(); await sleep(250);
+  return { dlg, text: document.body.textContent, calls: globalThis.__CALLS.slice() };
+};
+await scenario('★ 퇴직 처리(과거 퇴직일) — 확인 창에 "바로 중지" 안내, 명부 저장 뒤 서버 syncResigned 호출, 서버 응답 안내', async (check) => {
+  const r = await resignOnce('2026-09-16', { adminAct: { suspended: [{ uid: 'u1', name: '김근로' }], failed: [], skippedAdmin: [], ambiguous: [], noDate: [], alreadyOff: 0 } });
+  const w1 = (D.workers && D.workers.w1) || {}; const nm = w1.name || '';
+  check(/바로 사용 중지됩니다/.test(r.dlg), '확인 창에 계정이 바로 중지된다는 안내가 있어야 함: ' + r.dlg.slice(0, 160));
+  check(WR().some((x) => x.op === 'set' && x.path === 'workers/w1' && x.data.status === 'resigned' && x.data.resignDate === '2026-09-16'), '명부에 퇴직 저장이 되어야 함');
+  const c = r.calls.filter((x) => x.name === 'adminAct'); check(c.length === 1 && c[0].data.action === 'syncResigned' && Object.keys(c[0].data).join() === 'action', '서버 adminAct 에 syncResigned 하나만(다른 값 없이) 호출되어야 함: ' + JSON.stringify(r.calls));
+});
+await scenario('★ 퇴직 처리(미래 퇴직일) — 확인 창에 "다음 날 새벽 자동 중지"와 날짜 확인 안내', async (check) => {
+  const r = await resignOnce('2099-12-31', { adminAct: { suspended: [], failed: [], skippedAdmin: [], ambiguous: [], noDate: [], alreadyOff: 0 } });
+  check(/2100-01-01 새벽에 자동으로 사용 중지/.test(r.dlg) && /날짜를 한 번 더 확인/.test(r.dlg), '미래 퇴직일이면 다음 날(2100-01-01) 새벽 중지 안내와 날짜 확인 문구가 있어야 함: ' + r.dlg.slice(0, 200));
+});
+await scenario('★ 퇴직 처리 — 서버 호출이 실패해도 퇴직 처리는 유지되고 "직접 중지" 안내(서버 미배포 포함)', async (check) => {
+  const e = Object.assign(new Error('not found'), { code: 'functions/not-found' });
+  const r = await resignOnce('2026-09-16', { adminAct: e });
+  check(WR().some((x) => x.op === 'set' && x.path === 'workers/w1' && x.data.status === 'resigned'), '서버가 실패해도 명부 퇴직 저장은 되어 있어야 함');
+  check(/아직 배포되지 않아/.test(r.text) && /직원 관리에서 직접 사용 중지/.test(r.text), '서버 함수 미배포 안내와 직접 중지 안내가 보여야 함');
+  const r2 = await resignOnce('2026-09-16', { adminAct: Object.assign(new Error('x'), { code: 'internal' }) }); check(/서버에 연결하지 못해/.test(r2.text) && /직접 사용 중지/.test(r2.text), '그 밖의 서버 오류도 직접 중지 안내');
+  const r3 = await resignOnce('2026-09-16', { adminAct: { suspended: [], failed: [{ name: '김근로' }], skippedAdmin: [], ambiguous: [], noDate: [], alreadyOff: 0 } }); check(r3.calls.length === 1, '(서버가 failed 로 응답한 경우도 호출은 1회)');
+});
+await scenario('★ 재직 복구 — 명부 복구 저장 뒤 서버 restoreResigned 를 근로자 id 와 함께 호출하고, 되돌려졌으면 안내', async (check) => {
+  D.workers = D.workers || {}; const keep = D.workers.w1; D.workers.w1 = Object.assign({}, keep, { status: 'resigned', resignDate: '2026-09-16' }); globalThis.__CALLS = []; globalThis.__CALL_REPLY = { adminAct: { restored: true, name: (keep && keep.name) || '김근로' } }; WR().length = 0;
+  try { const root = await mountFresh(hrMod.mountWorkers); const v = root.querySelector('[data-w-view="resigned"], [data-w-view-resigned]'); if (v) await click(root, '[data-w-view="resigned"], [data-w-view-resigned]'); await click(root, '[data-w-open=\"w1\"]'); await click(root, '[data-w-act=\"unresign\"]'); await confirmOk(); await sleep(250);
+    check(WR().some((x) => x.op === 'set' && x.path === 'workers/w1' && x.data.status === 'active'), '명부가 재직으로 복구 저장되어야 함');
+    const c = globalThis.__CALLS.filter((x) => x.name === 'adminAct'); check(c.length === 1 && c[0].data.action === 'restoreResigned' && c[0].data.workerId === 'w1', '서버 restoreResigned 가 근로자 id(w1)와 함께 호출되어야 함: ' + JSON.stringify(globalThis.__CALLS)); check(/다시 사용하도록 되돌렸습니다/.test(document.body.textContent), '계정이 되돌려졌으면 안내가 보여야 함');
+  } finally { D.workers.w1 = keep; globalThis.__CALLS = []; globalThis.__CALL_REPLY = {}; }
+});
 await scenario('급여명세서 — 확정 저장: payslips/{근로자}/months/{월}, 양식 v7·사용 요율(2026)·지급계 기록', async (check) => {
   const root = await mountFresh(hrMod.mountPayslip); await setv(root, '[data-p-month]', '2026-10'); await setv(root, '[data-p-worker]', 'w1'); await sleep(900);
   await click(root, '[data-p-act="save"]', 200); await confirmOk(); await sleep(200);

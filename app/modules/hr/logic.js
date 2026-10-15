@@ -1,7 +1,7 @@
 /* 인사 — 근로자 명부(새 화면). 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 데이터: workers/{id}(일반 정보) + worker_private/{id}(주민번호·계좌·주소·서명, 읽을 때 합쳐 쓰고 저장할 때 다시 가른다)
  *         labor_contracts/{id}/contracts · annual_contracts/{id}/contracts(endDate), workers/{id}/history(직급·부서 변경 이력) */
-import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261015g';
+import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261015h';
 export const WP_FIELDS = ['bankAccount', 'address', 'signData', 'taxFamily', 'taxChildren', 'taxRate'];   // worker_private 에 따로 두는 필드 — 주민번호(jumin)는 더 이상 여기 두지 않는다(테섭 2026-10-08): 서버 함수(identityAct)가 암호문으로 보관하고 마스킹 값(juminMasked)만 worker_private 에 남는다
 export const WP_NEVER_WRITE = ['jumin', 'juminMasked', 'juminUpdatedAt', 'birth6'];   // 화면에서 합쳐 만든 값·서버 전용 값은 문서에 쓰지 않는다
 /** 보유 자격증 목록(기술수당 1개당): 저장된 배열, 없으면 옛 hasCertification 표시를 한 개로 */
@@ -116,6 +116,23 @@ export function buildNew(form, list, opt) {
   if (errors.length) return { ok: false, errors };
   const empNo = nextEmpNo(list, hire);
   return { ok: true, errors: [], empNo, jumin: jd, pub: { name, phone, email, dept: T(f.dept, 40, '소속'), rank: T(f.rank, 20, '직급'), job: T(f.job, 60, '담당업무'), empType, hireDate: hire, empNo, registeredAt: (opt && opt.nowIso) || new Date().toISOString() }, priv: { address: T(f.address, 120, '주소'), bankAccount: T(f.bankAccount, 60, '계좌번호') } };   // jumin(숫자 13자리)은 문서에 쓰지 않고 호출한 쪽이 서버 함수로 암호화 저장
+}
+/** 퇴직 처리 때 포털 계정이 언제 사용 중지되는가 — 퇴직일 당일까지는 재직이므로 "다음 날"부터. 서버(resign-sweep.js)와 같은 기준. today·date 는 YYYY-MM-DD */
+export function resignAccountPlan(date, today) {
+  const d = String(date || '').trim(), t = String(today || '').trim(); if (!isDate(d)) return { when: 'invalid', text: '' };
+  const next = new Date(Date.parse(d + 'T00:00:00Z') + 86400000).toISOString().slice(0, 10);
+  if (d < t) return { when: 'now', stopFrom: next, text: '포털 계정도 바로 사용 중지됩니다(로그인이 막히고 열려 있는 로그인이 끊깁니다).' };
+  return { when: 'later', stopFrom: next, text: '퇴직일이 오늘이거나 아직 지나지 않아, 포털 계정은 ' + next + ' 새벽에 자동으로 사용 중지됩니다. 퇴직일을 잘못 입력하면 일하는 직원의 로그인이 막힐 수 있으니 날짜를 한 번 더 확인해 주세요.' };
+}
+/** 서버(adminAct syncResigned)의 응답을 사람이 읽는 한 줄로. r = { suspended:[{name}], failed:[{name}], skippedAdmin:[], ambiguous:[{name,why}], noDate:[] }, name = 퇴직 처리한 직원 이름 */
+export function resignSyncMessage(r, name) {
+  const x = r || {}; const has = (a) => (x[a] || []).some((v) => (typeof v === 'string' ? v : v && v.name) === name);
+  if (has('suspended')) return { ok: true, text: name + '님의 포털 계정을 사용 중지했습니다.' };
+  if (has('failed')) return { ok: false, text: name + '님의 포털 계정을 사용 중지하지 못했습니다. 직원 관리에서 직접 사용 중지해 주세요.' };
+  if (has('skippedAdmin')) return { ok: false, text: name + '님은 관리자 계정이라 자동으로 중지하지 않았습니다. 직원 관리에서 직접 처리해 주세요.' };
+  if ((x.ambiguous || []).some((a) => a && a.name === name)) return { ok: false, text: name + '님의 포털 계정을 확실하게 찾지 못해 건드리지 않았습니다(' + x.ambiguous.find((a) => a.name === name).why + '). 직원 관리에서 확인해 주세요.' };
+  if (x.alreadyOff) return { ok: true, text: '' };
+  return { ok: true, text: '' };
 }
 export function buildResign(date) { const d = String(date || '').trim(); if (!isDate(d)) return { ok: false, error: '퇴직일 형식이 올바르지 않습니다. 예: 2026-09-16' }; return { ok: true, patch: { status: 'resigned', resignDate: d } }; }
 /** 포털 계정 연동 후보: 이름이 같은 승인 계정이 정확히 한 명일 때만 */
