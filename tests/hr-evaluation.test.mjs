@@ -1,4 +1,4 @@
-import { RANK_ORDER, REGULAR_WEIGHTS, WEIGHTS_BY, RATIOS, gradeOf, evalPeriod, isEvalTarget, areaScore, regularTeamScore, peerAverage, pickAdhocEvaluator, adhocSiteScore, execScore, adhocFinal, combineRegular, finalizeScore, projectMargin, marginScore, projectPerformance, DEFAULT_MARGIN_BANDS } from '../app/modules/hr/evaluation.js';
+import { RANK_ORDER, REGULAR_WEIGHTS, WEIGHTS_BY, RATIOS, gradeOf, evalPeriod, isEvalTarget, areaScore, regularTeamScore, peerAverage, pickAdhocEvaluator, adhocSiteScore, execScore, adhocFinal, combineRegular, finalizeScore, projectMargin, marginScore, projectPerformance, DEFAULT_MARGIN_BANDS, evalAccess } from '../app/modules/hr/evaluation.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 // 평가 기간·대상
 ok(JSON.stringify(evalPeriod(2026)) === '{"from":"2025-10-01","to":"2026-09-30"}' && evalPeriod(1999) === null && evalPeriod('x') === null, '★ 평가 기간 = 전년 10월 1일 ~ 당해 9월 30일 (2026년분 2025-10-01 ~ 2026-09-30)');
@@ -35,4 +35,13 @@ ok(A.target === 12 && A.actual === 15 && A.diff === 3 && A.score === 5 && B.actu
 const x1 = regularTeamScore({ achievement: [4.5, 4.5, 4.5], competency: [4.25, 4.25], conduct: [4.5, 4.5], peer: [4] }, 'pjt');
 ok(x1 === 87 && combineRegular(x1, [85]) === 86.2 && gradeOf(finalizeScore(combineRegular(x1, [85]), null)) === 'A' && gradeOf(86.2) === 'A', '시나리오: 설계서 예시(PJT팀 직원, 정기 87점 + 수시 85점 → 86.2점, 등급 A) 가 입력 점수부터 그대로 재현됨');
 ok(RANK_ORDER[0] === '대표' && RANK_ORDER.indexOf('과장') < RANK_ORDER.indexOf('대리') && RANK_ORDER.indexOf('대리') < RANK_ORDER.indexOf('사원'), '직급 순서는 조직도(shared/org.js)와 같은 기준(대표 → … → 과장 → 대리 → 사원)');
+// 열람·조작 권한(대표님: 인사팀은 인사평가를 볼 수 있어야 업무 처리)
+const V = (o) => Object.assign({ id: 'u1', empNo: '24001', rank: '대리', perms: {} }, o || {}); const T = (id) => ({ id: id || 'w9' });
+const ceo = evalAccess(V({ id: 'c', rank: '대표' }), T(), {}), vp = evalAccess(V({ id: 'v', rank: '부사장' }), T(), {}), hr = evalAccess(V({ perms: { hrEval: true } }), T(), {});
+ok(ceo.level === 'exec' && ceo.viewScores && ceo.viewComments && ceo.edit && ceo.confirm && ceo.manage && vp.level === 'exec' && vp.viewScores && vp.edit && !vp.confirm && vp.manage, '★ 사장단(대표·부사장)은 모든 점수·코멘트를 보고 입력·수정하며, 최종 확정은 대표만');
+ok(hr.level === 'hr' && hr.viewScores && hr.viewComments && hr.manage && !hr.edit && !hr.confirm && !hr.viewPeerRaw, '★ 인사팀(hrEval 권한)은 다른 사람의 점수·코멘트를 모두 보고 양식 배포·진행 관리·집계·출력을 하지만(manage), 평가 입력·수정·확정은 못 함');
+const hrSelfBefore = evalAccess(V({ id: 'w9', perms: { hrEval: true } }), T('w9'), { published: false }), hrSelfAfter = evalAccess(V({ id: 'w9', perms: { hrEval: true } }), T('w9'), { published: true }), plainSelf = evalAccess(V({ id: 'w9' }), T('w9'), { published: false });
+ok(hrSelfBefore.level === 'self' && !hrSelfBefore.viewScores && !hrSelfBefore.viewComments && !hrSelfBefore.manage && hrSelfBefore.selfEval && hrSelfAfter.viewScores && hrSelfAfter.viewComments && !hrSelfAfter.edit && plainSelf.level === 'self' && !plainSelf.viewScores && plainSelf.selfEval, '★ 인사팀이라도 본인 평가는 확정·공개 전까지 가림(이해 충돌 방지), 공개 후에는 볼 수 있고, 본인은 자기평가를 쓸 수 있음');
+ok(evalAccess(V(), T(), { published: true }).level === 'none' && !evalAccess(V(), T(), { published: true }).viewScores && !evalAccess(V({ perms: { hrEval: false } }), T(), {}).manage && !evalAccess(V({ perms: { hrEval: 'yes' } }), T(), {}).manage && evalAccess(null, null, null).level === 'none', '권한이 없는 직원은 아무것도 못 봄(hrEval 은 true 일 때만 유효), 입력이 비어도 안전하게 none');
+ok(!ceo.viewPeerRaw && !vp.viewPeerRaw && !hr.viewPeerRaw && !hrSelfAfter.viewPeerRaw && evalAccess(V({ empNo: 'admin', rank: '대표' }), T(), {}).level === 'none', '★ 동료평가의 평가자별 점수는 사장단·인사팀을 포함해 누구에게도 보이지 않음(평균만), 시스템 계정(admin)은 권한 없음');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);
