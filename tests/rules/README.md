@@ -6,3 +6,4 @@
 실행 예: `firebase emulators:exec --only firestore --project demo-eval 'node eval_rules_latest.test.mjs'`
 - `eval_e2e.test.mjs` — **평가 전체 흐름**(과제 배정 → 시작 → 제출 → 마감 → 집계 → 점수 계산 → 저장 보존 → 익명, 팀장 1차 평가(leadAgg) 포함) 27건. 서버는 실제 `firebase-admin`으로 `eval-act.js`, 직원·사장단은 보안 규칙을 적용받는 클라이언트, 제출 문서는 화면 코드(`mine-logic.js`)가 만든 것. 조각별 시험이 놓치는 "서버가 읽는 필드 ↔ 화면이 쓰는 필드" 불일치를 잡는다(서버가 읽는 필드 이름이나 영역 키를 일부러 바꾸면 실패함을 확인). 서버 쪽 폴더는 `PORTAL_FUNCTIONS=경로`(npm install 완료), 저장소 루트는 `PORTAL_ROOT`.
   실행 예: `PORTAL_FUNCTIONS=... PORTAL_ROOT=... firebase emulators:exec --only firestore --project demo-eval 'node eval_e2e.test.mjs'`
+- `sign_links.test.mjs` — **본인 확인 링크(sign_links) 보안 규칙** 28건(공격 18·정상 동작 10). `RULES_FILE=` 로 어떤 규칙 파일에도 돌릴 수 있고, 현재 게시본(본섭·테섭)에서는 공격 항목이 실패해 결함을 보여 주며 수정본에서는 전부 통과한다. 규칙을 바꿀 때마다 **본섭 게시본과 테섭 게시본 양쪽**에 돌린다. 이 시험이 잡은 것: catch-all 이 sign_links 를 제외하지 않아 이메일 로그인 직원 누구나 남의 링크 내용(급여명세서·계약서)을 읽고, 링크를 위조·변조·삭제하고, 인증 번호를 바꿔 본인 확인을 우회할 수 있었다(2026-10-16).

@@ -7,7 +7,7 @@ export const SIGN_TTL_MS = 72 * 3600 * 1000, VIEW_TTL_MS = 180 * 24 * 3600 * 100
 /** 메일 발송은 본섭에서만 — 테섭 구포털도 메일 설정이 자리표시 값이라 꺼져 있었다(시험 중 실제 직원에게 메일이 나가지 않게). 테섭에서는 링크·QR 로 확인한다 */
 export const emailjsFor = (isTest) => (isTest ? null : EMAILJS);
 export const EMAILJS = { serviceId: 'service_7iova18', templateId: 'template_jto208l', publicKey: 'VxJuVh6ZVpDoIurYp', sdk: 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js' };   // 공개 키(브라우저용)
-export const DOC_LABEL = { annual: '연봉계약서', labor: '근로계약서', payslip: '급여명세서', offer: '연봉제안서', leavepromo: '연차사용촉진 서면 통지' };
+export const DOC_LABEL = { annual: '연봉계약서', labor: '근로계약서', payslip: '급여명세서', offer: '연봉제안서', leavepromo: '연차사용촉진 서면 통지', evalresult: '평가 결과 통보서' };
 /** 휴대폰 번호 → +82 국제 형식(010·011·016~019 만), 올바르지 않으면 빈 문자열 */
 export function phoneE164(p) { const d = String(p || '').replace(/\D/g, ''); if (!d) return ''; const e = '+82' + d.replace(/^0/, ''); return /^\+821[016789]\d{7,8}$/.test(e) ? e : ''; }
 /** 주민번호 마스킹: 앞 6자리-성별 1자리 + ●(최소 6개) */
@@ -24,7 +24,7 @@ export function buildSignLink(o) {
 }
 /** 열람 전용 링크: 저장 당시 양식으로 그린 HTML 만 담는다(서명·수정 불가, 문자 인증 후 열람, 180일) */
 export function buildViewLink(o) {
-  const x = o || {}; if (!['labor', 'annual', 'payslip', 'leavepromo'].includes(x.docType)) return { ok: false, error: '열람 링크는 근로계약서·연봉계약서·급여명세서·연차사용촉진 서면만 지원합니다.' }; if (String(x.html || '').length > MAX_PAYLOAD) return { ok: false, error: '문서가 너무 커서 링크를 만들 수 없습니다. (이미지·첨부 용량 확인)' };
+  const x = o || {}; if (!['labor', 'annual', 'payslip', 'leavepromo', 'evalresult'].includes(x.docType)) return { ok: false, error: '열람 링크는 근로계약서·연봉계약서·급여명세서·연차사용촉진 서면·평가 결과 통보서만 지원합니다.' }; if (String(x.html || '').length > MAX_PAYLOAD) return { ok: false, error: '문서가 너무 커서 링크를 만들 수 없습니다. (이미지·첨부 용량 확인)' };
   const expMs = (x.now || Date.now()) + VIEW_TTL_MS; return { ok: true, expMs, meta: { docType: x.docType, workerName: x.workerName || (x.src && x.src.name) || '', phoneE164: x.e164, status: 'view', viewOnly: true, synced: true, expiresAt: new Date(expMs).toISOString() }, payload: { docType: x.docType, viewOnly: true, html: x.html, title: x.title || '', ref: {} } };
 }
 export const NO_PHONE_ERROR = '받는 분의 휴대폰 번호가 없거나 형식이 올바르지 않아 링크를 만들 수 없습니다.\n문서 확인 시 이 번호로 문자 인증을 하므로, 근로자 명부(또는 채용 지원서)에 휴대폰 번호를 등록한 뒤 다시 시도해 주세요.';

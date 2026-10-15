@@ -7,7 +7,7 @@ const verbose = process.argv.includes('--verbose');
 const planMod = await import(new URL('../../app/modules/plan/index.js', import.meta.url).href); const pjtMod = await import(new URL('../../app/modules/pjt/index.js', import.meta.url).href); const hrMod = await import(new URL('../../app/modules/hr/index.js', import.meta.url).href);
 const evalMod = await import(new URL('../../app/modules/eval/index.js', import.meta.url).href);   // 평가(내 평가·정기평가 운영·수시평가) — 인사 모듈에서 분리
 const evalMine = (root, route, c) => evalMod.mount(root, { segs: ['mine'], query: {} }, c);
-const evalCycle = (root, route, c) => evalMod.mount(root, { segs: ['cycle'], query: {} }, c), evalAdhoc = (root, route, c) => evalMod.mount(root, { segs: ['adhoc'], query: {} }, c); const genMod = await import(new URL('../../app/modules/general/index.js', import.meta.url).href);
+const evalResult = (root, route, c) => evalMod.mount(root, { segs: ['result'], query: {} }, c, { sendResult: async () => ({ ok: true }), makeResultLink: async () => 'TOK', showLink: () => {} }), evalCycle = (root, route, c) => evalMod.mount(root, { segs: ['cycle'], query: {} }, c), evalAdhoc = (root, route, c) => evalMod.mount(root, { segs: ['adhoc'], query: {} }, c); const genMod = await import(new URL('../../app/modules/general/index.js', import.meta.url).href);
 const ctx = { me: { admin: true, uid: 'u1', name: '관리자', email: 'a@jhsol.kr', perms: {} } };
 const idCalls = []; globalThis.JH_IDENTITY = { save: async (kind, id, jumin) => { idCalls.push({ kind, id, jumin }); return { ok: true }; }, reveal: async () => ({ found: true, jumin: '9001011234567' }), maskView: (m) => m };
 const WR = () => globalThis.__WRITES;
@@ -351,6 +351,39 @@ await scenario('★ 정기평가 저장 — 팀장·대표 점수를 저장해�
     const w2 = WR().filter((x) => x.op === 'set' && x.path === 'evaluations/' + wid + '/cycles/2026');
     check(w2.length >= 1, '저장이 evaluations/' + wid + '/cycles/2026 에 일어나야 함(저장 ' + WR().length + '건: ' + JSON.stringify(WR().map((x) => x.path)) + ')');
     check(w2.length >= 1 && !('peerAgg' in w2[0].data), '★ 저장 내용에 peerAgg 가 들어 있으면 안 됨(서버가 집계한 값을 화면의 옛 복제본으로 덮어쓰게 됨): 저장된 필드 = ' + JSON.stringify(w2[0] && Object.keys(w2[0].data))); }, mkTeam());
+});
+// ── 평가 결과 통보서 링크(createResultLink): 본인 확인용 번호는 그 직원의 명부 번호, 공개 문서에는 내용이 없고 비공개 문서에만 통보서가 들어간다
+const signIo = await import(new URL('../../app/modules/hr/sign-io.js', import.meta.url).href);
+await scenario('★ 평가 결과 통보서 링크 — 그 직원의 명부 번호로 본인 확인이 걸리고, 점수는 비공개 문서에만 저장됨', async (check) => {
+  const had = D.workers; D.workers = Object.assign({}, D.workers, { wRes1: { name: '김영서', phone: '010-1234-5678', status: 'active' }, wRes2: { name: '다른직원', phone: '010-9999-0000', status: 'active' }, wRes3: { name: '번호없음', status: 'active' } });
+  try { WR().length = 0; globalThis.__READS.length = 0; const html = '<html><body>최종 80점 <b>A</b></body></html>';
+    const token = await signIo.createResultLink({ workerId: 'wRes1', workerName: '김영서', html, title: '인사평가 결과 통보서' });
+    const links = WR().filter((x) => x.op === 'batch-set' && /^sign_links\/[^/]+$/.test(x.path)), sec = WR().filter((x) => x.op === 'batch-set' && /^sign_links\/[^/]+\/secure\/payload$/.test(x.path));
+    check(typeof token === 'string' && token.length > 0 && links.length === 1 && sec.length === 1 && links[0].path === 'sign_links/' + token && sec[0].path === 'sign_links/' + token + '/secure/payload', '링크 문서와 비공개 문서가 같은 토큰 아래 하나씩 저장되어야 함: ' + JSON.stringify(WR().map((x) => x.path)));
+    const L = links[0].data; check(L.docType === 'evalresult' && L.viewOnly === true && L.status === 'view' && L.workerName === '김영서' && L.phoneE164 === '+821012345678' && L.expiresTs !== undefined && L.expiresAt, '★ 본인 확인 대상 번호는 그 직원(김영서)의 명부 번호(+821012345678)이고 열람 전용·만료 시각이 있음: ' + JSON.stringify({ phone: L.phoneE164, t: L.docType, v: L.viewOnly }));
+    check(!JSON.stringify(L).includes('80점') && !JSON.stringify(L).includes('최종') && !JSON.stringify(L).includes('<html'), '★ 누구나 읽을 수 있는 링크 문서(sign_links/{토큰})에는 점수·통보서 내용이 없음');
+    const P = sec[0].data; check(P.viewOnly === true && P.html === html && P.title === '인사평가 결과 통보서' && P.docType === 'evalresult', '통보서 내용은 비공개 문서(secure/payload)에만 저장됨(문자 인증을 통과한 본인만 읽는 곳)');
+    check(globalThis.__READS.filter((r) => /^workers\//.test(r)).join() === 'workers/wRes1', '★ 명부에서는 받는 직원 한 명만 읽음(다른 직원의 번호를 읽거나 쓰지 않음): ' + globalThis.__READS.join(','));
+    WR().length = 0; let e1 = null; try { await signIo.createResultLink({ workerId: 'wRes3', workerName: '번호없음', html }); } catch (e) { e1 = e; }
+    check(e1 && /휴대폰 번호가 없거나/.test(e1.message) && WR().length === 0, '★ 명부에 휴대폰 번호가 없으면 링크를 만들지 않고 이유를 알림(번호 없이 링크가 생기지 않음)');
+    let e2 = null, e3 = null, e4 = null; try { await signIo.createResultLink({ workerId: '', html }); } catch (e) { e2 = e; } try { await signIo.createResultLink({ workerId: 'wRes1', html: '' }); } catch (e) { e3 = e; } try { await signIo.createResultLink({ workerId: 'nobody', html }); } catch (e) { e4 = e; }
+    check(e2 && e3 && e4 && WR().length === 0, '받는 사람이 없거나 내용이 비었거나 명부에 없는 직원이면 링크를 만들지 않음');
+    let e5 = null; try { await signIo.createResultLink({ workerId: 'wRes1', html: 'x'.repeat(1000000) }); } catch (e) { e5 = e; } check(e5 && /너무 커서/.test(e5.message) && WR().length === 0, '내용이 너무 크면(90만 자 초과) 링크를 만들지 않음');
+  } finally { D.workers = had; }
+});
+// ── 평가 결과 통보 화면(실제 마운트): 관리자 → 확정된 직원만 "보기", 일반 직원은 열리지 않음, 읽기만으로는 저장이 일어나지 않음
+await scenario('★ 평가 결과 통보 화면 — 관리자는 목록과 확정된 직원의 미리보기를 보고(저장 없음), 일반 직원에게는 열리지 않음', async (check) => {
+  await withCycleAdmin(CEO2, async () => {
+    const wid = Object.keys(D.workers || {}).find((k) => D.workers[k].dept === 'PJT팀' && D.workers[k].status !== 'resigned') || 't1'; const key = 'evaluations/' + wid + '/cycles';
+    D[key] = { 2026: { year: 2026, leadAgg: { areas: { achievement: 4, competency: 5, conduct: 3 }, n: 1, by: 'uL' }, peerAgg: { avg: 4, n: 3 }, ceo: { approved: true }, confirmed: true, self: { text: '메모' } } };
+    WR().length = 0; const root = await mountFresh(evalResult); await sleep(450);
+    check(/평가 결과 통보/.test(root.textContent) && /확정 1명/.test(root.textContent) && root.querySelectorAll('[data-rs-open]').length === 1, '관리자에게 목록이 보이고 확정된 직원 1명에게만 "보기" 버튼이 있어야 함: ' + root.textContent.slice(0, 180));
+    const btn = root.querySelector('[data-rs-open]'); if (btn) { btn.dispatchEvent(new w.MouseEvent('click', { bubbles: true })); await sleep(450); }
+    check(!!root.querySelector('iframe[sandbox]') && /결과 통보서/.test(root.textContent) && root.querySelectorAll('[data-rs-act]').length === 4, '"보기"를 누르면 샌드박스 미리보기와 버튼 4개(목록·메일·링크·인쇄)가 나옴');
+    check(WR().length === 0, '★ 보기만으로는 아무것도 저장·발송되지 않음(' + WR().length + '건)');
+    check(/테섭에서는 메일 발송이 꺼져 있습니다/.test(root.textContent), '이 점검 환경은 테섭 주소이므로 "메일 발송이 꺼져 있습니다" 안내가 보임');
+    delete D[key]; }, mkTeam());
+  const saved = ctx.me; ctx.me = { uid: 'Z', name: '일반', rank: '사원', admin: false, perms: {}, isGuest: false }; try { const r2 = await mountFresh(evalResult); await sleep(300); check(/사장단·인사팀만 열 수 있습니다/.test(r2.textContent) && !r2.querySelector('[data-rs-open]'), '★ 일반 직원이 평가 결과 통보 주소를 열어도 목록 없이 권한 안내만 나옴'); } finally { ctx.me = saved; }
 });
 await scenario('인사평가(인사 모듈) — 분리 후: 개별 기록(호봉 입력)은 그대로이고 정기·수시평가 탭은 없음', async (check) => {
   const root = await mountFresh(hrMod.mountEvals); check(!!root.querySelector('[data-e-step="w1"]'), '인사 모듈의 인사평가는 기존 개별 기록(호봉 입력칸)이어야 함');

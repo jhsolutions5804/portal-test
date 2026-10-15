@@ -141,6 +141,29 @@ await assertFails(setDoc(cyc(as(EX1), 'wM', 2026), { year: 2026, leadAgg: { area
 await assertFails(updateDoc(cyc(as(EX1), 'wL', 2026), { 'leadAgg.areas.achievement': 5 })); ok(true, '중첩 필드(leadAgg.areas.achievement)만 바꾸는 시도도 거부');
 await assertSucceeds(setDoc(cyc(as(EX1), 'wL', 2026), { year: 2026, team: { by: 'e1', areas: {} }, ceo: { approved: true } }, { merge: true })); ok(true, '★ 사장단의 점수·승인 저장은 그대로 통과(leadAgg·peerAgg 를 건드리지 않으므로 서버가 집계한 값이 있어도 막히지 않음)');
 await assertSucceeds(getDoc(cyc(as(A), 'wL', 2026))); ok(true, 'leadAgg 가 있는 문서도 관리자는 읽을 수 있음');
+// ── 6-6. 본인 확인 링크(sign_links) — 평가 결과 통보서가 얹히는 구조. 누가 만들 수 있고, 누가 읽을 수 있는가(문자 인증 번호 일치·유효기간·취소)
+const PH = '+821012345678', PH2 = '+821099990000'; const lnk = (db, t) => doc(db, 'sign_links/' + t), sec = (db, t) => doc(db, 'sign_links/' + t + '/secure/payload');
+const asPhone = (num) => env.authenticatedContext('phoneUser_' + num.slice(-4), { phone_number: num }).firestore();   // 문자 인증으로 로그인한 사용자(이메일 없음)
+const future = new Date(Date.now() + 86400000), past = new Date(Date.now() - 86400000);
+await env.withSecurityRulesDisabled(async (ctx) => { const db = ctx.firestore();
+  const mkL = async (t, o) => { await setDoc(lnk(db, t), Object.assign({ docType: 'evalresult', viewOnly: true, status: 'view', workerName: '김', phoneE164: PH, expiresTs: future }, o || {})); await setDoc(sec(db, t), { docType: 'evalresult', viewOnly: true, html: '<p>최종 80점</p>', title: '결과' }); };
+  await mkL('okTok'); await mkL('expTok', { expiresTs: past }); await mkL('revTok', { status: 'revoked' }); await mkL('noPhoneTok', { phoneE164: '' }); });
+await assertSucceeds(getDoc(lnk(as(A), 'okTok'))); await assertSucceeds(getDoc(lnk(env.unauthenticatedContext().firestore(), 'okTok'))); ok(true, '링크 문서(sign_links/{토큰})는 토큰을 아는 사람이면 로그인 없이 읽을 수 있음 — 그래서 여기에는 점수·내용이 없어야 함(시나리오 시험이 확인)');
+await assertSucceeds(getDoc(sec(asPhone(PH), 'okTok'))); ok(true, '★ 링크에 지정된 번호로 문자 인증한 본인은 통보서(secure/payload)를 읽을 수 있음');
+await assertFails(getDoc(sec(asPhone(PH2), 'okTok'))); ok(true, '★★ 다른 번호로 문자 인증한 사람은 읽을 수 없음(링크를 전달받았거나 주워도 본인이 아니면 안 보임)');
+await assertFails(getDoc(sec(env.unauthenticatedContext().firestore(), 'okTok'))); ok(true, '★ 문자 인증 없이(로그인 없이) 링크만으로는 통보서를 읽을 수 없음');
+await assertFails(getDoc(sec(as(K), 'okTok'))); ok(true, '★★ 이메일로 로그인한 일반 직원은(문자 인증 없이는) 남의 통보서 내용을 읽을 수 없음');
+await assertSucceeds(getDoc(sec(as(A), 'okTok'))); await assertSucceeds(getDoc(sec(as(EX1), 'okTok'))); ok(true, '관리자·사장단은 링크 비공개 문서를 읽을 수 있음(서명 결과 동기화에 필요) — 같은 정보의 원본(급여·계약서·평가)을 이미 읽을 수 있는 계정이라 새로운 노출은 아님',);
+await assertFails(getDoc(sec(asPhone(PH), 'expTok'))); await assertFails(getDoc(sec(asPhone(PH), 'revTok'))); ok(true, '★ 유효기간이 지난 링크·취소된 링크는 본인 번호로 인증해도 읽을 수 없음');
+await assertFails(getDoc(sec(asPhone(PH), 'noPhoneTok'))); ok(true, '인증 대상 번호가 비어 있는 링크는 누구도 읽을 수 없음(번호 없이 열리지 않음)');
+await assertFails(getDocs(collection(env.unauthenticatedContext().firestore(), 'sign_links'))); await assertFails(getDocs(collection(asPhone(PH), 'sign_links'))); ok(true, '링크 목록 조회는 로그인 없이도 문자 인증으로도 불가(다른 토큰을 찾아볼 수 없음)');
+await assertFails(setDoc(lnk(as(K), 'newByEmp'), { docType: 'evalresult', viewOnly: true, status: 'view', phoneE164: PH, expiresTs: future })); ok(true, '★★ 일반 직원 계정은 링크를 만들 수 없음(자기 번호로 가짜 통보서 링크를 만들 수 없다)');
+await assertFails(setDoc(lnk(asPhone(PH), 'newByPhone'), { docType: 'evalresult', viewOnly: true, status: 'view', phoneE164: PH, expiresTs: future })); ok(true, '문자 인증 사용자도 링크를 만들 수 없음');
+await assertFails(setDoc(sec(asPhone(PH), 'okTok'), { html: '<p>위조</p>', viewOnly: true })); await assertFails(updateDoc(lnk(asPhone(PH), 'okTok'), { status: 'revoked' })); ok(true, '★ 본인이 통보서 내용을 바꾸거나 링크 상태를 고칠 수 없음(열람 전용 문서는 서명 완료 표시도 불가 — 계약서 종류만 가능)');
+await assertFails(deleteDoc(lnk(asPhone(PH), 'okTok'))); await assertFails(deleteDoc(lnk(as(K), 'okTok'))); ok(true, '링크 삭제는 본인·직원 모두 불가');
+const mk2 = async (db, t) => { await setDoc(lnk(db, t), { docType: 'evalresult', viewOnly: true, status: 'view', workerName: '관리자생성', phoneE164: PH, expiresTs: future }); await setDoc(sec(db, t), { docType: 'evalresult', viewOnly: true, html: '<p>x</p>', title: 't' }); };
+await assertSucceeds(mk2(as(A), 'byAdmin')); ok(true, '관리자 계정은 링크(공개 문서와 비공개 문서)를 만들 수 있음');
+await assertSucceeds(getDoc(sec(asPhone(PH), 'byAdmin'))); ok(true, '관리자가 만든 링크를 본인(해당 번호)이 문자 인증 후 읽을 수 있음');
 // ── 7. 관리자가 직원 대신 쓰기·미승인
 await assertFails(setDoc(dk(as(A), K, 'wY', 'peer', 2026), sub(K, 'wY', 'peer'))); ok(true, '★ 관리자도 직원의 이름으로 평가를 대신 쓸 수 없음');
 await assertFails(setDoc(dk(as(X), X, 'wX', 'self'), sub(X, 'wX', 'self'))); ok(true, '승인되지 않은 계정은 쓸 수 없음');

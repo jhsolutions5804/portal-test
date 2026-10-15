@@ -1,9 +1,9 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261016a';
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261016a';
-import { financePerm } from '../../shared/finance-perm.js?v=20261016a';
-import { isEvalUser, isEvalOps } from '../../shared/eval-perm.js?v=20261016a';
-import { companyPerm } from '../../shared/company-perm.js?v=20261016a';
-import { isProjectKey } from '../../shared/pjt-key.js?v=20261016a';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261016b';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261016b';
+import { financePerm } from '../../shared/finance-perm.js?v=20261016b';
+import { isEvalUser, isEvalOps } from '../../shared/eval-perm.js?v=20261016b';
+import { companyPerm } from '../../shared/company-perm.js?v=20261016b';
+import { isProjectKey } from '../../shared/pjt-key.js?v=20261016b';
 export { isProjectKey };
 /* 옛 모듈 어댑터의 목록과 규칙 — 화면(DOM)·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 옛 모듈이 새 모듈로 바뀌면 여기서 항목을 지우고 modules/index.js 의 새 모듈 목록으로 옮긴다. */
@@ -25,8 +25,8 @@ export const LEGACY_DEFS = [
     sections: [{ key: 'org', label: '조직도', native: true }, { key: 'rules', label: '회사 내규', native: true }, { key: 'staff', label: '직원 관리', native: true }, { key: 'alog', label: '열람 기록', native: true }] },
   // 평가: 인사 모듈에서 분리한 독립 메뉴 — 내 평가(정직원 누구나, 폰에서도) · 평가 운영(사장단·관리자·"인사평가" 권한자). 인사 모듈은 관리자 전용이라 비관리자(인사총무팀 일부)에게 열면 급여·계약서 화면이 주소로 열릴 위험이 있어 따로 뺐다(설계서 docs/hr-evaluation-design.md 9-1절)
   { id: 'eval', order: 47, title: '평가', icon: '📝', tabbed: true, ownNav: true, perm: isEvalUser, nav: [{ key: 'mine', label: '내 평가' }], homeLabel: '평가',
-    groups: [{ key: 'eval', label: '평가', home: { key: 'mine', label: '내 평가', hint: '나에게 배정된 평가를 폰에서도 작성합니다' }, clusters: [{ label: '평가 운영', perm: isEvalOps, keys: ['cycle', 'adhoc'] }] }],
-    sections: [{ key: 'mine', label: '내 평가', native: true }, { key: 'cycle', label: '정기평가', native: true }, { key: 'adhoc', label: '수시평가', native: true }] },
+    groups: [{ key: 'eval', label: '평가', home: { key: 'mine', label: '내 평가', hint: '나에게 배정된 평가를 폰에서도 작성합니다' }, clusters: [{ label: '평가 운영', perm: isEvalOps, keys: ['cycle', 'adhoc', 'result'] }] }],
+    sections: [{ key: 'mine', label: '내 평가', native: true }, { key: 'cycle', label: '정기평가', native: true }, { key: 'adhoc', label: '수시평가', native: true }, { key: 'result', label: '평가 결과 통보', native: true }] },
   { id: 'pjt', order: 40, mobileTab: { order: 2, label: 'PJT', icon: '🏗️' }, title: 'PJT 관리', icon: '🏗️', tabbed: false, dynamicNav: true, defaultSub: 'home', nativeKeys: ['roster', 'home', 'ended'], nativeSubs: ['home', 'schedule', 'progress', 'attend', 'report', 'settings'], perm: (me) => !!(me && (me.admin || (me.perms && me.perms.pjt) || (Array.isArray(me.pjtKeys) && me.pjtKeys.length > 0))) },   // PJT 권한자·관리자, 또는 어느 프로젝트든 참여자로 지정된 사람
   { id: 'myteam', order: 90, title: '내 팀 공수표', icon: '👷', tabbed: false, url: 'team/', nativeKeys: ['main'],
     perm: (me) => !!(me && (me.admin || (Array.isArray(me.teamLeaderIds) && me.teamLeaderIds.length > 0))), nav: [{ key: 'main', label: '내 팀 공수표' }] }

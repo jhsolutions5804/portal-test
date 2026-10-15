@@ -1,14 +1,14 @@
 /* 원격 서명·열람 링크·메일 발송 — Firestore·메일 서비스를 쓰는 부분(규칙·판단은 sign.js, 시험은 거기서).
  * 서명 페이지(sign.html)는 별도 공개 페이지이고, 이 파일은 관리자 화면 쪽(링크 만들기·서명 결과 반영·메일 보내기·발송 이력)만 맡는다. */
-import { db, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp, Timestamp, addDoc, updateDoc } from '../../core/firebase.js?v=20261016a';
-import { confirmDialog } from '../../core/dialog.js?v=20261016a';
-import { toast, esc } from '../../core/ui.js?v=20261016a';
-import { configureFrozenDocs, docHtmlByVer, __ANNUAL_TPL, __LABOR_TPL } from './frozen-docs.js?v=20261016a';
-import { psHtml } from './payslip-doc.js?v=20261016a';
-import { leavePromoHtmlByVer, configureLeavePromoDocs } from './leave-promo-docs.js?v=20261016a';
-import { LP_STAGE } from './leave-promo.js?v=20261016a';
-import { IS_TEST } from '../../core/config.js?v=20261016a';
-import { emailjsFor, phoneE164, maskJumin, contractContentHash, buildSignLink, buildViewLink, NO_PHONE_ERROR, syncDecision, isEmail, sendLogEntry, summarizeSendLog, qrUrl, EMAILJS, DOC_LABEL } from './sign.js?v=20261016a';
+import { db, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp, Timestamp, addDoc, updateDoc } from '../../core/firebase.js?v=20261016b';
+import { confirmDialog } from '../../core/dialog.js?v=20261016b';
+import { toast, esc } from '../../core/ui.js?v=20261016b';
+import { configureFrozenDocs, docHtmlByVer, __ANNUAL_TPL, __LABOR_TPL } from './frozen-docs.js?v=20261016b';
+import { psHtml } from './payslip-doc.js?v=20261016b';
+import { leavePromoHtmlByVer, configureLeavePromoDocs } from './leave-promo-docs.js?v=20261016b';
+import { LP_STAGE } from './leave-promo.js?v=20261016b';
+import { IS_TEST } from '../../core/config.js?v=20261016b';
+import { emailjsFor, phoneE164, maskJumin, contractContentHash, buildSignLink, buildViewLink, NO_PHONE_ERROR, syncDecision, isEmail, sendLogEntry, summarizeSendLog, qrUrl, EMAILJS, DOC_LABEL } from './sign.js?v=20261016b';
 export const signBase = () => new URL('../../../sign.html', import.meta.url).href;   // 이 앱이 올라가 있는 곳(테섭·본섭)의 서명 페이지
 const logoUrl = () => new URL('../../theme/assets/jh-logo.png', import.meta.url).href;
 const COLL = { annual: 'annual_contracts', labor: 'labor_contracts' };
@@ -36,6 +36,16 @@ export async function createDocLink({ docType, workerId, contractId, offerId, pa
     const r = buildSignLink({ docType, src, workerName, e164, seal, coll, workerId, contractId, contentHash: coll ? await contractContentHash(src) : '' }); if (!r.ok) throw new Error(r.error);
     batch.set(ref, Object.assign({}, r.meta, { createdAt: serverTimestamp(), expiresTs: Timestamp.fromMillis(r.expMs) })); batch.set(doc(db, 'sign_links/' + ref.id + '/secure/payload'), Object.assign({}, r.payload, { createdAt: serverTimestamp() }));
   }
+  await batch.commit(); return ref.id;
+}
+/** 평가 결과 통보서 열람 링크 만들기 → 토큰. 문서 내용(HTML)은 평가 모듈이 만들어 넘기고(이스케이프 완료), 여기서는 본인 확인용 휴대폰 번호(근로자 명부)를 찾아 링크 문서만 저장한다.
+ *  메일 본문에는 점수가 없고 이 링크만 나간다 — 링크를 열면 명부의 번호로 문자 인증을 통과한 본인만 읽는다(보안 규칙 sign_links/{token}/secure). */
+export async function createResultLink({ workerId, workerName, html, title }) {
+  if (!workerId) throw new Error('받는 분(근로자)을 알 수 없습니다.'); if (!html) throw new Error('통보서 내용이 비어 있습니다.');
+  let e164 = ''; try { const s = await getDoc(doc(db, 'workers', workerId)); if (s.exists()) e164 = phoneE164(s.data().phone); } catch (e) { /* 번호 없음 처리로 */ } if (!e164) throw new Error(NO_PHONE_ERROR);
+  const r = buildViewLink({ docType: 'evalresult', workerName, e164, html, title }); if (!r.ok) throw new Error(r.error);
+  const ref = doc(collection(db, 'sign_links')); const batch = writeBatch(db);
+  batch.set(ref, Object.assign({}, r.meta, { createdAt: serverTimestamp(), expiresTs: Timestamp.fromMillis(r.expMs) })); batch.set(doc(db, 'sign_links/' + ref.id + '/secure/payload'), Object.assign({}, r.payload, { createdAt: serverTimestamp() }));
   await batch.commit(); return ref.id;
 }
 let syncBusy = false;
@@ -77,7 +87,7 @@ export async function sendDocLinkByEmail({ kind, id, toEmail, toName, docLabel, 
     if (!email) { const ask = await confirmDialog({ title: '이메일 주소 입력', body: (toName || '') + '님의 이메일 주소가 ' + srcLabel + '에 등록되어 있지 않습니다. 발송할 이메일 주소를 입력해 주세요.' + (id ? ' (발송 후 ' + srcLabel + '에 함께 저장되어 다음부터 자동 입력됩니다)' : ''), confirmLabel: '다음', reason: { label: '이메일 주소', placeholder: 'name@example.com', required: true } }); if (!ask.ok) return { ok: false, cancelled: true }; email = ask.reason; }
     email = String(email).trim(); if (!isEmail(email)) { toast('이메일 주소 형식이 올바르지 않습니다.'); return { ok: false }; }
     if (fromRecord) { const c = await confirmDialog({ title: '확인 링크 발송', body: (toName || '') + '님 (' + email + srcNote + ')에게 ' + docLabel + ' 확인 링크를 이메일로 발송합니다.', confirmLabel: '발송' }); if (!c.ok) return { ok: false, cancelled: true }; }
-    const token = await createDocLink(Object.assign({}, linkParams, { workerName: toName, recipient: { kind, id } })); const link = signBase() + '?token=' + token;
+    const token = (linkParams && linkParams.docType === 'evalresult') ? await createResultLink({ workerId: id, workerName: toName, html: linkParams.html, title: linkParams.title }) : await createDocLink(Object.assign({}, linkParams, { workerName: toName, recipient: { kind, id } })); const link = signBase() + '?token=' + token;
     await ensureEmailJs(); await globalThis.emailjs.send(EMAILJS.serviceId, EMAILJS.templateId, { to_email: email, to_name: toName || '', doc_label: docLabel, company_name: 'JH솔루션', link });
     if (!fromRecord && !toEmail && id) { try { await updateDoc(doc(db, kind === 'applicant' ? 'recruit_applicants' : 'workers', id), { email }); } catch (e) { /* 저장 실패해도 발송은 완료 */ } }
     try { await addDoc(collection(db, 'doc_send_log'), Object.assign(sendLogEntry({ kind, id, docLabel, linkParams, email }), { sentAt: serverTimestamp() })); } catch (e) { /* 이력 기록 실패 */ }

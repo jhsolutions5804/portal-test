@@ -28,4 +28,12 @@ ok(emailjsFor(true) === null && emailjsFor(false) === EMAILJS && emailjsFor(fals
 const pl = buildViewLink({ docType: 'leavepromo', src: { stage: 'p1' }, workerName: '홍길동', e164: '+821012345678', html: '<p>촉진서</p>', title: '1차 촉진 서면 통지', now: 1000 });
 ok(pl.ok && pl.meta.docType === 'leavepromo' && pl.meta.viewOnly === true && pl.meta.status === 'view' && pl.meta.phoneE164 === '+821012345678' && pl.payload.html === '<p>촉진서</p>' && pl.payload.title === '1차 촉진 서면 통지' && pl.expMs === 1000 + VIEW_TTL_MS && DOC_LABEL.leavepromo === '연차사용촉진 서면 통지', '★ 연차사용촉진 서면도 열람 링크로 보낼 수 있다(저장 당시 양식 HTML·제목, 180일, 문자 인증 대상 번호) — 이메일 발송의 바탕');
 ok(buildViewLink({ docType: 'offer', html: 'x', e164: '+82101' }).ok === false && buildViewLink({ docType: 'leavepromo', html: 'x'.repeat(MAX_PAYLOAD + 1), e164: '+821012345678' }).ok === false && buildViewLink({ docType: 'annual', html: '<p>a</p>', e164: '+821012345678' }).payload.title === '', '열람 링크 지원 문서는 계약서·급여명세서·연차사용촉진 서면(그 밖은 거부, 너무 크면 거부, 제목은 없으면 빈 값)');
+// ── 평가 결과 통보서(evalresult) 열람 링크: 기존 종류의 동작은 그대로, 새 종류만 추가
+{ const now = 1000000; const ok2 = buildViewLink({ docType: 'evalresult', workerName: '김영서', e164: '+821012345678', html: '<p>결과</p>', title: '인사평가 결과 통보서', now });
+  ok(ok2.ok === true && ok2.meta.docType === 'evalresult' && ok2.meta.viewOnly === true && ok2.meta.status === 'view' && ok2.meta.phoneE164 === '+821012345678' && ok2.meta.workerName === '김영서' && ok2.payload.viewOnly === true && ok2.payload.html === '<p>결과</p>' && ok2.payload.title === '인사평가 결과 통보서', '★ 평가 결과 통보서는 열람 전용 링크로 만들어지고 문자 인증 대상 번호·본인 이름·저장본 HTML 이 들어감');
+  ok(ok2.expMs === now + VIEW_TTL_MS, '평가 결과 통보서의 유효기간은 열람 링크와 같음(연봉협상 때까지 볼 수 있게)');
+  ok(DOC_LABEL.evalresult === '평가 결과 통보서' && DOC_LABEL.payslip === '급여명세서' && DOC_LABEL.annual === '연봉계약서' && DOC_LABEL.labor === '근로계약서' && DOC_LABEL.leavepromo === '연차사용촉진 서면 통지', '문서 이름표에 평가 결과 통보서가 추가되고 기존 이름은 그대로');
+  ok(buildViewLink({ docType: 'offer', html: 'x', e164: '+821012345678' }).ok === false && buildViewLink({ docType: 'unknown', html: 'x' }).ok === false && buildViewLink({ docType: 'evalresult', html: 'x'.repeat(MAX_PAYLOAD + 1), e164: '+821012345678' }).ok === false, '★ 연봉 제안서 등 허용되지 않은 종류는 여전히 거부되고, 평가 결과 통보서도 크기 제한(과대 문서 거부)을 받음');
+  ok(['labor', 'annual', 'payslip', 'leavepromo'].every((t) => buildViewLink({ docType: t, html: '<p>x</p>', e164: '+821012345678', now }).ok === true), '기존 열람 종류(근로계약서·연봉계약서·급여명세서·연차사용촉진)는 여전히 만들어짐');
+}
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

@@ -119,8 +119,8 @@ async function loadAndShow(link){
 
     // 열람 전용 링크 — 회사가 저장 당시 양식으로 만들어 둔 HTML을 그대로 보여준다(서명·수정 없음)
     if (pay.viewOnly && pay.html) {
-      const vt = link.docType === 'payslip' ? '급여명세서' : link.docType === 'leavepromo' ? ((pay.title || '연차사용촉진 서면 통지') + ' (저장본)') : ((link.docType === 'annual' ? '연봉계약서' : '근로계약서') + ' (저장본)');
-      showViewOnly({ f: { name: link.workerName || '' }, title: vt, buildHtml: () => pay.html });
+      const vt = link.docType === 'evalresult' ? (pay.title || '평가 결과 통보서') : link.docType === 'payslip' ? '급여명세서' : link.docType === 'leavepromo' ? ((pay.title || '연차사용촉진 서면 통지') + ' (저장본)') : ((link.docType === 'annual' ? '연봉계약서' : '근로계약서') + ' (저장본)');
+      showViewOnly({ f: { name: link.workerName || '' }, title: vt, buildHtml: () => pay.html, safeFrame: link.docType === 'evalresult' });
       return;
     }
     const f = { ...(pay.doc || {}) };
@@ -178,16 +178,18 @@ function wireDocFrame(){
 new MutationObserver(wireDocFrame).observe(document.body, { childList:true, subtree:true });
 
 // 서명이 필요 없는 문서(연봉제안서·급여명세서) 또는 이미 서명 완료된 계약서를 그냥 보여주기만 하는 화면
-function showViewOnly({ f, title, buildHtml, alreadySigned }){
+function showViewOnly({ f, title, buildHtml, alreadySigned, safeFrame }){
   const html = buildHtml(f);
   el.innerHTML = `
     <div class="card">
       <div style="font-weight:800;font-size:0.98rem;margin-bottom:4px;">${esc(f.name||'')}님, 안녕하세요</div>
       <div class="muted">${esc(title)} 내용을 아래에서 확인하실 수 있습니다.${alreadySigned?' 이미 서명이 완료된 문서입니다.':''}</div>
     </div>
-    <div class="doc-frame-wrap"><iframe id="docFrame" srcdoc="${html.replace(/"/g,'&quot;')}"></iframe></div>
+    <div class="doc-frame-wrap">${safeFrame ? '<iframe id="docFrame" sandbox=""></iframe>' : `<iframe id="docFrame" srcdoc="${html.replace(/"/g,'&quot;')}"></iframe>`}</div>
     <button class="btn btn-primary" id="viewOpenBtn">📄 새 창에서 보기 / 인쇄 · PDF 저장</button>
   `;
+  // 평가 결과: 속성(srcdoc="...")은 한 번 더 해석되어 이스케이프한 글자(&lt;)가 태그로 되살아나므로 프로퍼티로 넣고, sandbox 로 스크립트 실행을 막는다
+  if (safeFrame) document.getElementById('docFrame').srcdoc = html;
   document.getElementById('viewOpenBtn').onclick = () => {
     const w = window.open('', '_blank');
     w.document.write(html); w.document.close();
