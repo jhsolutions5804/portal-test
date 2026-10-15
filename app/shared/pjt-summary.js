@@ -19,3 +19,12 @@ export function pjtSummary(pid, estimates, settlements) {
   const billed = sumSet(settlements, pid, (s) => s.docType === 'invoice' && s.status !== 'void'), paid = sumSet(settlements, pid, (s) => s.docType === 'payment' && s.status !== 'void'), done = sumSet(settlements, pid, (s) => s.docType === 'invoice' && s.status === 'done');
   return { est, billed, paid, done, due: billed - done, profit: billed - paid };
 }
+/** 프로젝트 마진율(%) — 프로젝트마다 따로. 실현 = (청구 − 지급[− 직접 노무비 − 직접비]) ÷ 청구 × 100, 청구가 0 이하이면 null.
+ *  목표 마진율(targetMargin)은 프로젝트 문서에 프로젝트마다 입력한다. 영업기획 프로젝트 화면이 계산·표시하고, 인사평가(수시평가)는 이 값을 읽기만 한다. */
+export function pjtMargin(summary, opts) {
+  const s = summary || {}, o = opts || {}; const billed = NUM(s.billed); if (!(billed > 0)) return { target: null, actual: null, diff: null };
+  const actual = Math.round((billed - NUM(s.paid) - NUM(o.labor) - NUM(o.direct)) / billed * 1000) / 10;
+  const t = o.target === '' || o.target == null ? NaN : Number(o.target); const target = isFinite(t) ? t : null;
+  return { target, actual, diff: target == null ? null : Math.round((actual - target) * 10) / 10 };
+}
+

@@ -3,8 +3,8 @@
  * 여러 프로젝트를 합산한 정산서는 perPjtAmount(프로젝트별 몫)가 있으면 그 값, 없으면 pjtIds 가 둘 이상일 때 균등 분배. */
 export const TYPE_LABEL = { fcu: '자동정산', general: '일반(품목)' };
 export const PD_PAGE_SIZE = 10;
-import { itemAmt, estSupply, estTotal, isEstActive, setActive, settleAmountForPjt, settleBelongsToPjt, pjtSummary } from '../../shared/pjt-summary.js?v=20261015c';
-export { itemAmt, estSupply, estTotal, isEstActive, setActive, settleAmountForPjt, settleBelongsToPjt, pjtSummary };   // 영업기획 안에서는 예전 경로 그대로 쓴다(함수는 shared/pjt-summary.js 하나)
+import { itemAmt, estSupply, estTotal, isEstActive, setActive, settleAmountForPjt, settleBelongsToPjt, pjtSummary, pjtMargin } from '../../shared/pjt-summary.js?v=20261015d';
+export { itemAmt, estSupply, estTotal, isEstActive, setActive, settleAmountForPjt, settleBelongsToPjt, pjtSummary, pjtMargin };   // 영업기획 안에서는 예전 경로 그대로 쓴다(함수는 shared/pjt-summary.js 하나)
 /** 등록 순서(오래된 것부터): createdAt(Timestamp·ISO 문자열) → 없으면 문서 번호 pjt_<시각> */
 export function pjtCreatedKey(p) {
   const x = p || {}; const c = x.createdAt; if (c && c.seconds) return c.seconds * 1000; if (typeof c === 'string' && !Number.isNaN(Date.parse(c))) return Date.parse(c);
@@ -37,8 +37,8 @@ export function getLinkPjt(p) { if (!p) return 'auto'; return p.linkPjt || 'none
 export function linkOptions(registry) {
   return [{ value: 'auto', label: '🆕 새 PJT관리 항목 자동 생성' }].concat((registry || []).map((r) => ({ value: r.id, label: (r.name || '(이름없음)') + ' — PJT관리 항목에 연결' }))).concat([{ value: 'none', label: '(연동 없음 / 직접 입력)' }]);
 }
-export const projNew = () => ({ code: '', name: '', site: '', client: '', contractor: '', partner: '', type: 'general', status: 'run', link: 'auto' });
-export const projToForm = (p) => { const x = p || {}; return { code: x.code || '', name: x.name || '', site: x.site || '', client: x.client || '', contractor: x.contractor || '', partner: x.partner || '', type: x.type === 'fcu' ? 'fcu' : 'general', status: x.status === 'done' ? 'done' : 'run', link: getLinkPjt(p) }; };
+export const projNew = () => ({ code: '', name: '', site: '', client: '', contractor: '', partner: '', type: 'general', status: 'run', link: 'auto', targetMargin: '' });
+export const projToForm = (p) => { const x = p || {}; return { code: x.code || '', name: x.name || '', site: x.site || '', client: x.client || '', contractor: x.contractor || '', partner: x.partner || '', type: x.type === 'fcu' ? 'fcu' : 'general', status: x.status === 'done' ? 'done' : 'run', link: getLinkPjt(p), targetMargin: x.targetMargin == null ? '' : String(x.targetMargin) }; };
 /** 저장 계획(구포털 savePjt): PJT 코드 필수. 연동이 "자동 생성"이면 PJT관리(pjt_registry)에 같은 이름의 프로젝트를 새로 만들고(registry), 이미 연동된 프로젝트면
  *  기본정보 6항목(PJT 코드·내용·현장명·발주처·시공사·협력사)을 그대로 반영한다(syncPatch). 새 프로젝트 번호는 pjt_<시각>. 호출한 쪽이 순서대로 쓴다. */
 export function projectBuild(form, opt) {
@@ -46,6 +46,8 @@ export function projectBuild(form, opt) {
   const code = T(f.code, 80, 'PJT 코드'); if (!code) errors.push('PJT 코드를 입력하세요.');
   const data = { code, name: T(f.name, 120, '내용'), site: T(f.site, 120, '현장명'), client: T(f.client, 80, '발주처'), contractor: T(f.contractor, 80, '시공사'), partner: T(f.partner, 80, '협력사'), type: f.type === 'fcu' ? 'fcu' : 'general', status: f.status === 'done' ? 'done' : 'run' };
   if (errors.length) return { ok: false, errors };
+  // 목표 마진율(%): 프로젝트마다 입력(견적 시점의 목표). 비우면 저장하지 않는다(인사평가의 프로젝트 성과 점수에서 "목표 미입력")
+  const tm = String(f.targetMargin == null ? '' : f.targetMargin).trim(); if (tm === '') data.clearTarget = true; else { const n = Number(tm); if (!isFinite(n) || n < -100 || n > 100) return { ok: false, errors: ['목표 마진율은 -100~100 사이의 숫자(%)로 입력해 주세요.'] }; data.targetMargin = Math.round(n * 10) / 10; }
   const link = String(f.link || 'auto'); const valid = link === 'auto' || link === 'none' || /^[A-Za-z0-9_-]{1,64}$/.test(link); if (!valid) return { ok: false, errors: ['연동 PJT 값이 올바르지 않습니다.'] };
   const registry = link === 'auto' ? { name: data.code || data.name, site: data.site || '', client: data.client || '', contractor: data.contractor || '', partner: data.partner || '', content: data.name || '', item: '', qty: 0, startDate: '', progress: 0, status: 'active' } : null;
   const syncPatch = link !== 'auto' && link !== 'none' ? { name: data.code, content: data.name, site: data.site, client: data.client, contractor: data.contractor, partner: data.partner } : null;

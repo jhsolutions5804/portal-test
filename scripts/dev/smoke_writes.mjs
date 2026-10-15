@@ -223,16 +223,17 @@ await scenario('인사평가 — 수시평가: 탭을 열면 프로젝트 목록
   check(!!root.querySelector('[data-ad-open="p4ph2"]'), 'PJT 프로젝트(p4ph2)가 목록에 있어야 함'); check(WR().length === before, '탭을 열어 보기만 하면 저장이 일어나면 안 됨(실제 ' + (WR().length - before) + '건)');
 });
 
-await scenario('인사평가 — 수시평가: 프로젝트 성과(목표 마진율·사장단 점수) 저장 → evaluations/_pjt/adhoc/{프로젝트} 한 곳에만 기록', async (check) => {
+await scenario('인사평가 — 수시평가: 프로젝트 성과 — 마진율은 영업기획 값을 읽기만 하고(입력칸 없음), 사장단의 프로젝트 성과 점수만 evaluations/_pjt/adhoc/{프로젝트} 에 저장', async (check) => {
   const saved = ctx.me; ctx.me = Object.assign({}, saved, { rank: '대표', name: '관리자 대표' }); try {
   const root = await mountFresh(hrMod.mountEvals); await click(root, '[data-ec-tab="adhoc"]', 900); await sleep(400); await click(root, '[data-ad-open="p4ph2"]', 500); await sleep(300);
-  check(/프로젝트 성과 — /.test(root.textContent) && !!root.querySelector('[data-ad-proj="target"]'), '프로젝트 성과 카드와 목표 마진율 입력칸이 보여야 함');
-  await setv(root, '[data-ad-proj="target"]', '12'); await setv(root, '[data-ad-proj="billed"]', '1000'); await setv(root, '[data-ad-proj="paid"]', '850'); await sleep(150);
+  const t = root.textContent; check(/프로젝트 성과 — /.test(t) && /읽기 전용/.test(t), '프로젝트 성과 카드가 읽기 전용 안내와 함께 보여야 함');
+  check(!root.querySelector('[data-ad-proj]') && !root.querySelector('input[inputmode="decimal"]'), '마진율 입력칸(목표·청구·지급·노무비·직접비)이 없어야 함 — 입력은 영업기획에서');
+  check(!!root.querySelector('a[href^="#/plan/projects/"]'), '영업기획 프로젝트 상세로 가는 링크가 있어야 함');
   const b = root.querySelector('[data-ad-score="pexec|4"]'); b.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(120);
   const before = WR().length; await click(root, '[data-ad-act="psave"]', 450); await sleep(300);
-  const c = WR().filter((x) => /^evaluations\/_pjt\/adhoc\/p4ph2$/.test(x.path)); check(c.length === 1 && c[0].data.target === 12 && c[0].data.snapshot && c[0].data.snapshot.billed === 1000 && c[0].data.snapshot.paid === 850 && c[0].data.exec && c[0].data.exec.u1 && c[0].data.exec.u1.project === 4, 'evaluations/_pjt/adhoc/p4ph2 에 목표 12·청구 1000·지급 850·사장단 프로젝트 성과 4점이 저장되어야 함: ' + JSON.stringify(WR().slice(before).map((x) => x.op + ' ' + x.path + JSON.stringify(x.data || {}).slice(0, 120))));
+  const c = WR().filter((x) => /^evaluations\/_pjt\/adhoc\/p4ph2$/.test(x.path)); check(c.length === 1 && c[0].data.exec && c[0].data.exec.u1 && c[0].data.exec.u1.project === 4, 'evaluations/_pjt/adhoc/p4ph2 에 사장단 프로젝트 성과 4점이 저장되어야 함: ' + JSON.stringify(WR().slice(before).map((x) => x.op + ' ' + x.path + JSON.stringify(x.data || {}).slice(0, 120))));
+  check(c[0] && !('target' in c[0].data) && !('snapshot' in c[0].data) && !('targetMargin' in c[0].data), '★ 마진율·청구·지급은 저장하지 않아야 함(수시평가는 점수만 저장 — 숫자는 영업기획 한 곳에서만 관리): ' + JSON.stringify(c[0] && c[0].data).slice(0, 200));
   check(WR().slice(before).every((x) => /^evaluations\/_pjt\/adhoc\//.test(x.path)), '다른 문서는 건드리면 안 됨(프로젝트·영업기획·근로자 그대로): ' + JSON.stringify(WR().slice(before).map((x) => x.path)));
-  check(/12%/.test(root.textContent) && /15%/.test(root.textContent) && /\+3%p/.test(root.textContent), '실현 마진율 15%·목표 대비 +3%p가 화면에 보여야 함');
   } finally { ctx.me = saved; }
 });
 
@@ -308,6 +309,23 @@ await scenario('영업기획 프로젝트 — 수정(이미 연동): 기본정�
   const up = WR().filter((x) => x.op === 'update' && x.path === 'pjt_registry/REG1'); check(up.length === 1 && JSON.stringify(up[0].data) === JSON.stringify({ name: 'H17L Gas RM. 전환공사', content: 'AHU 설치 공사', site: 'H3 17L 신관', client: '삼성전자(주)', contractor: '삼성중공업', partner: '' }), '기본정보 6항목(비운 협력사 포함)이 pjt_registry/REG1 에 반영되어야 함: ' + JSON.stringify(up[0] && up[0].data));
   const pj = wrote('set', /^gihoek_projects\/pjt_1784786243034$/); check(pj.length === 1 && pj[0].merge === true && pj[0].data.site === 'H3 17L 신관' && pj[0].data.linkPjt === 'REG1' && !('createdAt' in pj[0].data), '프로젝트는 병합 저장(등록일은 그대로)되고 연동은 유지: ' + JSON.stringify(pj[0] && pj[0].data).slice(0, 220));
 });
+await scenario('영업기획 프로젝트 — 목표 마진율: 입력하면 gihoek_projects 에 targetMargin 만 병합 저장, 허브에 실현 마진율이 보이고, 잘못된 값은 저장하지 않음', async (check) => {
+  const root = await mountFresh(planMod.mountProjects); await click(root, '[data-pj-open="pjt_1784786243034"]'); await click(root, '[data-pj-act="edit"]');
+  check(!!root.querySelector('[data-pj-f="targetMargin"]'), '수정 폼에 목표 마진율 입력칸이 있어야 함');
+  await setv(root, '[data-pj-f="targetMargin"]', 'abc'); const b0 = WR().length; await click(root, '[data-pj-act="save"]', 300); await sleep(150);
+  check(WR().length === b0, '숫자가 아닌 값은 저장하면 안 됨(실제 ' + (WR().length - b0) + '건)');
+  await setv(root, '[data-pj-f="targetMargin"]', '12.5'); WR().length = 0; await click(root, '[data-pj-act="save"]', 300); await sleep(200);
+  const pj = wrote('set', /^gihoek_projects\/pjt_1784786243034$/); check(pj.length === 1 && pj[0].merge === true && pj[0].data.targetMargin === 12.5 && !('clearTarget' in pj[0].data) && !('createdAt' in pj[0].data), '목표 마진율 12.5 가 병합 저장되어야 함(등록일 그대로, 지움 표시 없음): ' + JSON.stringify(pj[0] && pj[0].data).slice(0, 240));
+  check(/목표 마진율/.test(root.textContent) && /실현 마진율/.test(root.textContent) && /목표 대비/.test(root.textContent), '저장 후 프로젝트 허브에 목표·실현 마진율·목표 대비가 보여야 함');
+});
+await scenario('영업기획 프로젝트 — 목표 마진율을 비우면 저장된 값이 지워짐(병합 저장이라 가만히 두면 남는 문제 방지)', async (check) => {
+  const root = await mountFresh(planMod.mountProjects); await click(root, '[data-pj-open="pjt_1784786243034"]'); await click(root, '[data-pj-act="edit"]');
+  await setv(root, '[data-pj-f="targetMargin"]', '10'); WR().length = 0; await click(root, '[data-pj-act="save"]', 300); await sleep(200);
+  const a = wrote('set', /^gihoek_projects\/pjt_1784786243034$/); check(a.length === 1 && a[0].data.targetMargin === 10, '먼저 목표 10 이 저장되어야 함');
+  await click(root, '[data-pj-act="edit"]'); await setv(root, '[data-pj-f="targetMargin"]', ''); WR().length = 0; await click(root, '[data-pj-act="save"]', 300); await sleep(200);
+  const b = wrote('set', /^gihoek_projects\/pjt_1784786243034$/); check(b.length === 1 && b[0].merge === true && 'targetMargin' in b[0].data && b[0].data.targetMargin !== 10 && b[0].data.targetMargin != null && typeof b[0].data.targetMargin === 'object' && !('clearTarget' in b[0].data), '비우면 targetMargin 에 "필드 삭제" 표시(deleteField)가 기록되어야 함 — 숫자 값이 남으면 안 됨: ' + JSON.stringify(b[0] && b[0].data).slice(0, 260));
+});
+
 await scenario('영업기획 프로젝트 — 삭제와 PJT 코드 필수, 견적·정산서 열기 연결', async (check) => {
   const root = await mountFresh(planMod.mountProjects); await click(root, '[data-pj-act="new"]'); await click(root, '[data-pj-act="save"]', 200); check(WR().length === 0, 'PJT 코드가 비어 있으면 저장하면 안 됨');
   const r2 = await mountFresh(planMod.mountProjects); await click(r2, '[data-pj-open="pjt_1782285557624"]'); check(/요약/.test(r2.textContent) && /청구 누계/.test(r2.textContent) && /견적 내역 \(3\)/.test(r2.textContent) && /청구서 \(3\)/.test(r2.textContent) && /지급예정서 \(2\)/.test(r2.textContent), '상세에 요약과 견적 3·청구서 3(폐기 포함)·지급예정서 2 가 보여야 함');
