@@ -1,12 +1,13 @@
-import { esc } from '../../core/ui.js?v=20261015a';
-import { PERM_KEYS, hasPerm, sortStaff, ranksFor, linkedWorkerOf } from './staff-logic.js?v=20261015a';
-import { isGuestUser } from '../../shared/org.js?v=20261015a';
+import { esc } from '../../core/ui.js?v=20261015b';
+import { PERM_KEYS, hasPerm, isTeamLead, sortStaff, ranksFor, linkedWorkerOf } from './staff-logic.js?v=20261015b';
+import { isGuestUser } from '../../shared/org.js?v=20261015b';
 
 export function staffListHtml(users, workers, meUid) {
   const rows = sortStaff(users).map((u) => {
     const guest = isGuestUser(u); const lw = linkedWorkerOf(workers, u.uid); const adm = u.admin === true;
     const badges = (adm ? '<span class="jh-chip">관리자</span>' : '') + (guest ? '<span class="jh-chip">GUEST</span>' : '') + (u.status && u.status !== 'approved' ? '<span class="jh-chip" data-warn="true">' + esc(u.status === 'pending' ? '승인 대기' : u.status === 'suspended' ? '사용 중지' : u.status) + '</span>' : '') + (!guest ? (lw ? '<span class="jh-chip">명부 연동</span>' : '<span class="jh-chip" data-warn="true">명부 미연동</span>') : '');
-    const perms = adm ? '<span class="jh-field__hint">관리자는 모든 모듈이 열립니다.</span>' : PERM_KEYS.map(([k, l]) => '<button type="button" class="jh-staff__perm" data-perm="' + k + '" data-uid="' + esc(u.uid) + '" aria-pressed="' + hasPerm(u, k) + '">' + l + '</button>').join('');
+    const lead = !guest && u.dept ? '<button type="button" class="jh-staff__perm" data-teamlead="' + esc(u.uid) + '" aria-pressed="' + isTeamLead(u) + '" title="같은 팀에는 한 명만 지정됩니다. 정기평가의 1차 평가자가 됩니다">팀장</button>' : '';
+    const perms = (adm ? '<span class="jh-field__hint">관리자는 모든 모듈이 열립니다.</span>' : PERM_KEYS.map(([k, l]) => '<button type="button" class="jh-staff__perm" data-perm="' + k + '" data-uid="' + esc(u.uid) + '" aria-pressed="' + hasPerm(u, k) + '">' + l + '</button>').join('')) + lead;
     return '<div class="jh-card jh-staff__row" data-uid="' + esc(u.uid) + '"><div class="jh-staff__who"><div class="jh-staff__name"><strong>' + esc(u.name || '-') + '</strong> <span class="jh-field__hint">' + esc([u.rank, u.dept || '(미지정)', u.empNo].filter(Boolean).join(' · ')) + '</span></div><div class="jh-staff__badges">' + badges + '</div></div><div class="jh-staff__perms" role="group" aria-label="' + esc((u.name || '') + ' 모듈 권한') + '">' + perms + '</div><div><button type="button" class="jh-btn" data-variant="secondary" data-staff-edit="' + esc(u.uid) + '">상세 수정</button></div></div>';
   }).join('');
   return '<div class="jh-staff__bar"><button type="button" class="jh-btn" data-variant="primary" data-staff-new>＋ 새 직원 계정</button></div><p class="jh-field__hint">직원별 모듈 권한을 켜고 끄고, 상세 정보(사번·이름·직급·부서·전화)를 고칩니다. 프로젝트별 참여 지정은 각 프로젝트의 설정 탭에서 합니다.</p><div class="jh-staff__list">' + (rows || '<div class="jh-empty">등록된 계정이 없습니다.</div>') + '</div>' +

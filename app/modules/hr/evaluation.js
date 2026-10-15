@@ -110,12 +110,68 @@ export function projectPerformance(p) {
  *  - 동료평가의 평가자별 점수는 누구에게도 보이지 않는다(평균만). 그 밖의 직원은 아무것도 못 본다. */
 export function evalAccess(viewer, target, ctx) {
   const v = viewer || {}, t = target || {}, c = ctx || {};
-  const sys = SYSTEM_EMPNOS.test(String(v.empNo || '').trim()); const rank = String(v.rank || '').trim();
-  const exec = !sys && EXEC_RANKS.indexOf(rank) !== -1; const hr = !sys && !exec && !!(v.perms && v.perms.hrEval === true);
+  const rank = String(v.rank || '').trim();
+  const exec = EXEC_RANKS.indexOf(rank) !== -1;   // 대표·부사장(대표님이 쓰는 관리자 계정 포함)
+  const hr = !exec && (v.admin === true || !!(v.perms && v.perms.hrEval === true));   // 인사 모듈 접근자(관리자)이거나 직원 관리에서 "인사평가" 권한을 받은 사람
   const same = v.id != null && t.id != null && String(v.id) === String(t.id);
   const none = { level: 'none', viewScores: false, viewComments: false, viewPeerRaw: false, edit: false, confirm: false, manage: false, selfEval: false };
   if (exec) return { level: 'exec', viewScores: true, viewComments: true, viewPeerRaw: false, edit: true, confirm: rank === '대표', manage: true, selfEval: false };
   if (same) return Object.assign({}, none, { level: 'self', viewScores: !!c.published, viewComments: !!c.published, selfEval: true });
   if (hr) return { level: 'hr', viewScores: true, viewComments: true, viewPeerRaw: false, edit: false, confirm: false, manage: true, selfEval: false };
   return none;
+}
+
+/* ───────── 부서(팀)별 평가 기준·정기평가 기록(cycle) — 화면용 순수 규칙 ───────── */
+export const COMPETENCY_ITEMS = ['문제해결', '직무 전문성', '협업·소통', '책임감·추진력'];
+export const LEADER_ITEM = '리더십';                                   // 과장 이상 추가
+export const CONDUCT_ITEMS = ['근태 성실', '안전교육·검진 유효', '보고 적시성', '규정 준수'];
+export const PEER_ITEMS = ['협업·소통', '신뢰·책임감', '업무 지원'];
+export const AREA_LABELS = { achievement: '업적', competency: '역량', conduct: '태도·근태·안전', peer: '동료평가' };
+/** 부서별 정기 업적 항목(설계서 4절). PJT팀의 정기 업적은 프로젝트 활동을 뺀 연간 지표(프로젝트 활동은 수시평가가 맡는다) */
+export const TEAM_CRITERIA = {
+  'PJT팀': { type: 'pjt', achievement: ['연간 안전교육 이수', '자격 취득·기술 습득', '후배 지도·팀 운영'] },
+  '인사총무팀': { type: 'nonpjt', achievement: ['업무 정확도(급여·계약·4대보험·신고)', '기한 준수', '총무 관리(임대·차량·갱신)', '직원 지원·개선', '개인정보 준수'] },
+  '영업기획팀': { type: 'nonpjt', achievement: ['견적 발행 적시성', '청구·수금 관리', '정산서 오류율'] },
+  '재무회계팀': { type: 'nonpjt', achievement: ['전표 정확도', '월 마감 기한 준수', '분류 대기 잔여', '세무 자료 적시 제공'] },
+};
+const GENERIC_CRITERIA = { type: 'nonpjt', achievement: ['업무 정확도', '기한 준수', '개선 기여'] };
+export function teamCriteria(dept) { const d = String(dept || '').trim(); return TEAM_CRITERIA[d] || (/^PJT\s*\d+\s*팀$/.test(d) ? TEAM_CRITERIA['PJT팀'] : GENERIC_CRITERIA); }
+export const teamTypeOf = (dept) => teamCriteria(dept).type;
+export function competencyItems(rank) { const i = RANK_ORDER.indexOf(String(rank || '').trim()); return i !== -1 && i <= RANK_ORDER.indexOf('과장') ? COMPETENCY_ITEMS.concat([LEADER_ITEM]) : COMPETENCY_ITEMS.slice(); }
+export function areaItems(dept, rank) { return { achievement: teamCriteria(dept).achievement.slice(), competency: competencyItems(rank), conduct: CONDUCT_ITEMS.slice() }; }
+export const blankAreas = (items) => ({ achievement: items.achievement.map(() => null), competency: items.competency.map(() => null), conduct: items.conduct.map(() => null) });
+export function emptyCycle(w, year) { const x = w || {}; const items = areaItems(x.dept, x.rank); return { year: Number(year), workerId: x.id || '', name: x.name || '', dept: x.dept || '', rank: x.rank || '', teamType: teamTypeOf(x.dept), team: { by: '', areas: blankAreas(items) }, peers: {}, self: { text: '' }, exec: {}, ceo: { approved: false, score: null, comment: '' }, confirmed: false }; }
+/** 5점 척도 값 설정(범위 밖·빈 값은 null) — 원본을 바꾸지 않고 복사본을 돌려준다 */
+export function setRating(areas, area, idx, val) { const a = JSON.parse(JSON.stringify(areas || {})); if (!Array.isArray(a[area])) return a; const n = Number(val); a[area][idx] = n >= 1 && n <= 5 && Number.isInteger(n) ? n : null; return a; }
+const itemAvg = (arr, need) => { const v = (arr || []).map(num); if (v.length < need || v.slice(0, need).some((n) => !isFinite(n))) return null; return v.slice(0, need).reduce((a, b) => a + b, 0) / need; };
+const hasInput = (areas) => !!areas && ['achievement', 'competency', 'conduct'].some((k) => (areas[k] || []).some((n) => isFinite(num(n))));
+export const STATUS_LABEL = { none: '미시작', rating: '입력 중', team_done: '팀 평가 완료', confirmed: '확정' };
+/** 정기평가 기록 요약: 팀 점수·동료 평균·대표 반영·최종 점수·등급·진행 상태.
+ *  PJT팀 = 팀장(1차) 점수 + 동료 평균, 비프로젝트 팀 = 사장단 각자 점수의 평균. 대표가 확정하기 전에는 최종 점수를 내지 않는다 */
+export function cycleSummary(cycle, info) {
+  const c = cycle || {}, i = info || {}; const type = i.teamType === 'pjt' ? 'pjt' : 'nonpjt'; const it = i.items || areaItems(i.dept, i.rank);
+  const complete = (r) => !!r && ['achievement', 'competency', 'conduct'].every((k) => itemAvg(r[k], it[k].length) != null);
+  let teamScore = null, peerAvg = null, raters = 0, input = false;
+  if (type === 'pjt') {
+    const peers = Object.values(c.peers || {}).map((a) => itemAvg(a, PEER_ITEMS.length)).filter((x) => x != null);
+    peerAvg = peerAverage(peers); const r = c.team && c.team.areas; input = hasInput(r) || peers.length > 0;
+    if (complete(r) && peerAvg != null) teamScore = regularTeamScore({ achievement: r.achievement, competency: r.competency, conduct: r.conduct, peer: [peerAvg] }, 'pjt');
+  } else {
+    const all = Object.values(c.exec || {}); input = all.some((e) => hasInput(e && e.areas)); const done = all.filter((e) => complete(e && e.areas)); raters = done.length;
+    const sc = done.map((e) => regularTeamScore(e.areas, 'nonpjt')).filter((x) => x != null); teamScore = sc.length ? r1(sc.reduce((a, b) => a + b, 0) / sc.length) : null;
+  }
+  const ceo = c.ceo || {}; const ceoScore = ceo.approved ? null : (ceo.score != null && ceo.score !== '' && isFinite(num(ceo.score)) ? Number(ceo.score) : null);
+  const decided = !!(ceo.approved || ceoScore != null);
+  const final = c.confirmed === true && decided ? finalizeScore(teamScore, ceoScore) : null;
+  input = input || !!(c.self && String(c.self.text || '').trim());
+  const status = final != null ? 'confirmed' : teamScore != null ? 'team_done' : input ? 'rating' : 'none';
+  return { type, teamScore, peerAvg, raters, ceoScore, decided, final, grade: final == null ? '' : gradeOf(final), status };
+}
+/** 팀의 1차 평가자: 직원 관리에서 "팀장"으로 지정된 사람, 없으면 팀 최상급자(관리자 제외)로 대신한다 */
+export function teamLeaderOf(dept, members, users) {
+  const d = String(dept || '').trim(); const list = members || [];
+  const flagged = (users || []).find((u) => u && u.teamLead === true && String(u.dept || '').trim() === d);
+  if (flagged) { const w = list.find((m) => (m.portalUid && m.portalUid === flagged.uid) || (m.empNo && flagged.empNo && String(m.empNo) === String(flagged.empNo))); return { workerId: w ? w.id : '', name: (w && w.name) || flagged.name || '', uid: flagged.uid || '', source: 'flag' }; }
+  const top = pickAdhocEvaluator(list.map((m) => ({ name: m.name, rank: m.rank, hireDate: m.hireDate, empNo: m.empNo, id: m.id })));
+  return top ? { workerId: top.id || '', name: top.name || '', uid: '', source: 'rank' } : { workerId: '', name: '', uid: '', source: 'none' };
 }

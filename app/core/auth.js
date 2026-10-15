@@ -1,6 +1,6 @@
-import { auth, db, doc, getDoc, getDocs, collection, onAuthStateChanged, signInWithEmailAndPassword, signOut } from './firebase.js?v=20261015a';
-import { accessibleKeys } from '../shared/pjt-access.js?v=20261015a';
-import { DOMAIN } from './config.js?v=20261015a';
+import { auth, db, doc, getDoc, getDocs, collection, onAuthStateChanged, signInWithEmailAndPassword, signOut } from './firebase.js?v=20261015b';
+import { accessibleKeys } from '../shared/pjt-access.js?v=20261015b';
+import { DOMAIN } from './config.js?v=20261015b';
 
 export function authErrorMessage(code) {
   const m = {
@@ -20,7 +20,7 @@ export function buildMe(uid, email, data) {
     name: data.name || '', rank: data.rank || '', dept: data.dept || '', empNo,
     admin: data.admin === true,
     isGuest: /^guest/i.test(empNo),
-    perms: data.perms || {},
+    perms: data.perms || {}, teamLead: data.teamLead === true,
     teamLeaderIds: Array.isArray(data.teamLeaderIds) ? data.teamLeaderIds.slice() : []
   };
 }

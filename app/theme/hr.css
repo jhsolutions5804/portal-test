@@ -121,3 +121,16 @@
 .jh-hr__listbox .jh-hr-table { min-width: 0; }
 .jh-hr__listbox .jh-hr-table tbody tr:first-child td { border-top: 0; }
 .jh-hr__listbox .jh-hr__acts { display: flex; flex-wrap: nowrap; }
+
+/* 인사평가 — 정기평가 운영(팀 보드·평가 패널) */
+.jh-hr-ev__area { display: grid; gap: var(--sp-1); }
+.jh-hr-ev__rate { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--sp-3); align-items: center; padding: var(--sp-2) 0; border-bottom: var(--u-1) solid var(--c-line); font-size: var(--fs-sm); }
+.jh-hr-ev__dots { display: inline-flex; gap: var(--sp-1); }
+.jh-hr-ev__dot { min-width: var(--u-36); min-height: var(--u-36); border: var(--u-1) solid var(--c-line); border-radius: var(--radius-sm); background: var(--c-surface); font-weight: 600; cursor: pointer; }
+.jh-hr-ev__dot[aria-pressed="true"] { background: var(--c-primary); border-color: var(--c-primary); color: var(--c-on-primary); }
+.jh-hr-ev__dot:disabled { cursor: not-allowed; opacity: .6; }
+.jh-hr-ev__score { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-3); }
+.jh-hr-ev__cell { display: grid; gap: var(--sp-1); padding: var(--sp-3); border-radius: var(--radius-sm); background: var(--c-primary-weak); }
+.jh-hr-ev__cell strong { font-size: var(--fs-lg); }
+.jh-hr-ev__peer { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, minmax(var(--u-64), 6rem)); gap: var(--sp-2); align-items: center; font-size: var(--fs-sm); }
+@media (max-width: 720px) { .jh-hr-ev__score { grid-template-columns: repeat(2, minmax(0, 1fr)); } .jh-hr-ev__rate { grid-template-columns: minmax(0, 1fr); } .jh-hr-ev__peer { grid-template-columns: minmax(0, 1fr); } }

@@ -1,15 +1,15 @@
-import { db, auth, functions, httpsCallable, sendPasswordResetEmail, collection, getDocs, getDoc, query, where, orderBy, limit, doc, updateDoc } from '../../core/firebase.js?v=20261015a';
-import { esc, toast } from '../../core/ui.js?v=20261015a';
-import { fmtPhone } from '../../core/profile-logic.js?v=20261015a';
-import { deptOptions } from '../../shared/org.js?v=20261015a';
-import { PERM_KEYS, validateStaffForm, staffUpdate, linkedWorkerOf, findWorkerMatch, workerSync, validateNewAccount, newAccountPayload, callMessage, resetMailMessage } from './staff-logic.js?v=20261015a';
-import { staffListHtml, staffDialogHtml, newAccountDialogHtml, secretDialogHtml } from './staff-view.js?v=20261015a';
-import { accessLogHtml } from './accesslog-view.js?v=20261015a';
-import { toEntry, filterEntries, summarize, monthRange, addMonth, kstYm, kstText, tsMs } from './accesslog-logic.js?v=20261015a';
-import { companyPerm } from '../../shared/company-perm.js?v=20261015a';
-import { markChecked, identityErrorText } from '../../shared/identity.js?v=20261015a';
-import { groupOrg, sortPolicies, buildOrgTree, isGuestUser, isOrgHidden } from './logic.js?v=20261015a';
-import { orgHtml, rulesHtml, orgChartHtml, orgViewHtml, personCardHtml } from './view.js?v=20261015a';
+import { db, auth, functions, httpsCallable, sendPasswordResetEmail, collection, getDocs, getDoc, query, where, orderBy, limit, doc, updateDoc } from '../../core/firebase.js?v=20261015b';
+import { esc, toast } from '../../core/ui.js?v=20261015b';
+import { fmtPhone } from '../../core/profile-logic.js?v=20261015b';
+import { deptOptions } from '../../shared/org.js?v=20261015b';
+import { PERM_KEYS, validateStaffForm, staffUpdate, linkedWorkerOf, findWorkerMatch, workerSync, validateNewAccount, newAccountPayload, callMessage, resetMailMessage, teamLeadChanges } from './staff-logic.js?v=20261015b';
+import { staffListHtml, staffDialogHtml, newAccountDialogHtml, secretDialogHtml } from './staff-view.js?v=20261015b';
+import { accessLogHtml } from './accesslog-view.js?v=20261015b';
+import { toEntry, filterEntries, summarize, monthRange, addMonth, kstYm, kstText, tsMs } from './accesslog-logic.js?v=20261015b';
+import { companyPerm } from '../../shared/company-perm.js?v=20261015b';
+import { markChecked, identityErrorText } from '../../shared/identity.js?v=20261015b';
+import { groupOrg, sortPolicies, buildOrgTree, isGuestUser, isOrgHidden } from './logic.js?v=20261015b';
+import { orgHtml, rulesHtml, orgChartHtml, orgViewHtml, personCardHtml } from './view.js?v=20261015b';
 
 /** 회사 영역(플랫폼 기본 모듈): 조직도·규정을 읽기 전용으로. GUEST 계정에는 보이지 않는다(연락처·내부 규정) */
 /** 실제 메뉴 등록은 공용 틀(modules/legacy/list.js 의 company 정의 — 인사총무와 같은 사이드바·내용 영역). 여기의 값은 규약(manifest+mount)용이며 권한은 같은 함수를 쓴다 */
@@ -94,6 +94,12 @@ export async function mount(root, route, ctx) {
         const first = w.querySelector('#nf-id'); if (first) first.focus();
       };
       root.onclick = async (ev) => {
+        const tl = ev.target.closest('[data-teamlead]');
+        if (tl) {   // 팀장 지정/해제 — 같은 팀에는 한 명만(새로 지정하면 기존 팀장은 자동 해제), 먼저 화면에 반영하고 저장 실패하면 되돌린다
+          const uid = tl.getAttribute('data-teamlead'); const u = users.find((x) => x.uid === uid); if (!u) return; const ch = teamLeadChanges(users, uid, u.teamLead !== true); const before = {}; Object.keys(ch).forEach((k) => { const x = users.find((y) => y.uid === k); if (x) { before[k] = x.teamLead === true; x.teamLead = ch[k]; } }); paint();
+          try { await Promise.all(Object.keys(ch).map((k) => updateDoc(doc(db, 'portal_users', k), { teamLead: ch[k] }))); toast(ch[uid] ? (u.name || '') + ' 님을 ' + (u.dept || '') + ' 팀장으로 지정했습니다.' : '팀장 지정을 해제했습니다.'); } catch (e) { console.error('팀장 저장', e); Object.keys(before).forEach((k) => { const x = users.find((y) => y.uid === k); if (x) x.teamLead = before[k]; }); paint(); toast('팀장을 저장하지 못했습니다: ' + ((e && e.message) || '')); }
+          return;
+        }
         const pb = ev.target.closest('[data-perm]');
         if (pb) {
           const u = users.find((x) => x.uid === pb.getAttribute('data-uid')); if (!u) return; const k = pb.getAttribute('data-perm'); const on = !(u.perms && u.perms[k] === true);

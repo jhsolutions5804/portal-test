@@ -186,6 +186,37 @@ await scenario('인사평가 — 호봉 직접 입력: 근로자 호봉(step·st
   const u = WR().filter((x) => /^workers\/w1$/.test(x.path)); check(u.length >= 1 && u.some((x) => Number(x.data.step) === 7 && !!x.data.stepYear), '호봉 7 이 workers/w1 에 step·stepYear 로 저장되어야 함: ' + JSON.stringify(WR().map((x) => x.op + ' ' + x.path + JSON.stringify(x.data || {}).slice(0, 70))));
 });
 
+await scenario('인사평가 — 정기평가 운영 탭: 처음에는 기존 개별 기록, 탭을 누르면 팀 보드가 열리고 읽기만으로는 저장이 일어나지 않음', async (check) => {
+  const root = await mountFresh(hrMod.mountEvals); check(!!root.querySelector('[data-e-step="w1"]'), '기본 화면은 기존 개별 기록(호봉 입력칸)이어야 함'); check(!!root.querySelector('[data-ec-tab="cycle"]'), '위쪽에 "정기평가 운영" 탭이 보여야 함');
+  const before = WR().length; await click(root, '[data-ec-tab="cycle"]', 700); await sleep(500);
+  const t = root.textContent; check(/정기평가 2026/.test(t) && /2025-10-01 ~ 2026-09-30/.test(t) && /참고자료로만/.test(t), '정기평가 안내(평가 기간·참고자료)가 보여야 함: ' + t.slice(0, 160));
+  check(/PJT팀 · 1명/.test(t) && /영업기획팀 · 1명/.test(t) && !/박퇴사/.test(t), '퇴사자는 빠지고 팀별 대상자가 보여야 함(PJT팀 1명·영업기획팀 1명)');
+  check(!!root.querySelector('[data-ec-open="w1"]') && !!root.querySelector('[data-ec-open="w2"]'), '대상자마다 평가 버튼이 있어야 함'); check(WR().length === before, '탭을 열어 보기만 하면 저장이 일어나면 안 됨(실제 ' + (WR().length - before) + '건)');
+});
+
+await scenario('인사평가 — 정기평가 운영: 인사팀(직급이 대표가 아닌 관리자)은 점수를 눌러도 입력·저장되지 않음(열람·운영만)', async (check) => {
+  const root = await mountFresh(hrMod.mountEvals); await click(root, '[data-ec-tab="cycle"]', 700); await sleep(400); await click(root, '[data-ec-open="w2"]', 300); const before = WR().length;
+  check(/내 권한: 인사팀/.test(root.textContent.replace(/\s+/g, ' ')) || /인사팀은 열람·운영만/.test(root.textContent), '현재 사용자는 인사팀으로 보여야 함');
+  const b = root.querySelector('[data-ec-score^="exec:"]'); check(!!b && b.disabled === true, '점수 버튼이 잠겨 있어야 함'); b.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(100);
+  const sv = root.querySelector('[data-ec-act="save"]'); check(!!sv && sv.disabled === true, '저장 버튼이 잠겨 있어야 함'); if (sv) sv.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(150); check(WR().length === before, '인사팀의 시도로 저장이 일어나면 안 됨(실제 ' + (WR().length - before) + '건)');
+});
+
+await scenario('인사평가 — 정기평가 운영: 영업기획팀(사장단 평가) 점수 입력 → 저장은 evaluations/{근로자}/cycles/2026 에 사장단 점수만 기록, 확정 전에는 최종 점수 없음', async (check) => {
+  const saved = ctx.me; ctx.me = Object.assign({}, saved, { rank: '대표', name: '관리자 대표' }); try {
+  const root = await mountFresh(hrMod.mountEvals); await click(root, '[data-ec-tab="cycle"]', 700); await sleep(400); await click(root, '[data-ec-open="w2"]', 300);
+  check(/사장단 평가/.test(root.textContent) && !root.querySelector('[data-ec-peer]'), '비프로젝트 팀은 사장단 평가 칸이고 동료평가 칸이 없어야 함');
+  const dots = [...root.querySelectorAll('[data-ec-score^="exec:"]')]; check(dots.length > 0, '사장단 점수 버튼이 있어야 함');
+  const keys = [...new Set(dots.map((d) => d.getAttribute('data-ec-score').split('|').slice(0, 2).join('|')))];
+  for (const k of keys) { const el = root.querySelector('[data-ec-score="' + k + '|4"]'); el.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(30); }
+  await sleep(200); check(/팀 점수[^0-9]*80/.test(root.textContent.replace(/\s+/g, '')) || root.textContent.includes('80'), '모든 항목에 4점이면 팀 점수 80점이 보여야 함');
+  check(/확정 전/.test(root.textContent), '확정 전에는 최종 점수가 없어야 함'); const before = WR().length;
+  await click(root, '[data-ec-act="save"]', 400); await sleep(300);
+  const c = WR().filter((x) => /^evaluations\/w2\/cycles\/2026$/.test(x.path)); check(c.length === 1 && c[0].data && c[0].data.year === 2026 && c[0].data.teamType === 'nonpjt' && c[0].data.exec && c[0].data.exec.u1 && c[0].data.exec.u1.areas, 'evaluations/w2/cycles/2026 에 사장단 점수가 저장되어야 함: ' + JSON.stringify(WR().slice(before).map((x) => x.op + ' ' + x.path)));
+  check(WR().slice(before).every((x) => /^evaluations\/w2\/cycles\//.test(x.path)), '다른 문서는 건드리면 안 됨(근로자·계정·기존 평가 기록 그대로): ' + JSON.stringify(WR().slice(before).map((x) => x.path)));
+  if (c[0]) check(c[0].data.confirmed === false && !(c[0].data.ceo && c[0].data.ceo.approved), '저장만으로는 확정되지 않아야 함');
+  } finally { ctx.me = saved; }
+});
+
 await scenario('퇴직금 정산 — 미사용 연차 정산(참고) 카드와 "연차수당 합계에 넣기": 입력칸이 채워지고 평균임금에 가산 반영, 저장은 일어나지 않음', async (check) => {
   const root = await mountFresh(hrMod.mountRetire); await setv(root, '[data-t-date]', '2026-09-30'); await setv(root, '[data-t-worker]', 'w1'); await sleep(900);
   check(/미사용 연차 정산/.test(root.textContent), '④ 미사용 연차 정산 카드가 보여야 함'); const before = root.textContent.includes('연차수당 가산');

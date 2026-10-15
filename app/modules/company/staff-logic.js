@@ -1,9 +1,17 @@
 /* 직원 관리(관리자)의 순수 규칙 — 화면·네트워크 없이 시험한다 */
-import { byEmpNo, RANK_ORDER } from '../../shared/org.js?v=20261015a';
-import { isPhone } from '../../core/profile-logic.js?v=20261015a';
+import { byEmpNo, RANK_ORDER } from '../../shared/org.js?v=20261015b';
+import { isPhone } from '../../core/profile-logic.js?v=20261015b';
 
 /** 포털 모듈 권한(옛 포털의 MODULES 와 같은 키). 관리자는 권한과 무관하게 모두 열린다 */
-export const PERM_KEYS = [['plan', '영업기획'], ['hr', '인사총무'], ['finance', '재무회계'], ['edoc', '전자결재'], ['pjt', 'PJT']];
+export const PERM_KEYS = [['plan', '영업기획'], ['hr', '인사총무'], ['finance', '재무회계'], ['edoc', '전자결재'], ['pjt', 'PJT'], ['hrEval', '인사평가']];   // 인사평가 = 다른 사람의 평가를 열람·운영(입력·확정은 사장단)
+export const isTeamLead = (u) => !!(u && u.teamLead === true);
+/** 팀장 지정: 같은 팀(부서)에는 한 명만. 새로 지정하면 같은 팀의 기존 팀장은 자동으로 해제된다. 돌려주는 값 = 바꿀 { uid: true|false } */
+export function teamLeadChanges(users, uid, on) {
+  const u = (users || []).find((x) => x && x.uid === uid); if (!u) return {};
+  const out = { [uid]: !!on }; if (!on) return out; const d = String(u.dept || '').trim(); if (!d) return out;
+  (users || []).forEach((x) => { if (x && x.uid !== uid && x.teamLead === true && String(x.dept || '').trim() === d) out[x.uid] = false; });
+  return out;
+}
 export const hasPerm = (u, k) => !!(u && u.perms && u.perms[k] === true);
 /** 사번 숫자 순서(사번 없는 사람은 뒤) */
 export const sortStaff = (users) => (users || []).slice().sort(byEmpNo);
