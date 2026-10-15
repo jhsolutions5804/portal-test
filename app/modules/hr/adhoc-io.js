@@ -1,0 +1,73 @@
+/* 인사평가 — 수시평가 운영: 불러오기·저장·클릭/입력 처리.
+ * 저장 위치(기존 관리자 전용 컬렉션 evaluations 안이라 보안 규칙 변경 없음):
+ *   프로젝트 성과 = evaluations/_pjt/adhoc/{프로젝트 id}   (목표 마진율·청구/지급 스냅샷·사장단의 프로젝트 성과 점수)
+ *   참여자 평가   = evaluations/{근로자}/adhoc/{프로젝트 id} (현장 항목·동료 점수·사장단의 개인 점수·확정) */
+import { setRating, evalAccess, adhocParticipants, emptyAdhoc, adhocSummary } from './evaluation.js?v=20261015c';
+import { pjtSummary } from '../../shared/pjt-summary.js?v=20261015c';
+const clone = (o) => JSON.parse(JSON.stringify(o));
+const numOrNull = (v) => { if (v == null || String(v).trim() === '') return null; const n = Number(String(v).replace(/,/g, '')); return isFinite(n) ? n : null; };
+/** deps: { db, collection, getDocs, getDoc, setDoc, doc, serverTimestamp, toast, confirmDialog, paint, st, ctx } */
+export function createAdhocController(deps) {
+  const { db, collection, getDocs, getDoc, setDoc, doc, serverTimestamp, toast, confirmDialog, paint, st, ctx } = deps;
+  const me = (ctx && ctx.me) || {};
+  st.ad = { me, projects: [], sel: '', pdraft: null, msel: '', mdraft: null, recs: {}, loaded: false };
+  const pPath = (pid) => 'evaluations/_pjt/adhoc/' + pid;
+  const mPath = (wid, pid) => 'evaluations/' + wid + '/adhoc/' + pid;
+  const rows = async (path) => { const s = await getDocs(collection(db, path)); const l = []; s.forEach((d) => l.push(Object.assign({ id: d.id }, d.data()))); return l; };
+  const load = async () => {
+    const ad = st.ad; const reg = await rows('pjt_registry');
+    let gp = [], gs = [], ge = []; try { gp = await rows('gihoek_projects'); gs = await rows('gihoek_settlements'); ge = await rows('gihoek_estimates'); } catch (e) { /* 영업기획 데이터를 못 읽어도 직접 입력으로 평가할 수 있다 */ }
+    const out = [];
+    for (const r of reg) {
+      const link = gp.find((p) => p.linkPjt === r.id); let snapshot = {}; if (link) { const sm = pjtSummary(link.id, ge, gs); snapshot = { billed: sm.billed, paid: sm.paid }; }
+      let roster = []; try { roster = await rows('pjt_registry/' + r.id + '/workers'); } catch (e) { roster = []; }
+      let saved = null; try { const s = await getDoc(doc(db, pPath(r.id))); saved = s.exists() ? s.data() : null; } catch (e) { saved = null; }
+      const memberWorkers = adhocParticipants(roster, st.evWorkers || []);
+      out.push({ id: r.id, name: r.name || r.id, status: r.status === 'ended' ? 'ended' : 'active', linked: !!link, members: memberWorkers, memberWorkers, snapshot: Object.assign({}, snapshot, (saved && saved.snapshot) || {}), eval: saved || {} });
+    }
+    out.sort((a, b) => (a.status === 'ended' ? 0 : 1) - (b.status === 'ended' ? 0 : 1) || String(a.name).localeCompare(String(b.name), 'ko'));
+    ad.projects = out; ad.loaded = true;
+  };
+  const access = () => evalAccess(me, { id: '' }, {});
+  const proj = () => (st.ad.projects || []).find((p) => p.id === st.ad.sel);
+  const loadRecs = async (p) => { const recs = {}; await Promise.all((p.memberWorkers || []).map(async (w) => { try { const s = await getDoc(doc(db, mPath(w.id, p.id))); recs[w.id] = s.exists() ? s.data() : null; } catch (e) { recs[w.id] = null; } })); st.ad.recs = recs; };
+  const saveProject = async () => {
+    const ad = st.ad; const p = proj(); if (!p || !ad.pdraft) return; if (!access().edit) { toast('저장할 권한이 없습니다.'); return; }
+    try { await setDoc(doc(db, pPath(p.id)), Object.assign({}, ad.pdraft, { pjtId: p.id, pjtName: p.name, updatedAt: serverTimestamp(), updatedBy: me.uid || '' }), { merge: true }); p.eval = clone(ad.pdraft); p.snapshot = Object.assign({}, p.snapshot, ad.pdraft.snapshot || {}); toast('프로젝트 성과를 저장했습니다.'); paint(); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); }
+  };
+  const saveMember = async () => {
+    const ad = st.ad; const p = proj(); if (!p || !ad.mdraft) return; const a = access(); if (!a.edit && !a.confirm) { toast('저장할 권한이 없습니다.'); return; }
+    try { await setDoc(doc(db, mPath(ad.msel, p.id)), Object.assign({}, ad.mdraft, { updatedAt: serverTimestamp(), updatedBy: me.uid || '' }), { merge: true }); ad.recs[ad.msel] = clone(ad.mdraft); toast('저장했습니다.'); paint(); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); }
+  };
+  const onClick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return false; const ad = st.ad;
+    const tab = t.closest('[data-ec-tab]'); if (tab && tab.getAttribute('data-ec-tab') === 'adhoc') { st.evTab = 'adhoc'; if (!ad.loaded) { try { await load(); } catch (e) { toast('프로젝트를 불러오지 못했습니다: ' + ((e && e.message) || '')); } } paint(); return true; }
+    const op = t.closest('[data-ad-open]'); if (op) { const p = (ad.projects || []).find((x) => x.id === op.getAttribute('data-ad-open')); if (!p) return true; ad.sel = p.id; ad.msel = ''; ad.mdraft = null; ad.pdraft = clone(Object.assign({ target: null, snapshot: {}, exec: {} }, p.eval || {}, { snapshot: Object.assign({}, p.snapshot) })); try { await loadRecs(p); } catch (e) { ad.recs = {}; } paint(); return true; }
+    const sc = t.closest('[data-ad-score]'); if (sc) {
+      if (!access().edit) return true; const [key, val] = sc.getAttribute('data-ad-score').split('|'); const n = Number(val);
+      if (key === 'pexec') { ad.pdraft.exec = Object.assign({}, ad.pdraft.exec, { [me.uid || 'me']: { name: me.name || '', project: n } }); }
+      else if (ad.mdraft && !ad.mdraft.confirmed) {
+        if (key === 'person') ad.mdraft.exec = Object.assign({}, ad.mdraft.exec, { [me.uid || 'me']: { name: me.name || '', person: n } });
+        else if (key.startsWith('item:')) { const k = key.slice(5); ad.mdraft.items = Object.assign({}, ad.mdraft.items, { [k]: n }); }
+      }
+      paint(); return true;
+    }
+    const mb = t.closest('[data-ad-member]'); if (mb) { const w = (proj().memberWorkers || []).find((x) => x.id === mb.getAttribute('data-ad-member')); if (!w) return true; ad.msel = w.id; ad.mdraft = clone(ad.recs[w.id] || emptyAdhoc(w, proj())); paint(); return true; }
+    const ac = t.closest('[data-ad-act]'); if (!ac) return false; const act = ac.getAttribute('data-ad-act');
+    if (act === 'back') { ad.sel = ''; ad.pdraft = null; ad.msel = ''; ad.mdraft = null; paint(); return true; }
+    if (act === 'mback') { ad.msel = ''; ad.mdraft = null; paint(); return true; }
+    if (act === 'psave') { await saveProject(); return true; }
+    if (act === 'msave') { await saveMember(); return true; }
+    if (act === 'mconfirm') { const a = access(); if (!a.confirm) { toast('수시 평가 확정은 대표만 할 수 있습니다.'); return true; } const sm = adhocSummary(ad.mdraft, ad.pdraft); if (sm.site == null || sm.exec == null) { toast('현장 점수와 사장단 점수가 모두 있어야 확정할 수 있습니다(항목·동료 2명 이상·사장단 점수).'); return true; } ad.mdraft.confirmed = true; await saveMember(); return true; }
+    if (act === 'munconfirm') { if (!access().confirm) return true; const ok = await confirmDialog({ title: '확정 취소', body: '확정을 취소하고 다시 수정할 수 있게 합니다.', confirmLabel: '확정 취소' }); if (!ok.ok) return true; ad.mdraft.confirmed = false; await saveMember(); return true; }
+    return false;
+  };
+  const onInput = (ev) => { const t = ev.target; if (!(t instanceof Element) || !st.ad.pdraft) return false; if (t.matches('[data-ad-proj]')) { const k = t.getAttribute('data-ad-proj'); const v = numOrNull(t.value); if (k === 'target') st.ad.pdraft.target = v; else st.ad.pdraft.snapshot = Object.assign({}, st.ad.pdraft.snapshot, { [k]: v }); return true; } return false; };
+  const onChange = (ev) => {
+    const t = ev.target; if (!(t instanceof Element) || !st.ad.mdraft) return false;
+    if (t.matches('[data-ad-peer]')) { if (!access().edit || st.ad.mdraft.confirmed) return true; const [pid, idx] = t.getAttribute('data-ad-peer').split('|'); const cur = (st.ad.mdraft.peers && st.ad.mdraft.peers[pid]) ? st.ad.mdraft.peers[pid].slice() : [null, null, null]; const n = Number(t.value); cur[Number(idx)] = n >= 1 && n <= 5 ? n : null; st.ad.mdraft.peers = Object.assign({}, st.ad.mdraft.peers, { [pid]: cur }); paint(); return true; }
+    if (t.matches('[data-ad-proj]')) { paint(); return true; }
+    return false;
+  };
+  return { load, onClick, onInput, onChange };
+}

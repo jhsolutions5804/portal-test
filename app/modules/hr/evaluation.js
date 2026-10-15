@@ -175,3 +175,26 @@ export function teamLeaderOf(dept, members, users) {
   const top = pickAdhocEvaluator(list.map((m) => ({ name: m.name, rank: m.rank, hireDate: m.hireDate, empNo: m.empNo, id: m.id })));
   return top ? { workerId: top.id || '', name: top.name || '', uid: '', source: 'rank' } : { workerId: '', name: '', uid: '', source: 'none' };
 }
+
+/* ───────── 수시평가(프로젝트 종료 시) — 화면용 순수 규칙 (설계서 5·6절) ───────── */
+export const ADHOC_LABELS = { progress: '담당 공정 목표 달성', schedule: '일정 준수', quality: '품질(재작업·검사)', safety: '안전수칙 준수·위험 제보', collab: '협업·소통(동료 평균)', report: '보고 충실도(공사일보·출역)' };
+export const ADHOC_ENTRY_ITEMS = ['progress', 'schedule', 'quality', 'safety', 'report'];   // 평가자가 입력 — 협업(collab)은 동료평가 평균으로 자동
+/** 프로젝트 참여자: 명부(workers)에서 활동 중이고 평가 대상(사장단·관리자 시스템 계정 제외)인 근로자 */
+export function adhocParticipants(roster, hrWorkers) {
+  const byId = new Map((hrWorkers || []).map((w) => [w.id, w]));
+  return (roster || []).filter((r) => r && r.active !== false).map((r) => byId.get(r.id)).filter((w) => w && w.status !== 'resigned' && EXEC_RANKS.indexOf(String(w.rank || '').trim()) === -1 && !SYSTEM_EMPNOS.test(String(w.empNo || '').trim()));
+}
+export function emptyAdhoc(w, pjt) { const x = w || {}, p = pjt || {}; return { pjtId: p.id || '', pjtName: p.name || '', workerId: x.id || '', name: x.name || '', rank: x.rank || '', items: { progress: null, schedule: null, quality: null, safety: null, report: null }, peers: {}, exec: {}, evaluator: '', confirmed: false }; }
+/** 수시평가 기록 요약: 협업 = 동료 3항목 평균의 평균(2명 미만이면 없음), 현장 점수·사장단 점수·최종 점수. 사장단 점수는 사장단 각자 (개인 점수, 그 프로젝트 성과 점수) 로 계산 */
+export function adhocSummary(rec, proj) {
+  const r = rec || {}, p = proj || {};
+  const peerOne = Object.values(r.peers || {}).map((a) => itemAvg(a, PEER_ITEMS.length)).filter((x) => x != null); const collab = peerAverage(peerOne);
+  const it = Object.assign({}, r.items || {}, { collab });
+  const site = adhocSiteScore(it);
+  const rates = Object.keys(r.exec || {}).map((uid) => ({ person: num(r.exec[uid] && r.exec[uid].person), project: num(p.exec && p.exec[uid] && p.exec[uid].project) })).filter((x) => isFinite(x.person) && isFinite(x.project));
+  const exec = execScore(rates); const final = r.confirmed === true ? adhocFinal(site, exec) : null;
+  const any = ADHOC_ENTRY_ITEMS.some((k) => isFinite(num((r.items || {})[k]))) || peerOne.length > 0 || Object.keys(r.exec || {}).length > 0;
+  return { collab, site, exec, execRaters: rates.length, final, grade: final == null ? '' : gradeOf(final), status: final != null ? 'confirmed' : (site != null && exec != null) ? 'team_done' : any ? 'rating' : 'none' };
+}
+/** 프로젝트 성과(마진율): 목표 마진율·청구·지급·노무비·직접비를 프로젝트마다 따로 입력/집계 → 실현 마진율·차이·점수 */
+export function adhocProjectPerf(proj) { const p = proj || {}; const s = p.snapshot || {}; return projectPerformance({ target: p.target, billed: s.billed, paid: s.paid, labor: s.labor, direct: s.direct, bands: p.bands }); }

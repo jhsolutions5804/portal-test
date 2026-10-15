@@ -217,6 +217,31 @@ await scenario('인사평가 — 정기평가 운영: 영업기획팀(사장단 
   } finally { ctx.me = saved; }
 });
 
+await scenario('인사평가 — 수시평가: 탭을 열면 프로젝트 목록(영업기획 연결 프로젝트의 청구·지급 집계)이 보이고, 읽기만으로는 저장이 일어나지 않음', async (check) => {
+  const root = await mountFresh(hrMod.mountEvals); const before = WR().length; await click(root, '[data-ec-tab="adhoc"]', 900); await sleep(500);
+  const t = root.textContent; check(/수시평가/.test(t) && /현장 평가/.test(t) && /프로젝트마다 따로/.test(t), '수시평가 안내가 보여야 함: ' + t.slice(0, 160));
+  check(!!root.querySelector('[data-ad-open="p4ph2"]'), 'PJT 프로젝트(p4ph2)가 목록에 있어야 함'); check(WR().length === before, '탭을 열어 보기만 하면 저장이 일어나면 안 됨(실제 ' + (WR().length - before) + '건)');
+});
+
+await scenario('인사평가 — 수시평가: 프로젝트 성과(목표 마진율·사장단 점수) 저장 → evaluations/_pjt/adhoc/{프로젝트} 한 곳에만 기록', async (check) => {
+  const saved = ctx.me; ctx.me = Object.assign({}, saved, { rank: '대표', name: '관리자 대표' }); try {
+  const root = await mountFresh(hrMod.mountEvals); await click(root, '[data-ec-tab="adhoc"]', 900); await sleep(400); await click(root, '[data-ad-open="p4ph2"]', 500); await sleep(300);
+  check(/프로젝트 성과 — /.test(root.textContent) && !!root.querySelector('[data-ad-proj="target"]'), '프로젝트 성과 카드와 목표 마진율 입력칸이 보여야 함');
+  await setv(root, '[data-ad-proj="target"]', '12'); await setv(root, '[data-ad-proj="billed"]', '1000'); await setv(root, '[data-ad-proj="paid"]', '850'); await sleep(150);
+  const b = root.querySelector('[data-ad-score="pexec|4"]'); b.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(120);
+  const before = WR().length; await click(root, '[data-ad-act="psave"]', 450); await sleep(300);
+  const c = WR().filter((x) => /^evaluations\/_pjt\/adhoc\/p4ph2$/.test(x.path)); check(c.length === 1 && c[0].data.target === 12 && c[0].data.snapshot && c[0].data.snapshot.billed === 1000 && c[0].data.snapshot.paid === 850 && c[0].data.exec && c[0].data.exec.u1 && c[0].data.exec.u1.project === 4, 'evaluations/_pjt/adhoc/p4ph2 에 목표 12·청구 1000·지급 850·사장단 프로젝트 성과 4점이 저장되어야 함: ' + JSON.stringify(WR().slice(before).map((x) => x.op + ' ' + x.path + JSON.stringify(x.data || {}).slice(0, 120))));
+  check(WR().slice(before).every((x) => /^evaluations\/_pjt\/adhoc\//.test(x.path)), '다른 문서는 건드리면 안 됨(프로젝트·영업기획·근로자 그대로): ' + JSON.stringify(WR().slice(before).map((x) => x.path)));
+  check(/12%/.test(root.textContent) && /15%/.test(root.textContent) && /\+3%p/.test(root.textContent), '실현 마진율 15%·목표 대비 +3%p가 화면에 보여야 함');
+  } finally { ctx.me = saved; }
+});
+
+await scenario('인사평가 — 수시평가: 인사팀(대표가 아닌 관리자)은 프로젝트 성과·참여자 평가를 입력·저장할 수 없음', async (check) => {
+  const root = await mountFresh(hrMod.mountEvals); await click(root, '[data-ec-tab="adhoc"]', 900); await sleep(400); await click(root, '[data-ad-open="p4ph2"]', 500); await sleep(300); const before = WR().length;
+  const ps = root.querySelector('[data-ad-act="psave"]'); check(!!ps && ps.disabled === true, '프로젝트 성과 저장 버튼이 잠겨 있어야 함'); if (ps) ps.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(150);
+  const b = root.querySelector('[data-ad-score="pexec|4"]'); check(!!b && b.disabled === true, '사장단 점수 버튼이 잠겨 있어야 함'); check(WR().length === before, '인사팀의 시도로 저장이 일어나면 안 됨(실제 ' + (WR().length - before) + '건)');
+});
+
 await scenario('퇴직금 정산 — 미사용 연차 정산(참고) 카드와 "연차수당 합계에 넣기": 입력칸이 채워지고 평균임금에 가산 반영, 저장은 일어나지 않음', async (check) => {
   const root = await mountFresh(hrMod.mountRetire); await setv(root, '[data-t-date]', '2026-09-30'); await setv(root, '[data-t-worker]', 'w1'); await sleep(900);
   check(/미사용 연차 정산/.test(root.textContent), '④ 미사용 연차 정산 카드가 보여야 함'); const before = root.textContent.includes('연차수당 가산');
