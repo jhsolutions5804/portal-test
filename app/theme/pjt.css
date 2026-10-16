@@ -466,7 +466,7 @@
   .jh-fp__drawer { position: fixed; top: var(--u-64); right: 0; bottom: 0; width: 26rem; z-index: var(--z-actionbar); display: flex; flex-direction: column; background: var(--c-surface); color: var(--c-ink); border-left: var(--u-1) solid var(--c-line-strong); }
   .jh-fp__drawer[hidden] { display: none; }
 }
-@media (min-width: 1500px) { body.jh-files-open .jh-main { padding-right: 26.5rem; } }
+@media (min-width: 1500px) { .jh-fp-host { margin-right: 26.5rem; } }   /* 서랍이 붙은 본문 컨테이너 자체를 줄인다(스크롤바도 서랍 밖에 보임) */
 .jh-fp__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); border-bottom: var(--u-1) solid var(--c-line); }
 .jh-fp__headbtns { display: inline-flex; gap: var(--sp-2); }
 .jh-fp__body { flex: 1; overflow: auto; padding: var(--sp-3) var(--sp-4); }
