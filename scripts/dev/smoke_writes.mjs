@@ -399,7 +399,7 @@ await scenario('★ PJT 자료 패널 — 셸 도킹: 프로젝트 주소에서 
     check(a.host.el.querySelectorAll('.jh-fp__row').length === 2 && /ms-excel:ofe/.test(a.host.el.innerHTML) && /SharePoint에서 폴더 열기/.test(a.host.el.textContent), '받은 목록(폴더 1·파일 1)이 그려지고 엑셀 파일에 앱에서 열기가 있어야 함');
     a.host.el.querySelector('[data-fp-open="0"]').click(); await sleep(150); check(fc().length === 2 && fc()[1].data.path === '02 공정', '폴더를 누르면 하위 경로로 다시 요청해야 함');
     check(WR().length === 0, '★ 패널을 열고 폴더를 오가는 동안 저장·삭제가 한 건도 일어나지 않아야 함(' + WR().length + '건)');
-    w.location.hash = '#/edoc/home'; await sleep(60); check(a.host.toggle.hidden === true && a.host.el.hidden === true, '다른 메뉴로 가면 버튼과 패널이 숨어야 함');
+    w.location.hash = '#/home'; await sleep(60); check(a.host.toggle.hidden === true && a.host.el.hidden === true, '패널이 없는 화면(홈)으로 가면 버튼과 패널이 숨어야 함');
     w.location.hash = '#/pjt/p4ph2/progress'; await sleep(60); check(a.host.toggle.hidden === false && !a.host.el.hidden && /견적서\.xlsx/.test(a.host.el.textContent) && fc().length === 2, '★ 돌아오면 버튼과 패널이 다시 나타나고 같은 목록이 그대로 있어야 함(재요청 없음)');
     d.dispose(); check(a.host.toggle.hidden === true && a.host.el.hidden === true, '정리하면 모두 꺼져야 함'); a.wrap.remove();
     const prevMe = ctx.me; const b = mkHost(); const d2 = pjtMod.installFilesDock(b.host, { uid: 'Z', admin: false, perms: {} }); await sleep(60); check(b.host.toggle.hidden === true && b.host.el.hidden === true, '★ PJT 권한이 없는 계정(참여자만)에게는 버튼도 패널도 켜지지 않아야 함'); d2.dispose(); b.wrap.remove();

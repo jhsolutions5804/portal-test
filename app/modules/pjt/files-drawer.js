@@ -2,7 +2,7 @@
  *  · 셸(core/shell.js)의 오른쪽 도킹 영역에 고정되고, 상단 바의 📁 버튼으로 숨기고 보인다(선택은 localStorage 에 기억). 1500px 이상에서는 본문이 비켜 고정 열처럼, 좁으면 위에 덮는다. 900px 미만(모바일)에서는 쓰지 않는다.
  *  · 화면(작업 탭)에 붙이지 않는다: 작업 탭은 화면을 지우지 않고 숨겼다 다시 보여 주므로 화면 안에 붙은 패널은 다시 붙지 않아 사라졌다. 이 모듈이 hashchange 를 직접 듣고 프로젝트 주소(#/pjt/<프로젝트>/<탭>)일 때만 켠다.
  *  · 이 파일은 Firebase 를 가져오지 않는다(서버 호출은 deps.callFiles 로 받음 — 시험 가능). 서버가 준 값은 모두 이스케이프하고, 웹/앱 열기 주소는 https 일 때만 쓴다. */
-import { esc } from '../../core/ui.js?v=20261016e';
+import { esc } from '../../core/ui.js?v=20261016f';
 
 const TABS = ['home', 'schedule', 'progress', 'attend', 'report', 'settings'];
 const RESERVED = TABS.concat(['ended', 'roster']);
@@ -13,15 +13,23 @@ export function projectKeyFromHash(hash) {
   if (RESERVED.indexOf(k) !== -1) return ''; if (m[2] && TABS.indexOf(m[2]) === -1) return '';
   return /^[A-Za-z0-9_-]{1,80}$/.test(k) ? k : '';
 }
+/** 주소의 첫 칸(모듈 번호) → 폴더 패널이 있는 다른 모듈. 서버 filesAct listModule 의 moduleId 와 이름표. 총무(general)는 인사총무와 같은 폴더를 쓴다 */
+const MODULE_PANELS = { plan: ['plan', '영업기획'], hr: ['hr', '인사총무'], general: ['hr', '인사총무'], finance: ['finance', '재무회계'], edoc: ['edoc', '전자결재'], company: ['company', '회사'], eval: ['eval', '평가'] };
+/** 주소 → 패널이 보여 줄 대상: PJT 프로젝트({kind:'pjt'}) 또는 다른 모듈({kind:'module'}, 관리자만). 대상이 아니면 null. title·rootLabel 은 패널 머리글과 경로 표시에 쓴다 */
+export function dockTargetFromHash(hash) {
+  const proj = projectKeyFromHash(hash); if (proj) return { kind: 'pjt', key: proj, title: 'PJT 자료', rootLabel: '프로젝트 폴더' };
+  const m = /^#\/([a-z]+)(?:[/?#]|$)/.exec(String(hash || '')); const mod = m && MODULE_PANELS[m[1]]; if (!mod) return null;
+  return { kind: 'module', key: mod[0], title: mod[1] + ' 자료', rootLabel: mod[1] + ' 폴더' };
+}
 const OFFICE = { doc: 'ms-word', docx: 'ms-word', docm: 'ms-word', xls: 'ms-excel', xlsx: 'ms-excel', xlsm: 'ms-excel', ppt: 'ms-powerpoint', pptx: 'ms-powerpoint', vsd: 'ms-visio', vsdx: 'ms-visio' };
 /** 오피스 문서의 "앱에서 열기" 주소(데스크톱 앱이 웹 주소를 받아 편집으로 연다). 오피스 문서가 아니거나 https 가 아니면 '' */
 export function officeAppUrl(name, webUrl) { const m = /\.([A-Za-z0-9]+)$/.exec(String(name || '')); const proto = m && OFFICE[m[1].toLowerCase()]; if (!proto || !/^https:\/\//.test(String(webUrl || ''))) return ''; return proto + ':ofe|u|' + webUrl; }
 export function fmtSize(n) { if (n === null || n === undefined || !isFinite(Number(n))) return ''; const v = Number(n); if (v < 1024) return v + ' B'; const kb = v / 1024; if (kb < 1024) return (kb >= 10 ? String(Math.round(kb)) : kb.toFixed(1)) + ' KB'; const mb = kb / 1024; if (mb < 1024) return (mb >= 10 ? String(Math.round(mb)) : mb.toFixed(1)) + ' MB'; const gb = mb / 1024; return (gb >= 10 ? String(Math.round(gb)) : gb.toFixed(1)) + ' GB'; }
 export function fmtDate(iso) { const t = Date.parse(String(iso || '')); if (!isFinite(t)) return ''; return new Date(t + 9 * 3600 * 1000).toISOString().slice(0, 10); }   // 한국 시간 기준 날짜
 
-function crumbsHtml(path) {
+function crumbsHtml(path, rootLabel) {
   const parts = path.map((p, i) => ' / ' + (i === path.length - 1 ? '<strong>' + esc(p) + '</strong>' : '<button type="button" class="jh-fp__crumb" data-fp-crumb="' + (i + 1) + '">' + esc(p) + '</button>')).join('');
-  return '<nav class="jh-fp__crumbs" aria-label="폴더 경로">' + (path.length ? '<button type="button" class="jh-fp__crumb" data-fp-crumb="0">프로젝트 폴더</button>' : '<strong>프로젝트 폴더</strong>') + parts + '</nav>';
+  return '<nav class="jh-fp__crumbs" aria-label="폴더 경로">' + (path.length ? '<button type="button" class="jh-fp__crumb" data-fp-crumb="0">' + esc(rootLabel || '프로젝트 폴더') + '</button>' : '<strong>' + esc(rootLabel || '프로젝트 폴더') + '</strong>') + parts + '</nav>';
 }
 function rowHtml(x, i) {
   if (x.isFolder) return '<li class="jh-fp__row"><button type="button" class="jh-fp__dir" data-fp-open="' + i + '">📁 ' + esc(x.name) + '</button><span class="jh-fp__meta">' + (x.childCount !== null && x.childCount !== undefined ? esc(x.childCount) + '개' : '') + '</span></li>';
@@ -34,16 +42,16 @@ function bodyHtml(st) {
   switch (st.status) {
     case 'idle': case 'loading': return '<div class="jh-field__hint" role="status">불러오는 중…</div>';
     case 'notConfigured': return '<div class="jh-field__hint">SharePoint 연결이 아직 설정되지 않았습니다. 관리자가 연결을 마치면 이 서랍에서 PJT 자료를 볼 수 있습니다.</div>';
-    case 'unmapped': return '<div class="jh-field__hint">이 프로젝트에 연결된 SharePoint 폴더가 없습니다. 관리자에게 폴더 연결을 요청해 주세요.</div>';
-    case 'missing': return (st.path.length ? crumbsHtml(st.path) : '') + '<div class="jh-field__hint">연결된 SharePoint 폴더를 찾을 수 없습니다(이름이 바뀌었거나 삭제됐을 수 있습니다).</div>';
+    case 'unmapped': return '<div class="jh-field__hint">' + (st.kind === 'module' ? '이 모듈에 연결된 SharePoint 폴더가 없습니다.' : '이 프로젝트에 연결된 SharePoint 폴더가 없습니다.') + ' 관리자에게 폴더 연결을 요청해 주세요.</div>';
+    case 'missing': return (st.path.length ? crumbsHtml(st.path, st.rootLabel) : '') + '<div class="jh-field__hint">연결된 SharePoint 폴더를 찾을 수 없습니다(이름이 바뀌었거나 삭제됐을 수 있습니다).</div>';
     case 'error': return '<div class="jh-alert" data-tone="danger" role="alert">' + esc(st.error || '불러오지 못했습니다.') + '</div>';
-    default: return crumbsHtml(st.path) + (st.items.length ? '<ul class="jh-fp__list">' + st.items.map(rowHtml).join('') + '</ul>' : '<div class="jh-field__hint">이 폴더는 비어 있습니다.</div>')
+    default: return crumbsHtml(st.path, st.rootLabel) + (st.items.length ? '<ul class="jh-fp__list">' + st.items.map(rowHtml).join('') + '</ul>' : '<div class="jh-field__hint">이 폴더는 비어 있습니다.</div>')
       + (st.truncated ? '<div class="jh-field__hint">항목이 많아 일부만 표시합니다. SharePoint 에서 전체를 확인해 주세요.</div>' : '')
       + (st.folderUrl && /^https:\/\//.test(st.folderUrl) ? '<div class="jh-fp__foot"><a class="jh-btn" data-variant="secondary" href="' + esc(st.folderUrl) + '" target="_blank" rel="noopener noreferrer">SharePoint에서 폴더 열기</a></div>' : '');
   }
 }
 export function drawerHtml(st) {
-  return '<div class="jh-fp__head"><strong>📁 PJT 자료</strong><span class="jh-fp__headbtns"><button type="button" class="jh-btn" data-variant="secondary" data-fp="refresh" aria-label="새로고침">↻</button><button type="button" class="jh-btn" data-variant="secondary" data-fp="close" aria-label="패널 숨기기" title="패널 숨기기">»</button></span></div><div class="jh-fp__body">' + bodyHtml(st) + '</div>';
+  return '<div class="jh-fp__head"><strong>📁 ' + esc(st.title || 'PJT 자료') + '</strong><span class="jh-fp__headbtns"><button type="button" class="jh-btn" data-variant="secondary" data-fp="refresh" aria-label="새로고침">↻</button><button type="button" class="jh-btn" data-variant="secondary" data-fp="close" aria-label="패널 숨기기" title="패널 숨기기">»</button></span></div><div class="jh-fp__body">' + bodyHtml(st) + '</div>';
 }
 /** 오류 문구: 서버가 한글로 준 메시지(권한 없음·설정 확인 등)는 그대로, SDK 가 만든 일반 코드(함수가 아직 배포되지 않았거나 닿지 않음 등)는 실제 상황에 맞는 안내로 바꾼다 */
 const errText = (e) => { const m = e && e.message ? String(e.message) : ''; if (/[가-힣]/.test(m)) return m.slice(0, 200); const code = String((e && e.code) || '').replace(/^functions\//, ''); if (code === 'unauthenticated') return '로그인이 만료됐습니다. 다시 로그인해 주세요.'; return '서버의 SharePoint 연결 기능에 닿지 못했습니다(아직 배포되지 않았거나 일시적인 문제입니다). 관리자에게 알려 주세요.'; };
@@ -53,22 +61,22 @@ const errText = (e) => { const m = e && e.message ? String(e.message) : ''; if (
 const PREF_KEY = 'jh.filesDock.open';
 export function installFilesDock(host, me, deps) {
   const call = deps && deps.callFiles; if (typeof call !== 'function' || !host || !host.el || !host.toggle || !host.app) return null;
-  const doc = host.el.ownerDocument, win = doc.defaultView; const m = me || {}; const allowed = !!(m.admin || (m.perms && m.perms.pjt));
+  const doc = host.el.ownerDocument, win = doc.defaultView; const m = me || {}; const adminOnly = m.admin === true; const pjtAllowed = !!(m.admin || (m.perms && m.perms.pjt));   // PJT 패널: PJT 권한자·관리자 / 다른 모듈 패널: 관리자만(서버도 같은 기준)
   const width = () => (deps.width ? deps.width() : win.innerWidth); const store = deps.storage || (() => { try { return win.localStorage; } catch (e) { return null; } })();
   const readPref = () => { try { const v = store && store.getItem(PREF_KEY); return v === '1' ? true : v === '0' ? false : null; } catch (e) { return null; } };
   const savePref = (v) => { try { if (store) store.setItem(PREF_KEY, v ? '1' : '0'); } catch (e) { /* 저장 못 해도 이번 화면에서는 동작 */ } };
-  let pref = readPref(), seq = 0, disposed = false; const st = { proj: '', open: false, status: 'idle', path: [], items: [], folderUrl: '', truncated: false, error: '' };
+  let pref = readPref(), seq = 0, disposed = false; const st = { kind: 'pjt', proj: '', title: 'PJT 자료', rootLabel: '프로젝트 폴더', open: false, status: 'idle', path: [], items: [], folderUrl: '', truncated: false, error: '' };
   const render = () => { host.el.innerHTML = drawerHtml(st); };
   const apply = (r) => { if (!r || r.ok !== true) { st.status = 'error'; st.error = '불러오지 못했습니다.'; return; } if (r.configured === false) st.status = 'notConfigured'; else if (r.mapped === false) st.status = 'unmapped'; else if (r.missing) st.status = 'missing'; else { st.status = 'ok'; st.items = Array.isArray(r.items) ? r.items : []; st.folderUrl = typeof r.folderUrl === 'string' ? r.folderUrl : ''; st.truncated = !!r.truncated; } };
-  async function load() { const my = ++seq; st.status = 'loading'; st.error = ''; render(); try { const r = await call({ action: 'list', pjtId: st.proj, path: st.path.join('/') }); if (my !== seq || disposed) return; apply(r); } catch (e) { if (my !== seq || disposed) return; st.status = 'error'; st.error = errText(e); } render(); }
+  async function load() { const my = ++seq; st.status = 'loading'; st.error = ''; render(); try { const r = await call(st.kind === 'module' ? { action: 'listModule', moduleId: st.proj, path: st.path.join('/') } : { action: 'list', pjtId: st.proj, path: st.path.join('/') }); if (my !== seq || disposed) return; apply(r); } catch (e) { if (my !== seq || disposed) return; st.status = 'error'; st.error = errText(e); } render(); }
   const off = () => { host.toggle.hidden = true; host.el.hidden = true; host.app.removeAttribute('data-dock-open'); doc.body.classList.remove('jh-files-open'); };
   function paint() { host.toggle.setAttribute('aria-pressed', String(st.open)); host.el.hidden = !st.open; if (st.open) { host.app.setAttribute('data-dock-open', ''); doc.body.classList.add('jh-files-open'); if (st.status === 'idle') load(); else render(); } else { host.app.removeAttribute('data-dock-open'); doc.body.classList.remove('jh-files-open'); } }
   /** 주소·폭·권한을 보고 버튼과 패널의 보임/숨김을 맞춘다 — 주소가 바뀔 때마다(화면이 다시 만들어지든 아니든) 부른다 */
   function sync() {
-    if (disposed) return; const proj = allowed && width() >= 900 ? projectKeyFromHash(win.location.hash) : '';
-    if (!proj) { off(); return; }   // 프로젝트 화면이 아님: 숨기기만 한다(상태는 그대로 — 같은 프로젝트로 돌아오면 이어서 쓴다)
+    if (disposed) return; const tg = width() >= 900 ? dockTargetFromHash(win.location.hash) : null; const ok = tg && (tg.kind === 'pjt' ? pjtAllowed : adminOnly); const proj = ok ? tg.key : '';
+    if (!proj) { off(); return; }   // 대상 화면이 아니거나 권한이 없음: 숨기기만 한다(상태는 그대로 — 같은 대상으로 돌아오면 이어서 쓴다)
     host.toggle.hidden = false;
-    if (proj !== st.proj) { st.proj = proj; st.path = []; st.items = []; st.status = 'idle'; st.folderUrl = ''; st.truncated = false; st.error = ''; seq++; }   // 다른 프로젝트: 맨 위 폴더부터, 진행 중이던 응답은 무효
+    if (proj !== st.proj || tg.kind !== st.kind) { st.kind = tg.kind; st.title = tg.title; st.rootLabel = tg.rootLabel; st.proj = proj; st.path = []; st.items = []; st.status = 'idle'; st.folderUrl = ''; st.truncated = false; st.error = ''; seq++; }   // 다른 프로젝트: 맨 위 폴더부터, 진행 중이던 응답은 무효
     st.open = pref === null ? width() >= 1500 : pref; paint();
   }
   const setOpen = (v) => { pref = !!v; savePref(pref); sync(); const f = pref ? host.el.querySelector('[data-fp="close"]') : host.toggle; if (f && f.focus) f.focus(); };

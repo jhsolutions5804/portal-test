@@ -20,5 +20,11 @@ ok(/@media \(min-width: 900px\) and \(hover: hover\) and \(pointer: fine\)/.test
 ok(/\.jh-app \{ grid-template-columns: var\(--u-64\) minmax\(0, 1fr\); \}/.test(blk) && /\.jh-sidebar \{ width: var\(--u-64\);[^}]*z-index: var\(--z-actionbar\)/.test(blk) && /\.jh-sidebar:is\(:hover, :focus-within\) \{ width: var\(--u-220\); \}/.test(blk), '★ 본문 열은 접힌 폭(64) 기준으로 고정하고, 사이드바는 마우스나 키보드 포커스가 오면 220 으로 펼쳐져 본문 위에 겹침(본문이 밀리지 않음)');
 ok(/\.jh-sidebar:not\(:hover\):not\(:focus-within\) :is\(\.jh-nav__label, \.jh-userchip, \.jh-sidebar__foot > \.jh-btn, \.jh-brand__full, \.jh-sidebar__brand \.jh-chip\) \{ display: none; \}/.test(blk) && /\.jh-sidebar:not\(:hover\):not\(:focus-within\) \.jh-brand__short \{ display: inline; \}/.test(blk), '접힌 상태에서는 메뉴 이름·사용자 칩·로그아웃·전체 브랜드를 숨기고 아이콘과 짧은 브랜드만 보임(펼치면 모두 보임)');
 ok(/:focus-within/.test(blk), '키보드로 메뉴에 들어가도 펼쳐짐(접근성)');
+// ── 사이드바가 펼쳐질 때 본문 전체가 같이 밀리고, 접힐 때 같이 들어온다(:has 지원 브라우저). 지원하지 않으면 위의 겹침 방식이 그대로 쓰인다
+const push = css.slice(css.indexOf('@supports selector(:has(*))'));
+ok(css.includes('@supports selector(:has(*))') && /@media \(min-width: 900px\) and \(hover: hover\) and \(pointer: fine\)/.test(push), '★ 밀기 방식은 :has 를 지원하고 PC·마우스 기기일 때만 적용(그 밖에는 겹침 방식·기존 동작)');
+ok(/\.jh-app:has\(\.jh-sidebar:is\(:hover, :focus-within\)\) \{ grid-template-columns: var\(--u-220\) minmax\(0, 1fr\);/.test(push), '★ 사이드바에 마우스나 포커스가 오면 앱 격자의 첫 열이 64→220 으로 넓어져 본문 전체가 오른쪽으로 같이 밀림');
+ok(/\.jh-app \{ transition: grid-template-columns \.16s ease \.12s; \}/.test(push), '열 폭 변화에 전환(0.16초)이 있어 들어올 때도 같이 부드럽게 들어옴(스치기만 한 경우를 위한 짧은 지연 포함)');
+ok(/\.jh-sidebar, \.jh-sidebar:is\(:hover, :focus-within\) \{ width: auto; justify-self: stretch; transition: none; overflow-x: hidden; \}/.test(push), '밀기 방식에서는 사이드바 폭을 칸 폭에 맡기고(겹침용 고정 폭 해제) 펼치는 중 글자가 삐져나가지 않게 가림');
 // (실제 셸 생성·동작은 가상 브라우저 점검 시나리오 smoke_writes 와 배포 뒤 실제 브라우저 측정으로 확인한다 — 셸이 외부 주소 모듈을 불러와 이 시험 환경에서는 못 만든다)
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

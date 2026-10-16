@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261016e';
-import { PERM_KEYS, hasPerm, isTeamLead, sortStaff, ranksFor, linkedWorkerOf } from './staff-logic.js?v=20261016e';
-import { isGuestUser } from '../../shared/org.js?v=20261016e';
+import { esc } from '../../core/ui.js?v=20261016f';
+import { PERM_KEYS, hasPerm, isTeamLead, sortStaff, ranksFor, linkedWorkerOf } from './staff-logic.js?v=20261016f';
+import { isGuestUser } from '../../shared/org.js?v=20261016f';
 
 export function staffListHtml(users, workers, meUid) {
   const rows = sortStaff(users).map((u) => {

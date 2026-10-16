@@ -145,3 +145,12 @@
   .jh-sidebar:not(:hover):not(:focus-within) :is(.jh-nav__label, .jh-userchip, .jh-sidebar__foot > .jh-btn, .jh-brand__full, .jh-sidebar__brand .jh-chip) { display: none; }
   .jh-sidebar:not(:hover):not(:focus-within) .jh-brand__short { display: inline; }
 }
+
+/* 사이드바가 펼쳐질 때 본문 전체가 오른쪽으로 같이 밀리고, 접힐 때 같이 들어온다(:has 를 지원하는 브라우저). 지원하지 않으면 위의 겹침 방식이 그대로 쓰인다. 스치기만 한 경우에 흔들리지 않게 짧은 지연을 둔다. */
+@supports selector(:has(*)) {
+  @media (min-width: 900px) and (hover: hover) and (pointer: fine) {
+    .jh-app { transition: grid-template-columns .16s ease .12s; }
+    .jh-app:has(.jh-sidebar:is(:hover, :focus-within)) { grid-template-columns: var(--u-220) minmax(0, 1fr); transition-delay: .06s; }
+    .jh-sidebar, .jh-sidebar:is(:hover, :focus-within) { width: auto; justify-self: stretch; transition: none; overflow-x: hidden; }
+  }
+}
