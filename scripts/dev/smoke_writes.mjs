@@ -921,6 +921,24 @@ await scenario('PJT 일정(모든 프로젝트 같은 화면): 달력·주간 �
   const bad = await mountFresh(pjtMod.mountSchedule, { segs: ['ZZZ'], query: {} }); check(/이 프로젝트를 열 수 없습니다/.test(bad.textContent), '열 수 없는 프로젝트는 안내만');
 });
 
+// ── C3: 공사일보 저장 뒤 업무일지 연동 결과를 사용자에게 알린다(전에는 console.warn 만 남아 조용히 사라졌음)
+await scenario('★ PJT 공사일보 저장 → 전자결재 업무일지 연동 결과 안내(상신·임시저장·금일 업무 없음·거부 이유)', async (check) => {
+  w.JH_HOLIDAYS = {}; w.JH_HOLIDAY_DATES = []; const calls = []; let reply = async () => ({ ok: true, created: true, status: 'pending' }); ctx.syncDaily = async (d) => { calls.push(d); return reply(d); };
+  const toasts = () => [...document.querySelectorAll('.jh-toast, [role="status"]')].map((n) => n.textContent.replace(/\s+/g, ' ')).join(' | ');
+  const root = await mountFresh(pjtMod.mountReport, { segs: ['p4ph2', '2026-07-02'], query: {} }); const val = (k) => root.querySelector('[data-rp-f="' + k + '"]'); const edit = async () => { await click(root, '[data-rp-act="edit"]', 400); for (let i = 0; i < 10 && !root.querySelector('[data-rp-f="content"]'); i++) await sleep(150); if (!root.querySelector('[data-rp-f="content"]')) throw new Error('수정 모드 입력칸이 보이지 않음: ' + root.textContent.replace(/\s+/g, ' ').slice(0, 120)); };
+  const save = async () => { calls.length = 0; document.querySelectorAll('.jh-toast').forEach((n) => n.remove()); await click(root, '[data-rp-act="save"]', 300); await sleep(300); };
+  if (!val('content')) throw new Error('입력칸이 보이지 않음: ' + root.textContent.replace(/\s+/g, ' ').slice(0, 160));
+  val('content').value = '배관 보온 작업'; await save(); check(calls.length === 1 && /저장했습니다/.test(toasts()) && /업무일지도 상신했습니다/.test(toasts()), '금일 업무를 쓰고 저장하면 서버 연동을 부르고 "전자결재 업무일지도 상신했습니다" 알림이 뜸: ' + toasts());
+  await edit(); val('content').value = '배관 보온 작업(수정)'; reply = async () => ({ ok: true, status: 'draft', created: true, noApprover: true }); await save();
+  check(calls.length === 1 && /임시저장으로 만들었습니다/.test(toasts()) && /결재선을 정해 상신/.test(toasts()), '★ 결재자가 없어 임시저장이 되면 그 사실과 다음 행동(전자결재에서 결재선을 정해 상신)을 알림: ' + toasts());
+  await edit(); val('content').value = '세 번째'; reply = async () => { throw Object.assign(new Error('결재자는 1~5명이어야 합니다.'), { code: 'functions/invalid-argument' }); }; await save();
+  check(calls.length === 1 && /공사일보는 저장했지만/.test(toasts()) && /결재자는 1~5명이어야 합니다/.test(toasts()), '★ 서버가 거부하면 "공사일보는 저장했지만 업무일지는 만들지 못했습니다 — (서버가 준 이유)"를 알림(이전에는 조용히 사라짐): ' + toasts());
+  check(wrote('set', /^pjt_registry\/p4ph2\/reports\/2026-07-02$/).length >= 1 && !/저장 실패/.test(toasts()), '연동이 실패해도 공사일보 자체는 저장되어 있고 "저장 실패"로 보이지 않음');
+  await edit(); val('content').value = ''; reply = async () => ({ ok: true, created: true, status: 'pending' }); await save();
+  check(calls.length === 0 && /금일 업무가 비어/.test(toasts()), '★ 금일 업무가 비어 있으면(예: 공정 체크가 없는 미래 날짜) 서버를 부르지 않고 "금일 업무가 비어 있어 업무일지는 만들지 않았습니다"를 알림: ' + toasts());
+  ctx.syncDaily = undefined;
+});
+
 await scenario('PJT 공사일보(모든 프로젝트 같은 양식): 공정 체크·출역으로 자동 채움, 한 가지 형식으로 저장, 옛 양식 조회·새 양식으로 편집, 미리보기·인쇄, 모든 프로젝트 업무일지 연동', async (check) => {
   w.JH_HOLIDAYS = {}; w.JH_HOLIDAY_DATES = []; let printed = 0; w.print = () => { printed++; }; const syncs = []; ctx.syncDaily = async (d) => { syncs.push(d); };
   const root = await mountFresh(pjtMod.mountReport, { segs: ['p4ph2', '2026-07-02'], query: {} }); const txt = () => root.textContent.replace(/\s+/g, ' '); WR().length = 0; const val = (k) => root.querySelector('[data-rp-f="' + k + '"]');
