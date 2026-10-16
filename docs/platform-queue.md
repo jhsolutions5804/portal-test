@@ -112,6 +112,7 @@
 - ☐ 연명부 백업 문서(`roster_backup_20261007__*`, 개인정보 포함) 삭제 시점 결정
 
 ## 3. 본섭 전환 (완료로 가는 마지막 단계 — 대표님 승인 후)
+- ☐ **(2026-10-16 재점검 — 최신 순서는 `docs/cutover-plan.md` §0-3 과 `본섭_전환_체크리스트_2026-10-16.md`)** 본섭에 서버 함수 없음(첫 배포)·규칙 4곳이 코드와 함께 바뀌어야 함·본섭용 `sign.html` 준비·평가용 본섭 데이터(부서·팀장) 정리 필요
 - ☐ (대표님 승인) **A6 본섭 전환** — `scripts/migrate/`(테섭 전용 `ALLOWED` 잠금)를 본섭에서 실행, 순서는 `docs/cutover-plan.md`. 직원 QC 기간(2026-10-08~) 동안은 본섭에 새 변경을 올리지 않음(긴급은 승인)
 - ☐ 전환 전: 롤백 준비(`gcloud firestore export`·규칙 파일 날짜 백업·저장소 태그 `prod-before-cutover`·서버 함수 현재 버전 기록) · 규칙은 반드시 프로젝트 이름 확인(본섭 `p4ph2-fab-506a7` / 테섭 `portal-test-6e0ff`)
 - ☐ 규칙 먼저: 총무 컬렉션 5개(`general_leases·vehicles·assets·renewals·drive_history`)를 `isAdminOnlyCollection`+`isHrDataCollection` **둘 다**에, `edoc_drive` 전용 블록, 재무회계(`ledger_entries·imports·meta`) — 반영 후 관리자 계정으로 열리고 일반 직원은 막히는지
