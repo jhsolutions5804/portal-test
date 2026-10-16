@@ -1,16 +1,16 @@
 /* 플랫폼에 꽂는 모듈 목록 — 모듈을 더하거나 빼는 일은 이 파일 한 곳만 고친다.
  * 각 항목은 { manifest, mount }. 핵심부(core/)는 모듈 폴더를 직접 알지 못하고 이 목록만 읽는다. */
-import * as edoc from './edoc/index.js?v=20261016b';
-import * as attendance from './attendance/index.js?v=20261016b';
-import * as calendar from './calendar/index.js?v=20261016b';
-import * as company from './company/index.js?v=20261016b';
-import * as evalm from './eval/index.js?v=20261016b';
-import * as finance from './finance/index.js?v=20261016b';
-import * as plan from './plan/index.js?v=20261016b';
-import * as general from './general/index.js?v=20261016b';
-import * as hr from './hr/index.js?v=20261016b';
-import * as pjt from './pjt/index.js?v=20261016b';
-import { modules as legacy, hostNative } from './legacy/index.js?v=20261016b';
+import * as edoc from './edoc/index.js?v=20261016c';
+import * as attendance from './attendance/index.js?v=20261016c';
+import * as calendar from './calendar/index.js?v=20261016c';
+import * as company from './company/index.js?v=20261016c';
+import * as evalm from './eval/index.js?v=20261016c';
+import * as finance from './finance/index.js?v=20261016c';
+import * as plan from './plan/index.js?v=20261016c';
+import * as general from './general/index.js?v=20261016c';
+import * as hr from './hr/index.js?v=20261016c';
+import * as pjt from './pjt/index.js?v=20261016c';
+import { modules as legacy, hostNative } from './legacy/index.js?v=20261016c';
 
 export const MODULES = [
   { manifest: edoc.manifest, mount: edoc.mount },
@@ -24,15 +24,17 @@ const resultExtra = {   // 메일 발송은 본섭에서만(테섭은 시험 중
   sendResult: ({ workerId, workerName, html, title, year }) => hr.sendDocLinkByEmail({ kind: 'worker', id: workerId, toName: workerName, docLabel: title, linkParams: { docType: 'evalresult', viewOnly: true, workerId, contractId: String(year), html, title } }),
   makeResultLink: (x) => hr.createResultLink(x), showLink: (token, name) => hr.showLinkModal(token, name, { view: true, label: '평가 결과 통보서' }) };
 ['mine', 'cycle', 'adhoc', 'result'].forEach((k) => hostNative('eval', k, (root, route, ctx) => evalm.mount(root, { segs: [k].concat((route && route.segs) || []), query: (route && route.query) || {} }, ctx, k === 'result' ? resultExtra : undefined)));   // 평가(내 평가·정기평가 운영·수시평가·평가 결과 통보) — 인사 모듈에서 분리
+// 프로젝트 탭(홈·일정·공정·출역·공사일보·설정) 공통: 화면을 그린 뒤 오른쪽 "자료" 서랍(SharePoint 파일 패널)을 붙인다. 프로젝트가 아닌 주소(전체 홈 등)·PJT 권한이 없는 계정에는 붙지 않으며, 서랍이 실패해도 화면은 그대로 둔다.
+const withFiles = (mount) => async (root, route, ctx) => { const r = await mount(root, route, ctx); try { pjt.attachFiles(root, ctx); } catch (e) { console.warn('[PJT 자료 서랍] 붙이지 못함', (e && e.message) || e); } return r; };
 hostNative('pjt', 'roster', pjt.mountRoster);   // 근로자 연명부(새 화면 — 목록·상세 조회)
-hostNative('pjt', 'settings', pjt.mountSettings);   // PJT 새 모듈 — 설정(관리자 전용)
+hostNative('pjt', 'settings', withFiles(pjt.mountSettings));   // PJT 새 모듈 — 설정(관리자 전용)
 hostNative('myteam', 'main', pjt.mountTeam);   // 내 팀 공수표 — 새 화면(통일된 저장 구조만 읽음)
 hostNative('pjt', 'ended', pjt.mountEnded);   // PJT 새 모듈 — 종료 PJT(재개·완전삭제)
-hostNative('pjt', 'home', pjt.mountHome);   // PJT 새 모듈 — 프로젝트 홈(프로젝트를 고르면 처음 보이는 화면)
-hostNative('pjt', 'report', pjt.mountReport);   // PJT 새 모듈 — 공사일보(프로젝트 아래 탭)
-hostNative('pjt', 'schedule', pjt.mountSchedule);   // PJT 새 모듈 — 일정(프로젝트 아래 탭)
-hostNative('pjt', 'progress', pjt.mountProgress);   // PJT 새 모듈 — 공정(프로젝트 아래 탭)
-hostNative('pjt', 'attend', pjt.mountAttend);   // PJT 새 모듈의 첫 화면 — 출역·공수(구포털 PJT 메뉴 안에서 열린다)
+hostNative('pjt', 'home', withFiles(pjt.mountHome));   // PJT 새 모듈 — 프로젝트 홈(프로젝트를 고르면 처음 보이는 화면)
+hostNative('pjt', 'report', withFiles(pjt.mountReport));   // PJT 새 모듈 — 공사일보(프로젝트 아래 탭)
+hostNative('pjt', 'schedule', withFiles(pjt.mountSchedule));   // PJT 새 모듈 — 일정(프로젝트 아래 탭)
+hostNative('pjt', 'progress', withFiles(pjt.mountProgress));   // PJT 새 모듈 — 공정(프로젝트 아래 탭)
+hostNative('pjt', 'attend', withFiles(pjt.mountAttend));   // PJT 새 모듈의 첫 화면 — 출역·공수(구포털 PJT 메뉴 안에서 열린다)
 hostNative('plan', 'home', plan.mountHome);   // 영업기획 홈 새 화면
 hostNative('plan', 'acct', plan.mountAcct);   // 비용장부 대조(재무회계 이관) 새 화면
 hostNative('plan', 'closing', plan.mountClosing);   // 월말 마감(신규)

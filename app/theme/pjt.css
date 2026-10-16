@@ -456,3 +456,25 @@
 /* 작성 완료된 일보: 인쇄(PDF) 미리보기 같은 종이 모양 */
 .jh-pjt__paper { max-width: 52rem; width: 100%; margin: 0 auto; padding: var(--sp-6); border: var(--u-1) solid var(--c-line-strong); box-shadow: 0 var(--u-4) var(--u-16) var(--c-overlay); }
 
+
+/* PJT 자료 서랍(SharePoint 파일 패널) — 평소 접힘, 오른쪽 "자료" 탭으로 열린다. 모바일(900px 미만)에서는 쓰지 않는다. 1500px 이상에서는 열렸을 때 본문이 비켜 고정 열처럼 보인다. */
+.jh-fp { display: none; }
+@media (min-width: 900px) {
+  .jh-fp { display: block; }
+  .jh-fp__tab { position: fixed; right: 0; top: 40%; z-index: var(--z-actionbar); writing-mode: vertical-rl; padding: var(--sp-3) var(--sp-2); background: var(--c-primary); color: var(--c-primary-ink); border: var(--u-1) solid var(--c-primary); border-right: 0; border-radius: var(--radius) 0 0 var(--radius); cursor: pointer; font-size: var(--fs-sm); }
+  .jh-fp[data-open] .jh-fp__tab { right: 26rem; }
+  .jh-fp__drawer { position: fixed; top: var(--u-64); right: 0; bottom: 0; width: 26rem; z-index: var(--z-actionbar); display: flex; flex-direction: column; background: var(--c-surface); color: var(--c-ink); border-left: var(--u-1) solid var(--c-line-strong); }
+  .jh-fp__drawer[hidden] { display: none; }
+}
+@media (min-width: 1500px) { body.jh-files-open .jh-main { padding-right: 26.5rem; } }
+.jh-fp__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); border-bottom: var(--u-1) solid var(--c-line); }
+.jh-fp__headbtns { display: inline-flex; gap: var(--sp-2); }
+.jh-fp__body { flex: 1; overflow: auto; padding: var(--sp-3) var(--sp-4); }
+.jh-fp__crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1); margin-bottom: var(--sp-3); font-size: var(--fs-sm); color: var(--c-ink-2); }
+.jh-fp__crumb, .jh-fp__dir { background: none; border: 0; padding: 0; color: var(--c-primary); cursor: pointer; font: inherit; text-align: left; text-decoration: underline; }
+.jh-fp__list { list-style: none; margin: 0; padding: 0; }
+.jh-fp__row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--sp-1) var(--sp-2); padding: var(--sp-2) 0; border-bottom: var(--u-1) solid var(--c-line); font-size: var(--fs-sm); }
+.jh-fp__name, .jh-fp__dir { overflow-wrap: anywhere; }
+.jh-fp__meta { color: var(--c-ink-3); font-size: var(--fs-xs); text-align: right; }
+.jh-fp__acts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.jh-fp__foot { margin-top: var(--sp-3); }

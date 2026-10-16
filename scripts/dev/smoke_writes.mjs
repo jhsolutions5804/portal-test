@@ -385,6 +385,22 @@ await scenario('★ 평가 결과 통보 화면 — 관리자는 목록과 확�
     delete D[key]; }, mkTeam());
   const saved = ctx.me; ctx.me = { uid: 'Z', name: '일반', rank: '사원', admin: false, perms: {}, isGuest: false }; try { const r2 = await mountFresh(evalResult); await sleep(300); check(/사장단·인사팀만 열 수 있습니다/.test(r2.textContent) && !r2.querySelector('[data-rs-open]'), '★ 일반 직원이 평가 결과 통보 주소를 열어도 목록 없이 권한 안내만 나옴'); } finally { ctx.me = saved; }
 });
+// ── PJT 자료 서랍(SharePoint 파일 패널): 실제 연결 함수 attachFiles 가 프로젝트 탭에 붙고, 열면 서버 filesAct 를 정확한 값으로 부르며, 읽기만으로는 어떤 저장도 일어나지 않는다
+await scenario('★ PJT 자료 서랍 — 프로젝트 탭에 붙고 filesAct 를 부르며(읽기 전용) 저장은 일어나지 않음', async (check) => {
+  const hashBefore = w.location.hash; try {
+    w.location.hash = '#/pjt/p4ph2/report/2026-07-02'; WR().length = 0; globalThis.__CALLS.length = 0;
+    globalThis.__CALL_REPLY = Object.assign({}, globalThis.__CALL_REPLY, { filesAct: () => ({ ok: true, configured: true, mapped: true, path: [], folderUrl: 'https://x.sharepoint.com/f', truncated: false, items: [{ id: 'd1', name: '02 공정', isFolder: true, size: null, childCount: 3, modified: '', webUrl: 'https://x.sharepoint.com/d1' }, { id: 'f1', name: '견적서.xlsx', isFolder: false, size: 2048, childCount: null, modified: '2026-10-02T01:00:00Z', webUrl: 'https://x.sharepoint.com/f1.xlsx' }] }) });
+    const root = await mountFresh(pjtMod.mountReport, { segs: ['p4ph2', '2026-07-02'], query: {} }); const r2 = pjtMod.attachFiles(root, ctx);
+    check(!!r2 && root.querySelectorAll('.jh-fp').length === 1 && root.querySelector('aside').hidden === true && globalThis.__CALLS.filter((c) => c.name === 'filesAct').length === 0, '관리자 계정으로 프로젝트 공사일보 탭에 서랍이 붙고, 열기 전에는 서버를 부르지 않아야 함');
+    root.querySelector('[data-fp="toggle"]').click(); await sleep(120); const fc = globalThis.__CALLS.filter((c) => c.name === 'filesAct');
+    check(fc.length === 1 && JSON.stringify(fc[0].data) === JSON.stringify({ action: 'list', pjtId: 'p4ph2', path: '' }), '열면 filesAct 를 {action:list, pjtId:p4ph2, path:""} 로 한 번 불러야 함: ' + JSON.stringify(fc.map((c) => c.data)));
+    check(root.querySelectorAll('.jh-fp__row').length === 2 && /ms-excel:ofe/.test(root.querySelector('aside').innerHTML) && /SharePoint에서 폴더 열기/.test(root.querySelector('aside').textContent), '받은 목록(폴더 1·파일 1)이 그려지고 엑셀 파일에 앱에서 열기가 있어야 함');
+    root.querySelector('[data-fp-open="0"]').click(); await sleep(120); const fc2 = globalThis.__CALLS.filter((c) => c.name === 'filesAct'); check(fc2.length === 2 && fc2[1].data.path === '02 공정', '폴더를 누르면 하위 경로로 다시 요청해야 함');
+    check(WR().length === 0, '★ 서랍을 열고 폴더를 오가는 동안 저장·삭제가 한 건도 일어나지 않아야 함(' + WR().length + '건)');
+    const prevMe = ctx.me; ctx.me = { uid: 'Z', name: '참여자', rank: '사원', admin: false, perms: {}, isGuest: false }; try { const r3 = await mountFresh(pjtMod.mountReport, { segs: ['p4ph2', '2026-07-02'], query: {} }); check(pjtMod.attachFiles(r3, ctx) === null && !r3.querySelector('.jh-fp'), '★ PJT 권한이 없는 계정(참여자만)에게는 서랍이 붙지 않아야 함'); } finally { ctx.me = prevMe; }
+    w.location.hash = '#/pjt/home'; const r4 = await mountFresh(pjtMod.mountReport, { segs: [], query: {} }); check(pjtMod.attachFiles(r4, ctx) === null && !r4.querySelector('.jh-fp'), '프로젝트가 아닌 주소(전체 홈)에는 서랍이 붙지 않아야 함');
+  } finally { w.location.hash = hashBefore || ''; }
+});
 await scenario('인사평가(인사 모듈) — 분리 후: 개별 기록(호봉 입력)은 그대로이고 정기·수시평가 탭은 없음', async (check) => {
   const root = await mountFresh(hrMod.mountEvals); check(!!root.querySelector('[data-e-step="w1"]'), '인사 모듈의 인사평가는 기존 개별 기록(호봉 입력칸)이어야 함');
   check(!root.querySelector('[data-ec-tab]') && !root.querySelector('[data-ec-open]') && !root.querySelector('[data-ad-open]'), '정기·수시평가 운영 탭·버튼이 인사 모듈에 없어야 함(평가 메뉴로 분리됨)');
