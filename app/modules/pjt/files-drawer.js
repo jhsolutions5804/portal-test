@@ -1,8 +1,8 @@
-/* PJT 자료 서랍 — SharePoint 파일 패널(1단계: 읽기 전용 폴더 목록 + 웹/앱에서 열기). 서버 함수 filesAct(portal-functions)가 Graph 로 읽어 준 목록만 그린다.
- *  · 평소에는 접혀 있고 오른쪽 "자료" 탭을 누르면 열린다(1500px 이상에서는 본문이 비켜 고정 열처럼, 좁으면 덮는 서랍). 900px 미만(모바일)에서는 쓰지 않는다(CSS).
- *  · PJT 탭마다 따로 마운트되므로 공통 훅(pjt/index.js attachFiles)으로 붙인다 — 프로젝트 주소(#/pjt/<프로젝트>/<탭>)일 때만 붙고, 다른 프로젝트·다른 메뉴로 가면 스스로 정리한다.
+/* PJT 자료 패널 — SharePoint 파일 패널(1단계: 읽기 전용 폴더 목록 + 웹/앱에서 열기). 서버 함수 filesAct(portal-functions)가 Graph 로 읽어 준 목록만 그린다.
+ *  · 셸(core/shell.js)의 오른쪽 도킹 영역에 고정되고, 상단 바의 📁 버튼으로 숨기고 보인다(선택은 localStorage 에 기억). 1500px 이상에서는 본문이 비켜 고정 열처럼, 좁으면 위에 덮는다. 900px 미만(모바일)에서는 쓰지 않는다.
+ *  · 화면(작업 탭)에 붙이지 않는다: 작업 탭은 화면을 지우지 않고 숨겼다 다시 보여 주므로 화면 안에 붙은 패널은 다시 붙지 않아 사라졌다. 이 모듈이 hashchange 를 직접 듣고 프로젝트 주소(#/pjt/<프로젝트>/<탭>)일 때만 켠다.
  *  · 이 파일은 Firebase 를 가져오지 않는다(서버 호출은 deps.callFiles 로 받음 — 시험 가능). 서버가 준 값은 모두 이스케이프하고, 웹/앱 열기 주소는 https 일 때만 쓴다. */
-import { esc } from '../../core/ui.js?v=20261016d';
+import { esc } from '../../core/ui.js?v=20261016e';
 
 const TABS = ['home', 'schedule', 'progress', 'attend', 'report', 'settings'];
 const RESERVED = TABS.concat(['ended', 'roster']);
@@ -43,33 +43,42 @@ function bodyHtml(st) {
   }
 }
 export function drawerHtml(st) {
-  return '<div class="jh-fp__head"><strong>📁 PJT 자료</strong><span class="jh-fp__headbtns"><button type="button" class="jh-btn" data-variant="secondary" data-fp="refresh" aria-label="새로고침">↻</button><button type="button" class="jh-btn" data-variant="secondary" data-fp="close" aria-label="닫기">✕</button></span></div><div class="jh-fp__body">' + bodyHtml(st) + '</div>';
+  return '<div class="jh-fp__head"><strong>📁 PJT 자료</strong><span class="jh-fp__headbtns"><button type="button" class="jh-btn" data-variant="secondary" data-fp="refresh" aria-label="새로고침">↻</button><button type="button" class="jh-btn" data-variant="secondary" data-fp="close" aria-label="패널 숨기기" title="패널 숨기기">»</button></span></div><div class="jh-fp__body">' + bodyHtml(st) + '</div>';
 }
 /** 오류 문구: 서버가 한글로 준 메시지(권한 없음·설정 확인 등)는 그대로, SDK 가 만든 일반 코드(함수가 아직 배포되지 않았거나 닿지 않음 등)는 실제 상황에 맞는 안내로 바꾼다 */
 const errText = (e) => { const m = e && e.message ? String(e.message) : ''; if (/[가-힣]/.test(m)) return m.slice(0, 200); const code = String((e && e.code) || '').replace(/^functions\//, ''); if (code === 'unauthenticated') return '로그인이 만료됐습니다. 다시 로그인해 주세요.'; return '서버의 SharePoint 연결 기능에 닿지 못했습니다(아직 배포되지 않았거나 일시적인 문제입니다). 관리자에게 알려 주세요.'; };
 
-/** 서랍을 root(PJT 탭 본문)에 붙인다. 프로젝트 화면이 아니거나 PJT 권한이 없으면 붙이지 않고 null.
- *  같은 프로젝트에서 다시 부르면(탭 이동) 새로 만들지 않고 상태(열림·폴더 경로)를 유지한다. deps.callFiles(payload) → 서버 filesAct 결과 */
-export function attachFilesDrawer(root, ctx, deps) {
-  const call = deps && deps.callFiles; if (typeof call !== 'function' || !root) return null;
-  const doc = root.ownerDocument, win = doc.defaultView; const me = (ctx && ctx.me) || {}; const proj = projectKeyFromHash(win.location.hash); const allowed = !!(me.admin || (me.perms && me.perms.pjt));
-  const prev = root.__filesDrawer; if (prev && !prev.disposed && prev.proj === proj && allowed) { prev.ensure(); return prev; } if (prev) prev.dispose(); if (!proj || !allowed) return null;
-  const st = { proj, open: false, status: 'idle', path: [], items: [], folderUrl: '', truncated: false, error: '' }; let seq = 0, disposed = false;
-  const el = doc.createElement('div'); el.className = 'jh-fp'; el.innerHTML = '<button type="button" class="jh-fp__tab" data-fp="toggle" aria-expanded="false" aria-controls="jh-fp-drawer">📁 자료</button><aside class="jh-fp__drawer" id="jh-fp-drawer" role="complementary" aria-label="PJT 자료" hidden></aside>';
-  const tab = el.querySelector('[data-fp="toggle"]'), drawer = el.querySelector('aside');
-  const render = () => { drawer.innerHTML = drawerHtml(st); drawer.hidden = !st.open; tab.setAttribute('aria-expanded', String(st.open)); if (st.open) el.setAttribute('data-open', ''); else el.removeAttribute('data-open'); doc.body.classList.toggle('jh-files-open', st.open); root.classList.toggle('jh-fp-host', st.open); };   // jh-fp-host: 서랍이 붙은 본문 컨테이너를 줄여 넓은 화면에서 서랍과 겹치지 않게(CSS)
+/** 셸 도킹 패널을 설치한다. host = { el(우측 패널 자리), toggle(상단 바 버튼), app(.jh-app) } — core/shell.js 의 renderShell 이 돌려준 dock. 돌려주는 객체의 dispose() 로 정리(다시 로그인할 때).
+ *  PJT 권한자·관리자만 보이고, 프로젝트 주소일 때만 버튼이 나타난다. 열림/숨김은 사용자가 정한 값을 기억하고(없으면 1500px 이상에서 열림), 900px 미만에서는 모두 숨긴다. deps.callFiles(payload) → 서버 filesAct 결과 */
+const PREF_KEY = 'jh.filesDock.open';
+export function installFilesDock(host, me, deps) {
+  const call = deps && deps.callFiles; if (typeof call !== 'function' || !host || !host.el || !host.toggle || !host.app) return null;
+  const doc = host.el.ownerDocument, win = doc.defaultView; const m = me || {}; const allowed = !!(m.admin || (m.perms && m.perms.pjt));
+  const width = () => (deps.width ? deps.width() : win.innerWidth); const store = deps.storage || (() => { try { return win.localStorage; } catch (e) { return null; } })();
+  const readPref = () => { try { const v = store && store.getItem(PREF_KEY); return v === '1' ? true : v === '0' ? false : null; } catch (e) { return null; } };
+  const savePref = (v) => { try { if (store) store.setItem(PREF_KEY, v ? '1' : '0'); } catch (e) { /* 저장 못 해도 이번 화면에서는 동작 */ } };
+  let pref = readPref(), seq = 0, disposed = false; const st = { proj: '', open: false, status: 'idle', path: [], items: [], folderUrl: '', truncated: false, error: '' };
+  const render = () => { host.el.innerHTML = drawerHtml(st); };
   const apply = (r) => { if (!r || r.ok !== true) { st.status = 'error'; st.error = '불러오지 못했습니다.'; return; } if (r.configured === false) st.status = 'notConfigured'; else if (r.mapped === false) st.status = 'unmapped'; else if (r.missing) st.status = 'missing'; else { st.status = 'ok'; st.items = Array.isArray(r.items) ? r.items : []; st.folderUrl = typeof r.folderUrl === 'string' ? r.folderUrl : ''; st.truncated = !!r.truncated; } };
-  async function load() { const my = ++seq; st.status = 'loading'; st.error = ''; render(); try { const r = await call({ action: 'list', pjtId: proj, path: st.path.join('/') }); if (my !== seq || disposed) return; apply(r); } catch (e) { if (my !== seq || disposed) return; st.status = 'error'; st.error = errText(e); } render(); }
-  function setOpen(v) { st.open = !!v; if (st.open && st.status === 'idle') load(); else render(); const f = st.open ? drawer.querySelector('[data-fp="close"]') : tab; if (f && f.focus) f.focus(); }
-  el.addEventListener('click', (ev) => { const t = ev.target; if (!t || !t.closest) return; const b = t.closest('[data-fp],[data-fp-open],[data-fp-crumb]'); if (!b || !el.contains(b)) return;
+  async function load() { const my = ++seq; st.status = 'loading'; st.error = ''; render(); try { const r = await call({ action: 'list', pjtId: st.proj, path: st.path.join('/') }); if (my !== seq || disposed) return; apply(r); } catch (e) { if (my !== seq || disposed) return; st.status = 'error'; st.error = errText(e); } render(); }
+  const off = () => { host.toggle.hidden = true; host.el.hidden = true; host.app.removeAttribute('data-dock-open'); doc.body.classList.remove('jh-files-open'); };
+  function paint() { host.toggle.setAttribute('aria-pressed', String(st.open)); host.el.hidden = !st.open; if (st.open) { host.app.setAttribute('data-dock-open', ''); doc.body.classList.add('jh-files-open'); if (st.status === 'idle') load(); else render(); } else { host.app.removeAttribute('data-dock-open'); doc.body.classList.remove('jh-files-open'); } }
+  /** 주소·폭·권한을 보고 버튼과 패널의 보임/숨김을 맞춘다 — 주소가 바뀔 때마다(화면이 다시 만들어지든 아니든) 부른다 */
+  function sync() {
+    if (disposed) return; const proj = allowed && width() >= 900 ? projectKeyFromHash(win.location.hash) : '';
+    if (!proj) { off(); return; }   // 프로젝트 화면이 아님: 숨기기만 한다(상태는 그대로 — 같은 프로젝트로 돌아오면 이어서 쓴다)
+    host.toggle.hidden = false;
+    if (proj !== st.proj) { st.proj = proj; st.path = []; st.items = []; st.status = 'idle'; st.folderUrl = ''; st.truncated = false; st.error = ''; seq++; }   // 다른 프로젝트: 맨 위 폴더부터, 진행 중이던 응답은 무효
+    st.open = pref === null ? width() >= 1500 : pref; paint();
+  }
+  const setOpen = (v) => { pref = !!v; savePref(pref); sync(); const f = pref ? host.el.querySelector('[data-fp="close"]') : host.toggle; if (f && f.focus) f.focus(); };
+  const onToggle = () => setOpen(!st.open);
+  const onPanel = (ev) => { const t = ev.target; if (!t || !t.closest) return; const b = t.closest('[data-fp],[data-fp-open],[data-fp-crumb]'); if (!b || !host.el.contains(b)) return;
     if (b.hasAttribute('data-fp-open')) { const it = st.items[Number(b.getAttribute('data-fp-open'))]; if (it && it.isFolder) { st.path = st.path.concat(it.name); load(); } return; }
     if (b.hasAttribute('data-fp-crumb')) { const n = Number(b.getAttribute('data-fp-crumb')); if (n >= 0 && n <= st.path.length) { st.path = st.path.slice(0, n); load(); } return; }
-    const a = b.getAttribute('data-fp'); if (a === 'toggle') setOpen(!st.open); else if (a === 'close') setOpen(false); else if (a === 'refresh') load(); });
-  el.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && st.open) setOpen(false); });
-  root.appendChild(el); render();
-  const mo = new win.MutationObserver(() => { if (disposed || root.contains(el)) return; if (projectKeyFromHash(win.location.hash) === proj) root.appendChild(el); else dispose(); });   // 탭이 본문을 새로 그리면 다시 붙이고, 다른 화면이면 정리
-  mo.observe(root, { childList: true });
-  const onHash = () => { if (projectKeyFromHash(win.location.hash) !== proj) dispose(); }; win.addEventListener('hashchange', onHash);
-  function dispose() { if (disposed) return; disposed = true; mo.disconnect(); win.removeEventListener('hashchange', onHash); if (el.parentNode) el.parentNode.removeChild(el); doc.body.classList.remove('jh-files-open'); root.classList.remove('jh-fp-host'); if (root.__filesDrawer === api) root.__filesDrawer = null; }
-  const api = { proj, el, st, setOpen, load, dispose, ensure() { if (!disposed && !root.contains(el)) root.appendChild(el); }, get disposed() { return disposed; } }; root.__filesDrawer = api; return api;
+    const a = b.getAttribute('data-fp'); if (a === 'close') setOpen(false); else if (a === 'refresh') load(); };
+  const onKey = (ev) => { if (ev.key === 'Escape' && st.open) setOpen(false); };
+  host.toggle.addEventListener('click', onToggle); host.el.addEventListener('click', onPanel); host.el.addEventListener('keydown', onKey); win.addEventListener('hashchange', sync); win.addEventListener('resize', sync);
+  function dispose() { if (disposed) return; disposed = true; host.toggle.removeEventListener('click', onToggle); host.el.removeEventListener('click', onPanel); host.el.removeEventListener('keydown', onKey); win.removeEventListener('hashchange', sync); win.removeEventListener('resize', sync); off(); host.el.innerHTML = ''; }
+  sync(); return { st, sync, setOpen, dispose };
 }

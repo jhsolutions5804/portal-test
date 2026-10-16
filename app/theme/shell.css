@@ -122,3 +122,26 @@
 .jh-widget[data-widget="edoc/todo"] .jh-todo { padding: var(--sp-3); min-height: 0; }
 .jh-widget[data-widget="edoc/todo"] .jh-todo__hint { display: none; }
 }
+
+/* 오른쪽 도킹 영역(보조 패널: PJT 자료 등) — 셸에 고정되어 화면(작업 탭)이 다시 그려져도 사라지지 않는다. 상단 바의 📁 버튼(.jh-dockbtn)으로 숨기고 보인다. 모바일(900px 미만)에서는 쓰지 않는다. */
+.jh-dockbtn { display: none; }
+.jh-dock { display: none; }
+@media (min-width: 900px) {
+  .jh-dockbtn:not([hidden]) { display: inline-grid; place-items: center; width: var(--u-36); height: var(--u-36); border: var(--u-1) solid var(--c-line); border-radius: var(--radius-sm); background: var(--c-surface); color: var(--c-ink-2); font-size: var(--fs-md); cursor: pointer; }
+  .jh-dockbtn[aria-pressed="true"] { background: var(--c-primary-weak); border-color: var(--c-primary); color: var(--c-primary); }
+  .jh-dock:not([hidden]) { display: flex; flex-direction: column; position: fixed; top: 0; right: 0; bottom: 0; width: 26rem; z-index: var(--z-actionbar); background: var(--c-surface); color: var(--c-ink); border-left: var(--u-1) solid var(--c-line-strong); }
+}
+@media (min-width: 1500px) { .jh-app[data-dock-open] .jh-body { margin-right: 26rem; } }   /* 넓은 화면: 열려 있으면 본문이 비켜 고정 열처럼(좁으면 위에 덮음) */
+
+/* 맨 왼쪽 사이드바: 마우스를 올리지 않으면 아이콘만(좁게), 올리거나 키보드로 들어가면 펼쳐져 메뉴 이름이 보인다. 본문 폭은 접힌 폭 기준으로 고정해 펼쳐질 때 본문이 밀리지 않고 위에 겹쳐 뜬다. 터치 기기·좁은 화면에서는 적용하지 않는다. */
+.jh-sidebar__brand .jh-brand__short { display: none; }
+@media (min-width: 900px) and (hover: hover) and (pointer: fine) {
+  .jh-app { grid-template-columns: var(--u-64) minmax(0, 1fr); }
+  .jh-sidebar { width: var(--u-64); justify-self: start; z-index: var(--z-actionbar); transition: width .16s ease .06s; }
+  .jh-sidebar:is(:hover, :focus-within) { width: var(--u-220); }
+  .jh-sidebar:not(:hover):not(:focus-within) { overflow: hidden; padding-left: var(--sp-2); padding-right: var(--sp-2); }
+  .jh-sidebar:not(:hover):not(:focus-within) .jh-nav__item { justify-content: center; gap: 0; padding-left: 0; padding-right: 0; }
+  .jh-sidebar:not(:hover):not(:focus-within) .jh-sidebar__brand { justify-content: center; padding-left: 0; padding-right: 0; }
+  .jh-sidebar:not(:hover):not(:focus-within) :is(.jh-nav__label, .jh-userchip, .jh-sidebar__foot > .jh-btn, .jh-brand__full, .jh-sidebar__brand .jh-chip) { display: none; }
+  .jh-sidebar:not(:hover):not(:focus-within) .jh-brand__short { display: inline; }
+}

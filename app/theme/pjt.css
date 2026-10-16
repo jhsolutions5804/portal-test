@@ -457,16 +457,7 @@
 .jh-pjt__paper { max-width: 52rem; width: 100%; margin: 0 auto; padding: var(--sp-6); border: var(--u-1) solid var(--c-line-strong); box-shadow: 0 var(--u-4) var(--u-16) var(--c-overlay); }
 
 
-/* PJT 자료 서랍(SharePoint 파일 패널) — 평소 접힘, 오른쪽 "자료" 탭으로 열린다. 모바일(900px 미만)에서는 쓰지 않는다. 1500px 이상에서는 열렸을 때 본문이 비켜 고정 열처럼 보인다. */
-.jh-fp { display: none; }
-@media (min-width: 900px) {
-  .jh-fp { display: block; }
-  .jh-fp__tab { position: fixed; right: 0; top: 40%; z-index: var(--z-actionbar); writing-mode: vertical-rl; padding: var(--sp-3) var(--sp-2); background: var(--c-primary); color: var(--c-primary-ink); border: var(--u-1) solid var(--c-primary); border-right: 0; border-radius: var(--radius) 0 0 var(--radius); cursor: pointer; font-size: var(--fs-sm); }
-  .jh-fp[data-open] .jh-fp__tab { right: 26rem; }
-  .jh-fp__drawer { position: fixed; top: var(--u-64); right: 0; bottom: 0; width: 26rem; z-index: var(--z-actionbar); display: flex; flex-direction: column; background: var(--c-surface); color: var(--c-ink); border-left: var(--u-1) solid var(--c-line-strong); }
-  .jh-fp__drawer[hidden] { display: none; }
-}
-@media (min-width: 1500px) { .jh-fp-host { margin-right: 26.5rem; } }   /* 서랍이 붙은 본문 컨테이너 자체를 줄인다(스크롤바도 서랍 밖에 보임) */
+/* PJT 자료 패널(SharePoint 파일 패널) 안쪽 — 틀(도킹 자리)은 셸 CSS(.jh-dock). */
 .jh-fp__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); border-bottom: var(--u-1) solid var(--c-line); }
 .jh-fp__headbtns { display: inline-flex; gap: var(--sp-2); }
 .jh-fp__body { flex: 1; overflow: auto; padding: var(--sp-3) var(--sp-4); }

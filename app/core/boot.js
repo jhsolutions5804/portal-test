@@ -1,21 +1,21 @@
-import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261016d';
-import { register, visibleFor, get } from './registry.js?v=20261016d';
-import { parseHash, onChange } from './router.js?v=20261016d';
-import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261016d';
-import { initTheme } from './theme.js?v=20261016d';
-import { checkForUpdate } from './update.js?v=20261016d';
-import { MODULES } from '../modules/index.js?v=20261016d';
-import { mountPlatformHome } from './home.js?v=20261016d';
-import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261016d';
-import { ensureTime24 } from '../shared/time24.js?v=20261016d';
-import { installRecent, describeNow } from './recent.js?v=20261016d';
-import { workTabs, resumeHash } from './worktabs.js?v=20261016d';
+import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261016e';
+import { register, visibleFor, get } from './registry.js?v=20261016e';
+import { parseHash, onChange } from './router.js?v=20261016e';
+import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261016e';
+import { initTheme } from './theme.js?v=20261016e';
+import { checkForUpdate } from './update.js?v=20261016e';
+import { MODULES, installShellDocks } from '../modules/index.js?v=20261016e';
+import { mountPlatformHome } from './home.js?v=20261016e';
+import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261016e';
+import { ensureTime24 } from '../shared/time24.js?v=20261016e';
+import { installRecent, describeNow } from './recent.js?v=20261016e';
+import { workTabs, resumeHash } from './worktabs.js?v=20261016e';
 
 initTheme();   // 이 기기에 저장된 화면 모드(자동·라이트·다크) 적용
 MODULES.forEach((m) => register(Object.assign({}, m.manifest, { mount: m.mount })));
 
 const root = document.getElementById('jh-root');
-let me = null; let shell = null; let mods = []; let recent = null;   // recent: 화면 우측 floating 최근 사용 메뉴
+let me = null; let shell = null; let mods = []; let recent = null; let docsOff = null;   // recent: 화면 우측 floating 최근 사용 메뉴
 const mainViews = new Map(); let curView = null; let labelTimers = [];   // 작업 탭: 화면별 본문(전자결재·재무회계 등)을 살려 둔다. 옛 모듈 틀(영업기획·인사총무·PJT)은 frame.js 가 같은 방식으로
 const isDesktop = () => !!(window.matchMedia && window.matchMedia('(min-width: 900px)').matches);   // 폰은 하단 메뉴가 있고 새로고침 수단이 없어 지금까지처럼 매번 새로 그린다
 /** 살려 두는 화면의 키: 화면이 아닌 값(문서 번호 등)은 넣지 않는다 — 전자결재는 결재함(목록·상세)·새 문서·홈·관리 */
@@ -67,7 +67,7 @@ ensureTime24();   // 시각 입력칸을 24시간(HH:MM) 입력으로(루트 tim
 let answered = false;   // 인증 응답이 한 번이라도 왔는가 — 6초 넘게 없으면 로딩 화면 대신 로그인 화면(응답이 늦게 오면 그때 이어서 처리)
 setTimeout(() => { if (!answered) renderLogin(root, { onSubmit: doLogin, message: REASONS.slow }); }, 6000);
 watchMe((user, reason) => {
-  answered = true; me = user; shell = null; recent = null; workTabs.reset(); mainViews.clear(); curView = null; const oldRecent = document.getElementById('jh-recent'); if (oldRecent) oldRecent.remove();
+  answered = true; me = user; shell = null; recent = null; if (docsOff) { docsOff(); docsOff = null; } workTabs.reset(); mainViews.clear(); curView = null; const oldRecent = document.getElementById('jh-recent'); if (oldRecent) oldRecent.remove();
   if (!me) {
     stopIdle(); let msg = REASONS[reason] || '';
     try { const f = sessionStorage.getItem(OUT_FLAG); if (f) { msg = durationText(+f > 0 ? +f : IDLE_LIMIT_MS) + ' 동안 활동이 없어 자동 로그아웃되었습니다.'; sessionStorage.removeItem(OUT_FLAG); } } catch (e) { /* 표시를 못 읽어도 로그인 화면은 보인다 */ }
@@ -75,7 +75,7 @@ watchMe((user, reason) => {
   }
   mods = visibleFor(me);
   if (!mods.length) { renderDenied(root, '이 계정에는 사용할 수 있는 모듈이 없습니다.', logout); return; }
-  shell = renderShell(root, me, mods, { onLogout: logout }); recent = installRecent(me); workTabs.attach(shell.tabsEl, { navigate: (h) => { location.hash = h; } }); shell.setResume((m) => (isDesktop() ? resumeHash(workTabs.list(), workTabs.currentKey(), m) : null));   // 사이드바로 돌아오면 직전에 작업하던 화면으로(데스크톱)
+  shell = renderShell(root, me, mods, { onLogout: logout }); recent = installRecent(me); docsOff = installShellDocks(shell, me); workTabs.attach(shell.tabsEl, { navigate: (h) => { location.hash = h; } }); shell.setResume((m) => (isDesktop() ? resumeHash(workTabs.list(), workTabs.currentKey(), m) : null));   // 사이드바로 돌아오면 직전에 작업하던 화면으로(데스크톱)
   startIdle({ onExpire: logout });   // 1시간 무동작 자동 로그아웃(옛 모듈 화면 안의 활동도 센다)
   route();
 });

@@ -1,8 +1,8 @@
-import { esc } from './ui.js?v=20261016d';
-import { openSettings } from './settings.js?v=20261016d';
-import { openProfile } from './profile.js?v=20261016d';
-import { phoneTabs } from './nav.js?v=20261016d';
-import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261016d';
+import { esc } from './ui.js?v=20261016e';
+import { openSettings } from './settings.js?v=20261016e';
+import { openProfile } from './profile.js?v=20261016e';
+import { phoneTabs } from './nav.js?v=20261016e';
+import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261016e';
 
 export function renderLogin(root, { onSubmit, message }) {
   root.innerHTML =
@@ -49,7 +49,7 @@ export function renderShell(root, me, mods, { onLogout }) {
   root.innerHTML =
     '<div class="jh-app">' +
       '<aside class="jh-sidebar">' +
-        '<div class="jh-sidebar__brand">JH Portal' + (IS_TEST ? ' <span class="jh-chip" data-tone="warn">테섭</span>' : '') + '</div>' +
+        '<div class="jh-sidebar__brand"><span class="jh-brand__short" aria-hidden="true">JH</span><span class="jh-brand__full">JH Portal</span>' + (IS_TEST ? ' <span class="jh-chip" data-tone="warn">테섭</span>' : '') + '</div>' +
         '<nav class="jh-nav" aria-label="모듈">' + homeItem + items + '</nav>' +
         '<div class="jh-sidebar__foot">' +
           '<a class="jh-nav__item" href="' + LEGACY_PORTAL_URL + '"><span class="jh-nav__icon" aria-hidden="true">←</span><span class="jh-nav__label">기존 포털</span></a>' +
@@ -60,12 +60,13 @@ export function renderShell(root, me, mods, { onLogout }) {
         '</div>' +
       '</aside>' +
       '<div class="jh-body">' +
-        '<header class="jh-topbar"><h1 class="jh-topbar__title"><a id="jh-title" href="#/home"></a></h1><div class="jh-topbar__tools"><div class="jh-userchip">' + who + '</div><button type="button" class="jh-iconbtn" data-open-profile aria-label="내 정보">👤</button><button type="button" class="jh-iconbtn" data-open-settings aria-label="화면 설정">⚙</button></div></header>' +
+        '<header class="jh-topbar"><h1 class="jh-topbar__title"><a id="jh-title" href="#/home"></a></h1><div class="jh-topbar__tools"><button type="button" class="jh-dockbtn" id="jh-dock-toggle" aria-controls="jh-dock" aria-pressed="false" aria-label="자료 패널 보이기/숨기기" title="자료 패널" hidden>📁</button><div class="jh-userchip">' + who + '</div><button type="button" class="jh-iconbtn" data-open-profile aria-label="내 정보">👤</button><button type="button" class="jh-iconbtn" data-open-settings aria-label="화면 설정">⚙</button></div></header>' +
         '<main class="jh-main" id="jh-main"></main>' +
         '<div class="jh-keep" id="jh-keep" hidden></div>' +
         '<nav class="jh-worktabs" id="jh-worktabs" aria-label="작업 탭" hidden></nav>' +
       '</div>' +
-      '<nav class="jh-tabbar" aria-label="하단 메뉴">' + tabItems + '</nav>' +
+      '<aside class="jh-dock" id="jh-dock" aria-label="자료 패널" hidden></aside>' +
+  '<nav class="jh-tabbar" aria-label="하단 메뉴">' + tabItems + '</nav>' +
       '<a class="jh-fab" id="jh-fab" hidden></a>' +
       '<div class="jh-sheet" id="jh-sheet" role="dialog" aria-modal="true" aria-label="더보기" hidden><div class="jh-sheet__backdrop" data-sheet-close></div><div class="jh-sheet__panel">' +
         moreItems + (moreItems ? '<div class="jh-sheet__sep"></div>' : '') +
@@ -97,6 +98,8 @@ export function renderShell(root, me, mods, { onLogout }) {
     /** 하단 작업 탭 바 자리 */
     tabsEl,
     setResume(fn) { resume = fn; },
+  /** 오른쪽 도킹 영역(보조 패널 자리)과 상단 바의 보임/숨김 버튼 — modules/index.js installShellDocks 가 채운다 */
+  dock: { el: root.querySelector('#jh-dock'), toggle: root.querySelector('#jh-dock-toggle'), app: appEl },
     /** 화면별 본문을 새로 만든다(처음 열 때). 일반 본문(main)과 같은 모양(.jh-main) */
     newView(key) { const el = document.createElement('main'); el.className = 'jh-main'; el.setAttribute('data-view', key); el.hidden = true; keepEl.insertAdjacentElement('beforebegin', el); views.set(key, el); return el; },
     /** 이 화면별 본문만 보인다(일반 본문·옛 모듈 층·다른 화면은 숨김) */
