@@ -12,7 +12,7 @@ import { estDocHtml } from './estimate-doc.js?v=20261016j';
 import { sortProjects } from './projects.js?v=20261016j';
 import { linkPlan, donePatch, undonePatch, voidPatch, doneConfirm, undoneConfirm, doneToast, projectBalance, acctMonthInput } from './settlements.js?v=20261016j';
 import { settlementsListHtml, settlementDetailHtml } from './settlements-view.js?v=20261016j';
-import { settleDocPage } from './settlement-doc.js?v=20261016j';
+import { settleDocPage, settleDocTitle } from './settlement-doc.js?v=20261016j';
 import { teamLaborHtml } from './teamlabor-view.js?v=20261016j';
 import { homeHtml } from './home-view.js?v=20261016j';
 import { closingHtml, closingPrintHtml } from './closing-view.js?v=20261016j';
@@ -28,6 +28,7 @@ import { shiftMonth, monthRange, rosterEntry, aggregateMandays, parseTeamRate, r
 import { issueFormHtml, qtyBlocksHtml, totalsHtml, manualRowHtml, mandayRowsHtml, mandayInfoHtml, progressBlocksHtml } from './issue-view.js?v=20261016j';
 import { accumulateDays, applyProgress as applyProgressChecks, setProgressZone, toggleProgressDeposit, setProgressBill } from './progress.js?v=20261016j';
 import { progressProfile, mandaySource, monthDays, sumMandayDays, duplicateSources, applyMandayFetch, setMandayInput, setMandayForPjt, setRateForPjtValue, setMandayBaseRate, newIssueDraft, formatMoneyInput, togglePjt, toggleEst, setQty, setQtyAmount, setSupplyOverride, setVatOverride, resetTotals, buildSettlement, itemSetQty as isItemQty, itemSetPrice as isItemPrice, itemSetAmount as isItemAmount, blankItem as isBlank } from './issue.js?v=20261016j';
+import { docFileName } from '../../shared/doc-filename.js?v=20261016j';
 
 /** 영업기획(플랫폼 기본 모듈): 구포털 기획(gihoek)을 탭 하나씩 새 화면으로 옮기는 중. 관리자 전용 — 데이터는 gihoek_* 컬렉션 그대로.
  *  사이드바는 옛 화면 틀(legacy/frame.js)이 그린다 — 이 모듈은 틀 안의 구역(거래처·협력사)을 그리는 함수만 내보내고 modules/index.js 가 hostNative 로 연결한다. */
@@ -147,7 +148,7 @@ export async function mountEstimates(root, route, ctx) {
   const refreshTotals = () => { const tt = draftTotals(st.draft.items); const sp = body.querySelector('#es-supply'); if (sp && document.activeElement !== sp) sp.value = Math.round(tt.supply).toLocaleString('ko-KR'); const v = body.querySelector('#es-vat'), tot = body.querySelector('#es-total'); if (v) v.textContent = Math.round(tt.vat).toLocaleString('ko-KR') + ' 원'; if (tot) tot.textContent = Math.round(tt.total).toLocaleString('ko-KR') + ' 원'; };
   const refreshRow = (i) => { const it = st.draft.items[i]; const set = (k, v) => { const el = body.querySelector('[data-es-it="' + i + ':' + k + '"]'); if (el) el.value = Math.round(v).toLocaleString('ko-KR'); }; set('price', it.price); set('amount', itemAmt(it)); };
   const drawRows = () => { rows().innerHTML = st.draft.items.map(itemRowHtml).join(''); refreshTotals(); };
-  const printEst = (e) => { const p = st.projects.find((x) => x.id === e.pjtId) || null; const w = window.open('', '_blank'); if (!w) { toast('팝업이 차단되었습니다.'); return; } w.document.write(estDocHtml(e, p)); w.document.close(); };
+  const printEst = (e) => { const p = st.projects.find((x) => x.id === e.pjtId) || null; const w = window.open('', '_blank'); if (!w) { toast('팝업이 차단되었습니다.'); return; } w.document.write(estDocHtml(e, p, { title: docFileName({ group: 'project', project: p && (p.code || p.name), kind: '견적서', no: e.no, party: e.client && e.client.company, date: e.date }) })); w.document.close(); };
   root.onclick = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
     const pg = t.closest('[data-es-page]'); if (pg) { st.page = Number(pg.getAttribute('data-es-page').split(':')[1]); remember(0); paint(); return; }
@@ -270,7 +271,7 @@ async function mountSettlementsView(root, route, ctx, kind) {
     if (act === 'team') { location.hash = '#/plan/teamlabor'; return; }
     if (act === 'back') { goBack(); return; }
     if (!cur) return;
-    if (act === 'print') { const w = window.open('', '_blank'); if (!w) { toast('팝업이 차단되었습니다.'); return; } w.document.write(settleDocPage(cur, st.projects)); w.document.close(); return; }
+    if (act === 'print') { const w = window.open('', '_blank'); if (!w) { toast('팝업이 차단되었습니다.'); return; } w.document.write(settleDocPage(cur, st.projects, { title: settleDocTitle(cur, st.projects) })); w.document.close(); return; }
     if (act === 'link-open') { st.linkOpen = true; st.linkSel = {}; paint(); return; }
     if (act === 'link-close') { st.linkOpen = false; paint(); return; }
     if (act === 'link-save') { const plan = linkPlan(cur, Object.assign({}, cur.perEstLines || {}, st.linkSel)); await patch(cur.id, plan, '견적 연결을 저장했습니다.', () => goDetail(cur.id, false)); return; }

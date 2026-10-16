@@ -1,5 +1,6 @@
 import { esc } from '../../core/ui.js?v=20261016j';
 import { contractTotals, periodDays } from './contracts.js?v=20261016j';
+import { docFileName } from '../../shared/doc-filename.js?v=20261016j';
 const w = (n) => Math.round(Number(n) || 0).toLocaleString('ko-KR');
 const nl = (s) => esc(s).replace(/\n/g, '<br>');
 const dot = (d) => (d ? d.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$1년 $2월 $3일') : '____년 __월 __일');
@@ -9,7 +10,7 @@ export function contractDocPage(c, o) {
   const x = o || {}; const t = contractTotals(c); const d = periodDays(c); const iss = c.issuer || {}, par = c.partner || {};
   const party = (label, p, signedDate) => '<div><b>' + label + '</b>상호: ' + esc(p.company || '') + '<br>사업자등록번호: ' + esc(p.bizno || '') + '<br>주소: ' + esc(p.address || '') + '<br>대표자: ' + esc(p.ceo || '') + ' <span class="stamp">(서명 또는 기명날인)</span><br><span style="color:#666">서명일: ' + dot(signedDate) + '</span></div>';
   const row = (th, td) => '<tr><th>' + th + '</th><td>' + td + '</td></tr>';
-  return '<!doctype html><meta charset="utf-8"><title>' + esc(c.title || '계약서') + ' ' + esc(c.no || '') + '</title><style>' + CSS + '</style>'
+  return '<!doctype html><meta charset="utf-8"><title>' + esc(docFileName({ group: 'project', project: x.projectName, kind: c.kind === 'change' ? '하도급 변경 계약서' : '하도급 계약서', no: c.no, party: c.partner && c.partner.company, date: c.issuedDate || c.consignDate }) || ((c.title || '계약서') + ' ' + (c.no || ''))) + '</title><style>' + CSS + '</style>'
     + '<h1>' + (c.kind === 'change' ? '하도급 변경 계약서' : '하도급 계약서') + '</h1><div class="no">계약번호 ' + esc(c.no || '(발급 전)') + ' · ' + esc(c.title || '') + '</div>'
     + '<p class="lead">원사업자 <b>' + esc(iss.company || '') + '</b>(이하 "갑")와 수급사업자 <b>' + esc(par.company || '') + '</b>(이하 "을")는 아래와 같이 하도급 계약을 체결하고, 이 계약의 성실한 이행을 위하여 서명(또는 기명날인)한 계약서 2부를 작성하여 각각 1부씩 보관한다.</p>'
     + '<h2>제1조 (위탁일 및 위탁 내용)</h2><table class="k">' + row('위탁일', dot(c.consignDate)) + row('공사(용역)명', esc(x.projectName || c.title || '')) + row('위탁 내용', nl(c.scope || '')) + row('공사 장소', esc(c.site || '')) + '</table>'

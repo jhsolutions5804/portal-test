@@ -1,5 +1,6 @@
 /* 영업기획 정산서(대금청구서·지급예정서) 양식 — 구포털 기획의 양식을 그대로 옮겼다(동결). 원본과 같은 결과가 나오는지는 tests/plan-settlement-doc.test.mjs 가 원본 함수(tests/fixtures/gihoek_settle_doc.js.txt)와 대조한다.
  * 원본과 다른 점은 하나뿐: 원본은 입력값을 그대로 HTML 에 넣었는데, 안전하게 모든 입력값(내역·비고·거래처·담당자 등)을 이스케이프한다(일반 글자는 결과가 같다). */
+import { docFileName } from '../../shared/doc-filename.js?v=20261016j';
 const won = (n) => (Math.round(n) || 0).toLocaleString('ko-KR');
 const h = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 export const SET_DOC_CSS = `*{box-sizing:border-box;font-family:'Malgun Gothic',sans-serif}body{margin:0;color:#1a2330;font-size:12px}
@@ -30,7 +31,12 @@ export function settleDocHtml(s, projects) {
   ${s.notes ? `<div style="margin-top:14px;border:1px solid #cfd8e6;border-radius:6px;padding:10px 12px"><div style="font-size:10px;color:#1D5BA6;font-weight:700;margin-bottom:4px;letter-spacing:1px">특이사항</div><div style="font-size:11.5px;white-space:pre-wrap">${h(s.notes)}</div></div>` : ''}
   <div class="stamp">위와 같이 ${s.docType === 'invoice' ? '청구' : '지급 예정 통보'}합니다.<br><br>${h(sd.company || '')}　${sd.ceo ? '대표 ' + h(sd.ceo) + ' (인)' : ''} ${sd.contact ? '<br><span style="font-size:11px;color:#555">담당: ' + h(sd.contact) + (sd.contactTel ? ' &nbsp;' + h(sd.contactTel) : '') + (sd.contactEmail ? ' &nbsp;' + h(sd.contactEmail) : '') + '</span>' : ''}</div>`;
 }
-/** 인쇄 창에 쓰는 전체 페이지(구포털 pvPrint): A4 여백 16mm + 양식 CSS + 본문 + 자동 인쇄 */
-export function settleDocPage(s, projects) {
-  return `<!doctype html><meta charset="utf-8"><title>${s.docType === 'invoice' ? '대금청구서' : '지급예정서'} ${h(s.no)}</title><style>@page{size:A4;margin:16mm}${SET_DOC_CSS}</style>${settleDocHtml(s, projects)}<scr` + `ipt>window.onload=function(){setTimeout(function(){window.print();},250);}</scr` + `ipt>`;
+/** 인쇄 창에 쓰는 전체 페이지(구포털 pvPrint): A4 여백 16mm + 양식 CSS + 본문 + 자동 인쇄. opts.title: PDF 저장 기본 이름(`settleDocTitle` 결과, 없으면 기존 '대금청구서 번호') — 구포털 원본 대조 시험이 지키는 기본 모양은 그대로 */
+/** PDF 저장 기본 이름(대표님 확정 규칙): 프로젝트(공동이면 +로 연결) → 종류 → 번호 → 상대방 → 발행일 */
+export function settleDocTitle(s, projects) {
+  const ids = (s.pjtIds && s.pjtIds.length ? s.pjtIds : [s.pjtId]).filter(Boolean), pr = (projects || []).filter((x) => ids.indexOf(x.id) >= 0);
+  return docFileName({ group: 'project', project: pr.map((x) => x.code || x.name).filter(Boolean).join(' + '), kind: s.docType === 'invoice' ? '대금청구서' : '지급예정서', no: s.no, party: s.recipient && s.recipient.company, date: s.issueDate });
+}
+export function settleDocPage(s, projects, opts) {
+  return `<!doctype html><meta charset="utf-8"><title>${opts && opts.title ? h(opts.title) : (s.docType === 'invoice' ? '대금청구서' : '지급예정서') + ' ' + h(s.no)}</title><style>@page{size:A4;margin:16mm}${SET_DOC_CSS}</style>${settleDocHtml(s, projects)}<scr` + `ipt>window.onload=function(){setTimeout(function(){window.print();},250);}</scr` + `ipt>`;
 }

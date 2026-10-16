@@ -3,11 +3,11 @@
 import { itemAmt, estSupply } from './projects.js?v=20261016j';
 const won = (n) => (Math.round(n) || 0).toLocaleString('ko-KR');
 const h = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-/** 견적서 한 장의 HTML. e: 견적 문서, p: 연결 프로젝트(없으면 null) */
-export function estDocHtml(e, p) {
+/** 견적서 한 장의 HTML. e: 견적 문서, p: 연결 프로젝트(없으면 null), opts.title: PDF 저장 기본 이름(`docFileName` 결과, 없으면 기존 '견적서 번호') */
+export function estDocHtml(e, p, opts) {
   const sup = estSupply(e), vat = Math.round(sup * 0.1), tot = sup + vat; const iss = e.issuer || {}, cl = e.client || {};
   const rows = (e.items || []).map((it, i) => `<tr><td style="text-align:center">${i + 1}</td><td>${h(it.name)}</td><td>${h(it.spec)}</td><td style="text-align:right">${won(it.qty)}</td><td style="text-align:right">${won(it.price)}</td><td style="text-align:right">${won(itemAmt(it))}</td><td>${h(it.remark)}</td></tr>`).join('');
-  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>견적서 ${h(e.no)}</title>
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${opts && opts.title ? h(opts.title) : '견적서 ' + h(e.no)}</title>
   <style>@page{size:A4;margin:16mm}*{box-sizing:border-box;font-family:'Malgun Gothic','맑은 고딕',sans-serif}
   body{margin:0;color:#1a2330;font-size:12px}
   h1{text-align:center;font-size:26px;letter-spacing:14px;margin:0 0 18px;font-weight:800}
