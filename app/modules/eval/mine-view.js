@@ -1,6 +1,6 @@
 /* 내 평가 화면(마크업만) — 폰 우선: 목록 → 작성 → 제출. 한 화면에 한 과제, 큰 버튼, 가로 스크롤 없음. 저장·불러오기는 mine-io.js */
-import { esc } from '../../core/ui.js?v=20261016g';
-import { KINDS, STATUS_TEXT, itemsOf, statusOf, progressOf, canSubmit, MAX_TEXT } from './mine-logic.js?v=20261016g';
+import { esc } from '../../core/ui.js?v=20261016h';
+import { KINDS, STATUS_TEXT, itemsOf, statusOf, progressOf, canSubmit, MAX_TEXT } from './mine-logic.js?v=20261016h';
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const stone = (s) => (s === 'submitted' ? 'accent' : s === 'draft' ? 'warn' : 'muted');
 
