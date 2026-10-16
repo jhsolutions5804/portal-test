@@ -2,7 +2,7 @@
  *  · 셸(core/shell.js)의 오른쪽 도킹 영역에 고정되고, 상단 바의 📁 버튼으로 숨기고 보인다(선택은 localStorage 에 기억). 1500px 이상에서는 본문이 비켜 고정 열처럼, 좁으면 위에 덮는다. 900px 미만(모바일)에서는 쓰지 않는다.
  *  · 화면(작업 탭)에 붙이지 않는다: 작업 탭은 화면을 지우지 않고 숨겼다 다시 보여 주므로 화면 안에 붙은 패널은 다시 붙지 않아 사라졌다. 이 모듈이 hashchange 를 직접 듣고 프로젝트 주소(#/pjt/<프로젝트>/<탭>)일 때만 켠다.
  *  · 이 파일은 Firebase 를 가져오지 않는다(서버 호출은 deps.callFiles 로 받음 — 시험 가능). 서버가 준 값은 모두 이스케이프하고, 웹/앱 열기 주소는 https 일 때만 쓴다. */
-import { esc } from '../../core/ui.js?v=20261016f';
+import { esc } from '../../core/ui.js?v=20261016g';
 
 const TABS = ['home', 'schedule', 'progress', 'attend', 'report', 'settings'];
 const RESERVED = TABS.concat(['ended', 'roster']);
@@ -54,7 +54,7 @@ export function drawerHtml(st) {
   return '<div class="jh-fp__head"><strong>📁 ' + esc(st.title || 'PJT 자료') + '</strong><span class="jh-fp__headbtns"><button type="button" class="jh-btn" data-variant="secondary" data-fp="refresh" aria-label="새로고침">↻</button><button type="button" class="jh-btn" data-variant="secondary" data-fp="close" aria-label="패널 숨기기" title="패널 숨기기">»</button></span></div><div class="jh-fp__body">' + bodyHtml(st) + '</div>';
 }
 /** 오류 문구: 서버가 한글로 준 메시지(권한 없음·설정 확인 등)는 그대로, SDK 가 만든 일반 코드(함수가 아직 배포되지 않았거나 닿지 않음 등)는 실제 상황에 맞는 안내로 바꾼다 */
-const errText = (e) => { const m = e && e.message ? String(e.message) : ''; if (/[가-힣]/.test(m)) return m.slice(0, 200); const code = String((e && e.code) || '').replace(/^functions\//, ''); if (code === 'unauthenticated') return '로그인이 만료됐습니다. 다시 로그인해 주세요.'; return '서버의 SharePoint 연결 기능에 닿지 못했습니다(아직 배포되지 않았거나 일시적인 문제입니다). 관리자에게 알려 주세요.'; };
+const errText = (e) => { const m = e && e.message ? String(e.message) : ''; if (/알 수 없는 요청/.test(m)) return '서버 함수가 아직 최신 버전이 아닙니다(배포 필요). 관리자에게 알려 주세요.'; if (/[가-힣]/.test(m)) return m.slice(0, 200); const code = String((e && e.code) || '').replace(/^functions\//, ''); if (code === 'unauthenticated') return '로그인이 만료됐습니다. 다시 로그인해 주세요.'; return '서버의 SharePoint 연결 기능에 닿지 못했습니다(아직 배포되지 않았거나 일시적인 문제입니다). 관리자에게 알려 주세요.'; };
 
 /** 셸 도킹 패널을 설치한다. host = { el(우측 패널 자리), toggle(상단 바 버튼), app(.jh-app) } — core/shell.js 의 renderShell 이 돌려준 dock. 돌려주는 객체의 dispose() 로 정리(다시 로그인할 때).
  *  PJT 권한자·관리자만 보이고, 프로젝트 주소일 때만 버튼이 나타난다. 열림/숨김은 사용자가 정한 값을 기억하고(없으면 1500px 이상에서 열림), 900px 미만에서는 모두 숨긴다. deps.callFiles(payload) → 서버 filesAct 결과 */

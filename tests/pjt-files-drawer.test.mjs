@@ -79,6 +79,7 @@ const txt = (e) => e.host.el.textContent;
     const n = e.calls.length; await e.go('#/hr/home'); await tick(8); ok(e.calls.length === n + 1 && e.calls[n].moduleId === 'hr' && e.calls[n].path === '', '다른 모듈(인사총무)로 옮기면 그 모듈의 맨 위 폴더를 새로 요청(경로 초기화)');
     await e.go('#/general/leases'); await tick(8); ok(e.calls.length === n + 1, '같은 폴더를 쓰는 총무(general)로 옮기면 인사총무 목록을 그대로 쓰고 다시 요청하지 않음');
     await e.go('#/home'); ok(e.host.toggle.hidden === true && e.host.el.hidden === true, '홈에서는 숨김'); }
+  { const e = mk('#/finance/home', ADMIN, () => { throw Object.assign(new Error('알 수 없는 요청입니다.'), { code: 'functions/invalid-argument' }); }); e.install(); await tick(8); ok(/서버 함수가 아직 최신 버전이 아닙니다/.test(e.host.el.textContent) && !/알 수 없는 요청/.test(e.host.el.textContent), '★ 서버가 옛 버전이라 모듈 폴더 요청을 모를 때 "알 수 없는 요청입니다"가 아니라 "서버가 아직 최신 버전이 아닙니다(배포 필요)"로 안내'); }
   { const run = async (resp) => { const e = mk('#/edoc/home', ADMIN, () => resp); e.install(); await tick(8); return e.host.el.textContent; };
     ok(/이 모듈에 연결된 SharePoint 폴더가 없습니다/.test(await run({ ok: true, configured: true, mapped: false })) && /연결이 아직 설정되지 않았습니다/.test(await run({ ok: true, configured: false })), '모듈 패널의 안내 문구(폴더 미연결은 "이 모듈에 …", 미설정은 공통)'); } }
 const src = fs.readFileSync(new URL('../app/modules/pjt/files-drawer.js', import.meta.url), 'utf8'); ok(!/downloadUrl/.test(src) && !/firebase/.test(src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')), '서랍 코드는 Firebase 를 직접 가져오지 않고(연결은 index.js) 다운로드 임시 주소를 다루지 않음');
