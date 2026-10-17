@@ -249,6 +249,68 @@ await scenario('PJT 메인 홈 3단 — 통합 일정 달력 | 선택한 날 일
   } finally { globalThis.__CALL_REPLY = sav; globalThis.__CALLS.length = 0; try { window.localStorage.removeItem('jh.pjtlog.lastProject'); } catch (e) { /* 무시 */ } }
   check(WR().length === 0, '메인 홈의 이력관리도 Firestore 에 직접 쓰지 않음: ' + JSON.stringify(WR().map((x) => x.op + ' ' + x.path)));
 });
+await scenario('PJT 월간 보고서 탭 — 열면 list·get, 달을 바꾸면 그 달 get(늦게 온 이전 달 응답은 무시), 만들기는 generate, 직접 입력 저장은 saveNotes(금액은 서버 미호출), 인쇄는 파일 이름 규칙', async (check) => {
+  const MR = () => globalThis.__CALLS.filter((c) => c.name === 'monthlyReportAct'); const sav = globalThis.__CALL_REPLY;
+  const tl = (o) => Object.assign({ start: { installed: 0, inspected: 0, cells: 0, byStage: { 반입: 0, 입고검사: 0 }, total: 183, installRate: 0, inspectRate: 0 }, end: { installed: 86, inspected: 67, cells: 703, byStage: { 반입: 82, 입고검사: 82 }, total: 183, installRate: 86 / 183, inspectRate: 67 / 86 }, delta: { installed: 45, inspected: 67, cells: 305, byStage: { 반입: 27, 입고검사: 31 } }, touched: true, checkDays: 17 }, o || {});
+  const REPORT = (ym, o) => Object.assign({ ym, pjtId: 'p4ph2', pjtLabel: 'P4 Ph2 (FAB)', partial: false, version: 1, generatedMs: 1, generatedByName: '팀장', source: {}, notes: { remarks: '', nextPlan: '', byName: '', atMs: 0 }, data: { ym, progress: tl(), manday: { manday: 195, mandayDays: 19, attendDays: 19, avgHeads: 7.5, workers: 12 }, reports: { from: ym + '-01', to: ym + '-28', span: 28, written: 5, missing: 23, attendMissing: 14, remarks: [{ date: ym + '-03', text: '자재 반입 지연', author: '작성자' }], nextPlan: { text: '4층 배관 검사', from: ym + '-28' }, total: 5 }, yield: { status: 'ok', installed: 45, manday: 195, value: 0.23, per100: 23.1, installRate: 0.47 } } }, o || {});
+  const THIS = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 7); const PREV = (() => { const [y, m] = THIS.split('-').map(Number); return m === 1 ? (y - 1) + '-12' : y + '-' + String(m - 1).padStart(2, '0'); })();
+  let made = [{ ym: PREV, version: 1, partial: false, yieldStatus: 'ok' }]; const store = { [PREV]: REPORT(PREV) }; let slowPrev = false;
+  const reply = (d) => {
+    if (d.action === 'list') return { ok: true, months: made, canEdit: true };
+    if (d.action === 'get') { const r = store[d.ym]; if (slowPrev && d.ym === PREV) return new Promise((res) => setTimeout(() => res({ ok: true, exists: !!r, report: r, canEdit: true }), 220)); return { ok: true, exists: !!r, report: r, canEdit: true }; }
+    if (d.action === 'generate') { store[d.ym] = REPORT(d.ym, { version: (store[d.ym] ? store[d.ym].version : 0) + 1, notes: store[d.ym] ? store[d.ym].notes : undefined }); made = [{ ym: d.ym, version: store[d.ym].version, partial: false, yieldStatus: 'ok' }].concat(made.filter((x) => x.ym !== d.ym)); return { ok: true, version: store[d.ym].version, report: store[d.ym] }; }
+    if (d.action === 'saveNotes') { store[d.ym].notes = { remarks: d.notes.remarks, nextPlan: d.notes.nextPlan, byName: '팀장', atMs: 1 }; return { ok: true }; }
+    return { ok: true };
+  };
+  const typeInto = async (el, v) => { el.value = v; el.dispatchEvent(new w.Event('input', { bubbles: true })); await sleep(30); };
+  const pick = async (root, ym) => { const sel = root.querySelector('[data-mr-ym]'); sel.value = ym; sel.dispatchEvent(new w.Event('change', { bubbles: true })); };
+  const opened = []; const realOpen = w.open; w.open = () => { const doc = { buf: '', write(h) { this.buf += h; }, close() {} }; const win = { document: doc }; opened.push(win); return win; };
+  try {
+    globalThis.__CALLS.length = 0; globalThis.__CALL_REPLY = Object.assign({}, sav, { monthlyReportAct: reply });
+    const root = await mountFresh(pjtMod.mountMonthly, { segs: ['p4ph2'], query: {} }); await sleep(300);
+    check(MR().length === 2 && JSON.stringify(MR()[0].data) === JSON.stringify({ action: 'list', pjtId: 'p4ph2' }) && JSON.stringify(MR()[1].data) === JSON.stringify({ action: 'get', pjtId: 'p4ph2', ym: THIS }), '탭을 열면 list 를 한 번, 이번 달 get 을 한 번 정확한 값으로 불러야 함: ' + JSON.stringify(MR().map((c) => c.data)));
+    check(/P4 Ph2/.test(root.textContent) && /월간 보고서/.test(root.textContent) && !!root.querySelector('[data-mr-gen]') && /만들기/.test(root.querySelector('[data-mr-gen]').textContent) && /아직 없습니다/.test(root.textContent) && !root.querySelector('[data-mr-print]'), '이번 달 보고서가 없으면 "만들기"·빈 안내만(인쇄 버튼 없음)');
+    check([...root.querySelectorAll('[data-mr-ym] option')].some((o) => o.value === PREV && /✓/.test(o.textContent)), '만든 달(지난달)에는 ✓ 표시가 월 선택에 나와야 함');
+    // 지난달로 바꾸면 그 달 get, 보고서가 그려짐
+    globalThis.__CALLS.length = 0; await pick(root, PREV); await sleep(300);
+    check(MR().length === 1 && JSON.stringify(MR()[0].data) === JSON.stringify({ action: 'get', pjtId: 'p4ph2', ym: PREV }) && /86 \/ 183품목/.test(root.textContent) && /자재 반입 지연/.test(root.textContent) && /다시 만들기/.test(root.querySelector('[data-mr-gen]').textContent) && !!root.querySelector('[data-mr-print]'), '달을 바꾸면 그 달만 get 으로 읽고 보고서(공정 86/183·특이사항)가 그려지며 "다시 만들기"·인쇄 버튼이 나와야 함: ' + JSON.stringify(MR().map((c) => c.data)));
+    // ★ 달을 빠르게 바꿀 때 늦게 온 이전 달 응답이 화면을 덮지 않음
+    slowPrev = true; globalThis.__CALLS.length = 0; await pick(root, THIS); await sleep(40); await pick(root, PREV); await sleep(40); await pick(root, THIS); await sleep(450);
+    check(root.querySelector('[data-mr-ym]').value === THIS && /아직 없습니다/.test(root.textContent) && !/86 \/ 183품목/.test(root.textContent), '★ 달을 빠르게 이번 달→지난달→이번 달로 바꿔도 늦게 도착한 지난달 응답이 이번 달 화면을 덮지 않아야 함(이번 달은 보고서 없음 그대로)');
+    slowPrev = false;
+    // 만들기 → generate 를 고른 달로
+    globalThis.__CALLS.length = 0; await click(root, '[data-mr-gen]', 400);
+    const gen = MR().find((c) => c.data.action === 'generate'); check(!!gen && JSON.stringify(gen.data) === JSON.stringify({ action: 'generate', pjtId: 'p4ph2', ym: THIS }), '만들기는 generate 를 {pjtId, ym: 고른 달} 로 불러야 함: ' + JSON.stringify(gen && gen.data));
+    check(/86 \/ 183품목/.test(root.textContent) && /다시 만들기/.test(root.querySelector('[data-mr-gen]').textContent) && /만들었습니다/.test(root.textContent) && MR().some((c) => c.data.action === 'list'), '만든 뒤 보고서가 그려지고 "다시 만들기"로 바뀌며 안내가 뜨고 목록도 다시 읽어야 함');
+    check([...root.querySelectorAll('[data-mr-ym] option')].find((o) => o.value === THIS).textContent.includes('✓'), '목록을 다시 읽어 이번 달에도 ✓ 가 붙어야 함');
+    // ★ 이번 달이 아닌 달(지난달)을 골라 "다시 만들기" — 고른 달로 요청해야 함(항상 이번 달로 보내는 고장을 잡는다)
+    await pick(root, PREV); await sleep(250); globalThis.__CALLS.length = 0; await click(root, '[data-mr-gen]', 400);
+    const gen2 = MR().find((c) => c.data.action === 'generate'); check(!!gen2 && gen2.data.ym === PREV && gen2.data.ym !== THIS && /다시 만들기/.test(root.querySelector('[data-mr-gen]').textContent), '★ 지난달을 골라 누른 "다시 만들기"는 generate 를 지난달(' + PREV + ')로 불러야 함(이번 달이 아님): ' + JSON.stringify(gen2 && gen2.data));
+    check(store[PREV].version === 2 && root.querySelector('[data-mr-ym]').value === PREV, '지난달 보고서의 버전이 올라가고(2) 화면은 계속 지난달을 보여 줘야 함');
+    await pick(root, THIS); await sleep(250);
+    // 직접 입력: 금액은 안내·저장 비활성·서버 미호출, 정상은 saveNotes 후 다시 읽음
+    check(!!root.querySelector('[data-mr-notes="remarks"]') && !!root.querySelector('[data-mr-save]'), '권한자에게는 직접 입력 칸·저장 버튼이 보여야 함');
+    globalThis.__CALLS.length = 0; await typeInto(root.querySelector('[data-mr-notes="remarks"]'), '배관 단가 15만원 인상 협의');
+    check(!root.querySelector('[data-mr-hint]').hidden && /금액·단가/.test(root.querySelector('[data-mr-hint]').textContent) && root.querySelector('[data-mr-save]').disabled === true && MR().length === 0, '★ 직접 입력에 금액을 쓰면 입력 중에 안내가 뜨고 저장이 비활성이며 서버 호출이 없어야 함');
+    root.querySelector('[data-mr-save]').dispatchEvent(new w.MouseEvent('click', { bubbles: true })); await sleep(80); check(MR().filter((c) => c.data.action === 'saveNotes').length === 0, '★ 비활성 저장 버튼을 우회해 눌러도(금액 포함) saveNotes 를 부르지 않아야 함');
+    await typeInto(root.querySelector('[data-mr-notes="remarks"]'), '검측 일정 협의 필요'); await typeInto(root.querySelector('[data-mr-notes="nextPlan"]'), '8월 3주 검측 신청');
+    check(root.querySelector('[data-mr-hint]').hidden === true && root.querySelector('[data-mr-save]').disabled === false, '금액을 지우면 안내가 사라지고 저장이 활성');
+    globalThis.__CALLS.length = 0; await click(root, '[data-mr-save]', 400); const sn = MR().find((c) => c.data.action === 'saveNotes');
+    check(!!sn && JSON.stringify(sn.data) === JSON.stringify({ action: 'saveNotes', pjtId: 'p4ph2', ym: THIS, notes: { remarks: '검측 일정 협의 필요', nextPlan: '8월 3주 검측 신청' } }) && /저장했습니다/.test(root.textContent), '저장은 saveNotes 를 {pjtId, ym, notes:{remarks, nextPlan}} 로 불러야 함: ' + JSON.stringify(sn && sn.data));
+    check(MR().some((c, i) => c.data.action === 'get' && MR().findIndex((x) => x.data.action === 'saveNotes') < i) && root.querySelector('[data-mr-notes="remarks"]').value === '검측 일정 협의 필요', '저장한 뒤 그 달을 다시 읽어 서버에 저장된 값이 칸에 보여야 함');
+    // 인쇄: 새 창에 인쇄 문서, 제목이 파일 이름 규칙
+    await click(root, '[data-mr-print]', 80); const pw = opened[opened.length - 1];
+    check(!!pw && /<title>\d{4}-\d{2} 월간 보고서 - P4 Ph2 \(FAB\)<\/title>/.test(pw.document.buf) && pw.document.buf.includes('window.print()') && pw.document.buf.includes('검측 일정 협의 필요') && pw.document.buf.includes('86 / 183품목'), '인쇄는 새 창에 "연월 월간 보고서 - 프로젝트" 제목의 문서(자동 인쇄)를 써야 함: ' + (pw ? (pw.document.buf.match(/<title>[^<]*<\/title>/) || [''])[0] : '창이 안 열림'));
+    // 서버 거절 문구를 화면에 보여 줌
+    globalThis.__CALL_REPLY = Object.assign({}, sav, { monthlyReportAct: (d) => { if (d.action === 'generate') throw Object.assign(new Error('이 프로젝트의 이력을 볼 권한이 없습니다.'), { code: 'functions/permission-denied' }); return reply(d); } });
+    const r2 = await mountFresh(pjtMod.mountMonthly, { segs: ['p4ph2'], query: {} }); await sleep(300); await click(r2, '[data-mr-gen]', 300); check(/권한이 없습니다/.test(r2.textContent) && !!r2.querySelector('[data-mr-ym]'), '서버가 만들기를 거절하면 그 문구를 보여 주고 화면은 그대로 쓸 수 있어야 함');
+    // 목록 자체가 실패하면 오류 안내, 모르는 프로젝트는 서버 미호출
+    globalThis.__CALL_REPLY = Object.assign({}, sav, { monthlyReportAct: () => { throw Object.assign(new Error('이 프로젝트의 이력을 볼 권한이 없습니다.'), { code: 'functions/permission-denied' }); } });
+    const r3 = await mountFresh(pjtMod.mountMonthly, { segs: ['p4ph2'], query: {} }); await sleep(300); check(/권한이 없습니다/.test(r3.textContent), '목록을 못 읽으면(권한 없음) 안내가 나와야 함');
+    globalThis.__CALLS.length = 0; const r4 = await mountFresh(pjtMod.mountMonthly, { segs: ['nope'], query: {} }); await sleep(120); check(/이 프로젝트를 열 수 없습니다/.test(r4.textContent) && MR().length === 0, '목록에 없는 프로젝트 주소는 안내만 하고 서버를 부르지 않아야 함');
+  } finally { w.open = realOpen; globalThis.__CALL_REPLY = sav; globalThis.__CALLS.length = 0; }
+  check(WR().length === 0, '월간 보고서 탭은 Firestore 에 직접 쓰지 않음(서버 함수만): ' + JSON.stringify(WR().map((x) => x.op + ' ' + x.path)));
+});
 await scenario('연차 현황 — 관리자 등록: edoc_leave 에 관리자 등록분으로 저장(근로자·종류·기간·일수)', async (check) => {
   const root = await mountFresh(hrMod.mountLeaves, { segs: ['w1'], query: {} }); await click(root, '[data-l-new="김가나"]'); await sleep(150);
   await setv(root, '[data-lv-f="startDate"]', '2026-10-20'); await setv(root, '[data-lv-f="endDate"]', '2026-10-21'); await setv(root, '[data-lv-f="note"]', '개인 사유');

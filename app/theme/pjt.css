@@ -501,3 +501,15 @@
   .jh-ov__log { grid-column: auto; position: sticky; top: var(--sp-3); }
 }
 .jh-pjt__lgproj { font-weight: 600; text-decoration: none; color: var(--c-primary); overflow-wrap: anywhere; }
+
+/* ── 월간 보고서 탭(현장 층): 지표 타일은 폭에 맞춰 자동으로 줄바꿈, 데이터 부족·주의는 data-tone 으로 구분 */
+.jh-pjt__mr { display: grid; gap: var(--sp-3); }
+.jh-pjt__mrbar { flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.jh-pjt__mrgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--u-220), 1fr)); gap: var(--sp-3); margin: var(--sp-2) 0; }
+.jh-pjt__mrtile { border: var(--u-1) solid var(--c-line); border-radius: var(--radius); padding: var(--sp-3); display: grid; gap: var(--sp-1); }
+.jh-pjt__mrtile[data-tone="warn"] { border-color: var(--c-warn); }
+.jh-pjt__mrtile[data-tone="ok"] { border-color: var(--c-primary); }
+.jh-pjt__mrnum { font-size: var(--fs-xl); font-weight: 700; overflow-wrap: anywhere; }
+.jh-pjt__mrh { margin: var(--sp-3) 0 var(--sp-1); }
+.jh-pjt__mrlist { margin: 0; padding-left: var(--sp-4); display: grid; gap: var(--sp-1); }
+.jh-pjt__mrtext { white-space: pre-wrap; overflow-wrap: anywhere; }

@@ -38,6 +38,8 @@ import { installFilesDock as installDock } from './files-drawer.js?v=20261016j';
 import { syncWithNote } from './daily-note.js?v=20261016j';
 import { logHtml } from './log-view.js?v=20261016j';
 import { createLogPanel } from './log-panel.js?v=20261016j';
+import { monthlyHtml, printHtml } from './monthly-view.js?v=20261016j';
+import { hasMoney as lgHasMoney, hasPersonal as lgHasPersonal, friendlyError as lgFriendlyError } from '../../shared/pjt-log.js?v=20261016j';
 export const manifest = { id: 'pjt', order: 40, title: 'PJT 관리', icon: '🏗️', defaultHash: '#/pjt/attend', perm: (me) => !!me && me.admin === true };
 export async function mount(root) { root.innerHTML = '<div class="jh-empty">PJT 화면은 구포털 틀 안의 메뉴로 열립니다.</div>'; }
 const pushHash = (h) => { if (location.hash === h) return; try { history.replaceState(null, '', h); } catch (e) { location.hash = h; } };
@@ -350,6 +352,47 @@ export async function mountLog(root, route, ctx) {
   if (!pr) { body.innerHTML = logHtml({ proj: '' }); return; }
   const panel = createLogPanel(body, { proj: pr.key, label: pr.label, me: { uid: me.uid || '' }, callLog: ctx && ctx.callLog });   // 상태·이벤트·서버 호출은 패널 부품이 맡는다(프로젝트 홈 3단째와 같은 부품)
   await panel.ready;
+}
+/** 월간 보고서(프로젝트 아래 탭, 현장 층 — 금액 없음): 월을 고르고 "만들기"를 누르면 서버(monthlyReportAct)가 공정·출역·공수·공사일보를 직접 읽어 계산해 저장하고, 이 화면은 결과를 그린다. 설계 docs/monthly-report-design.md.
+ *  읽기·쓰기는 모두 서버 함수로만(참여자 판정은 서버) — Firestore 의 pjt_monthly 를 직접 읽지 않는다. 호출 함수는 ctx.callMonthly 로 바꿀 수 있다(시험). */
+export async function mountMonthly(root, route, ctx) {
+  root.onclick = null; root.onchange = null; root.onkeydown = null; root.oninput = null;
+  const me = (ctx && ctx.me) || {}; const segs = (route && route.segs) || [];
+  const callM = (ctx && ctx.callMonthly) || (async (payload) => (await httpsCallable(functions, 'monthlyReportAct')(payload)).data);
+  const st = { projects: [], proj: '', label: '', loading: true, error: '', months: null, ym: '', report: null, reportLoading: false, canEdit: false, busy: false, msg: '', notesDraft: null, today: new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10) };
+  root.innerHTML = '<div id="mr-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#mr-body');
+  const paint = () => { const y = window.scrollY; body.innerHTML = monthlyHtml(st); window.scrollTo(0, y); };
+  try { st.projects = visibleProjects(me, await loadDyn()); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
+  body.removeAttribute('aria-busy'); const pr = st.projects.find((p) => p.key === segs[0]); if (!pr) { paint(); return; }
+  st.proj = pr.key; st.label = pr.label; st.ym = st.today.slice(0, 7);
+  let seq = 0;   // 달을 빠르게 바꿀 때 늦게 온 이전 달 응답이 화면을 덮지 않게 요청 번호로 가린다
+  const loadReport = async () => {
+    const my = ++seq, ym = st.ym; st.reportLoading = true; st.report = null; st.notesDraft = null; paint();
+    try { const r = await callM({ action: 'get', pjtId: st.proj, ym }); if (my !== seq) return; st.report = r.exists ? r.report : null; st.canEdit = r.canEdit === true; st.error = ''; }
+    catch (e) { if (my !== seq) return; st.error = lgFriendlyError(e); }
+    st.reportLoading = false; paint();
+  };
+  const loadList = async () => { try { const r = await callM({ action: 'list', pjtId: st.proj }); st.months = r.months || []; st.canEdit = r.canEdit === true; st.error = ''; } catch (e) { st.error = lgFriendlyError(e); st.months = st.months || []; } st.loading = false; };
+  await loadList(); await loadReport();
+  const act = async (fn, okMsg) => { if (st.busy) return; st.busy = true; st.msg = ''; paint(); try { await fn(); if (okMsg) st.msg = okMsg; } catch (e) { st.msg = lgFriendlyError(e); } st.busy = false; paint(); };
+  root.onclick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return;
+    if (t.closest('[data-mr-gen]')) { const ym = st.ym; return act(async () => { const r = await callM({ action: 'generate', pjtId: st.proj, ym }); if (st.ym === ym) { st.report = r.report; st.notesDraft = null; } await loadList(); }, '만들었습니다.'); }
+    if (t.closest('[data-mr-print]')) { if (!st.report) return; const w = window.open('', '_blank'); if (!w) { toast('팝업이 차단되었습니다.'); return; } w.document.write(printHtml(st.report, st.label)); w.document.close(); return; }
+    if (t.closest('[data-mr-save]')) {
+      const dr = st.notesDraft || {}; const cur = st.report && st.report.notes || {}; const notes = { remarks: dr.remarks != null ? dr.remarks : (cur.remarks || ''), nextPlan: dr.nextPlan != null ? dr.nextPlan : (cur.nextPlan || '') };
+      if (lgHasMoney(notes.remarks) || lgHasPersonal(notes.remarks) || lgHasMoney(notes.nextPlan) || lgHasPersonal(notes.nextPlan)) { st.msg = '금액·단가·전화번호·메일 주소는 적지 않습니다.'; paint(); return; }
+      const ym = st.ym; return act(async () => { await callM({ action: 'saveNotes', pjtId: st.proj, ym, notes }); if (st.ym === ym) { const r = await callM({ action: 'get', pjtId: st.proj, ym }); st.report = r.exists ? r.report : st.report; } st.notesDraft = null; }, '저장했습니다.');
+    }
+  };
+  root.onchange = async (ev) => { const t = ev.target; if (!(t instanceof Element) || !t.hasAttribute('data-mr-ym')) return; st.ym = t.value; st.msg = ''; await loadReport(); };
+  root.oninput = (ev) => {   // 직접 입력 칸: 쓰는 동안 금액 안내를 서버 호출 없이 바로 갱신(입력칸은 다시 그리지 않아 커서가 유지된다)
+    const t = ev.target; if (!(t instanceof Element) || !t.hasAttribute('data-mr-notes')) return; const cur = st.report && st.report.notes || {};
+    st.notesDraft = Object.assign({ remarks: cur.remarks || '', nextPlan: cur.nextPlan || '' }, st.notesDraft || {}); st.notesDraft[t.getAttribute('data-mr-notes')] = t.value;
+    const bad = lgHasMoney(st.notesDraft.remarks) || lgHasPersonal(st.notesDraft.remarks) || lgHasMoney(st.notesDraft.nextPlan) || lgHasPersonal(st.notesDraft.nextPlan);
+    const hint = body.querySelector('[data-mr-hint]'); if (hint) { hint.textContent = bad ? '금액·단가·전화번호·메일 주소는 적지 않습니다.' : ''; if (bad) hint.removeAttribute('hidden'); else hint.setAttribute('hidden', ''); }
+    const sv = body.querySelector('[data-mr-save]'); if (sv) { if (bad || st.busy) sv.setAttribute('disabled', ''); else sv.removeAttribute('disabled'); }
+  };
 }
 const TAG_LABEL_OF = { edu: '교육', meeting: '회의', in: '반입', fcu: '설치', off: '휴무', safety: '안전', quality: '품질', admin: '기타' };
 
