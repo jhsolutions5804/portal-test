@@ -373,6 +373,7 @@ async function loadReports(dk){
   render();
 }
 let curView='home', site=null, sub='sched', detailId=null, loadError='';
+let LOG=null;   // 이력 기능(pjt-log.js) — 불러오기에 성공했을 때만 채워진다. null 이면 이력 관련 화면은 아무것도 그리지 않아 기존 화면과 똑같다
 const todayStr=()=>{const d=new Date(); if(d.getHours()<6) d.setDate(d.getDate()-1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 let selectedDate=todayStr(), calMonth=todayStr().slice(0,7);
 
@@ -421,6 +422,7 @@ function renderHome(){
         <div class="sq-body"><div class="sq-cl">${esc(s.client)}</div><div class="sq-nm">${esc(s.code)}</div><div class="sq-ds">${esc(s.desc)}</div></div></div>`).join('')}
       ${lightCards}
     </div>
+    ${LOG?LOG.homeHtml():''}
     <div class="lbl" style="margin-top:6px">PJT 메뉴</div>
     <div class="menulist">
       <div class="mrow" onclick="location.href='schedule.html'"><span class="mic">📅</span><div><div class="mnm">일정</div><div class="mds">캘린더 · 날짜별 일정</div></div><span class="mgo">›</span></div>
@@ -445,6 +447,7 @@ function renderSite(){
   let body='';
   if(sub==='sched') body=renderCalendar(s);
   else if(sub==='progress' && !isLight) body=renderProgress();
+  else if(sub==='log') body=LOG?LOG.siteHtml(LOG.pjtIdOf(site)):'<div class="empty">불러오는 중...</div>';   // 이력(변경·결정 이력 로그) — pjt-log.js
   else body=renderAttend();
   $app().innerHTML=topBar('PJT','goBack()')+`
     <div class="hello"><div class="name" style="font-size:21px;color:var(--ink)">${esc(s.code)}</div><div class="sub">${esc(s.client)}${s.desc?(' · '+esc(s.desc)):''}${isLight?(' · 진행률 '+s.progress+'%'):''}</div></div>
@@ -452,6 +455,7 @@ function renderSite(){
       ${isLight?'':`<div class="seg ${sub==='progress'?'on':''}" onclick="setSub('progress')">공정</div>`}
       <div class="seg ${sub==='sched'?'on':''}" onclick="setSub('sched')">일정</div>
       <div class="seg ${sub==='attend'?'on':''}" onclick="setSub('attend')">${isLight?'근태·공수':'근태'}</div>
+      ${(LOG&&!isGuest)?`<div class="seg ${sub==='log'?'on':''}" onclick="setSub('log')">이력</div>`:''}
     </div>
     ${body}`;
 }
@@ -731,6 +735,21 @@ onAuthStateChanged(auth, ()=>{
   });
   setTimeout(_fixedDone,2500); // 응답이 늦어도 화면이 비어 있지 않도록
 });
+// ── 이력(변경·결정 이력 로그, 설계 docs/pjt-log-design.md) — 별도 파일을 따로 불러온다. 서버 함수 SDK·파일 불러오기·초기화 어디서 실패해도 기존 공정·일정·근태 화면에는 영향이 없다(LOG 가 null 로 남을 뿐).
+(async function(){
+  try{
+    const [fnMod, logMod] = await Promise.all([ import('https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js'), import('./pjt-log.js?v=20261016j') ]);
+    const callFn = fnMod.httpsCallable(fnMod.getFunctions(app,'asia-northeast3'),'pjtLogAct');   // PC 와 같은 지역
+    const ctl = logMod.createMobileLog({
+      call: async (payload)=> (await callFn(payload)).data,
+      rerender: ()=>{ try{ render(); }catch(e){} },
+      isGuest, getUid: ()=> (auth.currentUser && auth.currentUser.uid) || '',
+      siteKeyOf: (id)=> SITES[id] ? id : 'reg_'+id,
+      goProject: (key)=>{ openSite(key); setSub('log'); }
+    });
+    ctl.attachGlobals(window); LOG=ctl; render();
+  }catch(e){ console.error('이력 기능을 불러오지 못했습니다(기존 화면은 정상)', e); }
+})();
 </script>
 </body>
 </html>
