@@ -1,6 +1,6 @@
 import fs from 'fs';
 import { CATEGORIES, SOURCES, INPUT_SOURCES, TITLE_MAX, STATUS_LABEL, hasMoney, hasPersonal, titleHint, canSubmit, dueText, shortDate, actionsFor, friendlyError } from '../app/shared/pjt-log.js';
-import { logHtml, formHtml } from '../app/modules/pjt/log-view.js';
+import { logHtml, formHtml, logCompactHtml } from '../app/modules/pjt/log-view.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 
 // ── 금액·연락처 안내: 서버와 같은 규칙(수량·사양·일정은 허용)
@@ -73,6 +73,25 @@ ok(hf.includes('<option value="일정 변경" selected>') && hf.includes('<optio
 const evil = logHtml(ST({ data: { urgent: [ENT({ id: 'x"><img src=x onerror=alert(1)>', title: '<script>alert(1)</script> & <b>x</b>', createdByName: '<img src=x onerror=1>', due: { daysLeft: 1, tone: 'soon' }, dueDate: '2026-10-18' })], changes: [], entries: [], total: 1, today: '2026-10-17', canConfirm: false } }));
 ok(!/<script>alert|<img src=x|<b>x<\/b>/.test(evil) && evil.includes('&lt;script&gt;alert(1)&lt;/script&gt; &amp; &lt;b&gt;x&lt;/b&gt;'), '★ 제목·작성자·id 에 든 꺾쇠·따옴표는 글자로만 표시(스크립트 실행·속성 탈출 불가)');
 ok(logHtml(ST({ error: '<img src=x onerror=1>' })).includes('&lt;img'), '오류 문구도 이스케이프');
+
+
+// ── 프로젝트 홈 3단째(요약 이력)
+const CST = (o) => Object.assign({ proj: 'p1', label: 'P4 Ph2', compact: true, me: { uid: 'u1', manager: false }, loading: false, error: '', data: { urgent: [], changes: [], entries: [], total: 0, today: '2026-10-17', canConfirm: false }, filter: {}, formOpen: false, form: { category: '', source: '', title: '', dueDate: '' }, busy: false, msg: '' }, o);
+const c0 = logCompactHtml(CST());
+ok(c0.includes('🗂️ 이력') && c0.includes('href="#/pjt/p1/log"') && c0.includes('전체 보기') && c0.includes('data-lg-toggle') && c0.includes('＋ 기록'), '요약: 제목·"전체 보기"(이력 탭 링크)·"＋ 기록" 버튼');
+ok(c0.includes('기한 임박 요청 0건') && c0.includes('기한이 있는 요청이 없습니다') && c0.includes('아직 기록이 없습니다'), '요약: 비어 있으면 기한 임박 0건·빈 안내·첫 이력 유도');
+ok(!c0.includes('변경사항') && !c0.includes('data-lg-fcat') && !c0.includes('projlabel'), '요약에는 변경사항 묶음·필터·프로젝트 헤더가 없음(이력 탭에서)');
+const urg = Array.from({ length: 7 }, (_, i) => ENT({ id: 'u' + i, title: '기한요청' + i, dueDate: '2026-10-2' + i, due: { daysLeft: i, tone: 'later' } }));
+const ent = Array.from({ length: 12 }, (_, i) => ENT({ id: 'r' + i, title: '이력' + i }));
+const c1 = logCompactHtml(CST({ data: { urgent: urg, changes: [], entries: urg.concat(ent), total: 19, today: '2026-10-17', canConfirm: false } }));
+ok((c1.match(/data-lg-row="u\d"/g) || []).length === 5 && c1.includes('기한 임박 요청 7건') && c1.includes('외 2건은 &quot;전체 보기&quot;에서 볼 수 있습니다'), '요약: 기한 임박은 5건만 보여 주고 나머지는 "외 N건"으로 안내');
+ok((c1.match(/data-lg-row="r\d+"/g) || []).length === 8 && !c1.includes('data-lg-row="u5"'), '요약: 최근 이력은 8건까지, 이미 위에 보인 기한 임박 항목은 다시 안 나옴(중복 없음)');
+const cf = logCompactHtml(CST({ formOpen: true }));
+ok(cf.includes('data-lg-add') && cf.includes('data-lg-title') && (cf.match(/<section/g) || []).length === 1 && cf.includes('닫기'), '요약: 폼을 펼치면 입력칸이 나오고 카드 속 카드가 되지 않음(section 1개)');
+ok(logCompactHtml(CST({ loading: true, data: null })).includes('aria-busy="true"') && logCompactHtml(CST({ loading: true, data: null })).includes('data-lg-toggle'), '요약: 불러오는 중에도 제목·버튼은 보임');
+const ce = logCompactHtml(CST({ error: '이 프로젝트의 이력을 볼 권한이 없습니다.', data: null }));
+ok(ce.includes('data-tone="warn"') && !ce.includes('data-tone="danger"') && ce.includes('data-lg-retry') && ce.includes('권한이 없습니다'), '★ 요약: 서버가 안 돼도 홈이 시끄럽지 않게 주의(warn) 안내 + 다시 시도, 빨간 오류 없음');
+ok(!logCompactHtml(CST({ data: { urgent: [], changes: [], entries: [ENT({ id: 'x"><i>', title: '<script>alert(1)</script>' })], total: 1, today: '2026-10-17', canConfirm: false } })).includes('<script>alert') && logCompactHtml(CST({ proj: 'a/b c' })).includes('#/pjt/a%2Fb%20c/log'), '요약: 제목은 이스케이프, 프로젝트 주소는 인코딩');
 
 // ── 서버 규칙과 같은지(서버 저장소가 옆에 있을 때만 대조 — 분류·출처·금액 감지가 어긋나면 입력 중 안내와 서버 거절이 달라진다)
 const SRV = ['/tmp/pf_diag/functions/pjt-log-act.js', new URL('../../portal-functions/functions/pjt-log-act.js', import.meta.url).pathname].find((p) => fs.existsSync(p));

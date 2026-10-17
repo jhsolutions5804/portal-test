@@ -485,3 +485,16 @@
   .jh-pjt__lgrow { grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; }
   .jh-pjt__lgside, .jh-pjt__lgacts { grid-column: auto; justify-content: flex-end; }
 }
+
+/* ── 프로젝트 홈 3단(캘린더 | 선택한 날 일정 | 이력): 브라우저 폭이 아니라 이 홈이 실제로 차지하는 폭(오른쪽 파일 서랍이 열리면 줄어든다)으로 정한다.
+   넓으면 3단, 보통이면 2단(이력은 아래 한 줄), 좁으면 1단. 이력 요약의 행은 칸이 좁아 항상 세로로 쌓는다. */
+.jh-phome2wrap { container-type: inline-size; }
+.jh-phome2__log { grid-column: 1 / -1; min-width: 0; }
+@container (min-width: 1180px) {
+  .jh-phome2 { grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.95fr) minmax(0, 1fr); }
+  .jh-phome2__log { grid-column: auto; position: sticky; top: var(--sp-3); }
+}
+.jh-pjt__lg--compact .jh-pjt__lgrow { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
+.jh-pjt__lg--compact .jh-pjt__lgside, .jh-pjt__lg--compact .jh-pjt__lgacts { grid-column: 2; justify-content: flex-start; }
+.jh-pjt__lgtools { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1); }
+.jh-pjt__lgsec { margin-top: var(--sp-2); font-weight: 600; }
