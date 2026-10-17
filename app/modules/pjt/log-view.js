@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261016j';
-import { CATEGORIES, INPUT_SOURCES, SOURCES, CATEGORY_ICON, STATUS_LABEL, STATUS_TONE, TITLE_MAX, titleHint, canSubmit, dueText, DUE_TONE, shortDate, actionsFor } from '../../shared/pjt-log.js?v=20261016j';
+import { esc } from '../../core/ui.js?v=20261017a';
+import { CATEGORIES, INPUT_SOURCES, SOURCES, CATEGORY_ICON, STATUS_LABEL, STATUS_TONE, TITLE_MAX, titleHint, canSubmit, dueText, DUE_TONE, shortDate, actionsFor } from '../../shared/pjt-log.js?v=20261017a';
 /* PJT 이력 탭 화면(문자열) — 설계 docs/pjt-log-design.md §3. 화면 순서: 기한 임박 요청 → 변경사항 → 전체 이력, 맨 위에 한 줄 입력.
  * st = { proj, label, me:{uid,manager}, loading, error, data:{urgent,changes,entries,total,today,canConfirm}, filter:{category,source,from,to}, formOpen, form:{category,source,title,dueDate}, busy, msg } */
 const chip = (text, tone) => '<span class="jh-badge"' + (tone ? ' data-tone="' + tone + '"' : '') + '>' + esc(text) + '</span>';
@@ -18,7 +18,7 @@ function row(e, st, opts) {
     + '<div class="jh-pjt__lgside">' + (dt ? chip(dt, DUE_TONE[due.tone] || '') + (e.dueDate ? '<span class="jh-field__hint">' + esc(shortDate(e.dueDate)) + '</span>' : '') : '') + (e.status !== 'confirmed' ? chip(STATUS_LABEL[e.status] || e.status, STATUS_TONE[e.status] || '') : '') + (e.replyDetected ? chip('회신됨', 'info') : '') + '</div>'
     + (acts ? '<div class="jh-pjt__lgacts">' + acts + '</div>' : '') + '</div>';
 }
-const card = (title, body, count, note) => '<section class="jh-card"><div class="jh-panel__head"><h3 class="jh-pjt__dayh">' + esc(title) + (count != null ? ' <span class="jh-field__hint">' + count + '건</span>' : '') + '</h3></div><div class="jh-pjt__pad">' + (note ? '<div class="jh-field__hint">' + esc(note) + '</div>' : '') + body + '</div></section>';
+const card = (title, body, count, note, scroll) => '<section class="jh-card jh-pjt__lgcard"><div class="jh-panel__head"><h3 class="jh-pjt__dayh">' + esc(title) + (count != null ? ' <span class="jh-field__hint">' + count + '건</span>' : '') + '</h3></div><div class="jh-pjt__pad' + (scroll ? ' jh-pjt__lgscroll' : '') + '">' + (note ? '<div class="jh-field__hint">' + esc(note) + '</div>' : '') + body + '</div></section>';
 const empty = (t) => '<div class="jh-empty">' + esc(t) + '</div>';
 
 /** 한 줄 입력 폼 — 분류 칩 5개·출처 칩·한 줄 요약·기한(선택). 금액이 들어가면 입력 중에 바로 안내 */
@@ -52,11 +52,11 @@ export function logHtml(st) {
   const d = st.data;
   if (st.loading || !d) return '<div class="jh-pjt" aria-busy="true">' + projHead(st) + '<div class="jh-skeleton" style="height:var(--u-220)"></div></div>';
   const msg = st.msg ? '<div class="jh-alert" data-tone="info" role="status">' + esc(st.msg) + '</div>' : '';
-  const urgent = card('기한 임박 요청', (d.urgent || []).map((e) => row(e, st, { showUnclaimed: true })).join('') || empty('기한이 있는 요청이 없습니다.'), (d.urgent || []).length, '마감이 가까운 순서입니다. 맡을 사람이 없는 요청은 "내가 맡기"를 눌러 주세요.');
-  const changes = card('변경사항', (d.changes || []).map((e) => row(e, st)).join('') || empty('일정·범위·수량 변경이 없습니다.'), (d.changes || []).length, '영향 확인이 안 된 변경이 위에 옵니다. 공정·월간 보고서에 반영했으면 "영향 확인"을 눌러 주세요.');
+  const urgent = card('기한 임박 요청', (d.urgent || []).map((e) => row(e, st, { showUnclaimed: true })).join('') || empty('기한이 있는 요청이 없습니다.'), (d.urgent || []).length, '마감이 가까운 순서입니다. 맡을 사람이 없는 요청은 "내가 맡기"를 눌러 주세요.', true);
+  const changes = card('변경사항', (d.changes || []).map((e) => row(e, st)).join('') || empty('일정·범위·수량 변경이 없습니다.'), (d.changes || []).length, '영향 확인이 안 된 변경이 위에 옵니다. 공정·월간 보고서에 반영했으면 "영향 확인"을 눌러 주세요.', true);
   const all = card('전체 이력', filterHtml(st) + ((d.entries || []).map((e) => row(e, st)).join('') || empty('조건에 맞는 이력이 없습니다.')) + (d.total > (d.entries || []).length ? '<div class="jh-field__hint">최근 ' + d.entries.length + '건만 보입니다. 필터로 좁혀 주세요. (전체 ' + d.total + '건)</div>' : ''), d.total);
-  const head = '<div class="jh-actionbar"><button type="button" class="jh-btn" data-variant="' + (st.formOpen ? 'ghost' : 'primary') + '" data-lg-toggle aria-expanded="' + !!st.formOpen + '">' + (st.formOpen ? '입력 닫기' : '＋ 기록') + '</button></div>';
-  return '<div class="jh-pjt jh-pjt__lg">' + projHead(st) + msg + head + (st.formOpen ? formHtml(st) : '') + urgent + changes + all + '</div>';
+  const head = '<div class="jh-pjt__lghead">' + projHead(st) + '<button type="button" class="jh-btn" data-variant="' + (st.formOpen ? 'ghost' : 'primary') + '" data-lg-toggle aria-expanded="' + !!st.formOpen + '">' + (st.formOpen ? '입력 닫기' : '＋ 기록') + '</button></div>';
+  return '<div class="jh-pjt jh-pjt__lg">' + head + msg + (st.formOpen ? formHtml(st) : '') + '<div class="jh-pjt__lgtop">' + urgent + changes + '</div>' + all + '</div>';
 }
 
 /** 프로젝트 홈 3단째의 요약 이력 — 기한 임박 최대 5건 + 최근 이력 최대 8건. 변경사항 묶음·필터·전체 목록은 이력 탭("전체 보기")에서. 서버가 안 되면 홈이 시끄럽지 않게 주의 안내와 다시 시도만 */
