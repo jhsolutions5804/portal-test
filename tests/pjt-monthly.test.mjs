@@ -99,4 +99,21 @@ ok(P7.touched === true && P7.checkDays === 2 && P6.checkDays === 1, '그 달에 
   const s1 = JSON.stringify(f); const s2 = JSON.stringify(fieldReport({ progress: DAYS, manday: MD, attendance: AT, reports: RP }, '2026-07', { structure: ST, startDate: '2026-06-01', today: '2026-12-31' })); ok(s1 === s2, '같은 입력은 항상 같은 결과(순수)');
   ok(!/amount|price|pay|wage|salary|bank|account|rrn|jumin|phone/i.test(s1), '현장 층 결과에는 금액·개인정보 성격의 필드가 없음'); }
 
+// ── 서버 변환본(portal-functions/functions/monthly-core.js)과 같은 결과인지 — 규칙이 화면(앱)과 서버에서 어긋나면 안 된다(서버 저장소가 옆에 있을 때만 대조)
+{ const fs = await import('node:fs'); const SRV = ['/tmp/pf_diag/functions/monthly-core.js', new URL('../../portal-functions/functions/monthly-core.js', import.meta.url).pathname].find((p) => fs.existsSync(p));
+  if (!SRV) console.log('SKIP 서버 변환본이 없어 앱·서버 대조는 건너뜀(portal-functions 가 옆에 있을 때만 실행)');
+  else {
+    const { createRequire } = await import('node:module'); const srv = createRequire(import.meta.url)(SRV); const mod = await import('../app/modules/pjt/monthly.js');
+    ok(Object.keys(srv).sort().join() === Object.keys(mod).sort().join(), '★ 서버 변환본이 앱 원본과 같은 이름을 내보냄(빠진 함수 없음): ' + Object.keys(srv).length + '개');
+    const REPS = [{ id: '2026-08-03', remarks: '자재 반입 지연', tomorrow: '4층 배관', author: '작성자' }, { id: '2026-08-10', remarks: '', tomorrow: '5층 점검' }, { id: '2026-07-31' }];
+    const MDD = [{ id: '2026-08-03', md: { w1: 0.5, w2: 1 } }, { id: '2026-08-04', md: { w1: 1.5, w9: -1 } }], ATT = [{ id: '2026-08-03', checks: ['w1', 'w2'] }, { id: '2026-08-04', checks: [] }];
+    const cases = [];
+    for (const ym of ['2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10', '2026-02', '2028-02', '2026-13', 'x', '']) for (const today of ['2026-08-15', '2026-12-31', undefined]) for (const startDate of [undefined, '2026-08-10', '2026-06-01']) cases.push([ym, { structure: ST, startDate, today, endDate: undefined }]);
+    cases.push(['2026-08', { structure: null, today: '2026-08-31' }], ['2026-08', {}], ['2026-08', null]);
+    let same = 0, diffAt = null; for (const [ym, p] of cases) { const a = JSON.stringify(mod.fieldReport({ progress: DAYS, manday: MDD, attendance: ATT, reports: REPS }, ym, p)), b = JSON.stringify(srv.fieldReport({ progress: DAYS, manday: MDD, attendance: ATT, reports: REPS }, ym, p)); if (a === b) same++; else if (!diffAt) diffAt = ym + ' ' + JSON.stringify(p); }
+    ok(same === cases.length, '★ 같은 입력 ' + cases.length + '개(월 11종 × 오늘 3종 × 시작일 3종 + 빈 구조·null 등)에서 앱 원본과 서버 변환본의 월간 보고가 한 글자도 다르지 않음' + (diffAt ? ' — 처음 다른 경우: ' + diffAt : ''));
+    const fz = (m) => [m.monthRange('2026-08'), m.monthlyProgress(DAYS, '2026-08', ST), m.monthlyManday(MDD, ATT, '2026-08'), m.monthlyReports(REPS, '2026-08', { today: '2026-08-31' }), m.tally(m.stateAt(DAYS, '2026-09-30', ST), ST), m.isDay('2026-02-29'), m.isYm('2026-12'), m.FINISHING_RATE];
+    ok(JSON.stringify(fz(mod)) === JSON.stringify(fz(srv)), '개별 함수(월 범위·공정·공수·일보·집계·형식 검사)도 같은 결과');
+  } }
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed'); if (fail) process.exit(1);
