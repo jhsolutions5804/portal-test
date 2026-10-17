@@ -28,6 +28,24 @@ export function yieldView(y) {
     default: return { tone: 'warn', main: '공정 구조 없음', sub: '이 프로젝트에는 공정 구조가 없어 수율을 낼 수 없습니다' };
   }
 }
+const CAT_ICON = { '발주처 요청·지시': '📨', '일정 변경': '📅', '범위·수량 변경': '📐', '현장 이슈': '⚠️', '회의 결정': '🗣️' };
+/** 이력 요약(설계 §2-1 5번) — 서버가 이력 로그에서 계산한 결과. 옛 보고서에는 없다 */
+export function logSummaryHtml(L) {
+  if (!L) return '<div class="jh-empty">이 보고서는 이력 요약이 생기기 전에 만들어졌습니다. "다시 만들기"를 누르면 포함됩니다.</div>';
+  const cats = Object.keys(L.byCategory || {}).filter((k) => n(L.byCategory[k]) > 0).map((k) => '<span class="jh-badge">' + (CAT_ICON[k] || '•') + ' ' + esc(k) + ' ' + fmt(L.byCategory[k]) + '</span>').join(' ');
+  const st = L.byStatus || {}; const list = (items, fn) => (items && items.length ? '<ul class="jh-pjt__mrlist">' + items.map(fn).join('') + '</ul>' : '');
+  const due = (x) => '<li><span class="jh-field__hint">' + esc(md(x.dueDate)) + (x.daysOver ? ' · ' + esc(x.daysOver) + '일 지남' : '') + (x.claimedByName ? ' · 👤 ' + esc(x.claimedByName) : ' · 맡은 사람 없음') + '</span> ' + esc(x.title) + '</li>';
+  const more = (o) => (o && o.total > (o.items || []).length ? '<div class="jh-field__hint">외 ' + fmt(o.total - o.items.length) + '건은 이력 탭에서 볼 수 있습니다.</div>' : '');
+  const ch = L.changes || {}, ov = L.overdue || {}, nx = L.dueNext || {};
+  return '<div class="jh-pjt__mrgrid">' + tile('이번 달 기록된 이력', fmt(L.total) + '건', '직접 입력 ' + fmt(L.manual) + ' · 자동 기록(일정) ' + fmt(L.auto), '')
+    + tile('처리 상태', '처리 중 ' + fmt(st.open), '완료 ' + fmt(st.done) + ' · 종결 ' + fmt(st.closed) + ' · 보류 ' + fmt(st.hold), n(st.open) > 0 ? 'warn' : 'ok')
+    + tile('변경사항', fmt(ch.total) + '건', '영향 확인 전 ' + fmt(ch.unchecked) + '건', n(ch.unchecked) > 0 ? 'warn' : '') + '</div>'
+    + (cats ? '<div>' + cats + '</div>' : '<div class="jh-empty">이번 달에 기록된 이력이 없습니다.</div>')
+    + (ch.items && ch.items.length ? '<h4 class="jh-pjt__mrh">변경사항 (영향 확인 전이 위)</h4>' + list(ch.items, (x) => '<li><span class="jh-field__hint">' + esc(md(x.date)) + (x.impactChecked ? ' · 영향 확인됨' : ' · 영향 확인 전') + '</span> ' + esc(x.title) + '</li>') + more(ch) : '')
+    + (ov.items && ov.items.length ? '<h4 class="jh-pjt__mrh">기한이 지났는데 처리 중인 요청 (' + fmt(ov.total) + '건)</h4>' + list(ov.items, due) + more(ov) : '')
+    + (nx.items && nx.items.length ? '<h4 class="jh-pjt__mrh">다음 달에 기한이 오는 요청 (' + fmt(nx.total) + '건)</h4>' + list(nx.items, due) + more(nx) : '')
+    + '<div class="jh-field__hint">보고서를 만든 날(' + esc(L.asOf || '') + ')의 처리 상태입니다. 후보 항목과 대외비 항목은 포함하지 않습니다.</div>';
+}
 const tile = (label, main, sub, tone) => '<div class="jh-pjt__mrtile"' + (tone ? ' data-tone="' + esc(tone) + '"' : '') + '><div class="jh-field__hint">' + esc(label) + '</div><div class="jh-pjt__mrnum">' + esc(main) + '</div>' + (sub ? '<div class="jh-field__hint">' + esc(sub) + '</div>' : '') + '</div>';
 const card = (title, body, note) => '<section class="jh-card"><div class="jh-panel__head"><h3 class="jh-pjt__dayh">' + esc(title) + '</h3></div><div class="jh-pjt__pad">' + (note ? '<div class="jh-field__hint">' + esc(note) + '</div>' : '') + body + '</div></section>';
 /** 보고서 본문(현장 층) — 서버가 돌려준 report.data 를 그린다 */
@@ -49,7 +67,8 @@ export function reportBodyHtml(rep) {
   return card('공정', prog, '공정 체크 데이터 기준(날짜마다 새로 체크한 칸의 합이 아니라 월말 상태 − 전월 말 상태)')
     + card('출역 · 공수', mand)
     + card('생산성 수율', '<div class="jh-pjt__mrgrid">' + tile('이번 달 설치 완료 ÷ 투입 공수', yv.main, yv.sub, yv.tone) + '</div>', '수율은 분자·분모를 항상 같이 봅니다. 공정 체크가 없는 달은 숫자를 내지 않습니다(입력 누락 가능).')
-    + card('공사일보 · 특이사항 · 다음 달 계획', rpt + next);
+    + card('공사일보 · 특이사항 · 다음 달 계획', rpt + next)
+    + card('이력 요약 (변경 · 결정 · 요청)', logSummaryHtml(d.log), '프로젝트 "이력" 탭에 기록된 내용을 모은 것입니다.');
 }
 /** 직접 입력 칸(특이사항 보완·다음 달 계획) — PJT 권한자·관리자만 고치고 나머지는 읽기만 */
 function notesHtml(st) {
@@ -83,6 +102,15 @@ export function monthlyHtml(st) {
 export const printTitle = (rep, label) => docFileName({ group: 'month', ym: rep && rep.ym, kind: '월간 보고서', project: label });
 const PCSS = '@page{size:A4;margin:16mm}*{box-sizing:border-box}body{font:12px/1.55 "Malgun Gothic","Noto Sans KR",sans-serif;color:#111;margin:0}h1{font-size:20px;margin:0 0 2px}h2{font-size:14px;margin:18px 0 6px;padding-bottom:3px;border-bottom:1.5px solid #333}.sub{color:#555;margin-bottom:10px}table{border-collapse:collapse;width:100%;margin:4px 0}td,th{border:1px solid #999;padding:5px 8px;text-align:left;vertical-align:top}th{background:#f1f3f5;width:30%}ul{margin:4px 0 4px 18px;padding:0}li{margin:2px 0}.note{color:#666;font-size:11px;margin-top:4px}.warn{color:#a5342a;font-weight:700}';
 const row = (a, b) => '<tr><th>' + esc(a) + '</th><td>' + b + '</td></tr>';
+function printLog(L) {
+  if (!L) return '';
+  const st = L.byStatus || {}, ch = L.changes || {}, ov = L.overdue || {}, nx = L.dueNext || {}; const cats = Object.keys(L.byCategory || {}).filter((k) => n(L.byCategory[k]) > 0).map((k) => esc(k) + ' ' + fmt(L.byCategory[k])).join(' · ');
+  const li = (arr, fn) => (arr && arr.length ? '<ul>' + arr.map(fn).join('') + '</ul>' : '');
+  const due = (x) => '<li>' + esc(md(x.dueDate)) + (x.daysOver ? ' (' + esc(x.daysOver) + '일 지남)' : '') + (x.claimedByName ? ' · ' + esc(x.claimedByName) : ' · 맡은 사람 없음') + ' — ' + esc(x.title) + '</li>';
+  return '<h2>이력 요약 (변경 · 결정 · 요청)</h2><table>' + row('이번 달 기록된 이력', fmt(L.total) + '건 (직접 입력 ' + fmt(L.manual) + ' · 자동 기록 ' + fmt(L.auto) + ')' + (cats ? ' — ' + cats : '')) + row('처리 상태', '처리 중 ' + fmt(st.open) + ' · 완료 ' + fmt(st.done) + ' · 종결 ' + fmt(st.closed) + ' · 보류 ' + fmt(st.hold)) + row('변경사항', fmt(ch.total) + '건 (영향 확인 전 ' + fmt(ch.unchecked) + '건)') + '</table>'
+    + (ov.items && ov.items.length ? '<div><b>기한이 지났는데 처리 중인 요청 (' + fmt(ov.total) + '건)</b></div>' + li(ov.items, due) : '') + (nx.items && nx.items.length ? '<div><b>다음 달에 기한이 오는 요청 (' + fmt(nx.total) + '건)</b></div>' + li(nx.items, due) : '')
+    + '<div class="note">보고서를 만든 날(' + esc(L.asOf || '') + ')의 처리 상태입니다. 후보·대외비 항목은 포함하지 않습니다.</div>';
+}
 export function printHtml(rep, label) {
   const d = rep.data || {}, p = d.progress, m = d.manday, r = d.reports, yv = yieldView(d.yield), nt = rep.notes || {};
   const rem = (r && r.remarks || []).map((x) => '<li>' + esc(md(x.date)) + (x.author ? ' (' + esc(x.author) + ')' : '') + ' — ' + esc(x.text) + '</li>').join('');
@@ -92,6 +120,7 @@ export function printHtml(rep, label) {
     + '<h2>생산성 수율</h2><table>' + row('이번 달 설치 완료 ÷ 투입 공수', '<b' + (yv.tone === 'warn' ? ' class="warn"' : '') + '>' + esc(yv.main) + '</b> — ' + esc(yv.sub)) + '</table><div class="note">수율은 분자·분모를 항상 같이 봅니다. 공정 체크가 없는 달은 숫자를 내지 않습니다(입력 누락 가능).</div>'
     + '<h2>공사일보 · 특이사항</h2>' + (r ? '<table>' + row('공사일보 작성', fmt(r.written) + '일 / ' + fmt(r.span) + '일') + row('미작성 (달력 전체)', fmt(r.missing) + '일 (휴무·주말·공휴일 포함 · 출역이 있는데 미작성 ' + fmt(r.attendMissing) + '일)') + '</table>' + (rem ? '<ul>' + rem + '</ul>' : '<div class="note">비고가 적힌 날이 없습니다.</div>') : '')
     + '<h2>다음 달 계획</h2>' + ((r && r.nextPlan && r.nextPlan.text) ? '<div>' + esc(r.nextPlan.text) + '</div><div class="note">' + esc(md(r.nextPlan.from)) + ' 공사일보의 "내일 작업" (초안)</div>' : '<div class="note">공사일보에 "내일 작업"이 적힌 날이 없습니다.</div>')
+    + printLog(d.log)
     + ((nt.remarks || nt.nextPlan) ? '<h2>직접 입력 (보완)</h2>' + (nt.remarks ? '<div><b>특이사항 보완</b> — ' + esc(nt.remarks) + '</div>' : '') + (nt.nextPlan ? '<div><b>다음 달 계획</b> — ' + esc(nt.nextPlan) + '</div>' : '') + (nt.byName ? '<div class="note">' + esc(nt.byName) + ' 작성</div>' : '') : '');
   return '<!doctype html><meta charset="utf-8"><title>' + esc(printTitle(rep, label) || '월간 보고서') + '</title><style>' + PCSS + '</style>' + body + '<scr' + 'ipt>window.onload=function(){setTimeout(function(){window.print();},250);}</scr' + 'ipt>';
 }

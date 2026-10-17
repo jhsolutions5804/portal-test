@@ -1,4 +1,4 @@
-import { monthlyHtml, reportBodyHtml, yieldView, monthOptions, monthLabel, printHtml, printTitle } from '../app/modules/pjt/monthly-view.js';
+import { monthlyHtml, reportBodyHtml, yieldView, monthOptions, monthLabel, printHtml, printTitle, logSummaryHtml } from '../app/modules/pjt/monthly-view.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 
 // ── 서버(monthlyReportAct)가 돌려주는 report 와 같은 모양의 시험 자료
@@ -59,6 +59,30 @@ const ST = (o) => Object.assign({ proj: 'p1', label: 'P4 Ph2 (FAB)', loading: fa
   const bad = monthlyHtml(ST({ notesDraft: { remarks: '단가 12만원 인상', nextPlan: '' } })); ok(/data-mr-save[^>]*disabled/.test(bad) && bad.includes('금액·단가·전화번호·메일 주소는 적지 않습니다') && !/data-mr-hint hidden/.test(bad), '★ 금액이 든 초안: 저장 비활성 + 안내 표시');
   const ph = monthlyHtml(ST({ notesDraft: { remarks: '', nextPlan: '담당 010-1234-5678' } })); ok(/data-mr-save[^>]*disabled/.test(ph) && ph.includes('전화번호'), '연락처가 든 초안도 저장 비활성');
   const fine = monthlyHtml(ST({ notesDraft: { remarks: 'FCU 183대 반입(1,500대 중 1차)', nextPlan: '검측 신청' } })); ok(!/data-mr-save[^>]*disabled/.test(fine) && /data-mr-hint hidden/.test(fine), '수량·사양은 허용(저장 활성, 안내 숨김)'); }
+
+// ── 이력 요약(4단계): 서버가 이력 로그에서 계산한 결과를 그린다 — 옛 보고서(log 없음)도 안전
+const LOGS = (o) => Object.assign({ asOf: '2026-10-17', total: 7, auto: 1, manual: 6, byCategory: { '발주처 요청·지시': 2, '일정 변경': 1, '범위·수량 변경': 1, '현장 이슈': 1, '회의 결정': 2 }, byStatus: { open: 4, done: 1, closed: 1, hold: 1 },
+  changes: { total: 2, unchecked: 1, items: [{ date: '2026-07-12', title: '변경: 4층 배관 검사 (11/5 → 11/7)', category: '일정 변경', impactChecked: false, dueDate: '', claimedByName: '' }, { date: '2026-07-14', title: 'FCU 3대 추가', category: '범위·수량 변경', impactChecked: true, dueDate: '', claimedByName: '' }] },
+  overdue: { total: 12, items: [{ date: '2026-07-10', title: '자재 반입 일정 회신 요청', category: '발주처 요청·지시', dueDate: '2026-07-20', daysOver: 89, claimedByName: '참여A' }, { date: '2026-07-28', title: '검측 신청 회신', category: '발주처 요청·지시', dueDate: '2026-08-05', daysOver: 73, claimedByName: '' }] },
+  dueNext: { total: 1, items: [{ date: '2026-07-28', title: '8월 중 회신 요청', category: '발주처 요청·지시', dueDate: '2026-08-20', claimedByName: '' }] } }, o || {});
+{ const h = logSummaryHtml(LOGS());
+  ok(h.includes('7건') && h.includes('직접 입력 6 · 자동 기록(일정) 1') && h.includes('처리 중 4') && h.includes('완료 1 · 종결 1 · 보류 1') && h.includes('변경사항') && h.includes('영향 확인 전 1건') && h.includes('📨 발주처 요청·지시 2') && h.includes('🗣️ 회의 결정 2'), '이력 요약: 건수·직접/자동·처리 상태·변경사항(영향 확인 전)·분류별 칩');
+  ok(h.includes('영향 확인 전') && h.includes('영향 확인됨') && h.indexOf('4층 배관 검사') < h.indexOf('FCU 3대 추가'), '변경사항 목록: 영향 확인 전/됨 표시, 서버가 준 순서(전이 위)');
+  ok(h.includes('기한이 지났는데 처리 중인 요청 (12건)') && h.includes('89일 지남') && h.includes('👤 참여A') && h.includes('맡은 사람 없음') && h.includes('외 10건은 이력 탭에서 볼 수 있습니다') && h.includes('다음 달에 기한이 오는 요청 (1건)') && !/외 \d+건은 이력 탭[^<]*<\/div>[\s\S]*다음 달에 기한이 오는 요청 \(1건\)[\s\S]*외 \d+건/.test(h), '기한 지난 요청: 지난 일수·맡은 사람·"외 10건"(전체 12건 중 2건만 목록), 다음 달 기한 요청은 전체와 목록이 같으면 "외 N건" 없음');
+  ok(h.includes('2026-10-17') && h.includes('후보 항목과 대외비 항목은 포함하지 않습니다'), '만든 날 기준 처리 상태라는 점과 후보·대외비 제외를 밝힘');
+  ok(h.includes('data-tone="warn"') && h.includes('data-tone="ok"') === false, '처리 중·영향 확인 전이 있으면 주의 색');
+  const calm = logSummaryHtml(LOGS({ byStatus: { open: 0, done: 3, closed: 0, hold: 0 }, changes: { total: 1, unchecked: 0, items: [] }, overdue: { total: 0, items: [] }, dueNext: { total: 0, items: [] } })); ok(calm.includes('data-tone="ok"') && !calm.includes('기한이 지났는데') && !calm.includes('다음 달에 기한이 오는') && !calm.includes('변경사항 (영향 확인 전이 위)'), '처리 중이 없고 영향 확인이 끝났으면 정상 색, 비어 있는 목록 구역은 제목도 생략');
+  const none = logSummaryHtml(LOGS({ total: 0, auto: 0, manual: 0, byCategory: { '발주처 요청·지시': 0 }, byStatus: { open: 0, done: 0, closed: 0, hold: 0 }, changes: { total: 0, unchecked: 0, items: [] }, overdue: { total: 0, items: [] }, dueNext: { total: 0, items: [] } })); ok(none.includes('이번 달에 기록된 이력이 없습니다') && none.includes('0건'), '이번 달 이력이 없으면 빈 안내');
+  ok(logSummaryHtml(null).includes('이력 요약이 생기기 전에 만들어졌습니다') && logSummaryHtml(null).includes('다시 만들기') && logSummaryHtml(undefined).includes('다시 만들기'), '★ 옛 보고서(이력 요약 없음)는 오류 없이 "다시 만들기를 누르면 포함됩니다" 안내');
+  ok(logSummaryHtml({}).length > 0 && logSummaryHtml({ total: 'x', byStatus: null, changes: null, overdue: null, dueNext: null }).length > 0, '값이 비어 있거나 이상해도 오류 없이');
+  const evil = LOGS({ overdue: { total: 1, items: [{ date: '2026-07-10', title: '<img src=x onerror=1> & "x"', dueDate: '2026-07-20', daysOver: 1, claimedByName: '<b>a</b>' }] }, changes: { total: 1, unchecked: 1, items: [{ date: '<i>d</i>', title: '<script>alert(1)</script>', impactChecked: false }] }, asOf: '<u>z</u>' }); const he = logSummaryHtml(evil);
+  ok(!/<img src=x|<b>a|<i>d|<script>alert|<u>z/.test(he) && he.includes('&lt;img src=x onerror=1&gt; &amp; &quot;x&quot;') && he.includes('&lt;script&gt;alert(1)&lt;/script&gt;'), '★ 이력 제목·맡은 사람·날짜·만든 날의 꺾쇠·따옴표는 글자로만 표시');
+  const body = reportBodyHtml(REP({ data: Object.assign({}, REP().data, { log: LOGS() }) })); ok(body.indexOf('공사일보 · 특이사항 · 다음 달 계획') < body.indexOf('이력 요약 (변경 · 결정 · 요청)') && body.includes('프로젝트 &quot;이력&quot; 탭에 기록된 내용을 모은 것입니다'), '보고서 본문 구역 순서: 공정 → 출역·공수 → 수율 → 공사일보·특이사항·다음 달 계획 → 이력 요약');
+  ok(reportBodyHtml(REP()).includes('이력 요약이 생기기 전에 만들어졌습니다'), '이력 요약이 없는 보고서의 본문에도 안내가 보임'); }
+{ const p = printHtml(REP({ data: Object.assign({}, REP().data, { log: LOGS() }) }), 'P4 Ph2 (FAB)');
+  ok(p.includes('이력 요약 (변경 · 결정 · 요청)') && p.includes('7건 (직접 입력 6 · 자동 기록 1)') && p.includes('발주처 요청·지시 2') && p.includes('처리 중 4 · 완료 1 · 종결 1 · 보류 1') && p.includes('영향 확인 전 1건') && p.includes('기한이 지났는데 처리 중인 요청 (12건)') && p.includes('(89일 지남) · 참여A') && p.includes('맡은 사람 없음') && p.includes('다음 달에 기한이 오는 요청 (1건)') && p.includes('후보·대외비 항목은 포함하지 않습니다'), '인쇄 문서에도 이력 요약(건수·상태·변경사항·기한 지난·다음 달 기한)이 실림');
+  ok(!printHtml(REP(), 'P').includes('이력 요약') && !/undefined/.test(printHtml(REP({ data: Object.assign({}, REP().data, { log: { total: 1 } }) }), 'P')), '이력 요약이 없는 옛 보고서는 인쇄에서 그 구역을 생략, 부분 값이어도 "undefined" 없음');
+  ok(!/<img src=x|<script>alert\(/.test(printHtml(REP({ data: Object.assign({}, REP().data, { log: LOGS({ overdue: { total: 1, items: [{ date: '2026-07-10', title: '<img src=x onerror=1>', dueDate: '2026-07-20', daysOver: 1, claimedByName: '<script>alert(1)</script>' }] } }) }) }), 'P').replace(/<scr\x69pt>window\.onload[\s\S]*?<\/scr\x69pt>/, '')), '인쇄 문서의 이력 요약도 이스케이프'); }
 
 // ── 안전: 사용자·서버가 준 글자는 HTML 로 해석되지 않음
 { const evil = REP({ pjtLabel: '<img src=x onerror=1>', notes: { remarks: '<script>alert(1)</script>', nextPlan: '"><b>x</b>', byName: '<i>y</i>' }, generatedByName: '<u>z</u>', data: Object.assign({}, REP().data, { reports: { from: '2026-08-01', to: '2026-08-31', span: 31, written: 1, missing: 30, attendMissing: 0, remarks: [{ date: '2026-08-03', text: '<script>alert(2)</script> & "x"', author: '<b>a</b>' }], nextPlan: { text: '<img src=x onerror=3>', from: '2026-08-03' } } }) });
