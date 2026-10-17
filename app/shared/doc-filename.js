@@ -1,8 +1,9 @@
 /* 모든 문서(PDF) 파일 이름 규칙 — 공용 함수 한 곳(대표님 확정 2026-10-16, 대기열 1-2).
  * 브라우저의 "인쇄 → PDF 저장" 은 문서 <title> 을 기본 파일 이름으로 쓴다. 각 문서의 <title> 에 이 함수의 결과를 넣는다.
  *
- * 문서군별 순서(구분자 ' - '):
- *   project : 프로젝트 → 종류 → 번호 → 상대방 → 날짜(YYYY-MM-DD)          예) P4 Ph2 - 견적서 - EST-2026-001 - 다람이엔지 - 2026-05-10
+ * 문서군별 순서(project 는 '_', 나머지는 ' - '):
+ *   project : 날짜(YYYYMMDD) _ 거래처(담당자) _ 현장명 _ 견적명 _ 종류   (구분자 '_', 대표님이 엑셀로 쓰시던 방식 그대로 + 맨 끝에 종류, 2026-10-17)
+ *             예) 20260510_다람이엔지(김과장)_P4 Ph2_FCU 설치 견적_견적서   — 견적명이 없는 정산서·계약서는 그 칸만 건너뜀. 번호(EST-…)는 파일 이름에 넣지 않는다
  *   month   : 연월(YYYY-MM) → 종류 → (프로젝트)                            예) 2026-09 월말 마감
  *   person  : 종류 → 이름 → 기준일. 연월(ym)을 주면 '연월 종류 - 이름'(급여명세서)  예) 근로계약서 - 홍길동 - 2026-10-26 / 2026-06 급여명세서 - 홍길동
  *   edoc    : 종류 → 문서번호 → 작성자 → 날짜                              예) 구매품의 - 2610001 - 김작성 - 2026-10-01
@@ -31,6 +32,8 @@ export function safeText(s, max) {
 }
 const noOf = (s) => String(s == null ? '' : s).replace(/[^0-9A-Za-z가-힣._-]/g, '').slice(0, 30);
 const dateOf = (s) => { const m = String(s == null ? '' : s).match(/^\d{4}-\d{2}-\d{2}/); return m ? m[0] : ''; };
+const compactDate = (s) => dateOf(s).replace(/-/g, '');
+const partyOf = (party, contact, max) => { const p = safeText(party, max), c = safeText(contact, 20); return p && c ? p + '(' + c + ')' : (p || c); };
 const ymOf = (s) => { const m = String(s == null ? '' : s).match(/^\d{4}-\d{2}/); return m ? m[0] : ''; };
 function build(x, maxFree) {
   const free = (v) => safeText(v, maxFree), kind = safeText(x.kind, 30) || '문서';
@@ -38,14 +41,14 @@ function build(x, maxFree) {
   if (x.group === 'month') parts = [[ymOf(x.ym), kind].filter(Boolean).join(' '), free(x.project)];
   else if (x.group === 'person') { const ym = ymOf(x.ym); parts = ym ? [ym + ' ' + kind, free(x.name)] : [kind, free(x.name), dateOf(x.date)]; }
   else if (x.group === 'edoc') parts = [kind, noOf(x.docNo != null ? x.docNo : x.no), free(x.author), dateOf(x.date)];
-  else parts = [free(x.project), kind, noOf(x.no), free(x.party), dateOf(x.date)];
+  else { const proj = free(x.project), ttl = free(x.title); return [compactDate(x.date), partyOf(x.party, x.contact, maxFree), proj, ttl && ttl !== proj ? ttl : '', kind].filter(Boolean).join('_'); }   // project: 날짜_거래처(담당자)_현장명_견적명_종류 (견적명이 현장명과 같으면 한 번만)
   return parts.filter(Boolean).join(' - ');
 }
-/** 문서 파일 이름(확장자 없음). o = { group, kind, project, no, party, date, ym, name, docNo, author } — 없는 칸은 건너뛴다 */
+/** 문서 파일 이름(확장자 없음). o = { group, kind, project, no, party, contact, title, date, ym, name, docNo, author } — 없는 칸은 건너뛴다. project 문서군은 contact(거래처 담당자)·title(견적명)을 쓴다 */
 export function docFileName(o) {
   const x = o || {};
   let s = build(x, MAX_PART);
   if (s.length > MAX_ALL) s = build(x, 18);
-  if (s.length > MAX_ALL) s = s.slice(0, MAX_ALL).replace(/[\s-]+$/, '');
+  if (s.length > MAX_ALL) s = s.slice(0, MAX_ALL).replace(/[\s_-]+$/, '');
   return s;
 }

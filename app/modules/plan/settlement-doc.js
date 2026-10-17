@@ -1,6 +1,6 @@
 /* 영업기획 정산서(대금청구서·지급예정서) 양식 — 구포털 기획의 양식을 그대로 옮겼다(동결). 원본과 같은 결과가 나오는지는 tests/plan-settlement-doc.test.mjs 가 원본 함수(tests/fixtures/gihoek_settle_doc.js.txt)와 대조한다.
  * 원본과 다른 점은 하나뿐: 원본은 입력값을 그대로 HTML 에 넣었는데, 안전하게 모든 입력값(내역·비고·거래처·담당자 등)을 이스케이프한다(일반 글자는 결과가 같다). */
-import { docFileName } from '../../shared/doc-filename.js?v=20261017d';
+import { docFileName } from '../../shared/doc-filename.js?v=20261017e';
 const won = (n) => (Math.round(n) || 0).toLocaleString('ko-KR');
 const h = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 export const SET_DOC_CSS = `*{box-sizing:border-box;font-family:'Malgun Gothic',sans-serif}body{margin:0;color:#1a2330;font-size:12px}
@@ -35,7 +35,7 @@ export function settleDocHtml(s, projects) {
 /** PDF 저장 기본 이름(대표님 확정 규칙): 프로젝트(공동이면 +로 연결) → 종류 → 번호 → 상대방 → 발행일 */
 export function settleDocTitle(s, projects) {
   const ids = (s.pjtIds && s.pjtIds.length ? s.pjtIds : [s.pjtId]).filter(Boolean), pr = (projects || []).filter((x) => ids.indexOf(x.id) >= 0);
-  return docFileName({ group: 'project', project: pr.map((x) => x.code || x.name).filter(Boolean).join(' + '), kind: s.docType === 'invoice' ? '대금청구서' : '지급예정서', no: s.no, party: s.recipient && s.recipient.company, date: s.issueDate });
+  return docFileName({ group: 'project', project: pr.map((x) => x.code || x.name).filter(Boolean).join(' + '), kind: s.docType === 'invoice' ? '대금청구서' : '지급예정서', no: s.no, party: s.recipient && s.recipient.company, contact: s.recipient && s.recipient.contact, date: s.issueDate });
 }
 export function settleDocPage(s, projects, opts) {
   return `<!doctype html><meta charset="utf-8"><title>${opts && opts.title ? h(opts.title) : (s.docType === 'invoice' ? '대금청구서' : '지급예정서') + ' ' + h(s.no)}</title><style>@page{size:A4;margin:16mm}${SET_DOC_CSS}</style>${settleDocHtml(s, projects)}<scr` + `ipt>window.onload=function(){setTimeout(function(){window.print();},250);}</scr` + `ipt>`;

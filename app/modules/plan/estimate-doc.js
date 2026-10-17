@@ -1,6 +1,9 @@
 /* 영업기획 견적서(인쇄/PDF) 양식 — 구포털 기획의 견적서 양식을 그대로 옮겼다(동결). 원본과 같은 결과가 나오는지는 tests/plan-estimate-doc.test.mjs 가 원본 함수(tests/fixtures/gihoek_print_est.js.txt)와 대조한다.
  * 원본과 다른 점은 하나뿐: 원본은 특기사항만 HTML 이스케이프했는데, 안전하게 모든 입력값(품명·규격·비고·제목·거래처 등)을 이스케이프한다(일반 글자는 결과가 같다). */
-import { itemAmt, estSupply } from './projects.js?v=20261017d';
+import { itemAmt, estSupply } from './projects.js?v=20261017e';
+import { docFileName } from '../../shared/doc-filename.js?v=20261017e';
+/** PDF 저장 기본 이름: 날짜_거래처(담당자)_현장명_견적명_견적서 — 화면 호출부와 시험이 같은 함수를 쓴다(정산서의 settleDocTitle 과 같은 구조). p = 연결 프로젝트(없으면 null) */
+export const estDocTitle = (e, p) => docFileName({ group: 'project', project: p && (p.code || p.name), kind: '견적서', no: e.no, party: e.client && e.client.company, contact: e.client && e.client.contact, title: e.title, date: e.date });
 const won = (n) => (Math.round(n) || 0).toLocaleString('ko-KR');
 const h = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 /** 견적서 한 장의 HTML. e: 견적 문서, p: 연결 프로젝트(없으면 null), opts.title: PDF 저장 기본 이름(`docFileName` 결과, 없으면 기존 '견적서 번호') */
