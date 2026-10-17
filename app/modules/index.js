@@ -31,6 +31,7 @@ hostNative('pjt', 'ended', pjt.mountEnded);   // PJT 새 모듈 — 종료 PJT(�
 hostNative('pjt', 'home', pjt.mountHome);   // PJT 새 모듈 — 프로젝트 홈(프로젝트를 고르면 처음 보이는 화면)
 hostNative('pjt', 'report', pjt.mountReport);   // PJT 새 모듈 — 공사일보(프로젝트 아래 탭)
 hostNative('pjt', 'schedule', pjt.mountSchedule);   // PJT 새 모듈 — 일정(프로젝트 아래 탭)
+hostNative('pjt', 'log', pjt.mountLog);   // PJT 새 모듈 — 이력: 변경·결정·요청 로그(프로젝트 아래 탭, 서버 함수 pjtLogAct 만 사용)
 hostNative('pjt', 'progress', pjt.mountProgress);   // PJT 새 모듈 — 공정(프로젝트 아래 탭)
 hostNative('pjt', 'attend', pjt.mountAttend);   // PJT 새 모듈의 첫 화면 — 출역·공수(구포털 PJT 메뉴 안에서 열린다)
 hostNative('plan', 'home', plan.mountHome);   // 영업기획 홈 새 화면

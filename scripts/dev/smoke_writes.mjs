@@ -163,6 +163,48 @@ await scenario('PJT 화면 구성 — 출역·공수(위쪽 한 줄 + 인원별 
   const hm = await mountFresh(pjtMod.mountHome, { segs: ['p4ph2'], query: {} }); await sleep(300); check(!!hm.querySelector('.jh-phome2 .jh-phome2__cal [data-hm-day]') && !!hm.querySelector('.jh-phome2 .jh-phome2__side') && !hm.querySelector('.jh-kpi') && !/바로가기/.test(hm.textContent), '프로젝트 홈: 왼쪽 월 캘린더 + 오른쪽 일정, 요약 카드·바로가기 없음');
   check(WR().length === 0, '화면 구성 확인은 아무것도 저장하지 않음');
 });
+await scenario('PJT 이력 탭 — 열면 pjtLogAct 목록, ＋ 기록으로 폼, 금액 입력은 안내·비활성·서버 호출 없음, 정상 입력은 add, 내가 맡기는 claim 으로 연결', async (check) => {
+  const LOG = () => globalThis.__CALLS.filter((c) => c.name === 'pjtLogAct'); const sav = globalThis.__CALL_REPLY;
+  const E1 = { id: 'e1', date: '2026-10-14', category: '발주처 요청·지시', title: '자재 반입 일정 회신 요청', source: '메일', sourceRef: '', dueDate: '2026-10-19', status: 'confirmed', claimedBy: '', claimedByName: '', replyDetected: false, impactChecked: false, restricted: false, createdByName: '팀장', createdByMe: false, createdMs: 1, auto: false, due: { daysLeft: 2, tone: 'soon' }, unclaimed: true };
+  const typeInto = async (el, v) => { el.value = v; el.dispatchEvent(new w.Event('input', { bubbles: true })); await sleep(30); };
+  try {
+    globalThis.__CALLS.length = 0; globalThis.__CALL_REPLY = Object.assign({}, sav, { pjtLogAct: (d) => (d.action === 'list' ? { ok: true, today: '2026-10-17', urgent: [E1], changes: [], entries: [E1], total: 1, canConfirm: false } : { ok: true, id: 'new1' }) });
+    const root = await mountFresh(pjtMod.mountLog, { segs: ['p4ph2'], query: {} }); await sleep(250);
+    check(LOG().length === 1 && JSON.stringify(LOG()[0].data) === JSON.stringify({ action: 'list', pjtId: 'p4ph2', filter: {} }), '탭을 열면 pjtLogAct 를 {action:list, pjtId:p4ph2, filter:{}} 로 한 번 불러야 함: ' + JSON.stringify(LOG().map((c) => c.data)));
+    check(/이력/.test(root.textContent) && /P4 Ph2/.test(root.textContent) && /기한 임박 요청/.test(root.textContent) && /자재 반입 일정 회신 요청/.test(root.textContent) && /D-2/.test(root.textContent) && !!root.querySelector('[data-lg-act="claim"]'), '프로젝트 이름·세 묶음·받은 항목·D-2 칩·"내가 맡기" 버튼이 그려져야 함');
+    check(!root.querySelector('[data-lg-add]'), '입력 폼은 처음에 접혀 있어야 함');
+    await click(root, '[data-lg-toggle]', 60); check(!!root.querySelector('[data-lg-add]') && !!root.querySelector('[data-lg-title]'), '＋ 기록을 누르면 입력 폼이 펼쳐져야 함');
+    check(root.querySelector('[data-lg-add]').disabled === true, '아무것도 입력하지 않으면 기록하기는 비활성이어야 함');
+    await click(root, '[data-lg-cat="현장 이슈"]', 60); await click(root, '[data-lg-src="현장"]', 60);
+    check(root.querySelector('[data-lg-cat="현장 이슈"]').getAttribute('aria-pressed') === 'true' && root.querySelector('[data-lg-src="현장"]').getAttribute('aria-pressed') === 'true', '고른 분류·출처 칩이 눌린 표시여야 함');
+    // 금액 입력: 안내가 뜨고 기록하기 비활성, 눌러도 서버 호출 없음
+    globalThis.__CALLS.length = 0; await typeInto(root.querySelector('[data-lg-title]'), '배관 단가 15만원 인상 합의');
+    check(!!root.querySelector('[data-lg-hint]') && /금액·단가는 이력에 적지 않습니다/.test(root.querySelector('[data-lg-hint]').textContent) && root.querySelector('[data-lg-add]').disabled === true, '★ 금액을 입력하면 입력칸 아래에 안내가 뜨고 기록하기가 비활성이어야 함');
+    root.querySelector('[data-lg-add]').dispatchEvent(new w.MouseEvent('click', { bubbles: true })); await sleep(60);
+    check(LOG().length === 0, '★ 금액이 든 입력은 눌러도 서버(pjtLogAct)를 부르면 안 됨: ' + JSON.stringify(LOG().map((c) => c.data)));
+    // 정상 입력: 안내가 사라지고 활성, 누르면 add → 목록 다시
+    await typeInto(root.querySelector('[data-lg-title]'), '크레인 사용 일정 충돌 — 4층 B구역');
+    check(!root.querySelector('[data-lg-hint]') && root.querySelector('[data-lg-add]').disabled === false, '금액을 지우면 안내가 사라지고 기록하기가 활성이어야 함');
+    await typeInto(root.querySelector('[data-lg-due]'), ''); globalThis.__CALLS.length = 0;
+    await click(root, '[data-lg-add]', 250);
+    const add = LOG().find((c) => c.data.action === 'add');
+    check(!!add && JSON.stringify(add.data) === JSON.stringify({ action: 'add', pjtId: 'p4ph2', category: '현장 이슈', source: '현장', title: '크레인 사용 일정 충돌 — 4층 B구역', dueDate: '' }), 'add 를 정확한 값으로 불러야 함: ' + JSON.stringify(add && add.data));
+    check(LOG().some((c, i) => c.data.action === 'list' && LOG().findIndex((x) => x.data.action === 'add') < i), '저장한 뒤 목록을 다시 불러와야 함');
+    check(/기록했습니다/.test(root.textContent) && !root.querySelector('[data-lg-add]'), '저장하면 안내가 뜨고 폼이 접혀야 함');
+    // 내가 맡기
+    globalThis.__CALLS.length = 0; await click(root, '[data-lg-act="claim"][data-lg-id="e1"]', 250);
+    const cl = LOG().find((c) => c.data.action === 'claim'); check(!!cl && JSON.stringify(cl.data) === JSON.stringify({ action: 'claim', pjtId: 'p4ph2', id: 'e1' }), '"내가 맡기"는 claim 을 {pjtId, id} 로 불러야 함: ' + JSON.stringify(cl && cl.data));
+    // 서버가 거절하면 그 문구를 그대로 보여 줌
+    globalThis.__CALL_REPLY = Object.assign({}, sav, { pjtLogAct: (d) => { if (d.action === 'list') return { ok: true, today: '2026-10-17', urgent: [E1], changes: [], entries: [E1], total: 1, canConfirm: false }; throw Object.assign(new Error('이미 다른 사람이 맡고 있습니다.'), { code: 'functions/already-exists' }); } });
+    await click(root, '[data-lg-act="claim"][data-lg-id="e1"]', 250); check(/이미 다른 사람이 맡고 있습니다/.test(root.textContent), '서버가 거절하면 그 안내 문구를 화면에 보여 줘야 함');
+    // 권한 없음 오류는 화면에 안내
+    globalThis.__CALL_REPLY = Object.assign({}, sav, { pjtLogAct: () => { throw Object.assign(new Error('이 프로젝트의 이력을 볼 권한이 없습니다.'), { code: 'functions/permission-denied' }); } });
+    const r2 = await mountFresh(pjtMod.mountLog, { segs: ['p4ph2'], query: {} }); await sleep(250); check(/이 프로젝트의 이력을 볼 권한이 없습니다/.test(r2.textContent) && !!r2.querySelector('.jh-alert[data-tone="danger"]'), '목록을 불러오지 못하면(권한 없음) 오류 안내가 나와야 함');
+    // 모르는 프로젝트 주소는 안내만(서버 호출 없음)
+    globalThis.__CALLS.length = 0; const r3 = await mountFresh(pjtMod.mountLog, { segs: ['nope'], query: {} }); await sleep(120); check(/이 프로젝트를 열 수 없습니다/.test(r3.textContent) && LOG().length === 0, '목록에 없는 프로젝트 주소는 안내만 하고 서버를 부르지 않아야 함');
+  } finally { globalThis.__CALL_REPLY = sav; globalThis.__CALLS.length = 0; }
+  check(WR().length === 0, '이력 탭은 Firestore 에 직접 쓰지 않음(서버 함수만): ' + JSON.stringify(WR().map((x) => x.op + ' ' + x.path)));
+});
 await scenario('연차 현황 — 관리자 등록: edoc_leave 에 관리자 등록분으로 저장(근로자·종류·기간·일수)', async (check) => {
   const root = await mountFresh(hrMod.mountLeaves, { segs: ['w1'], query: {} }); await click(root, '[data-l-new="김가나"]'); await sleep(150);
   await setv(root, '[data-lv-f="startDate"]', '2026-10-20'); await setv(root, '[data-lv-f="endDate"]', '2026-10-21'); await setv(root, '[data-lv-f="note"]', '개인 사유');

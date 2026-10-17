@@ -36,6 +36,8 @@ export { mountTeam } from './team-index.js?v=20261016j';
 import { mountOverview, notifyPjtChanged } from './overview-index.js?v=20261016j';
 import { installFilesDock as installDock } from './files-drawer.js?v=20261016j';
 import { syncWithNote } from './daily-note.js?v=20261016j';
+import { logHtml, formHtml } from './log-view.js?v=20261016j';
+import { titleHint, canSubmit, friendlyError } from '../../shared/pjt-log.js?v=20261016j';
 export const manifest = { id: 'pjt', order: 40, title: 'PJT 관리', icon: '🏗️', defaultHash: '#/pjt/attend', perm: (me) => !!me && me.admin === true };
 export async function mount(root) { root.innerHTML = '<div class="jh-empty">PJT 화면은 구포털 틀 안의 메뉴로 열립니다.</div>'; }
 const pushHash = (h) => { if (location.hash === h) return; try { history.replaceState(null, '', h); } catch (e) { location.hash = h; } };
@@ -332,6 +334,62 @@ export async function mountSchedule(root, route, ctx) {
   root.oninput = (ev) => {   // 내용을 쓰는 동안 분류를 자동 추정(사용자가 분류를 직접 고르기 전까지)
     const t = ev.target; if (!(t instanceof Element) || !st.form || !t.hasAttribute('data-sc-f') || t.getAttribute('data-sc-f') !== 'text' || st.form.catTouched) return; const tag = detectCat(t.value); st.form.tag = tag;
     body.querySelectorAll('[data-sc-cat]').forEach((b) => b.setAttribute('aria-pressed', String(b.getAttribute('data-sc-cat') === tag))); const h = body.querySelector('[data-sc-hint]'); if (h) h.textContent = tag === 'admin' ? '' : '자동 추정: ' + (TAG_LABEL_OF[tag] || '') + ' (다르면 위에서 눌러 바꾸세요)';
+  };
+}
+/** 이력(이력 탭): 프로젝트 아래의 탭 — 주소 #/pjt/<프로젝트>/log. 변경·결정·요청을 프로젝트별로 남기고 기한 있는 요청을 놓치지 않게 한다(설계 docs/pjt-log-design.md).
+ *  저장·읽기는 모두 서버 함수 pjtLogAct 로만 한다(참여자 판정은 서버) — 이 화면은 Firestore 의 pjt_log 를 직접 읽지 않는다. 시험·확장을 위해 호출 함수를 ctx.callLog 로 바꿀 수 있다. */
+export async function mountLog(root, route, ctx) {
+  root.onclick = null; root.onchange = null; root.onkeydown = null; root.oninput = null;
+  const me = (ctx && ctx.me) || {}; const segs = (route && route.segs) || [];
+  const callLog = (ctx && ctx.callLog) || (async (payload) => (await httpsCallable(functions, 'pjtLogAct')(payload)).data);
+  const st = { projects: [], proj: '', label: '', me: { uid: me.uid || '', manager: false }, loading: true, error: '', data: null, filter: {}, formOpen: false, form: { category: '', source: '', title: '', dueDate: '' }, busy: false, msg: '' };
+  root.innerHTML = '<div id="lg-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#lg-body');
+  const paint = () => { const y = window.scrollY; body.innerHTML = logHtml(st); window.scrollTo(0, y); };
+  try { st.projects = visibleProjects(me, await loadDyn()); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
+  body.removeAttribute('aria-busy'); st.proj = st.projects.some((p) => p.key === segs[0]) ? segs[0] : ''; if (!st.proj) { paint(); return; }
+  st.label = st.projects.find((p) => p.key === st.proj).label;
+  const load = async () => {
+    try { const f = {}; Object.keys(st.filter).forEach((k) => { if (st.filter[k]) f[k] = st.filter[k]; }); const r = await callLog({ action: 'list', pjtId: st.proj, filter: f }); st.data = r; st.me.manager = r.canConfirm === true; st.error = ''; }
+    catch (e) { st.error = friendlyError(e); st.data = null; }
+    st.loading = false; paint();
+  };
+  st.loading = true; paint(); await load();
+  const act = async (fn, okMsg) => { if (st.busy) return; st.busy = true; st.msg = ''; paint(); try { await fn(); if (okMsg) st.msg = okMsg; await load(); } catch (e) { st.msg = friendlyError(e); } st.busy = false; paint(); };
+  const STATUS_OF = { done: 'done', closed: 'closed', hold: 'hold', reopen: 'confirmed' };
+  root.onclick = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return; let el;
+    if (t.closest('[data-lg-toggle]')) { st.formOpen = !st.formOpen; paint(); return; }
+    if ((el = t.closest('[data-lg-cat]'))) { st.form.category = el.getAttribute('data-lg-cat'); paint(); return; }
+    if ((el = t.closest('[data-lg-src]'))) { st.form.source = el.getAttribute('data-lg-src'); paint(); return; }
+    if (t.closest('[data-lg-freset]')) { st.filter = {}; st.loading = true; paint(); await load(); return; }
+    if (t.closest('[data-lg-add]')) {
+      const c = canSubmit(st.form); if (!c.ok) { st.msg = c.why; paint(); return; }
+      await act(async () => { await callLog({ action: 'add', pjtId: st.proj, category: st.form.category, source: st.form.source, title: st.form.title, dueDate: st.form.dueDate || '' }); st.form = { category: st.form.category, source: st.form.source, title: '', dueDate: '' }; st.formOpen = false; }, '기록했습니다.'); return;
+    }
+    if ((el = t.closest('[data-lg-act]'))) {
+      const a = el.getAttribute('data-lg-act'), id = el.getAttribute('data-lg-id');
+      if (a === 'claim') return act(() => callLog({ action: 'claim', pjtId: st.proj, id }), '맡았습니다.');
+      if (a === 'release') return act(() => callLog({ action: 'release', pjtId: st.proj, id }), '맡기를 취소했습니다.');
+      if (a === 'confirm') return act(() => callLog({ action: 'confirm', pjtId: st.proj, id }), '확정했습니다.');
+      if (a === 'impact') { const e = ((st.data && st.data.changes) || []).concat((st.data && st.data.entries) || []).find((x) => x.id === id); return act(() => callLog({ action: 'impact', pjtId: st.proj, id, checked: !(e && e.impactChecked) }), ''); }
+      if (STATUS_OF[a]) {
+        if (a === 'closed' || a === 'hold') { const ok = await confirmDialog({ title: a === 'closed' ? '종결' : '보류', body: a === 'closed' ? '이 항목을 종결합니다. 회신·조치가 끝났는지 확인하셨나요?' : '이 항목을 보류합니다. 기한 임박 목록에서 빠집니다.', confirmLabel: a === 'closed' ? '종결' : '보류' }); if (!ok) return; }
+        return act(() => callLog({ action: 'setStatus', pjtId: st.proj, id, status: STATUS_OF[a] }), '');
+      }
+    }
+  };
+  root.onchange = async (ev) => {
+    const t = ev.target; if (!(t instanceof Element)) return; let changed = true;
+    if (t.hasAttribute('data-lg-fcat')) st.filter.category = t.value; else if (t.hasAttribute('data-lg-fsrc')) st.filter.source = t.value; else if (t.hasAttribute('data-lg-ffrom')) st.filter.from = t.value; else if (t.hasAttribute('data-lg-fto')) st.filter.to = t.value;
+    else if (t.hasAttribute('data-lg-due')) { st.form.dueDate = t.value; paint(); changed = false; } else changed = false;
+    if (changed) { st.loading = true; paint(); await load(); }
+  };
+  root.oninput = (ev) => {   // 쓰는 동안 글자 수·금액 안내를 서버 호출 없이 바로 갱신(입력칸은 다시 그리지 않아 커서가 유지된다)
+    const t = ev.target; if (!(t instanceof Element) || !t.hasAttribute('data-lg-title')) return; st.form.title = t.value;
+    const h = titleHint(t.value), c = canSubmit(st.form); const cnt = body.querySelector('[data-lg-count]'); if (cnt) cnt.textContent = String(t.value).trim().length + ' / 80';
+    let hint = body.querySelector('[data-lg-hint]'); const field = t.closest('.jh-field');
+    if (h) { if (!hint && field) { hint = document.createElement('div'); hint.className = 'jh-field__error'; hint.setAttribute('role', 'alert'); hint.setAttribute('data-lg-hint', ''); field.appendChild(hint); } if (hint) hint.textContent = h; t.setAttribute('aria-invalid', 'true'); } else { if (hint) hint.remove(); t.removeAttribute('aria-invalid'); }
+    const add = body.querySelector('[data-lg-add]'); if (add) { if (c.ok && !st.busy) add.removeAttribute('disabled'); else add.setAttribute('disabled', ''); }
   };
 }
 const TAG_LABEL_OF = { edu: '교육', meeting: '회의', in: '반입', fcu: '설치', off: '휴무', safety: '안전', quality: '품질', admin: '기타' };

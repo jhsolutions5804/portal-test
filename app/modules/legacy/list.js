@@ -27,7 +27,7 @@ export const LEGACY_DEFS = [
   { id: 'eval', order: 47, title: '평가', icon: '📝', tabbed: true, ownNav: true, perm: isEvalUser, nav: [{ key: 'mine', label: '내 평가' }], homeLabel: '평가',
     groups: [{ key: 'eval', label: '평가', home: { key: 'mine', label: '내 평가', hint: '나에게 배정된 평가를 폰에서도 작성합니다' }, clusters: [{ label: '평가 운영', perm: isEvalOps, keys: ['cycle', 'adhoc', 'result'] }] }],
     sections: [{ key: 'mine', label: '내 평가', native: true }, { key: 'cycle', label: '정기평가', native: true }, { key: 'adhoc', label: '수시평가', native: true }, { key: 'result', label: '평가 결과 통보', native: true }] },
-  { id: 'pjt', order: 40, mobileTab: { order: 2, label: 'PJT', icon: '🏗️' }, title: 'PJT 관리', icon: '🏗️', tabbed: false, dynamicNav: true, defaultSub: 'home', nativeKeys: ['roster', 'home', 'ended'], nativeSubs: ['home', 'schedule', 'progress', 'attend', 'report', 'settings'], perm: (me) => !!(me && (me.admin || (me.perms && me.perms.pjt) || (Array.isArray(me.pjtKeys) && me.pjtKeys.length > 0))) },   // PJT 권한자·관리자, 또는 어느 프로젝트든 참여자로 지정된 사람
+  { id: 'pjt', order: 40, mobileTab: { order: 2, label: 'PJT', icon: '🏗️' }, title: 'PJT 관리', icon: '🏗️', tabbed: false, dynamicNav: true, defaultSub: 'home', nativeKeys: ['roster', 'home', 'ended'], nativeSubs: ['home', 'schedule', 'progress', 'attend', 'report', 'log', 'settings'], perm: (me) => !!(me && (me.admin || (me.perms && me.perms.pjt) || (Array.isArray(me.pjtKeys) && me.pjtKeys.length > 0))) },   // PJT 권한자·관리자, 또는 어느 프로젝트든 참여자로 지정된 사람
   { id: 'myteam', order: 90, title: '내 팀 공수표', icon: '👷', tabbed: false, url: 'team/', nativeKeys: ['main'],
     perm: (me) => !!(me && (me.admin || (Array.isArray(me.teamLeaderIds) && me.teamLeaderIds.length > 0))), nav: [{ key: 'main', label: '내 팀 공수표' }] }
 ];
@@ -56,7 +56,7 @@ export function resolveItem(def, key, me, dyn) {
 }
 /** 옛 페이지 주소: 기본 폴더 + 항목 주소 + via=portal(임베드 모드) + tab(탭형만) + admin=1(관리자). base 는 LEGACY_BASE 를 해석한 절대 주소 */
 /** 프로젝트 아래의 새 화면 탭(순서대로) — 프로젝트 키는 shared/pjt-key.js 의 규칙(등록 id) */
-export const PJT_SUB_LABELS = { home: '🏠 프로젝트 홈', schedule: '📅 일정 (새)', progress: '📊 공정 (새)', attend: '👷 출역·공수 (새)', report: '📝 공사일보 (새)', settings: '⚙️ 설정' };
+export const PJT_SUB_LABELS = { home: '🏠 프로젝트 홈', schedule: '📅 일정 (새)', progress: '📊 공정 (새)', attend: '👷 출역·공수 (새)', report: '📝 공사일보 (새)', log: '🗂️ 이력 (새)', settings: '⚙️ 설정' };
 /** PJT 관리 사이드 내비게이션 구성(순수): PJT 홈 → 프로젝트 목록 → 보는 프로젝트의 화면들 → 근로자 연명부 → 종료 PJT.
  *  items = pjtNav 결과, activeKey = 'home' | 프로젝트 id | 'roster' | 'ended', sub = 프로젝트 화면(home·schedule·…) 또는 연명부의 _manday·_migrate. 모든 프로젝트가 같은 모양이다. */
 export function pjtSideConfig(def, items, activeKey, sub, me) {
