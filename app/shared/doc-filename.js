@@ -41,7 +41,13 @@ function build(x, maxFree) {
   if (x.group === 'month') parts = [[ymOf(x.ym), kind].filter(Boolean).join(' '), free(x.project)];
   else if (x.group === 'person') { const ym = ymOf(x.ym); parts = ym ? [ym + ' ' + kind, free(x.name)] : [kind, free(x.name), dateOf(x.date)]; }
   else if (x.group === 'edoc') parts = [kind, noOf(x.docNo != null ? x.docNo : x.no), free(x.author), dateOf(x.date)];
-  else { const proj = free(x.project), ttl = free(x.title); return [compactDate(x.date), partyOf(x.party, x.contact, maxFree), proj, ttl && ttl !== proj ? ttl : '', kind].filter(Boolean).join('_'); }   // project: 날짜_거래처(담당자)_현장명_견적명_종류 (견적명이 현장명과 같으면 한 번만)
+  else {   // project: 날짜_거래처(담당자)_현장명_견적명_종류
+    const proj = free(x.project), ttl = safeText(x.title, maxFree === MAX_PART ? 60 : maxFree);   // 견적명은 실제로 52자까지 있어 60자(길어서 줄일 때는 18자)
+    const sameAsProj = !!ttl && ttl === proj;                 // 견적명이 현장명과 같으면 견적명 칸은 생략(종류는 유지)
+    const hasKind = !!ttl && !sameAsProj && ttl.endsWith(kind);   // 견적명이 이미 "…견적서"로 끝나면 견적명은 그대로 두고 종류만 생략(실제 견적 1건)
+    return [compactDate(x.date), partyOf(x.party, x.contact, maxFree), proj, sameAsProj ? '' : ttl, hasKind ? '' : kind].filter(Boolean).join('_');
+  }
+
   return parts.filter(Boolean).join(' - ');
 }
 /** 문서 파일 이름(확장자 없음). o = { group, kind, project, no, party, contact, title, date, ym, name, docNo, author } — 없는 칸은 건너뛴다. project 문서군은 contact(거래처 담당자)·title(견적명)을 쓴다 */

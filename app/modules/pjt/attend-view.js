@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261017e';
-import { dayTotals, mdSum, activeWorkersForDate, canWorkOn, hasManday, monthlyMatrix } from './attendance.js?v=20261017e';
-import { holidayName, isWeekend } from '../../shared/holidays.js?v=20261017e';
-import { monthGrid } from './schedule.js?v=20261017e';
+import { esc } from '../../core/ui.js?v=20261017f';
+import { dayTotals, mdSum, activeWorkersForDate, canWorkOn, hasManday, monthlyMatrix } from './attendance.js?v=20261017f';
+import { holidayName, isWeekend } from '../../shared/holidays.js?v=20261017f';
+import { monthGrid } from './schedule.js?v=20261017f';
 const f1 = (n) => (Math.round((Number(n) || 0) * 10) / 10).toFixed(1);
 const chip = (t, tone) => '<span class="jh-pjt__chip" data-tone="' + esc(tone || '') + '">' + esc(t) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';

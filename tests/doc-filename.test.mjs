@@ -69,4 +69,16 @@ eq(docFileName({ group: 'month', ym: '잘못', kind: '월말 마감' }), '월말
   ok(!/[\\/:*?"<>|]/.test(docFileName(Object.assign({}, base, { title: '가/나:다*라?' }))), '견적명의 파일 이름 금지 문자도 지워짐');
   const mix = docFileName(Object.assign({}, base, { contact: '김(과장)' })); ok(mix.includes('다람이엔지(김(과장))'), '담당자 이름에 괄호가 있어도 오류 없이(그대로 둠)');
   ok(docFileName({ group: 'month', ym: '2026-09', kind: '월말 마감' }) === '2026-09 월말 마감' && docFileName({ group: 'person', kind: '근로계약서', name: '홍길동', date: '2026-10-26' }) === '근로계약서 - 홍길동 - 2026-10-26' && docFileName({ group: 'edoc', kind: '구매품의', docNo: '2610001', author: '김작성', date: '2026-10-01' }) === '구매품의 - 2610001 - 김작성 - 2026-10-01', '★ 월 단위·사람·결재 문서는 이번 변경과 무관하게 기존 형식 그대로'); }
+// ── 실제 견적(테섭 13건)에서 나온 사례: 견적명이 길거나 이미 종류 글자를 포함한 경우
+{ const b = { group: 'project', kind: '견적서', project: 'P5 Ph1 (복합동)', party: '귀뚜라미범양냉방', contact: '', date: '2026-08-13' };
+  eq(docFileName(Object.assign({}, b, { title: 'P5 Ph1 PAC 26대 납품 설치 견적서' })), '20260813_귀뚜라미범양냉방_P5 Ph1 (복합동)_P5 Ph1 PAC 26대 납품 설치 견적서', '★ 견적명이 이미 "…견적서"로 끝나면 견적명은 그대로 두고 종류만 생략(이름에 "견적서"가 한 번만) — 견적명이 사라지면 안 된다');
+  ok(docFileName(Object.assign({}, b, { title: 'P5 Ph1 PAC 26대 납품 설치 견적서' })).split('견적서').length === 2, '"견적서" 글자가 파일 이름에 한 번만 나옴');
+  const long52 = 'P4 Ph2 FCU 87대분 관리자 2인 파견 (3F FIZ, X-OB, 복합4동, 복합3동)'; ok(long52.length === 52, '시험 자료: 실제 견적명 52자');
+  ok(docFileName(Object.assign({}, b, { title: long52 })).includes(long52) && docFileName(Object.assign({}, b, { title: long52 })).endsWith('_견적서'), '★ 52자 견적명이 잘리지 않고 전부 들어가며 종류가 끝에 옴(전에는 40자에서 "X-OB," 로 잘렸다)');
+  ok(docFileName(Object.assign({}, b, { title: '가'.repeat(80) })).length <= 120, '견적명이 아주 길어도 전체는 120자 이내');
+  eq(docFileName(Object.assign({}, b, { title: 'P5 Ph1 (복합동)' })), '20260813_귀뚜라미범양냉방_P5 Ph1 (복합동)_견적서', '견적명이 현장명과 같으면 견적명 칸만 생략하고 종류는 유지');
+  eq(docFileName(Object.assign({}, b, { title: '견적서' })), '20260813_귀뚜라미범양냉방_P5 Ph1 (복합동)_견적서', '견적명이 종류 글자뿐이어도 "견적서" 한 번만');
+  eq(docFileName(Object.assign({}, b, { title: '' })), '20260813_귀뚜라미범양냉방_P5 Ph1 (복합동)_견적서', '견적명이 비어 있으면 그 칸만 건너뜀');
+  ok(docFileName({ group: 'project', kind: '하도급 변경 계약서', project: 'P4 Ph2', party: '에스제이', title: '하도급 변경 계약서', date: '2026-10-14' }).split('계약서').length === 2, '종류가 긴 글자("하도급 변경 계약서")여도 같은 규칙');
+  ok(/_견적서$/.test(docFileName(Object.assign({}, b, { title: '견적서 검토 건' }))), '견적명이 "견적서"를 포함하지만 끝이 아니면 종류를 따로 붙임'); }
 console.log('\n' + pass + ' passed, ' + fail + ' failed'); if (fail) process.exit(1);
