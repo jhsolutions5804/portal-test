@@ -539,3 +539,6 @@
 @media (min-width: 1200px) { .jh-pjt__splitrep { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
 /* 월간 보고서 탭은 일반 .jh-pjt 의 2열 규칙(900px~)을 쓰지 않고 한 열로 쌓는다 */
 .jh-pjt__mr { grid-template-columns: minmax(0, 1fr); }
+
+/* 월간 보고서 맨 위 줄: 전역 .jh-select 가 width:100% 라 월 선택이 한 줄을 다 차지하고 버튼이 아래로 밀리던 것을 한 줄로 */
+.jh-pjt__mrbar .jh-select { width: auto; min-width: var(--u-220); max-width: 100%; }
