@@ -93,6 +93,22 @@ const ce = logCompactHtml(CST({ error: '이 프로젝트의 이력을 볼 권한
 ok(ce.includes('data-tone="warn"') && !ce.includes('data-tone="danger"') && ce.includes('data-lg-retry') && ce.includes('권한이 없습니다'), '★ 요약: 서버가 안 돼도 홈이 시끄럽지 않게 주의(warn) 안내 + 다시 시도, 빨간 오류 없음');
 ok(!logCompactHtml(CST({ data: { urgent: [], changes: [], entries: [ENT({ id: 'x"><i>', title: '<script>alert(1)</script>' })], total: 1, today: '2026-10-17', canConfirm: false } })).includes('<script>alert') && logCompactHtml(CST({ proj: 'a/b c' })).includes('#/pjt/a%2Fb%20c/log'), '요약: 제목은 이스케이프, 프로젝트 주소는 인코딩');
 
+// ── PJT 메인 홈 이력관리(전체 모드): 여러 프로젝트 항목 + 프로젝트 칩·선택·필터
+const AST = (o) => CST(Object.assign({ proj: '', label: '', all: true, projects: [{ key: 'p1', label: 'P4 Ph2' }, { key: 'reg_2', label: '청주 CUB동 A/S' }], form: { category: '', source: '', title: '', dueDate: '', pjtId: '' } }, o));
+const PE = (id, pjtId, pjtLabel, o) => ENT(Object.assign({ id, pjtId, pjtLabel }, o || {}));
+const a1 = logCompactHtml(AST({ data: { urgent: [PE('x1', 'p1', 'P4 Ph2', { title: '회신 요청', due: { daysLeft: 1, tone: 'soon' }, dueDate: '2026-10-18' }), PE('x2', 'reg_2', '청주 CUB동 A/S', { title: '점검 일정', due: { daysLeft: 3, tone: 'later' }, dueDate: '2026-10-20' })], changes: [], entries: [], total: 2, today: '2026-10-17', canConfirm: false } }));
+ok(a1.includes('P4 Ph2') && a1.includes('청주 CUB동 A/S') && a1.includes('href="#/pjt/p1/log"') && a1.includes('href="#/pjt/reg_2/log"') && a1.includes('class="jh-pjt__lgproj"'), '전체 모드: 항목마다 프로젝트 이름 칩, 누르면 그 프로젝트의 이력 탭');
+ok(a1.includes('data-lg-pjt="p1"') && a1.includes('data-lg-pjt="reg_2"') && (a1.match(/data-lg-act="claim"[^>]*data-lg-pjt="/g) || []).length === 2, '★ 전체 모드: 행의 버튼마다 그 항목의 프로젝트 id 가 실려 있음(다른 프로젝트로 요청이 가지 않게)');
+ok(!a1.includes('전체 보기') && a1.includes('data-lg-fproj') && a1.includes('모든 프로젝트') && a1.includes('<option value="reg_2">'), '전체 모드: "전체 보기" 링크 대신 프로젝트 필터(프로젝트가 여럿일 때)');
+ok(!logCompactHtml(AST({ projects: [{ key: 'p1', label: 'P4 Ph2' }], data: { urgent: [], changes: [], entries: [], total: 0, today: '2026-10-17', canConfirm: false } })).includes('data-lg-fproj'), '전체 모드: 보이는 프로젝트가 하나뿐이면 프로젝트 필터는 없음');
+ok(logCompactHtml(AST({ filter: { pjtId: 'reg_2' }, data: { urgent: [], changes: [], entries: [], total: 0, today: '2026-10-17', canConfirm: false } })).includes('<option value="reg_2" selected>'), '전체 모드: 고른 프로젝트 필터가 선택돼 있음');
+const af = logCompactHtml(AST({ formOpen: true }));
+ok(af.includes('data-lg-proj') && af.includes('프로젝트를 선택하세요') && af.includes('<option value="p1">') && af.includes('<option value="reg_2">') && af.indexOf('data-lg-proj') < af.indexOf('data-lg-cat'), '전체 모드 폼: 분류보다 먼저 프로젝트 선택(보이는 프로젝트만)');
+ok(/data-lg-add[^>]*disabled/.test(logCompactHtml(AST({ formOpen: true, form: { category: '현장 이슈', source: '현장', title: '크레인 충돌', dueDate: '', pjtId: '' } }))) && !/data-lg-add[^>]*disabled/.test(logCompactHtml(AST({ formOpen: true, form: { category: '현장 이슈', source: '현장', title: '크레인 충돌', dueDate: '', pjtId: 'p1' } }))) && logCompactHtml(AST({ formOpen: true, form: { category: '현장 이슈', source: '현장', title: '크레인 충돌', dueDate: '', pjtId: 'p1' } })).includes('<option value="p1" selected>'), '★ 전체 모드 폼: 프로젝트를 고르지 않으면 다른 칸이 다 차도 기록하기 비활성, 고르면 활성(고른 프로젝트가 선택 표시)');
+ok(canSubmit(F(), true).ok === false && canSubmit(F(), true).why.includes('프로젝트') && canSubmit(F({ pjtId: 'p1' }), true).ok === true && canSubmit(F(), false).ok === true && canSubmit(F()).ok === true, '제출 검사: 전체 모드만 프로젝트 선택을 요구하고 개별 프로젝트 화면(이력 탭)은 그대로');
+ok(!logCompactHtml(CST({ formOpen: true })).includes('data-lg-proj') && !logHtml(ST({ formOpen: true })).includes('data-lg-proj') && !logCompactHtml(CST()).includes('jh-pjt__lgproj'), '개별 프로젝트 화면에는 프로젝트 선택·프로젝트 칩이 나오지 않음(이력 탭은 그대로)');
+ok(logCompactHtml(AST({ data: { urgent: [PE('y1', 'p1', '<img src=x onerror=1>', { title: 'x' })], changes: [], entries: [], total: 1, today: '2026-10-17', canConfirm: false } })).includes('&lt;img src=x onerror=1&gt;') && !logCompactHtml(AST({ data: { urgent: [PE('y1', 'a"><b>', '라벨', { title: 'x' })], changes: [], entries: [], total: 1, today: '2026-10-17', canConfirm: false } })).includes('<b>'), '전체 모드: 프로젝트 이름·id 도 이스케이프');
+
 // ── 서버 규칙과 같은지(서버 저장소가 옆에 있을 때만 대조 — 분류·출처·금액 감지가 어긋나면 입력 중 안내와 서버 거절이 달라진다)
 const SRV = ['/tmp/pf_diag/functions/pjt-log-act.js', new URL('../../portal-functions/functions/pjt-log-act.js', import.meta.url).pathname].find((p) => fs.existsSync(p));
 if (SRV) {

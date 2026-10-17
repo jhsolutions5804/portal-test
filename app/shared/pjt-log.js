@@ -24,9 +24,10 @@ export function titleHint(title) {
   if (t.length > TITLE_MAX) return '한 줄 요약은 ' + TITLE_MAX + '자 이내로 적어 주세요. (지금 ' + t.length + '자)';
   return '';
 }
-/** 제출 가능 여부와 이유 — 버튼 비활성·안내에 쓴다 */
-export function canSubmit(f) {
+/** 제출 가능 여부와 이유 — 버튼 비활성·안내에 쓴다. needProject = PJT 메인 홈처럼 프로젝트를 고르기 전 화면(프로젝트 선택이 필요) */
+export function canSubmit(f, needProject) {
   const x = f || {};
+  if (needProject && !String(x.pjtId || '')) return { ok: false, why: '프로젝트를 선택해 주세요.' };
   if (CATEGORIES.indexOf(x.category) === -1) return { ok: false, why: '분류를 선택해 주세요.' };
   if (INPUT_SOURCES.indexOf(x.source) === -1) return { ok: false, why: '출처를 선택해 주세요.' };
   if (!String(x.title || '').trim()) return { ok: false, why: '한 줄 요약을 적어 주세요.' };

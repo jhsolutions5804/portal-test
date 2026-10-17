@@ -205,42 +205,49 @@ await scenario('PJT 이력 탭 — 열면 pjtLogAct 목록, ＋ 기록으로 폼
   } finally { globalThis.__CALL_REPLY = sav; globalThis.__CALLS.length = 0; }
   check(WR().length === 0, '이력 탭은 Firestore 에 직접 쓰지 않음(서버 함수만): ' + JSON.stringify(WR().map((x) => x.op + ' ' + x.path)));
 });
-await scenario('프로젝트 홈 3단 — 캘린더 | 선택한 날 일정 | 이력(요약): 한 번만 불러오고, 날짜를 눌러 홈이 다시 그려져도 패널이 유지되며, 홈 안에서 맡기·기록이 서버로 연결', async (check) => {
+await scenario('PJT 메인 홈 3단 — 통합 일정 달력 | 선택한 날 일정 | 이력관리(전체 프로젝트): listAll 한 번, 달·날짜·폼으로 다시 그려도 패널 유지, 행의 프로젝트로 맡기, 프로젝트를 골라야 기록', async (check) => {
   const LOG = () => globalThis.__CALLS.filter((c) => c.name === 'pjtLogAct'); const sav = globalThis.__CALL_REPLY;
-  const E1 = { id: 'h1', date: '2026-10-14', category: '발주처 요청·지시', title: '자재 반입 일정 회신 요청', source: '메일', sourceRef: '', dueDate: '2026-10-19', status: 'confirmed', claimedBy: '', claimedByName: '', replyDetected: false, impactChecked: false, restricted: false, createdByName: '팀장', createdByMe: false, createdMs: 1, auto: false, due: { daysLeft: 2, tone: 'soon' }, unclaimed: true };
+  const E = (id, pjtId, pjtLabel, title, o) => Object.assign({ id, pjtId, pjtLabel, date: '2026-10-14', category: '발주처 요청·지시', title, source: '메일', sourceRef: '', dueDate: '2026-10-19', status: 'confirmed', claimedBy: '', claimedByName: '', replyDetected: false, impactChecked: false, restricted: false, createdByName: '팀장', createdByMe: false, createdMs: 1, auto: false, due: { daysLeft: 2, tone: 'soon' }, unclaimed: true }, o || {});
+  const A = E('a1', 'p4ph2', 'P4 Ph2 (FAB)', '자재 반입 일정 회신 요청'), B = E('b1', 'reg_X1', '청주 M15X CUB동 A/S', '점검 일정 확인 요청', { dueDate: '2026-10-18', due: { daysLeft: 1, tone: 'soon' } });
+  const typeInto = async (el, v) => { el.value = v; el.dispatchEvent(new w.Event('input', { bubbles: true })); await sleep(30); };
   try {
-    globalThis.__CALLS.length = 0; globalThis.__CALL_REPLY = Object.assign({}, sav, { pjtLogAct: (d) => (d.action === 'list' ? { ok: true, today: '2026-10-17', urgent: [E1], changes: [], entries: [E1], total: 1, canConfirm: false } : { ok: true, id: 'n1' }) });
-    const hm = await mountFresh(pjtMod.mountHome, { segs: ['p4ph2'], query: {} }); await sleep(400);
-    const grid = hm.querySelector('.jh-phome2'); const kids = grid ? [...grid.children].map((c) => c.className.split(' ')[0]) : [];
-    check(kids.join() === 'jh-phome2__cal,jh-phome2__side,jh-phome2__log', '홈 격자의 자식이 캘린더 · 선택한 날 일정 · 이력 순서여야 함: ' + kids.join());
-    check(!!hm.querySelector('.jh-phome2wrap .jh-phome2'), '남은 폭으로 단 수를 정하도록 격자가 컨테이너 래퍼 안에 있어야 함');
-    const logCol = hm.querySelector('.jh-phome2__log'); check(!!logCol && !!logCol.querySelector('.jh-pjt__lg--compact') && /자재 반입 일정 회신 요청/.test(logCol.textContent) && /D-2/.test(logCol.textContent), '3단째에 요약 이력(받은 항목·D-2 칩)이 그려져야 함');
-    check(!!logCol.querySelector('a[href="#/pjt/p4ph2/log"]'), '"전체 보기"는 그 프로젝트의 이력 탭으로 연결돼야 함');
-    check(LOG().length === 1 && JSON.stringify(LOG()[0].data) === JSON.stringify({ action: 'list', pjtId: 'p4ph2', filter: {} }), '홈을 열면 pjtLogAct list 를 한 번만 불러야 함: ' + JSON.stringify(LOG().map((c) => c.data)));
-    check(!/공사일보/.test(logCol.textContent) && /공사일보/.test(hm.querySelector('.jh-phome2__side').textContent), '기존 일정·공사일보·기본정보는 가운데 칸에 그대로 있어야 함');
-    // 날짜를 눌러 홈이 다시 그려져도 패널이 유지(서버 재호출 없음)
-    const box1 = logCol.querySelector('.jh-phome2__logbox'); await click(hm, '[data-hm-day]', 120);   // 홈은 다시 그려져 자리표시자는 새 요소가 되지만, 패널 요소(logbox)는 같은 요소로 옮겨 끼워져야 한다
-    const after = hm.querySelector('.jh-phome2__log'); const box2 = after && after.querySelector('.jh-phome2__logbox');
-    check(!!box1 && box1 === box2 && !!box2.querySelector('.jh-pjt__lg--compact') && /자재 반입 일정 회신 요청/.test(after.textContent) && after !== logCol, '★ 날짜를 눌러 홈이 다시 그려져도(자리표시자는 새 요소) 이력 패널 요소는 같은 요소로 유지되고 내용도 그대로여야 함');
-    check(LOG().length === 1, '★ 날짜를 눌러도 이력 서버 호출이 늘면 안 됨(패널 요소를 옮겨 끼움): ' + LOG().length + '번');
-    // 한 번 더(달 이동)도 유지
-    const nav = hm.querySelector('[data-hm-nav="1"]'); if (nav) { await click(hm, '[data-hm-nav="1"]', 120); check(LOG().length === 1 && /자재 반입 일정 회신 요청/.test(hm.querySelector('.jh-phome2__log').textContent), '달을 넘겨도 이력 패널·호출 횟수가 그대로여야 함'); }
-    // 홈 안에서 내가 맡기 → claim
-    globalThis.__CALLS.length = 0; await click(hm, '.jh-phome2__log [data-lg-act="claim"][data-lg-id="h1"]', 300);
-    const cl = LOG().find((c) => c.data.action === 'claim'); check(!!cl && JSON.stringify(cl.data) === JSON.stringify({ action: 'claim', pjtId: 'p4ph2', id: 'h1' }), '홈 안의 "내가 맡기"가 claim 을 {pjtId,id} 로 불러야 함: ' + JSON.stringify(cl && cl.data));
-    // 홈 안에서 ＋ 기록 → 폼 → 금액은 서버 호출 없음 → 정상은 add
-    await click(hm, '.jh-phome2__log [data-lg-toggle]', 60); check(!!hm.querySelector('.jh-phome2__log [data-lg-title]') && hm.querySelectorAll('.jh-phome2__log section').length === 1, '홈에서 ＋ 기록을 누르면 3단째 안에 폼이 펼쳐지고 카드 속 카드가 되지 않아야 함');
-    await click(hm, '.jh-phome2__log [data-lg-cat="현장 이슈"]', 60); await click(hm, '.jh-phome2__log [data-lg-src="현장"]', 60);
-    const ti = hm.querySelector('.jh-phome2__log [data-lg-title]'); globalThis.__CALLS.length = 0; ti.value = '배관 단가 15만원 인상'; ti.dispatchEvent(new w.Event('input', { bubbles: true })); await sleep(30);
-    check(!!hm.querySelector('.jh-phome2__log [data-lg-hint]') && hm.querySelector('.jh-phome2__log [data-lg-add]').disabled === true && LOG().length === 0, '★ 홈의 폼에서도 금액 입력은 안내·비활성이고 서버 호출이 없어야 함');
-    ti.value = '크레인 사용 일정 충돌'; ti.dispatchEvent(new w.Event('input', { bubbles: true })); await sleep(30); globalThis.__CALLS.length = 0; await click(hm, '.jh-phome2__log [data-lg-add]', 300);
-    const add = LOG().find((c) => c.data.action === 'add'); check(!!add && add.data.title === '크레인 사용 일정 충돌' && add.data.category === '현장 이슈' && add.data.source === '현장', '홈의 폼에서 add 가 정확한 값으로 불려야 함: ' + JSON.stringify(add && add.data));
-    // 이력 서버가 안 돼도 홈은 정상(빨간 오류 없음)
+    globalThis.__CALLS.length = 0; globalThis.__CALL_REPLY = Object.assign({}, sav, { pjtLogAct: (d) => (d.action === 'listAll' ? { ok: true, today: '2026-10-17', projects: [{ id: 'p4ph2', name: 'P4 Ph2 (FAB)' }], urgent: [B, A], entries: [A, B], total: 2, canConfirm: false } : { ok: true, id: 'n1' }) });
+    const ov = await mountFresh(pjtMod.mountHome, { segs: [], query: {} }); await sleep(450);
+    const grid = ov.querySelector('.jh-ov__layout'); const kids = grid ? [...grid.children].map((c) => c.id || c.className.split(' ')[0]) : [];
+    check(kids.join() === 'ov-sched,ov-detail,jh-ov__log', 'PJT 홈 격자의 자식이 통합 일정 달력 · 선택한 날 일정 · 이력관리 순서여야 함: ' + kids.join());
+    check(!!ov.querySelector('.jh-ov__wrap .jh-ov__layout'), '남은 폭으로 단 수를 정하도록 격자가 컨테이너 래퍼 안에 있어야 함');
+    const col = ov.querySelector('.jh-ov__log'); check(!!col.querySelector('.jh-pjt__lg--compact') && /자재 반입 일정 회신 요청/.test(col.textContent) && /점검 일정 확인 요청/.test(col.textContent), '3단째에 여러 프로젝트의 이력(요약)이 함께 그려져야 함');
+    check(/P4 Ph2 \(FAB\)/.test(col.textContent) && /청주 M15X CUB동 A\/S/.test(col.textContent) && !!col.querySelector('a.jh-pjt__lgproj[href="#/pjt/p4ph2/log"]') && !!col.querySelector('a.jh-pjt__lgproj[href="#/pjt/reg_X1/log"]'), '항목마다 프로젝트 이름 칩이 있고 누르면 그 프로젝트의 이력 탭으로 가야 함');
+    check(col.textContent.indexOf('점검 일정 확인 요청') < col.textContent.indexOf('자재 반입 일정 회신 요청'), '기한 임박은 프로젝트를 가로질러 마감 임박순(D-1이 D-2보다 위)이어야 함');
+    check(LOG().length === 1 && JSON.stringify(LOG()[0].data) === JSON.stringify({ action: 'listAll', filter: {} }), 'PJT 홈을 열면 pjtLogAct 를 {action:listAll, filter:{}} 로 한 번만 불러야 함: ' + JSON.stringify(LOG().map((c) => c.data)));
+    // 달 이동·날짜 선택은 왼쪽·가운데만 다시 그림 — 패널은 그대로, 호출도 그대로
+    const box1 = col.querySelector('.jh-ov__logbox'); await click(ov, '[data-ov-shift="1"]', 120); await click(ov, '[data-ov-today]', 120); const day = ov.querySelector('[data-ov-day]'); if (day) await click(ov, '[data-ov-day]', 120);
+    check(ov.querySelector('.jh-ov__log .jh-ov__logbox') === box1 && /점검 일정 확인 요청/.test(ov.querySelector('.jh-ov__log').textContent) && LOG().length === 1, '★ 달 이동·날짜 선택을 해도 이력관리 패널은 그대로이고 서버 호출도 늘지 않아야 함: ' + LOG().length + '번');
+    // 전체를 다시 그리는 경우(신규 프로젝트 폼 열기)에도 패널 요소는 같은 요소로 유지
+    const nb = ov.querySelector('[data-ov-new]'); if (nb) { await click(ov, '[data-ov-new]', 120); check(ov.querySelector('.jh-ov__log .jh-ov__logbox') === box1 && LOG().length === 1, '★ 화면 전체가 다시 그려져도(신규 프로젝트 폼) 이력관리 패널 요소는 같은 요소로 유지돼야 함'); await click(ov, '[data-ov-cancel]', 120); }
+    // 다른 프로젝트 항목의 "내가 맡기" → 그 항목의 프로젝트로 claim
+    globalThis.__CALLS.length = 0; await click(ov, '.jh-ov__log [data-lg-act="claim"][data-lg-id="b1"]', 300);
+    const cl = LOG().find((c) => c.data.action === 'claim'); check(!!cl && JSON.stringify(cl.data) === JSON.stringify({ action: 'claim', pjtId: 'reg_X1', id: 'b1' }), '★ 다른 프로젝트 항목의 "내가 맡기"는 그 항목의 프로젝트(reg_X1)로 claim 을 불러야 함(화면의 다른 프로젝트로 가면 안 됨): ' + JSON.stringify(cl && cl.data));
+    // 프로젝트가 여럿이면 프로젝트 필터가 나오고, 고르면 listAll 에 pjtId 가 실린다
+    const fp = ov.querySelector('.jh-ov__log [data-lg-fproj]'); check(!!fp && [...fp.options].map((o) => o.value).join() === ',REG2,p4ph2,p4ph4,REG1', '보이는 프로젝트가 여럿이면 프로젝트 필터가 나오고 보이는 프로젝트만 들어 있어야 함: ' + (fp ? [...fp.options].map((o) => o.value).join() : '없음'));
+    globalThis.__CALLS.length = 0; if (fp) { fp.value = 'p4ph2'; fp.dispatchEvent(new w.Event('change', { bubbles: true })); await sleep(300); const lf = LOG().find((c) => c.data.action === 'listAll'); check(!!lf && JSON.stringify(lf.data.filter) === JSON.stringify({ pjtId: 'p4ph2' }), '프로젝트 필터를 고르면 listAll 에 {pjtId:p4ph2} 가 실려야 함: ' + JSON.stringify(lf && lf.data)); fp.value = ''; fp.dispatchEvent(new w.Event('change', { bubbles: true })); await sleep(300); }
+    // ＋ 기록: 프로젝트를 골라야 제출 가능, 고른 프로젝트로 add
+    await click(ov, '.jh-ov__log [data-lg-toggle]', 60); const sel = ov.querySelector('.jh-ov__log [data-lg-proj]');
+    check(!!sel && [...sel.options].map((o) => o.value).join() === ',REG2,p4ph2,p4ph4,REG1', '＋ 기록에 프로젝트 선택이 나오고 보이는 프로젝트만 들어 있어야 함: ' + (sel ? [...sel.options].map((o) => o.value).join() : '없음'));
+    check(sel.value === '' && ov.querySelector('.jh-ov__log [data-lg-add]').disabled === true, '프로젝트가 여럿이고 처음이면 아무것도 골라져 있지 않고 기록하기는 비활성이어야 함(잘못된 프로젝트에 기록되는 실수 방지)');
+    await click(ov, '.jh-ov__log [data-lg-cat="현장 이슈"]', 60); await click(ov, '.jh-ov__log [data-lg-src="현장"]', 60); const ti = ov.querySelector('.jh-ov__log [data-lg-title]');
+    await typeInto(ti, '크레인 사용 일정 충돌'); check(ov.querySelector('.jh-ov__log [data-lg-add]').disabled === true, '★ 분류·출처·한 줄을 다 넣어도 프로젝트를 고르지 않았으면 기록하기가 비활성이어야 함');
+    { const s2 = ov.querySelector('.jh-ov__log [data-lg-proj]'); s2.value = 'p4ph2'; s2.dispatchEvent(new w.Event('change', { bubbles: true })); await sleep(60); }
+    check(ov.querySelector('.jh-ov__log [data-lg-add]').disabled === false && ov.querySelector('.jh-ov__log [data-lg-proj]').value === 'p4ph2' && ov.querySelector('.jh-ov__log [data-lg-title]').value === '크레인 사용 일정 충돌', '프로젝트를 고르면 기록하기가 활성이 되고 입력해 둔 한 줄은 그대로여야 함');
+    globalThis.__CALLS.length = 0; await typeInto(ov.querySelector('.jh-ov__log [data-lg-title]'), '배관 단가 15만원 인상'); check(!!ov.querySelector('.jh-ov__log [data-lg-hint]') && ov.querySelector('.jh-ov__log [data-lg-add]').disabled === true && LOG().length === 0, '★ 메인 홈의 폼에서도 금액 입력은 안내·비활성이고 서버 호출이 없어야 함');
+    await typeInto(ov.querySelector('.jh-ov__log [data-lg-title]'), '크레인 사용 일정 충돌'); globalThis.__CALLS.length = 0; await click(ov, '.jh-ov__log [data-lg-add]', 300);
+    const add = LOG().find((c) => c.data.action === 'add'); check(!!add && JSON.stringify(add.data) === JSON.stringify({ action: 'add', pjtId: 'p4ph2', category: '현장 이슈', source: '현장', title: '크레인 사용 일정 충돌', dueDate: '' }), 'add 가 고른 프로젝트(p4ph2)와 정확한 값으로 불려야 함: ' + JSON.stringify(add && add.data));
+    // 이력 서버가 안 돼도 메인 홈은 정상
     globalThis.__CALL_REPLY = Object.assign({}, sav, { pjtLogAct: () => { throw Object.assign(new Error('일시 오류'), { code: 'functions/unavailable' }); } });
-    const h2 = await mountFresh(pjtMod.mountHome, { segs: ['p4ph2'], query: {} }); await sleep(400);
-    check(!!h2.querySelector('.jh-phome2__side') && !!h2.querySelector('.jh-phome2__log [data-lg-retry]') && !h2.querySelector('.jh-alert[data-tone="danger"]'), '★ 이력 서버가 안 돼도 홈 본문은 정상이고 3단째에는 주의 안내+다시 시도만(빨간 오류 없음)');
-  } finally { globalThis.__CALL_REPLY = sav; globalThis.__CALLS.length = 0; }
-  check(WR().length === 0, '홈의 이력 패널도 Firestore 에 직접 쓰지 않음: ' + JSON.stringify(WR().map((x) => x.op + ' ' + x.path)));
+    const o2 = await mountFresh(pjtMod.mountHome, { segs: [], query: {} }); await sleep(450);
+    check(!!o2.querySelector('#ov-sched') && !!o2.querySelector('.jh-ov__log [data-lg-retry]') && !o2.querySelector('.jh-alert[data-tone="danger"]'), '★ 이력 서버가 안 돼도 PJT 홈 본문은 정상이고 3단째에는 주의 안내+다시 시도만(빨간 오류 없음)');
+  } finally { globalThis.__CALL_REPLY = sav; globalThis.__CALLS.length = 0; try { window.localStorage.removeItem('jh.pjtlog.lastProject'); } catch (e) { /* 무시 */ } }
+  check(WR().length === 0, '메인 홈의 이력관리도 Firestore 에 직접 쓰지 않음: ' + JSON.stringify(WR().map((x) => x.op + ' ' + x.path)));
 });
 await scenario('연차 현황 — 관리자 등록: edoc_leave 에 관리자 등록분으로 저장(근로자·종류·기간·일수)', async (check) => {
   const root = await mountFresh(hrMod.mountLeaves, { segs: ['w1'], query: {} }); await click(root, '[data-l-new="김가나"]'); await sleep(150);

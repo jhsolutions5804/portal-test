@@ -427,8 +427,7 @@ export async function mountHome(root, route, ctx) {
   root.onclick = null; root.onchange = null;
   const me = (ctx && ctx.me) || {}; const segs = (route && route.segs) || []; const today = appToday(); const [ty, tm] = today.split('-').map(Number);
   const st = { projects: [], proj: '', label: '', today, date: today, month: { y: ty, m: tm - 1 }, doc: null, unit: '대', ready: false, schedules: [], reports: [], reportDates: new Set(), features: {} };   // 홈 = 월 캘린더 + 고른 날짜의 일정(요약 카드 없음)
-  root.innerHTML = '<div id="hm-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#hm-body'); const logHost = document.createElement('div'); logHost.className = 'jh-phome2__logbox';   // 이력 패널 요소 — 한 번만 만들어 두고 홈이 다시 그려질 때마다 자리표시자에 옮겨 끼운다(상태·서버 호출 유지)
-  const paint = () => { const y = window.scrollY; body.innerHTML = homeHtml(st); const ph = body.querySelector('[data-hm-log]'); if (ph) ph.appendChild(logHost); window.scrollTo(0, y); };
+  root.innerHTML = '<div id="hm-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#hm-body'); const paint = () => { const y = window.scrollY; body.innerHTML = homeHtml(st); window.scrollTo(0, y); };
   try { await Promise.race([loadHolidays(), new Promise((r) => setTimeout(r, 1500))]); } catch (e) { /* 공휴일 없이 표시 */ }
   try { st.projects = visibleProjects(me, await loadDyn()); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
   body.removeAttribute('aria-busy'); st.proj = st.projects.some((p) => p.key === segs[0]) ? segs[0] : ''; if (!st.proj) { paint(); return; }
@@ -439,7 +438,6 @@ export async function mountHome(root, route, ctx) {
     const [ss, rr] = await Promise.all([getDocs(collection(db, P.schedules)), getDocs(collection(db, P.reports))]);
     st.schedules = []; ss.forEach((d) => st.schedules.push(Object.assign({ id: d.id }, d.data()))); const rdocs = []; rr.forEach((d) => rdocs.push({ id: d.id, data: d.data() })); st.reports = latestReports(rdocs, 3); st.reportDates = new Set(rdocs.map((d) => d.id)); st.ready = true;
   } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && (e.code || e.message)) || '') + '</div>'; return; }
-  createLogPanel(logHost, { proj: st.proj, label: st.label, me: { uid: me.uid || '' }, compact: true, callLog: ctx && ctx.callLog });   // 3단째 이력(요약) — 홈을 막지 않으려고 기다리지 않는다
   paint();
   root.onclick = (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return; let el;

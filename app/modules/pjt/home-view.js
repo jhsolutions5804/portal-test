@@ -8,7 +8,7 @@ const card = (title, body, right) => '<section class="jh-card"><div class="jh-pa
 const link = (st, sub, label, cls) => '<a class="' + (cls || 'jh-btn') + '" ' + (cls ? '' : 'data-variant="secondary" ') + 'href="#/pjt/' + encodeURIComponent(st.proj) + '/' + sub + '">' + label + '</a>';
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const offKind = (k) => (holidayName(k) || dowOf(k) === 0 ? 'red' : dowOf(k) === 6 ? 'sat' : '');
-/** 프로젝트 홈: 왼쪽 월 캘린더, 가운데에 캘린더에서 고른 날짜의 일정(그 아래 공사일보·기본정보), 오른쪽에 이력(요약 — 자리표시자를 이력 패널 부품이 채운다, 남은 폭이 좁으면 아래 한 줄). 요약 카드·바로가기는 없다 — 화면 이동은 사이드 메뉴. 모든 프로젝트 같은 형식 */
+/** 프로젝트 홈: 왼쪽 월 캘린더, 오른쪽에 캘린더에서 고른 날짜의 일정(그 아래 공사일보·기본정보). 요약 카드·바로가기는 없다 — 화면 이동은 사이드 메뉴. 모든 프로젝트 같은 형식 */
 export function homeHtml(st) {
   if (!st.proj) return '<div class="jh-pjt"><div class="jh-alert" data-tone="warn" role="status">이 프로젝트를 열 수 없습니다. 위 메뉴에서 프로젝트를 고르세요(참여자로 지정된 프로젝트만 열립니다).</div></div>';
   const head = '<div class="jh-pjt__proj"><span class="jh-pjt__projlabel">🏗️ ' + esc(st.label) + '</span><span class="jh-pjt__chip" data-tone="' + (st.doc && st.doc.status === 'ended' ? 'gray' : 'blue') + '">' + statusLabel(st.doc) + '</span><span class="jh-field__hint">프로젝트 홈</span></div>';
@@ -25,5 +25,5 @@ export function homeHtml(st) {
   const rep = card('공사일보', '<div class="jh-pjt__pad"><div class="jh-pjt__bar"><span>' + esc(dateText(st.date)) + ' 일보: ' + (done ? '<span class="jh-pjt__chip" data-tone="blue">작성됨</span>' : '<span class="jh-pjt__chip" data-tone="amber">작성 전</span>') + '</span>' + link(st, 'report/' + st.date, done ? '일보 보기' : '일보 작성', 'jh-btn') + '</div>'
     + (st.reports.length ? '<div class="jh-field__hint">최근 일보</div>' + st.reports.map((r) => '<div class="jh-pjt__rec"><span><strong>' + esc(r.date.slice(5).replace('-', '/')) + '</strong> ' + esc(r.author) + ' <span class="jh-field__hint">' + esc((r.content || '').split('\n')[0].slice(0, 60)) + '</span></span><a href="#/pjt/' + encodeURIComponent(st.proj) + '/report/' + r.date + '">보기</a></div>').join('') : '<div class="jh-empty">작성된 공사일보가 없습니다.</div>') + '</div>');
   const info = card('📋 기본정보', '<div class="jh-pjt__pad">' + infoRows(st.doc, unit).map(([k, v]) => '<div class="jh-pjt__rec"><span class="jh-field__hint">' + esc(k) + '</span><strong>' + esc(v) + '</strong></div>').join('') + '</div>');
-  return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide">' + head + '<div class="jh-phome2wrap"><div class="jh-phome2"><div class="jh-phome2__cal">' + cal + '</div><div class="jh-phome2__side">' + sched + rep + info + '</div><div class="jh-phome2__log" data-hm-log></div></div></div></div></div>';
+  return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide">' + head + '<div class="jh-phome2"><div class="jh-phome2__cal">' + cal + '</div><div class="jh-phome2__side">' + sched + rep + info + '</div></div></div></div>';
 }

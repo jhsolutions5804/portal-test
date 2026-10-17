@@ -35,11 +35,11 @@ export function detailInner(st) {
   const sel = groupByDay(st.items, [st.sel])[st.sel] || [];
   return '<div class="jh-panel__head"><h3>' + dayHead(st.sel) + ' (' + DOW[dowOf(st.sel)] + ')' + (holidayName(st.sel) ? ' · ' + esc(holidayName(st.sel)) : '') + ' 일정</h3></div><div class="jh-ov__detail">' + (sel.length ? sel.map((s) => itemHtml(st, s)).join('') : '<div class="jh-field__hint">이 날 일정이 없습니다.</div>') + '</div>';
 }
-/** PJT 전체 홈: 왼쪽에 통합 일정 월 달력, 오른쪽에 고른 날짜의 일정 목록(좁은 화면은 위아래) — 프로젝트 이동은 사이드 메뉴 */
+/** PJT 전체 홈: 왼쪽에 통합 일정 월 달력, 가운데에 고른 날짜의 일정 목록, 오른쪽에 이력관리(내가 볼 수 있는 모든 프로젝트의 이력 요약 — 자리표시자를 이력 패널 부품이 채운다). 남은 폭이 좁으면 이력은 아래 한 줄, 더 좁으면 위아래 — 프로젝트 이동은 사이드 메뉴 */
 export function overviewHtml(st) {
   if (!st.ready) return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide">' + head() + (st.err ? '<div class="jh-alert" data-tone="danger" role="alert">' + esc(st.err) + '</div>' : '<div class="jh-empty">불러오는 중...</div>') + '</div></div>';
   return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide">' + head(st.admin ? '<button type="button" class="jh-btn" data-variant="primary" data-ov-new style="margin-left:auto"' + (st.form ? ' disabled' : '') + '>＋ 신규 프로젝트</button>' : '') + (st.form ? newForm(st) : '')
-    + '<div class="jh-ov__layout"><section class="jh-card jh-ov__main" id="ov-sched">' + schedInner(st) + '</section><aside class="jh-card jh-ov__detailcard" id="ov-detail" aria-label="선택한 날 일정">' + detailInner(st) + '</aside></div></div></div>';
+    + '<div class="jh-ov__wrap"><div class="jh-ov__layout"><section class="jh-card jh-ov__main" id="ov-sched">' + schedInner(st) + '</section><aside class="jh-card jh-ov__detailcard" id="ov-detail" aria-label="선택한 날 일정">' + detailInner(st) + '</aside><div class="jh-ov__log" data-ov-log></div></div></div></div></div>';
 }
 /** 종료 PJT 목록 */
 export function endedHtml(st) {
