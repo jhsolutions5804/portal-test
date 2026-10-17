@@ -109,6 +109,12 @@ ok(canSubmit(F(), true).ok === false && canSubmit(F(), true).why.includes('프�
 ok(!logCompactHtml(CST({ formOpen: true })).includes('data-lg-proj') && !logHtml(ST({ formOpen: true })).includes('data-lg-proj') && !logCompactHtml(CST()).includes('jh-pjt__lgproj'), '개별 프로젝트 화면에는 프로젝트 선택·프로젝트 칩이 나오지 않음(이력 탭은 그대로)');
 ok(logCompactHtml(AST({ data: { urgent: [PE('y1', 'p1', '<img src=x onerror=1>', { title: 'x' })], changes: [], entries: [], total: 1, today: '2026-10-17', canConfirm: false } })).includes('&lt;img src=x onerror=1&gt;') && !logCompactHtml(AST({ data: { urgent: [PE('y1', 'a"><b>', '라벨', { title: 'x' })], changes: [], entries: [], total: 1, today: '2026-10-17', canConfirm: false } })).includes('<b>'), '전체 모드: 프로젝트 이름·id 도 이스케이프');
 
+// ── ★ 금액 안내가 실제로 "보이는" 조건: 전역 CSS(.jh-field__error{display:none})는 부모 .jh-field 에 data-invalid="true" 가 있을 때만 안내를 보여 준다 — 안내 요소만 있고 이 속성이 없으면 사용자에게 안 보인다(A2 확인에서 발견)
+{ const bad = logHtml(ST({ formOpen: true, form: { category: '현장 이슈', source: '현장', title: '배관 단가 15만원 인상', dueDate: '' } })), ok1 = logHtml(ST({ formOpen: true, form: { category: '현장 이슈', source: '현장', title: '크레인 충돌', dueDate: '' } }));
+  ok(/<div class="jh-field" data-invalid="true"><label[^>]*for="lg-title"/.test(bad) && bad.includes('data-lg-hint') && bad.includes('aria-invalid="true"'), '★ 금액이 든 한 줄: 안내(data-lg-hint)와 함께 그 필드에 data-invalid="true" 가 붙음(없으면 안내가 숨겨진다)');
+  ok(!/data-invalid/.test(ok1) && !ok1.includes('data-lg-hint'), '정상 한 줄에는 data-invalid·안내가 없음');
+  ok(/<div class="jh-field" data-invalid="true"><label[^>]*for="lg-title"/.test(logCompactHtml(AST({ formOpen: true, form: { category: '현장 이슈', source: '현장', title: '단가 3만원', dueDate: '', pjtId: 'p1' } }))), 'PJT 홈의 요약 폼에서도 같음'); }
+
 // ── 서버 규칙과 같은지(서버 저장소가 옆에 있을 때만 대조 — 분류·출처·금액 감지가 어긋나면 입력 중 안내와 서버 거절이 달라진다)
 const SRV = ['/tmp/pf_diag/functions/pjt-log-act.js', new URL('../../portal-functions/functions/pjt-log-act.js', import.meta.url).pathname].find((p) => fs.existsSync(p));
 if (SRV) {

@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261017c';
-import { CATEGORIES, INPUT_SOURCES, SOURCES, CATEGORY_ICON, STATUS_LABEL, STATUS_TONE, TITLE_MAX, titleHint, canSubmit, dueText, DUE_TONE, shortDate, actionsFor } from '../../shared/pjt-log.js?v=20261017c';
+import { esc } from '../../core/ui.js?v=20261017d';
+import { CATEGORIES, INPUT_SOURCES, SOURCES, CATEGORY_ICON, STATUS_LABEL, STATUS_TONE, TITLE_MAX, titleHint, canSubmit, dueText, DUE_TONE, shortDate, actionsFor } from '../../shared/pjt-log.js?v=20261017d';
 /* PJT 이력 탭 화면(문자열) — 설계 docs/pjt-log-design.md §3. 화면 순서: 기한 임박 요청 → 변경사항 → 전체 이력, 맨 위에 한 줄 입력.
  * st = { proj, label, me:{uid,manager}, loading, error, data:{urgent,changes,entries,total,today,canConfirm}, filter:{category,source,from,to}, formOpen, form:{category,source,title,dueDate}, busy, msg } */
 const chip = (text, tone) => '<span class="jh-badge"' + (tone ? ' data-tone="' + tone + '"' : '') + '>' + esc(text) + '</span>';
@@ -30,7 +30,7 @@ export function formHtml(st, bare) {
   return open
     + projSel + '<div class="jh-field"><span class="jh-field__label">분류</span>' + seg('data-lg-cat', CATEGORIES, f.category) + '</div>'
     + '<div class="jh-field"><span class="jh-field__label">출처</span>' + seg('data-lg-src', INPUT_SOURCES, f.source) + '</div>'
-    + '<div class="jh-field"><label class="jh-field__label" for="lg-title">한 줄 요약 <span class="jh-field__hint">(금액·단가는 적지 않습니다)</span></label><input id="lg-title" class="jh-input" data-lg-title maxlength="200" autocomplete="off" placeholder="예) 4층 B구역 배관 검사 11/5 → 11/7로 변경" value="' + esc(f.title || '') + '"' + (hint ? ' aria-invalid="true"' : '') + '>'
+    + '<div class="jh-field"' + (hint ? ' data-invalid="true"' : '') + '><label class="jh-field__label" for="lg-title">한 줄 요약 <span class="jh-field__hint">(금액·단가는 적지 않습니다)</span></label><input id="lg-title" class="jh-input" data-lg-title maxlength="200" autocomplete="off" placeholder="예) 4층 B구역 배관 검사 11/5 → 11/7로 변경" value="' + esc(f.title || '') + '"' + (hint ? ' aria-invalid="true"' : '') + '>'
     + '<div class="jh-field__hint" data-lg-count>' + String(f.title || '').trim().length + ' / ' + TITLE_MAX + '</div>' + (hint ? '<div class="jh-field__error" role="alert" data-lg-hint>' + esc(hint) + '</div>' : '') + '</div>'
     + '<div class="jh-field"><label class="jh-field__label" for="lg-due">기한 <span class="jh-field__hint">(회신·조치가 필요한 날, 없으면 비워 두세요)</span></label><input id="lg-due" class="jh-input" type="date" data-lg-due value="' + esc(f.dueDate || '') + '"></div>'
     + '<div class="jh-actionbar"><button type="button" class="jh-btn" data-variant="primary" data-lg-add' + (can.ok && !st.busy ? '' : ' disabled') + '>기록하기</button>' + (can.ok ? '' : '<span class="jh-field__hint">' + esc(can.why) + '</span>') + '</div>'

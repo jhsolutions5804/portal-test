@@ -179,12 +179,12 @@ await scenario('PJT 이력 탭 — 열면 pjtLogAct 목록, ＋ 기록으로 폼
     check(root.querySelector('[data-lg-cat="현장 이슈"]').getAttribute('aria-pressed') === 'true' && root.querySelector('[data-lg-src="현장"]').getAttribute('aria-pressed') === 'true', '고른 분류·출처 칩이 눌린 표시여야 함');
     // 금액 입력: 안내가 뜨고 기록하기 비활성, 눌러도 서버 호출 없음
     globalThis.__CALLS.length = 0; await typeInto(root.querySelector('[data-lg-title]'), '배관 단가 15만원 인상 합의');
-    check(!!root.querySelector('[data-lg-hint]') && /금액·단가는 이력에 적지 않습니다/.test(root.querySelector('[data-lg-hint]').textContent) && root.querySelector('[data-lg-add]').disabled === true, '★ 금액을 입력하면 입력칸 아래에 안내가 뜨고 기록하기가 비활성이어야 함');
+    check(!!root.querySelector('[data-lg-hint]') && /금액·단가는 이력에 적지 않습니다/.test(root.querySelector('[data-lg-hint]').textContent) && root.querySelector('[data-lg-add]').disabled === true && root.querySelector('[data-lg-hint]').closest('.jh-field').getAttribute('data-invalid') === 'true', '★ 금액을 입력하면 입력칸 아래에 안내가 뜨고(그 필드에 data-invalid — 없으면 전역 CSS 가 안내를 숨긴다) 기록하기가 비활성이어야 함');
     root.querySelector('[data-lg-add]').dispatchEvent(new w.MouseEvent('click', { bubbles: true })); await sleep(60);
     check(LOG().length === 0, '★ 금액이 든 입력은 눌러도 서버(pjtLogAct)를 부르면 안 됨: ' + JSON.stringify(LOG().map((c) => c.data)));
     // 정상 입력: 안내가 사라지고 활성, 누르면 add → 목록 다시
     await typeInto(root.querySelector('[data-lg-title]'), '크레인 사용 일정 충돌 — 4층 B구역');
-    check(!root.querySelector('[data-lg-hint]') && root.querySelector('[data-lg-add]').disabled === false, '금액을 지우면 안내가 사라지고 기록하기가 활성이어야 함');
+    check(!root.querySelector('[data-lg-hint]') && root.querySelector('[data-lg-add]').disabled === false && !root.querySelector('[data-lg-title]').closest('.jh-field').hasAttribute('data-invalid'), '금액을 지우면 안내가 사라지고(필드의 data-invalid 도 꺼짐) 기록하기가 활성이어야 함');
     await typeInto(root.querySelector('[data-lg-due]'), ''); globalThis.__CALLS.length = 0;
     await click(root, '[data-lg-add]', 250);
     const add = LOG().find((c) => c.data.action === 'add');
@@ -239,7 +239,7 @@ await scenario('PJT 메인 홈 3단 — 통합 일정 달력 | 선택한 날 일
     await typeInto(ti, '크레인 사용 일정 충돌'); check(ov.querySelector('.jh-ov__log [data-lg-add]').disabled === true, '★ 분류·출처·한 줄을 다 넣어도 프로젝트를 고르지 않았으면 기록하기가 비활성이어야 함');
     { const s2 = ov.querySelector('.jh-ov__log [data-lg-proj]'); s2.value = 'p4ph2'; s2.dispatchEvent(new w.Event('change', { bubbles: true })); await sleep(60); }
     check(ov.querySelector('.jh-ov__log [data-lg-add]').disabled === false && ov.querySelector('.jh-ov__log [data-lg-proj]').value === 'p4ph2' && ov.querySelector('.jh-ov__log [data-lg-title]').value === '크레인 사용 일정 충돌', '프로젝트를 고르면 기록하기가 활성이 되고 입력해 둔 한 줄은 그대로여야 함');
-    globalThis.__CALLS.length = 0; await typeInto(ov.querySelector('.jh-ov__log [data-lg-title]'), '배관 단가 15만원 인상'); check(!!ov.querySelector('.jh-ov__log [data-lg-hint]') && ov.querySelector('.jh-ov__log [data-lg-add]').disabled === true && LOG().length === 0, '★ 메인 홈의 폼에서도 금액 입력은 안내·비활성이고 서버 호출이 없어야 함');
+    globalThis.__CALLS.length = 0; await typeInto(ov.querySelector('.jh-ov__log [data-lg-title]'), '배관 단가 15만원 인상'); check(!!ov.querySelector('.jh-ov__log [data-lg-hint]') && ov.querySelector('.jh-ov__log [data-lg-hint]').closest('.jh-field').getAttribute('data-invalid') === 'true' && ov.querySelector('.jh-ov__log [data-lg-add]').disabled === true && LOG().length === 0, '★ 메인 홈의 폼에서도 금액 입력은 안내·비활성이고 서버 호출이 없어야 함');
     await typeInto(ov.querySelector('.jh-ov__log [data-lg-title]'), '크레인 사용 일정 충돌'); globalThis.__CALLS.length = 0; await click(ov, '.jh-ov__log [data-lg-add]', 300);
     const add = LOG().find((c) => c.data.action === 'add'); check(!!add && JSON.stringify(add.data) === JSON.stringify({ action: 'add', pjtId: 'p4ph2', category: '현장 이슈', source: '현장', title: '크레인 사용 일정 충돌', dueDate: '' }), 'add 가 고른 프로젝트(p4ph2)와 정확한 값으로 불려야 함: ' + JSON.stringify(add && add.data));
     // 이력 서버가 안 돼도 메인 홈은 정상

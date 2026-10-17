@@ -1,7 +1,7 @@
-import { functions, httpsCallable } from '../../core/firebase.js?v=20261017c';
-import { confirmDialog } from '../../core/dialog.js?v=20261017c';
-import { logHtml, logCompactHtml } from './log-view.js?v=20261017c';
-import { titleHint, canSubmit, friendlyError } from '../../shared/pjt-log.js?v=20261017c';
+import { functions, httpsCallable } from '../../core/firebase.js?v=20261017d';
+import { confirmDialog } from '../../core/dialog.js?v=20261017d';
+import { logHtml, logCompactHtml } from './log-view.js?v=20261017d';
+import { titleHint, canSubmit, friendlyError } from '../../shared/pjt-log.js?v=20261017d';
 /* 이력 패널 — 이력 탭(전체 화면)과 프로젝트 홈의 3단째(요약)가 같이 쓰는 부품. 상태·이벤트·서버 호출(pjtLogAct)을 이 안에서만 다룬다.
  * host = 이 패널이 그려지는 요소(이 요소에 직접 이벤트를 달기 때문에 바깥 화면이 다시 그려져도 요소만 옮겨 끼우면 상태가 유지된다).
  * o = { proj, label, me:{uid}, callLog?, compact?, all?, projects? }. all = PJT 메인 홈처럼 프로젝트를 고르기 전 화면(내가 볼 수 있는 모든 프로젝트의 이력, projects=[{key,label}] — 입력은 프로젝트를 골라서, 행의 버튼은 그 행의 프로젝트로 처리). 반환 { ready, reload, state } */
@@ -58,7 +58,7 @@ export function createLogPanel(host, o) {
     const t = ev.target; if (!(t instanceof Element) || !t.hasAttribute('data-lg-title')) return; st.form.title = t.value;
     const h = titleHint(t.value), c = canSubmit(st.form, st.all); const cnt = host.querySelector('[data-lg-count]'); if (cnt) cnt.textContent = String(t.value).trim().length + ' / 80';
     let hint = host.querySelector('[data-lg-hint]'); const field = t.closest('.jh-field');
-    if (h) { if (!hint && field) { hint = document.createElement('div'); hint.className = 'jh-field__error'; hint.setAttribute('role', 'alert'); hint.setAttribute('data-lg-hint', ''); field.appendChild(hint); } if (hint) hint.textContent = h; t.setAttribute('aria-invalid', 'true'); } else { if (hint) hint.remove(); t.removeAttribute('aria-invalid'); }
+    if (h) { if (!hint && field) { hint = document.createElement('div'); hint.className = 'jh-field__error'; hint.setAttribute('role', 'alert'); hint.setAttribute('data-lg-hint', ''); field.appendChild(hint); } if (hint) hint.textContent = h; t.setAttribute('aria-invalid', 'true'); if (field) field.setAttribute('data-invalid', 'true'); } else { if (hint) hint.remove(); t.removeAttribute('aria-invalid'); if (field) field.removeAttribute('data-invalid'); }   // 전역 규칙이 .jh-field[data-invalid] 일 때만 안내(.jh-field__error)를 보여 준다 — 이 속성이 없으면 안내가 숨겨진 채라 사용자가 왜 기록하기가 안 눌리는지 모른다
     const add = host.querySelector('[data-lg-add]'); if (add) { if (c.ok && !st.busy) add.removeAttribute('disabled'); else add.setAttribute('disabled', ''); }
   };
   paint();
