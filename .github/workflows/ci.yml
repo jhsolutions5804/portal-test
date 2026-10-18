@@ -21,7 +21,8 @@ permissions:
   contents: read
 
 jobs:
-  검사:
+  check:   # 작업 ID 는 영문·숫자·-·_ 만 허용(한글이면 GitHub 가 워크플로를 시작조차 하지 않음 — 2026-10-18 실제로 그랬다). 화면에 보이는 이름은 name 으로
+    name: 검사(정적·화면·크로미움·빌드 번호)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
