@@ -3,12 +3,12 @@ let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK 
 const eq = (a, b, m) => ok(a === b, m + (a === b ? '' : '  ← 실제: "' + a + '" / 기대: "' + b + '"'));
 
 // ── 문서군별 순서
-eq(docFileName({ group: 'project', project: 'P4 Ph2', kind: '견적서', no: 'EST-2026-001', party: '다람이엔지', contact: '김과장', title: 'FCU 설치 견적', date: '2026-05-10' }), '20260510_다람이엔지(김과장)_P4 Ph2_FCU 설치 견적_견적서', '★ 프로젝트 문서: 날짜(숫자만)_거래처(담당자)_현장명_견적명_종류 — 대표님이 엑셀로 쓰시던 방식 + 맨 끝에 종류');
-eq(docFileName({ kind: '대금청구서', project: 'H17L', no: '2609001', party: 'A사', date: '2026-09-30' }), '20260930_A사_H17L_대금청구서', '그룹을 안 주면 프로젝트 문서로 처리(번호는 파일 이름에 넣지 않음)');
-eq(docFileName({ group: 'month', ym: '2026-09', kind: '월말 마감' }), '2026-09 월말 마감', '월 단위 문서: 연월 → 종류');
-eq(docFileName({ group: 'month', ym: '2026-09', kind: '월간 보고서', project: 'P4 Ph2' }), '2026-09 월간 보고서 - P4 Ph2', '월 단위 문서에 프로젝트가 있으면 뒤에 붙임');
+eq(docFileName({ group: 'project', project: 'P4 Ph2', kind: '견적서', no: 'EST-2026-001', party: '다람이엔지', contact: '김과장', title: 'FCU 설치 견적', date: '2026-05-10' }), '견적서_20260510_다람이엔지(김과장)_P4 Ph2_FCU 설치 견적', '★ 프로젝트 문서: 종류_날짜(숫자만)_거래처(담당자)_현장명_견적명 — 대표님이 엑셀로 쓰시던 방식 + 맨 앞에 종류');
+eq(docFileName({ kind: '대금청구서', project: 'H17L', no: '2609001', party: 'A사', date: '2026-09-30' }), '대금청구서_20260930_A사_H17L', '그룹을 안 주면 프로젝트 문서로 처리(번호는 파일 이름에 넣지 않음)');
+eq(docFileName({ group: 'month', ym: '2026-09', kind: '월말 마감' }), '월말 마감 - 2026-09', '월 단위 문서: 종류 → 연월');
+eq(docFileName({ group: 'month', ym: '2026-09', kind: '월간 보고서', project: 'P4 Ph2' }), '월간 보고서 - 2026-09 - P4 Ph2', '월 단위 문서에 프로젝트가 있으면 뒤에 붙임');
 eq(docFileName({ group: 'person', kind: '근로계약서', name: '홍길동', date: '2026-10-26' }), '근로계약서 - 홍길동 - 2026-10-26', '인사 직원 문서: 종류 → 이름 → 기준일');
-eq(docFileName({ group: 'person', ym: '2026-06', kind: '급여명세서', name: '홍길동' }), '2026-06 급여명세서 - 홍길동', '급여명세서는 연월을 앞에(확정된 예시와 같은 모양)');
+eq(docFileName({ group: 'person', ym: '2026-06', kind: '급여명세서', name: '홍길동' }), '급여명세서 - 2026-06 - 홍길동', '급여명세서도 종류가 맨 앞(대표님 2026-10-17: 모든 문서의 종류를 가장 앞에)');
 eq(docFileName({ group: 'edoc', kind: '구매품의', docNo: '2610001', author: '김작성', date: '2026-10-01' }), '구매품의 - 2610001 - 김작성 - 2026-10-01', '전자결재: 종류 → 문서번호 → 작성자 → 날짜');
 
 // ── 없는 칸은 건너뜀(빈 구분자·"undefined" 금지)
@@ -19,9 +19,9 @@ eq(docFileName({}), '문서', '아무것도 없으면 "문서"');
 eq(docFileName(), '문서', '인자 자체가 없어도 오류 없이 "문서"');
 
 // ── 날짜·번호가 민감정보 필터에 잘못 지워지지 않음(번호·날짜는 필터를 거치지 않는 구조화 칸)
-eq(docFileName({ project: 'P', kind: '견적서', no: 'EST-2026-001', date: '2026-05-10' }), '20260510_P_견적서', '날짜는 맨 앞에 숫자만(파일 목록이 날짜순으로 정렬됨)');
-eq(docFileName({ project: 'P', kind: '정산서', no: '2610003', date: '2026-10-13T09:00:00.000Z' }), '20261013_P_정산서', 'ISO 날짜는 YYYYMMDD 로 줄임');
-eq(docFileName({ project: 'P/Q:R', kind: '정산서', date: '2026-10-13' }), '20261013_P Q R_정산서', '이름의 / : 같은 파일 이름 금지 문자는 공백으로');
+eq(docFileName({ project: 'P', kind: '견적서', no: 'EST-2026-001', date: '2026-05-10' }), '견적서_20260510_P', '종류 다음에 날짜(숫자만) — 같은 종류끼리 날짜순으로 정렬됨');
+eq(docFileName({ project: 'P', kind: '정산서', no: '2610003', date: '2026-10-13T09:00:00.000Z' }), '정산서_20261013_P', 'ISO 날짜는 YYYYMMDD 로 줄임');
+eq(docFileName({ project: 'P/Q:R', kind: '정산서', date: '2026-10-13' }), '정산서_20261013_P Q R', '이름의 / : 같은 파일 이름 금지 문자는 공백으로');
 
 // ── 민감정보 강제 필터(자유 입력 칸)
 eq(safeText('홍길동 900101-1234567'), '홍길동', '주민등록번호 제거');
@@ -47,38 +47,46 @@ eq(safeText('...점으로 시작.'), '점으로 시작', '앞뒤 점·하이픈 
 eq(safeText('가'.repeat(100)).length, 40, '자유 입력 한 칸은 40자 이내');
 const long = docFileName({ project: '가'.repeat(60), kind: '견적서', no: 'EST-2026-001', party: '나'.repeat(60), contact: '라'.repeat(30), title: '다'.repeat(60), date: '2026-05-10' });
 ok(long.length <= 120, '전체 120자 이내 (실제 ' + long.length + '자)');
-ok(long.startsWith('20260510_') && long.endsWith('_견적서'), '★ 길 때는 이름 칸을 줄이고 맨 앞의 날짜와 맨 끝의 종류는 살림');
+ok(long.startsWith('견적서_20260510_'), '★ 길 때는 이름 칸을 줄이고 맨 앞의 종류와 날짜는 살림');
 ok(safeText('가'.normalize('NFD')) === '가'.normalize('NFC'), '한글 자모 분리(맥 파일 이름)를 합쳐 줌');
-eq(docFileName({ group: 'month', ym: '2026-13-99x', kind: '월말 마감' }), '2026-13 월말 마감', '연월 앞 7자리만 형식이 맞으면 받음');
+eq(docFileName({ group: 'month', ym: '2026-13-99x', kind: '월말 마감' }), '월말 마감 - 2026-13', '연월 앞 7자리만 형식이 맞으면 받음');
 eq(docFileName({ group: 'month', ym: '잘못', kind: '월말 마감' }), '월말 마감', '연월 형식이 아니면 버림');
 
 // ── 프로젝트 문서군 새 형식(대표님 2026-10-17): 날짜(YYYYMMDD)_거래처(담당자)_현장명_견적명_종류
 { const base = { group: 'project', kind: '견적서', project: 'P4 Ph2', party: '다람이엔지', contact: '김과장', title: 'FCU 설치 견적', no: 'EST-2026-001', date: '2026-05-10' };
-  eq(docFileName(base), '20260510_다람이엔지(김과장)_P4 Ph2_FCU 설치 견적_견적서', '★ 4칸 모두 있는 견적서');
+  eq(docFileName(base), '견적서_20260510_다람이엔지(김과장)_P4 Ph2_FCU 설치 견적', '★ 4칸 모두 있는 견적서');
   ok(!docFileName(base).includes('EST-2026-001') && !docFileName(base).includes(' - '), '문서 번호는 파일 이름에 넣지 않고, 구분자는 \'_\' 만(\' - \' 없음)');
-  eq(docFileName(Object.assign({}, base, { contact: '' })), '20260510_다람이엔지_P4 Ph2_FCU 설치 견적_견적서', '담당자가 없으면 괄호도 없음');
-  eq(docFileName(Object.assign({}, base, { party: '', contact: '김과장' })), '20260510_김과장_P4 Ph2_FCU 설치 견적_견적서', '거래처가 없고 담당자만 있으면 담당자만(빈 괄호 없음)');
-  eq(docFileName(Object.assign({}, base, { title: '' })), '20260510_다람이엔지(김과장)_P4 Ph2_견적서', '견적명이 없으면(정산서·계약서) 그 칸만 건너뜀');
-  eq(docFileName(Object.assign({}, base, { title: 'P4 Ph2' })), '20260510_다람이엔지(김과장)_P4 Ph2_견적서', '견적명이 현장명과 같으면 한 번만');
-  eq(docFileName(Object.assign({}, base, { date: '' })), '다람이엔지(김과장)_P4 Ph2_FCU 설치 견적_견적서', '날짜가 없으면 그 칸만 건너뜀(맨 앞에 \'_\' 가 남지 않음)');
-  ok(!/^_|_$|__/.test(docFileName({ group: 'project', kind: '견적서', project: '', party: '', title: '', date: '' })), '비어 있는 칸이 많아도 \'_\' 가 맨 앞·맨 끝·연속으로 남지 않음');
-  eq(docFileName(Object.assign({}, base, { date: '2026-05-10T09:00:00Z' })), '20260510_다람이엔지(김과장)_P4 Ph2_FCU 설치 견적_견적서', 'ISO 날짜도 YYYYMMDD');
-  ok(docFileName(Object.assign({}, base, { date: '20260510' })).startsWith('다람이엔지'), '날짜 형식이 아니면(이미 압축된 값 포함) 버림 — 입력은 YYYY-MM-DD 만 받는다');
+  eq(docFileName(Object.assign({}, base, { contact: '' })), '견적서_20260510_다람이엔지_P4 Ph2_FCU 설치 견적', '담당자가 없으면 괄호도 없음');
+  eq(docFileName(Object.assign({}, base, { party: '', contact: '김과장' })), '견적서_20260510_김과장_P4 Ph2_FCU 설치 견적', '거래처가 없고 담당자만 있으면 담당자만(빈 괄호 없음)');
+  eq(docFileName(Object.assign({}, base, { title: '' })), '견적서_20260510_다람이엔지(김과장)_P4 Ph2', '견적명이 없으면(정산서·계약서) 그 칸만 건너뜀');
+  eq(docFileName(Object.assign({}, base, { title: 'P4 Ph2' })), '견적서_20260510_다람이엔지(김과장)_P4 Ph2', '견적명이 현장명과 같으면 한 번만');
+  eq(docFileName(Object.assign({}, base, { date: '' })), '견적서_다람이엔지(김과장)_P4 Ph2_FCU 설치 견적', '날짜가 없으면 그 칸만 건너뜀(연속 밑줄이 남지 않음)');
+  ok(!/^_|_$|__/.test(docFileName({ group: 'project', kind: '견적서', project: '', party: '', title: '', date: '' })), '비어 있는 칸이 많아도 밑줄이 맨 앞·맨 끝·연속으로 남지 않음');
+  eq(docFileName(Object.assign({}, base, { date: '2026-05-10T09:00:00Z' })), '견적서_20260510_다람이엔지(김과장)_P4 Ph2_FCU 설치 견적', 'ISO 날짜도 YYYYMMDD');
+  ok(docFileName(Object.assign({}, base, { date: '20260510' })).startsWith('견적서_다람이엔지'), '날짜 형식이 아니면(이미 압축된 값 포함) 버림 — 입력은 YYYY-MM-DD 만 받는다');
   ok(!/010|1234|5678/.test(docFileName(Object.assign({}, base, { contact: '김과장 010-1234-5678' }))) && docFileName(Object.assign({}, base, { contact: '김과장 010-1234-5678' })).includes('(김과장)'), '★ 담당자 칸에 전화번호가 섞여도 지워지고 이름만 남음');
   ok(!/원|3,000/.test(docFileName(Object.assign({}, base, { title: '공사 3,000,000원 견적' }))), '★ 견적명에 금액이 섞여도 지워짐');
   ok(!/[\\/:*?"<>|]/.test(docFileName(Object.assign({}, base, { title: '가/나:다*라?' }))), '견적명의 파일 이름 금지 문자도 지워짐');
   const mix = docFileName(Object.assign({}, base, { contact: '김(과장)' })); ok(mix.includes('다람이엔지(김(과장))'), '담당자 이름에 괄호가 있어도 오류 없이(그대로 둠)');
-  ok(docFileName({ group: 'month', ym: '2026-09', kind: '월말 마감' }) === '2026-09 월말 마감' && docFileName({ group: 'person', kind: '근로계약서', name: '홍길동', date: '2026-10-26' }) === '근로계약서 - 홍길동 - 2026-10-26' && docFileName({ group: 'edoc', kind: '구매품의', docNo: '2610001', author: '김작성', date: '2026-10-01' }) === '구매품의 - 2610001 - 김작성 - 2026-10-01', '★ 월 단위·사람·결재 문서는 이번 변경과 무관하게 기존 형식 그대로'); }
-// ── 실제 견적(테섭 13건)에서 나온 사례: 견적명이 길거나 이미 종류 글자를 포함한 경우
+  ok(docFileName({ group: 'month', ym: '2026-09', kind: '월말 마감' }) === '월말 마감 - 2026-09' && docFileName({ group: 'person', kind: '근로계약서', name: '홍길동', date: '2026-10-26' }) === '근로계약서 - 홍길동 - 2026-10-26' && docFileName({ group: 'edoc', kind: '구매품의', docNo: '2610001', author: '김작성', date: '2026-10-01' }) === '구매품의 - 2610001 - 김작성 - 2026-10-01', '★ 월 단위는 종류가 앞으로 옮겨졌고, 사람(근로계약서)·결재 문서는 이미 종류가 맨 앞이라 그대로'); }
+// ── 실제 견적(테섭 13건)에서 나온 사례: 견적명이 길거나 이미 종류 글자를 포함한 경우 — 종류는 항상 맨 앞, 견적명 끝의 종류 글자는 떼어 중복을 없앤다
 { const b = { group: 'project', kind: '견적서', project: 'P5 Ph1 (복합동)', party: '귀뚜라미범양냉방', contact: '', date: '2026-08-13' };
-  eq(docFileName(Object.assign({}, b, { title: 'P5 Ph1 PAC 26대 납품 설치 견적서' })), '20260813_귀뚜라미범양냉방_P5 Ph1 (복합동)_P5 Ph1 PAC 26대 납품 설치 견적서', '★ 견적명이 이미 "…견적서"로 끝나면 견적명은 그대로 두고 종류만 생략(이름에 "견적서"가 한 번만) — 견적명이 사라지면 안 된다');
+  eq(docFileName(Object.assign({}, b, { title: 'P5 Ph1 PAC 26대 납품 설치 견적서' })), '견적서_20260813_귀뚜라미범양냉방_P5 Ph1 (복합동)_P5 Ph1 PAC 26대 납품 설치', '★ 견적명이 이미 "…견적서"로 끝나면 끝의 종류 글자를 떼어 냄(종류는 맨 앞에 한 번만)');
   ok(docFileName(Object.assign({}, b, { title: 'P5 Ph1 PAC 26대 납품 설치 견적서' })).split('견적서').length === 2, '"견적서" 글자가 파일 이름에 한 번만 나옴');
   const long52 = 'P4 Ph2 FCU 87대분 관리자 2인 파견 (3F FIZ, X-OB, 복합4동, 복합3동)'; ok(long52.length === 52, '시험 자료: 실제 견적명 52자');
-  ok(docFileName(Object.assign({}, b, { title: long52 })).includes(long52) && docFileName(Object.assign({}, b, { title: long52 })).endsWith('_견적서'), '★ 52자 견적명이 잘리지 않고 전부 들어가며 종류가 끝에 옴(전에는 40자에서 "X-OB," 로 잘렸다)');
+  ok(docFileName(Object.assign({}, b, { title: long52 })).includes(long52) && docFileName(Object.assign({}, b, { title: long52 })).startsWith('견적서_'), '★ 52자 견적명이 잘리지 않고 전부 들어가며 종류가 맨 앞에 옴');
   ok(docFileName(Object.assign({}, b, { title: '가'.repeat(80) })).length <= 120, '견적명이 아주 길어도 전체는 120자 이내');
-  eq(docFileName(Object.assign({}, b, { title: 'P5 Ph1 (복합동)' })), '20260813_귀뚜라미범양냉방_P5 Ph1 (복합동)_견적서', '견적명이 현장명과 같으면 견적명 칸만 생략하고 종류는 유지');
-  eq(docFileName(Object.assign({}, b, { title: '견적서' })), '20260813_귀뚜라미범양냉방_P5 Ph1 (복합동)_견적서', '견적명이 종류 글자뿐이어도 "견적서" 한 번만');
-  eq(docFileName(Object.assign({}, b, { title: '' })), '20260813_귀뚜라미범양냉방_P5 Ph1 (복합동)_견적서', '견적명이 비어 있으면 그 칸만 건너뜀');
-  ok(docFileName({ group: 'project', kind: '하도급 변경 계약서', project: 'P4 Ph2', party: '에스제이', title: '하도급 변경 계약서', date: '2026-10-14' }).split('계약서').length === 2, '종류가 긴 글자("하도급 변경 계약서")여도 같은 규칙');
-  ok(/_견적서$/.test(docFileName(Object.assign({}, b, { title: '견적서 검토 건' }))), '견적명이 "견적서"를 포함하지만 끝이 아니면 종류를 따로 붙임'); }
+  eq(docFileName(Object.assign({}, b, { title: 'P5 Ph1 (복합동)' })), '견적서_20260813_귀뚜라미범양냉방_P5 Ph1 (복합동)', '견적명이 현장명과 같으면 견적명 칸만 생략');
+  eq(docFileName(Object.assign({}, b, { title: '견적서' })), '견적서_20260813_귀뚜라미범양냉방_P5 Ph1 (복합동)', '견적명이 종류 글자뿐이어도 "견적서" 한 번만');
+  eq(docFileName(Object.assign({}, b, { title: '' })), '견적서_20260813_귀뚜라미범양냉방_P5 Ph1 (복합동)', '견적명이 비어 있으면 그 칸만 건너뜀');
+  eq(docFileName({ group: 'project', kind: '하도급 변경 계약서', project: 'P4 Ph2', party: '에스제이', title: '하도급 변경 계약서', date: '2026-10-14' }), '하도급 변경 계약서_20261014_에스제이_P4 Ph2', '종류가 긴 글자("하도급 변경 계약서")여도 같은 규칙');
+  eq(docFileName(Object.assign({}, b, { title: '견적서 검토 건' })), '견적서_20260813_귀뚜라미범양냉방_P5 Ph1 (복합동)_견적서 검토 건', '견적명이 "견적서"를 포함하지만 끝이 아니면 그대로 둠');
+  eq(docFileName(Object.assign({}, b, { title: 'FCU 설치 - 견적서' })), '견적서_20260813_귀뚜라미범양냉방_P5 Ph1 (복합동)_FCU 설치', '끝의 종류 글자 앞에 붙은 구분 글자(- · _)도 같이 정리'); }
+
+// ── ★ 종류는 모든 문서군에서 이름의 맨 앞(대표님 2026-10-17)
+{ const KINDS = [['project', { kind: '견적서', project: 'P', party: 'A', date: '2026-05-10', title: 'T' }], ['project', { kind: '대금청구서', project: 'P', party: 'A', date: '2026-05-10' }], ['project', { kind: '지급예정서', project: 'P', party: 'A', date: '2026-05-10' }], ['project', { kind: '하도급 계약서', project: 'P', party: 'A', date: '2026-05-10' }],
+    ['month', { kind: '월말 마감', ym: '2026-09' }], ['month', { kind: '월간 보고서', ym: '2026-09', project: 'P' }], ['person', { kind: '근로계약서', name: '홍길동', date: '2026-10-26' }], ['person', { kind: '급여명세서', ym: '2026-06', name: '홍길동' }], ['edoc', { kind: '구매품의', docNo: '2610001', author: '김작성', date: '2026-10-01' }]];
+  KINDS.forEach(([g, o]) => ok(docFileName(Object.assign({ group: g }, o)).startsWith(o.kind), '종류가 맨 앞: ' + g + ' / ' + o.kind + ' → ' + docFileName(Object.assign({ group: g }, o))));
+  ok(KINDS.every(([g, o]) => docFileName(Object.assign({ group: g }, o)).split(o.kind).length === 2), '종류 글자가 이름에 한 번만 나옴(모든 문서군)'); }
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed'); if (fail) process.exit(1);

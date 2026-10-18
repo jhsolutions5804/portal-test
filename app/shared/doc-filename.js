@@ -1,11 +1,11 @@
 /* 모든 문서(PDF) 파일 이름 규칙 — 공용 함수 한 곳(대표님 확정 2026-10-16, 대기열 1-2).
  * 브라우저의 "인쇄 → PDF 저장" 은 문서 <title> 을 기본 파일 이름으로 쓴다. 각 문서의 <title> 에 이 함수의 결과를 넣는다.
  *
- * 문서군별 순서(project 는 '_', 나머지는 ' - '):
- *   project : 날짜(YYYYMMDD) _ 거래처(담당자) _ 현장명 _ 견적명 _ 종류   (구분자 '_', 대표님이 엑셀로 쓰시던 방식 그대로 + 맨 끝에 종류, 2026-10-17)
- *             예) 20260510_다람이엔지(김과장)_P4 Ph2_FCU 설치 견적_견적서   — 견적명이 없는 정산서·계약서는 그 칸만 건너뜀. 번호(EST-…)는 파일 이름에 넣지 않는다
- *   month   : 연월(YYYY-MM) → 종류 → (프로젝트)                            예) 2026-09 월말 마감
- *   person  : 종류 → 이름 → 기준일. 연월(ym)을 주면 '연월 종류 - 이름'(급여명세서)  예) 근로계약서 - 홍길동 - 2026-10-26 / 2026-06 급여명세서 - 홍길동
+ * **종류(견적서·월말 마감·근로계약서 …)는 모든 문서군에서 이름의 맨 앞**(대표님 2026-10-17 — 파일 목록에서 종류별로 묶여 보이게). 문서군별 순서(project 는 '_', 나머지는 ' - '):
+ *   project : 종류 _ 날짜(YYYYMMDD) _ 거래처(담당자) _ 현장명 _ 견적명   (구분자 '_', 대표님이 엑셀로 쓰시던 방식 + 맨 앞에 종류)
+ *             예) 견적서_20260510_다람이엔지(김과장)_P4 Ph2_FCU 설치 견적   — 견적명이 없는 정산서·계약서는 그 칸만 건너뜀. 번호(EST-…)는 파일 이름에 넣지 않는다
+ *   month   : 종류 → 연월(YYYY-MM) → (프로젝트)                            예) 월말 마감 - 2026-09 / 월간 보고서 - 2026-07 - P4 Ph2 (FAB)
+ *   person  : 종류 → 이름 → 기준일. 연월(ym)을 주면 '종류 - 연월 - 이름'(급여명세서)  예) 근로계약서 - 홍길동 - 2026-10-26 / 급여명세서 - 2026-06 - 홍길동
  *   edoc    : 종류 → 문서번호 → 작성자 → 날짜                              예) 구매품의 - 2610001 - 김작성 - 2026-10-01
  *
  * 안전 규칙(강제): 주민번호·계좌번호·전화번호·금액처럼 보이는 글자는 이름의 자유 입력 칸(프로젝트·상대방·이름·작성자)에서 지운다.
@@ -38,15 +38,16 @@ const ymOf = (s) => { const m = String(s == null ? '' : s).match(/^\d{4}-\d{2}/)
 function build(x, maxFree) {
   const free = (v) => safeText(v, maxFree), kind = safeText(x.kind, 30) || '문서';
   let parts;
-  if (x.group === 'month') parts = [[ymOf(x.ym), kind].filter(Boolean).join(' '), free(x.project)];
-  else if (x.group === 'person') { const ym = ymOf(x.ym); parts = ym ? [ym + ' ' + kind, free(x.name)] : [kind, free(x.name), dateOf(x.date)]; }
+  if (x.group === 'month') parts = [kind, ymOf(x.ym), free(x.project)];
+  else if (x.group === 'person') { const ym = ymOf(x.ym); parts = ym ? [kind, ym, free(x.name)] : [kind, free(x.name), dateOf(x.date)]; }
   else if (x.group === 'edoc') parts = [kind, noOf(x.docNo != null ? x.docNo : x.no), free(x.author), dateOf(x.date)];
-  else {   // project: 날짜_거래처(담당자)_현장명_견적명_종류
-    const proj = free(x.project), ttl = safeText(x.title, maxFree === MAX_PART ? 60 : maxFree);   // 견적명은 실제로 52자까지 있어 60자(길어서 줄일 때는 18자)
-    const sameAsProj = !!ttl && ttl === proj;                 // 견적명이 현장명과 같으면 견적명 칸은 생략(종류는 유지)
-    const hasKind = !!ttl && !sameAsProj && ttl.endsWith(kind);   // 견적명이 이미 "…견적서"로 끝나면 견적명은 그대로 두고 종류만 생략(실제 견적 1건)
-    return [compactDate(x.date), partyOf(x.party, x.contact, maxFree), proj, sameAsProj ? '' : ttl, hasKind ? '' : kind].filter(Boolean).join('_');
+  else {   // project: 종류_날짜_거래처(담당자)_현장명_견적명
+    const proj = free(x.project); let ttl = safeText(x.title, maxFree === MAX_PART ? 60 : maxFree);   // 견적명은 실제로 52자까지 있어 60자(길어서 줄일 때는 18자)
+    if (ttl && kind && ttl.endsWith(kind)) ttl = ttl.slice(0, ttl.length - kind.length).replace(/[\s_\-·]+$/, '');   // 견적명 끝의 "…견적서"는 앞의 종류와 겹치니 떼어낸다(종류는 항상 맨 앞에 남는다)
+    if (ttl === proj) ttl = '';                                       // 견적명이 현장명과 같으면 한 번만
+    return [kind, compactDate(x.date), partyOf(x.party, x.contact, maxFree), proj, ttl].filter(Boolean).join('_');
   }
+
 
   return parts.filter(Boolean).join(' - ');
 }

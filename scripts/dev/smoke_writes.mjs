@@ -300,7 +300,7 @@ await scenario('PJT 월간 보고서 탭 — 열면 list·get, 달을 바꾸면 
     check(MR().some((c, i) => c.data.action === 'get' && MR().findIndex((x) => x.data.action === 'saveNotes') < i) && root.querySelector('[data-mr-notes="remarks"]').value === '검측 일정 협의 필요', '저장한 뒤 그 달을 다시 읽어 서버에 저장된 값이 칸에 보여야 함');
     // 인쇄: 새 창에 인쇄 문서, 제목이 파일 이름 규칙
     await click(root, '[data-mr-print]', 80); const pw = opened[opened.length - 1];
-    check(!!pw && /<title>\d{4}-\d{2} 월간 보고서 - P4 Ph2 \(FAB\)<\/title>/.test(pw.document.buf) && pw.document.buf.includes('window.print()') && pw.document.buf.includes('검측 일정 협의 필요') && pw.document.buf.includes('86 / 183품목'), '인쇄는 새 창에 "연월 월간 보고서 - 프로젝트" 제목의 문서(자동 인쇄)를 써야 함: ' + (pw ? (pw.document.buf.match(/<title>[^<]*<\/title>/) || [''])[0] : '창이 안 열림'));
+    check(!!pw && /<title>월간 보고서 - \d{4}-\d{2} - P4 Ph2 \(FAB\)<\/title>/.test(pw.document.buf) && pw.document.buf.includes('window.print()') && pw.document.buf.includes('검측 일정 협의 필요') && pw.document.buf.includes('86 / 183품목'), '인쇄는 새 창에 "연월 월간 보고서 - 프로젝트" 제목의 문서(자동 인쇄)를 써야 함: ' + (pw ? (pw.document.buf.match(/<title>[^<]*<\/title>/) || [''])[0] : '창이 안 열림'));
     // 서버 거절 문구를 화면에 보여 줌
     globalThis.__CALL_REPLY = Object.assign({}, sav, { monthlyReportAct: (d) => { if (d.action === 'generate') throw Object.assign(new Error('이 프로젝트의 이력을 볼 권한이 없습니다.'), { code: 'functions/permission-denied' }); return reply(d); } });
     const r2 = await mountFresh(pjtMod.mountMonthly, { segs: ['p4ph2'], query: {} }); await sleep(300); await click(r2, '[data-mr-gen]', 300); check(/권한이 없습니다/.test(r2.textContent) && !!r2.querySelector('[data-mr-ym]'), '서버가 만들기를 거절하면 그 문구를 보여 주고 화면은 그대로 쓸 수 있어야 함');

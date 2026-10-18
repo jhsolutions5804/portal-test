@@ -92,10 +92,10 @@ const LOGS = (o) => Object.assign({ asOf: '2026-10-17', total: 7, auto: 1, manua
   ok(((p.match(/<script>/g) || []).length) === 1, '인쇄 문서의 script 는 자동 인쇄 하나뿐'); }
 
 // ── 인쇄 문서(PDF 저장): 파일 이름 규칙(월 단위: "연월 종류 - 프로젝트")·내용·중간 보고서 표시·수율 사유
-{ const r = REP(); ok(printTitle(r, 'P4 Ph2 (FAB)') === '2026-08 월간 보고서 - P4 Ph2 (FAB)', '★ 파일 이름 = 문서 파일 이름 규칙(월 단위): "' + printTitle(r, 'P4 Ph2 (FAB)') + '"');
+{ const r = REP(); ok(printTitle(r, 'P4 Ph2 (FAB)') === '월간 보고서 - 2026-08 - P4 Ph2 (FAB)', '★ 파일 이름 = 문서 파일 이름 규칙(월 단위): "' + printTitle(r, 'P4 Ph2 (FAB)') + '"');
   ok(printTitle(r, '공사 3,000,000원 건 010-1234-5678').indexOf('010') === -1 && printTitle(r, '공사 3,000,000원').indexOf('원') === -1, '프로젝트 이름에 금액·전화번호가 들어와도 파일 이름에는 남지 않음');
-  ok(printTitle(null, '프로젝트') === '월간 보고서 - 프로젝트' && printTitle(r, '') === '2026-08 월간 보고서', '월이 없거나 프로젝트 이름이 없으면 그 칸만 건너뜀');
-  const p = printHtml(r, 'P4 Ph2 (FAB)'); ok(p.startsWith('<!doctype html>') && p.includes('<title>2026-08 월간 보고서 - P4 Ph2 (FAB)</title>') && p.includes('window.print()') && p.includes('@page{size:A4'), '인쇄 문서: 제목이 파일 이름·A4·자동 인쇄');
+  ok(printTitle(null, '프로젝트') === '월간 보고서 - 프로젝트' && printTitle(r, '') === '월간 보고서 - 2026-08', '월이 없거나 프로젝트 이름이 없으면 그 칸만 건너뜀');
+  const p = printHtml(r, 'P4 Ph2 (FAB)'); ok(p.startsWith('<!doctype html>') && p.includes('<title>월간 보고서 - 2026-08 - P4 Ph2 (FAB)</title>') && p.includes('window.print()') && p.includes('@page{size:A4'), '인쇄 문서: 제목이 파일 이름·A4·자동 인쇄');
   ok(p.includes('P4 Ph2 (FAB) 월간 보고서') && p.includes('2026년 8월') && p.includes('현장 층(금액 없음)') && p.includes('버전 2') && p.includes('86 / 183품목 (47%)') && p.includes('+45품목') && p.includes('67품목') && p.includes('195 (공수 입력 19일 · 인원 12명)') && p.includes('19일 · 일평균 7.5명') && p.includes('공수 100당 23.1품목') && p.includes('설치 완료 +45 ÷ 공수 195') && p.includes('5일 / 31일') && p.includes('26일 (휴무·주말·공휴일 포함 · 출역이 있는데 미작성 14일)') && p.includes('자재 반입 지연') && p.includes('4층 배관 검사'), '인쇄 문서 내용: 공정·출역·공수·수율(분자·분모)·공사일보 미작성(달력 전체)·특이사항·다음 달 계획');
   ok(printHtml(REP({ partial: true }), 'P').includes('중간 보고서 — 오늘까지'), '이번 달은 "중간 보고서 — 오늘까지"로 표시');
   const nc = printHtml(REP({ data: Object.assign({}, REP().data, { yield: { status: 'no-check', installed: 0, manday: 195 } }) }), 'P'); ok(nc.includes('공정 체크 없음') && nc.includes('입력 누락 가능') && nc.includes('class="warn"'), '인쇄 문서도 공정 체크가 없으면 숫자 대신 사유(주의 색)');
