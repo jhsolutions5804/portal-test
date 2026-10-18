@@ -15,13 +15,12 @@ function itemRow(it, projects, pick, busy) {
   const meta = [shortDate(it.date), it.siteHint ? '현장 표기 ' + it.siteHint : ''].filter(Boolean).map(esc).join(' · ');
   const opts = '<option value="">프로젝트 선택</option>' + (projects || []).map((p) => '<option value="' + esc(p.id) + '"' + (chosen === p.id ? ' selected' : '') + '>' + esc(p.name) + '</option>').join('');
   const dis = busy ? ' disabled' : '';
-  return '<div class="jh-pjt__lgrow" data-ib-row="' + esc(it.id) + '">'
-    + '<span class="jh-pjt__lgicon" aria-hidden="true">📨</span>'
-    + '<div class="jh-pjt__lgbody"><div class="jh-pjt__lgtitle">' + title + (it.restricted ? ' <span class="jh-badge" data-tone="warn">대외비</span>' : '') + '</div>'
-    + '<div class="jh-field__hint">' + meta + (it.dueDate ? ' · 기한 ' + esc(shortDate(it.dueDate)) : '') + '</div></div>'
-    + '<div class="jh-pjt__lgside">' + (dt ? '<span class="jh-badge">' + esc(dt) + '</span>' : '')
-    + '<select class="jh-select" data-ib-pick="' + esc(it.id) + '" aria-label="이 메일을 넣을 프로젝트"' + dis + '>' + opts + '</select>'
-    + '<div class="jh-pjt__lgacts"><button type="button" class="jh-btn" data-variant="secondary" data-ib-act="assign" data-ib-id="' + esc(it.id) + '"' + (chosen ? '' : ' disabled') + dis + '>지정</button>'
+  // 받은함 줄 전용 구조 — 이력 줄(lgrow)과 달리 고르기·버튼이 넓어서, 제목은 윗줄 전체 폭·조작은 아랫줄로 쌓는다(좁은 칸에서 제목이 한 글자씩 쪼개지지 않게)
+  return '<div class="jh-pjt__ibrow" data-ib-row="' + esc(it.id) + '">'
+    + '<div class="jh-pjt__ibtitle"><span aria-hidden="true">📨</span> ' + title + (it.restricted ? ' <span class="jh-badge" data-tone="warn">대외비</span>' : '') + '</div>'
+    + '<div class="jh-field__hint jh-pjt__ibmeta">' + meta + (it.dueDate ? ' · 기한 ' + esc(shortDate(it.dueDate)) : '') + (dt ? ' <span class="jh-badge">' + esc(dt) + '</span>' : '') + '</div>'
+    + '<div class="jh-pjt__ibctl"><select class="jh-select" data-ib-pick="' + esc(it.id) + '" aria-label="이 메일을 넣을 프로젝트"' + dis + '>' + opts + '</select>'
+    + '<div class="jh-pjt__ibacts"><button type="button" class="jh-btn" data-variant="secondary" data-ib-act="assign" data-ib-id="' + esc(it.id) + '"' + (chosen ? '' : ' disabled') + dis + '>지정</button>'
     + '<button type="button" class="jh-btn" data-variant="ghost" data-ib-act="dismiss" data-ib-id="' + esc(it.id) + '"' + dis + '>이 현장 아님</button></div></div></div>';
 }
 
