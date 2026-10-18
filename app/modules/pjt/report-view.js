@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261018h';
-import { holidayName } from '../../shared/holidays.js?v=20261018h';
-import { monthGrid, dowOf } from './schedule.js?v=20261018h';
-import { WORK_SHIFTS, shiftOf, EQUIPS, docHtml, dateText, totalOf, fmtAt, docTitle } from './report.js?v=20261018h';
+import { esc } from '../../core/ui.js?v=20261018i';
+import { holidayName } from '../../shared/holidays.js?v=20261018i';
+import { monthGrid, dowOf } from './schedule.js?v=20261018i';
+import { WORK_SHIFTS, shiftOf, EQUIPS, docHtml, dateText, totalOf, fmtAt, docTitle } from './report.js?v=20261018i';
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const hrs = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')), mins = ['00', '10', '20', '30', '40', '50'];
 const split = (t) => { const [h, m] = String(t || '').split(':'); return t ? { h: (h || '00').padStart(2, '0'), m: String(Math.floor((parseInt(m, 10) || 0) / 10) * 10).padStart(2, '0') } : { h: '', m: '' }; };
@@ -43,5 +43,5 @@ export function reportHtml(st) {
   const head = '<div class="jh-pjt__proj"><span class="jh-pjt__projlabel">🏗️ ' + esc(st.label) + '</span><span class="jh-field__hint">공사일보</span></div>';
   if (!st.ready) return '<div class="jh-pjt">' + head + '<div class="jh-empty">불러오는 중...</div></div>';
   const right = st.preview ? '<section class="jh-card jh-pjt__rpt"><div class="jh-panel__head"><h3>미리보기</h3><button type="button" class="jh-btn" data-variant="ghost" data-rp-act="closeprev">닫기</button></div><div class="jh-pjt__pad"><div class="jh-pjt__doc">' + docHtml(st.form, st.ctx) + '</div><div class="jh-pjt__bar"><span></span><button type="button" class="jh-btn" data-variant="primary" data-rp-act="print">PDF·인쇄</button></div></div></section>' : (st.form.legacy ? legacyView(st) : (st.exists && !st.editing ? viewHtml(st) : formHtml(st)));
-  return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide">' + head + (st.readonly ? '<div class="jh-field__hint">조회만 할 수 있습니다(작성·수정은 관리자·PJT 담당 계정).</div>' : '') + '<div class="jh-pjt__split jh-pjt__splitrep"><div class="jh-pjt__calcol jh-pjt__calcol--compact">' + calHtml(st) + '</div><div>' + right + '</div></div></div></div>';
+  return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide">' + head + (st.readonly ? '<div class="jh-field__hint">조회만 할 수 있습니다(작성·수정은 관리자·PJT 담당 계정).</div>' : '') + '<div class="jh-pjt__split jh-pjt__splitrep"><div class="jh-pjt__calcol jh-pjt__calcol--compact">' + calHtml(st) + '</div><div class="jh-pjt__rpcol" data-open="' + (st.popup ? 'true' : 'false') + '"><div class="jh-pjt__rphead"><strong>' + esc(dateText(st.date)) + ' 공사일보</strong><button type="button" class="jh-btn" data-variant="ghost" data-rp-act="closepop" aria-label="공사일보 닫기">✕ 닫기</button></div>' + right + '</div></div></div></div>'; // 오른쪽 열 = 폰 폭에서는 팝업(날짜를 누르면 열리고 닫기로 달력만 남김, 스타일의 폭 분기점이 결정 — 넓은 화면은 그대로)
 }

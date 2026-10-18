@@ -578,3 +578,16 @@
 
 /* 월간 보고서 맨 위 줄: 전역 .jh-select 가 width:100% 라 월 선택이 한 줄을 다 차지하고 버튼이 아래로 밀리던 것을 한 줄로 */
 .jh-pjt__mrbar .jh-select { width: auto; min-width: var(--u-220); max-width: 100%; }
+
+/* ── 공사일보: 폰 폭에서는 달력만 보이고, 날짜를 누르면 그날 공사일보가 팝업으로 뜨고, 닫기를 누르면 다시 달력만 보인다(대표님 2026-10-19). 폭 600px 이상은 원래대로(달력 옆·아래에 일보) ── */
+.jh-pjt__rphead { display: none; }
+@media (max-width: 599px) {
+  .jh-pjt__rpcol[data-open="false"] { display: none; }
+  .jh-pjt__rpcol[data-open="true"] { position: fixed; inset: 0; z-index: calc(var(--z-dialog) - 1); overflow-y: auto; overscroll-behavior: contain; background: var(--c-bg); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--sp-6)); } /* 하단 메뉴(20) 위·확인창(60) 아래 */
+  .jh-pjt__rphead { display: flex; position: sticky; top: 0; z-index: 1; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); padding-top: calc(env(safe-area-inset-top, 0px) + var(--sp-3)); background: var(--c-surface); border-bottom: var(--u-1) solid var(--c-line); }
+  .jh-pjt__rpcol[data-open="true"] > .jh-card { margin: var(--sp-3); }
+}
+/* 공사일보 종이: 다크 모드에서 흰색이 눈부시지 않게 살짝 어둡게(대표님 2026-10-19). 인쇄 양식은 어느 테마에서도 흰 종이라 인쇄는 그대로 흰색 */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .jh-pjt__doc { background: #e3e7ed; } }
+:root[data-theme="dark"] .jh-pjt__doc { background: #e3e7ed; }
+@media print { .jh-pjt__doc { background: #fff !important; } }

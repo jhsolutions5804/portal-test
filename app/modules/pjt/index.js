@@ -1,45 +1,46 @@
 /* PJT 관리(통합 새 모듈) — 설계서 docs/pjt-design.md. Ph2·Ph4·경량PJT를 한 모듈로 합친다.
  * 지금 새 화면은 "출역·공수"(근태·공수 탭) 하나다 — 구포털 PJT 메뉴에서 프로젝트를 고르면 그 아래 "👷 출역·공수 (새)" 탭으로 열린다(legacy/frame.js 의 nativeSubs, modules/index.js hostNative). 프로젝트는 화면 안에서 고르지 않는다. 나머지 탭은 만들면서 구포털 항목을 하나씩 교체한다.
  * 저장 형식은 구포털 그대로(출역 { checks }, 공수 { md }, 날짜별 문서) — 영업기획의 공수 연동·팀별 노무비가 읽는다. 경로는 adapter.js, 규칙은 attendance.js. */
-import { db, functions, httpsCallable, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261018h';
-import { esc, toast } from '../../core/ui.js?v=20261018h';
-import { confirmDialog } from '../../core/dialog.js?v=20261018h';
-import { pathsFor, featuresOf, defaultMandayOf, isDateKey } from './adapter.js?v=20261018h';
-import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261018h';
-import { visibleProjects } from './projects.js?v=20261018h';
-import { loadHolidays } from '../../shared/holidays.js?v=20261018h';
-import { attendHtml, dayWorkers } from './attend-view.js?v=20261018h';
-import { normalizeDay, stateAt, cellState, keyOf, stagesOf } from './progress.js?v=20261018h';
-import { structureFor, planSave } from './structure-store.js?v=20261018h';
-import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, setFeature, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261018h';
-import { progressHtml } from './progress-view.js?v=20261018h';
-import { diffText } from './structure-view.js?v=20261018h';
-import { activeWorkersForDate } from './attendance.js?v=20261018h';
-import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261018h';
-import { buildWeekly } from './weekly-ppt.js?v=20261018h';
-import { boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, remapByOrder, unmatchedKeys, snapToTuesday, weekNo, weekRange } from './layout.js?v=20261018h';
-import { fileToDataUrl, imageInfo } from './image-tools.js?v=20261018h';
-import { layoutEditorHtml } from './layout-view.js?v=20261018h';
-import { scheduleHtml } from './schedule-view.js?v=20261018h';
-import { reportHtml } from './report-view.js?v=20261018h';
-import { homeHtml } from './home-view.js?v=20261018h';
-import { settingsHtml } from './settings-view.js?v=20261018h';
-import { formOf as settingsFormOf, buildData as settingsBuild, changedFields, endText, parseDefaultManday } from './settings.js?v=20261018h';
-import { dday, monthMandayTotal, latestReports } from './home.js?v=20261018h';
-import { calcAll } from './progress.js?v=20261018h';
-import { fromStored, toStored, totalOf, attendanceSummary, autoContent, docHtml, docTitle, isLegacyDoc, dateText, WORK_SHIFTS, authorLabel, normalizeEquip, withEditor } from './report.js?v=20261018h';
-import { itemsForKey, buildDoc, formOf, detectCat, addDays, weekDays, isKey } from './schedule.js?v=20261018h';
+import { db, functions, httpsCallable, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261018i';
+import { esc, toast } from '../../core/ui.js?v=20261018i';
+import { confirmDialog } from '../../core/dialog.js?v=20261018i';
+import { pathsFor, featuresOf, defaultMandayOf, isDateKey } from './adapter.js?v=20261018i';
+import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261018i';
+import { visibleProjects } from './projects.js?v=20261018i';
+import { loadHolidays } from '../../shared/holidays.js?v=20261018i';
+import { attendHtml, dayWorkers } from './attend-view.js?v=20261018i';
+import { normalizeDay, stateAt, cellState, keyOf, stagesOf } from './progress.js?v=20261018i';
+import { structureFor, planSave } from './structure-store.js?v=20261018i';
+import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, setFeature, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261018i';
+import { progressHtml } from './progress-view.js?v=20261018i';
+import { diffText } from './structure-view.js?v=20261018i';
+import { activeWorkersForDate } from './attendance.js?v=20261018i';
+import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261018i';
+import { buildWeekly } from './weekly-ppt.js?v=20261018i';
+import { boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, remapByOrder, unmatchedKeys, snapToTuesday, weekNo, weekRange } from './layout.js?v=20261018i';
+import { fileToDataUrl, imageInfo } from './image-tools.js?v=20261018i';
+import { layoutEditorHtml } from './layout-view.js?v=20261018i';
+import { scheduleHtml } from './schedule-view.js?v=20261018i';
+import { reportHtml } from './report-view.js?v=20261018i';
+import { isDirty, openPopup, closePopup } from './report-popup.js?v=20261018i'; // 공사일보 폰 폭 팝업(대표님 2026-10-19)
+import { homeHtml } from './home-view.js?v=20261018i';
+import { settingsHtml } from './settings-view.js?v=20261018i';
+import { formOf as settingsFormOf, buildData as settingsBuild, changedFields, endText, parseDefaultManday } from './settings.js?v=20261018i';
+import { dday, monthMandayTotal, latestReports } from './home.js?v=20261018i';
+import { calcAll } from './progress.js?v=20261018i';
+import { fromStored, toStored, totalOf, attendanceSummary, autoContent, docHtml, docTitle, isLegacyDoc, dateText, WORK_SHIFTS, authorLabel, normalizeEquip, withEditor } from './report.js?v=20261018i';
+import { itemsForKey, buildDoc, formOf, detectCat, addDays, weekDays, isKey } from './schedule.js?v=20261018i';
 
-export { mountRoster } from './roster-index.js?v=20261018h';
-export { mountEnded } from './overview-index.js?v=20261018h';
-export { mountTeam } from './team-index.js?v=20261018h';
-import { mountOverview, notifyPjtChanged } from './overview-index.js?v=20261018h';
-import { installFilesDock as installDock } from './files-drawer.js?v=20261018h';
-import { syncWithNote } from './daily-note.js?v=20261018h';
-import { logHtml } from './log-view.js?v=20261018h';
-import { createLogPanel } from './log-panel.js?v=20261018h';
-import { monthlyHtml, printHtml } from './monthly-view.js?v=20261018h';
-import { hasMoney as lgHasMoney, hasPersonal as lgHasPersonal, friendlyError as lgFriendlyError } from '../../shared/pjt-log.js?v=20261018h';
+export { mountRoster } from './roster-index.js?v=20261018i';
+export { mountEnded } from './overview-index.js?v=20261018i';
+export { mountTeam } from './team-index.js?v=20261018i';
+import { mountOverview, notifyPjtChanged } from './overview-index.js?v=20261018i';
+import { installFilesDock as installDock } from './files-drawer.js?v=20261018i';
+import { syncWithNote } from './daily-note.js?v=20261018i';
+import { logHtml } from './log-view.js?v=20261018i';
+import { createLogPanel } from './log-panel.js?v=20261018i';
+import { monthlyHtml, printHtml } from './monthly-view.js?v=20261018i';
+import { hasMoney as lgHasMoney, hasPersonal as lgHasPersonal, friendlyError as lgFriendlyError } from '../../shared/pjt-log.js?v=20261018i';
 export const manifest = { id: 'pjt', order: 40, title: 'PJT 관리', icon: '🏗️', defaultHash: '#/pjt/attend', perm: (me) => !!me && me.admin === true };
 export async function mount(root) { root.innerHTML = '<div class="jh-empty">PJT 화면은 구포털 틀 안의 메뉴로 열립니다.</div>'; }
 const pushHash = (h) => { if (location.hash === h) return; try { history.replaceState(null, '', h); } catch (e) { location.hash = h; } };
@@ -402,7 +403,7 @@ const TAG_LABEL_OF = { edu: '교육', meeting: '회의', in: '반입', fcu: '설
 export async function mountReport(root, route, ctx) {
   root.onclick = null; root.onchange = null; root.onkeydown = null; root.oninput = null;
   const me = (ctx && ctx.me) || {}; const segs = (route && route.segs) || []; const guest = !(me.admin || (me.perms && me.perms.pjt)); const today = appToday(); const date0 = isDateKey(segs[1]) ? segs[1] : today; const [y0, m0] = date0.split('-').map(Number);
-  const st = { projects: [], proj: '', label: '', date: date0, today, month: { y: y0, m: m0 - 1 }, dates: new Set(), form: null, exists: false, editing: false, ready: false, manage: !guest, readonly: guest, busy: false, preview: false, equipHistory: [], ctx: {} };
+  const st = { projects: [], proj: '', label: '', date: date0, today, month: { y: y0, m: m0 - 1 }, dates: new Set(), form: null, exists: false, editing: false, ready: false, manage: !guest, readonly: guest, busy: false, preview: false, equipHistory: [], ctx: {}, popup: false, snap: '' };
   root.innerHTML = '<div id="rp-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#rp-body');
   const paint = () => { const y = window.scrollY; body.innerHTML = reportHtml(st); window.scrollTo(0, y); };
   try { await Promise.race([loadHolidays(), new Promise((r) => setTimeout(r, 1500))]); } catch (e) { /* 공휴일 없이 주말만 표시 */ }
@@ -415,12 +416,13 @@ export async function mountReport(root, route, ctx) {
   const activeIds = async (date) => { try { const [rs, ms] = await Promise.all([getDocs(collection(db, P.roster)), getDocs(collection(db, 'master_workers'))]); const resigned = {}; ms.forEach((d) => { const x = d.data(); if (x.resigned) resigned[d.id] = { resigned: true, resignedDate: x.resignedDate || '' }; }); const roster = []; rs.forEach((d) => roster.push(Object.assign({ id: d.id }, d.data()))); return activeWorkersForDate(roster, resigned, date).map((w) => w.id); } catch (e) { return null; } };
   const attSummary = async (date) => { const d = await readDay(date); return attendanceSummary(d.checks, d.md, await activeIds(date)); };
   const newChecks = async (date) => { try { const s = await getDoc(doc(db, P.progress.days, date)); return normalizeDay(s.exists() ? s.data() : {}); } catch (e) { return {}; } };
-  const loadDay = async () => {
+  const loadDay0 = async () => {
     st.preview = false; st.editing = false; st.ctx = Object.assign({}, st.ctx, { dateKey: st.date }); const s = await getDoc(doc(db, P.reports, st.date)); st.exists = s.exists();
     if (s.exists()) { st.form = fromStored(s.data()); if (!st.form.author) st.form.author = authorLabel(me); return; }   // 작성자는 로그인 계정에서(이미 쓴 일보는 쓴 사람 그대로)
     const [att, nc] = await Promise.all([attSummary(st.date), newChecks(st.date)]);   // 저장된 일보가 없으면 그날의 공정 체크와 출역·공수로 미리 채운다
     st.form = { legacy: false, author: authorLabel(me), checkIn: '', checkOut: '', shift: '', equipText: '', content: autoContent(st.structure, nc), tomorrow: '', headcount: att.headcount, manday: att.manday, mandayTotal: att.mandayTotal, equip: [], eqNo: {}, eqHrs: {}, note: '' };
   };
+  const loadDay = async () => { await loadDay0(); st.snap = JSON.stringify(st.form); }; // 하루를 읽은 직후의 폼을 기준으로 저장 — 닫을 때 입력 중인 내용이 있는지 비교(날짜 이동·취소·처음 열기 모두 이 감싸개를 거친다)
   try { await loadStructureR(); await loadList(); await loadDay(); st.ready = true; } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && (e.code || e.message)) || '') + '</div>'; return; }
   paint();
   const go = async (d) => { if (!isKey(d)) return; st.date = d; const [y, m] = d.split('-').map(Number); st.month = { y, m: m - 1 }; pushHash('#/pjt/' + st.proj + '/report/' + d); st.ready = false; paint(); try { await loadDay(); } catch (e) { toast('불러오기 실패: ' + ((e && (e.code || e.message)) || '')); } st.ready = true; paint(); };
@@ -445,13 +447,14 @@ export async function mountReport(root, route, ctx) {
   };
   root.onclick = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return; let el;
-    if ((el = t.closest('[data-rp-day]'))) { await go(el.getAttribute('data-rp-day')); return; }
+    if ((el = t.closest('[data-rp-day]'))) { openPopup(st); await go(el.getAttribute('data-rp-day')); return; } // 폰 폭에서는 날짜를 누르면 그날 공사일보가 팝업으로 뜬다(넓은 화면은 스타일이 무시)
     if ((el = t.closest('[data-rp-nav]'))) { const v = el.getAttribute('data-rp-nav'); if (v === 'today') { await go(st.today); return; } let { y, m } = st.month; m += Number(v); if (m > 11) { m = 0; y++; } if (m < 0) { m = 11; y--; } st.month = { y, m }; paint(); return; }
     if ((el = t.closest('[data-rp-hc]')) && st.manage) { readForm(); st.form.headcount = Math.max(0, (parseInt(st.form.headcount, 10) || 0) + Number(el.getAttribute('data-rp-hc'))); paint(); return; }
     if ((el = t.closest('[data-rp-equip]')) && st.manage) { readForm(); const v = el.getAttribute('data-rp-equip'); st.form.equip = st.form.equip.indexOf(v) !== -1 ? st.form.equip.filter((x) => x !== v) : st.form.equip.concat([v]); paint(); return; }   // 지게차·크레인은 둘 다 고를 수 있다(다시 누르면 해제)
     if ((el = t.closest('[data-rp-rmeq]')) && st.manage) { readForm(); const v = el.getAttribute('data-rp-rmeq'); st.form.equip = st.form.equip.filter((x) => x !== v); paint(); return; }
     if (!(el = t.closest('[data-rp-act]'))) return; const act = el.getAttribute('data-rp-act');
-    if (act === 'closeprev') { st.preview = false; paint(); return; } if (act === 'preview') { readForm(); st.preview = true; paint(); return; } if (act === 'print') { readForm(); printDoc(docHtml(st.form, st.ctx), docTitle(st.date, st.label)); return; }
+    if (act === 'closepop') { readForm(); if (isDirty(st)) { const ok = await confirmDialog({ title: '작성 중인 내용', body: '저장하지 않은 내용이 있습니다. 닫으면 사라집니다.', confirmLabel: '닫기', variant: 'danger' }); if (!ok || !ok.ok) return; } closePopup(st); paint(); return; } // 입력 중이면 확인(확인창 결과는 객체라 ok.ok 로 읽는다)
+  if (act === 'closeprev') { st.preview = false; paint(); return; } if (act === 'preview') { readForm(); st.preview = true; paint(); return; } if (act === 'print') { readForm(); printDoc(docHtml(st.form, st.ctx), docTitle(st.date, st.label)); return; }
     if (act === 'upgrade' && st.manage) { st.form.legacy = false; st.form.equipText = ''; st.editing = true; paint(); return; }
     if (act === 'edit' && st.manage) { st.editing = true; paint(); return; }   // 작성 완료된 일보: [수정]을 눌러야 수정 화면
     if (act === 'cancel-edit') { await loadDay(); st.editing = false; paint(); return; }   // 고치던 내용을 버리고 저장된 일보를 다시 보여 준다
@@ -501,7 +504,7 @@ export async function mountSettings(root, route, ctx) {
   const P = pathsFor(st.proj); st.label = st.projects.find((p) => p.key === st.proj).label; if (!st.admin) { paint(); return; }
   const ref = doc(db, P.settings.col, P.settings.id);
   const load = async () => { const s = await getDoc(ref); st.doc = s.exists() ? s.data() : {}; st.form = settingsFormOf(st.doc); st.ended = st.doc.status === 'ended'; st.mandayText = defaultMandayOf(st.doc) == null ? '' : String(defaultMandayOf(st.doc)); };
-  const mountPpt = (box) => { Promise.resolve().then(async () => { const mp = (ctx && ctx.mountParticipants) || (await import('../../shared/pjt-participants.js?v=20261018h')).mountParticipants; await mp(box, { db, id: P.settings.id, me: { uid: me.uid } }); }).catch((e) => { box.innerHTML = '<div class="jh-field__hint">참여자 지정 구역을 불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; }); };
+  const mountPpt = (box) => { Promise.resolve().then(async () => { const mp = (ctx && ctx.mountParticipants) || (await import('../../shared/pjt-participants.js?v=20261018i')).mountParticipants; await mp(box, { db, id: P.settings.id, me: { uid: me.uid } }); }).catch((e) => { box.innerHTML = '<div class="jh-field__hint">참여자 지정 구역을 불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; }); };
   try { await load(); st.ready = true; } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">설정을 불러오지 못했습니다: ' + esc((e && (e.code || e.message)) || '') + '</div>'; return; }
   paint();
   const readForm = () => { body.querySelectorAll('[data-st-f]').forEach((el) => { st.form[el.getAttribute('data-st-f')] = el.value; }); };
