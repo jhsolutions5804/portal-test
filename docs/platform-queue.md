@@ -53,6 +53,7 @@
 
 - ☐ **0-6** SharePoint 자료 패널 암호 `files-server`(Entra 앱 "JH Portal Files") **만료 2027-10-16 → 2027-10-01 전에 갱신**(새 암호 값은 `firebase functions:secrets:set MS_FILES_CLIENT_SECRET` 으로 테섭·본섭 둘 다 교체, 자동화 후에는 비밀 갱신 절차에 포함). 배포 전용 서비스 계정 키(00-1 ③)는 만든 날로부터 **90일마다 교체**
 - ☑ **0-7** (대표님·외부) **GitHub 지원팀에 옛 커밋 삭제 요청** — 공개 저장소 `portal-test` 에서 (a) 개인 급여·회사 마진 숫자가 들어갔던 커밋 9개(2026-10-16~17, 이력 다시 쓰기는 **2026-10-17 완료**: 새 이력에는 0개, 원격 `main` 은 새 해시로 교체) (b) 이메일 주소가 들어갔던 옛 커밋 `cd8c80a0` 가 **GitHub 서버에 해시로는 아직 열림**(API 200 확인) → 이 커밋들의 캐시·참조 삭제를 요청해야 함(GitHub 지원 양식 "Remove sensitive data", 저장소 소유자만 접수 가능). 요청문 초안은 채팅에 있음. **재발 방지**: 공개 저장소(`portal-test`·`portal`)에는 개인 급여·회사 금액·메일·외부인 정보를 쓰지 않는다(비율·결정만, 상세는 비공개 문서) — 대기열 8번 맨 위에도 같은 주의 문구 — **대표님 결정(2026-10-18): GitHub 지원팀 삭제 요청은 하지 않기로 함**(확인 목록 B1 삭제). 기록: 옛 커밋은 해시로 열리는 상태 그대로(확인: `cd8c80a0`·`ded06d5c`·`93d2318e`·`202f6530`·`307704b3` HTTP 200), main 이력 안에도 개인정보 3건(통장 거래 상대방 이름·급여명세서 공제 금액·인상 차등 암시 문장)이 과거 커밋에 남아 있음. 접수 방법: 포털 https://support.github.com(소유 계정 로그인)·제공 정보 = 저장소 이름·영향받은 PR 개수·`git-filter-repo` 의 First Changed Commit 해시(10-17 이력 다시 쓰기 기록에서 찾아야 함)·교체로 해결 불가한 개인정보라는 설명. 다시 하려면 이 기록을 근거로 — **닫음(대표님 2026-10-18 결정: 하지 않음)**
+- ☐ 0-8 메일 수집 앱 비밀(Entra 앱 `portal-mail-ingest` 클라이언트 비밀) 만료 12개월(2026-10-18 생성 → 2027-10-18 전후, 정확한 날짜는 Entra 인증서 및 비밀 목록의 만료 열) → **2027-09 중순에 새 비밀을 만들어 Secret Manager 에 새 버전으로 넣고 옛 비밀 삭제**(서버 저장소 docs/메일_수집_설정_안내.md). 만료되면 수집이 조용히 멈추고 상태 문서 lastError 에 토큰 발급 실패가 남음
 
 ## 1. 설계 (코드 착수 전 또는 local 검증까지)
 ### 1-1 PJT 관리
@@ -119,6 +120,9 @@
 - ☐ (대표님) 홈페이지(jhsol.kr, 저장소 jhsolutions5804.github.io) "현장 관리 대행 전문" 개편은 반영됨 → **기업소개서(PPT)**: 같은 기조, A4 가로, 홈페이지 28건 이력 전부, 영업용 한 종류(공개용 불필요), 원도급사 표기 안 함, 현장명 그대로. 조직도는 확정 조직(사업본부=영업기획팀·PJT팀 / 경영지원본부=인사총무팀·재무회계팀)과 맞는지 확인 — 진행 상태 미확인
 - ☐ (필요할 때) 채용 폼 스팸: 보이면 지원자 삭제, 심하면 App Check·서버 함수 경유 검토
 - ☐ (시기 도래 시) 2028년 이후 공휴일은 정부 월력요항 발표 후 추가
+- ☐ (제가) 앱 저장소 자동 검사 도입 — 서버 저장소는 올릴 때마다 시험이 자동으로 돌지만 앱 저장소는 `.github/workflows` 가 없어 춘식이가 직접 돌릴 때만 시험이 돎(2026-10-18 레이아웃·확인창 사고의 구조적 원인). 정적 검사 4종·화면 시험(mjs)·크로미움 시험(layout-inbox·confirm-cancel)을 푸시마다 자동 실행하고 실패하면 막는다. 본섭 전환 전에 도입 권장
+- ☐ (제가) 번호 도구 `app_stamp.py` 보완 — `import('…js?v=…')` 호출 형태를 처리하지 못해 `app/modules/pjt/index.js` 의 `pjt-participants.js?v=20261013zs` 한 줄이 옛 번호로 남아 있음(도구가 `from '…'` 형태만 처리). 도구를 고치고 그 줄도 현재 번호로. 규칙: **코드를 고치면 반드시 번호를 올린다**(같은 번호면 브라우저가 옛 파일을 계속 씀 — 2026-10-18 실제로 확인)
+- ☐ (제가) 이력 패널(`createLogPanel`) 이벤트를 주입 방식으로 바꿔 시험 — 지금은 이벤트 시험이 없고 크로미움 시험(confirm-cancel)으로만 보완. 받은함 패널처럼 서버 호출·확인창을 주입받게 하면 노드에서 시험 가능
 
 ## 2. 검증 (테섭 반영 — 대표님 확인·본섭 대기)
 ### 2-1 PJT 리빌드 점검(C 목록 전체, 상세는 `pjt-queue.md`)
@@ -221,6 +225,7 @@
 - ☐ 테섭 더미 `workers/w_dummy_admin`·출퇴근 2건·연차 1건 · `edoc_resign/test_resign_dummy`(2026-10-18 확인 시 이미 없음) · 팀즈 시험용 워크플로(그룹 채팅 "테스트") · `portal_secrets/worker_id_migration`(급하지 않음)
 - ☐ 연명부 백업 `roster_backup_20261007__*`(개인정보 포함) 삭제 시점
 - 지우면 안 됨: 테섭 test 계정(test@jhsol.kr)과 근로자 `test`(26004), 본섭 test 계정
+- ☐ 메일 수집 시험 데이터(테섭, 2026-10-18) 정리 — 대표님이 콘솔에서: `pjt_log/p4ph2/entries/bb597587…`(첫 시험 메일 이력 항목, 현재 확정 상태)·`mail_ingest/*` 처리 기록 4건·`mail_inbox/*` 미분류 2건·`mail_ingest_state/main`(실행 상태). **`mail_ingest_state/config` 는 수집을 켜는 설정 문서라 지우면 수집이 꺼짐 — 시험이 끝나 끌 때만 지운다**. 시험 메일은 `PJT 일정` 사서함·Gmail 에도 남아 있음(필요하면 메일함에서 삭제)
 
 ## 7. 이 목록을 만들 때 읽은 문서
 `portal-work-queue`·`pjt-rebuild`·`finance-ledger`·`general-affairs`·`hr-system-redesign`·`hr-legal-policy`·`worker-roster`·`prod-sync-ledger`·`data-storage`·`data-storage-design`·`mobile-review`·`desktop-app`·`portal-qc`·`multi-ai-collab`·`new-hire-office`·`company-homepage`·`patch-notes`·`overview`·`preferences` + 저장소 `docs/pjt-queue.md`·`cutover-plan.md`·`sales-planning-design.md`·`statutory-alignment.md`·`mobile-migration.md`·`pjt-design.md`. (모듈별 패치노트·참고 자료(`ref-*`)·업무와 무관한 문서는 대기열이 아니라 읽지 않음)
