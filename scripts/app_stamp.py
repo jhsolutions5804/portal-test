@@ -13,6 +13,13 @@ n = 0
 for f in glob.glob(root + '/**/*.js', recursive=True):
     s = open(f, encoding='utf-8').read()
     t = re.sub(r"(from\s+'\.{1,2}/[^'?]*?\.js)(\?v=[^']*)?'", lambda m: m.group(1) + '?v=' + ver + "'", s)
+    # 동적 불러오기 import('./…js') 도 같은 번호로(2026-10-18: 이 형태를 처리하지 못해 pjt/index.js 의 번호가 옛것으로 남았다).
+    # 호출이 있는 파일 기준으로 경로를 풀어 app/ 안의 .js 일 때만 붙인다 — 외부 주소(https://)와 앱 밖 경로(../../../x.js)는 건드리지 않는다.
+    def _dyn(m, _f=f):
+        target = os.path.normpath(os.path.join(os.path.dirname(_f), m.group(2)))
+        if not os.path.abspath(target).startswith(os.path.abspath(root) + os.sep): return m.group(0)
+        return m.group(1) + m.group(2) + '?v=' + ver + m.group(4)
+    t = re.sub(r"(import\(\s*')(\.{1,2}/[^'?]*?\.js)(\?v=[^']*)?('\s*\))", _dyn, t)
     if t != s: open(f, 'w', encoding='utf-8', newline='').write(t); n += 1
 idx = os.path.join(root, 'index.html')
 s = open(idx, encoding='utf-8').read()
