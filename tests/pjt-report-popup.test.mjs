@@ -17,7 +17,31 @@ ok(formShown(rst()) === false && formShown(rst({ preview: true, editing: true })
 { const f = fromStored(stored); const a = rst({ editing: true, form: f, snap: JSON.stringify(f) }); ok(isDirty(a) === false, '★ 폼을 열기만 했으면(기준과 같음) 입력 중이 아니다 — 닫을 때 확인창을 띄우지 않는다');
   const g = Object.assign({}, f, { content: '고친 내용' }); ok(isDirty(Object.assign({}, a, { form: g })) === true, '★ 내용을 고쳤으면 입력 중이다 — 닫을 때 확인창');
   ok(isDirty(rst({ snap: JSON.stringify(f) })) === false, '작성된 일보를 보는 중(폼 없음)에는 입력 중이 아니다');
+  // 실제 앱에서 폼을 열기만 했는데 확인창이 떴다(2026-10-19): readForm() 이 시·분 칸을 f['_ciH'] 같은 임시 키로 폼 상태에 덧붙이는데, 기준(snap)에는 그 키가 없어 "달라졌다"로 판정됐다
+  { const base = Object.assign({}, f); const withRead = Object.assign({}, f, { _ciH: '07', _ciM: '00', _coH: '17', _coM: '00' });
+    ok(isDirty(rst({ editing: true, form: withRead, snap: JSON.stringify(base) })) === false, '★ readForm 이 덧붙이는 임시 키(_ciH·_ciM·_coH·_coM)는 입력한 값이 아니라 읽기 부산물 — 폼을 열기만 하고 닫을 때 확인창을 띄우지 않는다');
+    ok(isDirty(rst({ editing: true, form: Object.assign({}, withRead, { content: '고친 내용' }), snap: JSON.stringify(base) })) === true, '★ 임시 키가 붙어 있어도 실제로 내용을 고쳤으면 입력 중이다');
+    ok(isDirty(rst({ editing: true, form: Object.assign({}, base, { note: '새 특이사항' }), snap: JSON.stringify(base) })) === true, '특이사항만 고쳐도 입력 중이다');
+    ok(isDirty(rst({ editing: true, form: Object.assign({}, withRead, { headcount: 9 }), snap: JSON.stringify(base) })) === true, '인원을 바꿔도 입력 중이다'); }
   ok(isDirty(rst({ editing: true, snap: undefined })) === false, '기준이 없으면(읽기 전) 입력 중으로 보지 않는다(오류 없음)'); }
+
+// ── 1-2) 실제 컨트롤러의 readForm 을 소스에서 그대로 꺼내 실행 — 순수 함수만 시험하다 실제 앱에서 놓친 문제(폼을 열기만 해도 확인창)를 막는다
+{ // 소스에서 readForm 화살표 함수 전체를 중괄호 짝으로 정확히 잘라 낸다(첫 줄 정규식으로 끊으면 forEach 안에서 잘려 문법이 깨진다)
+  const start = idx.indexOf('const readForm = () => {', idx.indexOf('export async function mountReport')); let m = null;
+  if (start >= 0) { let d = 0, k = idx.indexOf('{', start); for (; k < idx.length; k++) { if (idx[k] === '{') d++; else if (idx[k] === '}') { d--; if (d === 0) break; } } m = [idx.slice(start, k + 1) + ';']; }
+  ok(!!m && m[0].includes("data-rp-f") && m[0].includes("f['_' + k] = el.value"), '컨트롤러의 readForm 전체를 소스에서 그대로 꺼냄(임시 키를 덧붙이는 줄 포함)');
+  if (m) {
+    const mkEl = (k, v) => ({ getAttribute: () => k, value: v });
+    const els = [mkEl('author', '관리자'), mkEl('ciH', '07'), mkEl('ciM', '00'), mkEl('coH', '17'), mkEl('coM', '00'), mkEl('content', '4층 FCU 설치'), mkEl('tomorrow', '5층'), mkEl('manday', '3'), mkEl('note', '')];
+    const body = { querySelectorAll: (sel) => (String(sel).indexOf('data-rp-f') !== -1 ? els : []) }; // 선택자별로 해당 칸만 돌려준다 — 장비 차량번호·사용 시간 칸은 이 일보에 없음(실제 폼과 같게)
+    const makeRead = (st) => new Function('st', 'body', m[0] + '\nreturn readForm;')(st, body);
+    const f0 = fromStored(Object.assign({}, stored, { checkIn: '07:00', checkOut: '17:00' })); const st = { form: f0, preview: false, exists: true, editing: true, snap: JSON.stringify(f0) }; // 저장된 출·퇴근 시각 = 폼의 시·분 칸 값(실제 폼은 저장된 값에서 칸을 채운다)
+    makeRead(st)();
+    ok(Object.keys(st.form).some((k) => k.charAt(0) === '_'), '실제 readForm 이 임시 키(_로 시작)를 폼 상태에 덧붙이는 것을 재현한다 — 이 시험이 문제 상황을 정확히 만든다');
+    ok(isDirty(st) === false, '★ 실제 readForm 을 거친 뒤에도, 사용자가 아무것도 안 바꿨으면 입력 중이 아니다 — 폼을 열기만 하고 닫을 때 확인창이 뜨지 않는다(실제 앱에서 확인된 문제)');
+    els[5].value = '4층 FCU 설치 + 추가'; makeRead(st)();
+    ok(isDirty(st) === true, '★ 실제 readForm 을 거친 뒤, 금일 작업을 고쳤으면 입력 중이다 — 닫을 때 확인창');
+  } }
 
 // ── 2) 화면 마크업
 const closed = reportHtml(rst({ popup: false })), open = reportHtml(rst({ popup: true }));
