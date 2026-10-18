@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import { fromStored } from '../app/modules/pjt/report.js';
 import { reportHtml } from '../app/modules/pjt/report-view.js';
-import { formShown, isDirty, openPopup, closePopup } from '../app/modules/pjt/report-popup.js';
+import { formShown, isDirty, openPopup, closePopup, createPopupHistory } from '../app/modules/pjt/report-popup.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const css = fs.readFileSync(new URL('../app/theme/pjt.css', import.meta.url), 'utf8');
 const idx = fs.readFileSync(new URL('../app/modules/pjt/index.js', import.meta.url), 'utf8');
@@ -43,6 +43,30 @@ ok(formShown(rst()) === false && formShown(rst({ preview: true, editing: true })
     ok(isDirty(st) === true, '★ 실제 readForm 을 거친 뒤, 금일 작업을 고쳤으면 입력 중이다 — 닫을 때 확인창');
   } }
 
+// ── 1-3) 뒤로 가기: 폰에서 팝업이 열린 채 뒤로 가기를 누르면 이전 화면(프로젝트 홈)이 아니라 팝업만 닫는다(대표님 2026-10-19 폰 확인)
+// 가짜 window — 기록 스택과 popstate 를 흉내 낸다(실제 브라우저 시험은 report-popup.test.py)
+const mkWin = () => { const w = { entries: [{ url: '#/pjt/p4ph2/report', state: null }], idx: 0, ls: [], location: { get href() { return w.entries[w.idx].url; } }, history: { pushState: (st, _t, url) => { w.entries.splice(w.idx + 1); w.entries.push({ url: url || w.entries[w.idx].url, state: st }); w.idx++; w.pushes = (w.pushes || 0) + 1; }, back: () => { if (w.idx > 0) { w.idx--; w.fire(); } } }, addEventListener: (t, f) => { if (t === 'popstate') w.ls.push(f); }, removeEventListener: (t, f) => { w.ls = w.ls.filter((x) => x !== f); }, fire: () => w.ls.slice().forEach((f) => f()), back: () => w.history.back() }; return w; };
+{ // 기본: 폰 폭에서 열면 기록이 한 단계 쌓이고, 뒤로 가기가 오면 팝업만 닫는다
+  const w = mkWin(); const log = []; const h = createPopupHistory(w, { narrow: () => true, close: () => log.push('close'), requestClose: (cancel) => { log.push('request'); h._cancel = cancel; } }); h.attach();
+  h.open(); ok(w.entries.length === 2 && h.isActive() === true, '★ 폰 폭에서 팝업을 열면 브라우저 기록이 한 단계 쌓인다');
+  h.open(); ok(w.entries.length === 2, '이미 열려 있으면 또 쌓지 않는다');
+  w.back(); ok(log.join() === 'request' && h.isActive() === false, '★ 뒤로 가기가 오면 팝업 닫기를 요청한다(이전 화면으로 가지 않고 같은 화면 유지)  (실제 기록 위치: ' + w.idx + ')');
+  ok(w.idx === 0 && w.entries.length === 2, '뒤로 간 기록 위치는 팝업을 열기 전 항목이다(같은 주소) — 그 앞(프로젝트 홈)으로 한 번 더 가지 않았다'); }
+{ // 입력 중이라 확인창에서 취소하면 기록을 다시 쌓아 팝업을 유지한다
+  const w = mkWin(); const log = []; let cancel = null; const h = createPopupHistory(w, { narrow: () => true, close: () => log.push('close'), requestClose: (c) => { log.push('request'); cancel = c; } }); h.attach(); h.open(); w.back();
+  cancel(); ok(h.isActive() === true && w.idx === 1 && w.entries.length === 2, '★ 확인창에서 취소하면 기록을 다시 쌓아 팝업이 열린 채 유지된다 — 다음 뒤로 가기도 다시 팝업 닫기가 된다'); w.back(); ok(log.join() === 'request,request', '취소 뒤 다시 뒤로 가기를 눌러도 팝업 닫기를 다시 요청한다'); }
+{ // 닫기 버튼: 쌓아 둔 기록을 되돌려 기록이 남지 않고, 확인창은 다시 묻지 않는다
+  const w = mkWin(); const log = []; const h = createPopupHistory(w, { narrow: () => true, close: () => log.push('close'), requestClose: () => log.push('request') }); h.attach(); h.open();
+  ok(h.closeByButton() === true && log.join() === 'close' && w.idx === 0 && h.isActive() === false, '★ 닫기 버튼은 쌓아 둔 기록 한 단계를 되돌리며 팝업을 닫고, 확인창을 다시 묻지 않는다(버튼에서 이미 확인함)');
+  ok(h.closeByButton() === false, '열려 있지 않을 때의 닫기 버튼은 직접 닫도록 false 를 돌려준다(기록을 건드리지 않음)'); }
+{ // 넓은 화면은 기록을 쌓지 않는다(데스크톱 동작 그대로)
+  const w = mkWin(); const h = createPopupHistory(w, { narrow: () => false, close() {}, requestClose() {} }); h.attach(); h.open(); ok(w.entries.length === 1 && h.isActive() === false && h.closeByButton() === false, '★ 넓은 화면에서는 기록을 쌓지 않는다 — 데스크톱에서 날짜를 누를 때마다 뒤로 가기 단계가 늘지 않는다'); }
+{ // 열려 있지 않을 때 오는 popstate 는 무시, 떼면 반응하지 않음
+  const w = mkWin(); const log = []; const h = createPopupHistory(w, { narrow: () => true, close: () => log.push('close'), requestClose: () => log.push('request') }); h.attach(); w.fire(); ok(log.length === 0, '열려 있지 않을 때의 뒤로 가기·앞으로 가기는 무시한다');
+  h.open(); h.detach(); w.back(); ok(log.length === 0 && w.ls.length === 0, '★ detach 하면 더 이상 반응하지 않는다(다시 열 때 옛 리스너가 겹쳐 중복 처리되지 않게)'); }
+{ // 여러 번 반복해도 기록이 쌓이지 않고 균형
+  const w = mkWin(); const h = createPopupHistory(w, { narrow: () => true, close() {}, requestClose() {} }); h.attach(); for (let i = 0; i < 5; i++) { h.open(); h.closeByButton(); } ok(w.idx === 0, '열고 닫기를 5번 반복해도 기록 위치는 처음 그대로(기록이 쌓여 남지 않음)'); }
+
 // ── 2) 화면 마크업
 const closed = reportHtml(rst({ popup: false })), open = reportHtml(rst({ popup: true }));
 ok(closed.includes('class="jh-pjt__rpcol" data-open="false"') && open.includes('class="jh-pjt__rpcol" data-open="true"'), '★ 오른쪽 열이 팝업 껍데기(jh-pjt__rpcol)로 감싸지고 열림 상태가 data-open 으로 표시된다');
@@ -72,9 +96,14 @@ ok(/\.jh-pjt__doc \{ background: #fff; color: #111;/.test(css), '기본 종이 �
 // ── 4) 컨트롤러 연결(index.js mountReport)
 ok(/import \{ formShown, isDirty, openPopup, closePopup \} from '\.\/report-popup\.js\?v=/.test(idx) || /import \{[^}]*openPopup[^}]*\} from '\.\/report-popup\.js\?v=/.test(idx), '컨트롤러가 팝업 함수를 불러온다(빌드 번호 붙은 주소)');
 ok(/preview: false, equipHistory: \[\], ctx: \{\}, popup: false/.test(idx) || /popup: false/.test(idx.slice(idx.indexOf('export async function mountReport'))), '상태 초기값: 팝업 닫힘');
-ok(/data-rp-day\]'\)\)\) \{ openPopup\(st\); await go\(/.test(idx), '★ 날짜 칸을 누르면 팝업을 연 다음 그 날짜를 불러온다');
-ok(/act === 'closepop'/.test(idx) && /isDirty\(st\)/.test(idx) && /confirmDialog\(\{ title: '작성 중인 내용'/.test(idx), '★ 닫기: 입력 중인 내용이 있으면 확인창을 띄운다');
-{ const i = idx.indexOf("act === 'closepop'"); const seg = idx.slice(i, i + 700); ok(/!ok \|\| !ok\.ok\) return;/.test(seg) && /closePopup\(st\); paint\(\)/.test(seg), '★ 확인창에서 취소하면 닫지 않고(ok.ok 로 읽음 — 확인창 객체는 항상 참), 확인하면 닫는다'); }
+ok(/data-rp-day\]'\)\)\) \{ openPopup\(st\); await go\([^\n]*; hist\.open\(\); return; \}/.test(idx), '★ 날짜 칸을 누르면 팝업을 열고, 그 날짜를 불러온 뒤, 폰 폭이면 브라우저 기록을 한 단계 쌓는다(뒤로 가기가 팝업만 닫게)');
+ok(/import \{[^}]*createPopupHistory[^}]*\} from '\.\/report-popup\.js\?v=/.test(idx) && /createPopupHistory\(window, \{ narrow: \(\) => window\.matchMedia\('\(max-width: 599px\)'\)\.matches,/.test(idx), '★ 컨트롤러가 뒤로 가기 처리를 만든다 — 폰 폭 판정은 스타일의 분기점(599px)과 같다');
+ok(/rpHist = hist; hist\.attach\(\);/.test(idx) && /if \(rpHist\) rpHist\.detach\(\);/.test(idx), '★ 다시 열 때 이전 마운트의 뒤로 가기 리스너를 떼고 새로 붙인다(겹쳐 중복 처리되지 않게)');
+{ const i = idx.indexOf('const askClose = async (onCancel) =>'); const seg = idx.slice(i, i + 800);
+  ok(i > 0 && /readForm\(\); if \(isDirty\(st\)\) \{ const ok = await confirmDialog\(\{ title: '작성 중인 내용'/.test(seg) && /if \(!ok \|\| !ok\.ok\) \{ if \(onCancel\) onCancel\(\); return false; \}/.test(seg), '★ 입력 중이면 확인창을 띄우고(확인창 결과는 객체라 ok.ok 로 읽음), 취소하면 호출자에게 알린다(뒤로 가기는 기록을 다시 쌓음)'); }
+{ const i = idx.indexOf("act === 'closepop'"); const seg = idx.slice(i, i + 400);
+  ok(i > 0 && /await askClose\(\)\)/.test(seg) && /hist\.closeByButton\(\)/.test(seg) && /closePopup\(st\); paint\(\)/.test(seg), '★ 닫기 버튼: 확인을 거친 뒤, 쌓아 둔 기록이 있으면 되돌리고 없으면 직접 닫는다'); }
+ok(/requestClose: async \(cancel\) => \{ if \(await askClose\(cancel\)\) \{ closePopup\(st\); paint\(\); \} \}/.test(idx), '★ 뒤로 가기: 같은 확인 흐름을 거쳐 팝업만 닫는다');
 ok(/const loadDay0 = async \(\) =>/.test(idx) && /const loadDay = async \(\) => \{ await loadDay0\(\); st\.snap = JSON\.stringify\(st\.form\); \};/.test(idx), '★ 하루를 읽은 직후의 폼을 기준(snap)으로 저장한다 — 모든 호출 경로(날짜 이동·취소·처음 열기)가 같은 감싸개를 쓴다');
 ok(!/act === 'closepop'[^;]*st\.editing = true/.test(idx), '닫기가 수정 상태를 켜지 않는다');
 

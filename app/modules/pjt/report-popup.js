@@ -25,3 +25,28 @@ export function openPopup(st) { st.popup = true; }
 
 /** 닫기를 눌렀을 때 */
 export function closePopup(st) { st.popup = false; }
+
+/** 뒤로 가기 처리 — 폰에서 팝업이 열린 채 뒤로 가기를 누르면 이전 화면(프로젝트 홈)이 아니라 팝업만 닫는다(대표님 2026-10-19 폰 확인).
+ *  이 화면의 pushHash 는 history.replaceState 라 날짜를 눌러도 기록이 쌓이지 않아, 그대로면 뒤로 가기가 공사일보 탭을 건너뛰고 프로젝트 홈으로 간다.
+ *  그래서 폰 폭에서 팝업을 열 때 같은 주소로 기록을 한 단계 쌓고, 뒤로 가기(popstate)가 오면 팝업만 닫는다. 쌓은 기록은 같은 주소라서 라우터(core/router.js)가 주소가 같다고 보고 무시한다.
+ *  넓은 화면은 팝업이 아니므로 기록을 쌓지 않는다(데스크톱 동작 그대로).
+ *  hooks = { narrow(): 지금 폰 폭인가, close(): 확인 없이 닫고 다시 그리기, requestClose(cancel): 입력 중이면 확인창을 띄워 닫거나, 취소되면 cancel() 호출 } */
+export function createPopupHistory(win, hooks) {
+  const MARK = { jhRpPopup: 1 };
+  let active = false, skip = false;
+  const push = () => { win.history.pushState(MARK, '', win.location.href); active = true; };
+  const onPop = () => {
+    if (!active) return;                       // 팝업이 열려 있지 않을 때의 뒤로·앞으로 가기는 라우터에 맡긴다
+    active = false;
+    if (skip) { skip = false; hooks.close(); return; }          // 닫기 버튼이 되돌린 것 — 이미 확인했으므로 바로 닫는다
+    hooks.requestClose(() => push());          // 뒤로 가기 — 입력 중이면 확인, 취소하면 기록을 다시 쌓아 팝업 유지
+  };
+  return {
+    attach() { win.addEventListener('popstate', onPop); },
+    detach() { win.removeEventListener('popstate', onPop); active = false; skip = false; },
+    isActive() { return active; },
+    open() { if (active || !hooks.narrow()) return; push(); },
+    /** 닫기 버튼 — 쌓아 둔 기록이 있으면 한 단계 되돌리고(true, 닫기는 popstate 가 처리) 없으면 false(직접 닫는다) */
+    closeByButton() { if (!active) return false; skip = true; win.history.back(); return true; }
+  };
+}

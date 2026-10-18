@@ -1,7 +1,7 @@
-import { validateDraft } from './logic.js?v=20261018j';
-import { createCompanyEvent, updateCompanyEvent } from './data.js?v=20261018j';
-import { formHtml, readForm } from './view.js?v=20261018j';
-import { toast } from '../../core/ui.js?v=20261018j';
+import { validateDraft } from './logic.js?v=20261018k';
+import { createCompanyEvent, updateCompanyEvent } from './data.js?v=20261018k';
+import { formHtml, readForm } from './view.js?v=20261018k';
+import { toast } from '../../core/ui.js?v=20261018k';
 
 /** 일정 등록·수정 창. editing = 수정할 문서 번호(없으면 새로 등록). 저장에 성공하면 onSaved(draft) */
 export function openEventForm({ me, draft, editing, onSaved }) {
