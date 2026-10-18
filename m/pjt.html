@@ -376,7 +376,6 @@ async function loadReports(dk){
 }
 let curView='home', site=null, sub='sched', detailId=null, loadError='';
 let LOG=null;   // 이력 기능(pjt-log.js) — 불러오기에 성공했을 때만 채워진다. null 이면 이력 관련 화면은 아무것도 그리지 않아 기존 화면과 똑같다
-let REP=null; // 공사일보(pjt-report.js) — 불러오기에 성공했을 때만 채워진다. null 이면 공사일보 탭은 나타나지 않아 기존 화면과 똑같다
 const todayStr=()=>{const d=new Date(); if(d.getHours()<6) d.setDate(d.getDate()-1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 let selectedDate=todayStr(), calMonth=todayStr().slice(0,7);
 
@@ -451,7 +450,6 @@ function renderSite(){
   if(sub==='sched') body=renderCalendar(s);
   else if(sub==='progress' && !isLight) body=renderProgress();
   else if(sub==='log') body=LOG?LOG.siteHtml(LOG.pjtIdOf(site)):'<div class="empty">불러오는 중...</div>';   // 이력(변경·결정 이력 로그) — pjt-log.js
- else if(sub==='report') body=REP?REP.html(site):'<div class="empty">불러오는 중...</div>'; // 공사일보 — pjt-report.js(저장 형식·위치는 PC 와 같음)
   else body=renderAttend();
   $app().innerHTML=topBar('PJT','goBack()')+`
     <div class="hello"><div class="name" style="font-size:21px;color:var(--ink)">${esc(s.code)}</div><div class="sub">${esc(s.client)}${s.desc?(' · '+esc(s.desc)):''}${isLight?(' · 진행률 '+s.progress+'%'):''}</div></div>
@@ -460,7 +458,6 @@ function renderSite(){
       <div class="seg ${sub==='sched'?'on':''}" onclick="setSub('sched')">일정</div>
       <div class="seg ${sub==='attend'?'on':''}" onclick="setSub('attend')">${isLight?'근태·공수':'근태'}</div>
       ${(LOG&&!isGuest)?`<div class="seg ${sub==='log'?'on':''}" onclick="setSub('log')">이력</div>`:''}
-  ${(REP&&!isGuest)?`<div class="seg ${sub==='report'?'on':''}" onclick="setSub('report')">공사일보</div>`:''}
     </div>
     ${body}`;
 }
@@ -754,48 +751,6 @@ onAuthStateChanged(auth, ()=>{
     });
     ctl.attachGlobals(window); LOG=ctl; render();
   }catch(e){ console.error('이력 기능을 불러오지 못했습니다(기존 화면은 정상)', e); }
-})();
-// ── 공사일보(새 모바일 공사일보, 대표님 2026-10-18) — 별도 파일을 따로 불러온다. 파일 불러오기·초기화 어디서 실패해도 기존 공정·일정·근태·이력 화면에는 영향이 없다(REP 가 null 로 남아 공사일보 탭이 나타나지 않을 뿐).
-// 저장 형식·위치·계산은 PC 와 같다(PC 의 report.js·adapter.js 를 pjt-report.js 가 그대로 불러 씀). 여기서는 서버 읽기·쓰기만 구현한다.
-// 1단계에서는 공정 체크로 금일 작업을 미리 채우는 기능(PC 에만 있음)은 넣지 않는다 — 금일 작업은 직접 입력. 인원·공수는 출역·공수로 미리 채운다.
-(async function(){
- try{
- const [fnMod, repMod] = await Promise.all([ import('https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js'), import('./pjt-report.js?v=20261018h') ]);
- const edocAct = fnMod.httpsCallable(fnMod.getFunctions(app,'asia-northeast3'),'edocAct'); // PC 와 같은 서버 함수·같은 지역
- const loginMe = ()=>{ try{ return JSON.parse(localStorage.getItem('jh_login_perms')||'null')||{}; }catch(e){ return {}; } }; // classic.html 이 로그인 때 저장: { name, rank, dept, admin, perms, uid, empNo … }
- const regIdOf = (key)=> repMod.pjtIdOf(key); // 경량은 reg_<id> → <id>, 고정 프로젝트(p4ph2·p4ph4 등)는 그대로
- const labelOf = (key)=>{ const s=SITE(key); return s? s.code : ''; };
- const io = {
-  // 그날의 일보 + 출역·공수·근로자 명단. 출역 위치는 모바일이 이미 쓰는 규칙(경량 = pjt_registry/<id>/…, 고정 = ATT[사이트] 옛 위치)을 그대로 쓴다 — 테섭에서 두 위치의 인원은 같음을 확인함
-  async readDay(key, date){
-   const loc = repMod.reportDoc(key, date); if(!loc) throw new Error('날짜나 프로젝트가 올바르지 않습니다.');
-   const sc = SITE(key); const light = sc && sc.type==='light';
-   const repP = getDoc(doc(db, loc[0], loc[1]));
-   let attRef, mdRef, rosterCol;
-   if(light){ attRef=doc(db,'pjt_registry',sc.regId,'attendance',date); mdRef=doc(db,'pjt_registry',sc.regId,'manday',date); rosterCol=collection(db,'pjt_registry',sc.regId,'workers'); }
-   else { const cfg=ATT[key]; if(cfg){ attRef=doc(db,cfg.att,date); mdRef=doc(db,cfg.md,date); rosterCol=collection(db,cfg.workers); } }
-   const [rep, a, m, ws] = await Promise.all([ repP, attRef?getDoc(attRef):Promise.resolve(null), mdRef?getDoc(mdRef):Promise.resolve(null), rosterCol?getDocs(rosterCol):Promise.resolve(null) ]);
-   const active=[]; if(ws) ws.forEach(d=>{ if((d.data()||{}).active!==false) active.push(d.id); });
-   return { stored: rep.exists()? rep.data() : null, att: { checks: a&&a.exists()? ((a.data()||{}).checks||[]) : [], md: m&&m.exists()? ((m.data()||{}).md||{}) : {} }, active: ws? active : null, newChecks: {}, structure: null };
-  },
-  // PC 와 같은 저장: 날짜 키 문서 하나에 병합 저장
-  async save(key, date, docData){
-   const loc = repMod.reportDoc(key, date); if(!loc) throw new Error('날짜나 프로젝트가 올바르지 않습니다.');
-   await setDoc(doc(db, loc[0], loc[1]), Object.assign({}, docData, { updatedAt: serverTimestamp(), savedAt: serverTimestamp() }), { merge: true });
-  },
-  // PC 의 defaultSync 와 같은 서버 호출(전자결재 업무일지). 실패해도 일보 저장은 막지 않는다(통제기가 처리)
-  async syncDaily(key, date, d, title){
-   const res = await edocAct({ action:'syncDaily', pjtId: regIdOf(key), date, title, pjtName: labelOf(key), todayWork: d.content||'', tomorrowWork: d.tomorrow||'', issue: d.note||'' });
-   return res.data;
-  }
- };
- const ctl = repMod.createMobileReport({
-  me: loginMe, today: todayStr, rerender: ()=>{ try{ render(); }catch(e){} }, isGuest, io, labelOf
- });
- // 스타일 주입(한 번)
- if(!document.getElementById('rp-style')){ const st=document.createElement('style'); st.id='rp-style'; st.textContent=repMod.CSS; document.head.appendChild(st); }
- ctl.attachGlobals(window); REP=ctl; render();
- }catch(e){ console.error('공사일보 기능을 불러오지 못했습니다(기존 화면은 정상)', e); }
 })();
 </script>
 </body>

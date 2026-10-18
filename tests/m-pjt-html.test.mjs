@@ -22,21 +22,11 @@ const blk = js.slice(js.indexOf('(async function(){\n  try{\n    const [fnMod'))
 ok(blk.includes('catch(e){ console.error') && blk.includes("import('https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js')") && blk.includes("getFunctions(app,'asia-northeast3')") && blk.includes("import('./pjt-log.js?v="), '불러오기 블록: 동적 import·try/catch 로 격리, PC 와 같은 SDK 버전·지역(asia-northeast3)');
 ok(!/^import .*pjt-log/m.test(js) && !/^import .*firebase-functions/m.test(js), '이력 모듈·서버 함수 SDK 를 정적 import 하지 않음(실패해도 페이지 전체가 죽지 않음)');
 ok(blk.includes('rerender: ()=>{ try{ render(); }catch(e){} }'), '이력이 화면을 다시 그리다 오류가 나도 삼켜서 기존 화면이 죽지 않게 함');
-// ── 공사일보(새 모바일 공사일보): 이력과 같은 원칙 — 기능이 없으면 기존 화면과 똑같고, 있을 때만 탭이 나타난다
-const repCtl = { html: (site) => '<rpbody site="' + site + '"/>' };
-{ const e = mkEnv(ctl, false, 'sched'); e.api.renderSite(); ok(!e.out.includes('공사일보') && !e.out.includes("setSub('report')"), '★ 공사일보 기능이 없으면(불러오기 전·실패) 프로젝트 화면 탭에 "공사일보"가 없어 기존 화면과 같음'); }
-{ const e = mkEnv(ctl, false, 'sched', repCtl); e.api.renderSite(); ok(e.out.includes("setSub('report')") && e.out.includes('>공사일보</div>'), '공사일보 기능이 있으면 탭 줄에 "공사일보"'); const i = e.out.indexOf("setSub('log')"), j = e.out.indexOf("setSub('report')"); ok(i > 0 && j > i, '탭 순서: 공정·일정·근태·이력·공사일보 — 이력 뒤'); }
-{ const e = mkEnv(ctl, false, 'report', repCtl); e.api.renderSite(); ok(e.out.includes('<rpbody site="p4ph2"/>') && e.out.includes('class="seg on" onclick="setSub(\'report\')"') && !e.out.includes('<attend/>'), '공사일보 탭: 선택 표시 + 공사일보 본문이 그려지고 근태 본문은 아님(그 프로젝트 키로 호출)'); }
-{ const e = mkEnv(ctl, true, 'sched', repCtl); e.api.renderSite(); ok(!e.out.includes("setSub('report')"), '손님 계정은 공사일보 탭이 없음'); }
-{ const e = mkEnv(ctl, false, 'report', null); e.api.renderSite(); ok(e.out.includes('불러오는 중') && !e.out.includes('<attend/>'), '공사일보 기능이 아직 없는데 공사일보 탭 상태(뒤로가기 복원)면 근태가 아니라 "불러오는 중"'); }
-{ const e = mkEnv(null, false, 'sched', repCtl); e.api.renderSite(); ok(e.out.includes("setSub('report')") && !e.out.includes("setSub('log')"), '이력과 공사일보는 서로 독립 — 이력이 실패해도 공사일보 탭은 나타남'); }
-// 연결 고리: 공사일보 불러오기 블록의 격리(정적 확인)
-const rblk = js.slice(js.indexOf("const [fnMod, repMod]") - 40);
-ok(rblk.includes("import('./pjt-report.js?v=") && rblk.includes("httpsCallable(fnMod.getFunctions(app,'asia-northeast3'),'edocAct')") && rblk.includes("console.error('공사일보 기능을 불러오지 못했습니다(기존 화면은 정상)'"), '공사일보 블록: 동적 import·try/catch 로 격리, PC 와 같은 서버 함수(edocAct)·지역(asia-northeast3)');
-ok(!/^import .*pjt-report/m.test(js), '공사일보 모듈을 정적 import 하지 않음(실패해도 페이지 전체가 죽지 않음)');
-ok(rblk.includes('rerender: ()=>{ try{ render(); }catch(e){} }') && rblk.includes('REP=ctl; render();'), '공사일보가 화면을 다시 그리다 오류가 나도 삼켜서 기존 화면이 죽지 않게 함');
-{ const nUse = (rblk.match(/repMod\.reportDoc\(key, date\)/g) || []).length; const iRead = rblk.indexOf('async readDay('), iSave = rblk.indexOf('async save('), iSync = rblk.indexOf('async syncDaily(');
-  ok(nUse === 2 && rblk.slice(iRead, iSave).includes('repMod.reportDoc(key, date)') && rblk.slice(iSave, iSync).includes('repMod.reportDoc(key, date)') && !/daily_report_docs|ph4_reports|\x27reports\x27/.test(rblk), '★ 일보를 읽는 곳과 저장하는 곳 둘 다 PC 와 같은 어댑터(reportDoc)로 위치를 정함 — 한쪽만 바뀌어 "읽기는 옛 위치, 쓰기는 새 위치"가 되는 일이 없고, 모바일이 옛 위치 이름을 직접 쓰지 않음'); }
-ok(rblk.includes("setDoc(doc(db, loc[0], loc[1]), Object.assign({}, docData, { updatedAt: serverTimestamp(), savedAt: serverTimestamp() }), { merge: true })"), 'PC 와 같은 저장 방식(날짜 키 문서에 병합 저장 + updatedAt·savedAt)');
-ok(rblk.includes("todayWork: d.content||'', tomorrowWork: d.tomorrow||'', issue: d.note||''") && rblk.includes("action:'syncDaily'"), 'PC 의 defaultSync 와 같은 업무일지 연동 요청(금일·명일·특이사항)');
+// ── 공사일보: 폰에서 쓰시는 것은 PC 플랫폼(app/)이라 m/ 공사일보는 제거했다(대표님 2026-10-19). 탭·연결·코드·파일이 남아 있지 않아야 한다
+{ const e = mkEnv(ctl, false, 'sched', { html: (site) => '<rpbody site="' + site + '"/>' }); e.api.renderSite(); ok(!e.out.includes('공사일보') && !e.out.includes("setSub('report')") && !e.out.includes('<rpbody'), '★ 프로젝트 화면 탭에 "공사일보"가 없다(공사일보 기능 객체를 넘겨도 그리지 않음)'); }
+ok(!/pjt-report/.test(html), '★ m/pjt.html 에 모바일 공사일보 모듈(pjt-report.js) 불러오기가 남아 있지 않다');
+ok(!/\bREP\b|rp-style|createMobileReport|repMod/.test(js), '★ 공사일보 변수·초기화 코드(REP·rp-style·createMobileReport·repMod)가 남아 있지 않다');
+ok(!/edocAct|syncDaily/.test(js), '★ m/pjt.html 이 전자결재 업무일지 함수(edocAct·syncDaily)를 더 이상 부르지 않는다(공사일보 연동 제거)');
+ok(!fs.existsSync(new URL('../m/pjt-report.js', import.meta.url)), '★ m/pjt-report.js 파일이 없다');
+ok(js.includes("import('./pjt-log.js?v="), '이력(pjt-log.js) 연결은 그대로 남아 있다(공사일보만 제거, 회귀 없음)');
 console.log('\n' + pass + ' passed, ' + fail + ' failed'); if (fail) process.exit(1);
