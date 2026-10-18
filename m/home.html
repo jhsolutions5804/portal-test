@@ -429,8 +429,8 @@ onAuthStateChanged(auth, (user)=>{
       err=>{ console.error('pjt_settings 구독 오류(홈)',k,err); applyFixedPjt(); });
   });
   setTimeout(applyFixedPjt,3000); // 응답이 늦거나 없어도 카드가 계속 숨겨져 있지 않도록
-  onSnapshot(collection(db,'user_schedules'), snap=>{ let c=0; snap.forEach(d=>{ if(inRangeToday(d.data())) c++; }); _todayCounts.fab=c; updateTodayBadge(); });
-  onSnapshot(collection(db,'ph4_schedules'), snap=>{ let c=0; snap.forEach(d=>{ if(inRangeToday(d.data())) c++; }); _todayCounts.sup=c; updateTodayBadge(); });
+  onSnapshot(collection(db,'pjt_registry','p4ph2','schedules'), snap=>{ let c=0; snap.forEach(d=>{ if(inRangeToday(d.data())) c++; }); _todayCounts.fab=c; updateTodayBadge(); });
+  onSnapshot(collection(db,'pjt_registry','p4ph4','schedules'), snap=>{ let c=0; snap.forEach(d=>{ if(inRangeToday(d.data())) c++; }); _todayCounts.sup=c; updateTodayBadge(); });
   // GUEST는 규칙상 연차·휴무만 읽을 수 있으므로 tag in [off,leave] 필터로 구독(필터가 없으면 서버가 거부한다)
   onSnapshot(_isGuestEmp?query(collection(db,'company_schedules'),where('tag','in',['off','leave'])):collection(db,'company_schedules'), snap=>{ let c=0; snap.forEach(d=>{ if(inRangeToday(d.data())) c++; }); _todayCounts.comp=c; updateTodayBadge(); }, err=>{ console.error('공통 일정 구독 오류(홈)',err); });
   onSnapshot(collection(db,'pjt_registry'), snap=>{

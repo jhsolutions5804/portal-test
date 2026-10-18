@@ -167,8 +167,8 @@ const FIXED_KEY={fab:'p4ph2', sup:'p4ph4'};
 let fixedEnded={p4ph2:false, p4ph4:false}, fixedLoaded=false;
 const isEndedSite=k=>!!(FIXED_KEY[k] && fixedEnded[FIXED_KEY[k]]);
 const SITES={
-  fab:{code:'P4 Ph2 (FAB)',client:'귀뚜라미범양냉방',desc:'FCU 설치 · 6섹터 183대',ic:'🏭',cls:'fab',sch:'user_schedules',repPrefix:'daily_reports_'},
-  sup:{code:'P4 Ph4 (SUP)',client:'귀뚜라미범양냉방',desc:'EHU 설치 · 4섹터 11대',ic:'🔧',cls:'sup',sch:'ph4_schedules',repPrefix:'ph4_daily_'},
+  fab:{code:'P4 Ph2 (FAB)',client:'귀뚜라미범양냉방',desc:'FCU 설치 · 6섹터 183대',ic:'🏭',cls:'fab',schReg:'p4ph2',repPrefix:'daily_reports_'},
+  sup:{code:'P4 Ph4 (SUP)',client:'귀뚜라미범양냉방',desc:'EHU 설치 · 4섹터 11대',ic:'🔧',cls:'sup',schReg:'p4ph4',repPrefix:'ph4_daily_'},
 };
 // 일정 태그 (PC PJT홈과 동일)
 const TAGS={in:{c:'#1D5BA6',l:'반입'},inspect:{c:'#2e7d32',l:'검수'},edu:{c:'#5e35b1',l:'교육'},off:{c:'#c0392b',l:'휴무'},leave:{c:'#e67e22',l:'연차'},meeting:{c:'#5D3A00',l:'회의'},fcu:{c:'#0A3D7A',l:'설치'},safety:{c:'#8D6E00',l:'안전'},admin:{c:'#7A8AA0',l:'행정'}};
@@ -288,9 +288,11 @@ function SITE(key){
   }
   return null;
 }
-function schedList(s){ return data[s.type==='light'?('light_'+s.regId):s.sch]||[]; }
-function schColl(s){ return s.type==='light' ? collection(db,'pjt_registry',s.regId,'schedules') : collection(db,s.sch); }
-function schDocRef(s,id){ return s.type==='light' ? doc(db,'pjt_registry',s.regId,'schedules',id) : doc(db,s.sch,id); }
+// 일정은 모든 프로젝트가 PC 와 같은 새 구조 pjt_registry/<id>/schedules 에 읽고 쓴다(결정7, 2026-10-19) — 옛 컬렉션(user_schedules·ph4_schedules)에 쓰면 PC 달력·이력에 안 보이고 두 곳이 어긋난다
+function schReg(s){ return s.type==='light' ? s.regId : s.schReg; }
+function schedList(s){ return data['light_'+schReg(s)]||[]; }
+function schColl(s){ return collection(db,'pjt_registry',schReg(s),'schedules'); }
+function schDocRef(s,id){ return doc(db,'pjt_registry',schReg(s),'schedules',id); }
 let lightSchedSubs={};
 function ensureLightSchedSub(regId){
   if(lightSchedSubs[regId]) return;
@@ -359,7 +361,7 @@ window.setMd=async function(wid,val){
   render();
 };
 
-let data={user_schedules:[],ph4_schedules:[]};
+let data={light_p4ph2:[],light_p4ph4:[]};
 let repCache={}; // 날짜별 업무지시/보고 (daily_reports_{날짜}/ph4_daily_{날짜})
 async function loadReports(dk){
   const s=SITES[site]; if(!s){ return; }
@@ -707,7 +709,7 @@ function subscribe(coll){
 let _authBooted=false;
 onAuthStateChanged(auth, ()=>{
   if(_authBooted) return; _authBooted=true;
-  ['user_schedules','ph4_schedules'].forEach(subscribe);
+  ['p4ph2','p4ph4'].forEach(ensureLightSchedSub); // 고정 프로젝트도 새 구조(pjt_registry/<id>/schedules)를 구독 — 경량 프로젝트와 같은 부품
   onSnapshot(collection(db,'pjt_registry'), snap=>{
     const next={}, ended={};
     snap.forEach(d=>{ const v=d.data()||{}; if(v.status!=='ended') next[d.id]=v; else ended[d.id]=v; });

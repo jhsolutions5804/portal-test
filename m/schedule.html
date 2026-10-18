@@ -158,10 +158,10 @@ const isGuest=!!(_me && typeof _me.empNo==='string' && /^guest/i.test(_me.empNo.
 const canEdit=!isGuest && !!(_me && (_me.admin || (_me.perms && _me.perms.pjt)));
 const myName=()=>{ try{ return localStorage.getItem('jh_login_full')||localStorage.getItem('jh_login_name')||(_me&&_me.name)||''; }catch(e){ return (_me&&_me.name)||''; } };
 const CATS=[['in','반입'],['inspect','검수'],['edu','교육'],['meeting','회의'],['fcu','설치'],['safety','안전'],['off','휴무'],['leave','연차'],['admin','행정'],['event','행사'],['etc','기타']];   // 행사·기타: 프로젝트에 속하지 않는 일정용(PC와 동일)
-// 일정 컬렉션 경로: FAB/SUP는 최상위 컬렉션, 경량(reg_) PJT는 pjt_registry/{id}/schedules
+// 일정 컬렉션 경로: 모든 프로젝트가 PC 와 같은 새 구조 pjt_registry/{id}/schedules (FAB=p4ph2, SUP=p4ph4 — 결정7, 2026-10-19). 옛 컬렉션(user_schedules·ph4_schedules)에 쓰면 PC 달력·이력에 안 보이고 두 곳이 어긋난다
 function colPath(key){
-  if(key==='fab') return ['user_schedules'];
-  if(key==='sup') return ['ph4_schedules'];
+  if(key==='fab') return ['pjt_registry','p4ph2','schedules'];
+  if(key==='sup') return ['pjt_registry','p4ph4','schedules'];
   if(String(key).indexOf('reg_')===0) return ['pjt_registry', key.slice(4), 'schedules'];
   if(key==='comp') return ['company_schedules'];      // 소속 없음(공통) 일정
   return null;
@@ -356,13 +356,13 @@ onAuthStateChanged(auth, ()=>{
     });
   });
   setTimeout(_fixedDone,2500); // 응답이 늦어도 화면이 비어 있지 않도록
-  onSnapshot(collection(db,'user_schedules'), snap=>{ const arr=[]; snap.forEach(d=>arr.push({id:d.id,...d.data()})); fabSched=arr; render(); });
-  onSnapshot(collection(db,'ph4_schedules'), snap=>{ const arr=[]; snap.forEach(d=>arr.push({id:d.id,...d.data()})); supSched=arr; render(); });
+  onSnapshot(collection(db,'pjt_registry','p4ph2','schedules'), snap=>{ const arr=[]; snap.forEach(d=>arr.push({id:d.id,...d.data()})); fabSched=arr; render(); });
+  onSnapshot(collection(db,'pjt_registry','p4ph4','schedules'), snap=>{ const arr=[]; snap.forEach(d=>arr.push({id:d.id,...d.data()})); supSched=arr; render(); });
   // GUEST는 규칙상 연차·휴무만 읽을 수 있으므로 tag in [off,leave] 필터로 구독(필터가 없으면 서버가 거부한다)
   onSnapshot(isGuest?query(collection(db,'company_schedules'),where('tag','in',PUBLIC_TAGS)):collection(db,'company_schedules'), snap=>{ const arr=[]; snap.forEach(d=>arr.push({id:d.id,...d.data()})); compSched=arr; render(); }, err=>{ console.error('공통 일정 구독 오류',err); });
   onSnapshot(collection(db,'pjt_registry'), snap=>{
     const next={};
-    snap.forEach(d=>{ const v=d.data()||{}; if(v.status!=='ended'){ next[d.id]=v; ensureLightSub(d.id); } });
+    snap.forEach(d=>{ if(d.id==='p4ph2'||d.id==='p4ph4') return; /* 고정 프로젝트는 위의 FAB·SUP 구독이 같은 경로를 읽는다 — 여기서 또 읽으면 일정이 두 번 보인다 */ const v=d.data()||{}; if(v.status!=='ended'){ next[d.id]=v; ensureLightSub(d.id); } });
     lightMeta=next; render();
   });
   render();
