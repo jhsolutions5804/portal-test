@@ -26,7 +26,7 @@ const SENSITIVE = [
 export function safeText(s, max) {
   let t = String(s == null ? '' : s).normalize('NFC');
   SENSITIVE.forEach((re) => { t = t.replace(re, ' '); });
-  t = t.replace(BAD, ' ').replace(/\s+/g, ' ').trim().replace(/^[.\s-]+|[.\s-]+$/g, '');
+  t = t.replace(/\//g, '-').replace(BAD, ' ').replace(/\s+/g, ' ').trim().replace(/^[.\s-]+|[.\s-]+$/g, '');   // '/' 만 '-' 로("A/S" → "A-S", 공백으로 바꾸면 "A S" 처럼 어색해진다). 나머지 금지 문자는 공백
   const m = max || MAX_PART;
   return t.length > m ? t.slice(0, m).trim() : t;
 }

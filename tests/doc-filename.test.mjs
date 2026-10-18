@@ -21,7 +21,7 @@ eq(docFileName(), '문서', '인자 자체가 없어도 오류 없이 "문서"')
 // ── 날짜·번호가 민감정보 필터에 잘못 지워지지 않음(번호·날짜는 필터를 거치지 않는 구조화 칸)
 eq(docFileName({ project: 'P', kind: '견적서', no: 'EST-2026-001', date: '2026-05-10' }), '견적서_20260510_P', '종류 다음에 날짜(숫자만) — 같은 종류끼리 날짜순으로 정렬됨');
 eq(docFileName({ project: 'P', kind: '정산서', no: '2610003', date: '2026-10-13T09:00:00.000Z' }), '정산서_20261013_P', 'ISO 날짜는 YYYYMMDD 로 줄임');
-eq(docFileName({ project: 'P/Q:R', kind: '정산서', date: '2026-10-13' }), '정산서_20261013_P Q R', '이름의 / : 같은 파일 이름 금지 문자는 공백으로');
+eq(docFileName({ project: 'P/Q:R', kind: '정산서', date: '2026-10-13' }), '정산서_20261013_P-Q R', '이름의 / 는 - 로, : 같은 나머지 파일 이름 금지 문자는 공백으로');
 
 // ── 민감정보 강제 필터(자유 입력 칸)
 eq(safeText('홍길동 900101-1234567'), '홍길동', '주민등록번호 제거');
@@ -41,7 +41,7 @@ ok(!/010/.test(docFileName({ project: 'P', kind: '정산서', party: '다람 010
 ok(!/원/.test(docFileName({ project: '공사 3,000,000원', kind: '견적서' })), '문서 파일 이름 어디에도 금액이 남지 않음(프로젝트 칸)');
 
 // ── 금지 문자·공백·길이
-eq(safeText('a/b\\c:d*e?f"g<h>i|j'), 'a b c d e f g h i j', '파일 이름 금지 문자 9가지를 공백으로');
+eq(safeText('a/b' + String.fromCharCode(92) + 'c:d*e?f"g<h>i|j'), 'a-b c d e f g h i j', '파일 이름 금지 문자 9가지: / 는 - 로, 나머지 8가지(역슬래시 포함)는 공백으로');
 eq(safeText('  앞뒤   공백\t\n많음  '), '앞뒤 공백 많음', '공백 정리');
 eq(safeText('...점으로 시작.'), '점으로 시작', '앞뒤 점·하이픈 제거(윈도우 파일 이름 오류 방지)');
 eq(safeText('가'.repeat(100)).length, 40, '자유 입력 한 칸은 40자 이내');
@@ -89,4 +89,8 @@ eq(docFileName({ group: 'month', ym: '잘못', kind: '월말 마감' }), '월말
   KINDS.forEach(([g, o]) => ok(docFileName(Object.assign({ group: g }, o)).startsWith(o.kind), '종류가 맨 앞: ' + g + ' / ' + o.kind + ' → ' + docFileName(Object.assign({ group: g }, o))));
   ok(KINDS.every(([g, o]) => docFileName(Object.assign({ group: g }, o)).split(o.kind).length === 2), '종류 글자가 이름에 한 번만 나옴(모든 문서군)'); }
 
+// ── 실제 프로젝트 코드의 "/": 청주 M15X CUB동 A/S → A-S (공백으로 바꾸면 "A S" 처럼 어색해짐 — 대표님 화면 확인에서 발견)
+eq(docFileName({ group: 'project', kind: '견적서', project: '청주 M15X CUB동 A/S', party: '다람이엔지', title: 'M15X FCU 보수 작업', date: '2026-08-25' }), '견적서_20260825_다람이엔지_청주 M15X CUB동 A-S_M15X FCU 보수 작업', '★ 프로젝트 코드의 / 는 - 로("A/S" → "A-S")');
+ok(!docFileName({ group: 'project', kind: '견적서', project: '가/나/다', date: '2026-08-25' }).includes('/') && docFileName({ group: 'project', kind: '견적서', project: '가/나/다', date: '2026-08-25' }).endsWith('가-나-다'), '/ 가 여러 개여도 모두 -');
+eq(docFileName({ group: 'project', kind: '견적서', project: 'A/', date: '2026-08-25' }), '견적서_20260825_A', '끝에 붙은 / 는 - 가 된 뒤 가장자리의 - 로 정리되어 남지 않음');
 console.log('\n' + pass + ' passed, ' + fail + ' failed'); if (fail) process.exit(1);
