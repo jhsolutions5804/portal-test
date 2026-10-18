@@ -29,3 +29,4 @@ export function createInboxPanel(host, o) {
   };
   return { ready: load(), reload: load, state: st };
 }
+/* CI 시험용 주석 — 빌드 번호를 올리지 않은 app 코드 변경이 자동 검사에서 실패하는지 확인하려고 잠깐 넣는다(동작은 같다). 확인 후 되돌린다. */
