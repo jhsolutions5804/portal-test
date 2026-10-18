@@ -65,3 +65,15 @@ export function actionsFor(e, me) {
 }
 /** 서버 오류 문구 → 사용자 안내(서버가 이미 한국어로 주므로 그대로, 없으면 기본 문구) */
 export function friendlyError(e) { const m = String((e && (e.message || e.details)) || '').replace(/^FirebaseError:\s*/, '').trim(); return m && m.length < 160 ? m : '처리하지 못했습니다. 잠시 후 다시 시도해 주세요.'; }
+
+/* ── 미분류 메일 받은함(설계 §3) — 서버 mail-inbox-act.js 가 준 목록을 화면에서 쓰는 순수 규칙 ── */
+/** 현장 표기(Ph2 등)가 든 프로젝트가 "정확히 하나"일 때만 미리 골라 준다(추천일 뿐 — 지정은 사람이 누른다). projects=[{id,name}] */
+export function suggestProject(siteHint, projects) {
+  const num = String(siteHint || '').replace(/\D/g, ''); if (!num) return '';
+  const re = new RegExp('\\bph\\.?\\s*' + num + '\\b', 'i'); const hit = (projects || []).filter((p) => p && re.test(String(p.name || '')));
+  return hit.length === 1 ? hit[0].id : '';
+}
+/** 받은함 한 줄이 지정 버튼을 낼 수 있는지 — 프로젝트를 골라야 한다 */
+export const canAssign = (pjtId) => typeof pjtId === 'string' && pjtId.length > 0 && pjtId.length <= 128 && pjtId.indexOf('/') === -1;
+/** 받은함 카드를 그릴지 — 권한이 없거나(서버가 거절) 비어 있으면 조용히 그리지 않는다 */
+export const showInbox = (d) => !!d && Array.isArray(d.items) && d.items.length > 0;

@@ -1,6 +1,6 @@
 /* PJT 전체 홈(주소 #/pjt/home)과 종료 PJT(#/pjt/ended) — 새 화면. 규칙은 overview.js, 표시는 overview-view.js.
  * 프로젝트를 만들거나 종료·재개·삭제하면 메뉴의 프로젝트 칩도 바뀌어야 하므로 'jh:pjt-changed' 알림을 보낸다(legacy/frame.js 가 받아 칩을 다시 읽는다). */
-import { db, collection, doc, getDocs, setDoc, addDoc, deleteDoc, deleteField, serverTimestamp } from '../../core/firebase.js?v=20261018e';
+import { db, collection, doc, getDocs, setDoc, addDoc, deleteDoc, deleteField, serverTimestamp, functions, httpsCallable } from '../../core/firebase.js?v=20261018e';
 import { esc, toast } from '../../core/ui.js?v=20261018e';
 import { confirmDialog } from '../../core/dialog.js?v=20261018e';
 import { canAccessProject } from '../../shared/pjt-access.js?v=20261018e';
@@ -11,6 +11,7 @@ import { visibleProjects } from './projects.js?v=20261018e';
 import { dowOf } from './schedule.js?v=20261018e';
 import { overviewHtml, schedInner, detailInner, endedHtml } from './overview-view.js?v=20261018e';
 import { createLogPanel } from './log-panel.js?v=20261018e';
+import { createInboxPanel } from './inbox-panel.js?v=20261018e';
 import { newProjectData, deleteConfirmed, endedSorted, shiftMonth } from './overview.js?v=20261018e';
 const ts = (d) => (d.createdAt && d.createdAt.seconds) || 0;
 /** 프로젝트가 바뀌었음을 메뉴(legacy/frame.js)에 알리고, 메뉴가 칩을 다시 읽을 때까지 기다린다 */
@@ -21,8 +22,9 @@ export async function mountOverview(root, route, ctx) {
   const me = (ctx && ctx.me) || {}; const today = appToday(); const t0 = today.split('-').map(Number);
   const st = { admin: !!me.admin, today, ready: false, err: '', projects: [], items: [], y: t0[0], m: t0[1] - 1, sel: today, form: null, msg: '', busy: false };
   root.innerHTML = '<div id="ov-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#ov-body');
+  const inboxHost = document.createElement('div'); inboxHost.className = 'jh-ov__inbox'; // 미분류 메일 받은함 — 이력 요약 위(같은 칸). 비어 있거나 권한이 없으면 아무것도 그리지 않는다
   const logHost = document.createElement('div'); logHost.className = 'jh-ov__logbox';   // 이력관리 패널 요소 — 한 번만 만들어 두고 화면 전체를 다시 그릴 때마다 자리표시자에 옮겨 끼운다(상태·서버 호출 유지)
-  const paint = () => { const y = window.scrollY; body.innerHTML = overviewHtml(st); const ph = body.querySelector('[data-ov-log]'); if (ph && st.logOn) ph.appendChild(logHost); window.scrollTo(0, y); };
+  const paint = () => { const y = window.scrollY; body.innerHTML = overviewHtml(st); const ph = body.querySelector('[data-ov-log]'); if (ph && st.logOn) { ph.appendChild(inboxHost); ph.appendChild(logHost); } window.scrollTo(0, y); };
   const paintSched = () => { const a = body.querySelector('#ov-sched'), d = body.querySelector('#ov-detail'); if (a && d) { a.innerHTML = schedInner(st); d.innerHTML = detailInner(st); } else paint(); };   // 월 이동·날짜 선택은 왼쪽 달력과 오른쪽 일정 목록만 다시 그린다
   try { await Promise.race([loadHolidays(), new Promise((r) => setTimeout(r, 1500))]); } catch (e) { /* 공휴일 없이 표시 */ }
   const load = async () => {
@@ -30,7 +32,7 @@ export async function mountOverview(root, route, ctx) {
     const per = await Promise.all(st.projects.map(async (p) => { const items = []; try { (await getDocs(collection(db, pathsFor(p.key).schedules))).forEach((d) => items.push(Object.assign({}, d.data(), { id: d.id, pjtKey: p.key, pjtName: p.label }))); } catch (e) { /* 이 프로젝트 일정은 못 읽음 */ } return items; })); st.items = [].concat.apply([], per);
   };
   try { await load(); st.ready = true; } catch (e) { st.err = '불러오지 못했습니다: ' + ((e && (e.code || e.message)) || ''); }
-  if (st.ready && st.projects.length) { st.logOn = true; createLogPanel(logHost, { all: true, compact: true, projects: st.projects.map((p) => ({ key: p.key, label: p.label })), me: { uid: me.uid || '' }, callLog: ctx && ctx.callLog }); }   // 3단째 이력관리 — 보이는 프로젝트가 있을 때만, 홈을 막지 않으려고 기다리지 않는다
+  if (st.ready && st.projects.length) { st.logOn = true; const inbox = createInboxPanel(inboxHost, { callLog: (ctx && ctx.callLog) || (async (payload) => (await httpsCallable(functions, 'pjtLogAct')(payload)).data), confirm: confirmDialog, onChange: () => { try { logPanel.reload(); } catch (e) { /* 이력 요약은 다음에 다시 읽힘 */ } } }); const logPanel = createLogPanel(logHost, { all: true, compact: true, projects: st.projects.map((p) => ({ key: p.key, label: p.label })), me: { uid: me.uid || '' }, callLog: ctx && ctx.callLog }); }   // 3단째 이력관리 — 보이는 프로젝트가 있을 때만, 홈을 막지 않으려고 기다리지 않는다
   body.removeAttribute('aria-busy'); paint();
   const go = (h) => { location.hash = h; };
   const create = async () => {
