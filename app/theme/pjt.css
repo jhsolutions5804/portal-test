@@ -394,6 +394,8 @@
 .jh-pjt__calit b { font-weight: 800; color: var(--tc, var(--c-primary)); }
 /* 공정: 왼쪽 섹터 카드는 좁게(19rem), 오른쪽 체크표는 안쪽 스크롤바 없이 칸을 균등하게(가로 스크롤 없음, 길면 화면이 스크롤) */
 @media (min-width: 1000px) { .jh-pjt__splitprog { grid-template-columns: minmax(0, 19rem) minmax(0, 1fr); } .jh-pjt__splitprog .jh-pjt__pane { position: static; } }
+/* 섹터를 닫아 오른쪽 체크표가 없으면(대표님 2026-10-18: 열기만 되고 닫기가 안 됐음) 카드 목록이 19rem 으로 좁게 남아 오른쪽이 비어 보이므로, 카드를 한 줄에 여러 개 넓게 펼친다 */
+@media (min-width: 1000px) { .jh-pjt__splitprog.jh-pjt__splitclosed { grid-template-columns: minmax(0, 1fr); } .jh-pjt__splitprog.jh-pjt__splitclosed > .jh-pjt__cards { position: static; max-height: none; overflow: visible; grid-template-columns: repeat(auto-fill, minmax(var(--u-220), 1fr)); } }
 .jh-pjt__splitprog .jh-pjt__panebody { overflow: visible; max-height: none; }
 .jh-pjt__splitprog .jh-pjt__scroll { overflow: visible; }
 .jh-pjt__splitprog .jh-pjt__ctable { table-layout: fixed; width: calc(100% - var(--sp-5) - var(--sp-3)); }

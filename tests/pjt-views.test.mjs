@@ -73,4 +73,6 @@ ok(/\.jh-pjt__cat \{ --cat: var\(--c-primary\); \}/.test(css) && /\.jh-pjt__cat\
 // 근무시간: 구분 드롭박스와 시·분 칸이 같은 줄(.jh-pjt__timerow) 안에
 const trow = (fm.match(/<div class="jh-pjt__timerow">[^]*?<\/span><\/div>/) || [''])[0];
 ok(trow.includes('data-rp-shiftsel') && trow.includes('data-rp-f="ciH"') && trow.includes('data-rp-f="ciM"') && trow.includes('data-rp-f="coH"') && trow.includes('data-rp-f="coM"') && trow.indexOf('data-rp-shiftsel') < trow.indexOf('data-rp-f="ciH"') && !/jh-pjt__bar/.test(trow), '★ 근무시간: 구분 드롭박스와 시작·종료 시·분 칸이 같은 줄(한 묶음)에 — 드롭박스가 앞, 시간 칸이 뒤');
+ok(/\.jh-pjt__splitprog\.jh-pjt__splitclosed \{ grid-template-columns: minmax\(0, 1fr\); \}/.test(css) && /\.jh-pjt__splitprog\.jh-pjt__splitclosed > \.jh-pjt__cards \{[^}]*position: static;[^}]*overflow: visible;[^}]*repeat\(auto-fill/.test(css), '★ 공정: 섹터를 닫아 체크표가 없으면 카드 목록이 한 열로 좁게 남지 않고 한 줄에 여러 개 넓게 펼쳐지며 sticky·높이 제한도 풀림');
+ok(/\.jh-pjt__eqhrs \{ display: inline-flex;/.test(css) && /\.jh-pjt__eqpick \.jh-pjt__eqh \{ width: var\(--u-64\);/.test(css), '공사일보: 장비마다 사용 시간 칸(숫자 + "시간")이 차량번호 칸 옆에 한 줄로 놓임 — 정의된 크기 토큰(--u-64)만 사용');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

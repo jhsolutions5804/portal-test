@@ -1,9 +1,9 @@
-import { esc } from '../../core/ui.js?v=20261018a';
-import { calcAll, cellState, keyOf } from './progress.js?v=20261018a';
-import { holidayName } from '../../shared/holidays.js?v=20261018a';
-import { structureEditorHtml } from './structure-view.js?v=20261018a';
-import { layoutEditorHtml } from './layout-view.js?v=20261018a';
-import { snapToTuesday, weekNo, weekRange } from './layout.js?v=20261018a';
+import { esc } from '../../core/ui.js?v=20261018b';
+import { calcAll, cellState, keyOf } from './progress.js?v=20261018b';
+import { holidayName } from '../../shared/holidays.js?v=20261018b';
+import { structureEditorHtml } from './structure-view.js?v=20261018b';
+import { layoutEditorHtml } from './layout-view.js?v=20261018b';
+import { snapToTuesday, weekNo, weekRange } from './layout.js?v=20261018b';
 const f1 = (n) => (Math.round((Number(n) || 0) * 10) / 10).toFixed(1);
 const chip = (t, tone) => '<span class="jh-pjt__chip" data-tone="' + esc(tone || '') + '">' + esc(t) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -28,7 +28,7 @@ export function progressHtml(st) {
   const cards = A.groups.map((x) => groupHtml(st, x, x.group.id === selId, wide)).join('') || '<div class="jh-empty">등록된 품목이 없습니다.</div>';
   const empty = !S.leafCols.length ? '<div class="jh-empty">공정 단계가 설정되지 않았습니다. (구조 설정에서 단계를 정하세요)</div>' : '';
   const pane = wide && selX ? '<div class="jh-pjt__pane">' + card((selX.group.name || '전체') + ' 체크표', '<div class="jh-pjt__panebody">' + tableHtml(st, selX.group, selX.calc, st.states[selX.group.id] || {}) + '</div>') + '</div>' : '';
-  return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide">' + head + dateBar + note + weeklyPanel + card('공정 현황', '<div class="jh-pjt__pad">' + sum + '</div>') + empty + '<div class="jh-pjt__split jh-pjt__splitprog"><div class="jh-pjt__cards">' + cards + '</div>' + pane + '</div></div></div>';
+  return '<div class="jh-pjt jh-pjt--prog"><div class="jh-pjt__main jh-pjt__mainwide">' + head + dateBar + note + weeklyPanel + card('공정 현황', '<div class="jh-pjt__pad">' + sum + '</div>') + empty + '<div class="jh-pjt__split jh-pjt__splitprog' + (pane ? '' : ' jh-pjt__splitclosed') + '"><div class="jh-pjt__cards">' + cards + '</div>' + pane + '</div></div></div>';
 }
 function groupHtml(st, x, selected, wide) {
   const S = st.structure; const g = x.group, c = x.calc; const unit = S.unit || '대';
