@@ -14,7 +14,7 @@ class H(http.server.SimpleHTTPRequestHandler):
 httpd = socketserver.TCPServer(('127.0.0.1', 0), H); port = httpd.server_address[1]; threading.Thread(target=httpd.serve_forever, daemon=True).start()
 BASE = 'http://127.0.0.1:%d' % port; VER = '20261018e'
 FAKE_FB = """export const functions={}; export const httpsCallable=(f,n)=>async(p)=>{(window.__calls=window.__calls||[]).push(p);
- if(p.action==='list')return {data:{ok:true,today:'2026-10-18',urgent:[],changes:[],entries:[{id:'e1',date:'2026-10-18',category:'발주처 요청·지시',title:'시험 항목',source:'메일',status:'confirmed',claimedBy:'u1',claimedByName:'나',replyDetected:false,impactChecked:false,restricted:false,createdByName:'',createdByMe:false,createdMs:0,auto:false,dueDate:'',due:null},{id:'e2',date:'2026-10-17',category:'회의 결정',title:'완료된 시험 항목',source:'메일',status:'done',claimedBy:'u1',claimedByName:'나',replyDetected:false,impactChecked:false,restricted:false,createdByName:'',createdByMe:true,createdMs:0,auto:false,dueDate:'',due:null}],total:2,canConfirm:true,isManager:true}};
+ window.__cal=window.__cal||{}; if(p.action==='calendarAdd'){ window.__cal[p.id]='log_'+p.id; await new Promise(r=>setTimeout(r,150)); return {data:{ok:true,scheduleId:'log_'+p.id}}; } if(p.action==='list')return {data:{ok:true,today:'2026-10-18',urgent:[],changes:[],entries:[{id:'e1',date:'2026-10-18',category:'발주처 요청·지시',title:'시험 항목',source:'메일',status:'confirmed',claimedBy:'u1',claimedByName:'나',replyDetected:false,impactChecked:false,restricted:false,createdByName:'',createdByMe:false,createdMs:0,auto:false,dueDate:'',due:null},{id:'e4',date:'2026-10-18',category:'발주처 요청·지시',title:'기한 있는 확정 항목',source:'메일',status:'confirmed',claimedBy:'u1',claimedByName:'나',replyDetected:false,impactChecked:false,restricted:false,createdByName:'',createdByMe:false,createdMs:0,auto:false,dueDate:'2026-10-22',due:null,calendarId:(window.__cal||{})['e4']||''},{id:'e2',date:'2026-10-17',category:'회의 결정',title:'완료된 시험 항목',source:'메일',status:'done',claimedBy:'u1',claimedByName:'나',replyDetected:false,impactChecked:false,restricted:false,createdByName:'',createdByMe:true,createdMs:0,auto:false,dueDate:'',due:null}],total:2,canConfirm:true,isManager:true}};
  if(p.action==='inboxList')return {data:{ok:true,items:[{id:'a'.repeat(32),date:'2026-10-18',category:'발주처 요청·지시',title:'미분류 시험 메일',sourceRef:'',dueDate:'',restricted:false,siteHint:''}],projects:[{id:'p1',name:'P4 Ph2'}],total:1}};
  return {data:{ok:true}}};"""
 PAGE = """<!doctype html><meta charset=utf-8><link rel=stylesheet href="%(b)s/theme/tokens.css"><link rel=stylesheet href="%(b)s/theme/base.css"><link rel=stylesheet href="%(b)s/theme/components.css"><link rel=stylesheet href="%(b)s/theme/pjt.css"><div id=log></div><div id=inbox></div>
@@ -47,5 +47,19 @@ with sync_playwright() as p:
         ok(len(calls(pg, action)) == 0, '★ %s: 바깥(배경)을 눌러 닫아도 서버를 부르지 않는다' % name); pg.close()
         pg = fresh(); b4 = pg.query_selector(sel); b4.scroll_into_view_if_needed(); b4.click(timeout=5000); pg.wait_for_selector('.jh-dialog', timeout=5000); pg.click('.jh-dialog [data-ok]', timeout=5000); pg.wait_for_timeout(400)
         ok(len(calls(pg, action)) == 1, '%s: 확인 버튼을 누르면 서버를 정확히 한 번 부른다' % name); pg.close()
+    # ── 캘린더에 넣기(설계 §8): 확인창 없이 서버를 한 번만 부르고, 목록을 다시 읽어 "캘린더에 있음" 칩이 나타난다
+    pg = fresh(); btn = pg.query_selector('[data-lg-act="calendar"]')
+    if not btn: ok(False, '캘린더에 넣기: 기한 있는 확정 항목에 버튼이 없음(시험 자료 점검 필요)')
+    else:
+        btn.scroll_into_view_if_needed(); btn.click(timeout=5000); pg.wait_for_timeout(700)
+        c = calls(pg, 'calendarAdd'); ok(len(c) == 1 and c[0].get('id') == 'e4' and c[0].get('pjtId') == 'p1', '★ 캘린더에 넣기: 서버를 정확히 한 번, 그 항목 번호와 프로젝트로 부른다')
+        ok(pg.query_selector('.jh-dialog') is None, '캘린더에 넣기: 확인창을 띄우지 않는다(되돌릴 수 있는 일이라 설계 §8-4 대로 한 번에)')
+        ok('캘린더에 있음' in pg.inner_text('#log'), '★ 캘린더에 넣기: 목록을 다시 읽어 "📅 캘린더에 있음" 칩이 나타난다')
+        ok(pg.query_selector('[data-lg-act="calendar"]') is None, '캘린더에 넣기: 칩이 나타난 뒤에는 버튼이 사라진다(중복 방지)')
+    pg.close()
+    pg = fresh(); btn = pg.query_selector('[data-lg-act="calendar"]'); btn.scroll_into_view_if_needed(); btn.click(timeout=5000)
+    b2 = pg.query_selector('[data-lg-act="calendar"]')
+    if b2: b2.dispatch_event('click')
+    pg.wait_for_timeout(800); ok(len(calls(pg, 'calendarAdd')) == 1, '★ 처리 중에 두 번 눌러도 서버는 한 번만 부른다(중복 클릭 방지)'); pg.close()
     b.close()
 print('\n' + (('%d건 실패' % fail_n) if fail_n else '전부 통과') + ' (%d건)' % pass_n); sys.exit(1 if fail_n else 0)

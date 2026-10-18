@@ -61,7 +61,18 @@ export function actionsFor(e, me) {
   if ((e.status === 'confirmed' || e.status === 'claimed') && me.manager) out.push({ act: 'hold', label: '보류' });
   if ((e.status === 'hold' || e.status === 'closed') && me.manager) out.push({ act: 'reopen', label: '다시 열기' });
   if (CHANGE_CATEGORIES.indexOf(e.category) !== -1 && e.status !== 'candidate') out.push({ act: 'impact', label: e.impactChecked ? '영향 확인 해제' : '영향 확인' });
+  if (canAddCalendar(e, me)) out.push({ act: 'calendar', label: '캘린더에 넣기' });
   return out;
+}
+/* ── 이력의 기한을 캘린더로(설계 §8, 서버 calendarAdd 와 같은 규칙) ── */
+const realDay = (k) => /^\d{4}-\d{2}-\d{2}$/.test(String(k || '')) && !isNaN(Date.parse(k + 'T00:00:00Z')) && new Date(k + 'T00:00:00Z').toISOString().slice(0, 10) === k;
+/** 캘린더에 이미 넘긴 항목인가(서버가 calendarId 를 내려준다) */
+export const inCalendar = (e) => !!e && typeof e.calendarId === 'string' && e.calendarId.length > 0;
+/** "캘린더에 넣기" 를 보일지 — 관리 권한자·확정/처리 중/완료·기한이 실제 날짜·대외비 아님·아직 안 넘김. 후보·종결·보류는 제외(서버도 같은 이유로 거절). */
+export function canAddCalendar(e, me) {
+  if (!e || !me || !me.manager) return false;
+  if (['confirmed', 'claimed', 'done'].indexOf(e.status) === -1 || e.restricted === true) return false;
+  return realDay(e.dueDate) && !inCalendar(e);
 }
 /** 서버 오류 문구 → 사용자 안내(서버가 이미 한국어로 주므로 그대로, 없으면 기본 문구) */
 export function friendlyError(e) { const m = String((e && (e.message || e.details)) || '').replace(/^FirebaseError:\s*/, '').trim(); return m && m.length < 160 ? m : '처리하지 못했습니다. 잠시 후 다시 시도해 주세요.'; }

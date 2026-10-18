@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { CATEGORIES, SOURCES, INPUT_SOURCES, TITLE_MAX, STATUS_LABEL, hasMoney, hasPersonal, titleHint, canSubmit, dueText, shortDate, actionsFor, friendlyError } from '../app/shared/pjt-log.js';
+import { CATEGORIES, SOURCES, INPUT_SOURCES, TITLE_MAX, STATUS_LABEL, hasMoney, hasPersonal, titleHint, canSubmit, dueText, shortDate, actionsFor, canAddCalendar, inCalendar, friendlyError } from '../app/shared/pjt-log.js';
 import { logHtml, formHtml, logCompactHtml } from '../app/modules/pjt/log-view.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 
@@ -31,6 +31,20 @@ ok(A(E({ status: 'done' }), { uid: 'u1', manager: false }) === '' && A(E({ statu
 ok(A(E({ status: 'hold' }), { uid: 'u1', manager: true }) === 'reopen' && A(E({ status: 'closed' }), { uid: 'u1', manager: true }) === 'reopen' && A(E({ status: 'hold' }), { uid: 'u1', manager: false }) === '', '보류·종결: 다시 열기는 관리 권한자만');
 ok(A(E({ category: '일정 변경' }), { uid: 'u1', manager: false }) === 'claim,impact' && actionsFor(E({ category: '일정 변경', impactChecked: true }), { uid: 'u1', manager: false }).some((a) => a.label === '영향 확인 해제') && !A(E({ category: '현장 이슈' }), { uid: 'u1', manager: false }).includes('impact'), '변경사항(일정·범위·수량)만 "영향 확인" 버튼이 있고 체크하면 "해제"로 바뀜');
 ok(actionsFor(null, { uid: 'u' }).length === 0 && actionsFor(E(), null).length === 0, '항목·사용자가 없어도 오류 없이 빈 목록');
+
+// ── 캘린더로 넘기기(설계 §8): 확정·처리 중·완료 항목 중 기한이 있고 대외비가 아니며 아직 안 넘긴 것에, 관리 권한자에게만 "캘린더에 넣기"
+const DUE = '2026-10-22'; const M = { uid: 'u1', manager: true }, G = { uid: 'u1', manager: false };
+ok(A(E({ dueDate: DUE }), M) === 'claim,done,hold,calendar' && actionsFor(E({ dueDate: DUE }), M).find((x) => x.act === 'calendar').label === '캘린더에 넣기', '★ 확정·기한 있음: 관리 권한자에게 "캘린더에 넣기"');
+ok(!A(E({ dueDate: DUE }), G).includes('calendar'), '★ 일반 참여자에게는 안 보임');
+ok(!A(E(), M).includes('calendar') && !A(E({ dueDate: '' }), M).includes('calendar'), '★ 기한이 없으면 안 보임');
+ok(!A(E({ status: 'candidate', dueDate: DUE }), M).includes('calendar'), '★ 후보에는 안 보임(확정 뒤에)');
+ok(A(E({ status: 'claimed', claimedBy: 'u1', dueDate: DUE }), M).includes('calendar') && A(E({ status: 'done', dueDate: DUE }), M).includes('calendar'), '처리 중·완료 항목에도 보임');
+ok(!A(E({ status: 'hold', dueDate: DUE }), M).includes('calendar') && !A(E({ status: 'closed', dueDate: DUE }), M).includes('calendar'), '★ 보류·종결에는 안 보임');
+ok(!A(E({ dueDate: DUE, restricted: true }), M).includes('calendar'), '★ 대외비(금액·연락처 제목) 항목에는 안 보임');
+ok(!A(E({ dueDate: DUE, calendarId: 'log_e1' }), M).includes('calendar'), '★ 이미 캘린더에 넣은 항목에는 버튼이 없다(칩으로 표시)');
+ok(!A(E({ dueDate: 'abc' }), M).includes('calendar') && !A(E({ dueDate: '2026-13-40' }), M).includes('calendar'), '기한 형식이 깨졌으면 안 보임');
+ok(!A(E({ dueDate: '2026-02-30' }), M).includes('calendar') && !A(E({ dueDate: '2026-04-31' }), M).includes('calendar') && A(E({ dueDate: '2026-02-28' }), M).includes('calendar'), '★ 형식은 맞지만 없는 날짜(2월 30일·4월 31일)는 안 보임 — Date.parse 는 이런 날짜를 다음 달로 넘겨 통과시키므로 되돌려 비교해야 걸러진다');
+ok(canAddCalendar(E({ dueDate: DUE }), M) === true && canAddCalendar(E({ dueDate: DUE, calendarId: 'x' }), M) === false && inCalendar(E({ calendarId: 'log_e1' })) === true && inCalendar(E()) === false && inCalendar(null) === false, '규칙 함수: 넣을 수 있는지(canAddCalendar)·이미 있는지(inCalendar)');
 ok(friendlyError({ message: 'FirebaseError: 금액·단가는 이력에 적지 않습니다.' }) === '금액·단가는 이력에 적지 않습니다.' && friendlyError(null).includes('다시 시도') && friendlyError({ message: 'x'.repeat(200) }).includes('다시 시도'), '서버 오류 문구는 그대로 보여 주고 접두어를 지움, 너무 길거나 없으면 기본 안내');
 
 // ── 화면: 세 묶음 순서(기한 임박 → 변경사항 → 전체 이력)·빈 상태·로딩·오류
@@ -124,5 +138,19 @@ if (SRV) {
   ok(samples.every((s) => srv.hasMoney(s) === hasMoney(s) && srv.hasPersonal(s) === hasPersonal(s)), '★ 금액·연락처 감지 결과가 서버와 모든 표본에서 같음(' + samples.length + '개)');
   ok(Object.keys(STATUS_LABEL).sort().join() === srv.STATUSES.slice().sort().join(), '상태 6종 이름표가 서버 상태와 같음');
 } else console.log('SKIP 서버 파일이 없어 서버 규칙 대조는 건너뜀(portal-functions 가 옆에 있을 때만 실행)');
+
+// ── 캘린더 칩·버튼 화면(logHtml): 넣은 항목은 "📅 캘린더에 있음" 칩, 넣을 수 있는 항목은 "캘린더에 넣기" 버튼
+const CALST = (entries, mgr) => ({ proj: 'p1', label: '시험', me: { uid: 'u1', manager: !!mgr }, loading: false, error: '', data: { urgent: [], changes: [], entries, total: entries.length, today: '2026-10-18', canConfirm: !!mgr }, filter: {}, formOpen: false, form: {}, busy: false, msg: '' });
+const hCalBtn = logHtml(CALST([ENT({ id: 'c1', dueDate: '2026-10-22' })], true));
+ok(hCalBtn.includes('data-lg-act="calendar"') && hCalBtn.includes('캘린더에 넣기') && !hCalBtn.includes('캘린더에 있음'), '★ 넣을 수 있는 항목: "캘린더에 넣기" 버튼이 그려지고 칩은 없다');
+const hCalChip = logHtml(CALST([ENT({ id: 'c2', dueDate: '2026-10-22', calendarId: 'log_c2' })], true));
+ok(hCalChip.includes('캘린더에 있음') && !hCalChip.includes('data-lg-act="calendar"'), '★ 이미 넣은 항목: "📅 캘린더에 있음" 칩이 그려지고 버튼은 없다');
+ok(logHtml(CALST([ENT({ id: 'c3', dueDate: '2026-10-22', calendarId: 'log_c3' })], false)).includes('캘린더에 있음'), '일반 참여자도 "캘린더에 있음" 칩은 본다(정보 표시)');
+ok(!logHtml(CALST([ENT({ id: 'c4', dueDate: '2026-10-22' })], false)).includes('캘린더에 넣기'), '★ 일반 참여자에게는 버튼이 없다');
+ok(!logHtml(CALST([ENT({ id: 'c5', dueDate: '' })], true)).includes('캘린더에'), '기한이 없으면 버튼도 칩도 없다');
+ok(!logHtml(CALST([ENT({ id: 'c6', dueDate: '2026-10-22', restricted: true, title: '(관리자만 볼 수 있는 항목입니다)' })], true)).includes('캘린더에 넣기'), '대외비 항목에는 버튼이 없다');
+ok(hCalBtn.includes('data-lg-id="c1"'), '버튼이 어느 항목인지 번호를 담는다');
+ok(logHtml(CALST([ENT({ id: 'x"><b>', dueDate: '2026-10-22', calendarId: 'x' })], true)).split('<b>').length === 1, '★ 항목 번호에 태그가 들어 있어도 칩·버튼 속성이 깨지지 않는다(이스케이프)');
+ok(logCompactHtml(CALST([ENT({ id: 'c7', dueDate: '2026-10-22', calendarId: 'log_c7' })], true)).includes('캘린더에 있음'), '홈 요약(compact)에도 칩이 나온다');
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed'); if (fail) process.exit(1);

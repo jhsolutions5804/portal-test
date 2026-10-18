@@ -3,9 +3,9 @@
  * 저장 형식·규칙은 **PC 와 완전히 같다**: PC 의 순수 규칙(app/modules/pjt/report.js · daily-note.js · adapter.js)을 그대로 불러 쓴다 — 모바일이 따로 만드는 규칙은 없고,
  * 여기서 하는 일은 ①서버에서 읽은 값으로 그날의 폼 모델을 만들고(저장된 일보가 있으면 그대로, 없으면 공정 체크·출역·공수로 미리 채움) ②모바일 입력칸의 값을 모델에 담아 저장 문서로 바꾸고 ③모바일 모양의 화면 문자열을 만드는 것이다.
  * 서버 읽기·쓰기는 호출하는 쪽(pjt.html)이 함수로 넘긴다(createMobileReport 의 io) — 이 파일은 Firestore 를 직접 부르지 않아 노드에서 시험한다. */
-import { REPORT_FMT, WORK_SHIFTS, EQUIPS, cleanHrs, shiftOf, fromStored, toStored, isLegacyDoc, authorLabel, withEditor, dateText, attendanceSummary, autoContent, totalOf, perPersonOf, fmtAt } from '../app/modules/pjt/report.js?v=20261018g';
-import { dayDoc, isDateKey } from '../app/modules/pjt/adapter.js?v=20261018g';
-import { syncWithNote } from '../app/modules/pjt/daily-note.js?v=20261018g';
+import { REPORT_FMT, WORK_SHIFTS, EQUIPS, cleanHrs, shiftOf, fromStored, toStored, isLegacyDoc, authorLabel, withEditor, dateText, attendanceSummary, autoContent, totalOf, perPersonOf, fmtAt } from '../app/modules/pjt/report.js?v=20261018h';
+import { dayDoc, isDateKey } from '../app/modules/pjt/adapter.js?v=20261018h';
+import { syncWithNote } from '../app/modules/pjt/daily-note.js?v=20261018h';
 
 const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 /** 모바일 사이트 키 → 서버 프로젝트 id (경량 프로젝트 키는 reg_<문서id>, 고정 프로젝트 p4ph2·p4ph4 는 그대로) — 이력(pjt-log.js)과 같은 규칙 */

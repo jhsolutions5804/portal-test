@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261018g';
-import { CATEGORIES, INPUT_SOURCES, SOURCES, CATEGORY_ICON, STATUS_LABEL, STATUS_TONE, TITLE_MAX, titleHint, canSubmit, dueText, DUE_TONE, shortDate, actionsFor } from '../../shared/pjt-log.js?v=20261018g';
+import { esc } from '../../core/ui.js?v=20261018h';
+import { CATEGORIES, INPUT_SOURCES, SOURCES, CATEGORY_ICON, STATUS_LABEL, STATUS_TONE, TITLE_MAX, titleHint, canSubmit, dueText, DUE_TONE, shortDate, actionsFor, inCalendar } from '../../shared/pjt-log.js?v=20261018h';
 /* PJT 이력 탭 화면(문자열) — 설계 docs/pjt-log-design.md §3. 화면 순서: 기한 임박 요청 → 변경사항 → 전체 이력, 맨 위에 한 줄 입력.
  * st = { proj, label, me:{uid,manager}, loading, error, data:{urgent,changes,entries,total,today,canConfirm}, filter:{category,source,from,to}, formOpen, form:{category,source,title,dueDate}, busy, msg } */
 const chip = (text, tone) => '<span class="jh-badge"' + (tone ? ' data-tone="' + tone + '"' : '') + '>' + esc(text) + '</span>';
@@ -15,7 +15,7 @@ function row(e, st, opts) {
     + '<span class="jh-pjt__lgicon" aria-hidden="true">' + (CATEGORY_ICON[e.category] || '•') + '</span>'
     + '<div class="jh-pjt__lgbody"><div class="jh-pjt__lgtitle">' + esc(e.title) + (e.restricted ? ' ' + chip('대외비', 'warn') : '') + '</div>'
     + '<div class="jh-field__hint">' + pjtChip + (pjtChip ? ' · ' : '') + esc(e.category) + ' · ' + meta + '</div></div>'
-    + '<div class="jh-pjt__lgside">' + (dt ? chip(dt, DUE_TONE[due.tone] || '') + (e.dueDate ? '<span class="jh-field__hint">' + esc(shortDate(e.dueDate)) + '</span>' : '') : '') + (e.status !== 'confirmed' ? chip(STATUS_LABEL[e.status] || e.status, STATUS_TONE[e.status] || '') : '') + (e.replyDetected ? chip('회신됨', 'info') : '') + '</div>'
+    + '<div class="jh-pjt__lgside">' + (dt ? chip(dt, DUE_TONE[due.tone] || '') + (e.dueDate ? '<span class="jh-field__hint">' + esc(shortDate(e.dueDate)) + '</span>' : '') : '') + (e.status !== 'confirmed' ? chip(STATUS_LABEL[e.status] || e.status, STATUS_TONE[e.status] || '') : '') + (e.replyDetected ? chip('회신됨', 'info') : '') + (inCalendar(e) ? chip('📅 캘린더에 있음', 'accent') : '') + '</div>'
     + (acts ? '<div class="jh-pjt__lgacts">' + acts + '</div>' : '') + '</div>';
 }
 const card = (title, body, count, note, scroll) => '<section class="jh-card jh-pjt__lgcard"><div class="jh-panel__head"><h3 class="jh-pjt__dayh">' + esc(title) + (count != null ? ' <span class="jh-field__hint">' + count + '건</span>' : '') + '</h3></div><div class="jh-pjt__pad' + (scroll ? ' jh-pjt__lgscroll' : '') + '">' + (note ? '<div class="jh-field__hint">' + esc(note) + '</div>' : '') + body + '</div></section>';

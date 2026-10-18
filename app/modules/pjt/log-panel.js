@@ -1,7 +1,7 @@
-import { functions, httpsCallable } from '../../core/firebase.js?v=20261018g';
-import { confirmDialog } from '../../core/dialog.js?v=20261018g';
-import { logHtml, logCompactHtml } from './log-view.js?v=20261018g';
-import { titleHint, canSubmit, friendlyError } from '../../shared/pjt-log.js?v=20261018g';
+import { functions, httpsCallable } from '../../core/firebase.js?v=20261018h';
+import { confirmDialog } from '../../core/dialog.js?v=20261018h';
+import { logHtml, logCompactHtml } from './log-view.js?v=20261018h';
+import { titleHint, canSubmit, friendlyError } from '../../shared/pjt-log.js?v=20261018h';
 /* 이력 패널 — 이력 탭(전체 화면)과 프로젝트 홈의 3단째(요약)가 같이 쓰는 부품. 상태·이벤트·서버 호출(pjtLogAct)을 이 안에서만 다룬다.
  * host = 이 패널이 그려지는 요소(이 요소에 직접 이벤트를 달기 때문에 바깥 화면이 다시 그려져도 요소만 옮겨 끼우면 상태가 유지된다).
  * o = { proj, label, me:{uid}, callLog?, compact?, all?, projects? }. all = PJT 메인 홈처럼 프로젝트를 고르기 전 화면(내가 볼 수 있는 모든 프로젝트의 이력, projects=[{key,label}] — 입력은 프로젝트를 골라서, 행의 버튼은 그 행의 프로젝트로 처리). 반환 { ready, reload, state } */
@@ -39,6 +39,7 @@ export function createLogPanel(host, o) {
       if (a === 'claim') return act(() => callLog({ action: 'claim', pjtId: pid, id }), '맡았습니다.');
       if (a === 'release') return act(() => callLog({ action: 'release', pjtId: pid, id }), '맡기를 취소했습니다.');
       if (a === 'confirm') return act(() => callLog({ action: 'confirm', pjtId: pid, id }), '확정했습니다.');
+ if (a === 'calendar') return act(() => callLog({ action: 'calendarAdd', pjtId: pid, id }), '캘린더에 할 일로 넣었습니다.'); // 확인창 없이 한 번(일정을 지워도 이력은 남는 되돌릴 수 있는 일, 설계 §8-4). 서버가 일정 번호를 항목 번호로 정해 두 번 눌러도 하나
       if (a === 'impact') { const e = ((st.data && st.data.changes) || []).concat((st.data && st.data.entries) || []).find((x) => x.id === id); return act(() => callLog({ action: 'impact', pjtId: pid, id, checked: !(e && e.impactChecked) }), ''); }
       if (STATUS_OF[a]) {
         if (a === 'closed' || a === 'hold') { const ok = await confirmDialog({ title: a === 'closed' ? '종결' : '보류', body: a === 'closed' ? '이 항목을 종결합니다. 회신·조치가 끝났는지 확인하셨나요?' : '이 항목을 보류합니다. 기한 임박 목록에서 빠집니다.', confirmLabel: a === 'closed' ? '종결' : '보류' }); if (!ok || !ok.ok) return; } // confirmDialog 는 { ok, reason } 객체를 돌려준다 — 객체는 항상 참이라 ok.ok 를 봐야 취소가 걸러진다(2026-10-18 수정: 취소해도 실행되던 문제)
