@@ -48,7 +48,7 @@ const { createInboxPanel } = await import('../app/modules/pjt/inbox-panel.js?v='
 {
   const root = document.getElementById('root'); const calls = []; let answers = { inboxList: { ok: true, items: [IT()], projects: P, total: 1 } }; let changed = 0; let confirmAns = true;
   const confirms = []; const mk = async (o) => { root.innerHTML = ''; calls.length = 0; confirms.length = 0; const callLog = async (p) => { calls.push(p); const a = answers[p.action]; if (a instanceof Error) throw a; return a || { ok: true }; };
-    const panel = createInboxPanel(root, Object.assign({ callLog, confirm: async (x) => { confirms.push(x); return confirmAns; }, onChange: () => { changed++; } }, o || {})); await panel.ready; return panel; };
+    const panel = createInboxPanel(root, Object.assign({ callLog, confirm: async (x) => { confirms.push(x); return { ok: confirmAns, reason: '' }; } /* 실제 core/dialog.js confirmDialog 와 같은 약속 — Promise<{ ok, reason }>. 불리언을 돌려주면 시험이 실제와 어긋나 버그를 못 잡는다 */, onChange: () => { changed++; } }, o || {})); await panel.ready; return panel; };
   const clickBtn = async (sel) => { const el = root.querySelector(sel); if (!el) throw new Error('요소 없음: ' + sel); el.dispatchEvent(new window.MouseEvent('click', { bubbles: true })); await new Promise((r) => setTimeout(r, 20)); };
   { await mk(); ok(calls[0].action === 'inboxList' && root.querySelectorAll('[data-ib-row]').length === 1, '시작하면 목록을 읽어 그린다'); }
   { answers.inboxList = new Error('permission-denied'); await mk(); ok(root.innerHTML === '', '★ 권한이 없어 서버가 거절하면 아무것도 그리지 않고 오류 문구도 띄우지 않는다'); answers.inboxList = { ok: true, items: [IT()], projects: P, total: 1 }; }
@@ -61,6 +61,9 @@ const { createInboxPanel } = await import('../app/modules/pjt/inbox-panel.js?v='
     const b2 = root2.querySelector('[data-ib-act="assign"]'); b2.removeAttribute('disabled'); b2.dispatchEvent(new window.MouseEvent('click', { bubbles: true })); await new Promise((r) => setTimeout(r, 20)); release(); await new Promise((r) => setTimeout(r, 30)); ok(calls2.filter((x) => x === 'inboxAssign').length === 1, '★ 처리 중에 두 번 눌러도 서버는 한 번만 부른다(중복 방지)'); }
   { confirmAns = true; await mk(); await clickBtn('[data-ib-act="dismiss"]'); const dm = calls.find((c) => c.action === 'inboxDismiss'); ok(confirms.length === 1 && /이 현장 메일 아님/.test(confirms[0].title) && dm && dm.id === 'a'.repeat(32), '★ 치우기: 확인 대화상자를 먼저 띄우고 확인하면 inboxDismiss 를 부른다'); }
   { confirmAns = false; await mk(); await clickBtn('[data-ib-act="dismiss"]'); ok(confirms.length === 1 && !calls.some((c) => c.action === 'inboxDismiss'), '★ 치우기: 확인에서 취소하면 서버를 부르지 않는다'); confirmAns = true; }
+  { const src = fs.readFileSync(new URL('../app/core/dialog.js', import.meta.url), 'utf8'); ok(/Promise<\{\s*ok:boolean/.test(src) && /resolve\(\{\s*ok,\s*reason\s*\}\)/.test(src), '★ 실제 확인창(core/dialog.js)은 불리언이 아니라 { ok, reason } 객체를 돌려준다 — 시험의 가짜 확인창이 같은 약속을 쓰는 근거'); }
+  { confirmAns = false; await mk(); await clickBtn('[data-ib-act="dismiss"]'); ok(!calls.some((c) => c.action === 'inboxDismiss'), '★ 실제 확인창과 같은 모양({ ok:false })으로 취소하면 서버를 부르지 않는다(객체는 항상 참이라 if (!답) 로는 못 거른다)'); confirmAns = true; }
+  { confirmAns = true; await mk(); await clickBtn('[data-ib-act="dismiss"]'); ok(calls.some((c) => c.action === 'inboxDismiss'), '확인({ ok:true })하면 서버를 부른다'); }
   { let threw = false; try { createInboxPanel(root, {}); } catch (e) { threw = true; } ok(threw, '서버 호출 함수(callLog)가 없으면 시작하지 않는다(조용히 잘못 동작하지 않음)'); }
 }
 console.log('\n' + (fail ? fail + '건 실패' : '전부 통과') + ' (' + pass + '건)'); process.exit(fail ? 1 : 0);

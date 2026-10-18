@@ -41,7 +41,7 @@ export function createLogPanel(host, o) {
       if (a === 'confirm') return act(() => callLog({ action: 'confirm', pjtId: pid, id }), '확정했습니다.');
       if (a === 'impact') { const e = ((st.data && st.data.changes) || []).concat((st.data && st.data.entries) || []).find((x) => x.id === id); return act(() => callLog({ action: 'impact', pjtId: pid, id, checked: !(e && e.impactChecked) }), ''); }
       if (STATUS_OF[a]) {
-        if (a === 'closed' || a === 'hold') { const ok = await confirmDialog({ title: a === 'closed' ? '종결' : '보류', body: a === 'closed' ? '이 항목을 종결합니다. 회신·조치가 끝났는지 확인하셨나요?' : '이 항목을 보류합니다. 기한 임박 목록에서 빠집니다.', confirmLabel: a === 'closed' ? '종결' : '보류' }); if (!ok) return; }
+        if (a === 'closed' || a === 'hold') { const ok = await confirmDialog({ title: a === 'closed' ? '종결' : '보류', body: a === 'closed' ? '이 항목을 종결합니다. 회신·조치가 끝났는지 확인하셨나요?' : '이 항목을 보류합니다. 기한 임박 목록에서 빠집니다.', confirmLabel: a === 'closed' ? '종결' : '보류' }); if (!ok || !ok.ok) return; } // confirmDialog 는 { ok, reason } 객체를 돌려준다 — 객체는 항상 참이라 ok.ok 를 봐야 취소가 걸러진다(2026-10-18 수정: 취소해도 실행되던 문제)
         return act(() => callLog({ action: 'setStatus', pjtId: pid, id, status: STATUS_OF[a] }), '');
       }
     }

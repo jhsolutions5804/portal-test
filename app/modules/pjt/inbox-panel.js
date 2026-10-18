@@ -23,7 +23,7 @@ export function createInboxPanel(host, o) {
       return act(() => callLog({ action: 'inboxAssign', id, pjtId: pid }), '이력에 후보로 넣었습니다. 확정은 해당 프로젝트 이력 탭에서 하세요.');
     }
     if (a === 'dismiss') {
-      const ok = await confirm({ title: '이 현장 메일 아님', body: '이 메일을 미분류 목록에서 치웁니다. 이력에는 들어가지 않으며 같은 메일이 다시 나타나지 않습니다.', confirmLabel: '치우기' }); if (!ok) return;
+      const ans = await confirm({ title: '이 현장 메일 아님', body: '이 메일을 미분류 목록에서 치웁니다. 이력에는 들어가지 않으며 같은 메일이 다시 나타나지 않습니다.', confirmLabel: '치우기' }); if (!ans || ans.ok !== true) return; // confirmDialog 는 { ok, reason } 객체를 돌려준다 — 객체 자체는 항상 참이라 ans.ok 를 봐야 한다(취소해도 { ok:false } 가 돌아온다)
       return act(() => callLog({ action: 'inboxDismiss', id }), '치웠습니다.');
     }
   };
