@@ -52,11 +52,13 @@ function build(x, maxFree) {
 
   return parts.filter(Boolean).join(' - ');
 }
-/** 문서 파일 이름(확장자 없음). o = { group, kind, project, no, party, contact, title, date, ym, name, docNo, author } — 없는 칸은 건너뛴다. project 문서군은 contact(거래처 담당자)·title(견적명)을 쓴다 */
+/** 문서 파일 이름(확장자 없음). o = { group, kind, project, no, party, contact, title, rev, date, ym, name, docNo, author } — 없는 칸은 건너뛴다. project 문서군은 contact(거래처 담당자)·title(견적명)을 쓴다 */
 export function docFileName(o) {
   const x = o || {};
+  // 개정본(rev 2 이상)은 맨 끝에 _r2 · _r3 (대표님 2026-10-18) — 같은 날 같은 거래처·견적명의 원본과 개정본이 같은 이름이 되어 덮어쓰는 것을 막는다. 처음 발행한 견적(rev 1)의 이름은 그대로
+  const rev = Math.floor(Number(x.rev)), suf = rev >= 2 && rev < 100 ? '_r' + rev : '', cap = MAX_ALL - suf.length;
   let s = build(x, MAX_PART);
-  if (s.length > MAX_ALL) s = build(x, 18);
-  if (s.length > MAX_ALL) s = s.slice(0, MAX_ALL).replace(/[\s_-]+$/, '');
-  return s;
+  if (s.length > cap) s = build(x, 18);
+  if (s.length > cap) s = s.slice(0, cap).replace(/[\s_-]+$/, '');
+  return s + suf;
 }

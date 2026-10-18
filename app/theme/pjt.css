@@ -422,7 +422,10 @@
 @media (min-width: 1000px) { .jh-pjt__splitprog > .jh-pjt__cards { position: sticky; top: var(--sp-3); align-self: start; max-height: calc(100vh - var(--sp-6)); overflow-y: auto; } }
 /* 출역·공수: 오른쪽 탭은 한 줄(줄바꿈 없음) — 왼쪽 입력 칸을 24rem 으로 줄여 오른쪽을 넓힌다 */
 @media (min-width: 900px) { .jh-pa.jh-pjt { grid-template-columns: minmax(0, 24rem) minmax(0, 1fr); } }
-.jh-pa .jh-ro__ftabs { flex-wrap: nowrap; overflow: hidden; }
+/* 출역·공수의 탭 줄: 한 줄은 유지하되 폭이 좁아 탭이 안 들어가면 가로로 밀어서 볼 수 있게(전에는 overflow:hidden 이라 맨 끝의 "명단 관리" 등이 잘려서 눌러 볼 수 없었다) */
+.jh-pa .jh-ro__ftabs { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.jh-pa .jh-ro__ftabs::-webkit-scrollbar { display: none; }
+.jh-pa .jh-ro__ftab { flex: 0 0 auto; }
 .jh-pa .jh-ro__ftab { white-space: nowrap; padding-left: var(--sp-3); padding-right: var(--sp-3); }
 /* 이달 공수 달력 */
 .jh-pa__calc { min-height: var(--u-84); align-items: center; }
@@ -450,6 +453,10 @@
 .jh-pjt__eqrow { align-items: center; gap: var(--sp-2) var(--sp-4); }
 .jh-pjt__eqpick { display: inline-flex; align-items: center; gap: var(--sp-2); flex-wrap: nowrap; }
 .jh-pjt__eqpick .jh-pjt__eqno { width: var(--u-220); min-width: 0; }
+/* 장비마다 사용 시간(대표님 2026-10-18): 차량번호 칸 옆에 숫자 칸 + "시간" */
+.jh-pjt__eqhrs { display: inline-flex; align-items: center; gap: var(--sp-1); flex: 0 0 auto; }
+.jh-pjt__eqpick .jh-pjt__eqh { width: var(--u-64); min-width: 0; text-align: right; }
+.jh-pjt__eqhu { color: var(--c-ink-3); white-space: nowrap; }
 /* 근무시간: 구분 드롭박스와 시·분 칸을 같은 줄에(좁으면 줄바꿈) */
 .jh-pjt__timerow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
 .jh-pjt__timerow .jh-pjt__shiftsel { width: auto; min-width: var(--u-180, 11rem); }

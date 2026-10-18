@@ -93,4 +93,15 @@ eq(docFileName({ group: 'month', ym: '잘못', kind: '월말 마감' }), '월말
 eq(docFileName({ group: 'project', kind: '견적서', project: '청주 M15X CUB동 A/S', party: '다람이엔지', title: 'M15X FCU 보수 작업', date: '2026-08-25' }), '견적서_20260825_다람이엔지_청주 M15X CUB동 A-S_M15X FCU 보수 작업', '★ 프로젝트 코드의 / 는 - 로("A/S" → "A-S")');
 ok(!docFileName({ group: 'project', kind: '견적서', project: '가/나/다', date: '2026-08-25' }).includes('/') && docFileName({ group: 'project', kind: '견적서', project: '가/나/다', date: '2026-08-25' }).endsWith('가-나-다'), '/ 가 여러 개여도 모두 -');
 eq(docFileName({ group: 'project', kind: '견적서', project: 'A/', date: '2026-08-25' }), '견적서_20260825_A', '끝에 붙은 / 는 - 가 된 뒤 가장자리의 - 로 정리되어 남지 않음');
+// ── 개정본: rev 2 이상이면 맨 끝에 _r2 · _r3 (대표님 2026-10-18). 처음 발행한 견적의 이름은 그대로
+{ const b = { group: 'project', kind: '견적서', project: 'P4 Ph4 (SUP)', party: '다람이엔지', contact: '현병찬 차장님', title: '(삼성물산) EHU 8대 설치', date: '2026-01-15' };
+  eq(docFileName(Object.assign({}, b, { rev: 1 })), '견적서_20260115_다람이엔지(현병찬 차장님)_P4 Ph4 (SUP)_(삼성물산) EHU 8대 설치', '★ 처음 발행한 견적(rev 1)은 이름 그대로 — 담당자 직함(차장님)도 그대로');
+  eq(docFileName(Object.assign({}, b, { rev: 2 })), '견적서_20260115_다람이엔지(현병찬 차장님)_P4 Ph4 (SUP)_(삼성물산) EHU 8대 설치_r2', '★ 개정 2는 맨 끝에 _r2');
+  eq(docFileName(Object.assign({}, b, { rev: 9 })).slice(-3), '_r9', '개정 9는 _r9');
+  eq(docFileName(b), docFileName(Object.assign({}, b, { rev: undefined })), 'rev 가 없으면 붙지 않음');
+  ok(!/_r/.test(docFileName(Object.assign({}, b, { rev: 0 }))) && !/_r/.test(docFileName(Object.assign({}, b, { rev: 'x' }))) && !/_r/.test(docFileName(Object.assign({}, b, { rev: -3 }))) && !/_r/.test(docFileName(Object.assign({}, b, { rev: null }))), 'rev 가 0·음수·숫자 아님·null 이면 붙지 않음');
+  ok(docFileName(Object.assign({}, b, { rev: 2 })) !== docFileName(Object.assign({}, b, { rev: 1 })), '★ 같은 날 같은 거래처·견적명의 원본과 개정본은 서로 다른 이름(덮어쓰기 방지)');
+  const long = docFileName(Object.assign({}, b, { rev: 3, project: '가'.repeat(60), party: '나'.repeat(60), title: '다'.repeat(80) })); ok(long.length <= 120 && long.endsWith('_r3') && long.startsWith('견적서_20260115_'), '★ 이름이 아주 길어도 120자 이내이고 앞의 종류·날짜와 끝의 _r3 가 모두 살아남음 (' + long.length + '자)');
+  { const x = { group: 'project', kind: '가'.repeat(60), project: '나'.repeat(60), party: '다'.repeat(60), contact: '라'.repeat(40), title: '마'.repeat(80), date: '2026-01-15' }; ok(docFileName(x).length >= 118, '시험 자료: 18자 축소로도 120자 가까이 가서 최종 자르기 경로에 도달(' + docFileName(x).length + '자)'); const r3 = docFileName(Object.assign({}, x, { rev: 3 })); ok(r3.length <= 120 && r3.endsWith('_r3'), '★ 최종 자르기 경로에서도 개정 접미사 _r3 가 잘리지 않고 120자 이내 (' + r3.length + '자)'); }
+  eq(docFileName({ group: 'month', ym: '2026-09', kind: '월말 마감', rev: 2 }), '월말 마감 - 2026-09_r2', 'rev 는 어떤 문서군이든 같은 규칙(견적서만 rev 를 넘김)'); }
 console.log('\n' + pass + ' passed, ' + fail + ' failed'); if (fail) process.exit(1);

@@ -8,26 +8,33 @@ export const shiftOf = (checkIn, checkOut) => { const s = WORK_SHIFTS.find((x) =
 /** 사용 장비: 지게차·크레인은 버튼으로 (둘 다 고를 수 있음), 장비 번호 등 그 밖의 장비는 직접 입력해 칩으로 더한다(대표님 지정 2026-10-14) */
 export const EQUIPS = ['지게차', '크레인'];
 export const normalizeEquip = (v) => splitEquip(v);   // 쉼표로 나눈 장비 이름들("—" 제외)
-/** 저장된 장비 문구 → { equip: [고른 장비 이름들], eqNo: { 지게차: '차량번호', 크레인: '…' } } — "지게차 (12가3456), 크레인" 처럼 장비마다 차량번호가 붙은 형태를 읽는다(옛 문서의 "지게차 (00가0000)" 칩도 같은 방식) */
+/** 장비 한 항목 끝의 사용 시간 "4시간"·"2.5시간"(대표님 2026-10-18: 장비마다 사용 시간 수) → { rest, hrs } — 시간이 없으면 전과 같다(옛 문서 호환) */
+export const HRS_RE = /\s*(\d+(?:\.\d+)?)\s*시간$/;
+export const cleanHrs = (v) => { const t = String(v == null ? '' : v).trim(); if (/^-/.test(t)) return ''; const n = Math.round(Number(t.replace(/[^\d.]/g, '')) * 2) / 2; return n > 0 && n <= 24 ? String(n) : ''; };   // 0.5 시간 단위로 반올림, 24 이하, 음수·0·빈 값·숫자 아님은 없음(음수 부호가 지워져 양수로 둔갑하지 않게)
+const splitHrs = (e) => { const m = String(e).match(HRS_RE); return m ? { rest: String(e).slice(0, m.index).trim(), hrs: cleanHrs(m[1]) } : { rest: String(e).trim(), hrs: '' }; };
+/** 저장된 장비 문구 → { equip: [고른 장비 이름들], eqNo: { 지게차: '차량번호' }, eqHrs: { 지게차: '4' } } — "지게차 (12가3456) 4시간, 크레인" 처럼 장비마다 차량번호·사용 시간이 붙은 형태를 읽는다(옛 문서의 "지게차 (00가0000)" 칩도 같은 방식) */
 export function parseEquip(v) {
-  const equip = [], eqNo = {};   // 같은 장비에 번호가 둘 이상이면(옛 일보) 첫 번호만 칸에 넣고 나머지는 장비 칩으로 남겨 번호가 사라지지 않게 한다
-  normalizeEquip(v).forEach((e) => {
-    const hit = EQUIPS.find((n) => e === n || (e.indexOf(n + ' (') === 0 && /\)$/.test(e))); if (!hit) { if (equip.indexOf(e) === -1) equip.push(e); return; }
-    if (equip.indexOf(hit) === -1) equip.push(hit); const mm = e.match(/^[^(]+\((.*)\)$/); const no = mm && mm[1].trim() ? mm[1].trim() : '';
+  const equip = [], eqNo = {}, eqHrs = {};   // 같은 장비에 번호가 둘 이상이면(옛 일보) 첫 번호만 칸에 넣고 나머지는 장비 칩으로 남겨 번호가 사라지지 않게 한다
+  normalizeEquip(v).forEach((raw) => {
+    const sh = splitHrs(raw), e = sh.rest;
+    const hit = EQUIPS.find((n) => e === n || (e.indexOf(n + ' (') === 0 && /\)$/.test(e))); if (!hit) { if (equip.indexOf(raw) === -1) equip.push(raw); return; }   // 지게차·크레인이 아닌 장비는 입력한 글자 그대로(시간도 글자의 일부)
+    if (equip.indexOf(hit) === -1) equip.push(hit); if (sh.hrs && !eqHrs[hit]) eqHrs[hit] = sh.hrs; const mm = e.match(/^[^(]+\((.*)\)$/); const no = mm && mm[1].trim() ? mm[1].trim() : '';
     if (no) { if (!eqNo[hit]) eqNo[hit] = no; else if (eqNo[hit] !== no && equip.indexOf(e) === -1) equip.push(e); }
   });
-  return { equip, eqNo };
+  return { equip, eqNo, eqHrs };
 }
-/** 화면 모델 → 표시·저장용 장비 목록: 지게차·크레인은 고른 것만 "지게차 (차량번호)"(번호가 없으면 이름만), 그 밖의 장비는 입력한 그대로 */
+/** 화면 모델 → 표시·저장용 장비 목록: 지게차·크레인은 고른 것만 "지게차 (차량번호) 4시간"(번호·시간이 없으면 있는 것만), 그 밖의 장비는 입력한 그대로 */
 export function equipList(m) {
-  const given = (m && m.eqNo) || {}; const sel = [], others = [], combined = {};   // combined = 장비 이름에 번호가 붙어 들어온 것("지게차 (A)") — 옛 일보·옛 칩
-  normalizeEquip(m && m.equip).forEach((e) => {
-    const hit = EQUIPS.find((n) => e === n || (e.indexOf(n + ' (') === 0 && /\)$/.test(e))); if (!hit) { if (others.indexOf(e) === -1) others.push(e); return; }
-    if (sel.indexOf(hit) === -1) sel.push(hit); const mm = e.match(/^[^(]+\((.*)\)$/); if (mm && mm[1].trim()) (combined[hit] = combined[hit] || []).push(mm[1].trim());
+  const given = (m && m.eqNo) || {}, givenH = (m && m.eqHrs) || {}; const sel = [], others = [], combined = {}, hrsIn = {};   // combined = 장비 이름에 번호가 붙어 들어온 것("지게차 (A)") — 옛 일보·옛 칩
+  normalizeEquip(m && m.equip).forEach((raw) => {
+    const sh = splitHrs(raw), e = sh.rest;
+    const hit = EQUIPS.find((n) => e === n || (e.indexOf(n + ' (') === 0 && /\)$/.test(e))); if (!hit) { if (others.indexOf(raw) === -1) others.push(raw); return; }
+    if (sel.indexOf(hit) === -1) sel.push(hit); if (sh.hrs && !hrsIn[hit]) hrsIn[hit] = sh.hrs; const mm = e.match(/^[^(]+\((.*)\)$/); if (mm && mm[1].trim()) (combined[hit] = combined[hit] || []).push(mm[1].trim());
   });
   const clean = (v) => String(v || '').trim().replace(/[,()]/g, ' ').replace(/\s+/g, ' ').trim(); const out = [];
   EQUIPS.forEach((n) => { if (sel.indexOf(n) === -1) return; const list = combined[n] || []; const slot = clean(given[n]) || clean(list[0]);   // 번호 칸 = 입력한 값, 없으면 이름에 붙어 온 첫 번호
-    out.push(slot ? n + ' (' + slot + ')' : n); list.forEach((v) => { const full = n + ' (' + v + ')'; if (clean(v) !== slot && others.indexOf(full) === -1) others.push(full); }); });   // 번호가 다른 나머지는 그대로 남겨 사라지지 않게
+    const hrs = cleanHrs(givenH[n]) || hrsIn[n] || '';   // 시간 칸 = 입력한 값, 없으면 이름에 붙어 온 시간
+    out.push((slot ? n + ' (' + slot + ')' : n) + (hrs ? ' ' + hrs + '시간' : '')); list.forEach((v) => { const full = n + ' (' + v + ')'; if (clean(v) !== slot && others.indexOf(full) === -1) others.push(full); }); });   // 번호가 다른 나머지는 그대로 남겨 사라지지 않게
   others.forEach((e) => { if (out.indexOf(e) === -1) out.push(e); });
   return out;
 }
@@ -51,7 +58,7 @@ export function isLegacyDoc(d) { return !!d && d.fmt == null && d.content === un
 export function fromStored(d) {
   const x = d || {}; const legacy = isLegacyDoc(x);
   const headcount = legacy ? (parseInt(x.count, 10) || 0) : (parseInt(x.headcount, 10) || 0); const per = legacy ? 0 : r1(x.manday); const total = legacy ? 0 : (x.mandayTotal != null ? r1(x.mandayTotal) : r1(headcount * per));
-  return { legacy, author: String(x.author || ''), checkIn: String(x.checkIn || ''), checkOut: String(x.checkOut || ''), shift: shiftOf(String(x.checkIn || ''), String(x.checkOut || '')), content: String((legacy ? x.today : x.content) || ''), tomorrow: String(x.tomorrow || ''), headcount, manday: per, mandayTotal: total, equip: parseEquip(x.equip).equip, eqNo: parseEquip(x.equip).eqNo, equipText: legacy ? splitEquip(x.equip).join(', ') : '', editors: Array.isArray(x.editors) ? x.editors.filter((e) => e && e.by).map((e) => ({ by: String(e.by), at: String(e.at || '') })) : [], note: String((legacy ? x.remarks : x.note) || '') };   // 옛 형식은 장비 번호가 든 원래 문구를 equipText 로 보여 주고(고치면 칩으로 이어짐), editors = 최초 작성자 외에 고친 사람들(수정자 기록)
+  return { legacy, author: String(x.author || ''), checkIn: String(x.checkIn || ''), checkOut: String(x.checkOut || ''), shift: shiftOf(String(x.checkIn || ''), String(x.checkOut || '')), content: String((legacy ? x.today : x.content) || ''), tomorrow: String(x.tomorrow || ''), headcount, manday: per, mandayTotal: total, equip: parseEquip(x.equip).equip, eqNo: parseEquip(x.equip).eqNo, eqHrs: parseEquip(x.equip).eqHrs, equipText: legacy ? splitEquip(x.equip).join(', ') : '', editors: Array.isArray(x.editors) ? x.editors.filter((e) => e && e.by).map((e) => ({ by: String(e.by), at: String(e.at || '') })) : [], note: String((legacy ? x.remarks : x.note) || '') };   // 옛 형식은 장비 번호가 든 원래 문구를 equipText 로 보여 주고(고치면 칩으로 이어짐), editors = 최초 작성자 외에 고친 사람들(수정자 기록)
 }
 /** 화면 모델 → 저장할 문서(fmt 2). 모든 프로젝트 같은 형식 — 날짜 키 문서(pjt_registry/<id>/reports/<날짜>)에 쓴다 */
 export function toStored(m, ctx) {

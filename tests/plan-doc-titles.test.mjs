@@ -17,6 +17,7 @@ ok(titleOf(withT) === '견적서_20260510_다람이엔지_P4 Ph2 (FAB동) FCU_FC
 const ttC = estDocTitle(Object.assign({}, E, { client: party('다람이엔지', { contact: '김과장' }) }), PR[0]); ok(ttC === '견적서_20260510_다람이엔지(김과장)_P4 Ph2 (FAB동) FCU_FCU 183대 설치 견적' && titleOf(estDocHtml(E, PR[0], { title: ttC })) === ttC, '견적서: 거래처 담당자가 있으면 거래처(담당자)');
 ok(plain.replace(/<title>[\s\S]*?<\/title>/, '') === withT.replace(/<title>[\s\S]*?<\/title>/, ''), '견적서: 제목 말고는 본문이 한 글자도 달라지지 않음');
 ok(titleOf(estDocHtml(E, PR[0], { title: '<b>x</b> & y' })) === '&lt;b&gt;x&lt;/b&gt; &amp; y', '견적서: 제목에 들어온 HTML 글자는 이스케이프');
+ok(estDocTitle(Object.assign({}, E, { rev: 2 }), PR[0]) === '견적서_20260510_다람이엔지_P4 Ph2 (FAB동) FCU_FCU 183대 설치 견적_r2' && estDocTitle(Object.assign({}, E, { rev: 1 }), PR[0]) === estDocTitle(E, PR[0]), '★ 견적서 개정본은 끝에 _r2 — 화면 호출부가 rev 를 실제로 넘김(rev 1 은 그대로)');
 ok(estDocTitle(E, null) === '견적서_20260510_다람이엔지_FCU 183대 설치 견적', '견적서: 프로젝트가 없으면 그 칸만 건너뜀');
 ok(estDocTitle(Object.assign({}, E, { client: null, title: '', date: '' }), null) === '견적서' && !/undefined|null/.test(estDocTitle({}, undefined)), '견적서: 거래처·견적명·날짜·프로젝트가 모두 없어도 오류 없이 종류만');
 ok(!/010|1111|2222/.test(estDocTitle(Object.assign({}, E, { client: party('다람이엔지', { contact: '김과장 010-1111-2222' }) }), PR[0])), '견적서: 담당자 칸의 전화번호는 파일 이름에 남지 않음');
