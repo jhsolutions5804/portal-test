@@ -1,6 +1,6 @@
 // PJT 자료 서랍(SharePoint 파일 패널) — 순수 규칙·화면·붙고 떨어지는 동작(가짜 서버, jsdom)
 import fs from 'node:fs'; import { createRequire } from 'node:module';
-const require = createRequire(import.meta.url); const { JSDOM } = require('/home/claude/portal-test/scripts/dev/node_modules/jsdom');
+const require = createRequire(import.meta.url); const { JSDOM } = require('../scripts/dev/node_modules/jsdom');
 const VER = (fs.readFileSync(new URL('../app/modules/eval/index.js', import.meta.url), 'utf8').match(/eval-perm\.js\?v=([0-9a-z]+)/) || [])[1];
 const D = await import('../app/modules/pjt/files-drawer.js?v=' + VER);
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };

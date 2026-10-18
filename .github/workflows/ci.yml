@@ -1,0 +1,76 @@
+name: 자동 검사
+
+# 2026-10-18: 앱 저장소는 올릴 때 시험이 자동으로 돌지 않아(서버 저장소와 달리) 같은 날 두 가지 사고가 났다
+#  ① 화면 배치 문제(칸이 끝없이 길어짐) — 문자열 시험이 배치를 못 봄  ② 확인창 취소가 걸러지지 않음 — 가짜 확인창이 진짜와 달랐음
+# 그리고 수정판을 같은 빌드 번호로 올려 브라우저가 옛 파일을 계속 써서 수정이 사용자에게 가지 않았다.
+# 이 검사는 올릴 때마다 제가(춘식이) 직접 돌리던 것과 같은 점검을 같은 순서로 자동 실행한다.
+# 한계: 이 저장소는 GitHub Pages 가 브랜치에서 바로 배포하므로 이 검사가 실패해도 배포는 막지 못한다 — 빨간 X 와 알림으로 즉시 알리는 용도.
+#       배포까지 막으려면 Pages 를 "GitHub Actions 로 배포" 방식으로 바꿔야 한다(대표님 저장소 설정).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  검사:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # 빌드 번호 검사가 이전 커밋과 비교하려면 이력이 필요하다
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 개발용 의존성 설치(jsdom 등)
+        working-directory: scripts/dev
+        run: npm ci --no-audit --no-fund
+
+      - name: 정적 검사(번호 일치·모듈 규약·화면 규약·비밀 값)
+        run: |
+          set -e
+          python3 scripts/app_check.py
+          python3 scripts/module_check.py
+          python3 scripts/ui_contract_check.py
+          python3 scripts/secret_check.py
+
+      - name: 빌드 번호 검사(코드가 바뀌었는데 번호가 그대로면 실패)
+        run: |
+          BASE="${{ github.event.before }}"
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then BASE="${{ github.event.pull_request.base.sha }}"; fi
+          python3 scripts/check_build_bump.py "$BASE"
+
+      - name: 화면 단위 시험(tests/*.test.mjs 전부, 파일별 결과)
+        run: |
+          fail=0; n=0; bad=""
+          for f in tests/*.test.mjs; do
+            n=$((n+1))
+            if out=$(timeout 180 node "$f" 2>&1); then echo "OK   $f"; else echo "FAIL $f"; echo "$out" | tail -15 | sed 's/^/      /'; fail=$((fail+1)); bad="$bad $f"; fi
+          done
+          echo "화면 단위 시험 ${n}개 파일 중 실패 ${fail}개${bad:+ —$bad}"
+          [ "$fail" -eq 0 ]
+
+      - name: 크로미움 설치(레이아웃·확인창 시험용)
+        run: |
+          python3 -m pip install --quiet playwright
+          python3 -m playwright install --with-deps chromium
+
+      - name: 크로미움 시험(레이아웃·확인창 — 실제 브라우저로 그려서 확인)
+        run: |
+          set -e
+          for f in tests/*.test.py; do echo "== $f"; python3 "$f"; done

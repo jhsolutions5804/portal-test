@@ -1,6 +1,6 @@
 // 미분류 메일 받은함 화면 — 공용 규칙(suggestProject·canAssign·showInbox)·화면 문자열(inboxHtml)·이벤트 연결(createInboxPanel, 가짜 브라우저)
 import fs from 'node:fs'; import { createRequire } from 'node:module';
-const require = createRequire(import.meta.url); const { JSDOM } = require('/home/claude/portal-test/scripts/dev/node_modules/jsdom');
+const require = createRequire(import.meta.url); const { JSDOM } = require('../scripts/dev/node_modules/jsdom');
 const VER = (fs.readFileSync(new URL('../app/modules/pjt/overview-index.js', import.meta.url), 'utf8').match(/inbox-panel\.js\?v=([0-9a-z]+)/) || [])[1];
 const L = await import('../app/shared/pjt-log.js?v=' + VER);
 const V = await import('../app/modules/pjt/inbox-view.js?v=' + VER);

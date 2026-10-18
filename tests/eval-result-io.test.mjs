@@ -1,6 +1,6 @@
 // 평가 결과 통보 — 불러오기·미리보기·발송 전 재확인·권한·테섭 차단(가짜 Firestore·가짜 발송 함수)
 import fs from 'node:fs'; import { createRequire } from 'node:module';
-const require = createRequire(import.meta.url); const { JSDOM } = require('/home/claude/portal-test/scripts/dev/node_modules/jsdom');
+const require = createRequire(import.meta.url); const { JSDOM } = require('../scripts/dev/node_modules/jsdom');
 const VER = (fs.readFileSync(new URL('../app/modules/eval/index.js', import.meta.url), 'utf8').match(/eval-perm\.js\?v=([0-9a-z]+)/) || [])[1];
 const IO = await import('../app/modules/eval/result-io.js?v=' + VER), VW = await import('../app/modules/eval/result-view.js?v=' + VER), E = await import('../app/modules/eval/evaluation.js?v=' + VER), RR = await import('../app/modules/eval/result-report.js?v=' + VER);
 const MK = await import('../app/shared/mask.js?v=' + VER); const SG = await import('../app/modules/hr/sign.js?v=' + VER);

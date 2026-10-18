@@ -1,7 +1,7 @@
 // 열람 페이지(sign.html)의 열람 전용 화면 — 평가 결과(safeFrame)는 직원이 쓴 글이 실행되지 않고, 기존 문서 종류의 화면은 예전과 똑같다.
 //  sign.html 의 실제 showViewOnly 함수를 그대로 잘라서 jsdom 에서 돌린다.
 import fs from 'node:fs'; import { createRequire } from 'node:module';
-const require = createRequire(import.meta.url); const { JSDOM } = require('/home/claude/portal-test/scripts/dev/node_modules/jsdom');
+const require = createRequire(import.meta.url); const { JSDOM } = require('../scripts/dev/node_modules/jsdom');
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const src = fs.readFileSync(new URL('../sign.html', import.meta.url), 'utf8');
 const a = src.indexOf('function showViewOnly'), b = src.indexOf('function normalizePhoneE164'); const escSrc = src.match(/function esc\(s\)\{[^\n]*\}/)[0];
