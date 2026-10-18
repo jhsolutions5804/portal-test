@@ -6,8 +6,8 @@ GitHub Pages 는 파일을 10분간 캐시하므로, 배포 직후 새 파일과
 """
 import re, sys, glob, os
 ver = sys.argv[1] if len(sys.argv) > 1 else None
-if not ver or not re.fullmatch(r'[0-9A-Za-z._-]+', ver):
-    sys.exit('버전을 입력하세요 (영문·숫자·.-_)')
+if not ver or not re.fullmatch(r'\d{8}[a-z]', ver): # 빌드 번호는 '날짜 8자리 + 영문 1자'(예: 20261018f). 느슨하면 --help 같은 값이 그대로 번호로 적용돼 145개 파일이 망가진다(2026-10-18 실제로 그랬다)
+    sys.exit('버전 형식이 맞지 않습니다 — 날짜 8자리 + 영문 소문자 1자(예: 20261018f). 받은 값: %r' % (ver,))
 root = os.path.join(os.path.dirname(__file__), '..', 'app')
 n = 0
 for f in glob.glob(root + '/**/*.js', recursive=True):

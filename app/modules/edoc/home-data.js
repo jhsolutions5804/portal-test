@@ -1,2 +1,2 @@
-export { loadWorkers, loadMonthAttendance } from '../../shared/workers-data.js?v=20261018e';
-export { loadHolidays } from '../../shared/holidays.js?v=20261018e';
+export { loadWorkers, loadMonthAttendance } from '../../shared/workers-data.js?v=20261018f';
+export { loadHolidays } from '../../shared/holidays.js?v=20261018f';
