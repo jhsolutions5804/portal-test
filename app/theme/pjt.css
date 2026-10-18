@@ -457,6 +457,16 @@
 .jh-pjt__eqpick .jh-pjt__eqno { width: var(--u-220); min-width: 0; }
 /* 장비마다 사용 시간(대표님 2026-10-18): 차량번호 칸 옆에 숫자 칸 + "시간" */
 .jh-pjt__eqhrs { display: inline-flex; align-items: center; gap: var(--sp-1); flex: 0 0 auto; }
+/* 장비 이름 버튼이 줄어들거나 글자가 쪼개지지 않게(폰에서 "지게/차" 로 쪼개지고 동그랗게 눌리던 것) */
+.jh-pjt__eqpick .jh-pjt__cat { flex: 0 0 auto; white-space: nowrap; }
+/* 폰 폭: 한 줄에 버튼·차량번호·사용 시간이 다 못 들어가므로 줄바꿈을 허용하고, 차량번호 칸은 남는 폭을 쓴다(대표님 폰 화면 확인 2026-10-18) */
+@media (max-width: 899px) {
+  .jh-pjt__eqpick { flex-wrap: wrap; row-gap: var(--sp-2); max-width: 100%; }
+  .jh-pjt__eqpick .jh-pjt__eqno { flex: 1 1 var(--u-140); width: auto; min-width: var(--u-120); }
+  /* 조회 화면 제목이 "공사일/보" 로 끊기고 버튼이 제목에 붙던 것: 제목이 먼저 한 줄을 쓰고 버튼은 아래로 */
+  .jh-pjt__rpt .jh-panel__head { flex-wrap: wrap; row-gap: var(--sp-2); }
+  .jh-pjt__rpt .jh-panel__head h3 { flex: 1 1 100%; font-size: var(--fs-lg); overflow-wrap: anywhere; }
+}
 .jh-pjt__eqpick .jh-pjt__eqh { width: var(--u-64); min-width: 0; text-align: right; }
 .jh-pjt__eqhu { color: var(--c-ink-3); white-space: nowrap; }
 /* 근무시간: 구분 드롭박스와 시·분 칸을 같은 줄에(좁으면 줄바꿈) */
