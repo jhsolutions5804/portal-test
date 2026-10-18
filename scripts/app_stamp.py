@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""app/ 의 모든 내부 import·CSS·스크립트 주소에 같은 버전(?v=)을 붙인다.
+"""app/ 의 모든 내부 import·CSS·스크립트 주소에 같은 버전(?v=)을 붙인다. **모바일(m/)이 app/ 을 불러 쓰는 주소**(m/*.js 의 '../app/…' import 와 m/pjt.html 의 모바일 모듈 동적 import)도 같은 버전으로 맞춘다 — 모바일 공사일보·이력이 PC 의 규칙 파일을 그대로 쓰므로 옛 번호가 남으면 저장 형식이 어긋날 수 있다(2026-10-18).
 GitHub Pages 는 파일을 10분간 캐시하므로, 배포 직후 새 파일과 옛 파일이 섞여 로드되면 앱이 깨진다.
 모든 주소에 같은 버전을 붙이면 '전부 새것 / 전부 옛것' 중 하나로만 로드된다.
 사용: python3 scripts/app_stamp.py <버전>   예) python3 scripts/app_stamp.py 20261003c
@@ -29,5 +29,20 @@ bad = []
 for f in glob.glob(root + '/**/*.js', recursive=True):
     for m in re.finditer(r"from\s+'(\.{1,2}/[^']*)'", open(f, encoding='utf-8').read()):
         if not m.group(1).endswith('?v=' + ver): bad.append((f, m.group(1)))
-print('버전', ver, '적용 파일', n, '개 /', '검사 통과' if not bad else '불일치 ' + str(bad))
-sys.exit(1 if bad else 0)
+# 모바일(m/)이 app/ 을 불러 쓰는 주소: m/*.js 안의 '../app/…?v=' 와 m/pjt.html 안의 모바일 모듈 동적 import('./pjt-*.js?v=') 도 같은 버전으로
+mroot = os.path.join(os.path.dirname(__file__), '..', 'm'); mn = 0
+for f in glob.glob(mroot + '/*.js') + glob.glob(mroot + '/*.html'):
+    s = open(f, encoding='utf-8').read()
+    t = re.sub(r"(from\s+'\.\./app/[^'?]*?\.js)(\?v=[^']*)?'", lambda m: m.group(1) + '?v=' + ver + "'", s)
+    t = re.sub(r"(import\('\./pjt-[a-z-]+\.js)(\?v=[^']*)?'\)", lambda m: m.group(1) + '?v=' + ver + "')", t)
+    if t != s: open(f, 'w', encoding='utf-8', newline='').write(t); mn += 1
+mbad = []
+for f in glob.glob(mroot + '/*.js') + glob.glob(mroot + '/*.html'):
+    s = open(f, encoding='utf-8').read()
+    for m in re.finditer(r"from\s+'(\.\./app/[^']*)'", s):
+        if not m.group(1).endswith('?v=' + ver): mbad.append((f, m.group(1)))
+    for m in re.finditer(r"import\('(\./pjt-[a-z-]+\.js[^']*)'\)", s):
+        if not m.group(1).endswith('?v=' + ver): mbad.append((f, m.group(1)))
+print('모바일(m/) 주소 맞춤 파일', mn, '개 /', '검사 통과' if not mbad else '불일치 ' + str(mbad))
+print('버전', ver, '적용 파일', n, '개 /', '검사 통과' if not (bad or mbad) else '불일치 ' + str(bad + mbad))
+sys.exit(1 if (bad or mbad) else 0)
