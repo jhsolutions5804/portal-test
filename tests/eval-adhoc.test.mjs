@@ -24,7 +24,7 @@ r.exec = { e1: { person: 4 }, e9: { person: 5 } }; ok(adhocSummary(r, proj).exec
 const A = adhocProjectPerf({ target: 12, snapshot: { billed: 2000, paid: 1700 } }), B = adhocProjectPerf({ target: 8, snapshot: { billed: 1000, paid: 950 }, bands: [{ min: 2, score: 5 }, { min: -Infinity, score: 2 }] }), C = adhocProjectPerf({ target: 10, snapshot: { billed: 1000, paid: 700, ownLabor: 100, direct: 50 } }), D = adhocProjectPerf({ target: 10, snapshot: {} });
 ok(A.actual === 15 && A.diff === 3 && A.score === 5 && B.actual === 5 && B.diff === -3 && B.score === 2 && C.actual === 15 && C.score === 5 && D.actual === null && D.score === null, '★ 프로젝트 성과는 프로젝트마다 따로: A(목표 12%, 실현 15%, +3%p, 5점) / B(목표 8%, 실현 5%, 자체 구간으로 2점) / C(직접비·자체 인건비 포함 실투입비 차감 후 15%) / 청구가 없으면 계산 안 함');
 // ── 화면
-const me = { uid: '202TPNudKZghsTPAeeG206f8vbJ3', name: '송지훈', rank: '대표', empNo: '00000', admin: true, perms: {} };   // 사장단 계정(보안 규칙 isCycleManager 의 목록에 있는 실제 계정 식별자)
+const me = { uid: '202TPNudKZghsTPAeeG206f8vbJ3', name: '조은별', rank: '대표', empNo: '00000', admin: true, perms: {} };   // 사장단 계정(보안 규칙 isCycleManager 의 목록에 있는 실제 계정 식별자)
 const projects = [{ id: 'P1', name: 'P4 Ph2 FAB', status: 'ended', linked: true, planId: 'pjt_1', members: [hr[0], hr[1]], memberWorkers: [hr[0], hr[1]], snapshot: { billed: 1000, paid: 850 }, targetMargin: 12, eval: {} }, { id: 'P2', name: '청주 M15X', status: 'active', linked: false, planId: '', members: [], memberWorkers: [], snapshot: {}, targetMargin: null, eval: {} }];
 const st = { evTab: 'adhoc', ad: { me, projects, sel: '', pdraft: null, msel: '', mdraft: null, recs: {} } };
 const bd0 = adhocBoardHtml(st); ok(!bd0.includes('data-ec-tab') && !bd0.includes('jh-segmented'), '★ 수시평가 화면 안에 탭이 없음 — 메뉴(정기평가·수시평가)가 탭 역할을 하므로 화면 안 탭은 두지 않음');

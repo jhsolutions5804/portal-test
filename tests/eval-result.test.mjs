@@ -3,7 +3,7 @@ import fs from 'node:fs';
 const VER = (fs.readFileSync(new URL('../app/modules/eval/index.js', import.meta.url), 'utf8').match(/eval-perm\.js\?v=([0-9a-z]+)/) || [])[1];
 const R = await import('../app/modules/eval/result-report.js?v=' + VER); const E = await import('../app/modules/eval/evaluation.js?v=' + VER);
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
-const W = { id: 'w1', name: '김영서', dept: 'PJT팀', rank: '사원' }; const it = E.areaItems('PJT팀', '사원');
+const W = { id: 'w1', name: '도하린', dept: 'PJT팀', rank: '사원' }; const it = E.areaItems('PJT팀', '사원');
 const mkCycle = (o) => Object.assign(E.emptyCycle(W, 2026), { leadAgg: { areas: { achievement: 4, competency: 5, conduct: 3 }, n: 1, by: 'uL' }, peerAgg: { avg: 4, n: 3 }, ceo: { approved: true, score: null, comment: '내부 코멘트 비공개' }, confirmed: true, self: { text: '올해 안전교육을 모두 이수했습니다.' } }, o || {});
 // ── 확정된 평가만
 ok(R.buildResultData({ year: 2026, worker: W, cycle: mkCycle({ confirmed: false }) }).ok === false && /확정되지 않은/.test(R.buildResultData({ year: 2026, worker: W, cycle: mkCycle({ confirmed: false }) }).reason), '★ 확정 전 평가는 통보서를 만들지 않음(대표 확정 후에만)');
@@ -11,7 +11,7 @@ ok(R.buildResultData({ year: 2026, worker: W, cycle: null }).ok === false && R.b
 const noPeer = mkCycle({ peerAgg: { avg: null, n: 1 } }); ok(R.buildResultData({ year: 2026, worker: W, cycle: noPeer }).ok === false, '동료 평균이 없어 팀 점수가 안 나온 평가는 확정될 수 없으므로 통보서도 없음');
 // ── 내용(손계산): 팀장 업적 4·역량 5·태도 3, 동료 4.0 → 32 + 20 + 12 + 16 = 80점, 등급 A
 const r = R.buildResultData({ year: 2026, worker: W, cycle: mkCycle(), adhoc: [] }); const d = r.data;
-ok(r.ok && d.final === 80 && d.grade === 'A' && d.combined === null && d.worker.name === '김영서' && d.period.from === '2025-10-01' && d.period.to === '2026-09-30', '★ 최종 80점 · A등급(손계산 32+20+12+16), 수시평가가 없으면 종합 점수 없음, 평가 기간 2025-10-01 ~ 2026-09-30');
+ok(r.ok && d.final === 80 && d.grade === 'A' && d.combined === null && d.worker.name === '도하린' && d.period.from === '2025-10-01' && d.period.to === '2026-09-30', '★ 최종 80점 · A등급(손계산 32+20+12+16), 수시평가가 없으면 종합 점수 없음, 평가 기간 2025-10-01 ~ 2026-09-30');
 const by = Object.fromEntries(d.areas.map((a) => [a.key, a])); ok(by.achievement.score === 32 && by.achievement.avg === 4 && by.competency.score === 20 && by.competency.avg === 5 && by.conduct.score === 12 && by.conduct.avg === 3 && by.peer.score === 16 && by.peer.avg === 4 && d.areas.length === 4, '★ 영역별 환산 점수: 업적 32 · 역량 20 · 태도 12 · 동료 16(평균 4·5·3·4)');
 // ── 수시평가 합산: 정기 80 + 수시 90 → 80×0.6 + 90×0.4 = 84
 const rec = { confirmed: true, items: { progress: 5, schedule: 5, quality: 5, safety: 5, report: 5 }, peers: { a: [5, 5, 5], b: [5, 5, 5] }, exec: { e1: { person: 4 }, e2: { person: 5 } } }; const proj = { exec: { e1: { project: 4 }, e2: { project: 5 } } };
@@ -25,7 +25,7 @@ const cn = Object.assign(E.emptyCycle(Wn, 2026), { exec: { e1: { areas: fullN(4)
 ok(rn.ok && rn.data.final === 80 && rn.data.areas.map((a) => a.key).join() === 'achievement,competency,conduct' && rn.data.areas.every((a) => a.weight > 0) && rn.data.peerN === 0, '비프로젝트 팀: 사장단 평가 평균으로 80점(업적 32·역량 32·태도 16), 동료평가 행은 아예 만들지 않음');
 // ── HTML: 내용·안전·누락
 const html = R.resultHtml(d, { today: '2026-11-20' });
-ok(html.startsWith('<!DOCTYPE html>') && html.includes('2026년 인사평가 결과 통보서') && html.includes('김영서') && html.includes('PJT팀 · 사원') && html.includes('80') && html.includes('A등급') && html.includes('업적') && html.includes('동료평가') && html.includes('발행일 2026-11-20'), 'HTML: 제목·성명·소속·최종 점수·등급·영역·발행일이 들어 있음');
+ok(html.startsWith('<!DOCTYPE html>') && html.includes('2026년 인사평가 결과 통보서') && html.includes('도하린') && html.includes('PJT팀 · 사원') && html.includes('80') && html.includes('A등급') && html.includes('업적') && html.includes('동료평가') && html.includes('발행일 2026-11-20'), 'HTML: 제목·성명·소속·최종 점수·등급·영역·발행일이 들어 있음');
 ok(html.includes('참고자료') && html.includes('실적 보고서') && html.includes('별도로 안내') && html.includes('올해 안전교육을 모두 이수했습니다.'), '★ 안내(참고자료·연봉협상 면담에 실적 보고서 지참·일정 별도 안내)와 본인 자기평가 서술이 들어 있음');
 ok(!/사장단|코멘트|내부 코멘트|raterUid|uLead|uL\b|scores|approved|ceo|대표 점수/.test(html), '★ 사장단 개인 점수·코멘트·평가자 식별자·내부 필드는 어디에도 없음(대표 코멘트 "내부 코멘트 비공개"도 안 나감)');
 ok(!/<script|javascript:|onerror=|onload=|<iframe|<img|https?:\/\//i.test(html), '스크립트·이벤트·외부 주소 없음(자체 완결 문서)');
