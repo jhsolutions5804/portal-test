@@ -1,12 +1,16 @@
 /* 영업기획 견적 — 순수 규칙(화면·네트워크 없이 시험 가능). 구포털 기획(gihoek)의 견적 규칙을 그대로 옮기고, 개정 이력 비교를 새로 더했다.
  * 번호: 새 견적 EST-<연도>-<세 자리>, 개정은 <기준 번호>-r<N>. 개정본을 발행하면 원본은 자동으로 폐기(void)되고 replacedBy 에 개정본 번호가 남는다.
  * 종결(closed)은 정산이 끝난 견적으로 유효 견적 집계에서 빠진다. 거래처·담당자 정보는 견적서에 그대로 복사(스냅샷)해 저장한다. */
-import { itemAmt, estSupply, estTotal, isEstActive, estTag, sortProjects } from './projects.js?v=20261019c';
+import { itemAmt, estSupply, estTotal, isEstActive, estTag, sortProjects } from './projects.js?v=20261019d';
+import { sanitizeCalc } from './estimate-calc.js?v=20261019d'; // 순환 import: estimate-calc.js 도 itemSetAmount 를 가져온다. 둘 다 function 선언이라 호이스팅되어 안전하며, 로드 순서를 뒤집어도 같은 결과임을 tests/estimate-calc-save.test.mjs 가 확인한다
 export { estSupply, estTotal, isEstActive, estTag, itemAmt };
 export const EST_PAGE_SIZE = 10;
 export const VAT_RATE = 0.1;
 export const num = (v) => { const n = parseFloat(String(v == null ? '' : v).replace(/[^0-9.\-]/g, '')); return Number.isNaN(n) ? 0 : n; };
 export const blankItem = () => ({ name: '', spec: '', qty: 1, price: 0, amount: 0, remark: '' });
+export const CALC_ROWS_MAX = 300; // 견적 하나에 저장하는 산식 행 수 상한(Firestore 문서 1MB 한도 대비, 셀 120자·행 60개·항목 100개의 이론 최대치를 막는다)
+/** 항목 복사에 산식 표(calc)를 붙인다 — 정리된 표가 있을 때만 키를 만든다(산식을 안 쓴 기존 견적은 문서 모양이 그대로). 저장된 표는 알려진 칸만 새 객체로 복사해 읽는다 */
+const withCalc = (target, src) => { const c = sanitizeCalc(src && src.calc); if (c) target.calc = c; return target; };
 /** 품목 입력 연동(구포털 onQty·onPrice·onAmt): 수량·단가를 바꾸면 금액 = 수량×단가(반올림), 금액을 바꾸면 단가 = 금액÷수량(수량이 0이면 금액 그대로) */
 export function itemSetQty(it, v) { it.qty = num(v); it.amount = Math.round(it.qty * it.price); return it; }
 export function itemSetPrice(it, v) { it.price = num(v); it.amount = Math.round(it.qty * it.price); return it; }
@@ -35,7 +39,7 @@ export function newDraft(o) {
 }
 /** 개정 초안(구포털 editEst): 원본을 복사하고 기준 번호·원본 번호를 기억한다 */
 export function draftFromEstimate(e, o) {
-  const x = o || {}; const me = x.me || {}; const it = e.items && e.items.length ? e.items.map((i) => ({ name: i.name || '', spec: i.spec || '', qty: i.qty || 0, price: i.price || 0, amount: Math.round(itemAmt(i)), remark: i.remark || '' })) : [blankItem()];
+  const x = o || {}; const me = x.me || {}; const it = e.items && e.items.length ? e.items.map((i) => withCalc({ name: i.name || '', spec: i.spec || '', qty: i.qty || 0, price: i.price || 0, amount: Math.round(itemAmt(i)), remark: i.remark || '' }, i)) : [blankItem()];
   return { editId: e.id, baseNo: e.baseNo || e.no, srcNo: e.no, srcRev: e.rev || 1, pjtId: e.pjtId, title: e.title || '', date: e.date || x.today || '', clientId: e.clientId || '', issuerId: e.issuerId || defIssuer(x.companies), issuerContact: e.issuerContact || '', clientContact: e.clientContact || '', notes: e.notes || '',
     authorDept: e.authorDept || me.rank || '', authorName: e.authorName || me.name || '', authorEmail: e.authorEmail || me.email || '', items: it };
 }
@@ -51,10 +55,11 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 export function buildEstimate(d, o) {
   const x = o || {}; const errors = []; const me = x.me || {};
   const title = String(d.title || '').trim(); if (!title) errors.push('견적 제목을 입력하세요.'); else if (title.length > 120) errors.push('견적 제목은 120자 이내로 입력해 주세요.');
-  const items = (d.items || []).filter((i) => String(i.name || '').trim()).map((i) => ({ name: String(i.name).trim(), spec: i.spec || '', qty: i.qty || 0, price: i.price || 0, amount: Math.round(itemAmt(i)), remark: String(i.remark || '').trim() }));
+  const items = (d.items || []).filter((i) => String(i.name || '').trim()).map((i) => withCalc({ name: String(i.name).trim(), spec: i.spec || '', qty: i.qty || 0, price: i.price || 0, amount: Math.round(itemAmt(i)), remark: String(i.remark || '').trim() }, i));
   if (!items.length) errors.push('품목을 1개 이상 입력하세요.'); else if (items.length > 100) errors.push('품목은 100개까지 입력할 수 있습니다.');
   if (items.some((i) => i.name.length > 120 || String(i.spec).length > 120 || i.remark.length > 200)) errors.push('품명·규격·비고가 너무 깁니다.');
   if (items.some((i) => !Number.isFinite(i.amount) || Math.abs(i.amount) > 1e13 || !Number.isFinite(i.qty) || !Number.isFinite(i.price))) errors.push('금액이 올바르지 않습니다.');
+  if (items.reduce((n, i) => n + (i.calc ? i.calc.rows.length : 0), 0) > CALC_ROWS_MAX) errors.push('산식 내역이 너무 많습니다(견적 전체 ' + CALC_ROWS_MAX + '행 이하). 쓰지 않는 산식 행을 줄여 주세요.');
   if (!DATE.test(String(d.date || ''))) errors.push('작성일을 입력하세요.');
   const notes = String(d.notes || '').trim(); if (notes.length > 2000) errors.push('특기사항은 2,000자 이내로 입력해 주세요.');
   if (errors.length) return { ok: false, errors };

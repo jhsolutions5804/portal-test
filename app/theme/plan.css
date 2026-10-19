@@ -84,3 +84,22 @@ a.jh-plan__row { text-decoration: none; }
 .jh-plan__table strong[data-tone="pos"] { color: var(--c-ok, #16a34a); } .jh-plan__table strong[data-tone="neg"] { color: var(--c-danger, #dc2626); }
 .jh-plan__sum--5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .jh-plan__clickable tbody tr { cursor: pointer; } .jh-plan__clickable tbody tr:hover { background: var(--c-primary-weak); }
+
+/* ───── 견적 항목 산식 계산 영역(항목 줄 아래에 끼워 넣는 행) — 색·간격은 전부 tokens.css 변수 ───── */
+.jh-plan__calc { display: grid; gap: var(--sp-3); padding: var(--sp-3); border-radius: var(--radius-sm); background: var(--c-bg); color: var(--c-ink); }
+.jh-plan__calcres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2) var(--sp-3); padding: var(--sp-3); border-radius: var(--radius-sm); background: var(--c-primary-weak); color: var(--c-primary-strong); font-size: var(--fs-sm); }
+.jh-plan__calcres strong { font-variant-numeric: tabular-nums; }
+.jh-plan__rowbtns { white-space: nowrap; }
+.jh-plan__rowbtns .jh-btn + .jh-btn { margin-left: var(--sp-1); }
+@media (max-width: 899px) { .jh-plan__calcres { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ───── 산식 표(행을 추가해 가며 세부 내역을 쌓는 표) — 색·간격은 전부 tokens.css 변수 ───── */
+.jh-plan__ectable { min-width: calc(var(--u-440) * 1.6); }
+.jh-plan__ectable th, .jh-plan__ectable td { padding: var(--sp-1) var(--sp-1); }
+.jh-plan__ectable .jh-input { width: 100%; min-width: var(--u-56); }
+.jh-plan__ecno { width: var(--u-36); text-align: center; color: var(--c-ink-2); font-size: var(--fs-sm); }
+.jh-plan__ectable input[data-ec-fixed="true"] { background: var(--c-primary-weak); border-color: var(--c-primary); }
+.jh-plan__ectable tr[data-ec-err="true"] .jh-input { border-color: var(--c-danger); }
+.jh-plan__calchead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
+.jh-plan__ectable .jh-input { padding: var(--sp-1) var(--sp-2); font-size: var(--fs-sm); }
+.jh-plan__calc [data-ec-stale] { margin-bottom: var(--sp-2); }
