@@ -1,1 +1,4 @@
 scripts/dev/node_modules/
+# 공개 저장소라 문서를 두지 않는다 — 비공개 저장소(portal-functions)의 app-docs/ 에 둔다(2026-10-19)
+docs/*
+!docs/README.md

@@ -49,6 +49,7 @@ jobs:
           python3 scripts/module_check.py
           python3 scripts/ui_contract_check.py
           python3 scripts/secret_check.py
+          python3 scripts/check_public_docs.py   # 공개 저장소에 문서·민감 정보(직원 실명·금액·거래처)가 올라오면 실패(2026-10-19)
 
       - name: 빌드 번호 검사(코드가 바뀌었는데 번호가 그대로면 실패)
         run: |

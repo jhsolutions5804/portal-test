@@ -6,9 +6,12 @@ let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK 
 const rd = (f) => fs.readFileSync(new URL(f, import.meta.url), 'utf8');
 const uidsIn = (txt, fnName) => { const i = txt.indexOf(fnName); if (i < 0) return null; const j = txt.indexOf('[', i), k = txt.indexOf(']', j); return [...txt.slice(j, k).matchAll(/'([A-Za-z0-9]{20,})'/g)].map((m) => m[1]); };
 const ui = P.CYCLE_MANAGERS.map((m) => m.uid);
-const blockRules = uidsIn(rd('../docs/rules/eval_rules_block.rules'), 'function isCycleManager'), fullRules = uidsIn(rd('../docs/rules/firestore.rules_테섭_평가추가본_2026-10-15.rules'), 'function isCycleManager');
+// 규칙 파일(UID 가 들어 있어 공개 저장소에 둘 수 없음 — 2026-10-19 비공개 저장소 portal-functions 의 app-docs/rules/ 로 이전)은 있을 때만 대조한다: PORTAL_FUNCTIONS=<서버 저장소 폴더> 로 경로를 주면 돈다
+const rulesDir = [process.env.PORTAL_FUNCTIONS && process.env.PORTAL_FUNCTIONS + '/app-docs/rules', '/tmp/pf_diag/app-docs/rules', '/tmp/pf/app-docs/rules'].filter(Boolean).find((d) => fs.existsSync(d + '/eval_rules_block.rules'));
+const rdr = (f) => fs.readFileSync(rulesDir + '/' + f, 'utf8');
+const blockRules = rulesDir ? uidsIn(rdr('eval_rules_block.rules'), 'function isCycleManager') : null, fullRules = rulesDir ? uidsIn(rdr('firestore.rules_테섭_평가추가본_2026-10-15.rules'), 'function isCycleManager') : null;
 ok(ui.length === 3 && new Set(ui).size === 3 && P.CYCLE_MANAGERS.map((m) => m.name).join() === '송지훈,김종화,김영희', '화면 목록: 송지훈·김종화·김영희 3명(중복 없음)');
-ok(JSON.stringify(blockRules) === JSON.stringify(ui) && JSON.stringify(fullRules) === JSON.stringify(ui), '★ 보안 규칙(블록 파일·전체 추가본)의 사장단 목록이 화면 목록과 순서까지 같음');
+if (rulesDir) ok(JSON.stringify(blockRules) === JSON.stringify(ui) && JSON.stringify(fullRules) === JSON.stringify(ui), '★ 보안 규칙(블록 파일·전체 추가본)의 사장단 목록이 화면 목록과 순서까지 같음'); else console.log('SKIP 보안 규칙 대조(규칙 파일이 비공개 저장소에 있음 — PORTAL_FUNCTIONS 로 서버 저장소 폴더를 주면 대조)');
 // 서버 저장소는 별도라, 있을 때만 대조(서버 쪽 시험 eval.test.js 가 자기 목록을 따로 확인한다)
 const srvPath = ['/tmp/pf/functions/eval-act.js', process.env.PORTAL_FUNCTIONS && process.env.PORTAL_FUNCTIONS + '/functions/eval-act.js'].filter(Boolean).find((f) => fs.existsSync(f));
 if (srvPath) { const srv = fs.readFileSync(srvPath, 'utf8'); const su = uidsIn(srv, 'const CYCLE_MANAGERS'); ok(JSON.stringify(su) === JSON.stringify(ui), '★ 서버(eval-act.js)의 사장단 목록이 화면 목록과 같음'); } else console.log('SKIP 서버 목록 대조(서버 저장소 폴더 없음 — PORTAL_FUNCTIONS=경로 로 지정하면 대조)');
