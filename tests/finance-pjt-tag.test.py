@@ -110,6 +110,16 @@ with sync_playwright() as p:
     ok(pg.locator('.jh-dialog').count() == 0, '연속 클릭이 두 번째 확인창을 띄우지 않음')
     pg.close()
 
+    print('── 확정 처리 중에는 선택이 바뀌지 않음')
+    pg, errs = fresh(delay=900); pg.wait_for_selector('.jh-fin__pjttag', timeout=15000)
+    pg.locator('[data-pt-confirm-month="2026-07"]').click(); pg.wait_for_selector('.jh-dialog', timeout=5000); pg.locator('.jh-dialog button[data-ok]').click(); pg.wait_for_timeout(200)
+    for sel in ('[data-pt-pick-month="2026-08"]', '[data-pt-clear]'):
+        try: pg.locator(sel).click(timeout=300, force=True)
+        except Exception: pass
+    pg.wait_for_timeout(100)
+    ok((not pg.locator('[data-pt-row="e4_1"]').is_checked()) and pg.locator('[data-pt-pick-month="2026-08"]').is_disabled(), '★ 확정이 처리되는 동안에는 "이 달 전체 선택"을 눌러도 줄이 체크되지 않고 버튼이 비활성')
+    pg.wait_for_timeout(1300); pg.close()
+
     print('── 서버가 줄을 거부했을 때')
     pg, errs = fresh(mode='reject'); pg.wait_for_selector('.jh-fin__pjttag', timeout=15000)
     pg.locator('[data-pt-confirm-month="2026-07"]').click(); pg.wait_for_selector('.jh-dialog', timeout=5000); pg.locator('.jh-dialog button[data-ok]').click(); pg.wait_for_timeout(1000)
@@ -132,6 +142,21 @@ with sync_playwright() as p:
     ok('선택 0줄' in bar.inner_text() and pg.locator('[data-pt-row]:checked').count() == 0, '★ "선택 해제"를 누르면 체크가 모두 풀리고 "선택 0줄"')
     pg.set_viewport_size({'width': 1200, 'height': 260}); pg.evaluate('window.scrollTo(0, document.body.scrollHeight)'); pg.wait_for_timeout(200)
     bb = bar.bounding_box(); ok(bb is not None and 0 <= bb['y'] <= 12, '★ 화면을 맨 아래까지 내려도 선택 바가 맨 위에 붙어 따라옴(y=%s)' % (bb and round(bb['y'])))
+    pg.close()
+
+    print('── 이 달 전체 선택')
+    pg, errs = fresh(); pg.wait_for_selector('.jh-fin__pjttag', timeout=15000)
+    pg.locator('[data-pt-pick-month="2026-07"]').click(); pg.wait_for_timeout(150)
+    ok(pg.locator('[data-pt-row]:checked').count() == 2 and pg.locator('[data-pt-row="e1_1"]').is_checked() and pg.locator('[data-pt-row="e3_0"]').is_checked(), '★ "이 달 전체 선택"을 누르면 그 달의 확정 가능한 줄(2개)이 모두 체크됨')
+    ok((not pg.locator('[data-pt-row="e2_0"]').is_checked()) and (not pg.locator('[data-pt-row="e4_1"]').is_checked()), '★ 확정할 수 없는 줄(수동)과 다른 달(8월) 줄은 체크되지 않음')
+    ok('선택 2줄' in pg.locator('[data-pt-bar]').inner_text(), '선택 바가 바로 "선택 2줄"')
+    pg.locator('[data-pt-row="e3_0"]').uncheck(); pg.wait_for_timeout(100)
+    ok('선택 1줄' in pg.locator('[data-pt-bar]').inner_text(), '전체 선택 뒤 한 줄을 빼면 "선택 1줄"')
+    pg.locator('[data-pt-confirm-sel]').click(); pg.wait_for_selector('.jh-dialog', timeout=5000)
+    ok('선택한 1줄' in pg.inner_text('.jh-dialog'), '★ 확정 확인창에 빼고 남은 1줄이 보임')
+    pg.locator('.jh-dialog button[data-cancel]').click(); pg.wait_for_timeout(300); ok(len(calls(pg)) == 0, '취소하면 서버 호출 없음')
+    pg.locator('[data-pt-pick-month="2026-08"]').click(); pg.wait_for_timeout(150)
+    ok('선택 2줄' in pg.locator('[data-pt-bar]').inner_text() and pg.locator('[data-pt-row="e4_1"]').is_checked(), '다른 달도 이어서 선택할 수 있고 앞의 선택은 유지(7월 1줄 + 8월 1줄 = 2줄)')
     pg.close()
 
     print('── 선택한 줄 확정')

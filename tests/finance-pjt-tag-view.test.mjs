@@ -78,5 +78,12 @@ ok(btnTags(manual).filter((t) => has(t, 'data-pt-confirm-month')).every((t) => /
 const withMsg = pjtTagHtml(Object.assign(base(), { msg: '3줄을 확정했습니다.' })); ok(has(withMsg, '3줄을 확정했습니다.') && has(withMsg, 'role="status"'), '처리 결과 메시지가 role=status 로 보임');
 const noProj = pjtTagHtml(Object.assign(base(), { names: {} })); ok(has(noProj, 'pA') && has(noProj, 'pB'), '프로젝트 이름을 못 읽었으면 id 로라도 표시(칩이 비지 않음)');
 
-ok(pass + fail >= 28, '★ 시험 전체가 끝까지 실행됨(실행 ' + (pass + fail) + '건 ≥ 28) — 중간에 예외로 죽어 뒤쪽 시험이 안 도는 일 방지');
+console.log('── 이 달 전체 선택 버튼');
+const pickBtns = (h) => (h.match(/<button[^>]*data-pt-pick-month[^>]*>/g) || []); const isDis = (t) => /\sdisabled/.test(t);
+ok(pickBtns(html).length === 2 && has(html, 'data-pt-pick-month="2026-07"') && has(html, 'data-pt-pick-month="2026-08"') && has(html, '이 달 전체 선택'), '★ 달 카드마다 "이 달 전체 선택" 버튼이 하나씩(2개월 → 2개)');
+ok(pickBtns(html).every((t) => !isDis(t)), '확정할 줄이 있는 달의 버튼은 눌림');
+ok(pickBtns(manual).length === 1 && isDis(pickBtns(manual)[0]), '★ 확정할 수 있는 줄이 하나도 없는 달(수동 줄만)의 "이 달 전체 선택"은 비활성');
+ok(pickBtns(busy).length === 2 && pickBtns(busy).every(isDis), '처리 중에는 "이 달 전체 선택"도 비활성');
+ok(count(html, /data-variant="primary"/g) === 1 && pickBtns(html).length === 2 && pickBtns(html).every((t) => !has(t, 'data-variant')), '★ 주 버튼은 여전히 하나("선택한 줄 확정"), 이 달 전체 선택 버튼 2개는 기본 버튼 — 버튼이 없어도 참이 되는 빈 목록 함정 방지');
+ok(pass + fail >= 33, '★ 시험 전체가 끝까지 실행됨(실행 ' + (pass + fail) + '건 ≥ 28) — 중간에 예외로 죽어 뒤쪽 시험이 안 도는 일 방지');
 console.log('\n' + (fail ? '실패 ' + fail + '건 / 통과 ' + pass : '전부 통과 (' + pass + '건)')); process.exit(fail ? 1 : 0);
