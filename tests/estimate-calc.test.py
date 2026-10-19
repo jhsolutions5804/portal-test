@@ -67,6 +67,16 @@ with sync_playwright() as p:
         put(pg, 1, 'name', '구역 B'); put(pg, 1, 'unit', '인'); put(pg, 1, 'qty', '20'); put(pg, 1, 'price', '100')
         pg.locator(M('unit')).fill('10'); pg.locator(M('count')).fill('13'); pg.wait_for_timeout(60)
 
+    print('── 항목 표의 줄맞춤(번호 칸이 행 높이만큼 늘어나 줄·가운데가 맞음)')
+    pg, errs = new_form(); pg.locator('[data-es-it="0:qty"]').fill('12'); pg.locator('[data-es-it="0:price"]').fill('3825'); pg.wait_for_timeout(100)
+    g = pg.evaluate("""(() => { const tr = document.querySelector('#es-rows > tr'); const cells = [...tr.children]; const geo = cells.map((td) => { const b = td.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), disp: getComputedStyle(td).display, mid: (b.top + b.bottom) / 2 }; }); const inp = tr.querySelector('input').getBoundingClientRect(); return { geo, inputMid: (inp.top + inp.bottom) / 2 }; })()""")
+    ok(g['geo'][0]['disp'] == 'table-cell', '★ 번호 칸이 표 칸(table-cell)으로 그려짐(예전: block)')
+    ok(all(abs(c['top'] - g['geo'][1]['top']) <= 1 and abs(c['bottom'] - g['geo'][1]['bottom']) <= 1 for c in g['geo']), '★ 번호 칸의 위·아래가 같은 행의 다른 칸과 같음 → 번호 밑 줄이 행 구분선과 한 줄로 이어짐 (실제: %s)' % [(c['top'], c['bottom']) for c in g['geo'][:3]])
+    ok(abs(g['geo'][0]['mid'] - g['inputMid']) <= 1.5, '★ 번호의 세로 가운데가 입력칸 가운데와 맞음(번호 %.1f · 입력칸 %.1f)' % (g['geo'][0]['mid'], g['inputMid']))
+    open_calc(pg, 0)
+    e = pg.evaluate("""(() => { const tr = document.querySelector('[data-ec-box] tbody tr[data-ec-r]'); const tds = [...tr.children]; const b = tds.map((td) => td.getBoundingClientRect()); const inp = tr.querySelector('input').getBoundingClientRect(); return { disp: getComputedStyle(tds[0]).display, same: b.every((x) => Math.abs(x.top - b[1].top) <= 1 && Math.abs(x.bottom - b[1].bottom) <= 1), mid: (b[0].top + b[0].bottom) / 2, inputMid: (inp.top + inp.bottom) / 2 }; })()""")
+    ok(e['disp'] == 'table-cell' and e['same'] and abs(e['mid'] - e['inputMid']) <= 1.5, '산식 표의 번호 칸도 같은 줄맞춤(표 칸 · 위아래 일치 · 가운데 일치)'); pg.close()
+
     print('── 열기·닫기')
     pg, errs = new_form()
     ok(pg.locator('[data-ec-open]').count() == 2, '새 견적 화면의 기본 항목 2줄에 각각 "산식" 버튼이 있음')
@@ -233,5 +243,5 @@ with sync_playwright() as p:
     orig = [s for s in sv if s['id'] == 'e1']; ok(all('calc' not in s['data'].get('items', [{}])[0] for s in orig) or all(s['data'].get('status') == 'void' for s in orig), '원본은 폐기 처리만 되고 산식 내역은 건드리지 않음')
     pg.close()
     b.close()
-ok(pass_n + fail_n >= 75, '★ 시험 전체가 끝까지 실행됨(%d건 ≥ 75) — 중간에 예외로 죽어 뒤쪽 시험이 안 도는 일 방지' % (pass_n + fail_n))
+ok(pass_n + fail_n >= 79, '★ 시험 전체가 끝까지 실행됨(%d건 ≥ 75) — 중간에 예외로 죽어 뒤쪽 시험이 안 도는 일 방지' % (pass_n + fail_n))
 print('\n' + ('실패 %d건 / 통과 %d' % (fail_n, pass_n) if fail_n else '전부 통과 (%d건)' % pass_n)); sys.exit(1 if fail_n else 0)
