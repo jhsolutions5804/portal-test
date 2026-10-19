@@ -1,6 +1,6 @@
 // 견적 산식 표(행을 추가해 가며 세부 내역을 쌓는 계산기) 순수 계산 시험 — 가짜 숫자만 쓴다(공개 저장소이므로 실제 단가·금액을 시험에 넣지 않는다).
 // 계산 모듈: app/modules/plan/estimate-calc.js (화면·저장을 모른다). 열: 번호(자동)·내역·단위·수량·단가·합계·비고. 합계 칸이 비어 있으면 수량×단가, 적혀 있으면 그 값으로 고정.
-import { calcSheet, newCalc, newRow, sanitizeCalc, applyToItem, calcIsEmpty, DEFAULTS, LIMITS } from '../app/modules/plan/estimate-calc.js';
+import { calcSheet, newCalc, newRow, sanitizeCalc, applyToItem, calcIsEmpty, removeRow, COL_LETTERS, DEFAULTS, LIMITS } from '../app/modules/plan/estimate-calc.js';
 import { blankItem, itemSetAmount } from '../app/modules/plan/estimates.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const near = (a, b) => typeof a === 'number' && Math.abs(a - b) < 1e-9;
@@ -56,6 +56,55 @@ const big = calcSheet({ rows: [row({ qty: '1,000,000', price: '9,999,999' })], m
 const sumBig = calcSheet({ rows: [row({ qty: '1', price: '4,000,000,000,000' }), row({ qty: '1', price: '4,000,000,000,000' }), row({ qty: '1', price: '4,000,000,000,000' })], markup: '0', unit: '1', count: '1' });
 ok(sumBig.ok === false && /한도/.test(sumBig.error), '★ 행 하나하나는 한도 안인데 여러 행의 합이 한도(1e13)를 넘으면 거부');
 ok(calcSheet({ rows: [row({ qty: '1', price: '4,000,000,000,000' }), row({ qty: '1', price: '4,000,000,000,000' })], markup: '0', unit: '1', count: '1' }).ok === true, '경계: 합 8e12 는 한도 안이라 정상');
+console.log('── 칸 참조(엑셀처럼): 열 A 내역·B 단위·C 수량·D 단가·E 합계·F 비고, 행은 표의 번호');
+ok(COL_LETTERS === 'ABCDEF', '★ 열 글자는 A 내역 · B 단위 · C 수량 · D 단가 · E 합계 · F 비고 (번호 열은 행 번호라서 글자가 없음)');
+const R = (rows, extra) => Object.assign({ rows, markup: '0', unit: '1', count: '1' }, extra || {});
+const labor = () => row({ name: '인건비', unit: '인', qty: '2', price: '7000' });
+const r1 = calcSheet(R([labor(), row({ name: '출장 할증', unit: '식', qty: '1.1', price: '=e1' })]));
+ok(r1.ok && near(r1.rows[0].total, 14000) && near(r1.rows[1].total, 15400) && near(r1.subtotal, 29400), '★ 단가 =e1 (E1 = 1행 합계 14,000) → 2행 합계 1.1 × 14,000 = 15,400, 소계 29,400');
+const r2 = calcSheet(R([labor(), row({ name: '출장 할증', unit: '식', qty: '1.1', price: '=e1*c2' })]));
+ok(r2.ok && near(r2.rows[1].total, 16940), '수식은 쓴 그대로 계산(=e1*c2 + 수량 1.1 이면 1.1 이 두 번 곱해져 16,940) — 의도와 다르면 사용자가 수식을 고쳐야 함');
+const r3 = calcSheet(R([labor(), row({ name: '출장 할증', unit: '식', qty: '1.1', total: '=e1*c2' })]));
+ok(r3.ok && near(r3.rows[1].total, 15400) && r3.rows[1].auto === false, '합계 칸에 =e1*c2 (고정) → 15,400');
+ok(near(calcSheet(R([row({ total: '=E2' }), row({ qty: '3', price: '10' })])).rows[0].total, 30), '★ 아래 행(앞으로 쓸 행)도 참조할 수 있음 — 1행 합계 =E2 → 30');
+const r4 = calcSheet(R([labor(), row({ qty: '1', price: '=e1' }), row({ total: '=SUM(e1:e2)' })])); ok(r4.ok && near(r4.rows[2].total, 28000) && near(r4.subtotal, 56000), 'SUM 범위(E1:E2 = 14,000 + 14,000) → 3행 합계 28,000, 소계 56,000');
+ok(near(calcSheet(R([row({ qty: '5', price: '10' }), row({ qty: '8', price: '10' })], { count: '=c1+c2' })).count, 13), '★ 총 장비 대수에도 칸 참조(=c1+c2 → 5 + 8 = 13)');
+ok(near(calcSheet(R([row({ qty: '5', price: '100' })], { markup: '=c1*2', unit: '=C1' })).gross, 500 * 1.1), '가산율·내림 단위에도 칸 참조(=c1*2 → 10%)');
+ok(calcSheet(R([row({ qty: '4', price: '=d2' }), row({})])).rows[0].total === 0 && calcSheet(R([row({ qty: '4', price: '=d2' }), row({})])).rows[0].ok === true, '★ 완전히 빈 행의 단가를 참조하면 그 행은 0 으로 계산(오류 아님)');
+
+console.log('── 칸 참조 오류');
+const cyc = calcSheet(R([row({ qty: '2', price: '=e1' })])); ok(cyc.ok === false && /순환/.test(cyc.error + JSON.stringify(cyc.rows)), '★ 단가가 자기 행 합계를 가리키면(D1 → E1 → D1) 순환 참조 오류');
+const cyc2 = calcSheet(R([row({ total: '=e1' })])); ok(cyc2.ok === false && /순환/.test(JSON.stringify(cyc2.rows)), '합계가 자기 자신을 가리키면 순환');
+const cyc3 = calcSheet(R([row({ total: '=e2' }), row({ total: '=e1' })])); ok(cyc3.ok === false && /순환/.test(JSON.stringify(cyc3.rows)), '두 행이 서로를 가리켜도 순환');
+const cyc4 = calcSheet(R([row({ qty: '1', price: '5' }), row({ total: '=SUM(e1:e3)' }), row({ qty: '1', price: '1' })])); ok(cyc4.ok === false && /순환/.test(JSON.stringify(cyc4.rows)), '범위가 자기 행을 포함하면 순환(=SUM(E1:E3) 를 2행에 씀)');
+const prop = calcSheet(R([row({ qty: '=1/0', price: '5' }), row({ qty: '1', price: '=e1' })])); ok(prop.ok === false && prop.rows[0].ok === false && prop.rows[1].ok === false && /E1/.test(prop.rows[1].error), '★ 참조한 칸에 오류가 있으면 그 행도 오류이고 어느 칸 때문인지(E1) 문구에 보임');
+const txt = calcSheet(R([row({ name: '글자', qty: '1', price: '=a1' })])); ok(txt.ok === false && /A1/.test(txt.rows[0].error) && /글자/.test(txt.rows[0].error), '내역(글자 칸)을 가리키면 오류');
+const far = calcSheet(R([row({ qty: '1', price: '=e9' })])); ok(far.ok === false && /9번 행/.test(far.rows[0].error), '없는 행(9번)을 가리키면 오류');
+ok(calcSheet(R([row({ qty: '1', price: '=g1' })])).ok === false && calcSheet(R([row({ qty: '1', price: '=sum(' })])).ok === false, '없는 열(G)·덜 쓴 함수도 오류');
+ok(calcSheet(R([row({ qty: '2', price: '=e1' }), labor()])).ok === false, '수량 2 · 단가 =e1(1행 자신) 순환 — 다른 행이 있어도 거부');
+ok(Date.now() > 0 && (() => { const rows = Array.from({ length: 60 }, (_, i) => row({ qty: '1', price: i === 0 ? '5' : '=e' + i })); const t0 = Date.now(); const rr = calcSheet(R(rows)); return rr.ok && near(rr.rows[59].total, 5) && Date.now() - t0 < 500; })(), '★ 60행이 줄줄이 앞 행을 가리켜도(긴 사슬) 즉시 계산됨');
+
+ok((() => { const rows = Array.from({ length: 40 }, (_, i) => row({ qty: '1', price: i === 0 ? '5' : '=e' + i + '+e' + i })); const t0 = Date.now(); const rr = calcSheet(R(rows)); return rr.ok && near(rr.rows[39].total, 5 * Math.pow(2, 39)) && Date.now() - t0 < 400; })(), '★ 각 행이 앞 행을 두 번 가리키는 40행 사슬(=e39+e39 …)도 즉시 계산(한 번 계산한 칸을 기억하지 않으면 2^40 번 계산해 브라우저가 멈춤) — 값 5×2^39 정확');
+console.log('── 행을 지우면 수식의 행 번호를 자동으로 맞춤(안 맞추면 금액이 조용히 틀림)');
+const mk = () => R([row({ qty: '2', price: '100' }), row({ qty: '1', price: '=e1' }), row({ total: '=SUM(e1:e2)' }), row({ qty: '=c3+1', price: '=d2' })], { count: '=c1+c2', markup: '=c4', unit: '=d1' });
+const d0 = removeRow(mk(), 0);
+ok(d0.rows.length === 3 && d0.rows[0].price === '=#REF!' && d0.rows[1].total === '=SUM(e1:e1)' && d0.rows[2].qty === '=c2+1' && d0.rows[2].price === '=d1', '★ 1행을 지우면: 1행을 가리키던 =e1 은 #REF!, 범위 e1:e2 는 e1:e1(남은 한 행), 아래 행을 가리키던 =c3+1 은 =c2+1, =d2 는 =d1 (쓴 글자는 번호만 바뀜)');
+ok(d0.count === '=#REF!+c1' && d0.markup === '=c3' && d0.unit === '=#REF!', '총 대수·가산율·내림 단위의 참조도 같이 맞춤(=c1+c2 → =#REF!+c1)');
+const d1 = removeRow(mk(), 1);
+ok(d1.rows[1].total === '=SUM(e1:e1)' && d1.rows[2].qty === '=c2+1' && d1.rows[2].price === '=#REF!' && d1.count === '=c1+#REF!', '2행을 지우면: 범위 e1:e2 → e1:e1, =c3+1 → =c2+1, 지운 2행을 가리키던 =d2 는 #REF!');
+const d3 = removeRow(mk(), 3); ok(d3.rows.length === 3 && d3.rows[1].price === '=e1' && d3.rows[2].total === '=SUM(e1:e2)' && d3.markup === '=#REF!' , '맨 아래 행을 지우면 위 행의 수식은 그대로(번호 안 바뀜), 그 행을 가리키던 것만 #REF!');
+const rng = removeRow(R([row({}), row({}), row({ total: '=SUM(e2:e3)' }), row({ total: '=SUM(E2:E2)' })]), 1);
+ok(rng.rows[1].total === '=SUM(e2:e2)' && rng.rows[2].total === '=SUM(#REF!)', '★ 2행을 지우면: 범위 e2:e3 은 시작이 지운 행이라 그 자리에 올라온 행부터 e2:e2, 범위 E2:E2(지운 행 하나뿐)는 =SUM(#REF!) — 함수는 남고 범위 자리만 #REF!');
+const only = removeRow(R([row({ qty: '1', price: '3' })]), 0); ok(only.rows.length === 1 && only.rows[0].qty === '' && only.rows[0].price === '', '유일한 행을 지우면 빈 행 1개가 남음');
+const txtc = removeRow(R([row({ qty: '1', price: '3' }), row({ name: '=e1', unit: '=e1', remark: '=e1' })]), 0); ok(txtc.rows[0].name === '=e1' && txtc.rows[0].unit === '=e1' && txtc.rows[0].remark === '=e1', '글자 칸(내역·단위·비고)에 쓴 "=e1" 은 수식이 아니라 글자라 건드리지 않음');
+const plain = removeRow(R([row({}), row({ qty: '3', price: '100,000', name: 'x' })]), 0); ok(plain.rows[0].qty === '3' && plain.rows[0].price === '100,000', '수식이 아닌 숫자 칸은 그대로');
+const lc = removeRow(R([row({}), row({}), row({ price: '=e2*D1 + e3' })]), 0);
+ok(lc.rows[1].price === '=e1*#REF! + e2', '★ 한 수식 안의 여러 참조를 각각 맞춤: e2 → e1, D1(지운 행) → #REF!, e3 → e2 (쓴 글자는 번호만 바뀜)');
+ok(removeRow(R([row({}), row({}), row({ price: '=e3' })]), 0).rows[1].price === '=e2' && removeRow(R([row({}), row({}), row({ price: '=E3' })]), 0).rows[1].price === '=E2', '★ 사용자가 쓴 글자는 번호만 바뀌고 대소문자는 그대로(e3 → e2, E3 → E2)');
+const fn = removeRow(R([row({ qty: '1', price: '5' }), row({ price: '=SUM(1,2)+ROUND(e1,2)' }), row({})]), 2); ok(fn.rows[1].price === '=SUM(1,2)+ROUND(e1,2)', '★ 함수 이름(SUM·ROUND)은 칸 참조로 오인하지 않고 그대로 둠');
+const afterDel = calcSheet(removeRow(R([row({ qty: '2', price: '100' }), row({ qty: '3', price: '=d1' })]), 0)); ok(afterDel.ok === false && /삭제/.test(afterDel.rows[0].error), '★ 지운 행을 가리키던 수식은 계산할 때 "삭제된 칸" 오류로 막힘(조용히 틀린 금액이 나오지 않음)');
+const okDel = calcSheet(removeRow(R([row({ qty: '9', price: '9' }), row({ qty: '2', price: '100' }), row({ qty: '1', price: '=e2' })]), 0)); ok(okDel.ok && near(okDel.rows[1].total, 200), '★ 지운 행과 무관한 수식은 번호만 맞춰져 같은 칸(원래 2행 = 지금 1행)을 계속 가리킴 → 200');
+
 console.log('── 견적가 0·설치비 0(의미 없는 결과를 항목에 넣지 않게)');
 const z1 = calcSheet({ rows: [row({ qty: '1', price: '3' })], markup: '10', unit: '100', count: '1' }); ok(z1.ok === false && /내림 단위/.test(z1.error), '★ 내림 단위가 커서 견적가가 0 이 되면 거부하고 "내림 단위"를 알림');
 const z2 = calcSheet({ rows: [row({ name: '빈 내역' })], markup: '10', unit: '10', count: '1' }); ok(z2.ok === false && /내역|금액/.test(z2.error), '★ 모든 행이 0원이면 거부(내역을 입력하라고 알림)');
@@ -93,5 +142,5 @@ ok(applyToItem(Object.assign(blankItem(), { name: '구역', spec: '규격', rema
 ok(applyToItem(blankItem(), { ok: false, error: 'x' }) === null && applyToItem(blankItem(), null) === null, '거부된 결과는 항목을 바꾸지 않음(null)');
 const orig = blankItem(); ok(applyToItem(orig, r) === orig, '받은 항목 객체를 그대로 고쳐 돌려줌');
 
-ok(pass + fail >= 64, '★ 시험 전체가 끝까지 실행됨(' + (pass + fail) + '건 ≥ 64) — 중간에 예외로 죽어 뒤쪽 시험이 안 도는 일 방지');
+ok(pass + fail >= 97, '★ 시험 전체가 끝까지 실행됨(' + (pass + fail) + '건 ≥ 97) — 중간에 예외로 죽어 뒤쪽 시험이 안 도는 일 방지');
 console.log('\n' + (fail ? '실패 ' + fail + '건 / 통과 ' + pass : '전부 통과 (' + pass + '건)')); process.exit(fail ? 1 : 0);

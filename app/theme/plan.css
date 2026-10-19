@@ -103,3 +103,4 @@ a.jh-plan__row { text-decoration: none; }
 .jh-plan__calchead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
 .jh-plan__ectable .jh-input { padding: var(--sp-1) var(--sp-2); font-size: var(--fs-sm); }
 .jh-plan__calc [data-ec-stale] { margin-bottom: var(--sp-2); }
+.jh-plan__ecletter { margin-left: var(--sp-1); color: var(--c-ink-2); font-size: var(--fs-xs); font-weight: 400; }

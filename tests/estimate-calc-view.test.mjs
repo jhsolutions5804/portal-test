@@ -12,8 +12,11 @@ const res = calcSheet(calc()); const INFO = { qty: 1, amount: 0 }; const html = 
 console.log('── 구조(열: 번호·내역·단위·수량·단가·합계·비고)');
 ok(html.startsWith('<div') && has(html, 'data-ec-box="2"') && !has(html, 'colspan=') && !/^<tr/.test(html), '★ 항목 표 안의 <tr> 이 아니라 표 밖에 놓는 <div> 블록(data-ec-box) — 항목 표의 가로 폭에 끌려가 폰에서 잘리지 않게');
 ok(COLS.map((c) => c.label).join() === '번호,내역,단위,수량,단가,합계,비고', '★ 열은 번호·내역·단위·수량·단가·합계·비고 (대표님 지정)');
+ok(COLS.map((c) => c.col || '').join() === ',A,B,C,D,E,F', '★ 열 글자: 번호는 없음, 내역 A · 단위 B · 수량 C · 단가 D · 합계 E · 비고 F — 수식에서 =E1*C2 처럼 칸을 가리킬 때 쓰는 글자');
 ok(has(html, '품목 3 산식') && has(html, 'aria-label="품목 3 산식"'), '★ 블록 제목에 어느 품목의 계산인지(항목 번호 2 → "품목 3")가 보임 — 항목 바로 아래가 아니므로');
-ok(count(html, /<th[ >]/g) >= 7 && ['번호', '내역', '단위', '수량', '단가', '합계', '비고'].every((t) => has(html, '>' + t + '<')), '표 머리글에 일곱 열의 이름이 있음');
+ok(count(html, /<th[ >]/g) >= 7 && ['번호', '내역', '단위', '수량', '단가', '합계', '비고'].every((t) => has(html, t)), '표 머리글에 일곱 열의 이름이 있음');
+ok(['내역', '단위', '수량', '단가', '합계', '비고'].every((t, k) => has(html, t + ' <span class="jh-plan__ecletter">' + 'ABCDEF'[k] + '</span>')) && !has(html, '번호 <span'), '★ 머리글에 열 글자가 보임(내역 A … 비고 F), 번호 열에는 없음');
+ok(has(html, '=E1*C2') && has(html, '=SUM(E1:E3)') && has(html, 'A 내역') && has(html, 'E 합계') && has(html, 'data-ec-hint'), '★ 표 아래 안내에 칸 참조 예(=E1*C2 · =SUM(E1:E3))와 열 글자 설명이 있음');
 ok(count(html, /data-ec-r="\d+"/g) >= 2 && has(html, 'data-ec-r="0"') && has(html, 'data-ec-r="1"'), '행마다 행 번호(data-ec-r)가 붙음');
 ok(['name', 'unit', 'qty', 'price', 'total', 'remark'].every((k) => count(html, new RegExp('data-ec-c="' + k + '"', 'g')) === 2), '★ 행 2개 × 입력칸 6종(내역·단위·수량·단가·합계·비고)이 각각 2개씩');
 ok(has(html, 'value="구역 A"') && has(html, 'value="=2*18"') && has(html, 'value="메모 A"') && has(html, 'value="2500"'), '입력한 글자가 칸에 그대로 보임(수식은 =2*18 글자 그대로)');
@@ -53,6 +56,16 @@ const evilHtml = calcBoxHtml(0, evil, calcSheet(evil));
 ok(!has(evilHtml, '<script>alert') && !has(evilHtml, '<img src=x') && !has(evilHtml, '<b>x</b>') && !has(evilHtml, '<i>') && !has(evilHtml, '<script>3') && has(evilHtml, '&lt;script&gt;'), '★ 내역·비고·단위·가산율·총 대수의 HTML 은 이스케이프됨(주입 불가)');
 const evilErr = calc(); evilErr.rows[0].qty = '=<script>'; ok(!has(calcBoxHtml(0, evilErr, calcSheet(evilErr)), '<script>'), '오류 문구 안의 입력 글자도 이스케이프됨');
 
+console.log('── 총 장비 대수만 없을 때: 내역을 쌓는 동안에도 소계·견적가는 보임');
+const noCnt = calc(); noCnt.count = ''; const noCntRes = calcSheet(noCnt); const noCntHtml = calcSummaryHtml(noCntRes, 0, { qty: 1, amount: 0 });
+ok(noCntRes.ok === false && noCntRes.subtotal === 6100 && noCntRes.price === 6710, '계산 결과: 대수가 없으면 거부이지만 소계 6,100 · 견적가 6,710 은 돌려줌');
+ok(has(noCntHtml, '6,100') && has(noCntHtml, '6,710') && has(noCntHtml, '소계') && has(noCntHtml, '견적가'), '★ 요약에 소계 6,100 · 견적가 6,710 이 보임 — 총 대수를 아직 안 넣었어도 내역을 쌓으며 중간 합계를 볼 수 있음');
+ok(has(noCntHtml, '총 장비 대수') && has(noCntHtml, 'role="alert"') && /data-ec-apply="0"[^>]*disabled/.test(noCntHtml), '대수가 없다는 이유가 보이고 "항목에 넣기"는 비활성');
+ok(has(noCntHtml, '대당 금액') && !has(noCntHtml, 'NaN') && !has(noCntHtml, 'Infinity'), '대당 금액 칸은 숫자 대신 안내(NaN·Infinity 가 보이지 않음)');
+const noPrice = calcSummaryHtml(calcSheet({ rows: [], markup: '10', unit: '10', count: '1' }), 0, { qty: 1, amount: 0 }); ok(!has(noPrice, '소계') && has(noPrice, 'role="alert"'), '소계가 아예 없으면(내역 없음) 숫자 칸 없이 안내만');
+const leak = calcSummaryHtml({ ok: false, error: '2번 행: 수량: 0 으로 나눌 수 없습니다.', badRow: 1, subtotal: 3600, price: 3960, gross: 3960, rows: [] }, 0, { qty: 1, amount: 0 });
+ok(!has(leak, '3,600') && !has(leak, '3,960') && !has(leak, '소계') && has(leak, '2번 행을 확인'), '★ 계산 결과에 행 오류(badRow)가 있으면, 소계·견적가 숫자가 함께 들어 있어도 화면은 숫자를 숨김 — 계산 모듈이 나중에 바뀌어도 틀린 줄을 뺀 합계가 새지 않게 화면 쪽에도 독립된 방어');
+const bad2 = calc(); bad2.rows[1].qty = '=1/0'; ok(!has(calcSummaryHtml(calcSheet(bad2), 0, { qty: 1, amount: 0 }), '소계'), '틀린 행이 있으면 소계를 보여 주지 않음(틀린 줄을 뺀 합계가 사실처럼 보이면 안 됨)');
 console.log('── 결과 요약만 다시 그리기(입력 중 커서 유지용)');
 const smOk = calcSummaryHtml(res, 2, { qty: 1, amount: 0 });
 ok(!has(smOk, 'data-ec-c=') && !has(smOk, 'data-ec-m='), '★ 요약 영역에는 입력칸이 없음 — 입력할 때마다 이 부분만 다시 그리므로 커서가 유지됨');
@@ -76,5 +89,5 @@ const used = [...new Set((html + badHtml + emptyHtml + row0 + rowWith + sm + dif
 const undef = used.filter((c) => !cssAll.includes('.' + c));
 ok(used.length >= 8 && undef.length === 0, '★ 화면이 쓰는 jh- 클래스 ' + used.length + '개가 전부 스타일 파일에 정의됨(정의 안 된 이름 ' + JSON.stringify(undef) + ')');
 const primary = (html.match(/<button[^>]*data-variant="primary"[^>]*>/g) || []); ok(primary.length === 1 && has(primary[0], 'data-ec-apply'), '주 버튼은 하나이고 그것이 "항목에 넣기"(나머지는 기본·보조)');
-ok(pass + fail >= 42, '★ 시험 전체가 끝까지 실행됨(' + (pass + fail) + '건 ≥ 42) — 중간에 예외로 죽어 뒤쪽 시험이 안 도는 일 방지');
+ok(pass + fail >= 52, '★ 시험 전체가 끝까지 실행됨(' + (pass + fail) + '건 ≥ 52) — 중간에 예외로 죽어 뒤쪽 시험이 안 도는 일 방지');
 console.log('\n' + (fail ? '실패 ' + fail + '건 / 통과 ' + pass : '전부 통과 (' + pass + '건)')); process.exit(fail ? 1 : 0);
