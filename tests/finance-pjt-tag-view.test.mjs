@@ -1,5 +1,6 @@
 // 재무회계 "프로젝트 표시" 대기 목록 화면(HTML 문자열) 시험 — 가짜 데이터만 쓴다(공개 저장소). 화면 함수: app/modules/finance/view.js 의 pjtTagHtml
 import { pjtTagHtml } from '../app/modules/finance/view.js';
+import { readFileSync, readdirSync } from 'node:fs';
 import { buildPendingRows, groupByMonth, monthPreview } from '../app/modules/finance/pjt-tag-logic.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const has = (h, s) => h.includes(s); const count = (h, re) => (h.match(re) || []).length;
@@ -42,6 +43,22 @@ const jul = html.slice(html.indexOf('data-pt-month="2026-07"'), html.indexOf('da
 ok(has(jul, '600') && has(jul, '400') && has(jul, '1,000'), '2026-07 미리보기에 프로젝트별 매출 순액(600·400)과 합계(1,000)가 계산 모듈 값대로 나옴');
 const aug = html.slice(html.indexOf('data-pt-month="2026-08"'));
 ok(/매출 순액<\/?[^>]*>\s*[^<]*0원|매출 순액[^<]*0/.test(aug) || has(aug, 'data-pt-net="0"'), '★ 2026-08 은 원본(+900)과 마이너스(−900)가 같이 있어 매출 순액이 정확히 0 으로 상쇄돼 보임(data-pt-net 값으로 확인)');
+console.log('── 스타일 클래스');
+const cssAll = readdirSync(new URL('../app/theme/', import.meta.url)).filter((f) => f.endsWith('.css')).map((f) => readFileSync(new URL('../app/theme/' + f, import.meta.url), 'utf8')).join('\n');
+const usedCls = [...new Set((html + pjtTagHtml(Object.assign(base(), { busy: true, msg: 'x' }))).match(/class="[^"]+"/g).flatMap((c) => c.slice(7, -1).split(/\s+/)))].filter((c) => c.startsWith('jh-'));
+const undef = usedCls.filter((c) => !cssAll.includes('.' + c));
+ok(usedCls.length >= 15 && undef.length === 0, '★ 화면이 쓰는 jh- 클래스 ' + usedCls.length + '개가 전부 스타일 파일에 정의됨(정의 안 된 이름 ' + JSON.stringify(undef) + ' — jh-btn--primary 처럼 효과 없는 이름 방지)');
+ok(count(html, /data-variant="primary"/g) === 1 && count(html, /data-pt-confirm-month[^>]*>/g) === count(html, /data-variant="secondary" data-pt-confirm-month/g), '★ 주 버튼은 화면에 하나(선택한 줄 확정), 달마다 있는 "이 달 전부 확정"은 보조 버튼');
+console.log('── 선택 바(맨 위 고정)');
+const iBar = html.indexOf('data-pt-bar'), iFirst = html.indexOf('data-pt-month=');
+ok(iBar !== -1 && iBar < iFirst, '★ 선택 바가 달 카드보다 위(맨 위)에 있음 — 긴 목록 맨 아래에 숨어 있지 않음');
+const barHtml = iBar === -1 ? '' : html.slice(iBar, iFirst);
+ok(has(barHtml, 'data-pt-confirm-sel') && has(barHtml, '선택한 줄 확정') && has(barHtml, 'data-pt-clear'), '★ "선택한 줄 확정"과 "선택 해제" 버튼이 선택 바 안에 있음');
+ok(count(html, /data-pt-confirm-sel/g) === 1, '"선택한 줄 확정" 버튼은 한 곳에만(맨 아래 중복 없음)');
+ok(has(barHtml, 'data-pt-selcount') && has(barHtml, '선택 0줄'), '아무것도 고르지 않으면 "선택 0줄"');
+const sel2 = pjtTagHtml(Object.assign(base(), { sel: { e1_1: true, e3_1: true } })); ok(has(sel2.slice(sel2.indexOf('data-pt-bar'), sel2.indexOf('data-pt-month=')), '선택 2줄'), '고른 줄 수가 선택 바에 보임(2줄)');
+const selStale = pjtTagHtml(Object.assign(base(), { sel: { zzz_9: true } })); ok(has(selStale.slice(selStale.indexOf('data-pt-bar'), selStale.indexOf('data-pt-month=')), '선택 0줄'), '목록에 없는 줄의 선택 기록은 세지 않음(확정되어 사라진 줄)');
+const busyBar = pjtTagHtml(Object.assign(base(), { busy: true })); const bb = busyBar.slice(busyBar.indexOf('data-pt-bar'), busyBar.indexOf('data-pt-month=')); const bbBtns = bb.match(/<button[^>]*>/g) || []; ok(bbBtns.length === 2 && bbBtns.every((t) => /\sdisabled/.test(t)), '★ 처리 중에는 선택 바의 버튼 2개(선택 해제·선택한 줄 확정)가 모두 비활성 — 버튼이 0개여도 참이 되는 빈 목록 함정 방지');
 console.log('── 안전');
 const evilRows = buildPendingRows([E('x1', '2026-07-31', '<img src=x onerror=alert(1)> 매출', [ln('4010', 'C', 5, '"><script>alert(2)</script>')])], { x1_0: { entryId: 'x1', lineIdx: 0, method: '직접', splits: [{ pjt: 'pZ', amount: 5 }], status: 'proposed', basisMonth: '2026-07' } }, {});
 const evil = pjtTagHtml({ rows: evilRows, months: groupByMonth(evilRows), names: { pZ: '<b>이름</b>' }, busy: false, msg: '', open: {}, sel: {} });
@@ -49,6 +66,7 @@ ok(!has(evil, '<img src=x') && !has(evil, '<script>alert') && !has(evil, '<b>이
 console.log('── 빈 상태·진행 중');
 const empty = pjtTagHtml({ rows: [], months: [], names: {}, busy: false, msg: '', open: {}, sel: {} });
 ok(has(empty, '대기 중인 줄이 없습니다') && !has(empty, 'data-pt-confirm-month'), '대기 줄이 없으면 안내만 보이고 확정 버튼은 없음');
+ok(!has(empty, 'data-pt-bar'), '대기 줄이 없으면 선택 바도 없음');
 const btnTags = (h) => (h.match(/<button[^>]*data-pt-confirm-(?:month|sel)[^>]*>/g) || []);
 const busy = pjtTagHtml(Object.assign(base(), { busy: true }));
 ok(has(busy, 'aria-busy="true"') && btnTags(busy).length === 3 && btnTags(busy).every((t) => /\sdisabled/.test(t)), '★ 처리 중에는 확정 버튼 3개(달 2 + 선택 1)가 모두 disabled — 중복 확정 방지');
@@ -60,4 +78,5 @@ ok(btnTags(manual).filter((t) => has(t, 'data-pt-confirm-month')).every((t) => /
 const withMsg = pjtTagHtml(Object.assign(base(), { msg: '3줄을 확정했습니다.' })); ok(has(withMsg, '3줄을 확정했습니다.') && has(withMsg, 'role="status"'), '처리 결과 메시지가 role=status 로 보임');
 const noProj = pjtTagHtml(Object.assign(base(), { names: {} })); ok(has(noProj, 'pA') && has(noProj, 'pB'), '프로젝트 이름을 못 읽었으면 id 로라도 표시(칩이 비지 않음)');
 
+ok(pass + fail >= 28, '★ 시험 전체가 끝까지 실행됨(실행 ' + (pass + fail) + '건 ≥ 28) — 중간에 예외로 죽어 뒤쪽 시험이 안 도는 일 방지');
 console.log('\n' + (fail ? '실패 ' + fail + '건 / 통과 ' + pass : '전부 통과 (' + pass + '건)')); process.exit(fail ? 1 : 0);

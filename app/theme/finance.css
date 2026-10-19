@@ -154,3 +154,6 @@ a.jh-kpi:hover { border-color: var(--c-primary); }
 .jh-fin__ptpreview { padding: var(--sp-3); border-radius: var(--radius-sm); background: var(--c-bg); font-size: var(--fs-sm); color: var(--c-ink); overflow-wrap: anywhere; }
 .jh-fin__ptact { display: flex; justify-content: flex-end; gap: var(--sp-2); }
 @media (max-width: 899px) { .jh-fin__ptrow { grid-template-columns: var(--u-20) minmax(0, 1fr) auto; } .jh-fin__ptamt { grid-column: 3; grid-row: 1; } .jh-fin__ptchips { grid-column: 2 / -1; grid-row: 2; } }
+.jh-fin__ptbar { position: sticky; top: 0; z-index: var(--z-actionbar); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border: var(--u-1) solid var(--c-line-strong); border-radius: var(--radius); background: var(--c-surface); box-shadow: var(--shadow-1); }
+.jh-fin__ptsel { font-size: var(--fs-md); font-weight: 700; color: var(--c-ink); }
+.jh-fin__ptbarbtns { display: flex; gap: var(--sp-2); }

@@ -119,6 +119,21 @@ with sync_playwright() as p:
     ok(pg.locator('[data-pt-confirm-month="2026-07"]').is_enabled(), '★ 거부 뒤 버튼이 다시 눌림(busy 가 영원히 잠기지 않음)')
     pg.close()
 
+    print('── 선택 바(맨 위 고정·실시간 개수)')
+    pg, errs = fresh(); pg.wait_for_selector('.jh-fin__pjttag', timeout=15000)
+    bar = pg.locator('[data-pt-bar]'); first_card = pg.locator('[data-pt-month]').first
+    ok(bar.count() == 1 and bar.bounding_box()['y'] < first_card.bounding_box()['y'], '★ 선택 바가 첫 달 카드보다 위에 보임')
+    ok('선택 0줄' in bar.inner_text(), '처음에는 "선택 0줄"')
+    pg.locator('[data-pt-row="e3_0"]').check(); pg.wait_for_timeout(100)
+    ok('선택 1줄' in bar.inner_text(), '★ 줄을 고르면 화면을 다시 그리지 않고도 바로 "선택 1줄"로 바뀜')
+    pg.locator('[data-pt-row="e1_1"]').check(); pg.wait_for_timeout(100)
+    ok('선택 2줄' in bar.inner_text() and pg.locator('[data-pt-row]:checked').count() == 2, '두 줄을 고르면 "선택 2줄"')
+    pg.locator('[data-pt-clear]').click(); pg.wait_for_timeout(100)
+    ok('선택 0줄' in bar.inner_text() and pg.locator('[data-pt-row]:checked').count() == 0, '★ "선택 해제"를 누르면 체크가 모두 풀리고 "선택 0줄"')
+    pg.set_viewport_size({'width': 1200, 'height': 260}); pg.evaluate('window.scrollTo(0, document.body.scrollHeight)'); pg.wait_for_timeout(200)
+    bb = bar.bounding_box(); ok(bb is not None and 0 <= bb['y'] <= 12, '★ 화면을 맨 아래까지 내려도 선택 바가 맨 위에 붙어 따라옴(y=%s)' % (bb and round(bb['y'])))
+    pg.close()
+
     print('── 선택한 줄 확정')
     pg, errs = fresh(); pg.wait_for_selector('.jh-fin__pjttag', timeout=15000)
     pg.locator('[data-pt-confirm-sel]').click(); pg.wait_for_timeout(300)
