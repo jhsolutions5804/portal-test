@@ -1,5 +1,5 @@
-import { db, functions, httpsCallable, collection, getDocs, getDoc, doc, query, orderBy, limit } from '../../core/firebase.js?v=20261018k';
-import { docToEntry, chunk, postPayload } from './logic.js?v=20261018k';
+import { db, functions, httpsCallable, collection, getDocs, getDoc, doc, query, orderBy, limit } from '../../core/firebase.js?v=20261019a';
+import { docToEntry, chunk, postPayload } from './logic.js?v=20261019a';
 
 /* 재무회계 데이터 읽기·쓰기 — Firestore 를 만지는 코드는 이 파일에만 둔다.
  * 읽기: ledger_entries(전표)·ledger_meta(설정·마감일·가맹점 규칙)·ledger_imports(가져오기 이력) — 보안 규칙상 관리자·재무회계팀(dept)·perms.finance 만 읽는다.
@@ -46,3 +46,19 @@ export const savePurchaseRules = (rules) => ledgerCall({ action: 'savePurchaseRu
 export async function attachEvidence(entryId, fileName, mime, dataBase64) { try { const r = await httpsCallable(functions, 'ledgerReceipt')({ action: 'attach', entryId, fileName, mime, dataBase64 }); return r.data; } catch (e) { throw new Error(friendly(e)); } }
 export async function getAttachment(entryId, aid) { try { const r = await httpsCallable(functions, 'ledgerReceipt')({ action: 'attachFile', entryId, aid }); return r.data; } catch (e) { throw new Error(friendly(e)); } }
 export const assignEntries = (ids, assignee) => ledgerCall({ action: 'assign', ids, assignee });
+/* 전표 프로젝트 표시(분석 태그) — 읽기는 보안 규칙상 재무회계 권한자만, 쓰기는 전부 서버 함수 ledgerAct 로만. 계산은 pjt-tag-logic.js */
+const byId = (snap) => { const o = {}; snap.forEach((d) => { o[d.id] = d.data(); }); return o; };
+export async function loadPjtTags() {
+  const [tg, pr, rg] = await Promise.all([getDocs(collection(db, 'ledger_pjt_tags')), getDocs(collection(db, 'ledger_pjt_proposals')), getDocs(collection(db, 'pjt_registry'))]);
+  const names = {}; rg.forEach((d) => { const v = d.data(); names[d.id] = (v && v.name) || d.id; });
+  return { tags: byId(tg), proposals: byId(pr), names };
+}
+/** 확정 — 서버 pjtTagBatch 에 100건씩 보내고 줄별 결과를 합친다(한 줄이 거부돼도 나머지는 저장됨) */
+export async function confirmPjtTags(items) {
+  const out = { saved: 0, rejected: [] }; let done = 0;
+  for (const part of chunk(items, 100)) { const r = await ledgerCall({ action: 'pjtTagBatch', items: part }); out.saved += r.saved.length; r.rejected.forEach((x) => out.rejected.push({ index: done + x.index, code: x.code, message: x.message })); done += part.length; }
+  return out;
+}
+/** 새 전표의 제안 만들기 — dryRun 이면 만들 건수만 알려 주고 쓰지 않는다 */
+export const proposeNewPjt = (dryRun) => ledgerCall({ action: 'pjtProposeNew', dryRun: dryRun === true });
+

@@ -1,0 +1,72 @@
+// 재무회계 "프로젝트 표시" 대기 목록 계산 시험 — 가짜 데이터만 쓴다(이 저장소는 공개이므로 실제 금액·거래처·직원 이름을 시험에 넣지 않는다).
+// 계산 함수: app/modules/finance/pjt-tag-logic.js (순수 함수, Firestore 를 읽지 않음). 서버 규칙(비공개 저장소 functions/ledger-pjt-tags.js)과 같은 대상 판정을 쓴다.
+import { taggableReason, buildPendingRows, groupByMonth, monthPreview, confirmItems, pairKey } from '../app/modules/finance/pjt-tag-logic.js';
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
+const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const E = (id, date, memo, lines, extra) => Object.assign({ id, no: id.toUpperCase(), date, memo, lines, source: { kind: 'manual' } }, extra || {});
+const ln = (account, side, amount, partner) => ({ account, side, amount, partner: partner || '' });
+
+console.log('── 대상 줄 판정(서버와 같은 규칙)');
+ok(taggableReason(ln('4010', 'C', 100)) === null && taggableReason(ln('4010', 'D', 100)) === null && taggableReason(ln('4090', 'C', 5)) === null, '매출 4xxx 는 대변·차변 모두 대상(마이너스 수정세금계산서는 차변)');
+ok(['5010', '5210', '5320', '5340', '5370'].every((a) => taggableReason(ln(a, 'D', 100)) === null) && ['5010', '5210', '5320', '5340', '5370'].every((a) => taggableReason(ln(a, 'C', 100)) !== null), '직접원가 5010·5210·5320·5340·5370 은 차변만 대상(대변은 아님)');
+ok(['5110', '5350', '5360', '5380', '1100', '2040', '6010', '9999'].every((a) => taggableReason(ln(a, 'D', 100)) !== null) && taggableReason(null) !== null && taggableReason(undefined) !== null, '공수 배분 5110·5350·회사 공통비 5360·5380·자산·부채·판관비·없는 줄은 대상이 아님');
+
+console.log('── 대기 목록 만들기');
+const entries = [
+  E('e1', '2026-07-31', '매출 가짜회사 · 2026년 07월 용역비', [ln('1100', 'D', 1000, '가짜회사'), ln('4010', 'C', 1000, '가짜회사')]),
+  E('e2', '2026-07-31', '매입 가짜외주', [ln('5210', 'D', 500, '가짜외주'), ln('2020', 'C', 500, '가짜외주')]),
+  E('e3', '2026-07-31', '차량', [ln('5360', 'D', 70), ln('2020', 'C', 70)]),
+  E('e4', '2026-08-01', '역분개', [ln('5210', 'C', 500, '가짜외주'), ln('2020', 'D', 500, '가짜외주')], { reverses: 'e2' }),
+  E('e5', '2026-08-02', '매입 확정된 건', [ln('5210', 'D', 300, '가짜외주'), ln('2020', 'C', 300)]),
+];
+const props = { 'e1_1': { entryId: 'e1', lineIdx: 1, method: '공수비율', splits: [{ pjt: 'pA', amount: 600 }, { pjt: 'pB', amount: 400 }], status: 'proposed', basisMonth: '2026-07', warn: '' }, 'e2_0': { entryId: 'e2', lineIdx: 0, method: '수동', splits: [], status: 'proposed', note: '2026-08 공수 없음', basisMonth: '2026-08', warn: '' } };
+const tags = { 'e5_0': { entryId: 'e5', lineIdx: 0, status: 'confirmed', splits: [{ pjt: 'pA', amount: 300 }], method: '직접' } };
+const rows = buildPendingRows(entries, props, tags);
+ok(rows.length === 2 && eq(rows.map((r) => r.id).sort(), ['e1_1', 'e2_0']), '★ 대상 줄 중 확정 태그가 없는 줄만 — 대상 아닌 줄(5360·1100·2020)·역분개 전표·이미 확정된 줄은 빠짐');
+const r1 = rows.find((r) => r.id === 'e1_1'), r2 = rows.find((r) => r.id === 'e2_0');
+ok(r1.entryId === 'e1' && r1.lineIdx === 1 && r1.amount === 1000 && r1.side === 'C' && r1.account === '4010' && r1.date === '2026-07-31' && r1.no === 'E1' && r1.partner === '가짜회사', '줄 정보(전표·줄번호·금액·차대·계정·일자·거래처)가 전표에서 옴');
+ok(r1.method === '공수비율' && eq(r1.splits, [{ pjt: 'pA', amount: 600 }, { pjt: 'pB', amount: 400 }]) && r1.hasProposal === true && r1.confirmable === true, '제안이 있고 분할이 있으면 확정할 수 있음(confirmable)');
+ok(r2.method === '수동' && r2.splits.length === 0 && r2.hasProposal === true && r2.confirmable === false && /공수/.test(r2.note), '"수동" 제안(공수 없음)은 확정할 수 없고 이유를 보여 줌');
+const noProp = buildPendingRows([E('e9', '2026-09-10', '매입 어딘가', [ln('5340', 'D', 40, '어딘가'), ln('2020', 'C', 40)])], {}, {});
+ok(noProp.length === 1 && noProp[0].hasProposal === false && noProp[0].confirmable === false && noProp[0].method === '' && noProp[0].splits.length === 0, '제안이 없는 대상 줄도 대기 목록에 나옴(사람이 직접 지정) — 확정은 불가');
+ok(buildPendingRows([E('x', '2026-07-31', 'm', [ln('4010', 'C', 100, 'p')])], {}, { x_0: { status: 'cleared', splits: [] } }).length === 1, '해제(cleared)된 태그는 확정이 아니므로 다시 대기 목록에 나옴');
+ok(buildPendingRows([E('x', '2026-07-31', 'm', [ln('4010', 'C', 100, 'p')])], { x_0: { entryId: 'x', lineIdx: 0, method: '제외', splits: [], status: 'proposed', note: '정산 차액' } }, {})[0].confirmable === true, '"제외" 제안은 분할이 없어도 확정할 수 있음(프로젝트에 붙이지 않는다는 결정)');
+ok(buildPendingRows([E('rv', '2026-08-03', '역분개된 매출', [ln('4010', 'D', 800, 'p'), ln('1100', 'C', 800, 'p')], { reverses: 'e1' })], {}, {}).length === 0, '★ 역분개 전표 안의 대상 줄(차변 매출)도 대기 목록에서 빠짐 — 원 전표의 지정이 기준');
+ok(buildPendingRows([E('cm', '2026-08-03', '차량', [ln('5360', 'D', 70), ln('5380', 'D', 30), ln('5110', 'D', 5), ln('5350', 'D', 6)])], {}, {}).length === 0, '★ 회사 공통비 5360·5380 과 공수 배분 5110·5350 은 대기 목록에 나오지 않음');
+ok(taggableReason(ln('5360', 'D', 1)).includes('공통') && taggableReason(ln('5380', 'D', 1)).includes('공통') && taggableReason(ln('5110', 'D', 1)).includes('공수'), '대상이 아닌 이유 문구가 계정 종류에 맞음(공통비 vs 공수 배분)');
+ok(buildPendingRows([E('mm', '2026-08-03', 'm', [ln('5210', 'D', 9, 'p')])], { mm_0: { entryId: 'mm', lineIdx: 0, method: '수동', splits: [{ pjt: 'pA', amount: 9 }], status: 'proposed' } }, {})[0].confirmable === false, '★ 방식이 "수동"이면 분할이 들어 있어도 확정 불가(사람이 직접 정해야 하는 제안)');
+ok(buildPendingRows([E('nn', '2026-08-03', 'm', [ln('5210', 'D', 9, 'p')])], { nn_0: { entryId: 'nn', lineIdx: 0, method: '직접', splits: [], status: 'proposed' } }, {})[0].confirmable === false, '★ 방식이 "직접"인데 분할이 비었으면 확정 불가');
+ok(buildPendingRows(null, null, null).length === 0 && buildPendingRows([], {}, {}).length === 0, '빈 입력·null 은 빈 목록(오류 없음)');
+
+console.log('── 월 묶음');
+const g = groupByMonth(rows);
+ok(eq(g.map((x) => x.month), ['2026-07', '2026-08']) && g[0].rows.length === 1 && g[1].rows.length === 1, '★ 제안의 기준월(basisMonth)로 묶음 — 같은 전표 일자(7/31)라도 기준월이 다르면 다른 달');
+const g2 = groupByMonth(noProp);
+ok(eq(g2.map((x) => x.month), ['2026-09']), '제안이 없으면 전표 일자의 달로 묶음(메모를 읽지 않음 — 서버와 규칙이 두 벌이 되지 않게)');
+ok(g[0].confirmableCount === 1 && g[1].confirmableCount === 0 && g[0].count === 1, '달마다 전체 줄 수와 확정 가능한 줄 수를 알려 줌');
+ok(eq(groupByMonth(rows).map((x) => x.month), groupByMonth(rows.slice().reverse()).map((x) => x.month)), '입력 순서와 무관하게 달 순서가 같음(오름차순)');
+
+console.log('── 월 미리보기(확정하면 프로젝트별 순액)');
+const pv = monthPreview([{ side: 'C', amount: 1000, account: '4010', splits: [{ pjt: 'pA', amount: 600 }, { pjt: 'pB', amount: 400 }] }, { side: 'D', amount: 200, account: '4010', splits: [{ pjt: 'pA', amount: 200 }] }, { side: 'D', amount: 500, account: '5210', splits: [{ pjt: 'pA', amount: 300 }, { pjt: 'pB', amount: 200 }] }]);
+ok(pv.revenue.pA === 400 && pv.revenue.pB === 400 && pv.revenueTotal === 800, '★ 매출 순액 = 대변 − 차변(마이너스 수정세금계산서가 원본을 상쇄)');
+ok(pv.cost.pA === 300 && pv.cost.pB === 200 && pv.costTotal === 500, '직접원가는 프로젝트별 합');
+ok(eq(monthPreview([]).revenue, {}) && monthPreview([]).revenueTotal === 0 && monthPreview([{ side: 'C', amount: 5, account: '4010', splits: [] }]).revenueTotal === 0, '분할이 없는 줄(제외·수동)은 미리보기 합에 넣지 않음, 빈 입력은 0');
+const sumPv = monthPreview([{ side: 'C', amount: 1200, account: '4010', splits: [{ pjt: 'a', amount: 700 }, { pjt: 'b', amount: 300 }, { pjt: 'c', amount: 200 }] }, { side: 'D', amount: 1200, account: '4010', splits: [{ pjt: 'a', amount: 700 }, { pjt: 'b', amount: 300 }, { pjt: 'c', amount: 200 }] }, { side: 'C', amount: 1100, account: '4010', splits: [{ pjt: 'a', amount: 650 }, { pjt: 'b', amount: 280 }, { pjt: 'c', amount: 170 }] }]);
+ok(sumPv.revenueTotal === 1100 && sumPv.revenue.a === 650 && sumPv.revenue.b === 280 && sumPv.revenue.c === 170, '★ 수정세금계산서 원본(+)·마이너스(−)·재발행(+) 세 줄이 같이 있으면 순액이 재발행 금액과 같음');
+
+console.log('── 같이 확정할 묶음(수정세금계산서)');
+const k = (memo, acct) => pairKey({ memo, account: acct });
+ok(k('매출 가짜 · 25년 3월 용역비', '4010') === k('매출 가짜 · 25년 3월 용역비 (수정)', '4010') && k('매출 가짜 · 25년 3월 용역비', '4010') !== k('매출 가짜 · 25년 4월 용역비', '4010') && k('매출 가짜 · 25년 3월 용역비', '4010') !== k('매출 가짜 · 25년 3월 용역비', '4090'), '★ "(수정)" 표시를 뺀 메모와 계정이 같으면 같은 묶음, 다른 달·다른 계정은 다른 묶음');
+const grp = buildPendingRows([E('a', '2026-08-01', '매출 가짜 · 26년 7월 용역비', [ln('4010', 'C', 100, 'p')]), E('b', '2026-08-01', '매출 가짜 · 26년 7월 용역비 (수정)', [ln('4010', 'D', 100, 'p')]), E('c', '2026-08-01', '매출 가짜 · 26년 7월 용역비 (수정)', [ln('4010', 'C', 90, 'p')]), E('d', '2026-08-01', '매출 다른 · 26년 7월 용역비', [ln('4010', 'C', 5, 'q')])], {}, {});
+ok(grp.filter((r) => r.pair === grp[0].pair).length === 3 && grp.find((r) => r.entryId === 'd').pair !== grp[0].pair, '대기 줄마다 묶음 표시(pair)가 붙어 같은 묶음 줄을 알 수 있음');
+
+console.log('── 확정 요청 만들기(서버 pjtTagBatch 형식)');
+const conf = confirmItems([{ id: 'e1_1', entryId: 'e1', lineIdx: 1, method: '공수비율', splits: [{ pjt: 'pA', amount: 600 }, { pjt: 'pB', amount: 400 }], note: '', basisMonth: '2026-07', confirmable: true }, { id: 'e2_0', entryId: 'e2', lineIdx: 0, method: '수동', splits: [], confirmable: false }, { id: 'e3_0', entryId: 'e3', lineIdx: 0, method: '제외', splits: [], note: '정산 차액', confirmable: true }]);
+ok(conf.length === 2 && eq(conf.map((c) => c.entryId), ['e1', 'e3']), '확정할 수 없는 줄(수동·제안 없음)은 요청에 넣지 않음');
+ok(eq(conf[0], { entryId: 'e1', lineIdx: 1, method: '공수비율', splits: [{ pjt: 'pA', amount: 600 }, { pjt: 'pB', amount: 400 }], note: '', basis: { month: '2026-07', note: '대기 목록에서 확정' } }), '요청 한 건의 모양이 서버 pjtTagBatch 가 받는 항목과 같음(필요한 필드만)');
+ok(eq(conf[1].splits, []) && conf[1].method === '제외' && conf[1].note === '정산 차액', '"제외"는 분할 없이 방식과 이유만 보냄');
+ok(confirmItems([]).length === 0 && confirmItems(null).length === 0, '빈 입력은 빈 요청');
+const big = confirmItems(Array.from({ length: 250 }, (_, i) => ({ id: 'x' + i, entryId: 'x' + i, lineIdx: 0, method: '직접', splits: [{ pjt: 'p', amount: 1 }], confirmable: true })));
+ok(big.length === 250, '요청 목록은 자르지 않음(100건씩 나누는 일은 data.js 가 함)');
+
+console.log('\n' + (fail ? '실패 ' + fail + '건 / 통과 ' + pass : '전부 통과 (' + pass + '건)')); process.exit(fail ? 1 : 0);

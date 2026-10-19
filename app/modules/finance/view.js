@@ -1,10 +1,11 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261018k';
-import { esc } from '../../core/ui.js?v=20261018k';
-import { MP_GROUPS, NPAY_CHOICES, ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport, vatForm, vatCardRef } from './logic.js?v=20261018k';
-import { CHOICES } from '../../shared/merchant-table.js?v=20261018k';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261019a';
+import { monthPreview } from './pjt-tag-logic.js?v=20261019a';
+import { esc } from '../../core/ui.js?v=20261019a';
+import { MP_GROUPS, NPAY_CHOICES, ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport, vatForm, vatCardRef } from './logic.js?v=20261019a';
+import { CHOICES } from '../../shared/merchant-table.js?v=20261019a';
 
 /* 재무회계 화면 조각 — 모든 값은 esc() 로 감싸 HTML 로 만든다. 스타일은 theme/finance.css 와 공용 클래스를 쓴다 */
-const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['monthly', '월간 수지'], ['forecast', '예측'], ['gap', '이엔지 정산'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];
+const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['monthly', '월간 수지'], ['forecast', '예측'], ['gap', '이엔지 정산'], ['pjt', '프로젝트 표시'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];
 export const tabsHtml = (cur) => '<div class="jh-segmented jh-finance__tabs" role="group" aria-label="재무회계">' + TABS.map(([k, l]) => '<a class="jh-segmented__item" href="#/finance/' + k + '" aria-pressed="' + (k === cur) + '">' + l + '</a>').join('') + '</div>';
 
 /** 카드 한 장: 제목 줄 + 안쪽 여백이 일정한 내용. flush=true 면 표처럼 가장자리까지 채우는 내용 */
@@ -347,4 +348,34 @@ export function bulkReclassHtml(info) {
 export function reclassHtml(e, defaultDate) {
   const rows = e.lines.map((l, i) => '<tr><td><select class="jh-select" data-rc-acc="' + i + '">' + accOptions(l.account) + '</select></td><td><input class="jh-input" data-rc-partner="' + i + '" data-rc-init="' + esc(/^분류 대기/.test(l.partner || '') ? '' : (l.partner || '')) + '" value="' + esc(/^분류 대기/.test(l.partner || '') ? '' : (l.partner || '')) + '" maxlength="60" placeholder="거래처(선택)" aria-label="거래처"></td><td>' + esc(l.side === 'D' ? '차변' : '대변') + '</td>' + num(l.amount) + '</tr>');
   return '<div class="jh-finance__pad">' + alertHtml('info', '원 전표를 역분개하고 고른 계정·거래처로 새 전표를 만듭니다. 원 전표와 역분개 전표는 그대로 남아 기록이 지워지지 않습니다. 옛 분류 대기 거래처 표시는 계정을 바꾸면 지워집니다.') + tbl([['계정'], ['거래처'], ['차/대'], ['금액', 'num']], rows, 'jh-fin-table--form') + '<div class="jh-finance__bar"><input class="jh-input" type="date" data-rc-date value="' + esc(defaultDate) + '" aria-label="새 전표 일자"><input class="jh-input jh-finance__q" data-rc-memo maxlength="200" placeholder="사유·메모(선택)"><button type="button" class="jh-btn" data-variant="primary" data-act="reclass-save">재분류 저장</button></div><div class="jh-field__hint">일자는 기본으로 원 전표 일자(마감일 이후)가 들어가며, 역분개 전표와 새 전표가 이 날짜로 만들어집니다. 마감일 다음 날 이후만 가능합니다.</div></div>';
+}
+
+
+/* ───────── 프로젝트 표시(대기 목록) ───────── */
+/** 전표 줄에 프로젝트를 붙이는 대기 목록 — 달별 카드. st = { rows, months, names, busy, msg, open, sel }. 계산은 pjt-tag-logic.js, 확정은 서버 pjtTagBatch(index.js 가 연결) */
+export function pjtTagHtml(st) {
+  const names = st.names || {}; const nm = (id) => esc(names[id] || id); const money = (v) => esc(won(Math.abs(v)));
+  const total = (st.rows || []).length; const can = (st.rows || []).filter((r) => r.confirmable).length; const dis = st.busy ? ' disabled' : '';
+  const head = '<div class="jh-finance__pad"><div class="jh-fin__ptstat"><strong>대기 ' + total + '줄</strong> · 확정할 수 있는 ' + can + '줄</div>' + (st.msg ? '<div class="jh-alert" data-tone="info" role="status">' + esc(st.msg) + '</div>' : '') + '</div>';
+  if (!total) return '<div class="jh-fin__pjttag" aria-busy="' + (st.busy ? 'true' : 'false') + '">' + head + '<div class="jh-finance__pad">대기 중인 줄이 없습니다. 새 전표를 가져오면 여기에 나타납니다.</div></div>';
+  const chip = (r) => {
+    if (!r.hasProposal) return '<span class="jh-fin__chip jh-fin__chip--none">제안 없음 — 직접 지정 필요</span>';
+    if (r.method === '제외') return '<span class="jh-fin__chip jh-fin__chip--skip">프로젝트에 붙이지 않음' + (r.note ? ' · ' + esc(r.note) : '') + '</span>';
+    if (!r.splits.length) return '<span class="jh-fin__chip jh-fin__chip--none">' + esc(r.note || '직접 지정 필요') + '</span>';
+    return r.splits.map((x) => '<span class="jh-fin__chip">' + nm(x.pjt) + ' ' + Math.round(1000 * x.amount / r.amount) / 10 + '%</span>').join('');
+  };
+  const pairSize = {}; (st.rows || []).forEach((r) => { pairSize[r.pair] = (pairSize[r.pair] || 0) + 1; });
+  const rowHtml = (r) => '<div class="jh-fin__ptrow' + (pairSize[r.pair] > 1 ? ' jh-fin__pair' : '') + '" data-pt-pair="' + esc(r.pair) + '">'
+    + '<input type="checkbox" data-pt-row="' + esc(r.id) + '"' + (r.confirmable ? '' : ' disabled') + (st.sel && st.sel[r.id] ? ' checked' : '') + (st.busy ? ' disabled' : '') + ' aria-label="' + esc(r.no) + ' 선택">'
+    + '<div class="jh-fin__ptinfo"><strong>' + esc(r.no) + '</strong> · ' + esc(r.date) + ' · ' + esc(r.partner || '거래처 없음') + '<div class="jh-fin__ptmemo">' + esc(r.memo) + ' · ' + esc(r.account) + '</div></div>'
+    + '<div class="jh-fin__ptchips">' + chip(r) + (r.warn ? '<div class="jh-fin__ptwarn">' + esc(r.warn) + '</div>' : '') + (!r.confirmable && r.hasProposal && r.splits.length === 0 && r.method !== '제외' ? '' : '') + '</div>'
+    + '<div class="num jh-fin__ptamt">' + (r.side === 'D' && /^4/.test(r.account) ? '−' : '') + money(r.amount) + '</div></div>';
+  const monthCard = (m) => {
+    const pv = monthPreview(m.rows); const revs = Object.keys(pv.revenue).sort(); const costs = Object.keys(pv.cost).sort();
+    const preview = '<div class="jh-fin__ptpreview" data-pt-net="' + pv.revenueTotal + '"><strong>미리보기</strong> — 확정하면 ' + (revs.length ? '매출 순액 ' + revs.map((k) => nm(k) + ' ' + money(pv.revenue[k])).join(' · ') + ' (합 ' + money(pv.revenueTotal) + ')' : '매출 순액 0원') + (costs.length ? ' · 직접원가 ' + costs.map((k) => nm(k) + ' ' + money(pv.cost[k])).join(' · ') + ' (합 ' + money(pv.costTotal) + ')' : '') + '</div>';
+    const act = '<div class="jh-fin__ptact"><button type="button" class="jh-btn jh-btn--primary" data-pt-confirm-month="' + esc(m.month) + '"' + (m.confirmableCount ? '' : ' disabled') + dis + '>이 달 전부 확정 (' + m.confirmableCount + '줄)</button></div>';
+    return '<section class="jh-card" data-pt-month="' + esc(m.month) + '"><div class="jh-panel__head"><h3>' + esc(m.month) + '</h3><span class="jh-fin__ptcount">' + m.count + '줄 · 확정 가능 ' + m.confirmableCount + '줄</span></div><div class="jh-finance__pad">' + m.rows.map(rowHtml).join('') + preview + act + '</div></section>';
+  };
+  const bar = '<div class="jh-finance__pad"><button type="button" class="jh-btn" data-pt-confirm-sel' + dis + '>선택한 줄 확정</button></div>';
+  return '<div class="jh-fin__pjttag" aria-busy="' + (st.busy ? 'true' : 'false') + '">' + head + (st.months || []).map(monthCard).join('') + bar + '</div>';
 }

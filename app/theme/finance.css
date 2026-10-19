@@ -135,3 +135,22 @@ a.jh-kpi:hover { border-color: var(--c-primary); }
 @media (min-width: 1500px) { .jh-fin__home { grid-template-columns: 17rem minmax(0, 1fr) var(--u-320); } .jh-fin__homedetail { grid-column: auto; } }
 @media (max-width: 1099px) { .jh-fin__home { grid-template-columns: minmax(0, 1fr); } .jh-fin__homeside { position: static; } .jh-fin__homeside .jh-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .jh-fin__homedetail { grid-column: auto; } }
 
+/* ───── 프로젝트 표시(대기 목록) — 달별 카드 안의 줄·분할 칩·미리보기. 색·간격은 전부 tokens.css 변수 ───── */
+.jh-fin__pjttag { display: grid; gap: var(--sp-4); min-width: 0; }
+.jh-fin__ptstat { font-size: var(--fs-md); color: var(--c-ink); }
+.jh-fin__ptcount { font-size: var(--fs-sm); color: var(--c-ink-2); }
+.jh-fin__ptrow { display: grid; grid-template-columns: var(--u-20) minmax(0, 2fr) minmax(0, 3fr) minmax(var(--u-96), auto); gap: var(--sp-3); align-items: start; padding: var(--sp-3) var(--sp-2); border-top: var(--u-1) solid var(--c-line); }
+.jh-fin__ptrow:first-child { border-top: 0; }
+.jh-fin__ptrow input[type="checkbox"] { margin-top: var(--u-3); }
+.jh-fin__ptinfo { min-width: 0; font-size: var(--fs-sm); color: var(--c-ink); overflow-wrap: anywhere; }
+.jh-fin__ptmemo { margin-top: var(--u-2); font-size: var(--fs-xs); color: var(--c-ink-2); }
+.jh-fin__ptchips { display: flex; flex-wrap: wrap; gap: var(--sp-1); align-items: center; min-width: 0; }
+.jh-fin__chip { display: inline-block; padding: var(--u-2) var(--sp-2); border-radius: var(--radius-sm); background: var(--c-primary-weak); color: var(--c-primary-strong); font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; }
+.jh-fin__chip--none { background: var(--c-bg); color: var(--c-ink-2); border: var(--u-1) dashed var(--c-line-strong); white-space: normal; }
+.jh-fin__chip--skip { background: var(--c-line); color: var(--c-ink); white-space: normal; }
+.jh-fin__ptwarn { flex-basis: 100%; padding: var(--u-2) var(--sp-2); border-radius: var(--radius-sm); background: var(--c-warn-bg); color: var(--c-warn-ink); font-size: var(--fs-xs); }
+.jh-fin__ptamt { text-align: right; font-size: var(--fs-sm); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.jh-fin__pair { box-shadow: inset var(--u-3) 0 0 var(--c-warn); }
+.jh-fin__ptpreview { padding: var(--sp-3); border-radius: var(--radius-sm); background: var(--c-bg); font-size: var(--fs-sm); color: var(--c-ink); overflow-wrap: anywhere; }
+.jh-fin__ptact { display: flex; justify-content: flex-end; gap: var(--sp-2); }
+@media (max-width: 899px) { .jh-fin__ptrow { grid-template-columns: var(--u-20) minmax(0, 1fr) auto; } .jh-fin__ptamt { grid-column: 3; grid-row: 1; } .jh-fin__ptchips { grid-column: 2 / -1; grid-row: 2; } }

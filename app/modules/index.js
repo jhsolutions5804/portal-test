@@ -1,23 +1,23 @@
 /* 플랫폼에 꽂는 모듈 목록 — 모듈을 더하거나 빼는 일은 이 파일 한 곳만 고친다.
  * 각 항목은 { manifest, mount }. 핵심부(core/)는 모듈 폴더를 직접 알지 못하고 이 목록만 읽는다. */
-import * as edoc from './edoc/index.js?v=20261018k';
-import * as attendance from './attendance/index.js?v=20261018k';
-import * as calendar from './calendar/index.js?v=20261018k';
-import * as company from './company/index.js?v=20261018k';
-import * as evalm from './eval/index.js?v=20261018k';
-import * as finance from './finance/index.js?v=20261018k';
-import * as plan from './plan/index.js?v=20261018k';
-import * as general from './general/index.js?v=20261018k';
-import * as hr from './hr/index.js?v=20261018k';
-import * as pjt from './pjt/index.js?v=20261018k';
-import { modules as legacy, hostNative } from './legacy/index.js?v=20261018k';
+import * as edoc from './edoc/index.js?v=20261019a';
+import * as attendance from './attendance/index.js?v=20261019a';
+import * as calendar from './calendar/index.js?v=20261019a';
+import * as company from './company/index.js?v=20261019a';
+import * as evalm from './eval/index.js?v=20261019a';
+import * as finance from './finance/index.js?v=20261019a';
+import * as plan from './plan/index.js?v=20261019a';
+import * as general from './general/index.js?v=20261019a';
+import * as hr from './hr/index.js?v=20261019a';
+import * as pjt from './pjt/index.js?v=20261019a';
+import { modules as legacy, hostNative } from './legacy/index.js?v=20261019a';
 
 export const MODULES = [
   { manifest: edoc.manifest, mount: edoc.mount },
   { manifest: attendance.manifest, mount: attendance.mount },
   { manifest: calendar.manifest, mount: calendar.mount },
 ].concat(legacy);   // 옛 모듈(기획·인사·PJT·내 팀 공수표)은 어댑터로 입주 — 새 모듈로 바뀌면 이 줄에서 빠지고 위 목록으로 옮긴다
-['home', 'entries', 'expense', 'import', 'reports', 'monthly', 'forecast', 'gap', 'rules', 'opening', 'settings'].forEach((k) => hostNative('finance', k, (root, route, ctx) => finance.mount(root, { segs: [k], query: (route && route.query) || {} }, ctx)));   // 재무회계: 인사총무와 같은 공용 틀(사이드바·내용 영역) 안의 새 화면
+['home', 'entries', 'expense', 'import', 'reports', 'monthly', 'forecast', 'gap', 'rules', 'opening', 'settings', 'pjt'].forEach((k) => hostNative('finance', k, (root, route, ctx) => finance.mount(root, { segs: [k], query: (route && route.query) || {} }, ctx)));   // 재무회계: 인사총무와 같은 공용 틀(사이드바·내용 영역) 안의 새 화면
 ['org', 'rules', 'staff', 'alog'].forEach((k) => hostNative('company', k, (root, route, ctx) => company.mount(root, { segs: [k].concat((route && route.segs) || []), query: (route && route.query) || {} }, ctx)));   // 회사: 인사총무와 같은 공용 틀(사이드바·내용 영역) 안의 새 화면
 // 평가 결과 통보(result)의 발송 기능은 인사 모듈의 기존 "본인 확인 링크" 흐름을 쓴다 — 평가 모듈이 인사 모듈을 직접 가져오지 않도록 여기서 한 번만 연결해 주입한다.
 const resultExtra = {   // 메일 발송은 본섭에서만(테섭은 시험 중 실제 직원에게 메일이 나가지 않게 꺼 둠) — 테섭 여부는 평가 모듈(ops.js)이 판단한다
