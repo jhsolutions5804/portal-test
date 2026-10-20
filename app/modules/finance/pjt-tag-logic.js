@@ -61,3 +61,31 @@ export async function autoProposeAfterImport(call, posted) {
     return { created: n, note: n ? '프로젝트 표시 제안 ' + n + '건을 만들었습니다(재무회계 "프로젝트 표시" 탭에서 확정)' : '' };
   } catch (e) { return { created: 0, note: '프로젝트 표시 제안은 만들지 못했습니다(나중에 "프로젝트 표시" 탭에서 다시 만들 수 있습니다)' }; }
 }
+/** 줄 직접 지정 입력 검사 — 서버 cleanSplits 와 같은 규칙을 앱에서 먼저 알려 준다(최종 판단은 서버). amount = 줄 금액(양의 정수), rows = [{ pjt, amount(입력한 글자) }].
+ * 프로젝트·금액이 둘 다 빈 칸은 "칸만 추가한 줄"이라 무시한다. 금액은 공백·쉼표를 지운 뒤 숫자만 인정(소수·음수·글자 거절). 한 줄은 최대 12개 프로젝트, 같은 프로젝트 두 번 금지, 합 = 줄 금액.
+ * 결과 = { ok, splits, method, remaining, error }: 칸이 하나면 "직접", 여러 칸이면 "수동". remaining = 줄 금액 − 합(모자라면 양수·넘치면 음수). */
+const MAX_SPLIT_ROWS = 12; const fmtWon = (n) => Math.abs(n).toLocaleString('ko-KR') + '원';
+export function splitDraft(amount, rows) {
+  const bad = (error, extra) => Object.assign({ ok: false, splits: [], method: '', remaining: 0, error }, extra || {});
+  if (!Number.isInteger(amount) || amount <= 0) return bad('줄 금액을 확인할 수 없어 지정할 수 없습니다.');
+  if (!Array.isArray(rows)) return bad('프로젝트별 금액을 한 개 이상 입력해 주세요.');
+  const used = rows.map((r) => ({ pjt: String((r && r.pjt) == null ? '' : r.pjt).trim(), raw: String((r && r.amount) == null ? '' : r.amount).replace(/[,\s]/g, '') })).filter((r) => r.pjt || r.raw);
+  if (!used.length) return bad('프로젝트별 금액을 한 개 이상 입력해 주세요.');
+  if (used.length > MAX_SPLIT_ROWS) return bad('한 줄은 최대 ' + MAX_SPLIT_ROWS + '개 프로젝트까지 나눌 수 있습니다.');
+  const seen = new Set(); const splits = []; let sum = 0;
+  for (const r of used) {
+    if (!r.pjt) return bad('프로젝트를 골라 주세요.'); if (!/^\d+$/.test(r.raw)) return bad('금액은 1원 이상의 정수로 입력해 주세요.');
+    const n = Number(r.raw); if (!Number.isSafeInteger(n) || n <= 0) return bad('금액은 1원 이상의 정수로 입력해 주세요.');
+    if (seen.has(r.pjt)) return bad('같은 프로젝트를 두 번 고를 수 없습니다.'); seen.add(r.pjt); sum += n; splits.push({ pjt: r.pjt, amount: n });
+  }
+  const remaining = amount - sum;
+  if (remaining !== 0) return bad(remaining > 0 ? '합이 ' + fmtWon(remaining) + ' 모자랍니다. 합이 줄 금액과 같아야 저장됩니다.' : '합이 ' + fmtWon(remaining) + ' 넘칩니다. 합이 줄 금액과 같아야 저장됩니다.', { remaining });
+  return { ok: true, splits, method: splits.length === 1 ? '직접' : '수동', remaining: 0, error: '' };
+}
+/** 줄 직접 지정 패널의 "남은 금액" 문구 — 패널을 처음 그릴 때(view.js)와 입력할 때마다 갱신(index.js)이 같은 함수를 쓴다. 칸의 금액은 공백·쉼표를 지운 뒤 숫자만 인정하고, 숫자가 아니면(글자·음수·소수) 0 으로 센다.
+ * 합이 모자라면 "남은 금액 N원"(합이 맞으면 0원), 넘치면 "N원 넘침"(음수로 쓰지 않는다). 줄 금액은 절댓값 기준. */
+export function splitLeftText(amount, rows) {
+  const total = Math.abs(Number(amount) || 0); const sum = (Array.isArray(rows) ? rows : []).reduce((a, r) => { const raw = String((r && r.amount) == null ? '' : r.amount).replace(/[,\s]/g, ''); return a + (/^\d+$/.test(raw) ? Number(raw) : 0); }, 0);
+  const rest = total - sum; return rest >= 0 ? '남은 금액 ' + rest.toLocaleString('ko-KR') + '원' : Math.abs(rest).toLocaleString('ko-KR') + '원 넘침';
+}
+

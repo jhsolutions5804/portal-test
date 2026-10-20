@@ -1,8 +1,8 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261020d';
-import { monthPreview } from './pjt-tag-logic.js?v=20261020d';
-import { esc } from '../../core/ui.js?v=20261020d';
-import { MP_GROUPS, NPAY_CHOICES, ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport, vatForm, vatCardRef } from './logic.js?v=20261020d';
-import { CHOICES } from '../../shared/merchant-table.js?v=20261020d';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261020e';
+import { monthPreview, splitLeftText } from './pjt-tag-logic.js?v=20261020e';
+import { esc } from '../../core/ui.js?v=20261020e';
+import { MP_GROUPS, NPAY_CHOICES, ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport, vatForm, vatCardRef } from './logic.js?v=20261020e';
+import { CHOICES } from '../../shared/merchant-table.js?v=20261020e';
 
 /* 재무회계 화면 조각 — 모든 값은 esc() 로 감싸 HTML 로 만든다. 스타일은 theme/finance.css 와 공용 클래스를 쓴다 */
 const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['monthly', '월간 수지'], ['forecast', '예측'], ['gap', '이엔지 정산'], ['pjt', '프로젝트 표시'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];
@@ -353,6 +353,19 @@ export function reclassHtml(e, defaultDate) {
 
 /* ───────── 프로젝트 표시(대기 목록) ───────── */
 /** 전표 줄에 프로젝트를 붙이는 대기 목록 — 달별 카드. st = { rows, months, names, busy, msg, open, sel }. 계산은 pjt-tag-logic.js, 확정은 서버 pjtTagBatch(index.js 가 연결) */
+/** 줄 직접 지정 패널 안쪽 — 한 줄을 프로젝트 하나 이상으로 나눠 직접 지정한다(서버 pjtTagSet). row = 대기 줄, names = { 프로젝트 id: 이름 }, draft = 입력 중이던 칸 [{ pjt, amount }](없으면 제안 분할, 그것도 없으면 빈 칸 하나).
+ * 선택지의 값은 id, 보이는 글자는 이름이다. 목록에 없는 id(이미 지워진 프로젝트)가 칸에 있으면 그 id 를 선택지에 더해 몰래 바뀌지 않게 한다. 금액은 줄 금액을 항상 양수로 보여 준다(수정세금계산서 − 는 줄 목록의 표시). */
+export function pjtSplitDialogHtml(row, names, draft) {
+  const r = row || {}; const nm = names || {}; const fmt = (n) => Math.abs(Number(n) || 0).toLocaleString('ko-KR');
+  const cells = (Array.isArray(draft) && draft.length ? draft : (Array.isArray(r.splits) && r.splits.length ? r.splits.map((x) => ({ pjt: x.pjt, amount: fmt(x.amount) })) : [{ pjt: '', amount: '' }]));
+  const ids = Object.keys(nm).sort((a, b) => String(nm[a]).localeCompare(String(nm[b]), 'ko')); cells.forEach((c) => { if (c && c.pjt && ids.indexOf(c.pjt) === -1) ids.push(c.pjt); });
+  const opts = (sel) => '<option value=""' + (sel ? '' : ' selected') + '>프로젝트 선택</option>' + ids.map((id) => '<option value="' + esc(id) + '"' + (id === sel ? ' selected' : '') + '>' + esc(nm[id] || id) + '</option>').join('');
+  const cellHtml = (c) => '<div class="jh-fin__spcell"><select class="jh-select" data-sp-pjt aria-label="프로젝트">' + opts(c && c.pjt) + '</select><input class="jh-input" data-sp-amt inputmode="numeric" placeholder="금액" aria-label="금액" value="' + esc(c && c.amount != null ? c.amount : '') + '"></div>';
+  return '<div class="jh-fin__spinfo"><strong>' + esc(r.no) + '</strong> · ' + esc(r.date) + ' · ' + esc(r.partner || '거래처 없음') + '<div class="jh-fin__ptmemo">' + esc(r.memo) + ' · ' + esc(r.account) + '</div><div class="num">줄 금액 ' + fmt(r.amount) + '원</div></div>'
+    + '<div class="jh-fin__spcells" data-sp-cells data-sp-total="' + esc(Math.abs(Number(r.amount) || 0)) + '">' + cells.map(cellHtml).join('') + '</div>'
+    + '<div class="jh-fin__spbar"><button type="button" class="jh-btn" data-variant="ghost" data-sp-add>+ 칸 추가</button><span class="jh-field__hint" data-sp-left role="status">' + esc(splitLeftText(r.amount, cells)) + '</span></div>'
+    + '<div class="jh-field"><label class="jh-field__label" for="sp-note">메모(선택)</label><input class="jh-input" id="sp-note" data-sp-note maxlength="200" placeholder="예: 대표님 지정"></div>';
+}
 export function pjtTagHtml(st) {
   const names = st.names || {}; const nm = (id) => esc(names[id] || id); const money = (v) => esc(won(Math.abs(v)));
   const total = (st.rows || []).length; const can = (st.rows || []).filter((r) => r.confirmable).length; const dis = st.busy ? ' disabled' : '';
@@ -368,7 +381,7 @@ export function pjtTagHtml(st) {
   const rowHtml = (r) => '<div class="jh-fin__ptrow' + (pairSize[r.pair] > 1 ? ' jh-fin__pair' : '') + '" data-pt-pair="' + esc(r.pair) + '">'
     + '<input type="checkbox" data-pt-row="' + esc(r.id) + '"' + (r.confirmable ? '' : ' disabled') + (st.sel && st.sel[r.id] ? ' checked' : '') + (st.busy ? ' disabled' : '') + ' aria-label="' + esc(r.no) + ' 선택">'
     + '<div class="jh-fin__ptinfo"><strong>' + esc(r.no) + '</strong> · ' + esc(r.date) + ' · ' + esc(r.partner || '거래처 없음') + '<div class="jh-fin__ptmemo">' + esc(r.memo) + ' · ' + esc(r.account) + '</div></div>'
-    + '<div class="jh-fin__ptchips">' + chip(r) + (r.warn ? '<div class="jh-fin__ptwarn">' + esc(r.warn) + '</div>' : '') + (!r.confirmable && r.hasProposal && r.splits.length === 0 && r.method !== '제외' ? '' : '') + '</div>'
+    + '<div class="jh-fin__ptchips">' + chip(r) + (r.warn ? '<div class="jh-fin__ptwarn">' + esc(r.warn) + '</div>' : '') + (!r.confirmable && r.hasProposal && r.splits.length === 0 && r.method !== '제외' ? '' : '') + '<button type="button" class="jh-btn jh-fin__ptedit" data-pt-edit="' + esc(r.id) + '"' + dis + '>직접 지정</button></div>'
     + '<div class="num jh-fin__ptamt">' + (r.side === 'D' && /^4/.test(r.account) ? '−' : '') + money(r.amount) + '</div></div>';
   const monthCard = (m) => {
     const pv = monthPreview(m.rows); const revs = Object.keys(pv.revenue).sort(); const costs = Object.keys(pv.cost).sort();

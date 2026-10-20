@@ -42,6 +42,7 @@ export const httpsCallable = (f, name) => async (p) => {
   window.__calls.push(JSON.parse(JSON.stringify(p)));
   if (window.__fail && window.__fail[p.action]) throw Object.assign(new Error(window.__fail[p.action]), { code: 'internal' });
   if (window.__resp && window.__resp[p.action] !== undefined) return { data: typeof window.__resp[p.action] === 'function' ? window.__resp[p.action](p) : window.__resp[p.action] };
+  if (p.action === 'pjtTagSet') { await new Promise((r) => setTimeout(r, window.__delay || 200)); if (window.__mode === 'reject') throw Object.assign(new Error('분할 금액의 합이 줄 금액과 다릅니다(시험 거부 사유)'), { code: 'invalid-argument' }); const id = p.entryId + '_' + p.lineIdx; DATA.ledger_pjt_tags[id] = { status: 'confirmed', entryId: p.entryId, lineIdx: p.lineIdx, splits: p.splits, method: p.method }; return { data: { ok: true, id } }; }
   if (p.action === 'pjtTagBatch') { await new Promise((r) => setTimeout(r, window.__delay || 200));
     if (window.__mode === 'reject') return { data: { saved: [], rejected: p.items.map((x, i) => ({ index: i, code: 'invalid-argument', message: '합계가 맞지 않는 시험 거부 사유' })) } };
     p.items.forEach((x) => { const id = x.entryId + '_' + x.lineIdx; DATA.ledger_pjt_tags[id] = Object.assign({ status: 'confirmed', entryId: x.entryId, lineIdx: x.lineIdx, splits: x.splits }, {}); });
@@ -198,8 +199,49 @@ try:
         pg, errs = imp_fresh({'posted': [{'id': 'E100'}], 'duplicates': [], 'rejected': []}, {'ok': True, 'created': 0, 'skippedExisting': 4})
         pg.locator('[data-act=\"commit\"]').click(); pg.wait_for_function('window.__calls.some(c => c.action === \"pjtProposeNew\")', timeout=8000); pg.wait_for_timeout(300)
         ok('저장 1건' in pg.inner_text('body') and '프로젝트 표시 제안' not in pg.inner_text('body'), '만들 제안이 0건이면 굳이 알리지 않는다(가져오기 결과만)'); pg.close()
+        print('── 줄 직접 지정 패널(실제 클릭 → 패널 → 저장)')
+        def sp_open(pg, rid):
+            pg.locator('[data-pt-edit="%s"]' % rid).click(); pg.wait_for_selector('.jh-dialog [data-sp-cells]', timeout=5000)
+        def sets(pg): return pg.evaluate('window.__calls.filter(c => c.action === "pjtTagSet")')
+        def left(pg): return pg.inner_text('.jh-dialog [data-sp-left]')
+        pg, errs = fresh(); pg.wait_for_selector('.jh-fin__pjttag', timeout=15000)
+        sp_open(pg, 'e2_0')
+        ok('2026-0002' in pg.inner_text('.jh-dialog') and '가짜외주' in pg.inner_text('.jh-dialog') and '500' in pg.inner_text('.jh-dialog'), '★ 직접 지정을 누르면 패널이 열리고 줄 정보(번호·거래처·금액 500원)가 보인다')
+        ok(pg.locator('.jh-dialog [data-sp-pjt]').count() == 1 and len(sets(pg)) == 0, '★ 제안이 없는 줄은 빈 칸 하나로 열리고 서버 호출은 0건이다')
+        ok('남은 금액 500' in left(pg), '남은 금액이 줄 금액 500으로 시작한다')
+        pg.locator('.jh-dialog [data-sp-pjt]').first.select_option('pA'); pg.locator('.jh-dialog [data-sp-amt]').first.fill('300'); pg.wait_for_timeout(100)
+        ok('200' in left(pg), '★ 금액을 입력하면 남은 금액이 실시간으로 바뀐다(500 − 300 = 200) (실제: %s)' % left(pg))
+        pg.locator('.jh-dialog [data-act="save"]').click(); pg.wait_for_timeout(250)
+        ok(len(sets(pg)) == 0 and pg.locator('.jh-dialog').count() == 1 and ('모자' in pg.inner_text('.jh-dialog') or '200' in pg.inner_text('.jh-dialog [data-panel-msg]')), '★ 합이 안 맞으면 저장을 눌러도 서버 호출 0건이고 패널은 열린 채 이유가 보인다')
+        pg.locator('.jh-dialog [data-sp-amt]').first.fill('500'); pg.locator('.jh-dialog [data-sp-note]').fill('대표님 지정'); pg.wait_for_timeout(100)
+        pg.locator('.jh-dialog [data-act="save"]').click(); pg.wait_for_function('window.__calls.some(c => c.action === "pjtTagSet")', timeout=5000); pg.wait_for_timeout(500)
+        cs = sets(pg); ok(len(cs) == 1 and cs[0] == {'action': 'pjtTagSet', 'entryId': 'e2', 'lineIdx': 0, 'method': '직접', 'splits': [{'pjt': 'pA', 'amount': 500}], 'note': '대표님 지정'}, '★ 합이 맞게 저장하면 서버에 pjtTagSet 이 정확히 1건(방식 직접·메모 포함)으로 간다 (실제: %s)' % cs)
+        ok(pg.locator('.jh-dialog').count() == 0, '★ 저장에 성공하면 패널이 닫힌다')
+        ok(pg.locator('[data-pt-row="e2_0"]').count() == 0 and '가짜외주' not in pg.inner_text('.jh-fin__pjttag'), '★ 저장한 줄(e2_0)은 대기 목록에서 사라진다(확정됐으므로)')
+        ok(not errs, '화면 오류 없음 %s' % errs[:2]); pg.close()
+        pg, errs = fresh(); pg.wait_for_selector('.jh-fin__pjttag', timeout=15000); sp_open(pg, 'e1_1')
+        ok(pg.locator('.jh-dialog [data-sp-pjt]').count() == 2 and pg.locator('.jh-dialog [data-sp-pjt]').nth(0).input_value() == 'pA' and pg.locator('.jh-dialog [data-sp-amt]').nth(1).input_value() == '400', '★ 제안이 있는 줄은 제안(A 600·B 400)이 두 칸에 채워져 열린다')
+        ok('남은 금액 0' in left(pg), '채워진 칸의 합이 맞으면 남은 금액 0이다')
+        pg.locator('.jh-dialog [data-act="save"]').click(); pg.wait_for_function('window.__calls.some(c => c.action === "pjtTagSet")', timeout=5000); pg.wait_for_timeout(400)
+        cs = sets(pg); ok(len(cs) == 1 and cs[0]['method'] == '수동' and [x['pjt'] for x in cs[0]['splits']] == ['pA', 'pB'] and cs[0]['note'] == '', '★ 두 프로젝트로 나눠 저장하면 방식은 수동이고 분할이 그대로 간다'); pg.close()
+        pg, errs = fresh(); pg.wait_for_selector('.jh-fin__pjttag', timeout=15000); sp_open(pg, 'e1_1')
+        for k in range(20): pg.locator('.jh-dialog [data-sp-add]').click()
+        ok(pg.locator('.jh-dialog [data-sp-pjt]').count() == 12, '★ 칸 추가는 12칸에서 멈춘다(서버 한도) — 실제 %d칸' % pg.locator('.jh-dialog [data-sp-pjt]').count()); pg.close()
+        pg, errs = fresh(); pg.wait_for_selector('.jh-fin__pjttag', timeout=15000); sp_open(pg, 'e2_0')
+        pg.locator('.jh-dialog [data-close]').last.click(); pg.wait_for_timeout(200)
+        ok(pg.locator('.jh-dialog').count() == 0 and len(sets(pg)) == 0 and pg.locator('[data-pt-row="e2_0"]').count() == 1, '★ 닫기를 누르면 서버 호출 0건이고 줄은 그대로 대기 목록에 있다')
+        sp_open(pg, 'e2_0'); pg.keyboard.press('Escape'); pg.wait_for_timeout(200); ok(pg.locator('.jh-dialog').count() == 0 and len(sets(pg)) == 0, 'Esc 로 닫아도 서버 호출 0건'); pg.close()
+        pg, errs = fresh('reject'); pg.wait_for_selector('.jh-fin__pjttag', timeout=15000); sp_open(pg, 'e2_0')
+        pg.locator('.jh-dialog [data-sp-pjt]').first.select_option('pB'); pg.locator('.jh-dialog [data-sp-amt]').first.fill('500'); pg.locator('.jh-dialog [data-act="save"]').click(); pg.wait_for_function('window.__calls.some(c => c.action === "pjtTagSet")', timeout=5000); pg.wait_for_timeout(500)
+        ok(pg.locator('.jh-dialog').count() == 1 and '시험 거부 사유' in pg.inner_text('.jh-dialog'), '★ 서버가 거절하면 패널이 열린 채 서버가 준 이유가 패널 안에 보인다')
+        ok(pg.locator('.jh-dialog [data-sp-amt]').first.input_value() == '500' and pg.locator('.jh-dialog [data-sp-pjt]').first.input_value() == 'pB', '★ 거절돼도 입력한 값(프로젝트 B·500)은 그대로 남아 있다(다시 고쳐 시도할 수 있게)')
+        ok(pg.locator('[data-pt-row="e2_0"]').count() == 1 and not errs, '거절되면 줄은 대기 목록에 그대로 있고 화면 오류 없음 %s' % errs[:2]); pg.close()
+        pg, errs = fresh('ok', 600); pg.wait_for_selector('.jh-fin__pjttag', timeout=15000); sp_open(pg, 'e2_0')
+        pg.locator('.jh-dialog [data-sp-pjt]').first.select_option('pA'); pg.locator('.jh-dialog [data-sp-amt]').first.fill('500')
+        pg.evaluate("() => { const b = document.querySelector('.jh-dialog [data-act=\"save\"]'); b.click(); b.click(); b.click(); }"); pg.wait_for_timeout(1200)
+        ok(len(sets(pg)) == 1, '★ 저장 중에 여러 번 눌러도 서버 호출은 1건이다(두 번 눌림 방지) — 실제 %d건' % len(sets(pg))); pg.close()
         b.close()
 except Exception as _e:
     import traceback; fail_n += 1; print('FAIL 시험이 예외로 중단됨 → ' + type(_e).__name__ + ': ' + str(_e).split('\n')[0][:200]); print(traceback.format_exc()[-500:])
-if pass_n + fail_n < 46: fail_n += 1; print('FAIL ★ 시험 전체가 끝까지 실행됨(%d건 ≥ 46) — 중간에 죽어 뒤쪽이 안 도는 일 방지' % (pass_n + fail_n))
+if pass_n + fail_n < 63: fail_n += 1; print('FAIL ★ 시험 전체가 끝까지 실행됨(%d건 ≥ 63) — 중간에 죽어 뒤쪽이 안 도는 일 방지' % (pass_n + fail_n))
 print('\n' + ('실패 %d건 / 통과 %d' % (fail_n, pass_n) if fail_n else '전부 통과 (%d건)' % pass_n)); sys.exit(1 if fail_n else 0)

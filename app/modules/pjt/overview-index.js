@@ -1,18 +1,18 @@
 /* PJT 전체 홈(주소 #/pjt/home)과 종료 PJT(#/pjt/ended) — 새 화면. 규칙은 overview.js, 표시는 overview-view.js.
  * 프로젝트를 만들거나 종료·재개·삭제하면 메뉴의 프로젝트 칩도 바뀌어야 하므로 'jh:pjt-changed' 알림을 보낸다(legacy/frame.js 가 받아 칩을 다시 읽는다). */
-import { db, collection, doc, getDocs, setDoc, addDoc, deleteDoc, deleteField, serverTimestamp, functions, httpsCallable } from '../../core/firebase.js?v=20261020d';
-import { esc, toast } from '../../core/ui.js?v=20261020d';
-import { confirmDialog } from '../../core/dialog.js?v=20261020d';
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261020d';
-import { loadHolidays, holidayName } from '../../shared/holidays.js?v=20261020d';
-import { pathsFor } from './adapter.js?v=20261020d';
-import { appToday } from './attendance.js?v=20261020d';
-import { visibleProjects } from './projects.js?v=20261020d';
-import { dowOf } from './schedule.js?v=20261020d';
-import { overviewHtml, schedInner, detailInner, endedHtml } from './overview-view.js?v=20261020d';
-import { createLogPanel } from './log-panel.js?v=20261020d';
-import { createInboxPanel } from './inbox-panel.js?v=20261020d';
-import { newProjectData, deleteConfirmed, endedSorted, shiftMonth } from './overview.js?v=20261020d';
+import { db, collection, doc, getDocs, setDoc, addDoc, deleteDoc, deleteField, serverTimestamp, functions, httpsCallable } from '../../core/firebase.js?v=20261020e';
+import { esc, toast } from '../../core/ui.js?v=20261020e';
+import { confirmDialog } from '../../core/dialog.js?v=20261020e';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261020e';
+import { loadHolidays, holidayName } from '../../shared/holidays.js?v=20261020e';
+import { pathsFor } from './adapter.js?v=20261020e';
+import { appToday } from './attendance.js?v=20261020e';
+import { visibleProjects } from './projects.js?v=20261020e';
+import { dowOf } from './schedule.js?v=20261020e';
+import { overviewHtml, schedInner, detailInner, endedHtml } from './overview-view.js?v=20261020e';
+import { createLogPanel } from './log-panel.js?v=20261020e';
+import { createInboxPanel } from './inbox-panel.js?v=20261020e';
+import { newProjectData, deleteConfirmed, endedSorted, shiftMonth } from './overview.js?v=20261020e';
 const ts = (d) => (d.createdAt && d.createdAt.seconds) || 0;
 /** 프로젝트가 바뀌었음을 메뉴(legacy/frame.js)에 알리고, 메뉴가 칩을 다시 읽을 때까지 기다린다 */
 export async function notifyPjtChanged() { const waits = []; try { window.dispatchEvent(new CustomEvent('jh:pjt-changed', { detail: { waits } })); await Promise.all(waits); } catch (e) { /* 알림 실패는 화면 동작을 막지 않는다 */ } }

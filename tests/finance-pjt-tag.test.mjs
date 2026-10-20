@@ -1,6 +1,6 @@
 // 재무회계 "프로젝트 표시" 대기 목록 계산 시험 — 가짜 데이터만 쓴다(이 저장소는 공개이므로 실제 금액·거래처·직원 이름을 시험에 넣지 않는다).
 // 계산 함수: app/modules/finance/pjt-tag-logic.js (순수 함수, Firestore 를 읽지 않음). 서버 규칙(비공개 저장소 functions/ledger-pjt-tags.js)과 같은 대상 판정을 쓴다.
-import { taggableReason, buildPendingRows, groupByMonth, monthPreview, confirmItems, pairKey, autoProposeAfterImport } from '../app/modules/finance/pjt-tag-logic.js';
+import { taggableReason, buildPendingRows, groupByMonth, monthPreview, confirmItems, pairKey, autoProposeAfterImport, splitDraft, splitLeftText } from '../app/modules/finance/pjt-tag-logic.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const E = (id, date, memo, lines, extra) => Object.assign({ id, no: id.toUpperCase(), date, memo, lines, source: { kind: 'manual' } }, extra || {});
@@ -83,4 +83,24 @@ for (const bad of [undefined, null, -1, NaN, '3', {}]) { const { r, spy } = awai
 for (const [nm, bad] of [['null', null], ['undefined', undefined], ['ok 없음', { created: 3 }], ['created 문자열', { ok: true, created: '3' }], ['created 음수', { ok: true, created: -2 }], ['created NaN', { ok: true, created: NaN }], ['빈 객체', {}]]) { const { r } = await run(bad, 2); ok(r && r.created === 0 && !/NaN|undefined|-2/.test(r.note), '★ 서버 응답이 이상해도(' + nm + ') 던지지 않고 숫자를 지어내지 않는다 (created ' + (r && r.created) + ')'); }
 { const { spy } = await run({ ok: true, created: 1 }, 1000000); ok(spy.length === 1, '저장 건수가 아무리 많아도 호출은 한 번이다(건별 호출 금지)'); }
 { const { r } = await run({ ok: true, created: 7 }, 7); ok(!/원|₩|거래처/.test(r.note), '안내 문구에 금액·거래처가 없다(건수만)'); }
+// ── 줄 직접 지정 입력 검사(서버 cleanSplits 와 같은 규칙을 앱에서 먼저 알려 준다): splitDraft(줄 금액, [{ pjt, amount(입력 글자) }]) → { ok, splits, method, remaining, error }
+const sd = (amt, rows) => splitDraft(amt, rows);
+{ const r = sd(1000000, [{ pjt: 'a', amount: '1,000,000' }]); ok(r.ok && eq(r.splits, [{ pjt: 'a', amount: 1000000 }]) && r.method === '직접' && r.remaining === 0, '★ 한 칸에 전액(쉼표 입력)이면 통과·방식은 "직접"·남은 금액 0'); }
+{ const r = sd(1000000, [{ pjt: 'a', amount: '600000' }, { pjt: 'b', amount: ' 400,000 ' }]); ok(r.ok && eq(r.splits, [{ pjt: 'a', amount: 600000 }, { pjt: 'b', amount: 400000 }]) && r.method === '수동', '★ 두 칸의 합이 줄 금액이면 통과·방식은 "수동"(여러 프로젝트로 나눔)·공백·쉼표 정리'); }
+{ const r = sd(1000000, [{ pjt: 'a', amount: '600000' }, { pjt: 'b', amount: '300000' }]); ok(!r.ok && r.remaining === 100000 && /100,000/.test(r.error), '★ 합이 모자라면 거절·남은 금액이 정확히 100,000(양수)이고 문구에 보인다 (실제: ' + r.remaining + ' · ' + r.error + ')'); }
+{ const r = sd(1000000, [{ pjt: 'a', amount: '700000' }, { pjt: 'b', amount: '400000' }]); ok(!r.ok && r.remaining === -100000 && /100,000/.test(r.error), '★ 합이 넘치면 거절·남은 금액이 −100,000(음수)이고 문구에 보인다'); }
+for (const [nm, rows] of [['프로젝트 미선택', [{ pjt: '', amount: '1000000' }]], ['같은 프로젝트 두 번', [{ pjt: 'a', amount: '500000' }, { pjt: 'a', amount: '500000' }]], ['금액 0', [{ pjt: 'a', amount: '0' }, { pjt: 'b', amount: '1000000' }]], ['금액 음수', [{ pjt: 'a', amount: '-500' }, { pjt: 'b', amount: '1000500' }]], ['금액 소수', [{ pjt: 'a', amount: '1000000.5' }]], ['금액 빈칸', [{ pjt: 'a', amount: '' }]], ['금액 글자', [{ pjt: 'a', amount: '백만' }]], ['금액 NaN 문자열', [{ pjt: 'a', amount: 'NaN' }]], ['빈 목록', []], ['목록이 아님', null]]) { const r = sd(1000000, rows); ok(!r.ok && typeof r.error === 'string' && r.error.length > 0 && eq(r.splits, []), '★ ' + nm + ' → 거절·이유 문구 있음·splits 비어 있음 (실제 ok=' + r.ok + ')'); }
+{ const many = Array.from({ length: 13 }, (_, i) => ({ pjt: 'p' + i, amount: '1' })); const r = sd(13, many); ok(!r.ok && /12/.test(r.error), '★ 13칸이면 거절(한 줄은 최대 12개 프로젝트) — 문구에 12'); const r12 = sd(12, many.slice(0, 12)); ok(r12.ok && r12.splits.length === 12, '12칸은 통과'); }
+{ const r = sd(1000000, [{ pjt: 'a', amount: '1000000' }]); ok(r.splits.every((x) => Number.isInteger(x.amount) && x.amount > 0), '결과 금액은 모두 양의 정수'); }
+{ const r = sd(0, [{ pjt: 'a', amount: '0' }]); ok(!r.ok, '줄 금액이 0 이하이면 지정할 수 없다'); const r2 = sd(-5, [{ pjt: 'a', amount: '5' }]); ok(!r2.ok, '줄 금액이 음수여도 거절(줄 금액은 항상 양수 — 화면의 − 는 표시일 뿐)'); }
+{ const r = sd(1000000, [{ pjt: 'a', amount: '1000000' }, { pjt: '', amount: '' }]); ok(r.ok && r.splits.length === 1, '★ 칸을 추가만 하고 비워 둔 줄(프로젝트·금액 둘 다 빈 칸)은 무시한다'); const r2 = sd(1000000, [{ pjt: 'a', amount: '1000000' }, { pjt: 'b', amount: '' }]); ok(!r2.ok, '프로젝트만 고르고 금액을 비운 칸은 거절(실수 방지)'); }
+{ const r = sd(1000000, [{ pjt: ' a ', amount: '1000000' }]); ok(r.ok && r.splits[0].pjt === 'a', '프로젝트 id 앞뒤 공백은 정리'); }
+// ── 남은 금액 문구(패널 처음 그릴 때와 입력 중 갱신이 같은 함수를 쓴다): splitLeftText(줄 금액, 칸들)
+{ const L = splitLeftText; ok(L(1000, []) === '남은 금액 1,000원' && L(1000, [{ pjt: 'a', amount: '' }]) === '남은 금액 1,000원', '★ 아무것도 안 채웠으면 남은 금액은 줄 금액 그대로');
+  ok(L(1000, [{ pjt: 'a', amount: '600' }, { pjt: 'b', amount: '400' }]) === '남은 금액 0원', '★ 합이 맞으면 남은 금액 0원');
+  ok(L(1000, [{ pjt: 'a', amount: '300' }]) === '남은 금액 700원' && L(1000, [{ pjt: 'a', amount: ' 1, 000 ' }]) === '남은 금액 0원', '★ 일부만 채우면 남은 금액을 센다(쉼표·공백 정리)');
+  ok(L(1000, [{ pjt: 'a', amount: '1200' }]) === '200원 넘침', '★ 합이 넘치면 "N원 넘침"(음수 표기 아님)');
+  ok(L(1000, [{ pjt: 'a', amount: '글자' }, { pjt: 'b', amount: '-5' }, { pjt: 'c', amount: '1.5' }, { pjt: 'd', amount: 'NaN' }]) === '남은 금액 1,000원', '★ 숫자가 아닌 칸(글자·음수·소수·NaN)은 0으로 세고 NaN·undefined 글자가 나오지 않는다');
+  ok(L(1000, null) === '남은 금액 1,000원' && L(1000, undefined) === '남은 금액 1,000원', '칸 목록이 없어도 던지지 않는다');
+  ok(L(-1000, [{ pjt: 'a', amount: '300' }]) === '남은 금액 700원', '줄 금액이 음수로 들어와도 절댓값 기준으로 센다(방어)'); }
 console.log('\n' + (fail ? '실패 ' + fail + '건 / 통과 ' + pass : '전부 통과 (' + pass + '건)')); process.exit(fail ? 1 : 0);

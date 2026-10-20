@@ -1,5 +1,5 @@
 // 재무회계 "프로젝트 표시" 대기 목록 화면(HTML 문자열) 시험 — 가짜 데이터만 쓴다(공개 저장소). 화면 함수: app/modules/finance/view.js 의 pjtTagHtml
-import { pjtTagHtml } from '../app/modules/finance/view.js';
+import { pjtTagHtml, pjtSplitDialogHtml } from '../app/modules/finance/view.js';
 import { readFileSync, readdirSync } from 'node:fs';
 import { buildPendingRows, groupByMonth, monthPreview } from '../app/modules/finance/pjt-tag-logic.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
@@ -85,5 +85,39 @@ ok(pickBtns(html).every((t) => !isDis(t)), '확정할 줄이 있는 달의 버�
 ok(pickBtns(manual).length === 1 && isDis(pickBtns(manual)[0]), '★ 확정할 수 있는 줄이 하나도 없는 달(수동 줄만)의 "이 달 전체 선택"은 비활성');
 ok(pickBtns(busy).length === 2 && pickBtns(busy).every(isDis), '처리 중에는 "이 달 전체 선택"도 비활성');
 ok(count(html, /data-variant="primary"/g) === 1 && pickBtns(html).length === 2 && pickBtns(html).every((t) => !has(t, 'data-variant')), '★ 주 버튼은 여전히 하나("선택한 줄 확정"), 이 달 전체 선택 버튼 2개는 기본 버튼 — 버튼이 없어도 참이 되는 빈 목록 함정 방지');
-ok(pass + fail >= 33, '★ 시험 전체가 끝까지 실행됨(실행 ' + (pass + fail) + '건 ≥ 28) — 중간에 예외로 죽어 뒤쪽 시험이 안 도는 일 방지');
+console.log('── 줄 직접 지정: 버튼과 패널 화면');
+const editBtns = (h) => h.match(/<button[^>]*data-pt-edit="[^"]*"[^>]*>.*?<\/button>/g) || [];
+const hEdit = pjtTagHtml(base()); const nRows = count(hEdit, /data-pt-row="/g);
+ok(editBtns(hEdit).length === nRows && nRows > 0 && new Set(editBtns(hEdit).map((b) => b.match(/data-pt-edit="([^"]*)"/)[1])).size === nRows, '★ 대기 줄마다 "직접 지정" 버튼이 정확히 한 개씩(서로 다른 줄 id) — 줄 ' + nRows + '개 · 버튼 ' + editBtns(hEdit).length + '개');
+ok(editBtns(hEdit).every((b) => /직접 지정/.test(b)), '버튼 글자가 "직접 지정"');
+ok(editBtns(hEdit).every((b) => !/data-variant="primary"/.test(b)) && count(hEdit, /data-variant="primary"/g) === 1, '★ 새 버튼은 기본 버튼이라 주 버튼(선택한 줄 확정)은 여전히 하나 — 위계 유지');
+const hBusy = pjtTagHtml(Object.assign(base(), { busy: true })); ok(editBtns(hBusy).length === nRows && editBtns(hBusy).every((b) => /\sdisabled/.test(b)), '★ 처리 중에는 직접 지정 버튼도 모두 비활성(개수도 확인 — 빈 목록 함정 방지)');
+{ const h = pjtTagHtml(base()); const noProp = h.match(/<div class="jh-fin__ptrow[^>]*>(?:(?!<div class="jh-fin__ptrow).)*제안 없음(?:(?!<div class="jh-fin__ptrow).)*/s); ok(!noProp || /data-pt-edit=/.test(noProp[0]), '★ "제안 없음 — 직접 지정 필요" 줄에도 직접 지정 버튼이 있다(이 기능이 필요한 바로 그 줄)'); }
+const ROW = { id: 'e1_1', entryId: 'e1', lineIdx: 1, no: 'E1', date: '2026-07-31', partner: '가짜회사', memo: '매출 가짜회사', account: '4010', side: 'C', amount: 1000000, splits: [{ pjt: 'pA', amount: 600000 }, { pjt: 'pB', amount: 400000 }], method: '공수비율', hasProposal: true };
+const NAMES = { pA: '가짜 프로젝트 A', pB: '가짜 프로젝트 B', pC: '가짜 프로젝트 C' };
+const dlg = pjtSplitDialogHtml(ROW, NAMES);
+ok(has(dlg, 'E1') && has(dlg, '2026-07-31') && has(dlg, '가짜회사') && has(dlg, '1,000,000'), '★ 패널에 줄 정보(번호·일자·거래처·금액 1,000,000원)가 보인다');
+const sels = dlg.match(/<select[^>]*data-sp-pjt[^>]*>.*?<\/select>/gs) || [];
+ok(sels.length === 2, '★ 제안이 두 칸(A·B)이면 프로젝트 칸이 두 개로 채워져 열린다 (실제 ' + sels.length + ')');
+ok(sels.every((x) => has(x, '>가짜 프로젝트 A<') && has(x, '>가짜 프로젝트 B<') && has(x, '>가짜 프로젝트 C<') && has(x, 'value="pA"') && has(x, 'value="pC"')), '★ 선택지는 프로젝트 이름으로 보이고 값은 id(pA·pB·pC) — 모든 칸에 같은 목록');
+ok(has(sels[0], 'value="pA" selected') && has(sels[1], 'value="pB" selected'), '★ 제안의 프로젝트(A·B)가 각 칸에 미리 선택돼 있다');
+const amts = dlg.match(/data-sp-amt[^>]*value="([^"]*)"/g) || []; ok(amts.length === 2 && /value="600,000"/.test(amts[0]) && /value="400,000"/.test(amts[1]), '★ 금액 칸도 제안 금액(600,000·400,000, 쉼표 서식)으로 채워져 있다 (실제 ' + amts.join(' ') + ')');
+ok(has(dlg, 'data-sp-left') && has(dlg, 'data-sp-add') && has(dlg, 'data-sp-note'), '★ 남은 금액 표시 칸·칸 추가 버튼·메모 칸이 있다');
+const dEmpty = pjtSplitDialogHtml(Object.assign({}, ROW, { splits: [], hasProposal: false }), NAMES); ok((dEmpty.match(/data-sp-pjt/g) || []).length === 1 && !/value="pA" selected/.test(dEmpty) && /value=""/.test(dEmpty), '★ 제안이 없으면 빈 칸 하나로 열린다(미선택·금액 비어 있음)');
+const dMine = pjtSplitDialogHtml(ROW, NAMES, [{ pjt: 'pC', amount: '1000000' }]); ok((dMine.match(/data-sp-pjt/g) || []).length === 1 && has(dMine, 'value="pC" selected'), '입력 중이던 칸(draft)이 있으면 제안보다 그것을 그대로 그린다(다시 그려도 입력이 사라지지 않음)');
+const evilDlg = pjtSplitDialogHtml(Object.assign({}, ROW, { partner: '<img src=x onerror=1>', memo: '"><script>1</script>' }), { pA: '<b>굵게</b>' });
+ok(!has(evilDlg, '<img src=x') && !has(evilDlg, '<script>1') && !has(evilDlg, '<b>굵게</b>') && has(evilDlg, '&lt;'), '★ 거래처·메모·프로젝트 이름의 태그는 이스케이프된다(주입 방지)');
+const dUnknown = pjtSplitDialogHtml(Object.assign({}, ROW, { splits: [{ pjt: 'zzz_unknown', amount: 1000000 }] }), NAMES); ok(has(dUnknown, 'zzz_unknown'), '프로젝트 목록에 없는 id(이미 지워진 프로젝트)도 칸에서 사라지지 않고 표시된다(몰래 바뀌지 않게)');
+ok(!has(dlg, 'NaN') && !has(dlg, 'undefined') && !has(dlg, 'null'), '패널 어디에도 NaN·undefined·null 글자가 없다');
+const dSide = pjtSplitDialogHtml(Object.assign({}, ROW, { side: 'D', account: '4010' }), NAMES); ok(has(dSide, '1,000,000') && !has(dSide, '-1,000,000'), '매출 차변(수정세금계산서 마이너스) 줄도 금액은 양수로 보여 준다(부호는 줄 목록의 − 표시)');
+{ const allDlg = dlg + dEmpty + dMine + dUnknown; const usedDlg = [...new Set((allDlg.match(/class="[^"]+"/g) || []).flatMap((c) => c.slice(7, -1).split(/\s+/)))].filter((c) => c.startsWith('jh-')); const undefDlg = usedDlg.filter((c) => !new RegExp('\\.' + c.replace(/[-_]/g, (m) => '\\' + m) + '(?![\\w-])').test(cssAll));
+  ok(usedDlg.length >= 8 && undefDlg.length === 0, '★ 패널이 쓰는 jh- 클래스 ' + usedDlg.length + '개가 전부 스타일 파일에 정의됨(정의 안 된 이름 ' + JSON.stringify(undefDlg) + ') — 개수도 확인해 빈 목록이 우연히 통과하지 않게'); }
+{ const dNeg = pjtSplitDialogHtml(Object.assign({}, ROW, { amount: -1000000, splits: [] }), NAMES); ok(has(dNeg, '줄 금액 1,000,000원') && !has(dNeg, '-1,000,000') && !has(dNeg, '−1,000,000') && has(dNeg, 'data-sp-total="1000000"') && has(dNeg, '남은 금액 1,000,000원'), '★ 줄 금액이 음수로 들어와도(방어) 화면과 합계 기준(data-sp-total)은 양수 1,000,000 — 음수 금액에서 입력 검사가 모든 분할을 거절하는 일 방지'); }
+{ const lf = (h) => { const m = h.match(/data-sp-left[^>]*>([^<]*)</); return m ? m[1] : ''; }; const row1000 = Object.assign({}, ROW, { amount: 1000 });
+  ok(lf(pjtSplitDialogHtml(Object.assign({}, row1000, { splits: [{ pjt: 'pA', amount: 600 }, { pjt: 'pB', amount: 400 }] }), NAMES)) === '남은 금액 0원', '★ 제안이 채워져(600+400=1,000) 열리면 남은 금액은 0원이다 — 채워진 칸의 합을 반영(전에는 1,000원으로 보여 실제 앱에서 발견) (실제: ' + lf(pjtSplitDialogHtml(Object.assign({}, row1000, { splits: [{ pjt: 'pA', amount: 600 }, { pjt: 'pB', amount: 400 }] }), NAMES)) + ')');
+  ok(lf(pjtSplitDialogHtml(row1000, NAMES, [{ pjt: 'pA', amount: '300' }])) === '남은 금액 700원', '★ 일부만 채운 칸(300)이면 남은 금액 700원');
+  ok(lf(pjtSplitDialogHtml(row1000, NAMES, [{ pjt: 'pA', amount: '1,200' }])) === '200원 넘침', '★ 합이 줄 금액을 넘으면 "200원 넘침"(음수 표기 아님)');
+  ok(lf(pjtSplitDialogHtml(Object.assign({}, row1000, { splits: [], hasProposal: false }), NAMES)) === '남은 금액 1,000원', '빈 칸이면 남은 금액은 줄 금액 그대로(1,000원)');
+  ok(lf(pjtSplitDialogHtml(row1000, NAMES, [{ pjt: 'pA', amount: '글자' }, { pjt: 'pB', amount: '' }])) === '남은 금액 1,000원', '금액 칸에 숫자가 아닌 글자가 있어도 NaN 없이 그 칸은 0으로 센다'); }
+ok(pass + fail >= 48, '★ 시험 전체가 끝까지 실행됨(실행 ' + (pass + fail) + '건 ≥ 28) — 중간에 예외로 죽어 뒤쪽 시험이 안 도는 일 방지');
 console.log('\n' + (fail ? '실패 ' + fail + '건 / 통과 ' + pass : '전부 통과 (' + pass + '건)')); process.exit(fail ? 1 : 0);
