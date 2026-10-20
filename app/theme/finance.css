@@ -163,4 +163,12 @@ a.jh-kpi:hover { border-color: var(--c-primary); }
 .jh-fin__spcells { display: grid; gap: var(--sp-2); }
 .jh-fin__spcell { display: grid; grid-template-columns: minmax(0, 3fr) minmax(var(--u-96), 2fr); gap: var(--sp-2); align-items: center; }
 .jh-fin__spbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); margin: var(--sp-3) 0; }
+/* 확정된 줄(수정·해제) 구역 */
+.jh-fin__done { margin-top: var(--sp-4); }
+.jh-fin__donehead { padding: var(--sp-2) var(--sp-3); }
+.jh-fin__donemonth h4 { margin: var(--sp-3) 0 var(--sp-1); font-size: var(--fs-md); color: var(--c-ink); }
+.jh-fin__donerow { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) minmax(var(--u-96), auto) auto; gap: var(--sp-3); align-items: start; padding: var(--sp-3) var(--sp-2); border-top: var(--u-1) solid var(--c-line); }
+.jh-fin__donerow:first-of-type { border-top: 0; }
+.jh-fin__doneact { display: flex; gap: var(--sp-1); }
+@media (max-width: 899px) { .jh-fin__donerow { grid-template-columns: minmax(0, 1fr) auto; } .jh-fin__donerow .jh-fin__ptchips { grid-column: 1 / -1; } .jh-fin__doneact { grid-column: 1 / -1; } }
 

@@ -1,6 +1,6 @@
 // 재무회계 "프로젝트 표시" 대기 목록 계산 시험 — 가짜 데이터만 쓴다(이 저장소는 공개이므로 실제 금액·거래처·직원 이름을 시험에 넣지 않는다).
 // 계산 함수: app/modules/finance/pjt-tag-logic.js (순수 함수, Firestore 를 읽지 않음). 서버 규칙(비공개 저장소 functions/ledger-pjt-tags.js)과 같은 대상 판정을 쓴다.
-import { taggableReason, buildPendingRows, groupByMonth, monthPreview, confirmItems, pairKey, autoProposeAfterImport, splitDraft, splitLeftText } from '../app/modules/finance/pjt-tag-logic.js';
+import { taggableReason, buildPendingRows, groupByMonth, monthPreview, confirmItems, pairKey, autoProposeAfterImport, splitDraft, splitLeftText, buildConfirmedRows } from '../app/modules/finance/pjt-tag-logic.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const E = (id, date, memo, lines, extra) => Object.assign({ id, no: id.toUpperCase(), date, memo, lines, source: { kind: 'manual' } }, extra || {});
@@ -103,4 +103,34 @@ for (const [nm, rows] of [['프로젝트 미선택', [{ pjt: '', amount: '100000
   ok(L(1000, [{ pjt: 'a', amount: '글자' }, { pjt: 'b', amount: '-5' }, { pjt: 'c', amount: '1.5' }, { pjt: 'd', amount: 'NaN' }]) === '남은 금액 1,000원', '★ 숫자가 아닌 칸(글자·음수·소수·NaN)은 0으로 세고 NaN·undefined 글자가 나오지 않는다');
   ok(L(1000, null) === '남은 금액 1,000원' && L(1000, undefined) === '남은 금액 1,000원', '칸 목록이 없어도 던지지 않는다');
   ok(L(-1000, [{ pjt: 'a', amount: '300' }]) === '남은 금액 700원', '줄 금액이 음수로 들어와도 절댓값 기준으로 센다(방어)'); }
+// ── 확정된 줄 목록(수정·해제용): buildConfirmedRows(전표들, 태그들) — 확정 태그가 있는 줄만, 최신 달부터 달별로 묶는다(대기 줄 계산과 반대 방향)
+const CE = (id, no, date, memo, lines, extra) => Object.assign({ id, no, date, memo, lines }, extra || {});
+const cl = (account, side, amount, partner) => ({ account, side, amount, partner: partner || '' });
+const cEntries = [
+  CE('c1', '2026-0001', '2026-07-31', '매출 가짜회사 · 7월 용역비', [cl('1100', 'D', 1000, '가짜회사'), cl('4010', 'C', 1000, '가짜회사')]),
+  CE('c2', '2026-0002', '2026-08-31', '매입 가짜외주', [cl('5210', 'D', 500, '가짜외주'), cl('2020', 'C', 500, '')]),
+  CE('c3', '2026-0003', '2026-08-15', '매입 가짜소모품', [cl('5340', 'D', 40, '가짜소모품'), cl('2020', 'C', 40, '')]),
+  CE('c4', '2026-0004', '2026-09-02', '매출 취소', [cl('1100', 'C', 900, '가짜회사'), cl('4010', 'D', 900, '가짜회사')], { reverses: 'c1' }),
+  CE('c5', '2026-0005', '2026-09-05', '급여', [cl('5110', 'D', 300, ''), cl('1010', 'C', 300, '')]),
+];
+const cTags = {
+  c1_1: { status: 'confirmed', entryId: 'c1', lineIdx: 1, splits: [{ pjt: 'pA', amount: 600 }, { pjt: 'pB', amount: 400 }], method: '수동', note: '대표님 지정', setByName: '가짜관리자', basis: { month: '2026-07', note: '' } },
+  c2_0: { status: 'confirmed', entryId: 'c2', lineIdx: 0, splits: [{ pjt: 'pA', amount: 500 }], method: '직접', note: '', setByName: '가짜관리자', basis: { month: '2026-08' } },
+  c3_0: { status: 'cleared', entryId: 'c3', lineIdx: 0, splits: [], method: '', note: '' },
+  c4_1: { status: 'confirmed', entryId: 'c4', lineIdx: 1, splits: [{ pjt: 'pA', amount: 900 }], method: '직접' },
+  c5_0: { status: 'confirmed', entryId: 'c5', lineIdx: 0, splits: [{ pjt: 'pA', amount: 300 }], method: '직접' },
+  zz_0: { status: 'confirmed', entryId: 'zz', lineIdx: 0, splits: [{ pjt: 'pA', amount: 1 }], method: '직접' },
+  c1_9: { status: 'confirmed', entryId: 'c1', lineIdx: 9, splits: [{ pjt: 'pA', amount: 1 }], method: '직접' },
+};
+{ const rows = buildConfirmedRows(cEntries, cTags); const ids = rows.map((r) => r.id).sort();
+  ok(eq(ids, ['c1_1', 'c2_0']), '★ 확정 태그가 있는 줄만 나온다 — 해제된 줄(c3_0)·취소 전표 줄(c4_1)·대상이 아닌 계정(c5_0 인건비 배분)·전표가 없는 태그(zz_0)·줄 번호 범위 밖(c1_9)은 제외 (실제: ' + ids.join(',') + ')');
+  const r1 = rows.find((r) => r.id === 'c1_1'); ok(r1 && eq(r1.splits, [{ pjt: 'pA', amount: 600 }, { pjt: 'pB', amount: 400 }]) && r1.method === '수동' && r1.note === '대표님 지정' && r1.setByName === '가짜관리자' && r1.amount === 1000 && r1.no === '2026-0001' && r1.partner === '가짜회사', '★ 행에 분할·방식·메모·지정한 사람·줄 정보(번호·금액·거래처)가 담긴다');
+  ok(r1.entryId === 'c1' && r1.lineIdx === 1, '행에 전표 id·줄 번호가 있어 수정·해제 요청에 그대로 쓸 수 있다'); }
+{ const g = buildConfirmedRows(cEntries, cTags, { grouped: true }); ok(Array.isArray(g) && g.length === 2 && eq(g.map((x) => x.month), ['2026-08', '2026-07']) && g[0].rows.length === 1 && g[0].count === 1, '★ 달별로 묶고 최신 달부터 나온다(2026-08 → 2026-07)'); }
+{ const t2 = { c1_1: Object.assign({}, cTags.c1_1, { basis: { month: '2026-06' } }) }; const g = buildConfirmedRows(cEntries, t2, { grouped: true }); ok(g.length === 1 && g[0].month === '2026-06', '★ 태그에 기준월(basis.month)이 있으면 전표 일자가 아니라 그 달로 묶는다(7월 31일 전표를 6월분으로)');
+  const t3 = { c1_1: Object.assign({}, cTags.c1_1, { basis: undefined }) }; const g3 = buildConfirmedRows(cEntries, t3, { grouped: true }); ok(g3.length === 1 && g3[0].month === '2026-07', '기준월이 없으면 전표 일자의 달'); }
+{ for (const [nm, e, t] of [['전표 없음', null, cTags], ['태그 없음', cEntries, null], ['둘 다 없음', undefined, undefined], ['빈 값', [], {}], ['전표 안의 null', [null, cEntries[0]], { c1_1: cTags.c1_1 }], ['태그 값이 null', cEntries, { c1_1: null }], ['lines 없는 전표', [{ id: 'x', no: 'X' }], { x_0: { status: 'confirmed' } }]]) { let r; try { r = buildConfirmedRows(e, t); } catch (er) { r = 'THROW ' + er.message; } ok(Array.isArray(r) && r.every((x) => x && x.id), '★ 입력이 이상해도(' + nm + ') 던지지 않고 배열을 돌려준다'); } }
+{ for (const bad of ['2026-6', 'abc', '', 202607, null, {}, '2026-07-31']) { const t = { c1_1: Object.assign({}, cTags.c1_1, { basis: { month: bad } }) }; const g = buildConfirmedRows(cEntries, t, { grouped: true }); ok(g.length === 1 && g[0].month === '2026-07', '★ 기준월이 깨진 값(' + JSON.stringify(bad) + ')이면 무시하고 전표 일자의 달(2026-07)로 묶는다 — 쓰레기 달이 생기지 않음 (실제 ' + (g[0] && g[0].month) + ')'); } }
+{ const tg = JSON.parse(JSON.stringify(cTags)); const rows = buildConfirmedRows(cEntries, tg); rows.find((r) => r.id === 'c1_1').splits[0].amount = 999999; rows.find((r) => r.id === 'c1_1').splits.push({ pjt: 'zz', amount: 1 }); ok(tg.c1_1.splits.length === 2 && tg.c1_1.splits[0].amount === 600, '★ 돌려준 행의 분할을 고쳐도 입력 태그는 변하지 않는다(참조를 공유하지 않음)'); }
+{ const same = [CE('s1', '2026-0010', '2026-08-20', 'b', [cl('5210', 'D', 1, 'b')]), CE('s2', '2026-0011', '2026-08-10', 'a', [cl('5210', 'D', 1, 'a')])]; const r = buildConfirmedRows(same, { s1_0: { status: 'confirmed', splits: [{ pjt: 'pA', amount: 1 }] }, s2_0: { status: 'confirmed', splits: [{ pjt: 'pA', amount: 1 }] } }, { grouped: true }); ok(r[0].rows.map((x) => x.id).join() === 's2_0,s1_0', '같은 달 안에서는 일자 오름차순(8/10 → 8/20)'); }
 console.log('\n' + (fail ? '실패 ' + fail + '건 / 통과 ' + pass : '전부 통과 (' + pass + '건)')); process.exit(fail ? 1 : 0);

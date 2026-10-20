@@ -1,8 +1,8 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261020e';
-import { monthPreview, splitLeftText } from './pjt-tag-logic.js?v=20261020e';
-import { esc } from '../../core/ui.js?v=20261020e';
-import { MP_GROUPS, NPAY_CHOICES, ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport, vatForm, vatCardRef } from './logic.js?v=20261020e';
-import { CHOICES } from '../../shared/merchant-table.js?v=20261020e';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261020f';
+import { monthPreview, splitLeftText } from './pjt-tag-logic.js?v=20261020f';
+import { esc } from '../../core/ui.js?v=20261020f';
+import { MP_GROUPS, NPAY_CHOICES, ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport, vatForm, vatCardRef } from './logic.js?v=20261020f';
+import { CHOICES } from '../../shared/merchant-table.js?v=20261020f';
 
 /* 재무회계 화면 조각 — 모든 값은 esc() 로 감싸 HTML 로 만든다. 스타일은 theme/finance.css 와 공용 클래스를 쓴다 */
 const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['monthly', '월간 수지'], ['forecast', '예측'], ['gap', '이엔지 정산'], ['pjt', '프로젝트 표시'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];
@@ -366,11 +366,25 @@ export function pjtSplitDialogHtml(row, names, draft) {
     + '<div class="jh-fin__spbar"><button type="button" class="jh-btn" data-variant="ghost" data-sp-add>+ 칸 추가</button><span class="jh-field__hint" data-sp-left role="status">' + esc(splitLeftText(r.amount, cells)) + '</span></div>'
     + '<div class="jh-field"><label class="jh-field__label" for="sp-note">메모(선택)</label><input class="jh-input" id="sp-note" data-sp-note maxlength="200" placeholder="예: 대표님 지정"></div>';
 }
+/** 확정된 줄 구역(수정·해제) — st.doneGroups = [{ month, rows, count }](최신 달부터, 순수 계산 buildConfirmedRows), st.doneOpen = 펼침 여부. 확정된 줄이 없으면 그리지 않는다. 처음에는 접혀 있고 토글에 줄 수만 보인다.
+ * 줄마다 [수정](프로젝트 칸이 현재 지정으로 채워진 패널) · [해제](확인창 뒤 대기 목록으로 되돌림). 이전 지정은 서버 history 에 남고, 영업기획 마진율·월간 보고서 값이 바뀔 수 있다고 안내한다. nm = 프로젝트 id → 이름 함수, dis = 처리 중 비활성 속성 */
+function doneHtml(st, nm, dis) {
+  const groups = Array.isArray(st.doneGroups) ? st.doneGroups.filter((g) => g && Array.isArray(g.rows) && g.rows.length) : []; const n = groups.reduce((a, g) => a + g.rows.length, 0); if (!n) return '';
+  const open = st.doneOpen === true; const money = (v) => esc(won(Math.abs(v)));
+  const toggle = '<div class="jh-fin__donehead" data-pt-done><button type="button" class="jh-btn" data-variant="ghost" data-pt-done-toggle aria-expanded="' + (open ? 'true' : 'false') + '">확정된 줄 ' + n + '줄 ' + (open ? '접기 ▴' : '보기 ▾') + '</button></div>';
+  if (!open) return '<section class="jh-card jh-fin__done">' + toggle + '</section>';
+  const chips = (r) => (r.splits || []).map((x) => '<span class="jh-fin__chip">' + nm(x.pjt) + ' ' + (Math.abs(r.amount) ? Math.round(1000 * x.amount / Math.abs(r.amount)) / 10 : 0) + '%</span>').join('') || '<span class="jh-fin__chip jh-fin__chip--skip">프로젝트에 붙이지 않음' + (r.note ? ' · ' + esc(r.note) : '') + '</span>';
+  const row = (r) => '<div class="jh-fin__donerow" data-pt-done-row="' + esc(r.id) + '"><div class="jh-fin__ptinfo"><strong>' + esc(r.no) + '</strong> · ' + esc(r.date) + ' · ' + esc(r.partner || '거래처 없음') + '<div class="jh-fin__ptmemo">' + esc(r.memo) + ' · ' + esc(r.account) + (r.method ? ' · ' + esc(r.method) : '') + (r.setByName ? ' · ' + esc(r.setByName) + ' 지정' : '') + (r.note ? ' · ' + esc(r.note) : '') + '</div></div>'
+    + '<div class="jh-fin__ptchips">' + chips(r) + '</div><div class="num jh-fin__ptamt">' + (r.side === 'D' && /^4/.test(String(r.account)) ? '−' : '') + money(r.amount) + '</div>'
+    + '<div class="jh-fin__doneact"><button type="button" class="jh-btn" data-pt-redo="' + esc(r.id) + '"' + dis + '>수정</button><button type="button" class="jh-btn" data-pt-undo="' + esc(r.id) + '"' + dis + '>해제</button></div></div>';
+  const note = '<div class="jh-field__hint">이미 확정된 줄입니다. 수정하거나 해제하면 영업기획의 마진율·월간 보고서 값이 바뀔 수 있습니다. 이전 지정은 기록에 남습니다. 해제한 줄은 위 대기 목록으로 돌아옵니다.</div>';
+  return '<section class="jh-card jh-fin__done">' + toggle + '<div class="jh-finance__pad">' + note + groups.map((g) => '<div class="jh-fin__donemonth"><h4>' + esc(g.month) + ' <span class="jh-fin__ptcount">' + g.rows.length + '줄</span></h4>' + g.rows.map(row).join('') + '</div>').join('') + '</div></section>';
+}
 export function pjtTagHtml(st) {
   const names = st.names || {}; const nm = (id) => esc(names[id] || id); const money = (v) => esc(won(Math.abs(v)));
   const total = (st.rows || []).length; const can = (st.rows || []).filter((r) => r.confirmable).length; const dis = st.busy ? ' disabled' : '';
   const head = '<div class="jh-finance__pad"><div class="jh-fin__ptstat"><strong>대기 ' + total + '줄</strong> · 확정할 수 있는 ' + can + '줄</div>' + (st.msg ? '<div class="jh-alert" data-tone="info" role="status">' + esc(st.msg) + '</div>' : '') + '</div>';
-  if (!total) return '<div class="jh-fin__pjttag" aria-busy="' + (st.busy ? 'true' : 'false') + '">' + head + '<div class="jh-finance__pad">대기 중인 줄이 없습니다. 새 전표를 가져오면 여기에 나타납니다.</div></div>';
+  if (!total) return '<div class="jh-fin__pjttag" aria-busy="' + (st.busy ? 'true' : 'false') + '">' + head + '<div class="jh-finance__pad">대기 중인 줄이 없습니다. 새 전표를 가져오면 여기에 나타납니다.</div>' + doneHtml(st, nm, dis) + '</div>';
   const chip = (r) => {
     if (!r.hasProposal) return '<span class="jh-fin__chip jh-fin__chip--none">제안 없음 — 직접 지정 필요</span>';
     if (r.method === '제외') return '<span class="jh-fin__chip jh-fin__chip--skip">프로젝트에 붙이지 않음' + (r.note ? ' · ' + esc(r.note) : '') + '</span>';
@@ -391,5 +405,5 @@ export function pjtTagHtml(st) {
   };
   const picked = (st.rows || []).filter((r) => st.sel && st.sel[r.id]).length;
   const bar = '<div class="jh-fin__ptbar" data-pt-bar role="region" aria-label="선택한 줄 확정"><span class="jh-fin__ptsel" data-pt-selcount>선택 ' + picked + '줄</span><span class="jh-fin__ptbarbtns"><button type="button" class="jh-btn" data-pt-clear' + dis + '>선택 해제</button><button type="button" class="jh-btn" data-variant="primary" data-pt-confirm-sel' + dis + '>선택한 줄 확정</button></span></div>';
-  return '<div class="jh-fin__pjttag" aria-busy="' + (st.busy ? 'true' : 'false') + '">' + head + bar + (st.months || []).map(monthCard).join('') + '</div>';
+  return '<div class="jh-fin__pjttag" aria-busy="' + (st.busy ? 'true' : 'false') + '">' + head + bar + (st.months || []).map(monthCard).join('') + doneHtml(st, nm, dis) + '</div>';
 }

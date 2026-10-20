@@ -119,5 +119,32 @@ const dSide = pjtSplitDialogHtml(Object.assign({}, ROW, { side: 'D', account: '4
   ok(lf(pjtSplitDialogHtml(row1000, NAMES, [{ pjt: 'pA', amount: '1,200' }])) === '200원 넘침', '★ 합이 줄 금액을 넘으면 "200원 넘침"(음수 표기 아님)');
   ok(lf(pjtSplitDialogHtml(Object.assign({}, row1000, { splits: [], hasProposal: false }), NAMES)) === '남은 금액 1,000원', '빈 칸이면 남은 금액은 줄 금액 그대로(1,000원)');
   ok(lf(pjtSplitDialogHtml(row1000, NAMES, [{ pjt: 'pA', amount: '글자' }, { pjt: 'pB', amount: '' }])) === '남은 금액 1,000원', '금액 칸에 숫자가 아닌 글자가 있어도 NaN 없이 그 칸은 0으로 센다'); }
+console.log('── 확정된 줄(수정·해제) 구역');
+const DONE = [{ month: '2026-08', count: 1, rows: [{ id: 'd2_0', entryId: 'd2', lineIdx: 0, no: '2026-0002', date: '2026-08-31', memo: '매입 가짜외주', account: '5210', side: 'D', amount: 500, partner: '가짜외주', splits: [{ pjt: 'pA', amount: 500 }], method: '직접', note: '', setByName: '가짜관리자', month: '2026-08' }] },
+  { month: '2026-07', count: 2, rows: [{ id: 'd1_1', entryId: 'd1', lineIdx: 1, no: '2026-0001', date: '2026-07-31', memo: '매출 가짜회사', account: '4010', side: 'C', amount: 1000, partner: '가짜회사', splits: [{ pjt: 'pA', amount: 600 }, { pjt: 'pB', amount: 400 }], method: '수동', note: '대표님 지정', setByName: '가짜관리자', month: '2026-07' }, { id: 'd3_0', entryId: 'd3', lineIdx: 0, no: '2026-0003', date: '2026-07-20', memo: '매입', account: '5340', side: 'D', amount: 40, partner: '', splits: [{ pjt: 'pB', amount: 40 }], method: '직접', note: '', setByName: '', month: '2026-07' }] }];
+const dsec = (h) => { const i = h.indexOf('data-pt-done'); return i < 0 ? '' : h.slice(i); };
+const hClosed = pjtTagHtml(Object.assign(base(), { doneGroups: DONE, doneOpen: false }));
+ok(has(hClosed, 'data-pt-done-toggle') && has(dsec(hClosed), '확정된 줄 3줄'), '★ 확정 구역이 있고 토글에 확정된 줄 수(3줄)가 보인다');
+ok(!has(hClosed, 'data-pt-redo') && !has(hClosed, 'data-pt-undo') && !has(hClosed, '가짜외주 · 가짜 프로젝트 A'), '★ 처음에는 접혀 있어 줄·수정·해제 버튼이 없다');
+const hOpen = pjtTagHtml(Object.assign(base(), { doneGroups: DONE, doneOpen: true }));
+const redoB = hOpen.match(/<button[^>]*data-pt-redo="[^"]*"[^>]*>.*?<\/button>/g) || [], undoB = hOpen.match(/<button[^>]*data-pt-undo="[^"]*"[^>]*>.*?<\/button>/g) || [];
+ok(redoB.length === 3 && undoB.length === 3 && new Set(redoB.map((b) => b.match(/data-pt-redo="([^"]*)"/)[1])).size === 3, '★ 펼치면 줄마다 [수정]·[해제] 버튼이 정확히 한 개씩(3줄 → 3 + 3, 서로 다른 줄 id)');
+ok(redoB.every((b) => /수정/.test(b)) && undoB.every((b) => /해제/.test(b)), '버튼 글자는 "수정"·"해제"');
+ok(dsec(hOpen).indexOf('2026-08') < dsec(hOpen).indexOf('2026-07'), '★ 달은 최신 달부터(2026-08 → 2026-07)');
+ok(has(dsec(hOpen), '가짜 프로젝트 A') && has(dsec(hOpen), '60%') && has(dsec(hOpen), '가짜 프로젝트 B') && has(dsec(hOpen), '40%'), '★ 줄마다 프로젝트 이름과 비율 칩이 보인다(A 60%·B 40%)');
+ok(has(dsec(hOpen), '대표님 지정') && has(dsec(hOpen), '가짜관리자'), '메모와 지정한 사람이 보인다');
+const hBusyD = pjtTagHtml(Object.assign(base(), { doneGroups: DONE, doneOpen: true, busy: true })); const bb2 = (hBusyD.match(/<button[^>]*data-pt-(?:redo|undo)="[^"]*"[^>]*>/g) || []);
+ok(bb2.length === 6 && bb2.every((b) => /\sdisabled/.test(b)), '★ 처리 중에는 수정·해제 버튼 6개가 모두 비활성(개수 확인 — 빈 목록 함정 방지) (' + bb2.length + '개)');
+ok(has(dsec(hOpen), '마진율') && has(dsec(hOpen), '기록'), '★ 안내문: 수정·해제하면 마진율 등에 영향이 있고 이전 지정은 기록에 남는다고 알린다');
+const noPending = pjtTagHtml({ rows: [], months: [], names, busy: false, msg: '', open: {}, sel: {}, doneGroups: DONE, doneOpen: true });
+ok(has(noPending, '대기 중인 줄이 없습니다') && has(noPending, 'data-pt-redo'), '★ 대기 줄이 0줄이어도 확정된 줄 구역은 나온다(빈 목록에서 일찍 끝나는 함정)');
+ok(!has(pjtTagHtml(Object.assign(base(), { doneGroups: [], doneOpen: true })), 'data-pt-done') && !has(pjtTagHtml(base()), 'data-pt-done'), '★ 확정된 줄이 하나도 없으면(빈 목록·상태 없음) 구역 자체를 그리지 않는다');
+const evilD = pjtTagHtml(Object.assign(base(), { doneOpen: true, doneGroups: [{ month: '2026-07', count: 1, rows: [Object.assign({}, DONE[1].rows[0], { memo: '<img src=x onerror=1>', partner: '<b>거래처</b>', note: '"><script>1</script>', setByName: '<i>x</i>', splits: [{ pjt: 'pZ', amount: 1000 }] })] }] }));
+ok(!has(evilD, '<img src=x') && !has(evilD, '<b>거래처</b>') && !has(evilD, '<script>1') && !has(evilD, '<i>x</i>') && has(dsec(evilD), '&lt;'), '★ 확정 줄의 메모·거래처·비고·지정한 사람 태그는 이스케이프된다');
+ok(count(hOpen, /data-variant="primary"/g) === 1, '★ 주 버튼(선택한 줄 확정)은 여전히 하나 — 새 버튼은 기본 버튼이라 위계 유지');
+ok(has(hOpen, 'aria-expanded="true"') && has(hClosed, 'aria-expanded="false"'), '토글은 펼침 상태를 aria-expanded 로 알린다');
+ok(!has(hOpen, 'NaN') && !has(hOpen, 'undefined'), '화면 어디에도 NaN·undefined 글자가 없다');
+{ const usedD = [...new Set((dsec(hOpen).match(/class="[^"]+"/g) || []).flatMap((c) => c.slice(7, -1).split(/\s+/)))].filter((c) => c.startsWith('jh-')); const undefD = usedD.filter((c) => !new RegExp('\\.' + c.replace(/[-_]/g, (m) => '\\' + m) + '(?![\\w-])').test(cssAll));
+  ok(usedD.length >= 6 && undefD.length === 0, '★ 확정 구역(data-pt-done 이후)이 쓰는 jh- 클래스 ' + usedD.length + '개가 전부 스타일에 정의됨(정의 안 된 이름 ' + JSON.stringify(undefD) + ') — 구역 안만 검사하고 개수도 확인해 구역이 없을 때 우연히 통과하지 않게'); }
 ok(pass + fail >= 48, '★ 시험 전체가 끝까지 실행됨(실행 ' + (pass + fail) + '건 ≥ 28) — 중간에 예외로 죽어 뒤쪽 시험이 안 도는 일 방지');
 console.log('\n' + (fail ? '실패 ' + fail + '건 / 통과 ' + pass : '전부 통과 (' + pass + '건)')); process.exit(fail ? 1 : 0);

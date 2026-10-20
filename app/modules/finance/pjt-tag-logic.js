@@ -88,4 +88,23 @@ export function splitLeftText(amount, rows) {
   const total = Math.abs(Number(amount) || 0); const sum = (Array.isArray(rows) ? rows : []).reduce((a, r) => { const raw = String((r && r.amount) == null ? '' : r.amount).replace(/[,\s]/g, ''); return a + (/^\d+$/.test(raw) ? Number(raw) : 0); }, 0);
   const rest = total - sum; return rest >= 0 ? '남은 금액 ' + rest.toLocaleString('ko-KR') + '원' : Math.abs(rest).toLocaleString('ko-KR') + '원 넘침';
 }
+/** 확정된 줄 — 대기 줄(buildPendingRows)과 반대 방향: 확정 태그(status 'confirmed')가 있는 줄만, 수정·해제할 수 있게 전표 정보와 합친다. 대기 줄과 같은 규칙으로 취소 전표(reverses)·프로젝트에 붙이지 않는 계정(taggableReason)은 뺀다.
+ * 전표가 없거나 줄 번호가 범위 밖인 태그(지워진 전표 등)는 건너뛴다. 월 = 태그의 기준월(basis.month, YYYY-MM 형식일 때), 없으면 전표 일자의 달. opts.grouped 면 [{ month, rows, count }] 를 최신 달부터, 아니면 행 배열(일자·전표번호 오름차순).
+ * 입력이 이상해도 던지지 않는다. */
+export function buildConfirmedRows(entries, tags, opts) {
+  const T = tags && typeof tags === 'object' ? tags : {}; const rows = [];
+  (Array.isArray(entries) ? entries : []).forEach((e) => {
+    if (!e || e.reverses || !Array.isArray(e.lines)) return;
+    e.lines.forEach((l, i) => {
+      if (!l || taggableReason(l)) return; const id = e.id + '_' + i; const t = T[id]; if (!t || t.status !== 'confirmed') return;
+      const bm = t.basis && typeof t.basis.month === 'string' && /^\d{4}-\d{2}$/.test(t.basis.month) ? t.basis.month : '';
+      rows.push({ id, entryId: e.id, lineIdx: i, no: e.no || '', date: e.date || '', memo: String(e.memo || ''), account: String(l.account), side: l.side, amount: l.amount, partner: String(l.partner || ''),
+        splits: Array.isArray(t.splits) ? t.splits.map((x) => ({ pjt: x.pjt, amount: x.amount })) : [], method: String(t.method || ''), note: String(t.note || ''), setByName: String(t.setByName || ''), month: bm || ym(e.date) });
+    });
+  });
+  rows.sort((a, b) => (a.date + a.no).localeCompare(b.date + b.no));
+  if (!(opts && opts.grouped)) return rows;
+  const m = {}; rows.forEach((r) => { (m[r.month] = m[r.month] || []).push(r); });
+  return Object.keys(m).sort().reverse().map((k) => ({ month: k, rows: m[k], count: m[k].length }));
+}
 
