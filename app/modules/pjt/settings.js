@@ -15,6 +15,6 @@ export function buildData(form) {
 }
 /** 저장 전 변경 요약: 바뀐 항목의 이름 목록 */
 export function changedFields(doc, form) { const a = formOf(doc), b = formOf(Object.assign({}, form)); const bd = buildData(form); const nb = bd.data ? formOf(bd.data) : b; const n = (k, v) => (k === 'qty' && (v === '' || v === '0') ? '0' : v); return FIELDS.filter(([k]) => n(k, a[k]) !== n(k, nb[k])).map(([, l]) => l); }   // 물량이 비어 있는 것과 0 은 같은 값
-/** 출역 체크 시 공수 칸에 자동으로 넣는 값(프로젝트 문서의 defaultManday): 빈 값 = 자동 입력 없음, 0 보다 큰 숫자(0.5 단위가 아니어도 됨, 최대 3) */
-export function parseDefaultManday(v) { const t = String(v == null ? '' : v).trim(); if (t === '') return { value: null }; const n = Number(t); if (!isFinite(n) || n <= 0 || n > 3) return { error: '자동 공수는 0 보다 크고 3 이하인 숫자로 입력하세요(비우면 자동 입력 없음).' }; return { value: Math.round(n * 10) / 10 }; }
+/** 출역 체크 시 공수 칸에 자동으로 넣는 값(프로젝트 문서의 defaultManday): 빈 값 = 자동 입력 없음, 0 보다 큰 숫자(0.5 단위가 아니어도 됨, 상한 없음) */
+export function parseDefaultManday(v) { const t = String(v == null ? '' : v).trim(); if (t === '') return { value: null }; const n = Number(t); if (!isFinite(n) || n <= 0) return { error: '자동 공수는 0 보다 큰 숫자로 입력하세요(비우면 자동 입력 없음).' }; return { value: Math.round(n * 10) / 10 }; }
 export const endText = (ended, label) => (ended ? '"' + label + '" 프로젝트를 다시 진행 중으로 되돌립니다. 위 메뉴의 프로젝트 목록에 다시 나타납니다.' : '"' + label + '" 프로젝트를 종료 처리합니다. 위 메뉴의 프로젝트 목록에서 "종료 PJT"로 이동하고, 일정·공정·출역·공사일보 화면은 열 수 없게 됩니다(데이터는 그대로 보존됩니다).');
