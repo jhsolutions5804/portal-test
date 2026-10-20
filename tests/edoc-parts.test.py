@@ -159,7 +159,9 @@ try:
         pg.wait_for_selector('[data-compose="daily"]', timeout=15000); pg.wait_for_timeout(500)
         gt = [x for x in part(pg) if x['action'] == 'get']
         ok(len(gt) >= 1 and gt[-1]['date'] == '2026-10-16', '★ 기존 문서를 열면 서버 get 으로 그날의 참여 기록을 불러온다 (호출: %s)' % gt)
-        ok(pg.locator('[data-part="pa"][aria-pressed="true"]').count() == 1 and pg.locator('[data-part="pb"][aria-pressed="true"]').count() == 1, '★ 불러온 기록(pa·pb)대로 칩이 선택돼 있다 — 수정할 때 칩이 비어 기록을 덮어쓰는 일이 없다'); pg.close()
+        ok(pg.locator('[data-part="pa"][aria-pressed="true"]').count() == 1 and pg.locator('[data-part="pb"][aria-pressed="true"]').count() == 1, '★ 불러온 기록(pa·pb)대로 칩이 선택돼 있다 — 수정할 때 칩이 비어 기록을 덮어쓰는 일이 없다')
+        pick_main(pg, 'pc')
+        ok(pg.locator('[data-part="pc"][aria-pressed="true"]').count() == 1 and pg.locator('[data-part="pb"][aria-pressed="true"]').count() == 1 and pg.locator('[data-part="pa"][aria-pressed="true"]').count() == 0, '★ 기존 문서를 열고 위쪽 프로젝트를 A → C 로 바꾸면 A 자리가 C 로 바뀌고 직접 더했던 B 는 남는다(이전 값을 문서의 프로젝트로 기억)'); pg.close()
         b.close()
     print('\n' + ('실패 %d건 / 통과 %d' % (fail_n, pass_n) if fail_n else '전부 통과 (%d건)' % pass_n)); sys.exit(1 if fail_n else 0)
 except Exception as e:
