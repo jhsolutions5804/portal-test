@@ -1,19 +1,19 @@
-import { esc, toast } from '../../core/ui.js?v=20261020f';
-import { buildPendingRows, groupByMonth, confirmItems, autoProposeAfterImport, splitDraft, splitLeftText, buildConfirmedRows } from './pjt-tag-logic.js?v=20261020f';
-import { proposeNewPjt, setPjtTag, clearPjtTag } from './data.js?v=20261020f';
-import { confirmDialog } from '../../core/dialog.js?v=20261020f';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261020f';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261020f';
-import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261020f';
-import { parseBankSheets } from '../../shared/bank-import.js?v=20261020f';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261020f';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261020f';
-import { monthlyView, monthlyCsv, MP_SEED, npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261020f';
-import { loadLedger, loadProjects, loadPjtTags, confirmPjtTags, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, saveMonthlyPlan, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261020f';
-import { pjtTagHtml, pjtSplitDialogHtml, monthlyHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261020f';
+import { esc, toast } from '../../core/ui.js?v=20261020g';
+import { buildPendingRows, groupByMonth, confirmItems, autoProposeAfterImport, splitDraft, splitLeftText, buildConfirmedRows, ruleDraft } from './pjt-tag-logic.js?v=20261020g';
+import { proposeNewPjt, setPjtTag, clearPjtTag, listPjtRules, savePjtRule } from './data.js?v=20261020g';
+import { confirmDialog } from '../../core/dialog.js?v=20261020g';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261020g';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261020g';
+import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261020g';
+import { parseBankSheets } from '../../shared/bank-import.js?v=20261020g';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261020g';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261020g';
+import { monthlyView, monthlyCsv, MP_SEED, npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261020g';
+import { loadLedger, loadProjects, loadPjtTags, confirmPjtTags, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, saveMonthlyPlan, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261020g';
+import { pjtTagHtml, pjtSplitDialogHtml, pjtRuleDialogHtml, monthlyHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261020g';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
-import { financePerm } from '../../shared/finance-perm.js?v=20261020f';
+import { financePerm } from '../../shared/finance-perm.js?v=20261020g';
 /** 실제 메뉴 등록은 공용 틀(modules/legacy/list.js 의 finance 정의 — 인사총무와 같은 사이드바·내용 영역). 여기의 값은 규약(manifest+mount)용이며 권한은 같은 함수를 쓴다 */
 export const manifest = { id: 'finance', order: 25, title: '재무회계', icon: '📒', defaultHash: '#/finance/home', perm: financePerm };
 const S = { data: null, filter: { from: '', to: '', source: '', review: false, reviewed: false, assignee: '', q: '' }, limit: 100, imp: { kind: 'taxsales', busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }, rep: { kind: 'is', from: '', to: '', acct: '2010', pacct: '2010', q: '', zero: false, vatKey: '', vatForm: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_vatform_v1') || '{}') || {}; } catch (e) { return {}; } })() }, openDate: '2026-01-01', admin: false, rl: null, chk: null, chkDate: '', openEditId: '', sel: new Set(), mp: { ym: kstToday().slice(0, 7), manage: false, draft: null, view: null }, fc: { over: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_fc_v1') || '{}') || {}; } catch (e) { return {}; } })(), scen: 'base' } };
@@ -62,7 +62,7 @@ export async function mount(root, route, ctx) {
   const rlInit = () => { S.rl = { merchant: S.data.rules.map((r) => Object.assign({}, r)), purchase: (S.data.purchaseRules || []).map((r) => Object.assign({}, r)), bank: (S.data.bankRules || []).map((r) => Object.assign({}, r)), q: '', dirtyM: false, dirtyP: false, dirtyB: false, upload: null, error: '' }; };
   const reload = async () => { S.data = await loadLedger(); if (tab === 'rules') rlInit(); if (!S.chkDate) S.chkDate = monthEnd((lastDate() || kstToday()).slice(0, 7)); };
   /* ───── 프로젝트 표시(대기 목록): 읽기 → 계산(pjt-tag-logic) → 화면(pjtTagHtml) → 확정(서버 pjtTagBatch) ───── */
-  if (!S.pt) S.pt = { busy: false, msg: '', sel: {}, open: {}, rows: [], months: [], names: {}, tags: {}, proposals: {}, doneGroups: [], doneOpen: false };
+  if (!S.pt) S.pt = { busy: false, msg: '', sel: {}, open: {}, rows: [], months: [], names: {}, tags: {}, proposals: {}, doneGroups: [], doneOpen: false, ruleOpen: false, ruleState: 'ok', rules: [], ruleWarnings: [], ruleLoaded: false };
   const ptRebuild = () => { const rows = buildPendingRows(S.data.entries, S.pt.proposals, S.pt.tags); S.pt.rows = rows; S.pt.months = groupByMonth(rows); S.pt.doneGroups = buildConfirmedRows(S.data.entries, S.pt.tags, { grouped: true }); const alive = new Set(rows.map((r) => r.id)); Object.keys(S.pt.sel).forEach((k) => { if (!alive.has(k)) delete S.pt.sel[k]; }); };
   async function ptLoad() { const d = await loadPjtTags(); S.pt.tags = d.tags; S.pt.proposals = d.proposals; S.pt.names = d.names; ptRebuild(); }
   async function ptConfirm(rows, label) {
@@ -90,9 +90,32 @@ export async function mount(root, route, ctx) {
       catch (e) { working = false; sv.disabled = false; p.msg(msgHtml('danger', (e && e.message) || '저장하지 못했습니다.')); }
     });
   }
+  /* 거래처 규칙(서버 pjtRuleList·pjtRuleSave) — 규칙은 제안의 입력일 뿐 확정이 아니다. 구역을 처음 펼칠 때 한 번 읽고(접었다 펴도 다시 읽지 않음, 못 읽었을 때만 [다시 불러오기]), 저장 뒤에는 다시 읽는다.
+   * 패널은 입력 검사(ruleDraft — 서버 규칙과 같음)를 통과해야 서버를 부르고, 저장 중에는 잠그며, 서버가 거절하면 패널·입력을 그대로 두고 이유를 보여 준다 */
+  async function loadRules() { S.pt.ruleState = 'loading'; paint(); try { const d = await listPjtRules(); S.pt.rules = Array.isArray(d && d.rules) ? d.rules : []; S.pt.ruleWarnings = Array.isArray(d && d.warnings) ? d.warnings : []; S.pt.ruleLoaded = true; S.pt.ruleState = 'ok'; } catch (e) { S.pt.ruleState = 'error'; } paint(); }
+  function openRule(rule) {
+    let working = false; const p = openPanel(rule ? '거래처 규칙 수정 — ' + rule.partner : '거래처 규칙 추가', pjtRuleDialogHtml(rule, S.pt.names), [{ act: 'save', label: '저장' }]);
+    const gather = () => ({ partner: p.el.querySelector('[data-rd-partner]').value, accounts: [...p.el.querySelectorAll('[data-rd-acc]:checked')].map((c) => c.value), mode: (p.el.querySelector('[data-rd-mode]:checked') || {}).value || '', pjt: p.el.querySelector('[data-rd-pjt]').value, note: p.el.querySelector('[data-rd-note]').value, active: p.el.querySelector('[data-rd-active]').checked });
+    p.el.addEventListener('change', (ev) => { if (ev.target.closest('[data-rd-mode]')) p.el.querySelector('[data-rd-pjtbox]').hidden = gather().mode === 'manday'; });
+    p.el.addEventListener('click', async (ev) => {
+      const sv = ev.target.closest('[data-act="save"]'); if (!sv || working) return;
+      const d = ruleDraft(gather()); if (!d.ok) { p.msg(msgHtml('danger', d.error)); return; }
+      working = true; sv.disabled = true; p.msg('');
+      try { await savePjtRule(d.rule); toast('거래처 규칙을 저장했습니다.'); p.close(); S.pt.msg = '거래처 규칙을 저장했습니다(' + d.rule.partner + '). 새 전표부터 적용되고 이미 만든 제안은 바뀌지 않습니다.'; await loadRules(); }
+      catch (e) { working = false; sv.disabled = false; p.msg(msgHtml('danger', (e && e.message) || '저장하지 못했습니다.')); }
+    });
+  }
   async function ptClick(ev) {
     if (tab !== 'pjt') return false; const t = ev.target; if (!t || !t.closest) return false;
-    const dt = t.closest('[data-pt-done-toggle]'); if (dt) { ev.preventDefault(); S.pt.doneOpen = !S.pt.doneOpen; paint(); return true; }
+    const rt = t.closest('[data-pt-rules-toggle]'); if (rt) { ev.preventDefault(); S.pt.ruleOpen = !S.pt.ruleOpen; if (S.pt.ruleOpen && !S.pt.ruleLoaded && S.pt.ruleState !== 'loading') await loadRules(); else paint(); return true; }
+  const rr = t.closest('[data-pt-rules-retry]'); if (rr) { ev.preventDefault(); if (!S.pt.busy && S.pt.ruleState !== 'loading') await loadRules(); return true; }
+  const ra = t.closest('[data-pt-rule-add]'); if (ra) { ev.preventDefault(); if (!S.pt.busy) openRule(null); return true; }
+  const re = t.closest('[data-pt-rule-edit]'); if (re) { ev.preventDefault(); if (!S.pt.busy) { const r = S.pt.rules.find((x) => x.id === re.getAttribute('data-pt-rule-edit')); if (r) openRule(r); } return true; }
+  const rg = t.closest('[data-pt-rule-toggle]'); if (rg) { ev.preventDefault(); if (S.pt.busy) return true; const r = S.pt.rules.find((x) => x.id === rg.getAttribute('data-pt-rule-toggle')); if (!r) return true;
+    S.pt.busy = true; S.pt.msg = ''; paint();
+    try { await savePjtRule({ partner: r.partner, accounts: r.accounts, mode: r.mode, pjt: r.pjt, note: r.note, active: r.active === false }); await loadRules(); S.pt.msg = '거래처 규칙을 ' + (r.active === false ? '켰습니다' : '껐습니다') + '(' + r.partner + ').'; } catch (e) { S.pt.msg = '규칙을 바꾸지 못했습니다. ' + ((e && e.message) || ''); }
+    S.pt.busy = false; paint(); return true; }
+  const dt = t.closest('[data-pt-done-toggle]'); if (dt) { ev.preventDefault(); S.pt.doneOpen = !S.pt.doneOpen; paint(); return true; }
   const rd = t.closest('[data-pt-redo]'); if (rd) { ev.preventDefault(); if (!S.pt.busy) { const id = rd.getAttribute('data-pt-redo'); const row = (S.pt.doneGroups || []).flatMap((g) => g.rows).find((r) => r.id === id); if (row) openSplit(row, true); } return true; }
   const ud = t.closest('[data-pt-undo]'); if (ud) { ev.preventDefault(); if (S.pt.busy) return true; const id = ud.getAttribute('data-pt-undo'); const row = (S.pt.doneGroups || []).flatMap((g) => g.rows).find((r) => r.id === id); if (!row) return true;
     const okd = await confirmDialog({ title: '프로젝트 표시 해제', body: row.no + ' 줄의 프로젝트 표시를 해제합니다.\n해제하면 대기 목록으로 돌아가고, 영업기획 마진율·월간 보고서 값이 바뀔 수 있습니다. 이전 지정은 기록에 남습니다.', confirmLabel: '해제' }); if (!okd || !okd.ok) return true;

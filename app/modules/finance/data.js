@@ -1,5 +1,5 @@
-import { db, functions, httpsCallable, collection, getDocs, getDoc, doc, query, orderBy, limit } from '../../core/firebase.js?v=20261020f';
-import { docToEntry, chunk, postPayload } from './logic.js?v=20261020f';
+import { db, functions, httpsCallable, collection, getDocs, getDoc, doc, query, orderBy, limit } from '../../core/firebase.js?v=20261020g';
+import { docToEntry, chunk, postPayload } from './logic.js?v=20261020g';
 
 /* 재무회계 데이터 읽기·쓰기 — Firestore 를 만지는 코드는 이 파일에만 둔다.
  * 읽기: ledger_entries(전표)·ledger_meta(설정·마감일·가맹점 규칙)·ledger_imports(가져오기 이력) — 보안 규칙상 관리자·재무회계팀(dept)·perms.finance 만 읽는다.
@@ -61,6 +61,10 @@ export async function confirmPjtTags(items) {
 }
 /** 줄 직접 지정(저장·재지정) — 서버 pjtTagSet. 분할 합 = 줄 금액·등록된 프로젝트만·줄당 12개까지는 서버가 최종 검사하고 거절 사유를 한글로 돌려준다 */
 export const setPjtTag = (item) => ledgerCall({ action: 'pjtTagSet', entryId: item.entryId, lineIdx: item.lineIdx, method: item.method, splits: item.splits, note: item.note || '' });
+/** 거래처 규칙 목록 — 서버 pjtRuleList(꺼진 규칙 포함). 응답 { rules, warnings: [{ partners, accounts }] } */
+export const listPjtRules = () => ledgerCall({ action: 'pjtRuleList', includeInactive: true });
+/** 거래처 규칙 저장(추가·수정·끄기/켜기) — 서버 pjtRuleSave. 같은 거래처면 갱신되고 이전 규칙은 서버 history 에 남는다. 규칙은 제안의 입력일 뿐 확정이 아니다 */
+export const savePjtRule = (r) => ledgerCall({ action: 'pjtRuleSave', partner: r.partner, accounts: r.accounts, mode: r.mode, pjt: r.pjt, note: r.note || '', active: r.active !== false });
 /** 확정 해제 — 서버 pjtTagClear: 문서는 남기고 상태만 cleared, 이전 지정은 history 에 남는다. 해제한 줄은 대기 목록으로 돌아온다 */
 export const clearPjtTag = (item) => ledgerCall({ action: 'pjtTagClear', entryId: item.entryId, lineIdx: item.lineIdx, note: item.note || '' });
 /** 새 전표의 제안 만들기 — dryRun 이면 만들 건수만 알려 주고 쓰지 않는다 */

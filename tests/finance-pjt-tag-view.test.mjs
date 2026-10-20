@@ -1,5 +1,5 @@
 // 재무회계 "프로젝트 표시" 대기 목록 화면(HTML 문자열) 시험 — 가짜 데이터만 쓴다(공개 저장소). 화면 함수: app/modules/finance/view.js 의 pjtTagHtml
-import { pjtTagHtml, pjtSplitDialogHtml } from '../app/modules/finance/view.js';
+import { pjtTagHtml, pjtSplitDialogHtml, pjtRuleDialogHtml } from '../app/modules/finance/view.js';
 import { readFileSync, readdirSync } from 'node:fs';
 import { buildPendingRows, groupByMonth, monthPreview } from '../app/modules/finance/pjt-tag-logic.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
@@ -146,5 +146,51 @@ ok(has(hOpen, 'aria-expanded="true"') && has(hClosed, 'aria-expanded="false"'), 
 ok(!has(hOpen, 'NaN') && !has(hOpen, 'undefined'), '화면 어디에도 NaN·undefined 글자가 없다');
 { const usedD = [...new Set((dsec(hOpen).match(/class="[^"]+"/g) || []).flatMap((c) => c.slice(7, -1).split(/\s+/)))].filter((c) => c.startsWith('jh-')); const undefD = usedD.filter((c) => !new RegExp('\\.' + c.replace(/[-_]/g, (m) => '\\' + m) + '(?![\\w-])').test(cssAll));
   ok(usedD.length >= 6 && undefD.length === 0, '★ 확정 구역(data-pt-done 이후)이 쓰는 jh- 클래스 ' + usedD.length + '개가 전부 스타일에 정의됨(정의 안 된 이름 ' + JSON.stringify(undefD) + ') — 구역 안만 검사하고 개수도 확인해 구역이 없을 때 우연히 통과하지 않게'); }
-ok(pass + fail >= 48, '★ 시험 전체가 끝까지 실행됨(실행 ' + (pass + fail) + '건 ≥ 28) — 중간에 예외로 죽어 뒤쪽 시험이 안 도는 일 방지');
+console.log('── 거래처 규칙 구역');
+const RULES = [{ id: 'rule__가짜외주', partner: '가짜외주', accounts: ['5210'], mode: 'single', pjt: 'pA', active: true, note: '대표님 지정', setByName: '가짜관리자' },
+  { id: 'rule__가짜회사', partner: '가짜회사', accounts: ['4010'], mode: 'manday', pjt: '', active: true, note: '' },
+  { id: 'rule__가짜', partner: '가짜', accounts: ['4010', '5340'], mode: 'single', pjt: 'pB', active: false, note: '' }];
+const WARN = [{ partners: ['가짜회사', '가짜'], accounts: ['4010'] }];
+const rs = (o) => Object.assign(base(), { ruleOpen: true, ruleState: 'ok', rules: RULES, ruleWarnings: WARN }, o || {});
+const rsec = (h) => { const i = h.indexOf('data-pt-rules'); return i < 0 ? '' : h.slice(i); };
+const rClosed = pjtTagHtml(Object.assign(base(), { ruleOpen: false }));
+ok(has(rClosed, 'data-pt-rules-toggle') && has(rsec(rClosed), '거래처 규칙') && has(rClosed, 'aria-expanded="false"'), '★ 거래처 규칙 구역이 있고 처음에는 접혀 있다(토글)');
+ok(!has(rClosed, 'data-pt-rule-edit') && !has(rClosed, 'data-pt-rule-add'), '★ 접혀 있으면 규칙 행·[규칙 추가] 버튼이 없다');
+ok(has(pjtTagHtml(rs({ ruleState: 'loading', rules: [] })), '불러오는 중') && !has(pjtTagHtml(rs({ ruleState: 'loading', rules: [] })), 'data-pt-rule-edit'), '★ 불러오는 중에는 "불러오는 중"만 보이고 목록·추가 버튼은 없다');
+const rErr = pjtTagHtml(rs({ ruleState: 'error', rules: [] })); ok(has(rErr, '불러오지 못했습니다') && has(rErr, 'data-pt-rules-retry') && !has(rErr, '규칙이 없습니다'), '★ 불러오지 못하면 "불러오지 못했습니다"와 [다시 불러오기]가 보이고 "규칙이 없습니다"로 오해되지 않는다');
+const rOpen = pjtTagHtml(rs());
+const eB = rOpen.match(/<button[^>]*data-pt-rule-edit="[^"]*"[^>]*>.*?<\/button>/g) || [], tB = rOpen.match(/<button[^>]*data-pt-rule-toggle="[^"]*"[^>]*>.*?<\/button>/g) || [];
+ok(eB.length === 3 && tB.length === 3 && new Set(eB.map((b) => b.match(/data-pt-rule-edit="([^"]*)"/)[1])).size === 3, '★ 규칙마다 [수정]·[끄기/켜기] 버튼이 정확히 한 개씩(3개 → 3 + 3, 서로 다른 규칙 id)');
+ok(has(rsec(rOpen), '가짜외주') && has(rsec(rOpen), '가짜회사') && has(rsec(rOpen), '대표님 지정'), '거래처와 메모가 보인다');
+ok(has(rsec(rOpen), '가짜 프로젝트 A') && has(rsec(rOpen), '공수 비율'), '★ 방식 문구: "프로젝트 하나"는 프로젝트 이름(가짜 프로젝트 A), "공수 비율"은 그 달 공수 비율로 보인다');
+ok(has(rsec(rOpen), '외주공사비') && has(rsec(rOpen), '공사수입') && has(rsec(rOpen), '안전관리비·현장소모품'), '★ 계정은 코드가 아니라 이름(외주공사비·공사수입·안전관리비·현장소모품)으로 보인다');
+ok(tB.filter((b) => /끄기/.test(b)).length === 2 && tB.filter((b) => /켜기/.test(b)).length === 1 && /rule__가짜"/.test(tB.find((b) => /켜기/.test(b))), '★ 켜진 규칙 2개는 [끄기], 꺼진 규칙 1개(가짜)는 [켜기]');
+ok(count(rOpen, /jh-fin__rule--off/g) === 1 && /jh-fin__rule--off[^>]*data-pt-rule="rule__가짜"|data-pt-rule="rule__가짜"[^>]*jh-fin__rule--off/.test(rOpen), '★ 꺼진 규칙 1개만 흐리게(--off) 표시된다');
+{ const wm = (rsec(rOpen).match(/jh-fin__rulewarn[\s\S]*?<\/div><\/div>/) || [''])[0]; ok(has(wm, '겹침') && has(wm, '가짜회사') && has(wm, '가짜') && has(wm, '공사수입') && has(wm, '이름이 더 긴 규칙이 우선'), '★ 겹침 경고 칸에 두 거래처(가짜회사·가짜)와 공통 계정 이름(공사수입)과 우선순위 안내가 함께 나온다'); }
+ok(!has(pjtTagHtml(rs({ ruleWarnings: [] })), 'jh-fin__rulewarn'), '겹침이 없으면 경고 칸이 없다');
+const r0 = pjtTagHtml(rs({ rules: [], ruleWarnings: [] })); ok(has(r0, '규칙이 없습니다') && has(r0, 'data-pt-rule-add') && !has(r0, 'data-pt-rule-edit'), '★ 규칙이 0개면 "규칙이 없습니다" 안내와 [규칙 추가]가 보인다');
+ok(count(rOpen, /data-pt-rule-add/g) === 1, '★ 규칙이 있어도 [규칙 추가] 버튼은 하나 있다');
+const rBusy = pjtTagHtml(rs({ busy: true })); const rb = rBusy.match(/<button[^>]*data-pt-rule-(?:edit|toggle|add)[^>]*>/g) || []; ok(rb.length === 7 && rb.every((b) => /\sdisabled/.test(b)), '★ 처리 중에는 규칙 버튼 7개(수정 3 + 끄기/켜기 3 + 추가 1)가 모두 비활성이다(' + rb.length + '개)');
+const rEvil = pjtTagHtml(rs({ rules: [Object.assign({}, RULES[0], { partner: '<img src=x onerror=1>거래처', note: '"><script>1</script>', pjt: 'pZ', setByName: '<i>x</i>' })] })); ok(!has(rEvil, '<img src=x') && !has(rEvil, '<script>1') && !has(rEvil, '<i>x</i>') && has(rsec(rEvil), '&lt;'), '★ 거래처·메모·지정한 사람의 태그는 이스케이프된다');
+ok(count(rOpen, /data-variant="primary"/g) === 1, '★ 주 버튼은 여전히 하나(선택한 줄 확정) — 규칙 버튼은 기본 버튼');
+ok(!has(rOpen, 'NaN') && !has(rOpen, 'undefined') && !has(rOpen, 'null'), '규칙 구역 어디에도 NaN·undefined·null 글자가 없다');
+{ const usedR = [...new Set((rsec(rOpen).match(/class="[^"]+"/g) || []).flatMap((c) => c.slice(7, -1).split(/\s+/)))].filter((c) => c.startsWith('jh-')); const undefR = usedR.filter((c) => !new RegExp('\\.' + c.replace(/[-_]/g, (m) => '\\' + m) + '(?![\\w-])').test(cssAll));
+  ok(usedR.length >= 6 && undefR.length === 0, '★ 규칙 구역(data-pt-rules 이후)이 쓰는 jh- 클래스 ' + usedR.length + '개가 전부 스타일에 정의됨(정의 안 된 이름 ' + JSON.stringify(undefR) + ')'); }
+console.log('── 거래처 규칙 패널');
+const dNew = pjtRuleDialogHtml(null, NAMES), dEdit = pjtRuleDialogHtml(RULES[0], NAMES), dMan = pjtRuleDialogHtml(RULES[1], NAMES);
+const dChecks = (h) => h.match(/<input[^>]*data-rd-acc[^>]*>/g) || [];
+ok(dChecks(dNew).length === 6 && ['4010', '5010', '5210', '5320', '5340', '5370'].every((c) => dChecks(dNew).some((x) => x.includes('value="' + c + '"'))) && !dChecks(dNew).some((x) => /5110|5350|5360|5380/.test(x)), '★ 계정 체크박스는 허용 6개(4010·5010·5210·5320·5340·5370)뿐이다 — 공수 배분·공통비 계정은 없다');
+ok(dChecks(dEdit).filter((x) => /\schecked/.test(x)).length === 1 && /value="5210"[^>]*checked|checked[^>]*value="5210"/.test(dChecks(dEdit).join(' ')), '★ 수정 패널은 현재 규칙의 계정(5210)만 체크돼 있다');
+ok(has(dNew, 'data-rd-partner') && !/data-rd-partner[^>]*\sdisabled|disabled[^>]*data-rd-partner/.test(dNew.match(/<input[^>]*data-rd-partner[^>]*>/)[0]), '★ 새 규칙 패널은 거래처 칸이 열려 있다');
+ok(/\sdisabled|readonly/.test(dEdit.match(/<input[^>]*data-rd-partner[^>]*>/)[0]) && has(dEdit, '가짜외주'), '★ 수정 패널은 거래처 칸이 잠겨 있다(거래처를 바꾸면 새 규칙이 되어 옛 규칙이 남기 때문)');
+const modes = (h) => h.match(/<input[^>]*data-rd-mode[^>]*>/g) || []; ok(modes(dNew).length === 2 && modes(dNew).some((x) => /value="single"[^>]*checked|checked[^>]*value="single"/.test(x)), '★ 방식은 2개(프로젝트 하나·공수 비율)이고 새 규칙은 "프로젝트 하나"가 기본이다');
+ok(modes(dMan).some((x) => /value="manday"[^>]*checked|checked[^>]*value="manday"/.test(x)), '"공수 비율" 규칙의 수정 패널은 공수 비율이 선택돼 있다');
+const sel = dEdit.match(/<select[^>]*data-rd-pjt[^>]*>[\s\S]*?<\/select>/)[0]; ok(has(sel, 'value="pA" selected') && has(sel, '>가짜 프로젝트 A<') && has(sel, 'value="pB"'), '★ single 규칙의 수정 패널은 프로젝트 선택이 현재 프로젝트(A)로 채워져 있고 목록은 이름으로 보인다');
+ok(has(dEdit, 'data-rd-note') && has(dEdit, '대표님 지정') && has(dEdit, 'data-rd-active'), '메모 칸(현재 메모)과 켬/끔 칸이 있다');
+ok(has(dMan, 'data-rd-pjtbox') && /data-rd-pjtbox[^>]*(hidden|display:\s*none)/.test(dMan), '★ "공수 비율" 규칙은 프로젝트 선택 칸이 숨겨져 있다(방식이 single 일 때만 보임)');
+ok(!/data-rd-pjtbox[^>]*(hidden|display:\s*none)/.test(dEdit), 'single 규칙은 프로젝트 선택 칸이 보인다');
+ok(/\[data-rd-pjtbox\]\[hidden\]\s*\{[^}]*display:\s*none/.test(cssAll), '★ 스타일이 hidden 속성을 무력화하지 않는다 — .jh-field 의 display: block 이 브라우저 기본의 숨김을 덮어써 "공수 비율"을 골라도 프로젝트 칸이 계속 보이던 실제 결함(실제 앱 시험이 발견)의 재발 방지');
+const dEv = pjtRuleDialogHtml(Object.assign({}, RULES[0], { partner: '<b>이름</b>', note: '"><script>1</script>' }), { pA: '<i>x</i>' }); ok(!has(dEv, '<b>이름</b>') && !has(dEv, '<script>1') && !has(dEv, '<i>x</i>'), '★ 패널의 거래처·메모·프로젝트 이름은 이스케이프된다');
+{ const usedP = [...new Set(((dNew + dEdit + dMan).match(/class="[^"]+"/g) || []).flatMap((c) => c.slice(7, -1).split(/\s+/)))].filter((c) => c.startsWith('jh-')); const undefP = usedP.filter((c) => !new RegExp('\\.' + c.replace(/[-_]/g, (m) => '\\' + m) + '(?![\\w-])').test(cssAll)); ok(usedP.length >= 4 && undefP.length === 0, '★ 패널이 쓰는 jh- 클래스 ' + usedP.length + '개가 전부 스타일에 정의됨(정의 안 된 이름 ' + JSON.stringify(undefP) + ')'); }
+ok(pass + fail >= 105, '★ 시험 전체가 끝까지 실행됨(실행 ' + (pass + fail) + '건 ≥ 28) — 중간에 예외로 죽어 뒤쪽 시험이 안 도는 일 방지');
 console.log('\n' + (fail ? '실패 ' + fail + '건 / 통과 ' + pass : '전부 통과 (' + pass + '건)')); process.exit(fail ? 1 : 0);

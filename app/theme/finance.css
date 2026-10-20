@@ -171,4 +171,12 @@ a.jh-kpi:hover { border-color: var(--c-primary); }
 .jh-fin__donerow:first-of-type { border-top: 0; }
 .jh-fin__doneact { display: flex; gap: var(--sp-1); }
 @media (max-width: 899px) { .jh-fin__donerow { grid-template-columns: minmax(0, 1fr) auto; } .jh-fin__donerow .jh-fin__ptchips { grid-column: 1 / -1; } .jh-fin__doneact { grid-column: 1 / -1; } }
-
+/* 거래처 규칙 구역·패널 */
+.jh-fin__rules { margin-top: var(--sp-3); }
+.jh-fin__rule { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) auto; gap: var(--sp-3); align-items: start; padding: var(--sp-3) var(--sp-2); border-top: var(--u-1) solid var(--c-line); }
+.jh-fin__rule--off { opacity: 0.6; }
+.jh-fin__rulewarn { padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-2); border-radius: var(--radius-sm); background: var(--c-warn-bg); color: var(--c-warn-ink); font-size: var(--fs-sm); }
+.jh-fin__rulechecks { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); }
+.jh-fin__rulecheck { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-sm); color: var(--c-ink); }
+@media (max-width: 899px) { .jh-fin__rule { grid-template-columns: minmax(0, 1fr) auto; } .jh-fin__rule .jh-fin__ptchips { grid-column: 1 / -1; } }
+[data-rd-pjtbox][hidden] { display: none; } /* .jh-field 의 display: block 이 hidden 속성의 숨김을 덮어쓰므로 이 칸만 다시 숨긴다 */

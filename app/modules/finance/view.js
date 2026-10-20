@@ -1,8 +1,8 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261020f';
-import { monthPreview, splitLeftText } from './pjt-tag-logic.js?v=20261020f';
-import { esc } from '../../core/ui.js?v=20261020f';
-import { MP_GROUPS, NPAY_CHOICES, ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport, vatForm, vatCardRef } from './logic.js?v=20261020f';
-import { CHOICES } from '../../shared/merchant-table.js?v=20261020f';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261020g';
+import { monthPreview, splitLeftText, RULE_ACCOUNTS } from './pjt-tag-logic.js?v=20261020g';
+import { esc } from '../../core/ui.js?v=20261020g';
+import { MP_GROUPS, NPAY_CHOICES, ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport, vatForm, vatCardRef } from './logic.js?v=20261020g';
+import { CHOICES } from '../../shared/merchant-table.js?v=20261020g';
 
 /* 재무회계 화면 조각 — 모든 값은 esc() 로 감싸 HTML 로 만든다. 스타일은 theme/finance.css 와 공용 클래스를 쓴다 */
 const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['monthly', '월간 수지'], ['forecast', '예측'], ['gap', '이엔지 정산'], ['pjt', '프로젝트 표시'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];
@@ -380,11 +380,41 @@ function doneHtml(st, nm, dis) {
   const note = '<div class="jh-field__hint">이미 확정된 줄입니다. 수정하거나 해제하면 영업기획의 마진율·월간 보고서 값이 바뀔 수 있습니다. 이전 지정은 기록에 남습니다. 해제한 줄은 위 대기 목록으로 돌아옵니다.</div>';
   return '<section class="jh-card jh-fin__done">' + toggle + '<div class="jh-finance__pad">' + note + groups.map((g) => '<div class="jh-fin__donemonth"><h4>' + esc(g.month) + ' <span class="jh-fin__ptcount">' + g.rows.length + '줄</span></h4>' + g.rows.map(row).join('') + '</div>').join('') + '</div></section>';
 }
+/** 거래처 규칙 구역 — st.ruleOpen(펼침)·st.ruleState('loading'|'error'|'ok')·st.rules(서버 pjtRuleList)·st.ruleWarnings([{ partners, accounts }] 이름이 서로 포함되는 두 규칙이 같은 계정에 걸림). 규칙은 제안의 입력일 뿐 확정이 아니다.
+ * 처음에는 접혀 있고(펼칠 때 서버에서 읽는다), 불러오는 중·못 불러옴·목록을 서로 다르게 보여 "규칙이 없습니다"로 오해되지 않게 한다. nm = 프로젝트 id → 이름, dis = 처리 중 비활성 속성 */
+function ruleSectionHtml(st, nm, dis) {
+  const open = st.ruleOpen === true; const toggle = '<div class="jh-fin__donehead" data-pt-rules><button type="button" class="jh-btn" data-variant="ghost" data-pt-rules-toggle aria-expanded="' + (open ? 'true' : 'false') + '">거래처 규칙 ' + (open ? '접기 ▴' : '보기 ▾') + '</button></div>';
+  if (!open) return '<section class="jh-card jh-fin__rules">' + toggle + '</section>';
+  const wrap = (inner) => '<section class="jh-card jh-fin__rules">' + toggle + '<div class="jh-finance__pad">' + inner + '</div></section>';
+  if (st.ruleState === 'loading') return wrap('<div class="jh-field__hint">거래처 규칙을 불러오는 중입니다.</div>');
+  if (st.ruleState === 'error') return wrap('<div class="jh-alert" data-tone="danger" role="alert">거래처 규칙을 불러오지 못했습니다.</div><button type="button" class="jh-btn" data-pt-rules-retry' + dis + '>다시 불러오기</button>');
+  const rules = Array.isArray(st.rules) ? st.rules : []; const warns = Array.isArray(st.ruleWarnings) ? st.ruleWarnings : [];
+  const hint = '<div class="jh-field__hint">거래처 이름에 규칙의 거래처가 들어 있는 전표 줄은 이 규칙으로 프로젝트 제안이 만들어집니다. 규칙은 제안일 뿐이고 확정은 사람이 합니다. 이미 만든 제안은 바뀌지 않으며 새 전표부터 적용됩니다.</div>';
+  const wHtml = warns.length ? '<div class="jh-fin__rulewarn" role="status">' + warns.map((w) => '<div>⚠ 겹침: ' + (w.partners || []).map(esc).join(' · ') + ' — 같은 계정(' + (w.accounts || []).map((a) => esc(accountName(a))).join(', ') + ')에 둘 다 걸립니다. 이름이 더 긴 규칙이 우선합니다.</div>').join('') + '</div>' : '';
+  const add = '<div class="jh-fin__ptact"><button type="button" class="jh-btn" data-variant="secondary" data-pt-rule-add' + dis + '>규칙 추가</button></div>';
+  if (!rules.length) return wrap(hint + '<div class="jh-field__hint">규칙이 없습니다. 자주 나오는 거래처를 규칙으로 두면 새 전표의 프로젝트 제안이 자동으로 만들어집니다.</div>' + add);
+  const modeText = (r) => r.mode === 'manday' ? '그 달 공수 비율' : (r.pjt ? nm(r.pjt) + ' 하나' : '프로젝트 미지정');
+  const row = (r) => '<div class="jh-fin__rule' + (r.active === false ? ' jh-fin__rule--off' : '') + '" data-pt-rule="' + esc(r.id) + '"><div class="jh-fin__ptinfo"><strong>' + esc(r.partner) + '</strong>' + (r.active === false ? ' <span class="jh-fin__chip jh-fin__chip--skip">꺼짐</span>' : '') + '<div class="jh-fin__ptmemo">' + (r.accounts || []).map((a) => esc(accountName(a))).join(' · ') + (r.note ? ' · ' + esc(r.note) : '') + (r.setByName ? ' · ' + esc(r.setByName) + ' 지정' : '') + '</div></div><div class="jh-fin__ptchips"><span class="jh-fin__chip">' + modeText(r) + '</span></div>'
+    + '<div class="jh-fin__doneact"><button type="button" class="jh-btn" data-pt-rule-edit="' + esc(r.id) + '"' + dis + '>수정</button><button type="button" class="jh-btn" data-pt-rule-toggle="' + esc(r.id) + '"' + dis + '>' + (r.active === false ? '켜기' : '끄기') + '</button></div></div>';
+  return wrap(hint + wHtml + rules.map(row).join('') + add);
+}
+/** 거래처 규칙 추가·수정 패널 안쪽 — rule 이 null 이면 새 규칙(거래처 칸이 열려 있고 방식은 "프로젝트 하나"), 있으면 수정(거래처 칸이 잠긴다 — 거래처를 바꾸면 새 규칙이 되어 옛 규칙이 남는다). 계정은 서버 허용 6개만, 방식이 "프로젝트 하나"일 때만 프로젝트 선택이 보인다 */
+export function pjtRuleDialogHtml(rule, names) {
+  const r = rule || {}; const nm = names || {}; const edit = !!rule; const mode = r.mode === 'manday' ? 'manday' : 'single'; const accs = Array.isArray(r.accounts) ? r.accounts.map(String) : [];
+  const ids = Object.keys(nm).sort((a, b) => String(nm[a]).localeCompare(String(nm[b]), 'ko')); if (r.pjt && ids.indexOf(r.pjt) === -1) ids.push(r.pjt);
+  const opts = '<option value=""' + (r.pjt ? '' : ' selected') + '>프로젝트 선택</option>' + ids.map((id) => '<option value="' + esc(id) + '"' + (id === r.pjt ? ' selected' : '') + '>' + esc(nm[id] || id) + '</option>').join('');
+  return '<div class="jh-field"><label class="jh-field__label" for="rd-partner">거래처(이름에 포함되는 말, 2~40자)</label><input class="jh-input" id="rd-partner" data-rd-partner maxlength="40" value="' + esc(r.partner || '') + '"' + (edit ? ' disabled' : '') + ' placeholder="예: 가짜외주">' + (edit ? '<span class="jh-field__hint">거래처 이름은 바꿀 수 없습니다. 다른 거래처는 새 규칙으로 추가하세요.</span>' : '') + '</div>'
+    + '<div class="jh-field"><span class="jh-field__label">적용 계정</span><div class="jh-fin__rulechecks">' + RULE_ACCOUNTS.map((c) => '<label class="jh-fin__rulecheck"><input type="checkbox" data-rd-acc value="' + c + '"' + (accs.indexOf(c) !== -1 ? ' checked' : '') + '> ' + esc(accountName(c)) + '</label>').join('') + '</div></div>'
+    + '<div class="jh-field"><span class="jh-field__label">방식</span><div class="jh-fin__rulechecks"><label class="jh-fin__rulecheck"><input type="radio" name="rd-mode" data-rd-mode value="single"' + (mode === 'single' ? ' checked' : '') + '> 프로젝트 하나</label><label class="jh-fin__rulecheck"><input type="radio" name="rd-mode" data-rd-mode value="manday"' + (mode === 'manday' ? ' checked' : '') + '> 그 달 공수 비율</label></div></div>'
+    + '<div class="jh-field" data-rd-pjtbox' + (mode === 'manday' ? ' hidden' : '') + '><label class="jh-field__label" for="rd-pjt">프로젝트</label><select class="jh-select" id="rd-pjt" data-rd-pjt>' + opts + '</select></div>'
+    + '<div class="jh-field"><label class="jh-field__label" for="rd-note">메모(선택)</label><input class="jh-input" id="rd-note" data-rd-note maxlength="200" value="' + esc(r.note || '') + '"></div>'
+    + '<label class="jh-fin__rulecheck"><input type="checkbox" data-rd-active' + (r.active === false ? '' : ' checked') + '> 이 규칙 켜기</label>';
+}
 export function pjtTagHtml(st) {
   const names = st.names || {}; const nm = (id) => esc(names[id] || id); const money = (v) => esc(won(Math.abs(v)));
   const total = (st.rows || []).length; const can = (st.rows || []).filter((r) => r.confirmable).length; const dis = st.busy ? ' disabled' : '';
   const head = '<div class="jh-finance__pad"><div class="jh-fin__ptstat"><strong>대기 ' + total + '줄</strong> · 확정할 수 있는 ' + can + '줄</div>' + (st.msg ? '<div class="jh-alert" data-tone="info" role="status">' + esc(st.msg) + '</div>' : '') + '</div>';
-  if (!total) return '<div class="jh-fin__pjttag" aria-busy="' + (st.busy ? 'true' : 'false') + '">' + head + '<div class="jh-finance__pad">대기 중인 줄이 없습니다. 새 전표를 가져오면 여기에 나타납니다.</div>' + doneHtml(st, nm, dis) + '</div>';
+  if (!total) return '<div class="jh-fin__pjttag" aria-busy="' + (st.busy ? 'true' : 'false') + '">' + head + '<div class="jh-finance__pad">대기 중인 줄이 없습니다. 새 전표를 가져오면 여기에 나타납니다.</div>' + doneHtml(st, nm, dis) + ruleSectionHtml(st, nm, dis) + '</div>';
   const chip = (r) => {
     if (!r.hasProposal) return '<span class="jh-fin__chip jh-fin__chip--none">제안 없음 — 직접 지정 필요</span>';
     if (r.method === '제외') return '<span class="jh-fin__chip jh-fin__chip--skip">프로젝트에 붙이지 않음' + (r.note ? ' · ' + esc(r.note) : '') + '</span>';
@@ -405,5 +435,5 @@ export function pjtTagHtml(st) {
   };
   const picked = (st.rows || []).filter((r) => st.sel && st.sel[r.id]).length;
   const bar = '<div class="jh-fin__ptbar" data-pt-bar role="region" aria-label="선택한 줄 확정"><span class="jh-fin__ptsel" data-pt-selcount>선택 ' + picked + '줄</span><span class="jh-fin__ptbarbtns"><button type="button" class="jh-btn" data-pt-clear' + dis + '>선택 해제</button><button type="button" class="jh-btn" data-variant="primary" data-pt-confirm-sel' + dis + '>선택한 줄 확정</button></span></div>';
-  return '<div class="jh-fin__pjttag" aria-busy="' + (st.busy ? 'true' : 'false') + '">' + head + bar + (st.months || []).map(monthCard).join('') + doneHtml(st, nm, dis) + '</div>';
+  return '<div class="jh-fin__pjttag" aria-busy="' + (st.busy ? 'true' : 'false') + '">' + head + bar + (st.months || []).map(monthCard).join('') + doneHtml(st, nm, dis) + ruleSectionHtml(st, nm, dis) + '</div>';
 }

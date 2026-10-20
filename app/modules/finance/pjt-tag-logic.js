@@ -107,4 +107,22 @@ export function buildConfirmedRows(entries, tags, opts) {
   const m = {}; rows.forEach((r) => { (m[r.month] = m[r.month] || []).push(r); });
   return Object.keys(m).sort().reverse().map((k) => ({ month: k, rows: m[k], count: m[k].length }));
 }
+/** 거래처 규칙 입력 검사 — 서버 pjtRuleSave 와 같은 규칙을 앱에서 먼저 알려 준다(최종 판단은 서버). 규칙 = 거래처 이름에 걸리는 제안 방식(프로젝트 하나 single / 그 달 공수 비율 manday). 규칙은 제안의 입력일 뿐 확정이 아니다.
+ * 거래처는 안의 공백까지 지운 2~40자(한 글자는 거의 모든 거래처에 걸려 받지 않음), 계정은 프로젝트에 붙이는 계정만(공수 배분 5110·5350, 회사 공통비 5360·5380 은 대상이 아님), 방식이 manday 면 프로젝트를 비운다.
+ * 결과 = { ok, rule, error }(거절이면 rule null). 입력이 이상해도 던지지 않는다. */
+export const RULE_ACCOUNTS = ['4010', '5010', '5210', '5320', '5340', '5370'];
+export function ruleDraft(input) {
+  const bad = (error) => ({ ok: false, rule: null, error });
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return bad('규칙 내용을 확인할 수 없습니다.');
+  const partner = typeof input.partner === 'string' ? input.partner.replace(/\s+/g, '') : '';
+  if (partner.length < 2 || partner.length > 40) return bad('거래처 이름은 공백 없이 2~40자로 입력해 주세요(한 글자는 거의 모든 거래처에 걸려 받지 않습니다).');
+  if (!Array.isArray(input.accounts) || !input.accounts.length) return bad('규칙이 적용될 계정을 한 개 이상 골라 주세요.');
+  const wrong = input.accounts.map(String).find((a) => RULE_ACCOUNTS.indexOf(a) === -1);
+  if (wrong !== undefined) return bad('프로젝트에 붙이는 계정(' + RULE_ACCOUNTS.join('·') + ')만 고를 수 있습니다' + (wrong ? ': ' + wrong : '') + ' (공수 배분·회사 공통비 계정은 대상이 아닙니다).');
+  const accounts = Array.from(new Set(input.accounts.map(String))).sort();
+  if (input.mode !== 'single' && input.mode !== 'manday') return bad('방식은 "프로젝트 하나" 또는 "공수 비율" 중에서 골라 주세요.');
+  let pjt = ''; if (input.mode === 'single') { pjt = typeof input.pjt === 'string' ? input.pjt.trim() : ''; if (!pjt) return bad('"프로젝트 하나" 방식은 프로젝트를 지정해야 합니다.'); }
+  const note = typeof input.note === 'string' ? input.note.trim().slice(0, 200) : '';
+  return { ok: true, rule: { partner, accounts, mode: input.mode, pjt, note, active: input.active === false ? false : true }, error: '' };
+}
 

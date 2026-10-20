@@ -28,6 +28,7 @@ DATA = {
     'e4_1': {'entryId': 'e4', 'lineIdx': 1, 'method': '공수비율', 'splits': [{'pjt': 'pA', 'amount': 900}], 'status': 'proposed', 'basisMonth': '2026-08', 'warn': '', 'note': ''},
   },
   'ledger_pjt_tags': {},
+  'rules': [{'id': 'rule__가짜외주', 'partner': '가짜외주', 'accounts': ['5210'], 'mode': 'single', 'pjt': 'pA', 'active': True, 'note': '기존 규칙', 'setByName': '가짜관리자'}, {'id': 'rule__가짜회사', 'partner': '가짜회사', 'accounts': ['4010'], 'mode': 'manday', 'pjt': '', 'active': True, 'note': ''}],
   'pjt_registry': {'pA': {'name': '가짜 프로젝트 A'}, 'pB': {'name': '가짜 프로젝트 B'}},
 }
 FAKE_FB = """
@@ -42,6 +43,8 @@ export const httpsCallable = (f, name) => async (p) => {
   window.__calls.push(JSON.parse(JSON.stringify(p)));
   if (window.__fail && window.__fail[p.action]) throw Object.assign(new Error(window.__fail[p.action]), { code: 'internal' });
   if (window.__resp && window.__resp[p.action] !== undefined) return { data: typeof window.__resp[p.action] === 'function' ? window.__resp[p.action](p) : window.__resp[p.action] };
+  if (p.action === 'pjtRuleList') { await new Promise((r) => setTimeout(r, window.__delay || 150)); if (window.__mode === 'rulesfail') throw Object.assign(new Error('규칙 목록 시험 실패'), { code: 'unavailable' }); const all = p.includeInactive === true; return { data: { ok: true, rules: DATA.rules.filter((r) => all || r.active !== false), warnings: window.__warn || [] } }; }
+  if (p.action === 'pjtRuleSave') { await new Promise((r) => setTimeout(r, window.__delay || 150)); if (window.__mode === 'rulereject') throw Object.assign(new Error('등록되지 않은 프로젝트입니다(시험 거부 사유)'), { code: 'invalid-argument' }); const id = 'rule__' + String(p.partner).replace(/\\s+/g, ''); const rec = { id, partner: String(p.partner).replace(/\\s+/g, ''), accounts: p.accounts, mode: p.mode, pjt: p.pjt, active: p.active !== false, note: p.note || '', setByName: '가짜관리자' }; const i = DATA.rules.findIndex((r) => r.id === id); if (i >= 0) DATA.rules[i] = rec; else DATA.rules.push(rec); return { data: { ok: true, id } }; }
   if (p.action === 'pjtTagClear') { await new Promise((r) => setTimeout(r, window.__delay || 200)); if (window.__mode === 'rejectclear') throw Object.assign(new Error('이미 마감된 달이라 해제할 수 없습니다(시험 거부 사유)'), { code: 'failed-precondition' }); const id = p.entryId + '_' + p.lineIdx; DATA.ledger_pjt_tags[id] = { status: 'cleared', entryId: p.entryId, lineIdx: p.lineIdx, splits: [], method: '' }; return { data: { ok: true } }; }
   if (p.action === 'pjtTagSet') { await new Promise((r) => setTimeout(r, window.__delay || 200)); if (window.__mode === 'reject') throw Object.assign(new Error('분할 금액의 합이 줄 금액과 다릅니다(시험 거부 사유)'), { code: 'invalid-argument' }); const id = p.entryId + '_' + p.lineIdx; DATA.ledger_pjt_tags[id] = { status: 'confirmed', entryId: p.entryId, lineIdx: p.lineIdx, splits: p.splits, method: p.method }; return { data: { ok: true, id } }; }
   if (p.action === 'pjtTagBatch') { await new Promise((r) => setTimeout(r, window.__delay || 200));
@@ -301,6 +304,62 @@ try:
         pg.locator('[data-pt-undo="e2_0"]').click(); pg.wait_for_selector('.jh-dialog button[data-ok]', timeout=3000); pg.locator('.jh-dialog button[data-ok]').click(); pg.wait_for_function('window.__calls.some(c => c.action === "pjtTagClear")', timeout=5000); pg.wait_for_timeout(600)
         ok(pg.evaluate("() => [...document.querySelectorAll('[data-pt-undo],[data-pt-redo]')].every((b) => !b.disabled)"), '★ 해제가 실패한 뒤에도 버튼이 다시 활성으로 돌아온다(실패 경로의 복구)')
         pg.locator('[data-pt-undo="e1_1"]').click(); pg.wait_for_selector('.jh-dialog button[data-ok]', timeout=3000); ok(pg.locator('.jh-dialog button[data-ok]').count() == 1, '★ 실패한 뒤에도 다른 줄의 [해제]를 다시 시도할 수 있다(확인창이 뜬다)'); pg.close()
+        print('── 거래처 규칙(불러오기·추가·수정·끄기)')
+        def rcalls(pg, act): return pg.evaluate('(a) => window.__calls.filter(c => c.action === a)', act)
+        def rules_open(pg):
+            if pg.locator('[data-pt-rules-toggle][aria-expanded="false"]').count(): pg.locator('[data-pt-rules-toggle]').click()
+        def rrows(pg): return pg.locator('[data-pt-rule]').count()
+        def rd_open(pg, which):
+            pg.locator(which).click(); pg.wait_for_selector('.jh-dialog [data-rd-partner]', timeout=5000)
+        def rd_save(pg): pg.locator('.jh-dialog [data-act="save"]').click()
+        pg, errs = fresh(); pg.wait_for_selector('.jh-fin__pjttag', timeout=15000)
+        ok(rrows(pg) == 0 and len(rcalls(pg, 'pjtRuleList')) == 0, '★ 거래처 규칙 구역은 처음에 접혀 있고 서버 호출이 없다(탭만 열어서는 규칙을 읽지 않는다)')
+        pg.locator('[data-pt-rules-toggle]').click(); pg.wait_for_selector('[data-pt-rule]', timeout=5000)
+        cl = rcalls(pg, 'pjtRuleList'); ok(len(cl) == 1 and cl[0] == {'action': 'pjtRuleList', 'includeInactive': True} and rrows(pg) == 2, '★ 펼치면 서버에 pjtRuleList(꺼진 규칙 포함)를 한 번 요청하고 규칙 2개가 보인다 (실제: %s · %d개)' % (cl, rrows(pg)))
+        pg.locator('[data-pt-rules-toggle]').click(); pg.wait_for_timeout(100); pg.locator('[data-pt-rules-toggle]').click(); pg.wait_for_timeout(300)
+        ok(len(rcalls(pg, 'pjtRuleList')) == 1 and rrows(pg) == 2, '★ 접었다 다시 펼쳐도 서버를 다시 부르지 않는다(받아 둔 목록을 그대로)')
+        rd_open(pg, '[data-pt-rule-add]')
+        ok(pg.locator('.jh-dialog [data-rd-acc]').count() == 6 and pg.locator('.jh-dialog [data-rd-partner]').is_enabled() and len(rcalls(pg, 'pjtRuleSave')) == 0, '★ [규칙 추가]를 누르면 패널(계정 6개·거래처 칸 열림)이 뜨고 서버 호출은 0건이다')
+        pg.locator('.jh-dialog [data-rd-partner]').fill('가'); rd_save(pg); pg.wait_for_timeout(250)
+        ok(len(rcalls(pg, 'pjtRuleSave')) == 0 and '거래처' in pg.inner_text('.jh-dialog [data-panel-msg]'), '★ 거래처를 1글자로 저장하면 서버 호출 0건이고 패널 안에 이유("거래처")가 보인다')
+        pg.locator('.jh-dialog [data-rd-partner]').fill('가짜 소모 '); rd_save(pg); pg.wait_for_timeout(250)
+        ok(len(rcalls(pg, 'pjtRuleSave')) == 0 and '계정' in pg.inner_text('.jh-dialog [data-panel-msg]'), '★ 계정을 안 고르고 저장하면 서버 호출 0건·이유("계정")')
+        pg.locator('.jh-dialog [data-rd-acc][value="5340"]').check(); pg.locator('.jh-dialog [data-rd-acc][value="5370"]').check(); rd_save(pg); pg.wait_for_timeout(250)
+        ok(len(rcalls(pg, 'pjtRuleSave')) == 0 and '프로젝트' in pg.inner_text('.jh-dialog [data-panel-msg]'), '★ "프로젝트 하나"인데 프로젝트를 안 골랐으면 서버 호출 0건·이유("프로젝트")')
+        pg.locator('.jh-dialog [data-rd-pjt]').select_option('pB'); pg.locator('.jh-dialog [data-rd-note]').fill('대표님 규칙'); rd_save(pg); pg.wait_for_function('window.__calls.some(c => c.action === "pjtRuleSave")', timeout=5000); pg.wait_for_function('document.querySelectorAll(".jh-dialog").length === 0', timeout=5000); pg.wait_for_timeout(300)
+        sv = rcalls(pg, 'pjtRuleSave'); ok(len(sv) == 1 and sv[0] == {'action': 'pjtRuleSave', 'partner': '가짜소모', 'accounts': ['5340', '5370'], 'mode': 'single', 'pjt': 'pB', 'note': '대표님 규칙', 'active': True}, '★ 올바르게 저장하면 pjtRuleSave 가 정확히 1건(거래처 공백 제거 "가짜소모"·계정 정렬·프로젝트 B·메모)으로 간다 (실제: %s)' % sv)
+        ok(rrows(pg) == 3 and '가짜소모' in pg.inner_text('.jh-fin__rules'), '★ 저장 뒤 목록이 다시 읽혀 새 규칙이 보인다(3개)')
+        rd_open(pg, '[data-pt-rule-edit="rule__가짜외주"]')
+        ok(not pg.locator('.jh-dialog [data-rd-partner]').is_enabled() and pg.locator('.jh-dialog [data-rd-partner]').input_value() == '가짜외주' and pg.locator('.jh-dialog [data-rd-acc][value="5210"]').is_checked() and pg.locator('.jh-dialog [data-rd-pjt]').input_value() == 'pA', '★ [수정]은 현재 규칙(가짜외주·5210·프로젝트 A)이 채워지고 거래처 칸은 잠겨 열린다')
+        pg.locator('.jh-dialog [data-rd-mode][value="manday"]').check(); pg.wait_for_timeout(100)
+        ok(pg.locator('.jh-dialog [data-rd-pjtbox]').is_hidden(), '★ 방식을 "공수 비율"로 바꾸면 프로젝트 선택 칸이 숨겨진다')
+        rd_save(pg); pg.wait_for_function('window.__calls.filter(c => c.action === "pjtRuleSave").length === 2', timeout=5000); pg.wait_for_timeout(500)
+        sv = rcalls(pg, 'pjtRuleSave'); ok(sv[1]['partner'] == '가짜외주' and sv[1]['mode'] == 'manday' and sv[1]['pjt'] == '' and sv[1]['active'] is True, '★ 공수 비율로 바꿔 저장하면 같은 거래처(가짜외주)의 규칙이 갱신되고 프로젝트는 비어서 간다 (실제: %s)' % sv[1])
+        pg.locator('[data-pt-rule-toggle="rule__가짜회사"]').click(); pg.wait_for_function('window.__calls.filter(c => c.action === "pjtRuleSave").length === 3', timeout=5000); pg.wait_for_timeout(500)
+        sv = rcalls(pg, 'pjtRuleSave'); ok(sv[2]['partner'] == '가짜회사' and sv[2]['active'] is False and sv[2]['mode'] == 'manday' and sv[2]['accounts'] == ['4010'], '★ [끄기]는 같은 규칙을 active false 로 저장한다(나머지 값은 그대로) (실제: %s)' % sv[2])
+        ok(pg.locator('[data-pt-rule="rule__가짜회사"].jh-fin__rule--off').count() == 1 and '켜기' in pg.inner_text('[data-pt-rule="rule__가짜회사"]'), '★ 끈 규칙은 흐리게 보이고 버튼이 [켜기]로 바뀐다')
+        pg.locator('[data-pt-rule-toggle="rule__가짜회사"]').click(); pg.wait_for_function('window.__calls.filter(c => c.action === "pjtRuleSave").length === 4', timeout=5000); pg.wait_for_timeout(400)
+        ok(rcalls(pg, 'pjtRuleSave')[3]['active'] is True and pg.locator('[data-pt-rule="rule__가짜회사"].jh-fin__rule--off').count() == 0, '★ [켜기]는 다시 active true 로 저장하고 흐린 표시가 사라진다')
+        ok(not errs, '화면 오류 없음 %s' % errs[:2]); pg.close()
+        pg, errs = fresh('rulesfail'); pg.wait_for_selector('.jh-fin__pjttag', timeout=15000); pg.locator('[data-pt-rules-toggle]').click(); pg.wait_for_selector('[data-pt-rules-retry]', timeout=5000)
+        ok('불러오지 못했습니다' in pg.inner_text('.jh-fin__rules') and rrows(pg) == 0 and '규칙이 없습니다' not in pg.inner_text('.jh-fin__rules'), '★ 규칙 목록을 못 불러오면 "불러오지 못했습니다"와 [다시 불러오기]가 보이고 "규칙이 없습니다"로 오해되지 않는다')
+        pg.evaluate("() => { window.__mode = 'ok'; }"); pg.locator('[data-pt-rules-retry]').click(); pg.wait_for_selector('[data-pt-rule]', timeout=5000)
+        ok(rrows(pg) == 2 and len(rcalls(pg, 'pjtRuleList')) == 2, '★ [다시 불러오기]를 누르면 서버를 다시 불러 목록이 나온다(호출 2번째)'); ok(not errs, '실패·재시도에도 화면 오류 없음 %s' % errs[:2]); pg.close()
+        pg, errs = fresh('rulereject'); pg.wait_for_selector('.jh-fin__pjttag', timeout=15000); pg.locator('[data-pt-rules-toggle]').click(); pg.wait_for_selector('[data-pt-rule]', timeout=5000); rd_open(pg, '[data-pt-rule-add]')
+        pg.locator('.jh-dialog [data-rd-partner]').fill('가짜신규'); pg.locator('.jh-dialog [data-rd-acc][value="5210"]').check(); pg.locator('.jh-dialog [data-rd-pjt]').select_option('pA'); rd_save(pg); pg.wait_for_function('window.__calls.some(c => c.action === "pjtRuleSave")', timeout=5000); pg.wait_for_timeout(500)
+        ok(pg.locator('.jh-dialog').count() == 1 and '시험 거부 사유' in pg.inner_text('.jh-dialog') and pg.locator('.jh-dialog [data-rd-partner]').input_value() == '가짜신규' and pg.locator('.jh-dialog [data-rd-acc][value="5210"]').is_checked(), '★ 서버가 거절하면 패널이 열린 채 이유가 보이고 입력(거래처·계정)은 그대로 남는다')
+        ok(rrows(pg) == 2 and not errs, '거절되면 목록은 그대로(2개)이고 화면 오류 없음 %s' % errs[:2]); pg.close()
+        pg, errs = fresh('ok', 700); pg.wait_for_selector('.jh-fin__pjttag', timeout=15000); pg.locator('[data-pt-rules-toggle]').click(); pg.wait_for_selector('[data-pt-rule]', timeout=5000); rd_open(pg, '[data-pt-rule-add]')
+        pg.locator('.jh-dialog [data-rd-partner]').fill('가짜두번'); pg.locator('.jh-dialog [data-rd-acc][value="5210"]').check(); pg.locator('.jh-dialog [data-rd-pjt]').select_option('pA')
+        pg.evaluate("() => { const b = document.querySelector('.jh-dialog [data-act=\"save\"]'); b.click(); b.click(); b.click(); }"); pg.wait_for_timeout(1500)
+        ok(len(rcalls(pg, 'pjtRuleSave')) == 1, '★ 저장 중에 여러 번 눌러도 서버 호출은 1건이다 — 실제 %d건' % len(rcalls(pg, 'pjtRuleSave')))
+        pg.locator('[data-pt-rule-toggle="rule__가짜회사"]').click(); pg.wait_for_timeout(250)
+        ok(pg.evaluate("() => [...document.querySelectorAll('[data-pt-rule-edit],[data-pt-rule-toggle],[data-pt-rule-add]')].every((b) => b.disabled)"), '★ 끄기 요청이 진행 중인 동안 규칙 버튼이 모두 비활성이다')
+        n = len(rcalls(pg, 'pjtRuleSave')); pg.evaluate("() => document.querySelectorAll('[data-pt-rule-toggle]').forEach((b) => { b.disabled = false; b.click(); })"); pg.wait_for_timeout(300)
+        ok(len(rcalls(pg, 'pjtRuleSave')) == n, '★ 진행 중에 억지로 다시 눌러도 서버 호출은 늘지 않는다(컨트롤러 잠금)'); pg.wait_for_timeout(1200)
+        ok(pg.evaluate("() => [...document.querySelectorAll('[data-pt-rule-edit],[data-pt-rule-toggle],[data-pt-rule-add]')].every((b) => !b.disabled)"), '★ 끝나면 버튼이 다시 활성으로 돌아온다(영구 잠금 방지)'); pg.close()
+        pg, errs = fresh(); pg.wait_for_selector('.jh-fin__pjttag', timeout=15000); pg.evaluate("() => { window.__warn = [{ partners: ['가짜회사', '가짜'], accounts: ['4010'] }]; }"); pg.locator('[data-pt-rules-toggle]').click(); pg.wait_for_selector('[data-pt-rule]', timeout=5000)
+        ok('겹침' in pg.inner_text('.jh-fin__rulewarn') and '가짜회사' in pg.inner_text('.jh-fin__rulewarn') and '공사수입' in pg.inner_text('.jh-fin__rulewarn'), '★ 서버가 겹침 경고를 주면 목록 위에 두 거래처와 공통 계정(공사수입)이 보인다'); pg.close()
         b.close()
 except Exception as _e:
     import traceback; fail_n += 1; print('FAIL 시험이 예외로 중단됨 → ' + type(_e).__name__ + ': ' + str(_e).split('\n')[0][:200]); print(traceback.format_exc()[-500:])

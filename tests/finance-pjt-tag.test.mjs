@@ -1,6 +1,6 @@
 // 재무회계 "프로젝트 표시" 대기 목록 계산 시험 — 가짜 데이터만 쓴다(이 저장소는 공개이므로 실제 금액·거래처·직원 이름을 시험에 넣지 않는다).
 // 계산 함수: app/modules/finance/pjt-tag-logic.js (순수 함수, Firestore 를 읽지 않음). 서버 규칙(비공개 저장소 functions/ledger-pjt-tags.js)과 같은 대상 판정을 쓴다.
-import { taggableReason, buildPendingRows, groupByMonth, monthPreview, confirmItems, pairKey, autoProposeAfterImport, splitDraft, splitLeftText, buildConfirmedRows } from '../app/modules/finance/pjt-tag-logic.js';
+import { taggableReason, buildPendingRows, groupByMonth, monthPreview, confirmItems, pairKey, autoProposeAfterImport, splitDraft, splitLeftText, buildConfirmedRows, ruleDraft, RULE_ACCOUNTS } from '../app/modules/finance/pjt-tag-logic.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const E = (id, date, memo, lines, extra) => Object.assign({ id, no: id.toUpperCase(), date, memo, lines, source: { kind: 'manual' } }, extra || {});
@@ -133,4 +133,21 @@ const cTags = {
 { for (const bad of ['2026-6', 'abc', '', 202607, null, {}, '2026-07-31']) { const t = { c1_1: Object.assign({}, cTags.c1_1, { basis: { month: bad } }) }; const g = buildConfirmedRows(cEntries, t, { grouped: true }); ok(g.length === 1 && g[0].month === '2026-07', '★ 기준월이 깨진 값(' + JSON.stringify(bad) + ')이면 무시하고 전표 일자의 달(2026-07)로 묶는다 — 쓰레기 달이 생기지 않음 (실제 ' + (g[0] && g[0].month) + ')'); } }
 { const tg = JSON.parse(JSON.stringify(cTags)); const rows = buildConfirmedRows(cEntries, tg); rows.find((r) => r.id === 'c1_1').splits[0].amount = 999999; rows.find((r) => r.id === 'c1_1').splits.push({ pjt: 'zz', amount: 1 }); ok(tg.c1_1.splits.length === 2 && tg.c1_1.splits[0].amount === 600, '★ 돌려준 행의 분할을 고쳐도 입력 태그는 변하지 않는다(참조를 공유하지 않음)'); }
 { const same = [CE('s1', '2026-0010', '2026-08-20', 'b', [cl('5210', 'D', 1, 'b')]), CE('s2', '2026-0011', '2026-08-10', 'a', [cl('5210', 'D', 1, 'a')])]; const r = buildConfirmedRows(same, { s1_0: { status: 'confirmed', splits: [{ pjt: 'pA', amount: 1 }] }, s2_0: { status: 'confirmed', splits: [{ pjt: 'pA', amount: 1 }] } }, { grouped: true }); ok(r[0].rows.map((x) => x.id).join() === 's2_0,s1_0', '같은 달 안에서는 일자 오름차순(8/10 → 8/20)'); }
+// ── 거래처 규칙 입력 검사(서버 pjtRuleSave 와 같은 규칙을 앱에서 먼저 알려 준다): ruleDraft({ partner, accounts, mode, pjt, note, active }) → { ok, rule, error }
+const RD = (o) => ruleDraft(Object.assign({ partner: '가짜외주', accounts: ['5210'], mode: 'single', pjt: 'pA', note: '', active: true }, o || {}));
+{ const r = RD(); ok(r.ok && eq(r.rule, { partner: '가짜외주', accounts: ['5210'], mode: 'single', pjt: 'pA', note: '', active: true }) && r.error === '', '★ 올바른 입력(프로젝트 하나)은 그대로 통과한다');
+  ok(eq(RULE_ACCOUNTS, ['4010', '5010', '5210', '5320', '5340', '5370']), '★ 고를 수 있는 계정은 서버 허용 목록(4010·5010·5210·5320·5340·5370)과 같다 — 공수 배분 5110·5350, 회사 공통비 5360·5380 은 없다');
+  ok(RD({ partner: ' 가짜 외주\n' }).rule.partner === '가짜외주', '★ 거래처 이름은 안의 공백·줄바꿈까지 지운다(공백만 다른 이름이 두 규칙이 되지 않게 — 서버 cleanPartner 와 같음)');
+  for (const [nm, v] of [['빈 값', ''], ['공백만', '   '], ['한 글자', '가'], ['41글자', '가'.repeat(41)], ['글자 아님', null], ['숫자', 12]]) { const r = RD({ partner: v }); ok(!r.ok && /거래처/.test(r.error) && r.rule === null, '★ 거래처가 ' + nm + ' 이면 거절·이유에 "거래처" (실제 ' + r.error + ')'); }
+  ok(RD({ partner: '가나' }).ok && RD({ partner: '가'.repeat(40) }).ok, '2글자와 40글자는 통과(경계값)');
+  for (const [nm, v] of [['빈 목록', []], ['목록 아님', '5210'], ['없음', undefined], ['null', null]]) { const r = RD({ accounts: v }); ok(!r.ok && /계정/.test(r.error), '★ 계정이 ' + nm + ' 이면 거절·이유에 "계정"'); }
+  for (const bad of ['5110', '5350', '5360', '5380', '1100', '9999', '']) { const r = RD({ accounts: ['5210', bad] }); ok(!r.ok && /계정/.test(r.error) && (bad === '' || r.error.includes(bad)), '★ 허용 밖 계정(' + JSON.stringify(bad) + ')이 하나라도 있으면 거절하고 이유에 그 계정 번호가 보인다'); }
+  ok(eq(RD({ accounts: ['5340', '5210', '5340', 5210] }).rule.accounts, ['5210', '5340']), '★ 계정은 중복을 없애고(숫자 5210 도 글자와 같게) 정렬한다');
+  for (const bad of ['', 'both', 'SINGLE', null, undefined, 1]) { const r = RD({ mode: bad }); ok(!r.ok && /방식/.test(r.error), '★ 방식이 ' + JSON.stringify(bad) + ' 이면 거절·이유에 "방식"'); }
+  { const r = RD({ mode: 'single', pjt: '' }); ok(!r.ok && /프로젝트/.test(r.error), '★ "프로젝트 하나" 방식인데 프로젝트가 없으면 거절'); const r2 = RD({ mode: 'single', pjt: '   ' }); ok(!r2.ok, '프로젝트가 공백뿐이어도 거절'); }
+  { const r = RD({ mode: 'manday', pjt: 'pA' }); ok(r.ok && r.rule.mode === 'manday' && r.rule.pjt === '', '★ "공수 비율" 방식은 프로젝트를 비워서 저장한다(고른 프로젝트가 남아 있어도 — 서버도 manday 일 때 프로젝트를 저장하지 않음)'); }
+  ok(RD({ pjt: ' pA ' }).rule.pjt === 'pA', '프로젝트 id 앞뒤 공백은 정리');
+  ok(RD({ note: '가'.repeat(300) }).rule.note.length === 200 && RD({ note: '  메모  ' }).rule.note === '메모' && RD({ note: null }).rule.note === '', '메모는 앞뒤 공백을 지우고 200자까지만, 글자가 아니면 빈 값');
+  ok(RD({ active: undefined }).rule.active === true && RD({ active: false }).rule.active === false && RD({ active: 0 }).rule.active === true, '활성은 명시적으로 false 일 때만 꺼진다(서버와 같음)');
+  for (const bad of [null, undefined, 'x', 3, []]) { let r; try { r = ruleDraft(bad); } catch (e) { r = { threw: e.message }; } ok(r && r.ok === false && !r.threw && typeof r.error === 'string', '★ 입력 자체가 이상해도(' + JSON.stringify(bad) + ') 던지지 않고 거절한다'); } }
 console.log('\n' + (fail ? '실패 ' + fail + '건 / 통과 ' + pass : '전부 통과 (' + pass + '건)')); process.exit(fail ? 1 : 0);
