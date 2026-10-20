@@ -1,15 +1,15 @@
-import { db, auth, functions, httpsCallable, sendPasswordResetEmail, collection, getDocs, getDoc, query, where, orderBy, limit, doc, updateDoc } from '../../core/firebase.js?v=20261019f';
-import { esc, toast } from '../../core/ui.js?v=20261019f';
-import { fmtPhone } from '../../core/profile-logic.js?v=20261019f';
-import { deptOptions } from '../../shared/org.js?v=20261019f';
-import { PERM_KEYS, validateStaffForm, staffUpdate, linkedWorkerOf, findWorkerMatch, workerSync, validateNewAccount, newAccountPayload, callMessage, resetMailMessage, teamLeadChanges } from './staff-logic.js?v=20261019f';
-import { staffListHtml, staffDialogHtml, newAccountDialogHtml, secretDialogHtml } from './staff-view.js?v=20261019f';
-import { accessLogHtml } from './accesslog-view.js?v=20261019f';
-import { toEntry, filterEntries, summarize, monthRange, addMonth, kstYm, kstText, tsMs } from './accesslog-logic.js?v=20261019f';
-import { companyPerm } from '../../shared/company-perm.js?v=20261019f';
-import { markChecked, identityErrorText } from '../../shared/identity.js?v=20261019f';
-import { groupOrg, sortPolicies, buildOrgTree, isGuestUser, isOrgHidden } from './logic.js?v=20261019f';
-import { orgHtml, rulesHtml, orgChartHtml, orgViewHtml, personCardHtml } from './view.js?v=20261019f';
+import { db, auth, functions, httpsCallable, sendPasswordResetEmail, collection, getDocs, getDoc, query, where, orderBy, limit, doc, updateDoc } from '../../core/firebase.js?v=20261020a';
+import { esc, toast } from '../../core/ui.js?v=20261020a';
+import { fmtPhone } from '../../core/profile-logic.js?v=20261020a';
+import { deptOptions } from '../../shared/org.js?v=20261020a';
+import { PERM_KEYS, validateStaffForm, staffUpdate, linkedWorkerOf, findWorkerMatch, workerSync, validateNewAccount, newAccountPayload, callMessage, resetMailMessage, teamLeadChanges } from './staff-logic.js?v=20261020a';
+import { staffListHtml, staffDialogHtml, newAccountDialogHtml, secretDialogHtml } from './staff-view.js?v=20261020a';
+import { accessLogHtml } from './accesslog-view.js?v=20261020a';
+import { toEntry, filterEntries, summarize, monthRange, addMonth, kstYm, kstText, tsMs } from './accesslog-logic.js?v=20261020a';
+import { companyPerm } from '../../shared/company-perm.js?v=20261020a';
+import { markChecked, identityErrorText } from '../../shared/identity.js?v=20261020a';
+import { groupOrg, sortPolicies, buildOrgTree, isGuestUser, isOrgHidden } from './logic.js?v=20261020a';
+import { orgHtml, rulesHtml, orgChartHtml, orgViewHtml, personCardHtml } from './view.js?v=20261020a';
 
 /** 회사 영역(플랫폼 기본 모듈): 조직도·규정을 읽기 전용으로. GUEST 계정에는 보이지 않는다(연락처·내부 규정) */
 /** 실제 메뉴 등록은 공용 틀(modules/legacy/list.js 의 company 정의 — 인사총무와 같은 사이드바·내용 영역). 여기의 값은 규약(manifest+mount)용이며 권한은 같은 함수를 쓴다 */

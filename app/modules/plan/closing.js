@@ -1,7 +1,7 @@
 /* 영업기획 월말 마감(신규) — 순수 규칙(화면·네트워크 없이 시험 가능). 한 달의 청구·수금·지급 현황을 모으고, 마감 전에 챙길 점검 항목을 찾는다. 저장하는 데이터는 없다(조회·내려받기·인쇄만).
  * 월 기준: 청구서·지급예정서는 "발행일"이 그 달인 것, 수금·지급완료는 "완결 시각(doneAt)"이 그 달인 것(한국 시간). 프로젝트별 금액은 공급가액 기준(공동 발행분은 프로젝트 몫), 잔액은 합계금액(부가세 포함) 기준으로 청구·수금 화면과 같다. */
-import { sortProjects, settleAmountForPjt, settleBelongsToPjt, isEstActive, estSupply } from './projects.js?v=20261019f';
-import { acctMonthOf, SETTLE_LABEL, METHOD_LABEL } from './settlements.js?v=20261019f';
+import { sortProjects, settleAmountForPjt, settleBelongsToPjt, isEstActive, estSupply, getLinkPjt } from './projects.js?v=20261020a';
+import { acctMonthOf, SETTLE_LABEL, METHOD_LABEL } from './settlements.js?v=20261020a';
 const T = (n) => Number(n) || 0; const active = (s) => !!s && s.status !== 'void'; const done = (s) => !!s && s.status === 'done';
 const pad = (n) => String(n).padStart(2, '0');
 /** Timestamp({seconds}) 또는 ISO 문자열의 한국 시간 월(YYYY-MM), 없으면 '' */
@@ -23,7 +23,7 @@ export function closingSummary(ym, projects, estimates, settlements) {
 }
 const row = (id, title, meta, right, href) => ({ id, title, meta, right, href });
 /** 마감 전 점검 항목. tone: warn(처리 필요) · info(참고) · ok(문제 없음). 각 항목은 {key, label, tone, count, hint, items:[{id,title,meta,right,href}]} */
-export function closingChecks(ym, today, projects, estimates, settlements) {
+export function closingChecks(ym, today, projects, estimates, settlements, monthly) {
   const S = settlements || [], P = projects || [], E = estimates || []; const end = lastDayOf(ym); const code = (id) => { const p = P.find((x) => x.id === id); return p ? p.code : '-'; }; const out = [];
   const add = (key, label, hint, items, warn) => out.push({ key, label, hint, count: items.length, tone: items.length ? (warn ? 'warn' : 'info') : 'ok', items });
   add('overdueInvoices', '연체 청구서', '지급요청일이 지났는데 완결(수금)되지 않았습니다. 이미 받았다면 완결 처리를, 아니라면 수금을 확인하세요.', S.filter((s) => s.docType === 'invoice' && s.status === 'active' && /^\d{4}-\d{2}-\d{2}$/.test(String(s.payDate || '')) && s.payDate < today).sort((a, b) => a.payDate.localeCompare(b.payDate)).map((s) => row(s.id, s.no + ' · ' + code(s.pjtId), ((s.recipient && s.recipient.company) || '수신자 없음') + ' · 지급요청일 ' + s.payDate + ' (' + dayDiff(today, s.payDate) + '일 지남)', T(s.total) || T(s.amount), '#/plan/billing/' + s.id)), true);
@@ -35,6 +35,17 @@ export function closingChecks(ym, today, projects, estimates, settlements) {
   add('acctMonthDiffers', '회계 계상월이 지급일 달과 다른 지급예정서', '지급완료된 지급예정서의 회계 계상월이 지급일의 달과 다릅니다. 의도한 것이 아니라면 지급·정산 상세에서 고치세요.', S.filter((s) => s.docType === 'payment' && done(s) && /^\d{4}-\d{2}-\d{2}$/.test(String(s.payDate || '')) && acctMonthOf(s) !== s.payDate.slice(0, 7)).map((s) => row(s.id, s.no + ' · ' + code(s.pjtId), '지급일 ' + s.payDate + ' → 계상월 ' + acctMonthOf(s), T(s.total) || T(s.amount), '#/plan/payout/' + s.id)), false);
   add('manualNoLink', '견적 연결이 없는 직접 입력 청구서', '유효 견적이 있는 프로젝트의 직접 입력 청구서인데 어느 견적에도 연결되지 않았습니다. 연결하면 이후 공정 정산의 기청구로 반영됩니다.', S.filter((s) => s.docType === 'invoice' && active(s) && s.method === 'manual' && !Object.keys(s.perEst || {}).some((k) => T(s.perEst[k]) > 0) && E.some((e) => e.pjtId === s.pjtId && isEstActive(e))).map((s) => row(s.id, s.no + ' · ' + code(s.pjtId), '발행 ' + (s.issueDate || '-') + ' · ' + (METHOD_LABEL[s.method] || ''), T(s.total) || T(s.amount), '#/plan/billing/' + s.id)), false);
   add('voidedThisMonth', '이 달 폐기된 정산서', '참고용입니다. 폐기된 정산서는 집계에서 빠져 있습니다.', S.filter((s) => s.status === 'void' && (monthOfTs(s.voidedAt) || String(s.issueDate || '').slice(0, 7)) === ym).map((s) => row(s.id, (SETTLE_LABEL[s.docType] || '정산서') + ' ' + s.no + ' · ' + code(s.pjtId), '발행 ' + (s.issueDate || '-'), T(s.total) || T(s.amount), '#/plan/' + (s.docType === 'payment' ? 'payout' : 'billing') + '/' + s.id)), false);
+  /* 월간 보고서 미생성(설계 결정 10 — 경고 수준, 마감을 막지 않음). monthly = 서버 monthlyReportAct status 응답({ ok, ym, projects:[{ pjtId, exists }] }).
+   * 믿을 수 없으면(없음·망가짐·다른 달 응답) "문제 없음"이 아니라 "확인하지 못함"으로 둔다. 이번 달·미래 달은 아직 안 끝났으니 세지 않는다. 연동 없음·자동 생성 예정·종료 프로젝트와 서버가 모르는 PJT 는 만들 곳이 없어 세지 않는다. */
+  const mhint = '그 달의 현장 층 월간 보고서가 아직 만들어지지 않은 진행 프로젝트입니다. 눌러서 프로젝트 화면의 월간 보고서 탭에서 만들 수 있습니다(경고일 뿐 마감을 막지 않습니다).';
+  const mok = !!monthly && typeof monthly === 'object' && monthly.ok === true && Array.isArray(monthly.projects) && monthly.ym === ym;
+  if (monthly === 'loading') out.push({ key: 'monthlyReportMissing', label: '월간 보고서 미생성 프로젝트', hint: '월간 보고서 생성 현황을 확인하는 중입니다. 잠시만 기다려 주세요.', count: 0, tone: 'info', items: [] });
+  else if (!mok) out.push({ key: 'monthlyReportMissing', label: '월간 보고서 미생성 프로젝트', hint: '월간 보고서 생성 현황을 확인하지 못했습니다(서버 응답이 없거나 다른 달의 것입니다). 잠시 뒤 다시 열어 보세요. 마감은 그대로 진행할 수 있습니다.', count: 0, tone: 'info', items: [] });
+  else {
+    const over = String(today || '').slice(0, 7) > ym; const have = new Map(monthly.projects.map((x) => [String(x && x.pjtId), x && x.exists === true]));
+    const miss = !over ? [] : P.filter((p) => p.status !== 'done').map((p) => ({ p, k: getLinkPjt(p) })).filter((x) => x.k && x.k !== 'none' && x.k !== 'auto' && have.has(String(x.k)) && have.get(String(x.k)) === false);
+    add('monthlyReportMissing', '월간 보고서 미생성 프로젝트', mhint, miss.map((x) => row(x.p.id, (x.p.code || '-') + ' ' + (x.p.name || ''), '월간 보고서 ' + ym, '만들러 가기', '#/pjt/' + x.k + '/monthly')), true);
+  }
   return out;
 }
 const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
