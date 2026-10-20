@@ -50,3 +50,14 @@ export function monthPreview(rows) {
 export function confirmItems(rows) {
   return (rows || []).filter((r) => r && r.confirmable).map((r) => ({ entryId: r.entryId, lineIdx: r.lineIdx, method: r.method, splits: (r.splits || []).map((s) => ({ pjt: s.pjt, amount: s.amount })), note: r.note || '', basis: { month: r.basisMonth || '', note: '대기 목록에서 확정' } }));
 }
+/** 가져오기 직후 자동 제안(결정 2026-10-20) — 새 전표가 저장됐을 때만(posted > 0) 서버 pjtProposeNew 를 한 번 부른다. call = (payload) => Promise<응답>(ledgerAct).
+ * 서버 동작이 멱등이라(이미 있는 제안·확정 태그는 덮어쓰지 않음) 반복해도 안전하다. 실패·이상한 응답이어도 던지지 않는다 — 가져오기 결과는 이미 저장됐고 제안은 대기 목록에서 언제든 다시 만들 수 있다.
+ * 결과 = { created, note }: note 는 가져오기 안내에 덧붙일 짧은 문구(만든 제안이 없으면 ''). 금액·거래처는 담지 않는다. */
+export async function autoProposeAfterImport(call, posted) {
+  if (!Number.isFinite(posted) || posted <= 0) return { created: 0, note: '' };
+  try {
+    const r = await call({ action: 'pjtProposeNew', dryRun: false });
+    const n = r && r.ok === true && Number.isFinite(r.created) && r.created > 0 ? Math.floor(r.created) : 0;
+    return { created: n, note: n ? '프로젝트 표시 제안 ' + n + '건을 만들었습니다(재무회계 "프로젝트 표시" 탭에서 확정)' : '' };
+  } catch (e) { return { created: 0, note: '프로젝트 표시 제안은 만들지 못했습니다(나중에 "프로젝트 표시" 탭에서 다시 만들 수 있습니다)' }; }
+}

@@ -1,8 +1,8 @@
-import { esc } from './ui.js?v=20261020c';
-import { openSettings } from './settings.js?v=20261020c';
-import { openProfile } from './profile.js?v=20261020c';
-import { phoneTabs } from './nav.js?v=20261020c';
-import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261020c';
+import { esc } from './ui.js?v=20261020d';
+import { openSettings } from './settings.js?v=20261020d';
+import { openProfile } from './profile.js?v=20261020d';
+import { phoneTabs } from './nav.js?v=20261020d';
+import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261020d';
 
 export function renderLogin(root, { onSubmit, message }) {
   root.innerHTML =

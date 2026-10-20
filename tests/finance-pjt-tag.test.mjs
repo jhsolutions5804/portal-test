@@ -1,6 +1,6 @@
 // 재무회계 "프로젝트 표시" 대기 목록 계산 시험 — 가짜 데이터만 쓴다(이 저장소는 공개이므로 실제 금액·거래처·직원 이름을 시험에 넣지 않는다).
 // 계산 함수: app/modules/finance/pjt-tag-logic.js (순수 함수, Firestore 를 읽지 않음). 서버 규칙(비공개 저장소 functions/ledger-pjt-tags.js)과 같은 대상 판정을 쓴다.
-import { taggableReason, buildPendingRows, groupByMonth, monthPreview, confirmItems, pairKey } from '../app/modules/finance/pjt-tag-logic.js';
+import { taggableReason, buildPendingRows, groupByMonth, monthPreview, confirmItems, pairKey, autoProposeAfterImport } from '../app/modules/finance/pjt-tag-logic.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const E = (id, date, memo, lines, extra) => Object.assign({ id, no: id.toUpperCase(), date, memo, lines, source: { kind: 'manual' } }, extra || {});
@@ -69,4 +69,18 @@ ok(confirmItems([]).length === 0 && confirmItems(null).length === 0, '빈 입력
 const big = confirmItems(Array.from({ length: 250 }, (_, i) => ({ id: 'x' + i, entryId: 'x' + i, lineIdx: 0, method: '직접', splits: [{ pjt: 'p', amount: 1 }], confirmable: true })));
 ok(big.length === 250, '요청 목록은 자르지 않음(100건씩 나누는 일은 data.js 가 함)');
 
+// ── 가져오기 직후 자동 제안 — 새 전표가 저장됐을 때만 서버 pjtProposeNew 를 한 번 부르고, 실패해도 가져오기 결과를 막지 않는다(결정 2026-10-20 "ㅇㅇ" = 자동)
+const mkCall = (resp, spy) => async (payload) => { spy.push(JSON.parse(JSON.stringify(payload))); if (resp instanceof Error) throw resp; return resp; };
+const run = async (resp, posted) => { const spy = []; const r = await autoProposeAfterImport(mkCall(resp, spy), posted); return { r, spy }; };
+{ const { r, spy } = await run({ ok: true, created: 4, skippedExisting: 0 }, 6);
+  ok(spy.length === 1 && eq(spy[0], { action: 'pjtProposeNew', dryRun: false }), '★ 새 전표가 저장됐으면(posted 6) 서버에 pjtProposeNew 를 정확히 한 번(dryRun false) 요청 (실제: ' + JSON.stringify(spy) + ')');
+  ok(r.created === 4 && /4건/.test(r.note) && /프로젝트 표시/.test(r.note), '★ 만든 제안이 있으면 안내 문구에 "프로젝트 표시 … 4건"이 들어간다 (실제: ' + r.note + ')'); }
+{ const { r, spy } = await run({ ok: true, created: 4 }, 0); ok(spy.length === 0 && r.note === '' && r.created === 0, '★ 새로 저장된 전표가 없으면(posted 0) 서버를 부르지 않고 안내도 없다'); }
+for (const bad of [undefined, null, -1, NaN, '3', {}]) { const { r, spy } = await run({ ok: true, created: 1 }, bad); ok(spy.length === 0 && r.note === '', '★ posted 가 숫자가 아니거나 0 이하(' + String(bad) + ')이면 서버를 부르지 않는다'); }
+{ const { r } = await run({ ok: true, created: 0, skippedExisting: 5 }, 3); ok(r.note === '' && r.created === 0, '만들 제안이 없으면(created 0) 굳이 알리지 않는다'); }
+{ const { r, spy } = await run(Object.assign(new Error('permission-denied'), { code: 'permission-denied' }), 2);
+  ok(spy.length === 1 && r.created === 0 && typeof r.note === 'string' && /제안/.test(r.note) && /다시|나중|프로젝트 표시/.test(r.note), '★ 서버가 실패해도 던지지 않고(가져오기 결과는 그대로) 짧은 안내만 남긴다 (실제: ' + r.note + ')'); }
+for (const [nm, bad] of [['null', null], ['undefined', undefined], ['ok 없음', { created: 3 }], ['created 문자열', { ok: true, created: '3' }], ['created 음수', { ok: true, created: -2 }], ['created NaN', { ok: true, created: NaN }], ['빈 객체', {}]]) { const { r } = await run(bad, 2); ok(r && r.created === 0 && !/NaN|undefined|-2/.test(r.note), '★ 서버 응답이 이상해도(' + nm + ') 던지지 않고 숫자를 지어내지 않는다 (created ' + (r && r.created) + ')'); }
+{ const { spy } = await run({ ok: true, created: 1 }, 1000000); ok(spy.length === 1, '저장 건수가 아무리 많아도 호출은 한 번이다(건별 호출 금지)'); }
+{ const { r } = await run({ ok: true, created: 7 }, 7); ok(!/원|₩|거래처/.test(r.note), '안내 문구에 금액·거래처가 없다(건수만)'); }
 console.log('\n' + (fail ? '실패 ' + fail + '건 / 통과 ' + pass : '전부 통과 (' + pass + '건)')); process.exit(fail ? 1 : 0);

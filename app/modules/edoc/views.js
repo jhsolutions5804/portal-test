@@ -1,12 +1,12 @@
-import { esc, escMultiline, money } from '../../core/ui.js?v=20261020c';
+import { esc, escMultiline, money } from '../../core/ui.js?v=20261020d';
 import {
   TYPE_LABEL, TYPE_GROUPS, STATUS_LABEL, STATUS_GROUPS, tabDefs, tabCounts, filterDocs, summaryOf,
   myTurn, canProxy, currentStepIndex, stepState, fmtDate, fmtDateTime, fmtYmd, isPassive, tabsOf, docTitle,
   PAGE_SIZES, normalizeSize, paginate, pageNumbers, pageOfIndex, legacyCurrentStep, availableActions
-} from './logic.js?v=20261020c';
-import { actionbarHtml } from './compose-view.js?v=20261020c';
-import { FORMS } from './forms.js?v=20261020c';
-import { fmtSize as fmtFileSize } from './attach-logic.js?v=20261020c';
+} from './logic.js?v=20261020d';
+import { actionbarHtml } from './compose-view.js?v=20261020d';
+import { FORMS } from './forms.js?v=20261020d';
+import { fmtSize as fmtFileSize } from './attach-logic.js?v=20261020d';
 
 export function badgeHtml(status, doc) {
   const label = doc && doc.recorded === true && (status === 'approved' || status === 'posted') ? '기록' : (STATUS_LABEL[status] || status || '-');   // 결재 없이 기록으로 남는 문서(차량 운행일지)

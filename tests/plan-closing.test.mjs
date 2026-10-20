@@ -23,7 +23,7 @@ ok(by('unpaidPayments').items.map((x) => x.id).join() === 'p2' && by('unpaidPaym
 ok(by('noInvoiceThisMonth').items.length === 0 && by('noInvoiceThisMonth').tone === 'ok' && closingChecks('2026-11', '2026-12-01', P, E, S).find((c) => c.key === 'noInvoiceThisMonth').items.map((x) => x.id).join() === 'p1,p2', '이 달 청구서가 없는 진행 프로젝트(종료 프로젝트 제외): 9월은 둘 다 있음, 11월은 둘 다 없음');
 ok(by('estimateReadyToClose').items.map((x) => x.id).join() === 'e1' && by('estimateReadyToClose').items[0].right === 1000 && by('estimateReadyToClose').tone === 'info', '★ 정산이 끝난 견적(종결 권장): 견적 금액만큼 청구되고 연결된 청구서가 모두 완결된 것(e1), 미완결 청구서가 걸린 e2 와 이미 종결된 e3 는 제외');
 ok(by('acctMonthDiffers').items.map((x) => x.id).join() === 'p1' && /지급일 2026-10-30 → 계상월 2026-09/.test(by('acctMonthDiffers').items[0].meta), '회계 계상월이 지급일 달과 다른 완결 지급예정서(p1)');
-ok(by('manualNoLink').items.map((x) => x.id).sort().join() === 'i3,i5' && by('voidedThisMonth').items.map((x) => x.id).join() === 'i4' && ck.length === 9 && ck.every((c) => ['ok', 'warn', 'info'].includes(c.tone) && c.count === c.items.length), '견적 연결이 없는 직접 입력 청구서(유효 견적이 있는 프로젝트만)·이 달 폐기 정산서·항목 9개 구성(월간 보고서 미생성 포함)');
+ok(by('manualNoLink').items.map((x) => x.id).sort().join() === 'i3,i5' && by('voidedThisMonth').items.map((x) => x.id).join() === 'i4' && ck.length === 10 && ck.every((c) => ['ok', 'warn', 'info'].includes(c.tone) && c.count === c.items.length), '견적 연결이 없는 직접 입력 청구서(유효 견적이 있는 프로젝트만)·이 달 폐기 정산서·항목 10개 구성(월간 보고서 미생성·프로젝트 표시 미확정 포함)');
 const csv = closingCsv('2026-09', P, S); const lines = csv.replace('\ufeff', '').trim().split('\r\n');
 ok(csv.startsWith('\ufeff"번호","구분"') && lines.length === 1 + 6 && lines[1].startsWith('"2609004","대금청구서","폐기"') && lines.some((l) => l.includes('"2609002","대금청구서","유효","P4 Ph2 + H17L","다람","2026-09","2026-09-25","2026-10-05","2000","200","2200",""')) && lines.some((l) => l.includes('"2609001","지급예정서","지급완료"') && l.endsWith('"2026-09"')) && lines.some((l) => l.includes('"폐기"')) && !lines.some((l) => l.includes('"2610001"')) && closingCsv('2026-01', P, S).trim().split('\r\n').length === 1 && closingCsv('2026-09', P, [{ no: 'a"b', docType: 'invoice', issueDate: '2026-09-01', recipient: { company: 'x,y' } }]).includes('"a""b"'), '★ CSV: 맨 앞 BOM, 발행일이 그 달인 정산서(폐기 포함, 상태 표시)를 날짜·번호순으로, 공동 발행은 프로젝트를 +로 이음, 지급예정서는 계상월, 따옴표·쉼표 안전');
 /* ── 월말 마감 경고: 월간 보고서 미생성 프로젝트(설계 monthly-report-design.md 결정 10 — 경고 수준, 마감을 막지 않음, 눌러 가서 만들 수 있게 링크) ── */
@@ -52,5 +52,23 @@ ok(ld && ld.tone === 'info' && ld.count === 0 && /확인하는 중/.test(ld.hint
 ok(mby(mck('2026-09', '2026-10-12', 'LOADING')).hint.includes('확인하지 못'), '"loading" 이 아닌 다른 문자열은 현황으로 믿지 않고 "확인하지 못함"');
 ok(ck.every((c) => c.items.every((x) => x.right === undefined || x.right === '' || typeof x.right === 'number')) && m1.items.every((x) => x.right === undefined || x.right === '' || typeof x.right === 'number'), '★ 모든 점검 항목 줄의 오른쪽 값(right)은 비었거나 숫자(화면이 금액 서식 won() 으로 그리므로 글자를 넣으면 0 으로 보임)');
 ok(m1.label === '월간 보고서 미생성 프로젝트' && typeof m1.hint === 'string' && m1.hint.length > 10 && /막지 않/.test(m1.hint), '경고 문구에 "마감을 막지 않는다"는 설명이 있음(결정 10)');
-ok(pass + fail >= 27, '★ 시험 전체가 끝까지 실행됨(' + (pass + fail) + '건 ≥ 27) — 중간에 예외로 죽어 뒤쪽 시험이 안 도는 일 방지');
+// ── 프로젝트 표시(전표 분석 태그) 미확정 점검 — 서버 ledgerAct pjtTagStatus 응답({ ok, since, months:{ 'YYYY-MM': { targets, confirmed, pending } } }). 경고 수준(마감을 막지 않음), 이번 달·미래 달은 세지 않는다
+const tck = (ym, today, tg) => closingChecks(ym, today, P, E, S, undefined, tg); const tby = (c) => c.find((x) => x.key === 'pjtTagPending');
+const TG = { ok: true, since: '2026-03', months: { '2026-08': { targets: 10, confirmed: 7, pending: 3 }, '2026-09': { targets: 4, confirmed: 4, pending: 0 }, '2026-10': { targets: 5, confirmed: 0, pending: 5 } } };
+const t1 = tby(tck('2026-08', '2026-10-12', TG));
+ok(t1 && t1.tone === 'warn' && t1.count === 1 && t1.items.length === 1 && t1.items[0].href === '#/finance/pjt', '★ 지난 달에 미확정이 있으면 경고 1줄, 누르면 재무회계 프로젝트 표시 탭으로 간다');
+ok(!!t1 && !!t1.items[0] && /미확정 3줄/.test(t1.items[0].title) && /대상 10줄/.test(t1.items[0].meta) && /확정 7줄/.test(t1.items[0].meta), '★ 줄 제목에 미확정 3줄, 설명에 대상 10줄·확정 7줄이 보인다');
+const t2 = tby(tck('2026-09', '2026-10-12', TG)); ok(t2 && t2.tone === 'ok' && t2.count === 0 && t2.items.length === 0, '★ 미확정이 0 이면 문제 없음(줄 없음)');
+const t3 = tby(tck('2026-10', '2026-10-12', TG)); ok(t3 && t3.count === 0 && t3.tone !== 'warn', '★ 이번 달(아직 안 끝난 달)은 미확정이 있어도 세지 않는다');
+const t4 = tby(tck('2026-11', '2026-10-12', { ok: true, since: '2026-03', months: { '2026-11': { targets: 2, confirmed: 0, pending: 2 } } })); ok(t4 && t4.count === 0 && t4.tone !== 'warn', '★ 미래 달도 세지 않는다');
+const t5 = tby(tck('2026-08', '2026-10-12', 'loading')); ok(t5 && t5.tone === 'info' && t5.count === 0 && /확인하는 중/.test(t5.hint), '★ 응답을 기다리는 동안은 "확인하는 중"(문제 없음으로 보이지 않게)');
+for (const [nm, bad] of [['없음', null], ['undefined', undefined], ['ok 아님', { ok: false, months: {} }], ['months 가 배열', { ok: true, months: [] }], ['months 가 문자열', { ok: true, months: 'x' }], ['months 없음', { ok: true }], ['빈 객체', {}]]) { const tb = tby(tck('2026-08', '2026-10-12', bad)); ok(tb && tb.tone === 'info' && tb.count === 0 && /확인하지 못/.test(tb.hint), '★ 서버 응답이 ' + nm + ' 이면 "확인하지 못함"(거짓 안심 금지)'); }
+const t6 = tby(tck('2026-07', '2026-10-12', TG)); ok(t6 && t6.tone === 'ok' && t6.count === 0, '응답에 그 달 항목이 없으면 0건(문제 없음)');
+const tkeys = ['pjtTagPending'].concat(['monthlyReportMissing']); ok(tby(ck) && tby(ck).tone === 'info' && ck.filter((c) => c.key === 'pjtTagPending').length === 1, '인자를 안 주는 기존 호출(7번째 인자 없음)은 "확인하지 못함" 한 항목만 더해진다(기존 호출을 깨지 않음)');
+ok(!!tby(tck('2026-08', '2026-10-12', TG)) && tby(tck('2026-08', '2026-10-12', TG)).items.length > 0 && tby(tck('2026-08', '2026-10-12', TG)).items.every((x) => x.right === undefined || x.right === '' || typeof x.right === 'number'), '★ 오른쪽 칸은 금액 칸이라 글자를 넣지 않는다(비었거나 숫자) — 월간 보고서 경고에서 "0"이 보였던 결함 재발 방지');
+const mny = (x) => /\d[\d,.]*\s*(원|만원|억)|₩|거래처|partner|amount/.test(JSON.stringify(x.items)); ok(!!t1 && !mny(t1), '행(items) 어디에도 금액·거래처 정보가 없다(건수만) — 설명문(hint)의 "직접원가" 같은 낱말은 대상이 아님');
+ok(mny({ items: [{ meta: '대상 1,200,000원' }] }) && mny({ items: [{ title: '거래처 A' }] }) && !mny({ items: [{ title: '미확정 3줄', meta: '대상 10줄 중 확정 7줄' }] }), '이 금액 검사 자체가 금액·거래처가 있으면 잡고 건수만 있으면 통과시킨다(약한 시험 방지)');
+ok(!!t1 && /막지 않/.test(t1.hint) && t1.hint.length > 20, '경고 문구에 "마감을 막지 않는다"는 설명이 있다');
+ok(new Set(ck.map((c) => c.key)).size === ck.length, '점검 항목 키는 서로 겹치지 않는다');
+ok(pass + fail >= 47, '★ 시험 전체가 끝까지 실행됨(' + (pass + fail) + '건 ≥ 47) — 중간에 예외로 죽어 뒤쪽 시험이 안 도는 일 방지');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

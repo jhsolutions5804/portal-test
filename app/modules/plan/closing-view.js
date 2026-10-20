@@ -1,13 +1,13 @@
-import { esc } from '../../core/ui.js?v=20261020c';
-import { won, signed, card, chip } from './ui.js?v=20261020c';
-import { closingSummary, closingChecks } from './closing.js?v=20261020c';
-import { docFileName } from '../../shared/doc-filename.js?v=20261020c';
+import { esc } from '../../core/ui.js?v=20261020d';
+import { won, signed, card, chip } from './ui.js?v=20261020d';
+import { closingSummary, closingChecks } from './closing.js?v=20261020d';
+import { docFileName } from '../../shared/doc-filename.js?v=20261020d';
 const TONE = { warn: ['처리 필요', 'red'], info: ['참고', 'amber'], ok: ['이상 없음', 'green'] };
 const cell = (label, v, hint, tone) => '<div class="jh-plan__sumcell"><span class="jh-field__hint">' + esc(label) + '</span><strong' + (tone ? ' data-tone="' + tone + '"' : '') + '>' + v + '</strong>' + (hint ? '<span class="jh-field__hint">' + esc(hint) + '</span>' : '') + '</div>';
 const itemRow = (r) => '<a class="jh-plan__row" href="' + esc(r.href) + '"><span class="jh-plan__main"><strong>' + esc(r.title) + '</strong><span class="jh-field__hint">' + esc(r.meta) + '</span></span>' + (r.right ? '<strong>' + won(r.right) + '</strong>' : '') + '</a>';
 /** 월말 마감: 월 이동, 한 달 요약, 점검 항목(누르면 목록), 프로젝트별 월 요약, CSV·인쇄 */
 export function closingHtml(st) {
-  const sm = closingSummary(st.ym, st.projects, st.estimates, st.settlements); const ck = closingChecks(st.ym, st.today, st.projects, st.estimates, st.settlements, st.monthly); const [y, m] = st.ym.split('-');
+  const sm = closingSummary(st.ym, st.projects, st.estimates, st.settlements); const ck = closingChecks(st.ym, st.today, st.projects, st.estimates, st.settlements, st.monthly, st.tags); const [y, m] = st.ym.split('-');
   const nav = '<div class="jh-plan__bar"><span class="jh-plan__line"><button type="button" class="jh-btn" data-variant="ghost" data-cl-act="prev" aria-label="이전 달">‹</button><strong class="jh-plan__big">' + y + '년 ' + Number(m) + '월</strong><button type="button" class="jh-btn" data-variant="ghost" data-cl-act="next" aria-label="다음 달">›</button></span><span class="jh-plan__line"><button type="button" class="jh-btn" data-variant="secondary" data-cl-act="csv">CSV 내려받기</button><button type="button" class="jh-btn" data-variant="secondary" data-cl-act="print">🖨 인쇄</button></span></div>';
   const warns = ck.filter((c) => c.tone === 'warn').length;
   const head = '<div class="jh-plan__pad">' + nav + '<div class="jh-field__hint">' + (warns ? '⚠️ 처리가 필요한 점검 항목이 ' + warns + '개 있습니다. 아래에서 확인하세요.' : '✓ 처리가 필요한 점검 항목이 없습니다.') + ' (발행일이 이 달인 정산서 기준, 수금·지급완료는 완결 처리한 달 기준)</div>'
@@ -21,7 +21,7 @@ export function closingHtml(st) {
 }
 /** 인쇄용 요약 문서(새 창): 월 요약·점검 항목·프로젝트별 표. 인쇄 대화상자가 자동으로 열린다 */
 export function closingPrintHtml(st) {
-  const sm = closingSummary(st.ym, st.projects, st.estimates, st.settlements); const ck = closingChecks(st.ym, st.today, st.projects, st.estimates, st.settlements, st.monthly); const w = (n) => Math.round(Number(n) || 0).toLocaleString('ko-KR'); const h = esc;
+  const sm = closingSummary(st.ym, st.projects, st.estimates, st.settlements); const ck = closingChecks(st.ym, st.today, st.projects, st.estimates, st.settlements, st.monthly, st.tags); const w = (n) => Math.round(Number(n) || 0).toLocaleString('ko-KR'); const h = esc;
   return '<!doctype html><meta charset="utf-8"><title>' + h(docFileName({ group: 'month', ym: st.ym, kind: '월말 마감' }) || '월말 마감 ' + st.ym) + '</title><style>@page{size:A4;margin:16mm}*{box-sizing:border-box;font-family:\'Malgun Gothic\',sans-serif}body{margin:0;color:#1a2330;font-size:12px}h1{text-align:center;font-size:22px;margin:0 0 4px}h2{font-size:14px;margin:18px 0 6px;color:#1D5BA6}.sub{text-align:center;color:#555;margin-bottom:12px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cfd8e6;padding:6px 8px;font-size:11.5px}th{background:#eaf2fc;color:#1D5BA6}td.n{text-align:right}.w{color:#b91c1c;font-weight:700}.i{color:#b45309}.k{color:#16a34a}</style>'
     + '<h1>월말 마감 ' + h(st.ym) + '</h1><div class="sub">영업기획 · 발행일이 이 달인 정산서 기준 · 출력 ' + h(st.today) + '</div>'
     + '<h2>한 달 요약</h2><table><tbody><tr><th>청구서 발행</th><td class="n">' + sm.invoice.count + '건 · ' + w(sm.invoice.total) + '원</td><th>수금(완결)</th><td class="n">' + sm.collected.count + '건 · ' + w(sm.collected.total) + '원</td></tr><tr><th>지급예정서 발행</th><td class="n">' + sm.payment.count + '건 · ' + w(sm.payment.total) + '원</td><th>지급완료</th><td class="n">' + sm.paid.count + '건 · ' + w(sm.paid.total) + '원</td></tr><tr><th>미수금 잔액(지금)</th><td class="n">' + w(sm.receivable) + '원</td><th>미지급 잔액(지금)</th><td class="n">' + w(sm.payable) + '원</td></tr></tbody></table>'

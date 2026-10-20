@@ -1,18 +1,19 @@
-import { esc, toast } from '../../core/ui.js?v=20261020c';
-import { buildPendingRows, groupByMonth, confirmItems } from './pjt-tag-logic.js?v=20261020c';
-import { confirmDialog } from '../../core/dialog.js?v=20261020c';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261020c';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261020c';
-import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261020c';
-import { parseBankSheets } from '../../shared/bank-import.js?v=20261020c';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261020c';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261020c';
-import { monthlyView, monthlyCsv, MP_SEED, npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261020c';
-import { loadLedger, loadProjects, loadPjtTags, confirmPjtTags, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, saveMonthlyPlan, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261020c';
-import { pjtTagHtml, monthlyHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261020c';
+import { esc, toast } from '../../core/ui.js?v=20261020d';
+import { buildPendingRows, groupByMonth, confirmItems, autoProposeAfterImport } from './pjt-tag-logic.js?v=20261020d';
+import { proposeNewPjt } from './data.js?v=20261020d';
+import { confirmDialog } from '../../core/dialog.js?v=20261020d';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261020d';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261020d';
+import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261020d';
+import { parseBankSheets } from '../../shared/bank-import.js?v=20261020d';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261020d';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261020d';
+import { monthlyView, monthlyCsv, MP_SEED, npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows } from './logic.js?v=20261020d';
+import { loadLedger, loadProjects, loadPjtTags, confirmPjtTags, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, saveMonthlyPlan, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries } from './data.js?v=20261020d';
+import { pjtTagHtml, monthlyHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261020d';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
-import { financePerm } from '../../shared/finance-perm.js?v=20261020c';
+import { financePerm } from '../../shared/finance-perm.js?v=20261020d';
 /** 실제 메뉴 등록은 공용 틀(modules/legacy/list.js 의 finance 정의 — 인사총무와 같은 사이드바·내용 영역). 여기의 값은 규약(manifest+mount)용이며 권한은 같은 함수를 쓴다 */
 export const manifest = { id: 'finance', order: 25, title: '재무회계', icon: '📒', defaultHash: '#/finance/home', perm: financePerm };
 const S = { data: null, filter: { from: '', to: '', source: '', review: false, reviewed: false, assignee: '', q: '' }, limit: 100, imp: { kind: 'taxsales', busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }, rep: { kind: 'is', from: '', to: '', acct: '2010', pacct: '2010', q: '', zero: false, vatKey: '', vatForm: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_vatform_v1') || '{}') || {}; } catch (e) { return {}; } })() }, openDate: '2026-01-01', admin: false, rl: null, chk: null, chkDate: '', openEditId: '', sel: new Set(), mp: { ym: kstToday().slice(0, 7), manage: false, draft: null, view: null }, fc: { over: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_fc_v1') || '{}') || {}; } catch (e) { return {}; } })(), scen: 'base' } };
@@ -155,6 +156,8 @@ export async function mount(root, route, ctx) {
       const r = await postEntries(p.fresh); const msg = '저장 ' + r.posted + '건 · 이미 있어 건너뜀 ' + r.duplicates + '건' + (r.rejected.length ? ' · 거부 ' + r.rejected.length + '건(' + r.rejected[0].errors[0] + ')' : '');
       try { await recordImport({ kind: S.imp.kind, fileName: (S.imp.raw && S.imp.raw.fileName) || '', rows: p.fresh.length + (p.dupCount || 0), posted: r.posted, duplicates: r.duplicates }); } catch (e) { /* 이력 기록 실패는 무시 */ }
       toast(msg); await reload(); S.imp.preview = null; S.imp.raw = null; S.imp.npay = null; S.imp.error = ''; S.imp.done = msg; paint(); body.insertAdjacentHTML('afterbegin', '<div class="jh-alert" data-tone="info" role="status">✅ ' + esc(msg) + '</div>');
+  /* 가져오기 직후 자동 제안(결정 2026-10-20): 가져오기 결과는 위에서 이미 보여 줬다 — 제안은 그 뒤에 만들고, 실패해도 가져오기는 그대로다(순수 함수가 던지지 않음). 서버 동작이 멱등이라 반복해도 안전 */
+  const ap = await autoProposeAfterImport((payload) => proposeNewPjt(payload.dryRun === true), r.posted); if (ap.note) { toast(ap.note); body.insertAdjacentHTML('afterbegin', '<div class="jh-alert" data-tone="info" role="status">' + esc(ap.note) + '</div>'); }
     } catch (e) { setImp({ error: e.message }); }
   }
 
