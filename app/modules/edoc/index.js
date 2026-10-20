@@ -1,28 +1,28 @@
-import { fetchAll, fetchOne } from './data.js?v=20261020h';
-import { listHtml, detailHtml } from './views.js?v=20261020h';
-import { tabCounts } from './logic.js?v=20261020h';
-import { buildHash, navigate } from '../../core/router.js?v=20261020h';
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261020h';
-import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261020h';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261020h';
-import { toast } from '../../core/ui.js?v=20261020h';
-import { confirmDialog } from '../../core/dialog.js?v=20261020h';
-import { loadDirectory, resetDirectory } from './directory.js?v=20261020h';
-import { act } from './api.js?v=20261020h';
-import * as C from './compose.js?v=20261020h';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261020h';
-import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261020h';
-import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261020h';
-import { kstKey } from './home-daily.js?v=20261020h';
-import { isOffDay } from '../../shared/holidays.js?v=20261020h';
-import { todoCounts } from './home-stats.js?v=20261020h';
-import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261020h';
-import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261020h';
-import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261020h';
-import * as AT from './attach-logic.js?v=20261020h';
-import { uploadFile, removeFile, openFile } from './attach.js?v=20261020h';
-import * as SL from './settings-logic.js?v=20261020h';
-import { chooserHtml, newDocLayoutHtml, composeHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261020h';
+import { fetchAll, fetchOne } from './data.js?v=20261020i';
+import { listHtml, detailHtml } from './views.js?v=20261020i';
+import { tabCounts } from './logic.js?v=20261020i';
+import { buildHash, navigate } from '../../core/router.js?v=20261020i';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261020i';
+import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261020i';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261020i';
+import { toast } from '../../core/ui.js?v=20261020i';
+import { confirmDialog } from '../../core/dialog.js?v=20261020i';
+import { loadDirectory, resetDirectory } from './directory.js?v=20261020i';
+import { act, partAct } from './api.js?v=20261020i';
+import * as C from './compose.js?v=20261020i';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261020i';
+import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261020i';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261020i';
+import { kstKey } from './home-daily.js?v=20261020i';
+import { isOffDay } from '../../shared/holidays.js?v=20261020i';
+import { todoCounts } from './home-stats.js?v=20261020i';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261020i';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261020i';
+import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261020i';
+import * as AT from './attach-logic.js?v=20261020i';
+import { uploadFile, removeFile, openFile } from './attach.js?v=20261020i';
+import * as SL from './settings-logic.js?v=20261020i';
+import { chooserHtml, newDocLayoutHtml, composeHtml, partsHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261020i';
 
 
 export const manifest = {
@@ -209,7 +209,7 @@ async function mountCompose(root, route, ctx) {
   try { dir = await loadDirectory(false); }
   catch (e) { root.innerHTML = '<div class="jh-card"><div class="jh-empty">작성에 필요한 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div><button type="button" class="jh-btn" data-variant="ghost" data-act="cancel">돌아가기</button></div>'; root.onclick = (ev) => { if (ev.target.closest('[data-act=cancel]')) leave(); }; return; }
 
-  const S = { files: [], uploading: [], attachError: '', type: null, values: null, errors: {}, line: null, ui: { search: '', picked: null, lineError: '' }, edit: null, rejectReason: '', formError: '', busy: false, ctx: null, docRef: null, createdMs: null };
+  const S = { files: [], uploading: [], attachError: '', type: null, values: null, errors: {}, line: null, ui: { search: '', picked: null, lineError: '' }, edit: null, rejectReason: '', formError: '', busy: false, ctx: null, docRef: null, createdMs: null, partsOn: !!(dir && dir.partsOn), partsUi: { custom: false, texts: {}, preview: null, previewError: '' }, partsSeq: 0, partsSaved: null, partsMain: '' };
   const lc = (type) => Object.assign(C.lineContext(me, dir.policy, dir.guides, dir.users, type), { projects: dir.projects, vehicles: dir.vehicles });
 
   if (route.segs[0] === 'edit') {
@@ -221,6 +221,7 @@ async function mountCompose(root, route, ctx) {
     }
     const v = C.valuesFromDoc(d); S.type = v.type; S.values = v.values; S.ctx = lc(S.type);
     S.line = (d.approvalLine && d.approvalLine.length) ? C.lineFromDoc(d, S.ctx) : C.initialLine(S.ctx);
+    if (S.partsOn && S.type === 'daily') { try { const g = await partAct({ action: 'get', date: S.values.date }); S.values.parts = g && g.record && Array.isArray(g.record.projects) ? g.record.projects.map((x) => ({ pjt: x.pjt })) : C.partsDefault(S.values.pjtId); S.partsSaved = g && g.record ? g.record : null; } catch (e) { S.values.parts = C.partsDefault(S.values.pjtId); } S.partsMain = S.values.pjtId || ''; } // 참여 기록은 문서 본문이 아니라 별도 기록이라 서버에서 불러온다
     S.files = AT.sanitizeList(d.attachments); S.edit = { dtype: d.dtype, id: d.id }; S.docRef = S.edit; S.rejectReason = d.status === 'rejected' ? (d.rejectReason || '') : ''; S.createdMs = d._ms;
   } else {
     const type = route.segs[1];
@@ -255,6 +256,14 @@ async function mountCompose(root, route, ctx) {
   const paintLine = () => {
     const sec = root.querySelector('#edoc-line-section'); if (!sec) return;
     sec.innerHTML = '<h3 class="jh-form__h">결재선</h3>' + lineEditorHtml(S.line, S.ctx, S.ui);
+  };
+  const paintParts = () => { const el = root.querySelector('#edoc-parts'); if (el) el.innerHTML = partsHtml(S); };
+  const refreshPreview = async () => { // 둘 이상 고르면 서버가 기본 비율(그날 일용직 공수 비율, 없으면 균등)을 계산해 준다 — 늦게 온 응답이 최신 선택을 덮지 않게 요청 번호로 거른다
+    if (!S.partsOn) return; if (!C.partsNeedsPreview(S.values, S.partsUi)) { S.partsUi.preview = null; S.partsUi.previewError = ''; paintParts(); return; }
+    const seq = ++S.partsSeq; S.partsUi.preview = null; S.partsUi.previewError = ''; paintParts();
+    try { const r = await partAct({ action: 'preview', date: S.values.date, projects: S.values.parts.map((p) => p.pjt) }); if (seq !== S.partsSeq) return; S.partsUi.preview = r; }
+    catch (e) { if (seq !== S.partsSeq) return; S.partsUi.previewError = C.partsSaveError(e); }
+    paintParts();
   };
   const sync = () => {   // 화면의 입력값을 상태로 읽어 온다
     root.querySelectorAll('[data-input]').forEach((el) => { S.values[el.getAttribute('data-input')] = el.value; });
@@ -326,6 +335,7 @@ async function mountCompose(root, route, ctx) {
 
   root.oninput = (ev) => {
     const t = ev.target;
+    if (t.hasAttribute && t.hasAttribute('data-parts-ratio-input')) { S.partsUi.texts[t.getAttribute('data-parts-ratio-input')] = t.value; return; }
     if (t.hasAttribute('data-line-search')) {   // 입력창은 그대로 두고 검색 결과만 바꾼다 — 다시 그리면 한글 조합이 끊긴다
       S.ui.search = t.value.trim(); S.ui.picked = null; S.ui.lineError = '';
       const box = root.querySelector('[data-suggest-box]'); if (box) box.innerHTML = suggestHtml(S.line, S.ctx, S.ui);
@@ -341,6 +351,7 @@ async function mountCompose(root, route, ctx) {
     if (t.hasAttribute && t.hasAttribute('data-attach-input')) { const fl = Array.from(t.files || []); t.value = ''; addFiles(fl); return; }
     if (!t.hasAttribute('data-input')) return;
     const key = t.getAttribute('data-input'); S.values[key] = t.value;
+    if (key === 'pjtId' && S.partsOn && S.type === 'daily') { S.values.parts = C.partsSyncMain(S.values.parts, S.partsMain, t.value); S.partsMain = t.value; /* 이전 값은 입력 이벤트가 이미 새 값으로 덮어쓰므로(input → change 순서) 마지막으로 반영한 위쪽 프로젝트를 따로 기억한다 */ S.partsUi.custom = false; S.partsUi.texts = {}; refreshPreview(); }
     if (S.type === 'leave' && (key === 'leaveType' || key === 'startDate' || key === 'endDate')) {
       const d = C.calcLeaveDays(S.values.startDate, S.values.endDate, S.values.leaveType);
       if (d !== '') { S.values.days = d; const el = root.querySelector('#f-days'); if (el) el.value = d; }
@@ -352,6 +363,10 @@ async function mountCompose(root, route, ctx) {
 
   root.onclick = async (ev) => {
     const nt = ev.target.closest('[data-new-type]'); if (nt) { navigate('#/edoc/new/' + nt.getAttribute('data-new-type'), { replace: true }); return; }   // 왼쪽 목록에서 다른 종류를 고르면 오른쪽 작성 화면이 바뀐다
+    const pc = ev.target.closest('[data-part],[data-parts-custom]');
+    if (pc && S.partsOn) { if (S.busy) return; sync();
+      if (pc.hasAttribute('data-part')) { S.values.parts = C.partsToggle(S.values.parts, pc.getAttribute('data-part')); S.partsUi.custom = false; S.partsUi.texts = {}; S.errors = Object.assign({}, S.errors); delete S.errors.parts; refreshPreview(); return; }
+      S.partsUi.custom = !S.partsUi.custom; if (S.partsUi.custom) { const pv = S.partsUi.preview; S.partsUi.texts = {}; if (pv && Array.isArray(pv.projects)) pv.projects.forEach((r) => { S.partsUi.texts[r.pjt] = String(Math.round(r.bp / 10) / 10); }); } paintParts(); return; }
     const t = ev.target.closest('[data-act],[data-kind],[data-add-item],[data-remove-item],[data-move],[data-remove],[data-pick],[data-add],[data-attach-pick],[data-attach-remove],[data-attach-open]'); if (!t) return;
     if (t.hasAttribute('data-attach-pick')) { const inp = root.querySelector('#edoc-file-input'); if (inp) inp.click(); return; }
     if (t.hasAttribute('data-attach-remove')) { dropFile(t.getAttribute('data-attach-remove')); return; }
@@ -380,6 +395,7 @@ async function mountCompose(root, route, ctx) {
       sync(); S.formError = ''; S.errors = {};
       const submit = act_ === 'submit';
       S.errors = submit ? C.validate(S.type, S.values, { projects: dir.projects, users: dir.users, meUid: me.uid, worker: S.worker }) : quickErrors();
+      if (S.partsOn && S.type === 'daily') { const pc2 = C.partsSubmitCheck(S.values, S.partsUi, !submit); if (!pc2.ok) S.errors.parts = pc2.error; }
       const lineProblems = submit && S.type !== 'drive' ? C.lineIssues(S.line, S.ctx) : [];
       if (Object.keys(S.errors).length || lineProblems.length) {
         S.formError = Object.keys(S.errors).length ? '입력 내용을 확인해 주세요. 빨간 표시된 항목을 고치면 됩니다.' : lineProblems[0];
@@ -388,6 +404,10 @@ async function mountCompose(root, route, ctx) {
       S.busy = true; paint();
       try {
         const ref = await persist();
+        if (S.partsOn && S.type === 'daily') { // 참여 기록은 문서 본문이 아니라 별도 기록(승인 후에도 정정 가능) — 상신하려면 저장에 성공해야 하고, 임시저장은 칩이 있을 때만 시도하며 실패해도 문서 저장은 유지한다
+          const fin = C.partsFinal(S.values, S.partsUi); const payload = C.partsPayload('daily', Object.assign({}, S.values, { parts: fin.ok ? fin.parts : [] }));
+          if (payload) { try { S.partsSaved = await partAct(payload); } catch (e) { if (submit) throw new Error(C.partsSaveError(e) + ' (업무일지는 임시저장되어 있습니다. 상신하지 않았습니다.)'); toast('임시저장했습니다. 다만 ' + C.partsSaveError(e)); } }
+        }
         if (!submit) { toast('임시저장했습니다.'); S.busy = false; navigate('#/edoc/edit/' + ref.dtype + '/' + ref.id, { replace: true }); return; }
         await act({ dtype: ref.dtype, docId: ref.id, action: 'submit', line: S.type === 'drive' ? [] : S.line.approvers, cc: S.type === 'drive' ? [] : S.line.cc });
         dropCache(); toast(S.type === 'drive' ? '운행일지를 기록했습니다.' : '상신했습니다. 결재 대기 중입니다.');

@@ -1,6 +1,7 @@
 /* 작성 화면의 순수 로직 — 양식 정의, 검증, 문서 데이터 만들기, 결재선 편집. (화면·Firestore 와 분리해 시험한다) */
 
 export const MAX_APPROVERS = 5;
+export const MAX_PARTS = 6; // 한 사람의 하루에 나눌 수 있는 참여 프로젝트 수(서버 pjt-part-act 의 day-split 규칙과 같다)
 export const MAX_CC = 10;
 
 export const LEAVE_TYPES = ['연차(유급)', '반차-오전(유급)', '반차-오후(유급)', '생리휴가(무급)', '출산전후휴가(유급)', '배우자출산휴가(유급)', '유산·사산휴가(유급)', '육아휴직(무급)', '가족돌봄휴가(무급)', '병가(무급)', '예비군/민방위(유급)'];
@@ -104,6 +105,65 @@ export function fieldRows(type, values) {
   return rows;
 }
 function visible(f, values) { return !f.showIf || (values && values[f.showIf.key] === f.showIf.equals); }
+/* ── 업무일지 "오늘 참여한 프로젝트"(대기열 1-2-2 2b, 대표님 2026-10-20): 직원이 하루에 참여한 프로젝트를 고른다. 내근이어도 선택하고 프로젝트와 무관하면 "공통".
+ * 승인된 업무일지는 잠기므로 이 값은 문서 본문(buildDocData)에 넣지 않고, 문서 저장이 끝난 뒤 서버 pjtPartAct(save)로 별도 문서에 저장한다. 비율은 서버가 정한다(그날 일용직 공수 비율, 없으면 균등) — 쏠린 날만 직접 입력. */
+const pid = (x) => (typeof x === 'string' ? x.trim() : '');
+const asParts = (parts) => (Array.isArray(parts) ? parts.filter((p) => p && pid(p.pjt)).map((p) => ({ pjt: pid(p.pjt) })) : []);
+/** 위에서 고른 프로젝트가 칩의 기본값 — 고르지 않았으면 빈 목록 */
+export function partsDefault(pjtId) { const id = pid(pjtId); return id ? [{ pjt: id }] : []; }
+/** 칩 켜기·끄기 — 공통은 단독, 최대 MAX_PARTS 개(끄는 것은 항상 가능), 직접 입력한 비율은 구성이 바뀌면 지운다. 새 목록을 돌려준다 */
+export function partsToggle(parts, pjt) {
+  const cur = asParts(parts); const id = pid(pjt); if (!id) return cur;
+  if (cur.some((p) => p.pjt === id)) return cur.filter((p) => p.pjt !== id);
+  if (id === 'common') return [{ pjt: 'common' }];
+  const next = cur.filter((p) => p.pjt !== 'common'); if (next.length >= MAX_PARTS) return cur; return next.concat([{ pjt: id }]);
+}
+/** 위쪽 프로젝트가 oldMain → newMain 으로 바뀔 때 칩이 따라간다 — oldMain 이 선택돼 있었으면 그 자리가 newMain 으로 바뀌고(다른 칩은 뒤에 남음), 이미 꺼져 있었으면 newMain 을 끝에 더한다. newMain 이 공통이면 공통 단독 */
+export function partsSyncMain(parts, oldMain, newMain) {
+  const cur = asParts(parts); const o = pid(oldMain), n = pid(newMain);
+  if (n === 'common') return [{ pjt: 'common' }];
+  const base = cur.filter((p) => p.pjt !== 'common'); const i = o ? base.findIndex((p) => p.pjt === o) : -1;
+  if (!n) return i === -1 ? base : base.filter((p) => p.pjt !== o);
+  if (base.some((p) => p.pjt === n)) return i === -1 ? base : base.filter((p, k) => k !== i);
+  if (i !== -1) return base.map((p, k) => (k === i ? { pjt: n } : p));
+  return base.length >= MAX_PARTS ? base : base.concat([{ pjt: n }]);
+}
+/** 직접 비율 입력(%칸 글자 목록) 검사 — 칸 수 = 프로젝트 수, 모두 0 보다 큰 숫자, 합 100(부동소수 오차 허용). 통과하면 서버로 보낼 ratio 가 붙은 목록 */
+export function partsRatioDraft(parts, texts) {
+  const bad = (error) => ({ ok: false, parts: null, error }); const cur = asParts(parts);
+  if (!cur.length || !Array.isArray(texts) || texts.length !== cur.length) return bad('프로젝트마다 비율(%)을 입력해 주세요.');
+  const nums = texts.map((t) => (typeof t === 'string' && t.trim() !== '' && /^\d+(\.\d+)?$/.test(t.trim()) ? Number(t.trim()) : NaN));
+  if (nums.some((n) => !(n > 0))) return bad('비율(%)은 0 보다 큰 숫자로 모든 칸에 입력해 주세요.');
+  const sum = nums.reduce((a, b) => a + b, 0); if (Math.abs(sum - 100) > 0.001) return bad('비율의 합이 100% 가 되어야 합니다(지금 ' + Math.round(sum * 100) / 100 + '%).');
+  return { ok: true, parts: cur.map((p, i) => ({ pjt: p.pjt, ratio: nums[i] })), error: '' };
+}
+/** 임시저장은 비어 있어도 되고, 상신은 참여 프로젝트를 1개 이상 골라야 한다(업무일지는 전 직원 의무 작성) */
+export function partsForSubmit(parts, draft) { if (draft) return { ok: true, error: '' }; return Array.isArray(parts) && asParts(parts).length ? { ok: true, error: '' } : { ok: false, error: '오늘 참여한 프로젝트를 한 개 이상 선택해 주세요(프로젝트와 무관하면 "공통").' }; }
+/** 서버 pjtPartAct 호출 본문 — 업무일지가 아니거나 날짜·칩이 없으면 null(보내지 않음). 직접 비율이 있으면 ratio 도 함께 */
+export function partsPayload(type, values) {
+  if (type !== 'daily' || !values || typeof values !== 'object' || !/^\d{4}-\d{2}-\d{2}$/.test(String(values.date || ''))) return null;
+  const list = Array.isArray(values.parts) ? values.parts.filter((p) => p && pid(p.pjt)).map((p) => (typeof p.ratio === 'number' ? { pjt: pid(p.pjt), ratio: p.ratio } : { pjt: pid(p.pjt) })) : []; if (!list.length) return null;
+  return { action: 'save', date: values.date, projects: list };
+}
+/* ── 참여 칩 연결 판단(index.js 가 부르는 순수 함수) ── */
+const objOk = (v) => v && typeof v === 'object' && !Array.isArray(v);
+/** 참여 프로젝트 기능 스위치 — 문서 edoc_settings/parts 가 { enabled: true } 일 때만 켜진다(없거나 다른 값이면 꺼짐). 규칙(pjt_day_part 거부) 게시와 함수 배포가 끝난 뒤 켠다 */
+export const partsEnabled = (data) => !!data && typeof data === 'object' && !Array.isArray(data) && data.enabled === true;
+/** 서버 미리보기(기본 비율)가 필요한가 — 업무일지 값에 유효한 날짜가 있고 칩이 둘 이상이며 직접 입력이 꺼져 있을 때만 */
+export function partsNeedsPreview(values, ui) { if (!objOk(values) || !/^\d{4}-\d{2}-\d{2}$/.test(String(values.date || ''))) return false; return asParts(values.parts).length >= 2 && !(objOk(ui) && ui.custom === true); }
+/** 저장할 최종 목록 — 직접 입력이 켜져 있으면 입력칸 글자(칩 순서)를 읽어 ratio 를 붙이고, 아니면 칩 그대로(비율은 서버가 정한다). 결과 { ok, parts, error } */
+export function partsFinal(values, ui) {
+  if (!objOk(values)) return { ok: false, parts: null, error: '참여 프로젝트를 확인할 수 없습니다.' };
+  const cur = asParts(values.parts); if (!(objOk(ui) && ui.custom === true)) return { ok: true, parts: cur, error: '' };
+  const texts = objOk(ui.texts) ? ui.texts : {}; return partsRatioDraft(cur, cur.map((p) => (typeof texts[p.pjt] === 'string' ? texts[p.pjt] : '')));
+}
+/** 임시저장·상신 검사 — 상신이면 참여 프로젝트 1개 이상이 필수, 직접 비율이 켜져 있으면 합 100 검사(임시저장도 형식이 틀린 값은 막는다). 결과 { ok, error } */
+export function partsSubmitCheck(values, ui, draft) {
+  const base = partsForSubmit(objOk(values) ? values.parts : null, draft === true); if (!base.ok) return base;
+  const f = partsFinal(values, ui); if (objOk(ui) && ui.custom === true && !f.ok) return { ok: false, error: f.error }; return { ok: true, error: '' };
+}
+/** 참여 기록 저장 실패 안내 문구 — 서버가 준 메시지가 있으면 그대로 */
+export function partsSaveError(e) { const m = e && typeof e.message === 'string' ? e.message.trim() : ''; return m || '참여 기록을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.'; }
 export function dtypeOf(type, values) { return type === 'spend' ? (values && values.kind === 'expense' ? 'expense' : 'purchase') : type; }
 
 export const ymd = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -132,7 +192,7 @@ export function defaultValues(type, me, now) {
   else if (type === 'resign') Object.assign(v, { leaveKind: '퇴직', lastDate: '', returnDate: '', reason: '' });
   else if (type === 'cert') Object.assign(v, { purpose: '', language: '한국어', copies: 1 });
   else if (type === 'attend') { const y = new Date(now || new Date()); y.setDate(y.getDate() - 1); Object.assign(v, { date: ymd(y), checkIn: '', checkOut: '', reason: '' }); }
-  else if (type === 'daily') Object.assign(v, { date: today, pjtId: '', todayWork: '', tomorrowWork: '', issue: '' });
+  else if (type === 'daily') Object.assign(v, { date: today, pjtId: '', todayWork: '', tomorrowWork: '', issue: '', parts: [] }); // parts = 오늘 참여한 프로젝트 칩(문서 본문에는 넣지 않고 업무일지와 별도 기록 pjt_day_part 로 서버가 저장)
   else if (type === 'drive') Object.assign(v, { date: today, vehicleId: '', pjtId: '', origin: '', destination: '', kind: DRIVE_KINDS[0], odoStart: '', odoEnd: '', bizKm: '', purpose: '', note: '' });
   else if (type === 'spend') Object.assign(v, { kind: 'purchase', vendor: '', pjtId: '', purpose: '', dueDate: '', expDate: today, category: SPEND_CATEGORIES[0], amount: '', receipt: RECEIPTS[0], items: [] });
   return v;

@@ -1,4 +1,4 @@
-import { functions, httpsCallable } from '../../core/firebase.js?v=20261020h';
+import { functions, httpsCallable } from '../../core/firebase.js?v=20261020i';
 
 /* 서버 함수 edocAct 호출 — 상신·승인·반려·회수·게시·삭제는 모두 서버가 검증해 처리한다 */
 const call = httpsCallable(functions, 'edocAct');
@@ -17,6 +17,12 @@ export function errorMessage(e) {
   // 서버가 보낸 한국어 안내문이 있으면 그대로, 영문 코드뿐이면 대체 문구
   if (/[가-힣]/.test(msg)) return msg;
   return FALLBACK[code] || FALLBACK.internal;
+}
+/* 참여 프로젝트 기록 서버 함수 pjtPartAct — 업무일지에서 고른 오늘 참여 프로젝트·비율. save/preview/get. 서버가 본인 확인·40일 규칙·정정 이력을 맡는다 */
+const partCall = httpsCallable(functions, 'pjtPartAct');
+export async function partAct(payload) {
+  try { const r = await partCall(payload); return r.data; }
+  catch (e) { const err = new Error(errorMessage(e)); err.code = e && e.code; throw err; }
 }
 export async function act(payload) {
   try { const r = await call(payload); return r.data; }

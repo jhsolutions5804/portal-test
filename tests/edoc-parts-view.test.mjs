@@ -1,0 +1,55 @@
+import { partsHtml, composeHtml } from '../app/modules/edoc/compose-view.js';
+import { readFileSync } from 'node:fs';
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK ' + m); } else { fail++; console.log('FAIL ' + m); } };
+const has = (h, s) => h.indexOf(s) !== -1; const count = (h, re) => (h.match(re) || []).length;
+const CSS = ['app/theme/components.css', 'app/theme/edoc.css'].map((f) => { try { return readFileSync(f, 'utf8'); } catch (e) { return ''; } }).join('\n');
+const PR = [{ id: 'pa', name: '프로젝트A', code: 'C1' }, { id: 'pb', name: '프로젝트B', code: '' }];
+const base = (o) => Object.assign({ type: 'daily', values: { parts: [{ pjt: 'pa' }] }, errors: {}, ctx: { projects: PR }, partsUi: { custom: false, texts: {}, preview: null, previewError: '' }, busy: false }, o || {});
+console.log('── 칩 화면(업무일지 "오늘 참여한 프로젝트")');
+ok(partsHtml(base({ type: 'leave' })) === '' && partsHtml(base({ type: 'spend' })) === '' && partsHtml(base({ type: 'drive' })) === '' && partsHtml(null) === '' && partsHtml({}) === '', '★ 업무일지가 아니면 아무것도 그리지 않는다(다른 양식에 영향 없음)');
+const h = partsHtml(base());
+ok(has(h, '오늘 참여한 프로젝트') && has(h, 'data-parts'), '★ 구역 제목 "오늘 참여한 프로젝트"와 구역 표시(data-parts)가 있다');
+const chips = h.match(/<button[^>]*data-part="[^"]*"[^>]*>.*?<\/button>/g) || [];
+ok(chips.length === 3 && ['pa', 'pb', 'common'].every((id) => chips.some((c) => c.includes('data-part="' + id + '"'))), '★ 후보 프로젝트마다 칩이 하나씩(A·B) + "공통" 칩 하나 = 3개, 각각 data-part 에 프로젝트 id (실제 ' + chips.length + '개)');
+ok(has(chips.find((c) => c.includes('data-part="pa"')), 'C1 · 프로젝트A') && has(chips.find((c) => c.includes('data-part="pb"')), '프로젝트B') && has(chips.find((c) => c.includes('data-part="common"')), '공통'), '칩 글자: 코드가 있으면 "코드 · 이름", 없으면 이름, 공통은 "공통"');
+ok(/aria-pressed="true"/.test(chips.find((c) => c.includes('data-part="pa"'))) && count(h, /aria-pressed="true"/g) === 1 && /aria-pressed="false"/.test(chips.find((c) => c.includes('data-part="pb"'))), '★ 선택된 칩(A)만 aria-pressed="true", 나머지는 false(선택 상태가 화면 읽기 도구에도 전달)');
+{ const h2 = partsHtml(base({ values: { parts: [{ pjt: 'pa' }, { pjt: 'pb' }] } })); ok(count(h2, /aria-pressed="true"/g) === 2, '둘을 선택하면 aria-pressed true 가 둘이다'); const h3 = partsHtml(base({ values: { parts: [{ pjt: 'common' }] } })); ok(count(h3, /aria-pressed="true"/g) === 1 && /aria-pressed="true"/.test(h3.match(/<button[^>]*data-part="common"[^>]*>/)[0]), '"공통"만 선택하면 공통 칩만 켜진다'); }
+ok(count(partsHtml(base({ values: { parts: [] } })), /aria-pressed="true"/g) === 0 && count(partsHtml(base({ values: {} })), /data-part="/g) === 3 && count(partsHtml(base({ ctx: { projects: [] } })), /data-part="/g) === 1, '선택이 없으면 켜진 칩이 없고, parts 값이 없어도·후보가 없어도(공통만) 던지지 않고 그린다');
+console.log('── 비율 미리보기');
+ok(!has(partsHtml(base()), 'data-parts-ratio') && !has(partsHtml(base({ values: { parts: [{ pjt: 'common' }] } })), 'data-parts-ratio'), '★ 선택이 하나(또는 공통)이면 비율 줄이 없다(100%라 보여 줄 필요 없음)');
+{ const pv = { projects: [{ pjt: 'pa', bp: 2500 }, { pjt: 'pb', bp: 7500 }], basis: 'manday' }; const r = partsHtml(base({ values: { parts: [{ pjt: 'pa' }, { pjt: 'pb' }] }, partsUi: { custom: false, texts: {}, preview: pv, previewError: '' } }));
+  ok(has(r, 'data-parts-ratio') && has(r, '25%') && has(r, '75%') && has(r, '일용직 공수'), '★ 둘을 고르고 서버 미리보기가 있으면 프로젝트별 비율(A 25% · B 75%)과 "일용직 공수 비율" 근거가 보인다');
+  const eq = partsHtml(base({ values: { parts: [{ pjt: 'pa' }, { pjt: 'pb' }] }, partsUi: { custom: false, texts: {}, preview: { projects: [{ pjt: 'pa', bp: 5000 }, { pjt: 'pb', bp: 5000 }], basis: 'equal' }, previewError: '' } })); ok(has(eq, '50%') && has(eq, '균등'), '★ 일용직 공수가 없으면 "균등" 근거와 50%·50%');
+  const cu = partsHtml(base({ values: { parts: [{ pjt: 'pa' }, { pjt: 'pb' }] }, partsUi: { custom: false, texts: {}, preview: { projects: [{ pjt: 'pa', bp: 3334 }, { pjt: 'pb', bp: 6666 }], basis: 'manday' }, previewError: '' } })); ok(has(cu, '33.3%') && has(cu, '66.7%'), '비율은 1만 분율을 퍼센트로 소수 첫째 자리까지(3334 → 33.3%)'); }
+ok(has(partsHtml(base({ values: { parts: [{ pjt: 'pa' }, { pjt: 'pb' }] }, partsUi: { custom: false, texts: {}, preview: null, previewError: '' } })), '비율을 계산하는 중') && has(partsHtml(base({ values: { parts: [{ pjt: 'pa' }, { pjt: 'pb' }] }, partsUi: { custom: false, texts: {}, preview: null, previewError: '서버 점검 중' } })), '서버 점검 중'), '★ 미리보기가 아직 없으면 "비율을 계산하는 중", 실패했으면 그 이유가 보인다(빈 칸으로 두지 않음)');
+{ const mp = (basis) => partsHtml(base({ values: { parts: [{ pjt: 'pa' }, { pjt: 'pb' }] }, partsUi: { custom: false, texts: {}, preview: { projects: [{ pjt: 'pa', bp: 2500 }, { pjt: 'pb', bp: 7500 }], basis }, previewError: '' } })); const md = mp('manday'), eq2 = mp('equal'); const ratioPart = (h) => h.slice(h.indexOf('data-parts-ratio'));
+  ok(has(ratioPart(md), '일용직 공수 비율로 나눴습니다') && !has(ratioPart(md), '균등하게 나눴습니다') && has(ratioPart(eq2), '균등하게 나눴습니다') && !has(ratioPart(eq2), '일용직 공수 비율로 나눴습니다'), '★ 비율 근거 문구가 방식에 따라 배타적이다 — manday 는 "일용직 공수 비율로 나눴습니다"만, equal 은 "균등하게 나눴습니다"만(구역 설명의 고정 문구와 구별되도록 비율 영역만 본다)'); }
+console.log('── 양식에 연결');
+{ const form = (type) => composeHtml({ type, values: type === 'daily' ? { date: '2026-10-16', pjtId: 'pa', todayWork: '', tomorrowWork: '', issue: '', parts: [{ pjt: 'pa' }] } : { date: '2026-10-16', pjtId: 'pa', kind: 'purchase', items: [], leaveType: '연차(유급)' }, errors: {}, ctx: { projects: PR, me: { name: '김' }, users: [], vehicles: [], byUid: {}, required: [] }, files: [], uploading: [], line: { approvers: [], cc: [] }, partsUi: { custom: false, texts: {}, preview: null, previewError: '' }, busy: false, partsOn: true });
+  const formOff = (type) => composeHtml({ type, values: { date: '2026-10-16', pjtId: 'pa', todayWork: '', tomorrowWork: '', issue: '', parts: [{ pjt: 'pa' }] }, errors: {}, ctx: { projects: PR, me: { name: '김' }, users: [], vehicles: [], byUid: {}, required: [] }, files: [], uploading: [], line: { approvers: [], cc: [] }, partsUi: { custom: false, texts: {}, preview: null, previewError: '' }, busy: false, partsOn: false });
+  for (const truthy of ['yes', 'true', 1, {}]) { const h3 = composeHtml({ type: 'daily', values: { date: '2026-10-16', pjtId: 'pa', todayWork: '', tomorrowWork: '', issue: '', parts: [] }, errors: {}, ctx: { projects: PR, me: { name: '김' }, users: [], vehicles: [], byUid: {}, required: [] }, files: [], uploading: [], line: { approvers: [], cc: [] }, partsUi: { custom: false, texts: {}, preview: null, previewError: '' }, busy: false, partsOn: truthy }); ok(!has(h3, 'edoc-parts'), '★ partsOn 은 정확히 true 일 때만 켜진다 — ' + JSON.stringify(truthy) + ' 같은 truthy 값은 꺼짐(스위치 판정 실수로 기능이 새어 나오지 않게)'); }
+  { const off = formOff('daily'); ok(!has(off, 'edoc-parts') && !has(off, 'data-parts') && !has(off, '오늘 참여한 프로젝트') && has(off, 'id="edoc-attach"'), '★ 스위치가 꺼져 있으면(partsOn false) 업무일지 양식에 참여 구역이 없고 나머지 양식은 그대로 그려진다(지금 쓰는 업무일지에 영향 없음)'); const und = composeHtml({ type: 'daily', values: { date: '2026-10-16', pjtId: 'pa', todayWork: '', tomorrowWork: '', issue: '' }, errors: {}, ctx: { projects: PR, me: { name: '김' }, users: [], vehicles: [], byUid: {}, required: [] }, files: [], uploading: [], line: { approvers: [], cc: [] } }); ok(!has(und, 'edoc-parts') && !has(und, 'THROW'), '★ partsOn 값이 아예 없어도(옛 상태 객체) 구역을 그리지 않는다(기본 꺼짐)'); }
+  let daily = ''; try { daily = form('daily'); } catch (e) { daily = 'THROW ' + e.message; }
+  ok(has(daily, 'id="edoc-parts"') && has(daily, 'data-parts') && has(daily, '오늘 참여한 프로젝트') && daily.indexOf('id="edoc-parts"') > daily.indexOf('내용') && daily.indexOf('id="edoc-parts"') < daily.indexOf('id="edoc-attach"'), '★ 업무일지 양식에 구역이 들어 있고 위치는 "내용" 섹션 뒤·첨부 섹션 앞이다 (' + daily.slice(0, 40) + ')');
+  for (const ty of ['leave', 'spend', 'drive']) { let h2 = ''; try { h2 = form(ty); } catch (e) { h2 = 'THROW ' + e.message; } ok(!has(h2, 'data-parts') && !has(h2, 'edoc-parts') && !has(h2, 'THROW'), '★ ' + ty + ' 양식에는 참여 구역이 없다(다른 양식에 영향 없음, 그려지기는 함)'); } }
+console.log('── 직접 비율(쏠린 날만)');
+{ const two = { values: { parts: [{ pjt: 'pa' }, { pjt: 'pb' }] } }; const off = partsHtml(base(two)); ok(has(off, 'data-parts-custom') && !has(off, 'data-parts-ratio-input'), '★ 직접 입력 토글은 둘 이상 고르면 보이고, 꺼져 있으면 입력칸이 없다');
+  const on = partsHtml(base(Object.assign({}, two, { partsUi: { custom: true, texts: { pa: '70', pb: '30' }, preview: null, previewError: '' } }))); const ins = on.match(/<input[^>]*data-parts-ratio-input="[^"]*"[^>]*>/g) || [];
+  ok(ins.length === 2 && ins.every((x) => /inputmode="decimal"/.test(x)) && has(ins[0], 'value="70"') && has(ins[1], 'value="30"') && /aria-pressed="true"/.test(on.match(/<button[^>]*data-parts-custom[^>]*>/)[0]), '★ 직접 입력을 켜면 선택한 프로젝트마다 % 입력칸(숫자 키패드)이 하나씩, 입력값이 채워지고 토글이 눌림 상태');
+  ok(has(on, '합계 100%'), '합계 100% 안내가 보인다');
+  ok(!has(partsHtml(base({ values: { parts: [{ pjt: 'pa' }] }, partsUi: { custom: true, texts: {}, preview: null, previewError: '' } })), 'data-parts-ratio-input') && !has(partsHtml(base({ values: { parts: [{ pjt: 'pa' }] } })), 'data-parts-custom'), '★ 선택이 하나이면 직접 입력은 의미가 없어 토글도 입력칸도 없다'); }
+console.log('── 오류·처리 중·안전');
+{ const e = partsHtml(base({ errors: { parts: '오늘 참여한 프로젝트를 한 개 이상 선택해 주세요.' } })); ok(has(e, 'data-invalid="true"') && has(e, '한 개 이상 선택') && has(e, 'role="alert"'), '★ 오류가 있으면 구역이 invalid 로 표시되고 문구가 보인다(role=alert)'); ok(!has(partsHtml(base()), 'data-invalid') && !has(partsHtml(base()), 'role="alert"'), '오류가 없으면 invalid·alert 표시가 없다'); }
+{ const b = partsHtml(base({ busy: true, values: { parts: [{ pjt: 'pa' }, { pjt: 'pb' }] }, partsUi: { custom: true, texts: { pa: '1', pb: '2' }, preview: null, previewError: '' } })); const bt = b.match(/<(?:button|input)[^>]*data-part(?:s-custom|s-ratio-input)?="?[^>]*>/g) || []; ok(bt.length >= 6 && bt.every((x) => /\sdisabled/.test(x)), '★ 처리 중에는 칩·토글·비율 입력칸이 모두 비활성이다(개수 확인 — 빈 목록에서 통과하는 함정 방지) (' + bt.length + '개)'); }
+{ const evil = partsHtml(base({ ctx: { projects: [{ id: 'x"y', name: '<img src=x onerror=1>', code: '<b>C</b>' }] }, values: { parts: [{ pjt: 'x"y' }] } })); ok(!has(evil, '<img src=x') && !has(evil, '<b>C</b>') && !has(evil, 'data-part="x"y"') && has(evil, '&lt;'), '★ 프로젝트 이름·코드·id 의 태그와 따옴표는 이스케이프된다'); }
+ok(!has(h, 'NaN') && !has(h, 'undefined') && !has(h, 'null'), '화면 어디에도 NaN·undefined·null 글자가 없다');
+{
+  const html = partsHtml(base({ values: { parts: [{ pjt: 'pa' }, { pjt: 'pb' }] }, partsUi: { custom: true, texts: {}, preview: { projects: [{ pjt: 'pa', bp: 5000 }, { pjt: 'pb', bp: 5000 }], basis: 'equal' }, previewError: '' }, errors: { parts: '오류' } }));
+  const names = new Set();
+  (html.match(/class="[^"]+"/g) || []).forEach((attr) => { attr.slice(7, -1).split(/\s+/).forEach((c) => { if (c.startsWith('jh-')) names.add(c); }); });
+  const defined = (c) => CSS.split('.' + c).some((rest, i) => i > 0 && !/^[\w-]/.test(rest)); // ".클래스" 뒤에 이름 글자가 이어지지 않으면 그 클래스의 정의
+  const undef = [...names].filter((c) => !defined(c));
+  ok(names.size >= 4 && undef.length === 0, '★ 이 구역이 쓰는 jh- 클래스 ' + names.size + '개가 전부 스타일에 정의됨(정의 안 된 이름 ' + JSON.stringify(undef) + ')');
+}
+ok(pass + fail >= 34, '시험이 끝까지 실행됨');
+console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

@@ -388,4 +388,16 @@ button.jh-kpi:hover { border-color: var(--c-primary); }
 .jh-newdoc__main { min-width: 0; display: grid; gap: var(--sp-4); }
 .jh-newdoc__side .jh-docrow { min-height: var(--u-64); padding: var(--sp-3) var(--sp-4); }
 @media (max-width: 1099px) { .jh-newdoc { grid-template-columns: minmax(0, 1fr); } .jh-newdoc__side { position: static; max-height: none; } }
-
+/* 업무일지 "오늘 참여한 프로젝트" 칩 */
+.jh-parts__chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-1); }
+.jh-parts__chip { min-height: var(--u-44); padding: 0 var(--sp-3); font-size: var(--fs-sm); }
+.jh-parts__chip[aria-pressed="true"] { font-weight: 700; }
+.jh-parts__ratio { display: flex; flex-direction: column; gap: var(--sp-1); margin-top: var(--sp-2); }
+.jh-parts__line { font-size: var(--fs-sm); color: var(--c-ink); }
+.jh-parts__row { display: flex; align-items: center; gap: var(--sp-2); }
+.jh-parts__name { flex: 1; min-width: 0; font-size: var(--fs-sm); color: var(--c-ink); overflow-wrap: anywhere; }
+.jh-parts__input { width: var(--u-96); text-align: right; }
+.jh-parts__unit { font-size: var(--fs-sm); color: var(--c-ink-2); }
+.jh-parts__custom { margin-top: var(--sp-1); }
+.jh-parts[data-invalid="true"] .jh-parts__chips { outline: var(--u-2) solid var(--c-danger); outline-offset: var(--u-3); border-radius: var(--radius-sm); }
+.jh-parts__sum { margin-top: var(--sp-1); }

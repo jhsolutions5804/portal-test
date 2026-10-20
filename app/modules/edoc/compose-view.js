@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261020h';
-import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261020h';
-import { isAnnualType } from './home-calc.js?v=20261020h';
-import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261020h';
+import { esc } from '../../core/ui.js?v=20261020i';
+import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261020i';
+import { isAnnualType } from './home-calc.js?v=20261020i';
+import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261020i';
 
 const uname = (ctx, uid) => { const u = ctx.byUid[uid]; return u ? esc(u.name) + (u.rank ? ' <small>' + esc(u.rank) + '</small>' : '') : '(알 수 없음)'; };
 
@@ -131,6 +131,30 @@ export function attachHtml(s) {
     (s.attachError ? '<div class="jh-alert" data-tone="danger" role="alert">' + esc(s.attachError) + '</div>' : '');
 }
 
+/** 업무일지 "오늘 참여한 프로젝트" 칩 구역 — 직원이 하루에 참여한 프로젝트를 고른다(내근이어도 선택, 프로젝트와 무관하면 "공통" 단독). 둘 이상이면 서버가 계산한 기본 비율(그날 일용직 공수 비율, 없으면 균등)을 보여 주고, 쏠린 날만 직접 % 입력.
+ * s = { type, values: { parts }, errors, ctx: { projects }, partsUi: { custom, texts, preview, previewError }, busy }. 업무일지가 아니면 빈 문자열 */
+const pctText = (bp) => { const n = Math.round(Number(bp) / 10) / 10; return (isFinite(n) ? n : 0) + '%'; };
+export function partsHtml(s) {
+  if (!s || s.type !== 'daily') return '';
+  const ctx = s.ctx || {}; const projects = Array.isArray(ctx.projects) ? ctx.projects : []; const ui = s.partsUi || {}; const dis = s.busy ? ' disabled' : '';
+  const sel = (Array.isArray(s.values && s.values.parts) ? s.values.parts : []).map((p) => String(p && p.pjt || '')).filter(Boolean);
+  const labelOf = (id) => { if (id === 'common') return '공통'; const p = projects.find((x) => x.id === id); return p ? (p.code ? p.code + ' · ' : '') + p.name : id; };
+  const chip = (id) => { const on = sel.indexOf(id) !== -1; return '<button type="button" class="jh-btn jh-parts__chip"' + (on ? ' data-variant="secondary"' : '') + ' data-part="' + esc(id) + '" aria-pressed="' + (on ? 'true' : 'false') + '"' + dis + '>' + esc(labelOf(id)) + '</button>'; };
+  const multi = sel.length >= 2; let detail = '';
+  if (multi) {
+    const custom = ui.custom === true; const texts = ui.texts || {};
+    const toggle = '<button type="button" class="jh-btn jh-parts__custom" data-variant="ghost" data-parts-custom="1" aria-pressed="' + (custom ? 'true' : 'false') + '"' + dis + '>직접 비율 입력</button>';
+    if (custom) detail = '<div class="jh-parts__ratio">' + sel.map((id) => '<label class="jh-parts__row"><span class="jh-parts__name">' + esc(labelOf(id)) + '</span><input class="jh-input jh-parts__input" type="text" inputmode="decimal" data-parts-ratio-input="' + esc(id) + '" value="' + esc(texts[id] == null ? '' : texts[id]) + '" aria-label="' + esc(labelOf(id)) + ' 비율(%)"' + dis + '><span class="jh-parts__unit">%</span></label>').join('') + '<span class="jh-field__hint jh-parts__sum">합계 100%가 되어야 합니다. 쏠린 날만 직접 입력하세요.</span></div>' + toggle;
+    else {
+      const pv = ui.preview && Array.isArray(ui.preview.projects) ? ui.preview : null;
+      const rows = pv ? pv.projects.map((r) => '<span class="jh-parts__line">' + esc(labelOf(r.pjt)) + ' ' + esc(pctText(r.bp)) + '</span>').join('') + '<span class="jh-field__hint">' + (pv.basis === 'manday' ? '그날 일용직 공수 비율로 나눴습니다.' : '일용직 공수가 없거나 일부만 있어 균등하게 나눴습니다.') + '</span>' : '<span class="jh-field__hint">' + (ui.previewError ? esc(ui.previewError) : '비율을 계산하는 중입니다.') + '</span>';
+      detail = '<div class="jh-parts__ratio" data-parts-ratio>' + rows + '</div>' + toggle;
+    }
+  }
+  const err = s.errors && s.errors.parts ? String(s.errors.parts) : '';
+  return '<div class="jh-field jh-parts" data-parts' + (err ? ' data-invalid="true"' : '') + '><span class="jh-field__label">오늘 참여한 프로젝트 *</span><div class="jh-parts__chips" role="group" aria-label="오늘 참여한 프로젝트">' + projects.map((p) => chip(p.id)).join('') + chip('common') + '</div>'
+    + '<span class="jh-field__hint">내근이어도 선택합니다. 프로젝트와 무관하면 "공통". 여럿이면 그날 일용직 공수 비율로 나뉩니다.</span>' + detail + (err ? '<span class="jh-field__error" role="alert">' + esc(err) + '</span>' : '') + '</div>';
+}
 export function composeHtml(s) {
   const { type, values, errors, ctx, edit, rejectReason } = s; const t = composeType(type);
   const kind = type === 'spend' ? '<div class="jh-form__section"><div class="jh-segmented" role="group" aria-label="구분">' +
@@ -140,7 +164,8 @@ export function composeHtml(s) {
     '<header class="jh-form__head"><h2 class="jh-form__title">' + esc(t ? t.label : '') + (edit ? ' 수정' : ' 작성') + '</h2><p class="jh-form__sub">작성자: ' + esc(ctx.me.name) + (ctx.me.rank ? ' ' + esc(ctx.me.rank) : '') + (ctx.me.dept ? ' · ' + esc(ctx.me.dept) : '') + '</p></header>' +
     (rejectReason ? '<div class="jh-alert" data-tone="danger" role="alert"><strong>반려 사유</strong><br>' + esc(rejectReason).replace(/\n/g, '<br>') + '</div>' : '') +
     kind + '<section class="jh-form__section"><h3 class="jh-form__h">내용</h3>' + fieldsBlock(type, values, errors || {}, ctx) + (type === 'leave' ? '<div id="edoc-balance" aria-live="polite">' + balanceHintHtml(s.balance, values.days, values.leaveType) + '</div>' : '') + (type === 'attend' ? '<div id="edoc-attend-hint" aria-live="polite">' + attendHintHtml(s.attend) + '</div>' : '') + '</section>' +
-    '<section class="jh-form__section" id="edoc-attach">' + attachHtml(s) + '</section>' +
+    (type === 'daily' && s.partsOn === true ? '<section class="jh-form__section" id="edoc-parts">' + partsHtml(s) + '</section>' : '') +
+  '<section class="jh-form__section" id="edoc-attach">' + attachHtml(s) + '</section>' +
     (s.type === 'drive' ? '<section class="jh-form__section"><div class="jh-alert" data-tone="info" role="status">결재 없이 <strong>기록하기</strong>를 누르면 바로 기록됩니다. 총무가 모든 사람의 운행일지를 시간 순으로 모아 봅니다.</div></section>' : '<section class="jh-form__section" id="edoc-line-section"><h3 class="jh-form__h">결재선</h3>' + lineEditorHtml(s.line, ctx, s.ui) + '</section>') +
     (s.formError ? '<div class="jh-alert" data-tone="danger" role="alert" id="edoc-form-error">' + esc(s.formError) + '</div>' : '') +
     '<div class="jh-form__foot"><button type="button" class="jh-btn" data-variant="ghost" data-act="cancel">취소</button>' +
