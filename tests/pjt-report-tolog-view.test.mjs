@@ -1,0 +1,35 @@
+import { reportHtml } from '../app/modules/pjt/report-view.js';
+import { fromStored } from '../app/modules/pjt/report.js';
+import { CATEGORIES } from '../app/shared/pjt-log.js';
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
+const doc = (o) => fromStored(Object.assign({ fmt: 2, author: '작성자', content: '덕트 설치', note: '3층 덕트 간섭 발견' }, o || {}));
+const rst = (o) => Object.assign({ proj: 'p1', label: 'P4 Ph2', ready: true, readonly: false, manage: true, exists: true, editing: false, preview: false, date: '2026-10-16', month: { y: 2026, m: 9 }, dates: new Set(['2026-10-16']), today: '2026-10-20', ctx: { site: 'P4 Ph2', dateKey: '2026-10-16' }, form: doc(), equipHistory: [], logCat: '', logBusy: false, logged: null }, o || {});
+const has = (h, s) => h.indexOf(s) !== -1;
+const btn = (h) => { const i = h.indexOf('data-rp-act="tolog"'); return i === -1 ? '' : h.slice(Math.max(0, h.lastIndexOf('<button', i)), h.indexOf('</button>', i) + 9); };
+
+const v = reportHtml(rst());
+ok(has(v, 'data-rp-act="tolog"') && has(btn(v), '이력으로 올리기'), '★ 저장된 일보 + 특이사항 + 작성 권한 → 조회 화면에 "이력으로 올리기" 버튼');
+ok(!has(btn(v), 'disabled'), '버튼은 활성(처음 상태)');
+const sel = v.slice(v.indexOf('data-rp-logcat'), v.indexOf('</select>', v.indexOf('data-rp-logcat')));
+ok(has(v, 'data-rp-logcat') && CATEGORIES.every((c) => has(sel, '>' + c + '<')) && (sel.match(/<option/g) || []).length === 5, '★ 분류 선택은 이력 분류 5종 전부(서버와 같은 목록)');
+ok(has(sel, 'value="현장 이슈" selected') && (sel.match(/ selected/g) || []).length === 1, '★ 기본 선택은 "현장 이슈" 하나만');
+ok(has(reportHtml(rst({ logCat: '일정 변경' })).slice(reportHtml(rst({ logCat: '일정 변경' })).indexOf('data-rp-logcat')), 'value="일정 변경" selected'), '고른 분류가 유지되어 다시 그려져도 그대로(상태 logCat)');
+ok(!has(reportHtml(rst({ form: doc({ note: '' }) })), 'data-rp-act="tolog"'), '★ 특이사항이 비면 버튼 없음');
+ok(!has(reportHtml(rst({ form: doc({ note: '   ' }) })), 'data-rp-act="tolog"'), '공백뿐이어도 버튼 없음');
+ok(!has(reportHtml(rst({ readonly: true, manage: false })), 'data-rp-act="tolog"'), '★ 조회 전용 계정은 버튼 없음');
+ok(!has(reportHtml(rst({ editing: true })), 'data-rp-act="tolog"'), '★ 수정(작성 폼) 화면에는 버튼 없음 — 서버는 저장된 일보를 읽으므로 저장 전 내용은 못 올림');
+ok(!has(reportHtml(rst({ exists: false, form: doc() })), 'data-rp-act="tolog"'), '★ 아직 저장 안 한 새 일보(작성 폼)에는 버튼 없음');
+const b = reportHtml(rst({ logBusy: true })); ok(has(btn(b), '올리는 중…') && has(btn(b), 'disabled'), '★ 올리는 중이면 "올리는 중…"·비활성(두 번 눌러도 한 번만)');
+const d = reportHtml(rst({ logged: { id: 'rpt_2026-10-16' } })); ok(has(btn(d), '이력에 올림 ✓') && has(btn(d), 'disabled'), '★ 이미 올렸으면 "이력에 올림 ✓"·비활성');
+ok(has(d, 'data-rp-logcat') === false, '이미 올린 뒤에는 분류 선택을 감춘다(바꿀 수 없으므로)');
+ok(has(reportHtml(rst({ form: doc({ note: '<img src=x onerror=1>' }) })), '이력으로 올리기') && !has(reportHtml(rst({ form: doc({ note: '<img src=x onerror=1>' }) })), '<img src=x onerror=1>'), '특이사항에 태그가 있어도 화면에 그대로 실리지 않음(이스케이프)');
+const L = (o) => rst({ form: fromStored(Object.assign({ today: '배관', remarks: '4층 개구부 누락', count: 3, author: '옛' }, o || {})) });
+const oldv = reportHtml(L()); ok(oldv.includes('옛 양식') && has(oldv, 'data-rp-act="upgrade"'), '전제: 이 입력은 옛 양식 조회 화면(legacyView)으로 그려진다');
+ok(has(oldv, 'data-rp-act="tolog"') && has(btn(oldv), '이력으로 올리기'), '★ 옛 양식 조회 화면에도 버튼이 나온다(remarks 가 note 로 환산 — 테섭 공사일보 59개 중 57개가 옛 양식)');
+ok(has(oldv, 'data-rp-logcat'), '옛 양식 화면에도 분류 선택');
+ok(!has(reportHtml(L({ remarks: '' })), 'data-rp-act="tolog"'), '★ 옛 양식에서 remarks 가 비면 버튼 없음');
+ok(!has(reportHtml(rst({ readonly: true, manage: false, form: fromStored({ today: '배관', remarks: '개구부', count: 1 }) })), 'data-rp-act="tolog"'), '★ 옛 양식도 조회 전용 계정은 버튼 없음');
+const oldd = reportHtml(rst({ logged: { id: 'x' }, form: fromStored({ today: '배관', remarks: '개구부', count: 1 }) })); ok(has(btn(oldd), '이력에 올림 ✓') && has(btn(oldd), 'disabled'), '옛 양식 화면도 올린 뒤에는 "이력에 올림 ✓"');
+ok(has(v, 'data-rp-act="print"') && has(v, 'data-rp-act="edit"'), '기존 [PDF·인쇄]·[수정] 버튼은 그대로');
+if (!(pass + fail >= 20)) { console.log('FAIL 시험이 끝까지 실행되지 않음'); fail++; }
+console.log('\n' + (fail ? '실패 ' + fail + '건 / 통과 ' + pass : '전부 통과 (' + pass + '건)')); if (fail) process.exit(1);

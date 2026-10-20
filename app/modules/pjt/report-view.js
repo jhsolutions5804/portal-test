@@ -1,7 +1,8 @@
-import { esc } from '../../core/ui.js?v=20261020b';
-import { holidayName } from '../../shared/holidays.js?v=20261020b';
-import { monthGrid, dowOf } from './schedule.js?v=20261020b';
-import { WORK_SHIFTS, shiftOf, EQUIPS, docHtml, dateText, totalOf, fmtAt, docTitle } from './report.js?v=20261020b';
+import { esc } from '../../core/ui.js?v=20261020c';
+import { holidayName } from '../../shared/holidays.js?v=20261020c';
+import { monthGrid, dowOf } from './schedule.js?v=20261020c';
+import { WORK_SHIFTS, shiftOf, EQUIPS, docHtml, dateText, totalOf, fmtAt, docTitle } from './report.js?v=20261020c';
+import { CATEGORIES, reportLogState } from '../../shared/pjt-log.js?v=20261020c';
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const hrs = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')), mins = ['00', '10', '20', '30', '40', '50'];
 const split = (t) => { const [h, m] = String(t || '').split(':'); return t ? { h: (h || '00').padStart(2, '0'), m: String(Math.floor((parseInt(m, 10) || 0) / 10) * 10).padStart(2, '0') } : { h: '', m: '' }; };
@@ -15,7 +16,7 @@ function calHtml(st) {
   return '<section class="jh-card"><div class="jh-panel__head"><h3>' + y + '년 ' + (m + 1) + '월</h3><span class="jh-pjt__tools"><button type="button" class="jh-btn" data-variant="ghost" data-rp-nav="-1" aria-label="이전 달">‹</button><button type="button" class="jh-btn" data-variant="ghost" data-rp-nav="1" aria-label="다음 달">›</button><button type="button" class="jh-btn" data-variant="secondary" data-rp-nav="today">오늘</button></span></div><div class="jh-pjt__pad"><div class="jh-pjt__calgrid">' + head + cells + '</div><div class="jh-field__hint"><span class="jh-pjt__dot" style="background:#16A34A;display:inline-block"></span> 일보가 작성된 날</div></div></section>';
 }
 function legacyView(st) {
-  const f = st.form; return '<section class="jh-card jh-pjt__rpt"><div class="jh-panel__head"><h3>' + esc(dateText(st.date)) + ' 공사일보 <span class="jh-pjt__chip" data-tone="gray">옛 양식</span></h3></div><div class="jh-pjt__pad"><div class="jh-pjt__doc">' + docHtml(f, st.ctx) + '</div><div class="jh-field__hint">구포털 양식으로 작성된 일보입니다. 조회·인쇄는 그대로 되고, 고치려면 새 양식으로 편집하세요(내용은 이어지고, 저장하면 새 양식으로 바뀝니다).</div><div class="jh-pjt__bar"><span></span><span class="jh-plan__line"><button type="button" class="jh-btn" data-variant="secondary" data-rp-act="print">PDF·인쇄</button>' + (st.manage ? '<button type="button" class="jh-btn" data-variant="primary" data-rp-act="upgrade">새 양식으로 편집</button>' : '') + '</span></div></div></section>';
+  const f = st.form; return '<section class="jh-card jh-pjt__rpt"><div class="jh-panel__head"><h3>' + esc(dateText(st.date)) + ' 공사일보 <span class="jh-pjt__chip" data-tone="gray">옛 양식</span></h3></div><div class="jh-pjt__pad"><div class="jh-pjt__doc">' + docHtml(f, st.ctx) + '</div><div class="jh-field__hint">구포털 양식으로 작성된 일보입니다. 조회·인쇄는 그대로 되고, 고치려면 새 양식으로 편집하세요(내용은 이어지고, 저장하면 새 양식으로 바뀝니다).</div><div class="jh-pjt__bar"><span></span><span class="jh-plan__line">' + logBtnHtml(st) + '<button type="button" class="jh-btn" data-variant="secondary" data-rp-act="print">PDF·인쇄</button>' + (st.manage ? '<button type="button" class="jh-btn" data-variant="primary" data-rp-act="upgrade">새 양식으로 편집</button>' : '') + '</span></div></div></section>';
 }
 function formHtml(st) {
   const f = st.form; const ro = !st.manage; const dis = ro ? ' disabled' : ''; const ci = split(f.checkIn), co = split(f.checkOut);
@@ -34,8 +35,16 @@ function formHtml(st) {
     + '<div class="jh-pjt__bar"><button type="button" class="jh-btn" data-variant="secondary" data-rp-act="preview">미리보기</button><span class="jh-plan__line">' + (st.exists ? '<button type="button" class="jh-btn" data-variant="ghost" data-rp-act="cancel-edit">취소</button>' : '') + '<button type="button" class="jh-btn" data-variant="secondary" data-rp-act="print">PDF·인쇄</button>' + (st.manage ? '<button type="button" class="jh-btn" data-variant="primary" data-rp-act="save">저장</button>' : '') + '</span></div></div></section>';
 }
 /** 작성 완료된 일보: 인쇄(PDF) 미리보기처럼 문서 모양으로 보여 주고, [수정]을 눌러야 수정 화면으로 간다 */
+/** 조회 화면의 "이력으로 올리기" — 특이사항(새 양식 note·옛 양식 remarks 를 fromStored 가 note 로 환산)을 프로젝트 이력 1건으로 올린다. 서버가 저장된 일보를 읽어 만들므로 저장된 일보의 조회 화면에만 둔다(수정·새 일보 화면에는 없음).
+ * 올린 뒤에는 분류를 바꿀 수 없어 선택을 감춘다. 상태 판정은 shared/pjt-log.js reportLogState(시험됨). */
+function logBtnHtml(st) {
+  const r = reportLogState({ note: st.form && st.form.note, manage: st.manage, logged: st.logged, busy: st.logBusy }); if (!r.show) return '';
+  const cur = CATEGORIES.indexOf(st.logCat) !== -1 ? st.logCat : '현장 이슈';
+  const sel = r.state === 'done' ? '' : '<select class="jh-select" data-rp-logcat aria-label="이력 분류"' + (r.disabled ? ' disabled' : '') + '>' + CATEGORIES.map((c) => '<option value="' + esc(c) + '"' + (c === cur ? ' selected' : '') + '>' + esc(c) + '</option>').join('') + '</select>';
+  return sel + '<button type="button" class="jh-btn" data-variant="ghost" data-rp-act="tolog"' + (r.disabled ? ' disabled' : '') + '>' + esc(r.label) + '</button>';
+}
 function viewHtml(st) {
-  return '<section class="jh-card jh-pjt__rpt"><div class="jh-panel__head"><h3>' + esc(dateText(st.date)) + ' 공사일보 <span class="jh-pjt__chip" data-tone="blue">작성됨</span></h3><span class="jh-plan__line"><button type="button" class="jh-btn" data-variant="secondary" data-rp-act="print">PDF·인쇄</button>' + (st.manage ? '<button type="button" class="jh-btn" data-variant="primary" data-rp-act="edit">✏️ 수정</button>' : '') + '</span></div><div class="jh-pjt__pad"><div class="jh-pjt__paper jh-pjt__doc" aria-label="공사일보 미리보기">' + docHtml(st.form, st.ctx) + '</div>' + (st.readonly ? '' : '<div class="jh-field__hint">인쇄 미리보기와 같은 모양입니다. 고치려면 [수정]을 누르세요.</div>') + '</div></section>';
+  return '<section class="jh-card jh-pjt__rpt"><div class="jh-panel__head"><h3>' + esc(dateText(st.date)) + ' 공사일보 <span class="jh-pjt__chip" data-tone="blue">작성됨</span></h3><span class="jh-plan__line">' + logBtnHtml(st) + '<button type="button" class="jh-btn" data-variant="secondary" data-rp-act="print">PDF·인쇄</button>' + (st.manage ? '<button type="button" class="jh-btn" data-variant="primary" data-rp-act="edit">✏️ 수정</button>' : '') + '</span></div><div class="jh-pjt__pad"><div class="jh-pjt__paper jh-pjt__doc" aria-label="공사일보 미리보기">' + docHtml(st.form, st.ctx) + '</div>' + (st.readonly ? '' : '<div class="jh-field__hint">인쇄 미리보기와 같은 모양입니다. 고치려면 [수정]을 누르세요.</div>') + '</div></section>';
 }
 /** 공사일보 탭: 왼쪽 작은 달력(작성한 날은 초록 칸, 스크롤해도 고정), 오른쪽 그날의 일보가 주인공(작성 폼 / 옛 양식 조회). 모든 프로젝트 같은 화면 */
 export function reportHtml(st) {

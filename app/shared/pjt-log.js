@@ -2,7 +2,7 @@
  * 서버 함수 pjtLogAct(portal-functions/functions/pjt-log-act.js)와 **같은 규칙**을 쓴다: 분류·출처·상태·금액·연락처 감지. 서버가 최종 판단이고, 이 파일은 입력하는 중에 바로 알려 주기 위한 것이다(제출한 뒤에야 거절되지 않게).
  * 규칙이 바뀌면 두 곳을 같이 고친다 — tests/pjt-log.test.mjs 가 서버 파일의 값과 같은지 대조한다(서버 파일이 옆에 있을 때). */
 export const CATEGORIES = ['발주처 요청·지시', '일정 변경', '범위·수량 변경', '현장 이슈', '회의 결정'];
-export const SOURCES = ['회의', '카톡', '전화', '현장', '메일', '일정'];
+export const SOURCES = ['회의', '카톡', '전화', '현장', '메일', '일정', '공사일보']; // 서버 pjt-log-act.js SOURCES 와 같게 — 공사일보는 "이력으로 올리기" 버튼 전용
 export const INPUT_SOURCES = ['회의', '카톡', '전화', '현장'];              // 직접 입력 칩(메일·일정은 자동 기록 전용)
 export const TITLE_MAX = 80;
 export const CATEGORY_ICON = { '발주처 요청·지시': '📨', '일정 변경': '📅', '범위·수량 변경': '📐', '현장 이슈': '⚠️', '회의 결정': '🗣️' };
@@ -88,3 +88,28 @@ export function suggestProject(siteHint, projects) {
 export const canAssign = (pjtId) => typeof pjtId === 'string' && pjtId.length > 0 && pjtId.length <= 128 && pjtId.indexOf('/') === -1;
 /** 받은함 카드를 그릴지 — 권한이 없거나(서버가 거절) 비어 있으면 조용히 그리지 않는다 */
 export const showInbox = (d) => !!d && Array.isArray(d.items) && d.items.length > 0;
+
+/** 공사일보 \"이력으로 올리기\" 버튼 상태(화면 없이 판정) — o = { note: 저장된 일보의 특이사항(새 양식 note·옛 양식 remarks 를 fromStored 가 note 로 환산), manage: 작성 권한, logged: 올린 뒤 서버가 준 { id }, busy: 올리는 중 }.
+ * 서버는 저장된 공사일보를 읽어 이력을 만들므로(요청의 글을 믿지 않음) 이 버튼은 저장된 일보(조회 화면)에만 둔다. 특이사항이 없거나 작성 권한이 없으면 숨긴다. */
+export function reportLogState(o) {
+  const x = o || {}; const note = String(x.note == null ? '' : x.note).trim();
+  if (!x.manage || !note) return { show: false, state: 'hidden', label: '', disabled: true };
+  if (x.logged) return { show: true, state: 'done', label: '이력에 올림 ✓', disabled: true };
+  if (x.busy) return { show: true, state: 'busy', label: '올리는 중…', disabled: true };
+  return { show: true, state: 'ready', label: '이력으로 올리기', disabled: false };
+}
+/** 서버 fromReport 응답 → 안내 문구. duplicate 가 참(true)일 때만 "이미"(이미 같은 날짜가 올라가 있어 서버가 새로 만들지 않은 경우) */
+export const reportLogMessage = (r) => (r && r.duplicate === true ? '이미 이력에 올라가 있습니다.' : '이력에 올렸습니다.');
+
+/** 공사일보 "이력으로 올리기" 서버 호출 — call = (payload) => Promise<응답>(pjtLogAct 호출). 서버에는 action·pjtId·date·category 만 보낸다(제목·출처·상태는 서버가 저장된 일보에서 직접 만든다).
+ * 결과 = { ok, msg, logged: { id } | null }. 서버가 항상 ok:true 를 주므로 ok 가 아닌 응답은 실패로 본다. 프로젝트·날짜가 없거나 알 수 없는 분류는 서버에 보내지 않고 거절한다. */
+export async function runReportLog(call, o) {
+  const x = o || {}; const category = x.category ? String(x.category) : '현장 이슈';
+  if (!x.pjtId || !x.date) return { ok: false, msg: '프로젝트와 날짜를 확인해 주세요.', logged: null };
+  if (CATEGORIES.indexOf(category) === -1) return { ok: false, msg: '분류를 선택해 주세요.', logged: null };
+  try {
+    const r = await call({ action: 'fromReport', pjtId: String(x.pjtId), date: String(x.date), category });
+    if (!r || r.ok !== true) return { ok: false, msg: '처리하지 못했습니다. 잠시 후 다시 시도해 주세요.', logged: null };
+    return { ok: true, msg: reportLogMessage(r), logged: { id: String(r.id || '') } };
+  } catch (e) { return { ok: false, msg: friendlyError(e), logged: null }; }
+}
