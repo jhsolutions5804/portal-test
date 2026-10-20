@@ -50,6 +50,7 @@ ok(trick.count === 1 && trick.items[0].id === 'q1', '★ 서버 현황에 "none"
 const ld = mby(mck('2026-09', '2026-10-12', 'loading'));
 ok(ld && ld.tone === 'info' && ld.count === 0 && /확인하는 중/.test(ld.hint) && !/확인하지 못/.test(ld.hint), '★ 응답을 기다리는 중("loading")이면 참고 + "확인하는 중입니다"(못했다는 문구가 아님)');
 ok(mby(mck('2026-09', '2026-10-12', 'LOADING')).hint.includes('확인하지 못'), '"loading" 이 아닌 다른 문자열은 현황으로 믿지 않고 "확인하지 못함"');
+ok(ck.every((c) => c.items.every((x) => x.right === undefined || x.right === '' || typeof x.right === 'number')) && m1.items.every((x) => x.right === undefined || x.right === '' || typeof x.right === 'number'), '★ 모든 점검 항목 줄의 오른쪽 값(right)은 비었거나 숫자(화면이 금액 서식 won() 으로 그리므로 글자를 넣으면 0 으로 보임)');
 ok(m1.label === '월간 보고서 미생성 프로젝트' && typeof m1.hint === 'string' && m1.hint.length > 10 && /막지 않/.test(m1.hint), '경고 문구에 "마감을 막지 않는다"는 설명이 있음(결정 10)');
-ok(pass + fail >= 26, '★ 시험 전체가 끝까지 실행됨(' + (pass + fail) + '건 ≥ 26) — 중간에 예외로 죽어 뒤쪽 시험이 안 도는 일 방지');
+ok(pass + fail >= 27, '★ 시험 전체가 끝까지 실행됨(' + (pass + fail) + '건 ≥ 27) — 중간에 예외로 죽어 뒤쪽 시험이 안 도는 일 방지');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

@@ -31,6 +31,8 @@ const prA = closingPrintHtml(withM(MS)), prN = closingPrintHtml(base());
 ok(has(prA, '<td>월간 보고서 미생성 프로젝트</td>') && has(prN, '<td>월간 보고서 미생성 프로젝트</td>'), '★ 인쇄 문서의 점검 항목 표에도 월간 보고서 미생성 줄이 있음(현황이 없어도 한 줄)');
 const rowOf = (h) => { const m = h.match(/<td>월간 보고서 미생성 프로젝트<\/td>(.*?)<\/tr>/); return m ? m[1] : ''; };
 ok(/>1</.test(rowOf(prA)) && /(참고|확인)/.test(rowOf(prN)), '★ 인쇄 문서: 미생성이 있으면 건수 1, 현황이 없으면 "참고"');
+const rows = (opened.match(/<a class="jh-plan__row"[^>]*>.*?<\/a>/g) || []);
+ok(rows.length === 1 && !/<strong>0<\/strong>/.test(rows[0]) && !/<strong>[0-9,]+<\/strong>\s*<\/a>$/.test(rows[0]), '★ 열린 미생성 프로젝트 줄 오른쪽에 금액 서식 숫자(0 등)가 나오지 않음 — 이름·월·링크만(실제 앱에서 "0" 이 보여 발견)');
 console.log('── 건수 0 인 "참고" 항목은 열어서 이유(힌트)를 볼 수 있음 / "이상 없음" 항목은 그대로 안 열림');
 const unkClosed = closingHtml(withM(null)); const btn = (h, k) => { const m = h.match(new RegExp('<button[^>]*data-cl-ck="' + k + '"[^>]*>.*?</button>')); return m ? m[0] : ''; };
 ok(/보기/.test(btn(unkClosed, 'monthlyReportMissing')) && /접기/.test(btn(unkOpen, 'monthlyReportMissing')), '★ "확인하지 못함"(참고·0건) 버튼에 "보기 ▾"가 있고 열면 "접기 ▴"로 바뀜');
@@ -41,5 +43,5 @@ ok(!has(voidOpen, '참고용입니다') && !/보기|접기/.test(btn(voidOpen, '
 const loadH = closingHtml(withM('loading')), loadOpen = closingHtml(withM('loading', { open: 'monthlyReportMissing' }));
 ok(has(loadH, '월간 보고서 미생성 프로젝트') && warnN(loadH) === warnN(hDone), '★ 응답을 기다리는 동안("확인하는 중")에도 항목이 보이고 처리 필요 개수에는 들어가지 않음');
 ok(has(loadOpen, '확인하는 중') && !has(loadOpen, '확인하지 못했습니다') && !has(loadOpen, '#/pjt/'), '★ 기다리는 동안 열면 "확인하는 중입니다"(거짓으로 "확인하지 못했습니다"가 뜨지 않음)이고 링크는 없음');
-ok(pass + fail >= 18, '★ 시험 전체가 끝까지 실행됨(' + (pass + fail) + '건 ≥ 18)');
+ok(pass + fail >= 19, '★ 시험 전체가 끝까지 실행됨(' + (pass + fail) + '건 ≥ 19)');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);
