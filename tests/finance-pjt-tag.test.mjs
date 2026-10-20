@@ -8,21 +8,21 @@ const ln = (account, side, amount, partner) => ({ account, side, amount, partner
 
 console.log('── 대상 줄 판정(서버와 같은 규칙)');
 ok(taggableReason(ln('4010', 'C', 100)) === null && taggableReason(ln('4010', 'D', 100)) === null && taggableReason(ln('4090', 'C', 5)) === null, '매출 4xxx 는 대변·차변 모두 대상(마이너스 수정세금계산서는 차변)');
-ok(['5010', '5210', '5320', '5340', '5370'].every((a) => taggableReason(ln(a, 'D', 100)) === null) && ['5010', '5210', '5320', '5340', '5370'].every((a) => taggableReason(ln(a, 'C', 100)) !== null), '직접원가 5010·5210·5320·5340·5370 은 차변만 대상(대변은 아님)');
-ok(['5110', '5350', '5360', '5380', '1100', '2040', '6010', '9999'].every((a) => taggableReason(ln(a, 'D', 100)) !== null) && taggableReason(null) !== null && taggableReason(undefined) !== null, '공수 배분 5110·5350·회사 공통비 5360·5380·자산·부채·판관비·없는 줄은 대상이 아님');
+ok(['5010', '5210', '5310', '5320', '5330', '5340', '5350', '5360', '5370', '5380', '5390', '6020', '6030', '6040', '6050', '6060', '6090', '6100', '6110', '6120', '6130'].every((a) => taggableReason(ln(a, 'D', 100)) === null) && ['5010', '5210', '5310', '5320', '5330', '5340', '5350', '5360', '5370', '5380', '5390', '6020', '6030', '6040', '6050', '6060', '6090', '6100', '6110', '6120', '6130'].every((a) => taggableReason(ln(a, 'C', 100)) !== null), '★ 비용 계정 21개(지급예정서 영역 5010·5210 + 간접비 5310~5390·6020~6130 일부)는 차변만 대상이다(대변은 아님) — 서버 ledger-pjt-tags.js COST_TAGGED 와 같은 목록');
+ok(['5110', '6010', '1100', '2040', '6070', '6080', '6190', '7010', '8010', '9999'].every((a) => taggableReason(ln(a, 'D', 100)) !== null) && taggableReason(null) !== null && taggableReason(undefined) !== null, '★ 인건비 5110·6010·자산·부채·목록 밖 판관비(세금과공과 6070·감가 6080·기타 6190)·이자·없는 줄은 대상이 아님');
 
 console.log('── 대기 목록 만들기');
 const entries = [
   E('e1', '2026-07-31', '매출 가짜회사 · 2026년 07월 용역비', [ln('1100', 'D', 1000, '가짜회사'), ln('4010', 'C', 1000, '가짜회사')]),
   E('e2', '2026-07-31', '매입 가짜외주', [ln('5210', 'D', 500, '가짜외주'), ln('2020', 'C', 500, '가짜외주')]),
-  E('e3', '2026-07-31', '차량', [ln('5360', 'D', 70), ln('2020', 'C', 70)]),
+  E('e3', '2026-07-31', '급여', [ln('5110', 'D', 70), ln('2020', 'C', 70)]), // 대상이 아닌 줄(인건비) — 예전에는 차량 5360(공통비)이 이 역할이었으나 지금은 간접비 대상이라 인건비로 바꿈
   E('e4', '2026-08-01', '역분개', [ln('5210', 'C', 500, '가짜외주'), ln('2020', 'D', 500, '가짜외주')], { reverses: 'e2' }),
   E('e5', '2026-08-02', '매입 확정된 건', [ln('5210', 'D', 300, '가짜외주'), ln('2020', 'C', 300)]),
 ];
 const props = { 'e1_1': { entryId: 'e1', lineIdx: 1, method: '공수비율', splits: [{ pjt: 'pA', amount: 600 }, { pjt: 'pB', amount: 400 }], status: 'proposed', basisMonth: '2026-07', warn: '' }, 'e2_0': { entryId: 'e2', lineIdx: 0, method: '수동', splits: [], status: 'proposed', note: '2026-08 공수 없음', basisMonth: '2026-08', warn: '' } };
 const tags = { 'e5_0': { entryId: 'e5', lineIdx: 0, status: 'confirmed', splits: [{ pjt: 'pA', amount: 300 }], method: '직접' } };
 const rows = buildPendingRows(entries, props, tags);
-ok(rows.length === 2 && eq(rows.map((r) => r.id).sort(), ['e1_1', 'e2_0']), '★ 대상 줄 중 확정 태그가 없는 줄만 — 대상 아닌 줄(5360·1100·2020)·역분개 전표·이미 확정된 줄은 빠짐');
+ok(rows.length === 2 && eq(rows.map((r) => r.id).sort(), ['e1_1', 'e2_0']), '★ 대상 줄 중 확정 태그가 없는 줄만 — 대상 아닌 줄(인건비 5110·1100·2020)·역분개 전표·이미 확정된 줄은 빠짐');
 const r1 = rows.find((r) => r.id === 'e1_1'), r2 = rows.find((r) => r.id === 'e2_0');
 ok(r1.entryId === 'e1' && r1.lineIdx === 1 && r1.amount === 1000 && r1.side === 'C' && r1.account === '4010' && r1.date === '2026-07-31' && r1.no === 'E1' && r1.partner === '가짜회사', '줄 정보(전표·줄번호·금액·차대·계정·일자·거래처)가 전표에서 옴');
 ok(r1.method === '공수비율' && eq(r1.splits, [{ pjt: 'pA', amount: 600 }, { pjt: 'pB', amount: 400 }]) && r1.hasProposal === true && r1.confirmable === true, '제안이 있고 분할이 있으면 확정할 수 있음(confirmable)');
@@ -32,8 +32,8 @@ ok(noProp.length === 1 && noProp[0].hasProposal === false && noProp[0].confirmab
 ok(buildPendingRows([E('x', '2026-07-31', 'm', [ln('4010', 'C', 100, 'p')])], {}, { x_0: { status: 'cleared', splits: [] } }).length === 1, '해제(cleared)된 태그는 확정이 아니므로 다시 대기 목록에 나옴');
 ok(buildPendingRows([E('x', '2026-07-31', 'm', [ln('4010', 'C', 100, 'p')])], { x_0: { entryId: 'x', lineIdx: 0, method: '제외', splits: [], status: 'proposed', note: '정산 차액' } }, {})[0].confirmable === true, '"제외" 제안은 분할이 없어도 확정할 수 있음(프로젝트에 붙이지 않는다는 결정)');
 ok(buildPendingRows([E('rv', '2026-08-03', '역분개된 매출', [ln('4010', 'D', 800, 'p'), ln('1100', 'C', 800, 'p')], { reverses: 'e1' })], {}, {}).length === 0, '★ 역분개 전표 안의 대상 줄(차변 매출)도 대기 목록에서 빠짐 — 원 전표의 지정이 기준');
-ok(buildPendingRows([E('cm', '2026-08-03', '차량', [ln('5360', 'D', 70), ln('5380', 'D', 30), ln('5110', 'D', 5), ln('5350', 'D', 6)])], {}, {}).length === 0, '★ 회사 공통비 5360·5380 과 공수 배분 5110·5350 은 대기 목록에 나오지 않음');
-ok(taggableReason(ln('5360', 'D', 1)).includes('공통') && taggableReason(ln('5380', 'D', 1)).includes('공통') && taggableReason(ln('5110', 'D', 1)).includes('공수'), '대상이 아닌 이유 문구가 계정 종류에 맞음(공통비 vs 공수 배분)');
+{ const rows35 = buildPendingRows([E('cm', '2026-08-03', '차량', [ln('5360', 'D', 70), ln('5380', 'D', 30), ln('5110', 'D', 5), ln('5350', 'D', 6)])], {}, {}); ok(rows35.length === 3 && eq(rows35.map((r) => r.account).sort(), ['5350', '5360', '5380']), '★ 차량 5360·창고 5380·식대 5350 은 이제 대기 목록에 나오고(프로젝트 간접비), 인건비 5110 만 나오지 않는다 (실제: ' + rows35.map((r) => r.account).join(',') + ')'); }
+ok(taggableReason(ln('5110', 'D', 1)).includes('참여 프로젝트 비율') && taggableReason(ln('6010', 'D', 1)).includes('사무 급여') && taggableReason(ln('5110', 'D', 1)) !== taggableReason(ln('6010', 'D', 1)) && taggableReason(ln('5360', 'D', 1)) === null && taggableReason(ln('5350', 'D', 1)) === null && taggableReason(ln('5380', 'D', 1)) === null, '★ 대상이 아닌 이유 문구가 인건비 종류에 맞다(현장 급여 5110 vs 사무 급여 6010) · 식대 5350·차량 5360·창고 5380 은 더 이상 "공수 배분"·"공통비"가 아니다');
 ok(buildPendingRows([E('mm', '2026-08-03', 'm', [ln('5210', 'D', 9, 'p')])], { mm_0: { entryId: 'mm', lineIdx: 0, method: '수동', splits: [{ pjt: 'pA', amount: 9 }], status: 'proposed' } }, {})[0].confirmable === false, '★ 방식이 "수동"이면 분할이 들어 있어도 확정 불가(사람이 직접 정해야 하는 제안)');
 ok(buildPendingRows([E('nn', '2026-08-03', 'm', [ln('5210', 'D', 9, 'p')])], { nn_0: { entryId: 'nn', lineIdx: 0, method: '직접', splits: [], status: 'proposed' } }, {})[0].confirmable === false, '★ 방식이 "직접"인데 분할이 비었으면 확정 불가');
 ok(buildPendingRows(null, null, null).length === 0 && buildPendingRows([], {}, {}).length === 0, '빈 입력·null 은 빈 목록(오류 없음)');
@@ -136,12 +136,14 @@ const cTags = {
 // ── 거래처 규칙 입력 검사(서버 pjtRuleSave 와 같은 규칙을 앱에서 먼저 알려 준다): ruleDraft({ partner, accounts, mode, pjt, note, active }) → { ok, rule, error }
 const RD = (o) => ruleDraft(Object.assign({ partner: '가짜외주', accounts: ['5210'], mode: 'single', pjt: 'pA', note: '', active: true }, o || {}));
 { const r = RD(); ok(r.ok && eq(r.rule, { partner: '가짜외주', accounts: ['5210'], mode: 'single', pjt: 'pA', note: '', active: true }) && r.error === '', '★ 올바른 입력(프로젝트 하나)은 그대로 통과한다');
-  ok(eq(RULE_ACCOUNTS, ['4010', '5010', '5210', '5320', '5340', '5370']), '★ 고를 수 있는 계정은 서버 허용 목록(4010·5010·5210·5320·5340·5370)과 같다 — 공수 배분 5110·5350, 회사 공통비 5360·5380 은 없다');
+  ok(eq(RULE_ACCOUNTS, ['4010'].concat(['5010', '5210', '5310', '5320', '5330', '5340', '5350', '5360', '5370', '5380', '5390', '6020', '6030', '6040', '6050', '6060', '6090', '6100', '6110', '6120', '6130'])) && RULE_ACCOUNTS.length === 22, '★ 고를 수 있는 계정은 서버 허용 목록과 같다 — 4010 + 비용 계정 21개(서버 ledger-pjt-rules.js ALLOWED_ACCOUNTS 와 같은 값), 인건비 5110·6010 은 없다');
   ok(RD({ partner: ' 가짜 외주\n' }).rule.partner === '가짜외주', '★ 거래처 이름은 안의 공백·줄바꿈까지 지운다(공백만 다른 이름이 두 규칙이 되지 않게 — 서버 cleanPartner 와 같음)');
   for (const [nm, v] of [['빈 값', ''], ['공백만', '   '], ['한 글자', '가'], ['41글자', '가'.repeat(41)], ['글자 아님', null], ['숫자', 12]]) { const r = RD({ partner: v }); ok(!r.ok && /거래처/.test(r.error) && r.rule === null, '★ 거래처가 ' + nm + ' 이면 거절·이유에 "거래처" (실제 ' + r.error + ')'); }
   ok(RD({ partner: '가나' }).ok && RD({ partner: '가'.repeat(40) }).ok, '2글자와 40글자는 통과(경계값)');
   for (const [nm, v] of [['빈 목록', []], ['목록 아님', '5210'], ['없음', undefined], ['null', null]]) { const r = RD({ accounts: v }); ok(!r.ok && /계정/.test(r.error), '★ 계정이 ' + nm + ' 이면 거절·이유에 "계정"'); }
-  for (const bad of ['5110', '5350', '5360', '5380', '1100', '9999', '']) { const r = RD({ accounts: ['5210', bad] }); ok(!r.ok && /계정/.test(r.error) && (bad === '' || r.error.includes(bad)), '★ 허용 밖 계정(' + JSON.stringify(bad) + ')이 하나라도 있으면 거절하고 이유에 그 계정 번호가 보인다'); }
+  for (const bad of ['5110', '6010', '1100', '9999', '6070', '']) { const r = RD({ accounts: ['5210', bad] }); ok(!r.ok && /계정/.test(r.error) && (bad === '' || r.error.includes(bad)), '★ 허용 밖 계정(' + JSON.stringify(bad) + ')이 하나라도 있으면 거절하고 이유에 그 계정 번호가 보인다'); }
+  { const r = RD({ accounts: ['5110'] }); ok(!r.ok && r.error.includes('인건비') && !r.error.includes('공수 배분') && !r.error.includes('공통비'), '★ 허용 밖 계정 거절 안내는 "인건비 계정은 대상이 아닙니다"이고 옛 안내(공수 배분·회사 공통비)는 없다 (실제: ' + r.error + ')'); }
+  for (const good of ['5350', '5360', '5380', '6090', '6020']) { const r = RD({ accounts: [good] }); ok(r.ok && r.rule.accounts[0] === good, '★ 새로 허용된 계정(' + good + ')은 규칙의 대상 계정으로 통과한다'); }
   ok(eq(RD({ accounts: ['5340', '5210', '5340', 5210] }).rule.accounts, ['5210', '5340']), '★ 계정은 중복을 없애고(숫자 5210 도 글자와 같게) 정렬한다');
   for (const bad of ['', 'both', 'SINGLE', null, undefined, 1]) { const r = RD({ mode: bad }); ok(!r.ok && /방식/.test(r.error), '★ 방식이 ' + JSON.stringify(bad) + ' 이면 거절·이유에 "방식"'); }
   { const r = RD({ mode: 'single', pjt: '' }); ok(!r.ok && /프로젝트/.test(r.error), '★ "프로젝트 하나" 방식인데 프로젝트가 없으면 거절'); const r2 = RD({ mode: 'single', pjt: '   ' }); ok(!r2.ok, '프로젝트가 공백뿐이어도 거절'); }

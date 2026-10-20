@@ -319,7 +319,7 @@ try:
         pg.locator('[data-pt-rules-toggle]').click(); pg.wait_for_timeout(100); pg.locator('[data-pt-rules-toggle]').click(); pg.wait_for_timeout(300)
         ok(len(rcalls(pg, 'pjtRuleList')) == 1 and rrows(pg) == 2, '★ 접었다 다시 펼쳐도 서버를 다시 부르지 않는다(받아 둔 목록을 그대로)')
         rd_open(pg, '[data-pt-rule-add]')
-        ok(pg.locator('.jh-dialog [data-rd-acc]').count() == 6 and pg.locator('.jh-dialog [data-rd-partner]').is_enabled() and len(rcalls(pg, 'pjtRuleSave')) == 0, '★ [규칙 추가]를 누르면 패널(계정 6개·거래처 칸 열림)이 뜨고 서버 호출은 0건이다')
+        ok(pg.locator('.jh-dialog [data-rd-acc]').count() == 22 and pg.locator('.jh-dialog [data-rd-acc][value="5110"]').count() == 0 and pg.locator('.jh-dialog [data-rd-acc][value="5350"]').count() == 1 and pg.locator('.jh-dialog [data-rd-partner]').is_enabled() and len(rcalls(pg, 'pjtRuleSave')) == 0, '★ [규칙 추가]를 누르면 패널(계정 22개 — 인건비 5110 은 없고 식대 5350 은 있음·거래처 칸 열림)이 뜨고 서버 호출은 0건이다')
         pg.locator('.jh-dialog [data-rd-partner]').fill('가'); rd_save(pg); pg.wait_for_timeout(250)
         ok(len(rcalls(pg, 'pjtRuleSave')) == 0 and '거래처' in pg.inner_text('.jh-dialog [data-panel-msg]'), '★ 거래처를 1글자로 저장하면 서버 호출 0건이고 패널 안에 이유("거래처")가 보인다')
         pg.locator('.jh-dialog [data-rd-partner]').fill('가짜 소모 '); rd_save(pg); pg.wait_for_timeout(250)

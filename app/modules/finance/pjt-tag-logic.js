@@ -2,7 +2,9 @@
  * 하는 일: 전표 줄 중 프로젝트를 붙일 줄(대상)을 가려 → 아직 확정 태그가 없는 줄만 대기 목록으로 만들고 → 서버가 만든 제안을 붙이고 → 달별로 묶어 → 확정하면 프로젝트별 순액이 어떻게 되는지 미리 보여 주고 → 서버에 보낼 확정 요청을 만든다.
  * 대상 판정은 서버(functions/ledger-pjt-tags.js 의 untaggableReason)와 같은 규칙이다: 매출 4xxx 는 대변(+)·차변(−, 마이너스 수정세금계산서) 모두, 직접원가 5010·5210·5320·5340·5370 은 차변만. 공수 배분 5110·5350 과 회사 공통비 5360·5380 은 대상이 아니다.
  * 월 구분은 서버가 만든 제안의 기준월(basisMonth)을 그대로 쓰고, 제안이 없으면 전표 일자의 달로 묶는다 — 메모를 읽는 규칙을 화면에 두 번째로 만들지 않기 위해서다. */
-const REVENUE = /^4\d{3}$/; const COST_TAGGED = ['5010', '5210', '5320', '5340', '5370'];
+const REVENUE = /^4\d{3}$/;
+/* 프로젝트 표시 대상 비용 계정 — 서버 ledger-pjt-tags.js COST_TAGGED 와 같은 목록이어야 한다(시험이 양쪽에서 같은 값을 고정). 대표님 2026-10-21: 인건비를 제외한 특정 프로젝트 지출은 모두 프로젝트 간접비. 5010·5210 은 지급예정서 영역이라 표시는 하되 마진 집계에서만 뺀다. */
+const COST_TAGGED = ['5010', '5210', '5310', '5320', '5330', '5340', '5350', '5360', '5370', '5380', '5390', '6020', '6030', '6040', '6050', '6060', '6090', '6100', '6110', '6120', '6130'];
 
 /** 이 줄이 프로젝트 대상이면 null, 아니면 이유 문자열 */
 export function taggableReason(line) {
@@ -10,8 +12,8 @@ export function taggableReason(line) {
   const a = String(line.account || '');
   if (REVENUE.test(a)) return null;
   if (COST_TAGGED.includes(a)) return line.side === 'D' ? null : '비용 계정의 대변 줄은 대상이 아닙니다.';
-  if (['5110', '5350'].includes(a)) return '공수 배분 계정입니다.';
-  if (['5360', '5380'].includes(a)) return '회사 공통비입니다.';
+  if (a === '5110') return '현장 급여(참여 프로젝트 비율로 배분하는 인건비)입니다.';
+  if (a === '6010') return '사무 급여(인건비)입니다.';
   return '프로젝트에 붙이는 계정이 아닙니다.';
 }
 /** 같은 묶음 키 — "(수정)" 표시를 뺀 메모와 계정이 같으면 같은 묶음(수정세금계산서의 원본·마이너스·재발행) */
@@ -110,7 +112,7 @@ export function buildConfirmedRows(entries, tags, opts) {
 /** 거래처 규칙 입력 검사 — 서버 pjtRuleSave 와 같은 규칙을 앱에서 먼저 알려 준다(최종 판단은 서버). 규칙 = 거래처 이름에 걸리는 제안 방식(프로젝트 하나 single / 그 달 공수 비율 manday). 규칙은 제안의 입력일 뿐 확정이 아니다.
  * 거래처는 안의 공백까지 지운 2~40자(한 글자는 거의 모든 거래처에 걸려 받지 않음), 계정은 프로젝트에 붙이는 계정만(공수 배분 5110·5350, 회사 공통비 5360·5380 은 대상이 아님), 방식이 manday 면 프로젝트를 비운다.
  * 결과 = { ok, rule, error }(거절이면 rule null). 입력이 이상해도 던지지 않는다. */
-export const RULE_ACCOUNTS = ['4010', '5010', '5210', '5320', '5340', '5370'];
+export const RULE_ACCOUNTS = ['4010'].concat(COST_TAGGED);
 export function ruleDraft(input) {
   const bad = (error) => ({ ok: false, rule: null, error });
   if (!input || typeof input !== 'object' || Array.isArray(input)) return bad('규칙 내용을 확인할 수 없습니다.');
@@ -118,7 +120,7 @@ export function ruleDraft(input) {
   if (partner.length < 2 || partner.length > 40) return bad('거래처 이름은 공백 없이 2~40자로 입력해 주세요(한 글자는 거의 모든 거래처에 걸려 받지 않습니다).');
   if (!Array.isArray(input.accounts) || !input.accounts.length) return bad('규칙이 적용될 계정을 한 개 이상 골라 주세요.');
   const wrong = input.accounts.map(String).find((a) => RULE_ACCOUNTS.indexOf(a) === -1);
-  if (wrong !== undefined) return bad('프로젝트에 붙이는 계정(' + RULE_ACCOUNTS.join('·') + ')만 고를 수 있습니다' + (wrong ? ': ' + wrong : '') + ' (공수 배분·회사 공통비 계정은 대상이 아닙니다).');
+  if (wrong !== undefined) return bad('프로젝트에 붙이는 계정(' + RULE_ACCOUNTS.join('·') + ')만 고를 수 있습니다' + (wrong ? ': ' + wrong : '') + ' (인건비 계정은 대상이 아닙니다).');
   const accounts = Array.from(new Set(input.accounts.map(String))).sort();
   if (input.mode !== 'single' && input.mode !== 'manday') return bad('방식은 "프로젝트 하나" 또는 "공수 비율" 중에서 골라 주세요.');
   let pjt = ''; if (input.mode === 'single') { pjt = typeof input.pjt === 'string' ? input.pjt.trim() : ''; if (!pjt) return bad('"프로젝트 하나" 방식은 프로젝트를 지정해야 합니다.'); }

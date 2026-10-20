@@ -179,7 +179,7 @@ ok(!has(rOpen, 'NaN') && !has(rOpen, 'undefined') && !has(rOpen, 'null'), '규�
 console.log('── 거래처 규칙 패널');
 const dNew = pjtRuleDialogHtml(null, NAMES), dEdit = pjtRuleDialogHtml(RULES[0], NAMES), dMan = pjtRuleDialogHtml(RULES[1], NAMES);
 const dChecks = (h) => h.match(/<input[^>]*data-rd-acc[^>]*>/g) || [];
-ok(dChecks(dNew).length === 6 && ['4010', '5010', '5210', '5320', '5340', '5370'].every((c) => dChecks(dNew).some((x) => x.includes('value="' + c + '"'))) && !dChecks(dNew).some((x) => /5110|5350|5360|5380/.test(x)), '★ 계정 체크박스는 허용 6개(4010·5010·5210·5320·5340·5370)뿐이다 — 공수 배분·공통비 계정은 없다');
+ok(dChecks(dNew).length === 22 && ['4010'].concat(['5010', '5210', '5310', '5320', '5330', '5340', '5350', '5360', '5370', '5380', '5390', '6020', '6030', '6040', '6050', '6060', '6090', '6100', '6110', '6120', '6130']).every((c) => dChecks(dNew).some((x) => x.includes('value="' + c + '"'))) && !dChecks(dNew).some((x) => /value="(5110|6010)"/.test(x)), '★ 계정 체크박스는 허용 22개(4010 + 비용 계정 21개)이고 인건비 5110·6010 은 없다');
 ok(dChecks(dEdit).filter((x) => /\schecked/.test(x)).length === 1 && /value="5210"[^>]*checked|checked[^>]*value="5210"/.test(dChecks(dEdit).join(' ')), '★ 수정 패널은 현재 규칙의 계정(5210)만 체크돼 있다');
 ok(has(dNew, 'data-rd-partner') && !/data-rd-partner[^>]*\sdisabled|disabled[^>]*data-rd-partner/.test(dNew.match(/<input[^>]*data-rd-partner[^>]*>/)[0]), '★ 새 규칙 패널은 거래처 칸이 열려 있다');
 ok(/\sdisabled|readonly/.test(dEdit.match(/<input[^>]*data-rd-partner[^>]*>/)[0]) && has(dEdit, '가짜외주'), '★ 수정 패널은 거래처 칸이 잠겨 있다(거래처를 바꾸면 새 규칙이 되어 옛 규칙이 남기 때문)');
