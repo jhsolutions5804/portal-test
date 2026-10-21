@@ -4,6 +4,15 @@
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const won = (v) => num(v).toLocaleString('ko-KR');
 const okReport = (r) => !!r && typeof r === 'object' && !Array.isArray(r) && r.ok === true && Array.isArray(r.projects);
+/** 서버 공통비 배부(allocate) 응답에서 프로젝트 하나의 몫과 전체 배부 현황 — 연결된 PJT 등록 id 로 찾는다(영업기획 id 가 아니다, 대기열 1-2-2-④ 교훈). 응답 모양이 이상하면 null(이상한 숫자로 화면을 그리지 않는다). 응답에 그 프로젝트가 없으면 오류가 아니라 배부 0(공수 기록이 있는 달이 없어 배부된 공통비가 없음) */
+export function allocFor(r, pjtId) {
+  const fin = (v) => typeof v === 'number' && Number.isFinite(v); const isO = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+  if (!isO(r) || r.ok !== true || !Array.isArray(r.months) || !Array.isArray(r.projects) || !isO(r.total) || !fin(r.total.pool) || !fin(r.total.allocated) || !fin(r.total.unallocated) || !isO(r.unmarked) || !fin(r.unmarked.count) || !fin(r.unmarked.amount) || !isO(r.basisSummary) || !fin(r.basisSummary.daily) || !fin(r.basisSummary.own)) return null;
+  const id = typeof pjtId === 'string' ? pjtId : ''; const months = []; let allocated = 0, manday = 0;
+  if (id) r.months.forEach((m) => { if (!isO(m) || typeof m.month !== 'string' || !Array.isArray(m.shares)) return; m.shares.forEach((x) => { if (isO(x) && x.pjt === id && fin(x.amount) && fin(x.manday)) { months.push({ month: m.month, amount: x.amount, manday: x.manday }); allocated += x.amount; manday += x.manday; } }); });
+  const pool = r.total.pool; const unallocatedMonths = r.months.filter((m) => isO(m) && m.basis === 'none').length;
+  return { allocated, manday: Math.round(manday * 100) / 100, months, pool, allocatedTotal: r.total.allocated, unallocated: r.total.unallocated, unallocatedMonths, pctAllocated: pool > 0 ? Math.round(r.total.allocated / pool * 1000) / 10 : 0, unmarked: { count: r.unmarked.count, amount: r.unmarked.amount }, own: r.basisSummary.own, daily: r.basisSummary.daily };
+}
 /** 평가용 저장(서버 saveEval) 실패를 사람이 읽는 문구로 — 서버가 준 한국어 안내(완결 없음·연결 없음 등)는 그대로 보여 주고(오류 코드 표기 functions/…: 는 뗌), 권한 없음·서버 함수 없음·그 밖은 정해진 문구 */
 export function evalSaveError(e) {
   const code = String(e && typeof e === 'object' ? e.code || '' : '').replace(/^functions\//, ''); const msg = String(e && typeof e === 'object' ? e.message || '' : '').replace(/^(functions\/)?[a-z-]+:\s*/i, '').trim();

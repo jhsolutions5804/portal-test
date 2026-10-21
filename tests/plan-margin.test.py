@@ -40,6 +40,14 @@ export const serverTimestamp = () => 0; export const deleteField = () => null; e
 export const httpsCallable = (f, name) => async (p) => {
   window.__calls.push({ fn: name, p: JSON.parse(JSON.stringify(p || {})) });
   const delay = window.__delay || 0; if (delay) await new Promise((r) => setTimeout(r, delay));
+  if (name === 'marginAct' && p.action === 'allocate') {
+    const ad = window.__allocDelay || 0; if (ad) await new Promise((r) => setTimeout(r, ad));
+    const am = window.__allocMode || 'ok'; const flaky = am === 'flaky' && window.__calls.filter((c) => c.fn === 'marginAct' && c.p.action === 'allocate').length < 2;
+    if (am === 'err' || flaky) throw Object.assign(new Error('internal'), { code: 'functions/internal' });
+    if (am === 'perm') throw Object.assign(new Error('x'), { code: 'functions/permission-denied' });
+    if (am === 'bad') return { data: { ok: true } };
+    return { data: { ok: true, upTo: '', months: [{ month: '2026-07', pool: 400000, mandayTotal: 40, basis: 'manday', shares: [{ pjt: 'p4ph2', manday: 30, amount: 150000 }, { pjt: 'p4ph4', manday: 10, amount: 250000 }] }, { month: '2026-08', pool: 600000, mandayTotal: 0, basis: 'none', shares: [] }], projects: [{ pjt: 'p4ph2', allocated: 150000, manday: 30 }, { pjt: 'p4ph4', allocated: 250000, manday: 10 }], total: { pool: 1000000, allocated: 400000, unallocated: 600000 }, unmarked: { count: 12, amount: 700000 }, basisSummary: { daily: 40, own: 0 } } };
+  }
   if (name === 'marginAct' && p.action === 'saveEval') {
     const ed = window.__evalDelay || 0; if (ed) await new Promise((r) => setTimeout(r, ed));
     const em = window.__evalMode || 'ok'; const flaky = em === 'flaky' && window.__calls.filter((c) => c.fn === 'marginAct' && c.p.action === 'saveEval').length < 2;
@@ -79,7 +87,7 @@ try:
             pg.route('**/core/firebase.js*', lambda r: r.fulfill(status=200, content_type='text/javascript', body=FAKE_FB))
             pg.route('**/*.html', lambda r: r.fulfill(status=200, content_type='text/html', body=PAGE))
             pg.goto(BASE + '/x.html'); pg.wait_for_function('window.__ready === true', timeout=20000)
-            pg.evaluate("([m, d, pr, rp, ck]) => { window.__mode = m; window.__delay = d; window.__prefix = pr; window.__report = rp; window.__check = ck; window.__checkMode = 'ok'; window.__checkDelay = 0; window.__evalMode = 'ok'; window.__evalDelay = 0; }", [mode, delay, prefix, REPORT, CHECK])
+            pg.evaluate("([m, d, pr, rp, ck]) => { window.__mode = m; window.__delay = d; window.__prefix = pr; window.__report = rp; window.__check = ck; window.__checkMode = 'ok'; window.__checkDelay = 0; window.__evalMode = 'ok'; window.__evalDelay = 0; window.__allocMode = 'ok'; window.__allocDelay = 0; }", [mode, delay, prefix, REPORT, CHECK])
             pg.evaluate("(r) => window.__mount(document.getElementById('root'), r, { me: { uid: 'u1', name: '가짜', admin: true } })", {'segs': segs or [], 'q': {}})
             return pg, errs
         mcalls = lambda pg: [c for c in pg.evaluate('window.__calls') if c['fn'] == 'marginAct']
@@ -197,7 +205,39 @@ try:
         pg, errs = loaded('pjt_1000001'); ev(pg).click(); pg.wait_for_timeout(600)
         pg.locator('[data-pj-act="list"]').click(); pg.wait_for_timeout(300); pg.locator('[data-pj-open="pjt_1000002"]').click(); pg.wait_for_timeout(400); txt = pg.inner_text('#pj-body')
         ok('평가용으로 저장됨' not in txt and len(ecalls(pg)) == 1, '★ 다른 프로젝트(B)에는 A 의 저장 결과가 보이지 않고 저장 호출은 늘지 않는다'); pg.close()
-        ok(pass_n + fail_n >= 56, '시험이 끝까지 실행됨')
+        print('── 공통비 반영 이익(대기열 1-2-2-①): 누를 때만 서버가 전표 전체로 계산, 결과·오류·중복 방지')
+        al = lambda pg: pg.locator('[data-pj-act="margin-alloc"]'); acalls = lambda pg: [c for c in mcalls(pg) if c['p'].get('action') == 'allocate']
+        pg, errs = fresh(['pjt_1000001']); open_detail(pg)
+        ok(al(pg).count() == 0, '★ 마진을 불러오기 전에는 [공통비 반영해서 보기] 버튼이 없다')
+        btn(pg).click(); pg.wait_for_function('window.__calls.some(c => c.fn === "marginAct")', timeout=5000); pg.wait_for_timeout(450)
+        ok(len(acalls(pg)) == 0 and al(pg).count() == 1 and al(pg).is_enabled() and '공통비 반영해서 보기' in al(pg).inner_text() and '그 달 공수 비율' in pg.inner_text('#pj-body'), '★ 마진 보고가 성공해도 공통비 호출은 0건(자동 호출 없음 — 전표 전체를 읽는 무거운 동작이라)이고 활성 버튼과 안내가 보인다')
+        al(pg).click(); pg.wait_for_function('window.__calls.some(c => c.p && c.p.action === "allocate")', timeout=5000); pg.wait_for_timeout(500); ac = acalls(pg); txt = pg.inner_text('#pj-body')
+        ok(len(ac) == 1 and ac[0]['p'] == {'action': 'allocate'}, '★ 버튼을 누르면 marginAct 가 정확히 1건({action: allocate})으로 나간다 (실제: %s)' % ac)
+        ok('공통비 반영 이익 -5,160,000원 (-516%)' in txt and '공헌이익 -5,010,000원' in txt and '공통비 배부 150,000원' in txt, '★ 공통비 반영 이익 = 공헌이익(완결 1,000,000 − 원가 6,010,000 = -5,010,000) − 공통비 배부 150,000(서버 연결 id p4ph2 몫) = -5,160,000원(-516%%) — 영업기획 id(pjt_…)와 서버 id(p4ph2)가 달라도 찾는다 (실제: %s)' % (txt[txt.find('공통비 반영 이익'):txt.find('공통비 반영 이익') + 120].replace('\n', ' ') if '공통비 반영 이익' in txt else '줄 없음'))
+        ok('(잠정)' in txt and '공통비 전체 1,000,000원 중 40%(400,000원)만 배부됐습니다' in txt and '공수가 없는 1개월 600,000원은 배부하지 않았습니다' in txt, '★ 잠정이고 "공통비 전체 1,000,000원 중 40%(400,000원)만 배부 — 공수가 없는 1개월 600,000원은 배부하지 않았습니다"가 보인다')
+        ok('미표시 판관비 12줄 700,000원' in txt and '일용직 40일' in txt and '자체 직원 참여일 0일' in txt and '참여 기록이 아직 없습니다' in txt and '2026-07 150,000원(공수 30)' in txt, '★ 미표시 판관비 12줄 700,000원·공수 구성(일용직 40일·자체 직원 0일, 참여 기록 없음)·이 프로젝트가 받은 달(2026-07 150,000원·공수 30)이 보인다')
+        ok('다시 계산' in al(pg).inner_text() and '현장경비 360,000원' in txt, '[다시 계산] 버튼이 있고 마진 값은 그대로 보인다')
+        ok(not [e for e in errs if 'favicon' not in e], '화면 오류 없음 %s' % errs[:2]); pg.close()
+        pg, errs = loaded('pjt_1000001'); pg.evaluate("() => { window.__allocDelay = 900; }")
+        pg.evaluate("() => { const b = document.querySelector('[data-pj-act=\"margin-alloc\"]'); b.click(); b.click(); b.click(); }"); pg.wait_for_timeout(250)
+        ok(not al(pg).is_enabled() and '계산하는 중' in al(pg).inner_text(), '★ 계산 중에는 버튼이 비활성 "계산하는 중…"이다')
+        pg.evaluate("() => { const b = document.querySelector('[data-pj-act=\"margin-alloc\"]'); if (b) { b.disabled = false; b.click(); b.click(); } }"); pg.wait_for_timeout(1300)
+        ok(len(acalls(pg)) == 1, '★ 세 번 연속·비활성을 억지로 풀어 눌러도 공통비 호출은 1건이다 — 실제 %d건' % len(acalls(pg))); pg.close()
+        pg, errs = loaded('pjt_1000001'); pg.evaluate("() => { window.__allocMode = 'flaky'; }"); al(pg).click(); pg.wait_for_function('window.__calls.some(c => c.p && c.p.action === "allocate")', timeout=5000); pg.wait_for_timeout(500); txt = pg.inner_text('#pj-body')
+        ok('공통비 배부를 불러오지 못했습니다' in txt and '공통비 반영 이익 ' not in txt and '다시 계산' in al(pg).inner_text(), '★ 서버 오류면 안내와 [다시 계산]이 보이고 공통비 반영 이익은 말하지 않는다')
+        al(pg).click(); pg.wait_for_timeout(600); txt = pg.inner_text('#pj-body'); ok(len(acalls(pg)) == 2 and '공통비 반영 이익 -5,160,000원' in txt and '불러오지 못했습니다' not in txt, '★ 다시 누르면 성공해서 결과가 보인다(호출 2건)')
+        ok(not [e for e in errs if 'favicon' not in e and 'internal' not in e.lower()], '화면 오류 없음 %s' % errs[:2]); pg.close()
+        pg, errs = loaded('pjt_1000001'); pg.evaluate("() => { window.__allocMode = 'perm'; }"); al(pg).click(); pg.wait_for_function('window.__calls.some(c => c.p && c.p.action === "allocate")', timeout=5000); pg.wait_for_timeout(500); txt = pg.inner_text('#pj-body')
+        ok('재무회계 권한이 있는 계정만 볼 수 있습니다' in txt, '권한이 없으면 권한 안내가 보인다'); pg.close()
+        pg, errs = loaded('pjt_1000001'); pg.evaluate("() => { window.__allocMode = 'bad'; }"); al(pg).click(); pg.wait_for_function('window.__calls.some(c => c.p && c.p.action === "allocate")', timeout=5000); pg.wait_for_timeout(500); txt = pg.inner_text('#pj-body')
+        ok('응답 형식이 올바르지 않아' in txt and '공통비 반영 이익 ' not in txt, '★ 응답 모양이 이상하면 성공으로 보지 않고 안내한다(이상한 숫자로 화면을 그리지 않음)'); pg.close()
+        pg, errs = loaded('pjt_1000004'); txt = pg.inner_text('#pj-body'); ok(al(pg).count() == 0, '★ 완결한 청구서가 없는 연결 프로젝트는 공통비 버튼이 없다'); pg.close()
+        pg, errs = fresh(['pjt_1000005']); open_detail(pg); ok(al(pg).count() == 0 and btn(pg).count() == 0, '연결이 없는 프로젝트에는 공통비 버튼도 없다'); pg.close()
+        print('── 다른 프로젝트로 가도 전체 계산 한 번의 응답에서 그 프로젝트 몫만')
+        pg, errs = loaded('pjt_1000001'); al(pg).click(); pg.wait_for_timeout(600)
+        pg.locator('[data-pj-act="list"]').click(); pg.wait_for_timeout(300); pg.locator('[data-pj-open="pjt_1000002"]').click(); pg.wait_for_timeout(400); btn(pg).click(); pg.wait_for_timeout(600); txt = pg.inner_text('#pj-body')
+        ok(len(acalls(pg)) == 1 and '공통비 배부 250,000원' in txt and '공통비 배부 150,000원' not in txt, '★ 다른 프로젝트(B, 연결 p4ph4)로 가서 마진을 불러오면 같은 응답(호출 1건)에서 그 프로젝트의 몫 250,000원만 보이고 A 의 150,000원은 보이지 않는다 (호출 %d건)' % len(acalls(pg))); pg.close()
+        ok(pass_n + fail_n >= 74, '시험이 끝까지 실행됨')
         b.close()
     print('\n' + ('실패 %d건 / 통과 %d' % (fail_n, pass_n) if fail_n else '전부 통과 (%d건)' % pass_n)); sys.exit(1 if fail_n else 0)
 except Exception as e:
