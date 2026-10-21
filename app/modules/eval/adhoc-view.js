@@ -1,7 +1,7 @@
 /* 인사평가 — 수시평가(프로젝트 종료 시) 화면(테섭 미리보기). 마크업만 만든다(저장·불러오기는 adhoc-io.js). 설계서 docs/hr-evaluation-design.md 5·6절 */
-import { withManage } from '../../shared/eval-perm.js?v=20261021c';
-import { esc } from '../../core/ui.js?v=20261021c';
-import { evalAccess, adhocSummary, adhocProjectPerf, adhocParticipants, pickAdhocEvaluator, emptyAdhoc, ADHOC_LABELS, ADHOC_ENTRY_ITEMS, PEER_ITEMS, STATUS_LABEL } from './evaluation.js?v=20261021c';
+import { withManage } from '../../shared/eval-perm.js?v=20261021d';
+import { esc } from '../../core/ui.js?v=20261021d';
+import { evalAccess, adhocSummary, adhocProjectPerf, adhocParticipants, pickAdhocEvaluator, emptyAdhoc, ADHOC_LABELS, ADHOC_ENTRY_ITEMS, PEER_ITEMS, STATUS_LABEL } from './evaluation.js?v=20261021d';
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const gtone = (g) => (g === 'S' || g === 'A' ? 'accent' : g === 'C' ? 'danger' : 'muted');
@@ -37,8 +37,8 @@ export function adhocProjectHtml(st) {
     + '<div class="jh-hr__bar">' + (p.status === 'ended' ? chip('종료', 'accent') : chip('진행 중 — 잠정치', 'warn')) + (p.linked ? chip('영업기획 연결됨', 'accent') : chip('영업기획 연결 없음', 'warn')) + '</div>'
     + '<div class="jh-field__hint">마진율은 <strong>읽기 전용</strong>입니다 — ' + plan + '. 여기서는 사장단이 점수만 줍니다.</div>'
     + '<div class="jh-hr__grid">' + ro('목표 마진율', perf.target == null ? '미입력' : perf.target + '%', '프로젝트마다 영업기획에서 입력') + ro('청구 누계(공급가액)', p.linked ? won(snap.billed) : '-', '영업기획 청구서 집계') + ro('지급 누계(공급가액)', p.linked ? won(snap.paid) : '-', '영업기획 지급예정서 집계') + '</div>'
-    + '<div class="jh-field__hint" data-tone="warn">잠정: 실투입비는 <strong>지급(외주·노무)만</strong> 반영된 상태입니다. 직접비(전표의 프로젝트 표시)와 자체 인력 인건비가 영업기획에 연결되면 실제 마진율로 바뀝니다. 점수를 줄 때 이 점을 감안해 주세요.</div>'
-    + '<div class="jh-hr-ev__score">' + cell('목표 마진율', perf.target == null ? '-' : perf.target + '%') + cell('실현 마진율 (잠정)', perf.actual == null ? '-' : perf.actual + '%', '(청구 − 지급) ÷ 청구 — 직접비·자체 인건비 미반영') + cell('목표 대비', perf.diff == null ? '-' : (perf.diff > 0 ? '+' : '') + perf.diff + '%p') + cell('마진율 점수', perf.score == null ? '-' : perf.score + ' / 5', '참고용 — ' + BAND_TEXT) + '</div>'
+    + '<div class="jh-field__hint" data-tone="warn">잠정: 프로젝트 원가는 <strong>외주·자재(지급예정서)만</strong> 반영된 상태입니다. 현장경비(전표의 프로젝트 표시)와 자체 직접노무비가 영업기획에 연결되면 실제 마진율로 바뀝니다. 점수를 줄 때 이 점을 감안해 주세요.</div>'
+    + '<div class="jh-hr-ev__score">' + cell('목표 마진율', perf.target == null ? '-' : perf.target + '%') + cell('실현 마진율 (잠정)', perf.actual == null ? '-' : perf.actual + '%', '(청구 − 지급) ÷ 청구 — 현장경비·자체 직접노무비 미반영') + cell('목표 대비', perf.diff == null ? '-' : (perf.diff > 0 ? '+' : '') + perf.diff + '%p') + cell('마진율 점수', perf.score == null ? '-' : perf.score + ' / 5', '참고용 — ' + BAND_TEXT) + '</div>'
     + '<div class="jh-hr-ev__area"><div class="jh-hr__sub">사장단 평가 — 프로젝트 성과 <span class="jh-field__hint">' + esc((ad.me && ad.me.name) || '내 평가') + ' · 마진율 점수를 참고해 일정·품질·안전·추가공사를 함께 고려(5점)</span></div>' + rateRow('프로젝트 성과 종합', myProj, 'pexec', dis) + '</div>'
     + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-ad-act="psave"' + (dis ? ' disabled' : '') + '>프로젝트 성과 점수 저장</button><button type="button" class="jh-btn" data-variant="ghost" data-ad-act="back">← 프로젝트 목록</button></div></div>');
   const mem = p.memberWorkers || []; const lead = pickAdhocEvaluator(mem.map((w) => ({ id: w.id, name: w.name, rank: w.rank, hireDate: w.hireDate, empNo: w.empNo })));

@@ -1,7 +1,7 @@
 /* 영업기획 월말 마감(신규) — 순수 규칙(화면·네트워크 없이 시험 가능). 한 달의 청구·수금·지급 현황을 모으고, 마감 전에 챙길 점검 항목을 찾는다. 저장하는 데이터는 없다(조회·내려받기·인쇄만).
  * 월 기준: 청구서·지급예정서는 "발행일"이 그 달인 것, 수금·지급완료는 "완결 시각(doneAt)"이 그 달인 것(한국 시간). 프로젝트별 금액은 공급가액 기준(공동 발행분은 프로젝트 몫), 잔액은 합계금액(부가세 포함) 기준으로 청구·수금 화면과 같다. */
-import { sortProjects, settleAmountForPjt, settleBelongsToPjt, isEstActive, estSupply, getLinkPjt } from './projects.js?v=20261021c';
-import { acctMonthOf, SETTLE_LABEL, METHOD_LABEL } from './settlements.js?v=20261021c';
+import { sortProjects, settleAmountForPjt, settleBelongsToPjt, isEstActive, estSupply, getLinkPjt } from './projects.js?v=20261021d';
+import { acctMonthOf, SETTLE_LABEL, METHOD_LABEL } from './settlements.js?v=20261021d';
 const T = (n) => Number(n) || 0; const active = (s) => !!s && s.status !== 'void'; const done = (s) => !!s && s.status === 'done';
 const pad = (n) => String(n).padStart(2, '0');
 /** Timestamp({seconds}) 또는 ISO 문자열의 한국 시간 월(YYYY-MM), 없으면 '' */
@@ -27,7 +27,7 @@ export function closingChecks(ym, today, projects, estimates, settlements, month
   const S = settlements || [], P = projects || [], E = estimates || []; const end = lastDayOf(ym); const code = (id) => { const p = P.find((x) => x.id === id); return p ? p.code : '-'; }; const out = [];
   const add = (key, label, hint, items, warn) => out.push({ key, label, hint, count: items.length, tone: items.length ? (warn ? 'warn' : 'info') : 'ok', items });
   add('overdueInvoices', '연체 청구서', '지급요청일이 지났는데 완결(수금)되지 않았습니다. 이미 받았다면 완결 처리를, 아니라면 수금을 확인하세요.', S.filter((s) => s.docType === 'invoice' && s.status === 'active' && /^\d{4}-\d{2}-\d{2}$/.test(String(s.payDate || '')) && s.payDate < today).sort((a, b) => a.payDate.localeCompare(b.payDate)).map((s) => row(s.id, s.no + ' · ' + code(s.pjtId), ((s.recipient && s.recipient.company) || '수신자 없음') + ' · 지급요청일 ' + s.payDate + ' (' + dayDiff(today, s.payDate) + '일 지남)', T(s.total) || T(s.amount), '#/plan/billing/' + s.id)), true);
-  add('unpaidPayments', '지급완료 전 지급예정서', '이 달 말까지 지급일인데 지급완료 처리가 안 됐습니다. 송금했다면 지급완료를, 아니라면 지급을 확인하세요(지급완료 시 회계 직접비로 반영됩니다).', S.filter((s) => s.docType === 'payment' && s.status === 'active' && /^\d{4}-\d{2}-\d{2}$/.test(String(s.payDate || '')) && s.payDate <= end).sort((a, b) => a.payDate.localeCompare(b.payDate)).map((s) => row(s.id, s.no + ' · ' + code(s.pjtId), ((s.recipient && s.recipient.company) || '수신자 없음') + ' · 지급예정일 ' + s.payDate, T(s.total) || T(s.amount), '#/plan/payout/' + s.id)), true);
+  add('unpaidPayments', '지급완료 전 지급예정서', '이 달 말까지 지급일인데 지급완료 처리가 안 됐습니다. 송금했다면 지급완료를, 아니라면 지급을 확인하세요(지급완료 시 회계 외주비로 반영됩니다).', S.filter((s) => s.docType === 'payment' && s.status === 'active' && /^\d{4}-\d{2}-\d{2}$/.test(String(s.payDate || '')) && s.payDate <= end).sort((a, b) => a.payDate.localeCompare(b.payDate)).map((s) => row(s.id, s.no + ' · ' + code(s.pjtId), ((s.recipient && s.recipient.company) || '수신자 없음') + ' · 지급예정일 ' + s.payDate, T(s.total) || T(s.amount), '#/plan/payout/' + s.id)), true);
   add('noRecipient', '수신자가 비어 있는 정산서', '수신자(거래처)가 선택되지 않은 채 발행된 정산서입니다. 인쇄하면 수신 거래처가 "-"로 나옵니다.', S.filter((s) => active(s) && !(s.recipient && s.recipient.company)).map((s) => row(s.id, (SETTLE_LABEL[s.docType] || '정산서') + ' ' + s.no + ' · ' + code(s.pjtId), '발행 ' + (s.issueDate || '-'), T(s.total) || T(s.amount), '#/plan/' + (s.docType === 'payment' ? 'payout' : 'billing') + '/' + s.id)), true);
   add('noInvoiceThisMonth', '이 달 청구서가 없는 진행 프로젝트', '기준월 또는 발행일이 ' + ym + '인 청구서가 없습니다. 이 달에 청구할 것이 없으면 그대로 두세요.', P.filter((p) => p.status !== 'done' && !S.some((s) => s.docType === 'invoice' && active(s) && settleBelongsToPjt(s, p.id) && (s.baseMonth === ym || String(s.issueDate || '').startsWith(ym)))).map((p) => row(p.id, '[' + (p.code || '-') + '] ' + (p.name || ''), [p.site, p.client].filter(Boolean).join(' · '), 0, '#/plan/projects/' + p.id)), false);
   const billedBy = {}; S.filter((s) => s.docType === 'invoice' && active(s)).forEach((s) => Object.keys(s.perEst || {}).forEach((eid) => { const b = billedBy[eid] || (billedBy[eid] = { sum: 0, all: true }); b.sum += T(s.perEst[eid]); if (!done(s)) b.all = false; }));
@@ -46,9 +46,9 @@ export function closingChecks(ym, today, projects, estimates, settlements, month
     const miss = !over ? [] : P.filter((p) => p.status !== 'done').map((p) => ({ p, k: getLinkPjt(p) })).filter((x) => x.k && x.k !== 'none' && x.k !== 'auto' && have.has(String(x.k)) && have.get(String(x.k)) === false);
     add('monthlyReportMissing', '월간 보고서 미생성 프로젝트', mhint, miss.map((x) => row(x.p.id, (x.p.code || '-') + ' ' + (x.p.name || ''), '월간 보고서 ' + ym, '', '#/pjt/' + x.k + '/monthly')), true);
   }
-  /* 프로젝트 표시(전표 분석 태그) 미확정 — 재무회계 전표 중 프로젝트에 붙이는 줄(매출·직접원가)이 확정되지 않은 채 남았는지. tags = 서버 ledgerAct pjtTagStatus 응답({ ok, since, months:{ 'YYYY-MM': { targets, confirmed, pending } } }, 월별 개수만 — 금액·거래처 없음).
+  /* 프로젝트 표시(전표 분석 태그) 미확정 — 재무회계 전표 중 프로젝트에 붙이는 줄(매출·프로젝트 원가)이 확정되지 않은 채 남았는지. tags = 서버 ledgerAct pjtTagStatus 응답({ ok, since, months:{ 'YYYY-MM': { targets, confirmed, pending } } }, 월별 개수만 — 금액·거래처 없음).
    * 월간 보고서 경고와 같은 규칙: 경고 수준(마감을 막지 않음)·이번 달과 미래 달은 아직 안 끝났으니 세지 않음·믿을 수 없으면(없음·ok 아님·months 가 객체가 아님) "문제 없음"이 아니라 "확인하지 못함". 과거 구간(since 미만)은 서버가 이미 뺀다. */
-  const thint = '재무회계 전표 중 프로젝트에 붙이는 줄(매출·직접원가)이 아직 확정되지 않았습니다. 눌러서 재무회계 "프로젝트 표시" 탭에서 확인·확정하세요(경고일 뿐 마감을 막지 않습니다).';
+  const thint = '재무회계 전표 중 프로젝트에 붙이는 줄(매출·프로젝트 원가)이 아직 확정되지 않았습니다. 눌러서 재무회계 "프로젝트 표시" 탭에서 확인·확정하세요(경고일 뿐 마감을 막지 않습니다).';
   const tok = !!tags && typeof tags === 'object' && tags !== 'loading' && tags.ok === true && !!tags.months && typeof tags.months === 'object' && !Array.isArray(tags.months);
   if (tags === 'loading') out.push({ key: 'pjtTagPending', label: '프로젝트 표시가 확정되지 않은 전표', hint: '프로젝트 표시 현황을 확인하는 중입니다. 잠시만 기다려 주세요.', count: 0, tone: 'info', items: [] });
   else if (!tok) out.push({ key: 'pjtTagPending', label: '프로젝트 표시가 확정되지 않은 전표', hint: '프로젝트 표시 현황을 확인하지 못했습니다(서버 응답이 없거나 올바르지 않습니다). 잠시 뒤 다시 열어 보세요. 마감은 그대로 진행할 수 있습니다.', count: 0, tone: 'info', items: [] });

@@ -43,7 +43,7 @@ ok(/data-ad-act="mconfirm" disabled/.test(mem), '현장·사장단 점수가 아
 const stH = { evTab: 'adhoc', ad: Object.assign({}, st.ad, { me: { uid: 'H', name: '인사', rank: '대리', admin: true, perms: {} } }) }; const memH = adhocProjectHtml(stH);
 ok(/data-ad-score="item:progress\|5"[^>]*disabled/.test(memH) && /data-ad-act="msave" disabled/.test(memH) && memH.includes('인사팀은 열람·운영만') && /data-ad-act="psave"[^>]*disabled/.test(memH), '★ 인사팀이 보면 평가 입력·저장·프로젝트 성과 저장이 모두 잠김(열람·운영만)');
 st.ad.mdraft.confirmed = true; const memL = adhocProjectHtml(st); ok(/data-ad-score="item:progress\|5"[^>]*disabled/.test(memL) && memL.includes('확정된 평가는 수정할 수 없습니다') && memL.includes('data-ad-act="munconfirm"'), '확정된 수시평가는 입력이 잠기고 대표에게만 "확정 취소"가 보임');
-ok(pj.includes('실현 마진율 (잠정)') && pj.includes('지급(외주·노무)만') && pj.includes('직접비·자체 인건비 미반영'), '★ 수시평가 프로젝트 성과 카드에 "잠정" 표기 — 지급 기준 마진율을 최종 숫자로 오해하지 않게(직접비·자체 인건비 연결 전)');
+ok(pj.includes('실현 마진율 (잠정)') && pj.includes('외주·자재(지급예정서)만') && pj.includes('현장경비·자체 직접노무비 미반영'), '★ 수시평가 프로젝트 성과 카드에 "잠정" 표기 — 지급 기준 마진율을 최종 숫자로 오해하지 않게(현장경비·자체 직접노무비 연결 전)');
 // ── 연결(소스) 확인
 const idx = fs.readFileSync(new URL('../app/modules/eval/ops.js', import.meta.url), 'utf8');
 ok(idx.includes('createAdhocController(') && idx.includes('adh.onClick(ev)') && idx.includes('adh.onInput(ev)') && idx.includes('adh.onChange(ev)') && idx.includes("kind === 'adhoc'"), '평가 모듈의 운영 화면에 수시평가 컨트롤러가 연결됨(클릭·입력·선택)');

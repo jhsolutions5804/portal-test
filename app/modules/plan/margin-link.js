@@ -16,9 +16,9 @@ export function marginNotes(report) {
   const notes = []; const rate = Math.round(num(report.employerRate) * 1000) / 10;
   if (report.estimated === true) notes.push('사업주 4대보험 ' + rate + '% 추정 포함(고지서와 맞춰 보정).');
   const um = report.unmarked && typeof report.unmarked === 'object' ? report.unmarked : {};
-  if (num(um.count) > 0) notes.push('프로젝트 표시가 없는 간접비 ' + num(um.count) + '줄(' + won(um.amount) + '원)은 마진에 반영되지 않았습니다. 재무회계 "프로젝트 표시"에서 표시하면 반영됩니다.');
+  if (num(um.count) > 0) notes.push('프로젝트 표시가 없는 현장경비 ' + num(um.count) + '줄(' + won(um.amount) + '원)은 마진에 반영되지 않았습니다. 재무회계 "프로젝트 표시"에서 표시하면 반영됩니다.');
   const ua = Array.isArray(report.unallocatedLabor) ? report.unallocatedLabor.filter((x) => x && typeof x === 'object') : [];
-  if (ua.length) notes.push('참여 기록이 없어 자체 인력 급여 ' + ua.length + '개월(' + won(ua.reduce((a, x) => a + num(x.amount), 0)) + '원, ' + ua.reduce((a, x) => a + num(x.people), 0) + '명)을 프로젝트에 나누지 못했습니다.');
+  if (ua.length) notes.push('참여 기록이 없어 자체 직접노무비(급여) ' + ua.length + '개월(' + won(ua.reduce((a, x) => a + num(x.amount), 0)) + '원, ' + ua.reduce((a, x) => a + num(x.people), 0) + '명)을 프로젝트에 나누지 못했습니다.');
   const pc = Array.isArray(report.payslipCheck) ? report.payslipCheck.filter((x) => x && typeof x.month === 'string') : [];
   if (pc.length) notes.push('급여명세서와 장부 5110 이 다른 달이 ' + pc.length + '개 있습니다(' + pc.map((x) => x.month).join(', ') + ').');
   const ul = report.unlinked && typeof report.unlinked === 'object' ? report.unlinked : {};

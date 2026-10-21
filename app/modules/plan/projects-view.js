@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261021c';
-import { TYPE_LABEL, SETTLE_TYPE_LABEL, filterProjects, paginate, pjtSummary, pjtMargin, pjtEstimates, pjtSettlements, estTotal, estTag, settleState, settleAmountForPjt, linkOptions, sortProjects } from './projects.js?v=20261021c';
-import { marginExtra, marginNotes } from './margin-link.js?v=20261021c';
+import { esc } from '../../core/ui.js?v=20261021d';
+import { TYPE_LABEL, SETTLE_TYPE_LABEL, filterProjects, paginate, pjtSummary, pjtMargin, pjtEstimates, pjtSettlements, estTotal, estTag, settleState, settleAmountForPjt, linkOptions, sortProjects } from './projects.js?v=20261021d';
+import { marginExtra, marginNotes } from './margin-link.js?v=20261021d';
 const won = (n) => (Math.round(Number(n) || 0)).toLocaleString('ko-KR');
 const signed = (n) => (n >= 0 ? '+' : '') + won(n);
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -36,13 +36,13 @@ export function marginHtml(p, s, extra) {
   const diff = m.diff == null ? '-' : (m.diff > 0 ? '+' : '') + m.diff + '%p'; const tone = m.diff == null ? '' : m.diff >= 0 ? 'pos' : 'neg';
   const c = m.cost; const hasDirect = ex.direct != null, hasOwn = ex.ownLabor != null; const complete = hasDirect && hasOwn;
   const part = (label, v, ok) => label + ' ' + (ok ? won(v) + '원' : '미연결');
-  const costLine = '<div class="jh-field__hint">실투입비 ' + won(c.total) + '원 = ' + part('지급(외주·노무)', c.paid, true) + ' + ' + part('직접비', c.direct, hasDirect) + ' + ' + part('자체 인력 인건비', c.ownLabor, hasOwn) + '</div>';
+  const costLine = '<div class="jh-field__hint">프로젝트 원가 ' + won(c.total) + '원 = ' + part('외주·자재(지급예정서)', c.paid, true) + ' + ' + part('현장경비', c.direct, hasDirect) + ' + ' + part('자체 직접노무비', c.ownLabor, hasOwn) + '</div>';
   const loadErr = ex.error ? '<div class="jh-field__hint" data-tone="warn">' + esc(ex.error) + '</div>' : '';
   const btnHtml = (label, off) => '<button type="button" class="jh-btn" data-variant="ghost" data-pj-act="margin-load"' + (off ? ' disabled' : '') + '>' + label + '</button>';
-  const ctl = ex.ui === 'idle' ? '<div class="jh-field__hint">' + btnHtml('간접비·자체 인력 반영해서 보기', false) + ' 장부와 급여명세서를 읽어 계산합니다(재무회계 권한자).</div>' : ex.ui === 'loading' ? '<div class="jh-field__hint">' + btnHtml('불러오는 중…', true) + '</div>' : ex.ui === 'denied' ? '<div class="jh-field__hint">간접비·자체 인력 반영은 재무회계 권한이 있는 계정만 볼 수 있습니다.</div>' : ex.ui === 'error' ? '<div class="jh-field__hint">' + btnHtml('다시 불러오기', false) + '</div>' : ex.ui === 'ok' ? '<div class="jh-field__hint">' + btnHtml('다시 불러오기', false) + '</div>' : '';
+  const ctl = ex.ui === 'idle' ? '<div class="jh-field__hint">' + btnHtml('현장경비·자체 직접노무비 반영해서 보기', false) + ' 장부와 급여명세서를 읽어 계산합니다(재무회계 권한자).</div>' : ex.ui === 'loading' ? '<div class="jh-field__hint">' + btnHtml('불러오는 중…', true) + '</div>' : ex.ui === 'denied' ? '<div class="jh-field__hint">현장경비·자체 직접노무비 반영은 재무회계 권한이 있는 계정만 볼 수 있습니다.</div>' : ex.ui === 'error' ? '<div class="jh-field__hint">' + btnHtml('다시 불러오기', false) + '</div>' : ex.ui === 'ok' ? '<div class="jh-field__hint">' + btnHtml('다시 불러오기', false) + '</div>' : '';
   const notes = Array.isArray(ex.notes) && ex.notes.length ? '<ul class="jh-field__hint" data-margin-notes>' + ex.notes.map((n) => '<li>' + esc(n) + '</li>').join('') + '</ul>' : '';
-  const warn = complete ? '' : '<div class="jh-field__hint" data-tone="warn">잠정: 직접비(전표의 프로젝트 표시)·자체 인력 인건비가 아직 반영되지 않아 <strong>지급(외주·노무) 기준</strong>입니다. 실제 마진율은 이보다 낮을 수 있습니다. 평가에 쓰기 전에 연결 여부를 확인하세요.</div>';
-  return '<div class="jh-plan__sum jh-plan__sum--3">' + sumCell('목표 마진율', m.target == null ? '미입력' : pct(m.target)) + sumCell('실현 마진율' + (complete ? '' : ' (잠정)'), pct(m.actual)) + sumCell('목표 대비', diff, tone) + '</div>' + costLine + warn + loadErr + notes + ctl + '<div class="jh-field__hint">실현 마진율 = (청구 − 실투입비) ÷ 청구 · 팀 공수 노무비는 지급예정서에 이미 들어 있어 따로 빼지 않습니다 · 목표는 "정보 수정"에서 프로젝트마다 입력합니다. 인사평가(수시평가)의 프로젝트 성과는 이 값을 읽어 점수를 냅니다.</div>';
+  const warn = complete ? '' : '<div class="jh-field__hint" data-tone="warn">잠정: 현장경비(전표의 프로젝트 표시)·자체 직접노무비가 아직 반영되지 않아 <strong>외주·자재(지급예정서) 기준</strong>입니다. 실제 마진율은 이보다 낮을 수 있습니다. 평가에 쓰기 전에 연결 여부를 확인하세요.</div>';
+  return '<div class="jh-plan__sum jh-plan__sum--3">' + sumCell('목표 마진율', m.target == null ? '미입력' : pct(m.target)) + sumCell('실현 마진율' + (complete ? '' : ' (잠정)'), pct(m.actual)) + sumCell('목표 대비', diff, tone) + '</div>' + costLine + warn + loadErr + notes + ctl + '<div class="jh-field__hint">실현 마진율 = (청구 − 프로젝트 원가) ÷ 청구 · 팀 공수 노무비는 지급예정서에 이미 들어 있어 따로 빼지 않습니다 · 목표는 "정보 수정"에서 프로젝트마다 입력합니다. 인사평가(수시평가)의 프로젝트 성과는 이 값을 읽어 점수를 냅니다.</div>';
 }
 /** 프로젝트 상세(허브): 기본정보·요약·견적·청구·지급 */
 export function projectDetailHtml(st) {
