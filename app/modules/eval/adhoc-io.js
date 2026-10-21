@@ -3,9 +3,9 @@
  * 저장 위치(기존 관리자 전용 컬렉션 evaluations 안이라 보안 규칙 변경 없음):
  *   프로젝트 성과 = evaluations/_pjt/adhoc/{프로젝트 id}   (사장단의 프로젝트 성과 점수만)
  *   참여자 평가   = evaluations/{근로자}/adhoc/{프로젝트 id} (현장 항목·동료 점수·사장단의 개인 점수·확정) */
-import { withManage } from '../../shared/eval-perm.js?v=20261021f';
-import { setRating, evalAccess, adhocParticipants, emptyAdhoc, adhocSummary } from './evaluation.js?v=20261021f';
-import { pjtSummary } from '../../shared/pjt-summary.js?v=20261021f';   // 청구·지급 집계(영업기획과 공용)
+import { withManage } from '../../shared/eval-perm.js?v=20261021g';
+import { setRating, evalAccess, adhocParticipants, emptyAdhoc, adhocSummary } from './evaluation.js?v=20261021g';
+import { pjtSummary } from '../../shared/pjt-summary.js?v=20261021g';   // 청구·지급 집계(영업기획과 공용)
 const clone = (o) => JSON.parse(JSON.stringify(o));
 /** deps: { db, collection, getDocs, getDoc, setDoc, doc, serverTimestamp, toast, confirmDialog, paint, st, ctx } */
 export function createAdhocController(deps) {
@@ -20,7 +20,7 @@ export function createAdhocController(deps) {
     let gp = [], gs = [], ge = []; try { gp = await rows('gihoek_projects'); gs = await rows('gihoek_settlements'); ge = await rows('gihoek_estimates'); } catch (e) { /* 영업기획 데이터를 못 읽어도 직접 입력으로 평가할 수 있다 */ }
     const out = [];
     for (const r of reg) {
-      const link = gp.find((p) => p.linkPjt === r.id); let snapshot = {}; let targetMargin = null; if (link) { const sm = pjtSummary(link.id, ge, gs); snapshot = { billed: sm.billed, paid: sm.paid }; targetMargin = link.targetMargin == null ? null : link.targetMargin; }   // 마진율은 영업기획 프로젝트의 값을 읽기만 한다
+      const link = gp.find((p) => p.linkPjt === r.id); let snapshot = {}; let targetMargin = null; if (link) { const sm = pjtSummary(link.id, ge, gs); snapshot = { billed: sm.billed, done: sm.done, paid: sm.paid }; targetMargin = link.targetMargin == null ? null : link.targetMargin; }   // 마진율은 영업기획 프로젝트의 값을 읽기만 한다
       let roster = []; try { roster = await rows('pjt_registry/' + r.id + '/workers'); } catch (e) { roster = []; }
       let saved = null; try { const s = await getDoc(doc(db, pPath(r.id))); saved = s.exists() ? s.data() : null; } catch (e) { saved = null; }
       const memberWorkers = adhocParticipants(roster, st.evWorkers || []);

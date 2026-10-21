@@ -23,15 +23,15 @@ export function pjtSummary(pid, estimates, settlements) {
  *  실투입비 = ① 지급 누계(정산서 지급예정서 — 협력사 외주·노무, 팀 공수 × 단가로 발행되므로 노무비는 여기 이미 들어 있다. 따로 또 빼면 이중 차감)
  *           + ② 직접비(재무회계 전표 중 이 프로젝트로 표시된 현장 원가 5xxx 줄. 지급예정서에서 만든 전표는 ①과 같은 돈이라 뺀다)
  *           + ③ 자체 인력 인건비(자사 직원 급여를 프로젝트 공수 비율로 배분한 값).
- *  실현 마진율 = (청구 − 실투입비) ÷ 청구 × 100, 청구가 0 이하이면 null. 목표 마진율(targetMargin)은 프로젝트 문서에 프로젝트마다 입력한다.
+ *  실현 마진율 = (완결한 청구 − 프로젝트 원가) ÷ 완결한 청구 × 100 — 프로젝트 매출은 청구서를 완결 처리한 것만 센다(대표님 2026-10-21), 완결 정보(done)가 없거나 0 이하이면 청구(billed)로 대신 계산하지 않고 null(대신 계산하면 규칙이 조용히 깨진다). 목표 마진율(targetMargin)은 프로젝트 문서에 프로젝트마다 입력한다.
  *  영업기획 프로젝트 화면이 계산·표시하고, 인사평가(수시평가)는 이 값을 읽기만 한다. 전표로 통일한다: 비용장부와 전표를 함께 쓰지 않는다(이중 계상 방지). */
 export function pjtCost(summary, parts) {
   const s = summary || {}, p = parts || {}; const paid = NUM(s.paid), direct = NUM(p.direct), ownLabor = NUM(p.ownLabor);
   return { paid, direct, ownLabor, total: paid + direct + ownLabor };
 }
 export function pjtMargin(summary, opts) {
-  const s = summary || {}, o = opts || {}; const billed = NUM(s.billed); if (!(billed > 0)) return { target: null, actual: null, diff: null, cost: pjtCost(s, o) };
-  const cost = pjtCost(s, o); const actual = Math.round((billed - cost.total) / billed * 1000) / 10;
+  const s = summary || {}, o = opts || {}; const done = typeof s.done === 'number' && s.done > 0 ? s.done : 0; if (!(done > 0)) return { target: null, actual: null, diff: null, cost: pjtCost(s, o) };
+  const cost = pjtCost(s, o); const actual = Math.round((done - cost.total) / done * 1000) / 10;
   const t = o.target === '' || o.target == null ? NaN : Number(o.target); const target = isFinite(t) ? t : null;
   return { target, actual, diff: target == null ? null : Math.round((actual - target) * 10) / 10, cost };
 }

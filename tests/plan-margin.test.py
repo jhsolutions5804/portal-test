@@ -13,13 +13,17 @@ httpd = socketserver.TCPServer(('127.0.0.1', 0), H); port = httpd.server_address
 BASE = 'http://127.0.0.1:%d' % port
 VER = open(os.path.join(ROOT, 'modules', 'plan', 'index.js'), encoding='utf-8').read().split('firebase.js?v=')[1].split("'")[0]
 DATA = {
-  'gihoek_projects': {'pA': {'name': '프로젝트A', 'code': 'C1', 'status': 'run', 'targetMargin': 12}, 'pB': {'name': '프로젝트B', 'code': 'C2', 'status': 'run', 'targetMargin': 10}},
+  'gihoek_projects': {'pA': {'name': '프로젝트A', 'code': 'C1', 'status': 'run', 'targetMargin': 12}, 'pB': {'name': '프로젝트B', 'code': 'C2', 'status': 'run', 'targetMargin': 10}, 'pC': {'name': '프로젝트C', 'code': 'C3', 'status': 'run', 'targetMargin': 30}, 'pD': {'name': '프로젝트D', 'code': 'C4', 'status': 'run', 'targetMargin': 30}},
   'gihoek_estimates': {},
   'gihoek_settlements': {
     's1': {'docType': 'invoice', 'pjtIds': ['pA'], 'amount': 1000000, 'supply': 1000000, 'status': 'done', 'issueDate': '2026-07-01'},
     's2': {'docType': 'payment', 'pjtIds': ['pA'], 'amount': 700000, 'supply': 700000, 'status': 'done', 'issueDate': '2026-07-02'},
     's3': {'docType': 'invoice', 'pjtIds': ['pB'], 'amount': 500000, 'supply': 500000, 'status': 'done', 'issueDate': '2026-07-03'},
-    's4': {'docType': 'payment', 'pjtIds': ['pB'], 'amount': 300000, 'supply': 300000, 'status': 'done', 'issueDate': '2026-07-04'}},
+    's4': {'docType': 'payment', 'pjtIds': ['pB'], 'amount': 300000, 'supply': 300000, 'status': 'done', 'issueDate': '2026-07-04'},
+    's5': {'docType': 'invoice', 'pjtIds': ['pC'], 'amount': 600000, 'supply': 600000, 'status': 'done', 'issueDate': '2026-08-01'},
+    's6': {'docType': 'invoice', 'pjtIds': ['pC'], 'amount': 400000, 'supply': 400000, 'status': 'active', 'issueDate': '2026-08-02'},
+    's7': {'docType': 'payment', 'pjtIds': ['pC'], 'amount': 400000, 'supply': 400000, 'status': 'done', 'issueDate': '2026-08-03'},
+    's8': {'docType': 'invoice', 'pjtIds': ['pD'], 'amount': 800000, 'supply': 800000, 'status': 'active', 'issueDate': '2026-08-04'}},
   'pjt_registry': {},
 }
 FAKE_FB = """
@@ -136,7 +140,16 @@ try:
         pg, errs = fresh(['pA']); open_detail(pg); btn(pg).click(); pg.wait_for_function('window.__calls.some(c => c.fn === "marginAct")', timeout=5000); pg.wait_for_timeout(400); ck(pg).click(); pg.wait_for_timeout(600)
         pg.locator('[data-pj-act="list"]').click(); pg.wait_for_timeout(300); pg.locator('[data-pj-open="pB"]').click(); pg.wait_for_timeout(400)
         txt = pg.inner_text('#pj-body'); ok(len(mcalls(pg)) == 2 and len(ccalls(pg)) == 1 and '3줄' in txt and '40,000원' in txt, '★ 다른 프로젝트(B)를 열어도 보고·대조를 다시 부르지 않고(총 2건: 보고 1·대조 1) 이미 받은 값(대조 결과 3줄, B 현장경비 40,000원)이 보인다'); pg.close()
-        ok(pass_n + fail_n >= 32, '시험이 끝까지 실행됨')
+        print('── 완결한 청구서만 매출(대표님 2026-10-21): 미완결 안내')
+        pg, errs = fresh(['pC']); open_detail(pg); txt = pg.inner_text('#pj-body')
+        ok('확정 매출(완결) 600,000원' in txt and '완결 전 청구 400,000원은 아직 매출에 포함되지 않았습니다' in txt and '완결한 청구서가 없어' not in txt, '★ 청구서가 완결 600,000·유효 400,000이면 "확정 매출(완결) 600,000원"과 "완결 전 청구 400,000원은 아직 매출에 포함되지 않았습니다"가 보인다')
+        ok('청구 누계' in txt and '1,000,000' in txt, '청구 누계(발행 기준) 1,000,000원은 그대로 보인다(발행 현황이라 유지)')
+        ok(not [e for e in errs if 'favicon' not in e], '화면 오류 없음 %s' % errs[:2]); pg.close()
+        pg, errs = fresh(['pD']); open_detail(pg); txt = pg.inner_text('#pj-body')
+        ok('완결한 청구서가 없어 마진율을 계산하지 않습니다' in txt and '완결 전 청구 800,000원' in txt and '확정 매출(완결)' not in txt, '★ 청구서가 전부 유효(완결 없음)이면 "완결한 청구서가 없어 마진율을 계산하지 않습니다"와 완결 전 청구 800,000원이 보이고 확정 매출 줄은 없다'); pg.close()
+        pg, errs = fresh(['pA']); open_detail(pg); txt = pg.inner_text('#pj-body')
+        ok('확정 매출(완결) 1,000,000원' in txt and '완결 전 청구' not in txt, '★ 전부 완결된 프로젝트는 "확정 매출(완결) 1,000,000원"만 보이고 미완결 안내는 없다'); pg.close()
+        ok(pass_n + fail_n >= 37, '시험이 끝까지 실행됨')
         b.close()
     print('\n' + ('실패 %d건 / 통과 %d' % (fail_n, pass_n) if fail_n else '전부 통과 (%d건)' % pass_n)); sys.exit(1 if fail_n else 0)
 except Exception as e:
