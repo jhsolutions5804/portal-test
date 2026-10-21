@@ -102,5 +102,15 @@ console.log('── 영업기획 id ≠ PJT 등록 id 인 실제 모양의 데�
 }
 ok(marginExtraOf({ margin: { state: 'ok', data: { ok: true, projects: [] } } }, '').ui === 'unlinked' && marginExtraOf(null, '').ui === 'unlinked' && marginExtraOf({ margin: { state: 'loading' } }, '').ui === 'unlinked' && marginExtraOf({ margin: { state: 'denied' } }, '').ui === 'unlinked', '★ 연결된 id 가 비면 서버 상태(성공·없음·부르는 중·권한 없음)와 무관하게 unlinked 이다 — 서버 값을 아무에게나 붙이지 않는다');
 ok(!marginHtml({ targetMargin: 30 }, { billed: 1000, done: 1000, paid: 400 }, { ui: 'unlinked' }).includes('NaN') && /연결되지 않아/.test(marginHtml({ targetMargin: 30 }, { billed: 1000, done: 1000, paid: 400 }, { ui: 'unlinked' })), 'marginHtml 이 unlinked 를 그린다');
-ok(pass + fail >= 79, '시험이 끝까지 실행됨');
+console.log('── 서버와 같은 입력표(서버 functions/test/pjt-eval-margin.test.js 의 "일치 입력표"와 같은 입력·같은 기대값) — 서버가 평가용 마진을 직접 계산해도 앱 화면과 같은 값이어야 한다');
+{ const inv = (id, pjtId, amount, status, extra) => Object.assign({ id, pjtId, docType: 'invoice', amount, status }, extra || {}); const pay = (id, pjtId, amount, status, extra) => Object.assign({ id, pjtId, docType: 'payment', amount, status }, extra || {});
+  const FIX = [inv('s1', 'PA', 600, 'done'), inv('s2', 'PA', 400, 'active'), inv('s3', 'PA', 999, 'void'), pay('s4', 'PA', 400, 'done'), pay('s5', 'PA', 77, 'void')]; const g = (sm) => ({ billed: sm.billed, done: sm.done, paid: sm.paid });
+  ok(JSON.stringify(g(pjtSummary('PA', [], FIX))) === JSON.stringify({ billed: 1000, done: 600, paid: 400 }) && pjtMargin(pjtSummary('PA', [], FIX), {}).actual === 33.3, '★ 일치 입력표: 완결 600·유효 400·폐기 999·지급 400(폐기 지급 77) → 청구 누계 1,000 · 완결 600 · 지급 400 이고 실현 마진율 33.3% — 서버 시험과 같은 값');
+  ok(JSON.stringify(g(pjtSummary('PB', [], FIX))) === JSON.stringify({ billed: 0, done: 0, paid: 0 }), '다른 프로젝트의 정산서는 세지 않는다(서버와 같음)');
+  { const s = [inv('m1', 'PA', 1000, 'done', { pjtIds: ['PA', 'PB'], perPjtAmount: { PA: 700, PB: 300 } })]; ok(pjtSummary('PA', [], s).done === 700 && pjtSummary('PB', [], s).done === 300, '★ 합산 정산서: perPjtAmount(프로젝트별 몫)가 있으면 그 값 — PA 700·PB 300(서버와 같음)'); }
+  { const s = [inv('m2', 'PA', 900, 'done', { pjtIds: ['PA', 'PB', 'PC'] })]; ok(pjtSummary('PB', [], s).done === 300 && pjtSummary('PC', [], s).billed === 300, '★ 합산 정산서: perPjtAmount 가 없고 pjtIds 가 셋이면 균등 분배 300 씩(서버와 같음)'); }
+  { const s = [inv('z', 'PA', 1000, 'done', { pjtIds: ['PA', 'PB'], perPjtAmount: { PA: 0, PB: 1000 } })]; ok(pjtSummary('PA', [], s).done === 0 && pjtSummary('PB', [], s).done === 1000, 'perPjtAmount 에 0 이 있으면 0 을 그대로 쓴다(서버와 같음)'); }
+  ok(pjtMargin({ billed: 1000, done: 600, paid: 400 }, { direct: 50, ownLabor: 50 }).actual === 16.7 && pjtMargin({ billed: 1000000, done: 1000000, paid: 400000 }, { direct: 2747500, ownLabor: 100000 }).actual === -224.7 && pjtMargin({ billed: 500, done: 500, paid: 600 }, {}).actual === -20 && pjtMargin({ billed: 7, done: 7, paid: 3 }, {}).actual === 57.1, '★ 실현 마진율 값(16.7·−224.7·−20·57.1)이 서버 시험의 기대값과 같다 — 반올림까지 같은 식');
+}
+ok(pass + fail >= 85, '시험이 끝까지 실행됨');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);
