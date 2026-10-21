@@ -234,4 +234,11 @@ export function adhocSummary(rec, proj) {
   return { collab, site, exec, execRaters: rates.length, final, grade: final == null ? '' : gradeOf(final), status: final != null ? 'confirmed' : (site != null && exec != null) ? 'team_done' : any ? 'rating' : 'none' };
 }
 /** 프로젝트 성과(마진율): 목표 마진율·청구·지급·노무비·직접비를 프로젝트마다 따로 입력/집계 → 실현 마진율·차이·점수 */
-export function adhocProjectPerf(proj) { const p = proj || {}; const s = p.snapshot || {}; return projectPerformance({ target: p.target, done: s.done, paid: s.paid, direct: s.direct, ownLabor: s.ownLabor, bands: p.bands }); }
+export function adhocProjectPerf(proj) {
+  const p = proj || {}; const s = p.snapshot || {}; const v = p.saved && typeof p.saved === 'object' ? p.saved : null;
+  if (v && typeof v.actual === 'number' && Number.isFinite(v.actual)) {
+    const t = num(p.target); const actual = v.actual;
+    return { target: isFinite(t) ? t : null, actual, diff: isFinite(t) ? Math.round((actual - t) * 10) / 10 : null, score: isFinite(t) ? marginScore(p.target, actual, p.bands) : null, confirmed: true, asOf: typeof v.asOf === 'string' ? v.asOf : '', estimated: v.estimated === true };
+  }
+  return Object.assign(projectPerformance({ target: p.target, done: s.done, paid: s.paid, direct: s.direct, ownLabor: s.ownLabor, bands: p.bands }), { confirmed: false, asOf: '', estimated: false });
+}

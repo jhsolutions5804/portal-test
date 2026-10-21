@@ -4,6 +4,14 @@
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const won = (v) => num(v).toLocaleString('ko-KR');
 const okReport = (r) => !!r && typeof r === 'object' && !Array.isArray(r) && r.ok === true && Array.isArray(r.projects);
+/** 평가용 저장(서버 saveEval) 실패를 사람이 읽는 문구로 — 서버가 준 한국어 안내(완결 없음·연결 없음 등)는 그대로 보여 주고(오류 코드 표기 functions/…: 는 뗌), 권한 없음·서버 함수 없음·그 밖은 정해진 문구 */
+export function evalSaveError(e) {
+  const code = String(e && typeof e === 'object' ? e.code || '' : '').replace(/^functions\//, ''); const msg = String(e && typeof e === 'object' ? e.message || '' : '').replace(/^(functions\/)?[a-z-]+:\s*/i, '').trim();
+  if (code === 'permission-denied') return '평가용 저장은 재무회계 권한이 있는 계정만 할 수 있습니다.';
+  if (code === 'failed-precondition') return msg || '평가용으로 저장할 수 없는 상태입니다. 프로젝트의 연결과 청구서 완결 여부를 확인해 주세요.';
+  if (code === 'not-found' || code === 'unimplemented') return '평가용 저장 기능이 서버에 아직 배포되지 않았거나 프로젝트를 찾을 수 없습니다.';
+  return '평가용 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.';
+}
 /** 영업기획 프로젝트가 연결된 PJT 등록 id — 서버 마진 집계 응답(projects[].pjt)의 id 와 같은 종류다. 영업기획 id(pjt_숫자)와 다르므로 응답을 영업기획 id 로 찾으면 항상 못 찾아 0 으로 채워진다(대기열 1-2-2-④). 연결이 없으면(auto·none·빈 값·없음·글자가 아님) 빈 글자 */
 export function linkedPjtId(p) { const v = p && typeof p === 'object' && typeof p.linkPjt === 'string' ? p.linkPjt.trim() : ''; return v && v !== 'auto' && v !== 'none' ? v : ''; }
 /** 서버 응답에서 프로젝트 하나의 { direct, ownLabor } — 응답이 없거나 실패면 null(비워 두어 "잠정" 표시). 서버가 성공했는데 그 프로젝트가 없으면 0(간접비·자체 인력이 정말 없는 프로젝트) */

@@ -61,5 +61,48 @@ console.log('── 평가 스냅샷은 영업기획 정산서의 완결 청구�
   ok(A && A.snapshot.billed === 1000 && A.snapshot.done === 600 && A.snapshot.paid === 400, '★ 스냅샷에 청구 누계 1,000 · 완결 600 · 지급 400 이 들어간다(폐기 999 제외) (실제: ' + JSON.stringify(A && A.snapshot) + ')');
   { const P = adhocProjectPerf({ target: A.targetMargin, snapshot: A.snapshot }); ok(P.actual === 33.3 && P.diff === 3.3 && P.score === 5, '★ 그 스냅샷으로 점수를 매기면 실현 33.3%(완결 기준)·+3.3%p·5점이다 — 청구 기준이면 60% 라 후하게 나온다 (실제: ' + P.actual + '%·' + P.score + '점)'); }
   ok(B && B.linked === false && Object.keys(B.snapshot).length === 0 && adhocProjectPerf({ target: null, snapshot: B.snapshot }).actual === null, '영업기획에 연결되지 않은 평가 프로젝트는 스냅샷이 비어 있고 마진을 계산하지 않는다'); }
-ok(pass + fail >= 29, '시험이 끝까지 실행됨');
+console.log('── 수시평가 점수는 영업기획에서 저장한 실현 마진율을 쓴다(대기열 1-2-2-②, 대표님 2026-10-21 "B + 공헌이익")');
+{ const snap = { billed: 1000, done: 600, paid: 400 };
+  const P = adhocProjectPerf({ target: 30, snapshot: snap, saved: { actual: 4.8, asOf: '2026-10-21', estimated: true } });
+  ok(P.actual === 4.8 && P.diff === -25.2 && P.score === 1 && P.confirmed === true && P.asOf === '2026-10-21' && P.estimated === true, '★ 저장값(4.8%)이 있으면 그 값으로 계산한다 — 목표 30%와의 차이 −25.2%p·점수 1·저장값 사용(confirmed)·확인일 2026-10-21·추정 표시 (실제: ' + JSON.stringify(P) + ')');
+  const Q = adhocProjectPerf({ target: 30, snapshot: snap }); ok(Q.actual === 33.3 && Q.confirmed === false && Q.asOf === '' && Q.estimated === false, '★ 저장값이 없으면 지금처럼 스냅샷(완결 600·지급 400 → 33.3%)으로 계산하고 confirmed 거짓(잠정) — 현장경비·자체 직접노무비가 빠져 후하게 나온 값');
+  ok(P.actual !== Q.actual, '★ 저장값이 스냅샷의 잠정값을 이긴다(4.8 ≠ 33.3) — 평가 점수가 비용이 빠진 값으로 매겨지던 문제가 저장값으로 바로잡힌다');
+  for (const bad of [{ actual: 'x' }, { actual: NaN }, { actual: null }, { actual: undefined }, {}, null, undefined, 'x', 3, { actual: Infinity }]) { const R = adhocProjectPerf({ target: 30, snapshot: snap, saved: bad }); ok(R.confirmed === false && R.actual === 33.3, '저장값이 이상하면(' + JSON.stringify(bad) + ') 던지지 않고 스냅샷으로 계산한다(잠정)'); }
+  const N = adhocProjectPerf({ snapshot: snap, saved: { actual: 4.8, asOf: '2026-10-21' } }); ok(N.target === null && N.actual === 4.8 && N.diff === null && N.score === null && N.confirmed === true, '★ 목표가 없으면 저장값이 있어도 차이·점수는 계산하지 않는다(실현 마진율은 보인다)');
+  const E = adhocProjectPerf({ target: 30, snapshot: {}, saved: { actual: 12.5, asOf: '2026-10-21' } }); ok(E.actual === 12.5 && E.confirmed === true, '스냅샷이 비어 있어도(영업기획 연결 없음) 저장값이 있으면 그 값을 쓴다');
+  const B = adhocProjectPerf({ target: 8, snapshot: snap, saved: { actual: 5 }, bands: [{ min: 2, score: 5 }, { min: -Infinity, score: 2 }] }); ok(B.actual === 5 && B.diff === -3 && B.score === 2, '프로젝트별 점수 구간(bands)도 저장값에 그대로 적용된다');
+  ok(adhocProjectPerf({ target: 30, snapshot: snap, saved: { actual: 4.8, asOf: 5 } }).asOf === '' && adhocProjectPerf({ target: 30, snapshot: snap, saved: { actual: 4.8, estimated: 'yes' } }).estimated === false, '확인일이 글자가 아니면 빈 글자, 추정 표시는 true 일 때만 참이다');
+}
+console.log('── 평가가 서버에 저장된 평가용 마진을 읽어 프로젝트에 연결한다(load 를 가짜 DB·가짜 서버 호출로 실제 실행)');
+{ const { createAdhocController } = await import('../app/modules/eval/adhoc-io.js');
+  const DB = { 'pjt_registry': [{ id: 'R1', name: '평가 프로젝트 A', status: 'active' }, { id: 'R2', name: '평가 프로젝트 B', status: 'active' }], 'gihoek_projects': [{ id: 'PLAN_1', linkPjt: 'R1', targetMargin: 30 }, { id: 'PLAN_2', linkPjt: 'R2', targetMargin: 30 }], 'gihoek_estimates': [],
+    'gihoek_settlements': [{ id: 's1', pjtId: 'PLAN_1', docType: 'invoice', amount: 600, status: 'done' }, { id: 's2', pjtId: 'PLAN_1', docType: 'payment', amount: 400 }, { id: 's3', pjtId: 'PLAN_2', docType: 'invoice', amount: 900, status: 'done' }, { id: 's4', pjtId: 'PLAN_2', docType: 'payment', amount: 100 }] };
+  const col = (d, p) => ({ path: p }); const getDocs = async (c) => { const l = DB[c.path] || []; return { forEach: (f) => l.forEach((x) => f({ id: x.id, data: () => { const y = Object.assign({}, x); delete y.id; return y; } })) }; };
+  const mkCtl = (extra) => { const st = {}; const base = { db: {}, collection: col, getDocs, getDoc: async () => ({ exists: () => false }), setDoc: async () => {}, doc: (d, p) => ({ path: p }), serverTimestamp: () => 0, toast: () => {}, confirmDialog: async () => ({ ok: true }), paint: () => {}, st, ctx: { me: { uid: 'u', admin: true } } }; return { st, ctl: createAdhocController(Object.assign(base, extra || {})) }; };
+  { const calls = []; const { st, ctl } = mkCtl({ callMargin: async (d) => { calls.push(d); return { ok: true, items: [{ pjtId: 'R1', actual: 4.8, asOf: '2026-10-21', estimated: true }] }; } }); await ctl.load(); const A = st.ad.projects.find((p) => p.id === 'R1'), B = st.ad.projects.find((p) => p.id === 'R2');
+    ok(calls.length === 1 && JSON.stringify(calls[0]) === JSON.stringify({ action: 'getEval' }), '★ 서버를 한 번만, {action: getEval} 로 부른다(프로젝트마다 부르지 않음) (호출: ' + JSON.stringify(calls) + ')');
+    ok(A.evalMargin && A.evalMargin.actual === 4.8 && A.evalMargin.asOf === '2026-10-21' && A.evalMargin.estimated === true, '★ 저장값이 있는 평가 프로젝트(R1)에 evalMargin(실현 4.8%·확인일·추정)이 연결된다 — 서버 항목의 PJT id 와 평가 프로젝트 id 가 같은 종류(영업기획 id PLAN_1 과 다름)');
+    ok(B.evalMargin === null, '★ 저장값이 없는 프로젝트(R2)는 evalMargin 이 null 이다(잠정)');
+    const pa = adhocProjectPerf({ target: A.targetMargin, snapshot: A.snapshot, saved: A.evalMargin }), pb = adhocProjectPerf({ target: B.targetMargin, snapshot: B.snapshot, saved: B.evalMargin });
+    ok(pa.confirmed === true && pa.actual === 4.8 && pa.score === 1, '★ 끝에서 끝까지: 저장값이 있는 프로젝트는 완결 600·지급 400 의 잠정 33.3% 가 아니라 저장값 4.8%·점수 1 로 계산된다 (실제 ' + pa.actual + '%·' + pa.score + '점)');
+    ok(pb.confirmed === false && pb.actual === 88.9, '저장값이 없는 프로젝트(R2)는 지금처럼 스냅샷(완결 900·지급 100 → 88.9%)으로 계산하고 잠정이다');
+  }
+  for (const [label, fn] of [['서버가 오류를 던져도', async () => { throw Object.assign(new Error('x'), { code: 'functions/permission-denied' }); }], ['응답이 ok 가 아니어도', async () => ({ ok: false })], ['응답에 items 가 없어도', async () => ({ ok: true })], ['응답이 null 이어도', async () => null], ['items 의 항목 모양이 이상해도', async () => ({ ok: true, items: [null, 3, 'x', { pjtId: 'R1' }, { pjtId: 'R1', actual: 'x' }, { actual: 5 }] })]]) { const { st, ctl } = mkCtl({ callMargin: fn }); let threw = null; try { await ctl.load(); } catch (e) { threw = e; } ok(!threw && st.ad.loaded === true && st.ad.projects.length === 2 && st.ad.projects.every((p) => p.evalMargin === null), '★ ' + label + ' load 는 끝까지 진행하고 저장값은 없는 것으로 본다(평가 화면이 안 깨진다)'); }
+  { const { st, ctl } = mkCtl({}); await ctl.load(); ok(st.ad.loaded === true && st.ad.projects.every((p) => p.evalMargin === null), 'callMargin 을 주입하지 않아도(옛 호출) 동작하고 저장값은 없다'); }
+  { const { st, ctl } = mkCtl({ callMargin: async () => ({ ok: true, items: [{ pjtId: 'R1', actual: 7, asOf: '2026-10-21', estimated: false }, { pjtId: 'R1', actual: 9, asOf: '2026-10-22', estimated: false }] }) }); await ctl.load(); ok(st.ad.projects.find((p) => p.id === 'R1').evalMargin.actual === 9, '같은 프로젝트 항목이 둘이면 나중 것을 쓴다(서버는 문서 하나라 정상에서는 없는 경우)'); }
+}
+console.log('── 수시평가 화면: 저장값이 있으면 확인일과 함께 보이고, 없으면 잠정과 정정된 안내(완결 청구 기준)');
+{ const mkSt = (ev) => ({ evTab: 'adhoc', ad: Object.assign({}, st.ad, { sel: 'P1', pdraft: { exec: {} }, projects: st.ad.projects.map((p) => (p.id === 'P1' ? Object.assign({}, p, { evalMargin: ev }) : p)) }) });
+  const sv = adhocProjectHtml(mkSt({ actual: 4.8, asOf: '2026-10-21', estimated: true })); const nv = adhocProjectHtml(mkSt(null)); const svB = adhocBoardHtml(mkSt({ actual: 4.8, asOf: '2026-10-21', estimated: true })); const nvB = adhocBoardHtml(mkSt(null));
+  ok(sv.includes('실현 마진율 (확인일 2026-10-21)') && sv.includes('4.8%') && sv.includes('영업기획에서 확인·저장한 공헌이익') && sv.includes('완결 청구 기준') && !sv.includes('실현 마진율 (잠정)'), '★ 저장값이 있으면 "실현 마진율 (확인일 2026-10-21)"·4.8%·"영업기획에서 확인·저장한 공헌이익(완결 청구 기준)"이 보이고 "(잠정)"은 없다');
+  ok(sv.includes('-7.2%p') && sv.includes('1 / 5'), '★ 목표 12% 대비 −7.2%p·마진율 점수 1 / 5 — 비용이 빠진 잠정 15%(+3%p·5점)가 아니라 저장값으로 계산된다');
+  ok(/4대보험[^<]*추정/.test(sv), '저장값이 사업주 4대보험 추정을 포함하면 안내에 "4대보험 추정"이 보인다');
+  ok(nv.includes('실현 마진율 (잠정)') && nv.includes('(완결 청구 − 지급) ÷ 완결 청구') && nv.includes('현장경비·자체 직접노무비 미반영') && !nv.includes('(청구 − 지급) ÷ 청구') && !nv.includes('확인일'), '★ 저장값이 없으면 "(잠정)"과 정정된 안내 "(완결 청구 − 지급) ÷ 완결 청구 — 현장경비·자체 직접노무비 미반영"이 보이고 옛 "(청구 − 지급) ÷ 청구"는 없다');
+  ok(nv.includes('15%') && nv.includes('5 / 5'), '저장값이 없으면 지금처럼 스냅샷 잠정값(15%·5점)이 보인다');
+  ok(svB.includes('4.8%') && svB.includes('1점') && !svB.includes('15%') && !svB.includes('5점'), '★ 프로젝트 목록(보드)의 실현 마진율·점수도 저장값 기준이다(4.8%·1점)');
+  ok(nvB.includes('15%') && nvB.includes('5점'), '저장값이 없는 목록은 지금처럼 잠정값이다(15%·5점)');
+  ok(!/직접비|간접비|실투입비/.test(sv + nv + svB + nvB), '평가 화면에 옛 용어(직접비·간접비·실투입비)가 없다');
+  ok(!/6000000|4950000|360000|savedBy|이름/.test(sv), '평가 화면에 재무 상세(현장경비·자체 직접노무비 금액)나 저장한 사람이 없다 — 값(실현 마진율·확인일)만 받는다');
+}
+ok(pass + fail >= 67, '시험이 끝까지 실행됨');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

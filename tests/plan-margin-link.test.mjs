@@ -1,4 +1,4 @@
-import { marginExtra, marginNotes, marginErrorState, linkedPjtId } from '../app/modules/plan/margin-link.js';
+import { marginExtra, marginNotes, marginErrorState, linkedPjtId, evalSaveError } from '../app/modules/plan/margin-link.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const J = JSON.stringify;
 const REP = () => ({ ok: true, upTo: '', projects: [{ pjt: 'pA', overhead: 360000, laborWage: 4500000, laborInsurance: 450000, ownLabor: 4950000 }, { pjt: 'pB', overhead: 40000, laborWage: 3000000, laborInsurance: 300000, ownLabor: 3300000 }],
@@ -41,5 +41,12 @@ console.log('── 연결된 PJT id(linkedPjtId) — 마진 화면은 영업기
 ok(linkedPjtId({ id: 'pjt_9000000000001', linkPjt: 'p4ph2' }) === 'p4ph2' && linkedPjtId({ linkPjt: ' p4ph4 ' }) === 'p4ph4', '★ 연결된 프로젝트는 영업기획 id(pjt_…)가 아니라 연결된 PJT 등록 id(linkPjt)를 돌려준다');
 ok(['auto', 'none', '', '   ', null, undefined, 3, {}, [], true].every((v) => linkedPjtId({ id: 'pjt_1', linkPjt: v }) === '') && linkedPjtId(null) === '' && linkedPjtId(undefined) === '' && linkedPjtId({ id: 'pjt_1' }) === '' && linkedPjtId('x') === '', '★ 연결이 없는 모든 표현(auto·none·빈 값·공백·없음·숫자·객체·배열·불리언)과 이상한 입력은 빈 글자다 — 서버 응답을 영업기획 id 로 찾으면 항상 못 찾아 0 으로 채워지는 결함의 원인');
 ok(linkedPjtId({ id: 'pjt_9000000000001', linkPjt: 'pjt_9000000000001' }) === 'pjt_9000000000001', '연결 값이 영업기획 id 와 같은 글자여도 연결 값 그대로 돌려준다(두 id 를 섞어 쓰지 않음)');
-ok(pass + fail >= 73, '시험이 끝까지 실행됨');
+console.log('── 평가용 저장 오류 문구(evalSaveError)');
+ok(evalSaveError({ code: 'functions/permission-denied' }) === '평가용 저장은 재무회계 권한이 있는 계정만 할 수 있습니다.' && evalSaveError({ code: 'permission-denied' }) === '평가용 저장은 재무회계 권한이 있는 계정만 할 수 있습니다.', '★ 권한 없음(접두 유무 모두)은 재무회계 권한 안내다');
+ok(evalSaveError({ code: 'functions/failed-precondition', message: '완결 처리한 청구서가 없어 저장할 마진이 없습니다. 청구서를 완결 처리한 뒤 다시 저장해 주세요.' }).includes('완결 처리한 청구서가 없어') && evalSaveError({ code: 'failed-precondition', message: '이 프로젝트는 PJT 관리 항목에 연결되지 않아 현장경비·자체 직접노무비를 계산할 수 없습니다. 정보 수정에서 PJT 관리 항목을 연결해 주세요.' }).includes('PJT 관리 항목에 연결되지 않아'), '★ 서버가 준 한국어 안내(완결 없음·연결 없음)는 그대로 보여 준다 — 무엇을 해야 하는지 구체적이라서');
+ok(evalSaveError({ code: 'functions/failed-precondition', message: 'functions/failed-precondition: ' }).length > 5 && !/^functions\//.test(evalSaveError({ code: 'functions/failed-precondition', message: 'functions/failed-precondition: 안내' })), '서버 메시지 앞의 오류 코드 표기(functions/…:)는 떼고 보여 주며 비어 있으면 기본 안내를 쓴다');
+ok(/배포|찾을 수 없습니다/.test(evalSaveError({ code: 'functions/not-found' })) && /배포|찾을 수 없습니다/.test(evalSaveError({ code: 'functions/unimplemented' })), '서버 함수가 없거나 프로젝트를 못 찾으면 그 사실을 알린다');
+ok(evalSaveError({ code: 'functions/unavailable' }) === '평가용 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.' && evalSaveError(null) === '평가용 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.' && evalSaveError('x') === '평가용 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.' && evalSaveError({}) === '평가용 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.', '그 밖의 오류와 이상한 입력은 던지지 않고 기본 안내다');
+ok(!/직접비|간접비|자체 인력|실투입비/.test([evalSaveError({ code: 'permission-denied' }), evalSaveError(null), evalSaveError({ code: 'not-found' })].join('|')), '옛 용어가 없다');
+ok(pass + fail >= 82, '시험이 끝까지 실행됨');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);
