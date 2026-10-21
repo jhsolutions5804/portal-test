@@ -40,6 +40,13 @@ export const serverTimestamp = () => 0; export const deleteField = () => null; e
 export const httpsCallable = (f, name) => async (p) => {
   window.__calls.push({ fn: name, p: JSON.parse(JSON.stringify(p || {})) });
   const delay = window.__delay || 0; if (delay) await new Promise((r) => setTimeout(r, delay));
+  if (name === 'marginAct' && p.action === 'saveEval') {
+    const ed = window.__evalDelay || 0; if (ed) await new Promise((r) => setTimeout(r, ed));
+    const em = window.__evalMode || 'ok'; const flaky = em === 'flaky' && window.__calls.filter((c) => c.fn === 'marginAct' && c.p.action === 'saveEval').length < 2;
+    if (em === 'pre' || flaky) throw Object.assign(new Error('완결 처리한 청구서가 없어 저장할 마진이 없습니다. 청구서를 완결 처리한 뒤 다시 저장해 주세요.'), { code: 'functions/failed-precondition' });
+    if (em === 'perm') throw Object.assign(new Error('재무회계 권한이 있는 계정만 사용할 수 있습니다.'), { code: 'functions/permission-denied' });
+    return { data: { ok: true, pjtId: 'p4ph2', actual: em === 'mismatch' ? 4.8 : -501, asOf: '2026-10-21', estimated: true } };
+  }
   const mode = window.__mode || 'ok'; if (name === 'marginAct' && p.action === 'check') {
     const cd = window.__checkDelay || 0; if (cd) await new Promise((r) => setTimeout(r, cd));
     const cm = window.__checkMode || 'ok'; if (cm === 'error' || (cm === 'flaky' && (window.__calls.filter((c) => c.fn === 'marginAct' && c.p.action === 'check').length < 2))) throw Object.assign(new Error('대조 점검 중'), { code: 'functions/unavailable' });
@@ -72,7 +79,7 @@ try:
             pg.route('**/core/firebase.js*', lambda r: r.fulfill(status=200, content_type='text/javascript', body=FAKE_FB))
             pg.route('**/*.html', lambda r: r.fulfill(status=200, content_type='text/html', body=PAGE))
             pg.goto(BASE + '/x.html'); pg.wait_for_function('window.__ready === true', timeout=20000)
-            pg.evaluate("([m, d, pr, rp, ck]) => { window.__mode = m; window.__delay = d; window.__prefix = pr; window.__report = rp; window.__check = ck; window.__checkMode = 'ok'; window.__checkDelay = 0; }", [mode, delay, prefix, REPORT, CHECK])
+            pg.evaluate("([m, d, pr, rp, ck]) => { window.__mode = m; window.__delay = d; window.__prefix = pr; window.__report = rp; window.__check = ck; window.__checkMode = 'ok'; window.__checkDelay = 0; window.__evalMode = 'ok'; window.__evalDelay = 0; }", [mode, delay, prefix, REPORT, CHECK])
             pg.evaluate("(r) => window.__mount(document.getElementById('root'), r, { me: { uid: 'u1', name: '가짜', admin: true } })", {'segs': segs or [], 'q': {}})
             return pg, errs
         mcalls = lambda pg: [c for c in pg.evaluate('window.__calls') if c['fn'] == 'marginAct']
@@ -157,7 +164,40 @@ try:
         pg, errs = fresh(['pjt_1000005']); open_detail(pg); txt = pg.inner_text('#pj-body')
         ok('PJT 관리 항목에 연결되지 않아' in txt and '잠정' in txt and btn(pg).count() == 0 and ck(pg).count() == 0 and len(mcalls(pg)) == 0 and '현장경비 0원' not in txt, '★ 연결 없는 프로젝트(linkPjt none)는 "PJT 관리 항목에 연결되지 않아" 안내와 잠정이 보이고 [반영해서 보기]·[장부 대조] 버튼과 서버 호출이 없으며 0원으로 완결 처리하지 않는다')
         pg.close()
-        ok(pass_n + fail_n >= 40, '시험이 끝까지 실행됨')
+        print('── 평가용으로 저장(대기열 1-2-2-②): 누를 때만 서버가 계산해 저장, 결과·오류·중복 방지')
+        ev = lambda pg: pg.locator('[data-pj-act="margin-eval"]'); ecalls = lambda pg: [c for c in mcalls(pg) if c['p'].get('action') == 'saveEval']
+        def loaded(pid, **kw):
+            pg, errs = fresh([pid], **kw); open_detail(pg); btn(pg).click(); pg.wait_for_function('window.__calls.some(c => c.fn === "marginAct")', timeout=5000); pg.wait_for_timeout(450); return pg, errs
+        pg, errs = fresh(['pjt_1000001']); open_detail(pg)
+        ok(ev(pg).count() == 0, '★ 마진을 불러오기 전에는 [평가용으로 저장] 버튼이 없다')
+        btn(pg).click(); pg.wait_for_function('window.__calls.some(c => c.fn === "marginAct")', timeout=5000); pg.wait_for_timeout(450)
+        ok(len(ecalls(pg)) == 0 and ev(pg).count() == 1 and ev(pg).is_enabled() and '평가용으로 저장' in ev(pg).inner_text() and '인사평가 점수에 쓰이는 값' in pg.inner_text('#pj-body'), '★ 마진 보고가 성공해도 저장 호출은 0건(자동 저장 없음)이고 활성 [평가용으로 저장] 버튼과 안내가 보인다')
+        ev(pg).click(); pg.wait_for_function('window.__calls.some(c => c.p && c.p.action === "saveEval")', timeout=5000); pg.wait_for_timeout(500); ec = ecalls(pg); txt = pg.inner_text('#pj-body')
+        ok(len(ec) == 1 and ec[0]['p'] == {'action': 'saveEval', 'planId': 'pjt_1000001'}, '★ 버튼을 누르면 marginAct 가 정확히 1건({action: saveEval, planId: 영업기획 id})으로 나간다 — 서버가 이 id 로 PJT 연결 id 를 찾아 직접 계산한다 (실제: %s)' % ec)
+        ok('평가용으로 저장됨' in txt and '-501%' in txt and '확인일 2026-10-21' in txt and '4대보험' in txt and '다릅니다' not in txt and '다시 저장' in ev(pg).inner_text(), '★ 저장되면 "평가용으로 저장됨 — 실현 마진율 -501% · 확인일 2026-10-21 · 4대보험 추정 포함"이 보이고 화면 값과 같아 경고가 없고 [다시 저장]이 있다')
+        ok('현장경비 360,000원' in txt, '저장 뒤에도 마진 값은 그대로 보인다')
+        ok(not [e for e in errs if 'favicon' not in e], '화면 오류 없음 %s' % errs[:2]); pg.close()
+        pg, errs = loaded('pjt_1000001'); pg.evaluate("() => { window.__evalDelay = 900; }")
+        pg.evaluate("() => { const b = document.querySelector('[data-pj-act=\"margin-eval\"]'); b.click(); b.click(); b.click(); }"); pg.wait_for_timeout(250)
+        ok(not ev(pg).is_enabled() and '저장하는 중' in ev(pg).inner_text(), '★ 저장 중에는 버튼이 비활성 "저장하는 중…"이다')
+        pg.evaluate("() => { const b = document.querySelector('[data-pj-act=\"margin-eval\"]'); if (b) { b.disabled = false; b.click(); b.click(); } }"); pg.wait_for_timeout(1300)
+        ok(len(ecalls(pg)) == 1, '★ 세 번 연속·비활성을 억지로 풀어 눌러도 저장 호출은 1건이다 — 실제 %d건' % len(ecalls(pg))); pg.close()
+        pg, errs = loaded('pjt_1000001'); pg.evaluate("() => { window.__evalMode = 'mismatch'; }"); ev(pg).click(); pg.wait_for_function('window.__calls.some(c => c.p && c.p.action === "saveEval")', timeout=5000); pg.wait_for_timeout(500); txt = pg.inner_text('#pj-body')
+        ok('평가용으로 저장됨' in txt and '4.8%' in txt and '다릅니다' in txt and '-501%' in txt and '다시 불러온 뒤' in txt, '★ 서버가 저장한 값(4.8%)이 화면의 실현 마진율(-501%)과 다르면 "다릅니다 — 다시 불러온 뒤 저장해 주세요" 경고가 보인다'); pg.close()
+        pg, errs = loaded('pjt_1000001'); pg.evaluate("() => { window.__evalMode = 'flaky'; }"); ev(pg).click(); pg.wait_for_function('window.__calls.some(c => c.p && c.p.action === "saveEval")', timeout=5000); pg.wait_for_timeout(500); txt = pg.inner_text('#pj-body')
+        ok('완결 처리한 청구서가 없어 저장할 마진이 없습니다' in txt and '평가용으로 저장됨' not in txt and '다시 저장' in ev(pg).inner_text() and ev(pg).is_enabled(), '★ 서버가 거절하면(failed-precondition) 서버가 준 한국어 안내와 [다시 저장]이 보이고 "저장됨"은 말하지 않는다')
+        ev(pg).click(); pg.wait_for_timeout(600); txt = pg.inner_text('#pj-body'); ok(len(ecalls(pg)) == 2 and '평가용으로 저장됨' in txt and '완결 처리한 청구서가 없어' not in txt, '★ 다시 누르면 성공해서 저장됨이 보인다(호출 2건)')
+        ok(not [e for e in errs if 'favicon' not in e and 'precondition' not in e.lower() and '완결 처리한' not in e], '화면 오류 없음 %s' % errs[:2]); pg.close()
+        pg, errs = loaded('pjt_1000001'); pg.evaluate("() => { window.__evalMode = 'perm'; }"); ev(pg).click(); pg.wait_for_function('window.__calls.some(c => c.p && c.p.action === "saveEval")', timeout=5000); pg.wait_for_timeout(500); txt = pg.inner_text('#pj-body')
+        ok('평가용 저장은 재무회계 권한이 있는 계정만 할 수 있습니다' in txt and '평가용으로 저장됨' not in txt, '권한이 없으면 권한 안내가 보인다'); pg.close()
+        pg, errs = loaded('pjt_1000004'); txt = pg.inner_text('#pj-body')
+        ok(ev(pg).count() == 0 and '완결한 청구서가 없어 평가용으로 저장할 마진이 없습니다' in txt, '★ 완결한 청구서가 없는 연결 프로젝트는 버튼 없이 안내만 보인다'); pg.close()
+        pg, errs = fresh(['pjt_1000005']); open_detail(pg); ok(ev(pg).count() == 0 and btn(pg).count() == 0, '연결이 없는 프로젝트에는 평가 저장 버튼도 없다'); pg.close()
+        print('── 저장 뒤 다른 프로젝트로 가도')
+        pg, errs = loaded('pjt_1000001'); ev(pg).click(); pg.wait_for_timeout(600)
+        pg.locator('[data-pj-act="list"]').click(); pg.wait_for_timeout(300); pg.locator('[data-pj-open="pjt_1000002"]').click(); pg.wait_for_timeout(400); txt = pg.inner_text('#pj-body')
+        ok('평가용으로 저장됨' not in txt and len(ecalls(pg)) == 1, '★ 다른 프로젝트(B)에는 A 의 저장 결과가 보이지 않고 저장 호출은 늘지 않는다'); pg.close()
+        ok(pass_n + fail_n >= 56, '시험이 끝까지 실행됨')
         b.close()
     print('\n' + ('실패 %d건 / 통과 %d' % (fail_n, pass_n) if fail_n else '전부 통과 (%d건)' % pass_n)); sys.exit(1 if fail_n else 0)
 except Exception as e:
