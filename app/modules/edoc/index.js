@@ -1,28 +1,28 @@
-import { fetchAll, fetchOne } from './data.js?v=20261021e';
-import { listHtml, detailHtml } from './views.js?v=20261021e';
-import { tabCounts } from './logic.js?v=20261021e';
-import { buildHash, navigate } from '../../core/router.js?v=20261021e';
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261021e';
-import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261021e';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261021e';
-import { toast } from '../../core/ui.js?v=20261021e';
-import { confirmDialog } from '../../core/dialog.js?v=20261021e';
-import { loadDirectory, resetDirectory } from './directory.js?v=20261021e';
-import { act, partAct } from './api.js?v=20261021e';
-import * as C from './compose.js?v=20261021e';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261021e';
-import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261021e';
-import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261021e';
-import { kstKey } from './home-daily.js?v=20261021e';
-import { isOffDay } from '../../shared/holidays.js?v=20261021e';
-import { todoCounts } from './home-stats.js?v=20261021e';
-import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261021e';
-import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261021e';
-import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261021e';
-import * as AT from './attach-logic.js?v=20261021e';
-import { uploadFile, removeFile, openFile } from './attach.js?v=20261021e';
-import * as SL from './settings-logic.js?v=20261021e';
-import { chooserHtml, newDocLayoutHtml, composeHtml, partsHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261021e';
+import { fetchAll, fetchOne } from './data.js?v=20261021f';
+import { listHtml, detailHtml } from './views.js?v=20261021f';
+import { tabCounts } from './logic.js?v=20261021f';
+import { buildHash, navigate } from '../../core/router.js?v=20261021f';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261021f';
+import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261021f';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261021f';
+import { toast } from '../../core/ui.js?v=20261021f';
+import { confirmDialog } from '../../core/dialog.js?v=20261021f';
+import { loadDirectory, resetDirectory } from './directory.js?v=20261021f';
+import { act, partAct } from './api.js?v=20261021f';
+import * as C from './compose.js?v=20261021f';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261021f';
+import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261021f';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261021f';
+import { kstKey } from './home-daily.js?v=20261021f';
+import { isOffDay } from '../../shared/holidays.js?v=20261021f';
+import { todoCounts } from './home-stats.js?v=20261021f';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261021f';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261021f';
+import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261021f';
+import * as AT from './attach-logic.js?v=20261021f';
+import { uploadFile, removeFile, openFile } from './attach.js?v=20261021f';
+import * as SL from './settings-logic.js?v=20261021f';
+import { chooserHtml, newDocLayoutHtml, composeHtml, partsHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261021f';
 
 
 export const manifest = {
@@ -365,7 +365,7 @@ async function mountCompose(root, route, ctx) {
     const nt = ev.target.closest('[data-new-type]'); if (nt) { navigate('#/edoc/new/' + nt.getAttribute('data-new-type'), { replace: true }); return; }   // 왼쪽 목록에서 다른 종류를 고르면 오른쪽 작성 화면이 바뀐다
     const pc = ev.target.closest('[data-part],[data-parts-custom]');
     if (pc && S.partsOn) { if (S.busy) return; sync();
-      if (pc.hasAttribute('data-part')) { S.values.parts = C.partsToggle(S.values.parts, pc.getAttribute('data-part')); S.partsUi.custom = false; S.partsUi.texts = {}; S.errors = Object.assign({}, S.errors); delete S.errors.parts; refreshPreview(); return; }
+      if (pc.hasAttribute('data-part')) { S.values.parts = C.partsToggle(S.values.parts, pc.getAttribute('data-part')); S.values.pjtId = C.mainAfterToggle(S.values.parts, S.values.pjtId); S.partsMain = S.values.pjtId; const sel = root.querySelector('[data-input="pjtId"]'); if (sel) sel.value = S.values.pjtId; S.partsUi.custom = false; S.partsUi.texts = {}; S.errors = Object.assign({}, S.errors); delete S.errors.parts; refreshPreview(); return; }
       S.partsUi.custom = !S.partsUi.custom; if (S.partsUi.custom) { const pv = S.partsUi.preview; S.partsUi.texts = {}; if (pv && Array.isArray(pv.projects)) pv.projects.forEach((r) => { S.partsUi.texts[r.pjt] = String(Math.round(r.bp / 10) / 10); }); } paintParts(); return; }
     const t = ev.target.closest('[data-act],[data-kind],[data-add-item],[data-remove-item],[data-move],[data-remove],[data-pick],[data-add],[data-attach-pick],[data-attach-remove],[data-attach-open]'); if (!t) return;
     if (t.hasAttribute('data-attach-pick')) { const inp = root.querySelector('#edoc-file-input'); if (inp) inp.click(); return; }

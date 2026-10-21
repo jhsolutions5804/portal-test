@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261021e';
-import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261021e';
-import { isAnnualType } from './home-calc.js?v=20261021e';
-import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261021e';
+import { esc } from '../../core/ui.js?v=20261021f';
+import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261021f';
+import { isAnnualType } from './home-calc.js?v=20261021f';
+import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261021f';
 
 const uname = (ctx, uid) => { const u = ctx.byUid[uid]; return u ? esc(u.name) + (u.rank ? ' <small>' + esc(u.rank) + '</small>' : '') : '(알 수 없음)'; };
 
@@ -153,7 +153,7 @@ export function partsHtml(s) {
   }
   const err = s.errors && s.errors.parts ? String(s.errors.parts) : '';
   return '<div class="jh-field jh-parts" data-parts' + (err ? ' data-invalid="true"' : '') + '><span class="jh-field__label">오늘 참여한 프로젝트 *</span><div class="jh-parts__chips" role="group" aria-label="오늘 참여한 프로젝트">' + projects.map((p) => chip(p.id)).join('') + chip('common') + '</div>'
-    + '<span class="jh-field__hint">내근이어도 선택합니다. 프로젝트와 무관하면 "공통". 여럿이면 그날 일용직 공수 비율로 나뉩니다.</span>' + detail + (err ? '<span class="jh-field__error" role="alert">' + esc(err) + '</span>' : '') + '</div>';
+    + '<span class="jh-field__hint">내근이어도 선택합니다. 프로젝트와 무관하면 "공통". 여럿이면 그날 일용직 공수 비율로 나뉩니다. 위 "프로젝트"는 문서 제목에 쓰이는 대표 프로젝트(가장 많이 일한 곳)입니다.</span>' + detail + (err ? '<span class="jh-field__error" role="alert">' + esc(err) + '</span>' : '') + '</div>';
 }
 export function composeHtml(s) {
   const { type, values, errors, ctx, edit, rejectReason } = s; const t = composeType(type);

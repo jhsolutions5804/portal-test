@@ -1,4 +1,4 @@
-import { partsDefault, partsToggle, partsSyncMain, partsRatioDraft, partsForSubmit, partsPayload, MAX_PARTS, defaultValues, buildDocData, validate, partsNeedsPreview, partsFinal, partsSubmitCheck, partsSaveError, partsEnabled } from '../app/modules/edoc/compose.js';
+import { partsDefault, partsToggle, partsSyncMain, partsRatioDraft, partsForSubmit, partsPayload, MAX_PARTS, defaultValues, buildDocData, validate, partsNeedsPreview, partsFinal, partsSubmitCheck, partsSaveError, partsEnabled, mainAfterToggle, fieldsFor } from '../app/modules/edoc/compose.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const J = JSON.stringify; const P = (...a) => a.map((x) => ({ pjt: x }));
 console.log('── 칩 기본값·켜기 끄기(업무일지 "오늘 참여한 프로젝트")');
@@ -52,5 +52,25 @@ for (const bad of [null, undefined, 'x', 3, []]) { let r; try { r = partsFinal(b
 console.log('── 스위치(edoc_settings/parts) — 규칙 게시·함수 배포가 끝나기 전에는 꺼 둔다');
 ok(partsEnabled({ enabled: true }) === true && partsEnabled({ enabled: true, updatedAt: 1 }) === true, '★ { enabled: true } 만 켜짐이다');
 ok(partsEnabled(null) === false && partsEnabled(undefined) === false && partsEnabled({}) === false && partsEnabled({ enabled: false }) === false && partsEnabled({ enabled: 'true' }) === false && partsEnabled({ enabled: 1 }) === false && partsEnabled('x') === false && partsEnabled([]) === false && partsEnabled({ enabled: null }) === false, '★ 문서가 없거나 비었거나 enabled 가 참이 아니면(글자 "true"·숫자 1 포함) 꺼짐이다 — 기본 꺼짐');
-ok(pass + fail >= 62, '시험이 끝까지 실행됨');
+console.log('── 업무일지 위쪽 "공통"(내근·프로젝트 무관한 날) — 운행일지·지출결의서와 같은 방식');
+{ const f = (fieldsFor('daily') || []).find((x) => x.key === 'pjtId'); ok(f && f.allowCommon === true && f.required === true && /공통/.test(f.hint || ''), '★ 업무일지의 프로젝트 필드에 "공통"이 있고(allowCommon) 여전히 필수이며 안내문에 "공통"이 있다'); }
+{ const me = { uid: 'u1', name: '김' }; const base = Object.assign(defaultValues('daily', me, new Date('2026-10-16T03:00:00Z')), { todayWork: '작업' }); const proj = [{ id: 'pa', name: 'A', code: 'C1' }];
+  ok(!validate('daily', Object.assign({}, base, { pjtId: 'common' }), { projects: proj }).pjtId, '★ 업무일지에서 "공통"은 검증을 통과한다(진행 중 프로젝트 목록에 없어도)');
+  ok(!!validate('daily', Object.assign({}, base, { pjtId: 'zzz' }), { projects: proj }).pjtId && !validate('daily', Object.assign({}, base, { pjtId: 'pa' }), { projects: proj }).pjtId, '★ 목록에 없는 프로젝트 id(zzz)는 여전히 거절하고 목록에 있는 것은 통과한다 — "공통" 허용이 검증을 느슨하게 만들지 않는다');
+  ok(!!validate('daily', Object.assign({}, base, { pjtId: '' }), { projects: proj }).pjtId, '프로젝트를 비우면 여전히 필수 오류다');
+  const d = buildDocData('daily', Object.assign({}, base, { pjtId: 'common' }), me, { projects: proj, now: new Date('2026-10-16T03:00:00Z') });
+  ok(d.pjtId === 'common' && d.pjtCode === '공통' && d.pjtName === '프로젝트 무관(본사 경비)', '★ 공통 업무일지의 문서 본문은 지출결의서와 같다 — pjtId common · pjtCode 공통 · pjtName 프로젝트 무관(본사 경비) (실제: ' + [d.pjtId, d.pjtCode, d.pjtName].join(' / ') + ')');
+  ok(d.title.startsWith('(공통) ') && d.title.endsWith(' 업무일지') && !d.title.includes('()'), '★ 제목은 "(공통) 261016 김 업무일지"이고 빈 괄호가 없다 (실제: ' + d.title + ')');
+  const d2 = buildDocData('daily', Object.assign({}, base, { pjtId: 'pa' }), me, { projects: proj, now: new Date('2026-10-16T03:00:00Z') }); ok(d2.pjtCode === 'C1' && d2.pjtName === 'A' && d2.title.startsWith('(C1) '), '일반 프로젝트는 그대로다 — 코드 C1·이름 A·제목 "(C1) …"');
+  ok(!('parts' in d) && !('parts' in d2), '공통이어도 참여 칩은 문서 본문에 들어가지 않는다'); }
+console.log('── 칩을 바꾼 뒤 위쪽 대표 프로젝트 맞춤(mainAfterToggle)');
+ok(mainAfterToggle([], 'pa') === 'pa' && mainAfterToggle(null, 'pa') === 'pa' && mainAfterToggle(undefined, '') === '', '★ 칩이 비어 있으면 대표 프로젝트는 그대로다');
+ok(mainAfterToggle(P('pa'), 'pa') === 'pa' && mainAfterToggle(P('pa', 'pb'), 'pa') === 'pa' && mainAfterToggle(P('pb', 'pa'), 'pa') === 'pa', '★ 대표 프로젝트가 칩 안에 있으면 칩이 여럿이어도 그대로다(사용자가 정한 대표 유지)');
+ok(mainAfterToggle(P('pb'), 'pa') === 'pb' && mainAfterToggle(P('pb', 'pc'), 'pa') === 'pb', '★ 대표가 칩에서 빠지면 첫 칩으로 바뀐다(둘이 어긋나지 않게) — 칩이 하나면 그 칩');
+ok(mainAfterToggle(P('common'), 'pa') === 'common' && mainAfterToggle(P('pa'), 'common') === 'pa' && mainAfterToggle(P('common'), 'common') === 'common', '★ "공통"을 켜면 대표도 공통, 공통이던 대표는 다른 칩을 켜면 그 칩으로 바뀐다');
+ok(mainAfterToggle(P('pa'), '') === 'pa' && mainAfterToggle(P('pa', 'pb'), '') === 'pa', '대표가 아직 비어 있으면 첫 칩을 대표로 삼는다');
+for (const bad of [[null, 'pa'], ['x', 'pa'], [3, null], [[null, 3, {}], 'pa'], [[{ pjt: '' }], 'pa']]) { let r; try { r = mainAfterToggle(bad[0], bad[1]); } catch (e) { r = { threw: e.message }; } ok(typeof r === 'string', '이상한 입력(' + JSON.stringify(bad) + ')은 던지지 않고 글자를 돌려준다'); }
+ok(mainAfterToggle(P(' pb '), 'pa') === 'pb', '칩 id 앞뒤 공백은 정리한다');
+{ const a = P('pa', 'pb'); const s0 = JSON.stringify(a); mainAfterToggle(a, 'pc'); ok(JSON.stringify(a) === s0, '입력 칩 목록을 바꾸지 않는다'); }
+ok(pass + fail >= 82, '시험이 끝까지 실행됨');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

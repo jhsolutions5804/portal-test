@@ -47,7 +47,7 @@ const F = {
   ],
   daily: [
     { key: 'date', label: '작성일', type: 'date', required: true, row: 'a', layout: 'narrow-first' },
-    { key: 'pjtId', label: '프로젝트', type: 'project', required: true, row: 'a' },
+    { key: 'pjtId', label: '프로젝트', type: 'project', allowCommon: true, required: true, row: 'a', hint: '프로젝트와 무관한 날(내근 등)은 "공통"을 고릅니다.' },
     { key: 'todayWork', label: '금일 업무', type: 'textarea', ph: '오늘 한 일을 시간 순서대로 적어 주세요', required: true, row: 'b' },
     { key: 'tomorrowWork', label: '명일 계획', type: 'textarea', ph: '내일 할 일', row: 'c' },
     { key: 'issue', label: '특이사항', type: 'textarea', ph: '안전·품질·자재 이슈 등', row: 'd' }
@@ -111,6 +111,11 @@ const pid = (x) => (typeof x === 'string' ? x.trim() : '');
 const asParts = (parts) => (Array.isArray(parts) ? parts.filter((p) => p && pid(p.pjt)).map((p) => ({ pjt: pid(p.pjt) })) : []);
 /** 위에서 고른 프로젝트가 칩의 기본값 — 고르지 않았으면 빈 목록 */
 export function partsDefault(pjtId) { const id = pid(pjtId); return id ? [{ pjt: id }] : []; }
+/** 칩을 바꾼 뒤 위쪽 "프로젝트"(문서 제목·결재 목록에 쓰이는 대표 프로젝트)를 칩과 맞춘다 — 칩이 비어 있으면 그대로, 대표가 칩 안에 있으면 그대로(여럿이어도 사용자가 정한 대표 유지), 칩에서 빠졌으면 첫 칩. 문자열을 돌려준다 */
+export function mainAfterToggle(parts, main) {
+  const cur = asParts(parts); const m = pid(main); if (!cur.length) return m;
+  return cur.some((p) => p.pjt === m) ? m : cur[0].pjt;
+}
 /** 칩 켜기·끄기 — 공통은 단독, 최대 MAX_PARTS 개(끄는 것은 항상 가능), 직접 입력한 비율은 구성이 바뀌면 지운다. 새 목록을 돌려준다 */
 export function partsToggle(parts, pjt) {
   const cur = asParts(parts); const id = pid(pjt); if (!id) return cur;
@@ -252,7 +257,7 @@ function validateBase(type, values, opts) {
   }
   if (type === 'leave' && !err.startDate && !err.endDate && v.startDate > v.endDate) err.endDate = '종료일이 시작일보다 빠릅니다.';
   if (type === 'resign' && v.leaveKind === '휴직' && !err.lastDate && !err.returnDate && v.returnDate && v.returnDate <= v.lastDate) err.returnDate = '복직 예정일은 휴직 예정일 이후여야 합니다.';
-  if ((type === 'daily' || type === 'spend') && opts && opts.projects && v.pjtId && !(type === 'spend' && v.pjtId === 'common') && !opts.projects.some((p) => p.id === v.pjtId)) err.pjtId = '선택할 수 없는 프로젝트입니다.';
+  if ((type === 'daily' || type === 'spend') && opts && opts.projects && v.pjtId && v.pjtId !== 'common' && !opts.projects.some((p) => p.id === v.pjtId)) err.pjtId = '선택할 수 없는 프로젝트입니다.';
   if (type === 'leave' && v.deputyUid && opts && opts.users && !err.deputyUid) {
     const u = opts.users.find((x) => x.uid === v.deputyUid);
     if (!u || (opts.meUid && u.uid === opts.meUid)) err.deputyUid = '업무 대리인으로 지정할 수 없는 사람입니다.';
@@ -266,7 +271,7 @@ export function buildTitle(type, values, me, now) {
   const today = ymdCompact(now || new Date()); const name = (me && me.name) || '';
   const v = values || {};
   if (type === 'leave') return today + ' ' + name + ' ' + (v.leaveType || '연차') + ' 신청서';
-  if (type === 'daily') { const d = String(v.date || '').replace(/-/g, '').slice(2); return '(' + (v.pjtCode || '') + ') ' + d + ' ' + name + ' 업무일지'; }
+  if (type === 'daily') { const d = String(v.date || '').replace(/-/g, '').slice(2); return '(' + (v.pjtId === 'common' ? '공통' : (v.pjtCode || '')) + ') ' + d + ' ' + name + ' 업무일지'; }
   if (type === 'drive') return String(v.date || '').replace(/-/g, '') + ' ' + name + ' 차량 운행일지' + (v.vehicleName ? ' (' + v.vehicleName + ')' : '');
   if (type === 'cert') return today + ' ' + name + ' 재직증명서';
   if (type === 'attend') return String(v.date || '').replace(/-/g, '') + ' ' + name + ' 근태 기록 수정 요청';
@@ -288,7 +293,7 @@ export function buildDocData(type, values, me, ctx) {
   else if (type === 'resign') Object.assign(d, { leaveKind: text('leaveKind'), lastDate: v.lastDate, returnDate: v.leaveKind === '휴직' ? (v.returnDate || '') : '', reason: text('reason') });
   else if (type === 'cert') Object.assign(d, { purpose: text('purpose'), language: text('language'), copies: num(v.copies) });
   else if (type === 'attend') Object.assign(d, { date: v.date, checkIn: v.checkIn, checkOut: v.checkOut, reason: text('reason'), workerId: (ctx && ctx.worker && ctx.worker.id) || '', workHours: attendHoursOf(v.checkIn, v.checkOut), breakMinutes: 120 });
-  else if (type === 'daily') Object.assign(d, { date: v.date, pjtId: v.pjtId, pjtCode: proj ? proj.pjtCode || proj.code || '' : '', pjtName: proj ? proj.name || '' : '', todayWork: String(v.todayWork || '').trim(), tomorrowWork: String(v.tomorrowWork || '').trim(), issue: String(v.issue || '').trim() });
+  else if (type === 'daily') Object.assign(d, { date: v.date, pjtId: v.pjtId, pjtCode: v.pjtId === 'common' ? '공통' : proj ? proj.pjtCode || proj.code || '' : '', pjtName: v.pjtId === 'common' ? '프로젝트 무관(본사 경비)' : proj ? proj.name || '' : '', todayWork: String(v.todayWork || '').trim(), tomorrowWork: String(v.tomorrowWork || '').trim(), issue: String(v.issue || '').trim() });
   else if (type === 'drive') {
     const veh = (ctx && ctx.vehicles || []).find((x) => x.id === v.vehicleId); const a = num(v.odoStart), b = num(v.odoEnd); const dist = b >= a ? b - a : 0;
     const biz = v.kind === '비업무용' ? 0 : (v.bizKm === '' || v.bizKm == null ? dist : Math.min(num(v.bizKm), dist));
