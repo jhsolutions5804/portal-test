@@ -1,4 +1,4 @@
-import { marginExtra, marginNotes, marginErrorState } from '../app/modules/plan/margin-link.js';
+import { marginExtra, marginNotes, marginErrorState, linkedPjtId } from '../app/modules/plan/margin-link.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const J = JSON.stringify;
 const REP = () => ({ ok: true, upTo: '', projects: [{ pjt: 'pA', overhead: 360000, laborWage: 4500000, laborInsurance: 450000, ownLabor: 4950000 }, { pjt: 'pB', overhead: 40000, laborWage: 3000000, laborInsurance: 300000, ownLabor: 3300000 }],
@@ -37,5 +37,9 @@ console.log('── 장부 대조(check)와 항상 보이는 안내');
 { const n = marginNotes(REP(), { ok: true, unmarked: { count: 0, amount: 0 }, payslipCheck: [{ month: '2026-07', ledger: 8000000, payslips: 9000000 }, { month: '2026-08', ledger: 0, payslips: 700000 }] }).join('|'); ok(n.includes('2개') && n.includes('2026-07') && n.includes('2026-08') && n.includes('5110') && !n.includes('이상 없음'), '★ 급여명세서와 장부 5110 이 다른 달을 월 이름과 함께 알리고 "이상 없음"은 말하지 않는다'); }
 { for (const bad of [null, undefined, {}, { ok: false }, 'x', 3, { ok: true }]) { const n = marginNotes(REP(), bad); ok(n.some((x) => x.includes('월 마감 점검')) && !n.some((x) => x.includes('이상 없음')), '이상한 대조 결과(' + J(bad) + ')는 없는 것으로 보고 항상 보이는 안내를 쓴다 — "이상 없음"을 만들어 내지 않는다'); } }
 { ok(J(marginNotes(null, { ok: true, unmarked: { count: 3, amount: 1 }, payslipCheck: [] })) === J([]), '보고가 없거나 실패면 대조가 있어도 문구가 없다(잠정 경고가 대신 나온다)'); }
+console.log('── 연결된 PJT id(linkedPjtId) — 마진 화면은 영업기획 id 가 아니라 이 id 로 서버 응답을 찾는다(대기열 1-2-2-④)');
+ok(linkedPjtId({ id: 'pjt_9000000000001', linkPjt: 'p4ph2' }) === 'p4ph2' && linkedPjtId({ linkPjt: ' p4ph4 ' }) === 'p4ph4', '★ 연결된 프로젝트는 영업기획 id(pjt_…)가 아니라 연결된 PJT 등록 id(linkPjt)를 돌려준다');
+ok(['auto', 'none', '', '   ', null, undefined, 3, {}, [], true].every((v) => linkedPjtId({ id: 'pjt_1', linkPjt: v }) === '') && linkedPjtId(null) === '' && linkedPjtId(undefined) === '' && linkedPjtId({ id: 'pjt_1' }) === '' && linkedPjtId('x') === '', '★ 연결이 없는 모든 표현(auto·none·빈 값·공백·없음·숫자·객체·배열·불리언)과 이상한 입력은 빈 글자다 — 서버 응답을 영업기획 id 로 찾으면 항상 못 찾아 0 으로 채워지는 결함의 원인');
+ok(linkedPjtId({ id: 'pjt_9000000000001', linkPjt: 'pjt_9000000000001' }) === 'pjt_9000000000001', '연결 값이 영업기획 id 와 같은 글자여도 연결 값 그대로 돌려준다(두 id 를 섞어 쓰지 않음)');
 ok(pass + fail >= 73, '시험이 끝까지 실행됨');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

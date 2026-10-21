@@ -4,6 +4,8 @@
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const won = (v) => num(v).toLocaleString('ko-KR');
 const okReport = (r) => !!r && typeof r === 'object' && !Array.isArray(r) && r.ok === true && Array.isArray(r.projects);
+/** 영업기획 프로젝트가 연결된 PJT 등록 id — 서버 마진 집계 응답(projects[].pjt)의 id 와 같은 종류다. 영업기획 id(pjt_숫자)와 다르므로 응답을 영업기획 id 로 찾으면 항상 못 찾아 0 으로 채워진다(대기열 1-2-2-④). 연결이 없으면(auto·none·빈 값·없음·글자가 아님) 빈 글자 */
+export function linkedPjtId(p) { const v = p && typeof p === 'object' && typeof p.linkPjt === 'string' ? p.linkPjt.trim() : ''; return v && v !== 'auto' && v !== 'none' ? v : ''; }
 /** 서버 응답에서 프로젝트 하나의 { direct, ownLabor } — 응답이 없거나 실패면 null(비워 두어 "잠정" 표시). 서버가 성공했는데 그 프로젝트가 없으면 0(간접비·자체 인력이 정말 없는 프로젝트) */
 export function marginExtra(report, pid) {
   if (!okReport(report) || typeof pid !== 'string' || !pid) return null;

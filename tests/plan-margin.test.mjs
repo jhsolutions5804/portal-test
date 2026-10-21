@@ -4,7 +4,7 @@ const VER = (fs0.readFileSync(new URL('../app/modules/plan/projects.js', import.
 const { pjtMargin, pjtSummary } = await import('../app/shared/pjt-summary.js?v=' + VER);
 import { projNew, projToForm, projectBuild, pjtMargin as pjtMarginViaPlan } from '../app/modules/plan/projects.js';
 import { projectMargin } from '../app/modules/eval/evaluation.js';
-import { marginHtml, marginExtraOf } from '../app/modules/plan/projects-view.js';
+import { marginHtml, marginExtraOf, projectDetailHtml } from '../app/modules/plan/projects-view.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 // ── 마진율 계산(공용: 영업기획과 인사평가가 같은 함수)
 const pm = (a, b) => { const r = pjtMargin(a, b); return { target: r.target, actual: r.actual, diff: r.diff }; };
@@ -27,7 +27,7 @@ const mh = marginHtml({ targetMargin: 12 }, { billed: 1000, done: 1000, paid: 85
 ok(mh.includes('목표 마진율') && mh.includes('12%') && mh.includes('실현 마진율') && mh.includes('15%') && mh.includes('목표 대비') && mh.includes('+3%p') && mh.includes('data-tone="pos"') && mh.includes('인사평가(수시평가)'), '★ 프로젝트 요약의 마진율 줄: 목표 12% · 실현 15% · 목표 대비 +3%p(초록), 인사평가가 이 값을 읽는다는 안내');
 const mn = marginHtml({ targetMargin: 20 }, { billed: 1000, done: 1000, paid: 900 }), m0 = marginHtml({}, { billed: 1000, done: 1000, paid: 850 }), me = marginHtml({ targetMargin: 12 }, { billed: 0, done: 0, paid: 0 });
 ok(mn.includes('-10%p') && mn.includes('data-tone="neg"') && m0.includes('미입력') && !m0.includes('%p') && me.includes('>-<') && !/\+\d+(\.\d+)?%p/.test(me), '목표에 못 미치면 −10%p(빨강), 목표 미입력이면 "미입력"과 차이 없음, 청구가 없으면 계산 안 함(−)');
-ok(vw.includes("inp('targetMargin', f.targetMargin") && vw.includes('목표 마진율(%) — 이 프로젝트의 견적 시점 목표') && vw.includes('프로젝트마다 따로 정합니다') && vw.includes("' + marginHtml(p, s, marginExtraOf(st, p.id)) + '"), '프로젝트 등록·수정 폼에 목표 마진율 입력칸, 상세 요약에 마진율 줄이 연결됨');
+ok(vw.includes("inp('targetMargin', f.targetMargin") && vw.includes('목표 마진율(%) — 이 프로젝트의 견적 시점 목표') && vw.includes('프로젝트마다 따로 정합니다') && vw.includes("' + marginHtml(p, s, marginExtraOf(st, linkedPjtId(p))) + '") && !vw.includes('marginExtraOf(st, p.id)'), '프로젝트 등록·수정 폼에 목표 마진율 입력칸, 상세 요약에 마진율 줄이 연결됨 — 서버 응답은 영업기획 id(p.id)가 아니라 연결된 PJT id(linkedPjtId)로 찾고 옛 호출은 남아 있지 않다');
 const ix = fs.readFileSync(new URL('../app/modules/plan/index.js', import.meta.url), 'utf8');
 ok(ix.includes('data.clearTarget') && ix.includes('data.targetMargin = deleteField()') && /import \{[^}]*deleteField[^}]*\} from '\.\.\/\.\.\/core\/firebase\.js/.test(ix) && ix.includes("setDoc(doc(db, 'gihoek_projects', r.id), data, { merge: true })"), '★ 저장 코드: 목표를 비우면 deleteField 로 이전 값 삭제(deleteField 를 가져옴), 수정 저장은 merge 그대로 — 다른 필드는 건드리지 않음');
 const mj = marginHtml({ targetMargin: 12 }, { billed: 1000, done: 1000, paid: 850 }), mc = marginHtml({ targetMargin: 12 }, { billed: 1000, done: 1000, paid: 700 }, { direct: 100, ownLabor: 50 }), mp = marginHtml({ targetMargin: 12 }, { billed: 1000, done: 1000, paid: 700 }, { direct: 100 });
@@ -84,5 +84,23 @@ console.log('── 마진 화면: 확정 매출과 미완결 안내');
 { const h = marginHtml({ targetMargin: 30 }, { billed: 0, done: 0, paid: 0 }); ok(!h.includes('완결 전 청구') && !h.includes('NaN') && !h.includes('undefined'), '청구서가 전혀 없으면 미완결 안내가 없고 NaN·undefined 도 없다'); }
 { const h = marginHtml({ targetMargin: 30 }, { billed: 1000, paid: 400 }); ok(!h.includes('NaN') && !h.includes('undefined') && h.includes('완결한 청구서가 없어'), '완결 정보가 없는 옛 입력도 던지지 않고 "완결한 청구서가 없어"로 보인다(청구로 대신 계산하지 않음)'); }
 ok(pjtMargin({ billed: 1000, done: '600', paid: 400 }, {}).actual === null && pjtMargin({ billed: 1000, done: NaN, paid: 400 }, {}).actual === null && pjtMargin({ billed: 1000, done: null, paid: 400 }, {}).actual === null && pjtMargin({ billed: 1000, done: Infinity, paid: 400 }, {}).actual !== undefined, '완결이 숫자 모양 글자("600")·NaN·null 이어도 청구로 대신 계산하지 않고 숫자만 인정한다(null)');
-ok(pass + fail >= 69, '시험이 끝까지 실행됨');
+console.log('── 영업기획 id ≠ PJT 등록 id 인 실제 모양의 데이터로 상세 화면 시험(대기열 1-2-2-④ — 시험 데이터가 두 id 를 같은 값으로 써서 연결 결함을 못 잡았던 것을 바로잡는다)');
+{ const PA = 'pjt_9000000000001', PB = 'pjt_9000000000002', PC = 'pjt_9000000000003', PD = 'pjt_9000000000004';
+  const SET = [{ id: 's1', pjtId: PA, docType: 'invoice', amount: 1000000, status: 'done' }, { id: 's2', pjtId: PA, docType: 'payment', amount: 400000, status: 'done' }, { id: 's3', pjtId: PB, docType: 'invoice', amount: 500000, status: 'done' }, { id: 's4', pjtId: PC, docType: 'invoice', amount: 800000, status: 'done' }, { id: 's5', pjtId: PD, docType: 'invoice', amount: 600000, status: 'done' }];
+  const PRJ = [{ id: PA, code: 'P1', name: 'FCU 설치', type: 'fcu', status: 'run', linkPjt: 'p4ph2', targetMargin: 30 }, { id: PB, code: 'P2', name: 'EHU 설치', type: 'fcu', status: 'run', linkPjt: 'p4ph4', targetMargin: 30 }, { id: PC, code: 'P3', name: '연결 없음', type: 'general', status: 'run', linkPjt: 'none', targetMargin: 30 }, { id: PD, code: 'P4', name: '자동 연결 대기', type: 'general', status: 'run', targetMargin: 30 }];
+  const REPORT = { ok: true, upTo: '', projects: [{ pjt: 'p4ph2', overhead: 2747500, ownLabor: 100000 }, { pjt: 'p4ph4', overhead: 117300, ownLabor: 0 }], unallocatedLabor: [], unlinked: { count: 0, amount: 0 }, estimated: true, employerRate: 0.1 };
+  const detail = (sel, margin) => projectDetailHtml({ projects: PRJ, estimates: [], settlements: SET, sel, page: { est: 1, inv: 1, pay: 1 }, margin: margin === undefined ? { state: 'ok', data: REPORT } : margin });
+  const hA = detail(PA);
+  ok(hA.includes('현장경비 2,747,500원') && hA.includes('자체 직접노무비 100,000원') && !hA.includes('현장경비 0원'), '★ 영업기획 id(pjt_…)와 PJT id(p4ph2)가 다른 실제 모양에서도 서버 응답의 현장경비 2,747,500원·자체 직접노무비 100,000원이 보인다 — 수정 전에는 항상 0원으로 채워졌다 (실제 화면 일부: ' + (hA.match(/프로젝트 원가[^<]*/) || [''])[0] + ')');
+  ok(hA.includes('프로젝트 원가 3,247,500원') && hA.includes('= 외주·자재(지급예정서) 400,000원 + 현장경비 2,747,500원 + 자체 직접노무비 100,000원'), '★ 프로젝트 원가 = 지급 400,000 + 현장경비 2,747,500 + 자체 직접노무비 100,000 = 3,247,500원이 화면 식과 맞는다');
+  ok(hA.includes('-224.7%') && !hA.includes('-224.8%'), '실현 마진율 = (완결 1,000,000 − 3,247,500) ÷ 1,000,000 = −224.75% 이고 JS 반올림(Math.round 는 .5 를 0 에 가까운 쪽으로)으로 -224.7% 가 보인다(평가 계산과 같은 식이라 앞선 일치 시험과 맞는다)');
+  ok(detail(PB).includes('현장경비 117,300원') && !detail(PB).includes('현장경비 2,747,500원'), '★ 다른 프로젝트(EHU)는 자기 연결 id(p4ph4)의 현장경비 117,300원을 보고 다른 프로젝트 값을 섞지 않는다');
+  { const h = detail(PC); ok(h.includes('PJT 관리 항목에 연결되지 않아') && h.includes('잠정') && !h.includes('현장경비 0원') && !/data-pj-act="margin-load"/.test(h) && !/data-pj-act="margin-check"/.test(h), '★ linkPjt 가 none 이면 0원으로 완결 처리하지 않고 "PJT 관리 항목에 연결되지 않아" 안내와 잠정을 보이며 불러오기·대조 버튼은 없다'); }
+  { const h = detail(PD); ok(h.includes('PJT 관리 항목에 연결되지 않아') && h.includes('잠정') && !h.includes('현장경비 0원'), '★ linkPjt 가 아예 없는 옛 프로젝트도 같은 안내와 잠정이다'); }
+  { const h = detail(PA, { state: 'ok', data: Object.assign({}, REPORT, { projects: [{ pjt: 'zzz', overhead: 9, ownLabor: 9 }] }) }); ok(h.includes('현장경비 0원') && !h.includes('잠정:'), '연결된 PJT id 가 서버 응답에 없으면 0원(현장경비가 정말 없는 프로젝트)으로 완결로 본다 — 이 규칙은 그대로다'); }
+  { const h = detail(PA, null); ok(h.includes('data-pj-act="margin-load"') && h.includes('잠정'), '연결된 프로젝트는 아직 안 불렀으면 [반영해서 보기] 버튼과 잠정이 보인다(연결 안 된 프로젝트와 구분)'); }
+}
+ok(marginExtraOf({ margin: { state: 'ok', data: { ok: true, projects: [] } } }, '').ui === 'unlinked' && marginExtraOf(null, '').ui === 'unlinked' && marginExtraOf({ margin: { state: 'loading' } }, '').ui === 'unlinked' && marginExtraOf({ margin: { state: 'denied' } }, '').ui === 'unlinked', '★ 연결된 id 가 비면 서버 상태(성공·없음·부르는 중·권한 없음)와 무관하게 unlinked 이다 — 서버 값을 아무에게나 붙이지 않는다');
+ok(!marginHtml({ targetMargin: 30 }, { billed: 1000, done: 1000, paid: 400 }, { ui: 'unlinked' }).includes('NaN') && /연결되지 않아/.test(marginHtml({ targetMargin: 30 }, { billed: 1000, done: 1000, paid: 400 }, { ui: 'unlinked' })), 'marginHtml 이 unlinked 를 그린다');
+ok(pass + fail >= 79, '시험이 끝까지 실행됨');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

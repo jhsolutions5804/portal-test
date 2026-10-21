@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261021g';
-import { TYPE_LABEL, SETTLE_TYPE_LABEL, filterProjects, paginate, pjtSummary, pjtMargin, pjtEstimates, pjtSettlements, estTotal, estTag, settleState, settleAmountForPjt, linkOptions, sortProjects } from './projects.js?v=20261021g';
-import { marginExtra, marginNotes } from './margin-link.js?v=20261021g';
+import { esc } from '../../core/ui.js?v=20261021h';
+import { TYPE_LABEL, SETTLE_TYPE_LABEL, filterProjects, paginate, pjtSummary, pjtMargin, pjtEstimates, pjtSettlements, estTotal, estTag, settleState, settleAmountForPjt, linkOptions, sortProjects } from './projects.js?v=20261021h';
+import { marginExtra, marginNotes, linkedPjtId } from './margin-link.js?v=20261021h';
 const won = (n) => (Math.round(Number(n) || 0)).toLocaleString('ko-KR');
 const signed = (n) => (n >= 0 ? '+' : '') + won(n);
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -22,6 +22,7 @@ const setRow = (s, pid) => { const st = settleState(s); const multi = !!(s.pjtId
 /** 서버 마진 집계(st.margin)에서 프로젝트 하나의 marginHtml 입력(extra)을 만든다. 서버 집계는 장부·급여명세서를 읽어서 무거우므로 자동으로 부르지 않고 [반영해서 보기]를 눌렀을 때만 부른다.
  * ui: idle(아직 안 누름)·loading·denied(권한 없음)·error·ok. 값(direct·ownLabor·notes)은 ok 일 때만 있고 나머지는 비워 지급 기준 "잠정"이 유지된다 — 틀린 값을 확정처럼 보이지 않게 */
 export function marginExtraOf(st, pid) {
+  if (typeof pid !== 'string' || !pid) return { ui: 'unlinked' };
   const m = st && typeof st === 'object' ? st.margin : null; const ST = m && typeof m === 'object' ? m.state : '';
   if (ST === 'loading') return { ui: 'loading' };
   if (ST === 'denied') return { ui: 'denied' };
@@ -50,10 +51,11 @@ export function marginHtml(p, s, extra) {
   const btnHtml = (label, off) => '<button type="button" class="jh-btn" data-variant="ghost" data-pj-act="margin-load"' + (off ? ' disabled' : '') + '>' + label + '</button>';
   const ckBtn = (label, off) => '<button type="button" class="jh-btn" data-variant="ghost" data-pj-act="margin-check"' + (off ? ' disabled' : '') + '>' + label + '</button>';
   const ckHtml = ex.checkUi === 'loading' ? '<div class="jh-field__hint">' + ckBtn('대조하는 중…', true) + '</div>' : ex.checkUi === 'ok' ? '<div class="jh-field__hint">' + ckBtn('다시 대조', false) + '</div>' : ex.checkUi === 'error' ? '<div class="jh-field__hint" data-tone="warn">장부 대조를 불러오지 못했습니다.</div><div class="jh-field__hint">' + ckBtn('다시 대조', false) + '</div>' : ex.checkUi === 'idle' ? '<div class="jh-field__hint">' + ckBtn('장부 대조 확인', false) + ' 전표 전체를 읽어 표시가 없는 현장경비와 급여명세서·장부 5110 을 대조합니다.</div>' : '';
+  const unlinkedLine = ex.ui === 'unlinked' ? '<div class="jh-field__hint" data-tone="warn">이 프로젝트는 PJT 관리 항목에 연결되지 않아 현장경비·자체 직접노무비를 계산할 수 없습니다(지급 기준 잠정 값). 정보 수정에서 PJT 관리 항목을 연결하면 반영됩니다.</div>' : '';
   const ctl = ex.ui === 'idle' ? '<div class="jh-field__hint">' + btnHtml('현장경비·자체 직접노무비 반영해서 보기', false) + ' 장부와 급여명세서를 읽어 계산합니다(재무회계 권한자).</div>' : ex.ui === 'loading' ? '<div class="jh-field__hint">' + btnHtml('불러오는 중…', true) + '</div>' : ex.ui === 'denied' ? '<div class="jh-field__hint">현장경비·자체 직접노무비 반영은 재무회계 권한이 있는 계정만 볼 수 있습니다.</div>' : ex.ui === 'error' ? '<div class="jh-field__hint">' + btnHtml('다시 불러오기', false) + '</div>' : ex.ui === 'ok' ? '<div class="jh-field__hint">' + btnHtml('다시 불러오기', false) + '</div>' + ckHtml : '';
   const notes = Array.isArray(ex.notes) && ex.notes.length ? '<ul class="jh-field__hint" data-margin-notes>' + ex.notes.map((n) => '<li>' + esc(n) + '</li>').join('') + '</ul>' : '';
   const warn = complete ? '' : '<div class="jh-field__hint" data-tone="warn">잠정: 현장경비(전표의 프로젝트 표시)·자체 직접노무비가 아직 반영되지 않아 <strong>외주·자재(지급예정서) 기준</strong>입니다. 실제 마진율은 이보다 낮을 수 있습니다. 평가에 쓰기 전에 연결 여부를 확인하세요.</div>';
-  return '<div class="jh-plan__sum jh-plan__sum--3">' + sumCell('목표 마진율', m.target == null ? '미입력' : pct(m.target)) + sumCell('실현 마진율' + (complete ? '' : ' (잠정)'), pct(m.actual)) + sumCell('목표 대비', diff, tone) + '</div>' + costLine + salesLine + openLine + warn + loadErr + notes + ctl + '<div class="jh-field__hint">실현 마진율 = (청구 − 프로젝트 원가) ÷ 청구 · 팀 공수 노무비는 지급예정서에 이미 들어 있어 따로 빼지 않습니다 · 목표는 "정보 수정"에서 프로젝트마다 입력합니다. 인사평가(수시평가)의 프로젝트 성과는 이 값을 읽어 점수를 냅니다.</div>';
+  return '<div class="jh-plan__sum jh-plan__sum--3">' + sumCell('목표 마진율', m.target == null ? '미입력' : pct(m.target)) + sumCell('실현 마진율' + (complete ? '' : ' (잠정)'), pct(m.actual)) + sumCell('목표 대비', diff, tone) + '</div>' + costLine + salesLine + openLine + warn + loadErr + unlinkedLine + notes + ctl + '<div class="jh-field__hint">실현 마진율 = (청구 − 프로젝트 원가) ÷ 청구 · 팀 공수 노무비는 지급예정서에 이미 들어 있어 따로 빼지 않습니다 · 목표는 "정보 수정"에서 프로젝트마다 입력합니다. 인사평가(수시평가)의 프로젝트 성과는 이 값을 읽어 점수를 냅니다.</div>';
 }
 /** 프로젝트 상세(허브): 기본정보·요약·견적·청구·지급 */
 export function projectDetailHtml(st) {
@@ -61,7 +63,7 @@ export function projectDetailHtml(st) {
   const s = pjtSummary(p.id, st.estimates, st.settlements); const ests = paginate(pjtEstimates(st.estimates, p.id), st.page.est), inv = paginate(pjtSettlements(st.settlements, p.id, 'invoice'), st.page.inv), pay = paginate(pjtSettlements(st.settlements, p.id, 'payment'), st.page.pay);
   const info = [['현장명', p.site], ['발주처', p.client], ['시공사', p.contractor], ['협력사', p.partner]].filter((x) => x[1]).map((x) => '<div class="jh-field__hint">' + esc(x[0]) + ': ' + esc(x[1]) + '</div>').join('');
   const head = '<div class="jh-plan__pad"><div class="jh-plan__line"><strong class="jh-plan__big">' + esc(p.code || '-') + '</strong>' + chip(TYPE_LABEL[p.type] || '일반(품목)', '') + statusChip(p) + '</div><div>' + esc(p.name || '') + '</div>' + info + '<div class="jh-plan__bar"><span class="jh-plan__line"><button type="button" class="jh-btn" data-variant="secondary" data-pj-act="edit">정보 수정</button><button type="button" class="jh-btn" data-variant="ghost" data-pj-act="del">삭제</button></span></div></div>';
-  const sum = '<div class="jh-plan__pad"><div class="jh-plan__sum jh-plan__sum--5">' + sumCell('견적 합계', won(s.est)) + sumCell('청구 누계', won(s.billed)) + sumCell('지급 누계', won(s.paid)) + sumCell('미수금', won(s.due), s.due > 0 ? 'neg' : '') + sumCell('실현 손익', signed(s.profit), s.profit >= 0 ? 'pos' : 'neg') + '</div><div class="jh-field__hint">실현 손익 = 청구 − 지급 · 미수금 = 청구 − 완결된 청구</div>' + marginHtml(p, s, marginExtraOf(st, p.id)) + '</div>';
+  const sum = '<div class="jh-plan__pad"><div class="jh-plan__sum jh-plan__sum--5">' + sumCell('견적 합계', won(s.est)) + sumCell('청구 누계', won(s.billed)) + sumCell('지급 누계', won(s.paid)) + sumCell('미수금', won(s.due), s.due > 0 ? 'neg' : '') + sumCell('실현 손익', signed(s.profit), s.profit >= 0 ? 'pos' : 'neg') + '</div><div class="jh-field__hint">실현 손익 = 청구 − 지급 · 미수금 = 청구 − 완결된 청구</div>' + marginHtml(p, s, marginExtraOf(st, linkedPjtId(p))) + '</div>';
   const estBody = '<div class="jh-plan__pad">' + (ests.items.length ? ests.items.map(estRow).join('') : '<div class="jh-empty">아직 견적이 없습니다.</div>') + pager(ests, 'est') + '</div>';
   const invBody = '<div class="jh-plan__pad">' + (inv.items.length ? inv.items.map((x) => setRow(x, p.id)).join('') : '<div class="jh-empty">아직 청구서가 없습니다.</div>') + pager(inv, 'inv') + '</div>';
   const payBody = '<div class="jh-plan__pad">' + (pay.items.length ? pay.items.map((x) => setRow(x, p.id)).join('') : '<div class="jh-empty">아직 지급예정서가 없습니다.</div>') + pager(pay, 'pay') + '</div>';
