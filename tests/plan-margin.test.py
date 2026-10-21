@@ -35,7 +35,12 @@ export const serverTimestamp = () => 0; export const deleteField = () => null; e
 export const httpsCallable = (f, name) => async (p) => {
   window.__calls.push({ fn: name, p: JSON.parse(JSON.stringify(p || {})) });
   const delay = window.__delay || 0; if (delay) await new Promise((r) => setTimeout(r, delay));
-  const mode = window.__mode || 'ok'; if (name === 'marginAct') {
+  const mode = window.__mode || 'ok'; if (name === 'marginAct' && p.action === 'check') {
+    const cd = window.__checkDelay || 0; if (cd) await new Promise((r) => setTimeout(r, cd));
+    const cm = window.__checkMode || 'ok'; if (cm === 'error' || (cm === 'flaky' && (window.__calls.filter((c) => c.fn === 'marginAct' && c.p.action === 'check').length < 2))) throw Object.assign(new Error('대조 점검 중'), { code: 'functions/unavailable' });
+    return { data: window.__check };
+  }
+  if (name === 'marginAct') {
     if (mode === 'denied') throw Object.assign(new Error('재무회계 권한이 있는 계정만 사용할 수 있습니다.'), { code: window.__prefix === false ? 'permission-denied' : 'functions/permission-denied' });
     if (mode === 'error' || (mode === 'flaky' && (window.__calls.filter((c) => c.fn === 'marginAct').length < 2))) throw Object.assign(new Error('서버 점검 중'), { code: 'functions/unavailable' });
     return { data: window.__report };
@@ -46,7 +51,8 @@ export const httpsCallable = (f, name) => async (p) => {
 PAGE = """<!doctype html><meta charset=utf-8><link rel=stylesheet href="%(b)s/theme/tokens.css"><link rel=stylesheet href="%(b)s/theme/base.css"><link rel=stylesheet href="%(b)s/theme/components.css"><link rel=stylesheet href="%(b)s/theme/plan.css"><div id=root></div>
 <script type=module>import { mountProjects } from "%(b)s/modules/plan/index.js?v=%(v)s"; window.__mount = mountProjects; window.__ready = true;</script>""" % {'b': BASE, 'v': VER}
 REPORT = {'ok': True, 'upTo': '', 'projects': [{'pjt': 'pA', 'overhead': 360000, 'laborWage': 4500000, 'laborInsurance': 450000, 'ownLabor': 4950000}, {'pjt': 'pB', 'overhead': 40000, 'laborWage': 3000000, 'laborInsurance': 300000, 'ownLabor': 3300000}],
-  'common': {'wage': 1500000, 'insurance': 150000, 'labor': 1650000}, 'unmarked': {'count': 3, 'amount': 1200000}, 'unallocatedLabor': [], 'payslipCheck': [], 'unlinked': {'count': 0, 'amount': 0}, 'participation': {'days': 4, 'ignoredDays': 0}, 'warnings': {}, 'estimated': True, 'employerRate': 0.1}
+  'common': {'wage': 1500000, 'insurance': 150000, 'labor': 1650000}, 'unallocatedLabor': [], 'unlinked': {'count': 0, 'amount': 0}, 'participation': {'days': 4, 'ignoredDays': 0}, 'warnings': {}, 'estimated': True, 'employerRate': 0.1}
+CHECK = {'ok': True, 'upTo': '', 'unmarked': {'count': 3, 'amount': 1200000}, 'payslipCheck': [{'month': '2026-07', 'ledger': 8000000, 'payslips': 9000000}], 'unlinked': {'count': 0, 'amount': 0}}
 pass_n = fail_n = 0
 def ok(c, m):
     global pass_n, fail_n
@@ -61,7 +67,7 @@ try:
             pg.route('**/core/firebase.js*', lambda r: r.fulfill(status=200, content_type='text/javascript', body=FAKE_FB))
             pg.route('**/*.html', lambda r: r.fulfill(status=200, content_type='text/html', body=PAGE))
             pg.goto(BASE + '/x.html'); pg.wait_for_function('window.__ready === true', timeout=20000)
-            pg.evaluate("([m, d, pr, rp]) => { window.__mode = m; window.__delay = d; window.__prefix = pr; window.__report = rp; }", [mode, delay, prefix, REPORT])
+            pg.evaluate("([m, d, pr, rp, ck]) => { window.__mode = m; window.__delay = d; window.__prefix = pr; window.__report = rp; window.__check = ck; window.__checkMode = 'ok'; window.__checkDelay = 0; }", [mode, delay, prefix, REPORT, CHECK])
             pg.evaluate("(r) => window.__mount(document.getElementById('root'), r, { me: { uid: 'u1', name: '가짜', admin: true } })", {'segs': segs or [], 'q': {}})
             return pg, errs
         mcalls = lambda pg: [c for c in pg.evaluate('window.__calls') if c['fn'] == 'marginAct']
@@ -78,7 +84,7 @@ try:
         print('── 버튼을 눌렀을 때만')
         pg, errs = fresh(['pA']); open_detail(pg); btn(pg).click(); pg.wait_for_function('window.__calls.some(c => c.fn === "marginAct")', timeout=5000); pg.wait_for_timeout(500)
         cs = mcalls(pg); ok(len(cs) == 1 and cs[0]['p'] == {'action': 'report'}, '★ 버튼을 누르면 marginAct 가 정확히 1건({action: report})으로 나간다 (실제: %s)' % cs)
-        txt = pg.inner_text('#pj-body'); ok('잠정' not in txt and '360,000원' in txt and '4,950,000원' in txt and '3줄' in txt and '4대보험 10% 추정' in txt, '★ 성공하면 "잠정"이 사라지고 현장경비 360,000원·자체 직접노무비 4,950,000원·미표시 3줄·추정 안내가 보인다')
+        txt = pg.inner_text('#pj-body'); ok('잠정' not in txt and '360,000원' in txt and '4,950,000원' in txt and '월 마감 점검' in txt and '3줄' not in txt and '4대보험 10% 추정' in txt, '★ 성공하면 "잠정"이 사라지고 현장경비 360,000원·자체 직접노무비 4,950,000원·미표시 3줄·추정 안내가 보인다')
         ok('다시 불러오기' in btn(pg).inner_text() and btn(pg).is_enabled(), '성공 뒤에는 [다시 불러오기]가 보인다')
         btn(pg).click(); pg.wait_for_timeout(600); ok(len(mcalls(pg)) == 2, '★ [다시 불러오기]를 누르면 두 번째 호출이 나간다(데이터가 바뀌었을 때 사용자가 원할 때만)')
         ok(not [e for e in errs if 'favicon' not in e], '화면 오류 없음 %s' % errs[:2]); pg.close()
@@ -103,7 +109,34 @@ try:
         pg.locator('[data-pj-act="list"]').click(); pg.wait_for_timeout(300); pg.locator('[data-pj-open="pB"]').click(); pg.wait_for_timeout(400)
         txt = pg.inner_text('#pj-body'); ok(len(mcalls(pg)) == 1 and '40,000원' in txt and '3,300,000원' in txt and '잠정' not in txt, '★ 목록으로 나갔다가 다른 프로젝트(B)를 열어도 서버를 다시 부르지 않고 이미 받은 값(B 현장경비 40,000원·자체 직접노무비 3,300,000원)이 보인다')
         pg.close()
-        ok(pass_n + fail_n >= 20, '시험이 끝까지 실행됨')
+        print('── 장부 대조(check): 누를 때만, 가장 무겁다')
+        pg, errs = fresh(['pA']); open_detail(pg)
+        ck = lambda pg: pg.locator('[data-pj-act="margin-check"]'); ccalls = lambda pg: [c for c in mcalls(pg) if c['p'].get('action') == 'check']
+        ok(ck(pg).count() == 0, '★ 마진 보고가 성공하기 전에는 [장부 대조 확인] 버튼이 없다')
+        btn(pg).click(); pg.wait_for_function('window.__calls.some(c => c.fn === "marginAct")', timeout=5000); pg.wait_for_timeout(500)
+        ok(len(ccalls(pg)) == 0 and ck(pg).count() == 1 and ck(pg).is_enabled() and '장부 대조 확인' in ck(pg).inner_text() and '월 마감 점검' in pg.inner_text('#pj-body'), '★ 마진 보고가 성공해도 대조 호출은 0건(자동 호출 없음)이고 활성 [장부 대조 확인] 버튼과 항상 보이는 안내가 있다')
+        ck(pg).click(); pg.wait_for_function('window.__calls.some(c => c.p && c.p.action === "check")', timeout=5000); pg.wait_for_timeout(500)
+        cc = ccalls(pg); txt = pg.inner_text('#pj-body')
+        ok(len(cc) == 1 and cc[0]['p'] == {'action': 'check'}, '★ 버튼을 누르면 marginAct 가 정확히 1건({action: check})으로 나간다 (실제: %s)' % cc)
+        ok('3줄' in txt and '1,200,000원' in txt and '2026-07' in txt and '5110' in txt and '월 마감 점검이나' not in txt, '★ 대조 결과(미표시 3줄·1,200,000원·장부 5110 불일치 2026-07)가 보이고 항상 보이는 안내는 사라진다')
+        ok('다시 대조' in ck(pg).inner_text() and '360,000원' in txt, '대조 뒤에도 마진 값은 그대로이고 [다시 대조]가 보인다')
+        ok(not [e for e in errs if 'favicon' not in e], '화면 오류 없음 %s' % errs[:2]); pg.close()
+        print('── 대조 중복 호출 방지·실패 후 재시도')
+        pg, errs = fresh(['pA']); open_detail(pg); btn(pg).click(); pg.wait_for_function('window.__calls.some(c => c.fn === "marginAct")', timeout=5000); pg.wait_for_timeout(400)
+        pg.evaluate("() => { window.__checkDelay = 900; }"); pg.evaluate("() => { const b = document.querySelector('[data-pj-act=\"margin-check\"]'); b.click(); b.click(); b.click(); }"); pg.wait_for_timeout(250)
+        ok(not ck(pg).is_enabled() and '대조하는 중' in ck(pg).inner_text(), '★ 대조 중에는 버튼이 비활성 "대조하는 중…"이다')
+        pg.evaluate("() => { const b = document.querySelector('[data-pj-act=\"margin-check\"]'); if (b) { b.disabled = false; b.click(); b.click(); } }"); pg.wait_for_timeout(1300)
+        ok(len(ccalls(pg)) == 1, '★ 세 번 연속·비활성을 억지로 풀어 눌러도 대조 호출은 1건이다 — 실제 %d건' % len(ccalls(pg))); pg.close()
+        pg, errs = fresh(['pA']); open_detail(pg); btn(pg).click(); pg.wait_for_function('window.__calls.some(c => c.fn === "marginAct")', timeout=5000); pg.wait_for_timeout(400)
+        pg.evaluate("() => { window.__checkMode = 'flaky'; }"); ck(pg).click(); pg.wait_for_function('window.__calls.some(c => c.p && c.p.action === "check")', timeout=5000); pg.wait_for_timeout(500)
+        txt = pg.inner_text('#pj-body'); ok('장부 대조를 불러오지 못했습니다' in txt and '월 마감 점검' in txt and '이상 없음' not in txt and '다시 대조' in ck(pg).inner_text() and '360,000원' in txt, '★ 대조가 실패하면 안내와 [다시 대조]가 보이고 항상 보이는 안내는 유지되며 마진 값은 그대로다')
+        ck(pg).click(); pg.wait_for_timeout(600); txt = pg.inner_text('#pj-body'); ok(len(ccalls(pg)) == 2 and '3줄' in txt and '장부 대조를 불러오지 못했습니다' not in txt, '★ 다시 누르면 성공해서 결과가 보인다(호출 2건)')
+        ok(not [e for e in errs if 'favicon' not in e and 'unavailable' not in e.lower() and '대조 점검' not in e], '화면 오류 없음 %s' % errs[:2]); pg.close()
+        print('── 대조 후 프로젝트를 바꿔도')
+        pg, errs = fresh(['pA']); open_detail(pg); btn(pg).click(); pg.wait_for_function('window.__calls.some(c => c.fn === "marginAct")', timeout=5000); pg.wait_for_timeout(400); ck(pg).click(); pg.wait_for_timeout(600)
+        pg.locator('[data-pj-act="list"]').click(); pg.wait_for_timeout(300); pg.locator('[data-pj-open="pB"]').click(); pg.wait_for_timeout(400)
+        txt = pg.inner_text('#pj-body'); ok(len(mcalls(pg)) == 2 and len(ccalls(pg)) == 1 and '3줄' in txt and '40,000원' in txt, '★ 다른 프로젝트(B)를 열어도 보고·대조를 다시 부르지 않고(총 2건: 보고 1·대조 1) 이미 받은 값(대조 결과 3줄, B 현장경비 40,000원)이 보인다'); pg.close()
+        ok(pass_n + fail_n >= 32, '시험이 끝까지 실행됨')
         b.close()
     print('\n' + ('실패 %d건 / 통과 %d' % (fail_n, pass_n) if fail_n else '전부 통과 (%d건)' % pass_n)); sys.exit(1 if fail_n else 0)
 except Exception as e:

@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261021d';
-import { TYPE_LABEL, SETTLE_TYPE_LABEL, filterProjects, paginate, pjtSummary, pjtMargin, pjtEstimates, pjtSettlements, estTotal, estTag, settleState, settleAmountForPjt, linkOptions, sortProjects } from './projects.js?v=20261021d';
-import { marginExtra, marginNotes } from './margin-link.js?v=20261021d';
+import { esc } from '../../core/ui.js?v=20261021e';
+import { TYPE_LABEL, SETTLE_TYPE_LABEL, filterProjects, paginate, pjtSummary, pjtMargin, pjtEstimates, pjtSettlements, estTotal, estTag, settleState, settleAmountForPjt, linkOptions, sortProjects } from './projects.js?v=20261021e';
+import { marginExtra, marginNotes } from './margin-link.js?v=20261021e';
 const won = (n) => (Math.round(Number(n) || 0)).toLocaleString('ko-KR');
 const signed = (n) => (n >= 0 ? '+' : '') + won(n);
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -26,7 +26,13 @@ export function marginExtraOf(st, pid) {
   if (ST === 'loading') return { ui: 'loading' };
   if (ST === 'denied') return { ui: 'denied' };
   if (ST === 'error') return { ui: 'error', error: '마진 집계를 불러오지 못했습니다. 지급 기준 잠정 값입니다.' };
-  if (ST === 'ok') { const e = marginExtra(m.data, pid); if (!e) return { ui: 'error', error: '마진 집계 응답 형식이 올바르지 않아 불러오지 못했습니다. 지급 기준 잠정 값입니다.' }; return Object.assign(e, { ui: 'ok', notes: marginNotes(m.data) }); }
+  if (ST === 'ok') {
+    const e = marginExtra(m.data, pid); if (!e) return { ui: 'error', error: '마진 집계 응답 형식이 올바르지 않아 불러오지 못했습니다. 지급 기준 잠정 값입니다.' };
+    const c = st.marginCheck && typeof st.marginCheck === 'object' ? st.marginCheck : null; const CS = c ? c.state : '';
+    const okCheck = CS === 'ok' && !!c.data && typeof c.data === 'object' && c.data.ok === true && !!c.data.unmarked && typeof c.data.unmarked === 'object' && Array.isArray(c.data.payslipCheck);
+    const checkUi = CS === 'loading' ? 'loading' : CS === 'ok' ? (okCheck ? 'ok' : 'error') : CS === 'error' || CS === 'denied' ? 'error' : 'idle';
+    return Object.assign(e, { ui: 'ok', checkUi, notes: marginNotes(m.data, okCheck ? c.data : undefined) });
+  }
   return { ui: 'idle' };
 }
 /** 마진율 줄: 목표(프로젝트마다 입력)·실현(청구 − 지급 기준)·목표 대비. 청구가 없으면 계산 안 함 */
@@ -39,7 +45,9 @@ export function marginHtml(p, s, extra) {
   const costLine = '<div class="jh-field__hint">프로젝트 원가 ' + won(c.total) + '원 = ' + part('외주·자재(지급예정서)', c.paid, true) + ' + ' + part('현장경비', c.direct, hasDirect) + ' + ' + part('자체 직접노무비', c.ownLabor, hasOwn) + '</div>';
   const loadErr = ex.error ? '<div class="jh-field__hint" data-tone="warn">' + esc(ex.error) + '</div>' : '';
   const btnHtml = (label, off) => '<button type="button" class="jh-btn" data-variant="ghost" data-pj-act="margin-load"' + (off ? ' disabled' : '') + '>' + label + '</button>';
-  const ctl = ex.ui === 'idle' ? '<div class="jh-field__hint">' + btnHtml('현장경비·자체 직접노무비 반영해서 보기', false) + ' 장부와 급여명세서를 읽어 계산합니다(재무회계 권한자).</div>' : ex.ui === 'loading' ? '<div class="jh-field__hint">' + btnHtml('불러오는 중…', true) + '</div>' : ex.ui === 'denied' ? '<div class="jh-field__hint">현장경비·자체 직접노무비 반영은 재무회계 권한이 있는 계정만 볼 수 있습니다.</div>' : ex.ui === 'error' ? '<div class="jh-field__hint">' + btnHtml('다시 불러오기', false) + '</div>' : ex.ui === 'ok' ? '<div class="jh-field__hint">' + btnHtml('다시 불러오기', false) + '</div>' : '';
+  const ckBtn = (label, off) => '<button type="button" class="jh-btn" data-variant="ghost" data-pj-act="margin-check"' + (off ? ' disabled' : '') + '>' + label + '</button>';
+  const ckHtml = ex.checkUi === 'loading' ? '<div class="jh-field__hint">' + ckBtn('대조하는 중…', true) + '</div>' : ex.checkUi === 'ok' ? '<div class="jh-field__hint">' + ckBtn('다시 대조', false) + '</div>' : ex.checkUi === 'error' ? '<div class="jh-field__hint" data-tone="warn">장부 대조를 불러오지 못했습니다.</div><div class="jh-field__hint">' + ckBtn('다시 대조', false) + '</div>' : ex.checkUi === 'idle' ? '<div class="jh-field__hint">' + ckBtn('장부 대조 확인', false) + ' 전표 전체를 읽어 표시가 없는 현장경비와 급여명세서·장부 5110 을 대조합니다.</div>' : '';
+  const ctl = ex.ui === 'idle' ? '<div class="jh-field__hint">' + btnHtml('현장경비·자체 직접노무비 반영해서 보기', false) + ' 장부와 급여명세서를 읽어 계산합니다(재무회계 권한자).</div>' : ex.ui === 'loading' ? '<div class="jh-field__hint">' + btnHtml('불러오는 중…', true) + '</div>' : ex.ui === 'denied' ? '<div class="jh-field__hint">현장경비·자체 직접노무비 반영은 재무회계 권한이 있는 계정만 볼 수 있습니다.</div>' : ex.ui === 'error' ? '<div class="jh-field__hint">' + btnHtml('다시 불러오기', false) + '</div>' : ex.ui === 'ok' ? '<div class="jh-field__hint">' + btnHtml('다시 불러오기', false) + '</div>' + ckHtml : '';
   const notes = Array.isArray(ex.notes) && ex.notes.length ? '<ul class="jh-field__hint" data-margin-notes>' + ex.notes.map((n) => '<li>' + esc(n) + '</li>').join('') + '</ul>' : '';
   const warn = complete ? '' : '<div class="jh-field__hint" data-tone="warn">잠정: 현장경비(전표의 프로젝트 표시)·자체 직접노무비가 아직 반영되지 않아 <strong>외주·자재(지급예정서) 기준</strong>입니다. 실제 마진율은 이보다 낮을 수 있습니다. 평가에 쓰기 전에 연결 여부를 확인하세요.</div>';
   return '<div class="jh-plan__sum jh-plan__sum--3">' + sumCell('목표 마진율', m.target == null ? '미입력' : pct(m.target)) + sumCell('실현 마진율' + (complete ? '' : ' (잠정)'), pct(m.actual)) + sumCell('목표 대비', diff, tone) + '</div>' + costLine + warn + loadErr + notes + ctl + '<div class="jh-field__hint">실현 마진율 = (청구 − 프로젝트 원가) ÷ 청구 · 팀 공수 노무비는 지급예정서에 이미 들어 있어 따로 빼지 않습니다 · 목표는 "정보 수정"에서 프로젝트마다 입력합니다. 인사평가(수시평가)의 프로젝트 성과는 이 값을 읽어 점수를 냅니다.</div>';

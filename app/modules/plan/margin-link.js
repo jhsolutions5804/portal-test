@@ -10,19 +10,23 @@ export function marginExtra(report, pid) {
   const p = pid === 'common' ? null : report.projects.find((x) => x && x.pjt === pid);
   return { direct: p ? num(p.overhead) : 0, ownLabor: p ? num(p.ownLabor) : 0 };
 }
-/** 마진 옆에 보여 줄 주의 문구 — 마진에서 빠진 것·추정한 것·확인이 필요한 것. 해당 없으면 빈 목록 */
-export function marginNotes(report) {
+/** 마진 옆에 보여 줄 주의 문구 — 마진에서 빠진 것·추정한 것·확인이 필요한 것. 해당 없으면 빈 목록.
+ * report = 서버 report 응답(가볍게 — 전표를 안 봐서 미표시·장부 대조는 모른다), check = 서버 check 응답(사용자가 [장부 대조 확인]을 눌렀을 때만 받는다, 선택).
+ * 대조를 안 했으면 항상 보이는 안내를 쓰고, 했으면 미표시 줄 수·장부 5110 불일치를 알린다. report 에 옛 키(unmarked·payslipCheck)가 섞여 와도 무시한다 — 옛 응답이 틀린 숫자를 보이지 않게 */
+export function marginNotes(report, check) {
   if (!okReport(report)) return [];
   const notes = []; const rate = Math.round(num(report.employerRate) * 1000) / 10;
   if (report.estimated === true) notes.push('사업주 4대보험 ' + rate + '% 추정 포함(고지서와 맞춰 보정).');
-  const um = report.unmarked && typeof report.unmarked === 'object' ? report.unmarked : {};
-  if (num(um.count) > 0) notes.push('프로젝트 표시가 없는 현장경비 ' + num(um.count) + '줄(' + won(um.amount) + '원)은 마진에 반영되지 않았습니다. 재무회계 "프로젝트 표시"에서 표시하면 반영됩니다.');
+  const ck = !!check && typeof check === 'object' && check.ok === true && !!check.unmarked && typeof check.unmarked === 'object' && Array.isArray(check.payslipCheck) ? check : null;
+  const um = ck ? ck.unmarked : {}; const pc = ck ? ck.payslipCheck.filter((x) => x && typeof x.month === 'string') : [];
+  if (!ck) notes.push('표시가 없는 현장경비는 마진에 반영되지 않습니다. 월 마감 점검이나 재무회계 "프로젝트 표시"에서 확인하세요(전표를 읽는 [장부 대조 확인]으로도 볼 수 있습니다).');
+  else if (num(um.count) > 0) notes.push('프로젝트 표시가 없는 현장경비 ' + num(um.count) + '줄(' + won(um.amount) + '원)은 마진에 반영되지 않았습니다. 재무회계 "프로젝트 표시"에서 표시하면 반영됩니다.');
   const ua = Array.isArray(report.unallocatedLabor) ? report.unallocatedLabor.filter((x) => x && typeof x === 'object') : [];
   if (ua.length) notes.push('참여 기록이 없어 자체 직접노무비(급여) ' + ua.length + '개월(' + won(ua.reduce((a, x) => a + num(x.amount), 0)) + '원, ' + ua.reduce((a, x) => a + num(x.people), 0) + '명)을 프로젝트에 나누지 못했습니다.');
-  const pc = Array.isArray(report.payslipCheck) ? report.payslipCheck.filter((x) => x && typeof x.month === 'string') : [];
   if (pc.length) notes.push('급여명세서와 장부 5110 이 다른 달이 ' + pc.length + '개 있습니다(' + pc.map((x) => x.month).join(', ') + ').');
   const ul = report.unlinked && typeof report.unlinked === 'object' ? report.unlinked : {};
   if (num(ul.count) > 0) notes.push('인사 직원과 연결하지 못한 급여명세서 ' + num(ul.count) + '건(' + won(ul.amount) + '원)이 제외되었습니다.');
+  if (ck && num(um.count) === 0 && pc.length === 0) notes.push('장부 대조 완료: 이상 없음(미표시 현장경비 없음, 급여명세서와 장부 5110 일치).');
   return notes;
 }
 /** 서버 마진 집계 호출이 실패했을 때의 상태 — 권한이 없으면 'denied'(일반 영업기획 사용자는 정상이라 오류 문구 없이 지급 기준 "잠정"만), 그 밖은 'error'(불러오지 못했다고 알림). 호출 함수의 오류 코드는 functions/ 접두사가 붙어 오기도 하고 아니기도 해서 접두사를 떼고 정확히 비교한다 */
