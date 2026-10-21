@@ -1,8 +1,8 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261021b';
-import { monthPreview, splitLeftText, RULE_ACCOUNTS } from './pjt-tag-logic.js?v=20261021b';
-import { esc } from '../../core/ui.js?v=20261021b';
-import { MP_GROUPS, NPAY_CHOICES, ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport, vatForm, vatCardRef } from './logic.js?v=20261021b';
-import { CHOICES } from '../../shared/merchant-table.js?v=20261021b';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261021c';
+import { monthPreview, splitLeftText, RULE_ACCOUNTS } from './pjt-tag-logic.js?v=20261021c';
+import { esc } from '../../core/ui.js?v=20261021c';
+import { ownerDraws, MP_GROUPS, NPAY_CHOICES, ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport, vatForm, vatCardRef } from './logic.js?v=20261021c';
+import { CHOICES } from '../../shared/merchant-table.js?v=20261021c';
 
 /* 재무회계 화면 조각 — 모든 값은 esc() 로 감싸 HTML 로 만든다. 스타일은 theme/finance.css 와 공용 클래스를 쓴다 */
 const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['monthly', '월간 수지'], ['forecast', '예측'], ['gap', '이엔지 정산'], ['pjt', '프로젝트 표시'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];
@@ -24,8 +24,16 @@ const ISS_LABEL = { nonghyup: '농협(개인)', ibk_sales: 'IBK', ibk_approval: 
 const kstText = (ms) => (ms ? new Date(ms + 9 * 3600000).toISOString().slice(0, 16).replace('T', ' ') : '');
 
 /* ───────── 개요 ───────── */
+/* 홈 "대표님 개인 지출" 카드 — 개인사업자라서 개인 지출은 인출금(3020)으로 잡고 비용이 아니므로 손익·프로젝트 마진에 들어가지 않는다. 회사 일을 개인카드로 쓴 것(미지급금 2021)은 회사가 대표님께 줄 돈이라 따로 보여 준다. 계산은 logic.js ownerDraws. */
+function ownerCardHtml(st) {
+  const d = ownerDraws(st.entries, { today: st.today });
+  const months = tbl([['월'], ['개인 지출 순액', 'num']], d.months.map((m) => '<tr><td>' + esc(m.month) + '</td><td class="num">' + esc(won(m.amount)) + '</td></tr>'), 'jh-fin-table--narrow');
+  const recent = d.recent.length ? tbl([['날짜'], ['내용'], ['금액', 'num']], d.recent.map((r) => '<tr><td>' + esc(r.date) + '</td><td>' + esc(r.memo) + '</td>' + num(r.amount) + '</tr>'), 'jh-fin-table--narrow') : '<div class="jh-field__hint">아직 개인 지출이 없습니다.</div>';
+  const top = tbl([['구분'], ['금액', 'num']], [['<tr><td>' + esc(d.year + '년 개인 지출') + '</td><td class="num">' + esc(won(d.yearTotal)) + '</td></tr>'], ['<tr><td>전체 누계</td><td class="num">' + esc(won(d.allTotal)) + '</td></tr>'], ['<tr><td>회사가 대표님께 줄 돈(개인카드 미지급)</td><td class="num">' + esc(won(d.cardPayable)) + '</td></tr>']].map((x) => x[0]), 'jh-fin-table--narrow');
+  return card('대표님 개인 지출', '<div class="jh-finance__pad">' + top + '<div class="jh-field__hint">최근 6개월</div>' + months + '<div class="jh-field__hint">최근 항목</div>' + recent + '<div class="jh-field__hint">개인 지출은 비용이 아니라 인출금이라 손익·프로젝트 마진에 들어가지 않습니다. 회사 일을 개인카드로 쓴 것은 개인 지출이 아니라 "회사가 대표님께 줄 돈"입니다.</div></div>', '<a class="jh-link" href="#/finance/entries">전표 ›</a>', true);
+}
 export function homeHtml(st) {
-  const s = st.sum, stm = st.stm, set = st.settings; const hasOpening = st.entries.some((e) => e.source && e.source.kind === 'opening');
+  const s = st.sum, stm = st.stm, set = st.settings; const hasOpening = (st.entries || []).some((e) => e.source && e.source.kind === 'opening');
   const alerts = [];
   if (!hasOpening) alerts.push(alertHtml('warn', '⚠ 개시(기초) 재산 목록이 아직 없습니다. <a class="jh-link" href="#/finance/opening">개시 재산</a>에서 먼저 입력해 주세요.'));
   if (!set.ownBiz) alerts.push(alertHtml('warn', '⚠ 내 사업자등록번호가 설정되어 있지 않습니다. 다른 회사 세금계산서가 섞이는 것을 막으려면 <a class="jh-link" href="#/finance/settings">설정</a>에서 입력해 주세요.'));
@@ -37,7 +45,7 @@ export function homeHtml(st) {
   const bs = mini('재무상태표 ' + stm.to, [['자산 총계', b.assetsTotal], ['부채 총계', b.liabsTotal], ['자본 총계', b.equityTotal], ['검산(자산−부채−자본)', b.diff]]);
   const quick = '<div class="jh-finance__pad"><div class="jh-finance__quick"><a class="jh-btn" data-variant="primary" href="#/finance/expense">+ 비용 입력</a><a class="jh-btn" href="#/finance/import">가져오기</a><a class="jh-btn" href="#/finance/entries">전표 보기</a><a class="jh-btn" href="#/finance/reports">재무제표</a></div></div>';
   // 인사 홈과 같은 구성: 경고 → 왼쪽 요약 카드(세로) → 본문 → 오른쪽 보조 카드
-  return alerts.join('') + '<div class="jh-fin__home"><aside class="jh-fin__homeside" aria-label="재무 요약">' + k + '</aside><div class="jh-fin__homemain">' + card('손익 요약', sum, '<a class="jh-link" href="#/finance/reports">재무제표 ›</a>', true) + card('재무상태', bs, '', true) + '</div><div class="jh-fin__homedetail">' + card('바로가기', quick) + card('최근 가져오기', importListHtml(st.imports), '', true) + '</div></div>';
+  return alerts.join('') + '<div class="jh-fin__home"><aside class="jh-fin__homeside" aria-label="재무 요약">' + k + '</aside><div class="jh-fin__homemain">' + card('손익 요약', sum, '<a class="jh-link" href="#/finance/reports">재무제표 ›</a>', true) + card('재무상태', bs, '', true) + ownerCardHtml(st) + '</div><div class="jh-fin__homedetail">' + card('바로가기', quick) + card('최근 가져오기', importListHtml(st.imports), '', true) + '</div></div>';
 }
 /* ───────── 전표 ───────── */
 const selectable = (e) => !e.reversedBy && !e.reverses;   // 일괄 재분류는 살아 있는 일반 전표만

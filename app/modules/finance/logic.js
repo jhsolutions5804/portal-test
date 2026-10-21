@@ -1,9 +1,9 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261021b';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261021b';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261021b';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261021b';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261021b';
-import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261021b';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261021c';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261021c';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261021c';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261021c';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261021c';
+import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261021c';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -15,6 +15,30 @@ export const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().s
 /** Firestore 문서 → 화면용 전표 */
 export function docToEntry(id, d) { return { id, no: d.no || '', seq: d.seq || 0, date: d.date || '', memo: d.memo || '', source: d.source || { kind: 'manual' }, lines: (d.lines || []).map((l) => ({ account: l.account, side: l.side, amount: l.amount, partner: l.partner || '', pjt: l.pjt || '' })), status: d.status || 'posted', reverses: d.reverses || '', reversesNo: d.reversesNo || '', reversedBy: d.reversedBy || '', reversedByNo: d.reversedByNo || '', createdByName: d.createdByName || '', createdMs: d.createdAt && d.createdAt.seconds ? d.createdAt.seconds * 1000 : 0, needsReview: !!d.needsReview, reviewNote: d.reviewNote || '', assignee: d.assignee || '', reviewedByName: d.reviewedByName || '', reviewedMs: d.reviewedAt && d.reviewedAt.seconds ? d.reviewedAt.seconds * 1000 : 0, replaces: d.replaces || '', replacesNo: d.replacesNo || '', attachments: (d.attachments || []).map((a) => ({ id: a.id, name: a.name, mime: a.mime, size: a.size, byName: a.byName || '', atMs: a.atMs || 0 })) }; }
 export const entryDebit = (e) => (e.lines || []).reduce((s, l) => s + (l.side === 'D' ? l.amount : 0), 0);
+/* 개인 지출(인출금) 누계 — 개인사업자라서 개인 지출은 지출 항목 "개인 지출(인출금)"으로 3020 에 잡는다(5xxx·6xxx 가 아니라 판관비·프로젝트 마진에 들어가지 않는다). 카드는 섞어서 쓰므로 카드가 아니라 항목 단위로 정한다.
+ * 인출금 순액 = 차변(개인 지출·인출) − 대변(대표님이 회사로 되돌린 금액). 개인카드 미지급 잔액 = 2021(미지급금·대표자 개인카드) 대변 − 차변 — 회사 일을 개인카드로 쓴 것이라 인출금과 합치지 않는다.
+ * 월별·누계에는 역분개 쌍을 그대로 합산(상쇄)하고, 최근 항목에서는 역분개 쌍을 숨긴다. 순수 함수(저장·호출 없음). */
+export function ownerDraws(entries, opts) {
+  const o = opts && typeof opts === 'object' ? opts : {}; const today = typeof o.today === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.today) ? o.today : new Date().toISOString().slice(0, 10);
+  const year = Number(today.slice(0, 4)); const cur = today.slice(0, 7); const amt = (v) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.round(v) : 0);
+  const months = []; { let y = Number(cur.slice(0, 4)), m = Number(cur.slice(5, 7)); for (let i = 0; i < 6; i++) { months.unshift({ month: y + '-' + String(m).padStart(2, '0'), amount: 0 }); m--; if (m === 0) { m = 12; y--; } } }
+  const byMonth = {}; months.forEach((x) => { byMonth[x.month] = x; });
+  let yearTotal = 0, allTotal = 0, cardPayable = 0; const draws = [];
+  (Array.isArray(entries) ? entries : []).forEach((e) => {
+    if (!e || typeof e !== 'object' || e.status !== 'posted' || typeof e.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(e.date) || !Array.isArray(e.lines)) return;
+    const hidden = !!e.reverses || !!e.reversedBy;
+    e.lines.forEach((l) => {
+      if (!l || typeof l !== 'object') return; const a = amt(l.amount); if (!a || (l.side !== 'D' && l.side !== 'C')) return;
+      if (String(l.account) === '2021') { cardPayable += l.side === 'C' ? a : -a; return; }
+      if (String(l.account) !== '3020') return;
+      const sg = l.side === 'D' ? a : -a; allTotal += sg; if (e.date.slice(0, 4) === String(year)) yearTotal += sg;
+      const mo = byMonth[e.date.slice(0, 7)]; if (mo) mo.amount += sg;
+      if (l.side === 'D' && !hidden) draws.push({ date: e.date, memo: String(e.memo || ''), amount: a, seq: Number(e.seq) || 0 });
+    });
+  });
+  draws.sort((x, y) => (x.date < y.date ? 1 : x.date > y.date ? -1 : y.seq - x.seq));
+  return { year, yearTotal, allTotal, months, recent: draws.slice(0, 5).map((x) => ({ date: x.date, memo: x.memo, amount: x.amount })), cardPayable };
+}
 export function summarize(entries) { const by = {}; let review = 0, d = 0, c = 0, from = '', to = ''; (entries || []).forEach((e) => { const k = (e.source && e.source.kind) || 'manual'; by[k] = (by[k] || 0) + 1; if (e.needsReview) review++; (e.lines || []).forEach((l) => { if (l.side === 'D') d += l.amount; else c += l.amount; }); if (!from || e.date < from) from = e.date; if (!to || e.date > to) to = e.date; }); return { count: (entries || []).length, review, by, debit: d, credit: c, balanced: d === c, from, to }; }
 /** 목록 거르기: 기간(from~to)·원천·확인 필요·검색어(메모·거래처·계정·전표번호) */
 export function filterEntries(entries, f) {
