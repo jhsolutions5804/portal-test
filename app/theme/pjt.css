@@ -571,6 +571,10 @@
 .jh-pjt__mrh { margin: var(--sp-3) 0 var(--sp-1); }
 .jh-pjt__mrlist { margin: 0; padding-left: var(--sp-4); display: grid; gap: var(--sp-1); }
 .jh-pjt__mrtext { white-space: pre-wrap; overflow-wrap: anywhere; }
+.jh-pjt__cklist { list-style: none; padding-left: 0; }
+.jh-pjt__ckrow { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 2fr) auto; gap: var(--sp-2); align-items: end; padding: var(--sp-2) 0; border-top: var(--u-1) solid var(--c-line); }
+.jh-pjt__ckbtns { display: flex; gap: var(--sp-1); flex-wrap: wrap; }
+@media (max-width: 899px) { .jh-pjt__ckrow { grid-template-columns: minmax(0, 1fr); } }
 /* 공사일보 탭: 넓은 화면(1200px~)에서는 달력 카드를 더 넓게 — 전에는 26rem 고정이라 오른쪽 일보 카드(작성·조회)와 균형이 안 맞았다. 달력이 따라다니는(sticky) 동작은 그대로 */
 @media (min-width: 1200px) { .jh-pjt__splitrep { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
 /* 월간 보고서 탭은 일반 .jh-pjt 의 2열 규칙(900px~)을 쓰지 않고 한 열로 쌓는다 */

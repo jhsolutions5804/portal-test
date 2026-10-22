@@ -97,3 +97,12 @@ export function fieldReport(docs, ym, project) {
   const reports = monthlyReports(d.reports, ym, { today: p.today, startDate: p.startDate, endDate: p.endDate, attendDocs: d.attendance });
   return { ym, range: r, progress, manday: md, reports, yield: productivity(progress, md, p.structure) };
 }
+/** 마감 체크리스트(시공검측 이후 프로젝트 완성도, 설계 §3-4) — 그 달 말(이번 달이면 오늘)까지 완료한 항목 수. 항목 이름·개수는 프로젝트가 정한다(코드에 단계 이름이 없다).
+ * 지난 달 보고서에는 그 뒤에 완료한 항목의 완료일을 내보내지 않는다(미래 정보가 새지 않게). 항목이 없으면 완성도 null(0 으로 나누지 않음). 정해진 필드만 내보낸다(uid·금액 등은 버림). */
+export function closeoutSummary(items, ym, today) {
+  const r = monthRange(ym); const list = (Array.isArray(items) ? items : []).filter((i) => i && typeof i === 'object' && !Array.isArray(i) && typeof i.name === 'string' && i.name.trim());
+  const cut = r ? (isDay(today) && today < r.last ? today : r.last) : ''; const str = (v) => (typeof v === 'string' ? v.trim() : '');
+  const out = list.map((i) => { const done = !!cut && isDay(i.doneDate) && i.doneDate <= cut; return { id: str(i.id), name: i.name.trim(), done, doneDate: done ? i.doneDate : '', assignee: str(i.assignee), memo: str(i.memo) }; });
+  const done = out.filter((x) => x.done).length;
+  return { total: out.length, done, rate: out.length ? done / out.length : null, doneThisMonth: r ? out.filter((x) => x.done && x.doneDate >= r.first).length : 0, items: out };
+}

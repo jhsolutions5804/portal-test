@@ -114,6 +114,12 @@ ok(P7.touched === true && P7.checkDays === 2 && P6.checkDays === 1, '그 달에 
     ok(same === cases.length, '★ 같은 입력 ' + cases.length + '개(월 11종 × 오늘 3종 × 시작일 3종 + 빈 구조·null 등)에서 앱 원본과 서버 변환본의 월간 보고가 한 글자도 다르지 않음' + (diffAt ? ' — 처음 다른 경우: ' + diffAt : ''));
     const fz = (m) => [m.monthRange('2026-08'), m.monthlyProgress(DAYS, '2026-08', ST), m.monthlyManday(MDD, ATT, '2026-08'), m.monthlyReports(REPS, '2026-08', { today: '2026-08-31' }), m.tally(m.stateAt(DAYS, '2026-09-30', ST), ST), m.isDay('2026-02-29'), m.isYm('2026-12'), m.FINISHING_RATE];
     ok(JSON.stringify(fz(mod)) === JSON.stringify(fz(srv)), '개별 함수(월 범위·공정·공수·일보·집계·형식 검사)도 같은 결과');
+  /* 마감 체크리스트 요약(closeoutSummary) — 서버가 보고서를 만들 때 쓰는 규칙이 앱 원본과 어긋나지 않게(같은 입력 → 같은 결과) */
+  const CKI = [{ id: 'c1', name: '시공검측', doneDate: '2026-07-10', assignee: '김', memo: '1차' }, { id: 'c2', name: '시운전', doneDate: '2026-08-25', assignee: '', memo: '' }, { id: 'c3', name: '완성검사', doneDate: '', assignee: '', memo: '' }, { id: 'c4', name: '턴 온', doneDate: '2026-12-31', assignee: '', memo: '' }, { id: 'c5', name: '정상2', doneDate: '2026-13-40' }, { id: 'c6', name: '  ' }, null, 3, 'x', { name: '공백 ', doneDate: '2026-08-15', uid: 'u1', amount: 5 }];
+  const CKS = [CKI, [], null, undefined, 'x', 3, {}, [{ name: 'a', doneDate: '2026-08-31' }, { name: 'b', doneDate: '2026-09-01' }]]; let ckSame = 0, ckN = 0, ckDiff = null;
+  for (const items of CKS) for (const ym of ['2026-05', '2026-07', '2026-08', '2026-09', '2026-10', '2026-02', '2028-02', '2026-13', 'x', '', null, undefined]) for (const today of ['2026-08-15', '2026-12-31', '2026-08-31', 'y', undefined, null]) { ckN++; const a = JSON.stringify(mod.closeoutSummary(items, ym, today)), b = JSON.stringify(srv.closeoutSummary(items, ym, today)); if (a === b) ckSame++; else if (!ckDiff) ckDiff = JSON.stringify([ym, today]); }
+  ok(ckSame === ckN && ckN > 500, '★ 마감 체크리스트 요약: 같은 입력 ' + ckN + '개(항목 8종 × 월 12종 × 오늘 6종)에서 앱 원본과 서버 변환본이 한 글자도 다르지 않음' + (ckDiff ? ' — 처음 다른 경우: ' + ckDiff : ''));
+  ok(JSON.stringify(mod.closeoutSummary(CKI, '2026-08', '2026-08-31')) === JSON.stringify(srv.closeoutSummary(CKI, '2026-08', '2026-08-31')) && [mod.closeoutSummary(CKI, '2026-08', '2026-08-31').total, mod.closeoutSummary(CKI, '2026-08', '2026-08-31').done, mod.closeoutSummary(CKI, '2026-08', '2026-08-31').doneThisMonth].join() === '6,3,2', '(점검) 대조에 쓴 입력이 실제로 항목을 세고 있다(전부 빈 결과끼리 같아 보이는 허상이 아님) — 손계산: 이름 있는 항목 6개, 8월 말까지 완료 3개(7/10·8/25·8/15), 그 달(8월) 완료 2개');
   } }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed'); if (fail) process.exit(1);
