@@ -13,7 +13,7 @@ const EST = () => [
   { id: 'C', pjtId: 'p2', clientId: 'c1', status: 'active', title: 'C', items: [] },
   { id: 'D', pjtId: 'p1', clientId: 'c1', status: 'void', title: 'D', items: [] },
   { id: 'E', pjtId: 'p1', clientId: '', status: 'active', title: 'E(거래처 없음)', items: [] }];
-const D = (o) => Object.assign({ docType: 'invoice', method: 'qty', pjtId: 'p1', pjtIds: ['p1'], recipientId: '', recipientContact: '', estIds: [], qtyInput: {}, qtyAmt: {} }, o || {});
+const D = (o) => Object.assign({ docType: 'invoice', method: 'manual', pjtId: 'p1', pjtIds: ['p1'], recipientId: '', recipientContact: '', estIds: [], qtyInput: {}, qtyAmt: {} }, o || {});
 const ids = (l) => l.map((e) => e.id).join();
 console.log('── 견적 후보(pickableEstimates): 청구서에서 수신자가 있으면 같은 거래처 견적만');
 eq(ids(I.pickableEstimates(D({ recipientId: 'c1' }), EST(), [])), 'A,E', '★ 청구서·수신자 c1·프로젝트 p1 → A(c1)와 E(거래처 미지정, 규칙 미적용). B 는 거래처 c2, C 는 프로젝트 p2, D 는 폐기');

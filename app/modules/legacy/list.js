@@ -1,9 +1,9 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261022s';
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261022s';
-import { financePerm } from '../../shared/finance-perm.js?v=20261022s';
-import { isEvalUser, isEvalOps } from '../../shared/eval-perm.js?v=20261022s';
-import { companyPerm } from '../../shared/company-perm.js?v=20261022s';
-import { isProjectKey } from '../../shared/pjt-key.js?v=20261022s';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261022t';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261022t';
+import { financePerm } from '../../shared/finance-perm.js?v=20261022t';
+import { isEvalUser, isEvalOps } from '../../shared/eval-perm.js?v=20261022t';
+import { companyPerm } from '../../shared/company-perm.js?v=20261022t';
+import { isProjectKey } from '../../shared/pjt-key.js?v=20261022t';
 export { isProjectKey };
 /* 옛 모듈 어댑터의 목록과 규칙 — 화면(DOM)·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 옛 모듈이 새 모듈로 바뀌면 여기서 항목을 지우고 modules/index.js 의 새 모듈 목록으로 옮긴다. */
