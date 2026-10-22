@@ -1,10 +1,10 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261022k';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261022k';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261022k';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261022k';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261022k';
-import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261022k';
-import { docFileName } from '../../shared/doc-filename.js?v=20261022k';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261022l';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261022l';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261022l';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261022l';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261022l';
+import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261022l';
+import { docFileName } from '../../shared/doc-filename.js?v=20261022l';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };

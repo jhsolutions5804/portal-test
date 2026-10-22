@@ -1,8 +1,8 @@
 /* 영업기획 월간 보고서 경영 층 화면(대기열 1-2-8, 대표님 2026-10-22 ㅇㅇ) — 순수 HTML(저장·호출 없음). 시험: tests/plan-monthly-mgmt-view.test.mjs · 계산: monthly-mgmt.js · 틀: closing-view.js(같은 CSS 클래스).
  * st = { ym, rows(monthRows), totals(monthTotals), srv: { state: 'loading'|'ok'|'error'|'denied', notes } }. 영업기획 모듈 전체가 관리자 전용이라(manifest perm) 별도 권한 코드는 없다.
  * 원칙: 모르는 값은 숫자로 꾸미지 않고 이유를 보인다(마진율·수율이 null 이면 "—"와 이유). 매출 기준 = 완결 청구(1-2-3-a). 공통비는 반영하지 않는다(프로젝트 화면의 공통비 반영 이익에서 본다). */
-import { esc } from '../../core/ui.js?v=20261022k';
-import { won, card, chip } from './ui.js?v=20261022k';
+import { esc } from '../../core/ui.js?v=20261022l';
+import { won, card, chip } from './ui.js?v=20261022l';
 const isO = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const money = (v) => (fin(v) ? won(v) : '—');
@@ -78,7 +78,8 @@ export function monthlyMgmtHtml(st) {
   const srvLine = srv.state === 'loading' ? '<div class="jh-field__hint">원가를 불러오는 중입니다… 청구·수금 금액은 먼저 보입니다.</div>'
     : srv.state === 'error' ? '<div class="jh-alert" data-tone="danger" role="alert">원가(서버 마진 집계)를 불러오지 못했습니다. <button type="button" class="jh-btn" data-variant="ghost" data-mm-act="reload">다시 불러오기</button></div>'
     : srv.state === 'denied' ? '<div class="jh-field__hint" data-tone="warn">원가는 재무회계 권한이 있는 계정만 볼 수 있습니다. 청구·수금 금액만 보입니다.</div>' : '';
-  const head = '<div class="jh-plan__pad">' + nav + srvLine
+  const csvBar = '<div class="jh-plan__line"><button type="button" class="jh-btn" data-variant="ghost" data-mm-act="csv"' + (loading ? ' disabled' : '') + '>엑셀 내려받기</button></div>'; // 화면의 네 구역(그 달 실적·추이 두 지표·원가 달성률)을 한 파일로 — 원가를 처음 불러오는 중에는 비활성(원가가 빈 채로 나가지 않게)
+  const head = '<div class="jh-plan__pad">' + nav + csvBar + srvLine
     + '<div class="jh-plan__sum">' + cell('청구 발행', money(t.invoiced) + '원', '발행일이 이 달') + cell('완결(수금)', money(t.collected) + '원', '매출로 보는 금액') + cell('지급예정서 발행', money(t.payIssued) + '원', '외주·노무') + cell('원가', unknown ? '—' : money(t.cost) + '원', unknown ? '원가를 모르는 프로젝트가 있어 합계를 내지 않습니다' : '지급 발행 + 현장경비 + 자체 직접노무비') + '</div>'
     + '<div class="jh-plan__sum jh-plan__sum--3">' + cell('마진율', unknown ? '—' : pct(t.margin), unknown ? '' : (fin(t.margin) ? '(완결 − 원가) ÷ 완결' : '완결 청구 없음')) + cell('노무 수율', unknown ? '—' : ratio(t.laborYield), unknown ? '' : (fin(t.laborYield) ? '완결 ÷ 자체 직접노무비' : '완결 청구 또는 직접노무비 없음')) + cell('프로젝트', rows.length + '개') + '</div>'
     + (unknown ? '<div class="jh-field__hint" data-tone="warn">원가를 모르는 프로젝트 ' + unknown + '개(PJT 연결 없음 또는 서버 응답 없음)는 합계 마진율·수율에서 제외하지 않고 합계를 비웠습니다. 청구만 보이고 원가는 없는 프로젝트를 합치면 마진이 부풀려지기 때문입니다.</div>' : '')
