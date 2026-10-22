@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { withDocTitle, openDocWindow } from '../app/shared/doc-title.js';
-import { contractDocTitle, payslipDocTitle } from '../app/modules/hr/doc-titles.js';
+import { contractDocTitle, payslipDocTitle, dismissalDocTitle, resignDocTitle, leavePromoDocTitle, offerDocTitle, resumeDocTitle } from '../app/modules/hr/doc-titles.js';
 import * as M from '../app/modules/hr/frozen-docs.js';
 import { psHtml } from '../app/modules/hr/payslip-doc.js';
 /* 인사 서류(근로계약서·연봉계약서·급여명세서) 인쇄 제목(대기열 1-2-7 ③, 대표님 2026-10-22 ㅇㅇ: 핵심 3종만, 작성 중 미리보기는 이름만)
@@ -76,8 +76,61 @@ console.log('── 화면 연결(hr/index.js): 호출 지점이 제목을 넘�
   ok(find(/openWin\(docHtmlByVer\(K\.tpl, K\.record\(st\.aForm\)\)[^;]*,\s*contractDocTitle\([^;]*preview: *true/).length === 1, '★ 계약서 작성 중 미리보기는 preview: true 로 이름만 넘긴다');
   ok(find(/openWin\(psHtml\(d\)[^;]*,\s*payslipDocTitle\(/).length >= 1, '★ 급여명세서 저장본 열기가 제목(payslipDocTitle)을 넘긴다');
   ok(find(/payslipRecord\(.*openWin\(psHtml\(rec\), payslipDocTitle\(rec, \{ preview: true \}\)\)/).length === 1, '★ 급여명세서 작성 중 미리보기도 제목을 넘긴다(같은 기록으로 문서와 제목을 만들고 preview: true)');
-  const untouched = calls.filter((c) => /openWin\((r|rec)\)/.test(c)); ok(untouched.length === 2 && untouched.every((c) => !/Title/.test(c)), '★ 이번 범위 밖(연차촉진)은 건드리지 않았다 — 대표님 확인 후 별도 진행');
+  /* 연차촉진·해고예고·퇴직원·휴직원·이력서·연봉 제안서는 대표님 "넣어도 돼"(2026-10-22) 뒤 범위 안 — 아래 '나머지 서류' 구역에서 시험한다 */
   ok(!/frozen-docs/.test(src.split('\n').filter((l) => /^import /.test(l) && /doc-titles|doc-title/.test(l)).join('\n')), 'doc-title 파일은 동결 파일을 가져오지 않는다'); }
 { const fz = fs.readFileSync(new URL('../app/modules/hr/frozen-docs.js', import.meta.url), 'utf8'); ok(!/doc-title|withDocTitle|contractDocTitle|payslipDocTitle/.test(fz), '★ 동결 파일(frozen-docs.js)은 한 글자도 고치지 않았다(제목 치환 코드가 없다)'); ok(/직접 수정 금지\(동결\)/.test(fz) && fz.split('\n').length === 1847, '동결 파일의 머리말과 길이(1847줄)가 그대로다'); }
-ok(pass + fail >= 88, '★ 시험이 끝까지 실행됨(중간에 예외로 중단돼도 FAIL 0 으로 보이지 않게)');
+console.log('── 나머지 서류(대표님 2026-10-22 "이름·날짜 넣어도 돼"): 해고예고통지서·퇴직원·휴직원·연차촉진·연봉 제안서·이력서');
+const DS = { workerName: '김가나', noticeDate: '2026-10-22', dismissalDate: '2026-11-21', reasonType: 'discipline', reasonDetail: '무단결근 3회 비밀사유', ruleRef: '취업규칙 제9조', hourly: 14384, ordinaryWage: 3000000, noticeAllowance: 3000000, dept: '사업본부', rank: '대리', workerId: 'w-secret-1', delivery: '직접 교부' };
+const RR = { authorName: '김가나', authorDept: '사업본부', authorRank: '대리', lastDate: '2026-11-30', returnDate: '2027-02-28', reason: '개인 사정 비밀사유', approvalLine: [{ name: '결재자비밀' }], status: 'approved', dtype: 'resign', authorUid: 'uid-secret', authorEmail: 'kim@example.com' };
+const LP = { stage: 'p1', workerName: '김가나', noticeDate: '2026-10-22', periodStart: '2026-01-01', periodEnd: '2026-12-31', grantDays: 15, usedDays: 3, unusedDays: 12, designatedDates: ['2026-12-01', '2026-12-02'], memo: '메모비밀', dept: '사업본부', rank: '대리', empNo: '25002', replyDue: '2026-11-01', method: '서면' };
+const OF = { kind: 'renew', name: '김가나', dept: '사업본부', rank: '대리', empNo: '25002', job: 'FCU', amount: '48000000', curSalary: '40000000', offerDate: '2026-10-22', replyDue: '2026-10-29', startDate: '2027-01-01', hireDate: '2023-01-01' };
+const AP = { name: '김가나', birth: '1990-01-01', address: '대전 서구 가나로 1', phone: '010-1234-5678', email: 'kim@example.com', gender: '여', eduLevel: '대졸', military: '군필', notes: '비고비밀' };
+console.log(' · 파일 이름 형식');
+eq(dismissalDocTitle(DS), '해고예고통지서 - 김가나 - 2026-10-22', '★ 해고예고통지서: 종류 - 이름 - 통지일');
+eq(resignDocTitle(Object.assign({}, RR, { dtype: 'resign' }), '퇴직'), '퇴직원 - 김가나 - 2026-11-30', '★ 퇴직원: 종류 - 이름 - 퇴직 예정일');
+eq(resignDocTitle(RR, '휴직'), '휴직원 - 김가나 - 2026-11-30', '★ 휴직원: 종류 - 이름 - 휴직 시작일(같은 필드 lastDate 가 휴직 시작일을 뜻한다)');
+eq(leavePromoDocTitle(LP), '연차 유급휴가 사용 촉진 통보서 (1차) - 김가나 - 2026-10-22', '★ 연차촉진 1차: 서류 제목(차수 포함) - 이름 - 통보일 (지금은 이름이 아예 없다)');
+eq(leavePromoDocTitle(Object.assign({}, LP, { stage: 'p2' })), '연차 유급휴가 사용 시기 지정 통보서 (2차) - 김가나 - 2026-10-22', '연차촉진 2차(시기 지정)');
+eq(leavePromoDocTitle(Object.assign({}, LP, { stage: 'p1x' })), '연차 유급휴가 사용 촉진 통보서 (추가 1차) - 김가나 - 2026-10-22', '연차촉진 추가 1차');
+eq(offerDocTitle(OF), '연봉 제안서 - 김가나 - 2026-10-22', '★ 연봉 제안서(재출력): 종류 - 이름 - 제안일');
+eq(offerDocTitle(OF, { preview: true }), '연봉 제안서 - 김가나', '★ 연봉 제안서(작성 중 출력): 이름만 — 제안일·금액이 아직 바뀔 수 있다');
+eq(resumeDocTitle(AP), '이력서 - 김가나', '★ 이력서: 종류 - 이름(날짜 없음 — 자연스러운 기준일이 없고 생년월일은 개인정보다)');
+console.log(' · 서류에 있어도 제목에 쓰이지 않는 것(해고 사유·연봉 금액·생년월일 등 — 이 서류들은 개인정보 위험이 크다)');
+const LEAK = (t, bad, m) => ok(!new RegExp(bad).test(t), '★ ' + m + ' — 실제: ' + t);
+LEAK(dismissalDocTitle(DS), '비밀사유|취업규칙|14,?384|3,?000,?000|사업본부|대리|w-secret|2026-11-21|직접|징계|discipline', '해고예고통지서 제목에 해고 사유·규정·임금·수당·부서·직급·직원 id·해고일·교부 방법이 없다');
+for (const k of ['퇴직', '휴직']) LEAK(resignDocTitle(RR, k), '비밀사유|결재자|uid-secret|example\\.com|사업본부|대리|2027-02-28|approved', k + '원 제목에 사유·결재선·uid·이메일·부서·직급·복직일이 없다');
+LEAK(leavePromoDocTitle(LP), '메모비밀|2026-12-0|15일|사업본부|대리|25002|2026-11-01|2026-01-01|서면', '연차촉진 제목에 연차 일수·지정일·메모·부서·직급·사번·회신기한·대상 기간이 없다');
+for (const pv of [false, true]) LEAK(offerDocTitle(OF, { preview: pv }), '48,?000,?000|40,?000,?000|FCU|사업본부|대리|25002|2027-01-01|2023-01-01|2026-10-29', '연봉 제안서' + (pv ? '(작성 중)' : '') + ' 제목에 연봉 금액·현 연봉·직무·부서·직급·사번·시작일·입사일·회신기한이 없다');
+LEAK(resumeDocTitle(AP), '1990|대전|010-|example\\.com|여|대졸|군필|비고비밀', '이력서 제목에 생년월일·주소·연락처·이메일·성별·학력·병역·비고가 없다');
+for (const [f, fn, rec] of [['workerId', dismissalDocTitle, DS], ['dismissalDate', dismissalDocTitle, DS], ['reasonDetail', dismissalDocTitle, DS]]) { const t = fn(Object.assign({}, rec, { [f]: '구별용값ZZ' })); ok(!/구별용값ZZ/.test(t), '★ 해고예고통지서 ' + f + ' 필드는 제목에 쓰이지 않는다'); }
+for (const f of ['authorDept', 'authorRank', 'reason', 'returnDate', 'authorEmail']) ok(!/구별용값ZZ/.test(resignDocTitle(Object.assign({}, RR, { [f]: '구별용값ZZ' }), '퇴직')), '★ 퇴직원 ' + f + ' 필드는 제목에 쓰이지 않는다');
+for (const f of ['memo', 'dept', 'empNo', 'method', 'replyDue', 'periodStart']) ok(!/구별용값ZZ/.test(leavePromoDocTitle(Object.assign({}, LP, { [f]: '구별용값ZZ' }))), '★ 연차촉진 ' + f + ' 필드는 제목에 쓰이지 않는다');
+for (const f of ['amount', 'curSalary', 'job', 'dept', 'empNo', 'replyDue']) ok(!/구별용값ZZ/.test(offerDocTitle(Object.assign({}, OF, { [f]: '구별용값ZZ' }))), '★ 연봉 제안서 ' + f + ' 필드는 제목에 쓰이지 않는다');
+for (const f of ['birth', 'address', 'phone', 'email', 'gender', 'eduLevel', 'military', 'notes']) ok(!/구별용값ZZ/.test(resumeDocTitle(Object.assign({}, AP, { [f]: '구별용값ZZ' }))), '★ 이력서 ' + f + ' 필드는 제목에 쓰이지 않는다');
+console.log(' · 비어 있거나 이상한 입력');
+eq(dismissalDocTitle(Object.assign({}, DS, { noticeDate: '' })), '해고예고통지서 - 김가나', '통지일이 비면 건너뛴다');
+eq(dismissalDocTitle(Object.assign({}, DS, { workerName: '' })), '해고예고통지서 - 2026-10-22', '이름이 비면 건너뛴다');
+eq(resignDocTitle(Object.assign({}, RR, { lastDate: '' }), '퇴직'), '퇴직원 - 김가나', '퇴직 예정일이 비면 이름만');
+eq(resignDocTitle(RR, undefined), '퇴직원 - 김가나 - 2026-11-30', '종류를 모르면 퇴직원(코드의 기본과 같다: 휴직이 아니면 퇴직)');
+eq(leavePromoDocTitle(Object.assign({}, LP, { noticeDate: '' })), '연차 유급휴가 사용 촉진 통보서 (1차) - 김가나', '통보일이 비면 이름까지');
+eq(offerDocTitle(Object.assign({}, OF, { offerDate: '' })), '연봉 제안서 - 김가나', '제안일이 비면 이름만');
+eq(offerDocTitle(Object.assign({}, OF, { name: '' })), '연봉 제안서 - 2026-10-22', '이름이 없으면(빈칸 출력) 제안일만');
+eq(resumeDocTitle(Object.assign({}, AP, { name: '' })), '이력서', '이름이 없으면 종류만');
+for (const [nm, fn] of [['해고예고', () => dismissalDocTitle(null)], ['퇴직원', () => resignDocTitle(null, '퇴직')], ['연차촉진', () => leavePromoDocTitle(null)], ['연봉 제안서', () => offerDocTitle(null)], ['이력서', () => resumeDocTitle(null)]]) { let r, threw = false; try { r = fn(); } catch (e) { threw = true; } ok(!threw && typeof r === 'string' && r.length > 0, '★ ' + nm + ': 이상한 입력(null)에도 던지지 않고 종류를 돌려준다 — ' + r); }
+for (const bad of [undefined, 'x', 3, [], {}]) { let threw = false; try { dismissalDocTitle(bad); resignDocTitle(bad, '퇴직'); leavePromoDocTitle(bad); offerDocTitle(bad); resumeDocTitle(bad); } catch (e) { threw = true; } ok(!threw, '이상한 입력(' + JSON.stringify(bad) + ')에도 던지지 않는다'); }
+eq(dismissalDocTitle(Object.assign({}, DS, { workerName: '김가나 010-1234-5678' })), '해고예고통지서 - 김가나 - 2026-10-22', '★ 이름 칸의 전화번호는 지운다(안전 규칙)');
+eq(resumeDocTitle(Object.assign({}, AP, { name: '김/가나' })), '이력서 - 김-가나', '이름의 금지 문자는 정리한다');
+{ const r = JSON.parse(JSON.stringify(DS)); const sn = JSON.stringify(r); dismissalDocTitle(r); ok(JSON.stringify(r) === sn, '입력을 바꾸지 않는다'); }
+console.log(' · 서류를 여는 곳(hr/index.js)이 제목을 넘긴다');
+{ const src = fs.readFileSync(new URL('../app/modules/hr/index.js', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(/withDocTitle\(resignPrintHtml\(d, w, d\.filed, st\.today\), resignDocTitle\(/.test(src), '★ 퇴직원·휴직원: 준비 중 창을 먼저 여는 구조(팝업 차단을 피하려고 클릭 직후 동기로 연다)는 그대로 두고 문서를 다시 쓰는 곳에서 제목만 바꾼다');
+  ok(/win\.document\.open\(\); win\.document\.write\(withDocTitle\(/.test(src), '퇴직원·휴직원은 여전히 win.document.open() 으로 다시 쓴다(비동기 구조 유지)');
+  ok(/resignDocTitle\(d, rrqKindOf\(d\)\)/.test(src), '★ 퇴직원·휴직원 제목은 서류의 종류(rrqKindOf(d) — 휴직/퇴직)를 넘긴다 — 항상 퇴직으로 두면 휴직원이 퇴직원 이름으로 저장된다');
+  ok(/withDocTitle\(resumePrintHtml\(a\), resumeDocTitle\(a\)\)/.test(src), '★ 이력서가 제목을 바꾼다');
+  ok(/openDocWindow\(\{ html: dsHtmlByVer\(d, \{ stamp: st\.stamp \}\), title: dismissalDocTitle\(d\)/.test(src), '★ 해고예고통지서(발행 직후·재출력 모두 이 함수)가 제목을 넘긴다');
+  ok(/openDocWindow\(\{ html: leavePromoHtmlByVer\(rec\), title: leavePromoDocTitle\(rec\)/.test(src), '★ 연차촉진(발행 직후·재출력 모두 이 함수)이 제목을 넘긴다');
+  ok(/openDocWindow\(\{ html: offerBuildHtml\(f, r, ctxOf\(\)\), title: offerDocTitle\(f, o\)/.test(src), '★ 연봉 제안서가 제목을 넘기고 작성 중(preview)과 재출력을 구분한다');
+  ok(/openPrint\(st\.of, \{ preview: true \}\)/.test(src) && /openPrint\(o\);/.test(src), '★ 연봉 제안서: 작성 폼의 출력은 preview: true(이름만), 저장된 제안서 재출력은 날짜까지');
+  ok(!/win\.document\.write\((dsHtmlByVer|leavePromoHtmlByVer|offerBuildHtml)\(/.test(src), '★ 이 세 서류는 더 이상 문서를 직접 쓰지 않고 공용 함수를 거친다(제목이 빠지는 길이 없다)'); }
+ok(pass + fail >= 161, '★ 시험이 끝까지 실행됨(중간에 예외로 중단돼도 FAIL 0 으로 보이지 않게)');
 console.log('\n' + pass + ' passed, ' + fail + ' failed'); if (fail) process.exit(1);
