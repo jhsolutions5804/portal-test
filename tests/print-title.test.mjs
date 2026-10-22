@@ -37,5 +37,5 @@ console.log('── 안전');
 { let threw = false; try { printWithTitle('문서 A', { env: { window: null } }); } catch (e) { threw = true; } ok(!threw, '환경이 없어도(창이 없음) 던지지 않고 ok: false 를 돌려준다'); const r = printWithTitle('문서 A', { env: { window: null } }); ok(r.ok === false, '창이 없으면 ok: false'); }
 { const m = mkEnv(); let threw = false; try { printWithTitle('문서 A', { env: m.env, onDone: () => { throw new Error('콜백 오류'); } }); m.fireAfterPrint(); } catch (e) { threw = true; } ok(!threw && m.document.title === '포털 홈', '★ onDone 이 던져도 제목은 이미 되돌려져 있고 오류가 밖으로 새지 않는다'); }
 { const m = mkEnv(); printWithTitle('문서 A', { env: m.env, onDone: 'x' }); m.fireAfterPrint(); ok(m.document.title === '포털 홈', 'onDone 이 함수가 아니면 무시한다'); }
-ok(pass + fail >= 1, '시험이 끝까지 실행됨');
+ok(pass + fail >= 36, '★ 시험이 끝까지 실행됨(중간에 예외로 중단돼도 FAIL 0 으로 보이지 않게)');
 console.log('\n' + pass + ' passed, ' + fail + ' failed'); if (fail) process.exit(1);

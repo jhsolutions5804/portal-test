@@ -1,7 +1,8 @@
 /* 평가 결과 통보서 — 순수 규칙(화면·네트워크 없이 시험 가능). 확정된 정기평가(+ 확정된 수시평가)를 직원 본인에게 알리는 문서의 "내용 결정"과 "HTML 생성".
  *  원칙: ① 확정된 평가만 ② 직원이 알아도 되는 것만 — 최종 점수·등급·영역별 점수·동료 평균·수시평가 결과·본인 자기평가. 사장단 개인별 점수·코멘트, 동료·팀장 개별 점수, 평가자 식별 정보는 넣지 않는다.
  *  ③ 문서는 메일 본문이 아니라 "본인 확인(휴대폰 문자 인증) 링크" 뒤에 저장되어, 본인만 본다. */
-import { cycleSummary, areaItems, teamTypeOf, WEIGHTS_BY, AREA_LABELS, areaScore, leadAreasOf, adhocSummary, combineRegular, gradeOf, evalPeriod } from './evaluation.js?v=20261022a';
+import { cycleSummary, areaItems, teamTypeOf, WEIGHTS_BY, AREA_LABELS, areaScore, leadAreasOf, adhocSummary, combineRegular, gradeOf, evalPeriod } from './evaluation.js?v=20261022b';
+import { docFileName } from '../../shared/doc-filename.js?v=20261022b';
 export const RESULT_DOC_TYPE = 'evalresult';
 export const RESULT_TITLE = '인사평가 결과 통보서';
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -56,4 +57,21 @@ export function resultHtml(d, opts) {
     + areaTable + peerNote + adhocTable + self
     + '<div class="note"><b>안내</b><br>올해 평가 결과는 <b>참고자료</b>로 활용하며 연봉·고과에 직접 반영하지 않습니다. 연봉협상 면담에서 이 결과를 함께 살펴봅니다.<br>면담 때 <b>본인이 준비한 실적 보고서</b>를 지참(또는 사전 제출)해 주세요. 면담 일정과 제출 방법은 인사총무팀에서 별도로 안내드립니다.</div>'
     + '<div class="foot">JH솔루션즈 인사총무팀' + (o.today ? ' · 발행일 ' + esc(o.today) : '') + '<br>이 문서는 본인 확인(휴대폰 문자 인증)을 거친 본인에게만 보이는 문서입니다. 외부로 공유하지 말아 주세요.</div></div></body></html>';
+}
+
+/* ───────── 인쇄(대기열 1-2-7 ②, 대표님 2026-10-22) ─────────
+ * 관리자 화면의 미리보기는 sandbox="" iframe 이라 바깥에서 contentWindow.print() 를 부를 수 없다(교차 출처 차단 — 실제 크로미움에서 확인) → [인쇄] 버튼은 영업기획 문서처럼 새 창에 문서를 쓰고 인쇄한다.
+ * 직원에게 보내는 확인 링크가 같은 resultHtml 을 쓰므로 resultHtml(발송·미리보기)은 바꾸지 않는다 — 새 창에 쓸 때만 아래 resultPrintHtml 로 <title> 을 문서 이름으로 바꾸고 인쇄 스크립트를 더한다. */
+/** 문서 이름 — 종류 - 이름 - 평가 연도(점수·부서·직급은 넣지 않는다). d = buildResultData 의 data 또는 { year, worker:{ name } } */
+export function resultPrintTitle(d) {
+  const x = d && typeof d === 'object' && !Array.isArray(d) ? d : {}; const w = x.worker && typeof x.worker === 'object' ? x.worker : {};
+  return docFileName({ group: 'person', kind: RESULT_TITLE, name: w.name, year: x.year });
+}
+const PRINT_SCRIPT = '<scr' + 'ipt>window.onload=function(){setTimeout(function(){window.print();},250);}</scr' + 'ipt>';
+const cleanTitle = (t) => (typeof t === 'string' ? t.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200).trim() : '');
+/** 새 창에 쓸 인쇄용 문서 — 본문은 그대로 두고 <title> 을 문서 이름으로 바꾸고(이스케이프) 문서를 다 읽은 뒤 인쇄하는 고정 스크립트를 더한다. 제목이 비면 원래 제목을 둔다 */
+export function resultPrintHtml(html, title) {
+  let h = typeof html === 'string' ? html : ''; const t = cleanTitle(title);
+  if (t) { const tag = '<title>' + esc(t) + '</title>'; if (/<title>[\s\S]*?<\/title>/i.test(h)) h = h.replace(/<title>[\s\S]*?<\/title>/i, () => tag); else if (/<head[^>]*>/i.test(h)) h = h.replace(/<head[^>]*>/i, (m) => m + tag); else h = tag + h; }
+  const i = h.toLowerCase().lastIndexOf('</body>'); return i >= 0 ? h.slice(0, i) + PRINT_SCRIPT + h.slice(i) : h + PRINT_SCRIPT;
 }

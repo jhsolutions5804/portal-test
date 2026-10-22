@@ -1,8 +1,8 @@
 /* 평가 결과 — 불러오기·미리보기·링크 만들기·메일 발송. 발송(링크 생성·메일)은 인사 모듈의 기존 흐름(본인 확인 링크)을 쓰되, 평가 모듈이 인사 모듈을 직접 가져오지 않도록 deps.sendResult / deps.makeResultLink 로 주입받는다(modules/index.js 에서 연결).
  *  원칙: 열 때마다 최신 문서를 다시 읽어 통보서를 만들고, 발송 직전에 한 번 더 만든다(미리보기와 발송 내용이 어긋나지 않게). 확정되지 않은 평가는 만들지 않는다. */
-import { isEvalTarget, teamTypeOf, cycleSummary, areaItems } from './evaluation.js?v=20261022a';
-import { buildResultData, resultHtml, RESULT_DOC_TYPE, RESULT_TITLE } from './result-report.js?v=20261022a';
-import { maskEmail } from '../../shared/mask.js?v=20261022a';
+import { isEvalTarget, teamTypeOf, cycleSummary, areaItems } from './evaluation.js?v=20261022b';
+import { buildResultData, resultHtml, RESULT_DOC_TYPE, RESULT_TITLE, resultPrintHtml, resultPrintTitle } from './result-report.js?v=20261022b';
+import { maskEmail } from '../../shared/mask.js?v=20261022b';
 const kstToday = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 /** deps: { db, collection, getDocs, getDoc, doc, toast, confirmDialog, paint, st, ctx, sendResult({ workerId, workerName, html, title, year }) → { ok, email, cancelled }, makeResultLink({ workerId, workerName, html, title }) → token, showLink(token, 이름), mailOn } */
 export function createResultController(deps) {
@@ -40,7 +40,8 @@ export function createResultController(deps) {
     const op = t.closest('[data-rs-open]'); if (op) { await open(op.getAttribute('data-rs-open')); return true; }
     const b = t.closest('[data-rs-act]'); if (!b) return false; const act = b.getAttribute('data-rs-act');
     if (act === 'back') { rs.sel = ''; rs.preview = null; paint(); return true; }
-    if (act === 'print') { try { const f = (deps.root || document).querySelector('[data-rs-frame]'); if (f && f.contentWindow) { f.contentWindow.focus(); f.contentWindow.print(); } else toast('미리보기를 불러온 뒤 다시 눌러 주세요.'); } catch (e) { toast('인쇄를 열지 못했습니다. 미리보기 화면에서 브라우저 인쇄(Ctrl+P)를 사용해 주세요.'); } return true; }
+    /* 인쇄(대기열 1-2-7 ②): 미리보기는 sandbox="" iframe 이라 바깥에서 contentWindow.print() 를 부를 수 없어(교차 출처 차단) 예전 버튼은 늘 안내만 보여 줬다 → 영업기획 문서처럼 새 창에 인쇄용 문서(제목 = 문서 이름)를 쓴다. 직원에게 가는 resultHtml 은 바꾸지 않는다 */
+    if (act === 'print') { const pv = rs.preview; if (!pv) { toast('미리보기를 불러온 뒤 다시 눌러 주세요.'); return true; } try { const w = (deps.openWindow || ((u, n) => window.open(u, n)))('', '_blank'); if (!w) { toast('팝업이 차단되었습니다. 팝업을 허용한 뒤 다시 눌러 주세요.'); return true; } w.document.write(resultPrintHtml(pv.html, resultPrintTitle(pv.data))); w.document.close(); } catch (e) { toast('인쇄 창을 열지 못했습니다. 팝업을 허용했는지 확인해 주세요.'); } return true; }
     if (!rs.canSend) { toast('통보서 발송은 관리자 계정만 할 수 있습니다.'); return true; } if (rs.busy) return true;
     if (act === 'link' || act === 'mail') {
       rs.busy = true; paint(); mountFrame();

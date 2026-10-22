@@ -130,4 +130,15 @@ eq(docFileName({ group: 'period', kind: '손익계산서', from: '2026-02-01', t
 // 기존 그룹은 그대로
 eq(docFileName({ group: 'month', ym: '2026-09', kind: '월말 마감' }), '월말 마감 - 2026-09', '회귀: month 그룹은 그대로');
 eq(docFileName({ group: 'edoc', kind: '구매품의서', author: '김작성', date: '2026-10-01' }), '구매품의서 - 김작성 - 2026-10-01', '★ 전자결재(번호 없이): 종류 → 작성자 → 날짜 — 문서번호 필드가 없어 칸만 건너뛴다(대표님 2026-10-22)');
+// ── 연도 문서(인사평가 결과 통보서 — 기준일이 아니라 평가 연도가 핵심, 대표님 2026-10-22)
+eq(docFileName({ group: 'person', kind: '인사평가 결과 통보서', name: '홍길동', year: 2026 }), '인사평가 결과 통보서 - 홍길동 - 2026', '★ 사람 문서에 year 를 주면 기준일 자리에 연도');
+eq(docFileName({ group: 'person', kind: '인사평가 결과 통보서', name: '홍길동', year: '2026' }), '인사평가 결과 통보서 - 홍길동 - 2026', '연도는 문자열이어도');
+eq(docFileName({ group: 'person', kind: '인사평가 결과 통보서', name: '홍길동', year: 2026, date: '2026-11-20' }), '인사평가 결과 통보서 - 홍길동 - 2026', '★ year 와 date 가 같이 있으면 year 가 우선(연도 문서에 발행일을 붙이지 않는다)');
+eq(docFileName({ group: 'person', kind: '인사평가 결과 통보서', name: '홍길동', year: 'x', date: '2026-11-20' }), '인사평가 결과 통보서 - 홍길동 - 2026-11-20', '★ year 가 4자리 숫자가 아니면 버리고 date 로');
+for (const bad of [0, -1, 202, 20260, '20 26', null, undefined, {}, NaN, 1899, 2200]) eq(docFileName({ group: 'person', kind: '통보서', name: '홍길동', year: bad }), '통보서 - 홍길동', '★ year 가 ' + JSON.stringify(bad) + ' 이면(1900~2100 의 4자리가 아님) 연도 칸을 건너뛴다');
+eq(docFileName({ group: 'person', kind: '급여명세서', name: '홍길동', ym: '2026-06', year: 2026 }), '급여명세서 - 2026-06 - 홍길동', '★ 회귀: ym 이 있으면 year 와 무관하게 기존대로 종류 - 연월 - 이름');
+eq(docFileName({ group: 'person', kind: '근로계약서', name: '홍길동', date: '2026-10-26' }), '근로계약서 - 홍길동 - 2026-10-26', '회귀: 기존 person 은 그대로');
+eq(docFileName({ group: 'person', kind: '인사평가 결과 통보서', year: 2026 }), '인사평가 결과 통보서 - 2026', '이름이 없으면 그 칸만 건너뛴다');
+eq(docFileName({ group: 'person', kind: '인사평가 결과 통보서', name: '홍길동 010-1234-5678', year: 2026 }), '인사평가 결과 통보서 - 홍길동 - 2026', '★ 안전 규칙은 연도 문서에도 적용된다(이름 칸의 전화번호 제거)');
+ok(pass + fail >= 132, '★ 시험이 끝까지 실행됨(중간에 예외로 중단돼도 FAIL 0 으로 보이지 않게)');
 console.log('\n' + pass + ' passed, ' + fail + ' failed'); if (fail) process.exit(1);

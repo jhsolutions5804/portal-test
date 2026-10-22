@@ -47,7 +47,7 @@ function build(x, maxFree) {
   const free = (v) => safeText(v, maxFree), kind = safeText(x.kind, 30) || '문서';
   let parts;
   if (x.group === 'month') parts = [kind, ymOf(x.ym), free(x.project)];
-  else if (x.group === 'person') { const ym = ymOf(x.ym); parts = ym ? [kind, ym, free(x.name)] : [kind, free(x.name), dateOf(x.date)]; }
+  else if (x.group === 'person') { const ym = ymOf(x.ym); const yr = (typeof x.year === 'number' || typeof x.year === 'string') && /^\d{4}$/.test(String(x.year)) && Number(x.year) >= 1900 && Number(x.year) <= 2100 ? String(x.year) : ''; parts = ym ? [kind, ym, free(x.name)] : [kind, free(x.name), yr || dateOf(x.date)]; }
   else if (x.group === 'period') parts = [kind, periodOf(x.from, x.to), free(x.project)];
   else if (x.group === 'edoc') parts = [kind, noOf(x.docNo != null ? x.docNo : x.no), free(x.author), dateOf(x.date)];
   else {   // project: 종류_날짜_거래처(담당자)_현장명_견적명

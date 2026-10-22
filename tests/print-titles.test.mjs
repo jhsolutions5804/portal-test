@@ -50,5 +50,5 @@ console.log('── 제목에 들어가면 안 되는 필드(실제 문서에는
 { const d = { id: 'Ab12Cd34Ef56Gh78Ij90Kl12', dtype: 'purchase', authorName: '김작성', authorEmail: 'kim.writer@example.com', authorUid: 'uid_secret_123', createdAt: KST(2026, 10, 1, 12, 0), title: '비밀 거래처 견적', docNo: 'SECRET-77' }; const r = edocPrintTitle(d); eq(r, '구매품의서 - 김작성 - 2026-10-01', '★ 전자결재 문서에 id·이메일·uid·제목이 있어도 제목에는 종류·작성자·날짜만 들어간다'); ok(!/Ab12Cd|example\.com|uid_secret|비밀|SECRET/.test(r), '★ 문서 id·이메일·uid·제목·번호가 파일 이름에 새지 않는다 — 실제: ' + r); }
 { const rep = { kind: 'pt', pacct: '1100', to: '2026-09-30', partner: '비밀거래처', q: '검색어비밀', acct: '1020' }; const r = T(rep); eq(r, '거래처별 잔액 - 2026-09-30 - 외상매출금', '★ 거래처별 잔액 화면에 거래처 이름·검색어·다른 계정이 있어도 제목에는 계정 이름만'); ok(!/비밀|보통예금/.test(r), '거래처 이름·검색어가 새지 않는다'); }
 { const rep = { kind: 'gl', acct: '1020', pacct: '1100', from: '2026-01-01', to: '2026-09-30', q: '검색어비밀' }; const r = T(rep); eq(r, '계정별 원장 - 2026-01~2026-09 - 보통예금', '★ 원장 화면의 검색어(q)·다른 화면의 계정(pacct)은 제목에 들어가지 않는다'); }
-ok(pass + fail >= 1, '시험이 끝까지 실행됨');
+ok(pass + fail >= 51, '★ 시험이 끝까지 실행됨(중간에 예외로 중단돼도 FAIL 0 으로 보이지 않게)');
 console.log('\n' + pass + ' passed, ' + fail + ' failed'); if (fail) process.exit(1);
