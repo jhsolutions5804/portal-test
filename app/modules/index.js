@@ -1,16 +1,16 @@
 /* 플랫폼에 꽂는 모듈 목록 — 모듈을 더하거나 빼는 일은 이 파일 한 곳만 고친다.
  * 각 항목은 { manifest, mount }. 핵심부(core/)는 모듈 폴더를 직접 알지 못하고 이 목록만 읽는다. */
-import * as edoc from './edoc/index.js?v=20261022f';
-import * as attendance from './attendance/index.js?v=20261022f';
-import * as calendar from './calendar/index.js?v=20261022f';
-import * as company from './company/index.js?v=20261022f';
-import * as evalm from './eval/index.js?v=20261022f';
-import * as finance from './finance/index.js?v=20261022f';
-import * as plan from './plan/index.js?v=20261022f';
-import * as general from './general/index.js?v=20261022f';
-import * as hr from './hr/index.js?v=20261022f';
-import * as pjt from './pjt/index.js?v=20261022f';
-import { modules as legacy, hostNative } from './legacy/index.js?v=20261022f';
+import * as edoc from './edoc/index.js?v=20261022g';
+import * as attendance from './attendance/index.js?v=20261022g';
+import * as calendar from './calendar/index.js?v=20261022g';
+import * as company from './company/index.js?v=20261022g';
+import * as evalm from './eval/index.js?v=20261022g';
+import * as finance from './finance/index.js?v=20261022g';
+import * as plan from './plan/index.js?v=20261022g';
+import * as general from './general/index.js?v=20261022g';
+import * as hr from './hr/index.js?v=20261022g';
+import * as pjt from './pjt/index.js?v=20261022g';
+import { modules as legacy, hostNative } from './legacy/index.js?v=20261022g';
 
 export const MODULES = [
   { manifest: edoc.manifest, mount: edoc.mount },
@@ -38,6 +38,7 @@ hostNative('pjt', 'attend', pjt.mountAttend);   // PJT 새 모듈의 첫 화면 
 hostNative('plan', 'home', plan.mountHome);   // 영업기획 홈 새 화면
 hostNative('plan', 'acct', plan.mountAcct);   // 비용장부 대조(재무회계 이관) 새 화면
 hostNative('plan', 'closing', plan.mountClosing);   // 월말 마감(신규)
+hostNative('plan', 'monthly', plan.mountMonthlyMgmt);   // 월간 보고서(경영 층 — 그 달 청구·완결·원가·마진율·노무 수율, 서버 마진 집계를 그 달까지·전달까지 두 번 불러 차이, 저장 없음)
 hostNative('plan', 'projects', plan.mountProjects);   // 프로젝트(허브) 새 화면
 hostNative('plan', 'billing', plan.mountBilling);   // 청구·수금 새 화면(정산서 중 대금청구서)
 hostNative('plan', 'payout', plan.mountPayout);   // 지급·정산 새 화면(정산서 중 지급예정서)

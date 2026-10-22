@@ -1,36 +1,38 @@
-import { db, collection, getDocs, getDoc, query, where, documentId, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, writeBatch, deleteField, functions, httpsCallable } from '../../core/firebase.js?v=20261022f';
-import { toast } from '../../core/ui.js?v=20261022f';
-import { confirmDialog } from '../../core/dialog.js?v=20261022f';
-import { compNew, compToForm, compBuild, fmtTel, fmtTelBlur, kstToday } from './logic.js?v=20261022f';
-import { companiesListHtml, companyFormHtml } from './view.js?v=20261022f';
-import { getLinkPjt, projNew, projToForm, projectBuild } from './projects.js?v=20261022f';
-import { projectsListHtml, projectDetailHtml, projectFormHtml } from './projects-view.js?v=20261022f';
-import { marginErrorState, evalSaveError } from './margin-link.js?v=20261022f';
-import { uiState, pushHash } from './ui.js?v=20261022f';
-import { itemAmt, blankItem, itemSetQty, itemSetPrice, itemSetAmount, applySupplyEdit, draftTotals, newDraft, draftFromEstimate, buildEstimate, closePatch, reopenPatch, estGroup, sortEstimates } from './estimates.js?v=20261022f';
-import { estimatesListHtml, estimateDetailHtml, estimateFormHtml, itemRowHtml } from './estimates-view.js?v=20261022f';
-import { estDocHtml, estDocTitle } from './estimate-doc.js?v=20261022f';
-import { calcSheet, newCalc, newRow, removeRow, applyToItem, LIMITS as CALC_LIMITS } from './estimate-calc.js?v=20261022f';
-import { calcBoxHtml, calcSummaryHtml, tableBodyHtml } from './estimate-calc-view.js?v=20261022f';
-import { sortProjects } from './projects.js?v=20261022f';
-import { linkPlan, donePatch, undonePatch, voidPatch, doneConfirm, undoneConfirm, doneToast, projectBalance, acctMonthInput } from './settlements.js?v=20261022f';
-import { settlementsListHtml, settlementDetailHtml } from './settlements-view.js?v=20261022f';
-import { settleDocPage, settleDocTitle } from './settlement-doc.js?v=20261022f';
-import { teamLaborHtml } from './teamlabor-view.js?v=20261022f';
-import { homeHtml } from './home-view.js?v=20261022f';
-import { closingHtml, closingPrintHtml } from './closing-view.js?v=20261022f';
-import { setProgressOverrides } from './progress.js?v=20261022f';
-import { toProfile } from '../../shared/pjt-structure.js?v=20261022f';
-import { acctHtml } from './acct-view.js?v=20261022f';
-import { contractsListHtml, contractFormHtml, contractDetailHtml } from './contracts-view.js?v=20261022f';
-import { contractDocPage } from './contract-doc.js?v=20261022f';
-import { flattenContracts, nextContractNo, newContract, validateContract, upsertContract, issueBlockers, changeFrom } from './contracts.js?v=20261022f';
-import { reconcileExpenses, missingToJson, tagTableCsv } from './acct-reconcile.js?v=20261022f';
-import { shiftYm, closingCsv } from './closing.js?v=20261022f';
-import { shiftMonth, monthRange, rosterEntry, aggregateMandays, parseTeamRate, ratePatch, rateSaveMessage } from './teamlabor.js?v=20261022f';
-import { issueFormHtml, qtyBlocksHtml, totalsHtml, manualRowHtml, mandayRowsHtml, mandayInfoHtml, progressBlocksHtml } from './issue-view.js?v=20261022f';
-import { accumulateDays, applyProgress as applyProgressChecks, setProgressZone, toggleProgressDeposit, setProgressBill } from './progress.js?v=20261022f';
-import { progressProfile, mandaySource, monthDays, sumMandayDays, duplicateSources, applyMandayFetch, setMandayInput, setMandayForPjt, setRateForPjtValue, setMandayBaseRate, newIssueDraft, formatMoneyInput, togglePjt, toggleEst, setQty, setQtyAmount, setSupplyOverride, setVatOverride, resetTotals, buildSettlement, itemSetQty as isItemQty, itemSetPrice as isItemPrice, itemSetAmount as isItemAmount, blankItem as isBlank } from './issue.js?v=20261022f';
+import { db, collection, getDocs, getDoc, query, where, documentId, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, writeBatch, deleteField, functions, httpsCallable } from '../../core/firebase.js?v=20261022g';
+import { toast } from '../../core/ui.js?v=20261022g';
+import { confirmDialog } from '../../core/dialog.js?v=20261022g';
+import { compNew, compToForm, compBuild, fmtTel, fmtTelBlur, kstToday } from './logic.js?v=20261022g';
+import { companiesListHtml, companyFormHtml } from './view.js?v=20261022g';
+import { getLinkPjt, projNew, projToForm, projectBuild } from './projects.js?v=20261022g';
+import { projectsListHtml, projectDetailHtml, projectFormHtml } from './projects-view.js?v=20261022g';
+import { marginErrorState, evalSaveError } from './margin-link.js?v=20261022g';
+import { uiState, pushHash } from './ui.js?v=20261022g';
+import { itemAmt, blankItem, itemSetQty, itemSetPrice, itemSetAmount, applySupplyEdit, draftTotals, newDraft, draftFromEstimate, buildEstimate, closePatch, reopenPatch, estGroup, sortEstimates } from './estimates.js?v=20261022g';
+import { estimatesListHtml, estimateDetailHtml, estimateFormHtml, itemRowHtml } from './estimates-view.js?v=20261022g';
+import { estDocHtml, estDocTitle } from './estimate-doc.js?v=20261022g';
+import { calcSheet, newCalc, newRow, removeRow, applyToItem, LIMITS as CALC_LIMITS } from './estimate-calc.js?v=20261022g';
+import { calcBoxHtml, calcSummaryHtml, tableBodyHtml } from './estimate-calc-view.js?v=20261022g';
+import { sortProjects } from './projects.js?v=20261022g';
+import { linkPlan, donePatch, undonePatch, voidPatch, doneConfirm, undoneConfirm, doneToast, projectBalance, acctMonthInput } from './settlements.js?v=20261022g';
+import { settlementsListHtml, settlementDetailHtml } from './settlements-view.js?v=20261022g';
+import { settleDocPage, settleDocTitle } from './settlement-doc.js?v=20261022g';
+import { teamLaborHtml } from './teamlabor-view.js?v=20261022g';
+import { homeHtml } from './home-view.js?v=20261022g';
+import { closingHtml, closingPrintHtml } from './closing-view.js?v=20261022g';
+import { setProgressOverrides } from './progress.js?v=20261022g';
+import { toProfile } from '../../shared/pjt-structure.js?v=20261022g';
+import { acctHtml } from './acct-view.js?v=20261022g';
+import { contractsListHtml, contractFormHtml, contractDetailHtml } from './contracts-view.js?v=20261022g';
+import { contractDocPage } from './contract-doc.js?v=20261022g';
+import { flattenContracts, nextContractNo, newContract, validateContract, upsertContract, issueBlockers, changeFrom } from './contracts.js?v=20261022g';
+import { reconcileExpenses, missingToJson, tagTableCsv } from './acct-reconcile.js?v=20261022g';
+import { shiftYm, closingCsv } from './closing.js?v=20261022g';
+import { shiftMonth, monthRange, rosterEntry, aggregateMandays, parseTeamRate, ratePatch, rateSaveMessage } from './teamlabor.js?v=20261022g';
+import { issueFormHtml, qtyBlocksHtml, totalsHtml, manualRowHtml, mandayRowsHtml, mandayInfoHtml, progressBlocksHtml } from './issue-view.js?v=20261022g';
+import { accumulateDays, applyProgress as applyProgressChecks, setProgressZone, toggleProgressDeposit, setProgressBill } from './progress.js?v=20261022g';
+import { progressProfile, mandaySource, monthDays, sumMandayDays, duplicateSources, applyMandayFetch, setMandayInput, setMandayForPjt, setRateForPjtValue, setMandayBaseRate, newIssueDraft, formatMoneyInput, togglePjt, toggleEst, setQty, setQtyAmount, setSupplyOverride, setVatOverride, resetTotals, buildSettlement, itemSetQty as isItemQty, itemSetPrice as isItemPrice, itemSetAmount as isItemAmount, blankItem as isBlank } from './issue.js?v=20261022g';
+import { monthlyMgmtHtml } from './monthly-mgmt-view.js?v=20261022g';
+import { createMonthlyMgmtController } from './monthly-mgmt-io.js?v=20261022g';
 
 /** 영업기획(플랫폼 기본 모듈): 구포털 기획(gihoek)을 탭 하나씩 새 화면으로 옮기는 중. 관리자 전용 — 데이터는 gihoek_* 컬렉션 그대로.
  *  사이드바는 옛 화면 틀(legacy/frame.js)이 그린다 — 이 모듈은 틀 안의 구역(거래처·협력사)을 그리는 함수만 내보내고 modules/index.js 가 hostNative 로 연결한다. */
@@ -520,5 +522,16 @@ export async function mountContracts(root, route, ctx) {
 }
 export const mountCompanies = (root, route, ctx) => mountCompaniesView(root, route, ctx, 'all');
 export const mountPartners = (root, route, ctx) => mountCompaniesView(root, route, ctx, 'partners');
+/** 월간 보고서(경영 층, 영업기획 — 모듈 전체가 관리자 전용): 그 달 청구·완결·지급·원가·마진율·노무 수율. 기본 데이터(프로젝트·견적·정산서)는 한 번 읽고, 서버 마진 집계(marginAct report)를 "그 달까지"와 "전달까지" 두 번 불러 차이를 낸다. 조회 전용 — 저장하는 데이터는 없다.
+ * 서버 호출은 ctx.callMargin 으로 바꿔 끼울 수 있다(시험). 월을 넘기면 늦게 온 이전 달 응답은 버린다. 컨트롤러: monthly-mgmt-io.js · 화면: monthly-mgmt-view.js · 계산: monthly-mgmt.js */
+export async function mountMonthlyMgmt(root, route, ctx) {
+  root.onclick = null; root.oninput = null; root.onchange = null;
+  root.innerHTML = '<div id="mm-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#mm-body');
+  const callMargin = (ctx && ctx.callMargin) || (async (payload) => (await httpsCallable(functions, 'marginAct')(payload)).data);
+  const loadBase = async () => { const [a, b, c] = await Promise.all([getDocs(collection(db, 'gihoek_projects')), getDocs(collection(db, 'gihoek_estimates')), getDocs(collection(db, 'gihoek_settlements'))]); return { projects: sortProjects(lst(a)), estimates: lst(b), settlements: lst(c) }; };
+  const ctl = createMonthlyMgmtController({ loadBase, callMargin, today: kstToday, paint: () => { body.removeAttribute('aria-busy'); body.innerHTML = monthlyMgmtHtml(ctl.st); } });
+  root.onclick = (ev) => { const t = ev.target; if (!(t instanceof Element)) return; const a = t.closest('[data-mm-act]'); if (!a) return; ctl.act(a.getAttribute('data-mm-act')); };
+  await ctl.open();
+}
 /** 모듈 규약상의 기본 진입점 — 실제 화면은 옛 화면 틀(legacy/frame.js)이 사이드바와 함께 위 구역 함수를 직접 부른다. 주소가 #/plan/partners 면 협력사, 그 밖에는 거래처 */
 export const mount = (root, route, ctx) => ((route && route.segs && route.segs[0]) === 'partners' ? mountPartners(root, route, ctx) : mountCompanies(root, route, ctx));   // 기본 진입점 — 프로젝트 화면은 mountProjects(구역 'projects')
