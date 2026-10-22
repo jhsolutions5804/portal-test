@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261022l';
-import { fmtTel, telHref, mailHref } from './logic.js?v=20261022l';
-import { renderMarkdown } from '../../shared/markdown.js?v=20261022l';
+import { esc } from '../../core/ui.js?v=20261022n';
+import { fmtTel, telHref, mailHref } from './logic.js?v=20261022n';
+import { renderMarkdown } from '../../shared/markdown.js?v=20261022n';
 
 export function orgHtml(groups, total, query) {
   const body = groups.length ? groups.map((g) => '<section class="jh-card jh-company__dept"><div class="jh-panel__head"><h3>📂 ' + esc(g.dept) + '</h3><span class="jh-chip">' + g.people.length + '명</span></div><div class="jh-company__people">' +

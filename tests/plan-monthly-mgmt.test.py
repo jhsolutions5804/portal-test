@@ -245,6 +245,43 @@ with sync_playwright() as p:
  c2 = calls(pg)
  for i, x in enumerate(c2[2:], start=2): respond(pg, i, x['upTo'], [row('r1', 700, 800)] if x['upTo'] == PREV else [row('r1', 600, 700)])
  settle(pg); name, txt = dl(pg); ok(name == '월간 보고서 - ' + PREV + '.csv' and ('[그 달 실적] ' + PREV) in txt, '★ 지난 달로 옮긴 뒤 파일 이름·구역 제목이 그 달이다: %s' % name); pg.close()
+ print('── 폰 폭 카드 변환(899px 이하): 표 행이 카드가 되고 이유가 글자로 보인다 — 실제 CSS·실제 화면으로 폰 폭(390)과 PC 폭(1300)을 비교한다')
+ def answer_trend(pg):
+  ms = [ym_shift(THIS, -i) for i in range(5, -1, -1)]
+  bm = [{'month': m, 'projects': [mrow('r1', 500, 1000)]} for m in ms]
+  for i, x in enumerate(calls(pg)):
+   up = x['upTo']; k = (ms.index(up) + 1) if up in ms else 1
+   respond_bm(pg, i, up, [row('r1', 500 * k, 1000 * k)], bm)
+ PHONE_JS = """() => { const out = {}; const tabs = [...document.querySelectorAll('#mm-body table.jh-plan__table--cards')]; out.n = tabs.length; out.pageW = document.documentElement.scrollWidth;
+  out.theadHidden = tabs.every((t) => getComputedStyle(t.querySelector('thead')).position === 'absolute');
+  out.rowsFlex = tabs.every((t) => [...t.querySelectorAll('tbody tr')].every((tr) => getComputedStyle(tr).display === 'flex' && getComputedStyle(tr).flexDirection === 'column'));
+  out.noHScroll = tabs.every((t) => t.scrollWidth <= t.parentElement.clientWidth + 1);
+  const bad = []; let labeled = 0; tabs.forEach((t, k) => t.querySelectorAll('td[data-label]').forEach((td) => { const l = td.getAttribute('data-label'); if (l === '') return; labeled++; const c = getComputedStyle(td, '::before').content; if (c !== '\"' + l + '\"') bad.push(k + ':' + l + ' != ' + c); })); out.labeled = labeled; out.badLabel = bad.slice(0, 3);
+  const badWhy = []; const ts = [...document.querySelectorAll('#mm-body td[title]')]; ts.forEach((td) => { const c = getComputedStyle(td, '::after').content; if (c !== '\"' + td.getAttribute('title') + '\"') badWhy.push(td.getAttribute('title') + ' != ' + c); }); out.titleCount = ts.length; out.badWhy = badWhy.slice(0, 3);
+  const h = document.querySelector('.jh-plan__hover'), t2 = document.querySelector('.jh-plan__touch'); out.hover = h ? getComputedStyle(h).display : null; out.touch = t2 ? getComputedStyle(t2).display : null;
+  const tr1 = tabs[1] && tabs[1].querySelector('tbody tr'); if (tr1) { const tds = [...tr1.querySelectorAll('td[data-label]')]; out.trendTops = tds.map((td) => Math.round(td.getBoundingClientRect().top)); out.trendLabels = tds.map((td) => td.getAttribute('data-label')); }
+  out.cardsFit = tabs.every((t) => [...t.querySelectorAll('tbody tr')].every((tr) => tr.getBoundingClientRect().right <= 391)); return out; }"""
+ pg, errs = fresh(); pg.set_viewport_size({'width': 390, 'height': 844}); mount(pg); ready(pg); settle(pg); answer_trend(pg); settle(pg)
+ r = pg.evaluate(PHONE_JS)
+ ok(r['n'] == 3, '(전제) 폰 폭에서 카드 변환 표가 3개 있다(그 달 실적·추이·달성률): ' + str(r['n']))
+ ok(r['pageW'] <= 390, '★ 폰 폭에서 페이지가 가로로 넘치지 않는다: ' + str(r['pageW']))
+ ok(r['theadHidden'], '★ 폰 폭에서 표 머리글 줄이 화면에서 사라진다(카드마다 라벨이 붙으므로 — 스크린리더용으로는 남김)')
+ ok(r['rowsFlex'], '★ 폰 폭에서 모든 행이 세로 카드(flex column)가 된다')
+ ok(r['noHScroll'], '★ 폰 폭에서 표가 가로 스크롤 없이 영역 안에 들어온다 — 원가·마진율·달성률이 화면 밖에 있지 않다')
+ ok(r['cardsFit'], '카드가 폰 폭 안에 들어온다')
+ ok(r['labeled'] >= 20 and r['badLabel'] == [], '★ 칸 앞 라벨(CSS 가 그리는 글자)이 data-label 과 똑같다 — 칸 ' + str(r['labeled']) + '개 ' + str(r['badLabel']))
+ ok(r['titleCount'] >= 1 and r['badWhy'] == [], '★ title(이유)이 있는 칸 ' + str(r['titleCount']) + '개 모두 폰에서 칸 아래 글자로 보인다(마우스 없이도 이유를 읽는다) ' + str(r['badWhy']))
+ ok(r['hover'] == 'none' and r['touch'] != 'none', '★ 폰에서는 마우스 안내가 사라지고 폰용 안내가 보인다: ' + str(r['hover']) + ' / ' + str(r['touch']))
+ ok('마우스' not in body(pg) and '칸 아래에 이유가 보입니다' in body(pg), '화면 글자에서도 폰에 마우스 안내가 없고 폰용 안내가 있다')
+ tops = r.get('trendTops') or []; ok(len(tops) == 6 and all(tops[i] > tops[i + 1] for i in range(len(tops) - 1)), '★ 추이 카드에서 이번 달이 맨 위, 가장 오래된 달이 맨 아래다(DOM 순서는 오래된 달부터지만 화면에서는 뒤집힘): ' + str(r.get('trendLabels')) + ' 위치 ' + str(tops))
+ ok(not errs, '시험 중 화면 오류·콘솔 오류 없음 ' + str(errs[:2])); pg.close()
+ pg, errs = fresh(); mount(pg); ready(pg); settle(pg); answer_trend(pg); settle(pg)
+ d = pg.evaluate("""() => { const tabs = [...document.querySelectorAll('#mm-body table.jh-plan__table--cards')]; const td = tabs[0].querySelector('td[data-label]'); const tr1 = tabs[1].querySelector('tbody tr'); const tops = [...tr1.querySelectorAll('td[data-label]')].map((x) => Math.round(x.getBoundingClientRect().top)); const h = document.querySelector('.jh-plan__hover'), t2 = document.querySelector('.jh-plan__touch');
+  return { n: tabs.length, tableDisplay: getComputedStyle(tabs[0]).display, theadPos: getComputedStyle(tabs[0].querySelector('thead')).position, rowDisplay: getComputedStyle(tabs[0].querySelector('tbody tr')).display, before: getComputedStyle(td, '::before').content, hover: getComputedStyle(h).display, touch: getComputedStyle(t2).display, sameRow: tops.every((x) => x === tops[0]), heads: [...tabs[0].querySelectorAll('thead th')].length }; }""")
+ ok(d['n'] == 3 and d['tableDisplay'] == 'table' and d['theadPos'] != 'absolute' and d['rowDisplay'] == 'table-row', '★ PC 폭(1300)에서는 표가 그대로다(table·머리글 보임·행은 table-row): ' + str(d))
+ ok(d['before'] in ('none', 'normal'), '★ PC 폭에서는 칸 앞 라벨이 그려지지 않는다: ' + str(d['before']))
+ ok(d['hover'] != 'none' and d['touch'] == 'none', '★ PC 폭에서는 마우스 안내가 보이고 폰용 안내는 숨는다')
+ ok(d['sameRow'], '★ PC 폭에서는 추이 월 칸이 한 줄에 나란히 있다(순서 지정이 PC 표를 바꾸지 않는다)'); ok(not errs, '화면 오류 없음 ' + str(errs[:2])); pg.close()
  print('── 조회 전용: 쓰기 호출이 한 번도 없다')
  pg, errs = fresh(); mount(pg); ready(pg); settle(pg); c = calls(pg)
  for i, x in enumerate(c): respond(pg, i, x['upTo'], [row('r1', 1, 1)])
@@ -252,5 +289,5 @@ with sync_playwright() as p:
  ok(pg.evaluate('window.__saved.length') == 0 and pg.evaluate('window.__calls.length') == 0, '★ 화면을 열고 달을 넘겨도 쓰기(setDoc·addDoc·updateDoc·deleteDoc·batch)가 0번이다 — %s %s' % (pg.evaluate('window.__saved'), pg.evaluate('window.__calls')))
  ok(set(pg.evaluate('window.__reads')) == {'gihoek_projects', 'gihoek_estimates', 'gihoek_settlements'}, '읽는 컬렉션은 프로젝트·견적·정산서 셋뿐이다 — %s' % sorted(set(pg.evaluate('window.__reads')))); pg.close()
  b.close()
-if pass_n + fail_n < 123: fail_n += 1; print('FAIL ★ 시험 전체가 끝까지 실행됨(%d건 < 123)' % (pass_n + fail_n))
+if pass_n + fail_n < 140: fail_n += 1; print('FAIL ★ 시험 전체가 끝까지 실행됨(%d건 < 140)' % (pass_n + fail_n))
 print('\n' + ('실패 %d건 / 통과 %d' % (fail_n, pass_n) if fail_n else '전부 통과 (%d건)' % pass_n)); sys.exit(1 if fail_n else 0)
