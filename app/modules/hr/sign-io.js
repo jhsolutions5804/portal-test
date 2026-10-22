@@ -1,14 +1,14 @@
 /* 원격 서명·열람 링크·메일 발송 — Firestore·메일 서비스를 쓰는 부분(규칙·판단은 sign.js, 시험은 거기서).
  * 서명 페이지(sign.html)는 별도 공개 페이지이고, 이 파일은 관리자 화면 쪽(링크 만들기·서명 결과 반영·메일 보내기·발송 이력)만 맡는다. */
-import { db, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp, Timestamp, addDoc, updateDoc } from '../../core/firebase.js?v=20261021k';
-import { confirmDialog } from '../../core/dialog.js?v=20261021k';
-import { toast, esc } from '../../core/ui.js?v=20261021k';
-import { configureFrozenDocs, docHtmlByVer, __ANNUAL_TPL, __LABOR_TPL } from './frozen-docs.js?v=20261021k';
-import { psHtml } from './payslip-doc.js?v=20261021k';
-import { leavePromoHtmlByVer, configureLeavePromoDocs } from './leave-promo-docs.js?v=20261021k';
-import { LP_STAGE } from './leave-promo.js?v=20261021k';
-import { IS_TEST } from '../../core/config.js?v=20261021k';
-import { emailjsFor, phoneE164, maskJumin, contractContentHash, buildSignLink, buildViewLink, NO_PHONE_ERROR, syncDecision, isEmail, sendLogEntry, summarizeSendLog, qrUrl, EMAILJS, DOC_LABEL } from './sign.js?v=20261021k';
+import { db, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp, Timestamp, addDoc, updateDoc } from '../../core/firebase.js?v=20261021l';
+import { confirmDialog } from '../../core/dialog.js?v=20261021l';
+import { toast, esc } from '../../core/ui.js?v=20261021l';
+import { configureFrozenDocs, docHtmlByVer, __ANNUAL_TPL, __LABOR_TPL } from './frozen-docs.js?v=20261021l';
+import { psHtml } from './payslip-doc.js?v=20261021l';
+import { leavePromoHtmlByVer, configureLeavePromoDocs } from './leave-promo-docs.js?v=20261021l';
+import { LP_STAGE } from './leave-promo.js?v=20261021l';
+import { IS_TEST } from '../../core/config.js?v=20261021l';
+import { emailjsFor, phoneE164, maskJumin, contractContentHash, buildSignLink, buildViewLink, NO_PHONE_ERROR, syncDecision, isEmail, sendLogEntry, summarizeSendLog, qrUrl, EMAILJS, DOC_LABEL } from './sign.js?v=20261021l';
 export const signBase = () => new URL('../../../sign.html', import.meta.url).href;   // 이 앱이 올라가 있는 곳(테섭·본섭)의 서명 페이지
 const logoUrl = () => new URL('../../theme/assets/jh-logo.png', import.meta.url).href;
 const COLL = { annual: 'annual_contracts', labor: 'labor_contracts' };

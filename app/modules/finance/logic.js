@@ -1,9 +1,9 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261021k';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261021k';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261021k';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261021k';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261021k';
-import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261021k';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261021l';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261021l';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261021l';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261021l';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261021l';
+import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261021l';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -548,6 +548,26 @@ export function arByMonth(entries) {
   const rows = new Map(); const cat = (e, l) => { const k = (e.source && e.source.kind) || 'manual'; if (l.side === 'D') return k === 'taxinv_sales' ? 'billed' : 'other'; if (e.lines.some((x) => x.account === '4090' && x.side === 'D')) return 'adjusted'; if (k === 'bank') return 'received'; return 'other'; };
   (entries || []).slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)).forEach((e) => (e.lines || []).forEach((l) => { if (l.account !== '1100') return; const ym = e.date.slice(0, 7); const r = rows.get(ym) || { ym, billed: 0, received: 0, adjusted: 0, other: 0 }; const c = cat(e, l); r[c] += l.side === 'D' ? l.amount : -l.amount; rows.set(ym, r); }));
   let bal = 0; return [...rows.values()].sort((a, b) => (a.ym < b.ym ? -1 : 1)).map((r) => { bal += r.billed + r.received + r.adjusted + r.other; return Object.assign(r, { received: -r.received, adjusted: -r.adjusted, balance: bal }); });
+}
+/** 세금계산서 공급가(홈택스 매출 전표의 4010 월별 합) — arByMonth 와 같은 집단(외상매출금 1100 차변이 있는 홈택스 매출 전표)만 세고 대변은 더하고 차변(발행 취소·정정)은 뺀다. 이엔지 정산 탭의 "월별 매출 세 숫자"(대표님 2026-10-21 "제이에이치 전체 매출 정보가 있어야 한다")에서 청구서 공급가와 같은 기준(공급가액)으로 비교하려고 쓴다 */
+export function taxSalesSupplyByMonth(entries) {
+  const out = {}; (Array.isArray(entries) ? entries : []).forEach((e) => {
+    if (!e || typeof e !== 'object' || !e.source || e.source.kind !== 'taxinv_sales' || typeof e.date !== 'string' || !Array.isArray(e.lines)) return;
+    if (!e.lines.some((l) => l && l.account === '1100' && l.side === 'D')) return;
+    const ym = e.date.slice(0, 7); e.lines.forEach((l) => { if (!l || l.account !== '4010') return; const m = Number(l.amount) || 0; out[ym] = (out[ym] || 0) + (l.side === 'C' ? m : -m); });
+  }); return out;
+}
+/** 월별 매출 세 숫자 — 청구서(이엔지 명의, 서버 invoiceMonthly: 공급가·완결·미완결)·세금계산서(공급가·부가세 포함 합계)·통장 입금을 월별 한 줄과 연 합계로 합친다. 세 서류는 서로 다른 거래의 것이라 짝짓지 않고 나란히만 둔다. 서버 응답이 없거나 이상하면 청구서 칸만 null(세금계산서·입금은 그대로) */
+export function revenueTriple(arRows, supply, invoiceMonthly) {
+  const fin = (v) => typeof v === 'number' && Number.isFinite(v); const im = invoiceMonthly;
+  const ready = !!im && typeof im === 'object' && im.ok === true && Array.isArray(im.months) && !!im.total && typeof im.total === 'object' && im.months.every((m) => m && typeof m === 'object' && typeof m.month === 'string' && fin(m.supply) && fin(m.done) && fin(m.open));
+  const by = {}; const row = (ym) => (by[ym] = by[ym] || { ym, invSupply: ready ? 0 : null, invDone: ready ? 0 : null, invOpen: ready ? 0 : null, taxSupply: 0, taxTotal: 0, bank: 0 });
+  (Array.isArray(arRows) ? arRows : []).forEach((r) => { if (r && typeof r.ym === 'string') { const x = row(r.ym); x.taxTotal = Number(r.billed) || 0; x.bank = Number(r.received) || 0; } });
+  const sp = supply && typeof supply === 'object' ? supply : {}; Object.keys(sp).forEach((ym) => { row(ym).taxSupply = Number(sp[ym]) || 0; });
+  if (ready) im.months.forEach((m) => { const x = row(m.month); x.invSupply = m.supply; x.invDone = m.done; x.invOpen = m.open; });
+  const rows = Object.keys(by).sort().reverse().map((k) => by[k]); const years = {};
+  rows.forEach((r) => { const y = r.ym.slice(0, 4); const t = years[y] = years[y] || { year: y, invSupply: ready ? 0 : null, invDone: ready ? 0 : null, invOpen: ready ? 0 : null, taxSupply: 0, taxTotal: 0, bank: 0 }; if (ready) { t.invSupply += r.invSupply; t.invDone += r.invDone; t.invOpen += r.invOpen; } t.taxSupply += r.taxSupply; t.taxTotal += r.taxTotal; t.bank += r.bank; });
+  return { rows, years: Object.keys(years).sort().reverse().map((y) => years[y]), invoiceReady: ready };
 }
 export const GAP_TYPES = [['nodoc', '증빙 없음(실제로 받지 않은 차액)', '4090'], ['cash', '현금으로 받음(증빙 있음)', '1010'], ['offset', '다른 거래와 상계·공제(증빙 있음)', '2020']];
 /** 정산 차액 처리 전표 — 증빙이 있다고 한 유형은 증빙 설명이 비어 있으면 거부 */

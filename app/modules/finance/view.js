@@ -1,8 +1,8 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261021k';
-import { monthPreview, splitLeftText, RULE_ACCOUNTS } from './pjt-tag-logic.js?v=20261021k';
-import { esc } from '../../core/ui.js?v=20261021k';
-import { ownerDraws, MP_GROUPS, NPAY_CHOICES, ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport, vatForm, vatCardRef } from './logic.js?v=20261021k';
-import { CHOICES } from '../../shared/merchant-table.js?v=20261021k';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261021l';
+import { monthPreview, splitLeftText, RULE_ACCOUNTS } from './pjt-tag-logic.js?v=20261021l';
+import { esc } from '../../core/ui.js?v=20261021l';
+import { ownerDraws, MP_GROUPS, NPAY_CHOICES, ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport, vatForm, vatCardRef } from './logic.js?v=20261021l';
+import { CHOICES } from '../../shared/merchant-table.js?v=20261021l';
 
 /* 재무회계 화면 조각 — 모든 값은 esc() 로 감싸 HTML 로 만든다. 스타일은 theme/finance.css 와 공용 클래스를 쓴다 */
 const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['monthly', '월간 수지'], ['forecast', '예측'], ['gap', '이엔지 정산'], ['pjt', '프로젝트 표시'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];
@@ -322,6 +322,24 @@ export function rulesHtml(st) {
   return '<div class="jh-finance__split"><div class="jh-finance__col">' + card('가맹점 분류표 올리기', upBox) + card('카드 가맹점 규칙 ' + R.merchant.length + '개', mCard, '', true) + '</div><div class="jh-finance__col">' + card('매입 거래처 계정 규칙 ' + R.purchase.length + '개', pCard, '', true) + card('통장 거래처 규칙 ' + (R.bank || []).length + '개', bCard, '', true) + card('규칙은 이렇게 쓰입니다', '<div class="jh-finance__pad"><ul class="jh-finance__steps"><li>카드 가져오기: 가맹점 규칙이 일반 규칙보다 먼저 적용됩니다.</li><li>홈택스 매입 가져오기: 거래처 규칙이 추정 계정보다 먼저 적용됩니다.</li><li>통장 가져오기: 통장 거래처 규칙이 내장 분류보다 먼저 적용됩니다.</li><li>이미 저장한 전표는 바뀌지 않습니다. 고치려면 전표 상세의 "계정 바꾸기"를 쓰세요.</li><li>규칙을 지우거나 바꿔도 이전 전표에는 영향이 없습니다.</li></ul></div>') + '</div></div>';
 }
 
+/* ───────── 월별 매출 세 숫자(대표님 2026-10-21 "제이에이치 전체 매출 정보가 있어야 하고 솔루션→이엔지 계산서도 취합해야 세무 계획을 짤 수 있다") ─────────
+ * 청구서(이엔지 명의, 서버 invoiceMonthly)·세금계산서(솔루션→이엔지, 공급가·부가세 포함 합계)·통장 입금(이엔지→솔루션)을 월별 한 줄과 연 합계로 나란히 둔다. 서로 다른 거래의 서류라 같지 않은 것이 정상이며 짝짓지 않는다.
+ * inv = { state: idle|loading|ok|error|denied, error }, T = revenueTriple 결과. 청구서를 못 받아도 세금계산서·통장 입금은 항상 보여 준다. ok 라는데 응답이 이상하면(T.invoiceReady 거짓) 0원으로 보이지 않게 오류로 다룬다 */
+export function revenueTripleHtml(inv, T) {
+  const iv = inv && typeof inv === 'object' ? inv : {}; const t = T && typeof T === 'object' && Array.isArray(T.rows) && Array.isArray(T.years) ? T : { rows: [], years: [], invoiceReady: false };
+  const state = iv.state === 'ok' && !t.invoiceReady ? 'badok' : (iv.state || 'idle'); const err = state === 'badok' ? '청구서 매출을 불러오지 못했습니다(서버 응답 형식이 올바르지 않습니다).' : String(iv.error || '청구서 매출을 불러오지 못했습니다.');
+  const reload = '<button type="button" class="jh-btn" data-variant="ghost" data-inv-reload>다시 불러오기</button>';
+  const status = state === 'loading' ? '<div class="jh-field__hint">청구서 매출을 불러오는 중…</div>' : state === 'error' || state === 'badok' ? '<div class="jh-field__hint" data-tone="warn">' + esc(err) + '</div><div class="jh-field__hint">' + reload + '</div>' : state === 'denied' ? '<div class="jh-field__hint" data-tone="warn">청구서 매출은 재무회계 권한이 있는 계정만 볼 수 있습니다.</div>' : '';
+  const fin = (v) => typeof v === 'number' && Number.isFinite(v); const inc = (v) => (fin(v) ? esc(won(v)) : '');
+  const invCell = (r) => (fin(r.invSupply) ? esc(won(r.invSupply)) + '<span class="jh-field__hint"> 완결 ' + esc(won(r.invDone)) + ' · 미완결 ' + esc(won(r.invOpen)) + '</span>' : '');
+  const open = t.invoiceReady ? t.years.reduce((a, y) => a + (fin(y.invOpen) ? y.invOpen : 0), 0) : 0;
+  const warn = open > 0 ? '<div class="jh-alert" data-tone="warn" role="note">미완결 ' + esc(won(open)) + '원은 아직 프로젝트 매출에 포함되지 않았습니다. 수금이 끝난 청구서는 영업기획 정산서에서 완결 처리해 주세요.</div>' : '';
+  const rows = t.rows.map((r) => '<tr><td>' + esc(r.ym) + '</td><td class="num"' + (fin(r.invOpen) && r.invOpen > 0 ? ' data-tone="warn"' : '') + '>' + invCell(r) + '</td><td class="num">' + inc(r.taxSupply) + '</td><td class="num">' + inc(r.taxTotal) + '</td><td class="num">' + inc(r.bank) + '</td></tr>');
+  const yrs = t.years.map((y) => '<tr><td><strong>' + esc(y.year) + ' 합계</strong></td><td class="num"><strong>' + (fin(y.invSupply) ? esc(won(y.invSupply)) : '') + '</strong>' + (fin(y.invSupply) ? '<span class="jh-field__hint"> 완결 ' + esc(won(y.invDone)) + ' · 미완결 ' + esc(won(y.invOpen)) + '</span>' : '') + '</td><td class="num"><strong>' + inc(y.taxSupply) + '</strong></td><td class="num"><strong>' + inc(y.taxTotal) + '</strong></td><td class="num"><strong>' + inc(y.bank) + '</strong></td></tr>');
+  const note = '<div class="jh-alert" data-tone="info" role="note">세 숫자는 서로 다른 서류입니다 — 청구서(이엔지→발주처, 제이에이치 전체 매출)·세금계산서(솔루션→이엔지, 세금 신고)·통장 입금(이엔지→솔루션, 실제로 받은 돈). 금액과 시기가 같지 않은 것이 정상이며 짝짓지 않습니다.</div>';
+  const table = rows.length ? tbl([['월'], ['청구서(공급가)', 'num'], ['세금계산서(공급가)', 'num'], ['세금계산서(합계·부가세 포함)', 'num'], ['통장 입금', 'num']], rows.concat(yrs)) : '<div class="jh-empty">아직 표시할 매출이 없습니다.</div>';
+  return card('월별 매출 세 숫자(최근 달이 위)', '<div class="jh-finance__pad">' + note + warn + status + table + '</div>', '', true);
+}
 /* ───────── 이엔지 정산(계산서와 실제 입금의 차이 처리) ───────── */
 export function gapHtml(st) {
   const rows = arByMonth(st.entries); const bal = rows.length ? rows[rows.length - 1].balance : 0; const lastD = st.entries.reduce((m, e) => (e.date > m ? e.date : m), '') || kstToday();
@@ -330,7 +348,7 @@ export function gapHtml(st) {
   const form = '<div class="jh-finance__pad"><div class="jh-alert" data-tone="warn" role="note">세금계산서 발행액보다 실제로 받은 돈이 적은 차이를 정리하는 곳입니다. <strong>증빙이 있는 처리</strong>(현금 수령, 상계)는 증빙 내용을 적어야 저장되고, 증빙이 없으면 "증빙 없음"으로 매출에서 차감해 장부가 사실과 다르지 않게 합니다. 잔액이 실제 받을 돈이면 처리하지 마세요.</div>' +
     '<div class="jh-finance__two"><div><div class="jh-field"><label class="jh-field__label">처리 방식</label><select class="jh-select" data-g="type">' + opts + '</select></div><div class="jh-field"><label class="jh-field__label">처리 일자</label><input class="jh-input" type="date" data-g="date" value="' + esc(lastD) + '"></div><div class="jh-field"><label class="jh-field__label">금액(원)</label><input class="jh-input" data-g="amount" inputmode="numeric" value="' + esc(bal > 0 ? won(bal) : '') + '"><span class="jh-field__hint">기본값은 현재 외상매출금 잔액입니다. 일부만 처리해도 됩니다.</span></div></div><div><div class="jh-field"><label class="jh-field__label">증빙 내용(증빙 있는 처리는 필수)</label><input class="jh-input" data-g="evidence" maxlength="120" placeholder="예: 상계 합의서 2026-08-31, 현금 영수증 번호"></div><div class="jh-field"><label class="jh-field__label">메모(선택)</label><input class="jh-input" data-g="memo" maxlength="80"></div><div class="jh-field__hint">저장 후 전표 상세에서 <strong>증빙 파일을 붙일 수 있습니다</strong>.</div></div></div><div class="jh-alert" data-tone="info" data-g-result>입력하면 전표 모양이 여기에 나옵니다.</div><div class="jh-finance__bar"><button type="button" class="jh-btn" data-variant="primary" data-act="gap-save">처리 전표 저장</button></div></div>';
   const hist = adj.length ? '<ul class="jh-finance__list">' + adj.map((e) => '<li class="jh-finance__li" data-entry="' + esc(e.id) + '" tabindex="0"><div><strong>' + esc(e.date) + ' · ' + esc(e.memo.length > 46 ? e.memo.slice(0, 46) + '…' : e.memo) + '</strong><span class="jh-field__hint">' + esc(e.no) + (e.attachments && e.attachments.length ? ' · 증빙 ' + e.attachments.length + '개' : ' · 증빙 파일 없음') + '</span></div><span class="jh-finance__amt">' + esc(won(entryDebit(e))) + '</span></li>').join('') + '</ul>' : '<div class="jh-empty">처리한 내역이 없습니다.</div>';
-  return '<div class="jh-finance__split"><div class="jh-finance__col">' + card('이엔지 외상매출금 월별(최근 달이 위)', rows.length ? tbl([['월'], ['청구(계산서)', 'num'], ['입금', 'num'], ['정산 차액 처리', 'num'], ['기타(공제·상계 등)', 'num'], ['월말 잔액', 'num']], tr) : '<div class="jh-empty">외상매출금 거래가 없습니다.</div>', '', true) + card('차액 처리', form) + '</div><div class="jh-finance__col">' + card('현재 잔액', '<div class="jh-finance__pad"><div class="jh-finance__fact"><span>외상매출금 잔액(실제로 받을 돈이어야 함)</span><strong>' + esc(won(bal)) + '</strong></div></div>') + card('처리한 내역', hist, '', true) + '</div></div>';
+  return '<div class="jh-finance__split"><div class="jh-finance__col">' + revenueTripleHtml(st.inv, st.revT) + card('이엔지 외상매출금 월별(최근 달이 위)', rows.length ? tbl([['월'], ['청구(계산서)', 'num'], ['입금', 'num'], ['정산 차액 처리', 'num'], ['기타(공제·상계 등)', 'num'], ['월말 잔액', 'num']], tr) : '<div class="jh-empty">외상매출금 거래가 없습니다.</div>', '', true) + card('차액 처리', form) + '</div><div class="jh-finance__col">' + card('현재 잔액', '<div class="jh-finance__pad"><div class="jh-finance__fact"><span>외상매출금 잔액(실제로 받을 돈이어야 함)</span><strong>' + esc(won(bal)) + '</strong></div></div>') + card('처리한 내역', hist, '', true) + '</div></div>';
 }
 
 /* ───────── 마감 전 점검 ───────── */
