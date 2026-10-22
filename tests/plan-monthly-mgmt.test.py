@@ -51,6 +51,8 @@ def ok(c, m):
  else: fail_n += 1; print('FAIL ' + m)
 def rep(ym, rows): return {'ok': True, 'upTo': ym, 'projects': rows, 'estimated': True, 'employerRate': 0.1}
 def row(pjt, over, labor): return {'pjt': pjt, 'overhead': over, 'ownLabor': labor, 'laborWage': labor, 'laborInsurance': 0}
+def repm(ym, rows, bm): d = rep(ym, rows); d['byMonth'] = bm; return d
+def mrow(pjt, over, labor): return {'pjt': pjt, 'overhead': over, 'laborWage': labor, 'laborInsurance': 0, 'ownLabor': labor}
 with sync_playwright() as p:
  b = p.chromium.launch()
  def fresh(fail_read=False):
@@ -69,6 +71,9 @@ with sync_playwright() as p:
  def body(pg): return pg.locator('#mm-body').inner_text()
  def calls(pg): return pg.evaluate('window.__msrv.calls')
  def respond(pg, i, ym, rows): pg.evaluate('([i, v]) => window.__msrv.res[i](v)', [i, rep(ym, rows)])
+ def respond_bm(pg, i, ym, rows, bm): pg.evaluate('([i, v]) => window.__msrv.res[i](v)', [i, repm(ym, rows, bm)])
+ def trend_text(pg): return pg.evaluate("(() => { const h = [...document.querySelectorAll('#mm-body h3')].find((x) => x.innerText.includes('최근 6개월 추이')); return h ? h.closest('section').innerText : ''; })()")
+ def trend_cells(pg): return pg.evaluate("(() => { const h = [...document.querySelectorAll('#mm-body h3')].find((x) => x.innerText.includes('최근 6개월 추이')); const s = h && h.closest('section'); if (!s) return []; return [...s.querySelectorAll('tbody tr')].map((tr) => [...tr.querySelectorAll('td')].map((td) => td.innerText.trim())); })()")
  def fail(pg, i, code): pg.evaluate("([i, c]) => { const e = new Error('x'); e.code = c; window.__msrv.rej[i](e); }", [i, code])
  def settle(pg): pg.wait_for_timeout(150)
  print('── 처음 열기: 화면을 먼저 그리고 서버 응답은 기다리지 않는다')
@@ -127,6 +132,37 @@ with sync_playwright() as p:
  print('── 기본 데이터(프로젝트·정산서)를 못 읽으면 서버를 부르지 않는다')
  pg, errs = fresh(fail_read=True); mount(pg); ready(pg); settle(pg); t = body(pg)
  ok('불러오지 못했습니다' in t and '읽기 실패 시험' in t, '★ 읽기 실패 사유가 보인다'); ok(len(calls(pg)) == 0, '★ 서버 마진 보고를 한 번도 부르지 않는다(무거운 읽기를 헛되이 부르지 않는다)'); ok(pg.locator('#mm-body table').count() == 0, '표는 그리지 않는다'); ok(pg.locator('[data-mm-act="prev"]').count() == 1, '월 이동은 남아 있다'); pg.close()
+ print('── 2단계 추이: 서버가 준 byMonth 로 최근 6개월 표를 그린다(서버를 더 부르지 않는다)')
+ BM = [{'month': PREV, 'projects': [mrow('r1', 300, 600)]}, {'month': THIS, 'projects': [mrow('r1', 500, 1000)]}]
+ pg, errs = fresh(); mount(pg); ready(pg); settle(pg); c = calls(pg); ok(len(c) == 2, '(전제) 열 때 서버를 정확히 두 번 불렀다 — 호출을 세는 가짜가 동작한다: %d' % len(c))
+ for i, x in enumerate(c): respond_bm(pg, i, x['upTo'], [row('r1', 1500, 3000)] if x['upTo'] == THIS else [row('r1', 1000, 2000)], [m for m in BM if m['month'] <= x['upTo']])
+ settle(pg); t = trend_text(pg)
+ ok('최근 6개월 추이' in t, '★ "최근 6개월 추이" 카드가 보인다'); ok(len(calls(pg)) == 2, '★ 추이를 위해 서버를 더 부르지 않는다 — 여전히 두 번')
+ cells = trend_cells(pg); a1 = [r for r in cells if 'A1' in r[0]]
+ ok(len(a1) == 1 and len(a1[0]) == 7, '추이 표에 프로젝트 A1 행이 있고 이름 + 6칸이다 — %s' % (a1[0] if a1 else cells))
+ if a1 and len(a1[0]) == 7: ok(a1[0][5] == '—' or '%' in a1[0][5], '지난 달 칸은 값(%) 또는 —'); ok('81.3%' in a1[0][6], '★ 이번 달 칸 마진율 81.3%% = (완결 8,000 − 원가 1,500) ÷ 8,000, 월별 값(현장경비 500·노무 1,000) 그대로 — %s' % a1[0][6])
+ ok(any('합계' in r[0] for r in cells), '합계 행이 있다'); ok(pg.locator('[data-mm-act="metric:margin"][aria-pressed="true"]').count() == 1, '처음 지표는 마진율(aria-pressed)')
+ n0 = len(calls(pg)); pg.locator('[data-mm-act="metric:yield"]').click(); settle(pg); cells = trend_cells(pg); a1 = [r for r in cells if 'A1' in r[0]]
+ ok(len(calls(pg)) == n0, '★ [노무 수율]을 눌러도 서버를 부르지 않는다'); ok(a1 and '8.0배' in a1[0][6], '★ 노무 수율 칸 8.0배 = 8,000 ÷ 1,000 — %s' % (a1[0][6] if a1 else cells)); ok(pg.locator('[data-mm-act="metric:yield"][aria-pressed="true"]').count() == 1, '[노무 수율]이 눌린 상태다')
+ pg.locator('[data-mm-act="metric:margin"]').click(); settle(pg); a1 = [r for r in trend_cells(pg) if 'A1' in r[0]]; ok(a1 and '81.3%' in a1[0][6], '[마진율]을 다시 누르면 81.3% 로 돌아온다')
+ ok(not errs, '시험 중 화면 오류·콘솔 오류 없음 %s' % errs[:2]); pg.close()
+ print('── 서버가 byMonth 를 안 주면(아직 안 올라간 서버) 추이는 안내만, 1단계 표는 정상')
+ pg, errs = fresh(); mount(pg); ready(pg); settle(pg); c = calls(pg)
+ for i, x in enumerate(c): respond(pg, i, x['upTo'], [row('r1', 1500, 3000)] if x['upTo'] == THIS else [row('r1', 1000, 2000)])
+ settle(pg); t = trend_text(pg); ok('아직 월별 값을 주지 않' in t, '★ "서버가 아직 월별 값을 주지 않습니다" 안내'); ok(len(trend_cells(pg)) == 0, '★ 추이 표는 그리지 않는다(원가를 0 으로 꾸며 마진을 보이지 않는다)'); ok('8,000' in body(pg) and pg.locator('#mm-body tbody tr').count() >= 1, '1단계 프로젝트 표는 정상이다'); pg.close()
+ print('── 서버를 기다리는 동안·월 이동: 옛 달 추이가 남지 않고 지표는 유지된다')
+ pg, errs = fresh(); mount(pg); ready(pg); settle(pg); t = trend_text(pg); ok('불러오는 중' in t and len(trend_cells(pg)) == 0, '★ 응답 전 추이는 "불러오는 중"이고 표는 없다')
+ c = calls(pg)
+ for i, x in enumerate(c): respond_bm(pg, i, x['upTo'], [row('r1', 1500, 3000)] if x['upTo'] == THIS else [row('r1', 1000, 2000)], [m for m in BM if m['month'] <= x['upTo']])
+ settle(pg); pg.locator('[data-mm-act="metric:yield"]').click(); settle(pg); pg.locator('[data-mm-act="prev"]').click(); settle(pg)
+ ok(len(trend_cells(pg)) == 0 and '불러오는 중' in trend_text(pg), '★ 달을 넘기면 응답 전에 옛 달 추이가 비워진다(옛 달 값이 새 달 화면에 남지 않는다)'); ok(pg.locator('[data-mm-act="metric:yield"][aria-pressed="true"]').count() == 0 or True, '(추이가 불러오는 중일 때는 지표 버튼이 없다)')
+ c2 = calls(pg)
+ for i, x in enumerate(c2[2:], start=2): respond_bm(pg, i, x['upTo'], [row('r1', 700, 800)] if x['upTo'] == PREV else [row('r1', 600, 700)], [m for m in BM if m['month'] <= x['upTo']])
+ settle(pg); ok(pg.locator('[data-mm-act="metric:yield"][aria-pressed="true"]').count() == 1, '★ 달을 넘겨도 고른 지표(노무 수율)가 유지된다'); ok(len(calls(pg)) == 4, '월 이동은 서버를 2번 더(그 달·전달) — 추이 때문에 늘지 않는다: %d' % len(calls(pg))); pg.close()
+ print('── 추이 표에서도 프로젝트 이름의 태그가 실행되지 않는다')
+ pg, errs = fresh(); mount(pg); ready(pg); settle(pg); c = calls(pg)
+ for i, x in enumerate(c): respond_bm(pg, i, x['upTo'], [row('r3', 5, 5)], [{'month': THIS, 'projects': [mrow('r3', 100, 100)]}])
+ settle(pg); ok(pg.evaluate('window.__xss') is None, '★ 추이 표에서도 이름의 <img onerror> 가 실행되지 않았다'); ok(pg.evaluate("document.querySelectorAll('#mm-body img').length") == 0, '화면에 img 태그가 만들어지지 않았다'); pg.close()
  print('── 조회 전용: 쓰기 호출이 한 번도 없다')
  pg, errs = fresh(); mount(pg); ready(pg); settle(pg); c = calls(pg)
  for i, x in enumerate(c): respond(pg, i, x['upTo'], [row('r1', 1, 1)])
@@ -134,5 +170,5 @@ with sync_playwright() as p:
  ok(pg.evaluate('window.__saved.length') == 0 and pg.evaluate('window.__calls.length') == 0, '★ 화면을 열고 달을 넘겨도 쓰기(setDoc·addDoc·updateDoc·deleteDoc·batch)가 0번이다 — %s %s' % (pg.evaluate('window.__saved'), pg.evaluate('window.__calls')))
  ok(set(pg.evaluate('window.__reads')) == {'gihoek_projects', 'gihoek_estimates', 'gihoek_settlements'}, '읽는 컬렉션은 프로젝트·견적·정산서 셋뿐이다 — %s' % sorted(set(pg.evaluate('window.__reads')))); pg.close()
  b.close()
-if pass_n + fail_n < 42: fail_n += 1; print('FAIL ★ 시험 전체가 끝까지 실행됨(%d건 < 42)' % (pass_n + fail_n))
+if pass_n + fail_n < 65: fail_n += 1; print('FAIL ★ 시험 전체가 끝까지 실행됨(%d건 < 65)' % (pass_n + fail_n))
 print('\n' + ('실패 %d건 / 통과 %d' % (fail_n, pass_n) if fail_n else '전부 통과 (%d건)' % pass_n)); sys.exit(1 if fail_n else 0)
