@@ -1,8 +1,8 @@
 /* 영업기획 월간 보고서 경영 층 화면(대기열 1-2-8, 대표님 2026-10-22 ㅇㅇ) — 순수 HTML(저장·호출 없음). 시험: tests/plan-monthly-mgmt-view.test.mjs · 계산: monthly-mgmt.js · 틀: closing-view.js(같은 CSS 클래스).
  * st = { ym, rows(monthRows), totals(monthTotals), srv: { state: 'loading'|'ok'|'error'|'denied', notes } }. 영업기획 모듈 전체가 관리자 전용이라(manifest perm) 별도 권한 코드는 없다.
  * 원칙: 모르는 값은 숫자로 꾸미지 않고 이유를 보인다(마진율·수율이 null 이면 "—"와 이유). 매출 기준 = 완결 청구(1-2-3-a). 공통비는 반영하지 않는다(프로젝트 화면의 공통비 반영 이익에서 본다). */
-import { esc } from '../../core/ui.js?v=20261022h';
-import { won, card, chip } from './ui.js?v=20261022h';
+import { esc } from '../../core/ui.js?v=20261022i';
+import { won, card, chip } from './ui.js?v=20261022i';
 const isO = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const money = (v) => (fin(v) ? won(v) : '—');
@@ -35,6 +35,20 @@ function trendCard(s) {
   const foot = '<tr><td><strong>합계</strong></td>' + months.map((m, i) => trendTotal(isO(totals[i]) ? totals[i] : {}, metric)).join('') + '</tr>';
   return card('최근 6개월 추이', '<div class="jh-plan__pad">' + tgl + '<div class="jh-plan__scroll"><table class="jh-plan__table"><thead>' + head + '</thead><tbody>' + body + foot + '</tbody></table></div><div class="jh-field__hint">그 달 완결 청구 기준, 월별 값은 서버가 준 그 달 값 그대로입니다(누계 차이가 아님). 칸에 마우스를 올리면 "—"의 이유가 보입니다.</div></div>');
 }
+/* 3단계 원가 달성률 카드(누계, 선택한 달까지) — 목표 원가 = 견적 공급가액 × (1 − 목표 마진율), 달성률 = 실제 원가 ÷ 목표 원가(100% 이하 = 목표 원가 안). 색만으로 알리지 않는다("목표 안"·"초과" 글자). 모르는 값은 "—"와 이유, 서버 원가를 모르는 동안(loading·unavailable)은 ach 에 값이 남아 있어도 표를 그리지 않는다 */
+const achWhy = (a) => (a.status === 'notarget' ? '목표 마진율 미입력' : a.status === 'badtarget' ? '목표 마진율이 100% 이상' : a.status === 'nolink' ? 'PJT 연결 없음' : a.status === 'nocost' ? '원가 확인 못함' : a.over === true ? '목표 원가 초과' : a.over === false ? '목표 안' : '—');
+function achCard(s) {
+  const state = ['ok', 'loading', 'unavailable'].indexOf(s.achState) >= 0 ? s.achState : 'loading'; const msg = (t) => '<div class="jh-plan__pad"><div class="jh-field__hint">' + esc(t) + '</div></div>';
+  if (state === 'loading') return card('원가 달성률', msg('원가를 불러오는 중입니다…'));
+  if (state === 'unavailable') return card('원가 달성률', msg('원가를 확인할 수 없어 달성률을 볼 수 없습니다(지급예정서만으로 계산하면 낮게 나와 목표 안으로 오해하게 됩니다).'));
+  const rows = (Array.isArray(s.ach) ? s.ach : []).filter(isO);
+  if (!rows.length) return card('원가 달성률', msg('견적이 있는 프로젝트가 없습니다(달성률은 견적 공급가액이 있어야 계산됩니다).'));
+  const body = rows.map((a) => { const neg = a.over === true; const tone = neg ? ' data-tone="neg"' : ''; const tm = fin(a.target) ? a.target + '%' : (a.status === 'notarget' ? '미입력' : '—');
+    return '<tr><td><a href="#/plan/projects/' + esc(a.id) + '">' + esc((a.code || '-') + (a.name ? ' ' + a.name : '')) + '</a> ' + (a.status === 'nolink' ? chip('PJT 연결 없음', 'amber') : a.status === 'notarget' ? chip('목표 마진율 미입력', 'amber') : '') + '</td><td class="jh-plan__num">' + money(a.est) + '</td><td class="jh-plan__num">' + esc(tm) + '</td><td class="jh-plan__num">' + money(a.targetCost) + '</td><td class="jh-plan__num">' + money(a.cost) + '</td><td class="jh-plan__num"' + tone + '>' + pct(a.rate) + '</td><td' + tone + '>' + esc(achWhy(a)) + '</td></tr>'; }).join('');
+  return card('원가 달성률', '<div class="jh-plan__pad"><div class="jh-plan__scroll"><table class="jh-plan__table"><thead><tr><th>프로젝트</th><th class="jh-plan__num">견적</th><th class="jh-plan__num">목표 마진율</th><th class="jh-plan__num">목표 원가</th><th class="jh-plan__num">실제 원가</th><th class="jh-plan__num">달성률</th><th>판정</th></tr></thead><tbody>' + body + '</tbody></table></div>'
+    + '<div class="jh-field__hint">목표 원가 = 견적 공급가액 × (1 − 목표 마진율), 실제 원가 = 선택한 달까지의 지급예정서 발행 + 현장경비 + 자체 직접노무비입니다. 달성률 100% 이하가 목표 원가 안입니다. 목표 마진율은 프로젝트 화면에서 입력합니다(비워 두면 달성률을 계산하지 않습니다).</div>'
+    + '<div class="jh-field__hint">한계: 공정율 대비 달성률은 아직 없습니다(공정율은 PJT 현장 층 데이터) — 달성률만으로는 원가를 많이 쓴 것이 공정이 그만큼 진행돼서인지 초과인지 구분하지 못합니다. 견적 개정이 여럿 유효하면 공급가액이 겹쳐 합쳐질 수 있습니다(기존 마진 화면과 같은 정의).</div></div>');
+}
 export function monthlyMgmtHtml(st) {
   const s = isO(st) ? st : {}; const ym = typeof s.ym === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(s.ym) ? s.ym : ''; const [y, m] = ym ? ym.split('-') : ['', ''];
   const rows = (Array.isArray(s.rows) ? s.rows : []).filter(isO); const t = isO(s.totals) ? s.totals : {}; const srv = isO(s.srv) ? s.srv : { state: 'loading', notes: [] }; const notes = Array.isArray(srv.notes) ? srv.notes.filter((x) => typeof x === 'string' && x) : [];
@@ -53,5 +67,5 @@ export function monthlyMgmtHtml(st) {
   const table = '<div class="jh-plan__pad">' + (body ? '<div class="jh-plan__scroll"><table class="jh-plan__table"><thead><tr><th>프로젝트</th><th class="jh-plan__num">청구 발행</th><th class="jh-plan__num">완결</th><th class="jh-plan__num">지급 발행</th><th class="jh-plan__num">현장경비</th><th class="jh-plan__num">자체 노무</th><th class="jh-plan__num">원가</th><th class="jh-plan__num">마진율</th><th class="jh-plan__num">노무 수율</th></tr></thead><tbody>' + body + '</tbody></table></div>' : '<div class="jh-field__hint">이 달에 청구도 원가도 없는 달입니다(해당하는 프로젝트가 없습니다).</div>') + '</div>';
   const basis = ['매출은 완결 처리한 청구서만 셉니다(발행했지만 수금 전인 청구는 마진 분모에 들어가지 않습니다).', '그 달 원가는 서버 마진 집계(누계)의 "그 달까지"와 "전달까지" 차이입니다(증분).', '공통비는 반영하지 않았습니다. 공통비 반영 이익은 프로젝트 화면의 [공통비 반영해서 보기]에서 봅니다.'].concat(notes);
   const note = '<div class="jh-plan__pad">' + basis.map((n) => '<div class="jh-field__hint">· ' + esc(n) + '</div>').join('') + '</div>';
-  return '<div class="jh-plan">' + card('월간 보고서(경영)', head) + card('프로젝트별 그 달 실적', table) + trendCard(s) + card('계산 기준과 주의', note) + '</div>';
+  return '<div class="jh-plan">' + card('월간 보고서(경영)', head) + card('프로젝트별 그 달 실적', table) + trendCard(s) + achCard(s) + card('계산 기준과 주의', note) + '</div>';
 }

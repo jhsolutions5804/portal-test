@@ -3,7 +3,8 @@
  * 매출 기준 = 완결 청구(1-2-3-a, 대표님 2026-10-21) — shared/pjt-summary.js pjtMargin 과 같은 규칙: 완결이 0 이하이면 발행 청구로 대신 계산하지 않고 null.
  * 원가 = 지급예정서 발행 + 현장경비 + 자체 직접노무비(pjtCost 와 같은 정의 — 노무비는 지급예정서에 이미 들어 있어 따로 또 빼면 이중 차감이라는 말은 외주 노무 이야기이고, 자체 직접노무비는 별도 항목).
  * 서버 응답은 연결된 PJT 등록 id 로 찾는다(영업기획 id 가 아니다 — 대기열 1-2-2-④ 교훈). 응답 검증은 margin-link.js 와 같은 규칙을 그대로 쓴다(두 곳이 어긋나지 않게). 원가를 모르면 마진율·수율을 내지 않는다(모르는 값을 0 으로 꾸미지 않음). */
-import { marginExtra, linkedPjtId } from './margin-link.js?v=20261022h';
+import { marginExtra, linkedPjtId } from './margin-link.js?v=20261022i';
+import { pjtSummary } from './projects.js?v=20261022i';
 const isO = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const T = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const r1 = (n) => Math.round(n * 10) / 10;
@@ -68,4 +69,29 @@ export function trendMatrix(projects, closingOf, byMonth, months) {
   const rows = []; list.forEach((p) => { const pjt = linkedPjtId(p); const cells = months.map((ym, i) => monthRowFromMonthly(p, closing[i].get(p.id), pjt && mon.get(ym) ? mon.get(ym).get(pjt) : undefined)); if (cells.some(active)) rows.push({ id: cells[0].id, pjt: cells[0].pjt, code: cells[0].code, name: cells[0].name, cells }); });
   const totals = months.map((ym, i) => monthTotals(rows.map((r) => r.cells[i]).filter(active)));
   return { months: months.slice(), rows, totals };
+}
+
+/* ───────── 3단계: 원가 달성률(설계 monthly-report-design.md §3-3, 대표님 2026-10-22 ㄱㄱ) ─────────
+ * 목표 원가 = 견적 공급가액 × (1 − 목표 마진율 ÷ 100), 실제 원가 = 선택한 달까지의 지급예정서 발행 + 현장경비 + 자체 직접노무비(마진 모듈의 원가와 같은 정의), 달성률 = 실제 원가 ÷ 목표 원가 × 100(100% 이하 = 목표 원가 안).
+ * 견적 공급가액·지급예정서 합산은 기존 마진 화면과 같은 pjtSummary 를 쓴다(공동 발행 몫·균등 분배·폐기 제외 규칙이 같다). 지급예정서는 발행일이 그 달 이전인 것만(발행일이 없거나 형식이 틀리면 그 달까지에 넣는다 — 원가를 낮춰 "목표 안"으로 보이게 하지 않는 보수적 선택).
+ * 모르는 값은 숫자로 꾸미지 않고 이유 상태를 돌려준다: notarget(목표 마진율 미입력) · noest(견적 없음) · badtarget(목표 마진율 100 이상 — 목표 원가 0 이하) · nolink(연결 없음) · nocost(서버 원가를 모름 — 지급예정서만으로 달성률을 내면 낮게 나와 "목표 안"으로 오해하게 되므로 내지 않는다).
+ * 공정율 대비 달성률(달성률 − 공정율)은 공정율이 PJT 현장 층 데이터라 영업기획에는 없어 하지 않는다. 견적의 개정(rev)이 모두 유효 상태면 합이 겹칠 수 있다 — 기존 마진 화면과 같은 정의라 그대로 쓴다. */
+const tmOf = (v) => { if (typeof v !== 'number' && typeof v !== 'string') return null; /* 숫자·글자만 — Number([]) 가 0, Number([12]) 가 12, Number(true) 가 1 로 둔갑하지 않게 */ const t = typeof v === 'string' ? v.trim() : v; if (t === '') return null; const n = Number(t); return Number.isFinite(n) ? n : null; };
+export function achievementRow(p, estimates, settlements, cur, ym) {
+  const x = isO(p) ? p : {}; const pjt = linkedPjtId(x); const target = tmOf(x.targetMargin);
+  const row = { id: typeof x.id === 'string' ? x.id : '', pjt, code: typeof x.code === 'string' ? x.code : '', name: typeof x.name === 'string' ? x.name : '', status: 'ok', est: null, target, targetCost: null, payIssued: null, direct: null, ownLabor: null, cost: null, rate: null, over: null };
+  const id = row.id; const month = typeof ym === 'string' ? ym.slice(0, 7) : ''; const set = (Array.isArray(settlements) ? settlements : []).filter((s) => { if (!isO(s)) return false; const d = typeof s.issueDate === 'string' && /^\d{4}-\d{2}/.test(s.issueDate) ? s.issueDate.slice(0, 7) : ''; return !d || !month || d <= month; });
+  const sm = pjtSummary(id, Array.isArray(estimates) ? estimates.filter(isO) : [], set); row.est = T(sm.est); row.payIssued = T(sm.paid);
+  if (!(row.est > 0)) { row.status = 'noest'; return row; }
+  if (target === null) { row.status = 'notarget'; return row; }
+  if (target >= 100) { row.status = 'badtarget'; return row; }
+  row.targetCost = Math.round(row.est * (1 - target / 100));
+  if (!pjt) { row.status = 'nolink'; return row; }
+  const e = marginExtra(cur, pjt); if (!e) { row.status = 'nocost'; return row; }
+  row.direct = T(e.direct); row.ownLabor = T(e.ownLabor); row.cost = row.payIssued + row.direct + row.ownLabor; row.rate = r1(row.cost / row.targetCost * 100); row.over = row.cost > row.targetCost;
+  return row;
+}
+/** 견적이 있는 프로젝트만(견적이 없으면 목표 원가를 모르는 "견적 없음" 행으로 목록을 채우지 않는다) */
+export function achievementRows(projects, estimates, settlements, cur, ym) {
+  const list = Array.isArray(projects) ? projects.filter(isO) : []; const out = []; list.forEach((p) => { const r = achievementRow(p, estimates, settlements, cur, ym); if (r.status !== 'noest') out.push(r); }); return out;
 }

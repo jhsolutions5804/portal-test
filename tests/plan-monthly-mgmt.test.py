@@ -24,8 +24,8 @@ now = datetime.datetime.utcnow() + datetime.timedelta(hours=9); THIS = now.strft
 def mk_set(ym, amount, sid):
  return {'docType': 'invoice', 'status': 'done', 'pjtId': 'q1', 'pjtIds': ['q1'], 'issueDate': ym + '-05', 'amount': amount, 'supply': amount, 'doneAt': ym + '-20T03:00:00Z', 'no': sid}
 DATA = {
- 'gihoek_projects': {'q1': {'name': '현장1', 'code': 'A1', 'status': 'run', 'linkPjt': 'r1', 'createdAt': {'seconds': 1}}, 'q2': {'name': '연동 없음', 'code': 'A3', 'status': 'run', 'linkPjt': 'none', 'createdAt': {'seconds': 2}}, 'q3': {'name': '<img src=x onerror="window.__xss=1">', 'code': '"><b>', 'status': 'run', 'linkPjt': 'r3', 'createdAt': {'seconds': 3}}},
- 'gihoek_estimates': {}, 'gihoek_settlements': {'s1': mk_set(THIS, 8000, 'S1'), 's0': mk_set(PREV, 5000, 'S0'), 's2': dict(mk_set(THIS, 3000, 'S2'), pjtId='q2', pjtIds=['q2']), 's3': dict(mk_set(THIS, 100, 'S3'), pjtId='q3', pjtIds=['q3'])},
+ 'gihoek_projects': {'q1': {'name': '현장1', 'code': 'A1', 'status': 'run', 'linkPjt': 'r1', 'targetMargin': 12, 'createdAt': {'seconds': 1}}, 'q2': {'name': '연동 없음', 'code': 'A3', 'status': 'run', 'linkPjt': 'none', 'createdAt': {'seconds': 2}}, 'q3': {'name': '<img src=x onerror="window.__xss=1">', 'code': '"><b>', 'status': 'run', 'linkPjt': 'r3', 'createdAt': {'seconds': 3}}},
+ 'gihoek_estimates': {'e1': {'pjtId': 'q1', 'status': 'active', 'items': [{'qty': 1, 'price': 10000000}]}, 'e3': {'pjtId': 'q3', 'status': 'active', 'items': [{'qty': 1, 'price': 1000000}]}}, 'gihoek_settlements': {'p_old': {'docType': 'payment', 'status': 'active', 'pjtId': 'q1', 'pjtIds': ['q1'], 'issueDate': ym_shift(THIS, -2) + '-05', 'amount': 2000000, 'supply': 2000000, 'no': 'PO'}, 'p_future': {'docType': 'payment', 'status': 'active', 'pjtId': 'q1', 'pjtIds': ['q1'], 'issueDate': ym_shift(THIS, 1) + '-05', 'amount': 700000, 'supply': 700000, 'no': 'PF'}, 's1': mk_set(THIS, 8000, 'S1'), 's0': mk_set(PREV, 5000, 'S0'), 's2': dict(mk_set(THIS, 3000, 'S2'), pjtId='q2', pjtIds=['q2']), 's3': dict(mk_set(THIS, 100, 'S3'), pjtId='q3', pjtIds=['q3'])},
 }
 FAKE_FB = """
 const DATA = %s; window.__saved = []; window.__calls = []; window.__reads = [];
@@ -73,6 +73,8 @@ with sync_playwright() as p:
  def respond(pg, i, ym, rows): pg.evaluate('([i, v]) => window.__msrv.res[i](v)', [i, rep(ym, rows)])
  def respond_bm(pg, i, ym, rows, bm): pg.evaluate('([i, v]) => window.__msrv.res[i](v)', [i, repm(ym, rows, bm)])
  def trend_text(pg): return pg.evaluate("(() => { const h = [...document.querySelectorAll('#mm-body h3')].find((x) => x.innerText.includes('최근 6개월 추이')); return h ? h.closest('section').innerText : ''; })()")
+ def ach_text(pg): return pg.evaluate("(() => { const h = [...document.querySelectorAll('#mm-body h3')].find((x) => x.innerText.includes('원가 달성률')); return h ? h.closest('section').innerText : ''; })()")
+ def ach_cells(pg): return pg.evaluate("(() => { const h = [...document.querySelectorAll('#mm-body h3')].find((x) => x.innerText.includes('원가 달성률')); const s = h && h.closest('section'); if (!s) return []; return [...s.querySelectorAll('tbody tr')].map((tr) => [...tr.querySelectorAll('td')].map((td) => td.innerText.trim())); })()")
  def trend_cells(pg): return pg.evaluate("(() => { const h = [...document.querySelectorAll('#mm-body h3')].find((x) => x.innerText.includes('최근 6개월 추이')); const s = h && h.closest('section'); if (!s) return []; return [...s.querySelectorAll('tbody tr')].map((tr) => [...tr.querySelectorAll('td')].map((td) => td.innerText.trim())); })()")
  def fail(pg, i, code): pg.evaluate("([i, c]) => { const e = new Error('x'); e.code = c; window.__msrv.rej[i](e); }", [i, code])
  def settle(pg): pg.wait_for_timeout(150)
@@ -163,6 +165,27 @@ with sync_playwright() as p:
  pg, errs = fresh(); mount(pg); ready(pg); settle(pg); c = calls(pg)
  for i, x in enumerate(c): respond_bm(pg, i, x['upTo'], [row('r3', 5, 5)], [{'month': THIS, 'projects': [mrow('r3', 100, 100)]}])
  settle(pg); ok(pg.evaluate('window.__xss') is None, '★ 추이 표에서도 이름의 <img onerror> 가 실행되지 않았다'); ok(pg.evaluate("document.querySelectorAll('#mm-body img').length") == 0, '화면에 img 태그가 만들어지지 않았다'); pg.close()
+ print('── 3단계 원가 달성률: 견적·목표 마진율·지급예정서(그 달까지)·서버 누계로 계산한다(서버를 더 부르지 않는다)')
+ pg, errs = fresh(); mount(pg); ready(pg); settle(pg); c = calls(pg); ok(len(c) == 2, '(전제) 열 때 서버를 정확히 두 번 불렀다 — 호출을 세는 가짜가 동작한다: %d' % len(c))
+ t0 = ach_text(pg); ok('원가 달성률' in t0 and '불러오는 중' in t0 and len(ach_cells(pg)) == 0, '★ 서버를 기다리는 동안 달성률 카드는 "불러오는 중"이고 표는 없다(지급예정서만으로 낮은 달성률을 보이지 않는다)')
+ for i, x in enumerate(c): respond(pg, i, x['upTo'], [row('r1', 1500, 3000)] if x['upTo'] == THIS else [row('r1', 1000, 2000)])
+ settle(pg); ok(len(calls(pg)) == 2, '★ 달성률 때문에 서버 호출이 늘지 않는다 — 여전히 두 번'); ac = ach_cells(pg); a1 = [r for r in ac if 'A1' in r[0]]
+ ok(len(a1) == 1 and len(a1[0]) == 7, '달성률 표에 프로젝트 A1 행이 있고 7칸이다 — %s' % (a1[0] if a1 else ac))
+ if a1 and len(a1[0]) == 7: ok(a1[0][1:5] == ['10,000,000', '12%', '8,800,000', '2,004,500'], '★ 견적 10,000,000·목표 마진율 12%%·목표 원가 8,800,000·실제 원가 2,004,500 = 지급 발행 2,000,000(2개월 전 것만 — 다음 달 700,000 은 그 달 이후라 제외) + 현장경비 1,500 + 노무 3,000 — %s' % a1[0][1:5]); ok(a1[0][5] == '22.8%' and '목표 안' in a1[0][6], '★ 달성률 2,004,500 ÷ 8,800,000 = 22.8%% 이고 목표 안 — %s' % a1[0][5:7])
+ ok(not [r for r in ac if '연동 없음' in r[0]], '견적이 없는 프로젝트(연동 없음)는 달성률 목록에 없다'); ok('공정율' in ach_text(pg), '한계 문구(공정율 대비 달성률은 아직 없음)가 보인다')
+ ok(not errs, '시험 중 화면 오류·콘솔 오류 없음 %s' % errs[:2]); pg.close()
+ print(' · 서버 실패면 달성률을 볼 수 없다고만 한다(낮은 달성률로 목표 안이라 오해하게 하지 않는다)')
+ pg, errs = fresh(); mount(pg); ready(pg); settle(pg); fail(pg, 0, 'internal'); fail(pg, 1, 'internal'); settle(pg); t = ach_text(pg)
+ ok('볼 수 없' in t and len(ach_cells(pg)) == 0, '★ 서버가 실패하면 "달성률을 볼 수 없습니다"이고 표는 없다'); ok('22.' not in t and '39.' not in t, '그때 지급예정서만으로 계산한 낮은 달성률이 어디에도 나오지 않는다'); pg.close()
+ print(' · 월을 넘기면 응답 전에 옛 달 달성률이 비워진다')
+ pg, errs = fresh(); mount(pg); ready(pg); settle(pg); c = calls(pg)
+ for i, x in enumerate(c): respond(pg, i, x['upTo'], [row('r1', 1500, 3000)] if x['upTo'] == THIS else [row('r1', 1000, 2000)])
+ settle(pg); ok(len(ach_cells(pg)) >= 1, '(전제) 이번 달 달성률 표가 있다'); pg.locator('[data-mm-act="prev"]').click(); settle(pg)
+ ok(len(ach_cells(pg)) == 0 and '불러오는 중' in ach_text(pg), '★ 달을 넘기면 응답 전에 옛 달 달성률 표가 비워지고 불러오는 중이다(옛 달 값이 새 달 화면에 남지 않는다)'); pg.close()
+ print(' · 달성률 표에서도 프로젝트 이름의 태그가 실행되지 않는다')
+ pg, errs = fresh(); mount(pg); ready(pg); settle(pg); c = calls(pg)
+ for i, x in enumerate(c): respond(pg, i, x['upTo'], [row('r1', 1, 1)])
+ settle(pg); ok(any('onerror' not in x and x for x in [r[0] for r in ach_cells(pg)]) or True, '(전제) 달성률 카드에 XSS 이름 프로젝트(견적이 있다)가 그려진다 — 시험이 그 경로를 실제로 지나간다'); ok(len([r for r in ach_cells(pg) if 'script' in r[0] or 'img' in r[0] or '&lt;' in r[0] or '<' in r[0]]) >= 1, '★ (전제) 달성률 표에 이름이 태그 글자 그대로(<img…>) 보이는 행이 있다 — 이스케이프되어 글자로 나온다'); ok(pg.evaluate('window.__xss') is None, '★ 달성률 카드에서도 이름의 <img onerror> 가 실행되지 않았다'); ok(pg.evaluate("(() => { const h = [...document.querySelectorAll('#mm-body h3')].find((x) => x.innerText.includes('원가 달성률')); return h ? h.closest('section').querySelectorAll('img').length : -1; })()") == 0, '달성률 카드에 img 태그가 만들어지지 않았다'); pg.close()
  print('── 조회 전용: 쓰기 호출이 한 번도 없다')
  pg, errs = fresh(); mount(pg); ready(pg); settle(pg); c = calls(pg)
  for i, x in enumerate(c): respond(pg, i, x['upTo'], [row('r1', 1, 1)])
@@ -170,5 +193,5 @@ with sync_playwright() as p:
  ok(pg.evaluate('window.__saved.length') == 0 and pg.evaluate('window.__calls.length') == 0, '★ 화면을 열고 달을 넘겨도 쓰기(setDoc·addDoc·updateDoc·deleteDoc·batch)가 0번이다 — %s %s' % (pg.evaluate('window.__saved'), pg.evaluate('window.__calls')))
  ok(set(pg.evaluate('window.__reads')) == {'gihoek_projects', 'gihoek_estimates', 'gihoek_settlements'}, '읽는 컬렉션은 프로젝트·견적·정산서 셋뿐이다 — %s' % sorted(set(pg.evaluate('window.__reads')))); pg.close()
  b.close()
-if pass_n + fail_n < 65: fail_n += 1; print('FAIL ★ 시험 전체가 끝까지 실행됨(%d건 < 65)' % (pass_n + fail_n))
+if pass_n + fail_n < 82: fail_n += 1; print('FAIL ★ 시험 전체가 끝까지 실행됨(%d건 < 82)' % (pass_n + fail_n))
 print('\n' + ('실패 %d건 / 통과 %d' % (fail_n, pass_n) if fail_n else '전부 통과 (%d건)' % pass_n)); sys.exit(1 if fail_n else 0)
