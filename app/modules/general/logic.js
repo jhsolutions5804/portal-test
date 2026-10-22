@@ -1,5 +1,6 @@
 /* 총무 — 임대·차량·자산·갱신 일정. 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 네 종류(lease·vehicle·asset·renewal)는 항목 정의(GTYPES) 하나로 목록·입력·검증·만기 알림이 모두 같은 방식으로 돌아간다. */
+import { csvCell } from '../../shared/csv.js?v=20261022r';
 export const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')) && new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
 const isYm = (s) => /^\d{4}-(0[1-9]|1[0-2])$/.test(String(s || ''));
@@ -179,7 +180,7 @@ export function driveOdoCheck(rows, deliveryOdo) {
 }
 /** 운행기록부 엑셀(CSV) — 업무용승용차 운행기록부 항목(사용일자·사용자·주행 전/후·주행거리·업무용 거리·출발·도착·목적) */
 export function driveCsv(rows, title) {
-  const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; const L = [[title || '차량 운행기록부'], [], ['사용일자', '차량', '차량번호', '사용자', '프로젝트', '구분', '출발지', '도착지', '주행 전 계기판(km)', '주행 후 계기판(km)', '주행거리(km)', '업무용 사용거리(km)', '운행 목적', '비고', '결재 상태']];
+  const q = csvCell; const L = [[title || '차량 운행기록부'], [], ['사용일자', '차량', '차량번호', '사용자', '프로젝트', '구분', '출발지', '도착지', '주행 전 계기판(km)', '주행 후 계기판(km)', '주행거리(km)', '업무용 사용거리(km)', '운행 목적', '비고', '결재 상태']];
   rows.forEach((x) => L.push([x.date, x.vehicle, x.plate, x.driver, x.pjt, x.kind, x.origin, x.destination, x.odoStart, x.odoEnd, x.distance, x.bizKm, x.purpose, x.note, DRIVE_STATUS[x.status] || x.status]));
   const t = driveTotals(rows); L.push([], ['합계', '', '', '', '', '', '', '', '', '', t.distance, t.bizKm, '업무사용비율 ' + t.bizRate + '%']);
   return '\uFEFF' + L.map((x) => x.map(q).join(',')).join('\r\n');

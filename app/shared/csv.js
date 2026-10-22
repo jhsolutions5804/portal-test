@@ -9,6 +9,16 @@ export function csvCell(v) {
   else t = '';
   return '"' + t.replace(/"/g, '""') + '"';
 }
+/* 필요할 때만 큰따옴표를 쓰는 셀(대기열 1-2-11, 대표님 2026-10-22) — 가맹점 분류표처럼 파일 모양을 바꾸지 않아야 하는 곳용. 값 해석과 수식 시작 글자 보호는 csvCell 과 같고(= + - @ 탭 CR LF 로 시작하는 글자는 작은따옴표 접두, 숫자는 그대로, 그 밖은 빈 칸),
+ * 쉼표·큰따옴표·줄바꿈이 있을 때만 큰따옴표로 감싼다(기존 분류표 출력과 같다). */
+export function csvCellMin(v) {
+ let t;
+ if (typeof v === 'number') t = Number.isFinite(v) ? String(v) : '';
+ else if (typeof v === 'string') t = /^[=+\-@\t\r\n]/.test(v) ? "'" + v : v;
+ else if (typeof v === 'boolean') t = String(v);
+ else t = '';
+ return /[",\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+}
 /** 행(배열의 배열)을 CSV 글자로 — 맨 앞에 BOM(엑셀에서 한글이 깨지지 않게), 행은 CRLF, 끝에도 CRLF. 행이 배열이 아니면 건너뛴다 */
 export function csvText(rows) {
   const list = Array.isArray(rows) ? rows.filter(Array.isArray) : [];

@@ -30,5 +30,28 @@ console.log('── 기존 월 마감 CSV(closingCsv)는 정상 값에서 출력
   const csv = CL.closingCsv('2026-09', P, [base()]); eq(csv.split('\r\n')[1], '"S1","대금청구서","유효","P4-2","가짜상사","","2026-09-01","","1000","100","1100",""', '★ 정상 값의 월 마감 행은 한 글자도 안 바뀐다(숫자도 기존처럼 따옴표로 감싼 "1000")');
   const evil = CL.closingCsv('2026-09', P, [Object.assign(base('', '=1+1'), { pjtId: 'p2' }), Object.assign(base(), { no: 'S2', pjtId: 'p3', recipient: { company: '@SUM(1)' } })]).split('\r\n'); ok(evil[1].includes('"\'=HYPERLINK(""http://x"",""a"")"') && evil[1].includes('"\'=1+1"'), '★ 프로젝트 코드·거래처 이름이 = 로 시작하면 월 마감 CSV 에서도 작은따옴표로 보호된다: ' + evil[1].slice(0, 120)); ok(evil[2].includes('"\'+1+1"') && evil[2].includes('"\'@SUM(1)"'), '+·@ 시작도 보호된다');
   ok(!evil.slice(1, 3).some((l) => /(^|,)"[=+@-]/.test(l.replace(/"\d+"/g, '""')) && /(^|,)"[=+@]/.test(l)), '어떤 셀도 큰따옴표 바로 뒤가 = + @ 로 시작하지 않는다(수식으로 실행될 셀이 없다)'); }
-ok(pass + fail >= 60, '★ 시험이 끝까지 실행됨(중간에 예외로 중단돼도 FAIL 0 으로 보이지 않게)');
+console.log('── csvCellMin: 필요할 때만 큰따옴표(분류표처럼 파일 모양을 바꾸지 않아야 하는 곳) + 수식 시작 글자 보호');
+{ const E = (v) => S.csvCellMin(v);
+  eq(E('정상'), '정상', '★ 평범한 글자는 따옴표 없이 그대로(기존 분류표 출력과 같다)');
+  eq(E('a,b'), '"a,b"', '쉼표가 있으면 큰따옴표');
+  eq(E('줄\n바꿈'), '"줄\n바꿈"', '줄바꿈이 있으면 큰따옴표');
+  eq(E('네이버"페이"'), '"네이버""페이"""', '★ 큰따옴표는 두 번 쓰고 전체를 감싼다(기존 분류표 시험의 가맹점 이름과 같다)');
+  eq(E('=HYPERLINK("x")'), '"\'=HYPERLINK(""x"")"', '★ 수식으로 시작하면 작은따옴표 접두 + 따옴표 규칙(값에 큰따옴표가 있으니 감싼다)');
+  eq(E('+1+1'), "'+1+1", '★ + 로 시작해도 보호(쉼표·따옴표가 없어도 접두는 붙는다)');
+  eq(E('@SUM(1)'), "'@SUM(1)", '@ 로 시작해도 보호');
+  eq(E('-5'), "'-5", '글자 -5 는 보호된다(숫자는 숫자로 넘길 것)');
+  eq(E('=1+1'), "'=1+1", '= 로 시작해도 보호');
+  eq(E('\t탭'), "'\t탭", '탭으로 시작해도 보호(탭·쉼표·따옴표·줄바꿈 규칙에 안 걸리면 접두만)');
+  eq(S.csvCellMin('\r=1+1'), '"\'\r=1+1"', '★ CR 로 시작하는 값도 접두 보호(줄바꿈이 있으니 큰따옴표로 감싼다)');
+  eq(S.csvCellMin('\n=HYPERLINK("x")'), '"\'\n=HYPERLINK(""x"")"', '★ LF 로 시작하는 값도 접두 보호(공격자가 줄바꿈 뒤에 수식을 붙이는 경로)');
+  eq(E(-5), '-5', '★ 숫자(음수)는 그대로');
+  eq(E(0), '0', '0 은 0');
+  eq(E(1.5), '1.5', '소수는 그대로');
+  for (const v of [null, undefined, NaN, Infinity, -Infinity, {}, [], () => 1]) eq(E(v), '', '숫자가 아니고 글자도 아닌 값은 빈 칸: ' + String(v));
+  eq(E(true), 'true', '불리언은 글자');
+  eq(E(''), '', '빈 글자는 빈 칸'); }
+{ for (const bad of ["=cmd|' /C calc'!A0", "@SUM(1+1)*cmd|' /C calc'!A0", "+1+cmd|' /C calc'!A0", "-2+3+cmd|' /C calc'!A0"]) { const o = S.csvCellMin(bad); ok(o.replace(/^"/, '').startsWith("'"), '대표적 수식 주입 값도 작은따옴표로 시작한다: ' + bad.slice(0, 18)); } }
+{ const roundTrip = (v) => { const o = S.csvCellMin(v); return o.startsWith('"') ? o.slice(1, -1).replace(/""/g, '"') : o; };
+  for (const v of ['평범', 'a,b', '네이버"페이"', '줄\n바꿈', '한글 가맹점(주) 본점']) eq(roundTrip(v), v, '보호가 필요 없는 값은 따옴표를 벗기면 원래 값 그대로: ' + v.replace(/\n/g, '\\n')); }
+ok(pass + fail >= 94, '★ 시험이 끝까지 실행됨(중간에 예외로 중단돼도 FAIL 0 으로 보이지 않게)');
 console.log('\n' + pass + ' passed, ' + fail + ' failed'); if (fail) process.exit(1);

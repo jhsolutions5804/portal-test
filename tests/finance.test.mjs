@@ -1,5 +1,5 @@
 // 실행: node tests/finance.test.mjs  — 재무회계 화면의 순수 규칙(logic.js)을 시험한다. 화면은 jsdom 시험(tests_ledger/ui*.mjs)으로 따로 확인한다.
-import { docToEntry, summarize, filterEntries, statements, statementCsv, openingFromForm, entryDocId, safeId, postPayload, chunk, parseEntriesJson, manualEntry, previewTaxInvoices, previewCards, monthEnd, won, sourceLabel, expenseEntryFromForm, EXPENSE_CATS, PAY_METHODS, receiptFileProblem, receiptToForm, previewPayroll, purchaseKey, purchaseRuleFor, mergeRules, applyMerchantTable, reclassLines, forecastBase, forecastAssume, forecastRun, FC_SCEN, monthlyView, monthlyCsv, mpMatch, MP_SEED, MP_GROUPS, vatPeriods, vatPick, vatReport, vatForm, vatCardRef, vatCsv, npayGuess, npayId, npayPlan, NPAY_CHOICES, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, openingToForm, arByMonth, taxSalesSupplyByMonth, revenueTriple, gapEntry, closeCheck, merchantRuleKey, assigneeList, merchantTableRows, merchantTableCsv, parseCsvRows } from '../app/modules/finance/logic.js';
+import { docToEntry, summarize, filterEntries, statements, statementCsv, openingFromForm, entryDocId, safeId, postPayload, chunk, parseEntriesJson, manualEntry, previewTaxInvoices, previewCards, monthEnd, won, sourceLabel, expenseEntryFromForm, EXPENSE_CATS, PAY_METHODS, receiptFileProblem, receiptToForm, previewPayroll, purchaseKey, purchaseRuleFor, mergeRules, applyMerchantTable, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, FC_SCEN, monthlyView, monthlyCsv, mpMatch, MP_SEED, MP_GROUPS, vatPeriods, vatPick, vatReport, vatForm, vatCardRef, vatCsv, npayGuess, npayId, npayPlan, NPAY_CHOICES, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, openingToForm, arByMonth, taxSalesSupplyByMonth, revenueTriple, gapEntry, closeCheck, merchantRuleKey, assigneeList, merchantTableRows, merchantTableCsv, parseCsvRows } from '../app/modules/finance/logic.js';
 import { classifyBankTxn, userBankRuleFor } from '../app/shared/bank-classify.js';
 let fail = 0, n = 0; const ok = (c, m) => { n++; if (!c) { fail++; console.log('FAIL', m); } else console.log('OK  ', m); };
 const E = (id, date, memo, lines, kind, extra) => docToEntry(id, Object.assign({ no: id, seq: 1, date, memo, source: { kind: kind || 'manual', id: id }, lines, needsReview: false }, extra || {}));
@@ -138,6 +138,7 @@ ok(fcB.start === '2025-10' && fcB.end === '2026-09' && fcB.startForecast === '20
 const fcA = forecastAssume(fcB, { hana: 0 });
 ok(Math.round(fcA.A.rev) === 1000000 && Math.abs(fcA.A.cr - 0.6) < 1e-9 && Math.round(fcA.A.sga) === 100000 && Math.round(fcA.A.nonop) === 50000 && Math.round(fcA.A.owner) === 200000 && fcA.A.dep === 100000, '★ 예측 자동값: 수금 환산 매출·원가율·판관비·영업외·대표자 유출·감가상각(연 합계 ÷ 월수)을 장부에서 뽑음');
 const fcRun = forecastRun(fcB, fcA.A, FC_SCEN[1]);
+const fcCsv = forecastCsv(fcRun, FC_SCEN[1].name); ok(fcCsv.charCodeAt(0) === 0xFEFF && fcCsv.split('\r\n').length > 5 && fcCsv.split('\r\n')[0].includes(FC_SCEN[1].name), '예측 월별 표 엑셀(CSV): BOM·여러 줄·첫 줄에 시나리오 이름');
 ok(Math.round(fcRun.rev[0]) === 1000000 && Math.round(fcRun.op[0]) === 200000 && Math.round(fcRun.ni[0]) === 150000 && Math.round(fcRun.rec[0]) === 1000000 && Math.round(-fcRun.pay[0]) === 700000, '예측: 첫 달부터 정상 상태(수금·지급 시차 기본값) — 영업이익·순이익·수금·지급');
 ok(Math.round(fcRun.net[5]) === 50000 && Math.round(fcRun.cash[11] - fcB.opening.cash) === 600000, '예측: 순현금흐름과 기말 현금이 월별로 쌓임');
 ok(FC_SCEN.every((s) => forecastRun(fcB, fcA.A, s).summary.chk === 0) && forecastRun(fcB, forecastAssume(fcB, { hana: 500000, ibk: 100000, tax: 70000, g: 0.02, sgaG: 0.01 }).A, FC_SCEN[0]).summary.chk === 0, '★ 예측: 모든 시나리오·가정에서 간이 재무상태표 검산이 0');
@@ -258,4 +259,31 @@ console.log('── 월별 매출 세 숫자(청구서·세금계산서·통장 
   { const E2 = E3().concat([gE('s9', '2025-12-10', 'taxinv_sales', [['1100', 'D', 2200], ['4010', 'C', 2000]])]); const T3 = revenueTriple(arByMonth(E2), taxSalesSupplyByMonth(E2), { ok: true, months: [{ month: '2025-12', supply: 90, done: 90, open: 0, count: 1 }, { month: '2026-07', supply: 1700, done: 1300, open: 400, count: 3 }, { month: '2026-08', supply: 50, done: 0, open: 50, count: 1 }], total: { supply: 1840, done: 1390, open: 450, count: 5 } }); ok(T3.years.map((y) => y.year).join() === '2026,2025' && T3.years[1].invSupply === 90 && T3.years[1].taxSupply === 2000 && T3.years[1].taxTotal === 2200 && T3.years[0].invSupply === 1750 && T3.rows.map((x) => x.ym).join() === '2026-08,2026-07,2025-12', '★ 연 합계는 최근 해가 위이고 해마다 따로 센다 — 2025 는 청구서 90·세금계산서 2,000·2,200, 2026 은 1,750·1,700·1,870'); }
   ok(T.rows.every((x) => x.taxTotal >= x.taxSupply) && T.rows.every((x) => x.invDone + x.invOpen === x.invSupply), '어느 줄에서도 세금계산서 합계 ≥ 공급가이고 청구서는 완결 + 미완결 = 합계다');
 }
+/* ── 대기열 1-2-11: 재무회계 CSV 수식 주입 방어 — 거래처·메모·가맹점 이름은 은행·카드·세금계산서에서 들어오는 외부 값이라 =HYPERLINK(…)·+1+1·@SUM(1)·-1+1 로 시작하면 받는 사람(세무사·회계)의 엑셀에서 수식으로 실행될 수 있었다 ── */
+console.log('── 재무회계 CSV 수식 주입 방어(원장·거래처 잔액·부가세·월간수지·재무제표·가맹점 분류표·예측)');
+{ const EVIL = ['=HYPERLINK("http://x","c")', '+1+1', '@SUM(1)', '-1+1', "=cmd|' /C calc'!A0", '\n=1+1'];
+  const cellsOf = (csv) => parseCsvRows(csv).flat();
+  const badCells = (cells) => cells.filter((c) => /^[=+@\t\r\n]/.test(c) || (/^-/.test(c) && !/^-\d+(\.\d+)?$/.test(c)));
+  const nth = (cells, v) => cells.filter((c) => c === "'" + v).length;
+  for (const ev of EVIL) {
+    const tag = ev.replace(/\n/g, '\\n').slice(0, 14);
+    const g = structuredClone(lgA); ok(g.rows.length > 0, '(전제) 원장에 행이 있다 — 주입 대상 없음이면 시험이 허상이 된다'); g.rows[0].memo = ev; g.rows[0].partner = ev;
+    const cg = cellsOf(ledgerCsv('gl', g)); ok(badCells(cg).length === 0 && nth(cg, ev) === 2, '★ 원장 CSV: 메모·거래처에 ' + tag + ' 이 들어와도 두 칸 모두 접두 보호, 수식 시작 칸 0 — 보호 ' + nth(cg, ev) + '칸 · 위험 ' + badCells(cg).length + '칸');
+    const p = structuredClone(lgP1); ok(p.rows.length > 0, '(전제) 거래처 잔액에 행이 있다'); p.rows[0].partner = ev;
+    const cp = cellsOf(ledgerCsv('pt', p)); ok(badCells(cp).length === 0 && nth(cp, ev) === 1, '★ 거래처 잔액 CSV: 거래처에 ' + tag + ' → 접두 보호 — 보호 ' + nth(cp, ev) + '칸 · 위험 ' + badCells(cp).length);
+    const v = structuredClone(vR); ok(v.sales.rows.length > 0 && v.pur.rows.length > 0, '(전제) 부가세 매출처·매입처에 행이 있다'); v.sales.rows[0].partner = ev; v.pur.rows[0].partner = ev;
+    const cv = cellsOf(vatCsv(v)); ok(badCells(cv).length === 0 && nth(cv, ev) === 2, '★ 부가세 CSV: 매출처·매입처에 ' + tag + ' → 두 칸 접두 보호 — 보호 ' + nth(cv, ev) + '칸 · 위험 ' + badCells(cv).length);
+    const m = structuredClone(mpV); ok(m.sales.length > 0, '(전제) 월간 수지에 받을 돈 행이 있다'); m.sales[0].partner = ev; m.sales[0].memo = ev;
+    const cm = cellsOf(monthlyCsv(m)); ok(badCells(cm).length === 0 && nth(cm, ev) === 2, '★ 월간 수지 CSV: 거래처·내용에 ' + tag + ' → 두 칸 접두 보호 — 보호 ' + nth(cm, ev) + '칸 · 위험 ' + badCells(cm).length);
+    const s = structuredClone(st); ok(s.is.revenue.length > 0, '(전제) 손익계산서에 매출 계정이 있다'); s.is.revenue[0].name = ev;
+    const cs = cellsOf(statementCsv(s, 'is')); ok(badCells(cs).length === 0 && nth(cs, ev) === 1, '★ 재무제표(손익) CSV: 계정 이름에 ' + tag + ' → 접두 보호 — 보호 ' + nth(cs, ev) + '칸 · 위험 ' + badCells(cs).length);
+    const mg = mgrp.map((x, i) => (i === 0 ? Object.assign({}, x, { name: ev }) : x)); const cmg = cellsOf(merchantTableCsv(mg));
+    ok(badCells(cmg).length === 0 && nth(cmg, ev) >= 1, '★ 가맹점 분류표 CSV(외부 값이라 가장 위험): 가맹점 이름에 ' + tag + ' → 접두 보호, 수식 시작 칸 0 — 보호 ' + nth(cmg, ev) + '칸 · 위험 ' + badCells(cmg).length);
+    const cf = cellsOf(forecastCsv(fcRun, ev)); ok(badCells(cf).length === 0, '예측 CSV: 시나리오 이름에 ' + tag + ' 이 들어와도 수식 시작 칸 0(이름은 "항목(…" 안에 들어가 칸 앞이 아니다) — 위험 ' + badCells(cf).length);
+  }
+  for (const kind of ['bs', 'cf', 'tb']) { const cs = cellsOf(statementCsv(st, kind)); ok(badCells(cs).length === 0, '재무제표(' + kind + ') CSV: 정상 입력에서 수식 시작 칸이 없다(숫자형 음수는 그대로) — 위험 ' + badCells(cs).length); }
+  const mc = cellsOf(merchantTableCsv(mgrp)); ok(mc.includes('케이비손해보험(주), 본점') && mc.includes('네이버"페이"'), '★ 가맹점 분류표 왕복: 쉼표·큰따옴표가 든 정상 이름이 내려받아 다시 읽어도 그대로(보호 접두가 붙지 않는다)');
+  { const raw = merchantTableCsv(mgrp); ok(raw.includes('"케이비손해보험(주), 본점"') && raw.includes(',농협,3,3000,') && raw.includes(',현대,5,500,') && !raw.includes('"농협"') && !raw.includes('"3000"'), '★ 분류표는 필요할 때만 큰따옴표: 쉼표가 든 이름은 감싸고 평범한 칸(농협·현대)과 숫자(3000·500)는 감싸지 않는다 — 파일 모양 유지(검토가 필요 없는 가맹점 이미규칙있음은 표에서 빠지는 것이 설계)'); }
+  const neg = structuredClone(lgA); neg.rows[0].debit = -1500; neg.rows[0].credit = 0; neg.rows[0].balance = -1500; ok(ledgerCsv('gl', neg).includes('"-1500"') && !ledgerCsv('gl', neg).includes("'-1500"), '★ 숫자형 음수 금액(-1500)은 작은따옴표 없이 나간다(합계가 깨지지 않게)'); }
+ok(n >= 250, '★ 시험이 끝까지 실행됨(중간에 예외로 중단돼도 FAIL 0 으로 보이지 않게)');
 console.log(fail ? '\n실패 ' + fail + '/' + n : '\n전부 통과 (' + n + '건)'); process.exit(fail ? 1 : 0);

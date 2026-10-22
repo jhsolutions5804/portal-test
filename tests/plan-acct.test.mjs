@@ -26,4 +26,17 @@ const j0 = missingToJson(R), j1 = missingToJson(R, { excludeCredit: false }), j2
 ok(j0.entries.length === 1 && j0.entries[0].date === '2026-07-11' && j0.skipped.length === 3 && j0.skipped.some((s) => /급여명세서/.test(s.reason)) && j0.skipped.some((s) => /외상거래/.test(s.reason)) && j0.skipped.some((s) => /중복 입력/.test(s.reason)) && j1.entries.length === 2 && j2.entries.length === 3 && JSON.parse(j0.json).entries.length === 1 && JSON.parse(j0.json).entries[0].lines[0].account === '5010', '★ 가져오기 JSON: 전표에 없는 건만(기본은 외상거래·중복 의심·급여 제외 → 1건), 옵션으로 외상거래·중복 의심 포함, 재무회계가 읽는 {entries:[…]} 모양');
 const csv = tagTableCsv(R, [{ id: 'p1', code: 'P4 Ph2' }]); const ln = csv.replace('\ufeff', '').trim().split('\r\n');
 ok(csv.startsWith('\ufeff"날짜","가맹점"') && ln.length === 1 + 3 && ln.some((l) => l.includes('"백다방 평택점"') && l.includes('"P4 Ph2"') && l.includes('"일치"') && l.endsWith('"2026-0100"')) && ln.some((l) => l.includes('"p2"') && l.includes('"없음"')) && ln.some((l) => l.includes('"날짜 어긋남"') && l.endsWith('"2026-0102"')), '프로젝트 표시 대조표(CSV): 표시가 있는 건만, 프로젝트 코드·상태·짝지어진 전표 번호(재무회계가 전표에 프로젝트 표시를 지원할 때 이어받기용)');
+/* ── 대기열 1-2-11: 프로젝트 표시 대조표 CSV 수식 주입 방어 — 가맹점·분류는 비용장부(외부 입력)에서 온 글자라 =HYPERLINK(…)·+1+1·@SUM(1)·-1+1 로 시작하면 받는 사람의 엑셀에서 수식으로 실행될 수 있었다 ── */
+console.log('── 프로젝트 표시 대조표 CSV 수식 주입 방어');
+{ const EVIL = ['=HYPERLINK("http://x","c")', '+1+1', '@SUM(1)', '-1+1', "=cmd|' /C calc'!A0", '\n=1+1'];
+  const cellsOf = (csv) => (csv.replace(/^\ufeff/, '').match(/"(?:[^"]|"")*"/g) || []).map((c) => c.slice(1, -1).replace(/""/g, '"'));
+  const badCells = (cells) => cells.filter((c) => /^[=+@\t\r\n]/.test(c) || (/^-/.test(c) && !/^-\d+(\.\d+)?$/.test(c)));
+  const base = tagTableCsv(R, [{ id: 'p1', code: 'P4 Ph2' }]); const withPjt = R.filter((r) => String((r.x && r.x.pjt) || '').trim());
+  ok(withPjt.length > 0, '(전제) 프로젝트 표시가 있는 행이 있다 — 대상이 없으면 시험이 허상이 된다');
+  for (const ev of EVIL) { const tag = ev.replace(/\n/g, '\\n').slice(0, 14);
+    const bad = R.map((r) => Object.assign({}, r, { x: Object.assign({}, r.x, { vendor: ev, cat: ev }) })); const cells = cellsOf(tagTableCsv(bad, [{ id: 'p1', code: ev }]));
+    const prot = cells.filter((c) => c === "'" + ev).length; ok(badCells(cells).length === 0 && prot >= 2 * withPjt.length, '★ 프로젝트 표시 대조표: 가맹점·분류·프로젝트 코드에 ' + tag + ' 이 들어와도 수식 시작 칸 0 — 보호 ' + prot + '칸(최소 ' + 2 * withPjt.length + ') · 위험 ' + badCells(cells).length); }
+  ok(badCells(cellsOf(base)).length === 0, '정상 입력에서도 수식 시작 칸이 없다 — 위험 ' + badCells(cellsOf(base)).length);
+  const neg = R.map((r) => Object.assign({}, r, { x: Object.assign({}, r.x, { total: -1500 }) })); const nc = tagTableCsv(neg, [{ id: 'p1', code: 'P4 Ph2' }]); ok(nc.includes('"-1500"') && !nc.includes("'-1500"), '★ 숫자형 음수 금액(-1500)은 작은따옴표 없이 나간다(합계가 깨지지 않게)'); }
+ok(pass + fail >= 19, '★ 시험이 끝까지 실행됨(중간에 예외로 중단돼도 FAIL 0 으로 보이지 않게)');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

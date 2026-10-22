@@ -1,10 +1,11 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261022q';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261022q';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261022q';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261022q';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261022q';
-import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261022q';
-import { docFileName } from '../../shared/doc-filename.js?v=20261022q';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261022r';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261022r';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261022r';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261022r';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261022r';
+import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261022r';
+import { docFileName } from '../../shared/doc-filename.js?v=20261022r';
+import { csvCell, csvCellMin } from '../../shared/csv.js?v=20261022r';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -54,7 +55,7 @@ export const yearOf = (d) => String(d || kstToday()).slice(0, 4);
 /** 재무제표 4종 계산(엔진 그대로) — 기간 from~to, 재무상태표는 to 기준 */
 export function statements(entries, from, to) { const E = (entries || []).filter((e) => !e.invalid); return { is: incomeStatement(E, from, to), cc: constructionCost(E, from, to), bs: balanceSheet(E, to, from), tb: trialBalance(E, to), cf: cashFlowStatement(E, from, to), from, to }; }
 export function statementCsv(st, kind) {
-  const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; const L = [];
+  const q = csvCell; const L = [];
   if (kind === 'is') { const s = st.is; L.push(['구분', '계정', '금액']); s.revenue.forEach((r) => L.push(['매출', r.name, r.amount])); L.push(['', '매출액', s.sales]); st.cc.groups.forEach((g) => { g.items.forEach((r) => L.push([g.label, r.name, r.amount])); L.push([g.label, '소계', g.subtotal]); }); L.push(['', '매출원가(당기총공사비)', s.costOfSales], ['', '매출총이익', s.grossProfit]); s.sga.forEach((r) => L.push(['판관비', r.name, r.amount])); L.push(['', '판관비 합계', s.sgaTotal], ['', '영업이익', s.operatingIncome]); s.nonopRevenue.forEach((r) => L.push(['영업외수익', r.name, r.amount])); s.nonopExpense.forEach((r) => L.push(['영업외비용', r.name, r.amount])); L.push(['', '당기순이익(세무조정 전)', s.netIncome]); }
   else if (kind === 'cf') { const c = st.cf; L.push(['구분', '항목', '금액']); L.push(['', '기초 현금', c.beginCash]); c.operating.forEach((r) => L.push(['영업활동', r.name, r.amount])); L.push(['', '영업활동 현금흐름', c.operatingTotal]); c.investing.forEach((r) => L.push(['투자활동', r.name, r.amount])); L.push(['', '투자활동 현금흐름', c.investingTotal]); c.financing.forEach((r) => L.push(['재무활동', r.name, r.amount])); L.push(['', '재무활동 현금흐름', c.financingTotal], ['', '현금 증감', c.change], ['', '기말 현금', c.endCash], ['', '검산(재무상태표 현금과의 차이)', c.diff]); }
   else if (kind === 'bs') { const b = st.bs; L.push(['구분', '계정', '금액']); b.assets.forEach((r) => L.push(['자산', r.name, r.amount])); L.push(['', '자산 총계', b.assetsTotal]); b.liabs.forEach((r) => L.push(['부채', r.name, r.amount])); L.push(['', '부채 총계', b.liabsTotal]); b.equity.forEach((r) => L.push(['자본', r.name, r.amount])); L.push(['', '자본 총계', b.equityTotal], ['', '검산(자산−부채−자본)', b.diff]); }
@@ -176,7 +177,7 @@ export function merchantTableRows(groups) {
   need.forEach((g, i) => rows.push([i + 1, g.name, CARD_CODE_LABEL[g.issuer] || g.issuer, g.n, g.sum, '', '', ACCOUNT_BY_CODE[g.account] ? ACCOUNT_BY_CODE[g.account].name : '', '', '', '', g.issuer, g.key]));
   return rows;
 }
-const csvQ = (v) => { const s = String(v == null ? '' : v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+const csvQ = csvCellMin; // 필요할 때만 큰따옴표 + 수식 시작 글자 보호(가맹점 이름은 은행·카드 거래에서 들어오는 외부 값 — 대기열 1-2-11). 분류표는 다시 읽는 입력이기도 해서 파일 모양은 그대로 둔다
 /** 엑셀에서 한글이 깨지지 않도록 앞에 BOM 을 붙인 CSV 문자열 */
 export const merchantTableCsv = (groups) => '\ufeff' + merchantTableRows(groups).map((r) => r.map(csvQ).join(',')).join('\r\n') + '\r\n';
 /** CSV 문자열 → 행 배열(따옴표·쉼표·줄바꿈·BOM 처리) */
@@ -229,7 +230,7 @@ export function partnerBalances(entries, account, asOf, includeZero) {
 }
 /** 원장·거래처 잔액 엑셀(CSV) — 한글이 깨지지 않게 BOM */
 export function ledgerCsv(kind, data) {
-  const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; const L = [];
+  const q = csvCell; const L = [];
   if (kind === 'gl') { L.push(['일자', '번호', '메모', '거래처', '차변', '대변', '잔액']); L.push(['', '', '기초 잔액', '', '', '', data.opening]); data.rows.forEach((r) => L.push([r.date, r.no, r.memo, r.partner, r.debit, r.credit, r.balance])); L.push(['', '', '합계 / 기말 잔액', '', data.debit, data.credit, data.closing]); }
   else if (kind === 'bk') { L.push(['월', '통장 마지막 거래일', '통장 잔액', '장부 보통예금(1020)', '차이(장부-통장)']); data.months.slice().reverse().forEach((m) => L.push([m.month, m.date, m.bankBal, m.ledgerBal, m.diff])); }
   else { L.push(['거래처', '차변 합계', '대변 합계', '잔액', '건수', '마지막 거래일']); data.rows.forEach((r) => L.push([r.partner, r.debit, r.credit, r.balance, r.n, r.last])); L.push(['합계', data.debit, data.credit, data.balance, '', '']); }
@@ -282,7 +283,7 @@ export function monthlyView(entries, plan, ym, today) {
 }
 /** 월간 수지 엑셀(CSV) */
 export function monthlyCsv(v) {
-  const q = (x) => '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"'; const L = [['월간 수지', v.ym], [], ['[받을 돈 — 매출 세금계산서]'], ['작성일', '거래처', '내용', '공급가액', '부가세', '합계']];
+  const q = csvCell; const L = [['월간 수지', v.ym], [], ['[받을 돈 — 매출 세금계산서]'], ['작성일', '거래처', '내용', '공급가액', '부가세', '합계']];
   v.sales.forEach((s) => L.push([s.date, s.partner, s.memo, s.supply, s.tax, s.total])); L.push(['입금 예정(합계)', '', '', '', '', v.revPlan], ['실제 입금(통장)', '', '', '', '', v.salesIn], [], ['[나갈 돈 — 고정지출]'], ['구분', '내용', '결제일', '방법', '예정 금액', '지급(장부)', '상태', '비고']);
   const ST = { ok: '지급 완료', diff: '금액 다름', paid: '지급됨', skip: '이번 달 없음', noamt: '금액 미정', missing: '장부에 없음', late: '결제일 지남', plan: '예정' };
   v.groups.forEach((g) => g.rows.forEach((r) => L.push([g.group, r.item.name, r.due || (r.item.day ? r.item.day + '일' : ''), r.item.method, r.exp, r.paid, ST[r.state], r.item.note || r.note])));
@@ -407,7 +408,7 @@ export function vatForm(v, I) {
 }
 /** 신고 보조표 엑셀(CSV): 신고서 양식 + 매출처별 + 매입처별 (form 이 없으면 간추린 요약) */
 export function vatCsv(r, form) {
-  const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; const L = []; const s = r.summary;
+  const q = csvCell; const L = []; const s = r.summary;
   L.push(['부가가치세 신고 보조표(일반과세자)', r.from + ' ~ ' + r.to], []);
   if (form) { L.push(['번호', '항목', '금액', '세액']); form.rows.forEach((x) => L.push([x.no, x.sub, x.amt || '', x.tax || ''])); }
   else { L.push(['구분', '건수', '공급가액', '세액']); L.push(['매출 — 세금계산서 발급분', r.sales.n, r.sales.supply, r.sales.tax], ['매입 — 세금계산서 일반매입', r.pur.general.n, r.pur.general.supply, r.pur.general.tax], ['매입 — 세금계산서 고정자산 매입', r.pur.fixed.n, r.pur.fixed.supply, r.pur.fixed.tax], ['매입 — 계산서(면세) 매입', r.pur.exempt.n, r.pur.exempt.supply, 0]); L.push(['매출세액', '', '', s.outputTax], ['매입세액 합계', '', '', s.inputTax], ['공제받지 못할 매입세액(입력)', '', '', s.deny], ['공제받을 매입세액', '', '', s.deductible], ['납부(환급)세액', '', '', s.payable]); }
@@ -479,7 +480,7 @@ export function forecastRun(base, A, scen) {
 }
 /** 예측 월별 표 엑셀(CSV) */
 export function forecastCsv(r, name) {
-  const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; const rows = [['항목(' + name + ' 시나리오, 원)'].concat(r.labels)];
+  const q = csvCell; const rows = [['항목(' + name + ' 시나리오, 원)'].concat(r.labels)];
   [['매출', 'rev'], ['매출원가', 'cogs'], ['매출총이익', 'gp'], ['판관비(감가상각 제외)', 'sga'], ['감가상각비', 'dep'], ['영업이익', 'op'], ['영업외 순비용', 'nonop'], ['당기순이익', 'ni'], ['수금', 'rec'], ['원가·판관비 지급', 'pay'], ['영업외비용 지급', 'intr'], ['차입금 원금 상환', 'prin'], ['대표자 현금 순유출', 'draw'], ['기타 세금 지출', 'tax'], ['순현금흐름', 'net'], ['기말 현금', 'cash'], ['외상매출금(순)', 'ar'], ['선급금·기타자산', 'oth'], ['차량운반구(순)', 'veh'], ['자산 총계', 'ta'], ['매입채무·미지급금 등', 'ap'], ['차입금', 'debt'], ['부채 총계', 'tl'], ['자본', 'eq'], ['필요 추가 입금(이엔지)', 'topup'], ['조정 후 기말 현금', 'adj']].forEach(([l, k]) => rows.push([l].concat(r[k].map((v) => Math.round(v)))));
   return '\uFEFF' + rows.map((x) => x.map(q).join(',')).join('\r\n');
 }

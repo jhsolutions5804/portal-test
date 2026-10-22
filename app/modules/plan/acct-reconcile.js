@@ -1,6 +1,7 @@
 /* 영업기획 → 재무회계 이관: 구포털 기획의 비용장부(gihoek_expenses)를 재무회계 전표(ledger_entries)와 대조한다 — 순수 규칙(화면·네트워크 없이 시험 가능).
  * 재무회계는 카드·통장·세금계산서를 가져와 전표를 이미 만들고 있어, 비용장부를 그대로 옮기면 같은 지출이 두 번 계상된다. 그래서 건마다 같은 날짜·금액의 전표가 있는지 먼저 확인하고,
  * 전표에 없는 건만 재무회계의 "전표 가져오기(JSON)" 형식으로 내려받게 한다(대표님이 확인 후 가져오기를 눌러야 반영). 프로젝트 표시는 전표에 아직 없어 대조표로 따로 내려받는다. */
+import { csvCell } from '../../shared/csv.js?v=20261022r';
 const T = (n) => Math.round(Number(n) || 0);
 const norm = (s) => String(s == null ? '' : s).toLowerCase().replace(/\(.*?\)|주식회사|\(주\)|㈜|[\s.\-_·,]/g, '');
 /** 두 이름이 비슷한 정도(0~1): 정규화한 글자열의 공통 부분(2글자 이상)이 짧은 쪽에서 차지하는 비율 */
@@ -52,7 +53,7 @@ export function missingToJson(rows, opt) {
   rows.filter((r) => r.status === 'missing' || (r.status === 'dup' && o.includeDup)).forEach((r) => { if (o.excludeCredit && r.x.pay === '외상거래') { skipped.push({ x: r.x, reason: '외상거래(매입 세금계산서로 들어왔을 수 있음)' }); return; } const c = expenseToEntry(r.x); if (c.entry) entries.push(c.entry); else skipped.push({ x: r.x, reason: c.reason }); });
   return { entries, skipped, json: JSON.stringify({ entries }, null, 2) };
 }
-const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+const q = csvCell;
 /** 프로젝트 표시가 있는 비용장부 건과 짝지어진 전표 번호의 대조표(CSV, 엑셀 BOM): 재무회계가 전표에 프로젝트 표시를 지원할 때 이어받기 위한 자료 */
 export function tagTableCsv(rows, projects) {
   const P = projects || []; const name = (id) => { const p = P.find((x) => x.id === id); return p ? p.code : id; };

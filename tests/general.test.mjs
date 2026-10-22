@@ -82,5 +82,14 @@ const hr2 = historyRows(as1.changed.map((c) => ({ id: c.ym, ym: c.ym, rows: c.ro
 ok(hr2[0].pjtKey === 'p4' && hr2[0].pjt === 'P4PH4 · P4 Ph4' && hr2[2].pjt === '(프로젝트 없음)' && historyRows([{ ym: '2025-05', rows: [pr('2025-05-07', 'x', 1, { pjtId: 'common', pjtCode: '공통' })] }], {})[0].pjt === '공통(프로젝트 무관)', '이식 줄의 프로젝트 표시: 지정한 프로젝트·공통·없음');
 const byp = driveByProject(driveAllRows([], as1.changed.map((c) => ({ id: c.ym, ym: c.ym, rows: c.rows })), {})); ok(byp.find((x) => x.key === 'p4').distance === 21 && byp.find((x) => x.key === 'p4').n === 3, '프로젝트별 보기에 지정한 과거 기록이 모임');
 
+/* ── 대기열 1-2-11: 차량 운행기록부 CSV 수식 주입 방어 — 사용자·출발지·목적 같은 자유 글자가 =HYPERLINK(…)·+1+1·@SUM(1)·-1+1 로 시작하면 받는 사람의 엑셀에서 수식으로 실행될 수 있었다 ── */
+{ const EVIL = ['=HYPERLINK("http://x","c")', '+1+1', '@SUM(1)', '-1+1', '=cmd|\' /C calc\'!A0'];
+  for (const ev of EVIL) { const bad = rowsD.map((x, i) => (i === 0 ? Object.assign({}, x, { purpose: ev, origin: ev, driver: ev }) : x)); const c = driveCsv(bad, '시험'); const lines = c.replace(/^\ufeff/, '').split('\r\n'); const row = lines[3];
+    const cells = row.match(/"(?:[^"]|"")*"/g) || []; const evilCells = cells.filter((x) => x.includes(ev.replace(/"/g, '""').slice(1)));
+    ok(evilCells.length === 3 && evilCells.every((x) => x.startsWith('"\'')), '★ 차량 운행기록부: 자유 글자(사용자·출발지·목적)에 ' + ev.slice(0, 16) + ' 이 들어와도 세 칸 모두 작은따옴표 접두로 나간다 — ' + evilCells.length + '칸');
+    ok(!cells.some((x) => /^"[=+@-]/.test(x) && !/^"-?\d+(\.\d+)?"$/.test(x)), '★ 큰따옴표 바로 뒤가 = + @ - 로 시작하는 글자 칸이 하나도 없다(숫자만 예외): ' + ev.slice(0, 12)); }
+  const good = driveCsv(rowsD, '시험'); ok(good.includes('"2026-10-05","GMC 시에라","12가 3456","한가나"'), '정상 값은 그대로 나간다(보호 접두가 붙지 않는다)');
+  const num = rowsD.map((x, i) => (i === 0 ? Object.assign({}, x, { odoStart: -5, distance: -12.5 }) : x)); const nc = driveCsv(num, '시험').split('\r\n')[3]; ok(nc.includes('"-5"') && nc.includes('"-12.5"') && !nc.includes('\'-5') && !nc.includes('\'-12.5'), '★ 숫자형 음수(계기판 -5·거리 -12.5)는 작은따옴표 없이 숫자로 나간다(합계가 깨지지 않게)'); }
+ok(pass + fail >= 49, '★ 시험이 끝까지 실행됨(중간에 예외로 중단돼도 FAIL 0 으로 보이지 않게)');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)');
 if (fail) process.exit(1);
