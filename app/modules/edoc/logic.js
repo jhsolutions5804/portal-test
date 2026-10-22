@@ -1,3 +1,4 @@
+import { docFileName } from '../../shared/doc-filename.js?v=20261022a';
 export const DOC_TYPES = ['daily', 'leave', 'resign', 'cert', 'purchase', 'expense', 'attend', 'drive'];
 /** 승인으로 끝나고 게시하지 않는 문서(업무일지, 근태 기록 수정 요청 — 승인되면 출퇴근 기록에 바로 반영) */
 export const NO_POST_TYPES = ['daily', 'attend', 'drive'];   // 차량 운행일지도 승인으로 끝(게시 안 함) — 총무가 운행기록부로 취합
@@ -192,4 +193,13 @@ export function stepState(doc, i) {
   if (s.status === 'skipped') return 'skipped';
   if (s.status === 'rejected') return 'rejected';
   return currentStepIndex(doc) === i ? 'current' : 'pending';
+}
+
+/* ───────── 인쇄 제목(대기열 1-2-7 ①, 대표님 2026-10-22) ─────────
+ * 전자결재 문서를 "인쇄 → PDF 저장" 할 때의 문서 이름 — 종류 → 작성자 → 작성일(한국 시간). 전자결재 문서에는 문서번호 필드가 없어 번호는 넣지 않는다(같은 날 같은 종류를 여러 건 내면 브라우저가 (1)을 붙인다).
+ * 작성일을 모르면 날짜 칸을 건너뛴다(시각 0 을 1970-01-01 로 쓰지 않는다). 종류를 모르면 "결재 문서" */
+export function edocPrintTitle(d) {
+  const x = d && typeof d === 'object' && !Array.isArray(d) ? d : {}; const ms = toMillis(x.createdAt); const k = kst(ms);
+  const date = ms ? k.getUTCFullYear() + '-' + pad(k.getUTCMonth() + 1) + '-' + pad(k.getUTCDate()) : '';
+  return docFileName({ group: 'edoc', kind: TYPE_LABEL[x.dtype] || '결재 문서', author: x.authorName, date });
 }

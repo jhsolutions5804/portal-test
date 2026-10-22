@@ -7,6 +7,9 @@
  *   month   : 종류 → 연월(YYYY-MM) → (프로젝트)                            예) 월말 마감 - 2026-09 / 월간 보고서 - 2026-07 - P4 Ph2 (FAB)
  *   person  : 종류 → 이름 → 기준일. 연월(ym)을 주면 '종류 - 연월 - 이름'(급여명세서)  예) 근로계약서 - 홍길동 - 2026-10-26 / 급여명세서 - 2026-06 - 홍길동
  *   edoc    : 종류 → 문서번호 → 작성자 → 날짜                              예) 구매품의 - 2610001 - 김작성 - 2026-10-01
+ *   period  : 종류 → 기간 → (이름) — 재무제표·원장·부가세 신고표처럼 시작~끝 기간이 핵심인 문서(대표님 2026-10-22). 기간은 from~to 이고 월의 첫날~월의 마지막 날이면 연월로 줄인다(2026-01~2026-09, 한 달이면 2026-09), 끝날짜만 있으면 그 날짜(기준일)
+ *             예) 손익계산서 - 2026-01~2026-09 / 재무상태표 - 2026-09-30 / 계정별 원장 - 2026-01~2026-09 - 보통예금
+ *   (전자결재 문서에는 문서번호 필드가 없어 edoc 의 번호를 비우면 칸만 건너뛴다 — 대표님 2026-10-22)
  *
  * 안전 규칙(강제): 주민번호·계좌번호·전화번호·금액처럼 보이는 글자는 이름의 자유 입력 칸(프로젝트·상대방·이름·작성자)에서 지운다.
  * 번호는 영문·숫자·한글·._- 만, 날짜는 YYYY-MM-DD / YYYY-MM 형식만 받는다. 파일 이름에 못 쓰는 문자(/ \ : * ? " < > |)와 제어문자는 없앤다.
@@ -35,12 +38,17 @@ const noOf = (s) => String(s == null ? '' : s).replace(/[^0-9A-Za-z가-힣._-]/g
 const dateOf = (s) => { const m = String(s == null ? '' : s).match(/^\d{4}-\d{2}-\d{2}/); return m ? m[0] : ''; };
 const compactDate = (s) => dateOf(s).replace(/-/g, '');
 const partyOf = (party, contact, max) => { const p = safeText(party, max), c = safeText(contact, 20); return p && c ? p + '(' + c + ')' : (p || c); };
+const lastDay = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+/** 기간 글자 — from·to 는 YYYY-MM-DD 만 받고(틀린 형식은 버림) 시작이 끝보다 늦으면 바꾼다. 월 첫날~월 마지막 날이면 연월로 줄인다(한쪽만 줄이지 않는다) */
+const periodOf = (from, to) => { const real = (d) => { const m = d.match(/^\d{4}-(\d{2})-(\d{2})$/); return m && Number(m[1]) >= 1 && Number(m[1]) <= 12 && Number(m[2]) >= 1 && Number(m[2]) <= 31 ? d : ''; }; let a = real(dateOf(from)), b = real(dateOf(to)); if (a && b && a > b) { const t = a; a = b; b = t; } if (!a && !b) return ''; if (!b) return a + '~'; if (!a) return b;
+  const ma = a.match(/^(\d{4})-(\d{2})-01$/), mb = b.match(/^(\d{4})-(\d{2})-(\d{2})$/); const aligned = !!ma && !!mb && Number(mb[3]) === lastDay(Number(mb[1]), Number(mb[2])); if (aligned) return a.slice(0, 7) === b.slice(0, 7) ? a.slice(0, 7) : a.slice(0, 7) + '~' + b.slice(0, 7); return a + '~' + b; };
 const ymOf = (s) => { const m = String(s == null ? '' : s).match(/^\d{4}-\d{2}/); return m ? m[0] : ''; };
 function build(x, maxFree) {
   const free = (v) => safeText(v, maxFree), kind = safeText(x.kind, 30) || '문서';
   let parts;
   if (x.group === 'month') parts = [kind, ymOf(x.ym), free(x.project)];
   else if (x.group === 'person') { const ym = ymOf(x.ym); parts = ym ? [kind, ym, free(x.name)] : [kind, free(x.name), dateOf(x.date)]; }
+  else if (x.group === 'period') parts = [kind, periodOf(x.from, x.to), free(x.project)];
   else if (x.group === 'edoc') parts = [kind, noOf(x.docNo != null ? x.docNo : x.no), free(x.author), dateOf(x.date)];
   else {   // project: 종류_날짜_거래처(담당자)_현장명_견적명
     const proj = free(x.project); let ttl = safeText(x.title, maxFree === MAX_PART ? 60 : maxFree);   // 견적명은 실제로 52자까지 있어 60자(길어서 줄일 때는 18자)

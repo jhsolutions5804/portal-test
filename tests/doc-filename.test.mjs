@@ -104,4 +104,30 @@ eq(docFileName({ group: 'project', kind: '견적서', project: 'A/', date: '2026
   const long = docFileName(Object.assign({}, b, { rev: 3, project: '가'.repeat(60), party: '나'.repeat(60), title: '다'.repeat(80) })); ok(long.length <= 120 && long.endsWith('_r3') && long.startsWith('견적서_20260115_'), '★ 이름이 아주 길어도 120자 이내이고 앞의 종류·날짜와 끝의 _r3 가 모두 살아남음 (' + long.length + '자)');
   { const x = { group: 'project', kind: '가'.repeat(60), project: '나'.repeat(60), party: '다'.repeat(60), contact: '라'.repeat(40), title: '마'.repeat(80), date: '2026-01-15' }; ok(docFileName(x).length >= 118, '시험 자료: 18자 축소로도 120자 가까이 가서 최종 자르기 경로에 도달(' + docFileName(x).length + '자)'); const r3 = docFileName(Object.assign({}, x, { rev: 3 })); ok(r3.length <= 120 && r3.endsWith('_r3'), '★ 최종 자르기 경로에서도 개정 접미사 _r3 가 잘리지 않고 120자 이내 (' + r3.length + '자)'); }
   eq(docFileName({ group: 'month', ym: '2026-09', kind: '월말 마감', rev: 2 }), '월말 마감 - 2026-09_r2', 'rev 는 어떤 문서군이든 같은 규칙(견적서만 rev 를 넘김)'); }
+// ── 기간 문서(재무제표·원장·부가세 신고표 — 시작~끝 기간이 핵심, 대표님 2026-10-22 "기간 전체를 넣자")
+eq(docFileName({ group: 'period', kind: '손익계산서', from: '2026-01-01', to: '2026-09-30' }), '손익계산서 - 2026-01~2026-09', '★ 기간 문서: 월의 첫날~월의 마지막 날이면 연월로 줄여 2026-01~2026-09');
+eq(docFileName({ group: 'period', kind: '손익계산서', from: '2026-09-01', to: '2026-09-30' }), '손익계산서 - 2026-09', '★ 한 달 전체면 연월 하나');
+eq(docFileName({ group: 'period', kind: '손익계산서', from: '2026-01-15', to: '2026-09-10' }), '손익계산서 - 2026-01-15~2026-09-10', '★ 월 경계가 아니면 날짜 그대로');
+eq(docFileName({ group: 'period', kind: '손익계산서', from: '2026-01-01', to: '2026-09-10' }), '손익계산서 - 2026-01-01~2026-09-10', '시작만 월 경계이고 끝이 월말이 아니면 날짜 그대로(한쪽만 줄이지 않는다)');
+eq(docFileName({ group: 'period', kind: '손익계산서', from: '2026-01-15', to: '2026-09-30' }), '손익계산서 - 2026-01-15~2026-09-30', '끝만 월말이고 시작이 1일이 아니면 날짜 그대로');
+eq(docFileName({ group: 'period', kind: '재무상태표', to: '2026-09-30' }), '재무상태표 - 2026-09-30', '★ 끝날짜만 있으면(기준일) 그 날짜');
+eq(docFileName({ group: 'period', kind: '계정별 원장', to: '2026-09-30', project: '보통예금' }), '계정별 원장 - 2026-09-30 - 보통예금', '★ 이름 칸(계정·거래처)은 기간 뒤에 붙는다');
+eq(docFileName({ group: 'period', kind: '계정별 원장', from: '2026-01-01', to: '2026-09-30', project: '보통예금' }), '계정별 원장 - 2026-01~2026-09 - 보통예금', '기간과 이름이 같이 있을 때');
+eq(docFileName({ group: 'period', kind: '합계잔액시산표', from: '2026-01-01' }), '합계잔액시산표 - 2026-01-01~', '시작만 있으면 "시작~"(끝이 없는 기간)');
+eq(docFileName({ group: 'period', kind: '통장 대사' }), '통장 대사', '기간이 없으면 종류만');
+eq(docFileName({ group: 'period', kind: '손익계산서', from: 'x', to: '2026-13-01' }), '손익계산서', '형식이 틀린 날짜는 버린다(YYYY-MM-DD 만 받는다)');
+eq(docFileName({ group: 'period', kind: '손익계산서', from: '2026-09-30', to: '2026-01-01' }), '손익계산서 - 2026-01~2026-09', '★ 시작이 끝보다 늦으면 순서를 바로잡고(날짜 입력 실수) 그 기간이 월 경계면 연월로 줄인다');
+eq(docFileName({ group: 'period', kind: '손익계산서', from: '2026-09-10', to: '2026-01-15' }), '손익계산서 - 2026-01-15~2026-09-10', '순서를 바로잡은 기간이 월 경계가 아니면 날짜 그대로');
+eq(docFileName({ group: 'period', kind: '거래처별 잔액', to: '2026-09-30', project: '김철수 010-1234-5678' }), '거래처별 잔액 - 2026-09-30 - 김철수', '★ 안전 규칙: 이름 칸의 전화번호는 지운다');
+eq(docFileName({ group: 'period', kind: '거래처별 잔액', to: '2026-09-30', project: '삼성 1,234,567원' }), '거래처별 잔액 - 2026-09-30 - 삼성', '★ 이름 칸의 금액은 지운다');
+eq(docFileName({ group: 'period', kind: '계정별/원장', to: '2026-09-30' }), '계정별-원장 - 2026-09-30', '종류의 금지 문자는 없앤다(/ 는 -)');
+{ const s = docFileName({ group: 'period', kind: '계정별 원장', from: '2026-01-15', to: '2026-09-10', project: '가'.repeat(80) }); ok(s.length <= 120, '★ 120자를 넘지 않는다 (실제 ' + s.length + '자)'); ok(s.startsWith('계정별 원장 - 2026-01-15~2026-09-10'), '길어도 종류와 기간은 살린다'); }
+eq(docFileName({ group: 'period', kind: '손익계산서', from: '2026-01-01', to: '2026-09-30', rev: 2 }), '손익계산서 - 2026-01~2026-09_r2', 'rev 는 이 그룹도 같은 규칙');
+eq(docFileName({ group: 'period', from: '2026-01-01', to: '2026-09-30' }), '문서 - 2026-01~2026-09', '종류가 없으면 "문서"');
+eq(docFileName({ group: 'period', kind: '손익계산서', from: '2024-02-01', to: '2024-02-29' }), '손익계산서 - 2024-02', '윤년 2월 29일도 월말로 본다');
+eq(docFileName({ group: 'period', kind: '손익계산서', from: '2026-02-01', to: '2026-02-28' }), '손익계산서 - 2026-02', '평년 2월 28일은 월말');
+eq(docFileName({ group: 'period', kind: '손익계산서', from: '2026-02-01', to: '2026-02-29' }), '손익계산서 - 2026-02-01~2026-02-29', '존재하지 않는 날짜(평년 2월 29일)는 월말로 보지 않고 날짜 그대로 — 입력 검사는 날짜 형식만 보므로 그대로 둔다');
+// 기존 그룹은 그대로
+eq(docFileName({ group: 'month', ym: '2026-09', kind: '월말 마감' }), '월말 마감 - 2026-09', '회귀: month 그룹은 그대로');
+eq(docFileName({ group: 'edoc', kind: '구매품의서', author: '김작성', date: '2026-10-01' }), '구매품의서 - 김작성 - 2026-10-01', '★ 전자결재(번호 없이): 종류 → 작성자 → 날짜 — 문서번호 필드가 없어 칸만 건너뛴다(대표님 2026-10-22)');
 console.log('\n' + pass + ' passed, ' + fail + ' failed'); if (fail) process.exit(1);

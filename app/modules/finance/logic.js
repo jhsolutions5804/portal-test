@@ -1,9 +1,10 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261021l';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261021l';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261021l';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261021l';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261021l';
-import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261021l';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261022a';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261022a';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261022a';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261022a';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261022a';
+import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261022a';
+import { docFileName } from '../../shared/doc-filename.js?v=20261022a';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -592,3 +593,18 @@ export function closeCheck(entries, through) {
   return { checks, bad: checks.filter((c) => c.level === 'bad').length, warn: checks.filter((c) => c.level === 'warn').length };
 }
 export { ACCOUNTS, ACCOUNT_BY_CODE };
+
+/* ───────── 인쇄 제목(대기열 1-2-7 ①, 대표님 2026-10-22) ─────────
+ * 재무회계 보고서를 "인쇄 → PDF 저장" 할 때의 문서 이름 — 기간(시작~끝)이 핵심이라 docFileName 의 period 형식(종류 - 기간 - 이름). 종류 이름은 화면의 STM 과 같다.
+ * ctx = { accountName: 코드 → 이름(없으면 코드 그대로), vatRange: { from, to }(부가세 신고 기간 — 장부로 계산해야 해서 주입) }. 종류를 몰라도 제목 없이 인쇄하지 않도록 "재무회계 보고서"를 돌려준다 */
+const PRINT_KINDS = { is: ['손익계산서', 'range'], bs: ['재무상태표', 'asof'], cf: ['현금흐름표', 'range'], tb: ['합계잔액시산표', 'range'], gl: ['계정별 원장', 'range+acct'], pt: ['거래처별 잔액', 'asof+pacct'], bk: ['통장 대사', 'none'], vat: ['부가세 신고표', 'vat'] };
+export function reportPrintTitle(rep, ctx) {
+  const r = rep && typeof rep === 'object' && !Array.isArray(rep) ? rep : {}; const c = ctx && typeof ctx === 'object' ? ctx : {}; const def = typeof r.kind === 'string' ? PRINT_KINDS[r.kind] : null;
+  if (!def) return docFileName({ group: 'period', kind: '재무회계 보고서' });
+  const nm = (code) => (typeof c.accountName === 'function' ? String(c.accountName(code) == null ? '' : c.accountName(code)) : String(code == null ? '' : code));
+  const mode = def[1]; const o = { group: 'period', kind: def[0] };
+  if (mode === 'range' || mode === 'range+acct') { o.from = r.from; o.to = r.to; if (mode === 'range+acct') o.project = nm(r.acct); }
+  else if (mode === 'asof' || mode === 'asof+pacct') { o.to = r.to; if (mode === 'asof+pacct') o.project = nm(r.pacct); }
+  else if (mode === 'vat' && c.vatRange && typeof c.vatRange === 'object') { o.from = c.vatRange.from; o.to = c.vatRange.to; }
+  return docFileName(o);
+}
