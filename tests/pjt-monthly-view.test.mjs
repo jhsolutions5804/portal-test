@@ -158,5 +158,13 @@ console.log('── 보강: 비대칭 데이터(완료·미완료 개수, 누계
 { const p = printHtml(REPC(CKD({ items: [{ id: 'c1', name: '항목', done: true, doneDate: '2026-08-10', assignee: '<img src=x onerror=1>', memo: '"><script>1</script>' }], total: 1, done: 1, rate: 1 })), 'P'); ok(!/<img src=x|<script>1/.test(p) && p.includes('&lt;img'), '★ 인쇄 문서의 담당·메모도 이스케이프한다(이름뿐 아니라)'); }
 { for (const state of ['zzz', '', null, undefined, 'OK', 'Loading']) ok(ckCard(monthlyHtml(STK({}, { state }))) === '', '★ 체크리스트 상태가 ' + JSON.stringify(state) + ' 처럼 모르는 값이면 카드를 그리지 않는다'); }
 { const h = monthlyHtml(ST({ canEdit: true, report: null, reportLoading: false, ck: { state: 'ok', items: [], version: 0 }, ckRows: null })); ok(ckCard(h).length > 50 && /data-ck-names/.test(ckCard(h)) && h.includes('보고서가 아직 없습니다'), '★ 보고서를 아직 만들지 않은 달에도 편집 카드가 있다(체크리스트는 프로젝트 단위라 보고서와 별개로 만든다)'); const h2 = monthlyHtml(ST({ canEdit: false, report: null })); ok(ckCard(h2) === '', '권한이 없으면 보고서가 없어도 편집 카드 없음'); }
-ok(pass + fail >= 139, '★ 시험이 끝까지 실행됨(중간에 예외로 중단돼도 FAIL 0 으로 보이지 않게)');
+console.log('── 폰 폭: 하단 고정 막대(jh-actionbar)는 한 화면에 하나(월 선택·만들기)뿐 — 직접 입력·체크리스트 막대는 카드 안의 일반 줄(실제 Edge 폰 폭 확인에서 세 막대가 같은 자리에 겹쳐 월 선택·만들기가 가려짐)');
+{ const cnt = (h) => (String(h).match(/class="jh-actionbar[ "]/g) || []).length, inb = (h) => (String(h).match(/class="jh-pjt__inbar"/g) || []).length;
+  const full = monthlyHtml(STK({ report: REPC(CKD()) })); ok(cnt(full) === 1 && /class="jh-actionbar jh-pjt__mrbar"/.test(full), '★ 보고서·직접 입력·체크리스트가 모두 있어도 고정 막대는 월 선택·만들기 하나뿐 — ' + cnt(full) + '개');
+  ok(inb(full) === 2, '직접 입력 저장 줄과 체크리스트 저장 줄은 카드 안의 일반 줄(jh-pjt__inbar) 2개 — ' + inb(full) + '개');
+  ok(cnt(monthlyHtml(STK({}, { items: [] }))) === 1 && inb(monthlyHtml(STK({}, { items: [] }))) >= 1, '★ 체크리스트가 비어 있어 이름 입력 칸만 있을 때도 고정 막대는 하나(항목 만들기 줄은 일반 줄)');
+  ok(cnt(monthlyHtml(STK({ ckRows: [{ id: 'c1', name: '바뀜', doneDate: '', assignee: '', memo: '' }] }))) === 1, '편집 중(항목 행이 있을 때)에도 고정 막대는 하나');
+  ok(cnt(monthlyHtml(ST({ canEdit: false, report: REPC(CKD()) }))) === 1, '권한이 없는 참여자 화면에도 월 선택 막대 하나');
+  ok(cnt(monthlyHtml(ST({ report: null }))) === 1 && cnt(monthlyHtml(STK({ report: null }, { items: [] }))) === 1, '보고서가 없는 달에도 하나'); }
+ok(pass + fail >= 145, '★ 시험이 끝까지 실행됨(중간에 예외로 중단돼도 FAIL 0 으로 보이지 않게)');
 console.log('\n' + pass + ' passed, ' + fail + ' failed'); if (fail) process.exit(1);

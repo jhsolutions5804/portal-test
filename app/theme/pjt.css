@@ -574,6 +574,10 @@
 .jh-pjt__cklist { list-style: none; padding-left: 0; }
 .jh-pjt__ckrow { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 2fr) auto; gap: var(--sp-2); align-items: end; padding: var(--sp-2) 0; border-top: var(--u-1) solid var(--c-line); }
 .jh-pjt__ckbtns { display: flex; gap: var(--sp-1); flex-wrap: wrap; }
+.jh-pjt__inbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: var(--u-1) solid var(--c-line); }
+.jh-pjt__inbar .jh-btn { min-height: var(--u-44); }
+/* 폰 폭: 월 선택·만들기 고정 하단 막대(약 99~121px)가 본문 맨 아래를 가려 마지막 카드의 버튼(체크리스트 저장 등)을 누를 수 없었다 — 막대(최대 약 121px)와 그 아래 하단 탭(57px)을 합친 것보다 넉넉한 아래 여백 */
+@media (max-width: 899px) { .jh-pjt__mr { padding-bottom: calc(var(--u-144) + var(--u-56)); } } /* 막대 높이 최대 약 121px + 그 아래 하단 탭 57px 를 모두 덮는 여백 */
 @media (max-width: 899px) { .jh-pjt__ckrow { grid-template-columns: minmax(0, 1fr); } }
 /* 공사일보 탭: 넓은 화면(1200px~)에서는 달력 카드를 더 넓게 — 전에는 26rem 고정이라 오른쪽 일보 카드(작성·조회)와 균형이 안 맞았다. 달력이 따라다니는(sticky) 동작은 그대로 */
 @media (min-width: 1200px) { .jh-pjt__splitrep { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }

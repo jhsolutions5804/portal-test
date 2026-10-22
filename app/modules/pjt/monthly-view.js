@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261022o';
-import { docFileName } from '../../shared/doc-filename.js?v=20261022o';
-import { hasMoney, hasPersonal } from '../../shared/pjt-log.js?v=20261022o';
-import { ckRowsFrom, ckCheck, ckDirty, CK_MAX } from './closeout.js?v=20261022o';
+import { esc } from '../../core/ui.js?v=20261022p';
+import { docFileName } from '../../shared/doc-filename.js?v=20261022p';
+import { hasMoney, hasPersonal } from '../../shared/pjt-log.js?v=20261022p';
+import { ckRowsFrom, ckCheck, ckDirty, CK_MAX } from './closeout.js?v=20261022p';
 /* PJT 월간 보고서 탭 화면(문자열) — 설계 docs/monthly-report-design.md r1. 현장 층(금액 없음). 계산은 서버(monthlyReportAct)가 했고, 이 파일은 **받은 결과를 그리기만** 한다.
  * st = { proj, label, loading, error, months:[{ym,version,partial,yieldStatus,…}], ym, report|null, canEdit, busy, msg, notesDraft:{remarks,nextPlan}, today } */
 const n = (v) => (typeof v === 'number' && isFinite(v) ? v : 0);
@@ -88,8 +88,9 @@ function notesHtml(st) {
   return card('직접 입력 (보완)', '<div class="jh-field"><label class="jh-field__label" for="mr-remarks">특이사항 보완</label><textarea id="mr-remarks" class="jh-input" rows="3" maxlength="2000" data-mr-notes="remarks">' + esc(dr.remarks) + '</textarea></div>'
     + '<div class="jh-field"><label class="jh-field__label" for="mr-next">다음 달 계획</label><textarea id="mr-next" class="jh-input" rows="3" maxlength="2000" data-mr-notes="nextPlan">' + esc(dr.nextPlan) + '</textarea>'
     + '<div class="jh-field__error" role="alert" data-mr-hint' + (warn ? '' : ' hidden') + '>' + esc(warn) + '</div></div>'
-    + '<div class="jh-actionbar"><button type="button" class="jh-btn" data-variant="primary" data-mr-save' + (warn || st.busy ? ' disabled' : '') + '>저장</button><span class="jh-field__hint">자동으로 채운 내용은 초안입니다. 다시 만들어도 여기에 적은 내용은 그대로 남습니다.</span></div>', '');
+    + '<div class="jh-pjt__inbar"><button type="button" class="jh-btn" data-variant="primary" data-mr-save' + (warn || st.busy ? ' disabled' : '') + '>저장</button><span class="jh-field__hint">자동으로 채운 내용은 초안입니다. 다시 만들어도 여기에 적은 내용은 그대로 남습니다.</span></div>', '');
 }
+/* 폰 폭에서 .jh-actionbar 는 화면 아래에 고정되고(전자결재 디자인 — 한 화면에 하나) 같은 자리에 겹치면 아래 것이 위 것을 덮는다. 이 탭에서는 월 선택·만들기 막대(mrbar)만 고정 막대로 두고, 카드 안의 저장 줄은 jh-pjt__inbar(일반 줄)로 둔다 — 실제 Edge 폰 폭에서 세 막대가 겹쳐 월 선택·만들기가 가려지는 것을 확인해 고침 */
 /** 마감 체크리스트 편집 카드 — PJT 권한자·관리자만(서버가 다시 막는다). 항목 이름은 프로젝트가 정한다(코드에 단계 이름 없음). 입력 중 안내는 마운트가 서버 호출 없이 갱신한다(입력칸은 다시 그리지 않음) */
 function closeoutEditHtml(st) {
   const ck = st.ck; if (!st.canEdit || !ck || typeof ck !== 'object' || Array.isArray(ck)) return '';
@@ -99,14 +100,14 @@ function closeoutEditHtml(st) {
   const rows = Array.isArray(st.ckRows) ? ckRowsFrom(st.ckRows) : ckRowsFrom(ck.items); const today = typeof st.today === 'string' ? st.today : ''; const err = ckCheck(rows, today); const dirty = st.ckRows != null && ckDirty(st.ckRows, ck.items);
   const day = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(v + 'T00:00:00Z')) ? v : ''); const dis = (b) => (b ? ' disabled' : '');
   const meta = ck.version ? '<span class="jh-field__hint">저장된 버전 ' + esc(ck.version) + (ck.updatedByName ? ' · ' + esc(ck.updatedByName) : '') + '</span>' : '';
-  if (!rows.length) return card('마감 체크리스트', '<div class="jh-field"><label class="jh-field__label" for="ck-names">항목 이름 — 한 줄에 하나씩 적습니다(프로젝트마다 정합니다)</label><textarea id="ck-names" class="jh-input" rows="5" maxlength="1500" data-ck-names></textarea></div><div class="jh-actionbar"><button type="button" class="jh-btn" data-variant="primary" data-ck-seed' + dis(st.busy) + '>항목 만들기</button><span class="jh-field__hint">만든 뒤 완료일·담당·메모를 적고 순서를 바꿀 수 있습니다.</span></div>');
+  if (!rows.length) return card('마감 체크리스트', '<div class="jh-field"><label class="jh-field__label" for="ck-names">항목 이름 — 한 줄에 하나씩 적습니다(프로젝트마다 정합니다)</label><textarea id="ck-names" class="jh-input" rows="5" maxlength="1500" data-ck-names></textarea></div><div class="jh-pjt__inbar"><button type="button" class="jh-btn" data-variant="primary" data-ck-seed' + dis(st.busy) + '>항목 만들기</button><span class="jh-field__hint">만든 뒤 완료일·담당·메모를 적고 순서를 바꿀 수 있습니다.</span></div>');
   const row = (r, i) => '<div class="jh-pjt__ckrow" data-ck-row="' + i + '"><div class="jh-field"><label class="jh-field__label" for="ck-n' + i + '">항목 ' + (i + 1) + '</label><input id="ck-n' + i + '" class="jh-input" type="text" maxlength="40" data-ck-f="name" data-ck-i="' + i + '" value="' + esc(r.name) + '"></div>'
     + '<div class="jh-field"><label class="jh-field__label" for="ck-d' + i + '">완료일</label><input id="ck-d' + i + '" class="jh-input" type="date" max="' + esc(today) + '" data-ck-f="doneDate" data-ck-i="' + i + '" value="' + esc(day(r.doneDate)) + '"></div>'
     + '<div class="jh-field"><label class="jh-field__label" for="ck-a' + i + '">담당</label><input id="ck-a' + i + '" class="jh-input" type="text" maxlength="20" data-ck-f="assignee" data-ck-i="' + i + '" value="' + esc(r.assignee) + '"></div>'
     + '<div class="jh-field"><label class="jh-field__label" for="ck-m' + i + '">메모</label><input id="ck-m' + i + '" class="jh-input" type="text" maxlength="200" data-ck-f="memo" data-ck-i="' + i + '" value="' + esc(r.memo) + '"></div>'
     + '<div class="jh-pjt__ckbtns"><button type="button" class="jh-btn" data-variant="ghost" data-ck-up="' + i + '" aria-label="항목 ' + (i + 1) + ' 위로"' + dis(i === 0 || st.busy) + '>↑</button><button type="button" class="jh-btn" data-variant="ghost" data-ck-down="' + i + '" aria-label="항목 ' + (i + 1) + ' 아래로"' + dis(i === rows.length - 1 || st.busy) + '>↓</button><button type="button" class="jh-btn" data-variant="ghost" data-ck-today="' + i + '"' + dis(st.busy) + '>오늘</button><button type="button" class="jh-btn" data-variant="ghost" data-ck-del="' + i + '"' + dis(st.busy) + '>삭제</button></div></div>';
   return card('마감 체크리스트', rows.map(row).join('') + '<div class="jh-field__error" role="alert" data-ck-hint' + (err ? '' : ' hidden') + '>' + esc(err) + '</div>'
-    + '<div class="jh-actionbar"><button type="button" class="jh-btn" data-variant="ghost" data-ck-add' + dis(rows.length >= CK_MAX || st.busy) + '>항목 추가</button><button type="button" class="jh-btn" data-variant="primary" data-ck-save' + dis(!dirty || !!err || st.busy) + '>저장</button>' + meta + '</div>'
+    + '<div class="jh-pjt__inbar"><button type="button" class="jh-btn" data-variant="ghost" data-ck-add' + dis(rows.length >= CK_MAX || st.busy) + '>항목 추가</button><button type="button" class="jh-btn" data-variant="primary" data-ck-save' + dis(!dirty || !!err || st.busy) + '>저장</button>' + meta + '</div>'
     + '<div class="jh-field__hint">저장해도 이미 만든 보고서는 바뀌지 않습니다. 보고서에 반영하려면 "다시 만들기"를 누르세요(그 달 말 기준으로 담깁니다).</div>');
 }
 /** 탭 전체 */
