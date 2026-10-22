@@ -2,8 +2,8 @@
  * 입력은 화면과 같은 컨트롤러 상태(st)라 화면 숫자와 파일 숫자가 같은 출처다. 구역 4개를 한 파일에 위아래로: 그 달 실적 · 추이(마진율) · 추이(노무 수율) · 원가 달성률.
  * 숫자는 원 단위 숫자 그대로(쉼표·원·% 없이 — 엑셀이 숫자로 읽어 합계·정렬이 된다), 음수 마진율도 숫자. 모르는 값은 빈 칸(숫자 열에 글자를 섞지 않음)이고 이유는 비고에 적는다. 서버 원가를 모르면 원가·마진율·노무 수율을 비우고 맨 위에 경고한다.
  * 수식으로 시작하는 글자(프로젝트 이름 등)는 shared/csv.js 가 보호한다. 직원·개인 정보는 화면에 없으므로 파일에도 없다. */
-import { csvText } from '../../shared/csv.js?v=20261022p';
-import { docFileName } from '../../shared/doc-filename.js?v=20261022p';
+import { csvText } from '../../shared/csv.js?v=20261022q';
+import { docFileName } from '../../shared/doc-filename.js?v=20261022q';
 const isO = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const lbl = (r) => ((typeof r.code === 'string' && r.code ? r.code : '-') + (typeof r.name === 'string' && r.name ? ' ' + r.name : ''));
@@ -13,9 +13,11 @@ const REASON = { nodata: '서버가 아직 월별 값을 주지 않습니다(서
 export function monthlyMgmtCsv(st) {
   const s = isO(st) ? st : {}; const ym = typeof s.ym === 'string' ? s.ym : ''; const srvOk = isO(s.srv) && s.srv.state === 'ok'; const out = [];
   if (!srvOk) out.push(['※ 서버 원가를 확인하지 못해 원가·마진율·노무 수율은 비어 있습니다.']);
-  out.push(['[그 달 실적] ' + ym]); out.push(['프로젝트', '청구 발행', '완결(수금)', '지급 발행', '지급 완료', '현장경비', '자체 노무', '원가', '마진율(%)', '노무 수율(배)', '비고']);
-  (Array.isArray(s.rows) ? s.rows : []).filter(isO).forEach((r) => { const c = srvOk && r.status === 'ok'; out.push([lbl(r), num(r.invoiced), num(r.collected), num(r.payIssued), num(r.paid), c ? num(r.direct) : null, c ? num(r.ownLabor) : null, c ? num(r.cost) : null, c ? num(r.margin) : null, c ? num(r.laborYield) : null, srvOk ? note(r) : (note(r).replace(/PJT 연결 없음|원가 확인 못함/, '') || '')]); });
-  { const t = isO(s.totals) ? s.totals : {}; const u = num(t.unknown) || 0; const c = srvOk && u === 0; out.push(['합계', num(t.invoiced), num(t.collected), num(t.payIssued), num(t.paid), srvOk ? num(t.direct) : null, srvOk ? num(t.ownLabor) : null, c ? num(t.cost) : null, c ? num(t.margin) : null, c ? num(t.laborYield) : null, srvOk && u > 0 ? '원가를 모르는 프로젝트 ' + u + '개 — 원가·마진율·노무 수율 합계를 비움' : '']); }
+  out.push(['[그 달 실적] ' + ym]); out.push(['프로젝트', '청구 발행', '완결(수금)', '지급 발행', '지급 완료', '현장경비', '자체 노무', '원가', '마진율(%)', '누적 마진율(%)', '노무 수율(배)', '비고']);
+  /* 누적 마진율(그 달까지 누계) 병기 — 서버 ok · 월 행 ok · 누적 행 ok 일 때만 숫자(화면과 같은 이중 방어: 엑셀은 한 번 나가면 회수되지 않아 원가를 모르는 채 부풀려진 숫자가 나가면 안 된다) */
+  const cumBy = new Map((Array.isArray(s.cum) ? s.cum : []).filter((k) => isO(k) && typeof k.id === 'string').map((k) => [k.id, k]));
+  (Array.isArray(s.rows) ? s.rows : []).filter(isO).forEach((r) => { const c = srvOk && r.status === 'ok'; const k = cumBy.get(r.id); const kc = c && isO(k) && k.status === 'ok'; const nt = srvOk ? note(r) : (note(r).replace(/PJT 연결 없음|원가 확인 못함/, '') || ''); const kn = kc && !(num(k.collected) > 0) ? '누계 완결 없음' : ''; out.push([lbl(r), num(r.invoiced), num(r.collected), num(r.payIssued), num(r.paid), c ? num(r.direct) : null, c ? num(r.ownLabor) : null, c ? num(r.cost) : null, c ? num(r.margin) : null, kc ? num(k.margin) : null, c ? num(r.laborYield) : null, [nt, kn].filter(Boolean).join('; ')]); });
+  { const t = isO(s.totals) ? s.totals : {}; const ct = isO(s.cumTotals) ? s.cumTotals : {}; const u = num(t.unknown) || 0; const c = srvOk && u === 0; const cu = num(ct.unknown) || 0; const kc = c && cu === 0; out.push(['합계', num(t.invoiced), num(t.collected), num(t.payIssued), num(t.paid), srvOk ? num(t.direct) : null, srvOk ? num(t.ownLabor) : null, c ? num(t.cost) : null, c ? num(t.margin) : null, kc ? num(ct.margin) : null, c ? num(t.laborYield) : null, srvOk && u > 0 ? '원가를 모르는 프로젝트 ' + u + '개 — 원가·마진율·노무 수율 합계를 비움' : '']); }
   out.push([]);
   const tr = isO(s.trend) ? s.trend : null; const months = tr && Array.isArray(tr.months) ? tr.months.filter((m) => typeof m === 'string') : [];
   for (const [key, title] of [['margin', '마진율(%)'], ['laborYield', '노무 수율(배)']]) {

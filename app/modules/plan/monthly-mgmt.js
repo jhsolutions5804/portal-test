@@ -3,8 +3,9 @@
  * 매출 기준 = 완결 청구(1-2-3-a, 대표님 2026-10-21) — shared/pjt-summary.js pjtMargin 과 같은 규칙: 완결이 0 이하이면 발행 청구로 대신 계산하지 않고 null.
  * 원가 = 지급예정서 발행 + 현장경비 + 자체 직접노무비(pjtCost 와 같은 정의 — 노무비는 지급예정서에 이미 들어 있어 따로 또 빼면 이중 차감이라는 말은 외주 노무 이야기이고, 자체 직접노무비는 별도 항목).
  * 서버 응답은 연결된 PJT 등록 id 로 찾는다(영업기획 id 가 아니다 — 대기열 1-2-2-④ 교훈). 응답 검증은 margin-link.js 와 같은 규칙을 그대로 쓴다(두 곳이 어긋나지 않게). 원가를 모르면 마진율·수율을 내지 않는다(모르는 값을 0 으로 꾸미지 않음). */
-import { marginExtra, linkedPjtId } from './margin-link.js?v=20261022p';
-import { pjtSummary } from './projects.js?v=20261022p';
+import { marginExtra, linkedPjtId } from './margin-link.js?v=20261022q';
+import { pjtSummary, settleBelongsToPjt, settleAmountForPjt } from './projects.js?v=20261022q';
+import { monthOfTs } from './closing.js?v=20261022q';
 const isO = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const T = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const r1 = (n) => Math.round(n * 10) / 10;
@@ -94,4 +95,29 @@ export function achievementRow(p, estimates, settlements, cur, ym) {
 /** 견적이 있는 프로젝트만(견적이 없으면 목표 원가를 모르는 "견적 없음" 행으로 목록을 채우지 않는다) */
 export function achievementRows(projects, estimates, settlements, cur, ym) {
   const list = Array.isArray(projects) ? projects.filter(isO) : []; const out = []; list.forEach((p) => { const r = achievementRow(p, estimates, settlements, cur, ym); if (r.status !== 'noest') out.push(r); }); return out;
+}
+/* ── 누적 마진율 병기(대표님 2026-10-22 "누적 병기") — 실제 테섭에서 월 마진율이 99.7%·100% 와 합계 −193.8% 사이를 오가는 것을 보고 정함: 원가(지급예정서 발행 월)와 매출(완결 월)의 시점이 어긋나면 한 달 값이 널뛰므로
+ * "그 달까지 누계" 마진율을 같이 보여 준다. 누계 완결 = 완결(status done) 청구서 중 완결 시각(doneAt, 한국 시간)의 월이 그 달 이하인 것의 프로젝트 몫(월 마감 closingSummary 의 "완결"과 같은 기준)
+ * · 누계 원가 = 그 달까지 발행한 지급예정서 + 서버 누계 현장경비 + 서버 누계 자체 직접노무비(원가 달성률의 실제 원가와 같은 정의, cur = 그 달까지 누계 응답) · 누적 마진율 = (누계 완결 − 누계 원가) ÷ 누계 완결(완결이 0 이하이면 null)
+ * 원가를 모르면(연결 없음·서버 응답 없음) 마진율은 null — 지급 발행만으로 마진을 내면 부풀려진다. */
+export function cumRow(p, settlements, cur, ym) {
+  const x = isO(p) ? p : {}; const id = typeof x.id === 'string' ? x.id : ''; const pjt = linkedPjtId(x);
+  const row = { id, pjt, code: typeof x.code === 'string' ? x.code : '', name: typeof x.name === 'string' ? x.name : '', status: 'ok', collected: 0, payIssued: 0, direct: null, ownLabor: null, cost: null, margin: null };
+  const month = typeof ym === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(ym) ? ym : ''; const S = (Array.isArray(settlements) ? settlements : []).filter(isO);
+  if (!month) { row.status = 'nocost'; return row; }
+  row.collected = S.filter((s) => s.docType === 'invoice' && s.status === 'done' && settleBelongsToPjt(s, id)).filter((s) => { const m = monthOfTs(s.doneAt); return !!m && m <= month; }).reduce((a, s) => a + T(settleAmountForPjt(s, id)), 0);
+  const set = S.filter((s) => { const d = typeof s.issueDate === 'string' && /^\d{4}-\d{2}/.test(s.issueDate) ? s.issueDate.slice(0, 7) : ''; return !d || d <= month; }); row.payIssued = T(pjtSummary(id, [], set).paid);
+  if (!pjt) { row.status = 'nolink'; return row; }
+  const e = marginExtra(cur, pjt); if (!e) { row.status = 'nocost'; return row; }
+  row.direct = T(e.direct); row.ownLabor = T(e.ownLabor); row.cost = row.payIssued + row.direct + row.ownLabor;
+  if (row.collected > 0) row.margin = r1((row.collected - row.cost) / row.collected * 100);
+  return row;
+}
+/** 프로젝트마다 한 행(입력 순서 그대로) */
+export function cumRows(projects, settlements, cur, ym) { return (Array.isArray(projects) ? projects.filter(isO) : []).map((p) => cumRow(p, settlements, cur, ym)); }
+/** 합계 — 원가를 모르는 프로젝트가 하나라도 있으면 원가·마진율을 비운다(그 프로젝트의 완결만 분모에 들어가 마진이 부풀려진다) */
+export function cumTotals(rows) {
+  const l = Array.isArray(rows) ? rows.filter(isO) : []; const unknown = l.filter((r) => r.status !== 'ok').length; const collected = l.reduce((a, r) => a + T(r.collected), 0); const t = { collected, cost: null, margin: null, unknown };
+  if (!unknown) { t.cost = l.reduce((a, r) => a + T(r.cost), 0); if (collected > 0) t.margin = r1((collected - t.cost) / collected * 100); }
+  return t;
 }
