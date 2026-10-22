@@ -70,5 +70,6 @@ const mny = (x) => /\d[\d,.]*\s*(원|만원|억)|₩|거래처|partner|amount/.t
 ok(mny({ items: [{ meta: '대상 1,200,000원' }] }) && mny({ items: [{ title: '거래처 A' }] }) && !mny({ items: [{ title: '미확정 3줄', meta: '대상 10줄 중 확정 7줄' }] }), '이 금액 검사 자체가 금액·거래처가 있으면 잡고 건수만 있으면 통과시킨다(약한 시험 방지)');
 ok(!!t1 && /막지 않/.test(t1.hint) && t1.hint.length > 20, '경고 문구에 "마감을 막지 않는다"는 설명이 있다');
 ok(new Set(ck.map((c) => c.key)).size === ck.length, '점검 항목 키는 서로 겹치지 않는다');
+{ const bad = [[], [5], true, false, {}, null, undefined, '', 'x', 0, NaN, Infinity, { seconds: 'x' }, { seconds: NaN }, { seconds: Infinity }, () => 1]; const out = bad.map((b) => monthOfTs(b)); ok(out.every((v) => v === ''), '★ monthOfTs 는 시각이 아닌 값(빈 배열·[5]·true·false·{}·null·글자·NaN·Infinity·seconds 가 숫자가 아닌 객체)에 빈 글자를 돌려준다 — Number([]) 가 0 이라 1970-01 로 둔갑하던 결함(서버 사본 시험이 찾음). 실제: ' + JSON.stringify(out)); ok(monthOfTs('2026-09-30T16:00:00Z') === '2026-10' && monthOfTs(Date.parse('2026-09-30T14:59:59Z')) === '2026-09' && monthOfTs({ seconds: Date.parse('2026-09-30T16:00:00Z') / 1000 }) === '2026-10', '정상 값(ISO 글자·밀리초 숫자·Timestamp)은 그대로 한국 시간 월이다(회귀 방지)'); }
 ok(pass + fail >= 47, '★ 시험 전체가 끝까지 실행됨(' + (pass + fail) + '건 ≥ 47) — 중간에 예외로 죽어 뒤쪽 시험이 안 도는 일 방지');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);
