@@ -1,4 +1,4 @@
-import { FIREBASE_CONFIG } from './config.js?v=20261022d';
+import { FIREBASE_CONFIG } from './config.js?v=20261022e';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
