@@ -1,8 +1,8 @@
 /* 영업기획 월간 보고서 경영 층 화면(대기열 1-2-8, 대표님 2026-10-22 ㅇㅇ) — 순수 HTML(저장·호출 없음). 시험: tests/plan-monthly-mgmt-view.test.mjs · 계산: monthly-mgmt.js · 틀: closing-view.js(같은 CSS 클래스).
  * st = { ym, rows(monthRows), totals(monthTotals), srv: { state: 'loading'|'ok'|'error'|'denied', notes } }. 영업기획 모듈 전체가 관리자 전용이라(manifest perm) 별도 권한 코드는 없다.
  * 원칙: 모르는 값은 숫자로 꾸미지 않고 이유를 보인다(마진율·수율이 null 이면 "—"와 이유). 매출 기준 = 완결 청구(1-2-3-a). 공통비는 반영하지 않는다(프로젝트 화면의 공통비 반영 이익에서 본다). */
-import { esc } from '../../core/ui.js?v=20261022j';
-import { won, card, chip } from './ui.js?v=20261022j';
+import { esc } from '../../core/ui.js?v=20261022k';
+import { won, card, chip } from './ui.js?v=20261022k';
 const isO = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const money = (v) => (fin(v) ? won(v) : '—');
@@ -49,6 +49,26 @@ function achCard(s) {
     + '<div class="jh-field__hint">목표 원가 = 견적 공급가액 × (1 − 목표 마진율), 실제 원가 = 선택한 달까지의 지급예정서 발행 + 현장경비 + 자체 직접노무비입니다. 달성률 100% 이하가 목표 원가 안입니다. 목표 마진율은 프로젝트 화면에서 입력합니다(비워 두면 달성률을 계산하지 않습니다).</div>'
     + '<div class="jh-field__hint">한계: 공정율 대비 달성률은 아직 없습니다(공정율은 PJT 현장 층 데이터) — 달성률만으로는 원가를 많이 쓴 것이 공정이 그만큼 진행돼서인지 초과인지 구분하지 못합니다. 견적 개정이 여럿 유효하면 공급가액이 겹쳐 합쳐질 수 있습니다(기존 마진 화면과 같은 정의).</div></div>');
 }
+/* 4단계 스냅샷 저장 카드 — 서버가 직접 읽어 계산해 저장한다(화면은 월만 보낸다). 기능이 꺼져 있으면(mgmt.enabled 아님) 카드가 없다. 권한 없음이면 저장 버튼을 숨긴다. 목록·저장본은 상태가 ok 가 아니면 값이 남아 있어도 표를 그리지 않는다. 시각은 한국 시간 */
+const fmtAt = (ms) => (fin(ms) ? new Date(ms + 9 * 3600000).toISOString().slice(0, 16).replace('T', ' ') : '—');
+const okYm = (v) => typeof v === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(v);
+function snapCard(s) {
+  const g = isO(s.mgmt) ? s.mgmt : null; if (!g || g.enabled !== true) return '';
+  const listState = ['ok', 'loading', 'denied', 'error', 'idle'].indexOf(g.listState) >= 0 ? g.listState : 'idle'; const sv = isO(g.save) ? g.save : {}; const vw = isO(g.view) ? g.view : {};
+  const ym = typeof s.ym === 'string' ? s.ym : ''; const saving = sv.state === 'saving';
+  const btn = listState === 'denied' ? '' : '<button type="button" class="jh-btn" data-variant="primary" data-mm-act="mgmt:save"' + (saving ? ' disabled' : '') + '>' + (saving ? esc(ym) + ' 저장 중…' : esc(ym) + ' 스냅샷 저장') + '</button>';
+  let res = ''; if (sv.state === 'ok') { const skipped = (Array.isArray(sv.skipped) ? sv.skipped : []).filter(isO); res = '<div class="jh-field__hint" role="status">' + esc(okYm(sv.ym) ? sv.ym : ym) + ' 저장됨: ' + (Number.isInteger(sv.saved) ? sv.saved : 0) + '개 프로젝트' + (skipped.length ? ' · 저장하지 않은 프로젝트: ' + skipped.map((k) => esc((k.code || '-') + ' ' + (k.name || '')) + (k.reason === 'nolink' ? '(PJT 연결 없음)' : '')).join(', ') : '') + '</div>'; }
+  else if (sv.state === 'error') res = '<div class="jh-field__hint" role="alert" data-tone="neg">' + esc(typeof sv.message === 'string' && sv.message ? sv.message : '저장하지 못했습니다.') + '</div>';
+  let list; if (listState === 'loading') list = '<div class="jh-field__hint">저장된 스냅샷을 불러오는 중입니다…</div>'; else if (listState === 'denied') list = '<div class="jh-field__hint">관리자만 볼 수 있습니다.</div>'; else if (listState === 'error') list = '<div class="jh-field__hint">저장된 스냅샷 목록을 불러오지 못했습니다.</div>'; else if (listState === 'idle') list = '';
+  else { const rows = (Array.isArray(g.list) ? g.list : []).filter((m) => isO(m) && okYm(m.ym)); list = !rows.length ? '<div class="jh-field__hint">저장된 스냅샷이 없습니다.</div>' : '<div class="jh-plan__scroll"><table class="jh-plan__table"><thead><tr><th>월</th><th class="jh-plan__num">프로젝트</th><th class="jh-plan__num">버전</th><th>저장 시각</th><th></th></tr></thead><tbody>' + rows.map((m) => '<tr><td>' + esc(m.ym) + '</td><td class="jh-plan__num">' + (fin(m.projects) ? esc(m.projects) + '개' : '—') + '</td><td class="jh-plan__num">' + (fin(m.version) ? 'v' + esc(m.version) : '—') + '</td><td>' + esc(fmtAt(m.savedAtMs)) + '</td><td><button type="button" class="jh-btn" data-variant="ghost" data-mm-act="mgmt:view:' + esc(m.ym) + '">보기</button></td></tr>').join('') + '</tbody></table></div>'; }
+  let view = ''; if (vw.state === 'loading') view = '<div class="jh-field__hint" data-snap-view>저장본을 불러오는 중입니다…</div>';
+  else if (vw.state === 'error') view = '<div class="jh-field__hint" role="alert" data-tone="neg" data-snap-view>' + esc(typeof vw.message === 'string' && vw.message ? vw.message : '저장본을 불러오지 못했습니다.') + '</div>';
+  else if (vw.state === 'ok') { const rows = (Array.isArray(vw.rows) ? vw.rows : []).filter(isO); const first = rows[0] || {};
+    view = '<div data-snap-view><h4>' + esc(okYm(vw.ym) ? vw.ym : '') + ' 저장본' + (rows.length ? ' · v' + (fin(first.version) ? esc(first.version) : '-') + ' · ' + esc(fmtAt(first.savedAtMs)) : '') + ' <button type="button" class="jh-btn" data-variant="ghost" data-mm-act="mgmt:close">닫기</button></h4>' + (!rows.length ? '<div class="jh-field__hint">저장된 프로젝트가 없습니다.</div>' : '<div class="jh-plan__scroll"><table class="jh-plan__table"><thead><tr><th>프로젝트</th><th class="jh-plan__num">청구</th><th class="jh-plan__num">완결</th><th class="jh-plan__num">지급 발행</th><th class="jh-plan__num">지급 완료</th><th class="jh-plan__num">현장경비</th><th class="jh-plan__num">노무</th><th class="jh-plan__num">원가</th><th class="jh-plan__num">마진율</th><th class="jh-plan__num">노무 수율</th><th class="jh-plan__num">달성률</th></tr></thead><tbody>'
+      + rows.map((r) => { const m = isO(r.month) ? r.month : {}; const a = isO(r.ach) ? r.ach : null; const neg = fin(m.margin) && m.margin < 0 ? ' data-tone="neg"' : ''; return '<tr><td>' + esc((r.code || '-') + (r.name ? ' ' + r.name : '')) + '</td><td class="jh-plan__num">' + money(m.invoiced) + '</td><td class="jh-plan__num">' + money(m.collected) + '</td><td class="jh-plan__num">' + money(m.payIssued) + '</td><td class="jh-plan__num">' + money(m.paid) + '</td><td class="jh-plan__num">' + money(m.direct) + '</td><td class="jh-plan__num">' + money(m.ownLabor) + '</td><td class="jh-plan__num">' + money(m.cost) + '</td><td class="jh-plan__num"' + neg + '>' + pct(m.margin) + '</td><td class="jh-plan__num">' + ratio(m.laborYield) + '</td><td class="jh-plan__num">' + (a ? pct(a.rate) : '—') + '</td></tr>'; }).join('') + '</tbody></table></div>') + '</div>'; }
+  return card('스냅샷 저장', '<div class="jh-plan__pad"><div class="jh-field__hint">서버가 장부·급여·견적·정산서를 직접 읽어 계산해 저장합니다(화면 숫자를 보내지 않습니다). 다시 저장하면 새 버전이 되고 이전 값은 이력에 남습니다(10개까지).</div><div class="jh-plan__line">' + btn + '</div>' + res + list + view
+    + '<div class="jh-field__hint">저장본은 서버가 저장하는 순간 직접 계산한 값이라 위 화면과 시점 차이가 있을 수 있습니다. 그 달 실적이 있거나 원가 달성률이 계산되는 PJT 연결 프로젝트만 저장합니다(목표 마진율이 없고 실적도 없는 프로젝트는 저장하지 않습니다).</div></div>');
+}
 export function monthlyMgmtHtml(st) {
   const s = isO(st) ? st : {}; const ym = typeof s.ym === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(s.ym) ? s.ym : ''; const [y, m] = ym ? ym.split('-') : ['', ''];
   const rows = (Array.isArray(s.rows) ? s.rows : []).filter(isO); const t = isO(s.totals) ? s.totals : {}; const srv = isO(s.srv) ? s.srv : { state: 'loading', notes: [] }; const notes = Array.isArray(srv.notes) ? srv.notes.filter((x) => typeof x === 'string' && x) : [];
@@ -67,5 +87,5 @@ export function monthlyMgmtHtml(st) {
   const table = '<div class="jh-plan__pad">' + (body ? '<div class="jh-plan__scroll"><table class="jh-plan__table"><thead><tr><th>프로젝트</th><th class="jh-plan__num">청구 발행</th><th class="jh-plan__num">완결</th><th class="jh-plan__num">지급 발행</th><th class="jh-plan__num">현장경비</th><th class="jh-plan__num">자체 노무</th><th class="jh-plan__num">원가</th><th class="jh-plan__num">마진율</th><th class="jh-plan__num">노무 수율</th></tr></thead><tbody>' + body + '</tbody></table></div>' : '<div class="jh-field__hint">이 달에 청구도 원가도 없는 달입니다(해당하는 프로젝트가 없습니다).</div>') + '</div>';
   const basis = ['매출은 완결 처리한 청구서만 셉니다(발행했지만 수금 전인 청구는 마진 분모에 들어가지 않습니다).', '그 달 원가는 서버 마진 집계(누계)의 "그 달까지"와 "전달까지" 차이입니다(증분).', '공통비는 반영하지 않았습니다. 공통비 반영 이익은 프로젝트 화면의 [공통비 반영해서 보기]에서 봅니다.'].concat(notes);
   const note = '<div class="jh-plan__pad">' + basis.map((n) => '<div class="jh-field__hint">· ' + esc(n) + '</div>').join('') + '</div>';
-  return '<div class="jh-plan">' + card('월간 보고서(경영)', head) + card('프로젝트별 그 달 실적', table) + trendCard(s) + achCard(s) + card('계산 기준과 주의', note) + '</div>';
+  return '<div class="jh-plan">' + card('월간 보고서(경영)', head) + card('프로젝트별 그 달 실적', table) + trendCard(s) + achCard(s) + snapCard(s) + card('계산 기준과 주의', note) + '</div>';
 }

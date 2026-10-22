@@ -2,16 +2,16 @@
  * 기본 데이터(프로젝트·견적·정산서)는 한 번 읽고, 서버 마진 보고(marginAct report, 전표·급여명세서를 읽어 무거움)를 "그 달까지"와 "전달까지" 정확히 두 번 불러 그 달 원가를 낸다.
  * 서버 호출·읽기·오늘·그리기는 전부 주입한다(가짜로 시험). 규칙: ① 둘 다 와야 원가를 그린다(한쪽만으로 계산하면 누계가 그 달 값처럼 보인다) ② 권한 없음은 오류가 아니라 denied ③ 월을 넘기면 늦게 온 이전 달 응답은 버린다
  * ④ 부르는 중 다시 불러오기는 무시, 권한 없음이면 다시 불러와도 안 되니 부르지 않는다 ⑤ 기본 데이터를 못 읽으면 서버를 부르지 않는다 ⑥ 청구·완결 금액은 서버를 기다리지 않고 먼저 그린다. */
-import { closingSummary, shiftYm } from './closing.js?v=20261022j';
-import { monthRows, monthTotals, prevYm, trendMonths, trendMatrix, achievementRows } from './monthly-mgmt.js?v=20261022j';
-import { marginNotes, marginErrorState } from './margin-link.js?v=20261022j';
+import { closingSummary, shiftYm } from './closing.js?v=20261022k';
+import { monthRows, monthTotals, prevYm, trendMonths, trendMatrix, achievementRows } from './monthly-mgmt.js?v=20261022k';
+import { marginNotes, marginErrorState } from './margin-link.js?v=20261022k';
 const isO = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const okRep = (r) => isO(r) && r.ok === true && Array.isArray(r.projects);
 const ymOf = (s) => (typeof s === 'string' && /^\d{4}-(0[1-9]|1[0-2])/.test(s) ? s.slice(0, 7) : '');
 export function createMonthlyMgmtController(deps) {
   const d = isO(deps) ? deps : {}; const call = (fn, ...a) => (typeof fn === 'function' ? fn(...a) : undefined);
   const today = () => { let t = ''; try { t = ymOf(call(d.today)); } catch (e) { t = ''; } return t || new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 7); };
-  const st = { ym: today(), base: null, rows: [], totals: monthTotals([]), srv: { state: 'loading', notes: [] }, error: '', cur: null, prev: null, trend: null, trendState: 'loading', metric: 'margin', ach: [], achState: 'loading' };
+  const st = { ym: today(), base: null, rows: [], totals: monthTotals([]), srv: { state: 'loading', notes: [] }, error: '', cur: null, prev: null, trend: null, trendState: 'loading', metric: 'margin', ach: [], achState: 'loading', mgmt: { enabled: typeof d.callMgmt === 'function', list: [], listState: 'idle', save: { state: 'idle', ym: '', saved: 0, skipped: [], message: '' }, view: { state: 'idle', ym: '', rows: [], message: '' } } };
   let seq = 0, busy = false, opening = null;
   const paint = () => { try { call(d.paint); } catch (e) { /* 그리기 오류가 컨트롤러를 죽이지 않게 */ } };
   const closing = () => { const b = st.base; return b ? closingSummary(st.ym, b.projects, b.estimates, b.settlements) : { byProject: [] }; };
@@ -32,16 +32,39 @@ export function createMonthlyMgmtController(deps) {
     else { st.cur = a.r; st.prev = b.r; st.srv = { state: 'ok', notes: marginNotes(a.r, null) }; }
     recompute(); paint();
   };
+  /* 4단계 스냅샷(서버 monthlyMgmtAct — 관리자만): 저장은 서버가 직접 읽어 계산하므로 화면은 { action, ym } 만 보낸다(숫자를 보내지 않음). 목록·저장본은 마진 흐름과 독립이라 실패해도 1단계 표에 영향이 없다. 서버 함수가 주어지지 않으면(deps.callMgmt 없음) 기능이 꺼진다 */
+  const YMRE = /^\d{4}-(0[1-9]|1[0-2])$/; let vseq = 0, savingNow = false;
+  const mgmtMsg = (e) => { const code = e && typeof e === 'object' && typeof e.code === 'string' ? e.code.replace(/^functions\//, '') : ''; const m = e && typeof e.message === 'string' ? e.message.trim() : ''; if (code === 'permission-denied') return '관리자만 저장할 수 있습니다.'; if (code && code !== 'internal' && code !== 'unknown' && m && m.length <= 300 && /[가-힣]/.test(m) && !/\bat \S+:\d+/.test(m)) return m; return '처리하지 못했습니다. 잠시 후 다시 시도해 주세요.'; };
+  const loadMgmtList = async () => {
+    if (!st.mgmt.enabled) return; st.mgmt.listState = 'loading'; paint();
+    try { const r = await call(d.callMgmt, { action: 'list' }); if (!isO(r) || r.ok !== true || !Array.isArray(r.months)) throw new Error('bad'); st.mgmt.list = r.months.filter((m) => isO(m) && typeof m.ym === 'string' && YMRE.test(m.ym)); st.mgmt.listState = 'ok'; }
+    catch (e) { st.mgmt.list = []; st.mgmt.listState = (e && typeof e === 'object' && typeof e.code === 'string' && e.code.replace(/^functions\//, '') === 'permission-denied') ? 'denied' : 'error'; }
+    paint();
+  };
+  const saveMgmt = async () => {
+    if (!st.mgmt.enabled || savingNow) return; savingNow = true; const ym = st.ym; st.mgmt.save = { state: 'saving', ym, saved: 0, skipped: [], message: '' }; paint();
+    try { const r = await call(d.callMgmt, { action: 'save', ym }); if (!isO(r) || r.ok !== true) throw new Error('bad'); st.mgmt.save = { state: 'ok', ym, saved: Number.isInteger(r.saved) ? r.saved : 0, skipped: (Array.isArray(r.skipped) ? r.skipped : []).filter(isO).map((x) => ({ planId: String(x.planId || ''), code: String(x.code || ''), name: String(x.name || ''), reason: String(x.reason || '') })), message: '' }; savingNow = false; paint(); await loadMgmtList(); }
+    catch (e) { savingNow = false; st.mgmt.save = { state: 'error', ym, saved: 0, skipped: [], message: mgmtMsg(e) }; paint(); }
+  };
+  const viewMgmt = async (ym) => {
+    if (!st.mgmt.enabled || !YMRE.test(ym)) return; const my = ++vseq; st.mgmt.view = { state: 'loading', ym, rows: [], message: '' }; paint();
+    try { const r = await call(d.callMgmt, { action: 'get', ym }); if (my !== vseq) return; if (!isO(r) || r.ok !== true || !Array.isArray(r.rows)) throw new Error('bad'); st.mgmt.view = { state: 'ok', ym, rows: r.rows.filter(isO), message: '' }; }
+    catch (e) { if (my !== vseq) return; st.mgmt.view = { state: 'error', ym, rows: [], message: mgmtMsg(e) }; }
+    paint();
+  };
   const doOpen = async () => {
     try { const base = await call(d.loadBase); if (!isO(base)) throw new Error('불러온 데이터가 없습니다'); st.base = { projects: Array.isArray(base.projects) ? base.projects : [], estimates: Array.isArray(base.estimates) ? base.estimates : [], settlements: Array.isArray(base.settlements) ? base.settlements : [] }; st.error = ''; }
     catch (e) { st.base = null; st.error = '불러오지 못했습니다: ' + ((e && e.message) || ''); st.rows = []; st.totals = monthTotals([]); st.srv = { state: 'error', notes: [] }; paint(); return; }
-    recompute(); paint(); await loadMargin();
+    recompute(); paint(); await loadMargin(); await loadMgmtList();
   };
   const open = () => { if (!opening) opening = doOpen(); return opening; };
   const act = async (a) => {
     if (!st.base) return; // 기본 데이터가 없으면 아무것도 안 한다
     if (a === 'prev' || a === 'next') { const nx = shiftYm(st.ym, a === 'prev' ? -1 : 1); if (!ymOf(nx)) return; st.ym = nx; await loadMargin(); return; }
     if (typeof a === 'string' && a.indexOf('metric:') === 0) { const v = a.slice(7); if (v === 'margin' || v === 'yield') { st.metric = v; paint(); } return; }
+    if (a === 'mgmt:save') { await saveMgmt(); return; }
+    if (typeof a === 'string' && a.indexOf('mgmt:view:') === 0) { await viewMgmt(a.slice(10)); return; }
+    if (a === 'mgmt:close') { vseq++; st.mgmt.view = { state: 'idle', ym: '', rows: [], message: '' }; paint(); return; }
     if (a === 'reload') { if (busy || st.srv.state === 'denied' || st.srv.state === 'loading') return; await loadMargin(); }
   };
   return { st, open, act };
