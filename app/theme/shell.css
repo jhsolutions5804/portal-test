@@ -1,8 +1,12 @@
 .jh-login { min-height: 100vh; display: grid; place-items: center; padding: var(--sp-5); }
 .jh-login__card { width: 100%; max-width: var(--u-380); background: var(--c-surface); border: var(--u-1) solid var(--c-line); border-radius: var(--radius-lg); padding: var(--sp-6); box-shadow: var(--shadow-1); display: grid; gap: var(--sp-2); }
 .jh-login__brand { font-size: var(--fs-xl); font-weight: 800; color: var(--c-primary); }
-.jh-login__guest { margin-top: var(--sp-3); }
-.jh-login__guest > summary { cursor: pointer; color: var(--c-ink-2); font-size: var(--fs-sm); }
+.jh-login__tabs { display: flex; margin: var(--sp-4) 0 var(--sp-4); border-bottom: var(--u-1) solid var(--c-line); }
+.jh-login__tab { flex: 1; appearance: none; background: none; border: 0; border-bottom: var(--u-2) solid transparent; margin-bottom: calc(var(--u-1) * -1); padding: var(--sp-3) var(--sp-2); cursor: pointer; color: var(--c-ink-2); font: inherit; font-size: var(--fs-md); }
+.jh-login__tab[aria-selected="true"] { color: var(--c-ink); font-weight: 800; border-bottom-color: var(--c-primary); }
+.jh-login__tab:focus-visible { outline: var(--u-2) solid var(--c-primary); outline-offset: calc(var(--u-2) * -1); }
+.jh-login__panel[hidden] { display: none; }
+.jh-login__panel > .jh-btn, .jh-login__panel form > .jh-btn { width: 100%; justify-content: center; padding-block: var(--sp-3); font-size: var(--fs-md); }   /* 로그인 카드 안의 버튼만 폭 가득(다른 화면의 .jh-btn 은 그대로) */
 .jh-login__sub { margin: 0 0 var(--sp-3); color: var(--c-ink-2); font-size: var(--fs-sm); }
 .jh-login__msg { min-height: var(--u-20); margin: 0; color: var(--c-danger); font-size: var(--fs-sm); }
 

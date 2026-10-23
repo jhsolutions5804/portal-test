@@ -47,14 +47,16 @@ try:
                 btn = pg.locator('#jh-ms-btn')
                 ok(btn.inner_text().strip() == 'Microsoft로 로그인' and btn.get_attribute('type') == 'button', '버튼 글자·type=button')
                 ok(btn.evaluate('e => e.closest("form") === null'), 'Microsoft 버튼은 폼 밖(게스트 폼 제출과 섞이지 않는다)')
-                guest = pg.locator('details.jh-login__guest')
-                has_guest = guest.count() == 1
-                ok(has_guest and guest.evaluate('e => !e.open') and not pg.locator('#jh-id').is_visible(), '★ "게스트 로그인"은 접혀 있고 아이디·비밀번호 칸은 숨겨져 있다')
+                tab_staff = pg.locator('#jh-tab-staff'); tab_guest = pg.locator('#jh-tab-guest')
+                ok(tab_staff.count() == 1 and tab_guest.count() == 1 and tab_staff.inner_text().strip() == '직원 계정 로그인' and tab_guest.inner_text().strip() == 'Guest 계정 로그인', '★ 로그인 화면 위에 "직원 계정 로그인"·"Guest 계정 로그인" 탭이 있다')
+                ok(tab_staff.get_attribute('aria-selected') == 'true' and tab_guest.get_attribute('aria-selected') == 'false' and not pg.locator('#jh-id').is_visible(), '★ 처음에는 직원 계정 로그인 탭이 선택돼 있고 아이디·비밀번호 칸은 보이지 않는다')
+                has_guest = tab_guest.count() == 1
                 if has_guest:
-                    guest.locator('summary').click()
+                    tab_guest.click()
                     opened = poll(pg, lambda: pg.locator('#jh-id').is_visible() and pg.locator('#jh-pw').is_visible(), 3000)
-                    ok(opened and pg.locator('#jh-pw').get_attribute('type') == 'password', '★ 게스트 로그인을 열면 아이디·비밀번호 칸이 보인다 — 기존 비밀번호 로그인 경로가 유지된다(정규 직원 잠금 방지)')
+                    ok(opened and pg.locator('#jh-pw').get_attribute('type') == 'password' and not btn.is_visible(), '★ Guest 계정 로그인 탭을 누르면 아이디·비밀번호 칸이 보이고 Microsoft 버튼은 숨는다 — 기존 비밀번호 로그인 경로가 유지된다(정규 직원 잠금 방지)')
                     ok(pg.locator('#jh-login-btn').count() == 1 and pg.locator('#jh-login-form').count() == 1, '비밀번호 로그인 폼·버튼이 있다')
+                    tab_staff.click(); poll(pg, lambda: btn.is_visible(), 3000)
                 btn.click()
                 got = poll(pg, lambda: [u for u in reqs if 'login.microsoftonline.com' in u and 'authorize' in u], 6000)
                 hit = [u for u in reqs if 'login.microsoftonline.com' in u and 'authorize' in u]

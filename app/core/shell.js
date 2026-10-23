@@ -1,24 +1,37 @@
-import { esc } from './ui.js?v=20261023g';
-import { openSettings } from './settings.js?v=20261023g';
-import { openProfile } from './profile.js?v=20261023g';
-import { phoneTabs } from './nav.js?v=20261023g';
-import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261023g';
+import { esc } from './ui.js?v=20261023h';
+import { openSettings } from './settings.js?v=20261023h';
+import { openProfile } from './profile.js?v=20261023h';
+import { phoneTabs } from './nav.js?v=20261023h';
+import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261023h';
 
 export function renderLogin(root, { onSubmit, onMicrosoft, message }) {
   root.innerHTML =
     '<div class="jh-login"><div class="jh-login__card">' +
       '<div class="jh-login__brand">JH Portal</div>' +
-      '<p class="jh-login__sub">회사 Microsoft 계정으로 로그인합니다.</p>' +
-      '<button class="jh-btn" data-variant="primary" id="jh-ms-btn" type="button">Microsoft로 로그인</button>' +
-      '<p class="jh-login__msg" id="jh-login-msg" role="alert">' + esc(message || '') + '</p>' +
-      '<details class="jh-login__guest"><summary>게스트 로그인</summary>' +
+      '<div class="jh-login__tabs" role="tablist" aria-label="로그인 방식">' +
+        '<button type="button" class="jh-login__tab" role="tab" id="jh-tab-staff" aria-selected="true" aria-controls="jh-panel-staff" data-tab="staff">직원 계정 로그인</button>' +
+        '<button type="button" class="jh-login__tab" role="tab" id="jh-tab-guest" aria-selected="false" aria-controls="jh-panel-guest" data-tab="guest" tabindex="-1">Guest 계정 로그인</button>' +
+      '</div>' +
+      '<div class="jh-login__panel" role="tabpanel" id="jh-panel-staff" aria-labelledby="jh-tab-staff">' +
+        '<p class="jh-login__sub">회사 Microsoft 계정으로 로그인합니다.</p>' +
+        '<button class="jh-btn" data-variant="primary" id="jh-ms-btn" type="button">Microsoft로 로그인</button>' +
+      '</div>' +
+      '<div class="jh-login__panel" role="tabpanel" id="jh-panel-guest" aria-labelledby="jh-tab-guest" hidden>' +
         '<form id="jh-login-form" autocomplete="on">' +
           '<label class="jh-field"><span class="jh-field__label">아이디</span><input class="jh-input" id="jh-id" name="username" autocomplete="username" required></label>' +
           '<label class="jh-field"><span class="jh-field__label">비밀번호</span><input class="jh-input" id="jh-pw" name="password" type="password" autocomplete="current-password" required></label>' +
-          '<button class="jh-btn" data-variant="secondary" id="jh-login-btn" type="submit">로그인</button>' +
-        '</form></details>' +
+          '<button class="jh-btn" data-variant="primary" id="jh-login-btn" type="submit">로그인</button>' +
+        '</form>' +
+      '</div>' +
+      '<p class="jh-login__msg" id="jh-login-msg" role="alert">' + esc(message || '') + '</p>' +
     '</div></div>';
   const msg = root.querySelector('#jh-login-msg');
+  const tabs = [...root.querySelectorAll('[role=tab]')], panels = [...root.querySelectorAll('[role=tabpanel]')];
+  const select = (idx, focus) => { tabs.forEach((t, k) => { const on = k === idx; t.setAttribute('aria-selected', on ? 'true' : 'false'); t.tabIndex = on ? 0 : -1; panels[k].hidden = !on; }); if (focus) tabs[idx].focus(); };
+  tabs.forEach((t, k) => {
+    t.addEventListener('click', () => select(k, false));
+    t.addEventListener('keydown', (ev) => { const n = ev.key === 'ArrowRight' ? Math.min(k + 1, tabs.length - 1) : ev.key === 'ArrowLeft' ? Math.max(k - 1, 0) : -1; if (n >= 0) { ev.preventDefault(); select(n, true); } });
+  });
   root.querySelector('#jh-ms-btn').addEventListener('click', async (ev) => {
     const btn = ev.currentTarget; btn.disabled = true; btn.textContent = 'Microsoft로 이동 중…'; msg.textContent = '';
     try { await onMicrosoft(); } catch (e) { msg.textContent = 'Microsoft 로그인을 시작하지 못했습니다.'; btn.disabled = false; btn.textContent = 'Microsoft로 로그인'; }

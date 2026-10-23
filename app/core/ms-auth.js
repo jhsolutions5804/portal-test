@@ -1,7 +1,7 @@
 // Microsoft 로그인(리디렉션 + PKCE) → 서버 함수 msLogin → Firebase 로그인. 빌드 표기(?v=)는 다른 core 파일과 맞춘다.
-import { auth, functions, httpsCallable, signInWithCustomToken } from './firebase.js?v=20261023g';
-import { MS_TENANT_ID, MS_CLIENT_ID } from './config.js?v=20261023g';
-import { randomString, pkceChallenge, buildAuthorizeUrl, parseCallback } from './ms-pkce.js?v=20261023g';
+import { auth, functions, httpsCallable, signInWithCustomToken } from './firebase.js?v=20261023h';
+import { MS_TENANT_ID, MS_CLIENT_ID } from './config.js?v=20261023h';
+import { randomString, pkceChallenge, buildAuthorizeUrl, parseCallback } from './ms-pkce.js?v=20261023h';
 
 const K = { verifier: 'ms_verifier', state: 'ms_state', nonce: 'ms_nonce', hash: 'ms_hash' };
 // 리디렉션 주소는 Entra 앱에 등록한 값과 글자 그대로 같아야 한다(쿼리·해시 제외, 끝의 / 또는 index.html 포함 여부까지)
@@ -42,7 +42,7 @@ export function msErrorMessage(e) {
   if (/no-account|not-registered/.test(m)) return '등록되지 않은 계정입니다. 관리자에게 문의해 주세요.';
   if (/not-approved/.test(m)) return '승인되지 않은 계정입니다.';
   if (/disabled/.test(m)) return '사용이 중지된 계정입니다.';
-  if (/guest-not-allowed/.test(m)) return '게스트 계정은 아래 "게스트 로그인"을 사용해 주세요.';
+  if (/guest-not-allowed/.test(m)) return '게스트 계정은 "Guest 계정 로그인" 탭에서 로그인해 주세요.';
   if (/wrong-tenant|wrong-domain/.test(m)) return '회사 Microsoft 계정(@jhsol.kr)으로 로그인해 주세요.';
   if (/ms-access_denied/.test(m)) return 'Microsoft 로그인이 취소되었거나 이 앱에 할당되지 않은 계정입니다.';
   if (/state-mismatch|stale-token|nonce-mismatch|invalid-token|token-exchange-failed/.test(m)) return '로그인 확인에 실패했습니다. 다시 시도해 주세요.';
