@@ -13,6 +13,7 @@ def sandbox():
     w = lambda p, t: open(os.path.join(d, p), 'w', encoding='utf-8').write(t)
     w('app/index.html', '<meta name="jh-build" content="20260101a"><link rel="stylesheet" href="theme/pjt.css?v=20260101a"><script type="module" src="core/boot.js?v=20260101a"></script>')
     w('app/version.json', '{ "build": "20260101a" }')
+    w('app/ms-login-test.html', '<style>.a{color:#fff}</style><script type="module">import { m } from ' + chr(39) + './core/ms-login-test.js?v=20260101a' + chr(39) + ';</script><p>core/ms-login-test.js?v=20260101a 는 본문의 글자</p>')   # 시험 페이지 화면 파일(대기열 00-0): 모듈 주소의 번호를 같이 올린다
     w('app/theme/pjt.css', 'a{}')
     w('app/shared/x.js', "export const x = 1;")
     w('app/modules/pjt/a.js', "import { x } from '../../shared/x.js?v=20260101a';\nconst m = await import('../../shared/y.js?v=20250101z');\nconst n = await import('./z.js');\nconst g = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js');\nconst o = await import('../../../outside.js');\n")
@@ -38,6 +39,9 @@ ok('20261018g' in open(os.path.join(d, 'app/index.html'), encoding='utf-8').read
 mh = open(os.path.join(d, 'm/pjt.html'), encoding='utf-8').read(); mj = open(os.path.join(d, 'm/pjt-log.js'), encoding='utf-8').read()
 ok("from '../app/shared/x.js?v=20261018g'" in mj, '모바일(m/*.js)이 app/ 을 부르는 주소는 새 번호')
 ok("import('./pjt-log.js?v=20261018g')" in mh and "import('https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js')" in mh, '모바일 페이지의 자기 모듈 import 는 새 번호, 외부 주소는 그대로')
+ml = open(os.path.join(d, 'app/ms-login-test.html'), encoding='utf-8').read()
+ok("import { m } from './core/ms-login-test.js?v=20261018g'" in ml, '★ 시험 페이지 화면 파일(app/ms-login-test.html)의 모듈 주소 번호도 새 번호로 바뀐다(.js 만 고치면 이 한 줄이 옛 번호로 남는다)')
+ok('<style>.a{color:#fff}</style>' in ml and 'core/ms-login-test.js?v=20260101a 는 본문의 글자' in ml, '★ 화면 파일의 다른 글자(스타일·본문에 적힌 같은 모양의 글자)는 건드리지 않는다 — 모듈 가져오기 구문만')
 r2 = run(d, '20261018g'); ok(r2.returncode == 0 and snap(d) == snap(d), '같은 번호를 다시 적용해도 오류 없이 같은 결과(멱등)')
 shutil.rmtree(d, ignore_errors=True)
 # 2) 잘못된 번호: 파일을 하나도 바꾸지 않고 거절

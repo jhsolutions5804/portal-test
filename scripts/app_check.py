@@ -35,6 +35,9 @@ for f in files:
         if not os.path.exists(target): problems.append('없는 파일 %s → %s' % (os.path.relpath(f, root), m.group(2))); continue
         for n in [x.strip().split(' as ')[0].strip() for x in (m.group(1) or '').split(',') if x.strip()]:
             if n not in exports[target]: problems.append('없는 export %s → %s : %s' % (os.path.relpath(f, root), m.group(2), n))
+# app/ 최상위의 화면 파일(.html)이 직접 가진 모듈 가져오기 주소의 번호도 같은 집합에 넣는다 — .js 만 보면 html 안의 번호가 옛것으로 남아도 모른다(2026-10-23 Microsoft 로그인 시험 페이지). 본문·스타일에 적힌 같은 모양의 글자는 import 구문이 아니라 세지 않는다
+for f in glob.glob(root + '/*.html'):
+    for m in re.finditer(r"import\s+(?:\*\s+as\s+\w+|\{[^}]*\})\s+from\s+'(\.{1,2}/[^'?]+)(\?v=([^']*))?'", open(f, encoding='utf-8').read()): versions.add(m.group(3))
 if len(versions) > 1: problems.append('버전 불일치: ' + str(versions))
 # 줄 끝에 붙인 주석이 뒤따르는 코드를 삼키는 실수(두 번 있었음) 방지: 한 줄에 주석 표시(//)가 둘 이상이면 의심
 def _strip_strings(l):

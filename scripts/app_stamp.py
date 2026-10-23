@@ -30,6 +30,12 @@ if t != s: open(idx, 'w', encoding='utf-8', newline='').write(t); n += 1
 s2 = open(idx, encoding='utf-8').read()
 t2 = re.sub(r'(<meta name="jh-build" content=")[^"]*(")', lambda m: m.group(1) + ver + m.group(2), s2)
 if t2 != s2: open(idx, 'w', encoding='utf-8', newline='').write(t2)
+# 시험 페이지(app/ms-login-test.html, 대기열 00-0)의 모듈 가져오기 주소 — html 안의 `import … from './core/….js?v=…'` 구문만 같은 번호로(본문·스타일에 적힌 같은 모양의 글자는 건드리지 않는다)
+mt = os.path.join(root, 'ms-login-test.html')
+if os.path.exists(mt):
+    sm = open(mt, encoding='utf-8').read()
+    tm = re.sub(r"(import\s*\{[^}]*\}\s*from\s*')(\./core/[^'?]+\.js)(\?v=[^']*)?'", lambda m: m.group(1) + m.group(2) + '?v=' + ver + "'", sm)
+    if tm != sm: open(mt, 'w', encoding='utf-8', newline='').write(tm); n += 1
 open(os.path.join(root, 'version.json'), 'w', encoding='utf-8', newline='').write('{ "build": "' + ver + '" }\n')
 # 검사: 상대 import 가 모두 같은 버전인지
 bad = []
