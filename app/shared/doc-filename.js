@@ -4,7 +4,7 @@
  * **종류(견적서·월말 마감·근로계약서 …)는 모든 문서군에서 이름의 맨 앞**(대표님 2026-10-17 — 파일 목록에서 종류별로 묶여 보이게). 문서군별 순서(project 는 '_', 나머지는 ' - '):
  *   project : 종류 _ 날짜(YYYYMMDD) _ 거래처(담당자) _ 현장명 _ 견적명   (구분자 '_', 대표님이 엑셀로 쓰시던 방식 + 맨 앞에 종류)
  *             예) 견적서_20260510_다람이엔지(김과장)_P4 Ph2_FCU 설치 견적   — 견적명이 없는 정산서·계약서는 그 칸만 건너뜀. 번호(EST-…)는 파일 이름에 넣지 않는다
- *   month   : 종류 → 연월(YYYY-MM) → (프로젝트)                            예) 월말 마감 - 2026-09 / 월간 보고서 - 2026-07 - P4 Ph2 (FAB)
+ *   month   : 종류 → 연월(YYYY-MM) → (거래처) → (프로젝트)                            예) 월말 마감 - 2026-09 / 월간 보고서 - 2026-07 - P4 Ph2 (FAB)
  *   person  : 종류 → 이름 → 기준일. 연월(ym)을 주면 '종류 - 연월 - 이름'(급여명세서)  예) 근로계약서 - 홍길동 - 2026-10-26 / 급여명세서 - 2026-06 - 홍길동
  *   edoc    : 종류 → 문서번호 → 작성자 → 날짜                              예) 구매품의 - 2610001 - 김작성 - 2026-10-01
  *   period  : 종류 → 기간 → (이름) — 재무제표·원장·부가세 신고표처럼 시작~끝 기간이 핵심인 문서(대표님 2026-10-22). 기간은 from~to 이고 월의 첫날~월의 마지막 날이면 연월로 줄인다(2026-01~2026-09, 한 달이면 2026-09), 끝날짜만 있으면 그 날짜(기준일)
@@ -46,7 +46,7 @@ const ymOf = (s) => { const m = String(s == null ? '' : s).match(/^\d{4}-\d{2}/)
 function build(x, maxFree) {
   const free = (v) => safeText(v, maxFree), kind = safeText(x.kind, 30) || '문서';
   let parts;
-  if (x.group === 'month') parts = [kind, ymOf(x.ym), free(x.project)];
+  if (x.group === 'month') parts = [kind, ymOf(x.ym), free(x.party), free(x.project)]; // party(거래처)는 선택 — 안 주면 기존 이름과 같다(월말 마감·월간 보고서). 정산서는 종류 - 기준월 - 거래처(대기열 1-2-10, 대표님 2026-10-23)
   else if (x.group === 'person') { const ym = ymOf(x.ym); const yr = (typeof x.year === 'number' || typeof x.year === 'string') && /^\d{4}$/.test(String(x.year)) && Number(x.year) >= 1900 && Number(x.year) <= 2100 ? String(x.year) : ''; parts = ym ? [kind, ym, free(x.name)] : [kind, free(x.name), yr || dateOf(x.date)]; }
   else if (x.group === 'period') parts = [kind, periodOf(x.from, x.to), free(x.project)];
   else if (x.group === 'edoc') parts = [kind, noOf(x.docNo != null ? x.docNo : x.no), free(x.author), dateOf(x.date)];

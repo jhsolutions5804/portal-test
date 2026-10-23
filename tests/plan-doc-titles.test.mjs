@@ -28,11 +28,11 @@ const S2 = { id: 's2', docType: 'payment', no: '2609002', issueDate: '2026-09-30
 const S3 = { id: 's3', docType: 'invoice', no: '2610001', issueDate: '2026-10-05', baseMonth: '2026-10', pjtId: 'zz', lines: [], supply: 0, vat: 0, total: 0, sender: null, recipient: null };
 const pg = (s, pr) => settleDocPage(s, pr, { title: settleDocTitle(s, pr) });
 ok(titleOf(settleDocPage(S1, PR)) === '대금청구서 2609001' && titleOf(settleDocPage(S2, PR)) === '지급예정서 2609002', '정산서: 제목 인자가 없으면 기존 제목 그대로("대금청구서 번호"·"지급예정서 번호")');
-ok(titleOf(pg(S1, PR)) === '대금청구서_20260930_다람이엔지_P4 Ph2 (FAB동) FCU', '★ 대금청구서: 종류_발행일_상대방_현장명(견적명 칸은 없음) (' + titleOf(pg(S1, PR)) + ')');
-ok(titleOf(pg(Object.assign({}, S1, { recipient: party('다람이엔지', { contact: '이대리' }) }), PR)) === '대금청구서_20260930_다람이엔지(이대리)_P4 Ph2 (FAB동) FCU', '★ 정산서: 받는 곳 담당자가 있으면 거래처(담당자) — 화면 호출부가 담당자를 실제로 넘김');
-ok(titleOf(pg(S2, PR)) === '지급예정서_20260930_에스제이_P4 Ph2 (FAB동) FCU + H17L Gas RM. 전환공사', '지급예정서: 공동 발행이면 프로젝트를 + 로 연결');
-ok(titleOf(pg(S3, PR)) === '대금청구서_20261005', '정산서: 프로젝트·상대방 정보가 없으면 그 칸만 건너뜀');
-ok(settleDocTitle(S1, undefined) === '대금청구서_20260930_다람이엔지', '정산서: 프로젝트 목록이 없어도 오류 없음');
+ok(titleOf(pg(S1, PR)) === '대금청구서 - 2026-09 - 다람이엔지', '★ 대금청구서: 종류 - 기준월 - 거래처(프로젝트·번호·발행일·담당자는 이름에 안 넣는다 — 대표님 2026-10-23 "파일명은 기준월 거래처") (' + titleOf(pg(S1, PR)) + ')');
+ok(titleOf(pg(Object.assign({}, S1, { recipient: party('다람이엔지', { contact: '이대리' }) }), PR)) === '대금청구서 - 2026-09 - 다람이엔지', '★ 정산서: 받는 곳 담당자가 있어도 이름에 안 들어간다(옛 이름은 "다람이엔지(이대리)")');
+ok(titleOf(pg(S2, PR)) === '지급예정서 - 2026-09 - 에스제이', '★ 지급예정서: 공동 발행(프로젝트 둘)이어도 프로젝트를 이름에 안 넣는다(옛 이름은 "P4 Ph2 … + H17L …" 로 길어졌다)');
+ok(titleOf(pg(S3, PR)) === '대금청구서 - 2026-10', '정산서: 거래처 정보가 없으면 그 칸만 건너뜀(기준월은 있으니 "대금청구서 - 2026-10")');
+ok(settleDocTitle(S1, undefined) === '대금청구서 - 2026-09 - 다람이엔지', '정산서: 프로젝트 목록이 없어도 오류 없음(이름에 프로젝트를 안 쓰므로 같다)');
 ok(settleDocPage(S1, PR).replace(/<title>[\s\S]*?<\/title>/, '') === pg(S1, PR).replace(/<title>[\s\S]*?<\/title>/, ''), '정산서: 제목 말고는 인쇄 페이지가 한 글자도 달라지지 않음');
 ok(!/010|1234|45-6789/.test(titleOf(pg(Object.assign({}, S1, { recipient: party('다람 010-1111-2222') }), PR))), '정산서: 상대방 칸에 전화번호가 들어와도 파일 이름에는 남지 않음');
 

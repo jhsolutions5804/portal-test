@@ -1,6 +1,6 @@
 /* 영업기획 정산서(대금청구서·지급예정서) 양식 — 구포털 기획의 양식을 그대로 옮겼다(동결). 원본과 같은 결과가 나오는지는 tests/plan-settlement-doc.test.mjs 가 원본 함수(tests/fixtures/gihoek_settle_doc.js.txt)와 대조한다.
  * 원본과 다른 점은 하나뿐: 원본은 입력값을 그대로 HTML 에 넣었는데, 안전하게 모든 입력값(내역·비고·거래처·담당자 등)을 이스케이프한다(일반 글자는 결과가 같다). */
-import { docFileName } from '../../shared/doc-filename.js?v=20261023a';
+import { docFileName, safeText } from '../../shared/doc-filename.js?v=20261023b';
 const won = (n) => (Math.round(n) || 0).toLocaleString('ko-KR');
 const h = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 export const SET_DOC_CSS = `*{box-sizing:border-box;font-family:'Malgun Gothic',sans-serif}body{margin:0;color:#1a2330;font-size:12px}
@@ -40,10 +40,15 @@ export function settleName(s) {
   const co = x.recipient && typeof x.recipient === 'object' && typeof x.recipient.company === 'string' ? x.recipient.company.trim() : '';
   return [m ? m[1] + '년 ' + Number(m[2]) + '월' : '', co, '정산서'].filter(Boolean).join(' ');
 }
-/** PDF 저장 기본 이름(대표님 확정 규칙): 프로젝트(공동이면 +로 연결) → 종류 → 번호 → 상대방 → 발행일 */
-export function settleDocTitle(s, projects) {
-  const ids = (s.pjtIds && s.pjtIds.length ? s.pjtIds : [s.pjtId]).filter(Boolean), pr = (projects || []).filter((x) => ids.indexOf(x.id) >= 0);
-  return docFileName({ group: 'project', project: pr.map((x) => x.code || x.name).filter(Boolean).join(' + '), kind: s.docType === 'invoice' ? '대금청구서' : '지급예정서', no: s.no, party: s.recipient && s.recipient.company, contact: s.recipient && s.recipient.contact, date: s.issueDate });
+const noOfTitle = (n) => String(n == null ? '' : n).replace(/[^0-9A-Za-z가-힣._-]/g, '').slice(0, 30); // 번호만 파일 이름에 쓸 수 있는 문자로(둘 다 없을 때의 대체용)
+/** PDF 저장 기본 이름: 종류 - 기준월 - 거래처(대기열 1-2-10, 대표님 2026-10-23 "파일명은 기준월 거래처"). 프로젝트·번호·발행일·담당자는 이름에 넣지 않는다(한 정산서에 프로젝트가 여럿이라 이름이 길어지던 문제).
+ * 종류는 모든 문서군에서 맨 앞(대표님 2026-10-17 원칙)이라 유지한다. 기준월이 올바르지 않으면 월 칸을, 거래처가 없으면 거래처 칸을 건너뛰고, 둘 다 없으면 번호로 대체한다(이름이 종류 한 단어만 남으면 여러 장이 구분되지 않는다). */
+export function settleDocTitle(s) {
+  const x = s && typeof s === 'object' ? s : {};
+  const ym = typeof x.baseMonth === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(x.baseMonth) ? x.baseMonth : '';
+  const party = x.recipient && typeof x.recipient === 'object' && typeof x.recipient.company === 'string' ? x.recipient.company : '';
+  const hasParty = !!safeText(party, 40);
+  return docFileName({ group: 'month', kind: x.docType === 'invoice' ? '대금청구서' : '지급예정서', ym, party, project: ym || hasParty ? '' : noOfTitle(x.no) });
 }
 export function settleDocPage(s, projects, opts) {
   return `<!doctype html><meta charset="utf-8"><title>${opts && opts.title ? h(opts.title) : (s.docType === 'invoice' ? '대금청구서' : '지급예정서') + ' ' + h(s.no)}</title><style>@page{size:A4;margin:16mm}${SET_DOC_CSS}</style>${settleDocHtml(s, projects)}<scr` + `ipt>window.onload=function(){setTimeout(function(){window.print();},250);}</scr` + `ipt>`;
