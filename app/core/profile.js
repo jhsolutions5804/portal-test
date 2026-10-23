@@ -1,7 +1,7 @@
-import { auth, db, doc, getDoc, getDocs, updateDoc, collection, query, where, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from './firebase.js?v=20261023f';
-import { esc, toast } from './ui.js?v=20261023f';
-import { validateNewPassword, passwordErrorMessage, fmtPhone, isPhone, maskJumin, fmtJumin, maskAccount } from './profile-logic.js?v=20261023f';
-import { revealOwn, maskView, identityErrorText } from '../shared/identity.js?v=20261023f';
+import { auth, db, doc, getDoc, getDocs, updateDoc, collection, query, where, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from './firebase.js?v=20261023g';
+import { esc, toast } from './ui.js?v=20261023g';
+import { validateNewPassword, passwordErrorMessage, fmtPhone, isPhone, maskJumin, fmtJumin, maskAccount } from './profile-logic.js?v=20261023g';
+import { revealOwn, maskView, identityErrorText } from '../shared/identity.js?v=20261023g';
 
 /** 내 정보 창 — 전화번호·비밀번호 변경, 내 인사 정보(주민번호·주소·계좌) 보기.
  *  비밀번호는 현재 비밀번호로 다시 인증한 뒤 바꾸며, 어디에도 따로 저장하지 않는다(옛 포털은 사본을 portal_secrets 에 남겼다). */
@@ -14,11 +14,11 @@ export function openProfile(me, trigger) {
     '<dl class="jh-profile__dl">' + dl + '</dl>' +
     '<section class="jh-profile__sec" aria-label="전화번호"><label class="jh-field"><span class="jh-field__label">전화번호</span><input class="jh-input" id="pf-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="010-0000-0000"></label>' +
       '<div class="jh-profile__row"><button type="button" class="jh-btn" data-variant="secondary" data-save-phone>전화번호 저장</button><span class="jh-field__hint" data-msg-phone role="status"></span></div></section>' +
-    '<details class="jh-profile__sec jh-profile__details" aria-label="비밀번호 변경"><summary>비밀번호 변경</summary>' +
+    (me.isGuest || me.pwLogin ? '<details class="jh-profile__sec jh-profile__details" aria-label="비밀번호 변경"><summary>비밀번호 변경</summary>' +
       '<label class="jh-field"><span class="jh-field__label">현재 비밀번호</span><input class="jh-input" id="pf-cur" type="password" autocomplete="current-password"></label>' +
       '<label class="jh-field"><span class="jh-field__label">새 비밀번호 (8자 이상)</span><input class="jh-input" id="pf-new" type="password" autocomplete="new-password"></label>' +
       '<label class="jh-field"><span class="jh-field__label">새 비밀번호 확인</span><input class="jh-input" id="pf-new2" type="password" autocomplete="new-password"></label>' +
-      '<div class="jh-profile__row"><button type="button" class="jh-btn" data-variant="secondary" data-save-pw>비밀번호 변경</button><span class="jh-field__hint" data-msg-pw role="status"></span></div></details>' +
+      '<div class="jh-profile__row"><button type="button" class="jh-btn" data-variant="secondary" data-save-pw>비밀번호 변경</button><span class="jh-field__hint" data-msg-pw role="status"></span></div></details>' : '') +
     '<details class="jh-profile__sec jh-profile__details" aria-label="내 인사 정보"><summary>내 인사 정보 (주민번호·주소·계좌)</summary><div data-hr><button type="button" class="jh-btn" data-variant="ghost" data-load-hr>불러오기</button></div></details>' +
     '</div><div class="jh-dialog__actions"><button type="button" class="jh-btn" data-variant="primary" data-close>닫기</button></div></div>';
   document.body.appendChild(wrap); const prev = document.body.style.overflow; document.body.style.overflow = 'hidden';

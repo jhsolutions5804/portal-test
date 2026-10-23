@@ -1,6 +1,6 @@
-import { auth, db, doc, getDoc, getDocs, collection, onAuthStateChanged, signInWithEmailAndPassword, signOut } from './firebase.js?v=20261023f';
-import { accessibleKeys } from '../shared/pjt-access.js?v=20261023f';
-import { DOMAIN } from './config.js?v=20261023f';
+import { auth, db, doc, getDoc, getDocs, collection, onAuthStateChanged, signInWithEmailAndPassword, signOut } from './firebase.js?v=20261023g';
+import { accessibleKeys } from '../shared/pjt-access.js?v=20261023g';
+import { DOMAIN } from './config.js?v=20261023g';
 
 export function authErrorMessage(code) {
   const m = {
@@ -21,7 +21,8 @@ export function buildMe(uid, email, data) {
     admin: data.admin === true,
     isGuest: /^guest/i.test(empNo),
     perms: data.perms || {}, teamLead: data.teamLead === true,
-    teamLeaderIds: Array.isArray(data.teamLeaderIds) ? data.teamLeaderIds.slice() : []
+    teamLeaderIds: Array.isArray(data.teamLeaderIds) ? data.teamLeaderIds.slice() : [],
+    pwLogin: data.pwLogin === true   // 비밀번호 로그인을 허용한 계정 표시(GUEST 외)
   };
 }
 

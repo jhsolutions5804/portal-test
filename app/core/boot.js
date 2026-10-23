@@ -1,15 +1,16 @@
-import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261023f';
-import { register, visibleFor, get } from './registry.js?v=20261023f';
-import { parseHash, onChange } from './router.js?v=20261023f';
-import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261023f';
-import { initTheme } from './theme.js?v=20261023f';
-import { checkForUpdate } from './update.js?v=20261023f';
-import { MODULES, installShellDocks } from '../modules/index.js?v=20261023f';
-import { mountPlatformHome } from './home.js?v=20261023f';
-import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261023f';
-import { ensureTime24 } from '../shared/time24.js?v=20261023f';
-import { installRecent, describeNow } from './recent.js?v=20261023f';
-import { workTabs, resumeHash } from './worktabs.js?v=20261023f';
+import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261023g';
+import { register, visibleFor, get } from './registry.js?v=20261023g';
+import { parseHash, onChange } from './router.js?v=20261023g';
+import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261023g';
+import { hasMicrosoftCallback, finishMicrosoftLogin, startMicrosoftLogin, msErrorMessage } from './ms-auth.js?v=20261023g';
+import { initTheme } from './theme.js?v=20261023g';
+import { checkForUpdate } from './update.js?v=20261023g';
+import { MODULES, installShellDocks } from '../modules/index.js?v=20261023g';
+import { mountPlatformHome } from './home.js?v=20261023g';
+import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261023g';
+import { ensureTime24 } from '../shared/time24.js?v=20261023g';
+import { installRecent, describeNow } from './recent.js?v=20261023g';
+import { workTabs, resumeHash } from './worktabs.js?v=20261023g';
 
 initTheme();   // 이 기기에 저장된 화면 모드(자동·라이트·다크) 적용
 MODULES.forEach((m) => register(Object.assign({}, m.manifest, { mount: m.mount })));
@@ -64,14 +65,16 @@ const REASONS = {
 };
 
 ensureTime24();   // 시각 입력칸을 24시간(HH:MM) 입력으로(루트 time24.js, 옛 화면과 같은 동작)
+let msNote = '';   // Microsoft 로그인 실패 안내(로그인 화면에 한 번 표시)
+if (hasMicrosoftCallback()) { try { await finishMicrosoftLogin(); } catch (e) { console.warn('Microsoft 로그인', e && (e.msCode || e.message)); msNote = msErrorMessage(e); } }   // watchMe 보다 먼저
 let answered = false;   // 인증 응답이 한 번이라도 왔는가 — 6초 넘게 없으면 로딩 화면 대신 로그인 화면(응답이 늦게 오면 그때 이어서 처리)
-setTimeout(() => { if (!answered) renderLogin(root, { onSubmit: doLogin, message: REASONS.slow }); }, 6000);
+setTimeout(() => { if (!answered) renderLogin(root, { onSubmit: doLogin, onMicrosoft: () => startMicrosoftLogin(), message: REASONS.slow }); }, 6000);
 watchMe((user, reason) => {
   answered = true; me = user; shell = null; recent = null; if (docsOff) { docsOff(); docsOff = null; } workTabs.reset(); mainViews.clear(); curView = null; const oldRecent = document.getElementById('jh-recent'); if (oldRecent) oldRecent.remove();
   if (!me) {
     stopIdle(); let msg = REASONS[reason] || '';
     try { const f = sessionStorage.getItem(OUT_FLAG); if (f) { msg = durationText(+f > 0 ? +f : IDLE_LIMIT_MS) + ' 동안 활동이 없어 자동 로그아웃되었습니다.'; sessionStorage.removeItem(OUT_FLAG); } } catch (e) { /* 표시를 못 읽어도 로그인 화면은 보인다 */ }
-    renderLogin(root, { onSubmit: doLogin, message: msg }); return;
+    renderLogin(root, { onSubmit: doLogin, onMicrosoft: () => startMicrosoftLogin(), message: msg || msNote }); msNote = ''; return;
   }
   mods = visibleFor(me);
   if (!mods.length) { renderDenied(root, '이 계정에는 사용할 수 있는 모듈이 없습니다.', logout); return; }

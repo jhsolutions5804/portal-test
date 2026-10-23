@@ -17,6 +17,8 @@ const PROD = {
 export const IS_TEST = /\/portal-test(\/|$)/.test(location.pathname);
 export const FIREBASE_CONFIG = IS_TEST ? TEST : PROD;
 export const DOMAIN = '@jhsol.kr';
+export const MS_TENANT_ID = '548fcb48-1ab8-4c47-8242-bc098ea80416';   // Entra 앱 등록 값(공개 값)
+export const MS_CLIENT_ID = '3669b1e5-34e9-4630-a357-ac512a878a90';
 export const SDK = 'https://www.gstatic.com/firebasejs/10.12.0/';
 export const LEGACY_PORTAL_URL = '../classic.html';   // 기존 포털(2026-10-07 C7: 루트 index.html 은 새 포털로 보내는 정문이 되고 옛 포털은 classic.html)
 /** 옛 모듈 페이지(hr/, gihoek/, pjt/ …)가 놓인 폴더 — 이 앱(app/) 기준 상대 주소. 플랫폼이 사이트 루트로 옮겨가면 './' 로 바꾼다 */

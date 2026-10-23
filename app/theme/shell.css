@@ -1,6 +1,8 @@
 .jh-login { min-height: 100vh; display: grid; place-items: center; padding: var(--sp-5); }
 .jh-login__card { width: 100%; max-width: var(--u-380); background: var(--c-surface); border: var(--u-1) solid var(--c-line); border-radius: var(--radius-lg); padding: var(--sp-6); box-shadow: var(--shadow-1); display: grid; gap: var(--sp-2); }
 .jh-login__brand { font-size: var(--fs-xl); font-weight: 800; color: var(--c-primary); }
+.jh-login__guest { margin-top: var(--sp-3); }
+.jh-login__guest > summary { cursor: pointer; color: var(--c-ink-2); font-size: var(--fs-sm); }
 .jh-login__sub { margin: 0 0 var(--sp-3); color: var(--c-ink-2); font-size: var(--fs-sm); }
 .jh-login__msg { min-height: var(--u-20); margin: 0; color: var(--c-danger); font-size: var(--fs-sm); }
 

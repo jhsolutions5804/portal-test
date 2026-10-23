@@ -34,7 +34,7 @@ export const writeBatch = () => ({ set() {}, update() {}, delete() {}, commit: a
 export const serverTimestamp = () => 0; export const deleteField = () => ({}); export const Timestamp = {}; export const arrayUnion = () => ({}); export const arrayRemove = () => ({});
 export const httpsCallable = () => async () => ({ data: { ok: true } }); export const onAuthStateChanged = () => {};
 export const EmailAuthProvider = {}; export const deleteObject = async () => {}; export const getBlob = async () => new Blob([]); export const getDownloadURL = async () => ''; export const reauthenticateWithCredential = async () => {}; export const sendPasswordResetEmail = async () => {};
-export const signInWithEmailAndPassword = async () => {}; export const signOut = async () => {}; export const storageRef = () => ({}); export const updatePassword = async () => {}; export const uploadBytesResumable = () => ({});
+export const signInWithEmailAndPassword = async () => {}; export const signInWithCustomToken = async () => {}; export const signOut = async () => {}; export const storageRef = () => ({}); export const updatePassword = async () => {}; export const uploadBytesResumable = () => ({});
 """ % json.dumps(DATA)
 # 가짜 모듈이 실제 core/firebase.js 의 내보내기와 어긋나면(실제에 이름이 늘었는데 가짜에 없음) 시험이 모듈 로딩 단계에서 조용히 죽는다 — 먼저 대조해 이유를 바로 알린다
 _real = open(os.path.join(ROOT, 'core', 'firebase.js'), encoding='utf-8').read()

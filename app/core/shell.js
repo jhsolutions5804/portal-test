@@ -1,22 +1,31 @@
-import { esc } from './ui.js?v=20261023f';
-import { openSettings } from './settings.js?v=20261023f';
-import { openProfile } from './profile.js?v=20261023f';
-import { phoneTabs } from './nav.js?v=20261023f';
-import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261023f';
+import { esc } from './ui.js?v=20261023g';
+import { openSettings } from './settings.js?v=20261023g';
+import { openProfile } from './profile.js?v=20261023g';
+import { phoneTabs } from './nav.js?v=20261023g';
+import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261023g';
 
-export function renderLogin(root, { onSubmit, message }) {
+export function renderLogin(root, { onSubmit, onMicrosoft, message }) {
   root.innerHTML =
-    '<div class="jh-login"><form class="jh-login__card" id="jh-login-form" autocomplete="on">' +
+    '<div class="jh-login"><div class="jh-login__card">' +
       '<div class="jh-login__brand">JH Portal</div>' +
-      '<p class="jh-login__sub">전자결재 v2 시험 화면 · 기존 포털과 같은 계정을 사용합니다.</p>' +
-      '<label class="jh-field"><span class="jh-field__label">아이디</span><input class="jh-input" id="jh-id" name="username" autocomplete="username" required></label>' +
-      '<label class="jh-field"><span class="jh-field__label">비밀번호</span><input class="jh-input" id="jh-pw" name="password" type="password" autocomplete="current-password" required></label>' +
+      '<p class="jh-login__sub">회사 Microsoft 계정으로 로그인합니다.</p>' +
+      '<button class="jh-btn" data-variant="primary" id="jh-ms-btn" type="button">Microsoft로 로그인</button>' +
       '<p class="jh-login__msg" id="jh-login-msg" role="alert">' + esc(message || '') + '</p>' +
-      '<button class="jh-btn" data-variant="primary" id="jh-login-btn" type="submit">로그인</button>' +
-    '</form></div>';
+      '<details class="jh-login__guest"><summary>게스트 로그인</summary>' +
+        '<form id="jh-login-form" autocomplete="on">' +
+          '<label class="jh-field"><span class="jh-field__label">아이디</span><input class="jh-input" id="jh-id" name="username" autocomplete="username" required></label>' +
+          '<label class="jh-field"><span class="jh-field__label">비밀번호</span><input class="jh-input" id="jh-pw" name="password" type="password" autocomplete="current-password" required></label>' +
+          '<button class="jh-btn" data-variant="secondary" id="jh-login-btn" type="submit">로그인</button>' +
+        '</form></details>' +
+    '</div></div>';
+  const msg = root.querySelector('#jh-login-msg');
+  root.querySelector('#jh-ms-btn').addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget; btn.disabled = true; btn.textContent = 'Microsoft로 이동 중…'; msg.textContent = '';
+    try { await onMicrosoft(); } catch (e) { msg.textContent = 'Microsoft 로그인을 시작하지 못했습니다.'; btn.disabled = false; btn.textContent = 'Microsoft로 로그인'; }
+  });
   root.querySelector('#jh-login-form').addEventListener('submit', async (ev) => {
     ev.preventDefault();
-    const btn = root.querySelector('#jh-login-btn'); const msg = root.querySelector('#jh-login-msg');
+    const btn = root.querySelector('#jh-login-btn');
     btn.disabled = true; btn.textContent = '로그인 중…'; msg.textContent = '';
     try { await onSubmit(root.querySelector('#jh-id').value, root.querySelector('#jh-pw').value); }
     catch (e) { msg.textContent = e && e.message ? e.message : '로그인에 실패했습니다.'; btn.disabled = false; btn.textContent = '로그인'; }
