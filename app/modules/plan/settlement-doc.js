@@ -1,6 +1,6 @@
 /* 영업기획 정산서(대금청구서·지급예정서) 양식 — 구포털 기획의 양식을 그대로 옮겼다(동결). 원본과 같은 결과가 나오는지는 tests/plan-settlement-doc.test.mjs 가 원본 함수(tests/fixtures/gihoek_settle_doc.js.txt)와 대조한다.
  * 원본과 다른 점은 하나뿐: 원본은 입력값을 그대로 HTML 에 넣었는데, 안전하게 모든 입력값(내역·비고·거래처·담당자 등)을 이스케이프한다(일반 글자는 결과가 같다). */
-import { docFileName } from '../../shared/doc-filename.js?v=20261022u';
+import { docFileName } from '../../shared/doc-filename.js?v=20261022v';
 const won = (n) => (Math.round(n) || 0).toLocaleString('ko-KR');
 const h = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 export const SET_DOC_CSS = `*{box-sizing:border-box;font-family:'Malgun Gothic',sans-serif}body{margin:0;color:#1a2330;font-size:12px}
@@ -32,6 +32,14 @@ export function settleDocHtml(s, projects) {
   <div class="stamp">위와 같이 ${s.docType === 'invoice' ? '청구' : '지급 예정 통보'}합니다.<br><br>${h(sd.company || '')}　${sd.ceo ? '대표 ' + h(sd.ceo) + ' (인)' : ''} ${sd.contact ? '<br><span style="font-size:11px;color:#555">담당: ' + h(sd.contact) + (sd.contactTel ? ' &nbsp;' + h(sd.contactTel) : '') + (sd.contactEmail ? ' &nbsp;' + h(sd.contactEmail) : '') + '</span>' : ''}</div>`;
 }
 /** 인쇄 창에 쓰는 전체 페이지(구포털 pvPrint): A4 여백 16mm + 양식 CSS + 본문 + 자동 인쇄. opts.title: PDF 저장 기본 이름(`settleDocTitle` 결과, 없으면 기존 '대금청구서 번호') — 구포털 원본 대조 시험이 지키는 기본 모양은 그대로 */
+/** 정산서 자동 이름(대기열 1-2-10, 대표님 2026-10-22 "기준월, 거래처만 고르면 2026년 10월 다람이엔지 정산서"): 기준월 + 거래처 + 정산서. 정산서는 기준월과 거래처로 식별하고 프로젝트는 항목에만 있다.
+ * 기준월이 올바르지 않거나 거래처가 없으면 그 부분만 생략한다. 화면 표시용이며 PDF 저장 기본 이름(settleDocTitle, 대표님 확정 규칙)은 이 함수와 별개로 그대로다. */
+export function settleName(s) {
+  const x = s && typeof s === 'object' ? s : {};
+  const m = typeof x.baseMonth === 'string' ? x.baseMonth.match(/^(\d{4})-(0[1-9]|1[0-2])$/) : null;
+  const co = x.recipient && typeof x.recipient === 'object' && typeof x.recipient.company === 'string' ? x.recipient.company.trim() : '';
+  return [m ? m[1] + '년 ' + Number(m[2]) + '월' : '', co, '정산서'].filter(Boolean).join(' ');
+}
 /** PDF 저장 기본 이름(대표님 확정 규칙): 프로젝트(공동이면 +로 연결) → 종류 → 번호 → 상대방 → 발행일 */
 export function settleDocTitle(s, projects) {
   const ids = (s.pjtIds && s.pjtIds.length ? s.pjtIds : [s.pjtId]).filter(Boolean), pr = (projects || []).filter((x) => ids.indexOf(x.id) >= 0);

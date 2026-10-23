@@ -1,9 +1,9 @@
 /* 영업기획 정산서 발행 — 순수 규칙(화면·네트워크 없이 시험 가능). 구포털 기획(gihoek)의 발행 계산을 그대로 옮겼다.
  * 방식: 직접 입력(manual), 수량 정산(qty), 공수 연동(manday, 지급예정서), 공정 연동(progress, 청구서) — 구포털의 정산서 발행 4방식을 모두 옮겼다.
  * 번호: yymm + 세 자리, 청구서·지급예정서 따로 센다(구포털은 "개수 + 1" 이라 삭제 뒤 같은 번호가 다시 나올 수 있어 "가장 큰 번호 + 1" 로 한다 — 빈 번호가 없으면 결과는 같다). */
-import { itemAmt, getLinkPjt } from './projects.js?v=20261022u';
-import { setProgressOverrides, getProgProfile, isTrackable, zoneGuess, calcProgressRow, toggleProgressEst, setProgressZone, toggleProgressDeposit, setProgressBill, applyProgress, progressLine } from './progress.js?v=20261022u';
-import { num, blankItem, itemSetQty, itemSetPrice, itemSetAmount, partySnap, suppliers, clients, DEFAULT_ISSUER } from './estimates.js?v=20261022u';
+import { itemAmt, getLinkPjt } from './projects.js?v=20261022v';
+import { setProgressOverrides, getProgProfile, isTrackable, zoneGuess, calcProgressRow, toggleProgressEst, setProgressZone, toggleProgressDeposit, setProgressBill, applyProgress, progressLine } from './progress.js?v=20261022v';
+import { num, blankItem, itemSetQty, itemSetPrice, itemSetAmount, partySnap, suppliers, clients, DEFAULT_ISSUER } from './estimates.js?v=20261022v';
 export { num, blankItem, itemSetQty, itemSetPrice, itemSetAmount, suppliers, clients, setProgressOverrides, getProgProfile, isTrackable, zoneGuess, calcProgressRow, toggleProgressEst, setProgressZone, toggleProgressDeposit, setProgressBill, applyProgress };
 export const SUPPORTED = { invoice: ['progress', 'manual', 'qty'], payment: ['manday', 'manual', 'qty'] };   // 새 화면에서 계산하는 방식
 export const METHOD_OPTIONS = { invoice: [['progress', '공정 연동 (반입·설치 자동)'], ['qty', '수량 정산 (견적 품목별)'], ['manual', '직접 입력']], payment: [['manday', '공수 연동'], ['qty', '수량 정산 (견적 품목별)'], ['manual', '직접 입력']] };
@@ -27,12 +27,23 @@ export function newIssueDraft(o) {
 /** 프로젝트 다중 선택(구포털 toggleSettlePjt): 최소 1개, 바뀌면 선택된 견적 중 빠진 프로젝트의 것은 해제. 반환: 오류 문구 또는 '' */
 export function togglePjt(d, pid, estimates) {
   d.pjtIds = Array.isArray(d.pjtIds) ? d.pjtIds.filter(Boolean) : (d.pjtId ? [d.pjtId] : []); const i = d.pjtIds.indexOf(pid);
-  if (i < 0) d.pjtIds.push(pid); else d.pjtIds.splice(i, 1);   // 모두 해제하면 프로젝트 없는 정산서(공정·공수 연동은 프로젝트가 있어야 하므로 직접 입력으로 바꾼다)
-  d.pjtId = d.pjtIds[0] || ''; if (!d.pjtIds.length && needsProject(d.method)) d.method = 'manual';
+  if (i >= 0 && d.pjtIds.length === 1) return '프로젝트는 하나 이상 선택해야 합니다.'; // 프로젝트 없는 정산서는 없다("해당 없음" 삭제) — 마지막 프로젝트는 해제할 수 없다. 다른 프로젝트로 바꾸려면 먼저 새 프로젝트를 고른다
+  if (i < 0) d.pjtIds.push(pid); else d.pjtIds.splice(i, 1);
+  d.pjtId = d.pjtIds[0] || '';
   d.estIds = (d.estIds || []).filter((id) => { const e = (estimates || []).find((x) => x.id === id); return e && (d.pjtIds.length ? d.pjtIds.includes(e.pjtId) : !e.pjtId); }); return '';
 }
 /** 프로젝트가 있어야 쓸 수 있는 정산 방식(공정 연동은 섹터·장비 추적, 공수 연동은 프로젝트의 공수 출처) */
 export const needsProject = (method) => method === 'progress' || method === 'manday';
+/* 정산 방식 바꾸기(대기열 1-2-10): 프로젝트가 입력의 본질인 공정·공수로 바꿀 때 프로젝트가 비어 있으면 프로젝트 목록의 첫 프로젝트로 채운다(프로젝트 없는 정산서는 없다).
+ * 직접 입력(줄에서 고른다)·수량 정산(견적이 정한다)으로 바꿀 때는 프로젝트를 건드리지 않는다. 프로젝트 목록이 이상하거나 비어 있으면 채우지 않고 방식만 바꾼다. */
+export function setMethod(d, method, projects) {
+  d.method = method;
+  if (!needsProject(method)) return;
+  const cur = Array.isArray(d.pjtIds) ? d.pjtIds.filter(Boolean) : (d.pjtId ? [d.pjtId] : []);
+  if (cur.length) return;
+  const first = (Array.isArray(projects) ? projects : []).find((p) => p && typeof p.id === 'string' && p.id);
+  if (first) { d.pjtIds = [first.id]; d.pjtId = first.id; }
+}
 /* 거래처 일치 규칙(대기열 1-2-10 ①, 대표님 2026-10-22 "정산서 하나에는 거래처 하나만"): 청구서의 수신자(원청)는 견적의 거래처(clientId)와 같아야 한다.
  * 지급예정서의 수신자는 하청이라 견적의 거래처(원청)와 다르므로 적용하지 않는다. 견적에 clientId 가 비어 있거나 초안에 수신자가 없으면 적용하지 않는다(옛 데이터·수신자를 아직 안 고른 흐름과 호환). */
 const estClient = (e) => (e && typeof e.clientId === 'string' ? e.clientId : '');

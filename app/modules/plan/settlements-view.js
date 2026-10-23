@@ -1,7 +1,8 @@
-import { esc } from '../../core/ui.js?v=20261022u';
-import { won, card, chip, fld, selectHtml, pagerHtml } from './ui.js?v=20261022u';
-import { SETTLE_PAGE_SIZE, SETTLE_LABEL, METHOD_LABEL, filterSettlements, sortSettlements, settleFilterOptions, settleSummary, projectLabel, isMulti, acctMonthOf, canLinkEst, linkedEstimates, linkableEstimates, settleLinesOf, setActive, projectBalance } from './settlements.js?v=20261022u';
-import { paginate } from './projects.js?v=20261022u';
+import { esc } from '../../core/ui.js?v=20261022v';
+import { won, card, chip, fld, selectHtml, pagerHtml } from './ui.js?v=20261022v';
+import { SETTLE_PAGE_SIZE, SETTLE_LABEL, METHOD_LABEL, filterSettlements, sortSettlements, settleFilterOptions, settleSummary, projectLabel, isMulti, acctMonthOf, canLinkEst, linkedEstimates, linkableEstimates, settleLinesOf, setActive, projectBalance } from './settlements.js?v=20261022v';
+import { paginate } from './projects.js?v=20261022v';
+import { settleName } from './settlement-doc.js?v=20261022v';
 const sumCell = (label, v, tone) => '<div class="jh-plan__sumcell"><span class="jh-field__hint">' + esc(label) + '</span><strong' + (tone ? ' data-tone="' + tone + '"' : '') + '>' + v + '</strong></div>';
 const filterSel = (key, val, label, opts) => selectHtml('data-sl-filter="' + key + '"', val, [['', label]].concat(opts));
 /** 청구·수금(kind=invoice) / 지급·정산(kind=payment) 목록: 합계 카드 + 필터 + 10건씩 쪽 나눔 */
@@ -33,7 +34,7 @@ export function settlementDetailHtml(st) {
   const btn = (act, label, v) => '<button type="button" class="jh-btn" data-variant="' + (v || 'secondary') + '" data-sl-act="' + act + '">' + label + '</button>';
   const acct = !inv ? ' · 회계 계상월 <strong>' + esc(acctMonthOf(s)) + '</strong> ' + (st.editAcct ? '<input class="jh-input jh-plan__acct" data-sl-acct value="' + esc(acctMonthOf(s)) + '" placeholder="YYYY-MM">' + btn('acct-save', '저장', 'primary') + btn('acct-cancel', '취소', 'ghost') : btn('acct-edit', '수정', 'ghost')) : '';
   const head = '<div class="jh-plan__pad">' + (!active ? '<div class="jh-alert" data-tone="warn" role="status">🚫 폐기된 정산서입니다. 집계에서 제외됩니다.</div>' : '')
-    + '<div class="jh-plan__bar"><div class="jh-plan__main"><strong class="jh-plan__big">' + esc(SETTLE_LABEL[s.docType] || '정산서') + '</strong><span class="jh-plan__line">' + chip(isMulti(s) ? projectLabel(s, st.projects).replace(/\+/g, ' + ') : projectLabel(s, st.projects), 'blue') + '<span class="jh-field__hint">' + esc(s.no + ' · 발행 ' + (s.issueDate || '-') + (s.author ? ' · ' + s.author : '')) + '</span></span></div>'
+    + '<div class="jh-plan__bar"><div class="jh-plan__main"><strong class="jh-plan__big" data-sl-name>' + esc(settleName(s)) + '</strong><span class="jh-plan__line">' + chip(SETTLE_LABEL[s.docType] || '정산서', 'gray') + ' ' + chip(isMulti(s) ? projectLabel(s, st.projects).replace(/\+/g, ' + ') : projectLabel(s, st.projects), 'blue') + '<span class="jh-field__hint">' + esc(s.no + ' · 발행 ' + (s.issueDate || '-') + (s.author ? ' · ' + s.author : '')) + '</span></span></div>'
     + '<span class="jh-plan__line">' + (canLinkEst(s) ? btn('link-open', '🔗 견적 연결' + (linked.length ? ' 수정' : '')) : '') + btn('print', '🖨 인쇄/PDF') + (active && !done ? btn(inv ? 'done' : 'done', inv ? '✓ 완결' + (bal <= 0 ? ' (권장)' : '') : '✓ 지급완료') : '') + (done ? btn('undone', '완결 취소', 'ghost') : '') + (active ? btn('void', '폐기', 'ghost') : btn('del', '🗑 삭제', 'ghost')) + '</span></div>'
     + '<div class="jh-plan__two">' + party('발신 (공급자)', s.sender) + party(inv ? '수신 (원청)' : '수신 (하청)', s.recipient) + '</div>'
     + '<div class="jh-field__hint">' + esc('기준월 ' + (s.baseMonth || '-') + ' · ' + (inv ? '지급요청일' : '지급예정일') + ' ' + (s.payDate || '-') + ' · 정산방식 ' + (METHOD_LABEL[s.method] || '-')) + '</div>' + (acct ? '<div class="jh-plan__line">' + acct + '</div>' : '')
