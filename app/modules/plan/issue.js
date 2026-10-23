@@ -1,9 +1,9 @@
 /* 영업기획 정산서 발행 — 순수 규칙(화면·네트워크 없이 시험 가능). 구포털 기획(gihoek)의 발행 계산을 그대로 옮겼다.
  * 방식: 직접 입력(manual), 수량 정산(qty), 공수 연동(manday, 지급예정서), 공정 연동(progress, 청구서) — 구포털의 정산서 발행 4방식을 모두 옮겼다.
  * 번호: yymm + 세 자리, 청구서·지급예정서 따로 센다(구포털은 "개수 + 1" 이라 삭제 뒤 같은 번호가 다시 나올 수 있어 "가장 큰 번호 + 1" 로 한다 — 빈 번호가 없으면 결과는 같다). */
-import { itemAmt, getLinkPjt } from './projects.js?v=20261022w';
-import { setProgressOverrides, getProgProfile, isTrackable, zoneGuess, calcProgressRow, toggleProgressEst, setProgressZone, toggleProgressDeposit, setProgressBill, applyProgress, progressLine } from './progress.js?v=20261022w';
-import { num, blankItem, itemSetQty, itemSetPrice, itemSetAmount, partySnap, suppliers, clients, DEFAULT_ISSUER } from './estimates.js?v=20261022w';
+import { itemAmt, getLinkPjt } from './projects.js?v=20261023a';
+import { setProgressOverrides, getProgProfile, isTrackable, zoneGuess, calcProgressRow, toggleProgressEst, setProgressZone, toggleProgressDeposit, setProgressBill, applyProgress, progressLine, accumulateDays } from './progress.js?v=20261023a';
+import { num, blankItem, itemSetQty, itemSetPrice, itemSetAmount, partySnap, suppliers, clients, DEFAULT_ISSUER } from './estimates.js?v=20261023a';
 export { num, blankItem, itemSetQty, itemSetPrice, itemSetAmount, suppliers, clients, setProgressOverrides, getProgProfile, isTrackable, zoneGuess, calcProgressRow, toggleProgressEst, setProgressZone, toggleProgressDeposit, setProgressBill, applyProgress };
 export const SUPPORTED = { invoice: ['progress', 'manual', 'qty'], payment: ['manday', 'manual', 'qty'] };   // 새 화면에서 계산하는 방식
 export const METHOD_OPTIONS = { invoice: [['progress', '공정 연동 (반입·설치 자동)'], ['qty', '수량 정산 (견적 품목별)'], ['manual', '직접 입력']], payment: [['manday', '공수 연동'], ['qty', '수량 정산 (견적 품목별)'], ['manual', '직접 입력']] };
@@ -66,6 +66,27 @@ export function progressZonesOf(d, e, projects) {
   const list = Array.isArray(projects) ? projects : [];
   const own = e && typeof e.pjtId === 'string' && e.pjtId ? list.find((p) => p && p.id === e.pjtId) : null;
   return (own ? getProgProfile(own) : progressProfile(d || {}, list)).zones;
+}
+/* 공정 불러오기는 견적의 프로젝트마다 그 프로젝트의 공정 체크(pjt_registry/<연동 PJT>/progress_days)를 읽고 그 프로젝트의 섹터 구조·설치 판정 기준으로 계산한다(대기열 1-2-10, 대표님 2026-10-22 "정산 항목에서 프로젝트를 선택하면 항목별로 그 프로젝트에 맞게").
+ * 지금까지는 정산서의 대표 프로젝트 한 개의 체크·섹터·설치 공정 열로 모든 견적에 적용해 서로 다른 프로젝트의 견적은 반입·설치가 0 으로 나와 청구되지 않았다(돈 오류).
+ * progressLinkIds: 서버에서 읽어야 할 연동 PJT id — 선택 순서대로 중복 없이, 연동 없음(none)·비어 있는 값은 제외. 견적의 프로젝트를 못 찾거나 견적에 프로젝트가 없으면 대표 프로젝트의 연동(옛 동작). */
+const progressOwn = (d, e, list) => (e && typeof e.pjtId === 'string' && e.pjtId ? list.find((p) => p && p.id === e.pjtId) : null) || list.find((p) => p && p.id === (d && d.pjtId)) || null;
+export function progressLinkIds(d, estimates, projects) {
+  const list = Array.isArray(projects) ? projects : []; const out = [];
+  (Array.isArray(estimates) ? estimates : []).forEach((e) => { if (!e) return; const p = progressOwn(d, e, list); const id = p ? getLinkPjt(p) : ''; if (typeof id === 'string' && id && id !== 'none' && id !== 'auto' && !out.includes(id)) out.push(id); });
+  return out;
+}
+/* 선택한 견적마다 자기 프로젝트의 프로파일(섹터·설치 공정 열)과 연동 PJT 의 공정 체크(docsByLink[연동 id])로 반입·설치 수와 장비 번호를 정한다. 직접 고친 청구액은 초기화(옛 동작).
+ * 연동 문서를 못 읽었거나(맵에 없음) 연동이 없으면 그 견적만 0 이고 다른 견적은 영향이 없다. 프로젝트가 하나뿐이면 옛 방식(대표 프로젝트로 일괄)과 결과가 같다. */
+export function applyProgressByProject(d, estimates, projects, docsByLink, endKey) {
+  const list = Array.isArray(projects) ? projects : []; const ests = Array.isArray(estimates) ? estimates : []; const by = docsByLink && typeof docsByLink === 'object' ? docsByLink : {};
+  (d.estIds || []).forEach((id) => {
+    const e = ests.find((x) => x && x.id === id); const own = progressOwn(d, e, list); const prof = getProgProfile(own); const link = own ? getLinkPjt(own) : '';
+    const docs = typeof link === 'string' && Array.isArray(by[link]) ? by[link] : [];
+    const zid = (d.estZone || {})[id]; const cum = accumulateDays(docs, zid ? [zid] : [], endKey);
+    const one = { estIds: [id], estZone: d.estZone, prog: d.prog, eqs: d.eqs, billOverride: d.billOverride };
+    applyProgress(one, cum, prof);
+  });
 }
 /** 견적 선택/해제. 반환: 오류 문구 또는 ''. 청구서는 수신자와 다른 거래처의 견적을 고를 수 없고(오류 문구, 아무것도 바꾸지 않음), 수신자가 비어 있으면 첫 견적의 거래처가 수신자가 된다 */
 /* 수량 정산에서는 프로젝트를 견적이 정한다(대기열 1-2-10, 대표님 2026-10-22 "상단 프로젝트 삭제"): 선택한 견적의 프로젝트가 선택 순서대로 pjtIds 가 되고 대표 프로젝트(pjtId)는 그 첫째.
