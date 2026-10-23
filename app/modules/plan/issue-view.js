@@ -1,8 +1,8 @@
-import { esc } from '../../core/ui.js?v=20261022v';
-import { won, card, chip, fld, selectHtml } from './ui.js?v=20261022v';
-import { METHOD_OPTIONS, isSupported, suppliers, clients, pickableEstimates, manualPjtPlan, qtyRow, issueTotals, progressExcluded, needsProject, progressProfile, calcProgressRow, mandaySource, mdSingle, mdBaseRate, mdForPjt, rateForPjt, mandaySummary, priorManday, TEAM_RATE } from './issue.js?v=20261022v';
-import { estSupply, itemAmt } from './projects.js?v=20261022v';
-import { compactRanges } from './progress.js?v=20261022v';
+import { esc } from '../../core/ui.js?v=20261022w';
+import { won, card, chip, fld, selectHtml } from './ui.js?v=20261022w';
+import { METHOD_OPTIONS, isSupported, suppliers, clients, pickableEstimates, manualPjtPlan, qtyRow, issueTotals, progressExcluded, needsProject, progressProfile, progressZonesOf, calcProgressRow, mandaySource, mdSingle, mdBaseRate, mdForPjt, rateForPjt, mandaySummary, priorManday, TEAM_RATE } from './issue.js?v=20261022w';
+import { estSupply, itemAmt } from './projects.js?v=20261022w';
+import { compactRanges } from './progress.js?v=20261022w';
 const money = (n) => Number(Math.round(n) || 0).toLocaleString('ko-KR');
 const companyOpts = (list, first) => [['', first]].concat(list.map((c) => [c.id, c.company + (c.ceo ? ' (' + c.ceo + ')' : '')]));
 const contactSel = (key, companyId, val, companies) => { if (!companyId) return ''; const c = companies.find((x) => x.id === companyId); const cts = (c && c.contacts) || []; return fld('담당자', selectHtml('data-is-f="' + key + '"', val, [['', cts.length ? '— 담당자 선택 (선택사항) —' : '— 담당자 없음 (거래처에서 추가 가능) —']].concat(cts.map((t) => [t.name, t.name + (t.tel ? ' · ' + t.tel : '') + (t.email ? ' · ' + t.email : '')])), cts.length ? '' : 'disabled')); };
@@ -15,8 +15,8 @@ export function qtyBlocksHtml(st) {
 }
 /** 공정 연동: 견적마다 섹터·반입/설치 진척·보증금·자동계산·이번 청구액 */
 export function progressBlocksHtml(st) {
-  const d = st.draft; const zones = progressProfile(d, st.projects).zones;
-  return d.estIds.map((id) => { const e = st.estimates.find((x) => x.id === id); if (!e) return ''; const r = calcProgressRow(d, e, zones, st.settlements); const eqd = d.eqs[id] || { banipEqs: [], installEqs: [] };
+  const d = st.draft;
+  return d.estIds.map((id) => { const e = st.estimates.find((x) => x.id === id); if (!e) return ''; const zones = progressZonesOf(d, e, st.projects); const r = calcProgressRow(d, e, zones, st.settlements); const eqd = d.eqs[id] || { banipEqs: [], installEqs: [] };
     return '<div class="jh-plan__party"><div class="jh-plan__bar"><strong>' + esc((e.title || '').slice(0, 22)) + '</strong>' + selectHtml('data-is-zone="' + esc(id) + '"', d.estZone[id], zones.map((z) => [z.id, z.name + ' (' + z.total + ')'])) + '</div>'
       + '<div class="jh-field__hint">반입 <strong>' + r.banip + '/' + r.qty + '</strong> ' + esc(compactRanges(eqd.banipEqs)) + '<br>설치 <strong>' + r.install + '/' + r.qty + '</strong> ' + esc(compactRanges(eqd.installEqs)) + '</div>'
       + '<div class="jh-plan__bar"><label class="jh-plan__check"><input type="checkbox" data-is-dep="' + esc(id) + '"' + (d.deposit[id] ? ' checked' : '') + '> <span>보증금 10%</span></label><span class="jh-field__hint">자동계산 ' + won(r.cum) + ' − 기청구 ' + won(r.prior) + ' =</span><span class="jh-plan__line"><span class="jh-field__hint">이번청구</span><input class="jh-input jh-plan__num jh-plan__supply" inputmode="numeric" data-is-bill="' + esc(id) + '" value="' + money(r.thisBill) + '"></span></div></div>'; }).join('');

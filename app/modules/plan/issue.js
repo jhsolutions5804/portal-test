@@ -1,9 +1,9 @@
 /* 영업기획 정산서 발행 — 순수 규칙(화면·네트워크 없이 시험 가능). 구포털 기획(gihoek)의 발행 계산을 그대로 옮겼다.
  * 방식: 직접 입력(manual), 수량 정산(qty), 공수 연동(manday, 지급예정서), 공정 연동(progress, 청구서) — 구포털의 정산서 발행 4방식을 모두 옮겼다.
  * 번호: yymm + 세 자리, 청구서·지급예정서 따로 센다(구포털은 "개수 + 1" 이라 삭제 뒤 같은 번호가 다시 나올 수 있어 "가장 큰 번호 + 1" 로 한다 — 빈 번호가 없으면 결과는 같다). */
-import { itemAmt, getLinkPjt } from './projects.js?v=20261022v';
-import { setProgressOverrides, getProgProfile, isTrackable, zoneGuess, calcProgressRow, toggleProgressEst, setProgressZone, toggleProgressDeposit, setProgressBill, applyProgress, progressLine } from './progress.js?v=20261022v';
-import { num, blankItem, itemSetQty, itemSetPrice, itemSetAmount, partySnap, suppliers, clients, DEFAULT_ISSUER } from './estimates.js?v=20261022v';
+import { itemAmt, getLinkPjt } from './projects.js?v=20261022w';
+import { setProgressOverrides, getProgProfile, isTrackable, zoneGuess, calcProgressRow, toggleProgressEst, setProgressZone, toggleProgressDeposit, setProgressBill, applyProgress, progressLine } from './progress.js?v=20261022w';
+import { num, blankItem, itemSetQty, itemSetPrice, itemSetAmount, partySnap, suppliers, clients, DEFAULT_ISSUER } from './estimates.js?v=20261022w';
 export { num, blankItem, itemSetQty, itemSetPrice, itemSetAmount, suppliers, clients, setProgressOverrides, getProgProfile, isTrackable, zoneGuess, calcProgressRow, toggleProgressEst, setProgressZone, toggleProgressDeposit, setProgressBill, applyProgress };
 export const SUPPORTED = { invoice: ['progress', 'manual', 'qty'], payment: ['manday', 'manual', 'qty'] };   // 새 화면에서 계산하는 방식
 export const METHOD_OPTIONS = { invoice: [['progress', '공정 연동 (반입·설치 자동)'], ['qty', '수량 정산 (견적 품목별)'], ['manual', '직접 입력']], payment: [['manday', '공수 연동'], ['qty', '수량 정산 (견적 품목별)'], ['manual', '직접 입력']] };
@@ -59,6 +59,14 @@ export function pickableEstimates(d, estimates, projects) {
 export const progressExcluded = (d, projects) => (d.pjtIds || [d.pjtId]).filter((pid) => !isTrackable((projects || []).find((p) => p.id === pid))).map((pid) => { const p = (projects || []).find((x) => x.id === pid); return p ? p.code : pid; });
 /** 공정 연동의 섹터 목록: 대표(첫) 프로젝트의 공정 프로파일(구포털 getProgProfile) */
 export const progressProfile = (d, projects) => getProgProfile((projects || []).find((p) => p.id === d.pjtId));
+/* 공정 연동의 섹터 목록은 견적의 프로젝트 구조에서 읽는다(대기열 1-2-10, 대표님 2026-10-22 "정산 항목에서 프로젝트를 선택하면 항목별로 그 프로젝트에 맞게").
+ * 지금까지는 정산서의 대표 프로젝트(pjtId) 한 개의 섹터로 모든 견적을 계산해, 서로 다른 프로젝트의 견적을 함께 담으면 다른 프로젝트 견적의 섹터를 못 찾아 진행률이 틀렸다(청구 금액이 덜 나가는 돈 오류).
+ * 견적의 프로젝트를 목록에서 못 찾거나 견적에 프로젝트가 없으면 대표 프로젝트의 섹터(옛 동작)로 대신한다. */
+export function progressZonesOf(d, e, projects) {
+  const list = Array.isArray(projects) ? projects : [];
+  const own = e && typeof e.pjtId === 'string' && e.pjtId ? list.find((p) => p && p.id === e.pjtId) : null;
+  return (own ? getProgProfile(own) : progressProfile(d || {}, list)).zones;
+}
 /** 견적 선택/해제. 반환: 오류 문구 또는 ''. 청구서는 수신자와 다른 거래처의 견적을 고를 수 없고(오류 문구, 아무것도 바꾸지 않음), 수신자가 비어 있으면 첫 견적의 거래처가 수신자가 된다 */
 /* 수량 정산에서는 프로젝트를 견적이 정한다(대기열 1-2-10, 대표님 2026-10-22 "상단 프로젝트 삭제"): 선택한 견적의 프로젝트가 선택 순서대로 pjtIds 가 되고 대표 프로젝트(pjtId)는 그 첫째.
  * 프로젝트 없는 견적은 프로젝트를 만들지 않는다. 다른 방식(직접 입력·공정·공수)과 견적 목록을 안 넘기는 옛 호출은 건드리지 않는다. */
@@ -73,7 +81,7 @@ export function toggleEst(d, id, projects, estimates) {
     if (d.recipientId && estClient(e) !== d.recipientId) return '이 견적은 수신자와 다른 거래처의 것입니다. 정산서 하나에는 거래처 하나만 담을 수 있어요(견적 거래처로 정산서를 따로 만들어 주세요).';
     if (!d.recipientId) { d.recipientId = estClient(e); d.recipientContact = ''; }
   }
-  if (d.method === 'progress') { const prof = progressProfile(d, projects); toggleProgressEst(d, id, zoneGuess(e && e.title, prof.zones), prof.zones); return ''; }
+  if (d.method === 'progress') { const zs = progressZonesOf(d, e, projects); toggleProgressEst(d, id, zoneGuess(e && e.title, zs), zs); return ''; }
   const i = d.estIds.indexOf(id); if (i < 0) { d.estIds.push(id); d.qtyInput[id] = d.qtyInput[id] || {}; d.qtyAmt[id] = d.qtyAmt[id] || {}; } else d.estIds.splice(i, 1); syncQtyPjts(d, estimates); return '';
 }
 /** 수신자(거래처) 바꾸기. 청구서는 이미 고른 견적 중 다른 거래처의 것을 자동 해제하고 해제된 견적 id 목록을 돌려준다(화면이 알린다). 수신자를 비우면 해제 없음 */
@@ -131,7 +139,7 @@ export function autoSupply(d, estimates, projects, settlements) {
   if (d.method === 'manual') return d.manualItems.reduce((s, it) => s + itemAmt(it), 0);
   if (d.method === 'qty') return d.estIds.reduce((s, id) => { const e = (estimates || []).find((x) => x.id === id); if (!e) return s; return s + (e.items || []).reduce((a, it, idx) => a + qtyAmount(d, id, idx, it), 0); }, 0);
   if (d.method === 'manday') return mandaySummary(d).amount;
-  if (d.method === 'progress') { const zones = progressProfile(d, projects).zones; return d.estIds.reduce((s, id) => { const e = (estimates || []).find((x) => x.id === id); return e ? s + calcProgressRow(d, e, zones, settlements).thisBill : s; }, 0); }
+  if (d.method === 'progress') { return d.estIds.reduce((s, id) => { const e = (estimates || []).find((x) => x.id === id); return e ? s + calcProgressRow(d, e, progressZonesOf(d, e, projects), settlements).thisBill : s; }, 0); }
   return 0;
 }
 export const effSupply = (d, estimates, projects, settlements) => (d.supplyOverride != null ? d.supplyOverride : autoSupply(d, estimates, projects, settlements));
@@ -165,7 +173,7 @@ export function manualPjtPlan(d, projects) {
 export function issueLines(d, estimates, projects, settlements) {
   if (d.method === 'manual') return d.manualItems.filter((i) => (i.name || '').trim()).map((i) => ({ name: i.name.trim(), spec: i.spec || '', qty: i.qty || 0, price: i.price || 0, amount: Math.round(itemAmt(i)), pjtId: typeof i.pjtId === 'string' ? i.pjtId : '' }));
   if (d.method === 'qty') { const lines = []; d.estIds.forEach((id) => { const e = (estimates || []).find((x) => x.id === id); if (!e) return; (e.items || []).forEach((it, idx) => { const q = qtyValue(d, id, idx); const amt = qtyAmount(d, id, idx, it); if (q > 0 || amt > 0) lines.push({ name: it.name, spec: (it.spec || '') + ' · 수량 ' + q, qty: q, price: it.price || 0, amount: amt }); }); }); return lines; }
-  if (d.method === 'progress') { const zones = progressProfile(d, projects).zones; return d.estIds.map((id) => (estimates || []).find((x) => x.id === id)).filter(Boolean).map((e) => progressLine(d, e, zones, settlements)); }
+  if (d.method === 'progress') { return d.estIds.map((id) => (estimates || []).find((x) => x.id === id)).filter(Boolean).map((e) => progressLine(d, e, progressZonesOf(d, e, projects), settlements)); }
   if (d.method === 'manday') {
     const ids = d.pjtIds && d.pjtIds.length ? d.pjtIds : [d.pjtId];
     if (ids.length > 1) return ids.map((pid) => { const p = (projects || []).find((x) => x.id === pid); const md = mdForPjt(d, pid), r = rateForPjt(d, pid); return { name: d.baseMonth + ' 기술인력 투입 (' + (p ? p.code : pid) + ')', spec: '공수 ' + md + ' × ' + Math.round(r).toLocaleString('ko-KR') + '원', qty: md, price: r, amount: Math.round(md * r) }; });
@@ -193,7 +201,7 @@ export function buildSettlement(d, o) {
   if (d.method === 'manday' && d.mandayMonth && d.mandayMonth !== d.baseMonth) warnings.push('불러온 공수의 기준월(' + d.mandayMonth + ')과 정산서 기준월(' + d.baseMonth + ')이 다릅니다. 그래도 발행할까요?');
   const no = nextSettleNo(x.settlements, d.docType, d.issueDate); const comp = (id) => (x.companies || []).find((c) => c.id === id) || null;
   const perEst = {}, perItem = {};
-  if (d.method === 'progress') { const zones = progressProfile(d, x.projects).zones; d.estIds.forEach((eid) => { const e = estimates.find((y) => y.id === eid); if (e) perEst[eid] = calcProgressRow(d, e, zones, x.settlements).thisBill; }); }
+  if (d.method === 'progress') { d.estIds.forEach((eid) => { const e = estimates.find((y) => y.id === eid); if (e) perEst[eid] = calcProgressRow(d, e, progressZonesOf(d, e, x.projects), x.settlements).thisBill; }); }
   if (d.method === 'qty') d.estIds.forEach((eid) => { const e = estimates.find((y) => y.id === eid); if (!e) return; perItem[eid] = {}; let es = 0; (e.items || []).forEach((it, idx) => { const q = qtyValue(d, eid, idx), amt = qtyAmount(d, eid, idx, it); if (q > 0 || amt > 0) { perItem[eid][idx] = { qty: q, amount: amt }; es += amt; } }); perEst[eid] = es; });
   const perPjtAmount = {}; let mandayUsed = 0;
   if (d.method === 'manday') mandayUsed = pjtIds.length > 1 ? pjtIds.reduce((s, pid) => s + mdForPjt(d, pid), 0) : mdSingle(d);
