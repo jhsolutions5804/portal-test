@@ -85,4 +85,14 @@ ok(VW.payslipCalcOf(mkSt({ taxRate: 80 })).incomeTax === 59480 && VW.payslipCalc
 ok(VW.payslipCalcOf(mkSt({ taxFamily: '4', taxChildren: '0', taxRate: '100' })).incomeTax === 26690, '명부 값이 글자("4")로 저장돼 있어도 숫자로 읽는다');
 ok(VW.payslipCalcOf(mkSt({ taxFamily: 99, taxChildren: 50, taxRate: 7 })).incomeTax >= 0, '이상한 값(가족 99·자녀 50·비율 7)도 던지지 않고 0 이상');
 
+// ── 급여 작성 화면 공제 카드의 "소득세 계산에 쓴 값" 안내 — 명부에 공제대상 가족 수가 없으면 경고가 눈에 보인다(조용히 가족 1명으로 계산되는 사고 방지)
+const mkSt2 = (w) => ({ pView: 'write', pWorkers: [Object.assign({ id: 'w1', name: '시험' }, w)], pWid: 'w1', pW: Object.assign({ id: 'w1', name: '시험' }, w), pAnnual: { hourly: 0, wageType: 'noncomprehensive', fixedOT: 0, fixedNight: 0 }, pMonth: '2026-10', pAtt: { attHours: 0, leaveHours: 0, nightHours: 0, attDates: new Set(), leaveDocs: [], holidayRecords: [], businessTrips: [] }, pHol: new Set(), pIn: { bonus: 3000000, specialBonus: 0, extraPay: 0, techAllowance: 0, dormitory: 0 }, pTravel: [], pTravelTotal: 0, pO: {}, pPerCert: 50000, pBank: '', pPayDate: '2026-11-30' });
+const hint = (html) => { const m = html.match(/<div class="jh-field__hint" data-tax-basis([^>]*)>([^<]*)<\/div>/); return m ? { attrs: m[1], text: m[2] } : null; };
+{ const h4 = hint(VW.payslipHtml2(mkSt2({ taxFamily: 4, taxChildren: 2, taxRate: 80 }))), h0 = hint(VW.payslipHtml2(mkSt2({})));
+  ok(h4 && h4.text === '소득세(간이세액표) 계산에 쓴 값: 공제대상 가족 4명(그중 8~20세 자녀 2명) · 원천징수 80%' && !/data-warn/.test(h4.attrs), '★ 급여 작성 화면 공제 카드에 소득세 계산에 쓴 값이 보인다(가족 4명·자녀 2명·80%) — 경고 표시 없음');
+  ok(h0 && /^⚠️ /.test(h0.text) && /가족 1명으로 계산했습니다/.test(h0.text) && /data-warn/.test(h0.attrs) && /color:var\(--c-danger\)/.test(h0.attrs), '★ 명부에 공제대상 가족 수가 없으면 경고(⚠️·빨간 굵은 글씨)가 보이고 1명으로 계산했다고 알린다'); }
+ok(!/<script|onerror|javascript:|<img/i.test(VW.payslipHtml2(mkSt2({ taxFamily: '<img src=x onerror=alert(1)>' }))) && /가족 1명으로 계산했습니다/.test(hint(VW.payslipHtml2(mkSt2({ taxFamily: '<img src=x onerror=alert(1)>' }))).text), '명부 값에 HTML 이 들어 있어도(올바르지 않은 값 → 가족 1명 경고) 그 글자는 화면에 나오지 않는다 — 안내 문구에는 고정 문구와 정규화한 숫자만 들어가 사용자 입력이 섞이지 않는다');
+ok(hint(VW.payslipHtml2(mkSt2({ taxFamily: 1 }))).text === '소득세(간이세액표) 계산에 쓴 값: 공제대상 가족 1명(본인) · 원천징수 100%' && !/data-warn/.test(hint(VW.payslipHtml2(mkSt2({ taxFamily: 1 }))).attrs), '본인만(가족 1명)을 입력했으면 경고가 아니다');
+ok((VW.payslipHtml2(mkSt2({ taxFamily: 4 })).match(/data-tax-basis/g) || []).length === 1, '안내는 공제 카드에 한 번만');
+
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

@@ -1,7 +1,7 @@
 /* 인사 — 근로자 명부(새 화면). 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 데이터: workers/{id}(일반 정보) + worker_private/{id}(주민번호·계좌·주소·서명, 읽을 때 합쳐 쓰고 저장할 때 다시 가른다)
  *         labor_contracts/{id}/contracts · annual_contracts/{id}/contracts(endDate), workers/{id}/history(직급·부서 변경 이력) */
-import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261023d';
+import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261023e';
 export const WP_FIELDS = ['bankAccount', 'address', 'signData', 'taxFamily', 'taxChildren', 'taxRate'];   // worker_private 에 따로 두는 필드 — 주민번호(jumin)는 더 이상 여기 두지 않는다(테섭 2026-10-08): 서버 함수(identityAct)가 암호문으로 보관하고 마스킹 값(juminMasked)만 worker_private 에 남는다
 export const WP_NEVER_WRITE = ['jumin', 'juminMasked', 'juminUpdatedAt', 'birth6'];   // 화면에서 합쳐 만든 값·서버 전용 값은 문서에 쓰지 않는다
 /** 보유 자격증 목록(기술수당 1개당): 저장된 배열, 없으면 옛 hasCertification 표시를 한 개로 */
@@ -30,6 +30,14 @@ export function taxInfoFromForm(f) {
 }
 /** 저장된 근로자 문서 → 소득세용 값(없으면 기본 1·0·100) */
 export const taxInfoOf = (w) => { const x = w || {}; const fam = Number(x.taxFamily), kids = Number(x.taxChildren), rate = Number(x.taxRate); return { family: fam >= 1 ? fam : 1, children: kids >= 0 ? kids : 0, rate: TAX_RATES.includes(rate) ? rate : 100 }; };
+/** 급여 작성 화면의 "소득세에 쓴 값" 안내 — 명부(worker_private)에 공제대상 가족 수가 없거나 올바르지 않으면 조용히 1명으로 계산하지 않고 경고한다(대기열 1-3 간이세액표). 가족 수만 입력 여부의 기준이다(자녀 0명·비율 100% 는 정상 기본값). 반환: { text, warn } */
+export const taxBasisNote = (w) => {
+  const x = w || {}; const fam = Number(x.taxFamily); const entered = x.taxFamily !== '' && x.taxFamily != null && Number.isInteger(fam) && fam >= 1 && fam <= 15;
+  const t = taxInfoOf(x); const rate = '원천징수 ' + t.rate + '%';
+  if (!entered) return { text: '공제대상 가족 수가 명부에 없어(또는 올바르지 않아) 가족 1명으로 계산했습니다 · ' + rate + ' — 직원 정보(명부)에서 입력하세요', warn: true };
+  const kids = t.children > 0 ? '(그중 8~20세 자녀 ' + t.children + '명)' : ''; const me = t.family === 1 ? '(본인)' : '';
+  return { text: '공제대상 가족 ' + t.family + '명' + me + kids + ' · ' + rate, warn: false };
+};
 
 /** 호봉: 저장된 기준(step·stepYear)이 있으면 그 해부터 매년 +1, 없으면 입사일로 추정 — 입사한 해는 1호봉, 다음 해부터 1~3분기 입사 2호봉·4분기 입사 1호봉으로 시작해 매년 1/1 +1 (구포털 hr 2.24.2 규칙 그대로) */
 export function stepSeed(hireDate) { if (!isDate(hireDate)) return null; const y = Number(hireDate.slice(0, 4)); const q = Math.ceil(Number(hireDate.slice(5, 7)) / 3); return { baseYear: y + 1, baseStep: q === 4 ? 1 : 2 }; }
