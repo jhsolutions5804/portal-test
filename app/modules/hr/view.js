@@ -1,22 +1,22 @@
-import { esc } from '../../core/ui.js?v=20261023c';
-import { rtWon, retireRecordsSorted } from './retire.js?v=20261023c';
-import { otSummary, otPerson, otAmount } from './overtime.js?v=20261023c';
-import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261023c';
-import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261023c';
-import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261023c';
-import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261023c';
-import { sendLogText } from './sign.js?v=20261023c';
-import { maskedView } from './identity.js?v=20261023c';
-import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261023c';
-import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261023c';
-import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261023c';
-import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261023c';
-import { _hzDot } from './leave-promo-docs.js?v=20261023c';
-import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261023c';
-import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261023c';
-import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261023c';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261023c';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix } from './logic.js?v=20261023c';
+import { esc } from '../../core/ui.js?v=20261023d';
+import { rtWon, retireRecordsSorted } from './retire.js?v=20261023d';
+import { otSummary, otPerson, otAmount } from './overtime.js?v=20261023d';
+import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261023d';
+import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261023d';
+import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261023d';
+import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261023d';
+import { sendLogText } from './sign.js?v=20261023d';
+import { maskedView } from './identity.js?v=20261023d';
+import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261023d';
+import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261023d';
+import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261023d';
+import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261023d';
+import { _hzDot } from './leave-promo-docs.js?v=20261023d';
+import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261023d';
+import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261023d';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261023d';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261023d';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix, taxInfoOf } from './logic.js?v=20261023d';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -447,7 +447,7 @@ export function attendEditHtml(st, w) {
 const pw = (n) => Number(n || 0).toLocaleString('ko-KR');
 export function payslipCalcOf(st) {
   const a = st.pAnnual; const w = st.pW;
-  return payslipCalc({ hourly: a ? a.hourly : 0, hasContract: !!a, wageType: a ? a.wageType : '', fixedOT: a ? a.fixedOT : 0, fixedNight: a ? a.fixedNight : 0, month: st.pMonth, attHours: st.pAtt.attHours, leaveHours: st.pAtt.leaveHours, nightHours: st.pAtt.nightHours, attDates: st.pAtt.attDates, leaveDocs: st.pAtt.leaveDocs, workerName: w ? w.name : '', holidayRecords: st.pAtt.holidayRecords, holidaySet: st.pHol, bonus: st.pIn.bonus, specialBonus: st.pIn.specialBonus, extraPay: st.pIn.extraPay, techAllowance: st.pIn.techAllowance, travelAllowance: st.pTravelTotal, dormitory: st.pIn.dormitory, o: st.pO });
+  return payslipCalc({ hourly: a ? a.hourly : 0, hasContract: !!a, wageType: a ? a.wageType : '', fixedOT: a ? a.fixedOT : 0, fixedNight: a ? a.fixedNight : 0, month: st.pMonth, attHours: st.pAtt.attHours, leaveHours: st.pAtt.leaveHours, nightHours: st.pAtt.nightHours, attDates: st.pAtt.attDates, leaveDocs: st.pAtt.leaveDocs, workerName: w ? w.name : '', holidayRecords: st.pAtt.holidayRecords, holidaySet: st.pHol, bonus: st.pIn.bonus, specialBonus: st.pIn.specialBonus, extraPay: st.pIn.extraPay, techAllowance: st.pIn.techAllowance, travelAllowance: st.pTravelTotal, dormitory: st.pIn.dormitory, taxFamily: taxInfoOf(w).family, taxChildren: taxInfoOf(w).children, taxRate: taxInfoOf(w).rate, o: st.pO });   // 소득세 간이세액표: 공제대상 가족 수·8~20세 자녀 수·원천징수 비율(근로자 명부, worker_private)
 }
 function psTravelHtml(st) {
   const items = st.pTravel; if (!items.length) return '<div class="jh-field__hint">등록된 이동유형이 없습니다. 아래 버튼으로 추가하세요.</div>';

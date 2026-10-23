@@ -3,11 +3,12 @@
  *  · 기본근로수당 금액은 시급×173.8h(연봉계약서 산식), 초과/부족 판정은 그 달 소정근로시간(평일×8h, 공휴일 제외) 대비 실근무+유급휴가
  *  · 충족하면 초과분 × 시급 × 1.5 = 연장근로수당, 못 채우면 부족분 × 시급을 기본근로수당에서 차감
  *  · 야간근로수당 = 22:00~06:00 실근무 × 시급 × 0.5, 주휴수당 = 시급×8×(그 주 소정근로일 개근한 주 수), 휴일근로수당 = 8h 이내 ×1.5 + 초과 ×2.0
- *  · 4대보험: 국민연금 4.5% · 건강보험 3.545% · 장기요양 건강보험료×12.81% · 고용보험 0.9%, 소득세 간이세액 근사 + 지방소득세 10%
+ *  · 4대보험: 국민연금 4.5% · 건강보험 3.545% · 장기요양 건강보험료×12.81% · 고용보험 0.9%, 소득세 간이세액표(공제대상 가족·자녀·원천징수 비율 반영) + 지방소득세 10%(10원 미만 절사)
  *  · 지급계(4대보험 산정 기준) = 급여 + 상여 + 특별성과급 + 특근수당 + 기술수당, 여비교통비는 실비변상이라 제외하고 실수령에만 더한다 */
-import { annualSalary } from './offer.js?v=20261023c';
-import { monthlyStandardHours } from '../../shared/worktime.js?v=20261023c';
-import { computeLeaveHoursForMonth } from '../../shared/leave-hours.js?v=20261023c';
+import { annualSalary } from './offer.js?v=20261023d';
+import { monthlyStandardHours } from '../../shared/worktime.js?v=20261023d';
+import { computeLeaveHoursForMonth } from '../../shared/leave-hours.js?v=20261023d';
+import { lookupIncomeTax, localIncomeTax } from '../../shared/tax-table.js?v=20261023d';
 const pad = (n) => String(n).padStart(2, '0');
 const N = (v) => Number(v || 0) || 0;
 export const PS_DOC_VER = 'v7';   // 급여명세서 양식 v7(2026-10-13~): 4대보험 요율을 급여 월의 법정 요율로 계산·표기(payslip-doc.js). 근로·연봉계약서는 v6 그대로
@@ -25,11 +26,9 @@ export const INSURANCE_RATES = [
 export function insuranceRates(month) { const m = /^\d{4}-\d{2}$/.test(month || '') ? month : '9999-12'; let r = INSURANCE_RATES[0]; INSURANCE_RATES.forEach((x) => { if (x.from <= m) r = x; }); return r; }
 /** 급여 지급일: 기준월의 다음 달 말일 */
 export function psPayDate(month) { if (!/^\d{4}-\d{2}$/.test(month || '')) return ''; const [y, m] = month.split('-').map(Number); const ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1; return ny + '-' + pad(nm) + '-' + pad(new Date(ny, nm, 0).getDate()); }
-/** 근로소득 간이세액표 근사(부양가족 1인) */
-export function calcIncomeTax(taxable) {
-  if (taxable <= 1060000) return 0; if (taxable <= 1500000) return Math.round(taxable * 0.006); if (taxable <= 3000000) return Math.round(taxable * 0.010);
-  if (taxable <= 4500000) return Math.round(taxable * 0.150 - 420000); if (taxable <= 7800000) return Math.round(taxable * 0.240 - 825000); return Math.round(taxable * 0.350 - 1680000);
-}
+/** 근로소득 간이세액표(소득세법 시행령 별표 2, 2026-03-01 지급분부터 시행하는 2026.2.27 개정판) 조회 — 월급여(비과세·학자금 제외) × 공제대상 가족 수 × 8~20세 자녀 수 × 원천징수 비율. 옛 근사식(부양가족 1인 5구간)을 대체한다(대기열 1-3, 2026-10-23).
+ * opts: { family(본인 포함, 기본 1) · children(8~20세 자녀 수, 기본 0) · rate(80|100|120, 기본 100) · payMonth('YYYY-MM' 급여월 — 자녀 공제액의 개정판을 가른다) } — 자세한 규칙은 shared/tax-table.js */
+export function calcIncomeTax(taxable, opts) { return lookupIncomeTax(taxable, opts); }
 /** 기술수당 = 근로자 명부 자격증 개수(빈 항목 제외, 옛 hasCertification 은 1개) × 자격증 1개당 단가 */
 export function techAllowance(worker, perCert) { if (!worker) return 0; const certs = worker.certifications && worker.certifications.length ? worker.certifications.filter((c) => c && String(c).trim()) : (worker.hasCertification ? ['(구버전 등록분)'] : []); return certs.length * (perCert == null ? 50000 : perCert); }
 /** 22:00~익일 06:00 근무시간(h) — 자정을 넘기는 근무와 새벽대 근무(03:00~11:00) 모두 처리 */
@@ -74,8 +73,8 @@ export function payslipCalc(inp) {
   const sal = Object.assign({}, sal0, { basic: pBasic, fixedOt: pOt, fixedNight: pNight, weekly: pWeekly, holidayPay: pHoliday, total: pBasic + pOt + pNight + pWeekly + pHoliday, isComprehensive: comp, attHours, leaveHours, nightHours: nightH, actualHours: actual, standardHours: threshold, otHours, shortHours, shortDeduct, holidayHours: hol.holidayHours, weeklyQualifyingWeeks: wk.qualifyingWeeks, weeklyTotalWeeks: wk.totalWeeks, weeklyEstimated: wk.estimated, weeklyDetails: wk.weekDetails });
   if (sal0.annual !== undefined) sal.annual = sal.total * 12;
   const bonus = N(x.bonus), specialBonus = N(x.specialBonus), extraPay = N(x.extraPay), tech = N(x.techAllowance), travel = N(x.travelAllowance); const totalPay = sal.total + bonus + specialBonus + extraPay + tech;
-  const R = insuranceRates(x.month); const health0 = Math.round(totalPay * R.health); const inTax0 = calcIncomeTax(totalPay);
-  const pension = pick('pension', Math.round(totalPay * R.pension)), health = pick('health', health0), ltcare = pick('ltcare', Math.round(health0 * R.ltcare)), employ = pick('employ', Math.round(totalPay * R.employ)), incomeTax = pick('incomeTax', inTax0), localTax = pick('localTax', Math.round(inTax0 * 0.1));
+  const R = insuranceRates(x.month); const health0 = Math.round(totalPay * R.health); const inTax0 = calcIncomeTax(totalPay, { family: x.taxFamily, children: x.taxChildren, rate: x.taxRate, payMonth: x.month });
+  const pension = pick('pension', Math.round(totalPay * R.pension)), health = pick('health', health0), ltcare = pick('ltcare', Math.round(health0 * R.ltcare)), employ = pick('employ', Math.round(totalPay * R.employ)), incomeTax = pick('incomeTax', inTax0), localTax = pick('localTax', localIncomeTax(inTax0));   // 지방소득세 = 소득세(자동 계산값)의 10%, 10원 미만 절사 — 소득세를 직접 고쳐도 지방소득세는 따라가지 않는다(기존 동작)
   const dormitory = N(x.dormitory); const totalDeduct = pension + health + ltcare + employ + dormitory + incomeTax + localTax;
   return { sal, bonus, specialBonus, extraPay, techAllowance: tech, travelAllowance: travel, totalPay, pension, health, ltcare, employ, dormitory, incomeTax, localTax, totalDeduct, netPay: totalPay - totalDeduct + travel, rates: { pension: R.pension, health: R.health, ltcare: R.ltcare, employ: R.employ } };
 }

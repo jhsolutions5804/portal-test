@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261023c';
-import { won, card, chip, selectHtml, pagerHtml } from './ui.js?v=20261023c';
-import { reconcileSummary, filterRows } from './acct-reconcile.js?v=20261023c';
-import { paginate } from './projects.js?v=20261023c';
+import { esc } from '../../core/ui.js?v=20261023d';
+import { won, card, chip, selectHtml, pagerHtml } from './ui.js?v=20261023d';
+import { reconcileSummary, filterRows } from './acct-reconcile.js?v=20261023d';
+import { paginate } from './projects.js?v=20261023d';
 export const ACCT_PAGE = 20;
 const ST = { matched: ['일치', 'green'], near: ['날짜 어긋남', 'amber'], dup: ['중복 의심', 'amber'], missing: ['없음', 'red'] };
 const cell = (label, v, hint, tone) => '<div class="jh-plan__sumcell"><span class="jh-field__hint">' + esc(label) + '</span><strong' + (tone ? ' data-tone="' + tone + '"' : '') + '>' + v + '</strong>' + (hint ? '<span class="jh-field__hint">' + esc(hint) + '</span>' : '') + '</div>';
