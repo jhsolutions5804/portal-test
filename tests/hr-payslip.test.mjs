@@ -90,7 +90,7 @@ const mkSt2 = (w) => ({ pView: 'write', pWorkers: [Object.assign({ id: 'w1', nam
 const hint = (html) => { const m = html.match(/<div class="jh-field__hint" data-tax-basis([^>]*)>([^<]*)<\/div>/); return m ? { attrs: m[1], text: m[2] } : null; };
 { const h4 = hint(VW.payslipHtml2(mkSt2({ taxFamily: 4, taxChildren: 2, taxRate: 80 }))), h0 = hint(VW.payslipHtml2(mkSt2({})));
   ok(h4 && h4.text === '소득세(간이세액표) 계산에 쓴 값: 공제대상 가족 4명(그중 8~20세 자녀 2명) · 원천징수 80%' && !/data-warn/.test(h4.attrs), '★ 급여 작성 화면 공제 카드에 소득세 계산에 쓴 값이 보인다(가족 4명·자녀 2명·80%) — 경고 표시 없음');
-  ok(h0 && /^⚠️ /.test(h0.text) && /가족 1명으로 계산했습니다/.test(h0.text) && /data-warn/.test(h0.attrs) && /color:var\(--c-danger\)/.test(h0.attrs), '★ 명부에 공제대상 가족 수가 없으면 경고(⚠️·빨간 굵은 글씨)가 보이고 1명으로 계산했다고 알린다'); }
+  ok(h0 && /가족 1명으로 계산했습니다/.test(h0.text) && /data-warn/.test(h0.attrs) && !/⚠️/.test(h0.text) && !/color:|font-weight/.test(h0.attrs), '★ 명부에 공제대상 가족 수가 없으면(전원 비워 둠 — 대표님 2026-10-23 "공제대상 가족 수 비워놔 전부") 가족 1명으로 계산했다는 평범한 안내만 보인다 — 빨간 굵은 글씨·⚠️ 없음(직원 전원에게 매번 경고가 뜨는 소음 방지), 미입력 표시(data-warn)는 남는다'); }
 ok(!/<script|onerror|javascript:|<img/i.test(VW.payslipHtml2(mkSt2({ taxFamily: '<img src=x onerror=alert(1)>' }))) && /가족 1명으로 계산했습니다/.test(hint(VW.payslipHtml2(mkSt2({ taxFamily: '<img src=x onerror=alert(1)>' }))).text), '명부 값에 HTML 이 들어 있어도(올바르지 않은 값 → 가족 1명 경고) 그 글자는 화면에 나오지 않는다 — 안내 문구에는 고정 문구와 정규화한 숫자만 들어가 사용자 입력이 섞이지 않는다');
 ok(hint(VW.payslipHtml2(mkSt2({ taxFamily: 1 }))).text === '소득세(간이세액표) 계산에 쓴 값: 공제대상 가족 1명(본인) · 원천징수 100%' && !/data-warn/.test(hint(VW.payslipHtml2(mkSt2({ taxFamily: 1 }))).attrs), '본인만(가족 1명)을 입력했으면 경고가 아니다');
 ok((VW.payslipHtml2(mkSt2({ taxFamily: 4 })).match(/data-tax-basis/g) || []).length === 1, '안내는 공제 카드에 한 번만');
