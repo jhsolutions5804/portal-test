@@ -5,10 +5,10 @@
  *  · 야간근로수당 = 22:00~06:00 실근무 × 시급 × 0.5, 주휴수당 = 시급×8×(그 주 소정근로일 개근한 주 수), 휴일근로수당 = 8h 이내 ×1.5 + 초과 ×2.0
  *  · 4대보험: 국민연금 4.5% · 건강보험 3.545% · 장기요양 건강보험료×12.81% · 고용보험 0.9%, 소득세 간이세액표(공제대상 가족·자녀·원천징수 비율 반영) + 지방소득세 10%(10원 미만 절사)
  *  · 지급계(4대보험 산정 기준) = 급여 + 상여 + 특별성과급 + 특근수당 + 기술수당, 여비교통비는 실비변상이라 제외하고 실수령에만 더한다 */
-import { annualSalary } from './offer.js?v=20261024j';
-import { monthlyStandardHours } from '../../shared/worktime.js?v=20261024j';
-import { computeLeaveHoursForMonth } from '../../shared/leave-hours.js?v=20261024j';
-import { lookupIncomeTax, localIncomeTax } from '../../shared/tax-table.js?v=20261024j';
+import { annualSalary } from './offer.js?v=20261025a';
+import { monthlyStandardHours } from '../../shared/worktime.js?v=20261025a';
+import { computeLeaveHoursForMonth } from '../../shared/leave-hours.js?v=20261025a';
+import { lookupIncomeTax, localIncomeTax } from '../../shared/tax-table.js?v=20261025a';
 const pad = (n) => String(n).padStart(2, '0');
 const N = (v) => Number(v || 0) || 0;
 export const PS_DOC_VER = 'v7';   // 급여명세서 양식 v7(2026-10-13~): 4대보험 요율을 급여 월의 법정 요율로 계산·표기(payslip-doc.js). 근로·연봉계약서는 v6 그대로
@@ -79,6 +79,6 @@ export function payslipCalc(inp) {
   return { sal, bonus, specialBonus, extraPay, techAllowance: tech, travelAllowance: travel, totalPay, pension, health, ltcare, employ, dormitory, incomeTax, localTax, totalDeduct, netPay: totalPay - totalDeduct + travel, rates: { pension: R.pension, health: R.health, ltcare: R.ltcare, employ: R.employ } };
 }
 /** 저장 문서(payslips/{근로자}/months/{YYYY-MM}) — 구포털과 같은 필드 */
-export function payslipRecord(w, annualData, month, payDate, bankAccount, c, travelItems, now) {
-  const x = w || {}; return Object.assign({ month, payDate, bankAccount: bankAccount || '', name: x.name || '', dept: x.dept || '', rank: x.rank || '', empNo: x.empNo || '', hourly: (annualData && annualData.hourly) || 0, empType: x.empType || 'field' }, c.sal, { bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay, techAllowance: c.techAllowance, travelAllowance: c.travelAllowance, travelItems: travelItems || [], grossPay: c.totalPay, pension: c.pension, health: c.health, ltcare: c.ltcare, employ: c.employ, dormitory: c.dormitory, incomeTax: c.incomeTax, localTax: c.localTax, totalDeduct: c.totalDeduct, netPay: c.netPay, insRates: c.rates || null, savedAt: now || new Date().toISOString(), tplVer: PS_DOC_VER });
+export function payslipRecord(w, annualData, month, payDate, bankAccount, c, travelItems, now, workDays) {
+  const x = w || {}; const wd = workDays === undefined || workDays === null || workDays === '' || !Number.isFinite(Number(workDays)) ? {} : { workDays: Number(workDays) }; return Object.assign({ month, payDate, bankAccount: bankAccount || '', name: x.name || '', dept: x.dept || '', rank: x.rank || '', empNo: x.empNo || '', hourly: (annualData && annualData.hourly) || 0, empType: x.empType || 'field' }, c.sal, { bonus: c.bonus, specialBonus: c.specialBonus, extraPay: c.extraPay, techAllowance: c.techAllowance, travelAllowance: c.travelAllowance, travelItems: travelItems || [], grossPay: c.totalPay, pension: c.pension, health: c.health, ltcare: c.ltcare, employ: c.employ, dormitory: c.dormitory, incomeTax: c.incomeTax, localTax: c.localTax, totalDeduct: c.totalDeduct, netPay: c.netPay, insRates: c.rates || null, savedAt: now || new Date().toISOString(), tplVer: PS_DOC_VER }, wd);
 }
