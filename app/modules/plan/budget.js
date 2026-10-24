@@ -4,8 +4,8 @@
  * 모르는 값은 숫자로 꾸미지 않고 이유 상태를 돌려준다: nobudget(실행예산 없음) · bad(저장된 값이 이상함) · nocost(실적을 모름 — 계획만 보여 준다).
  * 견적에서 가져오기: 프로젝트의 견적 묶음마다 폐기(void)가 아닌 마지막 개정본만 본다. 산식 표가 있고 금액이 견적가와 같은 항목의 소계(투입비)만 자동 합계에 넣고, 네고로 금액만 고친 항목·산식 표가 없는 항목·산식 표가 틀린 항목은 합계에서 빼고 따로 돌려준다(원가를 추측해 채우지 않는다).
  * 이 파일에는 단가·금액 같은 실제 값을 두지 않는다. */
-import { calcSheet, calcIsEmpty } from './estimate-calc.js?v=20261023h';
-import { itemAmt } from './estimates.js?v=20261023h';
+import { calcSheet, calcIsEmpty } from './estimate-calc.js?v=20261024a';
+import { itemAmt } from './estimates.js?v=20261024a';
 /** 비목 — 순서 고정. 예비비만 실적이 없는 칸 */
 export const CATS = Object.freeze([
   Object.freeze({ key: 'sub', label: '외주' }),

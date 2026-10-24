@@ -1,9 +1,9 @@
 /* PJT 전체 홈·종료 PJT 화면(표시만). 규칙은 overview.js, 불러오기·저장·이벤트는 overview-index.js. */
-import { esc } from '../../core/ui.js?v=20261023h';
-import { holidayName } from '../../shared/holidays.js?v=20261023h';
-import { monthGrid, itemsForKey, dowOf } from './schedule.js?v=20261023h';
-import { FIELDS } from './settings.js?v=20261023h';
-import { colorOf, monthLabel, groupByDay, legendOf } from './overview.js?v=20261023h';
+import { esc } from '../../core/ui.js?v=20261024a';
+import { holidayName } from '../../shared/holidays.js?v=20261024a';
+import { monthGrid, itemsForKey, dowOf } from './schedule.js?v=20261024a';
+import { FIELDS } from './settings.js?v=20261024a';
+import { colorOf, monthLabel, groupByDay, legendOf } from './overview.js?v=20261024a';
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const dayHead = (k) => { const [, m, d] = k.split('-').map(Number); return m + '/' + d; };
 const offKind = (k) => (holidayName(k) || dowOf(k) === 0 ? 'red' : dowOf(k) === 6 ? 'sat' : '');
