@@ -1,8 +1,8 @@
 /* 영업기획 월간 보고서 경영 층 화면(대기열 1-2-8, 대표님 2026-10-22 ㅇㅇ) — 순수 HTML(저장·호출 없음). 시험: tests/plan-monthly-mgmt-view.test.mjs · 계산: monthly-mgmt.js · 틀: closing-view.js(같은 CSS 클래스).
  * st = { ym, rows(monthRows), totals(monthTotals), srv: { state: 'loading'|'ok'|'error'|'denied', notes } }. 영업기획 모듈 전체가 관리자 전용이라(manifest perm) 별도 권한 코드는 없다.
  * 원칙: 모르는 값은 숫자로 꾸미지 않고 이유를 보인다(마진율·수율이 null 이면 "—"와 이유). 매출 기준 = 완결 청구(1-2-3-a). 공통비는 반영하지 않는다(프로젝트 화면의 공통비 반영 이익에서 본다). */
-import { esc } from '../../core/ui.js?v=20261024f';
-import { won, card, chip } from './ui.js?v=20261024f';
+import { esc } from '../../core/ui.js?v=20261024g';
+import { won, card, chip } from './ui.js?v=20261024g';
 const isO = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const lb = (t) => ' data-label="' + esc(t) + '"'; // 폰 폭에서 표 행이 카드로 바뀔 때 칸 앞에 붙는 글자(CSS plan.css 의 jh-plan__table--cards) — 반드시 같은 열의 머리글과 같은 글자(시험이 모든 칸을 대조한다)
@@ -42,17 +42,23 @@ function trendCard(s) {
   return card('최근 6개월 추이', '<div class="jh-plan__pad">' + tgl + '<div class="jh-plan__scroll"><table class="jh-plan__table jh-plan__table--cards"><thead>' + head + '</thead><tbody>' + body + foot + '</tbody></table></div><div class="jh-field__hint">그 달 완결 청구 기준, 월별 값은 서버가 준 그 달 값 그대로입니다(누계 차이가 아님). <span class="jh-plan__hover">칸에 마우스를 올리면 "—"의 이유가 보입니다.</span><span class="jh-plan__touch">"—" 칸 아래에 이유가 보입니다.</span></div></div>');
 }
 /* 3단계 원가 달성률 카드(누계, 선택한 달까지) — 목표 원가 = 견적 공급가액 × (1 − 목표 마진율), 달성률 = 실제 원가 ÷ 목표 원가(100% 이하 = 목표 원가 안). 색만으로 알리지 않는다("목표 안"·"초과" 글자). 모르는 값은 "—"와 이유, 서버 원가를 모르는 동안(loading·unavailable)은 ach 에 값이 남아 있어도 표를 그리지 않는다 */
-const achWhy = (a) => (a.status === 'notarget' ? '목표 마진율 미입력' : a.status === 'badtarget' ? '목표 마진율이 100% 이상' : a.status === 'nolink' ? 'PJT 연결 없음' : a.status === 'nocost' ? '원가 확인 못함' : a.over === true ? '목표 원가 초과' : a.over === false ? '목표 안' : '—');
+const achWhy = (a) => (a.status === 'notarget' ? '목표 마진율 미입력' : a.status === 'badtarget' ? '목표 마진율이 100% 이상' : a.status === 'nolink' ? 'PJT 연결 없음' : a.status === 'nocost' ? '원가 확인 못함' : a.basis === 'budget' ? (a.over === true ? '실행예산 초과' : a.usingReserve === true ? '예비비 사용 중' : a.over === false ? '실행예산 안' : '—') : a.over === true ? '목표 원가 초과' : a.over === false ? '목표 안' : '—');
 function achCard(s) {
   const state = ['ok', 'loading', 'unavailable'].indexOf(s.achState) >= 0 ? s.achState : 'loading'; const msg = (t) => '<div class="jh-plan__pad"><div class="jh-field__hint">' + esc(t) + '</div></div>';
   if (state === 'loading') return card('원가 달성률', msg('원가를 불러오는 중입니다…'));
   if (state === 'unavailable') return card('원가 달성률', msg('원가를 확인할 수 없어 달성률을 볼 수 없습니다(지급예정서만으로 계산하면 낮게 나와 목표 안으로 오해하게 됩니다).'));
   const rows = (Array.isArray(s.ach) ? s.ach : []).filter(isO);
   if (!rows.length) return card('원가 달성률', msg('견적이 있는 프로젝트가 없습니다(달성률은 견적 공급가액이 있어야 계산됩니다).'));
+  /* 실행예산 기준 행(대기열 1-3-9 4단계): 기준 칸에 실행예산 rN / 목표 마진율을 구분 표기하고, 비목별 달성률을 프로젝트 이름 아래 작은 글씨로(초과는 글자로도 표시). 깨진 실행예산은 목표 마진율 기준 값으로 보이되 "실행예산 오류"를 붙인다 */
+  const catHint = (a) => { if (a.basis !== 'budget' || !Array.isArray(a.byCat)) return ''; const parts = a.byCat.filter((c) => c.cat !== 'reserve').map((c) => esc(c.label) + ' ' + (fin(c.rate) ? c.rate + '%' : '—') + (c.over === true ? '(초과)' : '')); const res = a.byCat.find((c) => c.cat === 'reserve'); const rs = res && res.plan > 0 ? ' · 예비비 계획 ' + money(res.plan) : ''; const un = a.warnUnassigned ? ' · 비목 미배정 금액 있음(비목별 비교에서 빠집니다)' : ''; return '<div class="jh-field__hint" data-ach-cats>' + parts.join(' · ') + rs + un + '</div>'; };
+  const basisChip = (a) => (a.basis === 'budget' ? chip('실행예산 r' + a.budgetRev, 'blue') : a.budgetBad ? chip('실행예산 오류 — 목표 마진율 기준', 'amber') : chip('목표 마진율', 'gray'));
   const body = rows.map((a) => { const neg = a.over === true; const tone = neg ? ' data-tone="neg"' : ''; const tm = fin(a.target) ? a.target + '%' : (a.status === 'notarget' ? '미입력' : '—');
-    return '<tr><td><a href="#/plan/projects/' + esc(a.id) + '">' + esc((a.code || '-') + (a.name ? ' ' + a.name : '')) + '</a> ' + (a.status === 'nolink' ? chip('PJT 연결 없음', 'amber') : a.status === 'notarget' ? chip('목표 마진율 미입력', 'amber') : '') + '</td><td class="jh-plan__num"' + lb('견적') + '>' + money(a.est) + '</td><td class="jh-plan__num"' + lb('목표 마진율') + '>' + esc(tm) + '</td><td class="jh-plan__num"' + lb('목표 원가') + '>' + money(a.targetCost) + '</td><td class="jh-plan__num"' + lb('실제 원가') + '>' + money(a.cost) + '</td><td class="jh-plan__num"' + lb('달성률') + tone + '>' + pct(a.rate) + '</td><td' + lb('판정') + tone + '>' + esc(achWhy(a)) + '</td></tr>'; }).join('');
-  return card('원가 달성률', '<div class="jh-plan__pad"><div class="jh-plan__scroll"><table class="jh-plan__table jh-plan__table--cards"><thead><tr><th>프로젝트</th><th class="jh-plan__num">견적</th><th class="jh-plan__num">목표 마진율</th><th class="jh-plan__num">목표 원가</th><th class="jh-plan__num">실제 원가</th><th class="jh-plan__num">달성률</th><th>판정</th></tr></thead><tbody>' + body + '</tbody></table></div>'
-    + '<div class="jh-field__hint">목표 원가 = 견적 공급가액 × (1 − 목표 마진율), 실제 원가 = 선택한 달까지의 지급예정서 발행 + 현장경비 + 자체 직접노무비입니다. 달성률 100% 이하가 목표 원가 안입니다. 목표 마진율은 프로젝트 화면에서 입력합니다(비워 두면 달성률을 계산하지 않습니다).</div>'
+    return '<tr><td><a href="#/plan/projects/' + esc(a.id) + '">' + esc((a.code || '-') + (a.name ? ' ' + a.name : '')) + '</a> ' + (a.status === 'nolink' ? chip('PJT 연결 없음', 'amber') : a.status === 'notarget' ? chip('목표 마진율 미입력', 'amber') : '') + ' ' + basisChip(a) + catHint(a) + '</td><td class="jh-plan__num"' + lb('견적') + '>' + money(a.est) + '</td><td class="jh-plan__num"' + lb('목표 마진율') + '>' + esc(tm) + '</td><td class="jh-plan__num"' + lb('목표 원가') + '>' + money(a.targetCost) + '</td><td class="jh-plan__num"' + lb('실제 원가') + '>' + money(a.cost) + '</td><td class="jh-plan__num"' + lb('달성률') + tone + '>' + pct(a.rate) + '</td><td' + lb('판정') + tone + '>' + esc(achWhy(a)) + '</td></tr>'; }).join('');
+  const bn = []; if (s.budgetState === 'error') bn.push('실행예산을 불러오지 못해 모든 프로젝트를 목표 마진율 기준으로만 표시합니다(실행예산이 있어도 반영되지 않았습니다).'); const nbad = Array.isArray(s.budgetBad) ? s.budgetBad.length : 0; if (nbad > 0) bn.push('읽을 수 없는 깨진 실행예산 ' + nbad + '개가 있습니다(해당 프로젝트는 목표 마진율 기준으로 표시합니다).');
+  const bnote = bn.length ? '<div class="jh-alert" data-tone="warn" role="status">' + bn.map(esc).join('<br>') + '</div>' : '';
+  return card('원가 달성률', '<div class="jh-plan__pad">' + bnote + '<div class="jh-plan__scroll"><table class="jh-plan__table jh-plan__table--cards"><thead><tr><th>프로젝트</th><th class="jh-plan__num">견적</th><th class="jh-plan__num">목표 마진율</th><th class="jh-plan__num">목표 원가</th><th class="jh-plan__num">실제 원가</th><th class="jh-plan__num">달성률</th><th>판정</th></tr></thead><tbody>' + body + '</tbody></table></div>'
+    + '<div class="jh-field__hint">프로젝트 이름 옆에 "실행예산 rN"이 붙은 프로젝트는 목표 원가 = 프로젝트 화면에 저장한 실행예산의 총 계획(예비비 포함)입니다. 실제 원가의 세 부분이 곧 비목 실적입니다(외주 = 선택한 달까지 발행한 지급예정서, 자체 노무 = 자체 직접노무비, 현장경비). 판정은 실제 원가가 예비비를 뺀 계획 이하면 "실행예산 안", 예비비까지 쓰면 "예비비 사용 중", 총 계획을 넘으면 "실행예산 초과"입니다. 실행예산이 없는 프로젝트는 지금처럼 목표 마진율 기준입니다. 한계: 서버가 저장하는 저장본(스냅샷)의 달성률은 아직 목표 마진율 기준으로 계산됩니다(서버 업데이트 예정).</div>'
+  + '<div class="jh-field__hint">(목표 마진율 기준) 목표 원가 = 견적 공급가액 × (1 − 목표 마진율), 실제 원가 = 선택한 달까지의 지급예정서 발행 + 현장경비 + 자체 직접노무비입니다. 달성률 100% 이하가 목표 원가 안입니다. 목표 마진율은 프로젝트 화면에서 입력합니다(비워 두면 달성률을 계산하지 않습니다).</div>'
     + '<div class="jh-field__hint">한계: 공정율 대비 달성률은 아직 없습니다(공정율은 PJT 현장 층 데이터) — 달성률만으로는 원가를 많이 쓴 것이 공정이 그만큼 진행돼서인지 초과인지 구분하지 못합니다. 견적 개정이 여럿 유효하면 공급가액이 겹쳐 합쳐질 수 있습니다(기존 마진 화면과 같은 정의).</div></div>');
 }
 /* 4단계 스냅샷 저장 카드 — 서버가 직접 읽어 계산해 저장한다(화면은 월만 보낸다). 기능이 꺼져 있으면(mgmt.enabled 아님) 카드가 없다. 권한 없음이면 저장 버튼을 숨긴다. 목록·저장본은 상태가 ok 가 아니면 값이 남아 있어도 표를 그리지 않는다. 시각은 한국 시간 */

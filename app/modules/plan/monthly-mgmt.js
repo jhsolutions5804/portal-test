@@ -3,9 +3,10 @@
  * 매출 기준 = 완결 청구(1-2-3-a, 대표님 2026-10-21) — shared/pjt-summary.js pjtMargin 과 같은 규칙: 완결이 0 이하이면 발행 청구로 대신 계산하지 않고 null.
  * 원가 = 지급예정서 발행 + 현장경비 + 자체 직접노무비(pjtCost 와 같은 정의 — 노무비는 지급예정서에 이미 들어 있어 따로 또 빼면 이중 차감이라는 말은 외주 노무 이야기이고, 자체 직접노무비는 별도 항목).
  * 서버 응답은 연결된 PJT 등록 id 로 찾는다(영업기획 id 가 아니다 — 대기열 1-2-2-④ 교훈). 응답 검증은 margin-link.js 와 같은 규칙을 그대로 쓴다(두 곳이 어긋나지 않게). 원가를 모르면 마진율·수율을 내지 않는다(모르는 값을 0 으로 꾸미지 않음). */
-import { marginExtra, linkedPjtId } from './margin-link.js?v=20261024f';
-import { pjtSummary, settleBelongsToPjt, settleAmountForPjt } from './projects.js?v=20261024f';
-import { monthOfTs } from './closing.js?v=20261024f';
+import { marginExtra, linkedPjtId } from './margin-link.js?v=20261024g';
+import { budgetCompare, budgetFromDoc } from './budget.js?v=20261024g';
+import { pjtSummary, settleBelongsToPjt, settleAmountForPjt } from './projects.js?v=20261024g';
+import { monthOfTs } from './closing.js?v=20261024g';
 const isO = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const T = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const r1 = (n) => Math.round(n * 10) / 10;
@@ -78,11 +79,25 @@ export function trendMatrix(projects, closingOf, byMonth, months) {
  * 모르는 값은 숫자로 꾸미지 않고 이유 상태를 돌려준다: notarget(목표 마진율 미입력) · noest(견적 없음) · badtarget(목표 마진율 100 이상 — 목표 원가 0 이하) · nolink(연결 없음) · nocost(서버 원가를 모름 — 지급예정서만으로 달성률을 내면 낮게 나와 "목표 안"으로 오해하게 되므로 내지 않는다).
  * 공정율 대비 달성률(달성률 − 공정율)은 공정율이 PJT 현장 층 데이터라 영업기획에는 없어 하지 않는다. 견적의 개정(rev)이 모두 유효 상태면 합이 겹칠 수 있다 — 기존 마진 화면과 같은 정의라 그대로 쓴다. */
 const tmOf = (v) => { if (typeof v !== 'number' && typeof v !== 'string') return null; /* 숫자·글자만 — Number([]) 가 0, Number([12]) 가 12, Number(true) 가 1 로 둔갑하지 않게 */ const t = typeof v === 'string' ? v.trim() : v; if (t === '') return null; const n = Number(t); return Number.isFinite(n) ? n : null; };
-export function achievementRow(p, estimates, settlements, cur, ym) {
+/** 실행예산이 있으면(budget = parseBudgets 가 준 프로젝트별 실행예산) 목표 원가 = 실행예산 총 계획(예비비 포함), 실제 원가의 세 부분이 곧 비목 실적(외주 = 지급예정서 발행 누계 · 자체 노무 = 자체 직접노무비 · 현장경비)이라 비목별 달성률을 같이 낸다(대기열 1-3-9 4단계, 대표님 2026-10-24).
+ * 실행예산이 없거나 비어 있으면(합계 0) 지금처럼 목표 마진율 기준(basis 'margin'), 깨졌으면 budgetBad 를 켜고 목표 마진율 기준으로 돌아간다(깨진 숫자로 계산하지 않는다). 실행예산 기준 행은 견적이 없어도 나온다. */
+export function achievementRow(p, estimates, settlements, cur, ym, budget) {
   const x = isO(p) ? p : {}; const pjt = linkedPjtId(x); const target = tmOf(x.targetMargin);
   const row = { id: typeof x.id === 'string' ? x.id : '', pjt, code: typeof x.code === 'string' ? x.code : '', name: typeof x.name === 'string' ? x.name : '', status: 'ok', est: null, target, targetCost: null, payIssued: null, direct: null, ownLabor: null, cost: null, rate: null, over: null };
+  /* 주의: 실행예산이 없는 행은 예전과 정확히 같은 모양이어야 한다 — 서버가 저장본(스냅샷)을 만들 때 쓰는 계산 사본(portal-functions mgmt-core.js)과 tests/plan-mgmt-core-parity.test.mjs 가 한 글자도 다르지 않게 대조하는 안전망이다. 그래서 basis·budgetRev·plan·byCat·usingReserve·warnUnassigned·budgetBad 는 실행예산 기준 행(또는 깨진 표시)에만 붙인다 */
   const id = row.id; const month = typeof ym === 'string' ? ym.slice(0, 7) : ''; const set = (Array.isArray(settlements) ? settlements : []).filter((s) => { if (!isO(s)) return false; const d = typeof s.issueDate === 'string' && /^\d{4}-\d{2}/.test(s.issueDate) ? s.issueDate.slice(0, 7) : ''; return !d || !month || d <= month; });
   const sm = pjtSummary(id, Array.isArray(estimates) ? estimates.filter(isO) : [], set); row.est = T(sm.est); row.payIssued = T(sm.paid);
+  const probe = isO(budget) ? budgetCompare(budget, { sub: 0, labor: 0, site: 0 }) : null;
+  if (probe && probe.state === 'bad') row.budgetBad = true;
+  if (probe && probe.state === 'ok') {
+    row.basis = 'budget'; row.budgetRev = budget.rev; row.plan = probe.total.plan; row.targetCost = probe.total.plan; row.warnUnassigned = probe.warnUnassigned; row.usingReserve = false; row.byCat = null;
+    if (!pjt) { row.status = 'nolink'; return row; }
+    const e = marginExtra(cur, pjt); if (!e) { row.status = 'nocost'; return row; }
+    row.direct = T(e.direct); row.ownLabor = T(e.ownLabor); row.cost = row.payIssued + row.direct + row.ownLabor;
+    const cmp = budgetCompare(budget, { sub: row.payIssued, labor: row.ownLabor, site: row.direct });
+    row.byCat = cmp.rows; row.rate = cmp.total.rate; row.over = cmp.total.over; row.usingReserve = cmp.total.usingReserve;
+    return row;
+  }
   if (!(row.est > 0)) { row.status = 'noest'; return row; }
   if (target === null) { row.status = 'notarget'; return row; }
   if (target >= 100) { row.status = 'badtarget'; return row; }
@@ -92,9 +107,17 @@ export function achievementRow(p, estimates, settlements, cur, ym) {
   row.direct = T(e.direct); row.ownLabor = T(e.ownLabor); row.cost = row.payIssued + row.direct + row.ownLabor; row.rate = r1(row.cost / row.targetCost * 100); row.over = row.cost > row.targetCost;
   return row;
 }
-/** 견적이 있는 프로젝트만(견적이 없으면 목표 원가를 모르는 "견적 없음" 행으로 목록을 채우지 않는다) */
-export function achievementRows(projects, estimates, settlements, cur, ym) {
-  const list = Array.isArray(projects) ? projects.filter(isO) : []; const out = []; list.forEach((p) => { const r = achievementRow(p, estimates, settlements, cur, ym); if (r.status !== 'noest') out.push(r); }); return out;
+/** 실행예산 문서 목록(화면이 읽은 gihoek_budgets 문서들, 각각 id 포함) → Map(프로젝트 id → 실행예산). 깨진 문서와 문서 번호가 안의 프로젝트 번호와 다른 문서는 쓰지 않고 bad 로 알린다 */
+export function parseBudgets(list) {
+  const map = new Map(), bad = [];
+  (Array.isArray(list) ? list : []).forEach((d) => { if (!isO(d) || typeof d.id !== 'string' || !d.id) return; const r = budgetFromDoc(d); if (r.ok && r.budget.pjtId === d.id) map.set(d.id, r.budget); else bad.push(d.id); });
+  return { map, bad };
+}
+/** 견적이 있거나 실행예산이 있는 프로젝트만(둘 다 없으면 목표 원가를 모르는 행으로 목록을 채우지 않는다). budgets 는 parseBudgets 의 Map(없으면 지금과 같다) */
+export function achievementRows(projects, estimates, settlements, cur, ym, budgets, badIds) {
+  const list = Array.isArray(projects) ? projects.filter(isO) : []; const bm = budgets instanceof Map ? budgets : null; const bad = badIds instanceof Set ? badIds : Array.isArray(badIds) ? new Set(badIds) : null; const out = [];
+  /* badIds = parseBudgets 가 걸러 낸(깨진) 실행예산 문서의 프로젝트 id — 그 프로젝트 행에 budgetBad 를 붙여 "실행예산 오류"가 어느 프로젝트인지 표에서 보이게 한다(표 위의 개수 알림만으로는 어느 프로젝트인지 모른다) */
+  list.forEach((p) => { const r = achievementRow(p, estimates, settlements, cur, ym, bm && typeof p.id === 'string' ? bm.get(p.id) : undefined); if (bad && typeof p.id === 'string' && bad.has(p.id) && r.basis !== 'budget') r.budgetBad = true; if (r.status !== 'noest') out.push(r); }); return out;
 }
 /* ── 누적 마진율 병기(대표님 2026-10-22 "누적 병기") — 실제 테섭에서 월 마진율이 99.7%·100% 와 합계 −193.8% 사이를 오가는 것을 보고 정함: 원가(지급예정서 발행 월)와 매출(완결 월)의 시점이 어긋나면 한 달 값이 널뛰므로
  * "그 달까지 누계" 마진율을 같이 보여 준다. 누계 완결 = 완결(status done) 청구서 중 완결 시각(doneAt, 한국 시간)의 월이 그 달 이하인 것의 프로젝트 몫(월 마감 closingSummary 의 "완결"과 같은 기준)
