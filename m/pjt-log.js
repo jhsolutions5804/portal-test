@@ -2,7 +2,7 @@
  * pjt.html 이 불러 쓰는 별도 파일 — 불러오기·실행이 실패해도 기존 공정·일정·근태 화면은 그대로 동작하도록 pjt.html 쪽에서 감싼다.
  * 규칙(분류·출처·금액 감지·버튼 권한)은 PC 와 같은 공용 파일(app/shared/pjt-log.js)을 쓴다. 읽기·쓰기는 서버 함수 pjtLogAct 만(참여자 판정은 서버).
  * 클릭은 인라인 코드에 문자열을 끼우지 않고 data- 속성 + onclick="lgClick(this)" 한 곳으로 받는다. 화면 조작(오버레이·입력칸)은 ui 어댑터로 분리해 노드에서 시험한다. */
-import { CATEGORIES, INPUT_SOURCES, CATEGORY_ICON, STATUS_LABEL, STATUS_TONE, TITLE_MAX, titleHint, canSubmit, dueText, DUE_TONE, shortDate, actionsFor, friendlyError } from '../app/shared/pjt-log.js?v=20261024e';
+import { CATEGORIES, INPUT_SOURCES, CATEGORY_ICON, STATUS_LABEL, STATUS_TONE, TITLE_MAX, titleHint, canSubmit, dueText, DUE_TONE, shortDate, actionsFor, friendlyError } from '../app/shared/pjt-log.js?v=20261024f';
 
 const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 /** 모바일 사이트 키 → 서버 프로젝트 id (경량 프로젝트 키는 reg_<문서id>, 고정 프로젝트 p4ph2·p4ph4 는 그대로) */

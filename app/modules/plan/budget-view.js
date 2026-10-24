@@ -1,8 +1,8 @@
 /* 실행예산 화면 조각 + 편집 초안(draft) 도우미 — 순수(저장·서버를 모른다). 시험: tests/plan-budget-view.test.mjs · 계산·검증: budget.js · 저장: budget-io.js · 설계: 비공개 저장소 app-docs/execution-budget-design.md (대기열 1-3-9, 3단계).
  * 화면은 프로젝트 상세(projects-view.js)의 "실행예산" 카드 안에 들어간다. 버튼은 data-bd-act, 행 입력칸은 data-bd-k·data-bd-i, 메모는 data-bd-note — 이벤트는 컨트롤러(index.js)가 위임으로 처리한다(인라인 이벤트 없음). 모든 값은 esc 로 이스케이프한다.
  * 초안 도우미는 원본을 바꾸지 않고 새 초안을 돌려준다. 금액은 입력 중이라 글자로 둔다(저장할 때 sanitizeRows 가 검사). */
-import { esc } from '../../core/ui.js?v=20261024e';
-import { CATS, LIMITS, parseAmount, budgetTotals, revisionList, draftRowsFromImport } from './budget.js?v=20261024e';
+import { esc } from '../../core/ui.js?v=20261024f';
+import { CATS, LIMITS, parseAmount, budgetTotals, revisionList, draftRowsFromImport } from './budget.js?v=20261024f';
 const isO = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const won = (n) => (Math.round(Number(n) || 0)).toLocaleString('ko-KR');
 const catLabel = (k) => { const c = CATS.find((x) => x.key === k); return c ? c.label : '미배정'; };
@@ -125,8 +125,8 @@ export function budgetCardHtml(bs, imp) {
   if (bs.state === 'error') return '<div class="jh-plan__pad">' + alertHtml('실행예산을 불러오지 못했습니다: ' + String(bs.error || '')) + '<div class="jh-plan__bar">' + btn('다시 불러오기', 'reload', 'secondary') + '</div></div>';
   if (bs.state === 'denied') return '<div class="jh-plan__pad">' + alertHtml('실행예산은 관리자만 볼 수 있습니다.') + '</div>';
   if (bs.state === 'corrupt') return '<div class="jh-plan__pad">' + alertHtml('저장된 실행예산이 올바르지 않아 열 수 없습니다(그 위에 덮어쓰지 않습니다): ' + String(bs.error || '')) + '<div class="jh-plan__bar">' + btn('다시 불러오기', 'reload', 'secondary') + '</div></div>';
-  const msg = (bs.msg ? '<div class="jh-plan__pad"><div class="jh-field__hint" role="status">' + esc(bs.msg) + '</div></div>' : '') + (bs.err ? '<div class="jh-plan__pad">' + alertHtml(bs.err) + '</div>' : '');
-  const conflict = Number.isInteger(bs.conflictRev) ? '<div class="jh-plan__pad">' + alertHtml('다른 곳에서 먼저 바뀌었습니다(현재 r' + bs.conflictRev + '). 내가 입력한 내용은 그대로 두었습니다. 최신 개정을 확인한 뒤, 내 입력으로 최신 개정을 고치려면 아래 버튼을 눌러 이어서 저장하세요.') + '<div class="jh-plan__bar">' + btn('최신 기준으로 이어서 저장', 'conflict-continue', 'secondary') + '</div></div>' : '';
+  const msg = (bs.msg ? '<div class="jh-plan__pad"><div class="jh-field__hint" role="status">' + esc(bs.msg) + '</div></div>' : '') + (bs.err ? '<div class="jh-plan__pad" data-bd-err>' + alertHtml(bs.err) + '</div>' : '');
+  const conflict = Number.isInteger(bs.conflictRev) ? '<div class="jh-plan__pad" data-bd-conflict>' + alertHtml('다른 곳에서 먼저 바뀌었습니다(현재 r' + bs.conflictRev + '). 내가 입력한 내용은 그대로 두었습니다. 최신 개정을 확인한 뒤, 내 입력으로 최신 개정을 고치려면 아래 버튼을 눌러 이어서 저장하세요.') + '<div class="jh-plan__bar">' + btn('최신 기준으로 이어서 저장', 'conflict-continue', 'secondary') + '</div></div>' : '';
   if (isO(bs.draft)) return msg + conflict + editHtml(bs, imp);
   if (!isO(bs.saved)) return msg + '<div class="jh-plan__pad"><div class="jh-empty">아직 실행예산이 없습니다. 견적에서 가져오거나 직접 작성해 주세요.</div><div class="jh-plan__bar"><span class="jh-plan__line">' + btn('실행예산 작성', 'new', 'secondary') + btn('견적에서 가져와 작성', 'new-import', 'secondary') + '</span></div></div>';
   return msg + readHtml(bs) + (bs.showHistory && Array.isArray(bs.saved.history) && bs.saved.history.length ? historyHtml(bs) : '');

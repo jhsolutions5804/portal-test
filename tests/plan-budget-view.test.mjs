@@ -107,6 +107,8 @@ ok(/불러오는 중/.test(budgetCardHtml(undefined, imp0)) && /불러오는 중
 { const e = '2번 행: <b>금액</b>을 입력해 주세요.'; const d1 = D(budgetCardHtml({ state: 'ready', saved: saved1, err: e }, imp0)); const d2 = D(budgetCardHtml({ state: 'ready', saved: saved1, draft: draftFromBudget(saved1), err: e }, imp0));
   ok([d1, d2].every((d) => d.querySelector('[role=alert]') && d.body.textContent.includes('2번 행: <b>금액</b>을 입력해 주세요.') && !d.querySelector('b')), '★ 저장 실패 오류(err)는 읽기·편집 화면 모두 경고로 보이고 이스케이프된다');
   ok(!D(budgetCardHtml({ state: 'ready', saved: saved1, err: '' }, imp0)).querySelector('[role=alert]'), '오류가 비어 있으면 경고가 없다'); }
+{ const e1 = D(budgetCardHtml({ state: 'ready', saved: saved1, err: '2번 행: 금액을 입력해 주세요.' }, imp0)), e2 = D(budgetCardHtml({ state: 'ready', saved: saved2, draft: draftFromBudget(saved1), conflictRev: 2 }, imp0));
+  ok(e1.querySelector('[data-bd-err] [role=alert]') && !e1.querySelector('[data-bd-conflict]') && e2.querySelector('[data-bd-conflict] [role=alert]') && !e2.querySelector('[data-bd-err]'), '★ 저장 실패 경고는 data-bd-err, 충돌 경고는 data-bd-conflict 로 표시된다(컨트롤러가 화면 가운데로 스크롤하는 대상)'); }
 // 폰 카드 전환: 표가 카드로 바뀔 때 칸 앞에 붙는 data-label 은 같은 열 머리글과 같은 글자여야 한다
 { const pages = [budgetCardHtml({ state: 'ready', saved: saved2, showHistory: true, viewRev: 1 }, imp0), budgetCardHtml({ state: 'ready', saved: saved2, draft: draftFromBudget(saved2), showImport: true }, imp)];
   let tables = 0, bad = [];
