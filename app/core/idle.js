@@ -1,9 +1,9 @@
 /* 자동 로그아웃(1시간 무동작) — 옛 포털에는 있고 새 플랫폼에는 없던 기능(홈 대장 H-05).
  * 옛 포털과 다른 점: ① 옛 모듈 화면(iframe) 안에서 일하는 것도 "활동"으로 센다 ② 1분 전에 알려 주고 "계속 사용"으로 연장할 수 있다
  * ③ 마지막 활동 시각을 이 기기의 localStorage 에 두어 같은 브라우저의 다른 창에서 일하고 있으면 이 창도 유지된다 ④ 시계 기준이라 잠자기·백그라운드 뒤에 돌아와도 즉시 판단한다. */
-import { IS_TEST } from './config.js?v=20261024h';
-import { esc } from './ui.js?v=20261024h';
-import { idleStatus, createIdleWatch, IDLE_LIMIT_MS, IDLE_WARN_MS, durationText } from './idle-logic.js?v=20261024h';
+import { IS_TEST } from './config.js?v=20261024i';
+import { esc } from './ui.js?v=20261024i';
+import { idleStatus, createIdleWatch, IDLE_LIMIT_MS, IDLE_WARN_MS, durationText } from './idle-logic.js?v=20261024i';
 export { idleStatus, createIdleWatch, IDLE_LIMIT_MS, IDLE_WARN_MS, durationText };
 
 const KEY = 'jh_last_active';
@@ -36,6 +36,8 @@ function hideWarn() { if (dlg) { dlg.remove(); dlg = null; } }
 /** 로그인한 동안 시작한다. onExpire = 실제 로그아웃(auth.logout). 반환값 = 중지 함수 */
 export function startIdle({ onExpire }) {
   stopIdle();
+  /* 테섭(주소에 /portal-test/)은 자동 로그아웃을 끈다(대표님 2026-10-24 "테섭은 로그아웃 제한시간 없애줘"). 시험용으로 localStorage jh_idle_ms 를 직접 주면 그 값으로 동작한다. 본섭은 IS_TEST 가 거짓이라 그대로 1시간 */
+  if (IS_TEST && !num('jh_idle_ms')) return stopIdle;
   const limitMs = (IS_TEST && num('jh_idle_ms')) || IDLE_LIMIT_MS; const warnMs = (IS_TEST && num('jh_idle_warn_ms')) || IDLE_WARN_MS;   // 테섭에서만 시험용으로 줄일 수 있다
   const getLast = () => { try { return +localStorage.getItem(KEY) || 0; } catch (e) { return 0; } };
   const setLast = (t) => { try { localStorage.setItem(KEY, String(t)); } catch (e) { /* 저장 못 하면 이 창의 활동만 센다 */ } };

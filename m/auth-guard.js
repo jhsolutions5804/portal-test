@@ -5,6 +5,7 @@
    (Firebase를 직접 초기화하지 않고 IndexedDB 세션을 직접 정리하는 방식) */
 (function(){
   var IDLE_MS   = 60 * 60 * 1000;   // 자동 로그아웃 기준: 1시간
+  var IS_TEST = /\/portal-test(\/|$)/.test(location.pathname); // 테섭(주소에 /portal-test/)은 자동 로그아웃 없음(대표님 2026-10-24) — 본섭 주소에서는 그대로 1시간
   var LAST_KEY  = 'jh_last_active';  // 마지막 활동 시각(ms) 저장 키
   var LOGIN_KEY = 'jh_login_perms';  // 로그인 여부 판단 키
   var THROTTLE  = 5000;              // 활동시각 저장 최소 간격(5초)
@@ -48,6 +49,7 @@
 
   // 무동작 시간 초과 검사 → 초과 시 조용히 로그아웃
   function checkIdle(){
+    if(IS_TEST) return; // 테섭은 무동작 자동 로그아웃 없음(대표님 2026-10-24)
     if(!isLoggedIn()) return;
     var last = 0;
     try{ last = parseInt(localStorage.getItem(LAST_KEY) || '0', 10) || 0; }catch(e){}

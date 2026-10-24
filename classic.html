@@ -3656,10 +3656,11 @@ onAuthStateChanged(auth, async user=>{
 
 /* ── 자동 로그아웃 (1시간 무동작) ── */
 const AUTO_LOGOUT_MS = 60 * 60 * 1000;
+const AUTO_LOGOUT_ON = !/\/portal-test(\/|$)/.test(location.pathname); // 테섭(주소에 /portal-test/)은 자동 로그아웃 없음(대표님 2026-10-24) — 본섭 주소에서는 그대로 1시간
 let _autoLogoutTimer = null;
 
 function resetAutoLogout(){
-  if(!me) return;
+  if(!me || !AUTO_LOGOUT_ON) return;
   clearTimeout(_autoLogoutTimer);
   _autoLogoutTimer = setTimeout(()=>{
     toast('⏰ 1시간 동안 활동이 없어 자동 로그아웃됩니다.');
