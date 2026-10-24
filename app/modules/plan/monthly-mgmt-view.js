@@ -1,8 +1,8 @@
 /* 영업기획 월간 보고서 경영 층 화면(대기열 1-2-8, 대표님 2026-10-22 ㅇㅇ) — 순수 HTML(저장·호출 없음). 시험: tests/plan-monthly-mgmt-view.test.mjs · 계산: monthly-mgmt.js · 틀: closing-view.js(같은 CSS 클래스).
  * st = { ym, rows(monthRows), totals(monthTotals), srv: { state: 'loading'|'ok'|'error'|'denied', notes } }. 영업기획 모듈 전체가 관리자 전용이라(manifest perm) 별도 권한 코드는 없다.
  * 원칙: 모르는 값은 숫자로 꾸미지 않고 이유를 보인다(마진율·수율이 null 이면 "—"와 이유). 매출 기준 = 완결 청구(1-2-3-a). 공통비는 반영하지 않는다(프로젝트 화면의 공통비 반영 이익에서 본다). */
-import { esc } from '../../core/ui.js?v=20261024g';
-import { won, card, chip } from './ui.js?v=20261024g';
+import { esc } from '../../core/ui.js?v=20261024h';
+import { won, card, chip } from './ui.js?v=20261024h';
 const isO = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const lb = (t) => ' data-label="' + esc(t) + '"'; // 폰 폭에서 표 행이 카드로 바뀔 때 칸 앞에 붙는 글자(CSS plan.css 의 jh-plan__table--cards) — 반드시 같은 열의 머리글과 같은 글자(시험이 모든 칸을 대조한다)
@@ -51,7 +51,7 @@ function achCard(s) {
   if (!rows.length) return card('원가 달성률', msg('견적이 있는 프로젝트가 없습니다(달성률은 견적 공급가액이 있어야 계산됩니다).'));
   /* 실행예산 기준 행(대기열 1-3-9 4단계): 기준 칸에 실행예산 rN / 목표 마진율을 구분 표기하고, 비목별 달성률을 프로젝트 이름 아래 작은 글씨로(초과는 글자로도 표시). 깨진 실행예산은 목표 마진율 기준 값으로 보이되 "실행예산 오류"를 붙인다 */
   const catHint = (a) => { if (a.basis !== 'budget' || !Array.isArray(a.byCat)) return ''; const parts = a.byCat.filter((c) => c.cat !== 'reserve').map((c) => esc(c.label) + ' ' + (fin(c.rate) ? c.rate + '%' : '—') + (c.over === true ? '(초과)' : '')); const res = a.byCat.find((c) => c.cat === 'reserve'); const rs = res && res.plan > 0 ? ' · 예비비 계획 ' + money(res.plan) : ''; const un = a.warnUnassigned ? ' · 비목 미배정 금액 있음(비목별 비교에서 빠집니다)' : ''; return '<div class="jh-field__hint" data-ach-cats>' + parts.join(' · ') + rs + un + '</div>'; };
-  const basisChip = (a) => (a.basis === 'budget' ? chip('실행예산 r' + a.budgetRev, 'blue') : a.budgetBad ? chip('실행예산 오류 — 목표 마진율 기준', 'amber') : chip('목표 마진율', 'gray'));
+  const basisChip = (a) => (a.basis === 'budget' ? chip('실행예산 r' + a.budgetRev, 'blue') : a.budgetBad ? chip('실행예산 오류 — 목표 마진율 기준', 'amber') : a.status === 'ok' ? chip('목표 마진율', 'gray') : ''); // 목표 마진율 기준 칩은 실제로 그 기준으로 계산된 줄에만 — 미입력·연결 없음 줄에는 이미 그 이유 칩이 있어 같이 붙으면 중복이다(실제 테섭 데이터를 폰 카드로 보고 줄임)
   const body = rows.map((a) => { const neg = a.over === true; const tone = neg ? ' data-tone="neg"' : ''; const tm = fin(a.target) ? a.target + '%' : (a.status === 'notarget' ? '미입력' : '—');
     return '<tr><td><a href="#/plan/projects/' + esc(a.id) + '">' + esc((a.code || '-') + (a.name ? ' ' + a.name : '')) + '</a> ' + (a.status === 'nolink' ? chip('PJT 연결 없음', 'amber') : a.status === 'notarget' ? chip('목표 마진율 미입력', 'amber') : '') + ' ' + basisChip(a) + catHint(a) + '</td><td class="jh-plan__num"' + lb('견적') + '>' + money(a.est) + '</td><td class="jh-plan__num"' + lb('목표 마진율') + '>' + esc(tm) + '</td><td class="jh-plan__num"' + lb('목표 원가') + '>' + money(a.targetCost) + '</td><td class="jh-plan__num"' + lb('실제 원가') + '>' + money(a.cost) + '</td><td class="jh-plan__num"' + lb('달성률') + tone + '>' + pct(a.rate) + '</td><td' + lb('판정') + tone + '>' + esc(achWhy(a)) + '</td></tr>'; }).join('');
   const bn = []; if (s.budgetState === 'error') bn.push('실행예산을 불러오지 못해 모든 프로젝트를 목표 마진율 기준으로만 표시합니다(실행예산이 있어도 반영되지 않았습니다).'); const nbad = Array.isArray(s.budgetBad) ? s.budgetBad.length : 0; if (nbad > 0) bn.push('읽을 수 없는 깨진 실행예산 ' + nbad + '개가 있습니다(해당 프로젝트는 목표 마진율 기준으로 표시합니다).');

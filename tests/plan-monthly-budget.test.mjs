@@ -100,6 +100,8 @@ const achHtml = (st) => { const h = V.monthlyMgmtHtml(st); const i = h.indexOf('
 { const t = txt(achHtml(ST([a2]))); ok(t.includes('예비비 사용 중') && !t.includes('실행예산 초과'), '★ 예비비 사용 중이라고 글자로 알린다(초과와 구분)'); }
 { const t = txt(achHtml(ST([a3]))); ok(t.includes('실행예산 초과') && !t.includes('예비비 사용 중'), '초과는 "실행예산 초과"'); }
 { const t = txt(achHtml(ST([m1]))); ok(t.includes('목표 안') && !t.includes('실행예산 안'), '실행예산이 없는 프로젝트는 지금 판정 문구(목표 안)를 쓴다'); }
+{ const nt = M.achievementRow(P({ id: 'pjt_9', code: 'N9', name: '미입력', targetMargin: undefined }), EST.map((e) => Object.assign({}, e, { pjtId: 'pjt_9' })), [], REP(300000, 700000), '2026-09'); const nl = M.achievementRow(P({ id: 'pjt_8', code: 'N8', name: '연결없음', linkPjt: 'none' }), EST.map((e) => Object.assign({}, e, { pjtId: 'pjt_8' })), [], REP(300000, 700000), '2026-09'); const cell = (r) => { const h = achHtml(ST([r])); return h.slice(h.indexOf('<td>'), h.indexOf('</td>')); };
+  ok(nt.status === 'notarget' && nl.status === 'nolink' && (txt(cell(nt)).match(/목표 마진율/g) || []).length === 1 && !txt(cell(nl)).includes('목표 마진율'), '★ 목표 마진율 미입력·연결 없음 줄에는 이유 칩만 있고 "목표 마진율" 기준 칩이 겹쳐 붙지 않는다(기준 칩은 실제로 그 기준으로 계산된 줄에만)'); }
 { const nl = row(REP(300000, 700000), bud, P({ linkPjt: 'none' })); const t = txt(achHtml(ST([nl]))); ok(t.includes('PJT 연결 없음') && t.includes('2,700,000') && !t.includes('실행예산 안'), '연결이 없으면 계획은 보이고 판정은 이유(PJT 연결 없음)'); }
 { const t = txt(V.monthlyMgmtHtml(ST([a1], { budgetState: 'error' }))); ok(t.includes('실행예산을 불러오지 못해') && t.includes('목표 마진율 기준'), '★ 실행예산을 못 읽었으면 표 위에 "목표 마진율 기준으로만 표시한다"고 알린다(조용히 바꾸지 않는다)'); }
 ok(!txt(V.monthlyMgmtHtml(ST([a1]))).includes('실행예산을 불러오지 못해'), '정상일 때는 그 알림이 없다');
