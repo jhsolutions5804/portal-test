@@ -146,6 +146,8 @@ with sync_playwright() as p:
  pg, errs = fresh(width=390, store={'q1': BD}); wait_read(pg)
  inside = pg.evaluate("[...document.querySelectorAll('[data-bd-read] tbody tr')].every((tr) => { const td = tr.querySelector('td[data-label=\"금액(원)\"]'); if (!td) return false; const r = td.getBoundingClientRect(); return r.width > 0 && r.left >= 0 && r.right <= 391; })")
  ok(inside, '★ 폰 폭(390px) 읽기 화면: 모든 행의 금액 칸이 화면 안에 보인다(카드로 바뀜)')
+ hs = pg.evaluate("[...document.querySelectorAll('[data-bd-read] .jh-plan__sumcell strong')].map((e) => Math.round(e.getBoundingClientRect().height))")
+ ok(len(hs) == 5 and max(hs) < 30, '★ 폰 폭(390px) 읽기 화면: 요약 5칸의 금액이 한 줄로 보인다(숫자가 중간에서 줄바꿈되지 않는다) — 높이 %s' % hs)
  click(pg, 'edit'); pg.wait_for_selector('[data-bd-edit]'); settle(pg)
  w = pg.evaluate('({ sw: document.documentElement.scrollWidth, iw: window.innerWidth })'); ok(w['sw'] <= w['iw'] + 1, '★ 폰 폭(390px) 편집 화면에서 페이지가 가로로 넘치지 않는다(표는 자기 영역 안에서만 스크롤) — %s' % w)
 

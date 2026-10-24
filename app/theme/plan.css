@@ -132,3 +132,5 @@ a.jh-plan__row { text-decoration: none; }
   .jh-plan__bdtable td .jh-input, .jh-plan__bdtable td .jh-select { flex: 1 1 60%; width: auto; min-width: 0; }
   .jh-plan__bdtable td:last-child { justify-content: flex-end; }
 }
+/* 요약 5칸(jh-plan__sum--5)의 폰 폭 2칸 규칙이 앞(44행)에 있는데 뒤(85행)의 5칸 지정이 덮어써서 폰에서 7자리 금액이 중간에 줄바꿈되던 것을 바로잡는다(실행예산 카드를 실제 폰 폭으로 찍어 발견 — 기존 프로젝트 요약 카드도 같은 결함이었음). 반드시 85행 뒤에 둘 것 */
+@media (max-width: 899px) { .jh-plan__sum--5 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
