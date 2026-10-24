@@ -1,8 +1,8 @@
 /* 실행예산 화면 조각 + 편집 초안(draft) 도우미 — 순수(저장·서버를 모른다). 시험: tests/plan-budget-view.test.mjs · 계산·검증: budget.js · 저장: budget-io.js · 설계: 비공개 저장소 app-docs/execution-budget-design.md (대기열 1-3-9, 3단계).
  * 화면은 프로젝트 상세(projects-view.js)의 "실행예산" 카드 안에 들어간다. 버튼은 data-bd-act, 행 입력칸은 data-bd-k·data-bd-i, 메모는 data-bd-note — 이벤트는 컨트롤러(index.js)가 위임으로 처리한다(인라인 이벤트 없음). 모든 값은 esc 로 이스케이프한다.
  * 초안 도우미는 원본을 바꾸지 않고 새 초안을 돌려준다. 금액은 입력 중이라 글자로 둔다(저장할 때 sanitizeRows 가 검사). */
-import { esc } from '../../core/ui.js?v=20261024c';
-import { CATS, LIMITS, parseAmount, budgetTotals, revisionList, draftRowsFromImport } from './budget.js?v=20261024c';
+import { esc } from '../../core/ui.js?v=20261024d';
+import { CATS, LIMITS, parseAmount, budgetTotals, revisionList, draftRowsFromImport } from './budget.js?v=20261024d';
 const isO = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const won = (n) => (Math.round(Number(n) || 0)).toLocaleString('ko-KR');
 const catLabel = (k) => { const c = CATS.find((x) => x.key === k); return c ? c.label : '미배정'; };
@@ -68,8 +68,9 @@ const alertHtml = (msg, tone, extra) => '<div class="jh-alert" data-tone="' + (t
 const dateOf = (s) => (typeof s === 'string' && /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : '');
 const sumCell = (label, v) => '<div class="jh-plan__sumcell"><span class="jh-field__hint">' + esc(label) + '</span><strong>' + v + '</strong></div>';
 const srcLabel = (r) => (r.src === 'est' ? '견적 ' + (r.estNo || '') : '직접');
-const rowsTable = (rows, attr) => '<div class="jh-plan__scroll"><table class="jh-plan__table"' + (attr ? ' ' + attr : '') + '><thead><tr><th>비목</th><th>내역</th><th class="jh-plan__num">금액(원)</th><th>메모</th><th>출처</th></tr></thead><tbody>'
-  + rows.map((r) => '<tr><td>' + esc(catLabel(r.cat)) + '</td><td>' + esc(r.name) + '</td><td class="jh-plan__num">' + won(r.amount) + '</td><td>' + esc(r.memo) + '</td><td>' + esc(srcLabel(r)) + '</td></tr>').join('') + '</tbody></table></div>';
+/* 폰 폭(899px 이하)에서는 표의 행이 카드로 바뀐다(plan.css jh-plan__table--cards) — 첫 칸이 카드 제목이고, 나머지 칸 앞에 붙는 data-label 은 반드시 같은 열 머리글과 같은 글자(시험이 모든 칸을 대조한다) */
+const rowsTable = (rows, attr) => '<div class="jh-plan__scroll"><table class="jh-plan__table jh-plan__table--cards"' + (attr ? ' ' + attr : '') + '><thead><tr><th>내역</th><th>비목</th><th class="jh-plan__num">금액(원)</th><th>메모</th><th>출처</th></tr></thead><tbody>'
+  + rows.map((r) => '<tr><td>' + esc(r.name) + '</td><td data-label="비목">' + esc(catLabel(r.cat)) + '</td><td class="jh-plan__num" data-label="금액(원)">' + won(r.amount) + '</td><td data-label="메모">' + esc(r.memo) + '</td><td data-label="출처">' + esc(srcLabel(r)) + '</td></tr>').join('') + '</tbody></table></div>';
 function readHtml(bs) {
   const b = bs.saved; const t = budgetTotals(b.rows); const meta = ['r' + b.rev, dateOf(b.savedAt), b.note].filter(Boolean).map(esc).join(' · ');
   const sum = '<div class="jh-plan__sum jh-plan__sum--5">' + sumCell('외주', won(t.sub)) + sumCell('자체 노무', won(t.labor)) + sumCell('현장경비', won(t.site)) + sumCell('예비비', won(t.reserve)) + sumCell('총 계획', won(t.total)) + '</div>';
@@ -81,8 +82,8 @@ function historyHtml(bs) {
   const b = bs.saved; const list = revisionList(b);
   const rowsOf = (rev) => (rev === b.rev ? b.rows : ((b.history || []).find((h) => h.rev === rev) || {}).rows);
   const view = Number.isInteger(bs.viewRev) && bs.viewRev > 0 ? rowsOf(bs.viewRev) : null;
-  const tbl = '<div class="jh-plan__scroll"><table class="jh-plan__table"><thead><tr><th>개정</th><th>저장일</th><th class="jh-plan__num">총 계획(원)</th><th class="jh-plan__num">행</th><th>메모</th><th></th></tr></thead><tbody>'
-    + list.map((x) => '<tr><td>r' + x.rev + (x.current ? ' (현재)' : '') + '</td><td>' + esc(dateOf(x.savedAt)) + '</td><td class="jh-plan__num">' + won(x.total) + '</td><td class="jh-plan__num">' + x.count + '</td><td>' + esc(x.note) + '</td><td><button type="button" class="jh-btn" data-variant="ghost" data-bd-act="view-rev" data-bd-rev="' + x.rev + '">보기</button></td></tr>').join('') + '</tbody></table></div>';
+  const tbl = '<div class="jh-plan__scroll"><table class="jh-plan__table jh-plan__table--cards"><thead><tr><th>개정</th><th>저장일</th><th class="jh-plan__num">총 계획(원)</th><th class="jh-plan__num">행</th><th>메모</th><th></th></tr></thead><tbody>'
+    + list.map((x) => '<tr><td>r' + x.rev + (x.current ? ' (현재)' : '') + '</td><td data-label="저장일">' + esc(dateOf(x.savedAt)) + '</td><td class="jh-plan__num" data-label="총 계획(원)">' + won(x.total) + '</td><td class="jh-plan__num" data-label="행">' + x.count + '</td><td data-label="메모">' + esc(x.note) + '</td><td data-label=""><button type="button" class="jh-btn" data-variant="ghost" data-bd-act="view-rev" data-bd-rev="' + x.rev + '">보기</button></td></tr>').join('') + '</tbody></table></div>';
   const rv = view ? '<div data-bd-revrows><strong>r' + bs.viewRev + ' 내용</strong>' + rowsTable(view) + '</div>' : '';
   return '<div class="jh-plan__pad" data-bd-history><strong>개정 이력</strong><div class="jh-field__hint">이전 개정은 그대로 보존됩니다(수정하면 새 개정이 쌓입니다).</div>' + tbl + rv + '</div>';
 }
@@ -96,7 +97,7 @@ function importHtml(imp) {
   if (!isO(imp) || !Array.isArray(imp.groups) || !imp.groups.length) return '<div class="jh-plan__calc" data-bd-import><div class="jh-field__hint">이 프로젝트에 연결된 유효한 견적이 없습니다(폐기된 견적은 제외).</div><div class="jh-plan__bar">' + close + '</div></div>';
   const groups = imp.groups.map((g) => {
     const dec = g.items.filter((x) => x.kind !== 'calc');
-    const decide = dec.length ? '<div class="jh-plan__scroll"><table class="jh-plan__table"><thead><tr><th>정해야 할 항목</th><th>이유</th><th class="jh-plan__num">견적 금액</th><th class="jh-plan__num">산식 소계</th></tr></thead><tbody data-bd-decide>' + dec.map((x) => '<tr><td>' + esc(x.name) + '</td><td>' + esc(KIND_LABEL[x.kind] || x.kind) + (x.error ? ' — ' + esc(x.error) : '') + '</td><td class="jh-plan__num">' + won(x.amount) + '</td><td class="jh-plan__num">' + (x.subtotal === null || x.subtotal === undefined ? '-' : won(x.subtotal)) + '</td></tr>').join('') + '</tbody></table></div>' : '';
+    const decide = dec.length ? '<div class="jh-plan__scroll"><table class="jh-plan__table jh-plan__table--cards"><thead><tr><th>정해야 할 항목</th><th>이유</th><th class="jh-plan__num">견적 금액</th><th class="jh-plan__num">산식 소계</th></tr></thead><tbody data-bd-decide>' + dec.map((x) => '<tr><td>' + esc(x.name) + '</td><td data-label="이유">' + esc(KIND_LABEL[x.kind] || x.kind) + (x.error ? ' — ' + esc(x.error) : '') + '</td><td class="jh-plan__num" data-label="견적 금액">' + won(x.amount) + '</td><td class="jh-plan__num" data-label="산식 소계">' + (x.subtotal === null || x.subtotal === undefined ? '-' : won(x.subtotal)) + '</td></tr>').join('') + '</tbody></table></div>' : '';
     return '<div><strong>견적 ' + esc(g.no) + '</strong> <span class="jh-field__hint">(r' + g.rev + (g.status === 'closed' ? ' · 종결' : '') + ') 산식 표가 있는 항목의 투입비 합 ' + won(g.autoCost) + '원 · 견적 금액 합 ' + won(g.supply) + '원(참고)</div>' + decide;
   }).join('');
   const multi = imp.multi ? '<div class="jh-field__hint">견적 묶음이 ' + imp.groups.length + '개입니다. 묶음마다 투입비 한 줄씩 가져옵니다.</div>' : '';
@@ -107,12 +108,12 @@ function rowEdit(r, i) {
   const n = (i + 1) + '번 행 ';
   const sel = '<select class="jh-select" data-bd-k="cat" data-bd-i="' + i + '" aria-label="' + esc(n + '비목') + '"><option value=""' + (r.cat === '' ? ' selected' : '') + '>미배정</option>' + CATS.map((c) => '<option value="' + c.key + '"' + (r.cat === c.key ? ' selected' : '') + '>' + esc(c.label) + '</option>').join('') + '</select>';
   const inp = (k, v, extra) => '<input class="jh-input' + (k === 'amount' ? ' jh-plan__num' : '') + '" data-bd-k="' + k + '" data-bd-i="' + i + '" value="' + esc(v == null ? '' : v) + '" aria-label="' + esc(n + (k === 'name' ? '내역' : k === 'amount' ? '금액' : '메모')) + '"' + extra + '>';
-  return '<tr data-bd-row="' + i + '"><td class="jh-plan__ecno">' + (i + 1) + '</td><td>' + sel + '</td><td>' + inp('name', r.name, ' maxlength="' + LIMITS.name + '" placeholder="내역"') + '</td><td>' + inp('amount', r.amount, ' inputmode="numeric" placeholder="0"') + '</td><td>' + inp('memo', r.memo, ' maxlength="' + LIMITS.memo + '" placeholder="메모"') + '</td><td><button type="button" class="jh-btn" data-variant="ghost" data-bd-act="del-row" data-bd-i="' + i + '" aria-label="' + esc(n + '삭제') + '">삭제</button></td></tr>';
+  return '<tr data-bd-row="' + i + '"><td class="jh-plan__ecno" data-label="">' + (i + 1) + '</td><td data-label="비목">' + sel + '</td><td data-label="내역">' + inp('name', r.name, ' maxlength="' + LIMITS.name + '" placeholder="내역"') + '</td><td data-label="금액(원)">' + inp('amount', r.amount, ' inputmode="numeric" placeholder="0"') + '</td><td data-label="메모">' + inp('memo', r.memo, ' maxlength="' + LIMITS.memo + '" placeholder="메모"') + '</td><td data-label=""><button type="button" class="jh-btn" data-variant="ghost" data-bd-act="del-row" data-bd-i="' + i + '" aria-label="' + esc(n + '삭제') + '">삭제</button></td></tr>';
 }
 function editHtml(bs, imp) {
   const d = bs.draft; const first = d.baseRev === 0; const saving = bs.saving ? ' disabled' : '';
   const head = '<div class="jh-field__hint" role="status">' + (first ? 'r1 로 저장됩니다.' : 'r' + d.baseRev + ' 을 고쳐 r' + (d.baseRev + 1) + ' 로 저장됩니다(이전 개정은 이력에 남습니다).') + '</div>';
-  const table = '<div class="jh-plan__scroll"><table class="jh-plan__table jh-plan__bdtable"><thead><tr><th></th><th>비목</th><th>내역</th><th class="jh-plan__num">금액(원)</th><th>메모</th><th></th></tr></thead><tbody data-bd-body>' + d.rows.map(rowEdit).join('') + '</tbody></table></div>';
+  const table = '<div class="jh-plan__scroll"><table class="jh-plan__table jh-plan__table--cards jh-plan__bdtable"><thead><tr><th></th><th>비목</th><th>내역</th><th class="jh-plan__num">금액(원)</th><th>메모</th><th></th></tr></thead><tbody data-bd-body>' + d.rows.map(rowEdit).join('') + '</tbody></table></div>';
   const tools = '<div class="jh-plan__bar"><span class="jh-plan__line">' + btn('+ 행 추가', 'add-row', 'secondary', d.rows.length >= LIMITS.rows ? ' disabled' : '') + btn('견적에서 가져오기', 'import-open', 'secondary') + '</span></div>';
   const note = '<div class="jh-field"><label class="jh-field__label">저장 메모(선택)</label><input class="jh-input" data-bd-note maxlength="' + LIMITS.memo + '" value="' + esc(d.note) + '" aria-label="저장 메모" placeholder="예: 네고 반영"></div>';
   const actions = '<div class="jh-plan__bar"><span class="jh-plan__line">' + btn('저장', 'save', 'primary', saving) + btn('취소', 'cancel', 'ghost', saving) + '</span></div>';

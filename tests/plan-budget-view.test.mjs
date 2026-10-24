@@ -107,6 +107,12 @@ ok(/불러오는 중/.test(budgetCardHtml(undefined, imp0)) && /불러오는 중
 { const e = '2번 행: <b>금액</b>을 입력해 주세요.'; const d1 = D(budgetCardHtml({ state: 'ready', saved: saved1, err: e }, imp0)); const d2 = D(budgetCardHtml({ state: 'ready', saved: saved1, draft: draftFromBudget(saved1), err: e }, imp0));
   ok([d1, d2].every((d) => d.querySelector('[role=alert]') && d.body.textContent.includes('2번 행: <b>금액</b>을 입력해 주세요.') && !d.querySelector('b')), '★ 저장 실패 오류(err)는 읽기·편집 화면 모두 경고로 보이고 이스케이프된다');
   ok(!D(budgetCardHtml({ state: 'ready', saved: saved1, err: '' }, imp0)).querySelector('[role=alert]'), '오류가 비어 있으면 경고가 없다'); }
+// 폰 카드 전환: 표가 카드로 바뀔 때 칸 앞에 붙는 data-label 은 같은 열 머리글과 같은 글자여야 한다
+{ const pages = [budgetCardHtml({ state: 'ready', saved: saved2, showHistory: true, viewRev: 1 }, imp0), budgetCardHtml({ state: 'ready', saved: saved2, draft: draftFromBudget(saved2), showImport: true }, imp)];
+  let tables = 0, bad = [];
+  pages.forEach((h) => dom(h).querySelectorAll('table').forEach((tb) => { tables++; if (!tb.classList.contains('jh-plan__table--cards')) bad.push('카드 클래스 없음'); const heads = [...tb.querySelectorAll('thead th')].map((th) => th.textContent.trim()); tb.querySelectorAll('tbody tr').forEach((tr) => [...tr.children].forEach((td, i) => { if (i === 0 && td.getAttribute('data-label') === null) return; const lab = td.getAttribute('data-label'); if (lab === null) bad.push('라벨 없음 ' + heads[i]); else if (lab !== heads[i]) bad.push('라벨 불일치 [' + lab + '] ≠ [' + heads[i] + ']'); })); }));
+  ok(tables >= 5 && bad.length === 0, '★ 폰 카드 전환: 모든 표(읽기·이력·이력 내용·정할 항목·편집)에 카드 클래스가 있고 칸마다 data-label 이 같은 열 머리글과 같은 글자 — 표 ' + tables + '개 ' + bad.slice(0, 3).join(' / '));
+  const rd = dom(budgetCardHtml({ state: 'ready', saved: saved2 }, imp0)); ok([...rd.querySelectorAll('[data-bd-read] thead th')].map((x) => x.textContent.trim())[0] === '내역' && rd.querySelector('[data-bd-read] tbody tr td').textContent === '외주 A', '읽기 표의 첫 칸(카드 제목)은 내역'); }
 // 규약
 { const hs = [budgetCardHtml({ state: 'ready', saved: saved2, showHistory: true }, imp0), budgetCardHtml({ state: 'ready', saved: saved2, draft: draftFromBudget(saved2), showImport: true }, imp), budgetCardHtml({ state: 'ready', saved: null }, imp0), budgetCardHtml({ state: 'error', error: 'x' }, imp0)];
   ok(hs.every((h) => !/\son(click|input|change|error|load)=/i.test(h)), '인라인 이벤트 속성이 없다(이벤트는 위임으로만)');
