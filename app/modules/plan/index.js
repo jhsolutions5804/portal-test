@@ -1,39 +1,42 @@
-import { db, collection, getDocs, getDoc, query, where, documentId, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, writeBatch, deleteField, functions, httpsCallable } from '../../core/firebase.js?v=20261024b';
-import { toast } from '../../core/ui.js?v=20261024b';
-import { confirmDialog } from '../../core/dialog.js?v=20261024b';
-import { compNew, compToForm, compBuild, fmtTel, fmtTelBlur, kstToday } from './logic.js?v=20261024b';
-import { companiesListHtml, companyFormHtml } from './view.js?v=20261024b';
-import { projNew, projToForm, projectBuild } from './projects.js?v=20261024b';
-import { projectsListHtml, projectDetailHtml, projectFormHtml } from './projects-view.js?v=20261024b';
-import { marginErrorState, evalSaveError } from './margin-link.js?v=20261024b';
-import { uiState, pushHash } from './ui.js?v=20261024b';
-import { itemAmt, blankItem, itemSetQty, itemSetPrice, itemSetAmount, applySupplyEdit, draftTotals, newDraft, draftFromEstimate, buildEstimate, closePatch, reopenPatch, estGroup, sortEstimates } from './estimates.js?v=20261024b';
-import { estimatesListHtml, estimateDetailHtml, estimateFormHtml, itemRowHtml } from './estimates-view.js?v=20261024b';
-import { estDocHtml, estDocTitle } from './estimate-doc.js?v=20261024b';
-import { calcSheet, newCalc, newRow, removeRow, applyToItem, LIMITS as CALC_LIMITS } from './estimate-calc.js?v=20261024b';
-import { calcBoxHtml, calcSummaryHtml, tableBodyHtml } from './estimate-calc-view.js?v=20261024b';
-import { sortProjects } from './projects.js?v=20261024b';
-import { linkPlan, donePatch, undonePatch, voidPatch, doneConfirm, undoneConfirm, doneToast, projectBalance, acctMonthInput } from './settlements.js?v=20261024b';
-import { settlementsListHtml, settlementDetailHtml } from './settlements-view.js?v=20261024b';
-import { settleDocPage, settleDocTitle } from './settlement-doc.js?v=20261024b';
-import { teamLaborHtml } from './teamlabor-view.js?v=20261024b';
-import { homeHtml } from './home-view.js?v=20261024b';
-import { closingHtml, closingPrintHtml } from './closing-view.js?v=20261024b';
-import { setProgressOverrides } from './progress.js?v=20261024b';
-import { toProfile } from '../../shared/pjt-structure.js?v=20261024b';
-import { acctHtml } from './acct-view.js?v=20261024b';
-import { contractsListHtml, contractFormHtml, contractDetailHtml } from './contracts-view.js?v=20261024b';
-import { contractDocPage } from './contract-doc.js?v=20261024b';
-import { flattenContracts, nextContractNo, newContract, validateContract, upsertContract, issueBlockers, changeFrom } from './contracts.js?v=20261024b';
-import { reconcileExpenses, missingToJson, tagTableCsv } from './acct-reconcile.js?v=20261024b';
-import { shiftYm, closingCsv } from './closing.js?v=20261024b';
-import { shiftMonth, monthRange, rosterEntry, aggregateMandays, parseTeamRate, ratePatch, rateSaveMessage } from './teamlabor.js?v=20261024b';
-import { issueFormHtml, qtyBlocksHtml, totalsHtml, manualRowHtml, mandayRowsHtml, mandayInfoHtml, progressBlocksHtml } from './issue-view.js?v=20261024b';
-import { setProgressZone, toggleProgressDeposit, setProgressBill } from './progress.js?v=20261024b';
-import { mandaySource, monthDays, sumMandayDays, duplicateSources, applyMandayFetch, setMandayInput, setMandayForPjt, setRateForPjtValue, setMandayBaseRate, newIssueDraft, formatMoneyInput, togglePjt, toggleEst, setRecipient, setMethod, progressLinkIds, applyProgressByProject, setQty, setQtyAmount, setSupplyOverride, setVatOverride, resetTotals, buildSettlement, itemSetQty as isItemQty, itemSetPrice as isItemPrice, itemSetAmount as isItemAmount, blankItem as isBlank } from './issue.js?v=20261024b';
-import { monthlyMgmtHtml } from './monthly-mgmt-view.js?v=20261024b';
-import { createMonthlyMgmtController } from './monthly-mgmt-io.js?v=20261024b';
-import { monthlyMgmtCsv, monthlyMgmtCsvName } from './monthly-mgmt-csv.js?v=20261024b';
+import { db, collection, getDocs, getDoc, query, where, documentId, addDoc, updateDoc, setDoc, deleteDoc, doc, serverTimestamp, writeBatch, deleteField, functions, httpsCallable } from '../../core/firebase.js?v=20261024c';
+import { toast } from '../../core/ui.js?v=20261024c';
+import { confirmDialog } from '../../core/dialog.js?v=20261024c';
+import { compNew, compToForm, compBuild, fmtTel, fmtTelBlur, kstToday } from './logic.js?v=20261024c';
+import { companiesListHtml, companyFormHtml } from './view.js?v=20261024c';
+import { projNew, projToForm, projectBuild } from './projects.js?v=20261024c';
+import { projectsListHtml, projectDetailHtml, projectFormHtml } from './projects-view.js?v=20261024c';
+import { marginErrorState, evalSaveError } from './margin-link.js?v=20261024c';
+import { loadBudget, saveBudget } from './budget-io.js?v=20261024c';
+import { draftBlank, draftFromBudget, draftAddRow, draftDelRow, draftSet, draftAddFromImport, draftAddDecisions, budgetPreviewHtml } from './budget-view.js?v=20261024c';
+import { importFromEstimates } from './budget.js?v=20261024c';
+import { uiState, pushHash } from './ui.js?v=20261024c';
+import { itemAmt, blankItem, itemSetQty, itemSetPrice, itemSetAmount, applySupplyEdit, draftTotals, newDraft, draftFromEstimate, buildEstimate, closePatch, reopenPatch, estGroup, sortEstimates } from './estimates.js?v=20261024c';
+import { estimatesListHtml, estimateDetailHtml, estimateFormHtml, itemRowHtml } from './estimates-view.js?v=20261024c';
+import { estDocHtml, estDocTitle } from './estimate-doc.js?v=20261024c';
+import { calcSheet, newCalc, newRow, removeRow, applyToItem, LIMITS as CALC_LIMITS } from './estimate-calc.js?v=20261024c';
+import { calcBoxHtml, calcSummaryHtml, tableBodyHtml } from './estimate-calc-view.js?v=20261024c';
+import { sortProjects } from './projects.js?v=20261024c';
+import { linkPlan, donePatch, undonePatch, voidPatch, doneConfirm, undoneConfirm, doneToast, projectBalance, acctMonthInput } from './settlements.js?v=20261024c';
+import { settlementsListHtml, settlementDetailHtml } from './settlements-view.js?v=20261024c';
+import { settleDocPage, settleDocTitle } from './settlement-doc.js?v=20261024c';
+import { teamLaborHtml } from './teamlabor-view.js?v=20261024c';
+import { homeHtml } from './home-view.js?v=20261024c';
+import { closingHtml, closingPrintHtml } from './closing-view.js?v=20261024c';
+import { setProgressOverrides } from './progress.js?v=20261024c';
+import { toProfile } from '../../shared/pjt-structure.js?v=20261024c';
+import { acctHtml } from './acct-view.js?v=20261024c';
+import { contractsListHtml, contractFormHtml, contractDetailHtml } from './contracts-view.js?v=20261024c';
+import { contractDocPage } from './contract-doc.js?v=20261024c';
+import { flattenContracts, nextContractNo, newContract, validateContract, upsertContract, issueBlockers, changeFrom } from './contracts.js?v=20261024c';
+import { reconcileExpenses, missingToJson, tagTableCsv } from './acct-reconcile.js?v=20261024c';
+import { shiftYm, closingCsv } from './closing.js?v=20261024c';
+import { shiftMonth, monthRange, rosterEntry, aggregateMandays, parseTeamRate, ratePatch, rateSaveMessage } from './teamlabor.js?v=20261024c';
+import { issueFormHtml, qtyBlocksHtml, totalsHtml, manualRowHtml, mandayRowsHtml, mandayInfoHtml, progressBlocksHtml } from './issue-view.js?v=20261024c';
+import { setProgressZone, toggleProgressDeposit, setProgressBill } from './progress.js?v=20261024c';
+import { mandaySource, monthDays, sumMandayDays, duplicateSources, applyMandayFetch, setMandayInput, setMandayForPjt, setRateForPjtValue, setMandayBaseRate, newIssueDraft, formatMoneyInput, togglePjt, toggleEst, setRecipient, setMethod, progressLinkIds, applyProgressByProject, setQty, setQtyAmount, setSupplyOverride, setVatOverride, resetTotals, buildSettlement, itemSetQty as isItemQty, itemSetPrice as isItemPrice, itemSetAmount as isItemAmount, blankItem as isBlank } from './issue.js?v=20261024c';
+import { monthlyMgmtHtml } from './monthly-mgmt-view.js?v=20261024c';
+import { createMonthlyMgmtController } from './monthly-mgmt-io.js?v=20261024c';
+import { monthlyMgmtCsv, monthlyMgmtCsvName } from './monthly-mgmt-csv.js?v=20261024c';
 
 /** 영업기획(플랫폼 기본 모듈): 구포털 기획(gihoek)을 탭 하나씩 새 화면으로 옮기는 중. 관리자 전용 — 데이터는 gihoek_* 컬렉션 그대로.
  *  사이드바는 옛 화면 틀(legacy/frame.js)이 그린다 — 이 모듈은 틀 안의 구역(거래처·협력사)을 그리는 함수만 내보내고 modules/index.js 가 hostNative 로 연결한다. */
@@ -85,7 +88,7 @@ async function mountCompaniesView(root, route, ctx, view) {
 const openLegacy = (tab, fn, args) => { try { sessionStorage.setItem('jh_plan_open', JSON.stringify({ fn, args })); } catch (e) { /* 저장소를 못 써도 탭 이동은 한다 */ } location.hash = '#/plan/' + tab; };
 export async function mountProjects(root, route, ctx) {
   root.onclick = null; root.oninput = null; root.onchange = null;
-  const st = { projects: [], estimates: [], settlements: [], registry: [], view: 'list', sel: '', form: null, filter: { status: 'run', q: '' }, page: { est: 1, inv: 1, pay: 1 }, margin: null, marginCheck: null, evalSave: {}, alloc: null };
+  const st = { projects: [], estimates: [], settlements: [], registry: [], view: 'list', sel: '', form: null, filter: { status: 'run', q: '' }, page: { est: 1, inv: 1, pay: 1 }, margin: null, marginCheck: null, evalSave: {}, alloc: null, budget: {} };
   root.innerHTML = '<div id="pj-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div>'; const body = root.querySelector('#pj-body');
   const load = async () => { const [a, b, c, d] = await Promise.all([getDocs(collection(db, 'gihoek_projects')), getDocs(collection(db, 'gihoek_estimates')), getDocs(collection(db, 'gihoek_settlements')), getDocs(collection(db, 'pjt_registry')).catch(() => null)]); st.projects = lst(a); st.estimates = lst(b); st.settlements = lst(c); st.registry = d ? lst(d) : []; };
   try { await load(); } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + ((e && e.message) || '') + '</div>'; return; }
@@ -123,12 +126,59 @@ export async function mountProjects(root, route, ctx) {
     catch (e) { st.margin = { state: marginErrorState(e) }; }
     if (st.view === 'detail') paint();
   };
-  const paint = () => { body.innerHTML = st.view === 'form' ? projectFormHtml(st) : st.view === 'detail' ? projectDetailHtml(st) : projectsListHtml(st); };
+  /* 실행예산(대기열 1-3-9, 3단계) — 프로젝트마다 문서 하나(gihoek_budgets/{프로젝트 id}). 상세 화면에 들어오면 읽고, 저장은 [저장]을 눌렀을 때만 한다. 읽기·쓰기·시계·저장자는 budget-io.js 에 주입하고, 계산·검증은 budget.js, 화면은 budget-view.js. 충돌이면 내 입력을 버리지 않고 [최신 기준으로 이어서 저장]을 눌러야만 덮어쓴다 */
+  const bdDeps = { read: async (id) => { const s = await getDoc(doc(db, 'gihoek_budgets', id)); return { exists: s.exists(), data: s.exists() ? s.data() : null }; }, write: async (id, data) => { await setDoc(doc(db, 'gihoek_budgets', id), data); }, now: () => new Date().toISOString(), stamp: () => serverTimestamp(), by: () => (ctx && ctx.me && ctx.me.uid) || '' };
+  const bdRepaint = (pid) => { if (st.view === 'detail' && st.sel === pid) paint(); };
+  const bdLoad = async (pid) => {
+    const b = st.budget[pid] = Object.assign({}, st.budget[pid], { state: 'loading' }); bdRepaint(pid);
+    const r = await loadBudget(bdDeps, pid);
+    if (r.ok) Object.assign(b, { state: 'ready', saved: r.budget, error: '' }); else Object.assign(b, { state: r.denied ? 'denied' : r.corrupt ? 'corrupt' : 'error', error: r.error || '' });
+    bdRepaint(pid);
+  };
+  const bdSave = async (pid) => {
+    const b = st.budget[pid]; if (!b || !b.draft || b.saving) return;
+    b.saving = true; b.err = ''; b.msg = ''; bdRepaint(pid);
+    let r; try { r = await saveBudget(bdDeps, { pjtId: pid, rows: b.draft.rows, baseRev: b.draft.baseRev, note: b.draft.note }); } catch (e) { r = { ok: false, error: '저장 실패: ' + ((e && (e.code || e.message)) || '') }; }
+    b.saving = false;
+    if (r.ok) { b.msg = r.unchanged ? '바뀐 내용이 없어 저장하지 않았습니다.' : '실행예산을 저장했습니다(r' + r.rev + ').'; if (!r.unchanged) { b.saved = r.budget; toast('실행예산을 저장했습니다(r' + r.rev + ').'); } b.draft = null; b.showImport = false; b.conflictRev = null; }
+    else if (r.conflict) { const l = await loadBudget(bdDeps, pid); if (l.ok) { b.saved = l.budget; b.conflictRev = l.budget ? l.budget.rev : 0; } else b.err = l.error; toast('다른 곳에서 먼저 바뀌었습니다.'); }
+    else { b.err = r.denied ? '실행예산은 관리자만 저장할 수 있습니다.' : (r.error || '저장하지 못했습니다.'); toast(b.err); }
+    bdRepaint(pid);
+  };
+  const bdAct = async (a) => {
+    const pid = st.sel; const b = pid && st.budget[pid]; if (!b) return; const act = a.getAttribute('data-bd-act'); const d = b.draft;
+    if (act === 'reload') { await bdLoad(pid); return; }
+    if (act === 'save') { await bdSave(pid); return; }
+    let focus = '';
+    if (act === 'new' || act === 'new-import') { if (!b.saved) { b.draft = draftBlank(); b.showImport = act === 'new-import'; b.msg = ''; b.err = ''; } }
+    else if (act === 'edit') { if (b.saved) { b.draft = draftFromBudget(b.saved); b.showImport = false; b.msg = ''; b.err = ''; b.conflictRev = null; } }
+    else if (act === 'history') { b.showHistory = !b.showHistory; b.viewRev = 0; }
+    else if (act === 'view-rev') { const rev = Number(a.getAttribute('data-bd-rev')); b.viewRev = b.viewRev === rev ? 0 : rev; }
+    else if (d && !b.saving) {
+      if (act === 'cancel') { b.draft = null; b.showImport = false; b.conflictRev = null; b.err = ''; }
+      else if (act === 'add-row') { b.draft = draftAddRow(d); focus = String(b.draft.rows.length - 1); }
+      else if (act === 'del-row') b.draft = draftDelRow(d, Number(a.getAttribute('data-bd-i')));
+      else if (act === 'import-open') b.showImport = true;
+      else if (act === 'import-close') b.showImport = false;
+      else if (act === 'import-apply') { b.draft = draftAddFromImport(d, importFromEstimates(st.estimates, pid)); b.err = ''; }
+      else if (act === 'import-decisions') { b.draft = draftAddDecisions(d, importFromEstimates(st.estimates, pid)); b.err = ''; }
+      else if (act === 'conflict-continue') { if (Number.isInteger(b.conflictRev)) { b.draft = Object.assign({}, d, { baseRev: b.conflictRev }); b.msg = '최신 개정(r' + b.conflictRev + ') 기준으로 이어서 저장합니다. 내용을 확인하고 [저장]을 눌러 주세요.'; b.conflictRev = null; } }
+    }
+    paint();
+    if (focus) { const el = body.querySelector('[data-bd-k="name"][data-bd-i="' + focus + '"]'); if (el) el.focus(); }
+  };
+  const bdInput = (el) => {
+    const b = st.budget[st.sel]; if (!b || !b.draft || b.saving) return;
+    b.draft = el.hasAttribute('data-bd-note') ? Object.assign({}, b.draft, { note: el.value }) : draftSet(b.draft, Number(el.getAttribute('data-bd-i')), el.getAttribute('data-bd-k'), el.value);
+    const pv = body.querySelector('[data-bd-preview]'); if (pv) pv.innerHTML = budgetPreviewHtml(b.draft);
+  };
+  const paint = () => { body.innerHTML = st.view === 'form' ? projectFormHtml(st) : st.view === 'detail' ? projectDetailHtml(st) : projectsListHtml(st); if (st.view === 'detail' && st.sel && !st.budget[st.sel]) bdLoad(st.sel); };
   const show = (view, id) => { st.view = view; st.sel = id || st.sel; if (view === 'detail') st.page = { est: 1, inv: 1, pay: 1 }; paint(); };
   const seg = route && route.segs && route.segs[0]; if (seg && st.projects.some((p) => p.id === seg)) { st.sel = seg; st.view = 'detail'; }
   root.onclick = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
-    const fl = t.closest('[data-pj-filter]'); if (fl) { st.filter.status = fl.getAttribute('data-pj-filter'); paint(); return; }
+    const ba = t.closest('[data-bd-act]'); if (ba) { await bdAct(ba); return; }
+  const fl = t.closest('[data-pj-filter]'); if (fl) { st.filter.status = fl.getAttribute('data-pj-filter'); paint(); return; }
     const op = t.closest('[data-pj-open]'); if (op) { show('detail', op.getAttribute('data-pj-open')); return; }
     const pg = t.closest('[data-pj-page]'); if (pg) { const [k, n] = pg.getAttribute('data-pj-page').split(':'); st.page[k] = Number(n); paint(); return; }
     const es = t.closest('[data-pj-est]'); if (es) { location.hash = '#/plan/est/' + es.getAttribute('data-pj-est') + '/from/' + st.sel; return; }
@@ -162,8 +212,8 @@ export async function mountProjects(root, route, ctx) {
       } catch (e) { toast('저장 실패: ' + ((e && (e.code || e.message)) || '')); }
     }
   };
-  root.oninput = (ev) => { const t = ev.target; if (!(t instanceof Element)) return; if (t.matches('[data-pj-f]') && st.form) { st.form[t.getAttribute('data-pj-f')] = t.value; return; } if (t.matches('[data-pj-q]')) { st.filter.q = t.value; const pos = t.selectionStart; paint(); const q = body.querySelector('[data-pj-q]'); if (q) { q.focus(); try { q.setSelectionRange(pos, pos); } catch (e) { /* 검색칸 형식에 따라 위치 지정이 안 될 수 있다 */ } } } };
-  root.onchange = (ev) => { const t = ev.target; if (t instanceof Element && t.matches('[data-pj-f]') && st.form) st.form[t.getAttribute('data-pj-f')] = t.value; };
+  root.oninput = (ev) => { const t = ev.target; if (!(t instanceof Element)) return; if (t.matches('[data-bd-k],[data-bd-note]')) { bdInput(t); return; } if (t.matches('[data-pj-f]') && st.form) { st.form[t.getAttribute('data-pj-f')] = t.value; return; } if (t.matches('[data-pj-q]')) { st.filter.q = t.value; const pos = t.selectionStart; paint(); const q = body.querySelector('[data-pj-q]'); if (q) { q.focus(); try { q.setSelectionRange(pos, pos); } catch (e) { /* 검색칸 형식에 따라 위치 지정이 안 될 수 있다 */ } } } };
+  root.onchange = (ev) => { const t = ev.target; if (t instanceof Element && t.matches('[data-bd-k="amount"]')) { const digits = t.value.replace(/[,\s]/g, ''); if (/^[0-9]{1,14}$/.test(digits)) t.value = Number(digits).toLocaleString('ko-KR'); bdInput(t); return; } if (t instanceof Element && t.matches('[data-bd-k],[data-bd-note]')) { bdInput(t); return; } if (t instanceof Element && t.matches('[data-pj-f]') && st.form) st.form[t.getAttribute('data-pj-f')] = t.value; };
   paint();
 }
 
