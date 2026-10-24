@@ -107,13 +107,29 @@ const achHtml = (st) => { const h = V.monthlyMgmtHtml(st); const i = h.indexOf('
 ok(!txt(V.monthlyMgmtHtml(ST([a1]))).includes('실행예산을 불러오지 못해'), '정상일 때는 그 알림이 없다');
 { const bad = row(REP(300000, 700000), { pjtId: 'pjt_1', rev: 1, rows: [{ cat: 'foo', name: 'x', amount: 1 }], history: [] }); const t = txt(achHtml(ST([bad]))); ok(t.includes('실행예산 오류'), '깨진 실행예산 프로젝트에는 "실행예산 오류"가 보이고 목표 마진율 기준 값으로 표시된다'); }
 { const t = txt(V.monthlyMgmtHtml(ST([a1], { budgetBad: ['pjt_9'] }))); ok(/깨진 실행예산 1개/.test(t), '읽을 수 없는 실행예산 문서가 있으면 개수를 알린다'); }
-{ const t = txt(V.monthlyMgmtHtml(ST([a1]))); ok(/저장본/.test(t) && /목표 마진율 기준/.test(t), '★ 한계를 숨기지 않는다: 서버가 저장하는 저장본(스냅샷)은 아직 목표 마진율 기준임을 적는다'); }
+{ const t = txt(V.monthlyMgmtHtml(ST([a1]))); ok(/저장본\(스냅샷\)도 서버가 저장하는 시점의 같은 기준/.test(t) && /적용하기 전에 저장된 저장본은 목표 마진율 기준/.test(t) && !/서버 업데이트 예정/.test(t), '★ 저장본 설명이 사실과 같다: 저장하는 시점의 같은 기준으로 저장되고, 이 기능 적용 전 저장본만 목표 마진율 기준("서버 업데이트 예정" 같은 옛 한계 문구는 없다)'); }
 { const x = row(REP(300000, 700000), BUD([R('sub', 1500000, { name: '<img src=x onerror=alert(1)>' })]), P({ name: '<img src=x onerror=alert(1)>', code: '"><b>' })); const h = achHtml(ST([x])); ok(!/<img|<b>/.test(h), '★ 프로젝트 이름·코드의 태그가 살아나지 않는다'); }
 { const { createRequire } = await import('node:module'); const { JSDOM } = createRequire(import.meta.url)('../scripts/dev/node_modules/jsdom'); const d = new JSDOM('<body>' + V.monthlyMgmtHtml(ST([a1, a2, a3, m1])) + '</body>').window.document;
   const sec = [...d.querySelectorAll('section')].find((s) => s.querySelector('h3') && s.querySelector('h3').textContent.includes('원가 달성률')); const heads = [...sec.querySelectorAll('thead th')].map((x) => x.textContent.trim()); let bad = [];
   sec.querySelectorAll('tbody tr').forEach((tr) => [...tr.children].forEach((td, i) => { if (i === 0) return; if (td.getAttribute('data-label') !== heads[i]) bad.push(heads[i] + '≠' + td.getAttribute('data-label')); }));
   ok(sec.querySelector('table').classList.contains('jh-plan__table--cards') && bad.length === 0 && heads.length === 7 && heads[3] === '목표 원가', '★ 폰 카드 전환: 모든 칸의 data-label 이 같은 열 머리글과 같은 글자이고 표는 기존 7칸 그대로다 ' + bad.slice(0, 2).join(' / ')); }
 
+console.log('── 저장본 보기(서버가 저장한 달성률): 실행예산 기준 표시');
+{ const MONTH = { invoiced: 10000, collected: 8000, payIssued: 2500, paid: 2000, direct: 500, ownLabor: 1000, cost: 4000, margin: 50, laborYield: 8 };
+  const SROW = (id, name, ach) => ({ pjt: 'R' + id, planId: 'pjt_' + id, code: 'C' + id, name, version: 3, savedAtMs: 1790000000000, month: MONTH, ach });
+  const OLD = { status: 'ok', est: 10000000, target: 12, targetCost: 8800000, payIssued: 2500, direct: 500, ownLabor: 1000, cost: 4000, rate: 87, over: false };
+  const BUDGETED = { status: 'ok', est: 10000000, target: 12, targetCost: 5000000, payIssued: 4000, direct: 1200000, ownLabor: 2300000, cost: 3504000, rate: 70.1, over: false, basis: 'budget', budgetRev: 2, plan: 5000000, usingReserve: false, warnUnassigned: false, byCat: [] };
+  const mgmtSt = (rows) => ST([], { mgmt: { enabled: true, listState: 'ok', list: [], save: { state: 'idle' }, view: { state: 'ok', ym: '2026-09', rows, message: '' } } });
+  const html = V.monthlyMgmtHtml(mgmtSt([SROW(1, '예전 저장본', OLD), SROW(2, '실행예산 안', BUDGETED), SROW(3, '예비비', Object.assign({}, BUDGETED, { rate: 96.1, usingReserve: true })), SROW(4, '초과', Object.assign({}, BUDGETED, { rate: 106.1, over: true })), SROW(5, '깨짐', Object.assign({}, OLD, { budgetBad: true })), SROW(6, '달성률 없음', null)]));
+  const { createRequire } = await import('node:module'); const { JSDOM } = createRequire(import.meta.url)('../scripts/dev/node_modules/jsdom'); const d = new JSDOM('<body>' + html + '</body>').window.document; const trs = [...d.querySelector('[data-snap-view] tbody').querySelectorAll('tr')]; const cell = (i, k) => trs[i].children[k].textContent.replace(/\s+/g, ' ').trim();
+  ok(trs.length === 6 && trs[0].children.length === 11, '저장본 표는 기존 11칸 그대로다(칸을 끼우지 않았다) — 행 ' + trs.length + '·칸 ' + (trs[0] && trs[0].children.length));
+  ok(cell(0, 0) === 'C1 예전 저장본' && cell(0, 10) === '87.0%', '★ 실행예산이 없던 예전 저장본은 한 글자도 안 바뀐다(이름에 칩 없음, 달성률 87.0%)');
+  ok(cell(1, 0).includes('실행예산 r2') && cell(1, 10) === '70.1%', '★ 실행예산 기준 저장본: 이름 옆 "실행예산 r2", 달성률 70.1% (안이면 판정 글자 없음)');
+  ok(cell(2, 10) === '96.1% · 예비비 사용 중' && cell(3, 10) === '106.1% · 실행예산 초과', '★ 예비비 사용 중·실행예산 초과는 글자로 붙는다');
+  ok(cell(4, 0).includes('실행예산 오류') && cell(4, 10) === '87.0%', '깨진 실행예산으로 저장된 줄은 "실행예산 오류" 칩, 값은 목표 마진율 기준 그대로');
+  ok(cell(5, 10) === '—', '달성률이 없던 줄은 —');
+  const heads = [...d.querySelectorAll('[data-snap-view] thead th')].map((x) => x.textContent.trim()); let bad = 0; trs.forEach((tr) => [...tr.children].forEach((td, i) => { if (i > 0 && td.getAttribute('data-label') !== heads[i]) bad++; })); ok(bad === 0, '폰 카드 전환: 모든 칸의 data-label 이 열 머리글과 같다(저장본 표)');
+  { const h7 = V.monthlyMgmtHtml(mgmtSt([SROW(7, '<img src=x onerror=alert(1)>', BUDGETED)])); const d7 = new JSDOM('<body>' + h7 + '</body>').window.document; ok(d7.querySelectorAll('img').length === 0 && h7.includes('&lt;img'), '★ 저장본의 프로젝트 이름의 태그가 살아나지 않는다(실제 img 요소 0개, 글자로만 보인다)'); } }
 console.log('── 엑셀(CSV)');
 const parse = (csv) => csv.replace(/^\ufeff/, '').split(/\r?\n/).map((l) => { const out = []; let cur = '', q = false; for (let i = 0; i < l.length; i++) { const ch = l[i]; if (q) { if (ch === '"' && l[i + 1] === '"') { cur += '"'; i++; } else if (ch === '"') q = false; else cur += ch; } else if (ch === '"') q = true; else if (ch === ',') { out.push(cur); cur = ''; } else cur += ch; } out.push(cur); return out; }); // 따옴표로 감싼 칸을 제대로 푼다(모든 칸이 큰따옴표로 감싸진다)
 { const csv = C.monthlyMgmtCsv(ST([a1, a2, a3, m1])); const L = parse(csv); const i = L.findIndex((r) => (r[0] || '').startsWith('[원가 달성률')); const head = L[i + 1]; const r1 = L[i + 2];
