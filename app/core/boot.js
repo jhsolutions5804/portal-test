@@ -1,16 +1,16 @@
-import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261025g';
-import { register, visibleFor, get } from './registry.js?v=20261025g';
-import { parseHash, onChange } from './router.js?v=20261025g';
-import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261025g';
-import { hasMicrosoftCallback, finishMicrosoftLogin, startMicrosoftLogin, msErrorMessage } from './ms-auth.js?v=20261025g';
-import { initTheme } from './theme.js?v=20261025g';
-import { checkForUpdate } from './update.js?v=20261025g';
-import { MODULES, installShellDocks } from '../modules/index.js?v=20261025g';
-import { mountPlatformHome } from './home.js?v=20261025g';
-import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261025g';
-import { ensureTime24 } from '../shared/time24.js?v=20261025g';
-import { installRecent, describeNow } from './recent.js?v=20261025g';
-import { workTabs, resumeHash } from './worktabs.js?v=20261025g';
+import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261025h';
+import { register, visibleFor, get } from './registry.js?v=20261025h';
+import { parseHash, onChange } from './router.js?v=20261025h';
+import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261025h';
+import { hasMicrosoftCallback, finishMicrosoftLogin, startMicrosoftLogin, msErrorMessage } from './ms-auth.js?v=20261025h';
+import { initTheme } from './theme.js?v=20261025h';
+import { checkForUpdate } from './update.js?v=20261025h';
+import { MODULES, installShellDocks } from '../modules/index.js?v=20261025h';
+import { mountPlatformHome } from './home.js?v=20261025h';
+import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261025h';
+import { ensureTime24 } from '../shared/time24.js?v=20261025h';
+import { installRecent, describeNow } from './recent.js?v=20261025h';
+import { workTabs, resumeHash } from './worktabs.js?v=20261025h';
 
 initTheme();   // 이 기기에 저장된 화면 모드(자동·라이트·다크) 적용
 MODULES.forEach((m) => register(Object.assign({}, m.manifest, { mount: m.mount })));
