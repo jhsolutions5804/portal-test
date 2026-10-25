@@ -1,4 +1,4 @@
-import { composeType, COMPOSE_TYPES, defaultValues, validate, buildDocData, buildTitle, fieldsFor, valuesFromDoc, DRIVE_KINDS } from '../app/modules/edoc/compose.js';
+import { composeType, COMPOSE_TYPES, defaultValues, validate, buildDocData, buildTitle, fieldsFor, fieldRows, valuesFromDoc, DRIVE_KINDS } from '../app/modules/edoc/compose.js';
 import { DOC_TYPES, NO_POST_TYPES, TYPE_LABEL, TYPE_GROUPS, availableActions } from '../app/modules/edoc/logic.js';
 import { badgeHtml } from '../app/modules/edoc/views.js';
 import { GUIDE_TYPES } from '../app/modules/edoc/settings-logic.js';
@@ -25,4 +25,12 @@ const rows = FORMS.drive.rows; ok(rows.some((r) => r.label === '주행거리' &&
 ok(buildTitle('drive', { date: '2026-10-10' }, me) === '20261010 한가나 차량 운행일지', '차량 운행일지: 차량 이름이 없을 때 제목');
 const recDoc = { dtype: 'drive', status: 'approved', recorded: true, authorUid: 'u1', approvalLine: [{ role: '작성', uid: 'u1', status: 'done' }] };
 ok(badgeHtml('approved', recDoc).includes('기록') && badgeHtml('approved', { dtype: 'leave' }).includes('승인') && badgeHtml('approved').includes('승인') && !availableActions(recDoc, { uid: 'adm', admin: true, isRequired: true }).some((a) => a.key === 'post') && availableActions({ dtype: 'leave', status: 'approved', authorUid: 'u1', approvalLine: [{ role: '결재', uid: 'a', status: 'done' }] }, { uid: 'adm', admin: true }).some((a) => a.key === 'post'), '★ 차량 운행일지: 상태는 "기록"으로 표시, 관리자에게도 게시 버튼이 나오지 않음(다른 문서는 그대로)');
+// ── 작성 화면 줄 배치(대표님 2026-10-25: 운행일자·차량·프로젝트를 한 줄로)
+const dRows = fieldRows('drive', {});
+ok(dRows[0].cols === 3 && dRows[0].layout === 'narrow-first-3' && dRows[0].fields.map((f) => f.key).join() === 'date,vehicleId,pjtId', '운행일지 첫 줄: 운행일자·차량·프로젝트 세 칸이 한 줄(배치 narrow-first-3)');
+ok(dRows[1].fields.map((f) => f.key).join() === 'origin,destination,kind' && dRows[1].cols === 3 && dRows[1].layout === '' && dRows.length >= 3 && dRows[0].fields[2].required === true && dRows[0].fields[2].allowCommon === true, '둘째 줄(출발지·도착지·구분)은 그대로, 프로젝트는 여전히 필수이고 "공통" 선택이 가능');
+const css = (await import('node:fs')).readFileSync(new URL('../app/theme/edoc.css', import.meta.url), 'utf8');
+const i3 = css.indexOf('.jh-form__row[data-cols="narrow-first-3"] { grid-template-columns: minmax(0, var(--u-220)) minmax(0, 1fr) minmax(0, 1fr); }'); const iMid = css.indexOf('@media (max-width: 1099px) { .jh-form__row[data-cols="narrow-first-3"]'); const iPhone = css.indexOf('.jh-form__row, .jh-form__row[data-cols] { grid-template-columns: 1fr; }');
+ok(i3 > 0 && iMid > i3 && iPhone > iMid, '스타일: 3열 규칙 → 중간 폭(1099px 이하) 2열 규칙 → 폰 폭(899px 이하) 1열 규칙 순서(뒤의 규칙이 이긴다)');
+ok(/narrow-first-3[^}]*minmax\(0, 1fr\) minmax\(0, 1fr\)/.test(css) && !dRows.slice(1).some((r) => r.layout === 'narrow-first-3'), '3열은 날짜 칸 220px + 같은 폭 두 칸, 다른 줄에는 쓰이지 않는다');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

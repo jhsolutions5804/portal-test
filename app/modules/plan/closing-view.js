@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261025i';
-import { won, signed, card, chip } from './ui.js?v=20261025i';
-import { closingSummary, closingChecks } from './closing.js?v=20261025i';
-import { docFileName } from '../../shared/doc-filename.js?v=20261025i';
+import { esc } from '../../core/ui.js?v=20261025j';
+import { won, signed, card, chip } from './ui.js?v=20261025j';
+import { closingSummary, closingChecks } from './closing.js?v=20261025j';
+import { docFileName } from '../../shared/doc-filename.js?v=20261025j';
 const TONE = { warn: ['처리 필요', 'red'], info: ['참고', 'amber'], ok: ['이상 없음', 'green'] };
 const cell = (label, v, hint, tone) => '<div class="jh-plan__sumcell"><span class="jh-field__hint">' + esc(label) + '</span><strong' + (tone ? ' data-tone="' + tone + '"' : '') + '>' + v + '</strong>' + (hint ? '<span class="jh-field__hint">' + esc(hint) + '</span>' : '') + '</div>';
 const itemRow = (r) => '<a class="jh-plan__row" href="' + esc(r.href) + '"><span class="jh-plan__main"><strong>' + esc(r.title) + '</strong><span class="jh-field__hint">' + esc(r.meta) + '</span></span>' + (r.right ? '<strong>' + won(r.right) + '</strong>' : '') + '</a>';

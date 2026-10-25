@@ -53,7 +53,7 @@ const F = {
     { key: 'issue', label: '특이사항', type: 'textarea', ph: '안전·품질·자재 이슈 등', row: 'd' }
   ],
   drive: [
-    { key: 'date', label: '운행일자', type: 'date', required: true, row: 'a', layout: 'narrow-first' },
+    { key: 'date', label: '운행일자', type: 'date', required: true, row: 'a', layout: 'narrow-first-3' }, // 운행일자·차량·프로젝트를 한 줄로(대표님 2026-10-25)
     { key: 'vehicleId', label: '차량', type: 'vehicle', required: true, row: 'a' },
     { key: 'pjtId', label: '프로젝트', type: 'project', allowCommon: true, required: true, row: 'a', hint: '업무용 운행이 어느 프로젝트인지 고르세요. 프로젝트와 무관하면 "공통"을 고릅니다.' },
     { key: 'origin', label: '출발지', type: 'text', ph: '예) 본사 창고', required: true, row: 'b' },
