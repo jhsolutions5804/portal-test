@@ -38,4 +38,5 @@ t = mk(big); r = await t.io.destroy(ids, 'a@b.c', TODAY); ok(r.destroyed === 850
 // 읽기 실패는 숨기지 않는다
 const t2 = mk(seed()); const io2 = makePurgeIo({ db: {}, doc: (d, c, i) => ({ path: c + '/' + i }), serverTimestamp: () => 1, updateDoc: async () => {}, writeBatch: () => ({ set() {}, commit: async () => {} }), getDoc: async () => { throw new Error('permission-denied'); } });
 ok(/permission-denied/.test(await rej(() => io2.destroy(['due1'], 'a@b.c', TODAY))), '읽기에 실패하면 파기하지 않고 예외');
+t = mk(seed()); r = await t.io.destroy(['due1', 'pass1', 'due2', 'early'], 'a@b.c', TODAY); ok(r.destroyedIds.join() === 'due1,due2' && r.destroyed === r.destroyedIds.length && (await mk(seed()).io.destroy([], 'a@b.c', TODAY)).destroyedIds.length === 0, '파기한 지원서 번호 목록(destroyedIds)을 돌려준다 — 화면이 바로 반영하는 데 쓰며 건너뛴 것은 들어 있지 않다');
 console.log('\n' + (fail ? 'FAILED ' : 'ALL OK ') + pass + ' pass / ' + fail + ' fail'); process.exit(fail ? 1 : 0);
