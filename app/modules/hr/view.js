@@ -1,24 +1,25 @@
-import { esc } from '../../core/ui.js?v=20261025e';
-import { rtWon, retireRecordsSorted } from './retire.js?v=20261025e';
-import { otSummary, otPerson, otAmount } from './overtime.js?v=20261025e';
-import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261025e';
-import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261025e';
-import { weeklyCardHtml } from './weekly-view.js?v=20261025e';
-import { historyCardHtml } from './history-view.js?v=20261025e';
-import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261025e';
-import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261025e';
-import { sendLogText } from './sign.js?v=20261025e';
-import { maskedView } from './identity.js?v=20261025e';
-import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261025e';
-import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261025e';
-import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261025e';
-import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261025e';
-import { _hzDot } from './leave-promo-docs.js?v=20261025e';
-import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261025e';
-import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261025e';
-import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261025e';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261025e';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix, taxInfoOf, taxBasisNote } from './logic.js?v=20261025e';
+import { esc } from '../../core/ui.js?v=20261025f';
+import { rtWon, retireRecordsSorted } from './retire.js?v=20261025f';
+import { otSummary, otPerson, otAmount } from './overtime.js?v=20261025f';
+import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261025f';
+import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261025f';
+import { weeklyCardHtml } from './weekly-view.js?v=20261025f';
+import { purgeCardHtml, purgeChipHtml } from './recruit-purge-view.js?v=20261025f';
+import { historyCardHtml } from './history-view.js?v=20261025f';
+import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261025f';
+import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261025f';
+import { sendLogText } from './sign.js?v=20261025f';
+import { maskedView } from './identity.js?v=20261025f';
+import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261025f';
+import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261025f';
+import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261025f';
+import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261025f';
+import { _hzDot } from './leave-promo-docs.js?v=20261025f';
+import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261025f';
+import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261025f';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261025f';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261025f';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix, taxInfoOf, taxBasisNote } from './logic.js?v=20261025f';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -232,8 +233,8 @@ export function applicantsHtml(st) {
   const c = appCounts(st.apList); const list = appFilter(st.apList, st.apFilter);
   const seg = '<div class="jh-segmented" role="group" aria-label="상태">' + ['all', 'new', 'review', 'pass', 'fail'].map((k) => '<button type="button" class="jh-segmented__item" data-a-filter="' + k + '" aria-pressed="' + (st.apFilter === k) + '">' + (k === 'all' ? '전체' : APP_STATUS[k]) + ' (' + c[k] + ')</button>').join('') + '</div>';
   const rows = list.map((a) => { const iv = splitInterview(a.interviewAt); const s2 = appStatusOf(a);
-    return '<tr><td class="jh-hr__row" data-a-open="' + esc(a.id) + '"><strong style="cursor:pointer;text-decoration:underline">' + esc(a.name || '-') + '</strong></td><td>' + esc(a.phone || '-') + '</td><td>' + (a.jobTitle ? '<span class="jh-hr__trunc" title="' + esc(a.jobTitle) + '">' + chip(a.jobTitle, 'accent') + '</span>' : '-') + '</td><td>' + esc(a.created || '-') + '</td><td><div class="jh-hr__iv"><input class="jh-input" type="date" data-a-ivd="' + esc(a.id) + '" value="' + esc(iv.date) + '" title="날짜와 시간(24시간)을 모두 입력하면 인사 캘린더에 면접 일정으로 자동 등록됩니다"> <input class="jh-input" type="time" data-a-ivt="' + esc(a.id) + '" value="' + esc(iv.time) + '" title="24시간 형식 (예: 14:30)"></div></td><td><select class="jh-select jh-hr__stsel" data-a-status="' + esc(a.id) + '" aria-label="상태">' + Object.keys(APP_STATUS).map((k) => '<option value="' + k + '"' + (s2 === k ? ' selected' : '') + '>' + APP_STATUS[k] + '</option>').join('') + '</select></td><td>' + (s2 === 'pass' ? '<button type="button" class="jh-btn" data-variant="secondary" data-a-offer="' + esc(a.id) + '">제안서</button> ' : '') + '<button type="button" class="jh-btn" data-variant="ghost" data-a-del="' + esc(a.id) + '">삭제</button></td></tr>'; }).join('');
-  return card('채용 지원자', '<div class="jh-hr__pad"><div class="jh-hr__bar">' + seg + '</div><div class="jh-field__hint">홈페이지 지원 폼(recruit.html)으로 들어온 지원서입니다. 이름을 누르면 이력서를 보고 인쇄합니다. 면접 날짜·시간을 모두 입력하면 인사 캘린더에 면접 일정으로 자동 등록됩니다. 삭제는 되돌릴 수 없습니다.</div></div>' + (list.length ? '<div class="jh-hr__scroll"><table class="jh-hr-table jh-hr-table--nowrap"><thead><tr><th>이름</th><th>연락처</th><th>지원 공고</th><th>제출일</th><th>면접일</th><th>상태</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<div class="jh-empty">해당 조건의 지원자가 없습니다.</div>'));
+    return '<tr><td class="jh-hr__row" data-a-open="' + esc(a.id) + '"><strong style="cursor:pointer;text-decoration:underline">' + esc(a.name || '-') + '</strong></td><td>' + esc(a.phone || '-') + '</td><td>' + (a.jobTitle ? '<span class="jh-hr__trunc" title="' + esc(a.jobTitle) + '">' + chip(a.jobTitle, 'accent') + '</span>' : '-') + '</td><td>' + esc(a.created || '-') + (a.purgeInfo ? purgeChipHtml(a.purgeInfo) : '') + '</td><td><div class="jh-hr__iv"><input class="jh-input" type="date" data-a-ivd="' + esc(a.id) + '" value="' + esc(iv.date) + '" title="날짜와 시간(24시간)을 모두 입력하면 인사 캘린더에 면접 일정으로 자동 등록됩니다"> <input class="jh-input" type="time" data-a-ivt="' + esc(a.id) + '" value="' + esc(iv.time) + '" title="24시간 형식 (예: 14:30)"></div></td><td><select class="jh-select jh-hr__stsel" data-a-status="' + esc(a.id) + '" aria-label="상태">' + Object.keys(APP_STATUS).map((k) => '<option value="' + k + '"' + (s2 === k ? ' selected' : '') + '>' + APP_STATUS[k] + '</option>').join('') + '</select></td><td>' + (s2 === 'pass' ? '<button type="button" class="jh-btn" data-variant="secondary" data-a-offer="' + esc(a.id) + '">제안서</button> ' : '') + '<button type="button" class="jh-btn" data-variant="ghost" data-a-del="' + esc(a.id) + '">삭제</button></td></tr>'; }).join('');
+  return (st.purge ? purgeCardHtml(st.purge) : '') + card('채용 지원자', '<div class="jh-hr__pad"><div class="jh-hr__bar">' + seg + '</div><div class="jh-field__hint">홈페이지 지원 폼(recruit.html)으로 들어온 지원서입니다. 이름을 누르면 이력서를 보고 인쇄합니다. 면접 날짜·시간을 모두 입력하면 인사 캘린더에 면접 일정으로 자동 등록됩니다. 삭제는 되돌릴 수 없습니다.</div></div>' + (list.length ? '<div class="jh-hr__scroll"><table class="jh-hr-table jh-hr-table--nowrap"><thead><tr><th>이름</th><th>연락처</th><th>지원 공고</th><th>제출일</th><th>면접일</th><th>상태</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<div class="jh-empty">해당 조건의 지원자가 없습니다.</div>'));
 }
 export function applicantDetailHtml(st) {
   const a = st.apList.find((x) => x.id === st.apSel); if (!a) return ''; const m = a.military || {}; const pass = appStatusOf(a) === 'pass';
@@ -600,7 +601,7 @@ export function homeSealHtml(seals, admin) {
   return card('🖊️ 서명/도장 관리 (관리자)', '<div class="jh-hr__pad">' + SEAL_KEYS.map((k) => { const img = seals[k.key]; return '<div class="jh-hr__bar"><strong>' + esc(k.label) + '</strong>' + (img ? '<img src="' + esc(img) + '" alt="' + esc(k.label) + ' 도장" style="height:40px;max-width:100px;object-fit:contain">' : '<span class="jh-field__hint" style="display:inline-block;min-width:100px;height:40px;border:var(--u-1) dashed var(--c-line-strong);text-align:center;line-height:40px">없음</span>') + '<button type="button" class="jh-btn" data-variant="secondary" data-hm-seal="' + esc(k.key) + '">' + (img ? '교체' : '등록') + '</button>' + (img ? '<button type="button" class="jh-btn" data-variant="ghost" data-hm-sealdel="' + esc(k.key) + '">삭제</button>' : '') + '</div>'; }).join('') + '<div class="jh-field__hint">계약서(갑 서명란)·연차사용촉진 통보서 등에 찍히는 대표 도장입니다. 배경이 투명한 PNG 를 권장하며, 큰 이미지는 자동으로 줄여 저장합니다(300KB 이하).</div></div>');
 }
 export function homeHtml() {
-  return '<div id="hm-alert"></div><div class="jh-hr__home"><aside class="jh-hr__homeside" aria-label="인사 요약"><div id="hm-kpi"><div class="jh-skeleton" style="height:var(--u-100, 6rem)"></div></div><div id="hm-seal"></div></aside><div class="jh-hr__homemain"><div id="hm-week"></div><div id="hm-list"></div><div id="hm-cal"></div></div></div>';   // 요약 카드는 왼쪽에 세로로, 캘린더는 오른쪽(카드를 눌러 열리는 목록은 캘린더 위)
+  return '<div id="hm-alert"></div><div class="jh-hr__home"><aside class="jh-hr__homeside" aria-label="인사 요약"><div id="hm-kpi"><div class="jh-skeleton" style="height:var(--u-100, 6rem)"></div></div><div id="hm-seal"></div></aside><div class="jh-hr__homemain"><div id="hm-week"></div><div id="hm-purge"></div><div id="hm-work"></div><div id="hm-list"></div><div id="hm-cal"></div></div></div>';   // 요약 카드는 왼쪽에 세로로, 캘린더는 오른쪽(카드를 눌러 열리는 목록은 캘린더 위)
 }
 
 /** 양식 변경 이력(📜): 저장 서류는 저장 당시 양식으로만 그려진다는 원칙과 버전별 변경 내용 */

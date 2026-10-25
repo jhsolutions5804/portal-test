@@ -1,0 +1,28 @@
+import { workforceStats, tenureYears, isTestAccount, TENURE_BUCKETS } from '../app/modules/hr/workforce.js';
+import { workforceHtml } from '../app/modules/hr/workforce-view.js';
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
+const T = '2026-10-25'; const W = (id, o) => Object.assign({ id, name: '직원' + id, rank: '사원', empType: 'office', hireDate: '2024-10-25' }, o || {});
+ok(tenureYears('2024-10-25', T) > 1.99 && tenureYears('2024-10-25', T) < 2.01 && tenureYears('2026-10-25', T) === 0 && tenureYears('2026-10-26', T) === null && tenureYears('', T) === null && tenureYears('x', T) === null && tenureYears('2020-01-01', '') === null, '근속 햇수: 만 2년, 입사 당일 0, 미래 입사일·없는 값은 null');
+ok(isTestAccount('test') && isTestAccount(' test ') && isTestAccount('[테스트] 홍길동') && !isTestAccount('테스트') && !isTestAccount('김테스트') && !isTestAccount('') && !isTestAccount(null), '시험 계정 판별: "test"·"[테스트]…"만(진짜 이름에 테스트가 들어가도 제외하지 않는다)');
+ok(TENURE_BUCKETS.map((b) => b[0]).join() === '1년 미만,1~3년,3~5년,5년 이상', '근속 구간');
+const ws = [W('1', { rank: '대표', hireDate: '2015-01-01', empType: 'office' }), W('2', { rank: '과장', hireDate: '2021-10-25' }), W('3', { rank: '대리', hireDate: '2024-10-25' }), W('4', { rank: '대리', hireDate: '2026-03-01', empType: 'field' }), W('5', { rank: '사원', hireDate: '2026-10-01', empType: 'field' }), W('6', { name: 'test', rank: '사원', hireDate: '2020-01-01' }), W('7', { rank: '사원', status: 'resigned', hireDate: '2022-05-01', resignDate: '2025-12-31' }), W('8', { rank: '임시직급', hireDate: '2023-01-01' }), W('9', { rank: '', hireDate: '' }), null, {}];
+const s = workforceStats(ws, T);
+ok(s.headcount === 7 && s.resignedTotal === 1, '재직 7명(시험 계정 test·퇴직자·빈 항목 제외), 퇴직 처리 1명');
+ok(s.ranks.map((r) => r.join(':')).join() === '대표:1,과장:1,대리:2,사원:1,임시직급:1,(미지정):1', '직급: 조직도 순서(대표→사원)로, 모르는 직급은 뒤에, 직급이 비면 (미지정) 맨 끝');
+ok(s.types.map((r) => r.join(':')).join() === '사무직:5,현장직:2', '직원 구분: 많은 순(사무직 5·현장직 2)');
+ok(s.tenure.map((r) => r.join(':')).join() === '1년 미만:2,1~3년:1,3~5년:1,5년 이상:2' && s.noHireDate === 1, '근속 분포: 1년 미만 2(3월·10월 입사)·1~3년 1(만 2년)·3~5년 1(2023)·5년 이상 2(2015·2021), 입사일 없는 1명은 뺌');
+ok(s.avgTenure === 3.9, '평균 근속(입사일 있는 재직자 6명, 11.8·5.0·2.0·0.7·0.1·3.8년의 평균): 3.9년');
+ok(tenureYears('2021-10-25', T) === 5 && tenureYears('2025-10-25', T) === 1 && tenureYears('2021-10-26', T) < 5 && tenureYears('2024-02-29', T) > 2.6 && tenureYears('2024-02-29', T) < 2.7, '근속은 달력 기준: 윤년이 끼어도 정확히 만 5년은 5.0·만 1년은 1.0, 하루 모자라면 5 미만, 2월 29일 입사도 계산된다');
+ok(s.hires.map((r) => r.join(':')).join() === '2015:1,2021:1,2022:1,2023:1,2024:1,2026:2' && s.exits.map((r) => r.join(':')).join() === '2025:1', '입사 연도는 퇴직자 포함(2022년 입사 1명 포함)·연도 오름차순, 퇴직 연도');
+ok(workforceStats([], T).headcount === 0 && workforceStats(null, T).ranks.length === 0 && workforceStats(null, T).avgTenure === null && workforceStats([W('a', { status: 'resigned', resignDate: '2025-01-01' })], T).headcount === 0 && workforceStats([W('a', { status: 'resigned' })], T).exits.length === 0, '자료가 비거나 재직자가 없어도 깨지지 않는다(평균 null, 퇴직일 없는 퇴직자는 연도 집계에서 뺌)');
+ok(workforceStats([W('a', { hireDate: '2026-12-01' })], T).noHireDate === 1 && workforceStats([W('a', { hireDate: '2026-12-01' })], T).tenure.every((x) => x[1] === 0), '미래 입사일은 근속에서 빼고 "입사일 없음"으로 센다');
+// ── 화면
+let h = workforceHtml(s);
+ok(h.includes('👥 인력 현황') && h.includes('data-w-work') && h.includes('재직 <b>7명</b>') && h.includes('평균 근속 <b>' + s.avgTenure + '년</b>') && h.includes('퇴직 처리된 직원 1명') && h.includes('입사일이 없는 재직자 1명은 근속에서 뺐습니다'), '위젯: 재직 인원·평균 근속·퇴직 처리 인원·입사일 없는 직원 안내');
+const bars = [...h.matchAll(/data-w-bar style="width:(\d+)%/g)].map((m) => Number(m[1])); ok(bars.length === s.ranks.length + s.types.length + s.tenure.length + s.hires.length + s.exits.length && Math.max(...bars) === 100 && bars.every((b) => b >= 0 && b <= 100), '막대: 항목마다 하나, 가장 큰 것이 100%, 모두 0~100%');
+ok(h.includes('role="img"') && h.includes('aria-label="대리 2명"') && h.includes('>2명<') && h.includes('직급') && h.includes('직원 구분') && h.includes('근속(재직자)') && h.includes('입사 연도(퇴직자 포함)') && h.includes('퇴직 연도'), '막대에 숫자와 읽어 주는 글자(aria-label)가 함께 있다');
+ok(workforceHtml(null).includes('aria-busy="true"') && workforceHtml(workforceStats([], T)).includes('재직 중인 직원이 없습니다') && !workforceHtml(workforceStats([], T)).includes('data-w-bar'), '불러오는 중 자리표시, 재직자가 없으면 안내만');
+h = workforceHtml(workforceStats([W('a', { rank: '<img src=x onerror=1>' })], T)); ok(!h.includes('<img src=x') && h.includes('&lt;img'), '직급에 들어간 HTML 을 막는다');
+ok(!workforceHtml(workforceStats([W('a', { hireDate: '2020-01-01' })], T)).includes('입사일이 없는'), '입사일이 모두 있으면 안내를 띄우지 않는다');
+ok(JSON.stringify(workforceStats([W('a', { resignDate: '2027-03-31' }), W('b', { status: 'resigned', resignDate: '2025-05-01' })], T).exits) === '[["2025",1]]' && workforceStats([W('a', { resignDate: '2027-03-31' })], T).headcount === 1, '퇴직 예정일이 미리 입력된 재직자는 퇴직 연도 집계에 넣지 않는다(퇴직 처리된 사람만)');
+console.log('\n' + (fail ? 'FAILED ' : 'ALL OK ') + pass + ' pass / ' + fail + ' fail'); process.exit(fail ? 1 : 0);
