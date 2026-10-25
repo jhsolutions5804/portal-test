@@ -1,23 +1,24 @@
-import { esc } from '../../core/ui.js?v=20261025c';
-import { rtWon, retireRecordsSorted } from './retire.js?v=20261025c';
-import { otSummary, otPerson, otAmount } from './overtime.js?v=20261025c';
-import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261025c';
-import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261025c';
-import { weeklyCardHtml } from './weekly-view.js?v=20261025c';
-import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261025c';
-import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261025c';
-import { sendLogText } from './sign.js?v=20261025c';
-import { maskedView } from './identity.js?v=20261025c';
-import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261025c';
-import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261025c';
-import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261025c';
-import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261025c';
-import { _hzDot } from './leave-promo-docs.js?v=20261025c';
-import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261025c';
-import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261025c';
-import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261025c';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261025c';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix, taxInfoOf, taxBasisNote } from './logic.js?v=20261025c';
+import { esc } from '../../core/ui.js?v=20261025d';
+import { rtWon, retireRecordsSorted } from './retire.js?v=20261025d';
+import { otSummary, otPerson, otAmount } from './overtime.js?v=20261025d';
+import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261025d';
+import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261025d';
+import { weeklyCardHtml } from './weekly-view.js?v=20261025d';
+import { historyCardHtml } from './history-view.js?v=20261025d';
+import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261025d';
+import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261025d';
+import { sendLogText } from './sign.js?v=20261025d';
+import { maskedView } from './identity.js?v=20261025d';
+import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261025d';
+import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261025d';
+import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261025d';
+import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261025d';
+import { _hzDot } from './leave-promo-docs.js?v=20261025d';
+import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261025d';
+import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261025d';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261025d';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261025d';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix, taxInfoOf, taxBasisNote } from './logic.js?v=20261025d';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -60,7 +61,7 @@ export function detailHtml(st) {
   const hist = st.sel.history ? '<h4 class="jh-hr__sub">직급·소속 변경 이력</h4>' + (st.sel.history.length ? '<ul class="jh-hr__hist">' + st.sel.history.map((h) => '<li><span class="jh-field__hint">' + esc(h.date) + '</span> ' + esc(historyText(h)) + (h.reason ? '<div class="jh-field__hint">' + esc(h.reason) + '</div>' : '') + '</li>').join('') + '</ul>' : '<div class="jh-field__hint">변경 이력이 없습니다.</div>') : '';
   const manage = '<h4 class="jh-hr__sub">관리</h4><div class="jh-hr__bar">' + (res ? '<button type="button" class="jh-btn" data-variant="secondary" data-w-act="unresign">재직 상태로 복구</button>' : '<input class="jh-input" type="date" data-w-f="resignDate" value="' + esc(f.resignDate || st.today) + '" aria-label="퇴직일" style="max-width:11rem"><button type="button" class="jh-btn" data-variant="secondary" data-w-act="resign">퇴직 처리</button>') + (w.portalUid ? '' : '<button type="button" class="jh-btn" data-variant="secondary" data-w-act="link">포털 계정 연동</button>') + '<button type="button" class="jh-btn" data-variant="ghost" data-w-act="delete">명부에서 삭제</button></div><div class="jh-field__hint">퇴직 처리는 명부에서 지우지 않고 "퇴직"으로 표시합니다. 삭제하면 명부에서만 지워지고 계약서 자료는 남습니다.</div>';
   const foot = manage + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-w-act="save">저장</button><button type="button" class="jh-btn" data-variant="ghost" data-w-act="close">닫기</button><button type="button" class="jh-btn" data-variant="ghost" data-w-act="history">변경 이력 보기</button><a class="jh-btn" data-variant="ghost" href="#/hr/laborc/' + esc(st.sel.id) + '?from=workers">근로계약서</a><a class="jh-btn" data-variant="ghost" href="#/hr/annualc/' + esc(st.sel.id) + '?from=workers">연봉계약서</a></div>';
-  return card((w.name || '근로자') + ' 상세·수정', '<div class="jh-hr__pad">' + head + period + basic + hist + foot + '</div>');
+  return card((w.name || '근로자') + ' 상세·수정', '<div class="jh-hr__pad">' + head + period + basic + hist + foot + '</div>') + historyCardHtml(st.sel.hist);
 }
 
 /** 신규 등록 */
