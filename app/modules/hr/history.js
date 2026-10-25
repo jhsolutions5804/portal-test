@@ -1,7 +1,8 @@
 /* 인사 이력(인사기록카드) — 직원 1명의 계약·인사 변동·면담·평가·연차·퇴직·급여명세서 발행·서류 발송을 날짜순 타임라인으로 모은다.
  * 있는 자료를 모아 보여 줄 뿐 새로 저장하지 않는다. 금액(시급·연봉·퇴직금)은 secret 으로 따로 두어 화면에서 기본 가림 + [보기], 인쇄본에서는 뺀다.
  * 면담·평가 의견은 앞 60자만 보이고 전문은 각 화면에서 본다. 순수 함수 — 시험: tests/hr-history.test.mjs. 설계: app-docs/hr-additions-design.md §6 */
-import { historyText } from './logic.js?v=20261025d';
+import { historyText, RRQ_STATUS } from './logic.js?v=20261025e';
+import { DS_REASON } from './dismissal.js?v=20261025e';
 
 export const HIST_KINDS = {
   join: { label: '입사', mark: '🟢' }, exit: { label: '퇴직', mark: '⚫' }, contract: { label: '계약', mark: '📝' }, change: { label: '인사 변동', mark: '🔀' }, interview: { label: '면담', mark: '💬' }, eval: { label: '평가', mark: '⭐' },
@@ -35,9 +36,9 @@ export function buildHistory(inp) {
   (x.evals || []).forEach((r, i) => { if (!r) return; const adhoc = r.type === 'adhoc'; add({ key: 'eval:' + (r.id || i), kind: 'eval', date: dayOf(r.confirmedAt, r.createdAt, r.year ? r.year + '-12-31' : ''), title: adhoc ? '수시 평가' + (r.pjtName ? ' · ' + r.pjtName : '') : (r.year || '') + ' 정기 평가', detail: ['등급 ' + (r.grade || '-'), r.status === 'confirmed' ? '확정' : '초안', cut(r.comment, 60)].filter(Boolean).join(' · '), link: '#/hr/evals' }); });
   (x.leaves || []).forEach((l, i) => { if (!l || !['approved', 'posted'].includes(l.status)) return; const days = N(l.days || l.totalDays); add({ key: 'leave:' + (l.id || i), kind: 'leave', date: dayOf(l.startDate, l.date), title: l.leaveType || '휴가', detail: (l.startDate || '?') + ' ~ ' + (l.endDate || l.startDate || '?') + (days > 0 ? ' · ' + days + '일' : ''), link: '#/hr/leaves' }); });
   (x.promos || []).forEach((p, i) => { if (!p) return; add({ key: 'promo:' + (p.id || i), kind: 'promo', date: dayOf(p.noticeDate), title: p.stage === 'p2' ? '연차사용촉진 2차(시기 지정) 통보' : '연차사용촉진 1차 통보', detail: (p.periodStart || '?') + ' ~ ' + (p.periodEnd || '?') + ' · 미사용 ' + N(p.unusedDays) + '일', link: '#/hr/leavepromo' }); });
-  (x.resigns || []).forEach((r, i) => { if (!r) return; add({ key: 'resign:' + (r.id || i), kind: 'resign', date: dayOf(r.lastDate, r.createdAt), title: '휴직/퇴직 원서', detail: [r.leaveKind ? String(r.leaveKind) : '', '마지막 근무일 ' + (r.lastDate || '?'), r.status ? '상태 ' + r.status : ''].filter(Boolean).join(' · '), link: '#/hr/resignreqs' }); });
+  (x.resigns || []).forEach((r, i) => { if (!r) return; add({ key: 'resign:' + (r.id || i), kind: 'resign', date: dayOf(r.lastDate, r.createdAt), title: '휴직/퇴직 원서', detail: [r.leaveKind ? String(r.leaveKind) : '', '마지막 근무일 ' + (r.lastDate || '?'), r.status ? '상태 ' + (RRQ_STATUS[r.status] || r.status) : ''].filter(Boolean).join(' · '), link: '#/hr/resignreqs' }); });
   (x.severance || []).forEach((r, i) => { if (!r) return; add({ key: 'retire:' + (r.id || i), kind: 'retire', date: dayOf(r.retireDate, r.createdAt), title: '퇴직 정산', detail: '근속 ' + N(r.serviceDays) + '일', link: '#/hr/retire', secret: N(r.severance) > 0 ? '퇴직금 ' + won(r.severance) : '' }); });
-  (x.dismissals || []).forEach((d, i) => { if (!d) return; add({ key: 'dismissal:' + (d.id || i), kind: 'dismissal', date: dayOf(d.noticeDate, d.createdAt), title: '해고예고통지서', detail: '해고일 ' + (d.dismissalDate || '?') + (d.reasonType ? ' · ' + d.reasonType : ''), link: '#/hr/dismissal' }); });
+  (x.dismissals || []).forEach((d, i) => { if (!d) return; add({ key: 'dismissal:' + (d.id || i), kind: 'dismissal', date: dayOf(d.noticeDate, d.createdAt), title: '해고예고통지서', detail: '해고일 ' + (d.dismissalDate || '?') + (d.reasonType ? ' · ' + (DS_REASON[d.reasonType] || d.reasonType) : ''), link: '#/hr/dismissal' }); });
   // 급여명세서는 해마다 한 줄로 묶는다(월마다 한 줄이면 타임라인이 묻힌다) — 금액은 넣지 않는다
   const byYear = {}; (x.payslips || []).forEach((p) => { const m = String((p && (p.month || p.id)) || ''); if (/^\d{4}-\d{2}$/.test(m)) (byYear[m.slice(0, 4)] = byYear[m.slice(0, 4)] || []).push(m); });
   Object.keys(byYear).forEach((y) => { const ms = byYear[y].slice().sort(); add({ key: 'payslip:' + y, kind: 'payslip', date: ms[ms.length - 1] + '-01', title: '급여명세서 ' + y + '년 ' + ms.length + '건', detail: ms.map((m) => m.slice(5)).join('·') + '월', link: '#/hr/payslips' }); });
