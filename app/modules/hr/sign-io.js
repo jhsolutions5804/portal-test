@@ -1,15 +1,16 @@
 /* 원격 서명·열람 링크·메일 발송 — Firestore·메일 서비스를 쓰는 부분(규칙·판단은 sign.js, 시험은 거기서).
  * 서명 페이지(sign.html)는 별도 공개 페이지이고, 이 파일은 관리자 화면 쪽(링크 만들기·서명 결과 반영·메일 보내기·발송 이력)만 맡는다. */
-import { db, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp, Timestamp, addDoc, updateDoc } from '../../core/firebase.js?v=20261026c';
-import { confirmDialog } from '../../core/dialog.js?v=20261026c';
-import { toast, esc } from '../../core/ui.js?v=20261026c';
-import { docHtmlByVer, __ANNUAL_TPL } from './frozen-docs.js?v=20261026c';
-import { configureLaborDocs, laborDocHtml } from './labor-doc.js?v=20261026c';
-import { psHtml } from './payslip-doc.js?v=20261026c';
-import { leavePromoHtmlByVer, configureLeavePromoDocs } from './leave-promo-docs.js?v=20261026c';
-import { LP_STAGE } from './leave-promo.js?v=20261026c';
-import { IS_TEST } from '../../core/config.js?v=20261026c';
-import { emailjsFor, phoneE164, maskJumin, contractContentHash, buildSignLink, buildViewLink, NO_PHONE_ERROR, syncDecision, isEmail, sendLogEntry, summarizeSendLog, qrUrl, EMAILJS, DOC_LABEL } from './sign.js?v=20261026c';
+import { db, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp, Timestamp, addDoc, updateDoc } from '../../core/firebase.js?v=20261026d';
+import { confirmDialog } from '../../core/dialog.js?v=20261026d';
+import { toast, esc } from '../../core/ui.js?v=20261026d';
+import { docHtmlByVer, __ANNUAL_TPL } from './frozen-docs.js?v=20261026d';
+import { configureLaborDocs, laborDocHtml } from './labor-doc.js?v=20261026d';
+import { SHORT_TPL_VER, SHORT_SIGN_ERROR } from './short-doc.js?v=20261026d';
+import { psHtml } from './payslip-doc.js?v=20261026d';
+import { leavePromoHtmlByVer, configureLeavePromoDocs } from './leave-promo-docs.js?v=20261026d';
+import { LP_STAGE } from './leave-promo.js?v=20261026d';
+import { IS_TEST } from '../../core/config.js?v=20261026d';
+import { emailjsFor, phoneE164, maskJumin, contractContentHash, buildSignLink, buildViewLink, NO_PHONE_ERROR, syncDecision, isEmail, sendLogEntry, summarizeSendLog, qrUrl, EMAILJS, DOC_LABEL } from './sign.js?v=20261026d';
 export const signBase = () => new URL('../../../sign.html', import.meta.url).href;   // 이 앱이 올라가 있는 곳(테섭·본섭)의 서명 페이지
 const logoUrl = () => new URL('../../theme/assets/jh-logo.png', import.meta.url).href;
 const COLL = { annual: 'annual_contracts', labor: 'labor_contracts' };
@@ -34,7 +35,8 @@ export async function createDocLink({ docType, workerId, contractId, offerId, pa
     const html = docType === 'payslip' ? psHtml(snapDoc) : docType === 'leavepromo' ? leavePromoHtmlByVer(snapDoc) : (docType === 'annual' ? docHtmlByVer(__ANNUAL_TPL, snapDoc) : laborDocHtml(snapDoc)); const r = buildViewLink({ docType, src, workerName, e164, html, title: docType === 'leavepromo' ? (LP_STAGE[src.stage] || '연차사용촉진') + ' 서면 통지' : '' }); if (!r.ok) throw new Error(r.error);
     batch.set(ref, Object.assign({}, r.meta, { createdAt: serverTimestamp(), expiresTs: Timestamp.fromMillis(r.expMs) })); batch.set(doc(db, 'sign_links/' + ref.id + '/secure/payload'), Object.assign({}, r.payload, { createdAt: serverTimestamp() }));
   } else {
-    const r = buildSignLink({ docType, src, workerName, e164, seal, coll, workerId, contractId, contentHash: coll ? await contractContentHash(src) : '' }); if (!r.ok) throw new Error(r.error);
+  if (docType === 'labor' && src && src.tplVer === SHORT_TPL_VER) throw new Error(SHORT_SIGN_ERROR); // 서명 페이지(sign.html)가 단시간 양식을 못 그린다 — 열람 전용 링크는 위 분기에서 미리 그린 HTML 로 허용
+  const r = buildSignLink({ docType, src, workerName, e164, seal, coll, workerId, contractId, contentHash: coll ? await contractContentHash(src) : '' }); if (!r.ok) throw new Error(r.error);
     batch.set(ref, Object.assign({}, r.meta, { createdAt: serverTimestamp(), expiresTs: Timestamp.fromMillis(r.expMs) })); batch.set(doc(db, 'sign_links/' + ref.id + '/secure/payload'), Object.assign({}, r.payload, { createdAt: serverTimestamp() }));
   }
   await batch.commit(); return ref.id;

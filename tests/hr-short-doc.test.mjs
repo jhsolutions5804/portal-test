@@ -1,4 +1,4 @@
-import { SHORT_TPL_VER, DAYS, toMin, shortNewSched, shortInit, dayMinutes, selectedDays, weeklyHours, monthlyHours, shortInsurance, shortCheck, shortRecord, shortHtml, configureShortDoc, MIN_HOURLY, COMPANY } from '../app/modules/hr/short-doc.js';
+import { SHORT_TPL_VER, SHORT_SIGN_ERROR, DAYS, toMin, shortNewSched, shortInit, dayMinutes, selectedDays, weeklyHours, monthlyHours, shortInsurance, shortCheck, shortRecord, shortHtml, configureShortDoc, MIN_HOURLY, COMPANY } from '../app/modules/hr/short-doc.js';
 import { laborDocHtml, configureLaborDocs } from '../app/modules/hr/labor-doc.js';
 import { __LABOR_TPL } from '../app/modules/hr/frozen-docs.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
@@ -64,4 +64,10 @@ ok(/configureLaborDocs\(\{ signatures: seal/.test(sio) && /docType === 'annual' 
 ok(!/configureFrozenDocs\(/.test(idx) && (idx.match(/configureLaborDocs\(/g) || []).length === 2, '연결: 직인·로고 설정 2곳 모두 새 연결 함수(동결 양식 설정도 함께 한다)');
 ok(/checkForm\(st\.aForm\)/.test(idx) && /checkForm\(st\.aForm, true\)/.test(idx) && !/annualValidate\(st\.aForm/.test(idx) && /data-an-ftype/.test(idx) && /data-an-sday/.test(idx) && /data-an-sf/.test(idx), '연결: 링크·메일·저장·미리보기가 모두 checkForm(단시간이면 shortCheck)을 거치고 새 입력 3종을 처리한다');
 ok(/shortTypeCardHtml\(f\) \+ period \+ job \+ \(f\.workType === 'short' \? shortFormCardsHtml\(f, st\.aErrs\) : pay\)/.test(vw), '연결: 화면에서 단시간이면 일반 급여 카드 대신 단시간 카드');
+// ── 원격 서명 안전장치: 서명 페이지(sign.html)는 근로계약서를 항상 v6 로 그린다 → s1 은 서명 링크를 막고 열람 전용만 허용
+const signHtml = fs.readFileSync(new URL('../sign.html', import.meta.url), 'utf8'); const gIdx = sio.search(/docType === 'labor' && src && src\.tplVer === SHORT_TPL_VER\) throw new Error\(SHORT_SIGN_ERROR\)/); const viewIdx = sio.indexOf('if (viewOnly) {'); const bsIdx = sio.indexOf('buildSignLink({', gIdx);
+ok(/const buildHtml = link\.docType === 'annual' \? __annualHtml_v5 : __laborHtml_v6/.test(signHtml) && !/tplVer/.test(signHtml), '사실 확인: 공개 서명 페이지는 근로계약서를 항상 v6 로 그리고 양식 버전을 읽지 않는다(이 전제가 바뀌면 아래 안전장치를 다시 판단)');
+ok(viewIdx > 0 && gIdx > viewIdx && bsIdx > gIdx && (sio.match(/SHORT_SIGN_ERROR/g) || []).length === 2, '★ 안전장치: 서명 링크(열람 전용 아님)를 만들기 전에 s1 이면 예외 — 링크 만드는 모든 경로(저장 목록·작성 화면·이메일)가 이 함수를 거친다');
+ok(/if \(st\.aForm\.workType === 'short'\) \{ toast\(SHORT_SIGN_ERROR\); return; \}/.test(idx) && idx.indexOf('toast(SHORT_SIGN_ERROR)') < idx.indexOf('const v0 = checkForm'), '작성 화면: 단시간이면 저장하기 전에 안내하고 멈춘다');
+ok(/열람 전용 링크/.test(SHORT_SIGN_ERROR) && /인쇄\(PDF\)/.test(SHORT_SIGN_ERROR) && SHORT_SIGN_ERROR.length < 220, '안내 문구: 대신 인쇄(PDF) 서명과 열람 전용 링크를 알려 준다');
 console.log('\n' + (fail ? 'FAILED ' : 'ALL OK ') + pass + ' pass / ' + fail + ' fail'); process.exit(fail ? 1 : 0);
