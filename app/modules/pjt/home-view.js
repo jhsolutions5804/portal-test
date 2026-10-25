@@ -1,8 +1,8 @@
-import { esc } from '../../core/ui.js?v=20261026a';
-import { holidayName } from '../../shared/holidays.js?v=20261026a';
-import { itemsForKey, rangeText, TAG_COLOR, TAG_LABEL, dowOf, dotsFor, monthGrid } from './schedule.js?v=20261026a';
-import { dday, infoRows, statusLabel } from './home.js?v=20261026a';
-import { dateText } from './report.js?v=20261026a';
+import { esc } from '../../core/ui.js?v=20261026b';
+import { holidayName } from '../../shared/holidays.js?v=20261026b';
+import { itemsForKey, rangeText, TAG_COLOR, TAG_LABEL, dowOf, dotsFor, monthGrid } from './schedule.js?v=20261026b';
+import { dday, infoRows, statusLabel } from './home.js?v=20261026b';
+import { dateText } from './report.js?v=20261026b';
 const f1 = (n) => (Math.round((Number(n) || 0) * 10) / 10).toFixed(1);
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const link = (st, sub, label, cls) => '<a class="' + (cls || 'jh-btn') + '" ' + (cls ? '' : 'data-variant="secondary" ') + 'href="#/pjt/' + encodeURIComponent(st.proj) + '/' + sub + '">' + label + '</a>';

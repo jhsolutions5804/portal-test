@@ -1,4 +1,4 @@
-import { shortTypeCardHtml, shortFormCardsHtml, FORM_TYPES } from '../app/modules/hr/short-view.js';
+import { shortTypeCardHtml, shortFormCardsHtml, shortSummaryHtml, FORM_TYPES } from '../app/modules/hr/short-view.js';
 import { laborFormHtml } from '../app/modules/hr/view.js';
 import { shortInit } from '../app/modules/hr/short-doc.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
@@ -33,4 +33,8 @@ ok(['data-an-act="preview"', 'data-an-act="save"', 'data-an-act="sign-link"', 'd
 const idx = (h, k) => h.indexOf(k); ok(idx(short, '👤 근로자 선택') < idx(short, '🧾 근로 형태') && idx(short, '🧾 근로 형태') < idx(short, '📅 계약 기간') && idx(short, '📅 계약 기간') < idx(short, '💼 담당 업무') && idx(short, '💼 담당 업무') < idx(short, '🕒 근로일') && idx(short, '💰 시급') < idx(short, '✍️ 근로자 서명'), '카드 순서: 근로자 → 형태 → 계약 기간 → 담당 업무 → 근로일 → 시급 → 서명');
 const noWorker = laborFormHtml(st(Object.assign({}, base, { name: '' }))); ok(noWorker.includes('data-an-worker') && !noWorker.includes('data-an-ftype'), '근로자를 아직 안 골랐으면 근로자 선택만 보인다(형태 선택은 그 뒤)');
 const withErr = laborFormHtml(st(f, { aErrs: ['시급을 입력해 주세요.'] })); ok(withErr.includes('시급을 입력해 주세요.') && withErr.includes('role="alert"'), '화면 전체에서도 저장이 막힌 이유가 보인다');
+// ── 시각을 바꿀 때 화면을 다시 그리지 않고 합계만 갈아 끼운다(포커스가 사라지는 문제의 수정)
+ok(H.includes('<div data-an-sumwrap>') && H.includes(shortSummaryHtml(f)) && shortSummaryHtml(f).includes('주 소정근로시간 12시간') && shortSummaryHtml(shortInit(Object.assign({}, base))).includes('근로일을 눌러 켜고') && shortSummaryHtml(null).includes('data-an-sum') && shortSummaryHtml({ sched: 'x' }).includes('data-an-sum'), '합계 부분(shortSummaryHtml)이 따로 있고 화면 안의 합계 상자와 같은 내용이다');
+const fsrc = (await import('node:fs')).readFileSync(new URL('../app/modules/hr/index.js', import.meta.url), 'utf8'); const sfLine = fsrc.split('\n').find((l) => l.includes("t.matches('[data-an-sf]')")) || '';
+ok(sfLine.includes('shortSummaryHtml(st.aForm)') && sfLine.includes('data-an-sumwrap') && !/paint\(\)/.test(sfLine.split('// 요일별')[0]), '★ 연결: 요일별 시각·휴게를 바꿀 때 paint()(화면 전체 다시 그림)를 부르지 않고 합계만 갱신한다 — 입력 중 포커스가 사라지지 않는다');
 console.log('\n' + (fail ? 'FAILED ' : 'ALL OK ') + pass + ' pass / ' + fail + ' fail'); process.exit(fail ? 1 : 0);
