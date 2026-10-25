@@ -1,25 +1,26 @@
-import { esc } from '../../core/ui.js?v=20261025k';
-import { rtWon, retireRecordsSorted } from './retire.js?v=20261025k';
-import { otSummary, otPerson, otAmount } from './overtime.js?v=20261025k';
-import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261025k';
-import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261025k';
-import { weeklyCardHtml } from './weekly-view.js?v=20261025k';
-import { purgeCardHtml, purgeChipHtml } from './recruit-purge-view.js?v=20261025k';
-import { historyCardHtml } from './history-view.js?v=20261025k';
-import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261025k';
-import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261025k';
-import { sendLogText } from './sign.js?v=20261025k';
-import { maskedView } from './identity.js?v=20261025k';
-import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261025k';
-import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261025k';
-import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261025k';
-import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261025k';
-import { _hzDot } from './leave-promo-docs.js?v=20261025k';
-import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261025k';
-import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261025k';
-import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261025k';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261025k';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix, taxInfoOf, taxBasisNote } from './logic.js?v=20261025k';
+import { esc } from '../../core/ui.js?v=20261026a';
+import { rtWon, retireRecordsSorted } from './retire.js?v=20261026a';
+import { otSummary, otPerson, otAmount } from './overtime.js?v=20261026a';
+import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261026a';
+import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261026a';
+import { weeklyCardHtml } from './weekly-view.js?v=20261026a';
+import { purgeCardHtml, purgeChipHtml } from './recruit-purge-view.js?v=20261026a';
+import { historyCardHtml } from './history-view.js?v=20261026a';
+import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261026a';
+import { shortTypeCardHtml, shortFormCardsHtml } from './short-view.js?v=20261026a';
+import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261026a';
+import { sendLogText } from './sign.js?v=20261026a';
+import { maskedView } from './identity.js?v=20261026a';
+import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261026a';
+import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261026a';
+import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261026a';
+import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261026a';
+import { _hzDot } from './leave-promo-docs.js?v=20261026a';
+import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261026a';
+import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261026a';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261026a';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261026a';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix, taxInfoOf, taxBasisNote } from './logic.js?v=20261026a';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -538,7 +539,7 @@ export function laborFormHtml(st) {
   const job = card('💼 담당 업무', '<div class="jh-hr__pad"><div class="jh-field"><label class="jh-field__label">담당업무</label><input class="jh-input" data-an-f="job" value="' + esc(f.job) + '" placeholder="담당 업무 입력"></div></div>');
   const pay = card('💰 급여 입력', '<div class="jh-hr__pad">' + seg + '<div class="jh-field"><label class="jh-field__label">' + label + '</label><input class="jh-input" inputmode="numeric" data-an-pay value="' + (shown ? Number(shown).toLocaleString('ko-KR') : '') + '" placeholder="숫자만" style="text-align:right"></div>' + convHtml + prev + '</div>');
   const sign = card('✍️ 근로자 서명', '<div class="jh-hr__pad">' + (f.signData ? '<img src="' + esc(f.signData) + '" alt="서명" style="width:160px;height:60px;object-fit:contain;border:var(--u-1) solid var(--c-line);border-radius:var(--radius)"><div><button type="button" class="jh-btn" data-variant="ghost" data-an-act="sign-clear">지우기</button></div>' : (st.aSigning ? '<div class="jh-field__hint">손가락 또는 마우스로 서명하세요</div><canvas id="an-canvas" width="272" height="100" style="display:block;border:var(--u-1) solid var(--c-line);border-radius:var(--radius);touch-action:none;cursor:crosshair"></canvas><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-an-act="sign-wipe">지우기</button><button type="button" class="jh-btn" data-variant="ghost" data-an-act="sign-cancel">취소</button><button type="button" class="jh-btn" data-variant="primary" data-an-act="sign-ok">확인</button></div>' : '<button type="button" class="jh-btn" data-variant="secondary" data-an-act="sign-open">✍️ 지금 이 자리에서 서명하기</button>')) + '<div class="jh-field__hint">근로자 본인 기기로 원격 서명을 받으려면 아래 "원격 서명 링크·QR 생성"을 누르세요(먼저 저장된 뒤 링크가 만들어집니다).</div></div>');
-  return '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-an-act="list">← 목록</button><strong>근로계약서 작성</strong></div><div class="jh-hr__col">' + worker + period + job + pay + sign + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="secondary" data-an-act="preview">📄 미리보기</button><button type="button" class="jh-btn" data-variant="primary" data-an-act="save">✅ 확정 저장</button><button type="button" class="jh-btn" data-variant="secondary" data-an-act="sign-link">🔗 원격 서명 링크·QR 생성</button><button type="button" class="jh-btn" data-variant="secondary" data-an-act="mail">📧 이메일 발송</button></div></div>';
+  return '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-an-act="list">← 목록</button><strong>근로계약서 작성</strong></div><div class="jh-hr__col">' + worker + shortTypeCardHtml(f) + period + job + (f.workType === 'short' ? shortFormCardsHtml(f, st.aErrs) : pay) + sign + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="secondary" data-an-act="preview">📄 미리보기</button><button type="button" class="jh-btn" data-variant="primary" data-an-act="save">✅ 확정 저장</button><button type="button" class="jh-btn" data-variant="secondary" data-an-act="sign-link">🔗 원격 서명 링크·QR 생성</button><button type="button" class="jh-btn" data-variant="secondary" data-an-act="mail">📧 이메일 발송</button></div></div>';
 }
 
 /** 연차 관리자 등록 / 내역 수정 양식 */

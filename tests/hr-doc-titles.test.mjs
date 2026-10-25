@@ -72,8 +72,8 @@ console.log('── 화면 연결(hr/index.js): 호출 지점이 제목을 넘�
   ok(/openDocWindow/.test(src), '★ hr/index.js 가 공용 창 열기 함수(openDocWindow)를 쓴다');
   const lines = src.split('\n'); const calls = lines.filter((l) => /\bopenWin\(/.test(l) && !/const openWin =/.test(l)).map((l) => l.replace(/\s+/g, ' '));
   const find = (re) => calls.filter((c) => re.test(c));
-  ok(find(/openWin\(docHtmlByVer\(K\.tpl, d\)[^)]*,\s*contractDocTitle\(/).length === 1, '★ 근로·연봉계약서 저장본 열기가 제목(contractDocTitle)을 넘긴다');
-  ok(find(/openWin\(docHtmlByVer\(K\.tpl, K\.record\(st\.aForm\)\)[^;]*,\s*contractDocTitle\([^;]*preview: *true/).length === 1, '★ 계약서 작성 중 미리보기는 preview: true 로 이름만 넘긴다');
+  ok(find(/openWin\(outHtml\(d\)[^)]*,\s*contractDocTitle\(/).length === 1, '★ 근로·연봉계약서 저장본 열기가 제목(contractDocTitle)을 넘긴다');
+  ok(find(/openWin\(outHtml\(K\.record\(st\.aForm\)\)[^;]*,\s*contractDocTitle\([^;]*preview: *true/).length === 1, '★ 계약서 작성 중 미리보기는 preview: true 로 이름만 넘긴다');
   ok(find(/openWin\(psHtml\(d\)[^;]*,\s*payslipDocTitle\(/).length >= 1, '★ 급여명세서 저장본 열기가 제목(payslipDocTitle)을 넘긴다');
   ok(find(/payslipRecord\(.*openWin\(psHtml\(rec\), payslipDocTitle\(rec, \{ preview: true \}\)\)/).length === 1, '★ 급여명세서 작성 중 미리보기도 제목을 넘긴다(같은 기록으로 문서와 제목을 만들고 preview: true)');
   /* 연차촉진·해고예고·퇴직원·휴직원·이력서·연봉 제안서는 대표님 "넣어도 돼"(2026-10-22) 뒤 범위 안 — 아래 '나머지 서류' 구역에서 시험한다 */

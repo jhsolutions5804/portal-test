@@ -1,50 +1,52 @@
-import { auth, functions, httpsCallable, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp, writeBatch } from '../../core/firebase.js?v=20261025k';
-import { confirmDialog } from '../../core/dialog.js?v=20261025k';
-import { IS_TEST } from '../../core/config.js?v=20261025k';
-import { holidayName } from '../../shared/holidays.js?v=20261025k';
-import { esc, toast } from '../../core/ui.js?v=20261025k';
-import { retireLeavePay, retireCalc } from './retire.js?v=20261025k';
-import { homeStats, fitSize, validateSeal, SEAL_MAX_BYTES } from './home.js?v=20261025k';
-import { saveJumin, revealJumin, maskedView } from './identity.js?v=20261025k';
-import { lpTargets, lpFormNew, lpFormCtx, lpValidateIssue, lpBuildRecord, lpReplyUpdate, lpReceivedUpdate, lpDay, LP_STAGE } from './leave-promo.js?v=20261025k';
-import { configureLeavePromoDocs, leavePromoHtmlByVer } from './leave-promo-docs.js?v=20261025k';
-import { weekdayDays, defaultDays, adminLeaveNew, adminLeaveFromDoc, buildAdminLeave, entryEditFromDoc, buildEntryEdit } from './leave-admin.js?v=20261025k';
-import { createDocLink, syncSignedLinks, loadSendLog, showLinkModal, sendDocLinkByEmail } from './sign-io.js?v=20261025k';
-import { annualNewForm, annualEnd, annualFillFromWorker, annualValidate, annualRecord, annualContractId, annualSummary, payBasisChange, payValueInput } from './annual.js?v=20261025k';
-import { annualSalary } from './offer.js?v=20261025k';
-import { __ANNUAL_TPL, __LABOR_TPL } from './frozen-docs.js?v=20261025k';
-import { laborNewForm, laborFillFromWorker, laborRecord } from './labor.js?v=20261025k';
-import { psPayDate, techAllowance, attendanceData, travelFromTrips, travelTotal, travelSet, payslipRecord } from './payslip.js?v=20261025k';
-import { configureFrozenDocs, docHtmlByVer } from './frozen-docs.js?v=20261025k';
-import { psHtml } from './payslip-doc.js?v=20261025k';
-import { buildAttRecord, attDefaultBreak, attKey, holidaySetOf } from './attendance.js?v=20261025k';
-import { otYm, otMoveMonth, otSyncPlan, otWage, otNewForm, otFormFromRecord, buildOvertime, otAmount } from './overtime.js?v=20261025k';
-import { dsNewForm, dsFindHourly, dsCalc, dsValidate, dsBuildData, dsFormFromDraft, dsHtmlByVer } from './dismissal.js?v=20261025k';
-import { offerNewForm, offerCalc, offerSwitchMode, offerPayload, offerFormFromSaved, offerCalendar, offerFillCurrent, offerBuildHtml } from './offer.js?v=20261025k';
-import { certsFromWorker, mergeWorker, salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, rrqKindOf, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobHomeBase, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, resignAccountPlan, resignSyncMessage, linkCandidate } from './logic.js?v=20261025k';
-import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml, offersHtml, offerResultHtml, offerStateText, retireHtml, dismissalHtml, dsCalcHtml, attendCalHtml, payslipHtml2, payslipCalcOf, annualHtml, laborHtml, leavePromoHtml, homeHtml, homeSealHtml, homeListHtml, homeAlertHtml, homeKpiHtml } from './view.js?v=20261025k';
-import { openDocWindow, withDocTitle } from '../../shared/doc-title.js?v=20261025k';
-import { makeLedgerIo } from './ledger-io.js?v=20261025k';
-import { makeWeeklyIo } from './weekly-io.js?v=20261025k';
-import { weeklyReport, weekStart as wkStart } from './weekly.js?v=20261025k';
-import { weeklyHomeHtml } from './weekly-view.js?v=20261025k';
-import { renewItems } from './renew.js?v=20261025k';
-import { makeInsuranceIo } from './insurance-io.js?v=20261025k';
-import { insurancePageHtml } from './insurance-view.js?v=20261025k';
-import { makePurgeIo } from './recruit-purge-io.js?v=20261025k';
-import { purgeReport } from './recruit-purge.js?v=20261025k';
-import { purgeHomeHtml } from './recruit-purge-view.js?v=20261025k';
-import { workforceStats } from './workforce.js?v=20261025k';
-import { workforceHtml } from './workforce-view.js?v=20261025k';
-import { makeHistoryIo } from './history-io.js?v=20261025k';
-import { historyInnerHtml, historyPrintHtml } from './history-view.js?v=20261025k';
-import { ledgerPageHtml } from './ledger-view.js?v=20261025k';
-import { isYm, ledgerCsv, ledgerHtml } from './ledger.js?v=20261025k';
-import { contractDocTitle, payslipDocTitle, dismissalDocTitle, resignDocTitle, leavePromoDocTitle, offerDocTitle, resumeDocTitle } from './doc-titles.js?v=20261025k';
+import { auth, functions, httpsCallable, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp, writeBatch } from '../../core/firebase.js?v=20261026a';
+import { confirmDialog } from '../../core/dialog.js?v=20261026a';
+import { IS_TEST } from '../../core/config.js?v=20261026a';
+import { holidayName } from '../../shared/holidays.js?v=20261026a';
+import { esc, toast } from '../../core/ui.js?v=20261026a';
+import { retireLeavePay, retireCalc } from './retire.js?v=20261026a';
+import { homeStats, fitSize, validateSeal, SEAL_MAX_BYTES } from './home.js?v=20261026a';
+import { saveJumin, revealJumin, maskedView } from './identity.js?v=20261026a';
+import { lpTargets, lpFormNew, lpFormCtx, lpValidateIssue, lpBuildRecord, lpReplyUpdate, lpReceivedUpdate, lpDay, LP_STAGE } from './leave-promo.js?v=20261026a';
+import { configureLeavePromoDocs, leavePromoHtmlByVer } from './leave-promo-docs.js?v=20261026a';
+import { weekdayDays, defaultDays, adminLeaveNew, adminLeaveFromDoc, buildAdminLeave, entryEditFromDoc, buildEntryEdit } from './leave-admin.js?v=20261026a';
+import { createDocLink, syncSignedLinks, loadSendLog, showLinkModal, sendDocLinkByEmail } from './sign-io.js?v=20261026a';
+import { annualNewForm, annualEnd, annualFillFromWorker, annualValidate, annualRecord, annualContractId, annualSummary, payBasisChange, payValueInput } from './annual.js?v=20261026a';
+import { annualSalary } from './offer.js?v=20261026a';
+import { __ANNUAL_TPL, __LABOR_TPL } from './frozen-docs.js?v=20261026a';
+import { laborNewForm, laborFillFromWorker, laborRecord } from './labor.js?v=20261026a';
+import { psPayDate, techAllowance, attendanceData, travelFromTrips, travelTotal, travelSet, payslipRecord } from './payslip.js?v=20261026a';
+import { docHtmlByVer } from './frozen-docs.js?v=20261026a';
+import { configureLaborDocs, laborDocHtml } from './labor-doc.js?v=20261026a';
+import { shortInit, shortCheck, shortRecord } from './short-doc.js?v=20261026a';
+import { psHtml } from './payslip-doc.js?v=20261026a';
+import { buildAttRecord, attDefaultBreak, attKey, holidaySetOf } from './attendance.js?v=20261026a';
+import { otYm, otMoveMonth, otSyncPlan, otWage, otNewForm, otFormFromRecord, buildOvertime, otAmount } from './overtime.js?v=20261026a';
+import { dsNewForm, dsFindHourly, dsCalc, dsValidate, dsBuildData, dsFormFromDraft, dsHtmlByVer } from './dismissal.js?v=20261026a';
+import { offerNewForm, offerCalc, offerSwitchMode, offerPayload, offerFormFromSaved, offerCalendar, offerFillCurrent, offerBuildHtml } from './offer.js?v=20261026a';
+import { certsFromWorker, mergeWorker, salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, rrqKindOf, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobHomeBase, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, resignAccountPlan, resignSyncMessage, linkCandidate } from './logic.js?v=20261026a';
+import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml, offersHtml, offerResultHtml, offerStateText, retireHtml, dismissalHtml, dsCalcHtml, attendCalHtml, payslipHtml2, payslipCalcOf, annualHtml, laborHtml, leavePromoHtml, homeHtml, homeSealHtml, homeListHtml, homeAlertHtml, homeKpiHtml } from './view.js?v=20261026a';
+import { openDocWindow, withDocTitle } from '../../shared/doc-title.js?v=20261026a';
+import { makeLedgerIo } from './ledger-io.js?v=20261026a';
+import { makeWeeklyIo } from './weekly-io.js?v=20261026a';
+import { weeklyReport, weekStart as wkStart } from './weekly.js?v=20261026a';
+import { weeklyHomeHtml } from './weekly-view.js?v=20261026a';
+import { renewItems } from './renew.js?v=20261026a';
+import { makeInsuranceIo } from './insurance-io.js?v=20261026a';
+import { insurancePageHtml } from './insurance-view.js?v=20261026a';
+import { makePurgeIo } from './recruit-purge-io.js?v=20261026a';
+import { purgeReport } from './recruit-purge.js?v=20261026a';
+import { purgeHomeHtml } from './recruit-purge-view.js?v=20261026a';
+import { workforceStats } from './workforce.js?v=20261026a';
+import { workforceHtml } from './workforce-view.js?v=20261026a';
+import { makeHistoryIo } from './history-io.js?v=20261026a';
+import { historyInnerHtml, historyPrintHtml } from './history-view.js?v=20261026a';
+import { ledgerPageHtml } from './ledger-view.js?v=20261026a';
+import { isYm, ledgerCsv, ledgerHtml } from './ledger.js?v=20261026a';
+import { contractDocTitle, payslipDocTitle, dismissalDocTitle, resignDocTitle, leavePromoDocTitle, offerDocTitle, resumeDocTitle } from './doc-titles.js?v=20261026a';
 
 /** 인사(플랫폼 기본 모듈): 근로자 명부 새 화면. 인사총무 틀 안의 구역으로만 열린다(modules/index.js 의 hostNative). 구포털 인사 화면은 그대로 두고 하나씩 옮기는 중이다. 관리자 전용 */
 /** 다른 모듈이 인사 모듈의 "본인 확인 링크" 발송 흐름을 쓸 수 있게 내보낸다 — modules/index.js 가 평가 결과 통보 화면에 주입한다(모듈 규약 R4: 등록부는 각 모듈의 index.js 만 불러온다) */
-export { sendDocLinkByEmail, showLinkModal, createResultLink } from './sign-io.js?v=20261025k';
+export { sendDocLinkByEmail, showLinkModal, createResultLink } from './sign-io.js?v=20261026a';
 export const manifest = { id: 'hr', order: 21, title: '인사', icon: '👥', defaultHash: '#/hr/workers', perm: (me) => !!me && me.admin === true };
 const FORM_KEYS = ['name', 'empNo', 'dept', 'rank', 'empType', 'job', 'phone', 'email', 'address', 'bankAccount', 'hireDate', 'taxFamily', 'taxChildren', 'taxRate'];
 const toForm = (w) => { const f = {}; FORM_KEYS.forEach((k) => { f[k] = w[k] == null ? '' : String(w[k]); }); f.certs = certsFromWorker(w); f.step = stepNow(w) == null ? '' : String(stepNow(w)); f.reason = ''; return f; };
@@ -690,7 +692,7 @@ export async function mountPayslip(root, route, ctx) {
   const now = new Date(); const ym0 = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
   const st = { pView: 'write', pMonth: ym0, pPayDate: psPayDate(ym0), pWorkers: [], pWid: '', pW: null, pAnnual: null, pBank: '', pHol: new Set(), pPerCert: 50000, pAtt: { attHours: 0, leaveHours: 0, nightHours: 0, attDates: new Set(), leaveDocs: [], holidayRecords: [], businessTrips: [] }, pIn: { bonus: '', specialBonus: '', extraPay: '', techAllowance: '', dormitory: '' }, pO: {}, pTravel: [], pTravelTotal: 0, pListWid: '', pSlips: [] };
   root.innerHTML = '<div class="jh-hr"><div id="p-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
-  const body = root.querySelector('#p-body'); const lst = (s) => { const l = []; s.forEach((d) => l.push(Object.assign({ id: d.id }, d.data()))); return l; }; const logo = new URL('../../theme/assets/jh-logo.png', import.meta.url).href; configureFrozenDocs({ logo }); const num = (v) => Number(String(v == null ? '' : v).replace(/[^0-9.\-]/g, '')) || 0;
+  const body = root.querySelector('#p-body'); const lst = (s) => { const l = []; s.forEach((d) => l.push(Object.assign({ id: d.id }, d.data()))); return l; }; const logo = new URL('../../theme/assets/jh-logo.png', import.meta.url).href; configureLaborDocs({ logo }); const num = (v) => Number(String(v == null ? '' : v).replace(/[^0-9.\-]/g, '')) || 0;
   try { const [wsn, psn] = await Promise.all([getDocs(collection(db, 'workers')), getDocs(collection(db, 'worker_private')).catch(() => null)]); const privP = new Map(); if (psn) psn.forEach((d) => privP.set(d.id, d.data())); st.pWorkers = lst(wsn).map((w) => Object.assign({}, w, privP.get(w.id) || {})).filter((w) => w.status !== 'resigned').sort((a, b) => String(a.empNo || 'zzz').localeCompare(String(b.empNo || 'zzz'))); try { const sn = await getDoc(doc(db, 'company_settings', 'salaryTable')); if (sn.exists()) st.pPerCert = Number(sn.data().techAllowancePerCert) || 50000; } catch (e) { /* 기본값 */ } }
   catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
   body.removeAttribute('aria-busy');
@@ -751,7 +753,7 @@ export async function mountContract(root, route, ctx, kind) {
   try {
     const [wsn, psn] = await Promise.all([getDocs(collection(db, 'workers')), getDocs(collection(db, 'worker_private')).catch(() => null)]); const priv = new Map(); if (psn) psn.forEach((d) => priv.set(d.id, d.data()));
     st.aWorkers = lst(wsn).map((w) => Object.assign({}, w, priv.get(w.id) || {})).sort((a, b) => String(a.empNo || '').localeCompare(String(b.empNo || '')));
-    let sigs = {}; try { const sg = await getDoc(doc(db, 'company_settings', 'signatures')); if (sg.exists()) sigs = sg.data(); } catch (e) { /* 직인 없이 출력 */ } configureFrozenDocs({ signatures: sigs, logo });
+    let sigs = {}; try { const sg = await getDoc(doc(db, 'company_settings', 'signatures')); if (sg.exists()) sigs = sg.data(); } catch (e) { /* 직인 없이 출력 */ } configureLaborDocs({ signatures: sigs, logo });
     await Promise.all(st.aWorkers.map(async (w) => { try { st.aInfo[w.id] = annualSummary(lst(await getDocs(collection(db, K.coll + '/' + w.id + '/contracts')))); } catch (e) { st.aInfo[w.id] = { endDate: '', contractDate: '', cnt: 0 }; } }));
   } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
   body.removeAttribute('aria-busy');
@@ -761,6 +763,7 @@ export async function mountContract(root, route, ctx, kind) {
   const openWin = (html, title) => { openDocWindow({ html, title, toast }); };
   const loadDocs = async () => { st.aDocs = []; if (!st.aSel) return; try { st.aDocs = lst(await getDocs(collection(db, K.coll + '/' + st.aSel + '/contracts'))); st.aInfo[st.aSel] = annualSummary(st.aDocs); st.aLog = await loadSendLog(st.aSel); } catch (e) { toast('불러오지 못했습니다: ' + ((e && e.message) || '')); } };
   const startForm = async (wid) => { st.aForm = K.newForm(today); st.aSigning = false; recalc(); if (wid) { await pickWorker(wid); } st.aView = 'form'; paint(); };
+  const checkForm = (f, preview) => (f.workType === 'short' ? shortCheck(f) : annualValidate(f, preview)); const outHtml = (d) => (K.docHtml ? K.docHtml(d) : docHtmlByVer(K.tpl, d));
   const pickWorker = async (wid) => { const w = st.aWorkers.find((x) => x.id === wid); if (!w) return; let lab = []; if (K.inheritFromLabor) { try { lab = lst(await getDocs(collection(db, 'labor_contracts/' + wid + '/contracts'))); } catch (e) { lab = []; } } st.aForm = K.fill(st.aForm, w, lab); recalc(); };
   function bindCanvas() {
     const cv = body.querySelector('#an-canvas'); if (!cv) return; const g = cv.getContext('2d'); g.clearRect(0, 0, cv.width, cv.height); let drawing = false;
@@ -773,7 +776,9 @@ export async function mountContract(root, route, ctx, kind) {
     const fl = t.closest('[data-an-filter]'); if (fl) { st.aFilter = fl.getAttribute('data-an-filter'); paint(); return; }
     const op = t.closest('[data-an-open]'); if (op) { st.aSel = op.getAttribute('data-an-open'); await loadDocs(); st.aView = 'worker'; paint(); return; }
     const bs = t.closest('[data-an-basis]'); if (bs) { st.aForm = payBasisChange(st.aForm, bs.getAttribute('data-an-basis')); recalc(); paint(); return; }
-    const pr = t.closest('[data-an-print]'); if (pr) { const d = st.aDocs.find((x) => x.id === pr.getAttribute('data-an-print')); if (d) openWin(docHtmlByVer(K.tpl, d), contractDocTitle(K.label, d)); return; }   // 저장 당시 양식(동결) 그대로
+  const ft = t.closest('[data-an-ftype]'); if (ft) { st.aErrs = []; st.aForm = ft.getAttribute('data-an-ftype') === 'short' ? shortInit(st.aForm) : Object.assign({}, st.aForm, { workType: 'regular' }); paint(); return; } // 근로 형태(일반 / 단시간)
+  const sd = t.closest('[data-an-sday]'); if (sd) { const r = (st.aForm.sched || []).find((x) => x.day === sd.getAttribute('data-an-sday')); if (r) { r.on = !r.on; if (r.on && !r.start && !r.end) { const prev = st.aForm.sched.filter((x) => x.on && x !== r && x.start && x.end)[0]; if (prev) { r.start = prev.start; r.end = prev.end; r.breakMin = prev.breakMin; } } paint(); } return; } // 요일 켜기·끄기(먼저 켠 요일의 시각을 이어받음)
+    const pr = t.closest('[data-an-print]'); if (pr) { const d = st.aDocs.find((x) => x.id === pr.getAttribute('data-an-print')); if (d) openWin(outHtml(d), contractDocTitle(K.label, d)); return; }   // 저장 당시 양식(동결) 그대로
     const dl = t.closest('[data-an-del]'); if (dl) { const d = st.aDocs.find((x) => x.id === dl.getAttribute('data-an-del')); if (!d) return; const w = st.aWorkers.find((x) => x.id === st.aSel) || {}; const ok = await confirmDialog({ title: K.label + ' 삭제', body: (w.name || '') + '님의 ' + K.label + '(' + d.id + ')를 삭제하시겠습니까? 서명·저장된 서류이며 되돌릴 수 없습니다.', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return; try { await deleteDoc(doc(db, K.coll + '/' + st.aSel + '/contracts', d.id)); toast('삭제했습니다.'); await loadDocs(); paint(); } catch (e) { toast('삭제하지 못했습니다: ' + ((e && e.message) || '')); } return; }
     const lk = t.closest('[data-an-link]'); if (lk) { const w = st.aWorkers.find((x) => x.id === st.aSel) || {}; try { const token = await createDocLink({ docType: st.aDocType, workerId: st.aSel, contractId: lk.getAttribute('data-an-link'), workerName: w.name || '', recipient: { kind: 'worker', id: st.aSel }, viewOnly: true }); showLinkModal(token, w.name, { view: true, label: K.label }); } catch (e) { toast('열람 링크 생성 오류: ' + ((e && e.message) || '')); } return; }
     const rs = t.closest('[data-an-resend]'); if (rs) { const w = st.aWorkers.find((x) => x.id === st.aSel) || {}; await sendDocLinkByEmail({ kind: 'worker', id: st.aSel, toName: w.name || '', docLabel: K.label, linkParams: { docType: st.aDocType, workerId: st.aSel, contractId: rs.getAttribute('data-an-resend'), viewOnly: true } }); st.aLog = await loadSendLog(st.aSel); paint(); return; }
@@ -781,7 +786,7 @@ export async function mountContract(root, route, ctx, kind) {
     const a = t.closest('[data-an-act]'); if (!a) return; const act = a.getAttribute('data-an-act');
     if (act === 'tpl') { st.aTpl = !st.aTpl; paint(); return; }
     if (act === 'sign-link' || act === 'mail') {
-      const v0 = annualValidate(st.aForm); if (!v0.ok) { toast(v0.errors[0]); return; } const cid = annualContractId(st.aForm.contractDate);
+      const v0 = checkForm(st.aForm); if (!v0.ok) { st.aErrs = v0.errors; paint(); toast(v0.errors[0]); return; } st.aErrs = []; const cid = annualContractId(st.aForm.contractDate);
       try { await setDoc(doc(db, K.coll + '/' + st.aForm.workerId + '/contracts', cid), K.record(st.aForm), act === 'mail' ? { merge: true } : undefined); st.aInfo[st.aForm.workerId] = annualSummary(lst(await getDocs(collection(db, K.coll + '/' + st.aForm.workerId + '/contracts')))); }   // 링크·발송은 실제 전달이므로 먼저 저장(같은 계약일은 덮어씀)
       catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); return; }
       if (act === 'sign-link') { try { const token = await createDocLink({ docType: st.aDocType, workerId: st.aForm.workerId, contractId: cid, workerName: st.aForm.name, recipient: { kind: 'worker', id: st.aForm.workerId } }); showLinkModal(token, st.aForm.name); } catch (e) { toast('링크 생성 오류: ' + ((e && e.message) || '')); } return; }
@@ -796,8 +801,8 @@ export async function mountContract(root, route, ctx, kind) {
     if (act === 'sign-ok') { const cv = body.querySelector('#an-canvas'); if (cv && cv.dataset.drawn) st.aForm.signData = cv.toDataURL(); else toast('서명을 그려 주세요.'); st.aSigning = false; paint(); return; }
     if (act === 'sign-clear') { st.aForm.signData = null; paint(); return; }
     if (act === 'preview' || act === 'save') {
-      const v = annualValidate(st.aForm, true); if (act === 'save' && !v.ok) { toast(v.errors[0]); return; }
-      if (act === 'preview') { openWin(docHtmlByVer(K.tpl, K.record(st.aForm)), contractDocTitle(K.label, st.aForm, { preview: true })); return; }   // 저장될 문서를 현재 양식(v5)으로
+      const v = checkForm(st.aForm, true); if ((act === 'save' || st.aForm.workType === 'short') && !v.ok) { st.aErrs = v.errors; paint(); toast(v.errors[0]); return; } st.aErrs = [];
+      if (act === 'preview') { openWin(outHtml(K.record(st.aForm)), contractDocTitle(K.label, st.aForm, { preview: true })); return; }   // 저장될 문서를 현재 양식(v5)으로
       const ok = await confirmDialog({ title: K.label + ' 저장', body: st.aForm.name + '님의 ' + K.label + '를 저장하시겠습니까? 같은 계약일의 계약서는 덮어씁니다.', confirmLabel: '저장' }); if (!ok.ok) return;
       try { await setDoc(doc(db, K.coll + '/' + st.aForm.workerId + '/contracts', annualContractId(st.aForm.contractDate)), K.record(st.aForm)); toast('✅ ' + K.label + ' 저장 완료!'); st.aInfo[st.aForm.workerId] = annualSummary(lst(await getDocs(collection(db, K.coll + '/' + st.aForm.workerId + '/contracts')))); st.aView = 'list'; paint(); } catch (e) { toast('저장하지 못했습니다: ' + ((e && e.message) || '')); }
     }
@@ -807,6 +812,7 @@ export async function mountContract(root, route, ctx, kind) {
     if (t.matches('[data-an-worker]')) { if (t.value) { await pickWorker(t.value); paint(); } return; }
     if (t.matches('[data-an-start]')) { st.aForm.startDate = t.value; st.aForm.endDate = annualEnd(t.value); paint(); return; }
     if (t.matches('[data-an-f]')) { st.aForm[t.getAttribute('data-an-f')] = t.value; return; }
+  if (t.matches('[data-an-sf]')) { const [day, field] = t.getAttribute('data-an-sf').split(':'); const r = (st.aForm.sched || []).find((x) => x.day === day); if (r) { r[field] = field === 'breakMin' ? (t.value === '' ? 0 : Number(t.value)) : t.value; paint(); } return; } // 요일별 시작·종료·휴게
     if (t.matches('[data-an-wt]')) { st.aForm.wageType = t.getAttribute('data-an-wt'); paint(); return; }
     if (t.matches('[data-an-m]')) { st.aForm[t.getAttribute('data-an-m')] = num(t.value); paint(); return; }
     if (t.matches('[data-an-pay]')) { paint(); }
@@ -818,7 +824,7 @@ export async function mountContract(root, route, ctx, kind) {
   paint();
 }
 const contractKind = (kind) => (kind === 'labor'
-  ? { coll: 'labor_contracts', label: '근로계약서', tpl: __LABOR_TPL, newForm: () => laborNewForm(), fill: (f, w) => laborFillFromWorker(f, w), record: (f) => laborRecord(f), html: laborHtml, inheritFromLabor: false }
+  ? { coll: 'labor_contracts', label: '근로계약서', tpl: __LABOR_TPL, newForm: () => laborNewForm(), fill: (f, w) => laborFillFromWorker(f, w), record: (f) => (f.workType === 'short' ? shortRecord(f) : laborRecord(f)), docHtml: laborDocHtml, html: laborHtml, inheritFromLabor: false }
   : { coll: 'annual_contracts', label: '연봉계약서', tpl: __ANNUAL_TPL, newForm: (t) => annualNewForm(t), fill: (f, w, lab) => annualFillFromWorker(f, w, lab), record: (f) => annualRecord(f), html: annualHtml, inheritFromLabor: true });
 export const mountAnnual = (root, route, ctx) => mountContract(root, route, ctx, 'annual');
 export const mountLabor = (root, route, ctx) => mountContract(root, route, ctx, 'labor');
