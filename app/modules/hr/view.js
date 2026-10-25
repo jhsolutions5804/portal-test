@@ -1,23 +1,23 @@
-import { esc } from '../../core/ui.js?v=20261025b';
-import { rtWon, retireRecordsSorted } from './retire.js?v=20261025b';
-import { otSummary, otPerson, otAmount } from './overtime.js?v=20261025b';
-import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261025b';
-import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261025b';
-import { weeklyCardHtml } from './weekly-view.js?v=20261025b';
-import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261025b';
-import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261025b';
-import { sendLogText } from './sign.js?v=20261025b';
-import { maskedView } from './identity.js?v=20261025b';
-import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261025b';
-import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261025b';
-import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261025b';
-import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261025b';
-import { _hzDot } from './leave-promo-docs.js?v=20261025b';
-import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261025b';
-import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261025b';
-import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261025b';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261025b';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix, taxInfoOf, taxBasisNote } from './logic.js?v=20261025b';
+import { esc } from '../../core/ui.js?v=20261025c';
+import { rtWon, retireRecordsSorted } from './retire.js?v=20261025c';
+import { otSummary, otPerson, otAmount } from './overtime.js?v=20261025c';
+import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261025c';
+import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261025c';
+import { weeklyCardHtml } from './weekly-view.js?v=20261025c';
+import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261025c';
+import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261025c';
+import { sendLogText } from './sign.js?v=20261025c';
+import { maskedView } from './identity.js?v=20261025c';
+import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261025c';
+import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261025c';
+import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261025c';
+import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261025c';
+import { _hzDot } from './leave-promo-docs.js?v=20261025c';
+import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261025c';
+import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261025c';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261025c';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261025c';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix, taxInfoOf, taxBasisNote } from './logic.js?v=20261025c';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -588,11 +588,11 @@ export function leavePromoHistHtml(st) {
 export function homeAlertHtml(s) { return s.noAnnual.length ? '<div class="jh-alert" data-tone="warn" role="status"><b>⚠️ 연봉계약서 없는 재직자 ' + s.noAnnual.length + '명</b> — 급여·초과근로 통상임금이 0원으로 계산됩니다 <a class="jh-btn" data-variant="secondary" href="#/hr/annualc">지금 작성</a></div>' : ''; }
 export function homeKpiHtml(s) {
   const k = (kind, label, val, unit, act, warn) => '<button type="button" class="jh-kpi" data-hm-kpi="' + kind + '"' + (warn ? ' data-warn="true"' : '') + ' style="text-align:left;cursor:pointer"><span class="jh-kpi__label">' + label + '</span><span class="jh-kpi__value">' + val + '<small> ' + unit + '</small></span><span class="jh-kpi__hint">' + act + ' ›</span></button>';
-  return '<div class="jh-kpi-grid">' + k('roster', '재직 인원', s.headcount, '명', '명부 보기') + k('renew', '계약 갱신 필요', s.renew.length, '명 · D-30 이내', '갱신하러 가기', s.renew.length > 0) + k('paymissing', '이번 달 급여명세서', s.payDone, '/ ' + s.headcount + ' 작성', '작성하러 가기', s.payDone < s.headcount) + k('overtime', '이번 달 초과근로수당', s.otHours, 'h · ' + s.otMan + '만원', '현황 보기') + '</div>';
+  return '<div class="jh-kpi-grid">' + k('roster', '재직 인원', s.headcount, '명', '명부 보기') + k('renew', '계약 만료 예정', s.renew.length, '명 · 2개월 이내', '전환·갱신하러 가기', s.renew.length > 0) + k('paymissing', '이번 달 급여명세서', s.payDone, '/ ' + s.headcount + ' 작성', '작성하러 가기', s.payDone < s.headcount) + k('overtime', '이번 달 초과근로수당', s.otHours, 'h · ' + s.otMan + '만원', '현황 보기') + '</div>';
 }
 export function homeListHtml(kind, s) {
   if (!kind) return ''; const m = HOME_LISTS[kind]; const rows = homeListRows(kind, s);
-  return card(m.title + ' (' + rows.length + ')', '<div class="jh-hr__pad"><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-hm-close>닫기</button><a class="jh-btn" data-variant="secondary" href="#/hr/' + m.go + '">화면으로 이동 ›</a></div>' + (rows.length ? rows.map((r) => '<div class="jh-hr__post"><div class="jh-hr__bar">' + chip(esc(r.badge), r.tone === 'danger' ? 'danger' : r.tone === 'warn' ? 'warn' : r.tone === 'accent' ? 'accent' : 'muted') + '<strong>' + esc(r.title) + '</strong><span class="jh-field__hint">' + esc(r.meta) + '</span><span class="jh-field__hint" style="margin-left:auto">' + esc(r.right) + '</span></div></div>').join('') : '<div class="jh-empty">' + esc(m.empty) + '</div>') + '</div>');
+  return card(m.title + ' (' + rows.length + ')', '<div class="jh-hr__pad"><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-hm-close>닫기</button><a class="jh-btn" data-variant="secondary" href="#/hr/' + m.go + '">화면으로 이동 ›</a></div>' + (rows.length ? rows.map((r) => '<div class="jh-hr__post"><div class="jh-hr__bar">' + chip(esc(r.badge), r.tone === 'danger' ? 'danger' : r.tone === 'warn' ? 'warn' : r.tone === 'accent' ? 'accent' : 'muted') + '<strong>' + esc(r.title) + '</strong><span class="jh-field__hint">' + esc(r.meta) + '</span><span class="jh-field__hint" style="margin-left:auto">' + esc(r.right) + '</span></div>' + ((r.actions || []).length ? '<div class="jh-hr__bar">' + r.actions.map((a, i) => '<a class="jh-btn" data-variant="' + (i === 0 ? 'primary' : 'secondary') + '" data-hm-next href="' + esc(a.href) + '">' + esc(a.label) + '</a>').join('') + '</div>' : '') + '</div>').join('') : '<div class="jh-empty">' + esc(m.empty) + '</div>') + '</div>');
 }
 export function homeSealHtml(seals, admin) {
   if (!admin) return '';

@@ -17,14 +17,14 @@ export function homeStats(inp) {
     if (paySet.has(w.id)) payDone++; else payMissing.push(w);
   });
   const ot = (x.overtime || []).filter((o) => (o.yearMonth || '') === ym); const otHours = r2(ot.reduce((s, o) => s + (Number(o.hours) || 0), 0)); const otAmt = ot.reduce((s, o) => s + (Number(o.amount) || 0), 0);
-  return { headcount: active.length, roster: active, renew, noAnnual, payDone, payMissing, overtime: ot, otHours, otAmt, otMan: Math.round(otAmt / 10000), ym };
+  return { headcount: active.length, roster: active, renew: Array.isArray(x.renewItems) ? x.renewItems : renew, noAnnual, payDone, payMissing, overtime: ot, otHours, otAmt, otMan: Math.round(otAmt / 10000), ym };
 }
-export const HOME_LISTS = { roster: { title: '👥 재직 인원', empty: '재직자가 없습니다', go: 'workers' }, renew: { title: '📝 계약 갱신 필요 (D-30)', empty: '갱신 대상이 없습니다', go: 'annualc' }, paymissing: { title: '💰 급여명세서 미작성', empty: '모두 작성되었습니다', go: 'payslips' }, overtime: { title: '⏱️ 이번 달 초과근로', empty: '초과근로 기록이 없습니다', go: 'attendcal?view=ot' } };
+export const HOME_LISTS = { roster: { title: '👥 재직 인원', empty: '재직자가 없습니다', go: 'workers' }, renew: { title: '📝 계약 만료 예정 (2개월 이내)', empty: '만료가 가까운 계약이 없습니다', go: 'annualc' }, paymissing: { title: '💰 급여명세서 미작성', empty: '모두 작성되었습니다', go: 'payslips' }, overtime: { title: '⏱️ 이번 달 초과근로', empty: '초과근로 기록이 없습니다', go: 'attendcal?view=ot' } };
 /** 카드를 눌렀을 때 목록 행 */
 export function homeListRows(kind, s) {
   const won = (v) => '₩' + Math.round(v || 0).toLocaleString('ko-KR');
   if (kind === 'roster') return s.roster.map((w) => ({ tone: 'primary', badge: w.rank || '직원', title: w.name || '(이름없음)', meta: (w.dept || '') + (w.job ? ' · ' + w.job : ''), right: w.empNo ? '사번 ' + w.empNo : '' }));
-  if (kind === 'renew') return s.renew.map((w) => ({ tone: 'warn', badge: '갱신', title: w.name || '', meta: (w.dept || '') + (w.rank ? ' · ' + w.rank : ''), right: '~' + (w.aLatest || '') }));
+  if (kind === 'renew') return s.renew.map((w) => (w.stage ? { tone: w.tone, badge: w.badge, title: w.name || '', meta: (w.dept || '') + (w.rank ? ' · ' + w.rank : '') + ' · ' + w.kindLabel, right: '~' + w.endDate + ' (' + w.dayText + ')', actions: w.options || [] } : { tone: 'warn', badge: '갱신', title: w.name || '', meta: (w.dept || '') + (w.rank ? ' · ' + w.rank : ''), right: '~' + (w.aLatest || '') }));
   if (kind === 'paymissing') return s.payMissing.map((w) => ({ tone: 'danger', badge: '미작성', title: w.name || '', meta: (w.dept || '') + (w.rank ? ' · ' + w.rank : ''), right: s.ym }));
   if (kind === 'overtime') return s.overtime.map((o) => ({ tone: 'accent', badge: (o.hours || 0) + 'h', title: o.name || '', meta: (o.date || '') + (o.yearMonth ? ' · ' + o.yearMonth : ''), right: won(o.amount) }));
   return [];
