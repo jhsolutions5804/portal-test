@@ -1,16 +1,16 @@
 /* 플랫폼에 꽂는 모듈 목록 — 모듈을 더하거나 빼는 일은 이 파일 한 곳만 고친다.
  * 각 항목은 { manifest, mount }. 핵심부(core/)는 모듈 폴더를 직접 알지 못하고 이 목록만 읽는다. */
-import * as edoc from './edoc/index.js?v=20261025h';
-import * as attendance from './attendance/index.js?v=20261025h';
-import * as calendar from './calendar/index.js?v=20261025h';
-import * as company from './company/index.js?v=20261025h';
-import * as evalm from './eval/index.js?v=20261025h';
-import * as finance from './finance/index.js?v=20261025h';
-import * as plan from './plan/index.js?v=20261025h';
-import * as general from './general/index.js?v=20261025h';
-import * as hr from './hr/index.js?v=20261025h';
-import * as pjt from './pjt/index.js?v=20261025h';
-import { modules as legacy, hostNative } from './legacy/index.js?v=20261025h';
+import * as edoc from './edoc/index.js?v=20261025i';
+import * as attendance from './attendance/index.js?v=20261025i';
+import * as calendar from './calendar/index.js?v=20261025i';
+import * as company from './company/index.js?v=20261025i';
+import * as evalm from './eval/index.js?v=20261025i';
+import * as finance from './finance/index.js?v=20261025i';
+import * as plan from './plan/index.js?v=20261025i';
+import * as general from './general/index.js?v=20261025i';
+import * as hr from './hr/index.js?v=20261025i';
+import * as pjt from './pjt/index.js?v=20261025i';
+import { modules as legacy, hostNative } from './legacy/index.js?v=20261025i';
 
 export const MODULES = [
   { manifest: edoc.manifest, mount: edoc.mount },
@@ -65,6 +65,7 @@ hostNative('hr', 'overtimes', hr.mountOvertime);   // 초과근로 현황 새 �
 hostNative('hr', 'attendcal', hr.mountAttendCal);   // 출퇴근 달력 새 화면(근로시간 2단계)
 hostNative('hr', 'payslips', hr.mountPayslip);   // 급여명세서 새 화면(메일 발송·링크/QR 만 기존 '급여명세서'에서)
 hostNative('hr', 'ledger', hr.mountLedger); // 임금대장·급여 마감(근로기준법 제48조, 대기열 1-3-16 ①)
+hostNative('hr', 'insurance', hr.mountInsurance); // 4대보험 월별 대조(대기열 1-3-17 1단계)
 hostNative('hr', 'annualc', hr.mountAnnual);   // 연봉계약서 새 화면(원격 서명 링크·QR·메일만 기존 '연봉계약서'에서)
 hostNative('hr', 'laborc', hr.mountLabor);   // 근로계약서 새 화면(원격 서명 링크·QR·메일만 기존 '근로계약서'에서)
 hostNative('hr', 'leavepromo', hr.mountLeavePromo);   // 연차사용촉진 새 화면
