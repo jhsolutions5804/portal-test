@@ -1,0 +1,50 @@
+import { weeklyCardHtml, weeklyHomeHtml, stageChip } from '../app/modules/hr/weekly-view.js';
+import { weeklyReport } from '../app/modules/hr/weekly.js';
+import { attendCalHtml, homeHtml } from '../app/modules/hr/view.js';
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
+const rec = (date, h, o) => Object.assign({ date, workHours: h, checkIn: '09:00', checkOut: '18:30', breakMinutes: 60 }, o || {});
+const days = (start, hs) => hs.map((h, i) => rec(new Date(Date.UTC(+start.slice(0, 4), +start.slice(5, 7) - 1, +start.slice(8) + i)).toISOString().slice(0, 10), h));
+// 2026-10: 10-12 주 38h(정상) · 10-19 주 46h(주의) · 10-26 주 54h(초과) · 9-28 주는 자료 없음
+const rows = days('2026-10-12', [8, 8, 8, 8, 6]).concat(days('2026-10-19', [10, 10, 10, 10, 6]), days('2026-10-26', [10, 10, 10, 10, 10, 4]));
+const st = (o) => Object.assign({ y: 2026, m: 10, rows, selWeek: '', today: '2026-10-25' }, o || {});
+let h = weeklyCardHtml(st());
+const rowsOf = (html) => [...html.matchAll(/<tr[^>]*>(.*?)<\/tr>/g)].map((m) => m[1]);
+ok(h.includes('주별 근로시간 (월~일)') && h.includes('data-w-table') && h.includes('overflow-x:auto') && h.includes('주 40시간 + 연장 12시간 = 52시간') && h.includes('급여 계산은 바뀌지 않습니다'), '카드: 제목·표·가로 스크롤·법정 기준 안내·급여 불변 안내');
+const R = rowsOf(h); ok(R.length === 1 + 5 && R.slice(1).every((x) => (x.match(/<t[dh][ >]/g) || []).length === 5), '표: 머리글 + 10월이 걸치는 주 5개, 모든 줄 5칸');
+ok(R[1].includes('09/28~10/04') && R[1].includes('자료 없음') && !R[1].includes('data-ac-week'), '기록이 없는 주(9/28~10/4): "자료 없음", 일별 버튼 없음, 0시간으로 쓰지 않음');
+ok(R[3].includes('10/12~10/18') && R[3].includes('38') && R[3].includes('정상'), '10/12~10/18 주: 38시간 정상');
+ok(R[4].includes('10/19~10/25') && R[4].includes('46') && R[4].includes('🟡 주의') && R[4].includes('6 / 12') && R[4].includes('이번 주'), '10/19~10/25 주: 46시간 🟡 주의, 연장 6/12, "이번 주" 표시');
+ok(R[5].includes('10/26~11/01') && R[5].includes('54') && R[5].includes('🔴 52시간 초과') && R[5].includes('14 / 12'), '10/26~11/01 주: 54시간 🔴 초과, 연장 14/12(한도를 넘은 값이 그대로 보임)');
+ok((h.match(/data-ac-week="/g) || []).length === 3 && h.includes('data-ac-week="2026-10-19"') && !h.includes('data-w-detail'), '기록이 있는 3주에만 [일별] 버튼, 선택 전에는 일별 표 없음');
+h = weeklyCardHtml(st({ selWeek: '2026-10-19' })); ok(h.includes('data-w-detail') && h.includes('10/19~10/25 일별 내역 — 합계 46h') && h.includes('닫기') && rowsOf(h).filter((x) => x.includes('~ 18:30')).length === 5, '주를 고르면 일별 내역(합계 46h, 출퇴근 5일 줄)과 [닫기]');
+ok(h.includes('(월)') && h.includes('(일)') && h.includes('휴일') && h.includes('주말 근로 0h') && h.includes('남은 연장 6h'), '일별 내역: 요일 표시·휴일 표시, 월~금만 일한 주는 주말 근로 0h, 남은 연장 6h(46h → 연장 6)');
+const h26 = weeklyCardHtml(st({ selWeek: '2026-10-26' })); ok(h26.includes('10/26~11/01 일별 내역 — 합계 54h') && h26.includes('주말 근로 4h') && h26.includes('남은 연장 -2h') && rowsOf(h26).filter((x) => x.includes('~ 18:30')).length === 6, '토요일 4시간 일한 주: 주말 근로 4h 로 집계, 한도를 넘으면 남은 연장이 음수(-2h)로 보인다');
+ok(!weeklyCardHtml(st({ selWeek: '2026-09-28' })).includes('data-w-detail') && !weeklyCardHtml(st({ selWeek: '2030-01-07' })).includes('data-w-detail'), '자료가 없거나 이 달에 없는 주를 고르면 일별 표가 나오지 않는다(오류 없이)');
+const evil = rows.concat([rec('2026-10-21', 0, { checkIn: '<img src=x onerror=1>', checkOut: '<b>x</b>' })]); h = weeklyCardHtml(st({ rows: evil, selWeek: '2026-10-19' })); ok(!h.includes('<img src=x') && h.includes('&lt;img') && !h.includes('<b>x</b>'), '출퇴근 시각에 들어간 HTML 을 막는다');
+ok(weeklyCardHtml(st({ rows: [] })).includes('자료 없음') && !weeklyCardHtml(st({ rows: [] })).includes('NaN') && !weeklyCardHtml(st({ rows: null })).includes('undefined'), '기록이 하나도 없어도 깨지지 않는다(전부 자료 없음)');
+ok(stageChip(null).includes('자료 없음') && stageChip('over').includes('🔴') && stageChip('warn').includes('🟠 경고') && stageChip('notice').includes('🟡') && !stageChip('ok').includes('🟡') && stageChip('ok').includes('정상'), '단계 칩: 기호와 글자로 구분');
+// ── 인사 홈
+const wk = (id, nm, d0, hs) => days(d0, hs).map((r) => Object.assign({ workerId: id, name: nm }, r));
+const rep = weeklyReport([{ id: 'a', name: '가나다' }, { id: 'b', name: '<script>alert(1)</script>' }], [].concat(wk('a', '가나다', '2026-10-19', [10, 10, 10, 10, 8]), wk('b', 'b', '2026-10-12', [11, 11, 11, 11, 11, 3])), '2026-10-25');
+h = weeklyHomeHtml(rep);
+ok(h.includes('⏱ 주 근로시간') && h.includes('data-w-home') && h.includes('data-hm-week="a|2026-10-19"') && h.includes('data-hm-week="b|2026-10-12"') && h.includes('48h') && h.includes('58h') && h.includes('이번 주') && h.includes('지난주'), '홈: 이번 주·지난주 대상 직원이 시간·단계와 함께 나오고 이름 단추에 직원|주 값이 들어간다');
+ok(h.includes('🔴 주 52시간을 넘은 직원 1명') && h.includes('role="alert"') && h.indexOf('주 52시간을 넘은') < h.indexOf('data-w-home'), '홈: 52시간 초과 직원이 있으면 맨 위에 빨간 안내(명수)');
+ok(!h.includes('<script>alert') && h.includes('&lt;script&gt;'), '홈: 직원 이름의 HTML 을 막는다');
+ok(h.indexOf('data-hm-week="b|') < h.indexOf('data-hm-week="a|'), '홈: 심한 단계(초과)가 먼저');
+const none = weeklyHomeHtml(weeklyReport([{ id: 'a', name: '가' }], wk('a', '가', '2026-10-19', [8, 8, 8, 8, 8]), '2026-10-25')); ok(none.includes('44시간 이상 일한 직원이 없습니다') && none.includes('기록이 있는 직원 1명') && !none.includes('data-w-home') && !none.includes('role="alert"'), '홈: 모두 44시간 미만이면 "없습니다" + 확인한 직원 수, 표·경고 없음');
+const nodata = weeklyHomeHtml(weeklyReport([], [], '2026-10-25')); ok(nodata.includes('출퇴근 기록이 없습니다') && nodata.includes('2026-08') && !nodata.includes('data-w-home'), '홈: 기록 자체가 없으면 그렇게 안내(기록 시작 시점 포함)');
+ok(weeklyHomeHtml(null).includes('aria-busy="true"') && !weeklyHomeHtml(null).includes('data-hm-week'), '홈: 불러오는 중에는 자리표시만');
+ok((weeklyCardHtml(st()).match(/jh-hr__sum/g) || []).length === 0 && (weeklyCardHtml(st({ selWeek: '2026-10-19' })).match(/jh-hr__sum/g) || []).length === 2 && /<tr class="jh-hr__sum"><td>10\/19~10\/25/.test(weeklyCardHtml(st({ selWeek: '2026-10-19' }))), '선택한 주의 줄만 강조된다(선택 전에는 강조 없음, 선택하면 그 주 줄 + 일별 합계 줄)');
+// ── 실제 화면 함수에 연결됐는지(출퇴근 달력·인사 홈)
+const calSt = (o) => Object.assign({ today: '2026-10-25', acMode: 'cal', acW: 'w1', acWorkers: [{ id: 'w1', name: '김가나', empNo: 'E1', rank: '대리' }], workers: [], acY: 2026, acM: 10, acRows: rows, acAdj: [], acLeaves: [], acHol: new Set(), acSel: '', acForm: null, acWeek: '', acDaily: null, otRows: [], otOpen: '', otForm: null, otFormWage: null, otWage: null, otBanner: null }, o || {});
+const cal = attendCalHtml(calSt());
+ok(cal.includes('주별 근로시간 (월~일)') && cal.indexOf('주별 근로시간') > cal.indexOf('jh-ac__center') && cal.indexOf('주별 근로시간') < cal.indexOf('jh-ac__side') && !cal.includes('data-w-detail'), '출퇴근 달력 화면: 달력 아래·옆 칸 앞에 주별 카드가 있고, 주를 고르기 전에는 일별 표가 없다');
+ok(attendCalHtml(calSt({ acWeek: '2026-10-19' })).includes('10/19~10/25 일별 내역 — 합계 46h') && attendCalHtml(calSt({ acWeek: '2026-10-19', acRows: rows.slice(0, 5), acAdj: rows.slice(5) })).includes('합계 46h') && attendCalHtml(calSt({ acMode: 'ot' })).includes('주별 근로시간') === false && attendCalHtml(calSt({ acW: '' })).includes('주별 근로시간') === false, '달력 화면: 선택한 주 일별 내역, 앞·뒤 달 기록(acAdj)도 합산, 초과근로 보기·직원 미선택 때는 카드가 나오지 않는다');
+const hh2 = homeHtml(); ok(hh2.includes('id="hm-week"') && hh2.indexOf('hm-week') < hh2.indexOf('hm-list') && hh2.indexOf('hm-list') < hh2.indexOf('hm-cal') && hh2.includes('id="hm-kpi"') && hh2.includes('id="hm-seal"'), '인사 홈 틀: 주 근로시간 칸이 목록·캘린더 앞에 있고 기존 칸(요약·서명)은 그대로');
+// ── 의심 기록 표시
+const susRows = rows.concat([rec('2026-10-21', 24, { checkIn: '20:08', checkOut: '20:08' })]);
+let hs = weeklyCardHtml(st({ rows: susRows })); ok(hs.includes('⚠️ 기록 확인 1건') && !weeklyCardHtml(st()).includes('기록 확인'), '주별 표: 의심 기록이 있는 주에만 "⚠️ 기록 확인 N건"');
+hs = weeklyCardHtml(st({ rows: susRows, selWeek: '2026-10-19' })); ok(hs.includes('⚠️ 확인 필요') && hs.includes('퇴근 시각이 빠졌을 수 있어') && hs.includes('role="status"') && !weeklyCardHtml(st({ selWeek: '2026-10-19' })).includes('확인 필요'), '일별 내역: 그 날에 "⚠️ 확인 필요"와 안내문(정상 주에는 없음)');
+const repS = weeklyReport([{ id: 'a', name: '가' }], [].concat(wk('a', '가', '2026-10-19', [10, 10, 10, 10, 8])).concat([Object.assign({ workerId: 'a', name: 'a' }, rec('2026-10-24', 24, { checkIn: '20:08', checkOut: '20:08' }))]), '2026-10-25');
+ok(weeklyHomeHtml(repS).includes('72h ⚠️') && !weeklyHomeHtml(weeklyReport([{ id: 'a', name: '가' }], wk('a', '가', '2026-10-19', [10, 10, 10, 10, 8]), '2026-10-25')).includes('⚠️'), '홈: 의심 기록이 낀 직원에게만 시간 옆 ⚠️');
+console.log('\n' + (fail ? 'FAILED ' : 'ALL OK ') + pass + ' pass / ' + fail + ' fail'); process.exit(fail ? 1 : 0);

@@ -27,7 +27,7 @@ button { font:inherit; padding:10px 16px; border-radius:8px; border:1px solid va
   <div id="root"><p>불러오는 중…</p></div>
 </main>
 <script type="module">
-import { mountTestPage } from './core/ms-login-test.js?v=20261025a';
+import { mountTestPage } from './core/ms-login-test.js?v=20261025b';
 mountTestPage(document.getElementById('root')).catch((e) => { document.getElementById('root').innerHTML = '<div class="box bad"><strong>페이지를 시작하지 못했습니다</strong><p>' + String((e && e.message) || e).replace(/[<>&]/g, '') + '</p></div>'; });
 </script>
 </body>

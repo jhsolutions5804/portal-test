@@ -1,22 +1,23 @@
-import { esc } from '../../core/ui.js?v=20261025a';
-import { rtWon, retireRecordsSorted } from './retire.js?v=20261025a';
-import { otSummary, otPerson, otAmount } from './overtime.js?v=20261025a';
-import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261025a';
-import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261025a';
-import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261025a';
-import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261025a';
-import { sendLogText } from './sign.js?v=20261025a';
-import { maskedView } from './identity.js?v=20261025a';
-import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261025a';
-import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261025a';
-import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261025a';
-import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261025a';
-import { _hzDot } from './leave-promo-docs.js?v=20261025a';
-import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261025a';
-import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261025a';
-import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261025a';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261025a';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix, taxInfoOf, taxBasisNote } from './logic.js?v=20261025a';
+import { esc } from '../../core/ui.js?v=20261025b';
+import { rtWon, retireRecordsSorted } from './retire.js?v=20261025b';
+import { otSummary, otPerson, otAmount } from './overtime.js?v=20261025b';
+import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261025b';
+import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261025b';
+import { weeklyCardHtml } from './weekly-view.js?v=20261025b';
+import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261025b';
+import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261025b';
+import { sendLogText } from './sign.js?v=20261025b';
+import { maskedView } from './identity.js?v=20261025b';
+import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261025b';
+import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261025b';
+import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261025b';
+import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261025b';
+import { _hzDot } from './leave-promo-docs.js?v=20261025b';
+import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261025b';
+import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261025b';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261025b';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261025b';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix, taxInfoOf, taxBasisNote } from './logic.js?v=20261025b';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -429,7 +430,7 @@ export function attendCalHtml(st) {
   const w = st.acWorkers.find((x) => x.id === st.acW); let main;
   if (st.acMode === 'ot') main = '<div class="jh-ac__wide">' + acSummaryHtml(st) + '</div>';
   else if (!w) main = '<div class="jh-ac__center"><div class="jh-empty">왼쪽에서 근로자를 선택하면 출퇴근 달력이 나옵니다.</div></div>';
-  else main = '<div class="jh-ac__center">' + acCalHtml(st, w) + '</div><div class="jh-ac__side">' + (st.acSel ? attendEditHtml(st, w) : card('근로 내역 추가/수정', '<div class="jh-hr__pad"><div class="jh-empty">달력에서 날짜를 누르면 그 날의 출근·퇴근·휴게·출장을 입력·수정합니다.</div></div>')) + otFormHtml(st) + otDetailHtml(st) + acOtCardHtml(st, w) + '</div>';
+  else main = '<div class="jh-ac__center">' + acCalHtml(st, w) + weeklyCardHtml({ y: st.acY, m: st.acM, rows: (st.acRows || []).concat(st.acAdj || []), selWeek: st.acWeek || '', today: st.today }) + '</div><div class="jh-ac__side">' + (st.acSel ? attendEditHtml(st, w) : card('근로 내역 추가/수정', '<div class="jh-hr__pad"><div class="jh-empty">달력에서 날짜를 누르면 그 날의 출근·퇴근·휴게·출장을 입력·수정합니다.</div></div>')) + otFormHtml(st) + otDetailHtml(st) + acOtCardHtml(st, w) + '</div>';
   return acHeadHtml(st) + '<div class="jh-ac__layout" data-mode="' + st.acMode + '">' + acListHtml(st) + main + '</div>';
 }
 export function attendEditHtml(st, w) {
@@ -598,7 +599,7 @@ export function homeSealHtml(seals, admin) {
   return card('🖊️ 서명/도장 관리 (관리자)', '<div class="jh-hr__pad">' + SEAL_KEYS.map((k) => { const img = seals[k.key]; return '<div class="jh-hr__bar"><strong>' + esc(k.label) + '</strong>' + (img ? '<img src="' + esc(img) + '" alt="' + esc(k.label) + ' 도장" style="height:40px;max-width:100px;object-fit:contain">' : '<span class="jh-field__hint" style="display:inline-block;min-width:100px;height:40px;border:var(--u-1) dashed var(--c-line-strong);text-align:center;line-height:40px">없음</span>') + '<button type="button" class="jh-btn" data-variant="secondary" data-hm-seal="' + esc(k.key) + '">' + (img ? '교체' : '등록') + '</button>' + (img ? '<button type="button" class="jh-btn" data-variant="ghost" data-hm-sealdel="' + esc(k.key) + '">삭제</button>' : '') + '</div>'; }).join('') + '<div class="jh-field__hint">계약서(갑 서명란)·연차사용촉진 통보서 등에 찍히는 대표 도장입니다. 배경이 투명한 PNG 를 권장하며, 큰 이미지는 자동으로 줄여 저장합니다(300KB 이하).</div></div>');
 }
 export function homeHtml() {
-  return '<div id="hm-alert"></div><div class="jh-hr__home"><aside class="jh-hr__homeside" aria-label="인사 요약"><div id="hm-kpi"><div class="jh-skeleton" style="height:var(--u-100, 6rem)"></div></div><div id="hm-seal"></div></aside><div class="jh-hr__homemain"><div id="hm-list"></div><div id="hm-cal"></div></div></div>';   // 요약 카드는 왼쪽에 세로로, 캘린더는 오른쪽(카드를 눌러 열리는 목록은 캘린더 위)
+  return '<div id="hm-alert"></div><div class="jh-hr__home"><aside class="jh-hr__homeside" aria-label="인사 요약"><div id="hm-kpi"><div class="jh-skeleton" style="height:var(--u-100, 6rem)"></div></div><div id="hm-seal"></div></aside><div class="jh-hr__homemain"><div id="hm-week"></div><div id="hm-list"></div><div id="hm-cal"></div></div></div>';   // 요약 카드는 왼쪽에 세로로, 캘린더는 오른쪽(카드를 눌러 열리는 목록은 캘린더 위)
 }
 
 /** 양식 변경 이력(📜): 저장 서류는 저장 당시 양식으로만 그려진다는 원칙과 버전별 변경 내용 */
