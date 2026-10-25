@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261025j';
-import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261025j';
-import { isAnnualType } from './home-calc.js?v=20261025j';
-import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261025j';
+import { esc } from '../../core/ui.js?v=20261025k';
+import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261025k';
+import { isAnnualType } from './home-calc.js?v=20261025k';
+import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261025k';
 
 const uname = (ctx, uid) => { const u = ctx.byUid[uid]; return u ? esc(u.name) + (u.rank ? ' <small>' + esc(u.rank) + '</small>' : '') : '(알 수 없음)'; };
 
@@ -53,7 +53,8 @@ function itemsHtml(f, v, errs) {
 function fieldsBlock(type, v, errs, ctx) {
   return fieldRows(type, v).map((row) => {
     if (row.items) return itemsHtml(row.fields[0], v, errs);
-    return '<div class="jh-form__row" data-cols="' + (row.layout || row.cols) + '">' + row.fields.map((f) => fieldHtml(f, v, errs, ctx)).join('') + '</div>';
+    const rowHtml = '<div class="jh-form__row" data-cols="' + (row.layout || row.cols) + '">' + row.fields.map((f) => fieldHtml(f, v, errs, ctx)).join('') + '</div>';
+  return row.layout === 'narrow-first-3' ? '<div class="jh-form__rowbox">' + rowHtml + '</div>' : rowHtml; // 세 칸 줄은 상자의 폭(화면 폭이 아님)으로 배치를 정한다 — 왼쪽 목록이 있는 분할 화면에서는 폼 칸이 화면보다 훨씬 좁다
   }).join('');
 }
 
