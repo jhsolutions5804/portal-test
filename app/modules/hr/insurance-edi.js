@@ -2,7 +2,7 @@
  * 사업장 EDI 화면의 항목 순서(공통 → 국민연금 → 건강보험 → 고용보험 → 산재보험)대로 값을 보여 주고, 날짜·금액은 붙여 넣기 좋은 숫자만 값(copy)을 따로 준다.
  * 모르는 코드(취득부호·직종부호 등)는 지어내지 않고 "화면 목록에서 선택"으로 둔다. 신고 기한은 EDI 화면 안내 그대로: 건강보험=사유 발생일부터 14일 이내, 국민연금·고용·산재=사유 발생일이 속하는 달의 다음 달 15일까지.
  * 상실(퇴사) 입력표는 EDI 상실 화면을 받은 뒤 같은 방식으로 추가한다. */
-import { annualSalary } from './offer.js?v=20261026l';
+import { annualSalary } from './offer.js?v=20261026m';
 export const HEALTH_DEADLINE_DAYS = 14;
 export const RECENT_DAYS = 60; // 최근 입사자 목록 기간
 const pad = (n) => String(n).padStart(2, '0');
@@ -62,8 +62,8 @@ export function ediAcquireSheet({ worker, annual, labor, jumin, payOverride, hou
 }
 /* ───────── 퇴사(자격 상실) — EDI "직장가입자 자격 상실 신고서"(대표님 2026-10-26 예시 화면: 형일우 님 퇴사 2026-09-16 → 상실일 2026-09-17, 보수총액 7,123,833원·근무월수 4) ─────────
  * 상실일 = 퇴사일 다음 날. 보수총액 = 급여명세서(payslips/{근로자}/months/{YYYY-MM})의 grossPay 를 올해(퇴사한 달까지)·전년도로 더한 값 — 예시와 원 단위까지 같다.
- * 신고 기한은 상실 화면 안내 그대로: 건강=사유발생일(상실일)부터 14일 이내, 국민연금·고용·산재=사유발생일이 속하는 달의 다음 달 16일까지(취득 화면은 15일이라 따로 둔다). */
-export const LOSS_OTHERS_DAY = 16;
+ * 신고 기한은 상실 화면 안내 그대로: 건강=사유발생일(상실일)부터 14일 이내, 국민연금·고용·산재=사유발생일이 속하는 달의 다음 달 15일까지(대표님 2026-10-26 확정: 건강 14일 이내·나머지 다음 달 15일 — 상실 화면 문구가 "16일"로 보였던 것은 15일이 일요일인 달의 연장 표시로 보고 15일로 통일). */
+export const LOSS_OTHERS_DAY = 15;
 export const lossDateOf = (resign) => (isDate(resign) ? addDaysIso(resign, 1) : '');
 export function lossDeadlines(resign, today) {
   const ld = lossDateOf(resign); if (!ld) return null; const health = addDaysIso(ld, HEALTH_DEADLINE_DAYS); const y = Number(ld.slice(0, 4)), m = Number(ld.slice(5, 7)); const others = (m === 12 ? y + 1 : y) + '-' + pad(m === 12 ? 1 : m + 1) + '-' + pad(LOSS_OTHERS_DAY);

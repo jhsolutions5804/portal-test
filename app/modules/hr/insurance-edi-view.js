@@ -1,7 +1,7 @@
 /* 4대보험 대조 화면의 "📝 신고 입력표" 보기 — HTML 만 만드는 순수 함수(시험: tests/hr-insurance-edi.test.mjs). 입력은 index.js 의 mountInsurance 가 data-edi-* 속성으로 연결한다. */
-import { esc } from '../../core/ui.js?v=20261026l';
-import { insurancePageHtml } from './insurance-view.js?v=20261026l';
-import { recentHires, recentLeavers, sheetOfState, leftText, won, isDate } from './insurance-edi.js?v=20261026l';
+import { esc } from '../../core/ui.js?v=20261026m';
+import { insurancePageHtml } from './insurance-view.js?v=20261026m';
+import { recentHires, recentLeavers, sheetOfState, leftText, won, isDate } from './insurance-edi.js?v=20261026m';
 export const ediInit = () => ({ kind: 'acquire', loaded: false, loading: false, err: '', workers: [], sel: '', annual: null, labor: null, slips: [], jumin: '', payOv: '', hoursOv: '', lossPayOv: '', lossPrevOv: '', reasonOther: false, busy: false });
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const tone = (n) => (n == null ? '' : n < 0 ? ' data-tone="danger"' : n <= 3 ? ' data-tone="warn"' : ' data-tone="accent"');
@@ -21,7 +21,7 @@ const kindBar = (s) => '<div class="jh-hr__pad"><div class="jh-segmented" role="
 function leaverTable(list, sel) {
   if (!list.length) return '<div class="jh-empty">최근 60일 안에 퇴사했거나 30일 안에 퇴사 예정인 근로자가 없습니다. 아래에서 퇴사일이 입력된 근로자를 직접 고를 수 있습니다.</div>';
   const rows = list.map((r) => '<tr' + (r.id === sel ? ' aria-selected="true"' : '') + '><td><button type="button" class="jh-btn" data-variant="ghost" data-edi-pick="' + esc(r.id) + '">' + esc(r.name) + (r.empNo ? ' <span class="jh-hr__muted">' + esc(r.empNo) + '</span>' : '') + '</button></td><td>' + esc(r.resignDate) + '</td><td>' + esc(r.dl ? r.dl.lossDate : '') + '</td><td>' + dchip(r.dl && r.dl.healthLeft) + ' <span class="jh-hr__muted">' + esc(r.dl ? r.dl.health : '') + '</span></td><td>' + dchip(r.dl && r.dl.othersLeft) + ' <span class="jh-hr__muted">' + esc(r.dl ? r.dl.others : '') + '</span></td></tr>').join('');
-  return '<div class="jh-hr__scroll"><table class="jh-hr-table"><thead><tr><th>이름</th><th>퇴사일</th><th>상실일(퇴사 다음 날)</th><th>건강보험 기한(14일 이내)</th><th>연금·고용 기한(다음 달 16일)</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  return '<div class="jh-hr__scroll"><table class="jh-hr-table"><thead><tr><th>이름</th><th>퇴사일</th><th>상실일(퇴사 다음 날)</th><th>건강보험 기한(14일 이내)</th><th>연금·고용 기한(다음 달 15일)</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
 }
 function lossPanelHtml(s, today) {
   const list = recentLeavers(s.workers, today); const withDate = (s.workers || []).filter((w) => w && isDate(w.resignDate));
