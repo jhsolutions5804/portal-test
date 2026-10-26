@@ -96,8 +96,10 @@
 .jh-ac__month { display: inline-flex; align-items: center; gap: var(--sp-2); }
 .jh-ac__help { flex: 1 1 var(--u-320); margin: 0; }
 .jh-ac__layout { display: grid; grid-template-columns: var(--u-220) minmax(0, 1fr) minmax(var(--u-320), 26rem); gap: var(--sp-4); align-items: start; }
-.jh-ac__layout[data-mode="ot"] > .jh-ac__wide { grid-column: 2 / 4; }
+.jh-ac__layout[data-mode="ot"] > .jh-ac__wide, .jh-ac__layout[data-mode="caps"] > .jh-ac__wide { grid-column: 2 / 4; }
 .jh-ac__center, .jh-ac__side, .jh-ac__wide { display: grid; gap: var(--sp-4); min-width: 0; align-content: start; }
+/* 오른쪽 칸(근로 내역 추가/수정·초과근로)은 달력·주별 표를 스크롤해도 화면에 떠서 따라온다. 칸이 화면보다 길면 안에서 스크롤(재무회계·전자결재와 같은 방식, 대표님 2026-10-26) */
+.jh-ac__layout > .jh-ac__side { position: sticky; top: var(--sp-3); max-height: calc(100vh - var(--sp-6)); overflow-y: auto; overscroll-behavior: contain; }
 .jh-ac__layout > .jh-card:first-child { position: sticky; top: var(--sp-3); max-height: calc(100vh - var(--sp-6)); overflow-x: hidden; overflow-y: auto; }
 .jh-ac__wlist { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--u-4); padding: var(--sp-2); }   /* minmax(0,1fr): 이름 줄바꿈 금지 때문에 칸이 내용만큼 넓어져 가로 스크롤이 생기던 것을 막는다 */
 .jh-ac__wbtn { box-sizing: border-box; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); width: 100%; padding: var(--sp-2) var(--sp-3); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-surface); color: var(--c-ink); font: inherit; font-size: var(--fs-sm); text-align: left; cursor: pointer; }
@@ -110,8 +112,8 @@
 .jh-ac__otlist { display: grid; gap: var(--sp-2); }
 .jh-ac__otrow { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border: var(--u-1) solid var(--c-line); border-radius: var(--radius); background: var(--c-bg); font-size: var(--fs-sm); cursor: pointer; }
 .jh-ac__otrow:hover { background: var(--c-primary-weak); }
-@media (max-width: 1279px) { .jh-ac__layout { grid-template-columns: var(--u-220) minmax(0, 1fr); } .jh-ac__layout > .jh-ac__side { grid-column: 2; } .jh-ac__layout[data-mode="ot"] > .jh-ac__wide { grid-column: 2; } }
-@media (max-width: 899px) { .jh-ac__layout, .jh-ac__layout[data-mode="ot"] { grid-template-columns: minmax(0, 1fr); } .jh-ac__layout > .jh-ac__side, .jh-ac__layout[data-mode="ot"] > .jh-ac__wide { grid-column: auto; } .jh-ac__layout > .jh-card:first-child { position: static; max-height: none; } .jh-ac__center .jh-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1279px) { .jh-ac__layout { grid-template-columns: var(--u-220) minmax(0, 1fr); } .jh-ac__layout > .jh-ac__side { grid-column: 2; position: static; max-height: none; overflow: visible; } .jh-ac__layout[data-mode="ot"] > .jh-ac__wide, .jh-ac__layout[data-mode="caps"] > .jh-ac__wide { grid-column: 2; } }
+@media (max-width: 899px) { .jh-ac__layout, .jh-ac__layout[data-mode="ot"], .jh-ac__layout[data-mode="caps"] { grid-template-columns: minmax(0, 1fr); } .jh-ac__layout > .jh-ac__side, .jh-ac__layout[data-mode="ot"] > .jh-ac__wide, .jh-ac__layout[data-mode="caps"] > .jh-ac__wide { grid-column: auto; } .jh-ac__layout > .jh-card:first-child { position: static; max-height: none; } .jh-ac__center .jh-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* 인사 캘린더: 인사 홈에서는 3단(요약 카드 | 달력 | 선택한 날의 일정 내용) — 넓은 화면(1500px 이상)에서만 나란히, 좁으면 달력 아래 */
 .jh-hc__layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
