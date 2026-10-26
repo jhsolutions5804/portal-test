@@ -1,6 +1,6 @@
 /* 캡스 업로드 — 파일 읽기·포털 기존 근태 불러오기·일괄 저장(파이어스토어는 주입). 시험: tests/hr-caps-import.test.mjs(가짜 주입) */
-import { parseCapsRows, capsMonths, buildCapsPlan } from './caps-import.js?v=20261026f';
-import { capsInit } from './caps-view.js?v=20261026f';
+import { parseCapsRows, capsMonths, buildCapsPlan } from './caps-import.js?v=20261026g';
+import { capsInit } from './caps-view.js?v=20261026g';
 const BATCH = 400; // 한 번에 쓰는 문서 수(파이어스토어 한도 500 미만)
 export function makeCapsIo({ db, collection, getDocs, query, where, writeBatch, doc, serverTimestamp, readSpreadsheet }) {
   const loadExisting = async (months) => { const m = new Map(); for (const ym of months) { const s = await getDocs(query(collection(db, 'worker_attendance_log'), where('yearMonth', '==', ym))); s.forEach((d) => m.set(d.id, d.data())); } return m; };
@@ -34,7 +34,7 @@ export function capsActions({ st, io, paint, toast, reload, workers, today }) {
       const c = ensure(); if (act === 'reset') { st.caps = capsInit(); paint(); return; }
       if (act === 'save') {
         if (!c.plan || c.busy || !c.plan.writes.length) return; c.busy = true; c.err = ''; c.progress = '저장 중… 0/' + c.plan.writes.length; paint();
-        try { const n = await io.save(c.plan, (a, b) => { c.progress = '저장 중… ' + a + '/' + b; paint(); }); c.busy = false; c.progress = ''; c.stage = 'done'; c.saved = { n }; toast('캡스 근태 ' + n + '건을 반영했습니다.'); if (reload) await reload(); else paint(); }
+        try { const n = await io.save(c.plan, (a, b) => { c.progress = '저장 중… ' + a + '/' + b; paint(); }); c.busy = false; c.progress = ''; c.stage = 'done'; c.saved = { n }; toast('캡스 근태 ' + n + '건을 반영했습니다.'); if (reload) await reload(); paint(); /* 이 화면의 reload 는 데이터만 다시 불러오고 그리지 않는다 — 반드시 뒤에 paint */ }
         catch (e) { c.busy = false; c.progress = ''; c.err = '저장하지 못했습니다(일부만 저장됐을 수 있으니 같은 파일을 다시 올려 미리보기를 확인하세요): ' + ((e && (e.message || e.code)) || String(e)); paint(); }
       }
     }
