@@ -1,20 +1,20 @@
-import { esc, toast } from '../../core/ui.js?v=20261026j';
-import { buildPendingRows, groupByMonth, confirmItems, autoProposeAfterImport, splitDraft, splitLeftText, buildConfirmedRows, ruleDraft } from './pjt-tag-logic.js?v=20261026j';
-import { proposeNewPjt, setPjtTag, clearPjtTag, listPjtRules, savePjtRule } from './data.js?v=20261026j';
-import { confirmDialog } from '../../core/dialog.js?v=20261026j';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261026j';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261026j';
-import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261026j';
-import { parseBankSheets } from '../../shared/bank-import.js?v=20261026j';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261026j';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261026j';
-import { monthlyView, monthlyCsv, MP_SEED, npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, ruleReclassPlan, netByAccount, verifyReclass, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows, arByMonth, taxSalesSupplyByMonth, revenueTriple, reportPrintTitle } from './logic.js?v=20261026j';
-import { loadLedger, loadProjects, loadPjtTags, confirmPjtTags, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, saveMonthlyPlan, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries, loadInvoiceMonthly } from './data.js?v=20261026j';
-import { pjtTagHtml, pjtSplitDialogHtml, pjtRuleDialogHtml, monthlyHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261026j';
+import { esc, toast } from '../../core/ui.js?v=20261026k';
+import { buildPendingRows, groupByMonth, confirmItems, autoProposeAfterImport, splitDraft, splitLeftText, buildConfirmedRows, ruleDraft } from './pjt-tag-logic.js?v=20261026k';
+import { proposeNewPjt, setPjtTag, clearPjtTag, listPjtRules, savePjtRule } from './data.js?v=20261026k';
+import { confirmDialog } from '../../core/dialog.js?v=20261026k';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261026k';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261026k';
+import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261026k';
+import { parseBankSheets } from '../../shared/bank-import.js?v=20261026k';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261026k';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261026k';
+import { monthlyView, monthlyCsv, MP_SEED, npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, ruleReclassPlan, netByAccount, verifyReclass, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows, arByMonth, taxSalesSupplyByMonth, revenueTriple, reportPrintTitle } from './logic.js?v=20261026k';
+import { loadLedger, loadProjects, loadPjtTags, confirmPjtTags, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, saveMonthlyPlan, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries, loadInvoiceMonthly } from './data.js?v=20261026k';
+import { pjtTagHtml, pjtSplitDialogHtml, pjtRuleDialogHtml, monthlyHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261026k';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
-import { financePerm } from '../../shared/finance-perm.js?v=20261026j';
-import { printWithTitle } from '../../shared/print-title.js?v=20261026j';
+import { financePerm } from '../../shared/finance-perm.js?v=20261026k';
+import { printWithTitle } from '../../shared/print-title.js?v=20261026k';
 /** 실제 메뉴 등록은 공용 틀(modules/legacy/list.js 의 finance 정의 — 인사총무와 같은 사이드바·내용 영역). 여기의 값은 규약(manifest+mount)용이며 권한은 같은 함수를 쓴다 */
 export const manifest = { id: 'finance', order: 25, title: '재무회계', icon: '📒', defaultHash: '#/finance/home', perm: financePerm };
 const S = { data: null, filter: { from: '', to: '', source: '', review: false, reviewed: false, assignee: '', q: '' }, limit: 100, imp: { kind: 'taxsales', busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }, rep: { kind: 'is', from: '', to: '', acct: '2010', pacct: '2010', q: '', zero: false, vatKey: '', vatForm: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_vatform_v1') || '{}') || {}; } catch (e) { return {}; } })() }, openDate: '2026-01-01', admin: false, rl: null, chk: null, chkDate: '', openEditId: '', sel: new Set(), mp: { ym: kstToday().slice(0, 7), manage: false, draft: null, view: null }, fc: { over: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_fc_v1') || '{}') || {}; } catch (e) { return {}; } })(), scen: 'base' } };
@@ -266,7 +266,7 @@ export async function mount(root, route, ctx) {
     const R = S.rl; if (R.rr && R.rr.running) return; const plan = ruleReclassPlan(S.data.entries, S.data.rules, { lockedThrough: (S.data.settings || {}).lockedThrough || '', today: kstToday() });
     if (!plan.items.length && !plan.same.length) { toast('다시 분류할 전표가 없습니다.'); return; }
     const fm = (n) => Number(n || 0).toLocaleString('ko-KR');
-    const ok = await confirmDialog({ title: '규칙으로 기존 카드 전표 다시 분류', body: '계정을 바꾸는 전표 ' + plan.items.length + '건(전표마다 역분개 + 새 전표)과, 규칙과 계정이 같아 확인 완료로 표시할 전표 ' + plan.same.length + '건을 처리합니다.' + (plan.personal.count ? ' 개인 지출(인출금)으로 넘어가는 ' + plan.personal.count + '건(' + fm(plan.personal.amount) + '원)이 포함됩니다.' : '') + (plan.shifted ? ' 마감일 때문에 일자가 조정되는 전표 ' + plan.shifted + '건.' : '') + ' 시간이 걸리니 끝날 때까지 이 화면을 닫지 마세요.', confirmLabel: '실행' }); if (!ok.ok) return;
+    const ok = await confirmDialog({ title: '규칙으로 기존 카드 전표 다시 분류', body: '계정을 바꾸는 전표 ' + plan.items.length + '건(전표마다 역분개 + 새 전표)과, 규칙과 계정이 같아 확인 완료로 표시할 전표 ' + plan.same.length + '건을 처리합니다.' + (plan.personal.count ? ' 개인 지출(인출금)으로 넘어가는 ' + plan.personal.count + '건(' + fm(plan.personal.amount) + '원)이 포함됩니다.' : '') + (plan.vat && plan.vat.merged ? ' 부가세 불공제(접대비 등)로 부가세를 합산하는 전표 ' + plan.vat.merged + '건.' : '') + (plan.shifted ? ' 마감일 때문에 일자가 조정되는 전표 ' + plan.shifted + '건.' : '') + ' 시간이 걸리니 끝날 때까지 이 화면을 닫지 마세요.', confirmLabel: '실행' }); if (!ok.ok) return;
     R.rr = { running: true, progress: '준비 중…', result: null }; paint(); const before = netByAccount(S.data.entries); const done = [], failed = [];
     for (let k = 0; k < plan.items.length; k++) { const it = plan.items[k]; const msg = (k + 1) + '/' + plan.items.length + ' 재분류 중… ' + it.entry.no; R.rr.progress = msg; const el = body.querySelector('[data-rr-progress]'); if (el) el.textContent = msg; try { await reclassifyEntry(it.entry.id, it.date, '', it.lines); done.push(it); } catch (er) { failed.push(it.entry.no + ': ' + er.message); if (failed.length >= 5 && !done.length) break; } }
     let marked = 0, markErr = ''; if (plan.same.length && (done.length || !failed.length)) { try { marked = await markReviewed(plan.same.map((x) => x.entry.id), true, '가맹점 분류표 규칙과 계정이 같아 확인'); } catch (er) { markErr = er.message; } }
