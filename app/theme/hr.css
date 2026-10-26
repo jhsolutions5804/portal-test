@@ -136,3 +136,9 @@
 .jh-hr-ev__cell strong { font-size: var(--fs-lg); }
 .jh-hr-ev__peer { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, minmax(var(--u-64), 6rem)); gap: var(--sp-2); align-items: center; font-size: var(--fs-sm); }
 @media (max-width: 720px) { .jh-hr-ev__score { grid-template-columns: repeat(2, minmax(0, 1fr)); } .jh-hr-ev__rate { grid-template-columns: minmax(0, 1fr); } .jh-hr-ev__peer { grid-template-columns: minmax(0, 1fr); } }
+
+/* 4대보험 신고 입력표(1-3-17 2단계): 다섯 구역 표의 칸 폭을 같게 고정 — 복사 단추 열이 구역마다 달라 보이지 않게 */
+.jh-edi__tbl { table-layout: fixed; width: 100%; }
+.jh-edi__c1 { width: 24%; } .jh-edi__c2 { width: 30%; } .jh-edi__c3 { width: 9rem; } .jh-edi__c4 { width: auto; }
+.jh-edi__tbl td, .jh-edi__tbl th { overflow-wrap: anywhere; vertical-align: middle; }
+@media (max-width: 899px) { .jh-edi__tbl { table-layout: auto; min-width: 36rem; } .jh-edi__c1, .jh-edi__c2, .jh-edi__c3 { width: auto; } }
