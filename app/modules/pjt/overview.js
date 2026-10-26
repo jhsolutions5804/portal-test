@@ -1,9 +1,10 @@
 /* PJT 전체 홈·종료 PJT — 순수 규칙(화면·네트워크 없이 시험 가능). 모든 프로젝트 같은 규칙.
  * 전체 홈 = 내가 열 수 있는 프로젝트 카드(공정율·D+·누적 공수·오늘 출역) + 프로젝트 통합 일정(2주 / 월간, 프로젝트별 색) + 신규 프로젝트.
  * 종료 PJT = 종료된 프로젝트 목록(재개·완전삭제는 관리자). 프로젝트 문서는 pjt_registry/<id> 하나씩이다(설계서 ⑬). */
-import { weekDays, addDays, itemsForKey } from './schedule.js?v=20261026m';
-import { dday } from './home.js?v=20261026m';
-import { buildData } from './settings.js?v=20261026m';
+import { weekDays, addDays, itemsForKey } from './schedule.js?v=20261026n';
+import { dday } from './home.js?v=20261026n';
+import { buildData } from './settings.js?v=20261026n';
+import { isDateKey } from './adapter.js?v=20261026n';
 export const PALETTE = ['#1D5BA6', '#2e7d32', '#e67e22', '#5e35b1', '#00695C', '#c0392b', '#8D6E00', '#d81b60'];   // 프로젝트별 색(등록 순서대로, 8개를 돌려 쓴다)
 export const colorOf = (keys, key) => PALETTE[Math.max(0, (keys || []).indexOf(key)) % PALETTE.length];
 /** 통합 일정(주간) — 이번 주 월요일부터 14일 블록, offset 만큼 블록 단위로 이동 */
@@ -32,3 +33,5 @@ export const endedSorted = (docs) => (docs || []).slice().sort((a, b) => (((b.en
 export const deleteConfirmed = (name, typed) => { const n = String(name || '').trim(); return !!n && String(typed || '').trim() === n; };
 /** 신규 프로젝트 → 저장할 문서(생성 시각은 저장할 때 서버 시각으로). 입력 검증은 설정 탭과 같다 */
 export function newProjectData(form) { const r = buildData(form); if (r.error) return { error: r.error }; return { data: Object.assign({}, r.data, { status: 'active', progress: 0 }) }; }
+/** PJT 전체 홈에서 일정 항목을 눌렀을 때 가는 주소: 그 프로젝트의 일정 탭 — 홈에서 날짜를 골라 둔 상태면 그 날짜로 연다(2026-10-26 대표님: 8/3 일정을 눌렀는데 오늘 달이 열리던 문제) */
+export const schedHash = (key, sel) => '#/pjt/' + encodeURIComponent(String(key == null ? '' : key)) + '/schedule' + (isDateKey(sel) ? '/' + sel : '');

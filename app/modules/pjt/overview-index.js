@@ -1,18 +1,18 @@
 /* PJT 전체 홈(주소 #/pjt/home)과 종료 PJT(#/pjt/ended) — 새 화면. 규칙은 overview.js, 표시는 overview-view.js.
  * 프로젝트를 만들거나 종료·재개·삭제하면 메뉴의 프로젝트 칩도 바뀌어야 하므로 'jh:pjt-changed' 알림을 보낸다(legacy/frame.js 가 받아 칩을 다시 읽는다). */
-import { db, collection, doc, getDocs, setDoc, addDoc, deleteDoc, deleteField, serverTimestamp, functions, httpsCallable } from '../../core/firebase.js?v=20261026m';
-import { esc, toast } from '../../core/ui.js?v=20261026m';
-import { confirmDialog } from '../../core/dialog.js?v=20261026m';
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261026m';
-import { loadHolidays, holidayName } from '../../shared/holidays.js?v=20261026m';
-import { pathsFor } from './adapter.js?v=20261026m';
-import { appToday } from './attendance.js?v=20261026m';
-import { visibleProjects } from './projects.js?v=20261026m';
-import { dowOf } from './schedule.js?v=20261026m';
-import { overviewHtml, schedInner, detailInner, endedHtml } from './overview-view.js?v=20261026m';
-import { createLogPanel } from './log-panel.js?v=20261026m';
-import { createInboxPanel } from './inbox-panel.js?v=20261026m';
-import { newProjectData, deleteConfirmed, endedSorted, shiftMonth } from './overview.js?v=20261026m';
+import { db, collection, doc, getDocs, setDoc, addDoc, deleteDoc, deleteField, serverTimestamp, functions, httpsCallable } from '../../core/firebase.js?v=20261026n';
+import { esc, toast } from '../../core/ui.js?v=20261026n';
+import { confirmDialog } from '../../core/dialog.js?v=20261026n';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261026n';
+import { loadHolidays, holidayName } from '../../shared/holidays.js?v=20261026n';
+import { pathsFor } from './adapter.js?v=20261026n';
+import { appToday } from './attendance.js?v=20261026n';
+import { visibleProjects } from './projects.js?v=20261026n';
+import { dowOf } from './schedule.js?v=20261026n';
+import { overviewHtml, schedInner, detailInner, endedHtml } from './overview-view.js?v=20261026n';
+import { createLogPanel } from './log-panel.js?v=20261026n';
+import { createInboxPanel } from './inbox-panel.js?v=20261026n';
+import { newProjectData, deleteConfirmed, endedSorted, shiftMonth, schedHash } from './overview.js?v=20261026n';
 const ts = (d) => (d.createdAt && d.createdAt.seconds) || 0;
 /** 프로젝트가 바뀌었음을 메뉴(legacy/frame.js)에 알리고, 메뉴가 칩을 다시 읽을 때까지 기다린다 */
 export async function notifyPjtChanged() { const waits = []; try { window.dispatchEvent(new CustomEvent('jh:pjt-changed', { detail: { waits } })); await Promise.all(waits); } catch (e) { /* 알림 실패는 화면 동작을 막지 않는다 */ } }
@@ -44,7 +44,7 @@ export async function mountOverview(root, route, ctx) {
   };
   root.onclick = (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return; let el;
-    if ((el = t.closest('[data-ov-sched]'))) { go('#/pjt/' + encodeURIComponent(el.getAttribute('data-ov-sched')) + '/schedule'); return; }   // 일정 항목 → 그 프로젝트의 일정 탭(수정은 거기서)
+    if ((el = t.closest('[data-ov-sched]'))) { go(schedHash(el.getAttribute('data-ov-sched'), st.sel)); return; }   // 일정 항목 → 그 프로젝트의 일정 탭(고른 날짜로 열림, 수정은 거기서)
     if ((el = t.closest('[data-ov-shift]'))) { const n = shiftMonth(st.y, st.m, +el.getAttribute('data-ov-shift')); st.y = n.y; st.m = n.m; st.sel = ''; paintSched(); return; }
     if (t.closest('[data-ov-today]')) { st.y = t0[0]; st.m = t0[1] - 1; st.sel = today; paintSched(); return; }
     if ((el = t.closest('[data-ov-day]'))) { st.sel = el.getAttribute('data-ov-day'); paintSched(); return; }
