@@ -1,49 +1,49 @@
 /* PJT 관리(통합 새 모듈) — 설계서 docs/pjt-design.md. Ph2·Ph4·경량PJT를 한 모듈로 합친다.
  * 지금 새 화면은 "출역·공수"(근태·공수 탭) 하나다 — 구포털 PJT 메뉴에서 프로젝트를 고르면 그 아래 "👷 출역·공수 (새)" 탭으로 열린다(legacy/frame.js 의 nativeSubs, modules/index.js hostNative). 프로젝트는 화면 안에서 고르지 않는다. 나머지 탭은 만들면서 구포털 항목을 하나씩 교체한다.
  * 저장 형식은 구포털 그대로(출역 { checks }, 공수 { md }, 날짜별 문서) — 영업기획의 공수 연동·팀별 노무비가 읽는다. 경로는 adapter.js, 규칙은 attendance.js. */
-import { db, functions, httpsCallable, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261026o';
-import { esc, toast } from '../../core/ui.js?v=20261026o';
-import { confirmDialog } from '../../core/dialog.js?v=20261026o';
-import { pathsFor, featuresOf, defaultMandayOf, isDateKey } from './adapter.js?v=20261026o';
-import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261026o';
-import { visibleProjects } from './projects.js?v=20261026o';
-import { loadHolidays } from '../../shared/holidays.js?v=20261026o';
-import { attendHtml, dayWorkers } from './attend-view.js?v=20261026o';
-import { normalizeDay, stateAt, cellState, keyOf, stagesOf } from './progress.js?v=20261026o';
-import { structureFor, planSave } from './structure-store.js?v=20261026o';
-import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, setFeature, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261026o';
-import { progressHtml } from './progress-view.js?v=20261026o';
-import { diffText } from './structure-view.js?v=20261026o';
-import { activeWorkersForDate } from './attendance.js?v=20261026o';
-import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261026o';
-import { buildWeekly } from './weekly-ppt.js?v=20261026o';
-import { boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, remapByOrder, unmatchedKeys, snapToTuesday, weekNo, weekRange } from './layout.js?v=20261026o';
-import { fileToDataUrl, imageInfo } from './image-tools.js?v=20261026o';
-import { layoutEditorHtml } from './layout-view.js?v=20261026o';
-import { scheduleHtml } from './schedule-view.js?v=20261026o';
-import { reportHtml } from './report-view.js?v=20261026o';
-import { runReportLog } from '../../shared/pjt-log.js?v=20261026o';
-import { isDirty, openPopup, closePopup, createPopupHistory } from './report-popup.js?v=20261026o'; // 공사일보 폰 폭 팝업(대표님 2026-10-19)
-import { homeHtml } from './home-view.js?v=20261026o';
-import { settingsHtml } from './settings-view.js?v=20261026o';
-import { formOf as settingsFormOf, buildData as settingsBuild, changedFields, endText, parseDefaultManday } from './settings.js?v=20261026o';
-import { dday, monthMandayTotal, latestReports } from './home.js?v=20261026o';
-import { calcAll } from './progress.js?v=20261026o';
-import { fromStored, toStored, totalOf, attendanceSummary, autoContent, docHtml, docTitle, isLegacyDoc, dateText, WORK_SHIFTS, authorLabel, normalizeEquip, withEditor } from './report.js?v=20261026o';
-import { itemsForKey, buildDoc, formOf, detectCat, addDays, weekDays, isKey } from './schedule.js?v=20261026o';
+import { db, functions, httpsCallable, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, documentId, serverTimestamp } from '../../core/firebase.js?v=20261026p';
+import { esc, toast } from '../../core/ui.js?v=20261026p';
+import { confirmDialog } from '../../core/dialog.js?v=20261026p';
+import { pathsFor, featuresOf, defaultMandayOf, isDateKey } from './adapter.js?v=20261026p';
+import { applyManday, applyAdjust, applyAllManday, toggleCheck, toggleAll, canWorkOn, hasManday, cumulativeByWorker, recentTotals, monthSheet, appToday, shiftDate, clampManday } from './attendance.js?v=20261026p';
+import { visibleProjects } from './projects.js?v=20261026p';
+import { loadHolidays } from '../../shared/holidays.js?v=20261026p';
+import { attendHtml, dayWorkers } from './attend-view.js?v=20261026p';
+import { normalizeDay, stateAt, cellState, keyOf, stagesOf } from './progress.js?v=20261026p';
+import { structureFor, planSave } from './structure-store.js?v=20261026p';
+import { toRuntime, diffStructure, hasChanges, impactOf, validateStructure, setPpt, setFeature, addStage, removeStage, moveStage, toggleInstall, addGroup, renameGroup, removeGroup, addItems, removeItem, parseItemList } from './structure.js?v=20261026p';
+import { progressHtml } from './progress-view.js?v=20261026p';
+import { diffText } from './structure-view.js?v=20261026p';
+import { activeWorkersForDate } from './attendance.js?v=20261026p';
+import { buildDeck, loadPptxGen } from './progress-ppt.js?v=20261026p';
+import { buildWeekly } from './weekly-ppt.js?v=20261026p';
+import { boxFromGesture, normalizeSizes, cleanBox, withPoint, withoutPoint, remapByOrder, unmatchedKeys, snapToTuesday, weekNo, weekRange } from './layout.js?v=20261026p';
+import { fileToDataUrl, imageInfo } from './image-tools.js?v=20261026p';
+import { layoutEditorHtml } from './layout-view.js?v=20261026p';
+import { scheduleHtml } from './schedule-view.js?v=20261026p';
+import { reportHtml } from './report-view.js?v=20261026p';
+import { runReportLog } from '../../shared/pjt-log.js?v=20261026p';
+import { isDirty, openPopup, closePopup, createPopupHistory } from './report-popup.js?v=20261026p'; // 공사일보 폰 폭 팝업(대표님 2026-10-19)
+import { homeHtml } from './home-view.js?v=20261026p';
+import { settingsHtml } from './settings-view.js?v=20261026p';
+import { formOf as settingsFormOf, buildData as settingsBuild, changedFields, endText, parseDefaultManday } from './settings.js?v=20261026p';
+import { dday, monthMandayTotal, latestReports } from './home.js?v=20261026p';
+import { calcAll } from './progress.js?v=20261026p';
+import { fromStored, toStored, totalOf, attendanceSummary, autoContent, docHtml, docTitle, isLegacyDoc, dateText, WORK_SHIFTS, authorLabel, normalizeEquip, withEditor } from './report.js?v=20261026p';
+import { itemsForKey, buildDoc, formOf, detectCat, addDays, weekDays, isKey } from './schedule.js?v=20261026p';
 
-export { mountRoster } from './roster-index.js?v=20261026o';
-export { mountEnded } from './overview-index.js?v=20261026o';
-export { mountTeam } from './team-index.js?v=20261026o';
-import { mountOverview, notifyPjtChanged } from './overview-index.js?v=20261026o';
-import { installFilesDock as installDock } from './files-drawer.js?v=20261026o';
-import { syncWithNote } from './daily-note.js?v=20261026o';
-import { logHtml } from './log-view.js?v=20261026o';
-import { createLogPanel } from './log-panel.js?v=20261026o';
-import { monthlyHtml, printHtml } from './monthly-view.js?v=20261026o';
-import { ckParseNames, ckRowsFrom, ckCheck, ckMove, ckPayload, ckDirty } from './closeout.js?v=20261026o';
-import { hasMoney as lgHasMoney, hasPersonal as lgHasPersonal, friendlyError as lgFriendlyError } from '../../shared/pjt-log.js?v=20261026o';
-import { printWithTitle } from '../../shared/print-title.js?v=20261026o';
+export { mountRoster } from './roster-index.js?v=20261026p';
+export { mountEnded } from './overview-index.js?v=20261026p';
+export { mountTeam } from './team-index.js?v=20261026p';
+import { mountOverview, notifyPjtChanged } from './overview-index.js?v=20261026p';
+import { installFilesDock as installDock } from './files-drawer.js?v=20261026p';
+import { syncWithNote } from './daily-note.js?v=20261026p';
+import { logHtml } from './log-view.js?v=20261026p';
+import { createLogPanel } from './log-panel.js?v=20261026p';
+import { monthlyHtml, printHtml } from './monthly-view.js?v=20261026p';
+import { ckParseNames, ckRowsFrom, ckCheck, ckMove, ckPayload, ckDirty } from './closeout.js?v=20261026p';
+import { hasMoney as lgHasMoney, hasPersonal as lgHasPersonal, friendlyError as lgFriendlyError } from '../../shared/pjt-log.js?v=20261026p';
+import { printWithTitle } from '../../shared/print-title.js?v=20261026p';
 export const manifest = { id: 'pjt', order: 40, title: 'PJT 관리', icon: '🏗️', defaultHash: '#/pjt/attend', perm: (me) => !!me && me.admin === true };
 export async function mount(root) { root.innerHTML = '<div class="jh-empty">PJT 화면은 구포털 틀 안의 메뉴로 열립니다.</div>'; }
 const pushHash = (h) => { if (location.hash === h) return; try { history.replaceState(null, '', h); } catch (e) { location.hash = h; } };
@@ -543,7 +543,7 @@ export async function mountSettings(root, route, ctx) {
   const P = pathsFor(st.proj); st.label = st.projects.find((p) => p.key === st.proj).label; if (!st.admin) { paint(); return; }
   const ref = doc(db, P.settings.col, P.settings.id);
   const load = async () => { const s = await getDoc(ref); st.doc = s.exists() ? s.data() : {}; st.form = settingsFormOf(st.doc); st.ended = st.doc.status === 'ended'; st.mandayText = defaultMandayOf(st.doc) == null ? '' : String(defaultMandayOf(st.doc)); };
-  const mountPpt = (box) => { Promise.resolve().then(async () => { const mp = (ctx && ctx.mountParticipants) || (await import('../../shared/pjt-participants.js?v=20261026o')).mountParticipants; await mp(box, { db, id: P.settings.id, me: { uid: me.uid } }); }).catch((e) => { box.innerHTML = '<div class="jh-field__hint">참여자 지정 구역을 불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; }); };
+  const mountPpt = (box) => { Promise.resolve().then(async () => { const mp = (ctx && ctx.mountParticipants) || (await import('../../shared/pjt-participants.js?v=20261026p')).mountParticipants; await mp(box, { db, id: P.settings.id, me: { uid: me.uid } }); }).catch((e) => { box.innerHTML = '<div class="jh-field__hint">참여자 지정 구역을 불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; }); };
   try { await load(); st.ready = true; } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">설정을 불러오지 못했습니다: ' + esc((e && (e.code || e.message)) || '') + '</div>'; return; }
   paint();
   const readForm = () => { body.querySelectorAll('[data-st-f]').forEach((el) => { st.form[el.getAttribute('data-st-f')] = el.value; }); };

@@ -1,16 +1,17 @@
-import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261026o';
-import { register, visibleFor, get } from './registry.js?v=20261026o';
-import { parseHash, onChange } from './router.js?v=20261026o';
-import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261026o';
-import { hasMicrosoftCallback, finishMicrosoftLogin, startMicrosoftLogin, msErrorMessage } from './ms-auth.js?v=20261026o';
-import { initTheme } from './theme.js?v=20261026o';
-import { checkForUpdate } from './update.js?v=20261026o';
-import { MODULES, installShellDocks } from '../modules/index.js?v=20261026o';
-import { mountPlatformHome } from './home.js?v=20261026o';
-import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261026o';
-import { ensureTime24 } from '../shared/time24.js?v=20261026o';
-import { installRecent, describeNow } from './recent.js?v=20261026o';
-import { workTabs, resumeHash } from './worktabs.js?v=20261026o';
+import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261026p';
+import { register, visibleFor, get } from './registry.js?v=20261026p';
+import { parseHash, onChange } from './router.js?v=20261026p';
+import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261026p';
+import { hasMicrosoftCallback, finishMicrosoftLogin, startMicrosoftLogin, msErrorMessage } from './ms-auth.js?v=20261026p';
+import { initTheme } from './theme.js?v=20261026p';
+import { checkForUpdate } from './update.js?v=20261026p';
+import { MODULES, installShellDocks } from '../modules/index.js?v=20261026p';
+import { mountPlatformHome } from './home.js?v=20261026p';
+import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261026p';
+import { ensureTime24 } from '../shared/time24.js?v=20261026p';
+import { installRecent, describeNow } from './recent.js?v=20261026p';
+import { workTabs, resumeHash } from './worktabs.js?v=20261026p';
+import { legacyProjectHash } from '../shared/pjt-key.js?v=20261026p';
 
 initTheme();   // 이 기기에 저장된 화면 모드(자동·라이트·다크) 적용
 MODULES.forEach((m) => register(Object.assign({}, m.manifest, { mount: m.mount })));
@@ -26,6 +27,7 @@ function scheduleLabel(full) { labelTimers.forEach(clearTimeout); labelTimers = 
 
 function route() {
   if (!me || !shell) return;
+  const legacy = legacyProjectHash(location.hash); if (legacy) { location.replace(legacy); return; }   // 옛 북마크 #/pjt/reg_<id> → #/pjt/<id>
   const r = parseHash();
   if (curView) { curView.scroll = window.scrollY; curView = null; }   // 떠나는 화면의 스크롤 위치
   if (!r.module || r.module === 'home') {   // 플랫폼 홈: 모듈이 등록한 위젯을 모아 보여 준다
