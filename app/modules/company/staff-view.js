@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261026p';
-import { PERM_KEYS, hasPerm, isTeamLead, sortStaff, ranksFor, linkedWorkerOf } from './staff-logic.js?v=20261026p';
-import { isGuestUser } from '../../shared/org.js?v=20261026p';
+import { esc } from '../../core/ui.js?v=20261026q';
+import { PERM_KEYS, hasPerm, isTeamLead, sortStaff, ranksFor, linkedWorkerOf } from './staff-logic.js?v=20261026q';
+import { isGuestUser } from '../../shared/org.js?v=20261026q';
 
 export function staffListHtml(users, workers, meUid) {
   const rows = sortStaff(users).map((u) => {
@@ -24,7 +24,7 @@ export function staffDialogHtml(u, lw, depts, match, isSelf) {
     '<label class="jh-field"><span class="jh-field__label">부서</span><select class="jh-input" id="sf-dept">' + depOpts + '</select></label>' +
     '<label class="jh-field"><span class="jh-field__label">전화번호</span><input class="jh-input" id="sf-phone" type="tel" inputmode="tel" value="' + esc(u.phone || '') + '" placeholder="010-0000-0000"></label>' +
     '<p class="jh-field__hint">메일(아이디): ' + esc(u.email || '-') + '</p>' + link +
-    (isSelf ? '' : '<div class="jh-profile__sec"><h4>계정 관리</h4><div class="jh-staff__acts"><button type="button" class="jh-btn" data-variant="secondary" data-staff-pw>임시 비밀번호 발급</button><button type="button" class="jh-btn" data-variant="secondary" data-staff-mail>재설정 메일 보내기</button><button type="button" class="jh-btn" data-variant="secondary" data-staff-status data-to="' + (u.status === 'approved' || !u.status ? 'suspended' : 'approved') + '">' + (u.status === 'approved' || !u.status ? '사용 중지' : '사용 재개') + '</button></div><p class="jh-field__hint">임시 비밀번호를 발급하면 열려 있는 로그인이 끊기고 새 비밀번호가 화면에 한 번만 보입니다. 사용 중지하면 이 직원은 로그인할 수 없습니다.</p></div>') +
+    (isSelf ? '' : '<div class="jh-profile__sec"><h4>계정 관리</h4><div class="jh-staff__acts">' + (isGuestUser(u) ? '<button type="button" class="jh-btn" data-variant="secondary" data-staff-loginid>로그인 아이디 재설정</button>' : '') + '<button type="button" class="jh-btn" data-variant="secondary" data-staff-pw>임시 비밀번호 발급</button><button type="button" class="jh-btn" data-variant="secondary" data-staff-mail>재설정 메일 보내기</button><button type="button" class="jh-btn" data-variant="secondary" data-staff-status data-to="' + (u.status === 'approved' || !u.status ? 'suspended' : 'approved') + '">' + (u.status === 'approved' || !u.status ? '사용 중지' : '사용 재개') + '</button></div><p class="jh-field__hint">임시 비밀번호를 발급하면 열려 있는 로그인이 끊기고 새 비밀번호가 화면에 한 번만 보입니다. 사용 중지하면 이 직원은 로그인할 수 없습니다.' + (isGuestUser(u) ? ' GUEST 계정은 "로그인 아이디 재설정"으로 아이디(아이디@jhsol.kr)를 새로 정하면 임시 비밀번호가 함께 발급됩니다.' : '') + '</p></div>') +
     '<p class="jh-field__hint" data-sf-msg role="alert"></p></div>' +
     '<div class="jh-dialog__actions"><button type="button" class="jh-btn" data-variant="ghost" data-close>취소</button><button type="button" class="jh-btn" data-variant="primary" data-staff-save>저장</button></div></div>';
 }

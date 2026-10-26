@@ -1,6 +1,6 @@
 /* 직원 관리(관리자)의 순수 규칙 — 화면·네트워크 없이 시험한다 */
-import { byEmpNo, RANK_ORDER } from '../../shared/org.js?v=20261026p';
-import { isPhone } from '../../core/profile-logic.js?v=20261026p';
+import { byEmpNo, RANK_ORDER } from '../../shared/org.js?v=20261026q';
+import { isPhone } from '../../core/profile-logic.js?v=20261026q';
 
 /** 포털 모듈 권한(옛 포털의 MODULES 와 같은 키). 관리자는 권한과 무관하게 모두 열린다 */
 export const PERM_KEYS = [['plan', '영업기획'], ['hr', '인사총무'], ['finance', '재무회계'], ['edoc', '전자결재'], ['pjt', 'PJT'], ['hrEval', '인사평가']];   // 인사평가 = 다른 사람의 평가를 열람·운영(입력·확정은 사장단)
@@ -44,6 +44,12 @@ export function validateNewAccount(f, users) {
   const id = norm(f.id).toLowerCase(); if (!ID_RE.test(id)) return '아이디는 영문 소문자·숫자·점·밑줄·하이픈으로 2~30자여야 합니다.';
   if ((users || []).some((u) => norm(u.email).toLowerCase() === id + '@jhsol.kr')) return '이미 있는 아이디입니다.';
   return validateStaffForm(f, users, '');
+}
+/** GUEST 로그인 아이디 재설정 입력 검사(서버 규칙과 같음). users = 포털 계정 목록, uid = 대상 계정. 안내 문구('' = 통과) */
+export function validateLoginId(rawId, users, uid) {
+  const id = norm(rawId).toLowerCase(); if (!ID_RE.test(id)) return '아이디는 영문 소문자·숫자·점·밑줄·하이픈으로 2~30자여야 합니다.';
+  if ((users || []).some((u) => u && u.uid !== uid && norm(u.email).toLowerCase() === id + '@jhsol.kr')) return '이미 있는 아이디입니다.';
+  return '';
 }
 export const newAccountPayload = (f) => Object.assign({ action: 'createAccount', id: norm(f.id).toLowerCase(), perms: f.perms || {} }, staffUpdate(f));
 /** 서버 함수 호출 실패를 사람이 읽는 문구로. 서버가 보낸 한글 메시지는 그대로, 아니면(함수 미배포·네트워크 등) 일반 안내 */

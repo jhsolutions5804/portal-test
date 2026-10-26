@@ -1,0 +1,14 @@
+import fs from 'node:fs';
+import { validateLoginId, ID_RE } from '../app/modules/company/staff-logic.js';
+import { staffDialogHtml } from '../app/modules/company/staff-view.js';
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
+const users = [{ uid: 'g1', name: '이경택', empNo: 'guest001', email: 'kt.lee@jhsol.kr' }, { uid: 'g2', name: '서민우', empNo: 'guest002', email: 'guest102@jhsol.kr' }, { uid: 'e1', name: '직원', empNo: '2601', email: 'hy.lee@jhsol.kr' }];
+ok(validateLoginId('guest101', users, 'g1') === '' && validateLoginId('  Guest101 ', users, 'g1') === '' && validateLoginId('a.b-c_1', users, 'g1') === '', '★ GUEST 로그인 아이디: 영문 소문자·숫자·점·밑줄·하이픈 2~30자는 통과(앞뒤 공백·대문자는 정리)');
+ok(['', 'a', 'x y', '한글아이디', 'a'.repeat(31), '-abc', 'a@b.kr'].every((x) => validateLoginId(x, users, 'g1').includes('2~30자')), '★ 형식이 틀리면 안내(빈 값·1자·공백·한글·31자·하이픈 시작·@ 포함)');
+ok(validateLoginId('guest102', users, 'g1') === '이미 있는 아이디입니다.' && validateLoginId('guest102', users, 'g2') === '' && validateLoginId('GUEST102', users, 'g1') === '이미 있는 아이디입니다.', '★ 다른 계정이 쓰는 아이디는 거부(대소문자 무관), 자기 자신의 현재 아이디는 통과');
+const dlg = (u, self) => staffDialogHtml(u, null, ['PJT팀'], null, !!self);
+ok(dlg(users[0]).includes('data-staff-loginid') && dlg(users[0]).includes('로그인 아이디 재설정') && dlg(users[1]).includes('data-staff-loginid'), '★ GUEST 계정(사번 guest…) 직원 관리 창에 "로그인 아이디 재설정" 버튼이 있다');
+ok(!dlg(users[2]).includes('data-staff-loginid') && !dlg(users[0], true).includes('data-staff-loginid') && dlg(users[2]).includes('data-staff-pw'), '★ 정규 직원(Microsoft 로그인)과 자기 자신 창에는 버튼이 없고, 임시 비밀번호 발급은 그대로 있다');
+const idx = fs.readFileSync(new URL('../app/modules/company/index.js', import.meta.url), 'utf8');
+ok(/\[data-staff-loginid\]/.test(idx) && /action: 'setLoginId', uid: u\.uid/.test(idx) && /validateLoginId\(ask, users, u\.uid\)/.test(idx) && /showSecret\('로그인 아이디를 재설정했습니다', r\.email, r\.tempPassword\)/.test(idx), '★ 버튼을 누르면 검사 → 서버(adminAct setLoginId) 호출 → 임시 비밀번호를 한 번만 보여 주는 창으로 연결된다');
+console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

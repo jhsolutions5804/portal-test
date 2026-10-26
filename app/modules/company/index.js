@@ -1,15 +1,15 @@
-import { db, auth, functions, httpsCallable, sendPasswordResetEmail, collection, getDocs, getDoc, query, where, orderBy, limit, doc, updateDoc } from '../../core/firebase.js?v=20261026p';
-import { esc, toast } from '../../core/ui.js?v=20261026p';
-import { fmtPhone } from '../../core/profile-logic.js?v=20261026p';
-import { deptOptions } from '../../shared/org.js?v=20261026p';
-import { PERM_KEYS, validateStaffForm, staffUpdate, linkedWorkerOf, findWorkerMatch, workerSync, validateNewAccount, newAccountPayload, callMessage, resetMailMessage, teamLeadChanges } from './staff-logic.js?v=20261026p';
-import { staffListHtml, staffDialogHtml, newAccountDialogHtml, secretDialogHtml } from './staff-view.js?v=20261026p';
-import { accessLogHtml } from './accesslog-view.js?v=20261026p';
-import { toEntry, filterEntries, summarize, monthRange, addMonth, kstYm, kstText, tsMs } from './accesslog-logic.js?v=20261026p';
-import { companyPerm } from '../../shared/company-perm.js?v=20261026p';
-import { markChecked, identityErrorText } from '../../shared/identity.js?v=20261026p';
-import { groupOrg, sortPolicies, buildOrgTree, isGuestUser, isOrgHidden } from './logic.js?v=20261026p';
-import { orgHtml, rulesHtml, orgChartHtml, orgViewHtml, personCardHtml } from './view.js?v=20261026p';
+import { db, auth, functions, httpsCallable, sendPasswordResetEmail, collection, getDocs, getDoc, query, where, orderBy, limit, doc, updateDoc } from '../../core/firebase.js?v=20261026q';
+import { esc, toast } from '../../core/ui.js?v=20261026q';
+import { fmtPhone } from '../../core/profile-logic.js?v=20261026q';
+import { deptOptions } from '../../shared/org.js?v=20261026q';
+import { PERM_KEYS, validateStaffForm, staffUpdate, linkedWorkerOf, findWorkerMatch, workerSync, validateNewAccount, validateLoginId, ID_RE, newAccountPayload, callMessage, resetMailMessage, teamLeadChanges } from './staff-logic.js?v=20261026q';
+import { staffListHtml, staffDialogHtml, newAccountDialogHtml, secretDialogHtml } from './staff-view.js?v=20261026q';
+import { accessLogHtml } from './accesslog-view.js?v=20261026q';
+import { toEntry, filterEntries, summarize, monthRange, addMonth, kstYm, kstText, tsMs } from './accesslog-logic.js?v=20261026q';
+import { companyPerm } from '../../shared/company-perm.js?v=20261026q';
+import { markChecked, identityErrorText } from '../../shared/identity.js?v=20261026q';
+import { groupOrg, sortPolicies, buildOrgTree, isGuestUser, isOrgHidden } from './logic.js?v=20261026q';
+import { orgHtml, rulesHtml, orgChartHtml, orgViewHtml, personCardHtml } from './view.js?v=20261026q';
 
 /** 회사 영역(플랫폼 기본 모듈): 조직도·규정을 읽기 전용으로. GUEST 계정에는 보이지 않는다(연락처·내부 규정) */
 /** 실제 메뉴 등록은 공용 틀(modules/legacy/list.js 의 company 정의 — 인사총무와 같은 사이드바·내용 영역). 여기의 값은 규약(manifest+mount)용이며 권한은 같은 함수를 쓴다 */
@@ -122,6 +122,13 @@ export async function mount(root, route, ctx) {
           if (e.target.closest('[data-staff-link]')) {
             const mt = findWorkerMatch(workers, u); if (!mt) return;
             try { await updateDoc(doc(db, 'workers', mt.id), { portalUid: u.uid }); mt.portalUid = u.uid; lw = mt; draw(); msg('인사 명부와 연동했습니다.'); paint(); } catch (er) { console.error('명부 연동', er); msg('연동하지 못했습니다. (' + (er.code || er.message) + ')', true); }
+            return;
+          }
+          if (e.target.closest('[data-staff-loginid]')) {   // GUEST 로그인 아이디 재설정 — 새 아이디를 정하면 서버가 로그인 계정에 이메일·임시 비밀번호를 넣고 열려 있는 로그인을 끊는다
+            const sug = String(u.empNo || '').toLowerCase(); const ask = window.prompt((u.name || '이 직원') + '님의 새 로그인 아이디를 입력하세요.\n영문 소문자·숫자·점·밑줄·하이픈 2~30자이고, 로그인은 아이디@jhsol.kr 로 합니다.\n임시 비밀번호가 함께 발급되고 열려 있는 로그인은 끊깁니다.', ID_RE.test(sug) ? sug : '');
+            if (ask == null) return; const bad = validateLoginId(ask, users, u.uid); if (bad) { msg(bad, true); return; }
+            const btn = e.target.closest('[data-staff-loginid]'); btn.disabled = true; msg('재설정하는 중…');
+            try { const r = await callAdmin({ action: 'setLoginId', uid: u.uid, id: String(ask).trim().toLowerCase() }); close(); showSecret('로그인 아이디를 재설정했습니다', r.email, r.tempPassword); try { await reload(); paint(); } catch (er) { console.warn('목록 다시 읽기', er); } } catch (er) { console.error('로그인 아이디 재설정', er); btn.disabled = false; msg(callMessage(er), true); }
             return;
           }
           if (e.target.closest('[data-staff-pw]')) {

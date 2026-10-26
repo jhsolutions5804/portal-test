@@ -1,17 +1,17 @@
-import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261026p';
-import { register, visibleFor, get } from './registry.js?v=20261026p';
-import { parseHash, onChange } from './router.js?v=20261026p';
-import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261026p';
-import { hasMicrosoftCallback, finishMicrosoftLogin, startMicrosoftLogin, msErrorMessage } from './ms-auth.js?v=20261026p';
-import { initTheme } from './theme.js?v=20261026p';
-import { checkForUpdate } from './update.js?v=20261026p';
-import { MODULES, installShellDocks } from '../modules/index.js?v=20261026p';
-import { mountPlatformHome } from './home.js?v=20261026p';
-import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261026p';
-import { ensureTime24 } from '../shared/time24.js?v=20261026p';
-import { installRecent, describeNow } from './recent.js?v=20261026p';
-import { workTabs, resumeHash } from './worktabs.js?v=20261026p';
-import { legacyProjectHash } from '../shared/pjt-key.js?v=20261026p';
+import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261026q';
+import { register, visibleFor, get } from './registry.js?v=20261026q';
+import { parseHash, onChange } from './router.js?v=20261026q';
+import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261026q';
+import { hasMicrosoftCallback, finishMicrosoftLogin, startMicrosoftLogin, msErrorMessage } from './ms-auth.js?v=20261026q';
+import { initTheme } from './theme.js?v=20261026q';
+import { checkForUpdate } from './update.js?v=20261026q';
+import { MODULES, installShellDocks } from '../modules/index.js?v=20261026q';
+import { mountPlatformHome } from './home.js?v=20261026q';
+import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261026q';
+import { ensureTime24 } from '../shared/time24.js?v=20261026q';
+import { installRecent, describeNow } from './recent.js?v=20261026q';
+import { workTabs, resumeHash } from './worktabs.js?v=20261026q';
+import { legacyProjectHash } from '../shared/pjt-key.js?v=20261026q';
 
 initTheme();   // 이 기기에 저장된 화면 모드(자동·라이트·다크) 적용
 MODULES.forEach((m) => register(Object.assign({}, m.manifest, { mount: m.mount })));
