@@ -1,53 +1,55 @@
-import { auth, functions, httpsCallable, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp, writeBatch } from '../../core/firebase.js?v=20261026d';
-import { confirmDialog } from '../../core/dialog.js?v=20261026d';
-import { IS_TEST } from '../../core/config.js?v=20261026d';
-import { holidayName } from '../../shared/holidays.js?v=20261026d';
-import { esc, toast } from '../../core/ui.js?v=20261026d';
-import { retireLeavePay, retireCalc } from './retire.js?v=20261026d';
-import { homeStats, fitSize, validateSeal, SEAL_MAX_BYTES } from './home.js?v=20261026d';
-import { saveJumin, revealJumin, maskedView } from './identity.js?v=20261026d';
-import { lpTargets, lpFormNew, lpFormCtx, lpValidateIssue, lpBuildRecord, lpReplyUpdate, lpReceivedUpdate, lpDay, LP_STAGE } from './leave-promo.js?v=20261026d';
-import { configureLeavePromoDocs, leavePromoHtmlByVer } from './leave-promo-docs.js?v=20261026d';
-import { weekdayDays, defaultDays, adminLeaveNew, adminLeaveFromDoc, buildAdminLeave, entryEditFromDoc, buildEntryEdit } from './leave-admin.js?v=20261026d';
-import { createDocLink, syncSignedLinks, loadSendLog, showLinkModal, sendDocLinkByEmail } from './sign-io.js?v=20261026d';
-import { annualNewForm, annualEnd, annualFillFromWorker, annualValidate, annualRecord, annualContractId, annualSummary, payBasisChange, payValueInput } from './annual.js?v=20261026d';
-import { annualSalary } from './offer.js?v=20261026d';
-import { __ANNUAL_TPL, __LABOR_TPL } from './frozen-docs.js?v=20261026d';
-import { laborNewForm, laborFillFromWorker, laborRecord } from './labor.js?v=20261026d';
-import { psPayDate, techAllowance, attendanceData, travelFromTrips, travelTotal, travelSet, payslipRecord } from './payslip.js?v=20261026d';
-import { docHtmlByVer } from './frozen-docs.js?v=20261026d';
-import { configureLaborDocs, laborDocHtml } from './labor-doc.js?v=20261026d';
-import { shortInit, shortCheck, shortRecord, SHORT_SIGN_ERROR } from './short-doc.js?v=20261026d';
-import { shortSummaryHtml } from './short-view.js?v=20261026d';
-import { psHtml } from './payslip-doc.js?v=20261026d';
-import { buildAttRecord, attDefaultBreak, attKey, holidaySetOf } from './attendance.js?v=20261026d';
-import { otYm, otMoveMonth, otSyncPlan, otWage, otNewForm, otFormFromRecord, buildOvertime, otAmount } from './overtime.js?v=20261026d';
-import { dsNewForm, dsFindHourly, dsCalc, dsValidate, dsBuildData, dsFormFromDraft, dsHtmlByVer } from './dismissal.js?v=20261026d';
-import { offerNewForm, offerCalc, offerSwitchMode, offerPayload, offerFormFromSaved, offerCalendar, offerFillCurrent, offerBuildHtml } from './offer.js?v=20261026d';
-import { certsFromWorker, mergeWorker, salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, rrqKindOf, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobHomeBase, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, resignAccountPlan, resignSyncMessage, linkCandidate } from './logic.js?v=20261026d';
-import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml, offersHtml, offerResultHtml, offerStateText, retireHtml, dismissalHtml, dsCalcHtml, attendCalHtml, payslipHtml2, payslipCalcOf, annualHtml, laborHtml, leavePromoHtml, homeHtml, homeSealHtml, homeListHtml, homeAlertHtml, homeKpiHtml } from './view.js?v=20261026d';
-import { openDocWindow, withDocTitle } from '../../shared/doc-title.js?v=20261026d';
-import { makeLedgerIo } from './ledger-io.js?v=20261026d';
-import { makeWeeklyIo } from './weekly-io.js?v=20261026d';
-import { weeklyReport, weekStart as wkStart } from './weekly.js?v=20261026d';
-import { weeklyHomeHtml } from './weekly-view.js?v=20261026d';
-import { renewItems } from './renew.js?v=20261026d';
-import { makeInsuranceIo } from './insurance-io.js?v=20261026d';
-import { insurancePageHtml } from './insurance-view.js?v=20261026d';
-import { makePurgeIo } from './recruit-purge-io.js?v=20261026d';
-import { purgeReport } from './recruit-purge.js?v=20261026d';
-import { purgeHomeHtml } from './recruit-purge-view.js?v=20261026d';
-import { workforceStats } from './workforce.js?v=20261026d';
-import { workforceHtml } from './workforce-view.js?v=20261026d';
-import { makeHistoryIo } from './history-io.js?v=20261026d';
-import { historyInnerHtml, historyPrintHtml } from './history-view.js?v=20261026d';
-import { ledgerPageHtml } from './ledger-view.js?v=20261026d';
-import { isYm, ledgerCsv, ledgerHtml } from './ledger.js?v=20261026d';
-import { contractDocTitle, payslipDocTitle, dismissalDocTitle, resignDocTitle, leavePromoDocTitle, offerDocTitle, resumeDocTitle } from './doc-titles.js?v=20261026d';
+import { auth, functions, httpsCallable, getDoc, db, orderBy, limit, collection, getDocs, doc, setDoc, addDoc, updateDoc, deleteDoc, deleteField, query, where, serverTimestamp, writeBatch } from '../../core/firebase.js?v=20261026e';
+import { confirmDialog } from '../../core/dialog.js?v=20261026e';
+import { IS_TEST } from '../../core/config.js?v=20261026e';
+import { holidayName } from '../../shared/holidays.js?v=20261026e';
+import { esc, toast } from '../../core/ui.js?v=20261026e';
+import { retireLeavePay, retireCalc } from './retire.js?v=20261026e';
+import { homeStats, fitSize, validateSeal, SEAL_MAX_BYTES } from './home.js?v=20261026e';
+import { saveJumin, revealJumin, maskedView } from './identity.js?v=20261026e';
+import { lpTargets, lpFormNew, lpFormCtx, lpValidateIssue, lpBuildRecord, lpReplyUpdate, lpReceivedUpdate, lpDay, LP_STAGE } from './leave-promo.js?v=20261026e';
+import { configureLeavePromoDocs, leavePromoHtmlByVer } from './leave-promo-docs.js?v=20261026e';
+import { weekdayDays, defaultDays, adminLeaveNew, adminLeaveFromDoc, buildAdminLeave, entryEditFromDoc, buildEntryEdit } from './leave-admin.js?v=20261026e';
+import { createDocLink, syncSignedLinks, loadSendLog, showLinkModal, sendDocLinkByEmail } from './sign-io.js?v=20261026e';
+import { annualNewForm, annualEnd, annualFillFromWorker, annualValidate, annualRecord, annualContractId, annualSummary, payBasisChange, payValueInput } from './annual.js?v=20261026e';
+import { annualSalary } from './offer.js?v=20261026e';
+import { __ANNUAL_TPL, __LABOR_TPL } from './frozen-docs.js?v=20261026e';
+import { laborNewForm, laborFillFromWorker, laborRecord } from './labor.js?v=20261026e';
+import { psPayDate, techAllowance, attendanceData, travelFromTrips, travelTotal, travelSet, payslipRecord } from './payslip.js?v=20261026e';
+import { docHtmlByVer } from './frozen-docs.js?v=20261026e';
+import { configureLaborDocs, laborDocHtml } from './labor-doc.js?v=20261026e';
+import { shortInit, shortCheck, shortRecord, SHORT_SIGN_ERROR } from './short-doc.js?v=20261026e';
+import { shortSummaryHtml } from './short-view.js?v=20261026e';
+import { psHtml } from './payslip-doc.js?v=20261026e';
+import { buildAttRecord, attDefaultBreak, attKey, holidaySetOf } from './attendance.js?v=20261026e';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261026e';
+import { makeCapsIo, capsActions } from './caps-io.js?v=20261026e';
+import { otYm, otMoveMonth, otSyncPlan, otWage, otNewForm, otFormFromRecord, buildOvertime, otAmount } from './overtime.js?v=20261026e';
+import { dsNewForm, dsFindHourly, dsCalc, dsValidate, dsBuildData, dsFormFromDraft, dsHtmlByVer } from './dismissal.js?v=20261026e';
+import { offerNewForm, offerCalc, offerSwitchMode, offerPayload, offerFormFromSaved, offerCalendar, offerFillCurrent, offerBuildHtml } from './offer.js?v=20261026e';
+import { certsFromWorker, mergeWorker, salNormalize, salRegenerate, salSetField, salSetTenure, salEditCell, appStatusOf, joinInterview, splitInterview, interviewCalendar, prefillFromApplicant, resumePrintHtml, NEW_EVAL, buildEval, evalLatestRegular, buildStepInput, hcMove, hcMonthRange, hcValidate, hcExpandLeaves, hcResignPlan, rrqFindWorker, resignPrintHtml, rrqKindOf, NEW_INTERVIEW, buildInterview, latestInterview, JOB_HOME_BASE, jobHomeBase, jobCompose, jobFormOf, buildJob, normalizeOpt, buildChange, salaryEvents, historyEvent, leaveRows, kstToday, WP_FIELDS, buildEdit, stepNow, NEW_FORM, buildNew, newWorkerId, buildResign, resignAccountPlan, resignSyncMessage, linkCandidate } from './logic.js?v=20261026e';
+import { listHtml, tableHtml, leaveHtml, changeHtml, postingsHtml, interviewsHtml, resignReqHtml, calendarHtml, evalsHtml, applicantsHtml, salaryHtml, offersHtml, offerResultHtml, offerStateText, retireHtml, dismissalHtml, dsCalcHtml, attendCalHtml, payslipHtml2, payslipCalcOf, annualHtml, laborHtml, leavePromoHtml, homeHtml, homeSealHtml, homeListHtml, homeAlertHtml, homeKpiHtml } from './view.js?v=20261026e';
+import { openDocWindow, withDocTitle } from '../../shared/doc-title.js?v=20261026e';
+import { makeLedgerIo } from './ledger-io.js?v=20261026e';
+import { makeWeeklyIo } from './weekly-io.js?v=20261026e';
+import { weeklyReport, weekStart as wkStart } from './weekly.js?v=20261026e';
+import { weeklyHomeHtml } from './weekly-view.js?v=20261026e';
+import { renewItems } from './renew.js?v=20261026e';
+import { makeInsuranceIo } from './insurance-io.js?v=20261026e';
+import { insurancePageHtml } from './insurance-view.js?v=20261026e';
+import { makePurgeIo } from './recruit-purge-io.js?v=20261026e';
+import { purgeReport } from './recruit-purge.js?v=20261026e';
+import { purgeHomeHtml } from './recruit-purge-view.js?v=20261026e';
+import { workforceStats } from './workforce.js?v=20261026e';
+import { workforceHtml } from './workforce-view.js?v=20261026e';
+import { makeHistoryIo } from './history-io.js?v=20261026e';
+import { historyInnerHtml, historyPrintHtml } from './history-view.js?v=20261026e';
+import { ledgerPageHtml } from './ledger-view.js?v=20261026e';
+import { isYm, ledgerCsv, ledgerHtml } from './ledger.js?v=20261026e';
+import { contractDocTitle, payslipDocTitle, dismissalDocTitle, resignDocTitle, leavePromoDocTitle, offerDocTitle, resumeDocTitle } from './doc-titles.js?v=20261026e';
 
 /** 인사(플랫폼 기본 모듈): 근로자 명부 새 화면. 인사총무 틀 안의 구역으로만 열린다(modules/index.js 의 hostNative). 구포털 인사 화면은 그대로 두고 하나씩 옮기는 중이다. 관리자 전용 */
 /** 다른 모듈이 인사 모듈의 "본인 확인 링크" 발송 흐름을 쓸 수 있게 내보낸다 — modules/index.js 가 평가 결과 통보 화면에 주입한다(모듈 규약 R4: 등록부는 각 모듈의 index.js 만 불러온다) */
-export { sendDocLinkByEmail, showLinkModal, createResultLink } from './sign-io.js?v=20261026d';
+export { sendDocLinkByEmail, showLinkModal, createResultLink } from './sign-io.js?v=20261026e';
 export const manifest = { id: 'hr', order: 21, title: '인사', icon: '👥', defaultHash: '#/hr/workers', perm: (me) => !!me && me.admin === true };
 const FORM_KEYS = ['name', 'empNo', 'dept', 'rank', 'empType', 'job', 'phone', 'email', 'address', 'bankAccount', 'hireDate', 'taxFamily', 'taxChildren', 'taxRate'];
 const toForm = (w) => { const f = {}; FORM_KEYS.forEach((k) => { f[k] = w[k] == null ? '' : String(w[k]); }); f.certs = certsFromWorker(w); f.step = stepNow(w) == null ? '' : String(stepNow(w)); f.reason = ''; return f; };
@@ -633,6 +635,7 @@ export async function mountAttendCal(root, route, ctx, opts) {
   } catch (e) { body.innerHTML = '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>'; return; }
   body.removeAttribute('aria-busy');
   const paint = () => { const y = window.scrollY; body.innerHTML = attendCalHtml(st); window.scrollTo(0, y); };
+  const capsAct = capsActions({ st, io: makeCapsIo({ db, collection, getDocs, query, where, writeBatch, doc, serverTimestamp, readSpreadsheet }), paint, toast, reload: () => reload(), workers: () => st.workers, today: () => st.today }); // 캡스 근태 업로드(1-3-25)
   const loadOt = async () => { st.otRows = lst(await getDocs(query(collection(db, 'overtime'), where('yearMonth', '==', otYm(st.acY, st.acM))))); };
   const loadAtt = async () => {
     st.acHol = holidaySetOf(st.acY, st.acM, (ds) => !!holidayName(ds)); st.acRows = []; st.acAdj = []; st.acLeaves = []; const w = st.acWorkers.find((x) => x.id === st.acW); if (!w) return;
@@ -645,7 +648,8 @@ export async function mountAttendCal(root, route, ctx, opts) {
   const defaultOtDate = () => { const ym = otYm(st.acY, st.acM); if (st.acSel && st.acSel.slice(0, 7) === ym) return st.acSel; if (st.today.slice(0, 7) === ym) return st.today; return ym + '-01'; };
   root.onclick = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
-    const md = t.closest('[data-ac-mode]'); if (md) { st.acMode = md.getAttribute('data-ac-mode'); st.otOpen = ''; st.otForm = null; st.acSel = ''; st.acForm = null; if (st.acMode === 'cal' && !st.acW && st.acWorkers.length) { st.acW = st.acWorkers[0].id; await reload(); } paint(); return; }
+    const cp = t.closest('[data-caps]'); if (cp) { await capsAct.click(cp.getAttribute('data-caps')); return; } // 캡스 업로드: 반영·다른 파일
+  const md = t.closest('[data-ac-mode]'); if (md) { st.acMode = md.getAttribute('data-ac-mode'); st.otOpen = ''; st.otForm = null; st.acSel = ''; st.acForm = null; if (st.acMode === 'cal' && !st.acW && st.acWorkers.length) { st.acW = st.acWorkers[0].id; await reload(); } paint(); return; }
     const wk = t.closest('[data-ac-worker]'); if (wk) { st.acW = wk.getAttribute('data-ac-worker'); st.acMode = 'cal'; st.acSel = ''; st.acForm = null; st.otOpen = ''; st.otForm = null; await reload(); paint(); return; }
     const wkb = t.closest('[data-ac-week]'); if (wkb) { const v = wkb.getAttribute('data-ac-week'); st.acWeek = st.acWeek === v ? '' : v; paint(); return; }
     const mv = t.closest('[data-ac-month]'); if (mv) { const d = new Date(st.acY, st.acM - 1 + Number(mv.getAttribute('data-ac-month')), 1); st.acY = d.getFullYear(); st.acM = d.getMonth() + 1; st.acSel = ''; st.acForm = null; st.otOpen = ''; st.otForm = null; await reload(); paint(); return; }
@@ -676,6 +680,7 @@ export async function mountAttendCal(root, route, ctx, opts) {
   };
   root.onchange = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
+  if (t.matches('[data-caps-file],[data-caps-from],[data-caps-to]')) { await capsAct.change(t); return; } // 캡스 업로드: 파일·기간
     if (st.otForm && t.matches('[data-ot-f]')) { st.otForm[t.getAttribute('data-ot-f')] = t.value; return; }
     if (st.otForm && t.matches('[data-ot-fw]')) { st.otForm.workerId = t.value; st.otFormWage = await wageOf(t.value); paint(); return; }
     if (!st.acForm) return;

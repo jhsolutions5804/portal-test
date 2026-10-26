@@ -1,26 +1,27 @@
-import { esc } from '../../core/ui.js?v=20261026d';
-import { rtWon, retireRecordsSorted } from './retire.js?v=20261026d';
-import { otSummary, otPerson, otAmount } from './overtime.js?v=20261026d';
-import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261026d';
-import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261026d';
-import { weeklyCardHtml } from './weekly-view.js?v=20261026d';
-import { purgeCardHtml, purgeChipHtml } from './recruit-purge-view.js?v=20261026d';
-import { historyCardHtml } from './history-view.js?v=20261026d';
-import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261026d';
-import { shortTypeCardHtml, shortFormCardsHtml } from './short-view.js?v=20261026d';
-import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261026d';
-import { sendLogText } from './sign.js?v=20261026d';
-import { maskedView } from './identity.js?v=20261026d';
-import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261026d';
-import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261026d';
-import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261026d';
-import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261026d';
-import { _hzDot } from './leave-promo-docs.js?v=20261026d';
-import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261026d';
-import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261026d';
-import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261026d';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261026d';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix, taxInfoOf, taxBasisNote } from './logic.js?v=20261026d';
+import { esc } from '../../core/ui.js?v=20261026e';
+import { rtWon, retireRecordsSorted } from './retire.js?v=20261026e';
+import { otSummary, otPerson, otAmount } from './overtime.js?v=20261026e';
+import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261026e';
+import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261026e';
+import { weeklyCardHtml } from './weekly-view.js?v=20261026e';
+import { purgeCardHtml, purgeChipHtml } from './recruit-purge-view.js?v=20261026e';
+import { historyCardHtml } from './history-view.js?v=20261026e';
+import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261026e';
+import { shortTypeCardHtml, shortFormCardsHtml } from './short-view.js?v=20261026e';
+import { capsInit, capsPanelHtml } from './caps-view.js?v=20261026e';
+import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261026e';
+import { sendLogText } from './sign.js?v=20261026e';
+import { maskedView } from './identity.js?v=20261026e';
+import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261026e';
+import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261026e';
+import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261026e';
+import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261026e';
+import { _hzDot } from './leave-promo-docs.js?v=20261026e';
+import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261026e';
+import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261026e';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261026e';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261026e';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix, taxInfoOf, taxBasisNote } from './logic.js?v=20261026e';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -395,7 +396,7 @@ const acH = (n) => (Math.round((Number(n) || 0) * 10) / 10) + 'h';
 const acWorkerOt = (st, w) => (st.otRows || []).filter((r) => r.workerId === w.id || (!r.workerId && r.name === w.name));
 const acOtHours = (rows) => Math.round((rows || []).reduce((s2, r) => s2 + Number(r.hours || 0), 0) * 100) / 100;
 function acHeadHtml(st) {
-  const seg = '<div class="jh-segmented" role="group" aria-label="보기"><button type="button" class="jh-segmented__item" data-ac-mode="cal" aria-pressed="' + (st.acMode === 'cal') + '">📅 근로자별 달력</button><button type="button" class="jh-segmented__item" data-ac-mode="ot" aria-pressed="' + (st.acMode === 'ot') + '">📊 월 초과근로 현황</button></div>';
+  const seg = '<div class="jh-segmented" role="group" aria-label="보기"><button type="button" class="jh-segmented__item" data-ac-mode="cal" aria-pressed="' + (st.acMode === 'cal') + '">📅 근로자별 달력</button><button type="button" class="jh-segmented__item" data-ac-mode="ot" aria-pressed="' + (st.acMode === 'ot') + '">📊 월 초과근로 현황</button><button type="button" class="jh-segmented__item" data-ac-mode="caps" aria-pressed="' + (st.acMode === 'caps') + '">📥 캡스 업로드</button></div>';
   const month = '<div class="jh-ac__month"><button type="button" class="jh-btn" data-variant="ghost" data-ac-month="-1" aria-label="이전 달">◀</button><strong>' + st.acY + '년 ' + st.acM + '월</strong><button type="button" class="jh-btn" data-variant="ghost" data-ac-month="1" aria-label="다음 달">▶</button></div>';
   return '<div class="jh-hr__bar jh-ac__head">' + seg + month + '<span class="jh-field__hint jh-ac__help">출퇴근 모듈과 같은 근무시간 규칙(점심 120분 고정, 출근~퇴근 5시간 이하는 휴게 없음)으로 계산합니다. 전자결재에서 승인된 초과근로는 이 화면을 열 때 자동으로 반영됩니다.</span></div>' + (st.otBanner ? '<div class="jh-alert" data-tone="' + st.otBanner.tone + '" role="status">' + esc(st.otBanner.text) + '</div>' : '');
 }
@@ -432,6 +433,7 @@ function acSummaryHtml(st) {
 export function attendCalHtml(st) {
   const w = st.acWorkers.find((x) => x.id === st.acW); let main;
   if (st.acMode === 'ot') main = '<div class="jh-ac__wide">' + acSummaryHtml(st) + '</div>';
+  else if (st.acMode === 'caps') main = '<div class="jh-ac__wide">' + capsPanelHtml(st.caps || capsInit()) + '</div>';
   else if (!w) main = '<div class="jh-ac__center"><div class="jh-empty">왼쪽에서 근로자를 선택하면 출퇴근 달력이 나옵니다.</div></div>';
   else main = '<div class="jh-ac__center">' + acCalHtml(st, w) + weeklyCardHtml({ y: st.acY, m: st.acM, rows: (st.acRows || []).concat(st.acAdj || []), selWeek: st.acWeek || '', today: st.today }) + '</div><div class="jh-ac__side">' + (st.acSel ? attendEditHtml(st, w) : card('근로 내역 추가/수정', '<div class="jh-hr__pad"><div class="jh-empty">달력에서 날짜를 누르면 그 날의 출근·퇴근·휴게·출장을 입력·수정합니다.</div></div>')) + otFormHtml(st) + otDetailHtml(st) + acOtCardHtml(st, w) + '</div>';
   return acHeadHtml(st) + '<div class="jh-ac__layout" data-mode="' + st.acMode + '">' + acListHtml(st) + main + '</div>';
