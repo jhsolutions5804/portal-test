@@ -5,6 +5,8 @@ export const CHOICES = [
   ['보험료(업무·차량)', '6110'], ['통신비(업무)', '6050'], ['차량 유지비(유류·정비)', '6120'], ['선물(접대비)', '6040'], ['기타 업무비용(메모에 적어 주세요)', '6190'], ['모름', '']
 ];
 export const CHOICE_ACCOUNT = Object.fromEntries(CHOICES);
+/** 규칙을 저장할 수 있는 카드사 코드 — 서버 함수(functions/ledger-act.js 의 ISSUERS)와 같아야 한다. 네이버페이 영수증 전표(card_unknown_…)처럼 카드사를 알 수 없는 가맹점은 서버가 저장을 거부하므로 미리 빼고 알려 준다 */
+export const ISSUERS = ['nonghyup', 'samsung', 'hyundai', 'ibk_sales', 'ibk_approval'];
 /** 가맹점 이름 정규화 — 공백·(주)·주식회사 제거, 앞 18자 */
 export const merchantKey = (m) => String(m || '').replace(/\(주\)|㈜|주식회사|\(유\)|유한회사|\s/g, '').slice(0, 18);
 const squash = (s) => String(s == null ? '' : s).replace(/[\s\u00a0]/g, '');
@@ -13,11 +15,10 @@ export function parseMerchantTable(rows) {
   let hi = -1, col = {};
   for (let i = 0; i < Math.min(rows.length, 15); i++) { const m = {}; (rows[i] || []).forEach((h, c) => { const k = squash(h); if (k) m[k] = c; }); if (m['가맹점'] !== undefined && m['대표님분류'] !== undefined && m['카드사코드'] !== undefined && m['가맹점키'] !== undefined) { hi = i; col = m; break; } }
   if (hi < 0) return { rules: [], error: '분류표 형식이 아닙니다(가맹점·대표님 분류·카드사 코드·가맹점 키 열을 찾지 못했습니다).' };
-  const rules = [], unknown = []; let filled = 0;
+  const rules = [], unknown = [], badIssuer = []; let filled = 0;
   for (let i = hi + 1; i < rows.length; i++) {
     const r = rows[i] || []; const key = String(r[col['가맹점키']] || '').trim(); const issuer = String(r[col['카드사코드']] || '').trim(); const label = String(r[col['대표님분류']] || '').trim(); if (!key || !issuer || !label) continue;
-    filled++; if (!(label in CHOICE_ACCOUNT)) { unknown.push(label); continue; } const account = CHOICE_ACCOUNT[label]; if (!account) continue;
-    rules.push({ issuer, key, account, label, memo: String(r[col['메모']] || '').trim() });
+    filled++; if (!(label in CHOICE_ACCOUNT)) { unknown.push(label); continue; } const account = CHOICE_ACCOUNT[label]; if (!account) continue; if (!ISSUERS.includes(issuer)) { badIssuer.push({ key, issuer }); continue; } rules.push({ issuer, key, account, label, memo: String(r[col['메모']] || '').trim() });
   }
-  return { rules, filled, unknown: [...new Set(unknown)] };
+  return { rules, filled, unknown: [...new Set(unknown)], badIssuer };
 }

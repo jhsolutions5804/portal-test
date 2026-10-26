@@ -1,11 +1,11 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261026i';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261026i';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261026i';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261026i';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261026i';
-import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261026i';
-import { docFileName } from '../../shared/doc-filename.js?v=20261026i';
-import { csvCell, csvCellMin } from '../../shared/csv.js?v=20261026i';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261026j';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261026j';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261026j';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261026j';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261026j';
+import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261026j';
+import { docFileName } from '../../shared/doc-filename.js?v=20261026j';
+import { csvCell, csvCellMin } from '../../shared/csv.js?v=20261026j';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -198,11 +198,10 @@ export const merchantRuleKey = (r) => r.issuer + '|' + r.key;
 export const CARD_LABEL = { nonghyup: '농협(개인)', ibk_sales: 'IBK', ibk_approval: 'IBK 승인', samsung: '삼성', hyundai: '현대' };
 /** 채운 가맹점 분류표(엑셀 행들)에서 규칙을 읽어 저장 목록과 합친 결과·변경 요약을 만든다 */
 export function applyMerchantTable(sheetsRows, existing) {
-  let incoming = [], filled = 0, unknown = []; (sheetsRows || []).forEach((rows) => { const r = parseMerchantTable(rows); if (r.error) return; incoming = incoming.concat(r.rules); filled += r.filled; unknown = unknown.concat(r.unknown || []); });
+  let incoming = [], filled = 0, unknown = [], badIssuer = []; (sheetsRows || []).forEach((rows) => { const r = parseMerchantTable(rows); if (r.error) return; incoming = incoming.concat(r.rules); filled += r.filled; unknown = unknown.concat(r.unknown || []); badIssuer = badIssuer.concat(r.badIssuer || []); });
   if (!incoming.length && !filled) return { error: '가맹점 분류표(대표님 분류 칸)를 찾지 못했습니다. 내려받은 분류표 파일이 맞는지 확인해 주세요.' };
   const cur = new Map((existing || []).map((r) => [merchantRuleKey(r), r])); let added = 0, changed = 0, same = 0; incoming.forEach((r) => { const o = cur.get(merchantRuleKey(r)); if (!o) added++; else if (o.account !== r.account) changed++; else same++; });
-  return { rules: mergeRules(existing, incoming.map((r) => ({ issuer: r.issuer, key: r.key, account: r.account, label: r.label, memo: r.memo })), merchantRuleKey), incoming: incoming.length, filled, added, changed, same, unknown: [...new Set(unknown)] };
-}
+  return { rules: mergeRules(existing, incoming.map((r) => ({ issuer: r.issuer, key: r.key, account: r.account, label: r.label, memo: r.memo })), merchantRuleKey), incoming: incoming.length, filled, added, changed, same, unknown: [...new Set(unknown)], badIssuer }; }
 /* ───────── 재분류(계정 바꾸기) ───────── */
 /** 계정별 원장 — 기간 앞의 잔액(기초)에서 시작해 그 계정이 들어간 전표 줄을 날짜·번호 순으로 쌓는다.
  *  잔액은 계정의 정상 방향(자산·비용은 차변, 부채·자본·수익은 대변) 기준. partnerQ 가 있으면 그 글자가 들어간 거래처 줄만 */
@@ -608,4 +607,35 @@ export function reportPrintTitle(rep, ctx) {
   else if (mode === 'asof' || mode === 'asof+pacct') { o.to = r.to; if (mode === 'asof+pacct') o.project = nm(r.pacct); }
   else if (mode === 'vat' && c.vatRange && typeof c.vatRange === 'object') { o.from = c.vatRange.from; o.to = c.vatRange.to; }
   return docFileName(o);
+}
+
+/* ───────── 가맹점 규칙으로 기존 카드 전표 다시 분류(대표님 2026-10-26: 분류표 261곳 저장 뒤 검토 필요 카드 전표에 한꺼번에 적용) ─────────
+ * 대상: 카드 전표(source.kind 'card') 중 검토 필요 표시가 있고 역분개되지 않은 것. 카드사는 전표 원천 id(card_{카드사}_날짜_…)에서, 가맹점은 메모의 앞부분에서 읽는다.
+ * 규칙과 계정이 이미 같으면 계정은 두고 "확인 완료"만 표시하고(same), 다르면 차변 계정만 바꾼 새 줄을 만든다(items — 전표마다 역분개 + 새 전표). 규칙이 없으면 건드리지 않는다(noRule). */
+export const cardIssuerOf = (e) => { const m = /^card_([a-z_]+?)_\d{4}-\d{2}-\d{2}/.exec((e && e.source && e.source.id) || ''); return m ? m[1] : ''; };
+export const cardMerchantOf = (e) => String((e && e.memo) || '').replace(/^\[재분류\]\s*/, '').split(' · ')[0];
+export function ruleReclassPlan(entries, rules, opts) {
+  const o = opts || {}; const by = new Map((rules || []).map((r) => [r.issuer + '|' + r.key, r])); const items = [], same = [], noRule = [], skipped = []; let targets = 0;
+  (entries || []).forEach((e) => {
+    if (!e || e.invalid || !e.source || e.source.kind !== 'card' || !e.needsReview || e.reversedBy || e.reverses) return;
+    targets++; const rule = by.get(cardIssuerOf(e) + '|' + merchantKey(cardMerchantOf(e)));
+    if (!rule) { noRule.push({ id: e.id, no: e.no, merchant: cardMerchantOf(e) }); return; }
+    const dIdx = (e.lines || []).map((l, i) => (l.side === 'D' ? i : -1)).filter((i) => i >= 0);
+    if (dIdx.length !== 1) { skipped.push({ id: e.id, no: e.no, reason: '차변 줄이 하나가 아닙니다' }); return; }
+    const d = e.lines[dIdx[0]]; if (d.account === rule.account) { same.push({ entry: e, rule }); return; }
+    const r = reclassLines(e, { [dIdx[0]]: rule.account }, null); if (!r.ok) { skipped.push({ id: e.id, no: e.no, reason: r.errors[0] }); return; }
+    const date = reclassDefaultDate(e, o.lockedThrough, o.today); items.push({ entry: e, lines: r.lines, date, shifted: date !== e.date, from: d.account, to: rule.account, amount: Number(d.amount) || 0 });
+  });
+  const mv = new Map(); items.forEach((i) => { const k = i.from + '>' + i.to; const x = mv.get(k) || { from: i.from, to: i.to, count: 0, amount: 0 }; x.count++; x.amount += i.amount; mv.set(k, x); });
+  const personal = items.filter((i) => i.to === '3020'); // 개인 지출(인출금) — 회사 비용에서 빠진다
+  return { targets, items, same, noRule, skipped, moves: [...mv.values()].sort((a, b) => b.count - a.count || b.amount - a.amount), amount: items.reduce((s, i) => s + i.amount, 0), personal: { count: personal.length, amount: personal.reduce((s, i) => s + i.amount, 0) }, shifted: items.filter((i) => i.shifted).length };
+}
+/** 계정별 순합계(차변 − 대변) — 역분개·새 전표를 포함한 모든 유효 전표 */
+export function netByAccount(entries) { const m = new Map(); (entries || []).forEach((e) => { if (!e || e.invalid) return; (e.lines || []).forEach((l) => { m.set(l.account, (m.get(l.account) || 0) + (l.side === 'D' ? 1 : -1) * (Number(l.amount) || 0)); }); }); return m; }
+/** 처리한 계획(items)이 장부에 계획대로만 반영됐는지 — 계정별 변화가 "from 계정 −금액, to 계정 +금액"과 같고 장부 전체가 대차 균형인지 */
+export function verifyReclass(before, after, items) {
+  const exp = new Map(); (items || []).forEach((i) => { exp.set(i.from, (exp.get(i.from) || 0) - i.amount); exp.set(i.to, (exp.get(i.to) || 0) + i.amount); });
+  const keys = new Set([...(before ? before.keys() : []), ...(after ? after.keys() : []), ...exp.keys()]); const diffs = []; let sum = 0;
+  keys.forEach((k) => { const act = ((after && after.get(k)) || 0) - ((before && before.get(k)) || 0); const ex = exp.get(k) || 0; if (Math.round(act) !== Math.round(ex)) diffs.push({ account: k, expected: ex, actual: act }); sum += (after && after.get(k)) || 0; });
+  const balanced = Math.round(sum) === 0; return { ok: !diffs.length && balanced, diffs, balanced };
 }

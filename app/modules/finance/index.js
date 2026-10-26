@@ -1,20 +1,20 @@
-import { esc, toast } from '../../core/ui.js?v=20261026i';
-import { buildPendingRows, groupByMonth, confirmItems, autoProposeAfterImport, splitDraft, splitLeftText, buildConfirmedRows, ruleDraft } from './pjt-tag-logic.js?v=20261026i';
-import { proposeNewPjt, setPjtTag, clearPjtTag, listPjtRules, savePjtRule } from './data.js?v=20261026i';
-import { confirmDialog } from '../../core/dialog.js?v=20261026i';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261026i';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261026i';
-import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261026i';
-import { parseBankSheets } from '../../shared/bank-import.js?v=20261026i';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261026i';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261026i';
-import { monthlyView, monthlyCsv, MP_SEED, npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows, arByMonth, taxSalesSupplyByMonth, revenueTriple, reportPrintTitle } from './logic.js?v=20261026i';
-import { loadLedger, loadProjects, loadPjtTags, confirmPjtTags, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, saveMonthlyPlan, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries, loadInvoiceMonthly } from './data.js?v=20261026i';
-import { pjtTagHtml, pjtSplitDialogHtml, pjtRuleDialogHtml, monthlyHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261026i';
+import { esc, toast } from '../../core/ui.js?v=20261026j';
+import { buildPendingRows, groupByMonth, confirmItems, autoProposeAfterImport, splitDraft, splitLeftText, buildConfirmedRows, ruleDraft } from './pjt-tag-logic.js?v=20261026j';
+import { proposeNewPjt, setPjtTag, clearPjtTag, listPjtRules, savePjtRule } from './data.js?v=20261026j';
+import { confirmDialog } from '../../core/dialog.js?v=20261026j';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261026j';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261026j';
+import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261026j';
+import { parseBankSheets } from '../../shared/bank-import.js?v=20261026j';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261026j';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261026j';
+import { monthlyView, monthlyCsv, MP_SEED, npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, ruleReclassPlan, netByAccount, verifyReclass, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows, arByMonth, taxSalesSupplyByMonth, revenueTriple, reportPrintTitle } from './logic.js?v=20261026j';
+import { loadLedger, loadProjects, loadPjtTags, confirmPjtTags, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, saveMonthlyPlan, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries, loadInvoiceMonthly } from './data.js?v=20261026j';
+import { pjtTagHtml, pjtSplitDialogHtml, pjtRuleDialogHtml, monthlyHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261026j';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
-import { financePerm } from '../../shared/finance-perm.js?v=20261026i';
-import { printWithTitle } from '../../shared/print-title.js?v=20261026i';
+import { financePerm } from '../../shared/finance-perm.js?v=20261026j';
+import { printWithTitle } from '../../shared/print-title.js?v=20261026j';
 /** 실제 메뉴 등록은 공용 틀(modules/legacy/list.js 의 finance 정의 — 인사총무와 같은 사이드바·내용 영역). 여기의 값은 규약(manifest+mount)용이며 권한은 같은 함수를 쓴다 */
 export const manifest = { id: 'finance', order: 25, title: '재무회계', icon: '📒', defaultHash: '#/finance/home', perm: financePerm };
 const S = { data: null, filter: { from: '', to: '', source: '', review: false, reviewed: false, assignee: '', q: '' }, limit: 100, imp: { kind: 'taxsales', busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }, rep: { kind: 'is', from: '', to: '', acct: '2010', pacct: '2010', q: '', zero: false, vatKey: '', vatForm: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_vatform_v1') || '{}') || {}; } catch (e) { return {}; } })() }, openDate: '2026-01-01', admin: false, rl: null, chk: null, chkDate: '', openEditId: '', sel: new Set(), mp: { ym: kstToday().slice(0, 7), manage: false, draft: null, view: null }, fc: { over: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_fc_v1') || '{}') || {}; } catch (e) { return {}; } })(), scen: 'base' } };
@@ -69,7 +69,7 @@ export async function mount(root, route, ctx) {
   const validDate = (v) => v === '' || (/^\d{4}-\d{2}-\d{2}$/.test(v) && Number(v.slice(0, 4)) >= 1990 && Number(v.slice(0, 4)) <= 2100);
   const dateFlush = () => { clearTimeout(dTimer); dTimer = 0; const el = dPending; dPending = null; const sel = el && (el.getAttribute('data-f') ? '[data-f="' + el.getAttribute('data-f') + '"]' : '[data-rep="' + el.getAttribute('data-rep') + '"]'); const had = !!el && document.activeElement === el; paint(); if (had && sel) { const n = body.querySelector(sel); if (n) n.focus(); } };
   const dateApply = (t, apply) => { dPending = t; clearTimeout(dTimer); dTimer = 0; if (!validDate(t.value)) return; apply(); dTimer = setTimeout(dateFlush, 700); };
-  const rlInit = () => { S.rl = { merchant: S.data.rules.map((r) => Object.assign({}, r)), purchase: (S.data.purchaseRules || []).map((r) => Object.assign({}, r)), bank: (S.data.bankRules || []).map((r) => Object.assign({}, r)), q: '', dirtyM: false, dirtyP: false, dirtyB: false, upload: null, error: '' }; };
+  const rlInit = () => { S.rl = { rr: (S.rl && S.rl.rr) || {}, merchant: S.data.rules.map((r) => Object.assign({}, r)), purchase: (S.data.purchaseRules || []).map((r) => Object.assign({}, r)), bank: (S.data.bankRules || []).map((r) => Object.assign({}, r)), q: '', dirtyM: false, dirtyP: false, dirtyB: false, upload: null, error: '' }; };
   const reload = async () => { S.data = await loadLedger(); if (tab === 'rules') rlInit(); if (!S.chkDate) S.chkDate = monthEnd((lastDate() || kstToday()).slice(0, 7)); };
   /* ───── 프로젝트 표시(대기 목록): 읽기 → 계산(pjt-tag-logic) → 화면(pjtTagHtml) → 확정(서버 pjtTagBatch) ───── */
   if (!S.inv) S.inv = { state: 'idle', data: null, error: '' };
@@ -260,6 +260,18 @@ export async function mount(root, route, ctx) {
     });
   }
   /* ───── 규칙·이엔지 정산·마감 점검·개시 수정 ───── */
+  
+  /* 규칙으로 기존 카드 전표 다시 분류 — 전표마다 서버 재분류(역분개 + 새 전표)를 한 건씩 부르고, 규칙과 계정이 같은 전표는 확인 완료로 표시한 뒤, 계정별 변화가 계획과 같은지 점검한다 */
+  async function rrRun() {
+    const R = S.rl; if (R.rr && R.rr.running) return; const plan = ruleReclassPlan(S.data.entries, S.data.rules, { lockedThrough: (S.data.settings || {}).lockedThrough || '', today: kstToday() });
+    if (!plan.items.length && !plan.same.length) { toast('다시 분류할 전표가 없습니다.'); return; }
+    const fm = (n) => Number(n || 0).toLocaleString('ko-KR');
+    const ok = await confirmDialog({ title: '규칙으로 기존 카드 전표 다시 분류', body: '계정을 바꾸는 전표 ' + plan.items.length + '건(전표마다 역분개 + 새 전표)과, 규칙과 계정이 같아 확인 완료로 표시할 전표 ' + plan.same.length + '건을 처리합니다.' + (plan.personal.count ? ' 개인 지출(인출금)으로 넘어가는 ' + plan.personal.count + '건(' + fm(plan.personal.amount) + '원)이 포함됩니다.' : '') + (plan.shifted ? ' 마감일 때문에 일자가 조정되는 전표 ' + plan.shifted + '건.' : '') + ' 시간이 걸리니 끝날 때까지 이 화면을 닫지 마세요.', confirmLabel: '실행' }); if (!ok.ok) return;
+    R.rr = { running: true, progress: '준비 중…', result: null }; paint(); const before = netByAccount(S.data.entries); const done = [], failed = [];
+    for (let k = 0; k < plan.items.length; k++) { const it = plan.items[k]; const msg = (k + 1) + '/' + plan.items.length + ' 재분류 중… ' + it.entry.no; R.rr.progress = msg; const el = body.querySelector('[data-rr-progress]'); if (el) el.textContent = msg; try { await reclassifyEntry(it.entry.id, it.date, '', it.lines); done.push(it); } catch (er) { failed.push(it.entry.no + ': ' + er.message); if (failed.length >= 5 && !done.length) break; } }
+    let marked = 0, markErr = ''; if (plan.same.length && (done.length || !failed.length)) { try { marked = await markReviewed(plan.same.map((x) => x.entry.id), true, '가맹점 분류표 규칙과 계정이 같아 확인'); } catch (er) { markErr = er.message; } }
+    await reload(); const verify = verifyReclass(before, netByAccount(S.data.entries), done); S.rl.rr = { running: false, progress: '', result: { done: done.length, marked, failed, markErr, verify } }; paint(); toast('규칙 재분류 ' + done.length + '건 · 확인 완료 ' + marked + '건' + (failed.length ? ' · 실패 ' + failed.length + '건' : '') + (verify.ok ? ' — 장부 점검 통과' : ' — 장부 점검 결과를 확인하세요'));
+  }
   async function onRulesFile(input) {
     const f = (input.files || [])[0]; if (!f) return; S.rl.error = ''; S.rl.upload = null;
     try { const isCsv = /\.csv$/i.test(f.name || ''); const sheets = isCsv ? [parseCsvRows(await readText(f))] : (await readSpreadsheet(await readBuf(f))).sheets.map((s) => s.rows); const r = applyMerchantTable(sheets, S.rl.merchant); if (r.error) S.rl.error = r.error; else S.rl.upload = r; } catch (e) { S.rl.error = '파일을 읽지 못했습니다: ' + e.message; }
@@ -423,8 +435,7 @@ export async function mount(root, route, ctx) {
       try { if (S.openEditId) { const res = await reclassifyEntry(S.openEditId, r.entry.date, '개시 정정 — 숫자 수정', r.entry.lines); S.openEditId = ''; toast('개시 전표를 정정했습니다(' + res.no + ').'); await reload(); location.hash = '#/finance/home'; return; } const res = await postEntries([r.entry]); if (res.rejected.length) throw new Error(res.rejected[0].errors[0]); toast(res.duplicates ? '같은 날짜의 개시 전표가 이미 있어 건너뛰었습니다.' : '개시 전표를 저장했습니다.'); await reload(); location.hash = '#/finance/home'; } catch (e) { body.querySelector('[data-open-result]').setAttribute('data-tone', 'danger'); body.querySelector('[data-open-result]').textContent = e.message; }
     }
     else if (act === 'table-csv') { const p = S.imp.preview; if (!p || !p.groups) return; download('가맹점_분류표_' + kstToday() + '.csv', merchantTableCsv(p.groups)); toast('분류표를 내려받았습니다. 엑셀에서 "대표님 분류" 칸을 채워 규칙 탭에 올려 주세요.'); }
-    else if (act === 'rules-apply') { try { await saveMerchantRules(S.rl.upload.rules); toast('가맹점 규칙 ' + S.rl.upload.rules.length + '개를 저장했습니다.'); await reload(); paint(); } catch (e) { S.rl.error = e.message; paint(); } }
-    else if (act === 'rules-save-m') { try { await saveMerchantRules(S.rl.merchant); toast('가맹점 규칙을 저장했습니다.'); await reload(); paint(); } catch (e) { toast(e.message); } }
+    else if (act === 'rules-apply') { try { await saveMerchantRules(S.rl.upload.rules); toast('가맹점 규칙 ' + S.rl.upload.rules.length + '개를 저장했습니다.'); await reload(); paint(); } catch (e) { S.rl.error = e.message; paint(); } } else if (act === 'rr-run') { await rrRun(); } else if (act === 'rules-save-m') { try { await saveMerchantRules(S.rl.merchant); toast('가맹점 규칙을 저장했습니다.'); await reload(); paint(); } catch (e) { toast(e.message); } }
     else if (act === 'br-add') {
       const r = bankRuleFromForm(body.querySelector('[data-br-key]').value, body.querySelector('[data-br-dir]').value, body.querySelector('[data-br-acc]').value, body.querySelector('[data-br-partner]').value, body.querySelector('[data-br-memo]').value); if (!r.ok) { toast(r.errors[0]); return; }
       const k = S.rl.bank.findIndex((x) => x.key === r.rule.key && x.dir === r.rule.dir); if (k >= 0) S.rl.bank[k] = r.rule; else S.rl.bank.push(r.rule); S.rl.dirtyB = true; paint();
