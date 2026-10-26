@@ -1,9 +1,9 @@
 /* PJT 전체 홈·종료 PJT 화면(표시만). 규칙은 overview.js, 불러오기·저장·이벤트는 overview-index.js. */
-import { esc } from '../../core/ui.js?v=20261026n';
-import { holidayName } from '../../shared/holidays.js?v=20261026n';
-import { monthGrid, itemsForKey, dowOf } from './schedule.js?v=20261026n';
-import { FIELDS } from './settings.js?v=20261026n';
-import { colorOf, monthLabel, groupByDay, legendOf } from './overview.js?v=20261026n';
+import { esc } from '../../core/ui.js?v=20261026o';
+import { holidayName } from '../../shared/holidays.js?v=20261026o';
+import { monthGrid, itemsForKey, dowOf } from './schedule.js?v=20261026o';
+import { FIELDS } from './settings.js?v=20261026o';
+import { colorOf, monthLabel, groupByDay, legendOf } from './overview.js?v=20261026o';
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const dayHead = (k) => { const [, m, d] = k.split('-').map(Number); return m + '/' + d; };
 const offKind = (k) => (holidayName(k) || dowOf(k) === 0 ? 'red' : dowOf(k) === 6 ? 'sat' : '');
@@ -14,7 +14,7 @@ const keysOf = (st) => st.projects.map((p) => p.key);
 /** 신규 프로젝트 폼(설정 탭과 같은 기본정보 10칸) */
 function newForm(st) {
   const f = st.form; const inp = (k, label) => '<div class="jh-ro__fld"' + (k === 'content' ? ' data-wide="1"' : '') + '><label>' + esc(label) + (k === 'name' ? ' <b>*</b>' : '') + '</label><input class="jh-input" data-ov-f="' + k + '" autocomplete="off"' + (k === 'startDate' ? ' type="date"' : k === 'qty' ? ' inputmode="numeric"' : '') + ' value="' + esc(f[k] || '') + '"></div>';
-  return '<section class="jh-card"><div class="jh-panel__head"><h3>신규 프로젝트</h3></div><div class="jh-ro__form">' + FIELDS.map(([k, l]) => inp(k, l)).join('') + '</div><div class="jh-field__hint jh-ro__pad">만든 뒤에는 프로젝트 ⚙️ 설정에서 참여 부서·개인을 정하고, 공정 탭에서 섹터·품목·단계를 정합니다. 모든 프로젝트가 같은 화면·같은 규칙입니다.</div><div class="jh-ro__fbar">' + (st.msg ? '<span class="jh-ro__msg" data-bad="1" role="alert">' + esc(st.msg) + '</span>' : '<span></span>') + '<span><button type="button" class="jh-btn" data-variant="secondary" data-ov-cancel>취소</button> <button type="button" class="jh-btn" data-variant="primary" data-ov-create' + (st.busy ? ' disabled' : '') + '>' + (st.busy ? '만드는 중...' : '만들기') + '</button></span></div></section>';
+  return '<section class="jh-card"><div class="jh-panel__head"><h3>신규 프로젝트</h3></div><div class="jh-ro__form jh-ro__form--3">' + FIELDS.map(([k, l]) => inp(k, l)).join('') + '</div><div class="jh-field__hint jh-ro__pad">만든 뒤에는 프로젝트 ⚙️ 설정에서 참여 부서·개인을 정하고, 공정 탭에서 섹터·품목·단계를 정합니다. 모든 프로젝트가 같은 화면·같은 규칙입니다.</div><div class="jh-ro__fbar">' + (st.msg ? '<span class="jh-ro__msg" data-bad="1" role="alert">' + esc(st.msg) + '</span>' : '<span></span>') + '<span><button type="button" class="jh-btn" data-variant="secondary" data-ov-cancel>취소</button> <button type="button" class="jh-btn" data-variant="primary" data-ov-create' + (st.busy ? ' disabled' : '') + '>' + (st.busy ? '만드는 중...' : '만들기') + '</button></span></div></section>';
 }
 const legendHtml = (list, st) => '<div class="jh-ov__legend">' + (list.length ? list.map((p) => '<span><i style="background:' + colorOf(keysOf(st), p.key) + '"></i>' + esc(p.label) + '</span>').join('') : '<span class="jh-field__hint">이 기간에 일정이 없습니다.</span>') + '</div>';
 const itemHtml = (st, s) => '<button type="button" class="jh-ov__it" style="--pc:' + colorOf(keysOf(st), s.pjtKey) + '" data-ov-sched="' + esc(s.pjtKey) + '" title="이 프로젝트의 일정 탭에서 보기·수정">' + (s.stime && s.stime !== '미정' ? '<b>' + esc(s.stime) + '</b> ' : '') + esc(s.text || '') + '<small>' + esc(s.pjtName || '') + '</small></button>';

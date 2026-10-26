@@ -237,6 +237,9 @@
 .jh-ro__lh .jh-btn { width: 100%; }
 .jh-ro__newhd { display: flex; }
 .jh-ro__form { display: grid; grid-template-columns: repeat(auto-fit, minmax(var(--u-220), 1fr)); gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); }
+/* 신규 프로젝트 폼: 3칸씩 — 1행 PJT 코드·프로젝트명·현장명 / 2행 거래처(발주처)·시공사·협력사 / 3행 PJT 내용(전체 폭) / 4행 품목·물량·공사 시작일(대표님 2026-10-26) */
+.jh-ro__form--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 899px) { .jh-ro__form--3 { grid-template-columns: minmax(0, 1fr); } }
 .jh-ro__fld { display: grid; gap: var(--u-2); align-content: start; min-width: 0; }
 .jh-ro__fld[data-wide="1"] { grid-column: 1 / -1; }
 .jh-ro__fld label { font-size: var(--fs-xs); color: var(--c-ink-3); }
