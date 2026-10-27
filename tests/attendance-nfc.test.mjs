@@ -6,7 +6,8 @@ import { tagCardHtml, registerPageHtml, workTypeFieldHtml, reviewPageHtml } from
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const T64 = 'a'.repeat(64);
 
-ok(L.NFC_ENABLED === false, '★ 서버 적용 전에는 NFC 기능이 꺼져 있다(NFC_ENABLED=false) — 켜는 것은 테섭 배포 뒤');
+ok(L.NFC_ENABLED === false, '시험 환경(주소 없음)에서는 NFC 기능이 꺼져 있다');
+ok(L.nfcEnabledFor('/portal-test/app/') === true && L.nfcEnabledFor('/portal-test/m/tag.html') === true && L.nfcEnabledFor('/portal-test') === true && L.nfcEnabledFor('/app/') === false && L.nfcEnabledFor('/m/tag.html') === false && L.nfcEnabledFor('') === false && L.nfcEnabledFor(null) === false && L.nfcEnabledFor('/portal-testing/app/') === false, '★ NFC 기능은 테섭 주소(/portal-test/)에서만 켜지고 본섭 주소에서는 꺼져 있다');
 ok(L.validToken(T64) && !L.validToken('zz') && !L.validToken(null) && !L.validToken('A'.repeat(64)), '기기 토큰은 서버가 만드는 64자 16진수(소문자)만 인정');
 // 태그 화면 다음 단계
 ok(L.nextStep(null, null).next === 'register' && L.nextStep(T64, { ok: true, registered: false }).next === 'register', '★ 토큰이 없거나 서버에 없는 기기는 등록 안내');

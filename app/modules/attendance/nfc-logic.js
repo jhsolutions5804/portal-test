@@ -1,7 +1,9 @@
 /* NFC 출퇴근(대기열 1-3-26) — 화면용 순수 계산. 네트워크·화면 없음(시험하기 쉽게 분리).
  * 설계서: Claude Doc "NFC 출퇴근 기록 설계서". 서버(attendNfcAct)가 모든 판정을 하고, 여기서는 서버 응답을 직원 폰 화면 문구로 바꾸고 입력값을 검사한다.
- * 이 기능은 NFC_ENABLED 가 켜지기 전에는 화면에 나타나지 않는다(서버 함수·규칙을 테섭에 배포한 뒤 켠다). */
-export const NFC_ENABLED = false;
+ * 이 기능은 NFC_ENABLED 가 켜지기 전에는 화면에 나타나지 않는다(테섭 주소에서만 켜지고 본섭 주소에서는 꺼져 있다 — 본섭 반영은 대표님 지시 뒤). */
+/** NFC 기능을 켤 주소 — 지금은 테섭(주소에 /portal-test/)에서만 켠다. 본섭에서 켜는 것은 대표님 지시 뒤 이 한 줄만 바꾼다(본섭 전환 코드에 실려 가도 본섭 주소에서는 꺼져 있다) */
+export const nfcEnabledFor = (pathname) => /\/portal-test(\/|$)/.test(String(pathname || ''));
+export const NFC_ENABLED = typeof location !== 'undefined' && nfcEnabledFor(location.pathname);
 export const DEVICE_KEY = 'jh.attend.device';   // 폰 저장소에 기기 토큰을 두는 이름(쿠키를 쓰지 않는다 — 서버 함수 주소가 포털 주소와 달라 쿠키가 막힐 수 있음)
 export const TOKEN_RE = /^[0-9a-f]{64}$/;
 export const WORK_TYPES = [{ v: '', label: '사무실' }, { v: 'trip', label: '출장' }, { v: 'outside', label: '외근' }];
