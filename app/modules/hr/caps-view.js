@@ -9,7 +9,7 @@ const MAX_ROWS = 300;
 /** 미리보기 표 — 반영할 건(신규·변경·보충)을 사람·날짜 순으로 */
 function writesTable(plan) {
   const w = plan.writes; if (!w.length) return '<div class="jh-empty">반영할 건이 없습니다. 기간을 바꾸거나 파일을 확인해 주세요.</div>';
-  const rows = w.slice(0, MAX_ROWS).map((i) => '<tr><td>' + esc(i.name) + '</td><td>' + esc(i.date) + '</td><td>' + chip(i.status) + '</td><td>' + rng(i.caps.in, i.caps.out.replace('+', '+')) + '</td><td>' + (i.before ? rng(i.before.in, i.before.out) + ' <span class="jh-hr__muted">(' + esc(i.before.hours) + 'h)</span>' : '<span class="jh-hr__muted">기록 없음</span>') + '</td><td><b>' + rng(i.after.in, i.after.out) + '</b> <span class="jh-hr__muted">(' + esc(i.after.hours) + 'h)</span></td></tr>').join('');
+  const rows = w.slice(0, MAX_ROWS).map((i) => '<tr><td>' + esc(i.name) + '</td><td>' + esc(i.date) + '</td><td>' + chip(i.status) + (i.cleared ? ' <span class="jh-chip" data-tone="accent">NFC 확인 해제</span>' : '') + '</td><td>' + rng(i.caps.in, i.caps.out.replace('+', '+')) + '</td><td>' + (i.before ? rng(i.before.in, i.before.out) + ' <span class="jh-hr__muted">(' + esc(i.before.hours) + 'h)</span>' : '<span class="jh-hr__muted">기록 없음</span>') + '</td><td><b>' + rng(i.after.in, i.after.out) + '</b> <span class="jh-hr__muted">(' + esc(i.after.hours) + 'h)</span></td></tr>').join('');
   return '<div class="jh-hr__scroll"><table class="jh-hr-table"><thead><tr><th>이름</th><th>날짜</th><th>구분</th><th>캡스</th><th>지금 포털</th><th>반영 후</th></tr></thead><tbody>' + rows + '</tbody></table></div>' + (w.length > MAX_ROWS ? '<div class="jh-field__hint jh-hr__pad">처음 ' + MAX_ROWS + '건만 보여 드립니다(전체 ' + w.length + '건이 저장됩니다).</div>' : '');
 }
 function flagsTable(plan) {
