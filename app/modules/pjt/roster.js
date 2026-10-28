@@ -1,7 +1,7 @@
 /* 근로자 연명부 — 순수 규칙(화면·네트워크 없이 시험 가능). 구포털 연명부(pjt_roster 2.5.1)의 계산·표시 규칙을 그대로 옮겼다.
  * 데이터(동결): master_workers/<id>(기본: 이름·생년월일·성별·입사일·팀장·퇴사), master_worker_info/<id>(실무자 문서: 연락처·주소·검진·자격·교육·계정·비고·첨부 메타),
  * master_worker_private/<id>(관리자 전용: 일당·은행·계좌), master_worker_photos/<id>[__idcard|__cert|__bank](첨부 이미지). 주민번호는 문서에 쓰지 않고 서버 함수(identityAct)가 암호화해 보관, 문서에는 마스킹 값(juminMasked)만 둔다. */
-export const EDU = [{ k: 'e1', label: '안전담당자/화재감시자 기본 인증과정' }, { k: 'e2', label: '중량물/양중작업(통합) 안전인증과정' }, { k: 'e3', label: '화학물질취급작업 안전인증과정' }, { k: 'e4', label: '화학물질안전원 온라인 안전교육' }];
+export const EDU = [{ k: 'e1', label: '안전담당자/화재감시자 기본 인증과정' }, { k: 'e2', label: '중량물/양중작업(통합) 안전인증과정' }, { k: 'e3', label: '화학물질취급작업 안전인증과정' }];   // 2026-10-28 대표님: 화학물질안전원 온라인 교육(e4)은 상단 "화학물질안전원 교육시스템" 탭에서 따로 관리 — 목록에서만 뺀다(이미 저장된 e4 값은 지우지 않고 그대로 둔다)
 export const EDU_SK = [{ k: 's1', label: '기본안전교육(자율책임작업 등)' }, { k: 's2', label: '기본안전교육(A~D급)' }, { k: 's3', label: '신호수/중량물 교육' }, { k: 's4', label: '안전Leaders 교육' }, { k: 's5', label: '화학물질취급 교육' }];
 export const EDU_OF = { samsung: EDU, skhynix: EDU_SK };
 export const PORTAL_OF = { samsung: { label: '상생협력포탈', idK: 'ssId', pwK: 'ssPw' }, skhynix: { label: '행복한 만남', idK: 'hmId', pwK: 'hmPw' } };
@@ -12,6 +12,8 @@ export const FILE_SLOTS = [{ k: 'photo', label: '사진', short: '사진', suffi
 export const PHOTO_SLOTS = FILE_SLOTS.filter((x) => !x.admin);
 export const COMPANIES = [{ k: 'samsung', label: '삼성전자', short: '삼성' }, { k: 'skhynix', label: 'SK하이닉스', short: 'SK' }];
 export const CO_TABS = COMPANIES.concat([{ k: 'chem', label: '화학물질안전원 교육시스템', short: '화안원' }]);
+/** 날짜 칸 값이 쓸 만한가 — 비어 있거나 YYYY-MM-DD 이고 연도가 1900~2100. 브라우저 날짜 칸은 연도를 한 글자 칠 때마다(0002-…) 값이 바뀌었다고 알려 주므로, 중간에 걸린 값은 화면을 다시 그리지 않고 넘기는 데 쓴다 */
+export const validDateInput = (v) => { if (v === '' || v == null) return true; const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v)); if (!m) return false; const y = +m[1]; return y >= 1900 && y <= 2100 && +m[2] >= 1 && +m[2] <= 12 && +m[3] >= 1 && +m[3] <= 31; };
 export const certCo = (c) => (c && c.co) || 'samsung';   // 원청 구분이 없던 기존 자격은 삼성전자로 본다
 export const slotOf = (k) => FILE_SLOTS.find((x) => x.k === k);
 export const slotDocId = (id, k) => id + slotOf(k).suffix;

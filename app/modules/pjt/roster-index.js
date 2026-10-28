@@ -1,14 +1,14 @@
 /* 근로자 연명부(새 화면) — 구포털 PJT 메뉴의 "근로자 연명부" 칸. 주소 #/pjt/roster(목록) · #/pjt/roster/<근로자 id>(상세 조회).
  * 왼쪽 명단(재직·조치 필요·퇴사·전체, 검색, 정렬) + 오른쪽(사람을 고르면 상세, 아니면 조치 필요 현황). 2단계: 카드마다 따로 수정(인적사항·급여/계좌·비고), 신규 등록, 삭제(관리자), 퇴사·팀장 연결, 주민번호 저장·보기(사유 선택, 서버 함수).
  * 첨부·건강검진·원청별 교육·자격 입력은 다음 단계. 규칙은 roster.js, 표시는 roster-view.js. */
-import { db, storage, collection, doc, getDoc, getDocs, writeBatch, deleteField, serverTimestamp, arrayUnion, arrayRemove, storageRef, uploadBytesResumable, deleteObject, getBlob } from '../../core/firebase.js?v=20261028a';
-import { esc, toast } from '../../core/ui.js?v=20261028a';
-import { confirmDialog } from '../../core/dialog.js?v=20261028a';
-import { revealWorker, saveJumin } from '../../shared/identity.js?v=20261028a';
-import { compressImage } from './roster-image.js?v=20261028a';
-import { mergePrivs, summaryOf, visibleList, rowOf, todayKey, birthFromJumin, parseJumin, fmtJumin, fmtPhone, fmtMoney, blankForm, formOfMaster, validateWorker, payOf, deleteBlock, pdfPathsOf, slotDocId, FILE_SLOTS, slotOf, filesMeta, fileMetaOf, photoDocOf, anyFile, downloadName, canEditSlot, healthRowsOf, blankHealthRow, healthRowSet, planHealth, checkPdf, pdfStoragePath, pdfMeta, pdfDownloadName, fmtKB, eduFormOf, eduToggle, eduExpSet, eduSavePatch, certRowsOf, blankCertRow, certRowSet, planCerts, legalRowsOf, addLegalRow, planLegal, contractorsOf, chemRowsOf, blankChemRow, chemFormOf, planChem, chemAccountPatch, chemDownloadName } from './roster.js?v=20261028a';
-import { rosterHtml } from './roster-view.js?v=20261028a';
-import { mountRosterTools } from './roster-tools-index.js?v=20261028a';
+import { db, storage, collection, doc, getDoc, getDocs, writeBatch, deleteField, serverTimestamp, arrayUnion, arrayRemove, storageRef, uploadBytesResumable, deleteObject, getBlob } from '../../core/firebase.js?v=20261028b';
+import { esc, toast } from '../../core/ui.js?v=20261028b';
+import { confirmDialog } from '../../core/dialog.js?v=20261028b';
+import { revealWorker, saveJumin } from '../../shared/identity.js?v=20261028b';
+import { compressImage } from './roster-image.js?v=20261028b';
+import { validDateInput, mergePrivs, summaryOf, visibleList, rowOf, todayKey, birthFromJumin, parseJumin, fmtJumin, fmtPhone, fmtMoney, blankForm, formOfMaster, validateWorker, payOf, deleteBlock, pdfPathsOf, slotDocId, FILE_SLOTS, slotOf, filesMeta, fileMetaOf, photoDocOf, anyFile, downloadName, canEditSlot, healthRowsOf, blankHealthRow, healthRowSet, planHealth, checkPdf, pdfStoragePath, pdfMeta, pdfDownloadName, fmtKB, eduFormOf, eduToggle, eduExpSet, eduSavePatch, certRowsOf, blankCertRow, certRowSet, planCerts, legalRowsOf, addLegalRow, planLegal, contractorsOf, chemRowsOf, blankChemRow, chemFormOf, planChem, chemAccountPatch, chemDownloadName } from './roster.js?v=20261028b';
+import { rosterHtml } from './roster-view.js?v=20261028b';
+import { mountRosterTools } from './roster-tools-index.js?v=20261028b';
 const pushHash = (h) => { if (location.hash === h) return; try { history.replaceState(null, '', h); } catch (e) { location.hash = h; } };
 const lst = (snap) => { const a = []; snap.forEach((d) => a.push({ id: d.id, data: d.data() })); return a; };
 export async function mountRoster(root, route, ctx) {
@@ -159,13 +159,13 @@ export async function mountRoster(root, route, ctx) {
     try { const blob = await store.blob(path); const url = (URL.createObjectURL ? URL.createObjectURL(new Blob([blob], { type: 'application/pdf' })) : '#'); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); if (URL.revokeObjectURL) setTimeout(() => URL.revokeObjectURL(url), 30000); }
     catch (err) { toast('다운로드 실패: ' + ((err && (err.code || err.message)) || '') + ' (권한이 있는 계정인지 확인해 주세요)'); }
   };
-  const hfSet = (t) => { const [i, f] = String(t.getAttribute('data-ro-hf')).split('|'); const e = st.edit; if (!e || !e.rows || !e.rows[+i]) return false; e.rows[+i] = e.card === 'chem' ? Object.assign({}, e.rows[+i], { [f]: t.value }) : healthRowSet(e.rows[+i], f, t.value); paint(); return true; };
+  const hfSet = (t) => { const [i, f] = String(t.getAttribute('data-ro-hf')).split('|'); const e = st.edit; if (!e || !e.rows || !e.rows[+i]) return false; if (isDateInput(t) && !validDateInput(t.value)) { st.dirtyDate = true; return true; } e.rows[+i] = e.card === 'chem' ? Object.assign({}, e.rows[+i], { [f]: t.value }) : healthRowSet(e.rows[+i], f, t.value); if (isDateInput(t)) st.dirtyDate = true; else paint(); return true; };
   const saveEdu = async () => {
     const m = masterOf(st.sel); if (!m) return; const e = st.edit; const patch = eduSavePatch(st.privs[m.id], e.form); st.busy = true; e.msg = ''; paint();
     try { const b = writeBatch(db); b.set(doc(db, 'master_worker_info', m.id), Object.assign({}, patch, { updatedAt: serverTimestamp() }), { merge: true }); await b.commit(); await reload(); st.edit = null; toast('저장했습니다.'); }
     catch (err) { e.msg = '저장 실패: ' + ((err && (err.code || err.message)) || ''); } st.busy = false; paint();
   };
-  const efSet = (t) => { const e = st.edit; if (!e || (e.card !== 'edu' && e.card !== 'chem')) return false; const [kind, k] = String(t.getAttribute('data-ro-ef')).split('|'); if (e.card === 'edu' && kind === 'chk') { e.form = eduToggle(e.form, k, t.checked); paint(); } else if (e.card === 'edu' && kind === 'exp') { e.form = eduExpSet(e.form, k, t.value); paint(); } else if (kind === 'id') e.form.id = t.value; else if (kind === 'pw') e.form.pw = t.value; return true; };
+  const efSet = (t) => { const e = st.edit; if (!e || (e.card !== 'edu' && e.card !== 'chem')) return false; const [kind, k] = String(t.getAttribute('data-ro-ef')).split('|'); if (e.card === 'edu' && kind === 'chk') { e.form = eduToggle(e.form, k, t.checked); paint(); } else if (e.card === 'edu' && kind === 'exp') { if (isDateInput(t) && !validDateInput(t.value)) { st.dirtyDate = true; return true; } e.form = eduExpSet(e.form, k, t.value); if (isDateInput(t)) st.dirtyDate = true; else paint(); } else if (kind === 'id') e.form.id = t.value; else if (kind === 'pw') e.form.pw = t.value; return true; };
   // ── 자격·인증 / 법정교육(원청별 줄 편집기): [저장]을 눌러야 반영, 저장은 그 원청 줄만 바꾼다 ──
   const saveRows = async (kind) => {
     const m = masterOf(st.sel); if (!m) return; const e = st.edit; const p = st.privs[m.id] || {}; const plan = kind === 'cert' ? planCerts(p, e.co, e.rows) : planLegal(p, e.co, e.rows);
@@ -174,7 +174,12 @@ export async function mountRoster(root, route, ctx) {
     try { const b = writeBatch(db); b.set(doc(db, 'master_worker_info', m.id), Object.assign(kind === 'cert' ? { certs: plan.certs } : { legalEdu: plan.legalEdu }, { updatedAt: serverTimestamp() }), { merge: true }); await b.commit(); await reload(); st.edit = null; toast('저장했습니다.'); }
     catch (err) { e.msg = '저장 실패: ' + ((err && (err.code || err.message)) || ''); } st.busy = false; paint();
   };
-  const rfSet = (t, repaint) => { const e = st.edit; if (!e || !e.rows) return false; const [kind, i, f] = String(t.getAttribute('data-ro-rf')).split('|'); if (e.card !== kind || !e.rows[+i]) return false; if (kind === 'cert') e.rows[+i] = certRowSet(e.rows[+i], f, t.value); else e.rows[+i] = Object.assign({}, e.rows[+i], { [f]: t.value }); if (repaint) paint(); return true; };
+  const paintKeep = () => { const a = document.activeElement; let sel = ''; if (a instanceof Element) { for (const at of ['data-ro-ef', 'data-ro-rf', 'data-ro-hf', 'data-ro-f']) { if (a.hasAttribute(at)) { sel = '[' + at + '="' + a.getAttribute(at) + '"]'; break; } } } paint(); if (sel) { const n = body.querySelector(sel); if (n && typeof n.focus === 'function') n.focus(); } };   // 다시 그린 뒤에도 보던 칸에 커서를 돌려준다
+  if (root._roFocusOut) root.removeEventListener('focusout', root._roFocusOut);
+  root._roFocusOut = (ev) => { const t = ev.target; if (!st.dirtyDate || !(t instanceof Element) || t.type !== 'date') return; setTimeout(() => { if (!st.dirtyDate) return; const a = document.activeElement; if (a && a !== document.body && !/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return; /* 버튼을 누르는 중이면 그 버튼 동작이 다시 그린다(그 사이 버튼이 바뀌면 누른 것이 사라진다) */ st.dirtyDate = false; paintKeep(); }, 0); };
+  root.addEventListener('focusout', root._roFocusOut);
+  const isDateInput = (t) => !!t && t.type === 'date';   // 날짜 칸은 값이 확정될 때까지(연도를 한 글자씩 칠 때마다 change 가 온다) 화면을 다시 그리지 않고, 칸을 떠날 때 한 번만 다시 그린다
+  const rfSet = (t, repaint) => { const e = st.edit; if (!e || !e.rows) return false; const [kind, i, f] = String(t.getAttribute('data-ro-rf')).split('|'); if (e.card !== kind || !e.rows[+i]) return false; if (isDateInput(t) && !validDateInput(t.value)) { st.dirtyDate = true; return true; } if (kind === 'cert') e.rows[+i] = certRowSet(e.rows[+i], f, t.value); else e.rows[+i] = Object.assign({}, e.rows[+i], { [f]: t.value }); if (repaint) { if (isDateInput(t)) st.dirtyDate = true; else paint(); } return true; };
   const setField = (t) => {
     if (!st.edit || !t.hasAttribute('data-ro-f')) return false; const k = t.getAttribute('data-ro-f'); st.edit.form[k] = t.value;
     if (k === 'jumin') { const pj = parseJumin(t.value); if (pj.valid) { const f = st.edit.form; if (!f.birth || f.birth !== pj.birth) { f.birth = pj.birth; const bi = body.querySelector('[data-ro-f="birth"]'); if (bi) bi.value = pj.birth; } if (!f.gender) { f.gender = pj.gender; const gi = body.querySelector('[data-ro-f="gender"]'); if (gi) gi.value = pj.gender; } } }   // 주민번호를 넣으면 생년월일·성별을 자동으로
