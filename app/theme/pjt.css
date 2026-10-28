@@ -291,6 +291,9 @@
 .jh-ro__ftab small { opacity: .75; font-weight: 400; }
 .jh-ro__ftab[aria-selected="true"] { background: var(--c-surface); color: var(--c-primary); border-bottom: var(--u-1) solid var(--c-surface); box-shadow: inset 0 var(--u-3) 0 var(--c-primary); }
 .jh-ro__fpanel { padding-bottom: var(--sp-3); }
+.jh-ro__fpanel > .jh-field__hint, .jh-ro__fpanel > .jh-empty { display: block; margin: 0 var(--sp-4) var(--sp-3); }   /* 빈 상태 안내 문구가 제목·표와 같은 왼쪽 선에 오게 */
+.jh-ro__fpanel .jh-ro__sechd { margin-top: var(--sp-2); }
+.jh-ro__fpanel .jh-ro__sechd h4 { margin-block: var(--sp-2); }
 .jh-ro__stabs { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin: var(--sp-3) var(--sp-4) 0; border-bottom: var(--u-1) solid var(--c-line); }
 .jh-ro__stab { margin-bottom: calc(-1 * var(--u-1)); padding: var(--sp-2) var(--sp-3); border: 0; border-bottom: var(--u-3) solid transparent; background: none; color: var(--c-ink-3); font: inherit; font-weight: 600; cursor: pointer; }
 .jh-ro__stab small { opacity: .75; font-weight: 400; }

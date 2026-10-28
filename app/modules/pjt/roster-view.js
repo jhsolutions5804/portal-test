@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261027a';
-import { EDU, EDU_SK, EDU_OF, PORTAL_OF, COMPANIES, CO_TABS, HEALTH_TYPES, CHEM_REQ_HOURS, FILE_SLOTS, certCo, fmtKB, fmtMoney, fmtH, maskedOf, healthExpiry, eduStateOf, eduInfo, chemYearSum, legalAgg, filesMeta, SORT_OPTS, leaderChoices, canEditSlot, addYearsYmd, pdfDownloadName, VALID_YEAR_CHOICES, LEGAL_TYPES, activeMembers } from './roster.js?v=20261027a';
+import { esc } from '../../core/ui.js?v=20261028a';
+import { EDU, EDU_SK, EDU_OF, PORTAL_OF, COMPANIES, CO_TABS, HEALTH_TYPES, CHEM_REQ_HOURS, FILE_SLOTS, certCo, fmtKB, fmtMoney, fmtH, maskedOf, healthExpiry, eduStateOf, eduInfo, chemYearSum, legalAgg, filesMeta, SORT_OPTS, leaderChoices, canEditSlot, addYearsYmd, pdfDownloadName, VALID_YEAR_CHOICES, LEGAL_TYPES, activeMembers } from './roster.js?v=20261028a';
 const chip = (tone, text, title) => '<span class="jh-pjt__chip" data-tone="' + tone + '"' + (title ? ' title="' + esc(title) + '"' : '') + '>' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const stateChip = (r) => (r.state === 'expired' ? chip('red', '만료됨 (D+' + Math.abs(r.d) + ')') : r.state === 'soon' ? chip('amber', 'D-' + r.d) : r.chk && r.exp ? chip('blue', '유효') : '');
@@ -122,7 +122,7 @@ function legalHtml(p, co, year) {
   const rows = ((p && p.legalEdu) || []).filter((r) => certCo(r) === co).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
   const list = rows.length ? '<table class="jh-ro__t"><thead><tr><th>시공사</th><th>교육 종류</th><th>교육일</th><th>시간</th><th>비고</th></tr></thead><tbody>' + rows.map((r) => '<tr><td>' + esc(r.contractor || '—') + '</td><td>' + esc(r.type || '') + '</td><td>' + esc(r.date || '') + '</td><td>' + esc(fmtH(Number(r.hours) || 0)) + '</td><td>' + esc(r.note || '') + '</td></tr>').join('') + '</tbody></table>' : '<div class="jh-field__hint">등록된 법정교육 이력이 없습니다.</div>';
   const agg = legalAgg((p && p.legalEdu) || [], co, year); const sum = legalSumTable(agg, year);
-  return '<h4>법정교육</h4>' + list + '<h4>누계 <small>(시공사별로 따로 집계)</small></h4>' + sum;
+  return list + '<h4>누계 <small>(시공사별로 따로 집계)</small></h4>' + sum;   // 제목 "법정교육"은 위 머리줄(수정 버튼과 같은 줄)에 있다
 }
 function certHtml(p, co) {
   const rows = ((p && p.certs) || []).filter((c) => certCo(c) === co); if (!rows.length) return '<div class="jh-field__hint">등록된 자격·인증이 없습니다.</div>';
@@ -198,5 +198,5 @@ function companyHtml(st, p) {
   if (st.edit && st.edit.card === 'cert' && st.edit.co === co.k && st.coSub === 'cert') return panel(subTabs + certEditHtml(st));
   if (st.edit && st.edit.card === 'legal' && st.edit.co === co.k && st.coSub === 'legal') return panel(subTabs + legalEditHtml(st));
   const btn = (card) => (st.canEdit && !st.edit ? '<button type="button" class="jh-btn" data-variant="secondary" data-ro-edit="' + card + '">✏️ 수정</button>' : '');
-  return panel(subTabs + (st.coSub === 'cert' ? '<div class="jh-ro__sechd"><h4>자격 · 인증 <small>(' + esc(co.label) + ')</small></h4>' + btn('cert') + '</div>' + certHtml(p, co.k) : st.coSub === 'edu' ? eduPortalHtml(st, p, co.k) : '<div class="jh-ro__sechd"><span></span>' + btn('legal') + '</div>' + legalHtml(p, co.k, year)));
+  return panel(subTabs + (st.coSub === 'cert' ? '<div class="jh-ro__sechd"><h4>자격 · 인증 <small>(' + esc(co.label) + ')</small></h4>' + btn('cert') + '</div>' + certHtml(p, co.k) : st.coSub === 'edu' ? eduPortalHtml(st, p, co.k) : '<div class="jh-ro__sechd"><h4>법정교육 <small>(' + esc(co.label) + ')</small></h4>' + btn('legal') + '</div>' + legalHtml(p, co.k, year)));
 }
