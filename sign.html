@@ -40,6 +40,7 @@
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+ import { laborHtmlV7, annualHtmlV7, configureContractV7 } from './app/modules/hr/contract-v7.js';   // 양식 v7(2026-10-29~): 저장 문서의 tplVer 가 v7 이면 이 양식으로 그린다
 import { getFirestore, doc, getDoc, writeBatch, serverTimestamp }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, setPersistence, browserSessionPersistence, signOut }
@@ -115,7 +116,7 @@ async function loadAndShow(link){
     const paySnap = await getDoc(doc(db, `sign_links/${token}/secure/payload`));
     if (!paySnap.exists()) { showError('문서 정보를 찾을 수 없습니다. 회사(인사담당자)에게 새 링크를 요청해 주세요.'); return; }
     const pay = paySnap.data();
-    window._compSignatures = pay.seal || {};
+    window._compSignatures = pay.seal || {}; configureContractV7({ signatures: window._compSignatures });
 
     // 열람 전용 링크 — 회사가 저장 당시 양식으로 만들어 둔 HTML을 그대로 보여준다(서명·수정 없음)
     if (pay.viewOnly && pay.html) {
@@ -136,7 +137,7 @@ async function loadAndShow(link){
 
     // ── 근로계약서 / 연봉계약서 ──
     const docTitle = link.docType === 'annual' ? '연봉계약서' : '근로계약서';
-    const buildHtml = link.docType === 'annual' ? __annualHtml_v5 : __laborHtml_v6;
+    const buildHtml = pickContractHtml(link.docType, f);
     const fMasked = { ...f, jumin: maskJumin(f.jumin) };
     let result = null;
     try { const rs = await getDoc(doc(db, `sign_links/${token}/secure/result`)); if (rs.exists()) result = rs.data(); } catch(e) {}
@@ -266,9 +267,7 @@ function showPhoneVerify(link){
 async function showContractAndSign(fMasked, link, docTitle){
   const f = fMasked;
   try {
-    const previewHtml = link.docType === 'annual'
-      ? __annualHtml_v5(fMasked)
-      : __laborHtml_v6(fMasked);
+    const previewHtml = pickContractHtml(link.docType, fMasked)(fMasked);
 
     el.innerHTML = `
       <div class="card">
@@ -348,7 +347,7 @@ async function showContractAndSign(fMasked, link, docTitle){
 
         // 서명 반영된 최종본 (다운로드/보관용)
         const finalF = { ...f, signData };
-        const finalHtml = link.docType === 'annual' ? __annualHtml_v5(finalF) : __laborHtml_v6(finalF);
+        const finalHtml = pickContractHtml(link.docType, finalF)(finalF);
 
         el.innerHTML = `<div class="card center">
           <div class="state-icon">✅</div>
@@ -812,7 +811,8 @@ function __annualHtml_v5(f0){
     </body></html>`);
 }
 
-function __laborHtml_v6(f0) {
+function pickContractHtml(docType, f) { if (f && f.tplVer === 'v7') return docType === 'annual' ? annualHtmlV7 : laborHtmlV7; return docType === 'annual' ? __annualHtml_v5 : __laborHtml_v6; }
+ function __laborHtml_v6(f0) {
   const f=f0;
   const fmtDp=s=>{if(!s)return'____년 __월 __일';const d=new Date(s);return`${d.getFullYear()}년 ${String(d.getMonth()+1).padStart(2,'0')}월 ${String(d.getDate()).padStart(2,'0')}일`;};
   const ul=(v,w)=>`<span style="display:inline-block;min-width:${w||80}px;border-bottom:1px solid #333;text-align:center;padding:0 2px;">${v||''}</span>`;

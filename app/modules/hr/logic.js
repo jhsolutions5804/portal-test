@@ -1,7 +1,7 @@
 /* 인사 — 근로자 명부(새 화면). 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 데이터: workers/{id}(일반 정보) + worker_private/{id}(주민번호·계좌·주소·서명, 읽을 때 합쳐 쓰고 저장할 때 다시 가른다)
  *         labor_contracts/{id}/contracts · annual_contracts/{id}/contracts(endDate), workers/{id}/history(직급·부서 변경 이력) */
-import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261029a';
+import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261029c';
 export const WP_FIELDS = ['bankAccount', 'address', 'signData', 'taxFamily', 'taxChildren', 'taxRate'];   // worker_private 에 따로 두는 필드 — 주민번호(jumin)는 더 이상 여기 두지 않는다(테섭 2026-10-08): 서버 함수(identityAct)가 암호문으로 보관하고 마스킹 값(juminMasked)만 worker_private 에 남는다
 export const WP_NEVER_WRITE = ['jumin', 'juminMasked', 'juminUpdatedAt', 'birth6'];   // 화면에서 합쳐 만든 값·서버 전용 값은 문서에 쓰지 않는다
 /** 보유 자격증 목록(기술수당 1개당): 저장된 배열, 없으면 옛 hasCertification 표시를 한 개로 */
@@ -58,8 +58,7 @@ export const birthText = (jumin) => { const b = String(jumin || '').replace(/[^0
 export const fmtPhone = (v) => { const d = String(v || '').replace(/[^0-9]/g, '').slice(0, 11); if (d.length < 4) return d; if (d.length < 8) return d.slice(0, 3) + '-' + d.slice(3); if (d.length < 11) return d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6); return d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7); };
 
 /** 계약서 상태(마지막 종료일 기준): 종료일이 없고 문서가 있으면 확인필요, 아예 없으면 미작성 */
-export function contractState(endDate, count, today) {
-  const t = today || kstToday(); if (endDate) return endDate < t ? { text: '만료', tone: 'danger', end: endDate } : { text: '유효', tone: 'accent', end: endDate };
+export function contractState(endDate, count, today, period) { const t = today || kstToday(); if (!endDate && (period === 'open' || period === 'project')) return { text: period === 'open' ? '정함 없음' : '프로젝트 종료 시', tone: 'accent', end: '' };   /* v7: 종료일 없는 계약 */ if (endDate) return endDate < t ? { text: '만료', tone: 'danger', end: endDate } : { text: '유효', tone: 'accent', end: endDate };
   return count ? { text: '확인필요', tone: 'warn', end: '' } : { text: '미작성', tone: 'muted', end: '' };
 }
 export const isResigned = (w) => !!w && w.status === 'resigned';
