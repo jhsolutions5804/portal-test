@@ -1,6 +1,6 @@
 /* 근로계약서·연봉계약서 v7 입력 화면 조각 — 구분·계약기간 방식(프로젝트 선택)·근무지·고정연장 시간·지급 항목·특약 (순수 HTML 문자열, 이벤트는 index.js 의 계약서 컨트롤러가 data-c7-* / data-an-act="c7-*" 로 처리) */
-import { esc } from '../../core/ui.js?v=20261029f';
-import { TYPE_LABEL, PERIOD_LABEL, MAX_EXTRA, MAX_TERMS, typeOf, periodTypeOf, v7Calc } from './contract-v7.js?v=20261029f';
+import { esc } from '../../core/ui.js?v=20261029g';
+import { TYPE_LABEL, PERIOD_LABEL, MAX_EXTRA, MAX_TERMS, typeOf, periodTypeOf, v7Calc } from './contract-v7.js?v=20261029g';
 const card = (title, body) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3></div>' + body + '</section>';
 const won = (n) => '₩' + Math.round(Number(n) || 0).toLocaleString('ko-KR');
 const fmtN = (v) => (v === '' || v == null || !Number(v) ? '' : Number(v).toLocaleString('ko-KR'));
@@ -21,7 +21,7 @@ export function c7PeriodCardHtml(st, kind) {
   const start = inp('시작일 *', annual ? 'type="date" data-an-start' : 'type="date" data-an-f="startDate"', f.startDate);
   const projects = Array.isArray(st.aProjects) ? st.aProjects : []; const known = projects.some((x) => x.id === f.projectId);
   const projCtl = projects.length
-    ? '<div class="jh-field"><label class="jh-field__label">프로젝트 *</label><select class="jh-select" data-c7-proj><option value="">프로젝트를 선택하세요</option>' + projects.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === f.projectId ? ' selected' : '') + '>' + esc(x.name) + '</option>').join('') + (f.projectName && !known ? '<option value="" selected>' + esc(f.projectName) + ' (저장된 값)</option>' : '') + '</select></div>'
+    ? '<div class="jh-field"><label class="jh-field__label">프로젝트 *</label><select class="jh-select" data-c7-proj><option value="">프로젝트를 선택하세요</option>' + projects.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === f.projectId ? ' selected' : '') + '>' + esc(x.label || x.name) + '</option>').join('') + (f.projectName && !known ? '<option value="" selected>' + esc(f.projectName) + ' (저장된 값)</option>' : '') + '</select></div>'
     : inp('프로젝트 이름 *', 'data-c7-f="projectName"', f.projectName, ' placeholder="프로젝트 이름 입력"');
   const contract = inp('계약 체결일 *', 'type="date" data-an-f="contractDate"', f.contractDate);
   const row = (cells) => '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:var(--sp-3)">' + cells + '</div>';   // 한 줄에 모아 놓고, 좁은 화면에서만 줄바꿈

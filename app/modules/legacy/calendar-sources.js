@@ -1,12 +1,12 @@
 /* 임시 연결부 — 아직 새 모듈로 바뀌지 않은 PJT·인사가 일정을 내놓는 방법(옛 컬렉션 읽기).
  * PJT·인사가 새 모듈이 되면 그 모듈의 manifest.calendar 로 옮기고 이 파일을 지운다. 공개 범위는 컬렉션의 보안 규칙이 정한다. */
-import { db, collection, getDocs, query, where, orderBy } from '../../core/firebase.js?v=20261029f';
-import { addDays, fromLegacyDoc, makeEvent, TAG_LABEL } from '../../shared/calendar-event.js?v=20261029f';
-import { buildExpiryEvents } from '../../shared/expiry-events.js?v=20261029f';
-import { canSeeProject } from '../../shared/pjt-access.js?v=20261029f';
-import { financePerm } from '../../shared/finance-perm.js?v=20261029f';
-import { loadHolidays, isOffDay } from '../../shared/holidays.js?v=20261029f';
-import { taxEventsForRange } from '../finance/tax-calendar.js?v=20261029f';
+import { db, collection, getDocs, query, where, orderBy } from '../../core/firebase.js?v=20261029g';
+import { addDays, fromLegacyDoc, makeEvent, TAG_LABEL } from '../../shared/calendar-event.js?v=20261029g';
+import { buildExpiryEvents } from '../../shared/expiry-events.js?v=20261029g';
+import { canSeeProject } from '../../shared/pjt-access.js?v=20261029g';
+import { financePerm } from '../../shared/finance-perm.js?v=20261029g';
+import { loadHolidays, isOffDay } from '../../shared/holidays.js?v=20261029g';
+import { taxEventsForRange } from '../finance/tax-calendar.js?v=20261029g';
 
 const overlaps = (sd, ed, range) => !!sd && (ed || sd) >= range.from && sd <= range.to;
 async function rows(path, range) {            // 시작일 기준 범위 조회(여러 날 일정이 앞 달에서 시작했을 수 있어 45일 앞까지) 후 겹치는 것만

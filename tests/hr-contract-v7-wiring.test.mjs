@@ -45,9 +45,9 @@ ok(d1.contractItems.length === 2 && d1.contractItemsTotal === 300000 && !('contr
 const h1 = psHtml(d1), h0 = psHtml(d0); ok(h1.includes('직책수당') && h1.includes('연봉계약서 지급 항목 · 통상임금 포함') && h1.includes('₩100,000') && !h0.includes('연봉계약서 지급 항목') && psHtml(Object.assign({}, d1, { contractItems: [{ name: '<i>x</i>', amount: 1000 }] })).indexOf('<i>x</i>') < 0, '급여명세서 출력: 항목 행 추가(기술수당 아래), 항목이 없으면 출력 그대로, 글자는 안전하게 처리');
 
 // 입력 화면
-const mk = (form) => ({ aView: 'form', aWorkers: [W], aForm: form, aSal: annualSalary(Number(form.hourly || 0)), aV7: v7Calc(form), aProjects: [{ id: 'p1', name: 'P4 Ph2 (FAB)' }], aErrs: [], aSigning: false });
+const mk = (form) => ({ aView: 'form', aWorkers: [W], aForm: form, aSal: annualSalary(Number(form.hourly || 0)), aV7: v7Calc(form), aProjects: [{ id: 'p1', name: 'P4 Ph2 (FAB)', label: 'P4 Ph2 (FAB) · FCU 183대 설치' }], aErrs: [], aSigning: false });
 const hf = annualFormHtml(mk(Object.assign({}, f, { contractType: 'fixed', periodType: 'project', projectId: 'p1', projectName: 'P4 Ph2 (FAB)' })));
-ok(['data-c7-type="fixed"', 'data-c7-ptype="project"', 'data-c7-proj', '<option value="p1" selected>P4 Ph2 (FAB)', 'data-c7-f="fixedOTHours"', 'data-c7-row="0|name"', 'data-c7-row="0|ordinary" checked', 'data-an-act="c7-add"', 'data-an-act="c7-del"', 'data-c7-sum', '특약사항'].every((s) => hf.includes(s)), '★ 연봉계약서 화면: 구분·계약기간 방식·프로젝트 선택(목록)·고정연장 시간·지급 항목 행(추가/삭제/통상임금 체크)·특약');
+ok(['data-c7-type="fixed"', 'data-c7-ptype="project"', 'data-c7-proj', '<option value="p1" selected>P4 Ph2 (FAB) · FCU 183대 설치', 'data-c7-f="fixedOTHours"', 'data-c7-row="0|name"', 'data-c7-row="0|ordinary" checked', 'data-an-act="c7-add"', 'data-an-act="c7-del"', 'data-c7-sum', '특약사항'].every((s) => hf.includes(s)), '★ 연봉계약서 화면: 구분·계약기간 방식·프로젝트 선택(영업기획 프로젝트 목록)·고정연장 시간·지급 항목 행(추가/삭제/통상임금 체크)·특약');
 const hl = laborFormHtml(mk(Object.assign({}, lf, { contractType: 'fixed', periodType: 'range' }))); const hs = laborFormHtml(mk(Object.assign({}, lf, { workType: 'short' })));
 ok(hl.includes('근무지 *') && hl.includes('data-c7-f="workPlace"') && hl.includes('data-c7-ptype="range"') && !hl.includes('data-c7-sum') && !hs.includes('data-c7-type'), '근로계약서 화면: 계약직이면 근무지(필수) 칸, 지급 항목은 연봉계약서에만, 단시간 근로계약서는 기존 화면 그대로');
 ok(!hl.includes('data-c7-ptype="open" checked') && /data-c7-ptype="open"[^>]*disabled/.test(hl) && /data-c7-ptype="range"[^>]*checked/.test(hl), '계약직은 "기간의 정함 없음" 선택이 막혀 있다');
@@ -55,7 +55,7 @@ ok(annualFormHtml(mk(Object.assign({}, annualNewForm('2026-11-01'), { name: '홍
 
 // 연결(컨트롤러·서명 페이지)
 const idx = rd('../app/modules/hr/index.js'), sio = rd('../app/modules/hr/sign-io.js'), sign = rd('../sign.html');
-ok(/v7Check\(f, kind\)/.test(idx) && /act === 'c7-add'/.test(idx) && /act === 'c7-del'/.test(idx) && /\[data-c7-type\]/.test(idx) && /\[data-c7-proj\]/.test(idx) && /\[data-c7-row\]/.test(idx) && /docHtml: annualDocHtml/.test(idx) && /v7HourlyFromPay\(f\)/.test(idx) && /pjt_registry/.test(idx), '컨트롤러 연결: 검사·추가/삭제·구분·프로젝트·항목 처리·연봉계약서 출력·월급 역산·프로젝트 목록');
+ok(/v7Check\(f, kind\)/.test(idx) && /act === 'c7-add'/.test(idx) && /act === 'c7-del'/.test(idx) && /\[data-c7-type\]/.test(idx) && /\[data-c7-proj\]/.test(idx) && /\[data-c7-row\]/.test(idx) && /docHtml: annualDocHtml/.test(idx) && /v7HourlyFromPay\(f\)/.test(idx) && /gihoek_projects/.test(idx) && !/pjt_registry/.test(idx.slice(idx.indexOf('function mountContract'), idx.indexOf('function mountContract') + 6000)), '컨트롤러 연결: 검사·추가/삭제·구분·프로젝트·항목 처리·연봉계약서 출력·월급 역산·프로젝트 목록');
 ok(/const outHtml = /.test(idx) && !/\/\/[^\n]*const outHtml = /.test(idx) && !/\/\/[^\n]*const sal0 = /.test(rd('../app/modules/hr/payslip.js')), '회귀 방지: 한 줄 주석이 뒤따르는 선언을 가리지 않았다(outHtml·sal0)');
 ok(/pickContractHtml\(link\.docType, f\)/.test(sign) && /f\.tplVer === 'v7'/.test(sign) && /configureContractV7\(\{ signatures: window\._compSignatures \}\)/.test(sign) && /from '\.\/app\/modules\/hr\/contract-v7\.js'/.test(sign), '원격 서명 페이지: 저장 문서가 v7 이면 새 양식으로 그리고 직인도 연결');
 ok(/annualDocHtml\(snapDoc\)/.test(sio), '열람 전용 링크: 연봉계약서도 v7 양식으로 그린다');
