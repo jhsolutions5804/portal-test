@@ -5,7 +5,7 @@ import { laborNewForm, laborRecord } from '../app/modules/hr/labor.js';
 import { annualDocHtml, laborDocHtml } from '../app/modules/hr/labor-doc.js';
 import { payslipCalc, payslipRecord } from '../app/modules/hr/payslip.js';
 import { psHtml } from '../app/modules/hr/payslip-doc.js';
-import { annualFormHtml, laborFormHtml } from '../app/modules/hr/view.js';
+import { annualFormHtml, laborFormHtml, annualWorkerHtml } from '../app/modules/hr/view.js';
 import { annualSalary } from '../app/modules/hr/offer.js';
 import { v7Calc } from '../app/modules/hr/contract-v7.js';
 import { contractState } from '../app/modules/hr/logic.js';
@@ -60,4 +60,6 @@ ok(/const outHtml = /.test(idx) && !/\/\/[^\n]*const outHtml = /.test(idx) && !/
 ok(/pickContractHtml\(link\.docType, f\)/.test(sign) && /f\.tplVer === 'v7'/.test(sign) && /configureContractV7\(\{ signatures: window\._compSignatures \}\)/.test(sign) && /from '\.\/app\/modules\/hr\/contract-v7\.js'/.test(sign), '원격 서명 페이지: 저장 문서가 v7 이면 새 양식으로 그리고 직인도 연결');
 ok(/annualDocHtml\(snapDoc\)/.test(sio), '열람 전용 링크: 연봉계약서도 v7 양식으로 그린다');
 ok(contractState('', 1, '2026-12-01', 'project').text === '프로젝트 종료 시' && contractState('', 1, '2026-12-01', 'open').text === '정함 없음' && contractState('2026-11-30', 1, '2026-12-01').text === '만료' && contractState('2027-01-01', 1, '2026-12-01', 'project').text === '유효' && contractState('', 1, '2026-12-01').text === '확인필요' && contractState('', 0, '2026-12-01', 'open').text === '정함 없음' && contractState('', 0, '2026-12-01').text === '미작성', '근로자 목록 계약 상태: 종료일 없는 계약(정함 없음·프로젝트 종료 시)도 표시, 기존 만료·유효·확인필요·미작성 판정은 그대로');
+const wk = annualWorkerHtml({ aWorkers: [{ id: 'w1', name: '홍' }], aSel: 'w1', aLabel: '연봉계약서', aDocType: 'annual', aLog: {}, aDocs: [{ id: '1', contractDate: '2026-10-30', startDate: '2026-11-01', periodType: 'project', projectName: 'P4 Ph2', contractType: 'fixed', salary: 1 }, { id: '2', contractDate: '2026-01-01', startDate: '2026-01-01', endDate: '2026-12-31', contractType: 'regular', salary: 1 }, { id: '3', contractDate: '2025-01-01', startDate: '2025-01-01', endDate: '2025-12-31', salary: 1 }] });
+ok(wk.includes('계약직') && wk.includes('P4 Ph2 종료 시') && wk.includes('정규직') && wk.includes('2026.01.01 ~ 2026.12.31') && wk.includes('2025.01.01 ~ 2025.12.31'), '근로자별 계약서 목록: 정규직/계약직 표시와 프로젝트 종료 시·정함 없음 기간 표기(옛 계약서는 기존 표기 그대로)');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);
