@@ -41,4 +41,5 @@ ok(A({ periodType: 'project', projectName: 'P4 Ph4', expectedEnd: '2027-03-31' }
 configureContractV7({ signatures: { kjh: 'data:image/png;base64,AAAA' } }); ok(A({}).includes('data:image/png;base64,AAAA'), '직인 이미지 연결');
 ok(L({ assignedTo: '갑사(주)' }).includes('업무 수행처(투입처) : 갑사(주)') && L({ assignedTo: '갑사(주)' }).includes('지휘·감독 아래') && !L({}).includes('투입처') && !lf.includes('파견') && !L({ assignedTo: '<i>x</i>' }).includes('<i>x</i>'), '투입처(선택): 입력했을 때만 제3조에 중립 문구로 표기, 글자는 안전 처리, "파견" 표현은 쓰지 않음');
 ok(!lf.includes('여비교통비') && !lf.includes('기술수당') && !lr.includes('여비교통비') && lf.includes('세부 지급 사항은 연봉계약서를 기준으로 한다. 임금 지급일 : 익월 말일') && lf.includes('제5조 【사회보험】'), '근로계약서 제4조: 여비교통비·기술수당 문구는 삭제(포괄임금에는 없음), 계약연봉·세부 지급·지급일 문구와 제5조는 그대로');
+ok(!A({}).includes('기술수당') && !af.includes('기술수당') && A({}).includes('제2조의2 (여비교통비)') && A({}).includes('여비교통비') && A({}).includes('③ 지방 장기출장'), '연봉계약서 v7: 기술수당 조항(제2조의2 ④)과 제목의 기술수당 삭제, 여비교통비 조항 ①~③은 그대로');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);
