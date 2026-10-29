@@ -39,4 +39,5 @@ ok(af.includes('월 12시간분의 연장근로') && af.includes('월 5시간분
 ok(af.includes('통상시급(₩') && af.includes('통상임금 포함') && !A({}).includes('통상시급(₩') && A({}).includes('포괄임금제를 적용하지 않습니다') && !A({}).includes('제2조의3'), '통상임금 안내는 통상임금 포함 항목이 있을 때만, 비포괄·항목 없음이면 기존 문구 그대로');
 ok(A({ periodType: 'project', projectName: 'P4 Ph4', expectedEnd: '2027-03-31' }).includes('「P4 Ph4」 프로젝트 종료 시까지로 한다. (종료 예정일 2027년 03월 31일') && A({ periodType: 'open' }).includes('갱신·조정할 때까지 적용') && A({}).includes('2026년 11월 01일 부터 2027년 10월 31일까지로 한다') && A({}).includes('정규직(기간의 정함이 없는 근로계약)') && A({ contractType: 'fixed' }).includes('계약직(기간제 근로계약)'), '연봉계약서 기간 3종 문구와 구분 표시');
 configureContractV7({ signatures: { kjh: 'data:image/png;base64,AAAA' } }); ok(A({}).includes('data:image/png;base64,AAAA'), '직인 이미지 연결');
+ok(L({ assignedTo: '갑사(주)' }).includes('업무 수행처(투입처) : 갑사(주)') && L({ assignedTo: '갑사(주)' }).includes('지휘·감독 아래') && !L({}).includes('투입처') && !lf.includes('파견') && !L({ assignedTo: '<i>x</i>' }).includes('<i>x</i>'), '투입처(선택): 입력했을 때만 제3조에 중립 문구로 표기, 글자는 안전 처리, "파견" 표현은 쓰지 않음');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);
