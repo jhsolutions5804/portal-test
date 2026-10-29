@@ -1,9 +1,12 @@
 /* 임시 연결부 — 아직 새 모듈로 바뀌지 않은 PJT·인사가 일정을 내놓는 방법(옛 컬렉션 읽기).
  * PJT·인사가 새 모듈이 되면 그 모듈의 manifest.calendar 로 옮기고 이 파일을 지운다. 공개 범위는 컬렉션의 보안 규칙이 정한다. */
-import { db, collection, getDocs, query, where, orderBy } from '../../core/firebase.js?v=20261028b';
-import { addDays, fromLegacyDoc, makeEvent, TAG_LABEL } from '../../shared/calendar-event.js?v=20261028b';
-import { buildExpiryEvents } from '../../shared/expiry-events.js?v=20261028b';
-import { canSeeProject } from '../../shared/pjt-access.js?v=20261028b';
+import { db, collection, getDocs, query, where, orderBy } from '../../core/firebase.js?v=20261029a';
+import { addDays, fromLegacyDoc, makeEvent, TAG_LABEL } from '../../shared/calendar-event.js?v=20261029a';
+import { buildExpiryEvents } from '../../shared/expiry-events.js?v=20261029a';
+import { canSeeProject } from '../../shared/pjt-access.js?v=20261029a';
+import { financePerm } from '../../shared/finance-perm.js?v=20261029a';
+import { loadHolidays, isOffDay } from '../../shared/holidays.js?v=20261029a';
+import { taxEventsForRange } from '../finance/tax-calendar.js?v=20261029a';
 
 const overlaps = (sd, ed, range) => !!sd && (ed || sd) >= range.from && sd <= range.to;
 async function rows(path, range) {            // 시작일 기준 범위 조회(여러 날 일정이 앞 달에서 시작했을 수 있어 45일 앞까지) 후 겹치는 것만
@@ -42,4 +45,10 @@ export const hrProvider = { id: 'hr', label: '인사 일정', order: 50, default
     const s = await getDocs(query(collection(db, 'hr_calendar_events'), where('date', '>=', range.from), where('date', '<=', range.to)));
     const out = []; s.forEach((d) => { const x = d.data(); out.push(makeEvent({ id: 'hr:' + d.id, source: 'hr', title: x.title || x.person || '인사 일정', start: x.date, end: x.date, startTime: x.time, endTime: x.endTime, tag: 'hr', tagLabel: HR_TYPE[x.type] || '인사', place: '', extra: '', link: '#/hr/hrcal' })); }); return out;
   } };
-export const CAL_SOURCES = { pjt: [pjtProvider, expiryProvider], hr: [hrProvider] };
+/** 세무 일정(재무회계) — 법정 신고·납부 기한과 내부 점검일을 규칙으로 계산한다(저장 데이터 없음). 재무회계 권한자만 보인다 */
+export const taxProvider = { id: 'tax', label: '세무 일정', order: 60, defaultOn: true, perm: financePerm,
+  async load(range) {
+    try { await loadHolidays(); } catch (e) { /* 공휴일을 못 받아도 토·일만 피해서 계산 */ }
+    return taxEventsForRange(range, isOffDay).map((x) => makeEvent({ id: 'tax:' + x.id, source: 'tax', title: x.title, start: x.date, end: x.date, tag: 'tax', tagLabel: '세무', memo: x.memo, extra: x.group, link: '#/finance/home' }));
+  } };
+export const CAL_SOURCES = { pjt: [pjtProvider, expiryProvider], hr: [hrProvider], finance: [taxProvider] };
