@@ -1,6 +1,6 @@
 /* 근로계약서·연봉계약서 v7 입력 화면 조각 — 구분·계약기간 방식(프로젝트 선택)·근무지·고정연장 시간·지급 항목·특약 (순수 HTML 문자열, 이벤트는 index.js 의 계약서 컨트롤러가 data-c7-* / data-an-act="c7-*" 로 처리) */
-import { esc } from '../../core/ui.js?v=20261029h';
-import { TYPE_LABEL, PERIOD_LABEL, MAX_EXTRA, MAX_TERMS, typeOf, periodTypeOf, v7Calc } from './contract-v7.js?v=20261029h';
+import { esc } from '../../core/ui.js?v=20261029i';
+import { TYPE_LABEL, PERIOD_LABEL, MAX_EXTRA, MAX_TERMS, typeOf, periodTypeOf, v7Calc } from './contract-v7.js?v=20261029i';
 const card = (title, body) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3></div>' + body + '</section>';
 const won = (n) => '₩' + Math.round(Number(n) || 0).toLocaleString('ko-KR');
 const fmtN = (v) => (v === '' || v == null || !Number(v) ? '' : Number(v).toLocaleString('ko-KR'));
@@ -36,7 +36,7 @@ export function c7PlaceCardHtml(f) {
   return card('📍 근무지', '<div class="jh-hr__pad">' + inp('근무지' + (t === 'fixed' ? ' *' : ' (선택)'), 'data-c7-f="workPlace"', f.workPlace, ' placeholder="예) 평택 고덕 P4 현장"') + inp('투입처 (선택)', 'data-c7-f="assignedTo" maxlength="40"', f.assignedTo, ' placeholder="업무를 수행하는 현장의 업체명"') + '<div class="jh-field__hint">' + (t === 'fixed' ? '계약직은 근무지를 적어야 저장할 수 있습니다.' : '정규직은 비워 두면 "회사가 제공하는 근무장소" 문구가 들어갑니다.') + '</div></div>');
 }
 /** 포괄 선택 시 고정연장·야간 산정 시간(월) 입력 */
-export const c7HoursHtml = (f) => '<div class="jh-hr__grid">' + inp('고정연장 산정 시간 (월, 시간) *', 'inputmode="decimal" data-c7-f="fixedOTHours"', f.fixedOTHours, ' style="text-align:right"') + inp('고정야간 산정 시간 (월, 시간)', 'inputmode="decimal" data-c7-f="fixedNightHours"', f.fixedNightHours, ' style="text-align:right"') + '</div><div class="jh-field__hint">계약서에 "월 ○시간분의 대가이며, 그 시간을 넘는 근로는 별도로 지급한다"는 문구가 들어갑니다. 고정액이 있으면 시간을 꼭 적어 주세요.</div>';
+export const c7HoursHtml = (f) => '<div class="jh-hr__grid">' + inp('고정연장 산정 시간 (월, 시간) *', 'inputmode="decimal" data-c7-f="fixedOTHours"', f.fixedOTHours, ' style="text-align:right"') + inp('고정야간 산정 시간 (월, 시간)', 'inputmode="decimal" data-c7-f="fixedNightHours"', f.fixedNightHours, ' style="text-align:right"') + '</div><div class="jh-field__hint">계약서에 "월 ○시간분의 대가"라는 문구가 들어갑니다. 고정액이 있으면 시간을 꼭 적어 주세요.</div>';
 /** 월 지급계 구성 요약(입력하는 동안 이 부분만 다시 그린다) */
 export function c7SumHtml(f) {
   const c = v7Calc(f); if (!c.hourly) return '<div class="jh-field__hint">시급(또는 월급·연봉)을 입력하면 월 지급계가 계산됩니다.</div>';

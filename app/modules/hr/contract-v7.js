@@ -130,7 +130,7 @@ export function annualHtmlV7(f0) {
     + tr('상여금', '', '회사 내규에 따름') + tr('특별성과급', '', '회사 내규에 따름') + tr('특근수당', '', '주말, 공휴일 출근 시 지급')
     + '<tr style="background:#E8F0FB;"><td style="border:1px solid #333;padding:6px 8px;font-weight:700;font-size:10pt;">합계</td><td style="border:1px solid #333;padding:6px 8px;text-align:right;font-weight:700;font-size:10pt;">' + won(c.total) + '</td><td style="border:1px solid #333;padding:6px 8px;"></td></tr>';
   const wageNote = comp
-    ? '<p style="font-size:9pt;color:#555;margin-bottom:4px;">※ 본 계약은 포괄임금제를 적용합니다. 근로자 본인의 선택에 따라 연장근로수당·야간근로수당을 위 표의 고정액으로 매월 실제 근무시간과 무관하게 지급하되, 위 고정액은 표에 적은 월 시간 이내의 근로에 대한 대가입니다. 실제 근로시간이 그 시간을 넘는 경우 넘은 시간에 대한 수당은 별도로 지급하며, 다음 연봉계약 갱신 전까지 동일하게 적용합니다.</p>'
+    ? '<p style="font-size:9pt;color:#555;margin-bottom:4px;">※ 본 계약은 포괄임금제를 적용합니다. 근로자 본인의 선택에 따라 연장근로수당·야간근로수당을 위 표의 고정액으로 매월 실제 근무시간과 무관하게 지급하되, 위 고정액은 표에 적은 월 시간 이내의 근로에 대한 대가입니다. 다음 연봉계약 갱신 전까지 동일하게 적용합니다.</p>'
     : '<p style="font-size:9pt;color:#555;margin-bottom:4px;">※ 본 계약은 포괄임금제를 적용하지 않습니다. 기본근로수당은 월 209시간을 기준으로 산정하되, 연장근로수당(해당 월 소정근로시간 초과분에 대해 통상시급의 1.5배)과 야간근로수당(22:00~06:00 근로시간에 대해 통상시급의 0.5배 가산)은 매월 실제 근무기록을 기준으로 산정하여 별도 지급합니다.</p>';
   const ordNote = c.ordinaryExtra > 0 ? '<p style="font-size:9pt;color:#555;margin-bottom:4px;">※ 통상임금 : 기본근로수당·주휴수당과 위 표에서 "통상임금 포함"으로 표시한 항목의 월 합계(' + won(c.ordinaryMonthly) + ')를 월 환산 시간(208.56시간)으로 나눈 통상시급(' + won(c.ordinaryHourly) + ')을 연장·야간·휴일근로수당 및 주휴수당 산정에 적용합니다.</p>' : '';
   const terms = String(f.specialTerms || '').trim() ? H('제2조의3 (특약사항)', 14) + String(f.specialTerms).split(/\r?\n/).filter((s) => s.trim()).map((s) => P(esc(s), 2)).join('') + P('※ 특약이 근로기준법 등 관계 법령에 위반되는 경우 그 부분은 효력이 없다.', 10) : '';
