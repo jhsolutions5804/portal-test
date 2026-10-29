@@ -1,6 +1,6 @@
 /* 근로계약서·연봉계약서 v7 입력 화면 조각 — 구분·계약기간 방식(프로젝트 선택)·근무지·고정연장 시간·지급 항목·특약 (순수 HTML 문자열, 이벤트는 index.js 의 계약서 컨트롤러가 data-c7-* / data-an-act="c7-*" 로 처리) */
-import { esc } from '../../core/ui.js?v=20261029e';
-import { TYPE_LABEL, PERIOD_LABEL, MAX_EXTRA, MAX_TERMS, typeOf, periodTypeOf, v7Calc } from './contract-v7.js?v=20261029e';
+import { esc } from '../../core/ui.js?v=20261029f';
+import { TYPE_LABEL, PERIOD_LABEL, MAX_EXTRA, MAX_TERMS, typeOf, periodTypeOf, v7Calc } from './contract-v7.js?v=20261029f';
 const card = (title, body) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3></div>' + body + '</section>';
 const won = (n) => '₩' + Math.round(Number(n) || 0).toLocaleString('ko-KR');
 const fmtN = (v) => (v === '' || v == null || !Number(v) ? '' : Number(v).toLocaleString('ko-KR'));
@@ -17,16 +17,18 @@ export function c7TypeCardHtml(f) {
 export function c7PeriodCardHtml(st, kind) {
   const f = st.aForm; const t = typeOf(f); const p = periodTypeOf(f); const annual = kind === 'annual';
   const allow = { range: annual || t !== 'regular', open: annual || t !== 'fixed', project: annual || t !== 'regular' };   // 근로계약: 정규직은 정함 없음만, 계약직은 지정·프로젝트만
-  const kinds = ['range', 'project', 'open'].map((k) => radio('data-c7-ptype', 'c7-ptype', k, PERIOD_LABEL[k], p, !allow[k] && !!t)).join('');
+  const kinds = '<div style="display:flex;flex-wrap:wrap;gap:var(--sp-4);align-items:center">' + ['range', 'project', 'open'].map((k) => radio('data-c7-ptype', 'c7-ptype', k, PERIOD_LABEL[k], p, !allow[k] && !!t)).join('') + '</div>';
   const start = inp('시작일 *', annual ? 'type="date" data-an-start' : 'type="date" data-an-f="startDate"', f.startDate);
   const projects = Array.isArray(st.aProjects) ? st.aProjects : []; const known = projects.some((x) => x.id === f.projectId);
   const projCtl = projects.length
     ? '<div class="jh-field"><label class="jh-field__label">프로젝트 *</label><select class="jh-select" data-c7-proj><option value="">프로젝트를 선택하세요</option>' + projects.map((x) => '<option value="' + esc(x.id) + '"' + (x.id === f.projectId ? ' selected' : '') + '>' + esc(x.name) + '</option>').join('') + (f.projectName && !known ? '<option value="" selected>' + esc(f.projectName) + ' (저장된 값)</option>' : '') + '</select></div>'
     : inp('프로젝트 이름 *', 'data-c7-f="projectName"', f.projectName, ' placeholder="프로젝트 이름 입력"');
-  const body = p === 'range' ? '<div class="jh-hr__grid">' + start + inp('종료일 *', 'type="date" data-an-f="endDate"', f.endDate) + '</div>' + (annual ? '<div class="jh-field__hint">연봉계약 기본 기간은 시작일부터 1년이며, 종료일은 직접 바꿀 수 있습니다.</div>' : '')
-    : p === 'open' ? '<div class="jh-hr__grid">' + start + '</div><div class="jh-field__hint">종료일 없이 시작일만 적습니다. 정규직 근로계약은 기간의 정함이 없는 계약입니다.</div>'
-    : '<div class="jh-hr__grid">' + start + projCtl + '</div>' + inp('프로젝트 종료 예정일 (선택)', 'type="date" data-c7-f="expectedEnd"', f.expectedEnd) + '<div class="jh-field__hint">예정일은 참고용이며, 실제 종료일은 프로젝트가 끝날 때 회사가 통지합니다. 프로젝트가 끝나면 계약도 끝납니다.</div>';
-  return card('📅 계약 기간', '<div class="jh-hr__pad"><div>' + kinds + '</div>' + body + inp('계약 체결일 *', 'type="date" data-an-f="contractDate"', f.contractDate) + '</div>');
+  const contract = inp('계약 체결일 *', 'type="date" data-an-f="contractDate"', f.contractDate);
+  const row = (cells) => '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:var(--sp-3)">' + cells + '</div>';   // 한 줄에 모아 놓고, 좁은 화면에서만 줄바꿈
+  const body = p === 'range' ? row(start + inp('종료일 *', 'type="date" data-an-f="endDate"', f.endDate) + contract) + (annual ? '<div class="jh-field__hint">연봉계약 기본 기간은 시작일부터 1년이며, 종료일은 직접 바꿀 수 있습니다.</div>' : '')
+    : p === 'open' ? row(start + contract) + '<div class="jh-field__hint">종료일 없이 시작일만 적습니다. 정규직 근로계약은 기간의 정함이 없는 계약입니다.</div>'
+    : row(start + projCtl + inp('종료 예정일 (선택)', 'type="date" data-c7-f="expectedEnd"', f.expectedEnd) + contract) + '<div class="jh-field__hint">예정일은 참고용이며, 실제 종료일은 프로젝트가 끝날 때 회사가 통지합니다. 프로젝트가 끝나면 계약도 끝납니다.</div>';
+  return card('📅 계약 기간', '<div class="jh-hr__pad">' + kinds + body + '</div>');
 }
 /** 근무지(근로계약서) — 계약직은 필수 */
 export function c7PlaceCardHtml(f) {
