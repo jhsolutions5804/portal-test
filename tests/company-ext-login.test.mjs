@@ -1,0 +1,25 @@
+// 본인 이메일 로그인(계약직·GUEST, 대표님 2026-10-29): 입력 검사·계정 만들기 payload·직원 창 단추·처리 코드 연결 시험
+import fs from 'node:fs';
+import { validateExtEmail, validateNewAccount, newAccountPayload } from '../app/modules/company/staff-logic.js';
+import { staffDialogHtml, newAccountDialogHtml, staffListHtml } from '../app/modules/company/staff-view.js';
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
+const users = [{ uid: 'g1', name: '이경택', empNo: 'guest001', email: 'kt.lee@jhsol.kr' }, { uid: 'x1', name: '외부', empNo: '2650', email: 'taken@naver.com', extLogin: true }, { uid: 'e1', name: '직원', empNo: '2601', email: 'hy.lee@jhsol.kr' }, { uid: 'a1', name: '관리자', empNo: '0001', email: 'adm@jhsol.kr', admin: true }];
+const dlg = (u, self) => staffDialogHtml(u, null, ['PJT팀'], null, !!self);
+ok(validateExtEmail('leekts@naver.com', users, 'g1') === '' && validateExtEmail(' LeeKTS@Naver.COM ', users, 'g1') === '', '본인 이메일 검사: 정상 주소 통과(앞뒤 공백·대문자는 정리)');
+ok(['', 'abc', 'a@b', '한글@naver.com', 'x y@naver.com', 'a@@naver.com', 'a'.repeat(120) + '@naver.com'].every((b) => validateExtEmail(b, users, 'g1') !== ''), '본인 이메일 검사: 형식 오류는 거부');
+ok(/회사 이메일/.test(validateExtEmail('someone@jhsol.kr', users, 'g1')), '본인 이메일 검사: 회사 이메일(@jhsol.kr)은 거부(아이디 방식 안내)');
+ok(/이미 사용 중/.test(validateExtEmail('taken@naver.com', users, 'g1')) && validateExtEmail('taken@naver.com', users, 'x1') === '', '본인 이메일 검사: 다른 계정이 쓰는 이메일은 거부, 자기 자신의 이메일은 통과');
+const F = { id: '', name: '홍길동', empNo: '26010', rank: '사원', dept: 'PJT팀', phone: '010-1234-5678', perms: { pjt: true } };
+ok(validateNewAccount(Object.assign({}, F, { email: 'kim@naver.com' }), users) === '' && validateNewAccount(Object.assign({}, F, { email: '' }), users) !== '', '새 계정: 본인 이메일이 있으면 아이디 없이 통과, 둘 다 비면 거부');
+ok(validateNewAccount(Object.assign({}, F, { email: 'taken@naver.com' }), users) !== '' && validateNewAccount(Object.assign({}, F, { email: 'kim@jhsol.kr' }), users) !== '', '새 계정: 이미 쓰는 이메일·회사 이메일은 거부');
+const pe = newAccountPayload(Object.assign({}, F, { email: ' Kim@Naver.com ' })), pi = newAccountPayload(Object.assign({}, F, { id: 'Hong.GD' }));
+ok(pe.action === 'createAccount' && pe.email === 'kim@naver.com' && !('id' in pe) && pi.id === 'hong.gd' && !('email' in pi), '새 계정 payload: 본인 이메일이면 email(소문자), 아니면 기존대로 id');
+ok(newAccountDialogHtml(['PJT팀']).includes('id="nf-email"') && /본인 이메일 로그인/.test(newAccountDialogHtml(['PJT팀'])), '새 계정 창: 본인 이메일 입력칸(선택)이 있음');
+ok(dlg(users[0]).includes('data-staff-extlogin') && !dlg(users[0]).includes('data-contract') && /본인 이메일 로그인 설정/.test(dlg(users[0])), 'GUEST 계정 창: "본인 이메일 로그인 설정" 단추(확인 질문 없음)');
+ok(dlg(users[1]).includes('data-staff-extlogin') && dlg(users[1]).includes('data-staff-loginid') && /지금 이 계정은 본인 이메일 로그인/.test(dlg(users[1])), '이미 본인 이메일 로그인인 계정 창: 다시 바꾸기·회사 아이디로 되돌리기 단추, 상태 안내');
+ok(/data-staff-extlogin data-contract/.test(dlg(users[2])) && /계약직 — 본인 이메일 로그인으로 변경/.test(dlg(users[2])) && !dlg(users[2]).includes('data-staff-loginid'), '정규 직원 창: 계약직 표시(data-contract)가 붙은 변경 단추만(회사 아이디 재설정은 여전히 없음)');
+ok(!dlg(users[3]).includes('data-staff-extlogin') && !dlg(users[0], true).includes('data-staff-extlogin'), '관리자 계정·자기 자신에게는 본인 이메일 로그인 단추 없음');
+ok(staffListHtml(users, [], 'zz').includes('본인 이메일'), '직원 목록: 본인 이메일 로그인 계정에 표시');
+const idx = fs.readFileSync(new URL('../app/modules/company/index.js', import.meta.url), 'utf8');
+ok(/\[data-staff-extlogin\]/.test(idx) && /action: 'setLoginId', uid: u\.uid, email:/.test(idx) && /contract \? \{ contract: true \}/.test(idx) && /validateExtEmail\(ask, users, u\.uid\)/.test(idx) && /nf-email/.test(idx), '처리 코드: 이메일 입력·검사·계약직 확인 질문·setLoginId(email) 호출·새 계정 이메일 칸 읽기가 연결됨');
+console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

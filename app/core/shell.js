@@ -1,8 +1,8 @@
-import { esc } from './ui.js?v=20261029l';
-import { openSettings } from './settings.js?v=20261029l';
-import { openProfile } from './profile.js?v=20261029l';
-import { phoneTabs } from './nav.js?v=20261029l';
-import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261029l';
+import { esc } from './ui.js?v=20261029m';
+import { openSettings } from './settings.js?v=20261029m';
+import { openProfile } from './profile.js?v=20261029m';
+import { phoneTabs } from './nav.js?v=20261029m';
+import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261029m';
 
 export function renderLogin(root, { onSubmit, onMicrosoft, message }) {
   root.innerHTML =
@@ -18,7 +18,7 @@ export function renderLogin(root, { onSubmit, onMicrosoft, message }) {
       '</div>' +
       '<div class="jh-login__panel" role="tabpanel" id="jh-panel-guest" aria-labelledby="jh-tab-guest" hidden>' +
         '<form id="jh-login-form" autocomplete="on">' +
-          '<label class="jh-field"><span class="jh-field__label">아이디</span><input class="jh-input" id="jh-id" name="username" autocomplete="username" required></label>' +
+          '<label class="jh-field"><span class="jh-field__label">아이디 또는 이메일</span><input class="jh-input" id="jh-id" name="username" autocomplete="username" placeholder="회사 아이디 또는 본인 이메일" required></label>' +
           '<label class="jh-field"><span class="jh-field__label">비밀번호</span><input class="jh-input" id="jh-pw" name="password" type="password" autocomplete="current-password" required></label>' +
           '<button class="jh-btn" data-variant="primary" id="jh-login-btn" type="submit">로그인</button>' +
         '</form>' +

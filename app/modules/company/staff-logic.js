@@ -1,6 +1,6 @@
 /* 직원 관리(관리자)의 순수 규칙 — 화면·네트워크 없이 시험한다 */
-import { byEmpNo, RANK_ORDER } from '../../shared/org.js?v=20261029l';
-import { isPhone } from '../../core/profile-logic.js?v=20261029l';
+import { byEmpNo, RANK_ORDER } from '../../shared/org.js?v=20261029m';
+import { isPhone } from '../../core/profile-logic.js?v=20261029m';
 
 /** 포털 모듈 권한(옛 포털의 MODULES 와 같은 키). 관리자는 권한과 무관하게 모두 열린다 */
 export const PERM_KEYS = [['plan', '영업기획'], ['hr', '인사총무'], ['finance', '재무회계'], ['edoc', '전자결재'], ['pjt', 'PJT'], ['hrEval', '인사평가']];   // 인사평가 = 다른 사람의 평가를 열람·운영(입력·확정은 사장단)
@@ -40,7 +40,16 @@ export const workerSync = (upd) => ({ name: upd.name, empNo: upd.empNo, rank: up
 
 /** 새 계정 입력 검사(서버 규칙과 같음 — 서버가 다시 검사한다). 안내 문구('' = 통과) */
 export const ID_RE = /^[a-z0-9][a-z0-9._-]{1,29}$/;
+/** 본인 이메일 로그인(계약직·GUEST) 이메일 검사(서버와 같음). 회사 이메일(@jhsol.kr)은 아이디 방식이라 거부, 이미 쓰는 이메일 거부. 안내 문구('' = 통과) */
+export const EXT_EMAIL_RE = /^[a-z0-9][a-z0-9._%+-]{0,63}@[a-z0-9-]+(\.[a-z0-9-]+)+$/;
+export function validateExtEmail(raw, users, uid) {
+  const e = norm(raw).toLowerCase(); if (!e || e.length > 100 || !EXT_EMAIL_RE.test(e)) return '이메일 주소 형식을 확인해 주세요.';
+  if (e.endsWith('@jhsol.kr')) return '회사 이메일(@jhsol.kr)은 아이디 방식으로 만듭니다. 본인 이메일 로그인에는 다른 이메일 주소를 입력해 주세요.';
+  if ((users || []).some((u) => u && u.uid !== uid && norm(u.email).toLowerCase() === e)) return '이미 사용 중인 이메일입니다.';
+  return '';
+}
 export function validateNewAccount(f, users) {
+  if (norm(f.email)) { const bad = validateExtEmail(f.email, users, ''); return bad || validateStaffForm(f, users, ''); }   // 본인 이메일 로그인(아이디 없이)
   const id = norm(f.id).toLowerCase(); if (!ID_RE.test(id)) return '아이디는 영문 소문자·숫자·점·밑줄·하이픈으로 2~30자여야 합니다.';
   if ((users || []).some((u) => norm(u.email).toLowerCase() === id + '@jhsol.kr')) return '이미 있는 아이디입니다.';
   return validateStaffForm(f, users, '');
@@ -51,7 +60,7 @@ export function validateLoginId(rawId, users, uid) {
   if ((users || []).some((u) => u && u.uid !== uid && norm(u.email).toLowerCase() === id + '@jhsol.kr')) return '이미 있는 아이디입니다.';
   return '';
 }
-export const newAccountPayload = (f) => Object.assign({ action: 'createAccount', id: norm(f.id).toLowerCase(), perms: f.perms || {} }, staffUpdate(f));
+export const newAccountPayload = (f) => Object.assign({ action: 'createAccount', perms: f.perms || {} }, norm(f.email) ? { email: norm(f.email).toLowerCase() } : { id: norm(f.id).toLowerCase() }, staffUpdate(f));
 /** 서버 함수 호출 실패를 사람이 읽는 문구로. 서버가 보낸 한글 메시지는 그대로, 아니면(함수 미배포·네트워크 등) 일반 안내 */
 export function callMessage(e) {
   const m = String((e && e.message) || ''); if (/[가-힣]/.test(m)) return m;
