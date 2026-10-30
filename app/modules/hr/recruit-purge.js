@@ -1,9 +1,9 @@
 /* 채용 지원서 개인정보 파기 관리(대기열 1-3-16 ⑥) — 공고마다 "채용 확정일 + 보관기간(기본 90일, 14~180일)"을 두고 지원서마다 파기 예정일을 계산한다.
  * 근거(웹 확인, 노무사 확인 대기): 채용절차법 제11조·시행령 제4조(반환 청구기간은 채용 확정일부터 14~180일 중 회사가 정해 구직자에게 안내), 개인정보보호법 제21조(보유기간이 끝나면 지체 없이 파기).
  * 합격자(status pass)는 파기 대상에서 뺀다(입사 서류로 따로 보관). 파기는 이름·연락처·이력 전부를 지우고 최소 기록(접수일·공고·파기일·파기한 사람)만 남긴다. 순수 함수 — 시험: tests/hr-recruit-purge.test.mjs */
-import { appStatusOf } from './logic.js?v=20261030a';
-import { addDaysStr } from './home.js?v=20261030a';
-import { daysBetween } from './renew.js?v=20261030a';
+import { appStatusOf } from './logic.js?v=20261031a';
+import { addDaysStr } from './home.js?v=20261031a';
+import { daysBetween } from './renew.js?v=20261031a';
 
 export const RET_DEFAULT = 90; // 보관기간 기본값(일)
 export const RET_MIN = 14; // 법이 정한 하한

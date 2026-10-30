@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261030a';
-import { won, signed, card, chip, fld, selectHtml, pagerHtml } from './ui.js?v=20261030a';
-import { EST_PAGE_SIZE, estFilterOptions, filterEstimates, sortEstimates, estGroup, isSuperseded, estTag, estSupply, estTotal, itemAmt, suppliers, clients, draftTotals, compareEstimates } from './estimates.js?v=20261030a';
-import { paginate } from './projects.js?v=20261030a';
+import { esc } from '../../core/ui.js?v=20261031a';
+import { won, signed, card, chip, fld, selectHtml, pagerHtml } from './ui.js?v=20261031a';
+import { EST_PAGE_SIZE, estFilterOptions, filterEstimates, sortEstimates, estGroup, isSuperseded, estTag, estSupply, estTotal, itemAmt, suppliers, clients, draftTotals, compareEstimates } from './estimates.js?v=20261031a';
+import { paginate } from './projects.js?v=20261031a';
 const pjtOf = (st, id) => st.projects.find((x) => x.id === id) || null;
 const filterSel = (key, val, label, opts) => selectHtml('data-es-filter="' + key + '"', val, [['', label]].concat(opts));
 /** 견적 목록: 필터 5개 + 개정 전 버전 숨기기, 10건씩 쪽 나눔 */

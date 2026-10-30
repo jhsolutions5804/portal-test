@@ -1,6 +1,6 @@
 /* 영업기획 정산서(대금청구서·지급예정서) 양식 — 구포털 기획의 양식을 그대로 옮겼다(동결). 원본과 같은 결과가 나오는지는 tests/plan-settlement-doc.test.mjs 가 원본 함수(tests/fixtures/gihoek_settle_doc.js.txt)와 대조한다.
  * 원본과 다른 점은 하나뿐: 원본은 입력값을 그대로 HTML 에 넣었는데, 안전하게 모든 입력값(내역·비고·거래처·담당자 등)을 이스케이프한다(일반 글자는 결과가 같다). */
-import { docFileName, safeText } from '../../shared/doc-filename.js?v=20261030a';
+import { docFileName, safeText } from '../../shared/doc-filename.js?v=20261031a';
 const won = (n) => (Math.round(n) || 0).toLocaleString('ko-KR');
 const h = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 export const SET_DOC_CSS = `*{box-sizing:border-box;font-family:'Malgun Gothic',sans-serif}body{margin:0;color:#1a2330;font-size:12px}

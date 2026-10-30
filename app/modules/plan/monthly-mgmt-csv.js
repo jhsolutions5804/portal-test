@@ -2,8 +2,8 @@
  * 입력은 화면과 같은 컨트롤러 상태(st)라 화면 숫자와 파일 숫자가 같은 출처다. 구역 4개를 한 파일에 위아래로: 그 달 실적 · 추이(마진율) · 추이(노무 수율) · 원가 달성률.
  * 숫자는 원 단위 숫자 그대로(쉼표·원·% 없이 — 엑셀이 숫자로 읽어 합계·정렬이 된다), 음수 마진율도 숫자. 모르는 값은 빈 칸(숫자 열에 글자를 섞지 않음)이고 이유는 비고에 적는다. 서버 원가를 모르면 원가·마진율·노무 수율을 비우고 맨 위에 경고한다.
  * 수식으로 시작하는 글자(프로젝트 이름 등)는 shared/csv.js 가 보호한다. 직원·개인 정보는 화면에 없으므로 파일에도 없다. */
-import { csvText } from '../../shared/csv.js?v=20261030a';
-import { docFileName } from '../../shared/doc-filename.js?v=20261030a';
+import { csvText } from '../../shared/csv.js?v=20261031a';
+import { docFileName } from '../../shared/doc-filename.js?v=20261031a';
 const isO = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const lbl = (r) => ((typeof r.code === 'string' && r.code ? r.code : '-') + (typeof r.name === 'string' && r.name ? ' ' + r.name : ''));

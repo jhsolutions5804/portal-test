@@ -2,7 +2,7 @@
  * 후속 계약이 이미 있으면(더 늦은 만료일) 알림에서 빠진다. 만료일이 없는 계약서(기간 정함 없음)는 만료일 계산에서 제외한다.
  * "다음 계약" 단추는 계약서 화면 주소(#/hr/<annualc|laborc>/<직원>/new?start=시작일)로 이어진다 — 시작일은 만료일 다음 날. 새로 저장하는 것은 없다(계산만).
  * 순수 함수 — 시험: tests/hr-renew.test.mjs. 설계: app-docs/hr-additions-design.md §5 */
-import { HOME_EXEMPT, addDaysStr } from './home.js?v=20261030a';
+import { HOME_EXEMPT, addDaysStr } from './home.js?v=20261031a';
 
 export const RENEW_M1 = 30; // 1개월 전
 export const RENEW_M15 = 45; // 1.5개월 전

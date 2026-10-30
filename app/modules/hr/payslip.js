@@ -5,10 +5,10 @@
  *  · 야간근로수당 = 22:00~06:00 실근무 × 시급 × 0.5, 주휴수당 = 시급×8×(그 주 소정근로일 개근한 주 수), 휴일근로수당 = 8h 이내 ×1.5 + 초과 ×2.0
  *  · 4대보험: 국민연금 4.5% · 건강보험 3.545% · 장기요양 건강보험료×12.81% · 고용보험 0.9%, 소득세 간이세액표(공제대상 가족·자녀·원천징수 비율 반영) + 지방소득세 10%(10원 미만 절사)
  *  · 지급계(4대보험 산정 기준) = 급여 + 상여 + 특별성과급 + 특근수당 + 기술수당, 여비교통비는 실비변상이라 제외하고 실수령에만 더한다 */
-import { annualSalary } from './offer.js?v=20261030a';
-import { monthlyStandardHours } from '../../shared/worktime.js?v=20261030a';
-import { computeLeaveHoursForMonth } from '../../shared/leave-hours.js?v=20261030a';
-import { lookupIncomeTax, localIncomeTax } from '../../shared/tax-table.js?v=20261030a';
+import { annualSalary } from './offer.js?v=20261031a';
+import { monthlyStandardHours } from '../../shared/worktime.js?v=20261031a';
+import { computeLeaveHoursForMonth } from '../../shared/leave-hours.js?v=20261031a';
+import { lookupIncomeTax, localIncomeTax } from '../../shared/tax-table.js?v=20261031a';
 const pad = (n) => String(n).padStart(2, '0');
 const N = (v) => Number(v || 0) || 0;
 export const PS_DOC_VER = 'v7';   // 급여명세서 양식 v7(2026-10-13~): 4대보험 요율을 급여 월의 법정 요율로 계산·표기(payslip-doc.js). 근로·연봉계약서는 v6 그대로

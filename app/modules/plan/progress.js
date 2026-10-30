@@ -1,7 +1,7 @@
 /* 영업기획 공정 연동 청구서 — 순수 규칙(화면·네트워크 없이 시험 가능). 구포털 기획(gihoek)의 공정 자동 청구 계산을 그대로 옮겼다.
  * 견적 공급가액의 반입 80% + 설치 20% (+ 보증금 10%) 를 장비 수 대비 진척(반입 b/전체, 설치 i/전체)으로 계산하고, 이미 청구한 금액(기청구)을 뺀 값이 이번 청구액이다.
  * 반입·설치 진척은 날짜별 공정 체크 문서(연동 프로젝트의 progress_days)를 2026-05-01부터 기준월 말일까지 한 번이라도 체크된 것으로 모아 센다(구포털 그대로). */
-import { estSupply, getLinkPjt } from './projects.js?v=20261030a';
+import { estSupply, getLinkPjt } from './projects.js?v=20261031a';
 export const BANIP_RATE = 0.8, INSTALL_RATE = 0.2, DEPOSIT_RATE = 0.1;
 export const PROGRESS_SINCE = '2026-05-01';   // 구포털이 누적 진척을 읽기 시작하는 날(고정)
 const num = (v) => { const n = parseFloat(String(v == null ? '' : v).replace(/[^0-9.\-]/g, '')); return Number.isNaN(n) ? 0 : n; };

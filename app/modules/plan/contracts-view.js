@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261030a';
-import { won, card, chip, fld, selectHtml } from './ui.js?v=20261030a';
-import { CONTRACT_STATUS, KIND_LABEL, contractTotals, periodDays, contractChecklist, checklistSummary, contractStatusTone } from './contracts.js?v=20261030a';
+import { esc } from '../../core/ui.js?v=20261031a';
+import { won, card, chip, fld, selectHtml } from './ui.js?v=20261031a';
+import { CONTRACT_STATUS, KIND_LABEL, contractTotals, periodDays, contractChecklist, checklistSummary, contractStatusTone } from './contracts.js?v=20261031a';
 const NOTICE = '<div class="jh-alert" data-tone="warn" role="status">하도급 서면 발급을 돕는 <strong>초안 도구</strong>입니다. 점검표는 「하도급거래 공정화에 관한 법률」 제3조·시행령 제3조(2026-08 개정판)의 기재사항을 기준으로 입력 누락을 알려 줄 뿐이며, 이 계약에 하도급법·건설산업기본법이 적용되는지(업종·원사업자와 수급사업자의 규모)와 최종 문안은 <strong>법무 확인</strong>이 필요합니다.</div>';
 const ST = { ok: ['갖춤', 'green'], missing: ['누락', 'red'], check: ['확인', 'amber'], info: ['안내', 'gray'] };
 const money = (n) => Number(Math.round(n) || 0).toLocaleString('ko-KR');

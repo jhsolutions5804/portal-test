@@ -1,6 +1,6 @@
 /* 내 평가 — 불러오기·저장·클릭/입력 처리. 읽는 것: 내 과제(eval_tasks/{연도}__{내 uid})·평가 회차(eval_cycles/{연도})·내 제출(eval_submissions, 내 uid 로 조회)·근로자 명부(이름·내 근로자 찾기).
  * 쓰는 것: 내 제출 문서 하나(eval_submissions/{연도}__{내 uid}__{대상}__{종류}) — 점수를 누르면 임시저장, 제출하면 잠긴다(보안 규칙이 같은 약속을 강제한다). */
-import { tasksOf, statusOf, canSubmit, buildSubmission, withScore, withText, myWorker, subId, itemsOf } from './mine-logic.js?v=20261030a';
+import { tasksOf, statusOf, canSubmit, buildSubmission, withScore, withText, myWorker, subId, itemsOf } from './mine-logic.js?v=20261031a';
 const clone = (o) => JSON.parse(JSON.stringify(o));
 const DEBOUNCE_MS = 900;     // 서술은 입력이 멈춘 뒤 저장(느린 모바일 회선에서 글자마다 저장하지 않게)
 /** deps: { db, collection, getDocs, getDoc, setDoc, doc, query, where, serverTimestamp, toast, confirmDialog, paint, st, ctx, year } */

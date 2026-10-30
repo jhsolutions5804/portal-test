@@ -3,7 +3,7 @@
  * 여러 프로젝트를 합산한 정산서는 perPjtAmount(프로젝트별 몫)가 있으면 그 값, 없으면 pjtIds 가 둘 이상일 때 균등 분배. */
 export const TYPE_LABEL = { fcu: '자동정산', general: '일반(품목)' };
 export const PD_PAGE_SIZE = 10;
-import { itemAmt, estSupply, estTotal, isEstActive, setActive, settleAmountForPjt, settleBelongsToPjt, pjtSummary, pjtMargin } from '../../shared/pjt-summary.js?v=20261030a';
+import { itemAmt, estSupply, estTotal, isEstActive, setActive, settleAmountForPjt, settleBelongsToPjt, pjtSummary, pjtMargin } from '../../shared/pjt-summary.js?v=20261031a';
 export { itemAmt, estSupply, estTotal, isEstActive, setActive, settleAmountForPjt, settleBelongsToPjt, pjtSummary, pjtMargin };   // 영업기획 안에서는 예전 경로 그대로 쓴다(함수는 shared/pjt-summary.js 하나)
 /** 등록 순서(오래된 것부터): createdAt(Timestamp·ISO 문자열) → 없으면 문서 번호 pjt_<시각> */
 export function pjtCreatedKey(p) {

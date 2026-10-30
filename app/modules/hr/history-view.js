@@ -1,7 +1,7 @@
 /* 인사 이력(인사기록카드) 화면 — HTML 만 만드는 순수 함수(시험: tests/hr-history-view.test.mjs·hr-history-view.test.py). 읽기·클릭 연결은 index.js mount(직원 상세). */
-import { esc } from '../../core/ui.js?v=20261030a';
-import { HIST_KINDS, HIST_GROUPS, filterItems, groupCounts } from './history.js?v=20261030a';
-import { EMP_TYPES } from './logic.js?v=20261030a';
+import { esc } from '../../core/ui.js?v=20261031a';
+import { HIST_KINDS, HIST_GROUPS, filterItems, groupCounts } from './history.js?v=20261031a';
+import { EMP_TYPES } from './logic.js?v=20261031a';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';

@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261030a';
-import { mappedCount, unmatchedKeys } from './layout.js?v=20261030a';
+import { esc } from '../../core/ui.js?v=20261031a';
+import { mappedCount, unmatchedKeys } from './layout.js?v=20261031a';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 /** 장비 배치도 편집기: 섹터 탭, 품목 목록(매핑 여부), 도면 위에서 드래그·클릭으로 박스 배치(확대/축소), 삭제·크기 통일·번호 맞추기·도면 이미지 올리기. st.layoutEd = { gid, cur, zoom, docs: { 섹터: { points, image } }, src: { 섹터: 이미지 주소 } } */
 export function layoutEditorHtml(st) {

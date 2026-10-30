@@ -3,7 +3,7 @@
  * 포털에 없거나 동명이인이면 반영하지 않고 목록으로 표시) ④반영 전 미리보기. 저장 모양은 관리자 입력과 같다(buildAttRecord).
  * 파일에서 확인한 읽기 규칙: 시각은 H:MM·HH:MM(·HH:MM:SS) 혼재, 퇴근 칸의 "+HH:MM" 은 다음 날 퇴근(야간 근무) — 포털은 시작한 날짜 하나에 checkIn·checkOut(출근보다 이르거나 같으면 익일)로 저장한다.
  * 캡스의 기본·연장·총합·인정 칸과 근무일명칭은 쓰지 않는다(근무시간은 포털 규칙으로 다시 계산). */
-import { buildAttRecord, attKey } from './attendance.js?v=20261030a';
+import { buildAttRecord, attKey } from './attendance.js?v=20261031a';
 export const CAPS_TOL_MIN = 10; // 이 이내 차이는 같은 값으로 본다
 const pad2 = (n) => String(n).padStart(2, '0');
 const isoOk = (y, m, d) => { const t = new Date(Date.UTC(y, m - 1, d)); return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d; };

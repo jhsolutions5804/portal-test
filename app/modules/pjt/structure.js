@@ -2,7 +2,7 @@
  * (형식·정리·프로파일 변환은 shared/pjt-structure.js — 영업기획과 같이 쓴다.) 형식 v1: { v: 1, unit: '대', stages: [단계 이름…](열 순서), installCols: [설치로 묶는 단계…], groups: [{ id, name, kw: [섹터 추정 키워드…], items: [{ id, name }…] }…] }
  * 체크 키는 "<품목 id>_<단계 이름>" 이라서 품목 id·단계 이름을 바꾸면 기존 체크가 이어지지 않는다 — 그래서 이름 변경은 막고(지우고 새로 추가), 지울 때는 영향(체크된 칸 수)을 알려 준다.
  * 저장 위치는 프로젝트마다 다르지만(어댑터/structure-store) 데이터 모양은 같다. */
-import { STRUCTURE_VERSION, emptyStructure, normalizeStructure, structureFromProfile, toProfile } from '../../shared/pjt-structure.js?v=20261030a';
+import { STRUCTURE_VERSION, emptyStructure, normalizeStructure, structureFromProfile, toProfile } from '../../shared/pjt-structure.js?v=20261031a';
 export { STRUCTURE_VERSION, emptyStructure, normalizeStructure, structureFromProfile, toProfile };
 const num = (v) => parseInt(v, 10);
 const clone = (o) => JSON.parse(JSON.stringify(o));

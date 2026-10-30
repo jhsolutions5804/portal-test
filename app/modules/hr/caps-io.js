@@ -1,6 +1,6 @@
 /* 캡스 업로드 — 파일 읽기·포털 기존 근태 불러오기·일괄 저장(파이어스토어는 주입). 시험: tests/hr-caps-import.test.mjs(가짜 주입) */
-import { parseCapsRows, capsMonths, buildCapsPlan } from './caps-import.js?v=20261030a';
-import { capsInit } from './caps-view.js?v=20261030a';
+import { parseCapsRows, capsMonths, buildCapsPlan } from './caps-import.js?v=20261031a';
+import { capsInit } from './caps-view.js?v=20261031a';
 const BATCH = 400; // 한 번에 쓰는 문서 수(파이어스토어 한도 500 미만)
 export function makeCapsIo({ db, collection, getDocs, query, where, writeBatch, doc, serverTimestamp, readSpreadsheet }) {
   const loadExisting = async (months) => { const m = new Map(); for (const ym of months) { const s = await getDocs(query(collection(db, 'worker_attendance_log'), where('yearMonth', '==', ym))); s.forEach((d) => m.set(d.id, d.data())); } return m; };

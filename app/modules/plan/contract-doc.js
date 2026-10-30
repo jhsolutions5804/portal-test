@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261030a';
-import { contractTotals, periodDays } from './contracts.js?v=20261030a';
-import { docFileName } from '../../shared/doc-filename.js?v=20261030a';
+import { esc } from '../../core/ui.js?v=20261031a';
+import { contractTotals, periodDays } from './contracts.js?v=20261031a';
+import { docFileName } from '../../shared/doc-filename.js?v=20261031a';
 const w = (n) => Math.round(Number(n) || 0).toLocaleString('ko-KR');
 const nl = (s) => esc(s).replace(/\n/g, '<br>');
 const dot = (d) => (d ? d.replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$1년 $2월 $3일') : '____년 __월 __일');

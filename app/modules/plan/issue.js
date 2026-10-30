@@ -1,9 +1,9 @@
 /* 영업기획 정산서 발행 — 순수 규칙(화면·네트워크 없이 시험 가능). 구포털 기획(gihoek)의 발행 계산을 그대로 옮겼다.
  * 방식: 직접 입력(manual), 수량 정산(qty), 공수 연동(manday, 지급예정서), 공정 연동(progress, 청구서) — 구포털의 정산서 발행 4방식을 모두 옮겼다.
  * 번호: yymm + 세 자리, 청구서·지급예정서 따로 센다(구포털은 "개수 + 1" 이라 삭제 뒤 같은 번호가 다시 나올 수 있어 "가장 큰 번호 + 1" 로 한다 — 빈 번호가 없으면 결과는 같다). */
-import { itemAmt, getLinkPjt } from './projects.js?v=20261030a';
-import { setProgressOverrides, getProgProfile, isTrackable, zoneGuess, calcProgressRow, toggleProgressEst, setProgressZone, toggleProgressDeposit, setProgressBill, applyProgress, progressLine, accumulateDays } from './progress.js?v=20261030a';
-import { num, blankItem, itemSetQty, itemSetPrice, itemSetAmount, partySnap, suppliers, clients, DEFAULT_ISSUER } from './estimates.js?v=20261030a';
+import { itemAmt, getLinkPjt } from './projects.js?v=20261031a';
+import { setProgressOverrides, getProgProfile, isTrackable, zoneGuess, calcProgressRow, toggleProgressEst, setProgressZone, toggleProgressDeposit, setProgressBill, applyProgress, progressLine, accumulateDays } from './progress.js?v=20261031a';
+import { num, blankItem, itemSetQty, itemSetPrice, itemSetAmount, partySnap, suppliers, clients, DEFAULT_ISSUER } from './estimates.js?v=20261031a';
 export { num, blankItem, itemSetQty, itemSetPrice, itemSetAmount, suppliers, clients, setProgressOverrides, getProgProfile, isTrackable, zoneGuess, calcProgressRow, toggleProgressEst, setProgressZone, toggleProgressDeposit, setProgressBill, applyProgress };
 export const SUPPORTED = { invoice: ['progress', 'manual', 'qty'], payment: ['manday', 'manual', 'qty'] };   // 새 화면에서 계산하는 방식
 export const METHOD_OPTIONS = { invoice: [['progress', '공정 연동 (반입·설치 자동)'], ['qty', '수량 정산 (견적 품목별)'], ['manual', '직접 입력']], payment: [['manday', '공수 연동'], ['qty', '수량 정산 (견적 품목별)'], ['manual', '직접 입력']] };

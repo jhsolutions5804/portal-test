@@ -1,8 +1,8 @@
 /* 영업기획 월말 마감(신규) — 순수 규칙(화면·네트워크 없이 시험 가능). 한 달의 청구·수금·지급 현황을 모으고, 마감 전에 챙길 점검 항목을 찾는다. 저장하는 데이터는 없다(조회·내려받기·인쇄만).
  * 월 기준: 청구서·지급예정서는 "발행일"이 그 달인 것, 수금·지급완료는 "완결 시각(doneAt)"이 그 달인 것(한국 시간). 프로젝트별 금액은 공급가액 기준(공동 발행분은 프로젝트 몫), 잔액은 합계금액(부가세 포함) 기준으로 청구·수금 화면과 같다. */
-import { sortProjects, settleAmountForPjt, settleBelongsToPjt, isEstActive, estSupply, getLinkPjt } from './projects.js?v=20261030a';
-import { acctMonthOf, SETTLE_LABEL, METHOD_LABEL } from './settlements.js?v=20261030a';
-import { csvText } from '../../shared/csv.js?v=20261030a';
+import { sortProjects, settleAmountForPjt, settleBelongsToPjt, isEstActive, estSupply, getLinkPjt } from './projects.js?v=20261031a';
+import { acctMonthOf, SETTLE_LABEL, METHOD_LABEL } from './settlements.js?v=20261031a';
+import { csvText } from '../../shared/csv.js?v=20261031a';
 const T = (n) => Number(n) || 0; const active = (s) => !!s && s.status !== 'void'; const done = (s) => !!s && s.status === 'done';
 const pad = (n) => String(n).padStart(2, '0');
 /** Timestamp({seconds}) 또는 ISO 문자열의 한국 시간 월(YYYY-MM), 없으면 '' */

@@ -1,8 +1,8 @@
 /* 인사 이력(인사기록카드) — 직원 1명의 계약·인사 변동·면담·평가·연차·퇴직·급여명세서 발행·서류 발송을 날짜순 타임라인으로 모은다.
  * 있는 자료를 모아 보여 줄 뿐 새로 저장하지 않는다. 금액(시급·연봉·퇴직금)은 secret 으로 따로 두어 화면에서 기본 가림 + [보기], 인쇄본에서는 뺀다.
  * 면담·평가 의견은 앞 60자만 보이고 전문은 각 화면에서 본다. 순수 함수 — 시험: tests/hr-history.test.mjs. 설계: app-docs/hr-additions-design.md §6 */
-import { historyText, RRQ_STATUS } from './logic.js?v=20261030a';
-import { DS_REASON } from './dismissal.js?v=20261030a';
+import { historyText, RRQ_STATUS } from './logic.js?v=20261031a';
+import { DS_REASON } from './dismissal.js?v=20261031a';
 
 export const HIST_KINDS = {
   join: { label: '입사', mark: '🟢' }, exit: { label: '퇴직', mark: '⚫' }, contract: { label: '계약', mark: '📝' }, change: { label: '인사 변동', mark: '🔀' }, interview: { label: '면담', mark: '💬' }, eval: { label: '평가', mark: '⭐' },

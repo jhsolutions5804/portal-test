@@ -5,8 +5,8 @@
  * 견적에서 가져오기: 프로젝트의 견적 묶음마다 폐기(void)가 아닌 마지막 개정본만 본다. 산식 표가 있고 금액이 견적가와 같은 항목의 소계(투입비)만 자동 합계에 넣고, 네고로 금액만 고친 항목·산식 표가 없는 항목·산식 표가 틀린 항목은 합계에서 빼고 따로 돌려준다(원가를 추측해 채우지 않는다).
  * 저장·개정(2단계): 프로젝트마다 문서 하나(gihoek_budgets/{영업기획 프로젝트 id} — 견적의 pjtId 와 같은 id)에 현재 개정과 이전 개정(history)을 함께 둔다. 처음 저장 = r1, 행이 바뀐 저장 = r2·r3…(이전 개정은 이력에 그대로), 행이 같으면 번호를 올리지 않는다. 이력 50개·문서 900KB 를 넘으면 옛 이력을 조용히 버리지 않고 거부한다. 입출력은 budget-io.js.
  * 이 파일에는 단가·금액 같은 실제 값을 두지 않는다. */
-import { calcSheet, calcIsEmpty } from './estimate-calc.js?v=20261030a';
-import { itemAmt } from './estimates.js?v=20261030a';
+import { calcSheet, calcIsEmpty } from './estimate-calc.js?v=20261031a';
+import { itemAmt } from './estimates.js?v=20261031a';
 /** 비목 — 순서 고정. 예비비만 실적이 없는 칸 */
 export const CATS = Object.freeze([
   Object.freeze({ key: 'sub', label: '외주' }),

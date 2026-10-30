@@ -1,6 +1,6 @@
 /* 임금대장 입출력 — 급여명세서·명부·출퇴근 기록을 읽어 임금대장을 만들고 마감·해제를 저장한다.
  * 파이어베이스 함수는 밖에서 주입받는다(시험은 가짜 저장소로: tests/hr-ledger-io.test.mjs). 마감 후 수정 차단·권한은 서버 보안 규칙이 강제한다(설계서 payroll-ledger-design.md, 규칙 시험 payroll_close.test.mjs). */
-import { isYm, ledgerRow, closeChecks, closeDoc, versionDoc, unlockPatch, isClosed } from './ledger.js?v=20261030a';
+import { isYm, ledgerRow, closeChecks, closeDoc, versionDoc, unlockPatch, isClosed } from './ledger.js?v=20261031a';
 
 export function makeLedgerIo(fb) {
   const { db, doc, getDoc, getDocs, collection, query, where, updateDoc, writeBatch, serverTimestamp } = fb;

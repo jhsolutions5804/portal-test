@@ -3,8 +3,8 @@
  * 입사 첫 1년의 월 개근분(제2항): 최초 1년 종료 3개월 전 기준 10일 이내 1차 → 종료 1개월 전까지 2차, 1차 이후 발생분은 종료 1개월 전 기준 5일 이내 추가 1차 → 종료 10일 전까지 2차.
  * 저장: leave_promotions/{근로자}/records/{번호}(양식 버전 tplVer 로 동결). 대표는 근로기준법상 근로자가 아니라 제외한다.
  * ⚠️ 일정·일수는 위 기준으로 자동 계산한 참고값이다. 법률 자문이 아니며 실제 적용 전 노무사 확인을 권장한다. */
-import { jhLeaveTracks, jhLeaveAllocate } from '../../shared/leave-calc.js?v=20261030a';
-import { _hzParse, _hzYmd, _hzAddDays, _hzAddMonths, _hzDiffDays, _hzDot } from './leave-promo-docs.js?v=20261030a';
+import { jhLeaveTracks, jhLeaveAllocate } from '../../shared/leave-calc.js?v=20261031a';
+import { _hzParse, _hzYmd, _hzAddDays, _hzAddMonths, _hzDiffDays, _hzDot } from './leave-promo-docs.js?v=20261031a';
 export const LP_STAGE = { p1: '1차 촉진', p1x: '추가 1차', p2: '2차 지정통보' };
 export const LP_METHODS = ['직접 교부(수령 서명)', '이메일 + 수령 확인', '우편(내용증명)', '기타'];
 export const lpDay = (s) => { const d = _hzParse(s); return d ? new Date(d.getFullYear(), d.getMonth(), d.getDate()) : null; };

@@ -1,9 +1,9 @@
 /* 프로젝트 공정율 불러오기(공용) — 날짜별 체크를 모두 읽어 계산한다(월간 공수 보기의 프로젝트별 진행률). 읽기 전용. 규칙은 progress.js·structure.js. */
-import { db, collection, getDocs } from '../../core/firebase.js?v=20261030a';
-import { pathsFor } from './adapter.js?v=20261030a';
-import { structureFor } from './structure-store.js?v=20261030a';
-import { toRuntime } from './structure.js?v=20261030a';
-import { normalizeDay, stateAt, calcAll, stagesOf } from './progress.js?v=20261030a';
+import { db, collection, getDocs } from '../../core/firebase.js?v=20261031a';
+import { pathsFor } from './adapter.js?v=20261031a';
+import { structureFor } from './structure-store.js?v=20261031a';
+import { toRuntime } from './structure.js?v=20261031a';
+import { normalizeDay, stateAt, calcAll, stagesOf } from './progress.js?v=20261031a';
 /** regDoc = pjt_registry 문서(+id), name = 프로젝트 이름, today = 'YYYY-MM-DD' → 공정율(0~100) 또는 null(계산 실패) */
 export async function loadProgressPct(regDoc, name, today) {
   try {

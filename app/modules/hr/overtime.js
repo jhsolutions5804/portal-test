@@ -2,7 +2,7 @@
  * 출퇴근 달력(관리자 근태 수정)은 attendance.js(2단계).
  * 데이터: overtime(기록: date·name·rank·workerId·hours·amount·rate·reason·yearMonth), edoc_overtime(전자결재 초과근로 신청 — 승인된 건을 overtime 으로 한 번씩 반영).
  * 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다. */
-import { annualSalary } from './offer.js?v=20261030a';
+import { annualSalary } from './offer.js?v=20261031a';
 const pad = (n) => String(n).padStart(2, '0');
 export const otYm = (y, m) => y + '-' + pad(m);
 export function otMoveMonth(y, m, delta) { const d = new Date(y, m - 1 + delta, 1); return { y: d.getFullYear(), m: d.getMonth() + 1 }; }

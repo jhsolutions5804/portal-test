@@ -1,4 +1,4 @@
-import { docFileName } from '../../shared/doc-filename.js?v=20261030a';
+import { docFileName } from '../../shared/doc-filename.js?v=20261031a';
 export const DOC_TYPES = ['daily', 'leave', 'resign', 'cert', 'purchase', 'expense', 'attend', 'drive'];
 /** 승인으로 끝나고 게시하지 않는 문서(업무일지, 근태 기록 수정 요청 — 승인되면 출퇴근 기록에 바로 반영) */
 export const NO_POST_TYPES = ['daily', 'attend', 'drive'];   // 차량 운행일지도 승인으로 끝(게시 안 함) — 총무가 운행기록부로 취합

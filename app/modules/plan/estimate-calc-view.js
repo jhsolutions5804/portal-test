@@ -1,8 +1,8 @@
 /* 견적 항목 "산식" 표 화면 — 항목 줄 바로 아래에 끼워 넣는 표 행(<tr>) HTML. 계산은 estimate-calc.js, 수식은 formula.js, 연결(열기·행 추가·삭제·입력·항목에 넣기)은 index.js. 시험: tests/estimate-calc-view.test.mjs
  * 입력칸: 표의 셀은 data-ec-c="<열>" data-ec-r="<행 번호>", 아래의 가산율·내림 단위·총 대수는 data-ec-m="<이름>". 모든 값은 esc 로 이스케이프한다.
  * 입력할 때는 요약 영역(calcSummaryHtml)과 해당 행의 합계 표시만 다시 그려 입력 중인 커서가 유지된다. 행 추가·삭제는 표 본문(tableBodyHtml)을 다시 그린다. */
-import { esc } from '../../core/ui.js?v=20261030a';
-import { won } from './ui.js?v=20261030a';
+import { esc } from '../../core/ui.js?v=20261031a';
+import { won } from './ui.js?v=20261031a';
 /** 열 정의 — 번호(자동)·내역·단위·수량·단가·합계·비고 (대표님 지정, 2026-10-19) */
 export const COLS = [
   { key: 'no', label: '번호' }, { key: 'name', label: '내역', col: 'A', ph: '예: 구역 A 설치' }, { key: 'unit', label: '단위', col: 'B', ph: '인·일' },

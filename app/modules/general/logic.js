@@ -1,6 +1,6 @@
 /* 총무 — 임대·차량·자산·갱신 일정. 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 네 종류(lease·vehicle·asset·renewal)는 항목 정의(GTYPES) 하나로 목록·입력·검증·만기 알림이 모두 같은 방식으로 돌아간다. */
-import { csvCell } from '../../shared/csv.js?v=20261030a';
+import { csvCell } from '../../shared/csv.js?v=20261031a';
 export const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')) && new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
 const isYm = (s) => /^\d{4}-(0[1-9]|1[0-2])$/.test(String(s || ''));
@@ -56,7 +56,7 @@ export const GTYPES = {
       { k: 'name', l: '거래처', t: 'text', req: true, ph: '예) ○○식당, ○○철물' }, { k: 'kind', l: '구분', t: 'select', o: ['구매(자재·공구)', '식당', '복지', '기타'], d: '구매(자재·공구)' },
       { k: 'contact', l: '연락처', t: 'text' }, { k: 'cycle', l: '결제 주기', t: 'select', o: ['월말', '수시', '건별', '기타'], d: '월말' },
       { k: 'bank', l: '결제 방법·계좌', t: 'text', ph: '예) 월말 계좌이체, 농협 353…' }, { k: 'status', l: '상태', t: 'select', o: ['거래 중', '종료'], d: '거래 중' }, { k: 'note', l: '비고', t: 'area' }],
-    log: { k: 'entries', l: '거래 내역', cols: [{ k: 'date', l: '일자', t: 'date', req: true }, { k: 'type', l: '구분', t: 'select', o: ['외상', '결제'], req: true }, { k: 'item', l: '품목·내용', t: 'text' }, { k: 'amount', l: '금액(원)', t: 'money' }, { k: 'pjt', l: '현장(PJT)', t: 'text' }, { k: 'memo', l: '메모', t: 'text' }] },
+    log: { k: 'entries', l: '거래 내역', cols: [{ k: 'date', l: '일자', t: 'date', req: true }, { k: 'type', l: '구분', t: 'select', o: ['외상', '결제', '반품'], req: true }, { k: 'corp', l: '청구 법인', t: 'select', o: ['제이에이치테크', '다람이엔지', '제이에이치엔지니어링', '기타'] }, { k: 'item', l: '품목·내용', t: 'text' }, { k: 'amount', l: '금액(원)', t: 'money' }, { k: 'pay', l: '결제 수단', t: 'select', o: ['카드', '계좌이체', '현금', '기타'] }, { k: 'pjt', l: '현장(PJT)', t: 'text' }, { k: 'memo', l: '메모', t: 'text' }] },
     cols: [['거래처', (d) => d.name], ['구분', (d) => d.kind], ['미결제 잔액', (d) => won(creditBalance(d)) + '원', 'num'], ['마지막 거래', (d) => creditLast(d)], ['결제 주기', (d) => d.cycle || '']],
     dues: () => []
   },
@@ -126,8 +126,8 @@ export function dueList(data, today, horizon) {
   GKEYS.forEach((k) => { const T = GTYPES[k]; ((data && data[k]) || []).forEach((d) => { if (!T.active(d)) return; T.dues(d).forEach((du) => { const n = dday(du.date, t); if (n === null || n > H) return; out.push({ type: k, id: d.id, label: T.label(d), what: du.what, date: du.date, d: n, tone: n < 0 ? 'danger' : n <= du.lead ? 'warn' : 'muted' }); }); }); });
   return out.sort((a, b) => a.d - b.d || (a.label < b.label ? -1 : 1));
 }
-/** 외상 장부 — 잔액 = 외상 합계 − 결제 합계(거래 내역 줄 기준, 줄 값은 숫자·문자열 모두 허용) */
-export function creditRowsBalance(rows) { let s = 0; (rows || []).forEach((r) => { const n = Number(String(r && r.amount != null ? r.amount : '').replace(/[,\s원]/g, '')) || 0; if (r && r.type === '결제') s -= n; else if (r && r.type === '외상') s += n; }); return s; }
+/** 외상 장부 — 잔액 = 외상 합계 − 결제 합계 − 반품 합계(거래 내역 줄 기준, 줄 값은 숫자·문자열 모두 허용) */
+export function creditRowsBalance(rows) { let s = 0; (rows || []).forEach((r) => { const n = Number(String(r && r.amount != null ? r.amount : '').replace(/[,\s원]/g, '')) || 0; if (r && (r.type === '결제' || r.type === '반품')) s -= n; else if (r && r.type === '외상') s += n; }); return s; }
 export const creditBalance = (d) => creditRowsBalance((d && d.entries) || []);
 export function creditLast(d) { let m = ''; ((d && d.entries) || []).forEach((r) => { if (r && r.date && r.date > m) m = r.date; }); return m; }
 /** 외상 장부 합계 — 거래 중인 거래처만, 구분별 미결제 잔액 */

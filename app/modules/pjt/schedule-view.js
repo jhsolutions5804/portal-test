@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261030a';
-import { holidayName } from '../../shared/holidays.js?v=20261030a';
-import { CATS, TAG_LABEL, TAG_COLOR, itemsForKey, rangeText, dotsFor, monthGrid, twoWeeks, dowOf } from './schedule.js?v=20261030a';
+import { esc } from '../../core/ui.js?v=20261031a';
+import { holidayName } from '../../shared/holidays.js?v=20261031a';
+import { CATS, TAG_LABEL, TAG_COLOR, itemsForKey, rangeText, dotsFor, monthGrid, twoWeeks, dowOf } from './schedule.js?v=20261031a';
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const hrs = Array.from({ length: 25 }, (_, i) => String(i).padStart(2, '0')), mins = ['00', '10', '20', '30', '40', '50'];
 const sel = (attr, val, opts, suffix) => '<select class="jh-select jh-pjt__tsel" ' + attr + '>' + opts.map((o) => '<option value="' + o + '"' + (o === val ? ' selected' : '') + '>' + o + (suffix || '') + '</option>').join('') + '</select>';

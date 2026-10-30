@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261030a';
-import { shortDate, dueText, suggestProject, showInbox } from '../../shared/pjt-log.js?v=20261030a';
+import { esc } from '../../core/ui.js?v=20261031a';
+import { shortDate, dueText, suggestProject, showInbox } from '../../shared/pjt-log.js?v=20261031a';
 /* 미분류 메일 받은함 카드(문자열) — 설계 docs/pjt-log-design.md §3 "미분류 메일 받은함(관리 권한자만) — 한 건씩 프로젝트를 1클릭으로 지정".
  * 서버(mail-inbox-act.js)가 권한·대외비·종료 프로젝트를 판정해 준 목록만 그린다. 비어 있거나 권한이 없으면 아무것도 그리지 않는다(홈이 시끄럽지 않게).
  * 메일 제목·링크는 외부에서 온 글자라 모두 이스케이프하고, 링크는 https 만 연다.

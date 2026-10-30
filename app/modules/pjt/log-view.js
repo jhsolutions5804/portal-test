@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261030a';
-import { CATEGORIES, INPUT_SOURCES, SOURCES, CATEGORY_ICON, STATUS_LABEL, STATUS_TONE, TITLE_MAX, titleHint, canSubmit, dueText, DUE_TONE, shortDate, actionsFor, inCalendar } from '../../shared/pjt-log.js?v=20261030a';
+import { esc } from '../../core/ui.js?v=20261031a';
+import { CATEGORIES, INPUT_SOURCES, SOURCES, CATEGORY_ICON, STATUS_LABEL, STATUS_TONE, TITLE_MAX, titleHint, canSubmit, dueText, DUE_TONE, shortDate, actionsFor, inCalendar } from '../../shared/pjt-log.js?v=20261031a';
 /* PJT 이력 탭 화면(문자열) — 설계 docs/pjt-log-design.md §3. 화면 순서: 기한 임박 요청 → 변경사항 → 전체 이력, 맨 위에 한 줄 입력.
  * st = { proj, label, me:{uid,manager}, loading, error, data:{urgent,changes,entries,total,today,canConfirm}, filter:{category,source,from,to}, formOpen, form:{category,source,title,dueDate}, busy, msg } */
 const chip = (text, tone) => '<span class="jh-badge"' + (tone ? ' data-tone="' + tone + '"' : '') + '>' + esc(text) + '</span>';

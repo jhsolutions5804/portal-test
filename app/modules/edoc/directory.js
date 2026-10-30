@@ -1,5 +1,5 @@
-import { db, collection, doc, getDoc, getDocs } from '../../core/firebase.js?v=20261030a';
-import { partsEnabled } from './compose.js?v=20261030a';
+import { db, collection, doc, getDoc, getDocs } from '../../core/firebase.js?v=20261031a';
+import { partsEnabled } from './compose.js?v=20261031a';
 
 /* 작성 화면이 쓰는 기준 정보: 직원 명단, 정책(필수 결재자·대리 권한자), 권장 결재선, 프로젝트 */
 let cache = null;

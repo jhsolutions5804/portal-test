@@ -2,7 +2,7 @@
  *  · 셸(core/shell.js)의 오른쪽 도킹 영역에 고정되고, 상단 바의 📁 버튼으로 숨기고 보인다(선택은 localStorage 에 기억). 1500px 이상에서는 본문이 비켜 고정 열처럼, 좁으면 위에 덮는다. 900px 미만(모바일)에서는 쓰지 않는다.
  *  · 화면(작업 탭)에 붙이지 않는다: 작업 탭은 화면을 지우지 않고 숨겼다 다시 보여 주므로 화면 안에 붙은 패널은 다시 붙지 않아 사라졌다. 이 모듈이 hashchange 를 직접 듣고 프로젝트 주소(#/pjt/<프로젝트>/<탭>)일 때만 켠다.
  *  · 이 파일은 Firebase 를 가져오지 않는다(서버 호출은 deps.callFiles 로 받음 — 시험 가능). 서버가 준 값은 모두 이스케이프하고, 웹/앱 열기 주소는 https 일 때만 쓴다. */
-import { esc } from '../../core/ui.js?v=20261030a';
+import { esc } from '../../core/ui.js?v=20261031a';
 
 const TABS = ['home', 'schedule', 'progress', 'attend', 'report', 'settings'];
 const RESERVED = TABS.concat(['ended', 'roster']);

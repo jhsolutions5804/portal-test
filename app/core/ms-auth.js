@@ -1,7 +1,7 @@
 // Microsoft 로그인(리디렉션 + PKCE) → 서버 함수 msLogin → Firebase 로그인. 빌드 표기(?v=)는 다른 core 파일과 맞춘다.
-import { auth, functions, httpsCallable, signInWithCustomToken } from './firebase.js?v=20261030a';
-import { MS_TENANT_ID, MS_CLIENT_ID } from './config.js?v=20261030a';
-import { randomString, pkceChallenge, buildAuthorizeUrl, parseCallback } from './ms-pkce.js?v=20261030a';
+import { auth, functions, httpsCallable, signInWithCustomToken } from './firebase.js?v=20261031a';
+import { MS_TENANT_ID, MS_CLIENT_ID } from './config.js?v=20261031a';
+import { randomString, pkceChallenge, buildAuthorizeUrl, parseCallback } from './ms-pkce.js?v=20261031a';
 
 const K = { verifier: 'ms_verifier', state: 'ms_state', nonce: 'ms_nonce', hash: 'ms_hash' };
 // 리디렉션 주소는 Entra 앱에 등록한 값과 글자 그대로 같아야 한다(쿼리·해시 제외, 끝의 / 또는 index.html 포함 여부까지)

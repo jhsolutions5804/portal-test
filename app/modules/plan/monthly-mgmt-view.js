@@ -1,8 +1,8 @@
 /* 영업기획 월간 보고서 경영 층 화면(대기열 1-2-8, 대표님 2026-10-22 ㅇㅇ) — 순수 HTML(저장·호출 없음). 시험: tests/plan-monthly-mgmt-view.test.mjs · 계산: monthly-mgmt.js · 틀: closing-view.js(같은 CSS 클래스).
  * st = { ym, rows(monthRows), totals(monthTotals), srv: { state: 'loading'|'ok'|'error'|'denied', notes } }. 영업기획 모듈 전체가 관리자 전용이라(manifest perm) 별도 권한 코드는 없다.
  * 원칙: 모르는 값은 숫자로 꾸미지 않고 이유를 보인다(마진율·수율이 null 이면 "—"와 이유). 매출 기준 = 완결 청구(1-2-3-a). 공통비는 반영하지 않는다(프로젝트 화면의 공통비 반영 이익에서 본다). */
-import { esc } from '../../core/ui.js?v=20261030a';
-import { won, card, chip } from './ui.js?v=20261030a';
+import { esc } from '../../core/ui.js?v=20261031a';
+import { won, card, chip } from './ui.js?v=20261031a';
 const isO = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const fin = (v) => typeof v === 'number' && Number.isFinite(v);
 const lb = (t) => ' data-label="' + esc(t) + '"'; // 폰 폭에서 표 행이 카드로 바뀔 때 칸 앞에 붙는 글자(CSS plan.css 의 jh-plan__table--cards) — 반드시 같은 열의 머리글과 같은 글자(시험이 모든 칸을 대조한다)

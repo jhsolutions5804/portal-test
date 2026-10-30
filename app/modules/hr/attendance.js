@@ -2,8 +2,8 @@
  * 데이터: worker_attendance_log/{근로자번호}_{날짜}(출퇴근 모듈이 같은 문서를 쓴다), 유급휴가는 edoc_leave(승인·게시), 업무일지는 edoc_daily.
  * 근무시간 계산은 출퇴근 모듈과 같은 공용 규칙(shared/worktime.js)을 쓴다: 휴게는 점심 120분 고정(출근~퇴근 5시간 이하면 0), 같은 시각은 입력 오류.
  * 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다. */
-import { calcWorkHours, breakFor, validHHMM, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary } from '../../shared/worktime.js?v=20261030a';
-import { computeLeaveHoursForMonth } from '../../shared/leave-hours.js?v=20261030a';
+import { calcWorkHours, breakFor, validHHMM, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary } from '../../shared/worktime.js?v=20261031a';
+import { computeLeaveHoursForMonth } from '../../shared/leave-hours.js?v=20261031a';
 const pad = (n) => String(n).padStart(2, '0');
 export const TRIP_TYPES = { personal_near: '🚗 개인차량 · 40km 이내 (1만원/일)', personal_far: '🚗 개인차량 · 40km 초과 (2만원/일)', company_car: '🚙 회사차량 (거리무관 1만원/일)', longtrip: '🚄 지방장기출장 · 왕복KTX 실비' };
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')) && new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;

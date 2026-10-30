@@ -1,7 +1,7 @@
-import { functions, httpsCallable } from '../../core/firebase.js?v=20261030a';
-import { confirmDialog } from '../../core/dialog.js?v=20261030a';
-import { logHtml, logCompactHtml } from './log-view.js?v=20261030a';
-import { titleHint, canSubmit, friendlyError } from '../../shared/pjt-log.js?v=20261030a';
+import { functions, httpsCallable } from '../../core/firebase.js?v=20261031a';
+import { confirmDialog } from '../../core/dialog.js?v=20261031a';
+import { logHtml, logCompactHtml } from './log-view.js?v=20261031a';
+import { titleHint, canSubmit, friendlyError } from '../../shared/pjt-log.js?v=20261031a';
 /* 이력 패널 — 이력 탭(전체 화면)과 프로젝트 홈의 3단째(요약)가 같이 쓰는 부품. 상태·이벤트·서버 호출(pjtLogAct)을 이 안에서만 다룬다.
  * host = 이 패널이 그려지는 요소(이 요소에 직접 이벤트를 달기 때문에 바깥 화면이 다시 그려져도 요소만 옮겨 끼우면 상태가 유지된다).
  * o = { proj, label, me:{uid}, callLog?, compact?, all?, projects? }. all = PJT 메인 홈처럼 프로젝트를 고르기 전 화면(내가 볼 수 있는 모든 프로젝트의 이력, projects=[{key,label}] — 입력은 프로젝트를 골라서, 행의 버튼은 그 행의 프로젝트로 처리). 반환 { ready, reload, state } */

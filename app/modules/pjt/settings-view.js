@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261030a';
-import { FIELDS } from './settings.js?v=20261030a';
+import { esc } from '../../core/ui.js?v=20261031a';
+import { FIELDS } from './settings.js?v=20261031a';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 /** 설정 탭(관리자 전용): 기본정보 수정, 프로젝트 상태(종료·재개), 참여 부서·개인(공용 화면), 공정 구조·선택 기능으로 가는 안내. 모든 프로젝트 같은 화면 */
 export function settingsHtml(st) {

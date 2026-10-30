@@ -2,7 +2,7 @@
  * 사업장 EDI 화면의 항목 순서(공통 → 국민연금 → 건강보험 → 고용보험 → 산재보험)대로 값을 보여 주고, 날짜·금액은 붙여 넣기 좋은 숫자만 값(copy)을 따로 준다.
  * 모르는 코드(취득부호·직종부호 등)는 지어내지 않고 "화면 목록에서 선택"으로 둔다. 신고 기한은 EDI 화면 안내 그대로: 건강보험=사유 발생일부터 14일 이내, 국민연금·고용·산재=사유 발생일이 속하는 달의 다음 달 15일까지.
  * 상실(퇴사) 입력표는 EDI 상실 화면을 받은 뒤 같은 방식으로 추가한다. */
-import { annualSalary } from './offer.js?v=20261030a';
+import { annualSalary } from './offer.js?v=20261031a';
 export const HEALTH_DEADLINE_DAYS = 14;
 export const RECENT_DAYS = 60; // 최근 입사자 목록 기간
 const pad = (n) => String(n).padStart(2, '0');

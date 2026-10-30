@@ -1,6 +1,6 @@
 /* 평가 회차 카드(정기평가 운영 화면 맨 위) — 마크업만. 사장단만 단계 전환·과제 생성·집계 버튼이 켜지고, 인사팀은 상태만 본다. 저장·서버 호출은 cycle-admin-io.js */
-import { esc } from '../../core/ui.js?v=20261030a';
-import { STATE_TEXT, STATES, nextState, MOVE_TEXT, taskWarnings } from './cycle-admin.js?v=20261030a';
+import { esc } from '../../core/ui.js?v=20261031a';
+import { STATE_TEXT, STATES, nextState, MOVE_TEXT, taskWarnings } from './cycle-admin.js?v=20261031a';
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const TONE = { draft: 'muted', open: 'accent', closed: 'warn', published: 'accent' };
 

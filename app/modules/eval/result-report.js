@@ -1,8 +1,8 @@
 /* 평가 결과 통보서 — 순수 규칙(화면·네트워크 없이 시험 가능). 확정된 정기평가(+ 확정된 수시평가)를 직원 본인에게 알리는 문서의 "내용 결정"과 "HTML 생성".
  *  원칙: ① 확정된 평가만 ② 직원이 알아도 되는 것만 — 최종 점수·등급·영역별 점수·동료 평균·수시평가 결과·본인 자기평가. 사장단 개인별 점수·코멘트, 동료·팀장 개별 점수, 평가자 식별 정보는 넣지 않는다.
  *  ③ 문서는 메일 본문이 아니라 "본인 확인(휴대폰 문자 인증) 링크" 뒤에 저장되어, 본인만 본다. */
-import { cycleSummary, areaItems, teamTypeOf, WEIGHTS_BY, AREA_LABELS, areaScore, leadAreasOf, adhocSummary, combineRegular, gradeOf, evalPeriod } from './evaluation.js?v=20261030a';
-import { docFileName } from '../../shared/doc-filename.js?v=20261030a';
+import { cycleSummary, areaItems, teamTypeOf, WEIGHTS_BY, AREA_LABELS, areaScore, leadAreasOf, adhocSummary, combineRegular, gradeOf, evalPeriod } from './evaluation.js?v=20261031a';
+import { docFileName } from '../../shared/doc-filename.js?v=20261031a';
 export const RESULT_DOC_TYPE = 'evalresult';
 export const RESULT_TITLE = '인사평가 결과 통보서';
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

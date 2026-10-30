@@ -1,8 +1,8 @@
-import { esc } from '../../core/ui.js?v=20261030a';
-import { TYPE_LABEL, SETTLE_TYPE_LABEL, filterProjects, paginate, pjtSummary, pjtMargin, pjtEstimates, pjtSettlements, estTotal, estTag, settleState, settleAmountForPjt, linkOptions, sortProjects } from './projects.js?v=20261030a';
-import { marginExtra, marginNotes, linkedPjtId, evalSaveError, allocFor } from './margin-link.js?v=20261030a';
-import { budgetCardHtml } from './budget-view.js?v=20261030a';
-import { importFromEstimates } from './budget.js?v=20261030a';
+import { esc } from '../../core/ui.js?v=20261031a';
+import { TYPE_LABEL, SETTLE_TYPE_LABEL, filterProjects, paginate, pjtSummary, pjtMargin, pjtEstimates, pjtSettlements, estTotal, estTag, settleState, settleAmountForPjt, linkOptions, sortProjects } from './projects.js?v=20261031a';
+import { marginExtra, marginNotes, linkedPjtId, evalSaveError, allocFor } from './margin-link.js?v=20261031a';
+import { budgetCardHtml } from './budget-view.js?v=20261031a';
+import { importFromEstimates } from './budget.js?v=20261031a';
 const won = (n) => (Math.round(Number(n) || 0)).toLocaleString('ko-KR');
 const signed = (n) => (n >= 0 ? '+' : '') + won(n);
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';

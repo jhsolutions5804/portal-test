@@ -1,14 +1,14 @@
 /* 근로자 연명부(새 화면) — 구포털 PJT 메뉴의 "근로자 연명부" 칸. 주소 #/pjt/roster(목록) · #/pjt/roster/<근로자 id>(상세 조회).
  * 왼쪽 명단(재직·조치 필요·퇴사·전체, 검색, 정렬) + 오른쪽(사람을 고르면 상세, 아니면 조치 필요 현황). 2단계: 카드마다 따로 수정(인적사항·급여/계좌·비고), 신규 등록, 삭제(관리자), 퇴사·팀장 연결, 주민번호 저장·보기(사유 선택, 서버 함수).
  * 첨부·건강검진·원청별 교육·자격 입력은 다음 단계. 규칙은 roster.js, 표시는 roster-view.js. */
-import { db, storage, collection, doc, getDoc, getDocs, writeBatch, deleteField, serverTimestamp, arrayUnion, arrayRemove, storageRef, uploadBytesResumable, deleteObject, getBlob } from '../../core/firebase.js?v=20261030a';
-import { esc, toast } from '../../core/ui.js?v=20261030a';
-import { confirmDialog } from '../../core/dialog.js?v=20261030a';
-import { revealWorker, saveJumin } from '../../shared/identity.js?v=20261030a';
-import { compressImage } from './roster-image.js?v=20261030a';
-import { validDateInput, mergePrivs, summaryOf, visibleList, rowOf, todayKey, birthFromJumin, parseJumin, fmtJumin, fmtPhone, fmtMoney, blankForm, formOfMaster, validateWorker, payOf, deleteBlock, pdfPathsOf, slotDocId, FILE_SLOTS, slotOf, filesMeta, fileMetaOf, photoDocOf, anyFile, downloadName, canEditSlot, healthRowsOf, blankHealthRow, healthRowSet, planHealth, checkPdf, pdfStoragePath, pdfMeta, pdfDownloadName, fmtKB, eduFormOf, eduToggle, eduExpSet, eduSavePatch, certRowsOf, blankCertRow, certRowSet, planCerts, legalRowsOf, addLegalRow, planLegal, contractorsOf, chemRowsOf, blankChemRow, chemFormOf, planChem, chemAccountPatch, chemDownloadName } from './roster.js?v=20261030a';
-import { rosterHtml } from './roster-view.js?v=20261030a';
-import { mountRosterTools } from './roster-tools-index.js?v=20261030a';
+import { db, storage, collection, doc, getDoc, getDocs, writeBatch, deleteField, serverTimestamp, arrayUnion, arrayRemove, storageRef, uploadBytesResumable, deleteObject, getBlob } from '../../core/firebase.js?v=20261031a';
+import { esc, toast } from '../../core/ui.js?v=20261031a';
+import { confirmDialog } from '../../core/dialog.js?v=20261031a';
+import { revealWorker, saveJumin } from '../../shared/identity.js?v=20261031a';
+import { compressImage } from './roster-image.js?v=20261031a';
+import { validDateInput, mergePrivs, summaryOf, visibleList, rowOf, todayKey, birthFromJumin, parseJumin, fmtJumin, fmtPhone, fmtMoney, blankForm, formOfMaster, validateWorker, payOf, deleteBlock, pdfPathsOf, slotDocId, FILE_SLOTS, slotOf, filesMeta, fileMetaOf, photoDocOf, anyFile, downloadName, canEditSlot, healthRowsOf, blankHealthRow, healthRowSet, planHealth, checkPdf, pdfStoragePath, pdfMeta, pdfDownloadName, fmtKB, eduFormOf, eduToggle, eduExpSet, eduSavePatch, certRowsOf, blankCertRow, certRowSet, planCerts, legalRowsOf, addLegalRow, planLegal, contractorsOf, chemRowsOf, blankChemRow, chemFormOf, planChem, chemAccountPatch, chemDownloadName } from './roster.js?v=20261031a';
+import { rosterHtml } from './roster-view.js?v=20261031a';
+import { mountRosterTools } from './roster-tools-index.js?v=20261031a';
 const pushHash = (h) => { if (location.hash === h) return; try { history.replaceState(null, '', h); } catch (e) { location.hash = h; } };
 const lst = (snap) => { const a = []; snap.forEach((d) => a.push({ id: d.id, data: d.data() })); return a; };
 export async function mountRoster(root, route, ctx) {

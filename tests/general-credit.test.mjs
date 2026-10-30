@@ -10,7 +10,7 @@ ok(good.errors.length === 0 && good.doc.name === '○○식당' && good.doc.kind
 const bad = formToDoc('credit', { name: '', kind: '없는구분' }, [{ date: '2026-02-30', type: '환불', amount: '-5' }]);
 ok(bad.doc === null && bad.errors.some((e) => /거래처/.test(e)) && bad.errors.some((e) => /구분 값/.test(e)) && bad.errors.some((e) => /일자 형식/.test(e)), '외상 장부 입력 검사: 거래처 필수, 구분·거래 종류는 목록 값만, 날짜 형식, 금액은 0 이상');
 const rows = [{ type: '외상', amount: 330000 }, { type: '외상', amount: '120,000' }, { type: '결제', amount: 200000 }];
-ok(creditRowsBalance(rows) === 250000 && creditBalance({ entries: rows }) === 250000 && creditBalance({}) === 0 && creditRowsBalance([{ type: '결제', amount: 5000 }]) === -5000 && creditRowsBalance([{ type: '기타', amount: 9 }, null, { type: '외상' }]) === 0, '잔액 = 외상 합계 − 결제 합계(문자열 금액 허용, 선결제는 음수, 이상한 줄은 무시)');
+ok(creditRowsBalance(rows.concat([{ type: '반품', amount: '30,000' }])) === 220000 && creditRowsBalance(rows) === 250000 && creditBalance({ entries: rows }) === 250000 && creditBalance({}) === 0 && creditRowsBalance([{ type: '결제', amount: 5000 }]) === -5000 && creditRowsBalance([{ type: '기타', amount: 9 }, null, { type: '외상' }]) === 0, '잔액 = 외상 합계 − 결제 합계 − 반품 합계(문자열 금액 허용, 선결제는 음수, 이상한 줄은 무시)');
 ok(creditLast({ entries: [{ date: '2026-10-05' }, { date: '2026-11-02' }, { date: '' }] }) === '2026-11-02' && creditLast({}) === '', '마지막 거래일: 가장 늦은 일자, 없으면 빈 값');
 const list = [{ id: 'a', name: '식당', kind: '식당', status: '거래 중', entries: [{ type: '외상', amount: 100000 }] }, { id: 'b', name: '철물', kind: '구매(자재·공구)', status: '거래 중', entries: [{ type: '외상', amount: 70000 }, { type: '결제', amount: 20000 }] }, { id: 'c', name: '종료된 곳', kind: '복지', status: '종료', entries: [{ type: '외상', amount: 999 }] }, { id: 'd', name: '정산 끝', kind: '기타', status: '거래 중', entries: [{ type: '외상', amount: 5 }, { type: '결제', amount: 5 }] }];
 const tot = creditTotals(list);
@@ -27,4 +27,10 @@ const hh = homeHtml({ data: { lease: [], vehicle: [], asset: [], credit: list, r
 ok(hh.includes('외상 장부') && hh.includes('미결제 잔액 150,000원') && /#\/hr\/general\/credit/.test(hh), '개요 화면: "외상 장부" 카드와 미결제 잔액, 외상 장부 탭으로 가는 링크');
 const nav = fs.readFileSync(new URL('../app/modules/legacy/list.js', import.meta.url), 'utf8'), idx = fs.readFileSync(new URL('../app/modules/general/index.js', import.meta.url), 'utf8');
 ok(/\['asset', '자산·장비'\], \['credit', '외상 장부'\], \['renewal', '갱신 일정'\]/.test(nav) && /GKEYS\.includes\(want\)/.test(idx), '메뉴: 인사총무 > 총무에 "외상 장부" 항목이 자산·장비 다음에 걸림, 화면은 GKEYS 기준으로 열림');
+const good2 = formToDoc('credit', { name: '넘버원', kind: '구매(자재·공구)', status: '거래 중' }, [{ date: '2026-08-01', type: '외상', corp: '제이에이치테크', item: '안전화 280', amount: '58,000', pay: '', pjt: '', memo: '' }, { date: '2026-08-05', type: '반품', corp: '제이에이치테크', item: '안전화 280 반품', amount: '58000' }, { date: '2026-08-19', type: '결제', corp: '제이에이치테크', item: '8월분', amount: '0', pay: '계좌이체' }]);
+ok(good2.errors.length === 0 && good2.doc.entries[0].corp === '제이에이치테크' && good2.doc.entries[1].type === '반품' && good2.doc.entries[2].pay === '계좌이체' && creditBalance(good2.doc) === 0, '새 열: 청구 법인·결제 수단·반품 종류가 저장되고, 외상 58,000 − 반품 58,000 이면 잔액 0');
+const bad2 = formToDoc('credit', { name: 'x' }, [{ date: '2026-08-01', type: '외상', corp: '없는법인', amount: '1' }, { date: '2026-08-02', type: '결제', pay: '수표', amount: '1' }]);
+ok(bad2.doc === null && bad2.errors.filter((e) => /청구 법인|결제 수단/.test(e)).length === 2, '청구 법인·결제 수단은 목록 값만 허용');
+const rowsBig = Array.from({ length: 330 }, (_, i) => ({ date: '2026-08-01', type: '외상', amount: '1000' }));
+ok(formToDoc('credit', { name: 'x' }, rowsBig).doc.entries.length === 330 && creditBalance({ entries: rowsBig }) === 330000, '거래 줄 330개(한 거래처 2년치 규모)도 저장되고 잔액이 맞음');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

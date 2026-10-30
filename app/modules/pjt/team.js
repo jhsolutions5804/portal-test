@@ -1,6 +1,6 @@
 /* 내 팀 공수표 — 순수 규칙(화면·네트워크 없이 시험 가능). 팀장은 관리자가 지정한 자기 팀(portal_users.teamLeaderIds), 관리자는 재직 팀장 전체의 팀을 본다.
  * 사람은 마스터 id 로 묶어(월간 공수 집계 aggregateMonth 의 persons) 팀·프로젝트별 공수와 노무비(= 공수 × 팀 단가)를 낸다. 모든 프로젝트(종료 포함)의 공수를 합친다. */
-import { monthGrid } from './schedule.js?v=20261030a';
+import { monthGrid } from './schedule.js?v=20261031a';
 const r1 = (n) => Math.round(n * 10) / 10;
 export const won = (n) => (Math.round(n) || 0).toLocaleString('ko-KR');
 /** 단가 입력 → 정수(숫자만) */

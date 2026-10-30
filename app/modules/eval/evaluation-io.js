@@ -1,6 +1,6 @@
 /* 인사평가 — 정기평가 운영: 불러오기·저장·클릭/입력 처리. 저장 위치 = evaluations/{근로자}/cycles/{연도} (기존 관리자 전용 컬렉션 안이라 보안 규칙 변경 없음, 설계서 docs/hr-evaluation-design.md) */
-import { withManage } from '../../shared/eval-perm.js?v=20261030a';
-import { isEvalTarget, emptyCycle, setRating, evalAccess, cycleSummary, areaItems, teamTypeOf, saveBody } from './evaluation.js?v=20261030a';
+import { withManage } from '../../shared/eval-perm.js?v=20261031a';
+import { isEvalTarget, emptyCycle, setRating, evalAccess, cycleSummary, areaItems, teamTypeOf, saveBody } from './evaluation.js?v=20261031a';
 const clone = (o) => JSON.parse(JSON.stringify(o));
 /** deps: { db, collection, getDocs, getDoc, setDoc, doc, serverTimestamp, toast, confirmDialog, paint, st, ctx } */
 export function createCycleController(deps) {

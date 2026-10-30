@@ -1,8 +1,8 @@
-import { esc } from '../../core/ui.js?v=20261030a';
-import { won, card, chip, fld, selectHtml, pagerHtml } from './ui.js?v=20261030a';
-import { SETTLE_PAGE_SIZE, SETTLE_LABEL, METHOD_LABEL, filterSettlements, sortSettlements, settleFilterOptions, settleSummary, projectLabel, isMulti, acctMonthOf, canLinkEst, linkedEstimates, linkableEstimates, settleLinesOf, setActive, projectBalance } from './settlements.js?v=20261030a';
-import { paginate } from './projects.js?v=20261030a';
-import { settleName } from './settlement-doc.js?v=20261030a';
+import { esc } from '../../core/ui.js?v=20261031a';
+import { won, card, chip, fld, selectHtml, pagerHtml } from './ui.js?v=20261031a';
+import { SETTLE_PAGE_SIZE, SETTLE_LABEL, METHOD_LABEL, filterSettlements, sortSettlements, settleFilterOptions, settleSummary, projectLabel, isMulti, acctMonthOf, canLinkEst, linkedEstimates, linkableEstimates, settleLinesOf, setActive, projectBalance } from './settlements.js?v=20261031a';
+import { paginate } from './projects.js?v=20261031a';
+import { settleName } from './settlement-doc.js?v=20261031a';
 const sumCell = (label, v, tone) => '<div class="jh-plan__sumcell"><span class="jh-field__hint">' + esc(label) + '</span><strong' + (tone ? ' data-tone="' + tone + '"' : '') + '>' + v + '</strong></div>';
 const filterSel = (key, val, label, opts) => selectHtml('data-sl-filter="' + key + '"', val, [['', label]].concat(opts));
 /** 청구·수금(kind=invoice) / 지급·정산(kind=payment) 목록: 합계 카드 + 필터 + 10건씩 쪽 나눔 */

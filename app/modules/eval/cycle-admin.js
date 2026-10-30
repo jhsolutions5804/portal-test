@@ -1,6 +1,6 @@
 /* 평가 회차 관리 — 순수 규칙(화면·네트워크 없이 시험 가능). 보안 규칙(eval_cycles)·서버 함수(evalAct)와 같은 약속.
  *  상태: draft(준비) → open(진행) → closed(마감) → published(공개). 마감·공개된 회차는 다시 열 수 없다(재개방 후 재집계 → 평균 변화로 개인 점수 역산 방지). */
-import { isEvalTarget, teamTypeOf, teamLeaderOf } from './evaluation.js?v=20261030a';
+import { isEvalTarget, teamTypeOf, teamLeaderOf } from './evaluation.js?v=20261031a';
 export const STATES = ['draft', 'open', 'closed', 'published'];
 export const STATE_TEXT = { draft: '준비', open: '진행', closed: '마감', published: '공개' };
 const rank = (s) => STATES.indexOf(s);

@@ -1,10 +1,10 @@
 /* PJT 전체 홈·종료 PJT — 순수 규칙(화면·네트워크 없이 시험 가능). 모든 프로젝트 같은 규칙.
  * 전체 홈 = 내가 열 수 있는 프로젝트 카드(공정율·D+·누적 공수·오늘 출역) + 프로젝트 통합 일정(2주 / 월간, 프로젝트별 색) + 신규 프로젝트.
  * 종료 PJT = 종료된 프로젝트 목록(재개·완전삭제는 관리자). 프로젝트 문서는 pjt_registry/<id> 하나씩이다(설계서 ⑬). */
-import { weekDays, addDays, itemsForKey } from './schedule.js?v=20261030a';
-import { dday } from './home.js?v=20261030a';
-import { buildData } from './settings.js?v=20261030a';
-import { isDateKey } from './adapter.js?v=20261030a';
+import { weekDays, addDays, itemsForKey } from './schedule.js?v=20261031a';
+import { dday } from './home.js?v=20261031a';
+import { buildData } from './settings.js?v=20261031a';
+import { isDateKey } from './adapter.js?v=20261031a';
 export const PALETTE = ['#1D5BA6', '#2e7d32', '#e67e22', '#5e35b1', '#00695C', '#c0392b', '#8D6E00', '#d81b60'];   // 프로젝트별 색(등록 순서대로, 8개를 돌려 쓴다)
 export const colorOf = (keys, key) => PALETTE[Math.max(0, (keys || []).indexOf(key)) % PALETTE.length];
 /** 통합 일정(주간) — 이번 주 월요일부터 14일 블록, offset 만큼 블록 단위로 이동 */

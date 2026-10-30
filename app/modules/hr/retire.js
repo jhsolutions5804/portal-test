@@ -6,8 +6,8 @@
  * · 평균임금 < 통상임금이면 통상임금(1일 = 통상시급×8; 연봉계약서 기본·연장·야간·주휴 + 기술수당) · 계속근로 1년 미만 0원 · 퇴직금 = 적용 1일 평균임금 × 30 × (재직일수 ÷ 365)
  * · 퇴직금은 퇴직 후 14일 이내 지급(근로기준법 제36조), 지연 시 연 20% 지연이자 — 지급기한을 함께 안내한다.
  * ⚠️ 자동 산정 결과는 참고용이다 — 실제 지급 전 노무사 또는 관할 고용센터에 확인한다(docs/statutory-alignment.md). */
-import { annualSalary } from './offer.js?v=20261030a';
-import { lpDay, lpEvalWorker } from './leave-promo.js?v=20261030a';
+import { annualSalary } from './offer.js?v=20261031a';
+import { lpDay, lpEvalWorker } from './leave-promo.js?v=20261031a';
 export const rtWon = (n) => Math.round(Number(n) || 0).toLocaleString('ko-KR');
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')) && new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
 const T = (s) => Date.parse(s + 'T00:00:00Z'); const ymd = (ms) => new Date(ms).toISOString().slice(0, 10); const DAY = 86400000;

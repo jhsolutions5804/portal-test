@@ -1,5 +1,5 @@
 /* 연명부 첨부 이미지 줄이기(브라우저 전용) — 구포털 compressImage 와 같은 규칙: 긴 변 2000px 이하, 데이터 URL 이 950,000자를 넘지 않게 화질·크기를 단계적으로 낮춘다. 시험에서는 ctx.compressImage 로 대신한다. */
-import { PHOTO_MAX_CHARS, PHOTO_MAX_EDGE } from './roster.js?v=20261030a';
+import { PHOTO_MAX_CHARS, PHOTO_MAX_EDGE } from './roster.js?v=20261031a';
 const loadImage = (file) => new Promise((res, rej) => { const url = URL.createObjectURL(file), img = new Image(); img.onload = () => { URL.revokeObjectURL(url); res(img); }; img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('이미지를 읽을 수 없습니다.')); }; img.src = url; });
 /** 파일 → { dataUrl(JPEG), w, h } */
 export async function compressImage(file) {

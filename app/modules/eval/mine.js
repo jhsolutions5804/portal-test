@@ -1,11 +1,11 @@
 /* 내 평가 화면 — 정직원 누구나(GUEST 제외). 폰에서도 작성: 목록 → 작성 → 제출. 자동 임시저장, 제출하면 잠김.
  * 보안: 읽기·쓰기는 보안 규칙(docs/rules/eval_rules_block.rules)이 강제하고, 이 화면은 본인 과제·본인 제출만 다룬다. */
-import { db, collection, getDocs, getDoc, setDoc, doc, query, where, serverTimestamp } from '../../core/firebase.js?v=20261030a';
-import { confirmDialog } from '../../core/dialog.js?v=20261030a';
-import { esc, toast } from '../../core/ui.js?v=20261030a';
-import { isEvalUser } from '../../shared/eval-perm.js?v=20261030a';
-import { mineListHtml, mineFormHtml } from './mine-view.js?v=20261030a';
-import { createMineController } from './mine-io.js?v=20261030a';
+import { db, collection, getDocs, getDoc, setDoc, doc, query, where, serverTimestamp } from '../../core/firebase.js?v=20261031a';
+import { confirmDialog } from '../../core/dialog.js?v=20261031a';
+import { esc, toast } from '../../core/ui.js?v=20261031a';
+import { isEvalUser } from '../../shared/eval-perm.js?v=20261031a';
+import { mineListHtml, mineFormHtml } from './mine-view.js?v=20261031a';
+import { createMineController } from './mine-io.js?v=20261031a';
 
 export async function mountMine(root, ctx) {
   const me = (ctx && ctx.me) || {}; if (!isEvalUser(me) || !me.uid) { root.innerHTML = '<div class="jh-card"><div class="jh-empty">평가는 정직원 계정으로만 열 수 있습니다.</div></div>'; return; }

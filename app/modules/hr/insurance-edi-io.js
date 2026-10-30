@@ -1,6 +1,6 @@
 /* 신고 입력표 — 근로자·계약서 불러오기, 주민번호 열람, 복사(파이어스토어·열람·복사 함수는 밖에서 주입). 시험: tests/hr-insurance-edi.test.mjs */
-import { sheetOfState } from './insurance-edi.js?v=20261030a';
-import { ediInit } from './insurance-edi-view.js?v=20261030a';
+import { sheetOfState } from './insurance-edi.js?v=20261031a';
+import { ediInit } from './insurance-edi-view.js?v=20261031a';
 const J_SHOW_MS = 60000; // 열람한 주민번호는 1분 뒤 다시 가린다
 export function makeEdiIo({ db, collection, getDocs, query, orderBy, limit }) {
   const one = async (path, wid) => { const s = await getDocs(query(collection(db, path + '/' + wid + '/contracts'), orderBy('contractDate', 'desc'), limit(1))); return s.empty ? null : Object.assign({ id: s.docs[0].id }, s.docs[0].data()); };
