@@ -27,10 +27,10 @@
 <body>
 <main id="tag-root" aria-busy="true"></main>
 <script type="module">
-import { functions, httpsCallable } from '../app/core/firebase.js?v=20261029m';
-import { NFC_ENABLED, nextStep, tagResultView, errorView, FIXED_VIEWS } from '../app/modules/attendance/nfc-logic.js?v=20261029m';
-import { makeNfcApi, makeTokenStore, getPosition } from '../app/modules/attendance/nfc-data.js?v=20261029m';
-import { tagCardHtml } from '../app/modules/attendance/nfc-view.js?v=20261029m';
+import { functions, httpsCallable } from '../app/core/firebase.js?v=20261030a';
+import { NFC_ENABLED, nextStep, tagResultView, errorView, FIXED_VIEWS } from '../app/modules/attendance/nfc-logic.js?v=20261030a';
+import { makeNfcApi, makeTokenStore, getPosition } from '../app/modules/attendance/nfc-data.js?v=20261030a';
+import { tagCardHtml } from '../app/modules/attendance/nfc-view.js?v=20261030a';
 
 const root = document.getElementById('tag-root');
 const REGISTER = '../app/#/attendance/register', INPUT = '../app/#/attendance/input', LOGIN = '../app/';

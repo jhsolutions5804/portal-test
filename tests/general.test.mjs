@@ -4,7 +4,7 @@ const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail+
 const T0 = '2026-10-12';
 
 ok(dday('2026-10-12', T0) === 0 && dday('2026-11-11', T0) === 30 && dday('2026-10-01', T0) === -11 && dday('2026-02-30', T0) === null && dday('', T0) === null && dday('abc', T0) === null && dday('2027-01-01', '2026-12-31') === 1, '총무: 남은 날수(D-day) 계산 — 지난 날은 음수, 없는 날짜·빈 값은 null');
-ok(GKEYS.join() === 'lease,vehicle,asset,renewal' && GKEYS.every((k) => GTYPES[k].coll.startsWith('general_') && GTYPES[k].fields.some((f) => f.k === 'name' && f.req) && GTYPES[k].cols.length >= 5 && typeof GTYPES[k].dues === 'function'), '총무: 네 종류 모두 항목 정의(컬렉션 이름 general_, 이름 필수, 목록 열, 만기 규칙)를 갖춤');
+ok(GKEYS.join() === 'lease,vehicle,asset,credit,renewal' && GKEYS.every((k) => GTYPES[k].coll.startsWith('general_') && GTYPES[k].fields.some((f) => f.k === 'name' && f.req) && GTYPES[k].cols.length >= 5 && typeof GTYPES[k].dues === 'function'), '총무: 다섯 종류(임대·차량·자산·외상 장부·갱신) 모두 항목 정의(컬렉션 이름 general_, 이름 필수, 목록 열, 만기 규칙)를 갖춤');
 
 const lease = formToDoc('lease', { name: ' 원희캐슬 B111 ', kind: '창고', rent: '200,000', vat: '20000', payDay: '25', start: '2024-08-19', end: '2027-08-18', status: '사용중', note: '메모' }, [{ ym: '2026-09', date: '2026-09-30', amount: '220,000', memo: '' }]);
 ok(lease.errors.length === 0 && lease.doc.name === '원희캐슬 B111' && lease.doc.rent === 200000 && lease.doc.vat === 20000 && lease.doc.payDay === 25 && lease.doc.deposit === 0 && lease.doc.payments.length === 1 && lease.doc.payments[0].amount === 220000 && leaseMonthly(lease.doc) === 220000, '★ 총무 입력 검증: 이름 앞뒤 공백 정리, 금액의 쉼표·원 제거, 비운 금액은 0, 이력 줄 변환');

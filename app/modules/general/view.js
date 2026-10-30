@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261029m';
-import { GTYPES, GKEYS, dday, won, leasePayState, dueList, homeSummary, leaseMonthly, driveAllRows, driveFilter, driveTotals, driveByProject, driveByMonth, driveOdoCheck, driveRange, weekStart, DRIVE_STATUS, driveKeywordStats, matchHistory } from './logic.js?v=20261029m';
+import { esc } from '../../core/ui.js?v=20261030a';
+import { GTYPES, GKEYS, creditBalance, creditRowsBalance, creditTotals, dday, won, leasePayState, dueList, homeSummary, leaseMonthly, driveAllRows, driveFilter, driveTotals, driveByProject, driveByMonth, driveOdoCheck, driveRange, weekStart, DRIVE_STATUS, driveKeywordStats, matchHistory } from './logic.js?v=20261030a';
 
-const TABS = [['home', '개요'], ['lease', '임대'], ['vehicle', '차량'], ['drive', '운행일지'], ['asset', '자산·장비'], ['renewal', '갱신 일정']];
+const TABS = [['home', '개요'], ['lease', '임대'], ['vehicle', '차량'], ['drive', '운행일지'], ['asset', '자산·장비'], ['credit', '외상 장부'], ['renewal', '갱신 일정']];
 export const tabsHtml = (cur, base) => '<div class="jh-segmented jh-gen__tabs" role="group" aria-label="총무">' + TABS.map(([k, l]) => '<a class="jh-segmented__item" href="' + esc(base || '#/general') + '/' + k + '" aria-pressed="' + (k === cur) + '">' + esc(l) + '</a>').join('') + '</div>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const alertHtml = (tone, html) => '<div class="jh-alert" data-tone="' + tone + '" role="status">' + html + '</div>';
@@ -11,7 +11,7 @@ const ddayText = (n) => (n === 0 ? 'D-day' : n > 0 ? 'D-' + n : 'D+' + Math.abs(
 /** 개요: 네 종류의 숫자와 가까운 만기·갱신 */
 export function homeHtml(st) {
   const data = st.data; const s = homeSummary(data); const dues = dueList(data, st.today, 90); const total = GKEYS.reduce((n, k) => n + (data[k] || []).length, 0);
-  const kpi = [['임대', s.leaseN + '건', '월 ' + won(s.leaseMonthly) + '원(관리비 포함)', 'lease'], ['차량', s.vehicleN + '대', '월 ' + won(s.vehicleMonthly) + '원', 'vehicle'], ['자산·장비', s.assetN + '점', '구입가 합계 ' + won(s.assetCost) + '원', 'asset'], ['갱신 일정', s.renewalN + '건', '연 환산 ' + won(s.renewalYear) + '원', 'renewal']];
+  const kpi = [['임대', s.leaseN + '건', '월 ' + won(s.leaseMonthly) + '원(관리비 포함)', 'lease'], ['차량', s.vehicleN + '대', '월 ' + won(s.vehicleMonthly) + '원', 'vehicle'], ['자산·장비', s.assetN + '점', '구입가 합계 ' + won(s.assetCost) + '원', 'asset'], ['외상 장부', s.creditN + '곳', '미결제 잔액 ' + won(s.creditBalance) + '원', 'credit'], ['갱신 일정', s.renewalN + '건', '연 환산 ' + won(s.renewalYear) + '원', 'renewal']];
   const k = '<div class="jh-kpi-grid">' + kpi.map(([l, v, h, key]) => '<a class="jh-kpi jh-gen__kpi" href="' + esc(st.base || '#/general') + '/' + key + '"><span class="jh-kpi__label">' + esc(l) + '</span><span class="jh-kpi__value">' + esc(v) + '</span><span class="jh-kpi__hint">' + esc(h) + '</span></a>').join('') + '</div>';
   const rows = dues.map((x) => '<tr class="jh-gen__row" data-g-go="' + esc(x.type) + '" data-g-id="' + esc(x.id) + '"><td>' + chip(ddayText(x.d), x.tone === 'muted' ? 'muted' : x.tone) + '</td><td>' + esc(x.date) + '</td><td>' + esc(GTYPES[x.type].title) + '</td><td>' + esc(x.label) + '</td><td>' + esc(x.what) + '</td></tr>').join('');
   const body = dues.length ? '<div class="jh-gen__scroll"><table class="jh-gen-table jh-gen-table--click"><thead><tr><th>남은 날</th><th>일자</th><th>구분</th><th>항목</th><th>내용</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<div class="jh-empty">앞으로 90일 안에 다가오는 만기·갱신이 없습니다.</div>';
@@ -36,7 +36,7 @@ export function editHtml(st) {
     const L = T.log;
     const head = L.cols.map((c) => '<th>' + esc(c.l) + '</th>').join('') + '<th></th>';
     const rows = e.rows.map((r, i) => '<tr>' + L.cols.map((c) => '<td>' + inputFor(c, r[c.k], 'data-gl="' + i + ':' + c.k + '" aria-label="' + esc(c.l) + '"') + '</td>').join('') + '<td><button type="button" class="jh-btn" data-variant="ghost" data-g-logdel="' + i + '">삭제</button></td></tr>').join('');
-    log = '<h4 class="jh-gen__sub">' + esc(L.l) + ' <span class="jh-field__hint">(' + e.rows.length + '줄)</span></h4><div class="jh-gen__scroll"><table class="jh-gen-table"><thead><tr>' + head + '</tr></thead><tbody>' + (rows || '<tr><td colspan="' + (L.cols.length + 1) + '" class="jh-field__hint">이력이 없습니다.</td></tr>') + '</tbody></table></div><div class="jh-gen__bar"><button type="button" class="jh-btn" data-variant="ghost" data-g-logadd>+ 줄 추가</button></div>';
+    log = '<h4 class="jh-gen__sub">' + esc(L.l) + ' <span class="jh-field__hint">(' + e.rows.length + '줄)</span>' + (e.type === 'credit' ? ' <span class="jh-field__hint">· 현재 미결제 잔액 ' + won(creditRowsBalance(e.rows)) + '원 (외상 − 결제)</span>' : '') + '</h4><div class="jh-gen__scroll"><table class="jh-gen-table"><thead><tr>' + head + '</tr></thead><tbody>' + (rows || '<tr><td colspan="' + (L.cols.length + 1) + '" class="jh-field__hint">이력이 없습니다.</td></tr>') + '</tbody></table></div><div class="jh-gen__bar"><button type="button" class="jh-btn" data-variant="ghost" data-g-logadd>+ 줄 추가</button></div>';
   }
   const title = (e.isNew ? T.add : T.label(e.vals) + ' 수정');
   return card(title, '<div class="jh-gen__pad"><div class="jh-gen__grid">' + fields + '</div>' + log + '<div class="jh-gen__bar"><button type="button" class="jh-btn" data-variant="primary" data-g-act="save">저장</button><button type="button" class="jh-btn" data-variant="ghost" data-g-act="cancel">취소</button>' + (e.isNew ? '' : '<button type="button" class="jh-btn" data-variant="ghost" data-g-act="delete">삭제</button>') + '</div></div>');
@@ -50,6 +50,7 @@ export function tableHtml(st, type) {
     const dues = T.dues(d).map((du) => { const n = dday(du.date, st.today); return n === null ? null : { n, what: du.what, lead: du.lead }; }).filter(Boolean).sort((a, b) => a.n - b.n)[0];
     let badge = '';
     if (type === 'lease') { const ps = leasePayState(d, st.today); if (ps) badge += chip(ps.text, ps.tone); }
+    if (type === 'credit') { const b = creditBalance(d); badge += chip(b > 0 ? '미결제 ' + won(b) + '원' : b < 0 ? '선결제 ' + won(-b) + '원' : '정산 완료', b > 0 ? 'warn' : 'muted'); }
     if (dues && T.active(d) && dues.n <= Math.max(dues.lead, 0)) badge += ' ' + chip(ddayText(dues.n) + ' ' + dues.what, dues.n < 0 ? 'danger' : 'warn');
     return '<tr class="jh-gen__row' + (T.active(d) ? '' : ' jh-gen__off') + '" data-g-open="' + esc(d.id) + '">' + T.cols.map((c) => '<td' + (c[2] ? ' class="' + c[2] + '"' : '') + '>' + esc(c[1](d, st.today)) + '</td>').join('') + '<td>' + badge + '</td></tr>';
   }).join('');
@@ -58,7 +59,8 @@ export function tableHtml(st, type) {
 export function listHtml(st, type) {
   const T = GTYPES[type]; const hasSeed = (st.seed || {})[type] > 0 && !(st.data[type] || []).length;
   const bar = '<div class="jh-gen__bar"><button type="button" class="jh-btn" data-variant="primary" data-g-add>' + esc(T.add) + '</button><input class="jh-input jh-gen__q" data-g-q placeholder="검색" value="' + esc(st.q || '') + '" aria-label="검색"><label class="jh-field__hint"><input type="checkbox" data-g-active' + (st.onlyActive ? ' checked' : '') + '> ' + esc(T.activeFilter) + '만 보기</label>' + (hasSeed ? '<button type="button" class="jh-btn" data-variant="ghost" data-g-seed>엑셀 기준 첫 목록 넣기</button>' : '') + (type === 'vehicle' ? '<button type="button" class="jh-btn" data-variant="ghost" data-g-sync>운행일지 차량 목록 동기화</button>' : '') + '</div>';
-  const extra = type === 'lease' ? '<div class="jh-field__hint jh-gen__pad">월 납부액 = 월 임대료 + 월 부가세. 입금 이력은 항목을 열면 "귀속 월"별로 기록합니다.</div>' : type === 'vehicle' ? '<div class="jh-field__hint jh-gen__pad">차량을 저장하면 전자결재 "차량 운행일지"의 차량 선택 목록이 자동으로 갱신됩니다(사용 중인 차량만). 출고일·출고 시 계기판을 넣어 두면 운행일지가 그 시점부터 집계됩니다.</div>' : '';
+  const crT = type === 'credit' ? creditTotals(st.data.credit) : null;
+  const extra = type === 'credit' ? '<div class="jh-gen__pad"><div class="jh-field__hint"><strong>미결제 합계 ' + won(crT.balance) + '원</strong> (' + Object.keys(crT.byKind).map((k) => k + ' ' + won(crT.byKind[k]) + '원').join(' · ') + ') · 미결제 거래처 ' + crT.open + '곳</div><div class="jh-field__hint">거래처마다 항목을 열어 "거래 내역"에 외상과 결제를 한 줄씩 기록합니다. 잔액 = 외상 합계 − 결제 합계. 자재·공구 구매, 식당처럼 월말에 정산하는 거래를 거래처별로 관리합니다.</div></div>' : type === 'lease' ? '<div class="jh-field__hint jh-gen__pad">월 납부액 = 월 임대료 + 월 부가세. 입금 이력은 항목을 열면 "귀속 월"별로 기록합니다.</div>' : type === 'vehicle' ? '<div class="jh-field__hint jh-gen__pad">차량을 저장하면 전자결재 "차량 운행일지"의 차량 선택 목록이 자동으로 갱신됩니다(사용 중인 차량만). 출고일·출고 시 계기판을 넣어 두면 운행일지가 그 시점부터 집계됩니다.</div>' : '';
   return (st.edit && st.edit.type === type ? editHtml(st) : '') + card(T.title + ' (' + (st.data[type] || []).length + ')', '<div class="jh-gen__pad">' + bar + '</div><div id="g-table">' + tableHtml(st, type) + '</div>' + extra);
 }
 /** 차량 운행일지 취합 — 전자결재로 올라온 일지를 시간 순으로 모아 일간·주간·월간·프로젝트별로 본다 */
