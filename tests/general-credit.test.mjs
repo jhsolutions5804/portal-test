@@ -66,7 +66,7 @@ ok(tableHtml(stq, 'credit').includes('내역 ' + nq + '줄 일치') && nq > 0, '
 ok(!tableHtml(st, 'credit').includes('줄 일치'), '검색어가 없으면 일치 줄 표시 없음');
 // 화면: 거래 내역(편집)
 const e = { type: 'credit', id: 'a', isNew: false, fresh: false, vals: { name: '가게A', kind: '구매(자재·공구)' }, rows: R.map((r) => Object.assign({}, r)), flt: creditFltDefault() };
-const area0 = creditLogAreaHtml(e); const idxAttr = (h) => (h.match(/data-gl="(\d+):date"/g) || []).map((x) => Number(x.match(/(\d+):/)[1]));
+e.flt = Object.assign(creditFltDefault(), { limit: 1000 }); const area0 = creditLogAreaHtml(e); const idxAttr = (h) => (h.match(/data-gl="(\d+):date"/g) || []).map((x) => Number(x.match(/(\d+):/)[1]));
 ok(idxAttr(area0).length === 230 && area0.includes('전체 230줄') && area0.includes('현재 미결제 잔액 ' + won(creditRowsBalance(R)) + '원') && area0.includes('월별·청구 법인별 요약'), '거름 없음: 230줄 모두 표시, 전체 잔액과 월별·법인별 요약 표시');
 e.flt = { q: '', type: '결제', corp: '', ym: '', desc: false }; const area1 = creditLogAreaHtml(e);
 ok(same(idxAttr(area1), brute({ type: '결제' })) && area1.includes(brute({ type: '결제' }).length + '줄 표시') && area1.includes('전체 230줄'), '구분 "결제" 거름: 표시되는 줄의 번호가 **원래 번호**(저장이 틀어지지 않음), "N줄 표시 (전체 230줄)" 안내');
@@ -77,6 +77,25 @@ ok(idxAttr(area3).length === 0 && area3.includes('조건에 맞는 줄이 없습
 e.flt = creditFltDefault(); const full = creditLogHtml(e);
 ok(['data-glf="q"', 'data-glf="type"', 'data-glf="corp"', 'data-glf="ym"', 'data-glf="desc"', 'data-g-credit-csv', 'data-g-logadd', 'id="g-logwrap"', '최근 거래 먼저', '청구 법인 미지정'].every((x) => full.includes(x)) && (full.match(/<option value="2026-\d\d"/g) || []).length === 12, '거래 내역 구역: 검색·구분·법인·월·정렬·CSV·줄 추가가 모두 있고 월 선택은 12개월');
 ok(editHtml({ edit: e, data: { credit: docs }, today: '2026-10-31' }).includes('data-glf="q"') && !editHtml({ edit: { type: 'lease', id: '', isNew: true, vals: {}, rows: [] }, data: {}, today: '2026-10-31' }).includes('data-glf'), '편집 화면: 외상 장부에만 거름 막대가 붙고 임대 등은 그대로');
+
+  // ── D-5 보완: 최근순 기본·60줄씩("더 보기")·가로 스크롤 없는 표·저장 줄 고정·줄 추가 위치
+  const d0 = creditFltDefault();
+  ok(d0.desc === true && d0.limit === 60 && d0.q === '' && d0.type === '' && d0.corp === '' && d0.ym === '', '거름 기본값: 최근 거래 먼저·처음엔 60줄만');
+  e.flt = creditFltDefault(); const a60 = creditLogAreaHtml(e);
+  ok(idxAttr(a60).length === 60 && a60.includes('나머지 170줄은 가려져 있습니다') && a60.includes('data-g-logmore') && a60.includes('더 보기 (+60)'), '230줄이면 처음에 60줄만 그리고 "나머지 170줄 · 더 보기" 안내');
+  ok(R[idxAttr(a60)[0]].date >= R[idxAttr(a60)[59]].date && R[idxAttr(a60)[0]].date === R.map((r) => r.date).sort().reverse()[0], '처음 60줄은 가장 최근 거래부터');
+  e.flt = Object.assign(creditFltDefault(), { limit: 120 }); const a120 = creditLogAreaHtml(e);
+  ok(idxAttr(a120).length === 120 && a120.includes('나머지 110줄'), '더 보기를 누르면(limit 120) 120줄, 나머지 110줄');
+  e.flt = Object.assign(creditFltDefault(), { limit: 240 }); ok(!creditLogAreaHtml(e).includes('data-g-logmore'), '전부 보이면 "더 보기" 단추가 없음');
+  e.flt = Object.assign(creditFltDefault(), { type: '결제' }); const aPay = creditLogAreaHtml(e); const nPay = brute({ type: '결제' }).length;
+  ok(idxAttr(aPay).length === Math.min(60, nPay) && aPay.includes(nPay + '줄 표시') && aPay.includes('외상 ' + won(creditSummary(R.filter((r, i) => brute({ type: '결제' }).includes(i))).total.외상)), '줄 제한은 표시에만 적용 — "보이는 줄 합계"는 조건에 맞는 모든 줄 기준');
+  e.flt = Object.assign(creditFltDefault(), { limit: 1000 }); ok(creditShownIdx(e).length === 230, 'CSV·합계에 쓰는 거름 결과(creditShownIdx)는 줄 제한과 무관(230줄 전부)');
+  const lh2 = creditLogHtml(e); const full2 = editHtml({ edit: e, data: { credit: docs }, today: '2026-10-31' });
+  ok((lh2.match(/data-g-logadd/g) || []).length === 1 && lh2.indexOf('data-g-logadd') < lh2.indexOf('id="g-logwrap"'), '"+ 줄 추가"는 필터 막대 안에 한 번만(표 아래쪽 단추 제거)');
+  ok(full2.includes('jh-gen__bar--sticky') && !editHtml({ edit: { type: 'lease', id: '', isNew: true, vals: {}, rows: [] }, data: {}, today: '2026-10-31' }).includes('jh-gen__bar--sticky'), '저장·취소 단추 줄은 외상 장부에서만 고정(sticky)');
+  ok(area0.includes('jh-gen__logbox') && area0.includes('jh-gen-table--log') && area0.includes('<colgroup>') && (area0.match(/<col style="width:\d+%">/g) || []).length === 9, '거래 내역 표: 고정 높이 상자·고정 폭 표·칸 9개 폭 지정');
+  ok((area0.match(/<col style="width:(\d+)%">/g) || []).map((x) => Number(x.match(/(\d+)%/)[1])).reduce((n, v) => n + v, 0) === 100, '칸 폭 합계 100%(가로 스크롤 없이 상자 폭에 맞춤)');
+  ok(/data-gl="\d+:item"[^>]*title="[^"]/.test(area0), '품목·메모 입력 칸에 전체 글자를 보여 주는 title(말줄임 대비)');
 // CSV
 const csv = creditCsv(R.slice(0, 3).concat([{ date: '2026-02-02', type: '외상', corp: '다람이엔지', item: '=HYPERLINK("x")', amount: '1,000', pay: '', pjt: '', memo: '' }]), '외상 장부 — 시험');
 ok(csv.startsWith('\uFEFF') && csv.includes('"일자","구분","청구 법인"') && !/(^|,)"=HYPERLINK/m.test(csv) && csv.includes("순액(외상 − 결제 − 반품)"), 'CSV: 엑셀용 BOM·머리글·합계 줄, 수식으로 시작하는 내용은 글자로 바뀜(수식 주입 방어)');

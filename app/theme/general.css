@@ -30,3 +30,17 @@
 .jh-gen__more { margin: var(--sp-3) 0; }
 .jh-gen__more summary { cursor: pointer; font-weight: 600; margin-bottom: var(--sp-2); }
 .jh-gen-table tfoot td { border-top: var(--u-1) solid var(--c-line-strong); }
+/* 외상 장부 거래 내역: 가로 스크롤 없는 촘촘한 표(PC), 고정 높이 상자, 저장 줄 고정, 열었을 때 화면 폭 넓힘 */
+.jh-general--wide { max-width: calc(var(--u-440) * 4); }
+.jh-general--wide .jh-gen__grid { grid-template-columns: repeat(auto-fit, minmax(var(--u-220), 1fr)); }
+.jh-general--wide .jh-gen__grid .jh-gen__wide { grid-column: 1 / -1; }
+.jh-gen__logbox { max-height: 60vh; max-height: 60dvh; overflow: auto; border: var(--u-1) solid var(--c-line); border-radius: var(--radius); }
+.jh-gen-table--log { table-layout: fixed; min-width: calc(var(--u-440) * 1.6); }
+.jh-gen-table--log thead th { position: sticky; top: 0; z-index: 1; background: var(--c-surface); }
+.jh-gen__moretd { text-align: center; }
+.jh-gen__bar--sticky { position: sticky; bottom: 0; z-index: 2; padding: var(--sp-3) 0; background: var(--c-surface); border-top: var(--u-1) solid var(--c-line); }
+@media (min-width: 721px) {
+  .jh-gen-table--log td, .jh-gen-table--log th { padding: var(--sp-1) var(--sp-2); }
+  .jh-gen-table--log .jh-input, .jh-gen-table--log .jh-select { width: 100%; min-width: 0; padding: var(--sp-1) var(--sp-2); font-size: var(--fs-sm); min-height: 0; }
+  .jh-gen-table--log .jh-btn { padding: var(--sp-1) var(--sp-2); font-size: var(--fs-sm); white-space: nowrap; }
+}
