@@ -62,6 +62,9 @@ const e6 = await (async () => { try { await ms.finishMicrosoftLogin(); } catch (
 reset(); loc.search = ''; ok(!ms.hasMicrosoftCallback(), '일반 주소'); loc.search = '?code=abc'; ok(!ms.hasMicrosoftCallback(), 'state 없는 code 는 무시'); loc.search = '?r=123'; ok(!ms.hasMicrosoftCallback(), '재시도 쿼리(?r=)는 무시');
 // 5) 오류 문구 대응표
 const M = ms.msErrorMessage;
-const table = [['no-account', '등록되지 않은'], ['not-registered', '등록되지 않은'], ['not-approved', '승인되지 않은'], ['disabled', '중지'], ['guest-not-allowed', '게스트'], ['wrong-tenant', '@jhsol.kr'], ['wrong-domain', '@jhsol.kr'], ['ms-access_denied', '취소'], ['state-mismatch', '다시 시도'], ['stale-token', '다시 시도'], ['nonce-mismatch', '다시 시도'], ['invalid-token', '다시 시도'], ['token-exchange-failed', '다시 시도'], ['뭔가-이상한-코드', '실패'], [undefined, '실패']];
+const table = [['no-account', '등록되지 않은'], ['not-registered', '등록되지 않은'], ['not-approved', '승인되지 않은'], ['disabled', '중지'], ['guest-not-allowed', '게스트'], ['wrong-tenant', '@jhsol.kr'], ['wrong-domain', '@jhsol.kr'], ['ms-access_denied', '취소'], ['state-mismatch', '다시 시도'], ['stale-token', '다시 시도'], ['nonce-mismatch', '다시 시도'], ['invalid-token', '다시 시도'], ['token-exchange-failed', '다시 시도'], ['뭔가-이상한-코드', '서버가 로그인 처리를'], [undefined, '서버가 로그인 처리를'], ['internal', '서버가 로그인 처리를'], ['failed-precondition', '설정에 문제'], ['server-not-configured', '설정에 문제'], ['unavailable', '네트워크'], ['deadline-exceeded', '네트워크'], ['Failed to fetch', '네트워크'], ['invalid-argument', '처음부터 다시'], ['bad-request', '처음부터 다시'], ['missing-saved', '처음부터 다시']];
 table.forEach(([c, w]) => ok(M(c === undefined ? undefined : { message: c }).includes(w), '오류 문구 ' + c));
+ok(M({ code: 'functions/internal', message: 'internal' }).includes('(오류 코드: internal)'), '서버 오류는 문의용 코드를 함께 보여 줌');
+ok(!M(undefined).includes('오류 코드') && !M({ message: '뭔가-이상한-코드' }).includes('오류 코드'), '알아볼 수 없는 값은 코드를 붙이지 않음');
+ok(!M({ message: 'no-account' }).includes('오류 코드'), '알려진 오류에는 코드를 붙이지 않음');
 console.log('ms-auth 흐름 시험 ' + n + '건 통과');

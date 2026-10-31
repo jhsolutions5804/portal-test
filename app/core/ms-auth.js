@@ -1,7 +1,7 @@
 // Microsoft 로그인(리디렉션 + PKCE) → 서버 함수 msLogin → Firebase 로그인. 빌드 표기(?v=)는 다른 core 파일과 맞춘다.
-import { auth, functions, httpsCallable, signInWithCustomToken } from './firebase.js?v=20261031a';
-import { MS_TENANT_ID, MS_CLIENT_ID } from './config.js?v=20261031a';
-import { randomString, pkceChallenge, buildAuthorizeUrl, parseCallback } from './ms-pkce.js?v=20261031a';
+import { auth, functions, httpsCallable, signInWithCustomToken } from './firebase.js?v=20261031b';
+import { MS_TENANT_ID, MS_CLIENT_ID } from './config.js?v=20261031b';
+import { randomString, pkceChallenge, buildAuthorizeUrl, parseCallback } from './ms-pkce.js?v=20261031b';
 
 const K = { verifier: 'ms_verifier', state: 'ms_state', nonce: 'ms_nonce', hash: 'ms_hash' };
 // 리디렉션 주소는 Entra 앱에 등록한 값과 글자 그대로 같아야 한다(쿼리·해시 제외, 끝의 / 또는 index.html 포함 여부까지)
@@ -46,5 +46,10 @@ export function msErrorMessage(e) {
   if (/wrong-tenant|wrong-domain/.test(m)) return '회사 Microsoft 계정(@jhsol.kr)으로 로그인해 주세요.';
   if (/ms-access_denied/.test(m)) return 'Microsoft 로그인이 취소되었거나 이 앱에 할당되지 않은 계정입니다.';
   if (/state-mismatch|stale-token|nonce-mismatch|invalid-token|token-exchange-failed/.test(m)) return '로그인 확인에 실패했습니다. 다시 시도해 주세요.';
-  return 'Microsoft 로그인에 실패했습니다.';
+  if (/failed-precondition|server-not-configured/.test(m)) return '로그인 서버 설정에 문제가 있습니다. 관리자에게 알려 주세요.';
+  if (/unavailable|deadline-exceeded|network|failed to fetch/i.test(m)) return '네트워크가 불안정하거나 서버가 응답하지 않습니다. 연결을 확인하고 다시 시도해 주세요.';
+  if (/invalid-argument|bad-request|missing-saved/.test(m)) return '로그인 정보를 확인하지 못했습니다. 처음부터 다시 시도해 주세요.';
+  // 위 어디에도 없으면 서버 쪽 오류(internal 등) — 문의할 때 전달할 짧은 코드를 함께 보여 준다
+  const code = String((e && (e.code || e.msCode)) || '').replace(/^functions\//, '').replace(/[^a-z0-9\-]/gi, '').slice(0, 30);
+  return '서버가 로그인 처리를 하지 못했습니다. 잠시 후 다시 시도해도 같으면 관리자에게 알려 주세요.' + (/[a-z]{3}/i.test(code) ? ' (오류 코드: ' + code + ')' : '');
 }
