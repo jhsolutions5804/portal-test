@@ -1,7 +1,7 @@
 /* 인사 — 근로자 명부(새 화면). 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 데이터: workers/{id}(일반 정보) + worker_private/{id}(주민번호·계좌·주소·서명, 읽을 때 합쳐 쓰고 저장할 때 다시 가른다)
  *         labor_contracts/{id}/contracts · annual_contracts/{id}/contracts(endDate), workers/{id}/history(직급·부서 변경 이력) */
-import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261031b';
+import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261031c';
 export const WP_FIELDS = ['bankAccount', 'address', 'signData', 'taxFamily', 'taxChildren', 'taxRate'];   // worker_private 에 따로 두는 필드 — 주민번호(jumin)는 더 이상 여기 두지 않는다(테섭 2026-10-08): 서버 함수(identityAct)가 암호문으로 보관하고 마스킹 값(juminMasked)만 worker_private 에 남는다
 export const WP_NEVER_WRITE = ['jumin', 'juminMasked', 'juminUpdatedAt', 'birth6'];   // 화면에서 합쳐 만든 값·서버 전용 값은 문서에 쓰지 않는다
 /** 보유 자격증 목록(기술수당 1개당): 저장된 배열, 없으면 옛 hasCertification 표시를 한 개로 */
@@ -200,8 +200,8 @@ export function filterEvents(events, f) {
 /* ───────── 공고 관리 — job_postings(홈페이지 recruit-jobs·recruit 가 open 공고만 읽어 보여 준다) ─────────
  * 경력·고용형태·근무일시는 선택지로 고르고, 저장할 때 홈페이지 표시 문장으로 조합해 career/empType/workTime 에 저장(선택값은 opt 에 보관) — 구포털과 같은 규칙.
  * 학력은 공고에 요건으로 두지 않는다(대표님 결정 2026-10-12 — 학력 차별 소지 검토). 지원서에서는 학력 사항을 그대로 받는다. education 키는 홈페이지 호환을 위해 빈 값으로만 남긴다. */
-export const JOB_HOME_BASE = 'https://jhsolutions5804.github.io';   // 본섭 홈페이지(채용 소개·공고·지원 폼) 본주소
-export const JOB_HOME_BASE_TEST = 'https://jhsolutions5804.github.io/portal-test/recruit-test';   // 테섭: 테섭 DB 에 연결된 사본 페이지(테섭에서 낸 공고·지원서가 본섭 홈페이지로 새지 않게)
+export const JOB_HOME_BASE = 'https://jhsol.kr';   // 본섭 홈페이지(채용 소개·공고·지원 폼) 본주소
+export const JOB_HOME_BASE_TEST = 'https://jhsol.kr/portal-test/recruit-test';   // 테섭: 테섭 DB 에 연결된 사본 페이지(테섭에서 낸 공고·지원서가 본섭 홈페이지로 새지 않게)
 export const jobHomeBase = (isTest) => (isTest ? JOB_HOME_BASE_TEST : JOB_HOME_BASE);
 export const JOB_PAGES = [{ file: 'careers.html', icon: '🌐', name: '채용 소개 (랜딩)', desc: '인재상·EVP 소개 첫 화면' }, { file: 'recruit-jobs.html', icon: '📋', name: '채용 공고', desc: '진행 중인 공고 목록' }, { file: 'recruit.html', icon: '✍️', name: '지원 폼', desc: '지원서 입력 화면' }];
 export const JOB_STATUS = { open: '게시 중', closed: '마감', draft: '임시저장' };
