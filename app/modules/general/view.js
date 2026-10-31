@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261031e';
-import { GTYPES, GKEYS, creditBalance, creditRowsBalance, creditTotals, creditFilterRows, creditSummary, creditCorpTotals, creditFltDefault, CREDIT_NO_CORP, dday, won, leasePayState, dueList, homeSummary, leaseMonthly, driveAllRows, driveFilter, driveTotals, driveByProject, driveByMonth, driveOdoCheck, driveRange, weekStart, DRIVE_STATUS, driveKeywordStats, matchHistory } from './logic.js?v=20261031e';
+import { esc } from '../../core/ui.js?v=20261031f';
+import { GTYPES, GKEYS, creditBalance, creditRowsBalance, creditTotals, creditFilterRows, creditSummary, creditCorpTotals, creditFltDefault, CREDIT_NO_CORP, CREDIT_PAGE_SIZES, creditPageInfo, creditPageList, dday, won, leasePayState, dueList, homeSummary, leaseMonthly, driveAllRows, driveFilter, driveTotals, driveByProject, driveByMonth, driveOdoCheck, driveRange, weekStart, DRIVE_STATUS, driveKeywordStats, matchHistory } from './logic.js?v=20261031f';
 
 const TABS = [['home', '개요'], ['lease', '임대'], ['vehicle', '차량'], ['drive', '운행일지'], ['asset', '자산·장비'], ['credit', '외상 장부'], ['renewal', '갱신 일정']];
 export const tabsHtml = (cur, base) => '<div class="jh-segmented jh-gen__tabs" role="group" aria-label="총무">' + TABS.map(([k, l]) => '<a class="jh-segmented__item" href="' + esc(base || '#/general') + '/' + k + '" aria-pressed="' + (k === cur) + '">' + esc(l) + '</a>').join('') + '</div>';
@@ -48,11 +48,19 @@ export function creditShownIdx(e) {
   if (!f.desc) return idx;
   return idx.slice().sort((a, b) => String(e.rows[b].date || '').localeCompare(String(e.rows[a].date || '')) || b - a);
 }
+/** 거래 내역 페이지 나누기 막대 — 페이지당 줄 수(10·20·50), 보이는 범위, 이전·쪽 번호·다음 */
+export function creditPagerHtml(pg) {
+  const nums = creditPageList(pg.page, pg.pages).map((n) => n === '…' ? '<span class="jh-field__hint">…</span>' : '<button type="button" class="jh-btn" data-variant="' + (n === pg.page ? 'primary' : 'ghost') + '" data-g-page="' + n + '"' + (n === pg.page ? ' aria-current="page"' : '') + '>' + n + '</button>').join('');
+  const nav = (label, to, dis) => '<button type="button" class="jh-btn" data-variant="ghost" data-g-page="' + to + '"' + (dis ? ' disabled' : '') + '>' + label + '</button>';
+  const info = pg.total ? (pg.from + 1) + '–' + pg.to + ' / ' + pg.total + '줄' : '0줄';
+  const sel = '<label class="jh-field__hint">페이지당 <select class="jh-select jh-gen__flt-sel" data-glf="size" aria-label="페이지당 줄 수">' + CREDIT_PAGE_SIZES.map((n) => cOpt(String(n), String(pg.size), n + '줄')).join('') + '</select></label>';
+  return '<div class="jh-gen__pager">' + sel + '<span class="jh-field__hint">' + info + '</span>' + nav('이전', pg.page - 1, pg.page <= 1) + nums + nav('다음', pg.page + 1, pg.page >= pg.pages) + '</div>';
+}
 /** 거래 내역 표 + 보이는 줄 합계 + 월별·청구 법인별 요약 — 거름이 바뀔 때 이 부분만 다시 그린다(입력 칸 포커스를 지키려고) */
 export function creditLogAreaHtml(e) {
   const L = GTYPES.credit.log; const idx = creditShownIdx(e);
   const shown = idx.map((i) => e.rows[i]); const vs = creditSummary(shown); const all = creditSummary(e.rows);
-  const filtered = idx.length !== e.rows.length; const lim = (e.flt && e.flt.limit) || 60; const idxShow = idx.slice(0, lim); const hidden = idx.length - idxShow.length;
+  const filtered = idx.length !== e.rows.length; const pg = creditPageInfo(idx.length, e.flt); const idxShow = idx.slice(pg.from, pg.to);
   const head = L.cols.map((c) => '<th>' + esc(c.l) + '</th>').join('') + '<th></th>';
   const rows = idxShow.map((i) => { const r = e.rows[i]; return '<tr>' + L.cols.map((c) => '<td>' + inputFor(c, r[c.k], 'data-gl="' + i + ':' + c.k + '" aria-label="' + esc(c.l) + '"' + (c.k === 'item' || c.k === 'memo' ? ' title="' + esc(r[c.k]) + '"' : '')) + '</td>').join('') + '<td><button type="button" class="jh-btn" data-variant="ghost" data-g-logdel="' + i + '">삭제</button></td></tr>'; }).join('');
   const msg = e.rows.length && filtered ? '조건에 맞는 줄이 없습니다.' : '이력이 없습니다.';
@@ -60,9 +68,8 @@ export function creditLogAreaHtml(e) {
   const mrows = all.byMonth.slice().reverse().map((m) => '<tr><td>' + esc(m.ym) + '</td><td class="num">' + won0(m.외상) + '</td><td class="num">' + won0(m.반품) + '</td><td class="num">' + won0(m.결제) + '</td><td class="num">' + won0(m.cum) + '</td></tr>').join('');
   const crows = all.byCorp.map((c) => '<tr><td>' + esc(c.corp) + '</td><td class="num">' + won0(c.외상) + '</td><td class="num">' + won0(c.반품) + '</td><td class="num">' + won0(c.결제) + '</td><td class="num">' + won0(c.balance) + '</td></tr>').join('');
   const more = all.total.count ? '<details class="jh-gen__more"><summary>월별·청구 법인별 요약 (전체 줄 기준)</summary><div class="jh-gen__scroll"><table class="jh-gen-table"><thead><tr><th>월</th><th class="num">외상</th><th class="num">반품</th><th class="num">결제</th><th class="num">월말 누적 잔액</th></tr></thead><tbody>' + mrows + '</tbody></table></div><div class="jh-gen__scroll"><table class="jh-gen-table"><thead><tr><th>청구 법인</th><th class="num">외상</th><th class="num">반품</th><th class="num">결제</th><th class="num">잔액</th></tr></thead><tbody>' + crows + '</tbody></table></div></details>' : '';
-  const moreRow = hidden > 0 ? '<tr><td colspan="' + (L.cols.length + 1) + '" class="jh-gen__moretd"><span class="jh-field__hint">나머지 ' + hidden + '줄은 가려져 있습니다(보이는 줄 합계에는 포함).</span> <button type="button" class="jh-btn" data-variant="ghost" data-g-logmore>더 보기 (+60)</button></td></tr>' : '';
   const cg = '<colgroup>' + [12, 7, 13, 25, 10, 8, 8, 12, 5].map((w) => '<col style="width:' + w + '%">').join('') + '</colgroup>';
-  return line + more + '<div class="jh-gen__logbox"><table class="jh-gen-table jh-gen-table--log">' + cg + '<thead><tr>' + head + '</tr></thead><tbody>' + (rows || '<tr><td colspan="' + (L.cols.length + 1) + '" class="jh-field__hint">' + msg + '</td></tr>') + moreRow + '</tbody></table></div>';
+  return line + more + '<div class="jh-gen__logbox"><table class="jh-gen-table jh-gen-table--log">' + cg + '<thead><tr>' + head + '</tr></thead><tbody>' + (rows || '<tr><td colspan="' + (L.cols.length + 1) + '" class="jh-field__hint">' + msg + '</td></tr>') + '</tbody></table></div>' + creditPagerHtml(pg);
 }
 /** 외상 장부 편집 화면의 거래 내역 구역(거름 막대 + 표) */
 export function creditLogHtml(e) {

@@ -1,8 +1,8 @@
-import { db, auth, functions, httpsCallable, collection, getDocs, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261031e';
-import { esc, toast } from '../../core/ui.js?v=20261031e';
-import { confirmDialog } from '../../core/dialog.js?v=20261031e';
-import { GTYPES, GKEYS, kstToday, formToDoc, docToForm, newDefaults, SEED, driveCsv, addDays, parseDriveHistory, assignProject, matchHistory, creditFltDefault, creditCsv } from './logic.js?v=20261031e';
-import { tabsHtml, homeHtml, listHtml, tableHtml, driveHtml, driveSelect, creditLogAreaHtml, creditCorpHtml, creditShownIdx } from './view.js?v=20261031e';
+import { db, auth, functions, httpsCallable, collection, getDocs, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261031f';
+import { esc, toast } from '../../core/ui.js?v=20261031f';
+import { confirmDialog } from '../../core/dialog.js?v=20261031f';
+import { GTYPES, GKEYS, kstToday, formToDoc, docToForm, newDefaults, SEED, driveCsv, addDays, parseDriveHistory, assignProject, matchHistory, creditFltDefault, creditCsv } from './logic.js?v=20261031f';
+import { tabsHtml, homeHtml, listHtml, tableHtml, driveHtml, driveSelect, creditLogAreaHtml, creditCorpHtml, creditShownIdx } from './view.js?v=20261031f';
 
 /** 총무(플랫폼 기본 모듈): 임대·차량·자산·갱신 일정을 한 곳에서. 관리자 전용 — 데이터는 general_* 컬렉션(보안 규칙에서 관리자 전용으로 잠가야 한다) */
 /* 사이드바에는 따로 올리지 않는다(modules/index.js 의 MODULES 에 없음) — 인사총무 구역으로만 열린다. manifest 는 모듈 규약상 남겨 둔다 */
@@ -73,8 +73,8 @@ export async function mount(root, route, ctx, opts) {
  const rowsV = creditShownIdx(st.edit).map((i) => st.edit.rows[i]); const nm = GTYPES.credit.label(st.edit.vals);
  const blob = new Blob([creditCsv(rowsV, '외상 장부 — ' + nm)], { type: 'text/csv;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '외상장부_' + String(nm).replace(/[^\w가-힣]+/g, '_') + '_' + kstToday() + '.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); return;
  }
- const lmore = t.closest('[data-g-logmore]'); if (lmore && st.edit && st.edit.type === 'credit') { st.edit.flt.limit = (st.edit.flt.limit || 60) + 60; const w = body.querySelector('#g-logwrap'); if (w) w.innerHTML = creditLogAreaHtml(st.edit); return; }
- if (t.closest('[data-g-logadd]')) { if (st.edit.type === 'credit') st.edit.flt = Object.assign(creditFltDefault(), { desc: !st.edit.flt || st.edit.flt.desc !== false }); st.edit.rows.push(newLogRow()); paint(); return; }
+ const pgb = t.closest('[data-g-page]'); if (pgb && st.edit && st.edit.type === 'credit') { if (!pgb.disabled) { st.edit.flt.page = Number(pgb.getAttribute('data-g-page')) || 1; const w = body.querySelector('#g-logwrap'); if (w) w.innerHTML = creditLogAreaHtml(st.edit); } return; }
+ if (t.closest('[data-g-logadd]')) { if (st.edit.type === 'credit') st.edit.flt = Object.assign(creditFltDefault(), { desc: !st.edit.flt || st.edit.flt.desc !== false, size: (st.edit.flt && st.edit.flt.size) || 10 }); st.edit.rows.push(newLogRow()); paint(); return; }
     const ld = t.closest('[data-g-logdel]'); if (ld) { st.edit.rows.splice(Number(ld.getAttribute('data-g-logdel')), 1); paint(); return; }
     if (t.closest('[data-g-seed]')) {
       const arr = SEED[tab] || []; if (!arr.length) return; const ok = await confirmDialog({ title: '엑셀 기준 첫 목록 넣기', body: '월간 손익계산서 엑셀·지하111호 입금내역에서 확인된 ' + arr.length + '건을 ' + GTYPES[tab].title + ' 목록에 넣습니다. 넣은 뒤 각 항목을 열어 내용을 확인·수정하세요.', confirmLabel: '넣기' }); if (!ok.ok) return;
@@ -91,7 +91,7 @@ export async function mount(root, route, ctx, opts) {
   root.oninput = (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
     if (t.matches('[data-gf]') && st.edit) { st.edit.vals[t.getAttribute('data-gf')] = t.value; return; }
-    if (t.matches('[data-glf]') && st.edit) { const k = t.getAttribute('data-glf'); st.edit.flt = st.edit.flt || creditFltDefault(); st.edit.flt[k] = t.type === 'checkbox' ? t.checked : t.value; st.edit.flt.limit = creditFltDefault().limit; const w = body.querySelector('#g-logwrap'); if (w) w.innerHTML = creditLogAreaHtml(st.edit); return; }
+    if (t.matches('[data-glf]') && st.edit) { const k = t.getAttribute('data-glf'); st.edit.flt = st.edit.flt || creditFltDefault(); st.edit.flt[k] = k === 'size' ? Number(t.value) : (t.type === 'checkbox' ? t.checked : t.value); st.edit.flt.page = 1; const w = body.querySelector('#g-logwrap'); if (w) w.innerHTML = creditLogAreaHtml(st.edit); return; }
  if (t.matches('[data-gl]') && st.edit) { const [i, k] = t.getAttribute('data-gl').split(':'); if (st.edit.rows[Number(i)]) st.edit.rows[Number(i)][k] = t.value; return; }
     if (t.matches('[data-g-q]')) { st.q = t.value; const tb = body.querySelector('#g-table'); if (tb) tb.innerHTML = tableHtml(st, tab); const cp = body.querySelector('#g-corp'); if (cp) cp.innerHTML = creditCorpHtml(st); }
   };

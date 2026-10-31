@@ -1,6 +1,6 @@
 // 총무 > 외상 장부(자재·공구 구매, 식당 등 월말 정산 거래) 시험 — 유형 정의, 입력 검사, 잔액 계산, 화면, 메뉴·규칙 연결
 import fs from 'node:fs';
-import { GTYPES, GKEYS, formToDoc, newDefaults, creditBalance, creditRowsBalance, creditLast, creditTotals, homeSummary, dueList, creditFilterRows, creditSummary, creditCorpTotals, creditCsv, creditFltDefault, CREDIT_NO_CORP, won } from '../app/modules/general/logic.js';
+import { GTYPES, GKEYS, formToDoc, newDefaults, creditBalance, creditRowsBalance, creditLast, creditTotals, homeSummary, dueList, creditFilterRows, creditSummary, creditCorpTotals, creditCsv, creditFltDefault, CREDIT_NO_CORP, CREDIT_PAGE_SIZES, creditPageInfo, creditPageList, won } from '../app/modules/general/logic.js';
 import { listHtml, tableHtml, editHtml, homeHtml, creditLogAreaHtml, creditLogHtml, creditCorpHtml, creditShownIdx, visibleList } from '../app/modules/general/view.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const T = GTYPES.credit;
@@ -66,10 +66,10 @@ ok(tableHtml(stq, 'credit').includes('내역 ' + nq + '줄 일치') && nq > 0, '
 ok(!tableHtml(st, 'credit').includes('줄 일치'), '검색어가 없으면 일치 줄 표시 없음');
 // 화면: 거래 내역(편집)
 const e = { type: 'credit', id: 'a', isNew: false, fresh: false, vals: { name: '가게A', kind: '구매(자재·공구)' }, rows: R.map((r) => Object.assign({}, r)), flt: creditFltDefault() };
-e.flt = Object.assign(creditFltDefault(), { limit: 1000 }); const area0 = creditLogAreaHtml(e); const idxAttr = (h) => (h.match(/data-gl="(\d+):date"/g) || []).map((x) => Number(x.match(/(\d+):/)[1]));
-ok(idxAttr(area0).length === 230 && area0.includes('전체 230줄') && area0.includes('현재 미결제 잔액 ' + won(creditRowsBalance(R)) + '원') && area0.includes('월별·청구 법인별 요약'), '거름 없음: 230줄 모두 표시, 전체 잔액과 월별·법인별 요약 표시');
+e.flt = Object.assign(creditFltDefault(), { size: 50 }); const area0 = creditLogAreaHtml(e); const idxAttr = (h) => (h.match(/data-gl="(\d+):date"/g) || []).map((x) => Number(x.match(/(\d+):/)[1]));
+ok(idxAttr(area0).length === 50 && area0.includes('1–50 / 230줄') && area0.includes('전체 230줄') && area0.includes('현재 미결제 잔액 ' + won(creditRowsBalance(R)) + '원') && area0.includes('월별·청구 법인별 요약'), '거름 없음: 첫 쪽(50줄)과 전체 잔액·월별·법인별 요약 표시');
 e.flt = { q: '', type: '결제', corp: '', ym: '', desc: false }; const area1 = creditLogAreaHtml(e);
-ok(same(idxAttr(area1), brute({ type: '결제' })) && area1.includes(brute({ type: '결제' }).length + '줄 표시') && area1.includes('전체 230줄'), '구분 "결제" 거름: 표시되는 줄의 번호가 **원래 번호**(저장이 틀어지지 않음), "N줄 표시 (전체 230줄)" 안내');
+ok(same(idxAttr(area1), brute({ type: '결제' }).slice(0, 10)) && area1.includes(brute({ type: '결제' }).length + '줄 표시') && area1.includes('전체 230줄'), '구분 "결제" 거름: 첫 쪽 10줄의 번호가 **원래 번호**(저장이 틀어지지 않음), "N줄 표시 (전체 230줄)" 안내');
 e.flt = { q: '안전화', type: '', corp: '다람이엔지', ym: '', desc: true }; const idx2 = creditShownIdx(e);
 ok(same(idx2.slice().sort((a, b) => a - b), brute({ q: '안전화', corp: '다람이엔지' })) && idx2.every((v, i, a) => i === 0 || R[a[i - 1]].date >= R[v].date), '검색+법인 거름에 "최근 거래 먼저": 같은 줄이 날짜 내림차순으로 나옴');
 e.flt = { q: '없는말', type: '', corp: '', ym: '', desc: false }; const area3 = creditLogAreaHtml(e);
@@ -78,24 +78,36 @@ e.flt = creditFltDefault(); const full = creditLogHtml(e);
 ok(['data-glf="q"', 'data-glf="type"', 'data-glf="corp"', 'data-glf="ym"', 'data-glf="desc"', 'data-g-credit-csv', 'data-g-logadd', 'id="g-logwrap"', '최근 거래 먼저', '청구 법인 미지정'].every((x) => full.includes(x)) && (full.match(/<option value="2026-\d\d"/g) || []).length === 12, '거래 내역 구역: 검색·구분·법인·월·정렬·CSV·줄 추가가 모두 있고 월 선택은 12개월');
 ok(editHtml({ edit: e, data: { credit: docs }, today: '2026-10-31' }).includes('data-glf="q"') && !editHtml({ edit: { type: 'lease', id: '', isNew: true, vals: {}, rows: [] }, data: {}, today: '2026-10-31' }).includes('data-glf'), '편집 화면: 외상 장부에만 거름 막대가 붙고 임대 등은 그대로');
 
-  // ── D-5 보완: 최근순 기본·60줄씩("더 보기")·가로 스크롤 없는 표·저장 줄 고정·줄 추가 위치
+  // ── D-5 보완: 페이지 나누기(기본 10줄, 10·20·50 선택)·최근순 기본·가로 스크롤 없는 표·저장 줄 고정·줄 추가 위치
   const d0 = creditFltDefault();
-  ok(d0.desc === true && d0.limit === 60 && d0.q === '' && d0.type === '' && d0.corp === '' && d0.ym === '', '거름 기본값: 최근 거래 먼저·처음엔 60줄만');
-  e.flt = creditFltDefault(); const a60 = creditLogAreaHtml(e);
-  ok(idxAttr(a60).length === 60 && a60.includes('나머지 170줄은 가려져 있습니다') && a60.includes('data-g-logmore') && a60.includes('더 보기 (+60)'), '230줄이면 처음에 60줄만 그리고 "나머지 170줄 · 더 보기" 안내');
-  ok(R[idxAttr(a60)[0]].date >= R[idxAttr(a60)[59]].date && R[idxAttr(a60)[0]].date === R.map((r) => r.date).sort().reverse()[0], '처음 60줄은 가장 최근 거래부터');
-  e.flt = Object.assign(creditFltDefault(), { limit: 120 }); const a120 = creditLogAreaHtml(e);
-  ok(idxAttr(a120).length === 120 && a120.includes('나머지 110줄'), '더 보기를 누르면(limit 120) 120줄, 나머지 110줄');
-  e.flt = Object.assign(creditFltDefault(), { limit: 240 }); ok(!creditLogAreaHtml(e).includes('data-g-logmore'), '전부 보이면 "더 보기" 단추가 없음');
-  e.flt = Object.assign(creditFltDefault(), { type: '결제' }); const aPay = creditLogAreaHtml(e); const nPay = brute({ type: '결제' }).length;
-  ok(idxAttr(aPay).length === Math.min(60, nPay) && aPay.includes(nPay + '줄 표시') && aPay.includes('외상 ' + won(creditSummary(R.filter((r, i) => brute({ type: '결제' }).includes(i))).total.외상)), '줄 제한은 표시에만 적용 — "보이는 줄 합계"는 조건에 맞는 모든 줄 기준');
-  e.flt = Object.assign(creditFltDefault(), { limit: 1000 }); ok(creditShownIdx(e).length === 230, 'CSV·합계에 쓰는 거름 결과(creditShownIdx)는 줄 제한과 무관(230줄 전부)');
-  const lh2 = creditLogHtml(e); const full2 = editHtml({ edit: e, data: { credit: docs }, today: '2026-10-31' });
-  ok((lh2.match(/data-g-logadd/g) || []).length === 1 && lh2.indexOf('data-g-logadd') < lh2.indexOf('id="g-logwrap"'), '"+ 줄 추가"는 필터 막대 안에 한 번만(표 아래쪽 단추 제거)');
+  ok(d0.desc === true && d0.size === 10 && d0.page === 1 && d0.q === '' && d0.type === '' && d0.corp === '' && d0.ym === '' && same(CREDIT_PAGE_SIZES, [10, 20, 50]), '거름 기본값: 최근 거래 먼저·페이지당 10줄·1쪽, 선택 가능한 줄 수는 10·20·50');
+  const pi = (t, f) => creditPageInfo(t, f); const eq = (o, x) => Object.keys(x).every((k) => o[k] === x[k]);
+  ok(eq(pi(230, { size: 10, page: 1 }), { pages: 23, from: 0, to: 10, page: 1 }) && eq(pi(230, { size: 10, page: 23 }), { pages: 23, from: 220, to: 230, page: 23 }) && eq(pi(230, { size: 50, page: 5 }), { pages: 5, from: 200, to: 230 }), '페이지 계산: 230줄 / 10줄 = 23쪽, 마지막 쪽은 220~230, 50줄이면 5쪽(마지막 30줄)');
+  ok(pi(230, { size: 10, page: 99 }).page === 23 && pi(230, { size: 10, page: 0 }).page === 1 && pi(230, { size: 10, page: -4 }).page === 1 && pi(230, { size: 10, page: 'x' }).page === 1 && pi(230, { size: 7, page: 2 }).size === 10 && pi(230, { size: '20', page: 2 }).size === 20, '범위를 벗어난 쪽 번호는 가까운 쪽으로, 허용하지 않는 줄 수(7)는 10줄로, 글자 20은 숫자 20으로');
+  ok(eq(pi(0, { size: 10, page: 1 }), { pages: 1, from: 0, to: 0, page: 1 }) && eq(pi(10, { size: 10, page: 1 }), { pages: 1, to: 10 }) && pi(11, { size: 10, page: 1 }).pages === 2, '줄이 없으면 1쪽·0줄, 딱 10줄이면 1쪽, 11줄이면 2쪽');
+  ok(same(creditPageList(1, 23), [1, 2, 3, '…', 23]) && same(creditPageList(12, 23), [1, '…', 10, 11, 12, 13, 14, '…', 23]) && same(creditPageList(23, 23), [1, '…', 21, 22, 23]) && same(creditPageList(2, 3), [1, 2, 3]) && same(creditPageList(1, 1), [1]), '쪽 번호 단추: 첫·끝 쪽과 현재 앞뒤 2쪽만, 사이는 …');
+  e.flt = creditFltDefault(); const p1 = creditLogAreaHtml(e); const all230 = creditShownIdx(e);
+  ok(idxAttr(p1).length === 10 && same(idxAttr(p1), all230.slice(0, 10)) && p1.includes('1–10 / 230줄') && p1.includes('data-g-page="2"') && /<button[^>]*data-g-page="0"[^>]*disabled/.test(p1) && p1.includes('aria-current="page"'), '기본 화면: 최근 거래 10줄, "1–10 / 230줄", 이전 단추는 꺼짐, 현재 쪽 표시');
+  e.flt = Object.assign(creditFltDefault(), { page: 3 }); const p3 = creditLogAreaHtml(e);
+  ok(same(idxAttr(p3), all230.slice(20, 30)) && p3.includes('21–30 / 230줄') && !/<button[^>]*data-g-page="2"[^>]*disabled/.test(p3), '3쪽: 21~30번째 줄, 줄 번호는 원래 번호(저장이 틀어지지 않음)');
+  e.flt = Object.assign(creditFltDefault(), { page: 23 }); const p23 = creditLogAreaHtml(e);
+  ok(idxAttr(p23).length === 10 && p23.includes('221–230 / 230줄') && /<button[^>]*data-g-page="24"[^>]*disabled/.test(p23), '마지막 쪽: 다음 단추는 꺼짐');
+  e.flt = Object.assign(creditFltDefault(), { size: 20, page: 12 }); const s20 = creditLogAreaHtml(e);
+  ok(idxAttr(s20).length === 10 && s20.includes('221–230 / 230줄') && (s20.match(/<option value="(10|20|50)"( selected)?>/g) || []).length === 3 && /<option value="20" selected>/.test(s20), '페이지당 20줄: 12쪽이 마지막(221~230), 선택 칸에는 10·20·50이 있고 20이 선택됨');
+  e.flt = Object.assign(creditFltDefault(), { size: 50, page: 5 }); const s50 = creditLogAreaHtml(e);
+  ok(idxAttr(s50).length === 30 && s50.includes('201–230 / 230줄'), '페이지당 50줄: 5쪽은 마지막 30줄');
+  e.flt = Object.assign(creditFltDefault(), { page: 999 }); ok(creditLogAreaHtml(e).includes('221–230 / 230줄'), '쪽 번호가 너무 크면 마지막 쪽으로 맞춤(줄을 지워서 쪽이 줄어든 경우 등)');
+  e.flt = Object.assign(creditFltDefault(), { type: '결제', page: 3 }); const nPay2 = brute({ type: '결제' }).length; const pf = creditLogAreaHtml(e);
+  ok(idxAttr(pf).length === nPay2 - 20 && pf.includes('21–' + nPay2 + ' / ' + nPay2 + '줄') && pf.includes(nPay2 + '줄 표시'), '필터와 함께: 결제 ' + nPay2 + '줄이면 3쪽은 마지막 ' + (nPay2 - 20) + '줄, 범위는 필터 결과 기준');
+  const sumTxt = (h) => h.match(/현재 미결제 잔액 [^<]*/)[0]; e.flt = Object.assign(creditFltDefault(), { page: 1 }); const q1 = creditLogAreaHtml(e); e.flt = Object.assign(creditFltDefault(), { page: 7, size: 20 });
+  ok(sumTxt(q1) === sumTxt(creditLogAreaHtml(e)) && creditShownIdx(e).length === 230, '쪽·줄 수를 바꿔도 잔액·합계와 CSV·합계에 쓰는 거름 결과(230줄)는 그대로');
+  e.flt = Object.assign(creditFltDefault(), { q: '없는말' }); const pn = creditLogAreaHtml(e);
+  ok(pn.includes('조건에 맞는 줄이 없습니다.') && pn.includes('>0줄<') && !pn.includes('data-g-logmore'), '조건에 맞는 줄이 없으면 안내 문구와 "0줄"');
+  e.flt = creditFltDefault(); const lh2 = creditLogHtml(e); const full2 = editHtml({ edit: e, data: { credit: docs }, today: '2026-10-31' });
+  ok((lh2.match(/data-g-logadd/g) || []).length === 1 && lh2.indexOf('data-g-logadd') < lh2.indexOf('id="g-logwrap"') && !lh2.includes('data-g-logmore') && !lh2.includes('더 보기'), '"+ 줄 추가"는 필터 막대 안에 한 번만, 옛 "더 보기" 단추는 없음');
   ok(full2.includes('jh-gen__bar--sticky') && !editHtml({ edit: { type: 'lease', id: '', isNew: true, vals: {}, rows: [] }, data: {}, today: '2026-10-31' }).includes('jh-gen__bar--sticky'), '저장·취소 단추 줄은 외상 장부에서만 고정(sticky)');
-  ok(area0.includes('jh-gen__logbox') && area0.includes('jh-gen-table--log') && area0.includes('<colgroup>') && (area0.match(/<col style="width:\d+%">/g) || []).length === 9, '거래 내역 표: 고정 높이 상자·고정 폭 표·칸 9개 폭 지정');
-  ok((area0.match(/<col style="width:(\d+)%">/g) || []).map((x) => Number(x.match(/(\d+)%/)[1])).reduce((n, v) => n + v, 0) === 100, '칸 폭 합계 100%(가로 스크롤 없이 상자 폭에 맞춤)');
-  ok(/data-gl="\d+:item"[^>]*title="[^"]/.test(area0), '품목·메모 입력 칸에 전체 글자를 보여 주는 title(말줄임 대비)');
+  ok(p1.includes('jh-gen__logbox') && p1.includes('jh-gen-table--log') && p1.includes('<colgroup>') && (p1.match(/<col style="width:\d+%">/g) || []).length === 9 && (p1.match(/<col style="width:(\d+)%">/g) || []).map((x) => Number(x.match(/(\d+)%/)[1])).reduce((n, v) => n + v, 0) === 100, '거래 내역 표: 고정 높이 상자·고정 폭 표·칸 9개 폭 합계 100%(가로 스크롤 없음)');
+  ok(/data-gl="\d+:item"[^>]*title="[^"]/.test(p1), '품목·메모 입력 칸에 전체 글자를 보여 주는 title(말줄임 대비)');
 // CSV
 const csv = creditCsv(R.slice(0, 3).concat([{ date: '2026-02-02', type: '외상', corp: '다람이엔지', item: '=HYPERLINK("x")', amount: '1,000', pay: '', pjt: '', memo: '' }]), '외상 장부 — 시험');
 ok(csv.startsWith('\uFEFF') && csv.includes('"일자","구분","청구 법인"') && !/(^|,)"=HYPERLINK/m.test(csv) && csv.includes("순액(외상 − 결제 − 반품)"), 'CSV: 엑셀용 BOM·머리글·합계 줄, 수식으로 시작하는 내용은 글자로 바뀜(수식 주입 방어)');
