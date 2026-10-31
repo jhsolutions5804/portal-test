@@ -1,15 +1,16 @@
-import { db, auth, functions, httpsCallable, sendPasswordResetEmail, collection, getDocs, getDoc, query, where, orderBy, limit, doc, updateDoc } from '../../core/firebase.js?v=20261031g';
-import { esc, toast } from '../../core/ui.js?v=20261031g';
-import { fmtPhone } from '../../core/profile-logic.js?v=20261031g';
-import { deptOptions } from '../../shared/org.js?v=20261031g';
-import { PERM_KEYS, validateStaffForm, staffUpdate, linkedWorkerOf, findWorkerMatch, workerSync, validateNewAccount, validateLoginId, validateExtEmail, ID_RE, newAccountPayload, callMessage, resetMailMessage, teamLeadChanges } from './staff-logic.js?v=20261031g';
-import { staffListHtml, staffDialogHtml, newAccountDialogHtml, secretDialogHtml } from './staff-view.js?v=20261031g';
-import { accessLogHtml } from './accesslog-view.js?v=20261031g';
-import { toEntry, filterEntries, summarize, monthRange, addMonth, kstYm, kstText, tsMs } from './accesslog-logic.js?v=20261031g';
-import { companyPerm } from '../../shared/company-perm.js?v=20261031g';
-import { markChecked, identityErrorText } from '../../shared/identity.js?v=20261031g';
-import { groupOrg, sortPolicies, buildOrgTree, isGuestUser, isOrgHidden } from './logic.js?v=20261031g';
-import { orgHtml, rulesHtml, orgChartHtml, orgViewHtml, personCardHtml } from './view.js?v=20261031g';
+import { db, auth, functions, httpsCallable, sendPasswordResetEmail, collection, getDocs, getDoc, query, where, orderBy, limit, doc, updateDoc } from '../../core/firebase.js?v=20261031h';
+import { pagerAction, pagerApply } from '../../shared/pager.js?v=20261031h';
+import { esc, toast } from '../../core/ui.js?v=20261031h';
+import { fmtPhone } from '../../core/profile-logic.js?v=20261031h';
+import { deptOptions } from '../../shared/org.js?v=20261031h';
+import { PERM_KEYS, validateStaffForm, staffUpdate, linkedWorkerOf, findWorkerMatch, workerSync, validateNewAccount, validateLoginId, validateExtEmail, ID_RE, newAccountPayload, callMessage, resetMailMessage, teamLeadChanges } from './staff-logic.js?v=20261031h';
+import { staffListHtml, staffDialogHtml, newAccountDialogHtml, secretDialogHtml } from './staff-view.js?v=20261031h';
+import { accessLogHtml } from './accesslog-view.js?v=20261031h';
+import { toEntry, filterEntries, summarize, monthRange, addMonth, kstYm, kstText, tsMs } from './accesslog-logic.js?v=20261031h';
+import { companyPerm } from '../../shared/company-perm.js?v=20261031h';
+import { markChecked, identityErrorText } from '../../shared/identity.js?v=20261031h';
+import { groupOrg, sortPolicies, buildOrgTree, isGuestUser, isOrgHidden } from './logic.js?v=20261031h';
+import { orgHtml, rulesHtml, orgChartHtml, orgViewHtml, personCardHtml } from './view.js?v=20261031h';
 
 /** 회사 영역(플랫폼 기본 모듈): 조직도·규정을 읽기 전용으로. GUEST 계정에는 보이지 않는다(연락처·내부 규정) */
 /** 실제 메뉴 등록은 공용 틀(modules/legacy/list.js 의 company 정의 — 인사총무와 같은 사이드바·내용 영역). 여기의 값은 규약(manifest+mount)용이며 권한은 같은 함수를 쓴다 */
@@ -59,13 +60,14 @@ export async function mount(root, route, ctx) {
       const paint = () => { body.innerHTML = accessLogHtml(st); };
       paint(); await loadMonth();
       root.onclick = async (ev) => {
+        { const pa = pagerAction(ev); if (pa) { if (pagerApply(st.pg || (st.pg = {}), pa)) paint(); return; } }
         const mb = ev.target.closest('[data-alog-month]'); if (mb) { const nx = addMonth(st.ym, Number(mb.getAttribute('data-alog-month'))); if (nx > st.maxYm) return; st.ym = nx; try { await loadMonth(); } catch (e) { console.error('열람 기록', e); toast('불러오지 못했습니다.'); } return; }
         const ck = ev.target.closest('[data-alog-check]'); if (ck) {
           if (!window.confirm(st.ym + ' 열람 기록을 확인했고 점검을 완료했다고 표시할까요?')) return; ck.disabled = true; const note = (root.querySelector('#alog-note') || {}).value || '';
           try { await markChecked(st.ym, note); toast('점검 완료로 표시했습니다.'); await loadMonth(); } catch (e) { console.error('월 점검', e); toast(identityErrorText(e)); ck.disabled = false; }
         }
       };
-      root.onchange = (ev) => { const t = ev.target; if (t.hasAttribute && t.hasAttribute('data-alog-actor')) { st.filter.actor = t.value; recalc(); } else if (t.hasAttribute && t.hasAttribute('data-alog-action')) { st.filter.action = t.value; recalc(); } };
+      root.onchange = (ev) => { { const pa = pagerAction(ev); if (pa) { if (pagerApply(st.pg || (st.pg = {}), pa)) paint(); return; } } const t = ev.target; if (t.hasAttribute && t.hasAttribute('data-alog-actor')) { st.filter.actor = t.value; recalc(); } else if (t.hasAttribute && t.hasAttribute('data-alog-action')) { st.filter.action = t.value; recalc(); } };
       root.oninput = (ev) => { const t = ev.target; if (t.hasAttribute && t.hasAttribute('data-alog-q')) { st.filter.q = t.value.trim(); st.list = filterEntries(st.all, st.filter); const lst = root.querySelector('.jh-alog__list'); const tmp = document.createElement('div'); tmp.innerHTML = accessLogHtml(st); const nl = tmp.querySelector('.jh-alog__list'); if (lst && nl) lst.innerHTML = nl.innerHTML; } };   // 검색어를 칠 때는 입력칸을 다시 그리지 않고 목록만 바꾼다
     } else if (tab === 'staff') {
       const users = []; const workers = [];

@@ -1,35 +1,36 @@
-import { esc } from '../../core/ui.js?v=20261031g';
-import { rtWon, retireRecordsSorted } from './retire.js?v=20261031g';
-import { otSummary, otPerson, otAmount } from './overtime.js?v=20261031g';
-import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261031g';
-import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261031g';
-import { weeklyCardHtml } from './weekly-view.js?v=20261031g';
-import { purgeCardHtml, purgeChipHtml } from './recruit-purge-view.js?v=20261031g';
-import { historyCardHtml } from './history-view.js?v=20261031g';
-import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261031g';
-import { shortTypeCardHtml, shortFormCardsHtml } from './short-view.js?v=20261031g';
-import { c7TypeCardHtml, c7PeriodCardHtml, c7PlaceCardHtml, c7HoursHtml, c7ItemsCardHtml, c7SumHtml } from './contract-v7-view.js?v=20261031g';
-import { capsInit, capsPanelHtml } from './caps-view.js?v=20261031g';
-import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261031g';
-import { sendLogText } from './sign.js?v=20261031g';
-import { maskedView } from './identity.js?v=20261031g';
-import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261031g';
-import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261031g';
-import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261031g';
-import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261031g';
-import { _hzDot } from './leave-promo-docs.js?v=20261031g';
-import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261031g';
-import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261031g';
-import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261031g';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261031g';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix, taxInfoOf, taxBasisNote } from './logic.js?v=20261031g';
+import { esc } from '../../core/ui.js?v=20261031h';
+import { pageTableHtml } from '../../shared/pager.js?v=20261031h';
+import { rtWon, retireRecordsSorted } from './retire.js?v=20261031h';
+import { otSummary, otPerson, otAmount } from './overtime.js?v=20261031h';
+import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261031h';
+import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261031h';
+import { weeklyCardHtml } from './weekly-view.js?v=20261031h';
+import { purgeCardHtml, purgeChipHtml } from './recruit-purge-view.js?v=20261031h';
+import { historyCardHtml } from './history-view.js?v=20261031h';
+import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261031h';
+import { shortTypeCardHtml, shortFormCardsHtml } from './short-view.js?v=20261031h';
+import { c7TypeCardHtml, c7PeriodCardHtml, c7PlaceCardHtml, c7HoursHtml, c7ItemsCardHtml, c7SumHtml } from './contract-v7-view.js?v=20261031h';
+import { capsInit, capsPanelHtml } from './caps-view.js?v=20261031h';
+import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261031h';
+import { sendLogText } from './sign.js?v=20261031h';
+import { maskedView } from './identity.js?v=20261031h';
+import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261031h';
+import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261031h';
+import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261031h';
+import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261031h';
+import { _hzDot } from './leave-promo-docs.js?v=20261031h';
+import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261031h';
+import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261031h';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261031h';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261031h';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix, taxInfoOf, taxBasisNote } from './logic.js?v=20261031h';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const fmtD = (d) => (d ? String(d).slice(2).replace(/-/g, '.') : '');
 const empBadge = (t) => (t === 'field' ? chip('현장', 'warn') : t === 'office' ? chip('사무', 'accent') : chip('미지정', 'muted'));
 
-export function tableHtml(st) {
+function tableHtml_list(st) {
   const list = filterWorkers(st.workers, { view: st.view, q: st.q });
   if (!list.length) return '<div class="jh-empty">' + (st.view === 'resigned' ? '퇴사 처리된 근로자가 없습니다.' : '조건에 맞는 근로자가 없습니다.') + '</div>';
   const rows = list.map((w) => {
@@ -81,11 +82,11 @@ export function registerHtml(st) {
 
 /** 연차 현황 */
 const n1 = (x) => (x == null ? '-' : String(Math.round(x * 10) / 10));
-export function leaveTableHtml(st) {
+function leaveTableHtml_list(st) {
   const rows = st.leaveRows; if (!rows.length) return '<div class="jh-empty">등록된 근로자가 없습니다.</div>';
   return '<div class="jh-hr__scroll"><table class="jh-hr-table jh-hr-table--click"><thead><tr><th>이름</th><th>소속</th><th>직급</th><th>최초 입사일</th><th>산정 기준(회계연도)</th><th class="num">부여</th><th class="num">사용</th><th class="num">잔여</th></tr></thead><tbody>' + rows.map((r) => '<tr class="jh-hr__row" data-l-open="' + esc(r.id) + '"><td><strong>' + esc(r.name || '-') + '</strong>' + (r.resigned ? ' ' + chip('퇴직', 'danger') : '') + '</td><td>' + esc(r.dept || '-') + '</td><td>' + esc(r.rank || '-') + '</td><td>' + (r.hireDate ? esc(r.hireDate) : '<span style="color:var(--c-danger)">미등록</span>') + '</td><td class="jh-hr__cell">' + esc(r.detail || '-') + '</td><td class="num">' + n1(r.granted) + '</td><td class="num">' + n1(r.used) + (r.planned ? ' <span class="jh-field__hint">(예정 ' + n1(r.planned) + ')</span>' : '') + '</td><td class="num"><strong>' + n1(r.remain) + '</strong></td></tr>').join('') + '</tbody></table></div>';
 }
-export function leaveDetailHtml(st) {
+function leaveDetailHtml_list(st) {
   const r = st.leaveRows.find((x) => x.id === st.leaveSel); if (!r) return '';
   const entries = leaveEntries(r.docs);
   const kpi = '<div class="jh-kpi-grid"><div class="jh-kpi"><span class="jh-kpi__label">부여</span><span class="jh-kpi__value">' + n1(r.granted) + '일</span></div><div class="jh-kpi"><span class="jh-kpi__label">사용</span><span class="jh-kpi__value">' + n1(r.used) + '일</span><span class="jh-kpi__hint">' + (r.planned ? '예정 ' + n1(r.planned) + '일 포함' : '') + '</span></div><div class="jh-kpi"><span class="jh-kpi__label">잔여</span><span class="jh-kpi__value">' + n1(r.remain) + '일</span></div></div>';
@@ -101,7 +102,7 @@ export function leaveHtml(st) {
 
 /** 인사 변동 */
 const KIND_LABEL = { rank: '직급', dept: '소속', both: '직급·소속', salary: '연봉' };
-export function changeHtml(st) {
+function changeHtml_list(st) {
   const w = st.chWorkers.find((x) => x.id === st.chSel); const f = st.chForm;
   const ranks = RANK_ORDER.slice(); st.chWorkers.forEach((x) => { if (x.rank && !ranks.includes(x.rank)) ranks.push(x.rank); }); if (f.rank && !ranks.includes(f.rank)) ranks.push(f.rank);
   const depts = deptOptions(st.chWorkers.map((x) => ({ dept: x.dept }))); st.chWorkers.forEach((x) => { if (x.dept && !depts.includes(x.dept)) depts.push(x.dept); }); if (f.dept && !depts.includes(f.dept)) depts.push(f.dept);
@@ -153,7 +154,7 @@ export function jobFormHtml(st) {
 }
 
 /** 근로자 면담 */
-export function interviewsHtml(st) {
+function interviewsHtml_list(st) {
   if (st.ivSel) return interviewDetailHtml(st);
   const list = st.ivWorkers.map((w) => { const lt = st.ivLatest[w.id]; return '<tr class="jh-hr__row" data-i-open="' + esc(w.id) + '"><td>' + esc(w.empNo || '-') + '</td><td><strong>' + esc(w.name || '-') + '</strong></td><td>' + esc(w.dept || '-') + '</td><td>' + esc(w.rank || '-') + '</td><td>' + (lt ? esc(lt.date) + (lt.followUp ? ' ' + chip('후속조치 필요', 'warn') : '') : '<span class="jh-field__hint">면담 기록 없음</span>') + '</td></tr>'; }).join('');
   return card('근로자 면담', '<div class="jh-hr__pad"><div class="jh-field__hint">근로자 명부에 등록된 재직자와의 면담 내용을 기록·관리합니다. 이름을 누르면 면담 이력 조회·신규 기록을 합니다.</div></div>' + (list ? '<div class="jh-hr__scroll"><table class="jh-hr-table jh-hr-table--click"><thead><tr><th>사원번호</th><th>이름</th><th>소속</th><th>직급</th><th>최근 면담</th></tr></thead><tbody>' + list + '</tbody></table></div>' : '<div class="jh-empty">등록된 근로자가 없습니다.</div>'));
@@ -167,7 +168,7 @@ export function interviewDetailHtml(st) {
 
 /** 휴직/퇴직 원서 */
 const rtone = (s) => (['approved', 'posted', 'done'].includes(s) ? 'accent' : s === 'rejected' ? 'danger' : ['pending', 'reviewing'].includes(s) ? 'warn' : 'muted');
-export function resignReqHtml(st) {
+function resignReqHtml_list(st) {
   const c = rrqCounts(st.rrDocs, st.rrKind, st.rrStat); const rows = rrqFilter(st.rrDocs, st.rrKind, st.rrStat);
   const btn = (grp, val, label, n, cur) => '<button type="button" class="jh-segmented__item" data-r-' + grp + '="' + esc(val) + '" aria-pressed="' + (cur === val) + '">' + esc(label) + ' (' + n + ')</button>';
   const filters = '<div class="jh-hr__pad"><div class="jh-hr__bar"><div class="jh-segmented" role="group" aria-label="구분">' + btn('kind', 'all', '전체 구분', c.byKind.all, st.rrKind) + btn('kind', '퇴직', '퇴직', c.byKind['퇴직'], st.rrKind) + btn('kind', '휴직', '휴직', c.byKind['휴직'], st.rrKind) + '</div><div class="jh-segmented" role="group" aria-label="상태">' + btn('stat', 'active', '진행·완료', c.byStat.active, st.rrStat) + btn('stat', 'rejected', '반려', c.byStat.rejected, st.rrStat) + btn('stat', 'draft', '임시저장', c.byStat.draft, st.rrStat) + btn('stat', 'all', '전체', c.byStat.all, st.rrStat) + '</div></div><div class="jh-field__hint">전자결재 > 휴직/퇴직에서 작성·상신된 원서를 인사 담당자가 확인합니다. 결재 처리는 전자결재에서 진행하세요.</div></div>';
@@ -211,7 +212,7 @@ export function hcFormHtml(st) {
 
 /** 인사평가 */
 const gtone = (g) => (g === 'S' ? 'accent' : g === 'C' ? 'danger' : g === 'A' ? 'accent' : 'muted');
-export function evalsHtml(st) {
+function evalsHtml_list(st) {
   if (st.evSel) return evalDetailHtml(st);
   const rows = st.evWorkers.map((w) => { const lt = st.evLatest[w.id]; const s = stepNow(w); const seed = !(w.step != null && w.stepYear != null);
     return '<tr><td>' + esc(w.empNo || '-') + '</td><td class="jh-hr__row" data-e-open="' + esc(w.id) + '"><strong style="cursor:pointer;text-decoration:underline">' + esc(w.name || '-') + '</strong></td><td>' + esc(w.dept || '-') + '</td><td>' + esc(w.rank || '-') + '</td><td><input class="jh-input" data-e-step="' + esc(w.id) + '" value="' + esc(s == null ? '' : s) + '" inputmode="numeric" style="max-width:5rem" title="' + (seed ? '입사연도 기준 자동 계산값 — 바꾸면 그 값부터 새로 누적' : '직접 입력한 호봉 기준 — 매해 자동으로 1씩 올라감') + '"></td><td>' + (lt ? chip(lt.year + ' · ' + gradeLabel(lt.grade), gtone(lt.grade)) + (lt.status !== 'confirmed' ? ' ' + chip('초안', 'warn') : '') : '<span class="jh-field__hint">평가 없음</span>') + '</td></tr>'; }).join('');
@@ -231,7 +232,7 @@ export function evalDetailHtml(st) {
 
 /** 채용 지원자 */
 const atone = (s) => (s === 'pass' ? 'accent' : s === 'fail' ? 'danger' : s === 'review' ? 'warn' : 'muted');
-export function applicantsHtml(st) {
+function applicantsHtml_list(st) {
   if (st.apSel) return applicantDetailHtml(st);
   const c = appCounts(st.apList); const list = appFilter(st.apList, st.apFilter);
   const seg = '<div class="jh-segmented" role="group" aria-label="상태">' + ['all', 'new', 'review', 'pass', 'fail'].map((k) => '<button type="button" class="jh-segmented__item" data-a-filter="' + k + '" aria-pressed="' + (st.apFilter === k) + '">' + (k === 'all' ? '전체' : APP_STATUS[k]) + ' (' + c[k] + ')</button>').join('') + '</div>';
@@ -250,7 +251,7 @@ export function applicantDetailHtml(st) {
 }
 
 /** 급여테이블 */
-export function salaryHtml(st) {
+function salaryHtml_list(st) {
   const d = st.sal; const won = (n) => Math.round(Number(n) || 0).toLocaleString('ko-KR');
   const num = (k, label, step) => '<div class="jh-field"><label class="jh-field__label">' + esc(label) + '</label><input class="jh-input" type="number"' + (step ? ' step="' + step + '"' : '') + ' data-s-field="' + k + '" value="' + esc(d[k] == null ? '' : d[k]) + '"></div>';
   const settings = '<div class="jh-hr__pad"><div class="jh-hr__grid">' + num('minWage', '법정 최저시급(원)') + num('standardRate', '호봉별 표준 인상률(%)', '0.1') + num('perfRateMin', '고과 반영 최소(%)', '0.1') + num('perfRateMax', '고과 반영 최대(%)', '0.1') + num('techAllowancePerCert', '기술수당(자격증 1개당, 원)') + '</div>'
@@ -301,7 +302,7 @@ export function offerFormHtml(st) {
   const c5 = card(showCur ? '⑤ 기타 조건' : '④ 기타 조건', '<div class="jh-hr__pad">' + two(txt('payDay', '급여 지급 시기'), txt('bonus', '상여 · 성과급 (없으면 비움)')) + two(dt('offerDate', '제안일'), dt('replyDue', '회신 기한')) + '<div class="jh-field"><label class="jh-field__label">특약 사항</label><textarea class="jh-textarea" rows="3" data-o-f="special">' + esc(f.special) + '</textarea></div><label class="jh-field__hint"><input type="checkbox" data-o-ck="sepNote"' + (f.sepNote ? ' checked' : '') + '> 연봉 외 별도지급 안내 포함 (기술수당 · 여비교통비)</label></div>');
   return card('📨 연봉 제안서', '<div class="jh-hr__pad">' + top + intro + '</div>') + '<div class="jh-hr__offer"><div class="jh-hr__col">' + c1 + c2 + '</div><div class="jh-hr__col">' + c3 + c4 + c5 + '</div><div class="jh-hr__col" id="o-result">' + offerResultHtml(st) + '</div></div>';
 }
-export function offerHistHtml(st) {
+function offerHistHtml_list(st) {
   const tab = st.histTab; const offers = st.allOffers;
   const tabs = '<div class="jh-segmented" role="group" aria-label="구분"><button type="button" class="jh-segmented__item" data-o-tab="active" aria-pressed="' + (tab === 'active') + '">🟢 재직자</button><button type="button" class="jh-segmented__item" data-o-tab="pending" aria-pressed="' + (tab === 'pending') + '">🆕 신규입사 예정자</button></div>';
   let body;
@@ -331,7 +332,7 @@ function retireLeaveHtml(lp) {
     + (lp.hasPerDay ? '<div class="jh-hr__line"><span><span class="jh-hr__label">예상 연차수당</span><div class="jh-field__hint">대상 ' + lp.days + '일 × 통상일급 ' + rtWon(lp.perDay) + '원</div></span><span class="jh-hr__val"><strong>' + rtWon(lp.amount) + ' 원</strong></span></div>' : '<div class="jh-field__hint">연봉계약서가 없어 통상일급을 알 수 없습니다(일수만 표시).</div>')
     + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="secondary" data-t-leavefill' + (lp.amount ? '' : ' disabled') + '>연차수당 합계에 넣기</button></div><div class="jh-field__hint">현재 연차 현황·촉진 기록 기준의 참고 값입니다. 퇴직 시 미사용 연차수당의 정산 방식과 평균임금 3/12 가산 대상 여부는 노무사 확인이 필요합니다.</div></div>');
 }
-export function retireHtml(st) {
+function retireHtml_list(st) {
   const opts = '<option value="">근로자 선택</option>' + st.rtWorkers.map((w) => '<option value="' + esc(w.id) + '"' + (w.id === st.rtWid ? ' selected' : '') + '>' + esc((w.empNo ? '[' + w.empNo + '] ' : '') + (w.name || '-') + (w.dept ? ' · ' + w.dept : '') + (w.rank ? ' ' + w.rank : '') + (w.status === 'resigned' ? ' (퇴직)' : '')) + '</option>').join('');
   const cond = card('산정 조건', '<div class="jh-hr__pad"><div class="jh-field"><label class="jh-field__label">근로자</label><select class="jh-select" data-t-worker>' + opts + '</select></div><div class="jh-field"><label class="jh-field__label">퇴직일(마지막 근무일)</label><input class="jh-input" type="date" data-t-date value="' + esc(st.rtDate) + '"><div class="jh-field__hint">법적 퇴직일(근로관계 종료일)은 마지막 근무일의 다음 날로 계산합니다.</div></div><div class="jh-field"><label class="jh-field__label">연간 상여금 합계(원, 선택)</label><input class="jh-input" inputmode="numeric" data-t-opt="bonus12" value="' + esc(st.rtOpt.bonus12) + '" placeholder="0" style="text-align:right"></div><div class="jh-field"><label class="jh-field__label">연차수당 합계(원, 선택)</label><input class="jh-input" inputmode="numeric" data-t-opt="leave12" value="' + esc(st.rtOpt.leave12) + '" placeholder="0" style="text-align:right"><div class="jh-field__hint">퇴직 전 12개월 중 평균임금 3개월 밖에 지급한 연간 상여·연차수당 합계입니다. × 3/12 를 평균임금에 더합니다(월 급여에 이미 들어간 상여는 넣지 않습니다).</div></div></div>');
   const recs = retireRecordsSorted(st.rtRecords);
@@ -373,14 +374,14 @@ export function dismissalHtml(st) {
   const top = '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-d-act="hist">📂 발행 이력</button><button type="button" class="jh-btn" data-variant="ghost" data-d-act="reset">↺ 초기화</button><button type="button" class="jh-btn" data-variant="secondary" data-d-act="draft">💾 임시저장</button><button type="button" class="jh-btn" data-variant="primary" data-d-act="issue">🖨 통지서 발행 (저장 + 출력)</button></div>';
   return card('📄 해고예고통지서', '<div class="jh-hr__pad">' + top + warn + '</div>') + '<div class="jh-hr__col">' + c1 + c2 + c3 + c4 + '</div>';
 }
-export function dismissalHistHtml(st) {
+function dismissalHistHtml_list(st) {
   const list = st.dsHist; const rows = list.map((d) => '<tr><td><strong>' + esc(d.workerName || '') + '</strong></td><td>' + esc(d.noticeDate || '') + '</td><td>' + esc(d.dismissalDate || '') + '</td><td>' + esc(DS_REASON[d.reasonType] || '') + '</td><td>' + chip(d.status === 'issued' ? '발행' : '임시저장', d.status === 'issued' ? 'accent' : 'muted') + '</td><td><button type="button" class="jh-btn" data-variant="secondary" data-d-reprint="' + esc(d.id) + '">🖨 출력</button>' + (d.status !== 'issued' ? ' <button type="button" class="jh-btn" data-variant="ghost" data-d-edit="' + esc(d.id) + '">이어쓰기</button> <button type="button" class="jh-btn" data-variant="ghost" data-d-del="' + esc(d.id) + '">삭제</button>' : '') + '</td></tr>').join('');
   return card('📂 해고예고통지서 발행 이력', '<div class="jh-hr__pad"><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-d-act="form">← 작성</button></div></div>' + (list.length ? '<div class="jh-hr__scroll"><table class="jh-hr-table"><thead><tr><th>근로자</th><th>통지일</th><th>해고일</th><th>사유</th><th>상태</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div><div class="jh-field__hint jh-hr__pad">※ 발행된 통지서는 법적 기록이므로 삭제할 수 없습니다. 임시저장만 삭제·이어쓰기 가능합니다.</div>' : '<div class="jh-empty">발행된 통지서가 없습니다.</div>'));
 }
 
 /** 초과근로 현황 */
 const otN = (n) => Number(n || 0).toLocaleString('ko-KR');
-function otRowsTable(rows, withName, withDel) {
+function otRowsTable_list(rows, withName, withDel) {
   if (!rows.length) return '<div class="jh-empty">이 달 초과근로 내역이 없습니다.</div>';
   return '<div class="jh-hr__scroll"><table class="jh-hr-table jh-hr-table--click"><thead><tr><th>날짜</th>' + (withName ? '<th>이름</th>' : '') + '<th class="num">시간</th><th class="num">수당</th><th>사유</th>' + (withDel ? '<th></th>' : '') + '</tr></thead><tbody>' + rows.map((r) => '<tr class="jh-hr__row" data-ot-open="' + esc(r.id) + '"><td>' + esc(String(r.date || '').slice(5).replace('-', '/')) + '</td>' + (withName ? '<td>' + esc(r.name) + '</td>' : '') + '<td class="num">' + esc(r.hours) + 'h</td><td class="num">' + otN(r.amount) + '원</td><td class="jh-hr__cell">' + (r.reason ? esc(r.reason) : '<span class="jh-field__hint">-</span>') + '</td>' + (withDel ? '<td><button type="button" class="jh-btn" data-variant="ghost" data-ot-edit="' + esc(r.id) + '">수정</button> <button type="button" class="jh-btn" data-variant="ghost" data-ot-del="' + esc(r.id) + '">삭제</button></td>' : '') + '</tr>').join('') + '</tbody></table></div>';
 }
@@ -492,7 +493,7 @@ export function payslipListHtml(st) {
 
 /** 연봉계약서 */
 const an = (n) => '₩' + Math.round(Number(n) || 0).toLocaleString('ko-KR'); const anD = (s) => (s ? String(s).replace(/-/g, '.') : '-');
-export function annualHtml(st) {
+function annualHtml_list(st) {
   if (st.aView === 'form') return annualFormHtml(st); if (st.aView === 'worker') return annualWorkerHtml(st);
   const ws = st.aWorkers.filter((w) => (st.aFilter === 'resigned' ? w.status === 'resigned' : w.status !== 'resigned')); const act = st.aWorkers.filter((w) => w.status !== 'resigned').length, res = st.aWorkers.length - act;
   const seg = '<div class="jh-segmented" role="group" aria-label="구분"><button type="button" class="jh-segmented__item" data-an-filter="active" aria-pressed="' + (st.aFilter === 'active') + '">🟢 재직자 (' + act + ')</button><button type="button" class="jh-segmented__item" data-an-filter="resigned" aria-pressed="' + (st.aFilter === 'resigned') + '">🔴 퇴사자 (' + res + ')</button></div>';
@@ -517,7 +518,7 @@ export function annualFormHtml(st) {
   const sign = card('✍️ 서명', '<div class="jh-hr__pad">' + (f.signData ? '<img src="' + esc(f.signData) + '" alt="서명" style="width:160px;height:60px;object-fit:contain;border:var(--u-1) solid var(--c-line);border-radius:var(--radius)"><div><button type="button" class="jh-btn" data-variant="ghost" data-an-act="sign-clear">지우기</button></div>' : (st.aSigning ? '<div class="jh-field__hint">손가락 또는 마우스로 서명하세요</div><canvas id="an-canvas" width="272" height="100" style="display:block;border:var(--u-1) solid var(--c-line);border-radius:var(--radius);touch-action:none;cursor:crosshair"></canvas><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-an-act="sign-wipe">지우기</button><button type="button" class="jh-btn" data-variant="ghost" data-an-act="sign-cancel">취소</button><button type="button" class="jh-btn" data-variant="primary" data-an-act="sign-ok">확인</button></div>' : '<button type="button" class="jh-btn" data-variant="secondary" data-an-act="sign-open">✍️ 지금 이 자리에서 서명하기</button>')) + '<div class="jh-field__hint">근로자 본인 기기로 원격 서명을 받으려면 아래 "원격 서명 링크·QR 생성"을 누르세요(먼저 저장된 뒤 링크가 만들어집니다).</div></div>');
   return '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-an-act="list">← 목록</button><strong>연봉계약서 작성</strong></div><div class="jh-hr__col">' + worker + typeCard + period + pay + wage + c7ItemsCardHtml(st) + sign + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="secondary" data-an-act="preview">📄 미리보기</button><button type="button" class="jh-btn" data-variant="secondary" data-an-act="draft-save" title="확정하지 않고 지금까지 입력한 내용을 보관">💾 임시저장</button><button type="button" class="jh-btn" data-variant="primary" data-an-act="save">✅ 확정 저장</button><button type="button" class="jh-btn" data-variant="secondary" data-an-act="sign-link">🔗 원격 서명 링크·QR 생성</button><button type="button" class="jh-btn" data-variant="secondary" data-an-act="mail">📧 이메일 발송</button></div></div>';
 }
-export function annualWorkerHtml(st) {
+function annualWorkerHtml_list(st) {
   const w = st.aWorkers.find((x) => x.id === st.aSel) || {}; const docs = annualSorted(st.aDocs);
   const sign = (d) => (d.signData ? '✍️ 서명 있음' + (d.remoteSigned ? ' (원격)' : '') : '<span class="jh-hr__muted">서명 없음</span>');
   const btn = (v, attr, id, label, title) => '<button type="button" class="jh-btn" data-variant="' + v + '" ' + attr + '="' + esc(id) + '" title="' + title + '">' + label + '</button>';
@@ -567,7 +568,7 @@ export function leaveFormsHtml(st) {
 
 /** 연차사용촉진 */
 const lpTone = { red: 'danger', orange: 'warn', blue: 'accent', green: 'accent', gray: 'muted' };
-export function leavePromoHtml(st) {
+function leavePromoHtml_list(st) {
   const items = lpItems(st.lpWorkers, st.lpToday, st.lpLeaves, st.lpRecs); const sm = lpSummary(items);
   const kpi = '<div class="jh-kpi-grid"><div class="jh-kpi"><span class="jh-kpi__label">지금 조치 필요</span><span class="jh-kpi__value" style="color:var(--c-danger)">' + sm.now + '</span></div><div class="jh-kpi"><span class="jh-kpi__label">45일 내 시작</span><span class="jh-kpi__value">' + sm.soon + '</span></div><div class="jh-kpi"><span class="jh-kpi__label">기한 경과·미실시</span><span class="jh-kpi__value" style="color:var(--c-warn, #EA580C)">' + sm.overdue + '</span></div><div class="jh-kpi"><span class="jh-kpi__label">완료</span><span class="jh-kpi__value">' + sm.done + '</span></div></div>';
   const missed = sm.missedNames.length ? '<div class="jh-alert" data-tone="warn" role="status">⚠️ <b>' + sm.missedNames.map(esc).join(', ') + '</b>님은 이번 회계연도의 1차 촉진 기간(7/1~7/10)이 지났는데 촉진 기록이 없습니다. 기록이 없으면 12/31에 소멸되는 미사용 연차에 대해 <b>연차수당 지급 의무가 남을 수 있습니다.</b><br>이미 서면으로 진행하셨다면 아래 <b>[1차 촉진서] → "이미 발송함 — 기록만 등록"</b>으로 남겨 두세요. 그렇지 않다면 노무사와 대응을 상의하세요.</div>' : '';
@@ -616,3 +617,24 @@ export function tplHistoryHtml(kind, label) {
   const rows = DOC_TPL_HISTORY.concat([PS_HISTORY_V7]).reverse().map((h) => '<div class="jh-hr__post"><div class="jh-hr__bar"><strong>' + esc(h.ver) + (h.ver === (kind === 'payslip' ? PS_DOC_VER : DOC_TPL_CURRENT) ? ' · 현재 적용중' : '') + '</strong><span class="jh-field__hint">' + (h.from ? esc(String(h.from).slice(0, 16).replace('T', ' ')) + ' 부터' : '최초 양식') + '</span></div><div class="jh-field__hint">' + esc(h[kind] || '-') + '</div></div>').join('');
   return card('📜 ' + label + ' 양식 변경 이력', '<div class="jh-hr__pad"><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-tpl-close>닫기</button></div><div class="jh-field__hint">이미 저장된 서류는 저장 당시 양식(아래 버전) 그대로 조회·출력됩니다 — 양식이 바뀌어도 과거에 서명·저장한 서류의 내용은 바뀌지 않습니다.</div>' + rows + '</div>');
 }
+
+/* ── 목록 페이지 나누기(shared/pager.js) — 아래 함수들은 표를 만드는 안쪽 함수(NAME_list)의 결과에 쪽 나누기를 씌운 것이다. 줄이 10개 이하이거나 표가 여러 개이면 원래 화면 그대로 ── */
+const hrSig = (st) => [st.view, st.q, st.tab, st.ym, st.year, st.month, st.sel && (st.sel.id || st.sel), st.leaveSel, st.chSel, st.appSel, st.status, st.filter].map((x) => (x && typeof x === 'object') ? JSON.stringify(x).slice(0, 80) : String(x == null ? '' : x)).join('|');
+export function tableHtml(st) { return pageTableHtml(tableHtml_list(st), st.pg || (st.pg = {}), 'hr-workers', hrSig(st)); }
+export function leaveTableHtml(st) { return pageTableHtml(leaveTableHtml_list(st), st.pg || (st.pg = {}), 'hr-leave', hrSig(st)); }
+export function leaveDetailHtml(st) { return pageTableHtml(leaveDetailHtml_list(st), st.pg || (st.pg = {}), 'hr-leave-detail', hrSig(st)); }
+export function changeHtml(st) { return pageTableHtml(changeHtml_list(st), st.pg || (st.pg = {}), 'hr-change', hrSig(st)); }
+export function interviewsHtml(st) { return pageTableHtml(interviewsHtml_list(st), st.pg || (st.pg = {}), 'hr-interviews', hrSig(st)); }
+export function resignReqHtml(st) { return pageTableHtml(resignReqHtml_list(st), st.pg || (st.pg = {}), 'hr-resign-req', hrSig(st)); }
+export function evalsHtml(st) { return pageTableHtml(evalsHtml_list(st), st.pg || (st.pg = {}), 'hr-evals', hrSig(st)); }
+export function applicantsHtml(st) { return pageTableHtml(applicantsHtml_list(st), st.pg || (st.pg = {}), 'hr-applicants', hrSig(st)); }
+export function salaryHtml(st) { return pageTableHtml(salaryHtml_list(st), st.pg || (st.pg = {}), 'hr-salary', hrSig(st)); }
+export function offerHistHtml(st) { return pageTableHtml(offerHistHtml_list(st), st.pg || (st.pg = {}), 'hr-offer-hist', hrSig(st)); }
+export function dismissalHistHtml(st) { return pageTableHtml(dismissalHistHtml_list(st), st.pg || (st.pg = {}), 'hr-dismissal-hist', hrSig(st)); }
+export function annualHtml(st) { return pageTableHtml(annualHtml_list(st), st.pg || (st.pg = {}), 'hr-annual', hrSig(st)); }
+export function annualWorkerHtml(st) { return pageTableHtml(annualWorkerHtml_list(st), st.pg || (st.pg = {}), 'hr-annual-worker', hrSig(st)); }
+export function leavePromoHtml(st) { return pageTableHtml(leavePromoHtml_list(st), st.pg || (st.pg = {}), 'hr-leave-promo', hrSig(st)); }
+export function retireHtml(st) { return pageTableHtml(retireHtml_list(st), st.pg || (st.pg = {}), 'hr-retire', hrSig(st)); }
+
+/* ── 목록 페이지 나누기(shared/pager.js) — NAME_list 의 결과에 쪽 나누기를 씌운 함수 ── */
+function otRowsTable(rows, withName, withDel) { return pageTableHtml(otRowsTable_list(rows, withName, withDel), null, 'hr-ot-rows', String(rows && rows.length) + (withName ? 1 : 0)); }

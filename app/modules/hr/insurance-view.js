@@ -1,6 +1,7 @@
 /* 4대보험 월별 대조 화면(대기열 1-3-17 1단계) — HTML 만 만드는 순수 함수(시험: tests/hr-insurance-view.test.mjs). 급여명세서 근로자 공제 합과 공단 고지금액을 월별로 맞춰 보여 준다. */
-import { esc } from '../../core/ui.js?v=20261031g';
-import { reconcile } from './insurance-recon.js?v=20261031g';
+import { pageTableHtml } from '../../shared/pager.js?v=20261031h';
+import { esc } from '../../core/ui.js?v=20261031h';
+import { reconcile } from './insurance-recon.js?v=20261031h';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -12,7 +13,7 @@ const sum = (...v) => (v.some((x) => x === null || x === undefined) ? null : v.r
 export const NOTE = '급여명세서 합계는 화면을 열 때 계산하고(새로 저장하지 않음), 공단 고지금액은 회사 월 합계만 저장합니다(개인별 값·개인정보 없음). 연금·건강은 비과세를 뺀 과세 보수 기준이라 명세서 총지급과 정확히 맞지 않고, 고용·산재 고지는 연초 개산이라 내년 3월 확정 정산에서 오를 수 있습니다. 신고서 작성은 다음 단계입니다.';
 
 /** st: { loading, error, busy, data:{payslips,bills}, offset, form:{ym,pension,health,ltcare,unpaid,exists}|null } */
-export function insurancePageHtml(st) {
+function insurancePageHtml_list(st) {
   if (st.loading && !st.data) return '<div class="jh-skeleton" style="height:var(--u-220)" aria-busy="true"></div>';
   if (st.error) return '<div class="jh-alert" data-tone="danger" role="alert">불러오지 못했습니다: ' + esc(st.error) + '</div>';
   const d = st.data || { payslips: {}, bills: {} }; const off = Number.isInteger(st.offset) ? st.offset : 0; const rec = reconcile({ payslips: d.payslips, bills: d.bills, offset: off });
@@ -38,3 +39,6 @@ export function insurancePageHtml(st) {
     + '<div class="jh-field__hint">공단 고지서에 적힌 <b>근로자+사업주 합계</b>를 그대로 넣습니다. 이 달 고지가 없으면 0을 넣어 주세요.</div><div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-ins-act="save"' + (st.busy ? ' disabled' : '') + '>' + (st.busy ? '저장 중…' : '저장') + '</button><button type="button" class="jh-btn" data-variant="ghost" data-ins-act="cancel"' + (st.busy ? ' disabled' : '') + '>취소</button>' + (f.exists ? '<button type="button" class="jh-btn" data-variant="danger" data-ins-act="delete"' + (st.busy ? ' disabled' : '') + '>이 달 고지금액 삭제</button>' : '') + '</div></div>') : '';
   return alerts + card('월별 4대보험 대조', '<div class="jh-hr__pad"><div class="jh-hr__bar">' + offSel + '<button type="button" class="jh-btn" data-variant="primary" data-ins-edit="" >＋ 고지금액 입력</button></div>' + table + '<div class="jh-field__hint" style="margin-top:.5rem">' + esc(NOTE) + '</div></div>') + form;
 }
+
+/* ── 목록 페이지 나누기(shared/pager.js) — NAME_list 의 결과에 쪽 나누기를 씌운 함수 ── */
+export function insurancePageHtml(st) { return pageTableHtml(insurancePageHtml_list(st), st.pg || (st.pg = {}), 'hr-insurance', String(st && st.ym || '')); }

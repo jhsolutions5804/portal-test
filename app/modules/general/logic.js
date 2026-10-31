@@ -1,6 +1,6 @@
 /* 총무 — 임대·차량·자산·갱신 일정. 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 네 종류(lease·vehicle·asset·renewal)는 항목 정의(GTYPES) 하나로 목록·입력·검증·만기 알림이 모두 같은 방식으로 돌아간다. */
-import { csvCell } from '../../shared/csv.js?v=20261031g';
+import { csvCell } from '../../shared/csv.js?v=20261031h';
 export const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')) && new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
 const isYm = (s) => /^\d{4}-(0[1-9]|1[0-2])$/.test(String(s || ''));
@@ -136,7 +136,7 @@ export function creditTotals(list) { const kinds = GTYPES.credit.fields[1].o; co
 const cNum = (v) => Number(String(v == null ? '' : v).replace(/[,\s원]/g, '')) || 0;
 export const CREDIT_NO_CORP = '(미지정)';
 /** 거래 내역 화면의 거름 기본값 — desc 는 '최근 거래 먼저' 정렬(기본 켬), size·page 는 페이지 나누기(기본 한 쪽 10줄, 10·20·50 선택) */
-export { PAGE_SIZES as CREDIT_PAGE_SIZES, pageInfo as creditPageInfo, pageList as creditPageList } from '../../shared/pager.js?v=20261031g';
+export { PAGE_SIZES as CREDIT_PAGE_SIZES, pageInfo as creditPageInfo, pageList as creditPageList } from '../../shared/pager.js?v=20261031h';
 export const creditFltDefault = () => ({ q: '', type: '', corp: '', ym: '', desc: true, size: 10, page: 1 });
 /** 거름 조건 f = { q, type, corp, ym } — 조건에 맞는 줄의 **원래 번호** 목록(표시 순서는 부르는 쪽이 정한다). corp 가 '(미지정)'이면 청구 법인이 빈 줄 */
 export function creditFilterRows(rows, f) {

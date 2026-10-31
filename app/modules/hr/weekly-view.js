@@ -1,7 +1,8 @@
 /* 주 단위 근로시간 화면 — HTML 만 만드는 순수 함수(시험: tests/hr-weekly-view.test.mjs). 달력 아래 "주별 근로시간" 카드와 인사 홈 신호 칸. */
-import { esc } from '../../core/ui.js?v=20261031g';
-import { isHoliday } from '../../shared/holidays.js?v=20261031g';
-import { WEEK_STAGES, WEEK_LEGAL, WEEK_OT_LIMIT, weeksOfMonth, weekSummary, weekDetail, weekStart, weekLabel } from './weekly.js?v=20261031g';
+import { pageTableHtml } from '../../shared/pager.js?v=20261031h';
+import { esc } from '../../core/ui.js?v=20261031h';
+import { isHoliday } from '../../shared/holidays.js?v=20261031h';
+import { WEEK_STAGES, WEEK_LEGAL, WEEK_OT_LIMIT, weeksOfMonth, weekSummary, weekDetail, weekStart, weekLabel } from './weekly.js?v=20261031h';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -11,7 +12,7 @@ export const stageChip = (stage) => (stage ? chip((WEEK_STAGES[stage].mark ? WEE
 const NOTE = '출퇴근 기록 기준(휴게 제외 실근로, 평일·주말 합산, 연차 등 휴가 시간은 제외). 법정은 주 40시간 + 연장 12시간 = 52시간이고 연장은 40시간 초과분으로 셉니다. 자정을 넘긴 근무는 출근한 날의 주에 합산합니다. 경고만 표시하며 급여 계산은 바뀌지 않습니다.';
 
 /** 달력 아래 카드. st: { y, m, rows(그 달 + 앞·뒤 달 기록), selWeek, today } */
-export function weeklyCardHtml(st) {
+function weeklyCardHtml_list(st) {
   const weeks = weeksOfMonth(st.y, st.m), cur = weekStart(st.today || '');
   const sums = weeks.map((s) => weekSummary(st.rows, s));
   const body = sums.map((s) => '<tr' + (s.start === st.selWeek ? ' class="jh-hr__sum"' : '') + '><td>' + esc(weekLabel(s.start)) + (s.start === cur ? ' ' + chip('이번 주', 'accent') : '') + '</td><td style="text-align:right">' + hh(s.total) + '</td><td style="text-align:right">' + (s.ot === null ? '—' : s.ot + ' / ' + WEEK_OT_LIMIT) + '</td><td>' + stageChip(s.stage) + (s.suspect ? ' <span class="jh-field__hint">⚠️ 기록 확인 ' + s.suspect + '건</span>' : '') + '</td><td>' + (s.total === null ? '' : '<button type="button" class="jh-btn" data-variant="ghost" data-ac-week="' + esc(s.start) + '">' + (s.start === st.selWeek ? '닫기' : '일별') + '</button>') + '</td></tr>').join('');
@@ -19,7 +20,7 @@ export function weeklyCardHtml(st) {
   return card('주별 근로시간 (월~일)', '<div class="jh-hr__pad"><div class="jh-hr__scroll" style="overflow-x:auto"><table class="jh-hr-table" data-w-table><thead><tr><th>주</th><th>근로시간</th><th>연장(40h 초과)</th><th>단계</th><th></th></tr></thead><tbody>' + body + '</tbody></table></div><div class="jh-field__hint" style="margin-top:.5rem">' + esc(NOTE) + '</div></div>')
     + (sel ? weekDetailHtml(st.rows, sel) : '');
 }
-function weekDetailHtml(rows, sum) {
+function weekDetailHtml_list(rows, sum) {
   const days = weekDetail(rows, sum.start, isHoliday);
   const tr = days.map((d) => '<tr><td>' + esc(d.date.slice(5)) + ' (' + DOW[d.dow] + ')' + (d.off ? ' <span class="jh-field__hint">휴일</span>' : '') + '</td><td>' + (d.rec ? esc(d.checkIn) + ' ~ ' + esc(d.checkOut) : '<span class="jh-field__hint">—</span>') + '</td><td style="text-align:right">' + (d.rec ? d.breakMinutes + '분' : '') + '</td><td style="text-align:right">' + (d.rec ? d.hours : '') + '</td><td>' + (d.trip ? '✈️ 출장' : '') + (d.suspect ? ' ⚠️ 확인 필요' : '') + '</td></tr>').join('');
   const sus = days.filter((d) => d.suspect).length;
@@ -36,3 +37,7 @@ export function weeklyHomeHtml(rep) {
   const empty = !rep.withData ? '<div class="jh-field__hint">이번 주·지난주 출퇴근 기록이 없습니다(출퇴근 기록은 2026-08부터 쌓입니다).</div>' : '<div class="jh-field__hint">이번 주·지난주에 44시간 이상 일한 직원이 없습니다. (기록이 있는 직원 ' + rep.withData + '명 확인)</div>';
   return card('⏱ 주 근로시간 (이번 주·지난주)', '<div class="jh-hr__pad">' + head + (rep.items.length ? '<div class="jh-hr__scroll" style="overflow-x:auto"><table class="jh-hr-table" data-w-home><thead><tr><th>직원</th><th>주</th><th>근로시간</th><th>연장</th><th>단계</th></tr></thead><tbody>' + rows + '</tbody></table></div><div class="jh-field__hint" style="margin-top:.5rem">이름을 누르면 그 직원의 출퇴근 달력이 열립니다. 이번 주는 오늘까지 기록 기준입니다. 44h 주의 · 48h 경고 · 52h 초과.</div>' : empty) + '</div>');
 }
+
+/* ── 목록 페이지 나누기(shared/pager.js) — NAME_list 의 결과에 쪽 나누기를 씌운 함수 ── */
+export function weeklyCardHtml(st) { return pageTableHtml(weeklyCardHtml_list(st), st.pg || (st.pg = {}), 'hr-weekly', String(st && st.sel && st.sel.id || '') + '|' + String(st && st.q || '')); }
+function weekDetailHtml(rows, sum) { return pageTableHtml(weekDetailHtml_list(rows, sum), null, 'hr-week-detail', String(sum && (sum.week || sum.id || sum.label) || '') + '|' + String(rows && rows.length)); }

@@ -1,6 +1,7 @@
 /* 임금대장 화면 — HTML 만 만드는 순수 함수(시험: tests/hr-ledger-view.test.mjs·hr-ledger-view.test.py). 데이터 읽기·마감·해제는 ledger-io.js, 연결은 index.js mountLedger. */
-import { esc } from '../../core/ui.js?v=20261031g';
-import { LEDGER_HEAD, ledgerRowCells, ledgerTotalCells, ledgerTotals, isClosed } from './ledger.js?v=20261031g';
+import { pageTableHtml } from '../../shared/pager.js?v=20261031h';
+import { esc } from '../../core/ui.js?v=20261031h';
+import { LEDGER_HEAD, ledgerRowCells, ledgerTotalCells, ledgerTotals, isClosed } from './ledger.js?v=20261031h';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -29,7 +30,7 @@ function checksHtml(checks) {
 }
 
 /** 직원별 표 + 합계 줄. 가로가 넓어 스크롤 영역 안에 두고 첫 칸(성명)을 고정한다 */
-export function ledgerTableHtml(rows) {
+function ledgerTableHtml_list(rows) {
   const t = ledgerTotals(rows);
   const th = LEDGER_HEAD.map((h, i) => '<th' + (i === 0 ? ' style="position:sticky;left:0;background:var(--c-surface,#fff);z-index:1"' : '') + '>' + esc(h) + '</th>').join('');
   const tr = (cells, cls) => '<tr' + (cls ? ' class="' + cls + '"' : '') + '>' + cells.map((c, i) => '<td' + (typeof c === 'number' ? ' style="text-align:right"' : '') + (i === 0 ? ' style="position:sticky;left:0;background:var(--c-surface,#fff);font-weight:600"' : '') + '>' + (i === 6 && c === '' ? '<span class="jh-field__hint">—</span>' : num(c)) + '</td>').join('') + '</tr>';
@@ -60,3 +61,6 @@ export function ledgerPageHtml(st) {
   return bar + '<div class="jh-hr__bar">' + ledgerStatusHtml(d.close) + '</div>' + checksHtml(checks) + acts + unlock
     + card('임금대장 ' + (s.ym || ''), '<div class="jh-hr__pad">' + body + '<div class="jh-field__hint" style="margin-top:.5rem">근로기준법 제48조·시행령 제27조 기재사항(보존 3년). 근로시간·연장·야간·휴일은 급여명세서를 저장한 때의 값(실제 지급 기준)이고, 근로일수는 명세서에 없으면 출퇴근 기록에서 센 값입니다("—"는 자료 없음).</div></div>', rows.length ? chip(rows.length + '명', 'muted') : '') + logHtml(d.close);
 }
+
+/* ── 목록 페이지 나누기(shared/pager.js) — NAME_list 의 결과에 쪽 나누기를 씌운 함수 ── */
+export function ledgerTableHtml(rows) { return pageTableHtml(ledgerTableHtml_list(rows), null, 'hr-wage-ledger', String(rows && rows.length)); }

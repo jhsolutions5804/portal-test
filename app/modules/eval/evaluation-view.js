@@ -1,8 +1,9 @@
 /* 인사평가 — 정기평가 운영 화면(테섭 미리보기). 마크업만 만든다(저장·불러오기는 evaluation-io.js). 설계서 docs/hr-evaluation-design.md */
-import { withManage } from '../../shared/eval-perm.js?v=20261031g';
-import { esc } from '../../core/ui.js?v=20261031g';
-import { DEPT_ORDER } from '../../shared/org.js?v=20261031g';
-import { evalPeriod, teamCriteria, teamTypeOf, areaItems, AREA_LABELS, WEIGHTS_BY, cycleSummary, peerAggNote, leadAreasOf, leadNote, emptyCycle, STATUS_LABEL, gradeOf, teamLeaderOf, evalAccess } from './evaluation.js?v=20261031g';
+import { pageTableHtml } from '../../shared/pager.js?v=20261031h';
+import { withManage } from '../../shared/eval-perm.js?v=20261031h';
+import { esc } from '../../core/ui.js?v=20261031h';
+import { DEPT_ORDER } from '../../shared/org.js?v=20261031h';
+import { evalPeriod, teamCriteria, teamTypeOf, areaItems, AREA_LABELS, WEIGHTS_BY, cycleSummary, peerAggNote, leadAreasOf, leadNote, emptyCycle, STATUS_LABEL, gradeOf, teamLeaderOf, evalAccess } from './evaluation.js?v=20261031h';
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const gtone = (g) => (g === 'S' || g === 'A' ? 'accent' : g === 'C' ? 'danger' : 'muted');
@@ -11,7 +12,7 @@ const fmt = (n) => (n == null ? '-' : String(n));
 export const LEVEL_LABEL = { exec: '사장단', hr: '인사팀', self: '본인', none: '권한 없음' };
 
 /** 팀별 보드: 팀(부서)마다 팀장·대상자·진행 상태·점수 */
-export function evalBoardHtml(st) {
+function evalBoardHtml_list(st) {
   const ec = st.ec; const per = evalPeriod(ec.year); const acc = evalAccess(withManage(ec.me), { id: '' }, {});
   const note = '<div class="jh-hr__pad"><div class="jh-hr__bar">' + chip('평가 기간 ' + per.from + ' ~ ' + per.to, 'muted') + chip('올해(' + ec.year + ')는 참고자료로만 사용', 'warn') + chip('내 권한: ' + LEVEL_LABEL[acc.level], acc.level === 'none' ? 'danger' : 'accent') + '</div>'
     + '<div class="jh-field__hint">미리보기(테섭): 실제 운영에서는 팀장·동료·직원이 각자 로그인해 입력합니다. 여기서는 사장단 계정이 대신 입력해 화면과 계산을 확인합니다. 팀장은 <strong>직원 관리 → 팀장</strong>에서 팀마다 지정하고, 지정이 없으면 팀 최상급자가 1차 평가자가 됩니다. 평가 대상은 평가 기간 끝(' + per.to + ') 이전 입사자이며 올해 4분기 입사자는 제외됩니다.</div></div>';
@@ -63,3 +64,6 @@ export function evalPanelHtml(st) {
   const actions = '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-ec-act="save"' + (canEdit || (acc.confirm && !lock) ? '' : ' disabled') + '>저장</button><button type="button" class="jh-btn" data-variant="ghost" data-ec-act="back">← 팀 목록</button>' + (acc.level === 'hr' ? '<span class="jh-field__hint">인사팀은 열람·운영만 가능하고 평가 입력·확정은 사장단이 합니다.</span>' : '') + (lock ? '<span class="jh-field__hint">확정된 평가는 수정할 수 없습니다(대표가 확정 취소 후 수정).</span>' : '') + '</div>';
   return card((w.name || '') + ' · ' + (w.dept || '') + ' · ' + (w.rank || ''), '<div class="jh-hr__pad">' + result + main + peerBlock + selfBlock + ceoBlock + actions + '</div>', chip(STATUS_LABEL[sm.status], stone(sm.status)));
 }
+
+/* ── 목록 페이지 나누기(shared/pager.js) — NAME_list 의 결과에 쪽 나누기를 씌운 함수 ── */
+export function evalBoardHtml(st) { return pageTableHtml(evalBoardHtml_list(st), st.pg || (st.pg = {}), 'eval-board', String(st.ec && st.ec.year || '') + '|' + String(st.ec && st.ec.sel || '')); }

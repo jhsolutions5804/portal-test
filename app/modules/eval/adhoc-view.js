@@ -1,7 +1,8 @@
 /* 인사평가 — 수시평가(프로젝트 종료 시) 화면(테섭 미리보기). 마크업만 만든다(저장·불러오기는 adhoc-io.js). 설계서 docs/hr-evaluation-design.md 5·6절 */
-import { withManage } from '../../shared/eval-perm.js?v=20261031g';
-import { esc } from '../../core/ui.js?v=20261031g';
-import { evalAccess, adhocSummary, adhocProjectPerf, adhocParticipants, pickAdhocEvaluator, emptyAdhoc, ADHOC_LABELS, ADHOC_ENTRY_ITEMS, PEER_ITEMS, STATUS_LABEL } from './evaluation.js?v=20261031g';
+import { pageTableHtml } from '../../shared/pager.js?v=20261031h';
+import { withManage } from '../../shared/eval-perm.js?v=20261031h';
+import { esc } from '../../core/ui.js?v=20261031h';
+import { evalAccess, adhocSummary, adhocProjectPerf, adhocParticipants, pickAdhocEvaluator, emptyAdhoc, ADHOC_LABELS, ADHOC_ENTRY_ITEMS, PEER_ITEMS, STATUS_LABEL } from './evaluation.js?v=20261031h';
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const gtone = (g) => (g === 'S' || g === 'A' ? 'accent' : g === 'C' ? 'danger' : 'muted');
@@ -11,7 +12,7 @@ const won = (n) => (n == null || !isFinite(n) ? '-' : Math.round(n).toLocaleStri
 const BAND_TEXT = '목표 대비 +3%p 이상 5점 · +1%p 이상 4점 · ±1%p 미만 3점 · −3%p 이상 2점 · −3%p 미만 1점';
 
 /** 프로젝트 목록(종료된 프로젝트 + 진행 중 프로젝트) */
-export function adhocBoardHtml(st) {
+function adhocBoardHtml_list(st) {
   const ad = st.ad; const acc = evalAccess(withManage(ad.me), { id: '' }, {});
   const head = '<div class="jh-hr__pad"><div class="jh-hr__bar">' + chip('프로젝트 종료 시마다 평가', 'muted') + chip('내 권한: ' + (acc.level === 'exec' ? '사장단' : acc.level === 'hr' ? '인사팀' : '권한 없음'), acc.level === 'none' ? 'danger' : 'accent') + '</div>'
     + '<div class="jh-field__hint">수시평가는 <strong>현장 평가(참여자 중 최상급자 + 동료) 50% + 사장단 평가(개인 60 · 프로젝트 성과 40) 50%</strong>입니다. 프로젝트 성과는 <strong>프로젝트마다 따로</strong> 정한 목표 마진율과 실현 마진율의 차이로 점수를 냅니다. 미리보기(테섭)에서는 사장단 계정이 현장 입력을 대신 입력합니다. 올해는 참고자료입니다.</div></div>';
@@ -26,7 +27,7 @@ function rateRow(label, cur, key, disabled) {
 }
 const cell = (label, value, sub) => '<div class="jh-hr-ev__cell"><span class="jh-field__hint">' + esc(label) + '</span><strong>' + esc(value) + '</strong>' + (sub ? '<span class="jh-field__hint">' + esc(sub) + '</span>' : '') + '</div>';
 /** 프로젝트 한 건: 프로젝트 성과 카드 + 참여자 목록(+ 선택한 참여자 평가 패널) */
-export function adhocProjectHtml(st) {
+function adhocProjectHtml_list(st) {
   const ad = st.ad; const p = (ad.projects || []).find((x) => x.id === ad.sel); if (!p) return '';
   const acc = evalAccess(withManage(ad.me), { id: '' }, {}); const dis = !acc.edit; const pe = ad.pdraft || {}; const snap = p.snapshot || {};
   const perf = adhocProjectPerf({ target: p.targetMargin, snapshot: snap, saved: p.evalMargin }); const meUid = (ad.me && ad.me.uid) || '';
@@ -61,3 +62,7 @@ function adhocMemberHtml(st, p, lead) {
     + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-ad-act="msave"' + (canEdit ? '' : ' disabled') + '>저장</button><button type="button" class="jh-btn" data-variant="secondary" data-ad-act="mconfirm"' + (acc.confirm && !lock && sm.site != null && sm.exec != null ? '' : ' disabled') + '>수시 평가 확정(대표)</button>' + (lock && acc.confirm ? '<button type="button" class="jh-btn" data-variant="ghost" data-ad-act="munconfirm">확정 취소</button>' : '') + '<button type="button" class="jh-btn" data-variant="ghost" data-ad-act="mback">← 참여자 목록</button>' + (acc.level === 'hr' ? '<span class="jh-field__hint">인사팀은 열람·운영만 가능합니다.</span>' : '') + (lock ? '<span class="jh-field__hint">확정된 평가는 수정할 수 없습니다.</span>' : '') + '</div></div>';
   return card((w.name || '') + ' · 수시평가 · ' + (p.name || ''), body, chip(STATUS_LABEL[sm.status], stone(sm.status)));
 }
+
+/* ── 목록 페이지 나누기(shared/pager.js) — NAME_list 의 결과에 쪽 나누기를 씌운 함수 ── */
+export function adhocBoardHtml(st) { return pageTableHtml(adhocBoardHtml_list(st), st.pg || (st.pg = {}), 'eval-adhoc-board', String(st.ad && st.ad.year || '')); }
+export function adhocProjectHtml(st) { return pageTableHtml(adhocProjectHtml_list(st), st.pg || (st.pg = {}), 'eval-adhoc-project', String(st.ad && st.ad.sel && (st.ad.sel.id || st.ad.sel) || '')); }

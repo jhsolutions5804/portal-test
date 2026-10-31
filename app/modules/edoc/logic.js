@@ -1,4 +1,4 @@
-import { docFileName } from '../../shared/doc-filename.js?v=20261031g';
+import { docFileName } from '../../shared/doc-filename.js?v=20261031h';
 export const DOC_TYPES = ['daily', 'leave', 'resign', 'cert', 'purchase', 'expense', 'attend', 'drive'];
 /** 승인으로 끝나고 게시하지 않는 문서(업무일지, 근태 기록 수정 요청 — 승인되면 출퇴근 기록에 바로 반영) */
 export const NO_POST_TYPES = ['daily', 'attend', 'drive'];   // 차량 운행일지도 승인으로 끝(게시 안 함) — 총무가 운행기록부로 취합
@@ -155,8 +155,8 @@ export function filterDocs(docs, me, f) {
   });
 }
 /* ── 페이지 구분: 한 번에 10·20·30건씩 끊어서 보여준다 ── */
-export const PAGE_SIZES = [10, 20, 30];
-export const DEFAULT_PAGE_SIZE = 20;
+export const PAGE_SIZES = [10, 20, 50];
+export const DEFAULT_PAGE_SIZE = 10;
 export function normalizeSize(v) { const n = parseInt(v, 10); return PAGE_SIZES.indexOf(n) !== -1 ? n : DEFAULT_PAGE_SIZE; }
 export function pageOfIndex(index, size) { return index < 0 ? 1 : Math.floor(index / size) + 1; }
 /** rows 를 page(1부터)·size 로 자른다. 범위를 벗어난 page 는 가까운 쪽으로 보정한다. */

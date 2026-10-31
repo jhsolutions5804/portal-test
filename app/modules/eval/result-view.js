@@ -1,10 +1,11 @@
 /* 평가 결과 화면(관리자·인사팀) — 마크업만. 확정된 직원을 골라 결과 통보서를 미리 보고, 본인 확인 링크를 만들어 메일로 보낸다. 읽기·발송은 result-io.js */
-import { esc } from '../../core/ui.js?v=20261031g';
-import { resultHtml } from './result-report.js?v=20261031g';
+import { pageTableHtml } from '../../shared/pager.js?v=20261031h';
+import { esc } from '../../core/ui.js?v=20261031h';
+import { resultHtml } from './result-report.js?v=20261031h';
 const chip = (t, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(t) + '</span>';
 
 /** st.rs = { year, rows:[{ id, name, dept, rank, ok, reason, final, grade }], sel, preview:{ data, html }, sent:{ [workerId]: '발송 시각 문구' }, canSend, mailOn, busy } */
-export function resultBoardHtml(st) {
+function resultBoardHtml_list(st) {
   const rs = st.rs; const rows = rs.rows || []; const okN = rows.filter((r) => r.ok).length;
   const head = '<div class="jh-card"><div class="jh-panel__head"><h3>평가 결과 통보 — ' + esc(rs.year) + '년</h3></div><div class="jh-hr__pad">'
     + '<div class="jh-hr__bar">' + chip('확정 ' + okN + '명 / 대상 ' + rows.length + '명', okN ? 'accent' : 'muted') + '</div>'
@@ -34,3 +35,6 @@ export function resultPanelHtml(st) {
 }
 /** 미리보기 문서(HTML 문자열) — 화면과 발송이 같은 함수를 쓴다 */
 export const previewHtml = (data, today) => resultHtml(data, { today });
+
+/* ── 목록 페이지 나누기(shared/pager.js) — NAME_list 의 결과에 쪽 나누기를 씌운 함수 ── */
+export function resultBoardHtml(st) { return pageTableHtml(resultBoardHtml_list(st), st.pg || (st.pg = {}), 'eval-result-board', String(st.rs && st.rs.year || '')); }

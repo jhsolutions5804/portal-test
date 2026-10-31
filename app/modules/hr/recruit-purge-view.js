@@ -1,8 +1,9 @@
 /* 지원서 개인정보 파기 관리 화면 — HTML 만 만드는 순수 함수(시험: tests/hr-recruit-purge-view.test.mjs). 지원자 화면의 카드·행 칩과 인사 홈 신호 칸. */
-import { esc } from '../../core/ui.js?v=20261031g';
-import { JOB_STATUS } from './logic.js?v=20261031g';
-import { PURGE_STATES, RET_DEFAULT, RET_MIN, RET_MAX, purgeInfo, purgeDayText, retentionOf } from './recruit-purge.js?v=20261031g';
-import { addDaysStr } from './home.js?v=20261031g';
+import { pageTableHtml } from '../../shared/pager.js?v=20261031h';
+import { esc } from '../../core/ui.js?v=20261031h';
+import { JOB_STATUS } from './logic.js?v=20261031h';
+import { PURGE_STATES, RET_DEFAULT, RET_MIN, RET_MAX, purgeInfo, purgeDayText, retentionOf } from './recruit-purge.js?v=20261031h';
+import { addDaysStr } from './home.js?v=20261031h';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -14,7 +15,7 @@ export function purgeChipHtml(info) {
 }
 const NOTE = '지원서는 채용 확정일부터 보관기간(14~180일, 기본 ' + RET_DEFAULT + '일)이 지나면 파기해야 합니다(채용절차법 제11조·개인정보보호법 제21조, 노무사 확인 대기). 파기하면 이름·연락처·주소·생년월일·이력이 모두 지워지고 접수일·공고·파기일·파기한 사람만 남으며 되돌릴 수 없습니다. 합격자는 파기하지 않습니다. 지원 페이지에는 반환·보관·파기 안내(채용절차법 제11조 제6항)를 올려 두어야 합니다.';
 /** 지원자 화면 위의 관리 카드. rep = purgeReport 결과 */
-export function purgeCardHtml(rep) {
+function purgeCardHtml_list(rep) {
   if (!rep) return '';
   const c = rep.counts; const due = c.due;
   const run = '<button type="button" class="jh-btn" data-variant="' + (due ? 'primary' : 'secondary') + '" data-pg-run' + (due ? '' : ' disabled') + '>🗑 기한 지난 ' + due + '건 파기</button>';
@@ -37,3 +38,6 @@ export function purgeHomeHtml(rep) {
   const alert = c.due ? '<div class="jh-alert" data-tone="danger" role="alert"><b>🔴 파기 기한이 지난 지원서 ' + c.due + '건</b> — 보관기간이 끝났습니다. 확인 후 파기해 주세요.</div>' : '';
   return card('🗑 지원서 파기 기한', '<div class="jh-hr__pad" data-pg-home>' + alert + '<div class="jh-field__hint">기한 지남 ' + c.due + ' · 임박(14일 이내) ' + c.soon + ' · 채용 확정일 미입력 ' + c.nodate + (c.nolink ? ' · 공고 연결 없음 ' + c.nolink : '') + '</div><div class="jh-hr__bar"><a class="jh-btn" data-variant="' + (c.due ? 'primary' : 'secondary') + '" href="#/hr/applicants">지원자 화면에서 확인 ›</a></div></div>');
 }
+
+/* ── 목록 페이지 나누기(shared/pager.js) — NAME_list 의 결과에 쪽 나누기를 씌운 함수 ── */
+export function purgeCardHtml(rep) { return pageTableHtml(purgeCardHtml_list(rep), null, 'hr-purge', String(rep && rep.rows && rep.rows.length)); }

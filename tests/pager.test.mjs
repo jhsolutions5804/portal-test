@@ -1,5 +1,5 @@
 // 공용 페이지 나누기 부품 시험 — 계산·쪽 번호·막대 모양·이벤트 해석·상태 반영
-import { PAGE_SIZES, pagerDefault, pageInfo, pageList, pagerState, pagerReset, pagerHtml, pagerAction, pagerApply, pagerSync } from '../app/shared/pager.js';
+import { PAGE_SIZES, pagerDefault, pageInfo, pageList, pagerState, pagerReset, pagerHtml, pagerAction, pagerApply, pagerSync, pageTableHtml, pagerGlobal } from '../app/shared/pager.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b); const eq = (o, x) => Object.keys(x).every((k) => o[k] === x[k]);
 ok(same(PAGE_SIZES, [10, 20, 50]) && same(pagerDefault(), { size: 10, page: 1 }), '줄 수 선택은 10·20·50, 기본은 10줄 1쪽');
@@ -20,4 +20,26 @@ ok(same(pagerAction(el({ key: 'k', go: '3' })), { key: 'k', page: 3 }) && pagerA
 const mm = {}; ok(pagerApply(mm, { key: 'k', page: 4 }) && mm.k.page === 4 && pagerApply(mm, { key: 'k', size: 50 }) && mm.k.size === 50 && mm.k.page === 1 && !pagerApply(mm, { key: 'k', size: 7 }) && !pagerApply(mm, null) && !pagerApply(mm, { key: 'k', page: 0, noop: true }) && mm.k.size === 50, '상태 반영: 쪽 이동, 줄 수를 바꾸면 1쪽, 잘못된 줄 수·꺼진 단추는 무시');
 const ms = {}; const a1 = pagerSync(ms, 'k', 'q1|a'); a1.page = 5; ok(pagerSync(ms, 'k', 'q1|a').page === 5 && pagerSync(ms, 'k', 'q1|b').page === 1 && pagerSync(ms, 'k', undefined).page === 1, '조건(sig)이 같으면 쪽 유지, 바뀌면 1쪽(undefined 는 빈 글자)');
 const ms2 = {}; pagerSync(ms2, 'k', 'x'); pagerApply(ms2, { key: 'k', page: 7 }); ok(pagerSync(ms2, 'k', 'x').page === 7 && ms2.k.size === 10, '쪽 이동 뒤 같은 조건으로 다시 그려도 쪽 유지');
+
+const tbl = (n, tr = '<tr class="r" data-x="#"><td>#</td></tr>') => '<div class="s"><table><thead><tr><th>h</th></tr></thead><tbody>' + Array.from({ length: n }, (_, i) => tr.replace(/#/g, i)).join('') + '</tbody></table></div>';
+const cnt = (h) => (h.match(/<tr class="r"/g) || []).length; const pm = {};
+ok(pageTableHtml(tbl(10), pm, 'a', '') === tbl(10) && pageTableHtml(tbl(3), pm, 'a', '') === tbl(3) && pageTableHtml(tbl(0), pm, 'a', '') === tbl(0), '표 줄이 10개 이하(0·3·10)이면 입력 그대로(막대도 없음)');
+let ph = pageTableHtml(tbl(25), pm, 'a', 'q'); ok(cnt(ph) === 10 && ph.includes('1–10 / 25줄') && ph.includes('<thead><tr><th>h</th></tr></thead>') && ph.includes('data-pg-key="a"') && ph.startsWith('<div class="s"><table>') && ph.indexOf('</table></div>') < ph.indexOf('class="jh-pgbar"'), '25줄 표: 처음 10줄만 남기고 머리글 유지, 표 아래에 쪽 막대');
+pm.a.page = 3; ph = pageTableHtml(tbl(25), pm, 'a', 'q'); ok(cnt(ph) === 5 && ph.includes('data-x="20"') && !ph.includes('data-x="19"') && ph.includes('21–25 / 25줄'), '3쪽: 21~25번째 줄만');
+ph = pageTableHtml(tbl(25), pm, 'a', 'q2'); ok(pm.a.page === 1 && ph.includes('data-x="0"'), '조건(sig)이 바뀌면 1쪽으로');
+pm.a.size = 20; pm.a.page = 2; ph = pageTableHtml(tbl(25), pm, 'a', 'q2'); ok(cnt(ph) === 5 && ph.includes('21–25 / 25줄'), '페이지당 20줄: 2쪽은 5줄');
+const nested = '<table><thead><tr><th>h</th></tr></thead><tbody>' + Array.from({ length: 20 }, (_, i) => '<tr class="r"><td><table><tbody><tr><td>' + i + '</td></tr></tbody></table></td></tr>').join('') + '</tbody></table>';
+ok(pageTableHtml(nested, {}, 'n', '') === nested, '행 안에 중첩 표가 있으면 건드리지 않음');
+const two = tbl(20) + tbl(20); ok(pageTableHtml(two, {}, 't', '') === two, 'tbody 가 둘 이상(표가 여러 개)이면 건드리지 않음');
+const ragged = '<table><tbody>' + Array.from({ length: 20 }, () => '<tr class="r"><td>x</td></tr>').join('') + '<tr class="r"><td>끝</td></tbody></table>'; ok(pageTableHtml(ragged, {}, 'g', '') === ragged, '행이 </tr> 로 닫히지 않은 깨진 표는 건드리지 않음');
+ok(pageTableHtml('<div class="jh-empty">없음</div>', {}, 'e', '') === '<div class="jh-empty">없음</div>' && pageTableHtml(null, {}, 'e', '') === '' && pageTableHtml(undefined, null, 'e', '') === '', '표가 없는 안내 문구·null·undefined 는 그대로(예외 없음)');
+const rowTable = tbl(30, '<tr class="r" data-w-open="#" data-k=\'a>b\'><td><strong>#</strong></td></tr>'); ph = pageTableHtml(rowTable, {}, 'w', ''); ok(cnt(ph) === 10 && ph.includes('data-w-open="9"') && !ph.includes('data-w-open="10"'), '행에 속성(클릭 대상 등)이 붙어 있어도 그대로 보존');
+ok(pageTableHtml(tbl(30), undefined, 'u', '').includes('1–10 / 30줄'), '쪽 지도(map)가 없어도 첫 쪽으로 표시');
+const trail = '<h4>앞</h4>' + tbl(25) + '<p class="after">뒤 내용</p>'; const th2 = pageTableHtml(trail, {}, 'tr', ''); ok(th2.indexOf('class="jh-pgbar"') < th2.indexOf('class="after"') && th2.indexOf('class="jh-pgbar"') > th2.indexOf('</table></div>') && th2.startsWith('<h4>앞</h4>'), '표 뒤에 다른 내용이 이어져도 쪽 막대는 표 바로 아래(내용 순서 유지)');
+const bare = '<table><thead><tr><th>h</th></tr></thead><tbody>' + Array.from({ length: 12 }, (_, i) => '<tr class="r"><td>' + i + '</td></tr>').join('') + '</tbody></table><i>x</i>'; const bh = pageTableHtml(bare, {}, 'b', ''); ok(bh.indexOf('<div class="jh-pgbar"') === bh.indexOf('</table>') + 8 && bh.endsWith('<i>x</i>'), '스크롤 상자가 없는 표도 </table> 바로 뒤에 쪽 막대');
+const gk = 'glob-' + Math.random().toString(36).slice(2); const gh = pageTableHtml(tbl(25), null, gk, ''); ok(gh.includes('1–10 / 25줄') && pagerGlobal[gk] && pagerGlobal[gk].page === 1, '쪽 지도를 넘기지 않으면 앱 공용 지도에 기억(상태가 없는 표 함수용)');
+const modMap = {}; ok(pagerApply(modMap, { key: gk, page: 3 }) && pagerGlobal[gk].page === 3 && !(gk in modMap), '모듈 지도에 없는 key 는 공용 지도에 반영');
+ok(pageTableHtml(tbl(25), null, gk, '').includes('21–25 / 25줄'), '공용 지도의 쪽이 다음 그리기에 유지됨');
+const own = { k1: { size: 10, page: 1 } }; pagerApply(own, { key: 'k1', page: 2 }); ok(own.k1.page === 2, '모듈 지도에 있는 key 는 모듈 지도에 반영');
+pagerReset(null, gk); ok(pagerGlobal[gk].page === 1, '공용 지도도 pagerReset 으로 1쪽');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); process.exit(fail ? 1 : 0);

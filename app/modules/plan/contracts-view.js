@@ -1,12 +1,13 @@
-import { esc } from '../../core/ui.js?v=20261031g';
-import { won, card, chip, fld, selectHtml } from './ui.js?v=20261031g';
-import { CONTRACT_STATUS, KIND_LABEL, contractTotals, periodDays, contractChecklist, checklistSummary, contractStatusTone } from './contracts.js?v=20261031g';
+import { esc } from '../../core/ui.js?v=20261031h';
+import { pageTableHtml } from '../../shared/pager.js?v=20261031h';
+import { won, card, chip, fld, selectHtml } from './ui.js?v=20261031h';
+import { CONTRACT_STATUS, KIND_LABEL, contractTotals, periodDays, contractChecklist, checklistSummary, contractStatusTone } from './contracts.js?v=20261031h';
 const NOTICE = '<div class="jh-alert" data-tone="warn" role="status">하도급 서면 발급을 돕는 <strong>초안 도구</strong>입니다. 점검표는 「하도급거래 공정화에 관한 법률」 제3조·시행령 제3조(2026-08 개정판)의 기재사항을 기준으로 입력 누락을 알려 줄 뿐이며, 이 계약에 하도급법·건설산업기본법이 적용되는지(업종·원사업자와 수급사업자의 규모)와 최종 문안은 <strong>법무 확인</strong>이 필요합니다.</div>';
 const ST = { ok: ['갖춤', 'green'], missing: ['누락', 'red'], check: ['확인', 'amber'], info: ['안내', 'gray'] };
 const money = (n) => Number(Math.round(n) || 0).toLocaleString('ko-KR');
 const pcode = (st, id) => { const p = st.projects.find((x) => x.id === id); return p ? p.code : ''; };
 /** 목록: 협력사·상태 필터, 계약마다 번호·구분·협력사·프로젝트·대금·기간·상태·법정 항목 누락 수 */
-export function contractsListHtml(st) {
+function contractsListHtml_list(st) {
   const all = st.contracts; const list = all.filter((k) => (!st.filter.partner || k.partnerId === st.filter.partner) && (!st.filter.status || k.status === st.filter.status));
   const partners = st.companies.filter((c) => c.roleVendor);
   const filters = '<div class="jh-plan__filters2">' + selectHtml('data-ct-filter="partner"', st.filter.partner, [['', '협력사 전체']].concat(partners.map((c) => [c.id, c.company]))) + selectHtml('data-ct-filter="status"', st.filter.status, [['', '상태 전체']].concat(Object.keys(CONTRACT_STATUS).map((k) => [k, CONTRACT_STATUS[k]]))) + '</div>';
@@ -46,3 +47,5 @@ export function contractDetailHtml(st) {
   const acts = '<div class="jh-plan__bar"><button type="button" class="jh-btn" data-variant="ghost" data-ct-act="list">← 목록</button><span class="jh-plan__line"><button type="button" class="jh-btn" data-variant="secondary" data-ct-act="print">🖨 인쇄</button>' + (draft ? '<button type="button" class="jh-btn" data-variant="secondary" data-ct-act="edit">수정</button>' : '') + (issued ? '<button type="button" class="jh-btn" data-variant="secondary" data-ct-act="change">변경 계약서 작성</button>' : '') + (k.status !== 'void' ? '<button type="button" class="jh-btn" data-variant="ghost" data-ct-act="void">폐기</button>' : '') + (draft ? '<button type="button" class="jh-btn" data-variant="ghost" data-ct-act="delete">삭제</button>' : '') + '</span></div>';
   return '<div class="jh-plan">' + acts + NOTICE + card(k.title, sum) + card('법정 기재사항 점검', check) + (draft ? card('서면 발급 기록', issue) : '') + '</div>';
 }
+/* 목록 페이지 나누기(shared/pager.js) */
+export function contractsListHtml(st) { return pageTableHtml(contractsListHtml_list(st), st.pg || (st.pg = {}), 'plan-contracts', JSON.stringify(st.filter || {})); }
