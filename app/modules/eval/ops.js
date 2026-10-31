@@ -1,6 +1,6 @@
 /* 평가 운영 화면(정기평가·수시평가) — 사장단·인사팀. 인사 모듈에서 분리했다(메뉴 단위 권한: 급여·계약서 같은 인사 화면은 열리지 않는다).
-import { pagerAction, pagerApply } from '../../shared/pager.js?v=20261031h';
  * 화면(마크업)과 저장은 evaluation-view/evaluation-io/adhoc-view/adhoc-io 를 그대로 쓰고, 메뉴가 탭 역할을 하므로 화면 안 탭은 두지 않는다. */
+import { pagerAction, pagerApply } from '../../shared/pager.js?v=20261031h';
 import { db, functions, httpsCallable, collection, getDocs, getDoc, setDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261031h';
 import { confirmDialog } from '../../core/dialog.js?v=20261031h';
 import { esc, toast } from '../../core/ui.js?v=20261031h';
