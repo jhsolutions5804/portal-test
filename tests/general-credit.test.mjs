@@ -87,11 +87,11 @@ ok(editHtml({ edit: e, data: { credit: docs }, today: '2026-10-31' }).includes('
   ok(eq(pi(0, { size: 10, page: 1 }), { pages: 1, from: 0, to: 0, page: 1 }) && eq(pi(10, { size: 10, page: 1 }), { pages: 1, to: 10 }) && pi(11, { size: 10, page: 1 }).pages === 2, '줄이 없으면 1쪽·0줄, 딱 10줄이면 1쪽, 11줄이면 2쪽');
   ok(same(creditPageList(1, 23), [1, 2, 3, '…', 23]) && same(creditPageList(12, 23), [1, '…', 10, 11, 12, 13, 14, '…', 23]) && same(creditPageList(23, 23), [1, '…', 21, 22, 23]) && same(creditPageList(2, 3), [1, 2, 3]) && same(creditPageList(1, 1), [1]), '쪽 번호 단추: 첫·끝 쪽과 현재 앞뒤 2쪽만, 사이는 …');
   e.flt = creditFltDefault(); const p1 = creditLogAreaHtml(e); const all230 = creditShownIdx(e);
-  ok(idxAttr(p1).length === 10 && same(idxAttr(p1), all230.slice(0, 10)) && p1.includes('1–10 / 230줄') && p1.includes('data-g-page="2"') && /<button[^>]*data-g-page="0"[^>]*disabled/.test(p1) && p1.includes('aria-current="page"'), '기본 화면: 최근 거래 10줄, "1–10 / 230줄", 이전 단추는 꺼짐, 현재 쪽 표시');
+  ok(idxAttr(p1).length === 10 && same(idxAttr(p1), all230.slice(0, 10)) && p1.includes('1–10 / 230줄') && p1.includes('data-pg-go="2"') && /<button[^>]*data-pg-go="0"[^>]*disabled/.test(p1) && p1.includes('aria-current="page"'), '기본 화면: 최근 거래 10줄, "1–10 / 230줄", 이전 단추는 꺼짐, 현재 쪽 표시');
   e.flt = Object.assign(creditFltDefault(), { page: 3 }); const p3 = creditLogAreaHtml(e);
-  ok(same(idxAttr(p3), all230.slice(20, 30)) && p3.includes('21–30 / 230줄') && !/<button[^>]*data-g-page="2"[^>]*disabled/.test(p3), '3쪽: 21~30번째 줄, 줄 번호는 원래 번호(저장이 틀어지지 않음)');
+  ok(same(idxAttr(p3), all230.slice(20, 30)) && p3.includes('21–30 / 230줄') && !/<button[^>]*data-pg-go="2"[^>]*disabled/.test(p3), '3쪽: 21~30번째 줄, 줄 번호는 원래 번호(저장이 틀어지지 않음)');
   e.flt = Object.assign(creditFltDefault(), { page: 23 }); const p23 = creditLogAreaHtml(e);
-  ok(idxAttr(p23).length === 10 && p23.includes('221–230 / 230줄') && /<button[^>]*data-g-page="24"[^>]*disabled/.test(p23), '마지막 쪽: 다음 단추는 꺼짐');
+  ok(idxAttr(p23).length === 10 && p23.includes('221–230 / 230줄') && /<button[^>]*data-pg-go="24"[^>]*disabled/.test(p23), '마지막 쪽: 다음 단추는 꺼짐');
   e.flt = Object.assign(creditFltDefault(), { size: 20, page: 12 }); const s20 = creditLogAreaHtml(e);
   ok(idxAttr(s20).length === 10 && s20.includes('221–230 / 230줄') && (s20.match(/<option value="(10|20|50)"( selected)?>/g) || []).length === 3 && /<option value="20" selected>/.test(s20), '페이지당 20줄: 12쪽이 마지막(221~230), 선택 칸에는 10·20·50이 있고 20이 선택됨');
   e.flt = Object.assign(creditFltDefault(), { size: 50, page: 5 }); const s50 = creditLogAreaHtml(e);
@@ -102,7 +102,7 @@ ok(editHtml({ edit: e, data: { credit: docs }, today: '2026-10-31' }).includes('
   const sumTxt = (h) => h.match(/현재 미결제 잔액 [^<]*/)[0]; e.flt = Object.assign(creditFltDefault(), { page: 1 }); const q1 = creditLogAreaHtml(e); e.flt = Object.assign(creditFltDefault(), { page: 7, size: 20 });
   ok(sumTxt(q1) === sumTxt(creditLogAreaHtml(e)) && creditShownIdx(e).length === 230, '쪽·줄 수를 바꿔도 잔액·합계와 CSV·합계에 쓰는 거름 결과(230줄)는 그대로');
   e.flt = Object.assign(creditFltDefault(), { q: '없는말' }); const pn = creditLogAreaHtml(e);
-  ok(pn.includes('조건에 맞는 줄이 없습니다.') && pn.includes('>0줄<') && !pn.includes('data-g-logmore'), '조건에 맞는 줄이 없으면 안내 문구와 "0줄"');
+  ok(pn.includes('조건에 맞는 줄이 없습니다.') && !pn.includes('data-pg-go') && !pn.includes('data-g-logmore'), '조건에 맞는 줄이 없으면 안내 문구만(쪽 막대는 줄이 10개 이하일 때 숨김)');
   e.flt = creditFltDefault(); const lh2 = creditLogHtml(e); const full2 = editHtml({ edit: e, data: { credit: docs }, today: '2026-10-31' });
   ok((lh2.match(/data-g-logadd/g) || []).length === 1 && lh2.indexOf('data-g-logadd') < lh2.indexOf('id="g-logwrap"') && !lh2.includes('data-g-logmore') && !lh2.includes('더 보기'), '"+ 줄 추가"는 필터 막대 안에 한 번만, 옛 "더 보기" 단추는 없음');
   ok(full2.includes('jh-gen__bar--sticky') && !editHtml({ edit: { type: 'lease', id: '', isNew: true, vals: {}, rows: [] }, data: {}, today: '2026-10-31' }).includes('jh-gen__bar--sticky'), '저장·취소 단추 줄은 외상 장부에서만 고정(sticky)');
@@ -111,5 +111,26 @@ ok(editHtml({ edit: e, data: { credit: docs }, today: '2026-10-31' }).includes('
 // CSV
 const csv = creditCsv(R.slice(0, 3).concat([{ date: '2026-02-02', type: '외상', corp: '다람이엔지', item: '=HYPERLINK("x")', amount: '1,000', pay: '', pjt: '', memo: '' }]), '외상 장부 — 시험');
 ok(csv.startsWith('\uFEFF') && csv.includes('"일자","구분","청구 법인"') && !/(^|,)"=HYPERLINK/m.test(csv) && csv.includes("순액(외상 − 결제 − 반품)"), 'CSV: 엑셀용 BOM·머리글·합계 줄, 수식으로 시작하는 내용은 글자로 바뀜(수식 주입 방어)');
+}
+
+{
+  // ── 총무 목록(임대·차량·자산·외상·갱신) 쪽 나누기 — 공용 부품 연결
+  const mkDocs = (n) => Array.from({ length: n }, (_, i) => ({ id: 'v' + i, name: '거래처' + String(i).padStart(2, '0'), kind: i % 2 ? '식당' : '구매(자재·공구)', status: '거래 중', entries: [] }));
+  const stl = { data: { credit: mkDocs(25) }, onlyActive: true, q: '', kind: '', today: '2026-10-31', seed: {} };
+  const rowsOf = (h) => (h.match(/data-g-open="/g) || []).length;
+  let th = tableHtml(stl, 'credit');
+  ok(rowsOf(th) === 10 && th.includes('1–10 / 25줄') && th.includes('data-pg-key="list-credit"'), '목록: 25곳이면 처음 10곳만 그리고 "1–10 / 25줄" 쪽 막대');
+  stl.pg['list-credit'].page = 3; th = tableHtml(stl, 'credit');
+  ok(rowsOf(th) === 5 && th.includes('21–25 / 25줄') && th.includes('거래처20') && !th.includes('거래처00'), '목록: 3쪽은 마지막 5곳(21~25번째)');
+  stl.q = '거래처07'; th = tableHtml(stl, 'credit');
+  ok(rowsOf(th) === 1 && !th.includes('data-pg-go') && stl.pg['list-credit'].page === 1, '목록: 검색어를 바꾸면 1쪽으로 돌아가고, 10곳 이하이면 쪽 막대 없음');
+  stl.q = ''; stl.kind = '식당'; th = tableHtml(stl, 'credit');
+  ok(rowsOf(th) === 10 && th.includes('1–10 / 12줄'), '목록: 종류 거름(식당 12곳)도 거름 결과 기준으로 쪽 계산');
+  stl.kind = ''; tableHtml(stl, 'credit'); stl.pg['list-credit'].size = 20; stl.pg['list-credit'].page = 2; th = tableHtml(stl, 'credit');
+  ok(rowsOf(th) === 5 && th.includes('21–25 / 25줄') && /<option value="20" selected>/.test(th), '목록: 페이지당 20줄로 바꾸면 2쪽이 마지막 5곳');
+  const stFew = { data: { credit: mkDocs(8) }, onlyActive: true, q: '', kind: '', today: '2026-10-31', seed: {} };
+  ok(!tableHtml(stFew, 'credit').includes('data-pg-key') && rowsOf(tableHtml(stFew, 'credit')) === 8, '목록: 10곳 이하(8곳)이면 화면이 지금과 같음(쪽 막대 없음)');
+  const lhm = listHtml(stl, 'credit'); ok(lhm.includes('id="g-table"') && lhm.indexOf('data-pg-key="list-credit"') > lhm.indexOf('id="g-table"') && lhm.indexOf('data-pg-key="list-credit"') < lhm.indexOf('id="g-corp"'), '목록 화면: 쪽 막대는 #g-table 안(검색할 때 같이 갱신)이고 청구 법인별 합계 영역(#g-corp)은 그 아래');
+  ok(creditCorpTotals(visibleList(stl, 'credit')).total.count === 0 && visibleList(stl, 'credit').length === 25, '법인별 합계·종류 거름 등은 쪽과 무관하게 전체 목록(25곳) 기준');
 }
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

@@ -135,4 +135,7 @@
 .jh-card > :is(.jh-hr__scroll, .jh-finance__scroll) :is(th, td):first-child, .jh-card > .jh-ro__t :is(th, td):first-child { padding-left: calc(var(--sp-4) + var(--sp-1)); }
 .jh-card > :is(.jh-hr__scroll, .jh-finance__scroll) :is(th, td):last-child, .jh-card > .jh-ro__t :is(th, td):last-child { padding-right: calc(var(--sp-4) + var(--sp-1)); }
 .jh-card > .jh-field__hint { padding: var(--sp-3) calc(var(--sp-4) + var(--sp-1)) var(--sp-2); }
-
+/* 목록 페이지 나누기 공용 막대(shared/pager.js) */
+.jh-pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); }
+.jh-pager .jh-pager__sel { width: auto; margin-left: var(--sp-1); }
+.jh-pager .jh-btn { min-width: var(--u-40); }

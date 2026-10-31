@@ -1,0 +1,24 @@
+// 재무회계 목록의 페이지 나누기(공용 shared/pager.js) — 전표 목록: 쪽 계산·막대·조건 변경 시 1쪽·일괄 작업은 전체 기준
+import { entriesHtml } from '../app/modules/finance/view.js';
+import { filterEntries } from '../app/modules/finance/logic.js';
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
+const mkE = (n) => Array.from({ length: n }, (_, i) => ({ id: 'e' + i, no: '2026-' + String(1000 + i), date: '2026-' + String(1 + (i % 12)).padStart(2, '0') + '-' + String(1 + (i % 27)).padStart(2, '0'), memo: (i % 7 === 0 ? '주유 ' : '식대 ') + i, source: { kind: 'bank' }, needsReview: i % 5 === 0, lines: [{ account: '6020', side: 'D', amount: 1000 * (i + 1) }, { account: '1020', side: 'C', amount: 1000 * (i + 1) }] }));
+const F0 = { from: '', to: '', source: '', review: false, reviewed: false, assignee: '', q: '' };
+const pgs = {}; const E = mkE(235);
+const mk = (flt) => ({ filter: flt, list: filterEntries(E, flt), entries: E, sel: new Set(), pg: pgs });
+const rows = (h) => (h.match(/data-entry="/g) || []).length; const range = (h) => (h.match(/\d+–\d+ \/ \d+줄/) || ['없음'])[0];
+let h = entriesHtml(mk(F0));
+ok(rows(h) === 10 && range(h) === '1–10 / 235줄' && h.includes('data-pg-key="entries"') && !h.includes('data-act="more"') && !h.includes('더 보기'), '전표 목록: 235건이면 처음 10건과 "1–10 / 235줄" 막대, 옛 "더 보기" 단추는 없음');
+ok(h.includes('이 목록 전체 ' + E.length + '건 선택') && h.includes('건 (전체') === false, '일괄 선택 단추는 "이 목록 전체 N건"(쪽이 아니라 거른 전체 기준)이라고 표시');
+pgs.entries.page = 24; h = entriesHtml(mk(F0)); ok(rows(h) === 5 && range(h) === '231–235 / 235줄', '24쪽(마지막)은 5건, 범위 231–235');
+pgs.entries.size = 50; pgs.entries.page = 5; h = entriesHtml(mk(F0)); ok(rows(h) === 35 && range(h) === '201–235 / 235줄', '페이지당 50건: 5쪽(마지막)은 35건');
+const Fq = Object.assign({}, F0, { q: '주유' }); const nq = filterEntries(E, Fq).length; pgs.entries.page = 3; h = entriesHtml(mk(Fq));
+ok(pgs.entries.page === 1 && range(h) === '1–' + Math.min(50, nq) + ' / ' + nq + '줄' && rows(h) === Math.min(50, nq), '검색어를 바꾸면 1쪽으로 돌아감(줄 수 선택은 유지), 범위는 거른 결과 기준');
+const Fr = Object.assign({}, F0, { review: true }); const nr = filterEntries(E, Fr).length; h = entriesHtml(mk(Fr));
+ok(h.includes('이 목록 전체 ' + nr + '건 확인 완료로 표시') && h.includes('이 목록 전체 ' + nr + '건 담당자 지정') && range(h) === '1–' + Math.min(50, nr) + ' / ' + nr + '줄', '"확인 필요만" 거름: 확인 완료 표시·담당자 지정 단추가 거른 전체 ' + nr + '건 기준으로 표시(쪽과 무관)');
+const small = { filter: F0, list: filterEntries(mkE(8), F0), entries: mkE(8), sel: new Set(), pg: {} }; const hs = entriesHtml(small);
+ok(rows(hs) === 8 && !hs.includes('data-pg-key'), '10건 이하이면 쪽 막대 없이 지금과 같은 화면');
+pgs.entries.page = 1; pgs.entries.size = 10; const L0 = filterEntries(E, F0); const h1 = entriesHtml({ filter: F0, list: L0, entries: E, sel: new Set(), pg: pgs }); const near = [...h1.matchAll(/data-entry="([^"]+)"/g)][0][1]; const far = L0[200].id;
+const hsel = entriesHtml({ filter: F0, list: L0, entries: E, sel: new Set([near, far]), pg: pgs });
+ok(hsel.includes('선택 2건 일괄 재분류') && new RegExp('data-sel="' + near + '" checked').test(hsel) && !hsel.includes('data-sel="' + far + '"'), '선택한 건은 다른 쪽에 있어도 유지(선택 2건 표시), 그 쪽에 보이는 줄만 체크 표시');
+console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); process.exit(fail ? 1 : 0);

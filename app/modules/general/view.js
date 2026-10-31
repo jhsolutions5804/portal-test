@@ -1,5 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261031f';
-import { GTYPES, GKEYS, creditBalance, creditRowsBalance, creditTotals, creditFilterRows, creditSummary, creditCorpTotals, creditFltDefault, CREDIT_NO_CORP, CREDIT_PAGE_SIZES, creditPageInfo, creditPageList, dday, won, leasePayState, dueList, homeSummary, leaseMonthly, driveAllRows, driveFilter, driveTotals, driveByProject, driveByMonth, driveOdoCheck, driveRange, weekStart, DRIVE_STATUS, driveKeywordStats, matchHistory } from './logic.js?v=20261031f';
+import { esc } from '../../core/ui.js?v=20261031g';
+import { pageInfo, pagerSync, pagerHtml } from '../../shared/pager.js?v=20261031g';
+import { GTYPES, GKEYS, creditBalance, creditRowsBalance, creditTotals, creditFilterRows, creditSummary, creditCorpTotals, creditFltDefault, CREDIT_NO_CORP, dday, won, leasePayState, dueList, homeSummary, leaseMonthly, driveAllRows, driveFilter, driveTotals, driveByProject, driveByMonth, driveOdoCheck, driveRange, weekStart, DRIVE_STATUS, driveKeywordStats, matchHistory } from './logic.js?v=20261031g';
 
 const TABS = [['home', '개요'], ['lease', '임대'], ['vehicle', '차량'], ['drive', '운행일지'], ['asset', '자산·장비'], ['credit', '외상 장부'], ['renewal', '갱신 일정']];
 export const tabsHtml = (cur, base) => '<div class="jh-segmented jh-gen__tabs" role="group" aria-label="총무">' + TABS.map(([k, l]) => '<a class="jh-segmented__item" href="' + esc(base || '#/general') + '/' + k + '" aria-pressed="' + (k === cur) + '">' + esc(l) + '</a>').join('') + '</div>';
@@ -48,19 +49,11 @@ export function creditShownIdx(e) {
   if (!f.desc) return idx;
   return idx.slice().sort((a, b) => String(e.rows[b].date || '').localeCompare(String(e.rows[a].date || '')) || b - a);
 }
-/** 거래 내역 페이지 나누기 막대 — 페이지당 줄 수(10·20·50), 보이는 범위, 이전·쪽 번호·다음 */
-export function creditPagerHtml(pg) {
-  const nums = creditPageList(pg.page, pg.pages).map((n) => n === '…' ? '<span class="jh-field__hint">…</span>' : '<button type="button" class="jh-btn" data-variant="' + (n === pg.page ? 'primary' : 'ghost') + '" data-g-page="' + n + '"' + (n === pg.page ? ' aria-current="page"' : '') + '>' + n + '</button>').join('');
-  const nav = (label, to, dis) => '<button type="button" class="jh-btn" data-variant="ghost" data-g-page="' + to + '"' + (dis ? ' disabled' : '') + '>' + label + '</button>';
-  const info = pg.total ? (pg.from + 1) + '–' + pg.to + ' / ' + pg.total + '줄' : '0줄';
-  const sel = '<label class="jh-field__hint">페이지당 <select class="jh-select jh-gen__flt-sel" data-glf="size" aria-label="페이지당 줄 수">' + CREDIT_PAGE_SIZES.map((n) => cOpt(String(n), String(pg.size), n + '줄')).join('') + '</select></label>';
-  return '<div class="jh-gen__pager">' + sel + '<span class="jh-field__hint">' + info + '</span>' + nav('이전', pg.page - 1, pg.page <= 1) + nums + nav('다음', pg.page + 1, pg.page >= pg.pages) + '</div>';
-}
 /** 거래 내역 표 + 보이는 줄 합계 + 월별·청구 법인별 요약 — 거름이 바뀔 때 이 부분만 다시 그린다(입력 칸 포커스를 지키려고) */
 export function creditLogAreaHtml(e) {
   const L = GTYPES.credit.log; const idx = creditShownIdx(e);
   const shown = idx.map((i) => e.rows[i]); const vs = creditSummary(shown); const all = creditSummary(e.rows);
-  const filtered = idx.length !== e.rows.length; const pg = creditPageInfo(idx.length, e.flt); const idxShow = idx.slice(pg.from, pg.to);
+  const filtered = idx.length !== e.rows.length; const pg = pageInfo(idx.length, e.flt || creditFltDefault()); const idxShow = idx.slice(pg.from, pg.to);
   const head = L.cols.map((c) => '<th>' + esc(c.l) + '</th>').join('') + '<th></th>';
   const rows = idxShow.map((i) => { const r = e.rows[i]; return '<tr>' + L.cols.map((c) => '<td>' + inputFor(c, r[c.k], 'data-gl="' + i + ':' + c.k + '" aria-label="' + esc(c.l) + '"' + (c.k === 'item' || c.k === 'memo' ? ' title="' + esc(r[c.k]) + '"' : '')) + '</td>').join('') + '<td><button type="button" class="jh-btn" data-variant="ghost" data-g-logdel="' + i + '">삭제</button></td></tr>'; }).join('');
   const msg = e.rows.length && filtered ? '조건에 맞는 줄이 없습니다.' : '이력이 없습니다.';
@@ -69,7 +62,7 @@ export function creditLogAreaHtml(e) {
   const crows = all.byCorp.map((c) => '<tr><td>' + esc(c.corp) + '</td><td class="num">' + won0(c.외상) + '</td><td class="num">' + won0(c.반품) + '</td><td class="num">' + won0(c.결제) + '</td><td class="num">' + won0(c.balance) + '</td></tr>').join('');
   const more = all.total.count ? '<details class="jh-gen__more"><summary>월별·청구 법인별 요약 (전체 줄 기준)</summary><div class="jh-gen__scroll"><table class="jh-gen-table"><thead><tr><th>월</th><th class="num">외상</th><th class="num">반품</th><th class="num">결제</th><th class="num">월말 누적 잔액</th></tr></thead><tbody>' + mrows + '</tbody></table></div><div class="jh-gen__scroll"><table class="jh-gen-table"><thead><tr><th>청구 법인</th><th class="num">외상</th><th class="num">반품</th><th class="num">결제</th><th class="num">잔액</th></tr></thead><tbody>' + crows + '</tbody></table></div></details>' : '';
   const cg = '<colgroup>' + [12, 7, 13, 25, 10, 8, 8, 12, 5].map((w) => '<col style="width:' + w + '%">').join('') + '</colgroup>';
-  return line + more + '<div class="jh-gen__logbox"><table class="jh-gen-table jh-gen-table--log">' + cg + '<thead><tr>' + head + '</tr></thead><tbody>' + (rows || '<tr><td colspan="' + (L.cols.length + 1) + '" class="jh-field__hint">' + msg + '</td></tr>') + '</tbody></table></div>' + creditPagerHtml(pg);
+  return line + more + '<div class="jh-gen__logbox"><table class="jh-gen-table jh-gen-table--log">' + cg + '<thead><tr>' + head + '</tr></thead><tbody>' + (rows || '<tr><td colspan="' + (L.cols.length + 1) + '" class="jh-field__hint">' + msg + '</td></tr>') + '</tbody></table></div>' + pagerHtml(pg, 'credit-log');
 }
 /** 외상 장부 편집 화면의 거래 내역 구역(거름 막대 + 표) */
 export function creditLogHtml(e) {
@@ -109,8 +102,9 @@ export function visibleList(st, type) {
 export function tableHtml(st, type) {
   const T = GTYPES[type]; const q = (st.q || '').trim().toLowerCase(); const all = st.data[type] || [];
   const list = visibleList(st, type);
+  const info = pageInfo(list.length, pagerSync(st.pg || (st.pg = {}), 'list-' + type, [type, st.q || '', st.onlyActive ? 1 : 0, st.kind || ''].join('|'))); const pageRows = list.slice(info.from, info.to);
   const head = T.cols.map((c) => '<th' + (c[2] ? ' class="' + c[2] + '"' : '') + '>' + esc(c[0]) + '</th>').join('') + '<th>상태·알림</th>';
-  const rows = list.map((d) => {
+  const rows = pageRows.map((d) => {
     const dues = T.dues(d).map((du) => { const n = dday(du.date, st.today); return n === null ? null : { n, what: du.what, lead: du.lead }; }).filter(Boolean).sort((a, b) => a.n - b.n)[0];
     let badge = '';
     if (type === 'lease') { const ps = leasePayState(d, st.today); if (ps) badge += chip(ps.text, ps.tone); }
@@ -119,7 +113,7 @@ export function tableHtml(st, type) {
     if (dues && T.active(d) && dues.n <= Math.max(dues.lead, 0)) badge += ' ' + chip(ddayText(dues.n) + ' ' + dues.what, dues.n < 0 ? 'danger' : 'warn');
     return '<tr class="jh-gen__row' + (T.active(d) ? '' : ' jh-gen__off') + '" data-g-open="' + esc(d.id) + '">' + T.cols.map((c) => '<td' + (c[2] ? ' class="' + c[2] + '"' : '') + '>' + esc(c[1](d, st.today)) + '</td>').join('') + '<td>' + badge + '</td></tr>';
   }).join('');
-  return list.length ? '<div class="jh-gen__scroll"><table class="jh-gen-table jh-gen-table--click"><thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>' : '<div class="jh-empty">' + (all.length ? '조건에 맞는 항목이 없습니다.' : '아직 항목이 없습니다.') + '</div>';
+  return list.length ? '<div class="jh-gen__scroll"><table class="jh-gen-table jh-gen-table--click"><thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div>' + pagerHtml(info, 'list-' + type) : '<div class="jh-empty">' + (all.length ? '조건에 맞는 항목이 없습니다.' : '아직 항목이 없습니다.') + '</div>';
 }
 export function listHtml(st, type) {
   const T = GTYPES[type]; const hasSeed = (st.seed || {})[type] > 0 && !(st.data[type] || []).length;
@@ -186,8 +180,8 @@ export function driveHtml(st) {
     const g = driveByProject(base); body = g.length ? '<div class="jh-gen__scroll"><table class="jh-gen-table jh-gen-table--click"><thead><tr><th>프로젝트</th><th class="num">건수</th><th class="num">주행거리(km)</th><th class="num">업무용(km)</th><th>최근 운행</th></tr></thead><tbody>' + g.map((x) => '<tr class="jh-gen__row" data-d-pjt="' + esc(x.key) + '"><td>' + esc(x.pjt) + '</td><td class="num">' + x.n + '</td><td class="num">' + dKm(x.distance) + '</td><td class="num">' + dKm(x.bizKm) + '</td><td>' + esc(x.last) + '</td></tr>').join('') + '</tbody></table></div><div class="jh-field__hint jh-gen__pad">프로젝트를 누르면 그 프로젝트의 운행 내역만 시간 순으로 봅니다.</div>' : '<div class="jh-empty">조건에 맞는 운행일지가 없습니다.</div>';
   } else {
     const months = f.mode === 'all' ? driveByMonth(rows) : []; const mt = months.length > 1 ? '<h4 class="jh-gen__sub">월별 합계</h4><div class="jh-gen__scroll"><table class="jh-gen-table"><thead><tr><th>월</th><th class="num">건수</th><th class="num">주행거리(km)</th><th class="num">업무용(km)</th><th class="num">업무사용비율</th></tr></thead><tbody>' + months.map((m) => '<tr><td>' + esc(m.ym) + '</td><td class="num">' + m.n + '</td><td class="num">' + dKm(m.distance) + '</td><td class="num">' + dKm(m.bizKm) + '</td><td class="num">' + m.bizRate + '%</td></tr>').join('') + '</tbody></table></div>' : '';
-    const lines = rows.map((x) => '<tr><td>' + esc(x.date) + '</td><td>' + esc(x.vehicle + (x.plate ? ' ' + x.plate : '')) + '</td><td>' + esc(x.driver) + '</td><td class="jh-gen__cell">' + esc(x.pjt) + '</td><td class="jh-gen__cell">' + esc(x.origin + ' → ' + x.destination) + '</td><td>' + esc(x.kind) + '</td><td class="num">' + dKm(x.odoStart) + ' → ' + dKm(x.odoEnd) + '</td><td class="num">' + dKm(x.distance) + '</td><td class="num">' + dKm(x.bizKm) + '</td><td class="jh-gen__cell">' + esc(x.purpose) + '</td><td>' + stChip(x.status, x.source) + '</td></tr>').join('');
-    body = (rows.length ? mt + '<h4 class="jh-gen__sub">운행 내역 — 시간 순</h4><div class="jh-gen__scroll"><table class="jh-gen-table"><thead><tr><th>일자</th><th>차량</th><th>사용자</th><th>프로젝트</th><th>출발 → 도착</th><th>구분</th><th class="num">계기판(km)</th><th class="num">주행</th><th class="num">업무용</th><th>목적</th><th>상태</th></tr></thead><tbody>' + lines + '</tbody></table></div>' : '<div class="jh-empty">조건에 맞는 운행일지가 없습니다.</div>');
+    const dInfo = pageInfo(rows.length, pagerSync(st.pg || (st.pg = {}), 'drive-rows', [f.mode, f.anchor, f.ym, f.vehicleId, f.driver, f.pjtKey, f.approvedOnly ? 1 : 0].join('|'))); const lines = rows.slice(dInfo.from, dInfo.to).map((x) => '<tr><td>' + esc(x.date) + '</td><td>' + esc(x.vehicle + (x.plate ? ' ' + x.plate : '')) + '</td><td>' + esc(x.driver) + '</td><td class="jh-gen__cell">' + esc(x.pjt) + '</td><td class="jh-gen__cell">' + esc(x.origin + ' → ' + x.destination) + '</td><td>' + esc(x.kind) + '</td><td class="num">' + dKm(x.odoStart) + ' → ' + dKm(x.odoEnd) + '</td><td class="num">' + dKm(x.distance) + '</td><td class="num">' + dKm(x.bizKm) + '</td><td class="jh-gen__cell">' + esc(x.purpose) + '</td><td>' + stChip(x.status, x.source) + '</td></tr>').join('');
+    body = (rows.length ? mt + '<h4 class="jh-gen__sub">운행 내역 — 시간 순</h4><div class="jh-gen__scroll"><table class="jh-gen-table"><thead><tr><th>일자</th><th>차량</th><th>사용자</th><th>프로젝트</th><th>출발 → 도착</th><th>구분</th><th class="num">계기판(km)</th><th class="num">주행</th><th class="num">업무용</th><th>목적</th><th>상태</th></tr></thead><tbody>' + lines + '</tbody></table></div>' + pagerHtml(dInfo, 'drive-rows') : '<div class="jh-empty">조건에 맞는 운행일지가 없습니다.</div>');
   }
   const hint = all.length === 0 ? '<div class="jh-alert" data-tone="info" role="status">아직 올라온 운행일지가 없습니다. 직원은 <strong>전자결재 → 작성 → 차량 운행일지</strong>에서 운행 후에 쓰고 <strong>기록하기</strong>만 누르면(결재 없음) 바로 여기에 시간 순으로 모입니다. 차량은 먼저 <strong>차량 탭에서 등록(출고일·출고 시 계기판 포함)</strong>해야 선택할 수 있습니다.</div>' : '';
   return importPreviewHtml(st) + hint + assignHtml(st) + card('차량 운행일지 취합', bar + '<div class="jh-gen__pad">' + k + notice + '</div>' + body);

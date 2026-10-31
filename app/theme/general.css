@@ -44,6 +44,3 @@
   .jh-gen-table--log .jh-input, .jh-gen-table--log .jh-select { width: 100%; min-width: 0; padding: var(--sp-1) var(--sp-2); font-size: var(--fs-sm); min-height: 0; }
   .jh-gen-table--log .jh-btn { padding: var(--sp-1) var(--sp-2); font-size: var(--fs-sm); white-space: nowrap; }
 }
-.jh-gen__pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); }
-.jh-gen__pager .jh-gen__flt-sel { margin-left: var(--sp-1); }
-.jh-gen__pager .jh-btn { min-width: var(--u-40, 2.5rem); }

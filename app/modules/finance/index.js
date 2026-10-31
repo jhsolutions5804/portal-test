@@ -1,23 +1,24 @@
-import { esc, toast } from '../../core/ui.js?v=20261031f';
-import { buildPendingRows, groupByMonth, confirmItems, autoProposeAfterImport, splitDraft, splitLeftText, buildConfirmedRows, ruleDraft } from './pjt-tag-logic.js?v=20261031f';
-import { proposeNewPjt, setPjtTag, clearPjtTag, listPjtRules, savePjtRule } from './data.js?v=20261031f';
-import { confirmDialog } from '../../core/dialog.js?v=20261031f';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261031f';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261031f';
-import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261031f';
-import { parseBankSheets } from '../../shared/bank-import.js?v=20261031f';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261031f';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261031f';
-import { monthlyView, monthlyCsv, MP_SEED, npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, ruleReclassPlan, netByAccount, verifyReclass, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows, arByMonth, taxSalesSupplyByMonth, revenueTriple, reportPrintTitle } from './logic.js?v=20261031f';
-import { loadLedger, loadProjects, loadPjtTags, confirmPjtTags, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, saveMonthlyPlan, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries, loadInvoiceMonthly } from './data.js?v=20261031f';
-import { pjtTagHtml, pjtSplitDialogHtml, pjtRuleDialogHtml, monthlyHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261031f';
+import { esc, toast } from '../../core/ui.js?v=20261031g';
+import { pagerAction, pagerApply } from '../../shared/pager.js?v=20261031g';
+import { buildPendingRows, groupByMonth, confirmItems, autoProposeAfterImport, splitDraft, splitLeftText, buildConfirmedRows, ruleDraft } from './pjt-tag-logic.js?v=20261031g';
+import { proposeNewPjt, setPjtTag, clearPjtTag, listPjtRules, savePjtRule } from './data.js?v=20261031g';
+import { confirmDialog } from '../../core/dialog.js?v=20261031g';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261031g';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261031g';
+import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261031g';
+import { parseBankSheets } from '../../shared/bank-import.js?v=20261031g';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261031g';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261031g';
+import { monthlyView, monthlyCsv, MP_SEED, npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, ruleReclassPlan, netByAccount, verifyReclass, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows, arByMonth, taxSalesSupplyByMonth, revenueTriple, reportPrintTitle } from './logic.js?v=20261031g';
+import { loadLedger, loadProjects, loadPjtTags, confirmPjtTags, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, saveMonthlyPlan, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries, loadInvoiceMonthly } from './data.js?v=20261031g';
+import { pjtTagHtml, pjtSplitDialogHtml, pjtRuleDialogHtml, monthlyHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261031g';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
-import { financePerm } from '../../shared/finance-perm.js?v=20261031f';
-import { printWithTitle } from '../../shared/print-title.js?v=20261031f';
+import { financePerm } from '../../shared/finance-perm.js?v=20261031g';
+import { printWithTitle } from '../../shared/print-title.js?v=20261031g';
 /** 실제 메뉴 등록은 공용 틀(modules/legacy/list.js 의 finance 정의 — 인사총무와 같은 사이드바·내용 영역). 여기의 값은 규약(manifest+mount)용이며 권한은 같은 함수를 쓴다 */
 export const manifest = { id: 'finance', order: 25, title: '재무회계', icon: '📒', defaultHash: '#/finance/home', perm: financePerm };
-const S = { data: null, filter: { from: '', to: '', source: '', review: false, reviewed: false, assignee: '', q: '' }, limit: 100, imp: { kind: 'taxsales', busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }, rep: { kind: 'is', from: '', to: '', acct: '2010', pacct: '2010', q: '', zero: false, vatKey: '', vatForm: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_vatform_v1') || '{}') || {}; } catch (e) { return {}; } })() }, openDate: '2026-01-01', admin: false, rl: null, chk: null, chkDate: '', openEditId: '', sel: new Set(), mp: { ym: kstToday().slice(0, 7), manage: false, draft: null, view: null }, fc: { over: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_fc_v1') || '{}') || {}; } catch (e) { return {}; } })(), scen: 'base' } };
+const S = { data: null, filter: { from: '', to: '', source: '', review: false, reviewed: false, assignee: '', q: '' }, limit: 100, pg: {}, imp: { kind: 'taxsales', busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }, rep: { kind: 'is', from: '', to: '', acct: '2010', pacct: '2010', q: '', zero: false, vatKey: '', vatForm: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_vatform_v1') || '{}') || {}; } catch (e) { return {}; } })() }, openDate: '2026-01-01', admin: false, rl: null, chk: null, chkDate: '', openEditId: '', sel: new Set(), mp: { ym: kstToday().slice(0, 7), manage: false, draft: null, view: null }, fc: { over: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_fc_v1') || '{}') || {}; } catch (e) { return {}; } })(), scen: 'base' } };
 const existingIds = () => new Set(S.data.entries.map((e) => e.id));
 const lastDate = () => S.data.entries.reduce((m, e) => (e.date > m ? e.date : m), '');
 function stmNow() {
@@ -343,6 +344,7 @@ export async function mount(root, route, ctx) {
   root.onclick = async (ev) => {
     if (await ptClick(ev)) return;
     const t = ev.target;
+    { const pa = pagerAction(ev); if (pa) { if (pagerApply(S.pg, pa)) paint(); return; } }
     const mpn = t.closest('[data-mp-nav]'); if (mpn) { const k = Number(mpn.getAttribute('data-mp-nav')); if (k === 0) S.mp.ym = kstToday().slice(0, 7); else { const [y, m] = S.mp.ym.split('-').map(Number); const d = new Date(Date.UTC(y, m - 1 + k, 1)); S.mp.ym = d.toISOString().slice(0, 7); } paint(); return; }
     const mpe = t.closest('[data-mp-edit]'); if (mpe) { const it = mpPlan().items.find((x) => x.id === mpe.getAttribute('data-mp-edit')); if (it) { S.mp.manage = true; S.mp.draft = Object.assign({ isNew: false }, it); paint(); } return; }
     const mpd = t.closest('[data-mp-del]'); if (mpd) { const p = mpPlan(); const it = p.items.find((x) => x.id === mpd.getAttribute('data-mp-del')); if (!it) return; const ok = await confirmDialog({ title: '고정지출 항목 삭제', body: '"' + it.name + '" 항목을 목록에서 지웁니다. 장부 전표에는 영향이 없습니다.', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return; p.items = p.items.filter((x) => x.id !== it.id); Object.keys(p.overrides).forEach((ym) => { if (p.overrides[ym].items) delete p.overrides[ym].items[it.id]; mpClean(ym); }); await mpSave(); paint(); return; }
@@ -361,7 +363,6 @@ export async function mount(root, route, ctx) {
     const rk = t.closest('[data-rep-kind]'); if (rk) { S.rep.kind = rk.getAttribute('data-rep-kind'); paint(); return; }
     const a = t.closest('[data-act]'); if (!a) return; const act = a.getAttribute('data-act');
     if (act === 'manual') openManual();
-    else if (act === 'more') { S.limit += 200; paint(); }
     else if (act === 'sel-all') { filterEntries(S.data.entries, S.filter).filter((e) => !e.reversedBy && !e.reverses).forEach((e) => S.sel.add(e.id)); paint(); }
     else if (act === 'sel-clear') { S.sel.clear(); paint(); }
     else if (act === 'vat-clear') { const pk = vatPick(S.data.entries, S.rep.vatKey).key; const ok = await confirmDialog({ title: '입력값 지우기', body: '이 과세기간에 직접 입력한 신고서 칸을 모두 지웁니다.', confirmLabel: '지우기', variant: 'danger' }); if (!ok.ok) return; S.rep.vatForm = Object.assign({}, S.rep.vatForm); delete S.rep.vatForm[pk]; try { localStorage.setItem('jh_fin_vatform_v1', JSON.stringify(S.rep.vatForm)); } catch (e) { /* 무시 */ } paint(); }
@@ -465,6 +466,7 @@ export async function mount(root, route, ctx) {
   };
   root.onchange = async (ev) => {
     const t = ev.target;
+    { const pa = pagerAction(ev); if (pa) { if (pagerApply(S.pg, pa)) paint(); return; } }
     if (t.matches('[data-rc-file]')) { await onReceipts(t); return; }
     if (t.matches('[data-rules-file]')) { await onRulesFile(t); return; }
     if (t.matches('[data-mr]')) { const k = Number(t.getAttribute('data-mr')); S.rl.merchant[k].label = t.value; S.rl.merchant[k].account = CHOICE_ACCOUNT[t.value] || S.rl.merchant[k].account; S.rl.dirtyM = true; paint(); return; }

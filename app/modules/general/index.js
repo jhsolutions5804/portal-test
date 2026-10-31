@@ -1,8 +1,9 @@
-import { db, auth, functions, httpsCallable, collection, getDocs, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261031f';
-import { esc, toast } from '../../core/ui.js?v=20261031f';
-import { confirmDialog } from '../../core/dialog.js?v=20261031f';
-import { GTYPES, GKEYS, kstToday, formToDoc, docToForm, newDefaults, SEED, driveCsv, addDays, parseDriveHistory, assignProject, matchHistory, creditFltDefault, creditCsv } from './logic.js?v=20261031f';
-import { tabsHtml, homeHtml, listHtml, tableHtml, driveHtml, driveSelect, creditLogAreaHtml, creditCorpHtml, creditShownIdx } from './view.js?v=20261031f';
+import { db, auth, functions, httpsCallable, collection, getDocs, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261031g';
+import { esc, toast } from '../../core/ui.js?v=20261031g';
+import { confirmDialog } from '../../core/dialog.js?v=20261031g';
+import { pagerAction, pagerApply } from '../../shared/pager.js?v=20261031g';
+import { GTYPES, GKEYS, kstToday, formToDoc, docToForm, newDefaults, SEED, driveCsv, addDays, parseDriveHistory, assignProject, matchHistory, creditFltDefault, creditCsv } from './logic.js?v=20261031g';
+import { tabsHtml, homeHtml, listHtml, tableHtml, driveHtml, driveSelect, creditLogAreaHtml, creditCorpHtml, creditShownIdx } from './view.js?v=20261031g';
 
 /** 총무(플랫폼 기본 모듈): 임대·차량·자산·갱신 일정을 한 곳에서. 관리자 전용 — 데이터는 general_* 컬렉션(보안 규칙에서 관리자 전용으로 잠가야 한다) */
 /* 사이드바에는 따로 올리지 않는다(modules/index.js 의 MODULES 에 없음) — 인사총무 구역으로만 열린다. manifest 는 모듈 규약상 남겨 둔다 */
@@ -13,7 +14,7 @@ export const mountSection = (root, route, ctx) => mount(root, route, ctx, { base
 export async function mount(root, route, ctx, opts) {
   const BASE = (opts && opts.base) || '#/general'; const want = route.segs[0]; const tab = want === 'home' || want === 'drive' || GKEYS.includes(want) ? want : 'home'; const openId = route.segs[1] || '';
   root.onclick = null; root.oninput = null; root.onchange = null;
-  const st = { drive: { mode: 'all', anchor: kstToday(), ym: kstToday().slice(0, 7), vehicleId: '', driver: '', pjtKey: '', approvedOnly: false, docs: [], hist: [], imp: null, projects: [], pa: { kw: '', pjt: '', from: '', to: '', over: false } }, base: BASE, data: {}, today: kstToday(), q: '', onlyActive: true, edit: null, seed: { lease: SEED.lease.length, vehicle: SEED.vehicle.length, asset: SEED.asset.length, renewal: SEED.renewal.length } };
+  const st = { drive: { mode: 'all', anchor: kstToday(), ym: kstToday().slice(0, 7), vehicleId: '', driver: '', pjtKey: '', approvedOnly: false, docs: [], hist: [], imp: null, projects: [], pa: { kw: '', pjt: '', from: '', to: '', over: false } }, base: BASE, data: {}, pg: {}, today: kstToday(), q: '', onlyActive: true, edit: null, seed: { lease: SEED.lease.length, vehicle: SEED.vehicle.length, asset: SEED.asset.length, renewal: SEED.renewal.length } };
   root.innerHTML = '<div class="jh-general">' + ((opts && opts.noTabs) ? '' : tabsHtml(tab, BASE)) + '<div id="g-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
   const body = root.querySelector('#g-body'); const need = tab === 'home' ? GKEYS : tab === 'drive' ? ['vehicle'] : [tab];
   const load = async () => { await Promise.all(need.map(async (k) => { const s = await getDocs(collection(db, GTYPES[k].coll)); const arr = []; s.forEach((d) => arr.push(Object.assign({ id: d.id }, d.data()))); arr.sort((a, b) => String(GTYPES[k].label(a)).localeCompare(String(GTYPES[k].label(b)), 'ko')); st.data[k] = arr; })); };
@@ -38,8 +39,15 @@ export async function mount(root, route, ctx, opts) {
      if (e.type === 'lease') r.amount = String(num(e.vals.rent) + num(e.vals.vat) || '');
     return r;
   };
+const onPager = (ev) => {
+    const pa = pagerAction(ev); if (!pa) return false;
+    if (pa.key === 'credit-log') { if (st.edit && st.edit.type === 'credit' && pagerApply({ 'credit-log': st.edit.flt }, pa)) { const w = body.querySelector('#g-logwrap'); if (w) w.innerHTML = creditLogAreaHtml(st.edit); } return true; }
+    if (pagerApply(st.pg, pa)) { if (pa.key.startsWith('list-')) { const tb = body.querySelector('#g-table'); if (tb) tb.innerHTML = tableHtml(st, tab); } else paint(); }
+    return true;
+  };
   root.onclick = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
+    if (onPager(ev)) return;
     if (tab === 'drive') {
       const f = st.drive;
       const kwb = t.closest('[data-d-kw]'); if (kwb) { f.pa.kw = kwb.getAttribute('data-d-kw'); paint(); return; }
@@ -73,7 +81,6 @@ export async function mount(root, route, ctx, opts) {
  const rowsV = creditShownIdx(st.edit).map((i) => st.edit.rows[i]); const nm = GTYPES.credit.label(st.edit.vals);
  const blob = new Blob([creditCsv(rowsV, '외상 장부 — ' + nm)], { type: 'text/csv;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '외상장부_' + String(nm).replace(/[^\w가-힣]+/g, '_') + '_' + kstToday() + '.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); return;
  }
- const pgb = t.closest('[data-g-page]'); if (pgb && st.edit && st.edit.type === 'credit') { if (!pgb.disabled) { st.edit.flt.page = Number(pgb.getAttribute('data-g-page')) || 1; const w = body.querySelector('#g-logwrap'); if (w) w.innerHTML = creditLogAreaHtml(st.edit); } return; }
  if (t.closest('[data-g-logadd]')) { if (st.edit.type === 'credit') st.edit.flt = Object.assign(creditFltDefault(), { desc: !st.edit.flt || st.edit.flt.desc !== false, size: (st.edit.flt && st.edit.flt.size) || 10 }); st.edit.rows.push(newLogRow()); paint(); return; }
     const ld = t.closest('[data-g-logdel]'); if (ld) { st.edit.rows.splice(Number(ld.getAttribute('data-g-logdel')), 1); paint(); return; }
     if (t.closest('[data-g-seed]')) {
@@ -91,12 +98,13 @@ export async function mount(root, route, ctx, opts) {
   root.oninput = (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
     if (t.matches('[data-gf]') && st.edit) { st.edit.vals[t.getAttribute('data-gf')] = t.value; return; }
-    if (t.matches('[data-glf]') && st.edit) { const k = t.getAttribute('data-glf'); st.edit.flt = st.edit.flt || creditFltDefault(); st.edit.flt[k] = k === 'size' ? Number(t.value) : (t.type === 'checkbox' ? t.checked : t.value); st.edit.flt.page = 1; const w = body.querySelector('#g-logwrap'); if (w) w.innerHTML = creditLogAreaHtml(st.edit); return; }
+    if (t.matches('[data-glf]') && st.edit) { const k = t.getAttribute('data-glf'); st.edit.flt = st.edit.flt || creditFltDefault(); st.edit.flt[k] = t.type === 'checkbox' ? t.checked : t.value; st.edit.flt.page = 1; const w = body.querySelector('#g-logwrap'); if (w) w.innerHTML = creditLogAreaHtml(st.edit); return; }
  if (t.matches('[data-gl]') && st.edit) { const [i, k] = t.getAttribute('data-gl').split(':'); if (st.edit.rows[Number(i)]) st.edit.rows[Number(i)][k] = t.value; return; }
     if (t.matches('[data-g-q]')) { st.q = t.value; const tb = body.querySelector('#g-table'); if (tb) tb.innerHTML = tableHtml(st, tab); const cp = body.querySelector('#g-corp'); if (cp) cp.innerHTML = creditCorpHtml(st); }
   };
   root.onchange = (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
+    if (onPager(ev)) return;
     if (tab === 'drive') {
       const f = st.drive;
       if (t.matches('[data-d-pa]')) { f.pa[t.getAttribute('data-d-pa')] = t.value; paint(); return; }
