@@ -1,4 +1,4 @@
-import { esc } from '../core/ui.js?v=20261031h';
+import { esc } from '../core/ui.js?v=20261031i';
 
 /* 목록 페이지 나누기 공용 부품 — 모든 모듈(PJT 관리 제외)의 목록이 같은 규칙·같은 모양을 쓴다.
  * 쓰는 법: ① 모듈 상태에 map = {} 를 둔다 ② 목록을 그릴 때 info = pageInfo(rows.length, pagerState(map, key)) → rows.slice(info.from, info.to) 만 그리고 pagerHtml(info, key) 를 표 아래에 붙인다

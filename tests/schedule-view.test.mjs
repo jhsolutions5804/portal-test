@@ -1,0 +1,55 @@
+// 영업기획·재무회계 일정 보드 화면 시험 — 목록·달력·양식·쪽 나누기·자동 일정 읽기 전용·이스케이프
+import { boardHtml, listHtml, gridHtml, formHtml, rowHtml, newState, emptyForm, visibleItems, dayLabel } from '../app/shared/schedule-view.js';
+import { SCHEDULE_CONFIG } from '../app/shared/schedule-logic.js';
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
+const P = SCHEDULE_CONFIG.plan, F = SCHEDULE_CONFIG.finance; const cnt = (h, re) => (h.match(re) || []).length;
+const mk = (cfg, rows, o) => Object.assign(newState(cfg, { uid: 'u', admin: true }, '2026-11-10'), { rows, loaded: true }, o || {});
+const D = (o) => Object.assign({ text: '미팅', sdate: '2026-11-12', edate: '2026-11-12', stime: '', etime: '', tag: 'meeting', tagLabel: '미팅', place: '', memo: '', isTodo: false, done: false, source: 'manual' }, o || {});
+const R = (id, o) => ({ id, d: D(o) });
+ok(dayLabel('2026-11-10') === '11/10(화)' && dayLabel('2026-11-15') === '11/15(일)', '날짜 표시는 "11/10(화)"');
+const s0 = mk(P, []); let h = boardHtml(s0);
+ok(h.includes('영업기획 일정') && h.includes('data-sch-add') && h.includes('이 달에는 일정이 없습니다.') && h.includes('2026-11') && h.includes('영업기획 일정(Outlook 공유 사서함)') && h.includes('포털 → Outlook 한 방향'), '빈 달: 제목·추가 단추·"이 달에는 일정이 없습니다"·Outlook 반영 안내(한 방향)');
+ok(boardHtml(mk(F, [])).includes('재무회계 일정') && boardHtml(mk(F, [])).includes('재무회계 일정(Outlook 공유 사서함)') && boardHtml(mk(F, [])).includes('결제일') && !boardHtml(mk(F, [])).includes('>견적<'), '재무회계 보드는 자기 구분(결제일·세무·급여)과 사서함 안내를 씀');
+const rows = [R('a', { text: '견적서 작성', isTodo: true, sdate: '2026-11-05', edate: '2026-11-05', tag: 'est', tagLabel: '견적' }), R('b', { text: '[청구] P4 다람 지급요청일', source: 'settlement_auto', tag: 'billing', tagLabel: '청구', sdate: '2026-11-30', edate: '2026-11-30' }), R('c', { text: '월 마감 미팅', recurId: 'r1', recurNo: 2, recurTotal: 12, sdate: '2026-11-12', stime: '14:00', etime: '15:00', place: '회의실' }), R('d', { text: '완료한 일', isTodo: true, done: true, sdate: '2026-11-03', edate: '2026-11-03' }), R('e', { text: '출장', sdate: '2026-11-18', edate: '2026-11-20' }), R('f', { text: '다른 달', sdate: '2026-12-01', edate: '2026-12-01' })];
+const s1 = mk(P, rows, { today: '2026-11-04' }); h = boardHtml(s1);
+ok(!h.includes('다른 달') && cnt(h, /class="jh-sch__row/g) === 5 && h.includes('견적서 작성') && h.includes('월 마감 미팅'), '목록: 그 달 일정 5건만(12월 일정 제외)');
+ok(h.indexOf('11/03(화)') < h.indexOf('11/05(목)') && h.indexOf('11/05(목)') < h.indexOf('11/12(목)') && h.indexOf('11/18(수)') < h.indexOf('11/30(월)'), '날짜 순으로 묶여 나옴');
+const hT = boardHtml(Object.assign({}, s1, { today: '2026-11-12' })); ok(hT.includes('jh-sch__day is-today') && hT.indexOf('is-today') > hT.indexOf('11/05(목)') && !h.includes('jh-sch__day is-today'), '오늘 날짜(일정이 있는 날) 묶음에 오늘 표시, 오늘이 아닌 날에는 없음');
+const rowA = rowHtml(rows[0], s1), rowB = rowHtml(rows[1], s1), rowC = rowHtml(rows[2], s1);
+ok(rowA.includes('data-sch-done="a"') && rowA.includes('data-sch-edit="a"') && rowA.includes('data-sch-del="a"') && rowA.includes('마감') && rowA.includes('할 일'), '직접 입력 할 일: 완료 체크·수정·삭제, "마감" 표시');
+ok(!rowB.includes('data-sch-edit') && !rowB.includes('data-sch-del') && !rowB.includes('data-sch-done') && rowB.includes('정산서에서 자동 반영') && rowB.includes('청구'), '자동 일정(정산서): 수정·삭제·완료 체크가 없고 "정산서에서 자동 반영" 표시');
+ok(rowC.includes('14:00~15:00') && rowC.includes('회의실') && rowC.includes('반복 2/12') && rowC.includes('data-sch-delfuture="c"') && rowC.includes('이후 모두 삭제'), '반복 일정: 시간·장소·"반복 2/12"·"이후 모두 삭제" 단추');
+ok(rowHtml(rows[4], s1).includes('11/18~11/20') && rowHtml(rows[4], s1).includes('종일'), '여러 날 일정은 기간 표시, 시간 없으면 종일');
+ok(rowHtml(rows[3], s1).includes('checked') && rowHtml(rows[3], s1).includes('is-done') && rowHtml(rows[3], s1).includes('완료'), '완료한 할 일: 체크됨·취소선 클래스·"완료" 칩');
+ok(h.includes('오늘 0건') && h.includes('7일 안 마감 1건') && h.includes('지난 미완료 0건'), '요약 칩: 오늘 0건 · 7일 안 마감 1건(11/05) · 지난 미완료 0건(11/03 은 완료)');
+ok(visibleItems(Object.assign({}, s1, { tag: 'est' })).length === 1 && visibleItems(Object.assign({}, s1, { hideDone: true })).length === 4 && visibleItems(Object.assign({}, s1, { tag: 'est', hideDone: true })).length === 1, '구분 거름·완료 숨기기');
+ok(boardHtml(Object.assign({}, s1, { tag: 'billing', hideDone: false })).includes('청구') && boardHtml(Object.assign({}, s1, { tag: 'est' })).includes('조건에 맞는 일정이 없습니다.') === false && listHtml(Object.assign({}, s1, { tag: 'payment' })).includes('조건에 맞는 일정이 없습니다.'), '구분을 골라 결과가 없으면 "조건에 맞는 일정이 없습니다"');
+// 쪽 나누기
+const many = Array.from({ length: 23 }, (_, i) => R('m' + i, { text: '일정' + String(i).padStart(2, '0'), sdate: '2026-11-' + String(1 + (i % 28)).padStart(2, '0'), edate: '2026-11-' + String(1 + (i % 28)).padStart(2, '0') }));
+const s2 = mk(P, many); const l2 = listHtml(s2);
+ok(cnt(l2, /class="jh-sch__row/g) === 10 && l2.includes('1–10 / 23줄') && l2.includes('data-pg-key="sched-plan"'), '일정이 23건이면 처음 10건과 쪽 막대');
+s2.pg['sched-plan'].page = 3; ok(cnt(listHtml(s2), /class="jh-sch__row/g) === 3 && listHtml(s2).includes('21–23 / 23줄'), '3쪽은 마지막 3건');
+s2.tag = 'etc'; ok(listHtml(s2).includes('조건에 맞는 일정이 없습니다.') && s2.pg['sched-plan'].page === 3, '(참고) 결과가 없으면 쪽 막대 없이 안내문만');
+const s2b = mk(P, many); s2b.pg['sched-plan'] = { size: 10, page: 3 }; listHtml(s2b); s2b.hideDone = true; listHtml(s2b); ok(s2b.pg['sched-plan'].page === 1, '필터를 바꾸면 1쪽으로 돌아감');
+ok(!listHtml(mk(P, rows)).includes('data-pg-key'), '10건 이하이면 쪽 막대 없음');
+// 달력
+const g = gridHtml(s1);
+ok(cnt(g, /data-sch-day="/g) === 30 && g.includes('data-sch-day="2026-11-12"') && cnt(g, /is-blank/g) === 5 && cnt(g, /class="jh-sch__dow/g) === 7, '달력: 11월 30일 칸 + 앞뒤 빈 칸(2026-11-01 은 일요일 → 앞 0칸·뒤 5칸), 요일 7칸');
+ok(g.includes('is-auto') && g.includes('is-done') && g.includes('월 마감 미팅'), '달력 칸에 일정 제목, 자동 일정(점선)·완료 표시');
+const busy = mk(P, Array.from({ length: 5 }, (_, i) => R('x' + i, { text: '일' + i, sdate: '2026-11-12', edate: '2026-11-12' }))); ok(gridHtml(busy).includes('+2건') && cnt(gridHtml(busy), /jh-sch__tag/g) === 3, '한 날 일정이 많으면 3건까지 보이고 "+2건"');
+ok(gridHtml(mk(P, [R('t', { text: '3일간', sdate: '2026-11-18', edate: '2026-11-20' })])).match(/3일간/g).length === 3, '여러 날 일정은 해당 날짜 칸마다 표시');
+// 양식
+const fNew = formHtml(Object.assign({}, s1, { form: emptyForm(P, '2026-11-10') }));
+ok(fNew.includes('일정 추가') && fNew.includes('data-sf="text"') && fNew.includes('data-sf="recur"') && fNew.includes('data-sch-save') && fNew.includes('data-sf="stime"') && fNew.includes('금액·계좌번호는 쓰지 마세요'), '추가 양식: 제목·구분·날짜·시간·반복·저장 단추, 금액·계좌 입력 금지 안내');
+const fEdit = formHtml(Object.assign({}, s1, { form: Object.assign(emptyForm(P, '2026-11-10'), { id: 'a', text: '수정할 일' }) }));
+ok(fEdit.includes('일정 수정') && !fEdit.includes('data-sf="recur"') && fEdit.includes('수정할 일') && fEdit.includes('>저장<'), '수정 양식에는 반복 선택이 없음(묶음 전체 수정은 하지 않음)');
+const fTodo = formHtml(Object.assign({}, s1, { form: Object.assign(emptyForm(P, '2026-11-10'), { isTodo: true }) }));
+ok(fTodo.includes('마감일 *') && !fTodo.includes('data-sf="stime"') && !fTodo.includes('data-sf="edate"') && fTodo.includes('checked'), '할 일로 체크하면 마감일만 받고 시간·종료일 칸이 사라짐');
+const fRec = formHtml(Object.assign({}, s1, { form: Object.assign(emptyForm(F, '2026-11-25'), { recur: 'monthly' }) }));
+ok(fRec.includes('12개월분을 한 번에 만듭니다') && fRec.includes('<option value="monthly" selected>'), '매월 반복을 고르면 12개월분 안내');
+ok(formHtml(s1) === '' && boardHtml(s1).includes('class="jh-card jh-sch__form"') === false, '양식을 열지 않았으면 그리지 않음');
+const xss = mk(P, [R('z', { text: '<img src=x onerror=alert(1)>', memo: '"><script>x</script>', place: '<b>회의실</b>' })]); const hx = boardHtml(xss);
+ok(!hx.includes('<img src=x') && !hx.includes('<script>x') && hx.includes('&lt;img src=x') && hx.includes('&lt;b&gt;회의실'), '제목·메모·장소의 HTML 은 글자로만 표시(주입 방어)');
+ok(boardHtml(Object.assign({}, s1, { err: '이 일정은 관리자만 볼 수 있습니다.', rows: [] })).includes('role="alert"') && boardHtml(Object.assign({}, s1, { loaded: false })).includes('jh-skeleton'), '권한 오류는 경고 박스, 불러오는 중에는 자리 표시');
+ok(boardHtml(Object.assign({}, s1, { view: 'grid' })).includes('jh-sch__grid') && boardHtml(s1).includes('aria-pressed="true">목록') && boardHtml(Object.assign({}, s1, { view: 'grid' })).includes('aria-pressed="true">달력'), '보기 전환(목록·달력) 단추의 눌림 상태');
+console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); process.exit(fail ? 1 : 0);

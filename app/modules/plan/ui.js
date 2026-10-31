@@ -1,6 +1,6 @@
 /* 영업기획 화면 공용 조각 — 카드·칩·쪽 이동·입력칸. 색·간격은 theme/plan.css 의 변수만 쓴다. */
-import { pageList, pagerSizeSelect } from '../../shared/pager.js?v=20261031h';
-import { esc } from '../../core/ui.js?v=20261031h';
+import { pageList, pagerSizeSelect } from '../../shared/pager.js?v=20261031i';
+import { esc } from '../../core/ui.js?v=20261031i';
 export const won = (n) => (Math.round(Number(n) || 0)).toLocaleString('ko-KR');
 export const signed = (n) => (n >= 0 ? '+' : '') + won(n);
 export const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -19,4 +19,4 @@ export const uiState = { load(key) { try { return JSON.parse(sessionStorage.getI
 /** 주소(해시)만 갱신한다 — 화면은 이미 그렸으므로 틀이 다시 그리지 않게 pushState 를 쓰고, 브라우저 뒤로 가기·앞으로 가기는 틀이 주소를 읽어 화면을 다시 그린다 */
 export function pushHash(hash) { if (location.hash === hash) return; try { history.pushState(null, '', hash); } catch (e) { location.hash = hash; } }
 /* 줄 수 선택(shared/pager.js)을 이 모듈을 거쳐 쓰는 시험이 같은 모듈 인스턴스를 보게 다시 내보낸다 */
-export { pagerSizeSet, pagerSizeGet, pagerSizeSelect, pagerSizeAction } from '../../shared/pager.js?v=20261031h';
+export { pagerSizeSet, pagerSizeGet, pagerSizeSelect, pagerSizeAction } from '../../shared/pager.js?v=20261031i';

@@ -1,10 +1,10 @@
 /* 영업기획 프로젝트 — 순수 규칙(화면·네트워크 없이 시험 가능). 구포털 기획(gihoek)의 금액 집계·저장 규칙을 그대로 옮겼다.
  * 청구·지급·손익: 청구 누계 = 청구서(invoice, 폐기 제외), 지급 누계 = 지급예정서(payment, 폐기 제외), 손익(구포털 "실현 손익") = 청구 − 지급, 미수금 = 청구 − 완결된 청구.
  * 여러 프로젝트를 합산한 정산서는 perPjtAmount(프로젝트별 몫)가 있으면 그 값, 없으면 pjtIds 가 둘 이상일 때 균등 분배. */
-import { pagerSizeGet } from '../../shared/pager.js?v=20261031h';
+import { pagerSizeGet } from '../../shared/pager.js?v=20261031i';
 export const TYPE_LABEL = { fcu: '자동정산', general: '일반(품목)' };
 export const PD_PAGE_SIZE = 10;
-import { itemAmt, estSupply, estTotal, isEstActive, setActive, settleAmountForPjt, settleBelongsToPjt, pjtSummary, pjtMargin } from '../../shared/pjt-summary.js?v=20261031h';
+import { itemAmt, estSupply, estTotal, isEstActive, setActive, settleAmountForPjt, settleBelongsToPjt, pjtSummary, pjtMargin } from '../../shared/pjt-summary.js?v=20261031i';
 export { itemAmt, estSupply, estTotal, isEstActive, setActive, settleAmountForPjt, settleBelongsToPjt, pjtSummary, pjtMargin };   // 영업기획 안에서는 예전 경로 그대로 쓴다(함수는 shared/pjt-summary.js 하나)
 /** 등록 순서(오래된 것부터): createdAt(Timestamp·ISO 문자열) → 없으면 문서 번호 pjt_<시각> */
 export function pjtCreatedKey(p) {

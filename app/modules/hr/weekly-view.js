@@ -1,8 +1,8 @@
 /* 주 단위 근로시간 화면 — HTML 만 만드는 순수 함수(시험: tests/hr-weekly-view.test.mjs). 달력 아래 "주별 근로시간" 카드와 인사 홈 신호 칸. */
-import { pageTableHtml } from '../../shared/pager.js?v=20261031h';
-import { esc } from '../../core/ui.js?v=20261031h';
-import { isHoliday } from '../../shared/holidays.js?v=20261031h';
-import { WEEK_STAGES, WEEK_LEGAL, WEEK_OT_LIMIT, weeksOfMonth, weekSummary, weekDetail, weekStart, weekLabel } from './weekly.js?v=20261031h';
+import { pageTableHtml } from '../../shared/pager.js?v=20261031i';
+import { esc } from '../../core/ui.js?v=20261031i';
+import { isHoliday } from '../../shared/holidays.js?v=20261031i';
+import { WEEK_STAGES, WEEK_LEGAL, WEEK_OT_LIMIT, weeksOfMonth, weekSummary, weekDetail, weekStart, weekLabel } from './weekly.js?v=20261031i';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';

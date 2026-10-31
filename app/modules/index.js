@@ -1,16 +1,17 @@
 /* 플랫폼에 꽂는 모듈 목록 — 모듈을 더하거나 빼는 일은 이 파일 한 곳만 고친다.
  * 각 항목은 { manifest, mount }. 핵심부(core/)는 모듈 폴더를 직접 알지 못하고 이 목록만 읽는다. */
-import * as edoc from './edoc/index.js?v=20261031h';
-import * as attendance from './attendance/index.js?v=20261031h';
-import * as calendar from './calendar/index.js?v=20261031h';
-import * as company from './company/index.js?v=20261031h';
-import * as evalm from './eval/index.js?v=20261031h';
-import * as finance from './finance/index.js?v=20261031h';
-import * as plan from './plan/index.js?v=20261031h';
-import * as general from './general/index.js?v=20261031h';
-import * as hr from './hr/index.js?v=20261031h';
-import * as pjt from './pjt/index.js?v=20261031h';
-import { modules as legacy, hostNative } from './legacy/index.js?v=20261031h';
+import { mountScheduleBoard, SCHEDULE_CONFIG } from '../shared/schedule-board.js?v=20261031i';
+import * as edoc from './edoc/index.js?v=20261031i';
+import * as attendance from './attendance/index.js?v=20261031i';
+import * as calendar from './calendar/index.js?v=20261031i';
+import * as company from './company/index.js?v=20261031i';
+import * as evalm from './eval/index.js?v=20261031i';
+import * as finance from './finance/index.js?v=20261031i';
+import * as plan from './plan/index.js?v=20261031i';
+import * as general from './general/index.js?v=20261031i';
+import * as hr from './hr/index.js?v=20261031i';
+import * as pjt from './pjt/index.js?v=20261031i';
+import { modules as legacy, hostNative } from './legacy/index.js?v=20261031i';
 
 export const MODULES = [
   { manifest: edoc.manifest, mount: edoc.mount },
@@ -35,6 +36,8 @@ hostNative('pjt', 'monthly', pjt.mountMonthly);   // PJT 새 모듈 — 월간 �
 hostNative('pjt', 'log', pjt.mountLog);   // PJT 새 모듈 — 이력: 변경·결정·요청 로그(프로젝트 아래 탭, 서버 함수 pjtLogAct 만 사용)
 hostNative('pjt', 'progress', pjt.mountProgress);   // PJT 새 모듈 — 공정(프로젝트 아래 탭)
 hostNative('pjt', 'attend', pjt.mountAttend);   // PJT 새 모듈의 첫 화면 — 출역·공수(구포털 PJT 메뉴 안에서 열린다)
+hostNative('plan', 'schedule', (root, route, ctx) => mountScheduleBoard(root, route, ctx, SCHEDULE_CONFIG.plan));   // 영업기획 일정(직접 입력 + 정산서 청구일·지급일 자동, Outlook 공유 사서함으로 반영)
+hostNative('finance', 'schedule', (root, route, ctx) => mountScheduleBoard(root, route, ctx, SCHEDULE_CONFIG.finance));   // 재무회계 일정(결제일·세무·급여, 반복 입력, Outlook 공유 사서함으로 반영)
 hostNative('plan', 'home', plan.mountHome);   // 영업기획 홈 새 화면
 hostNative('plan', 'acct', plan.mountAcct);   // 비용장부 대조(재무회계 이관) 새 화면
 hostNative('plan', 'closing', plan.mountClosing);   // 월말 마감(신규)

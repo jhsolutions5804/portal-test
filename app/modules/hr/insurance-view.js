@@ -1,7 +1,7 @@
 /* 4대보험 월별 대조 화면(대기열 1-3-17 1단계) — HTML 만 만드는 순수 함수(시험: tests/hr-insurance-view.test.mjs). 급여명세서 근로자 공제 합과 공단 고지금액을 월별로 맞춰 보여 준다. */
-import { pageTableHtml } from '../../shared/pager.js?v=20261031h';
-import { esc } from '../../core/ui.js?v=20261031h';
-import { reconcile } from './insurance-recon.js?v=20261031h';
+import { pageTableHtml } from '../../shared/pager.js?v=20261031i';
+import { esc } from '../../core/ui.js?v=20261031i';
+import { reconcile } from './insurance-recon.js?v=20261031i';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
