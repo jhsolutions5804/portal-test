@@ -1,8 +1,8 @@
 /* 근로자 연명부 도구 화면(표시만): 월간 공수 보기 · 기존 인원 마이그레이션. 규칙은 roster-tools.js, 불러오기·저장은 roster-tools-index.js. */
-import { esc } from '../../core/ui.js?v=20261031c';
-import { personSheet, unknownGroups } from './roster-tools.js?v=20261031c';
-import { monthLabel } from './overview.js?v=20261031c';
-import { leaderChoices } from './roster.js?v=20261031c';
+import { esc } from '../../core/ui.js?v=20261031d';
+import { personSheet, unknownGroups } from './roster-tools.js?v=20261031d';
+import { monthLabel } from './overview.js?v=20261031d';
+import { leaderChoices } from './roster.js?v=20261031d';
 const f1 = (n) => (Math.round(n * 10) / 10).toFixed(1);
 const wrap = (mode, inner) => '<div class="jh-pjt jh-pjt--prog jh-ro"><div class="jh-pjt__main jh-pjt__mainwide"><div class="jh-pjt__proj"><span class="jh-pjt__projlabel">👷 근로자 연명부</span></div><div class="jh-ro__ftabs" role="tablist" aria-label="연명부 도구">' + [['', '명부'], ['_manday', '📊 월간 공수'], ['_migrate', '🔄 기존 인원 마이그레이션']].map(([k, l]) => '<a role="tab" class="jh-ro__ftab" href="#/pjt/roster' + (k ? '/' + k : '') + '" aria-selected="' + (mode === k ? 'true' : 'false') + '">' + l + '</a>').join('') + '</div><div class="jh-ro__fpanel jh-ro__tools2">' + inner + '</div></div></div>';
 const empty = (t) => '<div class="jh-empty">' + t + '</div>';

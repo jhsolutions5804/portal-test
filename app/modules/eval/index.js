@@ -2,10 +2,10 @@
  * 인사 모듈에서 분리한 이유: 인사 모듈은 모듈 전체가 관리자 전용이고 화면 단위 권한이 없어, 인사총무팀 일부(비관리자)에게 열면
  * 급여명세서·근로계약서·연봉계약서·주민번호 화면이 주소로 열릴 수 있다(설계서 docs/hr-evaluation-design.md 9-1절).
  * 규약: 다른 모듈을 직접 불러오지 않는다(권한 판정은 shared/eval-perm.js, 청구·지급 요약은 shared/pjt-summary.js). */
-import { esc } from '../../core/ui.js?v=20261031c';
-import { isEvalUser } from '../../shared/eval-perm.js?v=20261031c';
-import { mountOps } from './ops.js?v=20261031c';
-import { mountMine } from './mine.js?v=20261031c';
+import { esc } from '../../core/ui.js?v=20261031d';
+import { isEvalUser } from '../../shared/eval-perm.js?v=20261031d';
+import { mountOps } from './ops.js?v=20261031d';
+import { mountMine } from './mine.js?v=20261031d';
 
 export const manifest = { id: 'eval', order: 47, title: '평가', icon: '📝', defaultHash: '#/eval/mine', perm: isEvalUser };
 

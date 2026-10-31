@@ -1,5 +1,5 @@
 /* 영업기획 화면 공용 조각 — 카드·칩·쪽 이동·입력칸. 색·간격은 theme/plan.css 의 변수만 쓴다. */
-import { esc } from '../../core/ui.js?v=20261031c';
+import { esc } from '../../core/ui.js?v=20261031d';
 export const won = (n) => (Math.round(Number(n) || 0)).toLocaleString('ko-KR');
 export const signed = (n) => (n >= 0 ? '+' : '') + won(n);
 export const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';

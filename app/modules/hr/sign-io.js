@@ -1,16 +1,16 @@
 /* 원격 서명·열람 링크·메일 발송 — Firestore·메일 서비스를 쓰는 부분(규칙·판단은 sign.js, 시험은 거기서).
  * 서명 페이지(sign.html)는 별도 공개 페이지이고, 이 파일은 관리자 화면 쪽(링크 만들기·서명 결과 반영·메일 보내기·발송 이력)만 맡는다. */
-import { db, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp, Timestamp, addDoc, updateDoc } from '../../core/firebase.js?v=20261031c';
-import { confirmDialog } from '../../core/dialog.js?v=20261031c';
-import { toast, esc } from '../../core/ui.js?v=20261031c';
-import { docHtmlByVer, __ANNUAL_TPL } from './frozen-docs.js?v=20261031c';
-import { configureLaborDocs, laborDocHtml, annualDocHtml } from './labor-doc.js?v=20261031c';
-import { SHORT_TPL_VER, SHORT_SIGN_ERROR } from './short-doc.js?v=20261031c';
-import { psHtml } from './payslip-doc.js?v=20261031c';
-import { leavePromoHtmlByVer, configureLeavePromoDocs } from './leave-promo-docs.js?v=20261031c';
-import { LP_STAGE } from './leave-promo.js?v=20261031c';
-import { IS_TEST } from '../../core/config.js?v=20261031c';
-import { emailjsFor, phoneE164, maskJumin, contractContentHash, buildSignLink, buildViewLink, NO_PHONE_ERROR, syncDecision, isEmail, sendLogEntry, summarizeSendLog, qrUrl, EMAILJS, DOC_LABEL } from './sign.js?v=20261031c';
+import { db, doc, getDoc, getDocs, collection, query, where, writeBatch, serverTimestamp, Timestamp, addDoc, updateDoc } from '../../core/firebase.js?v=20261031d';
+import { confirmDialog } from '../../core/dialog.js?v=20261031d';
+import { toast, esc } from '../../core/ui.js?v=20261031d';
+import { docHtmlByVer, __ANNUAL_TPL } from './frozen-docs.js?v=20261031d';
+import { configureLaborDocs, laborDocHtml, annualDocHtml } from './labor-doc.js?v=20261031d';
+import { SHORT_TPL_VER, SHORT_SIGN_ERROR } from './short-doc.js?v=20261031d';
+import { psHtml } from './payslip-doc.js?v=20261031d';
+import { leavePromoHtmlByVer, configureLeavePromoDocs } from './leave-promo-docs.js?v=20261031d';
+import { LP_STAGE } from './leave-promo.js?v=20261031d';
+import { IS_TEST } from '../../core/config.js?v=20261031d';
+import { emailjsFor, phoneE164, maskJumin, contractContentHash, buildSignLink, buildViewLink, NO_PHONE_ERROR, syncDecision, isEmail, sendLogEntry, summarizeSendLog, qrUrl, EMAILJS, DOC_LABEL } from './sign.js?v=20261031d';
 export const signBase = () => new URL('../../../sign.html', import.meta.url).href;   // 이 앱이 올라가 있는 곳(테섭·본섭)의 서명 페이지
 const logoUrl = () => new URL('../../theme/assets/jh-logo.png', import.meta.url).href;
 const COLL = { annual: 'annual_contracts', labor: 'labor_contracts' };

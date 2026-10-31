@@ -4,7 +4,7 @@
 .jh-gen__tabs .jh-segmented__item { text-decoration: none; display: inline-flex; align-items: center; white-space: nowrap; }
 .jh-gen__bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); }
 .jh-gen__bar .jh-gen__q { flex: 1 1 var(--u-220); max-width: var(--u-420); }
-.jh-gen__pad { padding: var(--sp-4) calc(var(--sp-4) + var(--sp-1)); display: grid; gap: var(--sp-4); }
+.jh-gen__pad { padding: var(--sp-4) calc(var(--sp-4) + var(--sp-1)); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); }
 .jh-gen__scroll { overflow-x: auto; }
 .jh-gen__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3) var(--sp-4); }
 .jh-gen__grid .jh-gen__wide { grid-column: 1 / -1; }
@@ -23,3 +23,10 @@
 
 .jh-gen__cell { max-inline-size: 16rem; }
 .jh-gen__bar .jh-segmented { flex-wrap: wrap; max-width: 100%; }
+/* 외상 장부 거래 내역: 거름 막대·요약 */
+.jh-gen__flt { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); margin: var(--sp-3) 0; }
+.jh-gen__flt .jh-gen__q { flex: 1 1 var(--u-220); max-width: var(--u-420); }
+.jh-gen__flt-sel { width: auto; flex: 1 1 var(--u-140); min-width: 0; max-width: var(--u-220); }
+.jh-gen__more { margin: var(--sp-3) 0; }
+.jh-gen__more summary { cursor: pointer; font-weight: 600; margin-bottom: var(--sp-2); }
+.jh-gen-table tfoot td { border-top: var(--u-1) solid var(--c-line-strong); }

@@ -1,8 +1,8 @@
 /* 근로계약서 작성 화면의 "단시간 근로자" 칸 — HTML 만 만드는 순수 함수(시험: tests/hr-short-view.test.mjs). 입력 연결은 index.js 의 계약서 화면이 한다.
  * data-an-ftype(근로 형태)·data-an-sday(요일 켜기)·data-an-sf="요일:칸"(시작·종료·휴게)·data-an-f(근무장소·초과 한도·지급일·특약)·data-an-pay(시급).
  * 연봉계약서가 쓰는 data-an-wt 와 겹치지 않게 이름을 따로 썼다. */
-import { esc } from '../../core/ui.js?v=20261031c';
-import { DAYS, MIN_HOURLY, shortCheck } from './short-doc.js?v=20261031c';
+import { esc } from '../../core/ui.js?v=20261031d';
+import { DAYS, MIN_HOURLY, shortCheck } from './short-doc.js?v=20261031d';
 const card = (title, body) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3></div>' + body + '</section>';
 export const FORM_TYPES = [['regular', '일반 근로자'], ['short', '단시간 근로자 (주 40시간 미만)']];
 /** 근로자를 고른 뒤 맨 위에 나오는 근로 형태 선택 */

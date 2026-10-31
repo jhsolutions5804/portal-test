@@ -1,6 +1,6 @@
 /* NFC 출퇴근 화면 조각 — 문자열만 만든다(네트워크·저장 없음). 계산은 nfc-logic.js */
-import { esc } from '../../core/ui.js?v=20261031c';
-import { WORK_TYPES, locLabel, mapLink } from './nfc-logic.js?v=20261031c';
+import { esc } from '../../core/ui.js?v=20261031d';
+import { WORK_TYPES, locLabel, mapLink } from './nfc-logic.js?v=20261031d';
 
 const ICON = { success: '✔', info: 'ℹ', warn: '!', danger: '✕' };
 

@@ -1,8 +1,8 @@
-import { db, auth, functions, httpsCallable, collection, getDocs, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261031c';
-import { esc, toast } from '../../core/ui.js?v=20261031c';
-import { confirmDialog } from '../../core/dialog.js?v=20261031c';
-import { GTYPES, GKEYS, kstToday, formToDoc, docToForm, newDefaults, SEED, driveCsv, addDays, parseDriveHistory, assignProject, matchHistory } from './logic.js?v=20261031c';
-import { tabsHtml, homeHtml, listHtml, tableHtml, driveHtml, driveSelect } from './view.js?v=20261031c';
+import { db, auth, functions, httpsCallable, collection, getDocs, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261031d';
+import { esc, toast } from '../../core/ui.js?v=20261031d';
+import { confirmDialog } from '../../core/dialog.js?v=20261031d';
+import { GTYPES, GKEYS, kstToday, formToDoc, docToForm, newDefaults, SEED, driveCsv, addDays, parseDriveHistory, assignProject, matchHistory, creditFltDefault, creditCsv } from './logic.js?v=20261031d';
+import { tabsHtml, homeHtml, listHtml, tableHtml, driveHtml, driveSelect, creditLogAreaHtml, creditCorpHtml, creditShownIdx } from './view.js?v=20261031d';
 
 /** 총무(플랫폼 기본 모듈): 임대·차량·자산·갱신 일정을 한 곳에서. 관리자 전용 — 데이터는 general_* 컬렉션(보안 규칙에서 관리자 전용으로 잠가야 한다) */
 /* 사이드바에는 따로 올리지 않는다(modules/index.js 의 MODULES 에 없음) — 인사총무 구역으로만 열린다. manifest 는 모듈 규약상 남겨 둔다 */
@@ -23,7 +23,7 @@ export async function mount(root, route, ctx, opts) {
   const paint = () => { body.innerHTML = tab === 'home' ? homeHtml(st) : tab === 'drive' ? driveHtml(st) : listHtml(st, tab); if (st.edit) { const e = body.querySelector('[data-gf]'); if (e && st.edit.fresh) { st.edit.fresh = false; e.scrollIntoView({ block: 'center' }); } } };
   const openEdit = (type, id) => {
     const d = id ? (st.data[type] || []).find((x) => x.id === id) : null; const T = GTYPES[type]; if (id && !d) return;
-    st.edit = { type, id: id || '', isNew: !id, fresh: true, vals: d ? docToForm(type, d) : newDefaults(type), rows: d && T.log ? (d[T.log.k] || []).map(strRow) : [] }; paint();
+    st.edit = { type, id: id || '', isNew: !id, fresh: true, flt: type === 'credit' ? creditFltDefault() : null, vals: d ? docToForm(type, d) : newDefaults(type), rows: d && T.log ? (d[T.log.k] || []).map(strRow) : [] }; paint();
   };
   const reloadSoft = async () => { await load(); };
   /** 전자결재 "차량 운행일지"의 차량 선택 목록(edoc_settings/vehicles)을 사용 중인 차량으로 맞춘다 — 서버 함수가 관리자만 허용 */
@@ -69,7 +69,11 @@ export async function mount(root, route, ctx, opts) {
     const go = t.closest('[data-g-go]'); if (go) { location.hash = BASE + '/' + go.getAttribute('data-g-go') + '/' + go.getAttribute('data-g-id'); return; }
     if (t.closest('[data-g-add]')) { openEdit(tab, ''); return; }
     const op = t.closest('[data-g-open]'); if (op && !t.closest('input,select,button,textarea')) { openEdit(tab, op.getAttribute('data-g-open')); return; }
-    if (t.closest('[data-g-logadd]')) { st.edit.rows.push(newLogRow()); paint(); return; }
+    if (t.closest('[data-g-credit-csv]') && st.edit && st.edit.type === 'credit') {
+ const rowsV = creditShownIdx(st.edit).map((i) => st.edit.rows[i]); const nm = GTYPES.credit.label(st.edit.vals);
+ const blob = new Blob([creditCsv(rowsV, '외상 장부 — ' + nm)], { type: 'text/csv;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '외상장부_' + String(nm).replace(/[^\w가-힣]+/g, '_') + '_' + kstToday() + '.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); return;
+ }
+ if (t.closest('[data-g-logadd]')) { if (st.edit.type === 'credit') st.edit.flt = Object.assign(creditFltDefault(), { desc: !!(st.edit.flt && st.edit.flt.desc) }); st.edit.rows.push(newLogRow()); paint(); return; }
     const ld = t.closest('[data-g-logdel]'); if (ld) { st.edit.rows.splice(Number(ld.getAttribute('data-g-logdel')), 1); paint(); return; }
     if (t.closest('[data-g-seed]')) {
       const arr = SEED[tab] || []; if (!arr.length) return; const ok = await confirmDialog({ title: '엑셀 기준 첫 목록 넣기', body: '월간 손익계산서 엑셀·지하111호 입금내역에서 확인된 ' + arr.length + '건을 ' + GTYPES[tab].title + ' 목록에 넣습니다. 넣은 뒤 각 항목을 열어 내용을 확인·수정하세요.', confirmLabel: '넣기' }); if (!ok.ok) return;
@@ -86,8 +90,9 @@ export async function mount(root, route, ctx, opts) {
   root.oninput = (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
     if (t.matches('[data-gf]') && st.edit) { st.edit.vals[t.getAttribute('data-gf')] = t.value; return; }
-    if (t.matches('[data-gl]') && st.edit) { const [i, k] = t.getAttribute('data-gl').split(':'); if (st.edit.rows[Number(i)]) st.edit.rows[Number(i)][k] = t.value; return; }
-    if (t.matches('[data-g-q]')) { st.q = t.value; const tb = body.querySelector('#g-table'); if (tb) tb.innerHTML = tableHtml(st, tab); }
+    if (t.matches('[data-glf]') && st.edit) { const k = t.getAttribute('data-glf'); st.edit.flt = st.edit.flt || creditFltDefault(); st.edit.flt[k] = t.type === 'checkbox' ? t.checked : t.value; const w = body.querySelector('#g-logwrap'); if (w) w.innerHTML = creditLogAreaHtml(st.edit); return; }
+ if (t.matches('[data-gl]') && st.edit) { const [i, k] = t.getAttribute('data-gl').split(':'); if (st.edit.rows[Number(i)]) st.edit.rows[Number(i)][k] = t.value; return; }
+    if (t.matches('[data-g-q]')) { st.q = t.value; const tb = body.querySelector('#g-table'); if (tb) tb.innerHTML = tableHtml(st, tab); const cp = body.querySelector('#g-corp'); if (cp) cp.innerHTML = creditCorpHtml(st); }
   };
   root.onchange = (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return;
@@ -101,7 +106,8 @@ export async function mount(root, route, ctx, opts) {
       if (t.matches('[data-d-f]')) { f[t.getAttribute('data-d-f')] = t.value; paint(); return; }
       if (t.matches('[data-d-approved]')) { f.approvedOnly = t.checked; paint(); return; }
     }
-    if (t.matches('[data-g-active]')) { st.onlyActive = t.checked; const tb = body.querySelector('#g-table'); if (tb) tb.innerHTML = tableHtml(st, tab); return; }
+    if (t.matches('[data-g-active]')) { st.onlyActive = t.checked; const tb = body.querySelector('#g-table'); if (tb) tb.innerHTML = tableHtml(st, tab); const cp = body.querySelector('#g-corp'); if (cp) cp.innerHTML = creditCorpHtml(st); return; }
+ if (t.matches('[data-g-kind]')) { st.kind = t.value; const tb = body.querySelector('#g-table'); if (tb) tb.innerHTML = tableHtml(st, tab); const cp = body.querySelector('#g-corp'); if (cp) cp.innerHTML = creditCorpHtml(st); return; }
     root.oninput(ev);
   };
   paint(); if (openId && tab !== 'home') openEdit(tab, openId);

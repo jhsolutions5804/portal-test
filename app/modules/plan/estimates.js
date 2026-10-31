@@ -1,8 +1,8 @@
 /* 영업기획 견적 — 순수 규칙(화면·네트워크 없이 시험 가능). 구포털 기획(gihoek)의 견적 규칙을 그대로 옮기고, 개정 이력 비교를 새로 더했다.
  * 번호: 새 견적 EST-<연도>-<세 자리>, 개정은 <기준 번호>-r<N>. 개정본을 발행하면 원본은 자동으로 폐기(void)되고 replacedBy 에 개정본 번호가 남는다.
  * 종결(closed)은 정산이 끝난 견적으로 유효 견적 집계에서 빠진다. 거래처·담당자 정보는 견적서에 그대로 복사(스냅샷)해 저장한다. */
-import { itemAmt, estSupply, estTotal, isEstActive, estTag, sortProjects } from './projects.js?v=20261031c';
-import { sanitizeCalc } from './estimate-calc.js?v=20261031c'; // 순환 import: estimate-calc.js 도 itemSetAmount 를 가져온다. 둘 다 function 선언이라 호이스팅되어 안전하며, 로드 순서를 뒤집어도 같은 결과임을 tests/estimate-calc-save.test.mjs 가 확인한다
+import { itemAmt, estSupply, estTotal, isEstActive, estTag, sortProjects } from './projects.js?v=20261031d';
+import { sanitizeCalc } from './estimate-calc.js?v=20261031d'; // 순환 import: estimate-calc.js 도 itemSetAmount 를 가져온다. 둘 다 function 선언이라 호이스팅되어 안전하며, 로드 순서를 뒤집어도 같은 결과임을 tests/estimate-calc-save.test.mjs 가 확인한다
 export { estSupply, estTotal, isEstActive, estTag, itemAmt };
 export const EST_PAGE_SIZE = 10;
 export const VAT_RATE = 0.1;

@@ -2,7 +2,7 @@
  * 저장본: 근로계약서 = 종류 - 이름 - 계약 시작일 / 연봉계약서 = 종류 - 이름 - 연도(대표님 확정 "연봉은 연도") / 급여명세서 = 종류 - 연월 - 이름(확정 "급여명세서는 연월 우선").
  * 작성 중 미리보기: 계약서는 날짜 없이 종류 - 이름(계약 시작일은 아직 바뀔 수 있다). 급여명세서는 연월을 넣는다(월은 사용자가 고른 값이고 급여명세서의 정체성이다).
  * 제목에는 이름·종류·날짜(연월)만 — 주민번호·주소·연락처·급여·계좌·서명·부서·직급은 서류에 있어도 넣지 않는다(docFileName 의 안전 필터가 이름 칸의 전화번호·금액을 한 번 더 지운다). */
-import { docFileName } from '../../shared/doc-filename.js?v=20261031c';
+import { docFileName } from '../../shared/doc-filename.js?v=20261031d';
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const realDate = (s) => { const m = String(s == null ? '' : s).match(/^(\d{4})-(\d{2})-(\d{2})/); return m && Number(m[2]) >= 1 && Number(m[2]) <= 12 && Number(m[3]) >= 1 && Number(m[3]) <= 31 ? m[0] : ''; };
 const realMonth = (s) => { const m = String(s == null ? '' : s).match(/^(\d{4})-(\d{2})/); return m && Number(m[2]) >= 1 && Number(m[2]) <= 12 ? m[0] : ''; };

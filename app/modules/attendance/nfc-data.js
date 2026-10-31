@@ -1,5 +1,5 @@
 /* NFC 출퇴근 — 서버 호출·기기 토큰 보관·폰 위치. 화면·계산은 nfc-logic.js / nfc-view.js. 시험은 가짜 함수·저장소를 주입한다 */
-import { DEVICE_KEY, validToken, posFromGeo } from './nfc-logic.js?v=20261031c';
+import { DEVICE_KEY, validToken, posFromGeo } from './nfc-logic.js?v=20261031d';
 
 /** 서버 함수 attendNfcAct 호출기 — call(f) 에 파이어베이스 callable 을 주입한다. 오류는 { code, message } 를 그대로 던진다 */
 export function makeNfcApi(call) {

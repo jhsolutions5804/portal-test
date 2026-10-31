@@ -1,9 +1,9 @@
 /* 주간 공정회의 PPT — 모든 프로젝트 같은 양식(순수: PptxGenJS 비슷한 객체를 받아 슬라이드를 만든다). 구포털 Ph2 의 주간 공정회의 자료 양식 그대로: 섹터마다 한 장.
  * 한 장의 구성: 제목("○○ 시공 현황")·주차(수~화 기준) · 섹터 칩("작업 이름_섹터") · 도면(원본 비율 유지)과 그 위에 장비 박스(도달한 최종 단계 색, 투명도 33%) · 범례(단계 흐름, 최전선 단계 강조) · 표(구역·Activity·Step·단위·총 물량·전주 누계(누계·공정률)·금주(금주·누계·공정률)·Remark).
  * 단계는 프로젝트의 공정 구조를 따른다. 도면이 없는 섹터는 "도면 미등록" 자리표시. */
-import { calcGroup } from './progress.js?v=20261031c';
-import { reachedStage, frontierIndex, fitContain } from './layout.js?v=20261031c';
-import { stageColor, fmtDate } from './progress-ppt.js?v=20261031c';
+import { calcGroup } from './progress.js?v=20261031d';
+import { reachedStage, frontierIndex, fitContain } from './layout.js?v=20261031d';
+import { stageColor, fmtDate } from './progress-ppt.js?v=20261031d';
 const C = { navy: '1F3864', chip: 'D6DCE5', chipLn: 'A9BCDC', line: '8EA9D4', white: 'FFFFFF', text: '1E293B', sub: '64748B', headBg: 'EAF0F8', gridLn: 'D9E2EC' };
 const FONT = '맑은 고딕';
 export const weeklyFileName = (no, client, label) => no + '주차_' + String(client || '').replace(/\s+/g, '') + (client ? '_' : '') + String(label || '').replace(/\s+\(/g, '(').replace(/\s+/g, '_') + '_주간공정회의자료.pptx';

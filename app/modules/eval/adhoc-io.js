@@ -3,9 +3,9 @@
  * 저장 위치(기존 관리자 전용 컬렉션 evaluations 안이라 보안 규칙 변경 없음):
  *   프로젝트 성과 = evaluations/_pjt/adhoc/{프로젝트 id}   (사장단의 프로젝트 성과 점수만)
  *   참여자 평가   = evaluations/{근로자}/adhoc/{프로젝트 id} (현장 항목·동료 점수·사장단의 개인 점수·확정) */
-import { withManage } from '../../shared/eval-perm.js?v=20261031c';
-import { setRating, evalAccess, adhocParticipants, emptyAdhoc, adhocSummary } from './evaluation.js?v=20261031c';
-import { pjtSummary } from '../../shared/pjt-summary.js?v=20261031c';   // 청구·지급 집계(영업기획과 공용)
+import { withManage } from '../../shared/eval-perm.js?v=20261031d';
+import { setRating, evalAccess, adhocParticipants, emptyAdhoc, adhocSummary } from './evaluation.js?v=20261031d';
+import { pjtSummary } from '../../shared/pjt-summary.js?v=20261031d';   // 청구·지급 집계(영업기획과 공용)
 const clone = (o) => JSON.parse(JSON.stringify(o));
 /** deps: { db, collection, getDocs, getDoc, setDoc, doc, serverTimestamp, toast, confirmDialog, paint, st, ctx } */
 export function createAdhocController(deps) {

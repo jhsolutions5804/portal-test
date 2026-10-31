@@ -1,7 +1,7 @@
 /* 인사 — 근로자 명부(새 화면). 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 데이터: workers/{id}(일반 정보) + worker_private/{id}(주민번호·계좌·주소·서명, 읽을 때 합쳐 쓰고 저장할 때 다시 가른다)
  *         labor_contracts/{id}/contracts · annual_contracts/{id}/contracts(endDate), workers/{id}/history(직급·부서 변경 이력) */
-import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261031c';
+import { calcLeaveBalance, jhLeaveIsAnnual } from '../../shared/leave-calc.js?v=20261031d';
 export const WP_FIELDS = ['bankAccount', 'address', 'signData', 'taxFamily', 'taxChildren', 'taxRate'];   // worker_private 에 따로 두는 필드 — 주민번호(jumin)는 더 이상 여기 두지 않는다(테섭 2026-10-08): 서버 함수(identityAct)가 암호문으로 보관하고 마스킹 값(juminMasked)만 worker_private 에 남는다
 export const WP_NEVER_WRITE = ['jumin', 'juminMasked', 'juminUpdatedAt', 'birth6'];   // 화면에서 합쳐 만든 값·서버 전용 값은 문서에 쓰지 않는다
 /** 보유 자격증 목록(기술수당 1개당): 저장된 배열, 없으면 옛 hasCertification 표시를 한 개로 */

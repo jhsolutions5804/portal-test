@@ -1,7 +1,7 @@
 /* 내 팀 공수표 화면(표시만). 규칙은 team.js, 불러오기·저장은 team-index.js. */
-import { esc } from '../../core/ui.js?v=20261031c';
-import { monthLabel } from './overview.js?v=20261031c';
-import { won, summaryOf, calendarOf } from './team.js?v=20261031c';
+import { esc } from '../../core/ui.js?v=20261031d';
+import { monthLabel } from './overview.js?v=20261031d';
+import { won, summaryOf, calendarOf } from './team.js?v=20261031d';
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const f1 = (n) => (Math.round(n * 10) / 10).toFixed(1);
 const wrap = (inner) => '<div class="jh-pjt jh-pjt--prog jh-tm"><div class="jh-pjt__main jh-pjt__mainwide"><div class="jh-pjt__proj"><span class="jh-pjt__projlabel">👷 내 팀 공수표</span></div>' + inner + '</div></div>';

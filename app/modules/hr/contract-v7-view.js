@@ -1,6 +1,6 @@
 /* 근로계약서·연봉계약서 v7 입력 화면 조각 — 구분·계약기간 방식(프로젝트 선택)·근무지·고정연장 시간·지급 항목·특약 (순수 HTML 문자열, 이벤트는 index.js 의 계약서 컨트롤러가 data-c7-* / data-an-act="c7-*" 로 처리) */
-import { esc } from '../../core/ui.js?v=20261031c';
-import { TYPE_LABEL, PERIOD_LABEL, MAX_EXTRA, MAX_TERMS, typeOf, periodTypeOf, v7Calc } from './contract-v7.js?v=20261031c';
+import { esc } from '../../core/ui.js?v=20261031d';
+import { TYPE_LABEL, PERIOD_LABEL, MAX_EXTRA, MAX_TERMS, typeOf, periodTypeOf, v7Calc } from './contract-v7.js?v=20261031d';
 const card = (title, body) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3></div>' + body + '</section>';
 const won = (n) => '₩' + Math.round(Number(n) || 0).toLocaleString('ko-KR');
 const fmtN = (v) => (v === '' || v == null || !Number(v) ? '' : Number(v).toLocaleString('ko-KR'));

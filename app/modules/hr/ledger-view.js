@@ -1,6 +1,6 @@
 /* 임금대장 화면 — HTML 만 만드는 순수 함수(시험: tests/hr-ledger-view.test.mjs·hr-ledger-view.test.py). 데이터 읽기·마감·해제는 ledger-io.js, 연결은 index.js mountLedger. */
-import { esc } from '../../core/ui.js?v=20261031c';
-import { LEDGER_HEAD, ledgerRowCells, ledgerTotalCells, ledgerTotals, isClosed } from './ledger.js?v=20261031c';
+import { esc } from '../../core/ui.js?v=20261031d';
+import { LEDGER_HEAD, ledgerRowCells, ledgerTotalCells, ledgerTotals, isClosed } from './ledger.js?v=20261031d';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';

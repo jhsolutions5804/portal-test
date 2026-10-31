@@ -1,9 +1,9 @@
 /* 월간 공수 데이터 불러오기(공용) — 월간 공수 보기(연명부)와 내 팀 공수표가 같이 쓴다. 모든 프로젝트(종료 포함)가 pjt_registry/<id>/{workers,manday} 한 구조다.
  * 순수 집계는 roster-tools.js(aggregateMonth). 여기는 읽기만 한다. */
-import { db, collection, getDocs, query, where, documentId } from '../../core/firebase.js?v=20261031c';
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261031c';
-import { pathsFor } from './adapter.js?v=20261031c';
-import { monthRange, endedYmOf } from './roster-tools.js?v=20261031c';
+import { db, collection, getDocs, query, where, documentId } from '../../core/firebase.js?v=20261031d';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261031d';
+import { pathsFor } from './adapter.js?v=20261031d';
+import { monthRange, endedYmOf } from './roster-tools.js?v=20261031d';
 const ts = (d) => (d.createdAt && d.createdAt.seconds) || 0;
 /** 프로젝트(종료 포함, 진행 중 먼저·등록 순)와 각 프로젝트 명단, 마스터 명부.
  *  me 를 주면 내가 열 수 있는 프로젝트만(연명부 도구), 안 주면 전체(팀장은 자기 팀의 공수를 모든 프로젝트에서 봐야 한다) → { projects:[{key,name,ended,roster,rows:[]}], masters:{id:{name,birth,leaderId,resigned,resignedDate}}, failed[] } */

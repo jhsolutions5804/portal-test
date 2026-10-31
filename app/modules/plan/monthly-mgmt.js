@@ -3,10 +3,10 @@
  * 매출 기준 = 완결 청구(1-2-3-a, 대표님 2026-10-21) — shared/pjt-summary.js pjtMargin 과 같은 규칙: 완결이 0 이하이면 발행 청구로 대신 계산하지 않고 null.
  * 원가 = 지급예정서 발행 + 현장경비 + 자체 직접노무비(pjtCost 와 같은 정의 — 노무비는 지급예정서에 이미 들어 있어 따로 또 빼면 이중 차감이라는 말은 외주 노무 이야기이고, 자체 직접노무비는 별도 항목).
  * 서버 응답은 연결된 PJT 등록 id 로 찾는다(영업기획 id 가 아니다 — 대기열 1-2-2-④ 교훈). 응답 검증은 margin-link.js 와 같은 규칙을 그대로 쓴다(두 곳이 어긋나지 않게). 원가를 모르면 마진율·수율을 내지 않는다(모르는 값을 0 으로 꾸미지 않음). */
-import { marginExtra, linkedPjtId } from './margin-link.js?v=20261031c';
-import { budgetCompare, budgetFromDoc } from './budget.js?v=20261031c';
-import { pjtSummary, settleBelongsToPjt, settleAmountForPjt } from './projects.js?v=20261031c';
-import { monthOfTs } from './closing.js?v=20261031c';
+import { marginExtra, linkedPjtId } from './margin-link.js?v=20261031d';
+import { budgetCompare, budgetFromDoc } from './budget.js?v=20261031d';
+import { pjtSummary, settleBelongsToPjt, settleAmountForPjt } from './projects.js?v=20261031d';
+import { monthOfTs } from './closing.js?v=20261031d';
 const isO = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const T = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const r1 = (n) => Math.round(n * 10) / 10;

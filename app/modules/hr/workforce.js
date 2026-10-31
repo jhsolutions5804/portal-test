@@ -1,7 +1,7 @@
 /* 인력 현황(대기열 1-3-16 ⑦ 1차) — 근로자 명부만으로 재직 인원의 직급·직원 구분·근속 분포, 평균 근속, 해마다의 입사·퇴사 인원을 모은다. 인건비 추이는 본섭에 재무 장부가 이식된 뒤(2차).
  * 재직 인원 숫자 카드는 인사 홈에 이미 있어 다시 만들지 않는다. 시험·대표 계정이 아닌 "test"·"[테스트]…" 이름은 통계에서 뺀다. 순수 함수 — 시험: tests/hr-workforce.test.mjs */
-import { EMP_TYPES } from './logic.js?v=20261031c';
-import { RANK_ORDER } from '../../shared/org.js?v=20261031c';
+import { EMP_TYPES } from './logic.js?v=20261031d';
+import { RANK_ORDER } from '../../shared/org.js?v=20261031d';
 
 export const TENURE_BUCKETS = [['1년 미만', 0, 1], ['1~3년', 1, 3], ['3~5년', 3, 5], ['5년 이상', 5, 1000]];
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));

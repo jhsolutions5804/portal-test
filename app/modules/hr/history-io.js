@@ -1,6 +1,6 @@
 /* 인사 이력 입출력 — 한 직원의 이력 자료를 읽는다(파이어베이스 함수는 밖에서 주입, 시험: tests/hr-history-io.test.mjs). 새로 저장하는 것은 없다.
  * 읽기에 실패한 자료는 errors 에 이름을 담아 돌려준다 — 빈 칸으로 숨기지 않고 화면이 "일부를 불러오지 못했습니다"로 알린다. */
-import { buildHistory } from './history.js?v=20261031c';
+import { buildHistory } from './history.js?v=20261031d';
 
 export function makeHistoryIo(fb) {
   const { db, collection, getDocs, query, where } = fb;

@@ -1,5 +1,5 @@
 /* 인력 현황 위젯 화면 — HTML 만 만드는 순수 함수(시험: tests/hr-workforce-view.test.mjs). 막대는 비율(%)로 그리고 숫자도 함께 적는다. */
-import { esc } from '../../core/ui.js?v=20261031c';
+import { esc } from '../../core/ui.js?v=20261031d';
 
 const card = (title, body) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3></div>' + body + '</section>';
 function bars(title, pairs, unit) {

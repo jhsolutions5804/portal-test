@@ -1,5 +1,5 @@
 /* 주 단위 근로시간 입출력 — 출퇴근 기록을 읽는다(파이어베이스 함수는 밖에서 주입, 시험: tests/hr-weekly-io.test.mjs). 새로 저장하는 것은 없다. */
-import { addDays, weekStart } from './weekly.js?v=20261031c';
+import { addDays, weekStart } from './weekly.js?v=20261031d';
 
 export function makeWeeklyIo(fb) {
   const { db, collection, getDocs, query, where } = fb;

@@ -1,6 +1,6 @@
 /* 프로젝트 마감 체크리스트(시공검측 이후 프로젝트 완성도, 설계 monthly-report-design.md §3-4) 화면의 순수 도우미 — 서버(monthlyReportAct closeoutSave)와 같은 규칙을 저장 전에 미리 알려 준다(서버가 끝내 다시 막는다).
  * 항목 이름은 코드에 없다(프로젝트마다 직접 입력). 현장 층이라 금액·연락처는 적지 않는다. 시험: tests/pjt-closeout.test.mjs */
-import { hasMoney, hasPersonal } from '../../shared/pjt-log.js?v=20261031c';
+import { hasMoney, hasPersonal } from '../../shared/pjt-log.js?v=20261031d';
 export const CK_MAX = 30, CK_NAME = 40, CK_ASSIGNEE = 20, CK_MEMO = 200;
 const isO = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const sp = (v) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim(); // 공백 정리 — 서버와 같은 방식

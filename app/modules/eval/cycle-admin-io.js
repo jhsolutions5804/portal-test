@@ -1,7 +1,7 @@
 /* 평가 회차 — 불러오기·단계 전환·과제 배정(서버 generateTasks)·동료평가 집계(서버 aggregatePeers). 저장은 eval_cycles/{연도} 한 문서(보안 규칙이 단계 전이를 강제한다).
  * 서버 함수가 아직 배포되지 않았거나 실패하면 그대로 알린다(된 것처럼 보이지 않는다). */
-import { canManageCycle } from '../../shared/eval-perm.js?v=20261031c';
-import { canMove, MOVE_TEXT, MOVE_WARN, STATE_TEXT, buildMembers, taskWarnings } from './cycle-admin.js?v=20261031c';
+import { canManageCycle } from '../../shared/eval-perm.js?v=20261031d';
+import { canMove, MOVE_TEXT, MOVE_WARN, STATE_TEXT, buildMembers, taskWarnings } from './cycle-admin.js?v=20261031d';
 /** deps: { db, collection, getDocs, getDoc, setDoc, doc, serverTimestamp, callEval, toast, confirmDialog, paint, st, ctx, year } — callEval(data) = 서버 evalAct 호출 */
 export function createCycleAdminController(deps) {
   const { db, collection, getDocs, getDoc, setDoc, doc, serverTimestamp, callEval, toast, confirmDialog, paint, st, ctx } = deps; const me = (ctx && ctx.me) || {}; const year = deps.year || 2026;

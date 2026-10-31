@@ -1,6 +1,6 @@
 /* 총무 — 임대·차량·자산·갱신 일정. 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 네 종류(lease·vehicle·asset·renewal)는 항목 정의(GTYPES) 하나로 목록·입력·검증·만기 알림이 모두 같은 방식으로 돌아간다. */
-import { csvCell } from '../../shared/csv.js?v=20261031c';
+import { csvCell } from '../../shared/csv.js?v=20261031d';
 export const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')) && new Date(s + 'T00:00:00Z').toISOString().slice(0, 10) === s;
 const isYm = (s) => /^\d{4}-(0[1-9]|1[0-2])$/.test(String(s || ''));
@@ -132,6 +132,51 @@ export const creditBalance = (d) => creditRowsBalance((d && d.entries) || []);
 export function creditLast(d) { let m = ''; ((d && d.entries) || []).forEach((r) => { if (r && r.date && r.date > m) m = r.date; }); return m; }
 /** 외상 장부 합계 — 거래 중인 거래처만, 구분별 미결제 잔액 */
 export function creditTotals(list) { const kinds = GTYPES.credit.fields[1].o; const by = {}; kinds.forEach((k) => { by[k] = 0; }); let balance = 0; let open = 0; (list || []).filter(GTYPES.credit.active).forEach((d) => { const b = creditBalance(d); balance += b; if (b > 0) open += 1; const k = kinds.includes(d.kind) ? d.kind : '기타'; by[k] += b; }); return { balance, open, byKind: by }; }
+/* ── 외상 장부: 거래 줄 거름·요약(검색·구분·청구 법인·월 필터, 월별·법인별 합계, CSV) — 화면과 같은 계산을 시험할 수 있게 여기에 둔다 ── */
+const cNum = (v) => Number(String(v == null ? '' : v).replace(/[,\s원]/g, '')) || 0;
+export const CREDIT_NO_CORP = '(미지정)';
+/** 거래 내역 화면의 거름 기본값 — desc 는 '최근 거래 먼저' 정렬 */
+export const creditFltDefault = () => ({ q: '', type: '', corp: '', ym: '', desc: false });
+/** 거름 조건 f = { q, type, corp, ym } — 조건에 맞는 줄의 **원래 번호** 목록(표시 순서는 부르는 쪽이 정한다). corp 가 '(미지정)'이면 청구 법인이 빈 줄 */
+export function creditFilterRows(rows, f) {
+  const q = String((f && f.q) || '').trim().toLowerCase(); const type = (f && f.type) || ''; const corp = (f && f.corp) || ''; const ym = (f && f.ym) || '';
+  const out = [];
+  (rows || []).forEach((r, i) => {
+    if (!r) return;
+    if (type && r.type !== type) return;
+    if (corp === CREDIT_NO_CORP ? !!r.corp : (corp && r.corp !== corp)) return;
+    if (ym && String(r.date || '').slice(0, 7) !== ym) return;
+    if (q && ![r.date, r.type, r.corp, r.item, r.pay, r.pjt, r.memo].some((x) => String(x == null ? '' : x).toLowerCase().includes(q))) return;
+    out.push(i);
+  });
+  return out;
+}
+/** 줄 묶음 요약 — 구분별 합계·잔액(외상 − 결제 − 반품), 청구 법인별, 월별(월 순증감과 누적 잔액). 구분이 외상·결제·반품이 아닌 줄은 잔액 계산(creditRowsBalance)과 같이 제외한다 */
+export function creditSummary(rows) {
+  const blank = () => ({ 외상: 0, 결제: 0, 반품: 0, count: 0 });
+  const tot = blank(); const corp = {}; const mon = {};
+  (rows || []).forEach((r) => {
+    if (!r || !['외상', '결제', '반품'].includes(r.type)) return;
+    const n = cNum(r.amount); const ck = r.corp || CREDIT_NO_CORP; const mk = String(r.date || '').slice(0, 7) || '(일자 없음)';
+    tot[r.type] += n; tot.count += 1;
+    (corp[ck] = corp[ck] || blank())[r.type] += n; corp[ck].count += 1;
+    (mon[mk] = mon[mk] || blank())[r.type] += n; mon[mk].count += 1;
+  });
+  const bal = (o) => o.외상 - o.결제 - o.반품;
+  tot.balance = bal(tot);
+  const byCorp = Object.keys(corp).map((k) => Object.assign({ corp: k, balance: bal(corp[k]) }, corp[k])).sort((a, b) => b.balance - a.balance || b.외상 - a.외상 || (a.corp < b.corp ? -1 : 1));
+  let cum = 0; const NO_DATE = '(일자 없음)'; const byMonth = Object.keys(mon).sort((a, b) => (a === NO_DATE) - (b === NO_DATE) || (a < b ? -1 : a > b ? 1 : 0)).map((k) => { const net = bal(mon[k]); cum += net; return Object.assign({ ym: k, net, cum }, mon[k]); });
+  return { total: tot, byCorp, byMonth };
+}
+/** 거래처 목록 전체의 청구 법인별 합계 — list 는 화면에 보이는 거래처들 */
+export function creditCorpTotals(list) { const all = []; (list || []).forEach((d) => { ((d && d.entries) || []).forEach((r) => all.push(r)); }); return creditSummary(all); }
+/** 보이는 거래 줄을 엑셀용 CSV 로(수식 주입 방어 csvCell 사용). 맨 아래에 구분별 합계와 순액 */
+export function creditCsv(rows, title) {
+  const q = csvCell; const L = [[title || '외상 장부'], [], ['일자', '구분', '청구 법인', '품목·내용', '금액(원)', '결제 수단', '현장(PJT)', '메모']];
+  (rows || []).forEach((r) => L.push([r.date, r.type, r.corp, r.item, cNum(r.amount), r.pay, r.pjt, r.memo]));
+  const s = creditSummary(rows); L.push([], ['외상 합계', '', '', '', s.total.외상], ['반품 합계', '', '', '', s.total.반품], ['결제 합계', '', '', '', s.total.결제], ['순액(외상 − 결제 − 반품)', '', '', '', s.total.balance]);
+  return '\uFEFF' + L.map((x) => x.map(q).join(',')).join('\r\n');
+}
 /** 개요 숫자 */
 export function homeSummary(data) {
   const act = (k) => ((data && data[k]) || []).filter(GTYPES[k].active);

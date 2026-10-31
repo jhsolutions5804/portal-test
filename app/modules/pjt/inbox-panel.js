@@ -1,5 +1,5 @@
-import { inboxHtml } from './inbox-view.js?v=20261031c';
-import { canAssign, friendlyError } from '../../shared/pjt-log.js?v=20261031c';
+import { inboxHtml } from './inbox-view.js?v=20261031d';
+import { canAssign, friendlyError } from '../../shared/pjt-log.js?v=20261031d';
 /* 미분류 메일 받은함 부품 — PJT 메인 홈(프로젝트를 고르기 전)에 붙는다. 서버 함수 pjtLogAct 의 inboxList·inboxAssign·inboxDismiss 만 쓴다.
  * 서버가 권한을 판정한다: PJT 권한자·관리자가 아니면 서버가 거절하고 이 부품은 아무것도 그리지 않는다(오류 문구도 띄우지 않음 — 홈이 시끄럽지 않게).
  * host = 그려질 요소(요소에 직접 이벤트를 달아 바깥이 다시 그려져도 유지). o = { callLog(필수, 서버 함수 pjtLogAct 호출), confirm?, onChange? }  onChange = 지정·치우기 뒤 호출(이력 요약을 다시 읽게). 반환 { ready, reload, state } */

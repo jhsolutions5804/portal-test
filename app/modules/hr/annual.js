@@ -1,8 +1,8 @@
 /* 연봉계약서 — 구포털(hr) 연봉계약서 작성·조회 규칙을 옮겼다(순수 함수, 화면·네트워크 없음).
  * 저장: annual_contracts/{근로자}/contracts/{계약일 YYYYMMDD} — 같은 계약일은 덮어쓴다. 출력은 동결 양식(frozen-docs.js)으로, 저장 당시 양식 버전(tplVer)으로만 그린다.
  * 급여 입력은 시급·월급(월 지급계)·연봉 중 하나로 하고, 월급·연봉은 시급으로 역산해 계산한다(시급 = 월 지급계 ÷ 208.56시간, 소수 그대로 — 연봉계약서·제안서와 같은 산식). */
-import { annualSalary } from './offer.js?v=20261031c';
-import { CONTRACT_V7, v7Calc, periodEndOf, periodTypeOf } from './contract-v7.js?v=20261031c';
+import { annualSalary } from './offer.js?v=20261031d';
+import { CONTRACT_V7, v7Calc, periodEndOf, periodTypeOf } from './contract-v7.js?v=20261031d';
 export const PAY_BASIS_LABELS = { hourly: '시급', monthly: '월급', annual: '연봉' };
 export const PAY_MONTH_FACTOR = 8 * 5 * 4.345 + 8 * 4.345;
 /** 계약서에 찍는 주민번호는 마스킹 값(앞 6자리-성별 자리******)만 — 전체 번호는 서버에만 있다. 옛 평문(jumin)이 남아 있어도 마스킹해서 쓴다 */

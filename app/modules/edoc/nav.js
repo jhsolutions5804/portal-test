@@ -1,7 +1,7 @@
 /* 전자결재 사이드 내비게이션 구성(순수) — 영업기획·인사총무·재무회계·PJT 관리와 같은 공용 사이드 내비게이션(shared/sidenav.js, 너비 220px)을 쓴다.
  * 결재함 탭·필터는 주소(?tab=…&status=…)로 정해지므로 메뉴 항목도 같은 주소를 가리킨다. */
-import { buildHash } from '../../core/router.js?v=20261031c';
-import { tabDefs } from './logic.js?v=20261031c';
+import { buildHash } from '../../core/router.js?v=20261031d';
+import { tabDefs } from './logic.js?v=20261031d';
 export const URL_DEFAULTS = { tab: 'todo', type: 'all', status: 'all', page: '1', size: '20' };   // 주소에서 생략하는 기본값
 const box = (patch) => buildHash('edoc', '/box', patch, URL_DEFAULTS);
 /** route: { segs, query } → { label, title, current, sections } */

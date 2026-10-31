@@ -1,7 +1,7 @@
 /* 임금대장 — 급여명세서(payslips/{근로자}/months/{YYYY-MM})를 법정 임금대장(근로기준법 제48조·시행령 제27조) 행으로 정리하고, 마감 점검·표·CSV·인쇄용 HTML·마감 문서를 만든다.
  * 순수 함수만 둔다(화면·네트워크 없음). 시험: tests/hr-ledger.test.mjs. 설계: app-docs/payroll-ledger-design.md (서버 저장소, 비공개).
  * 근로시간은 급여명세서에 이미 저장된 값(attHours·leaveHours·nightHours·otHours·holidayHours)을 그대로 쓴다 — 실제 지급 기준과 같은 값. 없는 것은 근로일수뿐(workDays, 없으면 출퇴근 기록에서 센 값을 받는다). */
-import { csvText } from '../../shared/csv.js?v=20261031c';
+import { csvText } from '../../shared/csv.js?v=20261031d';
 
 const N = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
 const r2 = (v) => Math.round(N(v) * 100) / 100;

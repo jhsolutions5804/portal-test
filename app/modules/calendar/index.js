@@ -1,11 +1,11 @@
-import { calendarProvidersFor } from '../../core/registry.js?v=20261031c';
-import { toast } from '../../core/ui.js?v=20261031c';
-import { confirmDialog } from '../../core/dialog.js?v=20261031c';
-import { loadHolidays, isHoliday } from '../../shared/holidays.js?v=20261031c';
-import { dateKey, parseMonth, monthKey, shiftMonth, gridRange, groupByDay, mergeResults, visibleEvents, makeEvent, canWrite, isView, defaultView, viewRange, shiftAnchor, listDates, rangeTitle, AGENDA_DAYS } from './logic.js?v=20261031c';
-import { leaveProvider, companyProvider, deleteCompanyEvent, setCompanyDone, invalidateCompany } from './data.js?v=20261031c';
-import { gridHtml, dayHtml, noticeHtml, widgetFrameHtml, listFrameHtml, fullFrameHtml, agendaHtml, blankDraft, draftOf } from './view.js?v=20261031c';
-import { openEventForm } from './form.js?v=20261031c';
+import { calendarProvidersFor } from '../../core/registry.js?v=20261031d';
+import { toast } from '../../core/ui.js?v=20261031d';
+import { confirmDialog } from '../../core/dialog.js?v=20261031d';
+import { loadHolidays, isHoliday } from '../../shared/holidays.js?v=20261031d';
+import { dateKey, parseMonth, monthKey, shiftMonth, gridRange, groupByDay, mergeResults, visibleEvents, makeEvent, canWrite, isView, defaultView, viewRange, shiftAnchor, listDates, rangeTitle, AGENDA_DAYS } from './logic.js?v=20261031d';
+import { leaveProvider, companyProvider, deleteCompanyEvent, setCompanyDone, invalidateCompany } from './data.js?v=20261031d';
+import { gridHtml, dayHtml, noticeHtml, widgetFrameHtml, listFrameHtml, fullFrameHtml, agendaHtml, blankDraft, draftOf } from './view.js?v=20261031d';
+import { openEventForm } from './form.js?v=20261031d';
 
 /** 일정 모듈 = 플랫폼 기본 모듈. 자기 일정(회사 일정·연차·휴무)을 내놓고, 다른 모듈이 manifest.calendar 로 등록한 일정도 한 달력에 모은다.
  *  사이드바에는 두지 않는다(nav:false) — 홈의 일정 위젯과 그 안의 보기 방식(안건·하루·3일·월)으로 쓴다. */

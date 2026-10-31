@@ -2,7 +2,7 @@
  * 동결 양식(frozen-docs.js, 원본 그대로·수정 금지)의 v6 출력을 그대로 쓰되, 요율이 글자로 박힌 문구(공제 비고 4곳, 산출식 1줄)만 저장 문서의 insRates 로 바꾼다.
  * 이미 저장된 v0~v6 명세서는 저장 당시 양식 그대로(옛 요율 표기) 출력된다 — 서명·저장된 서류는 바뀌지 않는다는 원칙.
  * 새 양식이 필요하면 이 방식(동결본 위에 덧씌우기)으로 v8… 을 따로 추가한다. */
-import { __PS_TPL, docHtmlByVer } from './frozen-docs.js?v=20261031c';
+import { __PS_TPL, docHtmlByVer } from './frozen-docs.js?v=20261031d';
 const pct = (r) => String(parseFloat((Number(r) * 100).toFixed(3)));
 const OLD = { pension: '4.5', health: '3.545', ltcare: '12.81', employ: '0.9' };
 const esc = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

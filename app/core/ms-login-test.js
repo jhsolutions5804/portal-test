@@ -1,8 +1,8 @@
 // Microsoft 로그인 시험 페이지의 로직(대기열 00-0). 본 로그인 화면을 바꾸기 전에 "Microsoft 로그인 → 서버 함수 msLogin 호출"까지만 해 본다.
 // 약속: ① Firebase 로그인(signInWithCustomToken)은 어떤 경우에도 호출하지 않는다(지금 세션·기존 로그인 그대로) ② id_token·커스텀 토큰 글자는 화면 결과에 담지 않는다(길이·클레임 일부만)
 // ③ state 가 "mstest." 로 시작하는 콜백만 처리한다 — Entra 에 등록된 리디렉션 주소(.../app/)로 돌아오면 app/index.html 이 이 페이지로 보낸다.
-import { functions, httpsCallable } from './firebase.js?v=20261031c';
-import { randomString, pkceChallenge, buildAuthorizeUrl, parseCallback } from './ms-pkce.js?v=20261031c';
+import { functions, httpsCallable } from './firebase.js?v=20261031d';
+import { randomString, pkceChallenge, buildAuthorizeUrl, parseCallback } from './ms-pkce.js?v=20261031d';
 
 // 회사 Entra 앱 "portal-login"(단일 테넌트 SPA) — 비밀이 아닌 공개 값. 본 로그인 패치(config.js)와 같은 값.
 const TENANT_ID = '548fcb48-1ab8-4c47-8242-bc098ea80416';

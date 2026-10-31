@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261031c';
-import { won, card, chip } from './ui.js?v=20261031c';
-import { homeKpis, homeRows, homeTodo, homeMonth, HOME_TITLES } from './home.js?v=20261031c';
+import { esc } from '../../core/ui.js?v=20261031d';
+import { won, card, chip } from './ui.js?v=20261031d';
+import { homeKpis, homeRows, homeTodo, homeMonth, HOME_TITLES } from './home.js?v=20261031d';
 const kpi = (key, label, value, unit, tone, open) => '<button type="button" class="jh-plan__kpi" data-hm-kpi="' + key + '" aria-pressed="' + (open === key) + '"><span class="jh-field__hint">' + esc(label) + '</span><strong' + (tone ? ' data-tone="' + tone + '"' : '') + '>' + value + (unit ? '<span class="jh-field__hint"> ' + esc(unit) + '</span>' : '') + '</strong><span class="jh-field__hint">보기 ›</span></button>';
 const listRow = (r) => '<a class="jh-plan__row" href="' + esc(r.href) + '"><span class="jh-plan__main"><span class="jh-plan__line">' + chip(r.badge, r.tone) + '<strong>' + esc(r.title) + '</strong></span><span class="jh-field__hint">' + esc(r.meta) + '</span></span><strong>' + won(r.right) + '</strong></a>';
 const todoRow = (r, kind) => '<a class="jh-plan__row" href="#/plan/' + (kind === 'invoice' ? 'billing' : 'payout') + '/' + esc(r.id) + '"><span class="jh-plan__main"><span class="jh-plan__line"><strong>' + esc(r.no) + '</strong>' + chip(r.days > 0 ? r.days + '일 지남' : r.days === 0 ? '오늘' : (-r.days) + '일 남음', r.days > 0 ? 'red' : 'amber') + '</span><span class="jh-field__hint">' + esc((r.who ? r.who + ' · ' : '') + (kind === 'invoice' ? '지급요청일 ' : '지급예정일 ') + r.payDate) + '</span></span><strong>' + won(r.total) + '</strong></a>';

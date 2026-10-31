@@ -1,7 +1,7 @@
 /* 4대보험 대조 화면의 "📝 신고 입력표" 보기 — HTML 만 만드는 순수 함수(시험: tests/hr-insurance-edi.test.mjs). 입력은 index.js 의 mountInsurance 가 data-edi-* 속성으로 연결한다. */
-import { esc } from '../../core/ui.js?v=20261031c';
-import { insurancePageHtml } from './insurance-view.js?v=20261031c';
-import { recentHires, recentLeavers, sheetOfState, leftText, won, isDate } from './insurance-edi.js?v=20261031c';
+import { esc } from '../../core/ui.js?v=20261031d';
+import { insurancePageHtml } from './insurance-view.js?v=20261031d';
+import { recentHires, recentLeavers, sheetOfState, leftText, won, isDate } from './insurance-edi.js?v=20261031d';
 export const ediInit = () => ({ kind: 'acquire', loaded: false, loading: false, err: '', workers: [], sel: '', annual: null, labor: null, slips: [], jumin: '', payOv: '', hoursOv: '', lossPayOv: '', lossPrevOv: '', reasonOther: false, busy: false });
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const tone = (n) => (n == null ? '' : n < 0 ? ' data-tone="danger"' : n <= 3 ? ' data-tone="warn"' : ' data-tone="accent"');

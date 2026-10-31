@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261031c';
-import { docFileName } from '../../shared/doc-filename.js?v=20261031c';
-import { hasMoney, hasPersonal } from '../../shared/pjt-log.js?v=20261031c';
-import { ckRowsFrom, ckCheck, ckDirty, CK_MAX } from './closeout.js?v=20261031c';
+import { esc } from '../../core/ui.js?v=20261031d';
+import { docFileName } from '../../shared/doc-filename.js?v=20261031d';
+import { hasMoney, hasPersonal } from '../../shared/pjt-log.js?v=20261031d';
+import { ckRowsFrom, ckCheck, ckDirty, CK_MAX } from './closeout.js?v=20261031d';
 /* PJT 월간 보고서 탭 화면(문자열) — 설계 docs/monthly-report-design.md r1. 현장 층(금액 없음). 계산은 서버(monthlyReportAct)가 했고, 이 파일은 **받은 결과를 그리기만** 한다.
  * st = { proj, label, loading, error, months:[{ym,version,partial,yieldStatus,…}], ym, report|null, canEdit, busy, msg, notesDraft:{remarks,nextPlan}, today } */
 const n = (v) => (typeof v === 'number' && isFinite(v) ? v : 0);

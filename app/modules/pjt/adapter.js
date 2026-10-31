@@ -8,7 +8,7 @@
  *   pjt_registry/<id>/schedules/<일정 id>   일정               pjt_registry/<id>/reports/<날짜>  공사일보
  *   pjt_registry/<id>/layouts/<섹터 id>     장비 배치도 { points, image? }
  * 이 구조는 영업기획의 공정·공수 연동과 포털 홈 통합 캘린더가 함께 읽는다 — 바꾸면 그 계산이 어긋난다. */
-import { isProjectKey, RESERVED_KEYS } from '../../shared/pjt-key.js?v=20261031c';
+import { isProjectKey, RESERVED_KEYS } from '../../shared/pjt-key.js?v=20261031d';
 export { isProjectKey, RESERVED_KEYS };
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 /** 프로젝트의 데이터 경로. 컬렉션은 'a/b/c' 문자열(홀수 토막), 날짜별 문서는 doc(db, 컬렉션, 날짜)로 읽는다. 모르는 키·위험한 문자는 null */

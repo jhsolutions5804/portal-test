@@ -2,11 +2,11 @@
  * 원리(대표님 2026-10-19): 일위대가는 장비 1대에 들어가는 품이 기준이지만, 계산은 총 금액을 먼저 만든 뒤 총 대수로 나눠 대당 금액을 만든다. 견적가 = 소계에 가산율(기본 10%)을 더한 값. 할증은 건마다 달라 행에 직접 쓴다.
  *   행 합계 = 합계 칸이 비어 있으면 수량 × 단가, 적혀 있으면 그 값(고정) · 소계 = 행 합계의 합 · 견적가 = 내림(소계 × (1 + 가산율/100), 내림 단위) · 대당 금액 = 견적가 ÷ 총 대수
  * 셀은 숫자 또는 =수식(formula.js). 저장은 사용자가 쓴 글자 그대로(문자열)이고 열 때 다시 계산한다. 이 파일에는 단가·인원 같은 실제 값을 두지 않는다. 설계: 비공개 저장소 app-docs/estimate-tool-design.md */
-import { evalCell } from './formula.js?v=20261031c';
+import { evalCell } from './formula.js?v=20261031d';
 /** 열 글자 — 표의 번호 열은 행 번호라서 글자가 없고, 내역부터 A. 글자 칸(A 내역·B 단위·F 비고)은 계산에 쓸 수 없고 C 수량·D 단가·E 합계만 숫자다 */
 export const COL_LETTERS = 'ABCDEF';
 const FIELD = { A: 'name', B: 'unit', C: 'qty', D: 'price', E: 'total', F: 'remark' }, NUMERIC = 'CDE';
-import { itemSetAmount } from './estimates.js?v=20261031c';
+import { itemSetAmount } from './estimates.js?v=20261031d';
 /** 기본값 — 문자열(입력칸 값). 단가·인원 같은 실제 값은 없음 */
 export const DEFAULTS = Object.freeze({ markup: '10', unit: '100000' });
 /** 저장 한도 — 문서가 부풀지 않게 */

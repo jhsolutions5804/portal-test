@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261031c';
-import { GTYPES, GKEYS, creditBalance, creditRowsBalance, creditTotals, dday, won, leasePayState, dueList, homeSummary, leaseMonthly, driveAllRows, driveFilter, driveTotals, driveByProject, driveByMonth, driveOdoCheck, driveRange, weekStart, DRIVE_STATUS, driveKeywordStats, matchHistory } from './logic.js?v=20261031c';
+import { esc } from '../../core/ui.js?v=20261031d';
+import { GTYPES, GKEYS, creditBalance, creditRowsBalance, creditTotals, creditFilterRows, creditSummary, creditCorpTotals, creditFltDefault, CREDIT_NO_CORP, dday, won, leasePayState, dueList, homeSummary, leaseMonthly, driveAllRows, driveFilter, driveTotals, driveByProject, driveByMonth, driveOdoCheck, driveRange, weekStart, DRIVE_STATUS, driveKeywordStats, matchHistory } from './logic.js?v=20261031d';
 
 const TABS = [['home', '개요'], ['lease', '임대'], ['vehicle', '차량'], ['drive', '운행일지'], ['asset', '자산·장비'], ['credit', '외상 장부'], ['renewal', '갱신 일정']];
 export const tabsHtml = (cur, base) => '<div class="jh-segmented jh-gen__tabs" role="group" aria-label="총무">' + TABS.map(([k, l]) => '<a class="jh-segmented__item" href="' + esc(base || '#/general') + '/' + k + '" aria-pressed="' + (k === cur) + '">' + esc(l) + '</a>').join('') + '</div>';
@@ -27,12 +27,62 @@ const inputFor = (f, val, attr) => {
   if (f.t === 'money' || f.t === 'int') return '<input class="jh-input" inputmode="numeric" value="' + v + '" ' + attr + '>';
   return '<input class="jh-input" value="' + v + '" ' + (f.ph ? 'placeholder="' + esc(f.ph) + '" ' : '') + attr + '>';
 };
+const won0 = (n) => won(n);
+const cOpt = (v, cur, label) => '<option value="' + esc(v) + '"' + (v === cur ? ' selected' : '') + '>' + esc(label == null ? v : label) + '</option>';
+/** 외상 장부 목록: 종류(구매·식당·복지·기타) 거름 */
+export function creditKindSelect(st) {
+  const kinds = GTYPES.credit.fields[1].o;
+  return '<select class="jh-select jh-gen__flt-sel" data-g-kind aria-label="종류">' + cOpt('', st.kind || '', '종류 전체') + kinds.map((k) => cOpt(k, st.kind || '')).join('') + '</select>';
+}
+/** 외상 장부 목록: 청구 법인별 합계(지금 목록에 보이는 거래처 기준) */
+export function creditCorpHtml(st) {
+  const s = creditCorpTotals(visibleList(st, 'credit'));
+  if (!s.byCorp.length) return '';
+  const rows = s.byCorp.map((c) => '<tr><td>' + esc(c.corp) + '</td><td class="num">' + won0(c.외상) + '</td><td class="num">' + won0(c.반품) + '</td><td class="num">' + won0(c.결제) + '</td><td class="num"><strong>' + won0(c.balance) + '</strong></td></tr>').join('');
+  const t = s.total;
+  return '<h4 class="jh-gen__sub">청구 법인별 합계 <span class="jh-field__hint">(지금 목록 기준 · 잔액 = 외상 − 결제 − 반품)</span></h4><div class="jh-gen__scroll"><table class="jh-gen-table"><thead><tr><th>청구 법인</th><th class="num">외상</th><th class="num">반품</th><th class="num">결제</th><th class="num">잔액</th></tr></thead><tbody>' + rows + '</tbody><tfoot><tr><td><strong>합계</strong></td><td class="num">' + won0(t.외상) + '</td><td class="num">' + won0(t.반품) + '</td><td class="num">' + won0(t.결제) + '</td><td class="num"><strong>' + won0(t.balance) + '</strong></td></tr></tfoot></table></div>';
+}
+/** 표시할 줄의 원래 번호(정렬 반영) */
+export function creditShownIdx(e) {
+  const f = e.flt || creditFltDefault(); const idx = creditFilterRows(e.rows, f);
+  if (!f.desc) return idx;
+  return idx.slice().sort((a, b) => String(e.rows[b].date || '').localeCompare(String(e.rows[a].date || '')) || b - a);
+}
+/** 거래 내역 표 + 보이는 줄 합계 + 월별·청구 법인별 요약 — 거름이 바뀔 때 이 부분만 다시 그린다(입력 칸 포커스를 지키려고) */
+export function creditLogAreaHtml(e) {
+  const L = GTYPES.credit.log; const idx = creditShownIdx(e);
+  const shown = idx.map((i) => e.rows[i]); const vs = creditSummary(shown); const all = creditSummary(e.rows);
+  const filtered = idx.length !== e.rows.length;
+  const head = L.cols.map((c) => '<th>' + esc(c.l) + '</th>').join('') + '<th></th>';
+  const rows = idx.map((i) => { const r = e.rows[i]; return '<tr>' + L.cols.map((c) => '<td>' + inputFor(c, r[c.k], 'data-gl="' + i + ':' + c.k + '" aria-label="' + esc(c.l) + '"') + '</td>').join('') + '<td><button type="button" class="jh-btn" data-variant="ghost" data-g-logdel="' + i + '">삭제</button></td></tr>'; }).join('');
+  const msg = e.rows.length && filtered ? '조건에 맞는 줄이 없습니다.' : '이력이 없습니다.';
+  const line = '<div class="jh-field__hint">' + (filtered ? '<strong>' + idx.length + '줄 표시</strong> (전체 ' + e.rows.length + '줄) · 보이는 줄: 외상 ' + won0(vs.total.외상) + ' · 반품 ' + won0(vs.total.반품) + ' · 결제 ' + won0(vs.total.결제) + ' · 순액 ' + won0(vs.total.balance) + '원 · ' : '전체 ' + e.rows.length + '줄 · ') + '<strong>현재 미결제 잔액 ' + won0(all.total.balance) + '원</strong> (외상 − 결제 − 반품)</div>';
+  const mrows = all.byMonth.slice().reverse().map((m) => '<tr><td>' + esc(m.ym) + '</td><td class="num">' + won0(m.외상) + '</td><td class="num">' + won0(m.반품) + '</td><td class="num">' + won0(m.결제) + '</td><td class="num">' + won0(m.cum) + '</td></tr>').join('');
+  const crows = all.byCorp.map((c) => '<tr><td>' + esc(c.corp) + '</td><td class="num">' + won0(c.외상) + '</td><td class="num">' + won0(c.반품) + '</td><td class="num">' + won0(c.결제) + '</td><td class="num">' + won0(c.balance) + '</td></tr>').join('');
+  const more = all.total.count ? '<details class="jh-gen__more"><summary>월별·청구 법인별 요약 (전체 줄 기준)</summary><div class="jh-gen__scroll"><table class="jh-gen-table"><thead><tr><th>월</th><th class="num">외상</th><th class="num">반품</th><th class="num">결제</th><th class="num">월말 누적 잔액</th></tr></thead><tbody>' + mrows + '</tbody></table></div><div class="jh-gen__scroll"><table class="jh-gen-table"><thead><tr><th>청구 법인</th><th class="num">외상</th><th class="num">반품</th><th class="num">결제</th><th class="num">잔액</th></tr></thead><tbody>' + crows + '</tbody></table></div></details>' : '';
+  return line + more + '<div class="jh-gen__scroll"><table class="jh-gen-table"><thead><tr>' + head + '</tr></thead><tbody>' + (rows || '<tr><td colspan="' + (L.cols.length + 1) + '" class="jh-field__hint">' + msg + '</td></tr>') + '</tbody></table></div>';
+}
+/** 외상 장부 편집 화면의 거래 내역 구역(거름 막대 + 표) */
+export function creditLogHtml(e) {
+  const L = GTYPES.credit.log; const f = e.flt || (e.flt = creditFltDefault());
+  const corpCol = L.cols.find((c) => c.k === 'corp'); const typeCol = L.cols.find((c) => c.k === 'type');
+  const corps = []; e.rows.forEach((r) => { if (r.corp && !corps.includes(r.corp)) corps.push(r.corp); }); (corpCol.o || []).forEach((o) => { if (!corps.includes(o)) corps.push(o); });
+  const months = [...new Set(e.rows.map((r) => String(r.date || '').slice(0, 7)).filter(Boolean))].sort().reverse();
+  const bar = '<div class="jh-gen__flt"><input class="jh-input jh-gen__q" data-glf="q" placeholder="내역 검색(품목·메모·현장·법인)" value="' + esc(f.q) + '" aria-label="거래 내역 검색">'
+    + '<select class="jh-select jh-gen__flt-sel" data-glf="type" aria-label="구분">' + cOpt('', f.type, '구분 전체') + typeCol.o.map((o) => cOpt(o, f.type)).join('') + '</select>'
+    + '<select class="jh-select jh-gen__flt-sel" data-glf="corp" aria-label="청구 법인">' + cOpt('', f.corp, '청구 법인 전체') + corps.map((o) => cOpt(o, f.corp)).join('') + cOpt(CREDIT_NO_CORP, f.corp, '청구 법인 미지정') + '</select>'
+    + '<select class="jh-select jh-gen__flt-sel" data-glf="ym" aria-label="월">' + cOpt('', f.ym, '전체 기간') + months.map((m) => cOpt(m, f.ym)).join('') + '</select>'
+    + '<label class="jh-field__hint"><input type="checkbox" data-glf="desc"' + (f.desc ? ' checked' : '') + '> 최근 거래 먼저</label>'
+    + '<button type="button" class="jh-btn" data-variant="ghost" data-g-credit-csv>보이는 줄 CSV</button></div>';
+  return '<h4 class="jh-gen__sub">' + esc(L.l) + '</h4>' + bar + '<div id="g-logwrap">' + creditLogAreaHtml(e) + '</div><div class="jh-gen__bar"><button type="button" class="jh-btn" data-variant="ghost" data-g-logadd>+ 줄 추가</button></div>';
+}
 /** 항목 하나의 입력 양식(새로 만들기·수정) + 이력 편집 */
 export function editHtml(st) {
   const e = st.edit; const T = GTYPES[e.type];
   const fields = T.fields.map((f) => '<div class="jh-field' + (f.t === 'area' ? ' jh-gen__wide' : '') + '"><label class="jh-field__label">' + esc(f.l) + (f.req ? ' *' : '') + '</label>' + inputFor(f, e.vals[f.k], 'data-gf="' + f.k + '"') + '</div>').join('');
   let log = '';
-  if (T.log) {
+  if (T.log && e.type === 'credit') log = creditLogHtml(e);
+  else if (T.log) {
     const L = T.log;
     const head = L.cols.map((c) => '<th>' + esc(c.l) + '</th>').join('') + '<th></th>';
     const rows = e.rows.map((r, i) => '<tr>' + L.cols.map((c) => '<td>' + inputFor(c, r[c.k], 'data-gl="' + i + ':' + c.k + '" aria-label="' + esc(c.l) + '"') + '</td>').join('') + '<td><button type="button" class="jh-btn" data-variant="ghost" data-g-logdel="' + i + '">삭제</button></td></tr>').join('');
@@ -42,15 +92,21 @@ export function editHtml(st) {
   return card(title, '<div class="jh-gen__pad"><div class="jh-gen__grid">' + fields + '</div>' + log + '<div class="jh-gen__bar"><button type="button" class="jh-btn" data-variant="primary" data-g-act="save">저장</button><button type="button" class="jh-btn" data-variant="ghost" data-g-act="cancel">취소</button>' + (e.isNew ? '' : '<button type="button" class="jh-btn" data-variant="ghost" data-g-act="delete">삭제</button>') + '</div></div>');
 }
 /** 목록 표(검색·상태 거름 반영) */
+/** 목록에 보이는 항목들 — 상태 거름·검색(거래 내역까지 포함)·외상 장부의 종류 거름. 표와 청구 법인별 합계가 같은 목록을 쓴다 */
+export function visibleList(st, type) {
+  const T = GTYPES[type]; const q = (st.q || '').trim().toLowerCase();
+  return (st.data[type] || []).filter((d) => (!st.onlyActive || T.active(d)) && (type !== 'credit' || !st.kind || d.kind === st.kind) && (!q || JSON.stringify(d).toLowerCase().includes(q)));
+}
 export function tableHtml(st, type) {
   const T = GTYPES[type]; const q = (st.q || '').trim().toLowerCase(); const all = st.data[type] || [];
-  const list = all.filter((d) => (!st.onlyActive || T.active(d)) && (!q || JSON.stringify(d).toLowerCase().includes(q)));
+  const list = visibleList(st, type);
   const head = T.cols.map((c) => '<th' + (c[2] ? ' class="' + c[2] + '"' : '') + '>' + esc(c[0]) + '</th>').join('') + '<th>상태·알림</th>';
   const rows = list.map((d) => {
     const dues = T.dues(d).map((du) => { const n = dday(du.date, st.today); return n === null ? null : { n, what: du.what, lead: du.lead }; }).filter(Boolean).sort((a, b) => a.n - b.n)[0];
     let badge = '';
     if (type === 'lease') { const ps = leasePayState(d, st.today); if (ps) badge += chip(ps.text, ps.tone); }
-    if (type === 'credit') { const b = creditBalance(d); badge += chip(b > 0 ? '미결제 ' + won(b) + '원' : b < 0 ? '선결제 ' + won(-b) + '원' : '정산 완료', b > 0 ? 'warn' : 'muted'); }
+    if (type === 'credit') { const b = creditBalance(d); badge += chip(b > 0 ? '미결제 ' + won(b) + '원' : b < 0 ? '선결제 ' + won(-b) + '원' : '정산 완료', b > 0 ? 'warn' : 'muted');
+    if (type === 'credit' && q) { const nm = creditFilterRows(d.entries || [], { q }).length; if (nm) badge += ' ' + chip('내역 ' + nm + '줄 일치', 'muted'); } }
     if (dues && T.active(d) && dues.n <= Math.max(dues.lead, 0)) badge += ' ' + chip(ddayText(dues.n) + ' ' + dues.what, dues.n < 0 ? 'danger' : 'warn');
     return '<tr class="jh-gen__row' + (T.active(d) ? '' : ' jh-gen__off') + '" data-g-open="' + esc(d.id) + '">' + T.cols.map((c) => '<td' + (c[2] ? ' class="' + c[2] + '"' : '') + '>' + esc(c[1](d, st.today)) + '</td>').join('') + '<td>' + badge + '</td></tr>';
   }).join('');
@@ -58,10 +114,10 @@ export function tableHtml(st, type) {
 }
 export function listHtml(st, type) {
   const T = GTYPES[type]; const hasSeed = (st.seed || {})[type] > 0 && !(st.data[type] || []).length;
-  const bar = '<div class="jh-gen__bar"><button type="button" class="jh-btn" data-variant="primary" data-g-add>' + esc(T.add) + '</button><input class="jh-input jh-gen__q" data-g-q placeholder="검색" value="' + esc(st.q || '') + '" aria-label="검색"><label class="jh-field__hint"><input type="checkbox" data-g-active' + (st.onlyActive ? ' checked' : '') + '> ' + esc(T.activeFilter) + '만 보기</label>' + (hasSeed ? '<button type="button" class="jh-btn" data-variant="ghost" data-g-seed>엑셀 기준 첫 목록 넣기</button>' : '') + (type === 'vehicle' ? '<button type="button" class="jh-btn" data-variant="ghost" data-g-sync>운행일지 차량 목록 동기화</button>' : '') + '</div>';
+  const bar = '<div class="jh-gen__bar"><button type="button" class="jh-btn" data-variant="primary" data-g-add>' + esc(T.add) + '</button><input class="jh-input jh-gen__q" data-g-q placeholder="검색" value="' + esc(st.q || '') + '" aria-label="검색"><label class="jh-field__hint"><input type="checkbox" data-g-active' + (st.onlyActive ? ' checked' : '') + '> ' + esc(T.activeFilter) + '만 보기</label>' + (type === 'credit' ? creditKindSelect(st) : '') + (hasSeed ? '<button type="button" class="jh-btn" data-variant="ghost" data-g-seed>엑셀 기준 첫 목록 넣기</button>' : '') + (type === 'vehicle' ? '<button type="button" class="jh-btn" data-variant="ghost" data-g-sync>운행일지 차량 목록 동기화</button>' : '') + '</div>';
   const crT = type === 'credit' ? creditTotals(st.data.credit) : null;
   const extra = type === 'credit' ? '<div class="jh-gen__pad"><div class="jh-field__hint"><strong>미결제 합계 ' + won(crT.balance) + '원</strong> (' + Object.keys(crT.byKind).map((k) => k + ' ' + won(crT.byKind[k]) + '원').join(' · ') + ') · 미결제 거래처 ' + crT.open + '곳</div><div class="jh-field__hint">거래처마다 항목을 열어 "거래 내역"에 외상·결제·반품을 한 줄씩 기록합니다(청구 법인은 어느 회사 몫의 구매인지, 결제 수단은 결제 줄에). 잔액 = 외상 합계 − 결제 합계 − 반품 합계. 자재·공구 구매, 식당처럼 월말에 정산하는 거래를 거래처별로 관리합니다.</div></div>' : type === 'lease' ? '<div class="jh-field__hint jh-gen__pad">월 납부액 = 월 임대료 + 월 부가세. 입금 이력은 항목을 열면 "귀속 월"별로 기록합니다.</div>' : type === 'vehicle' ? '<div class="jh-field__hint jh-gen__pad">차량을 저장하면 전자결재 "차량 운행일지"의 차량 선택 목록이 자동으로 갱신됩니다(사용 중인 차량만). 출고일·출고 시 계기판을 넣어 두면 운행일지가 그 시점부터 집계됩니다.</div>' : '';
-  return (st.edit && st.edit.type === type ? editHtml(st) : '') + card(T.title + ' (' + (st.data[type] || []).length + ')', '<div class="jh-gen__pad">' + bar + '</div><div id="g-table">' + tableHtml(st, type) + '</div>' + extra);
+  return (st.edit && st.edit.type === type ? editHtml(st) : '') + card(T.title + ' (' + (st.data[type] || []).length + ')', '<div class="jh-gen__pad">' + bar + '</div><div id="g-table">' + tableHtml(st, type) + '</div>' + extra + (type === 'credit' ? '<div class="jh-gen__pad" id="g-corp">' + creditCorpHtml(st) + '</div>' : ''));
 }
 /** 차량 운행일지 취합 — 전자결재로 올라온 일지를 시간 순으로 모아 일간·주간·월간·프로젝트별로 본다 */
 const D_MODES = [['all', '전체(출고 이후)'], ['day', '일간'], ['week', '주간'], ['month', '월간'], ['project', '프로젝트별']];

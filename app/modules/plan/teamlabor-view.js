@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261031c';
-import { won, card, chip } from './ui.js?v=20261031c';
-import { buildTeams, monthLabel } from './teamlabor.js?v=20261031c';
+import { esc } from '../../core/ui.js?v=20261031d';
+import { won, card, chip } from './ui.js?v=20261031d';
+import { buildTeams, monthLabel } from './teamlabor.js?v=20261031d';
 const sumCell = (label, v) => '<div class="jh-plan__sumcell"><span class="jh-field__hint">' + esc(label) + '</span><strong>' + v + '</strong></div>';
 /** 팀별 노무비: 월 이동, 합계 카드, 팀마다 공수·팀 단가·노무비·프로젝트별 공수·구성원 공수 */
 export function teamLaborHtml(st) {

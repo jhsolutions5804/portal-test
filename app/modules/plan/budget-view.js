@@ -1,8 +1,8 @@
 /* 실행예산 화면 조각 + 편집 초안(draft) 도우미 — 순수(저장·서버를 모른다). 시험: tests/plan-budget-view.test.mjs · 계산·검증: budget.js · 저장: budget-io.js · 설계: 비공개 저장소 app-docs/execution-budget-design.md (대기열 1-3-9, 3단계).
  * 화면은 프로젝트 상세(projects-view.js)의 "실행예산" 카드 안에 들어간다. 버튼은 data-bd-act, 행 입력칸은 data-bd-k·data-bd-i, 메모는 data-bd-note — 이벤트는 컨트롤러(index.js)가 위임으로 처리한다(인라인 이벤트 없음). 모든 값은 esc 로 이스케이프한다.
  * 초안 도우미는 원본을 바꾸지 않고 새 초안을 돌려준다. 금액은 입력 중이라 글자로 둔다(저장할 때 sanitizeRows 가 검사). */
-import { esc } from '../../core/ui.js?v=20261031c';
-import { CATS, LIMITS, parseAmount, budgetTotals, revisionList, draftRowsFromImport } from './budget.js?v=20261031c';
+import { esc } from '../../core/ui.js?v=20261031d';
+import { CATS, LIMITS, parseAmount, budgetTotals, revisionList, draftRowsFromImport } from './budget.js?v=20261031d';
 const isO = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const won = (n) => (Math.round(Number(n) || 0)).toLocaleString('ko-KR');
 const catLabel = (k) => { const c = CATS.find((x) => x.key === k); return c ? c.label : '미배정'; };

@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261031c';
-import { COMP_ROLES, compGroups } from './logic.js?v=20261031c';
+import { esc } from '../../core/ui.js?v=20261031d';
+import { COMP_ROLES, compGroups } from './logic.js?v=20261031d';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const roleChips = (c) => COMP_ROLES.filter(([k]) => c[k]).map(([k, l]) => '<span class="jh-plan__chip" data-role="' + k + '">' + esc(l) + '</span>').join(' ');
 const compRow = (c) => '<button type="button" class="jh-plan__row" data-pc-open="' + esc(c.id) + '"><span class="jh-plan__main"><span class="jh-plan__line"><strong>' + esc(c.company || '-') + '</strong>' + roleChips(c) + '</span><span class="jh-field__hint">' + esc([c.ceo ? '대표 ' + c.ceo : '', c.bizno || '', c.tel || ''].filter(Boolean).join(' · ')) + '</span></span><span class="jh-field__hint">수정 ›</span></button>';

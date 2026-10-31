@@ -1,6 +1,6 @@
 /* 평가 결과 화면(관리자·인사팀) — 마크업만. 확정된 직원을 골라 결과 통보서를 미리 보고, 본인 확인 링크를 만들어 메일로 보낸다. 읽기·발송은 result-io.js */
-import { esc } from '../../core/ui.js?v=20261031c';
-import { resultHtml } from './result-report.js?v=20261031c';
+import { esc } from '../../core/ui.js?v=20261031d';
+import { resultHtml } from './result-report.js?v=20261031d';
 const chip = (t, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(t) + '</span>';
 
 /** st.rs = { year, rows:[{ id, name, dept, rank, ok, reason, final, grade }], sel, preview:{ data, html }, sent:{ [workerId]: '발송 시각 문구' }, canSend, mailOn, busy } */

@@ -1,7 +1,7 @@
 /* 인사평가 — 수시평가(프로젝트 종료 시) 화면(테섭 미리보기). 마크업만 만든다(저장·불러오기는 adhoc-io.js). 설계서 docs/hr-evaluation-design.md 5·6절 */
-import { withManage } from '../../shared/eval-perm.js?v=20261031c';
-import { esc } from '../../core/ui.js?v=20261031c';
-import { evalAccess, adhocSummary, adhocProjectPerf, adhocParticipants, pickAdhocEvaluator, emptyAdhoc, ADHOC_LABELS, ADHOC_ENTRY_ITEMS, PEER_ITEMS, STATUS_LABEL } from './evaluation.js?v=20261031c';
+import { withManage } from '../../shared/eval-perm.js?v=20261031d';
+import { esc } from '../../core/ui.js?v=20261031d';
+import { evalAccess, adhocSummary, adhocProjectPerf, adhocParticipants, pickAdhocEvaluator, emptyAdhoc, ADHOC_LABELS, ADHOC_ENTRY_ITEMS, PEER_ITEMS, STATUS_LABEL } from './evaluation.js?v=20261031d';
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const gtone = (g) => (g === 'S' || g === 'A' ? 'accent' : g === 'C' ? 'danger' : 'muted');

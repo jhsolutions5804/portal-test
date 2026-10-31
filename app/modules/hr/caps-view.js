@@ -1,6 +1,6 @@
 /* 근로시간 > "캡스 업로드" 보기의 HTML(순수 함수). 시험: tests/hr-caps-import.test.mjs. 입력은 index.js 의 근로시간 화면이 data-caps-* 속성으로 연결한다. */
-import { esc } from '../../core/ui.js?v=20261031c';
-import { capsSummaryText } from './caps-import.js?v=20261031c';
+import { esc } from '../../core/ui.js?v=20261031d';
+import { capsSummaryText } from './caps-import.js?v=20261031d';
 export const capsInit = () => ({ stage: 'pick', fileName: '', parse: null, from: '', to: '', plan: null, err: '', busy: false, saved: null, progress: '' });
 const card = (title, body) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3></div>' + body + '</section>';
 const chip = (s) => '<span class="jh-chip"' + (s === '변경' ? ' data-tone="warn"' : s === '확인' ? ' data-tone="danger"' : s === '신규' || s === '보충' ? ' data-tone="accent"' : '') + '>' + esc(s === '확인' ? '확인 필요' : s) + '</span>';

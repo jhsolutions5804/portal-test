@@ -1,5 +1,5 @@
 /* 지원서 파기·공고 설정 입출력 — 파이어베이스 함수는 밖에서 주입(시험: tests/hr-recruit-purge-io.test.mjs). 파기는 누르는 순간 문서와 공고를 다시 읽어 "기한이 지난 지원서"만 지운다(화면을 열어 둔 사이 상태가 바뀐 경우 방지). */
-import { purgeInfo, destroyDoc, settingsPatch } from './recruit-purge.js?v=20261031c';
+import { purgeInfo, destroyDoc, settingsPatch } from './recruit-purge.js?v=20261031d';
 
 export function makePurgeIo(fb) {
   const { db, doc, getDoc, updateDoc, writeBatch, serverTimestamp } = fb;

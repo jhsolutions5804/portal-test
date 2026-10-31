@@ -1,8 +1,8 @@
 /* 평가 결과 — 불러오기·미리보기·링크 만들기·메일 발송. 발송(링크 생성·메일)은 인사 모듈의 기존 흐름(본인 확인 링크)을 쓰되, 평가 모듈이 인사 모듈을 직접 가져오지 않도록 deps.sendResult / deps.makeResultLink 로 주입받는다(modules/index.js 에서 연결).
  *  원칙: 열 때마다 최신 문서를 다시 읽어 통보서를 만들고, 발송 직전에 한 번 더 만든다(미리보기와 발송 내용이 어긋나지 않게). 확정되지 않은 평가는 만들지 않는다. */
-import { isEvalTarget, teamTypeOf, cycleSummary, areaItems } from './evaluation.js?v=20261031c';
-import { buildResultData, resultHtml, RESULT_DOC_TYPE, RESULT_TITLE, resultPrintHtml, resultPrintTitle } from './result-report.js?v=20261031c';
-import { maskEmail } from '../../shared/mask.js?v=20261031c';
+import { isEvalTarget, teamTypeOf, cycleSummary, areaItems } from './evaluation.js?v=20261031d';
+import { buildResultData, resultHtml, RESULT_DOC_TYPE, RESULT_TITLE, resultPrintHtml, resultPrintTitle } from './result-report.js?v=20261031d';
+import { maskEmail } from '../../shared/mask.js?v=20261031d';
 const kstToday = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 /** deps: { db, collection, getDocs, getDoc, doc, toast, confirmDialog, paint, st, ctx, sendResult({ workerId, workerName, html, title, year }) → { ok, email, cancelled }, makeResultLink({ workerId, workerName, html, title }) → token, showLink(token, 이름), mailOn } */
 export function createResultController(deps) {
