@@ -1,6 +1,6 @@
 /* 일정 모듈의 순수 규칙 — 화면(DOM)·네트워크 없이 시험한다.
  * 공통 일정 형식: { id, source, title, start, end, startTime, endTime, tag, tagLabel, project, place, isTodo, done, link, editable, ref } */
-import { pad, ymd, dateKey, isYmd, isHHMM, addDays, TAG_LABEL, tagLabelOf, makeEvent, fromLegacyDoc } from '../../shared/calendar-event.js?v=20261101a';
+import { pad, ymd, dateKey, isYmd, isHHMM, addDays, TAG_LABEL, tagLabelOf, makeEvent, fromLegacyDoc } from '../../shared/calendar-event.js?v=20261101b';
 export { pad, ymd, dateKey, isYmd, isHHMM, addDays, TAG_LABEL, tagLabelOf, makeEvent, fromLegacyDoc };
 export const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 export const dayOfWeek = (key) => new Date(+key.slice(0, 4), +key.slice(5, 7) - 1, +key.slice(8, 10)).getDay();
@@ -93,7 +93,7 @@ export function validateDraft(d) {
 }
 /** 직접 등록하는 일정 → company_schedules 문서(옛 일정과 같은 필드 이름) */
 export function toCompanyDoc(d, me) {
-  const todo = d.isTodo === true || (!d.startTime && !d.endTime); // 시각을 모두 비우면 자동으로 할 일(2026-11-01)
+  const todo = d.isTodo === true || (!d.startTime && !d.endTime && d.tag !== 'off' && d.tag !== 'leave'); // 시각을 모두 비우면 자동으로 할 일(2026-11-01). 휴무·연차는 제외 — 종일 일정 그대로
   return { text: String(d.title).trim(), tag: d.tag, tagLabel: TAG_LABEL[d.tag] || '일정', sdate: d.start, edate: d.end || d.start, stime: todo || !d.startTime ? null : d.startTime, etime: todo || !d.endTime ? null : d.endTime,
     isTodo: todo, done: false, place: String(d.place || '').trim(), memo: String(d.memo || '').trim(), att: me.name || '', reg: me.email || me.name || '', source: 'calendar' };
 }
