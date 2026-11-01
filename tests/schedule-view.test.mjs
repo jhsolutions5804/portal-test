@@ -16,7 +16,7 @@ ok(!h.includes('다른 달') && cnt(h, /class="jh-sch__row/g) === 5 && h.include
 ok(h.indexOf('11/03(화)') < h.indexOf('11/05(목)') && h.indexOf('11/05(목)') < h.indexOf('11/12(목)') && h.indexOf('11/18(수)') < h.indexOf('11/30(월)'), '날짜 순으로 묶여 나옴');
 const hT = boardHtml(Object.assign({}, s1, { today: '2026-11-12' })); ok(hT.includes('jh-sch__day is-today') && hT.indexOf('is-today') > hT.indexOf('11/05(목)') && !h.includes('jh-sch__day is-today'), '오늘 날짜(일정이 있는 날) 묶음에 오늘 표시, 오늘이 아닌 날에는 없음');
 const rowA = rowHtml(rows[0], s1), rowB = rowHtml(rows[1], s1), rowC = rowHtml(rows[2], s1);
-ok(rowA.includes('data-sch-done="a"') && rowA.includes('data-sch-edit="a"') && rowA.includes('data-sch-del="a"') && rowA.includes('마감') && rowA.includes('할 일'), '직접 입력 할 일: 완료 체크·수정·삭제, "마감" 표시');
+ok(rowA.includes('data-sch-done="a"') && rowA.includes('data-sch-edit="a"') && rowA.includes('data-sch-del="a"') && rowA.includes('00~24시') && rowA.includes('할 일'), '직접 입력 할 일: 완료 체크·수정·삭제, "00~24시" 표시');
 ok(!rowB.includes('data-sch-edit') && !rowB.includes('data-sch-del') && !rowB.includes('data-sch-done') && rowB.includes('정산서에서 자동 반영') && rowB.includes('청구'), '자동 일정(정산서): 수정·삭제·완료 체크가 없고 "정산서에서 자동 반영" 표시');
 ok(rowC.includes('14:00~15:00') && rowC.includes('회의실') && rowC.includes('반복 2/12') && rowC.includes('data-sch-delfuture="c"') && rowC.includes('이후 모두 삭제'), '반복 일정: 시간·장소·"반복 2/12"·"이후 모두 삭제" 단추');
 ok(rowHtml(rows[4], s1).includes('11/18~11/20') && rowHtml(rows[4], s1).includes('종일'), '여러 날 일정은 기간 표시, 시간 없으면 종일');

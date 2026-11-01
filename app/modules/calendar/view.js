@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261031i';
-import { WEEKDAYS, ymd, dateKey, monthGrid, shiftMonth, fmtRange, expiryNote, expiryState, OWN_TAGS, TAG_LABEL, canWrite, canEditOwn, isHHMM, pad, VIEWS, dayLabel } from './logic.js?v=20261031i';
-import { holidayName as holName } from '../../shared/holidays.js?v=20261031i';
+import { esc } from '../../core/ui.js?v=20261101a';
+import { WEEKDAYS, ymd, dateKey, monthGrid, shiftMonth, fmtRange, expiryNote, expiryState, OWN_TAGS, TAG_LABEL, canWrite, canEditOwn, isHHMM, pad, VIEWS, dayLabel } from './logic.js?v=20261101a';
+import { holidayName as holName } from '../../shared/holidays.js?v=20261101a';
 
 export const SRC_LABEL = { pjt: 'PJT', leave: '연차·휴무', company: '회사', expiry: '만료', hr: '인사' };
 const srcLabel = (s) => SRC_LABEL[s] || s;
@@ -93,7 +93,7 @@ export function formHtml(draft, errors, editing) {
     '<label class="jh-field"' + inv('tag') + '><span class="jh-field__label">분류</span><select class="jh-select" id="cf-tag">' + tags + '</select>' + err('tag') + '</label>' +
     '<div class="jh-cal__two"><label class="jh-field"' + inv('start') + '><span class="jh-field__label">시작일</span><input class="jh-input" type="date" id="cf-start" value="' + esc(draft.start) + '">' + err('start') + '</label>' +
     '<label class="jh-field"' + inv('end') + '><span class="jh-field__label">종료일 (하루면 비움)</span><input class="jh-input" type="date" id="cf-end" value="' + esc(draft.end) + '">' + err('end') + '</label></div>' +
-    '<label class="jh-cal__check"><input type="checkbox" id="cf-todo"' + (draft.isTodo ? ' checked' : '') + '> 할 일 (시각 없이 체크리스트로)</label>' +
+    '<label class="jh-cal__check"><input type="checkbox" id="cf-todo"' + (draft.isTodo ? ' checked' : '') + '> 할 일 (00~24시 · 시각을 비워 두면 자동으로 할 일로 등록)</label>' +
     '<div class="jh-cal__two" id="cf-times"' + (draft.isTodo ? ' hidden' : '') + '>' + timeHtml('cf-s', draft.startTime, '시작 시각') + timeHtml('cf-e', draft.endTime, '종료 시각') + '</div>' + (e.time ? '<div class="jh-alert" data-tone="danger" role="alert">' + esc(e.time) + '</div>' : '') +
     '<label class="jh-field"' + inv('place') + '><span class="jh-field__label">장소</span><input class="jh-input" id="cf-place" maxlength="120" value="' + esc(draft.place) + '">' + err('place') + '</label>' +
     '<label class="jh-field"' + inv('memo') + '><span class="jh-field__label">메모</span><textarea class="jh-textarea" id="cf-memo" maxlength="600">' + esc(draft.memo) + '</textarea>' + err('memo') + '</label>' +

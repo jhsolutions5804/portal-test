@@ -51,7 +51,8 @@ const TIME = /^([01]\d|2[0-4]):[0-5]\d$/;
 export function buildDoc(form, defaults) {
   const f = form || {}; const text = String(f.text || '').trim();   // 내용은 비워도 된다(구포털 "공란 가능" — 목록에는 "(내용 없음)")
   let sdate = f.sdate && isKey(f.sdate) ? f.sdate : (defaults && defaults.today) || ''; if (!sdate) return { error: '날짜를 입력하세요.' }; let edate = f.edate && isKey(f.edate) ? f.edate : sdate; if (edate < sdate) edate = sdate;
-  const tag = CATS.some((c) => c[0] === f.tag) ? f.tag : detectCat(text); const isTodo = !!f.isTodo; const t = (h, m) => pad(Math.max(0, Math.min(24, parseInt(h, 10) || 0))) + ':' + pad(Math.max(0, Math.min(59, parseInt(m, 10) || 0)));
+  const tag = CATS.some((c) => c[0] === f.tag) ? f.tag : detectCat(text); const t = (h, m) => pad(Math.max(0, Math.min(24, parseInt(h, 10) || 0))) + ':' + pad(Math.max(0, Math.min(59, parseInt(m, 10) || 0)));
+  const noTime = t(f.sh, f.sm) === '00:00' && (t(f.eh, f.em) === '00:00' || t(f.eh, f.em) === '24:00'); const isTodo = !!f.isTodo || noTime;   // 시간을 정하지 않으면(시작·종료가 00:00) 자동으로 할 일(2026-11-01)
   const stime = isTodo ? '00:00' : t(f.sh, f.sm), etime = isTodo ? '24:00' : t(f.eh, f.em);   // 할 일은 하루 종일(00:00~24:00)로 저장 — 구포털은 할 일의 시간을 쓰지 않으므로 호환된다
   if (!TIME.test(stime) || !TIME.test(etime)) return { error: '시간 형식이 올바르지 않습니다.' };
   return { data: { reg: String(f.reg || '').trim(), text, place: String(f.place || '').trim(), att: String(f.att || '').trim(), tag, tagLabel: TAG_LABEL[tag], sdate, edate, isTodo, stime, etime } };

@@ -1,18 +1,19 @@
 /* 영업기획·재무회계 일정 보드 — 저장·이벤트 연결. 화면은 schedule-view.js, 규칙은 schedule-logic.js. 보안 규칙: 관리자만, 자동 일정은 서버만.
  * 일정은 저장되면 서버 함수가 Outlook 공유 사서함으로 보낸다(포털 → Outlook 한 방향) — 이 파일은 Outlook 을 직접 부르지 않는다. */
-import { db, collection, getDocs, query, where, addDoc, updateDoc, deleteDoc, doc, writeBatch, serverTimestamp } from '../core/firebase.js?v=20261031i';
-import { toast } from '../core/ui.js?v=20261031i';
-import { confirmDialog } from '../core/dialog.js?v=20261031i';
-import { pagerAction, pagerApply } from './pager.js?v=20261031i';
-import { addDays } from './calendar-event.js?v=20261031i';
-import { monthRange, shiftMonth, buildScheduleDoc, buildSeries, canEditDoc, seriesTargets } from './schedule-logic.js?v=20261031i';
-import { kstToday, newState, emptyForm, boardHtml } from './schedule-view.js?v=20261031i';
-export { SCHEDULE_CONFIG } from './schedule-logic.js?v=20261031i';
+import { db, collection, getDocs, query, where, addDoc, updateDoc, deleteDoc, doc, writeBatch, serverTimestamp } from '../core/firebase.js?v=20261101a';
+import { toast } from '../core/ui.js?v=20261101a';
+import { confirmDialog } from '../core/dialog.js?v=20261101a';
+import { pagerAction, pagerApply } from './pager.js?v=20261101a';
+import { addDays } from './calendar-event.js?v=20261101a';
+import { monthRange, shiftMonth, buildScheduleDoc, buildSeries, canEditDoc, seriesTargets, scheduleEnabledFor } from './schedule-logic.js?v=20261101a';
+import { kstToday, newState, emptyForm, boardHtml } from './schedule-view.js?v=20261101a';
+export { SCHEDULE_CONFIG } from './schedule-logic.js?v=20261101a';
 
 const friendly = (e) => (e && e.code === 'permission-denied') ? '이 일정은 관리자만 볼 수 있습니다.' : '일정을 불러오지 못했습니다: ' + ((e && e.message) || e);
 /** 마운트 — root 에 그리고 이벤트를 연결한다. cfg = SCHEDULE_CONFIG.plan | .finance */
 export async function mountScheduleBoard(root, route, ctx, cfg) {
   root.onclick = null; root.onchange = null; root.oninput = null;
+  if (!scheduleEnabledFor(location.pathname)) { root.innerHTML = '<div class="jh-card"><div class="jh-gen__pad"><h3 class="jh-gen__sub">' + cfg.title + '</h3><div class="jh-empty">준비 중입니다. 일정을 Outlook 공유 사서함으로 보내는 연결이 끝나면 열립니다.</div></div></div>'; return; }   // 본섭에서는 아직 닫혀 있다
   const st = newState(cfg, ctx && ctx.me, kstToday()); root.innerHTML = '<div id="sch-body"></div>'; const body = root.querySelector('#sch-body');
   const paint = () => { body.innerHTML = boardHtml(st); };
   const load = async () => {

@@ -1,8 +1,8 @@
 /* 영업기획·재무회계 일정 보드 — 순수 화면 부분(파이어베이스·네트워크 없이 시험 가능). 저장·이벤트는 schedule-board.js.
  * 월 이동 · 목록/달력 보기 · 구분 필터 · 추가·수정·삭제·완료 체크 · 반복(매월·매년, 미리 펼쳐 저장) · 자동 일정(정산서) 읽기 전용 표시 · 쪽 나누기(10줄 단위). */
-import { esc } from '../core/ui.js?v=20261031i';
-import { pageInfo, pagerSync, pagerHtml } from './pager.js?v=20261031i';
-import { RECUR_KINDS, RECUR_MAX, monthRange, monthItems, groupByDate, summarize, isAuto, canEditDoc } from './schedule-logic.js?v=20261031i';
+import { esc } from '../core/ui.js?v=20261101a';
+import { pageInfo, pagerSync, pagerHtml } from './pager.js?v=20261101a';
+import { RECUR_KINDS, RECUR_MAX, monthRange, monthItems, groupByDate, summarize, isAuto, canEditDoc } from './schedule-logic.js?v=20261101a';
 
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 export const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
@@ -18,7 +18,7 @@ export function visibleItems(st) {
 /** 일정 한 줄 */
 export function rowHtml(x, st) {
   const d = x.d; const auto = isAuto(d); const edit = canEditDoc(d); const multi = d.edate && d.edate !== d.sdate;
-  const when = d.isTodo ? '마감' : (d.stime ? d.stime + (d.etime ? '~' + d.etime : '') : '종일');
+  const when = d.isTodo ? '00~24시' : (d.stime ? d.stime + (d.etime ? '~' + d.etime : '') : '종일');
   const range = multi ? ' · ' + d.sdate.slice(5).replace('-', '/') + '~' + d.edate.slice(5).replace('-', '/') : '';
   const check = d.isTodo && edit ? '<label class="jh-sch__chk"><input type="checkbox" data-sch-done="' + esc(x.id) + '"' + (d.done ? ' checked' : '') + ' aria-label="완료"></label>' : '<span class="jh-sch__chk"></span>';
   const ser = d.recurId ? '<button type="button" class="jh-btn" data-variant="ghost" data-sch-delfuture="' + esc(x.id) + '">이후 모두 삭제</button>' : '';
@@ -48,10 +48,10 @@ export function formHtml(st) {
     + '<div class="jh-field jh-gen__wide"><label class="jh-field__label">제목 *</label><input class="jh-input" data-sf="text" maxlength="100" value="' + esc(f.text) + '" placeholder="예: 견적서 작성, 카드 결제"></div>'
     + '<div class="jh-field"><label class="jh-field__label">구분</label><select class="jh-select" data-sf="tag">' + cfg.tags.map((t) => opt(t[0], f.tag, t[1])).join('') + '</select></div>'
     + '<div class="jh-field"><label class="jh-field__label">' + (todo ? '마감일 *' : '시작일 *') + '</label><input class="jh-input" type="date" data-sf="sdate" value="' + esc(f.sdate) + '"></div>'
-    + (todo ? '' : '<div class="jh-field"><label class="jh-field__label">종료일(여러 날일 때)</label><input class="jh-input" type="date" data-sf="edate" value="' + esc(f.edate) + '"></div><div class="jh-field"><label class="jh-field__label">시작 시간(선택)</label><input class="jh-input" type="time" data-sf="stime" value="' + esc(f.stime) + '"></div><div class="jh-field"><label class="jh-field__label">종료 시간(선택)</label><input class="jh-input" type="time" data-sf="etime" value="' + esc(f.etime) + '"></div>')
+    + (todo ? '' : '<div class="jh-field"><label class="jh-field__label">종료일(여러 날일 때)</label><input class="jh-input" type="date" data-sf="edate" value="' + esc(f.edate) + '"></div><div class="jh-field"><label class="jh-field__label">시작 시간(선택)</label><input class="jh-input" type="time" data-sf="stime" value="' + esc(f.stime) + '"></div><div class="jh-field"><label class="jh-field__label">종료 시간(선택)</label><input class="jh-input" type="time" data-sf="etime" value="' + esc(f.etime) + '"></div><div class="jh-field__hint jh-gen__wide">시간을 비워 두면 자동으로 「할 일」(00~24시)로 등록됩니다.</div>')
     + '<div class="jh-field"><label class="jh-field__label">장소(선택)</label><input class="jh-input" data-sf="place" maxlength="120" value="' + esc(f.place) + '"></div>'
     + '<div class="jh-field jh-gen__wide"><label class="jh-field__label">메모(선택, 금액·계좌번호는 쓰지 마세요 — 제목과 함께 Outlook 공유 사서함으로도 갑니다)</label><input class="jh-input" data-sf="memo" maxlength="600" value="' + esc(f.memo) + '"></div>'
-    + '<div class="jh-field"><label class="jh-sch__todo"><input type="checkbox" data-sf="isTodo"' + (todo ? ' checked' : '') + '> 할 일(마감일까지, 완료 체크)</label></div>'
+    + '<div class="jh-field"><label class="jh-sch__todo"><input type="checkbox" data-sf="isTodo"' + (todo ? ' checked' : '') + '> 할 일(00~24시, 완료 체크)</label></div>'
     + (isNew ? '<div class="jh-field"><label class="jh-field__label">반복</label><select class="jh-select" data-sf="recur">' + RECUR_KINDS.map((k) => opt(k[0], f.recur, k[1])).join('') + '</select>' + (f.recur !== 'none' ? '<div class="jh-field__hint">' + (f.recur === 'monthly' ? RECUR_MAX.monthly + '개월' : RECUR_MAX.yearly + '년') + '분을 한 번에 만듭니다. 끝나기 전에 다시 만들어 주세요.</div>' : '') + '</div>' : '')
     + '</div><div class="jh-gen__bar"><button type="button" class="jh-btn" data-variant="primary" data-sch-save' + (st.busy ? ' disabled' : '') + '>' + (isNew ? '추가' : '저장') + '</button><button type="button" class="jh-btn" data-variant="ghost" data-sch-cancel>취소</button></div></div></div>';
 }

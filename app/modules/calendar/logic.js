@@ -1,6 +1,6 @@
 /* 일정 모듈의 순수 규칙 — 화면(DOM)·네트워크 없이 시험한다.
  * 공통 일정 형식: { id, source, title, start, end, startTime, endTime, tag, tagLabel, project, place, isTodo, done, link, editable, ref } */
-import { pad, ymd, dateKey, isYmd, isHHMM, addDays, TAG_LABEL, tagLabelOf, makeEvent, fromLegacyDoc } from '../../shared/calendar-event.js?v=20261031i';
+import { pad, ymd, dateKey, isYmd, isHHMM, addDays, TAG_LABEL, tagLabelOf, makeEvent, fromLegacyDoc } from '../../shared/calendar-event.js?v=20261101a';
 export { pad, ymd, dateKey, isYmd, isHHMM, addDays, TAG_LABEL, tagLabelOf, makeEvent, fromLegacyDoc };
 export const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 export const dayOfWeek = (key) => new Date(+key.slice(0, 4), +key.slice(5, 7) - 1, +key.slice(8, 10)).getDay();
@@ -93,15 +93,15 @@ export function validateDraft(d) {
 }
 /** 직접 등록하는 일정 → company_schedules 문서(옛 일정과 같은 필드 이름) */
 export function toCompanyDoc(d, me) {
-  const todo = d.isTodo === true;
+  const todo = d.isTodo === true || (!d.startTime && !d.endTime); // 시각을 모두 비우면 자동으로 할 일(2026-11-01)
   return { text: String(d.title).trim(), tag: d.tag, tagLabel: TAG_LABEL[d.tag] || '일정', sdate: d.start, edate: d.end || d.start, stime: todo || !d.startTime ? null : d.startTime, etime: todo || !d.endTime ? null : d.endTime,
     isTodo: todo, done: false, place: String(d.place || '').trim(), memo: String(d.memo || '').trim(), att: me.name || '', reg: me.email || me.name || '', source: 'calendar' };
 }
 export const canWrite = (me) => !!me && !me.isGuest;                      // GUEST 는 일정 등록·수정·삭제·완료 불가
 export const canEditOwn = (e, me) => canWrite(me) && e.editable === true;
 export function fmtRange(e) {
-  const t = e.startTime ? e.startTime + (e.endTime ? '~' + e.endTime : '') : '종일';
-  const same = e.start === e.end; return same ? t : (e.start.slice(5).replace('-', '/') + '~' + e.end.slice(5).replace('-', '/') + (e.startTime ? ' ' + t : ''));
+  const t = e.isTodo ? '00~24시' : e.startTime ? e.startTime + (e.endTime ? '~' + e.endTime : '') : '종일';
+  const same = e.start === e.end; return same ? t : (e.start.slice(5).replace('-', '/') + '~' + e.end.slice(5).replace('-', '/') + (e.startTime && !e.isTodo ? ' ' + t : ''));
 }
 
 /* ── 보기 방식(Outlook 처럼): 안건(다가오는 일정 목록) · 월 — 하루·3일은 대표님 결정(2026-10-06)으로 두지 않는다 ── */

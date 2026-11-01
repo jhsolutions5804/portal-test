@@ -1,7 +1,7 @@
 /* 영업기획·재무회계 일정(plan_schedules·finance_schedules) — 순수 규칙(화면·네트워크 없이 시험 가능). 설계: portal-functions/app-docs/calendar-extension-design.md (2026-10-20 대표님 결정, 2026-10-31 구현)
  * 일정 문서 모양은 옛 일정과 같다: text·sdate·edate·stime·etime·tag·tagLabel·place·memo·isTodo·done + source('manual'|'settlement_auto')·srcId·recurId·createdBy·createdByName·savedAt.
  * 금액·계좌는 일정에 넣지 않는다(제목이 Outlook 공유 사서함으로도 나간다). 자동 일정(settlement_auto)은 서버가 정산서에서 만들므로 화면에서 고치거나 지울 수 없다. */
-import { addDays, isYmd, isHHMM, makeEvent, fromLegacyDoc, pad } from './calendar-event.js?v=20261031i';
+import { addDays, isYmd, isHHMM, makeEvent, fromLegacyDoc, pad } from './calendar-event.js?v=20261101a';
 
 export const SCHEDULE_CONFIG = {
   plan: { key: 'plan', title: '영업기획 일정', col: 'plan_schedules', source: 'plan', label: '영업기획 일정', order: 55, link: '#/plan/schedule', defaultTag: 'meeting',
@@ -15,6 +15,8 @@ export const AUTO_SOURCE = 'settlement_auto';
 
 const ymKey = (y, m) => y + '-' + pad(m);
 const lastDayOf = (y, m) => new Date(y, m, 0).getDate();   // m 은 1~12
+/** 영업기획·재무회계 일정은 규칙 게시와 Outlook 사서함이 준비되기 전까지 본섭에서는 닫아 둔다 — 테섭 주소(/portal-test/)에서만 열린다. 본섭에서 열 때 이 한 줄만 바꾼다 */
+export const scheduleEnabledFor = (pathname) => /^\/portal-test(\/|$)/.test(String(pathname || ''));
 export const isAuto = (d) => !!d && d.source === AUTO_SOURCE;
 export const canEditDoc = (d) => !!d && !isAuto(d);
 /** 'YYYY-MM' → { from, to } (그 달 1일~말일) */
@@ -41,7 +43,8 @@ export function buildScheduleDoc(form, cfg, me) {
   if (!isYmd(f.sdate)) return { error: '날짜를 정확히 입력해 주세요.' };
   const edate = f.edate ? f.edate : f.sdate; if (!isYmd(edate)) return { error: '종료일을 정확히 입력해 주세요.' };
   if (edate < f.sdate) return { error: '종료일이 시작일보다 앞입니다.' };
-  const todo = f.isTodo === true || f.isTodo === 'true';
+  const explicitTodo = f.isTodo === true || f.isTodo === 'true'; const rawS = String(f.stime || '').trim(), rawE = String(f.etime || '').trim();
+  const todo = explicitTodo || (!rawS && !rawE);   // 시간을 하나도 안 쓰면 자동으로 할 일(00~24시, 2026-11-01 대표님 결정)
   let stime = todo ? '' : String(f.stime || '').trim(), etime = todo ? '' : String(f.etime || '').trim();
   if (stime && !isHHMM(stime)) return { error: '시작 시간 형식이 맞지 않습니다(예: 09:30).' };
   if (etime && !isHHMM(etime)) return { error: '종료 시간 형식이 맞지 않습니다(예: 18:00).' };

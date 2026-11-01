@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261031i';
-import { holidayName } from '../../shared/holidays.js?v=20261031i';
-import { CATS, TAG_LABEL, TAG_COLOR, itemsForKey, rangeText, dotsFor, monthGrid, twoWeeks, dowOf } from './schedule.js?v=20261031i';
+import { esc } from '../../core/ui.js?v=20261101a';
+import { holidayName } from '../../shared/holidays.js?v=20261101a';
+import { CATS, TAG_LABEL, TAG_COLOR, itemsForKey, rangeText, dotsFor, monthGrid, twoWeeks, dowOf } from './schedule.js?v=20261101a';
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const hrs = Array.from({ length: 25 }, (_, i) => String(i).padStart(2, '0')), mins = ['00', '10', '20', '30', '40', '50'];
 const sel = (attr, val, opts, suffix) => '<select class="jh-select jh-pjt__tsel" ' + attr + '>' + opts.map((o) => '<option value="' + o + '"' + (o === val ? ' selected' : '') + '>' + o + (suffix || '') + '</option>').join('') + '</select>';
@@ -43,7 +43,7 @@ function formHtml(st) {
     + row('일정 내용', '(공란 가능)', '<input class="jh-input" data-sc-f="text" value="' + esc(f.text) + '" placeholder="예: FCU 야간 설치 작업"><div class="jh-field__hint" data-sc-hint></div>')
     + row('카테고리', '(자동 추정 · 탭해서 변경)', '<div class="jh-pjt__cats">' + cats + '</div>')
     + '<div class="jh-pjt__frow"><label class="jh-pjt__todo" data-on="' + !!f.isTodo + '"><input type="checkbox" data-sc-todo' + (f.isTodo ? ' checked' : '') + '> <span>할 일 (00~24시 · 체크리스트로 등록)</span></label></div>'
-    + row('시작', '', three('sdate', 'sh', 'sm')) + row('종료', '(다중일 가능 · 같은 날이면 비워도 됨)', three('edate', 'eh', 'em'))
+    + row('시작', '', three('sdate', 'sh', 'sm')) + row('종료', '(다중일 가능 · 같은 날이면 비워도 됨)', three('edate', 'eh', 'em')) + '<div class="jh-field__hint jh-pjt__todohint">시·분을 정하지 않으면(00시 00분) 자동으로 <b>「할 일」(00~24시)</b>로 등록됩니다.</div>'
     + row('장소', '(공란 가능)', '<input class="jh-input" data-sc-f="place" value="' + esc(f.place) + '" placeholder="예: 가동 1층 대회의실">') + row('참석자', '(공란 가능)', '<input class="jh-input" data-sc-f="att" value="' + esc(f.att) + '" placeholder="예: 서민우 팀장, 김혁">') + row('등록자', '(상세에서만 표시)', '<input class="jh-input" data-sc-f="reg" value="' + esc(f.reg) + '" placeholder="본인 이름">')
     + '<button type="button" class="jh-btn jh-pjt__fsave" data-variant="primary" data-sc-act="save">' + (f.id ? '수정 저장' : '등록하기') + '</button></div></section>';
 }
