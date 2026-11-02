@@ -176,4 +176,12 @@
 .jh-fb__main { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: var(--sp-1); }
 .jh-fb .jh-segmented { scrollbar-width: none; }
 .jh-fb .jh-segmented::-webkit-scrollbar { display: none; }
+/* 문의·건의: PC 화면에서는 화면 내용을 가리지 않도록 오른쪽 가장자리의 「최근」 탭(가운데 기준 아래로 36px까지) 바로 아래에 같은 모양의 세로 탭으로 붙인다 — 2026-11-02 대표님 지적(우측 하단 버튼이 내용을 가림).
+   열린 창은 버튼과 따로 오른쪽 아래에 뜬다. 폰·좁은 화면(720px 이하)은 기존 둥근 버튼 그대로. */
+@media (min-width: 721px) {
+  .jh-fb { right: 0; bottom: auto; top: calc(50% + var(--u-44)); }
+  .jh-fb__btn { writing-mode: vertical-rl; padding: var(--sp-3) var(--sp-2); border-right: 0; border-radius: var(--radius) 0 0 var(--radius); gap: var(--sp-1); }
+  .jh-fb__dot { top: var(--u-2); left: var(--u-2); right: auto; }
+  .jh-fb__panel { position: fixed; right: var(--sp-4); bottom: calc(var(--u-56) + env(safe-area-inset-bottom, 0px)); max-height: calc(100vh - var(--u-96)); }
+}
 
