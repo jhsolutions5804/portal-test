@@ -1,7 +1,7 @@
 /* 포털 문의·건의 창 — 순수 화면 부분(파이어베이스 없이 시험 가능). 저장·이벤트 연결은 feedback.js */
-import { esc } from '../core/ui.js?v=20261102a';
-import { pageInfo, pagerSync, pagerHtml } from './pager.js?v=20261102a';
-import { FB_CATEGORIES, FB_STATUS, FB_MAX, categoryLabel, statusLabel, countByStatus, dayText, sortNewestFirst, nextStatus } from './feedback-logic.js?v=20261102a';
+import { esc } from '../core/ui.js?v=20261102b';
+import { pageInfo, pagerSync, pagerHtml } from './pager.js?v=20261102b';
+import { FB_CATEGORIES, FB_STATUS, FB_MAX, categoryLabel, statusLabel, countByStatus, dayText, sortNewestFirst, nextStatus } from './feedback-logic.js?v=20261102b';
 export const newState = (me) => ({ open: false, tab: 'send', category: 'inconvenience', text: '', busy: false, msg: '', msgTone: '', isAdmin: !!(me && me.admin), rows: [], loaded: false, err: '', pg: {}, last: 0 });
 export const buttonHtml = (open) => '<button type="button" class="jh-fb__btn" data-fb-toggle aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="jh-fb-panel" title="사용 중 불편한 점을 남겨 주세요"><span aria-hidden="true">💬</span><span class="jh-fb__lbl">문의·건의</span></button>';
 export function sendHtml(st) {

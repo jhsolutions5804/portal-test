@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261102a';
-import { diffStructure, hasChanges } from './structure.js?v=20261102a';
-import { featuresOf } from './adapter.js?v=20261102a';
+import { esc } from '../../core/ui.js?v=20261102b';
+import { diffStructure, hasChanges } from './structure.js?v=20261102b';
+import { featuresOf } from './adapter.js?v=20261102b';
 const chip = (t, tone) => '<span class="jh-pjt__chip" data-tone="' + esc(tone || '') + '">' + esc(t) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 /** 변경 요약 문구(확인 창·편집기 아래쪽) */

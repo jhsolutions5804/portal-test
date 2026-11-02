@@ -1,17 +1,17 @@
 /* 플랫폼에 꽂는 모듈 목록 — 모듈을 더하거나 빼는 일은 이 파일 한 곳만 고친다.
  * 각 항목은 { manifest, mount }. 핵심부(core/)는 모듈 폴더를 직접 알지 못하고 이 목록만 읽는다. */
-import { mountScheduleBoard, SCHEDULE_CONFIG } from '../shared/schedule-board.js?v=20261102a';
-import * as edoc from './edoc/index.js?v=20261102a';
-import * as attendance from './attendance/index.js?v=20261102a';
-import * as calendar from './calendar/index.js?v=20261102a';
-import * as company from './company/index.js?v=20261102a';
-import * as evalm from './eval/index.js?v=20261102a';
-import * as finance from './finance/index.js?v=20261102a';
-import * as plan from './plan/index.js?v=20261102a';
-import * as general from './general/index.js?v=20261102a';
-import * as hr from './hr/index.js?v=20261102a';
-import * as pjt from './pjt/index.js?v=20261102a';
-import { modules as legacy, hostNative } from './legacy/index.js?v=20261102a';
+import { mountScheduleBoard, SCHEDULE_CONFIG } from '../shared/schedule-board.js?v=20261102b';
+import * as edoc from './edoc/index.js?v=20261102b';
+import * as attendance from './attendance/index.js?v=20261102b';
+import * as calendar from './calendar/index.js?v=20261102b';
+import * as company from './company/index.js?v=20261102b';
+import * as evalm from './eval/index.js?v=20261102b';
+import * as finance from './finance/index.js?v=20261102b';
+import * as plan from './plan/index.js?v=20261102b';
+import * as general from './general/index.js?v=20261102b';
+import * as hr from './hr/index.js?v=20261102b';
+import * as pjt from './pjt/index.js?v=20261102b';
+import { modules as legacy, hostNative } from './legacy/index.js?v=20261102b';
 
 export const MODULES = [
   { manifest: edoc.manifest, mount: edoc.mount },

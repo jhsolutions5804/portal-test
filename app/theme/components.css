@@ -150,7 +150,7 @@
 .jh-fb__main { display: flex; flex-direction: column; gap: var(--sp-3); }
 .jh-fb__cats { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 .jh-fb__cat { display: inline-flex; align-items: center; gap: var(--sp-1); padding: var(--sp-2) var(--sp-3); border: var(--u-1) solid var(--c-line-strong); border-radius: var(--radius); cursor: pointer; font-size: var(--fs-sm); }
-.jh-fb__cat:has(input:checked) { background: var(--c-primary-weak); border-color: var(--c-primary); color: var(--c-primary-ink); font-weight: 700; }
+.jh-fb__cat:has(input:checked) { background: var(--c-primary-weak); border-color: var(--c-primary); color: var(--c-primary-strong); font-weight: 700; }
 .jh-fb__text { width: 100%; resize: vertical; min-height: var(--u-120); box-sizing: border-box; }
 .jh-fb__msg { padding: var(--sp-2) var(--sp-3); border-radius: var(--radius); background: var(--c-primary-weak); color: var(--c-primary-ink); font-size: var(--fs-sm); }
 .jh-fb__msg[data-tone="danger"] { background: var(--c-danger); color: var(--c-on-danger); }
