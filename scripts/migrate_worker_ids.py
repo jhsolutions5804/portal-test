@@ -12,7 +12,7 @@ ap.add_argument('--apply',action='store_true'); ap.add_argument('--rollback',act
 a=ap.parse_args()
 # 서비스 계정 키 파일 경로(비밀 — 저장소에 올리지 말 것). 환경에 맞게 바꿔서 실행.
 CFG={'prod':('p4ph2-fab-506a7','/mnt/project/p4ph2-fab-506a7-firebase-adminsdk-fbsvc-f84b0371ec.json'),
-     'test':('portal-test-6e0ff','/mnt/project/portal-test-6e0ff-firebase-adminsdk-fbsvc-fd25dd577d.json')}
+     'test':('portal-test-6e0ff','/mnt/project/portal-test-6e0ff-firebase-adminsdk-fbsvc-693f78eaff.json')}
 PROJ,SA=CFG[a.env]; BASE=f'https://firestore.googleapis.com/v1/projects/{PROJ}/databases/(default)/documents'
 S=requests.Session(); S.headers['Authorization']='Bearer '+token(SA,'https://www.googleapis.com/auth/datastore')
 OLD=re.compile(r'^[가-힣\[\]\s]{2,12}_\d{13}$')      # [테스트] 홍길동_1101… 도 포함

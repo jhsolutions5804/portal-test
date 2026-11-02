@@ -11,7 +11,7 @@ def token(sa_path):
     c=service_account.Credentials.from_service_account_file(sa_path,scopes=['https://www.googleapis.com/auth/datastore']); c.refresh(tr.Request()); return c.token
 ap=argparse.ArgumentParser(); ap.add_argument('cmd',choices=['copy','scrub','verify']); ap.add_argument('--env',choices=['prod','test'],required=True); ap.add_argument('--apply',action='store_true')
 a=ap.parse_args()
-CFG={'prod':('p4ph2-fab-506a7','/mnt/project/p4ph2-fab-506a7-firebase-adminsdk-fbsvc-f84b0371ec.json'),'test':('portal-test-6e0ff','/mnt/project/portal-test-6e0ff-firebase-adminsdk-fbsvc-fd25dd577d.json')}
+CFG={'prod':('p4ph2-fab-506a7','/mnt/project/p4ph2-fab-506a7-firebase-adminsdk-fbsvc-f84b0371ec.json'),'test':('portal-test-6e0ff','/mnt/project/portal-test-6e0ff-firebase-adminsdk-fbsvc-693f78eaff.json')}
 PROJ,SA=CFG[a.env]; BASE=f'https://firestore.googleapis.com/v1/projects/{PROJ}/databases/(default)/documents'
 S=requests.Session(); S.headers['Authorization']='Bearer '+token(SA)
 FIELDS=['jumin','bankAccount','address','signData']

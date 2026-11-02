@@ -2,7 +2,7 @@
 import json, difflib, re
 from google.oauth2 import service_account
 from google.auth.transport.requests import AuthorizedSession
-KEY='/mnt/project/portal-test-6e0ff-firebase-adminsdk-fbsvc-fd25dd577d.json'
+KEY='/mnt/project/portal-test-6e0ff-firebase-adminsdk-fbsvc-693f78eaff.json'
 cred=service_account.Credentials.from_service_account_file(KEY, scopes=['https://www.googleapis.com/auth/cloud-platform'])
 s=AuthorizedSession(cred); PID=json.load(open(KEY))['project_id']; print('프로젝트:',PID,'(읽기 전용)')
 r=s.get('https://firebaserules.googleapis.com/v1/projects/%s/releases/cloud.firestore'%PID,timeout=40)

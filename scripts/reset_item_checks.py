@@ -21,7 +21,7 @@
 사전 준비:
   같은 폴더에 서비스 계정 JSON을 아래 이름으로 둘 것
   - prod: p4ph2-fab-506a7-firebase-adminsdk-fbsvc-f84b0371ec.json
-  - test: portal-test-6e0ff-firebase-adminsdk-fbsvc-fd25dd577d.json
+  - test: portal-test-6e0ff-firebase-adminsdk-fbsvc-693f78eaff.json
 """
 import argparse
 import sys
@@ -38,7 +38,7 @@ def main():
     cred_file = (
         "p4ph2-fab-506a7-firebase-adminsdk-fbsvc-f84b0371ec.json"
         if args.project == "prod"
-        else "portal-test-6e0ff-firebase-adminsdk-fbsvc-fd25dd577d.json"
+        else "portal-test-6e0ff-firebase-adminsdk-fbsvc-693f78eaff.json"
     )
 
     cred = credentials.Certificate(cred_file)
