@@ -47,3 +47,26 @@ export function digest(rows) {
   return { total: (rows || []).length, byCategory: cat, byPage: Object.entries(page).sort((a, b) => b[1] - a[1]).slice(0, 8) };
 }
 export const dayText = (sec) => { if (!sec) return ''; const d = new Date((sec + 9 * 3600) * 1000); return String(d.getUTCMonth() + 1).padStart(2, '0') + '/' + String(d.getUTCDate()).padStart(2, '0') + ' ' + String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0'); };
+
+/* ── 2026-11-02 추가: 완료 탭 · 댓글(조치 내용) · 건의자 알림 ── */
+export const FB_REPLY_MAX = 1000;
+const MY_STATUS = { new: '접수', seen: '확인 중', done: '조치 완료' };
+export const myStatusLabel = (k) => MY_STATUS[k] || '접수';
+/** 댓글 글 검사 — 빈 글은 허용(「조치 완료」만 누를 때), 너무 길면 오류 */
+export function validateReply(text) { const t = String(text == null ? '' : text).trim(); if (t.length > FB_REPLY_MAX) return { error: '댓글은 ' + FB_REPLY_MAX + '자까지 쓸 수 있습니다. (현재 ' + t.length + '자)' }; return { text: t }; }
+/** 댓글 문서(서브컬렉션 replies) — kind: reply(일반 댓글) | done(조치 완료와 함께 남긴 댓글). 빈 글이면 만들지 않는다 */
+export function buildReplyDoc(text, me, kind) {
+  const v = validateReply(text); if (v.error) return { error: v.error }; if (!v.text) return { error: '댓글 내용을 입력해 주세요.' };
+  if (!me || !me.uid) return { error: '로그인 정보를 찾지 못했습니다. 새로고침 후 다시 시도해 주세요.' };
+  return { doc: { uid: me.uid, name: String(me.name || '').slice(0, 40), text: v.text, kind: kind === 'done' ? 'done' : 'reply' } };
+}
+/** 받은 건의 → 처리 중(신규·확인)과 완료로 나눈다. 처리 중은 최신 접수순, 완료는 최근 처리순 */
+export function splitInbox(rows) {
+  const all = (rows || []).slice(); const open = sortNewestFirst(all.filter((r) => ((r.d && r.d.status) || 'new') !== 'done'));
+  const done = all.filter((r) => r.d && r.d.status === 'done').sort((a, b) => ((b.d.handledSec || b.d.createdSec || 0) - (a.d.handledSec || a.d.createdSec || 0)));
+  return { open, done };
+}
+/** 건의자 알림: 내 건의 중 읽지 않은 답변(userUnread)이 있는 건수 */
+export const unreadCount = (rows) => (rows || []).filter((r) => r.d && r.d.userUnread === true).length;
+export const hasUnread = (rows) => unreadCount(rows) > 0;
+
