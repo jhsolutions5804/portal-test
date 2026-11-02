@@ -1,11 +1,11 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261102k';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261102k';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261102k';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261102k';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261102k';
-import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261102k';
-import { docFileName } from '../../shared/doc-filename.js?v=20261102k';
-import { csvCell, csvCellMin } from '../../shared/csv.js?v=20261102k';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261102l';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261102l';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261102l';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261102l';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261102l';
+import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261102l';
+import { docFileName } from '../../shared/doc-filename.js?v=20261102l';
+import { csvCell, csvCellMin } from '../../shared/csv.js?v=20261102l';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -15,7 +15,7 @@ export const accountName = (code) => (ACCOUNT_BY_CODE[code] ? ACCOUNT_BY_CODE[co
 export const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
 
 /** Firestore 문서 → 화면용 전표 */
-export function docToEntry(id, d) { return { id, no: d.no || '', seq: d.seq || 0, date: d.date || '', memo: d.memo || '', source: d.source || { kind: 'manual' }, lines: (d.lines || []).map((l) => ({ account: l.account, side: l.side, amount: l.amount, partner: l.partner || '', pjt: l.pjt || '' })), status: d.status || 'posted', reverses: d.reverses || '', reversesNo: d.reversesNo || '', reversedBy: d.reversedBy || '', reversedByNo: d.reversedByNo || '', createdByName: d.createdByName || '', createdMs: d.createdAt && d.createdAt.seconds ? d.createdAt.seconds * 1000 : 0, needsReview: !!d.needsReview, reviewNote: d.reviewNote || '', assignee: d.assignee || '', reviewedByName: d.reviewedByName || '', reviewedMs: d.reviewedAt && d.reviewedAt.seconds ? d.reviewedAt.seconds * 1000 : 0, replaces: d.replaces || '', replacesNo: d.replacesNo || '', attachments: (d.attachments || []).map((a) => ({ id: a.id, name: a.name, mime: a.mime, size: a.size, byName: a.byName || '', atMs: a.atMs || 0 })) }; }
+export function docToEntry(id, d) { return { id, no: d.no || '', seq: d.seq || 0, date: d.date || '', memo: d.memo || '', source: d.source || { kind: 'manual' }, lines: (d.lines || []).map((l) => ({ account: l.account, side: l.side, amount: l.amount, partner: l.partner || '', pjt: l.pjt || '' })), status: d.status || 'posted', reverses: d.reverses || '', reversesNo: d.reversesNo || '', reversedBy: d.reversedBy || '', reversedByNo: d.reversedByNo || '', createdByName: d.createdByName || '', createdBy: d.createdBy || '', replaces: d.replaces || '', replacesNo: d.replacesNo || '', createdMs: d.createdAt && d.createdAt.seconds ? d.createdAt.seconds * 1000 : 0, needsReview: !!d.needsReview, reviewNote: d.reviewNote || '', assignee: d.assignee || '', reviewedByName: d.reviewedByName || '', reviewedMs: d.reviewedAt && d.reviewedAt.seconds ? d.reviewedAt.seconds * 1000 : 0, replaces: d.replaces || '', replacesNo: d.replacesNo || '', attachments: (d.attachments || []).map((a) => ({ id: a.id, name: a.name, mime: a.mime, size: a.size, byName: a.byName || '', atMs: a.atMs || 0 })) }; }
 export const entryDebit = (e) => (e.lines || []).reduce((s, l) => s + (l.side === 'D' ? l.amount : 0), 0);
 /* 개인 지출(인출금) 누계 — 개인사업자라서 개인 지출은 지출 항목 "개인 지출(인출금)"으로 3020 에 잡는다(5xxx·6xxx 가 아니라 판관비·프로젝트 마진에 들어가지 않는다). 카드는 섞어서 쓰므로 카드가 아니라 항목 단위로 정한다.
  * 인출금 순액 = 차변(개인 지출·인출) − 대변(대표님이 회사로 되돌린 금액). 개인카드 미지급 잔액 = 2021(미지급금·대표자 개인카드) 대변 − 차변 — 회사 일을 개인카드로 쓴 것이라 인출금과 합치지 않는다.
@@ -650,3 +650,21 @@ export function verifyReclass(before, after, items) {
   keys.forEach((k) => { const act = ((after && after.get(k)) || 0) - ((before && before.get(k)) || 0); const ex = exp.get(k) || 0; if (Math.round(act) !== Math.round(ex)) diffs.push({ account: k, expected: ex, actual: act }); sum += (after && after.get(k)) || 0; });
   const balanced = Math.round(sum) === 0; return { ok: !diffs.length && balanced, diffs, balanced };
 }
+
+/* ───────── 잘못 입력한 수기 전표 삭제(제한형, 2026-11-02 대표님 요청) ─────────
+ * 「전표는 만든 뒤 지울 수 없다」는 원칙의 좁은 예외. 서버(ledger-act.js deleteBlocker)가 최종 판정하고, 이 함수는 단추를 보일지 정하는 안내용이다.
+ * 조건: 수기 입력 · 만든 지 7일 안 · 마감일 이후 일자 · 역분개·재분류와 무관 · 만든 사람 본인 또는 관리자. (프로젝트 지정 여부는 서버가 확인한다) */
+export const DELETE_DAYS = 7;
+export function deleteBlocker(e, me, locked, nowMs) {
+  if (!e) return '전표를 찾을 수 없습니다.';
+  if (e.reversedBy || e.reverses) return '역분개된 전표와 역분개 전표는 삭제할 수 없습니다. 역분개로 바로잡아 주세요.';
+  if (e.replaces || e.replacesNo) return '재분류로 만들어진 전표는 삭제할 수 없습니다. 역분개로 바로잡아 주세요.';
+  if (!(e.source && e.source.kind === 'manual')) return '수기로 입력한 전표만 삭제할 수 있습니다. 가져오기·세금계산서·통장·카드 전표는 역분개로 바로잡아 주세요.';
+  if (locked && String(e.date) <= locked) return '마감된 기간(' + locked + ' 이전)의 전표는 삭제할 수 없습니다.';
+  if (!e.createdMs) return '만든 시각을 확인할 수 없어 삭제할 수 없습니다. 역분개로 바로잡아 주세요.';
+  if (nowMs - e.createdMs > DELETE_DAYS * 864e5) return '만든 지 ' + DELETE_DAYS + '일이 지난 전표는 삭제할 수 없습니다. 역분개로 바로잡아 주세요.';
+  if (!(me && me.admin === true) && !(me && me.uid && e.createdBy === me.uid)) return '직접 만든 전표만 삭제할 수 있습니다(관리자는 모두 가능).';
+  return '';
+}
+export const canDeleteEntry = (e, me, locked, nowMs) => !deleteBlocker(e, me, locked, nowMs);
+

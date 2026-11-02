@@ -1,21 +1,21 @@
-import { esc, toast } from '../../core/ui.js?v=20261102k';
-import { pagerAction, pagerApply } from '../../shared/pager.js?v=20261102k';
-import { buildPendingRows, groupByMonth, confirmItems, autoProposeAfterImport, splitDraft, splitLeftText, buildConfirmedRows, ruleDraft } from './pjt-tag-logic.js?v=20261102k';
-import { proposeNewPjt, setPjtTag, clearPjtTag, listPjtRules, savePjtRule } from './data.js?v=20261102k';
-import { confirmDialog } from '../../core/dialog.js?v=20261102k';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261102k';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261102k';
-import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261102k';
-import { parseBankSheets } from '../../shared/bank-import.js?v=20261102k';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261102k';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261102k';
-import { monthlyView, monthlyCsv, MP_SEED, npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, ruleReclassPlan, netByAccount, verifyReclass, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows, arByMonth, taxSalesSupplyByMonth, revenueTriple, reportPrintTitle } from './logic.js?v=20261102k';
-import { loadLedger, loadProjects, loadPjtTags, confirmPjtTags, postEntries, markReviewed, reverseEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, saveMonthlyPlan, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries, loadInvoiceMonthly } from './data.js?v=20261102k';
-import { pjtTagHtml, pjtSplitDialogHtml, pjtRuleDialogHtml, monthlyHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261102k';
+import { esc, toast } from '../../core/ui.js?v=20261102l';
+import { pagerAction, pagerApply } from '../../shared/pager.js?v=20261102l';
+import { buildPendingRows, groupByMonth, confirmItems, autoProposeAfterImport, splitDraft, splitLeftText, buildConfirmedRows, ruleDraft } from './pjt-tag-logic.js?v=20261102l';
+import { proposeNewPjt, setPjtTag, clearPjtTag, listPjtRules, savePjtRule } from './data.js?v=20261102l';
+import { confirmDialog } from '../../core/dialog.js?v=20261102l';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261102l';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261102l';
+import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261102l';
+import { parseBankSheets } from '../../shared/bank-import.js?v=20261102l';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261102l';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261102l';
+import { canDeleteEntry, monthlyView, monthlyCsv, MP_SEED, npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, ruleReclassPlan, netByAccount, verifyReclass, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows, arByMonth, taxSalesSupplyByMonth, revenueTriple, reportPrintTitle } from './logic.js?v=20261102l';
+import { loadLedger, loadProjects, loadPjtTags, confirmPjtTags, postEntries, markReviewed, reverseEntry, deleteEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, saveMonthlyPlan, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries, loadInvoiceMonthly } from './data.js?v=20261102l';
+import { pjtTagHtml, pjtSplitDialogHtml, pjtRuleDialogHtml, monthlyHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261102l';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
-import { financePerm } from '../../shared/finance-perm.js?v=20261102k';
-import { printWithTitle } from '../../shared/print-title.js?v=20261102k';
+import { financePerm } from '../../shared/finance-perm.js?v=20261102l';
+import { printWithTitle } from '../../shared/print-title.js?v=20261102l';
 /** 실제 메뉴 등록은 공용 틀(modules/legacy/list.js 의 finance 정의 — 인사총무와 같은 사이드바·내용 영역). 여기의 값은 규약(manifest+mount)용이며 권한은 같은 함수를 쓴다 */
 export const manifest = { id: 'finance', order: 25, title: '재무회계', icon: '📒', defaultHash: '#/finance/home', perm: financePerm };
 const S = { data: null, filter: { from: '', to: '', source: '', review: false, reviewed: false, assignee: '', q: '' }, limit: 100, pg: {}, imp: { kind: 'taxsales', busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }, rep: { kind: 'is', from: '', to: '', acct: '2010', pacct: '2010', q: '', zero: false, vatKey: '', vatForm: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_vatform_v1') || '{}') || {}; } catch (e) { return {}; } })() }, openDate: '2026-01-01', admin: false, rl: null, chk: null, chkDate: '', openEditId: '', sel: new Set(), mp: { ym: kstToday().slice(0, 7), manage: false, draft: null, view: null }, fc: { over: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_fc_v1') || '{}') || {}; } catch (e) { return {}; } })(), scen: 'base' } };
@@ -43,7 +43,7 @@ const msgHtml = (tone, t) => '<div class="jh-alert" data-tone="' + tone + '" rol
 
 function RC_RESET() { if (S.rc) S.rc.current = null; }
 export async function mount(root, route, ctx) {
-  const me = (ctx && ctx.me) || {}; S.admin = me.admin === true;
+  const me = (ctx && ctx.me) || {}; S.admin = me.admin === true; S.uid = me.uid || '';
   const tab = ['home', 'entries', 'expense', 'import', 'reports', 'monthly', 'forecast', 'gap', 'rules', 'opening', 'settings', 'pjt'].includes(route.segs[0]) ? route.segs[0] : 'home';
   root.onclick = null; root.onchange = null; root.oninput = null; root.ondragover = null; root.ondragleave = null; root.ondrop = null; if (root.__finFocusOut) { root.removeEventListener('focusout', root.__finFocusOut); root.__finFocusOut = null; } root.onkeydown = null;
   root.innerHTML = '<div class="jh-finance' + (tab === 'home' ? ' jh-finance--wide' : '') + '"><div id="fin-body" class="jh-finance__body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';   // 사이드바는 공용 틀(인사총무와 같은 모양)이 그린다
@@ -231,11 +231,12 @@ export async function mount(root, route, ctx) {
   }
   function openEntry(id) {
     const cur = () => S.data.entries.find((x) => x.id === id); const first = cur(); if (!first) return; const locked = () => S.data.settings.lockedThrough || '';
-    const p = openPanel('전표 ' + (first.no || ''), entryDialogHtml(first, !first.reversedBy && !first.reverses, locked()), []);
+    const canDel = (e) => canDeleteEntry(e, { uid: S.uid, admin: S.admin }, locked(), Date.now());   // 잘못 입력한 수기 전표 삭제 단추를 보일지(서버가 최종 판정)
+  const p = openPanel('전표 ' + (first.no || ''), entryDialogHtml(first, !first.reversedBy && !first.reverses, locked(), canDel(first)), []);
     /** 저장한 뒤 창을 닫지 않고 그 자리에서 내용만 새로 고침(여러 가지를 이어서 쓸 수 있게) */
     const refresh = async (note) => {
       await reload(); paint(); const e2 = cur(); if (!e2) { p.close(); return; } const panel = p.el.querySelector('.jh-dialog__panel'); const bodyEl = p.el.querySelector('.jh-dialog__body'); const sc = panel.scrollTop, sb = bodyEl.scrollTop;
-      bodyEl.innerHTML = entryDialogHtml(e2, !e2.reversedBy && !e2.reverses, locked()) + '<div data-panel-msg></div>'; panel.scrollTop = sc; bodyEl.scrollTop = sb; if (note) p.msg(msgHtml('info', note));
+      bodyEl.innerHTML = entryDialogHtml(e2, !e2.reversedBy && !e2.reverses, locked(), canDel(e2)) + '<div data-panel-msg></div>'; panel.scrollTop = sc; bodyEl.scrollTop = sb; if (note) p.msg(msgHtml('info', note));
     };
     p.el.addEventListener('change', async (ev) => {
       const f = ev.target.closest('[data-att-file]'); if (!f || !f.files || !f.files[0]) return; const file = f.files[0]; const st = p.el.querySelector('[data-att-status]'); const ext = (file.name.split('.').pop() || '').toLowerCase(); const mime = ATT_EXT[ext] || file.type;
@@ -254,7 +255,13 @@ export async function mount(root, route, ctx) {
         const ok = await confirmDialog({ title: '계정 바꾸기(재분류)', body: e.no + ' 전표의 ' + r.changed + '줄(계정·거래처)을 바꿉니다. 원 전표는 ' + date + ' 자로 역분개되고 같은 날짜의 새 전표가 만들어집니다.', confirmLabel: '재분류' }); if (!ok.ok) return;
         try { const res = await reclassifyEntry(id, date, memo, r.lines); toast('재분류했습니다 — 새 전표 ' + res.no); await refresh('재분류했습니다 — 새 전표 ' + res.no + '. 이 전표는 역분개되었습니다.'); } catch (er) { p.msg(msgHtml('danger', er.message)); } return;
       }
-      if (!ev.target.closest('[data-act="reverse"]')) return; const e = cur(); const date = p.el.querySelector('[data-rev-date]').value; const memo = p.el.querySelector('[data-rev-memo]').value;
+      if (ev.target.closest('[data-act="delete"]')) {   // 잘못 입력한 수기 전표 삭제(제한형) — 사유 필수, 되돌릴 수 없음 확인
+    const e = cur(); if (!e) return; const reason = (p.el.querySelector('[data-del-reason]').value || '').trim();
+    if (reason.length < 2) { p.msg(msgHtml('danger', '삭제 사유를 2자 이상 적어 주세요.')); return; }
+    const ok = await confirmDialog({ title: '전표 삭제', body: e.no + ' 전표를 삭제합니다. 목록에서 사라지고 이 번호는 비게 됩니다(전표 내용·사유·실행자는 감사 기록에 남습니다). 되돌릴 수 없습니다.', confirmLabel: '삭제', variant: 'danger' }); if (!ok.ok) return;
+    try { await deleteEntry(id, reason); toast('전표 ' + e.no + ' 를 삭제했습니다.'); await refresh(); } catch (er) { p.msg(msgHtml('danger', er.message)); } return;
+  }
+  if (!ev.target.closest('[data-act="reverse"]')) return; const e = cur(); const date = p.el.querySelector('[data-rev-date]').value; const memo = p.el.querySelector('[data-rev-memo]').value;
       if (!date) { p.msg(msgHtml('danger', '역분개 일자를 입력해 주세요.')); return; }
       const ok = await confirmDialog({ title: '역분개', body: e.no + ' 전표를 ' + date + ' 자로 역분개합니다. 원 전표는 그대로 남고 차변·대변을 뒤집은 새 전표가 생깁니다.', confirmLabel: '역분개', variant: 'danger' }); if (!ok.ok) return;
       try { await reverseEntry(id, date, memo); toast('역분개했습니다.'); await refresh('역분개했습니다.'); } catch (er) { p.msg(msgHtml('danger', er.message)); }

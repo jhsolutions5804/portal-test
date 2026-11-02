@@ -1,5 +1,5 @@
-import { db, functions, httpsCallable, collection, getDocs, getDoc, doc, query, orderBy, limit } from '../../core/firebase.js?v=20261102k';
-import { docToEntry, chunk, postPayload } from './logic.js?v=20261102k';
+import { db, functions, httpsCallable, collection, getDocs, getDoc, doc, query, orderBy, limit } from '../../core/firebase.js?v=20261102l';
+import { docToEntry, chunk, postPayload } from './logic.js?v=20261102l';
 
 /* 재무회계 데이터 읽기·쓰기 — Firestore 를 만지는 코드는 이 파일에만 둔다.
  * 읽기: ledger_entries(전표)·ledger_meta(설정·마감일·가맹점 규칙)·ledger_imports(가져오기 이력) — 보안 규칙상 관리자·재무회계팀(dept)·perms.finance 만 읽는다.
@@ -37,6 +37,8 @@ export async function getReceiptFile(id) { try { const r = await httpsCallable(f
 /** 포털 급여명세서(해당 월) 읽기 — 서버가 관리자에게만 돌려준다 */
 export const readPayroll = (month) => ledgerCall({ action: 'payrollRead', month });
 export const reverseEntry = (id, date, memo) => ledgerCall({ action: 'reverse', id, date, memo });
+/** 잘못 입력한 수기 전표 삭제(제한형, 2026-11-02) — 서버가 조건을 최종 판정하고 감사 기록에 전표 전체를 남긴다 */
+export const deleteEntry = (id, reason) => ledgerCall({ action: 'deleteEntry', id, reason });
 export const lockThrough = (through) => ledgerCall({ action: 'lock', through });
 export const saveSettings = (ownBiz, ownName) => ledgerCall({ action: 'saveSettings', ownBiz, ownName });
 export const saveMerchantRules = (rules) => ledgerCall({ action: 'saveMerchantRules', rules });
