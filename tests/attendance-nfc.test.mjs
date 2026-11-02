@@ -7,7 +7,8 @@ let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK 
 const T64 = 'a'.repeat(64);
 
 ok(L.NFC_ENABLED === false, '시험 환경(주소 없음)에서는 NFC 기능이 꺼져 있다');
-ok(L.nfcEnabledFor('/portal-test/app/') === true && L.nfcEnabledFor('/portal-test/m/tag.html') === true && L.nfcEnabledFor('/portal-test') === true && L.nfcEnabledFor('/app/') === false && L.nfcEnabledFor('/m/tag.html') === false && L.nfcEnabledFor('') === false && L.nfcEnabledFor(null) === false && L.nfcEnabledFor('/portal-testing/app/') === false, '★ NFC 기능은 테섭 주소(/portal-test/)에서만 켜지고 본섭 주소에서는 꺼져 있다');
+ok(['/portal-test/app/', '/portal-test/m/tag.html', '/portal-test', '/app/', '/app/index.html', '/app', '/m/tag.html'].every((x) => L.nfcEnabledFor(x) === true), '★ NFC 기능은 테섭(/portal-test/…)과 본섭(/app/…·태그 페이지 /m/tag.html) 주소에서 켜진다(2026-11-02 대표님 「지금 바로」)');
+ok(['', null, undefined, '/', '/portal-testing/app/', '/classic.html', '/application', '/mx/tag.html', '/hr/index.html', '/gihoek/index.html'].every((x) => L.nfcEnabledFor(x) === false), '★ 옛 포털 화면·비슷한 이름의 주소에서는 켜지지 않는다');
 ok(L.validToken(T64) && !L.validToken('zz') && !L.validToken(null) && !L.validToken('A'.repeat(64)), '기기 토큰은 서버가 만드는 64자 16진수(소문자)만 인정');
 // 태그 화면 다음 단계
 ok(L.nextStep(null, null).next === 'register' && L.nextStep(T64, { ok: true, registered: false }).next === 'register', '★ 토큰이 없거나 서버에 없는 기기는 등록 안내');
