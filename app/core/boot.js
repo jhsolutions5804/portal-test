@@ -1,23 +1,23 @@
-import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261101b';
-import { register, visibleFor, get } from './registry.js?v=20261101b';
-import { parseHash, onChange } from './router.js?v=20261101b';
-import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261101b';
-import { hasMicrosoftCallback, finishMicrosoftLogin, startMicrosoftLogin, msErrorMessage } from './ms-auth.js?v=20261101b';
-import { initTheme } from './theme.js?v=20261101b';
-import { checkForUpdate } from './update.js?v=20261101b';
-import { MODULES, installShellDocks } from '../modules/index.js?v=20261101b';
-import { mountPlatformHome } from './home.js?v=20261101b';
-import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261101b';
-import { ensureTime24 } from '../shared/time24.js?v=20261101b';
-import { installRecent, describeNow } from './recent.js?v=20261101b';
-import { workTabs, resumeHash } from './worktabs.js?v=20261101b';
-import { legacyProjectHash } from '../shared/pjt-key.js?v=20261101b';
+import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261102a';
+import { register, visibleFor, get } from './registry.js?v=20261102a';
+import { parseHash, onChange } from './router.js?v=20261102a';
+import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261102a';
+import { hasMicrosoftCallback, finishMicrosoftLogin, startMicrosoftLogin, msErrorMessage } from './ms-auth.js?v=20261102a';
+import { initTheme } from './theme.js?v=20261102a';
+import { checkForUpdate } from './update.js?v=20261102a';
+import { MODULES, installShellDocks } from '../modules/index.js?v=20261102a';
+import { mountPlatformHome } from './home.js?v=20261102a';
+import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261102a';
+import { ensureTime24 } from '../shared/time24.js?v=20261102a';
+import { installRecent, describeNow } from './recent.js?v=20261102a'; import { installFeedback } from '../shared/feedback.js?v=20261102a';
+import { workTabs, resumeHash } from './worktabs.js?v=20261102a';
+import { legacyProjectHash } from '../shared/pjt-key.js?v=20261102a';
 
 initTheme();   // 이 기기에 저장된 화면 모드(자동·라이트·다크) 적용
 MODULES.forEach((m) => register(Object.assign({}, m.manifest, { mount: m.mount })));
 
 const root = document.getElementById('jh-root');
-let me = null; let shell = null; let mods = []; let recent = null; let docsOff = null;   // recent: 화면 우측 floating 최근 사용 메뉴
+let me = null; let shell = null; let mods = []; let recent = null; let docsOff = null; let feedbackOff = null;   // feedbackOff: 우측 하단 문의·건의 창   // recent: 화면 우측 floating 최근 사용 메뉴
 const mainViews = new Map(); let curView = null; let labelTimers = [];   // 작업 탭: 화면별 본문(전자결재·재무회계 등)을 살려 둔다. 옛 모듈 틀(영업기획·인사총무·PJT)은 frame.js 가 같은 방식으로
 const isDesktop = () => !!(window.matchMedia && window.matchMedia('(min-width: 900px)').matches);   // 폰은 하단 메뉴가 있고 새로고침 수단이 없어 지금까지처럼 매번 새로 그린다
 /** 살려 두는 화면의 키: 화면이 아닌 값(문서 번호 등)은 넣지 않는다 — 전자결재는 결재함(목록·상세)·새 문서·홈·관리 */
@@ -72,7 +72,7 @@ if (hasMicrosoftCallback()) { try { await finishMicrosoftLogin(); } catch (e) { 
 let answered = false;   // 인증 응답이 한 번이라도 왔는가 — 6초 넘게 없으면 로딩 화면 대신 로그인 화면(응답이 늦게 오면 그때 이어서 처리)
 setTimeout(() => { if (!answered) renderLogin(root, { onSubmit: doLogin, onMicrosoft: () => startMicrosoftLogin(), message: REASONS.slow }); }, 6000);
 watchMe((user, reason) => {
-  answered = true; me = user; shell = null; recent = null; if (docsOff) { docsOff(); docsOff = null; } workTabs.reset(); mainViews.clear(); curView = null; const oldRecent = document.getElementById('jh-recent'); if (oldRecent) oldRecent.remove();
+  answered = true; me = user; shell = null; recent = null; if (docsOff) { docsOff(); docsOff = null; } if (feedbackOff) { feedbackOff(); feedbackOff = null; } workTabs.reset(); mainViews.clear(); curView = null; const oldRecent = document.getElementById('jh-recent'); if (oldRecent) oldRecent.remove();
   if (!me) {
     stopIdle(); let msg = REASONS[reason] || '';
     try { const f = sessionStorage.getItem(OUT_FLAG); if (f) { msg = durationText(+f > 0 ? +f : IDLE_LIMIT_MS) + ' 동안 활동이 없어 자동 로그아웃되었습니다.'; sessionStorage.removeItem(OUT_FLAG); } } catch (e) { /* 표시를 못 읽어도 로그인 화면은 보인다 */ }
@@ -80,7 +80,7 @@ watchMe((user, reason) => {
   }
   mods = visibleFor(me);
   if (!mods.length) { renderDenied(root, '이 계정에는 사용할 수 있는 모듈이 없습니다.', logout); return; }
-  shell = renderShell(root, me, mods, { onLogout: logout }); recent = installRecent(me); docsOff = installShellDocks(shell, me); workTabs.attach(shell.tabsEl, { navigate: (h) => { location.hash = h; } }); shell.setResume((m) => (isDesktop() ? resumeHash(workTabs.list(), workTabs.currentKey(), m) : null));   // 사이드바로 돌아오면 직전에 작업하던 화면으로(데스크톱)
+  shell = renderShell(root, me, mods, { onLogout: logout }); recent = installRecent(me); feedbackOff = installFeedback(me); docsOff = installShellDocks(shell, me); workTabs.attach(shell.tabsEl, { navigate: (h) => { location.hash = h; } }); shell.setResume((m) => (isDesktop() ? resumeHash(workTabs.list(), workTabs.currentKey(), m) : null));   // 사이드바로 돌아오면 직전에 작업하던 화면으로(데스크톱)
   startIdle({ onExpire: logout });   // 1시간 무동작 자동 로그아웃(옛 모듈 화면 안의 활동도 센다)
   route();
 });
