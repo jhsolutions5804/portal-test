@@ -26,17 +26,23 @@
 </head>
 <body>
 <main id="tag-root" aria-busy="true"></main>
+<script>
+/* 2026-11-02: 사무실 NFC 스티커에는 테섭 주소(…/portal-test/m/tag.html)가 적혀 있다 — 스티커는 고칠 수 없으므로 이 주소로 들어오면 본섭 태그 페이지로 넘긴다(찍은 위치 정보 ?…#… 도 그대로).
+   테섭에서 이 화면을 시험하려면 주소 끝에 ?stay=1 을 붙인다. 본섭 주소(/m/tag.html)에서는 아무 일도 하지 않는다. */
+(function () { if (/^\/portal-test\/m\/tag\.html$/.test(location.pathname) && !/[?&]stay=1(&|$)/.test(location.search)) { document.documentElement.setAttribute('data-jh-redirect', '1'); location.replace('https://portal.jhsol.kr/m/tag.html' + location.search + location.hash); } })();
+</script>
 <script type="module">
-import { functions, httpsCallable } from '../app/core/firebase.js?v=20261030a';
-import { NFC_ENABLED, nextStep, tagResultView, errorView, FIXED_VIEWS } from '../app/modules/attendance/nfc-logic.js?v=20261030a';
-import { makeNfcApi, makeTokenStore, getPosition } from '../app/modules/attendance/nfc-data.js?v=20261030a';
-import { tagCardHtml } from '../app/modules/attendance/nfc-view.js?v=20261030a';
+import { functions, httpsCallable } from '../app/core/firebase.js?v=20261102f';
+import { NFC_ENABLED, nextStep, tagResultView, errorView, FIXED_VIEWS } from '../app/modules/attendance/nfc-logic.js?v=20261102f';
+import { makeNfcApi, makeTokenStore, getPosition } from '../app/modules/attendance/nfc-data.js?v=20261102f';
+import { tagCardHtml } from '../app/modules/attendance/nfc-view.js?v=20261102f';
 
 const root = document.getElementById('tag-root');
 const REGISTER = '../app/#/attendance/register', INPUT = '../app/#/attendance/input', LOGIN = '../app/';
 const show = (vm, extra) => { root.innerHTML = tagCardHtml(vm, extra); root.setAttribute('aria-busy', 'false'); };
 
 async function run() {
+  if (document.documentElement.hasAttribute('data-jh-redirect')) return;   // 본섭으로 넘어가는 중 — 이 주소에서는 아무것도 하지 않는다
   if (!NFC_ENABLED) { show({ tone: 'info', title: '출퇴근 태그 기능을 준비 중입니다', detail: '곧 사용할 수 있습니다. 그때까지는 포털의 출근·퇴근 버튼을 쓰세요.' }, { inputHref: INPUT }); return; }
   const store = makeTokenStore(localStorage); const api = makeNfcApi(httpsCallable(functions, 'attendNfcAct'));
   show(FIXED_VIEWS.locating);
