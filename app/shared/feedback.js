@@ -1,10 +1,10 @@
 /* 포털 문의·건의 창 — 우측 하단에 떠서 따라다니는 버튼(2026-11-02 대표님 요청). 저장·이벤트 연결만 맡고, 규칙은 feedback-logic.js, 화면은 feedback-view.js.
  * 직원: 분류·내용을 적어 보내면 portal_feedback 에 쌓이고, 「내 건의」 탭에서 처리 상태와 관리자 댓글을 읽는다. 새 답변이 달리면 버튼에 점이 뜬다.
  * 관리자: 「받은 건의」(처리 중)·「완료」 탭에서 목록을 보고, 댓글로 조치 내용을 남기거나 「조치 완료로 처리」한다(건의자에게 알림 = userUnread). */
-import { db, collection, addDoc, getDocs, query, where, orderBy, limit, doc, updateDoc, writeBatch, serverTimestamp } from '../core/firebase.js?v=20261102j';
-import { FB_COL, buildFeedbackDoc, buildReplyDoc, cooldownLeft, feedbackEnabledFor, nextStatus, unreadCount } from './feedback-logic.js?v=20261102j';
-import { newState, buttonHtml, panelHtml } from './feedback-view.js?v=20261102j';
-import { pagerAction, pagerApply } from './pager.js?v=20261102j';
+import { db, collection, addDoc, getDocs, query, where, orderBy, limit, doc, updateDoc, writeBatch, serverTimestamp } from '../core/firebase.js?v=20261102k';
+import { FB_COL, buildFeedbackDoc, buildReplyDoc, cooldownLeft, feedbackEnabledFor, nextStatus, unreadCount } from './feedback-logic.js?v=20261102k';
+import { newState, buttonHtml, panelHtml } from './feedback-view.js?v=20261102k';
+import { pagerAction, pagerApply } from './pager.js?v=20261102k';
 const buildOf = () => { const s = document.querySelector('script[src*="boot.js"]'); const m = s && /[?&]v=(\w+)/.exec(s.getAttribute('src') || ''); return m ? m[1] : ''; };
 const sec = (t) => (t && t.seconds) || 0;
 const rowOf = (s) => { const d = s.data(); return { id: s.id, d: Object.assign({}, d, { createdSec: sec(d.createdAt), handledSec: sec(d.handledAt) }) }; };

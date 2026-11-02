@@ -1,6 +1,6 @@
 /* 직원 관리(관리자)의 순수 규칙 — 화면·네트워크 없이 시험한다 */
-import { byEmpNo, RANK_ORDER } from '../../shared/org.js?v=20261102j';
-import { isPhone } from '../../core/profile-logic.js?v=20261102j';
+import { byEmpNo, RANK_ORDER } from '../../shared/org.js?v=20261102k';
+import { isPhone } from '../../core/profile-logic.js?v=20261102k';
 
 /** 포털 모듈 권한(옛 포털의 MODULES 와 같은 키). 관리자는 권한과 무관하게 모두 열린다 */
 export const PERM_KEYS = [['plan', '영업기획'], ['hr', '인사총무'], ['finance', '재무회계'], ['edoc', '전자결재'], ['pjt', 'PJT'], ['hrEval', '인사평가']];   // 인사평가 = 다른 사람의 평가를 열람·운영(입력·확정은 사장단)
@@ -67,3 +67,8 @@ export function callMessage(e) {
   return '서버 함수(adminAct)를 호출하지 못했습니다. 함수가 아직 배포되지 않았거나 네트워크 문제일 수 있습니다.';
 }
 export const resetMailMessage = (e) => ((e && e.code) === 'auth/user-not-found' ? '이 메일 주소의 로그인 계정이 없습니다.' : (e && e.code) === 'auth/too-many-requests' ? '요청이 많아 잠시 후 다시 시도해 주세요.' : '재설정 메일을 보내지 못했습니다.');
+
+/** 비밀번호로 로그인하는 계정인가 — GUEST(사번 guest…)·본인 이메일 로그인(extLogin)·비밀번호 로그인 허용 표시(pwLogin)만 true.
+ *  정규 직원은 Microsoft 로그인만 쓰므로(2026-11-02 비밀번호 무작위화) 임시 비밀번호 발급·재설정 메일 버튼을 보여 주지 않는다 */
+export const usesPassword = (u) => !!u && (/^guest/i.test(String(u.empNo || '').trim()) || u.extLogin === true || u.pwLogin === true);
+

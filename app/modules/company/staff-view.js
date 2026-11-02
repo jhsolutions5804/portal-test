@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261102j';
-import { PERM_KEYS, hasPerm, isTeamLead, sortStaff, ranksFor, linkedWorkerOf } from './staff-logic.js?v=20261102j';
-import { isGuestUser } from '../../shared/org.js?v=20261102j';
+import { esc } from '../../core/ui.js?v=20261102k';
+import { PERM_KEYS, hasPerm, isTeamLead, sortStaff, ranksFor, linkedWorkerOf, usesPassword } from './staff-logic.js?v=20261102k';
+import { isGuestUser } from '../../shared/org.js?v=20261102k';
 
 export function staffListHtml(users, workers, meUid) {
   const rows = sortStaff(users).map((u) => {
@@ -24,7 +24,7 @@ export function staffDialogHtml(u, lw, depts, match, isSelf) {
     '<label class="jh-field"><span class="jh-field__label">부서</span><select class="jh-input" id="sf-dept">' + depOpts + '</select></label>' +
     '<label class="jh-field"><span class="jh-field__label">전화번호</span><input class="jh-input" id="sf-phone" type="tel" inputmode="tel" value="' + esc(u.phone || '') + '" placeholder="010-0000-0000"></label>' +
     '<p class="jh-field__hint">메일(아이디): ' + esc(u.email || '-') + '</p>' + link +
-    (isSelf ? '' : '<div class="jh-profile__sec"><h4>계정 관리</h4><div class="jh-staff__acts">' + (isGuestUser(u) || u.extLogin ? '<button type="button" class="jh-btn" data-variant="secondary" data-staff-loginid>로그인 아이디 재설정</button>' : '') + (u.admin === true ? '' : '<button type="button" class="jh-btn" data-variant="secondary" data-staff-extlogin' + (isGuestUser(u) || u.extLogin ? '' : ' data-contract') + '>' + (isGuestUser(u) || u.extLogin ? '본인 이메일 로그인 설정' : '계약직 — 본인 이메일 로그인으로 변경') + '</button>') + '<button type="button" class="jh-btn" data-variant="secondary" data-staff-pw>임시 비밀번호 발급</button><button type="button" class="jh-btn" data-variant="secondary" data-staff-mail>재설정 메일 보내기</button><button type="button" class="jh-btn" data-variant="secondary" data-staff-status data-to="' + (u.status === 'approved' || !u.status ? 'suspended' : 'approved') + '">' + (u.status === 'approved' || !u.status ? '사용 중지' : '사용 재개') + '</button></div><p class="jh-field__hint">임시 비밀번호를 발급하면 열려 있는 로그인이 끊기고 새 비밀번호가 화면에 한 번만 보입니다. 사용 중지하면 이 직원은 로그인할 수 없습니다.' + (isGuestUser(u) ? ' GUEST 계정은 "로그인 아이디 재설정"으로 아이디(아이디@jhsol.kr)를 새로 정하면 임시 비밀번호가 함께 발급됩니다.' : '') + (u.admin === true ? '' : ' 본인 이메일 로그인은 회사 이메일이 없는 계약직·GUEST가 본인 이메일(네이버·지메일 등)과 임시 비밀번호로 로그인하게 합니다.') + (u.extLogin ? ' 지금 이 계정은 본인 이메일 로그인입니다.' : '') + '</p></div>') +
+    (isSelf ? '' : '<div class="jh-profile__sec"><h4>계정 관리</h4><div class="jh-staff__acts">' + (isGuestUser(u) || u.extLogin ? '<button type="button" class="jh-btn" data-variant="secondary" data-staff-loginid>로그인 아이디 재설정</button>' : '') + (u.admin === true ? '' : '<button type="button" class="jh-btn" data-variant="secondary" data-staff-extlogin' + (isGuestUser(u) || u.extLogin ? '' : ' data-contract') + '>' + (isGuestUser(u) || u.extLogin ? '본인 이메일 로그인 설정' : '계약직 — 본인 이메일 로그인으로 변경') + '</button>') + (usesPassword(u) ? '<button type="button" class="jh-btn" data-variant="secondary" data-staff-pw>임시 비밀번호 발급</button><button type="button" class="jh-btn" data-variant="secondary" data-staff-mail>재설정 메일 보내기</button>' : '') + '<button type="button" class="jh-btn" data-variant="secondary" data-staff-status data-to="' + (u.status === 'approved' || !u.status ? 'suspended' : 'approved') + '">' + (u.status === 'approved' || !u.status ? '사용 중지' : '사용 재개') + '</button></div><p class="jh-field__hint">' + (usesPassword(u) ? '임시 비밀번호를 발급하면 열려 있는 로그인이 끊기고 새 비밀번호가 화면에 한 번만 보입니다. ' : '이 계정은 Microsoft 로그인만 씁니다(비밀번호 없음). 로그인이 안 되면 Microsoft(Entra)의 계정과 앱 사용자 할당을 확인해 주세요. ') + '사용 중지하면 이 직원은 로그인할 수 없습니다.' + (isGuestUser(u) ? ' GUEST 계정은 "로그인 아이디 재설정"으로 아이디(아이디@jhsol.kr)를 새로 정하면 임시 비밀번호가 함께 발급됩니다.' : '') + (u.admin === true ? '' : ' 본인 이메일 로그인은 회사 이메일이 없는 계약직·GUEST가 본인 이메일(네이버·지메일 등)과 임시 비밀번호로 로그인하게 합니다.') + (u.extLogin ? ' 지금 이 계정은 본인 이메일 로그인입니다.' : '') + '</p></div>') +
     '<p class="jh-field__hint" data-sf-msg role="alert"></p></div>' +
     '<div class="jh-dialog__actions"><button type="button" class="jh-btn" data-variant="ghost" data-close>취소</button><button type="button" class="jh-btn" data-variant="primary" data-staff-save>저장</button></div></div>';
 }
@@ -40,7 +40,7 @@ export function newAccountDialogHtml(depts) {
     '<label class="jh-field"><span class="jh-field__label">부서</span><select class="jh-input" id="nf-dept">' + depOpts + '</select></label>' +
     '<label class="jh-field"><span class="jh-field__label">전화번호</span><input class="jh-input" id="nf-phone" type="tel" inputmode="tel" placeholder="010-0000-0000"></label>' +
     '<div class="jh-field"><span class="jh-field__label">모듈 권한</span><div class="jh-staff__perms" id="nf-perms">' + PERM_KEYS.map(([k, l]) => '<button type="button" class="jh-staff__perm" data-nf-perm="' + k + '" aria-pressed="' + (k === 'edoc') + '">' + l + '</button>').join('') + '</div></div>' +
-    '<p class="jh-field__hint">만들면 임시 비밀번호가 화면에 한 번만 나옵니다. 직원에게 전달하고 로그인 뒤 "내 정보"에서 바꾸도록 안내해 주세요.</p><p class="jh-field__hint" data-sf-msg role="alert"></p></div>' +
+    '<p class="jh-field__hint">정규 직원은 Microsoft 계정(회사 이메일)으로 로그인하므로 임시 비밀번호를 쓰지 않습니다(Microsoft 쪽 계정과 앱 사용자 할당이 먼저 있어야 합니다). 사번이 guest 로 시작하는 GUEST 계정만 만들면 임시 비밀번호가 화면에 한 번 나옵니다.</p><p class="jh-field__hint" data-sf-msg role="alert"></p></div>' +
     '<div class="jh-dialog__actions"><button type="button" class="jh-btn" data-variant="ghost" data-close>취소</button><button type="button" class="jh-btn" data-variant="primary" data-nf-save>계정 만들기</button></div></div>';
 }
 /** 임시 비밀번호 결과 창 — 닫으면 다시 볼 수 없다 */
