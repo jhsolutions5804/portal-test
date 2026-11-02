@@ -19,11 +19,13 @@ export const gradeOf = (score) => { if (score == null || score === '') return ''
 
 /** 평가 기간: 전년 10월 1일 ~ 당해 9월 30일 (2026년분 = 2025-10-01 ~ 2026-09-30) */
 export function evalPeriod(year) { const y = Number(year); if (!Number.isInteger(y) || y < 2000 || y > 2100) return null; return { from: (y - 1) + '-10-01', to: y + '-09-30' }; }
-/** 평가 대상인가: 재직·평가 기간 끝(9/30) 이하 입사·사장단/시스템 계정 제외. 당해 4분기(10월~) 입사자는 제외 */
+/** 평가 대상인가: 재직·평가 기간 끝(9/30) 이하 입사·사장단/시스템 계정 제외. 당해 4분기(10월~) 입사자는 제외.
+ * 퇴직자 제외(설계서 2절 「평가 시점 재직자」, 2026-11-02 대표님 승인 — 퇴직일이 있는 형일우가 대상으로 잡히던 결함 정정): 퇴직 처리(resigned 표시 또는 status 'resigned')했거나 퇴직일이 평가 기간 끝(9/30) 이전·당일이면 제외.
+ * 기간 끝 다음 날 이후 퇴직하는 사람은 기간 내내 재직했으므로 퇴직 처리 전까지는 대상이다. */
 export function isEvalTarget(worker, year) {
   const w = worker || {}; const p = evalPeriod(year); if (!p) return false;
   if (SYSTEM_EMPNOS.test(String(w.empNo || '').trim()) || EXEC_RANKS.indexOf(String(w.rank || '').trim()) !== -1) return false;
-  if (w.resigned === true || (w.resignDate && isKey(w.resignDate) && w.resignDate < p.from)) return false;
+  if (w.resigned === true || String(w.status || '').trim() === 'resigned' || (w.resignDate && isKey(w.resignDate) && w.resignDate <= p.to)) return false;
   const hire = String(w.hireDate || ''); if (!isKey(hire)) return false;
   return hire <= p.to;
 }
