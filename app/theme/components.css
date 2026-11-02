@@ -182,6 +182,6 @@
   .jh-fb { right: 0; bottom: auto; top: calc(50% + var(--u-44)); }
   .jh-fb__btn { writing-mode: vertical-rl; padding: var(--sp-3) var(--sp-2); border-right: 0; border-radius: var(--radius) 0 0 var(--radius); gap: var(--sp-1); }
   .jh-fb__dot { top: var(--u-2); left: var(--u-2); right: auto; }
-  .jh-fb__panel { position: fixed; right: var(--sp-4); bottom: calc(var(--u-56) + env(safe-area-inset-bottom, 0px)); max-height: calc(100vh - var(--u-96)); }
+  .jh-fb__panel { position: fixed; right: var(--u-52); bottom: calc(var(--u-56) + env(safe-area-inset-bottom, 0px)); max-height: calc(100vh - var(--u-96)); }
 }
 
