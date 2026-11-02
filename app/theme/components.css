@@ -145,7 +145,7 @@
 .jh-fb > * { pointer-events: auto; }
 .jh-fb__btn { position: relative; display: inline-flex; align-items: center; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); border: var(--u-1) solid var(--c-line-strong); border-radius: var(--radius-lg); background: var(--c-primary); color: var(--c-on-primary); font: inherit; font-size: var(--fs-sm); font-weight: 700; cursor: pointer; box-shadow: 0 var(--u-2) var(--u-8) var(--c-overlay); }
 .jh-fb__btn:hover { background: var(--c-primary-strong); }
-.jh-fb__panel { width: min(var(--u-380), calc(100vw - var(--sp-5))); max-height: 78vh; overflow: auto; padding: var(--sp-4); border: var(--u-1) solid var(--c-line-strong); border-radius: var(--radius-lg); background: var(--c-surface); color: var(--c-ink); box-shadow: 0 var(--u-4) var(--u-16) var(--c-overlay); display: flex; flex-direction: column; gap: var(--sp-3); }
+.jh-fb__panel { width: min(var(--u-380), calc(100vw - var(--sp-5))); max-height: 78vh; overflow: hidden; padding: var(--sp-4); border: var(--u-1) solid var(--c-line-strong); border-radius: var(--radius-lg); background: var(--c-surface); color: var(--c-ink); box-shadow: 0 var(--u-4) var(--u-16) var(--c-overlay); display: flex; flex-direction: column; gap: var(--sp-3); }
 .jh-fb__head, .jh-fb__bar, .jh-fb__sum, .jh-fb__rowhead { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); flex-wrap: wrap; }
 .jh-fb__main { display: flex; flex-direction: column; gap: var(--sp-3); }
 .jh-fb__cats { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
@@ -171,3 +171,9 @@
 .jh-fb__reply { padding: var(--sp-2) var(--sp-3); border-radius: var(--radius); background: var(--c-primary-weak); display: flex; flex-direction: column; gap: var(--sp-1); }
 .jh-fb__reply[data-kind="done"] { border-left: var(--sp-1) solid var(--c-success); }
 @media (max-width: 400px) { .jh-fb .jh-segmented .jh-segmented__item { padding: var(--sp-2) var(--sp-1); font-size: var(--fs-xs); } }
+/* 문의·건의: 글이 길어져도 머리글·탭은 고정하고 본문(목록·입력)만 스크롤 — 2026-11-02 대표님 지적(긴 건의에서 상단 탭이 사라짐) */
+.jh-fb__head, .jh-fb .jh-segmented, .jh-fb__panel > .jh-fb__msg { flex: none; }
+.jh-fb__main { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: var(--sp-1); }
+.jh-fb .jh-segmented { scrollbar-width: none; }
+.jh-fb .jh-segmented::-webkit-scrollbar { display: none; }
+
