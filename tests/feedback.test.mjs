@@ -4,7 +4,8 @@ import { newState, buttonHtml, panelHtml, rowHtml, inboxHtml, mineHtml, replyHtm
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const me = { uid: 'u1', name: '홍길동', email: 'hong@jhsol.kr', admin: false }; const env = { hash: '#/pjt/p4ph2/home', build: '20261102a', userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0', width: 1280.4, height: 720 };
 ok(FB_COL === 'portal_feedback', '저장 컬렉션 이름');
-ok(feedbackEnabledFor('/portal-test/app/') && feedbackEnabledFor('/portal-test') && !feedbackEnabledFor('/app/') && !feedbackEnabledFor('/') && !feedbackEnabledFor(undefined), '테섭 주소에서만 켜짐(본섭은 규칙 게시 전까지 닫힘)');
+ok(feedbackEnabledFor('/portal-test/app/') && feedbackEnabledFor('/portal-test') && feedbackEnabledFor('/app/') && feedbackEnabledFor('/app'), '테섭과 본섭 주소에서 켜짐(본섭은 규칙 게시 뒤 2026-11-02 에 열었음)');
+ok(!feedbackEnabledFor('/') && !feedbackEnabledFor('/application') && !feedbackEnabledFor('/classic.html') && !feedbackEnabledFor('/m/tag.html') && !feedbackEnabledFor(undefined), '그 밖의 주소(옛 포털·모바일 태그 페이지 등)에서는 켜지지 않음');
 // 브라우저 표기
 ok(browserLabel(env.userAgent) === 'Edge 130 · Windows', 'Edge/Windows 표기');
 ok(browserLabel('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1') === 'Safari 17 · iOS', 'iPhone Safari 표기');

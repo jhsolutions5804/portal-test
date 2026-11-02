@@ -5,8 +5,8 @@ export const FB_COL = 'portal_feedback';
 export const FB_CATEGORIES = [['inconvenience', '불편해요'], ['bug', '오류예요'], ['idea', '건의해요']];
 export const FB_STATUS = [['new', '신규'], ['seen', '확인'], ['done', '완료']];
 export const FB_MIN = 2, FB_MAX = 2000, FB_COOLDOWN_MS = 20000;
-/** 테섭 주소(/portal-test/)에서만 켠다. 본섭은 보안 규칙(portal_feedback)이 게시된 뒤 이 한 줄만 바꿔 연다 */
-export const feedbackEnabledFor = (pathname) => /^\/portal-test(\/|$)/.test(String(pathname || ''));
+/** 테섭(/portal-test/…)과 본섭(/app/…)에서 켠다. 본섭은 보안 규칙(portal_feedback)이 게시된 뒤인 2026-11-02 에 열었다(대표님 「지금 바로 반영」 — 직원 QC 중 불편 사항 수집) */
+export const feedbackEnabledFor = (pathname) => /^\/(portal-test|app)(\/|$)/.test(String(pathname || ''));
 const catRow = (k) => FB_CATEGORIES.find((c) => c[0] === k);
 export const categoryLabel = (k) => (catRow(k) || ['', k || ''])[1];
 export const statusLabel = (k) => (FB_STATUS.find((s) => s[0] === k) || ['', k || '신규'])[1];
