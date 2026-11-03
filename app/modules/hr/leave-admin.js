@@ -25,3 +25,17 @@ export function buildEntryEdit(f) {
   const x = f || {}; if (!isDate(x.startDate) || !isDate(x.endDate)) return { ok: false, errors: ['시작일/종료일을 입력해주세요.'] }; if (x.endDate < x.startDate) return { ok: false, errors: ['종료일이 시작일보다 빠를 수 없습니다.'] };
   return { ok: true, errors: [], data: { leaveType: x.leaveType, startDate: x.startDate, endDate: x.endDate, days: weekdayDays(x.startDate, x.endDate, x.leaveType), reason: String(x.reason || '').trim() } };
 }
+/* 연차 기록(edoc_leave)을 고치거나 지울 때 달력 일정(company_schedules/leave_<문서ID>)도 같이 맞춘다(2026-11-03).
+ * 달력의 연차는 전자결재가 게시 때 한 번 만든 별도 문서를 읽어서, 인사 화면에서 기간을 고쳐도 달력이 그대로 남던 문제를 막는다.
+ * 달력 일정이 있는 문서(전자결재로 게시된 연차)만 고치고, 없으면(관리자 등록 등) 아무것도 만들지 않는다. 실패해도 연차 기록 저장 자체는 막지 않는다. */
+export const calendarDocId = (id) => 'leave_' + String(id || '');
+/** 달력 일정에 반영할 값 — 전자결재 게시 때 만드는 모양(text·tagLabel·sdate·edate)과 같게 */
+export const calendarPatchOf = (name, data) => { const d = data || {}; const type = d.leaveType || '연차(유급)'; return { text: '[연차] ' + (name || '') + ' ' + type + ' (' + (d.days || '') + '일)', tagLabel: type, sdate: d.startDate || '', edate: d.endDate || d.startDate || '' }; };
+/** io = { db, doc, getDoc, updateDoc, deleteDoc } (firebase.js 의 함수). 돌려주는 sync·drop 은 성공하면 true, 실패하면 false */
+export function makeLeaveCalendar(io) {
+  const okId = (id) => typeof id === 'string' && id.length > 0 && !id.includes('/');
+  return {
+    async sync(id, name, data) { if (!okId(id)) return false; try { const ref = io.doc(io.db, 'company_schedules', calendarDocId(id)); const s = await io.getDoc(ref); if (s.exists()) await io.updateDoc(ref, calendarPatchOf(name, data)); return true; } catch (e) { return false; } },
+    async drop(id) { if (!okId(id)) return false; try { await io.deleteDoc(io.doc(io.db, 'company_schedules', calendarDocId(id))); return true; } catch (e) { return false; } }
+  };
+}

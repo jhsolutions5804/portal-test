@@ -1,4 +1,5 @@
-import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES, defaultDays, adminLeaveNew, adminLeaveFromDoc, buildAdminLeave, weekdayDays, entryEditFromDoc, buildEntryEdit } from '../app/modules/hr/leave-admin.js';
+import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES, defaultDays, adminLeaveNew, adminLeaveFromDoc, buildAdminLeave, weekdayDays, entryEditFromDoc, buildEntryEdit, calendarDocId, calendarPatchOf, makeLeaveCalendar } from '../app/modules/hr/leave-admin.js';
+import { readFileSync } from 'node:fs';
 import { leaveEntries } from '../app/modules/hr/logic.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 ok(ADMIN_LEAVE_TYPES.join() === '연차,반차(오전),반차(오후),특별휴가,병가' && ENTRY_LEAVE_TYPES.length === 5 && defaultDays('반차(오전)') === 0.5 && defaultDays('반차(오후)') === 0.5 && defaultDays('연차') === 1 && defaultDays('병가') === 1 && defaultDays('') === 1, '휴가 종류 목록과 일수 기본값(반차 0.5, 그 외 1)');
@@ -12,4 +13,30 @@ ok(weekdayDays('2026-10-05', '2026-10-09') === 5 && weekdayDays('2026-10-09', '2
 const e = entryEditFromDoc({ id: 'L9', leaveType: '병가(무급)', startDate: '2026-10-05', endDate: '2026-10-06', reason: '감기', adminCreated: true }); ok(e.id === 'L9' && e.leaveType === '병가(무급)' && e.reason === '감기' && e.adminCreated === true && entryEditFromDoc({ id: 'x' }).leaveType === '연차(유급)', '내역 수정 양식: 저장된 값 그대로, 종류가 없으면 연차(유급)');
 const ee = buildEntryEdit({ leaveType: '연차(유급)', startDate: '2026-10-08', endDate: '2026-10-13', reason: '  가족 행사  ' }); ok(ee.ok && ee.data.days === 4 && ee.data.reason === '가족 행사' && ee.data.leaveType === '연차(유급)' && Object.keys(ee.data).sort().join() === 'days,endDate,leaveType,reason,startDate' && buildEntryEdit({ leaveType: '반차(유급)', startDate: '2026-10-12', endDate: '2026-10-12' }).data.days === 0.5 && !buildEntryEdit({ startDate: '', endDate: '2026-10-12' }).ok && /빠를 수 없습니다/.test(buildEntryEdit({ startDate: '2026-10-13', endDate: '2026-10-12' }).errors[0]), '★ 내역 수정: 종류·기간·사유만 바꾸고(결재 상태·작성자는 그대로) 일수는 평일 수로 다시 계산(10/8~10/13 = 4일), 반차 0.5, 날짜 검사');
 const en = leaveEntries([{ id: 'a', status: 'posted', leaveType: '연차(유급)', startDate: '2026-10-01', endDate: '2026-10-01', days: 1, adminCreated: true, reason: 'r' }, { id: 'b', status: 'approved', leaveType: '병가(무급)', startDate: '2026-10-05', days: 1 }]); ok(en[0].id === 'b' && en[1].id === 'a' && en[1].admin === true && en[1].reason === 'r' && en[0].admin === false && en[0].annual === false && en[1].annual === true && en[1].status === '게시', '연차 내역 목록: 관리자 등록 여부·사유를 함께 돌려줌(최근순)');
+/* ── 연차 수정·삭제 → 달력 일정(company_schedules/leave_<문서ID>) 동기화 (2026-11-03) ── */
+const mkIo = (seed, opt) => { const store = new Map(Object.entries(seed || {})); const log = []; const o = opt || {};
+  return { store, log, db: 'DB',
+    doc: (db, col, id) => ({ path: col + '/' + id }),
+    getDoc: async (ref) => { log.push('get ' + ref.path); return { exists: () => store.has(ref.path) }; },
+    updateDoc: async (ref, patch) => { log.push('update ' + ref.path); if (o.failUpdate) throw new Error('denied'); if (!store.has(ref.path)) throw new Error('no doc'); store.set(ref.path, Object.assign({}, store.get(ref.path), patch)); },
+    deleteDoc: async (ref) => { log.push('delete ' + ref.path); if (o.failDelete) throw new Error('denied'); store.delete(ref.path); } }; };
+const calSeed = { 'company_schedules/leave_L1': { text: '[연차] 정다애 반차-오전(유급) (0.5일)', tag: 'off', tagLabel: '반차-오전(유급)', sdate: '2026-11-06', edate: '2026-11-06', source: 'edoc_leave', srcDocId: 'L1', att: '정다애' } };
+ok(calendarDocId('L1') === 'leave_L1', '달력 문서 ID 는 leave_<연차 문서 ID> (전자결재 게시 때 만드는 것과 같음)');
+const pt = calendarPatchOf('정다애', { leaveType: '반차-오전(유급)', startDate: '2026-11-09', endDate: '2026-11-09', days: 0.5 });
+ok(pt.text === '[연차] 정다애 반차-오전(유급) (0.5일)' && pt.tagLabel === '반차-오전(유급)' && pt.sdate === '2026-11-09' && pt.edate === '2026-11-09' && Object.keys(pt).length === 4, '달력 반영 값: 본섭에 실제로 있는 문구와 같은 모양, 날짜·분류만(4개 칸)');
+ok(calendarPatchOf('가나', { startDate: '2026-11-02', days: 2 }).edate === '2026-11-02' && calendarPatchOf('가나', { startDate: '2026-11-02', days: 2 }).tagLabel === '연차(유급)', '종료일이 없으면 시작일, 종류가 없으면 연차(유급)');
+const io1 = mkIo(calSeed); const cal1 = makeLeaveCalendar(io1);
+ok((await cal1.sync('L1', '정다애', { leaveType: '반차-오전(유급)', startDate: '2026-11-09', endDate: '2026-11-09', days: 0.5 })) === true && io1.store.get('company_schedules/leave_L1').sdate === '2026-11-09' && io1.store.get('company_schedules/leave_L1').edate === '2026-11-09', '수정: 기존 달력 일정의 날짜가 바뀐다');
+const k1 = io1.store.get('company_schedules/leave_L1'); ok(k1.tag === 'off' && k1.source === 'edoc_leave' && k1.srcDocId === 'L1' && k1.att === '정다애', '수정: 분류·출처·문서 연결·작성자는 그대로');
+const e5 = buildEntryEdit({ leaveType: '연차(유급)', startDate: '2026-11-02', endDate: '2026-11-06', reason: '' }); const io1b = mkIo({ 'company_schedules/leave_L2': { text: 'x', tag: 'off', sdate: '2026-10-01', edate: '2026-10-01', source: 'edoc_leave' } });
+await makeLeaveCalendar(io1b).sync('L2', '김가나', e5.data); ok(io1b.store.get('company_schedules/leave_L2').text === '[연차] 김가나 연차(유급) (5일)' && io1b.store.get('company_schedules/leave_L2').sdate === '2026-11-02' && io1b.store.get('company_schedules/leave_L2').edate === '2026-11-06', '기간을 늘려 수정하면 일수·시작일·종료일이 달력에 반영(실제 buildEntryEdit 결과로)');
+const io2 = mkIo({}); ok((await makeLeaveCalendar(io2).sync('A9', '관리자등록', { leaveType: '연차', startDate: '2026-11-02', endDate: '2026-11-02', days: 1 })) === true && io2.store.size === 0 && !io2.log.some((x) => x.startsWith('update')), '달력 일정이 없는 연차(관리자 등록 등)는 새로 만들지 않는다');
+const io3 = mkIo(calSeed); ok((await makeLeaveCalendar(io3).drop('L1')) === true && !io3.store.has('company_schedules/leave_L1'), '삭제: 연차 기록을 지우면 달력 일정도 지운다');
+const io3b = mkIo(calSeed); ok((await makeLeaveCalendar(io3b).drop('NOPE')) === true && io3b.store.has('company_schedules/leave_L1'), '삭제: 달력 일정이 없는 연차는 그대로 두고 다른 일정은 건드리지 않는다');
+const io4 = mkIo(calSeed, { failUpdate: true }); ok((await makeLeaveCalendar(io4).sync('L1', 'x', { startDate: '2026-11-09' })) === false && io4.store.get('company_schedules/leave_L1').sdate === '2026-11-06', '달력 갱신이 거절돼도 예외를 던지지 않고 false (연차 기록 저장은 막지 않음)');
+const io5 = mkIo(calSeed, { failDelete: true }); ok((await makeLeaveCalendar(io5).drop('L1')) === false, '달력 삭제가 거절돼도 예외 없이 false');
+const io6 = mkIo(calSeed); const c6 = makeLeaveCalendar(io6); const r6 = [await c6.sync('', 'x', {}), await c6.sync(null, 'x', {}), await c6.sync('a/b', 'x', {}), await c6.drop(''), await c6.drop('a/b'), await c6.drop(undefined)];
+ok(r6.every((v) => v === false) && io6.log.length === 0, '문서 ID 가 비었거나 경로 문자(/)가 있으면 아무 호출도 하지 않는다');
+const src = readFileSync(new URL('../app/modules/hr/index.js', import.meta.url), 'utf8');
+ok((src.match(/leaveCal\.sync\(/g) || []).length === 2 && (src.match(/leaveCal\.drop\(/g) || []).length === 2 && src.includes('makeLeaveCalendar({ db, doc, getDoc, updateDoc, deleteDoc })'), '인사 화면: 연차 수정 2곳(내역 수정·관리자 양식)·삭제 2곳이 모두 달력 동기화를 부른다');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);
