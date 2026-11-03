@@ -32,10 +32,10 @@
 (function () { if (/^\/portal-test\/m\/tag\.html$/.test(location.pathname) && !/[?&]stay=1(&|$)/.test(location.search)) { document.documentElement.setAttribute('data-jh-redirect', '1'); location.replace('https://portal.jhsol.kr/m/tag.html' + location.search + location.hash); } })();
 </script>
 <script type="module">
-import { functions, httpsCallable } from '../app/core/firebase.js?v=20261103a';
-import { NFC_ENABLED, nextStep, tagResultView, errorView, FIXED_VIEWS } from '../app/modules/attendance/nfc-logic.js?v=20261103a';
-import { makeNfcApi, makeTokenStore, getPosition } from '../app/modules/attendance/nfc-data.js?v=20261103a';
-import { tagCardHtml } from '../app/modules/attendance/nfc-view.js?v=20261103a';
+import { functions, httpsCallable } from '../app/core/firebase.js?v=20261103b';
+import { NFC_ENABLED, nextStep, tagResultView, errorView, FIXED_VIEWS } from '../app/modules/attendance/nfc-logic.js?v=20261103b';
+import { makeNfcApi, makeTokenStore, getPosition } from '../app/modules/attendance/nfc-data.js?v=20261103b';
+import { tagCardHtml } from '../app/modules/attendance/nfc-view.js?v=20261103b';
 
 const root = document.getElementById('tag-root');
 const REGISTER = '../app/#/attendance/register', INPUT = '../app/#/attendance/input', LOGIN = '../app/';

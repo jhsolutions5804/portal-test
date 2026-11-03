@@ -1,7 +1,7 @@
 /* 입사 입력(근로자 직접 기입) 화면 — Microsoft 로그인으로 들어온 "입사 입력 전용 계정"(portal_users.status = onboarding)에게만 보이는 전체 화면.
  * 저장·제출·서류 올리기는 전부 서버 함수 entryAct 로만 한다(클라이언트는 entry_* 컬렉션을 읽지도 쓰지도 못함). 설계서 app-docs/worker-self-entry-design.md */
-import { functions, httpsCallable } from '../core/firebase.js?v=20261103a';
-import { esc } from '../core/ui.js?v=20261103a';
+import { functions, httpsCallable } from '../core/firebase.js?v=20261103b';
+import { esc } from '../core/ui.js?v=20261103b';
 
 const CONSENT_TEXT = '「개인정보 보호법」에 따라 아래와 같이 개인정보를 수집·이용하는 데 동의합니다.\n' +
   '① 수집·이용 목적: 입사 처리, 근로계약 체결, 4대보험 신고, 인사관리(근로자 명부), 현장 출입 및 발주처 제출 서류 작성\n' +
@@ -31,7 +31,7 @@ function compress(file) {
   });
 }
 
-export function renderEntry(root, { me, onLogout }) {
+export function renderEntry(root, { me, onLogout, embedded }) {   // embedded: 이미 계정이 있는 직원이 포털 안에서 여는 경우(로그아웃 대신 홈으로 돌아가기)
   const st = { status: 'loading', draft: {}, files: [], reject: '', msg: '', busy: false, consent: false, jumin: '' };
   const D = () => st.draft;
   const val = (path) => path.split('.').reduce((o, k) => (o == null ? '' : o[k]), D()) || '';
@@ -48,7 +48,7 @@ export function renderEntry(root, { me, onLogout }) {
     root.innerHTML = '<style>.ef-wrap{max-width:760px;margin:0 auto;padding:20px 16px 80px;font-size:15px;line-height:1.5}.ef-wrap h1{font-size:22px;margin:0 0 4px}.ef-wrap h2{font-size:17px;margin:26px 0 8px;padding-top:10px;border-top:1px solid var(--jh-border,#ddd)}.ef-wrap h3{font-size:15px;margin:14px 0 6px}.ef-f{display:flex;flex-direction:column;gap:3px;margin:6px 0}.ef-f span{font-size:13px;opacity:.8}.ef-f input,.ef-f select,.ef-f textarea{padding:9px 10px;border:1px solid var(--jh-border,#bbb);border-radius:8px;font:inherit;background:transparent;color:inherit}.ef-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;align-items:end;padding:8px;border:1px dashed var(--jh-border,#ccc);border-radius:8px;margin:6px 0}.ef-chk{flex-direction:row;align-items:center}.ef-file{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--jh-border,#e5e5e5);flex-wrap:wrap}.ef-ok{color:#1a7f37}.ef-consent{white-space:pre-wrap;font-size:13px;padding:12px;border:1px solid var(--jh-border,#ccc);border-radius:8px;max-height:220px;overflow:auto}.ef-bar{position:sticky;bottom:0;display:flex;gap:8px;padding:10px 0;background:var(--jh-bg,#fff)}.ef-msg{padding:10px 12px;border-radius:8px;margin:10px 0;background:rgba(0,120,212,.1)}.ef-bad{background:rgba(209,52,56,.12)}</style><div class="ef-wrap">' +
       '<h1>입사 정보 입력</h1><div style="opacity:.75">' + esc(me.email || '') + ' · 입력하신 내용은 인사 담당자가 확인한 뒤 근로자 명부에 반영됩니다. <b>*</b>는 필수입니다.</div>' +
       (st.status === 'submitted' ? '<div class="ef-msg">제출이 완료되었습니다. 인사 담당자가 확인 중입니다. 수정이 필요하면 담당자에게 알려 주세요.</div>' : '') +
-      (st.status === 'approved' ? '<div class="ef-msg">입력하신 내용이 근로자 명부에 반영되었습니다. 포털 사용 권한은 관리자 승인 후 열립니다.</div>' : '') +
+      (st.status === 'approved' ? '<div class="ef-msg">입력하신 내용이 근로자 명부에 반영되었습니다.' + (embedded ? ' 홈으로 돌아가면 출퇴근 등을 사용할 수 있습니다.' : ' 포털 사용 권한은 관리자 승인 후 열립니다.') + '</div>' : '') +
       (st.status === 'rejected' ? '<div class="ef-msg ef-bad">보완이 필요합니다: ' + esc(st.reject) + '<br>내용을 고친 뒤 다시 제출해 주세요.</div>' : '') +
       (st.msg ? '<div class="ef-msg' + (st.bad ? ' ef-bad' : '') + '">' + esc(st.msg) + '</div>' : '') +
       '<h2>개인정보 수집·이용 동의 <b>*</b></h2><div class="ef-consent">' + esc(CONSENT_TEXT) + '</div><label class="ef-f ef-chk"><input type="checkbox" id="ef-consent"' + (st.consent || D().consent ? ' checked' : '') + (st.locked ? ' disabled' : '') + '> 위 내용을 읽었으며 동의합니다.</label>' +
@@ -63,7 +63,7 @@ export function renderEntry(root, { me, onLogout }) {
       '<h2>가족관계</h2>' + rowsHtml('family') +
       '<h2>서류·사진</h2><div style="opacity:.75;font-size:13px">촬영하거나 사진을 고르면 바로 올라갑니다. 글자가 읽히도록 밝은 곳에서 찍어 주세요.</div>' + fileHtml() +
       '<h2>자기소개서</h2><label class="ef-f"><textarea data-k="selfIntro" rows="8"' + (st.locked ? ' disabled' : '') + '>' + esc(val('selfIntro')) + '</textarea></label>' +
-      '<div class="ef-bar">' + (st.locked ? '' : '<button class="jh-btn" data-variant="secondary" id="ef-save" type="button"' + (st.busy ? ' disabled' : '') + '>임시저장</button><button class="jh-btn" id="ef-submit" type="button"' + (st.busy ? ' disabled' : '') + '>제출</button>') + '<button class="jh-btn" data-variant="ghost" id="ef-out" type="button">로그아웃</button></div></div>';
+      '<div class="ef-bar">' + (st.locked ? '' : '<button class="jh-btn" data-variant="secondary" id="ef-save" type="button"' + (st.busy ? ' disabled' : '') + '>임시저장</button><button class="jh-btn" id="ef-submit" type="button"' + (st.busy ? ' disabled' : '') + '>제출</button>') + (embedded ? '<a class="jh-btn" data-variant="ghost" href="#/home">← 홈으로</a>' : '<button class="jh-btn" data-variant="ghost" id="ef-out" type="button">로그아웃</button>') + '</div></div>';
   }
   function collect() {
     const f = JSON.parse(JSON.stringify(D())); delete f.juminMasked; delete f.consent;
@@ -81,7 +81,7 @@ export function renderEntry(root, { me, onLogout }) {
   async function guard(fn) { if (st.busy) return; st.busy = true; st.bad = false; try { await fn(); } catch (e) { st.msg = errMsg(e); st.bad = true; } st.busy = false; paint(); }
   root.onclick = (e) => {
     const t = e.target.closest('button'); if (!t) return;
-    if (t.id === 'ef-out') { onLogout(); return; }
+    if (t.id === 'ef-out') { if (onLogout) onLogout(); return; }
     if (t.id === 'ef-save') { guard(() => save()); return; }
     if (t.id === 'ef-submit') { guard(async () => { await save(true); await call({ action: 'submit' }); st.status = 'submitted'; st.msg = ''; window.scrollTo(0, 0); }); return; }
     const add = t.getAttribute('data-add'); if (add) { keep(collect()); (st.draft[add] = st.draft[add] || []).push({}); if (!st.draft[add].length) st.draft[add].push({}); paint(); return; }
@@ -92,6 +92,6 @@ export function renderEntry(root, { me, onLogout }) {
     guard(async () => { const dataUrl = await compress(el.files[0]); await call({ action: 'upload', slot, dataUrl }); if (st.files.indexOf(slot) === -1) st.files.push(slot); st.msg = SLOT_LABEL[slot] + ' 올림'; });
   };
   paint();
-  call({ action: 'get' }).then((r) => { st.status = r.status === 'new' ? 'draft' : r.status; st.draft = r.draft || {}; st.files = r.files || []; st.reject = r.rejectReason || ''; if (!st.draft.education) st.draft.education = []; paint(); })
+  call({ action: 'get' }).then((r) => { st.status = r.status === 'new' ? 'draft' : r.status; st.draft = r.draft || {}; if (!st.draft.name && r.prefillName) st.draft.name = r.prefillName; st.files = r.files || []; st.reject = r.rejectReason || ''; if (!st.draft.education) st.draft.education = []; paint(); })
     .catch((e) => { st.status = 'draft'; st.msg = errMsg(e); st.bad = true; paint(); });
 }

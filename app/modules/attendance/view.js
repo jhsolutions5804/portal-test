@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261103a';
-import { sourceLabel, dayLabel, fmtH, monthTotals } from './logic.js?v=20261103a';
+import { esc } from '../../core/ui.js?v=20261103b';
+import { sourceLabel, dayLabel, fmtH, monthTotals } from './logic.js?v=20261103b';
 
 const head = (t, link) => '<div class="jh-panel__head"><h3>' + t + '</h3>' + (link || '') + '</div>';
 const note = (tone, text) => '<div class="jh-form"><div class="jh-alert" data-tone="' + tone + '"' + (tone === 'danger' ? ' role="alert"' : '') + '>' + esc(text) + '</div></div>';
@@ -9,7 +9,7 @@ const LINK = '<a class="jh-link" href="#/attendance/input">기록 확인·수정
 export function clockWidgetHtml(m) {
   const h = head('⏰ 출퇴근', m.state === 'ok' ? LINK : '');
   if (m.state === 'loading') return '<div class="jh-panel jh-card">' + h + '<div class="jh-empty">불러오는 중…</div></div>';
-  if (m.state === 'unlinked') return '<div class="jh-panel jh-card">' + h + note('info', '계정이 근무자 명부와 연동되어 있지 않아 출퇴근을 기록할 수 없습니다. 인사 담당자에게 연동을 요청해 주세요.') + '</div>';
+  if (m.state === 'unlinked') return '<div class="jh-panel jh-card">' + h + note('info', '계정이 근무자 명부와 연동되어 있지 않아 출퇴근을 기록할 수 없습니다. 아래에서 내 정보를 입력하시면 인사 담당자가 확인해 연동합니다.') + '<div class="jh-form"><a class="jh-btn" href="#/myinfo/form">내 정보 입력하기</a></div></div>';
   if (m.state === 'error') return '<div class="jh-panel jh-card">' + h + note('danger', '출퇴근 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.') + '<div class="jh-form"><button type="button" class="jh-btn" data-variant="secondary" data-clock-retry>다시 불러오기</button></div></div>';
   const c = m.clock; const t = c.target;
   let chip = '<span class="jh-chip">출근 전</span>';
