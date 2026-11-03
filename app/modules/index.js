@@ -1,22 +1,24 @@
 /* 플랫폼에 꽂는 모듈 목록 — 모듈을 더하거나 빼는 일은 이 파일 한 곳만 고친다.
  * 각 항목은 { manifest, mount }. 핵심부(core/)는 모듈 폴더를 직접 알지 못하고 이 목록만 읽는다. */
-import { mountScheduleBoard, SCHEDULE_CONFIG } from '../shared/schedule-board.js?v=20261102m';
-import * as edoc from './edoc/index.js?v=20261102m';
-import * as attendance from './attendance/index.js?v=20261102m';
-import * as calendar from './calendar/index.js?v=20261102m';
-import * as company from './company/index.js?v=20261102m';
-import * as evalm from './eval/index.js?v=20261102m';
-import * as finance from './finance/index.js?v=20261102m';
-import * as plan from './plan/index.js?v=20261102m';
-import * as general from './general/index.js?v=20261102m';
-import * as hr from './hr/index.js?v=20261102m';
-import * as pjt from './pjt/index.js?v=20261102m';
-import { modules as legacy, hostNative } from './legacy/index.js?v=20261102m';
+import { mountScheduleBoard, SCHEDULE_CONFIG } from '../shared/schedule-board.js?v=20261103a';
+import * as edoc from './edoc/index.js?v=20261103a';
+import * as attendance from './attendance/index.js?v=20261103a';
+import * as calendar from './calendar/index.js?v=20261103a';
+import * as company from './company/index.js?v=20261103a';
+import * as evalm from './eval/index.js?v=20261103a';
+import * as finance from './finance/index.js?v=20261103a';
+import * as plan from './plan/index.js?v=20261103a';
+import * as general from './general/index.js?v=20261103a';
+import * as hr from './hr/index.js?v=20261103a';
+import * as entry from './entry/index.js?v=20261103a';
+import * as pjt from './pjt/index.js?v=20261103a';
+import { modules as legacy, hostNative } from './legacy/index.js?v=20261103a';
 
 export const MODULES = [
   { manifest: edoc.manifest, mount: edoc.mount },
   { manifest: attendance.manifest, mount: attendance.mount },
   { manifest: calendar.manifest, mount: calendar.mount },
+  { manifest: entry.manifest, mount: entry.mount },   // 입사 입력 검토(관리자) — 근로자 직접 기입 제출분을 확인·반영
 ].concat(legacy);   // 옛 모듈(기획·인사·PJT·내 팀 공수표)은 어댑터로 입주 — 새 모듈로 바뀌면 이 줄에서 빠지고 위 목록으로 옮긴다
 ['home', 'entries', 'expense', 'import', 'reports', 'monthly', 'forecast', 'gap', 'rules', 'opening', 'settings', 'pjt'].forEach((k) => hostNative('finance', k, (root, route, ctx) => finance.mount(root, { segs: [k], query: (route && route.query) || {} }, ctx)));   // 재무회계: 인사총무와 같은 공용 틀(사이드바·내용 영역) 안의 새 화면
 ['org', 'rules', 'staff', 'alog'].forEach((k) => hostNative('company', k, (root, route, ctx) => company.mount(root, { segs: [k].concat((route && route.segs) || []), query: (route && route.query) || {} }, ctx)));   // 회사: 인사총무와 같은 공용 틀(사이드바·내용 영역) 안의 새 화면

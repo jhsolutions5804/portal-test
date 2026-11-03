@@ -1,8 +1,8 @@
 /* 영업기획·재무회계 일정 보드 — 순수 화면 부분(파이어베이스·네트워크 없이 시험 가능). 저장·이벤트는 schedule-board.js.
  * 월 이동 · 목록/달력 보기 · 구분 필터 · 추가·수정·삭제·완료 체크 · 반복(매월·매년, 미리 펼쳐 저장) · 자동 일정(정산서) 읽기 전용 표시 · 쪽 나누기(10줄 단위). */
-import { esc } from '../core/ui.js?v=20261102m';
-import { pageInfo, pagerSync, pagerHtml } from './pager.js?v=20261102m';
-import { RECUR_KINDS, RECUR_MAX, monthRange, monthItems, groupByDate, summarize, isAuto, canEditDoc } from './schedule-logic.js?v=20261102m';
+import { esc } from '../core/ui.js?v=20261103a';
+import { pageInfo, pagerSync, pagerHtml } from './pager.js?v=20261103a';
+import { RECUR_KINDS, RECUR_MAX, monthRange, monthItems, groupByDate, summarize, isAuto, canEditDoc } from './schedule-logic.js?v=20261103a';
 
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 export const kstToday = () => new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);

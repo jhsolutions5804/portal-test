@@ -1,17 +1,18 @@
-import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261102m';
-import { register, visibleFor, get } from './registry.js?v=20261102m';
-import { parseHash, onChange } from './router.js?v=20261102m';
-import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261102m';
-import { hasMicrosoftCallback, finishMicrosoftLogin, startMicrosoftLogin, msErrorMessage } from './ms-auth.js?v=20261102m';
-import { initTheme } from './theme.js?v=20261102m';
-import { checkForUpdate } from './update.js?v=20261102m';
-import { MODULES, installShellDocks } from '../modules/index.js?v=20261102m';
-import { mountPlatformHome } from './home.js?v=20261102m';
-import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261102m';
-import { ensureTime24 } from '../shared/time24.js?v=20261102m';
-import { installRecent, describeNow } from './recent.js?v=20261102m'; import { installFeedback } from '../shared/feedback.js?v=20261102m';
-import { workTabs, resumeHash } from './worktabs.js?v=20261102m';
-import { legacyProjectHash } from '../shared/pjt-key.js?v=20261102m';
+import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261103a';
+import { register, visibleFor, get } from './registry.js?v=20261103a';
+import { parseHash, onChange } from './router.js?v=20261103a';
+import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261103a';
+import { hasMicrosoftCallback, finishMicrosoftLogin, startMicrosoftLogin, msErrorMessage } from './ms-auth.js?v=20261103a';
+import { initTheme } from './theme.js?v=20261103a';
+import { checkForUpdate } from './update.js?v=20261103a';
+import { MODULES, installShellDocks } from '../modules/index.js?v=20261103a';
+import { mountPlatformHome } from './home.js?v=20261103a';
+import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261103a';
+import { ensureTime24 } from '../shared/time24.js?v=20261103a';
+import { installRecent, describeNow } from './recent.js?v=20261103a'; import { installFeedback } from '../shared/feedback.js?v=20261103a';
+import { workTabs, resumeHash } from './worktabs.js?v=20261103a';
+import { legacyProjectHash } from '../shared/pjt-key.js?v=20261103a';
+import { renderEntry } from '../shared/entry-form.js?v=20261103a';
 
 initTheme();   // 이 기기에 저장된 화면 모드(자동·라이트·다크) 적용
 MODULES.forEach((m) => register(Object.assign({}, m.manifest, { mount: m.mount })));
@@ -78,6 +79,7 @@ watchMe((user, reason) => {
     try { const f = sessionStorage.getItem(OUT_FLAG); if (f) { msg = durationText(+f > 0 ? +f : IDLE_LIMIT_MS) + ' 동안 활동이 없어 자동 로그아웃되었습니다.'; sessionStorage.removeItem(OUT_FLAG); } } catch (e) { /* 표시를 못 읽어도 로그인 화면은 보인다 */ }
     renderLogin(root, { onSubmit: doLogin, onMicrosoft: () => startMicrosoftLogin(), message: msg || msNote }); msNote = ''; return;
   }
+  if (me.onboarding) { stopIdle(); renderEntry(root, { me, onLogout: logout }); return; }   // 입사 입력 전용 계정: 포털 화면 없이 본인 정보 입력만
   mods = visibleFor(me);
   if (!mods.length) { renderDenied(root, '이 계정에는 사용할 수 있는 모듈이 없습니다.', logout); return; }
   shell = renderShell(root, me, mods, { onLogout: logout }); recent = installRecent(me); feedbackOff = installFeedback(me); docsOff = installShellDocks(shell, me); workTabs.attach(shell.tabsEl, { navigate: (h) => { location.hash = h; } }); shell.setResume((m) => (isDesktop() ? resumeHash(workTabs.list(), workTabs.currentKey(), m) : null));   // 사이드바로 돌아오면 직전에 작업하던 화면으로(데스크톱)

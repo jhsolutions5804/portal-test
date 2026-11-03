@@ -1,6 +1,6 @@
-import { auth, db, doc, getDoc, getDocs, collection, onAuthStateChanged, signInWithEmailAndPassword, signOut } from './firebase.js?v=20261102m';
-import { accessibleKeys } from '../shared/pjt-access.js?v=20261102m';
-import { DOMAIN } from './config.js?v=20261102m';
+import { auth, db, doc, getDoc, getDocs, collection, onAuthStateChanged, signInWithEmailAndPassword, signOut } from './firebase.js?v=20261103a';
+import { accessibleKeys } from '../shared/pjt-access.js?v=20261103a';
+import { DOMAIN } from './config.js?v=20261103a';
 
 export function authErrorMessage(code) {
   const m = {
@@ -49,6 +49,7 @@ export function watchMe(cb) {
       const snap = await getDoc(doc(db, 'portal_users', user.uid));
       if (!snap.exists()) { await signOut(auth); cb(null, 'not-registered'); return; }
       const data = snap.data();
+      if (data.status === 'onboarding') { cb(Object.assign(buildMe(user.uid, user.email, data), { onboarding: true, admin: false, perms: {}, pjtKeys: [] }), 'ok'); return; }   // 입사 입력 전용 계정: 포털 대신 입사 정보 입력 화면만
       if (data.status !== 'approved') { await signOut(auth); cb(null, 'not-approved'); return; }
       const me = buildMe(user.uid, user.email, data); me.pjtKeys = await loadPjtAccess(me); cb(me, 'ok');
     } catch (e) { console.error('내 정보 조회 오류', e); cb(null, 'error'); }
