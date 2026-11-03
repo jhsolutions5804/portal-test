@@ -1,6 +1,7 @@
 /* PJT 공사일보 — 순수 규칙(화면·네트워크 없이 시험 가능). 모든 프로젝트 같은 양식: 작성자·근무시간·금일 작업·명일 예정·투입 인원·1인당 공수·사용 장비·특이사항.
  * 저장(동결): 날짜 키 문서 하나(어댑터 P.reports/<날짜>), 모든 프로젝트 같은 형식(fmt 2).
  * 옛 형식 문서(구포털 일보의 today·count·remarks 필드)는 읽을 때 새 양식으로 환산해 보여 주고(옛 양식 표시), 고쳐 저장하면 새 형식으로 바뀐다 — 문서의 나이에 따른 처리이며 프로젝트 종류와 무관하다. */
+import { halfwidthDeep } from '../../shared/text-fix.js?v=20261103e';
 export const REPORT_FMT = 2;
 /** 근무시간 구분(대표님 지정 2026-10-14): 고르면 시작·종료 시간이 채워지고, 그 뒤 시·분을 직접 고칠 수 있다. 시간이 구분과 정확히 맞으면 구분 이름이 표시되고, 고쳐서 맞지 않으면 시간만 남는다 */
 export const WORK_SHIFTS = [{ name: '주간', from: '07:00', to: '17:00' }, { name: '조출', from: '05:00', to: '07:00' }, { name: '연장', from: '17:00', to: '19:00' }, { name: '야간', from: '19:00', to: '21:00' }, { name: '조출주간', from: '05:00', to: '17:00' }, { name: '주간연장', from: '07:00', to: '19:00' }, { name: '철야', from: '19:00', to: '05:00' }];
@@ -63,8 +64,8 @@ export function fromStored(d) {
 /** 화면 모델 → 저장할 문서(fmt 2). 모든 프로젝트 같은 형식 — 날짜 키 문서(pjt_registry/<id>/reports/<날짜>)에 쓴다 */
 export function toStored(m, ctx) {
   const c = ctx || {}; const headcount = parseInt(m.headcount, 10) || 0; const manday = r1(m.manday); const total = r1(headcount * manday); const equip = equipList(m);
-  return { fmt: REPORT_FMT, dateKey: c.dateKey, date: c.dateKey, site: c.site || '', author: String(m.author || '').trim(), checkIn: m.checkIn || '', checkOut: m.checkOut || '', shift: shiftOf(m.checkIn || '', m.checkOut || ''),
-    content: String(m.content || '').trim(), tomorrow: String(m.tomorrow || '').trim(), headcount, manday, mandayTotal: total, equip: equip.join(', '), note: String(m.note || '').trim(), editors: (m.editors || []).slice(-20) };
+  return halfwidthDeep({ fmt: REPORT_FMT, dateKey: c.dateKey, date: c.dateKey, site: c.site || '', author: String(m.author || '').trim(), checkIn: m.checkIn || '', checkOut: m.checkOut || '', shift: shiftOf(m.checkIn || '', m.checkOut || ''),
+    content: String(m.content || '').trim(), tomorrow: String(m.tomorrow || '').trim(), headcount, manday, mandayTotal: total, equip: equip.join(', '), note: String(m.note || '').trim(), editors: (m.editors || []).slice(-20) }); // 전각 문자 정리(2026-11-03)
 }
 export const totalOf = (headcount, per) => r1((parseInt(headcount, 10) || 0) * (Number(per) || 0));
 export const perPersonOf = (total, headcount) => ((parseInt(headcount, 10) || 0) > 0 ? r1(total / headcount) : 0);

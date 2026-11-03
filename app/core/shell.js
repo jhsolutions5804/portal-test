@@ -1,8 +1,8 @@
-import { esc } from './ui.js?v=20261103d';
-import { openSettings } from './settings.js?v=20261103d';
-import { openProfile } from './profile.js?v=20261103d';
-import { phoneTabs } from './nav.js?v=20261103d';
-import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261103d';
+import { esc } from './ui.js?v=20261103e';
+import { openSettings } from './settings.js?v=20261103e';
+import { openProfile } from './profile.js?v=20261103e';
+import { phoneTabs } from './nav.js?v=20261103e';
+import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261103e';
 
 export function renderLogin(root, { onSubmit, onMicrosoft, message }) {
   root.innerHTML =

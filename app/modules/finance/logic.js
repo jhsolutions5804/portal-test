@@ -1,11 +1,12 @@
-import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261103d';
-import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261103d';
-import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261103d';
-import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261103d';
-import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261103d';
-import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261103d';
-import { docFileName } from '../../shared/doc-filename.js?v=20261103d';
-import { csvCell, csvCellMin } from '../../shared/csv.js?v=20261103d';
+import { ACCOUNTS, ACCOUNT_BY_CODE, validateEntry, totals, trialBalance, incomeStatement, constructionCost, balanceSheet, openingEntry, suggestPurchaseAccount, cashFlowStatement } from '../../shared/ledger-engine.js?v=20261103e';
+import { checkOwnership, entryFromTaxInvoice } from '../../shared/hometax-import.js?v=20261103e';
+import { entryFromBank, classificationReport } from '../../shared/bank-classify.js?v=20261103e';
+import { entryFromCard, classifyCardItem, setMerchantRules } from '../../shared/card-classify.js?v=20261103e';
+import { entryFromPortalPayslip } from '../../shared/payroll-import.js?v=20261103e';
+import { merchantKey, parseMerchantTable, CHOICES, CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261103e';
+import { docFileName } from '../../shared/doc-filename.js?v=20261103e';
+import { csvCell, csvCellMin } from '../../shared/csv.js?v=20261103e';
+import { toHalfwidth } from '../../shared/text-fix.js?v=20261103e';
 
 /* 재무회계 화면의 순수 규칙 — 전표 목록 거르기·재무제표 계산·가져오기 미리보기·개시 재산 목록. 화면·네트워크 없이 시험한다(tests/finance.test.mjs). */
 export const SOURCE_LABEL = { opening: '개시', invoice: '청구 정산서', payment: '지급예정서', payment_paid: '지급', expense: '비용 입력', taxinv_sales: '홈택스 매출', taxinv_purchase: '홈택스 매입', owner_settle: '대표자 정산', bank: '통장', card: '카드', payslip: '급여', accrual: '결산 정리', prepaid: '선급금 대체', manual: '수기' };
@@ -134,7 +135,7 @@ export function parseEntriesJson(text) {
   return { entries, errors };
 }
 /** 수기 전표 입력값 검사 */
-export function manualEntry(date, memo, lines) { const L = (lines || []).filter((l) => l.account || l.amount).map((l) => ({ account: String(l.account || ''), side: l.side === 'C' ? 'C' : 'D', amount: Number(String(l.amount == null ? '' : l.amount).replace(/[,\s원]/g, '')), partner: String(l.partner || '').trim() })); const e = { date, memo: String(memo || '').trim(), source: { kind: 'manual' }, lines: L }; const v = validateEntry(e); return { entry: e, ok: v.ok, errors: v.errors, debit: v.debit, credit: v.credit }; }
+export function manualEntry(date, memo, lines) { const L = (lines || []).filter((l) => l.account || l.amount).map((l) => ({ account: String(l.account || ''), side: l.side === 'C' ? 'C' : 'D', amount: Number(String(l.amount == null ? '' : l.amount).replace(/[,\s원]/g, '')), partner: toHalfwidth(l.partner).trim() })); const e = { date, memo: toHalfwidth(memo).trim(), source: { kind: 'manual' }, lines: L }; const v = validateEntry(e); return { entry: e, ok: v.ok, errors: v.errors, debit: v.debit, credit: v.credit }; }
 /* ───────── 비용 입력(영수증·현금 지출을 손으로) ───────── */
 export const EXPENSE_CATS = [['식대(업무·직원)', '6020'], ['현장 식대(야간조 등)', '5350'], ['거래처 접대·선물', '6040'], ['소모품·사무용품', '6090'], ['현장 소모품·안전용품', '5340'], ['자재·공구', '5010'], ['외주·용역', '5210'], ['차량 유류·정비', '6120'], ['통신비', '6050'], ['보험료', '6110'], ['임차료·관리비(사무)', '6060'], ['현장 창고·숙소', '5380'], ['지급수수료', '6100'], ['기부금', '8030'], ['기타 현장경비', '5390'], ['기타 판관비', '6190'], ['개인 지출(인출금)', '3020']];
 /** [키, 이름, 대변 계정, 거래처 표시] — 카드는 이용 시점에 미지급금으로 쌓고 카드 대금 이체 때 정리 */

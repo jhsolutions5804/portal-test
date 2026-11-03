@@ -11,3 +11,10 @@ export function toHalfwidth(s) {
     return '.';
   });
 }
+/** 객체·배열 안의 모든 글자 값을 같은 규칙으로 정리한 새 값을 돌려준다(숫자·참/거짓·비어 있는 값·날짜 같은 객체는 그대로, 키는 건드리지 않음). 붙여 넣기가 많은 문서(업무일지·공사일보 등)를 저장하기 직전에 한 번 쓴다. */
+export function halfwidthDeep(v) {
+  if (typeof v === 'string') return toHalfwidth(v);
+  if (Array.isArray(v)) return v.map(halfwidthDeep);
+  if (v && Object.getPrototypeOf(v) === Object.prototype) { const o = {}; Object.keys(v).forEach((k) => { o[k] = halfwidthDeep(v[k]); }); return o; }
+  return v;
+}

@@ -1,5 +1,6 @@
 /* 작성 화면의 순수 로직 — 양식 정의, 검증, 문서 데이터 만들기, 결재선 편집. (화면·Firestore 와 분리해 시험한다) */
 
+import { halfwidthDeep } from '../../shared/text-fix.js?v=20261103e';
 export const MAX_APPROVERS = 5;
 export const MAX_PARTS = 6; // 한 사람의 하루에 나눌 수 있는 참여 프로젝트 수(서버 pjt-part-act 의 day-split 규칙과 같다)
 export const MAX_CC = 10;
@@ -306,7 +307,7 @@ export function buildDocData(type, values, me, ctx) {
     else Object.assign(d, { dueDate: v.dueDate, items });
   }
   d.title = buildTitle(type, Object.assign({}, v, { pjtCode: d.pjtCode, vehicleName: d.vehicleName }), me, ctx && ctx.now);
-  return d;
+  return halfwidthDeep(d); // 메신저·엑셀에서 붙여 넣은 전각 문자(Ｐ４ｐｈ·（ ）·、)를 보통 문자로 저장(2026-11-03)
 }
 
 /** 저장된 문서 → 작성 화면 값 (임시저장·반려 문서 수정용) */
