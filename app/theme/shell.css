@@ -9,6 +9,8 @@
 .jh-login__panel > .jh-btn, .jh-login__panel form > .jh-btn { width: 100%; justify-content: center; padding-block: var(--sp-3); font-size: var(--fs-md); }   /* 로그인 카드 안의 버튼만 폭 가득(다른 화면의 .jh-btn 은 그대로) */
 .jh-login__sub { margin: 0 0 var(--sp-3); color: var(--c-ink-2); font-size: var(--fs-sm); }
 .jh-login__msg { min-height: var(--u-20); margin: 0; color: var(--c-danger); font-size: var(--fs-sm); }
+.jh-login__legal { margin: var(--sp-3) 0 0; text-align: center; font-size: var(--fs-sm); }
+.jh-login__legal a { color: var(--c-ink-2); text-decoration: underline; }
 
 .jh-app { display: grid; grid-template-columns: var(--u-220) 1fr; min-height: 100vh; }
 .jh-sidebar { background: var(--c-side); color: var(--c-side-ink); display: flex; flex-direction: column; padding: var(--sp-4); gap: var(--sp-4); position: sticky; top: 0; height: 100vh; }

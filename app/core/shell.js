@@ -1,8 +1,8 @@
-import { esc } from './ui.js?v=20261103e';
-import { openSettings } from './settings.js?v=20261103e';
-import { openProfile } from './profile.js?v=20261103e';
-import { phoneTabs } from './nav.js?v=20261103e';
-import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261103e';
+import { esc } from './ui.js?v=20261103f';
+import { openSettings } from './settings.js?v=20261103f';
+import { openProfile } from './profile.js?v=20261103f';
+import { phoneTabs } from './nav.js?v=20261103f';
+import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261103f';
 
 export function renderLogin(root, { onSubmit, onMicrosoft, message }) {
   root.innerHTML =
@@ -24,6 +24,7 @@ export function renderLogin(root, { onSubmit, onMicrosoft, message }) {
         '</form>' +
       '</div>' +
       '<p class="jh-login__msg" id="jh-login-msg" role="alert">' + esc(message || '') + '</p>' +
+  '<p class="jh-login__legal"><a href="../privacy.html" target="_blank" rel="noopener">개인정보 처리방침</a></p>' +
     '</div></div>';
   const msg = root.querySelector('#jh-login-msg');
   const tabs = [...root.querySelectorAll('[role=tab]')], panels = [...root.querySelectorAll('[role=tabpanel]')];

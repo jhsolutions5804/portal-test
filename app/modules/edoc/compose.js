@@ -1,6 +1,6 @@
 /* 작성 화면의 순수 로직 — 양식 정의, 검증, 문서 데이터 만들기, 결재선 편집. (화면·Firestore 와 분리해 시험한다) */
 
-import { halfwidthDeep } from '../../shared/text-fix.js?v=20261103e';
+import { halfwidthDeep } from '../../shared/text-fix.js?v=20261103f';
 export const MAX_APPROVERS = 5;
 export const MAX_PARTS = 6; // 한 사람의 하루에 나눌 수 있는 참여 프로젝트 수(서버 pjt-part-act 의 day-split 규칙과 같다)
 export const MAX_CC = 10;
