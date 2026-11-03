@@ -31,4 +31,10 @@ const shell = fs.readFileSync(path.join(ROOT, 'app/core/shell.js'), 'utf8'); con
 ok(/href="\.\.\/privacy\.html"/.test(shell) && shell.includes('개인정보 처리방침'), '로그인 화면에 처리방침 링크가 있다(앱 주소 기준 ../privacy.html — 테섭·본섭 모두 맞음)');
 ok(/jh-login__legal/.test(shell) && /\.jh-login__legal\s*\{/.test(css) && /\.jh-login__legal a\s*\{/.test(css), '로그인 화면 링크의 스타일(칸과 링크)이 정의돼 있다');
 ok(/target="_blank"[^>]*rel="noopener"/.test(shell.slice(shell.indexOf('jh-login__legal'), shell.indexOf('jh-login__legal') + 220)), '링크는 새 창으로 열리고 rel=noopener 이다(로그인 화면을 떠나지 않음)');
+// 5) 서명 링크 페이지(sign.html) — 로그인 없이 근로자가 계약서·급여를 보는 화면이라 처리방침 링크가 있어야 한다. #app 은 코드가 통째로 다시 그리므로 링크는 #app 바깥(.wrap 안)에 있어야 한다.
+const sign = fs.readFileSync(path.join(ROOT, 'sign.html'), 'utf8');
+ok(/<a href="privacy\.html" target="_blank" rel="noopener">개인정보 처리방침<\/a>/.test(sign), '서명 페이지에 처리방침 링크가 있다(같은 폴더의 privacy.html — 테섭·본섭 모두 맞음, 새 창)');
+ok(/id="app">.*?불러오는 중\.\.\.<\/div><\/div>\s*<p class="legal"><a href="privacy\.html"/s.test(sign), '링크는 #app 바깥(.wrap 안)에 있어 서명 화면이 바뀌어도 사라지지 않는다');
+ok(/\.legal\{[^}]*text-align:center/.test(sign) && /\.legal a\{[^}]*underline/.test(sign), '서명 페이지 링크의 스타일이 정의돼 있다');
+ok(sign.split('privacy.html').length - 1 === 1, '서명 페이지의 처리방침 링크는 한 곳이다(중복 없음)');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); process.exit(fail ? 1 : 0);
