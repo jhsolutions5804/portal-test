@@ -1,6 +1,7 @@
 /* PJT 일정 — 순수 규칙(화면·네트워크 없이 시험 가능). 모든 프로젝트 같은 형식·같은 규칙.
  * 일정 문서(동결): { reg(등록자), text, place, att(참석자), tag, tagLabel, sdate, edate, isTodo, stime, etime, done?, savedAt }.
  * 저장 위치는 프로젝트마다 다르지만(어댑터 P.schedules) 문서 모양은 같다. Ph2 의 user_schedules 는 포털 홈 통합 캘린더가 함께 읽는다. */
+import { toHalfwidth } from '../../shared/text-fix.js?v=20261103d';
 export const CATS = [['edu', '교육'], ['meeting', '회의'], ['in', '반입'], ['fcu', '설치'], ['off', '휴무'], ['safety', '안전'], ['quality', '품질'], ['admin', '기타']];
 export const TAG_LABEL = { edu: '교육', meeting: '회의', in: '반입', fcu: '설치', off: '휴무', safety: '안전', quality: '품질', admin: '기타', inspect: '검수', leave: '연차' };   // inspect·leave 는 옛 데이터 표시용
 export const TAG_COLOR = { in: '#1D5BA6', inspect: '#2e7d32', edu: '#5e35b1', meeting: '#5D3A00', fcu: '#0A3D7A', safety: '#8D6E00', off: '#c0392b', leave: '#e67e22', quality: '#00695C', admin: '#7A8AA0' };
@@ -49,13 +50,13 @@ export function weekDays(dateKey, n) { const dow = dowOf(dateKey); const monday 
 const TIME = /^([01]\d|2[0-4]):[0-5]\d$/;
 /** 폼 값 → 저장할 일정 문서. form = { text, tag, sdate, edate, isTodo, sh, sm, eh, em, place, att, reg } — 실패하면 { error } */
 export function buildDoc(form, defaults) {
-  const f = form || {}; const text = String(f.text || '').trim();   // 내용은 비워도 된다(구포털 "공란 가능" — 목록에는 "(내용 없음)")
+  const f = form || {}; const text = toHalfwidth(f.text).trim();   // 내용은 비워도 된다(구포털 "공란 가능" — 목록에는 "(내용 없음)")
   let sdate = f.sdate && isKey(f.sdate) ? f.sdate : (defaults && defaults.today) || ''; if (!sdate) return { error: '날짜를 입력하세요.' }; let edate = f.edate && isKey(f.edate) ? f.edate : sdate; if (edate < sdate) edate = sdate;
   const tag = CATS.some((c) => c[0] === f.tag) ? f.tag : detectCat(text); const t = (h, m) => pad(Math.max(0, Math.min(24, parseInt(h, 10) || 0))) + ':' + pad(Math.max(0, Math.min(59, parseInt(m, 10) || 0)));
   const noTime = tag !== 'off' && tag !== 'leave' && t(f.sh, f.sm) === '00:00' && (t(f.eh, f.em) === '00:00' || t(f.eh, f.em) === '24:00'); const isTodo = !!f.isTodo || noTime;   // 시간을 정하지 않으면(시작·종료가 00:00) 자동으로 할 일(2026-11-01). 휴무·연차는 제외 — 종일 일정 그대로
   const stime = isTodo ? '00:00' : t(f.sh, f.sm), etime = isTodo ? '24:00' : t(f.eh, f.em);   // 할 일은 하루 종일(00:00~24:00)로 저장 — 구포털은 할 일의 시간을 쓰지 않으므로 호환된다
   if (!TIME.test(stime) || !TIME.test(etime)) return { error: '시간 형식이 올바르지 않습니다.' };
-  return { data: { reg: String(f.reg || '').trim(), text, place: String(f.place || '').trim(), att: String(f.att || '').trim(), tag, tagLabel: TAG_LABEL[tag], sdate, edate, isTodo, stime, etime } };
+  return { data: { reg: toHalfwidth(f.reg).trim(), text, place: toHalfwidth(f.place).trim(), att: toHalfwidth(f.att).trim(), tag, tagLabel: TAG_LABEL[tag], sdate, edate, isTodo, stime, etime } };
 }
 /** 일정 문서 → 폼 값(수정용) */
 export function formOf(u, today) { const p = (s) => { const [h, m] = String(s || '0:0').split(':'); return { h: pad(parseInt(h, 10) || 0), m: pad(Math.floor((parseInt(m, 10) || 0) / 10) * 10) }; }; const s = p(u && u.stime), e = p(u && u.etime); return { id: (u && u.id) || null, text: (u && u.text) || '', tag: (u && u.tag && CATS.some((c) => c[0] === u.tag) ? u.tag : 'admin'), sdate: (u && u.sdate) || today, edate: (u && (u.edate || u.sdate)) || today, isTodo: !!(u && u.isTodo), sh: s.h, sm: s.m, eh: e.h, em: e.m, place: (u && u.place) || '', att: (u && u.att) || '', reg: (u && u.reg) || '' }; }

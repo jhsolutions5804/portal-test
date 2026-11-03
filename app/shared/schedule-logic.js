@@ -1,7 +1,8 @@
 /* 영업기획·재무회계 일정(plan_schedules·finance_schedules) — 순수 규칙(화면·네트워크 없이 시험 가능). 설계: portal-functions/app-docs/calendar-extension-design.md (2026-10-20 대표님 결정, 2026-10-31 구현)
  * 일정 문서 모양은 옛 일정과 같다: text·sdate·edate·stime·etime·tag·tagLabel·place·memo·isTodo·done + source('manual'|'settlement_auto')·srcId·recurId·createdBy·createdByName·savedAt.
  * 금액·계좌는 일정에 넣지 않는다(제목이 Outlook 공유 사서함으로도 나간다). 자동 일정(settlement_auto)은 서버가 정산서에서 만들므로 화면에서 고치거나 지울 수 없다. */
-import { addDays, isYmd, isHHMM, makeEvent, fromLegacyDoc, pad } from './calendar-event.js?v=20261103c';
+import { toHalfwidth } from './text-fix.js?v=20261103d';
+import { addDays, isYmd, isHHMM, makeEvent, fromLegacyDoc, pad } from './calendar-event.js?v=20261103d';
 
 export const SCHEDULE_CONFIG = {
   plan: { key: 'plan', title: '영업기획 일정', col: 'plan_schedules', source: 'plan', label: '영업기획 일정', order: 55, link: '#/plan/schedule', defaultTag: 'meeting',
@@ -37,7 +38,7 @@ export function recurrenceDates(kind, start, count) {
 }
 /** 입력 양식 → 저장할 문서(검증). 오류면 { error }. form: { text, sdate, edate, stime, etime, tag, place, memo, isTodo } */
 export function buildScheduleDoc(form, cfg, me) {
-  const f = form || {}; const text = String(f.text == null ? '' : f.text).trim();
+  const f = form || {}; const text = toHalfwidth(f.text).trim(); // 전각 문자(Ｐ４ｐｈ·（ ）·、)는 보통 문자로 저장한다(2026-11-03)
   if (!text) return { error: '제목을 입력해 주세요.' };
   if (text.length > 100) return { error: '제목은 100자까지 쓸 수 있습니다.' };
   if (!isYmd(f.sdate)) return { error: '날짜를 정확히 입력해 주세요.' };
@@ -51,8 +52,8 @@ export function buildScheduleDoc(form, cfg, me) {
   if (etime && !stime) return { error: '종료 시간만 입력할 수 없습니다. 시작 시간도 입력해 주세요.' };
   if (stime && etime && edate === f.sdate && etime <= stime) return { error: '종료 시간이 시작 시간보다 늦어야 합니다.' };
   const tagRow = cfg.tags.find((t) => t[0] === f.tag) || cfg.tags.find((t) => t[0] === cfg.defaultTag) || cfg.tags[0];
-  const memo = String(f.memo == null ? '' : f.memo).trim(); if (memo.length > 600) return { error: '메모는 600자까지 쓸 수 있습니다.' };
-  const place = String(f.place == null ? '' : f.place).trim(); if (place.length > 120) return { error: '장소는 120자까지 쓸 수 있습니다.' };
+  const memo = toHalfwidth(f.memo).trim(); if (memo.length > 600) return { error: '메모는 600자까지 쓸 수 있습니다.' };
+  const place = toHalfwidth(f.place).trim(); if (place.length > 120) return { error: '장소는 120자까지 쓸 수 있습니다.' };
   return { doc: { text, sdate: f.sdate, edate, stime, etime, tag: tagRow[0], tagLabel: tagRow[1], place, memo, isTodo: todo, done: false, source: 'manual', createdBy: (me && me.uid) || '', createdByName: (me && (me.name || me.email)) || '' } };
 }
 /** 반복 입력 → 문서 여러 개(같은 recurId, 문서 id 는 <recurId>_<번호>). 여러 날짜 일정은 기간 길이를 유지해 각 날짜로 옮긴다 */
