@@ -406,3 +406,6 @@ button.jh-kpi:hover { border-color: var(--c-primary); }
 .jh-parts__custom { margin-top: var(--sp-1); }
 .jh-parts[data-invalid="true"] .jh-parts__chips { outline: var(--u-2) solid var(--c-danger); outline-offset: var(--u-3); border-radius: var(--radius-sm); }
 .jh-parts__sum { margin-top: var(--sp-1); }
+
+/* 운행일지 주유·정비 입력 — 금액·주유량으로 자동 계산되는 표시 칸(입력이 아님) */
+.jh-input--static { display: flex; align-items: center; color: var(--c-ink-2); border-style: dashed; overflow-wrap: anywhere; }

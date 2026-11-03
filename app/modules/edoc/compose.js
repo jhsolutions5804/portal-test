@@ -1,6 +1,7 @@
 /* 작성 화면의 순수 로직 — 양식 정의, 검증, 문서 데이터 만들기, 결재선 편집. (화면·Firestore 와 분리해 시험한다) */
 
-import { halfwidthDeep } from '../../shared/text-fix.js?v=20261103f';
+import { halfwidthDeep } from '../../shared/text-fix.js?v=20261104a';
+import { recKey, FUEL_TYPES, FULL_OPTS, SHOP_KINDS, carChecks, carFields, emptyCarItem, carCalcText } from '../../shared/car-cost.js?v=20261104a'; // 주유·정비·비용 기록(운행일지 문서의 rec 필드)
 export const MAX_APPROVERS = 5;
 export const MAX_PARTS = 6; // 한 사람의 하루에 나눌 수 있는 참여 프로젝트 수(서버 pjt-part-act 의 day-split 규칙과 같다)
 export const MAX_CC = 10;
@@ -66,6 +67,30 @@ const F = {
     { key: 'purpose', label: '운행 목적', type: 'textarea', ph: '예) 현장 자재 운반, 협력업체 방문', required: true, row: 'd' },
     { key: 'note', label: '비고 (주유·통행료 등)', type: 'textarea', row: 'e' }
   ],
+  /* 차량 운행일지의 다른 기록 종류 — 주유·정비는 운행기록부(주행거리·업무사용비율)에 섞이지 않는다. 입력 칸 배치는 운행(drive)과 따로. */
+  driveFuel: [
+    { key: 'date', label: '주유 일자', type: 'date', required: true, row: 'a' },
+    { key: 'vehicleId', label: '차량', type: 'vehicle', required: true, row: 'a' },
+    { key: 'station', label: '주유소', type: 'text', ph: '예) 동일석유 고덕주유소', row: 'b' },
+    { key: 'fuelType', label: '유종', type: 'select', opts: FUEL_TYPES, required: true, row: 'b' },
+    { key: 'odo', label: '누적주행거리(km)', type: 'number', step: '1', required: true, row: 'c', hint: '주유할 때 계기판에 보이는 누적 거리입니다. 연비는 이 값으로 계산합니다.' },
+    { key: 'full', label: '주유 방식', type: 'select', opts: FULL_OPTS, required: true, row: 'c', hint: '연비는 가득 주유한 기록끼리 비교해 계산합니다. 부분 주유는 다음 가득 주유 때 함께 계산됩니다.' },
+    { key: 'amount', label: '주유금액(원)', type: 'money', ph: '0', required: true, row: 'd' },
+    { key: 'liters', label: '주유량(L)', type: 'number', step: '0.01', required: true, row: 'd' },
+    { key: 'fuelSum', label: '자동 계산', type: 'calc', row: 'd' },
+    { key: 'washFee', label: '세차비(원, 선택)', type: 'money', ph: '0', zeroOk: true, row: 'e' },
+    { key: 'note', label: '메모', type: 'textarea', ph: '예) 카드 종류, 영수증 번호 (영수증 사진은 아래 첨부에)', row: 'f' }
+  ],
+  driveRepair: [
+    { key: 'date', label: '정비 일자', type: 'date', required: true, row: 'a' },
+    { key: 'vehicleId', label: '차량', type: 'vehicle', required: true, row: 'a' },
+    { key: 'shopKind', label: '정비 구분', type: 'select', opts: SHOP_KINDS, required: true, row: 'b' },
+    { key: 'place', label: '정비소·장소', type: 'text', ph: '예) 애니카랜드 이충점', row: 'b' },
+    { key: 'odo', label: '정비 당시 누적주행거리(km)', type: 'number', step: '1', row: 'b' },
+    { key: 'items', label: '정비·수리·비용 항목', type: 'items', variant: 'car' },
+    { key: 'repairSum', label: '자동 계산', type: 'calc', row: 'g' },
+    { key: 'note', label: '메모', type: 'textarea', ph: '예) 다음 교체 시기, 보증 여부 (영수증 사진은 아래 첨부에)', row: 'h' }
+  ],
   attend: [
     { key: 'date', label: '수정할 날짜', type: 'date', required: true, row: 'a', hint: '지난 날짜만, 최근 60일 이내입니다. 오늘 기록은 출퇴근 기록 화면에서 직접 입력하세요.' },
     { key: 'checkIn', label: '출근', type: 'time', required: true, row: 'a' },
@@ -89,6 +114,7 @@ const F = {
 
 /** 작성 종류(+구매/지출 구분)에 따라 보여 줄 항목 목록 */
 export function fieldsFor(type, values) {
+  if (type === 'drive') { const rec = recKey(values && values.rec); return (rec === 'fuel' ? F.driveFuel : rec === 'repair' ? F.driveRepair : F.drive).filter((f) => visible(f, values)); } // 운행(기존)·주유·정비 비용은 칸 구성이 다르다
   if (type === 'spend') {
     const kind = (values && values.kind) === 'expense' ? 'expense' : 'purchase';
     return F.spendBase.concat(F[kind]).filter((f) => visible(f, values));
@@ -199,13 +225,16 @@ export function defaultValues(type, me, now) {
   else if (type === 'cert') Object.assign(v, { purpose: '', language: '한국어', copies: 1 });
   else if (type === 'attend') { const y = new Date(now || new Date()); y.setDate(y.getDate() - 1); Object.assign(v, { date: ymd(y), checkIn: '', checkOut: '', reason: '' }); }
   else if (type === 'daily') Object.assign(v, { date: today, pjtId: '', todayWork: '', tomorrowWork: '', issue: '', parts: [] }); // parts = 오늘 참여한 프로젝트 칩(문서 본문에는 넣지 않고 업무일지와 별도 기록 pjt_day_part 로 서버가 저장)
-  else if (type === 'drive') Object.assign(v, { date: today, vehicleId: '', pjtId: '', origin: '', destination: '', kind: DRIVE_KINDS[0], odoStart: '', odoEnd: '', bizKm: '', purpose: '', note: '' });
+  else if (type === 'drive') Object.assign(v, { rec: 'trip', date: today, vehicleId: '', pjtId: '', origin: '', destination: '', kind: DRIVE_KINDS[0], odoStart: '', odoEnd: '', bizKm: '', purpose: '', note: '', station: '', fuelType: FUEL_TYPES[0], odo: '', full: FULL_OPTS[0], amount: '', liters: '', washFee: '', shopKind: SHOP_KINDS[0], place: '', items: [] });
   else if (type === 'spend') Object.assign(v, { kind: 'purchase', vendor: '', pjtId: '', purpose: '', dueDate: '', expDate: today, category: SPEND_CATEGORIES[0], amount: '', receipt: RECEIPTS[0], items: [] });
   return v;
 }
 /** 근태 요청의 근무시간(점심 2시간 제외, 단 출근~퇴근 5시간 이하는 제외 안 함 · 퇴근이 더 이르면 다음 날 퇴근) — 서버(attend-calc.js)와 같은 규칙 */
 export function attendHoursOf(ci, co) { const [ih, im] = String(ci).split(':').map(Number); const [oh, om] = String(co).split(':').map(Number); let m = (oh * 60 + om) - (ih * 60 + im); if (m <= 0) m += 1440; return Math.max(0, m - (m <= 300 ? 0 : 120)) / 60; }
-export const emptyItem = () => ({ name: '', qty: '', unitPrice: '', link: '' });
+export { carCalcText, recKey };
+export const emptyItem = (type) => (type === 'drive' ? emptyCarItem() : { name: '', qty: '', unitPrice: '', link: '' }); // 운행일지의 정비·비용 항목은 이름·금액·메모
+/** 기록 종류(운행·주유·정비)를 바꾼다 — 정비·비용이면 빈 항목 한 줄을 미리 깔아 준다 */
+export function setRec(values, rec) { const v = Object.assign({}, values, { rec: recKey(rec) }); if (v.rec === 'repair' && !(v.items || []).length) v.items = [emptyCarItem()]; return v; }
 
 /** 한글 받침에 맞는 조사: josa('금액','을','를') → '금액을', josa('사유','을','를') → '사유를' */
 export function josa(word, withFinal, noFinal) {
@@ -223,12 +252,13 @@ function driveChecks(v, err) {
   if (has(v.bizKm) && !err.bizKm) { const dist = b - a; if (num(v.bizKm) < 0) err.bizKm = '업무용 사용거리가 올바르지 않습니다.'; else if (has(v.odoStart) && has(v.odoEnd) && dist >= 0 && num(v.bizKm) > dist) err.bizKm = '업무용 사용거리(' + num(v.bizKm) + 'km)가 주행거리(' + dist + 'km)보다 클 수 없습니다.'; }
   if (v.date && !err.date && v.date > ymd(new Date())) err.date = '운행일자가 오늘보다 뒤입니다. 운행 후에 작성해 주세요.';
 }
-export function validate(type, values, opts) { const err = validateBase(type, values, opts); if (type === 'drive') driveChecks(values || {}, err); return err; }
+export function validate(type, values, opts) { const err = validateBase(type, values, opts); if (type === 'drive') { if (recKey((values || {}).rec) === 'trip') driveChecks(values || {}, err); else carChecks(values || {}, err, ymd((opts && opts.now) || new Date()), !!(opts && opts.draft)); } return err; }
 function validateBase(type, values, opts) {
   const err = {}; const v = values || {}; const draft = !!(opts && opts.draft);   // 임시저장은 필수 항목이 비어 있어도 되고 형식만 본다
   fieldsFor(type, v).forEach((f) => {
     const val = v[f.key];
-    if (f.type === 'items') {
+    if (f.type === 'items' && f.variant === 'car') return; // 정비·비용 항목은 carChecks 가 본다
+  if (f.type === 'items') {
       const rows = (val || []).filter((r) => r.name || r.qty || r.unitPrice || r.link);
       rows.forEach((r, i) => {
         if (!draft && !String(r.name || '').trim()) err['items.' + i + '.name'] = '품목명을 입력해 주세요.';
@@ -273,6 +303,7 @@ export function buildTitle(type, values, me, now) {
   const v = values || {};
   if (type === 'leave') return today + ' ' + name + ' ' + (v.leaveType || '연차') + ' 신청서';
   if (type === 'daily') { const d = String(v.date || '').replace(/-/g, '').slice(2); return '(' + (v.pjtId === 'common' ? '공통' : (v.pjtCode || '')) + ') ' + d + ' ' + name + ' 업무일지'; }
+  if (type === 'drive' && recKey(v.rec) !== 'trip') return String(v.date || '').replace(/-/g, '') + ' ' + name + (recKey(v.rec) === 'fuel' ? ' 차량 주유 기록' : ' 차량 정비·비용 기록') + (v.vehicleName ? ' (' + v.vehicleName + ')' : '');
   if (type === 'drive') return String(v.date || '').replace(/-/g, '') + ' ' + name + ' 차량 운행일지' + (v.vehicleName ? ' (' + v.vehicleName + ')' : '');
   if (type === 'cert') return today + ' ' + name + ' 재직증명서';
   if (type === 'attend') return String(v.date || '').replace(/-/g, '') + ' ' + name + ' 근태 기록 수정 요청';
@@ -295,6 +326,10 @@ export function buildDocData(type, values, me, ctx) {
   else if (type === 'cert') Object.assign(d, { purpose: text('purpose'), language: text('language'), copies: num(v.copies) });
   else if (type === 'attend') Object.assign(d, { date: v.date, checkIn: v.checkIn, checkOut: v.checkOut, reason: text('reason'), workerId: (ctx && ctx.worker && ctx.worker.id) || '', workHours: attendHoursOf(v.checkIn, v.checkOut), breakMinutes: 120 });
   else if (type === 'daily') Object.assign(d, { date: v.date, pjtId: v.pjtId, pjtCode: v.pjtId === 'common' ? '공통' : proj ? proj.pjtCode || proj.code || '' : '', pjtName: v.pjtId === 'common' ? '프로젝트 무관(본사 경비)' : proj ? proj.name || '' : '', todayWork: String(v.todayWork || '').trim(), tomorrowWork: String(v.tomorrowWork || '').trim(), issue: String(v.issue || '').trim() });
+  else if (type === 'drive' && recKey(v.rec) !== 'trip') { // 주유·정비·비용 기록 — 운행기록부 필드(계기판 전·후, 주행거리, 업무용)는 넣지 않는다
+    const veh = (ctx && ctx.vehicles || []).find((x) => x.id === v.vehicleId);
+    Object.assign(d, { date: v.date, vehicleId: v.vehicleId || '', vehicleName: veh ? veh.name : '', vehiclePlate: veh ? veh.plate || '' : '' }, carFields(v));
+  }
   else if (type === 'drive') {
     const veh = (ctx && ctx.vehicles || []).find((x) => x.id === v.vehicleId); const a = num(v.odoStart), b = num(v.odoEnd); const dist = b >= a ? b - a : 0;
     const biz = v.kind === '비업무용' ? 0 : (v.bizKm === '' || v.bizKm == null ? dist : Math.min(num(v.bizKm), dist));
@@ -314,6 +349,7 @@ export function buildDocData(type, values, me, ctx) {
 export function valuesFromDoc(doc) {
   const type = typeOfDtype(doc.dtype); const v = defaultValues(type, {}, new Date());
   Object.keys(v).forEach((k) => { if (doc[k] != null) v[k] = doc[k]; });
+  if (type === 'drive') { v.rec = recKey(doc.rec); if (v.rec === 'fuel') v.full = doc.full === false ? FULL_OPTS[1] : FULL_OPTS[0]; if (v.rec === 'repair' && !(v.items || []).length) v.items = [emptyCarItem()]; v.items = (v.items || []).map((r) => ({ name: r.name || '', amount: r.amount == null ? '' : r.amount, memo: r.memo || '' })); }
   if (type === 'spend') {
     v.kind = doc.dtype === 'expense' ? 'expense' : 'purchase';
     const items = Array.isArray(doc.items) && doc.items.length ? doc.items : (doc.item ? [{ name: doc.item, qty: doc.qty, unitPrice: doc.unitPrice, link: (doc.refUrls || [])[0] || '' }] : []);

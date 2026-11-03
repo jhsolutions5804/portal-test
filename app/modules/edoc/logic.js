@@ -1,4 +1,5 @@
-import { docFileName } from '../../shared/doc-filename.js?v=20261103f';
+import { docFileName } from '../../shared/doc-filename.js?v=20261104a';
+import { carSummary } from '../../shared/car-cost.js?v=20261104a';
 export const DOC_TYPES = ['daily', 'leave', 'resign', 'cert', 'purchase', 'expense', 'attend', 'drive'];
 /** 승인으로 끝나고 게시하지 않는 문서(업무일지, 근태 기록 수정 요청 — 승인되면 출퇴근 기록에 바로 반영) */
 export const NO_POST_TYPES = ['daily', 'attend', 'drive'];   // 차량 운행일지도 승인으로 끝(게시 안 함) — 총무가 운행기록부로 취합
@@ -134,6 +135,7 @@ export function summaryOf(d) {
     case 'purchase': return [d.item, d.qty ? '× ' + d.qty : ''].filter(Boolean).join(' ');
     case 'attend': return [d.date, (d.checkIn || '--:--') + ' ~ ' + (d.checkOut || '--:--'), d.workHours != null ? Number(d.workHours).toFixed(1) + 'h' : ''].filter(Boolean).join(' · ');
     case 'expense': return [d.category, won(d.amount) ? won(d.amount) + '원' : '', d.vendor].filter(Boolean).join(' · ');
+    case 'drive': return carSummary(d); // 주유·정비·비용 기록만 요약(운행은 기존처럼 비움)
     default: return '';
   }
 }

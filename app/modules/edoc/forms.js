@@ -12,6 +12,12 @@ function itemLines(d) {
   return [];
 }
 
+/** 정비·수리·비용 항목 줄 — 이름(메모) — 금액 */
+function carItemLines(d) {
+  if (d.rec !== 'repair' || !Array.isArray(d.items)) return [];
+  return d.items.map((r) => (r.name || '') + (r.memo ? ' (' + r.memo + ')' : '') + ' — ' + Number(r.amount || 0).toLocaleString('ko-KR') + '원').filter(Boolean);
+}
+
 export const FORMS = {
   daily: { rows: [
     { label: '프로젝트', get: d => [d.pjtCode, d.pjtName].filter(Boolean).join(' · ') },
@@ -21,8 +27,19 @@ export const FORMS = {
     { label: '특이사항', key: 'issue', fmt: 'multiline' }
   ] },
   drive: { rows: [
-    { label: '운행일자', key: 'date', fmt: 'date' },
+    { label: '운행일자', get: d => (d.rec === 'fuel' || d.rec === 'repair' ? '' : d.date), fmt: 'date' },
     { label: '차량', get: d => [d.vehicleName, d.vehiclePlate ? '(' + d.vehiclePlate + ')' : ''].filter(Boolean).join(' ') },
+    { label: '기록 종류', get: d => (d.rec === 'fuel' ? '주유' : d.rec === 'repair' ? '정비·수리·비용' : '') }, // 운행일지 문서의 주유·정비·기타 비용 기록(rec) — 해당 종류에만 값이 나오고 비면 줄이 숨겨진다
+    { label: '일자', get: d => (d.rec === 'fuel' || d.rec === 'repair' ? d.date : ''), fmt: 'date' },
+    { label: '주유소', get: d => (d.rec === 'fuel' ? d.station : '') },
+    { label: '유종 · 방식', get: d => (d.rec === 'fuel' ? [d.fuelType, d.full === false ? '부분 주유' : '가득 주유'].filter(Boolean).join(' · ') : '') },
+    { label: '누적주행거리', get: d => ((d.rec === 'fuel' || d.rec === 'repair') && d.odo ? Number(d.odo).toLocaleString('ko-KR') + ' km' : '') },
+    { label: '주유량', get: d => (d.rec === 'fuel' && d.liters ? Number(d.liters).toLocaleString('ko-KR') + ' L (리터당 ' + Number(d.unitPrice || 0).toLocaleString('ko-KR') + '원)' : '') },
+    { label: '주유금액', get: d => (d.rec === 'fuel' ? d.amount : ''), fmt: 'money' },
+    { label: '세차비', get: d => (d.rec === 'fuel' && d.washFee ? d.washFee : ''), fmt: 'money' },
+    { label: '정비 구분 · 장소', get: d => (d.rec === 'repair' ? [d.shopKind, d.place].filter(Boolean).join(' · ') : '') },
+    { label: '항목', get: carItemLines, fmt: 'list' },
+    { label: '합계 금액(원)', get: d => (d.rec === 'fuel' || d.rec === 'repair' ? d.cost : ''), fmt: 'money' },
     { label: '프로젝트', get: pjtLine },
     { label: '구분', key: 'kind' },
     { label: '출발 → 도착', get: d => [d.origin, d.destination].filter(Boolean).join(' → ') },

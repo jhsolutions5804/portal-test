@@ -1,6 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261103f';
-import { pageInfo, pagerSync, pagerHtml } from '../../shared/pager.js?v=20261103f';
-import { GTYPES, GKEYS, creditBalance, creditRowsBalance, creditTotals, creditFilterRows, creditSummary, creditCorpTotals, creditFltDefault, CREDIT_NO_CORP, dday, won, leasePayState, dueList, homeSummary, leaseMonthly, driveAllRows, driveFilter, driveTotals, driveByProject, driveByMonth, driveOdoCheck, driveRange, weekStart, DRIVE_STATUS, driveKeywordStats, matchHistory } from './logic.js?v=20261103f';
+import { esc } from '../../core/ui.js?v=20261104a';
+import { pageInfo, pagerSync, pagerHtml } from '../../shared/pager.js?v=20261104a';
+import { costRows, costFilter, costTotals, costByMonth, costByVehicle, avgEconomy, flagText } from '../../shared/car-cost.js?v=20261104a';
+import { GTYPES, GKEYS, creditBalance, creditRowsBalance, creditTotals, creditFilterRows, creditSummary, creditCorpTotals, creditFltDefault, CREDIT_NO_CORP, dday, won, leasePayState, dueList, homeSummary, leaseMonthly, driveAllRows, driveFilter, driveTotals, driveByProject, driveByMonth, driveOdoCheck, driveRange, weekStart, DRIVE_STATUS, driveKeywordStats, matchHistory } from './logic.js?v=20261104a';
 
 const TABS = [['home', '개요'], ['lease', '임대'], ['vehicle', '차량'], ['drive', '운행일지'], ['asset', '자산·장비'], ['credit', '외상 장부'], ['renewal', '갱신 일정']];
 export const tabsHtml = (cur, base) => '<div class="jh-segmented jh-gen__tabs" role="group" aria-label="총무">' + TABS.map(([k, l]) => '<a class="jh-segmented__item" href="' + esc(base || '#/general') + '/' + k + '" aria-pressed="' + (k === cur) + '">' + esc(l) + '</a>').join('') + '</div>';
@@ -184,6 +185,42 @@ export function driveHtml(st) {
     body = (rows.length ? mt + '<h4 class="jh-gen__sub">운행 내역 — 시간 순</h4><div class="jh-gen__scroll"><table class="jh-gen-table"><thead><tr><th>일자</th><th>차량</th><th>사용자</th><th>프로젝트</th><th>출발 → 도착</th><th>구분</th><th class="num">계기판(km)</th><th class="num">주행</th><th class="num">업무용</th><th>목적</th><th>상태</th></tr></thead><tbody>' + lines + '</tbody></table></div>' + pagerHtml(dInfo, 'drive-rows') : '<div class="jh-empty">조건에 맞는 운행일지가 없습니다.</div>');
   }
   const hint = all.length === 0 ? '<div class="jh-alert" data-tone="info" role="status">아직 올라온 운행일지가 없습니다. 직원은 <strong>전자결재 → 작성 → 차량 운행일지</strong>에서 운행 후에 쓰고 <strong>기록하기</strong>만 누르면(결재 없음) 바로 여기에 시간 순으로 모입니다. 차량은 먼저 <strong>차량 탭에서 등록(출고일·출고 시 계기판 포함)</strong>해야 선택할 수 있습니다.</div>' : '';
-  return importPreviewHtml(st) + hint + assignHtml(st) + card('차량 운행일지 취합', bar + '<div class="jh-gen__pad">' + k + notice + '</div>' + body);
+  return importPreviewHtml(st) + hint + assignHtml(st) + card('차량 운행일지 취합', bar + '<div class="jh-gen__pad">' + k + notice + '</div>' + body) + carCostHtml(st);
+}
+/* ───────── 차량 비용(주유·정비·기타) — 운행일지 문서(edoc_drive)의 rec 가 fuel·repair 인 기록. 운행기록부 집계와는 따로 센다. ───────── */
+const C_MODES = [['month', '월별'], ['year', '연도별'], ['all', '전체']];
+/** 차량 비용 화면에 보이는 줄과 거름 정보(화면·내보내기가 같은 결과를 쓴다) */
+export function carSelect(st) {
+  const veh = st.data.vehicle || []; const vById = {}; veh.forEach((v) => { vById[v.id] = v; });
+  const c = st.car; const all = costRows(st.drive.docs, vById);
+  const rows = costFilter(all, { mode: c.mode, ym: c.ym, year: c.year, vehicleId: c.vehicleId, rec: c.rec });
+  const vsel = veh.find((v) => v.id === c.vehicleId) || null;
+  const period = c.mode === 'month' ? c.ym : c.mode === 'year' ? c.year + '년' : '전체 기간';
+  return { all, rows, vsel, veh, period };
+}
+export function carCostHtml(st) {
+  const c = st.car; const s = carSelect(st); const rows = s.rows; const t = costTotals(rows); const eco = avgEconomy(rows.filter((r) => r.rec === 'fuel'));
+  const mode = '<div class="jh-segmented" role="group" aria-label="비용 보기">' + C_MODES.map(([k, l]) => '<button type="button" class="jh-segmented__item" data-c-mode="' + k + '" aria-pressed="' + (c.mode === k) + '">' + esc(l) + '</button>').join('') + '</div>';
+  const pick = c.mode === 'month' ? '<button type="button" class="jh-btn" data-variant="ghost" data-c-nav="-1" aria-label="지난달">◀</button><input class="jh-input" type="month" data-c-ym value="' + esc(c.ym) + '" aria-label="월"><button type="button" class="jh-btn" data-variant="ghost" data-c-nav="1" aria-label="다음 달">▶</button>'
+    : c.mode === 'year' ? '<button type="button" class="jh-btn" data-variant="ghost" data-c-nav="-1" aria-label="작년">◀</button><span class="jh-field__hint">' + esc(c.year) + '년</span><button type="button" class="jh-btn" data-variant="ghost" data-c-nav="1" aria-label="내년">▶</button>' : '';
+  const sel = (key, label, opts, cur) => '<select class="jh-select" data-c-f="' + key + '" aria-label="' + esc(label) + '"><option value="">' + esc(label) + ' 전체</option>' + opts.map(([v, l]) => '<option value="' + esc(v) + '"' + (v === cur ? ' selected' : '') + '>' + esc(l) + '</option>').join('') + '</select>';
+  const bar = '<div class="jh-gen__pad"><div class="jh-gen__bar">' + mode + pick + '</div><div class="jh-gen__bar">' + sel('vehicleId', '차량', s.veh.map((v) => [v.id, v.name + (v.plate ? ' (' + v.plate + ')' : '')]), c.vehicleId) + sel('rec', '종류', [['fuel', '주유'], ['repair', '정비·수리·비용']], c.rec) + '<button type="button" class="jh-btn" data-variant="ghost" data-g-act="c-csv">차량 비용 엑셀(CSV)</button></div></div>';
+  const kpi = [['총 지출', won(t.total) + '원', t.n + '건'], ['주유', won(t.fuel) + '원', t.fuelN + '건 · ' + won(t.liters) + ' L' + (t.avgUnit ? ' · 평균 ' + won(t.avgUnit) + '원/L' : '')], ['정비·수리·기타', won(t.repair) + '원', t.repairN + '건' + (t.wash ? ' · 세차비 ' + won(t.wash) + '원 별도' : '')], ['평균 연비', eco ? eco.kmPerL + ' km/L' : '—', eco ? eco.n + '구간 · ' + won(eco.km) + ' km · ' + eco.liters + ' L' : '가득 주유 기록이 2건 이상 있어야 계산됩니다']];
+  const k = '<div class="jh-kpi-grid">' + kpi.map(([l, v, h]) => '<div class="jh-kpi"><span class="jh-kpi__label">' + esc(l) + '</span><span class="jh-kpi__value">' + esc(v) + '</span><span class="jh-kpi__hint">' + esc(h) + '</span></div>').join('') + '</div>';
+  const flagged = rows.filter((r) => r.flags && r.flags.length);
+  const notice = flagged.length ? '<div class="jh-alert" data-tone="warn" role="status">⚠ 금액·연비를 확인할 기록이 ' + flagged.length + '건 있습니다(리터당 단가가 1,000~3,000원 밖, 계기판이 이전 주유보다 작음, 연비가 3~30 km/L 밖): ' + flagged.slice(0, 4).map((r) => esc(r.date + ' ' + r.vehicle + ' — ' + r.flags.map(flagText).join('·'))).join(' · ') + (flagged.length > 4 ? ' 외 ' + (flagged.length - 4) + '건' : '') + '</div>' : '';
+  const empty = !s.all.length ? '<div class="jh-alert" data-tone="info" role="status">아직 주유·정비 기록이 없습니다. 직원은 <strong>전자결재 → 작성 → 차량 운행일지</strong> 위쪽에서 <strong>주유</strong> 또는 <strong>정비·수리·비용</strong>을 눌러 기록합니다(결재 없음). 가득 주유한 기록이 2건 이상이면 연비가 계산됩니다.</div>' : '';
+  const months = c.mode !== 'month' ? costByMonth(rows) : []; const vs = !c.vehicleId ? costByVehicle(rows) : [];
+  const num = (n) => '<td class="num">' + won(n) + '</td>';
+  const mt = months.length > 1 ? '<h4 class="jh-gen__sub">월별 합계</h4><div class="jh-gen__scroll"><table class="jh-gen-table"><thead><tr><th>월</th><th class="num">건수</th><th class="num">주유(원)</th><th class="num">정비·수리·기타(원)</th><th class="num">세차비(원)</th><th class="num">합계(원)</th></tr></thead><tbody>' + months.map((m) => '<tr><td>' + esc(m.ym) + '</td><td class="num">' + m.n + '</td>' + num(m.fuel) + num(m.repair) + num(m.wash) + num(m.total) + '</tr>').join('') + '</tbody></table></div>' : '';
+  const vt = vs.length > 1 ? '<h4 class="jh-gen__sub">차량별 합계</h4><div class="jh-gen__scroll"><table class="jh-gen-table"><thead><tr><th>차량</th><th class="num">건수</th><th class="num">주유(원)</th><th class="num">정비·수리·기타(원)</th><th class="num">합계(원)</th></tr></thead><tbody>' + vs.map((x) => '<tr><td>' + esc(x.vehicle) + '</td><td class="num">' + x.n + '</td>' + num(x.fuel) + num(x.repair) + num(x.total) + '</tr>').join('') + '</tbody></table></div>' : '';
+  const info = pageInfo(rows.length, pagerSync(st.pg || (st.pg = {}), 'car-rows', [c.mode, c.ym, c.year, c.vehicleId, c.rec].join('|')));
+  const line = (r) => {
+    const what = r.rec === 'fuel' ? esc((r.station || '(주유소 미입력)') + ' · ' + (r.fuelType || '') + ' · ' + r.liters + 'L @' + won(r.unitPrice) + '원 · ' + (r.full ? '가득' : '부분') + (r.washFee ? ' · 세차 ' + won(r.washFee) + '원' : '')) : esc((r.shopKind || '정비') + (r.place ? ' · ' + r.place : '') + ' — ' + r.items.map((x) => x.name + ' ' + won(x.amount) + '원').join(', '));
+    const eco2 = r.rec === 'fuel' ? (r.economy != null ? esc(won(r.segKm) + 'km · ' + r.economy + ' km/L') : '<span class="jh-field__hint">' + (r.full ? '기준 주유' : '부분 주유') + '</span>') : '';
+    return '<tr><td>' + esc(r.date) + '</td><td>' + esc(r.vehicle + (r.plate ? ' ' + r.plate : '')) + '</td><td>' + esc(r.driver) + '</td><td>' + (r.rec === 'fuel' ? '주유' : '정비·비용') + '</td><td class="jh-gen__cell">' + what + '</td><td class="num">' + won(r.cost) + '</td><td>' + eco2 + '</td><td>' + (r.flags || []).map((f) => '<span class="jh-chip" data-tone="warn">' + esc(flagText(f)) + '</span>').join(' ') + '</td></tr>';
+  };
+  const body = rows.length ? mt + vt + '<h4 class="jh-gen__sub">기록 내역 — 최근순</h4><div class="jh-gen__scroll"><table class="jh-gen-table"><thead><tr><th>일자</th><th>차량</th><th>작성자</th><th>종류</th><th>내용</th><th class="num">금액(원)</th><th>구간·연비</th><th>점검</th></tr></thead><tbody>' + rows.slice(info.from, info.to).map(line).join('') + '</tbody></table></div>' + pagerHtml(info, 'car-rows') : '<div class="jh-empty">' + esc(s.period) + ' 기간에 주유·정비 기록이 없습니다.</div>';
+  return card('차량 비용 — 주유·정비·기타', bar + '<div class="jh-gen__pad">' + k + empty + notice + '</div>' + body);
 }
 export { leaseMonthly };

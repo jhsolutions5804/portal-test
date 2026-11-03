@@ -1,29 +1,29 @@
-import { fetchAll, fetchOne } from './data.js?v=20261103f';
-import { listHtml, detailHtml } from './views.js?v=20261103f';
-import { tabCounts, edocPrintTitle } from './logic.js?v=20261103f';
-import { buildHash, navigate } from '../../core/router.js?v=20261103f';
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261103f';
-import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261103f';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261103f';
-import { toast } from '../../core/ui.js?v=20261103f';
-import { confirmDialog } from '../../core/dialog.js?v=20261103f';
-import { loadDirectory, resetDirectory } from './directory.js?v=20261103f';
-import { act, partAct } from './api.js?v=20261103f';
-import * as C from './compose.js?v=20261103f';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261103f';
-import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261103f';
-import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261103f';
-import { kstKey } from './home-daily.js?v=20261103f';
-import { isOffDay } from '../../shared/holidays.js?v=20261103f';
-import { todoCounts } from './home-stats.js?v=20261103f';
-import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261103f';
-import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261103f';
-import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261103f';
-import * as AT from './attach-logic.js?v=20261103f';
-import { uploadFile, removeFile, openFile } from './attach.js?v=20261103f';
-import * as SL from './settings-logic.js?v=20261103f';
-import { chooserHtml, newDocLayoutHtml, composeHtml, partsHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261103f';
-import { printWithTitle } from '../../shared/print-title.js?v=20261103f';
+import { fetchAll, fetchOne } from './data.js?v=20261104a';
+import { listHtml, detailHtml } from './views.js?v=20261104a';
+import { tabCounts, edocPrintTitle } from './logic.js?v=20261104a';
+import { buildHash, navigate } from '../../core/router.js?v=20261104a';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261104a';
+import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261104a';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261104a';
+import { toast } from '../../core/ui.js?v=20261104a';
+import { confirmDialog } from '../../core/dialog.js?v=20261104a';
+import { loadDirectory, resetDirectory } from './directory.js?v=20261104a';
+import { act, partAct } from './api.js?v=20261104a';
+import * as C from './compose.js?v=20261104a';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261104a';
+import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261104a';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261104a';
+import { kstKey } from './home-daily.js?v=20261104a';
+import { isOffDay } from '../../shared/holidays.js?v=20261104a';
+import { todoCounts } from './home-stats.js?v=20261104a';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261104a';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261104a';
+import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261104a';
+import * as AT from './attach-logic.js?v=20261104a';
+import { uploadFile, removeFile, openFile } from './attach.js?v=20261104a';
+import * as SL from './settings-logic.js?v=20261104a';
+import { chooserHtml, newDocLayoutHtml, composeHtml, partsHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261104a';
+import { printWithTitle } from '../../shared/print-title.js?v=20261104a';
 
 
 export const manifest = {
@@ -345,6 +345,7 @@ async function mountCompose(root, route, ctx) {
     }
     if (t.hasAttribute('data-input')) { S.values[t.getAttribute('data-input')] = t.value; clear(t); if (t.getAttribute('data-input') === 'days') updateBalance(); if (S.type === 'attend') updateAttend(); }
     else if (t.hasAttribute('data-item')) { const [i, k] = t.getAttribute('data-item').split('.'); S.values.items[+i][k] = t.value; clear(t); }
+    if (S.type === 'drive') root.querySelectorAll('[data-car-calc]').forEach((el) => { el.textContent = C.carCalcText(el.getAttribute('data-car-calc'), S.values); }); // 주유금액·주유량·항목 금액을 넣을 때마다 리터당 단가·합계를 다시 계산(화면을 다시 그리지 않아 입력이 끊기지 않는다)
   };
   const clear = (el) => { const f = el.closest('[data-invalid="true"]'); if (f) { f.removeAttribute('data-invalid'); } };
   root.onchange = (ev) => {
@@ -368,12 +369,13 @@ async function mountCompose(root, route, ctx) {
     if (pc && S.partsOn) { if (S.busy) return; sync();
       if (pc.hasAttribute('data-part')) { S.values.parts = C.partsToggle(S.values.parts, pc.getAttribute('data-part')); S.values.pjtId = C.mainAfterToggle(S.values.parts, S.values.pjtId); S.partsMain = S.values.pjtId; const sel = root.querySelector('[data-input="pjtId"]'); if (sel) sel.value = S.values.pjtId; S.partsUi.custom = false; S.partsUi.texts = {}; S.errors = Object.assign({}, S.errors); delete S.errors.parts; refreshPreview(); return; }
       S.partsUi.custom = !S.partsUi.custom; if (S.partsUi.custom) { const pv = S.partsUi.preview; S.partsUi.texts = {}; if (pv && Array.isArray(pv.projects)) pv.projects.forEach((r) => { S.partsUi.texts[r.pjt] = String(Math.round(r.bp / 10) / 10); }); } paintParts(); return; }
-    const t = ev.target.closest('[data-act],[data-kind],[data-add-item],[data-remove-item],[data-move],[data-remove],[data-pick],[data-add],[data-attach-pick],[data-attach-remove],[data-attach-open]'); if (!t) return;
+    const t = ev.target.closest('[data-act],[data-kind],[data-rec],[data-add-item],[data-remove-item],[data-move],[data-remove],[data-pick],[data-add],[data-attach-pick],[data-attach-remove],[data-attach-open]'); if (!t) return;
     if (t.hasAttribute('data-attach-pick')) { const inp = root.querySelector('#edoc-file-input'); if (inp) inp.click(); return; }
     if (t.hasAttribute('data-attach-remove')) { dropFile(t.getAttribute('data-attach-remove')); return; }
     if (t.hasAttribute('data-attach-open')) { openFile(t.getAttribute('data-attach-open')).catch((e) => { S.attachError = (e && e.message) || '파일을 열지 못했습니다.'; paintAttach(); }); return; }
+    if (t.hasAttribute('data-rec')) { if (S.edit) return; sync(); S.values = C.setRec(S.values, t.getAttribute('data-rec')); S.errors = {}; paint(); return; } // 운행·주유·정비 비용 — 칸 구성이 바뀐다
     if (t.hasAttribute('data-kind')) { if (S.edit) return; sync(); S.values.kind = t.getAttribute('data-kind'); S.errors = {}; paint(); return; }
-    if (t.hasAttribute('data-add-item')) { sync(); S.values.items = (S.values.items || []).concat(C.emptyItem()); paint(); const last = root.querySelectorAll('[data-item$=".name"]'); if (last.length) last[last.length - 1].focus(); return; }
+    if (t.hasAttribute('data-add-item')) { sync(); S.values.items = (S.values.items || []).concat(C.emptyItem(S.type)); paint(); const last = root.querySelectorAll('[data-item$=".name"]'); if (last.length) last[last.length - 1].focus(); return; }
     if (t.hasAttribute('data-remove-item')) { sync(); S.values.items.splice(+t.getAttribute('data-remove-item'), 1); paint(); return; }
     if (t.hasAttribute('data-move')) { const [uid, d] = t.getAttribute('data-move').split(':'); S.line = C.moveApprover(S.line, uid, +d); paintLine(); return; }
     if (t.hasAttribute('data-remove')) { const r = C.removeFromLine(S.line, t.getAttribute('data-remove'), S.ctx); S.line = r.state; S.ui.lineError = r.error || ''; paintLine(); return; }
@@ -411,7 +413,7 @@ async function mountCompose(root, route, ctx) {
         }
         if (!submit) { toast('임시저장했습니다.'); S.busy = false; navigate('#/edoc/edit/' + ref.dtype + '/' + ref.id, { replace: true }); return; }
         await act({ dtype: ref.dtype, docId: ref.id, action: 'submit', line: S.type === 'drive' ? [] : S.line.approvers, cc: S.type === 'drive' ? [] : S.line.cc });
-        dropCache(); toast(S.type === 'drive' ? '운행일지를 기록했습니다.' : '상신했습니다. 결재 대기 중입니다.');
+        dropCache(); toast(S.type === 'drive' ? (C.recKey(S.values.rec) === 'fuel' ? '주유 기록을 저장했습니다.' : C.recKey(S.values.rec) === 'repair' ? '정비·비용 기록을 저장했습니다.' : '운행일지를 기록했습니다.') : '상신했습니다. 결재 대기 중입니다.');
         navigate('#/edoc/doc/' + ref.dtype + '/' + ref.id + '?tab=mine', { replace: true });
       } catch (e) {
         S.busy = false; S.formError = (e && e.message) || '처리하지 못했습니다.';

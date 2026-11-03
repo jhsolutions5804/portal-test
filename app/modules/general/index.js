@@ -1,9 +1,11 @@
-import { db, auth, functions, httpsCallable, collection, getDocs, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261103f';
-import { esc, toast } from '../../core/ui.js?v=20261103f';
-import { confirmDialog } from '../../core/dialog.js?v=20261103f';
-import { pagerAction, pagerApply } from '../../shared/pager.js?v=20261103f';
-import { GTYPES, GKEYS, kstToday, formToDoc, docToForm, newDefaults, SEED, driveCsv, addDays, parseDriveHistory, assignProject, matchHistory, creditFltDefault, creditCsv } from './logic.js?v=20261103f';
-import { tabsHtml, homeHtml, listHtml, tableHtml, driveHtml, driveSelect, creditLogAreaHtml, creditCorpHtml, creditShownIdx } from './view.js?v=20261103f';
+import { db, auth, functions, httpsCallable, collection, getDocs, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261104a';
+import { esc, toast } from '../../core/ui.js?v=20261104a';
+import { confirmDialog } from '../../core/dialog.js?v=20261104a';
+import { pagerAction, pagerApply } from '../../shared/pager.js?v=20261104a';
+import { GTYPES, GKEYS, kstToday, formToDoc, docToForm, newDefaults, SEED, driveCsv, addDays, parseDriveHistory, assignProject, matchHistory, creditFltDefault, creditCsv } from './logic.js?v=20261104a';
+import { carCostHtml, carSelect } from './view.js?v=20261104a';
+import { carCostCsv } from '../../shared/car-cost.js?v=20261104a';
+import { tabsHtml, homeHtml, listHtml, tableHtml, driveHtml, driveSelect, creditLogAreaHtml, creditCorpHtml, creditShownIdx } from './view.js?v=20261104a';
 
 /** 총무(플랫폼 기본 모듈): 임대·차량·자산·갱신 일정을 한 곳에서. 관리자 전용 — 데이터는 general_* 컬렉션(보안 규칙에서 관리자 전용으로 잠가야 한다) */
 /* 사이드바에는 따로 올리지 않는다(modules/index.js 의 MODULES 에 없음) — 인사총무 구역으로만 열린다. manifest 는 모듈 규약상 남겨 둔다 */
@@ -14,7 +16,7 @@ export const mountSection = (root, route, ctx) => mount(root, route, ctx, { base
 export async function mount(root, route, ctx, opts) {
   const BASE = (opts && opts.base) || '#/general'; const want = route.segs[0]; const tab = want === 'home' || want === 'drive' || GKEYS.includes(want) ? want : 'home'; const openId = route.segs[1] || '';
   root.onclick = null; root.oninput = null; root.onchange = null;
-  const st = { drive: { mode: 'all', anchor: kstToday(), ym: kstToday().slice(0, 7), vehicleId: '', driver: '', pjtKey: '', approvedOnly: false, docs: [], hist: [], imp: null, projects: [], pa: { kw: '', pjt: '', from: '', to: '', over: false } }, base: BASE, data: {}, pg: {}, today: kstToday(), q: '', onlyActive: true, edit: null, seed: { lease: SEED.lease.length, vehicle: SEED.vehicle.length, asset: SEED.asset.length, renewal: SEED.renewal.length } };
+  const st = { drive: { mode: 'all', anchor: kstToday(), ym: kstToday().slice(0, 7), vehicleId: '', driver: '', pjtKey: '', approvedOnly: false, docs: [], hist: [], imp: null, projects: [], pa: { kw: '', pjt: '', from: '', to: '', over: false } }, car: { mode: 'month', ym: kstToday().slice(0, 7), year: kstToday().slice(0, 4), vehicleId: '', rec: '' }, base: BASE, data: {}, pg: {}, today: kstToday(), q: '', onlyActive: true, edit: null, seed: { lease: SEED.lease.length, vehicle: SEED.vehicle.length, asset: SEED.asset.length, renewal: SEED.renewal.length } };
   root.innerHTML = '<div class="jh-general">' + ((opts && opts.noTabs) ? '' : tabsHtml(tab, BASE)) + '<div id="g-body" aria-busy="true"><div class="jh-skeleton" style="height:var(--u-220)"></div></div></div>';
   const body = root.querySelector('#g-body'); const need = tab === 'home' ? GKEYS : tab === 'drive' ? ['vehicle'] : [tab];
   const load = async () => { await Promise.all(need.map(async (k) => { const s = await getDocs(collection(db, GTYPES[k].coll)); const arr = []; s.forEach((d) => arr.push(Object.assign({ id: d.id }, d.data()))); arr.sort((a, b) => String(GTYPES[k].label(a)).localeCompare(String(GTYPES[k].label(b)), 'ko')); st.data[k] = arr; })); };
@@ -68,7 +70,10 @@ const onPager = (ev) => {
         } catch (e) { toast('가져오지 못했습니다: ' + ((e && e.message) || '')); }
         return;
       }
-      const dm = t.closest('[data-d-mode]'); if (dm) { f.mode = dm.getAttribute('data-d-mode'); if (f.mode !== 'project') f.pjtKey = ''; paint(); return; }
+      const cm = t.closest('[data-c-mode]'); if (cm) { st.car.mode = cm.getAttribute('data-c-mode'); paint(); return; } // ── 차량 비용(주유·정비): 보기·이동·내보내기
+    const cn = t.closest('[data-c-nav]'); if (cn) { const n = Number(cn.getAttribute('data-c-nav')); if (st.car.mode === 'month') { const [y, m] = st.car.ym.split('-').map(Number); st.car.ym = new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7); } else if (st.car.mode === 'year') st.car.year = String(Number(st.car.year) + n); paint(); return; }
+    if (t.closest('[data-g-act="c-csv"]')) { const sel = carSelect(st); const nm = sel.vsel ? sel.vsel.name : '전체 차량'; const blob = new Blob([carCostCsv(sel.rows, '차량 비용 — ' + nm + ' (' + sel.period + ')')], { type: 'text/csv;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '차량비용_' + nm.replace(/[^\w가-힣]+/g, '_') + '_' + kstToday() + '.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); return; }
+    const dm = t.closest('[data-d-mode]'); if (dm) { f.mode = dm.getAttribute('data-d-mode'); if (f.mode !== 'project') f.pjtKey = ''; paint(); return; }
       const dn = t.closest('[data-d-nav]'); if (dn) { const n = Number(dn.getAttribute('data-d-nav')); if (f.mode === 'day') f.anchor = addDays(f.anchor, n); else if (f.mode === 'week') f.anchor = addDays(f.anchor, 7 * n); else if (f.mode === 'month') { const [y, m] = f.ym.split('-').map(Number); f.ym = new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7); } paint(); return; }
       const dp = t.closest('[data-d-pjt]'); if (dp) { f.pjtKey = dp.getAttribute('data-d-pjt'); paint(); return; }
       if (t.closest('[data-g-act="d-csv"]')) { const sel = driveSelect(st); const nm = sel.vsel ? sel.vsel.name : '전체 차량'; const blob = new Blob([driveCsv(sel.rows, '차량 운행기록부 — ' + nm + ' (' + (f.mode === 'month' ? f.ym : f.mode === 'day' ? f.anchor : '기간') + ')')], { type: 'text/csv;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '운행기록부_' + nm.replace(/[^\w가-힣]+/g, '_') + '_' + kstToday() + '.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); return; }
@@ -111,7 +116,9 @@ const onPager = (ev) => {
       if (t.matches('[data-d-pa-over]')) { f.pa.over = t.checked; paint(); return; }
       if (t.matches('[data-d-import]')) { const file = t.files && t.files[0]; t.value = ''; if (!file) return; file.text().then((txt) => { f.imp = parseDriveHistory(txt); paint(); }).catch(() => { f.imp = { ok: false, errors: ['파일을 읽지 못했습니다.'] }; paint(); }); return; }
       if (t.matches('[data-d-anchor]')) { if (/^\d{4}-\d{2}-\d{2}$/.test(t.value)) { f.anchor = t.value; paint(); } return; }
-      if (t.matches('[data-d-ym]')) { if (/^\d{4}-\d{2}$/.test(t.value)) { f.ym = t.value; paint(); } return; }
+      if (t.matches('[data-c-ym]')) { if (/^\d{4}-\d{2}$/.test(t.value)) { st.car.ym = t.value; paint(); } return; }
+    if (t.matches('[data-c-f]')) { st.car[t.getAttribute('data-c-f')] = t.value; paint(); return; }
+    if (t.matches('[data-d-ym]')) { if (/^\d{4}-\d{2}$/.test(t.value)) { f.ym = t.value; paint(); } return; }
       if (t.matches('[data-d-f]')) { f[t.getAttribute('data-d-f')] = t.value; paint(); return; }
       if (t.matches('[data-d-approved]')) { f.approvedOnly = t.checked; paint(); return; }
     }
