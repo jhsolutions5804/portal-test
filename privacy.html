@@ -10,7 +10,7 @@
 @media (prefers-color-scheme: dark) { :root { --bg:#12161c; --ink:#e7eaee; --ink2:#a7b0bb; --line:#2c333c; --head:#1a2029; --accent:#6aa8ee; } }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body { margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif; line-height:1.75; padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px); }
+body { margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif; line-height:1.75; word-break:keep-all; overflow-wrap:break-word; padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px); }
 main { max-width:780px; margin:0 auto; padding:28px 18px 56px; }
 h1 { font-size:1.55rem; margin:0 0 6px; line-height:1.35; }
 h2 { font-size:1.12rem; margin:34px 0 10px; padding-top:6px; border-top:1px solid var(--line); }
@@ -18,7 +18,7 @@ p { margin:8px 0; }
 .meta { color:var(--ink2); font-size:.92rem; }
 .scroll { overflow-x:auto; margin:10px 0; }
 table { border-collapse:collapse; width:100%; min-width:520px; font-size:.93rem; }
-th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; word-break:keep-all; overflow-wrap:anywhere; }
 th { background:var(--head); font-weight:600; white-space:nowrap; }
 ul { margin:8px 0; padding-left:1.3em; }
 a { color:var(--accent); }
