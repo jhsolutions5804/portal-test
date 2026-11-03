@@ -11,6 +11,7 @@ import * as plan from './plan/index.js?v=20261103b';
 import * as general from './general/index.js?v=20261103b';
 import * as hr from './hr/index.js?v=20261103b';
 import * as entry from './entry/index.js?v=20261103b';
+import * as myinfo from './myinfo/index.js?v=20261103b';
 import * as pjt from './pjt/index.js?v=20261103b';
 import { modules as legacy, hostNative } from './legacy/index.js?v=20261103b';
 
