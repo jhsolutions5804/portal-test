@@ -1,7 +1,7 @@
 /* 입사 입력(근로자 직접 기입) 화면 — Microsoft 로그인으로 들어온 "입사 입력 전용 계정"(portal_users.status = onboarding)에게만 보이는 전체 화면.
  * 저장·제출·서류 올리기는 전부 서버 함수 entryAct 로만 한다(클라이언트는 entry_* 컬렉션을 읽지도 쓰지도 못함). 설계서 app-docs/worker-self-entry-design.md */
-import { functions, httpsCallable } from '../core/firebase.js?v=20261104m';
-import { esc } from '../core/ui.js?v=20261104m';
+import { functions, httpsCallable } from '../core/firebase.js?v=20261104n';
+import { esc } from '../core/ui.js?v=20261104n';
 
 const CONSENT_TEXT = '「개인정보 보호법」에 따라 아래와 같이 개인정보를 수집·이용하는 데 동의합니다.\n' +
   '① 수집·이용 목적: 입사 처리, 근로계약 체결, 4대보험 신고, 인사관리(근로자 명부), 현장 출입 및 발주처 제출 서류 작성\n' +

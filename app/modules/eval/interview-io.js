@@ -1,11 +1,11 @@
 /* 인사평가 면담 — 불러오기·저장·클릭/입력 처리. 읽는 것: 근로자 명부(평가 대상자), interviews/{근로자}/evidence·review, 직원 자기평가(eval_submissions kind=self → 없으면 evaluations/{근로자}/cycles/{연도}.self).
  * 쓰는 것: 모두 관리자 전용 interviews/{근로자} 아래(새 보안 규칙 없음 — 컬렉션 interviews 의 기존 관리자 전용 규칙이 보호). 완료 처리하면 interviews/{근로자}/records/eval-{연도} 에 인사 면담 이력 한 건을 남긴다.
  * deps: { db, collection, getDocs, getDoc, setDoc, addDoc, deleteDoc, doc, query, where, serverTimestamp, toast, confirmDialog, paint, st, ctx, year?, today?, openWindow? } */
-import { isEvalTarget } from './evaluation.js?v=20261104m';
-import { sortByEmpNo } from '../../shared/worker-order.js?v=20261104m';
-import { resultPrintHtml } from './result-report.js?v=20261104m';
-import { reviewHtml, reviewPrintTitle } from './interview-report.js?v=20261104m';
-import { evalYearNow, kstToday, evidencePath, reviewDocPath, hrRecordPath, reviewFromDoc, prepOf, newEvidence, buildEvidence, buildReview, hrRecordOf, rowSummary, reviewStatusOf, evidenceSorted } from './interview-logic.js?v=20261104m';
+import { isEvalTarget } from './evaluation.js?v=20261104n';
+import { sortByEmpNo } from '../../shared/worker-order.js?v=20261104n';
+import { resultPrintHtml } from './result-report.js?v=20261104n';
+import { reviewHtml, reviewPrintTitle } from './interview-report.js?v=20261104n';
+import { evalYearNow, kstToday, evidencePath, reviewDocPath, hrRecordPath, reviewFromDoc, prepOf, newEvidence, buildEvidence, buildReview, hrRecordOf, rowSummary, reviewStatusOf, evidenceSorted } from './interview-logic.js?v=20261104n';
 
 const msgOf = (e) => (e && e.code === 'permission-denied' ? '권한이 없습니다(관리자 계정이 필요합니다).' : String((e && e.message) || ''));
 export function createInterviewController(deps) {

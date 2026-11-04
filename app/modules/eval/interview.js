@@ -1,11 +1,11 @@
 /* 인사평가 면담 화면 — 사장단·관리자 전용(면담 내용은 직원에게 공개되지 않는 인사 정보). 목록 → 직원 상세.
  * 보안: 읽기·쓰기는 컬렉션 interviews 의 기존 관리자 전용 보안 규칙이 강제하고, 화면도 같은 기준(isEvalOps + 관리자 계정)으로 막는다. */
-import { db, collection, getDocs, getDoc, setDoc, addDoc, deleteDoc, doc, query, where, serverTimestamp } from '../../core/firebase.js?v=20261104m';
-import { confirmDialog } from '../../core/dialog.js?v=20261104m';
-import { esc, toast } from '../../core/ui.js?v=20261104m';
-import { isInterviewUser } from '../../shared/eval-perm.js?v=20261104m';
-import { interviewBoardHtml, interviewDetailHtml, NO_ACCESS } from './interview-view.js?v=20261104m';
-import { createInterviewController } from './interview-io.js?v=20261104m';
+import { db, collection, getDocs, getDoc, setDoc, addDoc, deleteDoc, doc, query, where, serverTimestamp } from '../../core/firebase.js?v=20261104n';
+import { confirmDialog } from '../../core/dialog.js?v=20261104n';
+import { esc, toast } from '../../core/ui.js?v=20261104n';
+import { isInterviewUser } from '../../shared/eval-perm.js?v=20261104n';
+import { interviewBoardHtml, interviewDetailHtml, NO_ACCESS } from './interview-view.js?v=20261104n';
+import { createInterviewController } from './interview-io.js?v=20261104n';
 
 export const canOpenInterview = isInterviewUser;
 export async function mountInterview(root, ctx) {

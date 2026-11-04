@@ -1,8 +1,8 @@
 /* 포털 문의·건의 창 — 순수 화면 부분(파이어베이스 없이 시험 가능). 저장·이벤트 연결은 feedback.js
  * 2026-11-02: 완료 탭 분리 · 댓글(조치 내용) · 건의자 알림(버튼의 점 + 「내 건의」 탭) 추가 */
-import { esc } from '../core/ui.js?v=20261104m';
-import { pageInfo, pagerSync, pagerHtml } from './pager.js?v=20261104m';
-import { FB_CATEGORIES, FB_MAX, FB_REPLY_MAX, categoryLabel, statusLabel, myStatusLabel, countByStatus, dayText, sortNewestFirst, splitInbox, unreadCount } from './feedback-logic.js?v=20261104m';
+import { esc } from '../core/ui.js?v=20261104n';
+import { pageInfo, pagerSync, pagerHtml } from './pager.js?v=20261104n';
+import { FB_CATEGORIES, FB_MAX, FB_REPLY_MAX, categoryLabel, statusLabel, myStatusLabel, countByStatus, dayText, sortNewestFirst, splitInbox, unreadCount } from './feedback-logic.js?v=20261104n';
 export const newState = (me) => ({ open: false, tab: 'send', category: 'inconvenience', text: '', busy: false, msg: '', msgTone: '', isAdmin: !!(me && me.admin), rows: [], loaded: false, err: '', mine: [], mineLoaded: false, newIds: {}, expand: '', replies: {}, draft: '', pg: {}, last: 0, unread: false });
 export const buttonHtml = (open, unread) => '<button type="button" class="jh-fb__btn" data-fb-toggle aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="jh-fb-panel" title="' + (unread ? '새 답변이 도착했습니다' : '사용 중 불편한 점을 남겨 주세요') + '"><span aria-hidden="true">💬</span><span class="jh-fb__lbl">' + (unread ? '새 답변' : '문의·건의') + '</span>' + (unread ? '<span class="jh-fb__dot" role="status" aria-label="새 답변이 있습니다"></span>' : '') + '</button>';
 export function sendHtml(st) {

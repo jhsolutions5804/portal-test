@@ -1,8 +1,8 @@
 /* 인사평가 면담 기록서(인쇄용) — 면담에서 합의한 실행 계획을 한 장으로. 직원·면담자 서명란이 있다.
  * 결과 통보서와 같은 방식으로 새 창에 문서를 쓰고 인쇄한다(result-report.js 의 resultPrintHtml 이 제목·인쇄 스크립트를 더한다). 이 문서는 점수·연봉을 약속하는 문서가 아니다. */
-import { esc } from '../../core/ui.js?v=20261104m';
-import { docFileName } from '../../shared/doc-filename.js?v=20261104m';
-import { RC_LABELS, REVIEW_STATUS_TEXT } from './interview-logic.js?v=20261104m';
+import { esc } from '../../core/ui.js?v=20261104n';
+import { docFileName } from '../../shared/doc-filename.js?v=20261104n';
+import { RC_LABELS, REVIEW_STATUS_TEXT } from './interview-logic.js?v=20261104n';
 export const REVIEW_TITLE = '인사평가 면담 기록서';
 /** 문서 이름 — 종류 - 이름 - 평가 연도(점수·부서·직급은 넣지 않는다) */
 export function reviewPrintTitle(d) { const x = d && typeof d === 'object' ? d : {}; const w = x.worker && typeof x.worker === 'object' ? x.worker : {}; return docFileName({ group: 'person', kind: REVIEW_TITLE, name: w.name, year: x.year }); }

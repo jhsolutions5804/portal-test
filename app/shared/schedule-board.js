@@ -1,13 +1,13 @@
 /* 영업기획·재무회계 일정 보드 — 저장·이벤트 연결. 화면은 schedule-view.js, 규칙은 schedule-logic.js. 보안 규칙: 관리자만, 자동 일정은 서버만.
  * 일정은 저장되면 서버 함수가 Outlook 공유 사서함으로 보낸다(포털 → Outlook 한 방향) — 이 파일은 Outlook 을 직접 부르지 않는다. */
-import { db, collection, getDocs, query, where, addDoc, updateDoc, deleteDoc, doc, writeBatch, serverTimestamp } from '../core/firebase.js?v=20261104m';
-import { toast } from '../core/ui.js?v=20261104m';
-import { confirmDialog } from '../core/dialog.js?v=20261104m';
-import { pagerAction, pagerApply } from './pager.js?v=20261104m';
-import { addDays } from './calendar-event.js?v=20261104m';
-import { monthRange, shiftMonth, buildScheduleDoc, buildSeries, canEditDoc, seriesTargets, scheduleEnabledFor } from './schedule-logic.js?v=20261104m';
-import { kstToday, newState, emptyForm, boardHtml } from './schedule-view.js?v=20261104m';
-export { SCHEDULE_CONFIG } from './schedule-logic.js?v=20261104m';
+import { db, collection, getDocs, query, where, addDoc, updateDoc, deleteDoc, doc, writeBatch, serverTimestamp } from '../core/firebase.js?v=20261104n';
+import { toast } from '../core/ui.js?v=20261104n';
+import { confirmDialog } from '../core/dialog.js?v=20261104n';
+import { pagerAction, pagerApply } from './pager.js?v=20261104n';
+import { addDays } from './calendar-event.js?v=20261104n';
+import { monthRange, shiftMonth, buildScheduleDoc, buildSeries, canEditDoc, seriesTargets, scheduleEnabledFor } from './schedule-logic.js?v=20261104n';
+import { kstToday, newState, emptyForm, boardHtml } from './schedule-view.js?v=20261104n';
+export { SCHEDULE_CONFIG } from './schedule-logic.js?v=20261104n';
 
 const friendly = (e) => (e && e.code === 'permission-denied') ? '이 일정은 관리자만 볼 수 있습니다.' : '일정을 불러오지 못했습니다: ' + ((e && e.message) || e);
 /** 마운트 — root 에 그리고 이벤트를 연결한다. cfg = SCHEDULE_CONFIG.plan | .finance */

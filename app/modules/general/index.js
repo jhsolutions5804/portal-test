@@ -1,11 +1,11 @@
-import { db, auth, functions, httpsCallable, collection, getDocs, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261104m';
-import { esc, toast } from '../../core/ui.js?v=20261104m';
-import { confirmDialog } from '../../core/dialog.js?v=20261104m';
-import { pagerAction, pagerApply } from '../../shared/pager.js?v=20261104m';
-import { GTYPES, GKEYS, kstToday, formToDoc, docToForm, newDefaults, SEED, driveCsv, addDays, parseDriveHistory, assignProject, matchHistory, creditFltDefault, creditCsv } from './logic.js?v=20261104m';
-import { carCostHtml, carSelect } from './view.js?v=20261104m';
-import { carCostCsv } from '../../shared/car-cost.js?v=20261104m';
-import { tabsHtml, homeHtml, listHtml, tableHtml, driveHtml, driveSelect, creditLogAreaHtml, creditCorpHtml, creditShownIdx } from './view.js?v=20261104m';
+import { db, auth, functions, httpsCallable, collection, getDocs, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261104n';
+import { esc, toast } from '../../core/ui.js?v=20261104n';
+import { confirmDialog } from '../../core/dialog.js?v=20261104n';
+import { pagerAction, pagerApply } from '../../shared/pager.js?v=20261104n';
+import { GTYPES, GKEYS, kstToday, formToDoc, docToForm, newDefaults, SEED, driveCsv, addDays, parseDriveHistory, assignProject, matchHistory, creditFltDefault, creditCsv } from './logic.js?v=20261104n';
+import { carCostHtml, carSelect } from './view.js?v=20261104n';
+import { carCostCsv } from '../../shared/car-cost.js?v=20261104n';
+import { tabsHtml, homeHtml, listHtml, tableHtml, driveHtml, driveSelect, creditLogAreaHtml, creditCorpHtml, creditShownIdx } from './view.js?v=20261104n';
 
 /** 총무(플랫폼 기본 모듈): 임대·차량·자산·갱신 일정을 한 곳에서. 관리자 전용 — 데이터는 general_* 컬렉션(보안 규칙에서 관리자 전용으로 잠가야 한다) */
 /* 사이드바에는 따로 올리지 않는다(modules/index.js 의 MODULES 에 없음) — 인사총무 구역으로만 열린다. manifest 는 모듈 규약상 남겨 둔다 */
