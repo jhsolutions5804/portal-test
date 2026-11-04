@@ -1,29 +1,29 @@
-import { fetchAll, fetchOne } from './data.js?v=20261104b';
-import { listHtml, detailHtml } from './views.js?v=20261104b';
-import { tabCounts, edocPrintTitle } from './logic.js?v=20261104b';
-import { buildHash, navigate } from '../../core/router.js?v=20261104b';
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261104b';
-import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261104b';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261104b';
-import { toast } from '../../core/ui.js?v=20261104b';
-import { confirmDialog } from '../../core/dialog.js?v=20261104b';
-import { loadDirectory, resetDirectory } from './directory.js?v=20261104b';
-import { act, partAct } from './api.js?v=20261104b';
-import * as C from './compose.js?v=20261104b';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261104b';
-import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261104b';
-import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261104b';
-import { kstKey } from './home-daily.js?v=20261104b';
-import { isOffDay } from '../../shared/holidays.js?v=20261104b';
-import { todoCounts } from './home-stats.js?v=20261104b';
-import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261104b';
-import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261104b';
-import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261104b';
-import * as AT from './attach-logic.js?v=20261104b';
-import { uploadFile, removeFile, openFile } from './attach.js?v=20261104b';
-import * as SL from './settings-logic.js?v=20261104b';
-import { chooserHtml, newDocLayoutHtml, composeHtml, partsHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261104b';
-import { printWithTitle } from '../../shared/print-title.js?v=20261104b';
+import { fetchAll, fetchOne } from './data.js?v=20261104c';
+import { listHtml, detailHtml } from './views.js?v=20261104c';
+import { tabCounts, edocPrintTitle } from './logic.js?v=20261104c';
+import { buildHash, navigate } from '../../core/router.js?v=20261104c';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261104c';
+import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261104c';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261104c';
+import { toast } from '../../core/ui.js?v=20261104c';
+import { confirmDialog } from '../../core/dialog.js?v=20261104c';
+import { loadDirectory, resetDirectory } from './directory.js?v=20261104c';
+import { act, partAct } from './api.js?v=20261104c';
+import * as C from './compose.js?v=20261104c';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261104c';
+import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261104c';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261104c';
+import { kstKey } from './home-daily.js?v=20261104c';
+import { isOffDay } from '../../shared/holidays.js?v=20261104c';
+import { todoCounts } from './home-stats.js?v=20261104c';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261104c';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261104c';
+import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261104c';
+import * as AT from './attach-logic.js?v=20261104c';
+import { uploadFile, removeFile, openFile } from './attach.js?v=20261104c';
+import * as SL from './settings-logic.js?v=20261104c';
+import { chooserHtml, newDocLayoutHtml, composeHtml, partsHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261104c';
+import { printWithTitle } from '../../shared/print-title.js?v=20261104c';
 
 
 export const manifest = {
@@ -369,10 +369,13 @@ async function mountCompose(root, route, ctx) {
     if (pc && S.partsOn) { if (S.busy) return; sync();
       if (pc.hasAttribute('data-part')) { S.values.parts = C.partsToggle(S.values.parts, pc.getAttribute('data-part')); S.values.pjtId = C.mainAfterToggle(S.values.parts, S.values.pjtId); S.partsMain = S.values.pjtId; const sel = root.querySelector('[data-input="pjtId"]'); if (sel) sel.value = S.values.pjtId; S.partsUi.custom = false; S.partsUi.texts = {}; S.errors = Object.assign({}, S.errors); delete S.errors.parts; refreshPreview(); return; }
       S.partsUi.custom = !S.partsUi.custom; if (S.partsUi.custom) { const pv = S.partsUi.preview; S.partsUi.texts = {}; if (pv && Array.isArray(pv.projects)) pv.projects.forEach((r) => { S.partsUi.texts[r.pjt] = String(Math.round(r.bp / 10) / 10); }); } paintParts(); return; }
-    const t = ev.target.closest('[data-act],[data-kind],[data-rec],[data-add-item],[data-remove-item],[data-move],[data-remove],[data-pick],[data-add],[data-attach-pick],[data-attach-remove],[data-attach-open]'); if (!t) return;
+    const t = ev.target.closest('[data-act],[data-kind],[data-rec],[data-car-pick],[data-car-tab],[data-car-toggle],[data-add-item],[data-remove-item],[data-move],[data-remove],[data-pick],[data-add],[data-attach-pick],[data-attach-remove],[data-attach-open]'); if (!t) return;
     if (t.hasAttribute('data-attach-pick')) { const inp = root.querySelector('#edoc-file-input'); if (inp) inp.click(); return; }
     if (t.hasAttribute('data-attach-remove')) { dropFile(t.getAttribute('data-attach-remove')); return; }
     if (t.hasAttribute('data-attach-open')) { openFile(t.getAttribute('data-attach-open')).catch((e) => { S.attachError = (e && e.message) || '파일을 열지 못했습니다.'; paintAttach(); }); return; }
+    if (t.hasAttribute('data-car-tab')) { S.ui.carTab = t.getAttribute('data-car-tab'); sync(); paint(); return; } // 정비·비용 항목 선택: 정비/기타 탭, 접기·열기, 항목 단추(누르면 줄 추가 또는 그 줄로 이동)
+    if (t.hasAttribute('data-car-toggle')) { S.ui.carOpen = S.ui.carOpen === false; sync(); paint(); return; }
+    if (t.hasAttribute('data-car-pick')) { sync(); const r = C.pickCarItem(S.values, t.getAttribute('data-car-pick')); if (r.index < 0) return; S.values = r.values; paint(); const amt = [...root.querySelectorAll('[data-item="' + r.index + '.amount"]')].pop(); if (amt) { amt.focus(); if (amt.scrollIntoView) amt.scrollIntoView({ block: 'center' }); } return; }
     if (t.hasAttribute('data-rec')) { if (S.edit) return; sync(); S.values = C.setRec(S.values, t.getAttribute('data-rec')); S.errors = {}; paint(); return; } // 운행·주유·정비 비용 — 칸 구성이 바뀐다
     if (t.hasAttribute('data-kind')) { if (S.edit) return; sync(); S.values.kind = t.getAttribute('data-kind'); S.errors = {}; paint(); return; }
     if (t.hasAttribute('data-add-item')) { sync(); S.values.items = (S.values.items || []).concat(C.emptyItem(S.type)); paint(); const last = root.querySelectorAll('[data-item$=".name"]'); if (last.length) last[last.length - 1].focus(); return; }

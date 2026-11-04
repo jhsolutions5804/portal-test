@@ -1,7 +1,7 @@
 /* 작성 화면의 순수 로직 — 양식 정의, 검증, 문서 데이터 만들기, 결재선 편집. (화면·Firestore 와 분리해 시험한다) */
 
-import { halfwidthDeep } from '../../shared/text-fix.js?v=20261104b';
-import { recKey, FUEL_TYPES, FULL_OPTS, SHOP_KINDS, carChecks, carFields, emptyCarItem, carCalcText } from '../../shared/car-cost.js?v=20261104b'; // 주유·정비·비용 기록(운행일지 문서의 rec 필드)
+import { halfwidthDeep } from '../../shared/text-fix.js?v=20261104c';
+import { recKey, FUEL_TYPES, FULL_OPTS, SHOP_KINDS, carChecks, carFields, emptyCarItem, carCalcText } from '../../shared/car-cost.js?v=20261104c'; // 주유·정비·비용 기록(운행일지 문서의 rec 필드)
 export const MAX_APPROVERS = 5;
 export const MAX_PARTS = 6; // 한 사람의 하루에 나눌 수 있는 참여 프로젝트 수(서버 pjt-part-act 의 day-split 규칙과 같다)
 export const MAX_CC = 10;
@@ -241,6 +241,19 @@ export function resetCompose(S, me) {
   S.errors = {}; S.formError = ''; S.busy = false; S.files = []; S.uploading = []; S.attachError = ''; S.docRef = null; S.createdMs = null;
   S.line = initialLine(S.ctx);
   return S;
+}
+/** 정비·비용 항목 단추를 눌렀을 때: 이미 있는 항목이면 그 줄을 가리키고, 비어 있는 줄이 있으면 거기에 채우고, 없으면 새 줄을 더한다(최대 20줄). 돌려주는 index 는 금액 칸에 커서를 둘 줄(-1 이면 더할 수 없음). */
+export function pickCarItem(values, name) {
+  const items = (values.items || []).map((r) => Object.assign({}, r)); const nm = String(name || '').trim();
+  if (!nm) return { values, index: -1 };
+  let idx = items.findIndex((r) => String(r.name || '').trim() === nm);
+  if (idx < 0) {
+    const blank = items.findIndex((r) => !String(r.name || '').trim() && !String(r.amount == null ? '' : r.amount).trim() && !String(r.memo || '').trim());
+    if (blank >= 0) { items[blank].name = nm; idx = blank; }
+    else if (items.length >= 20) return { values, index: -1 };
+    else { items.push(Object.assign(emptyCarItem(), { name: nm })); idx = items.length - 1; }
+  }
+  return { values: Object.assign({}, values, { items }), index: idx };
 }
 export function setRec(values, rec) { const v = Object.assign({}, values, { rec: recKey(rec) }); if (v.rec === 'repair' && !(v.items || []).length) v.items = [emptyCarItem()]; return v; }
 

@@ -2,7 +2,7 @@
 // 같은 운행일지 문서(edoc_drive)에 rec 필드(fuel·repair)로 구분해 담는다. 서버·보안 규칙은 바뀌지 않는다.
 // 지켜야 할 것: ①연비는 가득 주유 기록끼리(부분 주유 포함) 계산 ②금액 입력 실수(단가 이상)를 막음 ③주유·정비가 운행기록부(주행거리·업무사용비율)에 섞이지 않음 ④기존 운행 입력 화면은 그대로.
 import * as K from '../app/shared/car-cost.js';
-import { fieldsFor, fieldRows, defaultValues, validate, buildDocData, buildTitle, valuesFromDoc, setRec, emptyItem } from '../app/modules/edoc/compose.js';
+import { fieldsFor, fieldRows, defaultValues, validate, buildDocData, buildTitle, valuesFromDoc, setRec, emptyItem, pickCarItem } from '../app/modules/edoc/compose.js';
 import { composeHtml } from '../app/modules/edoc/compose-view.js';
 import { summaryOf } from '../app/modules/edoc/logic.js';
 import { FORMS } from '../app/modules/edoc/forms.js';
@@ -138,10 +138,27 @@ ok(/data-rec="trip" aria-pressed="true"/.test(hTrip) && /data-rec="fuel" aria-pr
 ok(/data-input="origin"/.test(hTrip) && /data-input="odoStart"/.test(hTrip) && !/data-input="liters"/.test(hTrip) && !/jh-car-items/.test(hTrip), '화면(운행): 기존 입력 칸 그대로, 주유·정비 칸은 없다');
 ok(/data-rec="fuel" aria-pressed="true"/.test(hFuel) && /data-input="station"/.test(hFuel) && /data-input="liters"[^>]*/.test(hFuel) && /step="0\.01"/.test(hFuel) && /data-car-calc="fuelSum"/.test(hFuel) && /리터당 2,320원 · 지출 합계 150,000원/.test(hFuel) && !/data-input="origin"/.test(hFuel), '★ 화면(주유): 주유소·유종·금액·주유량(소수 둘째 자리) 칸과 자동 계산 표시, 운행 칸은 없다');
 ok(/data-input="fuelType"/.test(hFuel) && />고급 휘발유<\/option>/.test(hFuel) && /가득 주유/.test(hFuel) && /부분 주유/.test(hFuel), '화면(주유): 유종·가득/부분 선택');
-ok(/<datalist id="jh-car-items">/.test(hRep) && /엔진오일 및 오일필터/.test(hRep) && /12개월 · 15,000km 마다/.test(hRep) && /data-item="0\.name"[^>]*/.test(hRep) && /list="jh-car-items"/.test(hRep) && /data-car-calc="repairSum"/.test(hRep) && /합계 97,000원 \(2개 항목\)/.test(hRep) && /data-add-item/.test(hRep), '★ 화면(정비): 항목 자동 완성 목록(교체 주기 포함)·항목별 금액·합계·항목 추가');
+const rowsHtml = hRep.match(/<div class="jh-car-row">[\s\S]*?<\/button><\/div>/g) || [];
+ok(!/<datalist/.test(hRep) && !/list="jh-car-items"/.test(hRep), '★ 화면(정비): 브라우저 기본 드롭다운(자동 완성 목록)을 쓰지 않는다');
+ok(/data-car-tab="service" aria-pressed="true"/.test(hRep) && /data-car-tab="other" aria-pressed="false"/.test(hRep) && (hRep.match(/data-car-pick="/g) || []).length === 28 && />정비 항목<\/button>/.test(hRep) && />기타 항목<\/button>/.test(hRep), '★ 화면(정비): 항목 선택은 정비 항목 탭(28개 단추)이 기본, 기타 항목 탭이 따로 있다');
+ok(/data-car-pick="엔진오일 및 오일필터" aria-pressed="true"[^>]*title="교체 주기 12개월 · 15,000km 마다"/.test(hRep) && /<small>12개월 · 15,000km 마다<\/small>/.test(hRep) && /data-car-pick="타이어" aria-pressed="false"/.test(hRep), '화면(정비): 단추에 교체 주기가 함께 보이고, 이미 고른 항목은 눌린 상태로 표시');
+const hOther = composeHtml(baseState('drive', Object.assign({}, base, repGood()), { ui: { carTab: 'other' } }));
+ok((hOther.match(/data-car-pick="/g) || []).length === 18 && /data-car-pick="하이패스" aria-pressed="true"/.test(hOther) && /data-car-pick="자동차 보험"[^>]*title="교체 주기 12개월 마다"/.test(hOther) && /data-car-tab="other" aria-pressed="true"/.test(hOther), '화면(정비): 기타 항목 탭(18개 단추)에 하이패스·주차요금·자동차 보험 등, 고른 항목은 눌린 상태');
+const hClosed = composeHtml(baseState('drive', Object.assign({}, base, repGood()), { ui: { carOpen: false } }));
+ok(!/data-car-pick=/.test(hClosed) && /data-car-toggle aria-expanded="false">▸ 항목 선택 열기/.test(hClosed) && /data-car-toggle aria-expanded="true">▾ 항목 선택 접기/.test(hRep), '화면(정비): 항목 선택은 접고 펼 수 있다(기본은 펼침)');
+ok(rowsHtml.length === 2 && rowsHtml.every((r, i) => r.indexOf('data-item="' + i + '.name"') > 0 && r.indexOf('data-item="' + i + '.name"') < r.indexOf('data-item="' + i + '.amount"') && r.indexOf('data-item="' + i + '.amount"') < r.indexOf('data-item="' + i + '.memo"') && r.indexOf('data-item="' + i + '.memo"') < r.indexOf('data-remove-item="' + i + '"')), '★ 화면(정비): 항목·금액·메모·삭제가 한 줄(한 묶음)이고 순서대로 놓인다');
+ok(/data-car-calc="repairSum"/.test(hRep) && /합계 97,000원 \(2개 항목\)/.test(hRep) && /data-add-item[^>]*>\+ 직접 입력</.test(hRep), '화면(정비): 합계 자동 계산과 「+ 직접 입력」 단추');
 ok(/data-input="shopKind"/.test(hRep) && />자가정비<\/option>/.test(hRep) && /정비 당시 누적주행거리/.test(hRep), '화면(정비): 정비소/자가정비, 정비 당시 누적주행거리');
 ok(/총무 → 운행일지의 <strong>차량 비용<\/strong>/.test(hFuel) && /총무가 모든 사람의 운행일지를/.test(hTrip), '화면: 안내 문구가 종류에 맞게 바뀐다(주유·정비는 차량 비용으로 모임)');
 const hEdit = composeHtml(baseState('drive', Object.assign({}, base, fuelGood()), { edit: { id: 'x' } })); ok(/data-rec="trip"[^>]*disabled/.test(hEdit) && !/data-rec="fuel"[^>]*disabled/.test(hEdit) && /바꿀 수 없습니다/.test(hEdit), '화면: 이미 작성한 기록은 종류를 바꿀 수 없다');
+// 항목 단추 선택(순수 로직)
+const p1 = pickCarItem({ items: [{ name: '', amount: '', memo: '' }] }, '타이어'); ok(p1.index === 0 && p1.values.items.length === 1 && p1.values.items[0].name === '타이어', '★ 항목 단추: 비어 있는 줄이 있으면 거기에 채운다(빈 줄이 남지 않는다)');
+const p2 = pickCarItem(p1.values, '하이패스'); ok(p2.index === 1 && p2.values.items.length === 2 && p2.values.items[1].name === '하이패스' && p2.values.items[0].name === '타이어', '항목 단추: 채워진 줄이 있으면 새 줄을 더한다');
+const p3 = pickCarItem(p2.values, '타이어'); ok(p3.index === 0 && p3.values.items.length === 2, '★ 항목 단추: 이미 있는 항목을 누르면 줄을 늘리지 않고 그 줄을 가리킨다');
+const p4 = pickCarItem({ items: [{ name: '직접 쓴 항목', amount: '5000', memo: '' }] }, '배터리'); ok(p4.index === 1 && p4.values.items.length === 2 && p4.values.items[0].amount === '5000', '항목 단추: 입력 중인 줄(이름·금액)은 건드리지 않는다');
+const full = { items: Array.from({ length: 20 }, (_, i) => ({ name: '항목' + i, amount: '1', memo: '' })) }; ok(pickCarItem(full, '새 항목').index === -1 && pickCarItem(full, '새 항목').values.items.length === 20 && pickCarItem(full, '항목3').index === 3, '항목 단추: 20줄이 차면 더하지 않고, 이미 있는 항목은 계속 가리킨다');
+ok(pickCarItem({ items: [] }, '  ').index === -1 && pickCarItem({}, '타이어').values.items.length === 1 && Object.keys(p1.values).join() === 'items' && pickCarItem({ items: [{ name: '', amount: '', memo: '' }] }, '타이어').values !== p1.values, '항목 단추: 빈 이름은 무시, 항목이 없는 값도 처리, 원본을 바꾸지 않는다');
+const orig = { items: [{ name: '', amount: '', memo: '' }] }; pickCarItem(orig, '타이어'); ok(orig.items[0].name === '', '항목 단추: 넘겨 준 값(원본)은 그대로(새 값을 돌려준다)');
 const hErr = composeHtml(baseState('drive', Object.assign({}, base, repGood(), { items: [{ name: '', amount: '', memo: '' }] }), { errors: { 'items.0.name': '항목을 입력해 주세요.', items: '한 줄 이상' } })); ok(/항목을 입력해 주세요\./.test(hErr) && /data-invalid="true"/.test(hErr), '화면: 항목 줄 오류가 그 줄에 표시된다');
 
 /* ───────── 11) 총무 화면 ───────── */
