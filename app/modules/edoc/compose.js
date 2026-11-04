@@ -1,7 +1,7 @@
 /* 작성 화면의 순수 로직 — 양식 정의, 검증, 문서 데이터 만들기, 결재선 편집. (화면·Firestore 와 분리해 시험한다) */
 
-import { halfwidthDeep } from '../../shared/text-fix.js?v=20261104d';
-import { recKey, FUEL_TYPES, FULL_OPTS, SHOP_KINDS, carChecks, carFields, emptyCarItem, carCalcText } from '../../shared/car-cost.js?v=20261104d'; // 주유·정비·비용 기록(운행일지 문서의 rec 필드)
+import { halfwidthDeep } from '../../shared/text-fix.js?v=20261104e';
+import { recKey, FUEL_TYPES, FULL_OPTS, SHOP_KINDS, carChecks, carFields, emptyCarItem, carCalcText } from '../../shared/car-cost.js?v=20261104e'; // 주유·정비·비용 기록(운행일지 문서의 rec 필드)
 export const MAX_APPROVERS = 5;
 export const MAX_PARTS = 6; // 한 사람의 하루에 나눌 수 있는 참여 프로젝트 수(서버 pjt-part-act 의 day-split 규칙과 같다)
 export const MAX_CC = 10;
@@ -71,15 +71,15 @@ const F = {
   driveFuel: [
     { key: 'date', label: '주유 일자', type: 'date', required: true, row: 'a' },
     { key: 'vehicleId', label: '차량', type: 'vehicle', required: true, row: 'a' },
-    { key: 'station', label: '주유소', type: 'text', ph: '예) 동일석유 고덕주유소', row: 'b' },
+    { key: 'station', label: '주유소', type: 'text', ph: '예) 동일석유 고덕주유소', row: 'a' },
     { key: 'fuelType', label: '유종', type: 'select', opts: FUEL_TYPES, required: true, row: 'b' },
-    { key: 'odo', label: '누적주행거리(km)', type: 'number', step: '1', required: true, row: 'c', hint: '주유할 때 계기판에 보이는 누적 거리입니다. 연비는 이 값으로 계산합니다.' },
-    { key: 'full', label: '주유 방식', type: 'select', opts: FULL_OPTS, required: true, row: 'c', hint: '연비는 가득 주유한 기록끼리 비교해 계산합니다. 부분 주유는 다음 가득 주유 때 함께 계산됩니다.' },
-    { key: 'amount', label: '주유금액(원)', type: 'money', ph: '0', required: true, row: 'd' },
-    { key: 'liters', label: '주유량(L)', type: 'number', step: '0.01', required: true, row: 'd' },
-    { key: 'fuelSum', label: '자동 계산', type: 'calc', row: 'd' },
-    { key: 'washFee', label: '세차비(원, 선택)', type: 'money', ph: '0', zeroOk: true, row: 'e' },
-    { key: 'note', label: '메모', type: 'textarea', ph: '예) 카드 종류, 영수증 번호 (영수증 사진은 아래 첨부에)', row: 'f' }
+    { key: 'odo', label: '누적주행거리(km)', type: 'number', step: '1', required: true, row: 'b', hint: '주유할 때 계기판의 누적 거리' },
+    { key: 'full', label: '주유 방식', type: 'select', opts: FULL_OPTS, required: true, row: 'b', hint: '연비는 가득 주유끼리 계산(부분은 다음 가득 때 합산)' },
+    { key: 'amount', label: '주유금액(원)', type: 'money', ph: '0', required: true, row: 'c' },
+    { key: 'liters', label: '주유량(L)', type: 'number', step: '0.01', required: true, row: 'c' },
+    { key: 'fuelSum', label: '자동 계산', type: 'calc', row: 'c' },
+    { key: 'washFee', label: '세차비(원, 선택)', type: 'money', ph: '0', zeroOk: true, row: 'c' },
+    { key: 'note', label: '메모', type: 'textarea', ph: '예) 카드 종류, 영수증 번호 (영수증 사진은 아래 첨부에)', row: 'd' }
   ],
   driveRepair: [
     { key: 'date', label: '정비 일자', type: 'date', required: true, row: 'a' },
