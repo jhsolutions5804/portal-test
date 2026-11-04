@@ -5,6 +5,8 @@
 const EXEC = ['대표', '부사장'];
 export const isEvalOps = (me) => !!me && !me.isGuest && (me.admin === true || EXEC.indexOf(String(me.rank || '').trim()) !== -1 || !!(me.perms && me.perms.hrEval === true));
 export const isEvalUser = (me) => !!me && !me.isGuest;
+/** 인사평가 면담(근거 메모·면담 기록·실행 합의): 평가 운영 권한 + 관리자 계정 — 기록이 interviews(관리자 전용 컬렉션)에 저장되므로 관리자가 아니면 읽고 쓸 수 없고, 면담 내용은 직원에게 공개되지 않는 인사 정보다 */
+export const isInterviewUser = (me) => isEvalOps(me) && me.admin === true;
 /** 평가 회차 관리(시작·마감·공개·과제 배정·집계)를 할 수 있는 사장단 3명의 계정 식별자(uid). 보안 규칙(isCycleManager)·서버(functions/eval-act.js)와 같은 목록이어야 하며 tests/eval-managers.test.mjs 가 대조한다.
  *  직급·이름은 직원 관리에서 바뀌는 값이라 쓰지 않는다. 목록을 바꾸려면 규칙 게시·서버 배포·이 파일을 함께 고쳐야 한다. */
 export const CYCLE_MANAGERS = [

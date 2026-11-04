@@ -1,6 +1,7 @@
 /* 내 평가 — 순수 규칙(화면·네트워크 없이 시험 가능). 보안 규칙(docs/rules/eval_rules_block.rules)·서버 함수(portal-functions eval-act.js)와 같은 약속을 쓴다.
  *  과제 키 = "{연도}__{종류}__{대상 근로자 id}", 종류 = self(자기평가) | peer(동료평가) | lead(팀장의 1차 평가)
  *  제출 문서 id = "{연도}__{평가자 uid}__{대상}__{종류}"  (규칙이 id 의 평가자 uid 가 로그인한 사람인지 확인한다) */
+import { parseSelf, selfCheck } from './self-form.js?v=20261104l';
 export const KINDS = { self: '자기평가', peer: '동료평가', lead: '팀원 1차 평가' };
 /** 동료평가 항목(서버 PEER_ITEMS=3 과 같은 수 — 점수 항목은 정확히 3개여야 서버가 집계에 쓴다) */
 export const PEER_ITEMS = [{ key: 'collab', label: '협업·소통', hint: '의견을 나누고 필요한 정보를 공유했나요?' }, { key: 'trust', label: '신뢰·책임감', hint: '맡은 일을 믿고 맡길 수 있었나요?' }, { key: 'support', label: '업무 지원', hint: '필요할 때 도움을 주고 받았나요?' }];
@@ -31,7 +32,7 @@ export function progressOf(tasks, subs) {
 export function canSubmit(kind, sub) {
   const s = sub || {}; const items = itemsOf(kind); const text = String(s.text || '');
   if (text.length > MAX_TEXT) return { ok: false, reason: '서술은 ' + MAX_TEXT + '자 이내로 써 주세요.' };
-  if (kind === 'self') return text.trim() ? { ok: true } : { ok: false, reason: '올해 성과·성장·개선하고 싶은 점을 한 줄이라도 써 주세요.' };
+  if (kind === 'self') return selfCheck(parseSelf(text)); // 올해 성과 한 가지 이상(예전 자유 서술은 비어 있지 않으면 통과) — 구조는 self-form.js
   const sc = s.scores || {}; const miss = items.filter((i) => !(Number.isInteger(sc[i.key]) && sc[i.key] >= 1 && sc[i.key] <= 5));
   return miss.length ? { ok: false, reason: '아직 점수를 주지 않은 항목이 있습니다: ' + miss.map((m) => m.label).join(', ') } : { ok: true };
 }

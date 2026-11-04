@@ -45,3 +45,22 @@
 .jh-eval-bar .jh-btn { flex: 1 1 var(--u-140); min-height: var(--u-52); }
 .jh-eval .jh-textarea, .jh-eval textarea { width: 100%; min-height: var(--u-140); font-size: var(--fs-md); }
 @media (max-width: 899px) { .jh-eval-item { font-size: var(--fs-md); } .jh-eval-bar { padding-bottom: calc(var(--sp-3) + env(safe-area-inset-bottom, 0px)); } }
+.jh-eval-slots { display: grid; gap: var(--sp-2); }
+
+/* 인사평가 면담(근거 메모·진행 안내·면담 기록) */
+.jh-iv-check { display: flex; gap: var(--sp-2); align-items: flex-start; padding: var(--sp-2) 0; cursor: pointer; }
+.jh-iv-check input { margin-top: 0.3rem; flex: none; }
+.jh-iv-ev { padding: var(--sp-3) 0; border-bottom: 1px solid var(--c-line); display: grid; gap: var(--sp-2); }
+.jh-iv-kv { margin: 0; display: grid; gap: var(--sp-1); }
+.jh-iv-kv > div { display: grid; grid-template-columns: 8.5rem minmax(0, 1fr); gap: var(--sp-2); }
+.jh-iv-kv dt { color: var(--c-ink-2); font-size: var(--fs-sm); } .jh-iv-kv dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.jh-iv-h { margin: var(--sp-4) 0 var(--sp-2); font-size: var(--fs-md); }
+.jh-iv-form { display: grid; gap: var(--sp-3); }
+.jh-iv-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+.jh-iv-self { padding: var(--sp-3); border: 1px solid var(--c-line); border-radius: var(--radius-sm); background: var(--c-surface); overflow-wrap: anywhere; }
+.jh-iv-guide > summary { cursor: pointer; font-weight: 600; padding: var(--sp-2) 0; }
+.jh-iv-guide__body { display: grid; gap: var(--sp-3); padding-top: var(--sp-2); }
+.jh-iv-box { padding: var(--sp-3); border: 1px solid var(--c-line); border-radius: var(--radius-sm); display: grid; gap: var(--sp-2); }
+.jh-iv-q__q { font-weight: 600; }
+@media (max-width: 899px) { .jh-iv-grid { grid-template-columns: minmax(0, 1fr); } .jh-iv-kv > div { grid-template-columns: minmax(0, 1fr); } }
+

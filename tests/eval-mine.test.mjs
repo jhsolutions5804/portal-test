@@ -44,7 +44,7 @@ ok(peer.includes('<strong>익명</strong>으로 처리됩니다') && peer.includ
 const fullForm = V.mineFormHtml(formSt('peer', 'w2', { scores: { collab: 4, trust: 5, support: 3 }, text: '좋았어요' }));
 ok(fullForm.includes('제출할 수 있습니다') && !fullForm.includes('aria-disabled') && fullForm.includes('좋았어요') && !fullForm.includes('아직 점수를 주지 않은 항목'), '점수를 다 채우면 제출 가능 안내가 나오고 제출 버튼 비활성 표시가 사라지며 쓴 서술이 채워져 있음');
 const self = V.mineFormHtml(formSt('self', 'w1', { scores: {}, text: '' }));
-ok(self.includes('나의 자기평가') && !self.includes('data-ev-score') && self.includes('올해 성과·성장·개선하고 싶은 점') && self.includes('면담 자료로 쓰입니다') && self.includes('한 줄이라도 써 주세요'), '자기평가 작성: 점수 버튼 없이 서술만, 점수에 반영되지 않고 면담 자료라는 안내, 서술이 비면 안내');
+ok(self.includes('나의 자기평가') && !self.includes('data-ev-score') && self.includes('data-ev-selfform') && self.includes('올해 성과') && self.includes('아쉬운 점') && self.includes('내년 성장 목표') && self.includes('면담 자료로 쓰입니다') && self.includes('올해 성과를 한 가지 이상 써 주세요'), '자기평가 작성: 점수 버튼 없이 칸별(성과·아쉬운 점·성장 목표)로 쓰고, 점수에 반영되지 않고 면담 자료라는 안내, 성과가 비면 안내');
 const lead = V.mineFormHtml(formSt('lead', 'w2', { scores: { achievement: 4, competency: 4 } }));
 ok(lead.includes('팀원 1차 평가 — 나다라') && ['achievement', 'competency', 'conduct'].every((k) => lead.includes('data-ev-score="' + k + '|5"')) && lead.includes('업적') && lead.includes('태도·근태·안전') && lead.includes('태도·근태·안전'), '팀원 1차 평가 작성: 업적·역량·태도·근태·안전 3영역 점수');
 // 제출 후·기간 밖에는 잠김

@@ -1,8 +1,9 @@
 /* 평가 결과 통보서 — 순수 규칙(화면·네트워크 없이 시험 가능). 확정된 정기평가(+ 확정된 수시평가)를 직원 본인에게 알리는 문서의 "내용 결정"과 "HTML 생성".
  *  원칙: ① 확정된 평가만 ② 직원이 알아도 되는 것만 — 최종 점수·등급·영역별 점수·동료 평균·수시평가 결과·본인 자기평가. 사장단 개인별 점수·코멘트, 동료·팀장 개별 점수, 평가자 식별 정보는 넣지 않는다.
  *  ③ 문서는 메일 본문이 아니라 "본인 확인(휴대폰 문자 인증) 링크" 뒤에 저장되어, 본인만 본다. */
-import { cycleSummary, areaItems, teamTypeOf, WEIGHTS_BY, AREA_LABELS, areaScore, leadAreasOf, adhocSummary, combineRegular, gradeOf, evalPeriod } from './evaluation.js?v=20261104k';
-import { docFileName } from '../../shared/doc-filename.js?v=20261104k';
+import { cycleSummary, areaItems, teamTypeOf, WEIGHTS_BY, AREA_LABELS, areaScore, leadAreasOf, adhocSummary, combineRegular, gradeOf, evalPeriod } from './evaluation.js?v=20261104l';
+import { docFileName } from '../../shared/doc-filename.js?v=20261104l';
+import { selfHtml } from './self-form.js?v=20261104l';
 export const RESULT_DOC_TYPE = 'evalresult';
 export const RESULT_TITLE = '인사평가 결과 통보서';
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -49,7 +50,7 @@ export function resultHtml(d, opts) {
   const peerNote = d.teamType === 'pjt' ? '<p class="sub">동료평가는 같은 팀 동료들이 익명으로 평가한 평균입니다. 누가 몇 점을 주었는지는 누구에게도 공개되지 않습니다.</p>' : '';
   const adhocTable = d.adhoc.length ? '<h2>수시평가 (프로젝트별)</h2><table><tr><th class="c">프로젝트</th><th class="c">최종 점수</th><th class="c">등급</th></tr>' + d.adhoc.map((a) => '<tr><td>' + esc(a.name) + '</td><td class="c">' + esc(a.final) + '</td><td class="c">' + esc(a.grade) + '</td></tr>').join('') + '</table>' : '';
   const combined = d.combined != null ? '<div class="card"><b>' + esc(d.combined) + '</b><span>종합 점수 · ' + esc(d.combinedGrade) + '등급<br>(정기 60% + 수시 40%)</span></div>' : '';
-  const self = d.selfText ? '<h2>나의 자기평가</h2><div class="box">' + esc(d.selfText) + '</div>' : '';
+  const self = d.selfText ? '<h2>나의 자기평가</h2><div class="box">' + selfHtml(d.selfText, esc) + '</div>' : '';
   return '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + esc(RESULT_TITLE) + '</title><style>' + CSS + '</style></head><body><div class="w">'
     + '<h1>' + esc(d.year) + '년 ' + esc(RESULT_TITLE) + '</h1><p class="sub">평가 기간 ' + esc(d.period.from) + ' ~ ' + esc(d.period.to) + '</p>'
     + '<table><tr><th>성명</th><td>' + esc(w.name) + '</td></tr><tr><th>소속 · 직급</th><td>' + esc(w.dept) + ' · ' + esc(w.rank) + '</td></tr></table>'

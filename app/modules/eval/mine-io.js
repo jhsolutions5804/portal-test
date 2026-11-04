@@ -1,6 +1,7 @@
 /* 내 평가 — 불러오기·저장·클릭/입력 처리. 읽는 것: 내 과제(eval_tasks/{연도}__{내 uid})·평가 회차(eval_cycles/{연도})·내 제출(eval_submissions, 내 uid 로 조회)·근로자 명부(이름·내 근로자 찾기).
  * 쓰는 것: 내 제출 문서 하나(eval_submissions/{연도}__{내 uid}__{대상}__{종류}) — 점수를 누르면 임시저장, 제출하면 잠긴다(보안 규칙이 같은 약속을 강제한다). */
-import { tasksOf, statusOf, canSubmit, buildSubmission, withScore, withText, myWorker, subId, itemsOf } from './mine-logic.js?v=20261104k';
+import { tasksOf, statusOf, canSubmit, buildSubmission, withScore, withText, myWorker, subId, itemsOf } from './mine-logic.js?v=20261104l';
+import { composeSelf, selfFromInputs } from './self-form.js?v=20261104l';
 const clone = (o) => JSON.parse(JSON.stringify(o));
 const DEBOUNCE_MS = 900;     // 서술은 입력이 멈춘 뒤 저장(느린 모바일 회선에서 글자마다 저장하지 않게)
 /** deps: { db, collection, getDocs, getDoc, setDoc, doc, query, where, serverTimestamp, toast, confirmDialog, paint, st, ctx, year } */
@@ -47,6 +48,8 @@ export function createMineController(deps) {
     }
     return false;
   };
-  const onInput = (ev) => { const t = ev.target; if (!(t instanceof Element) || !t.matches('[data-ev-text]')) return false; if (!editable()) return true; st.mine.draft = withText(st.mine.draft, t.value); autosave(); return true; };
+  const onInput = (ev) => { const t = ev.target; if (!(t instanceof Element)) return false;
+  if (t.matches('[data-ev-self]')) { if (!editable()) return true; const f = t.closest('[data-ev-selfform]'); if (!f) return true; const pairs = [...f.querySelectorAll('[data-ev-self]')].map((e) => [e.getAttribute('data-ev-self'), e.value]); st.mine.draft = withText(st.mine.draft, composeSelf(selfFromInputs(pairs))); autosave(); return true; } // 자기평가 칸별 입력 → text 한 필드로 합쳐 저장
+  if (!t.matches('[data-ev-text]')) return false; if (!editable()) return true; st.mine.draft = withText(st.mine.draft, t.value); autosave(); return true; };
   return { load, onClick, onInput, flush: async () => { clearTimeout(timer); if (st.mine.dirty && st.mine.sel && editable()) await save('draft', true); } };
 }
