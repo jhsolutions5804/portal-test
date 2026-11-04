@@ -142,3 +142,14 @@
 .jh-edi__c1 { width: 24%; } .jh-edi__c2 { width: 30%; } .jh-edi__c3 { width: 9rem; } .jh-edi__c4 { width: auto; }
 .jh-edi__tbl td, .jh-edi__tbl th { overflow-wrap: anywhere; vertical-align: middle; }
 @media (max-width: 899px) { .jh-edi__tbl { table-layout: auto; min-width: 36rem; } .jh-edi__c1, .jh-edi__c2, .jh-edi__c3 { width: auto; } }
+
+/* 인사총무 출퇴근 달력 — 모바일(창 폭 899px 이하)에서는 날짜를 누르면 「근로 내역 추가/수정」이 화면 위로 뜨는 팝업(아래에서 올라오는 시트)으로 열린다.
+ * 한 줄로 쌓이는 모바일에서는 이 칸이 달력·주별 표 아래에 열려 화면 밖이라 눌러도 아무 일도 없어 보였다(대표님 11/04). 뒷배경이나 「닫기」를 누르면 닫힌다. PC·태블릿(900px 이상)은 그대로. */
+.jh-ac__backdrop { display: none; }
+@media (max-width: 899px) {
+  .jh-ac__layout > .jh-ac__side[data-open="true"] { position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; justify-content: flex-end; gap: 0; max-height: none; overflow: hidden; padding: 0; }
+  .jh-ac__side[data-open="true"] > .jh-ac__backdrop { display: block; position: absolute; inset: 0; background: rgba(15, 23, 42, 0.45); }
+  .jh-ac__side[data-open="true"] > :not(.jh-ac__backdrop):not(:nth-child(2)) { display: none; }
+  .jh-ac__side[data-open="true"] > :nth-child(2) { position: relative; margin: 0; max-height: 88vh; overflow-y: auto; border-radius: var(--radius-lg, 14px) var(--radius-lg, 14px) 0 0; box-shadow: 0 -8px 28px rgba(15, 23, 42, 0.28); padding-bottom: env(safe-area-inset-bottom, 0px); }
+}
+
