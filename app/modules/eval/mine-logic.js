@@ -1,7 +1,7 @@
 /* 내 평가 — 순수 규칙(화면·네트워크 없이 시험 가능). 보안 규칙(docs/rules/eval_rules_block.rules)·서버 함수(portal-functions eval-act.js)와 같은 약속을 쓴다.
  *  과제 키 = "{연도}__{종류}__{대상 근로자 id}", 종류 = self(자기평가) | peer(동료평가) | lead(팀장의 1차 평가)
  *  제출 문서 id = "{연도}__{평가자 uid}__{대상}__{종류}"  (규칙이 id 의 평가자 uid 가 로그인한 사람인지 확인한다) */
-import { parseSelf, selfCheck } from './self-form.js?v=20261104n';
+import { parseSelf, selfCheck } from './self-form.js?v=20261104o';
 export const KINDS = { self: '자기평가', peer: '동료평가', lead: '팀원 1차 평가' };
 /** 동료평가 항목(서버 PEER_ITEMS=3 과 같은 수 — 점수 항목은 정확히 3개여야 서버가 집계에 쓴다) */
 export const PEER_ITEMS = [{ key: 'collab', label: '협업·소통', hint: '의견을 나누고 필요한 정보를 공유했나요?' }, { key: 'trust', label: '신뢰·책임감', hint: '맡은 일을 믿고 맡길 수 있었나요?' }, { key: 'support', label: '업무 지원', hint: '필요할 때 도움을 주고 받았나요?' }];
@@ -14,11 +14,13 @@ export const taskKey = (year, kind, targetWid) => year + '__' + kind + '__' + ta
 export const subId = (year, raterUid, targetWid, kind) => year + '__' + raterUid + '__' + targetWid + '__' + kind;
 /** 과제 키 → { year, kind, target }, 형식이 틀리면 null */
 export function parseKey(k) { const p = String(k || '').split('__'); if (p.length !== 3 || !/^\d{4}$/.test(p[0]) || !KINDS[p[1]] || !p[2]) return null; return { year: Number(p[0]), kind: p[1], target: p[2] }; }
+/** 사번 비교(orders = { 근로자 id: 사번 }) — 사번이 없으면 맨 뒤, 둘 다 없으면 같음(이름순으로 넘어감) */
+const empCmp = (o, x, y) => { const ex = String((o && o[x]) || ''), ey = String((o && o[y]) || ''); if (!ex !== !ey) return ex ? -1 : 1; return ex === ey ? 0 : (ex < ey ? -1 : 1); };
 /** 과제 문서(eval_tasks/{연도}__{uid}).keys → 화면용 목록. 대상 이름은 names[근로자 id] 로 채우고, 종류·대상 순서로 정렬(자기평가 → 팀원 1차 → 동료) */
-export function tasksOf(taskDoc, names) {
+export function tasksOf(taskDoc, names, orders) {
   const order = { self: 0, lead: 1, peer: 2 };
   return ((taskDoc && taskDoc.keys) || []).map((k) => { const p = parseKey(k); return p ? Object.assign({ key: k, name: (names && names[p.target]) || '(이름 없음)' }, p) : null; }).filter(Boolean)
-    .sort((a, b) => order[a.kind] - order[b.kind] || String(a.name).localeCompare(String(b.name), 'ko'));
+    .sort((a, b) => order[a.kind] - order[b.kind] || empCmp(orders, a.target, b.target) || String(a.name).localeCompare(String(b.name), 'ko'));
 }
 /** 제출 상태: none(안 씀) | draft(임시저장) | submitted(제출) */
 export const statusOf = (sub) => (sub && sub.status === 'submitted' ? 'submitted' : sub && sub.status === 'draft' ? 'draft' : 'none');

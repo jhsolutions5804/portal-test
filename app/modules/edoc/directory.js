@@ -1,5 +1,6 @@
-import { db, collection, doc, getDoc, getDocs } from '../../core/firebase.js?v=20261104n';
-import { partsEnabled } from './compose.js?v=20261104n';
+import { db, collection, doc, getDoc, getDocs } from '../../core/firebase.js?v=20261104o';
+import { byEmpNo } from '../../shared/worker-order.js?v=20261104o';
+import { partsEnabled } from './compose.js?v=20261104o';
 
 /* 작성 화면이 쓰는 기준 정보: 직원 명단, 정책(필수 결재자·대리 권한자), 권장 결재선, 프로젝트 */
 let cache = null;
@@ -19,7 +20,7 @@ export async function loadDirectory(force) {
     if (x.status !== 'approved') return;
     users.push({ uid: d.id, name: x.name || '', rank: x.rank || '', dept: x.dept || '', empNo: x.empNo || '', status: x.status, admin: x.admin === true });
   });
-  users.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+  users.sort(byEmpNo); // 직원 배치는 사번순(대표님 2026-11-04) — 사번이 없는 계정은 맨 뒤·이름순
   const policy = pol.exists() ? pol.data() : {};
   const projects = [];
   pj.forEach((d) => { const x = d.data(); if (x.status && x.status !== 'run') return; projects.push({ id: d.id, code: x.code || '', pjtCode: x.code || '', name: x.name || '' }); });

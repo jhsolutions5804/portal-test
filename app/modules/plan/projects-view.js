@@ -1,9 +1,9 @@
-import { esc } from '../../core/ui.js?v=20261104n';
-import { pageList, pagerSizeSelect, pageInfo, pagerSync, pagerHtml as sharedPagerHtml } from '../../shared/pager.js?v=20261104n';
-import { TYPE_LABEL, SETTLE_TYPE_LABEL, filterProjects, paginate, pjtSummary, pjtMargin, pjtEstimates, pjtSettlements, estTotal, estTag, settleState, settleAmountForPjt, linkOptions, sortProjects } from './projects.js?v=20261104n';
-import { marginExtra, marginNotes, linkedPjtId, evalSaveError, allocFor } from './margin-link.js?v=20261104n';
-import { budgetCardHtml } from './budget-view.js?v=20261104n';
-import { importFromEstimates } from './budget.js?v=20261104n';
+import { esc } from '../../core/ui.js?v=20261104o';
+import { pageList, pagerSizeSelect, pageInfo, pagerSync, pagerHtml as sharedPagerHtml } from '../../shared/pager.js?v=20261104o';
+import { TYPE_LABEL, SETTLE_TYPE_LABEL, filterProjects, paginate, pjtSummary, pjtMargin, pjtEstimates, pjtSettlements, estTotal, estTag, settleState, settleAmountForPjt, linkOptions, sortProjects } from './projects.js?v=20261104o';
+import { marginExtra, marginNotes, linkedPjtId, evalSaveError, allocFor } from './margin-link.js?v=20261104o';
+import { budgetCardHtml } from './budget-view.js?v=20261104o';
+import { importFromEstimates } from './budget.js?v=20261104o';
 const won = (n) => (Math.round(Number(n) || 0)).toLocaleString('ko-KR');
 const signed = (n) => (n >= 0 ? '+' : '') + won(n);
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';

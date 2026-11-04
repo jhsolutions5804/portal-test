@@ -2,7 +2,8 @@
  * 출퇴근 달력(관리자 근태 수정)은 attendance.js(2단계).
  * 데이터: overtime(기록: date·name·rank·workerId·hours·amount·rate·reason·yearMonth), edoc_overtime(전자결재 초과근로 신청 — 승인된 건을 overtime 으로 한 번씩 반영).
  * 화면·네트워크 없이 시험할 수 있는 순수 함수만 둔다. */
-import { annualSalary } from './offer.js?v=20261104n';
+import { annualSalary } from './offer.js?v=20261104o';
+import { byEmpNo } from '../../shared/worker-order.js?v=20261104o';
 const pad = (n) => String(n).padStart(2, '0');
 export const otYm = (y, m) => y + '-' + pad(m);
 export function otMoveMonth(y, m, delta) { const d = new Date(y, m - 1 + delta, 1); return { y: d.getFullYear(), m: d.getMonth() + 1 }; }
@@ -23,10 +24,10 @@ export function otWage(contract, workerId) {
   return Object.assign({ rate: Math.round((sal.basic + sal.fixedOt + sal.fixedNight + sal.weekly) / 209), hourly, empType: contract.empType || 'field', workerId: workerId || '', wageType: contract.wageType || '', fixedOTContract: Number(contract.fixedOT || 0) }, sal);
 }
 const byDate = (a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
-/** 월별 전체 현황: 직원별 합계(이름 가나다순)·총 시간·총 수당·날짜별 내역 */
-export function otSummary(rows) {
+/** 월별 전체 현황: 직원별 합계(사번순)·총 시간·총 수당·날짜별 내역 */
+export function otSummary(rows, workers) {
   const totals = {}; (rows || []).forEach((r) => { const t = totals[r.name] || (totals[r.name] = { hours: 0, amount: 0, rank: r.rank || '' }); t.hours += Number(r.hours || 0); t.amount += Number(r.amount || 0); });
-  const names = Object.keys(totals).sort((a, b) => a.localeCompare(b, 'ko')); const round = (x) => Math.round(x * 100) / 100;
+  const eo = {}; (workers || []).forEach((w) => { if (w && w.name && eo[w.name] == null) eo[w.name] = w.empNo; }); const names = Object.keys(totals).sort((a, b) => byEmpNo({ empNo: eo[a], name: a }, { empNo: eo[b], name: b })); /* 사번순(근로자 명부를 넘기지 않으면 이름 가나다순 그대로) */ const round = (x) => Math.round(x * 100) / 100;
   return { totals, names, totalHours: round(names.reduce((s, n) => s + totals[n].hours, 0)), totalAmount: names.reduce((s, n) => s + totals[n].amount, 0), rows: (rows || []).slice().sort(byDate) };
 }
 export function otPerson(rows, name) { const mine = (rows || []).filter((r) => r.name === name).sort(byDate); return { rows: mine, totalHours: Math.round(mine.reduce((s, r) => s + Number(r.hours || 0), 0) * 100) / 100, totalAmount: mine.reduce((s, r) => s + Number(r.amount || 0), 0) }; }

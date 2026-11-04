@@ -454,11 +454,11 @@ button.jh-kpi:hover { border-color: var(--c-primary); }
 .jh-attcal__h { font-size: var(--fs-xs); font-weight: 600; }
 .jh-attcal__warn { font-size: var(--fs-xs); color: var(--c-warn-ink); white-space: nowrap; }
 /* 모바일 화면(이 앱이 하단 메뉴로 바꾸는 창 폭 899px 이하)에서는 달력을 숨긴다 — 입력 폼과 기록 목록만(대표님 11/04). 컨테이너 폭이 아니라 창 폭 기준: 사이드바가 보이는 좁은 PC 창(900px)은 내용 영역이 좁아도 달력이 보인다 */
-@media (max-width: 899px) { .jh-att__cal { display: none; } }
+/* 달력은 PC·모바일 모두 보인다(대표님 11/04: 모바일에도 달력, 날짜를 누르면 상세 팝업). 모바일은 시각을 숨기고 근무시간만 보인다 */
 @container dash (min-width: 58rem) { .jh-attcal__time { display: block; } .jh-attcal__cell, .jh-attcal__pad { min-height: 5rem; } .jh-attcal__d { font-size: var(--fs-md, 1rem); } }
 
-/* 출퇴근: PC(달력이 보이는 창 폭 900px 이상)에서는 기록 목록 카드를 숨긴다 — 달력에서 날짜를 눌러 상세(팝업)로 본다(11/04 대표님). 모바일(달력 숨김)은 기록 목록이 그대로 보인다 */
-@media (min-width: 900px) { .jh-att__list { display: none; } }
+/* 출퇴근: 기록 목록 카드는 PC·모바일 모두 숨긴다 — 달력에서 날짜를 눌러 상세(팝업)로 보고, 팝업의 「입력 칸에 불러오기」로 고친다(대표님 11/04) */
+.jh-att__list { display: none; }
 /* 날짜 상세 팝업 */
 .jh-daykv { margin: 0; display: grid; gap: var(--sp-2); }
 .jh-daykv__row { display: flex; gap: var(--sp-3); align-items: baseline; padding: var(--sp-2) 0; border-bottom: 1px solid var(--c-line); }

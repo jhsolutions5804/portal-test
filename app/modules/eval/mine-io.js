@@ -1,7 +1,7 @@
 /* 내 평가 — 불러오기·저장·클릭/입력 처리. 읽는 것: 내 과제(eval_tasks/{연도}__{내 uid})·평가 회차(eval_cycles/{연도})·내 제출(eval_submissions, 내 uid 로 조회)·근로자 명부(이름·내 근로자 찾기).
  * 쓰는 것: 내 제출 문서 하나(eval_submissions/{연도}__{내 uid}__{대상}__{종류}) — 점수를 누르면 임시저장, 제출하면 잠긴다(보안 규칙이 같은 약속을 강제한다). */
-import { tasksOf, statusOf, canSubmit, buildSubmission, withScore, withText, myWorker, subId, itemsOf } from './mine-logic.js?v=20261104n';
-import { composeSelf, selfFromInputs } from './self-form.js?v=20261104n';
+import { tasksOf, statusOf, canSubmit, buildSubmission, withScore, withText, myWorker, subId, itemsOf } from './mine-logic.js?v=20261104o';
+import { composeSelf, selfFromInputs } from './self-form.js?v=20261104o';
 const clone = (o) => JSON.parse(JSON.stringify(o));
 const DEBOUNCE_MS = 900;     // 서술은 입력이 멈춘 뒤 저장(느린 모바일 회선에서 글자마다 저장하지 않게)
 /** deps: { db, collection, getDocs, getDoc, setDoc, doc, query, where, serverTimestamp, toast, confirmDialog, paint, st, ctx, year } */
@@ -13,10 +13,10 @@ export function createMineController(deps) {
     const m = st.mine; m.error = '';
     // 근로자 명부: 내 근로자와 대상 이름. 명부 읽기 권한이 없으면 이름은 "(이름 없음)"으로 보이고 계속 쓸 수 있다
     let workers = []; try { const ws = await getDocs(collection(db, 'workers')); ws.forEach((d) => workers.push(Object.assign({ id: d.id }, d.data()))); } catch (e) { workers = []; }
-    m.worker = myWorker(me, workers); const names = {}; workers.forEach((w) => { names[w.id] = w.name || ''; });
+    m.worker = myWorker(me, workers); const names = {}, orders = {}; workers.forEach((w) => { names[w.id] = w.name || ''; orders[w.id] = w.empNo || ''; }); // orders: 같은 종류 과제는 사번순
     try { const c = await getDoc(doc(db, 'eval_cycles/' + year)); m.cycle = c.exists() ? c.data() : null; } catch (e) { m.cycle = null; }
     let taskDoc = null; try { const t = await getDoc(doc(db, 'eval_tasks/' + year + '__' + me.uid)); taskDoc = t.exists() ? t.data() : null; } catch (e) { m.error = '평가 과제를 불러오지 못했습니다.'; }
-    m.tasks = tasksOf(taskDoc, names); m.subs = {};
+    m.tasks = tasksOf(taskDoc, names, orders); m.subs = {};
     try { const s = await getDocs(query(collection(db, 'eval_submissions'), where('raterUid', '==', me.uid), where('year', '==', year))); s.forEach((d) => { const x = d.data(); if (x && x.targetWid && x.kind) m.subs[year + '__' + x.kind + '__' + x.targetWid] = x; }); } catch (e) { m.error = m.error || '내 제출 내용을 불러오지 못했습니다.'; }
     m.loaded = true;
   };
