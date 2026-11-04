@@ -3,7 +3,7 @@
  *   → 서버·보안 규칙은 바꾸지 않는다(운행일지는 필드 제한 없이 확정되는 기록 문서).
  *   → 운행기록부(주행거리·업무사용비율)는 세무 자료라 주유·정비 기록이 섞이면 안 된다. 운행 집계는 isTrip() 만 쓴다.
  * 연비: 가득 주유 기록끼리 비교한다 — (이번 가득 주유 누적주행거리 − 직전 가득 주유 누적주행거리) ÷ (그 사이 넣은 연료 합계: 사이의 부분 주유 + 이번 주유량). */
-import { csvCell } from './csv.js?v=20261104e';
+import { csvCell } from './csv.js?v=20261104f';
 
 const won = (n) => Number(n || 0).toLocaleString('ko-KR');
 const n0 = (x) => { const v = Number(String(x == null ? '' : x).replace(/[^0-9.\-]/g, '')); return isNaN(v) ? 0 : v; };
@@ -76,7 +76,7 @@ export function carCalcText(key, v) {
   if (key === 'fuelSum') {
     const amount = n0(val.amount), liters = n0(val.liters), wash = n0(val.washFee);
     const unit = amount > 0 && liters > 0 ? '리터당 ' + won(Math.round(amount / liters)) + '원' : '금액·주유량을 넣으면 자동 계산';
-    return unit + (amount > 0 ? ' · 합계 ' + won(amount + wash) + '원' : ''); // 4칸 한 줄에 들어가도록 짧게
+    return unit + (amount > 0 ? '\n합계 ' + won(amount + wash) + '원' : ''); // 4칸 한 줄 안에서 두 줄(리터당 단가 / 합계)로 나뉘어 보이게 — 화면은 줄바꿈을 살려 그린다(white-space: pre-line)
   }
   if (key === 'repairSum') {
     const rows = (val.items || []).filter((r) => r && (has(r.name) || has(r.amount)));

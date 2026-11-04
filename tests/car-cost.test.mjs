@@ -41,8 +41,8 @@ ok(Object.keys(chk(Object.assign(repGood(), { items: [] }), true)).length === 0,
 ok(Object.keys(K.carChecks({ rec: 'trip' }, {}, '2026-11-04')).length === 0, '운행(trip)은 이 검사가 건드리지 않는다');
 
 /* ───────── 3) 자동 계산 문구 ───────── */
-ok(K.carCalcText('fuelSum', fuelGood()) === '리터당 2,320원 · 합계 150,000원', '자동 계산: 리터당 단가 = 금액 ÷ 주유량, 합계');
-ok(K.carCalcText('fuelSum', Object.assign(fuelGood(), { washFee: '10000' })).endsWith('합계 160,000원'), '자동 계산: 세차비가 합계에 더해진다');
+ok(K.carCalcText('fuelSum', fuelGood()) === '리터당 2,320원\n합계 150,000원', '자동 계산: 리터당 단가 = 금액 ÷ 주유량, 합계(두 줄)');
+ok(K.carCalcText('fuelSum', Object.assign(fuelGood(), { washFee: '10000' })).endsWith('\n합계 160,000원'), '자동 계산: 세차비가 합계에 더해진다');
 ok(/넣으면/.test(K.carCalcText('fuelSum', {})) && /항목을 추가/.test(K.carCalcText('repairSum', {})), '자동 계산: 비어 있으면 안내 문구');
 ok(K.carCalcText('repairSum', repGood()) === '합계 97,000원 (2개 항목)', '자동 계산: 정비 항목 금액 합계');
 
@@ -140,7 +140,7 @@ const baseState = (type, values, extra) => Object.assign({ type, values, errors:
 const hTrip = composeHtml(baseState('drive', base)); const hFuel = composeHtml(baseState('drive', Object.assign({}, base, fuelGood()))); const hRep = composeHtml(baseState('drive', Object.assign({}, base, repGood())));
 ok(/data-rec="trip" aria-pressed="true"/.test(hTrip) && /data-rec="fuel" aria-pressed="false"/.test(hTrip) && /data-rec="repair"/.test(hTrip) && />운행<\/button>/.test(hTrip) && />주유<\/button>/.test(hTrip) && />정비·수리·비용<\/button>/.test(hTrip), '화면: 기록 종류 단추 3개(운행·주유·정비·수리·비용), 기본은 운행');
 ok(/data-input="origin"/.test(hTrip) && /data-input="odoStart"/.test(hTrip) && !/data-input="liters"/.test(hTrip) && !/jh-car-items/.test(hTrip), '화면(운행): 기존 입력 칸 그대로, 주유·정비 칸은 없다');
-ok(/data-rec="fuel" aria-pressed="true"/.test(hFuel) && /data-input="station"/.test(hFuel) && /data-input="liters"[^>]*/.test(hFuel) && /step="0\.01"/.test(hFuel) && /data-car-calc="fuelSum"/.test(hFuel) && /리터당 2,320원 · 합계 150,000원/.test(hFuel) && !/data-input="origin"/.test(hFuel), '★ 화면(주유): 주유소·유종·금액·주유량(소수 둘째 자리) 칸과 자동 계산 표시, 운행 칸은 없다');
+ok(/data-rec="fuel" aria-pressed="true"/.test(hFuel) && /data-input="station"/.test(hFuel) && /data-input="liters"[^>]*/.test(hFuel) && /step="0\.01"/.test(hFuel) && /data-car-calc="fuelSum"/.test(hFuel) && /리터당 2,320원\n합계 150,000원/.test(hFuel) && !/data-input="origin"/.test(hFuel), '★ 화면(주유): 주유소·유종·금액·주유량(소수 둘째 자리) 칸과 자동 계산 표시, 운행 칸은 없다');
 ok(/data-input="fuelType"/.test(hFuel) && />고급 휘발유<\/option>/.test(hFuel) && /가득 주유/.test(hFuel) && /부분 주유/.test(hFuel), '화면(주유): 유종·가득/부분 선택');
 const rowsHtml = hRep.match(/<div class="jh-car-row">[\s\S]*?<\/button><\/div>/g) || [];
 ok(!/<datalist/.test(hRep) && !/list="jh-car-items"/.test(hRep), '★ 화면(정비): 브라우저 기본 드롭다운(자동 완성 목록)을 쓰지 않는다');
@@ -156,6 +156,7 @@ ok(/data-input="shopKind"/.test(hRep) && />자가정비<\/option>/.test(hRep) &&
 ok(/총무 → 운행일지의 <strong>차량 비용<\/strong>/.test(hFuel) && /총무가 모든 사람의 운행일지를/.test(hTrip), '화면: 안내 문구가 종류에 맞게 바뀐다(주유·정비는 차량 비용으로 모임)');
 const hEdit = composeHtml(baseState('drive', Object.assign({}, base, fuelGood()), { edit: { id: 'x' } })); ok(/data-rec="trip"[^>]*disabled/.test(hEdit) && !/data-rec="fuel"[^>]*disabled/.test(hEdit) && /바꿀 수 없습니다/.test(hEdit), '화면: 이미 작성한 기록은 종류를 바꿀 수 없다');
 const fs0 = (await import('node:fs')).readFileSync(new URL('../app/theme/edoc.css', import.meta.url), 'utf8');
+ok(/\.jh-input--static \{[^}]*white-space: pre-line;/.test(fs0), '스타일: 자동 계산 칸은 줄바꿈을 살려 두 줄(리터당 단가 / 합계)로 보인다');
 ok(/\.jh-car-chips \{[^}]*max-height: 15\.5rem; overflow-y: auto;/.test(fs0), '★ 스타일: 항목 단추 영역은 높이를 제한하고 안에서 스크롤한다(28개를 길게 펼치면 입력 줄이 화면 아래로 밀림)');
 ok(/\.jh-car-row \{ display: grid; grid-template-columns: minmax\(0, 2fr\) minmax\(0, 1\.2fr\) minmax\(0, 2fr\) var\(--u-40\);/.test(fs0) && /@media \(max-width: 899px\) \{ \.jh-car-row \{ grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\) var\(--u-40\);/.test(fs0), '스타일: 항목·금액·메모·삭제가 한 줄(넓은 화면 4칸), 좁은 화면은 항목·금액 + 아래 메모');
 // 항목 단추 선택(순수 로직)
