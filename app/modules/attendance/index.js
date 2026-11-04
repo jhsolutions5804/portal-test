@@ -1,14 +1,16 @@
-import { loadWorkers } from '../../shared/workers-data.js?v=20261104j';
-import { loadHolidays } from '../../shared/holidays.js?v=20261104j';
-import { findWorker, dateKey, monthlyStandardHours } from '../../shared/worktime.js?v=20261104j';
-import { loadRecord, loadMonth, writeClockIn, writeClockOut, writeManual } from './data.js?v=20261104j';
-import { clockState, buildClockIn, buildClockOut, validateManual, editPermission, yesterdayKey, recentMonths, monthTotals, dayLabel } from './logic.js?v=20261104j';
-import { clockWidgetHtml, inputPageHtml, msgHtml } from './view.js?v=20261104j';
-import { toast, esc } from '../../core/ui.js?v=20261104j';
-import { functions, httpsCallable } from '../../core/firebase.js?v=20261104j';
-import { NFC_ENABLED, cleanWorkType, errorView, reviewRows, deviceRows, validateOffice, buttonResultText } from './nfc-logic.js?v=20261104j';
-import { makeNfcApi, makeTokenStore, getPosition, deviceLabel } from './nfc-data.js?v=20261104j';
-import { registerPageHtml, workTypeFieldHtml, reviewPageHtml } from './nfc-view.js?v=20261104j';
+import { loadWorkers } from '../../shared/workers-data.js?v=20261104k';
+import { loadHolidays } from '../../shared/holidays.js?v=20261104k';
+import { findWorker, dateKey, monthlyStandardHours } from '../../shared/worktime.js?v=20261104k';
+import { loadRecord, loadMonth, writeClockIn, writeClockOut, writeManual } from './data.js?v=20261104k';
+import { clockState, buildClockIn, buildClockOut, validateManual, editPermission, yesterdayKey, recentMonths, monthTotals, dayLabel } from './logic.js?v=20261104k';
+import { clockWidgetHtml, inputPageHtml, msgHtml, dayDetail } from './view.js?v=20261104k';
+import { toast, esc } from '../../core/ui.js?v=20261104k';
+import { infoDialog } from '../../core/dialog.js?v=20261104k';
+import { sortByEmpNo } from '../../shared/worker-order.js?v=20261104k';
+import { functions, httpsCallable } from '../../core/firebase.js?v=20261104k';
+import { NFC_ENABLED, cleanWorkType, errorView, reviewRows, deviceRows, validateOffice, buttonResultText } from './nfc-logic.js?v=20261104k';
+import { makeNfcApi, makeTokenStore, getPosition, deviceLabel } from './nfc-data.js?v=20261104k';
+import { registerPageHtml, workTypeFieldHtml, reviewPageHtml } from './nfc-view.js?v=20261104k';
 
 /* NFC 출퇴근(1-3-26) — 서버 함수 attendNfcAct 를 부르는 얇은 연결. NFC_ENABLED 가 꺼져 있으면 아래 연결은 모두 동작하지 않는다 */
 const nfcApi = () => makeNfcApi(httpsCallable(functions, 'attendNfcAct'));
@@ -77,7 +79,7 @@ export async function mount(root, route, ctx) {
   const now = new Date(); const today = dateKey(now);
   let workers = []; try { workers = await loadWorkers(false); } catch (e) { workers = []; }
   const mine = findWorker(workers, me);
-  const list = me.admin ? workers.filter((w) => w.name).slice().sort((a, b) => String(a.name).localeCompare(String(b.name), 'ko')) : (mine && mine.linked ? [mine] : []);
+  const list = me.admin ? sortByEmpNo(workers.filter((w) => w.name)) : (mine && mine.linked ? [mine] : []);
   if (!list.length) { root.innerHTML = '<div class="jh-card"><div class="jh-form"><div class="jh-alert" data-tone="info">계정이 근무자 명부와 연동되어 있지 않아 기록을 볼 수 없습니다. 인사 담당자에게 연동을 요청해 주세요.</div></div></div>'; return; }
   const holidays = await loadHolidays();
   const S = { me, today, workers: list, worker: (mine && list.find((w) => w.id === mine.id)) || list[0], ym: today.slice(0, 7), months: recentMonths(now, 12), rows: [], standard: 0, form: { date: today, checkIn: '', checkOut: '', hours: 0 }, perm: { ok: true } };
@@ -106,10 +108,14 @@ export async function mount(root, route, ctx) {
       refreshForm(); return;
     }
     if (t.hasAttribute && t.hasAttribute('data-month')) { S.ym = t.value; S.form = { date: S.ym === today.slice(0, 7) ? today : S.ym + '-01', checkIn: '', checkOut: '', hours: 0 }; await load(); return; }
-    if (t.hasAttribute && t.hasAttribute('data-worker')) { S.worker = list.find((w) => w.id === t.value) || S.worker; S.form = { date: today, checkIn: '', checkOut: '', hours: 0 }; S.ym = today.slice(0, 7); await load(); }
+    if (t.hasAttribute && t.hasAttribute('data-worker')) { S.worker = list.find((w) => w.id === t.value) || S.worker; S.form = { date: S.ym === today.slice(0, 7) ? today : S.ym + '-01', checkIn: '', checkOut: '', hours: 0 }; await load(); } // 근로자를 바꿔도 보고 있던 월은 그대로(11/04 대표님)
   };
   root.onclick = async (ev) => {
-    const e = ev.target.closest('[data-edit],[data-att-save],[data-att-request]'); if (!e) return;
+    const e = ev.target.closest('[data-day],[data-edit],[data-att-save],[data-att-request]'); if (!e) return;
+  if (e.hasAttribute('data-day')) { // 달력 날짜 → 그 날 상세를 팝업으로(출퇴근 입력 칸은 건드리지 않는다). 「입력 칸에 불러오기」를 누르면 그 날을 직접 입력·수정 칸에 불러온다
+  const ds = e.getAttribute('data-day'); const d = dayDetail(S, ds); const act = await infoDialog({ title: d.title, bodyHtml: d.html, actions: [{ key: 'close', label: '닫기', variant: 'ghost' }, { key: 'edit', label: '입력 칸에 불러오기', variant: 'primary' }] });
+  if (act === 'edit') { const r = S.rows.find((x) => x.date === ds); S.form = r ? { date: r.date, checkIn: r.checkIn, checkOut: r.checkOut, hours: r.workHours } : { date: ds, checkIn: '', checkOut: '', hours: 0 }; recompute(); paint(); window.scrollTo(0, 0); }
+  return; }
     if (e.hasAttribute('data-att-request')) {   // 지난 날짜는 근태 기록 수정 요청(결재)으로 — 입력한 값을 채워서 넘긴다
       const q = new URLSearchParams({ date: S.form.date, in: S.form.checkIn || '', out: S.form.checkOut || '' }); location.hash = '#/edoc/new/attend?' + q.toString(); return;
     }

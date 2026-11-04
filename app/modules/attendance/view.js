@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261104j';
-import { sourceLabel, dayLabel, fmtH, monthTotals } from './logic.js?v=20261104j';
-import { monthCalendar, cellLabel, WEEKDAYS } from '../../shared/att-month.js?v=20261104j';
-import { holidayName } from '../../shared/holidays.js?v=20261104j';
+import { esc } from '../../core/ui.js?v=20261104k';
+import { sourceLabel, dayLabel, fmtH, monthTotals } from './logic.js?v=20261104k';
+import { monthCalendar, cellLabel, WEEKDAYS, WEEKDAY_LONG } from '../../shared/att-month.js?v=20261104k';
+import { holidayName } from '../../shared/holidays.js?v=20261104k';
 
 const head = (t, link) => '<div class="jh-panel__head"><h3>' + t + '</h3>' + (link || '') + '</div>';
 const note = (tone, text) => '<div class="jh-form"><div class="jh-alert" data-tone="' + tone + '"' + (tone === 'danger' ? ' role="alert"' : '') + '>' + esc(text) + '</div></div>';
@@ -41,7 +41,19 @@ export function msgHtml(perm, f) {
     (perm.code === 'needs-approval' ? '<div><button type="button" class="jh-btn" data-variant="secondary" data-att-request' + dis + '>이 내용으로 결재 요청 작성</button>' + (dis ? '<span class="jh-field__hint"> 출근·퇴근 시각을 먼저 입력하면 요청서에 그대로 채워집니다.</span>' : '') + '</div>' : '');
 }
 
-/** 월간 달력 카드 — 날짜를 누르면 직접 입력·수정 칸에 그 날 기록을 불러온다(기록이 없는 날도). 오늘 이후 날짜는 누를 수 없다. */
+/** 날짜 상세(팝업) — 달력에서 날짜를 누르면 그 날 하루 기록만 보여 준다. 기록이 없는 날도 열린다. → { title, html, hasRecord } (html 은 이미 esc 처리) */
+export function dayDetail(m, ds) {
+  const cal = monthCalendar(String(ds).slice(0, 7), m.rows, { today: m.today, selected: m.form && m.form.date, holidayName });
+  const c = cal.days.find((x) => x.ds === ds); if (!c) return { title: '', html: '', hasRecord: false };
+  const [y, mo, da] = ds.split('-').map(Number); const title = y + '년 ' + mo + '월 ' + da + '일 ' + WEEKDAY_LONG[c.dow];
+  const kind = c.holiday ? '공휴일 · ' + c.holiday : c.dow === 0 ? '일요일(쉬는 날)' : c.dow === 6 ? '토요일(쉬는 날)' : '평일';
+  const kv = (k, v, tone) => '<div class="jh-daykv__row"><dt>' + esc(k) + '</dt><dd' + (tone ? ' data-tone="' + tone + '"' : '') + '>' + v + '</dd></div>';
+  if (!c.rec) return { title, hasRecord: false, html: '<dl class="jh-daykv">' + kv('구분', esc(kind)) + '</dl><p class="jh-field__hint">이 날의 출퇴근 기록이 없습니다.' + (c.off ? ' 쉬는 날입니다.' : '') + ' 연차·휴가·출장은 여기서 확인되지 않습니다.</p>' };
+  const r = c.rec;
+  return { title, hasRecord: true, html: '<dl class="jh-daykv">' + kv('구분', esc(kind)) + kv('출근', esc(r.checkIn || '--:--')) + kv('퇴근', r.checkOut ? esc(r.checkOut) : '기록 없음', r.checkOut ? '' : 'warn') + kv('근무시간', r.checkOut ? esc(fmtH(r.workHours)) : '—') + kv('휴게', esc(String(r.breakMinutes == null ? 0 : r.breakMinutes)) + '분') + kv('입력 방식', esc(sourceLabel(r.source))) + '</dl>' + (c.open ? '<div class="jh-alert" data-tone="warn" role="status">퇴근 기록이 없습니다. 아래 「입력 칸에 불러오기」로 퇴근 시각을 입력할 수 있습니다.</div>' : '') };
+}
+
+/** 월간 달력 카드 — 날짜를 누르면 그 날 상세를 팝업으로 보여 준다(기록이 없는 날도). 오늘 이후 날짜는 누를 수 없다. */
 function calendarHtml(m, f) {
   const cal = monthCalendar(m.ym, m.rows, { today: m.today, selected: f.date, holidayName });
   const dow = WEEKDAYS.map((w, i) => '<div class="jh-attcal__dow" data-dow="' + i + '" role="columnheader">' + w + '</div>').join('');
@@ -50,11 +62,11 @@ function calendarHtml(m, f) {
     const inner = '<span class="jh-attcal__d">' + c.d + '</span>' + (c.holiday ? '<span class="jh-attcal__hol">' + esc(c.holiday) + '</span>' : '') +
       (c.rec ? '<span class="jh-attcal__time">' + esc(c.checkIn || '--:--') + '~' + esc(c.checkOut || '') + '</span><span class="jh-attcal__h">' + (c.checkOut ? fmtH(c.hours) : '') + '</span>' : '') + (c.open ? '<span class="jh-attcal__warn">퇴근 없음</span>' : '');
     const attrs = ' data-state="' + c.state + '" data-dow="' + c.dow + '"' + (c.off ? ' data-off="true"' : '') + (c.today ? ' data-today="true"' : '') + (c.holiday ? ' data-holiday="true"' : '');
-    return c.pickable ? '<button type="button" class="jh-attcal__cell" data-edit="' + esc(c.ds) + '"' + attrs + ' aria-pressed="' + c.selected + '" aria-label="' + esc(cellLabel(c)) + '">' + inner + '</button>'
+    return c.pickable ? '<button type="button" class="jh-attcal__cell" data-day="' + esc(c.ds) + '"' + attrs + ' aria-pressed="' + c.selected + '" aria-label="' + esc(cellLabel(c)) + '">' + inner + '</button>'
       : '<div class="jh-attcal__cell" data-future="true"' + attrs + ' aria-label="' + esc(cellLabel(c)) + '">' + inner + '</div>';
   };
   return '<section class="jh-panel jh-card jh-att__cal">' + head('📅 ' + esc(m.ym.replace('-', '년 ')) + '월 달력') + '<div class="jh-attcal__wrap"><div class="jh-attcal" role="grid">' + dow + cal.weeks.map((w) => w.map(cell).join('')).join('') + '</div>' +
-    '<span class="jh-field__hint">날짜를 누르면 직접 입력·수정 칸에 그 날 기록을 불러옵니다. 연차·휴가·출장은 이 달력에 나오지 않습니다.</span></div></section>';
+    '<span class="jh-field__hint">날짜를 누르면 그 날 기록을 자세히 보여 줍니다. 연차·휴가·출장은 이 달력에 나오지 않습니다.</span></div></section>';
 }
 
 /** 출퇴근 기록 화면: 한 달 요약 · 직접 입력/수정 · 달력 · 기록 목록 */

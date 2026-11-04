@@ -1,4 +1,4 @@
-import { esc } from './ui.js?v=20261104j';
+import { esc } from './ui.js?v=20261104k';
 
 /** 확인 창. opts: { title, body(HTML 아님·일반 글), confirmLabel, variant('primary'|'danger'), reason:{label, placeholder, required} }
  *  → Promise<{ ok:boolean, reason:string }> */
@@ -43,3 +43,28 @@ export function confirmDialog(opts) {
     if (area) area.addEventListener('input', () => wrap.querySelector('#jh-confirm-field').removeAttribute('data-invalid'));
   });
 }
+
+/** 정보 창(상세 보기). opts: { title, bodyHtml(이미 esc 처리한 HTML), actions:[{key,label,variant}] } — 닫기 키(Esc)·바깥 누르기는 null. → Promise<string|null>(누른 단추의 key) */
+export function infoDialog(opts) {
+  return new Promise((resolve) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'jh-dialog'; wrap.setAttribute('role', 'dialog'); wrap.setAttribute('aria-modal', 'true'); wrap.setAttribute('aria-labelledby', 'jh-info-title');
+    const acts = opts.actions && opts.actions.length ? opts.actions : [{ key: 'close', label: '닫기', variant: 'primary' }];
+    wrap.innerHTML = '<div class="jh-dialog__backdrop" data-cancel></div><div class="jh-dialog__panel">' +
+      '<h3 class="jh-dialog__title" id="jh-info-title">' + esc(opts.title) + '</h3><div class="jh-dialog__body">' + (opts.bodyHtml || '') + '</div>' +
+      '<div class="jh-dialog__actions">' + acts.map((a) => '<button type="button" class="jh-btn" data-variant="' + esc(a.variant || 'ghost') + '" data-act-key="' + esc(a.key) + '">' + esc(a.label) + '</button>').join('') + '</div></div>';
+    document.body.appendChild(wrap);
+    const prev = document.body.style.overflow; document.body.style.overflow = 'hidden'; const prevFocus = document.activeElement;
+    const first = wrap.querySelector('[data-act-key]'); if (first) first.focus();
+    const done = (key) => { document.removeEventListener('keydown', onKey, true); wrap.remove(); document.body.style.overflow = prev; if (prevFocus && prevFocus.focus) prevFocus.focus(); resolve(key); };
+    function onKey(ev) {
+      if (ev.key === 'Escape') { ev.preventDefault(); done(null); return; }
+      if (ev.key !== 'Tab') return;
+      const f = [...wrap.querySelectorAll('button')]; const a = f[0], z = f[f.length - 1];
+      if (ev.shiftKey && document.activeElement === a) { ev.preventDefault(); z.focus(); } else if (!ev.shiftKey && document.activeElement === z) { ev.preventDefault(); a.focus(); }
+    }
+    document.addEventListener('keydown', onKey, true);
+    wrap.addEventListener('click', (ev) => { const b = ev.target.closest('[data-act-key]'); if (b) done(b.getAttribute('data-act-key')); else if (ev.target.closest('[data-cancel]')) done(null); });
+  });
+}
+

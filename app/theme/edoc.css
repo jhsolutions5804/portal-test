@@ -457,3 +457,11 @@ button.jh-kpi:hover { border-color: var(--c-primary); }
 @media (max-width: 899px) { .jh-att__cal { display: none; } }
 @container dash (min-width: 58rem) { .jh-attcal__time { display: block; } .jh-attcal__cell, .jh-attcal__pad { min-height: 5rem; } .jh-attcal__d { font-size: var(--fs-md, 1rem); } }
 
+/* 출퇴근: PC(달력이 보이는 창 폭 900px 이상)에서는 기록 목록 카드를 숨긴다 — 달력에서 날짜를 눌러 상세(팝업)로 본다(11/04 대표님). 모바일(달력 숨김)은 기록 목록이 그대로 보인다 */
+@media (min-width: 900px) { .jh-att__list { display: none; } }
+/* 날짜 상세 팝업 */
+.jh-daykv { margin: 0; display: grid; gap: var(--sp-2); }
+.jh-daykv__row { display: flex; gap: var(--sp-3); align-items: baseline; padding: var(--sp-2) 0; border-bottom: 1px solid var(--c-line); }
+.jh-daykv__row dt { flex: 0 0 5rem; color: var(--c-ink-2); font-size: var(--fs-sm); } .jh-daykv__row dd { margin: 0; font-weight: 600; }
+.jh-daykv__row dd[data-tone="warn"] { color: var(--c-warn-ink); }
+
