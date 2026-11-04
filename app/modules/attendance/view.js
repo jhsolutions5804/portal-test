@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261104f';
-import { sourceLabel, dayLabel, fmtH, monthTotals } from './logic.js?v=20261104f';
+import { esc } from '../../core/ui.js?v=20261104g';
+import { sourceLabel, dayLabel, fmtH, monthTotals } from './logic.js?v=20261104g';
 
 const head = (t, link) => '<div class="jh-panel__head"><h3>' + t + '</h3>' + (link || '') + '</div>';
 const note = (tone, text) => '<div class="jh-form"><div class="jh-alert" data-tone="' + tone + '"' + (tone === 'danger' ? ' role="alert"' : '') + '>' + esc(text) + '</div></div>';
@@ -46,7 +46,7 @@ export function inputPageHtml(m) {
   const workerSel = me.admin ? '<label class="jh-field" data-field="worker"><span class="jh-field__label">근로자 (관리자)</span><select class="jh-select" data-worker>' + m.workers.map((w) => '<option value="' + esc(w.id) + '"' + (w.id === m.worker.id ? ' selected' : '') + '>' + esc(w.name + (w.rank ? ' ' + w.rank : '')) + '</option>').join('') + '</select></label>' : '';
   const perm = m.perm; const f = m.form;
   const msg = msgHtml(perm, f);
-  return '<div class="jh-dashboard">' +
+  return '<div class="jh-dashboard"><div class="jh-att"><div class="jh-att__main">' + // 넓은 화면: 왼쪽(제목·요약·직접 입력) / 오른쪽(월 기록) 2단, 좁은 화면(모바일): 위아래
     '<div class="jh-pagehead"><header class="jh-form__head"><h2 class="jh-form__title">출퇴근 기록</h2><p class="jh-form__sub">' + (me.admin ? '관리자는 모든 근로자의 기록을 날짜에 상관없이 입력·수정할 수 있습니다.' : '오늘 기록은 직접 입력·수정할 수 있고, 지난 날짜는 결재 요청 또는 관리자 입력으로 처리합니다.') + '</p></header>' +
       '<label class="jh-field"><span class="jh-field__label">월</span><select class="jh-select" data-month>' + monthOpts + '</select></label></div>' +
     '<div class="jh-kpi-grid" data-cols="3"><div class="jh-kpi" data-tone="accent"><span class="jh-kpi__label">기록 일수</span><span class="jh-kpi__value">' + tot.days + '<small> 일</small></span></div>' +
@@ -60,6 +60,6 @@ export function inputPageHtml(m) {
       '<div data-att-msg>' + msg + '</div>' +
       '<div class="jh-kpi" data-tone="accent"><span class="jh-kpi__label">근무시간 (점심 2시간 제외 · 5시간 이하는 제외 안 함)</span><span class="jh-kpi__value" data-att-hours>' + fmtH(f.hours) + '</span></div>' +
       '<div><button type="button" class="jh-btn" data-variant="primary" data-att-save' + (perm.ok ? '' : ' disabled') + '>저장</button></div></div></section>' +
-    '<section class="jh-panel jh-card">' + head('🗓️ ' + esc(m.ym.replace('-', '년 ')) + '월 기록' + (me.admin ? ' · ' + esc(m.worker.name) : '')) +
-      '<div class="jh-doclist">' + (m.rows.length ? m.rows.map((r) => rowHtml(r, f.date)).join('') : '<div class="jh-empty">해당 월 기록이 없습니다.</div>') + '</div></section></div>';
+    '</div><section class="jh-panel jh-card jh-att__list">' + head('🗓️ ' + esc(m.ym.replace('-', '년 ')) + '월 기록' + (me.admin ? ' · ' + esc(m.worker.name) : '')) +
+      '<div class="jh-doclist">' + (m.rows.length ? m.rows.map((r) => rowHtml(r, f.date)).join('') : '<div class="jh-empty">해당 월 기록이 없습니다.</div>') + '</div></section></div></div>';
 }

@@ -1,18 +1,18 @@
-import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261104f';
-import { register, visibleFor, get } from './registry.js?v=20261104f';
-import { parseHash, onChange } from './router.js?v=20261104f';
-import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261104f';
-import { hasMicrosoftCallback, finishMicrosoftLogin, startMicrosoftLogin, msErrorMessage } from './ms-auth.js?v=20261104f';
-import { initTheme } from './theme.js?v=20261104f';
-import { checkForUpdate } from './update.js?v=20261104f';
-import { MODULES, installShellDocks } from '../modules/index.js?v=20261104f';
-import { mountPlatformHome } from './home.js?v=20261104f';
-import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261104f';
-import { ensureTime24 } from '../shared/time24.js?v=20261104f';
-import { installRecent, describeNow } from './recent.js?v=20261104f'; import { installFeedback } from '../shared/feedback.js?v=20261104f';
-import { workTabs, resumeHash } from './worktabs.js?v=20261104f';
-import { legacyProjectHash } from '../shared/pjt-key.js?v=20261104f';
-import { renderEntry } from '../shared/entry-form.js?v=20261104f';
+import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261104g';
+import { register, visibleFor, get } from './registry.js?v=20261104g';
+import { parseHash, onChange } from './router.js?v=20261104g';
+import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261104g';
+import { hasMicrosoftCallback, finishMicrosoftLogin, startMicrosoftLogin, msErrorMessage } from './ms-auth.js?v=20261104g';
+import { initTheme } from './theme.js?v=20261104g';
+import { checkForUpdate } from './update.js?v=20261104g';
+import { MODULES, installShellDocks } from '../modules/index.js?v=20261104g';
+import { mountPlatformHome } from './home.js?v=20261104g';
+import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261104g';
+import { ensureTime24 } from '../shared/time24.js?v=20261104g';
+import { installRecent, describeNow } from './recent.js?v=20261104g'; import { installFeedback } from '../shared/feedback.js?v=20261104g';
+import { workTabs, resumeHash } from './worktabs.js?v=20261104g';
+import { legacyProjectHash } from '../shared/pjt-key.js?v=20261104g';
+import { renderEntry } from '../shared/entry-form.js?v=20261104g';
 
 initTheme();   // 이 기기에 저장된 화면 모드(자동·라이트·다크) 적용
 MODULES.forEach((m) => register(Object.assign({}, m.manifest, { mount: m.mount })));
