@@ -1,7 +1,7 @@
 /* 입사 입력 검토(관리자) — 입사자가 Microsoft 로그인으로 직접 입력·제출한 내용을 확인하고 수동으로 근로자 명부에 반영하거나 반려한다.
  * 모든 조회·반영은 서버 함수 entryAct 로만(관리자 전용). 설계서 app-docs/worker-self-entry-design.md */
-import { functions, httpsCallable } from '../../core/firebase.js?v=20261104p';
-import { esc, toast } from '../../core/ui.js?v=20261104p';
+import { functions, httpsCallable } from '../../core/firebase.js?v=20261105a';
+import { esc, toast } from '../../core/ui.js?v=20261105a';
 
 export const manifest = { id: 'entry', order: 22, title: '입사 입력', icon: '📝', defaultHash: '#/entry/list', perm: (me) => !!me && me.admin === true };
 const call = async (data) => (await httpsCallable(functions, 'entryAct')(data)).data;

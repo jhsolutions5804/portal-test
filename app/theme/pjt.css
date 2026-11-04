@@ -1,6 +1,8 @@
 /* PJT 새 모듈 화면 — 색·간격은 theme/tokens.css 의 변수만 쓴다. 폰 기준으로 먼저 그리고 넓은 화면에서 늘린다. */
 .jh-pjt { display: grid; gap: var(--sp-3); }
 .jh-pjt__pad { padding: var(--sp-4) calc(var(--sp-4) + var(--sp-1)); display: grid; gap: var(--sp-4); }
+.jh-pjt__rec .jh-pjt__role { flex: 1 1 var(--u-140); min-width: 0; }
+.jh-pjt__bar > .jh-input { flex: 1 1 var(--u-140); min-width: 0; }
 .jh-pjt__bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); }
 .jh-pjt__datenav, .jh-pjt__tools, .jh-pjt__bulkmd { display: inline-flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .jh-pjt__sum { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); }

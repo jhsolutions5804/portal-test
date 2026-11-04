@@ -1,7 +1,8 @@
-import { esc } from '../../core/ui.js?v=20261104p';
-import { dayTotals, mdSum, activeWorkersForDate, canWorkOn, hasManday, monthlyMatrix } from './attendance.js?v=20261104p';
-import { holidayName, isWeekend } from '../../shared/holidays.js?v=20261104p';
-import { monthGrid } from './schedule.js?v=20261104p';
+import { esc } from '../../core/ui.js?v=20261105a';
+import { dayTotals, mdSum, activeWorkersForDate, canWorkOn, hasManday, monthlyMatrix } from './attendance.js?v=20261105a';
+import { holidayName, isWeekend } from '../../shared/holidays.js?v=20261105a';
+import { monthGrid } from './schedule.js?v=20261105a';
+import { cleanRole, roleSuggestions } from './career.js?v=20261105a';
 const f1 = (n) => (Math.round((Number(n) || 0) * 10) / 10).toFixed(1);
 const chip = (t, tone) => '<span class="jh-pjt__chip" data-tone="' + esc(tone || '') + '">' + esc(t) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -71,6 +72,8 @@ export function cumHtml(st) {
 export function manageHtml(st) {
   const have = new Set(st.roster.map((w) => w.id));
   const opts = [['', '— 마스터 명부에서 선택 —']].concat(Object.keys(st.masters).filter((id) => !have.has(id) && !st.masters[id].resigned && st.masters[id].name).map((id) => [id, st.masters[id].name + ' (' + (st.masters[id].birth || '생년월일 없음') + ')']));
-  const list = st.roster.map((w) => '<div class="jh-pjt__rec"><span>' + esc(w.name || w.id) + (w.active === false ? ' ' + chip('투입 종료', 'gray') : '') + '</span>' + (w.active === false ? '<button type="button" class="jh-btn" data-variant="ghost" data-pa-rejoin="' + esc(w.id) + '">재투입</button>' : '<button type="button" class="jh-btn" data-variant="ghost" data-pa-end="' + esc(w.id) + '">투입 종료</button>') + '</div>').join('');
-  return card('명단 관리', '<div class="jh-pjt__pad"><div class="jh-pjt__bar">' + sel('data-pa-addsel', '', opts) + '<button type="button" class="jh-btn" data-variant="primary" data-pa-act="add">투입</button></div>' + (list || '<div class="jh-empty">명단이 비어 있습니다.</div>') + '<div class="jh-field__hint">투입할 사람은 <a href="#/pjt/roster">근로자 연명부</a>(마스터 명부)에 있는 사람 중에서 고릅니다. 이름·생년월일 같은 정보는 연명부에서 고치고, 이 프로젝트의 명단은 여기서 투입·종료만 합니다(프로젝트마다 따로). "투입 종료"는 명단에서 지우지 않고 더 이상 입력 대상에서만 뺍니다. 지금까지의 출역·공수는 그대로 남아 집계표에 나옵니다.</div></div>');
+  const hints = roleSuggestions([st.roster].concat(st.roleHints || []), 20); const dl = '<datalist id="jh-pa-roles">' + hints.map((r) => '<option value="' + esc(r) + '"></option>').join('') + '</datalist>';
+  const roleInp = (w) => '<input type="text" class="jh-input jh-pjt__role" data-pa-role="' + esc(w.id) + '" value="' + esc(cleanRole(w.role)) + '" maxlength="40" list="jh-pa-roles" placeholder="역할(자유 입력)" aria-label="' + esc((w.name || w.id) + ' 역할') + '">';
+  const list = st.roster.map((w) => '<div class="jh-pjt__rec"><span>' + esc(w.name || w.id) + (w.active === false ? ' ' + chip('투입 종료', 'gray') : '') + '</span>' + roleInp(w) + (w.active === false ? '<button type="button" class="jh-btn" data-variant="ghost" data-pa-rejoin="' + esc(w.id) + '">재투입</button>' : '<button type="button" class="jh-btn" data-variant="ghost" data-pa-end="' + esc(w.id) + '">투입 종료</button>') + '</div>').join('');
+  return card('명단 관리', '<div class="jh-pjt__pad"><div class="jh-pjt__bar">' + sel('data-pa-addsel', '', opts) + '<input type="text" class="jh-input" data-pa-addrole maxlength="40" list="jh-pa-roles" placeholder="역할(선택)" aria-label="투입할 역할">' + '<button type="button" class="jh-btn" data-variant="primary" data-pa-act="add">투입</button></div>' + dl + (list || '<div class="jh-empty">명단이 비어 있습니다.</div>') + '<div class="jh-field__hint">투입할 사람은 <a href="#/pjt/roster">근로자 연명부</a>(마스터 명부)에 있는 사람 중에서 고릅니다. 이름·생년월일 같은 정보는 연명부에서 고치고, 이 프로젝트의 명단은 여기서 투입·종료만 합니다(프로젝트마다 따로). "투입 종료"는 명단에서 지우지 않고 더 이상 입력 대상에서만 뺍니다. 지금까지의 출역·공수는 그대로 남아 집계표에 나옵니다. 「역할」은 정해진 목록 없이 자유롭게 적고(예: 현장소장·공무·품질·반장), 바꾼 날짜가 기록되어 근로자 경력관리의 프로젝트 이력에 기간별로 나옵니다.</div></div>');
 }
