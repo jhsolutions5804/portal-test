@@ -453,5 +453,7 @@ button.jh-kpi:hover { border-color: var(--c-primary); }
 .jh-attcal__time { display: none; font-size: var(--fs-xs); color: var(--c-ink-2); white-space: nowrap; }
 .jh-attcal__h { font-size: var(--fs-xs); font-weight: 600; }
 .jh-attcal__warn { font-size: var(--fs-xs); color: var(--c-warn-ink); white-space: nowrap; }
+/* 휴대폰 폭(약 640px 이하)에서는 달력을 숨긴다 — 입력 폼과 기록 목록만(대표님 11/04). 태블릿·좁은 창은 위아래 배치로 달력이 보인다 */
+@container dash (max-width: 40rem) { .jh-att__cal { display: none; } }
 @container dash (min-width: 58rem) { .jh-attcal__time { display: block; } .jh-attcal__cell, .jh-attcal__pad { min-height: 5rem; } .jh-attcal__d { font-size: var(--fs-md, 1rem); } }
 
