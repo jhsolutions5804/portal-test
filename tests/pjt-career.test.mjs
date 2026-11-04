@@ -1,4 +1,4 @@
-import { ROLE_MAX, cleanRole, roleSuggestions, rolePatch, roleOn, careerProjects, careerSummary } from '../app/modules/pjt/career.js';
+import { ROLE_MAX, cleanRole, roleSuggestions, rolePatch, roleOn, careerProjects, careerSummary } from '../app/shared/career.js';
 import { manageHtml } from '../app/modules/pjt/attend-view.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 // ── 역할 정리·제안

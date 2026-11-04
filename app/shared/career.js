@@ -1,4 +1,4 @@
-/* 경력관리용 순수 규칙(화면·네트워크 없이 시험 가능) — 대기열 1-3-27-1.
+/* 경력관리용 순수 규칙(화면·네트워크 없이 시험 가능) — 대기열 1-3-27-1. PJT 명단 화면과 인사 > 근로자 상세 경력관리 카드(1-3-27-2)가 함께 쓰는 공용 규칙이라 shared 에 둔다.
  * ① 프로젝트 명단의 역할(role): 고정 목록 없이 자유 입력(40자), 이미 쓴 값을 입력칸 제안으로만 쓴다. 바뀔 때마다 roleLog 에 {role, at} 를 남겨 기간별로 나눈다.
  * ② 사람별 프로젝트 이력 집계(careerProjects): 저장하지 않고 명단·공수 기록에서 계산한다(원본이 바뀌면 이력도 바뀐다 — 이중 저장으로 어긋나는 것을 막는다).
  *    projects: [{ key, name, ended, test, roster: { 근로자id: { role, roleLog, active, endedDate, createdDate } }, rows: [[날짜(YYYY-MM-DD), { 근로자id: 공수 }], …] }] — 월간 공수 보기(aggregateMonth)와 같은 모양에 test·roleLog 등을 더한 것. */
