@@ -1,14 +1,14 @@
-import { loadWorkers } from '../../shared/workers-data.js?v=20261104g';
-import { loadHolidays } from '../../shared/holidays.js?v=20261104g';
-import { findWorker, dateKey, monthlyStandardHours } from '../../shared/worktime.js?v=20261104g';
-import { loadRecord, loadMonth, writeClockIn, writeClockOut, writeManual } from './data.js?v=20261104g';
-import { clockState, buildClockIn, buildClockOut, validateManual, editPermission, yesterdayKey, recentMonths, monthTotals, dayLabel } from './logic.js?v=20261104g';
-import { clockWidgetHtml, inputPageHtml, msgHtml } from './view.js?v=20261104g';
-import { toast, esc } from '../../core/ui.js?v=20261104g';
-import { functions, httpsCallable } from '../../core/firebase.js?v=20261104g';
-import { NFC_ENABLED, cleanWorkType, errorView, reviewRows, deviceRows, validateOffice, buttonResultText } from './nfc-logic.js?v=20261104g';
-import { makeNfcApi, makeTokenStore, getPosition, deviceLabel } from './nfc-data.js?v=20261104g';
-import { registerPageHtml, workTypeFieldHtml, reviewPageHtml } from './nfc-view.js?v=20261104g';
+import { loadWorkers } from '../../shared/workers-data.js?v=20261104h';
+import { loadHolidays } from '../../shared/holidays.js?v=20261104h';
+import { findWorker, dateKey, monthlyStandardHours } from '../../shared/worktime.js?v=20261104h';
+import { loadRecord, loadMonth, writeClockIn, writeClockOut, writeManual } from './data.js?v=20261104h';
+import { clockState, buildClockIn, buildClockOut, validateManual, editPermission, yesterdayKey, recentMonths, monthTotals, dayLabel } from './logic.js?v=20261104h';
+import { clockWidgetHtml, inputPageHtml, msgHtml } from './view.js?v=20261104h';
+import { toast, esc } from '../../core/ui.js?v=20261104h';
+import { functions, httpsCallable } from '../../core/firebase.js?v=20261104h';
+import { NFC_ENABLED, cleanWorkType, errorView, reviewRows, deviceRows, validateOffice, buttonResultText } from './nfc-logic.js?v=20261104h';
+import { makeNfcApi, makeTokenStore, getPosition, deviceLabel } from './nfc-data.js?v=20261104h';
+import { registerPageHtml, workTypeFieldHtml, reviewPageHtml } from './nfc-view.js?v=20261104h';
 
 /* NFC 출퇴근(1-3-26) — 서버 함수 attendNfcAct 를 부르는 얇은 연결. NFC_ENABLED 가 꺼져 있으면 아래 연결은 모두 동작하지 않는다 */
 const nfcApi = () => makeNfcApi(httpsCallable(functions, 'attendNfcAct'));
@@ -113,7 +113,7 @@ export async function mount(root, route, ctx) {
     if (e.hasAttribute('data-att-request')) {   // 지난 날짜는 근태 기록 수정 요청(결재)으로 — 입력한 값을 채워서 넘긴다
       const q = new URLSearchParams({ date: S.form.date, in: S.form.checkIn || '', out: S.form.checkOut || '' }); location.hash = '#/edoc/new/attend?' + q.toString(); return;
     }
-    if (e.hasAttribute('data-edit')) { const r = S.rows.find((x) => x.date === e.getAttribute('data-edit')); if (r) { S.form = { date: r.date, checkIn: r.checkIn, checkOut: r.checkOut, hours: r.workHours }; recompute(); paint(); window.scrollTo(0, 0); } return; }
+    if (e.hasAttribute('data-edit')) { const ds = e.getAttribute('data-edit'); const r = S.rows.find((x) => x.date === ds); S.form = r ? { date: r.date, checkIn: r.checkIn, checkOut: r.checkOut, hours: r.workHours } : { date: ds, checkIn: '', checkOut: '', hours: 0 }; recompute(); paint(); window.scrollTo(0, 0); return; } // 달력에서 기록이 없는 날을 눌러도 그 날짜로 입력 칸을 비워 불러온다
     const v = recompute(); const first = Object.values(v.errors)[0];
     if (first) { toast(first); return; }
     e.disabled = true;

@@ -432,3 +432,26 @@ button.jh-kpi:hover { border-color: var(--c-primary); }
   .jh-att__main .jh-form__row[data-cols="3"] { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* 출퇴근 월간 달력 — 오른쪽 열(PC)·목록 위. 좁은 화면에서는 시각을 숨기고 근무시간만 보인다 */
+.jh-att__side { display: grid; gap: var(--sp-4); min-width: 0; align-content: start; }
+.jh-attcal__wrap { padding: var(--sp-3) var(--sp-4) var(--sp-4); display: grid; gap: var(--sp-2); }
+.jh-attcal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; background: var(--c-line); border: 1px solid var(--c-line); border-radius: var(--radius-sm); overflow: hidden; }
+.jh-attcal__dow { padding: var(--sp-1) 0; text-align: center; font-size: var(--fs-xs); font-weight: 600; color: var(--c-ink-2); background: var(--c-surface); }
+.jh-attcal__dow[data-dow="0"] { color: var(--c-danger); } .jh-attcal__dow[data-dow="6"] { color: var(--c-primary); }
+.jh-attcal__pad { background: var(--c-bg); min-height: 3.4rem; }
+.jh-attcal__cell { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-height: 3.4rem; min-width: 0; padding: var(--sp-1); background: var(--c-surface); color: var(--c-ink); border: 0; font: inherit; text-align: left; cursor: pointer; overflow: hidden; }
+.jh-attcal__cell:hover { background: var(--c-primary-weak); }
+.jh-attcal__cell[data-future="true"] { cursor: default; opacity: 0.55; } .jh-attcal__cell[data-future="true"]:hover { background: var(--c-surface); }
+.jh-attcal__cell[data-state="work"] { background: var(--c-primary-weak); }
+.jh-attcal__cell[data-state="holidayWork"] { background: var(--c-warn-weak); }
+.jh-attcal__cell[aria-pressed="true"] { outline: 2px solid var(--c-primary); outline-offset: -2px; }
+.jh-attcal__d { font-size: var(--fs-sm); font-weight: 600; line-height: 1.4; padding: 0 var(--sp-1); border-radius: var(--radius-sm); }
+.jh-attcal__cell[data-dow="0"] .jh-attcal__d, .jh-attcal__cell[data-holiday="true"] .jh-attcal__d { color: var(--c-danger); }
+.jh-attcal__cell[data-dow="6"]:not([data-holiday="true"]) .jh-attcal__d { color: var(--c-primary); }
+.jh-attcal__cell[data-today="true"] .jh-attcal__d { background: var(--c-primary); color: var(--c-primary-ink); }
+.jh-attcal__hol { font-size: var(--fs-xs); color: var(--c-danger); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jh-attcal__time { display: none; font-size: var(--fs-xs); color: var(--c-ink-2); white-space: nowrap; }
+.jh-attcal__h { font-size: var(--fs-xs); font-weight: 600; }
+.jh-attcal__warn { font-size: var(--fs-xs); color: var(--c-warn-ink); white-space: nowrap; }
+@container dash (min-width: 58rem) { .jh-attcal__time { display: block; } .jh-attcal__cell, .jh-attcal__pad { min-height: 5rem; } .jh-attcal__d { font-size: var(--fs-md, 1rem); } }
+

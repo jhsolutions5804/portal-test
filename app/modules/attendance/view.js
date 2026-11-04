@@ -1,5 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261104g';
-import { sourceLabel, dayLabel, fmtH, monthTotals } from './logic.js?v=20261104g';
+import { esc } from '../../core/ui.js?v=20261104h';
+import { sourceLabel, dayLabel, fmtH, monthTotals } from './logic.js?v=20261104h';
+import { monthCalendar, cellLabel, WEEKDAYS } from '../../shared/att-month.js?v=20261104h';
+import { holidayName } from '../../shared/holidays.js?v=20261104h';
 
 const head = (t, link) => '<div class="jh-panel__head"><h3>' + t + '</h3>' + (link || '') + '</div>';
 const note = (tone, text) => '<div class="jh-form"><div class="jh-alert" data-tone="' + tone + '"' + (tone === 'danger' ? ' role="alert"' : '') + '>' + esc(text) + '</div></div>';
@@ -39,7 +41,23 @@ export function msgHtml(perm, f) {
     (perm.code === 'needs-approval' ? '<div><button type="button" class="jh-btn" data-variant="secondary" data-att-request' + dis + '>이 내용으로 결재 요청 작성</button>' + (dis ? '<span class="jh-field__hint"> 출근·퇴근 시각을 먼저 입력하면 요청서에 그대로 채워집니다.</span>' : '') + '</div>' : '');
 }
 
-/** 출퇴근 기록 화면: 한 달 요약 · 직접 입력/수정 · 기록 목록 */
+/** 월간 달력 카드 — 날짜를 누르면 직접 입력·수정 칸에 그 날 기록을 불러온다(기록이 없는 날도). 오늘 이후 날짜는 누를 수 없다. */
+function calendarHtml(m, f) {
+  const cal = monthCalendar(m.ym, m.rows, { today: m.today, selected: f.date, holidayName });
+  const dow = WEEKDAYS.map((w, i) => '<div class="jh-attcal__dow" data-dow="' + i + '" role="columnheader">' + w + '</div>').join('');
+  const cell = (c) => {
+    if (!c) return '<div class="jh-attcal__pad" aria-hidden="true"></div>';
+    const inner = '<span class="jh-attcal__d">' + c.d + '</span>' + (c.holiday ? '<span class="jh-attcal__hol">' + esc(c.holiday) + '</span>' : '') +
+      (c.rec ? '<span class="jh-attcal__time">' + esc(c.checkIn || '--:--') + '~' + esc(c.checkOut || '') + '</span><span class="jh-attcal__h">' + (c.checkOut ? fmtH(c.hours) : '') + '</span>' : '') + (c.open ? '<span class="jh-attcal__warn">퇴근 없음</span>' : '');
+    const attrs = ' data-state="' + c.state + '" data-dow="' + c.dow + '"' + (c.off ? ' data-off="true"' : '') + (c.today ? ' data-today="true"' : '') + (c.holiday ? ' data-holiday="true"' : '');
+    return c.pickable ? '<button type="button" class="jh-attcal__cell" data-edit="' + esc(c.ds) + '"' + attrs + ' aria-pressed="' + c.selected + '" aria-label="' + esc(cellLabel(c)) + '">' + inner + '</button>'
+      : '<div class="jh-attcal__cell" data-future="true"' + attrs + ' aria-label="' + esc(cellLabel(c)) + '">' + inner + '</div>';
+  };
+  return '<section class="jh-panel jh-card jh-att__cal">' + head('📅 ' + esc(m.ym.replace('-', '년 ')) + '월 달력') + '<div class="jh-attcal__wrap"><div class="jh-attcal" role="grid">' + dow + cal.weeks.map((w) => w.map(cell).join('')).join('') + '</div>' +
+    '<span class="jh-field__hint">날짜를 누르면 직접 입력·수정 칸에 그 날 기록을 불러옵니다. 연차·휴가·출장은 이 달력에 나오지 않습니다.</span></div></section>';
+}
+
+/** 출퇴근 기록 화면: 한 달 요약 · 직접 입력/수정 · 달력 · 기록 목록 */
 export function inputPageHtml(m) {
   const me = m.me; const tot = monthTotals(m.rows);
   const monthOpts = m.months.map((x) => '<option value="' + x + '"' + (x === m.ym ? ' selected' : '') + '>' + x.replace('-', '년 ') + '월</option>').join('');
@@ -60,6 +78,6 @@ export function inputPageHtml(m) {
       '<div data-att-msg>' + msg + '</div>' +
       '<div class="jh-kpi" data-tone="accent"><span class="jh-kpi__label">근무시간 (점심 2시간 제외 · 5시간 이하는 제외 안 함)</span><span class="jh-kpi__value" data-att-hours>' + fmtH(f.hours) + '</span></div>' +
       '<div><button type="button" class="jh-btn" data-variant="primary" data-att-save' + (perm.ok ? '' : ' disabled') + '>저장</button></div></div></section>' +
-    '</div><section class="jh-panel jh-card jh-att__list">' + head('🗓️ ' + esc(m.ym.replace('-', '년 ')) + '월 기록' + (me.admin ? ' · ' + esc(m.worker.name) : '')) +
-      '<div class="jh-doclist">' + (m.rows.length ? m.rows.map((r) => rowHtml(r, f.date)).join('') : '<div class="jh-empty">해당 월 기록이 없습니다.</div>') + '</div></section></div></div>';
+    '</div><div class="jh-att__side">' + calendarHtml(m, f) + '<section class="jh-panel jh-card jh-att__list">' + head('🗓️ ' + esc(m.ym.replace('-', '년 ')) + '월 기록' + (me.admin ? ' · ' + esc(m.worker.name) : '')) +
+      '<div class="jh-doclist">' + (m.rows.length ? m.rows.map((r) => rowHtml(r, f.date)).join('') : '<div class="jh-empty">해당 월 기록이 없습니다.</div>') + '</div></section></div></div></div>';
 }

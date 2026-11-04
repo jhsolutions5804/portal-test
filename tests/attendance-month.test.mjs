@@ -1,0 +1,23 @@
+// 출퇴근 월간 달력(순수 로직) 시험 — shared/att-month.js
+import { monthCalendar, cellLabel, WEEKDAYS, WEEKDAY_LONG } from '../app/shared/att-month.js';
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
+const rows = [{ date: '2026-11-04', checkIn: '08:50', checkOut: '', workHours: 0 }, { date: '2026-11-03', checkIn: '10:20', checkOut: '16:50', workHours: 4.5 }, { date: '2026-11-02', checkIn: '10:20', checkOut: '16:30', workHours: 4.2 }, { date: '2026-11-01', checkIn: '09:00', checkOut: '13:00', workHours: 4 }];
+const hol = (ds) => (ds === '2026-11-03' ? '시험 공휴일' : '');
+const cal = monthCalendar('2026-11', rows, { today: '2026-11-04', selected: '2026-11-04', holidayName: hol }); const byDs = Object.fromEntries(cal.days.map((c) => [c.ds, c]));
+ok(WEEKDAYS.join('') === '일월화수목금토' && WEEKDAY_LONG.length === 7, '요일 머리글은 일요일부터');
+ok(cal.year === 2026 && cal.month === 11 && cal.days.length === 30 && cal.weeks.length === 5 && cal.weeks.every((w) => w.length === 7), '2026-11: 30일, 5주, 모든 주가 7칸');
+ok(cal.weeks[0][0] && cal.weeks[0][0].ds === '2026-11-01' && cal.weeks[0][0].dow === 0 && cal.weeks[4].slice(2).every((c) => c === null) && cal.weeks[4][1].ds === '2026-11-30', '★ 1일은 일요일 칸에서 시작하고(앞 빈칸 0개), 30일(월) 뒤는 빈칸으로 채운다');
+const aug = monthCalendar('2026-08', [], {}); ok(aug.weeks.length === 6 && aug.weeks[0].slice(0, 6).every((c) => c === null) && aug.weeks[0][6].ds === '2026-08-01' && aug.weeks[0][6].dow === 6, '2026-08: 1일이 토요일이라 앞 빈칸 6개, 6주');
+const feb = monthCalendar('2028-02', [], {}); ok(feb.days.length === 29 && feb.days[0].dow === 2, '윤년 2028-02: 29일, 1일은 화요일');
+ok(byDs['2026-11-02'].state === 'work' && byDs['2026-11-02'].hours === 4.2 && byDs['2026-11-02'].checkIn === '10:20' && byDs['2026-11-02'].checkOut === '16:30' && !byDs['2026-11-02'].open, '★ 평일 기록: work, 근무시간·출퇴근 시각');
+ok(byDs['2026-11-01'].state === 'holidayWork' && byDs['2026-11-01'].off && byDs['2026-11-01'].dow === 0, '★ 일요일 기록: holidayWork(쉬는 날 근무)');
+ok(byDs['2026-11-03'].holiday === '시험 공휴일' && byDs['2026-11-03'].off && byDs['2026-11-03'].state === 'holidayWork', '★ 공휴일(평일) 기록: 공휴일 이름과 holidayWork');
+ok(byDs['2026-11-04'].open === true && byDs['2026-11-04'].checkOut === '' && byDs['2026-11-04'].state === 'work', '★ 출근만 있는 날: open(퇴근 기록 없음)');
+ok(byDs['2026-11-07'].state === 'off' && byDs['2026-11-07'].dow === 6 && byDs['2026-11-07'].rec === null, '토요일 기록 없음: off');
+ok(byDs['2026-11-05'].state === 'empty' && byDs['2026-11-06'].state === 'empty', '★ 평일 기록 없음: empty — 결근으로 표시하지 않는다(연차·출장을 여기서 보지 않으므로)');
+ok(byDs['2026-11-04'].today && !byDs['2026-11-03'].today && byDs['2026-11-04'].selected && !byDs['2026-11-02'].selected, '오늘·선택 표시');
+ok(byDs['2026-11-04'].pickable && !byDs['2026-11-04'].future && byDs['2026-11-05'].future && !byDs['2026-11-05'].pickable && byDs['2026-11-30'].future, '★ 오늘까지는 누를 수 있고, 오늘 이후는 누를 수 없다');
+const noOpt = monthCalendar('2026-11', rows); ok(noOpt.days.every((c) => !c.future && c.pickable && !c.today && !c.selected && c.holiday === ''), '옵션이 없으면 미래·오늘·선택·공휴일 없음(안전한 기본)');
+const bad = monthCalendar('2026-11', [{ date: '2026-11-10', checkIn: '09:00', checkOut: '18:00', workHours: 'x' }, null, { checkIn: '1' }], { today: '2026-11-30' }); ok(bad.days.find((c) => c.ds === '2026-11-10').hours === 0 && bad.days.filter((c) => c.rec).length === 1, '이상한 입력(근무시간이 숫자가 아님·null·날짜 없음)도 오류 없이 처리');
+ok(cellLabel(byDs['2026-11-02']) === '11월 2일 월요일, 출근 10:20, 퇴근 16:30, 근무 4.2시간' && cellLabel(byDs['2026-11-04']) === '11월 4일 수요일, 출근 08:50, 퇴근 기록 없음' && cellLabel(byDs['2026-11-03']).startsWith('11월 3일 화요일 시험 공휴일, 출근') && cellLabel(byDs['2026-11-06']) === '11월 6일 금요일, 아직 오지 않은 날' && cellLabel(monthCalendar('2026-11', [], { today: '2026-11-30' }).days[5]) === '11월 6일 금요일, 기록 없음', '읽어 주는 문구(스크린 리더·툴팁)');
+console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); process.exit(fail ? 1 : 0);
