@@ -1,7 +1,7 @@
 /* 작성 화면의 순수 로직 — 양식 정의, 검증, 문서 데이터 만들기, 결재선 편집. (화면·Firestore 와 분리해 시험한다) */
 
-import { halfwidthDeep } from '../../shared/text-fix.js?v=20261104a';
-import { recKey, FUEL_TYPES, FULL_OPTS, SHOP_KINDS, carChecks, carFields, emptyCarItem, carCalcText } from '../../shared/car-cost.js?v=20261104a'; // 주유·정비·비용 기록(운행일지 문서의 rec 필드)
+import { halfwidthDeep } from '../../shared/text-fix.js?v=20261104b';
+import { recKey, FUEL_TYPES, FULL_OPTS, SHOP_KINDS, carChecks, carFields, emptyCarItem, carCalcText } from '../../shared/car-cost.js?v=20261104b'; // 주유·정비·비용 기록(운행일지 문서의 rec 필드)
 export const MAX_APPROVERS = 5;
 export const MAX_PARTS = 6; // 한 사람의 하루에 나눌 수 있는 참여 프로젝트 수(서버 pjt-part-act 의 day-split 규칙과 같다)
 export const MAX_CC = 10;
@@ -234,6 +234,14 @@ export function attendHoursOf(ci, co) { const [ih, im] = String(ci).split(':').m
 export { carCalcText, recKey };
 export const emptyItem = (type) => (type === 'drive' ? emptyCarItem() : { name: '', qty: '', unitPrice: '', link: '' }); // 운행일지의 정비·비용 항목은 이름·금액·메모
 /** 기록 종류(운행·주유·정비)를 바꾼다 — 정비·비용이면 빈 항목 한 줄을 미리 깔아 준다 */
+/** 새 문서를 저장한 뒤 숨겨진 작성 화면을 빈 상태로 되돌린다 — 포털은 같은 주소로 돌아오면 화면을 다시 그리지 않고 그대로 보여 주므로(boot.js), 처리 중 표시와 이전 입력이 남지 않게 한다. 운행일지는 마지막으로 고른 기록 종류(운행·주유·정비)를 유지한다. */
+export function resetCompose(S, me) {
+  const rec = S.type === 'drive' && S.values ? recKey(S.values.rec) : null;
+  S.values = defaultValues(S.type, me); if (rec) S.values = setRec(S.values, rec);
+  S.errors = {}; S.formError = ''; S.busy = false; S.files = []; S.uploading = []; S.attachError = ''; S.docRef = null; S.createdMs = null;
+  S.line = initialLine(S.ctx);
+  return S;
+}
 export function setRec(values, rec) { const v = Object.assign({}, values, { rec: recKey(rec) }); if (v.rec === 'repair' && !(v.items || []).length) v.items = [emptyCarItem()]; return v; }
 
 /** 한글 받침에 맞는 조사: josa('금액','을','를') → '금액을', josa('사유','을','를') → '사유를' */
