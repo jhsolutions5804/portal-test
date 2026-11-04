@@ -151,6 +151,9 @@ ok(/data-car-calc="repairSum"/.test(hRep) && /합계 97,000원 \(2개 항목\)/.
 ok(/data-input="shopKind"/.test(hRep) && />자가정비<\/option>/.test(hRep) && /정비 당시 누적주행거리/.test(hRep), '화면(정비): 정비소/자가정비, 정비 당시 누적주행거리');
 ok(/총무 → 운행일지의 <strong>차량 비용<\/strong>/.test(hFuel) && /총무가 모든 사람의 운행일지를/.test(hTrip), '화면: 안내 문구가 종류에 맞게 바뀐다(주유·정비는 차량 비용으로 모임)');
 const hEdit = composeHtml(baseState('drive', Object.assign({}, base, fuelGood()), { edit: { id: 'x' } })); ok(/data-rec="trip"[^>]*disabled/.test(hEdit) && !/data-rec="fuel"[^>]*disabled/.test(hEdit) && /바꿀 수 없습니다/.test(hEdit), '화면: 이미 작성한 기록은 종류를 바꿀 수 없다');
+const fs0 = (await import('node:fs')).readFileSync(new URL('../app/theme/edoc.css', import.meta.url), 'utf8');
+ok(/\.jh-car-chips \{[^}]*max-height: 15\.5rem; overflow-y: auto;/.test(fs0), '★ 스타일: 항목 단추 영역은 높이를 제한하고 안에서 스크롤한다(28개를 길게 펼치면 입력 줄이 화면 아래로 밀림)');
+ok(/\.jh-car-row \{ display: grid; grid-template-columns: minmax\(0, 2fr\) minmax\(0, 1\.2fr\) minmax\(0, 2fr\) var\(--u-40\);/.test(fs0) && /@media \(max-width: 899px\) \{ \.jh-car-row \{ grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\) var\(--u-40\);/.test(fs0), '스타일: 항목·금액·메모·삭제가 한 줄(넓은 화면 4칸), 좁은 화면은 항목·금액 + 아래 메모');
 // 항목 단추 선택(순수 로직)
 const p1 = pickCarItem({ items: [{ name: '', amount: '', memo: '' }] }, '타이어'); ok(p1.index === 0 && p1.values.items.length === 1 && p1.values.items[0].name === '타이어', '★ 항목 단추: 비어 있는 줄이 있으면 거기에 채운다(빈 줄이 남지 않는다)');
 const p2 = pickCarItem(p1.values, '하이패스'); ok(p2.index === 1 && p2.values.items.length === 2 && p2.values.items[1].name === '하이패스' && p2.values.items[0].name === '타이어', '항목 단추: 채워진 줄이 있으면 새 줄을 더한다');

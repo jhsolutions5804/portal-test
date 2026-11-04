@@ -412,8 +412,8 @@ button.jh-kpi:hover { border-color: var(--c-primary); }
 
 /* 운행일지 정비·수리·기타 비용 — 항목 선택(칩)과 한 줄 입력(항목·금액·메모) */
 .jh-car-picker { display: flex; flex-direction: column; gap: var(--sp-3); margin-bottom: var(--sp-4); }
-.jh-car-chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--u-160, 10rem), 1fr)); gap: var(--sp-2); }
-.jh-car-chip { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: var(--u-40); padding: var(--sp-2) var(--sp-3); text-align: left; border: 1px solid var(--c-line); border-radius: var(--radius-sm); background: var(--c-surface); color: var(--c-ink); cursor: pointer; font: inherit; }
+.jh-car-chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--u-160, 10rem), 1fr)); gap: var(--sp-2); max-height: 15.5rem; overflow-y: auto; padding: var(--sp-1); border: 1px solid var(--c-line); border-radius: var(--radius-sm); } /* 단추가 28개라 길게 펼치면 입력 줄이 화면 아래로 밀린다 — 높이를 제한하고 안에서 스크롤 */
+.jh-car-chip { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; min-height: var(--u-36); padding: var(--sp-1) var(--sp-3); text-align: left; border: 1px solid var(--c-line); border-radius: var(--radius-sm); background: var(--c-surface); color: var(--c-ink); cursor: pointer; font: inherit; }
 .jh-car-chip small { color: var(--c-ink-2); font-size: 0.75em; }
 .jh-car-chip:hover { border-color: var(--c-primary-ink, var(--c-primary)); }
 .jh-car-chip[aria-pressed="true"] { border-color: var(--c-primary-ink, var(--c-primary)); background: var(--c-surface-2, var(--c-surface)); font-weight: 600; }
