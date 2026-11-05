@@ -31,5 +31,11 @@ const mkFb = (opts) => { const o = opts || {}; const calls = []; const snap = (r
   const { fb: f5 } = mkFb({ masterId: 'm1', failRegistry: true }); const r5 = await makeCareerIo(f5).load({ id: 'w1', name: 'x' }, '2026-11-05'); ok(r5.projects.list.length === 0 && r5.errors.includes('프로젝트 목록'), '프로젝트 목록을 못 읽으면 빈 이력과 오류 표시');
   const { fb: f6 } = mkFb({ failCall: true }); let err = null; try { await makeCareerIo(f6).load({ id: 'w1', name: 'x' }, '2026-11-05'); } catch (e) { err = e; } ok(err && err.code === 'functions/not-found', '서버 함수 오류는 그대로 던져 화면이 안내하게 함');
   const { fb: f7, calls: c7 } = mkFb(); const io7 = makeCareerIo(f7); await io7.act('saveCareer', { id: 'w9' }, { rows: [{ company: 'A' }] }); ok(c7[0].action === 'saveCareer' && c7[0].workerId === 'w9' && c7[0].rows.length === 1, '쓰기 동작: 동작 이름·직원 번호·내용을 서버 함수에 그대로 전달');
+  const dcalls = []; const okDeploy = async (d) => { dcalls.push(d); return { worker: { id: d.workerId }, linked: true, items: [{ pjtId: 'p1', name: 'P4 Ph2', status: 'agreed', at: '2026-11-05T01:30:00.000Z' }] }; };
+  const { fb: fd } = mkFb({ masterId: 'm1' }); const rd = await makeCareerIo(Object.assign({}, fd, { callDeploy: okDeploy })).load({ id: 'w1', name: '홍길동' }, '2026-11-05');
+  ok(dcalls.length === 1 && dcalls[0].action === 'adminList' && dcalls[0].workerId === 'w1' && rd.deploy.items[0].status === 'agreed' && rd.errors.length === 0, '투입 확인 현황: callDeploy 가 있으면 서버 함수 adminList 로 직원 한 명의 현황을 함께 읽음');
+  const rn = await makeCareerIo(fd).load({ id: 'w1', name: 'x' }, '2026-11-05'); ok(rn.deploy === undefined, '투입 확인 서버 함수가 연결되지 않았으면 deploy 는 undefined(구역을 그리지 않음)');
+  const rf = await makeCareerIo(Object.assign({}, fd, { callDeploy: async () => { throw new Error('x'); } })).load({ id: 'w1', name: 'x' }, '2026-11-05'); ok(rf.deploy === null && rf.errors.includes('투입 확인') && rf.data.worker.id === 'w1', '투입 확인 현황을 못 읽어도 경력관리의 나머지는 그대로(deploy=null, 오류에 「투입 확인」)');
+  const ld = await makeCareerIo(Object.assign({}, fd, { callDeploy: okDeploy })).loadDeploy({ id: 'w7' }); ok(ld.worker.id === 'w7' && dcalls[dcalls.length - 1].workerId === 'w7', 'loadDeploy: 연결·해제 뒤에 현황만 다시 읽음');
   console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);
 })();

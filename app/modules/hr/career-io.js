@@ -1,9 +1,9 @@
 /* 근로자 상세 「경력관리」 카드의 입출력 — 서버 함수(careerAct)와 프로젝트 기록 읽기(파이어베이스 함수는 밖에서 주입, 시험: tests/hr-career-io.test.mjs).
  * 프로젝트 이력은 저장하지 않고 명단·공수 기록에서 계산한다(shared/career.js careerProjects). 읽기에 실패한 자료는 errors 에 이름을 담아 돌려준다. */
-import { careerProjects, careerSummary } from '../../shared/career.js?v=20261105h';
+import { careerProjects, careerSummary } from '../../shared/career.js?v=20261105i';
 
 export function makeCareerIo(fb) {
-  const { db, collection, getDocs, getDoc, doc, query, where, call } = fb;
+  const { db, collection, getDocs, getDoc, doc, query, where, call, callDeploy } = fb;   // callDeploy(선택): 서버 함수 deployAct — 직원 한 명의 투입 확인 현황(관리자 조회)
   /** 프로젝트별로 이 사람의 명단 문서와 공수 있는 날짜만 읽는다(공수 문서 id = 날짜, md 에 근로자 id → 공수). 시험 프로젝트 표시는 없으므로 모두 포함 */
   async function loadProjects(masterId, today) {
     const errors = []; const projects = [];
@@ -22,8 +22,11 @@ export function makeCareerIo(fb) {
     const data = (await call({ action: 'get', workerId: worker.id })); const errors = [];
     let masters = []; try { const s = await getDocs(collection(db, 'master_workers')); s.forEach((d) => { const x = d.data() || {}; masters.push({ id: d.id, name: x.name || '', birth: x.birth || '', resigned: !!x.resigned }); }); } catch (e) { errors.push('연명부 목록'); }
     let projects = null; if (data.masterId) { projects = await loadProjects(data.masterId, today); errors.push.apply(errors, projects.errors); }
-    return { data, masters, projects, errors };
+    let deploy; if (callDeploy) { try { deploy = await loadDeploy(worker); } catch (e) { deploy = null; errors.push('투입 확인'); } }
+    return { data, masters, projects, errors, deploy };
   }
+  /** 직원 한 명의 투입 확인 현황(서버 deployAct adminList) — 연결 해제·연결 뒤에도 다시 읽는다 */
+  async function loadDeploy(worker) { return callDeploy ? callDeploy({ action: 'adminList', workerId: worker.id }) : undefined; }
   const act = (action, worker, extra) => call(Object.assign({ action, workerId: worker.id }, extra || {}));
-  return { load, loadProjects, act };
+  return { load, loadProjects, loadDeploy, act };
 }
