@@ -2,8 +2,8 @@
  * 쪽 구성은 양식과 같다: ① 지원서(인적사항·자격증·학력·가족관계·확인·서명) A4 세로 ② 경력사항 A4 세로 ③ 프로젝트이력 A4 가로(JH 프로젝트 이력이 있을 때). 자기소개서 쪽은 대표님 요청(2026-11-05)으로 뺐다.
  * 순수 함수 — 입력은 서버 careerAct resume 결과 + 프로젝트 이력(선택). 모든 값은 이스케이프하고 사진은 검사한 이미지 data URL 만 넣는다.
  * 내부용이라 가족관계·비상연락처·연락처가 들어간다. 주민등록번호는 마스킹본만(서버가 마스킹본만 준다), 은행·계좌는 이 인쇄에 넣지 않는다. 외부 제출용(투입 인력 소개)은 별도(1-3-27-3 후속, 외부 제공 동의 확인 뒤). */
-import { esc } from '../../core/ui.js?v=20261105e';
-import { careerMonths, fmtMonths } from './career-tab.js?v=20261105e';
+import { esc } from '../../core/ui.js?v=20261105f';
+import { careerMonths, fmtMonths } from './career-tab.js?v=20261105f';
 
 const NAVY = '#1F3A5F', LABEL = '#DCE6F1', GRAY = '#808080';
 const COMPANY = '제이에이치솔루션';
@@ -69,7 +69,7 @@ function page4(list) {
     + '<div class="note">프로젝트 수 ' + (list || []).length + ' 건</div></section>';
 }
 const roleText = (x) => { const segs = (x.segments || []).filter((g) => g.role); const r = segs.length > 1 ? segs.map((g) => g.role + ' ' + g.from.slice(5) + '~' + g.to.slice(5)).join(' · ') : (x.role || ''); return r + (x.manDays ? (r ? ' / ' : '') + '공수 ' + x.manDays : ''); };
-const CSS = '@page{size:A4 portrait;margin:10mm}@page land{size:A4 landscape;margin:8mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;line-height:1.25;font-family:"Malgun Gothic","맑은 고딕","Noto Sans CJK KR",sans-serif;font-size:9pt;color:#111}'
+const CSS = '@page{size:210mm 297mm;margin:10mm}@page land{size:297mm 210mm;margin:8mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;line-height:1.25;font-family:"Malgun Gothic","맑은 고딕","Noto Sans CJK KR",sans-serif;font-size:9pt;color:#111}'
   + '.pg{page-break-after:always;break-after:page}.pg:last-child{page-break-after:auto;break-after:auto}.land{page:land}'
   + 'h1{font-size:17pt;margin:0 0 2px;color:' + NAVY + '}h2{font-size:10.5pt;margin:4px 0 2px;color:' + NAVY + '}.sub{font-size:8pt;color:#555;margin-bottom:2px}.note{font-size:8pt;color:#666;margin:3px 0}'
   + 'table.g{width:100%;border-collapse:collapse;table-layout:fixed;margin:0}table.g td,table.g th{border:.5pt solid #7a7a7a;padding:1px 3px;vertical-align:middle;word-break:break-all;overflow-wrap:anywhere;text-align:center;white-space:pre-wrap}'
@@ -77,11 +77,11 @@ const CSS = '@page{size:A4 portrait;margin:10mm}@page land{size:A4 landscape;mar
   + 'tr.r5 td,tr.r5 th{height:7.5mm}tr.r16 td,tr.r16 th{height:11mm}table.g tr td,table.g tr th{height:5.6mm}tr{break-inside:avoid;page-break-inside:avoid}td.photo{width:19%;background:#f7f7f7;color:' + GRAY + ';font-size:8pt;padding:0;text-align:center}td.photo img{width:35mm;height:45mm;object-fit:cover;display:block;margin:0 auto}'
   + 'table.c2 tr.job td{height:16mm;font-size:9pt}.confirm{text-align:center;font-weight:700;margin:6px 0 4px}table.sign td,table.sign th{height:7mm}'
   + ''
-  + '.land table.g tr td{height:9mm}.toolbar{margin-bottom:12px;display:flex;gap:8px}@media print{body{background:#fff;padding:0}.toolbar{display:none}}@media screen{body{background:#e9edf3;padding:12px}.pg{background:#fff;max-width:210mm;margin:0 auto 12px;padding:10mm;box-shadow:0 1px 4px rgba(0,0,0,.25)}.pg.land{max-width:297mm}}';
+  + '.land table.g tr td{height:9mm}.toolbar{margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.toolbar .hint{font-size:8.5pt;color:#555}@media print{body{background:#fff;padding:0}.toolbar{display:none}.pg{padding:0 1.5mm}}@media screen{body{background:#e9edf3;padding:12px}.pg{background:#fff;max-width:210mm;margin:0 auto 12px;padding:10mm;box-shadow:0 1px 4px rgba(0,0,0,.25)}.pg.land{max-width:297mm}}';
 /** 이력서 인쇄본 전체 HTML(문서 하나). d = 서버 resume 결과, opts = { projects:[…careerProjects + client·contractor], todayYm, projectPage:true } */
 export function resumeHtml(d, opts) {
   const o = opts || {}; const data = d || {}; const name = s((data.worker || {}).name) || '근로자';
   const pages = [page1(data), page2(data, o.todayYm)];
   if (o.projectPage !== false && (o.projects || []).length) pages.push(page4(o.projects));
-  return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>' + esc('이력서(내부용) - ' + name) + '</title><style>' + CSS + '</style></head><body><div class="toolbar"><button onclick="window.close()" style="padding:8px 16px;background:#fff;border:1px solid #DDE4EF;border-radius:8px;cursor:pointer;">← 닫기</button><button onclick="window.print()" style="padding:8px 16px;background:#1D5BA6;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;">🖨 인쇄/PDF</button></div>' + pages.join('') + '</body></html>';
+  return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>' + esc('이력서(내부용) - ' + name) + '</title><style>' + CSS + '</style></head><body><div class="toolbar"><button onclick="window.close()" style="padding:8px 16px;background:#fff;border:1px solid #DDE4EF;border-radius:8px;cursor:pointer;">← 닫기</button><button onclick="window.print()" style="padding:8px 16px;background:#1D5BA6;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;">🖨 인쇄/PDF</button><span class="hint">인쇄 창 설정: 용지 A4 · 배율 100% · 여백 기본 · 배경 그래픽 켜기(권장)</span></div>' + pages.join('') + '</body></html>';
 }
