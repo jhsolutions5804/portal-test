@@ -1,27 +1,29 @@
 /* 플랫폼에 꽂는 모듈 목록 — 모듈을 더하거나 빼는 일은 이 파일 한 곳만 고친다.
  * 각 항목은 { manifest, mount }. 핵심부(core/)는 모듈 폴더를 직접 알지 못하고 이 목록만 읽는다. */
-import { mountScheduleBoard, SCHEDULE_CONFIG } from '../shared/schedule-board.js?v=20261105j';
-import * as edoc from './edoc/index.js?v=20261105j';
-import * as attendance from './attendance/index.js?v=20261105j';
-import * as calendar from './calendar/index.js?v=20261105j';
-import * as company from './company/index.js?v=20261105j';
-import * as evalm from './eval/index.js?v=20261105j';
-import * as finance from './finance/index.js?v=20261105j';
-import * as plan from './plan/index.js?v=20261105j';
-import * as general from './general/index.js?v=20261105j';
-import * as hr from './hr/index.js?v=20261105j';
-import * as entry from './entry/index.js?v=20261105j';
-import * as myinfo from './myinfo/index.js?v=20261105j';
-import * as deploy from './deploy/index.js?v=20261105j';
-import * as pjt from './pjt/index.js?v=20261105j';
-import { modules as legacy, hostNative } from './legacy/index.js?v=20261105j';
+import { mountScheduleBoard, SCHEDULE_CONFIG } from '../shared/schedule-board.js?v=20261105k';
+import * as edoc from './edoc/index.js?v=20261105k';
+import * as attendance from './attendance/index.js?v=20261105k';
+import * as calendar from './calendar/index.js?v=20261105k';
+import * as company from './company/index.js?v=20261105k';
+import * as evalm from './eval/index.js?v=20261105k';
+import * as finance from './finance/index.js?v=20261105k';
+import * as plan from './plan/index.js?v=20261105k';
+import * as general from './general/index.js?v=20261105k';
+import * as hr from './hr/index.js?v=20261105k';
+import * as entry from './entry/index.js?v=20261105k';
+import * as myinfo from './myinfo/index.js?v=20261105k';
+import * as deploy from './deploy/index.js?v=20261105k';
+import * as myresume from './myresume/index.js?v=20261105k';
+import * as pjt from './pjt/index.js?v=20261105k';
+import { modules as legacy, hostNative } from './legacy/index.js?v=20261105k';
 
 export const MODULES = [
   { manifest: edoc.manifest, mount: edoc.mount },
   { manifest: attendance.manifest, mount: attendance.mount },
   { manifest: calendar.manifest, mount: calendar.mount },
   { manifest: entry.manifest, mount: entry.mount },
-  { manifest: deploy.manifest, mount: deploy.mount },   // 투입 확인(직원 본인) — 프로젝트 투입 때마다 투입 확인서에 응답
+  { manifest: deploy.manifest, mount: deploy.mount },
+  { manifest: myresume.manifest, mount: myresume.mount },   // 내 이력서(직원 본인 열람, 신청 번호·워터마크·열람 기록)   // 투입 확인(직원 본인) — 프로젝트 투입 때마다 투입 확인서에 응답
   { manifest: myinfo.manifest, mount: myinfo.mount },   // 내 정보 입력(명부 미연결 직원) — 사이드바에는 없고 홈 출퇴근 칸에서 진입   // 입사 입력 검토(관리자) — 근로자 직접 기입 제출분을 확인·반영
 ].concat(legacy);   // 옛 모듈(기획·인사·PJT·내 팀 공수표)은 어댑터로 입주 — 새 모듈로 바뀌면 이 줄에서 빠지고 위 목록으로 옮긴다
 ['home', 'entries', 'expense', 'import', 'reports', 'monthly', 'forecast', 'gap', 'rules', 'opening', 'settings', 'pjt'].forEach((k) => hostNative('finance', k, (root, route, ctx) => finance.mount(root, { segs: [k], query: (route && route.query) || {} }, ctx)));   // 재무회계: 인사총무와 같은 공용 틀(사이드바·내용 영역) 안의 새 화면

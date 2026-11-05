@@ -1,0 +1,11 @@
+import { myResumeHtml } from '../app/modules/myresume/view.js';
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
+const S = (o) => Object.assign({ loading: false, error: '', data: { linked: true, recent: [{ no: 'R20261105-3F9A', at: '2026-11-05T01:30:00.000Z' }, { no: 'R20261104-0001', at: '2026-11-04T02:00:00.000Z' }] }, busy: false }, o || {});
+ok(myResumeHtml({ loading: true }).includes('aria-busy="true"') && myResumeHtml({ error: '서버 <b>오류</b>' }).includes('서버 &lt;b&gt;오류&lt;/b&gt;') && myResumeHtml({ data: null }).includes('불러오지 못했습니다') && !myResumeHtml(undefined).includes('undefined'), '읽는 중·오류(이스케이프)·자료 없음');
+const nl = myResumeHtml({ data: { linked: false, recent: [] } }); ok(nl.includes('계정과 연결된 직원 정보가 없습니다') && !nl.includes('data-mr-open'), '연결 안 된 계정: 안내만, 열람 단추 없음');
+const h = myResumeHtml(S());
+ok(h.includes('내 이력서') && h.includes('data-mr-open') && h.includes('📄 내 이력서 열람') && h.includes('열람할 때마다 신청 번호가 부여되고 열람 기록이 남으며') && h.includes('워터마크') && h.includes('비상연락처가 포함되고 가족관계는 나오지 않습니다') && h.includes('계좌는 나오지 않습니다'), '안내문: 신청 번호·열람 기록·워터마크, 본인 열람본의 범위(비상연락처 포함·가족관계 제외·계좌 제외)');
+ok(h.includes('최근 열람 기록') && h.includes('R20261105-3F9A') && h.includes('2026-11-05 10:30') && h.includes('R20261104-0001') && h.includes('2026-11-04 11:00'), '최근 열람 기록: 신청 번호와 한국 시각');
+ok(myResumeHtml(S({ data: { linked: true, recent: [] } })).includes('아직 열람 기록이 없습니다') && /data-mr-open[^>]*disabled/.test(myResumeHtml(S({ busy: true }))), '기록이 없을 때 안내, 처리 중에는 단추 잠김');
+ok(!myResumeHtml(S({ data: { linked: true, recent: [{ no: '<img onerror=1>', at: 'x' }] } })).includes('<img onerror') && !h.includes('workerId') && !h.includes('data-worker'), '신청 번호 이스케이프, 화면은 직원 id 를 싣지 않음(서버가 로그인 계정으로 찾음)');
+console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

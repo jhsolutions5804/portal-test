@@ -41,4 +41,15 @@ ok(h.includes('-webkit-print-color-adjust:exact;print-color-adjust:exact') && h.
 // ── 경력관리 카드의 인쇄 단추
 const C = (o) => Object.assign({ loading: false, error: '', data: { worker: { id: 'w1', name: '홍길동' }, hasProfile: true, education: [], certs: [], career: [], careerOverride: null, careerEdits: [], awards: [], training: [], masterId: '' }, masters: [], projects: null, errors: [], edit: null, aw: {}, tr: {}, busy: false, today: '2026-11-05' }, o || {});
 const card = careerInnerHtml(C(), { name: '홍길동' }); ok(card.includes('data-cr-print') && card.includes('🖨 이력서 인쇄(내부용)') && card.includes('열람 기록이 남습니다') && /data-cr-print[^>]*disabled/.test(careerInnerHtml(C({ busy: true }), {})) && !careerInnerHtml(C({ data: null, error: 'x' }), {}).includes('data-cr-print') && !careerInnerHtml(C({ loading: true, data: null }), {}).includes('data-cr-print'), '경력관리 카드: 자료가 있을 때만 「이력서 인쇄(내부용)」 단추, 처리 중에는 잠김, 안내문에 열람 기록 언급');
+// ── 본인 열람본(직원이 포털에서 자기 이력서를 볼 때): 신청 번호·열람 일시 표시줄, 이름·신청 번호 워터마크, 가족관계 구역 없음
+const VW = { no: 'R20261105-3F9A', at: '2026-11-05T01:30:00.000Z', name: '홍길동' };
+const hv = resumeHtml(D, { viewer: VW, noFamily: true, projectPage: false, todayYm: '2026-11' });
+ok(hv.includes('<title>내 이력서 - 홍길동 (R20261105-3F9A)</title>') && cnt(hv, /<div class="viewer">본인 열람본 · 신청 번호 R20261105-3F9A · 열람 2026-11-05 10:30<\/div>/g) === 2 && cnt(hv, /<section class="pg/g) === 2, '본인 열람본: 제목에 신청 번호, 지원서·경력사항 쪽 맨 위에 「본인 열람본 · 신청 번호 · 열람 일시」, 프로젝트이력 쪽 없음');
+ok(!hv.includes('4. 가족관계') && !hv.includes('>홍길순<') && !hv.includes('동거여부') && h.includes('4. 가족관계') && h.includes('>홍길순<'), '본인 열람본에는 가족관계 구역이 없고, 내부용 이력서(옵션 없음)에는 그대로 있음');
+ok(hv.includes('>홍어머니<') && hv.includes('>010-9999-8888<') && hv.includes('>920824-1******<') && hv.includes('인쇄에서 제외'), '본인 열람본에는 비상연락처가 포함되고 주민번호는 마스킹, 은행·계좌는 제외 표시');
+const wmUrls = (hv.match(/class="wm" style="background-image:url\('([^']+)'\)"/g) || []).map((x) => decodeURIComponent(x.match(/url\('([^']+)'\)/)[1]));
+ok(wmUrls.length === 2 && wmUrls.every((u) => u.startsWith('data:image/svg+xml') && u.includes('홍길동 · R20261105-3F9A') && u.includes('rotate(-24')) && hv.includes('.wm{position:absolute') && hv.includes('pointer-events:none') && hv.includes('.pg{position:relative}'), '워터마크: 쪽마다 이름·신청 번호가 대각선으로 반복(배경 그림, 클릭 방해 없음)');
+ok(!h.includes('class="wm"') && !h.includes('class="viewer"') && !h.includes('<title>내 이력서'), '옵션이 없으면(내부용) 워터마크·표시줄·제목 변경이 없음');
+const evilW = resumeHtml(Object.assign({}, D, { worker: Object.assign({}, D.worker, { name: '<b>"\'&' }) }), { viewer: { no: '"><script>1</script>', at: 'x', name: '<b>"\'&' }, noFamily: true });
+ok(!/<script>1/.test(evilW) && !evilW.includes('<b>"') && evilW.includes('class="wm"') && !/url\('[^']*'[^)]/.test(evilW.replace(/url\('[^']+'\)/g, 'url(OK)')), '이름·신청 번호에 따옴표·꺾쇠가 있어도 문서와 워터마크 그림이 깨지지 않음');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

@@ -1,5 +1,7 @@
 /* 근로자 상세 「경력관리」 카드의 순수 규칙(화면·네트워크 없이 시험 가능) — 대기열 1-3-27-2, 시험: tests/hr-career-tab.test.mjs.
  * 서버(careerAct)가 돌려주는 모양: { worker, hasProfile, education, certs, career(원본), careerOverride(수정본 또는 null), careerEdits, awards, training, masterId } */
+import { careerMonths, fmtMonths } from '../../shared/career-months.js?v=20261105k';
+export { careerMonths, fmtMonths };   // 옛 가져오기 경로 호환(실제 계산은 shared/career-months.js)
 export const AWARD_KINDS = [['award', '포상'], ['commend', '표창'], ['safety', '안전 무사고'], ['memo', '메모']];
 export const awardLabel = (k) => { const x = AWARD_KINDS.find((a) => a[0] === k); return x ? x[1] : '메모'; };
 export const emptyRow = () => ({ company: '', from: '', to: '', position: '', duty: '' });
@@ -12,14 +14,6 @@ const ym = (s) => /^\d{4}-(0[1-9]|1[0-2])$/.test(s || '');
 const idx = (s) => (+s.slice(0, 4)) * 12 + (+s.slice(5, 7) - 1);
 /** 기간 표시: 2012-03 ~ 2016-02 · 2016-03 ~ 재직 · 입사만 없으면 ~ 퇴사 */
 export function periodLabel(from, to) { const f = ym(from) ? from : (from || ''); const t = ym(to) ? to : (to || ''); if (!f && !t) return '—'; return (f || '?') + ' ~ ' + (t || (f ? '재직' : '?')); }
-/** 입사 전 경력 합계 개월(겹치는 기간은 한 번만 센다). 퇴사가 비어 있으면 todayYm(YYYY-MM)까지. 시기를 알 수 없는 줄은 뺀다 */
-export function careerMonths(rows, todayYm) {
-  const spans = (rows || []).map((r) => { if (!ym(r.from)) return null; const e = ym(r.to) ? idx(r.to) : (ym(todayYm) ? idx(todayYm) : null); if (e == null) return null; const s = idx(r.from); return e >= s ? [s, e + 1] : null; }).filter(Boolean).sort((a, b) => a[0] - b[0]);
-  let total = 0, curS = null, curE = null;
-  spans.forEach(([s, e]) => { if (curS == null) { curS = s; curE = e; } else if (s <= curE) { curE = Math.max(curE, e); } else { total += curE - curS; curS = s; curE = e; } });
-  if (curS != null) total += curE - curS; return total;
-}
-export const fmtMonths = (m) => { const n = Math.max(0, Math.round(m || 0)); const y = Math.floor(n / 12), r = n % 12; return ((y ? y + '년 ' : '') + (r || !y ? r + '개월' : '')).trim(); };
 /** 연명부 연결 후보: 이름이 같은 인원(재직 먼저, 생년월일 순). masters = [{id,name,birth,resigned}] */
 export function linkCandidates(worker, masters) {
   const nm = String((worker && worker.name) || '').trim(); if (!nm) return [];
