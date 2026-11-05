@@ -1,0 +1,27 @@
+import { externalResumeHtml } from '../app/modules/hr/external-print.js';
+import { resumeHtml } from '../app/modules/hr/resume-print.js';
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
+const cnt = (h, re) => (h.match(re) || []).length;
+const PNG = 'data:image/png;base64,iVBORw0KGgo=';
+const D = { worker: { id: 'w1', name: '홍길동' }, party: { pjtName: 'P4 Ph2 (FAB)', client: '발주처갑', contractor: '시공사을', site: '평택', from: '2026-10-05', role: '품질' }, consent: { at: '2026-11-05T01:30:00.000Z', version: 'v1', draft: true },
+  education: [{ school: '평택대', major: '기계공학', from: '2008-03', to: '2012-02', status: '졸업' }], certs: [{ name: '공조냉동기계기사', date: '2015-05-20', issuer: '산업인력공단' }],
+  career: [{ company: '가나기계', from: '2012-03', to: '2016-02', position: '사원', duty: '설비 시공' }, { company: '다라설비', from: '2016-03', to: '', position: '대리', duty: '현장 관리' }], photo: PNG, provision: { id: 'x1', at: '2026-11-05T03:00:00.000Z' } };
+const PJ = [{ name: 'P4 Ph2 (FAB)', client: '발주처갑', contractor: '시공사을', active: true, from: '2026-10-05', to: '2026-11-05', role: '품질' }, { name: 'M15X', client: '발주처병', contractor: '', active: false, from: '2026-07-01', to: '2026-07-03', role: '' }];
+const h = externalResumeHtml(D, { projects: PJ, todayYm: '2026-11' });
+ok(h.startsWith('<!doctype html>') && h.includes('<title>투입 인력 소개서 - 홍길동 (P4 Ph2 (FAB))</title>') && cnt(h, /<section class="pg/g) === 1 && h.includes('<h1>투입 인력 소개서</h1>'), '문서: 제목에 이름과 사업명, 한 장짜리 소개서');
+ok(h.includes('제출처: 발주처갑 · 시공사을') && h.includes('>발주처갑<') && h.includes('>시공사을<') && h.includes('>P4 Ph2 (FAB)<') && h.includes('>평택 / 품질<') && h.includes('>홍길동<') && h.includes('>제이에이치솔루션<'), '제출처·투입 사업·발주처·시공사·현장/역할·성명·소속이 사업 정보 그대로');
+ok(h.includes('<img src="' + PNG + '"') && h.includes('width:35mm;height:45mm') && !externalResumeHtml(Object.assign({}, D, { photo: 'javascript:alert(1)' })).includes('javascript:') && externalResumeHtml(Object.assign({}, D, { photo: '' })).includes('사진<br>(3.5 × 4.5 cm)'), '사진: 검사한 이미지 data URL 만 3.5×4.5cm, 없거나 이상하면 빈 칸');
+ok(h.includes('1. 학력') && h.includes('>평택대<') && h.includes('>기계공학<') && h.includes('>2008-03<') && h.includes('>졸업<') && h.includes('2. 자격·면허') && h.includes('>공조냉동기계기사<') && h.includes('>산업인력공단<') && h.includes('>2015-05-20<'), '학력·자격·면허 값');
+ok(h.includes('3. 경력사항') && h.includes('>가나기계<') && h.includes('>설비 시공<') && h.includes('>재직<') && h.includes('>48<') && h.includes('>129<') && h.includes('총 14년 9개월') && cnt(h, /<tr class="job">/g) === 5, '경력: 회사·직위·업무·기간·개월수(48, 129)·총 경력 14년 9개월, 빈 줄로 5줄');
+ok(h.includes('4. 프로젝트 참여 이력') && h.includes('>M15X<') && h.includes('2026-10-05 ~ 진행 중') && h.includes('2026-07-01 ~ 2026-07-03') && h.includes('>발주처병<'), '프로젝트 참여 이력: 프로젝트·발주처·시공사·기간(진행 중 표시)·역할');
+// ── 제공하지 않는 항목은 이 문서에 없음(입력에 섞여 들어와도 출력하지 않음)
+const leak = externalResumeHtml(Object.assign({}, D, { address: '비밀주소', phone: '010-1111-2222', email: 'a@b.kr', juminMasked: '900101-1******', family: [{ name: '비밀가족' }], emergency: { name: '비상연락' }, bloodType: 'O', military: { kind: '군필' }, selfIntro: '자기소개', bank: '신한', account: '110-123', salary: '8000' }), { projects: PJ });
+ok(!['비밀주소', '010-1111-2222', 'a@b.kr', '900101', '비밀가족', '비상연락', '군필', '자기소개', '110-123', '8000'].some((x) => leak.includes(x)) && !/연락처|주소<|주민등록|가족관계|병역|혈액형|연봉|퇴사사유|부서/.test(h.replace(/제공 항목:[^<]*/, '')), '주민번호·연락처·주소·계좌·가족·병역·혈액형·자기소개·연봉·퇴사사유·부서는 입력에 있어도 출력하지 않고 양식에도 칸이 없음');
+ok(h.includes('본인의 동의(프로젝트 투입 확인서, 2026-11-05)') && h.includes('발주처갑 · 시공사을에 제공하는 문서입니다') && h.includes('제공 항목: 성명, 사진, 학력, 자격·면허, 경력, 프로젝트 참여 이력') && h.includes('작성일 2026-11-05'), '맨 아래 제공 근거: 동의 일자·제공받는 자·제공 항목·작성일');
+ok(h.includes('시험용 문구에 따른 동의입니다(노무사 확인 전)') && !externalResumeHtml(Object.assign({}, D, { consent: { at: D.consent.at, version: 'v2', draft: false } })).includes('시험용 문구에 따른 동의'), '시험용(draft) 문구로 받은 동의면 인쇄본에 경고가 찍히고, 확정 문구면 없음');
+ok(h.includes('class="toolbar"') && h.includes('window.close()') && h.includes('window.print()') && h.includes('🖨 인쇄/PDF') && h.includes('@media print') && h.includes('@page{size:210mm 297mm;margin:10mm}') && h.includes('print-color-adjust:exact') && h.includes('beforeprint') && h.indexOf('class="toolbar"') < h.indexOf('<section class="pg'), '내부용 이력서와 같은 「← 닫기 · 🖨 인쇄/PDF」 단추·A4 설정·배경색 인쇄·크기 맞춤');
+const evil = externalResumeHtml({ worker: { name: '<script>1</script>' }, party: { pjtName: '"><img onerror=1>', client: '<b>', contractor: '<i>', site: '<u>', role: '<s>' }, consent: { at: 'x', draft: false }, education: [{ school: '<q>' }], certs: [{ name: '<w>' }], career: [{ company: '<a href=x>', duty: '<svg onload=1>' }], photo: '"><script>3</script>' }, { projects: [{ name: '<p>', client: '<c>', role: '<r>', from: '<f>', to: '<t>' }] });
+ok(!/<script>\d/.test(evil) && !evil.includes('<img onerror') && !evil.includes('<svg onload') && !evil.includes('<a href=x>') && !evil.includes('<b>') && !evil.includes('<u>') && evil.includes('&lt;script&gt;1&lt;/script&gt;'), '모든 값의 HTML·따옴표를 막음');
+let e1; try { e1 = externalResumeHtml(null, null); } catch (e) { e1 = 'ERR ' + e.message; } ok(!String(e1).startsWith('ERR') && e1.includes('투입 인력 소개서 - 근로자') && cnt(e1, /<tr class="job">/g) === 5, '자료가 비어 있어도 깨지지 않고 빈 양식이 나옴');
+ok(resumeHtml(null, null).includes('RESUME') === false && resumeHtml(null, null).includes('class="toolbar"'), '내부용 이력서는 그대로(단추 줄을 상수로 분리해도 같은 모양)');
+console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

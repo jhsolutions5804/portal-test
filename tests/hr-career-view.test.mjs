@@ -38,4 +38,8 @@ ok(dh.includes('프로젝트 투입 확인') && dh.includes('P4 &lt;Ph2&gt;') &&
 ok(dh.indexOf('프로젝트 투입 확인') > dh.indexOf('JH 프로젝트 이력') && dh.indexOf('프로젝트 투입 확인') < dh.indexOf('<h4 class="jh-hr__sub">성과 기록'), '투입 확인 현황은 프로젝트 이력 다음, 성과 기록 앞');
 ok(!careerInnerHtml(C(), W).includes('프로젝트 투입 확인') && !careerInnerHtml(C({ deploy: undefined }), W).includes('프로젝트 투입 확인'), '서버 함수가 연결되지 않은 상태(deploy 없음)에서는 구역을 그리지 않음(옛 호출 호환)');
 ok(careerInnerHtml(C({ deploy: null }), W).includes('투입 확인 현황을 불러오지 못했습니다') && careerInnerHtml(C({ deploy: { linked: false, items: [] } }), W).includes('연명부와 연결하면 프로젝트 투입 확인 현황이 나옵니다') && careerInnerHtml(C({ deploy: { linked: true, items: [] } }), W).includes('투입 확인 대상 프로젝트가 없습니다'), '현황을 못 읽었을 때·연결 안 됨·대상 없음 안내');
+const DPX = Object.assign({}, DP, { provisions: [{ id: 'a', at: '2026-11-05T01:00:00.000Z', pjtId: 'p1', pjtName: 'P4 <Ph2>' }, { id: 'b', at: '2026-11-06T01:00:00.000Z', pjtId: 'p1', pjtName: 'P4 <Ph2>' }] });
+const dx = careerInnerHtml(C({ deploy: DPX }), W);
+ok(dx.includes('외부용 소개서') && dx.includes('data-cr-ext="p1"') && !dx.includes('data-cr-ext="p2"') && !dx.includes('data-cr-ext="p3"') && dx.includes('data-cr-ext="p4"') && dx.includes('동의 필요') && dx.includes('2회 · 마지막 2026-11-06') && /data-cr-ext="p1"[^>]*disabled/.test(careerInnerHtml(C({ deploy: DPX, busy: true }), W)), '외부용 소개서 단추는 동의한 프로젝트에만(처리 중 잠김), 제공 이력은 횟수와 마지막 날짜');
+ok(!careerInnerHtml(C({ deploy: DP }), W).includes('2회 ·') && careerInnerHtml(C({ deploy: DP }), W).includes('만들 때마다 제공 이력이 남습니다'), '제공 이력이 없으면 「-」, 안내문에 제공 이력 기록 언급');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

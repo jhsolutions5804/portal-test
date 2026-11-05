@@ -1,8 +1,8 @@
 /* 근로자 상세 「경력관리」 카드 — HTML 만 만드는 순수 함수(시험: tests/hr-career-view.test.mjs). 읽기·클릭 연결은 index.js mount(직원 상세).
  * 카드 안쪽만 다시 그려서(careerInnerHtml) 상세의 다른 입력 중인 칸을 건드리지 않는다. 관리자 전용(서버가 막고 화면은 안내). */
-import { esc } from '../../core/ui.js?v=20261105i';
-import { AWARD_KINDS, awardLabel, careerRows, isEdited, careerMonths, fmtMonths, periodLabel, linkCandidates } from './career-tab.js?v=20261105i';
-import { deployStatus, deployWhen } from '../../shared/deploy-fmt.js?v=20261105i';
+import { esc } from '../../core/ui.js?v=20261105j';
+import { AWARD_KINDS, awardLabel, careerRows, isEdited, careerMonths, fmtMonths, periodLabel, linkCandidates } from './career-tab.js?v=20261105j';
+import { deployStatus, deployWhen } from '../../shared/deploy-fmt.js?v=20261105j';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -46,9 +46,11 @@ function deploySection(c) {
   const items = c.deploy.items || [];
   if (!c.deploy.linked) return head + '<div class="jh-empty">연명부와 연결하면 프로젝트 투입 확인 현황이 나옵니다.</div>';
   if (!items.length) return head + '<div class="jh-empty">투입 확인 대상 프로젝트가 없습니다. 프로젝트 명단에 들어가면 직원 본인이 투입 확인서에 응답합니다.</div>';
-  const rows = items.map((x) => { const st = deployStatus(x.status); return '<tr><td>' + esc(x.name) + (x.ended ? ' ' + chip(x.removed ? '명단 제외' : '종료', 'gray') : '') + '</td><td>' + chip(st.label, st.tone) + '</td><td>' + esc(x.at ? deployWhen(x.at) : '-') + '</td></tr>'; }).join('');
+  const pv = c.deploy.provisions || [];
+  const rows = items.map((x) => { const st = deployStatus(x.status); const mine = pv.filter((p) => p.pjtId === x.pjtId); const last = mine[mine.length - 1];
+    return '<tr><td>' + esc(x.name) + (x.ended ? ' ' + chip(x.removed ? '명단 제외' : '종료', 'gray') : '') + '</td><td>' + chip(st.label, st.tone) + '</td><td>' + esc(x.at ? deployWhen(x.at) : '-') + '</td><td>' + (last ? esc(mine.length) + '회 · 마지막 ' + esc(deployWhen(last.at).slice(0, 10)) : '<span class="jh-field__hint">-</span>') + '</td><td>' + (x.status === 'agreed' ? btn('소개서(외부용)', 'data-cr-ext="' + esc(x.pjtId) + '"', 'secondary', c.busy) : '<span class="jh-field__hint">동의 필요</span>') + '</td></tr>'; }).join('');
   const pend = items.filter((x) => x.status === 'pending' && x.canDecide).length;
-  return head + '<div class="jh-field__hint">' + (pend ? '확인 대기 ' + esc(pend) + '건 — ' : '') + '직원 본인이 「투입 확인」 화면에서 응답합니다. 동의하지 않은 사업에는 투입하지 않습니다(다른 불이익 없음).</div><div class="jh-hr__scroll"><table class="jh-hr-table"><thead><tr><th>프로젝트</th><th>상태</th><th>응답 일시</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  return head + '<div class="jh-field__hint">' + (pend ? '확인 대기 ' + esc(pend) + '건 — ' : '') + '직원 본인이 「투입 확인」 화면에서 응답합니다. 동의하지 않은 사업에는 투입하지 않습니다(다른 불이익 없음). 외부용 소개서는 동의한 프로젝트에서만 만들 수 있고, 만들 때마다 제공 이력이 남습니다.</div><div class="jh-hr__scroll"><table class="jh-hr-table"><thead><tr><th>프로젝트</th><th>상태</th><th>응답 일시</th><th>제공 이력</th><th>외부용 소개서</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
 }
 function awardSection(c) {
   const d = c.data; const f = c.aw || {}; const kinds = AWARD_KINDS.map((k) => '<option value="' + k[0] + '"' + ((f.kind || 'award') === k[0] ? ' selected' : '') + '>' + esc(k[1]) + '</option>').join('');

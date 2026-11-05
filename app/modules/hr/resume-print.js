@@ -2,8 +2,8 @@
  * 쪽 구성은 양식과 같다: ① 지원서(인적사항·자격증·학력·가족관계·확인·서명) A4 세로 ② 경력사항 A4 세로 ③ 프로젝트이력 A4 가로(JH 프로젝트 이력이 있을 때). 자기소개서 쪽은 대표님 요청(2026-11-05)으로 뺐다.
  * 순수 함수 — 입력은 서버 careerAct resume 결과 + 프로젝트 이력(선택). 모든 값은 이스케이프하고 사진은 검사한 이미지 data URL 만 넣는다.
  * 내부용이라 가족관계·비상연락처·연락처가 들어간다. 주민등록번호는 마스킹본만(서버가 마스킹본만 준다), 은행·계좌는 이 인쇄에 넣지 않는다. 외부 제출용(투입 인력 소개)은 별도(1-3-27-3 후속, 외부 제공 동의 확인 뒤). */
-import { esc } from '../../core/ui.js?v=20261105i';
-import { careerMonths, fmtMonths } from './career-tab.js?v=20261105i';
+import { esc } from '../../core/ui.js?v=20261105j';
+import { careerMonths, fmtMonths } from './career-tab.js?v=20261105j';
 
 const NAVY = '#1F3A5F', LABEL = '#DCE6F1', GRAY = '#808080';
 const COMPANY = '제이에이치솔루션';
@@ -78,10 +78,14 @@ const CSS = '@page{size:210mm 297mm;margin:10mm}@page land{size:297mm 210mm;marg
   + 'table.c2 tr.job td{height:16mm;font-size:9pt}.confirm{text-align:center;font-weight:700;margin:10px 0 6px}table.sign td,table.sign th{height:9mm}'
   + ''
   + '.land table.g tr td{height:9mm}.toolbar{margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.toolbar .hint{font-size:8.5pt;color:#555}@media print{body{background:#fff;padding:0}.toolbar{display:none}#sheets .pg{zoom:1 !important;width:auto;min-height:0;margin:0;box-shadow:none;padding:0 1.5mm}.pg.land{width:auto}}@media screen{body{background:#e9edf3;padding:12px}.pg{width:210mm;min-height:297mm;margin:0 auto 14px;padding:10mm;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.25)}.pg.land{width:297mm;min-height:210mm}}';
+/** 인쇄 창 맨 위 「← 닫기 / 🖨 인쇄/PDF」 단추 줄과 창 너비에 맞춘 쪽 축소 스크립트 — 외부용 소개서(external-print.js)도 같은 것을 쓴다 */
+export const RESUME_TOOLBAR = '<div class="toolbar"><button onclick="window.close()" style="padding:8px 16px;background:#fff;border:1px solid #DDE4EF;border-radius:8px;cursor:pointer;">← 닫기</button><button onclick="window.print()" style="padding:8px 16px;background:#1D5BA6;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;">🖨 인쇄/PDF</button><span class="hint">인쇄 창 설정: 용지 A4 · 배율 100% · 여백 기본 · 배경 그래픽 켜기(권장)</span></div>';
+export const RESUME_SCRIPT = '<script>(function(){function z(v){document.querySelectorAll(".pg").forEach(function(p){p.style.zoom=v===1?1:Math.min(1,(document.documentElement.clientWidth-24)/((p.classList.contains("land")?297:210)*96/25.4))})}function fit(){z()}window.addEventListener("resize",fit);window.addEventListener("beforeprint",function(){z(1)});window.addEventListener("afterprint",fit);fit()})()</script>';
+export const RESUME_CSS = CSS;
 /** 이력서 인쇄본 전체 HTML(문서 하나). d = 서버 resume 결과, opts = { projects:[…careerProjects + client·contractor], todayYm, projectPage:true } */
 export function resumeHtml(d, opts) {
   const o = opts || {}; const data = d || {}; const name = s((data.worker || {}).name) || '근로자';
   const pages = [page1(data), page2(data, o.todayYm)];
   if (o.projectPage !== false && (o.projects || []).length) pages.push(page4(o.projects));
-  return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>' + esc('이력서(내부용) - ' + name) + '</title><style>' + CSS + '</style></head><body><div class="toolbar"><button onclick="window.close()" style="padding:8px 16px;background:#fff;border:1px solid #DDE4EF;border-radius:8px;cursor:pointer;">← 닫기</button><button onclick="window.print()" style="padding:8px 16px;background:#1D5BA6;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;">🖨 인쇄/PDF</button><span class="hint">인쇄 창 설정: 용지 A4 · 배율 100% · 여백 기본 · 배경 그래픽 켜기(권장)</span></div><div id="sheets">' + pages.join('') + '</div><script>(function(){function z(v){document.querySelectorAll(".pg").forEach(function(p){p.style.zoom=v===1?1:Math.min(1,(document.documentElement.clientWidth-24)/((p.classList.contains("land")?297:210)*96/25.4))})}function fit(){z()}window.addEventListener("resize",fit);window.addEventListener("beforeprint",function(){z(1)});window.addEventListener("afterprint",fit);fit()})()</script></body></html>';
+  return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>' + esc('이력서(내부용) - ' + name) + '</title><style>' + CSS + '</style></head><body>' + RESUME_TOOLBAR + '<div id="sheets">' + pages.join('') + '</div>' + RESUME_SCRIPT + '</body></html>';
 }

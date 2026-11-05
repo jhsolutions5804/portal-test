@@ -1,6 +1,6 @@
 /* 근로자 상세 「경력관리」 카드의 입출력 — 서버 함수(careerAct)와 프로젝트 기록 읽기(파이어베이스 함수는 밖에서 주입, 시험: tests/hr-career-io.test.mjs).
  * 프로젝트 이력은 저장하지 않고 명단·공수 기록에서 계산한다(shared/career.js careerProjects). 읽기에 실패한 자료는 errors 에 이름을 담아 돌려준다. */
-import { careerProjects, careerSummary } from '../../shared/career.js?v=20261105i';
+import { careerProjects, careerSummary } from '../../shared/career.js?v=20261105j';
 
 export function makeCareerIo(fb) {
   const { db, collection, getDocs, getDoc, doc, query, where, call, callDeploy } = fb;   // callDeploy(선택): 서버 함수 deployAct — 직원 한 명의 투입 확인 현황(관리자 조회)
@@ -25,8 +25,13 @@ export function makeCareerIo(fb) {
     let deploy; if (callDeploy) { try { deploy = await loadDeploy(worker); } catch (e) { deploy = null; errors.push('투입 확인'); } }
     return { data, masters, projects, errors, deploy };
   }
+  /** 외부용 소개서 자료(서버 deployAct provide — 동의한 프로젝트만, 제공 이력이 남음) + 그 직원의 프로젝트 이력(제공받는 자 칸용) */
+  async function provide(worker, pjtId, masterId, today) {
+    const data = await callDeploy({ action: 'provide', workerId: worker.id, pjtId }); let projects = { list: [] }; if (masterId) { try { projects = await loadProjects(masterId, today); } catch (e) { projects = { list: [] }; } }
+    return { data, projects };
+  }
   /** 직원 한 명의 투입 확인 현황(서버 deployAct adminList) — 연결 해제·연결 뒤에도 다시 읽는다 */
   async function loadDeploy(worker) { return callDeploy ? callDeploy({ action: 'adminList', workerId: worker.id }) : undefined; }
   const act = (action, worker, extra) => call(Object.assign({ action, workerId: worker.id }, extra || {}));
-  return { load, loadProjects, loadDeploy, act };
+  return { load, loadProjects, loadDeploy, provide, act };
 }
