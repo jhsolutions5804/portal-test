@@ -1,7 +1,7 @@
 /* 근로자 상세 「경력관리」 카드 — HTML 만 만드는 순수 함수(시험: tests/hr-career-view.test.mjs). 읽기·클릭 연결은 index.js mount(직원 상세).
  * 카드 안쪽만 다시 그려서(careerInnerHtml) 상세의 다른 입력 중인 칸을 건드리지 않는다. 관리자 전용(서버가 막고 화면은 안내). */
-import { esc } from '../../core/ui.js?v=20261105b';
-import { AWARD_KINDS, awardLabel, careerRows, isEdited, careerMonths, fmtMonths, periodLabel, linkCandidates } from './career-tab.js?v=20261105b';
+import { esc } from '../../core/ui.js?v=20261105c';
+import { AWARD_KINDS, awardLabel, careerRows, isEdited, careerMonths, fmtMonths, periodLabel, linkCandidates } from './career-tab.js?v=20261105c';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -33,7 +33,7 @@ function projectSection(c) {
   if (!d.masterId) return head + '<div class="jh-empty">연명부와 연결하면 프로젝트별 역할·기간·공수가 계산되어 나옵니다.</div>';
   const p = c.projects; if (!p) return head + '<div class="jh-skeleton" style="height:var(--u-100, 6rem)" aria-busy="true"></div>';
   const s = p.summary || { count: 0, manDays: 0, from: '', to: '' };
-  const rows = (p.list || []).map((x) => '<tr><td>' + esc(x.name) + (x.ended ? ' ' + chip('종료', 'gray') : (x.active ? ' ' + chip('투입 중', 'ok') : ' ' + chip('투입 종료', 'gray'))) + '</td><td>' + esc(x.role || '미지정') + (x.segments && x.segments.length > 1 ? '<div class="jh-field__hint">' + x.segments.map((g) => esc((g.role || '미지정') + ' ' + g.from.slice(5) + '~' + g.to.slice(5))).join(' · ') + '</div>' : '') + '</td><td>' + esc(periodLabel(x.from, x.to)) + '</td><td>' + esc(x.days) + '일</td><td>' + esc(x.manDays) + '</td></tr>').join('');
+  const rows = (p.list || []).map((x) => '<tr><td>' + esc(x.name) + (x.ended ? ' ' + chip('종료', 'gray') : (x.active ? ' ' + chip('투입 중', 'ok') : ' ' + chip('투입 종료', 'gray'))) + '</td><td>' + esc(x.role || '미지정') + (x.segments && x.segments.length > 1 ? '<div class="jh-field__hint">' + x.segments.map((g) => esc((g.role || '미지정') + ' ' + g.from.slice(5) + '~' + g.to.slice(5))).join(' · ') + '</div>' : '') + '</td><td>' + (x.from ? esc(periodLabel(x.from, x.to)) : '<span class="jh-field__hint">기간 미상(공수 기록 없음)</span>') + '</td><td>' + esc(x.days) + '일</td><td>' + esc(x.manDays) + '</td></tr>').join('');
   return head + (rows ? '<div class="jh-field__hint">' + esc(s.count) + '개 프로젝트 · 공수 합계 ' + esc(s.manDays) + ' · ' + esc(periodLabel(s.from, s.to)) + '</div><div class="jh-hr__scroll"><table class="jh-hr-table"><thead><tr><th>프로젝트</th><th>역할</th><th>기간</th><th>출역일</th><th>공수</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<div class="jh-empty">이 인원의 프로젝트 명단·공수 기록이 없습니다.</div>')
     + '<div class="jh-field__hint">명단·공수 기록에서 계산한 값이라 따로 저장하지 않습니다. 역할은 PJT 「명단 관리」에서 고칩니다.</div>';
 }
