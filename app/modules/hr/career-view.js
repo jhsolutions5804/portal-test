@@ -1,7 +1,7 @@
 /* 근로자 상세 「경력관리」 카드 — HTML 만 만드는 순수 함수(시험: tests/hr-career-view.test.mjs). 읽기·클릭 연결은 index.js mount(직원 상세).
  * 카드 안쪽만 다시 그려서(careerInnerHtml) 상세의 다른 입력 중인 칸을 건드리지 않는다. 관리자 전용(서버가 막고 화면은 안내). */
-import { esc } from '../../core/ui.js?v=20261105c';
-import { AWARD_KINDS, awardLabel, careerRows, isEdited, careerMonths, fmtMonths, periodLabel, linkCandidates } from './career-tab.js?v=20261105c';
+import { esc } from '../../core/ui.js?v=20261105d';
+import { AWARD_KINDS, awardLabel, careerRows, isEdited, careerMonths, fmtMonths, periodLabel, linkCandidates } from './career-tab.js?v=20261105d';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -9,7 +9,7 @@ const sub = (t) => '<h4 class="jh-hr__sub">' + esc(t) + '</h4>';
 const btn = (label, attr, variant, disabled) => '<button type="button" class="jh-btn" data-variant="' + (variant || 'secondary') + '" ' + attr + (disabled ? ' disabled' : '') + '>' + esc(label) + '</button>';
 const inp = (attr, val, ph, type, extra) => '<input class="jh-input" type="' + (type || 'text') + '" ' + attr + ' value="' + esc(val == null ? '' : val) + '" placeholder="' + esc(ph || '') + '" maxlength="' + ((extra && extra.max) || 120) + '">';
 const when = (s) => String(s || '').slice(0, 10);
-const NOTE = '입사 입력(작성 링크)으로 받은 학력·자격·경력과 직접 적은 성과·교육 기록을 모아 보여 줍니다. 가족관계·병역·비상연락처는 여기에 나오지 않습니다. 입사 전 경력을 고쳐도 원본은 그대로 남고 「원본으로 되돌리기」로 돌아갑니다.';
+const NOTE = '입사 입력(작성 링크)으로 받은 학력·자격·경력과 직접 적은 성과·교육 기록을 모아 보여 줍니다. 가족관계·병역·비상연락처는 여기에 나오지 않습니다(이력서 인쇄본에만 들어가며, 인쇄할 때마다 열람 기록이 남습니다). 입사 전 경력을 고쳐도 원본은 그대로 남고 「원본으로 되돌리기」로 돌아갑니다.';
 
 function linkSection(c, worker) {
   const d = c.data; const cands = linkCandidates(worker, c.masters);
@@ -52,7 +52,7 @@ function trainingSection(c) {
 }
 /** 카드 안쪽 — c: { loading, error, data, masters, projects, errors, edit:{rows}|null, aw, tr, busy, today }, worker: 명부 문서 */
 export function careerInnerHtml(c, worker) {
-  const refresh = btn('새로 읽기', 'data-cr-refresh', 'ghost', !c || c.loading);
+  const refresh = (c && c.data ? btn('🖨 이력서 인쇄(내부용)', 'data-cr-print', 'secondary', c.busy) : '') + btn('새로 읽기', 'data-cr-refresh', 'ghost', !c || c.loading);
   if (!c) return '';
   if (c.loading) return card('🧭 경력관리', '<div class="jh-hr__pad"><div class="jh-skeleton" style="height:var(--u-100, 6rem)" aria-busy="true"></div></div>', refresh);
   if (c.error || !c.data) return card('🧭 경력관리', '<div class="jh-hr__pad"><div class="jh-alert" data-tone="warn" role="alert">' + esc(c.error || '불러오지 못했습니다.') + '</div></div>', refresh);

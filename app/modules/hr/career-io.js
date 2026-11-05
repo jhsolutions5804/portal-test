@@ -1,6 +1,6 @@
 /* 근로자 상세 「경력관리」 카드의 입출력 — 서버 함수(careerAct)와 프로젝트 기록 읽기(파이어베이스 함수는 밖에서 주입, 시험: tests/hr-career-io.test.mjs).
  * 프로젝트 이력은 저장하지 않고 명단·공수 기록에서 계산한다(shared/career.js careerProjects). 읽기에 실패한 자료는 errors 에 이름을 담아 돌려준다. */
-import { careerProjects, careerSummary } from '../../shared/career.js?v=20261105c';
+import { careerProjects, careerSummary } from '../../shared/career.js?v=20261105d';
 
 export function makeCareerIo(fb) {
   const { db, collection, getDocs, getDoc, doc, query, where, call } = fb;
@@ -14,7 +14,8 @@ export function makeCareerIo(fb) {
       try { const s = await getDocs(query(collection(db, 'pjt_registry/' + r.id + '/manday'), where('md.' + masterId, '>', 0))); s.forEach((d) => { const md = (d.data() || {}).md || {}; rows.push([d.id, { [masterId]: md[masterId] }]); }); } catch (e) { errors.push(label + ' 공수'); }
       if (w || rows.length) projects.push({ key: r.id, name: label, ended: r.status === 'ended', roster: w ? { [masterId]: w } : {}, rows });
     }));
-    const list = careerProjects(masterId, projects, { today }); return { list, summary: careerSummary(list), errors };
+    const list = careerProjects(masterId, projects, { today }); const meta = {}; regs.forEach((r) => { meta[r.id] = r; }); list.forEach((x) => { const r = meta[x.pjtKey] || {}; x.client = String(r.client || ''); x.contractor = String(r.contractor || ''); });   // 이력서 프로젝트이력 표(발주처·시공사)용
+    return { list, summary: careerSummary(list), errors };
   }
   /** 한 직원의 경력관리 자료: 서버 읽기 + 연명부 목록(연결 후보) + 연결돼 있으면 프로젝트 이력 */
   async function load(worker, today) {
