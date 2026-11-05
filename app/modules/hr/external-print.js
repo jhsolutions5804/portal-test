@@ -1,12 +1,14 @@
 /* 투입 인력 소개서(외부용) — 직원이 투입 확인서에서 「동의」한 프로젝트에 한해, 제공받는 자(발주처·시공사)에게 내는 소개서(대기열 1-3-27-3-2, 시험: tests/hr-external-print.test.mjs).
  * 서버(deployAct provide)가 동의한 프로젝트만 자료를 주고 제공 이력을 남긴다. 제공 항목은 성명·사진·학력·자격·경력·프로젝트 이력뿐 — 주민번호·연락처·주소·계좌·가족관계·병역·건강·급여·평가·부서·연봉·퇴사사유는 이 문서에 없다.
  * 내부용 이력서(resume-print.js)와 같은 스타일·단추·크기 맞춤을 쓴다. 순수 함수 — 모든 값은 이스케이프하고 사진은 검사한 이미지 data URL 만 넣는다. */
-import { esc } from '../../core/ui.js?v=20261105k';
-import { RESUME_CSS, RESUME_TOOLBAR, RESUME_SCRIPT } from './resume-print.js?v=20261105k';
-import { careerMonths, fmtMonths } from './career-tab.js?v=20261105k';
-import { deployWhen } from '../../shared/deploy-fmt.js?v=20261105k';
+import { esc } from '../../core/ui.js?v=20261105m';
+import { RESUME_CSS, RESUME_TOOLBAR, RESUME_SCRIPT } from './resume-print.js?v=20261105m';
+import { careerMonths, fmtMonths } from './career-tab.js?v=20261105m';
+import { deployWhen } from '../../shared/deploy-fmt.js?v=20261105m';
 
 const COMPANY = '제이에이치솔루션';
+/** 프로젝트 참여 기간 표시 — 시작이 비어 있으면(공수 기록 전) 「~」 없이 끝 표시만 */
+const periodText = (p) => { const end = p.active ? '진행 중' : (p.to || ''); return p.from ? p.from + ' ~ ' + end : end; };
 const PHOTO_RE = /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/;
 const s = (v) => (v == null ? '' : String(v));
 const td = (v, attr) => '<td' + (attr ? ' ' + attr : '') + '>' + esc(s(v)) + '</td>';
@@ -34,7 +36,7 @@ export function externalResumeHtml(d, opts) {
   const jobs = rows.map((r) => '<tr class="job"><td>' + esc(ym(r.from)) + '</td><td>' + esc(r.to ? ym(r.to) : (r.from ? '재직' : '')) + '</td><td>' + esc(r.company) + '</td><td>' + esc(r.position) + '</td><td class="l">' + esc(r.duty) + '</td><td>' + (r.from ? esc(String(careerMonths([r], today))) : '') + '</td></tr>').join('')
     + Array.from({ length: Math.max(0, 5 - rows.length) }, () => '<tr class="job">' + '<td>&nbsp;</td>'.repeat(6) + '</tr>').join('');
   const total = rows.reduce((a, r) => a + (r.from ? careerMonths([r], today) : 0), 0);
-  const pj = (o.projects || []).map((p) => '<tr><td class="l">' + esc(p.name) + '</td><td>' + esc(p.client || '') + '</td><td>' + esc(p.contractor || '') + '</td><td>' + esc((p.from || '') + ' ~ ' + (p.active ? '진행 중' : (p.to || ''))) + '</td><td class="l">' + esc(p.role || '') + '</td></tr>').join('') + blank(3 - (o.projects || []).length, [1, 1, 1, 1, 1]);
+  const pj = (o.projects || []).map((p) => '<tr><td class="l">' + esc(p.name) + '</td><td>' + esc(p.client || '') + '</td><td>' + esc(p.contractor || '') + '</td><td>' + esc(periodText(p)) + '</td><td class="l">' + esc(p.role || '') + '</td></tr>').join('') + blank(3 - (o.projects || []).length, [1, 1, 1, 1, 1]);
   const when = deployWhen(x.provision && x.provision.at).slice(0, 10); const consentDay = deployWhen(cs.at).slice(0, 10);
   const draft = cs.draft ? '<div class="warn">시험용 문구에 따른 동의입니다(노무사 확인 전) — 실제 제출에 사용하지 마세요.</div>' : '';
   const to = [pt.client, pt.contractor].filter(Boolean).join(' · ');

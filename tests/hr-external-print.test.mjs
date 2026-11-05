@@ -24,4 +24,6 @@ const evil = externalResumeHtml({ worker: { name: '<script>1</script>' }, party:
 ok(!/<script>\d/.test(evil) && !evil.includes('<img onerror') && !evil.includes('<svg onload') && !evil.includes('<a href=x>') && !evil.includes('<b>') && !evil.includes('<u>') && evil.includes('&lt;script&gt;1&lt;/script&gt;'), '모든 값의 HTML·따옴표를 막음');
 let e1; try { e1 = externalResumeHtml(null, null); } catch (e) { e1 = 'ERR ' + e.message; } ok(!String(e1).startsWith('ERR') && e1.includes('투입 인력 소개서 - 근로자') && cnt(e1, /<tr class="job">/g) === 5, '자료가 비어 있어도 깨지지 않고 빈 양식이 나옴');
 ok(resumeHtml(null, null).includes('RESUME') === false && resumeHtml(null, null).includes('class="toolbar"'), '내부용 이력서는 그대로(단추 줄을 상수로 분리해도 같은 모양)');
+const hp = externalResumeHtml(D, { projects: [{ name: 'X', client: 'c', active: true, from: '', to: '', role: '' }, { name: 'Y', client: 'c', active: false, from: '', to: '2026-03-01', role: '' }], todayYm: '2026-11' });
+ok(hp.includes('<td>진행 중</td>') && hp.includes('<td>2026-03-01</td>') && !hp.includes('> ~ 진행 중<') && !hp.includes(' ~ 2026-03-01'), '시작일이 비어 있는 프로젝트는 「 ~ 」 없이 진행 중·종료일만 표시');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);
