@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261109u';
-import { sourceLabel, dayLabel, fmtH, monthTotals } from './logic.js?v=20261109u';
-import { monthCalendar, cellLabel, WEEKDAYS, WEEKDAY_LONG } from '../../shared/att-month.js?v=20261109u';
-import { holidayName } from '../../shared/holidays.js?v=20261109u';
+import { esc } from '../../core/ui.js?v=20261109v';
+import { sourceLabel, dayLabel, fmtH, monthTotals } from './logic.js?v=20261109v';
+import { monthCalendar, cellLabel, WEEKDAYS, WEEKDAY_LONG } from '../../shared/att-month.js?v=20261109v';
+import { holidayName } from '../../shared/holidays.js?v=20261109v';
 
 const head = (t, link) => '<div class="jh-panel__head"><h3>' + t + '</h3>' + (link || '') + '</div>';
 const note = (tone, text) => '<div class="jh-form"><div class="jh-alert" data-tone="' + tone + '"' + (tone === 'danger' ? ' role="alert"' : '') + '>' + esc(text) + '</div></div>';
