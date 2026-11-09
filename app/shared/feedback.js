@@ -1,10 +1,10 @@
 /* 포털 문의·건의 창 — 우측 하단에 떠서 따라다니는 버튼(2026-11-02 대표님 요청). 저장·이벤트 연결만 맡고, 규칙은 feedback-logic.js, 화면은 feedback-view.js.
  * 직원: 분류·내용을 적어 보내면 portal_feedback 에 쌓이고, 「내 건의」 탭에서 처리 상태와 관리자 댓글을 읽는다. 새 답변이 달리면 버튼에 점이 뜬다.
  * 관리자: 「받은 건의」(처리 중)·「완료」 탭에서 목록을 보고, 댓글로 조치 내용을 남기거나 「조치 완료로 처리」한다(건의자에게 알림 = userUnread). */
-import { db, collection, addDoc, getDocs, query, where, orderBy, limit, doc, updateDoc, writeBatch, serverTimestamp } from '../core/firebase.js?v=20261109m';
-import { FB_COL, buildFeedbackDoc, buildReplyDoc, cooldownLeft, feedbackEnabledFor, nextStatus, unreadCount } from './feedback-logic.js?v=20261109m';
-import { newState, buttonHtml, panelHtml } from './feedback-view.js?v=20261109m';
-import { pagerAction, pagerApply } from './pager.js?v=20261109m';
+import { db, collection, addDoc, getDocs, query, where, orderBy, limit, doc, updateDoc, writeBatch, serverTimestamp } from '../core/firebase.js?v=20261109n';
+import { FB_COL, buildFeedbackDoc, buildReplyDoc, cooldownLeft, feedbackEnabledFor, nextStatus, unreadCount, errorNotice, alertLooksLikeError, errorReportDraft, noticeAllowed } from './feedback-logic.js?v=20261109n';
+import { newState, buttonHtml, panelHtml, noticeHtml } from './feedback-view.js?v=20261109n';
+import { pagerAction, pagerApply } from './pager.js?v=20261109n';
 const buildOf = () => { const s = document.querySelector('script[src*="boot.js"]'); const m = s && /[?&]v=(\w+)/.exec(s.getAttribute('src') || ''); return m ? m[1] : ''; };
 const sec = (t) => (t && t.seconds) || 0;
 const rowOf = (s) => { const d = s.data(); return { id: s.id, d: Object.assign({}, d, { createdSec: sec(d.createdAt), handledSec: sec(d.handledAt) }) }; };
@@ -16,7 +16,14 @@ export function installFeedback(me) {
   const old = document.getElementById('jh-fb'); if (old) old.remove();
   const host = document.createElement('div'); host.id = 'jh-fb'; host.className = 'jh-fb'; document.body.appendChild(host);
   const st = newState(me); let lastMine = 0, dead = false;
-  const paint = () => { if (dead) return; host.setAttribute('data-open', st.open ? 'true' : 'false'); host.innerHTML = buttonHtml(st.open, st.unread) + (st.open ? '<section class="jh-fb__panel" id="jh-fb-panel" role="dialog" aria-label="문의·건의">' + panelHtml(st) + '</section>' : ''); };
+  const paint = () => { if (dead) return; host.setAttribute('data-open', st.open ? 'true' : 'false'); host.innerHTML = (st.notice && !st.open ? noticeHtml(st.notice) : '') + buttonHtml(st.open, st.unread) + (st.open ? '<section class="jh-fb__panel" id="jh-fb-panel" role="dialog" aria-label="문의·건의">' + panelHtml(st) + '</section>' : ''); };
+  /** 오류 안내(대기열 2-1-15): 화면에서 오류가 나면 버튼 위에 「알리기」 말풍선을 한 번 띄운다. 잡히지 않은 오류·처리되지 않은 약속 실패·화면에 그려진 빨간 오류 안내를 본다(1분에 한 번만) */
+  let lastNoticeAt = 0, noticeTimer = 0;
+  const raise = (raw) => { const n = errorNotice(raw); if (dead || !n.show || st.open || !noticeAllowed(lastNoticeAt, Date.now())) return; lastNoticeAt = Date.now(); st.notice = n.summary; paint(); clearTimeout(noticeTimer); noticeTimer = setTimeout(() => { st.notice = ''; paint(); }, 20000); };
+  const onErr = (ev) => { if (ev && ev.filename && String(ev.filename).indexOf(location.origin) !== 0) return; raise({ message: (ev && ev.message) || (ev && ev.error && ev.error.message) || '' }); };
+  const onRej = (ev) => raise({ message: (ev && ev.reason && (ev.reason.message || String(ev.reason))) || '' });
+  const mo = new MutationObserver((muts) => { for (const m of muts) for (const n of m.addedNodes) { if (!(n instanceof Element) || host.contains(n)) continue; const a = n.matches && n.matches('.jh-alert[data-tone="danger"]') ? n : (n.querySelector ? n.querySelector('.jh-alert[data-tone="danger"]') : null); if (a && alertLooksLikeError(a.textContent)) { raise({ message: a.textContent }); return; } } });
+  window.addEventListener('error', onErr); window.addEventListener('unhandledrejection', onRej); mo.observe(document.body, { childList: true, subtree: true });
   /** 내가 보낸 건의를 읽어 새 답변 점을 갱신한다(조용히 — 화면을 다시 그리는 것은 점이 바뀔 때와 내 건의 탭을 볼 때만) */
   const loadMine = async (force) => {
     const now = Date.now(); if (!force && now - lastMine < MINE_EVERY_MS) return; lastMine = now;
@@ -74,7 +81,9 @@ export function installFeedback(me) {
   host.addEventListener('change', (ev) => { const t = ev.target; if (t instanceof HTMLInputElement && t.hasAttribute('data-fb-cat')) st.category = t.value; });
   host.addEventListener('click', async (ev) => {
     const pa = pagerAction(ev); if (pa) { if (pagerApply(st.pg, pa)) paint(); return; }
-    const t = ev.target instanceof Element ? ev.target.closest('[data-fb-toggle],[data-fb-close],[data-fb-send],[data-fb-tab],[data-fb-next],[data-fb-reload],[data-fb-exp],[data-fb-replysend],[data-fb-done]') : null; if (!t) return;
+    const t = ev.target instanceof Element ? ev.target.closest('[data-fb-toggle],[data-fb-report],[data-fb-noticeclose],[data-fb-close],[data-fb-send],[data-fb-tab],[data-fb-next],[data-fb-reload],[data-fb-exp],[data-fb-replysend],[data-fb-done]') : null; if (!t) return;
+    if (t.hasAttribute('data-fb-noticeclose')) { st.notice = ''; paint(); return; }
+    if (t.hasAttribute('data-fb-report')) { st.open = true; st.tab = 'send'; st.category = 'bug'; st.text = errorReportDraft(st.notice); st.notice = ''; st.msg = ''; paint(); const ta = host.querySelector('[data-fb-text]'); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } loadMine(true); return; }
     if (t.hasAttribute('data-fb-toggle')) { st.open = !st.open; st.msg = ''; paint(); if (st.open) { const ta = host.querySelector('[data-fb-text]'); if (ta) ta.focus(); loadMine(true); } return; }
     if (t.hasAttribute('data-fb-close')) { st.open = false; paint(); return; }
     if (t.hasAttribute('data-fb-send')) { await send(); return; }
@@ -97,5 +106,5 @@ export function installFeedback(me) {
   const onVis = () => { if (document.visibilityState === 'visible') loadMine(false); };
   document.addEventListener('keydown', onKey); document.addEventListener('visibilitychange', onVis);
   paint(); loadMine(true);
-  return () => { dead = true; document.removeEventListener('keydown', onKey); document.removeEventListener('visibilitychange', onVis); host.remove(); };
+  return () => { dead = true; clearTimeout(noticeTimer); mo.disconnect(); window.removeEventListener('error', onErr); window.removeEventListener('unhandledrejection', onRej); document.removeEventListener('keydown', onKey); document.removeEventListener('visibilitychange', onVis); host.remove(); };
 }

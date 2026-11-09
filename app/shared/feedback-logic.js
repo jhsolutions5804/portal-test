@@ -70,3 +70,20 @@ export function splitInbox(rows) {
 export const unreadCount = (rows) => (rows || []).filter((r) => r.d && r.d.userUnread === true).length;
 export const hasUnread = (rows) => unreadCount(rows) > 0;
 
+/* ── 오류 안내(2026-11-09, 대기열 2-1-15): 화면에서 오류가 나면 「문의·건의로 알려 주세요」 안내를 한 번 띄운다 ── */
+/** 브라우저가 흔히 내는 무해한 오류(레이아웃 알림·취소된 요청·교차 출처 「Script error.」)는 안내하지 않는다 */
+const ERR_IGNORE = /ResizeObserver loop|^Script error\.?$|AbortError|The user aborted|NotAllowedError|Non-Error promise rejection|Load failed$|cancell?ed/i;
+/** 화면 안에 그려진 빨간 안내(jh-alert danger)가 「진짜 오류 문구」인지 — 입력 검증 같은 안내는 제외 */
+const ALERT_ERRORISH = /못했습니다|못했어요|하지 못|실패|오류|문제가 (발생|생겼)|다시 시도/;
+/** 오류 원문 → { show, summary }. 한 줄·200자로 줄이고, 무시할 오류면 show=false */
+export function errorNotice(raw) {
+  const r0 = raw && typeof raw === 'object' ? (raw.message || (raw.reason && (raw.reason.message || raw.reason)) || '') : raw; const m = String(r0 || '').replace(/\s+/g, ' ').trim();
+  if (!m || ERR_IGNORE.test(m)) return { show: false, summary: '' };
+  return { show: true, summary: m.length > 200 ? m.slice(0, 200) + '…' : m };
+}
+export const alertLooksLikeError = (text) => ALERT_ERRORISH.test(String(text || ''));
+/** 안내를 누르면 건의 창에 미리 채울 글 — 분류는 「오류예요」, 사용자는 하던 일을 한 줄만 덧붙이면 된다 */
+export const errorReportDraft = (summary) => '[자동 기록] 방금 이 화면에서 오류가 났습니다: ' + String(summary || '').slice(0, 200) + '\n\n무엇을 하다가 그랬는지 한 줄만 적어 주세요: ';
+/** 같은 안내를 너무 자주 띄우지 않는다 — 마지막으로 띄운 뒤 ms 가 지나야 다시 */
+export const noticeAllowed = (lastAt, now, gapMs) => !lastAt || now - lastAt >= (gapMs == null ? 60000 : gapMs);
+

@@ -188,3 +188,7 @@
 /* 파일 선택칸은 브라우저가 정한 최소 폭 때문에 좁은 폰(폴드 접힘 280px)에서 카드 밖으로 나가므로 부모 폭 안에 가둔다(2026-11-09, 대기열 2-1-15) */
 input[type="file"] { max-width: 100%; min-width: 0; box-sizing: border-box; }
 
+/* 오류 안내 말풍선(대기열 2-1-15) — 문의·건의 버튼 바로 위. 오류가 나면 한 번 뜨고 20초 뒤 사라지며, 「알리기」를 누르면 오류 내용이 채워진 건의 창이 열린다 */
+.jh-fb__notice { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; max-width: min(var(--u-380), calc(100vw - var(--sp-5))); padding: var(--sp-3) var(--sp-4); border: var(--u-1) solid var(--c-line-strong); border-left: var(--sp-1) solid var(--c-danger, #dc2626); border-radius: var(--radius-lg); background: var(--c-surface); color: var(--c-ink); font-size: var(--fs-sm); box-shadow: 0 var(--u-4) var(--u-16) rgba(0, 0, 0, 0.18); }
+.jh-fb__noticebtns { display: inline-flex; gap: var(--sp-2); }
+

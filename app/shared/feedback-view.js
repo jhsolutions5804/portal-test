@@ -1,9 +1,9 @@
 /* 포털 문의·건의 창 — 순수 화면 부분(파이어베이스 없이 시험 가능). 저장·이벤트 연결은 feedback.js
  * 2026-11-02: 완료 탭 분리 · 댓글(조치 내용) · 건의자 알림(버튼의 점 + 「내 건의」 탭) 추가 */
-import { esc } from '../core/ui.js?v=20261109m';
-import { pageInfo, pagerSync, pagerHtml } from './pager.js?v=20261109m';
-import { FB_CATEGORIES, FB_MAX, FB_REPLY_MAX, categoryLabel, statusLabel, myStatusLabel, countByStatus, dayText, sortNewestFirst, splitInbox, unreadCount } from './feedback-logic.js?v=20261109m';
-export const newState = (me) => ({ open: false, tab: 'send', category: 'inconvenience', text: '', busy: false, msg: '', msgTone: '', isAdmin: !!(me && me.admin), rows: [], loaded: false, err: '', mine: [], mineLoaded: false, newIds: {}, expand: '', replies: {}, draft: '', pg: {}, last: 0, unread: false });
+import { esc } from '../core/ui.js?v=20261109n';
+import { pageInfo, pagerSync, pagerHtml } from './pager.js?v=20261109n';
+import { FB_CATEGORIES, FB_MAX, FB_REPLY_MAX, categoryLabel, statusLabel, myStatusLabel, countByStatus, dayText, sortNewestFirst, splitInbox, unreadCount } from './feedback-logic.js?v=20261109n';
+export const newState = (me) => ({ notice: '', open: false, tab: 'send', category: 'inconvenience', text: '', busy: false, msg: '', msgTone: '', isAdmin: !!(me && me.admin), rows: [], loaded: false, err: '', mine: [], mineLoaded: false, newIds: {}, expand: '', replies: {}, draft: '', pg: {}, last: 0, unread: false });
 export const buttonHtml = (open, unread) => '<button type="button" class="jh-fb__btn" data-fb-toggle aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="jh-fb-panel" title="' + (unread ? '새 답변이 도착했습니다' : '사용 중 불편한 점을 남겨 주세요') + '"><span aria-hidden="true">💬</span><span class="jh-fb__lbl">' + (unread ? '새 답변' : '문의·건의') + '</span>' + (unread ? '<span class="jh-fb__dot" role="status" aria-label="새 답변이 있습니다"></span>' : '') + '</button>';
 export function sendHtml(st) {
   const opts = FB_CATEGORIES.map((c) => '<label class="jh-fb__cat"><input type="radio" name="jh-fb-cat" data-fb-cat value="' + c[0] + '"' + (st.category === c[0] ? ' checked' : '') + '><span>' + esc(c[1]) + '</span></label>').join('');
@@ -62,3 +62,6 @@ export function panelHtml(st) {
   const main = st.tab === 'inbox' && st.isAdmin ? inboxHtml(st, 'open') : st.tab === 'done' && st.isAdmin ? inboxHtml(st, 'done') : st.tab === 'mine' ? mineHtml(st) : sendHtml(st);
   return '<div class="jh-fb__head"><strong>문의·건의</strong><button type="button" class="jh-btn" data-variant="ghost" data-fb-close aria-label="닫기">✕</button></div>' + tabs + (st.msg && st.tab !== 'send' ? '<div class="jh-fb__msg" data-tone="' + esc(st.msgTone || '') + '" role="status">' + esc(st.msg) + '</div>' : '') + '<div class="jh-fb__main">' + main + '</div>';
 }
+/** 오류 안내 말풍선 — 문의·건의 버튼 바로 위. 「알리기」를 누르면 오류 내용이 채워진 건의 창이 열린다 */
+export const noticeHtml = (text) => '<div class="jh-fb__notice" role="status" aria-live="polite"><span>화면에 문제가 생긴 것 같습니다. 반복되면 알려 주세요.</span><span class="jh-fb__noticebtns"><button type="button" class="jh-btn" data-variant="primary" data-fb-report>알리기</button><button type="button" class="jh-btn" data-variant="ghost" data-fb-noticeclose aria-label="안내 닫기">×</button></span></div>';
+

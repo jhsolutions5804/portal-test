@@ -73,4 +73,19 @@ let hm = mineHtml(me2); ok(hm.includes('조치 완료') && hm.includes('접수')
 me2.expand = 'm1'; me2.replies.m1 = { loaded: true, list: [{ id: 'p', d: { name: '관리자', text: '수정했습니다', kind: 'done', createdSec: 1793581000 } }], err: '' }; hm = mineHtml(me2); ok(hm.includes('수정했습니다') && !hm.includes('data-fb-replysend') && !hm.includes('data-fb-done'), '건의자는 관리자 댓글을 읽을 수만 있음');
 me2.rows = []; me2.mine[0].d.userUnread = false; me2.newIds = { m1: true }; ok(mineHtml(me2).includes('새 답변'), '이번에 읽음 처리된 건도 열어 보는 동안은 「새 답변」 표시가 남음');
 me2.tab = 'mine'; me2.mine[1].d.userUnread = true; ok(panelHtml(me2).includes('jh-fb__count') && panelHtml(me2).includes('새 1'), '내 건의 탭에 새 답변 건수 표시');
+// ── 오류 안내(2026-11-09, 대기열 2-1-15)
+{
+  const L = await import('../app/shared/feedback-logic.js'); const V = await import('../app/shared/feedback-view.js');
+  ok(L.errorNotice({ message: 'x is not a function' }).show === true && L.errorNotice({ message: 'x is not a function' }).summary === 'x is not a function', '진짜 오류는 안내한다');
+  ok(['ResizeObserver loop limit exceeded', 'Script error.', 'AbortError: The user aborted a request.', '', null, undefined].every((m) => L.errorNotice(m == null ? m : { message: m }).show === false), '무해한 브라우저 오류·빈 값은 안내하지 않는다');
+  const long = L.errorNotice({ message: 'a'.repeat(500) }); ok(long.show && long.summary.length === 201 && long.summary.endsWith('…'), '오류 원문은 200자로 줄인다');
+  ok(L.errorNotice({ message: '줄\n바꿈\t이   있는 오류' }).summary === '줄 바꿈 이 있는 오류', '줄바꿈·여러 공백은 한 줄로');
+  ok(L.alertLooksLikeError('불러오지 못했습니다: 네트워크') && L.alertLooksLikeError('저장하지 못했습니다') && L.alertLooksLikeError('오류가 발생했습니다') && !L.alertLooksLikeError('금액을 입력해 주세요') && !L.alertLooksLikeError(''), '화면의 빨간 안내는 오류 문구일 때만(입력 검증은 제외)');
+  ok(L.errorReportDraft('boom').startsWith('[자동 기록] 방금 이 화면에서 오류가 났습니다: boom') && L.errorReportDraft('boom').endsWith('적어 주세요: '), '안내를 누르면 채워질 글: 오류 요약 + 하던 일 한 줄 요청');
+  ok(L.noticeAllowed(0, 1000) === true && L.noticeAllowed(1000, 30000) === false && L.noticeAllowed(1000, 61000) === true && L.noticeAllowed(1000, 5000, 1000) === true, '같은 안내는 1분에 한 번만');
+  ok(V.newState({ uid: 'u' }).notice === '' && V.noticeHtml('x').includes('data-fb-report') && V.noticeHtml('x').includes('data-fb-noticeclose') && V.noticeHtml('x').includes('role="status"'), '안내 말풍선: 알리기·닫기 버튼과 읽어 주기 속성');
+  const fsrc = (await import('node:fs')).readFileSync(new URL('../app/shared/feedback.js', import.meta.url), 'utf8');
+  ok(fsrc.includes("addEventListener('error'") && fsrc.includes("addEventListener('unhandledrejection'") && fsrc.includes('MutationObserver') && fsrc.includes("removeEventListener('error'") && fsrc.includes('mo.disconnect()'), '창 연결: 오류·약속 실패·화면 빨간 안내를 보고, 로그아웃 때 모두 정리');
+  ok(fsrc.includes("st.category = 'bug'") && fsrc.includes('errorReportDraft(st.notice)'), '알리기를 누르면 분류 「오류예요」 + 오류 내용이 미리 채워진다');
+}
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); process.exit(fail ? 1 : 0);
