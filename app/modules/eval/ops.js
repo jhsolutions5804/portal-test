@@ -1,19 +1,19 @@
 /* 평가 운영 화면(정기평가·수시평가) — 사장단·인사팀. 인사 모듈에서 분리했다(메뉴 단위 권한: 급여·계약서 같은 인사 화면은 열리지 않는다).
  * 화면(마크업)과 저장은 evaluation-view/evaluation-io/adhoc-view/adhoc-io 를 그대로 쓰고, 메뉴가 탭 역할을 하므로 화면 안 탭은 두지 않는다. */
-import { pagerAction, pagerApply } from '../../shared/pager.js?v=20261109t';
-import { db, functions, httpsCallable, collection, getDocs, getDoc, setDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261109t';
-import { confirmDialog } from '../../core/dialog.js?v=20261109t';
-import { esc, toast } from '../../core/ui.js?v=20261109t';
-import { IS_TEST } from '../../core/config.js?v=20261109t';
-import { isEvalOps } from '../../shared/eval-perm.js?v=20261109t';
-import { evalBoardHtml, evalPanelHtml } from './evaluation-view.js?v=20261109t';
-import { createCycleController } from './evaluation-io.js?v=20261109t';
-import { adhocBoardHtml, adhocProjectHtml } from './adhoc-view.js?v=20261109t';
-import { createAdhocController } from './adhoc-io.js?v=20261109t';
-import { cycleCardHtml } from './cycle-admin-view.js?v=20261109t';
-import { createCycleAdminController } from './cycle-admin-io.js?v=20261109t';
-import { resultBoardHtml, resultPanelHtml } from './result-view.js?v=20261109t';
-import { createResultController } from './result-io.js?v=20261109t';
+import { pagerAction, pagerApply } from '../../shared/pager.js?v=20261109u';
+import { db, functions, httpsCallable, collection, getDocs, getDoc, setDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261109u';
+import { confirmDialog } from '../../core/dialog.js?v=20261109u';
+import { esc, toast } from '../../core/ui.js?v=20261109u';
+import { IS_TEST } from '../../core/config.js?v=20261109u';
+import { isEvalOps } from '../../shared/eval-perm.js?v=20261109u';
+import { evalBoardHtml, evalPanelHtml } from './evaluation-view.js?v=20261109u';
+import { createCycleController } from './evaluation-io.js?v=20261109u';
+import { adhocBoardHtml, adhocProjectHtml } from './adhoc-view.js?v=20261109u';
+import { createAdhocController } from './adhoc-io.js?v=20261109u';
+import { cycleCardHtml } from './cycle-admin-view.js?v=20261109u';
+import { createCycleAdminController } from './cycle-admin-io.js?v=20261109u';
+import { resultBoardHtml, resultPanelHtml } from './result-view.js?v=20261109u';
+import { createResultController } from './result-io.js?v=20261109u';
 
 /** 근로자 목록(퇴사 제외, 사번순) — 인사평가 화면과 같은 기준 */
 async function loadWorkers() {

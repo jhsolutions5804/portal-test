@@ -1,9 +1,9 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261109t';
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261109t';
-import { financePerm } from '../../shared/finance-perm.js?v=20261109t';
-import { isEvalUser, isEvalOps, isInterviewUser } from '../../shared/eval-perm.js?v=20261109t';
-import { companyPerm } from '../../shared/company-perm.js?v=20261109t';
-import { isProjectKey } from '../../shared/pjt-key.js?v=20261109t';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261109u';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261109u';
+import { financePerm } from '../../shared/finance-perm.js?v=20261109u';
+import { isEvalUser, isEvalOps, isInterviewUser } from '../../shared/eval-perm.js?v=20261109u';
+import { companyPerm } from '../../shared/company-perm.js?v=20261109u';
+import { isProjectKey } from '../../shared/pjt-key.js?v=20261109u';
 export { isProjectKey };
 /* 옛 모듈 어댑터의 목록과 규칙 — 화면(DOM)·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 옛 모듈이 새 모듈로 바뀌면 여기서 항목을 지우고 modules/index.js 의 새 모듈 목록으로 옮긴다. */
@@ -37,11 +37,11 @@ export const defById = (id) => LEGACY_DEFS.find((d) => d.id === id) || null;
  *  프로젝트는 위 메뉴에서 고르면 새 화면(프로젝트 홈·일정·공정·출역·공수·공사일보·설정)이 열린다. dyn = { loaded, registry: [{ id, name, … 프로젝트 문서 }] } */
 export function pjtNav(me, dyn) {
   const d = dyn || { registry: [] }; const loading = dyn && dyn.loaded === false;   // 프로젝트 정보를 아직 못 읽었으면 프로젝트 칩은 읽은 뒤에 보여 준다(참여자 지정 확인 전에는 숨김)
-  const items = [{ key: 'home', label: 'PJT 홈', url: 'classic.html?embed=pjt-home' }];
+  const items = [{ key: 'home', label: 'PJT 홈', url: '' }];
   const can = (proj) => !dyn || dyn.loaded === undefined ? true : canAccessProject(me, proj);   // dyn 이 없던 옛 호출(시험)은 지금까지처럼 모두 보임
   if (!loading) (d.registry || []).forEach((r) => { if (can(r)) items.push({ key: r.id, label: r.name || 'PJT', url: '' }); });
-  if (me && (me.admin || (me.perms && me.perms.pjt)) || !me) items.push({ key: 'roster', label: '근로자 연명부', url: 'pjt_roster/' });   // 연명부는 PJT 권한자·관리자(프로젝트 참여자 지정만으로는 열리지 않음 — 모든 근로자 정보를 다룬다)
-  items.push({ key: 'ended', label: '종료 PJT', url: 'classic.html?embed=pjt-ended' });
+  if (me && (me.admin || (me.perms && me.perms.pjt)) || !me) items.push({ key: 'roster', label: '근로자 연명부', url: '' });   // 연명부는 PJT 권한자·관리자(프로젝트 참여자 지정만으로는 열리지 않음 — 모든 근로자 정보를 다룬다)
+  items.push({ key: 'ended', label: '종료 PJT', url: '' });
   return items;
 }
 export function itemsFor(def, me, dyn) { return def.dynamicNav ? pjtNav(me, dyn) : def.nav; }

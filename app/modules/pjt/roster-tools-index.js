@@ -1,15 +1,15 @@
 /* 근로자 연명부 도구 — 주소 #/pjt/roster/_manday(월간 공수 보기) · #/pjt/roster/_migrate(기존 인원 마이그레이션). 연명부 진입(roster-index.js)이 넘겨준다.
  * 모든 프로젝트(종료된 것 포함)의 명단·공수는 pjt_registry/<id>/… 에서 읽는다. 마이그레이션 쓰기 순서: 마스터·새 명단 문서 → 공수·출역 기록의 id 이전 → 옛 명단 문서 삭제(맨 마지막, 중간에 멈춰도 다시 실행할 수 있게). */
-import { db, collection, doc, getDocs, writeBatch, deleteField } from '../../core/firebase.js?v=20261109t';
-import { toast } from '../../core/ui.js?v=20261109t';
-import { confirmDialog } from '../../core/dialog.js?v=20261109t';
-import { loadBase, loadRows } from './month-data.js?v=20261109t';
-import { pathsFor } from './adapter.js?v=20261109t';
-import { appToday } from './attendance.js?v=20261109t';
-import { aggregateMonth, migrationGroups, planMigration, planMerge, planLink, unknownGroups, rekeyMd, rekeyChecks, visibleInMonth } from './roster-tools.js?v=20261109t';
-import { loadProgressPct } from './progress-stat.js?v=20261109t';
-import { shiftMonth } from './overview.js?v=20261109t';
-import { mandayHtml, migrateHtml } from './roster-tools-view.js?v=20261109t';
+import { db, collection, doc, getDocs, writeBatch, deleteField } from '../../core/firebase.js?v=20261109u';
+import { toast } from '../../core/ui.js?v=20261109u';
+import { confirmDialog } from '../../core/dialog.js?v=20261109u';
+import { loadBase, loadRows } from './month-data.js?v=20261109u';
+import { pathsFor } from './adapter.js?v=20261109u';
+import { appToday } from './attendance.js?v=20261109u';
+import { aggregateMonth, migrationGroups, planMigration, planMerge, planLink, unknownGroups, rekeyMd, rekeyChecks, visibleInMonth } from './roster-tools.js?v=20261109u';
+import { loadProgressPct } from './progress-stat.js?v=20261109u';
+import { shiftMonth } from './overview.js?v=20261109u';
+import { mandayHtml, migrateHtml } from './roster-tools-view.js?v=20261109u';
 export async function mountRosterTools(root, route, ctx, mode) {
   root.onclick = null; root.oninput = null; root.onchange = null;
   const me = (ctx && ctx.me) || {}; const t0 = appToday().split('-').map(Number);
