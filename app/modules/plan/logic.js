@@ -35,3 +35,11 @@ export function compBuild(form, opt) {
   if (errors.length) return { ok: false, errors, warnings };
   return { ok: true, errors: [], warnings, id: o.id || ('co_' + (o.now || Date.now())), data, duplicate: dup ? dup.company : '' };
 }
+
+/** 목록 글자 검색(2026-11-09, 대기열 2-1-15): 띄어 쓴 낱말이 모두 들어 있는 줄만(대소문자 무시). 낱말이 없으면 모두 통과 */
+export function matchesQuery(parts, q) {
+  const words = String(q == null ? '' : q).toLowerCase().split(/\s+/).filter(Boolean); if (!words.length) return true;
+  const hay = (parts || []).filter((x) => x != null && x !== '').join(' ').toLowerCase();
+  return words.every((w) => hay.includes(w));
+}
+

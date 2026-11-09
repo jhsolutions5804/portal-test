@@ -43,4 +43,14 @@ const PN = [{ id: 'p1', code: '가현장', status: 'run' }];
 const fn = estFilterOptions(LN, PN); const fln = (f) => filterEstimates(LN, PN, f).map((e) => e.id).join();
 ok(fn.pjtOptions.map((x) => x.join(':')).join() === '__none:해당 없음,p1:가현장,gone:삭제된 PJT'.split(',').sort((a, b) => a.split(':')[1].localeCompare(b.split(':')[1], 'ko')).join(), '필터 선택지에 "해당 없음"(프로젝트 없는 견적)과 "삭제된 PJT"(없어진 프로젝트)가 따로 나옴');
 ok(NO_PJT === '__none' && fln({ pjt: NO_PJT }) === 'b' && fln({ pjt: 'p1' }) === 'a' && fln({ pjt: 'gone' }) === 'c' && fln({}) === 'a,b,c', '필터 "해당 없음"은 프로젝트 없는 견적만, 프로젝트 필터는 기존대로');
+// ── 목록 글자 검색(2026-11-09, 대기열 2-1-15)
+{
+  const { matchesQuery } = await import('../app/modules/plan/logic.js');
+  ok(matchesQuery(['A 현장 FCU 설치', 'E2611001'], 'fcu 설치') && matchesQuery(['가나다'], '') && matchesQuery(['가나다'], '   ') && !matchesQuery(['가나다'], '라마') && matchesQuery([null, '', 'ABC'], 'abc') && matchesQuery(null, ''), '낱말 검색: 띄어 쓴 낱말이 모두 들어 있으면 통과(대소문자 무시), 빈 검색어는 전부 통과');
+  const PJ = [{ id: 'p1', code: 'P4-PH2', name: '삼성 P4 Ph2' }];
+  const ES = [{ id: 'a', title: 'FCU 설치 견적', no: 'E-001', date: '2026-10-01', client: { company: '범양냉방' }, pjtId: 'p1', items: [{ name: '덕트 보온', spec: '25T' }] }, { id: 'b', title: '배관 자재', no: 'E-002', date: '2026-11-02', client: { company: '다람이엔지' }, items: [{ name: '밸브', spec: '' }] }];
+  const q = (v) => filterEstimates(ES, PJ, { q: v }).map((e) => e.id).join(',');
+  ok(q('fcu') === 'a' && q('다람') === 'b' && q('E-002') === 'b' && q('p4-ph2') === 'a' && q('덕트 25t') === 'a' && q('밸브') === 'b' && q('없는말') === '' && q('') === 'a,b', '견적 검색: 제목·번호·거래처·현장 코드·품목명/규격으로 찾고, 여러 낱말은 모두 맞아야 하며, 빈 검색어는 전부');
+  ok(filterEstimates(ES, PJ, { q: 'fcu', client: '다람이엔지' }).length === 0 && filterEstimates(ES, PJ, { q: '견적', client: '범양냉방' }).length === 1, '검색은 다른 필터와 함께 걸린다');
+}
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

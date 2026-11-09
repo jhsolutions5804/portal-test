@@ -30,4 +30,12 @@ ok(projectBalance(S, 'p1') === (8000000 + 1200000) - 3000000 && projectBalance(S
   ok(filterSettlements(SN, { pjtId: '__none' }).map((s) => s.id).join() === 'b' && filterSettlements(SN, { pjtId: 'p1' }).map((s) => s.id).join() === 'a,c' && filterSettlements(SN, {}).length === 3, '정산 목록 필터 "해당 없음"은 프로젝트 없는 정산서만, 프로젝트 필터는 기존대로');
   ok(projectLabel(SN[1], PN) === '해당 없음' && projectLabel(SN[0], PN) === '가현장' && projectLabel({ pjtId: 'gone', pjtIds: ['gone'] }, PN) === '-' && projectLabel(SN[2], PN) === '가현장+나현장', '프로젝트 라벨: 없으면 "해당 없음", 삭제된 프로젝트는 기존대로 "-", 여러 프로젝트는 +로 이음');
 }
+// ── 목록 글자 검색(2026-11-09, 대기열 2-1-15)
+{
+  const PJ = [{ id: 'p1', code: 'P4-PH2' }, { id: 'p2', code: 'P4-PH4' }];
+  const SL = [{ id: 's1', docType: 'invoice', no: 'INV-2610-01', baseMonth: '2026-10', issueDate: '2026-11-01', recipient: { company: '범양냉방' }, pjtId: 'p1' }, { id: 's2', docType: 'invoice', no: 'INV-2611-02', baseMonth: '2026-11', issueDate: '2026-11-05', recipient: { company: '다람이엔지' }, pjtId: 'p2' }];
+  const q = (v, pj) => filterSettlements(SL, { q: v }, pj).map((x) => x.id).join(',');
+  ok(q('inv-2611', PJ) === 's2' && q('범양', PJ) === 's1' && q('p4-ph4', PJ) === 's2' && q('2026-10', PJ) === 's1' && q('없음', PJ) === '' && q('', PJ) === 's1,s2' && q('범양') === 's1', '청구·지급 검색: 번호·거래처·현장·기준월로 찾고, 현장 목록을 안 넘겨도 오류 없이 동작');
+  ok(filterSettlements(SL, { q: '범양', month: '2026-11' }, PJ).length === 1 && filterSettlements(SL, { q: '다람', month: '2026-10' }, PJ).length === 0, '검색은 다른 필터와 함께 걸린다');
+}
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

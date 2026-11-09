@@ -1,16 +1,17 @@
-import { esc } from '../../core/ui.js?v=20261109n';
-import { won, signed, card, chip, fld, selectHtml, pagerHtml } from './ui.js?v=20261109n';
-import { EST_PAGE_SIZE, estFilterOptions, filterEstimates, sortEstimates, estGroup, isSuperseded, estTag, estSupply, estTotal, itemAmt, suppliers, clients, draftTotals, compareEstimates } from './estimates.js?v=20261109n';
-import { paginate } from './projects.js?v=20261109n';
+import { esc } from '../../core/ui.js?v=20261109o';
+import { won, signed, card, chip, fld, selectHtml, pagerHtml } from './ui.js?v=20261109o';
+import { EST_PAGE_SIZE, estFilterOptions, filterEstimates, sortEstimates, estGroup, isSuperseded, estTag, estSupply, estTotal, itemAmt, suppliers, clients, draftTotals, compareEstimates } from './estimates.js?v=20261109o';
+import { paginate } from './projects.js?v=20261109o';
 const pjtOf = (st, id) => st.projects.find((x) => x.id === id) || null;
 const filterSel = (key, val, label, opts) => selectHtml('data-es-filter="' + key + '"', val, [['', label]].concat(opts));
 /** 견적 목록: 필터 5개 + 개정 전 버전 숨기기, 10건씩 쪽 나눔 */
 export function estimatesListHtml(st) {
   const f = st.filter; const opt = estFilterOptions(st.estimates, st.projects); const all = sortEstimates(st.estimates); const list = filterEstimates(all, st.projects, f); const pg = paginate(list, st.page, EST_PAGE_SIZE);
   const groupCount = {}; st.estimates.forEach((e) => { const k = e.baseNo || e.no; groupCount[k] = (groupCount[k] || 0) + 1; });
-  const filters = '<div class="jh-plan__filters2">' + filterSel('pjt', f.pjt, '현장명 전체', opt.pjtOptions) + filterSel('pjtStatus', f.pjtStatus, '현장상태 전체', [['run', '현장 진행중'], ['done', '현장 종료']]) + filterSel('status', f.status, '견적상태 전체', [['active', '진행중'], ['closed', '종결'], ['void', '폐기']]) + filterSel('client', f.client, '거래처 전체', opt.clientOptions.map((c) => [c, c])) + filterSel('month', f.month, '발행월 전체', opt.monthOptions.map((m) => [m, m]))
+  const search = '<div class="jh-plan__searchrow"><input class="jh-input" type="search" data-es-q value="' + esc(f.q || '') + '" placeholder="견적 제목·번호·거래처·현장·품목 검색" aria-label="견적 검색"></div>';
+  const filters = search + '<div class="jh-plan__filters2">' + filterSel('pjt', f.pjt, '현장명 전체', opt.pjtOptions) + filterSel('pjtStatus', f.pjtStatus, '현장상태 전체', [['run', '현장 진행중'], ['done', '현장 종료']]) + filterSel('status', f.status, '견적상태 전체', [['active', '진행중'], ['closed', '종결'], ['void', '폐기']]) + filterSel('client', f.client, '거래처 전체', opt.clientOptions.map((c) => [c, c])) + filterSel('month', f.month, '발행월 전체', opt.monthOptions.map((m) => [m, m]))
     + '<button type="button" class="jh-btn" data-variant="ghost" data-es-act="reset">초기화</button></div><label class="jh-plan__check"><input type="checkbox" data-es-hide' + (f.hideReplaced ? ' checked' : '') + '> <span>개정 전 버전 숨기기 <span class="jh-field__hint">(개정본이 발행되어 폐기된 이전 버전)</span></span></label>';
-  const isFiltered = f.pjt || f.client || f.month || f.pjtStatus || f.status;
+  const isFiltered = f.pjt || f.client || f.month || f.pjtStatus || f.status || f.q;
   const rows = pg.items.length ? pg.items.map((e) => { const p = pjtOf(st, e.pjtId); const tg = estTag(e); const g = groupCount[e.baseNo || e.no] || 1;
     return '<button type="button" class="jh-plan__row" data-es-open="' + esc(e.id) + '" data-void="' + (e.status === 'void' || e.status === 'closed') + '"><span class="jh-plan__main"><span class="jh-plan__line"><strong>' + esc(e.title || '-') + '</strong>' + (tg ? chip(tg.text, tg.tone) : '') + (g > 1 && !isSuperseded(e) && e.status !== 'void' ? chip('개정 ' + (g - 1) + '회', 'amber') : '') + '</span><span class="jh-plan__line">' + chip(p ? p.code : (e.pjtId ? '삭제된 PJT' : '해당 없음'), 'blue') + (p ? chip(p.status === 'done' ? '현장 종료' : '현장 진행중', p.status === 'done' ? 'gray' : 'green') : '') + '<span class="jh-field__hint">' + esc([e.no, e.date, e.client && e.client.company].filter(Boolean).join(' · ')) + '</span></span></span><strong>' + won(estTotal(e)) + '</strong></button>'; }).join('')
     : '<div class="jh-empty">' + (isFiltered ? '조건에 맞는 견적이 없습니다.' : (st.estimates.length ? '개정 전 버전만 남아 있습니다. "개정 전 버전 숨기기"를 해제해 보세요.' : '작성된 견적이 없습니다.')) + '</div>';

@@ -1,8 +1,9 @@
 /* 영업기획 견적 — 순수 규칙(화면·네트워크 없이 시험 가능). 구포털 기획(gihoek)의 견적 규칙을 그대로 옮기고, 개정 이력 비교를 새로 더했다.
  * 번호: 새 견적 EST-<연도>-<세 자리>, 개정은 <기준 번호>-r<N>. 개정본을 발행하면 원본은 자동으로 폐기(void)되고 replacedBy 에 개정본 번호가 남는다.
  * 종결(closed)은 정산이 끝난 견적으로 유효 견적 집계에서 빠진다. 거래처·담당자 정보는 견적서에 그대로 복사(스냅샷)해 저장한다. */
-import { itemAmt, estSupply, estTotal, isEstActive, estTag, sortProjects } from './projects.js?v=20261109n';
-import { sanitizeCalc } from './estimate-calc.js?v=20261109n'; // 순환 import: estimate-calc.js 도 itemSetAmount 를 가져온다. 둘 다 function 선언이라 호이스팅되어 안전하며, 로드 순서를 뒤집어도 같은 결과임을 tests/estimate-calc-save.test.mjs 가 확인한다
+import { itemAmt, estSupply, estTotal, isEstActive, estTag, sortProjects } from './projects.js?v=20261109o';
+import { matchesQuery } from './logic.js?v=20261109o';
+import { sanitizeCalc } from './estimate-calc.js?v=20261109o'; // 순환 import: estimate-calc.js 도 itemSetAmount 를 가져온다. 둘 다 function 선언이라 호이스팅되어 안전하며, 로드 순서를 뒤집어도 같은 결과임을 tests/estimate-calc-save.test.mjs 가 확인한다
 export { estSupply, estTotal, isEstActive, estTag, itemAmt };
 export const EST_PAGE_SIZE = 10;
 export const VAT_RATE = 0.1;
@@ -82,7 +83,7 @@ export function estFilterOptions(estimates, projects) {
   (estimates || []).forEach((e) => { const p = (projects || []).find((x) => x.id === e.pjtId); if (p) pjt.set(p.id, p.code || p.name || '(이름없음)'); else pjt.set(e.pjtId || NO_PJT, e.pjtId ? '삭제된 PJT' : '해당 없음'); if (e.client && e.client.company) cl.add(e.client.company); if (e.date && e.date.length >= 7) mo.add(e.date.slice(0, 7)); });
   return { pjtOptions: Array.from(pjt.entries()).sort((a, b) => a[1].localeCompare(b[1], 'ko')), clientOptions: Array.from(cl).sort((a, b) => a.localeCompare(b, 'ko')), monthOptions: Array.from(mo).sort((a, b) => b.localeCompare(a)) };
 }
-/** 목록 필터(구포털 estFilteredList). f: pjt·client·month·pjtStatus('run'|'done')·status('active'|'closed'|'void')·hideReplaced(개정 전 버전 숨김) */
+/** 목록 필터(구포털 estFilteredList). f: pjt·client·month·pjtStatus('run'|'done')·status('active'|'closed'|'void')·hideReplaced(개정 전 버전 숨김)·q(글자 검색) */
 export function filterEstimates(estimates, projects, f) {
   const o = f || {};
   return (estimates || []).filter((e) => {
@@ -90,6 +91,7 @@ export function filterEstimates(estimates, projects, f) {
     if (o.status) { const st = e.status === 'void' ? 'void' : e.status === 'closed' ? 'closed' : 'active'; if (st !== o.status) return false; }
     if (o.pjtStatus) { const p = (projects || []).find((x) => x.id === e.pjtId); const ps = p ? (p.status === 'done' ? 'done' : 'run') : null; if (ps !== o.pjtStatus) return false; }
     if (o.hideReplaced && isSuperseded(e)) return false;
+    if (o.q) { const p = (projects || []).find((x) => x.id === e.pjtId); if (!matchesQuery([e.title, e.no, e.date, e.client && e.client.company, e.client && e.client.name, e.issuer && e.issuer.company, p && p.code, p && p.name].concat((e.items || []).map((i) => (i && (i.name || '') + ' ' + (i.spec || '')))), o.q)) return false; }   // 글자 검색: 제목·번호·거래처·현장·품목
     return true;
   });
 }

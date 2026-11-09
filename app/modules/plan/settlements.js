@@ -1,14 +1,15 @@
 /* 영업기획 정산서(청구서·지급예정서) — 순수 규칙(화면·네트워크 없이 시험 가능). 구포털 기획(gihoek)의 정산 목록·상세·상태 처리 규칙을 그대로 옮겼다.
  * 상태: active(유효) → done(청구서는 "완결 = 수금", 지급예정서는 "지급완료") → 취소하면 active. 폐기(void)는 집계에서 제외되고, 폐기된 정산서만 삭제할 수 있다.
  * 지급예정서가 완결되면 회계 장부의 직접비(용역비)로 반영되고 그때의 계상월은 acctMonth(없으면 지급일→발행일→기준월 순)다. */
-import { setActive, settleAmountForPjt } from './projects.js?v=20261109n';
+import { setActive, settleAmountForPjt } from './projects.js?v=20261109o';
+import { matchesQuery } from './logic.js?v=20261109o';
 export { setActive, settleAmountForPjt };
 export const SETTLE_PAGE_SIZE = 10;
 export const SETTLE_LABEL = { invoice: '대금청구서', payment: '지급예정서' };
 export const METHOD_LABEL = { progress: '공정 자동', qty: '수량정산', manday: '공수', manual: '직접입력' };
 const T = (s) => Number(s && s.total) || 0;
 /** 목록 필터(구포털 renderSettle): 구분·현장(공동 발행분 포함)·수신처·상태(done=완결, pending=완결이 아닌 것 — 폐기 포함)·발행월 */
-export function filterSettlements(list, f) {
+export function filterSettlements(list, f, projects) {
   const o = f || {};
   return (list || []).filter((s) => {
     if (o.docType && s.docType !== o.docType) return false;
@@ -17,6 +18,7 @@ export function filterSettlements(list, f) {
     if (o.client && (s.recipient && s.recipient.company) !== o.client) return false;
     if (o.status && (o.status === 'done' ? s.status !== 'done' : s.status === 'done')) return false;
     if (o.month && !String(s.issueDate || '').startsWith(o.month)) return false;
+    if (o.q && !matchesQuery([s.no, s.baseMonth, s.issueDate, s.title, s.recipient && s.recipient.company, s.recipient && s.recipient.name, projectLabel(s, projects)], o.q)) return false;   // 글자 검색: 번호·거래처·현장·월
     return true;
   });
 }

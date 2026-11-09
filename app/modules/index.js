@@ -1,21 +1,21 @@
 /* 플랫폼에 꽂는 모듈 목록 — 모듈을 더하거나 빼는 일은 이 파일 한 곳만 고친다.
  * 각 항목은 { manifest, mount }. 핵심부(core/)는 모듈 폴더를 직접 알지 못하고 이 목록만 읽는다. */
-import { mountScheduleBoard, SCHEDULE_CONFIG } from '../shared/schedule-board.js?v=20261109n';
-import * as edoc from './edoc/index.js?v=20261109n';
-import * as attendance from './attendance/index.js?v=20261109n';
-import * as calendar from './calendar/index.js?v=20261109n';
-import * as company from './company/index.js?v=20261109n';
-import * as evalm from './eval/index.js?v=20261109n';
-import * as finance from './finance/index.js?v=20261109n';
-import * as plan from './plan/index.js?v=20261109n';
-import * as general from './general/index.js?v=20261109n';
-import * as hr from './hr/index.js?v=20261109n';
-import * as entry from './entry/index.js?v=20261109n';
-import * as myinfo from './myinfo/index.js?v=20261109n';
-import * as deploy from './deploy/index.js?v=20261109n';
-import * as myresume from './myresume/index.js?v=20261109n';
-import * as pjt from './pjt/index.js?v=20261109n';
-import { modules as legacy, hostNative } from './legacy/index.js?v=20261109n';
+import { mountScheduleBoard, SCHEDULE_CONFIG } from '../shared/schedule-board.js?v=20261109o';
+import * as edoc from './edoc/index.js?v=20261109o';
+import * as attendance from './attendance/index.js?v=20261109o';
+import * as calendar from './calendar/index.js?v=20261109o';
+import * as company from './company/index.js?v=20261109o';
+import * as evalm from './eval/index.js?v=20261109o';
+import * as finance from './finance/index.js?v=20261109o';
+import * as plan from './plan/index.js?v=20261109o';
+import * as general from './general/index.js?v=20261109o';
+import * as hr from './hr/index.js?v=20261109o';
+import * as entry from './entry/index.js?v=20261109o';
+import * as myinfo from './myinfo/index.js?v=20261109o';
+import * as deploy from './deploy/index.js?v=20261109o';
+import * as myresume from './myresume/index.js?v=20261109o';
+import * as pjt from './pjt/index.js?v=20261109o';
+import { modules as legacy, hostNative } from './legacy/index.js?v=20261109o';
 
 export const MODULES = [
   { manifest: edoc.manifest, mount: edoc.mount },
