@@ -1,8 +1,8 @@
-import { esc } from '../../core/ui.js?v=20261109q';
-import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261109q';
-import { isAnnualType } from './home-calc.js?v=20261109q';
-import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261109q';
-import { SERVICE_ITEMS, OTHER_ITEMS, REC_KEYS, REC_LABEL, carCalcText, recKey } from '../../shared/car-cost.js?v=20261109q';
+import { esc } from '../../core/ui.js?v=20261109r';
+import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261109r';
+import { isAnnualType } from './home-calc.js?v=20261109r';
+import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261109r';
+import { SERVICE_ITEMS, OTHER_ITEMS, REC_KEYS, REC_LABEL, carCalcText, recKey } from '../../shared/car-cost.js?v=20261109r';
 
 const uname = (ctx, uid) => { const u = ctx.byUid[uid]; return u ? esc(u.name) + (u.rank ? ' <small>' + esc(u.rank) + '</small>' : '') : '(알 수 없음)'; };
 
@@ -72,9 +72,11 @@ function carItemsHtml(f, v, errs, ui) {
 }
 /** 참여 프로젝트(칩)가 켜진 업무일지는 위쪽 "프로젝트" 칸을 없앤다 — 칩에서 가장 먼저 고른 프로젝트가 문서 제목의 대표 프로젝트(2026-11-09 대표님) */
 function withoutMainProject(row) { const fs = row.fields.filter((f) => f.key !== 'pjtId'); return fs.length ? Object.assign({}, row, { fields: fs, cols: fs.length, layout: fs.length === 1 ? '' : row.layout }) : null; }
-function fieldsBlock(type, v, errs, ctx, ui, partsOn) {
+function fieldsBlock(type, v, errs, ctx, ui, partsOn, partsCell) {
   return fieldRows(type, v).map((row0) => {
     const row = partsOn && type === 'daily' && !row0.items ? withoutMainProject(row0) : row0; if (!row) return '';
+    // 첫 줄: 작성일(왼쪽 좁게) + 오늘 참여한 프로젝트(오른쪽) — 프로젝트 칸을 없애고 날짜만 전체 폭으로 남던 빈 줄을 채운다(2026-11-09 대표님)
+    if (partsCell && partsOn && type === 'daily' && row.fields.some((f) => f.key === 'date')) return '<div class="jh-form__row" data-cols="narrow-first">' + row.fields.map((f) => fieldHtml(f, v, errs, ctx)).join('') + partsCell + '</div>';
     if (row.items) return itemsHtml(row.fields[0], v, errs, ui);
     const rowHtml = '<div class="jh-form__row" data-cols="' + (row.layout || row.cols) + '">' + row.fields.map((f) => fieldHtml(f, v, errs, ctx)).join('') + '</div>';
   return row.layout === 'narrow-first-3' ? '<div class="jh-form__rowbox">' + rowHtml + '</div>' : rowHtml; // 세 칸 줄은 상자의 폭(화면 폭이 아님)으로 배치를 정한다 — 왼쪽 목록이 있는 분할 화면에서는 폼 칸이 화면보다 훨씬 좁다
@@ -191,8 +193,7 @@ export function composeHtml(s) {
   return '<form class="jh-form" data-compose="' + esc(type) + '" novalidate autocomplete="off">' +
     '<header class="jh-form__head"><h2 class="jh-form__title">' + esc(t ? t.label : '') + (edit ? ' 수정' : ' 작성') + '</h2><p class="jh-form__sub">작성자: ' + esc(ctx.me.name) + (ctx.me.rank ? ' ' + esc(ctx.me.rank) : '') + (ctx.me.dept ? ' · ' + esc(ctx.me.dept) : '') + '</p></header>' +
     (rejectReason ? '<div class="jh-alert" data-tone="danger" role="alert"><strong>반려 사유</strong><br>' + esc(rejectReason).replace(/\n/g, '<br>') + '</div>' : '') +
-    kind + rec + '<section class="jh-form__section"><h3 class="jh-form__h">내용</h3>' + fieldsBlock(type, values, errors || {}, ctx, s.ui, s.partsOn === true) + (type === 'leave' ? '<div id="edoc-balance" aria-live="polite">' + balanceHintHtml(s.balance, values.days, values.leaveType) + '</div>' : '') + (type === 'attend' ? '<div id="edoc-attend-hint" aria-live="polite">' + attendHintHtml(s.attend) + '</div>' : '') + '</section>' +
-    (type === 'daily' && s.partsOn === true ? '<section class="jh-form__section" id="edoc-parts">' + partsHtml(s) + '</section>' : '') +
+    kind + rec + '<section class="jh-form__section"><h3 class="jh-form__h">내용</h3>' + fieldsBlock(type, values, errors || {}, ctx, s.ui, s.partsOn === true, type === 'daily' && s.partsOn === true ? '<div id="edoc-parts">' + partsHtml(s) + '</div>' : '') + (type === 'leave' ? '<div id="edoc-balance" aria-live="polite">' + balanceHintHtml(s.balance, values.days, values.leaveType) + '</div>' : '') + (type === 'attend' ? '<div id="edoc-attend-hint" aria-live="polite">' + attendHintHtml(s.attend) + '</div>' : '') + '</section>' +
   '<section class="jh-form__section" id="edoc-attach">' + attachHtml(s) + '</section>' +
     (s.type === 'drive' ? '<section class="jh-form__section"><div class="jh-alert" data-tone="info" role="status">결재 없이 <strong>기록하기</strong>를 누르면 바로 기록됩니다. ' + (rk === 'trip' ? '총무가 모든 사람의 운행일지를 시간 순으로 모아 봅니다.' : '총무 → 운행일지의 <strong>차량 비용</strong>에서 월별 금액과 연비를 모아 봅니다.') + '</div></section>' : '<section class="jh-form__section" id="edoc-line-section"><h3 class="jh-form__h">결재선</h3>' + lineEditorHtml(s.line, ctx, s.ui) + '</section>') +
     (s.formError ? '<div class="jh-alert" data-tone="danger" role="alert" id="edoc-form-error">' + esc(s.formError) + '</div>' : '') +

@@ -23,4 +23,6 @@ ok(!has(on, 'data-input="pjtId"') && has(on, 'data-input="date"') && has(on, 'da
 ok(has(off, 'data-input="pjtId"') && !has(off, 'edoc-parts'), '★ 꺼져 있으면 예전 그대로(위쪽 프로젝트 선택이 있고 칩은 없다)');
 ok(has(on, '가장 먼저 고른 프로젝트') && !has(on, '가장 많이 일한 곳'), '칩 안내 문구가 "가장 먼저 고른 프로젝트가 제목에 쓰인다"로 바뀌었다');
 { const sp = composeHtml({ type: 'spend', values: { kind: 'purchase', pjtId: 'pjt_1', items: [], vendor: '', purpose: '', dueDate: '', expDate: '2026-11-09', category: '', amount: '', receipt: '' }, errors: {}, ctx: { projects: PR, me: { name: '김' }, users: [], vehicles: [], byUid: {}, required: [] }, files: [], uploading: [], line: { approvers: [], cc: [] }, busy: false, partsOn: true }); ok(has(sp, 'data-input="pjtId"'), '★ 다른 양식(지출결의 등)의 프로젝트 칸은 영향 없다'); }
+ok(/data-cols="narrow-first">[^]*data-field="date"[^]*id="edoc-parts"/.test(on) && !/<section[^>]*id="edoc-parts"/.test(on), '★ 첫 줄에 작성일(왼쪽)과 참여 프로젝트(오른쪽)가 함께 있고, 칩이 아래쪽 별도 구역으로 따로 나오지 않는다');
+ok(on.indexOf('id="edoc-parts"') < on.indexOf('data-input="todayWork"'), '칩이 금일 업무보다 위(프로젝트를 먼저 고르고 내용을 쓴다)');
 console.log(fail ? '\n실패 ' + fail + '건' : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);
