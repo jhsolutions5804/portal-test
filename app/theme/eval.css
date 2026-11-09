@@ -64,3 +64,12 @@
 .jh-iv-q__q { font-weight: 600; }
 @media (max-width: 899px) { .jh-iv-grid { grid-template-columns: minmax(0, 1fr); } .jh-iv-kv > div { grid-template-columns: minmax(0, 1fr); } }
 
+
+/* 평가 회차 진행 단계(준비→진행→마감→공개) — 번호 배지 + 이름을 가로로. 이 규칙이 없어 목록 기본 번호가 배지 숫자와 겹쳐 "1. 1준비"로 보이던 것을 고친다(2026-11-09 핫픽스) */
+.jh-eval-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); }
+.jh-eval-step { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--c-ink-3); font-size: var(--fs-md); }
+.jh-eval-step > span { display: inline-flex; align-items: center; justify-content: center; min-width: var(--u-20); height: var(--u-20); padding: 0 var(--u-4); border: var(--u-1) solid var(--c-line-strong); border-radius: var(--u-999); font-size: var(--fs-xs); font-weight: 700; font-variant-numeric: tabular-nums; }
+.jh-eval-step[data-done="true"] { color: var(--c-ink-2); }
+.jh-eval-step[data-done="true"] > span { background: var(--c-primary-weak); border-color: var(--c-primary); color: var(--c-primary-ink); }
+.jh-eval-step[data-now="true"] { color: var(--c-ink); font-weight: 700; }
+.jh-eval-step[data-now="true"] > span { background: var(--c-primary); border-color: var(--c-primary); color: var(--c-on-primary); }
