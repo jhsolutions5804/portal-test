@@ -1,8 +1,8 @@
-import { esc } from './ui.js?v=20261109o';
-import { openSettings } from './settings.js?v=20261109o';
-import { openProfile } from './profile.js?v=20261109o';
-import { phoneTabs } from './nav.js?v=20261109o';
-import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261109o';
+import { esc } from './ui.js?v=20261109p';
+import { openSettings } from './settings.js?v=20261109p';
+import { openProfile } from './profile.js?v=20261109p';
+import { phoneTabs } from './nav.js?v=20261109p';
+import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261109p';
 
 export function renderLogin(root, { onSubmit, onMicrosoft, message }) {
   root.innerHTML =
@@ -18,8 +18,8 @@ export function renderLogin(root, { onSubmit, onMicrosoft, message }) {
       '</div>' +
       '<div class="jh-login__panel" role="tabpanel" id="jh-panel-guest" aria-labelledby="jh-tab-guest" hidden>' +
         '<form id="jh-login-form" autocomplete="on">' +
-          '<label class="jh-field"><span class="jh-field__label">아이디 또는 이메일</span><input class="jh-input" id="jh-id" name="username" autocomplete="username" placeholder="회사 아이디 또는 본인 이메일" required></label>' +
-          '<label class="jh-field"><span class="jh-field__label">비밀번호</span><input class="jh-input" id="jh-pw" name="password" type="password" autocomplete="current-password" required></label>' +
+          '<label class="jh-field"><span class="jh-field__label">아이디 또는 이메일</span><input class="jh-input" id="jh-id" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next" placeholder="회사 아이디 또는 본인 이메일" required></label>' +
+          '<label class="jh-field"><span class="jh-field__label">비밀번호</span><span class="jh-login__pw"><input class="jh-input" id="jh-pw" name="password" type="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go" required><button type="button" class="jh-login__pwbtn" data-pw-toggle aria-pressed="false" aria-controls="jh-pw">보기</button></span></label>' +
           '<button class="jh-btn" data-variant="primary" id="jh-login-btn" type="submit">로그인</button>' +
         '</form>' +
       '</div>' +
@@ -33,6 +33,12 @@ export function renderLogin(root, { onSubmit, onMicrosoft, message }) {
     t.addEventListener('click', () => select(k, false));
     t.addEventListener('keydown', (ev) => { const n = ev.key === 'ArrowRight' ? Math.min(k + 1, tabs.length - 1) : ev.key === 'ArrowLeft' ? Math.max(k - 1, 0) : -1; if (n >= 0) { ev.preventDefault(); select(n, true); } });
   });
+  const TAB_KEY = 'jh_login_tab';   // 마지막으로 쓴 로그인 방식을 기억 — Guest 계정을 쓰는 분이 매번 탭을 누르지 않게(저장이 막힌 브라우저에서는 그냥 기본 탭)
+  const remember = (k) => { try { localStorage.setItem(TAB_KEY, k === 1 ? 'guest' : 'staff'); } catch (e) { /* 저장 불가는 무시 */ } };
+  tabs.forEach((t, k) => t.addEventListener('click', () => remember(k)));
+  try { if (localStorage.getItem(TAB_KEY) === 'guest') select(1, false); } catch (e) { /* 기본 탭 */ }
+  const pwBox = root.querySelector('#jh-pw'), pwBtn = root.querySelector('[data-pw-toggle]');
+  pwBtn.addEventListener('click', () => { const show = pwBox.type === 'password'; pwBox.type = show ? 'text' : 'password'; pwBtn.textContent = show ? '숨기기' : '보기'; pwBtn.setAttribute('aria-pressed', show ? 'true' : 'false'); });
   root.querySelector('#jh-ms-btn').addEventListener('click', async (ev) => {
     const btn = ev.currentTarget; btn.disabled = true; btn.textContent = 'Microsoft로 이동 중…'; msg.textContent = '';
     try { await onMicrosoft(); } catch (e) { msg.textContent = 'Microsoft 로그인을 시작하지 못했습니다.'; btn.disabled = false; btn.textContent = 'Microsoft로 로그인'; }
@@ -42,7 +48,7 @@ export function renderLogin(root, { onSubmit, onMicrosoft, message }) {
     const btn = root.querySelector('#jh-login-btn');
     btn.disabled = true; btn.textContent = '로그인 중…'; msg.textContent = '';
     try { await onSubmit(root.querySelector('#jh-id').value, root.querySelector('#jh-pw').value); }
-    catch (e) { msg.textContent = e && e.message ? e.message : '로그인에 실패했습니다.'; btn.disabled = false; btn.textContent = '로그인'; }
+    catch (e) { msg.textContent = e && e.message ? e.message : '로그인에 실패했습니다.'; btn.disabled = false; btn.textContent = '로그인'; pwBox.type = 'password'; pwBtn.textContent = '보기'; pwBtn.setAttribute('aria-pressed', 'false'); pwBox.focus(); pwBox.select(); }   // 실패하면 비밀번호 칸으로 돌아가 바로 다시 입력
   });
 }
 

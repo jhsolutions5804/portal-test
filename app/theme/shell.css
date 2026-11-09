@@ -163,3 +163,10 @@
     .jh-sidebar, .jh-sidebar:is(:hover, :focus-within) { width: auto; justify-self: stretch; transition: none; overflow-x: hidden; }
   }
 }
+
+/* 로그인 입력 보강(대기열 2-1-15, 2026-11-09) — ① 입력칸 글자를 16px 이상으로(폰 사파리는 16px 미만 칸을 누르면 화면이 확대되어 안 돌아옴) ② 비밀번호 「보기」 버튼 */
+.jh-login .jh-input { font-size: max(16px, var(--fs-sm)); }
+.jh-login__pw { position: relative; display: block; }
+.jh-login__pw .jh-input { padding-right: calc(var(--u-56) + var(--sp-2)); }
+.jh-login__pwbtn { position: absolute; top: 50%; right: var(--sp-1); transform: translateY(-50%); min-width: var(--u-56); min-height: var(--u-40); padding: 0 var(--sp-2); border: 0; background: none; color: var(--c-primary); font: inherit; font-size: var(--fs-sm); font-weight: 700; cursor: pointer; }
+
