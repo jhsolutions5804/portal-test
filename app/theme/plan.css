@@ -134,3 +134,11 @@ a.jh-plan__row { text-decoration: none; }
 }
 /* 요약 5칸(jh-plan__sum--5)의 폰 폭 2칸 규칙이 앞(44행)에 있는데 뒤(85행)의 5칸 지정이 덮어써서 폰에서 7자리 금액이 중간에 줄바꿈되던 것을 바로잡는다(실행예산 카드를 실제 폰 폭으로 찍어 발견 — 기존 프로젝트 요약 카드도 같은 결함이었음). 반드시 85행 뒤에 둘 것 */
 @media (max-width: 899px) { .jh-plan__sum--5 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* 견적 품목 표 폰 대응(대기열 2-1-15, 대표님 2026-11-09) — 폭 900px 미만에서 품목 한 줄이 카드 한 장으로 바뀌어 옆으로 밀지 않아도 품명·규격·수량·단가·금액·비고·산식 버튼이 모두 보인다(PC 폭은 그대로) */
+@media (max-width: 899px) {
+  .jh-plan__items.jh-plan__table--cards td.jh-field__hint { display: flex; }
+  .jh-plan__items.jh-plan__table--cards td .jh-input { flex: 1 1 60%; min-width: 0; width: auto; }
+  .jh-plan__items.jh-plan__table--cards td .jh-input:not(.jh-plan__num) { text-align: left; }
+  .jh-plan__items.jh-plan__table--cards td.jh-plan__rowbtns { justify-content: flex-end; gap: var(--sp-2); padding-top: var(--sp-2); }
+}
