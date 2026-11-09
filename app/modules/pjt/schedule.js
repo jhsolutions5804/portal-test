@@ -1,7 +1,7 @@
 /* PJT 일정 — 순수 규칙(화면·네트워크 없이 시험 가능). 모든 프로젝트 같은 형식·같은 규칙.
  * 일정 문서(동결): { reg(등록자), text, place, att(참석자), tag, tagLabel, sdate, edate, isTodo, stime, etime, done?, savedAt }.
  * 저장 위치는 프로젝트마다 다르지만(어댑터 P.schedules) 문서 모양은 같다. Ph2 의 user_schedules 는 포털 홈 통합 캘린더가 함께 읽는다. */
-import { toHalfwidth } from '../../shared/text-fix.js?v=20261105m';
+import { toHalfwidth } from '../../shared/text-fix.js?v=20261109h';
 export const CATS = [['edu', '교육'], ['meeting', '회의'], ['in', '반입'], ['fcu', '설치'], ['off', '휴무'], ['safety', '안전'], ['quality', '품질'], ['admin', '기타']];
 export const TAG_LABEL = { edu: '교육', meeting: '회의', in: '반입', fcu: '설치', off: '휴무', safety: '안전', quality: '품질', admin: '기타', inspect: '검수', leave: '연차' };   // inspect·leave 는 옛 데이터 표시용
 export const TAG_COLOR = { in: '#1D5BA6', inspect: '#2e7d32', edu: '#5e35b1', meeting: '#5D3A00', fcu: '#0A3D7A', safety: '#8D6E00', off: '#c0392b', leave: '#e67e22', quality: '#00695C', admin: '#7A8AA0' };

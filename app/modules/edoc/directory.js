@@ -1,6 +1,6 @@
-import { db, collection, doc, getDoc, getDocs } from '../../core/firebase.js?v=20261105m';
-import { byEmpNo } from '../../shared/worker-order.js?v=20261105m';
-import { partsEnabled } from './compose.js?v=20261105m';
+import { db, collection, doc, getDoc, getDocs } from '../../core/firebase.js?v=20261109h';
+import { byEmpNo } from '../../shared/worker-order.js?v=20261109h';
+import { partsEnabled } from './compose.js?v=20261109h';
 
 /* 작성 화면이 쓰는 기준 정보: 직원 명단, 정책(필수 결재자·대리 권한자), 권장 결재선, 프로젝트 */
 let cache = null;
@@ -23,7 +23,7 @@ export async function loadDirectory(force) {
   users.sort(byEmpNo); // 직원 배치는 사번순(대표님 2026-11-04) — 사번이 없는 계정은 맨 뒤·이름순
   const policy = pol.exists() ? pol.data() : {};
   const projects = [];
-  pj.forEach((d) => { const x = d.data(); if (x.status && x.status !== 'run') return; projects.push({ id: d.id, code: x.code || '', pjtCode: x.code || '', name: x.name || '' }); });
+  pj.forEach((d) => { const x = d.data(); if (x.status && x.status !== 'run') return; projects.push({ id: d.id, code: x.code || '', pjtCode: x.code || '', name: x.name || '', reg: x.linkPjt || '' }); });
   projects.sort((a, b) => (a.code + a.name).localeCompare(b.code + b.name, 'ko'));
   const partsOn = !!(pt && pt.exists && pt.exists() && partsEnabled(pt.data()));
   cache = { partsOn, users, policy: { required: Array.isArray(policy.required) ? policy.required : [], proxy: Array.isArray(policy.proxy) ? policy.proxy : [] }, guides: gd.exists() ? gd.data() : {}, projects, vehicles: vh && vh.exists() && Array.isArray(vh.data().list) ? vh.data().list.filter((x) => x && x.id && x.name) : [] };

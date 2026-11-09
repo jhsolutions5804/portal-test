@@ -1,7 +1,7 @@
 /* 작성 화면의 순수 로직 — 양식 정의, 검증, 문서 데이터 만들기, 결재선 편집. (화면·Firestore 와 분리해 시험한다) */
 
-import { halfwidthDeep } from '../../shared/text-fix.js?v=20261105m';
-import { recKey, FUEL_TYPES, FULL_OPTS, SHOP_KINDS, carChecks, carFields, emptyCarItem, carCalcText } from '../../shared/car-cost.js?v=20261105m'; // 주유·정비·비용 기록(운행일지 문서의 rec 필드)
+import { halfwidthDeep } from '../../shared/text-fix.js?v=20261109h';
+import { recKey, FUEL_TYPES, FULL_OPTS, SHOP_KINDS, carChecks, carFields, emptyCarItem, carCalcText } from '../../shared/car-cost.js?v=20261109h'; // 주유·정비·비용 기록(운행일지 문서의 rec 필드)
 export const MAX_APPROVERS = 5;
 export const MAX_PARTS = 6; // 한 사람의 하루에 나눌 수 있는 참여 프로젝트 수(서버 pjt-part-act 의 day-split 규칙과 같다)
 export const MAX_CC = 10;
@@ -138,6 +138,21 @@ const pid = (x) => (typeof x === 'string' ? x.trim() : '');
 const asParts = (parts) => (Array.isArray(parts) ? parts.filter((p) => p && pid(p.pjt)).map((p) => ({ pjt: pid(p.pjt) })) : []);
 /** 위에서 고른 프로젝트가 칩의 기본값 — 고르지 않았으면 빈 목록 */
 export function partsDefault(pjtId) { const id = pid(pjtId); return id ? [{ pjt: id }] : []; }
+/** 칩 id(영업기획 프로젝트) → 서버 id(PJT 관리 프로젝트). 영업기획 문서의 linkPjt 가 PJT 관리 프로젝트 id 이고, "공통"은 그대로. 연결이 없으면 오류(2026-11-09: 칩 id 를 그대로 보내 서버가 "프로젝트를 찾을 수 없습니다"로 거절하던 문제) */
+export function partsToServer(list, projects) {
+  const ps = Array.isArray(projects) ? projects : [];
+  return (Array.isArray(list) ? list : []).map((x) => {
+    const o = x && typeof x === 'object' ? x : { pjt: x }; const id = pid(o.pjt); if (id === 'common') return Object.assign({}, o, { pjt: id });
+    const p = ps.find((q) => q && q.id === id);
+    if (!p || !p.reg) throw new Error('"' + (p ? (p.code ? p.code + ' · ' : '') + p.name : id) + '" 프로젝트는 PJT 관리와 연결돼 있지 않아 참여 기록을 남길 수 없습니다. 관리자에게 연결을 요청해 주세요.');
+    return Object.assign({}, o, { pjt: p.reg });
+  });
+}
+/** 서버 id(PJT 관리) → 칩 id(영업기획). 찾지 못하면 그대로 둔다 */
+export function partsFromServer(list, projects) {
+  const ps = Array.isArray(projects) ? projects : [];
+  return (Array.isArray(list) ? list : []).map((x) => { const id = pid(x && x.pjt); if (!id || id === 'common') return x; const p = ps.find((q) => q && q.reg === id); return p ? Object.assign({}, x, { pjt: p.id }) : x; });
+}
 /** 칩을 바꾼 뒤 위쪽 "프로젝트"(문서 제목·결재 목록에 쓰이는 대표 프로젝트)를 칩과 맞춘다 — 칩이 비어 있으면 그대로, 대표가 칩 안에 있으면 그대로(여럿이어도 사용자가 정한 대표 유지), 칩에서 빠졌으면 첫 칩. 문자열을 돌려준다 */
 export function mainAfterToggle(parts, main) {
   const cur = asParts(parts); const m = pid(main); if (!cur.length) return m;

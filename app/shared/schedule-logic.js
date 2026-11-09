@@ -1,8 +1,8 @@
 /* 영업기획·재무회계 일정(plan_schedules·finance_schedules) — 순수 규칙(화면·네트워크 없이 시험 가능). 설계: portal-functions/app-docs/calendar-extension-design.md (2026-10-20 대표님 결정, 2026-10-31 구현)
  * 일정 문서 모양은 옛 일정과 같다: text·sdate·edate·stime·etime·tag·tagLabel·place·memo·isTodo·done + source('manual'|'settlement_auto')·srcId·recurId·createdBy·createdByName·savedAt.
  * 금액·계좌는 일정에 넣지 않는다(제목이 Outlook 공유 사서함으로도 나간다). 자동 일정(settlement_auto)은 서버가 정산서에서 만들므로 화면에서 고치거나 지울 수 없다. */
-import { toHalfwidth } from './text-fix.js?v=20261105m';
-import { addDays, isYmd, isHHMM, makeEvent, fromLegacyDoc, pad } from './calendar-event.js?v=20261105m';
+import { toHalfwidth } from './text-fix.js?v=20261109h';
+import { addDays, isYmd, isHHMM, makeEvent, fromLegacyDoc, pad } from './calendar-event.js?v=20261109h';
 
 export const SCHEDULE_CONFIG = {
   plan: { key: 'plan', title: '영업기획 일정', col: 'plan_schedules', source: 'plan', label: '영업기획 일정', order: 55, link: '#/plan/schedule', defaultTag: 'meeting',

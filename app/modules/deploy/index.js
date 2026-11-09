@@ -1,9 +1,9 @@
 /* 투입 확인(직원 본인) — 프로젝트에 투입될 때마다 「투입 확인서」(투입 확인 + 소개서 제공 동의)에 본인이 직접 응답한다(대기열 1-3-27-6).
  * 모든 조회·응답은 서버 함수 deployAct 로만. 확인 기록은 서버 전용 문서에 저장되고, 동의하지 않으면 그 사업에는 투입되지 않는다. 설계: Claude 문서 「사업별 투입 확인서」. */
-import { functions, httpsCallable } from '../../core/firebase.js?v=20261105m';
-import { confirmDialog } from '../../core/dialog.js?v=20261105m';
-import { toast } from '../../core/ui.js?v=20261105m';
-import { deployHtml } from './view.js?v=20261105m';
+import { functions, httpsCallable } from '../../core/firebase.js?v=20261109h';
+import { confirmDialog } from '../../core/dialog.js?v=20261109h';
+import { toast } from '../../core/ui.js?v=20261109h';
+import { deployHtml } from './view.js?v=20261109h';
 
 export const manifest = { id: 'deploy', order: 92, title: '투입 확인', icon: '🧾', defaultHash: '#/deploy/list', perm: (me) => !!me && !me.isGuest };
 const call = async (data) => (await httpsCallable(functions, 'deployAct')(data)).data;

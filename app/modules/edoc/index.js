@@ -1,29 +1,29 @@
-import { fetchAll, fetchOne } from './data.js?v=20261105m';
-import { listHtml, detailHtml } from './views.js?v=20261105m';
-import { tabCounts, edocPrintTitle } from './logic.js?v=20261105m';
-import { buildHash, navigate } from '../../core/router.js?v=20261105m';
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261105m';
-import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261105m';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261105m';
-import { toast } from '../../core/ui.js?v=20261105m';
-import { confirmDialog } from '../../core/dialog.js?v=20261105m';
-import { loadDirectory, resetDirectory } from './directory.js?v=20261105m';
-import { act, partAct } from './api.js?v=20261105m';
-import * as C from './compose.js?v=20261105m';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261105m';
-import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261105m';
-import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261105m';
-import { kstKey } from './home-daily.js?v=20261105m';
-import { isOffDay } from '../../shared/holidays.js?v=20261105m';
-import { todoCounts } from './home-stats.js?v=20261105m';
-import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261105m';
-import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261105m';
-import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261105m';
-import * as AT from './attach-logic.js?v=20261105m';
-import { uploadFile, removeFile, openFile } from './attach.js?v=20261105m';
-import * as SL from './settings-logic.js?v=20261105m';
-import { chooserHtml, newDocLayoutHtml, composeHtml, partsHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261105m';
-import { printWithTitle } from '../../shared/print-title.js?v=20261105m';
+import { fetchAll, fetchOne } from './data.js?v=20261109h';
+import { listHtml, detailHtml } from './views.js?v=20261109h';
+import { tabCounts, edocPrintTitle } from './logic.js?v=20261109h';
+import { buildHash, navigate } from '../../core/router.js?v=20261109h';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261109h';
+import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261109h';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261109h';
+import { toast } from '../../core/ui.js?v=20261109h';
+import { confirmDialog } from '../../core/dialog.js?v=20261109h';
+import { loadDirectory, resetDirectory } from './directory.js?v=20261109h';
+import { act, partAct } from './api.js?v=20261109h';
+import * as C from './compose.js?v=20261109h';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261109h';
+import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261109h';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261109h';
+import { kstKey } from './home-daily.js?v=20261109h';
+import { isOffDay } from '../../shared/holidays.js?v=20261109h';
+import { todoCounts } from './home-stats.js?v=20261109h';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261109h';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261109h';
+import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261109h';
+import * as AT from './attach-logic.js?v=20261109h';
+import { uploadFile, removeFile, openFile } from './attach.js?v=20261109h';
+import * as SL from './settings-logic.js?v=20261109h';
+import { chooserHtml, newDocLayoutHtml, composeHtml, partsHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261109h';
+import { printWithTitle } from '../../shared/print-title.js?v=20261109h';
 
 
 export const manifest = {
@@ -222,7 +222,7 @@ async function mountCompose(root, route, ctx) {
     }
     const v = C.valuesFromDoc(d); S.type = v.type; S.values = v.values; S.ctx = lc(S.type);
     S.line = (d.approvalLine && d.approvalLine.length) ? C.lineFromDoc(d, S.ctx) : C.initialLine(S.ctx);
-    if (S.partsOn && S.type === 'daily') { try { const g = await partAct({ action: 'get', date: S.values.date }); S.values.parts = g && g.record && Array.isArray(g.record.projects) ? g.record.projects.map((x) => ({ pjt: x.pjt })) : C.partsDefault(S.values.pjtId); S.partsSaved = g && g.record ? g.record : null; } catch (e) { S.values.parts = C.partsDefault(S.values.pjtId); } S.partsMain = S.values.pjtId || ''; } // 참여 기록은 문서 본문이 아니라 별도 기록이라 서버에서 불러온다
+    if (S.partsOn && S.type === 'daily') { try { const g = await partAct({ action: 'get', date: S.values.date }); S.values.parts = g && g.record && Array.isArray(g.record.projects) ? C.partsFromServer(g.record.projects, projs()).map((x) => ({ pjt: x.pjt })) : C.partsDefault(S.values.pjtId); S.partsSaved = g && g.record ? g.record : null; } catch (e) { S.values.parts = C.partsDefault(S.values.pjtId); } S.partsMain = S.values.pjtId || ''; } // 참여 기록은 문서 본문이 아니라 별도 기록이라 서버에서 불러온다
     S.files = AT.sanitizeList(d.attachments); S.edit = { dtype: d.dtype, id: d.id }; S.docRef = S.edit; S.rejectReason = d.status === 'rejected' ? (d.rejectReason || '') : ''; S.createdMs = d._ms;
   } else {
     const type = route.segs[1];
@@ -258,11 +258,12 @@ async function mountCompose(root, route, ctx) {
     const sec = root.querySelector('#edoc-line-section'); if (!sec) return;
     sec.innerHTML = '<h3 class="jh-form__h">결재선</h3>' + lineEditorHtml(S.line, S.ctx, S.ui);
   };
+  const projs = () => (dir && dir.projects) || (S.ctx && S.ctx.projects) || [];   // 칩 항목(영업기획 id·PJT 관리 id 연결 포함)
   const paintParts = () => { const el = root.querySelector('#edoc-parts'); if (el) el.innerHTML = partsHtml(S); };
   const refreshPreview = async () => { // 둘 이상 고르면 서버가 기본 비율(그날 일용직 공수 비율, 없으면 균등)을 계산해 준다 — 늦게 온 응답이 최신 선택을 덮지 않게 요청 번호로 거른다
     if (!S.partsOn) return; if (!C.partsNeedsPreview(S.values, S.partsUi)) { S.partsUi.preview = null; S.partsUi.previewError = ''; paintParts(); return; }
     const seq = ++S.partsSeq; S.partsUi.preview = null; S.partsUi.previewError = ''; paintParts();
-    try { const r = await partAct({ action: 'preview', date: S.values.date, projects: S.values.parts.map((p) => p.pjt) }); if (seq !== S.partsSeq) return; S.partsUi.preview = r; }
+    try { const r = await partAct({ action: 'preview', date: S.values.date, projects: C.partsToServer(S.values.parts.map((p) => p.pjt), projs()).map((p) => p.pjt) }); if (seq !== S.partsSeq) return; S.partsUi.preview = Object.assign({}, r, { projects: C.partsFromServer(r && r.projects, projs()) }); }
     catch (e) { if (seq !== S.partsSeq) return; S.partsUi.previewError = C.partsSaveError(e); }
     paintParts();
   };
@@ -401,6 +402,7 @@ async function mountCompose(root, route, ctx) {
       sync(); S.formError = ''; S.errors = {};
       const submit = act_ === 'submit';
       S.errors = submit ? C.validate(S.type, S.values, { projects: dir.projects, users: dir.users, meUid: me.uid, worker: S.worker }) : quickErrors();
+      if (S.partsOn && S.type === 'daily') delete S.errors.pjtId;   // 위쪽 프로젝트 칸은 감췄다 — 대표 프로젝트는 칩에서 정해지고, 비었을 때는 아래 칩 오류가 알려 준다
       if (S.partsOn && S.type === 'daily') { const pc2 = C.partsSubmitCheck(S.values, S.partsUi, !submit); if (!pc2.ok) S.errors.parts = pc2.error; }
       const lineProblems = submit && S.type !== 'drive' ? C.lineIssues(S.line, S.ctx) : [];
       if (Object.keys(S.errors).length || lineProblems.length) {
@@ -412,7 +414,7 @@ async function mountCompose(root, route, ctx) {
         const ref = await persist();
         if (S.partsOn && S.type === 'daily') { // 참여 기록은 문서 본문이 아니라 별도 기록(승인 후에도 정정 가능) — 상신하려면 저장에 성공해야 하고, 임시저장은 칩이 있을 때만 시도하며 실패해도 문서 저장은 유지한다
           const fin = C.partsFinal(S.values, S.partsUi); const payload = C.partsPayload('daily', Object.assign({}, S.values, { parts: fin.ok ? fin.parts : [] }));
-          if (payload) { try { S.partsSaved = await partAct(payload); } catch (e) { if (submit) throw new Error(C.partsSaveError(e) + ' (업무일지는 임시저장되어 있습니다. 상신하지 않았습니다.)'); toast('임시저장했습니다. 다만 ' + C.partsSaveError(e)); } }
+          if (payload) { try { const sr = await partAct(Object.assign({}, payload, { projects: C.partsToServer(payload.projects, projs()) })); S.partsSaved = sr && Array.isArray(sr.projects) ? Object.assign({}, sr, { projects: C.partsFromServer(sr.projects, projs()) }) : sr; } catch (e) { if (submit) throw new Error(C.partsSaveError(e) + ' (업무일지는 임시저장되어 있습니다. 상신하지 않았습니다.)'); toast('임시저장했습니다. 다만 ' + C.partsSaveError(e)); } }
         }
         if (!submit) { toast('임시저장했습니다.'); S.busy = false; navigate('#/edoc/edit/' + ref.dtype + '/' + ref.id, { replace: true }); return; }
         await act({ dtype: ref.dtype, docId: ref.id, action: 'submit', line: S.type === 'drive' ? [] : S.line.approvers, cc: S.type === 'drive' ? [] : S.line.cc });
