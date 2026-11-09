@@ -11,7 +11,7 @@ ok(r1.name === '김가나' && r1.empNo === 'E01' && r1.dept === '사업본부' &
 ok(r1.workHours === Math.round((c1.sal.attHours + c1.sal.holidayHours) * 100) / 100 && r1.workHours > 0 && r1.holidayHours === c1.sal.holidayHours && r1.leaveHours === 16 && r1.holidayHours === 6 && r1.nightHours === 5 && r1.otHours === c1.sal.otHours, '근로시간 = 평일 실근로 + 휴일근로, 휴가 환산·연장·야간은 명세서 값 그대로(실제 계산 결과로 확인)');
 ok(r1.holidayHours > 0 && r1.workHours === c1.sal.attHours + c1.sal.holidayHours, '휴일근로 시간이 근로시간에 더해진다(휴가 환산은 더하지 않는다)');
 ok(r1.pay.basic === s1.basic && r1.pay.weekly === s1.weekly && r1.pay.bonus === 100000 && r1.pay.techAllowance === 50000 && r1.grossPay === c1.totalPay && r1.ded.pension === c1.pension && r1.ded.health === c1.health && r1.ded.incomeTax === c1.incomeTax && r1.totalDeduct === c1.totalDeduct && r1.netPay === c1.netPay, '지급·공제·합계·실지급이 명세서와 같다');
-ok(LEDGER_PAY.length === 10 && LEDGER_DEDUCT.length === 7 && LEDGER_HEAD.length === 12 + 10 + 1 + 7 + 2, '열 구성(인적 6 + 근로 6 + 지급 10 + 지급합 + 공제 7 + 공제합·실지급)');
+ok(LEDGER_PAY.length === 12 && LEDGER_DEDUCT.length === 8 && LEDGER_HEAD.length === 12 + 12 + 1 + 8 + 2, '열 구성(인적 6 + 근로 6 + 지급 12(수당 항목·비과세 수당 포함) + 지급합 + 공제 8(기타 공제 포함) + 공제합·실지급)');
 // ── 근로일수
 ok(r1.workDays === 20 && r1.workDaysFrom === 'attendance', '명세서에 workDays 가 없으면 출퇴근 기록에서 센 값을 쓴다');
 const r1b = ledgerRow(Object.assign({}, s1, { workDays: 22 }), W, 20); ok(r1b.workDays === 22 && r1b.workDaysFrom === 'slip', '명세서에 workDays 가 있으면 그 값이 우선(실제 지급 기준)');
@@ -59,4 +59,14 @@ ok(up.ok && up.patch.status === 'open' && up.patch.unlockLog.length === 2 && up.
 ok(!unlockPatch(cd, 'a', '   ', 'n').ok && !unlockPatch(cd, 'a', '', 'n').ok && !unlockPatch({ status: 'open' }, 'a', '사유', 'n').ok && !unlockPatch(null, 'a', '사유', 'n').ok, '사유가 없거나 마감 상태가 아니면 해제할 수 없다');
 ok(canUnlock(true, '', []) && canUnlock(false, 'Kim@JHSOL.kr', ['kim@jhsol.kr']) && !canUnlock(false, 'x@jhsol.kr', ['kim@jhsol.kr']) && !canUnlock(false, '', ['kim@jhsol.kr']) && !canUnlock(false, 'kim@jhsol.kr', null) && !canUnlock(false, 'kim@jhsol.kr', 'kim@jhsol.kr'), '해제 권한: 관리자 + 인사 일정 담당자 목록(대소문자 무시), 목록이 아니면 거부');
 ok(isYm('2026-08') && !isYm('2026-13') && !isYm('2026-8') && !isYm('') && !isYm(null) && !isClosed(null) && !isClosed({ status: 'open' }), '귀속월 형식·마감 판정');
+// ── 수당 목록·비과세·공제 직접 추가가 있는 명세서도 임금대장 마감 검산을 통과한다(2026-11-09)
+{
+  const cx = payslipCalc({ hourly: 11000, month: '2026-08', attHours: 176, leaveHours: 16, hasContract: true, wageType: 'noncomprehensive', contractItems: [{ name: '직책수당', amount: 100000 }, { name: '식대', amount: 200000, taxFree: true, src: 'manual' }], customDeduct: [{ name: '선지급 상계', amount: 30000 }, { name: '환급', amount: -5000 }] });
+  const rec = payslipRecord(W, { hourly: 11000 }, '2026-08', '2026-09-30', '', cx, []);
+  const rows = [ledgerRow(W, rec, { workDays: 20, workHours: 176, holidayHours: 0, leaveHours: 16, otHours: 0, nightHours: 5 })];
+  const r = closeChecks('2026-08', [W], { w1: rec }, rows);
+  ok(r.blockers.length === 0, '수당 항목·비과세·직접 공제가 있어도 지급합계·공제합계·실지급액 검산에 걸리지 않는다(막힌 것: ' + JSON.stringify(r.blockers.map((b) => b.code)) + ')');
+  const bad = Object.assign({}, rec, { contractItemsTotal: 0 });
+  ok(closeChecks('2026-08', [W], { w1: bad }, rows).blockers.some((b) => b.code === 'sum-gross'), '수당 항목 합이 어긋나면 마감이 막힌다');
+}
 console.log('\n' + (fail ? 'FAILED ' : 'ALL OK ') + pass + ' pass / ' + fail + ' fail'); process.exit(fail ? 1 : 0);

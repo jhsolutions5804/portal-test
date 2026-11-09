@@ -18,8 +18,8 @@ ok(sc.includes('마감됨 v2') && sc.includes('adm@jhsol.kr') && sc.includes('2�
 ok(!ledgerStatusHtml({ status: 'closed', version: 1, closedBy: '<script>x</script>' }).includes('<script>'), '상태 줄: 마감자 이름의 HTML 을 막는다');
 // ── 표
 const t = ledgerTableHtml(rows); const nth = (t.match(/<th[ >]/g) || []).length, trs = t.match(/<tr[ >]/g) || [];
-ok(nth === LEDGER_HEAD.length && LEDGER_HEAD.length === 32 && trs.length === 1 + rows.length + 1, '표: 머리글 32칸, 줄 = 머리글 + 직원 2 + 합계 1');
-ok([...t.matchAll(/<tr[^>]*>(.*?)<\/tr>/g)].every((m) => (m[1].match(/<t[hd][ >]/g) || []).length === 32), '표: 모든 줄의 칸 수가 머리글과 같다');
+ok(nth === LEDGER_HEAD.length && LEDGER_HEAD.length === 35 && trs.length === 1 + rows.length + 1, '표: 머리글 35칸, 줄 = 머리글 + 직원 2 + 합계 1');
+ok([...t.matchAll(/<tr[^>]*>(.*?)<\/tr>/g)].every((m) => (m[1].match(/<t[hd][ >]/g) || []).length === 35), '표: 모든 줄의 칸 수가 머리글과 같다');
 ok(t.includes('overflow-x:auto') && t.includes('position:sticky;left:0') && t.includes('jh-hr-table') && t.includes('jh-hr__sum') && t.includes('합계(2명)'), '표: 가로 스크롤 영역·첫 칸 고정·합계 줄');
 ok(b.row.workDays === null && t.includes('<span class="jh-field__hint">—</span>') && !/>NaN</.test(t) && !/>undefined</.test(t), '표: 근로일수 자료가 없으면 "—", NaN·undefined 가 보이지 않는다');
 ok(t.includes((a.row.netPay).toLocaleString('ko-KR')) && t.includes('김가나') && t.includes('FCU 설치') && t.includes('2024-03-01'), '표: 숫자는 천 단위 구분, 인적사항이 보인다');

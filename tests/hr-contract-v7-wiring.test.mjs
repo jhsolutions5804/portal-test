@@ -38,7 +38,7 @@ const rate = 11000 + 200000 / 208.56;
 ok(Math.abs(pOrd.ordinaryHourly - rate) < 1e-9 && pOrd.sal.fixedOt === Math.round(rate * pOrd.sal.otHours * 1.5) && pOrd.sal.fixedNight === Math.round(rate * 6 * 0.5) && pOrd.sal.fixedOt > p0.sal.fixedOt && pOrd.totalPay > pNo.totalPay + 200000 && pOrd.sal.basic === p0.sal.basic, '★ 통상임금 포함 항목: 연장·야간 단가가 통상시급((기본+주휴+포함 항목)÷208.56)으로 올라가고 기본근로수당은 그대로');
 const none = payslipCalc({ hourly: 11000, hasContract: true, month: '2026-10', attHours: 220, nightHours: 6, contractItems: [], ordinaryExtra: 0 });
 ok(JSON.stringify(none) === JSON.stringify(Object.assign({}, p0, { contractItems: [], contractItemsTotal: 0 })) && p0.ordinaryHourly === 11000, '★ 항목이 없으면 기존 급여 계산과 한 글자도 다르지 않다(회귀 없음)');
-ok(payslipCalc({ hourly: 11000, month: '2026-10', contractItems: [{ name: '', amount: 5 }, { name: 'x', amount: 0 }, { name: 'y', amount: -3 }] }).contractItemsTotal === 0, '이름·금액이 없거나 음수인 줄은 무시');
+{ const q = payslipCalc({ hourly: 11000, month: '2026-10', contractItems: [{ name: '', amount: 5 }, { name: 'x', amount: 0 }, { name: 'y', amount: -3 }] }); ok(q.contractItems.length === 1 && q.contractItemsTotal === -3, '이름이 없거나 0원인 줄은 무시하고 마이너스 금액(정정·환수)은 받는다(2026-11-09: 예전에는 음수도 버렸음)'); }
 const w = { name: '홍길동', dept: 'A', rank: '사원' };
 const d1 = payslipRecord(w, { hourly: 11000 }, '2026-10', '2026-11-30', '', pOrd, [], '2026-10-29T00:00:00Z'), d0 = payslipRecord(w, { hourly: 11000 }, '2026-10', '2026-11-30', '', p0, [], '2026-10-29T00:00:00Z');
 ok(d1.contractItems.length === 2 && d1.contractItemsTotal === 300000 && !('contractItems' in d0) && d1.grossPay === pOrd.totalPay, '저장 문서: 항목이 있을 때만 contractItems 기록(없으면 필드 자체가 없어 기존 문서와 같음)');

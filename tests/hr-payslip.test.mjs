@@ -117,4 +117,25 @@ ok((VW.payslipHtml2(mkSt2({ taxFamily: 4 })).match(/data-tax-basis/g) || []).len
   ok(htmlForm.includes('data-p-act="item-add"') && htmlForm.includes('data-p-itdel="0"') && htmlForm.includes('data-p-it="0|name"') && !htmlForm.includes('data-p-in="extraPay"') && !htmlForm.includes('data-p-in="techAllowance"'), '작성 화면: 수당 추가·삭제·이름·금액 칸이 있고 옛 고정 칸(기타수당·기술수당)은 없다');
 }
 
+// ── 비과세 수당·마이너스·공제 직접 추가(2026-11-09, 본섭 구포털 2.28.0 이식)
+{
+  const base = { hourly: 12000, hasContract: true, wageType: 'noncomprehensive', month: '2026-10', attHours: 160, leaveHours: 0, holidaySet: HOL };
+  const c0 = payslipCalc(Object.assign({}, base));
+  const c1 = payslipCalc(Object.assign({}, base, { contractItems: [{ name: '직책수당', amount: 100000 }, { name: '식대', amount: 200000, taxFree: true, src: 'manual' }] }));
+  ok(c1.contractItemsTotal === 100000 && c1.contractItemsFree === 200000 && c1.totalPay === c0.totalPay + 100000, '비과세 수당은 지급계·보험·소득세 기준에서 빠지고 과세 수당만 합산된다');
+  ok(c1.netPay === c1.totalPay - c1.totalDeduct + 200000, '비과세 수당은 실지급액에만 더해진다(여비교통비와 같은 취급)');
+  ok(c1.pension === Math.round(c1.totalPay * c1.rates.pension), '국민연금은 비과세 수당이 아니라 과세 지급계 기준');
+  const c2 = payslipCalc(Object.assign({}, base, { contractItems: [{ name: '과지급 회수', amount: -50000, src: 'manual' }] }));
+  ok(c2.totalPay === c0.totalPay - 50000 && c2.contractItems[0].amount === -50000, '마이너스 수당(정정·환수)도 받는다');
+  const c3 = payslipCalc(Object.assign({}, base, { customDeduct: [{ name: '선지급 상계', amount: 30000 }, { name: '세금 환급', amount: -12000 }, { name: '', amount: 5000 }, { name: '빈금액', amount: 0 }] }));
+  ok(c3.customDeduct.length === 2 && c3.customDeductTotal === 18000 && c3.totalDeduct === c0.totalDeduct + 18000 && c3.netPay === c0.netPay - 18000, '직접 추가 공제는 공제계에 합산(마이너스 = 환급), 이름 없는 줄·0원은 제외');
+  const rec = payslipRecord({ name: '가상', empNo: 'T1' }, { hourly: 12000 }, '2026-10', '2026-11-30', '', Object.assign({}, c1, { customDeduct: c3.customDeduct, customDeductTotal: c3.customDeductTotal }), []);
+  ok(rec.contractItemsFree === 200000 && rec.customDeduct.length === 2 && rec.customDeductTotal === 18000, '저장 문서에 비과세 합계와 공제 항목이 남는다');
+  const rec0 = payslipRecord({ name: '가상', empNo: 'T1' }, { hourly: 12000 }, '2026-10', '2026-11-30', '', c0, []);
+  ok(!('contractItems' in rec0) && !('customDeduct' in rec0) && !('contractItemsFree' in rec0), '수당·공제 항목이 없으면 새 필드를 넣지 않아 기존 저장 문서와 같다');
+  const html = PD.psHtml(Object.assign({}, rec, { tplVer: 'v7' }));
+  ok(html.includes('식대') && html.includes('비과세(지급계 제외)') && html.includes('선지급 상계') && html.includes('직접 추가 공제(환급)') && html.indexOf('선지급 상계') < html.indexOf('공제계</td>'), '서류: 비과세 표기, 직접 추가 공제 행(공제계 위), 환급은 +₩ 로 표기');
+  const htmlNeg = PD.psHtml(Object.assign({}, rec, { tplVer: 'v7', contractItems: [{ name: '과지급 회수', amount: -50000, src: 'manual' }] }));
+  ok(htmlNeg.includes('-₩50,000'), '서류: 마이너스 수당은 -₩ 로 표기');
+}
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

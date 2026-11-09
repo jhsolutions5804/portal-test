@@ -1,16 +1,16 @@
 /* 임금대장 — 급여명세서(payslips/{근로자}/months/{YYYY-MM})를 법정 임금대장(근로기준법 제48조·시행령 제27조) 행으로 정리하고, 마감 점검·표·CSV·인쇄용 HTML·마감 문서를 만든다.
  * 순수 함수만 둔다(화면·네트워크 없음). 시험: tests/hr-ledger.test.mjs. 설계: app-docs/payroll-ledger-design.md (서버 저장소, 비공개).
  * 근로시간은 급여명세서에 이미 저장된 값(attHours·leaveHours·nightHours·otHours·holidayHours)을 그대로 쓴다 — 실제 지급 기준과 같은 값. 없는 것은 근로일수뿐(workDays, 없으면 출퇴근 기록에서 센 값을 받는다). */
-import { csvText } from '../../shared/csv.js?v=20261109s';
+import { csvText } from '../../shared/csv.js?v=20261109t';
 
 const N = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
 const r2 = (v) => Math.round(N(v) * 100) / 100;
 /** 검산 허용 오차(원) — 급여명세서 엑셀 파서와 같은 ±10원 */
 export const LEDGER_TOL = 10;
-export const LEDGER_PAY = [['basic', '기본급'], ['fixedOt', '연장수당'], ['fixedNight', '야간수당'], ['weekly', '주휴수당'], ['holidayPay', '휴일수당'], ['bonus', '상여'], ['specialBonus', '특별상여'], ['extraPay', '기타수당'], ['techAllowance', '기술수당'], ['travelAllowance', '여비교통비']];
-export const LEDGER_DEDUCT = [['pension', '국민연금'], ['health', '건강보험'], ['ltcare', '장기요양'], ['employ', '고용보험'], ['dormitory', '기숙사비'], ['incomeTax', '소득세'], ['localTax', '지방소득세']];
+export const LEDGER_PAY = [['basic', '기본급'], ['fixedOt', '연장수당'], ['fixedNight', '야간수당'], ['weekly', '주휴수당'], ['holidayPay', '휴일수당'], ['bonus', '상여'], ['specialBonus', '특별상여'], ['extraPay', '기타수당'], ['techAllowance', '기술수당'], ['contractItemsTotal', '수당(항목)'], ['travelAllowance', '여비교통비'], ['contractItemsFree', '비과세 수당']];
+export const LEDGER_DEDUCT = [['pension', '국민연금'], ['health', '건강보험'], ['ltcare', '장기요양'], ['employ', '고용보험'], ['dormitory', '기숙사비'], ['customDeductTotal', '기타 공제'], ['incomeTax', '소득세'], ['localTax', '지방소득세']];
 /** 급여명세서의 지급합(grossPay)을 이루는 항목 — 여비교통비(비과세)는 실지급에만 더해지므로 제외(payslipCalc: totalPay, netPay = totalPay − 공제 + 여비) */
-const GROSS_KEYS = ['basic', 'fixedOt', 'fixedNight', 'weekly', 'holidayPay', 'bonus', 'specialBonus', 'extraPay', 'techAllowance'];
+const GROSS_KEYS = ['basic', 'fixedOt', 'fixedNight', 'weekly', 'holidayPay', 'bonus', 'specialBonus', 'extraPay', 'techAllowance', 'contractItemsTotal'];   // 수당(항목) = 그 달 수당 목록의 과세 합계(2026-11-09 수당 추가·삭제)
 export const isYm = (s) => /^\d{4}-(0[1-9]|1[0-2])$/.test(String(s || ''));
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
 const monthStart = (ym) => ym + '-01';
@@ -52,8 +52,8 @@ export function closeChecks(ym, workers, slips, rows) {
     const gross = GROSS_KEYS.reduce((t, k) => t + N(s[k]), 0), ded = LEDGER_DEDUCT.reduce((t, [k]) => t + N(s[k]), 0);
     if (Math.abs(gross - N(s.grossPay)) > LEDGER_TOL) blockers.push({ code: 'sum-gross', workerId: id, msg: nm + ': 지급 항목 합(' + gross + ')과 지급합계(' + N(s.grossPay) + ')가 다릅니다.' });
     if (Math.abs(ded - N(s.totalDeduct)) > LEDGER_TOL) blockers.push({ code: 'sum-deduct', workerId: id, msg: nm + ': 공제 항목 합(' + ded + ')과 공제합계(' + N(s.totalDeduct) + ')가 다릅니다.' });
-    const net = N(s.grossPay) - N(s.totalDeduct) + N(s.travelAllowance);
-    if (Math.abs(net - N(s.netPay)) > LEDGER_TOL) blockers.push({ code: 'net', workerId: id, msg: nm + ': 지급합계 − 공제합계 + 여비교통비(' + net + ')와 실지급액(' + N(s.netPay) + ')이 다릅니다.' });
+    const net = N(s.grossPay) - N(s.totalDeduct) + N(s.travelAllowance) + N(s.contractItemsFree);
+    if (Math.abs(net - N(s.netPay)) > LEDGER_TOL) blockers.push({ code: 'net', workerId: id, msg: nm + ': 지급합계 − 공제합계 + 비과세(여비교통비·비과세 수당)(' + net + ')와 실지급액(' + N(s.netPay) + ')이 다릅니다.' });
   });
   (workers || []).forEach((w) => { if (w && w.id && expectedForMonth(w, ym) && !S[w.id]) warnings.push({ code: 'missing-slip', workerId: w.id, msg: (w.name || w.id) + ': ' + ym + ' 급여명세서가 없습니다(그 달 급여가 없으면 무시해도 됩니다).' }); });
   (rows || []).forEach((r) => {

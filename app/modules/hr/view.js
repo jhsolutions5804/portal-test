@@ -1,30 +1,30 @@
-import { esc } from '../../core/ui.js?v=20261109s';
-import { pageTableHtml } from '../../shared/pager.js?v=20261109s';
-import { rtWon, retireRecordsSorted } from './retire.js?v=20261109s';
-import { otSummary, otPerson, otAmount } from './overtime.js?v=20261109s';
-import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261109s';
-import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261109s';
-import { weeklyCardHtml } from './weekly-view.js?v=20261109s';
-import { purgeCardHtml, purgeChipHtml } from './recruit-purge-view.js?v=20261109s';
-import { historyCardHtml } from './history-view.js?v=20261109s';
-import { careerCardHtml } from './career-view.js?v=20261109s';
-import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261109s';
-import { shortTypeCardHtml, shortFormCardsHtml } from './short-view.js?v=20261109s';
-import { c7TypeCardHtml, c7PeriodCardHtml, c7PlaceCardHtml, c7HoursHtml, c7ItemsCardHtml, c7SumHtml } from './contract-v7-view.js?v=20261109s';
-import { capsInit, capsPanelHtml } from './caps-view.js?v=20261109s';
-import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261109s';
-import { sendLogText } from './sign.js?v=20261109s';
-import { maskedView } from './identity.js?v=20261109s';
-import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261109s';
-import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261109s';
-import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261109s';
-import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261109s';
-import { _hzDot } from './leave-promo-docs.js?v=20261109s';
-import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261109s';
-import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261109s';
-import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261109s';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261109s';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix, taxInfoOf, taxBasisNote } from './logic.js?v=20261109s';
+import { esc } from '../../core/ui.js?v=20261109t';
+import { pageTableHtml } from '../../shared/pager.js?v=20261109t';
+import { rtWon, retireRecordsSorted } from './retire.js?v=20261109t';
+import { otSummary, otPerson, otAmount } from './overtime.js?v=20261109t';
+import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261109t';
+import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261109t';
+import { weeklyCardHtml } from './weekly-view.js?v=20261109t';
+import { purgeCardHtml, purgeChipHtml } from './recruit-purge-view.js?v=20261109t';
+import { historyCardHtml } from './history-view.js?v=20261109t';
+import { careerCardHtml } from './career-view.js?v=20261109t';
+import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261109t';
+import { shortTypeCardHtml, shortFormCardsHtml } from './short-view.js?v=20261109t';
+import { c7TypeCardHtml, c7PeriodCardHtml, c7PlaceCardHtml, c7HoursHtml, c7ItemsCardHtml, c7SumHtml } from './contract-v7-view.js?v=20261109t';
+import { capsInit, capsPanelHtml } from './caps-view.js?v=20261109t';
+import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261109t';
+import { sendLogText } from './sign.js?v=20261109t';
+import { maskedView } from './identity.js?v=20261109t';
+import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261109t';
+import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261109t';
+import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261109t';
+import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261109t';
+import { _hzDot } from './leave-promo-docs.js?v=20261109t';
+import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261109t';
+import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261109t';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261109t';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261109t';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix, taxInfoOf, taxBasisNote } from './logic.js?v=20261109t';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -459,22 +459,30 @@ function psContractItemsHtml(st) { const a = st.pAnnual; const items = a && Arra
 const psAmt = (n) => Math.max(0, Math.round(Number(n) || 0));
 /** 수당 목록(st.pItems) — 연봉계약서 지급 항목·기술수당·그 달 직접 넣은 수당을 한 목록에서 추가·삭제·수정한다. 주휴수당·초과근로수당(연장·야간·휴일)은 자동 계산이라 이 목록에 없다 */
 const psTechTotal = (st) => (Array.isArray(st.pItems) ? st.pItems.filter((r) => r && r.src === 'tech').reduce((s, r) => s + psAmt(r.amount), 0) : 0);
-function psCalcItems(st) { if (!Array.isArray(st.pItems)) { const a = st.pAnnual; return a && Array.isArray(a.extraItems) ? a.extraItems : []; } return st.pItems.filter((r) => r && r.src !== 'tech').map((r) => ({ name: r.name, amount: r.amount, ordinary: !!r.ordinary, src: r.src })); }
-function psOrdinaryExtra(st) { return psCalcItems(st).reduce((s, r) => s + (r && r.ordinary ? psAmt(r.amount) : 0), 0); }
+function psCalcItems(st) { if (!Array.isArray(st.pItems)) { const a = st.pAnnual; return a && Array.isArray(a.extraItems) ? a.extraItems : []; } return st.pItems.filter((r) => r && r.src !== 'tech').map((r) => ({ name: r.name, amount: r.amount, ordinary: !!r.ordinary, src: r.src, taxFree: !!r.taxFree })); }
+function psOrdinaryExtra(st) { return psCalcItems(st).reduce((s, r) => s + (r && r.ordinary && !r.taxFree ? psAmt(r.amount) : 0), 0); }
+const psSigned = (n) => Math.round(Number(n) || 0);   // 수당·공제 금액은 마이너스(정정·환수·환급)도 받는다
+/** 공제 직접 추가 목록(st.pDeducts) — 이름·금액, 마이너스 금액은 환급. 지급 쪽 수당 목록과 같은 방식으로 추가·삭제 */
+function psDeductHtml(st) {
+  const items = Array.isArray(st.pDeducts) ? st.pDeducts : [];
+  const rows = items.map((r, i) => '<div class="jh-hr__bar" style="flex-wrap:wrap;gap:.4rem;align-items:center"><input class="jh-input" data-p-dd="' + i + '|name" value="' + esc(r.name) + '" placeholder="공제 이름" aria-label="공제 이름" style="max-width:11rem"><input class="jh-input" inputmode="text" data-p-dd="' + i + '|amount" value="' + (r.amount ? pw(r.amount) : '') + '" placeholder="0" aria-label="금액(마이너스는 환급)" style="max-width:8rem;text-align:right"><button type="button" class="jh-btn" data-variant="ghost" data-p-dddel="' + i + '">삭제</button></div>').join('');
+  const tot = items.reduce((s, r) => s + psSigned(r.amount), 0);
+  return '<div class="jh-field"><label class="jh-field__label">공제 직접 추가 <span class="jh-field__hint">(공제계에 합산 · 마이너스 금액은 환급)</span></label>' + (rows || '<div class="jh-field__hint">직접 추가한 공제가 없습니다.</div>') + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-p-act="deduct-add">+ 공제 추가</button></div><div class="jh-hr__line"><span class="jh-hr__label">직접 추가 공제 합계</span><strong>' + pw(tot) + '원</strong></div></div>';
+}
 function psItemsHtml(st) {
   const items = Array.isArray(st.pItems) ? st.pItems : []; const w = st.pW || {}; const certN = (w.certifications || []).filter((x) => x && String(x).trim()).length;
   const rows = items.map((r, i) => { const tech = r.src === 'tech';
     return '<div class="jh-hr__bar" style="flex-wrap:wrap;gap:.4rem;align-items:center">' + (tech ? '<span class="jh-hr__label" style="min-width:9rem">기술수당 <span class="jh-field__hint">(자격증 ' + certN + '개 × ' + pw(st.pPerCert) + '원)</span></span>' : '<input class="jh-input" data-p-it="' + i + '|name" value="' + esc(r.name) + '" placeholder="수당 이름" aria-label="수당 이름" style="max-width:11rem">')
-      + '<input class="jh-input" inputmode="numeric" data-p-it="' + i + '|amount" value="' + (r.amount ? pw(r.amount) : '') + '" placeholder="0" aria-label="금액" style="max-width:8rem;text-align:right">'
-      + (tech ? '' : '<label class="jh-field__hint" style="white-space:nowrap"><input type="checkbox" data-p-it="' + i + '|ordinary"' + (r.ordinary ? ' checked' : '') + '> 통상임금 포함</label>')
+      + '<input class="jh-input" inputmode="text" data-p-it="' + i + '|amount" value="' + (r.amount ? pw(r.amount) : '') + '" placeholder="0" aria-label="금액(마이너스 가능)" style="max-width:8rem;text-align:right">'
+      + (tech ? '' : '<label class="jh-field__hint" style="white-space:nowrap"><input type="checkbox" data-p-it="' + i + '|ordinary"' + (r.ordinary ? ' checked' : '') + '> 통상임금 포함</label><label class="jh-field__hint" style="white-space:nowrap"><input type="checkbox" data-p-it="' + i + '|taxFree"' + (r.taxFree ? ' checked' : '') + '> 비과세</label>')
       + (r.src === 'contract' ? '<span class="jh-field__hint">연봉계약서</span>' : '') + '<button type="button" class="jh-btn" data-variant="ghost" data-p-itdel="' + i + '">삭제</button></div>'; }).join('');
-  const tot = items.reduce((s, r) => s + psAmt(r.amount), 0);
-  return '<div class="jh-field"><label class="jh-field__label">수당 <span class="jh-field__hint">(이번 달에 맞게 추가·삭제·수정 · 지급계에 합산 · 주휴수당·초과근로수당은 위에서 자동 계산)</span></label>' + (rows || '<div class="jh-field__hint">등록된 수당이 없습니다. 아래 버튼으로 추가하세요.</div>')
-    + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-p-act="item-add">+ 수당 추가</button></div><div class="jh-hr__line"><span class="jh-hr__label">수당 합계</span><strong>' + pw(tot) + '원</strong></div></div>';
+  const tot = items.filter((r) => !r.taxFree).reduce((s, r) => s + psSigned(r.amount), 0), free = items.filter((r) => r.taxFree).reduce((s, r) => s + psSigned(r.amount), 0);
+  return '<div class="jh-field"><label class="jh-field__label">수당 <span class="jh-field__hint">(이번 달에 맞게 추가·삭제·수정 · 마이너스 금액 가능 · 지급계에 합산, 「비과세」는 지급계에서 빼고 실지급액에만 더함 · 주휴수당·초과근로수당은 위에서 자동 계산)</span></label>' + (rows || '<div class="jh-field__hint">등록된 수당이 없습니다. 아래 버튼으로 추가하세요.</div>')
+    + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-p-act="item-add">+ 수당 추가</button></div><div class="jh-hr__line"><span class="jh-hr__label">수당 합계</span><strong>' + pw(tot) + '원' + (free ? ' <span class="jh-field__hint">(비과세 ' + pw(free) + '원 별도)</span>' : '') + '</strong></div></div>';
 }
 export function payslipCalcOf(st) {
   const a = st.pAnnual; const w = st.pW;
-  return payslipCalc({ hourly: a ? a.hourly : 0, hasContract: !!a, wageType: a ? a.wageType : '', fixedOT: a ? a.fixedOT : 0, fixedNight: a ? a.fixedNight : 0, contractItems: psCalcItems(st), ordinaryExtra: psOrdinaryExtra(st), month: st.pMonth, attHours: st.pAtt.attHours, leaveHours: st.pAtt.leaveHours, nightHours: st.pAtt.nightHours, attDates: st.pAtt.attDates, leaveDocs: st.pAtt.leaveDocs, workerName: w ? w.name : '', holidayRecords: st.pAtt.holidayRecords, holidaySet: st.pHol, bonus: st.pIn.bonus, specialBonus: st.pIn.specialBonus, extraPay: Array.isArray(st.pItems) ? 0 : st.pIn.extraPay, techAllowance: Array.isArray(st.pItems) ? psTechTotal(st) : st.pIn.techAllowance, travelAllowance: st.pTravelTotal, dormitory: st.pIn.dormitory, taxFamily: taxInfoOf(w).family, taxChildren: taxInfoOf(w).children, taxRate: taxInfoOf(w).rate, o: st.pO });   // 소득세 간이세액표: 공제대상 가족 수·8~20세 자녀 수·원천징수 비율(근로자 명부, worker_private)
+  return payslipCalc({ hourly: a ? a.hourly : 0, hasContract: !!a, wageType: a ? a.wageType : '', fixedOT: a ? a.fixedOT : 0, fixedNight: a ? a.fixedNight : 0, contractItems: psCalcItems(st), customDeduct: Array.isArray(st.pDeducts) ? st.pDeducts : [], ordinaryExtra: psOrdinaryExtra(st), month: st.pMonth, attHours: st.pAtt.attHours, leaveHours: st.pAtt.leaveHours, nightHours: st.pAtt.nightHours, attDates: st.pAtt.attDates, leaveDocs: st.pAtt.leaveDocs, workerName: w ? w.name : '', holidayRecords: st.pAtt.holidayRecords, holidaySet: st.pHol, bonus: st.pIn.bonus, specialBonus: st.pIn.specialBonus, extraPay: Array.isArray(st.pItems) ? 0 : st.pIn.extraPay, techAllowance: Array.isArray(st.pItems) ? psTechTotal(st) : st.pIn.techAllowance, travelAllowance: st.pTravelTotal, dormitory: st.pIn.dormitory, taxFamily: taxInfoOf(w).family, taxChildren: taxInfoOf(w).children, taxRate: taxInfoOf(w).rate, o: st.pO });   // 소득세 간이세액표: 공제대상 가족 수·8~20세 자녀 수·원천징수 비율(근로자 명부, worker_private)
 }
 function psTravelHtml(st) {
   const items = st.pTravel; if (!items.length) return '<div class="jh-field__hint">등록된 이동유형이 없습니다. 아래 버튼으로 추가하세요.</div>';
@@ -496,7 +504,7 @@ export function payslipHtml2(st) {
   const info = '실근무 ' + (s.attHours || 0).toFixed(1) + 'h + 유급휴가 ' + (s.leaveHours || 0).toFixed(1) + 'h = 인정 ' + (s.actualHours || 0).toFixed(1) + 'h (기준 ' + (s.standardHours || 209) + 'h)' + ((s.otHours || 0) > 0 ? ' · 연장 ' + s.otHours.toFixed(1) + 'h' : '') + ((s.shortHours || 0) > 0 ? ' · 부족 ' + s.shortHours.toFixed(1) + 'h' : '') + ((s.nightHours || 0) > 0 ? ' · 야간 ' + s.nightHours.toFixed(1) + 'h' : '') + ((s.holidayHours || 0) > 0 ? ' · 휴일 ' + s.holidayHours.toFixed(1) + 'h' : '') + '<br>주휴: ' + (s.weeklyEstimated ? '출퇴근기록 없어 추정값' : '개근 ' + s.weeklyQualifyingWeeks + '/' + s.weeklyTotalWeeks + '주');
   const pay = card('💳 지급 내역', '<div class="jh-hr__pad">' + [['기본근로수당', 'basic'], ['연장근로수당', 'fixedOt'], ['야간근로수당', 'fixedNight'], ['주휴수당', 'weekly'], ['휴일근로수당', 'holidayPay']].map(([l, k]) => ovr(k, l, s[k] || 0)).join('') + '<div class="jh-field__hint">' + info + '</div>' + mny('bonus', '상여금(초과근로)', '전자결재·초과근로 수당 합계 자동') + mny('specialBonus', '특별상여') + psItemsHtml(st)
     + '<div class="jh-field"><label class="jh-field__label">여비교통비 <span class="jh-field__hint">(비과세, 지급계 미포함, 여러 유형 동시 등록 가능)</span></label>' + psTravelHtml(st) + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-p-act="travel-add">+ 이동유형 추가</button><button type="button" class="jh-btn" data-variant="secondary" data-p-act="travel-import">📥 근로시간에서 불러오기' + (st.pAtt.businessTrips.length ? ' (' + st.pAtt.businessTrips.length + '일)' : '') + '</button></div><div class="jh-hr__line"><span class="jh-hr__label">여비교통비 합계</span><strong>' + pw(st.pTravelTotal) + '원</strong></div></div><div class="jh-hr__line" style="border-top:2px solid var(--c-line)"><strong>지급계</strong><strong>' + pw(c.totalPay) + '원</strong></div></div>');
-  const ded = card('➖ 공제 내역', '<div class="jh-hr__pad">' + [['국민연금', 'pension'], ['건강보험', 'health'], ['장기요양', 'ltcare'], ['고용보험', 'employ'], ['소득세', 'incomeTax'], ['지방소득세', 'localTax']].map(([l, k]) => ovr(k, l, c[k] || 0)).join('') + mny('dormitory', '기숙사') + (() => { const nt = taxBasisNote(w); return '<div class="jh-field__hint" data-tax-basis' + (nt.warn ? ' data-warn' : '') + '>' + '소득세(간이세액표) 계산에 쓴 값: ' + esc(nt.text) + '</div>'; })() + '<div class="jh-hr__line" style="border-top:2px solid var(--c-line)"><strong>공제계</strong><strong style="color:var(--c-danger)">' + pw(c.totalDeduct) + '원</strong></div></div>');
+  const ded = card('➖ 공제 내역', '<div class="jh-hr__pad">' + [['국민연금', 'pension'], ['건강보험', 'health'], ['장기요양', 'ltcare'], ['고용보험', 'employ'], ['소득세', 'incomeTax'], ['지방소득세', 'localTax']].map(([l, k]) => ovr(k, l, c[k] || 0)).join('') + mny('dormitory', '기숙사') + psDeductHtml(st) + (() => { const nt = taxBasisNote(w); return '<div class="jh-field__hint" data-tax-basis' + (nt.warn ? ' data-warn' : '') + '>' + '소득세(간이세액표) 계산에 쓴 값: ' + esc(nt.text) + '</div>'; })() + '<div class="jh-hr__line" style="border-top:2px solid var(--c-line)"><strong>공제계</strong><strong style="color:var(--c-danger)">' + pw(c.totalDeduct) + '원</strong></div></div>');
   const net = '<div class="jh-alert" data-tone="info" role="status" style="text-align:center"><div>실 지급액</div><div style="font-size:var(--fs-xl, 1.6rem);font-weight:800">₩' + pw(c.netPay) + '</div></div>';
   const bar = '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="secondary" data-p-act="preview">📄 미리보기</button><button type="button" class="jh-btn" data-variant="primary" data-p-act="save">✅ 확정 저장</button></div>';
   return '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-p-act="list">📂 급여명세서 조회</button></div>' + left + '<div class="jh-hr__two">' + pay + ded + '</div>' + net + bar;
