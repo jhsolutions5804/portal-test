@@ -1,9 +1,9 @@
 /* 지원서 개인정보 파기 관리 화면 — HTML 만 만드는 순수 함수(시험: tests/hr-recruit-purge-view.test.mjs). 지원자 화면의 카드·행 칩과 인사 홈 신호 칸. */
-import { pageTableHtml } from '../../shared/pager.js?v=20261109r';
-import { esc } from '../../core/ui.js?v=20261109r';
-import { JOB_STATUS } from './logic.js?v=20261109r';
-import { PURGE_STATES, RET_DEFAULT, RET_MIN, RET_MAX, purgeInfo, purgeDayText, retentionOf } from './recruit-purge.js?v=20261109r';
-import { addDaysStr } from './home.js?v=20261109r';
+import { pageTableHtml } from '../../shared/pager.js?v=20261109s';
+import { esc } from '../../core/ui.js?v=20261109s';
+import { JOB_STATUS } from './logic.js?v=20261109s';
+import { PURGE_STATES, RET_DEFAULT, RET_MIN, RET_MAX, purgeInfo, purgeDayText, retentionOf } from './recruit-purge.js?v=20261109s';
+import { addDaysStr } from './home.js?v=20261109s';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';

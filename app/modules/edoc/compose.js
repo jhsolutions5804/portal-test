@@ -1,7 +1,7 @@
 /* 작성 화면의 순수 로직 — 양식 정의, 검증, 문서 데이터 만들기, 결재선 편집. (화면·Firestore 와 분리해 시험한다) */
 
-import { halfwidthDeep } from '../../shared/text-fix.js?v=20261109r';
-import { recKey, FUEL_TYPES, FULL_OPTS, SHOP_KINDS, carChecks, carFields, emptyCarItem, carCalcText } from '../../shared/car-cost.js?v=20261109r'; // 주유·정비·비용 기록(운행일지 문서의 rec 필드)
+import { halfwidthDeep } from '../../shared/text-fix.js?v=20261109s';
+import { recKey, FUEL_TYPES, FULL_OPTS, SHOP_KINDS, carChecks, carFields, emptyCarItem, carCalcText } from '../../shared/car-cost.js?v=20261109s'; // 주유·정비·비용 기록(운행일지 문서의 rec 필드)
 export const MAX_APPROVERS = 5;
 export const MAX_PARTS = 6; // 한 사람의 하루에 나눌 수 있는 참여 프로젝트 수(서버 pjt-part-act 의 day-split 규칙과 같다)
 export const MAX_CC = 10;
@@ -400,7 +400,8 @@ const isGuest = (u) => /^guest/i.test(String((u && u.empNo) || '').trim());
 export function lineContext(me, policy, guides, users, type) {
   const byUid = {}; (users || []).forEach((u) => { byUid[u.uid] = u; });
   const guide = guides && guides[(composeType(type) || {}).guide || type] || null;
-  return { me, required: (policy && policy.required) || [], proxy: (policy && policy.proxy) || [], guide, users: users || [], byUid };
+  const selfApprove = !!me && ((policy && policy.selfApprove) || []).indexOf(me.uid) !== -1;   // 결재선 면제 작성자(정책 selfApprove) — 내가 쓰는 문서는 결재 없이 바로 확정(대표님 2026-11-09)
+  return { me, required: (policy && policy.required) || [], proxy: (policy && policy.proxy) || [], selfApprove, guide, users: users || [], byUid };
 }
 export const requiredFor = (ctx) => ctx.required.filter((u) => u !== ctx.me.uid);
 const eligible = (ctx, uid, asApprover) => { const u = ctx.byUid[uid]; return !!u && u.status === 'approved' && uid !== ctx.me.uid && !(asApprover && isGuest(u)); };
@@ -409,6 +410,7 @@ const eligible = (ctx, uid, asApprover) => { const u = ctx.byUid[uid]; return !!
 export function initialLine(ctx) {
   const approvers = []; const cc = [];
   const g = ctx.guide || {};
+  if (ctx.selfApprove) { (g.cc || []).forEach((u) => { if (eligible(ctx, u, false) && cc.indexOf(u) === -1 && cc.length < MAX_CC) cc.push(u); }); return { approvers, cc }; }   // 면제 작성자: 결재자 없이 참조만
   (g.steps || []).forEach((u) => { if (eligible(ctx, u, true) && approvers.indexOf(u) === -1 && approvers.length < MAX_APPROVERS) approvers.push(u); });
   (g.cc || []).forEach((u) => { if (eligible(ctx, u, false) && approvers.indexOf(u) === -1 && cc.indexOf(u) === -1 && cc.length < MAX_CC) cc.push(u); });
   requiredFor(ctx).forEach((u) => { if (approvers.indexOf(u) === -1 && eligible(ctx, u, true)) { const i = cc.indexOf(u); if (i !== -1) cc.splice(i, 1); approvers.push(u); } });
@@ -460,6 +462,7 @@ export function applyGuide(ctx) { return initialLine(ctx); }
 /** 상신 전에 막아야 하는 문제 목록(서버 검증과 동일) */
 export function lineIssues(state, ctx) {
   const out = [];
+  if (ctx.selfApprove) return out;   // 면제 작성자: 결재자·필수 결재자·업무 대리인 참조 확인 없음(서버가 대리인을 참조로 넣어 준다)
   if (ctx.deputy && state.approvers.indexOf(ctx.deputy) === -1 && state.cc.indexOf(ctx.deputy) === -1) out.push('업무 대리인이 결재선에 빠졌습니다.');
   if (!state.approvers.length) out.push('결재자를 한 명 이상 지정해 주세요.');
   requiredFor(ctx).forEach((u) => { if (state.approvers.indexOf(u) === -1) out.push('필수 결재자(' + ((ctx.byUid[u] && ctx.byUid[u].name) || '지정자') + ')가 결재선에 빠졌습니다.'); });

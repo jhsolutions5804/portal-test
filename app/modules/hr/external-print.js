@@ -1,10 +1,10 @@
 /* 투입 인력 소개서(외부용) — 직원이 투입 확인서에서 「동의」한 프로젝트에 한해, 제공받는 자(발주처·시공사)에게 내는 소개서(대기열 1-3-27-3-2, 시험: tests/hr-external-print.test.mjs).
  * 서버(deployAct provide)가 동의한 프로젝트만 자료를 주고 제공 이력을 남긴다. 제공 항목은 성명·사진·학력·자격·경력·프로젝트 이력뿐 — 주민번호·연락처·주소·계좌·가족관계·병역·건강·급여·평가·부서·연봉·퇴사사유는 이 문서에 없다.
  * 내부용 이력서(resume-print.js)와 같은 스타일·단추·크기 맞춤을 쓴다. 순수 함수 — 모든 값은 이스케이프하고 사진은 검사한 이미지 data URL 만 넣는다. */
-import { esc } from '../../core/ui.js?v=20261109r';
-import { RESUME_CSS, RESUME_TOOLBAR, RESUME_SCRIPT } from './resume-print.js?v=20261109r';
-import { careerMonths, fmtMonths } from './career-tab.js?v=20261109r';
-import { deployWhen } from '../../shared/deploy-fmt.js?v=20261109r';
+import { esc } from '../../core/ui.js?v=20261109s';
+import { RESUME_CSS, RESUME_TOOLBAR, RESUME_SCRIPT } from './resume-print.js?v=20261109s';
+import { careerMonths, fmtMonths } from './career-tab.js?v=20261109s';
+import { deployWhen } from '../../shared/deploy-fmt.js?v=20261109s';
 
 const COMPANY = '제이에이치솔루션';
 /** 프로젝트 참여 기간 표시 — 시작이 비어 있으면(공수 기록 전) 「~」 없이 끝 표시만 */

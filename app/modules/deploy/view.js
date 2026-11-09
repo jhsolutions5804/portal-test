@@ -1,7 +1,7 @@
 /* 투입 확인 — 직원 본인 화면의 HTML 만 만드는 순수 함수(시험: tests/deploy-view.test.mjs). 읽기·클릭 연결은 index.js.
  * 확인서 문구는 서버(deployAct)가 정해서 보내 주고 화면은 그대로 보여 준다. 동의·동의 안 함·철회는 직원 본인만 하고 직원 id 는 보내지 않는다(서버가 로그인 계정으로 찾음). */
-import { esc } from '../../core/ui.js?v=20261109r';
-import { deployStatus, deployWhen } from '../../shared/deploy-fmt.js?v=20261109r';
+import { esc } from '../../core/ui.js?v=20261109s';
+import { deployStatus, deployWhen } from '../../shared/deploy-fmt.js?v=20261109s';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const btn = (label, attr, variant, disabled) => '<button type="button" class="jh-btn" data-variant="' + variant + '" ' + attr + (disabled ? ' disabled' : '') + '>' + esc(label) + '</button>';
