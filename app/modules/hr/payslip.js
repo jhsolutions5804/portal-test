@@ -5,10 +5,10 @@
  *  · 야간근로수당 = 22:00~06:00 실근무 × 시급 × 0.5, 주휴수당 = 시급×8×(그 주 소정근로일 개근한 주 수), 휴일근로수당 = 8h 이내 ×1.5 + 초과 ×2.0
  *  · 4대보험: 국민연금 4.5% · 건강보험 3.545% · 장기요양 건강보험료×12.81% · 고용보험 0.9%, 소득세 간이세액표(공제대상 가족·자녀·원천징수 비율 반영) + 지방소득세 10%(10원 미만 절사)
  *  · 지급계(4대보험 산정 기준) = 급여 + 상여 + 특별성과급 + 특근수당 + 기술수당, 여비교통비는 실비변상이라 제외하고 실수령에만 더한다 */
-import { annualSalary } from './offer.js?v=20261109j';
-import { monthlyStandardHours } from '../../shared/worktime.js?v=20261109j';
-import { computeLeaveHoursForMonth } from '../../shared/leave-hours.js?v=20261109j';
-import { lookupIncomeTax, localIncomeTax } from '../../shared/tax-table.js?v=20261109j';
+import { annualSalary } from './offer.js?v=20261109a';
+import { monthlyStandardHours } from '../../shared/worktime.js?v=20261109a';
+import { computeLeaveHoursForMonth } from '../../shared/leave-hours.js?v=20261109a';
+import { lookupIncomeTax, localIncomeTax } from '../../shared/tax-table.js?v=20261109a';
 const pad = (n) => String(n).padStart(2, '0');
 const N = (v) => Number(v || 0) || 0;
 export const PS_DOC_VER = 'v7';   // 급여명세서 양식 v7(2026-10-13~): 4대보험 요율을 급여 월의 법정 요율로 계산·표기(payslip-doc.js). 근로·연봉계약서는 v6 그대로
@@ -62,6 +62,7 @@ export const travelTotal = (items) => (items || []).reduce((s, it) => s + travel
 export function travelFromTrips(trips) { const counts = {}; (trips || []).forEach((t) => { const k = t.tripType || 'personal_near'; counts[k] = (counts[k] || 0) + 1; }); return Object.keys(counts).map((type) => (type === 'longtrip' ? { type: 'longtrip', tripCount: counts[type], perTrip: 0 } : { type, days: counts[type] })); }
 export function travelSet(item, field, value) { const it = Object.assign({}, item); if (field === 'type') it.type = value; else it[field] = Math.max(0, Number(value) || 0); return it; }
 /** 급여 계산. in: { hourly, wageType, fixedOT, fixedNight, month, attHours, leaveHours, nightHours, attDates, leaveDocs, workerName, holidayRecords, holidaySet, bonus, specialBonus, extraPay, techAllowance, travelAllowance, dormitory, o: {직접 고친 값 basic·fixedOt·fixedNight·weekly·holidayPay·pension·health·ltcare·employ·incomeTax·localTax} } */
+/* 수당 항목(contractItems)의 src:'manual' = 그 달 급여명세서에서 직접 넣은 수당(연봉계약서 항목과 구분해 서류에 표기) — 2026-11-09 */
 export function payslipCalc(inp) {
   const x = inp || {}; const o = x.o || {}; const hourly = N(x.hourly); const hasContract = hourly > 0 || x.hasContract; const ordExtra = N(x.ordinaryExtra); const rate = hourly > 0 && ordExtra > 0 ? hourly + ordExtra / PS_PAY_FACTOR : hourly; const sal0 = hasContract ? annualSalary(hourly) : { basic: 0, fixedOt: 0, fixedNight: 0, weekly: 0, total: 0 };   // rate: v7 계약서의 통상임금 포함 항목 반영 단가 = (기본+주휴+통상 포함 항목)÷208.56 — 항목이 없으면 hourly 와 같다
   const attHours = N(x.attHours), leaveHours = N(x.leaveHours), nightH = N(x.nightHours); const actual = attHours + leaveHours; const [py, pm] = String(x.month || '').split('-').map(Number); const threshold = py && pm ? monthlyStandardHours(py, pm, x.holidaySet) : 209; const diff = actual - threshold; const comp = x.wageType === 'comprehensive';
@@ -73,7 +74,7 @@ export function payslipCalc(inp) {
   const pBasic = pick('basic', basicAuto), pOt = pick('fixedOt', otPayAuto), pNight = pick('fixedNight', nightPayAuto), pWeekly = pick('weekly', wk.weeklyPay), pHoliday = pick('holidayPay', hol.holidayPay);
   const sal = Object.assign({}, sal0, { basic: pBasic, fixedOt: pOt, fixedNight: pNight, weekly: pWeekly, holidayPay: pHoliday, total: pBasic + pOt + pNight + pWeekly + pHoliday, isComprehensive: comp, attHours, leaveHours, nightHours: nightH, actualHours: actual, standardHours: threshold, otHours, shortHours, shortDeduct, holidayHours: hol.holidayHours, weeklyQualifyingWeeks: wk.qualifyingWeeks, weeklyTotalWeeks: wk.totalWeeks, weeklyEstimated: wk.estimated, weeklyDetails: wk.weekDetails });
   if (sal0.annual !== undefined) sal.annual = sal.total * 12;
-  const bonus = N(x.bonus), specialBonus = N(x.specialBonus), extraPay = N(x.extraPay), tech = N(x.techAllowance), travel = N(x.travelAllowance); const contractItems = (Array.isArray(x.contractItems) ? x.contractItems : []).map((r) => ({ name: String((r && r.name) || '').trim(), amount: Math.max(0, Math.round(N(r && r.amount))), ordinary: !!(r && r.ordinary) })).filter((r) => r.name && r.amount > 0); const contractItemsTotal = contractItems.reduce((a, r) => a + r.amount, 0); const totalPay = sal.total + bonus + specialBonus + extraPay + tech + contractItemsTotal;   // 계약서 지급 항목(직책수당 등)은 임금이라 4대보험·소득세 기준에 들어간다
+  const bonus = N(x.bonus), specialBonus = N(x.specialBonus), extraPay = N(x.extraPay), tech = N(x.techAllowance), travel = N(x.travelAllowance); const contractItems = (Array.isArray(x.contractItems) ? x.contractItems : []).map((r) => Object.assign({ name: String((r && r.name) || '').trim(), amount: Math.max(0, Math.round(N(r && r.amount))), ordinary: !!(r && r.ordinary) }, r && r.src === 'manual' ? { src: 'manual' } : {})).filter((r) => r.name && r.amount > 0); const contractItemsTotal = contractItems.reduce((a, r) => a + r.amount, 0); const totalPay = sal.total + bonus + specialBonus + extraPay + tech + contractItemsTotal;   // 계약서 지급 항목(직책수당 등)은 임금이라 4대보험·소득세 기준에 들어간다
   const R = insuranceRates(x.month); const health0 = Math.round(totalPay * R.health); const inTax0 = calcIncomeTax(totalPay, { family: x.taxFamily, children: x.taxChildren, rate: x.taxRate, payMonth: x.month });
   const pension = pick('pension', Math.round(totalPay * R.pension)), health = pick('health', health0), ltcare = pick('ltcare', Math.round(health0 * R.ltcare)), employ = pick('employ', Math.round(totalPay * R.employ)), incomeTax = pick('incomeTax', inTax0), localTax = pick('localTax', localIncomeTax(inTax0));   // 지방소득세 = 소득세(자동 계산값)의 10%, 10원 미만 절사 — 소득세를 직접 고쳐도 지방소득세는 따라가지 않는다(기존 동작)
   const dormitory = N(x.dormitory); const totalDeduct = pension + health + ltcare + employ + dormitory + incomeTax + localTax;

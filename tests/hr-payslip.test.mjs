@@ -75,6 +75,7 @@ ok(payslipCalc({ month: '2026-10', hourly: 0, hasContract: true, bonus: 3500000 
 
 // ── 급여 작성 화면(view.js payslipCalcOf)이 근로자 명부의 공제대상 가족·자녀·원천징수 비율을 소득세 계산에 실제로 넘긴다 — 이 고리가 끊기면 모든 직원이 가족 1명으로 계산된다(조용한 실패)
 const VW = await import('../app/modules/hr/view.js');
+const PD = await import('../app/modules/hr/payslip-doc.js');
 const mkSt = (w, bonus, month) => ({ pAnnual: { hourly: 0, wageType: 'noncomprehensive', fixedOT: 0, fixedNight: 0 }, pW: w, pMonth: month || '2026-10', pAtt: { attHours: 0, leaveHours: 0, nightHours: 0, attDates: new Set(), leaveDocs: [], holidayRecords: [] }, pHol: new Set(), pIn: { bonus: bonus || 3000000, specialBonus: 0, extraPay: 0, techAllowance: 0, dormitory: 0 }, pTravelTotal: 0, pO: {} });
 { const r4 = VW.payslipCalcOf(mkSt({ name: 'x', taxFamily: 4, taxChildren: 0, taxRate: 100 })), r1 = VW.payslipCalcOf(mkSt({ name: 'x' }));
   ok(r4.incomeTax === 26690 && r4.localTax === 2660 && r1.incomeTax === 74350 && r1.localTax === 7430, '★ 급여 작성 화면: 근로자 명부의 공제대상 가족 4명(worker_private 에서 합쳐진 taxFamily)이 소득세에 반영된다(월 300만원: 4명 26,690 · 값이 없으면 1명 74,350)'); }
@@ -94,5 +95,26 @@ const hint = (html) => { const m = html.match(/<div class="jh-field__hint" data-
 ok(!/<script|onerror|javascript:|<img/i.test(VW.payslipHtml2(mkSt2({ taxFamily: '<img src=x onerror=alert(1)>' }))) && /가족 1명으로 계산했습니다/.test(hint(VW.payslipHtml2(mkSt2({ taxFamily: '<img src=x onerror=alert(1)>' }))).text), '명부 값에 HTML 이 들어 있어도(올바르지 않은 값 → 가족 1명 경고) 그 글자는 화면에 나오지 않는다 — 안내 문구에는 고정 문구와 정규화한 숫자만 들어가 사용자 입력이 섞이지 않는다');
 ok(hint(VW.payslipHtml2(mkSt2({ taxFamily: 1 }))).text === '소득세(간이세액표) 계산에 쓴 값: 공제대상 가족 1명(본인) · 원천징수 100%' && !/data-warn/.test(hint(VW.payslipHtml2(mkSt2({ taxFamily: 1 }))).attrs), '본인만(가족 1명)을 입력했으면 경고가 아니다');
 ok((VW.payslipHtml2(mkSt2({ taxFamily: 4 })).match(/data-tax-basis/g) || []).length === 1, '안내는 공제 카드에 한 번만');
+
+// ── 수당 추가·삭제(2026-11-09): 주휴수당·초과근로수당 외의 수당은 그 달 급여명세서에서 추가·삭제·수정
+{
+  const base = { hourly: 12000, hasContract: true, wageType: 'noncomprehensive', month: '2026-10', attHours: 160, leaveHours: 0, holidaySet: HOL };
+  const c0 = payslipCalc(Object.assign({}, base));
+  const c1 = payslipCalc(Object.assign({}, base, { contractItems: [{ name: '프로젝트 참가수당', amount: 50000, ordinary: false, src: 'manual' }, { name: '직책수당', amount: 100000, ordinary: false }] }));
+  ok(c1.totalPay === c0.totalPay + 150000 && c1.contractItemsTotal === 150000, '직접 넣은 수당과 계약서 항목은 모두 지급계에 합산된다');
+  ok(c1.contractItems[0].src === 'manual' && c1.contractItems[1].src === undefined, '직접 넣은 수당만 src:manual 로 구분되고 계약서 항목은 기존 모양 그대로');
+  const c2 = payslipCalc(Object.assign({}, base, { contractItems: [{ name: '', amount: 30000, src: 'manual' }, { name: '빈금액', amount: 0, src: 'manual' }] }));
+  ok(c2.totalPay === c0.totalPay && c2.contractItems.length === 0, '이름이 없거나 금액이 0인 수당은 계산에서 빠진다');
+  const rec = payslipRecord({ name: '가상', empNo: 'T1' }, { hourly: 12000 }, '2026-10', '2026-11-30', '', c1, []);
+  ok(Array.isArray(rec.contractItems) && rec.contractItems.length === 2 && rec.contractItems[0].src === 'manual' && rec.contractItemsTotal === 150000 && rec.grossPay === c1.totalPay, '저장 문서에 수당 항목(구분 포함)과 합계가 남고 지급계에 반영된다');
+  const html = PD.psHtml(Object.assign({}, rec, { tplVer: 'v7' }));
+  ok(html.includes('프로젝트 참가수당') && html.includes('추가 지급 수당') && html.includes('직책수당') && html.includes('연봉계약서 지급 항목'), '명세서 서류에 직접 넣은 수당은 「추가 지급 수당」, 계약서 항목은 「연봉계약서 지급 항목」으로 표기');
+  const mk = (items) => ({ pView: 'write', pWorkers: [{ id: 'w1', name: '가상' }], pWid: 'w1', pBank: '', pMonth: '2026-10', pPayDate: '2026-11-30', pW: { id: 'w1', name: '가상', certifications: ['a', 'b'] }, pAnnual: { hourly: 12000, wageType: 'noncomprehensive' }, pPerCert: 50000, pHol: HOL, pAtt: { attHours: 160, leaveHours: 0, nightHours: 0, attDates: new Set(), leaveDocs: [], holidayRecords: [], businessTrips: [] }, pIn: { bonus: '', specialBonus: '', extraPay: '', techAllowance: '', dormitory: '' }, pItems: items, pO: {}, pTravel: [], pTravelTotal: 0 });
+  const cA = VW.payslipCalcOf(mk([{ name: '기술수당', amount: 100000, ordinary: false, src: 'tech' }, { name: '직책수당', amount: 70000, ordinary: false, src: 'manual' }]));
+  const cB = VW.payslipCalcOf(mk([]));
+  ok(cA.totalPay === cB.totalPay + 170000 && cA.techAllowance === 100000 && cA.extraPay === 0, '화면 계산: 기술수당 행은 기술수당으로, 나머지 수당은 수당 항목으로 합산되고 목록을 비우면 모두 빠진다');
+  const htmlForm = VW.payslipHtml2(mk([{ name: '직책수당', amount: 70000, ordinary: false, src: 'manual' }]));
+  ok(htmlForm.includes('data-p-act="item-add"') && htmlForm.includes('data-p-itdel="0"') && htmlForm.includes('data-p-it="0|name"') && !htmlForm.includes('data-p-in="extraPay"') && !htmlForm.includes('data-p-in="techAllowance"'), '작성 화면: 수당 추가·삭제·이름·금액 칸이 있고 옛 고정 칸(기타수당·기술수당)은 없다');
+}
 
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);
