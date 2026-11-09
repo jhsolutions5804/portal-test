@@ -1,8 +1,8 @@
-import { esc } from './ui.js?v=20261109u';
-import { openSettings } from './settings.js?v=20261109u';
-import { openProfile } from './profile.js?v=20261109u';
-import { phoneTabs } from './nav.js?v=20261109u';
-import { IS_TEST } from './config.js?v=20261109u';
+import { esc } from './ui.js?v=20261109t';
+import { openSettings } from './settings.js?v=20261109t';
+import { openProfile } from './profile.js?v=20261109t';
+import { phoneTabs } from './nav.js?v=20261109t';
+import { LEGACY_PORTAL_URL, IS_TEST } from './config.js?v=20261109t';
 
 export function renderLogin(root, { onSubmit, onMicrosoft, message }) {
   root.innerHTML =
@@ -55,7 +55,8 @@ export function renderLogin(root, { onSubmit, onMicrosoft, message }) {
 export function renderDenied(root, text, onLogout) {
   root.innerHTML = '<div class="jh-login"><div class="jh-login__card"><div class="jh-login__brand">JH Portal</div>' +
     '<p class="jh-login__sub">' + esc(text) + '</p>' +
-        '<button class="jh-btn" data-variant="ghost" id="jh-denied-logout" type="button">로그아웃</button></div></div>';
+    '<a class="jh-btn" data-variant="secondary" href="' + LEGACY_PORTAL_URL + '">기존 포털로 이동</a>' +
+    '<button class="jh-btn" data-variant="ghost" id="jh-denied-logout" type="button">로그아웃</button></div></div>';
   root.querySelector('#jh-denied-logout').addEventListener('click', onLogout);
 }
 
@@ -80,6 +81,7 @@ export function renderShell(root, me, mods, { onLogout }) {
         '<div class="jh-sidebar__brand"><span class="jh-brand__short" aria-hidden="true">JH</span><span class="jh-brand__full">JH Portal</span>' + (IS_TEST ? ' <span class="jh-chip" data-tone="warn">테섭</span>' : '') + '</div>' +
         '<nav class="jh-nav" aria-label="모듈">' + homeItem + items + '</nav>' +
         '<div class="jh-sidebar__foot">' +
+          '<a class="jh-nav__item" href="' + LEGACY_PORTAL_URL + '"><span class="jh-nav__icon" aria-hidden="true">←</span><span class="jh-nav__label">기존 포털</span></a>' +
           '<button type="button" class="jh-nav__item" data-open-profile><span class="jh-nav__icon" aria-hidden="true">👤</span><span class="jh-nav__label">내 정보</span></button>' +
         '<button type="button" class="jh-nav__item" data-open-settings><span class="jh-nav__icon" aria-hidden="true">⚙</span><span class="jh-nav__label">화면 설정</span></button>' +
           '<div class="jh-userchip">' + who + '</div>' +
@@ -99,6 +101,7 @@ export function renderShell(root, me, mods, { onLogout }) {
         moreItems + (moreItems ? '<div class="jh-sheet__sep"></div>' : '') +
         '<button type="button" class="jh-sheet__item" data-open-profile data-sheet-link><span class="jh-nav__icon" aria-hidden="true">👤</span>내 정보</button>' +
         '<button type="button" class="jh-sheet__item" data-open-settings data-sheet-link><span class="jh-nav__icon" aria-hidden="true">⚙</span>화면 설정</button>' +
+        '<a class="jh-sheet__item" href="' + LEGACY_PORTAL_URL + '"><span class="jh-nav__icon" aria-hidden="true">←</span>기존 포털</a>' +
         '<button type="button" class="jh-sheet__item" id="jh-sheet-logout"><span class="jh-nav__icon" aria-hidden="true">⎋</span>로그아웃</button>' +
         '<div class="jh-userchip">' + who + '</div></div></div>' +
     '</div>';
