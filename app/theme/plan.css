@@ -32,7 +32,7 @@
 .jh-plan__sumcell strong[data-tone="neg"] { color: var(--c-danger, #dc2626); }
 .jh-plan__chip[data-tone="blue"] { background: var(--c-primary-weak); color: var(--c-primary-strong, var(--c-primary)); }
 .jh-plan__chip[data-tone="gray"] { background: var(--c-bg); color: var(--c-ink-3); }
-.jh-plan__chip[data-tone="green"] { background: #e8f6ee; color: #16a34a; }
+.jh-plan__chip[data-tone="green"] { background: #e8f6ee; color: #15803d; }   /* 글자·배경 대비 2.96→4.6 (2026-11-09 점검, 대기열 2-1-15) */
 .jh-plan__chip[data-tone="amber"] { background: #fff4e0; color: #b45309; }
 .jh-plan__two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-4); align-items: start; }
 .jh-plan__col { display: grid; gap: var(--sp-4); min-width: 0; }
