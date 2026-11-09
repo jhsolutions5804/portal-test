@@ -11,4 +11,5 @@ ok(sh.includes('data-pw-toggle') && sh.includes("pwBox.type = show ? 'text' : 'p
 ok(sh.includes('pwBox.focus(); pwBox.select();') && sh.includes("pwBox.type = 'password'"), '로그인 실패하면 비밀번호를 다시 가리고 그 칸으로 돌아가 바로 다시 입력');
 ok(sh.includes("jh_login_tab") && sh.includes("select(1, false)") && /try \{ localStorage\.setItem/.test(sh) && /try \{ if \(localStorage\.getItem/.test(sh), '마지막에 쓴 로그인 탭을 기억하고, 저장이 막힌 브라우저에서도 오류 없이 기본 탭');
 ok(/\.jh-login \.jh-input \{[^}]*font-size: max\(16px/.test(css) && css.includes('.jh-login__pwbtn'), '로그인 입력칸 글자는 16px 이상(폰 사파리 확대 방지), 보기 버튼 스타일');
+ok(/\.jh-login__tab \{ word-break: keep-all/.test(css), '로그인 탭 이름은 글자 중간이 아니라 띄어쓰기에서만 줄바꿈');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); process.exit(fail ? 1 : 0);
