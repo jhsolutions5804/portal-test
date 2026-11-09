@@ -185,3 +185,6 @@
   .jh-fb__panel { position: fixed; right: var(--u-52); bottom: calc(var(--u-56) + env(safe-area-inset-bottom, 0px)); max-height: calc(100vh - var(--u-96)); }
 }
 
+/* 파일 선택칸은 브라우저가 정한 최소 폭 때문에 좁은 폰(폴드 접힘 280px)에서 카드 밖으로 나가므로 부모 폭 안에 가둔다(2026-11-09, 대기열 2-1-15) */
+input[type="file"] { max-width: 100%; min-width: 0; box-sizing: border-box; }
+

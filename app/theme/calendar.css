@@ -125,3 +125,10 @@
 .jh-cal-list .jh-link { font-size: var(--fs-xs); }
 .jh-cal-list .jh-empty { font-size: var(--fs-sm); padding: var(--sp-5) var(--sp-3); }
 
+/* 접힌 폴드 폭(280~340px)에서 일정 막대가 옆으로 밀리지 않게 — 제목이 남는 폭에 맞게 줄고 버튼은 그대로(2026-11-09, 대기열 2-1-15) */
+@media (max-width: 340px) {
+  .jh-cal__nav { gap: var(--sp-1); min-width: 0; }
+  .jh-cal__nav .jh-cal__title { min-width: 0; flex: 1 1 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-md, 1rem); }
+  .jh-cal__nav .jh-iconbtn, .jh-cal__nav .jh-btn { flex: 0 0 auto; }
+}
+
