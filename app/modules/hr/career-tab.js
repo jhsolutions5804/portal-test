@@ -1,6 +1,6 @@
 /* 근로자 상세 「경력관리」 카드의 순수 규칙(화면·네트워크 없이 시험 가능) — 대기열 1-3-27-2, 시험: tests/hr-career-tab.test.mjs.
  * 서버(careerAct)가 돌려주는 모양: { worker, hasProfile, education, certs, career(원본), careerOverride(수정본 또는 null), careerEdits, awards, training, masterId } */
-import { careerMonths, fmtMonths } from '../../shared/career-months.js?v=20261109i';
+import { careerMonths, fmtMonths } from '../../shared/career-months.js?v=20261109j';
 export { careerMonths, fmtMonths };   // 옛 가져오기 경로 호환(실제 계산은 shared/career-months.js)
 export const AWARD_KINDS = [['award', '포상'], ['commend', '표창'], ['safety', '안전 무사고'], ['memo', '메모']];
 export const awardLabel = (k) => { const x = AWARD_KINDS.find((a) => a[0] === k); return x ? x[1] : '메모'; };

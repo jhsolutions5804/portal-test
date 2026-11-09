@@ -2,9 +2,9 @@
  * 쪽 구성은 양식과 같다: ① 지원서(인적사항·자격증·학력·가족관계·확인·서명) A4 세로 ② 경력사항 A4 세로 ③ 프로젝트이력 A4 가로(JH 프로젝트 이력이 있을 때). 자기소개서 쪽은 대표님 요청(2026-11-05)으로 뺐다.
  * 순수 함수 — 입력은 서버 careerAct resume 결과 + 프로젝트 이력(선택). 모든 값은 이스케이프하고 사진은 검사한 이미지 data URL 만 넣는다.
  * 내부용이라 가족관계·비상연락처·연락처가 들어간다. 주민등록번호는 마스킹본만(서버가 마스킹본만 준다), 은행·계좌는 이 인쇄에 넣지 않는다. 외부 제출용(투입 인력 소개)은 별도(1-3-27-3 후속, 외부 제공 동의 확인 뒤). */
-import { esc } from '../core/ui.js?v=20261109i';
-import { careerMonths, fmtMonths } from './career-months.js?v=20261109i';
-import { deployWhen } from './deploy-fmt.js?v=20261109i';
+import { esc } from '../core/ui.js?v=20261109j';
+import { careerMonths, fmtMonths } from './career-months.js?v=20261109j';
+import { deployWhen } from './deploy-fmt.js?v=20261109j';
 
 const NAVY = '#1F3A5F', LABEL = '#DCE6F1', GRAY = '#808080';
 const COMPANY = '제이에이치솔루션';

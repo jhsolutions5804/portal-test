@@ -1,11 +1,11 @@
 /* 내 이력서(직원 본인) — 포털 로그인 상태에서 자기 이력서를 열람한다(대기열 1-3-27-4, 대표님 2026-11-05 단순화: 메일·문자 인증 링크 없이 포털 안에서).
  * 모든 조회는 서버 함수 myResumeAct 로만. 열람마다 신청 번호와 열람 기록이 남고, 열람본에는 이름·신청 번호 워터마크가 들어간다. */
-import { functions, httpsCallable } from '../../core/firebase.js?v=20261109i';
-import { toast } from '../../core/ui.js?v=20261109i';
-import { resumeHtml } from '../../shared/resume-print.js?v=20261109i';
-import { myResumeHtml } from './view.js?v=20261109i';
+import { functions, httpsCallable } from '../../core/firebase.js?v=20261109j';
+import { toast } from '../../core/ui.js?v=20261109j';
+import { resumeHtml } from '../../shared/resume-print.js?v=20261109j';
+import { myResumeHtml } from './view.js?v=20261109j';
 
-export const manifest = { id: 'myresume', order: 93, title: '내 이력서', icon: '📄', defaultHash: '#/myresume/view', perm: (me) => !!me && !me.isGuest };
+export const manifest = { id: 'myresume', order: 93, nav: false, title: '내 이력서', icon: '📄', defaultHash: '#/myresume/view', perm: (me) => !!me && !me.isGuest };
 const call = async (data) => (await httpsCallable(functions, 'myResumeAct')(data)).data;
 const errMsg = (e) => String((e && e.message) || '').replace(/^.*?:\s*/, '') || '처리하지 못했습니다.';
 const kstYm = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 7);

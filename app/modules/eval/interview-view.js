@@ -1,9 +1,9 @@
 /* 인사평가 면담 화면(마크업만) — 사장단·관리자 전용. 저장·불러오기는 interview-io.js, 규칙은 interview-logic.js.
  * 목록 → 직원 상세: ① 면담 전 준비 체크 · 직원 자기평가 보기 · ② 평가 근거 메모 · 면담 진행 안내 · ③ 면담 기록·실행 합의(완료하면 인사 면담 이력에도 남김). */
-import { esc } from '../../core/ui.js?v=20261109i';
-import { evalPeriod } from './evaluation.js?v=20261109i';
-import { selfHtml } from './self-form.js?v=20261109i';
-import { PREP_ITEMS, prepProgress, TONES, EV_LIMITS, EV_LABELS, RC_LIMITS, RC_LABELS, REVIEW_STATUS_TEXT, FLOW, FLOW_TOTAL_MIN, FEEDBACK, HARD_QUESTIONS, toneCounts, balanceNote, evidenceSorted, reviewStatusOf } from './interview-logic.js?v=20261109i';
+import { esc } from '../../core/ui.js?v=20261109j';
+import { evalPeriod } from './evaluation.js?v=20261109j';
+import { selfHtml } from './self-form.js?v=20261109j';
+import { PREP_ITEMS, prepProgress, TONES, EV_LIMITS, EV_LABELS, RC_LIMITS, RC_LABELS, REVIEW_STATUS_TEXT, FLOW, FLOW_TOTAL_MIN, FEEDBACK, HARD_QUESTIONS, toneCounts, balanceNote, evidenceSorted, reviewStatusOf } from './interview-logic.js?v=20261109j';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const stone = (s) => (s === 'done' ? 'accent' : s === 'draft' ? 'warn' : 'muted');
