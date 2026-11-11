@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261109w';
-import { sourceLabel, dayLabel, fmtH, monthTotals } from './logic.js?v=20261109w';
-import { monthCalendar, cellLabel, WEEKDAYS, WEEKDAY_LONG } from '../../shared/att-month.js?v=20261109w';
-import { holidayName } from '../../shared/holidays.js?v=20261109w';
+import { esc } from '../../core/ui.js?v=20261109x';
+import { sourceLabel, dayLabel, fmtH, monthTotals, visibleWorkers } from './logic.js?v=20261109x';
+import { monthCalendar, cellLabel, WEEKDAYS, WEEKDAY_LONG } from '../../shared/att-month.js?v=20261109x';
+import { holidayName } from '../../shared/holidays.js?v=20261109x';
 
 const head = (t, link) => '<div class="jh-panel__head"><h3>' + t + '</h3>' + (link || '') + '</div>';
 const note = (tone, text) => '<div class="jh-form"><div class="jh-alert" data-tone="' + tone + '"' + (tone === 'danger' ? ' role="alert"' : '') + '>' + esc(text) + '</div></div>';
@@ -73,7 +73,7 @@ function calendarHtml(m, f) {
 export function inputPageHtml(m) {
   const me = m.me; const tot = monthTotals(m.rows);
   const monthOpts = m.months.map((x) => '<option value="' + x + '"' + (x === m.ym ? ' selected' : '') + '>' + x.replace('-', '년 ') + '월</option>').join('');
-  const workerSel = me.admin ? '<label class="jh-field" data-field="worker"><span class="jh-field__label">근로자 (관리자)</span><select class="jh-select" data-worker>' + m.workers.map((w) => '<option value="' + esc(w.id) + '"' + (w.id === m.worker.id ? ' selected' : '') + '>' + esc(w.name + (w.rank ? ' ' + w.rank : '')) + '</option>').join('') + '</select></label>' : '';
+  const workerSel = me.admin ? '<label class="jh-field" data-field="worker"><span class="jh-field__label">근로자 (관리자)</span><select class="jh-select" data-worker>' + visibleWorkers(m.workers, m.ym, m.worker).map((w) => '<option value="' + esc(w.id) + '"' + (w.id === m.worker.id ? ' selected' : '') + '>' + esc(w.name + (w.rank ? ' ' + w.rank : '')) + '</option>').join('') + '</select></label>' : '';
   const perm = m.perm; const f = m.form;
   const msg = msgHtml(perm, f);
   return '<div class="jh-dashboard"><div class="jh-att"><div class="jh-att__main">' + // 넓은 화면: 왼쪽(제목·요약·직접 입력) / 오른쪽(월 기록) 2단, 좁은 화면(모바일): 위아래

@@ -1,4 +1,4 @@
-import { BREAK_MINUTES, breakFor, dateKey, nowHHMM, snapTo10Min, validHHMM, calcWorkHours, calcManualHours } from '../../shared/worktime.js?v=20261109w';
+import { BREAK_MINUTES, breakFor, dateKey, nowHHMM, snapTo10Min, validHHMM, calcWorkHours, calcManualHours } from '../../shared/worktime.js?v=20261109x';
 
 /* 출퇴근 순수 로직 — 화면·네트워크 없음(시험하기 쉽게 분리).
  * 규칙: 휴게는 점심 2시간(120분) 고정(출근~퇴근 5시간 이하는 휴게 없음) · 기록 시각은 10분 단위 · 오늘 기록은 본인이 원터치/직접 입력,
@@ -9,7 +9,7 @@ export const SOURCE_LABEL = { clock: '원터치', manual: '직접 입력', admin
 export const sourceLabel = (s) => SOURCE_LABEL[s] || '입력';
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
-export { toMs, recordOf } from '../../shared/attendance-record.js?v=20261109w';   // 변환 함수는 전자결재와 함께 쓰므로 공용(shared)에 있다
+export { toMs, recordOf } from '../../shared/attendance-record.js?v=20261109x';   // 변환 함수는 전자결재와 함께 쓰므로 공용(shared)에 있다
 export const dayLabel = (key) => { const [y, m, d] = key.split('-').map(Number); const w = DAYS[new Date(y, m - 1, d).getDay()]; return pad(m) + '/' + pad(d) + '(' + w + ')'; };
 const pad = (n) => String(n).padStart(2, '0');
 export function yesterdayKey(now) { const d = new Date(now); d.setDate(d.getDate() - 1); return dateKey(d); }
@@ -56,3 +56,16 @@ export function monthTotals(rows) { return { days: rows.filter((r) => r.checkIn)
 export const sortRows = (rows) => rows.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
 export function recentMonths(now, n) { const out = []; const d = new Date(now.getFullYear(), now.getMonth(), 1); for (let i = 0; i < n; i++) { out.push(d.getFullYear() + '-' + pad(d.getMonth() + 1)); d.setMonth(d.getMonth() - 1); } return out; }
 export const fmtH = (h) => (Number(h) || 0).toFixed(1) + 'h';
+
+/** 관리자 직접 입력 화면의 근로자 선택 목록 — 퇴사자는 퇴사한 달까지만 보인다(그 달 이후에는 목록에서 빠짐). 지금 고른 사람은 예외로 남겨 과거 기록 수정은 막지 않는다.
+ *  퇴사 판정: 근로자 명부 status === 'resigned' 또는 resignDate 가 있음. 퇴사일이 없으면(날짜 미입력) 퇴사자로 보고 숨긴다. (2026-11-11 대표님: 퇴사 처리한 형일우가 목록에 남아 있음) */
+export function visibleWorkers(workers, ym, selected) {
+  const sid = selected && selected.id;
+  return (Array.isArray(workers) ? workers : []).filter((w) => {
+    if (!w) return false;
+    if (w.id === sid) return true;
+    const gone = w.status === 'resigned' || !!w.resignDate; if (!gone) return true;
+    const rm = String(w.resignDate || '').slice(0, 7);
+    return /^\d{4}-\d{2}$/.test(rm) && rm >= String(ym || '');
+  });
+}
