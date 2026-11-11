@@ -1,16 +1,16 @@
-import { loadWorkers } from '../../shared/workers-data.js?v=20261109v';
-import { loadHolidays } from '../../shared/holidays.js?v=20261109v';
-import { findWorker, dateKey, monthlyStandardHours } from '../../shared/worktime.js?v=20261109v';
-import { loadRecord, loadMonth, writeClockIn, writeClockOut, writeManual } from './data.js?v=20261109v';
-import { clockState, buildClockIn, buildClockOut, validateManual, editPermission, yesterdayKey, recentMonths, monthTotals, dayLabel } from './logic.js?v=20261109v';
-import { clockWidgetHtml, inputPageHtml, msgHtml, dayDetail } from './view.js?v=20261109v';
-import { toast, esc } from '../../core/ui.js?v=20261109v';
-import { infoDialog } from '../../core/dialog.js?v=20261109v';
-import { sortByEmpNo } from '../../shared/worker-order.js?v=20261109v';
-import { functions, httpsCallable } from '../../core/firebase.js?v=20261109v';
-import { NFC_ENABLED, cleanWorkType, errorView, reviewRows, deviceRows, validateOffice, buttonResultText } from './nfc-logic.js?v=20261109v';
-import { makeNfcApi, makeTokenStore, getPosition, deviceLabel } from './nfc-data.js?v=20261109v';
-import { registerPageHtml, workTypeFieldHtml, reviewPageHtml } from './nfc-view.js?v=20261109v';
+import { loadWorkers } from '../../shared/workers-data.js?v=20261109w';
+import { loadHolidays } from '../../shared/holidays.js?v=20261109w';
+import { findWorker, dateKey, monthlyStandardHours } from '../../shared/worktime.js?v=20261109w';
+import { loadRecord, loadMonth, writeClockIn, writeClockOut, writeManual } from './data.js?v=20261109w';
+import { clockState, buildClockIn, buildClockOut, validateManual, editPermission, yesterdayKey, recentMonths, monthTotals, dayLabel } from './logic.js?v=20261109w';
+import { clockWidgetHtml, inputPageHtml, msgHtml, dayDetail } from './view.js?v=20261109w';
+import { toast, esc } from '../../core/ui.js?v=20261109w';
+import { infoDialog } from '../../core/dialog.js?v=20261109w';
+import { sortByEmpNo } from '../../shared/worker-order.js?v=20261109w';
+import { functions, httpsCallable } from '../../core/firebase.js?v=20261109w';
+import { NFC_ENABLED, cleanWorkType, errorView, reviewRows, deviceRows, validateOffice, buttonResultText } from './nfc-logic.js?v=20261109w';
+import { makeNfcApi, makeTokenStore, getPosition, deviceLabel } from './nfc-data.js?v=20261109w';
+import { registerPageHtml, workTypeFieldHtml, reviewPageHtml } from './nfc-view.js?v=20261109w';
 
 /* NFC 출퇴근(1-3-26) — 서버 함수 attendNfcAct 를 부르는 얇은 연결. NFC_ENABLED 가 꺼져 있으면 아래 연결은 모두 동작하지 않는다 */
 const nfcApi = () => makeNfcApi(httpsCallable(functions, 'attendNfcAct'));

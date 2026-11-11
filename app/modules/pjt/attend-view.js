@@ -1,8 +1,8 @@
-import { esc } from '../../core/ui.js?v=20261109v';
-import { dayTotals, mdSum, activeWorkersForDate, canWorkOn, hasManday, monthlyMatrix } from './attendance.js?v=20261109v';
-import { holidayName, isWeekend } from '../../shared/holidays.js?v=20261109v';
-import { monthGrid } from './schedule.js?v=20261109v';
-import { cleanRole, roleSuggestions } from '../../shared/career.js?v=20261109v';
+import { esc } from '../../core/ui.js?v=20261109w';
+import { dayTotals, mdSum, activeWorkersForDate, canWorkOn, hasManday, monthlyMatrix } from './attendance.js?v=20261109w';
+import { holidayName, isWeekend } from '../../shared/holidays.js?v=20261109w';
+import { monthGrid } from './schedule.js?v=20261109w';
+import { cleanRole, roleSuggestions } from '../../shared/career.js?v=20261109w';
 const f1 = (n) => (Math.round((Number(n) || 0) * 10) / 10).toFixed(1);
 const chip = (t, tone) => '<span class="jh-pjt__chip" data-tone="' + esc(tone || '') + '">' + esc(t) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
