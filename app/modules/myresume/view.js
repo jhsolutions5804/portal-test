@@ -1,7 +1,7 @@
 /* 내 이력서(직원 본인) — 화면 HTML 만 만드는 순수 함수(시험: tests/myresume-view.test.mjs). 읽기·클릭 연결은 index.js.
  * 열람본은 서버(myResumeAct)가 로그인 계정으로 본인 것만 준다(비상연락처 포함·가족관계 제외·주민번호 마스킹·계좌 제외). */
-import { esc } from '../../core/ui.js?v=20261113a';
-import { deployWhen } from '../../shared/deploy-fmt.js?v=20261113a';
+import { esc } from '../../core/ui.js?v=20261113b';
+import { deployWhen } from '../../shared/deploy-fmt.js?v=20261113b';
 
 const btn = (label, attr, variant, disabled) => '<button type="button" class="jh-btn" data-variant="' + variant + '" ' + attr + (disabled ? ' disabled' : '') + '>' + esc(label) + '</button>';
 /** st: { loading, error, data: { linked, recent:[{no, at}] }, busy } */

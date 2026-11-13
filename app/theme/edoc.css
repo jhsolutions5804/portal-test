@@ -465,3 +465,11 @@ button.jh-kpi:hover { border-color: var(--c-primary); }
 .jh-daykv__row dt { flex: 0 0 5rem; color: var(--c-ink-2); font-size: var(--fs-sm); } .jh-daykv__row dd { margin: 0; font-weight: 600; }
 .jh-daykv__row dd[data-tone="warn"] { color: var(--c-warn-ink); }
 
+/* 업무일지 일괄 결재(2-5-104) */
+.jh-bulkbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); padding: var(--sp-2) var(--sp-3); border-bottom: var(--u-1) solid var(--c-line); background: var(--c-primary-weak); }
+.jh-bulkall { display: inline-flex; align-items: center; gap: var(--sp-2); font-weight: 700; font-size: var(--fs-sm); cursor: pointer; }
+.jh-bulkall small { font-weight: 400; color: var(--c-ink); }
+.jh-bulkrow { display: flex; align-items: stretch; }
+.jh-bulkrow > .jh-docrow { flex: 1 1 auto; min-width: 0; }
+.jh-bulkcheck { display: flex; align-items: center; justify-content: center; flex: 0 0 auto; padding: 0 var(--sp-3); border-bottom: var(--u-1) solid var(--c-line); cursor: pointer; }
+.jh-bulkcheck input, .jh-bulkall input { inline-size: 1.25rem; block-size: 1.25rem; accent-color: var(--c-primary); }

@@ -1,29 +1,30 @@
-import { fetchAll, fetchOne } from './data.js?v=20261113a';
-import { listHtml, detailHtml } from './views.js?v=20261113a';
-import { tabCounts, edocPrintTitle } from './logic.js?v=20261113a';
-import { buildHash, navigate } from '../../core/router.js?v=20261113a';
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261113a';
-import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261113a';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261113a';
-import { toast } from '../../core/ui.js?v=20261113a';
-import { confirmDialog } from '../../core/dialog.js?v=20261113a';
-import { loadDirectory, resetDirectory } from './directory.js?v=20261113a';
-import { act, partAct } from './api.js?v=20261113a';
-import * as C from './compose.js?v=20261113a';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261113a';
-import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261113a';
-import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261113a';
-import { kstKey } from './home-daily.js?v=20261113a';
-import { isOffDay } from '../../shared/holidays.js?v=20261113a';
-import { todoCounts } from './home-stats.js?v=20261113a';
-import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261113a';
-import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261113a';
-import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261113a';
-import * as AT from './attach-logic.js?v=20261113a';
-import { uploadFile, removeFile, openFile } from './attach.js?v=20261113a';
-import * as SL from './settings-logic.js?v=20261113a';
-import { chooserHtml, newDocLayoutHtml, composeHtml, partsHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261113a';
-import { printWithTitle } from '../../shared/print-title.js?v=20261113a';
+import { fetchAll, fetchOne } from './data.js?v=20261113b';
+import { listHtml, detailHtml } from './views.js?v=20261113b';
+import { tabCounts, edocPrintTitle, filterDocs } from './logic.js?v=20261113b';
+import { bulkTargets, bulkConfirmBody, bulkChunks, runBulk, bulkResultText } from './bulk-logic.js?v=20261113b';
+import { buildHash, navigate } from '../../core/router.js?v=20261113b';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261113b';
+import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261113b';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261113b';
+import { toast } from '../../core/ui.js?v=20261113b';
+import { confirmDialog } from '../../core/dialog.js?v=20261113b';
+import { loadDirectory, resetDirectory } from './directory.js?v=20261113b';
+import { act, partAct } from './api.js?v=20261113b';
+import * as C from './compose.js?v=20261113b';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261113b';
+import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261113b';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261113b';
+import { kstKey } from './home-daily.js?v=20261113b';
+import { isOffDay } from '../../shared/holidays.js?v=20261113b';
+import { todoCounts } from './home-stats.js?v=20261113b';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261113b';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261113b';
+import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261113b';
+import * as AT from './attach-logic.js?v=20261113b';
+import { uploadFile, removeFile, openFile } from './attach.js?v=20261113b';
+import * as SL from './settings-logic.js?v=20261113b';
+import { chooserHtml, newDocLayoutHtml, composeHtml, partsHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261113b';
+import { printWithTitle } from '../../shared/print-title.js?v=20261113b';
 
 
 export const manifest = {
@@ -97,7 +98,8 @@ async function mountBox(root, route, ctx) {
 
   const [docs] = await Promise.all([ensureDocs(me, false), withPolicy(me)]);
   ctx.setBadge('edoc', tabCounts(docs, me).todo);
-  listEl.innerHTML = listHtml({ docs, me, query: q, selectedKey });
+  const bulkSel = new Set();   // 일괄 승인에 체크한 문서(목록을 다시 그리면 비워진다)
+  listEl.innerHTML = listHtml({ docs, me, query: q, selectedKey, bulkSel });
   if (!isDetail && listScroll != null) { window.scrollTo(0, listScroll); listScroll = null; }   // 상세에서 뒤로 오면 보던 위치로
   if (isDetail && window.matchMedia('(max-width: 899px)').matches) window.scrollTo(0, 0);        // 폰: 상세는 맨 위부터
 
@@ -156,6 +158,7 @@ async function mountBox(root, route, ctx) {
   }
 
   root.onclick = (ev) => {
+    if (ev.target.closest('[data-bulk-run]')) { bulkRunAll().catch((e) => toast((e && e.message) || '일괄 승인을 마치지 못했습니다.')); return; }
     const t = ev.target.closest('[data-tab],[data-open],[data-back],[data-refresh],[data-page],[data-new],[data-do],[data-home],[data-file]'); if (!t) return;
     if (t.hasAttribute('data-file')) { openFile(t.getAttribute('data-file')).catch((e) => toast((e && e.message) || '파일을 열지 못했습니다.')); return; }
     if (t.hasAttribute('data-home')) { navigate('#/edoc/home', { replace: true }); return; }
@@ -177,7 +180,35 @@ async function mountBox(root, route, ctx) {
     }
     if (t.hasAttribute('data-refresh')) { dropCache(); mountBox(root, route, ctx); }
   };
+  // ── 업무일지 일괄 결재(2-5-104): 체크 → 확인 창 → 건별 승인을 순서대로 ──
+  const bulkEligibleAll = () => bulkTargets(filterDocs(docs, me, q), me);
+  const bulkSync = () => {
+    const btn = root.querySelector('[data-bulk-run]'); if (!btn) return;
+    btn.textContent = '선택 ' + bulkSel.size + '건 승인'; btn.disabled = bulkSel.size === 0;
+    const all = root.querySelector('[data-bulk-all]'); if (all) { const n = bulkEligibleAll().length; all.checked = n > 0 && bulkSel.size >= n; }
+  };
+  const bulkRunAll = async () => {
+    const items = bulkEligibleAll().filter((d) => bulkSel.has(d.dtype + '/' + d.id)); if (!items.length) return;
+    const r = await confirmDialog({ title: '일괄 승인', body: bulkConfirmBody(items), confirmLabel: items.length + '건 승인' });
+    if (!r.ok) return;
+    const lock = (on) => root.querySelectorAll('[data-bulk],[data-bulk-all],[data-bulk-run]').forEach((el) => { el.disabled = on; });
+    const hint = root.querySelector('[data-bulk-hint]'); lock(true);
+    const total = { ok: [], failed: [], stopped: false, remaining: [] }; let done = 0;
+    for (const chunk of bulkChunks(items)) {
+      const res = await runBulk(chunk, act, { onProgress: (d) => { if (hint) hint.textContent = '승인 중… ' + (done + d) + '/' + items.length; } });
+      done += chunk.length; total.ok.push(...res.ok); total.failed.push(...res.failed); total.remaining.push(...res.remaining);
+      if (res.stopped) { total.stopped = true; break; }
+    }
+    toast(bulkResultText(total)); dropCache(); await reload();
+  };
   root.onchange = (ev) => {
+    const el = ev.target;
+    if (el.hasAttribute && el.hasAttribute('data-bulk')) { const k = el.getAttribute('data-bulk'); if (el.checked) bulkSel.add(k); else bulkSel.delete(k); bulkSync(); return; }
+    if (el.hasAttribute && el.hasAttribute('data-bulk-all')) {
+      const keys = bulkEligibleAll().map((d) => d.dtype + '/' + d.id);
+      if (el.checked) keys.forEach((k) => bulkSel.add(k)); else bulkSel.clear();
+      root.querySelectorAll('[data-bulk]').forEach((c) => { c.checked = bulkSel.has(c.getAttribute('data-bulk')); }); bulkSync(); return;
+    }
     if (ev.target.hasAttribute && ev.target.hasAttribute('data-pagesize')) return goBox({ size: ev.target.value, page: '1' });
     const f = ev.target.getAttribute && ev.target.getAttribute('data-filter'); if (!f) return;
     goBox({ [f]: ev.target.value, page: '1' });

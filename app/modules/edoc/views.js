@@ -1,12 +1,13 @@
-import { esc, escMultiline, money } from '../../core/ui.js?v=20261113a';
+import { esc, escMultiline, money } from '../../core/ui.js?v=20261113b';
 import {
   TYPE_LABEL, TYPE_GROUPS, STATUS_LABEL, STATUS_GROUPS, tabDefs, tabCounts, filterDocs, summaryOf,
   myTurn, canProxy, currentStepIndex, stepState, fmtDate, fmtDateTime, fmtYmd, isPassive, tabsOf, docTitle,
   PAGE_SIZES, normalizeSize, paginate, pageNumbers, pageOfIndex, legacyCurrentStep, availableActions
-} from './logic.js?v=20261113a';
-import { actionbarHtml } from './compose-view.js?v=20261113a';
-import { FORMS } from './forms.js?v=20261113a';
-import { fmtSize as fmtFileSize } from './attach-logic.js?v=20261113a';
+} from './logic.js?v=20261113b';
+import { actionbarHtml } from './compose-view.js?v=20261113b';
+import { bulkEligible } from './bulk-logic.js?v=20261113b';
+import { FORMS } from './forms.js?v=20261113b';
+import { fmtSize as fmtFileSize } from './attach-logic.js?v=20261113b';
 
 export function badgeHtml(status, doc) {
   const label = doc && doc.recorded === true && (status === 'approved' || status === 'posted') ? '기록' : (STATUS_LABEL[status] || status || '-');   // 결재 없이 기록으로 남는 문서(차량 운행일지)
@@ -60,7 +61,20 @@ export function listHtml(ctx) {
   if (!want && selectedKey) want = pageOfIndex(all.findIndex(d => d.dtype + '/' + d.id === selectedKey), size);
   const pg = paginate(all, want, size);
   const rows = pg.rows;
-  const body = rows.length ? rows.map(d => docRowHtml(d, me, selectedKey)).join('') : '<div class="jh-empty">조건에 맞는 문서가 없습니다.</div>';
+  // 업무일지 일괄 결재(2-5-104): 결재할 문서 탭에서 내 차례인 업무일지에만 체크박스를 둔다(문서를 여는 행 버튼과 따로)
+  const bulkOn = tab === 'todo'; const bulkSel = ctx.bulkSel || new Set();
+  const bulkAll = bulkOn ? all.filter(d => bulkEligible(d, me)) : [];
+  const rowHtml = (d) => {
+    const base = docRowHtml(d, me, selectedKey);
+    if (!bulkOn || !bulkEligible(d, me)) return base;
+    const k = d.dtype + '/' + d.id;
+    return '<div class="jh-bulkrow"><label class="jh-bulkcheck" aria-label="일괄 승인에 포함"><input type="checkbox" data-bulk="' + esc(k) + '"' + (bulkSel.has(k) ? ' checked' : '') + '></label>' + base + '</div>';
+  };
+  const bulkBar = bulkAll.length ? '<div class="jh-bulkbar" data-bulkbar>' +
+    '<label class="jh-bulkall"><input type="checkbox" data-bulk-all> 업무일지 전체 선택 <small>(' + bulkAll.length + '건)</small></label>' +
+    '<button type="button" class="jh-btn" data-variant="primary" data-bulk-run disabled>선택 0건 승인</button>' +
+    '<span class="jh-field__hint" data-bulk-hint>내 차례인 업무일지만 선택할 수 있습니다. 반려는 문서를 열어 건별로 합니다.</span></div>' : '';
+  const body = rows.length ? rows.map(rowHtml).join('') : '<div class="jh-empty">조건에 맞는 문서가 없습니다.</div>';
   return '<div class="jh-edoc-tabs" role="tablist">' + tabs + '</div>' +
     '<div class="jh-filters">' +
       '<button type="button" class="jh-btn" data-variant="ghost" data-home>‹ 전자결재 홈</button>' +
@@ -69,7 +83,7 @@ export function listHtml(ctx) {
       '<select class="jh-select" data-filter="status" aria-label="상태">' + optionList(STATUS_GROUPS, query.status) + '</select>' +
       '<input class="jh-input" type="search" data-filter="q" placeholder="제목·작성자 검색" value="' + esc(query.q || '') + '" aria-label="검색">' +
       '<button type="button" class="jh-btn" data-variant="ghost" data-refresh>새로고침</button>' +
-    '</div>' +
+    '</div>' + bulkBar +
     '<div class="jh-doclist">' + body + '</div>' + pagerHtml(pg);
 }
 
