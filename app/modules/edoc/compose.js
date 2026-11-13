@@ -1,7 +1,7 @@
 /* 작성 화면의 순수 로직 — 양식 정의, 검증, 문서 데이터 만들기, 결재선 편집. (화면·Firestore 와 분리해 시험한다) */
 
-import { halfwidthDeep } from '../../shared/text-fix.js?v=20261113b';
-import { recKey, FUEL_TYPES, FULL_OPTS, SHOP_KINDS, carChecks, carFields, emptyCarItem, carCalcText } from '../../shared/car-cost.js?v=20261113b'; // 주유·정비·비용 기록(운행일지 문서의 rec 필드)
+import { halfwidthDeep } from '../../shared/text-fix.js?v=20261113c';
+import { recKey, FUEL_TYPES, FULL_OPTS, SHOP_KINDS, carChecks, carFields, emptyCarItem, carCalcText } from '../../shared/car-cost.js?v=20261113c'; // 주유·정비·비용 기록(운행일지 문서의 rec 필드)
 export const MAX_APPROVERS = 5;
 export const MAX_PARTS = 6; // 한 사람의 하루에 나눌 수 있는 참여 프로젝트 수(서버 pjt-part-act 의 day-split 규칙과 같다)
 export const MAX_CC = 10;
@@ -397,16 +397,41 @@ export function valuesFromDoc(doc) {
 /* ───────── 결재선 편집 ─────────
  * state = { approvers:[uid…], cc:[uid…] } — 서버(core.js)의 상신 검증과 같은 규칙을 화면에서 미리 알려 준다. 최종 판단은 서버. */
 const isGuest = (u) => /^guest/i.test(String((u && u.empNo) || '').trim());
+/**
+ * 팀장 고정 결재선(대기열 2-5-103) — 서버 core.js teamLeadFor 와 같은 규칙을 화면에서 미리 보여 준다(최종 판단은 서버).
+ * 정책 teamLeadLine { enabled, dtypes } 가 켜져 있고 이 문서 종류가 목록에 있으며, 작성자가 대표(admin)·필수 결재자·팀장이 아니고 부서가 있을 때,
+ * 같은 부서의 승인된 팀장(teamLead) 한 명(uid 사전순 첫 사람) — 없으면 ''.
+ */
+export function teamLeadUid(me, users, policy, type) {
+  const t = policy && policy.teamLeadLine; if (!me || !t || t.enabled !== true || !Array.isArray(t.dtypes)) return '';
+  const dtypes = type === 'spend' ? ['purchase', 'expense'] : [typeOfDtype(type) === 'spend' ? 'expense' : type];   // 지출·구매는 한 화면(spend)에서 고르므로 둘 중 하나라도 켜져 있으면 미리 보여 준다
+  if (!dtypes.some((d) => t.dtypes.indexOf(d) !== -1)) return '';
+  if (me.admin === true || me.teamLead === true || ((policy && policy.required) || []).indexOf(me.uid) !== -1) return '';
+  const dept = typeof me.dept === 'string' ? me.dept.trim() : ''; if (!dept) return '';
+  const ok = (users || []).filter((u) => u && u.uid !== me.uid && u.status === 'approved' && u.teamLead === true && !/^guest/i.test(String(u.empNo || '').trim()) && String(u.dept || '').trim() === dept);
+  ok.sort((x, y) => (x.uid < y.uid ? -1 : x.uid > y.uid ? 1 : 0));
+  return ok.length ? ok[0].uid : '';
+}
 export function lineContext(me, policy, guides, users, type) {
   const byUid = {}; (users || []).forEach((u) => { byUid[u.uid] = u; });
   const guide = guides && guides[(composeType(type) || {}).guide || type] || null;
   const selfApprove = !!me && ((policy && policy.selfApprove) || []).indexOf(me.uid) !== -1;   // 결재선 면제 작성자(정책 selfApprove) — 내가 쓰는 문서는 결재 없이 바로 확정(대표님 2026-11-09)
-  return { me, required: (policy && policy.required) || [], proxy: (policy && policy.proxy) || [], selfApprove, guide, users: users || [], byUid };
+  // 내 계정의 부서·팀장 표시는 디렉터리(users)에서 찾는다(me 에 없을 수 있다)
+  const mine = (users || []).find((u) => me && u.uid === me.uid) || {};
+  const lead = selfApprove ? '' : teamLeadUid(Object.assign({}, mine, me, { dept: (me && me.dept) || mine.dept, teamLead: (me && me.teamLead !== undefined) ? me.teamLead : mine.teamLead }), users, policy, type);
+  return { me, required: (policy && policy.required) || [], proxy: (policy && policy.proxy) || [], selfApprove, guide, users: users || [], byUid, lead };
 }
 export const requiredFor = (ctx) => ctx.required.filter((u) => u !== ctx.me.uid);
 const eligible = (ctx, uid, asApprover) => { const u = ctx.byUid[uid]; return !!u && u.status === 'approved' && uid !== ctx.me.uid && !(asApprover && isGuest(u)); };
 
-/** 처음 보여 줄 결재선: 권장 결재선(있으면) + 빠진 필수 결재자 */
+/** 팀장 고정 결재선: 팀장이 있으면 결재선의 맨 앞에 둔다(이미 있으면 앞으로 옮기고, 참조에 있으면 참조에서 뺀다) */
+function leadFirst(state, ctx) {
+  if (!ctx.lead || !eligible(ctx, ctx.lead, true)) return state;
+  const approvers = state.approvers.filter((u) => u !== ctx.lead); approvers.unshift(ctx.lead);
+  return { approvers: approvers.slice(0, MAX_APPROVERS), cc: state.cc.filter((u) => u !== ctx.lead) };
+}
+
+/** 처음 보여 줄 결재선: 권장 결재선(있으면) + 빠진 필수 결재자(+ 팀장 고정 결재선이면 팀장을 맨 앞에) */
 export function initialLine(ctx) {
   const approvers = []; const cc = [];
   const g = ctx.guide || {};
@@ -414,7 +439,7 @@ export function initialLine(ctx) {
   (g.steps || []).forEach((u) => { if (eligible(ctx, u, true) && approvers.indexOf(u) === -1 && approvers.length < MAX_APPROVERS) approvers.push(u); });
   (g.cc || []).forEach((u) => { if (eligible(ctx, u, false) && approvers.indexOf(u) === -1 && cc.indexOf(u) === -1 && cc.length < MAX_CC) cc.push(u); });
   requiredFor(ctx).forEach((u) => { if (approvers.indexOf(u) === -1 && eligible(ctx, u, true)) { const i = cc.indexOf(u); if (i !== -1) cc.splice(i, 1); approvers.push(u); } });
-  return { approvers, cc };
+  return leadFirst({ approvers, cc }, ctx);
 }
 /** 기존 문서(반려·임시저장)의 결재선을 편집 상태로 */
 export function lineFromDoc(doc, ctx) {
@@ -425,7 +450,7 @@ export function lineFromDoc(doc, ctx) {
     else if (eligible(ctx, s.uid, false) && cc.indexOf(s.uid) === -1) cc.push(s.uid);
   });
   requiredFor(ctx).forEach((u) => { if (approvers.indexOf(u) === -1) approvers.push(u); });
-  return { approvers, cc };
+  return leadFirst({ approvers, cc }, ctx);
 }
 export function addApprover(state, uid, ctx) {
   if (!eligible(ctx, uid, true)) return { state, error: '결재자로 지정할 수 없는 사람입니다.' };
@@ -439,7 +464,7 @@ export function addCc(state, uid, ctx) {
   if (state.cc.length >= MAX_CC) return { state, error: '참조는 최대 ' + MAX_CC + '명까지 지정할 수 있습니다.' };
   return { state: { approvers: state.approvers, cc: state.cc.concat(uid) } };
 }
-export const isLocked = (uid, ctx) => requiredFor(ctx).indexOf(uid) !== -1 || (!!ctx.deputy && uid === ctx.deputy);
+export const isLocked = (uid, ctx) => requiredFor(ctx).indexOf(uid) !== -1 || (!!ctx.deputy && uid === ctx.deputy) || (!!ctx.lead && uid === ctx.lead);
 /** 업무 대리인을 정하면 참조로 자동 포함한다. prevAuto: 이전에 자동으로 넣었던 사람(바꾸면 빼 준다) → { state, auto, error } */
 export function setDeputy(state, newUid, prevAuto, ctx) {
   let cc = state.cc.filter((u) => u !== prevAuto || u === newUid); let auto = null; let error = '';
@@ -450,12 +475,13 @@ export function setDeputy(state, newUid, prevAuto, ctx) {
   return { state: { approvers: state.approvers, cc }, auto, error };
 }
 export function removeFromLine(state, uid, ctx) {
-  if (isLocked(uid, ctx)) return { state, error: ctx.deputy && uid === ctx.deputy ? '업무 대리인은 참조로 고정됩니다. 바꾸려면 위쪽 "업무 대리인"을 변경하세요.' : '필수 결재자는 뺄 수 없습니다.' };
+  if (isLocked(uid, ctx)) return { state, error: ctx.deputy && uid === ctx.deputy ? '업무 대리인은 참조로 고정됩니다. 바꾸려면 위쪽 "업무 대리인"을 변경하세요.' : ctx.lead && uid === ctx.lead ? '팀장 결재는 고정이라 뺄 수 없습니다.' : '필수 결재자는 뺄 수 없습니다.' };
   return { state: { approvers: state.approvers.filter((u) => u !== uid), cc: state.cc.filter((u) => u !== uid) } };
 }
-export function moveApprover(state, uid, dir) {
+export function moveApprover(state, uid, dir, ctx) {
   const i = state.approvers.indexOf(uid); const j = i + (dir < 0 ? -1 : 1);
   if (i < 0 || j < 0 || j >= state.approvers.length) return state;
+  if (ctx && ctx.lead && (uid === ctx.lead || state.approvers[j] === ctx.lead)) return state;   // 팀장 고정 결재선: 팀장은 항상 첫 결재자
   const a = state.approvers.slice(); a[i] = a[j]; a[j] = uid; return { approvers: a, cc: state.cc };
 }
 export function applyGuide(ctx) { return initialLine(ctx); }
@@ -465,6 +491,7 @@ export function lineIssues(state, ctx) {
   if (ctx.selfApprove) return out;   // 면제 작성자: 결재자·필수 결재자·업무 대리인 참조 확인 없음(서버가 대리인을 참조로 넣어 준다)
   if (ctx.deputy && state.approvers.indexOf(ctx.deputy) === -1 && state.cc.indexOf(ctx.deputy) === -1) out.push('업무 대리인이 결재선에 빠졌습니다.');
   if (!state.approvers.length) out.push('결재자를 한 명 이상 지정해 주세요.');
+  if (ctx.lead && state.approvers[0] !== ctx.lead) out.push('팀장(' + ((ctx.byUid[ctx.lead] && ctx.byUid[ctx.lead].name) || '지정자') + ')이 첫 결재자여야 합니다.');
   requiredFor(ctx).forEach((u) => { if (state.approvers.indexOf(u) === -1) out.push('필수 결재자(' + ((ctx.byUid[u] && ctx.byUid[u].name) || '지정자') + ')가 결재선에 빠졌습니다.'); });
   if (state.approvers.length > MAX_APPROVERS) out.push('결재자는 최대 ' + MAX_APPROVERS + '명입니다.');
   return out;

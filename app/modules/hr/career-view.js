@@ -1,8 +1,8 @@
 /* 근로자 상세 「경력관리」 카드 — HTML 만 만드는 순수 함수(시험: tests/hr-career-view.test.mjs). 읽기·클릭 연결은 index.js mount(직원 상세).
  * 카드 안쪽만 다시 그려서(careerInnerHtml) 상세의 다른 입력 중인 칸을 건드리지 않는다. 관리자 전용(서버가 막고 화면은 안내). */
-import { esc } from '../../core/ui.js?v=20261113b';
-import { AWARD_KINDS, awardLabel, careerRows, isEdited, careerMonths, fmtMonths, periodLabel, linkCandidates } from './career-tab.js?v=20261113b';
-import { deployStatus, deployWhen } from '../../shared/deploy-fmt.js?v=20261113b';
+import { esc } from '../../core/ui.js?v=20261113c';
+import { AWARD_KINDS, awardLabel, careerRows, isEdited, careerMonths, fmtMonths, periodLabel, linkCandidates } from './career-tab.js?v=20261113c';
+import { deployStatus, deployWhen } from '../../shared/deploy-fmt.js?v=20261113c';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';

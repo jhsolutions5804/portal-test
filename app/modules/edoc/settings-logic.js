@@ -10,12 +10,21 @@ export const GUIDE_TYPES = [
 export const LIMITS = { required: 3, proxy: 3, approvers: 5, cc: 10 };
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const arr = (v) => (Array.isArray(v) ? v.filter((u) => typeof u === 'string' && u) : []);
+/** 팀장 고정 결재선을 적용할 수 있는 문서 종류(결재선이 있는 문서) — 서버 COLLECTIONS 와 같은 이름 */
+export const TEAMLEAD_TYPES = [['daily', '업무일지'], ['leave', '연차신청서'], ['purchase', '구매 요청'], ['expense', '지출 결의'], ['attend', '근태 수정'], ['cert', '증명서 발급'], ['resign', '퇴직·휴직']];
+export function setTeamLead(state, change) {   // change: { enabled } 또는 { dtype, on }
+  const t = state.policy.teamLeadLine;
+  if (change && typeof change.enabled === 'boolean') t.enabled = change.enabled;
+  if (change && change.dtype) { const has = t.dtypes.indexOf(change.dtype) !== -1; if (change.on && !has) t.dtypes = t.dtypes.concat(change.dtype); if (!change.on && has) t.dtypes = t.dtypes.filter((d) => d !== change.dtype); }
+  return state;
+}
 export const isGuest = (u) => !!u && /^guest/i.test(String(u.empNo || '').trim());
 
 /** dir = loadDirectory 결과(users·policy·guides), company = 회사 정보 문서 */
 export function initState(dir, company, me) {
   const byUid = {}; (dir.users || []).forEach((u) => { byUid[u.uid] = u; });
-  const policy = { required: arr(dir.policy && dir.policy.required), proxy: arr(dir.policy && dir.policy.proxy) };
+  const tl = (dir.policy && dir.policy.teamLeadLine) || {};
+  const policy = { required: arr(dir.policy && dir.policy.required), proxy: arr(dir.policy && dir.policy.proxy), teamLeadLine: { enabled: tl.enabled === true, dtypes: arr(tl.dtypes) } };
   const guides = {}; GUIDE_TYPES.forEach((t) => { const g = (dir.guides && dir.guides[t.key]) || {}; guides[t.key] = { steps: arr(g.steps), cc: arr(g.cc), note: typeof g.note === 'string' ? g.note : '' }; });
   const co = { name: (company && company.name) || '', ceo: (company && company.ceo) || '', bizNo: (company && company.bizNo) || '', address: (company && company.address) || '' };
   const s = { me, users: dir.users || [], byUid, policy, guides, company: co, saving: '', open: '' };
@@ -58,7 +67,7 @@ export const isDirty = (state, section, key) => {
   return JSON.stringify(state.guides[key]) !== JSON.stringify(state.orig.guides[key]);
 };
 export function payloadFor(section, state, key) {
-  if (section === 'policy') return { action: 'saveSettings', kind: 'policy', policy: { required: state.policy.required.slice(), proxy: state.policy.proxy.slice() } };
+  if (section === 'policy') return { action: 'saveSettings', kind: 'policy', policy: { required: state.policy.required.slice(), proxy: state.policy.proxy.slice(), teamLeadLine: { enabled: state.policy.teamLeadLine.enabled === true, dtypes: state.policy.teamLeadLine.dtypes.slice() } } };
   if (section === 'company') return { action: 'saveSettings', kind: 'company', company: { name: state.company.name.trim(), ceo: state.company.ceo.trim(), bizNo: state.company.bizNo.trim(), address: state.company.address.trim() } };
   const g = state.guides[key];
   return { action: 'saveSettings', kind: 'guides', guides: { [key]: { steps: g.steps.slice(), cc: g.cc.slice(), note: g.note.trim() } } };
@@ -74,6 +83,7 @@ export function validateSection(state, section, key) {
   if (section === 'policy') {
     if (!state.policy.required.length) return '필수 결재자는 1명 이상이어야 합니다.';
     if (state.policy.required.indexOf(state.me.uid) === -1) return '본인을 필수 결재자에서 뺄 수 없습니다.';
+    if (state.policy.teamLeadLine.enabled && !state.policy.teamLeadLine.dtypes.length) return '팀장 고정 결재선을 켜려면 적용할 문서 종류를 하나 이상 고르세요.';
   }
   if (section === 'company') {
     const c = state.company; if (c.name.length > 60 || c.ceo.length > 40 || c.bizNo.length > 30 || c.address.length > 200) return '글자 수가 너무 깁니다. (상호 60·대표자 40·사업자번호 30·주소 200자)';

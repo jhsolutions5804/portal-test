@@ -1,6 +1,6 @@
-import { db, collection, doc, getDoc, getDocs } from '../../core/firebase.js?v=20261113b';
-import { byEmpNo } from '../../shared/worker-order.js?v=20261113b';
-import { partsEnabled } from './compose.js?v=20261113b';
+import { db, collection, doc, getDoc, getDocs } from '../../core/firebase.js?v=20261113c';
+import { byEmpNo } from '../../shared/worker-order.js?v=20261113c';
+import { partsEnabled } from './compose.js?v=20261113c';
 
 /* 작성 화면이 쓰는 기준 정보: 직원 명단, 정책(필수 결재자·대리 권한자), 권장 결재선, 프로젝트 */
 let cache = null;
@@ -18,7 +18,7 @@ export async function loadDirectory(force) {
   us.forEach((d) => {
     const x = d.data();
     if (x.status !== 'approved') return;
-    users.push({ uid: d.id, name: x.name || '', rank: x.rank || '', dept: x.dept || '', empNo: x.empNo || '', status: x.status, admin: x.admin === true });
+    users.push({ uid: d.id, name: x.name || '', rank: x.rank || '', dept: x.dept || '', empNo: x.empNo || '', status: x.status, admin: x.admin === true, teamLead: x.teamLead === true });
   });
   users.sort(byEmpNo); // 직원 배치는 사번순(대표님 2026-11-04) — 사번이 없는 계정은 맨 뒤·이름순
   const policy = pol.exists() ? pol.data() : {};
@@ -26,7 +26,7 @@ export async function loadDirectory(force) {
   pj.forEach((d) => { const x = d.data(); if (x.status && x.status !== 'run') return; projects.push({ id: d.id, code: x.code || '', pjtCode: x.code || '', name: x.name || '', reg: x.linkPjt || '' }); });
   projects.sort((a, b) => (a.code + a.name).localeCompare(b.code + b.name, 'ko'));
   const partsOn = !!(pt && pt.exists && pt.exists() && partsEnabled(pt.data()));
-  cache = { partsOn, users, policy: { required: Array.isArray(policy.required) ? policy.required : [], proxy: Array.isArray(policy.proxy) ? policy.proxy : [], selfApprove: Array.isArray(policy.selfApprove) ? policy.selfApprove : [] }, guides: gd.exists() ? gd.data() : {}, projects, vehicles: vh && vh.exists() && Array.isArray(vh.data().list) ? vh.data().list.filter((x) => x && x.id && x.name) : [] };
+  cache = { partsOn, users, policy: { required: Array.isArray(policy.required) ? policy.required : [], proxy: Array.isArray(policy.proxy) ? policy.proxy : [], selfApprove: Array.isArray(policy.selfApprove) ? policy.selfApprove : [], teamLeadLine: { enabled: !!(policy.teamLeadLine && policy.teamLeadLine.enabled === true), dtypes: Array.isArray(policy.teamLeadLine && policy.teamLeadLine.dtypes) ? policy.teamLeadLine.dtypes.filter((d) => typeof d === 'string') : [] } }, guides: gd.exists() ? gd.data() : {}, projects, vehicles: vh && vh.exists() && Array.isArray(vh.data().list) ? vh.data().list.filter((x) => x && x.id && x.name) : [] };
   return cache;
 }
 export function resetDirectory() { cache = null; }

@@ -1,8 +1,8 @@
-import { esc } from '../../core/ui.js?v=20261113b';
-import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261113b';
-import { isAnnualType } from './home-calc.js?v=20261113b';
-import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261113b';
-import { SERVICE_ITEMS, OTHER_ITEMS, REC_KEYS, REC_LABEL, carCalcText, recKey } from '../../shared/car-cost.js?v=20261113b';
+import { esc } from '../../core/ui.js?v=20261113c';
+import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261113c';
+import { isAnnualType } from './home-calc.js?v=20261113c';
+import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261113c';
+import { SERVICE_ITEMS, OTHER_ITEMS, REC_KEYS, REC_LABEL, carCalcText, recKey } from '../../shared/car-cost.js?v=20261113c';
 
 const uname = (ctx, uid) => { const u = ctx.byUid[uid]; return u ? esc(u.name) + (u.rank ? ' <small>' + esc(u.rank) + '</small>' : '') : '(알 수 없음)'; };
 
@@ -98,10 +98,10 @@ export function lineEditorHtml(line, ctx, ui) {
     const locked = isLocked(uid, ctx);
     return '<li class="jh-line-item" data-kind="approver" data-uid="' + esc(uid) + '"' + (locked ? ' data-locked="true"' : '') + '>' +
       '<span class="jh-line-item__handle" aria-hidden="true">⋮⋮</span><span class="jh-line-item__order">결재' + (line.approvers.length > 1 ? (i + 1) : '') + '</span>' +
-      '<span class="jh-line-item__name">' + uname(ctx, uid) + '</span>' + (locked ? '<span class="jh-line-item__tag">필수</span>' : '') +
+      '<span class="jh-line-item__name">' + uname(ctx, uid) + '</span>' + (locked ? '<span class="jh-line-item__tag">' + (ctx.lead && uid === ctx.lead ? '팀장 고정' : '필수') + '</span>' : '') +
       '<span class="jh-line-item__actions">' +
-        '<button type="button" class="jh-iconbtn" data-move="' + esc(uid) + ':-1" aria-label="위로"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
-        '<button type="button" class="jh-iconbtn" data-move="' + esc(uid) + ':1" aria-label="아래로"' + (i === line.approvers.length - 1 ? ' disabled' : '') + '>↓</button>' +
+        '<button type="button" class="jh-iconbtn" data-move="' + esc(uid) + ':-1" aria-label="위로"' + (i === 0 || (ctx.lead && (uid === ctx.lead || line.approvers[i - 1] === ctx.lead)) ? ' disabled' : '') + '>↑</button>' +
+        '<button type="button" class="jh-iconbtn" data-move="' + esc(uid) + ':1" aria-label="아래로"' + (i === line.approvers.length - 1 || (ctx.lead && uid === ctx.lead) ? ' disabled' : '') + '>↓</button>' +
         '<button type="button" class="jh-iconbtn" data-remove="' + esc(uid) + '" aria-label="빼기"' + (locked ? ' disabled' : '') + '>×</button></span></li>';
   }).join('');
   const ccItems = line.cc.map((uid) => { const dep = !!ctx.deputy && uid === ctx.deputy;
@@ -114,7 +114,7 @@ export function lineEditorHtml(line, ctx, ui) {
       (gs.note ? '<p class="jh-guide__note">' + esc(gs.note) + '</p>' : '') +
       '<p class="jh-guide__diff">현재 결재선이 권장과 다릅니다. (차단되지는 않습니다)</p>' +
       (gs.matches ? '' : '<div><button type="button" class="jh-btn" data-variant="secondary" data-act="apply-guide">권장대로 적용</button></div>') + '</div>' : '';
-  return '<div class="jh-line-editor">' + (selfOk ? '<div class="jh-alert" data-tone="info" role="status">내가 작성하는 문서는 <strong>결재선 없이 바로 확정</strong>됩니다. 알려야 할 사람만 참조로 추가하세요.</div>' : '') + '<ol class="jh-line-editor__list">' +
+  return '<div class="jh-line-editor">' + (selfOk ? '<div class="jh-alert" data-tone="info" role="status">내가 작성하는 문서는 <strong>결재선 없이 바로 확정</strong>됩니다. 알려야 할 사람만 참조로 추가하세요.</div>' : '') + (ctx.lead ? '<div class="jh-alert" data-tone="info" role="status">이 문서는 <strong>팀장 결재 → 대표 결재</strong> 순서로 고정됩니다. 팀장(' + uname(ctx, ctx.lead) + ')은 뺄 수 없습니다.</div>' : '') + '<ol class="jh-line-editor__list">' +
       '<li class="jh-line-item" data-kind="author"><span class="jh-line-item__order">작성</span><span class="jh-line-item__name">' + esc(me.name) + (me.rank ? ' <small>' + esc(me.rank) + '</small>' : '') + '</span><span class="jh-line-item__tag">작성자</span></li>' +
       approverItems + ccItems + '</ol>' +
     '<div class="jh-line-editor__add"><input class="jh-input" type="search" data-line-search placeholder="이름 또는 부서로 직원 검색" value="' + esc(q) + '" aria-label="결재선에 추가할 직원 검색" autocomplete="off">' +

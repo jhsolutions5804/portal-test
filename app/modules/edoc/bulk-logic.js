@@ -1,5 +1,5 @@
 // 업무일지 일괄 결재(대기열 2-5-104) — 화면과 분리한 순수 계산. 서버는 건별 승인 그대로 쓴다(결재 기록·알림이 건별과 똑같다).
-import { myTurn } from './logic.js?v=20261113b';
+import { myTurn } from './logic.js?v=20261113c';
 
 /** 일괄 결재를 허용하는 문서 종류(업무일지만 — 연차·지출·구매는 내용을 보고 결재해야 한다) */
 export const BULK_DTYPES = ['daily'];

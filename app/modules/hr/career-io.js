@@ -1,6 +1,6 @@
 /* 근로자 상세 「경력관리」 카드의 입출력 — 서버 함수(careerAct)와 프로젝트 기록 읽기(파이어베이스 함수는 밖에서 주입, 시험: tests/hr-career-io.test.mjs).
  * 프로젝트 이력은 저장하지 않고 명단·공수 기록에서 계산한다(shared/career.js careerProjects). 읽기에 실패한 자료는 errors 에 이름을 담아 돌려준다. */
-import { careerProjects, careerSummary } from '../../shared/career.js?v=20261113b';
+import { careerProjects, careerSummary } from '../../shared/career.js?v=20261113c';
 
 export function makeCareerIo(fb) {
   const { db, collection, getDocs, getDoc, doc, query, where, call, callDeploy } = fb;   // callDeploy(선택): 서버 함수 deployAct — 직원 한 명의 투입 확인 현황(관리자 조회)

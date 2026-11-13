@@ -473,3 +473,8 @@ button.jh-kpi:hover { border-color: var(--c-primary); }
 .jh-bulkrow > .jh-docrow { flex: 1 1 auto; min-width: 0; }
 .jh-bulkcheck { display: flex; align-items: center; justify-content: center; flex: 0 0 auto; padding: 0 var(--sp-3); border-bottom: var(--u-1) solid var(--c-line); cursor: pointer; }
 .jh-bulkcheck input, .jh-bulkall input { inline-size: 1.25rem; block-size: 1.25rem; accent-color: var(--c-primary); }
+
+/* 팀장 고정 결재선 설정(2-5-103) */
+.jh-check { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); cursor: pointer; }
+.jh-check input { inline-size: 1.25rem; block-size: 1.25rem; accent-color: var(--c-primary); }
+.jh-admin__types { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); margin-block: var(--sp-2); }

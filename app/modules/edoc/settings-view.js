@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261113b';
-import { GUIDE_TYPES, LIMITS, canEditPolicy, candidates, personLabel, guideNotes, isDirty } from './settings-logic.js?v=20261113b';
+import { esc } from '../../core/ui.js?v=20261113c';
+import { GUIDE_TYPES, LIMITS, canEditPolicy, candidates, personLabel, guideNotes, isDirty, TEAMLEAD_TYPES} from './settings-logic.js?v=20261113c';
 
 const itemHtml = (state, scope, uid, idx, len, opts) => {
   const o = opts || {};
@@ -34,7 +34,17 @@ export function policyHtml(state) {
       listHtml(state, 'policy.required', p.required, '필수', { tag: '필수', locked: true, readonly: !editable }) + addRow(state, 'policy.required', p.required, true, !editable) + '</div>' +
     '<div class="jh-admin__group"><h4 class="jh-admin__h2">대리 승인 · 전결 권한자 <small>다른 결재자 차례에도 승인할 수 있고, 승인과 함께 게시(전결)할 수 있습니다 (최대 ' + LIMITS.proxy + '명)</small></h4>' +
       listHtml(state, 'policy.proxy', p.proxy, '권한', { tag: '전결', readonly: !editable }) + addRow(state, 'policy.proxy', p.proxy, true, !editable) + '</div>' +
+    '<div class="jh-admin__group"><h4 class="jh-admin__h2">팀장 고정 결재선 <small>직원이 쓰면 「팀장 결재 → 대표 결재」, 팀장이 쓰면 「대표 결재」만. 팀장은 직원 설정의 「팀장」 표시를 따릅니다.</small></h4>' + teamLeadHtml(state, editable) + '</div>' +
     saveBar(state, 'policy', '', isDirty(state, 'policy'), !editable) + '</section>';
+}
+function teamLeadHtml(state, editable) {
+  const t = state.policy.teamLeadLine; const dis = editable ? '' : ' disabled';
+  const leads = (state.users || []).filter((u) => u.teamLead === true && u.status === 'approved');
+  const depts = {}; leads.forEach((u) => { const d = u.dept || '(부서 없음)'; (depts[d] = depts[d] || []).push(u.name); });
+  const lines = Object.keys(depts).map((d) => esc(d) + ' — ' + depts[d].map(esc).join(', ') + (depts[d].length > 1 ? ' <strong>(팀장이 둘 이상이면 한 명만 쓰입니다)</strong>' : ''));
+  return '<label class="jh-check"><input type="checkbox" data-tl="enabled"' + (t.enabled ? ' checked' : '') + dis + '> 팀장 고정 결재선 사용</label>' +
+    '<div class="jh-admin__types">' + TEAMLEAD_TYPES.map(([k, label]) => '<label class="jh-check"><input type="checkbox" data-tl-type="' + esc(k) + '"' + (t.dtypes.indexOf(k) !== -1 ? ' checked' : '') + dis + '> ' + esc(label) + '</label>').join('') + '</div>' +
+    '<p class="jh-field__hint">지금 팀장으로 지정된 사람: ' + (lines.length ? lines.join(' / ') : '없음 — 직원 설정에서 부서별로 「팀장」을 지정하세요.') + '</p>';
 }
 export function guideHtml(state, t) {
   const g = state.guides[t.key]; const open = state.open === t.key; const dirty = isDirty(state, 'guides', t.key);
