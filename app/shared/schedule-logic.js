@@ -1,8 +1,8 @@
 /* 영업기획·재무회계 일정(plan_schedules·finance_schedules) — 순수 규칙(화면·네트워크 없이 시험 가능). 설계: portal-functions/app-docs/calendar-extension-design.md (2026-10-20 대표님 결정, 2026-10-31 구현)
  * 일정 문서 모양은 옛 일정과 같다: text·sdate·edate·stime·etime·tag·tagLabel·place·memo·isTodo·done + source('manual'|'settlement_auto')·srcId·recurId·createdBy·createdByName·savedAt.
  * 금액·계좌는 일정에 넣지 않는다(제목이 Outlook 공유 사서함으로도 나간다). 자동 일정(settlement_auto)은 서버가 정산서에서 만들므로 화면에서 고치거나 지울 수 없다. */
-import { toHalfwidth } from './text-fix.js?v=20261113c';
-import { addDays, isYmd, isHHMM, makeEvent, fromLegacyDoc, pad } from './calendar-event.js?v=20261113c';
+import { toHalfwidth } from './text-fix.js?v=20261116a';
+import { addDays, isYmd, isHHMM, makeEvent, fromLegacyDoc, pad } from './calendar-event.js?v=20261116a';
 
 export const SCHEDULE_CONFIG = {
   plan: { key: 'plan', title: '영업기획 일정', col: 'plan_schedules', source: 'plan', label: '영업기획 일정', order: 55, link: '#/plan/schedule', defaultTag: 'meeting',
@@ -16,8 +16,8 @@ export const AUTO_SOURCE = 'settlement_auto';
 
 const ymKey = (y, m) => y + '-' + pad(m);
 const lastDayOf = (y, m) => new Date(y, m, 0).getDate();   // m 은 1~12
-/** 영업기획·재무회계 일정은 규칙 게시와 Outlook 사서함이 준비되기 전까지 본섭에서는 닫아 둔다 — 테섭 주소(/portal-test/)에서만 열린다. 본섭에서 열 때 이 한 줄만 바꾼다 */
-export const scheduleEnabledFor = (pathname) => /^\/portal-test(\/|$)/.test(String(pathname || ''));
+/** 영업기획·재무회계 일정 화면 열림 여부. 11/16 대표님 「진행」: 본섭 규칙(단계 3 게시본에 plan_schedules·finance_schedules 있음)·Outlook 공유 사서함 2개·서버 함수 3개가 모두 준비돼 테섭·본섭 모두 연다. 다시 닫을 일이 생기면 이 한 줄만 바꾼다 */
+export const scheduleEnabledFor = () => true;
 export const isAuto = (d) => !!d && d.source === AUTO_SOURCE;
 export const canEditDoc = (d) => !!d && !isAuto(d);
 /** 'YYYY-MM' → { from, to } (그 달 1일~말일) */

@@ -37,5 +37,5 @@ ok(buildScheduleDoc(B(), P, { uid: 'u' }).doc.isTodo === true, '영업기획: �
 ok(buildScheduleDoc(B({ stime: '09:00', etime: '10:00' }), P, { uid: 'u' }).doc.isTodo === false && buildScheduleDoc(B({ stime: '09:00' }), P, { uid: 'u' }).doc.isTodo === false, '영업기획: 시작 시간만 써도 시간 일정');
 ok(!!buildScheduleDoc(B({ etime: '10:00' }), P, { uid: 'u' }).error && buildScheduleDoc(B({ etime: '10:00' }), P, { uid: 'u' }).error.includes('시작 시간'), '영업기획: 종료 시간만 쓰면 여전히 오류(할 일로 바꾸지 않음)');
 ok(buildScheduleDoc(B({ isTodo: true, stime: '09:00' }), P, { uid: 'u' }).doc.stime === '', '영업기획: 할 일은 시간을 버림');
-ok(scheduleEnabledFor('/portal-test/app/') && scheduleEnabledFor('/portal-test') && !scheduleEnabledFor('/app/') && !scheduleEnabledFor('/') && !scheduleEnabledFor(undefined), '영업기획·재무회계 일정 화면은 테섭 주소에서만 열림(본섭은 준비 중)');
+ok(scheduleEnabledFor('/portal-test/app/') && scheduleEnabledFor('/app/') && scheduleEnabledFor('/'), '영업기획·재무회계 일정 화면은 테섭·본섭 모두 열림(11/16 대표님 진행)');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); process.exit(fail ? 1 : 0);
