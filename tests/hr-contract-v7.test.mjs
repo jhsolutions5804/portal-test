@@ -18,7 +18,8 @@ ok(periodEndOf(base) === '2027-10-31' && periodEndOf({ periodType: 'open', endDa
 const lab = (o) => v7Check(Object.assign({}, base, { contractType: 'fixed', workPlace: '평택 P4' }, o), 'labor');
 ok(lab({}).ok && !lab({ contractType: '' }).ok && lab({ contractType: '' }).errors[0].includes('정규직/계약직'), '근로계약서: 구분을 고르지 않으면 저장 불가');
 ok(!lab({ workPlace: '' }).ok && lab({ workPlace: ' ' }).errors.some((e) => e.includes('근무지')) && lab({ contractType: 'regular', periodType: 'open', workPlace: '' }).ok, '★ 계약직은 근무지 필수, 정규직은 선택');
-ok(lab({ periodType: 'open' }).errors.some((e) => e.includes('계약직은 기간의 정함 없음')) && !lab({ contractType: 'regular', periodType: 'range' }).ok && lab({ contractType: 'regular', periodType: 'open' }).ok, '★ 계약직은 정함 없음 불가, 정규직 근로계약은 기간의 정함 없음만');
+ok(lab({ periodType: 'open' }).errors.some((e) => e.includes('계약직은 기간의 정함 없음')) && lab({ contractType: 'regular', periodType: 'range' }).ok && !lab({ contractType: 'regular', periodType: 'project', projectName: 'P4' }).ok && lab({ contractType: 'regular', periodType: 'open' }).ok, '★ 계약직은 정함 없음 불가, 정규직 근로계약은 기간 지정·정함 없음 가능(프로젝트 종료 시만 불가, 2026-11-16)');
+ok(!lab({ contractType: 'regular', periodType: 'range', endDate: '' }).ok && lab({ contractType: 'regular', periodType: 'range', endDate: '' }).errors.some((e) => e.includes('종료일')), '정규직도 기간 지정이면 종료일 필수');
 ok(!lab({ endDate: '' }).ok && !lab({ endDate: '2026-10-01' }).ok && lab({ periodType: 'project', projectName: 'P4 Ph2', endDate: '' }).ok && !lab({ periodType: 'project', projectName: '' }).ok && !lab({ periodType: 'project', projectName: 'A', expectedEnd: '2026-01-01' }).ok && !lab({ startDate: '' }).ok, '기간 검사: 지정은 시작·종료일, 프로젝트는 프로젝트 필수(종료일 없이 저장 가능), 예정일은 시작일 이후');
 const ann = (o) => v7Check(Object.assign({}, base, { contractType: 'regular' }, o), 'annual');
 ok(ann({ periodType: 'range' }).ok && ann({ periodType: 'open' }).ok && !ann({ contractType: '' }).ok, '연봉계약서: 정규직도 기간 지정(연봉계약기간 1년) 가능, 구분 필수');
@@ -27,6 +28,8 @@ ok(!ann({ extraItems: [{ name: '', amount: 1000 }] }).ok && !ann({ extraItems: [
 ok(termsProblem('퇴직금은 지급하지 않는다') && termsProblem('손해배상액을 미리 정한다') && termsProblem('중도 퇴사 시 위약금 100만원') && termsProblem('급여에서 임의 공제한다') && !termsProblem('현장 숙소를 회사가 제공한다. 4대보험 공제 후 지급') && !ann({ specialTerms: '퇴직금을 지급하지 않는다' }).ok && ann({ specialTerms: '현장 숙소 제공' }).ok && !ann({ specialTerms: 'a'.repeat(601) }).ok, '★ 특약: 퇴직금 불지급·손해배상 예정·위약금·임의 공제는 막고 일반 특약은 통과, 600자 제한');
 
 const L = (o) => laborHtmlV7(Object.assign({}, base, { contractType: 'fixed', workPlace: '평택 P4 현장', salary: 36000000, dept: '사업본부', rank: '사원' }, o));
+const lrr = L({ contractType: 'regular', periodType: 'range', workPlace: '' });
+ok(lrr.includes('정규직(계약기간을 정한 근로계약)을 체결한다') && lrr.includes('2026년 11월 01일 ~ 2027년 10월 31일') && !lrr.includes('정규직(기간의 정함이 없는 근로계약)') && !lrr.includes('계약직'), '근로계약서 정규직+기간 지정: 기간 문구, 정함 없음 문구 없음');
 const lf = L({}), lr = L({ contractType: 'regular', periodType: 'open', workPlace: '' }), lp = L({ periodType: 'project', projectName: 'P4 Ph2 (FAB)', expectedEnd: '2027-06-30' });
 ok(lf.includes('계약직(기간제 근로계약)을 체결한다') && lf.includes('계약직 근로자') && lf.includes('2026년 11월 01일 ~ 2027년 10월 31일') && lf.includes('<b>평택 P4 현장</b>로 하며'), '근로계약서 계약직: 문구·기간·근무지 반영');
 ok(lr.includes('정규직(기간의 정함이 없는 근로계약)을 체결한다') && lr.includes('기간의 정함이 없음') && lr.includes('"을"은 "갑"이 제공하는 근무장소에서 근무하며') && !lr.includes('계약직') && lr.includes('8. 재직 중에 동종업체'), '근로계약서 정규직: 정함 없음 문구, 근무지 입력 없으면 기존 문구, 계약직 표현 없음');

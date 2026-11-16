@@ -55,7 +55,7 @@ export function v7Check(f, kind) {
   const x = f || {}; const e = []; const t = typeOf(x); const p = periodTypeOf(x);
   if (!t) e.push('정규직/계약직을 선택해 주세요.');
   if (t === 'fixed' && p === 'open') e.push('계약직은 기간의 정함 없음을 선택할 수 없습니다. 기간 지정 또는 프로젝트 종료 시를 선택해 주세요.');
-  if (kind === 'labor' && t === 'regular' && p !== 'open') e.push('정규직 근로계약은 기간의 정함이 없는 계약입니다. 기간의 정함 없음을 선택해 주세요.');
+  if (kind === 'labor' && t === 'regular' && p === 'project') e.push('정규직 근로계약은 프로젝트 종료 시를 선택할 수 없습니다. 기간 지정 또는 기간의 정함 없음을 선택해 주세요.');
   if (!isYmd(x.startDate)) e.push('계약 시작일을 입력해 주세요.');
   if (p === 'range') { if (!isYmd(x.endDate)) e.push('계약 종료일을 입력해 주세요.'); else if (isYmd(x.startDate) && x.endDate < x.startDate) e.push('계약 종료일이 시작일보다 빠릅니다.'); }
   if (p === 'project') { if (!String(x.projectName || '').trim()) e.push('프로젝트를 선택해 주세요.'); if (x.expectedEnd && (!isYmd(x.expectedEnd) || (isYmd(x.startDate) && x.expectedEnd < x.startDate))) e.push('프로젝트 종료 예정일이 올바르지 않습니다.'); }
@@ -77,7 +77,7 @@ const H = (t, mt) => '<p style="font-weight:700;margin:' + (mt || 12) + 'px 0 4p
 
 /** 근로계약서 v7 — v6 본문에서 정규직/계약직 문구·근로기간·근무장소·계약해지 문구만 바꿨다 */
 export function laborHtmlV7(f0) {
-  const f = f0 || {}; const t = typeOf(f); const p = periodTypeOf(f); const fixed = t === 'fixed'; const kindWord = fixed ? '계약직(기간제 근로계약)' : '정규직(기간의 정함이 없는 근로계약)';
+  const f = f0 || {}; const t = typeOf(f); const p = periodTypeOf(f); const fixed = t === 'fixed'; const kindWord = fixed ? '계약직(기간제 근로계약)' : (p === 'open' ? '정규직(기간의 정함이 없는 근로계약)' : '정규직(계약기간을 정한 근로계약)');
   const own = fixed ? '계약직 근로자' : '정규직원';
   const period = P('1. 근로계약기간 : ' + periodText(f), 4) + (p === 'open' ? P('2. 본 계약은 기간의 정함이 없는 근로계약으로, 근로관계는 제17조 및 관계 법령에 따라 종료된다.', 8)
     : p === 'project' ? P('2. 위 프로젝트가 종료되면 본 근로계약은 종료된다. 프로젝트 종료일은 발주처와의 계약상 완료일 또는 \"갑\"이 \"을\"에게 서면(문자·메일 포함)으로 통지한 종료일로 하며, \"갑\"은 종료일이 확정되면 지체 없이 \"을\"에게 알린다.', 4) + P('3. 프로젝트 종료 후 계속 근무의 필요가 있을 때에는 당사자간의 합의 하에 재계약 할 수 있다.', 8)
