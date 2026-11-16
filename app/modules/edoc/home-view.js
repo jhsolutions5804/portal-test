@@ -1,8 +1,8 @@
-import { esc } from '../../core/ui.js?v=20261116a';
-import { myTurn, canProxy, tabsOf } from './logic.js?v=20261116a';
-import { docRowHtml, badgeHtml } from './views.js?v=20261116a';
-import { dailyState, recentDaily, dateLabel, rowSummary } from './home-daily.js?v=20261116a';
-import { pipeCounts, todoCounts } from './home-stats.js?v=20261116a';
+import { esc } from '../../core/ui.js?v=20261116b';
+import { myTurn, canProxy, tabsOf } from './logic.js?v=20261116b';
+import { docRowHtml, badgeHtml } from './views.js?v=20261116b';
+import { dailyState, recentDaily, dateLabel, rowSummary } from './home-daily.js?v=20261116b';
+import { pipeCounts, todoCounts } from './home-stats.js?v=20261116b';
 
 /** 홈에 보여 줄 문서 묶음 — 결재할 문서 / 수신함(참조·회람) / 내가 작성한 문서 / 게시된 문건 */
 export function homeLists(docs, me) {

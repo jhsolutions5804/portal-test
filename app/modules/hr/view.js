@@ -1,30 +1,30 @@
-import { esc } from '../../core/ui.js?v=20261116a';
-import { pageTableHtml } from '../../shared/pager.js?v=20261116a';
-import { rtWon, retireRecordsSorted } from './retire.js?v=20261116a';
-import { otSummary, otPerson, otAmount } from './overtime.js?v=20261116a';
-import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261116a';
-import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261116a';
-import { weeklyCardHtml } from './weekly-view.js?v=20261116a';
-import { purgeCardHtml, purgeChipHtml } from './recruit-purge-view.js?v=20261116a';
-import { historyCardHtml } from './history-view.js?v=20261116a';
-import { careerCardHtml } from './career-view.js?v=20261116a';
-import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261116a';
-import { shortTypeCardHtml, shortFormCardsHtml } from './short-view.js?v=20261116a';
-import { c7TypeCardHtml, c7PeriodCardHtml, c7PlaceCardHtml, c7HoursHtml, c7ItemsCardHtml, c7SumHtml } from './contract-v7-view.js?v=20261116a';
-import { capsInit, capsPanelHtml } from './caps-view.js?v=20261116a';
-import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261116a';
-import { sendLogText } from './sign.js?v=20261116a';
-import { maskedView } from './identity.js?v=20261116a';
-import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261116a';
-import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261116a';
-import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261116a';
-import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261116a';
-import { _hzDot } from './leave-promo-docs.js?v=20261116a';
-import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261116a';
-import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261116a';
-import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261116a';
-import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261116a';
-import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix, taxInfoOf, taxBasisNote } from './logic.js?v=20261116a';
+import { esc } from '../../core/ui.js?v=20261116b';
+import { pageTableHtml } from '../../shared/pager.js?v=20261116b';
+import { rtWon, retireRecordsSorted } from './retire.js?v=20261116b';
+import { otSummary, otPerson, otAmount } from './overtime.js?v=20261116b';
+import { PS_TRAVEL_LABEL, PS_TRAVEL_PER_DAY, PS_LONGTRIP_WEEKLY_MAX, PS_DOC_VER, payslipCalc, travelItemAmount } from './payslip.js?v=20261116b';
+import { PS_HISTORY_V7 } from './payslip-doc.js?v=20261116b';
+import { weeklyCardHtml } from './weekly-view.js?v=20261116b';
+import { purgeCardHtml, purgeChipHtml } from './recruit-purge-view.js?v=20261116b';
+import { historyCardHtml } from './history-view.js?v=20261116b';
+import { careerCardHtml } from './career-view.js?v=20261116b';
+import { docTplVer, DOC_TPL_CURRENT, DOC_TPL_HISTORY } from './frozen-docs.js?v=20261116b';
+import { shortTypeCardHtml, shortFormCardsHtml } from './short-view.js?v=20261116b';
+import { c7TypeCardHtml, c7PeriodCardHtml, c7PlaceCardHtml, c7HoursHtml, c7ItemsCardHtml, c7SumHtml } from './contract-v7-view.js?v=20261116b';
+import { capsInit, capsPanelHtml } from './caps-view.js?v=20261116b';
+import { PAY_BASIS_LABELS, payConv, annualStatus, annualSorted } from './annual.js?v=20261116b';
+import { sendLogText } from './sign.js?v=20261116b';
+import { maskedView } from './identity.js?v=20261116b';
+import { HOME_LISTS, homeListRows, SEAL_KEYS } from './home.js?v=20261116b';
+import { TRIP_TYPES, attCalendar, attMonthSummary, attDefaultBreak } from './attendance.js?v=20261116b';
+import { ADMIN_LEAVE_TYPES, ENTRY_LEAVE_TYPES } from './leave-admin.js?v=20261116b';
+import { LP_STAGE, LP_METHODS, LP_REPLY_LABEL, lpItems, lpSummary, lpFormCtx, lpFormInfo, lpRecsSorted } from './leave-promo.js?v=20261116b';
+import { _hzDot } from './leave-promo-docs.js?v=20261116b';
+import { DS_REASON, DS_EXEMPT, DS_DELIVERY, dsCalc, dsMessages } from './dismissal.js?v=20261116b';
+import { offerCalc, offerNotes, OFFER_KIND, OFFER_HB, OFFER_HW, OFFER_HF } from './offer.js?v=20261116b';
+import { isOffDay, holidayName } from '../../shared/holidays.js?v=20261116b';
+import { RANK_ORDER, deptOptions } from '../../shared/org.js?v=20261116b';
+import { counts, filterWorkers, stepNow, workPeriod, maskJumin, maskAccount, birthText, contractState, isResigned, EMP_TYPES, historyText, nextEmpNo, kstToday, leaveRows, leaveEntries, leaveTotals, wonText, filterEvents, JOB_PAGES, JOB_STATUS, JOB_OPT, JOB_OPT_DEFAULT, jobCompose, jobOrder, jobMeta, interviewsSorted, RRQ_STATUS, rrqKindOf, rrqDone, rrqFilter, rrqCounts, HC_TYPES, hcGrid, hcByDate, hcSort, EVAL_GRADES, gradeLabel, evalSorted, APP_STATUS, appStatusOf, appFilter, appCounts, splitInterview, resumeSections, SAL_POSITIONS, salRows, salMatrix, taxInfoOf, taxBasisNote } from './logic.js?v=20261116b';
 
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
@@ -92,12 +92,12 @@ function leaveDetailHtml_list(st) {
   const entries = leaveEntries(r.docs);
   const kpi = '<div class="jh-kpi-grid"><div class="jh-kpi"><span class="jh-kpi__label">부여</span><span class="jh-kpi__value">' + n1(r.granted) + '일</span></div><div class="jh-kpi"><span class="jh-kpi__label">사용</span><span class="jh-kpi__value">' + n1(r.used) + '일</span><span class="jh-kpi__hint">' + (r.planned ? '예정 ' + n1(r.planned) + '일 포함' : '') + '</span></div><div class="jh-kpi"><span class="jh-kpi__label">잔여</span><span class="jh-kpi__value">' + n1(r.remain) + '일</span></div></div>';
   const tracks = r.tracks.length ? '<ul class="jh-hr__hist">' + r.tracks.map((t) => '<li><strong>' + esc(t.title) + '</strong> — 부여 ' + n1(t.granted) + '일 <span class="jh-field__hint">(' + esc(t.basis) + ')</span></li>').join('') + '</ul>' : '';
-  const list = entries.length ? '<div class="jh-hr__scroll"><table class="jh-hr-table"><thead><tr><th>상태</th><th>종류</th><th>기간</th><th class="num">일수</th><th></th></tr></thead><tbody>' + entries.map((e) => '<tr><td>' + chip(e.status, 'muted') + (e.admin ? ' ' + chip('관리자 등록', 'accent') : '') + '</td><td>' + esc(e.title) + (e.annual ? '' : ' <span class="jh-field__hint">(연차 차감 안 함)</span>') + '</td><td>' + esc(e.start + (e.end && e.end !== e.start ? ' ~ ' + e.end : '')) + '</td><td class="num">' + n1(e.days) + '일</td><td><button type="button" class="jh-btn" data-variant="ghost" data-l-edit="' + esc(e.id) + '">수정</button>' + (e.admin ? '<button type="button" class="jh-btn" data-variant="ghost" data-l-del="' + esc(e.id) + '">삭제</button>' : '') + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="jh-empty">승인·게시된 연차 문서가 없습니다.</div>';
-  return card(r.name + ' 연차 상세', '<div class="jh-hr__pad"><div class="jh-field__hint">입사일 ' + esc(r.hireDate || '미등록') + ' · ' + esc(r.detail || '-') + '</div>' + kpi + tracks + '<h4 class="jh-hr__sub">사용 내역(승인·게시)</h4>' + list + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-l-close>닫기</button><button type="button" class="jh-btn" data-variant="primary" data-l-new="' + esc(r.name) + '">+ 연차 등록(관리자)</button></div></div>');
+  const list = entries.length ? '<div class="jh-hr__scroll"><table class="jh-hr-table"><thead><tr><th>상태</th><th>종류</th><th>기간</th><th class="num">일수</th><th></th></tr></thead><tbody>' + entries.map((e) => '<tr><td>' + chip(e.status, 'muted') + (e.admin ? ' ' + chip('관리자 등록', 'accent') : '') + '</td><td>' + esc(e.title) + (e.annual ? '' : ' <span class="jh-field__hint">(연차 차감 안 함)</span>') + '</td><td>' + esc(e.start + (e.end && e.end !== e.start ? ' ~ ' + e.end : '')) + '</td><td class="num">' + n1(e.days) + '일</td><td>' + (st.readOnly ? '' : '<button type="button" class="jh-btn" data-variant="ghost" data-l-edit="' + esc(e.id) + '">수정</button>' + (e.admin ? '<button type="button" class="jh-btn" data-variant="ghost" data-l-del="' + esc(e.id) + '">삭제</button>' : '')) + '</td></tr>').join('') + '</tbody></table></div>' : '<div class="jh-empty">승인·게시된 연차 문서가 없습니다.</div>';
+  return card(r.name + ' 연차 상세', '<div class="jh-hr__pad"><div class="jh-field__hint">입사일 ' + esc(r.hireDate || '미등록') + ' · ' + esc(r.detail || '-') + '</div>' + kpi + tracks + '<h4 class="jh-hr__sub">사용 내역(승인·게시)</h4>' + list + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="ghost" data-l-close>닫기</button>' + (st.readOnly ? '' : '<button type="button" class="jh-btn" data-variant="primary" data-l-new="' + esc(r.name) + '">+ 연차 등록(관리자)</button>') + '</div></div>');
 }
 export function leaveHtml(st) {
   const t = leaveTotals(st.leaveRows);
-  const bar = '<div class="jh-hr__pad"><div class="jh-hr__bar"><label class="jh-field__hint"><input type="checkbox" data-l-all' + (st.leaveAll ? ' checked' : '') + '> 퇴직자 포함</label><button type="button" class="jh-btn" data-variant="primary" data-l-new="">+ 연차 등록(관리자)</button><a class="jh-btn" data-variant="secondary" href="#/hr/leavepromo">📣 연차사용촉진</a></div><div class="jh-kpi-grid"><div class="jh-kpi"><span class="jh-kpi__label">대상</span><span class="jh-kpi__value">' + t.n + '명</span><span class="jh-kpi__hint">' + (t.noHire ? '입사일 미등록 ' + t.noHire + '명' : '') + '</span></div><div class="jh-kpi"><span class="jh-kpi__label">부여 합계</span><span class="jh-kpi__value">' + n1(t.granted) + '일</span></div><div class="jh-kpi"><span class="jh-kpi__label">사용 합계</span><span class="jh-kpi__value">' + n1(t.used) + '일</span></div><div class="jh-kpi"><span class="jh-kpi__label">잔여 합계</span><span class="jh-kpi__value">' + n1(t.remain) + '일</span></div></div></div>';
+  const bar = '<div class="jh-hr__pad"><div class="jh-hr__bar"><label class="jh-field__hint"><input type="checkbox" data-l-all' + (st.leaveAll ? ' checked' : '') + '> 퇴직자 포함</label>' + (st.readOnly ? '' : '<button type="button" class="jh-btn" data-variant="primary" data-l-new="">+ 연차 등록(관리자)</button><a class="jh-btn" data-variant="secondary" href="#/hr/leavepromo">📣 연차사용촉진</a>') + '</div><div class="jh-kpi-grid"><div class="jh-kpi"><span class="jh-kpi__label">대상</span><span class="jh-kpi__value">' + t.n + '명</span><span class="jh-kpi__hint">' + (t.noHire ? '입사일 미등록 ' + t.noHire + '명' : '') + '</span></div><div class="jh-kpi"><span class="jh-kpi__label">부여 합계</span><span class="jh-kpi__value">' + n1(t.granted) + '일</span></div><div class="jh-kpi"><span class="jh-kpi__label">사용 합계</span><span class="jh-kpi__value">' + n1(t.used) + '일</span></div><div class="jh-kpi"><span class="jh-kpi__label">잔여 합계</span><span class="jh-kpi__value">' + n1(t.remain) + '일</span></div></div></div>';
   return leaveFormsHtml(st) + (st.leaveSel ? leaveDetailHtml(st) : '') + card('전체 직원 연차 현황', bar + leaveTableHtml(st) + '<div class="jh-field__hint jh-hr__pad">회계연도(1.1~12.31) 기준·근로기준법 자동 산정입니다. 입사 첫 1년은 1개월 개근당 1일(최대 11일), 입사 다음 해 1/1은 첫해 재직일수 비례, 이후 매년 1/1에 15일 + 3년 이상 2년마다 +1일(최대 25일). 사용일수는 해당 연차 구간에 시작한 승인·게시 연차·반차만 차감하며(병가·생리휴가 등은 차감 안 함) 승인된 미래 일정도 사용으로 봅니다. 입사일이 미등록인 직원은 근로자 명부에서 입사일을 입력해 주세요.</div>');
 }
 
