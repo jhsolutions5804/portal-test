@@ -80,7 +80,7 @@ ok(teamLeaderOf('인사총무팀', mem, [{ uid: 'U1', teamLead: true, dept: 'PJT
 // ── 직원 관리: 팀장 지정(같은 팀 한 명)·권한 키
 const U = [{ uid: 'u1', dept: 'PJT팀', teamLead: true }, { uid: 'u2', dept: 'PJT팀' }, { uid: 'u3', dept: '인사총무팀', teamLead: true }, { uid: 'u4', dept: 'PJT팀' }];
 ok(JSON.stringify(teamLeadChanges(U, 'u2', true)) === '{"u2":true,"u1":false}' && JSON.stringify(teamLeadChanges(U, 'u1', false)) === '{"u1":false}' && JSON.stringify(teamLeadChanges(U, 'u4', true)) === '{"u4":true,"u1":false}' && JSON.stringify(teamLeadChanges(U, 'zz', true)) === '{}' && JSON.stringify(teamLeadChanges([{ uid: 'x', dept: '' }], 'x', true)) === '{"x":true}' && isTeamLead(U[0]) && !isTeamLead(U[1]) && !isTeamLead(null), '★ 팀장 지정: 같은 팀에는 한 명만(새로 지정하면 기존 팀장 자동 해제), 다른 팀 팀장은 그대로, 해제는 본인만');
-ok(PERM_KEYS.some(([k, l]) => k === 'hrEval' && l === '인사평가') && PERM_KEYS.length === 6, '직원 관리 권한 칩에 "인사평가"가 추가됨');
+ok(PERM_KEYS.some(([k, l]) => k === 'hrEval' && l === '인사평가') && PERM_KEYS.length === 7, '직원 관리 권한 칩에 "인사평가"가 추가됨');
 // ── 권한 보정(관리자=인사팀, 대표 직급 계정은 사장단)
 const V = (o) => Object.assign({ id: 'u1', empNo: '24001', rank: '대리', perms: {} }, o || {});
 ok(evalAccess(V({ admin: true }), { id: 'x' }, {}).level === 'hr' && evalAccess(V({ admin: true }), { id: 'x' }, {}).manage && !evalAccess(V({ admin: true }), { id: 'x' }, {}).edit && evalAccess(V({ empNo: 'admin', rank: '대표', admin: true, canManage: true }), { id: 'x' }, {}).confirm && evalAccess(V({ id: 'u1', admin: true }), { id: 'u1' }, { published: false }).level === 'self', '★ 인사 모듈 접근자(관리자)는 인사팀 권한(열람·운영), 사장단 계정(canManage)의 대표는 입력·확정, 본인 평가는 공개 전까지 가림');
