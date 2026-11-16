@@ -1,15 +1,16 @@
-import { db, auth, functions, httpsCallable, collection, getDocs, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261116e';
-import { esc, toast } from '../../core/ui.js?v=20261116e';
-import { confirmDialog } from '../../core/dialog.js?v=20261116e';
-import { pagerAction, pagerApply } from '../../shared/pager.js?v=20261116e';
-import { GTYPES, GKEYS, kstToday, formToDoc, docToForm, newDefaults, SEED, driveCsv, addDays, parseDriveHistory, assignProject, matchHistory, creditFltDefault, creditCsv } from './logic.js?v=20261116e';
-import { carCostHtml, carSelect } from './view.js?v=20261116e';
-import { carCostCsv } from '../../shared/car-cost.js?v=20261116e';
-import { tabsHtml, homeHtml, listHtml, tableHtml, driveHtml, driveSelect, creditLogAreaHtml, creditCorpHtml, creditShownIdx } from './view.js?v=20261116e';
+import { hrAffairsPerm } from '../../shared/hr-perm.js?v=20261116g';
+import { db, auth, functions, httpsCallable, collection, getDocs, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp } from '../../core/firebase.js?v=20261116g';
+import { esc, toast } from '../../core/ui.js?v=20261116g';
+import { confirmDialog } from '../../core/dialog.js?v=20261116g';
+import { pagerAction, pagerApply } from '../../shared/pager.js?v=20261116g';
+import { GTYPES, GKEYS, kstToday, formToDoc, docToForm, newDefaults, SEED, driveCsv, addDays, parseDriveHistory, assignProject, matchHistory, creditFltDefault, creditCsv } from './logic.js?v=20261116g';
+import { carCostHtml, carSelect } from './view.js?v=20261116g';
+import { carCostCsv } from '../../shared/car-cost.js?v=20261116g';
+import { tabsHtml, homeHtml, listHtml, tableHtml, driveHtml, driveSelect, creditLogAreaHtml, creditCorpHtml, creditShownIdx } from './view.js?v=20261116g';
 
 /** 총무(플랫폼 기본 모듈): 임대·차량·자산·갱신 일정을 한 곳에서. 관리자 전용 — 데이터는 general_* 컬렉션(보안 규칙에서 관리자 전용으로 잠가야 한다) */
 /* 사이드바에는 따로 올리지 않는다(modules/index.js 의 MODULES 에 없음) — 인사총무 구역으로만 열린다. manifest 는 모듈 규약상 남겨 둔다 */
-export const manifest = { id: 'general', order: 25, title: '총무', icon: '🗂️', defaultHash: '#/general/home', perm: (me) => !!me && me.admin === true };
+export const manifest = { id: 'general', order: 25, title: '총무', icon: '🗂️', defaultHash: '#/general/home', perm: hrAffairsPerm };
 const strRow = (r) => { const o = {}; Object.keys(r || {}).forEach((k) => { o[k] = r[k] == null ? '' : String(r[k]); }); return o; };
 /** 인사총무 틀 안의 총무 구역으로 열기 — 주소는 #/hr/general/… */
 export const mountSection = (root, route, ctx) => mount(root, route, ctx, { base: '#/hr/general', noTabs: true });   // 인사총무 안에서는 왼쪽 사이드바가 총무 메뉴를 대신한다
