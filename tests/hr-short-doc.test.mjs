@@ -63,7 +63,7 @@ ok(/docHtml: laborDocHtml/.test(idx) && /f\.workType === 'short' \? shortRecord\
 ok(/configureLaborDocs\(\{ signatures: seal/.test(sio) && /docType === 'annual' \? annualDocHtml\(snapDoc\) : laborDocHtml\(snapDoc\)/.test(sio) && !/__LABOR_TPL/.test(sio), '연결: 원격 서명 링크(열람용)도 근로계약서는 laborDocHtml, 연봉계약서는 annualDocHtml(v7·동결 양식 선택)');
 ok(!/configureFrozenDocs\(/.test(idx) && (idx.match(/configureLaborDocs\(/g) || []).length === 2, '연결: 직인·로고 설정 2곳 모두 새 연결 함수(동결 양식 설정도 함께 한다)');
 ok(/checkForm\(st\.aForm\)/.test(idx) && /checkForm\(st\.aForm, true\)/.test(idx) && !/annualValidate\(st\.aForm/.test(idx) && /data-an-ftype/.test(idx) && /data-an-sday/.test(idx) && /data-an-sf/.test(idx), '연결: 링크·메일·저장·미리보기가 모두 checkForm(단시간이면 shortCheck)을 거치고 새 입력 3종을 처리한다');
-ok(/shortTypeCardHtml\(f\) \+ typeCard \+ period \+ job \+ \(f\.workType === 'short' \? shortFormCardsHtml\(f, st\.aErrs\) : pay\)/.test(vw), '연결: 화면에서 단시간이면 일반 급여 카드 대신 단시간 카드');
+ok(/shortTypeCardHtml\(f\) \+ typeCard \+ period \+ job \+ \(f\.workType === 'short' \? shortFormCardsHtml\(f, st\.aErrs\) : payHint\)/.test(vw), '연결: 화면에서 단시간이면 일반 급여 카드 대신 단시간 카드');
 // ── 원격 서명 안전장치: 서명 페이지(sign.html)는 근로계약서를 항상 v6 로 그린다 → s1 은 서명 링크를 막고 열람 전용만 허용
 const signHtml = fs.readFileSync(new URL('../sign.html', import.meta.url), 'utf8'); const gIdx = sio.search(/docType === 'labor' && src && src\.tplVer === SHORT_TPL_VER\) throw new Error\(SHORT_SIGN_ERROR\)/); const viewIdx = sio.indexOf('if (viewOnly) {'); const bsIdx = sio.indexOf('buildSignLink({', gIdx);
 ok(/const buildHtml = pickContractHtml\(link\.docType, f\)/.test(signHtml) && /f\.tplVer === 'v7'/.test(signHtml) && !/'s1'|SHORT_TPL_VER/.test(signHtml), '사실 확인: 공개 서명 페이지는 양식 v7 만 새 양식으로 그리고 단시간 양식(s1)은 그리지 못한다(이 전제가 바뀌면 아래 안전장치를 다시 판단)');
