@@ -1,6 +1,6 @@
 /* 근로계약서·연봉계약서 v7 입력 화면 조각 — 구분·계약기간 방식(프로젝트 선택)·근무지·고정연장 시간·지급 항목·특약 (순수 HTML 문자열, 이벤트는 index.js 의 계약서 컨트롤러가 data-c7-* / data-an-act="c7-*" 로 처리) */
-import { esc } from '../../core/ui.js?v=20261116d';
-import { TYPE_LABEL, PERIOD_LABEL, MAX_EXTRA, MAX_TERMS, typeOf, periodTypeOf, v7Calc } from './contract-v7.js?v=20261116d';
+import { esc } from '../../core/ui.js?v=20261116e';
+import { TYPE_LABEL, PERIOD_LABEL, MAX_EXTRA, MAX_TERMS, typeOf, periodTypeOf, v7Calc } from './contract-v7.js?v=20261116e';
 const card = (title, body) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3></div>' + body + '</section>';
 const won = (n) => '₩' + Math.round(Number(n) || 0).toLocaleString('ko-KR');
 const fmtN = (v) => (v === '' || v == null || !Number(v) ? '' : Number(v).toLocaleString('ko-KR'));
@@ -10,13 +10,13 @@ const inp = (label, attrs, val, extra) => '<div class="jh-field"><label class="j
 /** 정규직/계약직 구분 */
 export function c7TypeCardHtml(f) {
   const t = typeOf(f);
-  return card('🏷 근로계약 구분 *', '<div class="jh-hr__pad"><div>' + radio('data-c7-type', 'c7-type', 'regular', TYPE_LABEL.regular, t) + radio('data-c7-type', 'c7-type', 'fixed', TYPE_LABEL.fixed + ' (기간제 근로계약)', t) + '</div>'
-    + '<div class="jh-field__hint">' + (t === 'fixed' ? '계약직은 기간제 근로계약입니다. 계약기간(기간 지정 또는 프로젝트 종료 시)과 근무지를 꼭 적어 주세요.' : t === 'regular' ? '정규직도 계약기간(시작일·종료일)을 정해 쓸 수 있습니다. 종료일 없이 쓰려면 아래에서 기간의 정함 없음을 고르세요.' : '정규직/계약직을 선택해 주세요. 선택해야 저장할 수 있습니다.') + '</div></div>');
+  return card('🏷 근로계약 구분 *', '<div class="jh-hr__pad"><div>' + radio('data-c7-type', 'c7-type', 'regular', TYPE_LABEL.regular + ' (기간의 정함이 없는 근로계약)', t) + radio('data-c7-type', 'c7-type', 'fixed', TYPE_LABEL.fixed + ' (기간제 근로계약)', t) + '</div>'
+    + '<div class="jh-field__hint">' + (t === 'fixed' ? '계약직은 기간제 근로계약입니다. 계약기간(기간 지정 또는 프로젝트 종료 시)과 근무지를 꼭 적어 주세요.' : t === 'regular' ? '정규직은 기간의 정함이 없는 근로계약입니다.' : '정규직/계약직을 선택해 주세요. 선택해야 저장할 수 있습니다.') + '</div></div>');
 }
 /** 계약기간 — 기간 지정 / 기간의 정함 없음 / 프로젝트 종료 시(프로젝트는 목록에서 선택) */
 export function c7PeriodCardHtml(st, kind) {
   const f = st.aForm; const t = typeOf(f); const p = periodTypeOf(f); const annual = kind === 'annual';
-  const allow = { range: true, open: annual || t !== 'fixed', project: annual || t !== 'regular' };   // 근로계약: 정규직은 기간 지정·정함 없음, 계약직은 지정·프로젝트(정규직 기간 지정은 2026-11-16 대표님 요청)
+  const allow = { range: annual || t !== 'regular', open: annual || t !== 'fixed', project: annual || t !== 'regular' };   // 근로계약: 정규직은 정함 없음만, 계약직은 지정·프로젝트
   const kinds = '<div style="display:flex;flex-wrap:wrap;gap:var(--sp-4);align-items:center">' + ['range', 'project', 'open'].map((k) => radio('data-c7-ptype', 'c7-ptype', k, PERIOD_LABEL[k], p, !allow[k] && !!t)).join('') + '</div>';
   const start = inp('시작일 *', annual ? 'type="date" data-an-start' : 'type="date" data-an-f="startDate"', f.startDate);
   const projects = Array.isArray(st.aProjects) ? st.aProjects : []; const known = projects.some((x) => x.id === f.projectId);
@@ -26,7 +26,7 @@ export function c7PeriodCardHtml(st, kind) {
   const contract = inp('계약 체결일 *', 'type="date" data-an-f="contractDate"', f.contractDate);
   const row = (cells) => '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:var(--sp-3)">' + cells + '</div>';   // 한 줄에 모아 놓고, 좁은 화면에서만 줄바꿈
   const body = p === 'range' ? row(start + inp('종료일 *', 'type="date" data-an-f="endDate"', f.endDate) + contract) + (annual ? '<div class="jh-field__hint">연봉계약 기본 기간은 시작일부터 1년이며, 종료일은 직접 바꿀 수 있습니다.</div>' : '')
-    : p === 'open' ? row(start + contract) + '<div class="jh-field__hint">종료일 없이 시작일만 적습니다. 기간의 정함이 없는 근로계약입니다.</div>'
+    : p === 'open' ? row(start + contract) + '<div class="jh-field__hint">종료일 없이 시작일만 적습니다. 정규직 근로계약은 기간의 정함이 없는 계약입니다.</div>'
     : row(start + projCtl + inp('종료 예정일 (선택)', 'type="date" data-c7-f="expectedEnd"', f.expectedEnd) + contract) + '<div class="jh-field__hint">예정일은 참고용이며, 실제 종료일은 프로젝트가 끝날 때 회사가 통지합니다. 프로젝트가 끝나면 계약도 끝납니다.</div>';
   return card('📅 계약 기간', '<div class="jh-hr__pad">' + kinds + body + '</div>');
 }

@@ -21,7 +21,7 @@ ok(annualRecord(Object.assign({}, f, { wageType: 'noncomprehensive' })).fixedOT 
 const base = annualRecord(Object.assign(annualFillFromWorker(annualNewForm('2026-11-01'), W, []), { hourly: 11000, contractType: 'regular', contractDate: '2026-10-30' }));
 ok(base.salary === annualSalary(11000).annual, '고정수당·추가 항목이 없으면 계약연봉은 기존 계산(시급×…×12)과 같다');
 const lf = Object.assign(laborNewForm(), { workerId: 'w1', name: '홍길동', hourly: 11000, contractType: 'fixed', periodType: 'project', projectName: 'P4 Ph2', workPlace: '평택', startDate: '2026-11-01', endDate: '2027-01-01', contractDate: '2026-10-30' });
-const lr = laborRecord(lf); ok(lr.tplVer === 'v7' && lr.endDate === '' && lr.periodType === 'project' && lr.workPlace === '평택' && lr.salary === annualSalary(11000).annual, '근로계약서 저장: v7, 프로젝트 종료 시는 종료일 없음, 근무지·구분 그대로');
+const lr = laborRecord(lf); ok(lr.tplVer === 'v8' && lr.endDate === '' && lr.periodType === 'project' && lr.workPlace === '평택' && lr.salary === annualSalary(11000).annual, '근로계약서 저장: v7, 프로젝트 종료 시는 종료일 없음, 근무지·구분 그대로');
 ok(annualDocHtml(rec).includes('연 봉 계 약 서') && annualDocHtml(rec).includes('직책수당') && laborDocHtml(lr).includes('「P4 Ph2」 프로젝트 종료 시까지') && annualDocHtml({ name: '옛', tplVer: 'v6', hourly: 11000, salary: 1 }).includes('연 봉 계 약 서') && !annualDocHtml({ name: '옛', tplVer: 'v6', hourly: 11000, salary: 1 }).includes('통상임금 포함'), '출력 연결: v7 은 새 양식, 저장된 v6 문서는 동결 양식 그대로');
 
 // 목록 상태

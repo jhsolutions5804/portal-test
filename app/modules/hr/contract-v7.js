@@ -4,6 +4,7 @@
  *         ⑤연봉계약서 지급 항목 추가·삭제(통상임금 포함 여부) + 특약 ⑥급여명세서가 불러다 쓸 값(v7Calc).
  * ※ 법적 문구(프로젝트 종료 시 기간 명시, 포괄 고정연장 시간·초과분 별도 지급, 통상시급 산정, 특약 안내)는 노무사 확인 대상이다. */
 export const CONTRACT_V7 = 'v7';
+export const CONTRACT_V8 = 'v8';   // 근로계약서 전용(2026-11-16): 제4조에 금액을 쓰지 않고 연봉계약서에 따른다 — 연봉계약서만 해마다 새로 쓰면 되게. 연봉계약서는 v7 그대로. 노무사 확인 전 테섭 시험 단계
 export const TYPE_LABEL = { regular: '정규직', fixed: '계약직' };
 export const PERIOD_LABEL = { range: '기간 지정', open: '기간의 정함 없음', project: '프로젝트 종료 시' };
 export const MAX_EXTRA = 10, MAX_TERMS = 600;
@@ -55,7 +56,7 @@ export function v7Check(f, kind) {
   const x = f || {}; const e = []; const t = typeOf(x); const p = periodTypeOf(x);
   if (!t) e.push('정규직/계약직을 선택해 주세요.');
   if (t === 'fixed' && p === 'open') e.push('계약직은 기간의 정함 없음을 선택할 수 없습니다. 기간 지정 또는 프로젝트 종료 시를 선택해 주세요.');
-  if (kind === 'labor' && t === 'regular' && p === 'project') e.push('정규직 근로계약은 프로젝트 종료 시를 선택할 수 없습니다. 기간 지정 또는 기간의 정함 없음을 선택해 주세요.');
+  if (kind === 'labor' && t === 'regular' && p !== 'open') e.push('정규직 근로계약은 기간의 정함이 없는 계약입니다. 기간의 정함 없음을 선택해 주세요.');
   if (!isYmd(x.startDate)) e.push('계약 시작일을 입력해 주세요.');
   if (p === 'range') { if (!isYmd(x.endDate)) e.push('계약 종료일을 입력해 주세요.'); else if (isYmd(x.startDate) && x.endDate < x.startDate) e.push('계약 종료일이 시작일보다 빠릅니다.'); }
   if (p === 'project') { if (!String(x.projectName || '').trim()) e.push('프로젝트를 선택해 주세요.'); if (x.expectedEnd && (!isYmd(x.expectedEnd) || (isYmd(x.startDate) && x.expectedEnd < x.startDate))) e.push('프로젝트 종료 예정일이 올바르지 않습니다.'); }
@@ -77,7 +78,7 @@ const H = (t, mt) => '<p style="font-weight:700;margin:' + (mt || 12) + 'px 0 4p
 
 /** 근로계약서 v7 — v6 본문에서 정규직/계약직 문구·근로기간·근무장소·계약해지 문구만 바꿨다 */
 export function laborHtmlV7(f0) {
-  const f = f0 || {}; const t = typeOf(f); const p = periodTypeOf(f); const fixed = t === 'fixed'; const kindWord = fixed ? '계약직(기간제 근로계약)' : (p === 'open' ? '정규직(기간의 정함이 없는 근로계약)' : '정규직(계약기간을 정한 근로계약)');
+  const f = f0 || {}; const t = typeOf(f); const p = periodTypeOf(f); const fixed = t === 'fixed'; const kindWord = fixed ? '계약직(기간제 근로계약)' : '정규직(기간의 정함이 없는 근로계약)';
   const own = fixed ? '계약직 근로자' : '정규직원';
   const period = P('1. 근로계약기간 : ' + periodText(f), 4) + (p === 'open' ? P('2. 본 계약은 기간의 정함이 없는 근로계약으로, 근로관계는 제17조 및 관계 법령에 따라 종료된다.', 8)
     : p === 'project' ? P('2. 위 프로젝트가 종료되면 본 근로계약은 종료된다. 프로젝트 종료일은 발주처와의 계약상 완료일 또는 \"갑\"이 \"을\"에게 서면(문자·메일 포함)으로 통지한 종료일로 하며, \"갑\"은 종료일이 확정되면 지체 없이 \"을\"에게 알린다.', 4) + P('3. 프로젝트 종료 후 계속 근무의 필요가 있을 때에는 당사자간의 합의 하에 재계약 할 수 있다.', 8)
@@ -91,7 +92,7 @@ export function laborHtmlV7(f0) {
     + H('제1조 【의 무】', 14) + P('"을"은 "갑"의 ' + own + '으로서 "갑"의 사규에 따른 제규정 및 취업규칙에 정해진 근로조건을 승인하고 근로를 성실히 이행할 의무를 진다.', 8)
     + H('제2조 【근로기간】', 14) + period
     + H('제3조 【근무장소 및 대상업무】', 14) + place + assignee + P('&nbsp;&nbsp;1) 소속 : ' + ul(f.dept, 180) + ' &nbsp; 직급 : ' + ul(f.rank, 60), 4) + P('&nbsp;&nbsp;2) 담당 업무 : ' + ul(f.job, 160), 8)
-    + H('제4조 【임 금】', 14) + P('- 계약연봉 : ' + (f.salary ? '일금 ' + Number(f.salary).toLocaleString('ko-KR') + '원' : ul('', 180)), 4) + P('- 세부 지급 사항은 연봉계약서를 기준으로 한다. 임금 지급일 : 익월 말일', 8)   // 대표님 2026-10-29: 포괄임금에는 여비교통비·기술수당 문구가 없으므로 근로계약서에서 삭제
+    + H('제4조 【임 금】', 14) + (f.tplVer === CONTRACT_V8 ? P('- 임금(계약연봉, 임금의 구성항목·계산방법·지급방법)은 "갑"과 "을"이 별도로 작성하는 연봉계약서에 따른다. 연봉계약서는 매년 새로 작성할 수 있으며, 연봉계약서의 내용이 바뀌어도 본 근로계약은 그대로 유지된다.', 4) + P('- 임금 지급일 : 익월 말일', 8) : P('- 계약연봉 : ' + (f.salary ? '일금 ' + Number(f.salary).toLocaleString('ko-KR') + '원' : ul('', 180)), 4) + P('- 세부 지급 사항은 연봉계약서를 기준으로 한다. 임금 지급일 : 익월 말일', 8))   // 대표님 2026-10-29: 포괄임금에는 여비교통비·기술수당 문구가 없으므로 근로계약서에서 삭제
     + H('제5조 【사회보험】', 14) + P('☑ 고용보험 &nbsp; ☑ 산재보험 &nbsp; ☑ 국민연금 &nbsp; ☑ 건강보험', 8)
     + H('제6조 【근로시간】') + P('근로기준법 제50조에 따라 주 40시간 근로를 원칙으로 한다. 다만 현장 여건에 따라 근로기준법 제53조에 의거하여 최대 12시간까지 연장하여 근로할 수 있다. (식사 및 휴게시간은 근로시간에서 제외)', 6)
     + H('제7조 【휴게시간】') + P('4시간 근무마다 30분 휴식, 중식 1시간 의무지급을 원칙으로 한다. 다만, 현장 상황에 따라 유연하게 적용한다.', 6)

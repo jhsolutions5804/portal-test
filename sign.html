@@ -814,7 +814,7 @@ function __annualHtml_v5(f0){
     </body></html>`);
 }
 
-function pickContractHtml(docType, f) { if (f && f.tplVer === 'v7') return docType === 'annual' ? annualHtmlV7 : laborHtmlV7; return docType === 'annual' ? __annualHtml_v5 : __laborHtml_v6; }
+function pickContractHtml(docType, f) { if (f && (f.tplVer === 'v7' || (f.tplVer === 'v8' && docType !== 'annual'))) return docType === 'annual' ? annualHtmlV7 : laborHtmlV7; return docType === 'annual' ? __annualHtml_v5 : __laborHtml_v6; }
  function __laborHtml_v6(f0) {
   const f=f0;
   const fmtDp=s=>{if(!s)return'____년 __월 __일';const d=new Date(s);return`${d.getFullYear()}년 ${String(d.getMonth()+1).padStart(2,'0')}월 ${String(d.getDate()).padStart(2,'0')}일`;};
