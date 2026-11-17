@@ -105,7 +105,7 @@ ok(pan.includes('aria-pressed="true"') && pan.match(/data-ec-score="team:achieve
 const stN = { evTab: 'cycle', ec: Object.assign({}, st.ec, { sel: 'h1', draft: emptyCycle(E[3], 2026) }) }; const panN = evalPanelHtml(stN);
 ok(panN.includes('사장단 평가 — 조은별') && panN.includes('data-ec-score="exec:achievement|4|3"') && !panN.includes('data-ec-peer') && !panN.includes('1차 평가 — 팀장') && panN.includes('사장단 3명이 각자 평가') && panN.includes('data-ec-score="exec:competency|3|5"'), '★ 평가 패널(인사총무팀): 사장단 평가(업적 5항목)이고 동료평가·팀장 평가 칸은 없음');
 const stH = { evTab: 'cycle', ec: Object.assign({}, st.ec, { me: { uid: 'H', name: '인사', rank: '대리', admin: true, perms: {} }, sel: 'p1' }) }; const panH = evalPanelHtml(stH);
-ok(/data-ec-score="team:achievement\|0\|5"[^>]*disabled/.test(panH) && /data-ec-act="save" disabled/.test(panH) && panH.includes('인사팀은 열람·운영만') && panH.includes('최종 확정은 대표만'), '★ 인사팀이 보면 평가 입력칸은 잠기고 저장·확정은 못 함(열람만), 안내 문구가 보임');
+ok(/data-ec-score="team:achievement\|0\|5"[^>]*disabled/.test(panH) && /data-ec-act="save" disabled/.test(panH) && panH.includes('인사팀은 열람·운영만') && panH.includes('최종 확정은 사장단 계정'), '★ 인사팀이 보면 평가 입력칸은 잠기고 저장·확정은 못 함(열람만), 안내 문구가 보임');
 const stL = { evTab: 'cycle', ec: Object.assign({}, st.ec, { sel: 'p1', draft: Object.assign(JSON.parse(JSON.stringify(st.ec.cycles.p1)), { confirmed: true, ceo: { approved: true } }) }) }; const panL = evalPanelHtml(stL);
 ok(/data-ec-score="team:achievement\|0\|5"[^>]*disabled/.test(panL) && panL.includes('확정된 평가는 수정할 수 없습니다') && panL.includes('data-ec-act="unconfirm"') && panL.includes('그대로 승인'), '확정된 평가는 입력이 잠기고 대표에게만 "확정 취소"가 보임');
 import fs from 'node:fs';

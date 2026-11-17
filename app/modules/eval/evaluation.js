@@ -107,7 +107,7 @@ export function projectPerformance(p) {
 }
 
 /** 열람·조작 권한(설계서 8절, 대표님 2026-10-15 "인사팀은 인사평가를 볼 수 있어야 업무 처리하지"):
- *  - 사장단(대표·부사장): 모든 점수·코멘트를 보고 평가를 입력·수정. 최종 확정은 대표만.
+ *  - 사장단(대표·부사장): 모든 점수·코멘트를 보고 평가를 입력·수정. 최종 확정은 사장단 계정(대표·부사장 3명)만.
  *  - 인사팀(직원 관리에서 hrEval 권한을 받은 사람): **다른 사람의** 점수·코멘트를 모두 보고 양식 배포·진행 관리·집계·평가표 출력 등 운영 업무를 한다. 평가 입력·수정·확정은 못 한다.
  *  - 본인: 자기평가를 쓰고, 본인 결과는 **확정·공개된 뒤에만** 본다(인사팀이라도 본인 평가는 공개 전까지 가림 — 이해 충돌 방지).
  *  - 동료평가의 평가자별 점수는 누구에게도 보이지 않는다(평균만). 그 밖의 직원은 아무것도 못 본다. */
@@ -119,7 +119,7 @@ export function evalAccess(viewer, target, ctx) {
   const same = v.id != null && t.id != null && String(v.id) === String(t.id);
   const none = { level: 'none', viewScores: false, viewComments: false, viewPeerRaw: false, edit: false, confirm: false, manage: false, selfEval: false };
   // 입력·확정은 직급이 아니라 보안 규칙(isCycleManager)과 같은 "사장단 계정"(viewer.canManage — withManage 가 붙임)이어야 한다. 직급만 사장단인 계정(관리자 시스템 계정 등)은 열람·운영은 되지만 저장이 규칙에서 거부되므로 입력을 열지 않는다.
-  if (exec) return { level: 'exec', viewScores: true, viewComments: true, viewPeerRaw: false, edit: v.canManage === true, confirm: v.canManage === true && rank === '대표', manage: true, selfEval: false };
+  if (exec) return { level: 'exec', viewScores: true, viewComments: true, viewPeerRaw: false, edit: v.canManage === true, confirm: v.canManage === true, manage: true, selfEval: false };
   if (same) return Object.assign({}, none, { level: 'self', viewScores: !!c.published, viewComments: !!c.published, selfEval: true });
   if (hr) return { level: 'hr', viewScores: true, viewComments: true, viewPeerRaw: false, edit: false, confirm: false, manage: true, selfEval: false };
   return none;
