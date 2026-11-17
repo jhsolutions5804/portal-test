@@ -3,9 +3,9 @@
  * 저장 위치(기존 관리자 전용 컬렉션 evaluations 안이라 보안 규칙 변경 없음):
  *   프로젝트 성과 = evaluations/_pjt/adhoc/{프로젝트 id}   (사장단의 프로젝트 성과 점수만)
  *   참여자 평가   = evaluations/{근로자}/adhoc/{프로젝트 id} (현장 항목·동료 점수·사장단의 개인 점수·확정) */
-import { withManage } from '../../shared/eval-perm.js?v=20261116e';
-import { setRating, evalAccess, adhocParticipants, emptyAdhoc, adhocSummary } from './evaluation.js?v=20261116e';
-import { pjtSummary } from '../../shared/pjt-summary.js?v=20261116e';   // 청구·지급 집계(영업기획과 공용)
+import { withManage } from '../../shared/eval-perm.js?v=20261117a';
+import { setRating, evalAccess, adhocParticipants, emptyAdhoc, adhocSummary } from './evaluation.js?v=20261117a';
+import { pjtSummary } from '../../shared/pjt-summary.js?v=20261117a';   // 청구·지급 집계(영업기획과 공용)
 const clone = (o) => JSON.parse(JSON.stringify(o));
 /** deps: { db, collection, getDocs, getDoc, setDoc, doc, serverTimestamp, toast, confirmDialog, paint, st, ctx } */
 export function createAdhocController(deps) {
@@ -60,7 +60,7 @@ export function createAdhocController(deps) {
     if (act === 'mback') { ad.msel = ''; ad.mdraft = null; paint(); return true; }
     if (act === 'psave') { await saveProject(); return true; }
     if (act === 'msave') { await saveMember(); return true; }
-    if (act === 'mconfirm') { const a = access(); if (!a.confirm) { toast('수시 평가 확정은 대표만 할 수 있습니다.'); return true; } const sm = adhocSummary(ad.mdraft, ad.pdraft); if (sm.site == null || sm.exec == null) { toast('현장 점수와 사장단 점수가 모두 있어야 확정할 수 있습니다(항목·동료 2명 이상·사장단 점수).'); return true; } ad.mdraft.confirmed = true; await saveMember(); return true; }
+    if (act === 'mconfirm') { const a = access(); if (!a.confirm) { toast('수시 평가 확정은 사장단 계정(대표·부사장)만 할 수 있습니다.'); return true; } const sm = adhocSummary(ad.mdraft, ad.pdraft); if (sm.site == null || sm.exec == null) { toast('현장 점수와 사장단 점수가 모두 있어야 확정할 수 있습니다(항목·동료 2명 이상·사장단 점수).'); return true; } ad.mdraft.confirmed = true; await saveMember(); return true; }
     if (act === 'munconfirm') { if (!access().confirm) return true; const ok = await confirmDialog({ title: '확정 취소', body: '확정을 취소하고 다시 수정할 수 있게 합니다.', confirmLabel: '확정 취소' }); if (!ok.ok) return true; ad.mdraft.confirmed = false; await saveMember(); return true; }
     return false;
   };

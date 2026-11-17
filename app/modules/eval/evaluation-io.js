@@ -1,6 +1,6 @@
 /* 인사평가 — 정기평가 운영: 불러오기·저장·클릭/입력 처리. 저장 위치 = evaluations/{근로자}/cycles/{연도} (기존 관리자 전용 컬렉션 안이라 보안 규칙 변경 없음, 설계서 docs/hr-evaluation-design.md) */
-import { withManage } from '../../shared/eval-perm.js?v=20261116e';
-import { isEvalTarget, emptyCycle, setRating, evalAccess, cycleSummary, areaItems, teamTypeOf, saveBody } from './evaluation.js?v=20261116e';
+import { withManage } from '../../shared/eval-perm.js?v=20261117a';
+import { isEvalTarget, emptyCycle, setRating, evalAccess, cycleSummary, areaItems, teamTypeOf, saveBody } from './evaluation.js?v=20261117a';
 const clone = (o) => JSON.parse(JSON.stringify(o));
 /** deps: { db, collection, getDocs, getDoc, setDoc, doc, serverTimestamp, toast, confirmDialog, paint, st, ctx } */
 export function createCycleController(deps) {
@@ -36,7 +36,7 @@ export function createCycleController(deps) {
     if (act === 'back') { ec.sel = ''; ec.draft = null; paint(); return true; }
     if (act === 'save') { await save(); return true; }
     if (act === 'approve' || act === 'confirm') {
-      const a = access(); if (!a.confirm) { toast('최종 확정은 대표만 할 수 있습니다.'); return true; } const w = target(); const sm = cycleSummary(ec.draft, { teamType: teamTypeOf(w.dept), items: areaItems(w.dept, w.rank) });
+      const a = access(); if (!a.confirm) { toast('최종 확정은 사장단 계정(대표·부사장)만 할 수 있습니다.'); return true; } const w = target(); const sm = cycleSummary(ec.draft, { teamType: teamTypeOf(w.dept), items: areaItems(w.dept, w.rank) });
       if (sm.teamScore == null) { toast('팀 점수가 아직 완성되지 않았습니다(모든 항목과 동료평가가 필요합니다).'); return true; }
       if (act === 'approve') ec.draft.ceo = Object.assign({}, ec.draft.ceo, { approved: true, score: null });
       else { const n = Number(ec.draft.ceo && ec.draft.ceo.score); if (!(isFinite(n) && n >= 0 && n <= 100) || ec.draft.ceo.score === '' || ec.draft.ceo.score == null) { toast('대표 점수를 0~100 사이로 입력해 주세요.'); return true; } ec.draft.ceo = Object.assign({}, ec.draft.ceo, { approved: false, score: n }); }

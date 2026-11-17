@@ -1,9 +1,9 @@
 /* 인사평가 — 정기평가 운영 화면(테섭 미리보기). 마크업만 만든다(저장·불러오기는 evaluation-io.js). 설계서 docs/hr-evaluation-design.md */
-import { pageTableHtml } from '../../shared/pager.js?v=20261116e';
-import { withManage } from '../../shared/eval-perm.js?v=20261116e';
-import { esc } from '../../core/ui.js?v=20261116e';
-import { DEPT_ORDER } from '../../shared/org.js?v=20261116e';
-import { evalPeriod, teamCriteria, teamTypeOf, areaItems, AREA_LABELS, WEIGHTS_BY, cycleSummary, peerAggNote, leadAreasOf, leadNote, emptyCycle, STATUS_LABEL, gradeOf, teamLeaderOf, evalAccess } from './evaluation.js?v=20261116e';
+import { pageTableHtml } from '../../shared/pager.js?v=20261117a';
+import { withManage } from '../../shared/eval-perm.js?v=20261117a';
+import { esc } from '../../core/ui.js?v=20261117a';
+import { DEPT_ORDER } from '../../shared/org.js?v=20261117a';
+import { evalPeriod, teamCriteria, teamTypeOf, areaItems, AREA_LABELS, WEIGHTS_BY, cycleSummary, peerAggNote, leadAreasOf, leadNote, emptyCycle, STATUS_LABEL, gradeOf, teamLeaderOf, evalAccess } from './evaluation.js?v=20261117a';
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const gtone = (g) => (g === 'S' || g === 'A' ? 'accent' : g === 'C' ? 'danger' : 'muted');
@@ -59,7 +59,7 @@ export function evalPanelHtml(st) {
     + '<input class="jh-input" style="max-width:8rem" inputmode="decimal" data-ec-ceo="score" placeholder="대표 점수(0~100)" value="' + esc(ceo.score == null ? '' : ceo.score) + '"' + (acc.confirm && !lock ? '' : ' disabled') + '>'
     + '<input class="jh-input" style="max-width:22rem" data-ec-ceo="comment" placeholder="대표 코멘트(선택)" value="' + esc(ceo.comment || '') + '"' + (acc.confirm && !lock ? '' : ' disabled') + '>'
     + '<button type="button" class="jh-btn" data-variant="secondary" data-ec-act="confirm"' + (acc.confirm && !lock && base != null ? '' : ' disabled') + '>점수로 확정</button>' + (lock && acc.confirm ? '<button type="button" class="jh-btn" data-variant="ghost" data-ec-act="unconfirm">확정 취소</button>' : '') + '</div>'
-    + (acc.confirm ? '' : '<div class="jh-field__hint">최종 확정은 대표만 할 수 있습니다' + (acc.level === 'hr' ? ' (인사팀은 열람·운영만)' : '') + '.</div>') + '</div>';
+    + (acc.confirm ? '' : '<div class="jh-field__hint">최종 확정은 사장단 계정(대표·부사장)만 할 수 있습니다' + (acc.level === 'hr' ? ' (인사팀은 열람·운영만)' : '') + '.</div>') + '</div>';
   const result = '<div class="jh-hr-ev__score">' + cell('팀 점수', fmt(sm.teamScore), type === 'pjt' ? '팀장 평가 + 동료' : '사장단 ' + sm.raters + '명 평균') + cell('대표 점수', ceo.approved ? '그대로 승인' : fmt(sm.ceoScore)) + cell('최종 점수', fmt(sm.final), lock ? '확정됨' : '확정 전') + cell('등급', sm.grade || '-', sm.grade ? '' : 'S 90↑ · A 80↑ · B 65↑ · C') + '</div>';
   const actions = '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-ec-act="save"' + (canEdit || (acc.confirm && !lock) ? '' : ' disabled') + '>저장</button><button type="button" class="jh-btn" data-variant="ghost" data-ec-act="back">← 팀 목록</button>' + (acc.level === 'hr' ? '<span class="jh-field__hint">인사팀은 열람·운영만 가능하고 평가 입력·확정은 사장단이 합니다.</span>' : '') + (lock ? '<span class="jh-field__hint">확정된 평가는 수정할 수 없습니다(대표가 확정 취소 후 수정).</span>' : '') + '</div>';
   return card((w.name || '') + ' · ' + (w.dept || '') + ' · ' + (w.rank || ''), '<div class="jh-hr__pad">' + result + main + peerBlock + selfBlock + ceoBlock + actions + '</div>', chip(STATUS_LABEL[sm.status], stone(sm.status)));
