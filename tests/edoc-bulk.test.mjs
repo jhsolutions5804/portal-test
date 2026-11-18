@@ -10,6 +10,7 @@ const line = (cur) => [{ role: '작성', uid: 'A', status: 'draft' }, { role: '�
 const doc = (id, o) => Object.assign({ dtype: 'daily', id, status: 'pending', authorName: '정다애', _ms: 1000, approvalLine: line('CEO') }, o || {});
 
 ok('결재 중인 내 차례 업무일지는 대상', () => assert.equal(B.bulkEligible(doc('1'), me), true));
+ok('★ 앞 결재가 끝나 검토중이 된 업무일지(2단계 내 차례)도 대상 — 결재1 완료·결재2 내 차례', () => assert.equal(B.bulkEligible(doc('1', { status: 'reviewing', approvalLine: [{ role: '작성', uid: 'A', status: 'draft' }, { role: '결재1', uid: 'LEAD', status: 'done' }, { role: '결재2', uid: 'CEO', status: 'pending' }] }), me), true));
 ok('연차·지출 같은 다른 종류는 대상이 아님', () => { assert.equal(B.bulkEligible(doc('1', { dtype: 'leave' }), me), false); assert.equal(B.bulkEligible(doc('1', { dtype: 'purchase' }), me), false); });
 ok('이미 승인·반려·임시저장 문서는 대상이 아님', () => ['approved', 'rejected', 'draft', 'posted'].forEach((s) => assert.equal(B.bulkEligible(doc('1', { status: s }), me), false)));
 ok('내 차례가 아니면 대상이 아님(다른 사람 결재 단계)', () => assert.equal(B.bulkEligible(doc('1', { approvalLine: line('SOMEONE') }), me), false));

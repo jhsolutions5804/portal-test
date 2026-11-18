@@ -1,5 +1,5 @@
 // 업무일지 일괄 결재(대기열 2-5-104) — 화면과 분리한 순수 계산. 서버는 건별 승인 그대로 쓴다(결재 기록·알림이 건별과 똑같다).
-import { myTurn } from './logic.js?v=20261118d';
+import { myTurn } from './logic.js?v=20261118e';
 
 /** 일괄 결재를 허용하는 문서 종류(업무일지만 — 연차·지출·구매는 내용을 보고 결재해야 한다) */
 export const BULK_DTYPES = ['daily'];
@@ -10,9 +10,9 @@ export const BULK_STOP_AFTER = 3;
 
 const keyOf = (d) => d.dtype + '/' + d.id;
 
-/** 일괄 결재 대상인가: 결재 중인 업무일지이고 지금이 **내 차례**일 때만(대리 승인은 문서를 열어 건별로) */
+/** 일괄 결재 대상인가: 결재 중(결재대기·검토중)인 업무일지이고 지금이 **내 차례**일 때만(대리 승인은 문서를 열어 건별로) */
 export function bulkEligible(d, me) {
-  return !!d && BULK_DTYPES.indexOf(d.dtype) !== -1 && d.status === 'pending' && myTurn(d, me) === true;
+  return !!d && BULK_DTYPES.indexOf(d.dtype) !== -1 && (d.status === 'pending' || d.status === 'reviewing') && myTurn(d, me) === true;
 }
 
 /** 목록에서 대상만 오래된 순으로 */
