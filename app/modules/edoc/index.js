@@ -1,30 +1,30 @@
-import { fetchAll, fetchOne } from './data.js?v=20261118a';
-import { listHtml, detailHtml } from './views.js?v=20261118a';
-import { tabCounts, edocPrintTitle, filterDocs } from './logic.js?v=20261118a';
-import { bulkTargets, bulkConfirmBody, bulkChunks, runBulk, bulkResultText } from './bulk-logic.js?v=20261118a';
-import { buildHash, navigate } from '../../core/router.js?v=20261118a';
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261118a';
-import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261118a';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261118a';
-import { toast } from '../../core/ui.js?v=20261118a';
-import { confirmDialog } from '../../core/dialog.js?v=20261118a';
-import { loadDirectory, resetDirectory } from './directory.js?v=20261118a';
-import { act, partAct } from './api.js?v=20261118a';
-import * as C from './compose.js?v=20261118a';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261118a';
-import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261118a';
-import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261118a';
-import { kstKey } from './home-daily.js?v=20261118a';
-import { isOffDay } from '../../shared/holidays.js?v=20261118a';
-import { todoCounts } from './home-stats.js?v=20261118a';
-import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261118a';
-import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261118a';
-import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261118a';
-import * as AT from './attach-logic.js?v=20261118a';
-import { uploadFile, removeFile, openFile } from './attach.js?v=20261118a';
-import * as SL from './settings-logic.js?v=20261118a';
-import { chooserHtml, newDocLayoutHtml, composeHtml, partsHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261118a';
-import { printWithTitle } from '../../shared/print-title.js?v=20261118a';
+import { fetchAll, fetchOne } from './data.js?v=20261118b';
+import { listHtml, detailHtml } from './views.js?v=20261118b';
+import { tabCounts, edocPrintTitle, filterDocs } from './logic.js?v=20261118b';
+import { bulkTargets, bulkConfirmBody, bulkChunks, runBulk, bulkResultText } from './bulk-logic.js?v=20261118b';
+import { buildHash, navigate } from '../../core/router.js?v=20261118b';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261118b';
+import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261118b';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261118b';
+import { toast } from '../../core/ui.js?v=20261118b';
+import { confirmDialog } from '../../core/dialog.js?v=20261118b';
+import { loadDirectory, resetDirectory } from './directory.js?v=20261118b';
+import { act, partAct } from './api.js?v=20261118b';
+import * as C from './compose.js?v=20261118b';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261118b';
+import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261118b';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261118b';
+import { kstKey } from './home-daily.js?v=20261118b';
+import { isOffDay } from '../../shared/holidays.js?v=20261118b';
+import { todoCounts } from './home-stats.js?v=20261118b';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261118b';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261118b';
+import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261118b';
+import * as AT from './attach-logic.js?v=20261118b';
+import { uploadFile, removeFile, openFile } from './attach.js?v=20261118b';
+import * as SL from './settings-logic.js?v=20261118b';
+import { chooserHtml, newDocLayoutHtml, composeHtml, partsHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261118b';
+import { printWithTitle } from '../../shared/print-title.js?v=20261118b';
 
 
 export const manifest = {
@@ -271,7 +271,7 @@ async function mountCompose(root, route, ctx) {
   let attendSeq = 0;
   const updateAttend = async () => {   // 근태 요청: 근무시간 계산과 그 날의 현재 기록(날짜가 바뀌면 다시 조회)
     const v = S.values; const ok = /^([01]\d|2[0-3]):[0-5]\d$/;
-    const hours = ok.test(v.checkIn || '') && ok.test(v.checkOut || '') && v.checkIn !== v.checkOut ? C.attendHoursOf(v.checkIn, v.checkOut) : null;
+    const hours = ok.test(v.checkIn || '') && ok.test(v.checkOut || '') && v.checkIn !== v.checkOut ? C.attendHoursOf(v.checkIn, v.checkOut, v.breakOverride) : null;
     S.attend = Object.assign({}, S.attend, { date: v.date, hours });
     const el = () => root.querySelector('#edoc-attend-hint'); if (el()) el().innerHTML = attendHintHtml(S.attend);
     if (S.attend.loadedDate !== v.date && /^\d{4}-\d{2}-\d{2}$/.test(v.date || '') && S.worker) {

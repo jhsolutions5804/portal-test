@@ -1,8 +1,8 @@
 /* 작성 화면의 순수 로직 — 양식 정의, 검증, 문서 데이터 만들기, 결재선 편집. (화면·Firestore 와 분리해 시험한다) */
 
-import { halfwidthDeep } from '../../shared/text-fix.js?v=20261118a';
-import { breakOfSpan } from '../../shared/worktime.js?v=20261118a';
-import { recKey, FUEL_TYPES, FULL_OPTS, SHOP_KINDS, carChecks, carFields, emptyCarItem, carCalcText } from '../../shared/car-cost.js?v=20261118a'; // 주유·정비·비용 기록(운행일지 문서의 rec 필드)
+import { halfwidthDeep } from '../../shared/text-fix.js?v=20261118b';
+import { breakOfSpan } from '../../shared/worktime.js?v=20261118b';
+import { recKey, FUEL_TYPES, FULL_OPTS, SHOP_KINDS, carChecks, carFields, emptyCarItem, carCalcText } from '../../shared/car-cost.js?v=20261118b'; // 주유·정비·비용 기록(운행일지 문서의 rec 필드)
 export const MAX_APPROVERS = 5;
 export const MAX_PARTS = 6; // 한 사람의 하루에 나눌 수 있는 참여 프로젝트 수(서버 pjt-part-act 의 day-split 규칙과 같다)
 export const MAX_CC = 10;
@@ -96,7 +96,8 @@ const F = {
     { key: 'date', label: '수정할 날짜', type: 'date', required: true, row: 'a', hint: '지난 날짜만, 최근 60일 이내입니다. 오늘 기록은 출퇴근 기록 화면에서 직접 입력하세요.' },
     { key: 'checkIn', label: '출근', type: 'time', required: true, row: 'a' },
     { key: 'checkOut', label: '퇴근', type: 'time', required: true, row: 'a' },
-    { key: 'reason', label: '사유', type: 'textarea', ph: '예) 퇴근 기록을 누르지 못했습니다', required: true, row: 'b' }
+    { key: 'breakOverride', label: '휴게시간 정정(분, 선택)', type: 'number', step: '1', zeroOk: true, ph: '비우면 규칙대로', row: 'b', hint: '점심을 안 드셨거나 실제로 쉰 시간이 규칙보다 짧을 때만 적으세요. 규칙 휴게(식사 1시간 + 4시간마다 30분)보다 클 수 없고, 결재자가 확인합니다.' },
+    { key: 'reason', label: '사유', type: 'textarea', ph: '예) 퇴근 기록을 누르지 못했습니다 / 점심을 먹지 못해 휴게 0분입니다', required: true, row: 'b' }
   ],
   spendBase: [
     { key: 'vendor', label: '공급업체 / 거래처', type: 'text', ph: '업체명', required: true, row: 'a' },
@@ -239,14 +240,15 @@ export function defaultValues(type, me, now) {
   if (type === 'leave') { const nb = nextBusinessDay(now); Object.assign(v, { leaveType: '연차(유급)', startDate: nb, endDate: nb, days: calcLeaveDays(nb, nb, '연차(유급)'), reason: '', contact: '', deputyUid: '' }); }
   else if (type === 'resign') Object.assign(v, { leaveKind: '퇴직', lastDate: '', returnDate: '', reason: '' });
   else if (type === 'cert') Object.assign(v, { purpose: '', language: '한국어', copies: 1 });
-  else if (type === 'attend') { const y = new Date(now || new Date()); y.setDate(y.getDate() - 1); Object.assign(v, { date: ymd(y), checkIn: '', checkOut: '', reason: '' }); }
+  else if (type === 'attend') { const y = new Date(now || new Date()); y.setDate(y.getDate() - 1); Object.assign(v, { date: ymd(y), checkIn: '', checkOut: '', breakOverride: '', reason: '' }); }
   else if (type === 'daily') Object.assign(v, { date: today, pjtId: '', todayWork: '', tomorrowWork: '', issue: '', parts: [] }); // parts = 오늘 참여한 프로젝트 칩(문서 본문에는 넣지 않고 업무일지와 별도 기록 pjt_day_part 로 서버가 저장)
   else if (type === 'drive') Object.assign(v, { rec: 'trip', date: today, vehicleId: '', pjtId: '', origin: '', destination: '', kind: DRIVE_KINDS[0], odoStart: '', odoEnd: '', bizKm: '', purpose: '', note: '', station: '', fuelType: FUEL_TYPES[0], odo: '', full: FULL_OPTS[0], amount: '', liters: '', washFee: '', shopKind: SHOP_KINDS[0], place: '', items: [] });
   else if (type === 'spend') Object.assign(v, { kind: 'purchase', vendor: '', pjtId: '', purpose: '', dueDate: '', expDate: today, category: SPEND_CATEGORIES[0], amount: '', receipt: RECEIPTS[0], items: [] });
   return v;
 }
 /** 근태 요청의 근무시간(식사 1시간 + 식사 뺀 4시간마다 30분 제외, 단 출근~퇴근 5시간 이하는 제외 안 함 · 퇴근이 더 이르면 다음 날 퇴근) — 서버(attend-calc.js)와 같은 규칙 */
-export function attendHoursOf(ci, co) { const [ih, im] = String(ci).split(':').map(Number); const [oh, om] = String(co).split(':').map(Number); let m = (oh * 60 + om) - (ih * 60 + im); if (m <= 0) m += 1440; return Math.max(0, m - breakOfSpan(m)) / 60; }
+export function attendBreakOf(ci, co, ov) { const [ih, im] = String(ci).split(':').map(Number); const [oh, om] = String(co).split(':').map(Number); let m = (oh * 60 + om) - (ih * 60 + im); if (m <= 0) m += 1440; const auto = breakOfSpan(m); if (ov === undefined || ov === null || ov === '') return auto; const n = Number(ov); return Number.isInteger(n) && n >= 0 ? Math.min(n, auto) : auto; }
+export function attendHoursOf(ci, co, ov) { const [ih, im] = String(ci).split(':').map(Number); const [oh, om] = String(co).split(':').map(Number); let m = (oh * 60 + om) - (ih * 60 + im); if (m <= 0) m += 1440; return Math.max(0, m - attendBreakOf(ci, co, ov)) / 60; }
 export { carCalcText, recKey };
 export const emptyItem = (type) => (type === 'drive' ? emptyCarItem() : { name: '', qty: '', unitPrice: '', link: '' }); // 운행일지의 정비·비용 항목은 이름·금액·메모
 /** 기록 종류(운행·주유·정비)를 바꾼다 — 정비·비용이면 빈 항목 한 줄을 미리 깔아 준다 */
@@ -320,7 +322,8 @@ function validateBase(type, values, opts) {
     if (!err.date) { const back = new Date(today + 'T00:00:00'); back.setDate(back.getDate() - 60);
       if (v.date >= today) err.date = '지난 날짜만 요청할 수 있습니다. 오늘 기록은 출퇴근 기록 화면에서 직접 입력해 주세요.'; else if (v.date < ymd(back)) err.date = '최근 60일 이내의 날짜만 요청할 수 있습니다. 관리자에게 직접 입력을 요청해 주세요.'; }
     if (!err.checkIn && !t(v.checkIn)) err.checkIn = '출근 시각 형식이 올바르지 않습니다.'; if (!err.checkOut && !t(v.checkOut)) err.checkOut = '퇴근 시각 형식이 올바르지 않습니다.';
-    if (!err.checkIn && !err.checkOut) { if (v.checkIn === v.checkOut) err.checkOut = '출근과 퇴근 시각이 같습니다.'; else if (attendHoursOf(v.checkIn, v.checkOut) > 16) err.checkOut = '근무시간이 16시간을 넘습니다. 시각을 확인해 주세요.'; }
+    if (!err.checkIn && !err.checkOut && v.checkIn !== v.checkOut && String(v.breakOverride == null ? '' : v.breakOverride).trim() !== '') { const ov = Number(v.breakOverride); const auto = attendBreakOf(v.checkIn, v.checkOut); if (!Number.isInteger(ov) || ov < 0) err.breakOverride = '휴게시간은 0 이상의 정수(분)로 입력해 주세요.'; else if (ov > auto) err.breakOverride = '휴게시간 정정은 규칙 휴게(' + auto + '분) 이하여야 합니다. 더 쉬었다면 그대로 두세요.'; }
+    if (!err.checkIn && !err.checkOut) { if (v.checkIn === v.checkOut) err.checkOut = '출근과 퇴근 시각이 같습니다.'; else if (attendHoursOf(v.checkIn, v.checkOut, err.breakOverride ? '' : v.breakOverride) > 16) err.checkOut = '근무시간이 16시간을 넘습니다. 시각을 확인해 주세요.'; }
     if (opts && opts.worker === null) err.date = err.date || '근무자 명부와 연동된 계정만 요청할 수 있습니다. 인사 담당자에게 연동을 요청해 주세요.';
   }
   if (type === 'leave' && !err.startDate && !err.endDate && v.startDate > v.endDate) err.endDate = '종료일이 시작일보다 빠릅니다.';
@@ -361,7 +364,7 @@ export function buildDocData(type, values, me, ctx) {
   }
   else if (type === 'resign') Object.assign(d, { leaveKind: text('leaveKind'), lastDate: v.lastDate, returnDate: v.leaveKind === '휴직' ? (v.returnDate || '') : '', reason: text('reason') });
   else if (type === 'cert') Object.assign(d, { purpose: text('purpose'), language: text('language'), copies: num(v.copies) });
-  else if (type === 'attend') Object.assign(d, { date: v.date, checkIn: v.checkIn, checkOut: v.checkOut, reason: text('reason'), workerId: (ctx && ctx.worker && ctx.worker.id) || '', workHours: attendHoursOf(v.checkIn, v.checkOut), breakMinutes: 120 });
+  else if (type === 'attend') Object.assign(d, { date: v.date, checkIn: v.checkIn, checkOut: v.checkOut, reason: text('reason'), workerId: (ctx && ctx.worker && ctx.worker.id) || '', workHours: attendHoursOf(v.checkIn, v.checkOut, v.breakOverride), breakMinutes: attendBreakOf(v.checkIn, v.checkOut, v.breakOverride), breakOverride: String(v.breakOverride == null ? '' : v.breakOverride).trim() === '' ? null : Number(v.breakOverride) });
   else if (type === 'daily') Object.assign(d, { date: v.date, pjtId: v.pjtId, pjtCode: v.pjtId === 'common' ? '공통' : proj ? proj.pjtCode || proj.code || '' : '', pjtName: v.pjtId === 'common' ? '프로젝트 무관(본사 경비)' : proj ? proj.name || '' : '', todayWork: String(v.todayWork || '').trim(), tomorrowWork: String(v.tomorrowWork || '').trim(), issue: String(v.issue || '').trim() });
   else if (type === 'drive' && recKey(v.rec) !== 'trip') { // 주유·정비·비용 기록 — 운행기록부 필드(계기판 전·후, 주행거리, 업무용)는 넣지 않는다
     const veh = (ctx && ctx.vehicles || []).find((x) => x.id === v.vehicleId);
