@@ -176,6 +176,7 @@
 @media print {
  .jh-app { display: block; }
  .jh-body, .jh-main { display: block; padding: 0; }
+ .jh-main[hidden], .jh-keep[hidden] { display: none; }   /* 작업 탭으로 살려 둔 다른 화면(숨김)이 위 display:block 때문에 인쇄에 같이 나오던 것을 막는다 */
  .jh-split, .jh-split__list, .jh-split__detail { display: block; border: 0; box-shadow: none; }
  .jh-detail, .jh-paper { display: block; }
  .jh-paper { width: 210mm; min-height: 297mm; }
