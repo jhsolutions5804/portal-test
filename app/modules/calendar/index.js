@@ -1,18 +1,18 @@
-import { calendarProvidersFor } from '../../core/registry.js?v=20261118b';
-import { toast } from '../../core/ui.js?v=20261118b';
-import { confirmDialog } from '../../core/dialog.js?v=20261118b';
-import { loadHolidays, isHoliday } from '../../shared/holidays.js?v=20261118b';
-import { dateKey, parseMonth, monthKey, shiftMonth, gridRange, groupByDay, mergeResults, visibleEvents, makeEvent, canWrite, isView, defaultView, viewRange, shiftAnchor, listDates, rangeTitle, AGENDA_DAYS } from './logic.js?v=20261118b';
-import { leaveProvider, companyProvider, deleteCompanyEvent, setCompanyDone, invalidateCompany } from './data.js?v=20261118b';
-import { gridHtml, dayHtml, noticeHtml, widgetFrameHtml, listFrameHtml, fullFrameHtml, agendaHtml, blankDraft, draftOf } from './view.js?v=20261118b';
-import { openEventForm } from './form.js?v=20261118b';
+import { calendarProvidersFor } from '../../core/registry.js?v=20261118c';
+import { toast } from '../../core/ui.js?v=20261118c';
+import { confirmDialog } from '../../core/dialog.js?v=20261118c';
+import { loadHolidays, isHoliday } from '../../shared/holidays.js?v=20261118c';
+import { dateKey, parseMonth, monthKey, shiftMonth, gridRange, groupByDay, mergeResults, visibleEvents, makeEvent, canWrite, isView, defaultView, viewRange, shiftAnchor, listDates, rangeTitle, AGENDA_DAYS } from './logic.js?v=20261118c';
+import { leaveProvider, companyProvider, deleteCompanyEvent, setCompanyDone, invalidateCompany } from './data.js?v=20261118c';
+import { gridHtml, dayHtml, noticeHtml, widgetFrameHtml, fullFrameHtml, agendaHtml, blankDraft, draftOf } from './view.js?v=20261118c';
+import { openEventForm } from './form.js?v=20261118c';
 
 /** 일정 모듈 = 플랫폼 기본 모듈. 자기 일정(회사 일정·연차·휴무)을 내놓고, 다른 모듈이 manifest.calendar 로 등록한 일정도 한 달력에 모은다.
  *  사이드바에는 두지 않는다(nav:false) — 홈의 일정 위젯과 그 안의 보기 방식(안건·하루·3일·월)으로 쓴다. */
 export const manifest = {
   id: 'calendar', order: 70, nav: false, title: '일정', icon: '📅', defaultHash: '#/calendar/month',
   calendar: [leaveProvider, companyProvider],
-  widgets: [{ id: 'month', order: 90, mobileOrder: 3, mount: mountWidget }, { id: 'list', order: 91, mobileOrder: 4, mount: mountListWidget }]   // 홈: 일정 캘린더 + 일정 목록(두 카드)
+  widgets: [{ id: 'month', order: 90, mobileOrder: 3, mount: mountWidget }]   // 홈: 일정 캘린더 한 장(달력 + 선택한 날 목록)
 };
 
 const OFF_KEY = 'jh_cal_off'; const VIEW_KEY = 'jh_cal_view';
@@ -35,7 +35,7 @@ async function loadRange(me, range, force) {
   const merged = mergeResults(results); merged.range = range; cache.set(ckey(me, range), { t: Date.now(), merged }); return merged;
 }
 
-/** 달력 제어기 — 전체 화면과 홈 위젯(widget=true)이 같은 코드·같은 모양을 쓴다(홈에서는 날짜 목록 dayEl 이 옆 "일정 목록" 카드에 붙는다). 위젯은 월 보기가 6주 고정·URL 주소 갱신 없음이 다를 뿐이다.
+/** 달력 제어기 — 전체 화면과 홈 위젯(widget=true)이 같은 코드·같은 모양을 쓴다. 위젯은 월 보기가 6주 고정·URL 주소 갱신 없음이 다를 뿐이다.
  *  화면이 흔들리지 않도록: 틀은 한 번만 그리고, 이동·보기 전환·날짜 선택·불러오기에서는 본문만 제자리에서 바꾼다. */
 function createCalendar(el, me, widget, route) {
   const now = new Date(); const q = (route && route.query) || {}; const today = dateKey(now);
@@ -50,7 +50,7 @@ function createCalendar(el, me, widget, route) {
   S.range = rangeOf(); S.title = S.view === 'month' ? S.y + '년 ' + S.m + '월' : rangeTitle(S.view, S.range);
   el.onclick = null; el.onchange = null; el.oninput = null;
   el.innerHTML = widget ? widgetFrameHtml(S, providers, me) : fullFrameHtml(S, providers, me);
-  const $ = (s) => el.querySelector(s); const root = $('.jh-cal'); const grid = $('[data-cal-grid]'); let dayEl = $('[data-cal-day]'); const noteEl = $('[data-cal-notice]'); const titleEl = $('[data-cal-title]'); const filter = $('[data-cal-filter]');
+  const $ = (s) => el.querySelector(s); const root = $('.jh-cal'); const grid = $('[data-cal-grid]'); const dayEl = $('[data-cal-day]'); const noteEl = $('[data-cal-notice]'); const titleEl = $('[data-cal-title]'); const filter = $('[data-cal-filter]');
   if (filter) filter.open = widget ? false : !isPhone();   // 폰에서는 접어 둔다(화면을 덜 차지하고 칩이 잘리지 않게), PC는 펼침
   let bd = {};
   const reserve = () => { /* 홈은 카드를 내용 높이로 둔다(미리 큰 자리를 잡지 않음) */ };
@@ -112,16 +112,10 @@ function createCalendar(el, me, widget, route) {
     catch (err) { console.error(err); c.checked = !c.checked; toast('완료 표시를 저장하지 못했습니다.'); }
   };
   el.onchange = onChange;
-  if (widget) {   // 홈: 옆 "일정 목록" 카드가 붙으면 선택한 날의 목록을 거기에 그리고, 그 안의 수정·삭제·완료도 같은 처리기로
-    homeShare.attach = (slot) => { if (!el.isConnected || !slot.isConnected) return; slot.innerHTML = listFrameHtml(); dayEl = slot.querySelector('[data-cal-day]'); slot.onclick = onClick; slot.onchange = onChange; if (!S.loading) dayEl.innerHTML = dayHtml(S, bd, me); };
-    if (homeShare.listSlot && homeShare.listSlot.isConnected) homeShare.attach(homeShare.listSlot);
-  }
   return load(false);
 }
 
 /* 전체 화면 */
 export function mount(root, route, ctx) { root.className = 'jh-main'; return createCalendar(root, ctx.me, false, route); }
-/* 플랫폼 홈 위젯: 일정 캘린더 + 일정 목록(두 카드가 한 달력 제어기를 함께 쓴다) */
-const homeShare = { listSlot: null, attach: null };
+/* 플랫폼 홈 위젯: 일정 캘린더 한 장(달력 + 선택한 날 목록) */
 async function mountWidget(slot, ctx) { return createCalendar(slot, ctx.me, true, null); }
-async function mountListWidget(slot) { homeShare.listSlot = slot; slot.innerHTML = listFrameHtml(); if (homeShare.attach) homeShare.attach(slot); }

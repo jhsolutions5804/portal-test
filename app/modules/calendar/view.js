@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261118b';
-import { WEEKDAYS, ymd, dateKey, monthGrid, shiftMonth, fmtRange, expiryNote, expiryState, OWN_TAGS, TAG_LABEL, canWrite, canEditOwn, isHHMM, pad, VIEWS, dayLabel } from './logic.js?v=20261118b';
-import { holidayName as holName } from '../../shared/holidays.js?v=20261118b';
+import { esc } from '../../core/ui.js?v=20261118c';
+import { WEEKDAYS, ymd, dateKey, monthGrid, shiftMonth, fmtRange, expiryNote, expiryState, OWN_TAGS, TAG_LABEL, canWrite, canEditOwn, isHHMM, pad, VIEWS, dayLabel } from './logic.js?v=20261118c';
+import { holidayName as holName } from '../../shared/holidays.js?v=20261118c';
 
 export const SRC_LABEL = { pjt: 'PJT', leave: '연차·휴무', company: '회사', expiry: '만료', hr: '인사' };
 const srcLabel = (s) => SRC_LABEL[s] || s;
@@ -18,16 +18,12 @@ export function barHtml(S, providers, me) {
 /** 달력 본체(막대 · 알림 · 본문 + (월 보기에서) 선택한 날 목록). 전체 화면과 홈 위젯이 똑같이 쓴다 */
 function bodyHtml(S, providers, me) {
   return '<div class="jh-cal" data-view="' + S.view + '"' + (S.widget ? ' data-in-widget="true"' : '') + '>' + barHtml(S, providers, me) + '<div data-cal-notice></div><div class="jh-cal__split"><div class="jh-cal__gridwrap" data-cal-grid aria-busy="true"></div>' +
-    (S.widget ? '' : '<section class="jh-card jh-form jh-cal__dayarea" aria-live="polite" data-cal-day></section>') + '</div></div>';   // 홈에서는 날짜 목록이 따로 카드(listFrameHtml)
+    '<section class="jh-card jh-form jh-cal__dayarea" aria-live="polite" data-cal-day></section></div></div>';   // 홈 달력 카드도 전체 화면처럼 오른쪽에 선택한 날 목록을 한 장 안에 둔다
 }
 export function fullFrameHtml(S, providers, me) { return bodyHtml(S, providers, me); }
-/** 홈 위젯: 월 달력(보기 전환 없음) 카드. 선택한 날의 일정 목록은 옆 카드(listFrameHtml)에 나온다 */
+/** 홈 위젯: 월 달력(보기 전환 없음) 카드 한 장. 선택한 날의 일정 목록은 같은 카드 오른쪽에 나온다 */
 export function widgetFrameHtml(S, providers, me) {
   return '<section class="jh-panel jh-card" aria-label="일정 캘린더"><div class="jh-panel__head"><h3>📅 일정 캘린더</h3></div><div class="jh-form">' + bodyHtml(S, providers, me) + '</div></section>';
-}
-/** 홈의 일정 목록 카드: 달력에서 고른 날짜의 일정(등록·수정·삭제·완료는 달력과 같은 처리기). 카드 높이를 다 쓰고 길면 안에서 스크롤 */
-export function listFrameHtml() {
-  return '<section class="jh-panel jh-card jh-cal-list" aria-label="일정 목록"><div class="jh-panel__head"><h3>📋 일정 목록</h3></div><div class="jh-cal__dayarea jh-cal-list__body" aria-live="polite" data-cal-day></div></section>';
 }
 /** 목록 보기(안건·하루·3일): 날짜 머리글 아래 그날의 일정. 이름·시간이 눌러 보지 않아도 보인다.
  *  limit = 보여 줄 일정 줄 수(홈 위젯은 처음 5줄만 — 목록이 길어도 위젯이 커지지 않게). 날짜는 쪼개지 않고, 남은 줄 수는 "N건 더 보기"로 알린다 */
@@ -52,8 +48,8 @@ export function gridHtml(S, byDay) {
     const items = byDay[c.key] || []; const hol = holName(c.key); const isHol = !!hol;
     let inner = '<span class="jh-cal__num">' + c.day + '</span>';
     if (hol) inner += '<span class="jh-cal__hol">' + esc(hol) + '</span>';
-    inner += items.slice(0, 2).map((e) => '<span class="jh-cal__ev" data-src="' + esc(e.source) + '" data-done="' + (e.done ? 'true' : 'false') + '">' + esc((e.startTime ? e.startTime + ' ' : '') + e.title) + '</span>').join('');
-    if (items.length > 2) inner += '<span class="jh-cal__more">+' + (items.length - 2) + '건</span>';
+    inner += items.slice(0, S.widget ? 3 : 2).map((e) => '<span class="jh-cal__ev" data-src="' + esc(e.source) + '" data-done="' + (e.done ? 'true' : 'false') + '">' + esc((e.startTime ? e.startTime + ' ' : '') + e.title) + '</span>').join('');
+    if (items.length > (S.widget ? 3 : 2)) inner += '<span class="jh-cal__more">+' + (items.length - (S.widget ? 3 : 2)) + '건</span>';
     const label = c.key.replace(/-/g, '.') + (hol ? ' ' + hol : '') + ' · 일정 ' + items.length + '건';
     return '<button type="button" class="jh-cal__day" data-day="' + c.key + '" data-dow="' + c.dow + '"' + (c.inMonth ? '' : ' data-out="true"') + (isHol ? ' data-hol="true"' : '') + (c.key === S.today ? ' data-today="true"' : '') + (c.key === S.sel ? ' aria-current="date"' : '') + ' aria-label="' + esc(label) + '">' + inner + '</button>';
   }).join('')).join('');

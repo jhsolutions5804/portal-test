@@ -112,9 +112,9 @@ for (const [name, fn] of targets) {
   MODULES.forEach((m) => reg.register(m.manifest)); const host = document.createElement('div'); document.body.appendChild(host); errors.length = 0; let bad = 0; const problems = [];
   try { mountPlatformHome(host, Object.assign({}, ctx, { setBadge: () => {} })); await sleep(1800); } catch (e) { problems.push('홈 예외: ' + String((e && e.stack) || e).split('\n').slice(0, 2).join(' | ')); }
   const ids = [...host.querySelectorAll('[data-widget]')].map((x) => x.getAttribute('data-widget')); const slot = (id) => host.querySelector('[data-widget="' + id + '"]');
-  if (ids.join() !== 'attendance/clock,edoc/todo,calendar/month,calendar/list') problems.push('홈 카드가 4개(출퇴근·전자결재·일정 캘린더·일정 목록)가 아님: ' + ids.join());
-  const m = slot('calendar/month'), l = slot('calendar/list');
-  if (m) { if (m.querySelectorAll('[data-day]').length < 35) problems.push('일정 캘린더에 날짜 칸이 부족함'); if (m.querySelector('[data-cal-day]')) problems.push('일정 캘린더 카드 안에 날짜 목록이 또 있음(목록은 별도 카드여야 함)'); if (m.querySelector('.jh-cal__views')) problems.push('홈 달력에 보기 전환이 있음(월 달력만이어야 함)'); }
+  if (ids.join() !== 'attendance/clock,edoc/todo,calendar/month') problems.push('홈 카드가 3개(출퇴근·전자결재·일정 캘린더)가 아님: ' + ids.join());
+  const m = slot('calendar/month'), l = null;
+  if (m) { if (m.querySelectorAll('[data-day]').length < 35) problems.push('일정 캘린더에 날짜 칸이 부족함'); if (!m.querySelector('[data-cal-day] .jh-cal__dayhead')) problems.push('일정 캘린더 카드 안에 선택한 날 목록이 없음'); if (m.querySelector('.jh-cal__views')) problems.push('홈 달력에 보기 전환이 있음(월 달력만이어야 함)'); }
   if (l) { if (!l.querySelector('.jh-cal-list [data-cal-day]')) problems.push('일정 목록 카드에 목록 칸이 없음'); else if (!l.querySelector('[data-cal-day] .jh-cal__dayhead')) problems.push('일정 목록 카드에 선택한 날짜(오늘)의 목록이 안 그려짐'); }
   if (m && l && !problems.length) { const target = [...m.querySelectorAll('[data-day]')].find((d) => !d.hasAttribute('data-out') && d.getAttribute('data-day').endsWith('-15')); if (target) { const before = l.querySelector('.jh-cal__dayhead h3').textContent; target.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(120); const after = l.querySelector('.jh-cal__dayhead h3').textContent; if (!/15일/.test(after) || before === after && !/15일/.test(before)) problems.push('달력에서 날짜를 눌러도 옆 일정 목록이 바뀌지 않음: ' + before + ' → ' + after); } }
   const tdo = slot('edoc/todo'); if (tdo && (!tdo.querySelector('a[href="#/edoc/new"]') || !tdo.querySelector('a[href="#/edoc/home"]'))) problems.push('전자결재 카드에 새 문서 작성·전자결재 홈 버튼이 없음');
