@@ -1,7 +1,11 @@
 /* 근로시간 공용 계산 — 출퇴근 모듈·전자결재 홈이 함께 쓴다(순수 함수, 화면·네트워크 없음).
  * 기존 전자결재·출퇴근 화면과 같은 기준: 소정근로시간 = 해당 월 평일(공휴일 제외) × 8h, 최대초과근로 = 주 12h × 겹치는 주 수,
- * 기록 시각은 10분 단위(가까운 값), 휴게시간은 점심 2시간(120분) 고정 — 단, 출근~퇴근이 5시간 이하면 점심을 빼지 않는다(반차일 등, 대표님 2026-10-07). */
-export const BREAK_MINUTES = 120;
+ * 기록 시각은 10분 단위(가까운 값), 휴게시간 = 식사 1시간 고정 + 식사를 뺀 근무 4시간마다 30분(대표님 2026-11-18, 점심 2시간 고정 폐지) —
+ * 단, 출근~퇴근이 5시간 이하면 휴게를 빼지 않는다(반차일 등, 대표님 2026-10-07). 서버 functions/attend-calc.js 와 같은 규칙. */
+export const MEAL_MINUTES = 60;          // 식사 1시간 고정
+export const REST_PER_MINUTES = 240;      // 식사를 뺀 근무 4시간마다
+export const REST_MINUTES = 30;           // 휴게 30분을 더 준다
+export const LEGACY_BREAK_MINUTES = 120;  // 옛 규칙(점심 2시간 고정) — breakMinutes 가 없는 옛 기록을 읽을 때만 쓴다
 export const SHORT_DAY_MAX_MINUTES = 300;   // 이 시간(5시간) 이하로 근무한 날은 휴게를 차감하지 않는다
 export const pad2 = (n) => String(n).padStart(2, '0');
 /** 로컬 날짜 키 yyyy-mm-dd (toISOString 은 UTC 라 한국에서 하루가 밀린다) */
@@ -23,8 +27,10 @@ export function spanMinutes(inV, outV, nextDay) {
   if (nextDay) { if (mins <= 0) mins += 24 * 60; } else if (mins < 0) mins = 0;
   return mins;
 }
-/** 차감할 휴게(분): 출근~퇴근이 5시간 이하면 0, 그보다 길면 점심 2시간. 기록에 저장하는 breakMinutes 도 이 값 */
-export function breakFor(inV, outV, nextDay) { return spanMinutes(inV, outV, nextDay) <= SHORT_DAY_MAX_MINUTES ? 0 : BREAK_MINUTES; }
+/** 출근~퇴근 span(분)에서 차감할 휴게(분): 5시간 이하면 0, 그보다 길면 식사 1시간 + 식사 뺀 근무 4시간마다 30분 */
+export function breakOfSpan(span) { return span <= SHORT_DAY_MAX_MINUTES ? 0 : MEAL_MINUTES + REST_MINUTES * Math.floor((span - MEAL_MINUTES) / REST_PER_MINUTES); }
+/** 차감할 휴게(분). 기록에 저장하는 breakMinutes 도 이 값 */
+export function breakFor(inV, outV, nextDay) { return breakOfSpan(spanMinutes(inV, outV, nextDay)); }
 /** 근무시간(h) = (퇴근 − 출근) − 휴게. 휴게(brk)를 주지 않으면 위 규칙으로 정한다 */
 export function calcWorkHours(inV, outV, nextDay, brk) {
   if (!validHHMM(inV) || !validHHMM(outV)) return 0;

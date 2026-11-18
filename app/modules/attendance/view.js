@@ -1,7 +1,7 @@
-import { esc } from '../../core/ui.js?v=20261117a';
-import { sourceLabel, dayLabel, fmtH, monthTotals, visibleWorkers } from './logic.js?v=20261117a';
-import { monthCalendar, cellLabel, WEEKDAYS, WEEKDAY_LONG } from '../../shared/att-month.js?v=20261117a';
-import { holidayName } from '../../shared/holidays.js?v=20261117a';
+import { esc } from '../../core/ui.js?v=20261118a';
+import { sourceLabel, dayLabel, fmtH, monthTotals, visibleWorkers } from './logic.js?v=20261118a';
+import { monthCalendar, cellLabel, WEEKDAYS, WEEKDAY_LONG } from '../../shared/att-month.js?v=20261118a';
+import { holidayName } from '../../shared/holidays.js?v=20261118a';
 
 const head = (t, link) => '<div class="jh-panel__head"><h3>' + t + '</h3>' + (link || '') + '</div>';
 const note = (tone, text) => '<div class="jh-form"><div class="jh-alert" data-tone="' + tone + '"' + (tone === 'danger' ? ' role="alert"' : '') + '>' + esc(text) + '</div></div>';
@@ -25,7 +25,7 @@ export function clockWidgetHtml(m) {
       '<button type="button" class="jh-btn" data-variant="primary" data-clock="in"' + (c.state === 'ready' && !m.busy ? '' : ' disabled') + '>출근</button>' +
       '<button type="button" class="jh-btn" data-variant="secondary" data-clock="out"' + (c.state === 'working' && !m.busy ? '' : ' disabled') + '>퇴근</button></div>' +
     '<div class="jh-progress" role="img" aria-label="이번 달 소정근로시간 ' + fmtH(m.standard) + ' 중 ' + fmtH(m.monthHours) + '"><span class="jh-progress__bar" style="--p:' + pct + '%"></span></div>' +
-    '<span class="jh-field__hint">이번 달 출퇴근 기록 ' + fmtH(m.monthHours) + ' / 소정 ' + fmtH(m.standard) + ' · 휴게 점심 2시간(5시간 이하 근무는 휴게 없음) · 기록 시각은 10분 단위</span></div></div>';
+    '<span class="jh-field__hint">이번 달 출퇴근 기록 ' + fmtH(m.monthHours) + ' / 소정 ' + fmtH(m.standard) + ' · 휴게 식사 1시간 + 4시간마다 30분(5시간 이하 근무는 휴게 없음) · 기록 시각은 10분 단위</span></div></div>';
 }
 
 const rowHtml = (r, sel) => '<button type="button" class="jh-docrow' + (r.date === sel ? ' is-selected' : '') + '" data-edit="' + esc(r.date) + '">' +
@@ -88,7 +88,7 @@ export function inputPageHtml(m) {
         '<label class="jh-field" data-field="checkIn"><span class="jh-field__label">출근</span><input class="jh-input" type="time" step="600" data-att="checkIn" value="' + esc(f.checkIn) + '"></label>' +
         '<label class="jh-field" data-field="checkOut"><span class="jh-field__label">퇴근</span><input class="jh-input" type="time" step="600" data-att="checkOut" value="' + esc(f.checkOut) + '"></label></div>' +
       '<div data-att-msg>' + msg + '</div>' +
-      '<div class="jh-kpi" data-tone="accent"><span class="jh-kpi__label">근무시간 (점심 2시간 제외 · 5시간 이하는 제외 안 함)</span><span class="jh-kpi__value" data-att-hours>' + fmtH(f.hours) + '</span></div>' +
+      '<div class="jh-kpi" data-tone="accent"><span class="jh-kpi__label">근무시간 (식사 1시간 + 4시간마다 30분 제외 · 5시간 이하는 제외 안 함)</span><span class="jh-kpi__value" data-att-hours>' + fmtH(f.hours) + '</span></div>' +
       '<div><button type="button" class="jh-btn" data-variant="primary" data-att-save' + (perm.ok ? '' : ' disabled') + '>저장</button></div></div></section>' +
     '</div><div class="jh-att__side">' + calendarHtml(m, f) + '<section class="jh-panel jh-card jh-att__list">' + head('🗓️ ' + esc(m.ym.replace('-', '년 ')) + '월 기록' + (me.admin ? ' · ' + esc(m.worker.name) : '')) +
       '<div class="jh-doclist">' + (m.rows.length ? m.rows.map((r) => rowHtml(r, f.date)).join('') : '<div class="jh-empty">해당 월 기록이 없습니다.</div>') + '</div></section></div></div></div>';

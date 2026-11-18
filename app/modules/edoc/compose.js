@@ -1,7 +1,8 @@
 /* 작성 화면의 순수 로직 — 양식 정의, 검증, 문서 데이터 만들기, 결재선 편집. (화면·Firestore 와 분리해 시험한다) */
 
-import { halfwidthDeep } from '../../shared/text-fix.js?v=20261117a';
-import { recKey, FUEL_TYPES, FULL_OPTS, SHOP_KINDS, carChecks, carFields, emptyCarItem, carCalcText } from '../../shared/car-cost.js?v=20261117a'; // 주유·정비·비용 기록(운행일지 문서의 rec 필드)
+import { halfwidthDeep } from '../../shared/text-fix.js?v=20261118a';
+import { breakOfSpan } from '../../shared/worktime.js?v=20261118a';
+import { recKey, FUEL_TYPES, FULL_OPTS, SHOP_KINDS, carChecks, carFields, emptyCarItem, carCalcText } from '../../shared/car-cost.js?v=20261118a'; // 주유·정비·비용 기록(운행일지 문서의 rec 필드)
 export const MAX_APPROVERS = 5;
 export const MAX_PARTS = 6; // 한 사람의 하루에 나눌 수 있는 참여 프로젝트 수(서버 pjt-part-act 의 day-split 규칙과 같다)
 export const MAX_CC = 10;
@@ -244,8 +245,8 @@ export function defaultValues(type, me, now) {
   else if (type === 'spend') Object.assign(v, { kind: 'purchase', vendor: '', pjtId: '', purpose: '', dueDate: '', expDate: today, category: SPEND_CATEGORIES[0], amount: '', receipt: RECEIPTS[0], items: [] });
   return v;
 }
-/** 근태 요청의 근무시간(점심 2시간 제외, 단 출근~퇴근 5시간 이하는 제외 안 함 · 퇴근이 더 이르면 다음 날 퇴근) — 서버(attend-calc.js)와 같은 규칙 */
-export function attendHoursOf(ci, co) { const [ih, im] = String(ci).split(':').map(Number); const [oh, om] = String(co).split(':').map(Number); let m = (oh * 60 + om) - (ih * 60 + im); if (m <= 0) m += 1440; return Math.max(0, m - (m <= 300 ? 0 : 120)) / 60; }
+/** 근태 요청의 근무시간(식사 1시간 + 식사 뺀 4시간마다 30분 제외, 단 출근~퇴근 5시간 이하는 제외 안 함 · 퇴근이 더 이르면 다음 날 퇴근) — 서버(attend-calc.js)와 같은 규칙 */
+export function attendHoursOf(ci, co) { const [ih, im] = String(ci).split(':').map(Number); const [oh, om] = String(co).split(':').map(Number); let m = (oh * 60 + om) - (ih * 60 + im); if (m <= 0) m += 1440; return Math.max(0, m - breakOfSpan(m)) / 60; }
 export { carCalcText, recKey };
 export const emptyItem = (type) => (type === 'drive' ? emptyCarItem() : { name: '', qty: '', unitPrice: '', link: '' }); // 운행일지의 정비·비용 항목은 이름·금액·메모
 /** 기록 종류(운행·주유·정비)를 바꾼다 — 정비·비용이면 빈 항목 한 줄을 미리 깔아 준다 */

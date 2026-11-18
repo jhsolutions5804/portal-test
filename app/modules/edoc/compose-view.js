@@ -1,8 +1,8 @@
-import { esc } from '../../core/ui.js?v=20261117a';
-import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261117a';
-import { isAnnualType } from './home-calc.js?v=20261117a';
-import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261117a';
-import { SERVICE_ITEMS, OTHER_ITEMS, REC_KEYS, REC_LABEL, carCalcText, recKey } from '../../shared/car-cost.js?v=20261117a';
+import { esc } from '../../core/ui.js?v=20261118a';
+import { MAX_FILES, ACCEPT, fmtSize } from './attach-logic.js?v=20261118a';
+import { isAnnualType } from './home-calc.js?v=20261118a';
+import { COMPOSE_TYPES, composeType, fieldRows, emptyItem, isLocked, guideStatus, lineIssues, MAX_APPROVERS, MAX_CC } from './compose.js?v=20261118a';
+import { SERVICE_ITEMS, OTHER_ITEMS, REC_KEYS, REC_LABEL, carCalcText, recKey } from '../../shared/car-cost.js?v=20261118a';
 
 const uname = (ctx, uid) => { const u = ctx.byUid[uid]; return u ? esc(u.name) + (u.rank ? ' <small>' + esc(u.rank) + '</small>' : '') : '(알 수 없음)'; };
 
@@ -138,7 +138,7 @@ export function balanceHintHtml(b, req, type) {
 export function attendHintHtml(a) {
   if (!a) return '';
   const cur = a.current ? '현재 기록: ' + (a.current.checkIn || '--:--') + ' ~ ' + (a.current.checkOut || '--:--') + ' (' + (Number(a.current.workHours) || 0).toFixed(1) + 'h) — 승인되면 이 값이 요청 내용으로 바뀝니다.' : (a.date ? '그 날짜에는 기록이 없습니다. 승인되면 새로 만들어집니다.' : '');
-  const hrs = a.hours != null ? '요청 근무시간 ' + a.hours.toFixed(1) + 'h (점심 2시간 제외 · 5시간 이하는 제외 안 함, 시각은 10분 단위로 맞춰집니다)' : '';
+  const hrs = a.hours != null ? '요청 근무시간 ' + a.hours.toFixed(1) + 'h (식사 1시간 + 4시간마다 30분 제외 · 5시간 이하는 제외 안 함, 시각은 10분 단위로 맞춰집니다)' : '';
   if (!cur && !hrs) return '';
   return '<div class="jh-alert" data-tone="info" role="status">' + [hrs, cur].filter(Boolean).map(esc).join('<br>') + '</div>';
 }

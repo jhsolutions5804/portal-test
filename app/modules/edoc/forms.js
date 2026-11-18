@@ -52,7 +52,7 @@ export const FORMS = {
     { label: '수정할 날짜', key: 'date', fmt: 'date' },
     { label: '출근', key: 'checkIn' },
     { label: '퇴근', get: d => (d.checkOut ? d.checkOut + (d.checkIn && d.checkOut <= d.checkIn ? ' (다음 날)' : '') : '') },
-    { label: '근무시간', get: d => (d.workHours != null && d.workHours !== '' ? Number(d.workHours).toFixed(1) + (Number(d.breakMinutes) === 0 ? 'h (5시간 이하 — 휴게 제외 없음)' : 'h (휴게 점심 2시간 제외)') : '') },
+    { label: '근무시간', get: d => (d.workHours != null && d.workHours !== '' ? Number(d.workHours).toFixed(1) + (Number(d.breakMinutes) === 0 ? 'h (5시간 이하 — 휴게 제외 없음)' : 'h (휴게 ' + (Number(d.breakMinutes) || 0) + '분 제외)') : '') },
     { label: '사유', key: 'reason', fmt: 'multiline' },
     { label: '기록 반영', get: d => (d.applied ? '출퇴근 기록에 반영됨' : '승인되면 출퇴근 기록에 반영됩니다') }
   ] },
