@@ -1,11 +1,11 @@
-import { calendarProvidersFor } from '../../core/registry.js?v=20261118c';
-import { toast } from '../../core/ui.js?v=20261118c';
-import { confirmDialog } from '../../core/dialog.js?v=20261118c';
-import { loadHolidays, isHoliday } from '../../shared/holidays.js?v=20261118c';
-import { dateKey, parseMonth, monthKey, shiftMonth, gridRange, groupByDay, mergeResults, visibleEvents, makeEvent, canWrite, isView, defaultView, viewRange, shiftAnchor, listDates, rangeTitle, AGENDA_DAYS } from './logic.js?v=20261118c';
-import { leaveProvider, companyProvider, deleteCompanyEvent, setCompanyDone, invalidateCompany } from './data.js?v=20261118c';
-import { gridHtml, dayHtml, noticeHtml, widgetFrameHtml, fullFrameHtml, agendaHtml, blankDraft, draftOf } from './view.js?v=20261118c';
-import { openEventForm } from './form.js?v=20261118c';
+import { calendarProvidersFor } from '../../core/registry.js?v=20261118d';
+import { toast } from '../../core/ui.js?v=20261118d';
+import { confirmDialog } from '../../core/dialog.js?v=20261118d';
+import { loadHolidays, isHoliday } from '../../shared/holidays.js?v=20261118d';
+import { dateKey, parseMonth, monthKey, shiftMonth, gridRange, groupByDay, mergeResults, visibleEvents, makeEvent, canWrite, isView, defaultView, viewRange, shiftAnchor, listDates, rangeTitle, AGENDA_DAYS } from './logic.js?v=20261118d';
+import { leaveProvider, companyProvider, deleteCompanyEvent, setCompanyDone, invalidateCompany } from './data.js?v=20261118d';
+import { gridHtml, dayHtml, noticeHtml, widgetFrameHtml, fullFrameHtml, agendaHtml, blankDraft, draftOf } from './view.js?v=20261118d';
+import { openEventForm } from './form.js?v=20261118d';
 
 /** 일정 모듈 = 플랫폼 기본 모듈. 자기 일정(회사 일정·연차·휴무)을 내놓고, 다른 모듈이 manifest.calendar 로 등록한 일정도 한 달력에 모은다.
  *  사이드바에는 두지 않는다(nav:false) — 홈의 일정 위젯과 그 안의 보기 방식(안건·하루·3일·월)으로 쓴다. */
@@ -119,3 +119,5 @@ function createCalendar(el, me, widget, route) {
 export function mount(root, route, ctx) { root.className = 'jh-main'; return createCalendar(root, ctx.me, false, route); }
 /* 플랫폼 홈 위젯: 일정 캘린더 한 장(달력 + 선택한 날 목록) */
 async function mountWidget(slot, ctx) { return createCalendar(slot, ctx.me, true, null); }
+/** 다른 모듈의 홈(영업기획 홈·재무회계 개요 등)에 같은 달력 카드(달력 + 선택한 날 목록)를 끼워 넣는다 */
+export async function mountEmbedded(slot, ctx) { return createCalendar(slot, ctx.me, true, null); }
