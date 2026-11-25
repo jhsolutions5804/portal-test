@@ -3,13 +3,13 @@
 export const BILL_MAX = 1000000000; // 10억 — 보안 규칙과 같은 상한
 export const isMonth = (m) => /^\d{4}-(0[1-9]|1[0-2])$/.test(String(m || ''));
 const N = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
-const LABEL = { pension: '국민연금', health: '건강보험', ltcare: '장기요양', unpaid: '미납액' };
+const LABEL = { pension: '국민연금', health: '건강보험', ltcare: '장기요양', unpaid: '미납액', exPension: '공제 없는 가입자 연금', exHealth: '공제 없는 가입자 건강', exLtcare: '공제 없는 가입자 요양' };
 /** 입력 칸 → 저장 값. 쉼표·공백·"원"은 지우고, 정수 0~10억만 받는다. 연금·건강·장기요양은 꼭 입력(고지 없으면 0), 미납액은 비우면 0 */
 export function billPatch(v) {
   const errors = []; const data = {}; const x = v || {};
-  ['pension', 'health', 'ltcare', 'unpaid'].forEach((k) => {
+  ['pension', 'health', 'ltcare', 'unpaid', 'exPension', 'exHealth', 'exLtcare'].forEach((k) => {
     const raw = String(x[k] == null ? '' : x[k]).replace(/[,\s원]/g, '');
-    if (raw === '') { if (k === 'unpaid') data[k] = 0; else errors.push(LABEL[k] + ' 금액을 입력해 주세요(고지가 없으면 0).'); return; }
+    if (raw === '') { if (k === 'unpaid' || k.startsWith('ex')) data[k] = 0; else errors.push(LABEL[k] + ' 금액을 입력해 주세요(고지가 없으면 0).'); return; }
     if (!/^\d+$/.test(raw)) { errors.push(LABEL[k] + '은 숫자(원 단위 정수)만 입력해 주세요.'); return; }
     const n = Number(raw); if (n > BILL_MAX) { errors.push(LABEL[k] + '이 너무 큽니다(10억 원 이하).'); return; } data[k] = n;
   });
@@ -25,7 +25,7 @@ export function makeInsuranceIo(fb) {
     return out;
   }
   /** 공단 고지금액 { 'YYYY-MM': { pension, health, ltcare, unpaid, updatedBy } } */
-  async function loadBills() { const s = await getDocs(collection(db, 'insurance_bills')); const out = {}; s.forEach((d) => { if (!isMonth(d.id)) return; const x = d.data() || {}; out[d.id] = { pension: N(x.pension), health: N(x.health), ltcare: N(x.ltcare), unpaid: N(x.unpaid), updatedBy: x.updatedBy || '' }; }); return out; }
+  async function loadBills() { const s = await getDocs(collection(db, 'insurance_bills')); const out = {}; s.forEach((d) => { if (!isMonth(d.id)) return; const x = d.data() || {}; out[d.id] = { pension: N(x.pension), health: N(x.health), ltcare: N(x.ltcare), unpaid: N(x.unpaid), exPension: N(x.exPension), exHealth: N(x.exHealth), exLtcare: N(x.exLtcare), updatedBy: x.updatedBy || '' }; }); return out; }
   async function load() { const [payslips, bills] = await Promise.all([loadSlipTotals(), loadBills()]); return { payslips, bills }; }
   /** 저장 — 같은 달은 전체 교체(규칙이 정해진 칸만 허용). 값이 이상하면 저장하지 않고 이유와 함께 예외 */
   async function saveBill(ym, vals, by) {

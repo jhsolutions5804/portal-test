@@ -52,6 +52,17 @@ t('★ 총지급 대비: 공제 동률 환산 7.39% · 고지 절반 기준 8.46
 t('미납 합계는 고지가 있는 모든 달의 미납액을 더한다(8월 3,621,000 + 9월 2,715,040)', () => { assert.strictEqual(run().totals.unpaid, 6336040); });
 t('한쪽만 있는 달은 합계 비교에서 빠진다(명세서만 있는 달·고지만 있는 달)', () => { const b = B(); delete b['2026-09']; const T = R.reconcile({ payslips: P(), bills: b }).totals; assert.strictEqual(T.monthsCompared, 4); assert.strictEqual(T.gross, 66069642 - 13536687); });
 
+
+console.log('── 공제 없는 가입자 몫 제외·두 달 합산(대기열 1-3-50)');
+const EX = { exPension: 39040, exHealth: 231240, exLtcare: 30380 };
+const withEx = () => { const b = B(); Object.keys(b).forEach((m) => Object.assign(b[m], EX)); return b; };
+t('★ 대표님 몫을 고지에서 빼고 비교한다 — 6월 건강 고지 838,760 − 231,240 = 607,520, 공제 303,760 → 비율 0.5000(제외 전 0.3622)', () => { const r = R.reconcile({ payslips: P(), bills: withEx() }); const h = row(r, '2026-06').health; assert.deepStrictEqual([h.bill, h.employee, h.ratio], [607520, 303760, 0.5]); assert(!has(r, '2026-06', 'healthRatioOff')); assert(has(run(), '2026-06', 'healthRatioOff')); });
+t('★ 제외 몫이 없는 옛 고지(칸 없음)는 지금까지와 같게 계산한다', () => { assert.deepStrictEqual(row(run(), '2026-06').health.bill, 838760); assert.strictEqual(row(run(), '2026-06').exempt.health, 0); });
+t('제외 몫이 고지보다 커도 음수가 되지 않는다(0 으로 멈춤)', () => { const r = R.reconcile({ payslips: { '2026-07': { gross: 1000, pension: 0 } }, bills: { '2026-07': { pension: 100, health: 0, ltcare: 0, unpaid: 0, exPension: 500 } } }); assert.strictEqual(row(r, '2026-07').pension.bill, 0); });
+t('★ 두 달 합산: 7월(연금 비율 0.77)·8월(0.35)은 각각 어긋나지만 합치면 정확히 절반 근처 → pairOk(제외 몫 반영 시 7+8월 연금 1,293,220 ÷ 고지 2,586,040)', () => { const r = R.reconcile({ payslips: P(), bills: withEx() }); assert(row(r, '2026-07').pairOk && row(r, '2026-08').pairOk); assert(has(r, '2026-07', 'pensionRatioOff')); });
+t('두 달 합산은 연속한 달끼리만 — 사이가 비면(5월·7월 둘만 있을 때) pairOk 아님', () => { const p = P(); delete p['2026-06']; const b = withEx(); delete b['2026-06']; const r = R.reconcile({ payslips: p, bills: b }); assert(!row(r, '2026-05').pairOk); assert(!R.reconcile({ payslips: { '2026-05': P()['2026-05'], '2026-07': P()['2026-07'] }, bills: { '2026-05': withEx()['2026-05'], '2026-07': withEx()['2026-07'] } }).rows.some((x) => x.pairOk)); });
+t('명세서나 고지가 한쪽만 있는 달은 pairOk 아님', () => { const b = withEx(); delete b['2026-06']; const r = R.reconcile({ payslips: P(), bills: b }); assert(!row(r, '2026-06').pairOk); });
+
 console.log('── 입력 방어');
 t('★ 입력이 이상해도(null·undefined·문자열·배열·빈 객체) 던지지 않고 빈 결과를 돌려준다', () => { for (const bad of [null, undefined, 'x', 3, [], {}]) { let r; try { r = R.reconcile(bad); } catch (e) { r = { threw: e.message }; } assert(!r.threw && Array.isArray(r.rows) && r.rows.length === 0 && r.totals.monthsCompared === 0, JSON.stringify(bad)); } });
 t('★ 월 형식이 깨진 키(abc·2026-7·2026-13·빈 값)는 무시한다', () => { const p = P(); p['abc'] = { gross: 1 }; p['2026-7'] = { gross: 1 }; p['2026-13'] = { gross: 1 }; p[''] = { gross: 1 }; const r = R.reconcile({ payslips: p, bills: B() }); assert.deepStrictEqual(r.rows.map((x) => x.month), ['2026-05', '2026-06', '2026-07', '2026-08', '2026-09']); });
@@ -60,5 +71,5 @@ t('★ 고지가 0 이면 공제/고지 비율은 null(0으로 나누지 않음)
 t('입력 객체를 바꾸지 않는다(순수 함수) · 같은 입력은 같은 결과(멱등)', () => { const i = { payslips: P(), bills: B() }; const s = JSON.stringify(i); const a = R.reconcile(i); assert.strictEqual(JSON.stringify(i), s); assert.deepStrictEqual(a, R.reconcile({ payslips: P(), bills: B() })); });
 t('행은 급여월 오름차순이다', () => { const p = P(); const o = {}; Object.keys(p).reverse().forEach((k) => { o[k] = p[k]; }); assert.deepStrictEqual(R.reconcile({ payslips: o, bills: B() }).rows.map((x) => x.month), Object.keys(P()).sort()); });
 t('결과에 개인 정보가 없다 — 회사 월 합계만(작업자·이름·주민번호 필드 없음)', () => { const s = JSON.stringify(run()); assert(!/worker|작업자|name|이름|resident|주민/i.test(s)); });
-assert(pass + failN >= 31, '시험이 끝까지 실행되지 않음(' + (pass + failN) + '건)');
+assert(pass + failN >= 37, '시험이 끝까지 실행되지 않음(' + (pass + failN) + '건)');
 console.log('\n' + (failN ? '실패 ' + failN + '건 / 통과 ' + pass : '전부 통과 (' + pass + '건)')); if (failN) process.exit(1);

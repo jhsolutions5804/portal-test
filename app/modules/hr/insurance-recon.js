@@ -17,7 +17,7 @@ function comp(employee, bill) {
 function reconcile(input) {
   const i = obj(input); if (!Object.keys(i).length) return emptyResult();
   const offset = Number.isInteger(i.offset) ? i.offset : 0; const jumpFactor = opt(i.jumpFactor, 1.8), ratioTol = opt(i.ratioTol, 0.1), employRate = opt(i.employRate, 0.009), employTol = opt(i.employTol, 0.05);
-  const ps = cleanMap(i.payslips, ['count', 'gross', 'pension', 'health', 'ltcare', 'employ']); const bs = cleanMap(i.bills, ['pension', 'health', 'ltcare', 'unpaid']);
+  const ps = cleanMap(i.payslips, ['count', 'gross', 'pension', 'health', 'ltcare', 'employ']); const bsRaw = cleanMap(i.bills, ['pension', 'health', 'ltcare', 'unpaid', 'exPension', 'exHealth', 'exLtcare']); const bs = {}; Object.keys(bsRaw).forEach((m) => { const r = bsRaw[m]; bs[m] = { pension: Math.max(0, r.pension - r.exPension), health: Math.max(0, r.health - r.exHealth), ltcare: Math.max(0, r.ltcare - r.exLtcare), unpaid: r.unpaid, exempt: { pension: r.exPension, health: r.exHealth, ltcare: r.exLtcare } }; });
   const months = Array.from(new Set(Object.keys(ps).concat(Object.keys(bs).map((bm) => shift(bm, -offset))))).sort();
   const rows = []; let lastBill = null; const T = { monthsCompared: 0, gross: 0, employee: 0, bill: 0, employerByBill: 0, unpaid: 0 };
   months.forEach((month) => {
@@ -32,8 +32,11 @@ function reconcile(input) {
     if (b) lastBill = b;
     if (p && b) { T.monthsCompared++; T.gross += p.gross; T.employee += p.pension + p.health + p.ltcare; T.bill += b.pension + b.health + b.ltcare; }
     if (b) T.unpaid += b.unpaid;
-    rows.push({ month, billMonth, payslip: p ? { count: p.count, gross: p.gross } : null, bill: b ? { pension: b.pension, health: b.health, ltcare: b.ltcare } : null, pension, health, ltcare, employ, unpaid: b ? b.unpaid : null, flags });
+    rows.push({ month, billMonth, payslip: p ? { count: p.count, gross: p.gross } : null, bill: b ? { pension: b.pension, health: b.health, ltcare: b.ltcare } : null, exempt: b ? b.exempt : null, pairOk: false, pension, health, ltcare, employ, unpaid: b ? b.unpaid : null, flags });
   });
+  /* 연속 두 달 합산 — 취득지연 소급·고지 시점 이동은 한 달씩 보면 어긋나도 두 달을 더하면 맞는다. 이웃한 달(앞 또는 뒤)과 합쳐 연금·건강 비율이 모두 허용 안이면 pairOk */
+  const pairFine = (a, c) => { if (!a.payslip || !a.bill || !c.payslip || !c.bill || shift(a.month, 1) !== c.month) return false; const ok = (ea, ec, ba, bc) => { const bsum = ba + bc; return bsum > 0 && Math.abs((ea + ec) / bsum - 0.5) <= ratioTol; }; return ok(a.pension.employee, c.pension.employee, a.bill.pension, c.bill.pension) && ok(a.health.employee, c.health.employee, a.bill.health, c.bill.health); };
+  rows.forEach((r, k) => { r.pairOk = (k > 0 && pairFine(rows[k - 1], r)) || (k < rows.length - 1 && pairFine(r, rows[k + 1])); });
   T.employerByBill = T.bill - T.employee; T.employeeShareOfGross = T.gross > 0 ? rate4(T.employee / T.gross) : null; T.billHalfShareOfGross = T.gross > 0 ? rate4(T.bill / 2 / T.gross) : null;
   return { rows, totals: T };
 }

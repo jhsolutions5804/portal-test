@@ -1,8 +1,8 @@
-import { esc } from './ui.js?v=20261125j';
-import { openSettings } from './settings.js?v=20261125j';
-import { openProfile } from './profile.js?v=20261125j';
-import { phoneTabs } from './nav.js?v=20261125j';
-import { IS_TEST } from './config.js?v=20261125j';
+import { esc } from './ui.js?v=20261125k';
+import { openSettings } from './settings.js?v=20261125k';
+import { openProfile } from './profile.js?v=20261125k';
+import { phoneTabs } from './nav.js?v=20261125k';
+import { IS_TEST } from './config.js?v=20261125k';
 
 export function renderLogin(root, { onSubmit, onMicrosoft, message }) {
   root.innerHTML =
