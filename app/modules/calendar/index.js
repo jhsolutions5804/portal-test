@@ -1,14 +1,14 @@
-import { calendarProvidersFor } from '../../core/registry.js?v=20261125b';
-import { toast } from '../../core/ui.js?v=20261125b';
-import { confirmDialog } from '../../core/dialog.js?v=20261125b';
-import { loadHolidays, isHoliday } from '../../shared/holidays.js?v=20261125b';
-import { dateKey, parseMonth, monthKey, shiftMonth, gridRange, groupByDay, mergeResults, visibleEvents, makeEvent, canWrite, isView, defaultView, viewRange, shiftAnchor, listDates, rangeTitle, AGENDA_DAYS } from './logic.js?v=20261125b';
-import { leaveProvider, companyProvider, deleteCompanyEvent, setCompanyDone, invalidateCompany } from './data.js?v=20261125b';
-import { gridHtml, dayHtml, noticeHtml, widgetFrameHtml, embeddedFrameHtml, fullFrameHtml, agendaHtml, blankDraft, draftOf } from './view.js?v=20261125b';
-import { openEventForm } from './form.js?v=20261125b';
-import { emptyForm } from '../../shared/schedule-view.js?v=20261125b';
-import { openScheduleDialog, deleteScheduleEvent, setScheduleDone } from '../../shared/schedule-actions.js?v=20261125b';
-import { formFromEvent, boardEvent } from '../../shared/schedule-logic.js?v=20261125b';
+import { calendarProvidersFor } from '../../core/registry.js?v=20261125c';
+import { toast } from '../../core/ui.js?v=20261125c';
+import { confirmDialog } from '../../core/dialog.js?v=20261125c';
+import { loadHolidays, isHoliday } from '../../shared/holidays.js?v=20261125c';
+import { dateKey, parseMonth, monthKey, shiftMonth, gridRange, groupByDay, mergeResults, visibleEvents, makeEvent, canWrite, isView, defaultView, viewRange, shiftAnchor, listDates, rangeTitle, AGENDA_DAYS } from './logic.js?v=20261125c';
+import { leaveProvider, companyProvider, deleteCompanyEvent, setCompanyDone, invalidateCompany } from './data.js?v=20261125c';
+import { gridHtml, dayHtml, noticeHtml, widgetFrameHtml, embeddedFrameHtml, fullFrameHtml, agendaHtml, blankDraft, draftOf } from './view.js?v=20261125c';
+import { openEventForm } from './form.js?v=20261125c';
+import { emptyForm } from '../../shared/schedule-view.js?v=20261125c';
+import { openScheduleDialog, deleteScheduleEvent, setScheduleDone } from '../../shared/schedule-actions.js?v=20261125c';
+import { formFromEvent, boardEvent } from '../../shared/schedule-logic.js?v=20261125c';
 
 /** 일정 모듈 = 플랫폼 기본 모듈. 자기 일정(회사 일정·연차·휴무)을 내놓고, 다른 모듈이 manifest.calendar 로 등록한 일정도 한 달력에 모은다.
  *  사이드바에는 두지 않는다(nav:false) — 홈의 일정 위젯과 그 안의 보기 방식(안건·하루·3일·월)으로 쓴다. */
@@ -25,17 +25,17 @@ const readView = () => { try { return localStorage.getItem(VIEW_KEY) || ''; } ca
 const saveView = (v) => { try { localStorage.setItem(VIEW_KEY, v); } catch (e) { /* 저장 못 해도 이번 화면에서는 동작 */ } };
 const isPhone = () => !!(window.matchMedia && window.matchMedia('(max-width: 899px)').matches);
 const cache = new Map();   // 날짜 범위 → { t, merged }  (등록·수정·삭제·완료하면 비움)
-const providersOf = (me) => calendarProvidersFor(me);
+const providersOf = (me, only) => calendarProvidersFor(me).filter((p) => !only || only.indexOf(p.id) !== -1);   // only = 이 달력이 보여 줄 일정 종류(모듈 홈은 그 모듈 일정만)
 const clearCache = () => { cache.clear(); invalidateCompany(); };
-const ckey = (me, range) => range.from + '|' + range.to + '|' + (me.isGuest ? 'g' : 'u');
+const ckey = (me, range, only) => range.from + '|' + range.to + '|' + (me.isGuest ? 'g' : 'u') + '|' + (only ? only.join(',') : '');
 
 /** 어떤 날짜 범위든 제공자 전부에서 불러와 합친다(월 달력·안건·하루·3일이 같은 함수를 쓴다). 60초 캐시 */
-async function loadRange(me, range, force) {
-  const hit = cache.get(ckey(me, range));
+async function loadRange(me, range, force, only) {
+  const hit = cache.get(ckey(me, range, only));
   if (!force && hit && Date.now() - hit.t < 60000) return hit.merged;
-  const ps = providersOf(me);
+  const ps = providersOf(me, only);
   const results = await Promise.all(ps.map((p) => Promise.resolve().then(() => p.load(range, { me })).then((events) => ({ id: p.id, events: (events || []).map((e) => (e && e.source ? e : makeEvent(e))) }), (error) => ({ id: p.id, error }))));
-  const merged = mergeResults(results); merged.range = range; cache.set(ckey(me, range), { t: Date.now(), merged }); return merged;
+  const merged = mergeResults(results); merged.range = range; cache.set(ckey(me, range, only), { t: Date.now(), merged }); return merged;
 }
 
 /** 달력 제어기 — 전체 화면과 홈 위젯(widget=true)이 같은 코드·같은 모양을 쓴다. 위젯은 월 보기가 6주 고정·URL 주소 갱신 없음이 다를 뿐이다.
@@ -48,7 +48,8 @@ function createCalendar(el, me, widget, route, opts) {
   const S = { widget: !!widget, readOnly: !!(opts && opts.readOnly) || !!(opts && opts.board && !(me && me.admin)), embedded: !!(opts && opts.embedded), board: (opts && opts.board) || null, view, y: pm.y, m: pm.m, today, off: readOff(), events: [], failed: [], hidden: [], loading: true, seq: 0, weeks, extra: 0, limit: widget ? 5 : Infinity, title: '', sel: '', anchor: '', range: null };
   S.sel = widget ? today : (/^\d{4}-\d{2}-\d{2}$/.test(q.d || '') ? q.d : (pm.y === now.getFullYear() && pm.m === now.getMonth() + 1 ? today : monthKey(pm.y, pm.m) + '-01'));
   S.anchor = S.view === 'agenda' && !(q.d && !widget) ? today : S.sel;
-  const providers = providersOf(me);
+  const only = (S.board && S.board.only) || null;
+  const providers = providersOf(me, only);
   const rangeOf = () => (S.view === 'month' ? gridRange(S.y, S.m, weeks) : viewRange(S.view, S.anchor, S.extra));
   S.range = rangeOf(); S.title = S.view === 'month' ? S.y + '년 ' + S.m + '월' : rangeTitle(S.view, S.range);
   el.onclick = null; el.onchange = null; el.oninput = null;
@@ -77,10 +78,10 @@ function createCalendar(el, me, widget, route, opts) {
   const adapt = (evs) => (S.board ? evs.map((e) => boardEvent(e, S.board)) : evs);   // 모듈 홈: 그 모듈 일정만 고칠 수 있다(등록도 그 모듈 일정으로 저장)
   const afterBoard = () => { clearCache(); load(true); };
   const load = async (force) => {
-    const seq = ++S.seq; S.range = rangeOf(); const hit = !force && cache.get(ckey(me, S.range));
+    const seq = ++S.seq; S.range = rangeOf(); const hit = !force && cache.get(ckey(me, S.range, only));
     S.loading = !(hit && Date.now() - hit.t < 60000); S.events = S.loading ? [] : adapt(hit.merged.events); paintAll();   // 불러오는 동안에도 같은 모양(날짜만)
     if (!S.loading) { S.failed = hit.merged.failed; S.hidden = hit.merged.hidden; paintNote(); urlSync(); return; }
-    try { const [mg] = await Promise.all([loadRange(me, S.range, force), loadHolidays()]); if (seq !== S.seq) return; S.events = adapt(mg.events); S.failed = mg.failed; S.hidden = mg.hidden; }
+    try { const [mg] = await Promise.all([loadRange(me, S.range, force, only), loadHolidays()]); if (seq !== S.seq) return; S.events = adapt(mg.events); S.failed = mg.failed; S.hidden = mg.hidden; }
     catch (e) { if (seq !== S.seq) return; console.error('일정 불러오기', e); S.events = []; S.failed = providers.map((p) => p.id); }
     S.loading = false; paintAll(); urlSync();
   };

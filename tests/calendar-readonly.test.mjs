@@ -56,4 +56,7 @@ ok(/readOnly: !!\(opts && opts\.readOnly\) \|\| !!\(opts && opts\.board && !\(me
 const lst = rd('modules/legacy/list.js');
 ok(!/label: '일정', keys: \['schedule'\]/.test(lst) && /key: 'schedule', label: '일정', native: true/.test(lst), '영업기획·재무회계 사이드바에서 일정 메뉴를 뺐고, 일정 주소(옛 링크·Outlook 링크)는 남아 있다');
 ok(/jh-plan jh-plan--wide/.test(rd('modules/plan/home-view.js')) && /\.jh-plan--wide \{ max-width: none; \}/.test(rd('theme/plan.css')) && /@container calembed \(min-width: 56rem\)/.test(rd('theme/calendar.css')), '영업기획 홈은 화면 폭을 쓰고, 일정은 자리가 넓으면 달력 | 목록 두 칸·좁으면 위아래');
+ok(JSON.stringify(cfgP.only) === '["plan"]' && JSON.stringify(cfgF.only) === '["finsch","tax"]', '영업기획 홈 달력은 영업기획 일정(plan)만, 재무회계 개요 달력은 재무회계 일정(finsch)·세무 일정(tax)만 보여 준다');
+ok(/providersOf = \(me, only\) => calendarProvidersFor\(me\)\.filter\(\(p\) => !only \|\| only\.indexOf\(p\.id\) !== -1\)/.test(idx) && /const only = \(S\.board && S\.board\.only\) \|\| null/.test(idx) && /loadRange\(me, S\.range, force, only\)/.test(idx) && /ckey = \(me, range, only\)/.test(idx), '달력이 일정 종류를 모듈 설정(only)대로 거르고, 캐시도 종류별로 따로 둔다');
+{ const hv = rd('modules/hr/view.js'); const i = (k) => hv.indexOf('<div id="' + k + '"></div>'); ok(i('hm-list') < i('hm-cal') && i('hm-cal') < i('hm-week') && i('hm-week') < i('hm-purge') && i('hm-purge') < i('hm-work'), '인사 홈 오른쪽 칸 순서: 캘린더가 맨 위, 주 근로시간·파기 현황·인력 현황은 그 아래'); }
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);
