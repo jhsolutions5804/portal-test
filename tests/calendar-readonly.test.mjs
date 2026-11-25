@@ -1,0 +1,28 @@
+/* 홈 일정 캘린더는 보기 전용(등록·수정·삭제·완료 없음), 모듈 홈(영업기획·재무회계)에 끼우는 달력은 등록 가능 */
+import { barHtml, dayHtml, widgetFrameHtml, fullFrameHtml } from '../app/modules/calendar/view.js';
+import { makeEvent } from '../app/modules/calendar/logic.js';
+import { readFileSync } from 'node:fs';
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
+const me = { name: '테스트', email: 't@jh.kr' };
+const ev = (o) => makeEvent(Object.assign({ id: 'company:1', source: 'company', title: '노사협의체', start: '2026-11-16', end: '2026-11-16', tag: 'meeting', editable: true, ref: '1' }, o));
+const S = (extra) => Object.assign({ widget: true, view: 'month', sel: '2026-11-16', today: '2026-11-25', off: [], title: '2026년 11월' }, extra);
+const by = { '2026-11-16': [ev({}), ev({ id: 'company:2', title: '할 일', isTodo: true, ref: '2' }), ev({ id: 'pjt:9', source: 'pjt', title: '공장검수', editable: false, ref: null, link: '#/pjt/x' })] };
+const prov = [{ id: 'company', label: '회사 일정' }];
+const rw = S({}), ro = S({ readOnly: true });
+ok(/data-new/.test(barHtml(rw, prov, me)) && /data-new/.test(dayHtml(rw, by, me)) && /data-edit/.test(dayHtml(rw, by, me)) && /data-del/.test(dayHtml(rw, by, me)) && /data-done/.test(dayHtml(rw, by, me)), '기본(등록 가능) 달력: 위쪽 등록·이 날짜에 등록·수정·삭제·완료 칸이 있다');
+const bro = barHtml(ro, prov, me), dro = dayHtml(ro, by, me);
+ok(!/data-new/.test(bro) && !/＋/.test(bro) && !/data-new/.test(dro) && !/이 날짜에 등록<|＋ 이 날짜에 등록/.test(dro), '홈(보기 전용): 등록 버튼이 위쪽 막대에도 선택한 날 목록에도 없다');
+ok(!/data-edit/.test(dro) && !/data-del/.test(dro) && !/data-done/.test(dro) && /공장검수/.test(dro) && /노사협의체/.test(dro) && /원본으로 이동/.test(dro), '홈(보기 전용): 수정·삭제·완료 칸은 없고 일정 내용과 원본으로 이동 링크는 그대로 보인다');
+ok(/할 일/.test(dro), '홈(보기 전용): 할 일 일정은 완료 체크 없이 "할 일" 표시만');
+const GUEST = { name: 'g', isGuest: true };
+ok(!/data-new/.test(dayHtml(rw, by, GUEST)), 'GUEST 는 기본 달력에서도 등록 버튼이 없다(기존 규칙 유지)');
+ok(/일정 캘린더/.test(widgetFrameHtml(ro, prov, me)) && !/data-new/.test(widgetFrameHtml(ro, prov, me)) && /data-new/.test(fullFrameHtml(rw, prov, me)), '홈 달력 틀에는 등록 버튼이 없고, 전체 화면 달력 틀에는 있다');
+const idx = readFileSync(new URL('../app/modules/calendar/index.js', import.meta.url), 'utf8');
+ok(/function mountWidget\(slot, ctx\) \{ return createCalendar\(slot, ctx\.me, true, null, \{ readOnly: true \}\)/.test(idx), '홈 위젯 mountWidget 은 readOnly 로 달력을 만든다');
+ok(/export async function mountEmbedded\(slot, ctx\) \{ return createCalendar\(slot, ctx\.me, true, null(, \{ embedded: true \})?\)/.test(idx) && !/mountEmbedded[^\n]*readOnly/.test(idx), '모듈 홈에 끼우는 mountEmbedded 는 readOnly 가 아니다(등록 가능)');
+ok(/S\.readOnly/.test(idx) && (idx.match(/!S\.readOnly|S\.readOnly\)/g) || []).length >= 4, '달력 처리기도 readOnly 면 등록·수정·삭제·완료를 막는다');
+const rd = (p) => readFileSync(new URL('../app/' + p, import.meta.url), 'utf8');
+ok(/id="hm-cal"/.test(rd('modules/plan/home-view.js')) && /mountEmbedded\(calEl, ctx\)/.test(rd('modules/plan/index.js')), '영업기획 홈에 일정 달력 자리와 연결이 있다');
+ok(/id="hm-cal"/.test(rd('modules/finance/view.js')) && /mountEmbedded\(calEl, \{ me \}\)/.test(rd('modules/finance/index.js')), '재무회계 개요에 일정 달력 자리와 연결이 있다');
+ok(/#hm-cal/.test(rd('modules/hr/index.js')) && /id="hm-cal"/.test(rd('modules/hr/view.js')), '인사 홈에 인사 캘린더 자리와 연결이 있다');
+console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

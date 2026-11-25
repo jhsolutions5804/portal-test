@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261118f';
-import { WEEKDAYS, ymd, dateKey, monthGrid, shiftMonth, fmtRange, expiryNote, expiryState, OWN_TAGS, TAG_LABEL, canWrite, canEditOwn, isHHMM, pad, VIEWS, dayLabel } from './logic.js?v=20261118f';
-import { holidayName as holName } from '../../shared/holidays.js?v=20261118f';
+import { esc } from '../../core/ui.js?v=20261125a';
+import { WEEKDAYS, ymd, dateKey, monthGrid, shiftMonth, fmtRange, expiryNote, expiryState, OWN_TAGS, TAG_LABEL, canWrite, canEditOwn, isHHMM, pad, VIEWS, dayLabel } from './logic.js?v=20261125a';
+import { holidayName as holName } from '../../shared/holidays.js?v=20261125a';
 
 export const SRC_LABEL = { pjt: 'PJT', leave: '연차·휴무', company: '회사', expiry: '만료', hr: '인사' };
 const srcLabel = (s) => SRC_LABEL[s] || s;
@@ -12,7 +12,7 @@ export function barHtml(S, providers, me) {
   const views = '<div class="jh-segmented jh-cal__views" role="group" aria-label="보기 방식">' + VIEWS.map(([k, label]) => '<button type="button" class="jh-segmented__item" data-view="' + k + '" aria-pressed="' + (S.view === k) + '">' + label + '</button>').join('') + '</div>';
   return '<div class="jh-cal__bar"><div class="jh-cal__nav"><button type="button" class="jh-iconbtn" data-cal-nav="-1" aria-label="이전">‹</button><strong class="jh-cal__title" data-cal-title>' + esc(S.title || '') + '</strong><button type="button" class="jh-iconbtn" data-cal-nav="1" aria-label="다음">›</button>' +
     '<button type="button" class="jh-btn" data-variant="secondary" data-cal-today>오늘</button></div>' + (S.widget ? '' : views) +
-    (canWrite(me) ? '<button type="button" class="jh-btn" data-variant="secondary" data-new data-bar-new aria-label="일정 등록">＋<span class="jh-cal__newtxt"> 등록</span></button>' : '') +
+    (canWrite(me) && !S.readOnly ? '<button type="button" class="jh-btn" data-variant="secondary" data-new data-bar-new aria-label="일정 등록">＋<span class="jh-cal__newtxt"> 등록</span></button>' : '') +
     '<details class="jh-cal__filter" data-cal-filter><summary class="jh-cal__filter-sum" title="표시할 일정">표시 <span data-cal-filter-n>' + on + '/' + providers.length + '</span></summary><div class="jh-cal__legend" role="group" aria-label="표시할 일정">' + tg + '</div></details></div>';
 }
 /** 달력 본체(막대 · 알림 · 본문 + (월 보기에서) 선택한 날 목록). 전체 화면과 홈 위젯이 똑같이 쓴다 */
@@ -56,7 +56,7 @@ export function gridHtml(S, byDay) {
   return '<div class="jh-cal__grid" role="group" aria-label="' + S.y + '년 ' + S.m + '월 달력">' + head + cells + '</div>';
 }
 function rowHtml(e, S, me) {
-  const own = canEditOwn(e, me); const exp = e.source === 'expiry' ? expiryState(e.start, S.today) : null;
+  const own = canEditOwn(e, me) && !S.readOnly; const exp = e.source === 'expiry' ? expiryState(e.start, S.today) : null;
   const meta = [e.project, e.place, e.extra && e.source === 'pjt' ? '참석 ' + e.extra : ''].filter(Boolean).map(esc).join(' · ');
   const todo = e.isTodo && own ? '<label class="jh-cal__todo"><input type="checkbox" data-done="' + esc(e.ref) + '"' + (e.done ? ' checked' : '') + '> 완료</label>' : (e.isTodo ? '<span class="jh-chip">할 일' + (e.done ? ' · 완료' : '') + '</span>' : '');
   const acts = own ? '<span class="jh-cal__acts"><button type="button" class="jh-btn" data-variant="ghost" data-edit="' + esc(e.ref) + '">수정</button><button type="button" class="jh-btn" data-variant="ghost" data-del="' + esc(e.ref) + '">삭제</button></span>' : '';
@@ -68,7 +68,7 @@ function rowHtml(e, S, me) {
 export function dayHtml(S, byDay, me) {
   const key = S.sel; if (!key) return ''; const list = byDay[key] || []; const d = new Date(+key.slice(0, 4), +key.slice(5, 7) - 1, +key.slice(8, 10)); const hol = holName(key);
   const head = '<div class="jh-cal__dayhead"><h3 class="jh-detail__h">' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일 (' + WEEKDAYS[d.getDay()] + ')' + (hol ? ' <small>' + esc(hol) + '</small>' : '') + ' <small>' + list.length + '건</small></h3>' +
-    (canWrite(me) ? '<button type="button" class="jh-btn" data-variant="primary" data-new>＋ 이 날짜에 등록</button>' : '') + '</div>';
+    (canWrite(me) && !S.readOnly ? '<button type="button" class="jh-btn" data-variant="primary" data-new>＋ 이 날짜에 등록</button>' : '') + '</div>';
     const body = list.length ? '<ul class="jh-cal__list">' + list.map((e) => rowHtml(e, S, me)).join('') + '</ul>' : '<div class="jh-empty">이 날짜에 등록된 일정이 없습니다.</div>';
   return head + body;
 }
