@@ -24,6 +24,7 @@ export function evalPeriod(year) { const y = Number(year); if (!Number.isInteger
  * 기간 끝 다음 날 이후 퇴직하는 사람은 기간 내내 재직했으므로 퇴직 처리 전까지는 대상이다. */
 export function isEvalTarget(worker, year) {
   const w = worker || {}; const p = evalPeriod(year); if (!p) return false;
+  if (w.evalExempt === true) return false; // 대표님이 평가 대상에서 뺀 사람(근로자 문서 evalExempt:true) — 2026-11-25 김민서
   if (SYSTEM_EMPNOS.test(String(w.empNo || '').trim()) || EXEC_RANKS.indexOf(String(w.rank || '').trim()) !== -1) return false;
   if (w.resigned === true || String(w.status || '').trim() === 'resigned' || (w.resignDate && isKey(w.resignDate) && w.resignDate <= p.to)) return false;
   const hire = String(w.hireDate || ''); if (!isKey(hire)) return false;

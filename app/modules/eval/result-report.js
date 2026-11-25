@@ -1,9 +1,9 @@
 /* 평가 결과 통보서 — 순수 규칙(화면·네트워크 없이 시험 가능). 확정된 정기평가(+ 확정된 수시평가)를 직원 본인에게 알리는 문서의 "내용 결정"과 "HTML 생성".
  *  원칙: ① 확정된 평가만 ② 직원이 알아도 되는 것만 — 최종 점수·등급·영역별 점수·동료 평균·수시평가 결과·본인 자기평가. 사장단 개인별 점수·코멘트, 동료·팀장 개별 점수, 평가자 식별 정보는 넣지 않는다.
  *  ③ 문서는 메일 본문이 아니라 "본인 확인(휴대폰 문자 인증) 링크" 뒤에 저장되어, 본인만 본다. */
-import { cycleSummary, areaItems, teamTypeOf, WEIGHTS_BY, AREA_LABELS, areaScore, leadAreasOf, adhocSummary, combineRegular, gradeOf, evalPeriod } from './evaluation.js?v=20261125i';
-import { docFileName } from '../../shared/doc-filename.js?v=20261125i';
-import { selfHtml } from './self-form.js?v=20261125i';
+import { cycleSummary, areaItems, teamTypeOf, WEIGHTS_BY, AREA_LABELS, areaScore, leadAreasOf, adhocSummary, combineRegular, gradeOf, evalPeriod } from './evaluation.js?v=20261125j';
+import { docFileName } from '../../shared/doc-filename.js?v=20261125j';
+import { selfHtml } from './self-form.js?v=20261125j';
 export const RESULT_DOC_TYPE = 'evalresult';
 export const RESULT_TITLE = '인사평가 결과 통보서';
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -14,6 +14,11 @@ const AREAS = ['achievement', 'competency', 'conduct'];
 /** 영역별 점수표: [{ key, label, weight, avg(5점 만점 평균), score(비중으로 환산한 점수) }] — 계산에 쓰인 값과 같은 출처(팀장 평가 집계 우선, 없으면 사장단 입력)를 쓴다 */
 function areaRows(cycle, items, type) {
   const w = WEIGHTS_BY(type); const c = cycle || {}; const rows = [];
+  if (type === 'pjt' && c.leadExempt === true) {
+    // 팀장 본인(팀장 1차 평가자 없음): 팀 점수 = 동료평가 평균을 100점으로 환산 — 대표가 넣은 항목 점수는 대표 점수에만 쓰이므로 표에 섞지 않는다
+    const pa0 = Number(c.peerAgg && c.peerAgg.avg); const ok0 = c.peerAgg && c.peerAgg.avg !== null && c.peerAgg.avg !== '' && isFinite(pa0) && pa0 >= 1 && pa0 <= 5;
+    return [{ key: 'peer', label: AREA_LABELS.peer + '(팀장은 동료평가로 팀 점수 산정)', weight: 100, avg: ok0 ? pa0 : null, score: ok0 ? r1(pa0 / 5 * 100) : null }];
+  }
   if (type === 'pjt') {
     const src = leadAreasOf(c.leadAgg, items) || (c.team && c.team.areas) || {};
     for (const k of AREAS) rows.push({ key: k, label: AREA_LABELS[k], weight: w[k], avg: mean(src[k]), score: areaScore(src[k], w[k]) });

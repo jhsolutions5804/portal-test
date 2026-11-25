@@ -61,4 +61,5 @@ console.log('── 인사평가도 완결한 청구서만 매출로 센다(대�
 ok(projectMargin({ billed: 1000, done: 600, paid: 400 }) === 33.3 && projectMargin({ billed: 1000, done: 0, paid: 400 }) === null && projectMargin({ billed: 1000, paid: 400 }) === null && projectMargin({ billed: 1000, done: 'x', paid: 400 }) === null && projectMargin({ billed: 1000, done: -1, paid: 400 }) === null, '★ 평가의 실현 마진율도 완결 기준이다 — 완결 600·지급 400 → 33.3%, 완결 0·없음·글자·음수는 null(청구로 대신 계산하지 않음)');
 { const P = projectPerformance({ target: 30, billed: 1000, done: 600, paid: 400 }); ok(P.actual === 33.3 && P.diff === 3.3 && P.score === 5, '★ 성과 요약(목표 30%): 실현 33.3% · +3.3%p · 5점 (청구 기준이면 60%·+30%p 로 후하게 나옴)'); }
 ok(pass + fail >= 32, '시험이 끝까지 실행됨');
+ok(isEvalTarget(W(), 2026) && !isEvalTarget(W({ evalExempt: true }), 2026), '★ 근로자 문서에 evalExempt:true 이면 평가 대상에서 빠짐(대표님 결정으로 제외한 직원)');
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);

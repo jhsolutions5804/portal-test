@@ -36,4 +36,7 @@ ok(!live(evil) && live('<img src=x onerror=1>') && live('<div onclick="x">') && 
 ok(R.resultHtml(Object.assign({}, d, { selfText: '' }), {}).indexOf('나의 자기평가') === -1 && R.resultHtml(d, {}).indexOf('발행일') === -1 && !R.resultHtml(Object.assign({}, d, { adhoc: [] }), {}).includes('수시평가 (프로젝트별)'), '자기평가 서술이 없으면 그 칸을 만들지 않고, 발행일은 값이 있을 때만, 수시평가가 없으면 표를 만들지 않음');
 const long = R.buildResultData({ year: 2026, worker: W, cycle: mkCycle({ self: { text: 'a'.repeat(5000) } }) }); ok(long.data.selfText.length === 2000, '자기평가 서술은 최대 2000자까지만(내 평가의 상한과 같음)');
 ok(html.includes('@media print') && html.includes('viewport') && R.RESULT_DOC_TYPE === 'evalresult', '인쇄·폰 화면 설정이 있고 문서 종류 식별자는 evalresult');
+{ const WL = { id: 'wl', name: '윤석원', dept: 'PJT팀', rank: '과장' }; const cyL = Object.assign(E.emptyCycle(WL, 2026), { leadExempt: true, peerAgg: { avg: 4.2, n: 3 }, team: { by: 'U1', areas: { achievement: [3, 3, 2], competency: [2, 3], conduct: [3, 3, 3] } }, ceo: { score: 53.6 }, confirmed: true });
+  const rl = R.buildResultData({ year: 2026, worker: WL, cycle: cyL }); ok(rl.ok && rl.data.areas.length === 1 && rl.data.areas[0].key === 'peer' && rl.data.areas[0].score === 84 && rl.data.final === 68.8, '★ 팀장 본인 통보서: 영역 표는 동료평가 한 줄(팀 점수)만 — 대표가 넣은 항목 점수가 표에 섞이지 않음');
+  ok(!R.resultHtml(rl.data, { today: '2026-11-25' }).includes('2.7'), '팀장 본인 통보서에 대표 입력 점수가 보이지 않음'); }
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);
