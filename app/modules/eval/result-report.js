@@ -1,9 +1,9 @@
 /* 평가 결과 통보서 — 순수 규칙(화면·네트워크 없이 시험 가능). 확정된 정기평가(+ 확정된 수시평가)를 직원 본인에게 알리는 문서의 "내용 결정"과 "HTML 생성".
  *  원칙: ① 확정된 평가만 ② 직원이 알아도 되는 것만 — 최종 점수·등급·영역별 점수·동료 평균·수시평가 결과·본인 자기평가. 사장단 개인별 점수·코멘트, 동료·팀장 개별 점수, 평가자 식별 정보는 넣지 않는다.
  *  ③ 문서는 메일 본문이 아니라 "본인 확인(휴대폰 문자 인증) 링크" 뒤에 저장되어, 본인만 본다. */
-import { cycleSummary, areaItems, teamTypeOf, WEIGHTS_BY, AREA_LABELS, areaScore, leadAreasOf, adhocSummary, combineRegular, gradeOf, evalPeriod } from './evaluation.js?v=20261125g';
-import { docFileName } from '../../shared/doc-filename.js?v=20261125g';
-import { selfHtml } from './self-form.js?v=20261125g';
+import { cycleSummary, areaItems, teamTypeOf, WEIGHTS_BY, AREA_LABELS, areaScore, leadAreasOf, adhocSummary, combineRegular, gradeOf, evalPeriod } from './evaluation.js?v=20261125h';
+import { docFileName } from '../../shared/doc-filename.js?v=20261125h';
+import { selfHtml } from './self-form.js?v=20261125h';
 export const RESULT_DOC_TYPE = 'evalresult';
 export const RESULT_TITLE = '인사평가 결과 통보서';
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -40,7 +40,7 @@ export function buildResultData(o) {
   return { ok: true, data: { year, period: p, worker: { name: String(w.name || ''), dept: String(w.dept || ''), rank: String(w.rank || '') }, teamType: type, final: sm.final, grade: sm.grade, areas: areaRows(x.cycle, items, type), peerN: type === 'pjt' ? sm.raters : 0, adhoc, combined, combinedGrade: combined == null ? '' : gradeOf(combined), selfText } };
 }
 
-const CSS = 'body{margin:0;padding:18px;font-family:-apple-system,"Malgun Gothic","Noto Sans KR",sans-serif;color:#1f2937;line-height:1.6;background:#fff}.w{max-width:720px;margin:0 auto}h1{font-size:20px;margin:0 0 4px;color:#0f2a5c}h2{font-size:15px;margin:22px 0 8px;padding-left:9px;border-left:4px solid #1d4ed8;color:#0f2a5c}p{margin:6px 0}.sub{color:#6b7280;font-size:13px}table{border-collapse:collapse;width:100%;margin:6px 0}th,td{border:1px solid #cbd5e1;padding:7px 9px;text-align:left;font-size:14px}th{background:#eef2fb;width:28%}.c{text-align:center}.big{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.card{flex:1 1 140px;border:2px solid #1d4ed8;background:#eef3ff;padding:10px 12px;text-align:center}.card b{display:block;font-size:26px;color:#0f2a5c}.card span{font-size:12px;color:#475569}.box{border:1px solid #cbd5e1;background:#f8fafc;padding:10px 12px;white-space:pre-wrap;font-size:14px}.note{border:2px solid #1d4ed8;background:#f0f6ff;padding:10px 12px;margin:14px 0;font-size:14px}.foot{margin-top:18px;padding-top:8px;border-top:1px solid #d1d5db;color:#6b7280;font-size:12px}@media print{body{padding:0}.card{break-inside:avoid}}';
+const CSS = 'body{margin:0;padding:18px;font-family:-apple-system,"Malgun Gothic","Noto Sans KR",sans-serif;color:#1f2937;line-height:1.6;background:#fff}.w{max-width:720px;margin:0 auto}h1{font-size:20px;margin:0 0 4px;color:#0f2a5c}h2{font-size:15px;margin:22px 0 8px;padding-left:9px;border-left:4px solid #1d4ed8;color:#0f2a5c}p{margin:6px 0}.sub{color:#6b7280;font-size:13px}table{border-collapse:collapse;width:100%;margin:6px 0}th,td{border:1px solid #cbd5e1;padding:7px 9px;text-align:left;font-size:14px}th{background:#eef2fb;width:28%}th.c{width:auto}.c{text-align:center}.big{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.card{flex:1 1 140px;border:2px solid #1d4ed8;background:#eef3ff;padding:10px 12px;text-align:center}.card b{display:block;font-size:26px;color:#0f2a5c}.card span{font-size:12px;color:#475569}.box{border:1px solid #cbd5e1;background:#f8fafc;padding:10px 12px;white-space:pre-wrap;font-size:14px}.note{border:2px solid #1d4ed8;background:#f0f6ff;padding:10px 12px;margin:14px 0;font-size:14px}.foot{margin-top:18px;padding-top:8px;border-top:1px solid #d1d5db;color:#6b7280;font-size:12px}@media print{body{padding:0}.card{break-inside:avoid}}';
 const fmt = (n) => (n == null ? '-' : String(n));
 
 /** 통보서 HTML(문서 전체). 모든 값은 이스케이프하고 스크립트·외부 자원이 없다. opts.today = 발행일(YYYY-MM-DD) */

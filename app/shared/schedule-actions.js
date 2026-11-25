@@ -1,10 +1,10 @@
 /* 영업기획·재무회계 일정 — 홈 달력에서 바로 등록·수정·삭제·완료할 때 쓰는 동작(일정 메뉴 보드와 같은 규칙·같은 저장소).
  * 보드(schedule-board.js)는 한 화면 전체를 그리지만 여기는 창(대화상자)·한 건 단위다. 저장하면 서버 함수가 Outlook 공유 사서함으로 보낸다(포털 → Outlook 한 방향). */
-import { db, collection, getDocs, query, where, addDoc, updateDoc, deleteDoc, doc, writeBatch, serverTimestamp } from '../core/firebase.js?v=20261125g';
-import { toast } from '../core/ui.js?v=20261125g';
-import { confirmDialog } from '../core/dialog.js?v=20261125g';
-import { buildScheduleDoc, buildSeries, seriesTargets } from './schedule-logic.js?v=20261125g';
-import { formHtml } from './schedule-view.js?v=20261125g';
+import { db, collection, getDocs, query, where, addDoc, updateDoc, deleteDoc, doc, writeBatch, serverTimestamp } from '../core/firebase.js?v=20261125h';
+import { toast } from '../core/ui.js?v=20261125h';
+import { confirmDialog } from '../core/dialog.js?v=20261125h';
+import { buildScheduleDoc, buildSeries, seriesTargets } from './schedule-logic.js?v=20261125h';
+import { formHtml } from './schedule-view.js?v=20261125h';
 
 /** 등록·수정 창. form = emptyForm(cfg, 날짜) 또는 formFromEvent(일정). done = 수정할 때 현재 완료 여부. 저장에 성공하면 onSaved() */
 export function openScheduleDialog({ cfg, me, form, done, onSaved }) {
