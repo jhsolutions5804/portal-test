@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261125a';
-import { won, card, chip } from './ui.js?v=20261125a';
-import { homeKpis, homeRows, homeTodo, homeMonth, HOME_TITLES } from './home.js?v=20261125a';
+import { esc } from '../../core/ui.js?v=20261125b';
+import { won, card, chip } from './ui.js?v=20261125b';
+import { homeKpis, homeRows, homeTodo, homeMonth, HOME_TITLES } from './home.js?v=20261125b';
 const kpi = (key, label, value, unit, tone, open) => '<button type="button" class="jh-plan__kpi" data-hm-kpi="' + key + '" aria-pressed="' + (open === key) + '"><span class="jh-field__hint">' + esc(label) + '</span><strong' + (tone ? ' data-tone="' + tone + '"' : '') + '>' + value + (unit ? '<span class="jh-field__hint"> ' + esc(unit) + '</span>' : '') + '</strong><span class="jh-field__hint">보기 ›</span></button>';
 const listRow = (r) => '<a class="jh-plan__row" href="' + esc(r.href) + '"><span class="jh-plan__main"><span class="jh-plan__line">' + chip(r.badge, r.tone) + '<strong>' + esc(r.title) + '</strong></span><span class="jh-field__hint">' + esc(r.meta) + '</span></span><strong>' + won(r.right) + '</strong></a>';
 const todoRow = (r, kind) => '<a class="jh-plan__row" href="#/plan/' + (kind === 'invoice' ? 'billing' : 'payout') + '/' + esc(r.id) + '"><span class="jh-plan__main"><span class="jh-plan__line"><strong>' + esc(r.no) + '</strong>' + chip(r.days > 0 ? r.days + '일 지남' : r.days === 0 ? '오늘' : (-r.days) + '일 남음', r.days > 0 ? 'red' : 'amber') + '</span><span class="jh-field__hint">' + esc((r.who ? r.who + ' · ' : '') + (kind === 'invoice' ? '지급요청일 ' : '지급예정일 ') + r.payDate) + '</span></span><strong>' + won(r.total) + '</strong></a>';
@@ -13,5 +13,5 @@ export function homeHtml(st) {
     + (todo.payments.length ? '<div class="jh-plan__gtitle">지급 예정서 ' + todo.payments.length + '건 · ' + won(todo.paymentsTotal) + '원 <span class="jh-field__hint">(지급일이 지났거나 7일 안, 지급완료 전)</span></div>' + todo.payments.map((r) => todoRow(r, 'payment')).join('') : '')
     + (!todo.overdue.length && !todo.payments.length ? '<div class="jh-empty">지금 챙길 일이 없습니다. 연체 청구서와 임박한 지급이 없습니다.</div>' : '') + '</div>';
   const month = '<div class="jh-plan__pad"><div class="jh-plan__sum"><div class="jh-plan__sumcell"><span class="jh-field__hint">이번 달 청구서</span><strong>' + mon.invoice.count + '건 · ' + won(mon.invoice.total) + '원</strong></div><div class="jh-plan__sumcell"><span class="jh-field__hint">이번 달 지급예정서</span><strong>' + mon.payment.count + '건 · ' + won(mon.payment.total) + '원</strong></div><div class="jh-plan__sumcell"><span class="jh-field__hint">진행 중 프로젝트</span><strong>' + k.run + '개</strong></div><div class="jh-plan__sumcell"><span class="jh-field__hint">유효 견적 공급가</span><strong>' + won(k.estSupply) + '원</strong></div></div></div>';
-  return '<div class="jh-plan">' + card('영업기획 홈', '<div class="jh-plan__pad">' + cards + '</div>') + panel + '<div id="hm-cal"></div>' + card('챙길 일', todoBody) + card('이번 달', month) + '</div>';
+  return '<div class="jh-plan jh-plan--wide">' + card('영업기획 홈', '<div class="jh-plan__pad">' + cards + '</div>') + panel + '<div id="hm-cal"></div>' + card('챙길 일', todoBody) + card('이번 달', month) + '</div>';
 }

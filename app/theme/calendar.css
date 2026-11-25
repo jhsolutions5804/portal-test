@@ -131,4 +131,9 @@
   .jh-cal__nav .jh-cal__title { min-width: 0; flex: 1 1 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-md, 1rem); }
   .jh-cal__nav .jh-iconbtn, .jh-cal__nav .jh-btn { flex: 0 0 auto; }
 }
-
+/* 모듈 홈(영업기획 홈·재무회계 개요)에 끼운 일정: 왼쪽 달력 카드 + 오른쪽 일정 목록 카드. 자리가 좁으면(56rem 미만) 위아래 */
+.jh-cal-embed { container-type: inline-size; container-name: calembed; }
+.jh-cal-embed__grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+@container calembed (min-width: 56rem) { .jh-cal-embed__grid { grid-template-columns: minmax(0, 1fr) 22rem; } }
+.jh-cal-embed .jh-cal[data-in-widget="true"] .jh-cal__split { grid-template-columns: minmax(0, 1fr); }
+.jh-cal-embed__grid .jh-cal-list__body { max-height: 42rem; }

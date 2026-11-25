@@ -1,4 +1,4 @@
-import { breakFor, dateKey, nowHHMM, snapTo10Min, validHHMM, calcWorkHours, calcManualHours } from '../../shared/worktime.js?v=20261125a';
+import { breakFor, dateKey, nowHHMM, snapTo10Min, validHHMM, calcWorkHours, calcManualHours } from '../../shared/worktime.js?v=20261125b';
 
 /* 출퇴근 순수 로직 — 화면·네트워크 없음(시험하기 쉽게 분리).
  * 규칙: 휴게는 식사 1시간 고정 + 식사 뺀 근무 4시간마다 30분(출근~퇴근 5시간 이하는 휴게 없음) · 기록 시각은 10분 단위 · 오늘 기록은 본인이 원터치/직접 입력,
@@ -9,7 +9,7 @@ export const SOURCE_LABEL = { clock: '원터치', manual: '직접 입력', admin
 export const sourceLabel = (s) => SOURCE_LABEL[s] || '입력';
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
-export { toMs, recordOf } from '../../shared/attendance-record.js?v=20261125a';   // 변환 함수는 전자결재와 함께 쓰므로 공용(shared)에 있다
+export { toMs, recordOf } from '../../shared/attendance-record.js?v=20261125b';   // 변환 함수는 전자결재와 함께 쓰므로 공용(shared)에 있다
 export const dayLabel = (key) => { const [y, m, d] = key.split('-').map(Number); const w = DAYS[new Date(y, m - 1, d).getDay()]; return pad(m) + '/' + pad(d) + '(' + w + ')'; };
 const pad = (n) => String(n).padStart(2, '0');
 export function yesterdayKey(now) { const d = new Date(now); d.setDate(d.getDate() - 1); return dateKey(d); }

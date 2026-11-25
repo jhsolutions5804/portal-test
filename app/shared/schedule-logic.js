@@ -1,8 +1,8 @@
 /* 영업기획·재무회계 일정(plan_schedules·finance_schedules) — 순수 규칙(화면·네트워크 없이 시험 가능). 설계: portal-functions/app-docs/calendar-extension-design.md (2026-10-20 대표님 결정, 2026-10-31 구현)
  * 일정 문서 모양은 옛 일정과 같다: text·sdate·edate·stime·etime·tag·tagLabel·place·memo·isTodo·done + source('manual'|'settlement_auto')·srcId·recurId·createdBy·createdByName·savedAt.
  * 금액·계좌는 일정에 넣지 않는다(제목이 Outlook 공유 사서함으로도 나간다). 자동 일정(settlement_auto)은 서버가 정산서에서 만들므로 화면에서 고치거나 지울 수 없다. */
-import { toHalfwidth } from './text-fix.js?v=20261125a';
-import { addDays, isYmd, isHHMM, makeEvent, fromLegacyDoc, pad } from './calendar-event.js?v=20261125a';
+import { toHalfwidth } from './text-fix.js?v=20261125b';
+import { addDays, isYmd, isHHMM, makeEvent, fromLegacyDoc, pad } from './calendar-event.js?v=20261125b';
 
 export const SCHEDULE_CONFIG = {
   plan: { key: 'plan', title: '영업기획 일정', col: 'plan_schedules', source: 'plan', label: '영업기획 일정', order: 55, link: '#/plan/schedule', defaultTag: 'meeting',
@@ -83,6 +83,17 @@ export function summarize(rows, today) {
 }
 /** 홈 캘린더에 내놓을 공통 일정 형식 — 영업기획·재무회계 권한자에게만(제공자 perm) */
 export function toCalendarEvent(id, d, cfg) {
-  return fromLegacyDoc(id, d, cfg.source, '', { link: cfg.link, extra: isAuto(d) ? '정산서 자동' : '', tagLabel: d.tagLabel || undefined });
+  return fromLegacyDoc(id, d, cfg.source, '', { link: cfg.link, extra: isAuto(d) ? '정산서 자동' : '', tagLabel: d.tagLabel || undefined, recurId: d.recurId || '' });
+}
+/** 홈 달력의 영업기획·재무회계 일정 한 건이 정산서 자동 일정인지(자동 일정은 고치거나 지울 수 없다) */
+export const isAutoEvent = (e) => !!e && e.extra === '정산서 자동';
+/** 홈 달력 일정 → 모듈 일정 보드 문서의 공통 형식(고치기 창에 채울 값). ref = 문서 번호 */
+export const formFromEvent = (e) => ({ id: e.ref, text: e.title || '', sdate: e.start || '', edate: e.end && e.end !== e.start ? e.end : '', stime: e.startTime || '', etime: e.endTime || '', tag: e.tag || '', place: e.place || '', memo: e.memo || '', isTodo: e.isTodo === true, recur: 'none' });
+/** 홈 달력(모듈 홈에 끼운 것)에서 이 모듈의 일정만 고칠 수 있게 표시한다 — 이 모듈 일정(자동 제외)은 수정·삭제 가능, 회사 일정은 이 달력에서 고치지 않는다 */
+export function boardEvent(e, cfg) {
+  if (!e) return e;
+  if (e.source === cfg.source) return Object.assign({}, e, { editable: !isAutoEvent(e), ref: e.id.slice(cfg.source.length + 1) });
+  if (e.source === 'company') return Object.assign({}, e, { editable: false });
+  return e;
 }
 export { makeEvent };

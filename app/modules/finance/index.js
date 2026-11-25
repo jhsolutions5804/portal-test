@@ -1,22 +1,23 @@
-import { esc, toast } from '../../core/ui.js?v=20261125a';
-import { pagerAction, pagerApply } from '../../shared/pager.js?v=20261125a';
-import { buildPendingRows, groupByMonth, confirmItems, autoProposeAfterImport, splitDraft, splitLeftText, buildConfirmedRows, ruleDraft } from './pjt-tag-logic.js?v=20261125a';
-import { proposeNewPjt, setPjtTag, clearPjtTag, listPjtRules, savePjtRule } from './data.js?v=20261125a';
-import { confirmDialog } from '../../core/dialog.js?v=20261125a';
-import { readSpreadsheet } from '../../shared/xls-read.js?v=20261125a';
-import { mountEmbedded } from '../calendar/index.js?v=20261125a';
-import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261125a';
-import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261125a';
-import { parseBankSheets } from '../../shared/bank-import.js?v=20261125a';
-import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261125a';
-import { parseCardWorkbook } from '../../shared/card-import.js?v=20261125a';
-import { canDeleteEntry, monthlyView, monthlyCsv, MP_SEED, npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, ruleReclassPlan, netByAccount, verifyReclass, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows, arByMonth, taxSalesSupplyByMonth, revenueTriple, reportPrintTitle } from './logic.js?v=20261125a';
-import { loadLedger, loadProjects, loadPjtTags, confirmPjtTags, postEntries, markReviewed, reverseEntry, deleteEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, saveMonthlyPlan, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries, loadInvoiceMonthly } from './data.js?v=20261125a';
-import { pjtTagHtml, pjtSplitDialogHtml, pjtRuleDialogHtml, monthlyHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261125a';
+import { esc, toast } from '../../core/ui.js?v=20261125b';
+import { pagerAction, pagerApply } from '../../shared/pager.js?v=20261125b';
+import { buildPendingRows, groupByMonth, confirmItems, autoProposeAfterImport, splitDraft, splitLeftText, buildConfirmedRows, ruleDraft } from './pjt-tag-logic.js?v=20261125b';
+import { proposeNewPjt, setPjtTag, clearPjtTag, listPjtRules, savePjtRule } from './data.js?v=20261125b';
+import { confirmDialog } from '../../core/dialog.js?v=20261125b';
+import { readSpreadsheet } from '../../shared/xls-read.js?v=20261125b';
+import { mountEmbedded } from '../calendar/index.js?v=20261125b';
+import { SCHEDULE_CONFIG } from '../../shared/schedule-logic.js?v=20261125b';
+import { parseTaxInvoiceWorkbook } from '../../shared/hometax-import.js?v=20261125b';
+import { CHOICE_ACCOUNT } from '../../shared/merchant-table.js?v=20261125b';
+import { parseBankSheets } from '../../shared/bank-import.js?v=20261125b';
+import { ownerSettlementKeys } from '../../shared/bank-classify.js?v=20261125b';
+import { parseCardWorkbook } from '../../shared/card-import.js?v=20261125b';
+import { canDeleteEntry, monthlyView, monthlyCsv, MP_SEED, npayPlan, npayGuess, summarize, filterEntries, statements, statementCsv, openingFromForm, previewTaxInvoices, previewBank, previewCards, parseEntriesJson, manualEntry, expenseEntryFromForm, accountName, entryDocId, monthEnd, kstToday, receiptFileProblem, receiptToForm, previewPayroll, applyMerchantTable, mergeRules, purchaseKey, gapEntry, reclassLines, forecastBase, forecastAssume, forecastRun, forecastCsv, vatPick, vatReport, vatForm, vatCsv, accountLedger, partnerBalances, bankReconcile, ledgerCsv, bankRuleFromForm, ruleReclassPlan, netByAccount, verifyReclass, reclassDefaultDate, bulkReclassPlan, entryDebit, openingToForm, closeCheck, merchantTableCsv, parseCsvRows, arByMonth, taxSalesSupplyByMonth, revenueTriple, reportPrintTitle } from './logic.js?v=20261125b';
+import { loadLedger, loadProjects, loadPjtTags, confirmPjtTags, postEntries, markReviewed, reverseEntry, deleteEntry, lockThrough, saveSettings, saveMerchantRules, recordImport, readReceipt, readNpay, saveMonthlyPlan, getReceiptFile, readPayroll, reclassifyEntry, savePurchaseRules, saveBankRules, attachEvidence, getAttachment, assignEntries, loadInvoiceMonthly } from './data.js?v=20261125b';
+import { pjtTagHtml, pjtSplitDialogHtml, pjtRuleDialogHtml, monthlyHtml, forecastHtml, homeHtml, entriesHtml, entryDialogHtml, manualDialogHtml, importHtml, reportsHtml, openingHtml, settingsHtml, expenseHtml, gapHtml, rulesHtml, reclassHtml, bulkReclassHtml } from './view.js?v=20261125b';
 
 /** 재무회계 — 복식 원장·가져오기·재무제표. 영업기획·인사총무와 분리된 영역(관리자·재무회계팀·perms.finance). 설계: 기획_재무제표_설계_r1.md */
-import { financePerm } from '../../shared/finance-perm.js?v=20261125a';
-import { printWithTitle } from '../../shared/print-title.js?v=20261125a';
+import { financePerm } from '../../shared/finance-perm.js?v=20261125b';
+import { printWithTitle } from '../../shared/print-title.js?v=20261125b';
 /** 실제 메뉴 등록은 공용 틀(modules/legacy/list.js 의 finance 정의 — 인사총무와 같은 사이드바·내용 영역). 여기의 값은 규약(manifest+mount)용이며 권한은 같은 함수를 쓴다 */
 export const manifest = { id: 'finance', order: 25, title: '재무회계', icon: '📒', defaultHash: '#/finance/home', perm: financePerm };
 const S = { data: null, filter: { from: '', to: '', source: '', review: false, reviewed: false, assignee: '', q: '' }, limit: 100, pg: {}, imp: { kind: 'taxsales', busy: false, error: '', preview: null, userRules: {}, acctBySupplier: {}, raw: null }, rep: { kind: 'is', from: '', to: '', acct: '2010', pacct: '2010', q: '', zero: false, vatKey: '', vatForm: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_vatform_v1') || '{}') || {}; } catch (e) { return {}; } })() }, openDate: '2026-01-01', admin: false, rl: null, chk: null, chkDate: '', openEditId: '', sel: new Set(), mp: { ym: kstToday().slice(0, 7), manage: false, draft: null, view: null }, fc: { over: (() => { try { return JSON.parse(localStorage.getItem('jh_fin_fc_v1') || '{}') || {}; } catch (e) { return {}; } })(), scen: 'base' } };
@@ -57,7 +58,7 @@ export async function mount(root, route, ctx) {
     if (tab === 'gap') { st.inv = S.inv; st.revT = revenueTriple(arByMonth(S.data.entries), taxSalesSupplyByMonth(S.data.entries), S.inv.data); }
   if (tab === 'forecast') { const base = forecastBase(S.data.entries); const as = forecastAssume(base, S.fc.over); const runs = {}; as.scen.forEach((sc) => { runs[sc.key] = forecastRun(base, as.A, sc); }); st.fc = S.fc; st.fcm = { base, A: as.A, auto: as.auto, scen: as.scen, runs }; S.fcm = st.fcm; }
     body.innerHTML = tab === 'home' ? homeHtml(st) : tab === 'entries' ? entriesHtml(st) : tab === 'expense' ? expenseHtml(st) : tab === 'import' ? importHtml(st) : tab === 'reports' ? reportsHtml(st) : tab === 'monthly' ? monthlyHtml(st) : tab === 'forecast' ? forecastHtml(st) : tab === 'opening' ? openingHtml(st) : tab === 'gap' ? gapHtml(st) : tab === 'pjt' ? pjtTagHtml(S.pt) : tab === 'rules' ? rulesHtml(st) : settingsHtml(st);
-    if (tab === 'home') { const ph = body.querySelector('#hm-cal'); if (ph) { ph.replaceWith(calEl); if (!calOn) { calOn = true; mountEmbedded(calEl, { me }).catch((e) => { console.error('개요 일정', e); calEl.innerHTML = '<div class="jh-field__hint">일정을 불러오지 못했습니다.</div>'; }); } } }
+    if (tab === 'home') { const ph = body.querySelector('#hm-cal'); if (ph) { ph.replaceWith(calEl); if (!calOn) { calOn = true; mountEmbedded(calEl, { me }, SCHEDULE_CONFIG.finance).catch((e) => { console.error('개요 일정', e); calEl.innerHTML = '<div class="jh-field__hint">일정을 불러오지 못했습니다.</div>'; }); } } }
     body.removeAttribute('aria-busy');
   };
   /* 월별 매출 세 숫자(이엔지 정산 탭): 청구서 합계는 서버(marginAct invoiceMonthly, 정산서만 읽는 가벼운 동작)에서 받고 세금계산서·통장 입금은 이미 읽은 전표에서 계산한다. 이 탭을 열 때 한 번만 부르고(기다리지 않고 화면을 먼저 그린다) 부르는 중에는 다시 부르지 않는다. 실패해도 세금계산서·통장 입금은 그대로 보인다 */

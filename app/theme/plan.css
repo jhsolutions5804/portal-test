@@ -146,4 +146,4 @@ a.jh-plan__row { text-decoration: none; }
 /* 견적·청구·지급 목록 글자 검색칸(대기열 2-1-15, 2026-11-09) */
 .jh-plan__searchrow { margin-bottom: var(--sp-3); }
 .jh-plan__searchrow .jh-input { width: 100%; }
-
+.jh-plan--wide { max-width: none; }   /* 영업기획 홈: 일정 달력(왼쪽)·일정 목록(오른쪽)이 화면 폭을 쓰게 */

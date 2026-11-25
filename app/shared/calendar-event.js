@@ -18,7 +18,7 @@ export function makeEvent(o) {
     id: str(o.id, 160), source: str(o.source, 24), title: str(o.title, 200).trim() || '(제목 없음)', start, end,
     startTime: hm(o.startTime), endTime: hm(o.endTime), tag: str(o.tag, 24) || 'etc', tagLabel: tagLabelOf(o.tag, o.tagLabel),
     project: str(o.project, 80), place: str(o.place, 120), memo: str(o.memo, 600), isTodo: o.isTodo === true, done: o.done === true,
-    link: typeof o.link === 'string' && /^#\/[a-z0-9_]+(\/[A-Za-z0-9_%.\-]+)*$/.test(o.link) ? o.link : '', editable: o.editable === true, ref: o.ref || null, extra: str(o.extra, 120), tone: str(o.tone, 12), workdays: o.workdays === true
+    link: typeof o.link === 'string' && /^#\/[a-z0-9_]+(\/[A-Za-z0-9_%.\-]+)*$/.test(o.link) ? o.link : '', editable: o.editable === true, ref: o.ref || null, extra: str(o.extra, 120), tone: str(o.tone, 12), workdays: o.workdays === true, recurId: str(o.recurId, 60)
   };
 }
 /** 옛 일정 문서(text·sdate·edate·stime·etime·tag·tagLabel·place·att·isTodo·done) → 공통 형식 */
