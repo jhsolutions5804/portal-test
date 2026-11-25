@@ -163,8 +163,12 @@ export function cycleSummary(cycle, info) {
     const paN = Number(pa.n); raters = isFinite(paN) && paN > 0 ? Math.floor(paN) : 0;
     // 팀장의 1차 평가: 서버가 마감 후 집계해 둔 값(leadAgg)이 올바르면 그것을 쓰고(서버만 쓰므로 위조 불가), 없으면 사장단이 화면에서 대신 입력한 값(team.areas)을 쓴다(팀장이 제출하지 않아도 평가가 막히지 않게)
     const la = leadAreasOf(c.leadAgg, it); leadFrom = la ? 'lead' : (c.team && c.team.areas && hasInput(c.team.areas) ? 'manual' : 'none'); leadN = Number(c.leadAgg && c.leadAgg.n) || 0;
+    // 팀장 본인(팀장 1차 평가자가 없는 사람, c.leadExempt)은 팀 점수 = 동료평가 평균을 100점으로 환산한 값(대표 항목 점수는 대표 점수에만 반영 — 2026-11-25 대표님 결정)
+    if (c.leadExempt === true) { leadFrom = 'exempt'; input = raters > 0; if (peerAvg != null) teamScore = r1(peerAvg / 5 * 100); }
+    else {
     const r = la || (c.team && c.team.areas); input = hasInput(r) || raters > 0;
     if (complete(r) && peerAvg != null) teamScore = regularTeamScore({ achievement: r.achievement, competency: r.competency, conduct: r.conduct, peer: [peerAvg] }, 'pjt');
+    }
   } else {
     const all = Object.values(c.exec || {}); input = all.some((e) => hasInput(e && e.areas)); const done = all.filter((e) => complete(e && e.areas)); raters = done.length;
     const sc = done.map((e) => regularTeamScore(e.areas, 'nonpjt')).filter((x) => x != null); teamScore = sc.length ? r1(sc.reduce((a, b) => a + b, 0) / sc.length) : null;
@@ -203,6 +207,7 @@ export function leadAreasOf(leadAgg, items) {
 /** 정기평가 패널의 팀장 1차 평가 상태 안내 — sm = cycleSummary 결과(leadFrom: 'lead'(서버 집계) | 'manual'(사장단 입력) | 'none', leadN: 제출 건수), cycleStatus = 평가 회차 상태 */
 export function leadNote(sm, cycleStatus) {
   const s = sm || {}; const st = String(cycleStatus || ''); const n = Number(s.leadN) || 0;
+  if (s.leadFrom === 'exempt') return { tone: 'ok', text: '팀장 본인이라 팀장 1차 평가는 없습니다. 팀 점수 = 동료평가 평균(100점 환산), 대표 항목 점수는 대표 점수에만 반영됩니다.' };
   if (s.leadFrom === 'lead') return { tone: 'ok', text: '팀장 평가가 반영되었습니다(마감 후 서버가 집계한 값, 영역별 점수 — 이 화면에서는 고칠 수 없습니다). 조정이 필요하면 대표 점수로 반영해 주세요.' };
   if (n > 1) return { tone: 'low', text: '팀장 평가가 ' + n + '건 제출되어 어느 것을 쓸지 정할 수 없습니다. 영역 점수를 반영하지 않았으니 인사팀에 확인해 주세요(사장단이 아래에 대신 입력할 수 있습니다).' };
   if (st === 'closed' || st === 'published') return s.leadFrom === 'manual' ? { tone: 'wait', text: '팀장이 평가를 제출하지 않았거나 아직 집계되지 않았습니다. 지금은 사장단이 입력한 점수를 씁니다("동료평가 집계"를 누르면 제출된 팀장 평가를 반영합니다).' } : { tone: 'wait', text: '팀장 평가가 아직 집계되지 않았습니다. 평가 회차 카드의 "동료평가 집계"를 눌러 주세요(팀장이 제출하지 않았다면 사장단이 아래에 대신 입력할 수 있습니다).' };

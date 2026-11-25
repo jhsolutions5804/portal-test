@@ -130,3 +130,8 @@ console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통�
   const dd = { team: { by: 'U1', areas: full(4) }, exec: {} }; T.seedCeoFromTeam(dd, 'U1', '대표', 'pjt'); ok(dd.exec.U1 && T.ceoScoreOf(dd.exec.U1.areas, 'pjt') === 80, '★ 예전에 「1차 평가」 칸에 대표가 넣은 점수는 「대표 평가」 칸으로 옮겨 보임');
   const d2 = { team: { by: 'U2', areas: full(4) }, exec: {} }; T.seedCeoFromTeam(d2, 'U1', '대표', 'pjt'); ok(!d2.exec.U1, '다른 사람이 넣은 1차 평가 값은 옮기지 않음');
   const d3 = { team: { by: 'U1', areas: full(4) }, exec: { U1: { areas: full(2) } } }; T.seedCeoFromTeam(d3, 'U1', '대표', 'pjt'); ok(T.ceoScoreOf(d3.exec.U1.areas, 'pjt') === 40, '이미 대표 평가 칸에 값이 있으면 덮어쓰지 않음'); }
+
+{ const T = await import('../app/modules/eval/evaluation.js'); const it = T.areaItems('PJT팀', '과장'); const four = (n) => ({ achievement: it.achievement.map(() => n), competency: it.competency.map(() => n), conduct: it.conduct.map(() => n) });
+  const cy = { leadExempt: true, peerAgg: { avg: 4, n: 3 }, team: { by: 'U1', areas: four(2) }, ceo: { score: 60 }, confirmed: true };
+  const sm = T.cycleSummary(cy, { teamType: 'pjt', items: it });
+  ok(sm.teamScore === 80 && sm.leadFrom === 'exempt' && sm.final === 70, '★ 팀장 본인(leadExempt): 팀 점수 = 동료평가 평균×20(=80), 대표가 넣은 항목은 팀 점수에 안 섞이고 최종 = 팀 50% + 대표 50%'); }

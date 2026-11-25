@@ -1,6 +1,6 @@
 /* 인사평가 — 정기평가 운영: 불러오기·저장·클릭/입력 처리. 저장 위치 = evaluations/{근로자}/cycles/{연도} (기존 관리자 전용 컬렉션 안이라 보안 규칙 변경 없음, 설계서 docs/hr-evaluation-design.md) */
-import { withManage } from '../../shared/eval-perm.js?v=20261125d';
-import { isEvalTarget, emptyCycle, setRating, evalAccess, cycleSummary, areaItems, teamTypeOf, saveBody, ceoScoreOf, seedCeoFromTeam } from './evaluation.js?v=20261125d';
+import { withManage } from '../../shared/eval-perm.js?v=20261125e';
+import { isEvalTarget, emptyCycle, setRating, evalAccess, cycleSummary, areaItems, teamTypeOf, saveBody, ceoScoreOf, seedCeoFromTeam, teamLeaderOf } from './evaluation.js?v=20261125e';
 const clone = (o) => JSON.parse(JSON.stringify(o));
 /** deps: { db, collection, getDocs, getDoc, setDoc, doc, serverTimestamp, toast, confirmDialog, paint, st, ctx } */
 export function createCycleController(deps) {
@@ -25,7 +25,7 @@ export function createCycleController(deps) {
   /** 클릭 처리: 처리했으면 true */
   const onClick = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return false; const ec = st.ec;
-    const op = t.closest('[data-ec-open]'); if (op) { const wid = op.getAttribute('data-ec-open'); const w = (ec.eligible || []).find((x) => x.id === wid); if (!w) return true; ec.sel = wid; ec.draft = seedCeoFromTeam(clone(ec.cycles[wid] || emptyCycle(w, ec.year)), me.uid || '', me.name || '', teamTypeOf(w.dept)); paint(); return true; }
+    const op = t.closest('[data-ec-open]'); if (op) { const wid = op.getAttribute('data-ec-open'); const w = (ec.eligible || []).find((x) => x.id === wid); if (!w) return true; ec.sel = wid; ec.draft = seedCeoFromTeam(clone(ec.cycles[wid] || emptyCycle(w, ec.year)), me.uid || '', me.name || '', teamTypeOf(w.dept)); { const ld = teamLeaderOf(w.dept, (ec.eligible || []).filter((x) => String(x.dept || '').trim() === String(w.dept || '').trim()), ec.users); if (teamTypeOf(w.dept) === 'pjt' && ld.workerId === wid) ec.draft.leadExempt = true; } paint(); return true; }
     const sc = t.closest('[data-ec-score]'); if (sc) {
       const a = access(); if (!a.edit || ec.draft.confirmed) return true; const [key, idx, val] = sc.getAttribute('data-ec-score').split('|'); const [who, area] = key.split(':');
       if (who === 'team') ec.draft.team = Object.assign({}, ec.draft.team, { by: me.uid || '', areas: setRating(ec.draft.team && ec.draft.team.areas, area, Number(idx), Number(val)) });
