@@ -18,6 +18,8 @@
 .jh-hr-table td.jh-hr__muted { color: var(--c-ink-3); font-size: var(--fs-xs); }
 /* 인사평가 — 정기평가 운영(팀 보드·평가 패널) */
 .jh-hr-ev__area { display: grid; gap: var(--sp-1); }
+.jh-hr-ev__fold { border: 1px dashed var(--c-border, #ccc); border-radius: 6px; padding: 4px 8px; }
+.jh-hr-ev__fold > summary { cursor: pointer; }
 .jh-hr-ev__rate { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--sp-3); align-items: center; padding: var(--sp-2) 0; border-bottom: var(--u-1) solid var(--c-line); font-size: var(--fs-sm); }
 .jh-hr-ev__dots { display: inline-flex; gap: var(--sp-1); }
 .jh-hr-ev__dot { min-width: var(--u-36); min-height: var(--u-36); border: var(--u-1) solid var(--c-line); border-radius: var(--radius-sm); background: var(--c-surface); font-weight: 600; cursor: pointer; }
