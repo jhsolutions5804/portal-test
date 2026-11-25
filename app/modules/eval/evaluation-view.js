@@ -1,9 +1,9 @@
 /* 인사평가 — 정기평가 운영 화면(테섭 미리보기). 마크업만 만든다(저장·불러오기는 evaluation-io.js). 설계서 docs/hr-evaluation-design.md */
-import { pageTableHtml } from '../../shared/pager.js?v=20261125c';
-import { withManage } from '../../shared/eval-perm.js?v=20261125c';
-import { esc } from '../../core/ui.js?v=20261125c';
-import { DEPT_ORDER } from '../../shared/org.js?v=20261125c';
-import { evalPeriod, teamCriteria, teamTypeOf, areaItems, AREA_LABELS, WEIGHTS_BY, cycleSummary, peerAggNote, leadAreasOf, leadNote, emptyCycle, STATUS_LABEL, gradeOf, teamLeaderOf, evalAccess } from './evaluation.js?v=20261125c';
+import { pageTableHtml } from '../../shared/pager.js?v=20261125d';
+import { withManage } from '../../shared/eval-perm.js?v=20261125d';
+import { esc } from '../../core/ui.js?v=20261125d';
+import { DEPT_ORDER } from '../../shared/org.js?v=20261125d';
+import { evalPeriod, teamCriteria, teamTypeOf, areaItems, AREA_LABELS, WEIGHTS_BY, cycleSummary, peerAggNote, leadAreasOf, leadNote, emptyCycle, ceoScoreOf, STATUS_LABEL, gradeOf, teamLeaderOf, evalAccess } from './evaluation.js?v=20261125d';
 const chip = (text, tone) => '<span class="jh-chip" data-tone="' + tone + '">' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const gtone = (g) => (g === 'S' || g === 'A' ? 'accent' : g === 'C' ? 'danger' : 'muted');
@@ -49,18 +49,17 @@ export function evalPanelHtml(st) {
   const execAreas = (d.exec && d.exec[meUid] && d.exec[meUid].areas) || null;
   const leadAreas = type === 'pjt' ? leadAreasOf(d.leadAgg, items) : null; const ln = leadNote(sm, st.ca && st.ca.cycle && st.ca.cycle.status);
   const main = type === 'pjt'
-    ? '<div class="jh-hr__sub">1차 평가 — 팀장' + (lead.name ? ' ' + esc(lead.name) : '') + ' <span class="jh-field__hint">' + (leadAreas ? '(팀장이 "내 평가"에서 제출한 영역 점수 — 서버가 마감 후 집계, 읽기 전용)' : '(팀장이 아직 제출·집계되지 않았으면 사장단 계정이 대신 입력할 수 있습니다)') + '</span></div>' + '<div class="jh-field__hint" data-tone="' + ln.tone + '">' + esc(ln.text) + '</div>' + areasHtml(leadAreas || (d.team && d.team.areas), items, 'team:', dis || !!leadAreas)
+    ? '<div class="jh-hr__sub">1차 평가 — 팀장' + (lead.name ? ' ' + esc(lead.name) : '') + ' <span class="jh-field__hint">' + (leadAreas ? '(팀장이 "내 평가"에서 제출한 영역 점수 — 서버가 마감 후 집계, 읽기 전용)' : '(팀장이 아직 제출·집계되지 않았으면 사장단 계정이 대신 입력할 수 있습니다)') + '</span></div>' + '<div class="jh-field__hint" data-tone="' + ln.tone + '">' + esc(ln.text) + '</div>' + areasHtml(leadAreas || (d.team && d.team.areas), items, 'team:', dis || !!leadAreas) + '<div class="jh-hr__sub">대표 평가 — ' + esc((ec.me && ec.me.name) || '대표') + ' <span class="jh-field__hint">(항목별로 입력하면 대표 점수 50%가 됩니다 · 동료평가 비중은 빼고 100점으로 환산)</span></div>' + areasHtml(execAreas, items, 'exec:', dis)
     : '<div class="jh-hr__sub">사장단 평가 — ' + esc((ec.me && ec.me.name) || '내 평가') + ' <span class="jh-field__hint">(사장단 3명이 각자 평가하고 평균을 팀 점수로 사용 · 현재 완료 ' + sm.raters + '명)</span></div>' + areasHtml(execAreas, items, 'exec:', dis);
   const pn = peerAggNote(sm, st.ca && st.ca.cycle && st.ca.cycle.status); const peerBlock = type === 'pjt' ? '<div class="jh-hr-ev__area"><div class="jh-hr__sub">동료평가 <span class="jh-field__hint">같은 팀 안에서만 · 직원이 "내 평가"에서 직접 입력 · 평가자별 점수는 누구도 볼 수 없고 평균만 반영(2명 미만이면 반영 안 함)</span></div><div class="jh-field__hint" data-tone="' + pn.tone + '">' + esc(pn.text) + '</div></div>' : '';
   const selfBlock = '<div class="jh-field"><label class="jh-field__label">자기평가 <span class="jh-field__hint">점수에 넣지 않고 면담 자료로 씁니다 ([올해 성과] [아쉬운 점] [내년 성장 목표] [필요한 지원] 구역으로 나누어 적으면 결과 통보서에 구분해 보입니다)</span></label><textarea class="jh-textarea" rows="3" data-ec-self' + (dis ? ' disabled' : '') + ' placeholder="미리보기: 직원이 직접 쓰는 칸입니다">' + esc((d.self && d.self.text) || '') + '</textarea></div>';
   const ceo = d.ceo || {}; const base = sm.teamScore;
-  const ceoBlock = '<div class="jh-hr-ev__area"><div class="jh-hr__sub">최종 확정 — 대표 <span class="jh-field__hint">팀 점수 50% + 대표 점수 50% · "그대로 승인"이면 팀 점수 그대로</span></div>'
-    + '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-ec-act="approve"' + (acc.confirm && !lock && base != null ? '' : ' disabled') + '>팀 결과 그대로 승인</button>'
-    + '<input class="jh-input" style="max-width:8rem" inputmode="decimal" data-ec-ceo="score" placeholder="대표 점수(0~100)" value="' + esc(ceo.score == null ? '' : ceo.score) + '"' + (acc.confirm && !lock ? '' : ' disabled') + '>'
-    + '<input class="jh-input" style="max-width:22rem" data-ec-ceo="comment" placeholder="대표 코멘트(선택)" value="' + esc(ceo.comment || '') + '"' + (acc.confirm && !lock ? '' : ' disabled') + '>'
-    + '<button type="button" class="jh-btn" data-variant="secondary" data-ec-act="confirm"' + (acc.confirm && !lock && base != null ? '' : ' disabled') + '>점수로 확정</button>' + (lock && acc.confirm ? '<button type="button" class="jh-btn" data-variant="ghost" data-ec-act="unconfirm">확정 취소</button>' : '') + '</div>'
+  const myCeo = ceoScoreOf(execAreas, type);
+  const ceoBlock = '<div class="jh-hr-ev__area"><div class="jh-hr__sub">최종 확정 — 대표 <span class="jh-field__hint">팀 점수 50% + 대표 점수 50% · 대표 점수는 위 「' + (type === 'pjt' ? '대표 평가' : '사장단 평가') + '」 항목 점수를 100점으로 환산한 값</span></div>'
+    + '<div class="jh-hr__bar"><input class="jh-input" style="max-width:22rem" data-ec-ceo="comment" placeholder="대표 코멘트(선택)" value="' + esc(ceo.comment || '') + '"' + (acc.confirm && !lock ? '' : ' disabled') + '>'
+    + '<button type="button" class="jh-btn" data-variant="primary" data-ec-act="confirm"' + (acc.confirm && !lock && base != null && myCeo != null ? '' : ' disabled') + '>확정</button>' + (lock && acc.confirm ? '<button type="button" class="jh-btn" data-variant="ghost" data-ec-act="unconfirm">확정 취소</button>' : '') + '</div>'
     + (acc.confirm ? '' : '<div class="jh-field__hint">최종 확정은 사장단 계정(대표·부사장)만 할 수 있습니다' + (acc.level === 'hr' ? ' (인사팀은 열람·운영만)' : '') + '.</div>') + '</div>';
-  const result = '<div class="jh-hr-ev__score">' + cell('팀 점수', fmt(sm.teamScore), type === 'pjt' ? '팀장 평가 + 동료' : '사장단 ' + sm.raters + '명 평균') + cell('대표 점수', ceo.approved ? '그대로 승인' : fmt(sm.ceoScore)) + cell('최종 점수', fmt(sm.final), lock ? '확정됨' : '확정 전') + cell('등급', sm.grade || '-', sm.grade ? '' : 'S 90↑ · A 80↑ · B 65↑ · C') + '</div>';
+  const result = '<div class="jh-hr-ev__score">' + cell('팀 점수', fmt(sm.teamScore), type === 'pjt' ? '팀장 평가 + 동료' : '사장단 ' + sm.raters + '명 평균') + cell('대표 점수', lock ? fmt(sm.ceoScore) : fmt(myCeo), '항목 점수 환산') + cell('최종 점수', fmt(sm.final), lock ? '확정됨' : '확정 전') + cell('등급', sm.grade || '-', sm.grade ? '' : 'S 90↑ · A 80↑ · B 65↑ · C') + '</div>';
   const actions = '<div class="jh-hr__bar"><button type="button" class="jh-btn" data-variant="primary" data-ec-act="save"' + (canEdit || (acc.confirm && !lock) ? '' : ' disabled') + '>저장</button><button type="button" class="jh-btn" data-variant="ghost" data-ec-act="back">← 팀 목록</button>' + (acc.level === 'hr' ? '<span class="jh-field__hint">인사팀은 열람·운영만 가능하고 평가 입력·확정은 사장단이 합니다.</span>' : '') + (lock ? '<span class="jh-field__hint">확정된 평가는 수정할 수 없습니다(대표가 확정 취소 후 수정).</span>' : '') + '</div>';
   return card((w.name || '') + ' · ' + (w.dept || '') + ' · ' + (w.rank || ''), '<div class="jh-hr__pad">' + result + main + peerBlock + selfBlock + ceoBlock + actions + '</div>', chip(STATUS_LABEL[sm.status], stone(sm.status)));
 }

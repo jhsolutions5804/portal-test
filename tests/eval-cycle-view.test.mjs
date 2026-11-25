@@ -98,16 +98,16 @@ ok(b2.includes('권한이 없습니다') && !b2.includes('data-ec-open') && !b2.
 const b3 = evalBoardHtml({ evTab: 'cycle', ec: Object.assign({}, st.ec, { me: { uid: 'H', name: '인사', rank: '대리', admin: true, perms: {} } }) });
 ok(b3.includes('내 권한: 인사팀') && b3.includes('>보기<') && !b3.includes('>평가<'), '인사팀은 목록을 보되 버튼이 "보기"(입력은 사장단)');
 st.ec.sel = 'p1'; st.ec.draft = JSON.parse(JSON.stringify(st.ec.cycles.p1)); const pan = evalPanelHtml(st);
-ok(pan.includes('과장님 · PJT팀 · 과장') && pan.includes('1차 평가 — 팀장 과장님') && pan.includes('리더십') && pan.includes('동료평가') && pan.includes('data-ec-score="team:achievement|0|5"') && pan.includes('자기평가') && pan.includes('팀 결과 그대로 승인'), '★ 평가 패널(PJT팀 과장): 팀장 1차 평가 항목(리더십 포함)·자기평가·대표 확정 버튼이 그대로 있음');
+ok(pan.includes('과장님 · PJT팀 · 과장') && pan.includes('1차 평가 — 팀장 과장님') && pan.includes('리더십') && pan.includes('동료평가') && pan.includes('data-ec-score="team:achievement|0|5"') && pan.includes('자기평가') && pan.includes('대표 평가 —') && pan.includes('data-ec-score="exec:achievement|0|5"') && /data-ec-act="confirm"/.test(pan) && !pan.includes('그대로 승인') && !pan.includes('data-ec-ceo="score"'), '★ 평가 패널(PJT팀 과장): 팀장 1차 평가 항목(리더십 포함)·자기평가·대표 평가 항목 칸·확정 버튼이 있고 「그대로 승인」·대표 점수 입력 칸은 없음');
 ok(!pan.includes('data-ec-peer') && !/<select[^>]*동료|협업·소통<\/option>/.test(pan) && pan.includes('직원이 "내 평가"에서 직접 입력') && pan.includes('평가자별 점수는 누구도 볼 수 없고 평균만 반영') && pan.includes('평가 회차가 시작되면 동료평가가 진행되고'), '★ 평가자별 동료 점수 입력 칸이 더 이상 없음(익명 약속과 화면 일치) — 대신 직원이 직접 입력한다는 안내와 집계 상태 문구(회차 전)가 보임');
 ok(!pan.includes('아직 반영할 수 없음') && !pan.includes('미리보기에서는 동료가 쓴 점수를 대신 입력'), '옛 미리보기 문구("대신 입력"·"아직 반영할 수 없음")가 남아 있지 않음');
-ok(pan.includes('aria-pressed="true"') && pan.match(/data-ec-score="team:achievement\|0\|4"[^>]*aria-pressed="true"/) !== null && pan.includes('disabled') === true && /data-ec-act="approve" disabled/.test(pan), '입력한 점수(4점)가 눌린 상태로 보이고, 팀 점수가 아직 없으면 "그대로 승인"은 잠김');
+ok(pan.includes('aria-pressed="true"') && pan.match(/data-ec-score="team:achievement\|0\|4"[^>]*aria-pressed="true"/) !== null && pan.includes('disabled') === true && /data-ec-act="confirm" disabled/.test(pan), '입력한 점수(4점)가 눌린 상태로 보이고, 팀 점수가 아직 없으면 "확정"은 잠김');
 const stN = { evTab: 'cycle', ec: Object.assign({}, st.ec, { sel: 'h1', draft: emptyCycle(E[3], 2026) }) }; const panN = evalPanelHtml(stN);
 ok(panN.includes('사장단 평가 — 조은별') && panN.includes('data-ec-score="exec:achievement|4|3"') && !panN.includes('data-ec-peer') && !panN.includes('1차 평가 — 팀장') && panN.includes('사장단 3명이 각자 평가') && panN.includes('data-ec-score="exec:competency|3|5"'), '★ 평가 패널(인사총무팀): 사장단 평가(업적 5항목)이고 동료평가·팀장 평가 칸은 없음');
 const stH = { evTab: 'cycle', ec: Object.assign({}, st.ec, { me: { uid: 'H', name: '인사', rank: '대리', admin: true, perms: {} }, sel: 'p1' }) }; const panH = evalPanelHtml(stH);
 ok(/data-ec-score="team:achievement\|0\|5"[^>]*disabled/.test(panH) && /data-ec-act="save" disabled/.test(panH) && panH.includes('인사팀은 열람·운영만') && panH.includes('최종 확정은 사장단 계정'), '★ 인사팀이 보면 평가 입력칸은 잠기고 저장·확정은 못 함(열람만), 안내 문구가 보임');
 const stL = { evTab: 'cycle', ec: Object.assign({}, st.ec, { sel: 'p1', draft: Object.assign(JSON.parse(JSON.stringify(st.ec.cycles.p1)), { confirmed: true, ceo: { approved: true } }) }) }; const panL = evalPanelHtml(stL);
-ok(/data-ec-score="team:achievement\|0\|5"[^>]*disabled/.test(panL) && panL.includes('확정된 평가는 수정할 수 없습니다') && panL.includes('data-ec-act="unconfirm"') && panL.includes('그대로 승인'), '확정된 평가는 입력이 잠기고 대표에게만 "확정 취소"가 보임');
+ok(/data-ec-score="team:achievement\|0\|5"[^>]*disabled/.test(panL) && panL.includes('확정된 평가는 수정할 수 없습니다') && panL.includes('data-ec-act="unconfirm"') && !panL.includes('그대로 승인'), '확정된 평가는 입력이 잠기고 대표에게만 "확정 취소"가 보임');
 import fs from 'node:fs';
 const idx = fs.readFileSync(new URL('../app/modules/eval/ops.js', import.meta.url), 'utf8');
 ok(idx.includes('createCycleController(') && idx.includes('cyc.onClick(ev)') && idx.includes('cyc.onInput(ev)') && idx.includes('cyc.onChange(ev)') && idx.includes('evalBoardHtml') && idx.includes('evalPanelHtml'), '★ 평가 모듈의 운영 화면에 정기평가 컨트롤러·팀 보드·평가 패널이 연결됨(클릭·입력·선택)');
@@ -123,3 +123,10 @@ ok(idx.includes('createCycleController(') && idx.includes('cyc.onClick(ev)') && 
   const dup = Object.assign(emptyCycle(emp, 2026), { leadAgg: { areas: null, n: 2, by: null } }); const pd = evalPanelHtml(mkSt(dup, 'closed')); ok(pd.includes('팀장 평가가 2건 제출되어') && /data-ec-score="team:achievement\|0\|5"(?![^>]*disabled)/.test(pd), '팀장 평가가 중복 제출됐으면 이유를 알리고 사장단이 대신 입력할 수 있게 둠');
 }
 console.log(fail ? '\n실패 ' + fail + '건 / 통과 ' + pass : '\n전부 통과 (' + pass + '건)'); if (fail) process.exit(1);
+
+{ const T = await import('../app/modules/eval/evaluation.js'); const itp = T.areaItems('PJT팀', '대리'); const full = (n) => ({ achievement: itp.achievement.map(() => n), competency: itp.competency.map(() => n), conduct: itp.conduct.map(() => n) });
+  ok(T.ceoScoreOf(full(5), 'pjt') === 100 && T.ceoScoreOf(full(4), 'pjt') === 80 && T.ceoScoreOf(full(3), 'pjt') === 60, '★ 대표 점수 = 대표가 입력한 항목 점수를 100점으로 환산(PJT팀은 동료평가 비중을 뺀 80점 기준)');
+  const part = full(4); part.conduct = []; ok(T.ceoScoreOf(part, 'pjt') === null && T.ceoScoreOf(null, 'pjt') === null, '항목이 비면 대표 점수는 없음(확정 불가)');
+  const dd = { team: { by: 'U1', areas: full(4) }, exec: {} }; T.seedCeoFromTeam(dd, 'U1', '대표', 'pjt'); ok(dd.exec.U1 && T.ceoScoreOf(dd.exec.U1.areas, 'pjt') === 80, '★ 예전에 「1차 평가」 칸에 대표가 넣은 점수는 「대표 평가」 칸으로 옮겨 보임');
+  const d2 = { team: { by: 'U2', areas: full(4) }, exec: {} }; T.seedCeoFromTeam(d2, 'U1', '대표', 'pjt'); ok(!d2.exec.U1, '다른 사람이 넣은 1차 평가 값은 옮기지 않음');
+  const d3 = { team: { by: 'U1', areas: full(4) }, exec: { U1: { areas: full(2) } } }; T.seedCeoFromTeam(d3, 'U1', '대표', 'pjt'); ok(T.ceoScoreOf(d3.exec.U1.areas, 'pjt') === 40, '이미 대표 평가 칸에 값이 있으면 덮어쓰지 않음'); }

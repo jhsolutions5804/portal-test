@@ -176,6 +176,19 @@ export function cycleSummary(cycle, info) {
   const status = final != null ? 'confirmed' : teamScore != null ? 'team_done' : input ? 'rating' : 'none';
   return { type, teamScore, peerAvg, raters, leadFrom, leadN, ceoScore, decided, final, grade: final == null ? '' : gradeOf(final), status };
 }
+/** 대표 점수(100점) = 대표가 항목별로 매긴 영역 점수(업적·역량·태도)를 100점 만점으로 환산 — PJT팀은 동료평가 비중(20)을 뺀 80점 기준(2026-11-25 대표님 결정: 대표 점수 칸 없이 항목 입력이 곧 대표 점수). 항목이 비면 null */
+export function ceoScoreOf(areas, teamType) {
+  const w = WEIGHTS_BY(teamType); let sum = 0, tot = 0;
+  for (const k of ['achievement', 'competency', 'conduct']) { if (!(w[k] > 0)) continue; const sc = areaScore(areas && areas[k], w[k]); if (sc == null) return null; sum += sc; tot += w[k]; }
+  return tot > 0 ? r1(sum / tot * 100) : null;
+}
+/** 예전 화면은 대표가 입력한 항목 점수를 「1차 평가(팀장)」 칸(team.areas, by=대표)에 저장했다 — 대표 평가 칸(exec[uid])이 비어 있으면 그 값을 옮겨 보여 준다(저장 전까지는 화면에만) */
+export function seedCeoFromTeam(draft, uid, name, teamType) {
+  const d = draft || {}; if (teamType !== 'pjt' || !uid) return d;
+  const cur = d.exec && d.exec[uid]; if (cur && hasInput(cur.areas)) return d;
+  if (d.team && d.team.by === uid && hasInput(d.team.areas)) { d.exec = Object.assign({}, d.exec, { [uid]: { name: name || '', areas: JSON.parse(JSON.stringify(d.team.areas)) } }); }
+  return d;
+}
 /** 서버(evalAct)만 쓰는 필드 — 화면은 읽기만 한다. 저장 본문에 넣으면 ① 패널을 열어 둔 사이 서버가 새로 집계한 값을 화면의 옛 복제본이 덮어쓰고 ② 관리자가 동료 평균을 임의로 저장(위조)할 수 있다. */
 export const SERVER_ONLY_FIELDS = ['peerAgg', 'leadAgg'];
 /** 저장할 문서 본문: 화면 상태의 복사본에서 서버 전용 필드를 뺀다(원본은 바꾸지 않는다) */

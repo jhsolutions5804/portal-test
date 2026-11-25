@@ -1,6 +1,6 @@
 /* 인사평가 — 정기평가 운영: 불러오기·저장·클릭/입력 처리. 저장 위치 = evaluations/{근로자}/cycles/{연도} (기존 관리자 전용 컬렉션 안이라 보안 규칙 변경 없음, 설계서 docs/hr-evaluation-design.md) */
-import { withManage } from '../../shared/eval-perm.js?v=20261125c';
-import { isEvalTarget, emptyCycle, setRating, evalAccess, cycleSummary, areaItems, teamTypeOf, saveBody } from './evaluation.js?v=20261125c';
+import { withManage } from '../../shared/eval-perm.js?v=20261125d';
+import { isEvalTarget, emptyCycle, setRating, evalAccess, cycleSummary, areaItems, teamTypeOf, saveBody, ceoScoreOf, seedCeoFromTeam } from './evaluation.js?v=20261125d';
 const clone = (o) => JSON.parse(JSON.stringify(o));
 /** deps: { db, collection, getDocs, getDoc, setDoc, doc, serverTimestamp, toast, confirmDialog, paint, st, ctx } */
 export function createCycleController(deps) {
@@ -25,7 +25,7 @@ export function createCycleController(deps) {
   /** 클릭 처리: 처리했으면 true */
   const onClick = async (ev) => {
     const t = ev.target; if (!(t instanceof Element)) return false; const ec = st.ec;
-    const op = t.closest('[data-ec-open]'); if (op) { const wid = op.getAttribute('data-ec-open'); const w = (ec.eligible || []).find((x) => x.id === wid); if (!w) return true; ec.sel = wid; ec.draft = clone(ec.cycles[wid] || emptyCycle(w, ec.year)); paint(); return true; }
+    const op = t.closest('[data-ec-open]'); if (op) { const wid = op.getAttribute('data-ec-open'); const w = (ec.eligible || []).find((x) => x.id === wid); if (!w) return true; ec.sel = wid; ec.draft = seedCeoFromTeam(clone(ec.cycles[wid] || emptyCycle(w, ec.year)), me.uid || '', me.name || '', teamTypeOf(w.dept)); paint(); return true; }
     const sc = t.closest('[data-ec-score]'); if (sc) {
       const a = access(); if (!a.edit || ec.draft.confirmed) return true; const [key, idx, val] = sc.getAttribute('data-ec-score').split('|'); const [who, area] = key.split(':');
       if (who === 'team') ec.draft.team = Object.assign({}, ec.draft.team, { by: me.uid || '', areas: setRating(ec.draft.team && ec.draft.team.areas, area, Number(idx), Number(val)) });
@@ -35,11 +35,12 @@ export function createCycleController(deps) {
     const ac = t.closest('[data-ec-act]'); if (!ac) return false; const act = ac.getAttribute('data-ec-act');
     if (act === 'back') { ec.sel = ''; ec.draft = null; paint(); return true; }
     if (act === 'save') { await save(); return true; }
-    if (act === 'approve' || act === 'confirm') {
-      const a = access(); if (!a.confirm) { toast('최종 확정은 사장단 계정(대표·부사장)만 할 수 있습니다.'); return true; } const w = target(); const sm = cycleSummary(ec.draft, { teamType: teamTypeOf(w.dept), items: areaItems(w.dept, w.rank) });
+    if (act === 'confirm') {
+      const a = access(); if (!a.confirm) { toast('최종 확정은 사장단 계정(대표·부사장)만 할 수 있습니다.'); return true; } const w = target(); const type = teamTypeOf(w.dept); const sm = cycleSummary(ec.draft, { teamType: type, items: areaItems(w.dept, w.rank) });
       if (sm.teamScore == null) { toast('팀 점수가 아직 완성되지 않았습니다(모든 항목과 동료평가가 필요합니다).'); return true; }
-      if (act === 'approve') ec.draft.ceo = Object.assign({}, ec.draft.ceo, { approved: true, score: null });
-      else { const n = Number(ec.draft.ceo && ec.draft.ceo.score); if (!(isFinite(n) && n >= 0 && n <= 100) || ec.draft.ceo.score === '' || ec.draft.ceo.score == null) { toast('대표 점수를 0~100 사이로 입력해 주세요.'); return true; } ec.draft.ceo = Object.assign({}, ec.draft.ceo, { approved: false, score: n }); }
+      const mine = ec.draft.exec && ec.draft.exec[me.uid || 'me']; const cs = ceoScoreOf(mine && mine.areas, type);
+      if (cs == null) { toast('「대표 평가」의 모든 항목에 점수를 입력해 주세요.'); return true; }
+      ec.draft.ceo = Object.assign({}, ec.draft.ceo, { approved: false, score: cs });
       ec.draft.confirmed = true; ec.draft.ceo.by = me.uid || ''; await save(); return true;
     }
     if (act === 'unconfirm') { const a = access(); if (!a.confirm) return true; const ok = await confirmDialog({ title: '확정 취소', body: '확정을 취소하고 다시 수정할 수 있게 합니다.', confirmLabel: '확정 취소' }); if (!ok.ok) return true; ec.draft.confirmed = false; await save(); return true; }
