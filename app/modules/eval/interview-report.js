@@ -1,12 +1,12 @@
 /* 인사평가 면담 기록서(인쇄용) — 면담에서 합의한 실행 계획을 한 장으로. 직원·면담자 서명란이 있다.
  * 결과 통보서와 같은 방식으로 새 창에 문서를 쓰고 인쇄한다(result-report.js 의 resultPrintHtml 이 제목·인쇄 스크립트를 더한다). 이 문서는 점수·연봉을 약속하는 문서가 아니다. */
-import { esc } from '../../core/ui.js?v=20261125h';
-import { docFileName } from '../../shared/doc-filename.js?v=20261125h';
-import { RC_LABELS, REVIEW_STATUS_TEXT } from './interview-logic.js?v=20261125h';
+import { esc } from '../../core/ui.js?v=20261125i';
+import { docFileName } from '../../shared/doc-filename.js?v=20261125i';
+import { RC_LABELS, REVIEW_STATUS_TEXT } from './interview-logic.js?v=20261125i';
 export const REVIEW_TITLE = '인사평가 면담 기록서';
 /** 문서 이름 — 종류 - 이름 - 평가 연도(점수·부서·직급은 넣지 않는다) */
 export function reviewPrintTitle(d) { const x = d && typeof d === 'object' ? d : {}; const w = x.worker && typeof x.worker === 'object' ? x.worker : {}; return docFileName({ group: 'person', kind: REVIEW_TITLE, name: w.name, year: x.year }); }
-const CSS = 'body{margin:0;padding:24px;font-family:-apple-system,"Malgun Gothic","Noto Sans KR",sans-serif;color:#1f2937;line-height:1.6;background:#fff}.w{max-width:720px;margin:0 auto}h1{font-size:20px;margin:0 0 4px;color:#0f2a5c}h2{font-size:14px;margin:18px 0 6px;color:#0f2a5c}.sub{color:#64748b;font-size:12px;margin-bottom:14px}table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid #cbd5e1;padding:6px 8px;text-align:left}th{background:#f1f5f9;width:22%}.box{border:1px solid #cbd5e1;background:#f8fafc;padding:10px 12px;white-space:pre-wrap;font-size:14px;min-height:22px}.sig{display:flex;gap:24px;margin-top:34px}.sig div{flex:1;border-top:1px solid #64748b;padding-top:4px;font-size:12px;color:#475569;text-align:center}.note{margin-top:18px;font-size:12px;color:#64748b}@media print{body{padding:0}}';
+const CSS = 'body{margin:0;padding:24px;font-family:-apple-system,"Malgun Gothic","Noto Sans KR",sans-serif;color:#1f2937;line-height:1.6;background:#fff}.w{max-width:720px;margin:0 auto}h1{font-size:20px;margin:0 0 4px;color:#0f2a5c}h2{font-size:14px;margin:18px 0 6px;color:#0f2a5c}.sub{color:#64748b;font-size:12px;margin-bottom:14px}table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid #cbd5e1;padding:6px 8px;text-align:left}th{background:#f1f5f9;width:22%}.box{border:1px solid #cbd5e1;background:#f8fafc;padding:10px 12px;white-space:pre-wrap;font-size:14px;min-height:22px}.sig{display:flex;gap:24px;margin-top:34px}.sig div{flex:1;border-top:1px solid #64748b;padding-top:4px;font-size:12px;color:#475569;text-align:center}.note{margin-top:18px;font-size:12px;color:#64748b}@page{margin:14mm}@media print{body{padding:0}.w{max-width:none;padding-right:2px;box-sizing:border-box}}';
 /** d = { year, worker:{name, dept, rank}, record, status } → 한 장짜리 HTML 문서 */
 export function reviewHtml(d) {
   const x = d && typeof d === 'object' ? d : {}; const w = x.worker && typeof x.worker === 'object' ? x.worker : {}; const r = x.record && typeof x.record === 'object' ? x.record : {};
