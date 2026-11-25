@@ -1,12 +1,12 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261125e';
-import { pageInfo, pagerSync, pagerHtml } from '../../shared/pager.js?v=20261125e';
-import { monthPreview, splitLeftText, RULE_ACCOUNTS } from './pjt-tag-logic.js?v=20261125e';
-import { esc } from '../../core/ui.js?v=20261125e';
-import { ruleReclassPlan, DELETE_DAYS } from './logic.js?v=20261125e'; import { ownerDraws, MP_GROUPS, NPAY_CHOICES, ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport, vatForm, vatCardRef } from './logic.js?v=20261125e';
-import { CHOICES } from '../../shared/merchant-table.js?v=20261125e';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261125f';
+import { pageInfo, pagerSync, pagerHtml } from '../../shared/pager.js?v=20261125f';
+import { monthPreview, splitLeftText, RULE_ACCOUNTS } from './pjt-tag-logic.js?v=20261125f';
+import { esc } from '../../core/ui.js?v=20261125f';
+import { ruleReclassPlan, DELETE_DAYS } from './logic.js?v=20261125f'; import { ownerDraws, MP_GROUPS, NPAY_CHOICES, ACCOUNTS, SOURCE_LABEL, sourceLabel, won, accountName, entryDebit, OPENING_FIELDS, EXPENSE_CATS, PAY_METHODS, EVIDENCE, NO_VAT_CATS, kstToday, GAP_TYPES, arByMonth, CARD_LABEL, openingToForm, closeCheck, assigneeList, accountLedger, partnerBalances, bankReconcile, vatPeriods, vatPick, vatReport, vatForm, vatCardRef } from './logic.js?v=20261125f';
+import { CHOICES } from '../../shared/merchant-table.js?v=20261125f';
 
 /* 재무회계 화면 조각 — 모든 값은 esc() 로 감싸 HTML 로 만든다. 스타일은 theme/finance.css 와 공용 클래스를 쓴다 */
-const TABS = [['home', '개요'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['monthly', '월간 수지'], ['forecast', '예측'], ['gap', '이엔지 정산'], ['pjt', '프로젝트 표시'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];
+const TABS = [['home', '재무회계 홈'], ['entries', '전표'], ['expense', '비용 입력'], ['import', '가져오기'], ['reports', '재무제표'], ['monthly', '월간 수지'], ['forecast', '예측'], ['gap', '이엔지 정산'], ['pjt', '프로젝트 표시'], ['rules', '규칙'], ['opening', '개시 재산'], ['settings', '설정']];
 export const tabsHtml = (cur) => '<div class="jh-segmented jh-finance__tabs" role="group" aria-label="재무회계">' + TABS.map(([k, l]) => '<a class="jh-segmented__item" href="#/finance/' + k + '" aria-pressed="' + (k === cur) + '">' + l + '</a>').join('') + '</div>';
 
 /** 카드 한 장: 제목 줄 + 안쪽 여백이 일정한 내용. flush=true 면 표처럼 가장자리까지 채우는 내용 */
