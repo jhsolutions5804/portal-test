@@ -18,6 +18,10 @@ for f in files:
         for n in blk.split(','):
             n = n.strip().split(' as ')[-1].strip()
             if n: names.add(n)
+    # export const A = 1, B = 2;  (한 문장에 이름 여러 개) — 같은 줄에서 쉼표 뒤 '이름 =' 도 내보내기로 본다(2026-11-26: FB_MAX·MAX_TERMS 를 못 보던 오탐)
+    for ln in t.split('\n'):
+        mm = re.match(r'export\s+(?:const|let)\s+\w+\s*=(.*)', ln)
+        if mm: names.update(re.findall(r',\s*(\w+)\s*=(?!=)', mm.group(1).split(';')[0]))
     exports[os.path.abspath(f)] = names
 # export * from './x.js' (재내보내기)를 따라가 이름을 합친다(여러 단계도 반복해서 처리)
 for _ in range(4):

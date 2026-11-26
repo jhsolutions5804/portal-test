@@ -40,7 +40,7 @@ const calSt = (o) => Object.assign({ today: '2026-10-25', acMode: 'cal', acW: 'w
 const cal = attendCalHtml(calSt());
 ok(cal.includes('주별 근로시간 (월~일)') && cal.indexOf('주별 근로시간') > cal.indexOf('jh-ac__center') && cal.indexOf('주별 근로시간') < cal.indexOf('jh-ac__side') && !cal.includes('data-w-detail'), '출퇴근 달력 화면: 달력 아래·옆 칸 앞에 주별 카드가 있고, 주를 고르기 전에는 일별 표가 없다');
 ok(attendCalHtml(calSt({ acWeek: '2026-10-19' })).includes('10/19~10/25 일별 내역 — 합계 46h') && attendCalHtml(calSt({ acWeek: '2026-10-19', acRows: rows.slice(0, 5), acAdj: rows.slice(5) })).includes('합계 46h') && attendCalHtml(calSt({ acMode: 'ot' })).includes('주별 근로시간') === false && attendCalHtml(calSt({ acW: '' })).includes('주별 근로시간') === false, '달력 화면: 선택한 주 일별 내역, 앞·뒤 달 기록(acAdj)도 합산, 초과근로 보기·직원 미선택 때는 카드가 나오지 않는다');
-const hh2 = homeHtml(); ok(hh2.includes('id="hm-week"') && hh2.indexOf('hm-week') < hh2.indexOf('hm-list') && hh2.indexOf('hm-list') < hh2.indexOf('hm-cal') && hh2.includes('id="hm-kpi"') && hh2.includes('id="hm-seal"'), '인사 홈 틀: 주 근로시간 칸이 목록·캘린더 앞에 있고 기존 칸(요약·서명)은 그대로');
+const hh2 = homeHtml(); ok(hh2.includes('id="hm-week"') && hh2.indexOf('hm-list') < hh2.indexOf('hm-cal') && hh2.indexOf('hm-cal') < hh2.indexOf('hm-week') && hh2.includes('id="hm-kpi"') && hh2.includes('id="hm-seal"'), '인사 홈 틀: 주 근로시간 칸이 목록·캘린더 뒤(본문)에 있고 기존 칸(요약·서명)은 그대로');
 // ── 의심 기록 표시
 const susRows = rows.concat([rec('2026-10-21', 24, { checkIn: '20:08', checkOut: '20:08' })]);
 let hs = weeklyCardHtml(st({ rows: susRows })); ok(hs.includes('⚠️ 기록 확인 1건') && !weeklyCardHtml(st()).includes('기록 확인'), '주별 표: 의심 기록이 있는 주에만 "⚠️ 기록 확인 N건"');

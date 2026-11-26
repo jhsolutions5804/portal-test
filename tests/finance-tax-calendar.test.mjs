@@ -1,5 +1,5 @@
 /* 재무회계 세무 달력 — 법정기한 계산 규칙 시험(화면·네트워크 없음) */
-import { TAX_RULES, adjustDeadline, taxEventsOfYear, taxEventsForRange, GROUP_ORDER } from '../app/modules/finance/tax-calendar.js';
+import { TAX_RULES, adjustDeadline, taxEventsOfYear, taxEventsForRange, GROUP_ORDER } from '../app/shared/tax-calendar.js';
 let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
 const dow = (k) => new Date(k + 'T00:00:00Z').getUTCDay();
 const HOL = new Set(['2027-03-01', '2026-08-17']);                      // 시험용 공휴일(삼일절·대체공휴일)

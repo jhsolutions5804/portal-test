@@ -1,24 +1,24 @@
-import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261125k';
-import { register, visibleFor, get } from './registry.js?v=20261125k';
-import { parseHash, onChange } from './router.js?v=20261125k';
-import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261125k';
-import { hasMicrosoftCallback, finishMicrosoftLogin, startMicrosoftLogin, msErrorMessage } from './ms-auth.js?v=20261125k';
-import { initTheme } from './theme.js?v=20261125k';
-import { checkForUpdate } from './update.js?v=20261125k';
-import { MODULES, installShellDocks } from '../modules/index.js?v=20261125k';
-import { mountPlatformHome } from './home.js?v=20261125k';
-import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261125k';
-import { ensureTime24 } from '../shared/time24.js?v=20261125k';
-import { installRecent, describeNow } from './recent.js?v=20261125k'; import { installFeedback } from '../shared/feedback.js?v=20261125k';
-import { workTabs, resumeHash } from './worktabs.js?v=20261125k';
-import { legacyProjectHash } from '../shared/pjt-key.js?v=20261125k';
-import { renderEntry } from '../shared/entry-form.js?v=20261125k';
+import { watchMe, login, logout, authErrorMessage } from './auth.js?v=20261126a';
+import { register, visibleFor, get } from './registry.js?v=20261126a';
+import { parseHash, onChange } from './router.js?v=20261126a';
+import { renderLogin, renderDenied, renderShell } from './shell.js?v=20261126a';
+import { hasMicrosoftCallback, finishMicrosoftLogin, startMicrosoftLogin, msErrorMessage } from './ms-auth.js?v=20261126a';
+import { initTheme } from './theme.js?v=20261126a';
+import { checkForUpdate } from './update.js?v=20261126a';
+import { MODULES, installShellDocks } from '../modules/index.js?v=20261126a';
+import { mountPlatformHome } from './home.js?v=20261126a';
+import { startIdle, stopIdle, OUT_FLAG, IDLE_LIMIT_MS, durationText } from './idle.js?v=20261126a';
+import { ensureTime24 } from '../shared/time24.js?v=20261126a';
+import { installRecent, describeNow } from './recent.js?v=20261126a'; import { installFeedback } from '../shared/feedback.js?v=20261126a';
+import { workTabs, resumeHash } from './worktabs.js?v=20261126a';
+import { legacyProjectHash } from '../shared/pjt-key.js?v=20261126a';
+import { renderEntry } from '../shared/entry-form.js?v=20261126a';
 
 initTheme();   // 이 기기에 저장된 화면 모드(자동·라이트·다크) 적용
 MODULES.forEach((m) => register(Object.assign({}, m.manifest, { mount: m.mount })));
 
 const root = document.getElementById('jh-root');
-let me = null; let shell = null; let mods = []; let recent = null; let docsOff = null; let feedbackOff = null;   // feedbackOff: 우측 하단 문의·건의 창   // recent: 화면 우측 floating 최근 사용 메뉴
+let me = null; let shell = null; let mods = []; let recent = null; let docsOff = null; let feedbackOff = null;   // feedbackOff: 우측 하단 문의·건의 창 · recent: 화면 우측 floating 최근 사용 메뉴
 const mainViews = new Map(); let curView = null; let labelTimers = [];   // 작업 탭: 화면별 본문(전자결재·재무회계 등)을 살려 둔다. 옛 모듈 틀(영업기획·인사총무·PJT)은 frame.js 가 같은 방식으로
 const isDesktop = () => !!(window.matchMedia && window.matchMedia('(min-width: 900px)').matches);   // 폰은 하단 메뉴가 있고 새로고침 수단이 없어 지금까지처럼 매번 새로 그린다
 /** 살려 두는 화면의 키: 화면이 아닌 값(문서 번호 등)은 넣지 않는다 — 전자결재는 결재함(목록·상세)·새 문서·홈·관리 */

@@ -30,5 +30,5 @@ const ap = applicantsHtml(st());
 ok(ap.indexOf('🗑 지원서 개인정보 파기 관리') >= 0 && ap.indexOf('🗑 지원서 개인정보 파기 관리') < ap.indexOf('채용 지원자') && ap.includes('파기 기한 지남') && ap.includes('합격자 — 파기 제외') && ap.includes('공고 연결 없음') && ap.includes('채용 확정일 미입력'), '지원자 화면: 파기 관리 카드가 목록 위에, 각 행에 파기 상태 칩');
 ok(!applicantsHtml(st({ purge: null })).includes('파기 관리') && !applicantsHtml(st({ apList: [A({ id: 'z' })] })).includes('파기 기한 지남 2026'), '파기 정보가 없으면 카드·칩 없이 예전 화면 그대로');
 ok(applicantsHtml(st({ apSel: 'a1' })).indexOf('파기 관리') < 0, '지원서 상세를 열었을 때는 관리 카드가 끼어들지 않는다');
-const hh = homeHtml(); ok(hh.indexOf('hm-week') < hh.indexOf('hm-purge') && hh.indexOf('hm-purge') < hh.indexOf('hm-work') && hh.indexOf('hm-work') < hh.indexOf('hm-list') && hh.indexOf('hm-list') < hh.indexOf('hm-cal'), '인사 홈 틀: 주 근로시간 → 지원서 파기 → 인력 현황 → 목록 → 캘린더 순서');
+const hh = homeHtml(); ok(hh.indexOf('hm-list') < hh.indexOf('hm-cal') && hh.indexOf('hm-cal') < hh.indexOf('hm-week') && hh.indexOf('hm-week') < hh.indexOf('hm-purge') && hh.indexOf('hm-purge') < hh.indexOf('hm-work'), '인사 홈 틀: 본문은 목록 → 캘린더 → 주 근로시간 → 지원서 파기 → 인력 현황 순서(좌측은 요약·서명 칸)');
 console.log('\n' + (fail ? 'FAILED ' : 'ALL OK ') + pass + ' pass / ' + fail + ' fail'); process.exit(fail ? 1 : 0);

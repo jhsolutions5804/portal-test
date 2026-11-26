@@ -11,6 +11,11 @@ import re, os, sys, glob
 root = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), '..', 'app'))
 IMP = re.compile(r"(?:import|export)\s+(?:[^'\";]*?\s+from\s+)?['\"](\.{1,2}/[^'\"?]+)(?:\?[^'\"]*)?['\"]")
 problems = []; checked = 0
+# 알려진 예외(2026-11-26) — 새 예외를 늘리려면 이유를 여기 적는다:
+#  · plan/·finance/ 가 calendar 모듈의 내장 달력(mountEmbedded)을 일정 화면에 끼워 넣는다. 달력 화면 코드 전체가 modules/calendar 에 있어 shared/ 로 옮기려면 달력 모듈을 통째로 옮겨야 함 — 별도 과제
+#  · modules/index.js 가 shared/schedule-board.js 로 영업기획·재무회계 일정 화면(hostNative)을 연결한다
+ALLOW_R1 = {('plan', 'calendar'), ('finance', 'calendar')}
+ALLOW_R4 = {'shared/schedule-board.js'}
 def where(path):
     rel = os.path.relpath(path, root).replace(os.sep, '/')
     parts = rel.split('/')
@@ -24,13 +29,13 @@ for f in glob.glob(root + '/**/*.js', recursive=True):
     for m in IMP.finditer(text):
         target = os.path.normpath(os.path.join(os.path.dirname(f), m.group(1)))
         tk, tn, trel = where(target); checked += 1
-        if kind == 'modules' and name != '(index)' and tk == 'modules' and tn not in (name,):
+        if kind == 'modules' and name != '(index)' and tk == 'modules' and tn not in (name,) and (name, tn) not in ALLOW_R1:
             problems.append('R1 모듈끼리 직접 참조: %s → %s (공용이면 shared/ 로 옮기세요)' % (rel, trel))
         if kind == 'core' and tk == 'modules' and not (rel == 'core/boot.js' and trel == 'modules/index.js'):
             problems.append('R2 핵심부가 모듈을 직접 참조: %s → %s (modules/index.js 를 통해서만)' % (rel, trel))
         if kind == 'shared' and tk == 'modules':
             problems.append('R3 공용이 모듈을 참조: %s → %s' % (rel, trel))
-        if rel == 'modules/index.js' and not (tk == 'modules' and trel.endswith('/index.js') and tn != '(index)'):
+        if rel == 'modules/index.js' and trel not in ALLOW_R4 and not (tk == 'modules' and trel.endswith('/index.js') and tn != '(index)'):
             problems.append('R4 modules/index.js 가 각 모듈의 index.js 가 아닌 파일을 참조: %s' % trel)
 for name in sorted(mods):
     p = os.path.join(root, 'modules', name, 'index.js')

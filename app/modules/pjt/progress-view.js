@@ -1,9 +1,9 @@
-import { esc } from '../../core/ui.js?v=20261125k';
-import { calcAll, cellState, keyOf } from './progress.js?v=20261125k';
-import { holidayName } from '../../shared/holidays.js?v=20261125k';
-import { structureEditorHtml } from './structure-view.js?v=20261125k';
-import { layoutEditorHtml } from './layout-view.js?v=20261125k';
-import { snapToTuesday, weekNo, weekRange } from './layout.js?v=20261125k';
+import { esc } from '../../core/ui.js?v=20261126a';
+import { calcAll, cellState, keyOf } from './progress.js?v=20261126a';
+import { holidayName } from '../../shared/holidays.js?v=20261126a';
+import { structureEditorHtml } from './structure-view.js?v=20261126a';
+import { layoutEditorHtml } from './layout-view.js?v=20261126a';
+import { snapToTuesday, weekNo, weekRange } from './layout.js?v=20261126a';
 const f1 = (n) => (Math.round((Number(n) || 0) * 10) / 10).toFixed(1);
 const chip = (t, tone) => '<span class="jh-pjt__chip" data-tone="' + esc(tone || '') + '">' + esc(t) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
