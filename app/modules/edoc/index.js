@@ -1,30 +1,30 @@
-import { fetchAll, fetchOne } from './data.js?v=20261126a';
-import { listHtml, detailHtml } from './views.js?v=20261126a';
-import { tabCounts, edocPrintTitle, filterDocs } from './logic.js?v=20261126a';
-import { bulkTargets, bulkConfirmBody, bulkChunks, runBulk, bulkResultText } from './bulk-logic.js?v=20261126a';
-import { buildHash, navigate } from '../../core/router.js?v=20261126a';
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261126a';
-import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261126a';
-import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261126a';
-import { toast } from '../../core/ui.js?v=20261126a';
-import { confirmDialog } from '../../core/dialog.js?v=20261126a';
-import { loadDirectory, resetDirectory } from './directory.js?v=20261126a';
-import { act, partAct } from './api.js?v=20261126a';
-import * as C from './compose.js?v=20261126a';
-import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261126a';
-import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261126a';
-import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261126a';
-import { kstKey } from './home-daily.js?v=20261126a';
-import { isOffDay } from '../../shared/holidays.js?v=20261126a';
-import { todoCounts } from './home-stats.js?v=20261126a';
-import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261126a';
-import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261126a';
-import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261126a';
-import * as AT from './attach-logic.js?v=20261126a';
-import { uploadFile, removeFile, openFile } from './attach.js?v=20261126a';
-import * as SL from './settings-logic.js?v=20261126a';
-import { chooserHtml, newDocLayoutHtml, composeHtml, partsHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261126a';
-import { printWithTitle } from '../../shared/print-title.js?v=20261126a';
+import { fetchAll, fetchOne } from './data.js?v=20261126b';
+import { listHtml, detailHtml } from './views.js?v=20261126b';
+import { tabCounts, edocPrintTitle, filterDocs } from './logic.js?v=20261126b';
+import { bulkTargets, bulkConfirmBody, bulkChunks, runBulk, bulkResultText } from './bulk-logic.js?v=20261126b';
+import { buildHash, navigate } from '../../core/router.js?v=20261126b';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261126b';
+import { edocSideCfg, URL_DEFAULTS } from './nav.js?v=20261126b';
+import { db, collection, doc, getDoc, addDoc, updateDoc, setDoc, serverTimestamp } from '../../core/firebase.js?v=20261126b';
+import { toast } from '../../core/ui.js?v=20261126b';
+import { confirmDialog } from '../../core/dialog.js?v=20261126b';
+import { loadDirectory, resetDirectory } from './directory.js?v=20261126b';
+import { act, partAct } from './api.js?v=20261126b';
+import * as C from './compose.js?v=20261126b';
+import { paperHtml, printPanelHtml, canPrint } from './print-view.js?v=20261126b';
+import { loadAttendRecord } from '../../shared/attendance-load.js?v=20261126b';
+import { homeLists, homeHtml, worktimeHtml, leaveBoxHtml, todoHtml, pipelineHtml, recentHtml, homeTarget, dailyHtml } from './home-view.js?v=20261126b';
+import { kstKey } from './home-daily.js?v=20261126b';
+import { isOffDay } from '../../shared/holidays.js?v=20261126b';
+import { todoCounts } from './home-stats.js?v=20261126b';
+import { loadWorkers, loadMonthAttendance, loadHolidays } from './home-data.js?v=20261126b';
+import { findWorker, calcLeaveBalance, computeLeaveHoursForMonth, monthlyStandardHours, monthlyMaxOvertimeHours, worktimeSummary, leaveDocsOf } from './home-calc.js?v=20261126b';
+import { adminHtml, policyHtml, guideHtml, companyHtml } from './settings-view.js?v=20261126b';
+import * as AT from './attach-logic.js?v=20261126b';
+import { uploadFile, removeFile, openFile } from './attach.js?v=20261126b';
+import * as SL from './settings-logic.js?v=20261126b';
+import { chooserHtml, newDocLayoutHtml, composeHtml, partsHtml, lineEditorHtml, suggestHtml, balanceHintHtml, attendHintHtml, attachHtml } from './compose-view.js?v=20261126b';
+import { printWithTitle } from '../../shared/print-title.js?v=20261126b';
 
 
 export const manifest = {
@@ -243,6 +243,7 @@ async function mountCompose(root, route, ctx) {
 
   const S = { files: [], uploading: [], attachError: '', type: null, values: null, errors: {}, line: null, ui: { search: '', picked: null, lineError: '' }, edit: null, rejectReason: '', formError: '', busy: false, ctx: null, docRef: null, createdMs: null, partsOn: !!(dir && dir.partsOn), partsUi: { custom: false, texts: {}, preview: null, previewError: '' }, partsSeq: 0, partsSaved: null, partsMain: '' };
   const lc = (type) => Object.assign(C.lineContext(me, dir.policy, dir.guides, dir.users, type), { projects: dir.projects, vehicles: dir.vehicles });
+  const projs = () => (dir && dir.projects) || (S.ctx && S.ctx.projects) || [];   // (2026-11-26 위치 이동: 기존 문서 열기 코드가 이 줄보다 먼저 실행돼 'Cannot access projs before initialization' 으로 빠지고, 저장돼 있던 참여 칩이 대표 프로젝트 하나로 줄던 문제) 칩 항목(영업기획 id·PJT 관리 id 연결 포함)
 
   if (route.segs[0] === 'edit') {
     const [, dt, did] = route.segs;
@@ -289,7 +290,6 @@ async function mountCompose(root, route, ctx) {
     const sec = root.querySelector('#edoc-line-section'); if (!sec) return;
     sec.innerHTML = '<h3 class="jh-form__h">결재선</h3>' + lineEditorHtml(S.line, S.ctx, S.ui);
   };
-  const projs = () => (dir && dir.projects) || (S.ctx && S.ctx.projects) || [];   // 칩 항목(영업기획 id·PJT 관리 id 연결 포함)
   const paintParts = () => { const el = root.querySelector('#edoc-parts'); if (el) el.innerHTML = partsHtml(S); };
   const refreshPreview = async () => { // 둘 이상 고르면 서버가 기본 비율(그날 일용직 공수 비율, 없으면 균등)을 계산해 준다 — 늦게 온 응답이 최신 선택을 덮지 않게 요청 번호로 거른다
     if (!S.partsOn) return; if (!C.partsNeedsPreview(S.values, S.partsUi)) { S.partsUi.preview = null; S.partsUi.previewError = ''; paintParts(); return; }

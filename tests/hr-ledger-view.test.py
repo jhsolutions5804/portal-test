@@ -1,5 +1,5 @@
 """임금대장 화면 시험(대기열 1-3-16 ①) — 실제 크로미움에서 화면 함수가 만든 HTML 이 폰·PC 폭에서 어떻게 보이는지 확인한다.
-확인: 32칸 표가 가로 스크롤 영역 안에 있고 페이지 전체가 옆으로 밀리지 않는다 · 성명 칸이 고정된다 · 이름·사유에 넣은 HTML/스크립트가 실행되지 않는다 · 단추의 꺼짐 상태 · 월 입력.
+확인: 35칸 표가 가로 스크롤 영역 안에 있고 페이지 전체가 옆으로 밀리지 않는다 · 성명 칸이 고정된다 · 이름·사유에 넣은 HTML/스크립트가 실행되지 않는다 · 단추의 꺼짐 상태 · 월 입력.
 공개 저장소이므로 가짜 이름·값만 쓴다. 크로미움(playwright)이 없으면 건너뛴다."""
 import http.server, threading, socketserver, sys, os
 try:
@@ -44,8 +44,8 @@ try:
    else:
     pg.evaluate(SETUP, VER)
    pg.evaluate(PAINT, [{'data': 'good'}]); pg.wait_for_timeout(300)
-   ok(pg.evaluate("document.querySelectorAll('[data-l-table] thead th').length") == 32, '표 머리글이 32칸이다')
-   ok(pg.evaluate("[...document.querySelectorAll('[data-l-table] tr')].every((r) => r.children.length === 32)"), '모든 줄(머리글·직원 3·합계)이 32칸이다')
+   ok(pg.evaluate("document.querySelectorAll('[data-l-table] thead th').length") == 35, '표 머리글이 35칸이다')
+   ok(pg.evaluate("[...document.querySelectorAll('[data-l-table] tr')].every((r) => r.children.length === 35)"), '모든 줄(머리글·직원 3·합계)이 35칸이다')
    ok(pg.evaluate("document.querySelectorAll('[data-l-table] tbody tr').length") == 4, '직원 줄 3 + 합계 줄 1')
    sw = pg.evaluate("(() => { const w = document.querySelector('.jh-hr__scroll'); return [w.scrollWidth, w.clientWidth, document.documentElement.scrollWidth, innerWidth]; })()")
    if w == 390: ok(sw[0] > sw[1] + 50, '★ 폰: 표가 컨테이너보다 넓어 안에서 가로 스크롤된다(표 %dpx > 영역 %dpx)' % (sw[0], sw[1]))

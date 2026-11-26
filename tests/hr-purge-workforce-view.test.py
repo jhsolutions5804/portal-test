@@ -52,7 +52,7 @@ try:
    ok(pg.evaluate("document.querySelector('#hm-work [data-w-bar]').closest('[role=img]').getBoundingClientRect().height") > 3, '인력 현황 막대 바탕의 높이가 보인다')
    ok(pg.evaluate("window.__y") is None and pg.evaluate("document.querySelector('#hm-work').innerHTML.includes('<b>위험</b>')") is False, '★ 직급에 넣은 <b> 태그가 그대로 들어가지 않는다')
    ok(pg.evaluate("document.querySelector('#hm-work').getBoundingClientRect().right <= innerWidth + 1 && document.querySelector('#hm-purge').getBoundingClientRect().right <= innerWidth + 1") and pg.evaluate("document.documentElement.scrollWidth") <= w + 1, '★ %s: 홈의 파기 신호 칸·인력 현황이 화면을 넘지 않는다' % label)
-   ok(pg.evaluate("(() => { const k = document.getElementById('hm-kpi'), w = document.getElementById('hm-purge'), m = document.getElementById('hm-work'), l = document.getElementById('hm-list'); return !!k && w.compareDocumentPosition(m) & 4 && m.compareDocumentPosition(l) & 4; })()"), '칸 순서: 지원서 파기 → 인력 현황 → 목록')
+   ok(pg.evaluate("(() => { const k = document.getElementById('hm-kpi'), w = document.getElementById('hm-purge'), m = document.getElementById('hm-work'), l = document.getElementById('hm-list'); return !!k && l.compareDocumentPosition(w) & 4 && w.compareDocumentPosition(m) & 4; })()"), '칸 순서: 본문은 목록 → 지원서 파기 → 인력 현황(요약은 좌측)')
    ctx.close()
   ok(not [e for e in errs if 'favicon' not in e], '화면 오류 없음 %s' % errs[:2])
   b.close()

@@ -16,7 +16,7 @@ VER = open(os.path.join(ROOT, 'modules', 'edoc', 'index.js'), encoding='utf-8').
 DATA = {
   'portal_users': {'u1': {'name': '가짜작성자', 'rank': '대리', 'dept': 'PJT팀', 'empNo': '0101', 'status': 'approved'}, 'u2': {'name': '가짜결재자', 'rank': '팀장', 'dept': 'PJT팀', 'empNo': '0100', 'status': 'approved'}},
   'edoc_settings': {'policy': {'required': [], 'proxy': []}, 'guides': {}, 'vehicles': {'list': []}, 'company': {'name': '가짜회사'}},
-  'gihoek_projects': {'pa': {'name': '프로젝트A', 'code': 'C1', 'status': 'run'}, 'pb': {'name': '프로젝트B', 'code': '', 'status': 'run'}, 'pc': {'name': '프로젝트C', 'code': '', 'status': 'run'}},
+  'gihoek_projects': {'pa': {'name': '프로젝트A', 'code': 'C1', 'status': 'run', 'linkPjt': 'pa'}, 'pb': {'name': '프로젝트B', 'code': '', 'status': 'run', 'linkPjt': 'pb'}, 'pc': {'name': '프로젝트C', 'code': '', 'status': 'run', 'linkPjt': 'pc'}},
 }
 FAKE_FB = """
 const DATA = %s; window.__log = []; window.__calls = []; window.__docs = {};
@@ -68,7 +68,10 @@ try:
         def open_compose(pg):
             pg.wait_for_selector('[data-compose="daily"]', timeout=15000); pg.wait_for_timeout(200)
         def pick_main(pg, pid):
-            pg.locator('[data-input="pjtId"]').select_option(pid); pg.wait_for_timeout(250)
+            # 참여 칩이 켜져 있으면 위쪽 프로젝트 칸이 없다(2026-11-09 이후) — 칩을 눌러 고른다. 꺼져 있으면 예전처럼 목록에서 고른다
+            if pg.locator('[data-input="pjtId"]').count(): pg.locator('[data-input="pjtId"]').select_option(pid)
+            else: pg.locator('[data-part="%s"]' % pid).click()
+            pg.wait_for_timeout(250)
         def add_approver(pg):   # 실제 사용자 흐름 그대로: 결재선 검색 → 후보 선택 → 결재자로 추가(업무일지는 결재자가 한 명 이상 필요)
             pg.locator('[data-line-search]').fill('가짜결재자'); pg.wait_for_selector('[data-pick="u2"]', timeout=5000); pg.locator('[data-pick="u2"]').click(); pg.locator('[data-add="approver"]').click(); pg.wait_for_timeout(300)
         def fill_text(pg):
@@ -96,9 +99,9 @@ try:
         print('── 일용직 공수 비율 표시')
         pg, errs = fresh(True, labor={'pa': 10, 'pb': 30}); open_compose(pg); pick_main(pg, 'pa'); pg.locator('[data-part="pb"]').click(); pg.wait_for_timeout(500)
         ok('25%' in pg.inner_text('[data-parts-ratio]') and '75%' in pg.inner_text('[data-parts-ratio]') and '일용직 공수 비율로 나눴습니다' in pg.inner_text('[data-parts-ratio]'), '★ 서버가 공수 비율(A 10 : B 30)을 계산해 주면 25%·75%와 "일용직 공수 비율로 나눴습니다"가 보인다'); pg.close()
-        print('── 위쪽 프로젝트 변경')
+        print('── 칩 선택(2026-11-09 이후 위쪽 프로젝트 칸은 없고 칩이 대표를 정한다)')
         pg, errs = fresh(True); open_compose(pg); pick_main(pg, 'pa'); pick_main(pg, 'pb')
-        ok(pg.locator('[data-part="pb"][aria-pressed="true"]').count() == 1 and pg.locator('[data-part="pa"][aria-pressed="true"]').count() == 0, '★ 위쪽 프로젝트를 A → B 로 바꾸면 칩도 B 로 따라간다'); pg.close()
+        ok(pg.locator('[data-part="pb"][aria-pressed="true"]').count() == 1 and pg.locator('[data-part="pa"][aria-pressed="true"]').count() == 1 and pg.locator('[data-input="pjtId"]').count() == 0, '★ 칩 A 를 켠 뒤 B 를 켜면 둘 다 선택되고 위쪽 프로젝트 칸은 없다'); pg.close()
         print('── 빠른 연속 클릭: 늦게 온 응답이 최신 선택을 덮지 않는다')
         pg, errs = fresh(True); open_compose(pg)
         pg.evaluate("() => { window.__delay['pjtPartAct:preview'] = (p) => (p && p.projects && p.projects.length === 2 ? 700 : 50); }")
@@ -148,7 +151,7 @@ try:
         sv = [x for x in part(pg) if x['action'] == 'save']; ok(len(sv) == 1 and len([x for x in log(pg) if x['k'] == 'addDoc']) == 1, '★ 임시저장은 문서를 저장하고 참여 기록도 저장한다(칩이 있으므로)'); pg.close()
         pg, errs = fresh(True, fail={'pjtPartAct:save': '서버 점검 중(시험)'}); open_compose(pg); pick_main(pg, 'pa'); pg.locator('[data-input="todayWork"]').fill('가짜 금일 업무'); pg.locator('[data-act="save"]').click(); pg.wait_for_timeout(1000)
         ok(len([x for x in log(pg) if x['k'] == 'addDoc']) == 1 and not [x for x in log(pg) if x['k'] == 'call' and x['fn'] == 'edocAct'], '★ 임시저장은 참여 기록 저장이 실패해도 문서 저장은 유지된다(상신 호출 없음)'); pg.close()
-        pg, errs = fresh(True); open_compose(pg); pg.locator('[data-input="todayWork"]').fill('가짜 금일 업무'); pg.locator('[data-input="pjtId"]').select_option('pa'); pg.locator('[data-part="pa"]').click(); pg.wait_for_timeout(200)
+        pg, errs = fresh(True); open_compose(pg); pg.locator('[data-input="todayWork"]').fill('가짜 금일 업무'); pg.locator('[data-part="pa"]').click(); pg.wait_for_timeout(200); pg.locator('[data-part="pa"]').click(); pg.wait_for_timeout(200)   # 한 번 켜고 한 번 꺼서 칩이 하나도 없는 상태
         pg.locator('[data-act="save"]').click(); pg.wait_for_timeout(800)
         ok(len(part(pg)) == 0 and len([x for x in log(pg) if x['k'] == 'addDoc']) == 1, '★ 칩이 하나도 없으면 임시저장은 참여 기록을 보내지 않는다(문서만 저장, 빈 기록을 만들지 않음)'); pg.close()
         print('── 기존 문서 다시 열기')
@@ -161,42 +164,15 @@ try:
         ok(len(gt) >= 1 and gt[-1]['date'] == '2026-10-16', '★ 기존 문서를 열면 서버 get 으로 그날의 참여 기록을 불러온다 (호출: %s)' % gt)
         ok(pg.locator('[data-part="pa"][aria-pressed="true"]').count() == 1 and pg.locator('[data-part="pb"][aria-pressed="true"]').count() == 1, '★ 불러온 기록(pa·pb)대로 칩이 선택돼 있다 — 수정할 때 칩이 비어 기록을 덮어쓰는 일이 없다')
         pick_main(pg, 'pc')
-        ok(pg.locator('[data-part="pc"][aria-pressed="true"]').count() == 1 and pg.locator('[data-part="pb"][aria-pressed="true"]').count() == 1 and pg.locator('[data-part="pa"][aria-pressed="true"]').count() == 0, '★ 기존 문서를 열고 위쪽 프로젝트를 A → C 로 바꾸면 A 자리가 C 로 바뀌고 직접 더했던 B 는 남는다(이전 값을 문서의 프로젝트로 기억)'); pg.close()
-        print('── 위쪽 "공통"과 대표 프로젝트 맞춤')
-        pg, errs = fresh(True); open_compose(pg)
-        opts = pg.locator('[data-input="pjtId"] option').all_inner_texts()
-        ok(any('공통' in o for o in opts), '★ 업무일지 위쪽 프로젝트 선택지에 "공통"이 있다 (선택지: %s)' % opts[:5])
-        pg.locator('[data-input="pjtId"]').select_option('common'); pg.wait_for_timeout(300)
-        ok(pg.locator('[data-part="common"][aria-pressed="true"]').count() == 1 and pg.locator('[data-part][aria-pressed="true"]').count() == 1 and len(part(pg)) == 0, '★ 위쪽에서 "공통"을 고르면 칩이 "공통" 하나만 선택되고 서버 호출은 0건이다(하나라 비율 계산 불필요)')
-        pg.locator('[data-part="pa"]').click(); pg.wait_for_timeout(300)
-        ok(pg.locator('[data-input="pjtId"]').input_value() == 'pa' and pg.locator('[data-part="pa"][aria-pressed="true"]').count() == 1 and pg.locator('[data-part="common"][aria-pressed="true"]').count() == 0, '★ 공통이던 상태에서 칩 A 를 켜면 위쪽 대표 프로젝트가 A 로 바뀐다(둘이 어긋나지 않음, 공통 칩은 꺼짐)')
-        pg.locator('[data-part="pb"]').click(); pg.wait_for_timeout(500)
-        ok(pg.locator('[data-input="pjtId"]').input_value() == 'pa', '★ 칩이 둘이어도(A·B) 사용자가 정한 대표 프로젝트(A)는 그대로다')
-        pg.locator('[data-part="pa"]').click(); pg.wait_for_timeout(300)
-        ok(pg.locator('[data-input="pjtId"]').input_value() == 'pb' and pg.locator('[data-part="pb"][aria-pressed="true"]').count() == 1, '★ 대표 프로젝트(A) 칩을 끄면 남은 칩(B)이 대표가 되어 위쪽도 B 로 바뀐다')
-        pg.locator('[data-part="common"]').click(); pg.wait_for_timeout(300)
-        ok(pg.locator('[data-input="pjtId"]').input_value() == 'common', '★ "공통" 칩을 켜면 위쪽도 "공통"이 된다')
-        ok(not [e for e in errs if 'favicon' not in e], '화면 오류 없음 %s' % errs[:2]); pg.close()
+        ok(pg.locator('[data-part][aria-pressed="true"]').count() == 3 and pg.locator('[data-part="pc"][aria-pressed="true"]').count() == 1, '★ 기존 문서를 열고 칩 C 를 더 켜면 불러온 A·B 는 그대로 있고 C 가 더해진다(2026-11-09 이후 위쪽 프로젝트 칸 없음)')
         print('── 공통으로 상신: 제목·본문·참여 기록')
-        pg, errs = fresh(True); open_compose(pg); pg.locator('[data-input="pjtId"]').select_option('common'); pg.wait_for_timeout(300); pg.locator('[data-input="todayWork"]').fill('가짜 내근 업무'); add_approver(pg); pg.locator('[data-act="submit"]').click(); pg.wait_for_timeout(1200)
+        pg, errs = fresh(True); open_compose(pg); pg.locator('[data-part="common"]').click(); pg.wait_for_timeout(300); pg.locator('[data-input="todayWork"]').fill('가짜 내근 업무'); add_approver(pg); pg.locator('[data-act="submit"]').click(); pg.wait_for_timeout(1200)
         lg = log(pg); ad = [x for x in lg if x['k'] == 'addDoc']; ok(len(ad) == 1 and ad[0]['data'].get('pjtId') == 'common' and ad[0]['data'].get('pjtCode') == '공통' and ad[0]['data'].get('pjtName') == '프로젝트 무관(본사 경비)', '★ 공통으로 상신하면 문서 본문이 pjtId common · pjtCode 공통 · pjtName 프로젝트 무관(본사 경비)다 (실제: %s)' % [(x['data'].get('pjtId'), x['data'].get('pjtCode')) for x in ad])
         ok(len(ad) == 1 and str(ad[0]['data'].get('title', '')).startswith('(공통) ') and '()' not in str(ad[0]['data'].get('title', '')), '★ 제목이 "(공통) … 업무일지"이고 빈 괄호가 없다 (실제: %s)' % (ad[0]['data'].get('title') if ad else None))
         sv = [x for x in part(pg) if x['action'] == 'save']; ok(len(sv) == 1 and sv[0]['projects'] == [{'pjt': 'common'}], '★ 참여 기록도 공통 하나로 저장된다 (실제: %s)' % sv)
         seqk = [(x['k'] if x['k'] != 'call' else x['fn'] + ':' + x['action']) for x in lg if x['k'] in ('addDoc', 'updateDoc') or (x['k'] == 'call' and x['action'] in ('save', 'submit'))]; ok(seqk == ['addDoc', 'pjtPartAct:save', 'edocAct:submit'], '공통이어도 순서는 문서 저장 → 참여 기록 저장 → 상신이다 (실제: %s)' % seqk)
         pg.close()
-        print('── 칩을 바꾼 뒤에 위쪽을 직접 바꿔도 어긋나지 않는다(이전 대표 기억)')
-        pg, errs = fresh(True); open_compose(pg); pg.locator('[data-part="pb"]').click(); pg.wait_for_timeout(300)
-        ok(pg.locator('[data-input="pjtId"]').input_value() == 'pb', '칩 B 하나만 켜면 위쪽 대표가 B 가 된다')
-        pick_main(pg, 'pc'); pg.wait_for_timeout(300)
-        ok(pg.locator('[data-part="pc"][aria-pressed="true"]').count() == 1 and pg.locator('[data-part="pb"][aria-pressed="true"]').count() == 0 and pg.locator('[data-part][aria-pressed="true"]').count() == 1, '★ 칩으로 대표가 B 가 된 뒤 위쪽을 직접 C 로 바꾸면 칩이 [C] 가 된다(B 자리가 C 로 — 칩을 바꿀 때 이전 대표 B 를 기억해야 함)'); pg.close()
-        print('── 대표가 첫 칩이 아닐 때 대표가 유지된다(상태의 칩 순서 기준)')
-        pg, errs = fresh(True); open_compose(pg); pick_main(pg, 'pa'); pg.locator('[data-part="pb"]').click(); pg.wait_for_timeout(250); pg.locator('[data-part="pc"]').click(); pg.wait_for_timeout(350)
-        ok(pg.locator('[data-input="pjtId"]').input_value() == 'pa' and pg.locator('[data-part][aria-pressed="true"]').count() == 3, '준비: 위쪽 A 에 칩 A·B·C 를 켠 상태다')
-        pick_main(pg, 'pc'); pg.wait_for_timeout(350)
-        ok(pg.locator('[data-input="pjtId"]').input_value() == 'pc' and pg.locator('[data-part="pc"][aria-pressed="true"]').count() == 1 and pg.locator('[data-part="pb"][aria-pressed="true"]').count() == 1 and pg.locator('[data-part="pa"][aria-pressed="true"]').count() == 0, '준비: 위쪽을 C 로 바꾸면 이전 대표 A 칩이 빠지고 C 가 대표가 된다(칩 B·C 만 남음 — 상태 순서는 [B, C] 라 대표 C 가 첫 칩이 아니다)')
-        pg.locator('[data-part="pa"]').click(); pg.wait_for_timeout(450)
-        ok(pg.locator('[data-input="pjtId"]').input_value() == 'pc' and pg.locator('[data-part][aria-pressed="true"]').count() == 3, '★ 대표(C)가 상태상 첫 칩(B)이 아닌데 칩 A 를 더 켜도 대표는 C 로 유지된다(항상 첫 칩 B 로 바뀌지 않음)'); pg.close()
-        ok(pass_n + fail_n >= 51, '시험이 끝까지 실행됨')
+        ok(pass_n + fail_n >= 33, '시험이 끝까지 실행됨')
         b.close()
     print('\n' + ('실패 %d건 / 통과 %d' % (fail_n, pass_n) if fail_n else '전부 통과 (%d건)' % pass_n)); sys.exit(1 if fail_n else 0)
 except Exception as e:
