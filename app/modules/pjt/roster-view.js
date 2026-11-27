@@ -1,5 +1,5 @@
-import { esc } from '../../core/ui.js?v=20261127e';
-import { EDU, EDU_SK, EDU_OF, PORTAL_OF, COMPANIES, CO_TABS, HEALTH_TYPES, CHEM_REQ_HOURS, FILE_SLOTS, certCo, fmtKB, fmtMoney, fmtH, maskedOf, healthExpiry, certSuperseded, healthSuperseded, eduStateOf, eduInfo, chemYearSum, legalAgg, filesMeta, SORT_OPTS, leaderChoices, canEditSlot, addYearsYmd, pdfDownloadName, VALID_YEAR_CHOICES, LEGAL_TYPES, activeMembers } from './roster.js?v=20261127e';
+import { esc } from '../../core/ui.js?v=20261127f';
+import { EDU, EDU_SK, EDU_OF, PORTAL_OF, COMPANIES, CO_TABS, HEALTH_TYPES, CHEM_REQ_HOURS, FILE_SLOTS, certCo, fmtKB, fmtMoney, fmtH, maskedOf, healthExpiry, certSuperseded, healthSuperseded, eduStateOf, eduInfo, chemYearSum, legalAgg, filesMeta, SORT_OPTS, leaderChoices, canEditSlot, addYearsYmd, pdfDownloadName, VALID_YEAR_CHOICES, LEGAL_TYPES, activeMembers } from './roster.js?v=20261127f';
 const chip = (tone, text, title) => '<span class="jh-pjt__chip" data-tone="' + tone + '"' + (title ? ' title="' + esc(title) + '"' : '') + '>' + esc(text) + '</span>';
 const card = (title, body, right) => '<section class="jh-card"><div class="jh-panel__head"><h3>' + esc(title) + '</h3>' + (right || '') + '</div>' + body + '</section>';
 const rowChip = (r, old) => (old && (r.state === 'expired' || r.state === 'soon') ? chip('gray', '이전 기록', '같은 종류의 더 최근 기록이 있어 만료로 세지 않습니다') : stateChip(r));
