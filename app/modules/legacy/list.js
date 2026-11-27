@@ -1,17 +1,18 @@
-import { sidenavHtml } from '../../shared/sidenav.js?v=20261126b';
-import { canAccessProject } from '../../shared/pjt-access.js?v=20261126b';
-import { financePerm } from '../../shared/finance-perm.js?v=20261126b';
-import { isEvalUser, isEvalOps, isInterviewUser } from '../../shared/eval-perm.js?v=20261126b';
-import { companyPerm } from '../../shared/company-perm.js?v=20261126b';
-import { hrAccess, hrSectionAllowed, hrLanding } from '../../shared/hr-perm.js?v=20261126b';
-import { isProjectKey } from '../../shared/pjt-key.js?v=20261126b';
+import { sidenavHtml } from '../../shared/sidenav.js?v=20261127a';
+import { canAccessProject } from '../../shared/pjt-access.js?v=20261127a';
+import { financePerm } from '../../shared/finance-perm.js?v=20261127a';
+import { isEvalUser, isEvalOps, isInterviewUser } from '../../shared/eval-perm.js?v=20261127a';
+import { companyPerm } from '../../shared/company-perm.js?v=20261127a';
+import { hrAccess, hrSectionAllowed, hrLanding } from '../../shared/hr-perm.js?v=20261127a';
+import { planAccess, planSectionAllowed, planLanding } from '../../shared/plan-perm.js?v=20261127a';
+import { isProjectKey } from '../../shared/pjt-key.js?v=20261127a';
 export { isProjectKey };
 /* 옛 모듈 어댑터의 목록과 규칙 — 화면(DOM)·네트워크 없이 시험할 수 있는 순수 함수만 둔다.
  * 옛 모듈이 새 모듈로 바뀌면 여기서 항목을 지우고 modules/index.js 의 새 모듈 목록으로 옮긴다. */
 const isAdmin = (me) => !!(me && me.admin);
 
 export const LEGACY_DEFS = [
-  { id: 'plan', order: 10, title: '영업기획', icon: '🧭', tabbed: true, ownNav: true, url: 'gihoek/', perm: isAdmin, nav: [{ key: 'home', label: '기획 홈' }], homeLabel: '영업기획',
+  { id: 'plan', order: 10, title: '영업기획', icon: '🧭', tabbed: true, ownNav: true, url: 'gihoek/', perm: planAccess, sectionPerm: planSectionAllowed, landing: planLanding, nav: [{ key: 'home', label: '기획 홈' }], homeLabel: '영업기획',
     // 사이드바(인사총무와 같은 방식): 새 화면으로 옮긴 구역은 native, 나머지는 구포털 기획 화면(iframe)이 탭 값으로 열린다. 회계 탭은 재무회계로 이관 예정이라 맨 아래에 임시로 둔다.
     groups: [{ key: 'plan', label: '영업기획', home: { key: 'home', label: '홈', hint: '진행 프로젝트·유효 견적·청구·미수금 요약' }, clusters: [{ label: '프로젝트', keys: ['projects'] }, { label: '월말 마감', keys: ['closing', 'monthly'] }, { label: '영업', keys: ['comp', 'est', 'billing'] }, { label: '기획', keys: ['payout', 'teamlabor', 'partners', 'contracts'] }, { label: '이관 예정', keys: ['acct'] }] }],
     sections: [{ key: 'home', label: '홈', native: true }, { key: 'projects', label: '프로젝트', native: true }, { key: 'schedule', label: '일정', native: true }, { key: 'closing', label: '월말 마감', native: true }, { key: 'monthly', label: '월간 보고서', native: true }, { key: 'comp', label: '거래처', native: true }, { key: 'est', label: '견적', native: true }, { key: 'billing', label: '청구·수금', native: true }, { key: 'payout', label: '지급·정산', native: true }, { key: 'teamlabor', label: '팀별 노무비', native: true }, { key: 'partners', label: '협력사', native: true }, { key: 'contracts', label: '위탁 계약서', native: true }, { key: 'acct', label: '비용장부 대조', native: true }] },
