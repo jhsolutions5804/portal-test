@@ -30,4 +30,15 @@ ok(r(sales, 'payout') === 'home' && r(sales, 'closing') === 'home' && r(sales, '
 ok(resolveItem(def, 'comp', none) === null, '권한이 없으면 열 화면 없음(null)');
 const keys = PERM_KEYS.map((x) => x[0]);
 ok(['planSales', 'planPlan', 'planClose'].every((k) => keys.includes(k)) && !keys.includes('plan'), '직원 관리 칩: 영업·기획·월말마감 3개로 교체');
+// 프로젝트 화면: 마진(실현 손익·마진율·실행예산·목표 마진율 입력)은 marginOk 가 false 이면 안 보임
+const { projectDetailHtml, projectFormHtml, projectsListHtml } = await import('../app/modules/plan/projects-view.js');
+const proj = { id: 'p1', code: 'P4-1', name: '시험', type: 'general', status: 'run', targetMargin: 12 };
+const mkSt = (marginOk) => ({ projects: [proj], sel: 'p1', estimates: [], settlements: [], registry: [], page: { est: 1, inv: 1, pay: 1 }, margin: null, budget: {}, marginOk, form: { code: 'P4-1', name: '시험', type: 'general', targetMargin: '12' } });
+const withM = projectDetailHtml(mkSt(true)), noM = projectDetailHtml(mkSt(false)), dflt = projectDetailHtml(mkSt(undefined));
+ok(withM.includes('실현 손익') && withM.includes('목표 마진율') && withM.includes('실행예산'), '영업기획팀·관리자 화면: 손익·마진율·실행예산이 보임');
+ok(dflt === withM, '판정값이 없으면(옛 호출) 기존 화면 그대로(회귀)');
+ok(!noM.includes('실현 손익') && !noM.includes('마진율') && !noM.includes('실행예산') && noM.includes('미수금') && noM.includes('견적 합계'), '★ 다른 부서 칩 소유자: 손익·마진율·실행예산은 사라지고 견적·청구·지급·미수금은 그대로');
+ok(projectFormHtml(mkSt(true)).includes('targetMargin') && !projectFormHtml(mkSt(false)).includes('targetMargin'), '목표 마진율 입력칸도 영업기획팀·관리자만(숨겨도 기존 값은 폼 값으로 보존)');
+const listM = projectsListHtml({ projects: [proj], estimates: [], settlements: [], filter: { status: 'all', q: '' }, marginOk: true }), listN = projectsListHtml({ projects: [proj], estimates: [], settlements: [], filter: { status: 'all', q: '' }, marginOk: false });
+ok(listM.includes('손익') && !listN.includes('손익') && listN.includes('청구'), '프로젝트 목록 행의 손익도 같은 기준');
 console.log('\n통과 ' + pass + ' · 실패 ' + fail); process.exit(fail ? 1 : 0);

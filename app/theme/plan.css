@@ -26,6 +26,7 @@
 .jh-plan__pjt:hover { background: var(--c-primary-weak); }
 .jh-plan__sum { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-3); }
 .jh-plan__sum--5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.jh-plan__sum--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .jh-plan__sumcell { display: grid; gap: var(--u-2); min-width: 0; }
 .jh-plan__sumcell strong { font-size: var(--fs-md); overflow-wrap: anywhere; }
 .jh-plan__sumcell strong[data-tone="pos"] { color: var(--c-ok, #16a34a); }
@@ -41,7 +42,7 @@
 .jh-plan__center { text-align: center; }
 .jh-plan__pager { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-1); }
 .jh-plan__row[data-void="true"] { opacity: 0.6; }
-@media (max-width: 899px) { .jh-plan__sum, .jh-plan__sum--5 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .jh-plan__two, .jh-plan__grid3 { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 899px) { .jh-plan__sum, .jh-plan__sum--5, .jh-plan__sum--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .jh-plan__two, .jh-plan__grid3 { grid-template-columns: minmax(0, 1fr); } }
 
 /* 견적 */
 .jh-plan__filters2 { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--sp-2); align-items: center; }
