@@ -3,7 +3,7 @@ import { byEmpNo, RANK_ORDER } from '../../shared/org.js?v=20261127c';
 import { isPhone } from '../../core/profile-logic.js?v=20261127c';
 
 /** 포털 모듈 권한(옛 포털의 MODULES 와 같은 키). 관리자는 권한과 무관하게 모두 열린다 */
-export const PERM_KEYS = [['planSales', '영업'], ['planPlan', '기획'], ['planClose', '월말마감'], ['hrAffairs', '총무'], ['hrLeave', '연차'], ['finance', '재무회계'], ['edoc', '전자결재'], ['pjt', 'PJT'], ['hrEval', '인사평가']];   // 인사평가 = 다른 사람의 평가를 열람·운영(입력·확정은 사장단)
+export const PERM_KEYS = [['planSales', '영업'], ['planPlan', '기획'], ['planClose', '월말마감'], ['hrAffairs', '총무'], ['hrLeave', '연차'], ['finance', '재무조회'], ['financeEdit', '재무입력'], ['edoc', '전자결재'], ['pjt', 'PJT'], ['hrEval', '인사평가']];   // 인사평가 = 다른 사람의 평가를 열람·운영(입력·확정은 사장단)
 export const isTeamLead = (u) => !!(u && u.teamLead === true);
 /** 팀장 지정: 같은 팀(부서)에는 한 명만. 새로 지정하면 같은 팀의 기존 팀장은 자동으로 해제된다. 돌려주는 값 = 바꿀 { uid: true|false } */
 export function teamLeadChanges(users, uid, on) {

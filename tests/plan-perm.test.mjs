@@ -30,6 +30,7 @@ ok(r(sales, 'payout') === 'home' && r(sales, 'closing') === 'home' && r(sales, '
 ok(resolveItem(def, 'comp', none) === null, '권한이 없으면 열 화면 없음(null)');
 const keys = PERM_KEYS.map((x) => x[0]);
 ok(['planSales', 'planPlan', 'planClose'].every((k) => keys.includes(k)) && !keys.includes('plan'), '직원 관리 칩: 영업·기획·월말마감 3개로 교체');
+ok(keys.includes('finance') && keys.includes('financeEdit'), '직원 관리 칩: 재무조회·재무입력 분리');
 // 프로젝트 화면: 마진(실현 손익·마진율·실행예산·목표 마진율 입력)은 marginOk 가 false 이면 안 보임
 const { projectDetailHtml, projectFormHtml, projectsListHtml } = await import('../app/modules/plan/projects-view.js');
 const proj = { id: 'p1', code: 'P4-1', name: '시험', type: 'general', status: 'run', targetMargin: 12 };
