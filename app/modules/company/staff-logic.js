@@ -1,6 +1,6 @@
 /* 직원 관리(관리자)의 순수 규칙 — 화면·네트워크 없이 시험한다 */
-import { byEmpNo, RANK_ORDER } from '../../shared/org.js?v=20261127d';
-import { isPhone } from '../../core/profile-logic.js?v=20261127d';
+import { byEmpNo, RANK_ORDER } from '../../shared/org.js?v=20261127e';
+import { isPhone } from '../../core/profile-logic.js?v=20261127e';
 
 /** 포털 모듈 권한(옛 포털의 MODULES 와 같은 키). 관리자는 권한과 무관하게 모두 열린다 */
 export const PERM_KEYS = [['planSales', '영업'], ['planPlan', '기획'], ['planClose', '월말마감'], ['hrAffairs', '총무'], ['hrLeave', '연차'], ['finance', '재무조회'], ['financeEdit', '재무입력'], ['edoc', '전자결재'], ['pjt', 'PJT'], ['hrEval', '인사평가']];   // 인사평가 = 다른 사람의 평가를 열람·운영(입력·확정은 사장단)

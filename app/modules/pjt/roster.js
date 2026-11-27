@@ -15,6 +15,11 @@ export const CO_TABS = COMPANIES.concat([{ k: 'chem', label: '화학물질안전
 /** 날짜 칸 값이 쓸 만한가 — 비어 있거나 YYYY-MM-DD 이고 연도가 1900~2100. 브라우저 날짜 칸은 연도를 한 글자 칠 때마다(0002-…) 값이 바뀌었다고 알려 주므로, 중간에 걸린 값은 화면을 다시 그리지 않고 넘기는 데 쓴다 */
 export const validDateInput = (v) => { if (v === '' || v == null) return true; const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v)); if (!m) return false; const y = +m[1]; return y >= 1900 && y <= 2100 && +m[2] >= 1 && +m[2] <= 12 && +m[3] >= 1 && +m[3] <= 31; };
 export const certCo = (c) => (c && c.co) || 'samsung';   // 원청 구분이 없던 기존 자격은 삼성전자로 본다
+/** 같은 종류의 더 최근 기록이 있어 대체된 옛 기록인가 — 옛 기록은 만료·임박 표시와 집계에서 뺀다(2026-11-27). 자격은 원청·이름·시공사가 같으면 같은 종류, 검진은 검진 종류가 같으면 같은 종류 */
+const keyOf = (s) => String(s || '').replace(/\s+/g, '').toLowerCase();
+const certGroup = (c) => certCo(c) + '|' + keyOf(c.name) + '|' + keyOf(c.contractor);
+export const certSuperseded = (certs, c) => { if (!c || !c.expiry || !keyOf(c.name)) return false; const l = certs || [], i = l.indexOf(c); return l.some((d, j) => d !== c && d && d.expiry && certGroup(d) === certGroup(c) && (d.expiry > c.expiry || (d.expiry === c.expiry && j > i))); };
+export const healthSuperseded = (p, h) => !!h && !!h.date && (((p && p.health) || []).some((x) => x !== h && x && x.type === h.type && x.date && x.date > h.date));
 export const slotOf = (k) => FILE_SLOTS.find((x) => x.k === k);
 export const slotDocId = (id, k) => id + slotOf(k).suffix;
 const pad = (n) => String(n).padStart(2, '0');
@@ -113,7 +118,7 @@ export function rowOf(m, p, ctx) {
   const issues = m.resigned ? [] : issuesOf(p, today); return { m, p, issues, level: worstLevel(issues), team: m.leaderId ? { kind: 'member', leader: leader ? leader.name : '?' } : { kind: 'lead', account: acc ? acc.name : '' },
     general: { date: latestHealth(p, 'general'), exp: healthExpiry(p, 'general'), pdf: !!(latestHealthRow(p, 'general') || {}).pdf }, preplace: { date: latestHealth(p, 'preplace'), exp: healthExpiry(p, 'preplace'), pdf: !!(latestHealthRow(p, 'preplace') || {}).pdf },
     edu: { n, total: EDU.length, expired: ex, soon: so }, extra,
-    certs: COMPANIES.map((co) => { const cs = (p.certs || []).filter((c) => certCo(c) === co.k); return cs.length ? { co, n: cs.length, expired: cs.filter((c) => eduStateOf(true, c.expiry || '', today).state === 'expired').length } : null; }).filter(Boolean),
+    certs: COMPANIES.map((co) => { const cs = (p.certs || []).filter((c) => certCo(c) === co.k); return cs.length ? { co, n: cs.length, expired: cs.filter((c) => !certSuperseded(p.certs, c) && eduStateOf(true, c.expiry || '', today).state === 'expired').length } : null; }).filter(Boolean),
     files: PHOTO_SLOTS.map((x) => ({ slot: x, has: !!fm[x.k] })), masked: maskedOf(p) };
 }
 
@@ -124,7 +129,7 @@ export function issuesOf(p, today) {
   const hs = (type, label) => { const e = healthExpiry(p, type); if (!e) { if (type === 'general') out.push({ k: 'health', level: 'info', text: label + ' 기록 없음' }); return; } const r = eduStateOf(true, e, today); if (r.state === 'expired') out.push({ k: 'health', level: 'danger', text: label + ' 만료 (D+' + Math.abs(r.d) + ')' }); else if (r.state === 'soon') out.push({ k: 'health', level: 'warn', text: label + ' 만료 임박 (D-' + r.d + ')' }); };
   hs('general', '일반검진'); hs('preplace', '배치전검진');
   [['삼성전자', EDU], ['SK하이닉스', EDU_SK]].forEach(([label, list]) => { const ex = eduCountBy(p, 'expired', list, today), so = eduCountBy(p, 'soon', list, today); if (ex) out.push({ k: 'edu', level: 'danger', text: label + ' 사내화 교육 ' + ex + '건 만료' }); if (so) out.push({ k: 'edu', level: 'warn', text: label + ' 사내화 교육 ' + so + '건 만료 임박' }); });
-  const cs = (p.certs || []).map((c) => ({ c, r: eduStateOf(true, c.expiry || '', today) })); const nm = (a) => a.map((x) => x.c.name || '자격').join('·');
+  const cs = (p.certs || []).filter((c) => !certSuperseded(p.certs, c)).map((c) => ({ c, r: eduStateOf(true, c.expiry || '', today) })); const nm = (a) => a.map((x) => x.c.name || '자격').join('·');
   const cex = cs.filter((x) => x.r.state === 'expired'), cso = cs.filter((x) => x.r.state === 'soon');
   if (cex.length) out.push({ k: 'cert', level: 'danger', text: '자격·인증 만료: ' + nm(cex) }); if (cso.length) out.push({ k: 'cert', level: 'warn', text: '자격·인증 만료 임박: ' + nm(cso) });
   const rank = { danger: 0, warn: 1, info: 2 }; return out.sort((a, b) => rank[a.level] - rank[b.level]);
