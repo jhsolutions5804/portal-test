@@ -1,13 +1,14 @@
 /* 임시 연결부 — 아직 새 모듈로 바뀌지 않은 PJT·인사가 일정을 내놓는 방법(옛 컬렉션 읽기).
  * PJT·인사가 새 모듈이 되면 그 모듈의 manifest.calendar 로 옮기고 이 파일을 지운다. 공개 범위는 컬렉션의 보안 규칙이 정한다. */
-import { db, collection, getDocs, query, where, orderBy } from '../../core/firebase.js?v=20261127b';
-import { addDays, fromLegacyDoc, makeEvent, TAG_LABEL } from '../../shared/calendar-event.js?v=20261127b';
-import { buildExpiryEvents } from '../../shared/expiry-events.js?v=20261127b';
-import { canSeeProject } from '../../shared/pjt-access.js?v=20261127b';
-import { financePerm } from '../../shared/finance-perm.js?v=20261127b';
-import { loadHolidays, isOffDay } from '../../shared/holidays.js?v=20261127b';
-import { taxEventsForRange } from '../../shared/tax-calendar.js?v=20261127b';
-import { SCHEDULE_CONFIG, toCalendarEvent, scheduleEnabledFor } from '../../shared/schedule-logic.js?v=20261127b';
+import { db, collection, getDocs, query, where, orderBy } from '../../core/firebase.js?v=20261127c';
+import { addDays, fromLegacyDoc, makeEvent, TAG_LABEL } from '../../shared/calendar-event.js?v=20261127c';
+import { buildExpiryEvents } from '../../shared/expiry-events.js?v=20261127c';
+import { canSeeProject } from '../../shared/pjt-access.js?v=20261127c';
+import { financePerm } from '../../shared/finance-perm.js?v=20261127c';
+import { scheduleSourcePerm } from '../../shared/schedule-perm.js?v=20261127c';
+import { loadHolidays, isOffDay } from '../../shared/holidays.js?v=20261127c';
+import { taxEventsForRange } from '../../shared/tax-calendar.js?v=20261127c';
+import { SCHEDULE_CONFIG, toCalendarEvent, scheduleEnabledFor } from '../../shared/schedule-logic.js?v=20261127c';
 
 const overlaps = (sd, ed, range) => !!sd && (ed || sd) >= range.from && sd <= range.to;
 async function rows(path, range) {            // 시작일 기준 범위 조회(여러 날 일정이 앞 달에서 시작했을 수 있어 45일 앞까지) 후 겹치는 것만
@@ -52,8 +53,8 @@ export const taxProvider = { id: 'tax', label: '세무 일정', order: 60, defau
     try { await loadHolidays(); } catch (e) { /* 공휴일을 못 받아도 토·일만 피해서 계산 */ }
     return taxEventsForRange(range, isOffDay).map((x) => makeEvent({ id: 'tax:' + x.id, source: 'tax', title: x.title, start: x.date, end: x.date, tag: 'tax', tagLabel: '세무', memo: x.memo, extra: x.group, link: '#/finance/home' }));
   } };
-/** 영업기획·재무회계 일정 — 보안 규칙이 관리자만 읽게 하므로(본섭) 제공자도 관리자에게만. 재무회계 접근자로 넓힐 때 규칙과 함께 바꾼다 */
-const scheduleProvider = (cfg) => ({ id: cfg.source, label: cfg.label, order: cfg.order, defaultOn: true, perm: (me) => !!(me && me.admin) && typeof location !== 'undefined' && scheduleEnabledFor(location.pathname),   // 본섭에서는 아직 닫음(규칙·사서함 준비 전)
+/** 영업기획·재무회계 일정 — 보안 규칙과 같은 기준(4-6-23): 영업기획 = 영업·기획·월말마감 칩 하나라도(planAccess), 재무회계 = 입력 권한(financeEdit)·관리자 */
+const scheduleProvider = (cfg) => ({ id: cfg.source, label: cfg.label, order: cfg.order, defaultOn: true, perm: (me) => scheduleSourcePerm(cfg.source, me) && typeof location !== 'undefined' && scheduleEnabledFor(location.pathname),   // 본섭에서는 아직 닫음(규칙·사서함 준비 전)
   async load(range) { const r = await rows([cfg.col], range); return r.map((x) => toCalendarEvent(x.id, x.d, cfg)); } });
 export const planScheduleProvider = scheduleProvider(SCHEDULE_CONFIG.plan);
 export const financeScheduleProvider = scheduleProvider(SCHEDULE_CONFIG.finance);

@@ -1,6 +1,6 @@
-import { esc } from '../../core/ui.js?v=20261127b';
-import { pageInfo, pagerSync, pagerHtml } from '../../shared/pager.js?v=20261127b';
-import { ACTION_LABEL, ROLE_LABEL, KIND_LABEL, RESULT_LABEL, kstText } from './accesslog-logic.js?v=20261127b';
+import { esc } from '../../core/ui.js?v=20261127c';
+import { pageInfo, pagerSync, pagerHtml } from '../../shared/pager.js?v=20261127c';
+import { ACTION_LABEL, ROLE_LABEL, KIND_LABEL, RESULT_LABEL, kstText } from './accesslog-logic.js?v=20261127c';
 
 export function accessLogHtml(st) {
   const s = st.sum; const chk = st.check;

@@ -1,0 +1,25 @@
+// 재무회계 권한 3단계(대기열 4-6-23) — 판정 함수·사이드 메뉴·직접 주소·일정 제공자. 규칙은 portal-functions/rules-tests/finance_perm.test.mjs.
+import { financePerm, financeEditPerm, financeAdmin, financeSectionAllowed, financeLanding } from '../app/shared/finance-perm.js';
+import { LEGACY_DEFS, sideConfig, resolveItem } from '../app/modules/legacy/list.js';
+let pass = 0, fail = 0; const ok = (c, m) => { if (c) { pass++; console.log('OK   ' + m); } else { fail++; console.log('FAIL ' + m); } };
+const adm = { admin: true }, view = { perms: { finance: true } }, edit = { perms: { financeEdit: true } }, dept = { dept: '재무회계팀', perms: {} }, none = { perms: {} }, gst = { isGuest: true, perms: { financeEdit: true } };
+ok(financePerm(adm) && financePerm(view) && financePerm(edit) && !financePerm(dept) && !financePerm(none) && !financePerm(gst) && !financePerm(null), '입구: 관리자·조회 칩·입력 칩만 — 재무회계팀 소속만으로는 닫힘');
+ok(financeEditPerm(adm) && financeEditPerm(edit) && !financeEditPerm(view) && !financeEditPerm(dept) && financeAdmin(adm) && !financeAdmin(edit), '입력 권한: 관리자·입력 칩만 / 관리자 전용 판정은 관리자만');
+const VIEW = ['home', 'reports', 'monthly', 'forecast'], EDIT = ['entries', 'expense', 'import', 'schedule', 'pjt'], ADMIN = ['gap', 'rules', 'opening', 'settings'];
+ok(VIEW.every((k) => financeSectionAllowed(view, k)) && !EDIT.concat(ADMIN).some((k) => financeSectionAllowed(view, k)), '조회 칩: 홈·재무제표·월간 수지·예측만');
+ok(VIEW.concat(EDIT).every((k) => financeSectionAllowed(edit, k)) && !ADMIN.some((k) => financeSectionAllowed(edit, k)), '입력 칩: 조회 + 전표·비용 입력·가져오기·일정·프로젝트 표시, 관리자 전용 4개는 못 엶');
+ok(VIEW.concat(EDIT, ADMIN, ['zzz']).every((k) => financeSectionAllowed(adm, k)) && !financeSectionAllowed(edit, 'zzz') && !financeSectionAllowed(dept, 'home'), '관리자는 전부, 모르는 화면은 관리자만, 부서만은 홈도 못 엶');
+ok(financeLanding(view) === 'home' && financeLanding(none) === '', '처음 열 화면');
+const def = LEGACY_DEFS.find((d) => d.id === 'finance');
+ok(def.perm(view) && !def.perm(dept), '재무회계 입구(def.perm)가 financePerm 과 같게 동작');
+const keysOf = (me) => sideConfig(def, 'home', '', me).sections.flatMap((s) => s.items.map((i) => i.key));
+ok(keysOf(view).join() === 'home,reports,monthly,forecast', '조회 칩 메뉴: ' + keysOf(view).join());
+ok(keysOf(edit).join() === 'home,entries,expense,import,reports,monthly,forecast,pjt', '입력 칩 메뉴: ' + keysOf(edit).join());
+ok(keysOf(adm).length === 12, '관리자 메뉴는 그대로(회귀): ' + keysOf(adm).length);
+const r = (me, key) => (resolveItem(def, key, me) || {}).key;
+ok(r(view, 'entries') === 'home' && r(view, 'settings') === 'home' && r(edit, 'gap') === 'home' && r(edit, 'entries') === 'entries' && r(adm, 'settings') === 'settings', '★ 못 여는 화면을 주소로 쳐도 홈으로');
+ok(resolveItem(def, 'home', dept) === null, '부서만이면 열 화면 없음(null)');
+const { scheduleSourcePerm } = await import('../app/shared/schedule-perm.js');
+ok(scheduleSourcePerm('finsch', edit) && scheduleSourcePerm('finsch', adm) && !scheduleSourcePerm('finsch', view) && !scheduleSourcePerm('finsch', dept), '재무회계 일정 달력: 입력 칩·관리자만(조회 칩·부서만은 안 보임)');
+ok(scheduleSourcePerm('plan', { perms: { planClose: true } }) && scheduleSourcePerm('plan', adm) && !scheduleSourcePerm('plan', none) && !scheduleSourcePerm('plan', { dept: '영업기획팀', perms: {} }), '영업기획 일정 달력: 칩 하나라도 있으면(부서만은 안 보임)');
+console.log('\n통과 ' + pass + ' · 실패 ' + fail); process.exit(fail ? 1 : 0);
